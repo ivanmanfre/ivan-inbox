@@ -53,10 +53,20 @@ export function filterThreads(threads: Thread[], f: Filter): Thread[] {
 }
 
 export async function fetchMessages(): Promise<InboxMessage[]> {
-  const { data, error } = await supabase.from('inbox_messages_v')
-    .select('*').order('created_at', { ascending: true }).limit(5000)
-  if (error) throw error
-  return data as InboxMessage[]
+  // PostgREST caps a single response at 1000 rows regardless of .limit(),
+  // so page through the view; id tiebreak keeps pages stable.
+  const all: InboxMessage[] = []
+  const page = 1000
+  for (let from = 0; from < 20000; from += page) {
+    const { data, error } = await supabase.from('inbox_messages_v')
+      .select('*')
+      .order('created_at', { ascending: true }).order('id', { ascending: true })
+      .range(from, from + page - 1)
+    if (error) throw error
+    all.push(...(data as InboxMessage[]))
+    if (!data || data.length < page) break
+  }
+  return all
 }
 
 export async function approveDraft(id: string, editedText: string): Promise<void> {
