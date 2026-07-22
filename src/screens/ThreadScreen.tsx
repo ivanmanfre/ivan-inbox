@@ -175,8 +175,13 @@ export function ThreadScreen({ thread, onBack, refresh }: {
         <div className="draftcard">
           <div className="dc-h">
             <div className="spark">✦</div>
-            <div className="t">AI draft · waiting on you</div>
+            <div className="t">{thread.draftStale ? 'AI draft · you already replied' : 'AI draft · waiting on you'}</div>
           </div>
+          {thread.draftStale && (
+            <div className="stale" style={{ margin: '8px 14px 0' }}>
+              Your own reply went out after their last message — this draft is probably not needed.
+            </div>
+          )}
           <textarea
             ref={taRef}
             className="dc-b"

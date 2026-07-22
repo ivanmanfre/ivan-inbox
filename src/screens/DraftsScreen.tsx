@@ -163,6 +163,9 @@ function DraftCard({ thread, onOpenThread, refresh }: {
         </div>
         <div className="tm">{timeAgo(draft.created_at)}</div>
       </div>
+      {thread.draftStale && (
+        <div className="stale">You already replied after their last message — probably not needed</div>
+      )}
       <div className="bd" onClick={() => onOpenThread(thread.prospect_id)}>
         <Linkified text={draft.message_text} />
         <span className="editcue">Tap to edit</span>
@@ -180,7 +183,9 @@ export function DraftsScreen({ threads, onOpenThread, refresh }: {
   threads: Thread[]; onOpenThread: (id: string) => void; refresh: () => void
 }) {
   const [seg, setSeg] = useState<Seg>('all')
+  const [bulkBusy, setBulkBusy] = useState(false)
   const rowsRef = useRef<HTMLDivElement>(null)
+  const confirm = useConfirm()
   const ptr = usePullToRefresh(rowsRef, () => refresh())
   const draftThreads = threads.filter(t => t.draft !== null)
   const counts: Record<Seg, number> = {
@@ -188,7 +193,27 @@ export function DraftsScreen({ threads, onOpenThread, refresh }: {
     ivan: draftThreads.filter(t => t.client_id === 'ivan').length,
     risedtc: draftThreads.filter(t => t.client_id === 'risedtc').length,
   }
-  const shown = seg === 'all' ? draftThreads : draftThreads.filter(t => t.client_id === seg)
+  const segThreads = seg === 'all' ? draftThreads : draftThreads.filter(t => t.client_id === seg)
+  // Fresh drafts first; stale ones (Ivan already replied) sink to the bottom.
+  const shown = [...segThreads.filter(t => !t.draftStale), ...segThreads.filter(t => t.draftStale)]
+  const staleShown = segThreads.filter(t => t.draftStale)
+
+  async function discardAllStale() {
+    const ok = await confirm({
+      title: `Discard ${staleShown.length} stale draft${staleShown.length === 1 ? '' : 's'}?`,
+      message: 'These threads already have your own reply after the last inbound message. Nothing is sent.',
+      confirmText: 'Discard stale',
+      danger: true,
+    })
+    if (!ok) return
+    setBulkBusy(true)
+    try {
+      for (const t of staleShown) await discardDraft(t.draft!.id)
+      refresh()
+    } finally {
+      setBulkBusy(false)
+    }
+  }
 
   return (
     <>
@@ -211,6 +236,14 @@ export function DraftsScreen({ threads, onOpenThread, refresh }: {
       </div>
       <div className="rows" ref={rowsRef}>
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
+        {staleShown.length > 0 && (
+          <div className="stalebar">
+            <span>{staleShown.length} draft{staleShown.length === 1 ? '' : 's'} where you already replied</span>
+            <button className="stalebtn" disabled={bulkBusy} onClick={discardAllStale}>
+              {bulkBusy ? 'Discarding…' : 'Discard stale'}
+            </button>
+          </div>
+        )}
         {shown.length === 0 ? (
           <div className="empty">{SEG_EMPTY[seg]}</div>
         ) : (

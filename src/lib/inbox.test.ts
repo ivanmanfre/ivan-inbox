@@ -40,6 +40,32 @@ describe('groupThreads', () => {
   })
 })
 
+describe('draftStale', () => {
+  it('flags a draft as stale when a real send is newer than the last inbound', () => {
+    const rows: InboxMessage[] = [
+      { ...base, id: 'in1', direction: 'inbound', created_at: '2026-07-22T04:47:00Z' },
+      { ...base, id: 'sent1', sent_at: '2026-07-22T13:29:00Z', created_at: '2026-07-22T13:29:00Z', message_text: 'OK sounds good' },
+      { ...base, id: 'dr1', created_at: '2026-07-22T05:00:00Z', message_text: 'stale drafted reply' },
+    ]
+    expect(groupThreads(rows)[0].draftStale).toBe(true)
+  })
+  it('fresh draft (no send after the last inbound) is not stale', () => {
+    const rows: InboxMessage[] = [
+      { ...base, id: 'sent1', sent_at: '2026-07-21T10:00:00Z', created_at: '2026-07-21T10:00:00Z' },
+      { ...base, id: 'in1', direction: 'inbound', created_at: '2026-07-22T09:00:00Z' },
+      { ...base, id: 'dr1', created_at: '2026-07-22T09:30:00Z' },
+    ]
+    expect(groupThreads(rows)[0].draftStale).toBe(false)
+  })
+  it('thread with no inbound at all is never stale-flagged', () => {
+    const rows: InboxMessage[] = [
+      { ...base, id: 'sent1', sent_at: '2026-07-21T10:00:00Z', created_at: '2026-07-21T10:00:00Z' },
+      { ...base, id: 'dr1', created_at: '2026-07-22T09:30:00Z' },
+    ]
+    expect(groupThreads(rows)[0].draftStale).toBe(false)
+  })
+})
+
 describe('dedupeMessages', () => {
   it('collapses phantom duplicates (same prospect+direction+text+timestamp)', () => {
     const rows: InboxMessage[] = Array.from({ length: 17 }).map((_, i) => ({
