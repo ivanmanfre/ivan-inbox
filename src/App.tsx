@@ -10,9 +10,10 @@ import { SendsScreen } from './screens/SendsScreen'
 import { TabBar } from './components/TabBar'
 import { InboxSkeleton } from './components/Skeleton'
 import { useInbox } from './hooks/useInbox'
+import { useDesktop } from './hooks/useDesktop'
 import type { Filter } from './lib/inbox'
 
-type Route = 'inbox' | 'drafts' | 'sends' | 'settings' | { thread: string }
+type Tab = 'inbox' | 'drafts' | 'sends' | 'settings'
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -28,10 +29,12 @@ export default function App() {
 }
 
 function Shell() {
-  const [route, setRoute] = useState<Route>('inbox')
+  const [tab, setTab] = useState<Tab>('inbox')
+  const [openThread, setOpenThread] = useState<string | null>(null)
   const [filter, setFilter] = useState<Filter>('all')
   const [sendsClient, setSendsClient] = useState<'all' | 'ivan' | 'risedtc'>('all')
   const { threads, loading, refresh } = useInbox()
+  const desktop = useDesktop()
   const draftCount = threads.filter(t => t.draft).length
 
   if (loading && threads.length === 0) {
@@ -47,39 +50,66 @@ function Shell() {
     )
   }
 
-  if (typeof route === 'object') {
-    const thread = threads.find(t => t.prospect_id === route.thread)
-    if (thread) {
-      return (
-        <div className="app">
-          <ThreadScreen thread={thread} onBack={() => setRoute('inbox')} refresh={refresh} />
-        </div>
-      )
-    }
-  }
+  const thread = openThread ? threads.find(t => t.prospect_id === openThread) ?? null : null
 
-  const active: 'inbox' | 'drafts' | 'sends' | 'settings' = typeof route === 'string' ? route : 'inbox'
-
-  return (
-    <div className="app">
-      {active === 'inbox' && (
+  const listScreen = (
+    <>
+      {tab === 'inbox' && (
         <InboxScreen
           threads={threads}
           filter={filter}
           setFilter={setFilter}
           refresh={refresh}
-          onOpenThread={id => setRoute({ thread: id })}
-          onOpenDrafts={() => setRoute('drafts')}
+          onOpenThread={setOpenThread}
+          onOpenDrafts={() => setTab('drafts')}
+          activeThread={desktop ? openThread : null}
         />
       )}
-      {active === 'drafts' && (
-        <DraftsScreen threads={threads} onOpenThread={id => setRoute({ thread: id })} refresh={refresh} />
+      {tab === 'drafts' && (
+        <DraftsScreen threads={threads} onOpenThread={setOpenThread} refresh={refresh} />
       )}
-      {active === 'sends' && (
+      {tab === 'sends' && (
         <SendsScreen client={sendsClient} setClient={setSendsClient} />
       )}
-      {active === 'settings' && <SettingsScreen />}
-      <TabBar active={active} draftCount={draftCount} onNav={t => setRoute(t)} />
+      {tab === 'settings' && <SettingsScreen />}
+    </>
+  )
+
+  const nav = (t: Tab) => { setTab(t); if (!desktop) setOpenThread(null) }
+
+  // Desktop: rail + list column + conversation pane, side by side.
+  if (desktop) {
+    return (
+      <div className="app dt">
+        <TabBar active={tab} draftCount={draftCount} onNav={nav} />
+        <div className="dt-list">{listScreen}</div>
+        <div className="dt-detail">
+          {thread ? (
+            <ThreadScreen thread={thread} onBack={() => setOpenThread(null)} refresh={refresh} />
+          ) : (
+            <div className="dt-empty">
+              <div className="dt-empty-ic">✦</div>
+              <div>Select a conversation</div>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // Mobile: thread takes over the screen; otherwise the active tab + tab bar.
+  if (thread) {
+    return (
+      <div className="app">
+        <ThreadScreen thread={thread} onBack={() => setOpenThread(null)} refresh={refresh} />
+      </div>
+    )
+  }
+
+  return (
+    <div className="app">
+      {listScreen}
+      <TabBar active={tab} draftCount={draftCount} onNav={nav} />
     </div>
   )
 }

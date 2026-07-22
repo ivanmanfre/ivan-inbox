@@ -71,3 +71,28 @@ describe('laneStatus thresholds', () => {
     expect(laneStatus(null, now)).toBe('stale')
   })
 })
+
+describe('buildSendLog', () => {
+  const lr = (over: Record<string, unknown>) => ({
+    id: 'x', prospect_id: 'p1', prospect_name: 'A', client_id: 'ivan',
+    message_type: 'dm', message_text: 'hey',
+    sent_at: null, send_blocked_at: null, send_blocked_reason: null,
+    ...over,
+  })
+  it('merges sent + failed chronologically desc, collapsing phantom dupes', async () => {
+    const { buildSendLog } = await import('./sends')
+    const sent = [
+      lr({ id: 's1', sent_at: '2026-07-22T10:00:00Z' }),
+      lr({ id: 's1dup', sent_at: '2026-07-22T10:00:00Z' }), // phantom copy
+      lr({ id: 's2', sent_at: '2026-07-22T08:00:00Z', message_text: 'older' }),
+    ]
+    const failed = [
+      lr({ id: 'f1', send_blocked_at: '2026-07-22T09:00:00Z', send_blocked_reason: 'chat create failed: 422' }),
+      lr({ id: 'f2', send_blocked_at: '2026-07-22T09:30:00Z', send_blocked_reason: 'discarded_in_inbox' }), // Ivan's discard, excluded
+    ]
+    const log = buildSendLog(sent as never, failed as never)
+    expect(log.map(i => i.id)).toEqual(['s1', 'f1', 's2'])
+    expect(log[1].kind).toBe('failed')
+    expect(log[1].reason).toContain('422')
+  })
+})

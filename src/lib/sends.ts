@@ -64,6 +64,74 @@ export type RecentSend = {
   client_id: string
 }
 
+export type SendLogItem = {
+  id: string
+  prospect_id: string
+  prospect_name: string
+  client_id: string
+  message_type: string
+  message_text: string
+  event_at: string
+  kind: 'sent' | 'failed'
+  reason: string | null
+}
+
+type LogRow = {
+  id: string; prospect_id: string; prospect_name: string; client_id: string;
+  message_type: string | null; message_text: string;
+  sent_at: string | null; send_blocked_at: string | null; send_blocked_reason: string | null;
+}
+
+// Merge sent + failed rows into one chronological feed. Pure so it's testable.
+// Sent rows get the phantom-duplicate collapse; discarded drafts are Ivan's own
+// action, not a pipeline event, so they stay out of the log.
+export function buildSendLog(sent: LogRow[], failed: LogRow[]): SendLogItem[] {
+  const seen = new Set<string>()
+  const items: SendLogItem[] = []
+  for (const m of sent) {
+    if (!m.sent_at) continue
+    const dk = `${m.prospect_id}|${m.sent_at}|${m.message_text}`
+    if (seen.has(dk)) continue
+    seen.add(dk)
+    items.push({
+      id: m.id, prospect_id: m.prospect_id, prospect_name: m.prospect_name,
+      client_id: m.client_id, message_type: m.message_type ?? 'dm',
+      message_text: m.message_text, event_at: m.sent_at, kind: 'sent', reason: null,
+    })
+  }
+  for (const m of failed) {
+    if (!m.send_blocked_at || m.send_blocked_reason === 'discarded_in_inbox') continue
+    items.push({
+      id: m.id, prospect_id: m.prospect_id, prospect_name: m.prospect_name,
+      client_id: m.client_id, message_type: m.message_type ?? 'dm',
+      message_text: m.message_text, event_at: m.send_blocked_at, kind: 'failed',
+      reason: m.send_blocked_reason,
+    })
+  }
+  return items.sort((a, b) => b.event_at.localeCompare(a.event_at))
+}
+
+export async function fetchSendLog(
+  client: 'all' | 'ivan' | 'risedtc',
+  limit = 120,
+): Promise<SendLogItem[]> {
+  const cols = 'id, prospect_id, prospect_name, client_id, message_type, message_text, sent_at, send_blocked_at, send_blocked_reason'
+  let sentQ = supabase.from('inbox_messages_v').select(cols)
+    .eq('direction', 'outbound').not('sent_at', 'is', null)
+    .order('sent_at', { ascending: false }).limit(limit * 3) // wide for dedupe headroom
+  let failQ = supabase.from('inbox_messages_v').select(cols)
+    .eq('direction', 'outbound').not('send_blocked_at', 'is', null)
+    .order('send_blocked_at', { ascending: false }).limit(60)
+  if (client !== 'all') { sentQ = sentQ.eq('client_id', client); failQ = failQ.eq('client_id', client) }
+  const [sent, fail] = await Promise.all([sentQ, failQ])
+  if (sent.error) throw sent.error
+  if (fail.error) throw fail.error
+  return buildSendLog(
+    (sent.data ?? []) as LogRow[],
+    (fail.data ?? []) as LogRow[],
+  ).slice(0, limit)
+}
+
 // The most recent actually-sent rows for one lane — powers the drill-in so you
 // can see WHAT went out, not just that the count moved. A historical insert
 // loop duplicated some DMs hundreds of times (identical text + timestamp), so

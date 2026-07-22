@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  buildLanes, fetchLaneRecent, fetchSends, fetchSendsDaily,
-  type Lane, type LaneKey, type RecentSend,
+  buildLanes, fetchLaneRecent, fetchSendLog, fetchSends, fetchSendsDaily,
+  type Lane, type LaneKey, type RecentSend, type SendLogItem,
 } from '../lib/sends'
 import { SendsSkeleton } from '../components/Skeleton'
 import { Linkified } from '../components/Linkified'
@@ -42,6 +42,78 @@ function statusText(lane: Lane): string {
   if (lane.status === 'live') return `Sent ${ago(lane.last_sent)}`
   if (lane.status === 'slowing') return `Slowing, last ${ago(lane.last_sent)}`
   return `No sends in ${daysBetween(lane.last_sent)} days`
+}
+
+const TYPE_LABEL: Record<string, string> = {
+  connection_note: 'CONN', dm: 'DM', inmail: 'INMAIL', email: 'EMAIL', manual_reply: 'REPLY',
+}
+const TYPE_COLOR: Record<string, string> = {
+  connection_note: '#0A84FF', dm: '#10A37F', inmail: '#BF5AF2', email: '#FF9F0A', manual_reply: '#10A37F',
+}
+
+function logDay(iso: string): string {
+  const d = new Date(iso)
+  if (d.toDateString() === new Date().toDateString()) return 'TODAY'
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()
+}
+
+// Chronological feed of every outbound action (sends + verified failures).
+function LogView({ client }: { client: Client }) {
+  const [items, setItems] = useState<SendLogItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let live = true
+    setLoading(true); setError(null)
+    fetchSendLog(client)
+      .then(r => { if (live) setItems(r) })
+      .catch(e => { if (live) setError(e instanceof Error ? e.message : 'Failed to load') })
+      .finally(() => { if (live) setLoading(false) })
+    return () => { live = false }
+  }, [client])
+
+  if (loading) return <div className="rows sc-rows"><div className="empty">Loading…</div></div>
+  if (error) return <div className="rows sc-rows"><div className="empty">{error}</div></div>
+  if (items.length === 0) return <div className="rows sc-rows"><div className="empty">No send activity yet.</div></div>
+
+  let lastDay = ''
+  return (
+    <div className="rows sc-rows">
+      {items.map(m => {
+        const day = logDay(m.event_at)
+        const showDay = day !== lastDay
+        lastDay = day
+        return (
+          <div key={m.id} style={{ display: 'contents' }}>
+            {showDay && <div className="log-day">{day}</div>}
+            <div className="log-r">
+              <span
+                className="log-chip"
+                style={m.kind === 'failed'
+                  ? { background: 'rgba(255,69,58,.16)', color: '#FF453A' }
+                  : { background: `${TYPE_COLOR[m.message_type] ?? '#10A37F'}22`, color: TYPE_COLOR[m.message_type] ?? '#10A37F' }}
+              >
+                {m.kind === 'failed' ? 'FAILED' : (TYPE_LABEL[m.message_type] ?? m.message_type.toUpperCase())}
+              </span>
+              <div className="log-mid">
+                <div className="log-top">
+                  <span className="log-nm">{m.prospect_name}</span>
+                  <span className={`client ${m.client_id === 'risedtc' ? 'rise' : ''}`}>
+                    {m.client_id === 'risedtc' ? 'RISE' : m.client_id.toUpperCase()}
+                  </span>
+                </div>
+                <div className="log-snip">
+                  {m.kind === 'failed' ? (m.reason ?? 'send failed') : m.message_text}
+                </div>
+              </div>
+              <span className="log-tm">{ago(m.event_at)}</span>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
 }
 
 function Spark({ values }: { values: number[] }) {
@@ -119,6 +191,7 @@ export function SendsScreen({ client, setClient }: {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [openLane, setOpenLane] = useState<LaneKey | null>(null)
+  const [view, setView] = useState<'lanes' | 'log'>('lanes')
   const rowsRef = useRef<HTMLDivElement>(null)
 
   const load = useCallback(async () => {
@@ -166,7 +239,14 @@ export function SendsScreen({ client, setClient }: {
         </div>
       </div>
 
-      {loading && rows.length === 0 ? (
+      <div className="seg" style={{ margin: '10px 16px 0' }}>
+        <div className={`sg ${view === 'lanes' ? 'on' : ''}`} onClick={() => setView('lanes')}>Lanes</div>
+        <div className={`sg ${view === 'log' ? 'on' : ''}`} onClick={() => setView('log')}>Log</div>
+      </div>
+
+      {view === 'log' ? (
+        <LogView client={client} />
+      ) : loading && rows.length === 0 ? (
         <SendsSkeleton />
       ) : error ? (
         <div className="rows sc-rows"><div className="empty">{error}</div></div>

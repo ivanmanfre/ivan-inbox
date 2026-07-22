@@ -37,13 +37,14 @@ function clientLabel(id: string): string {
   return id.toUpperCase()
 }
 
-export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread, onOpenDrafts }: {
+export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread, onOpenDrafts, activeThread = null }: {
   threads: Thread[]
   filter: Filter
   setFilter: (f: Filter) => void
   refresh: () => void
   onOpenThread: (id: string) => void
   onOpenDrafts: () => void
+  activeThread?: string | null
 }) {
   const rowsRef = useRef<HTMLDivElement>(null)
   const ptr = usePullToRefresh(rowsRef, () => refresh())
@@ -97,7 +98,7 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
             return (
               <div
                 key={t.prospect_id}
-                className={`r ${t.unread > 0 ? 'unread' : ''}`}
+                className={`r ${t.unread > 0 ? 'unread' : ''} ${activeThread === t.prospect_id ? 'active' : ''}`}
                 onClick={() => onOpenThread(t.prospect_id)}
               >
                 <Avatar name={t.prospect_name} client_id={t.client_id} channel={t.channel} />
