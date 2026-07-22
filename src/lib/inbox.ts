@@ -88,6 +88,9 @@ export async function composeReply(t: Thread, text: string): Promise<void> {
     prospect_id: t.prospect_id, direction: 'outbound', message_text: text,
     message_type: 'manual_reply', channel: t.channel === 'email' ? 'email' : 'linkedin',
     approved_at: new Date().toISOString(),
+    // sent_at defaults to now() at the column level; explicit null keeps the
+    // row pickable by the dispatcher (approved_at NOT NULL AND sent_at IS NULL).
+    sent_at: null,
   })
   if (error) throw error
 }
