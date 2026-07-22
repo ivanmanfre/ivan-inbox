@@ -1,4 +1,7 @@
+import { useRef } from 'react'
 import { Avatar } from '../components/Avatar'
+import { PullIndicator } from '../components/PullIndicator'
+import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { filterThreads, type Filter, type Thread } from '../lib/inbox'
 
 function timeAgo(iso: string): string {
@@ -34,13 +37,16 @@ function clientLabel(id: string): string {
   return id.toUpperCase()
 }
 
-export function InboxScreen({ threads, filter, setFilter, onOpenThread, onOpenDrafts }: {
+export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread, onOpenDrafts }: {
   threads: Thread[]
   filter: Filter
   setFilter: (f: Filter) => void
+  refresh: () => void
   onOpenThread: (id: string) => void
   onOpenDrafts: () => void
 }) {
+  const rowsRef = useRef<HTMLDivElement>(null)
+  const ptr = usePullToRefresh(rowsRef, () => refresh())
   const shown = filterThreads(threads, filter)
   const draftTotal = threads.filter(t => t.draft).length
   const unreadTotal = threads.filter(t => t.unread > 0).length
@@ -78,7 +84,8 @@ export function InboxScreen({ threads, filter, setFilter, onOpenThread, onOpenDr
         </div>
       )}
 
-      <div className="rows">
+      <div className="rows" ref={rowsRef}>
+        <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
         {shown.length === 0 ? (
           <div className="empty">{EMPTY[filter]}</div>
         ) : (

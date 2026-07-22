@@ -55,6 +55,35 @@ export async function fetchSendsDaily(): Promise<DailyRow[]> {
   return (data ?? []) as DailyRow[]
 }
 
+export type RecentSend = {
+  id: string
+  prospect_id: string
+  prospect_name: string
+  message_text: string
+  sent_at: string
+  client_id: string
+}
+
+// The most recent actually-sent rows for one lane — powers the drill-in so you
+// can see WHAT went out, not just that the count moved.
+export async function fetchLaneRecent(
+  key: LaneKey,
+  client: 'all' | 'ivan' | 'risedtc',
+  limit = 25,
+): Promise<RecentSend[]> {
+  let q = supabase.from('inbox_messages_v')
+    .select('id, prospect_id, prospect_name, message_text, sent_at, client_id')
+    .eq('message_type', key)
+    .eq('direction', 'outbound')
+    .not('sent_at', 'is', null)
+    .order('sent_at', { ascending: false })
+    .limit(limit)
+  if (client !== 'all') q = q.eq('client_id', client)
+  const { data, error } = await q
+  if (error) throw error
+  return (data ?? []) as RecentSend[]
+}
+
 export function laneStatus(last_sent: string | null, nowIso: string): 'live' | 'slowing' | 'stale' {
   if (!last_sent) return 'stale'
   const age = new Date(nowIso).getTime() - new Date(last_sent).getTime()

@@ -1,5 +1,8 @@
 import { useRef, useState } from 'react'
 import { Avatar } from '../components/Avatar'
+import { useConfirm } from '../components/ConfirmSheet'
+import { PullIndicator } from '../components/PullIndicator'
+import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { approveDraft, discardDraft, type Thread } from '../lib/inbox'
 
 function timeAgo(iso: string): string {
@@ -43,8 +46,10 @@ function channelLabel(c: Thread['channel']): string {
 
 const SWIPE_THRESHOLD = 72
 
-// Touch-drag only (no mouse-drag equivalent) — this is a phone-width PWA,
-// mouse pointer support was skipped per implementation note.
+// Pointer-based swipe: works with both touch and mouse (so the card is usable
+// on desktop too). A directional lock decides on the first move whether the
+// gesture is a horizontal swipe (we take it) or a vertical scroll (we bail),
+// so the list still scrolls normally under your finger.
 function DraftCard({ thread, onOpenThread, refresh }: {
   thread: Thread; onOpenThread: (id: string) => void; refresh: () => void
 }) {
@@ -53,7 +58,9 @@ function DraftCard({ thread, onOpenThread, refresh }: {
   const [dragging, setDragging] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const startX = useRef(0)
+  const confirm = useConfirm()
+  const start = useRef({ x: 0, y: 0 })
+  const axis = useRef<'none' | 'x' | 'y'>('none')
   const dxRef = useRef(0)
 
   function springBack() {
@@ -61,21 +68,33 @@ function DraftCard({ thread, onOpenThread, refresh }: {
     setDx(0)
   }
 
-  function onTouchStart(e: React.TouchEvent) {
-    startX.current = e.touches[0].clientX
+  function onPointerDown(e: React.PointerEvent) {
+    if (busy) return
+    start.current = { x: e.clientX, y: e.clientY }
+    axis.current = 'none'
     setDragging(true)
   }
 
-  function onTouchMove(e: React.TouchEvent) {
+  function onPointerMove(e: React.PointerEvent) {
     if (!dragging) return
-    const next = e.touches[0].clientX - startX.current
-    dxRef.current = next
-    setDx(next)
+    const ddx = e.clientX - start.current.x
+    const ddy = e.clientY - start.current.y
+    if (axis.current === 'none') {
+      if (Math.abs(ddx) < 6 && Math.abs(ddy) < 6) return
+      // Lock to whichever direction dominated the first few pixels.
+      axis.current = Math.abs(ddx) > Math.abs(ddy) ? 'x' : 'y'
+      if (axis.current === 'x') e.currentTarget.setPointerCapture(e.pointerId)
+    }
+    if (axis.current !== 'x') return
+    dxRef.current = ddx
+    setDx(ddx)
   }
 
-  async function onTouchEnd() {
+  async function onPointerUp() {
+    if (!dragging) return
     setDragging(false)
-    const final = dxRef.current
+    const final = axis.current === 'x' ? dxRef.current : 0
+    axis.current = 'none'
     if (final > SWIPE_THRESHOLD) await handleApprove()
     else if (final < -SWIPE_THRESHOLD) await handleDiscard()
     else springBack()
@@ -83,10 +102,12 @@ function DraftCard({ thread, onOpenThread, refresh }: {
 
   async function handleApprove() {
     if (busy) return
-    if (!window.confirm(`Approve and send this reply to ${thread.prospect_name}?`)) {
-      springBack()
-      return
-    }
+    const ok = await confirm({
+      title: `Send to ${thread.prospect_name}?`,
+      message: 'The sender picks it up within about 2 minutes.',
+      confirmText: 'Approve & send',
+    })
+    if (!ok) { springBack(); return }
     setBusy(true)
     setError(null)
     try {
@@ -102,10 +123,13 @@ function DraftCard({ thread, onOpenThread, refresh }: {
 
   async function handleDiscard() {
     if (busy) return
-    if (!window.confirm(`Discard this draft for ${thread.prospect_name}?`)) {
-      springBack()
-      return
-    }
+    const ok = await confirm({
+      title: `Discard this draft?`,
+      message: `It won't be sent to ${thread.prospect_name}.`,
+      confirmText: 'Discard',
+      danger: true,
+    })
+    if (!ok) { springBack(); return }
     setBusy(true)
     setError(null)
     try {
@@ -121,11 +145,12 @@ function DraftCard({ thread, onOpenThread, refresh }: {
 
   return (
     <div
-      className="qc"
+      className={`qc ${dragging ? 'dragging' : ''}`}
       style={{ transform: `translateX(${dx}px)`, transition: dragging ? 'none' : 'transform .2s ease' }}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
     >
       <div className="h">
         <Avatar name={thread.prospect_name} client_id={thread.client_id} channel={thread.channel} />
@@ -154,6 +179,8 @@ export function DraftsScreen({ threads, onOpenThread, refresh }: {
   threads: Thread[]; onOpenThread: (id: string) => void; refresh: () => void
 }) {
   const [seg, setSeg] = useState<Seg>('all')
+  const rowsRef = useRef<HTMLDivElement>(null)
+  const ptr = usePullToRefresh(rowsRef, () => refresh())
   const draftThreads = threads.filter(t => t.draft !== null)
   const counts: Record<Seg, number> = {
     all: draftThreads.length,
@@ -181,7 +208,8 @@ export function DraftsScreen({ threads, onOpenThread, refresh }: {
           </div>
         ))}
       </div>
-      <div className="rows">
+      <div className="rows" ref={rowsRef}>
+        <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
         {shown.length === 0 ? (
           <div className="empty">{SEG_EMPTY[seg]}</div>
         ) : (

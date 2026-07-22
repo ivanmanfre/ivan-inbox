@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Avatar } from '../components/Avatar'
+import { useConfirm } from '../components/ConfirmSheet'
 import {
   approveDraft, composeReply, discardDraft, isDraft, markThreadRead,
   type InboxMessage, type Thread,
@@ -53,6 +54,7 @@ export function ThreadScreen({ thread, onBack, refresh }: {
   const [busy, setBusy] = useState(false)
   const msgsRef = useRef<HTMLDivElement>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
+  const confirm = useConfirm()
 
   // Re-seed the editor when the draft row changes (e.g. after a refresh).
   useEffect(() => { setEdited(draft?.message_text ?? '') }, [draft?.id])
@@ -79,7 +81,12 @@ export function ThreadScreen({ thread, onBack, refresh }: {
 
   async function onApprove() {
     if (!draft) return
-    if (!confirm('Approve and send this reply? The sender picks it up within about 2 minutes.')) return
+    const ok = await confirm({
+      title: `Send to ${thread.prospect_name}?`,
+      message: 'The sender picks it up within about 2 minutes.',
+      confirmText: 'Approve & send',
+    })
+    if (!ok) return
     setBusy(true); setDraftErr('')
     try { await approveDraft(draft.id, edited); refresh() }
     catch (e) { setDraftErr(errText(e)) }
@@ -88,7 +95,13 @@ export function ThreadScreen({ thread, onBack, refresh }: {
 
   async function onDiscard() {
     if (!draft) return
-    if (!confirm('Discard this draft? It will not be sent.')) return
+    const ok = await confirm({
+      title: 'Discard this draft?',
+      message: 'It will not be sent.',
+      confirmText: 'Discard',
+      danger: true,
+    })
+    if (!ok) return
     setBusy(true); setDraftErr('')
     try { await discardDraft(draft.id); refresh() }
     catch (e) { setDraftErr(errText(e)) }

@@ -1,5 +1,11 @@
-import { useEffect, useState, useCallback } from 'react'
-import { buildLanes, fetchSends, fetchSendsDaily, type Lane } from '../lib/sends'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  buildLanes, fetchLaneRecent, fetchSends, fetchSendsDaily,
+  type Lane, type LaneKey, type RecentSend,
+} from '../lib/sends'
+import { SendsSkeleton } from '../components/Skeleton'
+import { PullIndicator } from '../components/PullIndicator'
+import { usePullToRefresh } from '../hooks/usePullToRefresh'
 
 type Client = 'all' | 'ivan' | 'risedtc'
 
@@ -52,6 +58,57 @@ function Spark({ values }: { values: number[] }) {
   )
 }
 
+// Drill-in: recent sent messages for one lane. Read-only.
+function LaneDetail({ lane, client, onBack }: {
+  lane: Lane; client: Client; onBack: () => void
+}) {
+  const [rows, setRows] = useState<RecentSend[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let live = true
+    setLoading(true); setError(null)
+    fetchLaneRecent(lane.key as LaneKey, client)
+      .then(r => { if (live) setRows(r) })
+      .catch(e => { if (live) setError(e instanceof Error ? e.message : 'Failed to load') })
+      .finally(() => { if (live) setLoading(false) })
+    return () => { live = false }
+  }, [lane.key, client])
+
+  return (
+    <>
+      <div className="t-nav">
+        <span className="back" onClick={onBack}>‹</span>
+        <div className="who">
+          <div className="n">{lane.label}</div>
+          <div className="m"><b>{lane.sent_7d}</b> in 7d · {statusText(lane)}</div>
+        </div>
+        <span className="sc-dot" style={{ background: DOT[lane.status], width: 12, height: 12 }} />
+      </div>
+      <div className="rows sc-rows">
+        {loading ? (
+          <div className="empty">Loading…</div>
+        ) : error ? (
+          <div className="empty">{error}</div>
+        ) : rows.length === 0 ? (
+          <div className="empty">No sends in this lane yet.</div>
+        ) : (
+          rows.map(m => (
+            <div key={m.id} className="ld">
+              <div className="ld-h">
+                <span className="ld-nm">{m.prospect_name}</span>
+                <span className="ld-tm">{ago(m.sent_at)}</span>
+              </div>
+              <div className="ld-b">{m.message_text}</div>
+            </div>
+          ))
+        )}
+      </div>
+    </>
+  )
+}
+
 export function SendsScreen({ client, setClient }: {
   client: Client
   setClient: (c: Client) => void
@@ -60,6 +117,8 @@ export function SendsScreen({ client, setClient }: {
   const [daily, setDaily] = useState<Awaited<ReturnType<typeof fetchSendsDaily>>>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [openLane, setOpenLane] = useState<LaneKey | null>(null)
+  const rowsRef = useRef<HTMLDivElement>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -76,8 +135,14 @@ export function SendsScreen({ client, setClient }: {
   }, [])
 
   useEffect(() => { load() }, [load])
+  const ptr = usePullToRefresh(rowsRef, load)
 
   const lanes = buildLanes(rows, daily, client)
+  const detailLane = openLane ? lanes.find(l => l.key === openLane) ?? null : null
+
+  if (detailLane) {
+    return <LaneDetail lane={detailLane} client={client} onBack={() => setOpenLane(null)} />
+  }
 
   return (
     <>
@@ -100,14 +165,15 @@ export function SendsScreen({ client, setClient }: {
         </div>
       </div>
 
-      <div className="rows sc-rows">
-        {loading && rows.length === 0 ? (
-          <div className="empty">Loading…</div>
-        ) : error ? (
-          <div className="empty">{error}</div>
-        ) : (
-          lanes.map(lane => (
-            <div key={lane.key} className="sc">
+      {loading && rows.length === 0 ? (
+        <SendsSkeleton />
+      ) : error ? (
+        <div className="rows sc-rows"><div className="empty">{error}</div></div>
+      ) : (
+        <div className="rows sc-rows" ref={rowsRef}>
+          <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
+          {lanes.map(lane => (
+            <div key={lane.key} className="sc" onClick={() => setOpenLane(lane.key)}>
               <div className="sc-l">
                 <div className="sc-head">
                   <span className="sc-dot" style={{ background: DOT[lane.status] }} />
@@ -123,11 +189,12 @@ export function SendsScreen({ client, setClient }: {
                 <div className="sc-big">{lane.sent_7d}</div>
                 <div className="sc-cap">in 7d</div>
                 <div className="sc-24">24h: {lane.sent_24h}</div>
+                <div className="sc-chev">›</div>
               </div>
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </>
   )
 }

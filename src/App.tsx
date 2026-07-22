@@ -8,6 +8,7 @@ import { DraftsScreen } from './screens/DraftsScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
 import { SendsScreen } from './screens/SendsScreen'
 import { TabBar } from './components/TabBar'
+import { InboxSkeleton } from './components/Skeleton'
 import { useInbox } from './hooks/useInbox'
 import type { Filter } from './lib/inbox'
 
@@ -34,7 +35,16 @@ function Shell() {
   const draftCount = threads.filter(t => t.draft).length
 
   if (loading && threads.length === 0) {
-    return <div className="app"><div className="loading">Loading…</div></div>
+    return (
+      <div className="app">
+        <div className="nav">
+          <div className="row-top"><h2>Inbox</h2><div className="avatar-me">IM</div></div>
+          <div className="search">🔍&nbsp; Search people or messages</div>
+        </div>
+        <InboxSkeleton />
+        <TabBar active="inbox" draftCount={0} onNav={() => {}} />
+      </div>
+    )
   }
 
   if (typeof route === 'object') {
@@ -57,6 +67,7 @@ function Shell() {
           threads={threads}
           filter={filter}
           setFilter={setFilter}
+          refresh={refresh}
           onOpenThread={id => setRoute({ thread: id })}
           onOpenDrafts={() => setRoute('drafts')}
         />
