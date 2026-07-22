@@ -151,6 +151,28 @@ input.cfield::placeholder{color:var(--text3)}
 .seg.theme{margin:0;width:154px;flex:none;background:var(--surface2)}
 .seg.theme .sg{padding:6px 0}
 
+/* ---- sends (pipeline health) ---- */
+.sc-sub{margin-top:4px;font-size:14px;color:var(--text2);font-weight:500}
+.sc-refresh{width:34px;height:34px;border-radius:99px;background:var(--surface);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;flex:none}
+.sc-rows{padding:6px 16px 16px}
+.sc{display:flex;gap:14px;align-items:stretch;background:var(--surface);border-radius:16px;padding:14px 16px;margin-top:12px}
+.sc-l{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px}
+.sc-head{display:flex;align-items:center;gap:9px}
+.sc-dot{width:11px;height:11px;border-radius:99px;flex:none}
+.sc-name{font-size:17px;font-weight:700;letter-spacing:-.01em}
+.sc-status{font-size:13.5px;font-weight:600}
+.sc-status.s-live{color:var(--accent)}
+.sc-status.s-slowing{color:#FF9F0A}
+.sc-status.s-stale{color:#FF453A}
+.sc-blocked{font-size:12.5px;font-weight:600;color:#FF9F0A}
+.sc-spark{display:flex;align-items:flex-end;gap:3px;height:34px;margin-top:auto;padding-top:4px}
+.sc-bar{flex:1;min-height:2px;border-radius:2px;background:var(--accent);opacity:.9}
+.sc-bar.zero{background:var(--surface3);opacity:1;min-height:2px}
+.sc-r{flex:none;text-align:right;display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-start;min-width:58px}
+.sc-big{font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1}
+.sc-cap{font-size:12px;color:var(--text3);margin-top:2px}
+.sc-24{font-size:12.5px;color:var(--text2);margin-top:8px;font-weight:600}
+
 /* ---- login screen (app-specific, not in mockup) ---- */
 .login{max-width:360px;margin:20vh auto;padding:0 22px;display:flex;flex-direction:column;gap:12px}
 .login input{background:var(--surface);border:1px solid var(--surface2);border-radius:12px;padding:12px 14px;font-size:16px;color:var(--text)}

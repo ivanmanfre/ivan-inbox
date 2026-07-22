@@ -6,11 +6,12 @@ import { InboxScreen } from './screens/InboxScreen'
 import { ThreadScreen } from './screens/ThreadScreen'
 import { DraftsScreen } from './screens/DraftsScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
+import { SendsScreen } from './screens/SendsScreen'
 import { TabBar } from './components/TabBar'
 import { useInbox } from './hooks/useInbox'
 import type { Filter } from './lib/inbox'
 
-type Route = 'inbox' | 'drafts' | 'settings' | { thread: string }
+type Route = 'inbox' | 'drafts' | 'sends' | 'settings' | { thread: string }
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -28,6 +29,7 @@ export default function App() {
 function Shell() {
   const [route, setRoute] = useState<Route>('inbox')
   const [filter, setFilter] = useState<Filter>('all')
+  const [sendsClient, setSendsClient] = useState<'all' | 'ivan' | 'risedtc'>('all')
   const { threads, loading, refresh } = useInbox()
   const draftCount = threads.filter(t => t.draft).length
 
@@ -46,7 +48,7 @@ function Shell() {
     }
   }
 
-  const active: 'inbox' | 'drafts' | 'settings' = typeof route === 'string' ? route : 'inbox'
+  const active: 'inbox' | 'drafts' | 'sends' | 'settings' = typeof route === 'string' ? route : 'inbox'
 
   return (
     <div className="app">
@@ -61,6 +63,9 @@ function Shell() {
       )}
       {active === 'drafts' && (
         <DraftsScreen threads={threads} onOpenThread={id => setRoute({ thread: id })} refresh={refresh} />
+      )}
+      {active === 'sends' && (
+        <SendsScreen client={sendsClient} setClient={setSendsClient} />
       )}
       {active === 'settings' && <SettingsScreen />}
       <TabBar active={active} draftCount={draftCount} onNav={t => setRoute(t)} />
