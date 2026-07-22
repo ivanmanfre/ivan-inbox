@@ -101,7 +101,12 @@ body{
 .btn.s{background:var(--surface2);color:var(--text)}
 .composer{display:flex;gap:10px;align-items:center;padding:6px 14px 12px}
 .cfield{flex:1;background:var(--surface);border:1px solid var(--surface3);border-radius:22px;padding:11px 16px;font-size:15.5px;color:var(--text3)}
-.csend{width:38px;height:38px;border-radius:99px;background:var(--surface2);display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:16px}
+.csend{width:38px;height:38px;border-radius:99px;background:var(--surface2);display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:16px;flex:none;cursor:pointer}
+.app .msgs{overflow-y:auto;-webkit-overflow-scrolling:touch}
+textarea.dc-b{display:block;width:100%;background:transparent;border:none;color:var(--text);font-family:inherit;font-size:15.5px;line-height:1.45;resize:none;outline:none;min-height:66px}
+input.cfield{color:var(--text);outline:none;font-family:inherit}
+input.cfield::placeholder{color:var(--text3)}
+.draftcard .btn,.csend{cursor:pointer}
 
 /* ---- drafts queue ---- */
 .seg{display:flex;background:var(--surface);border-radius:10px;padding:2px;margin:16px 22px 4px}
