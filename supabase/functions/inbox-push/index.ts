@@ -15,9 +15,11 @@ Deno.serve(async (req) => {
     console.log(JSON.stringify({ message_id, subs: 0, results: [] }))
     return new Response('ok')
   }
+  // Inbox-scoped keypair (INBOX_VAPID_*): the project has no shared VAPID_*
+  // secrets, and the subscribe key in the app must match the signing key here.
   webpush.setVapidDetails(
     Deno.env.get('VAPID_SUBJECT') ?? 'mailto:im@ivanmanfredi.com',
-    Deno.env.get('VAPID_PUBLIC_KEY')!, Deno.env.get('VAPID_PRIVATE_KEY')!)
+    Deno.env.get('INBOX_VAPID_PUBLIC_KEY')!, Deno.env.get('INBOX_VAPID_PRIVATE_KEY')!)
   const payload = JSON.stringify({
     title: `${m.prospect_name} · ${m.client_id === 'risedtc' ? 'Rise' : 'Ivan'}`,
     body: (m.message_text ?? '').slice(0, 140),
