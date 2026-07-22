@@ -65,7 +65,10 @@ export type RecentSend = {
 }
 
 // The most recent actually-sent rows for one lane — powers the drill-in so you
-// can see WHAT went out, not just that the count moved.
+// can see WHAT went out, not just that the count moved. A historical insert
+// loop duplicated some DMs hundreds of times (identical text + timestamp), so
+// pull a wide window, collapse exact duplicates, then take the newest few —
+// otherwise one phantom burst would fill the whole list.
 export async function fetchLaneRecent(
   key: LaneKey,
   client: 'all' | 'ivan' | 'risedtc',
@@ -77,11 +80,21 @@ export async function fetchLaneRecent(
     .eq('direction', 'outbound')
     .not('sent_at', 'is', null)
     .order('sent_at', { ascending: false })
-    .limit(limit)
+    .limit(400)
   if (client !== 'all') q = q.eq('client_id', client)
   const { data, error } = await q
   if (error) throw error
-  return (data ?? []) as RecentSend[]
+
+  const seen = new Set<string>()
+  const out: RecentSend[] = []
+  for (const m of (data ?? []) as RecentSend[]) {
+    const dk = `${m.prospect_id}|${m.sent_at}|${m.message_text}`
+    if (seen.has(dk)) continue
+    seen.add(dk)
+    out.push(m)
+    if (out.length >= limit) break
+  }
+  return out
 }
 
 export function laneStatus(last_sent: string | null, nowIso: string): 'live' | 'slowing' | 'stale' {

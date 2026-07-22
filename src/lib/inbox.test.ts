@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isDraft, groupThreads, filterThreads, type InboxMessage } from './inbox'
+import { isDraft, groupThreads, filterThreads, dedupeMessages, type InboxMessage } from './inbox'
 
 const base: InboxMessage = {
   id: '1', prospect_id: 'p1', direction: 'outbound', message_text: 'hey',
@@ -37,6 +37,24 @@ describe('groupThreads', () => {
     expect(t[0].draft?.id).toBe('c')
     expect(t[0].messages.map(m => m.id)).toEqual(['a', 'b', 'c'])
     expect(t[1].client_id).toBe('risedtc')
+  })
+})
+
+describe('dedupeMessages', () => {
+  it('collapses phantom duplicates (same prospect+direction+text+timestamp)', () => {
+    const rows: InboxMessage[] = Array.from({ length: 17 }).map((_, i) => ({
+      ...base, id: `dup-${i}`, sent_at: '2026-06-13T16:02:46.991Z', message_text: 'Hi Brian',
+    }))
+    expect(dedupeMessages(rows)).toHaveLength(1)
+    expect(dedupeMessages(rows)[0].id).toBe('dup-0') // keeps first seen
+  })
+  it('keeps real repeats sent at different times, and different prospects', () => {
+    const rows: InboxMessage[] = [
+      { ...base, id: 'a', sent_at: '2026-06-13T16:00:00Z', message_text: 'ping' },
+      { ...base, id: 'b', sent_at: '2026-06-14T16:00:00Z', message_text: 'ping' }, // same text, later time
+      { ...base, id: 'c', prospect_id: 'p2', sent_at: '2026-06-13T16:00:00Z', message_text: 'ping' }, // other person
+    ]
+    expect(dedupeMessages(rows)).toHaveLength(3)
   })
 })
 

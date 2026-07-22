@@ -23,6 +23,24 @@ export function isDraft(m: InboxMessage): boolean {
   return m.direction === 'outbound' && !m.sent_at && !m.approved_at && !m.send_blocked_at
 }
 
+// A historical insert-loop left hundreds of phantom rows: the same message to
+// the same prospect, identical text, stamped at the exact same millisecond
+// (e.g. 587 copies of one June-13 DM to Brian Gerstner). They are not real
+// separate sends, so collapse them anywhere messages are shown. Two genuinely
+// distinct sends never share prospect+text+timestamp to the millisecond, so
+// this never eats a real message.
+export function dedupeMessages(rows: InboxMessage[]): InboxMessage[] {
+  const seen = new Set<string>()
+  const out: InboxMessage[] = []
+  for (const m of rows) {
+    const key = `${m.prospect_id}|${m.direction}|${m.sent_at ?? m.created_at}|${m.message_text}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(m)
+  }
+  return out
+}
+
 export function groupThreads(rows: InboxMessage[]): Thread[] {
   const map = new Map<string, InboxMessage[]>()
   for (const m of rows) {
@@ -66,7 +84,7 @@ export async function fetchMessages(): Promise<InboxMessage[]> {
     all.push(...(data as InboxMessage[]))
     if (!data || data.length < page) break
   }
-  return all
+  return dedupeMessages(all)
 }
 
 export async function approveDraft(id: string, editedText: string): Promise<void> {
