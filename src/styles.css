@@ -4,6 +4,16 @@
   --accent:#10A37F; --accent-soft:rgba(16,163,127,.16);
   --blue:#0A84FF; --sep:rgba(84,84,88,.5);
 }
+:root[data-theme='light']{
+  --bg:#F2F2F7; --surface:#FFFFFF; --surface2:#E5E5EA; --surface3:#D1D1D6;
+  --text:#000000; --text2:rgba(60,60,67,.6); --text3:rgba(60,60,67,.3);
+  --accent:#10A37F; --accent-soft:rgba(16,163,127,.14);
+  --blue:#0A84FF; --sep:rgba(60,60,67,.29);
+}
+:root[data-theme='light'] .tabbar{background:rgba(249,249,249,.92)}
+:root[data-theme='light'] .t-nav{background:rgba(255,255,255,.9)}
+:root[data-theme='light'] .chip.on{background:#000;color:#fff}
+:root[data-theme='light'] .b.out{color:#fff}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body,#root{height:100%}
 body{
@@ -123,6 +133,23 @@ input.cfield::placeholder{color:var(--text3)}
 .qc .btn{padding:10px 0;font-size:14.5px}
 .swipehint{margin:14px 22px 0;text-align:center;font-size:12.5px;color:var(--text3)}
 .swipehint b{color:var(--text2)}
+
+/* ---- settings ---- */
+.settings{padding-top:2px}
+.grouphdr{font-size:12.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;padding:20px 22px 7px}
+.group{background:var(--surface);margin:0 16px;border-radius:14px;overflow:hidden}
+.grow{display:flex;align-items:center;gap:12px;padding:14px 16px;min-height:52px}
+.grow + .grow{border-top:.5px solid var(--sep)}
+.gtxt{flex:1;min-width:0}
+.gt{font-size:16px;font-weight:500;color:var(--text)}
+.gt.danger{color:#FF453A}
+.gs{font-size:13px;color:var(--text2);margin-top:3px;line-height:1.35}
+.gbtn{flex:none;background:var(--accent);color:#fff;font-size:14px;font-weight:600;padding:8px 16px;border-radius:99px;border:none;cursor:pointer}
+.gbtn:disabled{opacity:.55}
+.gstate.on{flex:none;font-size:14.5px;font-weight:600;color:var(--accent)}
+.grow.tap{cursor:pointer;justify-content:center}
+.seg.theme{margin:0;width:154px;flex:none;background:var(--surface2)}
+.seg.theme .sg{padding:6px 0}
 
 /* ---- login screen (app-specific, not in mockup) ---- */
 .login{max-width:360px;margin:20vh auto;padding:0 22px;display:flex;flex-direction:column;gap:12px}
