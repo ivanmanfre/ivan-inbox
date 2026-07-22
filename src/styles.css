@@ -14,6 +14,12 @@ body{
   -webkit-font-smoothing:antialiased;
 }
 
+/* ---- app shell (real app fills the viewport; mockup used a phone bezel) ---- */
+.app{height:100%;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);max-width:480px;margin:0 auto;position:relative}
+.app .rows{overflow-y:auto;-webkit-overflow-scrolling:touch}
+.loading{flex:1;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:16px}
+.empty{padding:60px 22px;text-align:center;color:var(--text3);font-size:15px}
+
 /* ---- nav / large title ---- */
 .nav{padding:22px 22px 0}
 .nav .row-top{display:flex;align-items:center;justify-content:space-between}
@@ -50,6 +56,7 @@ body{
 .r .client{font-size:11px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:6px;background:var(--surface2);color:var(--text2)}
 .r .client.rise{background:var(--accent-soft);color:var(--accent)}
 .r .snip{font-size:14.5px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.r.unread .name{font-weight:700}
 .r.unread .snip{color:var(--text)}
 .r .right{flex:none;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 .r .time{font-size:13px;color:var(--text3)}
