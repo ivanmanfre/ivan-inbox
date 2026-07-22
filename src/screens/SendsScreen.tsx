@@ -4,6 +4,7 @@ import {
   type Lane, type LaneKey, type RecentSend,
 } from '../lib/sends'
 import { SendsSkeleton } from '../components/Skeleton'
+import { Linkified } from '../components/Linkified'
 import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 
@@ -100,7 +101,7 @@ function LaneDetail({ lane, client, onBack }: {
                 <span className="ld-nm">{m.prospect_name}</span>
                 <span className="ld-tm">{ago(m.sent_at)}</span>
               </div>
-              <div className="ld-b">{m.message_text}</div>
+              <div className="ld-b"><Linkified text={m.message_text} /></div>
             </div>
           ))
         )}

@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { Avatar } from '../components/Avatar'
+import { Linkified } from '../components/Linkified'
 import { useConfirm } from '../components/ConfirmSheet'
 import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
@@ -163,7 +164,7 @@ function DraftCard({ thread, onOpenThread, refresh }: {
         <div className="tm">{timeAgo(draft.created_at)}</div>
       </div>
       <div className="bd" onClick={() => onOpenThread(thread.prospect_id)}>
-        {draft.message_text}
+        <Linkified text={draft.message_text} />
         <span className="editcue">Tap to edit</span>
       </div>
       {error && <div className="err">{error}</div>}

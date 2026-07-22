@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Avatar } from '../components/Avatar'
+import { Linkified } from '../components/Linkified'
 import { useConfirm } from '../components/ConfirmSheet'
 import {
   approveDraft, composeReply, discardDraft, isDraft, markThreadRead,
@@ -155,7 +156,7 @@ export function ThreadScreen({ thread, onBack, refresh }: {
             return (
               <div key={m.id} style={{ display: 'contents' }}>
                 {showDay && <div className="day">{label}</div>}
-                <div className="b in">{m.message_text}</div>
+                <div className="b in"><Linkified text={m.message_text} /></div>
               </div>
             )
           }
@@ -164,7 +165,7 @@ export function ThreadScreen({ thread, onBack, refresh }: {
             <div key={m.id} style={{ display: 'contents' }}>
               {showDay && <div className="day">{label}</div>}
               <div className="blbl r" style={lbl.failed ? { color: '#FF453A' } : undefined}>{lbl.text}</div>
-              <div className="b out">{m.message_text}</div>
+              <div className="b out"><Linkified text={m.message_text} /></div>
             </div>
           )
         })}
