@@ -4,7 +4,7 @@ import { Linkified } from '../components/Linkified'
 import { useConfirm } from '../components/ConfirmSheet'
 import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
-import { approveDraft, discardDraft, type Thread } from '../lib/inbox'
+import { approveDraft, discardDraft, threadChatId, type Thread } from '../lib/inbox'
 
 function timeAgo(iso: string): string {
   const then = new Date(iso).getTime()
@@ -112,7 +112,7 @@ function DraftCard({ thread, onOpenThread, refresh }: {
     setBusy(true)
     setError(null)
     try {
-      await approveDraft(draft.id, draft.message_text)
+      await approveDraft(draft.id, draft.message_text, threadChatId(thread))
       refresh()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not approve draft')

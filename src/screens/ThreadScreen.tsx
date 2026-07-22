@@ -3,7 +3,7 @@ import { Avatar } from '../components/Avatar'
 import { Linkified } from '../components/Linkified'
 import { useConfirm } from '../components/ConfirmSheet'
 import {
-  approveDraft, composeReply, discardDraft, isDraft, markThreadRead,
+  approveDraft, composeReply, discardDraft, isDraft, markThreadRead, threadChatId,
   type InboxMessage, type Thread,
 } from '../lib/inbox'
 
@@ -89,7 +89,7 @@ export function ThreadScreen({ thread, onBack, refresh }: {
     })
     if (!ok) return
     setBusy(true); setDraftErr('')
-    try { await approveDraft(draft.id, edited); refresh() }
+    try { await approveDraft(draft.id, edited, threadChatId(thread)); refresh() }
     catch (e) { setDraftErr(errText(e)) }
     finally { setBusy(false) }
   }

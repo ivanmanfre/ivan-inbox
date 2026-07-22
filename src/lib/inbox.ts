@@ -6,6 +6,7 @@ export type InboxMessage = {
   channel: 'linkedin' | 'linkedin_inmail' | 'email';
   sent_at: string | null; approved_at: string | null; read_at: string | null;
   created_at: string; send_blocked_at: string | null; send_blocked_reason: string | null;
+  unipile_chat_id: string | null;
   prospect_name: string; prospect_company: string | null; prospect_headline: string | null;
   prospect_stage: string; prospect_email: string | null; profile_photo_url: string | null;
   campaign_name: string; client_id: string;
@@ -57,7 +58,11 @@ export function groupThreads(rows: InboxMessage[]): Thread[] {
     messages.sort((a, b) => a.created_at.localeCompare(b.created_at))
     const last = messages[messages.length - 1]
     const drafts = messages.filter(isDraft)
-    const draft = drafts.length ? drafts[drafts.length - 1] : null
+    // Archived prospects are dead lanes (e.g. ~76 April cold-email drafts from
+    // a retired campaign) — their leftover drafts don't belong in the queue.
+    const draft = last.prospect_stage === 'archived'
+      ? null
+      : drafts.length ? drafts[drafts.length - 1] : null
     const lastInbound = messages.filter(m => m.direction === 'inbound').at(-1)?.created_at ?? null
     const lastSent = messages
       .filter(m => m.direction === 'outbound' && m.sent_at)
@@ -98,9 +103,21 @@ export async function fetchMessages(): Promise<InboxMessage[]> {
   return dedupeMessages(all)
 }
 
-export async function approveDraft(id: string, editedText: string): Promise<void> {
+// The chat this thread already lives in on LinkedIn (InMail threads carry it on
+// both the sent InMail and the inbound reply). Stamping it on the approved row
+// lets the sender append to the existing chat instead of creating a new one —
+// creating fails with 422 for non-connections (Anthony + Alex, 2026-07-22).
+export function threadChatId(t: Thread): string | null {
+  return t.messages.filter(m => m.unipile_chat_id).at(-1)?.unipile_chat_id ?? null
+}
+
+export async function approveDraft(id: string, editedText: string, chatId?: string | null): Promise<void> {
+  const patch: Record<string, unknown> = {
+    message_text: editedText, approved_at: new Date().toISOString(),
+  }
+  if (chatId) patch.unipile_chat_id = chatId
   const { error } = await supabase.from('outreach_messages')
-    .update({ message_text: editedText, approved_at: new Date().toISOString() })
+    .update(patch)
     .eq('id', id).is('sent_at', null)
   if (error) throw error
 }

@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { isDraft, groupThreads, filterThreads, dedupeMessages, type InboxMessage } from './inbox'
+import { isDraft, groupThreads, filterThreads, dedupeMessages, threadChatId, type InboxMessage } from './inbox'
 
 const base: InboxMessage = {
   id: '1', prospect_id: 'p1', direction: 'outbound', message_text: 'hey',
   message_type: 'dm', channel: 'linkedin', sent_at: null, approved_at: null,
   read_at: null, created_at: '2026-07-22T10:00:00Z', send_blocked_at: null,
-  send_blocked_reason: null, prospect_name: 'A', prospect_company: null,
+  send_blocked_reason: null, unipile_chat_id: null,
+  prospect_name: 'A', prospect_company: null,
   prospect_headline: null, prospect_stage: 'replied', prospect_email: null,
   profile_photo_url: null, campaign_name: 'c', client_id: 'ivan',
 }
@@ -81,6 +82,25 @@ describe('dedupeMessages', () => {
       { ...base, id: 'c', prospect_id: 'p2', sent_at: '2026-06-13T16:00:00Z', message_text: 'ping' }, // other person
     ]
     expect(dedupeMessages(rows)).toHaveLength(3)
+  })
+})
+
+describe('threadChatId + archived drafts', () => {
+  it('finds the newest chat id in the thread (InMail reply-routing)', () => {
+    const rows: InboxMessage[] = [
+      { ...base, id: 'a', message_type: 'inmail', unipile_chat_id: 'chat-1', sent_at: '2026-07-22T14:00:00Z', created_at: '2026-07-22T14:00:00Z' },
+      { ...base, id: 'b', direction: 'inbound', unipile_chat_id: 'chat-1', created_at: '2026-07-22T17:00:00Z' },
+      { ...base, id: 'c', created_at: '2026-07-22T18:00:00Z' }, // draft, no chat id
+    ]
+    const t = groupThreads(rows)[0]
+    expect(threadChatId(t)).toBe('chat-1')
+    expect(t.draft?.id).toBe('c')
+  })
+  it('archived prospects never surface a draft', () => {
+    const rows: InboxMessage[] = [
+      { ...base, id: 'dr', prospect_stage: 'archived', created_at: '2026-04-26T10:00:00Z' },
+    ]
+    expect(groupThreads(rows)[0].draft).toBeNull()
   })
 })
 
