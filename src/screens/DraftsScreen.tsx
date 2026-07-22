@@ -137,7 +137,10 @@ function DraftCard({ thread, onOpenThread, refresh }: {
         </div>
         <div className="tm">{timeAgo(draft.created_at)}</div>
       </div>
-      <div className="bd">{draft.message_text}</div>
+      <div className="bd" onClick={() => onOpenThread(thread.prospect_id)}>
+        {draft.message_text}
+        <span className="editcue">Tap to edit</span>
+      </div>
       {error && <div className="err">{error}</div>}
       <div className="ac">
         <div className="btn s" onClick={() => onOpenThread(thread.prospect_id)}>Edit</div>

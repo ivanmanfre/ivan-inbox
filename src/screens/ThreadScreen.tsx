@@ -52,9 +52,19 @@ export function ThreadScreen({ thread, onBack, refresh }: {
   const [composeErr, setComposeErr] = useState('')
   const [busy, setBusy] = useState(false)
   const msgsRef = useRef<HTMLDivElement>(null)
+  const taRef = useRef<HTMLTextAreaElement>(null)
 
   // Re-seed the editor when the draft row changes (e.g. after a refresh).
   useEffect(() => { setEdited(draft?.message_text ?? '') }, [draft?.id])
+
+  // Grow the edit box to fit the draft (capped by max-height in CSS) so long
+  // drafts are readable and editable without a tiny scroll window.
+  useEffect(() => {
+    const el = taRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [edited, draft?.id])
 
   // Sanctioned: stamps read_at on REAL inbound rows. Fire and forget.
   useEffect(() => {
@@ -154,6 +164,7 @@ export function ThreadScreen({ thread, onBack, refresh }: {
             <div className="t">AI draft · waiting on you</div>
           </div>
           <textarea
+            ref={taRef}
             className="dc-b"
             value={edited}
             onChange={e => setEdited(e.target.value)}
