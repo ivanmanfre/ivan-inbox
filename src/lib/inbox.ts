@@ -100,6 +100,21 @@ function isConversation(t: Thread): boolean {
   return t.draft !== null || t.messages.some(m => m.direction === 'inbound')
 }
 
+// Free-text search over everything already loaded: person, company, and the
+// full message text of the thread ("that guy who mentioned Shopify"). Multiple
+// words must ALL match somewhere in the thread, so "shopify agency" narrows.
+export function searchThreads(threads: Thread[], query: string): Thread[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean)
+  if (!words.length) return threads
+  return threads.filter(t => {
+    const hay = [
+      t.prospect_name, t.prospect_company ?? '',
+      t.messages.map(m => m.message_text).join('\n'),
+    ].join('\n').toLowerCase()
+    return words.every(w => hay.includes(w))
+  })
+}
+
 export function filterThreads(threads: Thread[], f: Filter): Thread[] {
   const convos = threads.filter(isConversation)
   if (f === 'all') return convos

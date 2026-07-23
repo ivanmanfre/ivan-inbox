@@ -291,3 +291,34 @@ input.cfield::placeholder{color:var(--text3)}
 .app.dt .composer{padding:8px 24px 16px}
 .app.dt .t-nav .who{text-align:left;margin-right:0}
 .app.dt .back{display:none}
+
+/* ---- search (live) ---- */
+.search-in{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:16px;padding:0;min-width:0}
+.search-in::placeholder{color:var(--text3)}
+.search-x{color:var(--text3);font-size:13px;padding:2px 4px;cursor:pointer}
+
+/* ---- prospect context sheet ---- */
+.ctx-card{text-align:left;max-height:78vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.ctx-i{font-size:13px;color:var(--text3);font-weight:400}
+.who.tap{cursor:pointer}
+.ctx-head{display:flex;align-items:baseline;gap:10px}
+.ctx-name{font-size:18px;font-weight:800;letter-spacing:-.01em}
+.ctx-icp{margin-left:auto;font-size:13px;font-weight:800}
+.ctx-title{font-size:13px;color:var(--text2);margin-top:3px;line-height:1.35}
+.ctx-loading{color:var(--text3);font-size:14px;padding:18px 0}
+.ctx-grid{margin-top:14px;border-top:1px solid var(--surface3);padding-top:6px}
+.ctx-row{display:flex;padding:7px 0;font-size:13.5px;border-bottom:1px solid var(--surface3)}
+.ctx-row .k{color:var(--text3);width:96px;flex:none}
+.ctx-row .v{color:var(--text);font-weight:600;min-width:0;overflow-wrap:anywhere}
+.ctx-block{margin-top:14px}
+.ctx-lbl{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
+.ctx-lbl .ok{color:#30D158;text-transform:none;letter-spacing:0}
+.ctx-lbl .bad{color:#FF453A;text-transform:none;letter-spacing:0}
+.ctx-txt{font-size:13.5px;line-height:1.5;color:var(--text2);white-space:pre-wrap}
+.ctx-txt.sys{font-size:12.5px;color:var(--text3)}
+.ctx-links{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.ctx-link{font-size:13px;font-weight:700;color:var(--accent);background:var(--surface3);border-radius:9px;padding:8px 12px;text-decoration:none}
+.ctx-link.scan{color:#30D158}
+.ctx-link.none{color:var(--text3);font-weight:600}
+.ctx-note{width:100%;box-sizing:border-box;background:var(--surface3);border:none;border-radius:11px;color:var(--text);font-size:14.5px;line-height:1.45;padding:11px 12px;min-height:64px;resize:none;outline:none;font-family:inherit}
+.ctx-save{margin-top:8px;padding:10px 0;text-align:center}

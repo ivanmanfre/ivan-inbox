@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isDraft, groupThreads, filterThreads, dedupeMessages, threadChatId, type InboxMessage } from './inbox'
+import { isDraft, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, type InboxMessage } from './inbox'
 
 const base: InboxMessage = {
   id: '1', prospect_id: 'p1', direction: 'outbound', message_text: 'hey',
@@ -101,6 +101,27 @@ describe('threadChatId + archived drafts', () => {
       { ...base, id: 'dr', prospect_stage: 'archived', created_at: '2026-04-26T10:00:00Z' },
     ]
     expect(groupThreads(rows)[0].draft).toBeNull()
+  })
+})
+
+describe('searchThreads', () => {
+  const threads = groupThreads([
+    { ...base, id: 'a', prospect_id: 'p1', prospect_name: 'Brian Gerstner', prospect_company: 'Acme', sent_at: 'x', message_text: 'we run a Shopify store and need help', created_at: '2026-07-21T09:00:00Z' },
+    { ...base, id: 'b', prospect_id: 'p2', prospect_name: 'Karen Levin', prospect_company: 'LevinCo', sent_at: 'x', message_text: 'thanks but not now', created_at: '2026-07-20T09:00:00Z' },
+  ])
+  it('matches message text case-insensitively ("that guy who mentioned Shopify")', () => {
+    expect(searchThreads(threads, 'shopify').map(t => t.prospect_id)).toEqual(['p1'])
+  })
+  it('matches name and company', () => {
+    expect(searchThreads(threads, 'karen')).toHaveLength(1)
+    expect(searchThreads(threads, 'acme')).toHaveLength(1)
+  })
+  it('multi-word queries require every word (across name+text)', () => {
+    expect(searchThreads(threads, 'brian shopify')).toHaveLength(1)
+    expect(searchThreads(threads, 'karen shopify')).toHaveLength(0)
+  })
+  it('empty query returns everything', () => {
+    expect(searchThreads(threads, '  ')).toHaveLength(2)
   })
 })
 

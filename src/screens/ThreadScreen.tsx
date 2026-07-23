@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Avatar } from '../components/Avatar'
+import { ContextSheet } from '../components/ContextSheet'
 import { Linkified } from '../components/Linkified'
 import { useConfirm } from '../components/ConfirmSheet'
 import {
@@ -57,6 +58,7 @@ export function ThreadScreen({ thread, onBack, refresh }: {
   const [reply, setReply] = useState('')
   const [composeErr, setComposeErr] = useState('')
   const [busy, setBusy] = useState(false)
+  const [showCtx, setShowCtx] = useState(false)
   const msgsRef = useRef<HTMLDivElement>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
   const confirm = useConfirm()
@@ -141,8 +143,8 @@ export function ThreadScreen({ thread, onBack, refresh }: {
     <>
       <div className="t-nav">
         <span className="back" onClick={onBack}>‹</span>
-        <div className="who">
-          <div className="n">{thread.prospect_name}</div>
+        <div className="who tap" onClick={() => setShowCtx(true)}>
+          <div className="n">{thread.prospect_name} <span className="ctx-i">ⓘ</span></div>
           <div className="m">
             {thread.prospect_company ? <>{thread.prospect_company} · </> : null}
             <b>{clientName(thread.client_id)}</b> · {threadKind(thread) === 'inmail' ? 'InMail' : threadKind(thread) === 'email' ? 'Email' : 'LinkedIn'} · {stageLabel(thread.stage)}
@@ -150,6 +152,7 @@ export function ThreadScreen({ thread, onBack, refresh }: {
         </div>
         <Avatar name={thread.prospect_name} channel={thread.channel} size={36} />
       </div>
+      {showCtx && <ContextSheet thread={thread} onClose={() => setShowCtx(false)} />}
 
       <div className="msgs" ref={msgsRef}>
         {bubbles.map(m => {

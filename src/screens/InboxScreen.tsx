@@ -1,8 +1,8 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { Avatar } from '../components/Avatar'
 import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
-import { filterThreads, threadKind, type Filter, type Thread } from '../lib/inbox'
+import { filterThreads, searchThreads, threadKind, type Filter, type Thread } from '../lib/inbox'
 
 function timeAgo(iso: string): string {
   const then = new Date(iso).getTime()
@@ -48,7 +48,8 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
 }) {
   const rowsRef = useRef<HTMLDivElement>(null)
   const ptr = usePullToRefresh(rowsRef, () => refresh())
-  const shown = filterThreads(threads, filter)
+  const [query, setQuery] = useState('')
+  const shown = searchThreads(filterThreads(threads, filter), query)
   const draftTotal = threads.filter(t => t.draft).length
   const unreadTotal = threads.filter(t => t.unread > 0).length
 
@@ -59,7 +60,16 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
           <h2>Inbox</h2>
           <div className="avatar-me">IM</div>
         </div>
-        <div className="search">🔍&nbsp; Search people or messages</div>
+        <div className="search">
+          <span>🔍</span>
+          <input
+            className="search-in"
+            placeholder="Search people or messages"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+          />
+          {query && <span className="search-x" onClick={() => setQuery('')}>✕</span>}
+        </div>
         <div className="chips">
           {CHIPS.map(c => (
             <span
@@ -88,7 +98,7 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
       <div className="rows" ref={rowsRef}>
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
         {shown.length === 0 ? (
-          <div className="empty">{EMPTY[filter]}</div>
+          <div className="empty">{query ? `No matches for “${query}”` : EMPTY[filter]}</div>
         ) : (
           shown.map(t => {
             const isDraftLast = t.draft != null && t.last.id === t.draft.id
