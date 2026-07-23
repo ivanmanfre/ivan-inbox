@@ -36,10 +36,12 @@ function outLabel(m: InboxMessage, stage: string): { text: string; failed: boole
       ? { text: 'Connection invite · not accepted yet', failed: false }
       : { text: 'Sent · connection invite', failed: false }
   }
-  if (m.message_type === 'inmail' || m.channel === 'linkedin_inmail') return { text: 'Sent · InMail', failed: false }
-  if (m.channel === 'email') return { text: 'Sent · email', failed: false }
-  if (m.message_type === 'dm' || m.message_type === 'manual_reply') return { text: 'Sent · DM', failed: false }
-  return { text: 'Sent', failed: false }
+  // manual_mirror = the human typed it in the LinkedIn app; the sync mirrored it in.
+  const manual = m.ai_model === 'manual_mirror' ? ' · typed on LinkedIn' : ''
+  if (m.message_type === 'inmail' || m.channel === 'linkedin_inmail') return { text: `Sent · InMail${manual}`, failed: false }
+  if (m.channel === 'email') return { text: `Sent · email${manual}`, failed: false }
+  if (m.message_type === 'dm' || m.message_type === 'manual_reply') return { text: `Sent · DM${manual}`, failed: false }
+  return { text: `Sent${manual}`, failed: false }
 }
 
 function errText(e: unknown): string {

@@ -5,7 +5,7 @@ const base: InboxMessage = {
   id: '1', prospect_id: 'p1', direction: 'outbound', message_text: 'hey',
   message_type: 'dm', channel: 'linkedin', sent_at: null, approved_at: null,
   read_at: null, created_at: '2026-07-22T10:00:00Z', send_blocked_at: null,
-  send_blocked_reason: null, unipile_chat_id: null,
+  send_blocked_reason: null, unipile_chat_id: null, ai_model: null,
   prospect_name: 'A', prospect_company: null,
   prospect_headline: null, prospect_stage: 'replied', prospect_email: null,
   profile_photo_url: null, campaign_name: 'c', client_id: 'ivan',

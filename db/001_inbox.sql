@@ -4,7 +4,7 @@ select
   m.id, m.prospect_id, m.direction, m.message_text, m.message_type,
   coalesce(m.channel, 'linkedin') as channel,
   m.sent_at, m.approved_at, m.read_at, m.created_at,
-  m.send_blocked_at, m.send_blocked_reason, m.unipile_chat_id,
+  m.send_blocked_at, m.send_blocked_reason, m.unipile_chat_id, m.ai_model,
   p.name as prospect_name, p.company as prospect_company,
   p.headline as prospect_headline, p.stage as prospect_stage,
   p.email as prospect_email, p.profile_photo_url,

@@ -7,6 +7,9 @@ export type InboxMessage = {
   sent_at: string | null; approved_at: string | null; read_at: string | null;
   created_at: string; send_blocked_at: string | null; send_blocked_reason: string | null;
   unipile_chat_id: string | null;
+  // 'manual_mirror' = typed by hand in the LinkedIn app and mirrored in by the
+  // sync; anything else outbound was dispatched by the system.
+  ai_model: string | null;
   prospect_name: string; prospect_company: string | null; prospect_headline: string | null;
   prospect_stage: string; prospect_email: string | null; profile_photo_url: string | null;
   campaign_name: string; client_id: string;
