@@ -80,10 +80,20 @@ export function groupThreads(rows: InboxMessage[]): Thread[] {
   return threads.sort((a, b) => b.last.created_at.localeCompare(a.last.created_at))
 }
 
+// An invite that nobody accepted is a send, not a conversation (Eric Osman case:
+// 117 of 1125 threads were connection notes sitting in the void). They live in
+// Sends -> Log; the Inbox shows them only once the prospect accepts (stage flips
+// off connection_sent when accept detection runs) or anything inbound lands.
+function isConversation(t: Thread): boolean {
+  if (t.stage !== 'connection_sent') return true
+  return t.draft !== null || t.messages.some(m => m.direction === 'inbound')
+}
+
 export function filterThreads(threads: Thread[], f: Filter): Thread[] {
-  if (f === 'all') return threads
-  if (f === 'email') return threads.filter(t => t.channel === 'email')
-  return threads.filter(t => t.client_id === f)
+  const convos = threads.filter(isConversation)
+  if (f === 'all') return convos
+  if (f === 'email') return convos.filter(t => t.channel === 'email')
+  return convos.filter(t => t.client_id === f)
 }
 
 export async function fetchMessages(): Promise<InboxMessage[]> {

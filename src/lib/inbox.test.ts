@@ -105,6 +105,17 @@ describe('threadChatId + archived drafts', () => {
 })
 
 describe('filterThreads', () => {
+  it('hides unaccepted connection invites (no inbound, no draft) from every filter', () => {
+    const rows: InboxMessage[] = [
+      // pure invite-in-the-void thread (Eric Osman case)
+      { ...base, id: 'inv', prospect_id: 'p9', prospect_stage: 'connection_sent', message_type: 'connection_note', sent_at: '2026-07-22T10:00:00Z' },
+      // connection_sent but the prospect wrote back -> stays visible
+      { ...base, id: 'inv2', prospect_id: 'p10', prospect_stage: 'connection_sent', message_type: 'connection_note', sent_at: '2026-07-21T10:00:00Z' },
+      { ...base, id: 'in10', prospect_id: 'p10', prospect_stage: 'connection_sent', direction: 'inbound', created_at: '2026-07-22T11:00:00Z' },
+    ]
+    const shown = filterThreads(groupThreads(rows), 'all')
+    expect(shown.map(t => t.prospect_id)).toEqual(['p10'])
+  })
   it('filters by client and by email channel', () => {
     const rows: InboxMessage[] = [
       { ...base, id: 'a', sent_at: 'x', created_at: '2026-07-21T09:00:00Z' },
