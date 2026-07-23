@@ -65,6 +65,8 @@ body{
 .r .name{font-size:16px;font-weight:600}
 .r .client{font-size:11px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:6px;background:var(--surface2);color:var(--text2)}
 .r .client.rise{background:var(--accent-soft);color:var(--accent)}
+.r .client.kind-inmail{background:rgba(191,90,242,.15);color:#BF5AF2}
+.r .client.kind-email{background:rgba(255,159,10,.15);color:#FF9F0A}
 .r .snip{font-size:14.5px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
 .r.unread .name{font-weight:700}
 .r.unread .snip{color:var(--text)}

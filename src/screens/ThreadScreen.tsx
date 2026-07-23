@@ -3,7 +3,7 @@ import { Avatar } from '../components/Avatar'
 import { Linkified } from '../components/Linkified'
 import { useConfirm } from '../components/ConfirmSheet'
 import {
-  approveDraft, composeReply, discardDraft, isDraft, markThreadRead, threadChatId,
+  approveDraft, composeReply, discardDraft, isDraft, markThreadRead, threadChatId, threadKind,
   type InboxMessage, type Thread,
 } from '../lib/inbox'
 
@@ -11,12 +11,6 @@ function clientName(id: string): string {
   if (id === 'risedtc') return 'Rise'
   if (id === 'ivan') return 'Ivan'
   return id.charAt(0).toUpperCase() + id.slice(1)
-}
-
-function channelLabel(c: InboxMessage['channel']): string {
-  if (c === 'email') return 'Email'
-  if (c === 'linkedin_inmail') return 'InMail'
-  return 'LinkedIn'
 }
 
 function stageLabel(s: string): string {
@@ -30,13 +24,21 @@ function dayLabel(iso: string): string {
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()
 }
 
-// Micro-label shown above an outbound bubble. Truthful about queue/send state.
-function outLabel(m: InboxMessage): { text: string; failed: boolean } {
+// Micro-label shown above an outbound bubble. Truthful about queue/send state
+// AND about what kind of message it was (invite vs DM vs InMail vs email).
+function outLabel(m: InboxMessage, stage: string): { text: string; failed: boolean } {
   if (m.send_blocked_at && m.send_blocked_reason !== 'discarded_in_inbox') {
     return { text: `Send failed: ${m.send_blocked_reason}`, failed: true }
   }
   if (m.approved_at && !m.sent_at) return { text: 'Queued', failed: false }
-  if (m.message_type === 'connection_note') return { text: 'Sent · connection note', failed: false }
+  if (m.message_type === 'connection_note') {
+    return stage === 'connection_sent'
+      ? { text: 'Connection invite · not accepted yet', failed: false }
+      : { text: 'Sent · connection invite', failed: false }
+  }
+  if (m.message_type === 'inmail' || m.channel === 'linkedin_inmail') return { text: 'Sent · InMail', failed: false }
+  if (m.channel === 'email') return { text: 'Sent · email', failed: false }
+  if (m.message_type === 'dm' || m.message_type === 'manual_reply') return { text: 'Sent · DM', failed: false }
   return { text: 'Sent', failed: false }
 }
 
@@ -141,7 +143,7 @@ export function ThreadScreen({ thread, onBack, refresh }: {
           <div className="n">{thread.prospect_name}</div>
           <div className="m">
             {thread.prospect_company ? <>{thread.prospect_company} · </> : null}
-            <b>{clientName(thread.client_id)}</b> · {channelLabel(thread.channel)} · {stageLabel(thread.stage)}
+            <b>{clientName(thread.client_id)}</b> · {threadKind(thread) === 'inmail' ? 'InMail' : threadKind(thread) === 'email' ? 'Email' : 'LinkedIn'} · {stageLabel(thread.stage)}
           </div>
         </div>
         <Avatar name={thread.prospect_name} channel={thread.channel} size={36} />
@@ -160,7 +162,7 @@ export function ThreadScreen({ thread, onBack, refresh }: {
               </div>
             )
           }
-          const lbl = outLabel(m)
+          const lbl = outLabel(m, thread.stage)
           return (
             <div key={m.id} style={{ display: 'contents' }}>
               {showDay && <div className="day">{label}</div>}

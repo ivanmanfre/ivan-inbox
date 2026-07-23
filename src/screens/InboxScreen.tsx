@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { Avatar } from '../components/Avatar'
 import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
-import { filterThreads, type Filter, type Thread } from '../lib/inbox'
+import { filterThreads, threadKind, type Filter, type Thread } from '../lib/inbox'
 
 function timeAgo(iso: string): string {
   const then = new Date(iso).getTime()
@@ -106,6 +106,8 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
                   <div className="top">
                     <span className="name">{t.prospect_name}</span>
                     <span className={`client ${t.client_id === 'risedtc' ? 'rise' : ''}`}>{clientLabel(t.client_id)}</span>
+                    {threadKind(t) === 'inmail' && <span className="client kind-inmail">INMAIL</span>}
+                    {threadKind(t) === 'email' && <span className="client kind-email">EMAIL</span>}
                   </div>
                   <div className="snip">{snip}</div>
                 </div>

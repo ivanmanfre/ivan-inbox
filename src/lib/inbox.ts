@@ -80,6 +80,14 @@ export function groupThreads(rows: InboxMessage[]): Thread[] {
   return threads.sort((a, b) => b.last.created_at.localeCompare(a.last.created_at))
 }
 
+// What kind of thread this really is, judged by its message mix rather than
+// just the last row's channel (an InMail thread often ends in a dm-typed reply).
+export function threadKind(t: Thread): 'email' | 'inmail' | 'linkedin' {
+  if (t.messages.some(m => m.channel === 'email')) return 'email'
+  if (t.messages.some(m => m.message_type === 'inmail' || m.channel === 'linkedin_inmail')) return 'inmail'
+  return 'linkedin'
+}
+
 // An invite that nobody accepted is a send, not a conversation (Eric Osman case:
 // 117 of 1125 threads were connection notes sitting in the void). They live in
 // Sends -> Log; the Inbox shows them only once the prospect accepts (stage flips
