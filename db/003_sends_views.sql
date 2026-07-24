@@ -38,7 +38,7 @@ with dedup as (
   join outreach_prospects p on p.id = m.prospect_id
   join outreach_campaigns c on c.id = p.campaign_id
   where m.direction = 'outbound'
-    and m.sent_at >= now() - interval '14 days'
+    and m.sent_at >= now() - interval '90 days'
     and m.message_type in ('connection_note', 'dm', 'inmail', 'email')
   order by m.prospect_id, m.message_text, m.sent_at, m.id
 )

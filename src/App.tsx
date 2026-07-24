@@ -21,7 +21,21 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => { setSession(data.session); setReady(true) })
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
-    return () => sub.subscription.unsubscribe()
+    // On resume (PWA backgrounded), revalidate: restore the session or refresh a
+    // near-expired token instead of dumping the user back to the login screen.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        supabase.auth.getSession().then(({ data }) => {
+          if (data.session) setSession(data.session)
+          else supabase.auth.refreshSession()
+        })
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      sub.subscription.unsubscribe()
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [])
   if (!ready) return null
   if (!session) return <LoginScreen />
@@ -78,21 +92,31 @@ function Shell() {
   const nav = (t: Tab) => { setTab(t); if (!desktop) setOpenThread(null) }
 
   // Desktop: rail + list column + conversation pane, side by side.
+  // The Sends tab has no conversation, so it spans the full content width
+  // instead of the list+detail split (which would waste half the screen).
   if (desktop) {
     return (
       <div className="app dt">
         <TabBar active={tab} draftCount={draftCount} onNav={nav} />
-        <div className="dt-list">{listScreen}</div>
-        <div className="dt-detail">
-          {thread ? (
-            <ThreadScreen thread={thread} onBack={() => setOpenThread(null)} refresh={refresh} />
-          ) : (
-            <div className="dt-empty">
-              <div className="dt-empty-ic">✦</div>
-              <div>Select a conversation</div>
+        {tab === 'sends' ? (
+          <div className="dt-full">
+            <SendsScreen client={sendsClient} setClient={setSendsClient} />
+          </div>
+        ) : (
+          <>
+            <div className="dt-list">{listScreen}</div>
+            <div className="dt-detail">
+              {thread ? (
+                <ThreadScreen thread={thread} onBack={() => setOpenThread(null)} refresh={refresh} />
+              ) : (
+                <div className="dt-empty">
+                  <div className="dt-empty-ic">✦</div>
+                  <div>Select a conversation</div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
     )
   }

@@ -162,40 +162,42 @@ git commit -m "feat(db): 90d daily window + inbox_accept_v acceptance view"
 
 - [ ] **Step 1: Write `db/006_kpi_pipeline.sql`**
 
+Grounded in `db/NOTES-kpi-verification.md`: prospects have **no `source` column** — lane
+derives from `outreach_campaigns.name`; score field is **`icp_score`**; precontact stages
+are **`('enriched','identified','review')`** (`review` currently empty but kept for
+forward-compat); dead stages `archived`/`skipped`/`ballot_hold` are excluded by the `in`
+list; `blacklisted` boolean also excluded. Engager is tested **before** Warm so a campaign
+named "Warm - Engagement Harvest" buckets as Engager.
+
 ```sql
 -- Per client x lane: sendable ICP runway + recent sourcing mix.
--- lane_of(): bucket source/trigger_confidence into Cold / Warm / Engager / Other.
--- ADJUST the source lists to match db/NOTES-kpi-verification.md LANE_MAP.
-create or replace function lane_of(src text, tconf numeric) returns text
+-- Lane derives from CAMPAIGN NAME (outreach_prospects has no source column).
+-- Client = coalesce(outreach_campaigns.client_id,'ivan'). Score = icp_score.
+create or replace function lane_of(camp_name text) returns text
 language sql immutable as $$
   select case
-    when src ilike 'apollo_discovery%' or src ilike 'manual_icp_discovery%'
-         or (tconf is null and src is null)                                   then 'cold'
-    when src ilike 'engager_mining%' or src ilike 'client-%'
-         or src in ('like','comment')                                        then 'engager'
-    when src ilike 'unipile-orbit%' or src ilike 'warm%'
-         or src in ('your calendar','your assessments') or tconf >= 3        then 'warm'
-    else 'other'
+    when camp_name ilike '%engager%' or camp_name ilike '%engagement harvest%'
+      or camp_name ilike '%anchor%' or camp_name ilike '%profile view%'   then 'engager'
+    when camp_name ilike '%warm%' or camp_name ilike '%orbit%'
+      or camp_name ilike '%network activation%'                           then 'warm'
+    else 'cold'  -- explicit %cold% + bare vertical/industry campaigns
   end
 $$;
 
 create or replace view inbox_pipeline_v with (security_invoker = on) as
-with p as (
-  select coalesce(c.client_id,'ivan') as client_id,
-         lane_of(pr.source, pr.trigger_confidence) as lane,
-         pr.stage, pr.score, pr.blacklisted, c.is_active
+with runway as (  -- sendable = scored ICP, pre-contact, live campaign, not blacklisted
+  select coalesce(c.client_id,'ivan') as client_id, lane_of(c.name) as lane,
+         count(*) as sendable
   from outreach_prospects pr
   join outreach_campaigns c on c.id = pr.campaign_id
-),
-runway as (  -- sendable = scored ICP, pre-contact, live campaign, not dead
-  select client_id, lane, count(*) as sendable from p
-  where score >= 7 and stage in ('enriched','review')
-    and coalesce(blacklisted,false) = false and is_active = true
-  group by client_id, lane
+  where pr.icp_score >= 7
+    and pr.stage in ('enriched','identified','review')
+    and coalesce(pr.blacklisted,false) = false
+    and c.is_active = true
+  group by 1,2
 ),
 sent as (  -- sourcing mix: connections actually sent, by the prospect's lane
-  select coalesce(c.client_id,'ivan') as client_id,
-         lane_of(pr.source, pr.trigger_confidence) as lane,
+  select coalesce(c.client_id,'ivan') as client_id, lane_of(c.name) as lane,
          count(*) filter (where s.sent_at >= now() - interval '7 days')  as sent_7d,
          count(*) filter (where s.sent_at >= now() - interval '30 days') as sent_30d
   from (
@@ -223,7 +225,7 @@ from runway full outer join sent
 ```bash
 q "inbox_pipeline_v?select=*&order=client_id.asc,lane.asc"
 ```
-Expected: rows per client × lane with sane `sendable` counts. Cross-check one lane total against a raw count, e.g. `q "outreach_prospects?stage=in.(enriched,review)&score=gte.7&select=id" | python3 -c "import json,sys;print(len(json.load(sys.stdin)))"`.
+Expected: rows per client × lane with sane `sendable` counts. Cross-check the total sendable against a raw count, e.g. `q "outreach_prospects?stage=in.(enriched,identified,review)&icp_score=gte.7&blacklisted=not.eq.true&select=id" -I -H "Prefer: count=exact"` and read the Content-Range header.
 
 - [ ] **Step 3: Commit**
 
@@ -247,18 +249,25 @@ git commit -m "feat(db): inbox_pipeline_v sendable-ICP runway + sourcing mix by 
 
 - [ ] **Step 1: Write `db/007_kpi_scan_opens.sql`**
 
+Grounded in `db/NOTES-kpi-verification.md` SLUG_JOIN: there is no `scan_slug` column. The
+path is 4-hop and only resolves for scans carrying a `prospect_token` (most scans are
+`inbound` with a null token) — so use **LEFT joins** and `coalesce(...,'ivan')`, which
+attributes token-less/inbound opens to `ivan`, consistent with the repo convention.
+
 ```sql
--- Real (non-owner) scan-report opens per client. Definer rights so it can read
--- the service-role-only scan_opens under RLS, exposing only aggregates (mirrors
+-- Real (non-owner) scan-report opens per client. Definer rights so it reads the
+-- service-role-only scan_opens under RLS, exposing only aggregates (mirrors
 -- scan_open_stats). Self-clicks already excluded by is_owner + owner_ips.
--- ADJUST the slug->client join to match db/NOTES-kpi-verification.md SLUG_JOIN.
+-- Join: scan_opens.company_slug -> scans.company_slug -> scans.prospect_token
+--       -> outreach_prospects.id -> campaign_id -> outreach_campaigns.client_id.
 create or replace view inbox_scan_opens_v with (security_invoker = off) as
 with j as (
   select so.opened_at, so.company_slug,
          coalesce(c.client_id,'ivan') as client_id
   from scan_opens so
-  join outreach_prospects pr on pr.scan_slug = so.company_slug   -- SLUG_JOIN
-  join outreach_campaigns  c  on c.id = pr.campaign_id
+  left join scans sc            on sc.company_slug = so.company_slug
+  left join outreach_prospects pr on pr.id = sc.prospect_token
+  left join outreach_campaigns  c  on c.id = pr.campaign_id
   where so.is_owner = false
 )
 select client_id,
@@ -271,7 +280,6 @@ from j group by client_id;
 
 grant select on inbox_scan_opens_v to anon, authenticated;
 ```
-If `SLUG_JOIN` in findings is not `outreach_prospects.scan_slug`, replace that single join line with the confirmed path.
 
 - [ ] **Step 2: Apply + verify**
 
@@ -298,66 +306,84 @@ git commit -m "feat(db): inbox_scan_opens_v per-client real scan opens"
 
 **Interfaces:**
 - Consumes: `SENDER_HEALTH_FIELDS`, `MONTHLY_CAP` from Task 1.
-- Produces: RPC `inbox_governor()` returning rows `(client_id, model, cap, used, window_label, mode, daily_used, daily_cap, accept_rate, headroom_week, headroom_day)` — one per person.
+- Produces: RPC `inbox_governor()` returning rows `(client_id, model, cap, used, window_label, mode, daily_used, daily_cap, accept_rate, headroom_week, headroom_day, monthly_cap, monthly_used)` — one per person.
+
+Grounded in `db/NOTES-kpi-verification.md`: `outreach_sender_health` is **client-parameterized**
+(`outreach_sender_health(p_client_id => 'risedtc')`; bare `()` = Ivan's seat) and returns
+`accept_rate` as a **fraction** (0.1655 = 16.55%). `integration_config` is a **key/value**
+table (no `client_id` column): `risedtc_connect_monthly_cap`=400, `risedtc_connect_daily_cap`=20.
+Both people use the adaptive weekly governor (matches "each has a governor that raises/decreases");
+Rise additionally surfaces its monthly ceiling as context. Ivan's daily brake is the hard 20/day.
+Before writing, confirm the RPC's exact param name via `q "rpc/outreach_sender_health" -X POST -H "Content-Type: application/json" -d '{"p_client_id":"risedtc"}'` (already verified returning 200 in Task 1).
 
 - [ ] **Step 1: Write `db/008_kpi_governor.sql`**
 
 ```sql
--- Normalized per-person governor. Ivan = weekly adaptive (reuses the live
--- outreach_sender_health logic) + 20/day brake. Rise = fixed monthly cap from
--- integration_config. Field names per db/NOTES-kpi-verification.md.
+-- Normalized per-person governor. Both people use the client-parameterized
+-- adaptive weekly governor (outreach_sender_health). accept_rate is returned as a
+-- fraction by the RPC -> multiply by 100 for a percent. Rise also carries its
+-- monthly ceiling from the key/value integration_config table.
 create or replace function inbox_governor()
 returns table (
   client_id text, model text, cap int, used int, window_label text, mode text,
-  daily_used int, daily_cap int, accept_rate numeric, headroom_week int, headroom_day int
+  daily_used int, daily_cap int, accept_rate numeric, headroom_week int, headroom_day int,
+  monthly_cap int, monthly_used int
 ) language plpgsql security definer as $$
-declare h jsonb; today_ct int;
+declare h jsonb; today_ct int; mtd int;
 begin
-  -- ---- Ivan row ----
-  select to_jsonb(x) into h from outreach_sender_health() x;   -- {cap,weekly_sends,warm_only,warm_cap,warm_sends_7d,accept_rate}
-  select count(*) into today_ct from outreach_messages
-    where direction='outbound' and message_type='connection_note'
-      and sent_at >= date_trunc('day', now());
-  client_id := 'ivan'; model := 'weekly_adaptive';
-  cap := coalesce((h->>'cap')::int,35);
-  used := coalesce((h->>'weekly_sends')::int,0);
-  window_label := 'week';
-  mode := case when (h->>'warm_only')::boolean then 'warm_only'
-               when coalesce((h->>'accept_rate')::numeric,100) < 12 then 'cold_paused'
-               else 'normal' end;
-  daily_used := today_ct; daily_cap := 20;
-  accept_rate := coalesce((h->>'accept_rate')::numeric,0);
-  headroom_week := greatest(cap - used, 0);
-  headroom_day := greatest(20 - today_ct, 0);
-  return next;
-
-  -- ---- Rise row ----  (MONTHLY_CAP source per findings)
-  client_id := 'risedtc'; model := 'monthly_fixed';
-  select coalesce((value->>'monthly_connection_cap')::int, 0) into cap
-    from integration_config where client_id = 'risedtc' limit 1;   -- adjust column/shape per findings
-  select count(*) into used from outreach_messages m
+  -- helper: count today's / month's connection notes for a client (null client_id => ivan)
+  -- ---- Ivan ----
+  select to_jsonb(x) into h from outreach_sender_health() x;
+  select count(*) into today_ct from outreach_messages m
     join outreach_prospects p on p.id=m.prospect_id
     join outreach_campaigns c on c.id=p.campaign_id
-    where c.client_id='risedtc' and m.direction='outbound'
-      and m.message_type='connection_note' and m.sent_at >= date_trunc('month', now());
-  window_label := 'month'; mode := 'normal';
-  daily_used := 0; daily_cap := 0;
-  select round(rate_7d,1) into accept_rate from inbox_accept_v where inbox_accept_v.client_id='risedtc';
-  accept_rate := coalesce(accept_rate,0);
-  headroom_week := greatest(cap - used, 0); headroom_day := 0;
-  return next;
+    where coalesce(c.client_id,'ivan')='ivan' and m.direction='outbound'
+      and m.message_type='connection_note' and m.sent_at >= date_trunc('day', now());
+  client_id := 'ivan'; model := 'weekly_adaptive';
+  cap := coalesce((h->>'cap')::int,35); used := coalesce((h->>'weekly_sends')::int,0);
+  window_label := 'week';
+  mode := case when (h->>'warm_only')::boolean then 'warm_only'
+               when coalesce((h->>'accept_rate')::numeric,1) < 0.12 then 'cold_paused'
+               else 'normal' end;
+  daily_used := today_ct; daily_cap := 20;
+  accept_rate := round(coalesce((h->>'accept_rate')::numeric,0) * 100, 1);
+  headroom_week := greatest(cap - used, 0); headroom_day := greatest(20 - today_ct, 0);
+  monthly_cap := null; monthly_used := null; return next;
+
+  -- ---- Rise ----
+  select to_jsonb(x) into h from outreach_sender_health(p_client_id => 'risedtc') x;
+  select count(*) into today_ct from outreach_messages m
+    join outreach_prospects p on p.id=m.prospect_id join outreach_campaigns c on c.id=p.campaign_id
+    where c.client_id='risedtc' and m.direction='outbound' and m.message_type='connection_note'
+      and m.sent_at >= date_trunc('day', now());
+  select count(*) into mtd from outreach_messages m
+    join outreach_prospects p on p.id=m.prospect_id join outreach_campaigns c on c.id=p.campaign_id
+    where c.client_id='risedtc' and m.direction='outbound' and m.message_type='connection_note'
+      and m.sent_at >= date_trunc('month', now());
+  client_id := 'risedtc'; model := 'weekly_adaptive';
+  cap := coalesce((h->>'cap')::int,35); used := coalesce((h->>'weekly_sends')::int,0);
+  window_label := 'week';
+  mode := case when (h->>'warm_only')::boolean then 'warm_only'
+               when coalesce((h->>'accept_rate')::numeric,1) < 0.12 then 'cold_paused'
+               else 'normal' end;
+  daily_used := today_ct;
+  daily_cap := coalesce((select value::int from integration_config where key='risedtc_connect_daily_cap'),20);
+  accept_rate := round(coalesce((h->>'accept_rate')::numeric,0) * 100, 1);
+  headroom_week := greatest(cap - used, 0); headroom_day := greatest(daily_cap - today_ct, 0);
+  monthly_cap := coalesce((select value::int from integration_config where key='risedtc_connect_monthly_cap'),400);
+  monthly_used := mtd; return next;
 end $$;
 
 grant execute on function inbox_governor() to anon, authenticated;
 ```
-Reconcile the two marked lines (`h->>` keys, `integration_config` shape) against findings before applying.
+If Task 1 showed the RPC param name is not `p_client_id`, fix that one call; everything else is confirmed.
 
 - [ ] **Step 2: Apply + verify**
 
 ```bash
 q "rpc/inbox_governor" -X POST -H "Content-Type: application/json" -d '{}'
 ```
-Expected: two rows; Ivan with `cap` between 35–100 and `daily_cap=20`; Rise with `model=monthly_fixed` and a `cap` matching the integration_config value.
+Expected: two rows; Ivan `cap` 35–100, `daily_cap=20`, `monthly_cap=null`, `accept_rate` as a percent (e.g. 16.6); Rise with `monthly_cap=400`, `monthly_used` = month-to-date sends, `daily_cap=20`.
 
 - [ ] **Step 3: Commit**
 
@@ -450,8 +476,10 @@ export type GovernorRow = {
   client_id: string; model: 'weekly_adaptive' | 'monthly_fixed'
   cap: number; used: number; window_label: string
   mode: 'normal' | 'warm_only' | 'cold_paused'
-  daily_used: number; daily_cap: number; accept_rate: number
+  daily_used: number; daily_cap: number
+  accept_rate: number // already a percent (RPC fraction * 100)
   headroom_week: number; headroom_day: number
+  monthly_cap: number | null; monthly_used: number | null
 }
 export type ScanOpenRow = {
   client_id: string; opens_7d: number; opens_30d: number; opens_total: number
@@ -529,7 +557,7 @@ git commit -m "feat: kpis data lib — fetchers + accept/runway/headroom derivat
 Render five stacked blocks scoped to `client` + `timeframe`, each guarded for loading/error/empty:
 1. **KPI row** — reuse `buildLanes(rows, daily, client)`; one card per lane (Connections/DMs/InMails/Emails) showing the count for the selected timeframe (`sent_7d`/`sent_30d`/`sent_30d`→90 via daily sum/`sent_total`), the 24h figure, and the existing `Spark` sparkline. Desktop: `display:grid; grid-template-columns:repeat(4,1fr)`; mobile: `repeat(2,1fr)`.
 2. **Engagement** — from `fetchAccept()` filtered to `client` (for `all`, sum rows): acceptance % (`rate_7d`, `rate_30d`) with `accepted/sent` beneath + cohort-lag caption; and from `fetchScanOpens()`: real scan opens (`opens_7d`/`opens_30d`), `distinct_prospects`, `ago(last_open)`.
-3. **Governor** — from `fetchGovernor()` row for `client` (hide for `all`, or show both stacked). Weekly gauge `used/cap` via `governorHeadroomPct`; ramp caption ("cap at {cap} · accept {accept_rate}%"); daily brake `daily_used/daily_cap` (Ivan only, when `daily_cap>0`); `mode` badge (normal/warm-only/cold-paused); headroom line "{headroom_week} left this {window_label}" + Ivan's "{headroom_day} left today".
+3. **Governor** — from `fetchGovernor()` row for `client` (hide for `all`, or show both stacked). Weekly gauge `used/cap` via `governorHeadroomPct`; ramp caption ("cap at {cap} · accept {accept_rate}%" — `accept_rate` is already a percent, do not multiply); daily brake `daily_used/daily_cap` when `daily_cap>0` (both people have it now); `mode` badge (normal/warm-only/cold-paused); headroom line "{headroom_week} left this {window_label}" + "{headroom_day} left today"; and, when `monthly_cap` is non-null (Rise), a monthly-ceiling line "{monthly_used}/{monthly_cap} this month".
 4. **Pipeline** — from `fetchPipeline()` grouped by lane for `client`: bar per lane with `sendable`; overall runway `runwayDays(totalSendable, dailyRate)` where `dailyRate` = governor `daily_used` fallback to `sent_7d/7`; amber/red dot when a lane's runway < 5 days (reuse `DOT` colors from SendsScreen). Second strip: sourcing mix from `sent_7d`/`sent_30d` per lane.
 5. **Campaigns** — new small fetch: `supabase.from('outreach_campaigns').select('id,name,is_active,client_id')` filtered to client, joined client-side to per-campaign send counts (add a `fetchCampaignSends(client)` to `src/lib/sends.ts` returning `{campaign_id, sent}[]` from `inbox_messages_v` grouped client-side). Table rows: name · active/paused · sends · (accept % optional, from prospects if cheap — else omit per YAGNI).
 

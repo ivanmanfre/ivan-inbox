@@ -7,8 +7,17 @@ import { SendsSkeleton } from '../components/Skeleton'
 import { Linkified } from '../components/Linkified'
 import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
+import { OverviewView } from './kpi/OverviewView'
 
 type Client = 'all' | 'ivan' | 'risedtc'
+type Timeframe = '7d' | '30d' | '90d' | 'all'
+
+const TIMEFRAMES: { key: Timeframe; label: string }[] = [
+  { key: '7d', label: '7d' },
+  { key: '30d', label: '30d' },
+  { key: '90d', label: '90d' },
+  { key: 'all', label: 'All' },
+]
 
 const CHIPS: { key: Client; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -191,7 +200,8 @@ export function SendsScreen({ client, setClient }: {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [openLane, setOpenLane] = useState<LaneKey | null>(null)
-  const [view, setView] = useState<'lanes' | 'log'>('lanes')
+  const [view, setView] = useState<'overview' | 'lanes' | 'log'>('overview')
+  const [timeframe, setTimeframe] = useState<Timeframe>('7d')
   const rowsRef = useRef<HTMLDivElement>(null)
 
   const load = useCallback(async () => {
@@ -240,11 +250,28 @@ export function SendsScreen({ client, setClient }: {
       </div>
 
       <div className="seg" style={{ margin: '10px 16px 0' }}>
+        <div className={`sg ${view === 'overview' ? 'on' : ''}`} onClick={() => setView('overview')}>Overview</div>
         <div className={`sg ${view === 'lanes' ? 'on' : ''}`} onClick={() => setView('lanes')}>Lanes</div>
         <div className={`sg ${view === 'log' ? 'on' : ''}`} onClick={() => setView('log')}>Log</div>
       </div>
 
-      {view === 'log' ? (
+      {view === 'overview' && (
+        <div className="seg" style={{ margin: '8px 16px 0' }}>
+          {TIMEFRAMES.map(t => (
+            <div
+              key={t.key}
+              className={`sg ${timeframe === t.key ? 'on' : ''}`}
+              onClick={() => setTimeframe(t.key)}
+            >
+              {t.label}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {view === 'overview' ? (
+        <OverviewView client={client} timeframe={timeframe} />
+      ) : view === 'log' ? (
         <LogView client={client} />
       ) : loading && rows.length === 0 ? (
         <SendsSkeleton />
