@@ -17,7 +17,7 @@ with j as (
     select distinct on (company_slug) company_slug, prospect_token
     from scans order by company_slug, prospect_token nulls last
   ) sc on sc.company_slug = so.company_slug
-  left join outreach_prospects pr on pr.id = sc.prospect_token
+  left join outreach_prospects pr on pr.id::text = sc.prospect_token
   left join outreach_campaigns  c  on c.id = pr.campaign_id
   where so.is_owner = false
 )
