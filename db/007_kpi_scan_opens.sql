@@ -11,7 +11,12 @@ with j as (
   select so.opened_at, so.company_slug,
          coalesce(c.client_id,'ivan') as client_id
   from scan_opens so
-  left join scans sc             on sc.company_slug = so.company_slug
+  -- Collapse duplicate scans rows per slug (a re-scan inserts another row); the
+  -- bare left join would fan out and multi-count every open for that slug.
+  left join (
+    select distinct on (company_slug) company_slug, prospect_token
+    from scans order by company_slug, prospect_token nulls last
+  ) sc on sc.company_slug = so.company_slug
   left join outreach_prospects pr on pr.id = sc.prospect_token
   left join outreach_campaigns  c  on c.id = pr.campaign_id
   where so.is_owner = false

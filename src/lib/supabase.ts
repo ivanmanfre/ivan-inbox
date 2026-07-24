@@ -7,9 +7,13 @@ export const supabase = createClient(
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: true, // needed for the magic-link callback
-      storageKey: 'inbox-auth',
-      flowType: 'pkce',
+      // Implicit flow (token in the URL fragment) so a magic link opened in
+      // Safari still lands a session even though the installed PWA's storage is
+      // partitioned from Safari — PKCE would need the code_verifier that lives in
+      // the PWA's storage and fail cross-context. Keep the default storageKey so
+      // existing signed-in sessions are not orphaned on deploy.
+      detectSessionInUrl: true,
+      flowType: 'implicit',
     },
   },
 )

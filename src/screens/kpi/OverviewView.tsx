@@ -226,10 +226,13 @@ function Pipeline({ rows, governor, client }: {
   const lanes = [...byLane.entries()]
   const totalSendable = lanes.reduce((s, [, e]) => s + e.sendable, 0)
 
-  // Daily send rate: prefer governor daily_used, fall back to sent_7d / 7.
+  // Daily send rate: the 7d trailing average is a real full-day rate. The
+  // governor's daily_used is only a partial-day count, so use it as a floor
+  // (a heavy day shortens runway) but never as the estimate — otherwise runway
+  // is overstated all morning and the amber/red lane dots under-trigger.
+  const avg7 = pRows.reduce((s, r) => s + r.sent_7d, 0) / 7
   const govDaily = governor.filter(g => inClient(g.client_id, client)).reduce((s, g) => s + g.daily_used, 0)
-  const fallback = pRows.reduce((s, r) => s + r.sent_7d, 0) / 7
-  const dailyRate = govDaily > 0 ? govDaily : fallback
+  const dailyRate = Math.max(avg7, govDaily)
 
   const overallRunway = runwayDays(totalSendable, dailyRate)
   const maxSendable = Math.max(1, ...lanes.map(([, e]) => e.sendable))

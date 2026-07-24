@@ -180,12 +180,15 @@ export type CampaignSend = {
 export async function fetchCampaignSends(
   client: 'all' | 'ivan' | 'risedtc',
 ): Promise<CampaignSend[]> {
-  let campQ = supabase.from('outreach_campaigns').select('id, name, is_active, client_id')
+  // Raw outreach_campaigns stores Ivan's client_id as NULL (only inbox_messages_v
+  // coalesces it to 'ivan'), so a server-side .eq('client_id','ivan') matches
+  // nothing. Fetch all campaigns and filter client-side on the coalesced value.
+  const campQ = supabase.from('outreach_campaigns').select('id, name, is_active, client_id')
   let msgQ = supabase.from('inbox_messages_v')
     .select('prospect_id, campaign_name, message_text, sent_at')
     .eq('direction', 'outbound').not('sent_at', 'is', null)
     .order('sent_at', { ascending: false }).limit(4000)
-  if (client !== 'all') { campQ = campQ.eq('client_id', client); msgQ = msgQ.eq('client_id', client) }
+  if (client !== 'all') { msgQ = msgQ.eq('client_id', client) }
 
   const [camp, msg] = await Promise.all([campQ, msgQ])
   if (camp.error) throw camp.error
@@ -202,8 +205,9 @@ export async function fetchCampaignSends(
     counts.set(m.campaign_name, (counts.get(m.campaign_name) ?? 0) + 1)
   }
 
-  type CampRow = { id: string; name: string; is_active: boolean; client_id: string }
+  type CampRow = { id: string; name: string; is_active: boolean; client_id: string | null }
   return ((camp.data ?? []) as CampRow[])
+    .filter(c => client === 'all' || (c.client_id ?? 'ivan') === client)
     .map(c => ({
       campaign_id: c.id,
       campaign_name: c.name,
