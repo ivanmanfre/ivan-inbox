@@ -7,13 +7,14 @@ import { ThreadScreen } from './screens/ThreadScreen'
 import { DraftsScreen } from './screens/DraftsScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
 import { SendsScreen } from './screens/SendsScreen'
+import { OpsScreen } from './screens/OpsScreen'
 import { TabBar } from './components/TabBar'
 import { InboxSkeleton } from './components/Skeleton'
 import { useInbox } from './hooks/useInbox'
 import { useDesktop } from './hooks/useDesktop'
 import type { Filter } from './lib/inbox'
 
-type Tab = 'inbox' | 'drafts' | 'sends' | 'settings'
+type Tab = 'inbox' | 'drafts' | 'sends' | 'ops' | 'settings'
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -85,6 +86,7 @@ function Shell() {
       {tab === 'sends' && (
         <SendsScreen client={sendsClient} setClient={setSendsClient} />
       )}
+      {tab === 'ops' && <OpsScreen />}
       {tab === 'settings' && <SettingsScreen />}
     </>
   )
@@ -92,15 +94,17 @@ function Shell() {
   const nav = (t: Tab) => { setTab(t); if (!desktop) setOpenThread(null) }
 
   // Desktop: rail + list column + conversation pane, side by side.
-  // The Sends tab has no conversation, so it spans the full content width
-  // instead of the list+detail split (which would waste half the screen).
+  // The Sends and Ops tabs have no conversation, so they span the full content
+  // width instead of the list+detail split (which would waste half the screen).
   if (desktop) {
     return (
       <div className="app dt">
         <TabBar active={tab} draftCount={draftCount} onNav={nav} />
-        {tab === 'sends' ? (
+        {tab === 'sends' || tab === 'ops' ? (
           <div className="dt-full">
-            <SendsScreen client={sendsClient} setClient={setSendsClient} />
+            {tab === 'sends'
+              ? <SendsScreen client={sendsClient} setClient={setSendsClient} />
+              : <OpsScreen />}
           </div>
         ) : (
           <>

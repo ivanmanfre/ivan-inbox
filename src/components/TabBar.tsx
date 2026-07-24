@@ -1,4 +1,4 @@
-type Tab = 'inbox' | 'drafts' | 'sends' | 'settings'
+type Tab = 'inbox' | 'drafts' | 'sends' | 'ops' | 'settings'
 
 export function TabBar({ active, draftCount, onNav }: {
   active: Tab; draftCount: number; onNav: (t: Tab) => void
@@ -16,6 +16,10 @@ export function TabBar({ active, draftCount, onNav }: {
       <div className={`tb ${active === 'sends' ? 'on' : ''}`} onClick={() => onNav('sends')}>
         <div className="ic">↑</div>
         <div className="l">Sends</div>
+      </div>
+      <div className={`tb ${active === 'ops' ? 'on' : ''}`} onClick={() => onNav('ops')}>
+        <div className="ic">◈</div>
+        <div className="l">Ops</div>
       </div>
       <div className={`tb ${active === 'settings' ? 'on' : ''}`} onClick={() => onNav('settings')}>
         <div className="ic">⚙︎</div>
