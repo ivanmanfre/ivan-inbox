@@ -5,7 +5,7 @@ import {
 } from '../../lib/sends'
 import {
   fetchAccept, fetchPipeline, fetchGovernor, fetchScanOpens,
-  acceptRate, runwayDays, governorHeadroomPct, laneLabel,
+  acceptRate, runwayDays, laneLabel,
   type AcceptRow, type PipelineRow, type GovernorRow, type ScanOpenRow,
 } from '../../lib/kpis'
 
@@ -14,14 +14,17 @@ type Timeframe = '7d' | '30d' | '90d' | 'all'
 
 // Dot / accent colors mirror SendsScreen so the two views read as one system.
 const STATUS = { live: '#10A37F', slowing: '#FF9F0A', stale: '#FF453A' }
+type Sev = 'green' | 'amber' | 'red'
+const SEV_COLOR: Record<Sev, string> = { green: STATUS.live, amber: STATUS.slowing, red: STATUS.stale }
 const LANE_DOT: Record<string, string> = {
   connection_note: '#0A84FF', dm: '#10A37F', inmail: '#BF5AF2', email: '#FF9F0A',
 }
-const MODE: Record<GovernorRow['mode'], { label: string; color: string }> = {
-  normal: { label: 'NORMAL', color: '#10A37F' },
-  warm_only: { label: 'WARM-ONLY', color: '#FF9F0A' },
-  cold_paused: { label: 'COLD-PAUSED', color: '#FF453A' },
+const MODE: Record<GovernorRow['mode'], { label: string; color: string; sev: Sev }> = {
+  normal: { label: 'NORMAL', color: '#10A37F', sev: 'green' },
+  warm_only: { label: 'WARM-ONLY', color: '#FF9F0A', sev: 'amber' },
+  cold_paused: { label: 'COLD-PAUSED', color: '#FF453A', sev: 'red' },
 }
+const MODE_RANK: Record<GovernorRow['mode'], number> = { normal: 0, warm_only: 1, cold_paused: 2 }
 
 // Small local copies of SendsScreen primitives — duplicated (not imported) to
 // avoid a circular import, since SendsScreen imports this file.
@@ -66,12 +69,199 @@ function inClient(id: string, client: Client): boolean {
 
 const TITLE = (id: string) => (id === 'risedtc' ? 'Rise' : id.charAt(0).toUpperCase() + id.slice(1))
 
-// ---- Block 1: KPI row (per-channel volume for the selected timeframe) ----
+// Honest gauge geometry — NEVER clamps. When used>cap the bar's full extent is
+// `used`; a solid segment fills to the cap position, a dimmer overflow segment
+// continues past it, and a marker pins where the cap sits.
+function gaugeGeo(used: number, cap: number): { solid: number; over: number; capPos: number; overflow: boolean } {
+  if (cap <= 0) return { solid: used > 0 ? 100 : 0, over: 0, capPos: 100, overflow: false }
+  if (used <= cap) return { solid: Math.round((used / cap) * 100), over: 0, capPos: 100, overflow: false }
+  const capPos = Math.round((cap / used) * 100)
+  return { solid: capPos, over: 100 - capPos, capPos, overflow: true }
+}
+
+function Gauge({ used, cap, color, sm }: { used: number; cap: number; color: string; sm?: boolean }) {
+  const g = gaugeGeo(used, cap)
+  return (
+    <div className={`ov-gauge ${sm ? 'sm' : ''} ${g.overflow ? 'over' : ''}`}>
+      <div className="ov-gauge-fill" style={{ width: `${g.solid}%`, background: color }} />
+      {g.overflow && <div className="ov-gauge-ov" style={{ left: `${g.capPos}%`, width: `${g.over}%`, background: color }} />}
+      {g.overflow && <div className="ov-gauge-cap" style={{ left: `${g.capPos}%` }} />}
+    </div>
+  )
+}
+
+// A plain percentage gauge (no overflow logic) for the acceptance / runway tiles.
+function BarGauge({ pct, color, sm }: { pct: number; color: string; sm?: boolean }) {
+  return (
+    <div className={`ov-gauge ${sm ? 'sm' : ''}`}>
+      <div className="ov-gauge-fill" style={{ width: `${Math.max(0, Math.min(100, pct))}%`, background: color }} />
+    </div>
+  )
+}
+
+// ---- HERO: three decision tiles (Is it converting? Am I throttled? Runway?) ----
+function Hero({ accept, governor, pipeline, client }: {
+  accept: AcceptRow[]; governor: GovernorRow[]; pipeline: PipelineRow[]; client: Client
+}) {
+  // Q1 — Is outreach converting? Acceptance 7d vs 30d baseline.
+  const aRows = accept.filter(r => inClient(r.client_id, client))
+  const sent7 = sum(aRows, 'sent_7d'), acc7 = sum(aRows, 'accepted_7d')
+  const sent30 = sum(aRows, 'sent_30d'), acc30 = sum(aRows, 'accepted_30d')
+  const r7 = acceptRate(sent7, acc7), r30 = acceptRate(sent30, acc30)
+  const trend = r7 - r30
+  let aSev: Sev
+  if (aRows.length === 0 || sent7 === 0) aSev = 'amber'
+  else if (r30 === 0) aSev = r7 > 0 ? 'green' : 'amber'
+  else if (r7 >= r30) aSev = 'green'
+  else if (r7 >= r30 * 0.65) aSev = 'amber'
+  else aSev = 'red'
+
+  // Q2 — Am I throttled? Governor used/cap + mode + headroom today.
+  const gRows = governor.filter(g => inClient(g.client_id, client))
+  const gUsed = sum(gRows, 'used'), gCap = sum(gRows, 'cap')
+  const gHeadDay = sum(gRows, 'headroom_day')
+  const worst = gRows.reduce<GovernorRow | null>(
+    (w, g) => (!w || MODE_RANK[g.mode] > MODE_RANK[w.mode] ? g : w), null)
+  const gMode = worst ? MODE[worst.mode] : MODE.normal
+  const gSev: Sev = worst ? gMode.sev : 'amber'
+
+  // Q3 — Do I have runway? Total sendable ÷ daily send rate. Mirrors the
+  // Pipeline block: 7d trailing average, floored by today's governor count.
+  const pRows = pipeline.filter(r => inClient(r.client_id, client))
+  const totalSendable = sum(pRows, 'sendable')
+  const avg7 = pRows.reduce((s, r) => s + r.sent_7d, 0) / 7
+  const govDaily = gRows.reduce((s, g) => s + g.daily_used, 0)
+  const dailyRate = Math.max(avg7, govDaily)
+  const runway = runwayDays(totalSendable, dailyRate)
+  const rSev: Sev = pRows.length === 0 ? 'amber' : runway < 2 ? 'red' : runway < 5 ? 'amber' : 'green'
+
+  const trendArrow = trend > 0 ? '▲' : trend < 0 ? '▼' : '±'
+  const trendSev: Sev = trend >= 0 ? 'green' : trend >= -Math.max(3, r30 * 0.35) ? 'amber' : 'red'
+
+  return (
+    <section className="ov-sec">
+      <div className="ov-h">Decision<span className="ov-h-sub">where do I stand right now</span></div>
+      <div className="ov-hero">
+        {/* Acceptance */}
+        <div className="ov-tile">
+          <div className="ov-tile-h">
+            <span className="ov-tile-lbl">Acceptance</span>
+            <span className="sc-dot" style={{ background: SEV_COLOR[aSev] }} />
+          </div>
+          {aRows.length === 0 ? (
+            <div className="ov-tile-empty">No data</div>
+          ) : (
+            <>
+              <div className="ov-tile-big">{r7}<span className="ov-tile-unit">%</span></div>
+              <BarGauge pct={r7} color={SEV_COLOR[aSev]} sm />
+              <div className="ov-tile-sub">
+                {acc7}/{sent7} · 7d
+                <span className="ov-tile-trend" style={{ color: SEV_COLOR[trendSev] }}> {trendArrow}{Math.abs(trend)} vs 30d</span>
+              </div>
+            </>
+          )}
+        </div>
+        {/* Governor */}
+        <div className="ov-tile">
+          <div className="ov-tile-h">
+            <span className="ov-tile-lbl">Governor</span>
+            <span className="sc-dot" style={{ background: SEV_COLOR[gSev] }} />
+          </div>
+          {gRows.length === 0 ? (
+            <div className="ov-tile-empty">No data</div>
+          ) : (
+            <>
+              <div className="ov-tile-big">{gUsed}<span className="ov-tile-unit">/{gCap}</span></div>
+              <Gauge used={gUsed} cap={gCap} color={gMode.color} sm />
+              <div className="ov-tile-sub">
+                <span className="ov-tile-trend" style={{ color: gMode.color }}>{gMode.label}</span>
+                {' · '}{gHeadDay} left today
+              </div>
+            </>
+          )}
+        </div>
+        {/* Runway */}
+        <div className="ov-tile">
+          <div className="ov-tile-h">
+            <span className="ov-tile-lbl">Runway</span>
+            <span className="sc-dot" style={{ background: SEV_COLOR[rSev] }} />
+          </div>
+          {pRows.length === 0 ? (
+            <div className="ov-tile-empty">No data</div>
+          ) : (
+            <>
+              <div className="ov-tile-big">{runway >= 999 ? '∞' : runway}<span className="ov-tile-unit">{runway >= 999 ? '' : 'd'}</span></div>
+              <BarGauge pct={runway >= 999 ? 100 : (runway / 14) * 100} color={SEV_COLOR[rSev]} sm />
+              <div className="ov-tile-sub">{totalSendable} sendable</div>
+            </>
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ---- FUNNEL: Sent 7d → Accepted 7d → Scan opens 7d (new composition) ----
+function Funnel({ accept, scans, client }: {
+  accept: AcceptRow[]; scans: ScanOpenRow[]; client: Client
+}) {
+  const aRows = accept.filter(r => inClient(r.client_id, client))
+  const sent7 = sum(aRows, 'sent_7d'), acc7 = sum(aRows, 'accepted_7d')
+  const sent30 = sum(aRows, 'sent_30d'), acc30 = sum(aRows, 'accepted_30d')
+
+  const sRows = scans.filter(r => inClient(r.client_id, client))
+  const opens7 = sum(sRows, 'opens_7d'), opens30 = sum(sRows, 'opens_30d')
+  const distinct = sum(sRows, 'distinct_prospects')
+  const lastOpen = latestIso(sRows.map(r => r.last_open))
+
+  const step = (a: number, b: number) => (a > 0 ? `${Math.round((b / a) * 100)}%` : '—')
+
+  if (aRows.length === 0 && sRows.length === 0) {
+    return (
+      <section className="ov-sec">
+        <div className="ov-h">Funnel<span className="ov-h-sub">7d</span></div>
+        <div className="ov-empty">No funnel data yet.</div>
+      </section>
+    )
+  }
+
+  return (
+    <section className="ov-sec">
+      <div className="ov-h">Funnel<span className="ov-h-sub">last 7d</span></div>
+      <div className="ov-funnel">
+        <div className="ov-fstep">
+          <div className="ov-fn">{sent7}</div>
+          <div className="ov-fl">Sent</div>
+        </div>
+        <div className="ov-farrow">
+          <span className="ov-fpct">{step(sent7, acc7)}</span>
+          <span className="ov-fchev">→</span>
+        </div>
+        <div className="ov-fstep">
+          <div className="ov-fn">{acc7}</div>
+          <div className="ov-fl">Accepted</div>
+        </div>
+        <div className="ov-farrow">
+          <span className="ov-fpct">{step(acc7, opens7)}</span>
+          <span className="ov-fchev">→</span>
+        </div>
+        <div className="ov-fstep">
+          <div className="ov-fn">{opens7}</div>
+          <div className="ov-fl">Scan opens</div>
+        </div>
+      </div>
+      <div className="ov-fcap">
+        30d · accepted {acc30}/{sent30} · opens {opens30} · {distinct} prospects{lastOpen ? ` · last ${ago(lastOpen)}` : ''}
+      </div>
+    </section>
+  )
+}
+
+// ---- Volume (per-channel) ----
 function laneCount(lane: Lane, daily: DailyRow[], client: Client, tf: Timeframe): number {
   if (tf === '7d') return lane.sent_7d
   if (tf === '30d') return lane.sent_30d
   if (tf === 'all') return lane.sent_total
-  // 90d: sum the raw daily series over the trailing 90-day window.
   const cutoff = Date.now() - 90 * 86_400_000
   return daily
     .filter(d => d.message_type === lane.key && inClient(d.client_id, client)
@@ -102,84 +292,21 @@ function KpiRow({ lanes, daily, client, timeframe }: {
   )
 }
 
-// ---- Block 2: Engagement (acceptance + scan opens) ----
-function Engagement({ accept, scans, client }: {
-  accept: AcceptRow[]; scans: ScanOpenRow[]; client: Client
-}) {
-  const aRows = accept.filter(r => inClient(r.client_id, client))
-  const sent7 = sum(aRows, 'sent_7d'), acc7 = sum(aRows, 'accepted_7d')
-  const sent30 = sum(aRows, 'sent_30d'), acc30 = sum(aRows, 'accepted_30d')
-
-  const sRows = scans.filter(r => inClient(r.client_id, client))
-  const opens7 = sum(sRows, 'opens_7d'), opens30 = sum(sRows, 'opens_30d')
-  const distinct = sum(sRows, 'distinct_prospects')
-  const lastOpen = latestIso(sRows.map(r => r.last_open))
-
-  return (
-    <section className="ov-sec">
-      <div className="ov-h">Engagement</div>
-      <div className="ov-cards">
-        <div className="ov-card">
-          <div className="ov-card-t">Acceptance</div>
-          {aRows.length === 0 ? (
-            <div className="ov-empty">No acceptance data yet.</div>
-          ) : (
-            <>
-              <div className="ov-dual">
-                <div>
-                  <div className="ov-kpi-big">{acceptRate(sent7, acc7)}%</div>
-                  <div className="ov-cap">7d · {acc7}/{sent7}</div>
-                </div>
-                <div>
-                  <div className="ov-kpi-big">{acceptRate(sent30, acc30)}%</div>
-                  <div className="ov-cap">30d · {acc30}/{sent30}</div>
-                </div>
-              </div>
-              <div className="ov-note">Connections sent recently haven't had time to accept.</div>
-            </>
-          )}
-        </div>
-        <div className="ov-card">
-          <div className="ov-card-t">Scan opens</div>
-          {sRows.length === 0 ? (
-            <div className="ov-empty">No scan opens yet.</div>
-          ) : (
-            <>
-              <div className="ov-dual">
-                <div>
-                  <div className="ov-kpi-big">{opens7}</div>
-                  <div className="ov-cap">7d opens</div>
-                </div>
-                <div>
-                  <div className="ov-kpi-big">{opens30}</div>
-                  <div className="ov-cap">30d opens</div>
-                </div>
-              </div>
-              <div className="ov-cap">{distinct} prospects · {lastOpen ? `last ${ago(lastOpen)}` : 'no opens'}</div>
-            </>
-          )}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-// ---- Block 3: Governor (weekly gauge + daily brake + mode) ----
+// ---- Governor detail (weekly gauge + daily brake + mode + monthly) ----
 function GovGauge({ g }: { g: GovernorRow }) {
   const m = MODE[g.mode]
-  const weekPct = governorHeadroomPct(g.used, g.cap)
   return (
     <div className="ov-gov">
       <div className="ov-gov-h">
         <span className="ov-gov-nm">{TITLE(g.client_id)}</span>
         <span className="ov-badge" style={{ background: `${m.color}22`, color: m.color }}>{m.label}</span>
       </div>
-      <div className="ov-gauge"><div className="ov-gauge-fill" style={{ width: `${weekPct}%`, background: m.color }} /></div>
+      <Gauge used={g.used} cap={g.cap} color={m.color} />
       <div className="ov-gauge-lbl"><b>{g.used}</b>/{g.cap} <span className="ov-cap">this {g.window_label}</span></div>
       <div className="ov-cap">cap {g.cap} · accept {g.accept_rate}%</div>
       {g.daily_cap > 0 && (
         <div className="ov-brake">
-          <div className="ov-gauge sm"><div className="ov-gauge-fill" style={{ width: `${governorHeadroomPct(g.daily_used, g.daily_cap)}%`, background: m.color }} /></div>
+          <Gauge used={g.daily_used} cap={g.daily_cap} color={m.color} sm />
           <div className="ov-cap"><b>{g.daily_used}</b>/{g.daily_cap} today</div>
         </div>
       )}
@@ -192,7 +319,6 @@ function GovGauge({ g }: { g: GovernorRow }) {
 }
 
 function Governor({ rows, client }: { rows: GovernorRow[]; client: Client }) {
-  // No 'all' governor row exists — render both people stacked for the All view.
   const targets: string[] = client === 'all' ? ['ivan', 'risedtc'] : [client]
   const cards = targets
     .map(t => rows.find(r => r.client_id === t))
@@ -200,7 +326,7 @@ function Governor({ rows, client }: { rows: GovernorRow[]; client: Client }) {
 
   return (
     <section className="ov-sec">
-      <div className="ov-h">Governor</div>
+      <div className="ov-h">Governor detail</div>
       {cards.length === 0 ? (
         <div className="ov-empty">No governor data.</div>
       ) : (
@@ -212,7 +338,7 @@ function Governor({ rows, client }: { rows: GovernorRow[]; client: Client }) {
   )
 }
 
-// ---- Block 4: Pipeline (sendable per lane + runway) ----
+// ---- Pipeline (sendable per lane + runway) ----
 function Pipeline({ rows, governor, client }: {
   rows: PipelineRow[]; governor: GovernorRow[]; client: Client
 }) {
@@ -226,10 +352,6 @@ function Pipeline({ rows, governor, client }: {
   const lanes = [...byLane.entries()]
   const totalSendable = lanes.reduce((s, [, e]) => s + e.sendable, 0)
 
-  // Daily send rate: the 7d trailing average is a real full-day rate. The
-  // governor's daily_used is only a partial-day count, so use it as a floor
-  // (a heavy day shortens runway) but never as the estimate — otherwise runway
-  // is overstated all morning and the amber/red lane dots under-trigger.
   const avg7 = pRows.reduce((s, r) => s + r.sent_7d, 0) / 7
   const govDaily = governor.filter(g => inClient(g.client_id, client)).reduce((s, g) => s + g.daily_used, 0)
   const dailyRate = Math.max(avg7, govDaily)
@@ -265,7 +387,7 @@ function Pipeline({ rows, governor, client }: {
   )
 }
 
-// ---- Block 5: Campaigns ----
+// ---- Campaigns ----
 function Campaigns({ rows }: { rows: CampaignSend[] }) {
   return (
     <section className="ov-sec">
@@ -332,11 +454,16 @@ export function OverviewView({ client, timeframe }: { client: Client; timeframe:
 
   return (
     <div className="rows ov">
-      <KpiRow lanes={lanes} daily={data.daily} client={client} timeframe={timeframe} />
-      <Engagement accept={data.accept} scans={data.scans} client={client} />
-      <Governor rows={data.governor} client={client} />
-      <Pipeline rows={data.pipeline} governor={data.governor} client={client} />
-      <Campaigns rows={data.campaigns} />
+      <Hero accept={data.accept} governor={data.governor} pipeline={data.pipeline} client={client} />
+      <Funnel accept={data.accept} scans={data.scans} client={client} />
+      <div className="ov-duo">
+        <KpiRow lanes={lanes} daily={data.daily} client={client} timeframe={timeframe} />
+        <Pipeline rows={data.pipeline} governor={data.governor} client={client} />
+      </div>
+      <div className="ov-duo">
+        <Governor rows={data.governor} client={client} />
+        <Campaigns rows={data.campaigns} />
+      </div>
     </div>
   )
 }

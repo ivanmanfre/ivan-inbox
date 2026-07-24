@@ -335,6 +335,32 @@ input.cfield::placeholder{color:var(--text3)}
 .ov-empty{background:var(--surface);border-radius:14px;padding:20px 16px;text-align:center;color:var(--text3);font-size:13.5px}
 .ov-badge{font-size:10px;font-weight:800;letter-spacing:.05em;padding:3px 8px;border-radius:7px;white-space:nowrap}
 
+/* HERO — three decision tiles (converting? throttled? runway?) */
+.ov-hero{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.ov-tile{background:var(--surface);border-radius:16px;padding:13px 13px 14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.ov-tile-h{display:flex;align-items:center;gap:7px}
+.ov-tile-lbl{flex:1;min-width:0;font-size:10.5px;font-weight:700;letter-spacing:.01em;text-transform:uppercase;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ov-tile-big{font-size:30px;font-weight:800;letter-spacing:-.03em;line-height:1;white-space:nowrap}
+.ov-tile-unit{font-size:16px;font-weight:700;color:var(--text2);letter-spacing:0}
+.ov-tile .ov-gauge{margin-bottom:0}
+.ov-tile-sub{font-size:11.5px;color:var(--text3);line-height:1.35;font-weight:500}
+.ov-tile-trend{font-weight:700}
+.ov-tile-empty{font-size:13px;color:var(--text3);padding:8px 0}
+
+/* FUNNEL — Sent → Accepted → Scan opens, horizontal 3-step */
+.ov-funnel{display:flex;align-items:center;background:var(--surface);border-radius:16px;padding:14px 12px}
+.ov-fstep{flex:1;min-width:0;text-align:center}
+.ov-fn{font-size:23px;font-weight:800;letter-spacing:-.02em;line-height:1}
+.ov-fl{font-size:11px;font-weight:600;color:var(--text3);margin-top:4px;text-transform:uppercase;letter-spacing:.03em}
+.ov-farrow{flex:none;display:flex;flex-direction:column;align-items:center;gap:1px;padding:0 4px;min-width:34px}
+.ov-fpct{font-size:12px;font-weight:800;color:var(--accent)}
+.ov-fchev{font-size:15px;color:var(--text3);line-height:1}
+.ov-fcap{font-size:12px;color:var(--text3);margin-top:8px;padding:0 2px}
+
+/* DUO — two sections side-by-side on desktop, stacked on mobile */
+.ov-duo{display:grid;grid-template-columns:1fr;gap:0;margin-top:0}
+.ov-duo > .ov-sec{margin-top:18px;min-width:0}
+
 /* KPI row — 2x2 mobile, 4-across desktop */
 .ov-kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
 .ov-kpi{background:var(--surface);border-radius:16px;padding:13px 14px;display:flex;flex-direction:column;gap:4px;min-width:0}
@@ -352,13 +378,16 @@ input.cfield::placeholder{color:var(--text3)}
 .ov-dual .ov-kpi-big{font-size:26px}
 
 /* Governor — gauges side-by-side desktop, stacked mobile */
-.ov-govs{display:grid;grid-template-columns:1fr;gap:12px}
-.ov-gov{background:var(--surface);border-radius:16px;padding:14px 16px}
+.ov-govs{display:grid;grid-template-columns:1fr;gap:12px;min-width:0}
+.ov-gov{background:var(--surface);border-radius:16px;padding:14px 16px;min-width:0}
 .ov-gov-h{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .ov-gov-nm{font-size:16px;font-weight:700}
-.ov-gauge{height:10px;border-radius:99px;background:var(--surface3);overflow:hidden;margin-bottom:6px}
+.ov-gauge{position:relative;height:10px;border-radius:99px;background:var(--surface3);overflow:hidden;margin-bottom:6px}
 .ov-gauge.sm{height:7px}
 .ov-gauge-fill{height:100%;border-radius:99px;transition:width .3s ease}
+/* honest overflow: dimmer segment past the cap + a marker pinning the cap */
+.ov-gauge-ov{position:absolute;top:0;bottom:0;opacity:.34;border-radius:0 99px 99px 0}
+.ov-gauge-cap{position:absolute;top:0;bottom:0;width:2px;background:var(--text);opacity:.5;transform:translateX(-1px)}
 .ov-gauge-lbl{font-size:14px;font-weight:600}
 .ov-gauge-lbl b{font-size:17px;font-weight:800}
 .ov-gauge-lbl .ov-cap{display:inline;margin:0;color:var(--text2)}
@@ -380,9 +409,17 @@ input.cfield::placeholder{color:var(--text3)}
 .ov-td-n{flex:none;font-size:16px;font-weight:800;min-width:32px;text-align:right}
 
 @media(min-width:1000px){
-  .ov-kpis{grid-template-columns:repeat(4,1fr)}
-  .ov-cards{grid-template-columns:1fr 1fr}
-  .ov-govs{grid-template-columns:1fr 1fr}
+  .ov-hero{gap:14px}
+  .ov-tile{padding:16px 18px}
+  .ov-tile-big{font-size:38px}
+  .ov-fstep .ov-fn{font-size:28px}
+  /* Volume+Pipeline and Governor+Campaigns each ride side-by-side. */
+  .ov-duo{grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+  .ov-duo > .ov-sec{margin-top:18px}
+  /* KPIs sit in a half-width column now — keep the 2x2, don't stretch to 4. */
+  .ov-kpis{grid-template-columns:repeat(2,1fr)}
+  /* Governor detail cards stack within their half column. */
+  .ov-govs{grid-template-columns:1fr}
 }
 
 /* desktop full-width Sends pane (no conversation split) */
