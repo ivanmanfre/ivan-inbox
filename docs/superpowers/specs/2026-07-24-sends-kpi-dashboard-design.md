@@ -21,6 +21,8 @@ outbound analytics dashboard that answers, at a glance and per account (Ivan / R
 - How the **governor** is throttling sends right now, and how much headroom is left.
 - Whether there is **enough future pipeline** — sendable ICP runway by lane — and which
   lane recent leads are coming from.
+- **Scan-resource opens** — how many prospects actually opened the `/scan/<slug>` report
+  they were sent, per account (Ivan + Rise DTC), excluding Ivan's own clicks.
 - Per-campaign breakdown.
 
 Plus fix the recurring **auth lockout** that forces re-entering the email OTP code.
@@ -42,10 +44,15 @@ The `Overview` stacks five blocks, all scoped to the selected person + timeframe
 
 1. **KPI row** — 4 cards: Connections, DMs, InMails, Emails. Each: window count, a
    small today/24h figure, and a sparkline. Desktop = one row of 4; mobile = 2×2.
-2. **Acceptance panel** — connection acceptance % for 7d and 30d (and the selected
-   window), each with raw `accepted / sent` beneath, plus an accept-trend sparkline.
-   Carries an explicit cohort-lag caption (a connection sent yesterday hasn't had time
-   to accept yet) so the number isn't misread.
+2. **Engagement panel** — two downstream signals side by side:
+   - **Acceptance** — connection acceptance % for 7d and 30d (and the selected window),
+     each with raw `accepted / sent` beneath, plus an accept-trend sparkline. Carries an
+     explicit cohort-lag caption (a connection sent yesterday hasn't had time to accept
+     yet) so the number isn't misread.
+   - **Scan opens** — real (non-owner) opens of `/scan/<slug>` reports for this account,
+     windowed (7d / 30d / selected), plus distinct prospects who opened and last-open
+     time. Reuses the existing `is_owner` / `owner_ips` exclusion, so Ivan's own clicks
+     never count (§3.5).
 3. **Governor panel** — see §4. The "how it's limiting me" view.
 4. **Pipeline runway** — see §5. Sendable ICP by lane + recent sourcing mix.
 5. **Campaigns table** — per campaign for the selected person: name, active/paused,
@@ -98,6 +105,21 @@ Per `client_id` × lane, returns `sendable` (future runway) and `sent_in_window`
   (+ `trigger_confidence`) into that account's lanes.
 **Verify task:** enumerate the live `source` values per `client_id` and confirm the
 lane mapping + the exact pre-contact stage set before building the view.
+
+### 3.5 Scan opens — new view `inbox_scan_opens_v`
+The `scan_opens` table + `scan-open` edge function already log every `/scan/<slug>` open
+and stamp `is_owner` (owner_flag OR request IP in `owner_ips`; authed opens self-seed
+Ivan's IPs, so raw link clicks from his phone are excluded too). The existing
+`scan_open_stats` view exposes only all-time per-slug aggregates and no `client_id`, so
+add a **security-definer** view `inbox_scan_opens_v` (same definer pattern as
+`scan_open_stats`, raw table stays service-role-only) that:
+- filters `not is_owner` (self-clicks already handled — no new logic),
+- maps `company_slug → client_id` via the scan/prospect registry,
+- returns per `client_id`: `opens_7d / opens_30d / opens_total`, `distinct_prospects`,
+  `last_open`, and a daily series for the sparkline.
+**Verify task:** confirm how a scan `company_slug` ties back to a client (slug→prospect
+/campaign/client_id mapping) — Rise scans live under resources.risedtc.com, Ivan's under
+resources.ivanmanfredi.com, but the join key must be confirmed against live data.
 
 ---
 
@@ -171,19 +193,20 @@ when backgrounded. Three-part fix:
   `src/lib/inbox.test.ts`: accept-rate math, governor headroom/mode derivation, lane
   classification, timeframe bucketing, runway (days-left) calc.
 - New SQL views (`inbox_accept_v`, `inbox_pipeline_v`, widened `inbox_sends_daily_v`,
-  `inbox_governor`) ship with documented verification queries under `db/`, matching the
-  style of `db/003_sends_views.sql`.
+  `inbox_governor`, `inbox_scan_opens_v`) ship with documented verification queries under
+  `db/`, matching the style of `db/003_sends_views.sql`.
 - Screens verified with `scripts/shot.mjs` at mobile + desktop widths.
 
 ---
 
 ## 8. Build order (for the plan)
 
-1. **Data verification pass** (no UI): confirm `outreach_sender_health` fields,
-   `integration_config` monthly-cap field, live `source` values per `client_id`, and
-   the pre-contact stage set. Adjust §3.3–§3.4 mappings to reality.
+1. **Data verification pass** (no UI, via Supabase API / service key): confirm
+   `outreach_sender_health` fields, `integration_config` monthly-cap field, live
+   `source` values per `client_id`, the pre-contact stage set, and the scan
+   `company_slug → client_id` mapping. Adjust §3.3–§3.5 mappings to reality.
 2. SQL: widen `inbox_sends_daily_v`; add `inbox_accept_v`, `inbox_pipeline_v`,
-   `inbox_governor`.
+   `inbox_governor`, `inbox_scan_opens_v`.
 3. Data lib (`src/lib/sends.ts` + new modules): fetchers + pure derivations + tests.
 4. UI: Overview blocks (KPI row → Acceptance → Governor → Pipeline → Campaigns),
    timeframe selector, responsive desktop density; keep Lanes + Log intact.
