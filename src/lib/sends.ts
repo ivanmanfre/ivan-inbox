@@ -165,6 +165,54 @@ export async function fetchLaneRecent(
   return out
 }
 
+export type CampaignSend = {
+  campaign_id: string
+  campaign_name: string
+  is_active: boolean
+  sent: number
+}
+
+// Per-campaign send counts for the Overview → Campaigns block. inbox_messages_v
+// exposes campaign_name (not a stable id), so we count sends by name client-side
+// — applying the same phantom-duplicate collapse the log/lane fetchers use — and
+// join to outreach_campaigns (by name) to pick up the id + active/paused flag.
+// Campaigns with zero sends still appear (sent: 0) so paused-but-empty lanes show.
+export async function fetchCampaignSends(
+  client: 'all' | 'ivan' | 'risedtc',
+): Promise<CampaignSend[]> {
+  let campQ = supabase.from('outreach_campaigns').select('id, name, is_active, client_id')
+  let msgQ = supabase.from('inbox_messages_v')
+    .select('prospect_id, campaign_name, message_text, sent_at')
+    .eq('direction', 'outbound').not('sent_at', 'is', null)
+    .order('sent_at', { ascending: false }).limit(4000)
+  if (client !== 'all') { campQ = campQ.eq('client_id', client); msgQ = msgQ.eq('client_id', client) }
+
+  const [camp, msg] = await Promise.all([campQ, msgQ])
+  if (camp.error) throw camp.error
+  if (msg.error) throw msg.error
+
+  type MsgRow = { prospect_id: string; campaign_name: string | null; message_text: string; sent_at: string | null }
+  const seen = new Set<string>()
+  const counts = new Map<string, number>()
+  for (const m of (msg.data ?? []) as MsgRow[]) {
+    if (!m.campaign_name || !m.sent_at) continue
+    const dk = `${m.prospect_id}|${m.sent_at}|${m.message_text}`
+    if (seen.has(dk)) continue
+    seen.add(dk)
+    counts.set(m.campaign_name, (counts.get(m.campaign_name) ?? 0) + 1)
+  }
+
+  type CampRow = { id: string; name: string; is_active: boolean; client_id: string }
+  return ((camp.data ?? []) as CampRow[])
+    .map(c => ({
+      campaign_id: c.id,
+      campaign_name: c.name,
+      is_active: c.is_active,
+      sent: counts.get(c.name) ?? 0,
+    }))
+    .sort((a, b) => b.sent - a.sent)
+}
+
 export function laneStatus(last_sent: string | null, nowIso: string): 'live' | 'slowing' | 'stale' {
   if (!last_sent) return 'stale'
   const age = new Date(nowIso).getTime() - new Date(last_sent).getTime()

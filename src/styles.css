@@ -322,3 +322,67 @@ input.cfield::placeholder{color:var(--text3)}
 .ctx-link.none{color:var(--text3);font-weight:600}
 .ctx-note{width:100%;box-sizing:border-box;background:var(--surface3);border:none;border-radius:11px;color:var(--text);font-size:14.5px;line-height:1.45;padding:11px 12px;min-height:64px;resize:none;outline:none;font-family:inherit}
 .ctx-save{margin-top:8px;padding:10px 0;text-align:center}
+
+/* ---- sends: Overview dashboard ---- */
+.ov{padding:6px 16px 24px}
+.ov-sec{margin-top:18px}
+.ov-sec:first-child{margin-top:8px}
+.ov-h{display:flex;align-items:baseline;gap:8px;font-size:12.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text3);margin-bottom:10px}
+.ov-h-sub{margin-left:auto;font-size:11.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--text2)}
+.ov-cap{font-size:12px;color:var(--text3);margin-top:4px}
+.ov-note{font-size:11.5px;color:#FF9F0A;margin-top:8px;line-height:1.35}
+.ov-empty{background:var(--surface);border-radius:14px;padding:20px 16px;text-align:center;color:var(--text3);font-size:13.5px}
+.ov-badge{font-size:10px;font-weight:800;letter-spacing:.05em;padding:3px 8px;border-radius:7px;white-space:nowrap}
+
+/* KPI row — 2x2 mobile, 4-across desktop */
+.ov-kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.ov-kpi{background:var(--surface);border-radius:16px;padding:13px 14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.ov-kpi-top{display:flex;align-items:center;gap:7px}
+.ov-kpi-nm{font-size:13px;font-weight:600;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ov-kpi-big{font-size:28px;font-weight:800;letter-spacing:-.02em;line-height:1.05}
+.ov-kpi-24{font-size:12px;color:var(--text3);font-weight:600}
+.ov-kpi .sc-spark{height:26px;margin-top:6px}
+
+/* Engagement — two cards */
+.ov-cards{display:grid;grid-template-columns:1fr;gap:10px}
+.ov-card{background:var(--surface);border-radius:16px;padding:14px 16px}
+.ov-card-t{font-size:13px;font-weight:700;color:var(--text2);margin-bottom:8px}
+.ov-dual{display:flex;gap:22px}
+.ov-dual .ov-kpi-big{font-size:26px}
+
+/* Governor — gauges side-by-side desktop, stacked mobile */
+.ov-govs{display:grid;grid-template-columns:1fr;gap:12px}
+.ov-gov{background:var(--surface);border-radius:16px;padding:14px 16px}
+.ov-gov-h{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.ov-gov-nm{font-size:16px;font-weight:700}
+.ov-gauge{height:10px;border-radius:99px;background:var(--surface3);overflow:hidden;margin-bottom:6px}
+.ov-gauge.sm{height:7px}
+.ov-gauge-fill{height:100%;border-radius:99px;transition:width .3s ease}
+.ov-gauge-lbl{font-size:14px;font-weight:600}
+.ov-gauge-lbl b{font-size:17px;font-weight:800}
+.ov-gauge-lbl .ov-cap{display:inline;margin:0;color:var(--text2)}
+.ov-brake{margin-top:12px}
+
+/* Pipeline — bars */
+.ov-pipe{display:flex;flex-direction:column;gap:12px;background:var(--surface);border-radius:16px;padding:14px 16px}
+.ov-pl-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.ov-pl-nm{font-size:14px;font-weight:600}
+.ov-pl-n{margin-left:auto;font-size:16px;font-weight:800}
+.ov-bar{height:8px;border-radius:99px;background:var(--surface3);overflow:hidden}
+.ov-bar-fill{height:100%;border-radius:99px;transition:width .3s ease}
+
+/* Campaigns — table */
+.ov-tbl{background:var(--surface);border-radius:16px;overflow:hidden}
+.ov-tr{display:flex;align-items:center;gap:10px;padding:12px 16px}
+.ov-tr + .ov-tr{border-top:.5px solid var(--sep)}
+.ov-td-nm{flex:1;min-width:0;font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ov-td-n{flex:none;font-size:16px;font-weight:800;min-width:32px;text-align:right}
+
+@media(min-width:1000px){
+  .ov-kpis{grid-template-columns:repeat(4,1fr)}
+  .ov-cards{grid-template-columns:1fr 1fr}
+  .ov-govs{grid-template-columns:1fr 1fr}
+}
+
+/* desktop full-width Sends pane (no conversation split) */
+.dt-full{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden}
