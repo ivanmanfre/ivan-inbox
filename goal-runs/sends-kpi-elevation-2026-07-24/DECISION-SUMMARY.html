@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sends KPI Elevation — Decision Summary</title>
+<style>
+  :root{--bg:#000;--surface:#141416;--surface2:#1d1d20;--text:#f2f2f4;--text2:#a9a9b0;--text3:#6e6e76;--accent:#10A37F;--amber:#FF9F0A;--red:#FF453A}
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--text);font:15px/1.55 -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,sans-serif;padding:30px 34px 60px;max-width:980px}
+  h1{font-size:26px;font-weight:800;letter-spacing:-.02em}
+  h2{font-size:15px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text3);margin:30px 0 10px}
+  .sub{color:var(--text2);margin-top:6px}
+  .card{background:var(--surface);border-radius:14px;padding:16px 18px;margin:10px 0}
+  .card b{color:var(--text)}
+  .step{display:flex;gap:12px;margin:8px 0}
+  .n{flex:none;width:26px;height:26px;border-radius:8px;background:rgba(16,163,127,.15);color:var(--accent);font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
+  pre{background:#0d0d0f;border:1px solid #222;border-radius:10px;padding:12px 14px;font-size:12.5px;color:#c9c9cf;overflow-x:auto;margin:8px 0}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;margin:8px 0}
+  td,th{padding:8px 10px;border-bottom:1px solid #222;text-align:left;vertical-align:top}
+  th{color:var(--text3);font-size:11.5px;text-transform:uppercase;letter-spacing:.05em}
+  .fix{color:var(--accent);font-weight:700}
+  .warn{color:var(--amber);font-weight:700}
+  .crit{color:var(--red);font-weight:700}
+  code{background:var(--surface2);padding:1px 6px;border-radius:6px;font-size:12.5px}
+  .muted{color:var(--text3);font-size:13px}
+</style>
+</head>
+<body>
+<h1>Sends KPI dashboard — accuracy + elevation: your 3 decisions</h1>
+<p class="sub">Everything is born-dead on branch <code>feat/sends-kpi-elevation</code>. <code>main</code> is untouched (verified <code>b395ade</code> = start SHA). Nothing deploys until you run the steps below.</p>
+
+<h2>What the audit found (all live-verified, skeptic-checked)</h2>
+<table>
+  <tr><th>Finding</th><th>Truth</th><th>Fix on branch</th></tr>
+  <tr><td>Acceptance card 29% (7d)</td><td>Cohort-true is <b>19.5%</b> — 4 of 12 counted accepts came from notes sent before the window</td><td class="fix">View rewritten to cohort semantics + "only rises" caption</td></tr>
+  <tr><td>Campaigns block counts</td><td>Supabase caps every response at 1000 rows — <b>29% of sends dropped</b>; worst campaign showed 199 vs 331 real; 8 paused campaigns showed 0</td><td class="fix">New server-side all-time view + fallback-safe fetcher</td></tr>
+  <tr><td>Scan opens "all Ivan"</td><td>Wrong — <b>47/149 scans are RISE-branded</b>; Nora Fierman (Client Orbit) opened hers 25s after the DM. Truth today: ivan 64 / rise 3</td><td class="fix">View now attributes via campaign → RISE wordmark → ivan</td></tr>
+  <tr><td>Your governor 98/50</td><td class="crit">Contaminated: 98 = 41 (you) + 57 (Rise). Your true week: 41/50. Worse — your sender gates on the shared 98, so <b>Rise's volume is blocking your cold sends right now</b></td><td class="fix">Governor v2 RPC: true per-person numbers + explicit "shared counter" warning line</td></tr>
+  <tr><td>Rise cap shown 35</td><td>Real enforced cap is <b>100</b> (config override in the sender since 07-23, proven live)</td><td class="fix">RPC reads the config override</td></tr>
+  <tr><td>Rise accept 0.0%</td><td>Not failure — cohort too young to judge (sends must age 3+ days)</td><td class="fix">Shows "not enough data yet (opens ~date)" instead of 0%</td></tr>
+  <tr><td>"Engager" pipeline lane (yours)</td><td><b>0% of it is your own content's engagers</b> — it's Kyle/anchor/competitor-post harvests</td><td class="fix">New "Harvested" lane; Engager now means own-content only</td></tr>
+  <tr><td>Connection notes in the log (your report)</td><td>Every logged note WAS accepted by the API with the note attached. A no-note fallback exists in the sender but has never fired — and when it fires it writes <b>no row at all</b>. Honest caption added; the real fix is an n8n write-back (watch-first #4)</td><td class="fix">Log caption; n8n change handed to you below</td></tr>
+</table>
+
+<h2>Decision 1 — pick the UI (open BALLOT.html)</h2>
+<div class="card">Open <b>BALLOT.html</b> (same folder). Reply <b>S</b> / <b>A</b> / <b>C</b> / <b>NONE</b>. S is the judge-panel composite, already integrated with the accuracy fixes and verified on Ivan/Rise/All × mobile/desktop (no overflow, console clean). A and C need a ~10-min integration pass by Claude first. NONE = today's layout + accuracy fixes only.</div>
+
+<h2>Decision 2 — apply the SQL (do this FIRST, ~2 min)</h2>
+<div class="step"><span class="n">1</span><div>Open Supabase SQL editor (project <code>bjbvqvzbzczjbatgmccb</code>) → paste the whole of <code>db/APPLY-kpi-views.sql</code> from the branch → Run. Idempotent, safe to re-run.</div></div>
+<div class="step"><span class="n">2</span><div>Run the verification SELECTs embedded at the top of that file. Expected (numbers drift with live data, ±the sliding window): acceptance ivan ≈ 8/41 · 19.5%; campaigns Agency-Focused 331, Engagement Harvest 62, Manufacturing 29; scan opens ivan 64 / risedtc 3; governor ivan used ≈ 41 with gov_used ≈ 98, rise cap 100, rise accept NULL.</div></div>
+<div class="step"><span class="n">3</span><div><b>Grant check:</b> after merge+deploy, open the app's Campaigns block — rows should show a small <b>7d</b> number next to the all-time count. If they don't, the new view lacks a grant; run: <code>grant select on inbox_campaign_sends_v to authenticated;</code> (the app silently falls back to the old undercount otherwise).</div></div>
+
+<h2>Decision 3 — merge + deploy (after SQL)</h2>
+<div class="card"><b>If you picked S:</b>
+<pre>cd ~/Desktop/ivan-inbox
+git checkout feat/sends-kpi-elevation && git merge tourney/s   # verified conflict-free
+git checkout main && git merge feat/sends-kpi-elevation && git push origin main</pre>
+<b>If NONE (accuracy only):</b>
+<pre>git checkout main && git merge feat/sends-kpi-elevation && git push origin main</pre>
+<b>If A or C:</b> reply with the letter — Claude integrates it onto the feat branch first (~10 min), then you run the NONE command.<br>
+<span class="muted">Push to main auto-deploys GitHub Pages (~1 min). Cleanup after everything ships: <code>git worktree remove ../ivan-inbox-wt-a ../ivan-inbox-wt-b ../ivan-inbox-wt-c ../ivan-inbox-wt-s</code> and delete the tourney/* branches.</span></div>
+
+<h2>Watch-first (things only a live cycle or you can decide)</h2>
+<table>
+  <tr><th>#</th><th>Item</th><th>What to watch / do</th></tr>
+  <tr><td class="crit">1</td><td><b>Your cold sends are gated by Rise's volume</b></td><td>The shared governor counter reads 98/50 → your sender skips cold sends. Options: add a per-client scope to <code>outreach_sender_health</code> (an <code>'ivan'</code> sentinel mapping to <code>client_id IS NULL</code>) or a config override for your seat, mirroring Rise's. This touches live enforcement — your call, not done by this run. Until fixed, the dashboard's amber "shared counter" line tells you when it's happening.</td></tr>
+  <tr><td>2</td><td>First accepts after the SQL applies</td><td>The acceptance card should only ever RISE within a window (cohort semantics). If you see it fall, something's wrong — tell Claude.</td></tr>
+  <tr><td>3</td><td>Rise scan opens</td><td>46 more RISE-branded scans are out there (90 owner-opens already on them). New non-owner opens should now land under Rise, not Ivan. Optional backfill for Nora's scan is commented at the bottom of <code>db/011_scan_client_attr.sql</code>.</td></tr>
+  <tr><td>4</td><td>Connection-note honesty (your report)</td><td>n8n "Outreach - Connection Request Sender" (5ZXtArhobWrDDpfJ), node "Send Connection": on note-rejection fallback it should INSERT a message row flagged no-note so the log can show "connection sent without note". Same node treats <code>already_invited</code>/422 as full success — worth fixing together. Claude can do both on request (n8n change, outside this repo).</td></tr>
+  <tr><td>5</td><td>Invisible rows</td><td>14 DM sends (07-17) belong to prospects with no campaign → invisible on all KPI surfaces; 17 room_census prospects likewise. Backfill campaign_id when convenient.</td></tr>
+  <tr><td>6</td><td>Governor ramp contamination</td><td>Once Rise's sends age past 3 days they leak into the unfiltered sender_health cohort that sets YOUR adaptive cap. Display is fixed; enforcement isn't (see #1).</td></tr>
+</table>
+
+<p class="muted" style="margin-top:26px">Full evidence: phase1-accuracy.md (findings + skeptic verdicts), phase1/*.md (10 evidence files), phase-ui/ (judge verdicts + 22 crops), REPORT.md (run report). Branch: feat/sends-kpi-elevation · main untouched at b395ade.</p>
+</body>
+</html>

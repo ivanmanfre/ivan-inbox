@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sends Overview — UI Ballot</title>
+<style>
+  :root{--bg:#000;--surface:#141416;--surface2:#1d1d20;--text:#f2f2f4;--text2:#a9a9b0;--text3:#6e6e76;--accent:#10A37F;--amber:#FF9F0A}
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,sans-serif;padding:28px 32px 80px}
+  h1{font-size:26px;font-weight:800;letter-spacing:-.02em}
+  .sub{color:var(--text2);margin:6px 0 4px;max-width:880px}
+  .how{background:var(--surface);border-radius:14px;padding:14px 18px;margin:18px 0 26px;color:var(--text2);max-width:880px}
+  .how b{color:var(--text)}
+  .cand{margin:34px 0;border-top:1px solid #222;padding-top:22px}
+  .cand-h{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .tag{font-size:11px;font-weight:800;letter-spacing:.06em;padding:4px 10px;border-radius:8px;background:rgba(16,163,127,.15);color:var(--accent)}
+  .tag.neutral{background:rgba(142,142,147,.15);color:#8E8E93}
+  .cand-h h2{font-size:20px;font-weight:800}
+  .cand-h .score{color:var(--text3);font-size:13px}
+  .pitch{color:var(--text2);margin:8px 0 14px;max-width:880px}
+  .pitch b{color:var(--text)}
+  .shots{display:grid;grid-template-columns:220px 1fr 220px 1fr;gap:14px;align-items:start}
+  .shot{background:var(--surface);border-radius:12px;padding:10px}
+  .shot .lbl{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
+  .shot img{width:100%;border-radius:8px;display:block;background:#0a0a0a}
+  .shot a{color:var(--text3);font-size:11px;text-decoration:none}
+  .verdicts{margin-top:12px;font-size:13px;color:var(--text3)}
+  .verdicts b{color:var(--text2);font-weight:600}
+  .pickbox{position:fixed;bottom:0;left:0;right:0;background:rgba(20,20,22,.97);border-top:1px solid #2a2a2e;padding:14px 32px;font-size:14px;color:var(--text2);backdrop-filter:blur(8px)}
+  .pickbox b{color:var(--text)}
+  code{background:var(--surface2);padding:1px 6px;border-radius:6px;font-size:12.5px;color:var(--text2)}
+</style>
+</head>
+<body>
+<h1>Sends Overview — pick the direction</h1>
+<p class="sub">Three finalists, all built on the live branch data, all overflow-clean and console-clean. The judge panel <b>split</b> (no direction dominated), so this is your call. Direction B (persona rail) was not advanced — both judges ranked it last for reintroducing the dead half-column — but its two-seat compare cards were grafted into S.</p>
+<div class="how"><b>How to judge in 2 minutes:</b> scan the desktop shots left→right, then the mobiles. Ask: which one answers "am I converting / am I throttled / do I have runway" fastest, and which do you want to look at every morning? Reply to Claude with just <b>S</b>, <b>A</b>, or <b>C</b> (or notes). Click any image to open it full-size.</div>
+
+<div class="cand">
+  <div class="cand-h"><span class="tag">PANEL COMPOSITE</span><h2>S — Synthesis (decision-first + honest gauges + seats)</h2><span class="score">built from both judges' converged recipe</span></div>
+  <p class="pitch"><b>C's skeleton</b> (Decision row → Funnel → Volume+Pipeline → Governor+Campaigns), <b>A's hatched over-cap gauge</b> everywhere (98/50 renders as "194% of cap", never a happy green bar), <b>B's seat-compare cards</b> (both people, one glance, click to switch). Fixes every judged defect: no fake >100% funnel arrow, honest amber dot on an over-cap governor, no truncated hero labels, zero-send paused campaigns collapsed behind an expander. Already integrated with the accuracy fixes (cohort accept labels, enforcement-gap warning, null-safe Rise cohort).</p>
+  <div class="shots">
+    <div class="shot"><div class="lbl">Ivan · mobile</div><a href="phase-ui/judge-crops/s-ivan-mobile.png"><img src="phase-ui/judge-crops/s-ivan-mobile.png"></a></div>
+    <div class="shot"><div class="lbl">Ivan · desktop</div><a href="phase-ui/judge-crops/s-ivan-desktop.png"><img src="phase-ui/judge-crops/s-ivan-desktop.png"></a></div>
+    <div class="shot"><div class="lbl">Rise · mobile</div><a href="phase-ui/judge-crops/s-rise-mobile.png"><img src="phase-ui/judge-crops/s-rise-mobile.png"></a></div>
+    <div class="shot"><div class="lbl">Rise · desktop</div><a href="phase-ui/judge-crops/s-rise-desktop.png"><img src="phase-ui/judge-crops/s-rise-desktop.png"></a></div>
+  </div>
+  <div class="verdicts"><b>Merge-ready:</b> <code>tourney/s</code> includes the accuracy fix pack; merges into the feat branch conflict-free (verified). Exact commands in DECISION-SUMMARY.html. All-view also verified: <a href="phase-ui/judge-crops/s-all-desktop.png" style="color:#10A37F">desktop</a> · <a href="phase-ui/judge-crops/s-all-mobile.png" style="color:#10A37F">mobile</a>.</div>
+</div>
+
+<div class="cand">
+  <div class="cand-h"><span class="tag neutral">RAW DIRECTION</span><h2>A — Command grid</h2><span class="score">craft judge #1 (29/40) · utility judge #2 (29)</span></div>
+  <p class="pitch">One eye-sweep stat strip on top, then a tight 2-column grid. The most conventional and the most polished raw direction; invented the hatched over-cap gauge. Weakness: mobile is unchanged from today, and acceptance/scan numbers render twice on desktop.</p>
+  <div class="shots">
+    <div class="shot"><div class="lbl">Ivan · mobile (unchanged)</div><a href="phase-ui/judge-crops/a-ivan-mobile.png"><img src="phase-ui/judge-crops/a-ivan-mobile.png"></a></div>
+    <div class="shot"><div class="lbl">Ivan · desktop</div><a href="phase-ui/judge-crops/a-ivan-desktop.png"><img src="phase-ui/judge-crops/a-ivan-desktop.png"></a></div>
+    <div class="shot"><div class="lbl">Rise · mobile (unchanged)</div><a href="phase-ui/judge-crops/a-rise-mobile.png"><img src="phase-ui/judge-crops/a-rise-mobile.png"></a></div>
+    <div class="shot"><div class="lbl">Rise · desktop</div><a href="phase-ui/judge-crops/a-rise-desktop.png"><img src="phase-ui/judge-crops/a-rise-desktop.png"></a></div>
+  </div>
+  <div class="verdicts"><b>If picked:</b> needs a ~10-min integration pass on top of the accuracy fixes (built pre-fix; Claude does it next session).</div>
+</div>
+
+<div class="cand">
+  <div class="cand-h"><span class="tag neutral">RAW DIRECTION</span><h2>C — Decision-first narrative</h2><span class="score">utility judge #1 (33) · craft judge #2 (27/40)</span></div>
+  <p class="pitch">Hero row of the three decision numbers + a funnel strip; the only raw direction that redesigns mobile. Weaknesses the judges flagged (fixed in S, present here): a confusing 308% funnel step, green dots on over-cap governors, truncated hero labels on mobile, a wall of zeroed paused campaigns.</p>
+  <div class="shots">
+    <div class="shot"><div class="lbl">Ivan · mobile</div><a href="phase-ui/judge-crops/c-ivan-mobile.png"><img src="phase-ui/judge-crops/c-ivan-mobile.png"></a></div>
+    <div class="shot"><div class="lbl">Ivan · desktop</div><a href="phase-ui/judge-crops/c-ivan-desktop.png"><img src="phase-ui/judge-crops/c-ivan-desktop.png"></a></div>
+    <div class="shot"><div class="lbl">Rise · mobile</div><a href="phase-ui/judge-crops/c-rise-mobile.png"><img src="phase-ui/judge-crops/c-rise-mobile.png"></a></div>
+    <div class="shot"><div class="lbl">Rise · desktop</div><a href="phase-ui/judge-crops/c-rise-desktop.png"><img src="phase-ui/judge-crops/c-rise-desktop.png"></a></div>
+  </div>
+  <div class="verdicts"><b>If picked:</b> needs the same integration pass as A, plus the four defect fixes (already solved once in S).</div>
+</div>
+
+<div class="cand">
+  <div class="cand-h"><span class="tag neutral">REFERENCE</span><h2>FLOOR — what's live today</h2></div>
+  <div class="shots">
+    <div class="shot"><div class="lbl">Ivan · mobile</div><a href="phase-ui/judge-crops/FLOOR-ov-ivan-mobile.png"><img src="phase-ui/judge-crops/FLOOR-ov-ivan-mobile.png"></a></div>
+    <div class="shot"><div class="lbl">Ivan · desktop</div><a href="phase-ui/judge-crops/FLOOR-ov-ivan-desktop.png"><img src="phase-ui/judge-crops/FLOOR-ov-ivan-desktop.png"></a></div>
+    <div class="shot"><div class="lbl">Rise · mobile</div><a href="phase-ui/judge-crops/FLOOR-ov-rise-mobile.png"><img src="phase-ui/judge-crops/FLOOR-ov-rise-mobile.png"></a></div>
+    <div class="shot"><div class="lbl">Rise · desktop</div><a href="phase-ui/judge-crops/FLOOR-ov-rise-desktop.png"><img src="phase-ui/judge-crops/FLOOR-ov-rise-desktop.png"></a></div>
+  </div>
+</div>
+
+<div class="pickbox">Your pick: reply <b>S</b> / <b>A</b> / <b>C</b> / <b>NONE</b> (= keep today's layout, ship only the accuracy fixes) — or "S but change …". Nothing deploys until you also run the SQL + merge in DECISION-SUMMARY.html.</div>
+</body>
+</html>
