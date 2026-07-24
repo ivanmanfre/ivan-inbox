@@ -247,6 +247,7 @@ input.cfield::placeholder{color:var(--text3)}
 .sw.on .sw-knob{transform:translateX(20px)}
 
 /* ---- sends log view ---- */
+.log-note{font-size:12px;color:var(--text3);line-height:1.35;margin:2px 2px 4px}
 .log-day{font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.05em;text-align:center;margin:16px 0 2px}
 .log-r{display:flex;gap:10px;align-items:flex-start;background:var(--surface);border-radius:13px;padding:11px 13px;margin-top:8px}
 .log-chip{flex:none;font-size:10px;font-weight:800;letter-spacing:.05em;padding:3px 8px;border-radius:7px;margin-top:1px;min-width:46px;text-align:center}
@@ -377,6 +378,7 @@ input.cfield::placeholder{color:var(--text3)}
 .ov-tr{display:flex;align-items:center;gap:10px;padding:12px 16px}
 .ov-tr + .ov-tr{border-top:.5px solid var(--sep)}
 .ov-td-nm{flex:1;min-width:0;font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ov-td-sub{flex:none;font-size:12px;color:var(--text3);font-weight:600}
 .ov-td-n{flex:none;font-size:16px;font-weight:800;min-width:32px;text-align:right}
 
 @media(min-width:1000px){

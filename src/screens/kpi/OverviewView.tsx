@@ -5,7 +5,7 @@ import {
 } from '../../lib/sends'
 import {
   fetchAccept, fetchPipeline, fetchGovernor, fetchScanOpens,
-  acceptRate, runwayDays, governorHeadroomPct, laneLabel,
+  acceptRate, runwayDays, governorHeadroomPct, laneLabel, governorEnforcementGap,
   type AcceptRow, type PipelineRow, type GovernorRow, type ScanOpenRow,
 } from '../../lib/kpis'
 
@@ -135,7 +135,7 @@ function Engagement({ accept, scans, client }: {
                   <div className="ov-cap">30d · {acc30}/{sent30}</div>
                 </div>
               </div>
-              <div className="ov-note">Connections sent recently haven't had time to accept.</div>
+              <div className="ov-note">Share of notes sent in each window that got accepted. Recent sends are still maturing — this rate only rises.</div>
             </>
           )}
         </div>
@@ -164,10 +164,23 @@ function Engagement({ accept, scans, client }: {
   )
 }
 
+// 'YYYY-MM-DD…' → 'MM-DD' without the timezone drift new Date() would introduce
+// on a bare date string.
+function shortDate(d: string): string {
+  const mm = /^(\d{4})-(\d{2})-(\d{2})/.exec(d)
+  return mm ? `${mm[2]}-${mm[3]}` : d
+}
+
 // ---- Block 3: Governor (weekly gauge + daily brake + mode) ----
 function GovGauge({ g }: { g: GovernorRow }) {
   const m = MODE[g.mode]
   const weekPct = governorHeadroomPct(g.used, g.cap)
+  // Cohort accept is null while the matured window (sends 3-18d old) is still
+  // empty — show "not enough data yet" (+ opens date if known), never a false 0%.
+  const cohortStr = g.accept_rate == null
+    ? `cohort: not enough data yet${g.cohort_opens_at ? ` (opens ~${shortDate(g.cohort_opens_at)})` : ''}`
+    : `cohort accept (3-18d): ${g.accept_rate}%`
+  const gated = governorEnforcementGap(g.used, g.cap, g.gov_used, g.gov_cap)
   return (
     <div className="ov-gov">
       <div className="ov-gov-h">
@@ -176,7 +189,10 @@ function GovGauge({ g }: { g: GovernorRow }) {
       </div>
       <div className="ov-gauge"><div className="ov-gauge-fill" style={{ width: `${weekPct}%`, background: m.color }} /></div>
       <div className="ov-gauge-lbl"><b>{g.used}</b>/{g.cap} <span className="ov-cap">this {g.window_label}</span></div>
-      <div className="ov-cap">cap {g.cap} · accept {g.accept_rate}%</div>
+      <div className="ov-cap">cap {g.cap} · {cohortStr}</div>
+      {gated && (
+        <div className="ov-note">governor counter {g.gov_used}/{g.gov_cap} (shared) — cold sends gated</div>
+      )}
       {g.daily_cap > 0 && (
         <div className="ov-brake">
           <div className="ov-gauge sm"><div className="ov-gauge-fill" style={{ width: `${governorHeadroomPct(g.daily_used, g.daily_cap)}%`, background: m.color }} /></div>
@@ -285,6 +301,7 @@ function Campaigns({ rows }: { rows: CampaignSend[] }) {
               >
                 {c.is_active ? 'ACTIVE' : 'PAUSED'}
               </span>
+              {c.sent_7d != null && <span className="ov-td-sub">7d {c.sent_7d}</span>}
               <span className="ov-td-n">{c.sent}</span>
             </div>
           ))}

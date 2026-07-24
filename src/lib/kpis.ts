@@ -14,9 +14,13 @@ export type GovernorRow = {
   cap: number; used: number; window_label: string
   mode: 'normal' | 'warm_only' | 'cold_paused'
   daily_used: number; daily_cap: number
-  accept_rate: number // already a percent (RPC fraction * 100)
+  accept_rate: number | null // cohort accept percent; null when cohort is still empty
   headroom_week: number; headroom_day: number
   monthly_cap: number | null; monthly_used: number | null
+  // Governor v2 (absent on the legacy RPC → all optional):
+  cohort?: number | null; accepted?: number | null
+  gov_used?: number | null; gov_cap?: number | null // raw shared enforcement counter
+  cohort_opens_at?: string | null // date the Rise cohort starts maturing
 }
 export type ScanOpenRow = {
   client_id: string; opens_7d: number; opens_30d: number; opens_total: number
@@ -54,8 +58,20 @@ export function governorHeadroomPct(used: number, cap: number): number {
   return Math.min(100, Math.round((used / cap) * 100))
 }
 
+// True when the shared enforcement counter (gov_used/gov_cap, from the unscoped
+// sender_health) has hit its cap but THIS client is under it — i.e. the client's
+// own cold sends are being gated by another client's volume on the same counter.
+// gov_used/gov_cap are absent on the legacy RPC, so null in → false out.
+export function governorEnforcementGap(
+  used: number, _cap: number,
+  gov_used: number | null | undefined, gov_cap: number | null | undefined,
+): boolean {
+  if (gov_used == null || gov_cap == null) return false
+  return gov_used >= gov_cap && used < gov_used
+}
+
 const LANE_LABELS: Record<string, string> = {
-  cold: 'Cold', warm: 'Warm / Orbit', engager: 'Engager', other: 'Other',
+  cold: 'Cold', warm: 'Warm / Orbit', engager: 'Engager', harvest: 'Harvested', other: 'Other',
 }
 export function laneLabel(lane: string): string {
   return LANE_LABELS[lane] ?? lane
