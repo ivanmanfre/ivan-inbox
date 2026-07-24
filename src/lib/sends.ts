@@ -169,15 +169,50 @@ export type CampaignSend = {
   campaign_id: string
   campaign_name: string
   is_active: boolean
-  sent: number
+  sent: number // all-time (sent_total in view mode)
+  sent_7d?: number
+  sent_30d?: number
+  last_sent?: string | null
 }
 
-// Per-campaign send counts for the Overview → Campaigns block. inbox_messages_v
-// exposes campaign_name (not a stable id), so we count sends by name client-side
-// — applying the same phantom-duplicate collapse the log/lane fetchers use — and
-// join to outreach_campaigns (by name) to pick up the id + active/paused flag.
-// Campaigns with zero sends still appear (sent: 0) so paused-but-empty lanes show.
+// Per-campaign send counts for the Overview → Campaigns block. Prefer the
+// server-side aggregate view (inbox_campaign_sends_v) — it counts the FULL
+// population, dodging PostgREST's 1000-row response cap that silently truncated
+// the client-side count below. If the view isn't applied yet, fall back to the
+// legacy by-name count so the app runs clean against both DB worlds.
 export async function fetchCampaignSends(
+  client: 'all' | 'ivan' | 'risedtc',
+): Promise<CampaignSend[]> {
+  const { data, error } = await supabase.from('inbox_campaign_sends_v').select('*')
+  if (!error && data) {
+    type ViewRow = {
+      campaign_id: string; campaign_name: string; client_id: string | null
+      is_active: boolean; sent_total: number; sent_7d: number; sent_30d: number
+      last_sent: string | null
+    }
+    return (data as ViewRow[])
+      .filter(c => client === 'all' || (c.client_id ?? 'ivan') === client)
+      .map(c => ({
+        campaign_id: c.campaign_id,
+        campaign_name: c.campaign_name,
+        is_active: c.is_active,
+        sent: c.sent_total,
+        sent_7d: c.sent_7d,
+        sent_30d: c.sent_30d,
+        last_sent: c.last_sent,
+      }))
+      .sort((a, b) => b.sent - a.sent)
+  }
+  return fetchCampaignSendsLegacy(client)
+}
+
+// Legacy fallback: inbox_messages_v exposes campaign_name (not a stable id), so
+// count sends by name client-side — applying the same phantom-duplicate collapse
+// the log/lane fetchers use — and join to outreach_campaigns (by name) to pick up
+// the id + active/paused flag. Campaigns with zero sends still appear (sent: 0) so
+// paused-but-empty lanes show. Truncated by PostgREST's 1000-row cap; the view
+// above supersedes it once applied.
+async function fetchCampaignSendsLegacy(
   client: 'all' | 'ivan' | 'risedtc',
 ): Promise<CampaignSend[]> {
   // Raw outreach_campaigns stores Ivan's client_id as NULL (only inbox_messages_v

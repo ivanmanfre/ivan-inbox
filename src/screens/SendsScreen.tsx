@@ -89,6 +89,7 @@ function LogView({ client }: { client: Client }) {
   let lastDay = ''
   return (
     <div className="rows sc-rows">
+      <div className="log-note">Connection notes shown were accepted by the API with the note attached.</div>
       {items.map(m => {
         const day = logDay(m.event_at)
         const showDay = day !== lastDay

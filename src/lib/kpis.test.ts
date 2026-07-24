@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { acceptRate, runwayDays, governorHeadroomPct, laneLabel } from './kpis'
+import { acceptRate, runwayDays, governorHeadroomPct, laneLabel, governorEnforcementGap } from './kpis'
 
 describe('acceptRate', () => {
   it('rounds accepted/sent to a whole percent', () => {
@@ -34,6 +34,25 @@ describe('laneLabel', () => {
     expect(laneLabel('cold')).toBe('Cold')
     expect(laneLabel('warm')).toBe('Warm / Orbit')
     expect(laneLabel('engager')).toBe('Engager')
+    expect(laneLabel('harvest')).toBe('Harvested')
     expect(laneLabel('other')).toBe('Other')
+  })
+})
+
+describe('governorEnforcementGap', () => {
+  it('true when the shared enforcement counter is maxed but this client is under it', () => {
+    // ivan sent 41, but the shared sender_health counter reads 98/50 → gated by Rise
+    expect(governorEnforcementGap(41, 50, 98, 50)).toBe(true)
+  })
+  it('false when the enforcement counter has not hit its cap', () => {
+    expect(governorEnforcementGap(41, 50, 41, 50)).toBe(false)
+  })
+  it('false when this client already accounts for the whole enforcement count', () => {
+    expect(governorEnforcementGap(98, 50, 98, 50)).toBe(false)
+  })
+  it('false on legacy RPC where enforcement fields are absent (null)', () => {
+    expect(governorEnforcementGap(41, 50, null, null)).toBe(false)
+    expect(governorEnforcementGap(41, 50, 98, null)).toBe(false)
+    expect(governorEnforcementGap(41, 50, null, 50)).toBe(false)
   })
 })
