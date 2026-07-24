@@ -21,7 +21,21 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => { setSession(data.session); setReady(true) })
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
-    return () => sub.subscription.unsubscribe()
+    // On resume (PWA backgrounded), revalidate: restore the session or refresh a
+    // near-expired token instead of dumping the user back to the login screen.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        supabase.auth.getSession().then(({ data }) => {
+          if (data.session) setSession(data.session)
+          else supabase.auth.refreshSession()
+        })
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      sub.subscription.unsubscribe()
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [])
   if (!ready) return null
   if (!session) return <LoginScreen />

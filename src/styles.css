@@ -272,6 +272,7 @@ input.cfield::placeholder{color:var(--text3)}
 .login{max-width:360px;margin:20vh auto;padding:0 22px;display:flex;flex-direction:column;gap:12px}
 .login input{background:var(--surface);border:1px solid var(--surface2);border-radius:12px;padding:12px 14px;font-size:16px;color:var(--text)}
 .err{color:#FF453A;font-size:13px}
+.login .hint{color:var(--text2);font-size:13px;text-align:center}
 
 /* ---- desktop: rail + list + conversation, side by side ---- */
 .app.dt{max-width:none;width:100%;flex-direction:row}
