@@ -271,7 +271,7 @@ export function SendsScreen({ client, setClient }: {
       )}
 
       {view === 'overview' ? (
-        <OverviewView client={client} timeframe={timeframe} />
+        <OverviewView client={client} timeframe={timeframe} setClient={setClient} />
       ) : view === 'log' ? (
         <LogView client={client} />
       ) : loading && rows.length === 0 ? (
