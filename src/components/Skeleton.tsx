@@ -17,6 +17,20 @@ export function InboxSkeleton() {
   )
 }
 
+export function OpsSkeleton() {
+  return (
+    <div className="ops-rows" aria-hidden>
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div className="ops-card sk-ops" key={i}>
+          <div className="sk sk-line" style={{ width: '30%' }} />
+          <div className="sk sk-line" style={{ width: '92%', marginTop: 12 }} />
+          <div className="sk sk-line" style={{ width: '70%', marginTop: 8 }} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function SendsSkeleton() {
   return (
     <div className="rows sc-rows" aria-hidden>
