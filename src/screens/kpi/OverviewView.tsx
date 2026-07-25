@@ -4,9 +4,9 @@ import {
   type Lane, type DailyRow, type CampaignSend,
 } from '../../lib/sends'
 import {
-  fetchAccept, fetchPipeline, fetchGovernor, fetchScanOpens,
+  fetchAccept, fetchPipeline, fetchGovernor, fetchScanOpens, fetchOutcomes,
   acceptRate, runwayDays, laneLabel, governorEnforcementGap,
-  type AcceptRow, type PipelineRow, type GovernorRow, type ScanOpenRow,
+  type AcceptRow, type PipelineRow, type GovernorRow, type ScanOpenRow, type OutcomeRow,
 } from '../../lib/kpis'
 
 type Client = 'all' | 'ivan' | 'risedtc'
@@ -241,12 +241,13 @@ function Hero({ accept, governor, pipeline, client }: {
   )
 }
 
-// ---- FUNNEL: Sent → Accepted → Scan opens (7d) ----
+// ---- FUNNEL: Sent → Accepted · Conversations · Calls (7d) ----
 // Only the Sent→Accepted step is a real subset conversion, so only it carries a
-// % arrow. Scan opens count ALL scan-report views (not just accepted prospects),
-// so the third step is a neutral separator, never a >100% "conversion".
-function Funnel({ accept, scans, client }: {
-  accept: AcceptRow[]; scans: ScanOpenRow[]; client: Client
+// % arrow. Conversations (any inbound reply, optouts excluded) can arrive via
+// InMail/email without an accept, and calls can come from any channel, so the
+// later steps are neutral separators, never a "conversion" percentage.
+function Funnel({ accept, scans, outcomes, client }: {
+  accept: AcceptRow[]; scans: ScanOpenRow[]; outcomes: OutcomeRow[]; client: Client
 }) {
   const aRows = accept.filter(r => inClient(r.client_id, client))
   const sent7 = sum(aRows, 'sent_7d'), acc7 = sum(aRows, 'accepted_7d')
@@ -257,9 +258,13 @@ function Funnel({ accept, scans, client }: {
   const distinct = sum(sRows, 'distinct_prospects')
   const lastOpen = latestIso(sRows.map(r => r.last_open))
 
+  const oRows = outcomes.filter(r => inClient(r.client_id, client))
+  const convos7 = sum(oRows, 'convos_7d'), convosTotal = sum(oRows, 'convos_total')
+  const calls7 = sum(oRows, 'calls_7d'), callsTotal = sum(oRows, 'calls_total')
+
   const acceptStep = sent7 > 0 ? `${Math.round((acc7 / sent7) * 100)}%` : '—'
 
-  if (aRows.length === 0 && sRows.length === 0) {
+  if (aRows.length === 0 && sRows.length === 0 && oRows.length === 0) {
     return (
       <section className="ov-sec">
         <div className="ov-h">Funnel<span className="ov-h-sub">7d</span></div>
@@ -284,20 +289,25 @@ function Funnel({ accept, scans, client }: {
           <div className="ov-fn">{acc7}</div>
           <div className="ov-fl">Accepted</div>
         </div>
-        {/* neutral separator — scan opens are NOT a subset of accepts */}
+        {/* neutral separator — conversations are NOT a subset of accepts */}
         <div className="ov-farrow ov-fsep"><span className="ov-fdot">·</span></div>
         <div className="ov-fstep">
-          <div className="ov-fn">{opens7}</div>
-          <div className="ov-fl">Scan opens</div>
+          <div className="ov-fn">{convos7}</div>
+          <div className="ov-fl">Convos</div>
+        </div>
+        <div className="ov-farrow ov-fsep"><span className="ov-fdot">·</span></div>
+        <div className="ov-fstep">
+          <div className="ov-fn">{calls7}</div>
+          <div className="ov-fl">Calls</div>
         </div>
       </div>
       <div className="ov-fcap">
-        7d — opens include all scan-report views, not only accepted prospects.
+        Era totals · convos {convosTotal} · calls {callsTotal} · convos = replied at least once, optouts excluded.
       </div>
       <div className="ov-fcap">
-        30d · accepted {acc30}/{sent30} · opens {opens30} · {distinct} prospects{lastOpen ? ` · last ${ago(lastOpen)}` : ''}
+        30d · accepted {acc30}/{sent30} · scan opens 7d {opens7} / 30d {opens30} · {distinct} prospects{lastOpen ? ` · last ${ago(lastOpen)}` : ''}
       </div>
-      <div className="ov-note">Share of notes sent in each window that got accepted. Recent sends are still maturing — this rate only rises.</div>
+      <div className="ov-note">Ivan scope counts the warm-lane era only (since 07-11); Rise counts full history. Recent sends are still maturing — accept rate only rises.</div>
     </section>
   )
 }
@@ -582,6 +592,7 @@ type OverviewData = {
   pipeline: PipelineRow[]
   governor: GovernorRow[]
   scans: ScanOpenRow[]
+  outcomes: OutcomeRow[]
   campaigns: CampaignSend[]
 }
 
@@ -597,10 +608,10 @@ export function OverviewView({ client, timeframe, setClient }: {
     setLoading(true); setError(null)
     Promise.all([
       fetchSends(), fetchSendsDaily(), fetchAccept(), fetchPipeline(),
-      fetchGovernor(), fetchScanOpens(), fetchCampaignSends(client),
+      fetchGovernor(), fetchScanOpens(), fetchOutcomes(), fetchCampaignSends(client),
     ])
-      .then(([rows, daily, accept, pipeline, governor, scans, campaigns]) => {
-        if (live) setData({ rows, daily, accept, pipeline, governor, scans, campaigns })
+      .then(([rows, daily, accept, pipeline, governor, scans, outcomes, campaigns]) => {
+        if (live) setData({ rows, daily, accept, pipeline, governor, scans, outcomes, campaigns })
       })
       .catch(e => { if (live) setError(e instanceof Error ? e.message : 'Failed to load') })
       .finally(() => { if (live) setLoading(false) })
@@ -616,7 +627,7 @@ export function OverviewView({ client, timeframe, setClient }: {
   return (
     <div className="rows ov">
       <Hero accept={data.accept} governor={data.governor} pipeline={data.pipeline} client={client} />
-      <Funnel accept={data.accept} scans={data.scans} client={client} />
+      <Funnel accept={data.accept} scans={data.scans} outcomes={data.outcomes} client={client} />
       <div className="ov-duo">
         <KpiRow lanes={lanes} daily={data.daily} client={client} timeframe={timeframe} />
         <Pipeline rows={data.pipeline} governor={data.governor} client={client} />
