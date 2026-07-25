@@ -26,6 +26,11 @@ export type ScanOpenRow = {
   client_id: string; opens_7d: number; opens_30d: number; opens_total: number
   distinct_prospects: number; last_open: string | null
 }
+export type OutcomeRow = {
+  client_id: string
+  convos_7d: number; convos_30d: number; convos_total: number
+  calls_7d: number; calls_30d: number; calls_total: number
+}
 
 async function selectAll<T>(view: string): Promise<T[]> {
   const { data, error } = await supabase.from(view).select('*')
@@ -33,9 +38,12 @@ async function selectAll<T>(view: string): Promise<T[]> {
   return (data ?? []) as T[]
 }
 
-export const fetchAccept = () => selectAll<AcceptRow>('inbox_accept_v')
+// v2 = warm-era scoped: Ivan counts only sends since 2026-07-11 (era cutoff
+// lives in db/017_kpi_outcomes.sql). Rise keeps full history.
+export const fetchAccept = () => selectAll<AcceptRow>('inbox_accept_v2')
 export const fetchPipeline = () => selectAll<PipelineRow>('inbox_pipeline_v')
 export const fetchScanOpens = () => selectAll<ScanOpenRow>('inbox_scan_opens_v')
+export const fetchOutcomes = () => selectAll<OutcomeRow>('inbox_outcomes_v')
 
 export async function fetchGovernor(): Promise<GovernorRow[]> {
   const { data, error } = await supabase.rpc('inbox_governor')
