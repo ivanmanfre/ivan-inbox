@@ -45,6 +45,17 @@ export const fetchPipeline = () => selectAll<PipelineRow>('inbox_pipeline_v')
 export const fetchScanOpens = () => selectAll<ScanOpenRow>('inbox_scan_opens_v')
 export const fetchOutcomes = () => selectAll<OutcomeRow>('inbox_outcomes_v')
 
+export type RangeKpiRow = {
+  client_id: string; sent: number; accepted: number; convos: number; calls: number
+}
+// Explicit-range KPIs (custom date selector). No era cutoff: picked dates ARE
+// the scope. p_from/p_to inclusive, YYYY-MM-DD.
+export async function fetchRangeKpis(from: string, to: string): Promise<RangeKpiRow[]> {
+  const { data, error } = await supabase.rpc('inbox_range_kpis', { p_from: from, p_to: to })
+  if (error) throw error
+  return (data ?? []) as RangeKpiRow[]
+}
+
 export async function fetchGovernor(): Promise<GovernorRow[]> {
   const { data, error } = await supabase.rpc('inbox_governor')
   if (error) throw error

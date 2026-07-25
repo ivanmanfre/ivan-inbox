@@ -10,11 +10,12 @@ import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { OverviewView } from './kpi/OverviewView'
 
 type Client = 'all' | 'ivan' | 'risedtc'
-type Timeframe = '7d' | '30d' | '90d' | 'all'
+type Timeframe = '7d' | '30d' | 'custom'
 
 const TIMEFRAMES: { key: Timeframe; label: string }[] = [
   { key: '7d', label: '7d' },
   { key: '30d', label: '30d' },
+  { key: 'custom', label: 'Custom' },
 ]
 
 const CHIPS: { key: Client; label: string }[] = [
@@ -200,6 +201,8 @@ export function SendsScreen({ client, setClient }: {
   const [openLane, setOpenLane] = useState<LaneKey | null>(null)
   const [view, setView] = useState<'overview' | 'lanes' | 'log'>('overview')
   const [timeframe, setTimeframe] = useState<Timeframe>('7d')
+  const [rangeFrom, setRangeFrom] = useState('2026-07-11')
+  const [rangeTo, setRangeTo] = useState(() => new Date().toISOString().slice(0, 10))
   const rowsRef = useRef<HTMLDivElement>(null)
 
   const load = useCallback(async () => {
@@ -254,21 +257,41 @@ export function SendsScreen({ client, setClient }: {
       </div>
 
       {view === 'overview' && (
-        <div className="seg" style={{ margin: '8px 16px 0' }}>
-          {TIMEFRAMES.map(t => (
-            <div
-              key={t.key}
-              className={`sg ${timeframe === t.key ? 'on' : ''}`}
-              onClick={() => setTimeframe(t.key)}
-            >
-              {t.label}
+        <>
+          <div className="seg" style={{ margin: '8px 16px 0' }}>
+            {TIMEFRAMES.map(t => (
+              <div
+                key={t.key}
+                className={`sg ${timeframe === t.key ? 'on' : ''}`}
+                onClick={() => setTimeframe(t.key)}
+              >
+                {t.label}
+              </div>
+            ))}
+          </div>
+          {timeframe === 'custom' && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '8px 16px 0' }}>
+              <input
+                type="date" value={rangeFrom} max={rangeTo}
+                onChange={e => setRangeFrom(e.target.value)}
+                style={{ flex: 1, background: 'rgba(120,120,128,.12)', border: 'none', borderRadius: 8, padding: '8px 10px', color: 'inherit', font: 'inherit', colorScheme: 'dark' }}
+              />
+              <span style={{ opacity: .5 }}>→</span>
+              <input
+                type="date" value={rangeTo} min={rangeFrom}
+                onChange={e => setRangeTo(e.target.value)}
+                style={{ flex: 1, background: 'rgba(120,120,128,.12)', border: 'none', borderRadius: 8, padding: '8px 10px', color: 'inherit', font: 'inherit', colorScheme: 'dark' }}
+              />
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
 
       {view === 'overview' ? (
-        <OverviewView client={client} timeframe={timeframe} setClient={setClient} />
+        <OverviewView
+          client={client} timeframe={timeframe} setClient={setClient}
+          range={timeframe === 'custom' ? { from: rangeFrom, to: rangeTo } : null}
+        />
       ) : view === 'log' ? (
         <LogView client={client} />
       ) : loading && rows.length === 0 ? (
