@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
+import { parseHash } from './lib/route'
 import { LoginScreen } from './screens/LoginScreen'
 import { InboxScreen } from './screens/InboxScreen'
 import { ThreadScreen } from './screens/ThreadScreen'
@@ -16,14 +17,6 @@ import { useDesktop } from './hooks/useDesktop'
 import type { Filter } from './lib/inbox'
 
 type Tab = 'inbox' | 'drafts' | 'sends' | 'ops' | 'settings' | 'today'
-const TABS: Tab[] = ['inbox', 'drafts', 'sends', 'ops', 'settings', 'today']
-
-// The Supabase implicit-auth flow parks `#access_token=...` in the URL fragment
-// on redirect back to this origin. Never parse that as a route, and never let
-// hash-writeback clobber it mid-login.
-function isAuthHash(hash: string): boolean {
-  return hash.startsWith('#access_token')
-}
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -69,20 +62,20 @@ function Shell() {
 
   // Hash mini-router. Shell only ever mounts once App has resolved a session
   // (getSession() settled and session is truthy), so writeback below is
-  // implicitly gated on that already — the extra isAuthHash() guard covers the
+  // implicitly gated on that already — the parseHash() guard covers the
   // edge case of an #access_token fragment still sitting in the URL.
   useEffect(() => {
     const applyHash = () => {
-      const hash = location.hash
-      if (!hash || isAuthHash(hash)) return
-      if (hash.startsWith('#thread/')) {
-        const id = decodeURIComponent(hash.slice('#thread/'.length))
-        if (id) { setTab('inbox'); setOpenThread(id) }
+      const route = parseHash(location.hash)
+      if (!route) return
+      if (route.thread) {
+        setTab('inbox')
+        setOpenThread(route.thread)
         return
       }
-      const t = hash.slice(1) as Tab
-      if (TABS.includes(t)) setTab(t)
-      // else: unrecognized hash -> leave default tab as-is
+      if (route.tab) {
+        setTab(route.tab)
+      }
     }
     applyHash()
     window.addEventListener('hashchange', applyHash)
@@ -92,7 +85,7 @@ function Shell() {
   const nav = (t: Tab) => {
     setTab(t)
     if (!desktop) setOpenThread(null)
-    if (!isAuthHash(location.hash)) history.replaceState(null, '', `#${t}`)
+    if (!location.hash.startsWith('#access_token')) history.replaceState(null, '', `#${t}`)
   }
 
   if (loading && threads.length === 0) {
