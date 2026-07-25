@@ -558,10 +558,13 @@ function CampaignRow({ c }: { c: CampaignSend }) {
   )
 }
 
-function Campaigns({ rows }: { rows: CampaignSend[] }) {
+function Campaigns({ rows, client }: { rows: CampaignSend[]; client: Client }) {
   const [showPaused, setShowPaused] = useState(false)
-  const shown = rows.filter(c => c.is_active || c.sent > 0)
-  const hidden = rows.filter(c => !c.is_active && c.sent === 0)
+  // Ivan ruling 2026-07-25: paused campaigns are retired history on the Ivan
+  // scope — hide them outright (no expander). Rise keeps the expander.
+  const visible = client === 'ivan' ? rows.filter(c => c.is_active) : rows
+  const shown = visible.filter(c => c.is_active || c.sent > 0)
+  const hidden = client === 'ivan' ? [] : visible.filter(c => !c.is_active && c.sent === 0)
 
   return (
     <section className="ov-sec">
@@ -636,7 +639,7 @@ export function OverviewView({ client, timeframe, setClient }: {
         <Governor rows={data.governor} client={client} />
         <div className="ov-rcol">
           <Seats data={data} client={client} setClient={setClient} />
-          <Campaigns rows={data.campaigns} />
+          <Campaigns rows={data.campaigns} client={client} />
         </div>
       </div>
     </div>
