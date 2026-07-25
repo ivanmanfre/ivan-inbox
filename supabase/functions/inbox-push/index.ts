@@ -23,7 +23,9 @@ Deno.serve(async (req) => {
   const payload = JSON.stringify({
     title: `${m.prospect_name} · ${m.client_id === 'risedtc' ? 'Rise' : 'Ivan'}`,
     body: (m.message_text ?? '').slice(0, 140),
-    url: `/#thread/${m.prospect_id}`,
+    // Relative URL: resolves against the sw scope (/ivan-inbox/ on GH Pages).
+    // A leading slash resolves to the *user root* and the app never loads.
+    url: `./#thread/${m.prospect_id}`,
   })
   const results = await Promise.all((subs ?? []).map(s =>
     webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload)
