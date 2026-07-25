@@ -4,13 +4,14 @@ import {
   type Lane, type DailyRow, type CampaignSend,
 } from '../../lib/sends'
 import {
-  fetchAccept, fetchPipeline, fetchGovernor, fetchScanOpens, fetchOutcomes,
+  fetchAccept, fetchPipeline, fetchGovernor, fetchScanOpens, fetchOutcomes, fetchRangeKpis,
   acceptRate, runwayDays, laneLabel, governorEnforcementGap,
-  type AcceptRow, type PipelineRow, type GovernorRow, type ScanOpenRow, type OutcomeRow,
+  type AcceptRow, type PipelineRow, type GovernorRow, type ScanOpenRow, type OutcomeRow, type RangeKpiRow,
 } from '../../lib/kpis'
 
 type Client = 'all' | 'ivan' | 'risedtc'
-type Timeframe = '7d' | '30d' | '90d' | 'all'
+type Timeframe = '7d' | '30d' | 'custom'
+type DateRange = { from: string; to: string }
 
 // Dot / accent colors mirror SendsScreen so the two views read as one system.
 const STATUS = { live: '#10A37F', slowing: '#FF9F0A', stale: '#FF453A' }
@@ -312,24 +313,70 @@ function Funnel({ accept, scans, outcomes, client }: {
   )
 }
 
+// ---- Range summary (custom date selector) ----
+// Explicit-range KPIs from inbox_range_kpis — no era cutoff, the picked dates
+// are the scope. Daily sparkline data only reaches 90d back, but this RPC
+// counts from the raw tables, so any range works.
+function RangeSummary({ range, client }: { range: DateRange; client: Client }) {
+  const [rows, setRows] = useState<RangeKpiRow[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let live = true
+    setRows(null); setError(null)
+    fetchRangeKpis(range.from, range.to)
+      .then(r => { if (live) setRows(r) })
+      .catch(e => { if (live) setError(e instanceof Error ? e.message : 'Failed to load') })
+    return () => { live = false }
+  }, [range.from, range.to])
+
+  const rs = (rows ?? []).filter(r => inClient(r.client_id, client))
+  const sent = sum(rs, 'sent'), accepted = sum(rs, 'accepted')
+  const convos = sum(rs, 'convos'), calls = sum(rs, 'calls')
+  const pct = sent > 0 ? `${Math.round((accepted / sent) * 100)}%` : '—'
+
+  return (
+    <section className="ov-sec">
+      <div className="ov-h">Range<span className="ov-h-sub">{shortDate(range.from)} → {shortDate(range.to)}</span></div>
+      {error ? (
+        <div className="ov-empty">{error}</div>
+      ) : rows === null ? (
+        <div className="ov-empty">Loading…</div>
+      ) : (
+        <>
+          <div className="ov-funnel">
+            <div className="ov-fstep"><div className="ov-fn">{sent}</div><div className="ov-fl">Sent</div></div>
+            <div className="ov-farrow"><span className="ov-fpct">{pct}</span><span className="ov-fchev">→</span></div>
+            <div className="ov-fstep"><div className="ov-fn">{accepted}</div><div className="ov-fl">Accepted</div></div>
+            <div className="ov-farrow ov-fsep"><span className="ov-fdot">·</span></div>
+            <div className="ov-fstep"><div className="ov-fn">{convos}</div><div className="ov-fl">Convos</div></div>
+            <div className="ov-farrow ov-fsep"><span className="ov-fdot">·</span></div>
+            <div className="ov-fstep"><div className="ov-fn">{calls}</div><div className="ov-fl">Calls</div></div>
+          </div>
+          <div className="ov-fcap">Exact range, no era cutoff — accepts counted on the notes sent inside it.</div>
+        </>
+      )}
+    </section>
+  )
+}
+
 // ---- Volume (per-channel) ----
-function laneCount(lane: Lane, daily: DailyRow[], client: Client, tf: Timeframe): number {
+function laneCount(lane: Lane, daily: DailyRow[], client: Client, tf: Timeframe, range: DateRange | null): number {
   if (tf === '7d') return lane.sent_7d
   if (tf === '30d') return lane.sent_30d
-  if (tf === 'all') return lane.sent_total
-  const cutoff = Date.now() - 90 * 86_400_000
+  // custom: sum daily rows inside the picked range (daily reaches 90d back)
   return daily
     .filter(d => d.message_type === lane.key && inClient(d.client_id, client)
-      && new Date(d.day).getTime() >= cutoff)
+      && (!range || (d.day >= range.from && d.day <= range.to)))
     .reduce((s, d) => s + d.sent, 0)
 }
 
-function KpiRow({ lanes, daily, client, timeframe }: {
-  lanes: Lane[]; daily: DailyRow[]; client: Client; timeframe: Timeframe
+function KpiRow({ lanes, daily, client, timeframe, range }: {
+  lanes: Lane[]; daily: DailyRow[]; client: Client; timeframe: Timeframe; range: DateRange | null
 }) {
   return (
     <section className="ov-sec">
-      <div className="ov-h">Volume<span className="ov-h-sub">{timeframe === 'all' ? 'all time' : timeframe}</span></div>
+      <div className="ov-h">Volume<span className="ov-h-sub">{timeframe === 'custom' && range ? `${shortDate(range.from)}→${shortDate(range.to)}` : timeframe}</span></div>
       <div className="ov-kpis">
         {lanes.map(lane => (
           <div key={lane.key} className="ov-kpi">
@@ -337,7 +384,7 @@ function KpiRow({ lanes, daily, client, timeframe }: {
               <span className="sc-dot" style={{ background: LANE_DOT[lane.key] }} />
               <span className="ov-kpi-nm">{lane.label}</span>
             </div>
-            <div className="ov-kpi-big">{laneCount(lane, daily, client, timeframe)}</div>
+            <div className="ov-kpi-big">{laneCount(lane, daily, client, timeframe, range)}</div>
             <div className="ov-kpi-24">24h: {lane.sent_24h}</div>
             <Spark values={lane.daily} />
           </div>
@@ -599,8 +646,9 @@ type OverviewData = {
   campaigns: CampaignSend[]
 }
 
-export function OverviewView({ client, timeframe, setClient }: {
+export function OverviewView({ client, timeframe, setClient, range = null }: {
   client: Client; timeframe: Timeframe; setClient?: (c: Client) => void
+  range?: DateRange | null
 }) {
   const [data, setData] = useState<OverviewData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -630,9 +678,10 @@ export function OverviewView({ client, timeframe, setClient }: {
   return (
     <div className="rows ov">
       <Hero accept={data.accept} governor={data.governor} pipeline={data.pipeline} client={client} />
+      {timeframe === 'custom' && range && <RangeSummary range={range} client={client} />}
       <Funnel accept={data.accept} scans={data.scans} outcomes={data.outcomes} client={client} />
       <div className="ov-duo">
-        <KpiRow lanes={lanes} daily={data.daily} client={client} timeframe={timeframe} />
+        <KpiRow lanes={lanes} daily={data.daily} client={client} timeframe={timeframe} range={range} />
         <Pipeline rows={data.pipeline} governor={data.governor} client={client} />
       </div>
       <div className="ov-duo">
