@@ -1,10 +1,14 @@
-type Tab = 'inbox' | 'drafts' | 'sends' | 'ops' | 'settings'
+type Tab = 'inbox' | 'drafts' | 'sends' | 'ops' | 'settings' | 'today'
 
 export function TabBar({ active, draftCount, onNav }: {
   active: Tab; draftCount: number; onNav: (t: Tab) => void
 }) {
   return (
     <div className="tabbar">
+      <div className={`tb ${active === 'today' ? 'on' : ''}`} onClick={() => onNav('today')}>
+        <div className="ic">☼</div>
+        <div className="l">Today</div>
+      </div>
       <div className={`tb ${active === 'inbox' ? 'on' : ''}`} onClick={() => onNav('inbox')}>
         <div className="ic">◉</div>
         <div className="l">Inbox</div>
