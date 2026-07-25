@@ -8,13 +8,22 @@ import { DraftsScreen } from './screens/DraftsScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
 import { SendsScreen } from './screens/SendsScreen'
 import { OpsScreen } from './screens/OpsScreen'
+import { TodayScreen } from './screens/TodayScreen'
 import { TabBar } from './components/TabBar'
 import { InboxSkeleton } from './components/Skeleton'
 import { useInbox } from './hooks/useInbox'
 import { useDesktop } from './hooks/useDesktop'
 import type { Filter } from './lib/inbox'
 
-type Tab = 'inbox' | 'drafts' | 'sends' | 'ops' | 'settings'
+type Tab = 'inbox' | 'drafts' | 'sends' | 'ops' | 'settings' | 'today'
+const TABS: Tab[] = ['inbox', 'drafts', 'sends', 'ops', 'settings', 'today']
+
+// The Supabase implicit-auth flow parks `#access_token=...` in the URL fragment
+// on redirect back to this origin. Never parse that as a route, and never let
+// hash-writeback clobber it mid-login.
+function isAuthHash(hash: string): boolean {
+  return hash.startsWith('#access_token')
+}
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -28,7 +37,13 @@ export default function App() {
       if (document.visibilityState === 'visible') {
         supabase.auth.getSession().then(({ data }) => {
           if (data.session) setSession(data.session)
-          else supabase.auth.refreshSession()
+          else supabase.auth.refreshSession().then(({ data: refreshed, error }) => {
+            // A failed/empty refresh means the session is actually dead — clear it
+            // so the login gate shows instead of leaving stale truthy state around
+            // while supabase-js silently falls back to the anon key.
+            if (error || !refreshed.session) setSession(null)
+            else setSession(refreshed.session)
+          })
         })
       }
     }
@@ -51,6 +66,34 @@ function Shell() {
   const { threads, loading, refresh } = useInbox()
   const desktop = useDesktop()
   const draftCount = threads.filter(t => t.draft).length
+
+  // Hash mini-router. Shell only ever mounts once App has resolved a session
+  // (getSession() settled and session is truthy), so writeback below is
+  // implicitly gated on that already — the extra isAuthHash() guard covers the
+  // edge case of an #access_token fragment still sitting in the URL.
+  useEffect(() => {
+    const applyHash = () => {
+      const hash = location.hash
+      if (!hash || isAuthHash(hash)) return
+      if (hash.startsWith('#thread/')) {
+        const id = decodeURIComponent(hash.slice('#thread/'.length))
+        if (id) { setTab('inbox'); setOpenThread(id) }
+        return
+      }
+      const t = hash.slice(1) as Tab
+      if (TABS.includes(t)) setTab(t)
+      // else: unrecognized hash -> leave default tab as-is
+    }
+    applyHash()
+    window.addEventListener('hashchange', applyHash)
+    return () => window.removeEventListener('hashchange', applyHash)
+  }, [])
+
+  const nav = (t: Tab) => {
+    setTab(t)
+    if (!desktop) setOpenThread(null)
+    if (!isAuthHash(location.hash)) history.replaceState(null, '', `#${t}`)
+  }
 
   if (loading && threads.length === 0) {
     return (
@@ -88,23 +131,23 @@ function Shell() {
       )}
       {tab === 'ops' && <OpsScreen />}
       {tab === 'settings' && <SettingsScreen />}
+      {tab === 'today' && <TodayScreen />}
     </>
   )
 
-  const nav = (t: Tab) => { setTab(t); if (!desktop) setOpenThread(null) }
-
   // Desktop: rail + list column + conversation pane, side by side.
-  // The Sends and Ops tabs have no conversation, so they span the full content
-  // width instead of the list+detail split (which would waste half the screen).
+  // The Sends, Ops and Today tabs have no conversation, so they span the full
+  // content width instead of the list+detail split (which would waste half
+  // the screen).
   if (desktop) {
     return (
       <div className="app dt">
         <TabBar active={tab} draftCount={draftCount} onNav={nav} />
-        {tab === 'sends' || tab === 'ops' ? (
+        {tab === 'sends' || tab === 'ops' || tab === 'today' ? (
           <div className="dt-full">
-            {tab === 'sends'
-              ? <SendsScreen client={sendsClient} setClient={setSendsClient} />
-              : <OpsScreen />}
+            {tab === 'sends' && <SendsScreen client={sendsClient} setClient={setSendsClient} />}
+            {tab === 'ops' && <OpsScreen />}
+            {tab === 'today' && <TodayScreen />}
           </div>
         ) : (
           <>
