@@ -15,12 +15,9 @@ type Timeframe = '7d' | '30d' | '90d' | 'all'
 const TIMEFRAMES: { key: Timeframe; label: string }[] = [
   { key: '7d', label: '7d' },
   { key: '30d', label: '30d' },
-  { key: '90d', label: '90d' },
-  { key: 'all', label: 'All' },
 ]
 
 const CHIPS: { key: Client; label: string }[] = [
-  { key: 'all', label: 'All' },
   { key: 'ivan', label: 'Ivan' },
   { key: 'risedtc', label: 'Rise' },
 ]

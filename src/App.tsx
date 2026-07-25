@@ -55,7 +55,7 @@ function Shell() {
   const [tab, setTab] = useState<Tab>('inbox')
   const [openThread, setOpenThread] = useState<string | null>(null)
   const [filter, setFilter] = useState<Filter>('all')
-  const [sendsClient, setSendsClient] = useState<'all' | 'ivan' | 'risedtc'>('all')
+  const [sendsClient, setSendsClient] = useState<'all' | 'ivan' | 'risedtc'>('ivan')
   const { threads, loading, refresh } = useInbox()
   const desktop = useDesktop()
   const draftCount = threads.filter(t => t.draft).length
