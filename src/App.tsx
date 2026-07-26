@@ -11,6 +11,7 @@ import { SendsScreen } from './screens/SendsScreen'
 import { OpsScreen } from './screens/OpsScreen'
 import { TodayScreen } from './screens/TodayScreen'
 import { TabBar } from './components/TabBar'
+import { SeatHealthBanner } from './components/SeatHealthBanner'
 import { InboxSkeleton } from './components/Skeleton'
 import { useInbox } from './hooks/useInbox'
 import { useDesktop } from './hooks/useDesktop'
@@ -105,6 +106,7 @@ function Shell() {
 
   const listScreen = (
     <>
+      <SeatHealthBanner />
       {tab === 'inbox' && (
         <InboxScreen
           threads={threads}
@@ -138,6 +140,7 @@ function Shell() {
         <TabBar active={tab} draftCount={draftCount} onNav={nav} />
         {tab === 'sends' || tab === 'ops' || tab === 'today' ? (
           <div className="dt-full">
+            <SeatHealthBanner />
             {tab === 'sends' && <SendsScreen client={sendsClient} setClient={setSendsClient} />}
             {tab === 'ops' && <OpsScreen />}
             {tab === 'today' && <TodayScreen />}
