@@ -70,6 +70,7 @@ export type SendLogItem = {
   prospect_name: string
   client_id: string
   message_type: string
+  ai_model: string | null
   message_text: string
   event_at: string
   kind: 'sent' | 'failed'
@@ -78,7 +79,7 @@ export type SendLogItem = {
 
 type LogRow = {
   id: string; prospect_id: string; prospect_name: string; client_id: string;
-  message_type: string | null; message_text: string;
+  message_type: string | null; ai_model: string | null; message_text: string;
   sent_at: string | null; send_blocked_at: string | null; send_blocked_reason: string | null;
 }
 
@@ -95,7 +96,7 @@ export function buildSendLog(sent: LogRow[], failed: LogRow[]): SendLogItem[] {
     seen.add(dk)
     items.push({
       id: m.id, prospect_id: m.prospect_id, prospect_name: m.prospect_name,
-      client_id: m.client_id, message_type: m.message_type ?? 'dm',
+      client_id: m.client_id, message_type: m.message_type ?? 'dm', ai_model: m.ai_model ?? null,
       message_text: m.message_text, event_at: m.sent_at, kind: 'sent', reason: null,
     })
   }
@@ -103,7 +104,7 @@ export function buildSendLog(sent: LogRow[], failed: LogRow[]): SendLogItem[] {
     if (!m.send_blocked_at || m.send_blocked_reason === 'discarded_in_inbox') continue
     items.push({
       id: m.id, prospect_id: m.prospect_id, prospect_name: m.prospect_name,
-      client_id: m.client_id, message_type: m.message_type ?? 'dm',
+      client_id: m.client_id, message_type: m.message_type ?? 'dm', ai_model: m.ai_model ?? null,
       message_text: m.message_text, event_at: m.send_blocked_at, kind: 'failed',
       reason: m.send_blocked_reason,
     })
@@ -115,7 +116,7 @@ export async function fetchSendLog(
   client: 'all' | 'ivan' | 'risedtc',
   limit = 120,
 ): Promise<SendLogItem[]> {
-  const cols = 'id, prospect_id, prospect_name, client_id, message_type, message_text, sent_at, send_blocked_at, send_blocked_reason'
+  const cols = 'id, prospect_id, prospect_name, client_id, message_type, ai_model, message_text, sent_at, send_blocked_at, send_blocked_reason'
   let sentQ = supabase.from('inbox_messages_v').select(cols)
     .eq('direction', 'outbound').not('sent_at', 'is', null)
     .order('sent_at', { ascending: false }).limit(limit * 3) // wide for dedupe headroom
