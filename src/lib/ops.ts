@@ -1,15 +1,42 @@
 import { supabase } from './supabase'
 
-export type OpsKind = 'escalation' | 'update'
+export type OpsKind = 'escalation' | 'update' | 'newsjack'
 
 // The row shape varies by kind (escalation carries a prospect, update carries
-// receipts), so context stays a loose bag rather than a fixed type.
+// receipts, newsjack carries the idea it will generate from), so context stays a
+// loose bag rather than a fixed type.
 export type OpsContext = {
   prospect_name?: string
   company?: string
   receipts?: string[]
   replay?: boolean
+  // newsjack
+  engine?: string
+  idea_id?: string
+  headline?: string
+  source_url?: string
+  expires_at?: string
+  slot?: string
+  incumbent_moved_to?: string
   [key: string]: unknown
+}
+
+// Newsjack cards are not Slack-bound: approving one fires generation and claims the
+// next publish slot on the matching engine. Same table, different destination.
+export const ENGINE_LABEL: Record<string, string> = { ivan: 'your feed', risedtc: 'Rise' }
+export function engineLabel(clientId: string): string {
+  return ENGINE_LABEL[clientId] ?? clientId
+}
+
+// Newsjack lift is ~24h and the card TTLs at 48h, so the countdown is the whole
+// point of the card — a stale one is worth discarding rather than running.
+export function expiresIn(iso?: string, now: number = Date.now()): string | null {
+  if (!iso) return null
+  const ms = new Date(iso).getTime() - now
+  if (ms <= 0) return 'expired'
+  const h = Math.floor(ms / 3600000)
+  if (h >= 1) return `${h}h left`
+  return `${Math.max(1, Math.floor(ms / 60000))}m left`
 }
 
 export type OpsDraft = {
