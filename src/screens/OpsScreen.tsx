@@ -5,9 +5,14 @@ import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useOps } from '../hooks/useOps'
 import {
-  approveOpsDraft, blockedOps, discardOpsDraft, pendingOps, sentOps,
+  approveOpsDraft, blockedOps, discardOpsDraft, engineLabel, expiresIn, pendingOps, sentOps,
   type OpsDraft, type OpsKind,
 } from '../lib/ops'
+
+function slotText(iso?: string): string {
+  if (!iso) return ''
+  return iso.replace('T', ' ').slice(0, 16) + ' UTC'
+}
 
 function timeAgo(iso: string): string {
   const then = new Date(iso).getTime()
@@ -22,9 +27,10 @@ function timeAgo(iso: string): string {
   return `${d}d`
 }
 
-const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE' }
-// Escalations run warm/red (something needs attention); updates stay neutral/blue (fyi).
-const KIND_COLOR: Record<OpsKind, string> = { escalation: '#FF453A', update: '#0A84FF' }
+const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK' }
+// Escalations run warm/red (something needs attention); updates stay neutral/blue (fyi);
+// newsjack runs amber because it is the only kind with a clock on it.
+const KIND_COLOR: Record<OpsKind, string> = { escalation: '#FF453A', update: '#0A84FF', newsjack: '#FF9F0A' }
 
 function errText(e: unknown): string {
   return e instanceof Error ? e.message : String(e)
@@ -35,6 +41,16 @@ function errText(e: unknown): string {
 function ContextLine({ draft }: { draft: OpsDraft }) {
   const ctx = draft.context
   if (!ctx) return null
+  if (draft.kind === 'newsjack') {
+    if (!ctx.headline) return null
+    return (
+      <div className="ops-ctx">
+        {ctx.source_url
+          ? <a href={ctx.source_url} target="_blank" rel="noreferrer">{ctx.headline}</a>
+          : <span>{ctx.headline}</span>}
+      </div>
+    )
+  }
   const who = draft.kind === 'escalation'
     ? [ctx.prospect_name, ctx.company].filter(Boolean).join(' · ')
     : ''
@@ -59,11 +75,17 @@ function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void 
   // while the operator hasn't touched it yet).
   useEffect(() => { setBody(draft.body) }, [draft.id, draft.body])
 
+  const isNewsjack = draft.kind === 'newsjack'
+  const where = isNewsjack ? engineLabel(draft.client_id) : `#${draft.slack_channel}`
+  const left = isNewsjack ? expiresIn(draft.context?.expires_at) : null
+
   async function onApprove() {
     const ok = await confirm({
-      title: `Post to ${draft.slack_channel}?`,
-      message: 'The dispatcher posts this to Slack within about 2 minutes.',
-      confirmText: 'Approve & send',
+      title: isNewsjack ? `Take the next slot on ${where}?` : `Post to ${draft.slack_channel}?`,
+      message: isNewsjack
+        ? 'Writes the post now, then swaps it into the next publish slot. Whatever sits there moves to the next open weekday.'
+        : 'The dispatcher posts this to Slack within about 2 minutes.',
+      confirmText: isNewsjack ? 'Approve & jump' : 'Approve & send',
     })
     if (!ok) return
     setBusy(true); setError('')
@@ -75,7 +97,7 @@ function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void 
   async function onDiscard() {
     const ok = await confirm({
       title: 'Discard this one?',
-      message: `It won't be posted to ${draft.slack_channel}.`,
+      message: isNewsjack ? "It won't be written or scheduled." : `It won't be posted to ${draft.slack_channel}.`,
       confirmText: 'Discard',
       danger: true,
     })
@@ -95,7 +117,8 @@ function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void 
         >
           {KIND_LABEL[draft.kind]}
         </span>
-        <span className="ops-chan">#{draft.slack_channel}</span>
+        <span className="ops-chan">{where}</span>
+        {left && <span className="ops-replay">{left}</span>}
         <span className="ops-tm">{timeAgo(draft.created_at)}</span>
       </div>
       <ContextLine draft={draft} />
@@ -105,10 +128,13 @@ function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void 
         onChange={e => setBody(e.target.value)}
         disabled={busy}
       />
+      {isNewsjack && <div className="ops-ctx">Angle the post gets written from, edit before approving.</div>}
       {error && <div className="ops-err">{error}</div>}
       <div className="ops-ac">
         <div className="btn s" onClick={busy ? undefined : onDiscard}>Discard</div>
-        <div className="btn p" onClick={busy ? undefined : onApprove}>{busy ? 'Sending…' : 'Approve & send'}</div>
+        <div className="btn p" onClick={busy ? undefined : onApprove}>
+          {busy ? (isNewsjack ? 'Claiming…' : 'Sending…') : (isNewsjack ? 'Approve & jump' : 'Approve & send')}
+        </div>
       </div>
     </div>
   )
@@ -126,7 +152,12 @@ function ReadOnlyRow({ draft, reason }: { draft: OpsDraft; reason?: string }) {
       </span>
       <div className="log-mid">
         <div className="log-top">
-          <span className="log-nm">#{draft.slack_channel}</span>
+          <span className="log-nm">
+            {draft.kind === 'newsjack' ? engineLabel(draft.client_id) : `#${draft.slack_channel}`}
+          </span>
+          {draft.kind === 'newsjack' && draft.context?.slot && (
+            <span className="ops-chan">publishes {slotText(draft.context.slot)}</span>
+          )}
         </div>
         <div className="log-snip">{draft.body}</div>
         {reason && <div className="ops-reason">Blocked: {reason}</div>}
@@ -181,11 +212,11 @@ export function OpsScreen() {
       <div className="rows ops-rows" ref={rowsRef}>
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
         {pending.length === 0 ? (
-          <div className="empty">No pending updates or escalations.</div>
+          <div className="empty">Nothing waiting on you.</div>
         ) : (
           pending.map(d => <PendingCard key={d.id} draft={d} refresh={refresh} />)
         )}
-        <Section title="Sent" count={sent.length} open={sentOpen} onToggle={() => setSentOpen(o => !o)}>
+        <Section title="Done" count={sent.length} open={sentOpen} onToggle={() => setSentOpen(o => !o)}>
           <div style={{ padding: '0 16px' }}>
             {sent.map(d => <ReadOnlyRow key={d.id} draft={d} />)}
           </div>
