@@ -95,4 +95,20 @@ describe('buildSendLog', () => {
     expect(log[1].kind).toBe('failed')
     expect(log[1].reason).toContain('422')
   })
+
+  // Open-profile sends are message_type='dm' on channel='linkedin_inmail', so ai_model is the
+  // only field that separates a free open-profile message from a normal DM or a paid InMail.
+  // If it stops being carried through, the log silently mislabels the whole lane again.
+  it('carries ai_model through so open-profile sends stay distinguishable', async () => {
+    const { buildSendLog } = await import('./sends')
+    const sent = [
+      lr({ id: 'op', sent_at: '2026-07-27T20:00:47Z', ai_model: 'template/rise_openprofile_v1' }),
+      lr({ id: 'im', sent_at: '2026-07-27T19:00:00Z', message_type: 'inmail', ai_model: 'template/rise_inmail_client_v1' }),
+      lr({ id: 'plain', sent_at: '2026-07-27T18:00:00Z', ai_model: null }),
+    ]
+    const log = buildSendLog(sent as never, [] as never)
+    expect(log.find(i => i.id === 'op')!.ai_model).toBe('template/rise_openprofile_v1')
+    expect(log.find(i => i.id === 'im')!.ai_model).toBe('template/rise_inmail_client_v1')
+    expect(log.find(i => i.id === 'plain')!.ai_model).toBeNull()
+  })
 })

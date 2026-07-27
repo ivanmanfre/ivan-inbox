@@ -53,9 +53,20 @@ function statusText(lane: Lane): string {
 
 const TYPE_LABEL: Record<string, string> = {
   connection_note: 'CONN', dm: 'DM', inmail: 'INMAIL', email: 'EMAIL', manual_reply: 'REPLY',
+  open_profile: 'OPEN PROF',
 }
 const TYPE_COLOR: Record<string, string> = {
   connection_note: '#0A84FF', dm: '#10A37F', inmail: '#BF5AF2', email: '#FF9F0A', manual_reply: '#10A37F',
+  open_profile: '#FFD60A',
+}
+
+// Open-profile sends land as message_type='dm' with channel='linkedin_inmail', so the raw type
+// cannot tell them apart from a normal DM or from a paid InMail. ai_model is the only honest
+// discriminator: 'template/rise_openprofile_v1' = free open-profile message (no connection, no
+// credit); 'template/rise_inmail_*' = paid InMail.
+function sendKind(m: { message_type: string; ai_model: string | null }): string {
+  if (/openprofile/i.test(m.ai_model ?? '')) return 'open_profile'
+  return m.message_type
 }
 
 function logDay(iso: string): string {
@@ -100,9 +111,9 @@ function LogView({ client }: { client: Client }) {
                 className="log-chip"
                 style={m.kind === 'failed'
                   ? { background: 'rgba(255,69,58,.16)', color: '#FF453A' }
-                  : { background: `${TYPE_COLOR[m.message_type] ?? '#10A37F'}22`, color: TYPE_COLOR[m.message_type] ?? '#10A37F' }}
+                  : { background: `${TYPE_COLOR[sendKind(m)] ?? '#10A37F'}22`, color: TYPE_COLOR[sendKind(m)] ?? '#10A37F' }}
               >
-                {m.kind === 'failed' ? 'FAILED' : (TYPE_LABEL[m.message_type] ?? m.message_type.toUpperCase())}
+                {m.kind === 'failed' ? 'FAILED' : (TYPE_LABEL[sendKind(m)] ?? sendKind(m).toUpperCase())}
               </span>
               <div className="log-mid">
                 <div className="log-top">
