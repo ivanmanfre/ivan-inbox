@@ -5,7 +5,7 @@ import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useOps } from '../hooks/useOps'
 import {
-  approveOpsDraft, blockedOps, discardOpsDraft, engineLabel, expiresIn, pendingOps, sentOps,
+  approveOpsDraft, blockedOps, claimingOps, discardOpsDraft, engineLabel, expiresIn, pendingOps, sentOps,
   type OpsDraft, type OpsKind,
 } from '../lib/ops'
 
@@ -141,7 +141,7 @@ function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void 
 }
 
 // Read-only row for the Sent/Blocked groups — same shape as the Sends log feed.
-function ReadOnlyRow({ draft, reason }: { draft: OpsDraft; reason?: string }) {
+function ReadOnlyRow({ draft, reason, working }: { draft: OpsDraft; reason?: string; working?: boolean }) {
   return (
     <div className="log-r">
       <span
@@ -160,6 +160,7 @@ function ReadOnlyRow({ draft, reason }: { draft: OpsDraft; reason?: string }) {
           )}
         </div>
         <div className="log-snip">{draft.body}</div>
+        {working && <div className="ops-ctx">{draft.kind === 'newsjack' ? 'Writing the post, then claiming the slot…' : 'Posting…'}</div>}
         {reason && <div className="ops-reason">Blocked: {reason}</div>}
       </div>
       <span className="log-tm">{timeAgo(draft.sent_at ?? draft.created_at)}</span>
@@ -184,12 +185,14 @@ function Section({ title, count, open, onToggle, children }: {
 
 export function OpsScreen() {
   const { drafts, loading, refresh } = useOps()
+  const [claimingOpen, setClaimingOpen] = useState(true)
   const [sentOpen, setSentOpen] = useState(false)
   const [blockedOpen, setBlockedOpen] = useState(false)
   const rowsRef = useRef<HTMLDivElement>(null)
   const ptr = usePullToRefresh(rowsRef, () => refresh())
 
   const pending = pendingOps(drafts)
+  const claiming = claimingOps(drafts)
   const sent = sentOps(drafts)
   const blocked = blockedOps(drafts)
 
@@ -216,6 +219,11 @@ export function OpsScreen() {
         ) : (
           pending.map(d => <PendingCard key={d.id} draft={d} refresh={refresh} />)
         )}
+        <Section title="Working" count={claiming.length} open={claimingOpen} onToggle={() => setClaimingOpen(o => !o)}>
+          <div style={{ padding: '0 16px' }}>
+            {claiming.map(d => <ReadOnlyRow key={d.id} draft={d} working />)}
+          </div>
+        </Section>
         <Section title="Done" count={sent.length} open={sentOpen} onToggle={() => setSentOpen(o => !o)}>
           <div style={{ padding: '0 16px' }}>
             {sent.map(d => <ReadOnlyRow key={d.id} draft={d} />)}

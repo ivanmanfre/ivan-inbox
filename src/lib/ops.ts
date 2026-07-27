@@ -61,6 +61,15 @@ export function pendingOps(rows: OpsDraft[]): OpsDraft[] {
   return rows.filter(d => !d.approved_at && !d.sent_at && !d.send_blocked_reason)
 }
 
+// Approved but not yet done. Slack rows sit here for ~2 minutes; a newsjack sits here
+// while it generates and QA-gates, which can run to an hour — without this group the
+// card would just vanish on approve and look like nothing happened.
+export function claimingOps(rows: OpsDraft[]): OpsDraft[] {
+  return rows
+    .filter(d => d.approved_at && !d.sent_at && !d.send_blocked_reason)
+    .sort((a, b) => b.approved_at!.localeCompare(a.approved_at!))
+}
+
 // Sent = already dispatched to Slack. Read-only, most-recent-first, capped.
 export function sentOps(rows: OpsDraft[], limit = 10): OpsDraft[] {
   return rows

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { pendingOps, sentOps, blockedOps, engineLabel, expiresIn, DISCARDED_REASON, type OpsDraft } from './ops'
+import { pendingOps, sentOps, blockedOps, claimingOps, engineLabel, expiresIn, DISCARDED_REASON, type OpsDraft } from './ops'
 
 const base: OpsDraft = {
   id: '1', client_id: 'risedtc', kind: 'escalation', slack_channel: '#rise-ops',
@@ -60,5 +60,18 @@ describe('engineLabel', () => {
     expect(engineLabel('ivan')).toBe('your feed')
     expect(engineLabel('risedtc')).toBe('Rise')
     expect(engineLabel('someone-else')).toBe('someone-else')
+  })
+})
+
+describe('claimingOps', () => {
+  it('holds rows between approve and done, newest approval first', () => {
+    const rows: OpsDraft[] = [
+      { ...base, id: 'pending' },
+      { ...base, id: 'a', approved_at: '2026-07-27T09:00:00Z' },
+      { ...base, id: 'b', approved_at: '2026-07-27T11:00:00Z' },
+      { ...base, id: 'done', approved_at: '2026-07-27T08:00:00Z', sent_at: '2026-07-27T08:05:00Z' },
+      { ...base, id: 'blocked', approved_at: '2026-07-27T07:00:00Z', send_blocked_reason: 'qa_em_dash' },
+    ]
+    expect(claimingOps(rows).map(r => r.id)).toEqual(['b', 'a'])
   })
 })
