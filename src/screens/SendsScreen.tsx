@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  buildLanes, fetchLaneRecent, fetchSendLog, fetchSends, fetchSendsDaily,
+  buildLanes, fetchLaneRecent, fetchSendLog, fetchSends, fetchSendsDaily, sendKind,
   type Lane, type LaneKey, type RecentSend, type SendLogItem,
 } from '../lib/sends'
 import { SendsSkeleton } from '../components/Skeleton'
@@ -53,21 +53,19 @@ function statusText(lane: Lane): string {
 
 const TYPE_LABEL: Record<string, string> = {
   connection_note: 'CONN', dm: 'DM', inmail: 'INMAIL', email: 'EMAIL', manual_reply: 'REPLY',
-  open_profile: 'OPEN PROF',
+  open_profile: 'OPEN PROF', connection_note_blank: 'CONN·BLANK', connection_note_bare: 'CONN·BARE',
 }
 const TYPE_COLOR: Record<string, string> = {
   connection_note: '#0A84FF', dm: '#10A37F', inmail: '#BF5AF2', email: '#FF9F0A', manual_reply: '#10A37F',
-  open_profile: '#FFD60A',
+  open_profile: '#FFD60A', connection_note_blank: '#8E8E93', connection_note_bare: '#FF9F0A',
 }
 
 // Open-profile sends land as message_type='dm' with channel='linkedin_inmail', so the raw type
 // cannot tell them apart from a normal DM or from a paid InMail. ai_model is the only honest
 // discriminator: 'template/rise_openprofile_v1' = free open-profile message (no connection, no
-// credit); 'template/rise_inmail_*' = paid InMail.
-function sendKind(m: { message_type: string; ai_model: string | null }): string {
-  if (/openprofile/i.test(m.ai_model ?? '')) return 'open_profile'
-  return m.message_type
-}
+// credit); 'template/rise_inmail_*' = paid InMail. connection_note_blank/connection_note_bare
+// (deliberate blank-arm vs degraded/quota bare fallback) live in ../lib/sends so they're covered
+// by the same pure-function test suite as buildSendLog/buildLanes.
 
 function logDay(iso: string): string {
   const d = new Date(iso)
@@ -98,7 +96,7 @@ function LogView({ client }: { client: Client }) {
   let lastDay = ''
   return (
     <div className="rows sc-rows">
-      <div className="log-note">Connection notes shown were accepted by the API with the note attached.</div>
+      <div className="log-note">CONN = note attached and accepted by the API · CONN·BLANK = deliberate no-note A/B arm · CONN·BARE = note rejected, sent bare as a fallback.</div>
       {items.map(m => {
         const day = logDay(m.event_at)
         const showDay = day !== lastDay
