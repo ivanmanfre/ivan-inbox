@@ -253,6 +253,24 @@ async function fetchCampaignSendsLegacy(
     .sort((a, b) => b.sent - a.sent)
 }
 
+// A note-less connection invite writes one of two honest placeholder strings into
+// message_text instead of a real note: "(blank invite - no note by design)" for the
+// deliberate cold_blank_v1 / rise_cold_blank_v1 A/B arm, or a "...without note..." phrase
+// for the degraded/quota bare-fallback path (sibling loggers, both patched 2026-07-28 —
+// see rise-engine-repair-2026-07-28 phase3/phase3b). Before this, both collapsed into the
+// generic 'connection_note' bucket and rendered with the exact same CONN chip as a normal
+// noted invite, so a note-less send was technically in the log but visually
+// indistinguishable from one that wasn't — split them out here so the log/lane UI can
+// give each its own label and color (2026-07-28 fix).
+export function sendKind(m: { message_type: string; ai_model: string | null; message_text?: string | null }): string {
+  if (/openprofile/i.test(m.ai_model ?? '')) return 'open_profile'
+  if (m.message_type === 'connection_note' && m.message_text) {
+    if (/no note by design/i.test(m.message_text)) return 'connection_note_blank'
+    if (/without note/i.test(m.message_text)) return 'connection_note_bare'
+  }
+  return m.message_type
+}
+
 export function laneStatus(last_sent: string | null, nowIso: string): 'live' | 'slowing' | 'stale' {
   if (!last_sent) return 'stale'
   const age = new Date(nowIso).getTime() - new Date(last_sent).getTime()

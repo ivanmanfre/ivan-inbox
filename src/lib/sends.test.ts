@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildLanes, laneStatus, type SendRow, type DailyRow } from './sends'
+import { buildLanes, laneStatus, sendKind, type SendRow, type DailyRow } from './sends'
 
 const row = (over: Partial<SendRow>): SendRow => ({
   client_id: 'ivan', message_type: 'dm', channel: 'linkedin',
@@ -110,5 +110,57 @@ describe('buildSendLog', () => {
     expect(log.find(i => i.id === 'op')!.ai_model).toBe('template/rise_openprofile_v1')
     expect(log.find(i => i.id === 'im')!.ai_model).toBe('template/rise_inmail_client_v1')
     expect(log.find(i => i.id === 'plain')!.ai_model).toBeNull()
+  })
+
+  // 2026-07-28: the writer (Send Connection / Pick + Invite) was fixed to log a note-less
+  // invite instead of silently dropping the outreach_messages row. A note-less row survives
+  // buildSendLog's shaping like any other sent row (sent_at present, not a phantom dupe) —
+  // the bug this regression test guards is a DIFFERENT one: the log rendering used to give
+  // every message_type='connection_note' row the same 'CONN' chip regardless of whether it
+  // carried a real note, so a note-less send was in the feed but visually identical to a
+  // noted one. See the sendKind tests below for the fix.
+  it('a note-less connection invite survives the query shaping and keeps its placeholder text', async () => {
+    const { buildSendLog } = await import('./sends')
+    const sent = [
+      lr({
+        id: 'blank1', sent_at: '2026-07-27T05:11:36.382Z', message_type: 'connection_note',
+        message_text: '(blank invite - no note by design)', ai_model: 'phase3_backfill_2026-07-28',
+      }),
+      lr({
+        id: 'bare1', sent_at: '2026-07-27T06:00:00Z', message_type: 'connection_note',
+        message_text: '(connection sent without note)', ai_model: 'inmail_followup_connect_v1',
+      }),
+    ]
+    const log = buildSendLog(sent as never, [] as never)
+    expect(log.map(i => i.id)).toEqual(['bare1', 'blank1'])
+    expect(log.find(i => i.id === 'blank1')!.message_text).toBe('(blank invite - no note by design)')
+    expect(log.find(i => i.id === 'bare1')!.message_text).toBe('(connection sent without note)')
+  })
+})
+
+describe('sendKind', () => {
+  it('keeps a real note-bearing connection as connection_note', () => {
+    expect(sendKind({ message_type: 'connection_note', ai_model: null, message_text: 'Hey Rayson, loved your post on...' }))
+      .toBe('connection_note')
+  })
+
+  it('splits out the deliberate blank-arm invite so it never renders identically to a noted one', () => {
+    expect(sendKind({ message_type: 'connection_note', ai_model: 'phase3_backfill_2026-07-28', message_text: '(blank invite - no note by design)' }))
+      .toBe('connection_note_blank')
+  })
+
+  it('splits out the degraded/quota bare-fallback invite, distinct from the deliberate blank arm', () => {
+    expect(sendKind({ message_type: 'connection_note', ai_model: 'inmail_followup_connect_v1', message_text: '(connection sent without note)' }))
+      .toBe('connection_note_bare')
+  })
+
+  it('still recognizes a variant "without note" fallback phrase (e.g. a manual-probe row)', () => {
+    expect(sendKind({ message_type: 'connection_note', ai_model: null, message_text: '(connection sent without note - manual throttle probe 2026-07-25)' }))
+      .toBe('connection_note_bare')
+  })
+
+  it('open-profile detection (message_type=dm) is unaffected by the connection-note text sniffing', () => {
+    expect(sendKind({ message_type: 'dm', ai_model: 'template/rise_openprofile_v1', message_text: 'hey there' }))
+      .toBe('open_profile')
   })
 })
