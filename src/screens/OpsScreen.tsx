@@ -5,7 +5,7 @@ import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useOps } from '../hooks/useOps'
 import {
-  approveOpsDraft, blockedOps, claimingOps, discardOpsDraft, engineLabel, expiresIn, pendingOps, sentOps,
+  approveOpsDraft, approveWeeklyReport, blockedOps, claimingOps, discardOpsDraft, engineLabel, expiresIn, pendingOps, sentOps,
   type OpsDraft, type OpsKind,
 } from '../lib/ops'
 
@@ -27,10 +27,10 @@ function timeAgo(iso: string): string {
   return `${d}d`
 }
 
-const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK' }
+const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK', weekly_report: 'WEEKLY' }
 // Escalations run warm/red (something needs attention); updates stay neutral/blue (fyi);
 // newsjack runs amber because it is the only kind with a clock on it.
-const KIND_COLOR: Record<OpsKind, string> = { escalation: '#FF453A', update: '#0A84FF', newsjack: '#FF9F0A' }
+const KIND_COLOR: Record<OpsKind, string> = { escalation: '#FF453A', update: '#0A84FF', newsjack: '#FF9F0A', weekly_report: '#30D158' }
 
 function errText(e: unknown): string {
   return e instanceof Error ? e.message : String(e)
@@ -48,6 +48,27 @@ function ContextLine({ draft }: { draft: OpsDraft }) {
         {ctx.source_url
           ? <a href={ctx.source_url} target="_blank" rel="noreferrer">{ctx.headline}</a>
           : <span>{ctx.headline}</span>}
+      </div>
+    )
+  }
+  // The weekly report card is read before it is sent, so the context line is the
+  // week's actual numbers plus the link to the page. Zeros are printed, never
+  // dropped: a week with 0 calls booked has to look like one at a glance.
+  if (draft.kind === 'weekly_report') {
+    const n = (v: unknown) => (typeof v === 'number' ? v : null)
+    const parts = [
+      n(ctx.replied) !== null ? `${ctx.replied} replied` : null,
+      n(ctx.calls_booked) !== null ? `${ctx.calls_booked} calls booked` : null,
+      n(ctx.engagers) !== null ? `${ctx.engagers} commented` : null,
+      n(ctx.impressions) !== null ? `${ctx.impressions} impressions` : null,
+    ].filter(Boolean)
+    return (
+      <div className="ops-ctx">
+        {ctx.week && <span>week of {ctx.week}</span>}
+        {parts.length > 0 && <span>{parts.join(' · ')}</span>}
+        {ctx.report_url && (
+          <a href={ctx.report_url} target="_blank" rel="noreferrer">read the page</a>
+        )}
       </div>
     )
   }
@@ -76,10 +97,31 @@ function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void 
   useEffect(() => { setBody(draft.body) }, [draft.id, draft.body])
 
   const isNewsjack = draft.kind === 'newsjack'
-  const where = isNewsjack ? engineLabel(draft.client_id) : `#${draft.slack_channel}`
+  const isWeekly = draft.kind === 'weekly_report'
+  const where = isNewsjack || isWeekly ? engineLabel(draft.client_id) : `#${draft.slack_channel}`
   const left = isNewsjack ? expiresIn(draft.context?.expires_at) : null
 
   async function onApprove() {
+    // Nothing dispatches a weekly report. Approving copies the message and
+    // closes the card; Ivan pastes it to the client himself.
+    if (isWeekly) {
+      const ok = await confirm({
+        title: 'Copy the message and close this?',
+        message: 'Nothing is sent to the client. The message goes to your clipboard and the card clears.',
+        confirmText: 'Approve & copy',
+      })
+      if (!ok) return
+      setBusy(true); setError('')
+      try {
+        // Copy first: if the clipboard is blocked, the card stays put and the
+        // message is still recoverable from the textarea.
+        await navigator.clipboard.writeText(body)
+        await approveWeeklyReport(draft.id, body)
+        refresh()
+      } catch (e) { setError(errText(e)) }
+      finally { setBusy(false) }
+      return
+    }
     const ok = await confirm({
       title: isNewsjack ? `Take the next slot on ${where}?` : `Post to ${draft.slack_channel}?`,
       message: isNewsjack
@@ -97,7 +139,11 @@ function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void 
   async function onDiscard() {
     const ok = await confirm({
       title: 'Discard this one?',
-      message: isNewsjack ? "It won't be written or scheduled." : `It won't be posted to ${draft.slack_channel}.`,
+      message: isNewsjack
+        ? "It won't be written or scheduled."
+        : isWeekly
+          ? "The page stays live at its link. You just won't be reminded about this week again."
+          : `It won't be posted to ${draft.slack_channel}.`,
       confirmText: 'Discard',
       danger: true,
     })
@@ -129,11 +175,14 @@ function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void 
         disabled={busy}
       />
       {isNewsjack && <div className="ops-ctx">Angle the post gets written from, edit before approving.</div>}
+      {isWeekly && <div className="ops-ctx">Read the page first. Edit this message, then copy it and send it yourself.</div>}
       {error && <div className="ops-err">{error}</div>}
       <div className="ops-ac">
         <div className="btn s" onClick={busy ? undefined : onDiscard}>Discard</div>
         <div className="btn p" onClick={busy ? undefined : onApprove}>
-          {busy ? (isNewsjack ? 'Claiming…' : 'Sending…') : (isNewsjack ? 'Approve & jump' : 'Approve & send')}
+          {busy
+            ? (isNewsjack ? 'Claiming…' : isWeekly ? 'Copying…' : 'Sending…')
+            : (isNewsjack ? 'Approve & jump' : isWeekly ? 'Approve & copy' : 'Approve & send')}
         </div>
       </div>
     </div>
