@@ -75,3 +75,28 @@ describe('claimingOps', () => {
     expect(claimingOps(rows).map(r => r.id)).toEqual(['b', 'a'])
   })
 })
+
+describe('weekly_report lifecycle', () => {
+  // Nothing dispatches a weekly report, so approve stamps approved_at AND
+  // sent_at together. If it ever stamps only approved_at the card lands in
+  // claimingOps and sits in the Working group forever, waiting for a writer
+  // that does not exist. This test is the guard on that.
+  it('leaves the Working group empty once approved, and shows up as sent', () => {
+    const weekly: OpsDraft = {
+      ...base, id: 'wk', kind: 'weekly_report', slack_channel: null as unknown as string,
+      approved_at: '2026-08-02T18:10:00Z', sent_at: '2026-08-02T18:10:00Z',
+      context: { week: '2026-08-03', report_url: 'https://example.test/r', calls_booked: 0 },
+    }
+    expect(claimingOps([weekly])).toEqual([])
+    expect(sentOps([weekly]).map(r => r.id)).toEqual(['wk'])
+    expect(pendingOps([weekly])).toEqual([])
+  })
+
+  it('is pending while untouched, and discardable without ever being sent', () => {
+    const fresh: OpsDraft = { ...base, id: 'wk2', kind: 'weekly_report' }
+    expect(pendingOps([fresh]).map(r => r.id)).toEqual(['wk2'])
+    const discarded: OpsDraft = { ...fresh, send_blocked_reason: DISCARDED_REASON }
+    expect(pendingOps([discarded])).toEqual([])
+    expect(blockedOps([discarded])).toEqual([])
+  })
+})

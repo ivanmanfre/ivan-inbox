@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 
-export type OpsKind = 'escalation' | 'update' | 'newsjack'
+export type OpsKind = 'escalation' | 'update' | 'newsjack' | 'weekly_report'
 
 // The row shape varies by kind (escalation carries a prospect, update carries
 // receipts, newsjack carries the idea it will generate from), so context stays a
@@ -18,6 +18,16 @@ export type OpsContext = {
   expires_at?: string
   slot?: string
   incumbent_moved_to?: string
+  // weekly_report
+  week?: string
+  report_url?: string
+  invites?: number
+  accepted?: number
+  replied?: number
+  calls_booked?: number
+  impressions?: number
+  engagers?: number
+  moved?: number
   [key: string]: unknown
 }
 
@@ -101,6 +111,18 @@ export async function fetchOpsDrafts(): Promise<OpsDraft[]> {
 export async function approveOpsDraft(id: string, editedBody: string): Promise<void> {
   const { error } = await supabase.from('ops_drafts')
     .update({ body: editedBody, approved_at: new Date().toISOString() })
+    .eq('id', id).is('sent_at', null)
+  if (error) throw error
+}
+
+// weekly_report is the one kind with no dispatcher behind it: Ivan sends the
+// report to the client himself, so approving IS the send. Stamping only
+// approved_at would strand the card in the Working group forever, waiting on a
+// writer that does not exist. Both timestamps go down together.
+export async function approveWeeklyReport(id: string, editedBody: string): Promise<void> {
+  const now = new Date().toISOString()
+  const { error } = await supabase.from('ops_drafts')
+    .update({ body: editedBody, approved_at: now, sent_at: now })
     .eq('id', id).is('sent_at', null)
   if (error) throw error
 }
