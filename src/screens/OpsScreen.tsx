@@ -5,7 +5,7 @@ import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useOps } from '../hooks/useOps'
 import {
-  approveCommentReply, approveOpsDraft, approveWeeklyReport, blockedOps, claimingOps, discardOpsDraft, engineLabel, expiresIn, pendingOps, sentOps,
+  approveOpsDraft, approveWeeklyReport, blockedOps, claimingOps, discardOpsDraft, engineLabel, expiresIn, markCommentHandled, pendingOps, postCommentReply, sentOps,
   type OpsDraft, type OpsKind,
 } from '../lib/ops'
 
@@ -120,29 +120,46 @@ function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void 
   const left = isNewsjack ? expiresIn(draft.context?.expires_at) : null
 
   async function onApprove() {
-    // Nothing dispatches a weekly report or a comment reply. Approving copies
-    // the message and closes the card; a human posts it.
-    if (isWeekly || isComment) {
+    // A comment reply is the one thing in this app that publishes publicly.
+    // The edge function re-reads the thread before it writes, so an approve on a
+    // comment Mattan already answered clears the card instead of doubling up.
+    if (isComment) {
       const ok = await confirm({
-        title: isEscalatedComment
-          ? 'Mark this handled?'
-          : 'Copy the reply and close this?',
+        title: isEscalatedComment ? 'Mark this handled?' : `Post this reply as ${where}?`,
         message: isEscalatedComment
           ? 'Nothing is posted. The card clears and you stop being reminded about this comment.'
-          : isComment
-            ? 'Nothing is posted to LinkedIn. The reply goes to your clipboard and the card clears.'
-            : 'Nothing is sent to the client. The message goes to your clipboard and the card clears.',
-        confirmText: isEscalatedComment ? 'Mark handled' : 'Approve & copy',
+          : 'Goes live on LinkedIn under their comment, from the client seat. Checks first that they have not already been answered.',
+        confirmText: isEscalatedComment ? 'Mark handled' : 'Approve & post',
+      })
+      if (!ok) return
+      setBusy(true); setError('')
+      try {
+        if (isEscalatedComment) {
+          await markCommentHandled(draft.id)
+        } else {
+          const out = await postCommentReply(draft.id, body)
+          if (!out.posted) setError('Mattan already replied to this one, so nothing was posted. Card cleared.')
+        }
+        refresh()
+      } catch (e) { setError(errText(e)) }
+      finally { setBusy(false) }
+      return
+    }
+    // Nothing dispatches a weekly report: approving copies the message and closes
+    // the card; Ivan pastes it to the client himself.
+    if (isWeekly) {
+      const ok = await confirm({
+        title: 'Copy the message and close this?',
+        message: 'Nothing is sent to the client. The message goes to your clipboard and the card clears.',
+        confirmText: 'Approve & copy',
       })
       if (!ok) return
       setBusy(true); setError('')
       try {
         // Copy first: if the clipboard is blocked, the card stays put and the
-        // message is still recoverable from the textarea. An escalated comment
-        // has no draft to copy, so it goes straight to handled.
-        if (!isEscalatedComment) await navigator.clipboard.writeText(body)
-        if (isComment) await approveCommentReply(draft.id, body)
-        else await approveWeeklyReport(draft.id, body)
+        // message is still recoverable from the textarea.
+        await navigator.clipboard.writeText(body)
+        await approveWeeklyReport(draft.id, body)
         refresh()
       } catch (e) { setError(errText(e)) }
       finally { setBusy(false) }
@@ -208,7 +225,7 @@ function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void 
         <div className="ops-ctx">
           {isEscalatedComment
             ? 'No draft on purpose: this one wants Mattan in his own words.'
-            : 'Nothing posts from here. Edit the reply, copy it, paste it on LinkedIn.'}
+            : 'Edit it first. Approve posts it live under their comment.'}
         </div>
       )}
       {error && <div className="ops-err">{error}</div>}
@@ -216,8 +233,8 @@ function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void 
         <div className="btn s" onClick={busy ? undefined : onDiscard}>Discard</div>
         <div className="btn p" onClick={busy ? undefined : onApprove}>
           {busy
-            ? (isNewsjack ? 'Claiming…' : isEscalatedComment ? 'Closing…' : isWeekly || isComment ? 'Copying…' : 'Sending…')
-            : (isNewsjack ? 'Approve & jump' : isEscalatedComment ? 'Mark handled' : isWeekly || isComment ? 'Approve & copy' : 'Approve & send')}
+            ? (isNewsjack ? 'Claiming…' : isEscalatedComment ? 'Closing…' : isComment ? 'Posting…' : isWeekly ? 'Copying…' : 'Sending…')
+            : (isNewsjack ? 'Approve & jump' : isEscalatedComment ? 'Mark handled' : isComment ? 'Approve & post' : isWeekly ? 'Approve & copy' : 'Approve & send')}
         </div>
       </div>
     </div>

@@ -76,8 +76,10 @@ export type OpsDraft = {
 export const DISCARDED_REASON = 'discarded_by_operator'
 
 // Pending = nothing has happened to it yet — the only rows the operator acts on.
-export function pendingOps(rows: OpsDraft[]): OpsDraft[] {
-  return rows.filter(d => !d.approved_at && !d.sent_at && !d.send_blocked_reason)
+// Comment cards also age out: past the window they are noise, not a to-do.
+export function pendingOps(rows: OpsDraft[], now = Date.now()): OpsDraft[] {
+  return rows.filter(d =>
+    !d.approved_at && !d.sent_at && !d.send_blocked_reason && !isStaleComment(d, now))
 }
 
 // Approved but not yet done. Slack rows sit here for ~2 minutes; a newsjack sits here
@@ -128,11 +130,49 @@ export async function approveOpsDraft(id: string, editedBody: string): Promise<v
 // report to the client himself, so approving IS the send. Stamping only
 // approved_at would strand the card in the Working group forever, waiting on a
 // writer that does not exist. Both timestamps go down together.
-// comment_reply shares weekly_report's posture for the same reason: this lane is
-// read-only against LinkedIn, so Ivan (or Mattan) posts the reply by hand and the
-// approve IS the send. Nothing will ever stamp sent_at for him.
-export async function approveCommentReply(id: string, editedBody: string): Promise<void> {
-  return approveWeeklyReport(id, editedBody)
+// A comment older than this is dead: the post has left the feed and a reply lands
+// on nobody (Ivan, 2026-07-30). Same number the card writer uses.
+export const MAX_COMMENT_AGE_DAYS = 4
+
+export function isStaleComment(d: OpsDraft, now = Date.now()): boolean {
+  if (d.kind !== 'comment_reply') return false
+  const t = new Date(d.context?.posted_at ?? 0).getTime()
+  if (!Number.isFinite(t) || t === 0) return false   // unknown age is not staleness
+  return now - t > MAX_COMMENT_AGE_DAYS * 86400_000
+}
+
+// comment_reply is the one kind that posts to LinkedIn. The edge function owns
+// the whole act: it re-reads the thread first and refuses if the client already
+// answered, so pressing approve twice cannot double post. Everything is stamped
+// server-side, which is why nothing here writes to the table.
+export async function postCommentReply(
+  id: string, editedBody: string,
+): Promise<{ posted: boolean; reason?: string }> {
+  const { data: sess } = await supabase.auth.getSession()
+  const token = sess.session?.access_token
+  if (!token) throw new Error('not signed in')
+  const res = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/rise-comment-reply`,
+    {
+      method: 'POST',
+      headers: {
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ops_draft_id: id, body: editedBody }),
+    },
+  )
+  const out = await res.json().catch(() => ({}))
+  if (!res.ok || out?.ok === false) throw new Error(out?.error ?? `post failed (${res.status})`)
+  return { posted: out.posted === true, reason: out.reason }
+}
+
+// An escalate card has no draft to post: closing it is bookkeeping only, the same
+// shape weekly_report uses (approve IS the end of the line, so both stamps go down
+// together or the card strands in Working forever).
+export async function markCommentHandled(id: string): Promise<void> {
+  return approveWeeklyReport(id, '')
 }
 
 export async function approveWeeklyReport(id: string, editedBody: string): Promise<void> {
