@@ -24,6 +24,31 @@ describe('isDraft', () => {
 })
 
 describe('groupThreads', () => {
+  // Ronnie Teja, 2026-07-30. He replied 24s after accepting the invite, but that reply
+  // sat uncaptured for a day and was backfilled at 11:15 the next morning. Ordering by
+  // created_at (insertion time) therefore rendered his reply BELOW a DM we sent 19h after
+  // he wrote it, so the thread read as if he had answered our pitch. He had not.
+  // sent_at is when the human actually spoke; created_at is when our detector wrote the row.
+  it('orders a backfilled reply by when it was SENT, not when it was stored', () => {
+    const rows: InboxMessage[] = [
+      { ...base, id: 'note', sent_at: '2026-07-29T15:39:14Z', created_at: '2026-07-29T15:39:14Z' },
+      { ...base, id: 'reply', direction: 'inbound', sent_at: '2026-07-29T15:39:38Z', created_at: '2026-07-30T11:15:52Z' },
+      { ...base, id: 'dm', sent_at: '2026-07-30T10:04:47Z', created_at: '2026-07-30T10:04:47Z' },
+    ]
+    expect(groupThreads(rows)[0].messages.map(m => m.id)).toEqual(['note', 'reply', 'dm'])
+  })
+
+  // draftStale compared lastInbound (created_at) against lastSent (sent_at) -- two different
+  // clocks. A backfilled reply made an unsent draft look stale when it was not.
+  it('does not mark a draft stale when the newest human message is their reply', () => {
+    const rows: InboxMessage[] = [
+      { ...base, id: 'dm', sent_at: '2026-07-30T10:04:47Z', created_at: '2026-07-30T10:04:47Z' },
+      { ...base, id: 'reply', direction: 'inbound', sent_at: '2026-07-30T12:00:00Z', created_at: '2026-07-30T12:00:00Z' },
+      { ...base, id: 'draft', created_at: '2026-07-30T12:05:00Z' },
+    ]
+    expect(groupThreads(rows)[0].draftStale).toBe(false)
+  })
+
   it('groups by prospect, counts unread inbound, surfaces newest draft, sorts desc', () => {
     const rows: InboxMessage[] = [
       { ...base, id: 'a', sent_at: '2026-07-21T09:00:00Z', created_at: '2026-07-21T09:00:00Z' },
