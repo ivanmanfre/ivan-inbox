@@ -100,3 +100,26 @@ describe('weekly_report lifecycle', () => {
     expect(blockedOps([discarded])).toEqual([])
   })
 })
+
+describe('comment cards age out', () => {
+  const mkC = (posted_at: string | null): OpsDraft => ({
+    id: 'x', client_id: 'risedtc', kind: 'comment_reply', slack_channel: '',
+    body: 'hi', context: { posted_at: posted_at ?? undefined }, created_at: '2026-07-30T00:00:00Z',
+    approved_at: null, sent_at: null, send_blocked_reason: null,
+  })
+  const now = Date.parse('2026-07-30T12:00:00Z')
+
+  it('keeps a comment from inside the 4 day window', () => {
+    expect(pendingOps([mkC('2026-07-28T12:00:00Z')], now)).toHaveLength(1)
+  })
+  it('drops a comment older than 4 days', () => {
+    expect(pendingOps([mkC('2026-07-25T11:00:00Z')], now)).toHaveLength(0)
+  })
+  it('keeps a comment with no posted_at: unknown age is not staleness', () => {
+    expect(pendingOps([mkC(null)], now)).toHaveLength(1)
+  })
+  it('never ages out other kinds', () => {
+    const old = { ...mkC('2026-07-01T00:00:00Z'), kind: 'escalation' as const }
+    expect(pendingOps([old], now)).toHaveLength(1)
+  })
+})
