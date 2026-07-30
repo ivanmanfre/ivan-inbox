@@ -5,6 +5,51 @@ import { useConfirm } from '../components/ConfirmSheet'
 import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { approveDraft, discardDraft, threadChatId, type Thread } from '../lib/inbox'
+import { useOps } from '../hooks/useOps'
+import { pendingOps, type OpsDraft, type OpsKind } from '../lib/ops'
+
+// ops_drafts predates the risedtc client id and still writes 'rise' for the Slack
+// kinds, so both map to the same chip. Without this the Rise segment silently
+// hides half the Ops queue.
+function opsSeg(clientId: string): Seg | string {
+  return clientId === 'rise' ? 'risedtc' : clientId
+}
+
+const OPS_LABEL: Record<OpsKind, string> = {
+  escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK',
+  weekly_report: 'WEEKLY', comment_reply: 'COMMENT',
+}
+
+// One tappable line each: enough to know what is waiting, not a second Ops tab.
+// Acting on them stays on the Ops tab, which owns every approve path.
+function OpsPending({ drafts, onOpenOps }: { drafts: OpsDraft[]; onOpenOps: () => void }) {
+  if (drafts.length === 0) return null
+  return (
+    <>
+      <div className="ops-sechdr" onClick={onOpenOps}>
+        <span>Ops · {drafts.length}</span>
+        <span className="chev">›</span>
+      </div>
+      {drafts.map(d => (
+        <div key={d.id} className="log-r" onClick={onOpenOps} style={{ cursor: 'pointer' }}>
+          <span className="log-chip">{OPS_LABEL[d.kind] ?? d.kind}</span>
+          <div className="log-mid">
+            <div className="log-top">
+              <span className="log-nm">
+                {d.context?.author_name ?? d.context?.prospect_name
+                  ?? (d.slack_channel ? `#${d.slack_channel}` : clientTitle(d.client_id))}
+              </span>
+            </div>
+            <div className="log-snip">
+              {d.body?.trim() || d.context?.headline || 'Needs you, no draft'}
+            </div>
+          </div>
+          <span className="log-tm">{timeAgo(d.created_at)}</span>
+        </div>
+      ))}
+    </>
+  )
+}
 
 function timeAgo(iso: string): string {
   const then = new Date(iso).getTime()
@@ -179,19 +224,25 @@ function DraftCard({ thread, onOpenThread, refresh }: {
   )
 }
 
-export function DraftsScreen({ threads, onOpenThread, refresh }: {
+export function DraftsScreen({ threads, onOpenThread, refresh, onOpenOps }: {
   threads: Thread[]; onOpenThread: (id: string) => void; refresh: () => void
+  onOpenOps: () => void
 }) {
+  const { drafts: opsAll, refresh: refreshOps } = useOps()
   const [seg, setSeg] = useState<Seg>('all')
   const [bulkBusy, setBulkBusy] = useState(false)
   const rowsRef = useRef<HTMLDivElement>(null)
   const confirm = useConfirm()
-  const ptr = usePullToRefresh(rowsRef, () => refresh())
+  const ptr = usePullToRefresh(rowsRef, () => { refresh(); refreshOps() })
   const draftThreads = threads.filter(t => t.draft !== null)
+  // Everything waiting on Ivan lives in one count, so the tab badge and this
+  // screen cannot disagree about how much is pending.
+  const opsPend = pendingOps(opsAll)
+  const opsIn = (seg: Seg) => seg === 'all' ? opsPend : opsPend.filter(d => opsSeg(d.client_id) === seg)
   const counts: Record<Seg, number> = {
-    all: draftThreads.length,
-    ivan: draftThreads.filter(t => t.client_id === 'ivan').length,
-    risedtc: draftThreads.filter(t => t.client_id === 'risedtc').length,
+    all: draftThreads.length + opsPend.length,
+    ivan: draftThreads.filter(t => t.client_id === 'ivan').length + opsIn('ivan').length,
+    risedtc: draftThreads.filter(t => t.client_id === 'risedtc').length + opsIn('risedtc').length,
   }
   const segThreads = seg === 'all' ? draftThreads : draftThreads.filter(t => t.client_id === seg)
   // Fresh drafts first; stale ones (Ivan already replied) sink to the bottom.
@@ -244,8 +295,9 @@ export function DraftsScreen({ threads, onOpenThread, refresh }: {
             </button>
           </div>
         )}
+        <OpsPending drafts={opsIn(seg)} onOpenOps={onOpenOps} />
         {shown.length === 0 ? (
-          <div className="empty">{SEG_EMPTY[seg]}</div>
+          opsIn(seg).length === 0 ? <div className="empty">{SEG_EMPTY[seg]}</div> : null
         ) : (
           <>
             {shown.map(t => (
