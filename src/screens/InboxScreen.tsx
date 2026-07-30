@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { Avatar } from '../components/Avatar'
 import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
-import { filterThreads, searchThreads, threadKind, type Filter, type Thread } from '../lib/inbox'
+import { filterThreads, searchThreads, threadKind, type Filter, type Thread, eventTime } from '../lib/inbox'
 
 function timeAgo(iso: string): string {
   const then = new Date(iso).getTime()
@@ -122,7 +122,7 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
                   <div className="snip">{snip}</div>
                 </div>
                 <div className="right">
-                  <span className="time">{timeAgo(t.last.created_at)}</span>
+                  <span className="time">{timeAgo(eventTime(t.last))}</span>
                   {t.unread > 0 && <span className="udot" />}
                   {t.draft != null && <span className="dpill">DRAFT</span>}
                 </div>

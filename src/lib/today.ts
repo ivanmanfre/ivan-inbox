@@ -444,21 +444,30 @@ export async function fetchThreadChatId(prospect_id: string): Promise<string | n
 
 export type ReplyCount = { client_id: string; today: number; week: number }
 
-type InboundRow = { prospect_id: string; client_id: string | null; created_at: string }
+type InboundRow = { prospect_id: string; client_id: string | null; created_at: string; sent_at?: string | null }
 
 export function rollupReplies(rows: InboundRow[], now = new Date()): ReplyCount[] {
   // Same phantom-duplicate defence as the inbox: one prospect can't have two
   // genuinely distinct inbound rows at the same millisecond.
   const seen = new Set<string>()
   const map = new Map<string, ReplyCount>()
+  // When they actually replied. created_at is when our detector stored the row, which can
+  // be a day or more later for a backfilled reply -- counting on that credited every
+  // late-captured reply to "today" and left the real day showing zero.
+  const weekAgo = now.getTime() - 7 * 86_400_000
   for (const r of rows) {
-    const key = `${r.prospect_id}|${r.created_at}`
+    const at = r.sent_at ?? r.created_at
+    const key = `${r.prospect_id}|${at}`
     if (seen.has(key)) continue
     seen.add(key)
     const id = r.client_id ?? 'ivan'
     const e = map.get(id) ?? { client_id: id, today: 0, week: 0 }
-    e.week += 1
-    if (isToday(r.created_at, now)) e.today += 1
+    // a backfill can surface a reply older than the window we fetched on created_at
+    // compare as instants: Postgres returns '+00:00' while toISOString gives 'Z', and a
+    // lexical compare of two different formats is only accidentally right.
+    const ts = new Date(at).getTime()
+    if (!Number.isNaN(ts) && ts >= weekAgo) e.week += 1
+    if (isToday(at, now)) e.today += 1
     map.set(id, e)
   }
   return [...map.values()]
@@ -467,7 +476,7 @@ export function rollupReplies(rows: InboundRow[], now = new Date()): ReplyCount[
 export async function fetchReplyCounts(): Promise<ReplyCount[]> {
   const since = new Date(Date.now() - 7 * 86_400_000).toISOString()
   const { data, error } = await supabase.from('inbox_messages_v')
-    .select('prospect_id,client_id,created_at')
+    .select('prospect_id,client_id,created_at,sent_at')
     .eq('direction', 'inbound')
     .gte('created_at', since)
   if (error) throw error

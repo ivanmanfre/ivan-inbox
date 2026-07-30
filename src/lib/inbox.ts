@@ -55,7 +55,7 @@ export function dedupeMessages(rows: InboxMessage[]): InboxMessage[] {
 // far newer than its sent_at, so ordering by created_at renders it below messages it in fact
 // preceded. Unsent drafts have no sent_at, so they fall back to created_at and sort last,
 // which is what we want for a pending draft.
-const eventTime = (m: InboxMessage): string => m.sent_at ?? m.created_at
+export const eventTime = (m: InboxMessage): string => m.sent_at ?? m.created_at
 
 export function groupThreads(rows: InboxMessage[]): Thread[] {
   const map = new Map<string, InboxMessage[]>()
