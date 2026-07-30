@@ -50,6 +50,13 @@ export function dedupeMessages(rows: InboxMessage[]): InboxMessage[] {
   return out
 }
 
+// When the message actually happened, as opposed to when we stored it. A reply captured
+// late (backfilled by the detector hours or days after the person wrote it) has a created_at
+// far newer than its sent_at, so ordering by created_at renders it below messages it in fact
+// preceded. Unsent drafts have no sent_at, so they fall back to created_at and sort last,
+// which is what we want for a pending draft.
+const eventTime = (m: InboxMessage): string => m.sent_at ?? m.created_at
+
 export function groupThreads(rows: InboxMessage[]): Thread[] {
   const map = new Map<string, InboxMessage[]>()
   for (const m of rows) {
@@ -58,7 +65,7 @@ export function groupThreads(rows: InboxMessage[]): Thread[] {
   }
   const threads: Thread[] = []
   for (const messages of map.values()) {
-    messages.sort((a, b) => a.created_at.localeCompare(b.created_at))
+    messages.sort((a, b) => eventTime(a).localeCompare(eventTime(b)))
     const last = messages[messages.length - 1]
     const drafts = messages.filter(isDraft)
     // Archived prospects are dead lanes (e.g. ~76 April cold-email drafts from
@@ -66,7 +73,10 @@ export function groupThreads(rows: InboxMessage[]): Thread[] {
     const draft = last.prospect_stage === 'archived'
       ? null
       : drafts.length ? drafts[drafts.length - 1] : null
-    const lastInbound = messages.filter(m => m.direction === 'inbound').at(-1)?.created_at ?? null
+    // Must use the same clock as lastSent below (sent_at). Comparing an inbound created_at
+    // against an outbound sent_at is two different clocks, and a backfilled reply then made
+    // a live draft look stale.
+    const lastInbound = messages.filter(m => m.direction === 'inbound').map(eventTime).sort().at(-1) ?? null
     const lastSent = messages
       .filter(m => m.direction === 'outbound' && m.sent_at)
       .map(m => m.sent_at!).sort().at(-1) ?? null
