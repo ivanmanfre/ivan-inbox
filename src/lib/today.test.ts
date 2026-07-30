@@ -121,6 +121,16 @@ describe('rollupReplies', () => {
     expect(out.find(r => r.client_id === 'ivan')).toEqual({ client_id: 'ivan', today: 1, week: 2 })
     expect(out.find(r => r.client_id === 'risedtc')).toEqual({ client_id: 'risedtc', today: 1, week: 1 })
   })
+  it('counts a backfilled reply on the day it was SENT, not the day it was stored', () => {
+    // Ronnie Teja et al, 2026-07-30: four replies written 07-29 were only captured the
+    // next morning. Counting on created_at credited all of them to "today" and left the
+    // day they actually arrived showing zero.
+    const rows = [
+      { prospect_id: 'p1', client_id: 'risedtc', sent_at: '2026-07-24T15:39:00', created_at: '2026-07-25T11:15:00' },
+    ]
+    const out = rollupReplies(rows, now)
+    expect(out[0]).toEqual({ client_id: 'risedtc', today: 0, week: 1 })
+  })
   it('collapses phantom duplicate rows (same prospect, same millisecond)', () => {
     const rows = [
       { prospect_id: 'p1', client_id: null, created_at: '2026-07-25T09:00:00' },

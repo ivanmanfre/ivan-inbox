@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isDraft, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, type InboxMessage } from './inbox'
+import { isDraft, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, type InboxMessage } from './inbox'
 
 const base: InboxMessage = {
   id: '1', prospect_id: 'p1', direction: 'outbound', message_text: 'hey',
@@ -20,6 +20,17 @@ describe('isDraft', () => {
     expect(isDraft({ ...base, approved_at: '2026-07-22T11:00:00Z' })).toBe(false)
     expect(isDraft({ ...base, send_blocked_at: '2026-07-22T11:00:00Z' })).toBe(false)
     expect(isDraft({ ...base, direction: 'inbound' })).toBe(false)
+  })
+})
+
+describe('eventTime', () => {
+  it('is when the human spoke, falling back to storage time for unsent drafts', () => {
+    // Ronnie's reply: written 07-29 15:39, only stored 07-30 11:15.
+    expect(eventTime({ ...base, sent_at: '2026-07-29T15:39:38Z', created_at: '2026-07-30T11:15:52Z' }))
+      .toBe('2026-07-29T15:39:38Z')
+    // an unsent draft has no sent_at, so storage time is the only clock it has
+    expect(eventTime({ ...base, sent_at: null, created_at: '2026-07-30T12:05:00Z' }))
+      .toBe('2026-07-30T12:05:00Z')
   })
 })
 

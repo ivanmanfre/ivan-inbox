@@ -5,8 +5,7 @@ import { Linkified } from '../components/Linkified'
 import { useConfirm } from '../components/ConfirmSheet'
 import {
   approveDraft, composeReply, discardDraft, isDraft, markThreadRead, threadChatId, threadKind,
-  type InboxMessage, type Thread,
-} from '../lib/inbox'
+  type InboxMessage, type Thread, eventTime } from '../lib/inbox'
 
 function clientName(id: string): string {
   if (id === 'risedtc') return 'Rise'
@@ -156,7 +155,10 @@ export function ThreadScreen({ thread, onBack, refresh }: {
 
       <div className="msgs" ref={msgsRef}>
         {bubbles.map(m => {
-          const label = dayLabel(m.created_at)
+          // Label the day the message was SENT. created_at is when we stored it, so a
+          // reply backfilled the next morning was filed under TODAY despite being written
+          // the day before (Ronnie Teja, 2026-07-30).
+          const label = dayLabel(eventTime(m))
           const showDay = label !== lastDay
           lastDay = label
           if (m.direction === 'inbound') {
