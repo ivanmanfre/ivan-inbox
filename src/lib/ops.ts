@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 
-export type OpsKind = 'escalation' | 'update' | 'newsjack' | 'weekly_report'
+export type OpsKind = 'escalation' | 'update' | 'newsjack' | 'weekly_report' | 'comment_reply'
 
 // The row shape varies by kind (escalation carries a prospect, update carries
 // receipts, newsjack carries the idea it will generate from), so context stays a
@@ -28,6 +28,15 @@ export type OpsContext = {
   impressions?: number
   engagers?: number
   moved?: number
+  // comment_reply
+  comment_id?: string
+  post_url?: string
+  author_name?: string
+  author_headline?: string
+  comment_text?: string
+  category?: string
+  action?: string
+  posted_at?: string
   [key: string]: unknown
 }
 
@@ -119,6 +128,13 @@ export async function approveOpsDraft(id: string, editedBody: string): Promise<v
 // report to the client himself, so approving IS the send. Stamping only
 // approved_at would strand the card in the Working group forever, waiting on a
 // writer that does not exist. Both timestamps go down together.
+// comment_reply shares weekly_report's posture for the same reason: this lane is
+// read-only against LinkedIn, so Ivan (or Mattan) posts the reply by hand and the
+// approve IS the send. Nothing will ever stamp sent_at for him.
+export async function approveCommentReply(id: string, editedBody: string): Promise<void> {
+  return approveWeeklyReport(id, editedBody)
+}
+
 export async function approveWeeklyReport(id: string, editedBody: string): Promise<void> {
   const now = new Date().toISOString()
   const { error } = await supabase.from('ops_drafts')

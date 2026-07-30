@@ -5,7 +5,7 @@ import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useOps } from '../hooks/useOps'
 import {
-  approveOpsDraft, approveWeeklyReport, blockedOps, claimingOps, discardOpsDraft, engineLabel, expiresIn, pendingOps, sentOps,
+  approveCommentReply, approveOpsDraft, approveWeeklyReport, blockedOps, claimingOps, discardOpsDraft, engineLabel, expiresIn, pendingOps, sentOps,
   type OpsDraft, type OpsKind,
 } from '../lib/ops'
 
@@ -27,10 +27,10 @@ function timeAgo(iso: string): string {
   return `${d}d`
 }
 
-const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK', weekly_report: 'WEEKLY' }
+const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK', weekly_report: 'WEEKLY', comment_reply: 'COMMENT' }
 // Escalations run warm/red (something needs attention); updates stay neutral/blue (fyi);
 // newsjack runs amber because it is the only kind with a clock on it.
-const KIND_COLOR: Record<OpsKind, string> = { escalation: '#FF453A', update: '#0A84FF', newsjack: '#FF9F0A', weekly_report: '#30D158' }
+const KIND_COLOR: Record<OpsKind, string> = { escalation: '#FF453A', update: '#0A84FF', newsjack: '#FF9F0A', weekly_report: '#30D158', comment_reply: '#BF5AF2' }
 
 function errText(e: unknown): string {
   return e instanceof Error ? e.message : String(e)
@@ -72,6 +72,20 @@ function ContextLine({ draft }: { draft: OpsDraft }) {
       </div>
     )
   }
+  // The comment itself is the card's whole context: who said it, on which post,
+  // and what they actually wrote. Without the quote the reply below is unjudgeable.
+  if (draft.kind === 'comment_reply') {
+    return (
+      <div className="ops-ctx">
+        <span>{[ctx.author_name, ctx.author_headline].filter(Boolean).join(' · ')}</span>
+        {ctx.comment_text && <span>&ldquo;{ctx.comment_text}&rdquo;</span>}
+        {ctx.category && <span className="ops-replay">{ctx.category}</span>}
+        {ctx.post_url && (
+          <a href={ctx.post_url} target="_blank" rel="noreferrer">open the post</a>
+        )}
+      </div>
+    )
+  }
   const who = draft.kind === 'escalation'
     ? [ctx.prospect_name, ctx.company].filter(Boolean).join(' · ')
     : ''
@@ -98,25 +112,37 @@ function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void 
 
   const isNewsjack = draft.kind === 'newsjack'
   const isWeekly = draft.kind === 'weekly_report'
-  const where = isNewsjack || isWeekly ? engineLabel(draft.client_id) : `#${draft.slack_channel}`
+  const isComment = draft.kind === 'comment_reply'
+  // An escalate card carries no draft on purpose: the point is that Mattan
+  // answers it himself, so there is nothing to copy.
+  const isEscalatedComment = isComment && !draft.body.trim()
+  const where = isNewsjack || isWeekly || isComment ? engineLabel(draft.client_id) : `#${draft.slack_channel}`
   const left = isNewsjack ? expiresIn(draft.context?.expires_at) : null
 
   async function onApprove() {
-    // Nothing dispatches a weekly report. Approving copies the message and
-    // closes the card; Ivan pastes it to the client himself.
-    if (isWeekly) {
+    // Nothing dispatches a weekly report or a comment reply. Approving copies
+    // the message and closes the card; a human posts it.
+    if (isWeekly || isComment) {
       const ok = await confirm({
-        title: 'Copy the message and close this?',
-        message: 'Nothing is sent to the client. The message goes to your clipboard and the card clears.',
-        confirmText: 'Approve & copy',
+        title: isEscalatedComment
+          ? 'Mark this handled?'
+          : 'Copy the reply and close this?',
+        message: isEscalatedComment
+          ? 'Nothing is posted. The card clears and you stop being reminded about this comment.'
+          : isComment
+            ? 'Nothing is posted to LinkedIn. The reply goes to your clipboard and the card clears.'
+            : 'Nothing is sent to the client. The message goes to your clipboard and the card clears.',
+        confirmText: isEscalatedComment ? 'Mark handled' : 'Approve & copy',
       })
       if (!ok) return
       setBusy(true); setError('')
       try {
         // Copy first: if the clipboard is blocked, the card stays put and the
-        // message is still recoverable from the textarea.
-        await navigator.clipboard.writeText(body)
-        await approveWeeklyReport(draft.id, body)
+        // message is still recoverable from the textarea. An escalated comment
+        // has no draft to copy, so it goes straight to handled.
+        if (!isEscalatedComment) await navigator.clipboard.writeText(body)
+        if (isComment) await approveCommentReply(draft.id, body)
+        else await approveWeeklyReport(draft.id, body)
         refresh()
       } catch (e) { setError(errText(e)) }
       finally { setBusy(false) }
@@ -143,7 +169,9 @@ function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void 
         ? "It won't be written or scheduled."
         : isWeekly
           ? "The page stays live at its link. You just won't be reminded about this week again."
-          : `It won't be posted to ${draft.slack_channel}.`,
+          : isComment
+            ? "The comment stays on the post. You just won't be reminded about it again."
+            : `It won't be posted to ${draft.slack_channel}.`,
       confirmText: 'Discard',
       danger: true,
     })
@@ -176,13 +204,20 @@ function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void 
       />
       {isNewsjack && <div className="ops-ctx">Angle the post gets written from, edit before approving.</div>}
       {isWeekly && <div className="ops-ctx">Read the page first. Edit this message, then copy it and send it yourself.</div>}
+      {isComment && (
+        <div className="ops-ctx">
+          {isEscalatedComment
+            ? 'No draft on purpose: this one wants Mattan in his own words.'
+            : 'Nothing posts from here. Edit the reply, copy it, paste it on LinkedIn.'}
+        </div>
+      )}
       {error && <div className="ops-err">{error}</div>}
       <div className="ops-ac">
         <div className="btn s" onClick={busy ? undefined : onDiscard}>Discard</div>
         <div className="btn p" onClick={busy ? undefined : onApprove}>
           {busy
-            ? (isNewsjack ? 'Claiming…' : isWeekly ? 'Copying…' : 'Sending…')
-            : (isNewsjack ? 'Approve & jump' : isWeekly ? 'Approve & copy' : 'Approve & send')}
+            ? (isNewsjack ? 'Claiming…' : isEscalatedComment ? 'Closing…' : isWeekly || isComment ? 'Copying…' : 'Sending…')
+            : (isNewsjack ? 'Approve & jump' : isEscalatedComment ? 'Mark handled' : isWeekly || isComment ? 'Approve & copy' : 'Approve & send')}
         </div>
       </div>
     </div>
@@ -202,7 +237,7 @@ function ReadOnlyRow({ draft, reason, working }: { draft: OpsDraft; reason?: str
       <div className="log-mid">
         <div className="log-top">
           <span className="log-nm">
-            {draft.kind === 'newsjack' ? engineLabel(draft.client_id) : `#${draft.slack_channel}`}
+            {draft.slack_channel ? `#${draft.slack_channel}` : engineLabel(draft.client_id)}
           </span>
           {draft.kind === 'newsjack' && draft.context?.slot && (
             <span className="ops-chan">publishes {slotText(draft.context.slot)}</span>
