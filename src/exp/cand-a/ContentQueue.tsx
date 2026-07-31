@@ -1,68 +1,30 @@
-import { type ReactNode, useRef, useState } from 'react'
-import { useConfirm } from '../../components/ConfirmSheet'
+import { type ReactNode, useCallback, useRef, useState } from 'react'
 import { PullIndicator } from '../../components/PullIndicator'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { useContent } from '../../hooks/useContent'
-import { approveDraft, skipDraft, type ContentBuckets, type ContentDraft, type ContentLane } from '../../lib/content'
+import {
+  countBoardVisible, countUndated, reviewActionable,
+  ALERT_STAGES, PIPELINE_STAGES, STAGE_LABEL,
+  type ContentDraft, type ContentLane, type ContentStage, type ContentStages,
+} from '../../lib/content'
+import { DraftDetail } from './DraftDetail'
+import { ReviewActions } from './ReviewActions'
+import { relTime, typeLabel } from './fmt'
 
-const TYPE_LABEL: Record<string, string> = { text: 'Text', single_image: 'Image', carousel: 'Carousel' }
-function typeLabel(t: string | null): string {
-  if (!t) return 'Text'
-  return TYPE_LABEL[t] ?? t
-}
-
-function relTime(iso: string): string {
-  const s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000))
-  const m = Math.floor(s / 60)
-  if (m < 1) return 'just now'
-  if (m < 60) return `${m}m ago`
-  const h = Math.floor(m / 60)
-  if (h < 24) return `${h}h ago`
-  const d = Math.floor(h / 24)
-  return `${d}d ago`
-}
-
-// One card shape for every bucket (title/topic, type chip, relative time,
-// thumbnail if there's one). Only a 'review' row in the Ivan lane gets the
-// approve/skip pair — D6/D7: approve is a status write that does NOT publish,
-// and the Rise lane is read-only ambient visibility here (client-facing
-// decisions stay on the client board).
-function QueueCard({ d, lane, refresh }: { d: ContentDraft; lane: ContentLane; refresh: () => void }) {
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const confirm = useConfirm()
-  const actionable = d.status === 'review' && lane === 'ivan'
+// One card shape for every stage (title/topic, type chip, relative time,
+// thumbnail if there's one). Tapping it opens the full row (DraftDetail).
+// Only a 'review' row in the Ivan lane carries the approve/skip pair — D6/D7:
+// approve is a status write that does NOT publish, and the Rise lane is
+// read-only ambient visibility here (client-facing decisions stay on the client
+// board). Rise cards instead carry the board-visibility pill: whether the
+// client can actually SEE this row is the fact that matters on a lane Ivan
+// can't act on.
+function QueueCard({ d, lane, refresh, onOpen }: {
+  d: ContentDraft; lane: ContentLane; refresh: () => void; onOpen: (id: string) => void
+}) {
   const thumb = d.image_urls?.[0]
-
-  async function approve() {
-    const ok = await confirm({
-      title: 'Approve this draft?',
-      message: 'Marks approved. Nothing publishes — scheduling stays on the board.',
-      confirmText: 'Approve',
-    })
-    if (!ok) return
-    setBusy(true); setError('')
-    try { await approveDraft(d.id); refresh() }
-    catch (e) { setError(e instanceof Error ? e.message : 'Could not approve') }
-    finally { setBusy(false) }
-  }
-
-  async function skip() {
-    const ok = await confirm({
-      title: 'Skip this draft?',
-      message: 'Marks it disqualified — it drops out of the queue for good.',
-      confirmText: 'Skip',
-      danger: true,
-    })
-    if (!ok) return
-    setBusy(true); setError('')
-    try { await skipDraft(d.id); refresh() }
-    catch (e) { setError(e instanceof Error ? e.message : 'Could not skip') }
-    finally { setBusy(false) }
-  }
-
   return (
-    <div className="ct-card">
+    <div className="ct-card ct-tap" onClick={() => onOpen(d.id)}>
       <div className="ct-top">
         {thumb ? <img className="ct-thumb" src={thumb} alt="" /> : <div className="ct-thumb ct-thumb-empty">No image</div>}
         <div className="ct-mid">
@@ -71,70 +33,71 @@ function QueueCard({ d, lane, refresh }: { d: ContentDraft; lane: ContentLane; r
           <div className="ct-meta">
             <span className="ct-chip">{typeLabel(d.type)}</span>
             <span className="ct-tm">{relTime(d.updated_at)}</span>
-            {lane === 'risedtc' && <span className="ct-lane">client lane</span>}
+            {lane === 'risedtc' && (
+              <span className={d.board_visible === true ? 'ct-lane' : 'ct-chip'}>
+                {d.board_visible === true ? "On Rise's board" : 'Internal'}
+              </span>
+            )}
           </div>
         </div>
       </div>
-      {error && <div className="ops-err" style={{ marginTop: 8 }}>{error}</div>}
-      {actionable && (
-        <div className="ct-ac">
-          <div className="btn s" onClick={busy ? undefined : skip}>Skip</div>
-          <div className="btn p" onClick={busy ? undefined : approve}>{busy ? 'Working…' : 'Approve'}</div>
-        </div>
-      )}
+      {reviewActionable(d.status, lane) && <ReviewActions id={d.id} onDone={refresh} compact />}
     </div>
   )
 }
 
-// Same collapsible header idiom as OpsScreen's Section (ops-sechdr/chev,
-// hidden entirely at count 0 — no empty-state chrome for secondary groups).
-// `id` is optional and only used as a scroll target for the bucket tile strip
-// below — the sections it's passed on all default open, so scrolling the
-// header into view also reveals the rows under it.
-function Section({ title, count, defaultOpen, id, children }: {
-  title: string; count: number; defaultOpen?: boolean; id?: string; children: ReactNode
+// Same collapsible header idiom as OpsScreen's Section (ops-sechdr/chev, hidden
+// entirely at count 0 — no empty-state chrome for a stage nothing is sitting
+// in). Open state is LIFTED to the queue so a tap on the stage rail can open a
+// collapsed section before scrolling to it: scrolling a collapsed header into
+// view and showing the operator nothing is worse than not scrolling at all.
+function StageSection({ title, count, open, onToggle, id, sub, children }: {
+  title: string; count: number; open: boolean; onToggle: () => void
+  id: string; sub?: ReactNode; children: ReactNode
 }) {
-  const [open, setOpen] = useState(!!defaultOpen)
   if (count === 0) return null
   return (
     <>
-      <div className="ops-sechdr" id={id} onClick={() => setOpen(o => !o)}>
+      <div className="ops-sechdr" id={id} onClick={onToggle}>
         <span>{title} · {count}</span>
         <span className="chev">{open ? '⌄' : '›'}</span>
       </div>
-      {open && <div>{children}</div>}
+      {open && (
+        <>
+          {sub}
+          {children}
+        </>
+      )}
     </>
   )
 }
 
-// ---- bucket tile strip (top of Queue) ----
+// ---- stage rail ----
 //
-// Four counts already sitting in `buckets` (no extra fetch) as tappable stat
-// tiles, same look as the app's existing td-tile idiom (TodayScreen's Campaign
-// health strip) — just a 2x2 grid instead of that idiom's row-of-3. A tap
-// scrolls the matching bucket section into view; severity color only when a
-// bucket actually has something in it (D10's "an honest zero is not a
-// warning" — a clean queue should read as calm, not urgent-looking).
-const BUCKET_TILES: { key: keyof ContentBuckets; label: string; targetId: string }[] = [
-  { key: 'review', label: 'Needs review', targetId: 'ct-b-review' },
-  { key: 'error', label: 'Errors', targetId: 'ct-b-error' },
-  { key: 'stuckScheduled', label: 'Stuck', targetId: 'ct-b-stuck' },
-  { key: 'approvedUnscheduled', label: 'Approved, unscheduled', targetId: 'ct-b-approved' },
-]
+// Replaces round 1's 2x2 tile grid. Same counts, no extra fetch, but read as
+// the PIPELINE: ideas → generating → needs review → approved → scheduled →
+// published, in that order, left to right. Error/Stuck ride at the end and are
+// the only chips that ever take severity colour, and only when they're
+// non-zero — D10's "an honest zero is not a warning": a clean queue must read
+// calm, not urgent.
+const RAIL_STAGES: ContentStage[] = [...PIPELINE_STAGES, ...ALERT_STAGES]
 
-function scrollToBucket(id: string) {
-  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
-
-function BucketTiles({ buckets }: { buckets: ContentBuckets }) {
+function StageRail({ stages, onJump }: {
+  stages: ContentStages; onJump: (s: ContentStage) => void
+}) {
   return (
-    <div className="ct-tiles">
-      {BUCKET_TILES.map(t => {
-        const n = buckets[t.key].length
+    <div className="ct-rail">
+      {RAIL_STAGES.map(s => {
+        const n = stages[s].length
+        const bad = (s === 'error' || s === 'stuck') && n > 0
         return (
-          <div key={t.key} className="td-tile ct-tile" onClick={() => scrollToBucket(t.targetId)}>
-            <div className="td-tl">{t.label}</div>
-            <div className="td-tb" style={{ color: n > 0 ? '#FF453A' : 'var(--text3)' }}>{n}</div>
+          <div
+            key={s}
+            className={`ct-rchip${bad ? ' bad' : ''}${n === 0 ? ' zero' : ''}`}
+            onClick={n > 0 ? () => onJump(s) : undefined}
+          >
+            <span className="ct-rn">{n}</span>
+            <span className="ct-rl">{STAGE_LABEL[s]}</span>
           </div>
         )
       })}
@@ -165,17 +128,43 @@ const LANES: { key: ContentLane; label: string }[] = [
   { key: 'risedtc', label: 'Rise' },
 ]
 
+// Sections that are open on arrival. The top of the pipeline is where work is;
+// Scheduled and Published are reference, and both are opened on demand by the
+// rail (which forces them open before scrolling).
+const DEFAULT_OPEN: ContentStage[] = ['ideas', 'generating', 'review', 'approved']
+
 export function ContentQueue({ lane, setLane }: { lane: ContentLane; setLane: (l: ContentLane) => void }) {
-  const { buckets, matched, laneTotal, loading, error, refresh } = useContent(lane)
+  const { drafts, stages, matched, laneTotal, loading, error, refresh } = useContent(lane)
   const rowsRef = useRef<HTMLDivElement>(null)
   const ptr = usePullToRefresh(rowsRef, () => refresh())
+  const [openStages, setOpenStages] = useState<ContentStage[]>(DEFAULT_OPEN)
+  const [alertOpen, setAlertOpen] = useState(true)
+  const [openId, setOpenId] = useState<string | null>(null)
 
-  const firstLoad = loading && Object.values(buckets).every(b => b.length === 0)
+  const isOpen = (s: ContentStage) => openStages.includes(s)
+  const toggle = (s: ContentStage) =>
+    setOpenStages(cur => (cur.includes(s) ? cur.filter(x => x !== s) : [...cur, s]))
+
+  // Open first, scroll after paint — scrollIntoView against a header whose
+  // rows are still collapsed lands on the wrong offset the moment they expand.
+  const jump = useCallback((s: ContentStage) => {
+    if (s === 'error' || s === 'stuck') setAlertOpen(true)
+    else setOpenStages(cur => (cur.includes(s) ? cur : [...cur, s]))
+    requestAnimationFrame(() => {
+      document.getElementById(`ct-s-${s}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [])
+
+  const firstLoad = loading && drafts.length === 0
   // D10: an empty board and a broken filter must never render the same way.
-  // scoped===0 while the lane has rows at all means the recent-or-active
-  // filter ate everything — a bug, not a quiet Sunday.
+  // scoped===0 while the lane has rows at all means the recent-or-active filter
+  // ate everything — a bug, not a quiet Sunday.
   const nothingMatched = !loading && (matched ?? 0) === 0
   const filteredAway = nothingMatched && (laneTotal ?? 0) > 0
+
+  const alertRows = [...stages.error, ...stages.stuck]
+  const undated = countUndated(stages.approved)
+  const onBoard = countBoardVisible(drafts)
 
   return (
     <>
@@ -186,6 +175,12 @@ export function ContentQueue({ lane, setLane }: { lane: ContentLane; setLane: (l
           </span>
         ))}
       </div>
+      {/* Lane header line — Rise only. The one number Ivan can't get anywhere
+          else on a read-only lane: how much of what the engine made has
+          actually been promoted onto the client's board. */}
+      {lane === 'risedtc' && !firstLoad && !error && drafts.length > 0 && (
+        <div className="ct-lanehdr">{onBoard} of {drafts.length} visible on Rise's board</div>
+      )}
       <div className="rows ct-rows" ref={rowsRef}>
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
         {error ? (
@@ -202,41 +197,86 @@ export function ContentQueue({ lane, setLane }: { lane: ContentLane; setLane: (l
           )
         ) : (
           <>
-            <BucketTiles buckets={buckets} />
-            <div id="ct-b-review">
-              {buckets.review.length === 0 ? (
-                <div className="empty">Nothing waiting on review.</div>
-              ) : (
-                buckets.review.map(d => <QueueCard key={d.id} d={d} lane={lane} refresh={refresh} />)
-              )}
-            </div>
-            <Section title="Errors" count={buckets.error.length} defaultOpen id="ct-b-error">
-              {buckets.error.map(d => <QueueCard key={d.id} d={d} lane={lane} refresh={refresh} />)}
-            </Section>
-            <Section title="Stuck" count={buckets.stuckScheduled.length} defaultOpen id="ct-b-stuck">
-              {buckets.stuckScheduled.map(d => <QueueCard key={d.id} d={d} lane={lane} refresh={refresh} />)}
-            </Section>
-            <Section title="Approved, unscheduled" count={buckets.approvedUnscheduled.length} defaultOpen id="ct-b-approved">
-              {buckets.approvedUnscheduled.map(d => <QueueCard key={d.id} d={d} lane={lane} refresh={refresh} />)}
-            </Section>
-            <Section title="Generating" count={buckets.generating.length}>
-              {buckets.generating.map(d => <QueueCard key={d.id} d={d} lane={lane} refresh={refresh} />)}
-            </Section>
-            <Section title="Scheduled" count={buckets.scheduled.length}>
-              {buckets.scheduled.map(d => <QueueCard key={d.id} d={d} lane={lane} refresh={refresh} />)}
-            </Section>
-            <Section title="Recently published" count={buckets.published.length}>
-              {buckets.published.map(d => <QueueCard key={d.id} d={d} lane={lane} refresh={refresh} />)}
-            </Section>
-            {/* Unknown statuses (vocabulary the app hasn't caught up to yet) and
-                archived (disqualified/skipped) rows are never dropped — they
-                just collapse into one low-priority tray at the bottom. */}
-            <Section title="Other" count={buckets.archived.length + buckets.unknown.length}>
-              {[...buckets.archived, ...buckets.unknown].map(d => <QueueCard key={d.id} d={d} lane={lane} refresh={refresh} />)}
-            </Section>
+            {/* Exceptions ride ABOVE the pipeline, never as sections inside it:
+                an errored row and a schedule that silently died are not steps on
+                the way to publishing, and interleaving them broke the reading
+                order of the lifecycle. Open by default — an alert that has to be
+                unfolded to be seen isn't one. */}
+            {alertRows.length > 0 && (
+              <>
+                <div className="ct-alert" onClick={() => setAlertOpen(o => !o)}>
+                  <span className="ct-alert-n">{alertRows.length}</span>
+                  <span className="ct-alert-t">
+                    {stages.error.length > 0 && `${stages.error.length} errored`}
+                    {stages.error.length > 0 && stages.stuck.length > 0 && ' · '}
+                    {stages.stuck.length > 0 && `${stages.stuck.length} past due, never posted`}
+                  </span>
+                  <span className="chev">{alertOpen ? '⌄' : '›'}</span>
+                </div>
+                {alertOpen && (
+                  <>
+                    <div id="ct-s-error" />
+                    {stages.error.map(d => (
+                      <QueueCard key={d.id} d={d} lane={lane} refresh={refresh} onOpen={setOpenId} />
+                    ))}
+                    <div id="ct-s-stuck" />
+                    {stages.stuck.map(d => (
+                      <QueueCard key={d.id} d={d} lane={lane} refresh={refresh} onOpen={setOpenId} />
+                    ))}
+                  </>
+                )}
+              </>
+            )}
+
+            <StageRail stages={stages} onJump={jump} />
+
+            {PIPELINE_STAGES.map(s => (
+              <StageSection
+                key={s}
+                id={`ct-s-${s}`}
+                title={STAGE_LABEL[s]}
+                count={stages[s].length}
+                open={isOpen(s)}
+                onToggle={() => toggle(s)}
+                sub={s === 'approved' && undated > 0 ? (
+                  // The proven black hole, kept in sight now that approved rows
+                  // are one section: the dashboard's review lane only shows
+                  // status='review' and its calendar only shows rows that HAVE
+                  // a date, so these are on no other surface at all.
+                  <div className="ct-subline">{undated} approved without a date</div>
+                ) : undefined}
+              >
+                {stages[s].map(d => (
+                  <QueueCard key={d.id} d={d} lane={lane} refresh={refresh} onOpen={setOpenId} />
+                ))}
+              </StageSection>
+            ))}
+
+            {/* Decided-against rows and vocabulary the app hasn't caught up to
+                (n8n writes these statuses, not this app) both collapse to the
+                bottom — collapsed, but never dropped (blank-board #3). */}
+            <StageSection
+              id="ct-s-archived" title={STAGE_LABEL.archived} count={stages.archived.length}
+              open={isOpen('archived')} onToggle={() => toggle('archived')}
+            >
+              {stages.archived.map(d => (
+                <QueueCard key={d.id} d={d} lane={lane} refresh={refresh} onOpen={setOpenId} />
+              ))}
+            </StageSection>
+            <StageSection
+              id="ct-s-other" title={STAGE_LABEL.other} count={stages.other.length}
+              open={isOpen('other')} onToggle={() => toggle('other')}
+            >
+              {stages.other.map(d => (
+                <QueueCard key={d.id} d={d} lane={lane} refresh={refresh} onOpen={setOpenId} />
+              ))}
+            </StageSection>
           </>
         )}
       </div>
+      {openId && (
+        <DraftDetail id={openId} lane={lane} refresh={refresh} onBack={() => setOpenId(null)} />
+      )}
     </>
   )
 }
