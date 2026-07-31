@@ -66,7 +66,10 @@ export function VoiceControl({ state, onArm, onCancel, onResume, onSkip, onDismi
       aria-label={live ? 'Listening — tap to stop' : VOICE_LABEL[state.s]}
       title={handsFree ? 'Hands-free is on' : 'Tap to talk · long-press for hands-free'}
     >
-      {state.s === 'ERROR' ? '!' : state.s === 'SPEAKING' ? '◼' : '🎙'}
+      {/* Geometric glyph, not an emoji: every icon in this app is one
+          (TabBar.tsx:9-30), and a colour emoji beside ☼ ◉ ✦ ↑ ◈ reads as a
+          different icon set. */}
+      {state.s === 'ERROR' ? '!' : state.s === 'SPEAKING' ? '◼' : '⦿'}
       {live && <Meter level={level} on />}
     </button>
   )
@@ -136,7 +139,7 @@ export function HandsFreeSheet({ state, onClose, onArm, onSkip }: {
               : undefined}
             onClick={state.s === 'SPEAKING' ? onSkip : onArm}
           >
-            {state.s === 'SPEAKING' ? '◼' : '🎙'}
+            {state.s === 'SPEAKING' ? '◼' : '⦿'}
           </button>
           <div className="wb-hf-state">{VOICE_LABEL[state.s]}</div>
           {state.s === 'ERROR' && <div className="wb-hf-err">{VOICE_COPY[state.reason]}</div>}

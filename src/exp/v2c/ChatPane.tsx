@@ -7,15 +7,22 @@ import type { ChatHandle } from './useChat'
 import type { Job } from './layout'
 import { JOB_LABEL } from './layout'
 
-// Starters, derived from what the operator is actually looking at. Three chips,
-// never a wall — and they exist to make the peer relationship legible: the
-// question is pre-aimed at the thing in the other pane.
+// A content draft's title is a whole sentence. Naming it in the header, the
+// heading and three starters put the same sixteen words on screen five times —
+// so it is named ONCE, in the context card, and shortened everywhere else.
+function short(label: string, max = 34): string {
+  if (label.length <= max) return label
+  return `${label.slice(0, max - 1).replace(/[\s,.;:]+$/, '')}…`
+}
+
+// Starters, aimed at whatever is in the other pane. Three, never a wall. They do
+// not repeat the subject's name — the context card above already says it.
 function starters(job: Job, about: string | null): string[] {
   if (about) {
     return [
-      `What is ${about} actually waiting on?`,
-      `Draft a reply for ${about} in my voice`,
-      `Where in the code does ${about} get its data?`,
+      'What is this actually waiting on?',
+      'Draft a reply in my voice',
+      'Where does this get its data?',
     ]
   }
   switch (job) {
@@ -79,6 +86,7 @@ export function ChatPane({ chat, job, about, onClose, onOpenAbout, mobile }: {
   }, [chat.turns.length, chat.streamText])
 
   const empty = chat.turns.length === 0 && chat.status === 'idle'
+  const lastErr = chat.turns.length > 0 && chat.turns[chat.turns.length - 1].error !== null
 
   return (
     <>
@@ -92,6 +100,10 @@ export function ChatPane({ chat, job, about, onClose, onOpenAbout, mobile }: {
             {chat.model && ` · ${chat.model}`}
           </div>
         </div>
+        <span
+          className={`wb-live${chat.busy ? ' busy' : ''}${lastErr ? ' err' : ''}`}
+          title={lastErr ? 'last turn failed' : chat.busy ? 'streaming' : 'ready'}
+        />
         {TRANSPORT_IS_MOCK && <span className="wb-mockchip">mock</span>}
         {!mobile && <span className="wb-pane-x" onClick={onClose}>✕</span>}
       </div>
@@ -105,7 +117,7 @@ export function ChatPane({ chat, job, about, onClose, onOpenAbout, mobile }: {
           onClick={onOpenAbout ?? undefined}
         >
           <span className="wb-about-l">Asking about</span>
-          <span className="wb-about-n">{about}</span>
+          <span className="wb-about-n">{short(about, 52)}</span>
           {onOpenAbout && <span className="wb-about-go">›</span>}
         </div>
       )}
@@ -115,7 +127,7 @@ export function ChatPane({ chat, job, about, onClose, onOpenAbout, mobile }: {
           <div className="wb-chat-empty">
             <div className="wb-chat-empty-t">
               {about
-                ? <>Ask about <b>{about}</b> without leaving it.</>
+                ? <>Ask about <b>{short(about)}</b> without leaving it.</>
                 : <>Ask about the {JOB_LABEL[job].toLowerCase()} you’re looking at.</>}
             </div>
             <div className="wb-chat-empty-s">
@@ -171,7 +183,7 @@ export function ChatPane({ chat, job, about, onClose, onOpenAbout, mobile }: {
         />
         <input
           className="cfield"
-          placeholder={about ? `Ask about ${about}…` : 'Ask Claude…'}
+          placeholder={about ? `Ask about ${short(about, 22)}…` : 'Ask Claude…'}
           value={text}
           onChange={e => setText(e.target.value)}
           // Enter sends here on purpose, unlike the outbound DM composer: a chat
