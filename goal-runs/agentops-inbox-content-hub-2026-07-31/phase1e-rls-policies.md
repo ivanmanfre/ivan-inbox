@@ -1,0 +1,47 @@
+# Phase 1e — RLS / policy audit
+
+Sources: `personal-site/supabase/migrations/20260719_rls_closure_waves.sql` (455 lines, read in full — waves 2a/0/1/2/2b), all `personal-site/supabase/migrations/*.sql`, all `personal-site/migrations/*.sql`, and `ivan-inbox/db/*.sql` (001–022 + APPLY-kpi-views.sql). No CREATE TABLE for `client_boards`, `client_ideas`, `client_post_comments`, `outreach_prospects/messages/campaigns`, `carousel_styles/drafts`, `lm_idea_candidates`, `lm_drafts_v2`, `content_prompts/archetypes`, `integration_config` exists in any tracked migration — these tables predate the migrations tree (created via dashboard/SQL editor) or came in unversioned; only the closure migration's alter/policy lines govern their current RLS state.
+
+| object | RLS enabled? | anon | authenticated | source file:line |
+|---|---|---|---|---|
+| n8nclaw_proactive_alerts | yes (assumed pre-existing; policy churn only) | none (anon_select dropped) | full (authenticated_all) | closure:51 (create), closure:336 (drop anon_select) |
+| n8nclaw_reminders | yes | none | full | closure:52, closure:337 |
+| n8nclaw_daily_summaries | yes | none | full | closure:46, closure:331 |
+| n8nclaw_chat_messages | yes | none | full | closure:44, closure:329 |
+| paid_assessments | yes (enabled by closure, wave1) | none | full (+ service_role_all) | closure:250-252 |
+| assessment_intakes | yes (enabled by closure, wave1) | none | full (+ service_role_all) | closure:121-123; original `migrations/assessment_intakes_table.sql` has no RLS/GRANT lines |
+| blueprints | yes | anon SELECT scoped: `status='published' AND share_token IS NOT NULL`; also `public_read_published_by_token` | full read (`authenticated_read_all`) + update html; service_role full | `migrations/blueprints_table.sql:75-86`; closure:277 (re-enable, no new policies added) |
+| scans | yes | SELECT only `status='complete'` | not explicitly granted (service_role bypasses RLS; no authenticated policy defined here) | `supabase/migrations/20260508_scans_rls.sql:4-9` (also `scan_prospect_tokens`: anon SELECT where `expires_at > now()`, line 14-19) |
+| outreach_link_clicks | yes | none (anon_insert dropped) | full (authenticated_all) | closure:64 (create), closure:351 (drop `outreach_link_clicks_anon_insert`) |
+| carousel_drafts | yes (enabled wave0) | none (`anon_own_rows` latent policy dropped) | full (+ service_role_all) | closure:115-118 |
+| lm_drafts_v2 | yes (enabled wave1) | none | full (+ service_role_all) | closure:232-234 |
+| scheduled_posts | yes | SELECT only `status='posted'` (`anon_read_posted`) | full (authenticated_all) | closure:73 (create), closure:363-365 (drop old anon select/update, add scoped anon_read_posted) |
+| image_edit_versions | yes (enabled wave1) | none | full (+ service_role_all) | closure:199-201 |
+| client_boards | NOT-IN-REPO for CREATE TABLE/RLS — table referenced only inside RPC functions (`operator_client_outreach`, `client_board_set_schedule/edit_lm_promo/leave_empty/slot_state`) | unknown (no policy statement found) | unknown; access is mediated entirely through SECURITY DEFINER RPC functions, not direct table grants | `supabase/migrations/20260721_client_board_set_schedule.sql`, `..._edit_lm_promo.sql`, `..._leave_empty.sql`, `..._slot_state.sql`, `..._operator_client_outreach.sql` — all reference `public.client_boards` but never `ALTER TABLE`/`CREATE POLICY`/`GRANT` on it |
+| client_ideas | NOT-IN-REPO for CREATE TABLE/RLS — only referenced inside a function body (`select c2.source_label... from client_ideas c2`) | unknown | unknown | `supabase/migrations/20260726_operator_client_drafts_funnel_stage.sql:44` |
+| content_prompts | yes (enabled wave1) | none | full (+ service_role_all) | closure:166-168 |
+| content_archetypes | yes (enabled wave1) | none | full (+ service_role_all) | closure:154-156 |
+| carousel_styles | yes (enabled wave1) | none | full (+ service_role_all) | closure:127-129 |
+| lm_idea_candidates | yes | none (anon_select dropped) | full (authenticated_all) | closure:43 (create), closure:328 (drop anon_select) |
+| ops_drafts | yes | none (no anon policy ever defined) | full (`authenticated all ops_drafts`) | `ivan-inbox/db/015_ops_drafts.sql:24-29`; kind constraint later widened to newsjack/weekly_report/comment_reply by `020_newsjack_cards.sql:16-18`, `021_weekly_report_cards.sql:23-25`, `022_comment_reply_cards.sql:22-24` (no RLS changes in those 3 files) |
+| outreach_messages | yes | none (all 3 anon policies dropped) | full (authenticated_all) | closure:7 (create), closure:108-110 (drop anon_read/update/write_messages) |
+| outreach_prospects | yes | none (all 4 anon policies dropped) | full (authenticated_all) | closure:6 (create), closure:104-107 (drop anon_delete/read/update/write_prospects) |
+| outreach_campaigns | yes | none (all 4 anon policies dropped) | full (authenticated_all) | closure:8 (create), closure:111-114 (drop anon_delete/read/update/write_campaigns) |
+| integration_config | yes | SELECT only where `is_secret = false` (`anon_read_non_secret`) | full (authenticated_all) | closure:100 (create authenticated_all), closure:383-384 (drop `non_secret_config_access`, add scoped `anon_read_non_secret`) |
+| push_subscriptions | yes | none (all 3 anon policies — upsert/update/delete — dropped) | full (authenticated_all, new) | `migrations/push_subscriptions.sql:15-33` (orig: service_role_all_push + 3 anon policies); closure:66 (add authenticated_all), closure:353-355 (drop the 3 anon policies) |
+| client_post_comments | NOT-IN-REPO | n/a | n/a | no CREATE TABLE / POLICY / GRANT for this name found anywhere in either repo's SQL |
+| inbox_messages_v (view) | n/a — `security_invoker=on`, so RLS of underlying tables (`outreach_messages`/`outreach_prospects`/`outreach_campaigns`) applies at query time | effectively none (base tables have no anon policy post-closure; grant on the view itself is implicit/default, not an explicit GRANT line) | full (base tables' authenticated_all policies apply) | `ivan-inbox/db/001_inbox.sql:1-15` |
+| inbox_pipeline_v | n/a — `security_invoker=on` | effectively none (same base tables) | full | `ivan-inbox/db/006_kpi_pipeline.sql:15` (unchanged per `APPLY-kpi-views.sql:397,413`); no explicit GRANT (see note at `010_campaign_sends.sql:28-30`) |
+| inbox_sends_v / inbox_sends_daily_v | n/a — `security_invoker=on` | effectively none | full | `ivan-inbox/db/003_sends_views.sql:8,32`, redefined `018_warm_era_sends.sql:12,41`; no explicit GRANT |
+| inbox_campaign_sends_v | n/a — `security_invoker=on` | effectively none | full | `ivan-inbox/db/010_campaign_sends.sql:34`, redefined `018_warm_era_sends.sql:63`; no explicit GRANT (see comment 010:28-30) |
+| inbox_accept_v (v1) | n/a — `security_invoker=on` | effectively none | full | `ivan-inbox/db/005_kpi_accept.sql:6`, redefined `009_accept_cohort.sql:27`; no explicit GRANT |
+| inbox_accept_v2 | n/a — `security_invoker=on`, **but** explicit `GRANT SELECT` to both roles | granted at view level, but returns 0 rows for anon since base tables (`outreach_messages/prospects/campaigns`) deny anon under RLS | full | `ivan-inbox/db/017_kpi_outcomes.sql:21,53` (`grant select on inbox_accept_v2 to anon, authenticated;`) |
+| inbox_outcomes_v | n/a — `security_invoker=on`, explicit GRANT | granted at view level; effectively 0 rows for anon (same base-table RLS reasoning) | full | `ivan-inbox/db/017_kpi_outcomes.sql:59,103` |
+| inbox_scan_opens_v | n/a — **`security_invoker=off`** (definer view, deliberately bypasses RLS to expose aggregates) | full SELECT (aggregates only, no raw rows) | full | `ivan-inbox/db/007_kpi_scan_opens.sql:9,32`; redefined `011_scan_client_attr.sql:29,57`; also in `APPLY-kpi-views.sql:213,237` |
+
+## Pattern summary
+- **"authenticated full read/write, anon none"** — the dominant pattern post-2026-07-19 closure: `authenticated_all ... for all to authenticated using (true) with check (true)` plus, for wave1 tables, a parallel `service_role_all`. Applies to: n8nclaw_* (4 tables), paid_assessments, assessment_intakes, outreach_link_clicks, carousel_drafts, lm_drafts_v2, image_edit_versions, lm_idea_candidates, content_prompts, content_archetypes, carousel_styles, outreach_messages/prospects/campaigns, push_subscriptions.
+- **"anon scoped-read only"** (narrow `using` clause, not `true`): scans (`status='complete'`), scan_prospect_tokens (`expires_at > now()`), scheduled_posts (`status='posted'`), integration_config (`is_secret=false`), blueprints (`status='published' AND share_token IS NOT NULL`).
+- **"open to all" / anon full grant despite base-table lockdown**: `inbox_accept_v2` and `inbox_outcomes_v` carry an explicit `grant select ... to anon` even though the underlying `outreach_*` tables' RLS blocks anon rows — grant exists, data doesn't (dead grant, not a leak).
+- **"definer view, deliberate RLS bypass"**: `inbox_scan_opens_v` is the only `security_invoker=off` view found — explicitly designed to expose only aggregate counts to anon while the raw `scan_opens`/`outreach_prospects` stay locked.
+- **NOT-IN-REPO** (no CREATE TABLE/POLICY/GRANT anywhere): `client_boards`, `client_ideas`, `client_post_comments` — first two are read/written only through SECURITY DEFINER RPC functions (`operator_client_outreach`, `client_board_set_schedule`, etc.), so their RLS posture is undocumented in migrations and can't be confirmed from source; `client_post_comments` doesn't exist under that name at all.
