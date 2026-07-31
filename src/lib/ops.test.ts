@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { pendingOps, sentOps, blockedOps, claimingOps, engineLabel, expiresIn, DISCARDED_REASON, type OpsDraft } from './ops'
+import { pendingOps, sentOps, blockedOps, canGenerateDraft, claimingOps, engineLabel, expiresIn, DISCARDED_REASON, type OpsDraft } from './ops'
 
 const base: OpsDraft = {
   id: '1', client_id: 'risedtc', kind: 'escalation', slack_channel: '#rise-ops',
@@ -121,5 +121,52 @@ describe('comment cards age out', () => {
   it('never ages out other kinds', () => {
     const old = { ...mkC('2026-07-01T00:00:00Z'), kind: 'escalation' as const }
     expect(pendingOps([old], now)).toHaveLength(1)
+  })
+})
+
+describe('canGenerateDraft', () => {
+  // The empty comment card is the whole reason the button exists: the pipeline
+  // drafts only what it classified `auto`, so an escalate card (or one whose
+  // candidates all failed the voice gates) arrives blank and used to offer
+  // nothing but "Mark handled".
+  const card: OpsDraft = {
+    ...base, id: 'c', kind: 'comment_reply', slack_channel: null as unknown as string,
+    body: '', context: { comment_id: 'c-1', author_name: 'Clive William Kreft', action: 'escalate' },
+  }
+
+  it('offers a draft on the empty comment card', () => {
+    expect(canGenerateDraft(card)).toBe(true)
+    expect(canGenerateDraft({ ...card, body: '   ' })).toBe(true)
+  })
+
+  // The body is what Ivan edits and then publishes. Regenerating over a draft he
+  // has already read (or half-rewritten) would replace his words silently, so a
+  // card with text is never a draft target.
+  it('never offers to overwrite a body that already exists', () => {
+    expect(canGenerateDraft({ ...card, body: 'Agreed -- we screen margin first.' })).toBe(false)
+  })
+
+  // Approved, posted, discarded and blocked are all closed states; the edge
+  // function refuses each one, and the button must not offer them either.
+  it('never offers a draft for a closed card', () => {
+    expect(canGenerateDraft({ ...card, approved_at: '2026-07-31T10:00:00Z' })).toBe(false)
+    expect(canGenerateDraft({ ...card, sent_at: '2026-07-31T10:00:00Z' })).toBe(false)
+    expect(canGenerateDraft({ ...card, send_blocked_reason: 'thread_already_answered' })).toBe(false)
+    expect(canGenerateDraft({ ...card, send_blocked_reason: DISCARDED_REASON })).toBe(false)
+  })
+
+  // Only the comment lane has a drafter behind it. A newsjack angle and a weekly
+  // report come from different engines entirely.
+  it('is comment-only', () => {
+    for (const kind of ['newsjack', 'weekly_report', 'escalation', 'update'] as const) {
+      expect(canGenerateDraft({ ...card, kind })).toBe(false)
+    }
+  })
+
+  // rise-comment-draft looks the comment up by context->>'comment_id' and 400s
+  // without one.
+  it('needs the comment id the engine looks the row up by', () => {
+    expect(canGenerateDraft({ ...card, context: { author_name: 'Clive William Kreft' } })).toBe(false)
+    expect(canGenerateDraft({ ...card, context: null })).toBe(false)
   })
 })

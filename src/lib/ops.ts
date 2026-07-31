@@ -37,6 +37,9 @@ export type OpsContext = {
   category?: string
   action?: string
   posted_at?: string
+  // Stamped by rise-comment-draft: this body came from the button, not from the
+  // pipeline, so the card says so before Ivan posts it.
+  drafted_on_demand?: boolean
   [key: string]: unknown
 }
 
@@ -166,6 +169,52 @@ export async function postCommentReply(
   const out = await res.json().catch(() => ({}))
   if (!res.ok || out?.ok === false) throw new Error(out?.error ?? `post failed (${res.status})`)
   return { posted: out.posted === true, reason: out.reason }
+}
+
+// A comment card with an empty body is one the pipeline refused to draft: either
+// the category is escalate-only (PEER_ELABORATION, CHALLENGE, anything
+// judgement-bearing) or every candidate failed the voice gates. Both are honest
+// states, and both are worth a starting point when Ivan asks for one — hence the
+// button. Nothing else in the app can be drafted on demand.
+export function canGenerateDraft(d: OpsDraft): boolean {
+  return d.kind === 'comment_reply'
+    && !d.body.trim()
+    && !d.approved_at && !d.sent_at && !d.send_blocked_reason
+    && Boolean(d.context?.comment_id)
+}
+
+export type GeneratedDraft = {
+  drafted: boolean
+  draft?: string
+  // Why the engine refused: the named gate violations, or "he already answered".
+  why?: string[]
+  reason?: string
+  category_auto_eligible?: boolean
+}
+
+// Runs the SAME drafter the pipeline runs (same content_prompts rows, same
+// exemplars, same RAG corpus, same gates), for one card, now. It writes the body
+// and nothing else — publishing still goes through postCommentReply, which
+// re-reads the thread first. A refusal returns its reasons instead of a draft.
+export async function generateCommentDraft(id: string): Promise<GeneratedDraft> {
+  const { data: sess } = await supabase.auth.getSession()
+  const token = sess.session?.access_token
+  if (!token) throw new Error('not signed in')
+  const res = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/rise-comment-draft`,
+    {
+      method: 'POST',
+      headers: {
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ops_draft_id: id }),
+    },
+  )
+  const out = await res.json().catch(() => ({}))
+  if (!res.ok || out?.ok === false) throw new Error(out?.error ?? `draft failed (${res.status})`)
+  return out as GeneratedDraft
 }
 
 // An escalate card has no draft to post: closing it is bookkeeping only, the same

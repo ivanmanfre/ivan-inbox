@@ -5,7 +5,7 @@ import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useOps } from '../hooks/useOps'
 import {
-  approveOpsDraft, approveWeeklyReport, blockedOps, claimingOps, discardOpsDraft, engineLabel, expiresIn, markCommentHandled, pendingOps, postCommentReply, sentOps,
+  approveOpsDraft, approveWeeklyReport, blockedOps, canGenerateDraft, claimingOps, discardOpsDraft, engineLabel, expiresIn, generateCommentDraft, markCommentHandled, pendingOps, postCommentReply, sentOps,
   type OpsDraft, type OpsKind,
 } from '../lib/ops'
 
@@ -103,6 +103,10 @@ function ContextLine({ draft }: { draft: OpsDraft }) {
 function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void }) {
   const [body, setBody] = useState(draft.body)
   const [busy, setBusy] = useState(false)
+  const [drafting, setDrafting] = useState(false)
+  // Why the engine refused to write one. Named gate violations, not a spinner
+  // that stops: a refusal Ivan cannot see reads as a broken button.
+  const [refusal, setRefusal] = useState<string[]>([])
   const [error, setError] = useState('')
   const confirm = useConfirm()
 
@@ -116,6 +120,11 @@ function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void 
   // An escalate card carries no draft on purpose: the point is that Mattan
   // answers it himself, so there is nothing to copy.
   const isEscalatedComment = isComment && !draft.body.trim()
+  // ...but "on purpose" is not the same as "never". The button writes one
+  // through the same gates the pipeline uses, and the card keeps saying whose
+  // idea it was.
+  const canDraft = canGenerateDraft(draft)
+  const onDemand = isComment && draft.context?.drafted_on_demand === true
   const where = isNewsjack || isWeekly || isComment ? engineLabel(draft.client_id) : `#${draft.slack_channel}`
   const left = isNewsjack ? expiresIn(draft.context?.expires_at) : null
 
@@ -179,6 +188,24 @@ function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void 
     finally { setBusy(false) }
   }
 
+  // No confirm sheet: nothing leaves the building, it fills the textarea above.
+  // Takes ~10s (three candidates, every gate on all of them), so the button
+  // carries the wait instead of a toast.
+  async function onGenerate() {
+    setDrafting(true); setError(''); setRefusal([])
+    try {
+      const out = await generateCommentDraft(draft.id)
+      if (out.drafted && out.draft) {
+        setBody(out.draft)
+        refresh()
+      } else {
+        setRefusal(out.why?.length ? out.why : ['No draft survived the voice gates. Write this one yourself.'])
+        if (out.reason === 'already_answered') refresh()
+      }
+    } catch (e) { setError(errText(e)) }
+    finally { setDrafting(false) }
+  }
+
   async function onDiscard() {
     const ok = await confirm({
       title: 'Discard this one?',
@@ -217,21 +244,32 @@ function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void 
         className="ops-body"
         value={body}
         onChange={e => setBody(e.target.value)}
-        disabled={busy}
+        disabled={busy || drafting}
+        placeholder={canDraft ? 'Write his reply, or press Draft it.' : undefined}
       />
       {isNewsjack && <div className="ops-ctx">Angle the post gets written from, edit before approving.</div>}
       {isWeekly && <div className="ops-ctx">Read the page first. Edit this message, then copy it and send it yourself.</div>}
       {isComment && (
         <div className="ops-ctx">
           {isEscalatedComment
-            ? 'No draft on purpose: this one wants Mattan in his own words.'
-            : 'Edit it first. Approve posts it live under their comment.'}
+            ? 'No draft on purpose: this one wants Mattan in his own words. Draft it if you want a starting point.'
+            : onDemand
+              ? 'Drafted on request, so this category never passed the auto gate. Read every word before you post it.'
+              : 'Edit it first. Approve posts it live under their comment.'}
         </div>
       )}
+      {refusal.length > 0 && (
+        <div className="ops-reason">Refused: {refusal.join(' · ')}</div>
+      )}
       {error && <div className="ops-err">{error}</div>}
-      <div className="ops-ac">
-        <div className="btn s" onClick={busy ? undefined : onDiscard}>Discard</div>
-        <div className="btn p" onClick={busy ? undefined : onApprove}>
+      <div className={canDraft ? 'ops-ac three' : 'ops-ac'}>
+        <div className="btn s" onClick={busy || drafting ? undefined : onDiscard}>Discard</div>
+        {canDraft && (
+          <div className="btn s" onClick={busy || drafting ? undefined : onGenerate}>
+            {drafting ? 'Writing…' : 'Draft it'}
+          </div>
+        )}
+        <div className="btn p" onClick={busy || drafting ? undefined : onApprove}>
           {busy
             ? (isNewsjack ? 'Claiming…' : isEscalatedComment ? 'Closing…' : isComment ? 'Posting…' : isWeekly ? 'Copying…' : 'Sending…')
             : (isNewsjack ? 'Approve & jump' : isEscalatedComment ? 'Mark handled' : isComment ? 'Approve & post' : isWeekly ? 'Approve & copy' : 'Approve & send')}
