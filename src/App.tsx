@@ -17,6 +17,7 @@ import { SeatHealthBanner } from './components/SeatHealthBanner'
 import { InboxSkeleton } from './components/Skeleton'
 import { useInbox } from './hooks/useInbox'
 import { useDesktop } from './hooks/useDesktop'
+import { getExpVariant, ExpGate } from './exp'
 import type { Filter } from './lib/inbox'
 
 type Tab = 'inbox' | 'drafts' | 'sends' | 'ops' | 'settings' | 'today'
@@ -51,6 +52,10 @@ export default function App() {
   }, [])
   if (!ready) return null
   if (!session) return <LoginScreen />
+  // Tournament candidates (goal-run 2026-07-31): only a load-time #exp/ hash
+  // routes away from the real app; without it this is the untouched default.
+  const exp = getExpVariant()
+  if (exp) return <ExpGate variant={exp} />
   return <Shell />
 }
 
