@@ -1,0 +1,54 @@
+/* Candidate A — additive styles only. Every class below is NEW (content queue
+   cards, style gallery, resources, agent panel, push-overlay chrome); anything
+   that already existed in the real app's styles.css (.nav, .seg/.sg, .chips,
+   .chip, .rows, .empty, .ops-sechdr/.chev, .grouphdr/.group/.grow/.gt/.gs/
+   .gbtn, .log-r family, .draftbanner, .btn, .back, .t-nav, .msgs/.day/.b/.composer,
+   .sk/.sk-line) is reused as-is from the shared stylesheet — never redefined
+   here, so this file can never drift from the real app's register. */
+
+/* ---- Content tab: header gear (Settings left the tab bar) ---- */
+.ct-gear{width:34px;height:34px;border-radius:99px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--text2);cursor:pointer}
+.ct-gear:active{transform:scale(.94)}
+
+/* ---- Content tab: Queue cards ---- */
+.ct-rows{padding-bottom:20px}
+.ct-card{margin:14px 16px 0;background:var(--surface);border-radius:18px;padding:14px}
+.ct-top{display:flex;gap:12px}
+.ct-thumb{width:56px;height:56px;border-radius:12px;object-fit:cover;flex:none;background:var(--surface2)}
+.ct-thumb-empty{display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--text3);text-align:center;line-height:1.2}
+.ct-mid{flex:1;min-width:0}
+.ct-title{font-size:15.5px;font-weight:700;letter-spacing:-.01em}
+.ct-topic{font-size:13px;color:var(--text2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ct-meta{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.ct-chip{font-size:10px;font-weight:800;letter-spacing:.05em;padding:3px 8px;border-radius:7px;background:var(--surface2);color:var(--text2);text-transform:uppercase}
+.ct-tm{font-size:12px;color:var(--text3);font-weight:600}
+.ct-lane{font-size:10px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:6px;background:var(--accent-soft);color:var(--accent);text-transform:uppercase}
+.ct-ac{display:flex;gap:10px;margin-top:12px}
+.ct-ac .btn{cursor:pointer}
+.ct-broken{margin:14px 16px 0;font-size:13px;color:#FF9F0A;background:rgba(255,159,10,.1);border:1px solid rgba(255,159,10,.3);border-radius:14px;padding:12px 14px;line-height:1.4}
+
+/* ---- Content tab: Styles gallery + Resources ---- */
+.sty-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:14px 16px 4px}
+.sty-card{background:var(--surface);border-radius:16px;overflow:hidden}
+.sty-thumb{width:100%;aspect-ratio:1/1;object-fit:cover;background:var(--surface2);display:block}
+.sty-thumb-empty{width:100%;aspect-ratio:1/1;background:var(--surface2);display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:12px;text-align:center;padding:10px}
+.sty-body{padding:10px 12px 12px}
+.sty-title{font-size:14px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sty-meta{font-size:11.5px;color:var(--text3);margin-top:3px}
+.res-hdr{padding:20px 22px 4px;font-size:12.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.03em}
+.res-row{display:flex;gap:12px;align-items:center;background:var(--surface);border-radius:14px;padding:11px 13px;margin:8px 16px 0}
+.res-thumb{width:44px;height:44px;border-radius:10px;object-fit:cover;flex:none;background:var(--surface2)}
+.res-mid{flex:1;min-width:0}
+.res-topic{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.res-meta{font-size:12px;color:var(--text2);margin-top:2px;display:flex;align-items:center;gap:6px}
+.res-link{color:var(--accent);font-size:18px;flex:none;text-decoration:none}
+
+/* ---- Ops tab: Cards|Agent segmented switch above the reused OpsScreen ---- */
+.ops-host-seg{margin:14px 16px 0}
+
+/* ---- full-screen pushed takeovers (Settings, Agent chat): position:fixed so
+   they cover the whole viewport (incl. the tab bar) regardless of how deep in
+   the tree they're mounted from — same trick ConfirmSheet/ContextSheet already
+   use, just opaque instead of a scrim. Self-contained (doesn't rely on cascade
+   order against the real app's .app rules from a separately-loaded chunk). ---- */
+.ct-overlay{position:fixed;inset:0;z-index:55;height:100%;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);max-width:480px;margin:0 auto}
