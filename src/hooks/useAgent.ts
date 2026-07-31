@@ -10,6 +10,10 @@ export function useAgent() {
   const [alerts, setAlerts] = useState<AgentAlert[]>([])
   const [reminders, setReminders] = useState<AgentReminder[]>([])
   const [summaries, setSummaries] = useState<AgentSummary[]>([])
+  // Unacknowledged alerts older than the fetch window (lib/agent.ts
+  // ALERT_WINDOW_DAYS). Surfaced as a count so a 60-day-old pipeline_stall
+  // can't sit at the top of the screen pretending to be today's problem.
+  const [olderUnsent, setOlderUnsent] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -24,7 +28,8 @@ export function useAgent() {
     Promise.all([fetchChat(), fetchAlerts(), fetchReminders(), fetchDailySummaries()])
       .then(([msgs, al, rem, sum]) => {
         setMessages(msgs)
-        setAlerts(al)
+        setAlerts(al.alerts)
+        setOlderUnsent(al.olderUnsent)
         setReminders(rem)
         setSummaries(sum)
         setError(null)
@@ -67,7 +72,7 @@ export function useAgent() {
   }, [refresh])
 
   return {
-    messages, alerts, reminders, summaries, loading, error,
+    messages, alerts, olderUnsent, reminders, summaries, loading, error,
     refresh, send, acknowledgeAlert, completeReminder,
   }
 }

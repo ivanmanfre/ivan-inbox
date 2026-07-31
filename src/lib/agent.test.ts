@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
-  ALERT_TABLE, ALERT_FIELD, REMINDER_TABLE, REMINDER_FIELD,
-  chatDayKey, needsDaySeparator, startsTurn, unsentAlerts, latestAssistantId,
+  ALERT_TABLE, ALERT_FIELD, ALERT_WINDOW_DAYS, REMINDER_TABLE, REMINDER_FIELD,
+  alertWindowCutoff, chatDayKey, needsDaySeparator, startsTurn, unsentAlerts, latestAssistantId,
   type AgentAlert, type AgentMessage,
 } from './agent'
 
@@ -82,6 +82,39 @@ describe('unsentAlerts', () => {
       alert({ id: 'z', sent: null as unknown as boolean }),
     ]
     expect(unsentAlerts(rows).map(a => a.id)).toEqual(['x', 'z'])
+  })
+})
+
+describe('alertWindowCutoff', () => {
+  // The first tournament render opened on two 60+day-old unsent pipeline_stall
+  // alerts, at the top, styled exactly like today's. Nothing had acked them
+  // because nobody was ever going to act on them. Stale unsent ≠ actionable
+  // today, so the fetch windows to 14 days and the rest collapse to a count.
+  it('is a fixed 14-day window measured back from now', () => {
+    expect(ALERT_WINDOW_DAYS).toBe(14)
+    const now = Date.parse('2026-07-31T12:00:00.000Z')
+    expect(alertWindowCutoff(now)).toBe('2026-07-17T12:00:00.000Z')
+  })
+
+  it('puts a 60-day-old alert outside the window and a 2-day-old one inside', () => {
+    const now = Date.parse('2026-07-31T12:00:00.000Z')
+    const cutoff = alertWindowCutoff(now)
+    const stale = alert({ created_at: '2026-05-30T09:00:00.000Z' })
+    const fresh = alert({ created_at: '2026-07-29T09:00:00.000Z' })
+    expect(stale.created_at < cutoff).toBe(true)
+    expect(fresh.created_at >= cutoff).toBe(true)
+  })
+
+  it('emits a Z instant, never a +00:00 offset', () => {
+    // A literal '+' in a PostgREST timestamp filter is decoded as a space and
+    // the comparison silently stops matching.
+    expect(alertWindowCutoff(Date.now())).toMatch(/Z$/)
+    expect(alertWindowCutoff(Date.now())).not.toContain('+')
+  })
+
+  it('accepts a Date as readily as an epoch', () => {
+    const d = new Date('2026-07-31T12:00:00.000Z')
+    expect(alertWindowCutoff(d)).toBe(alertWindowCutoff(d.getTime()))
   })
 })
 

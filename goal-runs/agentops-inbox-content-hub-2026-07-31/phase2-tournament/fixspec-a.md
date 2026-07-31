@@ -1,0 +1,8 @@
+# Finalist A fix spec (ONE pass, scope: src/exp/cand-a/ only)
+Read judge-verdicts.md first. Verify with `npx tsc --noEmit -p tsconfig.app.json`. Commit nothing.
+1. Tab badge truthfulness: Content tab in cand-a/TabBar.tsx gets its own count badge = Ivan-lane needs-review count (mirror shared TabBar's `cnt` badge markup). Add a lean useContent('ivan') mount in Shell if needed (safe per useId namespacing, cite 754d32d). Don't change Drafts badge semantics.
+2. Ops/Agent double-header: move [Cards|Agent] segmented control BELOW the large title (match ContentScreen's Queue|Styles anatomy). If OpsScreen renders its own internal title, render own "Ops" title + control, hide OpsScreen's internal `.nav h2` via tightly-scoped additive CSS on a wrapper class. Verify no double title in either segment.
+3. D10 on AgentScreen: consume `error` from useAgent(); distinct broken-state banner (quiet card, red tier) — never the empty-state copy when error set.
+4. Bucket tile strip graft: top of Queue segment, 2x2 stat tiles (Needs review / Errors / Stuck / Approved-unscheduled) from already-fetched buckets; tap scrolls to bucket section (ids + scrollIntoView). Severity color only when count>0; zero = neutral --text3. Match app stat-tile look.
+5. Styles register drift: cleanStyleTitle everywhere in resources rows + styles headers (no raw "Style: " prefix); unify empty-thumb treatment (always the same "No image" tile, never bare gray square); keep two labeled family sections.
+6. #content hash: Shell applyHash accepts '#content' (and nav writes it) so reload returns to Content; incoming '#settings' opens the settings push (comment why — dead-link salvage).
