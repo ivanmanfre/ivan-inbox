@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ballot — Content hub IA (ivan-inbox)</title>
+<style>
+  :root { --bg:#000; --surface:#1c1c1e; --surface2:#2c2c2e; --text:#fff; --text2:#9a9aa0; --green:#10A37F; --amber:#FF9F0A; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--bg); color:var(--text); font:16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding:28px 20px 80px; max-width:1200px; margin:0 auto; }
+  h1 { font-size:34px; font-weight:800; margin-bottom:6px; }
+  .sub { color:var(--text2); margin-bottom:28px; }
+  .live { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:34px; }
+  .live a { flex:1; min-width:260px; background:var(--surface); border:1px solid var(--surface2); border-radius:16px; padding:18px; text-decoration:none; color:var(--text); }
+  .live a strong { display:block; font-size:19px; margin-bottom:4px; }
+  .live a span { color:var(--text2); font-size:14px; }
+  .live a em { color:var(--green); font-style:normal; font-size:13px; display:block; margin-top:8px; word-break:break-all; }
+  .cols { display:grid; grid-template-columns:1fr 1fr; gap:26px; }
+  @media (max-width:820px){ .cols { grid-template-columns:1fr; } }
+  .cand { background:var(--surface); border-radius:20px; padding:22px; }
+  .cand h2 { font-size:22px; margin-bottom:2px; }
+  .cand .tag { color:var(--text2); font-size:14px; margin-bottom:14px; }
+  .shots { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+  .shots img { width:100%; border-radius:12px; border:1px solid var(--surface2); }
+  .shots figcaption { font-size:12px; color:var(--text2); margin-top:4px; }
+  ul { padding-left:18px; color:var(--text2); font-size:14px; }
+  ul li { margin-bottom:5px; }
+  ul li b { color:var(--text); font-weight:600; }
+  .scores { width:100%; border-collapse:collapse; margin:30px 0 10px; font-size:14px; }
+  .scores th, .scores td { text-align:left; padding:8px 12px; border-bottom:.5px solid var(--surface2); }
+  .scores th { color:var(--text2); font-weight:600; }
+  .win { color:var(--green); font-weight:700; }
+  .apply { background:var(--surface); border-radius:14px; padding:16px 18px; margin-top:10px; font-size:14px; }
+  .apply code { background:var(--surface2); border-radius:6px; padding:2px 6px; font-size:13px; }
+  .note { color:var(--text2); font-size:13px; margin-top:26px; }
+  h3 { font-size:15px; text-transform:uppercase; letter-spacing:.06em; color:var(--text2); margin:34px 0 10px; }
+</style>
+</head>
+<body>
+<h1>Pick the home for Content · Styles · AgentOps</h1>
+<p class="sub">Both finalists are <b>live on your phone right now</b>, wired to real data, invisible to the normal app. Open both links, poke for a minute each, pick one. (Judge panel split: A won daily ergonomics + craft, B won coverage + scalability.)</p>
+
+<div class="live">
+  <a href="https://ivanmanfre.github.io/ivan-inbox/#exp/a"><strong>A — Content tab</strong><span>Content becomes a first-class tab (Queue | Styles). Agent rides inside Ops. Settings moves to a gear inside Content.</span><em>ivanmanfre.github.io/ivan-inbox/#exp/a</em></a>
+  <a href="https://ivanmanfre.github.io/ivan-inbox/#exp/b"><strong>B — Studio hub</strong><span>One "Studio" tab: alerts, chat, content tiles, styles, resources in a single scrolling hub with drill-ins. Settings is the hub's last row.</span><em>ivanmanfre.github.io/ivan-inbox/#exp/b</em></a>
+</div>
+<p class="sub" style="font-size:13px">To leave a candidate on your phone: open <b>…/#exp/off</b> (or just relaunch the app normally later — nothing sticks across a fresh open without the flag).</p>
+
+<div class="cols">
+  <div class="cand">
+    <h2>A — Content tab</h2>
+    <div class="tag">1 tap to your review queue · judges: ergonomics 8, craft 8, coverage 7</div>
+    <div class="shots">
+      <figure><img src="phase2-tournament/live/live-a-queue.png" alt=""><figcaption>Queue — buckets, approve/skip</figcaption></figure>
+      <figure><img src="phase2-tournament/live/live-a-styles.png" alt=""><figcaption>Styles — both families, real previews</figcaption></figure>
+      <figure><img src="phase2-tournament/live/live-a-styles-mid.png" alt=""><figcaption>Resources — published LMs</figcaption></figure>
+      <figure><img src="phase2-tournament/live/live-a-agent.png" alt=""><figcaption>Agent inside Ops</figcaption></figure>
+    </div>
+    <ul>
+      <li><b>Strongest at:</b> the daily loop — review queue is one tap, cleanest native register of the field.</li>
+      <li><b>Cost:</b> Settings leaves the tab bar (gear inside Content's header); tab bar is full again — the next new surface forces another demotion.</li>
+      <li><b>Judges' worry:</b> "Content" is clean, but Agent-inside-Ops slightly muddies what Ops means.</li>
+    </ul>
+    <div class="apply">Apply: in <code>src/App.tsx</code> replace the exp gate + <code>return &lt;Shell /&gt;</code> with <code>return &lt;CandAShell /&gt;</code> (import from <code>./exp/cand-a/Shell</code>). Follow-up tidy: fold cand-a into screens/, extend <code>route.ts</code> Tab enum.</div>
+  </div>
+
+  <div class="cand">
+    <h2>B — Studio hub</h2>
+    <div class="tag">everything in one glance-hub · judges: ergonomics 5, craft 6, coverage 8</div>
+    <div class="shots">
+      <figure><img src="phase2-tournament/live/live-b-hub.png" alt=""><figcaption>Hub top — alerts, chat, reminders</figcaption></figure>
+      <figure><img src="phase2-tournament/live/live-b-hub-mid.png" alt=""><figcaption>Hub — content tiles + review cards</figcaption></figure>
+      <figure><img src="phase2-tournament/live/live-b-hub-bottom.png" alt=""><figcaption>Hub — styles gallery + resources</figcaption></figure>
+      <figure><img src="phase2-tournament/crops/b-5-chat.png" alt=""><figcaption>Chat (pushed full-screen)</figcaption></figure>
+    </div>
+    <ul>
+      <li><b>Strongest at:</b> coverage + future growth — every capability has a home, next surfaces land as hub sections; Ops stays untouched/pure.</li>
+      <li><b>Cost:</b> everything is scroll-priced; full queue and styles are drill-ins, settings at hub bottom. No tab badge for waiting counts.</li>
+      <li><b>Judges' worry:</b> junk-drawer gravity — Studio absorbs everything by default.</li>
+    </ul>
+    <div class="apply">Apply: in <code>src/App.tsx</code> replace the exp gate + <code>return &lt;Shell /&gt;</code> with <code>return &lt;CandBShell /&gt;</code> (import from <code>./exp/cand-b/Shell</code>). Same follow-up tidy.</div>
+  </div>
+</div>
+
+<h3>Judge panel (3 Fable seats, calibrated on your real Today/Ops screens)</h3>
+<table class="scores">
+  <tr><th>Lens</th><th>A — Content tab</th><th>B — Studio hub</th><th>C — absorb into existing tabs</th></tr>
+  <tr><td>Daily-driver ergonomics</td><td class="win">8</td><td>5</td><td>7</td></tr>
+  <tr><td>Native-ness + craft</td><td class="win">8</td><td>6</td><td>4</td></tr>
+  <tr><td>Coverage + IA scalability</td><td>7</td><td class="win">8</td><td>6</td></tr>
+  <tr><td><b>Total</b></td><td class="win">23</td><td>19</td><td>17</td></tr>
+</table>
+<p class="note">C ("no new tab — Drafts/Ops absorb everything") was eliminated: last on two lenses, systemic layout defects, and "wins the port but forfeits the roadmap." Its two best ideas were grafted into A (truthful tab badge, bucket tiles).<br><br>
+Nothing publishes from either candidate: Ivan-lane approve is a status write (scheduling stays on the board), Rise lane is read-only, LMs are read-only, chat send is RPC-only with no webhook fallback. The winner's apply step is yours to trigger — the run arms nothing.</p>
+</body>
+</html>
