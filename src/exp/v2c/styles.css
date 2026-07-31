@@ -1,0 +1,415 @@
+/* Candidate v2c — WORKBENCH. Additive only.
+   Everything the app already has is reused as-is from the shared stylesheet
+   (.app/.app.dt, .nav, .rows, .r, .chips/.chip, .seg/.sg, .btn, .back, .t-nav,
+   .msgs, .composer/.cfield/.csend, .tabbar/.tb, .sk family, .sheet-scrim/.sheet/
+   .sheet-card/.sheet-btn, .group/.grouphdr/.grow, .ops-* , .td-* , .ov-*) and is
+   never redefined here, so this file cannot drift from the app's register.
+
+   Radii: the audit counted six card radii and three pill radii in active use.
+   This candidate uses exactly three card tokens and two pill values, declared
+   once, and nothing else. */
+.wb{
+  --r-sm:14px;   /* dense rows, inputs, inline cards */
+  --r-md:16px;   /* the default card */
+  --r-lg:20px;   /* a card that owns its own region */
+  --r-chip:7px;  /* every small label — the 6-vs-7px drift ends here */
+}
+
+/* ============================ frame ============================ */
+
+.wb-regions{flex:1;display:flex;min-width:0;min-height:0;overflow:hidden}
+.wb-work{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden}
+.wb-work.list{flex:none;width:400px;border-right:.5px solid var(--sep)}
+.wb-work.wide{flex:1}
+.wb-peer{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;
+  overflow:hidden;border-left:.5px solid var(--sep);background:var(--bg)}
+/* The focused peer is the one keyboard/hash state points at. A hairline, not a
+   glow — two panes both shouting is worse than neither. */
+.wb-peer.on{box-shadow:inset 1px 0 0 rgba(16,163,127,.5)}
+.wb.dt .wb-peer .rows,.wb.dt .wb-peer .msgs{max-width:760px;width:100%;margin:0 auto}
+
+/* A list job with NO peer open takes the whole canvas — which is the fix for the
+   ghost pane, but a 1,240px-wide message row is its own defect. The width becomes
+   MARGIN at a real measure, the same move Ops' own desktop rule already makes
+   (styles.css:653). */
+.wb.dt .wb-solo .nav,
+.wb.dt .wb-solo .draftbanner,
+.wb.dt .wb-solo .stalebar,
+.wb.dt .wb-solo .seg,
+.wb.dt .wb-solo .swipehint,
+.wb.dt .wb-solo .rows > *{max-width:860px;margin-left:auto;margin-right:auto}
+.wb.dt .wb-work.wide .group,
+.wb.dt .wb-work.wide .grouphdr{max-width:620px;margin-left:auto;margin-right:auto}
+
+/* A working surface sharing the canvas with a peer is ~400-720px wide while the
+   VIEWPORT is still ≥1000px, so the app's own viewport-keyed desktop grids would
+   keep trying to run two columns. Collapse them. */
+.wb-narrow .td-zones{grid-template-columns:minmax(0,1fr) !important}
+.wb-narrow #td-z1,.wb-narrow #td-z2,.wb-narrow #td-z3,.wb-narrow #td-z4{grid-column:1 !important}
+.wb-narrow .ov-duo{grid-template-columns:minmax(0,1fr) !important}
+.wb-narrow .ov-seats{grid-template-columns:minmax(0,1fr)}
+.wb-narrow .ov-tile-big{font-size:30px}
+.wb-narrow .ov-hero{gap:10px}
+
+/* ============================ rail ============================ */
+
+.wb-rail{flex:none;width:200px;display:flex;flex-direction:column;padding:16px 10px 12px;
+  border-right:.5px solid var(--sep);background:rgba(22,22,24,.92);overflow:hidden}
+:root[data-theme='light'] .wb-rail{background:rgba(249,249,249,.94)}
+.wb-rail-top{display:flex;align-items:center;gap:9px;padding:2px 8px 16px}
+.wb-rail-ttl{font-size:15px;font-weight:800;letter-spacing:-.01em}
+.wb-rail-jobs{display:flex;flex-direction:column;gap:2px}
+.wb-rj{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:var(--r-sm);
+  color:var(--text2);cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transition:background-color .14s ease,color .14s ease}
+.wb-rj:hover{background:var(--surface)}
+.wb-rj.on{background:var(--surface2);color:var(--text)}
+.wb-rj-ic{flex:none;width:20px;text-align:center;font-size:17px;line-height:1}
+.wb-rj.on .wb-rj-ic{color:var(--accent)}
+.wb-rj-l{flex:1;min-width:0;font-size:14.5px;font-weight:600;letter-spacing:-.01em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wb-rj-n{flex:none;font-size:11.5px;font-weight:800;color:var(--text2);
+  background:var(--surface3);border-radius:99px;padding:1px 7px;min-width:22px;text-align:center}
+.wb-rj.on .wb-rj-n{color:var(--text)}
+.wb-rj-n.attention{background:rgba(255,159,10,.18);color:#FF9F0A}
+.wb-rj-n.urgent{background:rgba(255,69,58,.18);color:#FF453A}
+.wb-rail-sep{height:1px;background:var(--sep);opacity:.7;margin:14px 10px 12px}
+/* Claude is not a job: picking a job changes the working column, picking Claude
+   docks a PEER beside it. Different shape, on purpose. */
+.wb-rj-peer{border:1px solid var(--surface3)}
+.wb-rj-peer.on{border-color:rgba(16,163,127,.55);background:var(--accent-soft);color:var(--text)}
+.wb-rj-peer.on .wb-rj-ic{color:var(--accent)}
+.wb-peer-dot{flex:none;width:8px;height:8px;border-radius:99px;background:var(--surface3)}
+.wb-peer-dot.on{background:var(--accent)}
+.wb-peer-dot.live{background:#FFD60A}
+.wb-rail-hint{padding:6px 12px 0;font-size:11px;color:var(--text3);line-height:1.35}
+.wb-rail-foot{margin-top:auto;padding-top:14px}
+.wb-rail-sync{display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px 10px;
+  border-radius:var(--r-sm);font-size:11.5px;font-weight:600;color:var(--text3);cursor:pointer}
+.wb-rail-sync:hover{background:var(--surface)}
+.wb-sync-dot{flex:none;width:7px;height:7px;border-radius:99px;background:var(--accent)}
+.wb-sync-dot.stale{background:#FF453A}
+.wb-sync-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wb-sync-r{flex:none;font-size:13px;color:var(--text2)}
+.wb-tb-live{position:absolute;top:-2px;right:-8px;width:7px;height:7px;border-radius:99px;background:#FFD60A}
+
+/* ============================ mobile ribbon ============================ */
+/* One quiet 34px line carrying the two things every screen needed and none had:
+   how fresh the data is (Today was the only screen with a sync age) and a way to
+   reach Settings now that it has left the tab bar. */
+.wb-ribbon{flex:none;display:flex;align-items:center;gap:10px;padding:8px 16px 4px;min-height:34px}
+.wb-rib-j{flex:1;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text3)}
+.wb-workseg{flex:1;display:flex;gap:6px;min-width:0}
+.wb-ws{display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;padding:4px 10px;
+  border-radius:99px;background:var(--surface);color:var(--text2);cursor:pointer;white-space:nowrap}
+.wb-ws.on{background:var(--surface3);color:var(--text)}
+.wb-ws b{font-size:11px;font-weight:800;color:var(--accent)}
+.wb-rib-sync{flex:none;display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;
+  color:var(--text3);cursor:pointer;white-space:nowrap}
+.wb-rib-sync.bad{color:#FF453A}
+.wb-gear{flex:none;font-size:14px;font-weight:600;color:var(--text2);padding:2px 4px;cursor:pointer}
+.wb .wb-work{flex:1;min-height:0}
+.wb-take{display:flex;flex-direction:column}
+
+/* ============================ pane chrome ============================ */
+
+.wb-pane-h{flex:none;display:flex;align-items:center;gap:10px;padding:13px 16px;
+  border-bottom:.5px solid var(--sep);background:rgba(18,18,20,.9)}
+:root[data-theme='light'] .wb-pane-h{background:rgba(255,255,255,.9)}
+.wb-pane-h.slim{padding:8px 14px}
+.wb-pane-ic{flex:none;width:28px;height:28px;border-radius:99px;background:var(--surface2);
+  display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--text2)}
+.wb-pane-ic.asst{background:var(--accent);color:#fff}
+.wb-pane-ttl{flex:1;min-width:0}
+.wb-pane-n{font-size:15px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.wb-pane-s{font-size:11.5px;color:var(--text3);margin-top:1px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.wb-pane-x{flex:none;font-size:14px;color:var(--text3);padding:2px 4px;cursor:pointer}
+.wb-pane-x:hover{color:var(--text)}
+.wb-ask{flex:none;background:var(--accent-soft);color:var(--accent);border:1px solid rgba(16,163,127,.35);
+  font-family:inherit;font-size:12.5px;font-weight:700;padding:6px 11px;border-radius:99px;cursor:pointer}
+.wb-ask:active{transform:scale(.97)}
+.wb-mockchip{flex:none;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  padding:2px 6px;border-radius:var(--r-chip);background:rgba(255,159,10,.15);color:#FF9F0A}
+.wb .back{display:block}
+
+/* ============================ three states ============================ */
+
+.wb-failed{margin:14px 16px 0;background:rgba(255,69,58,.1);border:1px solid rgba(255,69,58,.32);
+  border-radius:var(--r-md);padding:13px 15px}
+.wb-failed-h{display:flex;align-items:center;gap:9px}
+.wb-failed-dot{flex:none;width:9px;height:9px;border-radius:99px;background:#FF453A}
+.wb-failed-t{flex:1;font-size:14.5px;font-weight:700;color:#FF453A;letter-spacing:-.01em}
+.wb-failed-m{font-size:13px;color:var(--text2);margin-top:7px;line-height:1.4;overflow-wrap:anywhere}
+.wb-failed-f{font-size:11.5px;color:var(--text3);margin-top:8px;line-height:1.4}
+.wb-retry{flex:none;background:#FF453A;color:#fff;border:none;font-family:inherit;font-size:12.5px;
+  font-weight:700;padding:6px 12px;border-radius:99px;cursor:pointer}
+.wb-retry.ghost{background:var(--surface3);color:var(--text)}
+.wb-retry:active{transform:scale(.97)}
+
+.wb-empty{padding:44px 22px 20px;text-align:center}
+.wb-empty-l{font-size:15.5px;font-weight:600;color:var(--text2)}
+.wb-empty-s{font-size:13px;color:var(--text3);margin-top:7px;line-height:1.4}
+.wb-empty-f{display:inline-flex;align-items:center;gap:7px;margin-top:16px;padding:5px 11px;
+  border-radius:99px;background:var(--surface);font-size:11.5px;font-weight:600;color:var(--text3)}
+.wb-ok-dot{width:6px;height:6px;border-radius:99px;background:var(--accent)}
+
+/* One section-header primitive with optional slots, modelled on Today's .td-zh —
+   the strongest of the four unrelated patterns the audit counted. */
+.wb-sech{display:flex;align-items:center;gap:10px;padding:20px 16px 8px}
+.wb-sech.tap{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.wb-sech-n{flex:none;font-size:11px;font-weight:800;letter-spacing:.14em;color:var(--text3)}
+.wb-sech-t{flex:none;font-size:12.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.wb-sech-rule{flex:1;height:1px;background:var(--sep);opacity:.6;min-width:12px}
+.wb-sech-c{flex:none;font-size:11.5px;font-weight:700;color:var(--text2)}
+.wb-sech-dot{flex:none;width:8px;height:8px;border-radius:99px;background:var(--surface3)}
+.wb-sech-dot.clear{background:var(--accent)}
+.wb-sech-dot.attention{background:#FF9F0A}
+.wb-sech-dot.urgent{background:#FF453A}
+.wb-sech-chev{flex:none;font-size:13px;color:var(--text3)}
+
+.wb-stack{display:flex;height:9px;border-radius:99px;overflow:hidden;background:var(--surface3);gap:1px}
+.wb-stack-zero{background:var(--surface3)}
+.wb-stack-seg{display:block;min-width:2px}
+
+/* ============================ content pipeline ============================ */
+/* .ct-* / .dd-* / .res-* grafted from cand-a (raw material per the build
+   contract) so this candidate is self-contained — remapped onto the three radius
+   tokens above rather than carrying 13/15/18px along with them. */
+
+.ct-rows{padding-bottom:20px}
+.ct-card{margin:12px 16px 0;background:var(--surface);border-radius:var(--r-md);padding:14px}
+.ct-card.wb-card-on{box-shadow:inset 0 0 0 1px rgba(16,163,127,.55)}
+.ct-top{display:flex;gap:12px}
+.ct-thumb{width:56px;height:56px;border-radius:var(--r-sm);object-fit:cover;flex:none;background:var(--surface2)}
+.ct-thumb-empty{display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--text3);text-align:center;line-height:1.2}
+.ct-mid{flex:1;min-width:0}
+.ct-title{font-size:15.5px;font-weight:700;letter-spacing:-.01em}
+.ct-topic{font-size:13px;color:var(--text2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ct-meta{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.ct-chip{font-size:10px;font-weight:800;letter-spacing:.05em;padding:3px 8px;border-radius:var(--r-chip);
+  background:var(--surface2);color:var(--text2);text-transform:uppercase}
+.ct-chip-ok{background:var(--accent-soft);color:var(--accent)}
+.ct-chip-warn{background:rgba(255,159,10,.16);color:#FF9F0A}
+.ct-chip-bad{background:rgba(255,69,58,.16);color:#FF453A}
+.ct-tm{font-size:12px;color:var(--text3);font-weight:600}
+.ct-lane{font-size:10px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:var(--r-chip);
+  background:var(--accent-soft);color:var(--accent);text-transform:uppercase}
+.ct-ac{display:flex;gap:10px;margin-top:12px}
+.ct-ac .btn{cursor:pointer}
+.ct-ac-wide{margin:14px 16px 0}
+.ct-tap{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.ct-tap:active{transform:scale(.99)}
+.ct-subline{margin:8px 16px 0;font-size:12px;font-weight:600;color:#FF9F0A}
+.wb-lanenote{font-size:11.5px;font-weight:600;color:var(--text3);align-self:center;margin-left:2px}
+/* The alert strip is the only red surface in the queue and renders only when
+   something is actually wrong. */
+.ct-alert{display:flex;align-items:center;gap:10px;margin:12px 16px 0;padding:11px 13px;
+  border-radius:var(--r-md);background:rgba(255,69,58,.1);border:1px solid rgba(255,69,58,.3);
+  cursor:pointer;-webkit-tap-highlight-color:transparent}
+.ct-alert-n{font-size:17px;font-weight:800;color:#FF453A;line-height:1}
+.ct-alert-t{flex:1;font-size:13px;font-weight:600;color:#FF453A;line-height:1.3}
+.ct-alert .chev{font-size:14px;color:#FF453A}
+
+/* The pipeline, drawn once. This is the section's visual encoding — everything
+   below it is a list, and a section that is only text fails the build. */
+.wb-pipe{margin:12px 16px 0;background:var(--surface);border-radius:var(--r-md);padding:14px 16px}
+.wb-pipe-k{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:11px}
+.wb-pipe-i{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text3);
+  font-weight:600;cursor:pointer;white-space:nowrap}
+.wb-pipe-i b{font-size:12.5px;font-weight:800;color:var(--text)}
+.wb-pipe-i:hover{color:var(--text2)}
+.wb-pipe-d{width:7px;height:7px;border-radius:2px;flex:none}
+.wb-pipe-n{display:flex;align-items:flex-end;gap:10px;margin-top:14px;flex-wrap:wrap}
+.wb-pipe-big{font-size:32px;font-weight:800;letter-spacing:-.03em;line-height:.9}
+.wb-pipe-lbl{font-size:11.5px;font-weight:600;color:var(--text3);line-height:1.3}
+.wb-pipe-warn{margin-left:auto;font-size:11px;font-weight:700;color:#FF9F0A;
+  background:rgba(255,159,10,.14);padding:3px 8px;border-radius:var(--r-chip)}
+
+/* draft pane */
+.dd-head{padding:16px 16px 0}
+.dd-title{font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1.2}
+.dd-card{margin:8px 16px 0;background:var(--surface);border-radius:var(--r-md);padding:2px 14px}
+.dd-row{display:flex;gap:12px;align-items:baseline;padding:10px 0;border-bottom:.5px solid var(--sep)}
+.dd-row:last-child{border-bottom:none}
+.dd-k{flex:none;width:108px;font-size:12px;font-weight:600;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.03em}
+.dd-v{flex:1;min-width:0;font-size:14px;line-height:1.35;overflow-wrap:anywhere}
+.dd-abs{color:var(--text3);font-size:12px;margin-left:6px}
+.dd-body{font-size:14.5px;line-height:1.5;color:var(--text)}
+.dd-pre{white-space:pre-wrap;overflow-wrap:anywhere;padding:12px 0}
+/* -webkit-box does not break long tokens the way a block does, so a clamped
+   agent-log line reported horizontal overflow. */
+.dd-clamp{display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;word-break:break-word}
+.dd-more{font-size:12.5px;font-weight:700;color:var(--accent);margin-top:6px;cursor:pointer}
+.dd-log{padding:12px 0;border-bottom:.5px solid var(--sep)}
+.dd-log:last-child{border-bottom:none}
+.dd-log-ts{font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:5px;letter-spacing:.02em}
+.dd-imgs{display:flex;gap:10px;overflow-x:auto;padding:8px 16px 2px;scrollbar-width:none}
+.dd-imgs::-webkit-scrollbar{display:none}
+.dd-img{flex:none;width:190px;border-radius:var(--r-sm);background:var(--surface2)}
+.dd-point{font-size:14px;line-height:1.4;padding:10px 0;border-bottom:.5px solid var(--sep)}
+.dd-point:last-child{border-bottom:none}
+.dd-link{display:block;margin:8px 16px 0;color:var(--accent);font-size:14.5px;font-weight:600;text-decoration:none}
+.dd-actions{margin-top:18px}
+.res-hdr{padding:20px 22px 4px;font-size:12.5px;font-weight:600;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.03em}
+/* QA rides at the top of a draft pane, with the score drawn as well as printed. */
+.wb-qa{display:flex;align-items:center;gap:14px;margin:14px 16px 0;padding:14px 16px;
+  background:var(--surface);border-radius:var(--r-md)}
+.wb-qa-n{flex:none;font-size:34px;font-weight:800;letter-spacing:-.03em;line-height:1}
+.wb-qa-r{flex:1;min-width:0}
+.wb-qa-g{height:8px;border-radius:99px;background:var(--surface3);overflow:hidden;margin-top:9px}
+.wb-qa-fill{display:block;height:100%;border-radius:99px}
+
+/* ============================ chat pane ============================ */
+
+.wb-about-card{flex:none;display:flex;align-items:center;gap:9px;margin:10px 14px 0;padding:9px 12px;
+  background:var(--surface);border-radius:var(--r-sm);border:1px solid var(--surface3)}
+.wb-about-card.tap{cursor:pointer}
+.wb-about-card.tap:active{transform:scale(.99)}
+.wb-about-l{flex:none;font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--text3)}
+.wb-about-n{flex:1;min-width:0;font-size:13.5px;font-weight:700;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.wb-about-go{flex:none;color:var(--accent);font-size:17px}
+
+.wb-msgs{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 16px 6px}
+.wb-turn{margin-bottom:16px}
+.wb-turn.user{display:flex;flex-direction:column;align-items:flex-end}
+.wb-bubble{max-width:88%;padding:10px 14px;font-size:15px;line-height:1.42;border-radius:var(--r-lg);
+  white-space:pre-wrap;word-break:break-word}
+.wb-bubble.out{background:var(--accent);color:#fff;border-bottom-right-radius:6px}
+.wb-about{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--text3);margin-bottom:5px}
+.wb-body{font-size:15px;line-height:1.5}
+.wb-p{margin:0 0 10px}
+.wb-p:last-child{margin-bottom:0}
+.wb-mh{font-size:15px;font-weight:800;letter-spacing:-.01em;margin:14px 0 7px}
+.wb-mh.h1{font-size:17px}
+.wb-ul{list-style:none;margin:0 0 10px;padding:0}
+.wb-ul li{display:flex;gap:9px;padding:3px 0;font-size:14.5px;line-height:1.45}
+.wb-li-m{flex:none;color:var(--text3);font-weight:700;min-width:14px}
+/* Inline code and code blocks in the SYSTEM stack with tabular numerals. The
+   phase 1 spec proposed a scoped monospace exception; the contract locks "no
+   monospace anywhere" and the contract wins. */
+.wb-ic{background:var(--surface2);border-radius:5px;padding:1px 5px;font-family:inherit;
+  font-size:.93em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.wb-code{position:relative;background:var(--surface);border:1px solid var(--surface3);
+  border-radius:var(--r-sm);padding:12px 13px;margin:0 0 11px;overflow-x:auto;
+  font-family:inherit;font-size:13.5px;line-height:1.5;font-variant-numeric:tabular-nums;
+  white-space:pre;-webkit-overflow-scrolling:touch}
+.wb-code.open{border-color:rgba(16,163,127,.4)}
+.wb-code-l{position:absolute;top:0;right:0;font-size:9px;font-weight:800;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--text3);background:var(--surface2);
+  border-radius:0 var(--r-sm) 0 6px;padding:2px 7px}
+.wb-stopped{font-size:12.5px;font-weight:600;color:var(--text3);margin-top:8px}
+.wb-turn-err{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;
+  background:rgba(255,69,58,.1);border:1px solid rgba(255,69,58,.3);border-radius:var(--r-sm)}
+.wb-turn-err-t{flex:1;font-size:12.5px;font-weight:600;color:#FF453A;line-height:1.35}
+
+.wb-tools{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.wb-tool{background:var(--surface);border-radius:var(--r-sm);overflow:hidden}
+.wb-tool-r{display:flex;align-items:center;gap:9px;padding:8px 11px;cursor:pointer}
+.wb-tool-r:hover{background:var(--surface2)}
+.wb-tool-ic{flex:none;width:18px;text-align:center;color:var(--accent);font-size:13px}
+.wb-tool-n{flex:none;font-size:12px;font-weight:800;letter-spacing:.02em}
+.wb-tool-x{margin-left:4px;font-size:10.5px;font-weight:700;color:var(--text3)}
+.wb-tool-p{flex:1;min-width:0;font-size:12px;color:var(--text3);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.wb-tool-c{flex:none;font-size:12px;color:var(--text3)}
+.wb-tool-in{background:var(--surface2);margin:0;padding:10px 12px;font-family:inherit;
+  font-size:12.5px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;
+  font-variant-numeric:tabular-nums;color:var(--text2)}
+
+.wb-thinking{display:flex;align-items:center;gap:6px;padding:4px 0}
+.wb-th-dot{width:6px;height:6px;border-radius:99px;background:var(--text3);
+  animation:sk-sh 1.3s ease-in-out infinite}
+.wb-th-dot:nth-child(2){animation-delay:.16s}
+.wb-th-dot:nth-child(3){animation-delay:.32s}
+.wb-th-t{margin-left:6px;font-size:12.5px;font-weight:600;color:var(--text3)}
+.wb-cost{font-size:11px;font-weight:600;color:var(--text3);
+  font-variant-numeric:tabular-nums;padding-bottom:6px}
+
+.wb-chat-empty{padding:8px 2px}
+.wb-chat-empty-t{font-size:16px;font-weight:600;line-height:1.4;color:var(--text2)}
+.wb-chat-empty-t b{color:var(--text);font-weight:800}
+.wb-chat-empty-s{font-size:12.5px;color:var(--text3);margin-top:8px;line-height:1.45}
+.wb-starters{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+.wb-starter{text-align:left;background:var(--surface);border:1px solid var(--surface3);
+  border-radius:var(--r-sm);color:var(--text);font-family:inherit;font-size:13.5px;font-weight:600;
+  line-height:1.35;padding:11px 13px;cursor:pointer}
+.wb-starter:hover{background:var(--surface2)}
+.wb-starter:active{transform:scale(.99)}
+
+.wb-composer{flex:none;display:flex;gap:9px;align-items:center;padding:8px 14px 14px}
+.wb-composer .cfield{flex:1;min-width:0}
+.wb-stop{background:#FF453A;color:#fff}
+
+/* ============================ voice ============================ */
+
+.wb-mic{flex:none;position:relative;display:flex;align-items:center;justify-content:center;gap:5px;
+  width:38px;height:38px;border-radius:99px;background:var(--surface2);color:var(--text2);
+  border:none;font-family:inherit;font-size:15px;cursor:pointer;user-select:none;
+  -webkit-user-select:none;-webkit-tap-highlight-color:transparent;
+  transition:background-color .15s ease,box-shadow .1s linear,width .18s ease}
+.wb-mic.live{width:84px;background:var(--accent-soft);color:var(--accent)}
+.wb-mic.busy{color:var(--accent)}
+.wb-mic.err{background:rgba(255,69,58,.16);color:#FF453A;font-weight:800}
+.wb-mic:active{transform:scale(.96)}
+.wb-meter{display:inline-flex;align-items:flex-end;gap:1.5px;height:18px}
+.wb-meter-b{width:2.5px;border-radius:2px;background:var(--surface3);transition:background-color .08s linear}
+.wb-meter-b.lit{background:var(--accent)}
+.wb-vstrip{flex:none;display:flex;align-items:center;gap:9px;margin:0 14px;padding:8px 11px;
+  border-radius:var(--r-sm);background:var(--surface);font-size:12.5px}
+.wb-vstrip.attention{background:rgba(255,159,10,.12);border:1px solid rgba(255,159,10,.32)}
+.wb-vstrip.urgent{background:rgba(255,69,58,.1);border:1px solid rgba(255,69,58,.3)}
+.wb-vs-dot{flex:none;width:8px;height:8px;border-radius:99px;background:#FF453A}
+.wb-vstrip.attention .wb-vs-dot{background:#FF9F0A}
+.wb-vs-t{flex:1;min-width:0;font-weight:600;color:var(--text2);line-height:1.35}
+.wb-vstrip.urgent .wb-vs-t{color:#FF453A}
+.wb-vstrip.attention .wb-vs-t{color:#FF9F0A}
+.wb-hf{flex:none;background:var(--surface2);border:none;font-family:inherit;font-size:11.5px;
+  font-weight:700;color:var(--text2);padding:5px 10px;border-radius:99px;cursor:pointer}
+.wb-hf.on{background:var(--accent);color:#fff}
+.wb-hf-scrim{justify-content:center}
+.wb-hf-card{border-radius:var(--r-lg);padding:26px 20px 22px}
+.wb-hf-ttl{font-size:17px;font-weight:800;letter-spacing:-.01em}
+.wb-hf-sub{font-size:12.5px;color:var(--text2);margin-top:6px;line-height:1.4}
+.wb-hf-orb{display:flex;align-items:center;justify-content:center;width:92px;height:92px;
+  margin:26px auto 0;border-radius:99px;background:var(--surface3);color:var(--text2);border:none;
+  font-size:30px;cursor:pointer;user-select:none;-webkit-user-select:none;
+  transition:box-shadow .1s linear,background-color .18s ease}
+.wb-hf-orb.live{background:var(--accent-soft);color:var(--accent)}
+.wb-hf-orb:active{transform:scale(.97)}
+.wb-hf-state{font-size:13.5px;font-weight:700;margin-top:16px}
+.wb-hf-err{font-size:12.5px;color:#FF453A;margin-top:6px;line-height:1.4}
+.wb-hf-card .wb-meter{margin-top:12px;height:22px}
+
+/* Badge severity: the shared .cnt is red because it was built for "waiting on
+   you". An unread count reuses the shape without the alarm. */
+.wb .tb .cnt.neutral{background:var(--surface3);color:var(--text)}
+
+/* ---- stage ladder (thread peer) ---- */
+.wb-ladder{display:flex;align-items:center;gap:2px}
+.wb-lad-s{display:flex;align-items:center;gap:2px}
+.wb-lad-dot{width:7px;height:7px;border-radius:99px;background:var(--surface3)}
+.wb-lad-dot.on{background:var(--accent)}
+.wb-lad-dot.now{background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.wb-lad-dot.off{background:#FF9F0A}
+.wb-lad-bar{width:14px;height:2px;border-radius:2px;background:var(--surface3)}
+.wb-lad-bar.on{background:var(--accent)}
+.wb-lad-l{margin-left:8px;font-size:11.5px;font-weight:700;letter-spacing:.02em;color:var(--text2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wb-lad-l.unknown{color:var(--text3);font-weight:600}
+.wb-ladder.off .wb-lad-l{color:#FF9F0A}
+
+/* ---- inbox head: what the list holds, drawn ---- */
+.wb-ihead{margin:12px 16px 2px;padding:12px 14px;background:var(--surface);border-radius:var(--r-md)}
+.wb-ihead-k{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;margin-top:10px}
+.wb-ihead-i{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;
+  color:var(--text3);white-space:nowrap}
+.wb-ihead-i b{font-size:13px;font-weight:800;color:var(--text)}
+.wb-ihead-d{width:7px;height:7px;border-radius:2px;flex:none}
+.wb-ihead-f{display:flex;align-items:center;gap:6px;margin-left:auto;font-size:11px;
+  font-weight:600;color:var(--text3);white-space:nowrap}

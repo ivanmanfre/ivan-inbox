@@ -24,6 +24,9 @@ export function useContent(lane: ContentLane = 'ivan') {
   // Errors are surfaced, not swallowed to a calm empty list: an unreadable
   // board and an empty board must never render the same.
   const [error, setError] = useState<string | null>(null)
+  // When the last SUCCESSFUL read landed. An empty board with a fresh stamp is
+  // confirmed empty; an empty board with no stamp has never been read at all.
+  const [loadedAt, setLoadedAt] = useState<string | null>(null)
 
   // Every mount gets its own topic. supabase.channel() hands back the EXISTING
   // channel for a topic it already holds, so a second useContent() on screen
@@ -42,6 +45,7 @@ export function useContent(lane: ContentLane = 'ivan') {
         setMatched(page.count ?? probe.scoped)
         setLaneTotal(probe.total)
         setError(null)
+        setLoadedAt(new Date().toISOString())
         setLoading(false)
       })
       .catch((e: unknown) => {
@@ -61,7 +65,7 @@ export function useContent(lane: ContentLane = 'ivan') {
   }, [refresh, topic])
 
   // `buckets` stays first and unchanged in the shape — cand-b destructures it.
-  return { drafts, buckets, stages, matched, laneTotal, loading, error, refresh }
+  return { drafts, buckets, stages, matched, laneTotal, loading, error, loadedAt, refresh }
 }
 
 // One full row, fetched only when a card is opened. Deliberately NOT realtime-
