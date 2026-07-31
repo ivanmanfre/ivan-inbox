@@ -88,7 +88,9 @@
   border-radius:var(--r-sm);font-size:11.5px;font-weight:600;color:var(--text3);cursor:pointer}
 .wb-rail-sync:hover{background:var(--surface)}
 .wb-sync-dot{flex:none;width:7px;height:7px;border-radius:99px;background:var(--accent)}
-.wb-sync-dot.stale{background:#FF453A}
+/* NOT .stale — that is a shared class (styles.css:266, the 'you already
+   replied' card) and its padding/border/font-size leaked into this 7px dot. */
+.wb-sync-dot.bad{background:#FF453A}
 .wb-sync-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .wb-sync-r{flex:none;font-size:13px;color:var(--text2)}
 .wb-tb-live{position:absolute;top:-2px;right:-8px;width:7px;height:7px;border-radius:99px;background:#FFD60A}
@@ -355,7 +357,8 @@
   transition:background-color .15s ease,box-shadow .1s linear,width .18s ease}
 .wb-mic.live{width:84px;background:var(--accent-soft);color:var(--accent)}
 .wb-mic.busy{color:var(--accent)}
-.wb-mic.err{background:rgba(255,69,58,.16);color:#FF453A;font-weight:800}
+/* .err is also a shared bare class (login error text) — pin what it sets. */
+.wb-mic.err{background:rgba(255,69,58,.16);color:#FF453A;font-weight:800;font-size:15px}
 .wb-mic:active{transform:scale(.96)}
 .wb-meter{display:inline-flex;align-items:flex-end;gap:1.5px;height:18px}
 .wb-meter-b{width:2.5px;border-radius:2px;background:var(--surface3);transition:background-color .08s linear}
@@ -413,3 +416,14 @@
 .wb-ihead-d{width:7px;height:7px;border-radius:2px;flex:none}
 .wb-ihead-f{display:flex;align-items:center;gap:6px;margin-left:auto;font-size:11px;
   font-weight:600;color:var(--text3);white-space:nowrap}
+
+/* Chat transport state, as a mark rather than a sentence: ready / streaming /
+   the last turn failed. Also the pane's visual encoding when it is idle. */
+.wb-live{flex:none;width:8px;height:8px;border-radius:99px;background:var(--accent)}
+.wb-live.busy{background:#FFD60A}
+.wb-live.err{background:#FF453A}
+
+/* Rows kept on screen behind a failed refresh: dimmed, so "this is the last good
+   copy" is felt as well as stated. */
+.wb-stalewrap{flex:1;min-height:0;display:flex;flex-direction:column;opacity:.55}
+.wb-stalewrap .nav{display:none}

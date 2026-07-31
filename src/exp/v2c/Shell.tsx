@@ -218,6 +218,7 @@ export default function Shell() {
   }
 
   // ---- the working surface for the active job ----
+  const stale = inbox.threads.length > 0
   const inboxSurface = inboxError ? (
     <>
       <div className="nav"><div className="row-top"><h2>Inbox</h2><div className="avatar-me">IM</div></div></div>
@@ -225,8 +226,20 @@ export default function Shell() {
         what="The inbox"
         message={inboxError}
         onRetry={inbox.refresh}
-        loadedAt={inbox.threads.length > 0 ? inbox.loadedAt : null}
+        loadedAt={stale ? inbox.loadedAt : null}
       />
+      {/* Stale rows still beat a void, and the banner above is what makes them
+          honest — but the banner only CLAIMS stale data when there is some. */}
+      {stale && (
+        <div className="wb-stalewrap">
+          <InboxScreen
+            threads={inbox.threads} filter={filter} setFilter={setFilter}
+            refresh={inbox.refresh} onOpenThread={openThread}
+            onOpenDrafts={() => goJob('drafts')}
+            activeThread={ctx?.kind === 'thread' ? ctx.id : null} windowed
+          />
+        </div>
+      )}
     </>
   ) : (
     <InboxScreen
@@ -252,6 +265,7 @@ export default function Shell() {
         onRetry={ops.refresh}
         loadedAt={ops.drafts.length > 0 ? ops.loadedAt : null}
       />
+      {ops.drafts.length > 0 && <div className="wb-stalewrap"><OpsScreen /></div>}
     </>
   ) : opsPend.length === 0 && !ops.loading ? (
     <>
@@ -366,7 +380,7 @@ export default function Shell() {
             </div>
           ) : <span className="wb-rib-j">{job === 'settings' ? 'Settings' : ''}</span>}
           <span className={`wb-rib-sync${inboxError ? ' bad' : ''}`} onClick={inbox.refresh}>
-            <span className={`wb-sync-dot${inboxError ? ' stale' : ''}`} />
+            <span className={`wb-sync-dot${inboxError ? ' bad' : ''}`} />
             {inboxError ? 'not syncing' : relAge(inbox.loadedAt)}
           </span>
           {job === 'settings'
