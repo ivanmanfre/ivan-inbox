@@ -72,13 +72,52 @@ export async function fetchChatBefore(beforeIso: string, limit = CHAT_PAGE_SIZE)
   return ((data ?? []) as unknown as AgentMessage[]).slice().reverse()
 }
 
-export async function fetchAlerts(limit = 50): Promise<AgentAlert[]> {
-  const { data, error } = await supabase.from('n8nclaw_proactive_alerts')
-    .select('id, alert_type, title, body, sent, sent_at, created_at')
-    .order('created_at', { ascending: false })
-    .limit(limit)
-  if (error) throw error
-  return (data ?? []) as unknown as AgentAlert[]
+// Alerts are windowed. The first tournament render was two 60+day-old unsent
+// pipeline_stall rows sitting at the top of the Agent screen as if they were
+// today's news — nothing had acknowledged them because nobody was ever going to
+// act on them. Stale unsent ≠ actionable today. So the screen shows the last 14
+// days and the older unsent rows collapse to a count.
+export const ALERT_WINDOW_DAYS = 14
+
+// Cutoff as an ISO instant. Pure so the window is testable without a clock or a
+// network. UTC 'Z', never '+00:00' — a literal '+' in a PostgREST filter is
+// read as a space unless it is encoded.
+export function alertWindowCutoff(now: number | Date = Date.now(), days = ALERT_WINDOW_DAYS): string {
+  const ms = now instanceof Date ? now.getTime() : now
+  return new Date(ms - days * 24 * 60 * 60 * 1000).toISOString()
+}
+
+export type AlertsPage = {
+  alerts: AgentAlert[]
+  // Unacknowledged rows OLDER than the window. Not hidden — summarised. A zero
+  // here means the backlog is genuinely clear; a number means there is history
+  // to go read somewhere else, which is a different statement from "nothing is
+  // wrong" (D10: an empty screen has to be distinguishable from a filtered one).
+  olderUnsent: number
+}
+
+export async function fetchAlerts(limit = 50, days = ALERT_WINDOW_DAYS): Promise<AlertsPage> {
+  const cutoff = alertWindowCutoff(Date.now(), days)
+  const [recent, older] = await Promise.all([
+    supabase.from('n8nclaw_proactive_alerts')
+      .select('id, alert_type, title, body, sent, sent_at, created_at')
+      .gte('created_at', cutoff)
+      .order('created_at', { ascending: false })
+      .limit(limit),
+    // head-count only, no rows over the wire. `sent` is nullable and
+    // unsentAlerts() counts NULL as unacknowledged, so the count has to as well
+    // or the two numbers disagree on the same rows.
+    supabase.from('n8nclaw_proactive_alerts')
+      .select('id', { count: 'exact', head: true })
+      .lt('created_at', cutoff)
+      .or('sent.is.null,sent.eq.false'),
+  ])
+  if (recent.error) throw recent.error
+  if (older.error) throw older.error
+  return {
+    alerts: (recent.data ?? []) as unknown as AgentAlert[],
+    olderUnsent: older.count ?? 0,
+  }
 }
 
 export async function fetchReminders(): Promise<AgentReminder[]> {
