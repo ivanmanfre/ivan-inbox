@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Avatar } from '../components/Avatar'
 import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
@@ -15,6 +15,41 @@ function timeAgo(iso: string): string {
   const d = Math.floor(h / 24)
   if (d === 1) return 'yday'
   return `${d}d`
+}
+
+// ---- windowed list (opt-in) ----
+//
+// fetchMessages pages up to 20,000 rows and groupThreads renders every one of
+// them: the live inbox is ~1,354 rows, 83,453px of DOM and 49,558 words at
+// 390px, and the word count does not change between 390px and 1440px because it
+// tracks the DOM, not the screen. Nine rows are ever visible.
+//
+// The build contract forbids a virtualization dependency unless it is ~40 lines
+// implemented here and justified. This is those lines. Rows are a fixed 72px
+// (12px padding + a 48px avatar), so a scroll offset maps straight to an index;
+// the unrendered remainder is held open by two spacer divs so the scrollbar and
+// every scroll position stay honest. Opt-in via `windowed` — the live app passes
+// nothing and behaves exactly as before.
+const ROW_H = 73
+const OVERSCAN = 6
+
+function useRowWindow(ref: React.RefObject<HTMLDivElement | null>, count: number, on: boolean) {
+  const [top, setTop] = useState(0)
+  const [view, setView] = useState(900)
+  useEffect(() => {
+    const el = ref.current
+    if (!el || !on) return
+    const onScroll = () => setTop(el.scrollTop)
+    const onSize = () => setView(el.clientHeight || 900)
+    onSize()
+    el.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onSize)
+    return () => { el.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onSize) }
+  }, [ref, on])
+  if (!on) return { start: 0, end: count, padTop: 0, padBottom: 0 }
+  const start = Math.max(0, Math.floor(top / ROW_H) - OVERSCAN)
+  const end = Math.min(count, Math.ceil((top + view) / ROW_H) + OVERSCAN)
+  return { start, end, padTop: start * ROW_H, padBottom: (count - end) * ROW_H }
 }
 
 const CHIPS: { key: Filter; label: string }[] = [
@@ -37,7 +72,7 @@ function clientLabel(id: string): string {
   return id.toUpperCase()
 }
 
-export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread, onOpenDrafts, activeThread = null }: {
+export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head }: {
   threads: Thread[]
   filter: Filter
   setFilter: (f: Filter) => void
@@ -45,11 +80,18 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
   onOpenThread: (id: string) => void
   onOpenDrafts: () => void
   activeThread?: string | null
+  // Render only the rows near the viewport. Off by default so the live app is
+  // untouched; the workbench turns it on because it mounts this list beside two
+  // other live regions.
+  windowed?: boolean
+  // Optional slot under the filter chips. The live app passes nothing.
+  head?: ReactNode
 }) {
   const rowsRef = useRef<HTMLDivElement>(null)
   const ptr = usePullToRefresh(rowsRef, () => refresh())
   const [query, setQuery] = useState('')
   const shown = searchThreads(filterThreads(threads, filter), query)
+  const win = useRowWindow(rowsRef, shown.length, windowed)
   const draftTotal = threads.filter(t => t.draft).length
   const unreadTotal = threads.filter(t => t.unread > 0).length
 
@@ -84,6 +126,8 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
         </div>
       </div>
 
+      {head}
+
       {draftTotal > 0 && (
         <div className="draftbanner" onClick={onOpenDrafts}>
           <div className="ic">✦</div>
@@ -100,7 +144,9 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
         {shown.length === 0 ? (
           <div className="empty">{query ? `No matches for “${query}”` : EMPTY[filter]}</div>
         ) : (
-          shown.map(t => {
+          <>
+          {win.padTop > 0 && <div style={{ height: win.padTop }} aria-hidden />}
+          {shown.slice(win.start, win.end).map(t => {
             const isDraftLast = t.draft != null && t.last.id === t.draft.id
             let snip = t.last.message_text
             if (isDraftLast) snip = `✦ Draft: ${t.last.message_text}`
@@ -128,7 +174,9 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
                 </div>
               </div>
             )
-          })
+          })}
+          {win.padBottom > 0 && <div style={{ height: win.padBottom }} aria-hidden />}
+          </>
         )}
       </div>
     </>

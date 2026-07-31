@@ -1,0 +1,52 @@
+// Shared formatting for the Content tab. Extracted in round 2 because the
+// queue card and the draft detail screen now render the same timestamps and
+// the same type chip — two copies of relTime() is how two surfaces start
+// disagreeing about how old the same row is.
+
+export function relTime(iso: string): string {
+  const t = new Date(iso).getTime()
+  if (!Number.isFinite(t)) return ''
+  const s = Math.max(0, Math.floor((Date.now() - t) / 1000))
+  const m = Math.floor(s / 60)
+  if (m < 1) return 'just now'
+  if (m < 60) return `${m}m ago`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h ago`
+  const d = Math.floor(h / 24)
+  return `${d}d ago`
+}
+
+// A schedule in the future reads "in 3d", not "0m ago" — the dates row on the
+// detail screen shows scheduled_at, which is usually ahead of now.
+export function relOrAhead(iso: string): string {
+  const t = new Date(iso).getTime()
+  if (!Number.isFinite(t)) return ''
+  const diff = t - Date.now()
+  if (diff <= 0) return relTime(iso)
+  const m = Math.floor(diff / 60000)
+  if (m < 1) return 'in <1m'
+  if (m < 60) return `in ${m}m`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `in ${h}h`
+  return `in ${Math.floor(h / 24)}d`
+}
+
+// Absolute, local, no year unless it isn't this one — the detail screen shows
+// both forms because "3d ago" is useless when you're reconstructing what an
+// agent did at 12:00:08.
+export function absTime(iso: string): string {
+  const d = new Date(iso)
+  if (!Number.isFinite(d.getTime())) return iso
+  const sameYear = d.getFullYear() === new Date().getFullYear()
+  return d.toLocaleString(undefined, {
+    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+    ...(sameYear ? {} : { year: 'numeric' }),
+  })
+}
+
+const TYPE_LABEL: Record<string, string> = { text: 'Text', single_image: 'Image', carousel: 'Carousel' }
+
+export function typeLabel(t: string | null): string {
+  if (!t) return 'Text'
+  return TYPE_LABEL[t] ?? t
+}
