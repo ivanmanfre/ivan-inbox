@@ -399,7 +399,12 @@ input.cfield::placeholder{color:var(--text3)}
    remainder is a hatched amber segment, so 98/50 reads "past the line" calmly. */
 .ov-gauge-over{position:absolute;top:0;bottom:0;right:0;background:repeating-linear-gradient(45deg,rgba(255,159,10,.6) 0 4px,rgba(255,159,10,.16) 4px 9px)}
 .ov-gauge-tick{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:rgba(235,235,245,.85);border-radius:1px}
-.ov-over-lbl{margin-left:8px;font-size:11px;font-weight:700;color:#FF9F0A;background:rgba(255,159,10,.14);padding:1px 7px;border-radius:6px;white-space:nowrap}
+/* The over-cap pill used to be white-space:nowrap inside a 3-up hero tile with
+   ~86px of measure at 390px, so "103% of cap" clipped mid-word to "103% of ca".
+   It keeps its shape but is allowed to break, and inside a hero tile it takes
+   its own line under the sub-text instead of competing for the same one. */
+.ov-over-lbl{margin-left:8px;font-size:11px;font-weight:700;color:#FF9F0A;background:rgba(255,159,10,.14);padding:1px 7px;border-radius:6px;white-space:normal;overflow-wrap:anywhere}
+.ov-tile-sub .ov-over-lbl{display:block;width:fit-content;max-width:100%;margin:6px 0 0}
 .ov-gauge-lbl{font-size:14px;font-weight:600;display:flex;align-items:center;flex-wrap:wrap;row-gap:4px}
 .ov-gauge-lbl b{font-size:17px;font-weight:800}
 .ov-gauge-lbl .ov-cap{display:inline;margin:0 0 0 4px;color:var(--text2)}
