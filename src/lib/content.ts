@@ -28,11 +28,17 @@ export type ContentDraft = {
   taxonomy: Record<string, unknown> | string | null
   updated_at: string
   created_at: string
+  // TRUE = the row has been promoted onto the client's board by the
+  // operator_set_board_visible flow; FALSE/NULL = it exists internally only.
+  // Optional on the TYPE (not on the query) purely so every existing fixture
+  // and consumer that builds a ContentDraft literal keeps compiling — the
+  // column is selected below, so live rows always carry it.
+  board_visible?: boolean | null
 }
 
 const COLS =
   'id, client_id, status, type, title, topic, post_body, scheduled_at, ' +
-  'source_post_id, image_urls, taxonomy, updated_at, created_at'
+  'source_post_id, image_urls, taxonomy, updated_at, created_at, board_visible'
 
 // ---------- lane scoping ----------
 
@@ -243,4 +249,288 @@ export async function skipDraft(id: string): Promise<void> {
     .update({ status: SKIP_STATUS })
     .eq('id', id).is('client_id', null)
   if (error) throw error
+}
+
+// The one rule that decides whether a row shows a mutating affordance at all,
+// in one place because round 2 renders those buttons from two surfaces (the
+// queue card and the draft detail screen). D6: only a row waiting on review is
+// actionable. D7: only in the Ivan lane — the Rise lane is read-only ambient
+// visibility, and approveDraft/skipDraft are both scoped .is('client_id', null)
+// anyway, so a Rise button would be a button that silently does nothing.
+export function reviewActionable(status: string, lane: ContentLane): boolean {
+  return status === 'review' && lane === 'ivan'
+}
+
+// ---------- pipeline stages ----------
+//
+// bucketDrafts (above) groups by TRIAGE — "what needs me", in urgency order.
+// Ivan's round-2 read of that board: "pretty shitty the way stages are…
+// separate on our end on ideas, review, approved". A post has a LIFECYCLE, and
+// the queue should be that lifecycle read top to bottom, with the exceptions
+// (error / silently-dead schedule) lifted OUT of the flow into one alert strip
+// instead of interrupting it.
+//
+// This is a SECOND view of the same rows, added alongside bucketDrafts rather
+// than replacing it: cand-b renders the triage buckets and the two groupings
+// disagree on purpose (an approved row WITH a date is 'scheduled' to triage —
+// it has a time, nothing to do — but still 'approved' to the pipeline, because
+// that is the stage it is actually in).
+export type ContentStage =
+  | 'ideas' | 'generating' | 'review' | 'approved' | 'scheduled' | 'published'
+  | 'error' | 'stuck' | 'archived' | 'other'
+
+// The pipeline, in order. This array IS the render order of the queue and of
+// the stage rail — there is no second ordering constant to keep in sync.
+export const PIPELINE_STAGES = [
+  'ideas', 'generating', 'review', 'approved', 'scheduled', 'published',
+] as const
+
+// Lifted above the pipeline as an alert strip, never rendered as sections
+// mid-flow: an error is not a step on the way to publishing.
+export const ALERT_STAGES = ['error', 'stuck'] as const
+
+export const STAGE_LABEL: Record<ContentStage, string> = {
+  ideas: 'Ideas',
+  generating: 'Generating',
+  review: 'Needs review',
+  approved: 'Approved',
+  scheduled: 'Scheduled',
+  published: 'Published',
+  error: 'Errors',
+  stuck: 'Stuck',
+  archived: 'Archived',
+  other: 'Other',
+}
+
+// One row, one stage. Branch order is load-bearing in exactly one place:
+// 'scheduled' is tested for stuck-ness BEFORE it counts as scheduled, so a
+// past-due unpublished row can never sit quietly in the pipeline looking done.
+//
+// 'approved' does NOT fork on scheduled_at here (bucketDrafts does): an
+// approved post is at the approved STAGE whether or not it has a date. The
+// black hole that fork existed to expose is preserved as a count —
+// countUndated() below — rendered as a sub-line inside the Approved section.
+export function stageOf(r: ContentDraft, now: number = Date.now()): ContentStage {
+  switch (r.status) {
+    case 'idea': return 'ideas'
+    case 'generating': return 'generating'
+    case 'review': return 'review'
+    case 'approved': return 'approved'
+    case 'scheduled': return isStuckScheduled(r, now) ? 'stuck' : 'scheduled'
+    case 'published': return 'published'
+    case 'error': return 'error'
+    case 'disqualified':
+    case 'skipped': return 'archived'
+    // 'draft' and anything the n8n vocabulary grows after this file was
+    // written. Rendered at the bottom, never dropped (blank-board #3).
+    default: return 'other'
+  }
+}
+
+export type ContentStages = Record<ContentStage, ContentDraft[]>
+
+function emptyStages(): ContentStages {
+  return {
+    ideas: [], generating: [], review: [], approved: [], scheduled: [],
+    published: [], error: [], stuck: [], archived: [], other: [],
+  }
+}
+
+export function groupByStage(rows: ContentDraft[], now: number = Date.now()): ContentStages {
+  const out = emptyStages()
+  for (const r of rows) out[stageOf(r, now)].push(r)
+  return out
+}
+
+// "N approved without a date" — the approved-unscheduled black hole, kept
+// visible as a sub-line now that approved rows are no longer split into their
+// own section. Deleting this re-opens the hole (see bucketDrafts' comment).
+export function countUndated(rows: ContentDraft[]): number {
+  return rows.filter(r => !r.scheduled_at).length
+}
+
+// How many of a lane's rows are promoted onto the client's board. Rows with a
+// NULL board_visible are counted as NOT visible: absence of the promotion flag
+// is not evidence of promotion.
+export function countBoardVisible(rows: ContentDraft[]): number {
+  return rows.filter(r => r.board_visible === true).length
+}
+
+// ---------- draft detail ----------
+//
+// The list fetch stays slim (COLS) — post_body, agent_log and qa on 274 rows is
+// payload nobody reads. The detail screen is the only thing that pulls a whole
+// row, one id at a time.
+export type ContentDraftDetail = ContentDraft & {
+  // Every field below is nullable/loosely typed on purpose: these columns are
+  // written by n8n agents, not by this app, and three of them (agent_log, qa,
+  // taxonomy) are known to carry more than one shape in live data. They are
+  // typed `unknown` so no call site can read them without going through the
+  // normalizers below.
+  agent_log: unknown
+  qa: unknown
+  source_label: string | null
+  source_detail: string | null
+  source_ref: string | null
+  client_idea_id: string | null
+  funnel_stage: string | null
+  published_at: string | null
+  description: string | null
+  key_points: unknown
+  ig_caption: string | null
+  pdf_url: string | null
+  topic_strength: unknown
+}
+
+// select=* rather than a column list: this row is fetched one at a time, and a
+// hand-maintained 26-column list would silently start hiding fields the day an
+// agent starts writing a new one. Returns null (not an error) when the id is
+// gone — a deleted draft and an unreadable one must not render the same (D10).
+export async function fetchDraftDetail(id: string): Promise<ContentDraftDetail | null> {
+  const { data, error } = await supabase.from('carousel_drafts')
+    .select('*').eq('id', id).maybeSingle()
+  if (error) throw error
+  return (data ?? null) as ContentDraftDetail | null
+}
+
+// ---------- shape guards for agent-written columns ----------
+
+// A jsonb column can arrive as the parsed value OR as a JSON string (PostgREST
+// hands back text for a `text` column that happens to hold JSON — carousel_drafts
+// has both conventions in flight). One unwrap, used by every normalizer below.
+function parseMaybeJson(v: unknown): unknown {
+  if (typeof v !== 'string') return v
+  const s = v.trim()
+  if (!s.startsWith('{') && !s.startsWith('[')) return v
+  try { return JSON.parse(s) } catch { return v }
+}
+
+function str(v: unknown): string | null {
+  if (typeof v === 'string') return v.trim() || null
+  if (typeof v === 'number' && Number.isFinite(v)) return String(v)
+  return null
+}
+
+export type AgentLogEntry = { ts: string | null; body: string }
+
+// agent_log is an array of {ts, body} on a live review row, e.g.
+// {"ts":"2026-07-31T12:00:08Z","body":"[Auto-promoted by LM Curator …]"}.
+// It is also, on other rows, null / an empty array / a bare string / a JSON
+// string / entries with a different body key. Every one of those must render as
+// "nothing" instead of throwing inside a render pass and taking the screen to
+// black — so this returns [] for anything it can't read, and never throws.
+export function normalizeAgentLog(v: unknown): AgentLogEntry[] {
+  const parsed = parseMaybeJson(v)
+  const raw = Array.isArray(parsed) ? parsed : parsed == null ? [] : [parsed]
+  const out: AgentLogEntry[] = []
+  for (const e of raw) {
+    if (typeof e === 'string') {
+      const body = e.trim()
+      if (body) out.push({ ts: null, body })
+      continue
+    }
+    if (!e || typeof e !== 'object') continue
+    const o = e as Record<string, unknown>
+    const body = str(o.body) ?? str(o.message) ?? str(o.text) ?? str(o.note)
+    if (!body) continue
+    out.push({ ts: str(o.ts) ?? str(o.at) ?? str(o.created_at), body })
+  }
+  // Newest last (the register is a timeline you read downwards). Only sorted
+  // when EVERY entry carries a parseable timestamp — a partial sort would
+  // interleave undated entries at arbitrary points and invent a history that
+  // isn't in the data.
+  const stamps = out.map(e => (e.ts ? Date.parse(e.ts) : NaN))
+  if (out.length > 1 && stamps.every(Number.isFinite)) {
+    return out
+      .map((e, i) => ({ e, t: stamps[i], i }))
+      .sort((a, b) => a.t - b.t || a.i - b.i)
+      .map(x => x.e)
+  }
+  return out
+}
+
+export type QaSummary = {
+  score: number | null
+  verdict: string | null
+  feedback: string | null
+  // Only a literal PASS verdict is a pass. Everything else (REWRITE_OK, FAIL,
+  // a missing verdict) reads amber — this is the flag the UI colours on, so it
+  // must never be "not obviously bad".
+  pass: boolean
+}
+
+// qa looks like {"score":82,"verdict":"PASS","feedback":"VERDICT: REWRITE_OK…"}
+// on a live row — note the feedback text contradicting the verdict field, which
+// is why the chip reads `verdict` and the prose is shown verbatim underneath
+// rather than being re-derived from it. Returns null when there is nothing to
+// show, so the caller renders no card at all instead of an empty one.
+export function normalizeQa(v: unknown): QaSummary | null {
+  const parsed = parseMaybeJson(v)
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
+  const o = parsed as Record<string, unknown>
+  const rawScore = typeof o.score === 'string' ? Number(o.score) : o.score
+  const score = typeof rawScore === 'number' && Number.isFinite(rawScore) ? rawScore : null
+  const verdict = str(o.verdict)
+  const feedback = str(o.feedback)
+  if (score === null && !verdict && !feedback) return null
+  return { score, verdict, feedback, pass: (verdict ?? '').trim().toUpperCase() === 'PASS' }
+}
+
+// The taxonomy keys worth showing, in render order. `source` is read by the
+// detail screen's Source block; the rest form the taxonomy grid.
+export const TAXONOMY_KEYS = [
+  'source', 'pillar', 'hook_type', 'structure_used', 'image_style', 'arm',
+] as const
+export type TaxonomyKey = (typeof TAXONOMY_KEYS)[number]
+
+// taxonomy is a jsonb object on most rows and a BARE STRING on some (the same
+// live split styleKeysOf() handles, ACCESS-MATRIX check 3). A bare string is a
+// structure value — that column predates image_style and every observed bare
+// string is a structure name like "Teardown" — so it is read as
+// structure_used, exactly as styleKeysOf reads it. The experiment arm is one
+// level down (taxonomy.experiment.arm) and is flattened to 'arm' here so the
+// grid stays a flat label/value list.
+export function taxonomyFields(t: unknown): Partial<Record<TaxonomyKey, string>> {
+  const parsed = parseMaybeJson(t)
+  const out: Partial<Record<TaxonomyKey, string>> = {}
+  if (typeof parsed === 'string') {
+    const s = parsed.trim()
+    if (s) out.structure_used = s
+    return out
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return out
+  const o = parsed as Record<string, unknown>
+  for (const k of TAXONOMY_KEYS) {
+    if (k === 'arm') continue
+    const v = str(o[k])
+    if (v) out[k] = v
+  }
+  const exp = parseMaybeJson(o.experiment)
+  if (exp && typeof exp === 'object' && !Array.isArray(exp)) {
+    const arm = str((exp as Record<string, unknown>).arm)
+    if (arm) out.arm = arm
+  }
+  return out
+}
+
+// key_points is an array of strings on the rows that have it, and (like every
+// other agent-written column here) occasionally a newline-joined string or a
+// JSON string. Anything unreadable yields [] and renders nothing.
+export function normalizeKeyPoints(v: unknown): string[] {
+  const parsed = parseMaybeJson(v)
+  if (typeof parsed === 'string') {
+    return parsed.split('\n').map(s => s.trim()).filter(Boolean)
+  }
+  if (!Array.isArray(parsed)) return []
+  return parsed.map(x => str(x)).filter((s): s is string => !!s)
+}
+
+// image_urls is typed string[] but is agent-written like everything else here;
+// a single URL string is the shape that would otherwise render as a row of
+// one-character images.
+export function normalizeImageUrls(v: unknown): string[] {
+  const parsed = parseMaybeJson(v)
+  if (typeof parsed === 'string') return parsed.trim() ? [parsed.trim()] : []
+  if (!Array.isArray(parsed)) return []
+  return parsed.map(x => str(x)).filter((s): s is string => !!s)
 }

@@ -27,14 +27,71 @@
 .ct-lane{font-size:10px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:6px;background:var(--accent-soft);color:var(--accent);text-transform:uppercase}
 .ct-ac{display:flex;gap:10px;margin-top:12px}
 .ct-ac .btn{cursor:pointer}
+.ct-ac-wide{margin:14px 16px 0}
 .ct-broken{margin:14px 16px 0;font-size:13px;color:#FF9F0A;background:rgba(255,159,10,.1);border:1px solid rgba(255,159,10,.3);border-radius:14px;padding:12px 14px;line-height:1.4}
+/* Whole card is the tap target for the detail push (the action row stops
+   propagation itself, see ReviewActions). */
+.ct-tap{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.ct-tap:active{transform:scale(.99)}
+/* Chip severity tiers — the app's existing 3-tier palette, no new colours. */
+.ct-chip-ok{background:var(--accent-soft);color:var(--accent)}
+.ct-chip-warn{background:rgba(255,159,10,.16);color:#FF9F0A}
+.ct-chip-bad{background:rgba(255,69,58,.16);color:#FF453A}
+/* Rise lane header: "N of M visible on Rise's board". */
+.ct-lanehdr{margin:10px 16px 0;font-size:12px;font-weight:600;color:var(--text3)}
+/* "N approved without a date" — a sub-line inside Approved, not a section. */
+.ct-subline{margin:8px 16px 0;font-size:12px;font-weight:600;color:#FF9F0A}
 
-/* ---- Content tab: Queue bucket tile strip (top of Queue segment) ---- */
-/* 2x2 grid — the app's own td-tiles idiom (reused above) is a row of 3, so the
-   container is new; the tiles themselves stay td-tile/td-tl/td-tb, unmodified. */
-.ct-tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:14px 16px 0}
-.ct-tile{cursor:pointer;-webkit-tap-highlight-color:transparent}
-.ct-tile:active{transform:scale(.97)}
+/* ---- Content tab: alert strip + stage rail (replaces the 2x2 tile grid) ---- */
+/* The strip is pinned above the pipeline and is the ONLY red surface in the
+   queue; it renders at all only when something is actually wrong. */
+.ct-alert{display:flex;align-items:center;gap:10px;margin:14px 16px 0;padding:11px 13px;border-radius:14px;background:rgba(255,69,58,.1);border:1px solid rgba(255,69,58,.3);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.ct-alert:active{transform:scale(.99)}
+.ct-alert-n{font-size:17px;font-weight:800;color:#FF453A;line-height:1}
+.ct-alert-t{flex:1;font-size:13px;font-weight:600;color:#FF453A;line-height:1.3}
+.ct-alert .chev{font-size:14px;color:#FF453A}
+/* Horizontal stage rail in pipeline order. Scrolls rather than wraps so the
+   left-to-right reading of the lifecycle survives a narrow phone. */
+.ct-rail{display:flex;gap:8px;overflow-x:auto;padding:14px 16px 2px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.ct-rail::-webkit-scrollbar{display:none}
+.ct-rchip{flex:none;display:flex;flex-direction:column;gap:2px;min-width:74px;padding:8px 11px;border-radius:13px;background:var(--surface);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.ct-rchip:active{transform:scale(.97)}
+.ct-rn{font-size:17px;font-weight:800;letter-spacing:-.02em;line-height:1}
+.ct-rl{font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--text3);white-space:nowrap}
+/* D10: an honest zero is not a warning. A stage with nothing in it stays
+   grey and inert — severity colour is reserved for a NON-ZERO error/stuck. */
+.ct-rchip.zero{cursor:default}
+.ct-rchip.zero .ct-rn{color:var(--text3)}
+.ct-rchip.bad .ct-rn{color:#FF453A}
+
+/* ---- Draft detail (full-screen push, .ct-overlay chrome below) ---- */
+.dd-head{padding:16px 16px 0}
+.dd-title{font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1.2}
+.dd-card{margin:8px 16px 0;background:var(--surface);border-radius:16px;padding:2px 14px}
+.dd-row{display:flex;gap:12px;align-items:baseline;padding:10px 0;border-bottom:.5px solid var(--sep)}
+.dd-row:last-child{border-bottom:none}
+.dd-k{flex:none;width:108px;font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.03em}
+.dd-v{flex:1;min-width:0;font-size:14px;line-height:1.35;overflow-wrap:anywhere}
+.dd-abs{color:var(--text3);font-size:12px;margin-left:6px}
+.dd-body{font-size:14.5px;line-height:1.5;color:var(--text)}
+.dd-pre{white-space:pre-wrap;overflow-wrap:anywhere;padding:12px 0}
+.dd-clamp{display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden}
+.dd-more{font-size:12.5px;font-weight:700;color:var(--accent);margin-top:6px;cursor:pointer}
+/* Generation register — a timeline read downwards, newest last. No monospace
+   (house rule 11): the bodies are agent prose, not logs to be scanned. */
+.dd-log{padding:12px 0;border-bottom:.5px solid var(--sep)}
+.dd-log:last-child{border-bottom:none}
+.dd-log-ts{font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:5px;letter-spacing:.02em}
+.dd-qa{display:flex;align-items:center;gap:10px;padding:12px 0}
+.dd-score{font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1}
+.dd-qa-fb{padding-bottom:12px}
+.dd-imgs{display:flex;gap:10px;overflow-x:auto;padding:8px 16px 2px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.dd-imgs::-webkit-scrollbar{display:none}
+.dd-img{flex:none;width:190px;border-radius:14px;background:var(--surface2)}
+.dd-point{font-size:14px;line-height:1.4;padding:10px 0;border-bottom:.5px solid var(--sep)}
+.dd-point:last-child{border-bottom:none}
+.dd-link{display:block;margin:8px 16px 0;color:var(--accent);font-size:14.5px;font-weight:600;text-decoration:none}
+.dd-actions{margin-top:18px}
 
 /* ---- Content tab: Styles gallery + Resources ---- */
 .sty-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:14px 16px 4px}
