@@ -200,15 +200,24 @@ export function DraftPane({ id, lane, refresh, onClose, onAsk, mobile }: {
   mobile: boolean
 }) {
   const { detail, missing, loading, error } = useDraftDetail(id)
-  const title = detail?.title || detail?.topic || 'Draft'
+  // The pane header does NOT repeat the title. It used to, and the body's own
+  // <div class="dd-title"> printed the same sentence again two rows below it —
+  // the same doubled-render defect the panel found on Ops, in a second place, and
+  // found here by diffing duplicated visible text inside the peer rather than by
+  // reading the file. The body wins the title because a draft's title is a whole
+  // sentence and the header can only ellipsize it to one line; the header keeps
+  // what a pane header is for, which is saying what kind of thing this is.
   return (
     <>
       <div className="wb-pane-h">
         {mobile && <span className="back" onClick={onClose}>‹</span>}
         <span className="wb-pane-ic">▤</span>
         <div className="wb-pane-ttl">
-          <div className="wb-pane-n">{loading && !detail ? 'Draft' : title}</div>
-          <div className="wb-pane-s">{lane === 'ivan' ? 'Ivan' : 'Rise'} · content draft</div>
+          <div className="wb-pane-n">Content draft</div>
+          <div className="wb-pane-s">
+            {lane === 'ivan' ? 'Ivan' : 'Rise'}
+            {detail?.type ? ` · ${typeLabel(detail.type)}` : ''}
+          </div>
         </div>
         <button className="wb-ask" onClick={onAsk}>Ask Claude</button>
         {!mobile && <span className="wb-pane-x" onClick={onClose}>✕</span>}
