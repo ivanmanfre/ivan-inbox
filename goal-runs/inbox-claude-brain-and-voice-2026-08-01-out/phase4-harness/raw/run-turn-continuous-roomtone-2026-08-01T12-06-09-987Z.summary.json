@@ -1,0 +1,122 @@
+[
+  {
+    "fixture": "f1",
+    "why": "IDLE",
+    "transcript": "approve the top draft in the queue",
+    "werPct": 0,
+    "uEnd_to_final_ms": 811.5,
+    "uEnd_to_firstAudibleProxy_ms": 823.8,
+    "uEnd_to_utteranceStartEvent_ms": 823.8,
+    "final_to_firstAudibleProxy_ms": 12.3,
+    "speakCalled_to_startEvent_ms": 11.4,
+    "recSpeechEnd_to_final_ms": -2
+  },
+  {
+    "fixture": "f2",
+    "why": "IDLE",
+    "transcript": "what failed in any then overnight",
+    "werPct": 40,
+    "uEnd_to_final_ms": 1077.3,
+    "uEnd_to_firstAudibleProxy_ms": 1092.4,
+    "uEnd_to_utteranceStartEvent_ms": 1092.4,
+    "final_to_firstAudibleProxy_ms": 15.1,
+    "speakCalled_to_startEvent_ms": 14.2,
+    "recSpeechEnd_to_final_ms": -2.1
+  },
+  {
+    "fixture": "f3",
+    "why": "IDLE",
+    "transcript": "check the super base scheduled post table for stud Rose",
+    "werPct": 55.6,
+    "uEnd_to_final_ms": 1055.6,
+    "uEnd_to_firstAudibleProxy_ms": 1077.6,
+    "uEnd_to_utteranceStartEvent_ms": 1077.6,
+    "final_to_firstAudibleProxy_ms": 22,
+    "speakCalled_to_startEvent_ms": 19.7,
+    "recSpeechEnd_to_final_ms": -5
+  },
+  {
+    "fixture": "f4",
+    "why": "IDLE",
+    "transcript": "move the click up task to done and refresh the board",
+    "werPct": 20,
+    "uEnd_to_final_ms": 830.9,
+    "uEnd_to_firstAudibleProxy_ms": 858.3,
+    "uEnd_to_utteranceStartEvent_ms": 858.3,
+    "final_to_firstAudibleProxy_ms": 27.4,
+    "speakCalled_to_startEvent_ms": 25,
+    "recSpeechEnd_to_final_ms": -7.3
+  },
+  {
+    "fixture": "f5",
+    "why": "IDLE",
+    "transcript": "did you need Kyle hit the Reed ceiling on Madden seed",
+    "werPct": 66.7,
+    "uEnd_to_final_ms": 903.9,
+    "uEnd_to_firstAudibleProxy_ms": 971.6,
+    "uEnd_to_utteranceStartEvent_ms": 971.6,
+    "final_to_firstAudibleProxy_ms": 67.7,
+    "speakCalled_to_startEvent_ms": 62.1,
+    "recSpeechEnd_to_final_ms": -7.8
+  },
+  {
+    "fixture": "f6",
+    "why": "IDLE",
+    "transcript": "render the hyperframes video for the carousel draft",
+    "werPct": 0,
+    "uEnd_to_final_ms": 1041,
+    "uEnd_to_firstAudibleProxy_ms": 1115.2,
+    "uEnd_to_utteranceStartEvent_ms": 1115.2,
+    "final_to_firstAudibleProxy_ms": 74.2,
+    "speakCalled_to_startEvent_ms": 63.8,
+    "recSpeechEnd_to_final_ms": -17
+  },
+  {
+    "fixture": "f7",
+    "why": "IDLE",
+    "transcript": "until Monday",
+    "werPct": 75,
+    "uEnd_to_final_ms": 852,
+    "uEnd_to_firstAudibleProxy_ms": 871.6,
+    "uEnd_to_utteranceStartEvent_ms": 871.6,
+    "final_to_firstAudibleProxy_ms": 19.6,
+    "speakCalled_to_startEvent_ms": 19,
+    "recSpeechEnd_to_final_ms": -2.7
+  },
+  {
+    "fixture": "f8",
+    "why": "IDLE",
+    "transcript": "show me the rice DTC board visibility for this week",
+    "werPct": 10,
+    "uEnd_to_final_ms": 918.6,
+    "uEnd_to_firstAudibleProxy_ms": 934.4,
+    "uEnd_to_utteranceStartEvent_ms": 934.4,
+    "final_to_firstAudibleProxy_ms": 15.8,
+    "speakCalled_to_startEvent_ms": 14.8,
+    "recSpeechEnd_to_final_ms": -1.8
+  },
+  {
+    "fixture": "f9_noisy",
+    "why": "IDLE",
+    "transcript": "table for stuck Rose",
+    "werPct": 66.7,
+    "uEnd_to_final_ms": 1706,
+    "uEnd_to_firstAudibleProxy_ms": 1793.3,
+    "uEnd_to_utteranceStartEvent_ms": 1793.3,
+    "final_to_firstAudibleProxy_ms": 87.3,
+    "speakCalled_to_startEvent_ms": 80.9,
+    "recSpeechEnd_to_final_ms": -14.3
+  },
+  {
+    "fixture": "f10_fast",
+    "why": "timeout",
+    "transcript": "",
+    "werPct": 100,
+    "uEnd_to_final_ms": null,
+    "uEnd_to_firstAudibleProxy_ms": null,
+    "uEnd_to_utteranceStartEvent_ms": null,
+    "final_to_firstAudibleProxy_ms": null,
+    "speakCalled_to_startEvent_ms": null,
+    "recSpeechEnd_to_final_ms": null
+  }
+]

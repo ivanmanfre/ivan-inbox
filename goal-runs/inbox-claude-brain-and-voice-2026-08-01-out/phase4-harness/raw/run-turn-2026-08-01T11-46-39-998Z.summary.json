@@ -1,0 +1,13 @@
+[
+  {
+    "fixture": "f1",
+    "why": "timeout",
+    "transcript": "",
+    "werPct": 100,
+    "uEnd_to_final_ms": null,
+    "uEnd_to_firstAudible_acoustic_ms": null,
+    "uEnd_to_utteranceStartEvent_ms": null,
+    "final_to_firstAudible_ms": null,
+    "recSpeechEnd_to_final_ms": null
+  }
+]

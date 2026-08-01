@@ -1,0 +1,1621 @@
+[
+  {
+    "shot": "today",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:5403/#exp/v2c/today",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/today-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 1837,
+        "totalWords": 406,
+        "wordsPer1000px": 221,
+        "proseSharePct": 55.2,
+        "biggestNumberPx": 34,
+        "encodings": 17,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "today",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:5403/#exp/v2c/today",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/today-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 941,
+        "totalWords": 79,
+        "wordsPer1000px": 84,
+        "proseSharePct": 0,
+        "biggestNumberPx": 34,
+        "encodings": 17,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 55,
+        "wordsPer1000px": 61.1,
+        "proseSharePct": 32.7,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "inbox",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:5403/#exp/v2c/inbox",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/inbox-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83524,
+        "totalWords": 851,
+        "wordsPer1000px": 10.2,
+        "proseSharePct": 88.4,
+        "biggestNumberPx": 13,
+        "encodings": 6,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "inbox",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:5403/#exp/v2c/inbox",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/inbox-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83512,
+        "totalWords": 960,
+        "wordsPer1000px": 11.5,
+        "proseSharePct": 87.7,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 55,
+        "wordsPer1000px": 61.1,
+        "proseSharePct": 32.7,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "drafts",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:5403/#exp/v2c/drafts",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/drafts-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 746,
+        "totalWords": 92,
+        "wordsPer1000px": 123.3,
+        "proseSharePct": 70.7,
+        "biggestNumberPx": 12,
+        "encodings": 0,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "drafts",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:5403/#exp/v2c/drafts",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/drafts-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 900,
+        "totalWords": 92,
+        "wordsPer1000px": 102.2,
+        "proseSharePct": 70.7,
+        "biggestNumberPx": 12,
+        "encodings": 0,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 55,
+        "wordsPer1000px": 61.1,
+        "proseSharePct": 32.7,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "content",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:5403/#exp/v2c/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/content-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 31812,
+        "totalWords": 6647,
+        "wordsPer1000px": 208.9,
+        "proseSharePct": 67.3,
+        "biggestNumberPx": 34,
+        "encodings": 83,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "content",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:5403/#exp/v2c/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/content-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 17469,
+        "totalWords": 3747,
+        "wordsPer1000px": 214.5,
+        "proseSharePct": 52,
+        "biggestNumberPx": 34,
+        "encodings": 81,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 53,
+        "wordsPer1000px": 58.9,
+        "proseSharePct": 34,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "sends",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:5403/#exp/v2c/sends",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/sends-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 2282,
+        "totalWords": 270,
+        "wordsPer1000px": 118.3,
+        "proseSharePct": 21.9,
+        "biggestNumberPx": 28,
+        "encodings": 79,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "sends",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:5403/#exp/v2c/sends",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/sends-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 2434,
+        "totalWords": 270,
+        "wordsPer1000px": 110.9,
+        "proseSharePct": 21.9,
+        "biggestNumberPx": 28,
+        "encodings": 34,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 53,
+        "wordsPer1000px": 58.9,
+        "proseSharePct": 34,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "ops",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:5403/#exp/v2c/ops",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/ops-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 746,
+        "totalWords": 137,
+        "wordsPer1000px": 183.6,
+        "proseSharePct": 56.2,
+        "biggestNumberPx": 28,
+        "encodings": 5,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "ops",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:5403/#exp/v2c/ops",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/ops-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 900,
+        "totalWords": 137,
+        "wordsPer1000px": 152.2,
+        "proseSharePct": 56.2,
+        "biggestNumberPx": 28,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 58,
+        "wordsPer1000px": 64.4,
+        "proseSharePct": 31,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "settings",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:5403/#exp/v2c/settings",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/settings-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 746,
+        "totalWords": 60,
+        "wordsPer1000px": 80.4,
+        "proseSharePct": 61.7,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "settings",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:5403/#exp/v2c/settings",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/settings-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 900,
+        "totalWords": 60,
+        "wordsPer1000px": 66.7,
+        "proseSharePct": 61.7,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 55,
+        "wordsPer1000px": 61.1,
+        "proseSharePct": 32.7,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:5403/#exp/v2c/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/chat-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 852,
+        "totalWords": 55,
+        "wordsPer1000px": 64.6,
+        "proseSharePct": 32.7,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:5403/#exp/v2c/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/chat-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83512,
+        "totalWords": 960,
+        "wordsPer1000px": 11.5,
+        "proseSharePct": 87.7,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 55,
+        "wordsPer1000px": 61.1,
+        "proseSharePct": 32.7,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "content-mattan",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:5403/#exp/v2c/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/content-mattan-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 9467,
+        "totalWords": 1654,
+        "wordsPer1000px": 174.7,
+        "proseSharePct": 34.2,
+        "biggestNumberPx": 34,
+        "encodings": 72,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "content-mattan",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:5403/#exp/v2c/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/content-mattan-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 7053,
+        "totalWords": 1654,
+        "wordsPer1000px": 234.5,
+        "proseSharePct": 34.2,
+        "biggestNumberPx": 34,
+        "encodings": 72,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 53,
+        "wordsPer1000px": 58.9,
+        "proseSharePct": 34,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "draft-mattan",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:5403/#exp/v2c/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/draft-mattan-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 8425,
+        "totalWords": 1389,
+        "wordsPer1000px": 164.9,
+        "proseSharePct": 90.6,
+        "biggestNumberPx": 34,
+        "encodings": 2,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "draft-mattan",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:5403/#exp/v2c/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/draft-mattan-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 9317,
+        "totalWords": 1654,
+        "wordsPer1000px": 177.5,
+        "proseSharePct": 34.2,
+        "biggestNumberPx": 34,
+        "encodings": 72,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 8107,
+        "totalWords": 1389,
+        "wordsPer1000px": 171.3,
+        "proseSharePct": 90.6,
+        "biggestNumberPx": 34,
+        "encodings": 2,
+        "overflow": false
+      },
+      {
+        "region": "peer2",
+        "height": 900,
+        "totalWords": 65,
+        "wordsPer1000px": 72.2,
+        "proseSharePct": 27.7,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "dark-content",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:5403/#exp/v2c/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/dark-content-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 31879,
+        "totalWords": 6663,
+        "wordsPer1000px": 209,
+        "proseSharePct": 67.4,
+        "biggestNumberPx": 34,
+        "encodings": 83,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "dark-content",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:5403/#exp/v2c/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/dark-content-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 24698,
+        "totalWords": 6663,
+        "wordsPer1000px": 269.8,
+        "proseSharePct": 67.4,
+        "biggestNumberPx": 34,
+        "encodings": 83,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 53,
+        "wordsPer1000px": 58.9,
+        "proseSharePct": 34,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "dark-sends",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:5403/#exp/v2c/sends",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/dark-sends-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 2434,
+        "totalWords": 270,
+        "wordsPer1000px": 110.9,
+        "proseSharePct": 21.9,
+        "biggestNumberPx": 28,
+        "encodings": 34,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 53,
+        "wordsPer1000px": 58.9,
+        "proseSharePct": 34,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "settings-dark",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:5403/#exp/v2c/settings",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/settings-dark-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 746,
+        "totalWords": 60,
+        "wordsPer1000px": 80.4,
+        "proseSharePct": 61.7,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "thread",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:5403/#exp/v2c/inbox",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/thread-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 948,
+        "totalWords": 96,
+        "wordsPer1000px": 101.3,
+        "proseSharePct": 78.1,
+        "biggestNumberPx": 0,
+        "encodings": 7,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "thread",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:5403/#exp/v2c/inbox",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/thread-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83512,
+        "totalWords": 960,
+        "wordsPer1000px": 11.5,
+        "proseSharePct": 87.7,
+        "biggestNumberPx": 13,
+        "encodings": 6,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 1218,
+        "totalWords": 96,
+        "wordsPer1000px": 78.8,
+        "proseSharePct": 78.1,
+        "biggestNumberPx": 0,
+        "encodings": 7,
+        "overflow": false
+      },
+      {
+        "region": "peer2",
+        "height": 900,
+        "totalWords": 52,
+        "wordsPer1000px": 57.8,
+        "proseSharePct": 34.6,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "peers-thread-chat",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:5403/#exp/v2c/inbox",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/peers-thread-chat-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83512,
+        "totalWords": 960,
+        "wordsPer1000px": 11.5,
+        "proseSharePct": 87.7,
+        "biggestNumberPx": 13,
+        "encodings": 6,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 1218,
+        "totalWords": 96,
+        "wordsPer1000px": 78.8,
+        "proseSharePct": 78.1,
+        "biggestNumberPx": 0,
+        "encodings": 7,
+        "overflow": false
+      },
+      {
+        "region": "peer2",
+        "height": 900,
+        "totalWords": 52,
+        "wordsPer1000px": 57.8,
+        "proseSharePct": 34.6,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "draft",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:5403/#exp/v2c/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/draft-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 15580,
+        "totalWords": 3312,
+        "wordsPer1000px": 212.6,
+        "proseSharePct": 93.4,
+        "biggestNumberPx": 34,
+        "encodings": 2,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "draft",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:5403/#exp/v2c/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/draft-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 30568,
+        "totalWords": 6663,
+        "wordsPer1000px": 218,
+        "proseSharePct": 67.4,
+        "biggestNumberPx": 34,
+        "encodings": 83,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 14834,
+        "totalWords": 3312,
+        "wordsPer1000px": 223.3,
+        "proseSharePct": 93.4,
+        "biggestNumberPx": 34,
+        "encodings": 2,
+        "overflow": false
+      },
+      {
+        "region": "peer2",
+        "height": 900,
+        "totalWords": 63,
+        "wordsPer1000px": 70,
+        "proseSharePct": 28.6,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "peers-draft-chat",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:5403/#exp/v2c/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/peers-draft-chat-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 30568,
+        "totalWords": 6663,
+        "wordsPer1000px": 218,
+        "proseSharePct": 67.4,
+        "biggestNumberPx": 34,
+        "encodings": 83,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 14834,
+        "totalWords": 3312,
+        "wordsPer1000px": 223.3,
+        "proseSharePct": 93.4,
+        "biggestNumberPx": 34,
+        "encodings": 2,
+        "overflow": false
+      },
+      {
+        "region": "peer2",
+        "height": 900,
+        "totalWords": 63,
+        "wordsPer1000px": 70,
+        "proseSharePct": 28.6,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "inbox-solo",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:5403/#exp/v2c/inbox",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/inbox-solo-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83512,
+        "totalWords": 960,
+        "wordsPer1000px": 11.5,
+        "proseSharePct": 87.7,
+        "biggestNumberPx": 13,
+        "encodings": 6,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat-about-mobile",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:5403/#exp/v2c/inbox",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/chat-about-mobile-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 852,
+        "totalWords": 53,
+        "wordsPer1000px": 62.2,
+        "proseSharePct": 34,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat-streaming",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:5403/#exp/v2c/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/chat-streaming-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 852,
+        "totalWords": 19,
+        "wordsPer1000px": 22.3,
+        "proseSharePct": 0,
+        "biggestNumberPx": 0,
+        "encodings": 4,
+        "overflow": false
+      }
+    ],
+    "errors": [
+      "Access to fetch at 'https://bjbvqvzbzczjbatgmccb.supabase.co/functions/v1/inbox-claude' from origin 'http://localhost:5403' has been blocked by CORS policy: Response to preflight request doesn't pass ",
+      "Failed to load resource: net::ERR_FAILED"
+    ],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat-streaming",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:5403/#exp/v2c/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/chat-streaming-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83512,
+        "totalWords": 960,
+        "wordsPer1000px": 11.5,
+        "proseSharePct": 87.7,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 19,
+        "wordsPer1000px": 21.1,
+        "proseSharePct": 0,
+        "biggestNumberPx": 0,
+        "encodings": 4,
+        "overflow": false
+      }
+    ],
+    "errors": [
+      "Access to fetch at 'https://bjbvqvzbzczjbatgmccb.supabase.co/functions/v1/inbox-claude' from origin 'http://localhost:5403' has been blocked by CORS policy: Response to preflight request doesn't pass ",
+      "Failed to load resource: net::ERR_FAILED"
+    ],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat-done",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:5403/#exp/v2c/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/chat-done-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83512,
+        "totalWords": 960,
+        "wordsPer1000px": 11.5,
+        "proseSharePct": 87.7,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 19,
+        "wordsPer1000px": 21.1,
+        "proseSharePct": 0,
+        "biggestNumberPx": 0,
+        "encodings": 4,
+        "overflow": false
+      }
+    ],
+    "errors": [
+      "Access to fetch at 'https://bjbvqvzbzczjbatgmccb.supabase.co/functions/v1/inbox-claude' from origin 'http://localhost:5403' has been blocked by CORS policy: Response to preflight request doesn't pass ",
+      "Failed to load resource: net::ERR_FAILED"
+    ],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat-error",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:5403/?wbmock=chat:error-cold#exp/v2c/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/chat-error-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 852,
+        "totalWords": 18,
+        "wordsPer1000px": 21.1,
+        "proseSharePct": 0,
+        "biggestNumberPx": 0,
+        "encodings": 4,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat-error",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:5403/?wbmock=chat:error-cold#exp/v2c/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/chat-error-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83512,
+        "totalWords": 960,
+        "wordsPer1000px": 11.5,
+        "proseSharePct": 87.7,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 18,
+        "wordsPer1000px": 20,
+        "proseSharePct": 0,
+        "biggestNumberPx": 0,
+        "encodings": 4,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat-error-mid",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:5403/?wbmock=chat:error-mid#exp/v2c/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/chat-error-mid-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83512,
+        "totalWords": 960,
+        "wordsPer1000px": 11.5,
+        "proseSharePct": 87.7,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 18,
+        "wordsPer1000px": 20,
+        "proseSharePct": 0,
+        "biggestNumberPx": 0,
+        "encodings": 4,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "voice-listening",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:5403/#exp/v2c/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/voice-listening-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 852,
+        "totalWords": 57,
+        "wordsPer1000px": 66.9,
+        "proseSharePct": 31.6,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "voice-listening",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:5403/#exp/v2c/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/voice-listening-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83512,
+        "totalWords": 960,
+        "wordsPer1000px": 11.5,
+        "proseSharePct": 87.7,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 57,
+        "wordsPer1000px": 63.3,
+        "proseSharePct": 31.6,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "voice-handsfree",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:5403/#exp/v2c/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/voice-handsfree-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 895,
+        "totalWords": 74,
+        "wordsPer1000px": 82.7,
+        "proseSharePct": 41.9,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "voice-handsfree",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:5403/#exp/v2c/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/voice-handsfree-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83512,
+        "totalWords": 960,
+        "wordsPer1000px": 11.5,
+        "proseSharePct": 87.7,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 944,
+        "totalWords": 74,
+        "wordsPer1000px": 78.4,
+        "proseSharePct": 41.9,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "voice-denied",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:5403/?wbmock=voice:denied#exp/v2c/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/voice-denied-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 852,
+        "totalWords": 68,
+        "wordsPer1000px": 79.8,
+        "proseSharePct": 44.1,
+        "biggestNumberPx": 0,
+        "encodings": 2,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "voice-denied",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:5403/?wbmock=voice:denied#exp/v2c/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/voice-denied-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83512,
+        "totalWords": 960,
+        "wordsPer1000px": 11.5,
+        "proseSharePct": 87.7,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 68,
+        "wordsPer1000px": 75.6,
+        "proseSharePct": 44.1,
+        "biggestNumberPx": 0,
+        "encodings": 2,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "state-failed-inbox",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:5403/?wbmock=fetch-error#exp/v2c/inbox",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/state-failed-inbox-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83518,
+        "totalWords": 962,
+        "wordsPer1000px": 11.5,
+        "proseSharePct": 87.5,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "state-failed-inbox",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:5403/?wbmock=fetch-error#exp/v2c/inbox",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/state-failed-inbox-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83507,
+        "totalWords": 988,
+        "wordsPer1000px": 11.8,
+        "proseSharePct": 85.2,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 55,
+        "wordsPer1000px": 61.1,
+        "proseSharePct": 32.7,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "state-failed-ops",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:5403/?wbmock=fetch-error#exp/v2c/ops",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/state-failed-ops-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 746,
+        "totalWords": 33,
+        "wordsPer1000px": 44.2,
+        "proseSharePct": 0,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "state-failed-ops",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:5403/?wbmock=fetch-error#exp/v2c/ops",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/state-failed-ops-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 900,
+        "totalWords": 33,
+        "wordsPer1000px": 36.7,
+        "proseSharePct": 0,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 58,
+        "wordsPer1000px": 64.4,
+        "proseSharePct": 31,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "state-failed-content",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:5403/?wbmock=fetch-error#exp/v2c/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/state-failed-content-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 746,
+        "totalWords": 30,
+        "wordsPer1000px": 40.2,
+        "proseSharePct": 0,
+        "biggestNumberPx": 10,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "state-failed-content",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:5403/?wbmock=fetch-error#exp/v2c/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase2b-design/crops/instrument/state-failed-content-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 900,
+        "totalWords": 30,
+        "wordsPer1000px": 33.3,
+        "proseSharePct": 0,
+        "biggestNumberPx": 10,
+        "encodings": 1,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 53,
+        "wordsPer1000px": 58.9,
+        "proseSharePct": 34,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  }
+]

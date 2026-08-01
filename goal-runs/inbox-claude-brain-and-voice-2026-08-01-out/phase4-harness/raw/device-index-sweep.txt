@@ -1,0 +1,8 @@
+BlackHole output device index sweep (ffmpeg -f audiotoolbox -audio_device_index N),
+recording concurrently from avfoundation ":0" (= BlackHole 2ch input):
+idx=0 max_volume: -91.0 dB (silence)
+idx=1 max_volume:  -3.2 dB  <== BlackHole 2ch
+idx=2 max_volume: -91.0 dB
+idx=3 max_volume: -91.0 dB
+idx=4 max_volume: -91.0 dB
+idx=5 max_volume: -91.0 dB

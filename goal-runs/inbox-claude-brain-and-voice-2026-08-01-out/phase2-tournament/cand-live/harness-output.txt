@@ -1,0 +1,125 @@
+=== cand-live measurement run ===
+node v22.22.2  |  2026-08-01T12:04:53.390Z
+ANTHROPIC_API_KEY in env: NO   ANTHROPIC_AUTH_TOKEN: NO
+
+--- upstream model (GET https://claude-code-railway-production.up.railway.app/v1/models) ---
+HTTP 200  {"data":[{"id":"claude-opus-4-8","type":"model"},{"id":"claude-opus-4-7","type":"model"},{"id":"claude-opus-4-6","type":"model"},{"id":"claude-sonnet-4-6","type":"model"},{"id":"claude-haiku-4-5","type":"model"}]}
+main.py CLAUDE_MODEL default = claude-opus-4-7
+
+--- 3 COLD assemblies (module cache cleared before each) ---
+cold#1  state=cold  chars=35942  bytes=36609  blocks=8ok/1absent  shed=[]  assembledInMs=1307.4  wallMs=1307.6
+cold#2  state=cold  chars=35942  bytes=36609  blocks=8ok/1absent  shed=[]  assembledInMs=900.2  wallMs=900.2
+cold#3  state=cold  chars=35942  bytes=36609  blocks=8ok/1absent  shed=[]  assembledInMs=830.5  wallMs=830.5
+
+--- 12 WARM assemblies (consecutive simulated turns) ---
+warm# 1  state=warm  chars=35949  assembledInMs=176.5  wallMs=176.5
+warm# 2  state=warm  chars=35949  assembledInMs=168.2  wallMs=168.2
+warm# 3  state=warm  chars=35949  assembledInMs=272.1  wallMs=272.1
+warm# 4  state=warm  chars=35949  assembledInMs=199.6  wallMs=200.3
+warm# 5  state=warm  chars=35949  assembledInMs=176.3  wallMs=176.3
+warm# 6  state=warm  chars=35949  assembledInMs=179.7  wallMs=179.7
+warm# 7  state=warm  chars=35949  assembledInMs=177.7  wallMs=177.7
+warm# 8  state=warm  chars=35949  assembledInMs=503.7  wallMs=503.7
+warm# 9  state=warm  chars=35949  assembledInMs=174.7  wallMs=174.7
+warm#10  state=warm  chars=35949  assembledInMs=185.7  wallMs=185.7
+warm#11  state=warm  chars=35949  assembledInMs=201.2  wallMs=201.2
+warm#12  state=warm  chars=35949  assembledInMs=156.6  wallMs=156.6
+
+--- latency summary (ms, wall) ---
+cold  n=3  min=830.5  p50=900.2  mean=1012.8  max=1307.6
+warm  n=12  min=156.6  p50=179.7  mean=214.4  max=503.7
+cache avoided per warm turn: 2 full-tier content fetches (global + shared-tech), ~157KB of body
+delta cold-p50 - warm-p50 = 720.5 ms
+
+--- request accounting ---
+warm turn : 5 GETs  (P15, B5, B4, probe:global, probe:shared-tech) + 0-3 cached
+cold turn : 5 GETs + 2 full-tier content GETs + 3 B9 point-reads + 1 ClickUp attempt
+
+--- size + token estimate (canonical warm assembly) ---
+{
+  "chars": 35949,
+  "bytes": 36616,
+  "est_chars4": 8987,
+  "est_bytes": 10171,
+  "pretokens": 9610,
+  "est_pretok_lo": 10571,
+  "est_pretok_hi": 12974
+}
+
+--- per-block chars ---
+  OK     B14-header      140  
+  OK     B5             3618  
+  OK     B4              871  
+  OK     B9              449  
+  OK     B10a           4037  
+  OK     B10b           4211  
+  OK     P16             608  
+  OK     P15           19264  
+  ABSENT ClickUp           0  [ClickUp: no key configured — block omitted]
+
+--- model-free assertion suite (INJECTION-SAFETY §6.4) ---
+blocks emitted: 8   nonce: e272c57e209d
+scopes seen: ivan | ivan,global,shared-tech | global | shared-tech
+ALL ASSERTIONS PASS
+
+--- nonce entropy check (10,000 draws) ---
+distinct nonces from 10,000 draws: 10000 (collisions: 0)
+
+--- hostile fixture escaping (T2 / T5) ---
+  T2 break-out     closes-envelope=false  forges-header=false  idempotent=true
+  T5 header forge  closes-envelope=false  forges-header=false  idempotent=true
+  T2 generic sep   closes-envelope=false  forges-header=false  idempotent=true
+
+=== CROSS-TENANT SELF-TEST ===
+(1) assertion on the live assembly — every block header scope + a raw scan
+  block-header scopes outside {ivan,global,shared-tech}: 0
+  distinct scopes in the assembly: ivan, ivan,global,shared-tech, global, shared-tech
+(2) the pin is load-bearing — same file_path WITHOUT client_id (read-only probe)
+  UNPINNED  ?file_path=eq.project/MEMORY.md -> 2 rows: ivan, proswppp
+  PINNED    +client_id=eq.ivan            -> 1 rows: ivan
+  F5 CHECK  one in.() page for 3 tiers -> 1000 rows {"global":28,"ivan":972}  (shared-tech present? false)
+(3) the assertion FIRES — inject a proswppp row via a patched fetch
+  poisoned P15 with client_id=proswppp -> THREW
+  TENANCY ASSERTION FAILED at P15 project/MEMORY.md: row 0 carries client_id="proswppp", outside allowlist [ivan, global, shared-tech]
+  assertion routed to the STALE path instead of throwing? no
+(4) the assertion outranks the stale cache — poison AFTER a good assembly is memoised
+  LAST_GOOD present, P15 poisoned -> THREW (correct)
+  TENANCY ASSERTION FAILED at P15 project/MEMORY.md: row 0 carries client_id="proswppp", outside allowlist [ivan, global, shared-tech]
+=== END CROSS-TENANT SELF-TEST ===
+
+--- forced over-cap (P15 inflated so the ladder must fire) ---
+  chars=35976  shed=[B9,B4]
+  rendered line: [LOAD-SHED: dropped B9; truncated B4 to fit the 36,000-char cap — this context is partial]
+
+--- forced source outage (P15 unreachable) ---
+  cacheState=stale  first line: [STALE: assembled 2026-08-01T12:05:02Z, live sources unreachable — simulated Supabase outage]
+
+--- cost arithmetic ---
+model priced: claude-opus-4-7 (Opus tier) @ $5/MTok in, $25/MTok out
+injection tokens (EST): chars/4=8987  bytes/3.6=10171  pretoken-band=10571–12974
+injection alone, input cost/turn: $0.05285 – $0.06487 (pretoken band)
+                                  $0.05085 (byte estimator)
+
+realistic turn = injection + 24000-char context replay + ~1200-char prompt + ~800 output tokens
+  pretoken-lo  inTok≈17204  outTok=800  cost/turn ≈ $0.10602
+  pretoken-hi  inTok≈19607  outTok=800  cost/turn ≈ $0.11804
+  byte-est     inTok≈16804  outTok=800  cost/turn ≈ $0.10402
+
+DOUBLED TURN (PARITY-SPEC F3: the container SessionStart hook still injects ~1200 unframed tokens on every turn)
+  pretoken-lo  inTok≈18404  cost/turn ≈ $0.11202  (+$0.00600, +5.7%)
+  pretoken-hi  inTok≈20807  cost/turn ≈ $0.12404  (+$0.00600, +5.1%)
+  byte-est     inTok≈18004  cost/turn ≈ $0.11002  (+$0.00600, +5.8%)
+
+PROMPT-CACHE-HIT VARIANT:
+  The route does NOT support a cached system prefix as specified. Two independent
+  invalidators sit in the first ~40 chars of every assembly:
+    1. the per-turn nonce (INJECTION-SAFETY §2.1) at char 0 of the opening delimiter
+    2. the assemble timestamp in BLOCK 1 (<!-- Live system context auto-injected ... -->)
+  Prefix caching is a byte match, so hit rate is structurally 0%.
+  hypothetical if cacheable (pretoken-lo): $0.05285 -> $0.00529 per turn (0.1x read rate), saving $0.04757
+  hypothetical if cacheable (pretoken-hi): $0.06487 -> $0.00649 per turn (0.1x read rate), saving $0.05838
+
+--- byte-stability of consecutive warm assemblies ---
+  first differing char index between consecutive turns: 15 (of 35949 / 35949)
+  identical after masking nonce+timestamp: false
+

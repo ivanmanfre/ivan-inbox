@@ -1,0 +1,87 @@
+{
+  "wav": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase4-fixtures/16k/probe_long.wav",
+  "why": "ended",
+  "log": [
+    {
+      "t": 63.299999952316284,
+      "k": "ctor",
+      "v": {
+        "SpeechRecognition": true,
+        "webkitSpeechRecognition": true,
+        "secureContext": true
+      }
+    },
+    {
+      "t": 325.39999997615814,
+      "k": "gum-ok",
+      "v": {
+        "tracks": [
+          "Fake Default Audio Input"
+        ]
+      }
+    },
+    {
+      "t": 695.1000000238419,
+      "k": "stream-peak",
+      "v": {
+        "peak": 0
+      }
+    },
+    {
+      "t": 696.6000000238419,
+      "k": "start-called"
+    },
+    {
+      "t": 697.7999999523163,
+      "k": "onstart"
+    },
+    {
+      "t": 999.7999999523163,
+      "k": "onaudiostart"
+    },
+    {
+      "t": 8848.600000023842,
+      "k": "onaudioend"
+    },
+    {
+      "t": 8848.700000047684,
+      "k": "onerror",
+      "v": {
+        "error": "no-speech",
+        "message": ""
+      }
+    },
+    {
+      "t": 8849.100000023842,
+      "k": "onend"
+    }
+  ],
+  "speechRelatedLogLines": [
+    "[64633:17049599:0801/133837.103853:VERBOSE1:extensions/browser/extension_registrar.cc:549] AddComponentExtension Google Network Speech",
+    "[64633:17049599:0801/133837.103857:VERBOSE1:extensions/browser/extension_registrar.cc:551] Component extension Google Network Speech (fignfifoniblkonapihmkfakmlgkbkcf) installing/upgrading from '' to 1.0",
+    "[64633:17049599:0801/133839.734073:WARNING:chrome/browser/media/prefs/capture_device_ranking.h:256] Can't initialize the value of media.audio_input.user_preference_ranking because media.default_audio_capture_device isn't registered or is empty",
+    "[64633:17049660:0801/133839.744107:VERBOSE1:content/browser/renderer_host/media/media_stream_manager.cc:1519] MSM::DR::SetAudioType({label=df85e509-ea16-4880-b43a-ab46d8e7fb32}, [requester_id=0], {audio_type=DEVICE_AUDIO_CAPTURE})",
+    "[64633:17049660:0801/133839.744114:VERBOSE1:content/browser/renderer_host/media/media_stream_manager.cc:1519] MSM::DR::SetState({label=df85e509-ea16-4880-b43a-ab46d8e7fb32}, [requester_id=0], {stream_type=DEVICE_AUDIO_CAPTURE}, {new_state=STATE_REQUESTED})",
+    "[64633:17049660:0801/133839.744125:VERBOSE1:content/browser/renderer_host/media/media_stream_manager.cc:1519] MSM::DR::SetState({label=df85e509-ea16-4880-b43a-ab46d8e7fb32}, [requester_id=0], {stream_type=DEVICE_AUDIO_CAPTURE}, {new_state=STATE_PENDING_APPROVAL})",
+    "[64633:17049660:0801/133839.744127:VERBOSE1:content/browser/renderer_host/media/media_stream_manager.cc:1519] MSM::SetUpDeviceCaptureRequest([requester_id=0] {label=df85e509-ea16-4880-b43a-ab46d8e7fb32})",
+    "[64633:17049660:0801/133839.744139:VERBOSE1:content/browser/renderer_host/media/media_stream_manager.cc:1519] MSM::DR::SetState({label=df85e509-ea16-4880-b43a-ab46d8e7fb32}, [requester_id=0], {stream_type=DEVICE_AUDIO_CAPTURE}, {new_state=STATE_PENDING_APPROVAL})",
+    "[64633:17049660:0801/133839.744716:VERBOSE1:content/browser/renderer_host/media/media_stream_manager.cc:1519] AIDM::Open({session_id=03AA72FF97F77A5FEA76108122DE9485}, {device=[type: DEVICE_AUDIO_CAPTURE, id: default, group_id: fake_group_audio_input_default, name: Fake Default Audio Input, parameters: [format: FAKE, channel_layout: 3, channels: 2, sample_rate: 44100, frames_per_buffer: 441, effects: NONE, mic_positions: , latency_tag: LatencyUnknown]]})",
+    "[64633:17049660:0801/133839.745167:VERBOSE1:content/browser/renderer_host/media/media_stream_manager.cc:1519] MSM::DR::SetState({label=df85e509-ea16-4880-b43a-ab46d8e7fb32}, [requester_id=0], {stream_type=DEVICE_AUDIO_CAPTURE}, {new_state=STATE_OPENING})",
+    "[64633:17049660:0801/133839.903970:VERBOSE1:content/browser/renderer_host/media/media_stream_manager.cc:1519] MSM::Opened({stream_type=DEVICE_AUDIO_CAPTURE}, {session_id=03AA72FF97F77A5FEA76108122DE9485})",
+    "[64633:17049660:0801/133839.903974:VERBOSE1:content/browser/renderer_host/media/media_stream_manager.cc:1519] MSM::DR::SetState({label=df85e509-ea16-4880-b43a-ab46d8e7fb32}, [requester_id=0], {stream_type=DEVICE_AUDIO_CAPTURE}, {new_state=STATE_DONE})",
+    "[64670:17050101:0801/133839.981802:INFO:third_party/webrtc/modules/audio_processing/agc2/speech_level_estimator.cc:33] AGC2 using SpeechLevelEstimator",
+    "[64633:17049660:0801/133839.983140:VERBOSE1:content/browser/renderer_host/media/media_stream_manager.cc:1519] AIC::MaybeSetUpAudioProcessing({processing_config=[aec: yes, ns: yes, gain control: yes, multichannel capture processing: no, loopback aec: no]}, {processing_output_params=[format: FAKE, channel_layout: 2, channels: 1, sample_rate: 48000, frames_per_buffer: 480, effects: NONE, mic_positions: , latency_tag: LatencyUnknown]}, {device_params=[format: PCM_LOW_LATENCY, channel_layout: 2, channels: 1, sample_rate: 48000, frames_per_buffer: 128, effects: NONE, mic_positions: , latency_tag: LatencyUnknown, hw_capabilities: min_frames_per_buffer: 128, max_frames_per_buffer: 4096, bitstream_formats:0, require_encapsulation:0, require_audio_offload:0]}) [id=F8BF65AA72F03F6D27E066960017E39B]",
+    "[64633:17049660:0801/133839.983153:VERBOSE1:content/browser/renderer_host/media/media_stream_manager.cc:1519] AudioProcessor::Create({multi_channel_capture_processing=false, neural_residual_echo_estimator_present=false}) [id=F8BF65AA72F03F6D27E066960017E39B]",
+    "[64633:17049660:0801/133839.983162:VERBOSE1:content/browser/renderer_host/media/media_stream_manager.cc:1519] MSAP::AudioProcessor => (capture FIFO: fifo_output_frames_per_buffer=480) [this=0x11C000E4B40] [id=F8BF65AA72F03F6D27E066960017E39B]",
+    "[64670:17050262:0801/133839.983870:INFO:third_party/webrtc/modules/audio_processing/agc2/speech_level_estimator.cc:33] AGC2 using SpeechLevelEstimator",
+    "[64670:17050270:0801/133840.032727:INFO:third_party/webrtc/modules/audio_processing/agc2/speech_level_estimator.cc:33] AGC2 using SpeechLevelEstimator",
+    "[64633:17049660:0801/133840.358775:VERBOSE1:content/browser/renderer_host/media/media_stream_manager.cc:1519] MSM::DR::SetAudioType({label=bd82ffa5-3a4d-4e7c-bc6e-7a9f83716b9d}, [requester_id=0], {audio_type=DEVICE_AUDIO_CAPTURE})",
+    "[64633:17049660:0801/133840.358782:VERBOSE1:content/browser/renderer_host/media/media_stream_manager.cc:1519] MSM::DR::SetState({label=bd82ffa5-3a4d-4e7c-bc6e-7a9f83716b9d}, [requester_id=0], {stream_type=DEVICE_AUDIO_CAPTURE}, {new_state=STATE_REQUESTED})",
+    "[64633:17049660:0801/133840.358792:VERBOSE1:content/browser/renderer_host/media/media_stream_manager.cc:1519] MSM::DR::SetState({label=bd82ffa5-3a4d-4e7c-bc6e-7a9f83716b9d}, [requester_id=0], {stream_type=DEVICE_AUDIO_CAPTURE}, {new_state=STATE_PENDING_APPROVAL})",
+    "[64633:17049660:0801/133840.358794:VERBOSE1:content/browser/renderer_host/media/media_stream_manager.cc:1519] MSM::SetUpDeviceCaptureRequest([requester_id=0] {label=bd82ffa5-3a4d-4e7c-bc6e-7a9f83716b9d})",
+    "[64633:17049660:0801/133840.358800:VERBOSE1:content/browser/renderer_host/media/media_stream_manager.cc:1519] MSM::DR::SetState({label=bd82ffa5-3a4d-4e7c-bc6e-7a9f83716b9d}, [requester_id=0], {stream_type=DEVICE_AUDIO_CAPTURE}, {new_state=STATE_PENDING_APPROVAL})",
+    "[64641:17049701:0801/133840.660832:VERBOSE1:net/base/network_delegate.cc:38] NetworkDelegate::NotifyBeforeURLRequest: https://www.google.com/speech-api/full-duplex/v1/down?key=AIzaSyDr2UxVnv_U85AbhhY8XSHSIavUW0DC-sY&pair=E784AC072A1FDF33&output=pb",
+    "[64641:17049701:0801/133840.662010:VERBOSE1:net/base/network_delegate.cc:38] NetworkDelegate::NotifyBeforeURLRequest: https://www.google.com/speech-api/full-duplex/v1/up?key=AIzaSyDr2UxVnv_U85AbhhY8XSHSIavUW0DC-sY&pair=E784AC072A1FDF33&output=pb&lang=en-US&pFilter=0&maxAlternatives=1&app=chromium&endpoint=1&interim"
+  ],
+  "totalLogLines": 2291
+}

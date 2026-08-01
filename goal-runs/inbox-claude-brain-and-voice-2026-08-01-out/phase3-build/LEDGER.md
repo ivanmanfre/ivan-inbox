@@ -464,3 +464,83 @@ than no caching at all.
 
 ## 5. Voice instrumentation
 (pending)
+
+## 3. Railway model passthrough — T3 grant, executed serialized by the orchestrator
+
+**Grant:** "an allowlisted model passthrough on the Railway claude-code service ONLY". Nothing else changed. Executed alone; the only other tasks in flight (three UI design worktrees) touch no Railway surface.
+
+### Before-snapshot
+- Repo `claude-code-railway`, branch `main` @ `2b1054f`, working tree clean except 6 pre-existing untracked probe files (untouched).
+- `main.py` copied verbatim to `phase3-build/railway-snapshot/main.py.before`; sha256 `1783aa134768b7e787bd3d06e25588807cdbab2bcb7ea9c4020030e08307df97`.
+- Deployed env snapshot (39 vars, names + value hashes, secrets never printed) in `phase3-build/railway-env-before.md`. **No variable was set, changed, or removed at any point.**
+- Pre-deploy `GET /health` → 200.
+
+### The change — commit `82e4ab1`, 3 hunks, +21/-2
+1. `ChatRequest` (`main.py:91`): `model: Optional[str] = None`.
+2. New `resolve_chat_model()` (`main.py:1248-1264`), placed directly after the pre-existing `MODEL_MAP`: `None` returns `CLAUDE_MODEL` (byte-identical to prior behaviour); any other value must be a key of `MODEL_MAP` or the request is rejected `400`. **Fails closed** — it never quietly serves the default under a different name, which is what the broker's honest-degrade contract needs.
+3. Both invocation sites (`:678` `/chat`, `:808` `/chat/stream`) swap the `CLAUDE_MODEL` literal for `resolve_chat_model(request.model)`. No other line in the file differs — full diff in this ledger's commit.
+
+Pre-deploy behavioural test of the resolver in isolation: `None`→`claude-opus-4-7` ✅; `claude-sonnet-4-6`/`claude-haiku-4-5` accepted ✅; `gpt-4`, `claude-opus-9`, bare alias `opus`, empty string, and a shell-metacharacter payload all rejected 400 ✅.
+
+### Restore path (one line)
+`cd ~/Desktop/claude-code-railway && git revert 82e4ab1 && railway up --detach`
+(equivalently `git checkout 2b1054f -- main.py`, whose sha256 is recorded above.)
+
+### Deploy + read-back (all against `claude-code-railway-production.up.railway.app`)
+| probe | result |
+|---|---|
+| `POST /chat` with `model:"gpt-4-turbo"` | **HTTP 400** `Unsupported model 'gpt-4-turbo'. Allowed: [11 model ids]` — proves the new code is live |
+| `POST /chat` with `model:"claude-haiku-4-5"` | HTTP 200, `success:true`, `result:"OK\n"` — **model A** |
+| `POST /chat` with `model:"claude-sonnet-4-6"` | HTTP 200, `success:true`, `result:"OK\n"` — **model B** |
+| `POST /chat` with **no** `model` field | HTTP 200, `success:true` — default path unchanged |
+| `GET /health` post-deploy | 200, `claude_cli_available:true`, CLI `2.1.161`, `fork_watchdog.strikes:0` |
+| `railway variables` diff vs before-snapshot | identical, 39 vars, no change |
+
+### 🔴 P0 FOUND, PRE-EXISTING, NOT FIXED (out of grant): `/chat/stream` has been dead for every client
+Every `/chat/stream` call — on model A, model B, **and the no-model default** — returns exactly `data: {"type":"done","returncode":1}` and nothing else. Root cause, obtained from the container itself by asking `/chat` to run the same output format:
+
+```
+STDERR: Error: When using --print, --output-format=stream-json requires --verbose
+```
+
+`/chat/stream` builds `claude -p --output-format stream-json` with no `--verbose` (`main.py:803-809`); the CLI refuses. Reproduced identically on the local CLI 2.1.219 and confirmed as the container's own stderr on CLI 2.1.161. The line dates to commit `df6801e` (2026-02-24).
+
+**Not caused by this change:** the default path exercises `resolve_chat_model(None)`, which returns the same `CLAUDE_MODEL` string the old code passed, and it fails identically. `/chat` — same code path for the model argument — works on both models.
+
+**Consequence:** `/chat/stream` is the broker's *only* transport (`inbox-claude/index.ts` posts there). So the inbox Claude surface could never have completed a turn even with `RAILWAY_CLAUDE_API_KEY` armed. This is a bigger finding than the arming gap it was hiding behind.
+
+**Fix, ready but deliberately NOT applied:** add `"--verbose"` to the `cmd` list at `main.py:808`. One token. It cannot regress working behaviour because there is none. It is withheld because the grant reads "an allowlisted model passthrough ONLY. Nothing else on that service may change" — this is a different change on a multi-client service, so it goes to Ivan on the ballot rather than being taken unilaterally.
+
+**What this blocks in the DoD:** stream-based read-back of the model passthrough (proven instead on `/chat`, both models), and any "real turn" verification through the broker (captured injected context, on-demand depth reaching the brain). Those rows are reported as BLOCKED with this evidence rather than claimed.
+
+## 6. Injection hardening — blocking amendments A1/A2 applied (orchestrator, after two agent stalls)
+
+Source: `phase1-parity/SKEPTIC-INJECTION.md` §6 defects, §9 amendments. Commit `6706802` on `exp/brain`; redeployed to `bjbvqvzbzczjbatgmccb`.
+
+**A1 — normalise before you neutralise.** The shipped `escapeBody` was byte-exact while the model reads glyphs, so every row of the skeptic's evasion table walked through it *and left the counter at zero* — telemetry reporting clean over a live forgery. Rewritten as `escapeBodyCounted` with the order fixed: C0 controls → `\p{Cf}` format characters (ZWSP/ZWNJ/ZWJ/LRM/BOM) → NFKC fold restricted to single-character printable-ASCII results (`＜`→`<`, `［`→`[`) → delimiter runs tolerating intra-run space/tab → header shape tolerating leading/repeated/NBSP whitespace. Every rule counts; counts surface per block in `BlockReport.note` and once per turn as a trailer outside the envelope.
+
+**A2 — header fields are no longer trusted.** `blockHeader` now routes `id`/`source`/`scope`/`file`/`freshness` through `sanitizeHeaderField`, which escapes **then** shape-validates (a value that only passed because a ZWSP hid a `]` still fails; a header field has no legitimate reason to carry escapable bytes). A failure becomes `malformed` plus a preamble line naming the block and field **without reproducing the offending bytes** — quoting attacker text into scaffolding is the defect being fixed. Only the assembler-computed `n`/`total` integers are still interpolated raw.
+
+**A4** was already shipped by the Phase 3 builder (GRAFT 2 derives the nonce count from an empty envelope). **A3** N/A — grep confirms `MEMORY_NONCE_MODE` was never shipped (that flag lived only in the losing candidate). **A5** — the cap was already raised to 46,000 to cover envelope + depth block (§2).
+
+**Evidence — `phase3-build/escaper-evasion-test.mjs`, run against the shipped file:**
+
+| case | neutralised | counter |
+|---|---|---|
+| plain `<<<` | YES | 2 (delim=2) |
+| ZWSP-split `<<<` | YES | 4 (cf=2, delim=2) |
+| fullwidth `＜＜＜` | YES | 8 (fold=6, delim=2) |
+| plain `[BLOCK` | YES | 1 (header=1) |
+| NBSP `[BLOCK` | YES | 2 (fold=1, header=1) |
+| double-space `[BLOCK` | YES | 1 (header=1) |
+| leading-space `[BLOCK` | YES | 1 (header=1) |
+| space-split `< < <` | YES | 2 (delim=2) |
+| fullwidth `［BLOCK` | YES | 2 (fold=1, header=1) |
+
+D2 header break-out (the 163-char forged `[ASSEMBLER NOTICE]` + fake `[BLOCK]` through `compiled_at`) → `malformed`, issue recorded. All 7 legitimate header values pass through byte-identical. **0 failures.**
+
+**Gates:** 378 tests pass (22 files), lint 0 errors, `npm run build` clean, `deno check` clean, no new dependency.
+**Deploy + re-probe:** `supabase functions deploy inbox-claude` → Deployed. anon (no auth) → **401**; anon-key-as-bearer → **401 `invalid_token`** (the function's own check, so platform `verify_jwt` is not being relied on).
+**Secret grep:** `dist/assets/*.js` contains exactly one JWT — decoded `role=anon`, the intended public key. No `sk-ant-`, no `service_role`, no `RAILWAY_CLAUDE_API_KEY`. Branch history `exp/v2..exp/brain`: 0 hits.
+
+**Not applied:** A6/A7 (framing-text edits — non-blocking, and the skeptic's own §5 pre-registration warns framing edits must not be treated as substitutes for A1-A3, which are done) and A8 (report-only: the instruction-shaped scanner fired on the two harmless attacks and none of the six real ones — kept as corpus telemetry, and the report says plainly it is not coverage).

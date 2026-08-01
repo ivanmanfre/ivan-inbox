@@ -1,0 +1,82 @@
+[
+  {
+    "why": "spoke",
+    "voices": {
+      "n": 180
+    },
+    "called": 2617.1999999284744,
+    "started": 2624.0999999046326,
+    "ended": 6246.399999976158,
+    "floor": 0.07173296784133629,
+    "gate": 0.5738637427306903,
+    "peak": 0.25450314131072,
+    "firstAudible": null,
+    "called_to_start_ms": 6.9,
+    "called_to_audible_ms": null,
+    "startEvent_to_audible_ms": null
+  },
+  {
+    "why": "spoke",
+    "voices": {
+      "n": 180
+    },
+    "called": 2365.7999999523163,
+    "started": 2371.600000023842,
+    "ended": 5742.799999952316,
+    "floor": 0.03661234484348065,
+    "gate": 0.2928987587478452,
+    "peak": 0.2653959355949873,
+    "firstAudible": null,
+    "called_to_start_ms": 5.8,
+    "called_to_audible_ms": null,
+    "startEvent_to_audible_ms": null
+  },
+  {
+    "why": "spoke",
+    "voices": {
+      "n": 180
+    },
+    "called": 2249.7000000476837,
+    "started": 2255.3000000715256,
+    "ended": 5629.5,
+    "floor": 0.06996808729994423,
+    "gate": 0.5597446983995539,
+    "peak": 0.27655737269849745,
+    "firstAudible": null,
+    "called_to_start_ms": 5.6,
+    "called_to_audible_ms": null,
+    "startEvent_to_audible_ms": null
+  },
+  {
+    "why": "spoke",
+    "voices": {
+      "n": 180
+    },
+    "called": 2707.899999976158,
+    "started": 2712.6999999284744,
+    "ended": 6270.5,
+    "floor": 0.06656786766399547,
+    "gate": 0.5325429413119638,
+    "peak": 0.259797442597155,
+    "firstAudible": null,
+    "called_to_start_ms": 4.8,
+    "called_to_audible_ms": null,
+    "startEvent_to_audible_ms": null
+  },
+  {
+    "why": "spoke",
+    "voices": {
+      "n": 180
+    },
+    "called": 2882.399999976158,
+    "started": 2888.5,
+    "ended": 6297.700000047684,
+    "floor": 0.07648116191921407,
+    "gate": 0.6118492953537126,
+    "peak": 0.24978687862970242,
+    "firstAudible": null,
+    "called_to_start_ms": 6.1,
+    "called_to_audible_ms": null,
+    "startEvent_to_audible_ms": null
+  }
+]

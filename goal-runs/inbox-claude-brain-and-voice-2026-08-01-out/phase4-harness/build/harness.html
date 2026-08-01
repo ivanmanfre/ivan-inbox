@@ -1,0 +1,207 @@
+<!doctype html><meta charset=utf-8><title>phase4 voice harness</title>
+<body style="font:13px ui-monospace">
+<button id=mic>mic</button><pre id=out></pre>
+<script type="module">
+// Drives the REAL reducer (./voice.js, tsc output of src/exp/v2c/chat/voice.ts)
+// with the SAME wiring useVoice.ts uses. Every line below that mirrors the hook
+// carries its source line number so the fidelity is checkable.
+import {
+  IDLE, voiceReduce, recognitionCtor, speakableText, sttErrorReason,
+  ttsSupported, unlockAudio, NO_SPEECH_ROUNDS,
+} from './voice.js'
+
+const EV = []          // event timeline, performance.now()
+const AC = []          // acoustic blocks {t, rms}
+const log = (k, v) => { EV.push({ t: performance.now(), k, v: v ?? null }) }
+const put = s => { document.getElementById('out').textContent += s + '\n' }
+
+let state = IDLE
+let rec = null
+let heard = ''
+let rounds = 0
+let opts = {}
+let finish = null
+let acCtx = null, acMeta = {}
+
+// ---- acoustic tap: the same audio the recogniser hears, un-processed ----
+// echoCancellation OFF is load-bearing: with AEC on, Chrome cancels its own TTS
+// out of the loopback and the first-audible measurement would read as silence.
+async function startAcoustic() {
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+  })
+  log('gum', { tracks: stream.getAudioTracks().map(t => t.label), settings: stream.getAudioTracks()[0].getSettings() })
+  const ac = new AudioContext(); acCtx = ac
+  await ac.resume()
+  const src = ac.createMediaStreamSource(stream)
+  const sp = ac.createScriptProcessor(512, 1, 1)
+  const mute = ac.createGain(); mute.gain.value = 0   // never feed the loopback
+  src.connect(sp); sp.connect(mute); mute.connect(ac.destination)
+  sp.onaudioprocess = e => {
+    const d = e.inputBuffer.getChannelData(0)
+    let s = 0
+    for (let i = 0; i < d.length; i++) s += d[i] * d[i]
+    AC.push({ t: performance.now(), ct: e.playbackTime, rms: Math.sqrt(s / d.length) })
+  }
+  const ts = ac.getOutputTimestamp()
+  acMeta = {
+    sampleRate: ac.sampleRate, blockSize: 512, blockMs: 512 / ac.sampleRate * 1000,
+    baseLatency: ac.baseLatency, outputLatency: ac.outputLatency,
+    mapContextTime: ts.contextTime, mapPerformanceTime: ts.performanceTime,
+  }
+  log('acoustic-started', acMeta)
+}
+
+// ---- mirrors useVoice.ts:85-91 stopRec ----
+function stopRec() {
+  const r = rec; rec = null
+  if (!r) return
+  r.onstart = null; r.onend = null; r.onerror = null; r.onresult = null
+  try { r.abort() } catch {}
+}
+
+// ---- mirrors useVoice.ts:105-172 startRecognition ----
+function startRecognition() {
+  const Ctor = recognitionCtor()
+  if (!Ctor) return dispatch({ e: 'fail', reason: 'unsupported', retryable: false })
+  stopRec(); heard = ''
+  let r
+  try { r = new Ctor() } catch { return dispatch({ e: 'fail', reason: 'unsupported', retryable: false }) }
+  rec = r
+  // useVoice.ts:117-120 verbatim, except `continuous` which the runner varies so
+  // the app-as-written and the one-line variant can both be measured.
+  r.lang = 'en-US'; r.continuous = !!opts.continuous; r.interimResults = true; r.maxAlternatives = 1
+  log('rec:config', { continuous: r.continuous, interimResults: r.interimResults, lang: r.lang })
+  r.onstart = () => { log('rec:start'); dispatch({ e: 'granted' }) }
+  r.onaudiostart = () => log('rec:audiostart')
+  r.onspeechstart = () => log('rec:speechstart')
+  r.onspeechend = () => log('rec:speechend')   // the recogniser's own utterance-end
+  r.onaudioend = () => log('rec:audioend')
+  r.onresult = e => {
+    let interim = '', final = ''
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const res = e.results[i]
+      const text = (res[0] && res[0].transcript) || ''
+      if (res.isFinal) final += text; else interim += text
+    }
+    if (interim) {
+      log('rec:interim', { text: interim })
+      const level = Math.min(1, 0.25 + (interim.trim().split(/\s+/).length % 7) / 8)  // useVoice.ts:137
+      dispatch({ e: 'level', level })
+    }
+    // OBSERVATION ONLY — does not feed the app path. Records every finalised
+    // segment from index 0, so "what Chrome heard" can be separated from "what
+    // the resultIndex-based accumulation above actually keeps".
+    let allFinal = ''
+    for (let i = 0; i < e.results.length; i++)
+      if (e.results[i].isFinal) allFinal += (e.results[i][0] && e.results[i][0].transcript) || ''
+    if (allFinal.trim()) log('rec:all-finals', { text: allFinal.trim(), n: e.results.length, resultIndex: e.resultIndex })
+
+    if (final.trim()) {
+      heard = final.trim()
+      log('rec:final', { text: heard })            // <= FINAL RESULT timestamp
+      dispatch({ e: 'heard-silence' })             // useVoice.ts:143
+      dispatch({ e: 'transcript', text: heard })   // useVoice.ts:144
+      rounds = 0
+    }
+  }
+  r.onerror = ev => {
+    log('rec:error', { error: ev.error })
+    const mapped = sttErrorReason(ev.error)
+    if (mapped === 'no-speech') { rounds += 1; dispatch({ e: 'no-speech', round: rounds }); return }
+    if (ev.error === 'aborted') return
+    dispatch({ e: 'fail', reason: mapped.reason, retryable: mapped.retryable })
+  }
+  r.onend = () => {
+    log('rec:end', { heard })
+    if (!heard) { rounds += 1; dispatch({ e: 'no-speech', round: rounds }) }
+    else if (state.s === 'LISTENING') {
+      // Chrome ended the session without ever marking a result final. Real
+      // behaviour, recorded as such — not smoothed over.
+      log('rec:end-without-final', { interimTail: heard })
+    }
+  }
+  try { r.start(); log('rec:start-called') }
+  catch { dispatch({ e: 'fail', reason: 'stt-upstream', retryable: true }) }
+}
+
+// ---- mirrors useVoice.ts:175-187 speak ----
+function speak(text) {
+  if (!ttsSupported() || !text) return dispatch({ e: 'speak-end' })
+  try {
+    window.speechSynthesis.cancel()
+    const spoken = speakableText(text)                    // the REAL transform
+    const u = new SpeechSynthesisUtterance(spoken)
+    u.rate = 1.04
+    u.onstart = () => log('tts:utterance-start', { chars: spoken.length })  // PROXY for first-audible
+    u.onend = () => { log('tts:end'); dispatch({ e: 'speak-end' }) }
+    u.onerror = e => { log('tts:error', { error: e.error }); dispatch({ e: 'fail', reason: 'tts-failed', retryable: false }) }
+    log('tts:speak-called', { chars: spoken.length, text: spoken })
+    window.speechSynthesis.speak(u)
+  } catch (err) {
+    log('tts:threw', { message: String(err) })
+    dispatch({ e: 'fail', reason: 'tts-failed', retryable: false })
+  }
+}
+
+function dispatch(ev) {
+  const from = state.s
+  state = voiceReduce(state, ev, { handsFree: !!opts.handsFree })
+  if (state.s !== from) { log('state', { ev: ev.e, from, to: state.s, detail: state })
+    put(`${performance.now().toFixed(0)}  ${from} -[${ev.e}]-> ${state.s}`)
+    onEnter(state.s) }
+}
+
+// ---- mirrors useVoice.ts:236-253, the device-driver entry switch ----
+function onEnter(s) {
+  switch (s) {
+    case 'ARMING': startRecognition(); break
+    case 'SENDING':
+      // STUB: the chat turn. useVoice.ts:261-265 waits for the caller's turnDone;
+      // here it is fired after opts.upstreamStubMs so the speak leg is reachable
+      // without an armed broker. Labelled in the output as stubbed.
+      setTimeout(() => dispatch({ e: 'turn-done', speak: opts.spokenReplies !== false && ttsSupported() }),
+        opts.upstreamStubMs || 0)
+      break
+    case 'SPEAKING': stopRec(); speak(opts.replyText || ''); break   // useVoice.ts:240-244
+    case 'IDLE': case 'ERROR': case 'PAUSED': stopRec(); break
+  }
+  if (opts.stopAt && opts.stopAt.includes(s)) setTimeout(() => finish && finish(s), opts.settleMs || 400)
+}
+
+const mic = document.getElementById('mic')
+// VoiceControl.tsx:65 — unlockAudio on pointerdown, synchronously, before any await.
+mic.addEventListener('pointerdown', () => { log('unlockAudio'); unlockAudio() })
+mic.addEventListener('click', () => { log('arm-click'); dispatch({ e: 'arm' }) })
+
+window.__prepare = async o => {
+  opts = o
+  // getVoices() is populated asynchronously in Chrome; without this wait the
+  // first utterance can be dropped for want of a voice.
+  if (ttsSupported() && !window.speechSynthesis.getVoices().length) {
+    await new Promise(res => { const to = setTimeout(res, 3000)
+      window.speechSynthesis.onvoiceschanged = () => { clearTimeout(to); res() } })
+  }
+  log('voices', { n: ttsSupported() ? window.speechSynthesis.getVoices().length : 0 })
+  await startAcoustic(); return true
+}
+// TTS-only path, for verifying that first-audible is really measurable acoustically.
+window.__speakOnly = text => new Promise(res => {
+  const u = new SpeechSynthesisUtterance(speakableText(text))
+  u.rate = 1.04
+  u.onstart = () => log('tts:utterance-start', { chars: u.text.length })
+  u.onend = () => { log('tts:end'); setTimeout(() => res('spoke'), 300) }
+  u.onerror = e => { log('tts:error', { error: e.error }); res('error') }
+  log('tts:speak-called', { text: u.text })
+  window.speechSynthesis.speak(u)
+  setTimeout(() => res('timeout'), 15000)
+})
+window.__await = () => new Promise(res => {
+  finish = why => { finish = null; res(why) }
+  setTimeout(() => finish && finish('timeout'), opts.timeoutMs || 25000)
+})
+window.__dump = () => ({ EV, AC, acMeta, finalState: state, rounds })
+window.__voices = () => (window.speechSynthesis.getVoices() || []).slice(0, 5).map(v => ({ name: v.name, lang: v.lang, local: v.localService }))
+window.__ready = true
+</script>
+</body>

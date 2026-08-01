@@ -1,0 +1,543 @@
+{
+  "generated": "2026-08-01T12:28:51.941Z",
+  "fileSpan": {
+    "f1": {
+      "speechStart": 0.403438,
+      "speechEnd": 2.015062,
+      "dur": 1.612
+    },
+    "f2": {
+      "speechStart": 0.405375,
+      "speechEnd": 2.117313,
+      "dur": 1.712
+    },
+    "f3": {
+      "speechStart": 0.404813,
+      "speechEnd": 3.527438,
+      "dur": 3.123
+    },
+    "f4": {
+      "speechStart": 0.405188,
+      "speechEnd": 2.983812,
+      "dur": 2.579
+    },
+    "f5": {
+      "speechStart": 0.407875,
+      "speechEnd": 3.07525,
+      "dur": 2.667
+    },
+    "f6": {
+      "speechStart": 0.405813,
+      "speechEnd": 3.322,
+      "dur": 2.916
+    },
+    "f7": {
+      "speechStart": 0.406375,
+      "speechEnd": 2.930813,
+      "dur": 2.524
+    },
+    "f8": {
+      "speechStart": 0.407313,
+      "speechEnd": 3.52375,
+      "dur": 3.116
+    },
+    "f9_noisy": {
+      "speechStart": 0.400938,
+      "speechEnd": 3.563,
+      "dur": 3.162
+    },
+    "f10_fast": {
+      "speechStart": 0.404688,
+      "speechEnd": 2.815688,
+      "dur": 2.411
+    }
+  },
+  "aggregate": {
+    "runsPerFixture": 4.1,
+    "turnsAttempted": 41,
+    "turnsCompleted": 36,
+    "completionRatePct": 87.8,
+    "werPct_completedOnly": 38.6,
+    "werPct_microAvg_completedOnly": 38.4,
+    "werPct_inclFailures": 46.1,
+    "uEnd_to_final_ms": {
+      "median": 952,
+      "min": 765.7,
+      "max": 1706
+    },
+    "uEnd_to_firstAudibleProxy_ms": {
+      "median": 980.2,
+      "mean": 1036.6,
+      "min": 777.6,
+      "max": 1793.3,
+      "underTargetCount": 30,
+      "total": 36
+    },
+    "final_to_speakStart_ms": {
+      "median": 18.2,
+      "max": 87.3
+    },
+    "speakCalled_to_startEvent_ms": {
+      "median": 15.9
+    },
+    "appDefault": {
+      "attempted": 10,
+      "completed": 1
+    }
+  },
+  "continuousTable": [
+    {
+      "fixture": "f1",
+      "n": 5,
+      "completed": 5,
+      "ref": "Approve the top draft in the queue",
+      "refWords": 7,
+      "transcripts": [
+        "approve the top draft in the queue"
+      ],
+      "werPct": 0,
+      "S": 0,
+      "I": 0,
+      "D": 0,
+      "werPctInclFailures": 0,
+      "uEnd_to_final_ms": 961.3,
+      "uEnd_to_firstAudibleProxy_ms": 988.8,
+      "final_to_speakStart_ms": 17.9,
+      "all_uEnd_to_firstAudible": [
+        988.8,
+        823.8,
+        1160.1,
+        1328.9,
+        947.8
+      ],
+      "acousticDurMs": 1600,
+      "fileDurMs": 1612
+    },
+    {
+      "fixture": "f2",
+      "n": 4,
+      "completed": 3,
+      "ref": "What failed in n8n overnight",
+      "refWords": 5,
+      "transcripts": [
+        "what failed in any then overnight",
+        "what failed an NA done overnight"
+      ],
+      "werPct": 53.3,
+      "S": 1.7,
+      "I": 1,
+      "D": 0,
+      "werPctInclFailures": 65,
+      "uEnd_to_final_ms": 1077.3,
+      "uEnd_to_firstAudibleProxy_ms": 1092.4,
+      "final_to_speakStart_ms": 23.5,
+      "all_uEnd_to_firstAudible": [
+        1092.4,
+        913.2,
+        1575.2
+      ],
+      "acousticDurMs": 1663.9,
+      "fileDurMs": 1712
+    },
+    {
+      "fixture": "f3",
+      "n": 4,
+      "completed": 4,
+      "ref": "Check the Supabase scheduled posts table for stuck rows",
+      "refWords": 9,
+      "transcripts": [
+        "check the super base scheduled post table for stud Rose"
+      ],
+      "werPct": 55.6,
+      "S": 4,
+      "I": 1,
+      "D": 0,
+      "werPctInclFailures": 55.6,
+      "uEnd_to_final_ms": 968,
+      "uEnd_to_firstAudibleProxy_ms": 990.5,
+      "final_to_speakStart_ms": 22.6,
+      "all_uEnd_to_firstAudible": [
+        1077.6,
+        853.1,
+        1091.2,
+        903.5
+      ],
+      "acousticDurMs": 3109.2,
+      "fileDurMs": 3123
+    },
+    {
+      "fixture": "f4",
+      "n": 4,
+      "completed": 4,
+      "ref": "Move the ClickUp task to done and refresh the board",
+      "refWords": 10,
+      "transcripts": [
+        "move the click up task to done and refresh the board"
+      ],
+      "werPct": 20,
+      "S": 1,
+      "I": 1,
+      "D": 0,
+      "werPctInclFailures": 20,
+      "uEnd_to_final_ms": 970.3,
+      "uEnd_to_firstAudibleProxy_ms": 987.5,
+      "final_to_speakStart_ms": 23.6,
+      "all_uEnd_to_firstAudible": [
+        858.3,
+        881.2,
+        1093.8,
+        1096.5
+      ],
+      "acousticDurMs": 2570.7,
+      "fileDurMs": 2579
+    },
+    {
+      "fixture": "f5",
+      "n": 4,
+      "completed": 4,
+      "ref": "Did UniPile hit the read ceiling on Mattan's seat",
+      "refWords": 9,
+      "transcripts": [
+        "did you need Kyle hit the Reed ceiling on Madden seed"
+      ],
+      "werPct": 66.7,
+      "S": 4,
+      "I": 2,
+      "D": 0,
+      "werPctInclFailures": 66.7,
+      "uEnd_to_final_ms": 928.1,
+      "uEnd_to_firstAudibleProxy_ms": 961.3,
+      "final_to_speakStart_ms": 18.6,
+      "all_uEnd_to_firstAudible": [
+        971.6,
+        951,
+        925.9,
+        1279.4
+      ],
+      "acousticDurMs": 2613.3,
+      "fileDurMs": 2667
+    },
+    {
+      "fixture": "f6",
+      "n": 4,
+      "completed": 4,
+      "ref": "Render the hyperframes video for the carousel draft",
+      "refWords": 8,
+      "transcripts": [
+        "render the hyperframes video for the carousel draft",
+        "render the hyper frames video for the carousel draft",
+        "render the high performance video for the carousel draft"
+      ],
+      "werPct": 18.8,
+      "S": 0.8,
+      "I": 0.8,
+      "D": 0,
+      "werPctInclFailures": 18.8,
+      "uEnd_to_final_ms": 1040.9,
+      "uEnd_to_firstAudibleProxy_ms": 1085.3,
+      "final_to_speakStart_ms": 15.8,
+      "all_uEnd_to_firstAudible": [
+        1115.2,
+        1012.4,
+        1055.3,
+        1284.2
+      ],
+      "acousticDurMs": 2805.3,
+      "fileDurMs": 2916
+    },
+    {
+      "fixture": "f7",
+      "n": 4,
+      "completed": 4,
+      "ref": "Pause the Smartlead cold email lane until Monday",
+      "refWords": 8,
+      "transcripts": [
+        "until Monday"
+      ],
+      "werPct": 75,
+      "S": 0,
+      "I": 0,
+      "D": 6,
+      "werPctInclFailures": 75,
+      "uEnd_to_final_ms": 843.6,
+      "uEnd_to_firstAudibleProxy_ms": 857.9,
+      "final_to_speakStart_ms": 16.1,
+      "all_uEnd_to_firstAudible": [
+        871.6,
+        844.2,
+        841.8,
+        1107.7
+      ],
+      "acousticDurMs": 2517.3,
+      "fileDurMs": 2524
+    },
+    {
+      "fixture": "f8",
+      "n": 4,
+      "completed": 4,
+      "ref": "Show me the RISE DTC board visibility for this week",
+      "refWords": 10,
+      "transcripts": [
+        "show me the rice DTC board visibility for this week"
+      ],
+      "werPct": 10,
+      "S": 1,
+      "I": 0,
+      "D": 0,
+      "werPctInclFailures": 10,
+      "uEnd_to_final_ms": 912.5,
+      "uEnd_to_firstAudibleProxy_ms": 929.6,
+      "final_to_speakStart_ms": 17.9,
+      "all_uEnd_to_firstAudible": [
+        934.4,
+        1252.9,
+        894.6,
+        924.9
+      ],
+      "acousticDurMs": 3040,
+      "fileDurMs": 3116
+    },
+    {
+      "fixture": "f9_noisy",
+      "n": 4,
+      "completed": 4,
+      "ref": "Check the Supabase scheduled posts table for stuck rows",
+      "refWords": 9,
+      "transcripts": [
+        "table for stuck Rose",
+        "check the super base schedule post table for stuck Rose"
+      ],
+      "werPct": 61.1,
+      "S": 2.5,
+      "I": 0.5,
+      "D": 2.5,
+      "werPctInclFailures": 61.1,
+      "uEnd_to_final_ms": 882.4,
+      "uEnd_to_firstAudibleProxy_ms": 896.7,
+      "final_to_speakStart_ms": 14.3,
+      "all_uEnd_to_firstAudible": [
+        1793.3,
+        794.8,
+        998.6,
+        777.6
+      ],
+      "acousticDurMs": 3114.7,
+      "fileDurMs": 3162
+    },
+    {
+      "fixture": "f10_fast",
+      "n": 4,
+      "completed": 0,
+      "ref": "What failed in n8n overnight and did the carousel publisher run",
+      "refWords": 11,
+      "transcripts": [],
+      "werPct": null,
+      "S": null,
+      "I": null,
+      "D": null,
+      "werPctInclFailures": 100,
+      "uEnd_to_final_ms": null,
+      "uEnd_to_firstAudibleProxy_ms": null,
+      "final_to_speakStart_ms": null,
+      "all_uEnd_to_firstAudible": [],
+      "acousticDurMs": null,
+      "fileDurMs": 2411
+    }
+  ],
+  "appDefaultTable": [
+    {
+      "fixture": "f1",
+      "n": 1,
+      "completed": 0,
+      "ref": "Approve the top draft in the queue",
+      "refWords": 7,
+      "transcripts": [],
+      "werPct": null,
+      "S": null,
+      "I": null,
+      "D": null,
+      "werPctInclFailures": 100,
+      "uEnd_to_final_ms": null,
+      "uEnd_to_firstAudibleProxy_ms": null,
+      "final_to_speakStart_ms": null,
+      "all_uEnd_to_firstAudible": [],
+      "acousticDurMs": null,
+      "fileDurMs": 1612
+    },
+    {
+      "fixture": "f2",
+      "n": 1,
+      "completed": 0,
+      "ref": "What failed in n8n overnight",
+      "refWords": 5,
+      "transcripts": [],
+      "werPct": null,
+      "S": null,
+      "I": null,
+      "D": null,
+      "werPctInclFailures": 100,
+      "uEnd_to_final_ms": null,
+      "uEnd_to_firstAudibleProxy_ms": null,
+      "final_to_speakStart_ms": null,
+      "all_uEnd_to_firstAudible": [],
+      "acousticDurMs": null,
+      "fileDurMs": 1712
+    },
+    {
+      "fixture": "f3",
+      "n": 1,
+      "completed": 0,
+      "ref": "Check the Supabase scheduled posts table for stuck rows",
+      "refWords": 9,
+      "transcripts": [],
+      "werPct": null,
+      "S": null,
+      "I": null,
+      "D": null,
+      "werPctInclFailures": 100,
+      "uEnd_to_final_ms": null,
+      "uEnd_to_firstAudibleProxy_ms": null,
+      "final_to_speakStart_ms": null,
+      "all_uEnd_to_firstAudible": [],
+      "acousticDurMs": null,
+      "fileDurMs": 3123
+    },
+    {
+      "fixture": "f4",
+      "n": 1,
+      "completed": 0,
+      "ref": "Move the ClickUp task to done and refresh the board",
+      "refWords": 10,
+      "transcripts": [],
+      "werPct": null,
+      "S": null,
+      "I": null,
+      "D": null,
+      "werPctInclFailures": 100,
+      "uEnd_to_final_ms": null,
+      "uEnd_to_firstAudibleProxy_ms": null,
+      "final_to_speakStart_ms": null,
+      "all_uEnd_to_firstAudible": [],
+      "acousticDurMs": null,
+      "fileDurMs": 2579
+    },
+    {
+      "fixture": "f5",
+      "n": 1,
+      "completed": 0,
+      "ref": "Did UniPile hit the read ceiling on Mattan's seat",
+      "refWords": 9,
+      "transcripts": [],
+      "werPct": null,
+      "S": null,
+      "I": null,
+      "D": null,
+      "werPctInclFailures": 100,
+      "uEnd_to_final_ms": null,
+      "uEnd_to_firstAudibleProxy_ms": null,
+      "final_to_speakStart_ms": null,
+      "all_uEnd_to_firstAudible": [],
+      "acousticDurMs": null,
+      "fileDurMs": 2667
+    },
+    {
+      "fixture": "f6",
+      "n": 1,
+      "completed": 0,
+      "ref": "Render the hyperframes video for the carousel draft",
+      "refWords": 8,
+      "transcripts": [],
+      "werPct": null,
+      "S": null,
+      "I": null,
+      "D": null,
+      "werPctInclFailures": 100,
+      "uEnd_to_final_ms": null,
+      "uEnd_to_firstAudibleProxy_ms": null,
+      "final_to_speakStart_ms": null,
+      "all_uEnd_to_firstAudible": [],
+      "acousticDurMs": null,
+      "fileDurMs": 2916
+    },
+    {
+      "fixture": "f7",
+      "n": 1,
+      "completed": 0,
+      "ref": "Pause the Smartlead cold email lane until Monday",
+      "refWords": 8,
+      "transcripts": [],
+      "werPct": null,
+      "S": null,
+      "I": null,
+      "D": null,
+      "werPctInclFailures": 100,
+      "uEnd_to_final_ms": null,
+      "uEnd_to_firstAudibleProxy_ms": null,
+      "final_to_speakStart_ms": null,
+      "all_uEnd_to_firstAudible": [],
+      "acousticDurMs": null,
+      "fileDurMs": 2524
+    },
+    {
+      "fixture": "f8",
+      "n": 1,
+      "completed": 1,
+      "ref": "Show me the RISE DTC board visibility for this week",
+      "refWords": 10,
+      "transcripts": [
+        "show me the rice DTC board visibility for this week"
+      ],
+      "werPct": 10,
+      "S": 1,
+      "I": 0,
+      "D": 0,
+      "werPctInclFailures": 10,
+      "uEnd_to_final_ms": 1444.3,
+      "uEnd_to_firstAudibleProxy_ms": 1465.2,
+      "final_to_speakStart_ms": 20.9,
+      "all_uEnd_to_firstAudible": [
+        1465.2
+      ],
+      "acousticDurMs": 3039.9,
+      "fileDurMs": 3116
+    },
+    {
+      "fixture": "f9_noisy",
+      "n": 1,
+      "completed": 0,
+      "ref": "Check the Supabase scheduled posts table for stuck rows",
+      "refWords": 9,
+      "transcripts": [],
+      "werPct": null,
+      "S": null,
+      "I": null,
+      "D": null,
+      "werPctInclFailures": 100,
+      "uEnd_to_final_ms": null,
+      "uEnd_to_firstAudibleProxy_ms": null,
+      "final_to_speakStart_ms": null,
+      "all_uEnd_to_firstAudible": [],
+      "acousticDurMs": null,
+      "fileDurMs": 3162
+    },
+    {
+      "fixture": "f10_fast",
+      "n": 1,
+      "completed": 0,
+      "ref": "What failed in n8n overnight and did the carousel publisher run",
+      "refWords": 11,
+      "transcripts": [],
+      "werPct": null,
+      "S": null,
+      "I": null,
+      "D": null,
+      "werPctInclFailures": 100,
+      "uEnd_to_final_ms": null,
+      "uEnd_to_firstAudibleProxy_ms": null,
+      "final_to_speakStart_ms": null,
+      "all_uEnd_to_firstAudible": [],
+      "acousticDurMs": null,
+      "fileDurMs": 2411
+    }
+  ]
+}

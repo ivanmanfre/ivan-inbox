@@ -1,0 +1,38 @@
+[
+  {
+    "fixture": "f1",
+    "why": "timeout",
+    "transcript": "",
+    "werPct": null,
+    "S": null,
+    "I": null,
+    "D": null,
+    "refWords": null,
+    "transcriptAllSegments": "",
+    "werPctAllSegments": null,
+    "uEnd_to_final_ms": null,
+    "uEnd_to_firstAudibleProxy_ms": null,
+    "uEnd_to_utteranceStartEvent_ms": null,
+    "final_to_firstAudibleProxy_ms": null,
+    "speakCalled_to_startEvent_ms": null,
+    "recSpeechEnd_to_final_ms": null
+  },
+  {
+    "fixture": "f2",
+    "why": "timeout",
+    "transcript": "",
+    "werPct": null,
+    "S": null,
+    "I": null,
+    "D": null,
+    "refWords": null,
+    "transcriptAllSegments": "",
+    "werPctAllSegments": null,
+    "uEnd_to_final_ms": null,
+    "uEnd_to_firstAudibleProxy_ms": null,
+    "uEnd_to_utteranceStartEvent_ms": null,
+    "final_to_firstAudibleProxy_ms": null,
+    "speakCalled_to_startEvent_ms": null,
+    "recSpeechEnd_to_final_ms": null
+  }
+]
