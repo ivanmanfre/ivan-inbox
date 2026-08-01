@@ -1,0 +1,949 @@
+/* ============================================================================
+   faithful.css — candidate `faithful`, goal-run inbox-visual-rebuild-2026-08-02.
+
+   THESIS: reference-forward expressive. The Nixtio "Check Box" reference is read
+   at face value everywhere the spine permits — display type at the top of the
+   stepped scale, chart-forward overview cards at --r-hero, pill chrome on nav
+   and filters, generous card padding, capsule marks with the number inside,
+   legend + Total footers. Density is NOT sacrificed for it: the 285-row Content
+   surface is carried by the spine's dense-list vocabulary (§7) at full
+   discipline. The bet is that expression on the overview surfaces and monastic
+   rails on the lists are the same design, not two.
+
+   SCOPE (spine §1): every token is declared at the .wb root. :root in
+   src/styles.css:1-16 is NEVER touched. This file is imported by the v2c Shell
+   AFTER './styles.css', so it is the last word inside the workbench and has no
+   reach at all outside it.
+
+   SPECIFICITY NOTE — read this before editing:
+   The app ships 28 distinct font sizes including ten half-pixel steps, spread
+   over ~200 declarations across two stylesheets. Enumerating them by hand is how
+   a scale silently gains a 29th value. So this file FLATTENS first (`.wb.wb *`,
+   specificity 0-2-0, which beats every font rule in the base sheets and ties the
+   two 0-2-0 rules that it also follows in source order) and then RE-ASSIGNS the
+   seven tiers at `.wb.wb.wb` (0-3-0+). Anything not re-assigned lands on
+   --fs-body, which is safe, in-scale, and keeps the census honest by
+   construction rather than by vigilance.
+   ============================================================================ */
+
+/* ========================================================================== */
+/* 1 · TOKENS — the ladder, the bridge, the scale, the radii, the motion        */
+/* ========================================================================== */
+
+.wb{
+  /* --- 3.1 ladder, adopted unchanged (no re-derivation; harness output in
+         spine §9.4 is this ladder's, verbatim, and already clears all three
+         bars). --text4 is the §4 CORRECTION value #6F7472, never #606562. --- */
+  --canvas:#090B0A; --surface1:#121513; --surface2:#191D1B; --surface3:#212523;
+  --hairline:#2C302E; --hairline-strong:#3E4240;
+  --text:#F3F6F5; --text2:#AEB2B0; --text3:#7F8582; --text4:#6F7472;
+
+  /* --- 1.4 BRIDGE — the legacy names every stock screen actually reads.
+         Without this block TodayScreen/OverviewView/DraftsScreen/OpsScreen stay
+         on the iOS :root palette while the workbench chrome moves. --- */
+  --bg:var(--canvas);
+  --surface:var(--surface1);
+  --sep:var(--hairline);
+  --accent:#10A37F;
+  --accent-soft:rgba(16,163,127,.16);
+  --blue:var(--text2);          /* the undeclared second accent, retired to neutral */
+
+  /* --- severity, 5.4. Meaning locked, never reused as category encoding. --- */
+  --sev-clear:#10A37F; --sev-attention:#FF9F0A; --sev-urgent:#FF453A;
+  --ink:#171717;                /* 5.3 — the label on a filled accent mark */
+
+  /* --- 2 · type scale: seven tokens, no eighth --- */
+  --fs-display:34px;            /* stepped by media query below, never clamped */
+  --fs-figure:30px;
+  --fs-page:20px;
+  --fs-title:15px;
+  --fs-body:13px;
+  --fs-meta:12px;
+  --fs-eyebrow:11px;
+  --fs-glyph:20px;              /* the ONE glyph-only size (rail + tab icons) */
+  --fw-display:700;             /* 2.4 — the single ≥700 exception, ≥28px only */
+
+  /* --- 6 · radius family --- */
+  --r-chip:6px; --r-ctl:10px; --r-card:18px; --r-hero:24px; --r-pill:999px;
+  /* v2c's local radii (styles.css:11-16) are treatment surface per §1.6 and are
+     remapped onto the family rather than left to drift alongside it. */
+  --r-sm:var(--r-ctl); --r-md:var(--r-card); --r-lg:var(--r-hero);
+
+  /* --- 7 · dense-list geometry --- */
+  --anchor-w:28px; --anchor-gap:12px; --sech-h:32px; --indent:20px;
+  --gut:16px;                   /* the one horizontal gutter for list surfaces */
+  --pad-card:20px;              /* expressive: generous overview card padding */
+
+  /* --- 10 · motion: ONE easing token, three durations, nothing above 250ms --- */
+  --ease:cubic-bezier(.25,1,.5,1);
+  --dur-hover:100ms; --dur-state:180ms; --dur-beat:200ms;
+
+  /* --- 9.2 · ANSWER MONO (default) — zero new hues --- */
+  --cat-1:#10A37F; --cat-2:#DBDFDD; --cat-3:#A1A6A4; --cat-4:#747977;
+  --cat-1-ink:var(--ink); --cat-2-ink:var(--ink); --cat-3-ink:var(--ink);
+  --cat-4-ink:#FFFFFF;          /* 9.5 — MONO cat-4 is the one white label */
+  /* Beyond four series, differentiation is PATTERN not colour (9.2). */
+  --pat-1:none;
+  --pat-2:repeating-linear-gradient(45deg,rgba(9,11,10,.34) 0 3px,transparent 3px 7px);
+  --pat-3:repeating-linear-gradient(90deg,rgba(9,11,10,.40) 0 2px,transparent 2px 6px);
+  --pat-4:none;
+
+  font-variant-numeric:tabular-nums;   /* 2.6 — declared once, never unset */
+  background:var(--canvas);
+  color:var(--text);
+}
+
+/* --- 9.3 · ANSWER TRIAD — two derived hues, separated on hue AND lightness.
+       --cat-3 sits at L 0.7624, lifted from the accent's own 0.6374; that lift
+       is the CVD remedy and is a contract, not a taste call. Do not harmonise
+       it back down. --- */
+:root[data-cat='triad'] .wb{
+  --cat-1:#10A37F; --cat-2:#3A93D0; --cat-3:#D099E8; --cat-4:#747977;
+  --cat-1-ink:var(--ink); --cat-2-ink:var(--ink); --cat-3-ink:var(--ink);
+  --cat-4-ink:#FFFFFF;
+  /* TRIAD separates on hue; the pattern layer stands down so the two answers
+     differ in colour values only and the toggle produces zero layout shift. */
+  --pat-1:none; --pat-2:none; --pat-3:none; --pat-4:none;
+}
+
+/* 2.3 — --fs-display is STEPPED, not fluid. A clamp() on vw emits fractional
+   computed sizes at every intermediate width and destroys the integer census,
+   which is the one measurement that proves the scale exists. */
+@media (min-width:768px){ .wb{ --fs-display:44px } }
+@media (min-width:1200px){ .wb{ --fs-display:56px } }
+
+/* Light theme: the ladder inverts, the accent and severities do not. Dark is the
+   anchor; light must stay legible, which is what this block buys. */
+:root[data-theme='light'] .wb{
+  --canvas:#F4F6F5; --surface1:#FFFFFF; --surface2:#ECEFEE; --surface3:#E0E4E2;
+  --hairline:#D5D9D7; --hairline-strong:#B9BEBC;
+  --text:#0E1211; --text2:#4A4F4D; --text3:#6B706E; --text4:#7A7F7D;
+}
+
+/* ========================================================================== */
+/* 2 · TYPE — flatten, then re-assign the seven tiers                          */
+/* ========================================================================== */
+
+.wb.wb, .wb.wb *{
+  font-size:var(--fs-body);
+  font-weight:400;
+  letter-spacing:0;
+  line-height:20px;
+}
+.wb.wb *{ font-family:inherit }
+
+/* --- display (M1). Uppercase, flush left, the largest text on its screen by
+       ≥1.5x over the next tier, and the ONLY element permitted weight 700. --- */
+.wb.wb.wb .nav h2,
+.wb.wb.wb .wb-display{
+  font-size:var(--fs-display);
+  font-weight:var(--fw-display);
+  letter-spacing:-.02em;
+  line-height:1;
+  text-transform:uppercase;
+}
+
+/* --- figure: the ONE hero numeral per surface (8.1) --- */
+.wb.wb.wb .ov-tile-big,
+.wb.wb.wb .wb-pipe-big,
+.wb.wb.wb .td-big,
+.wb.wb.wb .ct-alert-n,
+.wb.wb.wb .wb-otile.big .wb-otile-n,
+.wb.wb.wb .wb-figure{
+  font-size:var(--fs-figure);
+  font-weight:600;
+  letter-spacing:-.033em;
+  line-height:32px;
+}
+
+/* --- page: pane and peer titles --- */
+.wb.wb.wb .wb-pane-n,
+.wb.wb.wb .wb-rail-ttl,
+.wb.wb.wb .dd-title,
+.wb.wb.wb .t-nav .n,
+.wb.wb.wb .wb-page{
+  font-size:var(--fs-page);
+  font-weight:600;
+  letter-spacing:-.02em;
+  line-height:24px;
+}
+
+/* --- title: section + card titles, and a working row's primary text --- */
+.wb.wb.wb .ct-title,
+.wb.wb.wb .wb-empty-l,
+.wb.wb.wb .ov-gov-nm,
+.wb.wb.wb .ov-rc-nm,
+.wb.wb.wb .wb-failed-t,
+.wb.wb.wb .wb-chat-empty-t,
+.wb.wb.wb .wb-mh.h1,
+.wb.wb.wb .wb-title{
+  font-size:var(--fs-title);
+  font-weight:500;
+  letter-spacing:-.01em;
+  line-height:24px;
+}
+
+/* --- body: the workhorse. Row primary text sits here at weight 500 (7.7). --- */
+.wb.wb.wb .r .name,
+.wb.wb.wb .td-nm,
+.wb.wb.wb .ov-td-nm,
+.wb.wb.wb .ov-pl-nm,
+.wb.wb.wb .ov-kpi-nm,
+.wb.wb.wb .wb-rj-l,
+.wb.wb.wb .ct-row-p,
+.wb.wb.wb .log-nm,
+.wb.wb.wb .ops-nm{
+  font-size:var(--fs-body);
+  font-weight:500;
+  line-height:20px;
+}
+.wb.wb.wb .wb-body,
+.wb.wb.wb .wb-p,
+.wb.wb.wb .dd-body,
+.wb.wb.wb .b,
+.wb.wb.wb .wb-bubble,
+.wb.wb.wb .msgs .b{
+  font-size:var(--fs-body);
+  font-weight:400;
+  line-height:20px;
+}
+
+/* --- meta: timestamps, counts, secondary row text --- */
+.wb.wb.wb .ct-tm,
+.wb.wb.wb .ct-topic,
+.wb.wb.wb .r .snip,
+.wb.wb.wb .r .time,
+.wb.wb.wb .td-snip,
+.wb.wb.wb .td-org,
+.wb.wb.wb .td-tm,
+.wb.wb.wb .ov-cap,
+.wb.wb.wb .ov-tile-sub,
+.wb.wb.wb .ov-kpi-24,
+.wb.wb.wb .ov-fcap,
+.wb.wb.wb .ov-note,
+.wb.wb.wb .ov-td-sub,
+.wb.wb.wb .wb-pane-s,
+.wb.wb.wb .wb-empty-s,
+.wb.wb.wb .wb-failed-m,
+.wb.wb.wb .wb-failed-f,
+.wb.wb.wb .ct-subtle,
+.wb.wb.wb .ct-fnote,
+.wb.wb.wb .wb-rail-hint,
+.wb.wb.wb .wb-meta{
+  font-size:var(--fs-meta);
+  font-weight:400;
+  line-height:16px;
+}
+
+/* --- eyebrow: uppercase column heads, section labels, legends, chips --- */
+.wb.wb.wb .wb-sech-t,
+.wb.wb.wb .wb-sech-n,
+.wb.wb.wb .wb-sech-c,
+.wb.wb.wb .td-zt,
+.wb.wb.wb .td-zn,
+.wb.wb.wb .td-zc,
+.wb.wb.wb .td-sub,
+.wb.wb.wb .td-big-c,
+.wb.wb.wb .ov-h,
+.wb.wb.wb .ov-tile-lbl,
+.wb.wb.wb .ov-fl,
+.wb.wb.wb .ct-chip,
+.wb.wb.wb .ct-lane,
+.wb.wb.wb .ov-badge,
+.wb.wb.wb .ov-rc-badge,
+.wb.wb.wb .td-kind,
+.wb.wb.wb .r .client,
+.wb.wb.wb .wb-workhead-l,
+.wb.wb.wb .wb-rib-j,
+.wb.wb.wb .res-hdr,
+.wb.wb.wb .wb-eyebrow,
+.wb.wb.wb .wb-legend-l,
+.wb.wb.wb .wb-total{
+  font-size:var(--fs-eyebrow);
+  font-weight:600;
+  letter-spacing:.04em;
+  line-height:16px;
+  text-transform:uppercase;
+}
+/* A legend label and a Total footer are eyebrow-sized but read as words, not
+   labels — case is left alone so "Total: 1,752" is a sentence. */
+.wb.wb.wb .wb-total,
+.wb.wb.wb .ov-h-sub{ text-transform:none; letter-spacing:.01em }
+
+/* --- the ONE glyph size. Icons carry no words, so they are the census's
+       permitted glyph-only tier (2.2). Everything else — chevrons, arrows,
+       markers — is pulled onto a real tier. --- */
+.wb.wb.wb .wb-rj-ic,
+.wb.wb.wb .tb .ic,
+.wb.wb.wb .wb-hf-orb,
+.wb.wb.wb .dt-empty-ic{ font-size:var(--fs-glyph); line-height:1 }
+.wb.wb.wb .wb-sech-chev,
+.wb.wb.wb .ct-alert .chev,
+.wb.wb.wb .wb-pane-x,
+.wb.wb.wb .wb-sync-r,
+.wb.wb.wb .wb-gear,
+.wb.wb.wb .ov-fchev,
+.wb.wb.wb .ov-fdot,
+.wb.wb.wb .td-sdot,
+.wb.wb.wb .back{ font-size:var(--fs-title); line-height:20px }
+
+/* 2.7 — monospace stays reserved for ids, shortcuts and code. */
+.wb.wb.wb .wb-code, .wb.wb.wb .wb-code code,
+.wb.wb.wb .wb-tool-in, .wb.wb.wb .wb-tool-in code,
+.wb.wb.wb code, .wb.wb.wb .dd-pre{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:var(--fs-meta);
+  line-height:16px;
+}
+
+/* 2.4 — the weight ceiling, enforced. Nothing between 9px and 17px is heavier
+   than 600; the measured defect (218/231 declarations ≥600, 800 the app's most
+   common weight) lived entirely in that band. */
+.wb.wb.wb b, .wb.wb.wb strong,
+.wb.wb.wb .r.unread .name,
+.wb.wb.wb .ov-pl-n, .wb.wb.wb .ov-td-n, .wb.wb.wb .ov-fn,
+.wb.wb.wb .ov-kpi-big, .wb.wb.wb .ov-gauge-lbl b,
+.wb.wb.wb .ov-rc-stat b, .wb.wb.wb .ov-rc-gov b,
+.wb.wb.wb .td-sm b, .wb.wb.wb .td-lg b, .wb.wb.wb .wb-pipe-i b,
+.wb.wb.wb .ct-fnote b, .wb.wb.wb .ct-f i, .wb.wb.wb .wb-ws b{ font-weight:600 }
+
+/* ========================================================================== */
+/* 3 · SURFACES, HAIRLINES, FOCUS                                              */
+/* ========================================================================== */
+
+.wb.wb.wb .app,
+.wb.wb.wb .rows,
+.wb-regions,
+.wb.wb.wb .wb-work{ background:var(--canvas) }
+.wb.wb.wb .wb-peer{ background:var(--canvas); border-left:1px solid var(--hairline) }
+.wb.wb.wb .wb-work.list{ border-right:1px solid var(--hairline) }
+
+/* 3.4 — zero drop shadows on resting surfaces. Depth is ladder + hairline.
+   Shadow survives on exactly one class of element: transient overlays. */
+.wb.wb.wb .ct-card, .wb.wb.wb .draftcard, .wb.wb.wb .ov-tile, .wb.wb.wb .ov-kpi,
+.wb.wb.wb .ov-gov, .wb.wb.wb .ov-rc, .wb.wb.wb .ov-tbl, .wb.wb.wb .ov-pipe,
+.wb.wb.wb .ov-funnel, .wb.wb.wb .td-mast, .wb.wb.wb .dd-card, .wb.wb.wb .group,
+.wb.wb.wb .wb-otile, .wb.wb.wb .sw-knob{ box-shadow:none }
+.wb.wb.wb .sheet, .wb.wb.wb .sheet-card, .wb.wb.wb .wb-modelmenu{
+  box-shadow:0 24px 60px rgba(0,0,0,.55);
+}
+
+/* 3.2 — focus ring: 2px accent at 100%. Linear's published 50% measures
+   2.20:1 on this ladder and fails; 70% scrapes 3.06:1; 100% clears at 4.85:1
+   worst case. This is settled and may not be reopened. */
+.wb.wb.wb :focus-visible{
+  outline:2px solid var(--accent);
+  outline-offset:2px;
+  border-radius:var(--r-chip);
+}
+
+/* 3.5 — text3 is label/metadata only on surface3; text4 is metadata and
+   disabled state everywhere. Both are re-pointed off the iOS rgba tokens. */
+.wb.wb.wb .ov-tile-empty, .wb.wb.wb .empty, .wb.wb.wb .ov-empty,
+.wb.wb.wb .td-empty{ color:var(--text3) }
+
+/* ========================================================================== */
+/* 4 · RADII + THE PILL LICENCE (6.3 / 6.4)                                    */
+/* ========================================================================== */
+
+/* --- LICENSED: 999px stays on exactly the seven classes in 6.3. --- */
+/* 1 · avatars and circular icon buttons */
+.wb.wb.wb .av, .wb.wb.wb .avatar-me, .wb.wb.wb .sk-av, .wb.wb.wb .av .badge,
+.wb.wb.wb .wb-pane-ic, .wb.wb.wb .sc-refresh, .wb.wb.wb .csend,
+.wb.wb.wb .draftbanner .ic, .wb.wb.wb .spark, .wb.wb.wb .dt-empty-ic,
+.wb.wb.wb .wb-mic, .wb.wb.wb .wb-hf-orb, .wb.wb.wb .ct-anchor-av{
+  border-radius:var(--r-pill);
+}
+/* 2 · top-level nav / view-switcher segments (M7 pill nav) */
+.wb.wb.wb .chip, .wb.wb.wb .wb-ws, .wb.wb.wb .seg .sg{ border-radius:var(--r-pill) }
+/* 3 · filter pills + the inline list filter (M5 / M13) */
+.wb.wb.wb .ct-f, .wb.wb.wb .wb-fpill{ border-radius:var(--r-pill) }
+/* 4 · numeric count badges attached to nav */
+.wb.wb.wb .wb-rj-n, .wb.wb.wb .tb .cnt{ border-radius:var(--r-pill) }
+/* 5 · the compose / primary FAB */
+.wb.wb.wb .wb-fab{ border-radius:var(--r-pill) }
+/* 6 · severity dots and legend dots */
+.wb.wb.wb .sc-dot, .wb.wb.wb .udot, .wb.wb.wb .wb-sech-dot, .wb.wb.wb .wb-sync-dot,
+.wb.wb.wb .wb-peer-dot, .wb.wb.wb .wb-ok-dot, .wb.wb.wb .wb-failed-dot,
+.wb.wb.wb .wb-tb-live, .wb.wb.wb .wb-th-dot, .wb.wb.wb .wb-vs-dot,
+.wb.wb.wb .wb-live, .wb.wb.wb .wb-ofresh-d, .wb.wb.wb .wb-tdot,
+.wb.wb.wb .wb-lad-dot, .wb.wb.wb .empty-dot, .wb.wb.wb .ops-fail-d,
+.wb.wb.wb .wb-pipe-d, .wb.wb.wb .td-zmark, .wb.wb.wb .td-zmark::after,
+.wb.wb.wb .wb-legend-d, .wb.wb.wb .ct-anchor-dot{ border-radius:var(--r-pill) }
+/* 7 · chart marks whose geometry IS a capsule — data geometry, not chrome */
+.wb.wb.wb .ov-gauge, .wb.wb.wb .ov-gauge-fill, .wb.wb.wb .ov-bar,
+.wb.wb.wb .ov-bar-fill, .wb.wb.wb .td-stack, .wb.wb.wb .td-bar,
+.wb.wb.wb .td-bar-f, .wb.wb.wb .wb-stack, .wb.wb.wb .wb-qa-g,
+.wb.wb.wb .wb-qa-fill, .wb.wb.wb .ct-mix-b, .wb.wb.wb .ct-mix-b i,
+.wb.wb.wb .wb-tbar, .wb.wb.wb .wb-tbar > span, .wb.wb.wb .sc-bar,
+.wb.wb.wb .wb-cap, .wb.wb.wb .wb-cap-t{ border-radius:var(--r-pill) }
+
+/* --- DEMOTED: everything else off 999px. This is what stops a dense row from
+       reading as an iOS settings screen, and it is what Attio actually does —
+       its Type/Source fields are small rounded rectangles, not capsules. --- */
+.wb.wb.wb .btn, .wb.wb.wb .wb-ask, .wb.wb.wb .wb-retry, .wb.wb.wb .stalebtn,
+.wb.wb.wb .gbtn, .wb.wb.wb .wb-stop, .wb.wb.wb .wb-starter, .wb.wb.wb .cfield,
+.wb.wb.wb .search, .wb.wb.wb .sheet-btn, .wb.wb.wb .wb-modelbtn,
+.wb.wb.wb .wb-modelopt, .wb.wb.wb .wb-hf, .wb.wb.wb .wb-hf-card button,
+.wb.wb.wb .wb-rj, .wb.wb.wb .wb-rail-sync, .wb.wb.wb input, .wb.wb.wb textarea,
+.wb.wb.wb button, .wb.wb.wb .sw, .wb.wb.wb .sw-knob{ border-radius:var(--r-ctl) }
+.wb.wb.wb .ct-chip, .wb.wb.wb .ct-lane, .wb.wb.wb .ov-badge,
+.wb.wb.wb .ov-rc-badge, .wb.wb.wb .ov-over-lbl, .wb.wb.wb .td-kind,
+.wb.wb.wb .r .client, .wb.wb.wb .dpill, .wb.wb.wb .wb-mockchip,
+.wb.wb.wb .wb-empty-f, .wb.wb.wb .wb-modelwarn,
+.wb.wb.wb .ct-score, .wb.wb.wb .wb-cost{ border-radius:var(--r-chip) }
+.wb.wb.wb .ct-card, .wb.wb.wb .dd-card, .wb.wb.wb .group, .wb.wb.wb .draftcard,
+.wb.wb.wb .wb-failed, .wb.wb.wb .ct-alert, .wb.wb.wb .b, .wb.wb.wb .wb-bubble,
+.wb.wb.wb .td-banner, .wb.wb.wb .ct-warnbox{ border-radius:var(--r-card) }
+/* 6.2 — nested radius = outer − padding, never larger inside smaller. */
+.wb.wb.wb .b.in{ border-bottom-left-radius:var(--r-chip) }
+.wb.wb.wb .b.out{ border-bottom-right-radius:var(--r-chip) }
+
+/* --- --r-hero: a card that owns its whole region. This is where the thesis
+       spends its budget — every overview card is a hero card. --- */
+.wb.wb.wb .ov-tile, .wb.wb.wb .ov-kpi, .wb.wb.wb .ov-gov, .wb.wb.wb .ov-rc,
+.wb.wb.wb .ov-tbl, .wb.wb.wb .ov-pipe, .wb.wb.wb .ov-funnel,
+.wb.wb.wb .ov-empty, .wb.wb.wb .td-mast, .wb.wb.wb .wb-oband,
+.wb.wb.wb .wb-chartcard{ border-radius:var(--r-hero) }
+
+/* ========================================================================== */
+/* 5 · ACCENT BUDGET (§5)                                                      */
+/* ========================================================================== */
+
+/* 5.2 — --accent is forbidden as a text colour: 3.20:1 against white, it cannot
+   carry body copy. Where a figure or label was painted accent the colour moves
+   to a mark and the words go back to --text. */
+.wb.wb.wb .ct-chip-ok, .wb.wb.wb .ct-lane, .wb.wb.wb .td-qown,
+.wb.wb.wb .td-zc.done, .wb.wb.wb .td-sm.td-apr.td-hi b, .wb.wb.wb .chip .ct,
+.wb.wb.wb .ct-fig b, .wb.wb.wb .ct-fnote b, .wb.wb.wb .wb-chat-empty-t b,
+.wb.wb.wb .wb-ws b, .wb.wb.wb .r.unread .time, .wb.wb.wb .t-nav .m b,
+.wb.wb.wb .dc-h .t, .wb.wb.wb .ct-fclear, .wb.wb.wb .back{ color:var(--text) }
+.wb.wb.wb .wb-rj.on .wb-rj-ic{ color:var(--accent) }   /* active nav — licensed */
+
+/* 5.3 — labels on a filled accent mark are ink, never white. */
+.wb.wb.wb .b.out, .wb.wb.wb .btn.p, .wb.wb.wb .wb-pane-ic.asst,
+.wb.wb.wb .td-zmark.done{ background:var(--accent); color:var(--ink) }
+
+/* Chips: hairline-boxed neutrals. A categorical field is a small rounded
+   rectangle (M12), and its border carries the ≥3:1 non-text bar. */
+.wb.wb.wb .ct-chip, .wb.wb.wb .td-kind, .wb.wb.wb .r .client{
+  background:var(--surface2); color:var(--text2);
+  box-shadow:inset 0 0 0 1px var(--hairline);
+}
+.wb.wb.wb .ct-chip-ok{ background:var(--surface2); box-shadow:inset 0 0 0 1px var(--accent) }
+.wb.wb.wb .ct-chip-warn{ background:rgba(255,159,10,.14); color:var(--sev-attention);
+  box-shadow:inset 0 0 0 1px rgba(255,159,10,.5) }
+.wb.wb.wb .ct-chip-bad{ background:rgba(255,69,58,.14); color:var(--sev-urgent);
+  box-shadow:inset 0 0 0 1px rgba(255,69,58,.5) }
+.wb.wb.wb .ct-lane{ background:var(--surface2); color:var(--text2);
+  box-shadow:inset 0 0 0 1px var(--accent) }
+
+/* The two badge families on Sends are STATE labels, not actions — they were
+   painted from inline hex, so they are neutralised here (CSS only; the default
+   app keeps its colours) to keep the 1440 accent census under 30. */
+.wb.wb.wb .ov-badge, .wb.wb.wb .ov-rc-badge{
+  background:var(--surface2)!important; color:var(--text2)!important;
+  box-shadow:inset 0 0 0 1px var(--hairline);
+}
+
+/* Sparklines were painted var(--accent) — four cards × ~30 bars is 120 accent
+   elements on one screen. A sparkline is data, so it takes a CATEGORICAL token
+   (9.1) and the accent budget gets its 120 back. */
+.wb.wb.wb .sc-bar{ background:var(--cat-3); opacity:1 }
+.wb.wb.wb .sc-bar.zero{ background:var(--surface3) }
+
+/* ========================================================================== */
+/* 6 · DENSE-LIST VOCABULARY (§7) — the run is won here                        */
+/* ========================================================================== */
+
+/* 7.3 — DE-BORDERED ROWS. The GROUP carries the boundary; rows carry none.
+   ~200 floating boxes is a quilt; one ruled sheet is scannable. */
+.wb.wb.wb .rows{ padding-bottom:32px }
+
+.wb.wb.wb .ct-card,
+.wb.wb.wb .r,
+.wb.wb.wb .td-r,
+.wb.wb.wb .ov-tr,
+.wb.wb.wb .log-r{
+  margin:0;
+  background:transparent;
+  border:none;
+  border-radius:0;
+  box-shadow:none;
+}
+.wb.wb.wb .ct-card + .ct-card,
+.wb.wb.wb .r + .r,
+.wb.wb.wb .td-r + .td-r,
+.wb.wb.wb .ov-tr + .ov-tr,
+.wb.wb.wb .log-r + .log-r{ border-top:1px solid var(--hairline) }
+
+/* 7.1 — ANCHOR-COLUMN CONTRACT. Every working-list row begins with a fixed
+   28px leading slot carrying EXACTLY ONE mark. The rail test: the left edge of
+   every row's primary text sits at an identical x, variance 0px, at 390 and
+   1440. The eye tracks a rail. */
+.wb.wb.wb .ct-card,
+.wb.wb.wb .r,
+.wb.wb.wb .td-r{
+  display:grid;
+  grid-template-columns:var(--anchor-w) minmax(0,1fr) auto;
+  column-gap:var(--anchor-gap);
+  align-items:center;
+  padding:10px var(--gut);
+  min-height:0;
+}
+.wb.wb.wb .av,
+.wb.wb.wb .ct-anchor,
+.wb.wb.wb .td-r > .sc-dot,
+.wb.wb.wb .td-r > .td-zmark{
+  grid-column:1;
+  width:var(--anchor-w); height:var(--anchor-w);
+  flex:none;
+}
+.wb.wb.wb .av{ font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:0; color:var(--ink) }
+.wb.wb.wb .av .badge{ width:12px;height:12px;bottom:-1px;right:-1px;border-width:2px;font-size:8px }
+.wb.wb.wb .r .mid, .wb.wb.wb .td-mid, .wb.wb.wb .ct-mid{ grid-column:2; min-width:0 }
+.wb.wb.wb .r .right, .wb.wb.wb .td-right, .wb.wb.wb .ct-tail{
+  grid-column:3; justify-self:end; text-align:right;
+  display:flex; flex-direction:column; align-items:flex-end; gap:4px;
+}
+
+/* 7.7 — row anatomy, in order: anchor → primary → meta → trailing value,
+   right-aligned and tabular. Trailing values in one list share a right edge. */
+.wb.wb.wb .r .top, .wb.wb.wb .td-top{ display:flex; align-items:center; gap:8px; min-width:0 }
+.wb.wb.wb .r .snip, .wb.wb.wb .td-snip, .wb.wb.wb .ct-topic{ margin-top:1px; color:var(--text3) }
+
+/* 7.4 — hover is a background shift; selection is a 2px inset accent spine,
+   the same mark active nav uses, so "where am I" is one vocabulary app-wide.
+   Never a fill, never a border, never both. */
+.wb.wb.wb .ct-card:hover, .wb.wb.wb .r:hover, .wb.wb.wb .td-r.tap:hover,
+.wb.wb.wb .ov-tr:hover{ background:var(--surface2) }
+.wb.wb.wb .ct-card.wb-card-on, .wb.wb.wb .r.active, .wb.wb.wb .r.on{
+  background:transparent;
+  box-shadow:inset 2px 0 0 var(--accent);
+}
+
+/* 7.5 — STICKY SECTION HEADERS with tabular counts. One object with slots,
+   replacing the four unrelated header patterns the audit counted
+   (.wb-sech / .td-zh / .grouphdr / .ov-h). Opaque: a translucent sticky header
+   over 285 scrolling rows is mush. The count above the rows is always the
+   count of what you are looking at. */
+.wb.wb.wb .wb-sech,
+.wb.wb.wb .td-zh,
+.wb.wb.wb .grouphdr,
+.wb.wb.wb .ops-sechdr{
+  position:sticky; top:0; z-index:6;
+  display:flex; align-items:center; gap:10px;
+  height:var(--sech-h); padding:0 var(--gut);
+  background:var(--surface1);
+  border-top:1px solid var(--hairline);
+  border-bottom:1px solid var(--hairline);
+}
+.wb.wb.wb .wb-sech-n, .wb.wb.wb .td-zn{ flex:none; color:var(--text3); letter-spacing:.1em }
+.wb.wb.wb .wb-sech-t, .wb.wb.wb .td-zt{ flex:none; color:var(--text) }
+.wb.wb.wb .wb-sech-rule, .wb.wb.wb .td-zrule{
+  flex:1; min-width:12px; height:1px; background:var(--hairline); opacity:1;
+}
+.wb.wb.wb .wb-sech-c, .wb.wb.wb .td-zc{ flex:none; color:var(--text2) }
+.wb.wb.wb .wb-sech-dot, .wb.wb.wb .td-zmark{ width:8px; height:8px; flex:none }
+/* 5.5 — ONE severity mark per run, not per row: red goes on the header that
+   counts them; the rows take a neutral rule. */
+.wb.wb.wb .wb-sech-dot.clear{ background:var(--sev-clear) }
+.wb.wb.wb .wb-sech-dot.attention{ background:var(--sev-attention) }
+.wb.wb.wb .wb-sech-dot.urgent{ background:var(--sev-urgent) }
+
+/* 7.6 — hierarchy is indentation + a trailing count badge (M10), never extra
+   chrome. No boxes inside boxes, no chevron column. */
+.wb.wb.wb .wb-rj-lane{ padding-left:calc(10px + var(--indent)) }
+.wb.wb.wb .ct-indent{ padding-left:calc(var(--gut) + var(--indent)) }
+
+/* ---- CONTENT specifically (7.2): the status stops floating. -------------- */
+/* Today the status/QA chip sits inside a WRAPPING .ct-meta flex, so its
+   position moves with the title's length and nothing tells the eye which row it
+   is on. Two fixes, both applied: the status is expressed ON THE ANCHOR as a
+   corner dot, and the chip row can never reflow. */
+.wb.wb.wb .ct-anchor{
+  position:relative;
+  border-radius:var(--r-chip);
+  background:var(--surface2);
+  box-shadow:inset 0 0 0 1px var(--hairline);
+  overflow:visible;
+}
+.wb.wb.wb .ct-thumb{
+  width:var(--anchor-w); height:var(--anchor-w);
+  border-radius:var(--r-chip);
+  object-fit:cover; display:block; background:var(--surface2);
+}
+.wb.wb.wb .ct-thumb-empty{
+  display:flex; align-items:center; justify-content:center;
+  font-size:var(--fs-eyebrow); line-height:1; color:var(--text4);
+  text-transform:none; letter-spacing:0;
+}
+.wb.wb.wb .ct-anchor-dot{
+  position:absolute; right:-3px; bottom:-3px;
+  width:10px; height:10px;
+  border:2px solid var(--canvas);
+  background:var(--text4);
+}
+.wb.wb.wb .ct-anchor[data-st='review'] .ct-anchor-dot{ background:var(--sev-attention) }
+.wb.wb.wb .ct-anchor[data-st='error'] .ct-anchor-dot,
+.wb.wb.wb .ct-anchor[data-st='stuck'] .ct-anchor-dot{ background:var(--sev-urgent) }
+.wb.wb.wb .ct-anchor[data-st='approved'] .ct-anchor-dot,
+.wb.wb.wb .ct-anchor[data-st='published'] .ct-anchor-dot{ background:var(--sev-clear) }
+.wb.wb.wb .ct-anchor[data-st='scheduled'] .ct-anchor-dot{ background:var(--cat-3) }
+
+/* Slot #1 can never reflow. flex-wrap:nowrap on a fixed first slot is the whole
+   contract; the overflow of the REST of the meta row is what ellipsizes. */
+.wb.wb.wb .ct-meta{
+  display:flex; align-items:center; gap:6px;
+  flex-wrap:nowrap; overflow:hidden;
+  margin-top:2px; min-width:0;
+}
+.wb.wb.wb .ct-meta > .ct-st{ flex:none; order:-1 }
+.wb.wb.wb .ct-meta > *{ flex:none }
+.wb.wb.wb .ct-meta > .ct-topic{ flex:1 1 auto; min-width:0;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.wb.wb.wb .ct-chip, .wb.wb.wb .ct-lane, .wb.wb.wb .td-kind, .wb.wb.wb .r .client{
+  padding:1px 6px; white-space:nowrap;
+}
+.wb.wb.wb .ct-title{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.wb.wb.wb .ct-tm{ color:var(--text3); font-weight:400 }
+
+/* The two review actions ride in the TRAILING column as compact controls, so a
+   285-row list keeps its 40-60px band instead of growing a 44px button bar
+   under every actionable row (7.8). */
+.wb.wb.wb .ct-card .ct-ac{
+  grid-column:3; grid-row:1;
+  display:flex; flex-direction:row; gap:6px; margin:0;
+}
+.wb.wb.wb .ct-card .ct-ac .btn{
+  flex:none; padding:4px 10px; font-size:var(--fs-eyebrow); font-weight:600;
+  letter-spacing:.04em; text-transform:uppercase; border-radius:var(--r-ctl);
+}
+.wb.wb.wb .ct-card .ct-ac .btn.s{ background:var(--surface2); color:var(--text2) }
+.wb.wb.wb .ct-ac-wide{ grid-column:1/-1; margin:12px 0 0 }
+.wb.wb.wb .ct-ac-wide .btn{ flex:1; padding:9px 0; font-size:var(--fs-body) }
+
+/* 7.8 — DENSITY BAND. 40-60px content box at 1440; ≤72px at 390 where a second
+   meta line is permitted. The list is 285 rows; the band is the whole point. */
+@media (min-width:1000px){
+  .wb.wb.wb .ct-card, .wb.wb.wb .r, .wb.wb.wb .td-r{ padding:9px var(--gut) }
+}
+
+/* ========================================================================== */
+/* 7 · MARK ANATOMY (§8) — metric card, chart card, number-in-mark             */
+/* ========================================================================== */
+
+/* 8.1 — METRIC CARD: eyebrow · direction glyph · big tabular numeral ·
+   micro-caption. All four slots or it is not a metric card. --r-hero, generous
+   padding: this is the reference read at face value. */
+.wb.wb.wb .ov-tile, .wb.wb.wb .ov-kpi, .wb.wb.wb .ov-gov, .wb.wb.wb .ov-rc,
+.wb.wb.wb .ov-pipe, .wb.wb.wb .ov-funnel, .wb.wb.wb .wb-chartcard{
+  background:var(--surface1);
+  border:1px solid var(--hairline);
+  padding:var(--pad-card);
+}
+.wb.wb.wb .ov-tbl{ background:var(--surface1); border:1px solid var(--hairline); padding:0 }
+.wb.wb.wb .ov-tbl .ov-tr{ padding:10px var(--pad-card) }
+.wb.wb.wb .ov-tile-lbl{ color:var(--text3) }
+.wb.wb.wb .ov-tile-big, .wb.wb.wb .wb-pipe-big, .wb.wb.wb .td-big{ color:var(--text) }
+.wb.wb.wb .ov-tile-unit{ font-size:var(--fs-title); font-weight:500; color:var(--text3) }
+.wb.wb.wb .ov-tile-sub{ color:var(--text3) }
+.wb.wb.wb .ov-tile-trend{ font-weight:600 }
+/* 8.1 — ONE --fs-figure numeral per surface. Everything that used to be a
+   second 28-38px numeral drops to --fs-page so the hero is a hero. */
+.wb.wb.wb .ov-kpi-big, .wb.wb.wb .ov-fn, .wb.wb.wb .wb-otile-n{
+  font-size:var(--fs-page); font-weight:600; letter-spacing:-.02em; line-height:24px;
+}
+@media (min-width:1000px){
+  .wb.wb.wb .ov-tile-big{ font-size:var(--fs-figure) }   /* never the 38px step */
+  .wb.wb.wb .ov-fstep .ov-fn{ font-size:var(--fs-page) }
+}
+
+/* 8.2 — CHART CARD: eyebrow · overflow menu · plot · legend · right-aligned
+   Total footer with the REAL denominator. The footer is the reference's single
+   most transferable move and it is the one place a chart cannot lie. */
+.wb.wb.wb .wb-cardh{
+  display:flex; align-items:center; gap:10px; margin-bottom:14px;
+}
+.wb.wb.wb .wb-cardh-t{ flex:1; min-width:0 }
+.wb.wb.wb .wb-cardh-x{ flex:none; color:var(--text3); letter-spacing:.12em }
+.wb.wb.wb .wb-cardf{
+  display:flex; align-items:center; flex-wrap:wrap; gap:6px 16px;
+  margin-top:16px; padding-top:12px;
+  border-top:1px solid var(--hairline);
+}
+.wb.wb.wb .wb-legend{ display:flex; align-items:center; gap:7px }
+.wb.wb.wb .wb-legend-d{ width:8px; height:8px; flex:none }
+.wb.wb.wb .wb-legend-l{ color:var(--text3) }
+.wb.wb.wb .wb-total{ margin-left:auto; color:var(--text3); white-space:nowrap }
+.wb.wb.wb .wb-total b{ color:var(--text); font-weight:600 }
+
+/* 8.3 — THE NUMBER LIVES INSIDE THE MARK (M9). A capsule bar prints its value
+   inside; the label colour follows §9.5 per token — ink on every filled
+   categorical except MONO --cat-4, which takes white. */
+.wb.wb.wb .wb-caps{ display:flex; align-items:flex-end; gap:10px; min-height:120px }
+.wb.wb.wb .wb-cap{
+  flex:1; min-width:22px; position:relative;
+  display:flex; align-items:flex-start; justify-content:center;
+  padding-top:7px;
+  background:var(--cat-1); color:var(--cat-1-ink);
+  font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.02em;
+}
+.wb.wb.wb .wb-cap[data-cat='2']{ background:var(--cat-2); color:var(--cat-2-ink); background-image:var(--pat-2) }
+.wb.wb.wb .wb-cap[data-cat='3']{ background:var(--cat-3); color:var(--cat-3-ink); background-image:var(--pat-3) }
+.wb.wb.wb .wb-cap[data-cat='4']{ background:var(--cat-4); color:var(--cat-4-ink) }
+.wb.wb.wb .wb-cap-0{
+  flex:1; min-width:22px; height:3px; align-self:flex-end;
+  background:var(--surface3); border-radius:var(--r-pill);
+}
+.wb.wb.wb .wb-caps-x{
+  display:flex; gap:10px; margin-top:8px;
+}
+.wb.wb.wb .wb-caps-xl{
+  flex:1; min-width:22px; text-align:center; color:var(--text3);
+  font-size:var(--fs-eyebrow); letter-spacing:.04em; text-transform:uppercase;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+
+/* 8.4 — THRESHOLD-COLOURED BARS (M14): a metric's health is the fill colour of
+   its own bar hitting a severity zone. The bar doubles as the verdict, so no
+   separate status badge sits beside a bar that already says it. */
+.wb.wb.wb .ov-gauge, .wb.wb.wb .ov-bar, .wb.wb.wb .td-bar, .wb.wb.wb .wb-stack,
+.wb.wb.wb .wb-qa-g, .wb.wb.wb .ct-mix-b, .wb.wb.wb .wb-tbar{
+  background:var(--surface3);
+}
+.wb.wb.wb .ov-gauge{ height:10px }
+.wb.wb.wb .ov-gauge.sm{ height:7px }
+
+/* 3.3 — one separation device per boundary. The section rule above already
+   separates; the cards below do not also need margins that read as gutters. */
+.wb.wb.wb .ov-sec{ margin-top:24px; padding:0 var(--gut) }
+.wb.wb.wb .ov-sec:first-child{ margin-top:12px }
+.wb.wb.wb .ov-h{
+  display:flex; align-items:center; gap:10px;
+  height:var(--sech-h); margin-bottom:8px; color:var(--text3);
+}
+.wb.wb.wb .ov-h-sub{ margin-left:auto; color:var(--text2); font-weight:400 }
+.wb.wb.wb .ov-hero{ gap:12px }
+.wb.wb.wb .ov-kpis, .wb.wb.wb .ov-seats, .wb.wb.wb .ov-govs{ gap:12px }
+.wb.wb.wb .ov-duo{ gap:0 }
+@media (min-width:1000px){ .wb.wb.wb .ov-duo{ gap:16px } }
+
+/* ========================================================================== */
+/* 8 · FILTER GRAMMAR (§11) — one vocabulary, two densities                    */
+/* ========================================================================== */
+
+/* 11.1 — overview surfaces: `label: value ⌄` pills, right-set beside the display
+   title. The label is never omitted: "Now ⌄" alone is a mystery, "Date: Now ⌄"
+   is a sentence. */
+.wb.wb.wb .wb-fbar{
+  display:flex; align-items:center; flex-wrap:wrap; gap:8px;
+  margin-left:auto;
+}
+.wb.wb.wb .wb-fpill{
+  display:inline-flex; align-items:center; gap:6px;
+  height:30px; padding:0 14px;
+  background:var(--surface2); border:none; color:var(--text3);
+  font-size:var(--fs-meta); font-weight:400; cursor:pointer;
+}
+.wb.wb.wb .wb-fpill b{ color:var(--text); font-weight:500 }
+.wb.wb.wb .wb-fpill i{ font-style:normal; color:var(--text3); font-size:9px }
+/* 11.4 — the active state of a filter is the VALUE TEXT, not a coloured fill.
+   A filter pill never takes --accent as a background; accent is reserved. */
+.wb.wb.wb .wb-fpill.on{ background:var(--surface3) }
+@media (max-width:767px){ .wb.wb.wb .wb-fpill{ height:32px } }
+
+/* 11.2 — working lists: one compact inline pill in the search field's row,
+   same anatomy at 26px. Not a second row of chips, not a filter bar. */
+.wb.wb.wb .ct-filters{ margin:0; padding:8px var(--gut) 10px }
+.wb.wb.wb .ct-fbar{ display:flex; align-items:center; flex-wrap:wrap; gap:6px }
+.wb.wb.wb .ct-fg{ display:inline-flex; align-items:center; gap:6px }
+.wb.wb.wb .ct-fgl{
+  font-size:var(--fs-meta); font-weight:400; color:var(--text3);
+  letter-spacing:0; text-transform:none;
+}
+.wb.wb.wb .ct-f{
+  display:inline-flex; align-items:center; gap:5px;
+  height:26px; padding:0 11px;
+  background:var(--surface2); border:none; color:var(--text3);
+  font-size:var(--fs-meta); font-weight:400; cursor:pointer;
+}
+.wb.wb.wb .ct-f i{ font-style:normal; color:var(--text3); font-weight:400 }
+.wb.wb.wb .ct-f.on{ background:var(--surface3); color:var(--text) }
+.wb.wb.wb .ct-f.on i{ color:var(--text2) }
+.wb.wb.wb .ct-fnote{ margin-top:8px; color:var(--text3) }
+.wb.wb.wb .ct-fcap{ color:var(--text4) }
+.wb.wb.wb .ct-fclear{ text-decoration:underline; cursor:pointer; margin-left:8px }
+
+/* The nav pills (M7). Chrome the reference wins on outright. */
+.wb.wb.wb .nav{ padding:20px var(--gut) 0 }
+.wb.wb.wb .wb-head{
+  display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+  padding:20px var(--gut) 12px;
+}
+.wb.wb.wb .wb-head .nav{ padding:0 }
+.wb.wb.wb .chips{ display:flex; gap:8px; margin:14px 0 0; flex-wrap:wrap; overflow:visible }
+.wb.wb.wb .chip{
+  height:30px; display:inline-flex; align-items:center; padding:0 14px;
+  background:var(--surface2); color:var(--text3);
+  font-size:var(--fs-meta); font-weight:500;
+}
+.wb.wb.wb .chip.on{ background:var(--surface3); color:var(--text) }
+.wb.wb.wb .wb-ws{
+  height:28px; display:inline-flex; align-items:center; gap:6px; padding:0 12px;
+  background:var(--surface2); color:var(--text3);
+  font-size:var(--fs-meta); font-weight:500;
+}
+.wb.wb.wb .wb-ws.on{ background:var(--surface3); color:var(--text) }
+.wb.wb.wb .wb-workhead{ padding:10px var(--gut); border-bottom:1px solid var(--hairline) }
+.wb.wb.wb .wb-workhead-l{ color:var(--text3) }
+
+/* rail chrome */
+.wb.wb.wb .wb-rail{
+  background:var(--surface1); border-right:1px solid var(--hairline); padding:16px 10px 12px;
+}
+.wb.wb.wb .wb-rj{ padding:8px 10px; color:var(--text2) }
+.wb.wb.wb .wb-rj:hover{ background:var(--surface2) }
+.wb.wb.wb .wb-rj.on{ background:var(--surface2); color:var(--text);
+  box-shadow:inset 2px 0 0 var(--accent) }
+.wb.wb.wb .wb-rj-n{
+  min-width:22px; padding:1px 7px; text-align:center;
+  background:var(--surface3); color:var(--text2);
+  font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:0;
+}
+.wb.wb.wb .wb-rj-n.attention{ background:rgba(255,159,10,.18); color:var(--sev-attention) }
+.wb.wb.wb .wb-rj-n.urgent{ background:rgba(255,69,58,.18); color:var(--sev-urgent) }
+.wb.wb.wb .wb-rj-peer{ border:1px solid var(--hairline) }
+.wb.wb.wb .wb-rj-peer.on{ border-color:var(--accent); background:transparent }
+.wb.wb.wb .wb-rail-sep{ background:var(--hairline); opacity:1; margin:14px 10px 12px }
+.wb.wb.wb .wb-rail-grp{ border-left:1px solid var(--hairline) }
+.wb.wb.wb .wb-rail-grp.on{ border-left-color:var(--accent) }
+.wb.wb.wb .wb-rail-grp-l{
+  font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.04em;
+  text-transform:uppercase; color:var(--text3);
+}
+.wb.wb.wb .tabbar{
+  background:var(--surface1); border-top:1px solid var(--hairline); backdrop-filter:none;
+}
+.wb.wb.wb .tb{ color:var(--text3) }
+.wb.wb.wb .tb.on{ color:var(--accent) }
+.wb.wb.wb .tb .l{ font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.02em;
+  text-transform:none; margin-top:3px }
+.wb.wb.wb .wb-pane-h{
+  background:var(--surface1); border-bottom:1px solid var(--hairline); padding:12px var(--gut);
+}
+.wb.wb.wb .wb-ribbon{ padding:8px var(--gut) 4px }
+
+/* ========================================================================== */
+/* 9 · MOTION (§10)                                                            */
+/* ========================================================================== */
+
+/* 10.3 — transform and opacity only. 10.4 — motion is DELETED from the 50×/day
+   paths: tab switch, row selection, keyboard nav, pane switch, palette. */
+.wb.wb.wb *{ transition:none }
+.wb.wb.wb .ct-card, .wb.wb.wb .r, .wb.wb.wb .td-r.tap, .wb.wb.wb .ov-tr,
+.wb.wb.wb .wb-rj:hover, .wb.wb.wb .ct-f, .wb.wb.wb .wb-fpill,
+.wb.wb.wb .btn, .wb.wb.wb .chip{
+  transition:background-color var(--dur-hover) var(--ease);
+}
+.wb.wb.wb .ov-gauge-fill, .wb.wb.wb .ov-bar-fill, .wb.wb.wb .td-bar-f{
+  transition:none;   /* animated width is banned (10.3) */
+}
+.wb.wb.wb .ct-tap:active, .wb.wb.wb .wb-ask:active, .wb.wb.wb .wb-retry:active{
+  transform:none;
+}
+
+/* 10.5 — EXACTLY ONE choreographed beat, app-wide: approving a draft. The row
+   lifts and fades over --dur-beat; the refetch fires when the movement ends so
+   the list never jumps under a hand, and the section count receives a matching
+   4px tick as it lands on its new value. Cause and effect, 24 inches apart, in
+   one gesture. Nothing else in this app is choreographed. */
+@keyframes wb-approve{
+  from{ transform:translateY(0); opacity:1 }
+  to{ transform:translateY(-10px); opacity:0 }
+}
+@keyframes wb-count-tick{
+  from{ transform:translateY(-4px); opacity:.4 }
+  to{ transform:translateY(0); opacity:1 }
+}
+.wb.wb.wb .ct-card.wb-approving{
+  animation:wb-approve var(--dur-beat) var(--ease) forwards;
+}
+.wb.wb.wb .wb-sech-c.wb-ticked{
+  display:inline-block;
+  animation:wb-count-tick var(--dur-beat) var(--ease);
+}
+
+/* 10.6 — reduced motion disables BOTH halves of the beat and every transition
+   except opacity. */
+@media (prefers-reduced-motion: reduce){
+  .wb.wb.wb *{ transition:none!important; animation:none!important; transform:none!important }
+  .wb.wb.wb .ct-card, .wb.wb.wb .r, .wb.wb.wb .td-r.tap, .wb.wb.wb .ov-tr,
+  .wb.wb.wb .ct-f, .wb.wb.wb .chip{ transition:opacity var(--dur-hover) linear!important }
+}
+
+/* ========================================================================== */
+/* 10 · LIGHT-MODE CHROME PATCHES (§1.5, D13) — both visited                   */
+/* ========================================================================== */
+
+/* v2c/styles.css:58 and :127 hard-code light rgba backgrounds that fight any
+   new ladder. Both are re-pointed at the ladder's own surface1 so the rail and
+   the pane header follow the tokens instead of a frozen colour. */
+:root[data-theme='light'] .wb.wb.wb .wb-rail{ background:var(--surface1) }
+:root[data-theme='light'] .wb.wb.wb .wb-pane-h{ background:var(--surface1) }
+:root[data-theme='light'] .wb.wb.wb .tabbar,
+:root[data-theme='light'] .wb.wb.wb .t-nav{ background:var(--surface1) }
+:root[data-theme='light'] .wb.wb.wb .chip.on{ background:var(--surface3); color:var(--text) }
+:root[data-theme='light'] .wb.wb.wb .b.out{ color:var(--ink) }
+:root[data-theme='light'] .wb.wb.wb .av{ color:#FFFFFF }
+
+/* ========================================================================== */
+/* 11 · EMPTY / FAILED / MISC                                                  */
+/* ========================================================================== */
+
+.wb.wb.wb .wb-empty{ padding:40px var(--gut) 20px; text-align:left }
+.wb.wb.wb .wb-empty-l{ color:var(--text2) }
+.wb.wb.wb .wb-empty-f{
+  display:inline-flex; align-items:center; gap:7px; margin-top:14px;
+  padding:4px 10px; background:var(--surface2); color:var(--text3);
+  font-size:var(--fs-meta);
+}
+.wb.wb.wb .wb-failed{
+  margin:12px var(--gut) 0; padding:14px 16px;
+  background:rgba(255,69,58,.08); border:1px solid rgba(255,69,58,.32);
+}
+.wb.wb.wb .wb-failed-t{ color:var(--sev-urgent) }
+.wb.wb.wb .wb-retry{ background:var(--sev-urgent); color:var(--ink); font-weight:600 }
+.wb.wb.wb .wb-retry.ghost{ background:var(--surface3); color:var(--text) }
+.wb.wb.wb .ct-alert{
+  margin:12px var(--gut) 0; padding:12px 14px;
+  background:rgba(255,69,58,.08); border:1px solid rgba(255,69,58,.3);
+}
+.wb.wb.wb .ct-alert-n{ color:var(--sev-urgent) }
+.wb.wb.wb .ct-subtle, .wb.wb.wb .ct-subline{ margin:8px var(--gut) 0; color:var(--text3) }
+.wb.wb.wb .ct-subline{ color:var(--sev-attention); font-weight:500 }
+.wb.wb.wb .wb-pipe{ margin:12px var(--gut) 0 }
+.wb.wb.wb .wb-lanenote{ color:var(--text3) }
+.wb.wb.wb .td-mast{ margin:12px var(--gut) 4px; padding:var(--pad-card) }
+.wb.wb.wb .td-sum{ background:var(--canvas); border-bottom:1px solid var(--hairline);
+  padding:9px var(--gut) }
+.wb.wb.wb .td-banner{ margin:10px var(--gut) 0; padding:11px 13px;
+  background:rgba(255,159,10,.08); border:1px solid rgba(255,159,10,.3);
+  color:var(--sev-attention) }
+.wb.wb.wb .td-foot, .wb.wb.wb .td-empty, .wb.wb.wb .td-sub{ padding-left:var(--gut);
+  padding-right:var(--gut) }
+.wb.wb.wb .td-lg-d{ width:8px; height:8px; border-radius:var(--r-pill) }
+.wb.wb.wb .sc-spark{ gap:2px }
+
+/* Settings is spine-only: the ladder, the scale, the hairlines, nothing else.
+   The switch loses its capsule because §6.3 does not license one. */
+.wb.wb.wb .sw{ background:var(--surface3) }
+.wb.wb.wb .sw.on{ background:var(--accent) }
+.wb.wb.wb .sw-knob{ background:var(--text) }
+:root[data-theme='light'] .wb.wb.wb .sw-knob{ background:#FFFFFF }
+.wb.wb.wb .group{
+  margin:12px var(--gut) 0; background:var(--surface1);
+  border:1px solid var(--hairline); overflow:hidden;
+}
+.wb.wb.wb .grow{ padding:11px 14px }
+.wb.wb.wb .grow + .grow{ border-top:1px solid var(--hairline) }
