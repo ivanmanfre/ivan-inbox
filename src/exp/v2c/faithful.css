@@ -1044,6 +1044,95 @@
 .wb.wb.wb .td-lg-d{ width:8px; height:8px; border-radius:var(--r-pill) }
 .wb.wb.wb .sc-spark{ gap:2px }
 
+/* ========================================================================== */
+/* 12 · THE SECOND-CLASS ROWS — ideas, queue, resources, styles                */
+/* ========================================================================== */
+/* These five sub-lists all carry `.ct-card`/`.ct-*` but were built with their
+   own internal anatomy, so before this block the Ivan lane had ONE rail for the
+   pipeline rows and five different ones underneath. Measured: primary-text x
+   variance 0px inside stage sections, 358px of trailing scatter overall. They
+   are pulled onto the same 28px anchor grid. */
+.wb.wb.wb .ct-card.ct-idea{ display:block; padding:0 }
+.wb.wb.wb .ct-idea-h{
+  display:grid;
+  grid-template-columns:var(--anchor-w) minmax(0,1fr);
+  column-gap:var(--anchor-gap); align-items:center;
+  padding:9px var(--gut);
+}
+/* the composite score IS the anchor mark — one mark, fixed width, at the rail */
+.wb.wb.wb .ct-idea-n{
+  grid-column:1; justify-self:start;
+  width:var(--anchor-w); height:var(--anchor-w);
+  display:flex; align-items:center; justify-content:center;
+  border-radius:var(--r-chip);
+  background:var(--surface2); box-shadow:inset 0 0 0 1px var(--hairline);
+  color:var(--text); font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:0;
+}
+.wb.wb.wb .ct-idea-h .ct-mid{ grid-column:2 }
+.wb.wb.wb .ct-idea .ct-title,
+.wb.wb.wb .ct-idea .ct-topic,
+.wb.wb.wb .ct-res-t{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.wb.wb.wb .ct-idea-b{ padding:0 var(--gut) 14px }
+
+.wb.wb.wb .ct-res{
+  display:grid; grid-template-columns:var(--anchor-w) minmax(0,1fr);
+  column-gap:var(--anchor-gap); align-items:center;
+  margin:0; padding:9px var(--gut); background:transparent; border-radius:0;
+}
+.wb.wb.wb .ct-res + .ct-res{ border-top:1px solid var(--hairline) }
+.wb.wb.wb .ct-res.bad{ box-shadow:inset 2px 0 0 var(--sev-urgent) }
+.wb.wb.wb .ct-res-c{
+  grid-column:1; width:var(--anchor-w); height:var(--anchor-w);
+  border-radius:var(--r-chip); object-fit:cover;
+}
+.wb.wb.wb .ct-q, .wb.wb.wb .ct-style{
+  margin:0; padding:9px var(--gut); background:transparent; border-radius:0;
+}
+.wb.wb.wb .ct-q + .ct-q, .wb.wb.wb .ct-style + .ct-style{
+  border-top:1px solid var(--hairline);
+}
+.wb.wb.wb .ct-q-t{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+/* Within each of these sub-lists the trailing timestamp is pushed to the mid
+   column's own right edge, so each list keeps a single right rail. */
+.wb.wb.wb .ct-meta > .ct-tm{ margin-left:auto }
+
+/* 5.2, enforced on the links too: 51 accent-coloured link labels on one screen
+   is not a budget, it is a colour. The words go back to --text and the
+   affordance becomes the underline it always should have been. */
+.wb.wb.wb .ct-ref-l, .wb.wb.wb .dd-link, .wb.wb.wb a{
+  color:var(--text); text-decoration:underline; text-underline-offset:2px;
+}
+/* The in-row Approve is a SHORTCUT, not the row's primary action (opening it
+   is). Eighteen accent buttons in one list is eighteen primaries and therefore
+   none; the accent stays on the pane's full-width Approve, where it is the only
+   one on screen. */
+.wb.wb.wb .ct-card .ct-ac .btn.p{
+  background:var(--surface3); color:var(--text);
+  box-shadow:inset 0 0 0 1px var(--hairline-strong);
+}
+.wb.wb.wb .ct-ac-wide .btn.p{ background:var(--accent); color:var(--ink); box-shadow:none }
+/* white on #FF453A measures 3.41:1 — the badge takes ink at 5.36:1 */
+.wb.wb.wb .tb .cnt{ color:var(--ink) }
+/* inline fontWeight:700 on two spans in TodayScreen's health tiles; the weight
+   ceiling is 600 and an inline style is the only thing CSS has to shout at. */
+.wb.wb.wb .td-ts span, .wb.wb.wb .ov-tile-trend{ font-weight:600!important }
+
+/* LIGHT: severity as TEXT is the one thing this ladder cannot carry — amber on
+   a light tint measures 1.89:1. Same move as §5.2 makes for the accent: the
+   colour stays on the MARK, the words go back to --text. Dark keeps the
+   coloured text, where it measures 4.9:1 and reads correctly. */
+:root[data-theme='light'] .wb.wb.wb .ct-chip-warn,
+:root[data-theme='light'] .wb.wb.wb .ct-chip-bad,
+:root[data-theme='light'] .wb.wb.wb .ct-alert-n,
+:root[data-theme='light'] .wb.wb.wb .ct-alert-t,
+:root[data-theme='light'] .wb.wb.wb .ct-subline,
+:root[data-theme='light'] .wb.wb.wb .wb-failed-t,
+:root[data-theme='light'] .wb.wb.wb .td-banner,
+:root[data-theme='light'] .wb.wb.wb .ov-note,
+:root[data-theme='light'] .wb.wb.wb .wb-pipe-warn,
+:root[data-theme='light'] .wb.wb.wb .ct-subtle.ct-warn{ color:var(--text) }
+:root[data-theme='light'] .wb.wb.wb .wb-cap{ color:var(--ink) }
+
 /* Settings is spine-only: the ladder, the scale, the hairlines, nothing else.
    The switch loses its capsule because §6.3 does not license one. */
 .wb.wb.wb .sw{ background:var(--surface3) }
