@@ -101,6 +101,13 @@
    reach Settings now that it has left the tab bar. */
 .wb-ribbon{flex:none;display:flex;align-items:center;gap:10px;padding:8px 16px 4px;min-height:34px}
 .wb-rib-j{flex:1;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text3)}
+/* The Work lane switch. Identical markup on both canvases (MF3) — it used to live
+   only in the mobile ribbon while the desktop rail spelled the same two lanes as
+   unrelated top-level rows. */
+.wb-workhead{flex:none;display:flex;align-items:center;gap:12px;padding:10px 16px 2px;
+  border-bottom:.5px solid var(--sep)}
+.wb-workhead-l{flex:none;font-size:10.5px;font-weight:800;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--text3)}
 .wb-workseg{flex:1;display:flex;gap:6px;min-width:0}
 .wb-ws{display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;padding:4px 10px;
   border-radius:99px;background:var(--surface);color:var(--text2);cursor:pointer;white-space:nowrap}
@@ -481,3 +488,13 @@
   .wb.dt .wb-work:not(.wb-narrow) .wb-ocols:not(.one) .wb-ocol-h{border-left:.5px solid var(--sep)}
   .wb.dt .wb-work:not(.wb-narrow) .wb-oband{margin-left:16px;margin-right:16px}
 }
+
+/* The rail's half of MF3: the two Work lanes are nested under one label, so the
+   rail states the same grouping the WorkSegment and the phone's bottom bar do.
+   A label with an indent — not a collapsible drawer, because Content must stay
+   one click away on the canvas that has room for it. */
+.wb-rail-grp{margin:6px 0;padding-left:10px;border-left:1.5px solid var(--surface2)}
+.wb-rail-grp.on{border-left-color:var(--surface3)}
+.wb-rail-grp-l{padding:0 0 3px 2px;font-size:9.5px;font-weight:800;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--text3)}
+.wb-rj-lane{padding-left:8px}

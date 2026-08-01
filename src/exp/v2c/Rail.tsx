@@ -1,5 +1,40 @@
-import { JOBS, JOB_ICON, JOB_LABEL, type Job } from './layout'
+import { JOBS, JOB_ICON, JOB_LABEL, WORK_JOBS, isWorkJob, type Job } from './layout'
 import { relAge } from './Surface'
+
+// One model, both viewports (the IA seat's must-fix).
+//
+// The tournament build taught two incompatible things: the desktop rail gave
+// Content a full peer row beside Drafts, while the phone folded both into one
+// "Work" tab with a segmented control inside the surface. Two viewports, two
+// answers to "what is Content" — a rail row on one, half a tab on the other.
+//
+// Resolved in favour of the grouping, because that is the model the phone's six
+// slots can actually hold: DRAFTS AND CONTENT ARE TWO LANES OF ONE JOB. This
+// strip is that model, rendered identically on both canvases directly above the
+// working surface, and the desktop rail shows the same two rows nested under a
+// WORK label so the rail agrees with it instead of contradicting it.
+export const WORK_LANE_LABEL: Record<string, string> = { drafts: 'DMs', content: 'Content' }
+
+export function WorkSegment({ job, counts, onJob }: {
+  job: Job
+  counts: Counts
+  onJob: (j: Job) => void
+}) {
+  if (!isWorkJob(job)) return null
+  return (
+    <div className="wb-workhead">
+      <span className="wb-workhead-l">Work</span>
+      <div className="wb-workseg">
+        {WORK_JOBS.map(j => (
+          <span key={j} className={`wb-ws${job === j ? ' on' : ''}`} onClick={() => onJob(j)}>
+            {WORK_LANE_LABEL[j]}
+            {(counts[j] ?? 0) > 0 && <b>{counts[j]}</b>}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 // The desktop rail — what replaces the bottom tab bar above 1000px.
 //
@@ -37,15 +72,21 @@ export function Rail({ job, counts, sev, chatOn, chatLive, onJob, onChat, loaded
     return (
       <div
         key={j}
-        className={`wb-rj${job === j ? ' on' : ''}`}
+        className={`wb-rj${job === j ? ' on' : ''}${isWorkJob(j) ? ' wb-rj-lane' : ''}`}
         onClick={() => onJob(j)}
       >
         <span className="wb-rj-ic">{JOB_ICON[j]}</span>
-        <span className="wb-rj-l">{JOB_LABEL[j]}</span>
+        <span className="wb-rj-l">{isWorkJob(j) ? WORK_LANE_LABEL[j] : JOB_LABEL[j]}</span>
         {n > 0 && <span className={`wb-rj-n${s ? ` ${s}` : ''}`}>{n}</span>}
       </div>
     )
   }
+
+  // Rail order with the two work lanes nested under one label, so the rail states
+  // the same grouping the WorkSegment and the phone's bottom bar state. Content is
+  // still one click away — the group is a label, not a collapsed drawer.
+  const before = JOBS.filter(j => j !== 'settings' && !isWorkJob(j) && j !== 'sends' && j !== 'ops')
+  const after = JOBS.filter(j => j === 'sends' || j === 'ops')
 
   return (
     <nav className="wb-rail">
@@ -55,7 +96,12 @@ export function Rail({ job, counts, sev, chatOn, chatLive, onJob, onChat, loaded
       </div>
 
       <div className="wb-rail-jobs">
-        {JOBS.filter(j => j !== 'settings').map(row)}
+        {before.map(row)}
+        <div className={`wb-rail-grp${isWorkJob(job) ? ' on' : ''}`}>
+          <div className="wb-rail-grp-l">Work</div>
+          {WORK_JOBS.map(row)}
+        </div>
+        {after.map(row)}
       </div>
 
       {/* Claude is deliberately below the rule and shaped differently: it is not
@@ -88,9 +134,9 @@ export function Rail({ job, counts, sev, chatOn, chatLive, onJob, onChat, loaded
 // Settings leaves (it is the one unambiguously non-daily job, and the audit's own
 // recommendation is to cut it first), Claude takes a real slot because a
 // conversation you have to hunt for is one you stop having, and Drafts+Content
-// SHARE one slot — the segmented control inside the Work surface sets the same
-// `job` state the desktop rail sets, so there is one state with two renderings
-// rather than a second router nested inside a tab.
+// SHARE one slot as the two lanes of Work — the same grouping the rail shows and
+// the same WorkSegment inside the surface, setting the same `job` state. One
+// state, one model, two renderings; never a second router nested inside a tab.
 const MOBILE: { job: Job; icon: string; label: string }[] = [
   { job: 'today', icon: JOB_ICON.today, label: 'Today' },
   { job: 'inbox', icon: JOB_ICON.inbox, label: 'Inbox' },
