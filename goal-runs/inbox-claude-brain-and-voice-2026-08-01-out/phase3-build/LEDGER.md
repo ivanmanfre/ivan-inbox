@@ -163,13 +163,304 @@ Three defects the instrument found that reading the file could not:
   created or sent.
 
 ## 2. Assembler into broker + depth block (per phase2-tournament verdict)
-(pending)
+
+Built on `exp/brain` in the main tree. Nothing pushed, `main` untouched, no design
+worktree and nothing in `claude-code-railway` touched.
+
+### Commits
+
+| sha | what |
+|---|---|
+| `5b81bb3` | the winning assembler + depth block + shared allowlist + 37 tests |
+| `a5f75fb` | wired into `index.ts`, model plumbing, picker UI, 41 more tests |
+
+### Files
+
+| file | status | what it is |
+|---|---|---|
+| `supabase/functions/inbox-claude/assembler.ts` | new, 828 lines | cand-live base + 4 grafts + the FIX |
+| `supabase/functions/inbox-claude/depth-block.ts` | new | DEPTH-SPEC §4 + AMENDMENTS A2, one file |
+| `supabase/functions/inbox-claude/allowlist.ts` | new | the ONE allowlist constant both read |
+| `supabase/functions/inbox-claude/assembler.test.ts` | new | 24 tests |
+| `supabase/functions/inbox-claude/depth-block.test.ts` | new | 13 tests |
+| `supabase/functions/inbox-claude/index.ts` | edited | assembly + depth wired to `append_system_prompt` |
+
+### The verdict's four grafts, as shipped
+
+1. **`sources-as-of` header** replaces the wall clock. Extended beyond the verdict's
+   letter to the B8/B9 freshness labels, which were the *other* wall clocks and the
+   measured source of the cold/warm 7-char delta; they now read `fetched this turn`
+   / `cached (<300s)`, which is the whole information content of a 300s TTL without
+   the per-second churn. **Measured live: two consecutive warm turns are
+   byte-identical once the nonce is masked.**
+2. **Derived nonce count.** `emptyEnvelope(nonce, ts)` is composed and counted at
+   runtime; the hand-typed `NONCE_SCAFFOLD_OCCURRENCES = 5` is gone. A test asserts
+   the derivation still yields 5 against the mandated framing, so the spec defect
+   (INJECTION-SAFETY §3.3's arithmetically impossible "exactly twice") stays
+   recorded rather than silently absorbed.
+3. **In-sequence numbered absent blocks.** Every non-shed block occupies its
+   position whether it has content or not; the preamble is gone. A test asserts the
+   numbering is `1..n` with no gaps and `n/total` agrees everywhere.
+4. **Single-flight coalescing** — see the deviation below.
+
+### The FIX the operational seat required — proven live
+
+`[ClickUp: no key configured — block omitted]` renders at position 4 of 9 on the
+live database today. It is a different sentence from `[B8 ClickUp: unavailable —
+<reason>]` and a different sentence again from `[LOAD-SHED: dropped B8 … this
+context is partial]`. Three states, no shared wording, three tests. A fourth state
+was added on the same principle: an empty compaction queue reports
+`[B9 compaction proposals: none pending in any tier]`, because "none pending" is a
+fact and "unavailable" would have been the same class of wrong causal story.
+
+### Deviations, with reasons
+
+- **Coalescing is narrower than cand-memo's.** cand-memo single-flights the whole
+  assembly; grafting that shape would have re-imported the exact coupling the
+  operational seat disqualified it for (one n8nClaw 500 → zero context on a cold
+  turn). It is applied to the whole-tier row fetch instead — the only read that
+  pulls file bodies, so the only one worth coalescing — and a failure there still
+  degrades one tier's block rather than the turn.
+- **`allowlist.ts` is a third file.** DEPTH-SPEC §7 asks for "exactly one constant
+  shared with PARITY-SPEC §2". Having the depth block import it from the assembler
+  would have inverted the dependency once the assembler appends the block; a tiny
+  shared module keeps one direction and one literal. A test asserts the two modules
+  hold the *same object*, not two equal-looking arrays.
+- **`AssembleDeps.reserveChars` added.** The depth block did not exist when the cap
+  was written and now rides in the same `append_system_prompt`. The ladder runs
+  against `cap − reserve`, so what is bounded is the artifact that actually leaves
+  the broker.
+
+### AMENDMENTS A2, clause by clause
+
+| clause | where | test |
+|---|---|---|
+| A2.1 allowlist inline, scoped form the only form | every recipe, built from `ALLOWLIST_JSON`/`_CSV`/`_QUOTED` | every `client_ids` list parsed and compared to `ALLOWLIST` |
+| A2.2 graph modes named unsafe | `NOT AVAILABLE` section names `connections`/`neighbors`/`related_to`, quotes `p_client_ids:null`, explains the `neighbors` timestamp race | asserted |
+| A2.3 always include `client_ids` | `ALWAYS send client_ids` + "Nothing on the server enforces this" | asserted |
+| A2.3 state when a depth query ran | `SAY when you ran one` — name the recipe so a live read is distinguishable from the injected index | asserted |
+| A2.4 zero unscoped examples in the deployed text | per-recipe assertion, ready for Phase 5 to re-run against the deployed string | asserted |
+
+No JWT literal appears anywhere in the block (asserted); the key is referenced by
+name only, with the "never echo, print, expand, cat" rule intact — DEPTH-SPEC §3.5,
+because every Bash call is synced to Supabase by a PostToolUse hook.
+
+### Controls re-proven, with evidence
+
+Read from the deployed `index.ts`, then probed live after deploy.
+
+| control | evidence |
+|---|---|
+| JWT verified by `sb.auth.getUser` | `index.ts:162-165` unchanged; no manual `atob` anywhere in the file |
+| `user.id` allowlist (never email, never role) | `index.ts:166-169` unchanged, still `user.id !== ALLOWED_USER_ID → 403` |
+| no `working_directory` read or forwarded | body type is `{prompt, context, model}`; `grep -n working_directory index.ts` → lines 181, 182, 189, **all three comments** explaining its deliberate absence. It appears in no expression. |
+| no `client_id` read or forwarded | `grep -n 'body.client_id\|body.working' index.ts` → no matches. The only `client_id` strings in the function are the assembler's own scoping literals, never caller-supplied. |
+| CORS allowlist unchanged | same five origins; the only change is `Access-Control-Expose-Headers`, which widens what the browser may READ of our own response, not who may call |
+| fails closed on missing config | `index.ts:147-153` unchanged → 503 `broker_not_configured` |
+| existing size caps unchanged | `MAX_PROMPT_CHARS = 12_000`, `MAX_CONTEXT_CHARS = 24_000`, both untouched |
+| new: assembled prompt bounded | `MAX_SYSTEM_PROMPT_CHARS`, reserved-then-asserted; over-cap fails the turn 500 rather than shipping |
+| new: assembly fails closed | tenancy violation / MEMORY.md gone with no cache / over-cap → 503 `context_assembly_failed`, no turn sent |
+
+Ordering is itself a control and was confirmed by probe: a 13,000-char body with a
+non-allowlisted token returns `401 invalid_token`, **not** `413`. The size cap is
+behind the allowlist, so the broker cannot be used as a size oracle by a stranger.
+
+### Deploy
+
+`supabase functions deploy inbox-claude --project-ref bjbvqvzbzczjbatgmccb`
+(CLI authenticated, project confirmed LINKED before deploying). Four assets
+uploaded: `index.ts`, `assembler.ts`, `depth-block.ts`, `allowlist.ts`. **No secret
+was set or changed.** The assembler needs `SUPABASE_SERVICE_ROLE_KEY`, which the
+platform injects automatically — nothing to add.
+
+### Post-deploy probes
+
+| probe | expected | got |
+|---|---|---|
+| anon, no `Authorization` | 401 | **401** `UNAUTHORIZED_NO_AUTH_HEADER` (platform gate, before our code) |
+| anon key as bearer | 401 `invalid_token` | **401 `{"error":"invalid_token"}`** — the anon key is a valid JWT, so this proves `getUser` + the `user.id` check, not just signature validity |
+| 13,000-char prompt (over the 12,000 cap) | 413 | **401 `invalid_token`** — auth precedes size, by design; the 413 is unreachable without Ivan's session and is **not verified end-to-end from here**. Its unit test passes. |
+| OPTIONS preflight | scoped origin | **200**, `allow-origin: https://ivanmanfre.github.io`, expose-headers present |
+| a real turn | — | **not possible from here**: needs Ivan's Supabase session. `RAILWAY_CLAUDE_API_KEY` state on the broker is therefore unconfirmed; if unset, the client classifies the container's 401 as `upstream_not_armed` and says so in words (path unchanged, tested). |
+
+### Measured, live, against the shipped code
+
+Run read-only against the live database with the service key parsed out of
+`main.py` at runtime and never persisted.
+
+```
+cold 	state=cold	memory=36085	depth=5191	total=41278	cap=46000	headroom=4722	shed=[]	ms=1870
+warm 	state=warm	memory=36082	depth=5191	total=41275	cap=46000	headroom=4725	shed=[]	ms=512
+warm2	state=warm	memory=36082	depth=5191	total=41275	cap=46000	headroom=4725	shed=[]	ms=634
+
+byte-stable across turns (nonce masked): true
+
+ ok  B14-header      75
+ ok  B5            3618
+ ok  B4             871
+ ABS B8              44   [ClickUp: no key configured — block omitted]
+ ok  B9             449
+ ok  B10a          4037
+ ok  B10b          4211
+ ok  P16            608
+ ok  P15          19297
+```
+
+Three things this measurement settles:
+
+- **The old cap was not merely tight, it was already insufficient.** 41,275 > 36,000
+  by 5,275 chars. With the depth block in the same prompt, the 36,000 cap would have
+  fired the full load-shed ladder on turn one, every turn.
+- **MEMORY.md grew 33 chars between Phase 2's measurement and this one** (19,264 →
+  19,297), inside one working day. That is the growth the 51-char headroom was
+  measured against.
+- **The remaining cold/warm delta is 3 chars**, and it is the honest one: B9's
+  freshness label moving from `fetched this turn` to `cached (<300s)`. Per-second
+  nondeterminism is gone; the surviving difference carries information.
+
+---
 
 ## 3. Railway model passthrough (T3 grant, serialized last)
 (pending)
 
 ## 4. Model picker UI + honest degrade
-(pending)
+
+### The decision that shapes this section
+
+The hazard on this path is **not** that the upstream rejects a model. It is that it
+*accepts* one and ignores it. FastAPI's Pydantic models drop unknown fields by
+default, so posting `model` to today's `ChatRequest` (`main.py:78-88`) returns 200,
+discards the field, and runs the turn on whatever `CLAUDE_MODEL` the container
+booted with (`main.py:677`, `:807` both hardcode `"--model", CLAUDE_MODEL`). Ivan
+picks Haiku, is billed for Opus, and nothing anywhere says otherwise.
+
+So the broker refuses rather than forwards-and-hopes. Capability is decided by two
+independent signals, either sufficient, neither assumed:
+
+1. `UPSTREAM_MODEL_PASSTHROUGH=true` on the broker — the switch the serialized
+   Railway task's owner flips once `model` lands upstream. **Unset. Not set by this
+   run.**
+2. the upstream's own `/openapi.json` showing `model` on `ChatRequest` — an
+   automatic upgrade path needing no deploy here. **Measured today: `/openapi.json`
+   302s to `/login`, so the schema is not readable from the broker.**
+
+Both negative ⇒ a picked model produces `409 model_support_unknown` with a detail
+that states the fact rather than shrugging. Neither state is ever a silent success.
+
+### Model allowlist, verified twice against the deployed upstream
+
+`GET /v1/models` (open, no auth — `main.py:1959-1970`) returned today:
+`claude-opus-4-8`, `claude-opus-4-7`, `claude-opus-4-6`, `claude-sonnet-4-6`,
+`claude-haiku-4-5`. Cross-read against `MODEL_MAP` (`main.py:1230-1243`, read-only,
+never edited): all five map to `opus`/`sonnet`/`haiku`. The brief named four;
+`claude-opus-4-6` is live and accepted, so it is in the list — a picker that omitted
+an available model would be its own small lie.
+
+### Error states, three of them, deliberately not one
+
+| code | means | retryable |
+|---|---|---|
+| `model_not_allowed` (400) | the client offered something outside the broker's five | no |
+| `model_not_supported_upstream` (409) | the container is KNOWN not to honour it | no |
+| `model_support_unknown` (409) | the broker cannot confirm either way | no |
+
+None are retryable: a container that does not take a per-request model will not
+start taking one because Retry was pressed. `context_assembly_failed` **is**
+retryable — it covers transient source outages and the assembler has a stale
+fallback, so a second attempt genuinely can land.
+
+### The UI
+
+`src/exp/v2c/ChatPane.tsx`, `useChat.ts`, `chat/transport.ts`, `chat/events.ts`,
+`src/lib/claude.ts`. Chip in the pane header showing the current selection, opening
+a six-row menu (`Container default` first, then the five models, each with a
+one-line note). Matched to the existing `.wb-mockchip` / `.wb-ask` register; a
+later design phase re-skins it.
+
+Two states are kept apart on purpose:
+
+- **`wanted`** — what Ivan selected, shown on the chip.
+- **`model`** — what the last turn ACTUALLY ran on, read off the broker's
+  `X-Broker-Model` response header and shown in the subtitle as `ran on …`.
+
+They are never merged. Merging them is exactly how a dropped model choice would
+hide: the chip would keep saying Haiku while every turn ran Opus. The header is
+read from the response, never echoed back from the request — a test asserts that
+asking for Haiku and being told `container-default` reports `container-default`.
+
+The menu also states the current truth where the choice is made — "the container
+takes no per-turn model yet, so anything but the default is refused rather than
+quietly ignored" — so the state is learned before a turn fails, not after.
+
+**Honest degrade:** a refused pick leaves the selection ALONE. Reverting it silently
+would be the app choosing for Ivan and hiding that it did. An amber banner names
+what happened and offers the one action that works ("Use container default"), which
+is a deliberate single click rather than an automatic fallback.
+
+`Access-Control-Expose-Headers` was added to the broker's CORS — a browser cannot
+read a response header it was not offered, so without it the UI would have had to
+invent the model it displayed. Two other headers ride the same channel:
+`X-Broker-Context-Chars` and `X-Broker-Context-Shed`, so the surface can eventually
+say how much brain rode with the turn and what was dropped.
+
+### Cap decision, and what it costs
+
+**`MAX_SYSTEM_PROMPT_CHARS` raised 36,000 → 46,000.** Recorded as a build decision,
+not left to chance.
+
+*Why not accept shedding.* The ladder's first six rungs are the cheap, useful half:
+ClickUp (0 chars today), the compaction queue (449), a summary day (~435), then the
+tier **indexes** (8,248 combined) — which are the map the depth recipes navigate by.
+P15 MEMORY.md is 19,297 chars and is never shed. Shedding at 36,000 buys ~1,300
+chars, about three MEMORY.md lines, before it starts eating the index. That is a
+worse trade than it looks: the depth block's entire value is that the model knows
+what exists before deciding to read deeper.
+
+*Why 46,000.* The measured combined artifact is 41,275 chars. That leaves 4,725 of
+headroom — roughly 140 MEMORY.md lines at today's average, months of growth rather
+than the 29-51 chars Phase 2 measured (one line). A `console.warn` fires above 90%
+of the cap so the next squeeze is seen before it bites, not after.
+
+*What it costs.* **Nothing today.** A cap is a ceiling, not a floor: the payload is
+what the sources are, not what the cap allows. Injection stays as measured —
+41,275 chars, ~19,700 tokens at Ivan's measured 2.10 chars/token, ≈$0.197/turn for
+the injection alone on today's route (fresh session per turn writes a 1-hour cache
+at 2× and never reads it). The cost consequence is deferred and bounded: the worst
+case, MEMORY.md growing to fill the new ceiling, is ~21,900 tokens ≈ $0.219/turn,
++28% over the Phase 2 figure, reached over months.
+
+*What was NOT done.* The tiering is untouched. Whether MEMORY.md belongs in every
+turn whole, at 47% of the payload, is a ballot item per VERDICT.md and not a build
+decision. It was not silently downgraded.
+
+*Also not done, and still true:* the 13× caching fix (pass `--resume`, keep the
+payload byte-stable) remains outside this run's grant. **Half of it is now done** —
+the payload IS byte-stable turn to turn, measured. The `--resume` half is the
+serialized Railway task's, and until it lands today's route still costs 2× more
+than no caching at all.
+
+### Gates
+
+| gate | before | after |
+|---|---|---|
+| `npm test` | 20 files / 334 tests | **22 files / 378 tests, all passing** |
+| `npm run lint` | 0 errors | **0 errors** (warnings unchanged; no new ones in shipped src) |
+| `npm run build` | clean | **clean** |
+| new npm dependency | — | **none** |
+| `deno check` on the four function modules | — | **clean** |
+| secret in an artifact or committed file | — | **none**; the measurement key was parsed from `main.py` at runtime and never written |
+
+### Left open, deliberately
+
+- The 413 probe is unreachable without Ivan's session; unit-tested, not
+  end-to-end-verified. Phase 5 owes it a real-session run.
+- A real turn was never executed from here, so `RAILWAY_CLAUDE_API_KEY`'s state on
+  the broker is unconfirmed and the `upstream_not_armed` classification is untested
+  against the live container.
+- `X-Broker-Context-Chars` / `-Shed` are emitted and parsed but nothing renders them
+  yet — the surface has the fact and no place to put it. A design-phase item.
+- P16 is still a compile-time literal of `~/.claude/CLAUDE.md` with no propagation
+  from the real file. Phase 5 owes the diff.
 
 ## 5. Voice instrumentation
 (pending)
