@@ -15,6 +15,8 @@
 // Fails closed on every ambiguity: missing config, unverifiable token, wrong
 // user, unparseable body.
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { assembleSystemPrompt, MAX_SYSTEM_PROMPT_CHARS } from './assembler.ts'
+import { DEPTH_BLOCK, DEPTH_BLOCK_CHARS } from './depth-block.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')
@@ -45,13 +47,93 @@ const MAX_CONTEXT_CHARS = 24_000
 // client sees a structured timeout instead of a dropped socket.
 const UPSTREAM_TIMEOUT_MS = 240_000
 
+// Re-exported from the assembler so there is one number, not two. The assembler
+// runs its load-shed ladder against `MAX_SYSTEM_PROMPT_CHARS - DEPTH_BLOCK_CHARS`;
+// the assertion below is the belt to that braces, and fails the turn rather than
+// handing the container a payload nobody bounded.
+export { MAX_SYSTEM_PROMPT_CHARS }
+
+/**
+ * The models this broker will forward, as a literal. Verified twice today against
+ * the DEPLOYED upstream, not against documentation:
+ *   - GET /v1/models returns opus-4-8, opus-4-7, opus-4-6, sonnet-4-6, haiku-4-5
+ *   - MODEL_MAP in claude-code-railway/main.py:1230-1243 maps each of those to the
+ *     CLI's short name (read-only; that repo is another task's to edit)
+ * opus-4-6 is live and accepted upstream, so it is here — a picker that silently
+ * omitted an available model would be its own small lie.
+ *
+ * ⚠ THE UPSTREAM DOES NOT ACCEPT `model` ON /chat/stream YET. ChatRequest
+ * (main.py:78-88) has no such field and both /chat call sites hardcode
+ * "--model", CLAUDE_MODEL. A separate, serialized task adds it. Until then this
+ * allowlist governs what LEAVES the broker, and the honest-degrade path below is
+ * what the operator actually sees.
+ */
+const ALLOWED_MODELS = [
+  'claude-opus-4-8',
+  'claude-opus-4-7',
+  'claude-opus-4-6',
+  'claude-sonnet-4-6',
+  'claude-haiku-4-5',
+] as const
+
 function cors(origin: string | null): Record<string, string> {
   const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0]
   return {
     'Access-Control-Allow-Origin': allowed,
     'Access-Control-Allow-Headers': 'authorization, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    // The browser cannot read a response header it was not offered. These two are
+    // how the UI learns which model the turn actually ran on and how much context
+    // rode with it — facts it would otherwise have to invent.
+    'Access-Control-Expose-Headers': 'x-broker-model, x-broker-context-chars, x-broker-context-shed',
     'Vary': 'Origin',
+  }
+}
+
+/**
+ * Does the DEPLOYED upstream accept a per-request `model` on /chat/stream?
+ *
+ * THE FAILURE THIS EXISTS TO PREVENT is not rejection — it is silent acceptance.
+ * FastAPI's Pydantic models ignore unknown fields by default, so sending `model`
+ * to today's `ChatRequest` returns 200, drops the field, and runs the turn on
+ * whatever `CLAUDE_MODEL` the container booted with. The operator picks Haiku,
+ * gets Opus, and nothing anywhere says so. A silent fallback is the one outcome
+ * this plumbing may not have.
+ *
+ * MEASURED TODAY, 2026-08-01: the upstream's `/openapi.json` 302s to `/login`, so
+ * the schema is not readable from here, and `ChatRequest` (main.py:78-88) has no
+ * `model` field — both `/chat` call sites hardcode `"--model", CLAUDE_MODEL`
+ * (main.py:677, 807). Support is therefore FALSE and the probe cannot see it.
+ *
+ * So capability is decided fail-closed by two independent signals, either of which
+ * is sufficient and neither of which is assumed:
+ *   1. `UPSTREAM_MODEL_PASSTHROUGH=true` on the broker — the switch the serialized
+ *      Railway task's owner flips once `model` actually lands upstream. Unset
+ *      today, deliberately, and NOT set by this run.
+ *   2. the upstream's own OpenAPI schema showing the field, if it ever becomes
+ *      readable — an automatic upgrade path that needs no deploy here.
+ *
+ * Returns true / false / null (probe failed and no flag — unknown, never "yes").
+ */
+let modelCapCache: { at: number; value: boolean } | null = null
+const MODEL_CAP_TTL_MS = 60_000
+
+async function upstreamAcceptsModel(base: string): Promise<boolean | null> {
+  if (Deno.env.get('UPSTREAM_MODEL_PASSTHROUGH') === 'true') return true
+  if (modelCapCache && Date.now() - modelCapCache.at < MODEL_CAP_TTL_MS) return modelCapCache.value
+  try {
+    const res = await fetch(`${base}/openapi.json`, { signal: AbortSignal.timeout(6_000) })
+    if (!res.ok) return null
+    const doc = await res.json() as {
+      components?: { schemas?: Record<string, { properties?: Record<string, unknown> }> }
+    }
+    const props = doc.components?.schemas?.ChatRequest?.properties
+    if (!props) return null
+    const value = Object.prototype.hasOwnProperty.call(props, 'model')
+    modelCapCache = { at: Date.now(), value }
+    return value
+  } catch {
+    return null // unreachable schema is UNKNOWN, and unknown is not "yes"
   }
 }
 
@@ -102,7 +184,12 @@ Deno.serve(async (req) => {
   // get_client_config() clone another client's repo and inject that client's n8n
   // credentials (main.py:256-270). They are never read from the caller and never
   // forwarded, so no caller can steer the container at another tenant.
-  let body: { prompt?: unknown; context?: unknown }
+  //
+  // `model` IS read from the caller, and is the only new caller-steerable field.
+  // It is safe in a way working_directory and client_id are not: it is validated
+  // against a literal allowlist of five model IDs and can address nothing. It
+  // cannot name a path, a tenant, a repo or a credential.
+  let body: { prompt?: unknown; context?: unknown; model?: unknown }
   try {
     body = await req.json()
   } catch {
@@ -110,20 +197,75 @@ Deno.serve(async (req) => {
   }
   const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : ''
   const context = typeof body.context === 'string' ? body.context : ''
+  const wantModel = typeof body.model === 'string' ? body.model.trim() : ''
   if (!prompt) return fail(400, 'empty_prompt', origin)
   if (prompt.length > MAX_PROMPT_CHARS) return fail(413, 'prompt_too_long', origin)
   if (context.length > MAX_CONTEXT_CHARS) return fail(413, 'context_too_long', origin)
 
+  const upstreamBase = UPSTREAM_URL.replace(/\/$/, '')
+
+  // ---- model: validate, then verify, then forward. Never two of the three. ----
+  if (wantModel && !(ALLOWED_MODELS as readonly string[]).includes(wantModel)) {
+    return fail(400, 'model_not_allowed', origin, `known models: ${ALLOWED_MODELS.join(', ')}`)
+  }
+  if (wantModel) {
+    const supported = await upstreamAcceptsModel(upstreamBase)
+    if (supported === false) {
+      return fail(409, 'model_not_supported_upstream', origin,
+        'The container accepts no per-request model on /chat/stream yet; it would run this turn ' +
+        'on its boot-time default and report nothing. Refusing rather than pretending.')
+    }
+    if (supported === null) {
+      return fail(409, 'model_support_unknown', origin,
+        'The container schema is not readable from here (/openapi.json redirects to /login) and ' +
+        'UPSTREAM_MODEL_PASSTHROUGH is not set, so the broker cannot confirm a per-request model ' +
+        'would be honoured. As of 2026-08-01 it would not be: ChatRequest has no model field. ' +
+        'Refusing rather than running the turn on an unknown model.')
+    }
+  }
+
+  // ---- the brain: assembled fresh per turn, appended as system prompt ---------
+  // PARITY-SPEC + DEPTH-SPEC. Fails CLOSED: the conditions the assembler throws on
+  // are a missing service key, a cross-tenant row, MEMORY.md unreachable with no
+  // cached assembly, and over-cap after the full shed ladder. None of those are
+  // states a turn should quietly run without.
+  let appendSystemPrompt: string
+  let contextChars = 0
+  let contextShed: string[] = []
+  try {
+    const assembled = await assembleSystemPrompt({
+      env: (k) => Deno.env.get(k),
+      reserveChars: DEPTH_BLOCK_CHARS,
+    })
+    appendSystemPrompt = `${assembled.text}\n\n${DEPTH_BLOCK}`
+    contextChars = appendSystemPrompt.length
+    contextShed = assembled.shed
+  } catch (e) {
+    console.error('context assembly failed', e)
+    return fail(503, 'context_assembly_failed', origin,
+      e instanceof Error ? e.message.slice(0, 300) : undefined)
+  }
+  // The assembler already reserved the depth block, so this can only trip if the
+  // two files disagree. Assert it anyway — a payload nobody bounded is exactly
+  // what the cap exists to prevent.
+  if (appendSystemPrompt.length > MAX_SYSTEM_PROMPT_CHARS) {
+    console.error('assembled prompt over cap', { chars: appendSystemPrompt.length })
+    return fail(500, 'context_over_cap', origin,
+      `${appendSystemPrompt.length} > ${MAX_SYSTEM_PROMPT_CHARS}`)
+  }
+
   const upstreamBody = {
     prompt: context ? `${context}\n\n---\n\n${prompt}` : prompt,
     stream: true,
+    append_system_prompt: appendSystemPrompt,
+    ...(wantModel ? { model: wantModel } : {}),
   }
 
   const ctl = new AbortController()
   const timer = setTimeout(() => ctl.abort(), UPSTREAM_TIMEOUT_MS)
   let upstream: Response
   try {
-    upstream = await fetch(`${UPSTREAM_URL.replace(/\/$/, '')}/chat/stream`, {
+    upstream = await fetch(`${upstreamBase}/chat/stream`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -183,6 +325,12 @@ Deno.serve(async (req) => {
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive',
       'X-Accel-Buffering': 'no',
+      // What the turn ACTUALLY ran on. Empty when the caller named no model, which
+      // means the container's boot-time default — a thing this broker cannot read,
+      // so it says "default" rather than guessing a name.
+      'X-Broker-Model': wantModel || 'container-default',
+      'X-Broker-Context-Chars': String(contextChars),
+      'X-Broker-Context-Shed': contextShed.join(',') || 'none',
     },
   })
 })

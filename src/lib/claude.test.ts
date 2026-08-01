@@ -1,11 +1,45 @@
-import { describe, it, expect } from 'vitest'
-import { emit, CLAUDE_ERROR_COPY, type ClaudeEvent } from './claude'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import {
+  emit, sendToClaude, CLAUDE_ERROR_COPY, CLAUDE_MODELS,
+  type ClaudeEvent, type ModelChoice,
+} from './claude'
+
+vi.mock('./supabase', () => ({
+  supabase: { auth: { getSession: () => Promise.resolve({ data: { session: { access_token: 'jwt' } } }) } },
+}))
 
 const collect = (frame: string): ClaudeEvent[] => {
   const out: ClaudeEvent[] = []
   emit(frame, (e) => out.push(e))
   return out
 }
+
+// One turn against a stubbed broker. The response is a closed, empty SSE stream —
+// enough to reach the header read and the clean end, which is all these assert.
+function stubBroker(headers: Record<string, string>) {
+  const calls: Record<string, unknown>[] = []
+  vi.stubGlobal('fetch', vi.fn((_url: string, init: RequestInit) => {
+    calls.push(JSON.parse(String(init.body)))
+    const body = new ReadableStream<Uint8Array>({ start(c) { c.close() } })
+    return Promise.resolve(new Response(body, { status: 200, headers }))
+  }))
+  return calls
+}
+
+async function runWithHeaders(headers: Record<string, string>, model: ModelChoice): Promise<ClaudeEvent[]> {
+  stubBroker(headers)
+  const out: ClaudeEvent[] = []
+  await sendToClaude('hi', { model, onEvent: e => out.push(e) })
+  return out
+}
+
+async function captureRequest(model: ModelChoice | undefined): Promise<Record<string, unknown>> {
+  const calls = stubBroker({ 'x-broker-model': 'container-default' })
+  await sendToClaude('hi', { ...(model === undefined ? {} : { model }), onEvent: () => {} })
+  return calls[0]
+}
+
+afterEach(() => { vi.unstubAllGlobals() })
 
 describe('emit — SSE frame parsing', () => {
   it('reads a text delta from an assistant frame', () => {
@@ -70,5 +104,62 @@ describe('error copy', () => {
       expect(copy, code).toBeTruthy()
       expect(copy.length, code).toBeGreaterThan(4)
     }
+  })
+})
+
+describe('model plumbing — never a silent fallback', () => {
+  it('offers only models the broker will forward', () => {
+    // The broker's ALLOWED_MODELS is the enforcing copy; this list only decides
+    // what gets offered. Both were verified against the deployed /v1/models.
+    expect(CLAUDE_MODELS.map(m => m.id)).toEqual([
+      'claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6',
+      'claude-sonnet-4-6', 'claude-haiku-4-5',
+    ])
+  })
+
+  it('sends no model field at all when the choice is the container default', async () => {
+    const seen = await captureRequest(undefined)
+    expect(seen).not.toHaveProperty('model')
+  })
+
+  it('sends the model when one is chosen', async () => {
+    const seen = await captureRequest('claude-haiku-4-5')
+    expect(seen.model).toBe('claude-haiku-4-5')
+  })
+
+  it('reports what the turn RAN on from the broker header, not the request', async () => {
+    const events = await runWithHeaders(
+      { 'x-broker-model': 'container-default', 'x-broker-context-chars': '40621' },
+      'claude-haiku-4-5',
+    )
+    const m = events.find(e => e.kind === 'model')
+    // Asked for Haiku, told "container-default" — the whole point. If this echoed
+    // the request back, a dropped model choice would be invisible.
+    expect(m).toEqual({ kind: 'model', model: 'container-default', contextChars: 40621, shed: [] })
+  })
+
+  it('carries the shed list through when the assembler dropped blocks', async () => {
+    const events = await runWithHeaders(
+      { 'x-broker-model': 'container-default', 'x-broker-context-chars': '46000', 'x-broker-context-shed': 'B8,B9' },
+      null,
+    )
+    expect(events.find(e => e.kind === 'model')).toMatchObject({ shed: ['B8', 'B9'] })
+  })
+
+  it('has distinct copy for each of the three model refusals', () => {
+    const copies = [
+      CLAUDE_ERROR_COPY.model_not_allowed,
+      CLAUDE_ERROR_COPY.model_not_supported_upstream,
+      CLAUDE_ERROR_COPY.model_support_unknown,
+    ]
+    expect(new Set(copies).size).toBe(3)
+    // Two of them tell the operator the action that actually works.
+    expect(CLAUDE_ERROR_COPY.model_not_supported_upstream).toMatch(/container default/i)
+    expect(CLAUDE_ERROR_COPY.model_support_unknown).toMatch(/container default/i)
+  })
+
+  it('names the context-assembly failure as its own state', () => {
+    expect(CLAUDE_ERROR_COPY.context_assembly_failed).toMatch(/memory context/i)
+    expect(CLAUDE_ERROR_COPY.context_assembly_failed).not.toMatch(/something went wrong/i)
   })
 })

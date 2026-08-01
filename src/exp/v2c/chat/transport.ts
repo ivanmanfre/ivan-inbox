@@ -1,6 +1,6 @@
 import type { ChatEvent, ChatRequest, ChatTransport } from './events'
 import { mockFlag } from '../mock'
-import { CLAUDE_ERROR_COPY, sendToClaude, type ClaudeErrorCode, type ClaudeEvent } from '../../../lib/claude'
+import { CLAUDE_ERROR_COPY, sendToClaude, type ClaudeErrorCode, type ClaudeEvent, type ClaudeModelId } from '../../../lib/claude'
 
 // ---------------------------------------------------------------------------
 // THE ONE SWAPPABLE MODULE — now swapped.
@@ -39,8 +39,14 @@ function sessionId(seed: string): string {
 // Which failures a second attempt could plausibly fix. Everything else is a
 // standing condition — a missing key, a refused user, a prompt over the limit —
 // and offering Retry on one of those teaches the operator to distrust the button.
+// `context_assembly_failed` IS here: it covers a transient source outage as well
+// as a standing one, and the assembler's own stale fallback means a second attempt
+// genuinely can succeed. The three model_* codes are NOT: a container that does
+// not take a per-request model will not start taking one because Retry was
+// pressed. The fix for those is switching the picker back, and the copy says so.
 const RETRYABLE: ReadonlySet<ClaudeErrorCode> = new Set<ClaudeErrorCode>([
-  'upstream_timeout', 'upstream_unreachable', 'upstream_error', 'relay_broken', 'unknown',
+  'upstream_timeout', 'upstream_unreachable', 'upstream_error', 'relay_broken',
+  'context_assembly_failed', 'unknown',
 ])
 
 export function isRetryable(code: ClaudeErrorCode): boolean {
@@ -64,6 +70,11 @@ export function toChatEvent(
       // /chat/stream forwards tool_use and never tool_result, so the input is
       // whatever detail came with it and there is no output to invent.
       return { type: 'tool_use', id: `${seq}:0`, tool: e.name, input: e.detail ? { detail: e.detail } : {} }
+    case 'model':
+      // The broker's account of what it forwarded. Reuses the `session` frame,
+      // which already carries a model field — the sessionId stays the honest
+      // "there isn't one" marker because the upstream still never resumes.
+      return { type: 'session', sessionId: '', model: e.model }
     case 'done':
       // The broker reports no cost. Duration is measured here, honestly, and cost
       // stays null rather than being estimated — an invented number on a
@@ -114,6 +125,7 @@ function httpStream(req: ChatRequest): AsyncGenerator<ChatEvent> {
     let sawDone = false
     await sendToClaude(req.prompt, {
       context: req.context,
+      model: (req.model ?? null) as ClaudeModelId | null,
       signal: req.signal,
       onEvent: e => {
         if (e.kind === 'tool') seq += 1

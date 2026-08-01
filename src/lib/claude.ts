@@ -17,10 +17,36 @@ import { supabase } from './supabase'
 
 const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/inbox-claude`
 
+// The models the broker will forward, in the order a picker should offer them.
+// Kept in step with ALLOWED_MODELS in supabase/functions/inbox-claude/index.ts —
+// the broker's copy is the enforcing one; this copy only decides what is offered.
+// A value that drifted out of the broker's list would be refused with
+// `model_not_allowed`, which is a visible failure rather than a silent one.
+export const CLAUDE_MODELS = [
+  { id: 'claude-opus-4-8', label: 'Opus 4.8', note: 'Most capable' },
+  { id: 'claude-opus-4-7', label: 'Opus 4.7', note: 'Container default' },
+  { id: 'claude-opus-4-6', label: 'Opus 4.6', note: 'Previous Opus' },
+  { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6', note: 'Faster, cheaper' },
+  { id: 'claude-haiku-4-5', label: 'Haiku 4.5', note: 'Fastest' },
+] as const
+
+export type ClaudeModelId = (typeof CLAUDE_MODELS)[number]['id']
+
+/**
+ * `null` means "whatever the container booted with". It is a real, distinct choice
+ * and the only one that works today, so it is the default rather than a fallback
+ * the UI slides into when a pick fails.
+ */
+export type ModelChoice = ClaudeModelId | null
+
 export type ClaudeEvent =
   | { kind: 'status'; text: string }
   | { kind: 'text'; delta: string }
   | { kind: 'tool'; name: string; detail?: string }
+  // What the turn ACTUALLY ran on, read off the broker's X-Broker-Model response
+  // header — never echoed back from what the client asked for. Those are different
+  // facts and conflating them is how a silent fallback would hide.
+  | { kind: 'model'; model: string; contextChars: number | null; shed: string[] }
   | { kind: 'done' }
   | { kind: 'error'; code: ClaudeErrorCode; detail?: string }
 
@@ -42,6 +68,18 @@ export type ClaudeErrorCode =
   | 'relay_broken'
   | 'prompt_too_long'
   | 'empty_prompt'
+  // The brain the broker assembles per turn could not be built — a cross-tenant
+  // row, MEMORY.md unreachable with nothing cached, or over the char cap after the
+  // full shed ladder. All fail closed: no turn runs on a half-assembled context.
+  | 'context_assembly_failed'
+  | 'context_over_cap'
+  // Model plumbing. Three distinct facts, deliberately not one:
+  //  - the client offered a model the broker's allowlist does not contain
+  //  - the container is KNOWN not to honour a per-request model
+  //  - the broker cannot confirm either way, and will not guess
+  | 'model_not_allowed'
+  | 'model_not_supported_upstream'
+  | 'model_support_unknown'
   | 'aborted'
   | 'unknown'
 
@@ -61,6 +99,15 @@ export const CLAUDE_ERROR_COPY: Record<ClaudeErrorCode, string> = {
   empty_prompt: 'Nothing to send.',
   aborted: 'Stopped.',
   relay_broken: 'The connection to Claude dropped mid-answer.',
+  context_assembly_failed: 'Claude’s memory context could not be built, so the turn was not sent.',
+  context_over_cap: 'Claude’s memory context is over the size cap and the turn was not sent.',
+  model_not_allowed: 'That model is not one the broker will send.',
+  // Says what is true and what to do, because this is the state the picker is in
+  // today and will stay in until the container change lands.
+  model_not_supported_upstream:
+    'The container cannot take a per-turn model yet — it would quietly use its own. Switch back to the container default to send.',
+  model_support_unknown:
+    'The broker cannot confirm the container would honour that model, so it did not send. Switch back to the container default.',
   unknown: 'Claude failed for an unrecognised reason.',
 }
 
@@ -76,6 +123,8 @@ function classify(status: number, payload: string): { code: ClaudeErrorCode; det
   const known: ClaudeErrorCode[] = [
     'unauthenticated', 'invalid_token', 'forbidden_user', 'broker_not_configured',
     'upstream_timeout', 'upstream_unreachable', 'upstream_error', 'prompt_too_long', 'empty_prompt',
+    'context_assembly_failed', 'context_over_cap',
+    'model_not_allowed', 'model_not_supported_upstream', 'model_support_unknown',
   ]
   if (known.includes(raw as ClaudeErrorCode)) return { code: raw as ClaudeErrorCode, detail }
   if (status === 401) return { code: 'unauthenticated', detail }
@@ -85,6 +134,14 @@ function classify(status: number, payload: string): { code: ClaudeErrorCode; det
 
 export type SendOptions = {
   context?: string
+  /**
+   * `null` (or omitted) sends no `model` at all, which is the container default —
+   * the only route that works until the upstream takes a per-request model. Any
+   * other value is sent and either honoured or refused with a named error. It is
+   * never quietly dropped, because a dropped model choice is indistinguishable
+   * from an honoured one from the outside.
+   */
+  model?: ModelChoice
   signal?: AbortSignal
   onEvent: (e: ClaudeEvent) => void
 }
@@ -94,7 +151,7 @@ export type SendOptions = {
  * failures — those arrive as an 'error' event so the UI has exactly one path.
  */
 export async function sendToClaude(prompt: string, opts: SendOptions): Promise<void> {
-  const { onEvent, context, signal } = opts
+  const { onEvent, context, model, signal } = opts
   const { data } = await supabase.auth.getSession()
   const token = data.session?.access_token
   if (!token) return onEvent({ kind: 'error', code: 'not_signed_in' })
@@ -104,7 +161,7 @@ export async function sendToClaude(prompt: string, opts: SendOptions): Promise<v
     res = await fetch(FN_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ prompt, ...(context ? { context } : {}) }),
+      body: JSON.stringify({ prompt, ...(context ? { context } : {}), ...(model ? { model } : {}) }),
       signal,
     })
   } catch (e) {
@@ -119,6 +176,21 @@ export async function sendToClaude(prompt: string, opts: SendOptions): Promise<v
     const payload = await res.text().catch(() => '')
     const { code, detail } = classify(res.status, payload)
     return onEvent({ kind: 'error', code, detail })
+  }
+
+  // Read off the RESPONSE, before the first token. This is the honest answer to
+  // "what am I talking to" — the broker's own account of what it forwarded, not
+  // the client repeating its own request back to itself.
+  const ranOn = res.headers.get('x-broker-model')
+  if (ranOn) {
+    const chars = Number(res.headers.get('x-broker-context-chars'))
+    const shedHeader = res.headers.get('x-broker-context-shed') ?? 'none'
+    onEvent({
+      kind: 'model',
+      model: ranOn,
+      contextChars: Number.isFinite(chars) && chars > 0 ? chars : null,
+      shed: shedHeader === 'none' ? [] : shedHeader.split(','),
+    })
   }
 
   const reader = res.body.getReader()

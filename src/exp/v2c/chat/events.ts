@@ -21,6 +21,11 @@ export type ChatEvent =
 export type ChatRequest = {
   prompt: string
   sessionId: string | null
+  // Which model to ask for, or null for the container's own default. Unlike
+  // `context` this IS a structured field, and it is safe to be one: the broker
+  // validates it against a five-entry literal allowlist and it can address
+  // nothing — no path, no tenant, no repo, no credential.
+  model?: string | null
   // What Ivan is looking at while he asks, plus the transcript so far. PROSE, and
   // only prose — phase0's fence says the browser may not hand the broker anything
   // that scopes an instance, so there is deliberately no field here for a
