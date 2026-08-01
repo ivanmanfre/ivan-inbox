@@ -523,6 +523,16 @@ export function ago(iso: string): string {
   return `${Math.floor(h / 24)}d`
 }
 
+// ago() returns a bare "now" under a minute, so callers that append " ago"
+// render "Checked now ago" on the freshest and most common read. Freshness copy
+// asks for a whole phrase, not a duration, so build it here once.
+export function checkedPhrase(iso: string | null | undefined): string {
+  if (!iso) return 'Never checked'
+  const a = ago(iso)
+  if (!a) return 'Never checked'
+  return a === 'now' ? 'Checked just now' : `Checked ${a} ago`
+}
+
 // Local time, always — a brief generated at 00:36Z is "21:36" in Buenos Aires
 // and that is the number Ivan reads against his own clock. 24h because the
 // count strip is one line at 390px and "11:01 PM" is three characters too many.

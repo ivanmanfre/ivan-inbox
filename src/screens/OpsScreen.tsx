@@ -8,7 +8,7 @@ import {
   approveOpsDraft, approveWeeklyReport, blockedOps, canGenerateDraft, claimingOps, discardOpsDraft, engineLabel, expiresIn, generateCommentDraft, markCommentHandled, pendingOps, postCommentReply, sentOps,
   type OpsDraft, type OpsKind,
 } from '../lib/ops'
-import { ago } from '../lib/today'
+import { checkedPhrase } from '../lib/today'
 
 function slotText(iso?: string): string {
   if (!iso) return ''
@@ -407,7 +407,7 @@ export function OpsScreen() {
             Nothing waiting on you
             <div className="empty-f">
               <span className="empty-dot" />
-              Checked {loadedAt ? `${ago(loadedAt)} ago` : 'never'} — and this is a live read, not a stall.
+              {checkedPhrase(loadedAt)}. This is a live read, not a stall.
             </div>
           </div>
         ) : pending.length === 0 ? null : (
