@@ -1,4 +1,4 @@
-import { micIsLive, VOICE_COPY, VOICE_LABEL, voiceSeverity, type VoiceState } from './chat/voice'
+import { micIsLive, unlockAudio, VOICE_COPY, VOICE_LABEL, voiceSeverity, type VoiceState } from './chat/voice'
 
 // The voice affordance. Real UI, real state machine, mock capture.
 //
@@ -46,9 +46,6 @@ export function VoiceControl({ state, onArm, onCancel, onResume, onSkip, onDismi
   const busy = state.s !== 'IDLE' && state.s !== 'ERROR'
 
   const tap = () => {
-    // iOS: audio must be unlocked inside the gesture, synchronously. In phase 3
-    // this is where unlockAudio() goes — before any state transition, never after
-    // an await. Keeping the ordering explicit here is the point.
     if (state.s === 'IDLE') return onArm()
     if (state.s === 'PAUSED') return onResume()
     if (state.s === 'SPEAKING') return onSkip()
@@ -61,6 +58,11 @@ export function VoiceControl({ state, onArm, onCancel, onResume, onSkip, onDismi
       type="button"
       className={`wb-mic${live ? ' live' : ''}${busy ? ' busy' : ''}${state.s === 'ERROR' ? ' err' : ''}`}
       style={live ? { boxShadow: `0 0 0 ${2 + level * 9}px rgba(16,163,127,${0.1 + level * 0.16})` } : undefined}
+      // iOS drops a speechSynthesis utterance that was not primed inside a real
+      // gesture, and the prime must run SYNCHRONOUSLY — after an await the gesture
+      // is already spent. pointerdown, before any state transition, is the only
+      // place this works, which is why it is not inside the state machine.
+      onPointerDown={unlockAudio}
       onClick={tap}
       onContextMenu={e => { e.preventDefault(); onHandsFree() }}
       aria-label={live ? 'Listening — tap to stop' : VOICE_LABEL[state.s]}

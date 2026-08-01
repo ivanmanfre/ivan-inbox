@@ -1,14 +1,27 @@
 import type { ChatEvent, ChatRequest, ChatTransport } from './events'
 import { mockFlag } from '../mock'
+import { CLAUDE_ERROR_COPY, sendToClaude, type ClaudeErrorCode, type ClaudeEvent } from '../../../lib/claude'
 
 // ---------------------------------------------------------------------------
-// THE ONE SWAPPABLE MODULE.
+// THE ONE SWAPPABLE MODULE — now swapped.
 //
-// Phase 2 judges composition, so this file is a stub: it emits the exact frame
-// sequence the real broker will (spec §2.1) with realistic pacing, and nothing
-// in this candidate calls Railway, an edge function, or a Supabase function.
-// Phase 3 adds httpTransport() below and flips getTransport() — no component,
-// hook, or type changes.
+// Phase 2 judged composition against a stub. Phase 3 points it at the real
+// broker: `src/lib/claude.ts` → `POST /functions/v1/inbox-claude`, Supabase-JWT
+// gated, Railway key held as an edge secret. Nothing about the components, the
+// hook or the event union changed to do it, which was the point of the seam.
+//
+// Three rules this file exists to keep:
+//  1. The browser NEVER talks to Railway, and never sends `working_directory` or
+//     `client_id`. Those fields do not exist in the request type; see
+//     phase1-audit/skeptic-security.md — the parameter-based cross-tenant request
+//     is the one vector the broker's shape actually closes, so nothing here may
+//     reopen it. `context` is PROSE and nothing else.
+//  2. The broker ships UNARMED on purpose: `RAILWAY_CLAUDE_API_KEY` is unset, so
+//     a real turn returns `upstream_not_armed`. That is a distinct, nameable
+//     state, and CLAUDE_ERROR_COPY already has the sentence for it. It must never
+//     collapse into "something went wrong".
+//  3. `retryable` is not decoration. An unarmed broker will not become armed by
+//     pressing Retry, so that error must not offer one.
 // ---------------------------------------------------------------------------
 
 const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
@@ -22,6 +35,110 @@ function hash(s: string): number {
 function sessionId(seed: string): string {
   return hash(seed).toString(16).padStart(8, '0').slice(0, 8)
 }
+
+// Which failures a second attempt could plausibly fix. Everything else is a
+// standing condition — a missing key, a refused user, a prompt over the limit —
+// and offering Retry on one of those teaches the operator to distrust the button.
+const RETRYABLE: ReadonlySet<ClaudeErrorCode> = new Set<ClaudeErrorCode>([
+  'upstream_timeout', 'upstream_unreachable', 'upstream_error', 'relay_broken', 'unknown',
+])
+
+export function isRetryable(code: ClaudeErrorCode): boolean {
+  return RETRYABLE.has(code)
+}
+
+/**
+ * One broker event → zero or one client events. Pure, so the mapping is testable
+ * without a network: `startedAt` is passed in rather than read off the clock.
+ */
+export function toChatEvent(
+  e: ClaudeEvent, startedAt: number, now: number, seq: number,
+): ChatEvent | null {
+  switch (e.kind) {
+    case 'status':
+      // The broker's own progress lines ("init", a subtype). Named, not a spinner.
+      return { type: 'status', status: 'started', note: e.text }
+    case 'text':
+      return { type: 'text', delta: e.delta }
+    case 'tool':
+      // /chat/stream forwards tool_use and never tool_result, so the input is
+      // whatever detail came with it and there is no output to invent.
+      return { type: 'tool_use', id: `${seq}:0`, tool: e.name, input: e.detail ? { detail: e.detail } : {} }
+    case 'done':
+      // The broker reports no cost. Duration is measured here, honestly, and cost
+      // stays null rather than being estimated — an invented number on a
+      // telemetry line is worse than a missing one.
+      return { type: 'done', costUsd: null, durationMs: now - startedAt }
+    case 'error':
+      if (e.code === 'aborted') return { type: 'aborted' }
+      return {
+        type: 'error',
+        message: e.detail && e.code === 'unknown'
+          ? `${CLAUDE_ERROR_COPY[e.code]} (${e.detail})`
+          : CLAUDE_ERROR_COPY[e.code],
+        retryable: isRetryable(e.code),
+      }
+  }
+}
+
+/**
+ * Turn a callback-style sender into the async generator the hook consumes. The
+ * queue is what keeps back-pressure honest: deltas that arrive while the consumer
+ * is rendering are buffered, never dropped.
+ */
+async function* bridge(
+  start: (emit: (e: ChatEvent) => void) => Promise<void>,
+): AsyncGenerator<ChatEvent> {
+  const buf: ChatEvent[] = []
+  let wake: (() => void) | null = null
+  let finished = false
+  const emit = (e: ChatEvent) => { buf.push(e); wake?.(); wake = null }
+  const run = start(emit).finally(() => { finished = true; wake?.(); wake = null })
+  for (;;) {
+    while (buf.length) yield buf.shift()!
+    if (finished) break
+    await new Promise<void>(r => { wake = r })
+  }
+  // Surface a genuine throw (sendToClaude reports expected failures as events).
+  await run
+}
+
+function httpStream(req: ChatRequest): AsyncGenerator<ChatEvent> {
+  const startedAt = Date.now()
+  return bridge(async emit => {
+    // Cold-start latency on the container is real and happens BEFORE the first
+    // frame, so the queued state is entered here rather than waiting for a
+    // broker frame that only arrives once it is already working.
+    emit({ type: 'status', status: 'queued' })
+    let seq = 0
+    let sawDone = false
+    await sendToClaude(req.prompt, {
+      context: req.context,
+      signal: req.signal,
+      onEvent: e => {
+        if (e.kind === 'tool') seq += 1
+        if (e.kind === 'done') {
+          // claude.ts emits done on a clean stream end AND the container emits a
+          // result frame; one turn, one done.
+          if (sawDone) return
+          sawDone = true
+        }
+        const out = toChatEvent(e, startedAt, Date.now(), seq)
+        if (out) emit(out)
+      },
+    })
+  })
+}
+
+export const httpTransport: ChatTransport = httpStream
+
+// ---------------------------------------------------------------------------
+// The stub is KEPT, behind a query flag, for exactly one reason: three of this
+// surface's states cannot be produced by clicking against a healthy backend (a
+// broker that dies before the stream opens, a stream that dies a third of the way
+// in), and they are states the build is judged on. `?wbmock=chat:error-cold`
+// reaches them. Nothing here is reachable without the query string.
+// ---------------------------------------------------------------------------
 
 // Three canned replies. Each exercises a different renderer path (prose only /
 // prose + list + inline code / prose + a fenced block) so the pane can be judged
@@ -118,11 +235,11 @@ async function* mockStream(req: ChatRequest): AsyncGenerator<ChatEvent> {
 
 export const mockTransport: ChatTransport = mockStream
 
-export function getTransport(): ChatTransport {
-  // Phase 3: return httpTransport when the inbox-claude edge function exists.
-  return mockTransport
+// The stub only runs when a URL asked for it by name.
+export function transportIsMock(): boolean {
+  return mockFlag('chat') !== null
 }
 
-// True while chat cannot actually reach Claude, so the surface can say so once,
-// quietly, instead of implying a live connection.
-export const TRANSPORT_IS_MOCK = true
+export function getTransport(): ChatTransport {
+  return transportIsMock() ? mockTransport : httpTransport
+}

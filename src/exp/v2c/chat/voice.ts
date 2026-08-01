@@ -15,12 +15,14 @@
 //     a component. The reference collapsed missing-key / dead-mic / OpenAI-down
 //     into one "Transcription failed".
 //
-// No audio is captured in this phase; useVoice drives this reducer from mock
-// timers. The reducer is the part that has to be right, and it is testable in
-// node.
+// Capture is now REAL and on-device (webkitSpeechRecognition in, speechSynthesis
+// out — see the second half of this file and useVoice.ts). The reducer did not
+// change to make that work, which was the point of having one: the events that
+// drive it went from timers to a live recogniser without a new state.
 
 export type VoiceErrorReason =
   | 'mic-denied'
+  | 'no-mic'
   | 'no-key-broker'
   | 'stt-network'
   | 'stt-upstream'
@@ -136,9 +138,14 @@ export const VOICE_LABEL: Record<VoiceState['s'], string> = {
 // line here is a different remedy, which is the whole point of the reason field.
 export const VOICE_COPY: Record<VoiceErrorReason, string> = {
   'mic-denied': 'Mic access is off. Enable it in Settings → Inbox → Microphone.',
+  // A refused permission and an absent microphone need different remedies, and the
+  // reference collapsed both into "Transcription failed".
+  'no-mic': 'No microphone was found on this device.',
   'no-key-broker': 'Voice needs setup — falling back to on-device dictation.',
-  'stt-network': "Couldn't reach the transcription service — check your connection and try again.",
-  'stt-upstream': 'Transcription service is having trouble right now — try again in a moment.',
+  // Recognition is on-device, but the browser's engine still calls home on most
+  // platforms, so "network" is a real and separate failure from a dead mic.
+  'stt-network': "Dictation lost its connection — check your network and try again.",
+  'stt-upstream': "The browser's dictation engine failed. Try again in a moment.",
   'tts-failed': "Couldn't read that reply aloud.",
   unsupported: "Voice input isn't available in this browser.",
 }
@@ -150,9 +157,114 @@ export function voiceSeverity(reason: VoiceErrorReason): 'attention' | 'urgent' 
   return reason === 'tts-failed' || reason === 'no-key-broker' ? 'attention' : 'urgent'
 }
 
+// Speech synthesis has to be primed inside a real user gesture on iOS, and it has
+// to happen SYNCHRONOUSLY — after any await the gesture is spent and the utterance
+// is silently dropped. Called from the mic button's pointerdown, before any state
+// transition, and it lives here so the ordering has a single documented home.
+export function unlockAudio(): void {
+  if (!ttsSupported()) return
+  try {
+    window.speechSynthesis.resume()
+    const u = new SpeechSynthesisUtterance('')
+    u.volume = 0
+    window.speechSynthesis.speak(u)
+  } catch { /* a browser that refuses the prime will simply not speak */ }
+}
+
 // Is the microphone live in this state? Used for the pulse and for the a11y
 // label — and asserted in the tests, because "SPEAKING never arms the mic" is a
 // property, not a comment.
 export function micIsLive(state: VoiceState): boolean {
   return state.s === 'LISTENING'
+}
+
+// ---------------------------------------------------------------------------
+// On-device capture: feature detection and error translation.
+//
+// The Supabase vault has no OPENAI_API_KEY, so the edge-brokered STT branch from
+// phase1-audit/voice.md does not exist and the fallback becomes the design:
+// webkitSpeechRecognition in, speechSynthesis out. That is better here rather than
+// merely cheaper — it removes two network legs from the reference's four-leg
+// pipeline (capture → upload → transcribe → send), needs no key, and cannot miss
+// the 1.2s first-audible target because nothing leaves the device to be
+// transcribed.
+// ---------------------------------------------------------------------------
+
+export type SpeechRecognitionResultEvent = {
+  resultIndex: number
+  results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }>
+}
+
+export type SpeechRecognitionLike = {
+  lang: string
+  continuous: boolean
+  interimResults: boolean
+  maxAlternatives: number
+  start: () => void
+  stop: () => void
+  abort: () => void
+  onstart: (() => void) | null
+  onend: (() => void) | null
+  onerror: ((e: { error: string }) => void) | null
+  onresult: ((e: SpeechRecognitionResultEvent) => void) | null
+}
+
+type SpeechRecognitionCtor = new () => SpeechRecognitionLike
+
+export function recognitionCtor(): SpeechRecognitionCtor | null {
+  if (typeof window === 'undefined') return null
+  const w = window as unknown as Record<string, unknown>
+  return (w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null) as SpeechRecognitionCtor | null
+}
+
+export function sttSupported(): boolean {
+  return recognitionCtor() !== null
+}
+
+export function ttsSupported(): boolean {
+  return typeof window !== 'undefined' && 'speechSynthesis' in window
+}
+
+/**
+ * SpeechRecognition error string → our typed reason. Each one has a different
+ * remedy, which is the entire point of carrying a reason rather than a boolean.
+ * `no-speech` is deliberately NOT an error: it is silence, and the machine has a
+ * PAUSED state for it.
+ */
+export function sttErrorReason(code: string): { reason: VoiceErrorReason; retryable: boolean } | 'no-speech' {
+  switch (code) {
+    case 'no-speech': return 'no-speech'
+    case 'not-allowed':
+    case 'service-not-allowed':
+      // A refused permission will not un-refuse itself on retry.
+      return { reason: 'mic-denied', retryable: false }
+    case 'audio-capture': return { reason: 'no-mic', retryable: false }
+    case 'network': return { reason: 'stt-network', retryable: true }
+    case 'language-not-supported': return { reason: 'unsupported', retryable: false }
+    default: return { reason: 'stt-upstream', retryable: true }
+  }
+}
+
+/**
+ * What a reply sounds like. Reading a fenced SQL block or a table of backticks
+ * aloud is worse than saying nothing, so the markup comes off and code blocks are
+ * announced rather than recited. Pure, so it is tested rather than trusted.
+ */
+export function speakableText(md: string, maxChars = 700): string {
+  const out = md
+    // Fenced blocks: say that there is one, do not read it.
+    .replace(/```[\s\S]*?```/g, ' — there is a code block on screen. ')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/^#{1,6}\s*/gm, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/^\s*[-*]\s+/gm, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (out.length <= maxChars) return out
+  // Cut at a sentence end rather than mid-word.
+  const cut = out.slice(0, maxChars)
+  const stop = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('? '), cut.lastIndexOf('! '))
+  return `${stop > maxChars * 0.5 ? cut.slice(0, stop + 1) : cut}…`
 }

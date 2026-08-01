@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  IDLE, micIsLive, NO_SPEECH_ROUNDS, voiceReduce, voiceSeverity,
-  type VoiceEvent, type VoiceState,
+  IDLE, micIsLive, NO_SPEECH_ROUNDS, speakableText, sttErrorReason, voiceReduce,
+  voiceSeverity, VOICE_COPY, type VoiceEvent, type VoiceState,
 } from './voice'
 
 const hf = { handsFree: true }
@@ -109,5 +109,64 @@ describe('cancel', () => {
     expect(run({ s: 'LISTENING', level: 0.3 }, [{ e: 'cancel' }])).toEqual(IDLE)
     expect(run({ s: 'TRANSCRIBING' }, [{ e: 'cancel' }])).toEqual(IDLE)
     expect(voiceReduce({ s: 'SPEAKING' }, { e: 'cancel' }, hf).s).toBe('SPEAKING')
+  })
+})
+
+describe('sttErrorReason — one remedy per failure', () => {
+  it('treats no-speech as silence, not as an error', () => {
+    // The machine has a PAUSED state for this; routing it to ERROR is what makes
+    // the reference feel broken when you simply did not talk.
+    expect(sttErrorReason('no-speech')).toBe('no-speech')
+  })
+
+  it('maps a refused permission to a non-retryable mic-denied', () => {
+    expect(sttErrorReason('not-allowed')).toEqual({ reason: 'mic-denied', retryable: false })
+    expect(sttErrorReason('service-not-allowed')).toEqual({ reason: 'mic-denied', retryable: false })
+  })
+
+  it('separates a missing microphone from a refused one', () => {
+    expect(sttErrorReason('audio-capture')).toEqual({ reason: 'no-mic', retryable: false })
+    expect(VOICE_COPY['no-mic']).not.toBe(VOICE_COPY['mic-denied'])
+  })
+
+  it('maps network to a retryable network failure', () => {
+    expect(sttErrorReason('network')).toEqual({ reason: 'stt-network', retryable: true })
+  })
+
+  it('falls back to a retryable engine failure rather than guessing', () => {
+    expect(sttErrorReason('something-new')).toEqual({ reason: 'stt-upstream', retryable: true })
+  })
+
+  it('has distinct copy for every reason', () => {
+    const all = Object.values(VOICE_COPY)
+    expect(new Set(all).size).toBe(all.length)
+  })
+})
+
+describe('speakableText — what a reply sounds like', () => {
+  it('announces a code block instead of reciting it', () => {
+    const out = speakableText('Here:\n\n```sql\ndrop function foo();\n```\n\nThat is all.')
+    expect(out).not.toContain('drop function')
+    expect(out).toMatch(/code block/i)
+  })
+
+  it('strips inline markup rather than reading the punctuation', () => {
+    expect(speakableText('the **channel** topic is a `constant`'))
+      .toBe('the channel topic is a constant')
+  })
+
+  it('reads a link as its label', () => {
+    expect(speakableText('see [the docs](https://example.com/x)')).toBe('see the docs')
+  })
+
+  it('drops list bullets', () => {
+    expect(speakableText('- one\n- two')).toBe('one two')
+  })
+
+  it('truncates at a sentence end, not mid-word', () => {
+    const long = `${'One sentence here. '.repeat(60)}`
+    const out = speakableText(long, 100)
+    expect(out.length).toBeLessThanOrEqual(102)
+    expect(out.endsWith('.') || out.endsWith('…')).toBe(true)
   })
 })

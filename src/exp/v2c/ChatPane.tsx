@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChatStreaming, ChatTurn } from './ChatMessage'
 import { HandsFreeSheet, VoiceControl, VoiceStrip } from './VoiceControl'
 import { useVoice } from './useVoice'
-import { TRANSPORT_IS_MOCK } from './chat/transport'
+import { transportIsMock } from './chat/transport'
 import type { ChatHandle } from './useChat'
 import type { Job } from './layout'
 import { JOB_LABEL } from './layout'
@@ -78,7 +78,17 @@ export function ChatPane({ chat, job, about, onClose, onOpenAbout, mobile }: {
     void chat.send(t, about ?? undefined).then(() => setTurnDone(true))
   }, [chat, about])
 
-  const voice = useVoice({ onTranscript, handsFree, turnDone, spokenReplies: true })
+  // What gets read back: the newest assistant turn. Read at the moment SPEAKING is
+  // entered, never captured earlier, so a turn that landed while the mic was still
+  // open is not spoken over.
+  const lastAsst = [...chat.turns].reverse().find(t => t.role === 'assistant')
+  const voice = useVoice({
+    onTranscript,
+    handsFree,
+    turnDone,
+    spokenReplies: true,
+    replyText: lastAsst?.error ? lastAsst.error.message : lastAsst?.text,
+  })
 
   useEffect(() => {
     const el = scroller.current
@@ -87,6 +97,7 @@ export function ChatPane({ chat, job, about, onClose, onOpenAbout, mobile }: {
 
   const empty = chat.turns.length === 0 && chat.status === 'idle'
   const lastErr = chat.turns.length > 0 && chat.turns[chat.turns.length - 1].error !== null
+  const mock = transportIsMock()
 
   return (
     <>
@@ -96,7 +107,12 @@ export function ChatPane({ chat, job, about, onClose, onOpenAbout, mobile }: {
         <div className="wb-pane-ttl">
           <div className="wb-pane-n">Claude</div>
           <div className="wb-pane-s">
-            {chat.sessionId ? `session ${chat.sessionId}` : 'no session yet'}
+            {/* The live broker has no session to name: the upstream never passes
+                --resume, so "no session yet" would imply one is coming. Say what
+                is true instead. */}
+            {chat.sessionId
+              ? `session ${chat.sessionId}`
+              : mock ? 'no session yet' : 'a fresh session every turn'}
             {chat.model && ` · ${chat.model}`}
           </div>
         </div>
@@ -104,7 +120,7 @@ export function ChatPane({ chat, job, about, onClose, onOpenAbout, mobile }: {
           className={`wb-live${chat.busy ? ' busy' : ''}${lastErr ? ' err' : ''}`}
           title={lastErr ? 'last turn failed' : chat.busy ? 'streaming' : 'ready'}
         />
-        {TRANSPORT_IS_MOCK && <span className="wb-mockchip">mock</span>}
+        {mock && <span className="wb-mockchip">mock</span>}
         {!mobile && <span className="wb-pane-x" onClick={onClose}>✕</span>}
       </div>
 
@@ -152,35 +168,37 @@ export function ChatPane({ chat, job, about, onClose, onOpenAbout, mobile }: {
             {chat.busy && (
               <ChatStreaming text={chat.streamText} tools={chat.streamTools} slow={chat.slow} />
             )}
-            {!chat.busy && chat.cost && (
-              <div className="wb-cost">
-                {chat.cost.durationMs != null && `${(chat.cost.durationMs / 1000).toFixed(1)}s`}
-                {chat.cost.costUsd != null && ` · $${chat.cost.costUsd.toFixed(4)}`}
-              </div>
-            )}
           </>
         )}
       </div>
 
-      <VoiceStrip
-        state={voice.state}
-        onDismiss={voice.dismiss}
-        onResume={voice.resume}
-        onHandsFree={() => setSheet(true)}
-        handsFree={handsFree}
-      />
-
-      <div className="wb-composer">
-        <VoiceControl
+      {/* Feature-detected, not error-handled: on a browser with no speech engine
+          the strip and the mic are absent entirely. A button that cannot work is
+          worse than no button, and an "unsupported" toast after the tap is worse
+          than both. */}
+      {voice.supported && (
+        <VoiceStrip
           state={voice.state}
-          onArm={voice.arm}
-          onCancel={voice.cancel}
-          onResume={voice.resume}
-          onSkip={voice.skip}
           onDismiss={voice.dismiss}
-          onHandsFree={() => { setHandsFree(true); setSheet(true) }}
+          onResume={voice.resume}
+          onHandsFree={() => setSheet(true)}
           handsFree={handsFree}
         />
+      )}
+
+      <div className="wb-composer">
+        {voice.supported && (
+          <VoiceControl
+            state={voice.state}
+            onArm={voice.arm}
+            onCancel={voice.cancel}
+            onResume={voice.resume}
+            onSkip={voice.skip}
+            onDismiss={voice.dismiss}
+            onHandsFree={() => { setHandsFree(true); setSheet(true) }}
+            handsFree={handsFree}
+          />
+        )}
         <input
           className="cfield"
           placeholder={about ? `Ask about ${short(about, 22)}…` : 'Ask Claude…'}

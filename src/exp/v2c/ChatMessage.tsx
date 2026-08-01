@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { parseMarkdown, type Block, type InlineNode } from './chat/renderer'
 import { formatInput, groupRuns, summarizeTool } from './chat/toolSummaries'
-import type { ToolCall, Turn } from './chat/events'
+import { turnOutcome, type ToolCall, type Turn } from './chat/events'
 
 // Inline nodes → React elements. No HTML string, no dangerouslySetInnerHTML, so
 // no sanitiser is needed: nothing on this path is ever parsed as markup.
@@ -100,8 +100,10 @@ export function ChatTurn({ turn, onRetry }: { turn: Turn; onRetry?: () => void }
       </div>
     )
   }
+  const outcome = turnOutcome(turn)
   return (
     <div className="wb-turn asst">
+      <TurnMeta turn={turn} outcome={outcome} />
       <ToolStrip calls={turn.tools} />
       {turn.text && <div className="wb-body"><Blocks blocks={parseMarkdown(turn.text)} /></div>}
       {turn.aborted && <div className="wb-stopped">Stopped.</div>}
@@ -112,6 +114,40 @@ export function ChatTurn({ turn, onRetry }: { turn: Turn; onRetry?: () => void }
             <button className="wb-retry" onClick={onRetry}>Retry</button>
           )}
         </div>
+      )}
+    </div>
+  )
+}
+
+// Per-turn cost and latency (grafted from v2a, which was the only candidate to
+// ship telemetry and was right to). It rides on the TURN, not the pane, so a
+// transcript scrolled back through still says what each answer took.
+//
+// The bar is the encoding: a number alone makes the reader do the comparison, and
+// the felt difference between a 2s answer and a 9s one is exactly what a bar
+// against a fixed 10s scale shows for free. Amber past 8s — attention, not alarm.
+const LATENCY_SCALE_MS = 10_000
+
+export function TurnMeta({ turn, outcome }: {
+  turn: Turn; outcome: 'ok' | 'error' | 'aborted'
+}) {
+  const parts: string[] = []
+  if (turn.durationMs != null) parts.push(`${(turn.durationMs / 1000).toFixed(1)}s`)
+  // Null cost is the honest state against the real broker, which reports none.
+  if (turn.costUsd != null) parts.push(`$${turn.costUsd.toFixed(4)}`)
+  return (
+    <div className="wb-tmeta">
+      <span className="wb-tmeta-ic">✳</span>
+      <span className="wb-tmeta-n">Claude</span>
+      <span className={`wb-tdot ${outcome}`} />
+      {parts.length > 0 && <span className="wb-tcost">{parts.join(' · ')}</span>}
+      {turn.durationMs != null && (
+        <span className="wb-tbar">
+          <span style={{
+            width: `${Math.max(2, Math.min(100, (turn.durationMs / LATENCY_SCALE_MS) * 100))}%`,
+            background: turn.durationMs > 8000 ? '#FF9F0A' : 'var(--accent)',
+          }} />
+        </span>
       )}
     </div>
   )

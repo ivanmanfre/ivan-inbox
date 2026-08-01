@@ -21,6 +21,30 @@ import type { ChatStatus, ToolCall, Turn } from './chat/events'
 // so rather than leaving a spinner to imply nothing is happening.
 const SLOW_MS = 4000
 
+// How much transcript travels with a turn. The upstream starts a fresh CLI session
+// every time, so this replay is the ONLY continuity that exists — and it is also
+// billed, so it is bounded rather than unbounded. Six turns is roughly three
+// exchanges, which is what "carry on that thought" actually needs.
+export const CONTEXT_TURNS = 6
+const CONTEXT_CHARS = 1200
+
+/**
+ * The context block, as prose. Exported and pure because the ONE thing that must
+ * never drift here is what leaves the browser: no working directory, no client id,
+ * no workspace — a transcript and a sentence naming what is on screen.
+ */
+export function buildContext(turns: Turn[], about?: string): string | undefined {
+  const lines: string[] = []
+  if (about) lines.push(`The operator is looking at: ${about}`)
+  const tail = turns.slice(-CONTEXT_TURNS)
+  for (const t of tail) {
+    const who = t.role === 'user' ? 'Ivan' : 'You'
+    const body = t.text.trim().slice(0, CONTEXT_CHARS)
+    if (body) lines.push(`${who}: ${body}`)
+  }
+  return lines.length ? lines.join('\n\n') : undefined
+}
+
 let seq = 0
 const nextId = () => `t${++seq}`
 
@@ -34,10 +58,14 @@ export function useChat() {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [model, setModel] = useState<string | null>(null)
   const [slow, setSlow] = useState(false)
-  const [cost, setCost] = useState<{ costUsd: number | null; durationMs: number | null } | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const lastSent = useRef<{ prompt: string; about?: string } | null>(null)
   const alive = useRef(true)
+  // `send` is memoised on sessionId, so it cannot close over the current turns.
+  // A ref keeps the context block reading the live transcript instead of the one
+  // that existed when the callback was built.
+  const turnsRef = useRef<Turn[]>(turns)
+  turnsRef.current = turns
   useEffect(() => () => { alive.current = false; abortRef.current?.abort() }, [])
 
   const send = useCallback(async (prompt: string, about?: string) => {
@@ -46,10 +74,13 @@ export function useChat() {
     lastSent.current = { prompt: text, about }
     const ctrl = new AbortController()
     abortRef.current = ctrl
+    // The transcript replayed as prose IS the continuity — the upstream never
+    // resumes a session — and the label of whatever pane Ivan is looking at rides
+    // with it as a sentence, never as a structured scoping field.
+    const context = buildContext(turnsRef.current, about)
     setTurns(t => [...t, { id: nextId(), role: 'user', text, tools: [], error: null, about }])
     setStreamText('')
     setStreamTools([])
-    setCost(null)
     setStatus('sending')
     setSlow(false)
     const slowTimer = window.setTimeout(() => setSlow(true), SLOW_MS)
@@ -62,9 +93,10 @@ export function useChat() {
     const tools: ToolCall[] = []
     let failed: { message: string; retryable: boolean } | null = null
     let aborted = false
+    let landed: { costUsd: number | null; durationMs: number | null } | null = null
 
     try {
-      for await (const ev of getTransport()({ prompt: text, sessionId, signal: ctrl.signal })) {
+      for await (const ev of getTransport()({ prompt: text, sessionId, context, signal: ctrl.signal })) {
         if (!alive.current) break
         switch (ev.type) {
           case 'session':
@@ -91,7 +123,7 @@ export function useChat() {
             aborted = true
             break
           case 'done':
-            setCost({ costUsd: ev.costUsd, durationMs: ev.durationMs })
+            landed = { costUsd: ev.costUsd, durationMs: ev.durationMs }
             break
         }
       }
@@ -109,6 +141,10 @@ export function useChat() {
           setTurns(t => [...t, {
             id: nextId(), role: 'assistant', text: acc, tools,
             error: failed, aborted: aborted || undefined,
+            // Telemetry lands ON the turn (v2a's graft), so a transcript scrolled
+            // back through still says what each answer cost and how long it took.
+            costUsd: landed?.costUsd ?? null,
+            durationMs: landed?.durationMs ?? null,
           }])
         }
         setStreamText('')
@@ -142,7 +178,7 @@ export function useChat() {
   const busy = status !== 'idle'
 
   return {
-    turns, status, busy, streamText, streamTools, sessionId, model, slow, cost,
+    turns, status, busy, streamText, streamTools, sessionId, model, slow,
     send, abort, retry,
   }
 }
