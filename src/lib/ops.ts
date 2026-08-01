@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 
-export type OpsKind = 'escalation' | 'update' | 'newsjack' | 'weekly_report' | 'comment_reply'
+export type OpsKind = 'escalation' | 'update' | 'newsjack' | 'weekly_report' | 'comment_reply' | 'comment_outbound'
 
 // The row shape varies by kind (escalation carries a prospect, update carries
 // receipts, newsjack carries the idea it will generate from), so context stays a
@@ -40,6 +40,14 @@ export type OpsContext = {
   // Stamped by rise-comment-draft: this body came from the button, not from the
   // pipeline, so the card says so before Ivan posts it.
   drafted_on_demand?: boolean
+  // comment_outbound (a draft comment on someone ELSE's post)
+  feed_id?: string
+  target_name?: string
+  target_headline?: string
+  post_excerpt?: string
+  hook?: string
+  approve_url?: string
+  skip_url?: string
   [key: string]: unknown
 }
 
@@ -138,10 +146,31 @@ export async function approveOpsDraft(id: string, editedBody: string): Promise<v
 export const MAX_COMMENT_AGE_DAYS = 4
 
 export function isStaleComment(d: OpsDraft, now = Date.now()): boolean {
-  if (d.kind !== 'comment_reply') return false
+  if (d.kind !== 'comment_reply' && d.kind !== 'comment_outbound') return false
   const t = new Date(d.context?.posted_at ?? 0).getTime()
   if (!Number.isFinite(t) || t === 0) return false   // unknown age is not staleness
   return now - t > MAX_COMMENT_AGE_DAYS * 86400_000
+}
+
+// comment_outbound, ivan lane: approving opens the n8n gate webhook in a new tab -
+// the five poster gates (arming flag, freshness, window, caps, cooldown) + jitter
+// still own the actual LinkedIn write, and the tab shows their plain-text verdict
+// ("posting in ~6 min" / "cooldown active"). The card itself double-stamps like
+// weekly_report because no dispatcher writes sent_at for this kind.
+// risedtc lane: context has no approve_url - the caller copies the body instead
+// and Ivan hand-posts from Mattan's seat. Same double-stamp.
+export function outboundApproveUrl(d: OpsDraft): string | null {
+  if (d.kind !== 'comment_outbound') return null
+  const u = d.context?.approve_url
+  return typeof u === 'string' && u.startsWith('https://') ? u : null
+}
+
+// Best-effort cancel of the underlying feed row when a card is discarded - if it
+// fails the row just expires on its own 5-day gate, so fire-and-forget is safe.
+export function outboundSkipUrl(d: OpsDraft): string | null {
+  if (d.kind !== 'comment_outbound') return null
+  const u = d.context?.skip_url
+  return typeof u === 'string' && u.startsWith('https://') ? u : null
 }
 
 // comment_reply is the one kind that posts to LinkedIn. The edge function owns

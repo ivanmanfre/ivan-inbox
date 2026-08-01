@@ -5,7 +5,7 @@ import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useOps } from '../hooks/useOps'
 import {
-  approveOpsDraft, approveWeeklyReport, blockedOps, canGenerateDraft, claimingOps, discardOpsDraft, engineLabel, expiresIn, generateCommentDraft, markCommentHandled, pendingOps, postCommentReply, sentOps,
+  approveOpsDraft, approveWeeklyReport, blockedOps, canGenerateDraft, claimingOps, discardOpsDraft, engineLabel, expiresIn, generateCommentDraft, markCommentHandled, outboundApproveUrl, outboundSkipUrl, pendingOps, postCommentReply, sentOps,
   type OpsDraft, type OpsKind,
 } from '../lib/ops'
 
@@ -27,10 +27,10 @@ function timeAgo(iso: string): string {
   return `${d}d`
 }
 
-const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK', weekly_report: 'WEEKLY', comment_reply: 'COMMENT' }
+const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK', weekly_report: 'WEEKLY', comment_reply: 'COMMENT', comment_outbound: 'OUTBOUND' }
 // Escalations run warm/red (something needs attention); updates stay neutral/blue (fyi);
 // newsjack runs amber because it is the only kind with a clock on it.
-const KIND_COLOR: Record<OpsKind, string> = { escalation: '#FF453A', update: '#0A84FF', newsjack: '#FF9F0A', weekly_report: '#30D158', comment_reply: '#BF5AF2' }
+const KIND_COLOR: Record<OpsKind, string> = { escalation: '#FF453A', update: '#0A84FF', newsjack: '#FF9F0A', weekly_report: '#30D158', comment_reply: '#BF5AF2', comment_outbound: '#64D2FF' }
 
 function errText(e: unknown): string {
   return e instanceof Error ? e.message : String(e)
@@ -86,6 +86,20 @@ function ContextLine({ draft }: { draft: OpsDraft }) {
       </div>
     )
   }
+  // Outbound: whose post we are commenting on, the line the draft reacts to, and
+  // the post itself. The draft below is unjudgeable without the excerpt.
+  if (draft.kind === 'comment_outbound') {
+    return (
+      <div className="ops-ctx">
+        <span>{[ctx.target_name, ctx.target_headline].filter(Boolean).join(' · ')}</span>
+        {ctx.post_excerpt && <span>&ldquo;{ctx.post_excerpt}&rdquo;</span>}
+        {ctx.hook && <span className="ops-replay">{ctx.hook}</span>}
+        {ctx.post_url && (
+          <a href={ctx.post_url} target="_blank" rel="noreferrer">open the post</a>
+        )}
+      </div>
+    )
+  }
   const who = draft.kind === 'escalation'
     ? [ctx.prospect_name, ctx.company].filter(Boolean).join(' · ')
     : ''
@@ -125,10 +139,41 @@ function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void 
   // idea it was.
   const canDraft = canGenerateDraft(draft)
   const onDemand = isComment && draft.context?.drafted_on_demand === true
-  const where = isNewsjack || isWeekly || isComment ? engineLabel(draft.client_id) : `#${draft.slack_channel}`
+  const isOutbound = draft.kind === 'comment_outbound'
+  // ivan lane cards carry the n8n gate link; risedtc cards are copy-and-hand-post.
+  const approveUrl = outboundApproveUrl(draft)
+  const where = isNewsjack || isWeekly || isComment || isOutbound ? engineLabel(draft.client_id) : `#${draft.slack_channel}`
   const left = isNewsjack ? expiresIn(draft.context?.expires_at) : null
 
   async function onApprove() {
+    // Outbound comments: two lanes, one kind.
+    // ivan lane (approve_url present): the button opens the n8n gate webhook - the
+    // five poster gates + jitter own the LinkedIn write, and the tab shows their
+    // verdict. risedtc lane (no approve_url): copy + close; Ivan posts it from
+    // Mattan's seat by hand. Both double-stamp because no dispatcher exists here.
+    if (isOutbound) {
+      const ok = await confirm({
+        title: approveUrl ? `Send this to the ${where} comment gate?` : `Copy this to post as ${where}?`,
+        message: approveUrl
+          ? 'Opens the gate link: rate caps, cooldown and jitter still apply before anything posts. The tab shows the verdict.'
+          : 'Nothing is posted by the system. The comment goes to your clipboard - paste it under the post from Mattan’s seat.',
+        confirmText: approveUrl ? 'Approve & open gate' : 'Approve & copy',
+      })
+      if (!ok) return
+      setBusy(true); setError('')
+      try {
+        if (approveUrl) {
+          window.open(approveUrl, '_blank', 'noopener')
+        } else {
+          // Copy first: a blocked clipboard leaves the card recoverable.
+          await navigator.clipboard.writeText(body)
+        }
+        await approveWeeklyReport(draft.id, body)
+        refresh()
+      } catch (e) { setError(errText(e)) }
+      finally { setBusy(false) }
+      return
+    }
     // A comment reply is the one thing in this app that publishes publicly.
     // The edge function re-reads the thread before it writes, so an approve on a
     // comment Mattan already answered clears the card instead of doubling up.
@@ -215,13 +260,21 @@ function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void 
           ? "The page stays live at its link. You just won't be reminded about this week again."
           : isComment
             ? "The comment stays on the post. You just won't be reminded about it again."
-            : `It won't be posted to ${draft.slack_channel}.`,
+            : isOutbound
+              ? 'Nothing gets posted. The draft is dropped for good.'
+              : `It won't be posted to ${draft.slack_channel}.`,
       confirmText: 'Discard',
       danger: true,
     })
     if (!ok) return
     setBusy(true); setError('')
-    try { await discardOpsDraft(draft.id); refresh() }
+    try {
+      // Best-effort cancel of the underlying feed row (ivan lane); a failure is
+      // fine - the row expires on its own 5-day gate.
+      const skip = outboundSkipUrl(draft)
+      if (skip) { try { void fetch(skip, { mode: 'no-cors' }) } catch { /* fire and forget */ } }
+      await discardOpsDraft(draft.id); refresh()
+    }
     catch (e) { setError(errText(e)) }
     finally { setBusy(false) }
   }
@@ -258,6 +311,13 @@ function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void 
               : 'Edit it first. Approve posts it live under their comment.'}
         </div>
       )}
+      {isOutbound && (
+        <div className="ops-ctx">
+          {approveUrl
+            ? 'A comment on their post, from your seat. Approve opens the gate link - caps and cooldown still apply.'
+            : 'A comment on their post, from Mattan’s seat. Approve copies it - you paste it on LinkedIn yourself.'}
+        </div>
+      )}
       {refusal.length > 0 && (
         <div className="ops-reason">Refused: {refusal.join(' · ')}</div>
       )}
@@ -271,8 +331,8 @@ function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void 
         )}
         <div className="btn p" onClick={busy || drafting ? undefined : onApprove}>
           {busy
-            ? (isNewsjack ? 'Claiming…' : isEscalatedComment ? 'Closing…' : isComment ? 'Posting…' : isWeekly ? 'Copying…' : 'Sending…')
-            : (isNewsjack ? 'Approve & jump' : isEscalatedComment ? 'Mark handled' : isComment ? 'Approve & post' : isWeekly ? 'Approve & copy' : 'Approve & send')}
+            ? (isNewsjack ? 'Claiming…' : isEscalatedComment ? 'Closing…' : isComment ? 'Posting…' : isOutbound ? (approveUrl ? 'Opening…' : 'Copying…') : isWeekly ? 'Copying…' : 'Sending…')
+            : (isNewsjack ? 'Approve & jump' : isEscalatedComment ? 'Mark handled' : isComment ? 'Approve & post' : isOutbound ? (approveUrl ? 'Approve & open gate' : 'Approve & copy') : isWeekly ? 'Approve & copy' : 'Approve & send')}
         </div>
       </div>
     </div>
