@@ -5,19 +5,23 @@ import { JOBS, type Job, type PeerKey } from './layout'
 // inner screen could only be reached by clicking, which is also why verifying
 // one needs a click script.
 //
-// v2c carries its own state in the experiment hash instead:
-//   #exp/v2c              → inbox, nothing focused
-//   #exp/v2c/content      → the Content job
-//   #exp/v2c/inbox/chat   → Inbox with Claude focused (a mobile takeover)
+// The workbench carries its own state in the experiment hash instead:
+//   #exp/v2              → inbox, nothing focused
+//   #exp/v2/content      → the Content job
+//   #exp/v2/inbox/chat   → Inbox with Claude focused (a mobile takeover)
 // The gate's regex tolerates the trailing path (\b after the id), so each of
 // these is a real fresh-load URL. Unknown segments fall back rather than throw.
+//
+// `v2c` is still READ so tournament-era ballot links keep working (see
+// src/exp/index.tsx), but only `v2` is ever WRITTEN back to the address bar —
+// two ids that both resolve is a compatibility shim, not two routes.
 
 export type WbRoute = { job: Job; focus: PeerKey | null }
 
 export const DEFAULT_ROUTE: WbRoute = { job: 'inbox', focus: null }
 
 export function parseWbHash(hash: string): WbRoute {
-  const m = hash.match(/^#exp\/v2c(?:\/([^/]*))?(?:\/([^/]*))?/)
+  const m = hash.match(/^#exp\/v2c?(?:\/([^/]*))?(?:\/([^/]*))?/)
   if (!m) return DEFAULT_ROUTE
   const job = (JOBS as string[]).includes(m[1] ?? '') ? (m[1] as Job) : DEFAULT_ROUTE.job
   // Only 'chat' is addressable as a focus: a thread/draft peer key is a database
@@ -29,5 +33,5 @@ export function parseWbHash(hash: string): WbRoute {
 
 export function wbHash(job: Job, focus: PeerKey | null): string {
   const tail = focus === 'chat' ? '/chat' : ''
-  return `#exp/v2c/${job}${tail}`
+  return `#exp/v2/${job}${tail}`
 }
