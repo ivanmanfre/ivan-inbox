@@ -91,7 +91,7 @@ function LogView({ client }: { client: Client }) {
 
   if (loading) return <div className="rows sc-rows"><div className="empty">Loading…</div></div>
   if (error) return <div className="rows sc-rows"><div className="empty">{error}</div></div>
-  if (items.length === 0) return <div className="rows sc-rows"><div className="empty">No send activity yet.</div></div>
+  if (items.length === 0) return <div className="rows sc-rows"><div className="empty">No send activity yet — a verified zero, not a failed load.</div></div>
 
   let lastDay = ''
   return (
@@ -182,7 +182,7 @@ function LaneDetail({ lane, client, onBack }: {
         ) : error ? (
           <div className="empty">{error}</div>
         ) : rows.length === 0 ? (
-          <div className="empty">No sends in this lane yet.</div>
+          <div className="empty">No sends in this lane yet — a verified zero, not a failed load.</div>
         ) : (
           rows.map(m => (
             <div key={m.id} className="ld">

@@ -7,6 +7,7 @@ import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { approveDraft, discardDraft, threadChatId, type Thread } from '../lib/inbox'
 import { useOps } from '../hooks/useOps'
 import { pendingOps, type OpsDraft, type OpsKind } from '../lib/ops'
+import { ago } from '../lib/today'
 
 // ops_drafts predates the risedtc client id and still writes 'rise' for the Slack
 // kinds, so both map to the same chip. Without this the Rise segment silently
@@ -26,8 +27,11 @@ function OpsPending({ drafts, onOpenOps }: { drafts: OpsDraft[]; onOpenOps: () =
   if (drafts.length === 0) return null
   return (
     <>
+      {/* Single ownership: a count and a way in, never a second approve path.
+          The owner is named inline so the row does not read as a button someone
+          forgot to draw. */}
       <div className="ops-sechdr" onClick={onOpenOps}>
-        <span>Ops · {drafts.length}</span>
+        <span>Ops · {drafts.length} — approved in Ops, not here</span>
         <span className="chev">›</span>
       </div>
       {drafts.map(d => (
@@ -73,9 +77,9 @@ const SEGS: { key: Seg; label: string }[] = [
 ]
 
 const SEG_EMPTY: Record<Seg, string> = {
-  all: 'No drafts right now.',
-  ivan: 'No Ivan drafts right now.',
-  risedtc: 'No Rise drafts right now.',
+  all: 'Nothing waiting on you',
+  ivan: 'Nothing waiting on you in Ivan',
+  risedtc: 'Nothing waiting on you in Rise',
 }
 
 function clientTitle(id: string): string {
@@ -224,9 +228,12 @@ function DraftCard({ thread, onOpenThread, refresh }: {
   )
 }
 
-export function DraftsScreen({ threads, onOpenThread, refresh, onOpenOps }: {
+export function DraftsScreen({ threads, onOpenThread, refresh, onOpenOps, verifiedAt }: {
   threads: Thread[]; onOpenThread: (id: string) => void; refresh: () => void
   onOpenOps: () => void
+  // Same rule as InboxScreen: only a host that knows the fetch succeeded may let
+  // this screen claim its empty queue is a live read.
+  verifiedAt?: string | null
 }) {
   const { drafts: opsAll, refresh: refreshOps } = useOps()
   const [seg, setSeg] = useState<Seg>('all')
@@ -297,7 +304,19 @@ export function DraftsScreen({ threads, onOpenThread, refresh, onOpenOps }: {
         )}
         <OpsPending drafts={opsIn(seg)} onOpenOps={onOpenOps} />
         {shown.length === 0 ? (
-          opsIn(seg).length === 0 ? <div className="empty">{SEG_EMPTY[seg]}</div> : null
+          opsIn(seg).length === 0
+            ? (
+              <div className="empty">
+                {SEG_EMPTY[seg]}
+                {verifiedAt !== undefined && (
+                  <div className="empty-f">
+                    <span className="empty-dot" />
+                    Checked {verifiedAt ? `${ago(verifiedAt)} ago` : 'never'} — and this is a live read, not a stall.
+                  </div>
+                )}
+              </div>
+            )
+            : null
         ) : (
           <>
             {shown.map(t => (

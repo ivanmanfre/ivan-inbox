@@ -8,6 +8,7 @@ import {
   approveOpsDraft, approveWeeklyReport, blockedOps, canGenerateDraft, claimingOps, discardOpsDraft, engineLabel, expiresIn, generateCommentDraft, markCommentHandled, pendingOps, postCommentReply, sentOps,
   type OpsDraft, type OpsKind,
 } from '../lib/ops'
+import { ago } from '../lib/today'
 
 function slotText(iso?: string): string {
   if (!iso) return ''
@@ -366,7 +367,11 @@ export function OpsGroups({ drafts, pad = true, expanded = false }: {
 }
 
 export function OpsScreen() {
-  const { drafts, loading, refresh } = useOps()
+  // `error` used to be dropped on the floor here, so a failed fetch rendered the
+  // identical "Nothing waiting on you." as a genuinely clear queue (U2/U3). The
+  // three states are distinct now, which is also what earns the empty state the
+  // right to say it is a live read.
+  const { drafts, loading, error, loadedAt, refresh } = useOps()
   const rowsRef = useRef<HTMLDivElement>(null)
   const ptr = usePullToRefresh(rowsRef, () => refresh())
 
@@ -390,9 +395,22 @@ export function OpsScreen() {
       </div>
       <div className="rows ops-rows" ref={rowsRef}>
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
-        {pending.length === 0 ? (
-          <div className="empty">Nothing waiting on you.</div>
-        ) : (
+        {error && (
+          <div className="ops-fail">
+            <span className="ops-fail-d" />
+            <span className="ops-fail-t">The ops queue didn’t load — {error}</span>
+            <button className="stalebtn" onClick={refresh}>Try again</button>
+          </div>
+        )}
+        {pending.length === 0 && !error ? (
+          <div className="empty">
+            Nothing waiting on you
+            <div className="empty-f">
+              <span className="empty-dot" />
+              Checked {loadedAt ? `${ago(loadedAt)} ago` : 'never'} — and this is a live read, not a stall.
+            </div>
+          </div>
+        ) : pending.length === 0 ? null : (
           pending.map(d => <PendingCard key={d.id} draft={d} refresh={refresh} />)
         )}
         <OpsGroups drafts={drafts} />

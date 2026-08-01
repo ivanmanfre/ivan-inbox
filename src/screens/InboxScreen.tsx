@@ -3,6 +3,7 @@ import { Avatar } from '../components/Avatar'
 import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { filterThreads, searchThreads, threadKind, type Filter, type Thread, eventTime } from '../lib/inbox'
+import { ago } from '../lib/today'
 
 function timeAgo(iso: string): string {
   const then = new Date(iso).getTime()
@@ -66,13 +67,33 @@ const EMPTY: Record<Filter, string> = {
   email: 'No email threads yet',
 }
 
+// The honest-empty register. "No threads yet" and "the fetch failed" rendered the
+// identical sentence on the screen Ivan opens first every morning (U2/U3), and the
+// fix is only half a state machine — the other half is saying so in language an
+// operator actually trusts. The claim is only made where the HOST has established
+// there was no error, which is why `verifiedAt` is a prop and not a constant: a
+// screen that cannot see its own fetch must not promise a live read.
+function EmptyVerified({ line, verifiedAt }: { line: string; verifiedAt?: string | null }) {
+  return (
+    <div className="empty">
+      {line}
+      {verifiedAt !== undefined && (
+        <div className="empty-f">
+          <span className="empty-dot" />
+          Checked {verifiedAt ? `${ago(verifiedAt)} ago` : 'never'} — and this is a live read, not a stall.
+        </div>
+      )}
+    </div>
+  )
+}
+
 function clientLabel(id: string): string {
   if (id === 'risedtc') return 'RISE'
   if (id === 'ivan') return 'IVAN'
   return id.toUpperCase()
 }
 
-export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head }: {
+export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt }: {
   threads: Thread[]
   filter: Filter
   setFilter: (f: Filter) => void
@@ -86,6 +107,9 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
   windowed?: boolean
   // Optional slot under the filter chips. The live app passes nothing.
   head?: ReactNode
+  // Supplied only by a host that has already established the fetch SUCCEEDED, so
+  // an empty list can honestly say it was checked. Omitted = no claim made.
+  verifiedAt?: string | null
 }) {
   const rowsRef = useRef<HTMLDivElement>(null)
   const ptr = usePullToRefresh(rowsRef, () => refresh())
@@ -142,7 +166,9 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
       <div className="rows" ref={rowsRef}>
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
         {shown.length === 0 ? (
-          <div className="empty">{query ? `No matches for “${query}”` : EMPTY[filter]}</div>
+          query
+            ? <div className="empty">No matches for “{query}”</div>
+            : <EmptyVerified line={EMPTY[filter]} verifiedAt={verifiedAt} />
         ) : (
           <>
           {win.padTop > 0 && <div style={{ height: win.padTop }} aria-hidden />}

@@ -254,6 +254,9 @@ export default function Shell() {
       onOpenDrafts={() => goJob('drafts')}
       activeThread={ctx?.kind === 'thread' ? ctx.id : null}
       windowed
+      // The Shell is the surface that KNOWS there was no error (it renders Failed
+      // above instead), so it is the one allowed to hand the list its freshness.
+      verifiedAt={inbox.loadedAt}
       head={<InboxHead threads={inbox.threads} loadedAt={inbox.loadedAt}
         onOpenDrafts={() => goJob('drafts')} />}
     />
@@ -287,7 +290,8 @@ export default function Shell() {
               loadedAt={inbox.threads.length > 0 ? inbox.loadedAt : null} />
           </>
           : <DraftsScreen threads={inbox.threads} onOpenThread={openThread}
-            refresh={inbox.refresh} onOpenOps={() => goJob('ops')} />
+            refresh={inbox.refresh} onOpenOps={() => goJob('ops')}
+            verifiedAt={inbox.loadedAt} />
       )}
       {job === 'content' && (
         <ContentList

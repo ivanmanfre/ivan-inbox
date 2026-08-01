@@ -671,7 +671,7 @@ export function OverviewView({ client, timeframe, setClient, range = null }: {
 
   if (loading && !data) return <div className="rows ov"><div className="empty">Loading…</div></div>
   if (error) return <div className="rows ov"><div className="empty">{error}</div></div>
-  if (!data) return <div className="rows ov"><div className="empty">No data yet.</div></div>
+  if (!data) return <div className="rows ov"><div className="empty">No data yet — the call returned, it just had nothing in it.</div></div>
 
   const lanes = buildLanes(data.rows, data.daily, client)
 
