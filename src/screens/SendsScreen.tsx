@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  buildLanes, fetchLaneRecent, fetchSendLog, fetchSends, fetchSendsDaily, sendKind,
-  type Lane, type LaneKey, type RecentSend, type SendLogItem,
+  buildLanes, fetchLaneRecent, fetchSendLog, fetchSendLogTotals, fetchSends, fetchSendsDaily,
+  sendKind,
+  type Lane, type LaneKey, type RecentSend, type SendLogItem, type SendLogTotals,
 } from '../lib/sends'
 import { SendsSkeleton } from '../components/Skeleton'
 import { Linkified } from '../components/Linkified'
@@ -78,6 +79,10 @@ function LogView({ client }: { client: Client }) {
   const [items, setItems] = useState<SendLogItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // The denominator, from a count=exact HEAD probe — never rows.length of a
+  // truncated fetch. This log is a WINDOW on 1,700+ sends and 200+ blocks; a
+  // count taken off the window would understate failures by ~76%.
+  const [totals, setTotals] = useState<SendLogTotals | null>(null)
 
   useEffect(() => {
     let live = true
@@ -86,6 +91,11 @@ function LogView({ client }: { client: Client }) {
       .then(r => { if (live) setItems(r) })
       .catch(e => { if (live) setError(e instanceof Error ? e.message : 'Failed to load') })
       .finally(() => { if (live) setLoading(false) })
+    // A failed probe must never take the log down with it: no denominator is a
+    // smaller lie than a wrong one.
+    fetchSendLogTotals(client)
+      .then(t => { if (live) setTotals(t) })
+      .catch(() => { if (live) setTotals(null) })
     return () => { live = false }
   }, [client])
 
@@ -96,6 +106,16 @@ function LogView({ client }: { client: Client }) {
   let lastDay = ''
   return (
     <div className="rows sc-rows">
+      {/* The log is a window, and it now says so. Both figures are count=exact
+          probes; the two shown counts are of this render. */}
+      <div className="log-denom">
+        <span className="log-denom-l">Newest</span>
+        <b>{items.filter(m => m.kind !== 'failed').length}</b>
+        <span className="log-denom-l">of {totals ? totals.sent.toLocaleString() : '—'} sent</span>
+        <span className="log-denom-s">·</span>
+        <b>{items.filter(m => m.kind === 'failed').length}</b>
+        <span className="log-denom-l">of {totals ? totals.blocked.toLocaleString() : '—'} blocked</span>
+      </div>
       <div className="log-note">CONN = note attached and accepted by the API · CONN·BLANK = deliberate no-note A/B arm · CONN·BARE = note rejected, sent bare as a fallback.</div>
       {items.map(m => {
         const day = logDay(m.event_at)

@@ -988,7 +988,11 @@
   margin:12px var(--gut) 0; padding:12px 14px;
   background:rgba(255,69,58,.08); border:1px solid rgba(255,69,58,.3);
 }
-.wb.wb.wb .ct-alert-n{ color:var(--sev-urgent) }
+/* 8.1 — the alert count is a warning, not the surface's hero. Content's ONE
+   --fs-figure numeral is the review count inside the pipeline chart card. */
+.wb.wb.wb .ct-alert-n{
+  color:var(--sev-urgent); font-size:var(--fs-page); font-weight:600; line-height:24px;
+}
 .wb.wb.wb .ct-alert-x{
   display:grid;
   grid-template-columns:var(--anchor-w) minmax(0,1fr);
@@ -1009,6 +1013,25 @@
 .wb.wb.wb .ct-subtle, .wb.wb.wb .ct-subline{ margin:8px var(--gut) 0; color:var(--text3) }
 .wb.wb.wb .ct-subline{ color:var(--sev-attention); font-weight:500 }
 .wb.wb.wb .wb-pipe{ margin:12px var(--gut) 0 }
+.wb.wb.wb .wb-chartcard{ margin:14px var(--gut) 0 }
+.wb.wb.wb .wb-pipe-n{
+  display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 10px; margin-top:16px;
+}
+.wb.wb.wb .wb-pipe-lbl{ color:var(--text3); font-size:var(--fs-meta); line-height:16px }
+.wb.wb.wb .wb-pipe-warn{ margin-left:auto; color:var(--sev-attention);
+  font-size:var(--fs-meta); font-weight:500 }
+
+/* The Sends log's denominator line — the one place the app admits it is a
+   window. §8.5: the figures are count=exact probes, never rows.length. */
+.wb.wb.wb .log-denom{
+  display:flex; align-items:center; flex-wrap:wrap; gap:6px;
+  margin:12px var(--gut) 0; padding:8px 12px;
+  background:var(--surface1); border:1px solid var(--hairline);
+  border-radius:var(--r-ctl);
+  font-size:var(--fs-meta); color:var(--text3);
+}
+.wb.wb.wb .log-denom b{ color:var(--text); font-weight:600 }
+.wb.wb.wb .log-denom-s{ color:var(--text4) }
 .wb.wb.wb .wb-lanenote{ color:var(--text3) }
 .wb.wb.wb .td-mast{ margin:12px var(--gut) 4px; padding:var(--pad-card) }
 .wb.wb.wb .td-sum{ background:var(--canvas); border-bottom:1px solid var(--hairline);
