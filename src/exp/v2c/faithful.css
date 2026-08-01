@@ -515,7 +515,10 @@
   flex:none;
 }
 .wb.wb.wb .av{ font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:0; color:var(--ink) }
-.wb.wb.wb .av .badge{ width:12px;height:12px;bottom:-1px;right:-1px;border-width:2px;font-size:8px }
+/* the badge carries a word ('in'), so an 8px size would be an EIGHTH text tier
+   in the census rather than a permitted glyph — it takes the eyebrow tier. */
+.wb.wb.wb .av .badge{ width:15px;height:15px;bottom:-3px;right:-3px;border-width:2px;
+  font-size:var(--fs-eyebrow); line-height:1 }
 .wb.wb.wb .r .mid, .wb.wb.wb .td-mid, .wb.wb.wb .ct-mid{ grid-column:2; min-width:0 }
 .wb.wb.wb .r .right, .wb.wb.wb .td-right, .wb.wb.wb .ct-tail{
   grid-column:4; justify-self:end; text-align:right;
@@ -735,7 +738,26 @@
   border-top:1px solid var(--hairline);
 }
 .wb.wb.wb .wb-legend{ display:flex; align-items:center; gap:7px }
-.wb.wb.wb .wb-legend-d{ width:8px; height:8px; flex:none }
+.wb.wb.wb .wb-legend-d{ width:8px; height:8px; flex:none; background:var(--cat-1) }
+.wb.wb.wb .wb-legend-d[data-cat='2']{ background:var(--cat-2) }
+.wb.wb.wb .wb-legend-d[data-cat='3']{ background:var(--cat-3) }
+.wb.wb.wb .wb-legend-d[data-cat='4']{ background:var(--cat-4) }
+/* 9.1 — the Volume lane dots were painted from an inline map carrying #0A84FF
+   and #BF5AF2, two hues this ladder never declares. A lane is a CATEGORY, so it
+   takes a categorical token; the inline hex is overruled here rather than in
+   the shared screen, so the default app keeps its own colours. */
+.wb.wb.wb .ov-kpi[data-cat='1'] .ov-kpi-top .sc-dot{ background:var(--cat-1)!important }
+.wb.wb.wb .ov-kpi[data-cat='2'] .ov-kpi-top .sc-dot{ background:var(--cat-2)!important }
+.wb.wb.wb .ov-kpi[data-cat='3'] .ov-kpi-top .sc-dot{ background:var(--cat-3)!important }
+.wb.wb.wb .ov-kpi[data-cat='4'] .ov-kpi-top .sc-dot{ background:var(--cat-4)!important }
+.wb.wb.wb .ov-kpi[data-cat='2'] .sc-bar{ background:var(--cat-2) }
+.wb.wb.wb .ov-kpi[data-cat='3'] .sc-bar{ background:var(--cat-3) }
+.wb.wb.wb .ov-kpi[data-cat='4'] .sc-bar{ background:var(--cat-4) }
+.wb.wb.wb .ov-kpi[data-cat='1'] .sc-bar{ background:var(--cat-1) }
+.wb.wb.wb .ov-kpi .sc-bar.zero{ background:var(--surface3) }
+/* The Volume/Pipeline/Campaign footers sit at the bottom of a SECTION, not
+   inside one card, so they keep the card's gutter. */
+.wb.wb.wb .ov-sec > .wb-cardf{ margin-top:12px; padding-top:12px }
 .wb.wb.wb .wb-legend-l{ color:var(--text3) }
 .wb.wb.wb .wb-total{ margin-left:auto; color:var(--text3); white-space:nowrap }
 .wb.wb.wb .wb-total b{ color:var(--text); font-weight:600 }
@@ -1131,7 +1153,6 @@
 :root[data-theme='light'] .wb.wb.wb .ov-note,
 :root[data-theme='light'] .wb.wb.wb .wb-pipe-warn,
 :root[data-theme='light'] .wb.wb.wb .ct-subtle.ct-warn{ color:var(--text) }
-:root[data-theme='light'] .wb.wb.wb .wb-cap{ color:var(--ink) }
 
 /* Settings is spine-only: the ladder, the scale, the hairlines, nothing else.
    The switch loses its capsule because §6.3 does not license one. */

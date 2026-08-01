@@ -64,16 +64,21 @@ function IdeaCard({ i }: { i: IdeaCandidate }) {
     // different row sets.
     <div className="ct-card ct-idea ct-tap" onClick={() => setOpen(o => !o)}>
       <div className="ct-idea-h">
-        {i.composite_score !== null && <div className="ct-idea-n">{i.composite_score}</div>}
+        {/* The composite score IS this row's anchor mark — one mark, fixed
+            width, on the same 28px rail every other row in the lane uses. */}
+        <div className="ct-idea-n">{i.composite_score !== null ? i.composite_score : '—'}</div>
         <div className="ct-mid">
-          <div className="ct-title">{title}</div>
-          {i.raw_topic && i.raw_topic !== i.normalized_topic && (
-            <div className="ct-topic">{i.raw_topic}</div>
-          )}
+          <div className="ct-title ct-row-p">{title}</div>
+          {/* raw_topic rides IN the meta line rather than on a third line of its
+              own: a third line put this row at an 80px content box against a
+              40-60 band, and 59 idea rows is exactly where the band matters. */}
           <div className="ct-meta">
             {i.source && <span className="ct-chip">{i.source}</span>}
             {i.content_type && <span className="ct-chip">{i.content_type}</span>}
             {i.ivan_engaged === true && <span className="ct-lane">engaged</span>}
+            {i.raw_topic && i.raw_topic !== i.normalized_topic && (
+              <span className="ct-topic">{i.raw_topic}</span>
+            )}
             {i.ingested_at && <span className="ct-tm">{relTime(i.ingested_at)}</span>}
           </div>
         </div>
