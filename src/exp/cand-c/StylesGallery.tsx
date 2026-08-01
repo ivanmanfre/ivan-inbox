@@ -115,7 +115,7 @@ export function StylesGallery() {
               {resources.map(r => (
                 <a
                   key={r.id}
-                  href={r.resource_url} target="_blank" rel="noreferrer"
+                  href={r.resource_url ?? undefined} target="_blank" rel="noreferrer"
                   className="log-r" style={{ textDecoration: 'none', color: 'inherit' }}
                 >
                   <div style={{ width: 44, height: 44, borderRadius: 10, flex: 'none', background: 'var(--surface2)', overflow: 'hidden' }}>

@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { ContentDraft } from './content'
+import { laneFilter, type ContentDraft, type ContentLane } from './content'
 
 // Styles + resources domain.
 //
@@ -209,7 +209,11 @@ export type Resource = {
   topic: string | null
   format: string | null
   status: string
-  resource_url: string
+  resource_url: string | null
+  // The live page. Its ABSENCE at a terminal-looking status is the stuck signal
+  // (isStuckResource below) — it is a different column from resource_url, which
+  // is the asset.
+  landing_url: string | null
   cover_url: string | null
   landing_slug: string | null
   updated_at: string
@@ -219,15 +223,40 @@ export type Resource = {
 // treats lm_drafts_v2.status='approved' as a publish trigger is unverifiable
 // from either repo (skeptic verdict 2026-07-31), so the inbox does not offer
 // an approve/edit affordance that might turn out to publish a page.
-export async function fetchResources(): Promise<Resource[]> {
-  const { data, error } = await supabase.from('lm_drafts_v2')
-    .select('id, topic, format, status, resource_url, cover_url, landing_slug, updated_at')
-    // Same tenancy split as carousel_drafts: NULL = Ivan's own, non-null = a
-    // client board's LM, which belongs on that board and not here.
-    .is('client_id', null)
-    .not('resource_url', 'is', null)
+//
+// R6, the one read change this spec makes to this file (IA §7): the lane was
+// hardcoded `.is('client_id', null)`, so Mattan's 5 rows — including the only
+// real approved-but-undated failure in the database, bb07706c… (`approved`
+// since 07-23, landing_url still NULL) — could appear on no inbox surface at
+// all. laneFilter() is the only correct way to scope, so it scopes here too.
+//
+// The `_r1atest` row (client_id='_r1atest', disqualified) belongs to no lane and
+// is excluded by construction: an unrecognised tenant is never coalesced into
+// Ivan's, the same fail-closed posture as the cross-tenant rule (IA §4.4).
+export async function fetchResources(lane: ContentLane = 'ivan'): Promise<Resource[]> {
+  const f = laneFilter(lane)
+  let q = supabase.from('lm_drafts_v2')
+    .select('id, topic, format, status, resource_url, landing_url, cover_url, landing_slug, updated_at')
+  q = f.op === 'is' ? q.is(f.column, null) : q.eq(f.column, f.value)
+  // The resource_url filter this fetch used to carry is gone: "has a resource
+  // URL" is a FACET (AFFORDANCES §2.4), and a facet whose rows were already
+  // filtered out at the query is a control with one side. Dropping it is also
+  // what lets Mattan's lane render all 5 of its rows rather than 3.
+  const { data, error } = await q
     .order('updated_at', { ascending: false })
     .limit(200)
   if (error) throw error
   return (data ?? []) as unknown as Resource[]
+}
+
+// The approved-with-no-date detector, carried onto the resource row set
+// (IA §2.4 extension). The only real instance of that failure in the whole
+// database is here rather than in carousel_drafts: a resource at a
+// terminal-looking status with no live URL is stuck, evaluated per lane. This
+// is a read and a boolean; it adds no write.
+export const RESOURCE_TERMINAL_STATUSES = ['approved', 'published', 'live'] as const
+
+export function isStuckResource(r: Resource): boolean {
+  return (RESOURCE_TERMINAL_STATUSES as readonly string[]).includes(r.status)
+    && !(r.landing_url && r.landing_url.trim())
 }
