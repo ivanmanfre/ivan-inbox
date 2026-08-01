@@ -121,7 +121,13 @@ export function Rail({ job, counts, sev, chatOn, chatLive, onJob, onChat, loaded
       <div className="wb-rail-foot">
         {JOBS.filter(j => j === 'settings').map(row)}
         <div className="wb-rail-sync" onClick={onRefresh}>
-          <span className={`wb-sync-dot${stale ? ' stale' : ''}`} />
+          {/* `.bad`, never `.stale`: `.stale` is a SHARED class (styles.css:266, the
+              "you already replied" card) whose padding, border and font-size leak
+              into this 7px dot and inflate it into a blob — the workbench's own CSS
+              comment warns about exactly this and the markup was still doing it.
+              Caught in crops/state-failed-ops-desktop.png, where the dot rendered
+              ~26px AND stayed green while the sync had failed. */}
+          <span className={`wb-sync-dot${stale ? ' bad' : ''}`} />
           <span className="wb-sync-t">{loadedAt ? relAge(loadedAt) : 'not loaded'}</span>
           <span className="wb-sync-r">↻</span>
         </div>
