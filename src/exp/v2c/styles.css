@@ -498,3 +498,16 @@
 .wb-rail-grp-l{padding:0 0 3px 2px;font-size:9.5px;font-weight:800;letter-spacing:.08em;
   text-transform:uppercase;color:var(--text3)}
 .wb-rj-lane{padding-left:8px}
+
+/* Per-turn telemetry (grafted from v2a). Cost and latency ride ON the turn, and
+   the bar against a fixed 10s scale is what makes "this one was slow" readable
+   without doing arithmetic. Amber past 8s: attention, never alarm. */
+.wb-tmeta{display:flex;align-items:center;gap:7px;margin:0 0 7px}
+.wb-tmeta-ic{flex:none;font-size:11px;color:var(--accent)}
+.wb-tmeta-n{font-size:11.5px;font-weight:800;letter-spacing:.02em;color:var(--text2)}
+.wb-tdot{flex:none;width:7px;height:7px;border-radius:99px;background:var(--surface3)}
+.wb-tdot.error{background:#FF453A}
+.wb-tdot.aborted{background:#FF9F0A}
+.wb-tcost{font-size:11px;font-weight:600;color:var(--text3);white-space:nowrap}
+.wb-tbar{flex:none;width:56px;height:4px;border-radius:99px;background:var(--surface2);overflow:hidden}
+.wb-tbar > span{display:block;height:100%;border-radius:99px}

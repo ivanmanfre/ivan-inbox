@@ -21,9 +21,16 @@ export type ChatEvent =
 export type ChatRequest = {
   prompt: string
   sessionId: string | null
-  // What Ivan is looking at while he asks. Sent as PROSE inside the prompt by
-  // the caller, never as a structured field the broker forwards: phase0's fence
-  // says the browser may not hand the broker anything that scopes an instance.
+  // What Ivan is looking at while he asks, plus the transcript so far. PROSE, and
+  // only prose — phase0's fence says the browser may not hand the broker anything
+  // that scopes an instance, so there is deliberately no field here for a
+  // workspace, a working directory or a client id.
+  //
+  // It carries the transcript because the upstream `POST /chat/stream` never reads
+  // session_id and never passes --resume (main.py:773-866): every turn is a fresh
+  // CLI session server-side, so this replay IS the continuity. The surface says so
+  // out loud rather than implying a memory that does not exist.
+  context?: string
   signal?: AbortSignal
 }
 
@@ -48,6 +55,21 @@ export type Turn = {
   // What the turn was asked ABOUT (a thread, a draft). Rendered as a chip on the
   // user turn so the transcript still makes sense a day later.
   about?: string
+  // Per-turn telemetry, grafted from v2a. Nobody asked for it; on a Claude Code
+  // surface the difference between a 2s answer and a 9s one is the thing you
+  // actually feel, and it belongs on the turn rather than on the pane, so an old
+  // turn still says what it cost. `costUsd` stays null against the real broker,
+  // which reports none — a missing number beats an invented one.
+  costUsd?: number | null
+  durationMs?: number | null
+}
+
+// The outcome of an assistant turn as one value, so the dot, the label and the
+// retry affordance cannot disagree about what happened.
+export function turnOutcome(t: Turn): 'ok' | 'error' | 'aborted' {
+  if (t.error) return 'error'
+  if (t.aborted) return 'aborted'
+  return 'ok'
 }
 
 export type ChatStatus = 'idle' | 'sending' | 'streaming'
