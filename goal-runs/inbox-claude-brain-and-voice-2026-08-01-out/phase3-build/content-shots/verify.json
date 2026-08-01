@@ -1,0 +1,292 @@
+[
+  {
+    "name": "ivan-lane",
+    "tag": "mobile",
+    "file": "goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase3-build/content-shots/ivan-lane-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "wb-work",
+        "overflow": false,
+        "height": 742
+      }
+    ],
+    "riseStrings": [],
+    "errors": [],
+    "claims": {
+      "lanes": [
+        "Ivan",
+        "Mattan Danino"
+      ],
+      "sections": [
+        "IDEAS",
+        "GENERATING",
+        "NEEDS REVIEW",
+        "SCHEDULED",
+        "PUBLISHED",
+        "ARCHIVED",
+        "PILLAR MIX",
+        "RESOURCES",
+        "STYLES",
+        "DAILY SUMMARIES"
+      ],
+      "facets": 23,
+      "draftCards": 21,
+      "ideaCards": 60
+    }
+  },
+  {
+    "name": "ivan-lane",
+    "tag": "desktop",
+    "file": "goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase3-build/content-shots/ivan-lane-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "wb-work",
+        "overflow": false,
+        "height": 900
+      },
+      {
+        "region": "wb-peer",
+        "overflow": false,
+        "height": 900
+      }
+    ],
+    "riseStrings": [],
+    "errors": [],
+    "claims": {
+      "lanes": [
+        "Ivan",
+        "Mattan Danino"
+      ],
+      "sections": [
+        "IDEAS",
+        "GENERATING",
+        "NEEDS REVIEW",
+        "SCHEDULED",
+        "PUBLISHED",
+        "ARCHIVED",
+        "PILLAR MIX",
+        "RESOURCES",
+        "STYLES",
+        "DAILY SUMMARIES"
+      ],
+      "facets": 23,
+      "draftCards": 21,
+      "ideaCards": 60
+    }
+  },
+  {
+    "name": "mattan-lane",
+    "tag": "mobile",
+    "file": "goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase3-build/content-shots/mattan-lane-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "wb-work",
+        "overflow": false,
+        "height": 742
+      }
+    ],
+    "riseStrings": [],
+    "errors": [],
+    "claims": {
+      "groups": [
+        "ON MATTAN’S BOARD",
+        "NEEDS REVIEW",
+        "PUBLISHED",
+        "INTERNAL",
+        "NEEDS REVIEW",
+        "ERRORS"
+      ],
+      "note": "20 of 84 on Mattan’s board",
+      "draftCards": 73,
+      "ideaCards": 0
+    }
+  },
+  {
+    "name": "mattan-lane",
+    "tag": "desktop",
+    "file": "goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase3-build/content-shots/mattan-lane-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "wb-work",
+        "overflow": false,
+        "height": 900
+      },
+      {
+        "region": "wb-peer",
+        "overflow": false,
+        "height": 900
+      }
+    ],
+    "riseStrings": [],
+    "errors": [],
+    "claims": {
+      "groups": [
+        "ON MATTAN’S BOARD",
+        "NEEDS REVIEW",
+        "PUBLISHED",
+        "INTERNAL",
+        "NEEDS REVIEW",
+        "ERRORS"
+      ],
+      "note": "20 of 84 on Mattan’s board",
+      "draftCards": 73,
+      "ideaCards": 0
+    }
+  },
+  {
+    "name": "ivan-filtered",
+    "tag": "desktop",
+    "file": "goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase3-build/content-shots/ivan-filtered-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "wb-work",
+        "overflow": false,
+        "height": 900
+      },
+      {
+        "region": "wb-peer",
+        "overflow": false,
+        "height": 900
+      }
+    ],
+    "riseStrings": [],
+    "errors": [],
+    "claims": {
+      "facet": "Archived 39",
+      "before": 21,
+      "after": 2,
+      "note": "39\nof 171 drafts shown\nclear"
+    }
+  },
+  {
+    "name": "draft-register",
+    "tag": "desktop",
+    "file": "goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase3-build/content-shots/draft-register-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "wb-work",
+        "overflow": false,
+        "height": 900
+      },
+      {
+        "region": "wb-peer",
+        "overflow": false,
+        "height": 900
+      },
+      {
+        "region": "wb-peer",
+        "overflow": false,
+        "height": 900
+      }
+    ],
+    "riseStrings": [],
+    "errors": [],
+    "claims": {
+      "entries": 37,
+      "distinctAgents": 11,
+      "unattributed": 0,
+      "showMore": 0,
+      "clamped": 0,
+      "blocks": [
+        "THE APPLIED REWRITE\nrewrite_total 75",
+        "VERDICT PROVENANCE",
+        "DATES",
+        "SOURCE",
+        "POST",
+        "IMAGE",
+        "GENERATION REGISTER\n37 entries",
+        "TAXONOMY",
+        "TAXONOMY · OTHER KEYS",
+        "IG CAPTION"
+      ]
+    }
+  },
+  {
+    "name": "mattan-draft",
+    "tag": "mobile",
+    "file": "goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase3-build/content-shots/mattan-draft-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "app",
+        "overflow": false,
+        "height": 852
+      }
+    ],
+    "riseStrings": [],
+    "errors": [],
+    "claims": {
+      "paneRendered": 1,
+      "sourceBlock": 1,
+      "registerEntries": 24
+    }
+  },
+  {
+    "name": "mattan-draft",
+    "tag": "desktop",
+    "file": "goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase3-build/content-shots/mattan-draft-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "wb-work",
+        "overflow": false,
+        "height": 900
+      },
+      {
+        "region": "wb-peer",
+        "overflow": false,
+        "height": 900
+      },
+      {
+        "region": "wb-peer",
+        "overflow": false,
+        "height": 900
+      }
+    ],
+    "riseStrings": [],
+    "errors": [],
+    "claims": {
+      "paneRendered": 1,
+      "sourceBlock": 1,
+      "registerEntries": 24
+    }
+  }
+]

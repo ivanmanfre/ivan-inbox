@@ -85,7 +85,10 @@ export function QaRegister({ qa }: { qa: QaSummary }) {
         // blind spot the dashboard's QA panel exists to close.
         <Block
           label="The applied rewrite"
-          tail={qa.rewriteTotal !== null ? `${qa.rewriteTotal} rewritten` : undefined}
+          // The field's own name and value, not a sentence about it: what
+          // rewrite_total counts is the gate's business, and paraphrasing it
+          // ("75 rewritten") invents a unit.
+          tail={qa.rewriteTotal !== null ? `rewrite_total ${qa.rewriteTotal}` : undefined}
         >
           <div className="ct-subtle">
             This is the copy the gate substituted. It is what published, not the
