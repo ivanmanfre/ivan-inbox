@@ -114,9 +114,19 @@ export function ThreadScreen({ thread, onBack, refresh }: {
     finally { setBusy(false) }
   }
 
+  // U4: approving a REVIEWED draft asked for confirmation while typing a fresh
+  // message and hitting ↑ sent it with none, which is backwards — the freehand
+  // path is the one nothing has read. Same sheet, same wording as the approve
+  // path, so the two consequential actions on this screen behave the same way.
   async function onSend() {
     const t = reply.trim()
     if (!t || busy) return
+    const ok = await confirm({
+      title: `Send this to ${thread.prospect_name}?`,
+      message: 'Your own words, not a reviewed draft. The sender picks it up within about 2 minutes.',
+      confirmText: 'Send it',
+    })
+    if (!ok) return
     setBusy(true); setComposeErr('')
     try { await composeReply(thread, t); setReply(''); refresh() }
     catch (e) { setComposeErr(errText(e)) }
