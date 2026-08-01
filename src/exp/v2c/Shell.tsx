@@ -300,7 +300,11 @@ export default function Shell() {
       )}
       {job === 'sends' && <SendsScreen client={sendsClient} setClient={setSendsClient} />}
       {job === 'ops' && opsSurface}
-      {job === 'today' && <TodayScreen />}
+      {/* Today aggregates, so its hand-off rows navigate INSIDE the workbench
+          rather than through the default app's hash routes. */}
+      {job === 'today' && (
+        <TodayScreen onOpenDrafts={() => goJob('drafts')} onOpenOps={() => goJob('ops')} />
+      )}
       {job === 'settings' && <SettingsScreen />}
     </>
   )
