@@ -330,7 +330,7 @@ export async function fetchLaneProbe(lane: ContentLane): Promise<LaneProbe> {
 // The only two content writes this app is allowed to make. Both mirror the
 // dashboard's existing semantics exactly (setStatus, studioActions.ts:250) and
 // both are scoped .is('client_id', null): approve is an IVAN-lane action, and
-// the Rise lane is read-only ambient visibility here — client-facing decisions
+// Mattan’s lane is read-only ambient visibility here — client-facing decisions
 // belong on the client board, behind its own gates (D7). No schedule, no
 // publish, no delete lives in this file on purpose: flipping a row to
 // 'scheduled' is what the n8n Bridge (yzXqLDIpuNzuhUQq) picks up to actually
@@ -362,9 +362,9 @@ export async function skipDraft(id: string): Promise<void> {
 // The one rule that decides whether a row shows a mutating affordance at all,
 // in one place because round 2 renders those buttons from two surfaces (the
 // queue card and the draft detail screen). D6: only a row waiting on review is
-// actionable. D7: only in the Ivan lane — the Rise lane is read-only ambient
+// actionable. D7: only in the Ivan lane — Mattan’s lane is read-only ambient
 // visibility, and approveDraft/skipDraft are both scoped .is('client_id', null)
-// anyway, so a Rise button would be a button that silently does nothing.
+// anyway, so a button there would be a button that silently does nothing.
 export function reviewActionable(status: string, lane: ContentLane): boolean {
   return status === 'review' && lane === 'ivan'
 }
@@ -496,6 +496,13 @@ export type ContentDraftDetail = ContentDraft & {
   ig_caption: string | null
   pdf_url: string | null
   topic_strength: unknown
+  // Carousel rows only (17 live). Agent-written and shaped freely, so it is
+  // rendered through <Val> like every other unknown, never as a JSX child.
+  slide_metadata?: unknown
+  // Named here so nobody re-adds them as empty rows: style_id is NULL on all
+  // 282 rows (a draft's style lives in taxonomy), regen_slides on all 282
+  // (regeneration lives in agent_log and qa.qa_regen_*), video_status on all
+  // 282. They are selected by `select('*')` and deliberately not rendered.
 }
 
 // select=* rather than a column list: this row is fetched one at a time, and a

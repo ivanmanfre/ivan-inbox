@@ -49,12 +49,17 @@ function starters(job: Job, about: string | null): string[] {
   }
 }
 
-export function ChatPane({ chat, job, about, onClose, onOpenAbout, mobile }: {
+export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout, mobile }: {
   chat: ChatHandle
   job: Job
   // The context peer's human name, if one is open. This is what makes chat a
   // PEER rather than a tab: the conversation knows what it is next to.
   about: string | null
+  // What the context peer IS, for the payload rather than the label. A content
+  // draft carries its lane and its register — "a POST in Mattan Danino's lane" —
+  // so a downstream voice check cannot judge a post against DM or comment voice
+  // (IA §5.7). Falls back to the label when a peer has nothing extra to say.
+  aboutContext?: string | null
   onClose: () => void
   // Mobile only: there is no third region, so the pairing degrades to a tappable
   // context card that flips back to the item.
@@ -70,13 +75,13 @@ export function ChatPane({ chat, job, about, onClose, onOpenAbout, mobile }: {
   const send = useCallback((prompt: string) => {
     if (!prompt.trim() || chat.busy) return
     setText('')
-    void chat.send(prompt, about ?? undefined)
-  }, [chat, about])
+    void chat.send(prompt, aboutContext ?? about ?? undefined)
+  }, [chat, about, aboutContext])
 
   const onTranscript = useCallback((t: string) => {
     setTurnDone(false)
-    void chat.send(t, about ?? undefined).then(() => setTurnDone(true))
-  }, [chat, about])
+    void chat.send(t, aboutContext ?? about ?? undefined).then(() => setTurnDone(true))
+  }, [chat, about, aboutContext])
 
   // What gets read back: the newest assistant turn. Read at the moment SPEAKING is
   // entered, never captured earlier, so a turn that landed while the mic was still

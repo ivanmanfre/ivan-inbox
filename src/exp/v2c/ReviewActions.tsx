@@ -5,7 +5,7 @@ import { approveDraft, skipDraft } from '../../lib/content'
 // The ONLY mutating affordance in the Content tab, now rendered from two places
 // (the queue card and the draft detail screen) — so it lives in one component
 // with one copy of the confirm wording. D6/D7: approve is a status write that
-// does NOT publish, skip persists as 'disqualified', and the Rise lane never
+// does NOT publish, skip persists as 'disqualified', and Mattan’s lane never
 // shows either (client-facing decisions stay on the client board behind its own
 // gates). No schedule/publish affordance exists here on purpose. The "may this
 // row be actioned at all" rule itself lives in lib/content.ts (reviewActionable)

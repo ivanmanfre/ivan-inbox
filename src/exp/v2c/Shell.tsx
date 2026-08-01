@@ -13,7 +13,7 @@ import type { Filter } from '../../lib/inbox'
 import type { ContentLane } from '../../lib/content'
 import { MobileTabs, Rail, WorkSegment } from './Rail'
 import { ContentList } from './ContentList'
-import { DraftPane } from './DraftPane'
+import { DraftPane, draftContextLabel } from './DraftPane'
 import { ThreadPeer } from './ThreadPeer'
 import { InboxHead } from './InboxHead'
 import { ChatPane } from './ChatPane'
@@ -147,6 +147,12 @@ export default function Shell() {
   const aboutLabel = ctx
     ? ctx.kind === 'thread' ? ctxThread?.prospect_name ?? ctx.label ?? 'this thread' : ctx.label ?? 'this draft'
     : null
+  // The label is what the pane PRINTS; this is what the payload SAYS. A draft
+  // carries its lane and its register so a voice check downstream cannot pick
+  // the wrong reference (IA §5.7).
+  const aboutContext = ctx?.kind === 'draft'
+    ? draftContextLabel(ctx.label ?? 'this draft', lane)
+    : aboutLabel
 
   // ---- hash: job + focus are addressable, so every surface has a fresh-load URL ----
   useEffect(() => {
@@ -322,6 +328,7 @@ export default function Shell() {
           chat={chat}
           job={job}
           about={aboutLabel}
+          aboutContext={aboutContext}
           onClose={() => closePeer('chat')}
           // Mobile only: no third region, so the pair degrades to a tappable
           // context card that flips focus back to the item.
