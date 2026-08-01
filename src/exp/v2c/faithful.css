@@ -70,7 +70,7 @@
   --r-sm:var(--r-ctl); --r-md:var(--r-card); --r-lg:var(--r-hero);
 
   /* --- 7 · dense-list geometry --- */
-  --anchor-w:28px; --anchor-gap:12px; --sech-h:32px; --indent:20px;
+  --anchor-w:28px; --anchor-gap:12px; --tail-w:62px; --sech-h:32px; --indent:20px;
   --gut:16px;                   /* the one horizontal gutter for list surfaces */
   --pad-card:20px;              /* expressive: generous overview card padding */
 
@@ -116,8 +116,13 @@
    anchor; light must stay legible, which is what this block buys. */
 :root[data-theme='light'] .wb{
   --canvas:#F4F6F5; --surface1:#FFFFFF; --surface2:#ECEFEE; --surface3:#E0E4E2;
-  --hairline:#D5D9D7; --hairline-strong:#B9BEBC;
-  --text:#0E1211; --text2:#4A4F4D; --text3:#6B706E; --text4:#7A7F7D;
+  --hairline:#D5D9D7; --hairline-strong:#A8ADAB;
+  /* text2/text3 measured at 4.35:1 on surface2 at the first pass — under the
+     4.5 bar. Darkened until every tier clears body contrast on the LIGHTEST
+     surface it can sit on, which on light is surface2, not the canvas. */
+  --text:#0B0E0D; --text2:#3A3F3D; --text3:#4F5452; --text4:#5E6361;
+  /* --ink is NOT overridden: the accent is the same hex in both themes, so the
+     label on a filled accent mark measures the same 5.61:1 and stays ink. */
 }
 
 /* ========================================================================== */
@@ -430,13 +435,18 @@
   background:var(--surface2); color:var(--text2);
   box-shadow:inset 0 0 0 1px var(--hairline);
 }
-.wb.wb.wb .ct-chip-ok{ background:var(--surface2); box-shadow:inset 0 0 0 1px var(--accent) }
+/* A PASS is the ABSENCE of a problem, so it is not worth a unit of the accent
+   budget: on an 80-row list a green-bordered chip per passing row spends 80 of
+   30. It takes the light categorical tier instead — still unmistakably not the
+   amber FAIL, still not shouting. */
+.wb.wb.wb .ct-chip-ok{ background:var(--surface2); color:var(--text);
+  box-shadow:inset 0 0 0 1px var(--cat-2) }
 .wb.wb.wb .ct-chip-warn{ background:rgba(255,159,10,.14); color:var(--sev-attention);
   box-shadow:inset 0 0 0 1px rgba(255,159,10,.5) }
 .wb.wb.wb .ct-chip-bad{ background:rgba(255,69,58,.14); color:var(--sev-urgent);
   box-shadow:inset 0 0 0 1px rgba(255,69,58,.5) }
-.wb.wb.wb .ct-lane{ background:var(--surface2); color:var(--text2);
-  box-shadow:inset 0 0 0 1px var(--accent) }
+.wb.wb.wb .ct-lane{ background:var(--surface3); color:var(--text);
+  box-shadow:inset 0 0 0 1px var(--hairline-strong) }
 
 /* The two badge families on Sends are STATE labels, not actions — they were
    painted from inline hex, so they are neutralised here (CSS only; the default
@@ -481,11 +491,16 @@
    28px leading slot carrying EXACTLY ONE mark. The rail test: the left edge of
    every row's primary text sits at an identical x, variance 0px, at 390 and
    1440. The eye tracks a rail. */
+/* The trailing column is a FIXED width, not `auto`. Every row is its own grid
+   container, so an auto-sized third column is sized by THAT row's content and
+   the right edges scatter — measured 358px of variance before this line. A
+   fixed track anchored against a 1fr middle puts every trailing value on one
+   right edge, which is what §7.7 asks for and what makes a column scannable. */
 .wb.wb.wb .ct-card,
 .wb.wb.wb .r,
 .wb.wb.wb .td-r{
   display:grid;
-  grid-template-columns:var(--anchor-w) minmax(0,1fr) auto;
+  grid-template-columns:var(--anchor-w) minmax(0,1fr) auto var(--tail-w);
   column-gap:var(--anchor-gap);
   align-items:center;
   padding:10px var(--gut);
@@ -503,9 +518,10 @@
 .wb.wb.wb .av .badge{ width:12px;height:12px;bottom:-1px;right:-1px;border-width:2px;font-size:8px }
 .wb.wb.wb .r .mid, .wb.wb.wb .td-mid, .wb.wb.wb .ct-mid{ grid-column:2; min-width:0 }
 .wb.wb.wb .r .right, .wb.wb.wb .td-right, .wb.wb.wb .ct-tail{
-  grid-column:3; justify-self:end; text-align:right;
+  grid-column:4; justify-self:end; text-align:right;
   display:flex; flex-direction:column; align-items:flex-end; gap:4px;
 }
+.wb.wb.wb .av .badge{ color:var(--text2) }
 
 /* 7.7 — row anatomy, in order: anchor → primary → meta → trailing value,
    right-aligned and tabular. Trailing values in one list share a right edge. */
@@ -624,14 +640,16 @@
    285-row list keeps its 40-60px band instead of growing a 44px button bar
    under every actionable row (7.8). */
 .wb.wb.wb .ct-tail{
-  grid-column:3; justify-self:end;
+  grid-column:4; justify-self:end;
   display:flex; flex-direction:row; align-items:center;
-  flex-wrap:wrap; justify-content:flex-end; gap:6px 10px;
-  text-align:right;
+  justify-content:flex-end; gap:10px;
+  min-width:var(--tail-w); text-align:right;
 }
 .wb.wb.wb .ct-card .ct-ac{
+  grid-column:3; grid-row:1;
   display:flex; flex-direction:row; gap:6px; margin:0;
 }
+.wb.wb.wb .ct-card .ops-err{ grid-column:2/-1; grid-row:2 }
 /* A failed approve is rare and must never be swallowed: it takes its own line
    inside the trailing slot rather than being hidden to protect the band. */
 .wb.wb.wb .ct-tail .ops-err{
@@ -672,15 +690,36 @@
 .wb.wb.wb .ov-tile-unit{ font-size:var(--fs-title); font-weight:500; color:var(--text3) }
 .wb.wb.wb .ov-tile-sub{ color:var(--text3) }
 .wb.wb.wb .ov-tile-trend{ font-weight:600 }
-/* 8.1 — ONE --fs-figure numeral per surface. Everything that used to be a
-   second 28-38px numeral drops to --fs-page so the hero is a hero. */
-.wb.wb.wb .ov-kpi-big, .wb.wb.wb .ov-fn, .wb.wb.wb .wb-otile-n{
+/* 8.1 — ONE --fs-figure numeral per surface, and this is the rule that enforces
+   it. The shipped hero was three 30px numerals side by side, which is three
+   headlines and therefore none. ACCEPT keeps the figure — the section asks
+   "where do I stand right now" and conversion is the answer to it; Governor and
+   Runway drop to --fs-page, where they still read as numbers and now read as
+   the SUPPORT for the number beside them. Deliberate, documented, and the only
+   place this build overrules the reference's equal-weight card grid. */
+.wb.wb.wb .ov-kpi-big, .wb.wb.wb .ov-fn, .wb.wb.wb .wb-otile-n,
+.wb.wb.wb .ov-hero .ov-tile:not(:first-child) .ov-tile-big{
   font-size:var(--fs-page); font-weight:600; letter-spacing:-.02em; line-height:24px;
 }
 @media (min-width:1000px){
   .wb.wb.wb .ov-tile-big{ font-size:var(--fs-figure) }   /* never the 38px step */
+  .wb.wb.wb .ov-hero .ov-tile:not(:first-child) .ov-tile-big{ font-size:var(--fs-page) }
   .wb.wb.wb .ov-fstep .ov-fn{ font-size:var(--fs-page) }
 }
+
+/* Segmented controls take the pill (§6.3.2 — view-switcher segments). The
+   shipped treatment rendered them as two full-width slabs; the reference makes
+   them chrome, and chrome is what they are. */
+.wb.wb.wb .seg{
+  display:flex; gap:6px; margin:12px var(--gut) 0; padding:0;
+  background:transparent; border:none;
+}
+.wb.wb.wb .seg .sg{
+  flex:1; height:30px; display:flex; align-items:center; justify-content:center;
+  background:var(--surface2); color:var(--text3);
+  font-size:var(--fs-meta); font-weight:500; cursor:pointer;
+}
+.wb.wb.wb .seg .sg.on{ background:var(--surface3); color:var(--text) }
 
 /* 8.2 — CHART CARD: eyebrow · overflow menu · plot · legend · right-aligned
    Total footer with the REAL denominator. The footer is the reference's single
@@ -921,7 +960,6 @@
 :root[data-theme='light'] .wb.wb.wb .t-nav{ background:var(--surface1) }
 :root[data-theme='light'] .wb.wb.wb .chip.on{ background:var(--surface3); color:var(--text) }
 :root[data-theme='light'] .wb.wb.wb .b.out{ color:var(--ink) }
-:root[data-theme='light'] .wb.wb.wb .av{ color:#FFFFFF }
 
 /* ========================================================================== */
 /* 11 · EMPTY / FAILED / MISC                                                  */
@@ -941,11 +979,33 @@
 .wb.wb.wb .wb-failed-t{ color:var(--sev-urgent) }
 .wb.wb.wb .wb-retry{ background:var(--sev-urgent); color:var(--ink); font-weight:600 }
 .wb.wb.wb .wb-retry.ghost{ background:var(--surface3); color:var(--text) }
+/* 5.5 — ONE SEVERITY MARK PER RUN, NOT PER ROW. On the live Ivan lane this
+   strip carries 38 alerts; the shipped treatment gave each of them a red card
+   with red body text, which is 38 red boxes ranking nothing and, on light, 38
+   AA failures. Red now lives on the HEADER that counts them; the rows below
+   take a neutral rule and a single urgent dot on the anchor rail. */
 .wb.wb.wb .ct-alert{
   margin:12px var(--gut) 0; padding:12px 14px;
   background:rgba(255,69,58,.08); border:1px solid rgba(255,69,58,.3);
 }
 .wb.wb.wb .ct-alert-n{ color:var(--sev-urgent) }
+.wb.wb.wb .ct-alert-x{
+  display:grid;
+  grid-template-columns:var(--anchor-w) minmax(0,1fr);
+  column-gap:var(--anchor-gap);
+  align-items:center;
+  margin:0; padding:10px var(--gut);
+  background:transparent; border:none; border-radius:0;
+  color:var(--text2);
+}
+.wb.wb.wb .ct-alert-x + .ct-alert-x{ border-top:1px solid var(--hairline) }
+.wb.wb.wb .ct-alert-x::before{
+  content:''; grid-column:1; justify-self:center;
+  width:6px; height:6px; border-radius:var(--r-pill);
+  /* neutral on purpose: the rail needs a mark, the run does not need 38 of the
+     same red one. The count in the header above is the severity. */
+  background:var(--text4);
+}
 .wb.wb.wb .ct-subtle, .wb.wb.wb .ct-subline{ margin:8px var(--gut) 0; color:var(--text3) }
 .wb.wb.wb .ct-subline{ color:var(--sev-attention); font-weight:500 }
 .wb.wb.wb .wb-pipe{ margin:12px var(--gut) 0 }

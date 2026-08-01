@@ -116,10 +116,8 @@ function Card({ d, lane, refresh, onOpen, active }: {
           what keeps a 285-row list inside the 40-60px density band. The value
           itself is last, right-aligned and tabular, so every row in the list
           shares one right edge. */}
-      <div className="ct-tail">
-        {reviewActionable(d.status, lane) && <ReviewActions id={d.id} onDone={refresh} compact />}
-        <span className="ct-tm">{relTime(d.updated_at)}</span>
-      </div>
+      {reviewActionable(d.status, lane) && <ReviewActions id={d.id} onDone={refresh} compact />}
+      <div className="ct-tail"><span className="ct-tm">{relTime(d.updated_at)}</span></div>
     </div>
   )
 }
