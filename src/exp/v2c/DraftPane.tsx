@@ -108,13 +108,21 @@ function Body({ d, lane, refresh, onClose }: {
       </div>
 
       {/* An errored row's reason lives in taxonomy, which is why it renders next
-          to the stage chip rather than three screens down in a key grid. */}
-      {(stage === 'error' || errMsg) && errMsg && (
+          to the stage chip rather than three screens down in a key grid.
+          But only a row that is errored NOW gets the red box: 63 rows carry an
+          error_message and most of them recovered, and painting a recovered row
+          red is the same over-claim as calling a backlog a warning. On those,
+          the same field renders as history. */}
+      {errMsg && (stage === 'error' || stage === 'stuck' ? (
         <div className="ct-err">
           {errMsg}
           {errAt && <span className="ct-ref"> · flipped {absTime(errAt)}</span>}
         </div>
-      )}
+      ) : (
+        <div className="ct-ref ct-ref-p">
+          Errored once{errAt ? ` on ${absTime(errAt)}` : ''} and recovered: {errMsg}
+        </div>
+      ))}
 
       {lane === 'risedtc' && noImages && d.status === 'review' && (
         // 🔴 The codified form of the regen trap: operator_schedule_draft refuses

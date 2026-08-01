@@ -568,7 +568,11 @@
 
 /* --- ideas --- */
 .ct-idea-h{display:flex;gap:12px}
-.ct-idea-n{flex:none;width:44px;font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1}
+ /* The composite score is a float on live rows (69.5, 68.32). A fixed width
+   clipped it, and rounding a score the scorer wrote is a claim — so the box
+   sizes to its content instead. */
+.ct-idea-n{flex:none;min-width:44px;font-size:20px;font-weight:800;letter-spacing:-.02em;
+  line-height:1;white-space:nowrap}
 .ct-idea-b{margin-top:12px;padding-top:12px;border-top:.5px solid var(--sep)}
 .ct-scores{display:flex;flex-wrap:wrap;gap:6px 10px}
 .ct-score{font-size:12px;font-weight:700;color:var(--text2)}
@@ -643,11 +647,17 @@
   color:var(--text3);cursor:pointer}
 .dd-log .dd-pre{padding:0}
 
-/* a structurally-rendered agent-written value (the source_detail crash class) */
-.dd-vobj{display:flex;flex-direction:column;gap:4px}
-.dd-vrow{display:flex;gap:8px;align-items:baseline}
-.dd-vk{flex:none;font-size:10.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;
+/* A structurally-rendered agent-written value (the source_detail crash class).
+   Key ABOVE value, never beside it: a qa payload nests four levels deep, and a
+   fixed-width label at each level ate the remaining width until the innermost
+   value had 0px to wrap into and clipped. Depth is drawn with a rule, which
+   costs no horizontal space. */
+.dd-vobj{display:flex;flex-direction:column;gap:5px}
+.dd-vobj .dd-vobj,.dd-vobj .dd-vlist{margin-top:2px;padding-left:9px;
+  border-left:1px solid var(--sep)}
+.dd-vrow{display:block}
+.dd-vk{display:block;font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;
   color:var(--text3)}
-.dd-vv{flex:1;min-width:0;font-size:13px;line-height:1.4;overflow-wrap:anywhere}
+.dd-vv{display:block;font-size:13px;line-height:1.4;overflow-wrap:anywhere}
 .dd-vlist{display:flex;flex-direction:column;gap:3px}
 .dd-vli{font-size:13px;line-height:1.4;overflow-wrap:anywhere}

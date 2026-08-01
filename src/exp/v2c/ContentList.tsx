@@ -266,6 +266,9 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
   const roster = useStyleRoster()
   const digest = useAgentDigest(true)
 
+  // Deliberately built from the UNFILTERED stages: a filter may narrow the
+  // flow, but it may never hide a broken row. The strip sits above the flow for
+  // the same reason.
   const alerts = [...stages.error, ...stages.stuck]
   const failedQueue = queue.rows.filter(queueFailed)
   const stuckRes = resources.rows.filter(isStuckResource)
@@ -409,7 +412,7 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, matc
   const stuckRes = resources.rows.filter(isStuckResource)
   const extra = stuckRes.map(r => ({
     key: r.id,
-    line: `Resource “${r.topic ?? r.id}” has been ${r.status} since ${relTime(r.updated_at)} with no landing URL.`,
+    line: `Resource “${r.topic ?? r.id}” is ${r.status} with no landing URL (updated ${relTime(r.updated_at)}).`,
   }))
 
   return (

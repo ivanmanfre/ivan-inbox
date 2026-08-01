@@ -59,7 +59,10 @@ function IdeaCard({ i }: { i: IdeaCandidate }) {
   const [open, setOpen] = useState(false)
   const title = i.normalized_topic || i.raw_topic || 'Untitled idea'
   return (
-    <div className="ct-card ct-tap" onClick={() => setOpen(o => !o)}>
+    // ct-idea marks this as an IDEA card rather than a draft card: they share
+    // the card shell, and a count that conflates them is a count of two
+    // different row sets.
+    <div className="ct-card ct-idea ct-tap" onClick={() => setOpen(o => !o)}>
       <div className="ct-idea-h">
         {i.composite_score !== null && <div className="ct-idea-n">{i.composite_score}</div>}
         <div className="ct-mid">
