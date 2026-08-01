@@ -11,7 +11,7 @@ import { useOps } from '../../hooks/useOps'
 import { pendingOps } from '../../lib/ops'
 import type { Filter } from '../../lib/inbox'
 import type { ContentLane } from '../../lib/content'
-import { MobileTabs, Rail } from './Rail'
+import { MobileTabs, Rail, WorkSegment } from './Rail'
 import { ContentList } from './ContentList'
 import { DraftPane } from './DraftPane'
 import { ThreadPeer } from './ThreadPeer'
@@ -24,7 +24,7 @@ import { useContentBadge } from './useContentBadge'
 import { hasMock } from './mock'
 import { parseWbHash, wbHash } from './route'
 import {
-  addPeer, contextPeer, dropPeer, hasChat, isWorkJob, jobHasList, peerKey,
+  addPeer, contextPeer, dropPeer, hasChat, jobHasList, peerKey,
   planWorkbench, type Canvas, type Job, type Peer,
 } from './layout'
 import './styles.css'
@@ -275,6 +275,9 @@ export default function Shell() {
   const workSurface = (
     <>
       <SeatHealthBanner />
+      {/* One model, both canvases: the lane switch for Work lives HERE now, not in
+          the mobile ribbon, so desktop and phone teach the same thing (MF3). */}
+      <WorkSegment job={job} counts={counts} onJob={goJob} />
       {job === 'inbox' && inboxSurface}
       {job === 'drafts' && (
         inboxError
@@ -363,16 +366,10 @@ export default function Shell() {
     return (
       <div className="app wb">
         <div className="wb-ribbon">
-          {isWorkJob(job) ? (
-            <div className="wb-workseg">
-              {(['drafts', 'content'] as const).map(j => (
-                <span key={j} className={`wb-ws${job === j ? ' on' : ''}`} onClick={() => goJob(j)}>
-                  {j === 'drafts' ? 'DMs' : 'Content'}
-                  {(counts[j] ?? 0) > 0 && <b>{counts[j]}</b>}
-                </span>
-              ))}
-            </div>
-          ) : <span className="wb-rib-j">{job === 'settings' ? 'Settings' : ''}</span>}
+          {/* The lane switch moved into the working surface (WorkSegment) so both
+              viewports carry the identical control. The ribbon keeps what belongs
+              to the FRAME: how fresh the data is, and the way out to Settings. */}
+          <span className="wb-rib-j">{job === 'settings' ? 'Settings' : ''}</span>
           <span className={`wb-rib-sync${inboxError ? ' bad' : ''}`} onClick={inbox.refresh}>
             <span className={`wb-sync-dot${inboxError ? ' bad' : ''}`} />
             {inboxError ? 'not syncing' : relAge(inbox.loadedAt)}
