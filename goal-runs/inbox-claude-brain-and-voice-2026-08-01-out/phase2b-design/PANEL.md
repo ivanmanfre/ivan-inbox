@@ -1,3 +1,5 @@
+> 🔴 **RETRACTION 2026-08-01.** This panel scored three directions. The third, `paper` (warm paper / editorial serif), was **rejected by Ivan and erased** — the warm-paper editorial identity is retired and was never asked for. Its branch, brief, crops and rescore are deleted. **Ignore every `paper` row below.** The live comparison is `instrument` (7.50) vs `inkline` (6.75), and the panel's recommendation — which was framed around grafting brand onto instrument — now reduces to instrument as base with inkline's readable third text tier and severity discipline as the named graft.
+
 # Phase 2B — design judge panel (4 seats, one agent, sequential)
 
 Judged on rendered images only. Calibration was performed and written before any candidate crop was opened. This document ends at a **recommendation**. It does not pick a winner, does not converge, and applies nothing.

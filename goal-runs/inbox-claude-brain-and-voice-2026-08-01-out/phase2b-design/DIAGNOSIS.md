@@ -16,14 +16,8 @@
 
 **What "meh" is, made falsifiable:** the shipped surface is indistinguishable from a default dark-theme admin template with a green accent. The test for any new direction: put a 390px crop next to `ivanmanfredi.com` and next to a generic template — a stranger should bin it with the former.
 
-## Addendum — what the brand actually feels like (live capture, 2026-08-01)
+## Addendum — RETRACTED 2026-08-01
 
-Captured `ivanmanfredi.com` at 1440 and 390 into `brand-refs/` (site-desktop-top/mid, site-mobile-top/mid). What the live site is made of, none of which the inbox app has:
+This section originally captured `ivanmanfredi.com` and catalogued its warm paper ground, editorial serif display and highlighter-green gesture as "what the brand actually feels like", then reasoned that the app should acquire them. **Ivan rejected that outright**, and he was right to: the warm-paper editorial identity is retired (`~/.claude/memory/global/brand-visual-system.md`), the retirement is not scoped to content assets, and a screenshot of the marketing site is not a licence to port its aesthetic onto an operator tool. The site is not the product.
 
-- **Warm paper ground, not black.** Cream/off-white field with a faint grid-paper texture. The app's `--bg:#000` is a token choice the brand never made on its flagship surface.
-- **Editorial serif display at extreme scale** ("Add $15k-$50k/mo of new pipeline"), with *italic serif* emphasis reversed out of solid ink-black blocks ("in 90 days."). Memory canon agrees: editorial italic serif numerals are a standing brand preference (`feedback-editorial-numerals`).
-- **The green is a highlighter, not a status color.** On the site, the brand green appears as a hand-swiped highlight *behind* the key number — an annotation gesture. In the app it is only ever a status dot/button fill. Same-ish hue, entirely different deployment; this is the clearest instance of "tokens are not a brand".
-- **Mono-spaced small-caps eyebrows** for labels ("FOR AGENCY OWNERS") — a typewriter/annotation register. (App constraint keeps monospace out of body UI, but the *small-caps letter-spaced eyebrow* register is portable without monospace.)
-- **Ink-block CTAs** — solid black rectangles with serif text, not rounded green pills.
-
-Implication for the 3 treatment directions: at least one direction must test the paper-editorial register honestly (the app already has a working `data-theme='light'` hook), and the accent-deployment question (status color vs highlighter gesture) is a real axis to vary. `ui-serif`/Georgia is reachable *within* the locked system font stack without any webfont — whether display serif belongs in a working tool at all is exactly the kind of taste call the ballot exists for.
+What survives from the diagnosis above is only the falsifiable part: the shipped app reads as a generic dark admin template with a green accent, and the last tournament could not fix that because its contract forbade changing the look. The cure is a distinctive treatment of the app's own material — **not** an import of a dead identity.

@@ -13,7 +13,7 @@ The prior contract locked the *look* and competed on *layout* (see `DIAGNOSIS.md
 - No monospace outside code blocks (chat code blocks exempt, as today).
 - WCAG AA contrast for body text in the direction's PRIMARY theme; the secondary `data-theme` must remain functional and legible (no invisible text), though it may be visibly less polished.
 - All existing tests stay green; lint clean; zero console errors; zero horizontal overflow at 390px (sweep.mjs gates).
-- Brand-canon note builders must read: the warm-paper Comic-Grid TOKEN SET (`#F7F4EF`+sage `#2A8F65`+DM Serif+italic) is RETIRED for content assets and client deliverables (Ivan 2026-07-24/26). This app is neither, and the live `ivanmanfredi.com` still ships the warm-editorial *feel* — so a paper direction is legal here but must NOT resurrect the retired sage hex or italic-heavy register: accent stays `#10A37F`, italic ≤1 short phrase per surface (roman default), zero em dashes anywhere in UI copy.
+- 🔴 **Brand-canon, ABSOLUTE (amended 2026-08-01 after Ivan rejected a direction that violated it):** the warm-paper editorial identity — paper ground, editorial/DM serif display, sage, italic register — is RETIRED and is available on **no** surface. See `~/.claude/memory/global/brand-visual-system.md`. Do not propose it; do not port it from the marketing site; screenshotting `ivanmanfredi.com` is not a licence, because the site is not the product. The original wording of this line reasoned that the retirement was scoped to "content assets and client deliverables" and therefore a paper direction was legal here. **That reasoning was wrong and produced the rejected direction.** Accent stays `#10A37F`; italic near-zero; zero em dashes anywhere in UI copy.
 
 ## Open for the first time (the competitive dimensions)
 
@@ -21,15 +21,14 @@ Type scale + contrast ratios · spatial rhythm + density · depth/material (surf
 
 **Anti-re-skin rule** (from design-elevation skill, hard-learned): a token swap alone is a DQ. Each direction must change, at minimum: the type scale (real hierarchy jumps, not ±2px), the section-header treatment, the table/row treatment on the content lanes, and the empty-state character. Layout (columns, nav, screen inventory) stays fixed; *hierarchy within a screen* is treatment territory.
 
-## The three directions (briefs in `brief-{paper,inkline,instrument}.md`)
+## The directions (briefs in `brief-{inkline,instrument}.md`)
 
 | id | thesis | ground | register |
 |---|---|---|---|
-| `paper` | **Field Notes** — the founder's paper-editorial feel, made into a working tool | warm paper light | editorial serif numerals, ink rules, highlighter accent |
 | `inkline` | **Ink & Signal** — the dark app, but *branded*: editorial spine on layered dark material | layered dark | serif display numerals on stats, small-caps eyebrows, accent as signal+sweep |
 | `instrument` | **Instrument** — quiet precision-tool austerity, Linear/Geist grade | cool neutral light | tabular-nums, hairlines, rationed accent, depth by elevation |
 
-Three grounds (warm-light / dark / cool-light), three accent deployments, three type registers — differing in look, not layout.
+Two grounds (dark / cool-light), two accent deployments, two type registers — differing in look, not layout.
 
 ## External references — fetched, never recalled
 
