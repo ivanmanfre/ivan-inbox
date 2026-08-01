@@ -598,8 +598,20 @@
   flex-wrap:nowrap; overflow:hidden;
   margin-top:2px; min-width:0;
 }
-.wb.wb.wb .ct-meta > .ct-st{ flex:none; order:-1 }
 .wb.wb.wb .ct-meta > *{ flex:none }
+/* Slot #1 is a COLUMN, so it holds its width whether or not the row has a
+   verdict. A row with no QA spends the slot on an em dash rather than letting
+   the next chip slide left into it — that is the difference between a column
+   and a coincidence. */
+.wb.wb.wb .ct-meta > .ct-st{
+  flex:none; order:-1;
+  min-width:74px; justify-content:center;
+  display:inline-flex; align-items:center;
+}
+.wb.wb.wb .ct-chip-none{
+  background:transparent; color:var(--text4);
+  box-shadow:inset 0 0 0 1px var(--hairline);
+}
 .wb.wb.wb .ct-meta > .ct-topic{ flex:1 1 auto; min-width:0;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
 .wb.wb.wb .ct-chip, .wb.wb.wb .ct-lane, .wb.wb.wb .td-kind, .wb.wb.wb .r .client{
@@ -611,9 +623,20 @@
 /* The two review actions ride in the TRAILING column as compact controls, so a
    285-row list keeps its 40-60px band instead of growing a 44px button bar
    under every actionable row (7.8). */
+.wb.wb.wb .ct-tail{
+  grid-column:3; justify-self:end;
+  display:flex; flex-direction:row; align-items:center;
+  flex-wrap:wrap; justify-content:flex-end; gap:6px 10px;
+  text-align:right;
+}
 .wb.wb.wb .ct-card .ct-ac{
-  grid-column:3; grid-row:1;
   display:flex; flex-direction:row; gap:6px; margin:0;
+}
+/* A failed approve is rare and must never be swallowed: it takes its own line
+   inside the trailing slot rather than being hidden to protect the band. */
+.wb.wb.wb .ct-tail .ops-err{
+  flex-basis:100%; margin:0; text-align:right;
+  font-size:var(--fs-meta); color:var(--sev-urgent);
 }
 .wb.wb.wb .ct-card .ct-ac .btn{
   flex:none; padding:4px 10px; font-size:var(--fs-eyebrow); font-weight:600;
@@ -776,13 +799,16 @@
 .wb.wb.wb .ct-fclear{ text-decoration:underline; cursor:pointer; margin-left:8px }
 
 /* The nav pills (M7). Chrome the reference wins on outright. */
-.wb.wb.wb .nav{ padding:20px var(--gut) 0 }
+.wb.wb.wb .nav{ padding:18px var(--gut) 12px }
+/* The reference's top row, literally: oversized uppercase title flush left, pill
+   chrome right-set on the same baseline. */
 .wb.wb.wb .wb-head{
   display:flex; align-items:center; gap:16px; flex-wrap:wrap;
-  padding:20px var(--gut) 12px;
 }
-.wb.wb.wb .wb-head .nav{ padding:0 }
-.wb.wb.wb .chips{ display:flex; gap:8px; margin:14px 0 0; flex-wrap:wrap; overflow:visible }
+.wb.wb.wb .wb-head .row-top{ flex:none }
+.wb.wb.wb .wb-head .chips{ margin:0 0 0 auto }
+.wb.wb.wb .chips{ display:flex; align-items:center; gap:8px; margin:12px 0 0;
+  flex-wrap:wrap; overflow:visible }
 .wb.wb.wb .chip{
   height:30px; display:inline-flex; align-items:center; padding:0 14px;
   background:var(--surface2); color:var(--text3);

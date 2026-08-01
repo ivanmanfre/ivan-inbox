@@ -7,7 +7,7 @@ import {
 import {
   CONTENT_LANES, LANE_LABEL, LANE_POSSESSIVE, PIPELINE_STAGES,
   STAGE_LABEL, countBoardVisible, countUndated, groupByStage, isStuckScheduled,
-  queueFailed, reviewActionable,
+  queueFailed, reviewActionable, stageOf,
   type ContentDraft, type ContentLane, type ContentStage, type ContentStages,
 } from '../../lib/content'
 import { isStuckResource } from '../../lib/styles'
@@ -49,6 +49,21 @@ const STAGE_COLOR: Record<string, string> = {
   published: 'rgba(235,235,245,.55)',
 }
 
+// One working-list row, built to the spine's anchor-column contract (§7.1/7.2).
+//
+// What changed and why it is the single most-weighted defect in the run: the
+// status/QA chip used to sit inside the WRAPPING `.ct-meta` flex, so its x
+// position moved with the title's length and nothing told the eye which row it
+// was on. Two fixes, both applied, because 285 rows is not a place to be clever:
+//
+//   1. status is expressed ON THE ANCHOR — a corner dot on the 28px plate, so
+//      the stage of every row reads down a single 28px-wide column;
+//   2. the status chip is slot #1 of a `flex-wrap:nowrap` meta row that can
+//      never reflow, so the QA verdict is at a fixed x on every row too.
+//
+// The rail (anchor 28px + 12px gap) puts every row's PRIMARY text at an
+// identical x at 390 and at 1440. That is what makes a three-second row-find
+// possible on a list this long.
 function Card({ d, lane, refresh, onOpen, active }: {
   d: ContentDraft; lane: ContentLane; refresh: () => void
   onOpen: (id: string, label: string) => void; active: boolean
@@ -56,41 +71,55 @@ function Card({ d, lane, refresh, onOpen, active }: {
   const thumb = d.image_urls?.[0]
   const title = d.title || d.topic || 'Untitled'
   const score = draftScore(d)
+  const stage = stageOf(d)
+  const qa = d.qa_verdict?.trim().toUpperCase()
   return (
     <div
       className={`ct-card ct-tap${active ? ' wb-card-on' : ''}`}
       onClick={() => onOpen(d.id, title)}
     >
-      <div className="ct-top">
+      {/* anchor slot — exactly ONE mark, at a fixed width, carrying the stage */}
+      <div className="ct-anchor" data-st={stage}>
         {thumb
           ? <img className="ct-thumb" src={thumb} alt="" />
-          : <div className="ct-thumb ct-thumb-empty">No image</div>}
-        <div className="ct-mid">
-          <div className="ct-title">{title}</div>
-          {d.title && d.topic && d.title !== d.topic && <div className="ct-topic">{d.topic}</div>}
-          <div className="ct-meta">
-            <span className="ct-chip">{typeLabel(d.type)}</span>
-            {/* QA on the card is what makes a 70-row review list scannable —
-                strictly, only a literal PASS is a pass. */}
-            {d.qa_verdict && (
-              <span className={`ct-chip ${d.qa_verdict.trim().toUpperCase() === 'PASS' ? 'ct-chip-ok' : 'ct-chip-warn'}`}>
-                {d.qa_verdict}{score !== null ? ` ${score}` : ''}
-              </span>
-            )}
-            {d.funnel_stage && <span className="ct-chip">{d.funnel_stage}</span>}
-            <span className="ct-tm">{relTime(d.updated_at)}</span>
-            {lane === 'risedtc' && (
-              // On a read-only lane the fact that matters is whether the client
-              // can SEE the row, not that it is a client row. Strict === true:
-              // absence of the flag is not evidence of promotion.
-              <span className={d.board_visible === true ? 'ct-lane' : 'ct-chip'}>
-                {d.board_visible === true ? 'On Mattan’s board' : 'Internal'}
-              </span>
-            )}
-          </div>
+          : <div className="ct-thumb ct-thumb-empty">◻</div>}
+        <span className="ct-anchor-dot" />
+      </div>
+      <div className="ct-mid">
+        <div className="ct-title ct-row-p">{title}</div>
+        <div className="ct-meta">
+          {/* SLOT #1 — never reflows, never moves. On a 70-row review list the
+              QA verdict is the fact you are scanning for, so it is the fact
+              that gets the fixed position; strictly, only a literal PASS is a
+              pass. Rows with no verdict still spend the slot, so the column
+              stays a column. */}
+          <span
+            className={`ct-chip ct-st ${qa ? (qa === 'PASS' ? 'ct-chip-ok' : 'ct-chip-warn') : 'ct-chip-none'}`}
+          >
+            {d.qa_verdict ? `${d.qa_verdict}${score !== null ? ` ${score}` : ''}` : '—'}
+          </span>
+          <span className="ct-chip">{typeLabel(d.type)}</span>
+          {d.funnel_stage && <span className="ct-chip">{d.funnel_stage}</span>}
+          {lane === 'risedtc' && (
+            // On a read-only lane the fact that matters is whether the client
+            // can SEE the row, not that it is a client row. Strict === true:
+            // absence of the flag is not evidence of promotion.
+            <span className={d.board_visible === true ? 'ct-lane' : 'ct-chip'}>
+              {d.board_visible === true ? 'On Mattan’s board' : 'Internal'}
+            </span>
+          )}
+          {d.title && d.topic && d.title !== d.topic && <span className="ct-topic">{d.topic}</span>}
         </div>
       </div>
-      {reviewActionable(d.status, lane) && <ReviewActions id={d.id} onDone={refresh} compact />}
+      {/* trailing slot — the two review controls stay INSIDE the row's third
+          column rather than growing a 44px button bar underneath it, which is
+          what keeps a 285-row list inside the 40-60px density band. The value
+          itself is last, right-aligned and tabular, so every row in the list
+          shares one right edge. */}
+      <div className="ct-tail">
+        {reviewActionable(d.status, lane) && <ReviewActions id={d.id} onDone={refresh} compact />}
+        <span className="ct-tm">{relTime(d.updated_at)}</span>
+      </div>
     </div>
   )
 }
@@ -101,15 +130,16 @@ function Skeleton() {
       <div className="wb-pipe">
         <div className="sk" style={{ height: 10, borderRadius: 99 }} />
       </div>
-      {Array.from({ length: 3 }).map((_, i) => (
+      {/* The skeleton has to be built to the same rail as the rows it stands in
+          for, or the list jumps 28px sideways the moment the fetch lands. */}
+      {Array.from({ length: 8 }).map((_, i) => (
         <div className="ct-card" key={i}>
-          <div className="ct-top">
-            <div className="sk" style={{ width: 56, height: 56, borderRadius: 12, flex: 'none' }} />
-            <div className="ct-mid">
-              <div className="sk sk-line" style={{ width: '62%' }} />
-              <div className="sk sk-line" style={{ width: '38%', marginTop: 8 }} />
-            </div>
+          <div className="ct-anchor"><div className="sk" style={{ width: 28, height: 28, borderRadius: 6 }} /></div>
+          <div className="ct-mid">
+            <div className="sk sk-line" style={{ width: '62%' }} />
+            <div className="sk sk-line" style={{ width: '38%', marginTop: 4 }} />
           </div>
+          <div className="ct-tail"><div className="sk sk-line" style={{ width: 40 }} /></div>
         </div>
       ))}
     </div>
@@ -529,7 +559,11 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
 
   return (
     <>
-      <div className="nav">
+      {/* M1 — the display title flush left with the pill switcher right-set
+          beside it, which is the reference's whole top row. The lane switch is a
+          view switcher, so it keeps the pill (§6.3.2); it is not a filter and
+          does not take the `label: value ⌄` grammar. */}
+      <div className="nav wb-head">
         <div className="row-top">
           <h2>Content</h2>
         </div>
