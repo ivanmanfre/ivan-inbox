@@ -6,6 +6,8 @@ import {
   PIPELINE_STAGES, ALERT_STAGES, STAGE_LABEL,
   normalizeAgentLog, normalizeQa, taxonomyFields, normalizeKeyPoints,
   normalizeImageUrls, reviewActionable,
+  CONTENT_LANES, LANE_LABEL, LANE_POSSESSIVE, isBackfillEntry, parseLogEntry,
+  scoreProgression, normalizeSourceDetail, taxonomyExtras, taxonomyValue, queueFailed,
 } from './content'
 
 const base: ContentDraft = {
@@ -251,7 +253,11 @@ describe('normalizeAgentLog', () => {
     expect(normalizeAgentLog([
       { ts: '2026-07-31T12:00:08Z', body: '[Auto-promoted by LM Curator — firing generation]\n\nWhy: …' },
     ])).toEqual([
-      { ts: '2026-07-31T12:00:08Z', body: '[Auto-promoted by LM Curator — firing generation]\n\nWhy: …' },
+      {
+        ts: '2026-07-31T12:00:08Z',
+        body: '[Auto-promoted by LM Curator — firing generation]\n\nWhy: …',
+        agent: null, source: null, comment_id: null,
+      },
     ])
   })
   it('orders a fully-timestamped log oldest first', () => {
@@ -275,19 +281,21 @@ describe('normalizeAgentLog', () => {
     expect(normalizeAgentLog(42)).toEqual([])
     expect(normalizeAgentLog({ nope: 1 })).toEqual([])
     expect(normalizeAgentLog([{ ts: '2026-07-31T12:00:08Z' }])).toEqual([])
-    expect(normalizeAgentLog('{not json')).toEqual([{ ts: null, body: '{not json' }])
+    expect(normalizeAgentLog('{not json'))
+      .toEqual([{ ts: null, body: '{not json', agent: null, source: null, comment_id: null }])
   })
   it('unwraps a JSON-string column and a bare-string entry', () => {
     expect(normalizeAgentLog('[{"ts":"2026-07-31T12:00:08Z","body":"promoted"}]'))
-      .toEqual([{ ts: '2026-07-31T12:00:08Z', body: 'promoted' }])
-    expect(normalizeAgentLog(['bare line'])).toEqual([{ ts: null, body: 'bare line' }])
+      .toEqual([{ ts: '2026-07-31T12:00:08Z', body: 'promoted', agent: null, source: null, comment_id: null }])
+    expect(normalizeAgentLog(['bare line']))
+      .toEqual([{ ts: null, body: 'bare line', agent: null, source: null, comment_id: null }])
   })
 })
 
 describe('normalizeQa', () => {
   it('reads the live {score,verdict,feedback} shape', () => {
     expect(normalizeQa({ score: 82, verdict: 'PASS', feedback: 'VERDICT: REWRITE_OK…' }))
-      .toEqual({ score: 82, verdict: 'PASS', feedback: 'VERDICT: REWRITE_OK…', pass: true })
+      .toMatchObject({ score: 82, verdict: 'PASS', feedback: 'VERDICT: REWRITE_OK…', pass: true })
   })
   it('only calls a literal PASS a pass', () => {
     // A live row carries verdict:"PASS" alongside feedback prose that opens
@@ -350,5 +358,201 @@ describe('key_points / image_urls guards', () => {
     expect(normalizeImageUrls('https://x/1.png')).toEqual(['https://x/1.png'])
     expect(normalizeImageUrls(['https://x/1.png', null])).toEqual(['https://x/1.png'])
     expect(normalizeImageUrls(null)).toEqual([])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Phase 1B — the fields the shipped surface dropped, and the lane rename.
+// ---------------------------------------------------------------------------
+
+describe('lane labels', () => {
+  // 'risedtc' is a DATABASE VALUE. Lane B is called "Mattan Danino" everywhere a
+  // human reads it (IA §0), and the mapping lives in exactly one place so a
+  // rename cannot half-land the way the shipped "Rise" chips did.
+  it('names lane B after the person, never after the account', () => {
+    expect(LANE_LABEL.risedtc).toBe('Mattan Danino')
+    expect(LANE_LABEL.ivan).toBe('Ivan')
+    expect(Object.values(LANE_LABEL).join(' ')).not.toMatch(/Rise/)
+    expect(LANE_POSSESSIVE.risedtc).toBe('Mattan’s')
+  })
+  it('keeps exactly two lanes', () => {
+    expect(CONTENT_LANES).toEqual(['ivan', 'risedtc'])
+  })
+})
+
+describe('normalizeAgentLog attribution (AMENDMENTS §A4.1)', () => {
+  // `agent` is present on 2 999 of 2 999 live entries and `source` on 2 996.
+  // The shipped normalizer returned {ts, body} and threw both away, so the proof
+  // row's 37 entries rendered as 37 anonymous paragraphs.
+  it('carries agent, source and comment_id through', () => {
+    expect(normalizeAgentLog([{
+      ts: '2026-07-13T22:30:51.006Z',
+      body: 'Generation stuck — no completion within 23 minutes.',
+      agent: 'Stuck Sentinel',
+      source: 'n8n',
+    }])).toEqual([{
+      ts: '2026-07-13T22:30:51.006Z',
+      body: 'Generation stuck — no completion within 23 minutes.',
+      agent: 'Stuck Sentinel',
+      source: 'n8n',
+      comment_id: null,
+    }])
+  })
+  it('marks a clickup_backfill entry as reconstruction, not a live step', () => {
+    const [live, back] = normalizeAgentLog([
+      { body: 'a', agent: 'QA Agent', source: 'n8n' },
+      { body: 'b', agent: 'QA Agent', source: 'clickup_backfill', comment_id: '86ahjhub4' },
+    ])
+    expect(isBackfillEntry(live)).toBe(false)
+    expect(isBackfillEntry(back)).toBe(true)
+    expect(back.comment_id).toBe('86ahjhub4')
+  })
+  it('still never throws on the shapes that carry no attribution', () => {
+    expect(normalizeAgentLog(['bare'])[0].agent).toBeNull()
+    expect(normalizeAgentLog([{ body: 'x', agent: 42 }])[0].agent).toBe('42')
+  })
+})
+
+describe('parseLogEntry', () => {
+  const entry = (body: string, agent: string | null = null) =>
+    ({ ts: null, agent, body, source: null, comment_id: null })
+
+  it('classifies a verdict line and keeps the scale it was written on', () => {
+    const p = parseLogEntry(entry('VERDICT: REWRITE_OK\nSCORE: 68/90\nISSUES: 3'))
+    expect(p.status).toBe('REWRITE_OK')
+    expect(p.score).toBe(68)
+    // 74/90 is a live form. Assuming 100 is what turns it into a wrong percentage.
+    expect(p.scoreMax).toBe(90)
+    expect(p.issues).toBe(3)
+  })
+  it('reads a HALT out of the agent name, as the dashboard does', () => {
+    expect(parseLogEntry(entry('stopping here', 'HALT Sentinel')).status).toBe('HALT')
+  })
+  it('surfaces a substantial REWRITE block and ignores a stub', () => {
+    expect(parseLogEntry(entry('REWRITE: short')).rewrite).toBeNull()
+    expect(parseLogEntry(entry(`REWRITE: ${'x'.repeat(60)}`)).rewrite).toHaveLength(60)
+  })
+  it('humanises a JSON body but keeps the raw payload reachable', () => {
+    const p = parseLogEntry(entry('{"qa_feedback":"too long","word_cap":"171 words"}'))
+    expect(p.text).toBe('too long')
+    // The dashboard drops the payload because it truncates to 160 chars. This
+    // register does not truncate, so the payload stays in place.
+    expect(p.json?.word_cap).toBe('171 words')
+  })
+  it('leaves an unparseable body whole', () => {
+    const p = parseLogEntry(entry('Publisher wrote urn:li:activity:123'))
+    expect(p.status).toBeNull()
+    expect(p.text).toBe('Publisher wrote urn:li:activity:123')
+  })
+  it('reads the score progression across attempts', () => {
+    const log = normalizeAgentLog([
+      { body: 'VERDICT: REWRITE_OK SCORE: 68/90', agent: 'QA Agent' },
+      { body: 'no numbers here', agent: 'Lint Gate' },
+      { body: 'VERDICT: REWRITE_OK SCORE: 74/90', agent: 'QA Agent' },
+    ])
+    expect(scoreProgression(log).map(s => s.score)).toEqual([68, 74])
+  })
+})
+
+describe('normalizeQa — the full register (IA §5.2)', () => {
+  // The live proof row's qa object carries exactly these keys.
+  const live = {
+    score: 82, verdict: 'PASS', feedback: 'VERDICT: REWRITE_OK…',
+    rewrite_text: 'the copy that actually shipped', rewrite_total: 2,
+    auto_promoted: true, parse_success: true, failing_slides: [2, 5],
+    published_version: 3, regenerate_instruction: 'tighten the hook',
+    qa_regen_history: [{ iteration: 1, score: 68, issues: 4, rewrite_applied: true }],
+    qa_regen_attempts: 1, backfilled: 'true', some_new_key_2026: 'kept',
+  }
+  it('carries the applied rewrite — what actually shipped', () => {
+    const q = normalizeQa(live)!
+    expect(q.rewriteText).toBe('the copy that actually shipped')
+    expect(q.rewriteTotal).toBe(2)
+  })
+  it('carries the regeneration history per attempt', () => {
+    const q = normalizeQa(live)!
+    expect(q.regenAttempts).toBe(1)
+    expect(q.regenHistory[0]).toMatchObject({ iteration: 1, score: 68, issues: 4, rewriteApplied: true })
+  })
+  it('carries gate detail and the provenance of the verdict itself', () => {
+    const q = normalizeQa(live)!
+    expect(q.gates.map(([k]) => k)).toContain('failing_slides')
+    expect(q.backfilled).toBe(true)
+    expect(q.parseSuccess).toBe(true)
+    expect(q.autoPromoted).toBe(true)
+  })
+  it('keeps a key nobody has written code for yet', () => {
+    // ~23 qa keys are live and the generator adds more. An unnamed key appears
+    // the day it appears instead of the day someone edits a constant.
+    expect(normalizeQa(live)!.rest).toContainEqual(['some_new_key_2026', 'kept'])
+  })
+  it('renders a row whose only QA content is a rewrite', () => {
+    expect(normalizeQa({ rewrite_text: 'x' })?.rewriteText).toBe('x')
+  })
+})
+
+describe('normalizeSourceDetail (AMENDMENTS §A4.2 — a live crash class)', () => {
+  // source_detail is an OBJECT on 71 of 282 rows, 63 of them Mattan's. The
+  // shipped pane pushed it into a JSX child, which throws and blanks the pane.
+  it('reads the call-quote shape the client board shows as its source chip', () => {
+    const s = normalizeSourceDetail({
+      kind: 'call', label: 'From your sales calls',
+      call_title: 'RISE ↔ merchant, 07-24', quote: 'we lose the second order',
+    })!
+    expect(s.kind).toBe('call')
+    expect(s.quote).toBe('we lose the second order')
+    expect(s.callTitle).toBe('RISE ↔ merchant, 07-24')
+  })
+  it('links only a resolvable URL and keeps every other key as a row', () => {
+    const s = normalizeSourceDetail({
+      kind: 'portfolio', label: 'From RISE DTC’s portfolio',
+      metric: '+38% repeat rate', slug: 'repeat-rate', source_url: 'https://x/y',
+    })!
+    expect(s.links).toEqual([['source_url', 'https://x/y']])
+    // A slug is a reference, not a URL. Linking one produces a dead anchor that
+    // looks like a working one.
+    expect(s.rows.map(([k]) => k)).toEqual(['metric', 'slug'])
+  })
+  it('drops nothing from a shape no code has seen', () => {
+    const s = normalizeSourceDetail({ born_gated: true, gate_keyword: 'KIT', goal_run: 'x' })!
+    expect(s.rows.map(([k]) => k)).toEqual(['born_gated', 'gate_keyword', 'goal_run'])
+  })
+  it('still reads the 3 rows that hold a bare string', () => {
+    expect(normalizeSourceDetail('Hand-picked')?.text).toBe('Hand-picked')
+    expect(normalizeSourceDetail(null)).toBeNull()
+    expect(normalizeSourceDetail('   ')).toBeNull()
+  })
+})
+
+describe('taxonomyExtras', () => {
+  it('emits every key beyond the six the code names', () => {
+    expect(taxonomyExtras({
+      pillar: 'methodology', structure_used: 'TEARDOWN',
+      value_tier: 'high', target_persona: 'DTC founder', experiment: { arm: 'a' },
+    })).toEqual([['target_persona', 'DTC founder'], ['value_tier', 'high']])
+  })
+  it('leaves the two call-out keys to their own placements', () => {
+    // error_message renders next to the error stage chip; structure_reason
+    // renders beneath structure_used as its justification.
+    expect(taxonomyExtras({ error_message: 'boom', structure_reason: 'because' })).toEqual([])
+    expect(taxonomyValue({ error_message: 'boom' }, 'error_message')).toBe('boom')
+  })
+  it('yields nothing for a bare-string or absent taxonomy', () => {
+    expect(taxonomyExtras('Teardown')).toEqual([])
+    expect(taxonomyExtras(null)).toEqual([])
+  })
+})
+
+describe('queueFailed', () => {
+  it('is the only place a publish failure is written down', () => {
+    const base = {
+      id: '1', clickup_task_id: null, post_text: null, scheduled_at: null,
+      posted_at: null, status: 'posted', platform: 'linkedin', is_repost: null,
+      error_message: null, created_at: '2026-07-01T00:00:00Z',
+      post_kind: 'reach', unipile_share_url: null,
+    }
+    expect(queueFailed(base)).toBe(false)
+    expect(queueFailed({ ...base, error_message: '  ' })).toBe(false)
+    expect(queueFailed({ ...base, status: 'failed', error_message: '429' })).toBe(true)
   })
 })

@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useId, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import {
-  bucketDrafts, groupByStage, fetchContentDrafts, fetchDraftDetail, fetchLaneProbe,
+  bucketDrafts, groupByStage, fetchContentDrafts, fetchDraftDetail, fetchIdeaCandidates,
+  fetchLaneProbe, fetchScheduledQueue,
   type ContentBuckets, type ContentDraft, type ContentDraftDetail, type ContentLane,
-  type ContentStages,
+  type ContentStages, type IdeaCandidate, type ScheduledQueueRow,
 } from '../lib/content'
+import { fetchAlerts, fetchDailySummaries, type AgentSummary } from '../lib/agent'
+import { fetchResources, fetchStyleRoster, type Resource, type StylePrompt } from '../lib/styles'
 
 export function useContent(lane: ContentLane = 'ivan') {
   const [drafts, setDrafts] = useState<ContentDraft[]>([])
@@ -103,4 +106,79 @@ export function useDraftDetail(id: string | null, reloadKey: unknown = 0) {
   }, [id, reloadKey])
 
   return { detail, missing, loading, error }
+}
+
+// ---------- the row sets the content section reads BESIDE the drafts ----------
+//
+// Each one is a plain fetch-on-mount with the same three-state discipline as
+// useContent (error surfaced, loadedAt stamped only on success, empty ≠
+// unreadable). None of them subscribes to realtime: a second postgres_changes
+// binding per section is exactly the collision the useId() namespacing exists
+// for, and none of these tables changes while Ivan is looking at it.
+
+type Aux<T> = { rows: T; loading: boolean; error: string | null; loadedAt: string | null; refresh: () => void }
+
+function useAux<T>(load: () => Promise<T>, initial: T, deps: unknown[]): Aux<T> {
+  const [rows, setRows] = useState<T>(initial)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [loadedAt, setLoadedAt] = useState<string | null>(null)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const run = useCallback(load, deps)
+  const refresh = useCallback(() => {
+    setLoading(true)
+    run()
+      .then(r => { setRows(r); setError(null); setLoadedAt(new Date().toISOString()); setLoading(false) })
+      .catch((e: unknown) => {
+        setError(e instanceof Error ? e.message : 'unavailable')
+        setLoading(false)
+      })
+  }, [run])
+  useEffect(() => { refresh() }, [refresh])
+  return { rows, loading, error, loadedAt, refresh }
+}
+
+// R4 — the publish queue. 152 rows read by NOTHING in the shipped app; this is
+// its first consumer. No lane argument and none needed: scheduled_posts has no
+// client_id column, so it is Ivan's by construction (IA §2.3).
+export function useScheduledQueue(enabled: boolean) {
+  return useAux<ScheduledQueueRow[]>(
+    () => (enabled ? fetchScheduledQueue() : Promise.resolve([])), [], [enabled])
+}
+
+// R7 — the Ideas stage. Also tenancy-column-less, also Ivan by construction.
+export function useIdeaCandidates(enabled: boolean) {
+  const [count, setCount] = useState<number | null>(null)
+  const aux = useAux<IdeaCandidate[]>(
+    () => (enabled
+      ? fetchIdeaCandidates().then(p => { setCount(p.count); return p.ideas })
+      : Promise.resolve([])),
+    [], [enabled])
+  return { ...aux, count }
+}
+
+// R6 — resources, now lane-scoped (the read change IA §7 names).
+export function useResources(lane: ContentLane) {
+  return useAux<Resource[]>(() => fetchResources(lane), [], [lane])
+}
+
+// R5 — the style roster. Shared registry (scope='shared'), rendered in both
+// lanes; only the PREVIEWS are lane-scoped, and those are computed from the
+// lane's already-loaded rows rather than fetched.
+export function useStyleRoster() {
+  return useAux<StylePrompt[]>(() => fetchStyleRoster(), [], [])
+}
+
+// R8/R9 — the two n8nclaw streams IA §6 places in Ivan's lane: the alert COUNT
+// (every live row is outside the 14-day window, so the count is the whole
+// story) and the daily summaries. Read-only; no ack, no send.
+export function useAgentDigest(enabled: boolean) {
+  const [olderUnsent, setOlderUnsent] = useState(0)
+  const aux = useAux<AgentSummary[]>(
+    () => (enabled
+      ? Promise.all([fetchAlerts(), fetchDailySummaries()])
+        .then(([alerts, summaries]) => { setOlderUnsent(alerts.olderUnsent); return summaries })
+      : Promise.resolve([])),
+    [], [enabled])
+  return { ...aux, olderUnsent }
 }

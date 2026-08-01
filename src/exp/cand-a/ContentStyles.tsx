@@ -113,7 +113,7 @@ export function ContentStyles() {
                 <span>{relTime(r.updated_at)}</span>
               </div>
             </div>
-            <a className="res-link" href={r.resource_url} target="_blank" rel="noreferrer">↗</a>
+            <a className="res-link" href={r.resource_url ?? undefined} target="_blank" rel="noreferrer">↗</a>
           </div>
         ))
       )}
