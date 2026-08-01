@@ -3,7 +3,7 @@ import { Avatar } from '../components/Avatar'
 import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { filterThreads, searchThreads, threadKind, type Filter, type Thread, eventTime } from '../lib/inbox'
-import { ago } from '../lib/today'
+import { checkedPhrase } from '../lib/today'
 
 function timeAgo(iso: string): string {
   const then = new Date(iso).getTime()
@@ -80,7 +80,7 @@ function EmptyVerified({ line, verifiedAt }: { line: string; verifiedAt?: string
       {verifiedAt !== undefined && (
         <div className="empty-f">
           <span className="empty-dot" />
-          Checked {verifiedAt ? `${ago(verifiedAt)} ago` : 'never'} — and this is a live read, not a stall.
+          {checkedPhrase(verifiedAt)}. This is a live read, not a stall.
         </div>
       )}
     </div>

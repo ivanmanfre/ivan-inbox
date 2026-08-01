@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  checkedPhrase,
   asBrief, cacheSafe, countsFromBrief, isCountsShape, partitionUrgencies,
   projectBrief, rollupReplies, todayLoad, type Brief, type BriefCounts,
 } from './today'
@@ -180,5 +181,32 @@ describe('todayLoad — the masthead cannot drift from its parts', () => {
     // The SCREEN renders '–' in that case; the load is not allowed to invent a
     // verified zero of its own.
     expect(todayLoad(null)).toEqual({ urgent: 0, approvals: 0, going: 0, total: 0 })
+  })
+})
+
+describe('checkedPhrase', () => {
+  it('says "just now" instead of the "now ago" the raw formatter produced', () => {
+    // ago() returns a bare "now" under a minute, so the old
+    // `${ago(t)} ago` template rendered "Checked now ago" on the freshest and
+    // most frequent read. This is the case that regressed in the field.
+    expect(checkedPhrase(new Date().toISOString())).toBe('Checked just now')
+  })
+
+  it('still appends "ago" for real durations', () => {
+    const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString()
+    expect(checkedPhrase(tenMinAgo)).toBe('Checked 10m ago')
+  })
+
+  it('never renders a bare "now ago" for any timestamp in the last hour', () => {
+    for (const mins of [0, 0.5, 1, 5, 30, 59]) {
+      const t = new Date(Date.now() - mins * 60 * 1000).toISOString()
+      expect(checkedPhrase(t)).not.toMatch(/now ago/)
+    }
+  })
+
+  it('names the absent case rather than printing "never checked ago"', () => {
+    expect(checkedPhrase(null)).toBe('Never checked')
+    expect(checkedPhrase(undefined)).toBe('Never checked')
+    expect(checkedPhrase('not-a-date')).toBe('Never checked')
   })
 })

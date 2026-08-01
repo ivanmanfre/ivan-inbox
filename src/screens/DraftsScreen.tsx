@@ -7,7 +7,7 @@ import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { approveDraft, discardDraft, threadChatId, type Thread } from '../lib/inbox'
 import { useOps } from '../hooks/useOps'
 import { pendingOps, type OpsDraft, type OpsKind } from '../lib/ops'
-import { ago } from '../lib/today'
+import { checkedPhrase } from '../lib/today'
 
 // ops_drafts predates the risedtc client id and still writes 'rise' for the Slack
 // kinds, so both map to the same chip. Without this the Rise segment silently
@@ -311,7 +311,7 @@ export function DraftsScreen({ threads, onOpenThread, refresh, onOpenOps, verifi
                 {verifiedAt !== undefined && (
                   <div className="empty-f">
                     <span className="empty-dot" />
-                    Checked {verifiedAt ? `${ago(verifiedAt)} ago` : 'never'} — and this is a live read, not a stall.
+                    {checkedPhrase(verifiedAt)}. This is a live read, not a stall.
                   </div>
                 )}
               </div>
