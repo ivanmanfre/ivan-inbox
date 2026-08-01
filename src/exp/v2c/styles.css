@@ -461,18 +461,23 @@
 .wb-ofresh-r{margin-left:auto;font-size:13px;color:var(--text2)}
 .wb-ocol-h-ttl{margin:14px 16px 2px;font-size:10.5px;font-weight:800;letter-spacing:.06em;
   text-transform:uppercase;color:var(--text3)}
+/* The third half of the verified Ops defect: `.app.dt .ops-sechdr` and
+   `.app.dt .ops-rows .log-r` centre themselves with `max-width:720px;margin:auto`
+   (styles.css:659-660), which in a 620px region resolves both side margins to 0 —
+   so the collapsed DONE/BLOCKED rows sat flush at the column edge while every
+   other row was inset 16px, and read as clipped. The gutter is restored here
+   unconditionally, at every width, because the bug is not width-dependent. */
+.wb.dt .wb-ocol .ops-sechdr,
+.wb.dt .wb-ocol .log-r{max-width:none;margin-left:16px;margin-right:16px}
+
 /* Two columns only where there is room for two readable measures, and only when
    the working region actually owns the canvas — planWorkbench sets .wb-narrow on
-   a region sharing width with a peer, and a 400px "column" is a squeeze. */
+   a region sharing width with a peer, and half of 620px is not a column. */
 @media (min-width:1000px){
   .wb.dt .wb-work:not(.wb-narrow) .wb-ocols{display:grid;
     grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:8px;align-items:start}
   .wb.dt .wb-work:not(.wb-narrow) .wb-ocols.one{display:block;max-width:760px;margin:0 auto}
   .wb.dt .wb-work:not(.wb-narrow) .wb-ocol{min-width:0}
-  .wb.dt .wb-work:not(.wb-narrow) .wb-ocol-h{border-left:.5px solid var(--sep)}
-  /* The history column's rows carried the queue's 16px inline gutter and read as
-     clipped at the column edge — the third half of the verified Ops defect. */
-  .wb.dt .wb-work:not(.wb-narrow) .wb-ocol-h .ops-sechdr{padding-left:16px;padding-right:16px}
-  .wb.dt .wb-work:not(.wb-narrow) .wb-ocol-h .log-r{padding-left:16px;padding-right:16px}
+  .wb.dt .wb-work:not(.wb-narrow) .wb-ocols:not(.one) .wb-ocol-h{border-left:.5px solid var(--sep)}
   .wb.dt .wb-work:not(.wb-narrow) .wb-oband{margin-left:16px;margin-right:16px}
 }

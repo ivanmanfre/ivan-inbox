@@ -329,10 +329,17 @@ function Section({ title, count, open, onToggle, children }: {
 // the same reason PendingCard is: a host that redesigns the frame must not
 // re-implement what "Working" means. `pad` lets a host that owns its own gutters
 // turn off the inline 16px this screen needs.
-export function OpsGroups({ drafts, pad = true }: { drafts: OpsDraft[]; pad?: boolean }) {
+export function OpsGroups({ drafts, pad = true, expanded = false }: {
+  drafts: OpsDraft[]
+  pad?: boolean
+  // A host whose queue is empty has a whole region to spend and nothing waiting
+  // to put in it: opening the history there is real content, not filler, and it
+  // is the difference between "clear" and "dead".
+  expanded?: boolean
+}) {
   const [claimingOpen, setClaimingOpen] = useState(true)
-  const [sentOpen, setSentOpen] = useState(false)
-  const [blockedOpen, setBlockedOpen] = useState(false)
+  const [sentOpen, setSentOpen] = useState(expanded)
+  const [blockedOpen, setBlockedOpen] = useState(expanded)
   const claiming = claimingOps(drafts)
   const sent = sentOps(drafts)
   const blocked = blockedOps(drafts)

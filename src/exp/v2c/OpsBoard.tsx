@@ -138,7 +138,12 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
       <div className="rows ops-rows" ref={rowsRef}>
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
         <StateBand drafts={drafts} loadedAt={loadedAt} onRefresh={refresh} />
-        <div className={`wb-ocols${history === 0 ? ' one' : ''}`}>
+        {/* Two columns only when BOTH have something to hold. A queue of zero
+            beside five history rows is the column-stranding the panel marked as
+            v2b's weakness (300px of black under the short column); one centered
+            measure with a full-width band above it is the app's own desktop
+            convention and has no hole in it. */}
+        <div className={`wb-ocols${history === 0 || pending.length === 0 ? ' one' : ''}`}>
           <div className="wb-ocol wb-ocol-q">
             {pending.length === 0 ? (
               <CalmEmpty
@@ -156,7 +161,7 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
           {history > 0 && (
             <div className="wb-ocol wb-ocol-h">
               <div className="wb-ocol-h-ttl">Already handled</div>
-              <OpsGroups drafts={drafts} pad={false} />
+              <OpsGroups drafts={drafts} pad={false} expanded={pending.length === 0} />
             </div>
           )}
         </div>
