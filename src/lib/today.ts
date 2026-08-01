@@ -270,6 +270,32 @@ export function approvalsTotal(c: BriefCounts): number {
   return c.approvals.comments + c.approvals.dms + c.approvals.feed
 }
 
+// ---------- the masthead number ----------
+//
+// An aggregating home's characteristic failure is a headline that drifts from its
+// parts: a big number sourced from one place, zones sourced from another, and the
+// operator learns to distrust both. So the headline is DEFINED as the sum of the
+// zone loads and nothing else, and the stacked bar renders those same three
+// numbers — drift is arithmetically impossible rather than merely unlikely.
+//
+// It takes BriefCounts because countsFromBrief() already derives every one of
+// these from the same arrays the zones render, so there is one derivation, not a
+// parallel one that has to be kept in step by hand.
+export type TodayLoad = {
+  urgent: number
+  approvals: number
+  going: number
+  total: number
+}
+
+export function todayLoad(c: BriefCounts | null): TodayLoad {
+  if (!c) return { urgent: 0, approvals: 0, going: 0, total: 0 }
+  const urgent = c.urgencies_count
+  const approvals = approvalsTotal(c)
+  const going = c.posts_today ?? 0
+  return { urgent, approvals, going, total: urgent + approvals + going }
+}
+
 // ---------- transport ----------
 
 export class BriefAuthError extends Error {}

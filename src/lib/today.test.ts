@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   asBrief, cacheSafe, countsFromBrief, isCountsShape, partitionUrgencies,
-  projectBrief, rollupReplies, type Brief,
+  projectBrief, rollupReplies, todayLoad, type Brief, type BriefCounts,
 } from './today'
 
 // A payload shaped like the real edge-fn response, including the capability
@@ -137,5 +137,48 @@ describe('rollupReplies', () => {
       { prospect_id: 'p1', client_id: null, created_at: '2026-07-25T09:00:00' },
     ]
     expect(rollupReplies(rows, now)[0].week).toBe(1)
+  })
+})
+
+describe('todayLoad — the masthead cannot drift from its parts', () => {
+  const counts = (over: Partial<BriefCounts> = {}): BriefCounts => ({
+    generated_at: '2026-08-01T08:00:00Z',
+    urgencies_count: 0,
+    autoreplies_count: 0,
+    aging_count: null,
+    needs_reply: null,
+    posts_today: 0,
+    queue_total: null,
+    approvals: { comments: 0, dms: 0, feed: 0 },
+    ...over,
+  })
+
+  it('is exactly the sum of the three zone loads', () => {
+    const l = todayLoad(counts({
+      urgencies_count: 3,
+      posts_today: 2,
+      approvals: { comments: 4, dms: 5, feed: 1 },
+    }))
+    expect(l).toEqual({ urgent: 3, approvals: 10, going: 2, total: 15 })
+    expect(l.total).toBe(l.urgent + l.approvals + l.going)
+  })
+
+  it('holds the sum property for arbitrary inputs', () => {
+    for (const [u, c, d, f, p] of [[0, 0, 0, 0, 0], [1, 0, 0, 0, 0], [9, 2, 3, 4, 7], [0, 0, 0, 0, 11]]) {
+      const l = todayLoad(counts({
+        urgencies_count: u, posts_today: p, approvals: { comments: c, dms: d, feed: f },
+      }))
+      expect(l.total).toBe(l.urgent + l.approvals + l.going)
+    }
+  })
+
+  it('treats a missing posts_today as zero rather than NaN', () => {
+    expect(todayLoad(counts({ posts_today: null, urgencies_count: 2 })).total).toBe(2)
+  })
+
+  it('reads as all-zero before any payload has landed', () => {
+    // The SCREEN renders '–' in that case; the load is not allowed to invent a
+    // verified zero of its own.
+    expect(todayLoad(null)).toEqual({ urgent: 0, approvals: 0, going: 0, total: 0 })
   })
 })
