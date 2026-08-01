@@ -217,11 +217,11 @@ export default function Shell() {
     (id: string, label?: string) => openPeer({ kind: 'draft', id, label }), [openPeer])
 
   // ---- first paint ----
+  // Spine §1.7 — the ONE licensed structural edit. At 390 the loading state used
+  // to carry no `.wb` class at all, so the iOS :root palette showed through for
+  // the first seconds of every cold mobile load.
   if (inbox.loading && inbox.threads.length === 0 && !inboxError) {
     return (
-      {/* Spine §1.7 — the ONE licensed structural edit. At 390 the loading state
-          used to carry no `.wb` class at all, so the iOS :root palette showed
-          through for the first seconds of every cold mobile load. */}
       <div className={mobile ? 'app wb' : 'app dt wb'}>
         {!mobile && (
           <Rail job={job} counts={{}} sev={{}} chatOn={hasChat(peers)} chatLive={false}
