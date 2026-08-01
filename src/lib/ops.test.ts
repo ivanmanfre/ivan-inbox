@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { pendingOps, sentOps, blockedOps, canGenerateDraft, claimingOps, engineLabel, expiresIn, DISCARDED_REASON, type OpsDraft } from './ops'
+import { outboundApproveUrl, outboundSkipUrl, pendingOps, sentOps, blockedOps, canGenerateDraft, claimingOps, engineLabel, expiresIn, DISCARDED_REASON, type OpsDraft } from './ops'
 
 const base: OpsDraft = {
   id: '1', client_id: 'risedtc', kind: 'escalation', slack_channel: '#rise-ops',
@@ -121,6 +121,36 @@ describe('comment cards age out', () => {
   it('never ages out other kinds', () => {
     const old = { ...mkC('2026-07-01T00:00:00Z'), kind: 'escalation' as const }
     expect(pendingOps([old], now)).toHaveLength(1)
+  })
+  it('ages out outbound comment cards on the same window', () => {
+    const old = { ...mkC('2026-07-25T11:00:00Z'), kind: 'comment_outbound' as const }
+    expect(pendingOps([old], now)).toHaveLength(0)
+    const fresh = { ...mkC('2026-07-29T11:00:00Z'), kind: 'comment_outbound' as const }
+    expect(pendingOps([fresh], now)).toHaveLength(1)
+  })
+})
+
+describe('comment_outbound approve routing', () => {
+  const mkO = (ctx: Record<string, unknown>): OpsDraft => ({
+    id: 'o', client_id: 'ivan', kind: 'comment_outbound', slack_channel: null as unknown as string,
+    body: 'draft', context: ctx, created_at: '2026-08-01T00:00:00Z',
+    approved_at: null, sent_at: null, send_blocked_reason: null,
+  })
+  it('ivan lane: carries the gate link', () => {
+    const d = mkO({ approve_url: 'https://n8n.example/webhook/comment-approve?id=a&k=b', skip_url: 'https://n8n.example/webhook/comment-approve?id=a&k=b&dismiss=1' })
+    expect(outboundApproveUrl(d)).toContain('comment-approve')
+    expect(outboundSkipUrl(d)).toContain('dismiss=1')
+  })
+  it('risedtc lane: no link means copy mode', () => {
+    expect(outboundApproveUrl(mkO({ feed_id: 'f1' }))).toBeNull()
+    expect(outboundSkipUrl(mkO({ feed_id: 'f1' }))).toBeNull()
+  })
+  it('refuses a non-https approve link', () => {
+    expect(outboundApproveUrl(mkO({ approve_url: 'javascript:alert(1)' }))).toBeNull()
+  })
+  it('never returns links for other kinds', () => {
+    const d = { ...mkO({ approve_url: 'https://x.example/y' }), kind: 'comment_reply' as const }
+    expect(outboundApproveUrl(d)).toBeNull()
   })
 })
 
