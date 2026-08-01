@@ -750,10 +750,11 @@
 .wb.wb.wb .ov-kpi[data-cat='2'] .ov-kpi-top .sc-dot{ background:var(--cat-2)!important }
 .wb.wb.wb .ov-kpi[data-cat='3'] .ov-kpi-top .sc-dot{ background:var(--cat-3)!important }
 .wb.wb.wb .ov-kpi[data-cat='4'] .ov-kpi-top .sc-dot{ background:var(--cat-4)!important }
-.wb.wb.wb .ov-kpi[data-cat='2'] .sc-bar{ background:var(--cat-2) }
-.wb.wb.wb .ov-kpi[data-cat='3'] .sc-bar{ background:var(--cat-3) }
-.wb.wb.wb .ov-kpi[data-cat='4'] .sc-bar{ background:var(--cat-4) }
-.wb.wb.wb .ov-kpi[data-cat='1'] .sc-bar{ background:var(--cat-1) }
+/* The sparkline is a WITHIN-card trend, not a cross-card category: it is
+   already labelled by the card it sits in. Giving lane 1 the accent put ~30
+   accent marks on one screen for no added meaning, so every spark takes the
+   same neutral categorical tier and the lane's identity stays on its dot. */
+.wb.wb.wb .ov-kpi .sc-bar{ background:var(--cat-3) }
 .wb.wb.wb .ov-kpi .sc-bar.zero{ background:var(--surface3) }
 /* The Volume/Pipeline/Campaign footers sit at the bottom of a SECTION, not
    inside one card, so they keep the card's gutter. */
@@ -1135,6 +1136,11 @@
 .wb.wb.wb .ct-ac-wide .btn.p{ background:var(--accent); color:var(--ink); box-shadow:none }
 /* white on #FF453A measures 3.41:1 — the badge takes ink at 5.36:1 */
 .wb.wb.wb .tb .cnt{ color:var(--ink) }
+/* the 'neutral' unread badge is a workload count, not a warning — it was white
+   on a near-white tint at 1.16:1 */
+.wb.wb.wb .tb .cnt.neutral{ background:var(--surface3); color:var(--text) }
+/* links inside a message body were accent text at 2.94:1 (§5.2) */
+.wb.wb.wb .msg-link{ color:var(--text); text-decoration:underline; text-underline-offset:2px }
 /* inline fontWeight:700 on two spans in TodayScreen's health tiles; the weight
    ceiling is 600 and an inline style is the only thing CSS has to shout at. */
 .wb.wb.wb .td-ts span, .wb.wb.wb .ov-tile-trend{ font-weight:600!important }
@@ -1153,6 +1159,10 @@
 :root[data-theme='light'] .wb.wb.wb .ov-note,
 :root[data-theme='light'] .wb.wb.wb .wb-pipe-warn,
 :root[data-theme='light'] .wb.wb.wb .ct-subtle.ct-warn{ color:var(--text) }
+/* the two Sends figures painted from an inline hex measure 3.20:1 on light */
+:root[data-theme='light'] .wb.wb.wb .ov-tile-trend,
+:root[data-theme='light'] .wb.wb.wb .ov-fpct,
+:root[data-theme='light'] .wb.wb.wb .td-qown{ color:var(--text)!important }
 
 /* Settings is spine-only: the ladder, the scale, the hairlines, nothing else.
    The switch loses its capsule because §6.3 does not license one. */
