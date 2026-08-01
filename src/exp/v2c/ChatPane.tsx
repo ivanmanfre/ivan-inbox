@@ -3,9 +3,24 @@ import { ChatStreaming, ChatTurn } from './ChatMessage'
 import { HandsFreeSheet, VoiceControl, VoiceStrip } from './VoiceControl'
 import { useVoice } from './useVoice'
 import { transportIsMock } from './chat/transport'
+import { CLAUDE_MODELS } from '../../lib/claude'
 import type { ChatHandle } from './useChat'
 import type { Job } from './layout'
 import { JOB_LABEL } from './layout'
+
+// The container's own default is a real, working choice and the FIRST entry, not
+// an "auto" fallback tucked at the bottom. Today it is also the only one that
+// completes a turn — the upstream takes no per-request model yet — so burying it
+// would be burying the working option.
+const MODEL_OPTIONS: { id: string | null; label: string; note: string }[] = [
+  { id: null, label: 'Container default', note: 'Whatever the box booted with' },
+  ...CLAUDE_MODELS.map(m => ({ id: m.id as string, label: m.label, note: m.note })),
+]
+
+function modelLabel(id: string | null): string {
+  if (!id || id === 'container-default') return 'default'
+  return MODEL_OPTIONS.find(m => m.id === id)?.label ?? id
+}
 
 // A content draft's title is a whole sentence. Naming it in the header, the
 // heading and three starters put the same sixteen words on screen five times —
@@ -70,6 +85,7 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
   const [handsFree, setHandsFree] = useState(false)
   const [sheet, setSheet] = useState(false)
   const [turnDone, setTurnDone] = useState(false)
+  const [models, setModels] = useState(false)
   const scroller = useRef<HTMLDivElement>(null)
 
   const send = useCallback((prompt: string) => {
@@ -104,6 +120,13 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
   const lastErr = chat.turns.length > 0 && chat.turns[chat.turns.length - 1].error !== null
   const mock = transportIsMock()
 
+  // The honest-degrade state. A picked model the container refused leaves the
+  // selection ALONE — silently reverting it to the default would be the app
+  // choosing for Ivan and then hiding that it did. It says what happened and
+  // offers the one action that works.
+  const lastTurn = chat.turns[chat.turns.length - 1]
+  const modelRefused = !!lastTurn?.error && /model/i.test(lastTurn.error.message) && chat.wanted !== null
+
   return (
     <>
       <div className="wb-pane-h">
@@ -118,9 +141,16 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
             {chat.sessionId
               ? `session ${chat.sessionId}`
               : mock ? 'no session yet' : 'a fresh session every turn'}
-            {chat.model && ` · ${chat.model}`}
+            {/* What the last turn RAN on, per the broker — not what is selected.
+                Before any turn there is nothing to report, so nothing is shown. */}
+            {chat.model && ` · ran on ${modelLabel(chat.model)}`}
           </div>
         </div>
+        <button
+          className={`wb-modelbtn${chat.wanted ? ' picked' : ''}`}
+          onClick={() => setModels(v => !v)}
+          title="Choose the model for the next turn"
+        >{modelLabel(chat.wanted)}</button>
         <span
           className={`wb-live${chat.busy ? ' busy' : ''}${lastErr ? ' err' : ''}`}
           title={lastErr ? 'last turn failed' : chat.busy ? 'streaming' : 'ready'}
@@ -128,6 +158,35 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
         {mock && <span className="wb-mockchip">mock</span>}
         {!mobile && <span className="wb-pane-x" onClick={onClose}>✕</span>}
       </div>
+
+      {models && (
+        <div className="wb-modelmenu">
+          {MODEL_OPTIONS.map(m => (
+            <button
+              key={m.id ?? 'default'}
+              className={`wb-modelopt${chat.wanted === m.id ? ' on' : ''}`}
+              onClick={() => { chat.setWanted(m.id); setModels(false) }}
+            >
+              <span className="wb-modelopt-l">{m.label}</span>
+              <span className="wb-modelopt-n">{m.note}</span>
+              {chat.wanted === m.id && <span className="wb-modelopt-t">✓</span>}
+            </button>
+          ))}
+          {/* Stated once, where the choice is made, rather than discovered by
+              sending a turn that fails. It is the current truth about the box. */}
+          <div className="wb-modelnote">
+            The container takes no per-turn model yet, so anything but the default
+            is refused rather than quietly ignored.
+          </div>
+        </div>
+      )}
+
+      {modelRefused && (
+        <div className="wb-modelwarn">
+          <span>{lastTurn.error!.message}</span>
+          <button onClick={() => chat.setWanted(null)}>Use container default</button>
+        </div>
+      )}
 
       {/* The context card. On desktop it labels a pane the operator can also see;
           on mobile it is the ONLY surviving half of the pair, so it is tappable

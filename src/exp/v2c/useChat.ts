@@ -56,7 +56,13 @@ export function useChat() {
   const [streamText, setStreamText] = useState('')
   const [streamTools, setStreamTools] = useState<ToolCall[]>([])
   const [sessionId, setSessionId] = useState<string | null>(null)
+  // Two different things, deliberately two states:
+  //   `model`  — what the last turn ACTUALLY ran on, per the broker's response.
+  //   `wanted` — what the operator has selected, null meaning container default.
+  // Collapsing them is exactly how a silent fallback would hide: the picker would
+  // keep showing Haiku while every turn ran on Opus.
   const [model, setModel] = useState<string | null>(null)
+  const [wanted, setWanted] = useState<string | null>(null)
   const [slow, setSlow] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
   const lastSent = useRef<{ prompt: string; about?: string } | null>(null)
@@ -96,11 +102,14 @@ export function useChat() {
     let landed: { costUsd: number | null; durationMs: number | null } | null = null
 
     try {
-      for await (const ev of getTransport()({ prompt: text, sessionId, context, signal: ctrl.signal })) {
+      for await (const ev of getTransport()({ prompt: text, sessionId, context, model: wanted, signal: ctrl.signal })) {
         if (!alive.current) break
         switch (ev.type) {
           case 'session':
-            setSessionId(ev.sessionId)
+            // The live broker has no session id to give; it sends an empty string
+            // rather than inventing one, and the pane already says "a fresh
+            // session every turn". Only overwrite when there is something to say.
+            if (ev.sessionId) setSessionId(ev.sessionId)
             setModel(ev.model)
             break
           case 'status':
@@ -153,7 +162,7 @@ export function useChat() {
         setSlow(false)
       }
     }
-  }, [sessionId])
+  }, [sessionId, wanted])
 
   // Abort is client-side and immediate — spec §2.3: do not wait for a server
   // acknowledgement that may never arrive.
@@ -179,6 +188,7 @@ export function useChat() {
 
   return {
     turns, status, busy, streamText, streamTools, sessionId, model, slow,
+    wanted, setWanted,
     send, abort, retry,
   }
 }
