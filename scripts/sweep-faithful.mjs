@@ -27,7 +27,10 @@ const SHOTS = [
   { name: 'content', hash: '#exp/v2/content', at: [M, D] },
   { name: 'content-mattan', hash: '#exp/v2/content', at: [M, D],
     steps: [click('.chips .chip:nth-child(2)'), wait(2600)] },
-  { name: 'today', hash: '#exp/v2/today', at: [M, D] },
+  // Today's zones 01-03 bind to the get-morning-brief edge function, which is
+  // slower than every table read in the app; 2.6s of settle screenshots
+  // "Loading the brief…", which is a failed capture, not a design verdict.
+  { name: 'today', hash: '#exp/v2/today', at: [M, D], settle: 9000 },
   { name: 'sends', hash: '#exp/v2/sends', at: [M, D] },
   { name: 'sends-triad', hash: '#exp/v2/sends', at: [D], query: 'cat=triad' },
   { name: 'content-triad', hash: '#exp/v2/content', at: [D], query: 'cat=triad' },
@@ -197,6 +200,8 @@ const MEASURE = function () {
     illegalPills: [...new Set(illegalPills)].slice(0, 10),
     rails: {
       content: railOf('.ct-card', '.ct-row-p'),
+      contentAll: railOf('.ct-card', '.ct-title'),
+      ideas: railOf('.ct-card.ct-idea', '.ct-title'),
       contentStatus: railOf('.ct-card', '.ct-st'),
       inbox: railOf('.rows .r', '.name'),
       today: railOf('.td-r', '.td-nm'),
