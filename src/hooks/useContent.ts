@@ -36,7 +36,7 @@ export function useContent(lane: ContentLane = 'ivan') {
   // would bind postgres_changes to an already-subscribed channel — which throws
   // inside the effect and takes the whole tree down to a black screen (the
   // 754d32d fix, see useOps.ts). The lane is in the topic too, so the Ivan and
-  // Rise views can be mounted side by side.
+  // Mattan views can be mounted side by side.
   const topic = `carousel_drafts:${lane}:${useId()}`
 
   const refresh = useCallback(() => {
