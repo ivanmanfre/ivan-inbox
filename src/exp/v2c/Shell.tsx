@@ -28,6 +28,10 @@ import {
   planWorkbench, type Canvas, type Job, type Peer,
 } from './layout'
 import './styles.css'
+// Candidate `faithful` — the treatment layer. Imported AFTER the workbench's own
+// stylesheet (spine §1.3) so it is the last word inside .wb and has no reach at
+// all outside it. :root in src/styles.css is never touched.
+import './faithful.css'
 
 // ============================================================================
 // Candidate v2c — WORKBENCH
@@ -154,6 +158,16 @@ export default function Shell() {
     ? draftContextLabel(ctx.label ?? 'this draft', lane)
     : aboutLabel
 
+  // ---- Fork 2: both colour answers ship, switched by an attribute on <html> ----
+  // Setting an ATTRIBUTE on the document element is not editing :root's tokens —
+  // MONO is declared in `.wb{…}` and TRIAD in `:root[data-cat='triad'] .wb{…}`,
+  // so the toggle changes colour values only and shifts no layout. `?cat=triad`
+  // exists so the ballot can link to a built surface rather than describe one.
+  useEffect(() => {
+    const cat = new URLSearchParams(location.search).get('cat')
+    document.documentElement.setAttribute('data-cat', cat === 'triad' ? 'triad' : 'mono')
+  }, [])
+
   // ---- hash: job + focus are addressable, so every surface has a fresh-load URL ----
   useEffect(() => {
     const apply = () => {
@@ -205,7 +219,10 @@ export default function Shell() {
   // ---- first paint ----
   if (inbox.loading && inbox.threads.length === 0 && !inboxError) {
     return (
-      <div className={mobile ? 'app' : 'app dt wb'}>
+      {/* Spine §1.7 — the ONE licensed structural edit. At 390 the loading state
+          used to carry no `.wb` class at all, so the iOS :root palette showed
+          through for the first seconds of every cold mobile load. */}
+      <div className={mobile ? 'app wb' : 'app dt wb'}>
         {!mobile && (
           <Rail job={job} counts={{}} sev={{}} chatOn={hasChat(peers)} chatLive={false}
             onJob={goJob} onChat={toggleChat} loadedAt={null} stale={false} onRefresh={inbox.refresh} />
