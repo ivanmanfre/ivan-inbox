@@ -100,7 +100,10 @@ function ContextLine({ draft }: { draft: OpsDraft }) {
   )
 }
 
-function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void }) {
+// Exported so a host surface can own the FRAME (header, freshness, columns) and
+// still act on the queue through this one card. Duplicating it would mean two
+// approve paths with two sets of confirm copy for the same publish.
+export function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void }) {
   const [body, setBody] = useState(draft.body)
   const [busy, setBusy] = useState(false)
   const [drafting, setDrafting] = useState(false)
@@ -322,18 +325,45 @@ function Section({ title, count, open, onToggle, children }: {
   )
 }
 
-export function OpsScreen() {
-  const { drafts, loading, refresh } = useOps()
+// The three read-only groups — what the queue already dealt with. Exported for
+// the same reason PendingCard is: a host that redesigns the frame must not
+// re-implement what "Working" means. `pad` lets a host that owns its own gutters
+// turn off the inline 16px this screen needs.
+export function OpsGroups({ drafts, pad = true }: { drafts: OpsDraft[]; pad?: boolean }) {
   const [claimingOpen, setClaimingOpen] = useState(true)
   const [sentOpen, setSentOpen] = useState(false)
   const [blockedOpen, setBlockedOpen] = useState(false)
+  const claiming = claimingOps(drafts)
+  const sent = sentOps(drafts)
+  const blocked = blockedOps(drafts)
+  const style = pad ? { padding: '0 16px' } : undefined
+  return (
+    <>
+      <Section title="Working" count={claiming.length} open={claimingOpen} onToggle={() => setClaimingOpen(o => !o)}>
+        <div style={style}>
+          {claiming.map(d => <ReadOnlyRow key={d.id} draft={d} working />)}
+        </div>
+      </Section>
+      <Section title="Done" count={sent.length} open={sentOpen} onToggle={() => setSentOpen(o => !o)}>
+        <div style={style}>
+          {sent.map(d => <ReadOnlyRow key={d.id} draft={d} />)}
+        </div>
+      </Section>
+      <Section title="Blocked" count={blocked.length} open={blockedOpen} onToggle={() => setBlockedOpen(o => !o)}>
+        <div style={style}>
+          {blocked.map(d => <ReadOnlyRow key={d.id} draft={d} reason={d.send_blocked_reason ?? undefined} />)}
+        </div>
+      </Section>
+    </>
+  )
+}
+
+export function OpsScreen() {
+  const { drafts, loading, refresh } = useOps()
   const rowsRef = useRef<HTMLDivElement>(null)
   const ptr = usePullToRefresh(rowsRef, () => refresh())
 
   const pending = pendingOps(drafts)
-  const claiming = claimingOps(drafts)
-  const sent = sentOps(drafts)
-  const blocked = blockedOps(drafts)
 
   if (loading && drafts.length === 0) {
     return (
@@ -358,21 +388,7 @@ export function OpsScreen() {
         ) : (
           pending.map(d => <PendingCard key={d.id} draft={d} refresh={refresh} />)
         )}
-        <Section title="Working" count={claiming.length} open={claimingOpen} onToggle={() => setClaimingOpen(o => !o)}>
-          <div style={{ padding: '0 16px' }}>
-            {claiming.map(d => <ReadOnlyRow key={d.id} draft={d} working />)}
-          </div>
-        </Section>
-        <Section title="Done" count={sent.length} open={sentOpen} onToggle={() => setSentOpen(o => !o)}>
-          <div style={{ padding: '0 16px' }}>
-            {sent.map(d => <ReadOnlyRow key={d.id} draft={d} />)}
-          </div>
-        </Section>
-        <Section title="Blocked" count={blocked.length} open={blockedOpen} onToggle={() => setBlockedOpen(o => !o)}>
-          <div style={{ padding: '0 16px' }}>
-            {blocked.map(d => <ReadOnlyRow key={d.id} draft={d} reason={d.send_blocked_reason ?? undefined} />)}
-          </div>
-        </Section>
+        <OpsGroups drafts={drafts} />
       </div>
     </>
   )

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { InboxScreen } from '../../screens/InboxScreen'
 import { DraftsScreen } from '../../screens/DraftsScreen'
 import { SendsScreen } from '../../screens/SendsScreen'
-import { OpsScreen } from '../../screens/OpsScreen'
 import { TodayScreen } from '../../screens/TodayScreen'
 import { SettingsScreen } from '../../screens/SettingsScreen'
 import { SeatHealthBanner } from '../../components/SeatHealthBanner'
@@ -18,7 +17,8 @@ import { DraftPane } from './DraftPane'
 import { ThreadPeer } from './ThreadPeer'
 import { InboxHead } from './InboxHead'
 import { ChatPane } from './ChatPane'
-import { CalmEmpty, Failed, relAge } from './Surface'
+import { OpsBoard } from './OpsBoard'
+import { Failed, relAge } from './Surface'
 import { useChat } from './useChat'
 import { useContentBadge } from './useContentBadge'
 import { hasMock } from './mock'
@@ -229,9 +229,12 @@ export default function Shell() {
         loadedAt={stale ? inbox.loadedAt : null}
       />
       {/* Stale rows still beat a void, and the banner above is what makes them
-          honest — but the banner only CLAIMS stale data when there is some. */}
+          honest — but the banner only CLAIMS stale data when there is some.
+          wb-hidenav suppresses the WRAPPED screen's own header: the region above
+          already carries one, and two "Inbox" titles in a column is the exact
+          doubled-render defect the panel flagged on Ops. */}
       {stale && (
-        <div className="wb-stalewrap">
+        <div className="wb-stalewrap wb-hidenav">
           <InboxScreen
             threads={inbox.threads} filter={filter} setFilter={setFilter}
             refresh={inbox.refresh} onOpenThread={openThread}
@@ -256,27 +259,18 @@ export default function Shell() {
     />
   )
 
-  const opsSurface = opsError ? (
-    <>
-      <div className="nav"><div className="row-top"><h2>Ops</h2></div></div>
-      <Failed
-        what="The ops queue"
-        message={opsError}
-        onRetry={ops.refresh}
-        loadedAt={ops.drafts.length > 0 ? ops.loadedAt : null}
-      />
-      {ops.drafts.length > 0 && <div className="wb-stalewrap"><OpsScreen /></div>}
-    </>
-  ) : opsPend.length === 0 && !ops.loading ? (
-    <>
-      <div className="nav"><div className="row-top"><h2>Ops</h2></div></div>
-      {/* The audit's clearest actionable finding: Ops had nothing at all to
-          distinguish a real zero from a stalled fetch. It has a stamp now. */}
-      <CalmEmpty line="Nothing waiting on you." loadedAt={ops.loadedAt}
-        sub="Comment replies, newsjacks, weekly reports and escalations all clear." />
-      <OpsScreen />
-    </>
-  ) : <OpsScreen />
+  // Ops is no longer a wrapped production screen. OpsBoard owns the frame and
+  // reuses the screen's PendingCard + OpsGroups, so there is exactly one header,
+  // one empty state, one approve path — and one useOps mount, this one.
+  const opsSurface = (
+    <OpsBoard
+      drafts={ops.drafts}
+      loading={ops.loading}
+      error={opsError}
+      loadedAt={ops.loadedAt}
+      refresh={ops.refresh}
+    />
+  )
 
   const workSurface = (
     <>
