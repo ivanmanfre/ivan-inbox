@@ -9,8 +9,14 @@
 //   ?wbmock=fetch-error  → every data surface reports a failed load
 //   ?wbmock=chat:error-cold → the broker refuses before the stream opens
 //   ?wbmock=chat:error-mid  → the stream dies a third of the way in
-//   ?wbmock=voice:denied    → getUserMedia is refused
-//   ?wbmock=voice:stt       → transcription fails (retryable)
+//   ?wbmock=voice:on        → drive the voice machine from timers instead of a live
+//                             recogniser (headless browsers have no speech engine,
+//                             and the build HIDES the affordance where there is
+//                             none — so the working states need a named driver)
+//   ?wbmock=voice:denied    → the microphone permission is refused
+//   ?wbmock=voice:stt       → the dictation engine fails (retryable)
+//   ?wbmock=chat:error-cold → also forces the chat MOCK transport; with no chat
+//                             flag set, chat talks to the real broker
 //
 // Nothing here is reachable without the query string, so the shipped surface is
 // unaffected. Read once at module load: a flag that could change mid-session

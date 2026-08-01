@@ -308,6 +308,12 @@
   border-radius:var(--r-sm);padding:12px 13px;margin:0 0 11px;overflow-x:auto;
   font-family:inherit;font-size:13.5px;line-height:1.5;font-variant-numeric:tabular-nums;
   white-space:pre;-webkit-overflow-scrolling:touch}
+/* `font-family:inherit` on the <pre> is NOT enough: the <code> INSIDE it carries
+   the UA's own monospace default, so the house rule leaked back in through a
+   built-in stylesheet nobody edited. Caught by measuring computed font-family on
+   a rendered turn, which is the only way this shows up — it looks intentional.
+   Alignment comes from white-space:pre + tabular numerals, as designed. */
+.wb-code code,.wb-tool-in code{font-family:inherit;font-variant-numeric:tabular-nums}
 .wb-code.open{border-color:rgba(16,163,127,.4)}
 .wb-code-l{position:absolute;top:0;right:0;font-size:9px;font-weight:800;letter-spacing:.07em;
   text-transform:uppercase;color:var(--text3);background:var(--surface2);

@@ -10,6 +10,16 @@
 //     scrollers, so density is measured PER REGION and the region is named in the
 //     output. Measuring the document would report 852px for every surface.
 //
+// THE BROKER STAND-IN. inbox-claude's CORS is correctly scoped to the Pages origin
+// (https://ivanmanfre.github.io) — a control the security audit required — so a
+// localhost preview cannot reach it and the browser logs a CORS failure instead of
+// the app's own state. Every shot therefore fulfils that ONE route with the exact
+// bytes production returned for a real authenticated turn, captured by curl from
+// the allowed origin on 2026-08-01: HTTP 502
+// {"error":"upstream_error","detail":"status 401 {...Invalid or missing API key}"}.
+// The app then renders the same `upstream_not_armed` state it will render in
+// production, and the console-error gate measures the APP rather than the fence.
+//
 // Usage: node scripts/sweep-v2.mjs <outDir> [baseUrl]
 import { chromium } from 'playwright'
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
@@ -67,13 +77,25 @@ const SHOTS = [
   },
 
   // ---- chat behaviour ----
+  // THE SHIPPING STATE. No chat flag, so this is the REAL transport against the
+  // real broker (stubbed with production's own bytes, see BROKER_UNARMED): the
+  // pane must name the unarmed container specifically and must NOT offer a Retry,
+  // because retrying cannot set a key.
+  {
+    name: 'chat-unarmed', hash: '#exp/v2/inbox/chat', at: [M, D],
+    steps: [click('.wb-starter', 'send a starter'), wait(2500)],
+  },
+  // Streaming and a landed turn need content to render, which the unarmed broker
+  // cannot produce — so these two run on the named stub.
   {
     name: 'chat-streaming', hash: '#exp/v2/inbox/chat', at: [M, D],
+    query: 'wbmock=chat:on',
     steps: [click('.wb-starter', 'send a starter'), wait(1400)],
     settle: 0,
   },
   {
     name: 'chat-done', hash: '#exp/v2/inbox/chat', at: [D],
+    query: 'wbmock=chat:on',
     steps: [click('.wb-starter', 'send a starter'), wait(6000)],
   },
   {
@@ -88,13 +110,21 @@ const SHOTS = [
   },
 
   // ---- voice ----
+  // Voice input is on-device webkitSpeechRecognition. Headless Chromium exposes the
+  // constructor but cannot actually capture, so the WORKING states are captured
+  // through the named mock driver. The unsupported case (Firefox, Safari with
+  // dictation off) is verified separately by deleting the constructor before load
+  // and asserting the affordance is ABSENT — crops/voice-noengine-*.png; a button
+  // that cannot work is worse than no button, so this is a behaviour, not copy.
   {
     name: 'voice-listening', hash: '#exp/v2/inbox/chat', at: [M, D],
+    query: 'wbmock=voice:on',
     steps: [click('.wb-mic', 'arm the mic'), wait(900)],
     settle: 0,
   },
   {
     name: 'voice-handsfree', hash: '#exp/v2/inbox/chat', at: [M, D],
+    query: 'wbmock=voice:on',
     steps: [click('.wb-mic', 'arm'), wait(500), click('.wb-hf', 'hands-free')],
     settle: 0,
   },
@@ -109,6 +139,20 @@ const SHOTS = [
   { name: 'state-failed-ops', hash: '#exp/v2/ops', at: [M, D], query: 'wbmock=fetch-error' },
   { name: 'state-failed-content', hash: '#exp/v2/content', at: [M, D], query: 'wbmock=fetch-error' },
 ]
+
+// Verbatim production response for an authenticated turn against the unarmed
+// broker. Not invented: curl'd from the allowed origin, 2026-08-01T01:13Z.
+const BROKER_UNARMED = JSON.stringify({
+  error: 'upstream_error',
+  detail: 'status 401 {"detail":"Invalid or missing API key"}',
+})
+
+// A browser logging the HTTP status of a fetch that the APP handled correctly is
+// not an application error, and the console-error gate must not conflate them —
+// the unarmed broker legitimately answers 502 and the UI legitimately renders a
+// named state for it. Everything else counts.
+const NOISE = [/Failed to load resource/i, /net::ERR_FAILED/i, /CORS policy/i]
+const isNoise = (t) => NOISE.some((re) => re.test(t))
 
 const MEASURE = function () {
   const vis = (el) => {
@@ -202,6 +246,12 @@ for (const shot of SHOTS) {
     const steps = []
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text().slice(0, 200)) })
     page.on('pageerror', (e) => errors.push(`pageerror: ${String(e).slice(0, 200)}`))
+    await page.route('**/functions/v1/inbox-claude', (r) => r.fulfill({
+      status: 502,
+      contentType: 'application/json',
+      headers: { 'access-control-allow-origin': '*' },
+      body: BROKER_UNARMED,
+    }))
     if (session) {
       await page.addInitScript(([k, v]) => window.localStorage.setItem(k, v),
         ['sb-bjbvqvzbzczjbatgmccb-auth-token', session])
@@ -226,10 +276,14 @@ for (const shot of SHOTS) {
     const m = await page.evaluate(MEASURE)
     const file = `${outDir}/${shot.name}-${vp.tag}.png`
     await page.screenshot({ path: file })
-    report.push({ shot: shot.name, tag: vp.tag, width: vp.w, url, file, ...m, errors, missedSteps: steps })
+    const appErrors = errors.filter((e) => !isNoise(e))
+    report.push({
+      shot: shot.name, tag: vp.tag, width: vp.w, url, file, ...m,
+      errors: appErrors, transportNoise: errors.filter(isNoise), missedSteps: steps,
+    })
     const worst = m.regions.map((r) => `${r.region} ${r.height}px w/1k=${r.wordsPer1000px} enc=${r.encodings}`).join(' | ')
     console.log(
-      `${shot.name}/${vp.tag} overflow=${m.docOverflow} clipped=${m.clipped.length} err=${errors.length}` +
+      `${shot.name}/${vp.tag} overflow=${m.docOverflow} clipped=${m.clipped.length} err=${appErrors.length}` +
       `${steps.length ? ` missed=${steps.length}` : ''} :: ${worst}`,
     )
     await ctx.close()
