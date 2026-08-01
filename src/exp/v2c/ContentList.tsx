@@ -19,7 +19,7 @@ import {
   StyleRoster, SummariesSection,
 } from './ContentSections'
 import { relTime, typeLabel } from './fmt'
-import { CalmEmpty, Failed, SectionHead, StackBar } from './Surface'
+import { CalmEmpty, Failed, SectionHead } from './Surface'
 import { hasMock } from './mock'
 
 // Content — TWO LANES, and nothing else.
@@ -144,37 +144,94 @@ function Skeleton() {
   )
 }
 
-// The pipeline drawn once, at the top: proportions as a stacked bar, plus the
-// two numbers that carry a decision (needs review, approved-with-no-date). This
-// is the section's visual encoding — the stage list below it is text.
-function PipelineBar({ stages, ideas, onJump }: {
-  stages: ContentStages; ideas: number; onJump: (s: ContentStage) => void
+// The pipeline drawn once, at the top, as a CHART CARD in the reference's full
+// anatomy (M2/M4/M9): eyebrow · the plot · legend · right-aligned Total footer
+// carrying the real denominator.
+//
+// The plot is a capsule column per stage with the value printed INSIDE the mark
+// — the single most transferable thing in the Nixtio shot, and it costs nothing
+// here because the series is real: it is the stage histogram of the rows this
+// list is already holding.
+//
+// DATA HONESTY. Two denominators, both from `Prefer: count=exact` probes and
+// neither from rows.length: `matched` is the server's count of the same filter
+// this list ran, `laneTotal` is every row in the lane. The ideas bank is stated
+// separately and NOT folded into the bar, because the lane renders 59 of 1,716
+// idea candidates — putting a truncated 59 in the same chart as a complete 285
+// would draw a proportion that does not exist.
+function PipelineBar({ stages, ideasShown, ideasTotal, matched, laneTotal, onJump }: {
+  stages: ContentStages
+  ideasShown: number
+  ideasTotal: number | null
+  matched: number | null
+  laneTotal: number | null
+  onJump: (s: ContentStage) => void
 }) {
-  const parts = PIPELINE_STAGES.map(s => ({
-    key: STAGE_LABEL[s],
-    n: s === 'ideas' ? ideas : stages[s].length,
-    color: STAGE_COLOR[s],
-  }))
-  const total = parts.reduce((s, p) => s + p.n, 0)
+  const parts = PIPELINE_STAGES
+    .filter(s => s !== 'ideas')
+    .map(s => ({ stage: s, key: STAGE_LABEL[s], n: stages[s].length, color: STAGE_COLOR[s] }))
+  const loaded = parts.reduce((s, p) => s + p.n, 0)
+  const peak = Math.max(1, ...parts.map(p => p.n))
   const review = stages.review.length
   const undated = countUndated(stages.approved)
+  // Cat index cycles 1-4; beyond four series MONO differentiates by PATTERN, not
+  // by colour, which is why the capsule reads the same in greyscale.
+  const cat = (i: number) => String((i % 4) + 1)
   return (
-    <div className="wb-pipe">
-      <StackBar parts={parts} />
-      <div className="wb-pipe-k">
-        {parts.filter(p => p.n > 0).map((p, i) => (
-          <span className="wb-pipe-i" key={p.key} onClick={() => onJump(PIPELINE_STAGES[i])}>
-            <span className="wb-pipe-d" style={{ background: p.color }} />
-            <b>{p.n}</b> {p.key.toLowerCase()}
-          </span>
+    <div className="wb-chartcard">
+      <div className="wb-cardh">
+        <span className="wb-cardh-t wb-eyebrow">Pipeline</span>
+        <span className="wb-cardh-x">···</span>
+      </div>
+
+      <div className="wb-caps">
+        {parts.map((p, i) => (
+          p.n === 0
+            ? <span className="wb-cap-0" key={p.key} title={`${p.key}: 0`} />
+            : (
+              <span
+                className="wb-cap"
+                key={p.key}
+                data-cat={cat(i)}
+                style={{ height: `${Math.max(22, Math.round((p.n / peak) * 120))}px` }}
+                onClick={() => onJump(p.stage)}
+                title={`${p.key}: ${p.n}`}
+              >
+                {p.n}
+              </span>
+            )
         ))}
       </div>
+      <div className="wb-caps-x">
+        {parts.map(p => <span className="wb-caps-xl" key={p.key}>{p.key}</span>)}
+      </div>
+
       <div className="wb-pipe-n">
         <span className="wb-pipe-big">{review}</span>
-        <span className="wb-pipe-lbl">waiting on you<br />of {total} in flight</span>
+        <span className="wb-pipe-lbl">
+          waiting on you<br />of {loaded} loaded
+        </span>
         {undated > 0 && (
           <span className="wb-pipe-warn">{undated} approved with no date</span>
         )}
+      </div>
+
+      {/* M4 — legend + Total footer. Every figure below is a count probe. */}
+      <div className="wb-cardf">
+        <span className="wb-legend">
+          <span className="wb-legend-d" style={{ background: 'var(--cat-1)' }} />
+          <span className="wb-legend-l">In flight</span>
+        </span>
+        <span className="wb-legend">
+          <span className="wb-legend-d" style={{ background: 'var(--cat-3)' }} />
+          <span className="wb-legend-l">
+            Ideas {ideasShown} of {ideasTotal ?? '—'}
+          </span>
+        </span>
+        <span className="wb-total">
+          Total: <b>{matched ?? loaded}</b>
+          {laneTotal !== null && laneTotal !== matched ? ` of ${laneTotal} in the lane` : ''}
+        </span>
       </div>
     </div>
   )
@@ -277,7 +334,7 @@ function useOpenStages(initial: ContentStage[]) {
 // LANE A — Ivan
 // ---------------------------------------------------------------------------
 
-function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters, matched }: {
+function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters, matched, laneTotal }: {
   drafts: ContentDraft[]
   stages: ContentStages
   openId: string | null
@@ -286,6 +343,7 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
   filters: FilterState
   setFilters: (f: FilterState) => void
   matched: number | null
+  laneTotal: number | null
 }) {
   const stageOpen = useOpenStages(DEFAULT_OPEN)
   const ideas = useIdeaCandidates(true)
@@ -334,7 +392,10 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
     <>
       <AlertCountLine olderUnsent={digest.olderUnsent} />
       <AlertStrip drafts={alerts} lane="ivan" refresh={refresh} onOpen={onOpen} openId={openId} extra={extra} />
-      <PipelineBar stages={stages} ideas={ideas.rows.length} onJump={jump} />
+      <PipelineBar
+        stages={stages} ideasShown={ideas.rows.length} ideasTotal={ideas.count}
+        matched={matched} laneTotal={laneTotal} onJump={jump}
+      />
       {/* Advisory denominator, never a quota, never a gate, never red. */}
       <div className="ct-subtle">
         {scheduledThisWeek} scheduled in the next 7 days of a 4-a-week cadence — a
@@ -605,7 +666,7 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
         ) : lane === 'ivan' ? (
           <IvanLane
             drafts={drafts} stages={stages} openId={openId} onOpen={onOpen} refresh={refresh}
-            filters={filters} setFilters={setFilters} matched={matched}
+            filters={filters} setFilters={setFilters} matched={matched} laneTotal={laneTotal}
           />
         ) : (
           <MattanLane
