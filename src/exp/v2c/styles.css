@@ -427,3 +427,52 @@
    copy" is felt as well as stated. */
 .wb-stalewrap{flex:1;min-height:0;display:flex;flex-direction:column;opacity:.55}
 .wb-stalewrap .nav{display:none}
+
+/* Scoped header suppression for any host that wraps a production screen and
+   supplies its own title. The tournament's Ops defect (two "Ops" titles, two
+   "Nothing waiting on you." lines) was this rule missing, not a layout bug — the
+   earlier tournament had already solved it once at cand-a/styles.css:121, and the
+   lesson is that it is a CLASS of hazard every wrapping host inherits. */
+.wb-hidenav .nav{display:none}
+
+/* ======================= ops board =======================
+   The must-fix all three candidates failed: Ops at 1440px. The region gets a
+   state band and two columns instead of one narrow queue and 600px of black. */
+.wb-oband{margin:12px 16px 0;padding:14px 16px;background:var(--surface);
+  border-radius:var(--r-md)}
+.wb-otiles{display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap}
+.wb-otile{min-width:64px}
+/* 30px — inside the app's real 26-38px stat scale (styles.css:181,349,454,581),
+   which is the ceiling CALIBRATION.md restored after the imported 40px gate was
+   withdrawn for contradicting it. */
+.wb-otile-n{font-size:26px;font-weight:800;letter-spacing:-.03em;line-height:1}
+.wb-otile.big .wb-otile-n{font-size:30px}
+.wb-otile-l{margin-top:3px;font-size:10.5px;font-weight:800;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--text2)}
+.wb-otile-s{margin-top:2px;font-size:11px;font-weight:500;color:var(--text3)}
+.wb-oband .wb-stack{margin-top:13px}
+.wb-ofresh{display:flex;align-items:center;gap:7px;margin-top:11px;font-size:11.5px;
+  font-weight:600;color:var(--text3);cursor:pointer}
+.wb-ofresh-d{flex:none;width:7px;height:7px;border-radius:99px;background:var(--accent)}
+.wb-ofresh.attention .wb-ofresh-d{background:#FF9F0A}
+.wb-ofresh.urgent .wb-ofresh-d{background:#FF453A}
+.wb-ofresh.attention .wb-ofresh-t,.wb-ofresh.urgent .wb-ofresh-t{color:var(--text2)}
+.wb-ofresh-t{min-width:0}
+.wb-ofresh-r{margin-left:auto;font-size:13px;color:var(--text2)}
+.wb-ocol-h-ttl{margin:14px 16px 2px;font-size:10.5px;font-weight:800;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--text3)}
+/* Two columns only where there is room for two readable measures, and only when
+   the working region actually owns the canvas — planWorkbench sets .wb-narrow on
+   a region sharing width with a peer, and a 400px "column" is a squeeze. */
+@media (min-width:1000px){
+  .wb.dt .wb-work:not(.wb-narrow) .wb-ocols{display:grid;
+    grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:8px;align-items:start}
+  .wb.dt .wb-work:not(.wb-narrow) .wb-ocols.one{display:block;max-width:760px;margin:0 auto}
+  .wb.dt .wb-work:not(.wb-narrow) .wb-ocol{min-width:0}
+  .wb.dt .wb-work:not(.wb-narrow) .wb-ocol-h{border-left:.5px solid var(--sep)}
+  /* The history column's rows carried the queue's 16px inline gutter and read as
+     clipped at the column edge — the third half of the verified Ops defect. */
+  .wb.dt .wb-work:not(.wb-narrow) .wb-ocol-h .ops-sechdr{padding-left:16px;padding-right:16px}
+  .wb.dt .wb-work:not(.wb-narrow) .wb-ocol-h .log-r{padding-left:16px;padding-right:16px}
+  .wb.dt .wb-work:not(.wb-narrow) .wb-oband{margin-left:16px;margin-right:16px}
+}
