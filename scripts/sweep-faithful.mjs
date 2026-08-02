@@ -199,6 +199,22 @@ const MEASURE = function () {
     bridgeBg: getComputedStyle(root).getPropertyValue('--bg').trim(),
     bridgeBlue: getComputedStyle(root).getPropertyValue('--blue').trim(),
     docOverflow: d.scrollWidth > d.clientWidth,
+    // D10 as written only catches overflow that reaches the DOCUMENT. A row of
+    // filter pills that runs off a pane with overflow:hidden is clipped in
+    // place: content is lost, scrollWidth never moves, and the instrument
+    // reports clean. Caught one real defect (.ct-fg at nowrap) that the capture
+    // showed and the number did not. Elements that are deliberately scrollable
+    // or deliberately ellipsized are excluded.
+    clipped: all.filter((el) => {
+      if (el.scrollWidth <= el.clientWidth + 1) return false
+      const s = getComputedStyle(el)
+      if (s.overflowX !== 'hidden') return false
+      if (s.textOverflow === 'ellipsis' || s.whiteSpace === 'nowrap') return false
+      // a trailing mask IS the affordance: the clip is announced, not hidden
+      if ((s.maskImage ?? 'none') !== 'none' || (s.webkitMaskImage ?? 'none') !== 'none') return false
+      return el.clientWidth > 0
+    }).map((el) => `${el.className?.toString().slice(0, 30)} ${el.scrollWidth}>${el.clientWidth}`)
+      .slice(0, 6),
     innerTextLen: (document.body.innerText ?? '').length,
     loginVisible: !!document.body.textContent?.includes('Send me a code'),
     skeletons: document.querySelectorAll('.sk').length,
@@ -302,7 +318,7 @@ for (const shot of SHOTS) {
       + ` heavy=${m.heavy?.length} accent=${m.accentCount} pills=${m.illegalPills?.length}`
       + ` rail=${m.rails?.content?.variance ?? '-'}/${m.rails?.inbox?.variance ?? '-'}`
       + ` band=${m.band?.content?.min ?? '-'}-${m.band?.content?.max ?? '-'}`
-      + ` contrast=${m.contrastFailureCount} ovf=${m.docOverflow} err=${errors.length}`,
+      + ` contrast=${m.contrastFailureCount} ovf=${m.docOverflow} clip=${m.clipped?.length} err=${errors.length}`,
     )
     await ctx.close()
   }
