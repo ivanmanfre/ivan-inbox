@@ -22,6 +22,89 @@ function modelLabel(id: string | null): string {
   return MODEL_OPTIONS.find(m => m.id === id)?.label ?? id
 }
 
+// ---------------------------------------------------------------------------
+// The slash palette (phase 6 ask 7)
+// ---------------------------------------------------------------------------
+//
+// What happened before this existed: nothing. A `/`-prefixed message was sent
+// raw, indistinguishable from any other sentence, all the way to the model —
+// traced end to end by the phase-6 scout through ChatPane → useChat.send →
+// chat/transport → supabase/functions/inbox-claude, and the broker POSTs the
+// whole string as one prompt argument to a FRESH Claude Code CLI invocation.
+// Slash commands are an interactive-REPL affordance and there is no REPL on the
+// other end, so `/clear` would simply have been read as the first line of a
+// question.
+//
+// So the palette is entirely CLIENT-SIDE and every command short-circuits BEFORE
+// send() — nothing here adds a network call, a dependency, or a server contract.
+//
+// 🔴 THREE COMMANDS, and only three. The scout verified each of these is a pure
+// wrapper around a capability the pane already has and already exposes as a
+// click:
+//   /model <id>  → chat.setWanted, the same setter the model menu calls
+//   /retry       → chat.retry, already wired to the last turn's retry control
+//   /stop        → chat.abort, already wired to the stop button while busy
+// `/clear` is deliberately ABSENT: useChat has no reset path — `turns` only
+// grows, and retry pops a tail rather than emptying it — so it would need new
+// state logic rather than a keyboard alias for an existing click. That is
+// outside the "pure wrapper" grant. `/about <off-screen id>` is absent for the
+// same reason (no path exists to reference a peer that is not open).
+type Command = {
+  name: string
+  // What it does when it CAN run, and what is true instead when it cannot. The
+  // second string is why `hint` is a function: "Abort the turn in flight" on a
+  // pane with nothing in flight is a lie about the button.
+  hint: (busy: boolean, hasTurns: boolean) => string
+  ready: (busy: boolean, hasTurns: boolean) => boolean
+  run: (chat: ChatHandle) => void
+}
+
+const COMMANDS: Command[] = [
+  ...MODEL_OPTIONS.map(m => ({
+    name: `/model ${m.id ?? 'default'}`,
+    hint: () => m.label,
+    ready: () => true,
+    run: (chat: ChatHandle) => chat.setWanted(m.id),
+  })),
+  {
+    name: '/retry',
+    hint: (_b, hasTurns) => (hasTurns ? 'Re-send the last turn' : 'nothing to retry yet'),
+    ready: (busy, hasTurns) => !busy && hasTurns,
+    run: chat => chat.retry(),
+  },
+  {
+    name: '/stop',
+    hint: busy => (busy ? 'Abort the turn in flight' : 'nothing is running'),
+    ready: busy => busy,
+    run: chat => chat.abort(),
+  },
+]
+
+/**
+ * Which commands a given composer string offers.
+ *
+ * Only a `/` at POSITION 0 opens the palette (`text[0] === '/'`), so a question
+ * that happens to contain a URL path never triggers it. Returns [] for anything
+ * else, which is what closes the palette — there is no second source of truth
+ * about whether it is open.
+ *
+ * 🔴 The vocabulary NEVER shrinks. The first build filtered unavailable commands
+ * out of the list, and the measurement caught what that costs: with no turns on
+ * the pane, typing `/retry` matched nothing, the palette closed, and Enter went
+ * back to sending the literal string "/retry" to the model — the exact behaviour
+ * this ask exists to end. A palette that hides its own vocabulary teaches
+ * nothing and silently re-opens the hole. Unavailable commands are listed,
+ * dimmed, and say why; running one is a no-op (chat.retry and chat.abort both
+ * already guard internally) that clears the composer.
+ */
+export function matchCommands(text: string): Command[] {
+  if (text[0] !== '/') return []
+  const q = text.slice(1).toLowerCase().trim()
+  // Substring, not prefix: "/model haiku" should find `/model claude-haiku-4-5`
+  // without Ivan typing the vendor prefix.
+  return COMMANDS.filter(c => q === '' || c.name.slice(1).toLowerCase().includes(q))
+}
+
 // A content draft's title is a whole sentence. Naming it in the header, the
 // heading and three starters put the same sixteen words on screen five times —
 // so it is named ONCE, in the context card, and shortened everywhere else.
@@ -88,11 +171,26 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
   const [models, setModels] = useState(false)
   const scroller = useRef<HTMLDivElement>(null)
 
+  // The palette is DERIVED from the composer's text, never a second piece of
+  // state that could disagree with it. `cursor` is the only state it owns.
+  const cmds = matchCommands(text)
+  const hasTurns = chat.turns.length > 0
+  const [cursor, setCursor] = useState(0)
+  const paletteOpen = cmds.length > 0
+  const active = cmds[Math.min(cursor, cmds.length - 1)]
+
   const send = useCallback((prompt: string) => {
     if (!prompt.trim() || chat.busy) return
     setText('')
     void chat.send(prompt, aboutContext ?? about ?? undefined)
   }, [chat, about, aboutContext])
+
+  // A command NEVER reaches send(): it runs locally and clears the composer.
+  const runCommand = useCallback((c: Command) => {
+    c.run(chat)
+    setText('')
+    setCursor(0)
+  }, [chat])
 
   const onTranscript = useCallback((t: string) => {
     setTurnDone(false)
@@ -250,6 +348,29 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
         />
       )}
 
+      {/* The palette sits ABOVE the composer, in the same overlay grammar the
+          model menu already establishes — it is the one existing precedent in
+          this pane, and reusing it means a `/` list and a picked model look like
+          the same kind of object. */}
+      {paletteOpen && (
+        <div className="wb-palette">
+          {cmds.map((c, i) => (
+            <button
+              key={c.name}
+              className={`wb-pal-opt${c === active ? ' on' : ''}${c.ready(chat.busy, hasTurns) ? '' : ' off'}`}
+              // onMouseDown, not onClick: the input keeps focus, so the palette
+              // does not close under the pointer before the click lands.
+              onMouseDown={e => { e.preventDefault(); runCommand(c) }}
+              onMouseEnter={() => setCursor(i)}
+            >
+              <span className="wb-pal-n">{c.name}</span>
+              <span className="wb-pal-h">{c.hint(chat.busy, hasTurns)}</span>
+            </button>
+          ))}
+          <div className="wb-pal-f">↑↓ to move · ⏎ to run · esc to cancel</div>
+        </div>
+      )}
+
       <div className="wb-composer">
         {voice.supported && (
           <VoiceControl
@@ -267,17 +388,34 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
           className="cfield"
           placeholder={about ? `Ask about ${short(about, 22)}…` : 'Ask Claude…'}
           value={text}
-          onChange={e => setText(e.target.value)}
+          onChange={e => { setText(e.target.value); setCursor(0) }}
           // Enter sends here on purpose, unlike the outbound DM composer: a chat
           // turn is conversational, not consequential. Nothing leaves the building.
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) send(text) }}
+          //
+          // While the palette is open the same four keys mean palette things,
+          // and Enter runs the highlighted command instead of sending the raw
+          // "/model …" string to the model — which is exactly what used to
+          // happen. Escape clears the composer, which is what closes the palette
+          // (it is derived from `text`, so there is nothing else to close).
+          onKeyDown={e => {
+            if (paletteOpen) {
+              if (e.key === 'ArrowDown') { e.preventDefault(); setCursor(c => (c + 1) % cmds.length); return }
+              if (e.key === 'ArrowUp') { e.preventDefault(); setCursor(c => (c - 1 + cmds.length) % cmds.length); return }
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (active) runCommand(active); return }
+              if (e.key === 'Escape') { e.preventDefault(); setText(''); setCursor(0); return }
+            }
+            if (e.key === 'Enter' && !e.shiftKey) send(text)
+          }}
         />
         {chat.busy ? (
           <div className="csend wb-stop" onClick={chat.abort} title="Stop">◼</div>
         ) : (
           <div
             className="csend"
-            onClick={() => send(text)}
+            // The button obeys the palette too. Without this, the one path that
+            // still sent a literal "/model haiku" to the model would be the
+            // send button — the exact behaviour ask 7 exists to end.
+            onClick={() => (paletteOpen && active ? runCommand(active) : send(text))}
             style={text.trim() ? { background: 'var(--accent)', color: '#fff' } : undefined}
           >↑</div>
         )}

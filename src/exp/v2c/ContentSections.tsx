@@ -149,6 +149,10 @@ export function IdeasSection({ ideas, kind, count, loading, error, loadedAt, ref
   error: string | null
   loadedAt: string | null
   refresh: () => void
+  // 🔴 Deliberately NOT defaulted. The lead-magnet idea CANDIDATES read a
+  // different table (lm_idea_candidates) from the stage sections beneath them
+  // (lm_drafts_v2), so they sit outside that lane's 01-07 numbering — the first
+  // build defaulted this to '01' and produced two "01" headers in one lane.
   n?: string
   title?: string
   // Rows whose content_type is NULL or unrecognised. They ride on the POST lane
@@ -163,7 +167,7 @@ export function IdeasSection({ ideas, kind, count, loading, error, loadedAt, ref
   return (
     <div id={kind === 'post' ? 'wb-s-ideas' : 'wb-s-lm-ideas'}>
       <SectionHead
-        n={n ?? '01'} title={title ?? 'Ideas'} count={all.length}
+        n={n} title={title ?? 'Ideas'} count={all.length}
         open={open} onToggle={() => setOpen(o => !o)} sticky
       />
       {!open ? null : error ? (
@@ -291,17 +295,22 @@ function LmRow({ r }: { r: Resource }) {
           {stalled
             ? <span className="ct-chip ct-st ct-chip-warn">{mins}m ⚠</span>
             : (
-              <span className={`ct-chip ct-st${stuck ? ' ct-chip-bad' : ''}`}>
+              <span
+                className={`ct-chip ct-st${stuck ? ' ct-chip-bad' : ''}`}
+                // 🔴 The raw DB value rides on the chip's title, not as a third
+                // mark. The fold has to stay AUDITABLE — a reader must be able
+                // to find out that "Idea" is 37 rows the database still calls
+                // `pending` — but ask 5 says two chips, and the folded-from
+                // value is a detail, not a scanning fact. It is stated once in
+                // prose under the chart, and per-row on hover.
+                title={normalizeLmStatus(r.status) !== r.status
+                  ? `${LM_STAGE_LABEL[stage]} — folded from the database value “${r.status}”`
+                  : `status: ${r.status}`}
+              >
                 {LM_STAGE_LABEL[stage]}
               </span>
             )}
           {r.format && <span className="ct-chip">{r.format}</span>}
-          {/* 🔴 The raw status is shown ONLY when the fold changed it, so a
-              legacy value is legible as a legacy value instead of silently
-              disappearing behind its canonical label. */}
-          {normalizeLmStatus(r.status) !== r.status && (
-            <span className="ct-topic">db: {r.status}</span>
-          )}
           {r.landing_url
             ? <a className="ct-ref-l" href={r.landing_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>landing ↗</a>
             : <span className="ct-ref">no landing URL</span>}
@@ -475,7 +484,7 @@ export function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loa
               ideas={ideas} kind="lead_magnet" count={ideaCount}
               loading={ideaState.loading} error={ideaState.error}
               loadedAt={ideaState.loadedAt} refresh={ideaState.refresh}
-              n="01" title="Lead-magnet ideas"
+              title="Lead-magnet ideas"
             />
           )}
 
@@ -483,24 +492,21 @@ export function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loa
             ? <FilteredEmpty noun="lead magnets" onClear={() => setFilters({})} />
             : (
               <>
-                {LM_PIPELINE_STAGES.filter(s => s !== 'idea').map((s, i) => (
+                {/* 🔴 In LIFECYCLE ORDER, idea first. The first pass rendered
+                    idea AFTER published because it was appended outside the map,
+                    which put "Idea 37" — the largest section in the lane —
+                    underneath the terminal ones and read as a bug. The stage
+                    ORDER is LM_PIPELINE_STAGES and there is no second ordering
+                    constant to keep in sync, exactly as PIPELINE_STAGES works
+                    for posts. */}
+                {LM_PIPELINE_STAGES.map((s, i) => (
                   <LmStageSection
-                    key={s} s={s} n={String(i + 2).padStart(2, '0')} rows={stages[s]}
+                    key={s} s={s} n={String(i + 1).padStart(2, '0')} rows={stages[s]}
                     isOpen={open.includes(s)}
                     toggle={() => setOpen(cur =>
                       cur.includes(s) ? cur.filter(x => x !== s) : [...cur, s])}
                   />
                 ))}
-                {/* The idea STAGE of this table (rows whose own status folds to
-                    idea) is distinct from the idea CANDIDATES above it — two
-                    different tables — so it renders as its own section rather
-                    than being merged into one figure. */}
-                <LmStageSection
-                  s="idea" rows={stages.idea}
-                  isOpen={open.includes('idea')}
-                  toggle={() => setOpen(cur =>
-                    cur.includes('idea') ? cur.filter(x => x !== 'idea') : [...cur, 'idea'])}
-                />
                 {(['error', 'archived', 'other'] as LmStage[]).map(s => (
                   <LmStageSection
                     key={s} s={s} rows={stages[s]}
