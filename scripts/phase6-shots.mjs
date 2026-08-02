@@ -92,9 +92,12 @@ for (const vp of [{ w: 1440, h: 900, tag: '1440' }, { w: 390, h: 844, tag: '390'
       await page.screenshot({ path: `${outDir}/content-${vp.tag}-ideas-open.png` })
       if (head) { await head.click(); await page.waitForTimeout(300) }
 
-      const lane = await page.$('#wb-lm-lane')
-      if (lane) await lane.scrollIntoViewIfNeeded()
-      await page.waitForTimeout(400)
+      // Scroll the lane's own TOP into view (boundary rule + header + chart),
+      // not just any part of it: scrollIntoViewIfNeeded landed mid-list and the
+      // capture proved nothing about the lane's structure.
+      await page.evaluate(() => document.querySelector('#wb-lm-lane')
+        ?.scrollIntoView({ block: 'start' }))
+      await page.waitForTimeout(500)
       await page.screenshot({ path: `${outDir}/content-${vp.tag}-lm-lane.png` })
     }
     if (route === 'sends') {
