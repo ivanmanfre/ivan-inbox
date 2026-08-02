@@ -517,6 +517,9 @@
 /* A QA verdict is a STATUS, and status speaks severity — the outline used
    --cat-2, which the triad default turned BLUE while the corner dot said green
    (blind row-find seat caught the mismatch). One vocabulary now. */
+/* style-delta risk 5, decided: this ring is the ONE old-green literal that
+   SURVIVES the lime sweep — it encodes a PASS verdict, which is severity
+   (--sev-clear #10A37F), not accent. Same value, new meaning. */
 .wb.wb.wb .ct-chip-ok{ background:var(--surface2); color:var(--text);
   box-shadow:inset 0 0 0 1px rgba(16,163,127,.55) }
 .wb.wb.wb .ct-chip-warn{ background:rgba(255,159,10,.14); color:var(--sev-attention);
@@ -1329,9 +1332,28 @@
 .wb.wb.wb .tb.on{ color:var(--accent-ui, var(--accent)) }
 .wb.wb.wb .tb .l{ font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.02em;
   text-transform:none; margin-top:3px }
+/* §3j — pane chrome is PLATE chrome, not a card. */
 .wb.wb.wb .wb-pane-h{
-  background:var(--surface1); border-bottom:1px solid var(--hairline); padding:12px var(--gut);
+  background:var(--canvas); border-bottom:1px solid var(--hairline); padding:12px var(--gut);
 }
+/* §3i — the takeover window IS a second plate: hero radius rides the --r-lg
+   remap; the desktop border steps up to the strong hairline. (border-color
+   alone is inert on mobile, where the window has no border.) */
+.wb.wb.wb .wb-tk{ border-color:var(--hairline-strong) }
+/* §3j — composer field: card fill, hairline, control radius (NOT pill; §6.3
+   licence unchanged — the radius itself rides the .wb input remap). */
+.wb.wb.wb .cfield{ background:var(--surface1); border:1px solid var(--hairline) }
+/* §3k — ghost button: one surface step + secondary text (8.50:1). */
+.wb.wb.wb .btn.s{ background:var(--surface2); color:var(--text2) }
+/* §5 move 3 — signature monogram: the reference's white circle, ink initials,
+   with a --ground ring — the ONLY place the pistachio enters the plate.
+   Overridden HERE (risk 8): src/styles.css:37's gradient is outside .wb scope
+   and is never edited. The rail logo takes the same face at 40px. */
+.wb.wb.wb .avatar-me{
+  background:#FFFFFF; color:var(--ink);
+  box-shadow:0 0 0 2px var(--ground);
+}
+.wb.wb.wb .wb-rail-top .avatar-me{ width:40px; height:40px }
 .wb.wb.wb .wb-ribbon{ padding:8px var(--gut) 4px }
 
 /* ========================================================================== */
@@ -1387,12 +1409,14 @@
 /* ========================================================================== */
 
 /* v2c/styles.css:58 and :127 hard-code light rgba backgrounds that fight any
-   new ladder. Both are re-pointed at the ladder's own surface1 so the rail and
-   the pane header follow the tokens instead of a frozen colour. */
-:root[data-theme='light'] .wb.wb.wb .wb-rail{ background:var(--surface1) }
-:root[data-theme='light'] .wb.wb.wb .wb-pane-h{ background:var(--surface1) }
-:root[data-theme='light'] .wb.wb.wb .tabbar,
-:root[data-theme='light'] .wb.wb.wb .t-nav{ background:var(--surface1) }
+   new ladder. Re-derived for the plate inversion (style-delta risk 6): the
+   rail floats transparent ON the plate and pane/tab chrome is plate chrome —
+   in BOTH themes — so light points them at the same assignments §3b/§3c/§3j
+   made for dark, not at surface1 (which is now the light CARD colour). */
+:root[data-theme='light'] .wb.wb.wb .wb-rail{ background:transparent }
+:root[data-theme='light'] .wb.wb.wb .wb-pane-h{ background:var(--canvas) }
+:root[data-theme='light'] .wb.wb.wb .tabbar{ background:var(--canvas) }
+:root[data-theme='light'] .wb.wb.wb .t-nav{ background:var(--canvas) }
 :root[data-theme='light'] .wb.wb.wb .chip.on{ background:var(--surface3); color:var(--text) }
 :root[data-theme='light'] .wb.wb.wb .b.out{ color:var(--ink) }
 
