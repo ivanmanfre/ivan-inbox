@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Facet, FacetOption, FilterState } from '../../lib/contentFilters'
 
 // THE FILTER ROW — one search field, five pills, one disclosure.
@@ -60,6 +60,29 @@ function useDismiss(open: boolean, close: () => void) {
     }
   }, [open, close])
   return ref
+}
+
+// A popover that opens off a pill sitting anywhere in a row inside a NARROW
+// column (620px with the peer docked) will run off the pane's right edge — the
+// "Filters" pill is the last one in the row, and measured, its panel clipped the
+// counts clean off. So the panel is measured once on open and flipped to the
+// right edge if it does not fit, and its height is capped to what is left below
+// it. Two reads, no loop, no layout animation.
+function usePlace(open: boolean) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [place, setPlace] = useState<{ flip: boolean; maxH: number | null }>({ flip: false, maxH: null })
+  useLayoutEffect(() => {
+    if (!open) { setPlace({ flip: false, maxH: null }); return }
+    const el = ref.current
+    if (!el) return
+    const pane = el.closest('.rows') ?? document.documentElement
+    const bounds = pane.getBoundingClientRect()
+    const r = el.getBoundingClientRect()
+    const flip = r.right > bounds.right - 4
+    const room = Math.floor(window.innerHeight - r.top - 12)
+    setPlace({ flip, maxH: room > 140 && room < r.height ? room : null })
+  }, [open])
+  return { ref, ...place }
 }
 
 // One option row, in both the popover and the sheet. The count is the honest
@@ -128,6 +151,7 @@ function FacetPill({ f, state, setState, sheet }: {
 }) {
   const [open, setOpen] = useState(false)
   const ref = useDismiss(open && !sheet, () => setOpen(false))
+  const place = usePlace(open && !sheet)
   const active = state[f.key]
   const label = active
     ? (f.options.find(o => o.value === active)?.label ?? active)
@@ -163,7 +187,13 @@ function FacetPill({ f, state, setState, sheet }: {
       )}
       {open && (sheet
         ? <Sheet title={f.label} onClose={() => setOpen(false)}>{body}</Sheet>
-        : <div className="wb-fmenu ct-fmenu">{body}</div>)}
+        : (
+          <div
+            className={`wb-fmenu ct-fmenu${place.flip ? ' ct-fmenu-r' : ''}`}
+            ref={place.ref}
+            style={place.maxH ? { maxHeight: place.maxH } : undefined}
+          >{body}</div>
+        ))}
     </div>
   )
 }
@@ -176,6 +206,7 @@ function MorePill({ facets, state, setState, sheet }: {
 }) {
   const [open, setOpen] = useState(false)
   const ref = useDismiss(open && !sheet, () => setOpen(false))
+  const place = usePlace(open && !sheet)
   const n = facets.filter(f => state[f.key]).length
   const pick = (key: string, value: string) => {
     const next = { ...state }
@@ -212,7 +243,13 @@ function MorePill({ facets, state, setState, sheet }: {
       </button>
       {open && (sheet
         ? <Sheet title="All filters" onClose={() => setOpen(false)}>{body}</Sheet>
-        : <div className="wb-fmenu ct-fmenu ct-fmenu-wide">{body}</div>)}
+        : (
+          <div
+            className={`wb-fmenu ct-fmenu ct-fmenu-wide${place.flip ? ' ct-fmenu-r' : ''}`}
+            ref={place.ref}
+            style={place.maxH ? { maxHeight: place.maxH } : undefined}
+          >{body}</div>
+        ))}
     </div>
   )
 }
