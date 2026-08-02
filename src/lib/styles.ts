@@ -316,6 +316,21 @@ export const LM_PIPELINE_STAGES = [
 
 export type LmStage = (typeof LM_PIPELINE_STAGES)[number] | 'error' | 'archived' | 'other'
 
+// Same rule as STAGE_SHORT in content.ts: axis slots are too narrow for full
+// names; codes on the axis, full names on headers + tooltips.
+export const LM_STAGE_SHORT: Record<LmStage, string> = {
+  idea: 'Idea',
+  generating: 'Gen',
+  generating_assets: 'Assets',
+  review: 'Review',
+  approved: 'Appr',
+  scheduled: 'Sched',
+  published: 'Pub',
+  error: 'Err',
+  archived: 'Arch',
+  other: 'Other',
+}
+
 export const LM_STAGE_LABEL: Record<LmStage, string> = {
   idea: 'Idea',
   generating: 'Generating',

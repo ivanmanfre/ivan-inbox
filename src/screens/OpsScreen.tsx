@@ -129,7 +129,12 @@ export function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () =
   // idea it was.
   const canDraft = canGenerateDraft(draft)
   const onDemand = isComment && draft.context?.drafted_on_demand === true
-  const where = isNewsjack || isWeekly || isComment ? engineLabel(draft.client_id) : `#${draft.slack_channel}`
+  // A NULL slack_channel used to render the literal "#null" on the card
+  // (phase0-readability #5 / phase0-mobile #8). No channel = say whose engine
+  // it is instead of printing a database absence.
+  const where = isNewsjack || isWeekly || isComment || !draft.slack_channel
+    ? engineLabel(draft.client_id)
+    : `#${draft.slack_channel}`
   const left = isNewsjack ? expiresIn(draft.context?.expires_at) : null
 
   async function onApprove() {

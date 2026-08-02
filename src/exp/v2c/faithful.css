@@ -711,7 +711,15 @@
 .wb.wb.wb .ct-chip, .wb.wb.wb .ct-lane, .wb.wb.wb .td-kind, .wb.wb.wb .r .client{
   padding:1px 6px; white-space:nowrap;
 }
-.wb.wb.wb .ct-title{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+/* Two-line clamp instead of a single-line clip: with both Content peers open
+   the mid column crushes to ~125px and a nowrap title kept ~20 characters — the
+   very row you opened the peer to inspect (phase0-readability #2). Wrapped, a
+   crushed title still reads ~40 chars; at full width most titles stay one line
+   and the density band holds (a wrapped row measures ~56px, inside 40-60). */
+.wb.wb.wb .ct-title{
+  white-space:normal; overflow:hidden;
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
+}
 .wb.wb.wb .ct-tm{ color:var(--text3); font-weight:400 }
 
 /* The two review actions ride in the TRAILING column as compact controls, so a
@@ -859,7 +867,7 @@
    the bar row and the label row on the same flex tracks so the axis still
    aligns. The chart sits left in its card, which is where the reference puts
    it. */
-.wb.wb.wb .wb-caps{ display:flex; align-items:flex-end; gap:10px; min-height:120px; max-width:320px }
+.wb.wb.wb .wb-caps{ display:flex; align-items:flex-end; gap:10px; min-height:120px; max-width:460px }
 .wb.wb.wb .wb-cap{
   flex:1; min-width:22px; position:relative;
   display:flex; align-items:flex-start; justify-content:center;
@@ -875,7 +883,7 @@
   background:var(--surface3); border-radius:var(--r-pill);
 }
 .wb.wb.wb .wb-caps-x{
-  display:flex; gap:10px; margin-top:8px; max-width:320px;
+  display:flex; gap:10px; margin-top:8px; max-width:460px;
 }
 .wb.wb.wb .wb-caps-xl{
   flex:1; min-width:22px; text-align:center; color:var(--text3);
@@ -1781,3 +1789,25 @@
    180ms sits in the §10.2 state band; one easing. */
 .wb.wb.wb .sw{ transition:background-color var(--dur-state) var(--ease) }
 .wb.wb.wb .sw-knob{ transition:transform var(--dur-state) var(--ease) }
+
+/* ---- phase 3: readability (phase0-readability.md #3/#4/#6/#9) ---- */
+/* Meta annotations went fluid with the reflow fix and ran 111-180ch unbroken.
+   Fluid block, capped MEASURE: the block still travels with the column, the
+   text wraps at a readable width. */
+.wb.wb.wb .ct-subtle, .wb.wb.wb .ct-subline{ max-width:72ch }
+/* The Today quote-preview single-lined a full reply (up to 1975px of content
+   into a 470px box) and read identically to the system captions around it.
+   Two-line clamp + a quiet quote rule: it now reads AS quoted material. */
+.wb.wb.wb .td-qs{
+  white-space:normal; display:-webkit-box; -webkit-box-orient:vertical;
+  -webkit-line-clamp:2; overflow:hidden;
+  border-left:2px solid var(--hairline-strong); padding-left:8px;
+}
+/* The NEXT teaser hid ~90% of its line behind a nowrap clip. */
+.wb.wb.wb .td-next .txt{
+  white-space:normal; display:-webkit-box; -webkit-box-orient:vertical;
+  -webkit-line-clamp:2; overflow:hidden;
+}
+/* The owner caption was ACCENT text (§5.2 forbids accent as a text colour) and
+   sat at the same visual weight as the quote. Metadata token, metadata place. */
+.wb.wb.wb .td-qown{ color:var(--text4); font-weight:500 }
