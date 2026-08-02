@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { PullIndicator } from '../../components/PullIndicator'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import {
@@ -376,6 +376,16 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
   laneTotal: number | null
 }) {
   const stageOpen = useOpenStages(DEFAULT_OPEN)
+  // Determinism under a filter (phase1-review residual): picking Stage:
+  // Published used to render a different card count before vs after a reload,
+  // because the persisted filter landed on a section whose open/closed state
+  // was whatever the last session left. The rule is now stated: an ACTIVE
+  // stage filter forces that stage's section open.
+  const filterStage = filters.stage as ContentStage | undefined
+  useEffect(() => {
+    if (filterStage) stageOpen.ensure(filterStage)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterStage])
   const ideas = useIdeaCandidates(true)
   const queue = useScheduledQueue(true)
   const resources = useResources('ivan')
@@ -552,6 +562,12 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
 }) {
   const stageOpen = useOpenStages(['review', 'approved', 'scheduled', 'generating'])
   const [groupOpen, setGroupOpen] = useState<string[]>(['board', 'internal'])
+  // Same determinism rule as the Ivan lane: an active stage filter opens its section.
+  const filterStage = filters.stage as ContentStage | undefined
+  useEffect(() => {
+    if (filterStage) stageOpen.ensure(filterStage)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterStage])
   const resources = useResources('risedtc')
   const roster = useStyleRoster()
 
