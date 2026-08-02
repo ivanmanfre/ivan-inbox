@@ -1719,3 +1719,27 @@
    Hiding it is what let a typed "/retry" fall through to the model. */
 .wb.wb.wb .wb-pal-opt.off .wb-pal-n{ color:var(--text3) }
 .wb.wb.wb .wb-pal-opt.off .wb-pal-h{ color:var(--text4) }
+
+/* ---- dictation mic (server-side inbox-stt path; the browser-API mic stays retired) ---- */
+/* 38px visual to match .csend; the ::after pad extends the hit box to 44px for touch. */
+.wb.wb.wb .cmic{
+  position:relative; width:38px; height:38px; flex:none;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--surface2); color:var(--text3);
+  border:none; border-radius:999px; font-size:15px;
+  cursor:pointer; padding:0; font-family:inherit;
+  transition:background-color var(--dur-hover) var(--ease);
+}
+.wb.wb.wb .cmic::after{ content:''; position:absolute; inset:-3px; border-radius:999px }
+.wb.wb.wb .cmic:hover{ background:var(--surface3) }
+.wb.wb.wb .cmic:disabled{ cursor:default; color:var(--text4) }
+/* Recording is a live signal — the one accent job §5.1 licenses here. Pulse is
+   opacity-only and sits on the dot, not the layout. */
+.wb.wb.wb .cmic-recording{ background:var(--accent-soft); color:var(--text) }
+.wb.wb.wb .cmic-recording::before{
+  content:''; width:6px; height:6px; border-radius:999px; background:var(--accent);
+  position:absolute; top:5px; right:5px; animation:wb-mic-live 1.2s var(--ease) infinite;
+}
+.wb.wb.wb .cmic-live{ font-size:11px; font-variant-numeric:tabular-nums; color:var(--text) }
+@keyframes wb-mic-live{ 0%,100%{opacity:1} 50%{opacity:.3} }
+@media (prefers-reduced-motion: reduce){ .wb.wb.wb .cmic-recording::before{ animation:none } }
