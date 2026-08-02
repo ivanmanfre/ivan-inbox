@@ -474,16 +474,17 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
           }}
         />
         {chat.busy ? (
-          <div className="csend wb-stop" onClick={chat.abort} title="Stop">◼</div>
+          <button type="button" className="csend wb-stop" onClick={chat.abort} title="Stop">◼</button>
         ) : (
-          <div
+          <button
+            type="button"
             className="csend"
             // The button obeys the palette too. Without this, the one path that
             // still sent a literal "/model haiku" to the model would be the
             // send button — the exact behaviour ask 7 exists to end.
             onClick={() => (paletteOpen && active ? runCommand(active) : send(text))}
             style={text.trim() ? { background: 'var(--accent)', color: '#fff' } : undefined}
-          >↑</div>
+          >↑</button>
         )}
       </div>
 

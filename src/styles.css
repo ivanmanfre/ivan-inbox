@@ -736,3 +736,13 @@ textarea.ops-body{display:block;width:100%;background:var(--surface2);border:non
   white-space:nowrap}
 .wb-pal-f{padding:6px 9px 2px;color:var(--text3);font-size:11.5px;
   border-top:1px solid var(--sep);margin-top:4px}
+
+/* Controls that were spans/divs are real <button>s now (keyboard reach, the
+   focus ring). Zero-specificity reset so every class-defined look stays
+   byte-identical — :where() loses to any class rule, it only beats UA defaults. */
+:where(button.chip, button.sg, button.sw, button.csend, button.btn,
+       button.ct-alert, button.wb-ofresh, button.wb-sech){
+  font: inherit; color: inherit; letter-spacing: inherit; text-align: left;
+  border: none; background: none; padding: 0; margin: 0;
+  -webkit-appearance: none; appearance: none;
+}

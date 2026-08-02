@@ -138,14 +138,15 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
         </div>
         <div className="chips">
           {CHIPS.map(c => (
-            <span
+            <button
+              type="button"
               key={c.key}
               className={`chip ${filter === c.key ? 'on' : ''}`}
               onClick={() => setFilter(c.key)}
             >
               {c.label}
               {c.key === 'all' && unreadTotal > 0 && <span className="ct"> ·{unreadTotal}</span>}
-            </span>
+            </button>
           ))}
         </div>
       </div>
