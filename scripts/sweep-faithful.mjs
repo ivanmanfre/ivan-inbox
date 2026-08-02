@@ -47,7 +47,11 @@ const SHOTS = [
   { name: 'ops', hash: '#exp/v2/ops', at: [M, D] },
   { name: 'drafts', hash: '#exp/v2/drafts', at: [M, D] },
   { name: 'settings', hash: '#exp/v2/settings', at: [M, D] },
-  { name: 'draft-pane', hash: '#exp/v2/content', at: [D], steps: [click('.ct-card'), wait(1200)] },
+  // `.ct-card` alone resolves to whichever card is first in the DOM, which
+  // after the alert strip learned to collapse is an IDEA, not a draft — the
+  // shot was quietly capturing the wrong peer. Pin it to a pipeline row.
+  { name: 'draft-pane', hash: '#exp/v2/content', at: [D],
+    steps: [click('.ct-card:not(.ct-idea)'), wait(1200)] },
   { name: 'thread-pane', hash: '#exp/v2/inbox', at: [D], steps: [click('.rows .r'), wait(900)] },
   { name: 'content-light', hash: '#exp/v2/content', at: [D], theme: 'light' },
   { name: 'sends-light', hash: '#exp/v2/sends', at: [D], theme: 'light' },
@@ -230,7 +234,11 @@ const MEASURE = function () {
     // window as if it were the population.
     logDenom: document.querySelector('.log-denom')?.innerText?.replace(/\s+/g, ' ').trim() ?? null,
     band: {
-      content: bandOf('.ct-card'), inbox: bandOf('.rows .r'), today: bandOf('.td-r'),
+      // 7.8 measures a ROW. An idea card is a disclosure: `.ct-card.ct-idea`
+      // is the row PLUS its opened body, and measuring the container reported
+      // a 311px 'row' the moment one was expanded. The row is `.ct-idea-h`.
+      content: bandOf('.ct-card:not(.ct-idea), .ct-idea-h'),
+      inbox: bandOf('.rows .r'), today: bandOf('.td-r'),
       sendsLog: bandOf('.log-r'),
     },
     livePathTransitions: livePaths,
