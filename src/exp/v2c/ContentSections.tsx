@@ -284,7 +284,7 @@ function LmRow({ r }: { r: Resource }) {
       <div className="ct-anchor" data-st={stage}>
         {r.cover_url
           ? <img className="ct-thumb" src={r.cover_url} alt="" />
-          : <div className="ct-thumb ct-thumb-empty">◻</div>}
+          : <div className="ct-thumb ct-thumb-empty" aria-hidden />}
         <span className="ct-anchor-dot" />
       </div>
       <div className="ct-mid">

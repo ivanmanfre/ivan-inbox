@@ -105,6 +105,29 @@ export function matchCommands(text: string): Command[] {
   return COMMANDS.filter(c => q === '' || c.name.slice(1).toLowerCase().includes(q))
 }
 
+// ---------------------------------------------------------------------------
+// Voice, off by default (phase 6 ask 9)
+// ---------------------------------------------------------------------------
+//
+// Ivan tried the mic in this pane and it is unusable for conversation. That is
+// not a taste call — it matches what the prior run measured on this exact
+// engine: 38.6% word error rate, and `continuous:false` dropping finals
+// mid-sentence (useVoice.ts). A control that loses a third of what you say is
+// worse than no control, and it sits in the composer where it is the easiest
+// thing to hit by accident.
+//
+// 🔴 NOTHING IS DELETED. useVoice, VoiceControl, VoiceStrip and HandsFreeSheet
+// are all still here, still built, still wired — the mic is simply not MOUNTED
+// unless the flag is on. Turning it back on is one line in the console:
+//
+//     localStorage.setItem('wb-voice', 'on')   // then reload
+//
+// Read once at module scope rather than per render: this is a developer flag,
+// not a setting, and there is deliberately no UI for it this pass.
+function voiceEnabled(): boolean {
+  try { return localStorage.getItem('wb-voice') === 'on' } catch { return false }
+}
+
 // A content draft's title is a whole sentence. Naming it in the header, the
 // heading and three starters put the same sixteen words on screen five times —
 // so it is named ONCE, in the context card, and shortened everywhere else.
@@ -169,6 +192,8 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
   const [sheet, setSheet] = useState(false)
   const [turnDone, setTurnDone] = useState(false)
   const [models, setModels] = useState(false)
+  // ask 9 — the mic is unmounted unless the flag is on. See voiceEnabled().
+  const [voiceOn] = useState(voiceEnabled)
   const scroller = useRef<HTMLDivElement>(null)
 
   // The palette is DERIVED from the composer's text, never a second piece of
@@ -338,7 +363,7 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
           the strip and the mic are absent entirely. A button that cannot work is
           worse than no button, and an "unsupported" toast after the tap is worse
           than both. */}
-      {voice.supported && (
+      {voiceOn && voice.supported && (
         <VoiceStrip
           state={voice.state}
           onDismiss={voice.dismiss}
@@ -372,7 +397,7 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
       )}
 
       <div className="wb-composer">
-        {voice.supported && (
+        {voiceOn && voice.supported && (
           <VoiceControl
             state={voice.state}
             onArm={voice.arm}
@@ -421,7 +446,7 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
         )}
       </div>
 
-      {sheet && (
+      {voiceOn && sheet && (
         <HandsFreeSheet
           state={voice.state}
           onClose={() => { setSheet(false); setHandsFree(false); voice.cancel() }}
