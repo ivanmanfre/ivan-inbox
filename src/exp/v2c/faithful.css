@@ -1185,11 +1185,16 @@
    asked for. Scoped to `.ct-rows` and to the content head, so the 860px measure
    the spine wants on message surfaces is untouched. `--gut` on both sides is a
    fixed gutter, so growth passes through 1:1 — every main object now grows by
-   100% of the column's growth rather than 21-44%. */
+   100% of the column's growth rather than 21-44%.
+
+   Only the CAP is lifted. The gutter margins each block already carries
+   (`var(--gut)` on the chart card, the subtle lines, the pipe) are what keep it
+   off the column edge, and they only read as "left-anchored" while a max-width
+   is also in force — with the cap gone a fixed gutter is exactly right. Setting
+   the margins to 0 here as well was the first attempt and it put the chart card
+   flush against the rail; measured gapL=0. */
 .wb.wb.wb.dt .wb-solo .ct-rows > *,
-.wb.wb.wb.dt .wb-solo .nav.wb-head{
-  max-width:none; margin-left:0; margin-right:0;
-}
+.wb.wb.wb.dt .wb-solo .nav.wb-head{ max-width:none }
 /* The prose lines inside the flow (`.ct-subtle`, `.ct-subline`) go fluid with
    everything else rather than staying capped and left-anchored — a capped block
    sitting in a fluid column is the asymmetric strip this rule exists to kill,
