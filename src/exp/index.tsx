@@ -21,15 +21,18 @@ import { lazy, Suspense } from 'react'
 // the three tournament candidates from their own deploys (v2a and v2b live on
 // their own branches and are not in this tree), and an existing v2c link must
 // not 404 on this build. The canonical id emitted by the router is `v2`.
-export type ExpVariant = 'a' | 'b' | 'c' | 'v2' | 'v2c'
+// 'stock' (added at deploy, 2026-08-02): the workbench is the default app now,
+// so the PRE-revamp shell is the one that needs a flag. App.tsx renders it
+// directly; ExpGate never sees it.
+export type ExpVariant = 'a' | 'b' | 'c' | 'v2' | 'v2c' | 'stock'
 
 const KEY = 'exp_variant'
-const VARIANTS: ExpVariant[] = ['a', 'b', 'c', 'v2', 'v2c']
+const VARIANTS: ExpVariant[] = ['a', 'b', 'c', 'v2', 'v2c', 'stock']
 
 export function getExpVariant(): ExpVariant | null {
   // v2c before v2 — the alternation is ordered, so the shorter id must not eat
   // the longer one's prefix.
-  const m = location.hash.match(/^#exp\/(v2c|v2|a|b|c|off)\b/)
+  const m = location.hash.match(/^#exp\/(v2c|v2|a|b|c|stock|off)\b/)
   if (m) {
     if (m[1] === 'off') { sessionStorage.removeItem(KEY); return null }
     sessionStorage.setItem(KEY, m[1])
