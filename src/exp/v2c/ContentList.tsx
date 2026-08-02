@@ -254,8 +254,16 @@ function AlertStrip({ drafts, lane, refresh, onOpen, openId, extra }: {
   // measured: the first 1440×900 viewport of the test surface contained zero
   // draft rows. The count, the breakdown and the chevron are all still there,
   // and a handful still opens on sight.
-  const [open, setOpen] = useState(drafts.length + extra.length <= 6)
+  //
+  // `null` = the operator has not decided yet, so follow the data. A plain
+  // `useState(n <= 6)` does NOT work here and the screenshot proved it: the
+  // initialiser runs on the FIRST render, when both arrays are still empty from
+  // the pending fetch, so it latches `true` and the strip is stuck open once the
+  // 38 rows land. State that is seeded from data which arrives later has to be
+  // derived, not initialised.
+  const [open, setOpen] = useState<boolean | null>(null)
   const n = drafts.length + extra.length
+  const isOpen = open ?? n <= 6
   if (n === 0) return null
   const errored = drafts.filter(d => d.status === 'error').length
   const stuck = drafts.filter(d => isStuckScheduled(d)).length
@@ -267,7 +275,7 @@ function AlertStrip({ drafts, lane, refresh, onOpen, openId, extra }: {
           closed. The header is what you want to land on anyway — it carries the
           count and the breakdown. */}
       <div id="wb-s-error" />
-      <div className="ct-alert" onClick={() => setOpen(o => !o)}>
+      <div className="ct-alert" onClick={() => setOpen(!isOpen)}>
         <span className="ct-alert-n">{n}</span>
         <span className="ct-alert-t">
           {[
@@ -276,9 +284,9 @@ function AlertStrip({ drafts, lane, refresh, onOpen, openId, extra }: {
             extra.length > 0 && `${extra.length} elsewhere`,
           ].filter(Boolean).join(' · ')}
         </span>
-        <span className="chev">{open ? '⌄' : '›'}</span>
+        <span className="chev">{isOpen ? '⌄' : '›'}</span>
       </div>
-      {open && (
+      {isOpen && (
         <>
           {/* the line is wrapped so it can ellipsize: a list of what is wrong,
               not prose about it. The full sentence lives on the row it points at. */}
