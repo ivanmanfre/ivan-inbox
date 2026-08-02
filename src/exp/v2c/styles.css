@@ -662,6 +662,65 @@
 .dd-vlist{display:flex;flex-direction:column;gap:3px}
 .dd-vli{font-size:13px;line-height:1.4;overflow-wrap:anywhere}
 
+/* ============================ takeover window ============================ */
+/* The reading register: a draft/LM opened from Content or Magnets covers the
+   canvas instead of squeezing into a 420px peer. z 50 sits below the confirm
+   sheets (z 60), which the delete flow opens on top. */
+.wb-tkscrim{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.55);
+  display:flex;overscroll-behavior:contain}
+.wb-tk{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;
+  background:var(--bg)}
+@media (min-width:1000px){
+  .wb-tkscrim{padding:26px 32px;justify-content:center}
+  .wb-tk{flex:0 1 960px;border-radius:var(--r-lg);border:1px solid var(--surface3);
+    box-shadow:0 24px 80px rgba(0,0,0,.5);overflow:hidden}
+}
+.wb-tk-head{flex:none;display:flex;align-items:center;gap:10px;padding:8px 10px 8px 16px;
+  border-bottom:.5px solid var(--sep);background:rgba(18,18,20,.92)}
+:root[data-theme='light'] .wb-tk-head{background:rgba(255,255,255,.92)}
+/* A REAL close affordance — 44px hit target, visible shape, not a glyph in a
+   corner. Esc and (desktop) backdrop click close too. */
+.wb-tk-x{flex:none;width:44px;height:44px;display:flex;align-items:center;justify-content:center;
+  border:none;border-radius:99px;background:var(--surface2);color:var(--text2);
+  font-family:inherit;font-size:16px;cursor:pointer}
+.wb-tk-x:hover{background:var(--surface3);color:var(--text)}
+.wb-tk-x:active{transform:scale(.95)}
+.wb-tk-body{overscroll-behavior:contain}
+/* The comfortable measure: text blocks run in a ~760px centered column (their
+   own 16px gutters bring the text to ~728px). */
+.wb-tk-col{max-width:760px;width:100%;margin:0 auto}
+.wb-tk-frame{display:block;width:calc(100% - 32px);margin:8px 16px 0;border:none;
+  border-radius:var(--r-md);background:#fff}
+/* Cover images render LARGE in the window — the 190px peer thumbnails were part
+   of the unreadable-detail complaint. */
+.wb-tk .dd-imgs{flex-wrap:wrap}
+.wb-tk .dd-img{width:min(100%, 400px)}
+
+/* ---- edit + delete (the window's two writes) ---- */
+.wb-editbtn{font-family:inherit;font-size:11.5px;font-weight:700;color:var(--accent);
+  background:var(--accent-soft);border:1px solid rgba(16,163,127,.35);
+  padding:3px 10px;border-radius:99px;cursor:pointer;margin-left:8px}
+.wb-editbtn:active{transform:scale(.97)}
+.wb-savestate{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
+.wb-savestate.ok{color:var(--accent)}
+.wb-savestate.bad{color:#FF453A;text-transform:none;letter-spacing:0;font-weight:700}
+.wb-savestate-row{display:block;padding:10px 0 0}
+.wb-editcard{padding:12px 14px 14px}
+.wb-edit-ta{display:block;width:100%;box-sizing:border-box;resize:vertical;min-height:120px;
+  background:var(--surface2);color:var(--text);border:1px solid var(--surface3);
+  border-radius:var(--r-sm);padding:12px;font-family:inherit;font-size:14.5px;line-height:1.5}
+.wb-edit-ta:focus{outline:none;border-color:rgba(16,163,127,.5)}
+.wb-delzone{margin:22px 16px 0}
+.wb-delzone-idea{margin:14px 0 0;padding-top:12px;border-top:.5px solid var(--sep)}
+.wb-delbtn{font-family:inherit;font-size:12.5px;font-weight:700;color:#FF453A;
+  background:none;border:1px solid rgba(255,69,58,.35);padding:7px 14px;
+  border-radius:99px;cursor:pointer}
+.wb-delbtn:hover{background:rgba(255,69,58,.1)}
+.wb-delconfirm{padding:12px 14px;border-radius:var(--r-md);
+  background:rgba(255,69,58,.08);border:1px solid rgba(255,69,58,.3)}
+.wb-delq{display:block;font-size:13px;font-weight:600;color:#FF453A;line-height:1.4}
+.wb-btn-danger{background:#FF453A;color:#fff}
+
 /* ============================ model picker ============================ */
 /* Header-weight control, matched to .wb-mockchip and .wb-ask rather than
    introducing a new register — a later design phase re-skins this surface. */

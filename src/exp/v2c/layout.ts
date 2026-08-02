@@ -11,7 +11,7 @@
 // viewport. That is testable in node (below) instead of only in a browser, and
 // it is why the workbench can add a third region without a fifth fork.
 
-export type Job = 'today' | 'inbox' | 'drafts' | 'content' | 'sends' | 'ops' | 'settings'
+export type Job = 'today' | 'inbox' | 'drafts' | 'content' | 'magnets' | 'sends' | 'ops' | 'settings'
 
 // Three canvases, two media queries, one hook (useCanvas). 'wide' is where the
 // workbench can hold the working list AND two context peers at once — 1440px is
@@ -36,32 +36,33 @@ export function peerKey(p: Peer): PeerKey {
 
 // Rail order. Jobs first (they set the working surface), Claude last — it is
 // deliberately NOT a job (see dockChat below).
-export const JOBS: Job[] = ['today', 'inbox', 'drafts', 'content', 'sends', 'ops', 'settings']
+export const JOBS: Job[] = ['today', 'inbox', 'drafts', 'content', 'magnets', 'sends', 'ops', 'settings']
 
 export const JOB_LABEL: Record<Job, string> = {
   today: 'Today', inbox: 'Inbox', drafts: 'Drafts', content: 'Content',
-  sends: 'Sends', ops: 'Ops', settings: 'Settings',
+  magnets: 'Magnets', sends: 'Sends', ops: 'Ops', settings: 'Settings',
 }
 
 // Unicode glyphs only, matching TabBar.tsx:9-30 — no icon set, no SVG sprite.
 export const JOB_ICON: Record<Job, string> = {
-  today: '☼', inbox: '◉', drafts: '✦', content: '▤',
+  today: '☼', inbox: '◉', drafts: '✦', content: '▤', magnets: '▦',
   sends: '↑', ops: '◈', settings: '⚙︎',
 }
 
 // Jobs whose working surface is a LIST that can hand a row to a context peer.
 // Everything else is a whole-canvas reading/monitoring surface. This replaces
 // App.tsx:152's inline `tab === 'sends' || tab === 'ops' || tab === 'today'`.
-const LIST_JOBS: Job[] = ['inbox', 'drafts', 'content']
+const LIST_JOBS: Job[] = ['inbox', 'drafts', 'content', 'magnets']
 
 export function jobHasList(job: Job): boolean {
   return LIST_JOBS.includes(job)
 }
 
-// On mobile the bottom bar cannot carry 7 jobs, so Drafts and Content share one
-// slot ("Work") and the segmented control inside it sets the SAME job state the
-// desktop rail sets. One state, two renderings — not a second router.
-export const WORK_JOBS: Job[] = ['drafts', 'content']
+// On mobile the bottom bar cannot carry 8 jobs, so Drafts, Content and Magnets
+// share one slot ("Work") and the segmented control inside it sets the SAME job
+// state the desktop rail sets. One state, two renderings — not a second router.
+// The mobile bar does NOT grow when a job joins this list.
+export const WORK_JOBS: Job[] = ['drafts', 'content', 'magnets']
 
 export function isWorkJob(job: Job): boolean {
   return WORK_JOBS.includes(job)

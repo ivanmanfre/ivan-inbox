@@ -1,35 +1,178 @@
-import { type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useDraftDetail } from '../../hooks/useContent'
 import {
-  LANE_LABEL, LANE_POSSESSIVE, STAGE_LABEL, normalizeAgentLog, normalizeImageUrls,
-  normalizeKeyPoints, normalizeQa, normalizeSourceDetail, reviewActionable, stageOf,
-  taxonomyExtras, taxonomyFields, taxonomyValue,
+  LANE_LABEL, STAGE_LABEL, deleteDraft, normalizeAgentLog, normalizeImageUrls,
+  normalizeKeyPoints, normalizeQa, normalizeSourceDetail, reviewActionable, selfContainedHtml, stageOf,
+  taxonomyExtras, taxonomyFields, taxonomyValue, updateDraftBody,
   type ContentDraftDetail, type ContentLane,
 } from '../../lib/content'
 import { ReviewActions } from './ReviewActions'
 import { Block, KeyRows, Rows, Val } from './ContentBits'
 import { AgentRegister, QaRegister } from './Register'
+import { HtmlPreview, Takeover } from './Takeover'
 import { absTime, relOrAhead, relTime, typeLabel } from './fmt'
 import { Failed } from './Surface'
 
-// A content draft, rendered as a PEER rather than a full-screen overlay. Same
-// register as cand-a's detail screen (that surface was already right); the change
-// is structural — on the workbench it sits beside the list it came from and
-// beside Claude, so "ask about this draft" does not mean losing sight of it.
+// A content draft, rendered as a TAKEOVER WINDOW (usability-voice ask 2).
 //
-// Every block renders only if its fields are populated: this row is written by a
-// dozen n8n agents and most rows carry a third of the columns, so a fixed
+// This surface was a 420px side peer, and Ivan's verbatim verdict on that was
+// "its literally impossible to read… make it like before on the interface that
+// opens a window so i can properly read". The register below is the cand-a
+// DraftDetail idiom — full reading surface, comfortable measure — carried into
+// the workbench through the shared Takeover chrome. The chat peer is NOT this:
+// chat stays a side peer, this is a reading surface.
+//
+// Content order, per the ask: title/meta head, then the COVER IMAGE(S)
+// rendered large, then the rendered HTML preview of the post as it will appear
+// (authored_html, sandboxed iframe), then the full existing register — every
+// block from the peer survives, because they are load-bearing.
+//
+// Every block renders only if its fields are populated: this row is written by
+// a dozen n8n agents and most rows carry a third of the columns, so a fixed
 // skeleton of em-dashes would read as broken rather than sparse.
-//
-// Phase 1B turned this from a summary into the FULL register: the QA verdict
-// with its applied rewrite, the whole generation log with agent attribution and
-// no clamp, source_detail rendered structurally instead of thrown at a JSX
-// child, and every taxonomy key rather than six.
 
 function scalar(v: unknown): string | null {
   if (typeof v === 'string') return v.trim() || null
   if (typeof v === 'number' && Number.isFinite(v)) return String(v)
   return null
+}
+
+// The editable Post block (ask 3b: "also allow to edit the content").
+//
+// Ivan lane only — the write is scoped .is('client_id', null) like approve, and
+// the risedtc lane stays read-only by standing rule, so the affordance never
+// renders there. EXPLICIT save; editing never touches status. The saved text is
+// shown optimistically, with a visible Saved flash / red failed state, and the
+// human-edit taxonomy markers ride in the same PATCH (the regen-clobber
+// protection contract — see updateDraftBody).
+function PostBlock({ d, lane }: { d: ContentDraftDetail; lane: ContentLane }) {
+  const original = d.post_body ?? ''
+  const [editing, setEditing] = useState(false)
+  const [text, setText] = useState(original)
+  const [shown, setShown] = useState(original)
+  const [busy, setBusy] = useState(false)
+  const [state, setState] = useState<'idle' | 'saved' | 'failed'>('idle')
+  const taRef = useRef<HTMLTextAreaElement>(null)
+
+  // Autosize to the content — the textarea keeps the block's measure.
+  useEffect(() => {
+    if (!editing) return
+    const el = taRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight + 2}px`
+  }, [editing, text])
+
+  if (!shown && !editing) return null
+
+  const save = async () => {
+    const body = text
+    setBusy(true)
+    // Optimistic: the block shows the new text at once; the state chip says
+    // whether the database agreed.
+    setShown(body)
+    setEditing(false)
+    try {
+      await updateDraftBody(d.id, body, d.taxonomy)
+      setState('saved')
+      window.setTimeout(() => setState(s => (s === 'saved' ? 'idle' : s)), 2500)
+    } catch {
+      setState('failed')
+      setEditing(true)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Block
+      label="Post"
+      tail={lane === 'ivan' && !editing
+        ? (
+          <>
+            {state === 'saved' && <span className="wb-savestate ok">Saved</span>}
+            {state === 'failed' && <span className="wb-savestate bad">Save failed — retry</span>}
+            <button type="button" className="wb-editbtn" onClick={() => { setText(shown); setEditing(true) }}>
+              Edit
+            </button>
+          </>
+        )
+        : undefined}
+    >
+      {editing ? (
+        <div className="dd-card wb-editcard">
+          {state === 'failed' && (
+            <div className="wb-savestate bad wb-savestate-row">Save failed — the edit is still here, retry.</div>
+          )}
+          <textarea
+            ref={taRef}
+            className="wb-edit-ta"
+            value={text}
+            onChange={e => setText(e.target.value)}
+            disabled={busy}
+            autoFocus
+          />
+          <div className="ct-ac">
+            <button type="button" className="btn s" disabled={busy}
+              onClick={() => { setEditing(false); setText(shown); setState('idle') }}>
+              Cancel
+            </button>
+            <button type="button" className="btn p" disabled={busy} onClick={save}>
+              {busy ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="dd-card"><div className="dd-body dd-pre">{shown}</div></div>
+      )}
+    </Block>
+  )
+}
+
+// Delete, with its confirm INLINE (ask 3c: "there is no delete option").
+// Distinct from Skip: skip archives a review-stage row visibly; delete removes
+// the row from the surface entirely, at any stage. Ivan lane only — the write
+// path is scoped .is('client_id', null) and the button never renders on
+// risedtc. deleteDraft() carries the honest hard-DELETE-then-fallback contract.
+function DeleteDraft({ d, onDone }: { d: ContentDraftDetail; onDone: () => void }) {
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+
+  const run = async () => {
+    setBusy(true)
+    setErr('')
+    try {
+      await deleteDraft(d.id, d.taxonomy)
+      onDone()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not delete')
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="wb-delzone">
+      {err && <div className="ops-err">{err}</div>}
+      {confirming ? (
+        <div className="wb-delconfirm">
+          <span className="wb-delq">Delete this draft? This removes it permanently.</span>
+          <div className="ct-ac">
+            <button type="button" className="btn s" disabled={busy} onClick={() => setConfirming(false)}>
+              Cancel
+            </button>
+            <button type="button" className="btn wb-btn-danger" disabled={busy} onClick={run}>
+              {busy ? 'Deleting…' : 'Delete'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" className="wb-delbtn" onClick={() => setConfirming(true)}>
+          Delete draft
+        </button>
+      )}
+    </div>
+  )
 }
 
 function Body({ d, lane, refresh, onClose }: {
@@ -47,6 +190,7 @@ function Body({ d, lane, refresh, onClose }: {
   const errMsg = taxonomyValue(d.taxonomy, 'error_message')
   const errAt = taxonomyValue(d.taxonomy, 'error_flipped_at')
   const reason = taxonomyValue(d.taxonomy, 'structure_reason')
+  const authored = (d.authored_html ?? '').trim()
 
   const dates: [string, ReactNode][] = []
   const dateRow = (label: string, iso: string | null, ahead = false) => {
@@ -108,11 +252,9 @@ function Body({ d, lane, refresh, onClose }: {
       </div>
 
       {/* An errored row's reason lives in taxonomy, which is why it renders next
-          to the stage chip rather than three screens down in a key grid.
-          But only a row that is errored NOW gets the red box: 63 rows carry an
-          error_message and most of them recovered, and painting a recovered row
-          red is the same over-claim as calling a backlog a warning. On those,
-          the same field renders as history. */}
+          to the stage chip rather than three screens down in a key grid. Only a
+          row that is errored NOW gets the red box; a recovered one renders the
+          same field as history. */}
       {errMsg && (stage === 'error' || stage === 'stuck' ? (
         <div className="ct-err">
           {errMsg}
@@ -126,17 +268,40 @@ function Body({ d, lane, refresh, onClose }: {
 
       {lane === 'risedtc' && noImages && d.status === 'review' && (
         // 🔴 The codified form of the regen trap: operator_schedule_draft refuses
-        // a draft with no media and returns 'awaiting_media', which ClientOps
-        // swallows into a quiet note. A regeneration CLEARS image_urls, so the
-        // photo has to be re-pinned or the schedule silently refuses.
+        // a draft with no media and returns 'awaiting_media'. A regeneration
+        // CLEARS image_urls, so the photo has to be re-pinned first.
         <div className="ct-warnbox">
           No image. A regen clears <code>image_urls</code>; the photo has to be
           re-pinned before this can be scheduled (<code>awaiting_media</code>).
         </div>
       )}
 
-      {/* QA rides at the TOP here, not near the bottom as on the phone: on a
-          workbench the score is the thing you check before reading the post. */}
+      {/* THE PREVIEW, at the top (ask 2): cover image(s) large, then the post
+          as it will appear — authored_html in a script-less sandboxed iframe.
+          The plain-text Post block below stays: it is the editable artifact. */}
+      {images.length > 0 && (
+        <Block label={images.length === 1 ? 'Cover image' : `Cover images · ${images.length}`}>
+          <div className="dd-imgs">
+            {images.map((u, i) => <img className="dd-img" src={u} alt="" key={`${u}-${i}`} />)}
+          </div>
+        </Block>
+      )}
+
+      {/* Only a SELF-CONTAINED document earns the frame: authored_html is
+          usually a class-based fragment whose styles live in the render
+          service's kit CSS, and framing that shows raw serif text — the
+          opposite of "as it will appear". Those rows' honest render is the
+          cover image(s) above (the service's own screenshots). */}
+      {selfContainedHtml(authored) && (
+        <Block label="Rendered preview">
+          <HtmlPreview html={authored} title="Post as it will appear" />
+        </Block>
+      )}
+
+      <PostBlock d={d} lane={lane} />
+
+      {/* QA directly under the artifact: the score is the thing you check
+          before deciding on the post. */}
       {qa && <QaRegister qa={qa} />}
 
       {dates.length > 0 && <Block label="Dates"><Rows items={dates} /></Block>}
@@ -153,7 +318,7 @@ function Body({ d, lane, refresh, onClose }: {
                 </div>
               )}
               {/* The real call quote the client board shows as its honest source
-                  chip. Today the operator saw a crash instead. */}
+                  chip. */}
               {detail.quote && (
                 <div className="ct-quote">
                   <div className="dd-body">“{detail.quote}”</div>
@@ -176,20 +341,6 @@ function Body({ d, lane, refresh, onClose }: {
         </Block>
       )}
 
-      {d.post_body && (
-        <Block label="Post">
-          <div className="dd-card"><div className="dd-body dd-pre">{d.post_body}</div></div>
-        </Block>
-      )}
-
-      {images.length > 0 && (
-        <Block label={images.length === 1 ? 'Image' : `Images · ${images.length}`}>
-          <div className="dd-imgs">
-            {images.map((u, i) => <img className="dd-img" src={u} alt="" key={`${u}-${i}`} />)}
-          </div>
-        </Block>
-      )}
-
       {points.length > 0 && (
         <Block label="Key points">
           <div className="dd-card">{points.map((p, i) => <div className="dd-point" key={i}>{p}</div>)}</div>
@@ -205,9 +356,8 @@ function Body({ d, lane, refresh, onClose }: {
       <AgentRegister log={log} />
 
       {taxRows.length > 0 && <Block label="Taxonomy"><Rows items={taxRows} /></Block>}
-      {/* ~25 further keys are live beyond the six named above, and the shipped
-          grid dropped every one. They render after the known ones, sorted, so a
-          new key appears without a code edit (IA §5.6). */}
+      {/* ~25 further keys are live beyond the six named above. They render after
+          the known ones, sorted, so a new key appears without a code edit. */}
       {extras.length > 0 && (
         <Block label="Taxonomy · other keys"><KeyRows items={extras} /></Block>
       )}
@@ -230,74 +380,50 @@ function Body({ d, lane, refresh, onClose }: {
       {reviewActionable(d.status, lane) && (
         <div className="dd-actions"><ReviewActions id={d.id} onDone={() => { refresh(); onClose() }} /></div>
       )}
+      {/* Skip ≠ Delete: Skip (above, review rows) archives visibly; Delete
+          removes the row from every list, at any stage. Ivan lane only. */}
+      {lane === 'ivan' && <DeleteDraft d={d} onDone={() => { refresh(); onClose() }} />}
       <div style={{ height: 28 }} />
     </>
   )
 }
 
-export function DraftPane({ id, lane, refresh, onClose, onAsk, mobile }: {
+// The window. No "Ask Claude" here — Ivan: "why is that on the content drafts
+// as well wtf.. remove that". The button stays on ThreadPeer (inbox threads),
+// which he did not complain about.
+export function DraftWindow({ id, lane, refresh, onClose, mobile }: {
   id: string
   lane: ContentLane
   refresh: () => void
   onClose: () => void
-  // "Ask Claude about this" — on the wide canvas it docks the chat peer beside
-  // this one; on a phone it pushes chat over it, carrying this draft's name.
-  onAsk: () => void
   mobile: boolean
 }) {
   const { detail, missing, loading, error } = useDraftDetail(id)
-  // The pane header does NOT repeat the title. It used to, and the body's own
-  // <div class="dd-title"> printed the same sentence again two rows below it —
-  // the same doubled-render defect the panel found on Ops, in a second place, and
-  // found here by diffing duplicated visible text inside the peer rather than by
-  // reading the file. The body wins the title because a draft's title is a whole
-  // sentence and the header can only ellipsize it to one line; the header keeps
-  // what a pane header is for, which is saying what kind of thing this is.
   return (
-    <>
-      <div className="wb-pane-h">
-        {mobile && <button type="button" className="back wb-back" onClick={onClose} aria-label="Back">‹</button>}
-        <span className="wb-pane-ic">▤</span>
-        <div className="wb-pane-ttl">
-          <div className="wb-pane-n">Content draft</div>
-          <div className="wb-pane-s">
-            {LANE_LABEL[lane]}
-            {detail?.type ? ` · ${typeLabel(detail.type)}` : ''}
-          </div>
+    <Takeover
+      label="Content draft"
+      sub={`${LANE_LABEL[lane]}${detail?.type ? ` · ${typeLabel(detail.type)}` : ''}`}
+      onClose={onClose}
+      mobile={mobile}
+    >
+      {error ? (
+        <Failed what="This draft" message={error} loadedAt={null} />
+      ) : loading && !detail ? (
+        <div aria-hidden style={{ padding: '18px 16px 0' }}>
+          <div className="sk sk-line" style={{ width: '70%', height: 20 }} />
+          <div className="sk sk-line" style={{ width: '40%', marginTop: 12 }} />
+          <div className="sk" style={{ height: 120, borderRadius: 16, marginTop: 18 }} />
+          <div className="sk" style={{ height: 180, borderRadius: 16, marginTop: 12 }} />
         </div>
-        <button className="wb-ask" onClick={onAsk}>Ask Claude</button>
-        {!mobile && <span className="wb-pane-x" onClick={onClose}>✕</span>}
-      </div>
-      <div className="rows">
-        {error ? (
-          <Failed what="This draft" message={error} loadedAt={null} />
-        ) : loading && !detail ? (
-          <div aria-hidden style={{ padding: '18px 16px 0' }}>
-            <div className="sk sk-line" style={{ width: '70%', height: 20 }} />
-            <div className="sk sk-line" style={{ width: '40%', marginTop: 12 }} />
-            <div className="sk" style={{ height: 120, borderRadius: 16, marginTop: 18 }} />
-            <div className="sk" style={{ height: 180, borderRadius: 16, marginTop: 12 }} />
-          </div>
-        ) : missing || !detail ? (
-          // Gone and unreadable are different facts. This one is gone.
-          <div className="wb-empty">
-            <div className="wb-empty-l">This draft is no longer in the database.</div>
-            <div className="wb-empty-s">It was deleted while the queue was open.</div>
-          </div>
-        ) : (
-          <Body d={detail} lane={lane} refresh={refresh} onClose={onClose} />
-        )}
-      </div>
-    </>
+      ) : missing || !detail ? (
+        // Gone and unreadable are different facts. This one is gone.
+        <div className="wb-empty">
+          <div className="wb-empty-l">This draft is no longer in the database.</div>
+          <div className="wb-empty-s">It was deleted while the queue was open.</div>
+        </div>
+      ) : (
+        <Body d={detail} lane={lane} refresh={refresh} onClose={onClose} />
+      )}
+    </Takeover>
   )
-}
-
-// What the chat peer is told this draft IS. The lane and the register travel
-// with it so a downstream voice check cannot judge a POST against DM or comment
-// voice — Mattan's post voice, DM voice and comment voice are three different
-// registers (IA §5.7 / §3.7).
-export function draftContextLabel(title: string, lane: ContentLane): string {
-  return lane === 'risedtc'
-    ? `${title} — a LinkedIn POST in ${LANE_POSSESSIVE.risedtc} lane (post register, not DM or comment voice)`
-    : `${title} — a LinkedIn POST in Ivan’s lane`
 }

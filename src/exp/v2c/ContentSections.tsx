@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import {
-  elapsedMinutes, LANE_POSSESSIVE, STUCK_GENERATING_MINUTES, taxonomyFields, queueFailed,
+  deleteIdea, elapsedMinutes, LANE_POSSESSIVE, STUCK_GENERATING_MINUTES,
+  taxonomyFields, queueFailed,
   type ContentDraft, type ContentLane, type IdeaCandidate, type ScheduledQueueRow,
 } from '../../lib/content'
 import {
@@ -60,9 +61,28 @@ function scoreLine(i: IdeaCandidate): [string, number | null][] {
   ]
 }
 
-function IdeaCard({ i }: { i: IdeaCandidate }) {
+function IdeaCard({ i, onDeleted }: { i: IdeaCandidate; onDeleted: () => void }) {
   const [open, setOpen] = useState(false)
+  // Delete-with-confirm (usability-voice ask 3c, extended to idea rows).
+  // deleteIdea() attempts the hard DELETE with representation and falls back
+  // to status='archived' — a real value in this table — throwing honestly if
+  // neither write landed. All clicks inside stopPropagation: the card's own
+  // onClick is the expand toggle.
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
   const title = i.normalized_topic || i.raw_topic || 'Untitled idea'
+  const runDelete = async () => {
+    setBusy(true)
+    setErr('')
+    try {
+      await deleteIdea(i.id)
+      onDeleted()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not delete')
+      setBusy(false)
+    }
+  }
   return (
     // ct-idea marks this as an IDEA card rather than a draft card: they share
     // the card shell, and a count that conflates them is a count of two
@@ -127,6 +147,26 @@ function IdeaCard({ i }: { i: IdeaCandidate }) {
             </div>
           )}
           {i.scored_at && <div className="ct-ref">Scored {absTime(i.scored_at)}</div>}
+          <div className="wb-delzone wb-delzone-idea" onClick={e => e.stopPropagation()}>
+            {err && <div className="ops-err">{err}</div>}
+            {confirming ? (
+              <div className="wb-delconfirm">
+                <span className="wb-delq">Delete this idea? This removes it permanently.</span>
+                <div className="ct-ac">
+                  <button type="button" className="btn s" disabled={busy} onClick={() => setConfirming(false)}>
+                    Cancel
+                  </button>
+                  <button type="button" className="btn wb-btn-danger" disabled={busy} onClick={runDelete}>
+                    {busy ? 'Deleting…' : 'Delete'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button type="button" className="wb-delbtn" onClick={() => setConfirming(true)}>
+                Delete idea
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -198,7 +238,7 @@ export function IdeasSection({ ideas, kind, count, loading, error, loadedAt, ref
           />
           {shown.length === 0
             ? <FilteredEmpty noun="ideas" onClear={() => setFilters({})} />
-            : shown.map(i => <IdeaCard key={i.id} i={i} />)}
+            : shown.map(i => <IdeaCard key={i.id} i={i} onDeleted={refresh} />)}
         </>
       )}
     </div>
@@ -277,13 +317,16 @@ export function QueueStrip({ rows, loading, error, loadedAt, refresh }: {
 // One lead-magnet row. Same anchor-rail contract as a draft card (the cover is
 // the anchor, the corner dot carries the stage), so the LM lane scans the same
 // way the post lane does rather than being a second, differently-shaped list.
-function LmRow({ r }: { r: Resource }) {
+function LmRow({ r, onOpen }: { r: Resource; onOpen?: (id: string, label: string) => void }) {
   const stage = stageOfLm(r)
   const stalled = isStuckGeneratingLm(r)
   const stuck = isStuckResource(r)
   const mins = stalled ? elapsedMinutes(r.updated_at) : null
   return (
-    <div className={`ct-card ct-res-row${stuck || stalled ? ' bad' : ''}`}>
+    <div
+      className={`ct-card ct-res-row${stuck || stalled ? ' bad' : ''}${onOpen ? ' ct-tap' : ''}`}
+      onClick={onOpen ? () => onOpen(r.id, r.topic ?? 'Untitled') : undefined}
+    >
       <div className="ct-anchor" data-st={stage}>
         {r.cover_url
           ? <img className="ct-thumb" src={r.cover_url} alt="" />
@@ -330,8 +373,9 @@ function LmRow({ r }: { r: Resource }) {
 
 // A lead-magnet stage section. Deliberately the same shape as ContentList's
 // StageSection — the lanes differ in what they hold, not in how a stage renders.
-function LmStageSection({ s, n, rows, isOpen, toggle }: {
+function LmStageSection({ s, n, rows, isOpen, toggle, onOpen }: {
   s: LmStage; n?: string; rows: Resource[]; isOpen: boolean; toggle: () => void
+  onOpen?: (id: string, label: string) => void
 }) {
   if (rows.length === 0) return null
   return (
@@ -341,7 +385,7 @@ function LmStageSection({ s, n, rows, isOpen, toggle }: {
         sev={s === 'review' ? 'attention' : null}
         open={isOpen} onToggle={toggle}
       />
-      {isOpen && rows.map(r => <LmRow key={r.id} r={r} />)}
+      {isOpen && rows.map(r => <LmRow key={r.id} r={r} onOpen={onOpen} />)}
     </div>
   )
 }
@@ -368,7 +412,7 @@ const LM_DEFAULT_OPEN: LmStage[] = ['idea', 'generating', 'generating_assets', '
 // ask 3), its own stage sections, its own alert line. Structurally the same
 // object as the post lane above it, which is the point: the two are separated by
 // being two lanes, not by being one list with a filter.
-export function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loadedAt, refresh, ideaState }: {
+export function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loadedAt, refresh, ideaState, onOpen }: {
   rows: Resource[]
   lane: ContentLane
   // The lead-magnet side of the idea partition. Only the Ivan lane has one:
@@ -380,6 +424,8 @@ export function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loa
   loadedAt: string | null
   refresh: () => void
   ideaState?: { loading: boolean; error: string | null; loadedAt: string | null; refresh: () => void }
+  // Opens an LM row's detail window. Optional so the lane can render read-only.
+  onOpen?: (id: string, label: string) => void
 }) {
   // The LM lane is a SEPARATE working list with its own facets, so it gets its
   // own filter row and its own persisted key — the post lane's `Stage: Review`
@@ -519,7 +565,7 @@ export function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loa
                 {LM_PIPELINE_STAGES.map((s, i) => (
                   <LmStageSection
                     key={s} s={s} n={String(i + 1).padStart(2, '0')} rows={stages[s]}
-                    isOpen={open.includes(s)}
+                    isOpen={open.includes(s)} onOpen={onOpen}
                     toggle={() => setOpen(cur =>
                       cur.includes(s) ? cur.filter(x => x !== s) : [...cur, s])}
                   />
@@ -527,7 +573,7 @@ export function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loa
                 {(['error', 'archived', 'other'] as LmStage[]).map(s => (
                   <LmStageSection
                     key={s} s={s} rows={stages[s]}
-                    isOpen={open.includes(s)}
+                    isOpen={open.includes(s)} onOpen={onOpen}
                     toggle={() => setOpen(cur =>
                       cur.includes(s) ? cur.filter(x => x !== s) : [...cur, s])}
                   />

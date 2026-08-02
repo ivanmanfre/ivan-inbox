@@ -13,7 +13,7 @@ import { relAge } from './Surface'
 // strip is that model, rendered identically on both canvases directly above the
 // working surface, and the desktop rail shows the same two rows nested under a
 // WORK label so the rail agrees with it instead of contradicting it.
-export const WORK_LANE_LABEL: Record<string, string> = { drafts: 'DMs', content: 'Content' }
+export const WORK_LANE_LABEL: Record<string, string> = { drafts: 'DMs', content: 'Content', magnets: 'Magnets' }
 
 export function WorkSegment({ job, counts, onJob }: {
   job: Job
@@ -158,11 +158,13 @@ export function MobileTabs({ job, counts, chatLive, onJob, onChat }: {
   onJob: (j: Job) => void
   onChat: () => void
 }) {
-  const workCount = (counts.drafts ?? 0) + (counts.content ?? 0)
+  // The Work slot's badge sums every WORK_JOBS member that carries a count, so
+  // a job joining the group never needs this line edited again.
+  const workCount = WORK_JOBS.reduce((s, j) => s + (counts[j] ?? 0), 0)
   return (
     <div className="tabbar">
       {MOBILE.map(t => {
-        const active = t.job === 'drafts' ? job === 'drafts' || job === 'content' : job === t.job
+        const active = t.job === 'drafts' ? isWorkJob(job) : job === t.job
         const n = t.job === 'drafts' ? workCount : counts[t.job] ?? 0
         return (
           <div key={t.job} className={`tb ${active ? 'on' : ''}`} onClick={() => onJob(t.job)}>

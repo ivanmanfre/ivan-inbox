@@ -239,7 +239,15 @@ export async function fetchContentDrafts(lane: ContentLane): Promise<ContentPage
     .order('updated_at', { ascending: false })
     .limit(1000)
   if (error) throw error
-  return { rows: (data ?? []) as unknown as ContentDraft[], count: count ?? null }
+  // Operator-deleted rows are GONE from every list, including Archived: when a
+  // hard DELETE is refused by RLS, deleteDraft falls back to disqualified +
+  // taxonomy.deleted_by_operator, and this filter is what makes that row leave
+  // the surface anyway. Filtered here (the one choke point every lane reads
+  // through) rather than per-bucket. The server-side `count` can therefore run
+  // a few rows high — it is a denominator, not a list.
+  const rows = ((data ?? []) as unknown as ContentDraft[])
+    .filter(r => !operatorDeleted(r.taxonomy))
+  return { rows, count: count ?? null }
 }
 
 export type ScheduledQueueRow = {
@@ -474,6 +482,109 @@ export async function skipDraft(id: string): Promise<void> {
   if (error) throw error
 }
 
+// ---------- edit / delete (usability-voice ask 3) ----------
+//
+// Both are IVAN-LANE ONLY, mirroring approveDraft's `.is('client_id', null)`
+// scope — Mattan's lane stays read-only ambient visibility by standing rule.
+// Both verify their own write landed (`.select()` + a non-empty result):
+// PostgREST returns a silent 204 when RLS filters the row away, and a surface
+// that says "Saved" off a filtered-away write is lying.
+
+// Merge marker keys into a taxonomy value of ANY live shape (object, bare
+// string, JSON string, null). A bare-string taxonomy is a structure value
+// (taxonomyFields reads it as structure_used), so it is preserved under that
+// key rather than clobbered.
+export function stampTaxonomy(t: unknown, marks: Record<string, unknown>): Record<string, unknown> {
+  const parsed = parseMaybeJson(t)
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    return { ...(parsed as Record<string, unknown>), ...marks }
+  }
+  if (typeof parsed === 'string' && parsed.trim()) {
+    return { structure_used: parsed.trim(), ...marks }
+  }
+  return { ...marks }
+}
+
+// The regen-clobber protection contract: a pipeline regen must be able to SEE
+// that a human touched this row. Writing the marker is this app's half; the
+// n8n side honors it separately.
+export function stampHumanEdit(t: unknown, at: string = new Date().toISOString()): Record<string, unknown> {
+  return stampTaxonomy(t, { human_edited: true, human_edited_at: at })
+}
+
+export function stampOperatorDelete(t: unknown, at: string = new Date().toISOString()): Record<string, unknown> {
+  return stampTaxonomy(t, { deleted_by_operator: true, deleted_at: at })
+}
+
+// TRUE only on an explicit marker. taxonomyValue() cannot be used here — it
+// stringifies via str(), which returns null for a boolean true.
+export function operatorDeleted(t: unknown): boolean {
+  const parsed = parseMaybeJson(t)
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return false
+  const v = (parsed as Record<string, unknown>).deleted_by_operator
+  return v === true || v === 'true'
+}
+
+// The explicit-save edit. Editing NEVER touches status — approve stays the
+// only status write. `taxonomy` is the value loaded with the detail
+// (read-modify-write): the human-edit markers are merged into it and written
+// in the same PATCH as the body.
+export async function updateDraftBody(id: string, body: string, taxonomy: unknown): Promise<void> {
+  const { data, error } = await supabase.from('carousel_drafts')
+    .update({ post_body: body, taxonomy: stampHumanEdit(taxonomy) })
+    .eq('id', id).is('client_id', null)
+    .select('id')
+  if (error) throw error
+  if (!data || data.length === 0) {
+    throw new Error('Save failed — the database did not accept the edit.')
+  }
+}
+
+// Delete, honestly. The RLS probe (2026-08-03) proved UPDATE on real rows but
+// left DELETE unproven: PostgREST answers 204 to a DELETE it silently filtered.
+// So: attempt the hard DELETE with return=representation; an EMPTY result
+// means it did not happen, and the row is instead flipped to 'disqualified'
+// with taxonomy.deleted_by_operator so it leaves every list (fetch filter
+// above) — and THAT write is verified too. Skip ≠ Delete: skip is a visible
+// archive decision, delete removes the row from the surface entirely.
+export async function deleteDraft(id: string, taxonomy: unknown): Promise<'deleted' | 'disqualified'> {
+  const del = await supabase.from('carousel_drafts')
+    .delete()
+    .eq('id', id).is('client_id', null)
+    .select('id')
+  if (!del.error && del.data && del.data.length > 0) return 'deleted'
+  const upd = await supabase.from('carousel_drafts')
+    .update({ status: SKIP_STATUS, taxonomy: stampOperatorDelete(taxonomy) })
+    .eq('id', id).is('client_id', null)
+    .select('id')
+  if (upd.error) throw upd.error
+  if (!upd.data || upd.data.length === 0) {
+    throw new Error('Delete failed — the row was neither removed nor archived.')
+  }
+  return 'disqualified'
+}
+
+// Idea delete, same honesty contract. The fallback status is 'archived' — a
+// REAL value in lm_idea_candidates (1,460 rows live at it, probed 2026-08-03;
+// 'dismissed'/'rejected' do not exist in the table) — which removes the row
+// from the reviewing list every consumer fetches.
+export async function deleteIdea(id: string): Promise<'deleted' | 'archived'> {
+  const del = await supabase.from('lm_idea_candidates')
+    .delete()
+    .eq('id', id)
+    .select('id')
+  if (!del.error && del.data && del.data.length > 0) return 'deleted'
+  const upd = await supabase.from('lm_idea_candidates')
+    .update({ status: 'archived' })
+    .eq('id', id)
+    .select('id')
+  if (upd.error) throw upd.error
+  if (!upd.data || upd.data.length === 0) {
+    throw new Error('Delete failed — the idea was neither removed nor archived.')
+  }
+  return 'archived'
+}
+
 // The one rule that decides whether a row shows a mutating affordance at all,
 // in one place because round 2 renders those buttons from two surfaces (the
 // queue card and the draft detail screen). D6: only a row waiting on review is
@@ -623,6 +734,10 @@ export type ContentDraftDetail = ContentDraft & {
   funnel_stage: string | null
   published_at: string | null
   description: string | null
+  // The rendered post/carousel HTML artifact the pipeline authored — what the
+  // post will actually look like. Selected by `select('*')` below; rendered in
+  // the detail window inside a script-less sandboxed iframe, never as raw JSX.
+  authored_html: string | null
   key_points: unknown
   ig_caption: string | null
   pdf_url: string | null
@@ -1142,4 +1257,17 @@ export function normalizeImageUrls(v: unknown): string[] {
   if (typeof parsed === 'string') return parsed.trim() ? [parsed.trim()] : []
   if (!Array.isArray(parsed)) return []
   return parsed.map(x => str(x)).filter((s): s is string => !!s)
+}
+
+// Whether an HTML artifact carries its own presentation. The engines author
+// carousel_drafts.authored_html as a CLASS-BASED FRAGMENT (`<section
+// class="card …">`) whose styles live in the render service's kit CSS — an
+// iframe would show it as raw serif text, which is the opposite of "the post
+// as it will appear" (the honest render of those rows is image_urls, the
+// service's own screenshots). Only a document that ships a <style> or a
+// stylesheet <link> earns the preview frame.
+export function selfContainedHtml(v: string | null | undefined): boolean {
+  const s = (v ?? '').trim()
+  if (!s) return false
+  return /<style[\s>]|<link[^>]*rel=["']?stylesheet/i.test(s)
 }
