@@ -1,0 +1,59 @@
+
+=== CONTINUOUS VARIANT (one-line change), n=4.1 per fixture ===
+fixture    wds  ok     WER%   S     I     D     uEnd→final  uEnd→audio  acDur/fileDur 
+f1         7    5/5    0      0     0     0     961.3       988.8       1600/1612     
+f2         5    3/4    53.3   1.7   1     0     1077.3      1092.4      1663.9/1712   
+f3         9    4/4    55.6   4     1     0     968         990.5       3109.2/3123   
+f4         10   4/4    20     1     1     0     970.3       987.5       2570.7/2579   
+f5         9    4/4    66.7   4     2     0     928.1       961.3       2613.3/2667   
+f6         8    4/4    18.8   0.8   0.8   0     1040.9      1085.3      2805.3/2916   
+f7         8    4/4    75     0     0     6     843.6       857.9       2517.3/2524   
+f8         10   4/4    10     1     0     0     912.5       929.6       3040/3116     
+f9_noisy   9    4/4    61.1   2.5   0.5   2.5   882.4       896.7       3114.7/3162   
+f10_fast   11   0/4    -      -     -     -     -           -           null/2411     
+
+AGGREGATE: {
+  "runsPerFixture": 4.1,
+  "turnsAttempted": 41,
+  "turnsCompleted": 36,
+  "completionRatePct": 87.8,
+  "werPct_completedOnly": 38.6,
+  "werPct_microAvg_completedOnly": 38.4,
+  "werPct_inclFailures": 46.1,
+  "uEnd_to_final_ms": {
+    "median": 952,
+    "min": 765.7,
+    "max": 1706
+  },
+  "uEnd_to_firstAudibleProxy_ms": {
+    "median": 980.2,
+    "mean": 1036.6,
+    "min": 777.6,
+    "max": 1793.3,
+    "underTargetCount": 30,
+    "total": 36
+  },
+  "final_to_speakStart_ms": {
+    "median": 18.2,
+    "max": 87.3
+  },
+  "speakCalled_to_startEvent_ms": {
+    "median": 15.9
+  },
+  "appDefault": {
+    "attempted": 10,
+    "completed": 1
+  }
+}
+
+=== APP AS WRITTEN (continuous=false) ===
+f1         0/1    -      -          
+f2         0/1    -      -          
+f3         0/1    -      -          
+f4         0/1    -      -          
+f5         0/1    -      -          
+f6         0/1    -      -          
+f7         0/1    -      -          
+f8         1/1    10     1465.2     
+f9_noisy   0/1    -      -          
+f10_fast   0/1    -      -          

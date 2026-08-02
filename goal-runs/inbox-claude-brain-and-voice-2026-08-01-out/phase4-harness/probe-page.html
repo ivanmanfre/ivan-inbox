@@ -1,0 +1,56 @@
+<!doctype html><meta charset=utf-8><title>probe</title><body>
+<h1>probe</h1><pre id=log></pre><script>
+window.__log = []
+function L(k, v) { window.__log.push({ t: performance.now(), k, v })
+  document.getElementById('log').textContent += k + ' ' + JSON.stringify(v ?? null) + '\n' }
+window.__probe = async function () {
+  const Ctor = window.SpeechRecognition || window.webkitSpeechRecognition || null
+  L('ctor', { SpeechRecognition: !!window.SpeechRecognition,
+              webkitSpeechRecognition: !!window.webkitSpeechRecognition,
+              secureContext: window.isSecureContext })
+  if (!Ctor) return 'no-ctor'
+  // getUserMedia first, exactly as a real page would, so a mic failure is
+  // distinguishable from a speech-service failure.
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({ audio: true })
+    L('gum-ok', { tracks: s.getAudioTracks().map(t => t.label) })
+    // Prove the fake audio is actually flowing: RMS over 300ms of the stream.
+    const ac = new AudioContext()
+    const src = ac.createMediaStreamSource(s)
+    const an = ac.createAnalyser(); an.fftSize = 2048
+    src.connect(an)
+    const buf = new Float32Array(an.fftSize)
+    let peak = 0
+    for (let i = 0; i < 30; i++) {
+      await new Promise(r => setTimeout(r, 10))
+      an.getFloatTimeDomainData(buf)
+      for (const v of buf) peak = Math.max(peak, Math.abs(v))
+    }
+    L('stream-peak', { peak })
+  } catch (e) { L('gum-fail', { name: e.name, message: e.message }) }
+
+  const r = new Ctor()
+  r.lang = 'en-US'; r.continuous = false; r.interimResults = true; r.maxAlternatives = 1
+  let done
+  const p = new Promise(res => { done = res })
+  r.onstart = () => L('onstart')
+  r.onaudiostart = () => L('onaudiostart')
+  r.onsoundstart = () => L('onsoundstart')
+  r.onspeechstart = () => L('onspeechstart')
+  r.onspeechend = () => L('onspeechend')
+  r.onsoundend = () => L('onsoundend')
+  r.onaudioend = () => L('onaudioend')
+  r.onresult = e => {
+    const out = []
+    for (let i = 0; i < e.results.length; i++)
+      out.push({ isFinal: e.results[i].isFinal, text: e.results[i][0] && e.results[i][0].transcript })
+    L('onresult', { resultIndex: e.resultIndex, results: out })
+  }
+  r.onerror = e => { L('onerror', { error: e.error, message: e.message }); }
+  r.onend = () => { L('onend'); done('ended') }
+  try { r.start(); L('start-called') } catch (e) { L('start-threw', { name: e.name, message: e.message }); return 'start-threw' }
+  const to = setTimeout(() => done('timeout'), 15000)
+  const why = await p; clearTimeout(to)
+  return why
+}
+</script></body>

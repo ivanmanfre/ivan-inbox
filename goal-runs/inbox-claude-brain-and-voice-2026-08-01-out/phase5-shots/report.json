@@ -1,0 +1,109 @@
+{
+  "r1_ivan_desktop": {
+    "lanes": [
+      "Ivan",
+      "Mattan Danino"
+    ],
+    "riseHits": [],
+    "errors": []
+  },
+  "r1_mattan_desktop": {
+    "labelPresent": true,
+    "riseHits": [],
+    "errors": []
+  },
+  "r1_ivan_mobile": {
+    "lanes": [
+      "Ivan",
+      "Mattan Danino"
+    ],
+    "riseHits": [],
+    "errors": []
+  },
+  "r1_mattan_mobile": {
+    "labelPresent": true,
+    "riseHits": [],
+    "errors": []
+  },
+  "r2_rail_text": "IM\nWorkbench\n☼\nToday\n◉\nInbox\n56\nWORK\n✦\nDMs\n▤\nContent\n18\n↑\nSends\n◈\nOps\n5\n✳\nClaude\nDocked beside your work\n⚙︎\nSettings\njust now\n↻",
+  "r3_proof_row": {
+    "cardFound": true,
+    "matchedRequestId": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=*&id=eq.792ee91c-5b0e-475b-9150-3bee9937bbb5",
+    "found": true,
+    "genHeaderTail": "37 entries",
+    "logEntryCount": 37,
+    "distinctAgents": [
+      "Stuck Sentinel",
+      "Lint Gate",
+      "AI-Slop Gate",
+      "IG Caption QA",
+      "Forbidden Language Gate",
+      "QA Agent",
+      "Content Agent",
+      "Hook Agent",
+      "IG Caption Lint Gate",
+      "Editorial Agent",
+      "Publisher"
+    ],
+    "unattributedCount": 0,
+    "clampControlsInRange": 0,
+    "clampedByCssCount": 0,
+    "subtleLine": "37 of 37 entries name the agent that wrote them",
+    "errors": []
+  },
+  "r4_filter": {
+    "facetLabel": "Archived\n39",
+    "totalBefore": 21,
+    "totalAfter": 3,
+    "fnote": "39\nof 171 drafts shown\nclear",
+    "errors": []
+  },
+  "r5_stuck_row": {
+    "stuckMention": true,
+    "resourceSectionHeader": "RESOURCES",
+    "bodyExcerpt": "",
+    "errors": []
+  },
+  "r6_ivan": {
+    "queueInfo": {
+      "found": true,
+      "headerCount": "2",
+      "fnoteText": "152 queue rows",
+      "rowElementCount": 60
+    },
+    "stylesInfoIvan": {
+      "found": true,
+      "headerCount": "17",
+      "fnoteText": "17 styles",
+      "rowElementCount": 17
+    },
+    "resourcesInfoIvan": {
+      "found": true,
+      "headerCount": "121",
+      "fnoteText": "121 resources",
+      "rowElementCount": 121
+    },
+    "errors": []
+  },
+  "r6_mattan": {
+    "resourcesInfoMattan": {
+      "found": true,
+      "headerCount": "5",
+      "fnoteText": "5 resources",
+      "rowElementCount": 5
+    },
+    "stylesInfoMattan": {
+      "found": true,
+      "headerCount": "17",
+      "fnoteText": "17 styles",
+      "rowElementCount": 17
+    },
+    "errors": []
+  },
+  "r5b_stuck_resource": {
+    "stuckResourceText": [
+      "The Shopify Report Card: a Claude skill that grades the repeat-customer money your Shopify dashboard hidesapprovedAI Kit6d agoasset ↗no landing URL"
+    ],
+    "errors": []
+  }
+}

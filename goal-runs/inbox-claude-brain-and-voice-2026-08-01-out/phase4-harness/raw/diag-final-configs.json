@@ -1,0 +1,396 @@
+[
+  {
+    "cfg": "app-settings (continuous=false, interim=true)",
+    "finals": [],
+    "lastInterim": "approve the top",
+    "log": [
+      {
+        "t": 53.90000009536743,
+        "k": "cfg",
+        "v": {
+          "name": "app-settings (continuous=false, interim=true)",
+          "continuous": false,
+          "interim": true
+        }
+      },
+      {
+        "t": 385.5,
+        "k": "start",
+        "v": null
+      },
+      {
+        "t": 1756,
+        "k": "speechstart",
+        "v": null
+      },
+      {
+        "t": 2346.5,
+        "k": "result",
+        "v": [
+          {
+            "f": false,
+            "t": "app"
+          }
+        ]
+      },
+      {
+        "t": 2432.600000023842,
+        "k": "result",
+        "v": [
+          {
+            "f": false,
+            "t": "approve"
+          }
+        ]
+      },
+      {
+        "t": 2599.600000023842,
+        "k": "result",
+        "v": [
+          {
+            "f": false,
+            "t": "approve the"
+          }
+        ]
+      },
+      {
+        "t": 2864.4000000953674,
+        "k": "result",
+        "v": [
+          {
+            "f": false,
+            "t": "approve the top"
+          }
+        ]
+      },
+      {
+        "t": 4061.3000000715256,
+        "k": "speechend",
+        "v": null
+      },
+      {
+        "t": 4061.5,
+        "k": "audioend",
+        "v": null
+      },
+      {
+        "t": 4155.900000095367,
+        "k": "end",
+        "v": null
+      }
+    ]
+  },
+  {
+    "cfg": "continuous=false, interim=false",
+    "finals": [],
+    "lastInterim": null,
+    "log": [
+      {
+        "t": 39,
+        "k": "cfg",
+        "v": {
+          "name": "continuous=false, interim=false",
+          "continuous": false,
+          "interim": false
+        }
+      },
+      {
+        "t": 301.1999999284744,
+        "k": "start",
+        "v": null
+      },
+      {
+        "t": 1808.5999999046326,
+        "k": "speechstart",
+        "v": null
+      },
+      {
+        "t": 4112.799999952316,
+        "k": "speechend",
+        "v": null
+      },
+      {
+        "t": 4112.799999952316,
+        "k": "audioend",
+        "v": null
+      },
+      {
+        "t": 4236.099999904633,
+        "k": "end",
+        "v": null
+      }
+    ]
+  },
+  {
+    "cfg": "continuous=true, interim=true",
+    "finals": [
+      "approve the top draft in the queue"
+    ],
+    "lastInterim": " the queue",
+    "log": [
+      {
+        "t": 43.799999952316284,
+        "k": "cfg",
+        "v": {
+          "name": "continuous=true, interim=true",
+          "continuous": true,
+          "interim": true
+        }
+      },
+      {
+        "t": 356.6999999284744,
+        "k": "start",
+        "v": null
+      },
+      {
+        "t": 1624.7999999523163,
+        "k": "speechstart",
+        "v": null
+      },
+      {
+        "t": 2131,
+        "k": "result",
+        "v": [
+          {
+            "f": false,
+            "t": "app"
+          }
+        ]
+      },
+      {
+        "t": 2239.6999999284744,
+        "k": "result",
+        "v": [
+          {
+            "f": false,
+            "t": "approve"
+          }
+        ]
+      },
+      {
+        "t": 2473.899999976158,
+        "k": "result",
+        "v": [
+          {
+            "f": false,
+            "t": "approve the"
+          }
+        ]
+      },
+      {
+        "t": 2706.100000023842,
+        "k": "result",
+        "v": [
+          {
+            "f": false,
+            "t": "approve the top"
+          }
+        ]
+      },
+      {
+        "t": 2791.899999976158,
+        "k": "result",
+        "v": [
+          {
+            "f": false,
+            "t": "approve"
+          },
+          {
+            "f": false,
+            "t": " the top"
+          }
+        ]
+      },
+      {
+        "t": 2802.1999999284744,
+        "k": "result",
+        "v": [
+          {
+            "f": false,
+            "t": "approve"
+          },
+          {
+            "f": false,
+            "t": " the top draft"
+          }
+        ]
+      },
+      {
+        "t": 3047.100000023842,
+        "k": "result",
+        "v": [
+          {
+            "f": false,
+            "t": "approve the"
+          },
+          {
+            "f": false,
+            "t": " top draft"
+          }
+        ]
+      },
+      {
+        "t": 3134.100000023842,
+        "k": "result",
+        "v": [
+          {
+            "f": false,
+            "t": "approve the"
+          },
+          {
+            "f": false,
+            "t": " top draft in"
+          }
+        ]
+      },
+      {
+        "t": 3226.2999999523163,
+        "k": "result",
+        "v": [
+          {
+            "f": false,
+            "t": "approve the"
+          },
+          {
+            "f": false,
+            "t": " top draft in the"
+          }
+        ]
+      },
+      {
+        "t": 3239.899999976158,
+        "k": "result",
+        "v": [
+          {
+            "f": false,
+            "t": "approve the top"
+          },
+          {
+            "f": false,
+            "t": " draft in the"
+          }
+        ]
+      },
+      {
+        "t": 3416.899999976158,
+        "k": "result",
+        "v": [
+          {
+            "f": false,
+            "t": "approve the top"
+          },
+          {
+            "f": false,
+            "t": " draft in the qu"
+          }
+        ]
+      },
+      {
+        "t": 3500.2999999523163,
+        "k": "result",
+        "v": [
+          {
+            "f": false,
+            "t": "approve the top draft"
+          },
+          {
+            "f": false,
+            "t": " in the queue"
+          }
+        ]
+      },
+      {
+        "t": 3721.7999999523163,
+        "k": "result",
+        "v": [
+          {
+            "f": false,
+            "t": "approve the top draft in"
+          },
+          {
+            "f": false,
+            "t": " the queue"
+          }
+        ]
+      },
+      {
+        "t": 3899.399999976158,
+        "k": "result",
+        "v": [
+          {
+            "f": true,
+            "t": "approve the top draft in the queue"
+          }
+        ]
+      },
+      {
+        "t": 18440.600000023842,
+        "k": "speechend",
+        "v": null
+      },
+      {
+        "t": 18441.399999976158,
+        "k": "audioend",
+        "v": null
+      },
+      {
+        "t": 18522.199999928474,
+        "k": "end",
+        "v": null
+      }
+    ]
+  },
+  {
+    "cfg": "continuous=true, interim=false",
+    "finals": [
+      "approve the top draft in the queue"
+    ],
+    "lastInterim": null,
+    "log": [
+      {
+        "t": 71.09999990463257,
+        "k": "cfg",
+        "v": {
+          "name": "continuous=true, interim=false",
+          "continuous": true,
+          "interim": false
+        }
+      },
+      {
+        "t": 347.6999999284744,
+        "k": "start",
+        "v": null
+      },
+      {
+        "t": 1774.3999999761581,
+        "k": "speechstart",
+        "v": null
+      },
+      {
+        "t": 3965.1999999284744,
+        "k": "result",
+        "v": [
+          {
+            "f": true,
+            "t": "approve the top draft in the queue"
+          }
+        ]
+      },
+      {
+        "t": 18502.299999952316,
+        "k": "speechend",
+        "v": null
+      },
+      {
+        "t": 18502.599999904633,
+        "k": "audioend",
+        "v": null
+      },
+      {
+        "t": 18569.799999952316,
+        "k": "end",
+        "v": null
+      }
+    ]
+  }
+]

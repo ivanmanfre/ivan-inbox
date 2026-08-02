@@ -52,11 +52,14 @@ export default function App() {
   }, [])
   if (!ready) return null
   if (!session) return <LoginScreen />
-  // Tournament candidates (goal-run 2026-07-31): only a load-time #exp/ hash
-  // routes away from the real app; without it this is the untouched default.
+  // Deploy decision 2026-08-02 ("apply, not additive"): the workbench — the
+  // faithful-revamp build the run verified — IS the app now. A load-time
+  // #exp/ hash still reaches any candidate; #exp/stock is the escape hatch to
+  // the pre-revamp shell.
   const exp = getExpVariant()
+  if (exp === 'stock') return <Shell />
   if (exp) return <ExpGate variant={exp} />
-  return <Shell />
+  return <ExpGate variant="v2" />
 }
 
 function Shell() {

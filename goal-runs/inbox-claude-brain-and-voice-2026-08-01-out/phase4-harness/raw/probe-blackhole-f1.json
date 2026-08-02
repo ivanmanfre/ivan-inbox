@@ -1,0 +1,119 @@
+{
+  "wav": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase4-fixtures/16k/f1.wav",
+  "why": "ended",
+  "log": [
+    {
+      "t": 53.39999997615814,
+      "k": "ctor",
+      "v": {
+        "SpeechRecognition": true,
+        "webkitSpeechRecognition": true,
+        "secureContext": true
+      }
+    },
+    {
+      "t": 540.0999999046326,
+      "k": "gum-ok",
+      "v": {
+        "tracks": [
+          "Default - BlackHole 2ch (Virtual)"
+        ]
+      }
+    },
+    {
+      "t": 922.5,
+      "k": "stream-peak",
+      "v": {
+        "peak": 0
+      }
+    },
+    {
+      "t": 925.2999999523163,
+      "k": "start-called"
+    },
+    {
+      "t": 928,
+      "k": "onstart"
+    },
+    {
+      "t": 1159.8999999761581,
+      "k": "onaudiostart"
+    },
+    {
+      "t": 1758.5,
+      "k": "onsoundstart"
+    },
+    {
+      "t": 1758.5999999046326,
+      "k": "onspeechstart"
+    },
+    {
+      "t": 2236.899999976158,
+      "k": "onresult",
+      "v": {
+        "resultIndex": 0,
+        "results": [
+          {
+            "isFinal": false,
+            "text": "app"
+          }
+        ]
+      }
+    },
+    {
+      "t": 2252.5,
+      "k": "onresult",
+      "v": {
+        "resultIndex": 0,
+        "results": [
+          {
+            "isFinal": false,
+            "text": "approve"
+          }
+        ]
+      }
+    },
+    {
+      "t": 2435.5999999046326,
+      "k": "onresult",
+      "v": {
+        "resultIndex": 0,
+        "results": [
+          {
+            "isFinal": false,
+            "text": "approve the"
+          }
+        ]
+      }
+    },
+    {
+      "t": 2750.0999999046326,
+      "k": "onresult",
+      "v": {
+        "resultIndex": 0,
+        "results": [
+          {
+            "isFinal": false,
+            "text": "approve the top"
+          }
+        ]
+      }
+    },
+    {
+      "t": 3860.5,
+      "k": "onspeechend"
+    },
+    {
+      "t": 3860.5999999046326,
+      "k": "onsoundend"
+    },
+    {
+      "t": 3860.5999999046326,
+      "k": "onaudioend"
+    },
+    {
+      "t": 3970,
+      "k": "onend"
+    }
+  ]
+}

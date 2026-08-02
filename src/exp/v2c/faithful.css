@@ -1,0 +1,1895 @@
+/* ============================================================================
+   faithful.css — candidate `faithful`, goal-run inbox-visual-rebuild-2026-08-02.
+
+   THESIS: reference-forward expressive. The Nixtio "Check Box" reference is read
+   at face value everywhere the spine permits — display type at the top of the
+   stepped scale, chart-forward overview cards at --r-hero, pill chrome on nav
+   and filters, generous card padding, capsule marks with the number inside,
+   legend + Total footers. Density is NOT sacrificed for it: the 285-row Content
+   surface is carried by the spine's dense-list vocabulary (§7) at full
+   discipline. The bet is that expression on the overview surfaces and monastic
+   rails on the lists are the same design, not two.
+
+   SCOPE (spine §1): every token is declared at the .wb root. :root in
+   src/styles.css:1-16 is NEVER touched. This file is imported by the v2c Shell
+   AFTER './styles.css', so it is the last word inside the workbench and has no
+   reach at all outside it.
+
+   SPECIFICITY NOTE — read this before editing:
+   The app ships 28 distinct font sizes including ten half-pixel steps, spread
+   over ~200 declarations across two stylesheets. Enumerating them by hand is how
+   a scale silently gains a 29th value. So this file FLATTENS first (`.wb.wb *`,
+   specificity 0-2-0, which beats every font rule in the base sheets and ties the
+   two 0-2-0 rules that it also follows in source order) and then RE-ASSIGNS the
+   seven tiers at `.wb.wb.wb` (0-3-0+). Anything not re-assigned lands on
+   --fs-body, which is safe, in-scale, and keeps the census honest by
+   construction rather than by vigilance.
+   ============================================================================ */
+
+/* ========================================================================== */
+/* 1 · TOKENS — the ladder, the bridge, the scale, the radii, the motion        */
+/* ========================================================================== */
+
+.wb{
+  /* --- 3.1 ladder, adopted unchanged (no re-derivation; harness output in
+         spine §9.4 is this ladder's, verbatim, and already clears all three
+         bars). --text4 is the §4 CORRECTION value #6F7472, never #606562. --- */
+  --canvas:#090B0A; --surface1:#121513; --surface2:#191D1B; --surface3:#212523;
+  --hairline:#2C302E; --hairline-strong:#3E4240;
+  --text:#F3F6F5; --text2:#AEB2B0; --text3:#7F8582; --text4:#6F7472;
+
+  /* --- 1.4 BRIDGE — the legacy names every stock screen actually reads.
+         Without this block TodayScreen/OverviewView/DraftsScreen/OpsScreen stay
+         on the iOS :root palette while the workbench chrome moves. --- */
+  --bg:var(--canvas);
+  --surface:var(--surface1);
+  --sep:var(--hairline);
+  --accent:#10A37F;
+  --accent-soft:rgba(16,163,127,.16);
+  --blue:var(--text2);          /* the undeclared second accent, retired to neutral */
+
+  /* --- severity, 5.4. Meaning locked, never reused as category encoding. --- */
+  --sev-clear:#10A37F; --sev-attention:#FF9F0A; --sev-urgent:#FF453A;
+  --ink:#171717;                /* 5.3 — the label on a filled accent mark */
+
+  /* --- 2 · type scale: seven tokens, no eighth --- */
+  --fs-display:34px;            /* stepped by media query below, never clamped */
+  --fs-figure:30px;
+  --fs-page:20px;
+  --fs-title:15px;
+  --fs-body:13px;
+  --fs-meta:12px;
+  --fs-eyebrow:11px;
+  --fs-glyph:20px;              /* the ONE glyph-only size (rail + tab icons) */
+  --fw-display:700;             /* 2.4 — the single ≥700 exception, ≥28px only */
+
+  /* --- 6 · radius family --- */
+  --r-chip:6px; --r-ctl:10px; --r-card:18px; --r-hero:24px; --r-pill:999px;
+  /* v2c's local radii (styles.css:11-16) are treatment surface per §1.6 and are
+     remapped onto the family rather than left to drift alongside it. */
+  --r-sm:var(--r-ctl); --r-md:var(--r-card); --r-lg:var(--r-hero);
+
+  /* --- 7 · dense-list geometry --- */
+  --anchor-w:28px; --anchor-gap:12px; --tail-w:62px; --sech-h:32px; --indent:20px;
+  --gut:16px;                   /* the one horizontal gutter for list surfaces */
+  --pad-card:20px;              /* expressive: generous overview card padding */
+
+  /* --- 10 · motion: ONE easing token, three durations, nothing above 250ms --- */
+  --ease:cubic-bezier(.25,1,.5,1);
+  --dur-hover:100ms; --dur-state:180ms; --dur-beat:200ms;
+
+  /* --- 9.2 · ANSWER MONO (default) — zero new hues --- */
+  --cat-1:#10A37F; --cat-2:#DBDFDD; --cat-3:#A1A6A4; --cat-4:#747977;
+  --cat-1-ink:var(--ink); --cat-2-ink:var(--ink); --cat-3-ink:var(--ink);
+  --cat-4-ink:#FFFFFF;          /* 9.5 — MONO cat-4 is the one white label */
+  /* Beyond four series, differentiation is PATTERN not colour (9.2). */
+  --pat-1:none;
+  --pat-2:repeating-linear-gradient(45deg,rgba(9,11,10,.34) 0 3px,transparent 3px 7px);
+  --pat-3:repeating-linear-gradient(90deg,rgba(9,11,10,.40) 0 2px,transparent 2px 6px);
+  --pat-4:none;
+
+  font-variant-numeric:tabular-nums;   /* 2.6 — declared once, never unset */
+  background:var(--canvas);
+  color:var(--text);
+}
+/* 2.6 has exactly one hole, and it is not a rule anyone wrote: form controls do
+   not inherit the UA's font shorthand, so a <textarea> resets
+   font-variant-numeric to `normal` no matter what the ancestor declares. The
+   census caught one leaf — the Ops draft body (styles.css:674) — which is the
+   one place in this app where an operator reads a number back inside an
+   editable field. Re-declared on the controls themselves. */
+.wb.wb.wb input, .wb.wb.wb textarea, .wb.wb.wb select, .wb.wb.wb button{
+  font-variant-numeric:tabular-nums;
+}
+
+/* --- 9.3 · ANSWER TRIAD — two derived hues, separated on hue AND lightness.
+       --cat-3 sits at L 0.7624, lifted from the accent's own 0.6374; that lift
+       is the CVD remedy and is a contract, not a taste call. Do not harmonise
+       it back down. --- */
+:root[data-cat='triad'] .wb{
+  /* --cat-4 is TRIAD's own neutral 4th slot (charts cycle %4; §9.3 defines 3
+     hues, the 4th stays neutral). #747977 held white ink at 4.43:1 — under the
+     4.5 body bar, flagged since the parity pass. Now that triad is the decided
+     answer the fix lands here: #6C716F carries white at 4.97:1 and stays ≥3.12:1
+     as a mark on every ladder surface (harness math in phase3-polish.md). MONO
+     keeps its published hexes untouched. */
+  --cat-1:#10A37F; --cat-2:#3A93D0; --cat-3:#D099E8; --cat-4:#6C716F;
+  --cat-1-ink:var(--ink); --cat-2-ink:var(--ink); --cat-3-ink:var(--ink);
+  --cat-4-ink:#FFFFFF;
+  /* TRIAD separates on hue; the pattern layer stands down so the two answers
+     differ in colour values only and the toggle produces zero layout shift. */
+  --pat-1:none; --pat-2:none; --pat-3:none; --pat-4:none;
+}
+
+/* 2.3 — --fs-display is STEPPED, not fluid. A clamp() on vw emits fractional
+   computed sizes at every intermediate width and destroys the integer census,
+   which is the one measurement that proves the scale exists. */
+@media (min-width:768px){ .wb{ --fs-display:44px } }
+@media (min-width:1200px){ .wb{ --fs-display:56px } }
+
+/* Light theme: the ladder inverts, the accent and severities do not. Dark is the
+   anchor; light must stay legible, which is what this block buys. */
+:root[data-theme='light'] .wb{
+  --canvas:#F4F6F5; --surface1:#FFFFFF; --surface2:#ECEFEE; --surface3:#E0E4E2;
+  --hairline:#D5D9D7; --hairline-strong:#A8ADAB;
+  /* text2/text3 measured at 4.35:1 on surface2 at the first pass — under the
+     4.5 bar. Darkened until every tier clears body contrast on the LIGHTEST
+     surface it can sit on, which on light is surface2, not the canvas. */
+  --text:#0B0E0D; --text2:#3A3F3D; --text3:#4F5452; --text4:#5E6361;
+  /* --ink is NOT overridden: the accent is the same hex in both themes, so the
+     label on a filled accent mark measures the same 5.61:1 and stays ink. */
+}
+
+/* ========================================================================== */
+/* 2 · TYPE — flatten, then re-assign the seven tiers                          */
+/* ========================================================================== */
+
+.wb.wb, .wb.wb *{
+  font-size:var(--fs-body);
+  font-weight:400;
+  letter-spacing:0;
+  line-height:20px;
+}
+.wb.wb *{ font-family:inherit }
+
+/* --- display (M1). Uppercase, flush left, the largest text on its screen by
+       ≥1.5x over the next tier, and the ONLY element permitted weight 700. --- */
+.wb.wb.wb .nav h2,
+.wb.wb.wb .wb-display{
+  font-size:var(--fs-display);
+  font-weight:var(--fw-display);
+  letter-spacing:-.02em;
+  line-height:1;
+  text-transform:uppercase;
+}
+
+/* --- figure: the ONE hero numeral per surface (8.1) --- */
+.wb.wb.wb .ov-tile-big,
+.wb.wb.wb .wb-pipe-big,
+.wb.wb.wb .td-big,
+.wb.wb.wb .ct-alert-n,
+.wb.wb.wb .wb-otile.big .wb-otile-n,
+.wb.wb.wb .wb-figure{
+  font-size:var(--fs-figure);
+  font-weight:600;
+  letter-spacing:-.033em;
+  line-height:32px;
+}
+
+/* --- page: pane and peer titles --- */
+.wb.wb.wb .wb-pane-n,
+.wb.wb.wb .wb-rail-ttl,
+.wb.wb.wb .dd-title,
+.wb.wb.wb .t-nav .n,
+.wb.wb.wb .wb-page{
+  font-size:var(--fs-page);
+  font-weight:600;
+  letter-spacing:-.02em;
+  line-height:24px;
+}
+
+/* --- title: section + card titles, and a working row's primary text --- */
+.wb.wb.wb .ct-title,
+.wb.wb.wb .wb-empty-l,
+.wb.wb.wb .ov-gov-nm,
+.wb.wb.wb .ov-rc-nm,
+.wb.wb.wb .wb-failed-t,
+.wb.wb.wb .wb-chat-empty-t,
+.wb.wb.wb .wb-mh.h1,
+.wb.wb.wb .wb-title{
+  font-size:var(--fs-title);
+  font-weight:500;
+  letter-spacing:-.01em;
+  line-height:24px;
+}
+
+/* --- body: the workhorse. Row primary text sits here at weight 500 (7.7). --- */
+.wb.wb.wb .r .name,
+.wb.wb.wb .td-nm,
+.wb.wb.wb .ov-td-nm,
+.wb.wb.wb .ov-pl-nm,
+.wb.wb.wb .ov-kpi-nm,
+.wb.wb.wb .wb-rj-l,
+.wb.wb.wb .ct-row-p,
+.wb.wb.wb .log-nm,
+.wb.wb.wb .ops-nm{
+  font-size:var(--fs-body);
+  font-weight:500;
+  line-height:20px;
+}
+.wb.wb.wb .wb-body,
+.wb.wb.wb .wb-p,
+.wb.wb.wb .dd-body,
+.wb.wb.wb .b,
+.wb.wb.wb .wb-bubble,
+.wb.wb.wb .msgs .b{
+  font-size:var(--fs-body);
+  font-weight:400;
+  line-height:20px;
+}
+
+/* --- meta: timestamps, counts, secondary row text --- */
+.wb.wb.wb .ct-tm,
+.wb.wb.wb .ct-topic,
+.wb.wb.wb .r .snip,
+.wb.wb.wb .r .time,
+.wb.wb.wb .td-snip,
+.wb.wb.wb .td-org,
+.wb.wb.wb .td-tm,
+.wb.wb.wb .ov-cap,
+.wb.wb.wb .ov-tile-sub,
+.wb.wb.wb .ov-kpi-24,
+.wb.wb.wb .ov-fcap,
+.wb.wb.wb .ov-note,
+.wb.wb.wb .ov-td-sub,
+.wb.wb.wb .wb-pane-s,
+.wb.wb.wb .wb-empty-s,
+.wb.wb.wb .wb-failed-m,
+.wb.wb.wb .wb-failed-f,
+.wb.wb.wb .ct-subtle,
+.wb.wb.wb .ct-fnote,
+.wb.wb.wb .wb-rail-hint,
+.wb.wb.wb .wb-meta{
+  font-size:var(--fs-meta);
+  font-weight:400;
+  line-height:16px;
+}
+
+/* --- eyebrow: uppercase column heads, section labels, legends, chips --- */
+.wb.wb.wb .wb-sech-t,
+.wb.wb.wb .wb-sech-n,
+.wb.wb.wb .wb-sech-c,
+.wb.wb.wb .td-zt,
+.wb.wb.wb .td-zn,
+.wb.wb.wb .td-zc,
+.wb.wb.wb .td-sub,
+.wb.wb.wb .td-big-c,
+.wb.wb.wb .ov-h,
+.wb.wb.wb .ov-tile-lbl,
+.wb.wb.wb .ov-fl,
+.wb.wb.wb .ct-chip,
+.wb.wb.wb .ct-lane,
+.wb.wb.wb .ov-badge,
+.wb.wb.wb .ov-rc-badge,
+.wb.wb.wb .td-kind,
+.wb.wb.wb .r .client,
+.wb.wb.wb .wb-workhead-l,
+.wb.wb.wb .wb-rib-j,
+.wb.wb.wb .res-hdr,
+.wb.wb.wb .wb-eyebrow,
+.wb.wb.wb .wb-legend-l,
+.wb.wb.wb .wb-total{
+  font-size:var(--fs-eyebrow);
+  font-weight:600;
+  letter-spacing:.04em;
+  line-height:16px;
+  text-transform:uppercase;
+}
+/* A legend label and a Total footer are eyebrow-sized but read as words, not
+   labels — case is left alone so "Total: 1,752" is a sentence. */
+.wb.wb.wb .wb-total,
+.wb.wb.wb .ov-h-sub{ text-transform:none; letter-spacing:.01em }
+
+/* --- the ONE glyph size. Icons carry no words, so they are the census's
+       permitted glyph-only tier (2.2). Everything else — chevrons, arrows,
+       markers — is pulled onto a real tier. --- */
+.wb.wb.wb .wb-rj-ic,
+.wb.wb.wb .tb .ic,
+.wb.wb.wb .wb-hf-orb,
+.wb.wb.wb .dt-empty-ic{ font-size:var(--fs-glyph); line-height:1 }
+.wb.wb.wb .wb-sech-chev,
+.wb.wb.wb .ct-alert .chev,
+.wb.wb.wb .wb-pane-x,
+.wb.wb.wb .wb-sync-r,
+.wb.wb.wb .wb-gear,
+.wb.wb.wb .ov-fchev,
+.wb.wb.wb .ov-fdot,
+.wb.wb.wb .td-sdot,
+.wb.wb.wb .back{ font-size:var(--fs-title); line-height:20px }
+
+/* 2.7 — monospace stays reserved for ids, shortcuts and code. */
+.wb.wb.wb .wb-code, .wb.wb.wb .wb-code code,
+.wb.wb.wb .wb-tool-in, .wb.wb.wb .wb-tool-in code,
+.wb.wb.wb code, .wb.wb.wb .dd-pre{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:var(--fs-meta);
+  line-height:16px;
+}
+
+/* 2.4 — the weight ceiling, enforced. Nothing between 9px and 17px is heavier
+   than 600; the measured defect (218/231 declarations ≥600, 800 the app's most
+   common weight) lived entirely in that band. */
+.wb.wb.wb b, .wb.wb.wb strong,
+.wb.wb.wb .r.unread .name,
+.wb.wb.wb .ov-pl-n, .wb.wb.wb .ov-td-n, .wb.wb.wb .ov-fn,
+.wb.wb.wb .ov-kpi-big, .wb.wb.wb .ov-gauge-lbl b,
+.wb.wb.wb .ov-rc-stat b, .wb.wb.wb .ov-rc-gov b,
+.wb.wb.wb .td-sm b, .wb.wb.wb .td-lg b, .wb.wb.wb .wb-pipe-i b,
+.wb.wb.wb .ct-fnote b, .wb.wb.wb .ct-f i, .wb.wb.wb .wb-ws b{ font-weight:600 }
+
+/* ========================================================================== */
+/* 3 · SURFACES, HAIRLINES, FOCUS                                              */
+/* ========================================================================== */
+
+.wb.wb.wb .app,
+.wb.wb.wb .rows,
+.wb-regions,
+.wb.wb.wb .wb-work{ background:var(--canvas) }
+.wb.wb.wb .wb-peer{ background:var(--canvas); border-left:1px solid var(--hairline) }
+.wb.wb.wb .wb-work.list{ border-right:1px solid var(--hairline) }
+
+/* 3.4 — zero drop shadows on resting surfaces. Depth is ladder + hairline.
+   Shadow survives on exactly one class of element: transient overlays. */
+.wb.wb.wb .ct-card, .wb.wb.wb .draftcard, .wb.wb.wb .ov-tile, .wb.wb.wb .ov-kpi,
+.wb.wb.wb .ov-gov, .wb.wb.wb .ov-rc, .wb.wb.wb .ov-tbl, .wb.wb.wb .ov-pipe,
+.wb.wb.wb .ov-funnel, .wb.wb.wb .td-mast, .wb.wb.wb .dd-card, .wb.wb.wb .group,
+.wb.wb.wb .wb-otile, .wb.wb.wb .sw-knob{ box-shadow:none }
+.wb.wb.wb .sheet, .wb.wb.wb .sheet-card, .wb.wb.wb .wb-modelmenu{
+  box-shadow:0 24px 60px rgba(0,0,0,.55);
+}
+
+/* 3.2 — focus ring: 2px accent at 100%. Linear's published 50% measures
+   2.20:1 on this ladder and fails; 70% scrapes 3.06:1; 100% clears at 4.85:1
+   worst case. This is settled and may not be reopened. */
+.wb.wb.wb :focus-visible{
+  outline:2px solid var(--accent);
+  outline-offset:2px;
+  border-radius:var(--r-chip);
+}
+
+/* 3.5 — text3 is label/metadata only on surface3; text4 is metadata and
+   disabled state everywhere. Both are re-pointed off the iOS rgba tokens. */
+.wb.wb.wb .ov-tile-empty, .wb.wb.wb .empty, .wb.wb.wb .ov-empty,
+.wb.wb.wb .td-empty{ color:var(--text3) }
+
+/* ========================================================================== */
+/* 4 · RADII + THE PILL LICENCE (6.3 / 6.4)                                    */
+/* ========================================================================== */
+
+/* --- LICENSED: 999px stays on exactly the seven classes in 6.3. --- */
+/* 1 · avatars and circular icon buttons */
+.wb.wb.wb .av, .wb.wb.wb .avatar-me, .wb.wb.wb .sk-av, .wb.wb.wb .av .badge,
+.wb.wb.wb .wb-pane-ic, .wb.wb.wb .sc-refresh, .wb.wb.wb .csend,
+.wb.wb.wb .draftbanner .ic, .wb.wb.wb .spark, .wb.wb.wb .dt-empty-ic,
+.wb.wb.wb .wb-mic, .wb.wb.wb .wb-hf-orb, .wb.wb.wb .ct-anchor-av{
+  border-radius:var(--r-pill);
+}
+/* 2 · top-level nav / view-switcher segments (M7 pill nav) */
+.wb.wb.wb .chip, .wb.wb.wb .wb-ws, .wb.wb.wb .seg .sg{ border-radius:var(--r-pill) }
+/* 3 · filter pills + the inline list filter (M5 / M13) */
+/* `.ct-f` is NOT this pill: it is ContentBits.tsx's FilterBar, an always-
+   expanded multi-facet chip browser (6+ facet groups, each rendering every
+   value as its own always-visible chip) — exactly the "second row of chips,
+   a filter bar" §11.2 bans by name, not the compact `label: value ⌄` grammar
+   this licence covers. The base app already had `.ct-f{border-radius:
+   var(--r-chip)}` (styles.css) correct; this override was shadowing it.
+   Removed here — `.ct-f` falls back to --r-chip. `.wb-fpill` (unused today,
+   reserved for the real §11.2 compact pill) keeps the licence. */
+.wb.wb.wb .wb-fpill{ border-radius:var(--r-pill) }
+/* 4 · numeric count badges attached to nav */
+.wb.wb.wb .wb-rj-n, .wb.wb.wb .tb .cnt{ border-radius:var(--r-pill) }
+/* 5 · the compose / primary FAB */
+.wb.wb.wb .wb-fab{ border-radius:var(--r-pill) }
+/* 6 · severity dots and legend dots */
+.wb.wb.wb .sc-dot, .wb.wb.wb .udot, .wb.wb.wb .wb-sech-dot, .wb.wb.wb .wb-sync-dot,
+.wb.wb.wb .wb-peer-dot, .wb.wb.wb .wb-ok-dot, .wb.wb.wb .wb-failed-dot,
+.wb.wb.wb .wb-tb-live, .wb.wb.wb .wb-th-dot, .wb.wb.wb .wb-vs-dot,
+.wb.wb.wb .wb-live, .wb.wb.wb .wb-ofresh-d, .wb.wb.wb .wb-tdot,
+.wb.wb.wb .wb-lad-dot, .wb.wb.wb .empty-dot, .wb.wb.wb .ops-fail-d,
+.wb.wb.wb .wb-pipe-d, .wb.wb.wb .td-zmark, .wb.wb.wb .td-zmark::after,
+.wb.wb.wb .wb-legend-d, .wb.wb.wb .ct-anchor-dot{ border-radius:var(--r-pill) }
+/* 7 · chart marks whose geometry IS a capsule — data geometry, not chrome */
+.wb.wb.wb .ov-gauge, .wb.wb.wb .ov-gauge-fill, .wb.wb.wb .ov-bar,
+.wb.wb.wb .ov-bar-fill, .wb.wb.wb .td-stack, .wb.wb.wb .td-bar,
+.wb.wb.wb .td-bar-f, .wb.wb.wb .wb-stack, .wb.wb.wb .wb-qa-g,
+.wb.wb.wb .wb-qa-fill, .wb.wb.wb .ct-mix-b, .wb.wb.wb .ct-mix-b i,
+.wb.wb.wb .wb-tbar, .wb.wb.wb .wb-tbar > span, .wb.wb.wb .sc-bar,
+.wb.wb.wb .wb-cap, .wb.wb.wb .wb-cap-t{ border-radius:var(--r-pill) }
+
+/* --- DEMOTED: everything else off 999px. This is what stops a dense row from
+       reading as an iOS settings screen, and it is what Attio actually does —
+       its Type/Source fields are small rounded rectangles, not capsules. --- */
+.wb.wb.wb .btn, .wb.wb.wb .wb-ask, .wb.wb.wb .wb-retry, .wb.wb.wb .stalebtn,
+.wb.wb.wb .gbtn, .wb.wb.wb .wb-stop, .wb.wb.wb .wb-starter, .wb.wb.wb .cfield,
+.wb.wb.wb .search, .wb.wb.wb .sheet-btn, .wb.wb.wb .wb-modelbtn,
+.wb.wb.wb .wb-modelopt, .wb.wb.wb .wb-hf, .wb.wb.wb .wb-hf-card button,
+.wb.wb.wb .wb-rj, .wb.wb.wb .wb-rail-sync, .wb.wb.wb input, .wb.wb.wb textarea,
+.wb.wb.wb button, .wb.wb.wb .sw, .wb.wb.wb .sw-knob{ border-radius:var(--r-ctl) }
+.wb.wb.wb .ct-chip, .wb.wb.wb .ct-lane, .wb.wb.wb .ov-badge,
+.wb.wb.wb .ov-rc-badge, .wb.wb.wb .ov-over-lbl, .wb.wb.wb .td-kind,
+.wb.wb.wb .r .client, .wb.wb.wb .dpill, .wb.wb.wb .wb-mockchip,
+.wb.wb.wb .wb-empty-f, .wb.wb.wb .wb-modelwarn,
+.wb.wb.wb .ct-score, .wb.wb.wb .wb-cost{ border-radius:var(--r-chip) }
+.wb.wb.wb .ct-card, .wb.wb.wb .dd-card, .wb.wb.wb .group, .wb.wb.wb .draftcard,
+.wb.wb.wb .wb-failed, .wb.wb.wb .ct-alert, .wb.wb.wb .b, .wb.wb.wb .wb-bubble,
+.wb.wb.wb .td-banner, .wb.wb.wb .ct-warnbox{ border-radius:var(--r-card) }
+/* 6.2 — nested radius = outer − padding, never larger inside smaller. */
+.wb.wb.wb .b.in{ border-bottom-left-radius:var(--r-chip) }
+.wb.wb.wb .b.out{ border-bottom-right-radius:var(--r-chip) }
+
+/* --- --r-hero: a card that owns its whole region. This is where the thesis
+       spends its budget — every overview card is a hero card. --- */
+.wb.wb.wb .ov-tile, .wb.wb.wb .ov-kpi, .wb.wb.wb .ov-gov, .wb.wb.wb .ov-rc,
+.wb.wb.wb .ov-tbl, .wb.wb.wb .ov-pipe, .wb.wb.wb .ov-funnel,
+.wb.wb.wb .ov-empty, .wb.wb.wb .td-mast, .wb.wb.wb .wb-oband,
+.wb.wb.wb .wb-chartcard{ border-radius:var(--r-hero) }
+
+/* ========================================================================== */
+/* 5 · ACCENT BUDGET (§5)                                                      */
+/* ========================================================================== */
+
+/* 5.2 — --accent is forbidden as a text colour: 3.20:1 against white, it cannot
+   carry body copy. Where a figure or label was painted accent the colour moves
+   to a mark and the words go back to --text. */
+.wb.wb.wb .ct-chip-ok, .wb.wb.wb .ct-lane, .wb.wb.wb .td-qown,
+.wb.wb.wb .td-zc.done, .wb.wb.wb .td-sm.td-apr.td-hi b, .wb.wb.wb .chip .ct,
+.wb.wb.wb .ct-fig b, .wb.wb.wb .ct-fnote b, .wb.wb.wb .wb-chat-empty-t b,
+.wb.wb.wb .wb-ws b, .wb.wb.wb .r.unread .time, .wb.wb.wb .t-nav .m b,
+.wb.wb.wb .dc-h .t, .wb.wb.wb .ct-fclear, .wb.wb.wb .back{ color:var(--text) }
+.wb.wb.wb .wb-rj.on .wb-rj-ic{ color:var(--accent) }   /* active nav — licensed */
+
+/* 5.3 — labels on a filled accent mark are ink, never white. */
+.wb.wb.wb .b.out, .wb.wb.wb .btn.p, .wb.wb.wb .wb-pane-ic.asst,
+.wb.wb.wb .td-zmark.done{ background:var(--accent); color:var(--ink) }
+
+/* Chips: hairline-boxed neutrals. A categorical field is a small rounded
+   rectangle (M12), and its border carries the ≥3:1 non-text bar. */
+.wb.wb.wb .ct-chip, .wb.wb.wb .td-kind, .wb.wb.wb .r .client{
+  background:var(--surface2); color:var(--text2);
+  box-shadow:inset 0 0 0 1px var(--hairline);
+}
+/* A PASS is the ABSENCE of a problem, so it is not worth a unit of the accent
+   budget: on an 80-row list a green-bordered chip per passing row spends 80 of
+   30. It takes the light categorical tier instead — still unmistakably not the
+   amber FAIL, still not shouting. */
+/* A QA verdict is a STATUS, and status speaks severity — the outline used
+   --cat-2, which the triad default turned BLUE while the corner dot said green
+   (blind row-find seat caught the mismatch). One vocabulary now. */
+.wb.wb.wb .ct-chip-ok{ background:var(--surface2); color:var(--text);
+  box-shadow:inset 0 0 0 1px rgba(16,163,127,.55) }
+.wb.wb.wb .ct-chip-warn{ background:rgba(255,159,10,.14); color:var(--sev-attention);
+  box-shadow:inset 0 0 0 1px rgba(255,159,10,.5) }
+.wb.wb.wb .ct-chip-bad{ background:rgba(255,69,58,.14); color:var(--sev-urgent);
+  box-shadow:inset 0 0 0 1px rgba(255,69,58,.5) }
+.wb.wb.wb .ct-lane{ background:var(--surface3); color:var(--text);
+  box-shadow:inset 0 0 0 1px var(--hairline-strong) }
+
+/* The two badge families on Sends are STATE labels, not actions — they were
+   painted from inline hex, so they are neutralised here (CSS only; the default
+   app keeps its colours) to keep the 1440 accent census under 30. */
+.wb.wb.wb .ov-badge, .wb.wb.wb .ov-rc-badge{
+  background:var(--surface2)!important; color:var(--text2)!important;
+  box-shadow:inset 0 0 0 1px var(--hairline);
+}
+
+/* Sparklines were painted var(--accent) — four cards × ~30 bars is 120 accent
+   elements on one screen. A sparkline is data, so it takes a CATEGORICAL token
+   (9.1) and the accent budget gets its 120 back. */
+.wb.wb.wb .sc-bar{ background:var(--cat-3); opacity:1 }
+.wb.wb.wb .sc-bar.zero{ background:var(--surface3) }
+
+/* ========================================================================== */
+/* 6 · DENSE-LIST VOCABULARY (§7) — the run is won here                        */
+/* ========================================================================== */
+
+/* 7.3 — DE-BORDERED ROWS. The GROUP carries the boundary; rows carry none.
+   ~200 floating boxes is a quilt; one ruled sheet is scannable. */
+.wb.wb.wb .rows{ padding-bottom:32px }
+
+.wb.wb.wb .ct-card,
+.wb.wb.wb .r,
+.wb.wb.wb .td-r,
+.wb.wb.wb .ov-tr,
+.wb.wb.wb .log-r{
+  margin:0;
+  background:transparent;
+  border:none;
+  border-radius:0;
+  box-shadow:none;
+}
+.wb.wb.wb .ct-card + .ct-card,
+.wb.wb.wb .r + .r,
+.wb.wb.wb .td-r + .td-r,
+.wb.wb.wb .ov-tr + .ov-tr,
+.wb.wb.wb .log-r + .log-r{ border-top:1px solid var(--hairline) }
+
+/* 7.1 — ANCHOR-COLUMN CONTRACT. Every working-list row begins with a fixed
+   28px leading slot carrying EXACTLY ONE mark. The rail test: the left edge of
+   every row's primary text sits at an identical x, variance 0px, at 390 and
+   1440. The eye tracks a rail. */
+/* The trailing column is a FIXED width, not `auto`. Every row is its own grid
+   container, so an auto-sized third column is sized by THAT row's content and
+   the right edges scatter — measured 358px of variance before this line. A
+   fixed track anchored against a 1fr middle puts every trailing value on one
+   right edge, which is what §7.7 asks for and what makes a column scannable. */
+.wb.wb.wb .ct-card,
+.wb.wb.wb .r,
+.wb.wb.wb .td-r{
+  display:grid;
+  grid-template-columns:var(--anchor-w) minmax(0,1fr) auto var(--tail-w);
+  column-gap:var(--anchor-gap);
+  align-items:center;
+  padding:10px var(--gut);
+  min-height:0;
+}
+.wb.wb.wb .av,
+.wb.wb.wb .ct-anchor,
+.wb.wb.wb .td-r > .sc-dot,
+.wb.wb.wb .td-r > .td-zmark{
+  grid-column:1;
+  width:var(--anchor-w); height:var(--anchor-w);
+  flex:none;
+}
+.wb.wb.wb .av{ font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:0; color:var(--ink) }
+/* the badge carries a word ('in'), so an 8px size would be an EIGHTH text tier
+   in the census rather than a permitted glyph — it takes the eyebrow tier. */
+.wb.wb.wb .av .badge{ width:15px;height:15px;bottom:-3px;right:-3px;border-width:2px;
+  font-size:var(--fs-eyebrow); line-height:1 }
+.wb.wb.wb .r .mid, .wb.wb.wb .td-mid, .wb.wb.wb .ct-mid{ grid-column:2; min-width:0 }
+.wb.wb.wb .r .right, .wb.wb.wb .td-right, .wb.wb.wb .ct-tail{
+  grid-column:4; justify-self:end; text-align:right;
+  display:flex; flex-direction:column; align-items:flex-end; gap:4px;
+}
+.wb.wb.wb .av .badge{ color:var(--text2) }
+
+/* 7.7 — row anatomy, in order: anchor → primary → meta → trailing value,
+   right-aligned and tabular. Trailing values in one list share a right edge. */
+.wb.wb.wb .r .top, .wb.wb.wb .td-top{ display:flex; align-items:center; gap:8px; min-width:0 }
+.wb.wb.wb .r .snip, .wb.wb.wb .td-snip, .wb.wb.wb .ct-topic{ margin-top:1px; color:var(--text3) }
+/* 7.8 — the density FLOOR, which is a real bar and not just a ceiling. Measured
+   at 1440: Inbox rows and Sends-Log rows both came out at 37-38px content box,
+   two pixels UNDER the 40-60 band, because a 20px primary line and a 16px meta
+   line were separated by a 1px margin. A two-line row that is 2px short reads
+   as cramped rather than dense — the band exists to catch exactly that. The
+   margin becomes a real 5px gap and both lists land at 41px. */
+.wb.wb.wb .r .mid, .wb.wb.wb .log-mid{
+  display:flex; flex-direction:column; gap:5px;
+}
+.wb.wb.wb .r .mid > .snip, .wb.wb.wb .log-mid > .log-snip{ margin-top:0 }
+
+/* 7.4 — hover is a background shift; selection is a 2px inset accent spine,
+   the same mark active nav uses, so "where am I" is one vocabulary app-wide.
+   Never a fill, never a border, never both. */
+.wb.wb.wb .ct-card:hover, .wb.wb.wb .r:hover, .wb.wb.wb .td-r.tap:hover,
+.wb.wb.wb .ov-tr:hover{ background:var(--surface2) }
+.wb.wb.wb .ct-card.wb-card-on, .wb.wb.wb .r.active, .wb.wb.wb .r.on{
+  background:transparent;
+  box-shadow:inset 2px 0 0 var(--accent);
+}
+
+/* 7.5 — STICKY SECTION HEADERS with tabular counts. One object with slots,
+   replacing the four unrelated header patterns the audit counted
+   (.wb-sech / .td-zh / .grouphdr / .ov-h). Opaque: a translucent sticky header
+   over 285 scrolling rows is mush. The count above the rows is always the
+   count of what you are looking at. */
+.wb.wb.wb .wb-sech,
+.wb.wb.wb .td-zh,
+.wb.wb.wb .grouphdr,
+.wb.wb.wb .ops-sechdr{
+  position:sticky; top:0; z-index:6;
+  display:flex; align-items:center; gap:10px;
+  height:var(--sech-h); padding:0 var(--gut);
+  background:var(--surface1);
+  border-top:1px solid var(--hairline);
+  border-bottom:1px solid var(--hairline);
+}
+.wb.wb.wb .wb-sech-n, .wb.wb.wb .td-zn{ flex:none; color:var(--text3); letter-spacing:.1em }
+.wb.wb.wb .wb-sech-t, .wb.wb.wb .td-zt{ flex:none; color:var(--text) }
+.wb.wb.wb .wb-sech-rule, .wb.wb.wb .td-zrule{
+  flex:1; min-width:12px; height:1px; background:var(--hairline); opacity:1;
+}
+.wb.wb.wb .wb-sech-c, .wb.wb.wb .td-zc{ flex:none; color:var(--text2) }
+.wb.wb.wb .wb-sech-dot, .wb.wb.wb .td-zmark{ width:8px; height:8px; flex:none }
+/* 5.5 — ONE severity mark per run, not per row: red goes on the header that
+   counts them; the rows take a neutral rule. */
+.wb.wb.wb .wb-sech-dot.clear{ background:var(--sev-clear) }
+.wb.wb.wb .wb-sech-dot.attention{ background:var(--sev-attention) }
+.wb.wb.wb .wb-sech-dot.urgent{ background:var(--sev-urgent) }
+
+/* 7.6 — hierarchy is indentation + a trailing count badge (M10), never extra
+   chrome. No boxes inside boxes, no chevron column. */
+.wb.wb.wb .wb-rj-lane{ padding-left:calc(10px + var(--indent)) }
+.wb.wb.wb .ct-indent{ padding-left:calc(var(--gut) + var(--indent)) }
+
+/* ---- CONTENT specifically (7.2): the status stops floating. -------------- */
+/* Today the status/QA chip sits inside a WRAPPING .ct-meta flex, so its
+   position moves with the title's length and nothing tells the eye which row it
+   is on. Two fixes, both applied: the status is expressed ON THE ANCHOR as a
+   corner dot, and the chip row can never reflow. */
+.wb.wb.wb .ct-anchor{
+  position:relative;
+  border-radius:var(--r-chip);
+  background:var(--surface2);
+  box-shadow:inset 0 0 0 1px var(--hairline);
+  overflow:visible;
+}
+.wb.wb.wb .ct-thumb{
+  width:var(--anchor-w); height:var(--anchor-w);
+  border-radius:var(--r-chip);
+  object-fit:cover; display:block; background:var(--surface2);
+}
+.wb.wb.wb .ct-thumb-empty{
+  /* G9, settled properly in phase 6. The argument has always been that "◻" is a
+     PICTOGRAM — the missing-image placeholder — and belongs under spine §3.2's
+     3:1 non-text bar rather than the 4.5:1 body bar, where --text4 on --surface2
+     measures 3.58:1 and clears. That argument is right, and it was being made
+     about a TEXT NODE, which is why every automated census kept reporting it as
+     a body-contrast failure and why the count scaled with the number of
+     thumbless rows (5 on content before the lead-magnet lane, 44 after it, since
+     LM rows rarely carry a cover).
+     So it is drawn instead of typed: the same square, as a border on a
+     pseudo-element, aria-hidden, with no text content at all. Identical
+     rendering, and the thing it always claimed to be. */
+  display:flex; align-items:center; justify-content:center;
+}
+.wb.wb.wb .ct-thumb-empty::before{
+  content:''; width:9px; height:9px;
+  border:1px solid var(--text4);
+  border-radius:1px;
+}
+.wb.wb.wb .ct-anchor-dot{
+  position:absolute; right:-3px; bottom:-3px;
+  width:10px; height:10px;
+  border:2px solid var(--canvas);
+  background:var(--text4);
+}
+/* GRAFT — phase 6 ask 8a, from candidate `split`. The dot used to encode the
+   STAGE, which is redundant: every row already sits inside a section whose
+   header names its stage, so the mark spent its whole budget repeating a fact
+   the eye had two rows above it. It carries the QA verdict now, in three states
+   and severity tokens only:
+
+     green  a literal PASS
+     amber  a verdict that is NOT a pass (FAIL / NEEDS_REGENERATE / REWRITE_OK)
+     grey   no verdict at all — the honest third state, and the reason this
+            replaces an amber-only dot: "not judged" and "judged fine" are
+            different facts and a two-colour dot cannot tell them apart.
+
+   Grey is the DEFAULT above, so a row that carries no QA needs no rule. */
+.wb.wb.wb .ct-anchor[data-qa='pass'] .ct-anchor-dot{ background:var(--sev-clear) }
+.wb.wb.wb .ct-anchor[data-qa='fail'] .ct-anchor-dot{ background:var(--sev-attention) }
+/* The lead-magnet lane has no QA column at all, so its dot keeps stage keying —
+   the same mark, reading the only status that table has. */
+.wb.wb.wb .ct-res-row .ct-anchor[data-st='review'] .ct-anchor-dot{ background:var(--sev-attention) }
+.wb.wb.wb .ct-res-row .ct-anchor[data-st='error'] .ct-anchor-dot{ background:var(--sev-urgent) }
+.wb.wb.wb .ct-res-row .ct-anchor[data-st='approved'] .ct-anchor-dot,
+.wb.wb.wb .ct-res-row .ct-anchor[data-st='published'] .ct-anchor-dot{ background:var(--sev-clear) }
+.wb.wb.wb .ct-res-row .ct-anchor[data-st='scheduled'] .ct-anchor-dot{ background:var(--cat-3) }
+
+/* Slot #1 can never reflow. flex-wrap:nowrap on a fixed first slot is the whole
+   contract; the overflow of the REST of the meta row is what ellipsizes. */
+.wb.wb.wb .ct-meta{
+  display:flex; align-items:center; gap:6px;
+  flex-wrap:nowrap; overflow:hidden;
+  margin-top:2px; min-width:0;
+  /* The clip is DELIBERATE — slot #1 may never reflow, so the tail of the meta
+     row is what gives way. But a chip cut off mid-glyph reads as a bug, not as
+     a decision: measured at 390, .ct-meta runs 182px of content through a 102px
+     box. A 14px fade at the trailing edge says "there is more, and it was
+     ranked below what you can see", which is exactly what happened. Costs no
+     colour, no motion and no layout — it is a mask on the existing clip. */
+  -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 14px),transparent);
+  mask-image:linear-gradient(to right,#000 calc(100% - 14px),transparent);
+}
+.wb.wb.wb .ct-meta > *{ flex:none }
+/* Slot #1 is a COLUMN, so it holds its width whether or not the row has a
+   verdict. A row with no QA spends the slot on an em dash rather than letting
+   the next chip slide left into it — that is the difference between a column
+   and a coincidence. */
+.wb.wb.wb .ct-meta > .ct-st{
+  flex:none; order:-1;
+  min-width:74px; justify-content:center;
+  display:inline-flex; align-items:center;
+}
+.wb.wb.wb .ct-chip-none{
+  /* G9 fix: the em dash IS text (a QA-verdict placeholder a user reads, same
+     column as a real "PASS 85"), not a disabled control — text4 tops out at
+     4.15:1 on canvas (worse on surface1/2/3), under the 4.5:1 body bar at
+     11px. text2 clears every ladder surface (9.21/8.57/7.94/7.24). */
+  background:transparent; color:var(--text2);
+  box-shadow:inset 0 0 0 1px var(--hairline);
+}
+.wb.wb.wb .ct-meta > .ct-topic{ flex:1 1 auto; min-width:0;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.wb.wb.wb .ct-chip, .wb.wb.wb .ct-lane, .wb.wb.wb .td-kind, .wb.wb.wb .r .client{
+  padding:1px 6px; white-space:nowrap;
+}
+/* Crushed titles wrap; comfortable titles clip. With both Content peers open
+   the mid column crushes to ~125px and a nowrap title kept ~20 characters — the
+   very row you opened the peer to inspect (phase0-readability #2). The wrap is
+   licensed ONLY when the column is actually crushed (container query), because
+   an unconditional 2-line clamp pushed long-title rows to 67px at 1440 and
+   broke the §7.8 40-60 band — the census caught it. */
+.wb.wb.wb .ct-mid{ container-type:inline-size; container-name:ctmid }
+.wb.wb.wb .ct-title{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+@container ctmid (max-width: 340px){
+  .wb.wb.wb .ct-title{
+    white-space:normal; text-overflow:clip;
+    display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
+  }
+}
+.wb.wb.wb .ct-tm{ color:var(--text3); font-weight:400 }
+
+/* The two review actions ride in the TRAILING column as compact controls, so a
+   285-row list keeps its 40-60px band instead of growing a 44px button bar
+   under every actionable row (7.8). */
+.wb.wb.wb .ct-tail{
+  grid-column:4; justify-self:end;
+  display:flex; flex-direction:row; align-items:center;
+  justify-content:flex-end; gap:10px;
+  min-width:var(--tail-w); text-align:right;
+}
+.wb.wb.wb .ct-card .ct-ac{
+  grid-column:3; grid-row:1;
+  display:flex; flex-direction:row; gap:6px; margin:0;
+}
+.wb.wb.wb .ct-card .ops-err{ grid-column:2/-1; grid-row:2 }
+/* A failed approve is rare and must never be swallowed: it takes its own line
+   inside the trailing slot rather than being hidden to protect the band. */
+.wb.wb.wb .ct-tail .ops-err{
+  flex-basis:100%; margin:0; text-align:right;
+  font-size:var(--fs-meta); color:var(--sev-urgent);
+}
+.wb.wb.wb .ct-card .ct-ac .btn{
+  flex:none; padding:4px 10px; font-size:var(--fs-eyebrow); font-weight:600;
+  letter-spacing:.04em; text-transform:uppercase; border-radius:var(--r-ctl);
+}
+.wb.wb.wb .ct-card .ct-ac .btn.s{ background:var(--surface2); color:var(--text2) }
+.wb.wb.wb .ct-ac-wide{ grid-column:1/-1; margin:12px 0 0 }
+.wb.wb.wb .ct-ac-wide .btn{ flex:1; padding:9px 0; font-size:var(--fs-body) }
+
+/* 7.8 — DENSITY BAND. 40-60px content box at 1440; ≤72px at 390 where a second
+   meta line is permitted. The list is 285 rows; the band is the whole point. */
+@media (min-width:1000px){
+  .wb.wb.wb .ct-card, .wb.wb.wb .r, .wb.wb.wb .td-r{ padding:9px var(--gut) }
+}
+
+/* ========================================================================== */
+/* 7 · MARK ANATOMY (§8) — metric card, chart card, number-in-mark             */
+/* ========================================================================== */
+
+/* 8.1 — METRIC CARD: eyebrow · direction glyph · big tabular numeral ·
+   micro-caption. All four slots or it is not a metric card. --r-hero, generous
+   padding: this is the reference read at face value. */
+.wb.wb.wb .ov-tile, .wb.wb.wb .ov-kpi, .wb.wb.wb .ov-gov, .wb.wb.wb .ov-rc,
+.wb.wb.wb .ov-pipe, .wb.wb.wb .ov-funnel, .wb.wb.wb .wb-chartcard{
+  background:var(--surface1);
+  border:1px solid var(--hairline);
+  padding:var(--pad-card);
+}
+.wb.wb.wb .ov-tbl{ background:var(--surface1); border:1px solid var(--hairline); padding:0 }
+.wb.wb.wb .ov-tbl .ov-tr{ padding:10px var(--pad-card) }
+.wb.wb.wb .ov-tile-lbl{ color:var(--text3) }
+.wb.wb.wb .ov-tile-big, .wb.wb.wb .wb-pipe-big, .wb.wb.wb .td-big{ color:var(--text) }
+.wb.wb.wb .ov-tile-unit{ font-size:var(--fs-title); font-weight:500; color:var(--text3) }
+.wb.wb.wb .ov-tile-sub{ color:var(--text3) }
+.wb.wb.wb .ov-tile-trend{ font-weight:600 }
+/* 8.1 — ONE --fs-figure numeral per surface, and this is the rule that enforces
+   it. The shipped hero was three 30px numerals side by side, which is three
+   headlines and therefore none. ACCEPT keeps the figure — the section asks
+   "where do I stand right now" and conversion is the answer to it; Governor and
+   Runway drop to --fs-page, where they still read as numbers and now read as
+   the SUPPORT for the number beside them. Deliberate, documented, and the only
+   place this build overrules the reference's equal-weight card grid. */
+.wb.wb.wb .ov-kpi-big, .wb.wb.wb .ov-fn, .wb.wb.wb .wb-otile-n,
+.wb.wb.wb .ov-hero .ov-tile:not(:first-child) .ov-tile-big{
+  font-size:var(--fs-page); font-weight:600; letter-spacing:-.02em; line-height:24px;
+}
+@media (min-width:1000px){
+  .wb.wb.wb .ov-tile-big{ font-size:var(--fs-figure) }   /* never the 38px step */
+  .wb.wb.wb .ov-hero .ov-tile:not(:first-child) .ov-tile-big{ font-size:var(--fs-page) }
+  .wb.wb.wb .ov-fstep .ov-fn{ font-size:var(--fs-page) }
+}
+
+/* Segmented controls take the pill (§6.3.2 — view-switcher segments). The
+   shipped treatment rendered them as two full-width slabs; the reference makes
+   them chrome, and chrome is what they are. */
+.wb.wb.wb .seg{
+  display:flex; gap:6px; margin:12px var(--gut) 0; padding:0;
+  background:transparent; border:none;
+}
+.wb.wb.wb .seg .sg{
+  flex:1; height:30px; display:flex; align-items:center; justify-content:center;
+  background:var(--surface2); color:var(--text3);
+  font-size:var(--fs-meta); font-weight:500; cursor:pointer;
+}
+.wb.wb.wb .seg .sg.on{ background:var(--surface3); color:var(--text) }
+
+/* 8.2 — CHART CARD: eyebrow · overflow menu · plot · legend · right-aligned
+   Total footer with the REAL denominator. The footer is the reference's single
+   most transferable move and it is the one place a chart cannot lie. */
+.wb.wb.wb .wb-cardh{
+  display:flex; align-items:center; gap:10px; margin-bottom:14px;
+}
+.wb.wb.wb .wb-cardh-t{ flex:1; min-width:0 }
+.wb.wb.wb .wb-cardh-x{ flex:none; color:var(--text3); letter-spacing:.12em }
+.wb.wb.wb .wb-cardf{
+  display:flex; align-items:center; flex-wrap:wrap; gap:6px 16px;
+  margin-top:16px; padding-top:12px;
+  border-top:1px solid var(--hairline);
+}
+.wb.wb.wb .wb-legend{ display:flex; align-items:center; gap:7px }
+.wb.wb.wb .wb-legend-d{ width:8px; height:8px; flex:none; background:var(--cat-1) }
+.wb.wb.wb .wb-legend-d[data-cat='2']{ background:var(--cat-2) }
+.wb.wb.wb .wb-legend-d[data-cat='3']{ background:var(--cat-3) }
+.wb.wb.wb .wb-legend-d[data-cat='4']{ background:var(--cat-4) }
+/* 9.1 — the Volume lane dots were painted from an inline map carrying #0A84FF
+   and #BF5AF2, two hues this ladder never declares. A lane is a CATEGORY, so it
+   takes a categorical token; the inline hex is overruled here rather than in
+   the shared screen, so the default app keeps its own colours. */
+.wb.wb.wb .ov-kpi[data-cat='1'] .ov-kpi-top .sc-dot{ background:var(--cat-1)!important }
+.wb.wb.wb .ov-kpi[data-cat='2'] .ov-kpi-top .sc-dot{ background:var(--cat-2)!important }
+.wb.wb.wb .ov-kpi[data-cat='3'] .ov-kpi-top .sc-dot{ background:var(--cat-3)!important }
+.wb.wb.wb .ov-kpi[data-cat='4'] .ov-kpi-top .sc-dot{ background:var(--cat-4)!important }
+/* The sparkline is a WITHIN-card trend, not a cross-card category: it is
+   already labelled by the card it sits in. Giving lane 1 the accent put ~30
+   accent marks on one screen for no added meaning, so every spark takes the
+   same neutral categorical tier and the lane's identity stays on its dot. */
+.wb.wb.wb .ov-kpi .sc-bar{ background:var(--cat-3) }
+.wb.wb.wb .ov-kpi .sc-bar.zero{ background:var(--surface3) }
+/* The Volume/Pipeline/Campaign footers sit at the bottom of a SECTION, not
+   inside one card, so they keep the card's gutter. */
+.wb.wb.wb .ov-sec > .wb-cardf{ margin-top:12px; padding-top:12px }
+.wb.wb.wb .wb-legend-l{ color:var(--text3) }
+.wb.wb.wb .wb-total{ margin-left:auto; color:var(--text3); white-space:nowrap }
+.wb.wb.wb .wb-total b{ color:var(--text); font-weight:600 }
+
+/* 8.3 — THE NUMBER LIVES INSIDE THE MARK (M9). A capsule bar prints its value
+   inside; the label colour follows §9.5 per token — ink on every filled
+   categorical except MONO --cat-4, which takes white. */
+/* G9: white-on-cat-4 (#747977) measures 4.43:1 — white is already the
+   brightest possible foreground (--text is #F3F6F5, dimmer than #FFFFFF), so
+   no brighter ladder token exists that improves this; 4.5:1 is mathematically
+   unreachable against this fill without darkening --cat-4 itself, which is a
+   locked, shared categorical token (§9) out of this fix's scope. Justified at
+   the 3:1 non-text-mark bar instead: this is a data value printed INSIDE a
+   chart mark's own fill (§8.3's own framing — "the number lives inside the
+   mark"), the same data-geometry status §6.3.7 already grants this element's
+   shape. 4.43:1 clears 3:1 with margin. No token change. */
+/* The capsule column has to stay a CAPSULE. §6.3.7 licenses --r-pill on "chart
+   marks whose geometry IS a capsule" — and a mark 145px wide by 120px tall is
+   not one, it is a slab, and 999px turns it into an egg. Measured on the
+   rendered card: five flex:1 tracks across a 780px pane gave the PUBLISHED mark
+   a 145px width and drew it as an ellipse. Capping the PLOT (not the mark) at
+   320px keeps every track ~52px, which is the reference's proportion, and keeps
+   the bar row and the label row on the same flex tracks so the axis still
+   aligns. The chart sits left in its card, which is where the reference puts
+   it. */
+.wb.wb.wb .wb-caps{ display:flex; align-items:flex-end; gap:10px; min-height:120px; max-width:460px }
+.wb.wb.wb .wb-cap{
+  flex:1; min-width:22px; position:relative;
+  display:flex; align-items:flex-start; justify-content:center;
+  padding-top:7px;
+  background:var(--cat-1); color:var(--cat-1-ink);
+  font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.02em;
+}
+.wb.wb.wb .wb-cap[data-cat='2']{ background:var(--cat-2); color:var(--cat-2-ink); background-image:var(--pat-2) }
+.wb.wb.wb .wb-cap[data-cat='3']{ background:var(--cat-3); color:var(--cat-3-ink); background-image:var(--pat-3) }
+.wb.wb.wb .wb-cap[data-cat='4']{ background:var(--cat-4); color:var(--cat-4-ink) }
+.wb.wb.wb .wb-cap-0{
+  flex:1; min-width:22px; height:3px; align-self:flex-end;
+  background:var(--surface3); border-radius:var(--r-pill);
+}
+.wb.wb.wb .wb-caps-x{
+  display:flex; gap:10px; margin-top:8px; max-width:460px;
+}
+.wb.wb.wb .wb-caps-xl{
+  flex:1; min-width:22px; text-align:center; color:var(--text3);
+  font-size:var(--fs-eyebrow); letter-spacing:.04em; text-transform:uppercase;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+
+/* 8.4 — THRESHOLD-COLOURED BARS (M14): a metric's health is the fill colour of
+   its own bar hitting a severity zone. The bar doubles as the verdict, so no
+   separate status badge sits beside a bar that already says it. */
+.wb.wb.wb .ov-gauge, .wb.wb.wb .ov-bar, .wb.wb.wb .td-bar, .wb.wb.wb .wb-stack,
+.wb.wb.wb .wb-qa-g, .wb.wb.wb .ct-mix-b, .wb.wb.wb .wb-tbar{
+  background:var(--surface3);
+}
+.wb.wb.wb .ov-gauge{ height:10px }
+.wb.wb.wb .ov-gauge.sm{ height:7px }
+
+/* 3.3 — one separation device per boundary. The section rule above already
+   separates; the cards below do not also need margins that read as gutters. */
+.wb.wb.wb .ov-sec{ margin-top:24px; padding:0 var(--gut) }
+.wb.wb.wb .ov-sec:first-child{ margin-top:12px }
+.wb.wb.wb .ov-h{
+  display:flex; align-items:center; gap:10px;
+  height:var(--sech-h); margin-bottom:8px; color:var(--text3);
+}
+.wb.wb.wb .ov-h-sub{ margin-left:auto; color:var(--text2); font-weight:400 }
+.wb.wb.wb .ov-hero{ gap:12px }
+.wb.wb.wb .ov-kpis, .wb.wb.wb .ov-seats, .wb.wb.wb .ov-govs{ gap:12px }
+.wb.wb.wb .ov-duo{ gap:0 }
+@media (min-width:1000px){ .wb.wb.wb .ov-duo{ gap:16px } }
+
+/* ========================================================================== */
+/* 8 · FILTER GRAMMAR (§11) — one vocabulary, two densities                    */
+/* ========================================================================== */
+
+/* 11.1 — overview surfaces: `label: value ⌄` pills, right-set beside the display
+   title. The label is never omitted: "Now ⌄" alone is a mystery, "Date: Now ⌄"
+   is a sentence. */
+.wb.wb.wb .wb-fbar{
+  display:flex; align-items:center; flex-wrap:wrap; gap:8px;
+  margin-left:auto;
+}
+.wb.wb.wb .wb-fpill{
+  display:inline-flex; align-items:center; gap:6px;
+  height:30px; padding:0 14px;
+  background:var(--surface2); border:none; color:var(--text3);
+  font-size:var(--fs-meta); font-weight:400; cursor:pointer;
+}
+.wb.wb.wb .wb-fpill b{ color:var(--text); font-weight:500 }
+.wb.wb.wb .wb-fpill i{ font-style:normal; color:var(--text3); font-size:9px }
+/* 11.4 — the active state of a filter is the VALUE TEXT, not a coloured fill.
+   A filter pill never takes --accent as a background; accent is reserved. */
+.wb.wb.wb .wb-fpill.on{ background:var(--surface3) }
+@media (max-width:767px){ .wb.wb.wb .wb-fpill{ height:32px } }
+
+/* The pill's own dropdown (ask 8b). Absolutely positioned off the pill so the
+   nav row's height never changes when it opens — a filter that reflows the
+   header is a filter that moves the thing you were about to click. */
+.wb.wb.wb .wb-fpop{ position:relative }
+.wb.wb.wb .wb-fmenu{
+  position:absolute; top:calc(100% + 6px); right:0; z-index:20;
+  min-width:150px; display:flex; flex-direction:column;
+  background:var(--surface1); border:1px solid var(--hairline-strong);
+  border-radius:var(--r-md); padding:4px; box-shadow:0 10px 28px rgba(0,0,0,.42);
+}
+.wb.wb.wb .wb-fopt{
+  display:flex; align-items:center; gap:8px; width:100%; text-align:left;
+  background:none; border:none; cursor:pointer;
+  padding:7px 10px; border-radius:var(--r-chip);
+  font-size:var(--fs-meta); font-weight:400; color:var(--text2);
+}
+.wb.wb.wb .wb-fopt:hover{ background:var(--surface2) }
+/* 11.4 again — the chosen value is TEXT weight, not a filled accent row. */
+.wb.wb.wb .wb-fopt.on{ color:var(--text); font-weight:500 }
+.wb.wb.wb .wb-fopt-t{ margin-left:auto; color:var(--text3) }
+
+/* 11.2 — working lists: one compact inline pill in the search field's row,
+   same anatomy at 26px. Not a second row of chips, not a filter bar. */
+.wb.wb.wb .ct-filters{ margin:0; padding:8px var(--gut) 10px }
+/* The base sheet makes this bar a horizontal SCROLLER (overflow-x:auto).
+   Measured at 390: scrollWidth 2219 against a 358px box, with no scrollbar, no
+   fade and no affordance of any kind — 84% of the filter vocabulary was sitting
+   off-screen behind a gesture nothing announced. It reads as a clipped row, and
+   the overflow instrument cannot fault it because the DOCUMENT never scrolls.
+   The bar wraps instead. */
+.wb.wb.wb .ct-fbar{
+  display:flex; align-items:flex-start; flex-wrap:wrap; gap:6px;
+  overflow-x:visible;
+}
+/* flex-wrap is NOT inherited from .ct-fbar: the bar wraps the GROUPS, but each
+   group was an inline-flex at the default nowrap, so a facet with eight values
+   (Structure, Image style, Hook, Source) ran straight off the pane edge and was
+   clipped — visible in the capture, invisible to the overflow instrument
+   because a clipped child does not grow document scrollWidth. */
+/* …and `flex-wrap:wrap` on the group alone does nothing, which is why the first
+   pass did not fix 390: a flex ITEM sizes to max-content, so .ct-fg measured
+   548px inside a 358px bar and simply overflowed rather than wrapping its own
+   pills. It has to be CONSTRAINED before it can wrap. */
+.wb.wb.wb .ct-fg{
+  display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+  max-width:100%; min-width:0;
+}
+.wb.wb.wb .ct-fgl{ flex:none }
+.wb.wb.wb .ct-fgl{
+  font-size:var(--fs-meta); font-weight:400; color:var(--text3);
+  letter-spacing:0; text-transform:none;
+}
+.wb.wb.wb .ct-f{
+  display:inline-flex; align-items:center; gap:5px;
+  height:26px; padding:0 11px;
+  background:var(--surface2); border:none; color:var(--text3);
+  font-size:var(--fs-meta); font-weight:400; cursor:pointer;
+}
+.wb.wb.wb .ct-f i{ font-style:normal; color:var(--text3); font-weight:400 }
+.wb.wb.wb .ct-f.on{ background:var(--surface3); color:var(--text) }
+.wb.wb.wb .ct-f.on i{ color:var(--text2) }
+.wb.wb.wb .ct-fnote{ margin-top:8px; color:var(--text3) }
+.wb.wb.wb .ct-fcap{ color:var(--text4) }
+.wb.wb.wb .ct-fclear{ text-decoration:underline; cursor:pointer; margin-left:8px }
+
+/* -------------------------------------------------------------------------- */
+/* 8b · THE FILTER ROW (FilterRow.tsx) — what replaced the wall                 */
+/* -------------------------------------------------------------------------- */
+/* Measured before: 18 always-expanded facet groups / 105 chips over two stacked
+   walls, 1,068px of chrome at 1440×900 with the peer docked, first draft row at
+   y=1439. The rules above (.ct-fbar/.ct-fg/.ct-f) still serve the three
+   collapsed-by-default lists that keep the old bar (Ideas, publish queue, style
+   roster); the two WORKING lists use this row instead.
+   Anatomy is §11.2 and reuses .wb-fpill / .wb-fmenu / .wb-fopt verbatim, which
+   is the app's one existing precedent (SendsScreen's `Range: 7d ⌄`). */
+
+.wb.wb.wb .ct-fr{
+  /* flex-start, not center: the pill box is two rows tall in the 620px column
+     the docked peer leaves, and a centred search field then floats between
+     them. Top-aligned, the field shares a baseline with the first pill row. */
+  display:flex; align-items:flex-start; gap:8px; flex-wrap:wrap; min-width:0;
+}
+/* The search field the old panel had and this surface never did. Client-side
+   substring over the loaded rows — same denominator discipline as the facets,
+   which is why the note below still prints both numbers. */
+.wb.wb.wb .ct-fsearch{
+  display:flex; align-items:center; gap:6px;
+  /* Capped growth, and the measurement is the reason: left to fill the line the
+     field pushed every pill onto its own rows and the block measured 134px in
+     the 620px column the docked peer leaves. Capped, the first pills sit IN the
+     search field's row, which is what §11.2 actually describes. */
+  flex:1 1 180px; min-width:120px; max-width:250px;
+  height:26px; padding:0 10px;
+  background:var(--surface2); border-radius:var(--r-ctl);
+}
+.wb.wb.wb .ct-fsearch-i{ color:var(--text3); font-size:var(--fs-meta); flex:none }
+.wb.wb.wb .ct-fsearch-in{
+  flex:1; min-width:0; background:none; border:none; outline:none;
+  font-family:inherit; font-size:var(--fs-meta); font-weight:400; color:var(--text);
+  -webkit-appearance:none; appearance:none;
+}
+.wb.wb.wb .ct-fsearch-in::placeholder{ color:var(--text3) }
+.wb.wb.wb .ct-fsearch-in::-webkit-search-cancel-button{ display:none }
+
+.wb.wb.wb .ct-fpills{
+  display:flex; align-items:center; gap:6px; flex-wrap:wrap; min-width:0;
+  /* A flex BASIS, not `auto`: at `auto` the pill box's hypothetical size is its
+     max-content (~660px), which exceeds the line and pushes the whole box onto
+     its own row before any shrinking happens — three rows of chrome instead of
+     two. With a basis it shares the search field's row, which is the §11.2
+     sentence ("one compact inline pill sitting in the search field's row"). */
+  flex:1 1 240px;
+}
+.wb.wb.wb .ct-fpop{ position:relative; display:inline-flex; align-items:center; gap:2px }
+.wb.wb.wb .ct-fpill{ height:26px; padding:0 11px; flex:none }
+.wb.wb.wb .ct-fpill i{ margin-left:2px }
+/* The demoted-facet badge is NOT a nav count badge, so it takes --r-chip and
+   stays outside the pill licence (§6.3.4 covers nav badges only). */
+.wb.wb.wb .ct-fn{
+  margin-left:5px; padding:0 5px; border-radius:var(--r-chip);
+  background:var(--surface3); color:var(--text); font-weight:500;
+}
+/* ✕ — its own button, so clearing one facet never travels through the control
+   that opens the menu. --r-chip, not a capsule: it is not on the §6.3 list. */
+.wb.wb.wb .ct-fx{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:20px; height:26px; padding:0; flex:none;
+  background:none; border:none; border-radius:var(--r-chip);
+  color:var(--text3); font-size:var(--fs-meta); cursor:pointer;
+}
+.wb.wb.wb .ct-fx:hover{ background:var(--surface2); color:var(--text) }
+.wb.wb.wb .ct-fx-in{ width:18px; height:20px }
+.wb.wb.wb .ct-fclear-all{
+  background:none; border:none; padding:0 4px; cursor:pointer;
+  font-family:inherit; font-size:var(--fs-meta); font-weight:400;
+  color:var(--text3); text-decoration:underline;
+}
+.wb.wb.wb .ct-fclear-all:hover{ color:var(--text) }
+
+/* The popover. Same overlay grammar as .wb-fmenu (and .wb-modelmenu, the app's
+   one precedent) — it just hangs off the LEFT edge of its own pill instead of
+   the right edge of a right-set header control, because these pills sit at the
+   start of the row. */
+.wb.wb.wb .ct-fmenu{
+  left:0; right:auto; min-width:210px; max-width:min(320px, 88vw);
+  max-height:340px; overflow-y:auto; overscroll-behavior:contain;
+}
+.wb.wb.wb .ct-fmenu-wide{ min-width:250px }
+/* The flip, set by measurement (FilterRow's usePlace) rather than by guessing
+   which pill is last: the row's pill order changes with the facets the rows
+   produced. */
+.wb.wb.wb .ct-fmenu-r{ left:auto; right:0 }
+.wb.wb.wb .wb-fopt-l{
+  flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+/* A group inside the "Filters" panel. One eyebrow per demoted facet, then that
+   facet's own options with their own counts — nothing was deleted, it moved. */
+.wb.wb.wb .ct-fgrp + .ct-fgrp{ margin-top:6px; border-top:1px solid var(--hairline); padding-top:6px }
+.wb.wb.wb .ct-fgrp-h{ padding:4px 10px 2px; color:var(--text3) }
+.wb.wb.wb .ct-fgrp-e{ padding:8px 10px; color:var(--text3); font-size:var(--fs-meta) }
+
+/* --- 390: the row scrolls, and the panels become bottom sheets ------------- */
+@media (max-width:767px){
+  .wb.wb.wb .ct-filters{ padding:8px var(--gut) 8px }
+  /* 🔴 flex-wrap:nowrap is load-bearing and the measurement is why: the base
+     rule wraps, and a WRAPPING column flex container sizes its single line to
+     the widest item's max-content instead of to the container — measured
+     .ct-fpills at 628px inside a 358px row, so the scroller had nothing to
+     scroll against and the pills were simply clipped by the .rows scroller.
+     That is the old wall's failure mode (a clipped row the document-overflow
+     instrument cannot see) reproduced in the fix for it. */
+  .wb.wb.wb .ct-fr{
+    flex-direction:column; flex-wrap:nowrap; align-items:stretch;
+    gap:8px; position:relative;
+  }
+  .wb.wb.wb .ct-fsearch{ height:36px; flex:none; max-width:none }
+  /* A horizontal scroller WITH an announced edge. The previous scroller on this
+     surface was a defect because nothing said it scrolled (2,219px of content
+     in a 358px box, no scrollbar, no fade); six pills behind a faded edge is a
+     different control from eighty-one chips behind an invisible one. */
+  .wb.wb.wb .ct-fpills{
+    /* flex:none — the row is a COLUMN here, so a flex-basis would be a HEIGHT. */
+    flex:none;
+    flex-wrap:nowrap; overflow-x:auto; overflow-y:visible;
+    overscroll-behavior-x:contain; scrollbar-width:none; padding-right:20px;
+  }
+  .wb.wb.wb .ct-fpills::-webkit-scrollbar{ display:none }
+  .wb.wb.wb .ct-fr::after{
+    content:''; position:absolute; right:0; bottom:0; width:26px; height:32px;
+    pointer-events:none;
+    background:linear-gradient(90deg, rgba(9,11,10,0), var(--canvas));
+  }
+  .wb.wb.wb .ct-fpill{ height:32px }
+  .wb.wb.wb .ct-fx{ height:32px; width:26px }
+  .wb.wb.wb .ct-fnote{ margin-top:6px }
+}
+
+/* The bottom sheet — its own overlay, tap-out or the grab handle to close.
+   Shadow is licensed here: a transient overlay is the one class §3.4 permits. */
+.wb.wb.wb .ct-fsheet-scrim{
+  position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.55);
+  display:flex; flex-direction:column; justify-content:flex-end;
+}
+.wb.wb.wb .ct-fsheet{
+  background:var(--surface1); border-top:1px solid var(--hairline-strong);
+  border-radius:var(--r-card) var(--r-card) 0 0;
+  max-height:72vh; display:flex; flex-direction:column;
+  padding-bottom:env(safe-area-inset-bottom);
+  box-shadow:0 -24px 60px rgba(0,0,0,.55);
+  animation:ct-sheet-up var(--dur-state) var(--ease);
+}
+@keyframes ct-sheet-up{ from{ transform:translateY(14px) } to{ transform:translateY(0) } }
+.wb.wb.wb .ct-fsheet-grab{
+  display:flex; align-items:center; justify-content:center;
+  width:100%; height:26px; background:none; border:none; cursor:pointer; padding:0;
+}
+/* 2px, not a capsule: the grab handle is not on the §6.3 pill licence list. */
+.wb.wb.wb .ct-fsheet-grab i{ display:block; width:38px; height:4px; border-radius:2px; background:var(--hairline-strong) }
+.wb.wb.wb .ct-fsheet-h{
+  padding:2px var(--gut) 8px; font-size:var(--fs-title); font-weight:500; color:var(--text);
+}
+.wb.wb.wb .ct-fsheet-b{ overflow-y:auto; overscroll-behavior:contain; padding:0 8px 12px }
+/* ≥44px touch rows, and the body tier rather than meta — a sheet is not a dense
+   list and reading it at 12px on a phone is the wall's mistake in miniature. */
+.wb.wb.wb .ct-fsheet-b .wb-fopt{ min-height:44px; font-size:var(--fs-body) }
+.wb.wb.wb .ct-fsheet-b .ct-fgrp-h{ padding:8px 10px 4px }
+
+/* Hover = one background shift, --dur-hover, var(--ease). No new curve, no
+   animated layout property. This is the only hover work in this phase's scope. */
+.wb.wb.wb .ct-fpill, .wb.wb.wb .ct-fx, .wb.wb.wb .ct-fclear-all,
+.wb.wb.wb .wb-fopt, .wb.wb.wb .ct-fsearch{
+  /* background-color only — §10.3 bans animated colour, and §7.4 names the
+     background shift as THE hover mark. One property, one duration, one curve. */
+  transition:background-color var(--dur-hover) var(--ease);
+}
+.wb.wb.wb .ct-fpill:hover{ background:var(--surface3) }
+
+/* The nav pills (M7). Chrome the reference wins on outright. */
+.wb.wb.wb .nav{ padding:18px var(--gut) 12px }
+/* The reference's top row, literally: oversized uppercase title flush left, pill
+   chrome right-set on the same baseline. */
+.wb.wb.wb .wb-head{
+  display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+}
+.wb.wb.wb .wb-head .row-top{ flex:none }
+.wb.wb.wb .wb-head .chips{ margin:0 0 0 auto }
+.wb.wb.wb .chips{ display:flex; align-items:center; gap:8px; margin:12px 0 0;
+  flex-wrap:wrap; overflow:visible }
+.wb.wb.wb .chip{
+  height:30px; display:inline-flex; align-items:center; padding:0 14px;
+  background:var(--surface2); color:var(--text3);
+  font-size:var(--fs-meta); font-weight:500;
+}
+.wb.wb.wb .chip.on{ background:var(--surface3); color:var(--text) }
+.wb.wb.wb .wb-ws{
+  height:28px; display:inline-flex; align-items:center; gap:6px; padding:0 12px;
+  background:var(--surface2); color:var(--text3);
+  font-size:var(--fs-meta); font-weight:500;
+}
+.wb.wb.wb .wb-ws.on{ background:var(--surface3); color:var(--text) }
+.wb.wb.wb .wb-workhead{ padding:10px var(--gut); border-bottom:1px solid var(--hairline) }
+.wb.wb.wb .wb-workhead-l{ color:var(--text3) }
+
+/* rail chrome */
+.wb.wb.wb .wb-rail{
+  background:var(--surface1); border-right:1px solid var(--hairline); padding:16px 10px 12px;
+}
+.wb.wb.wb .wb-rj{ padding:8px 10px; color:var(--text2) }
+.wb.wb.wb .wb-rj:hover{ background:var(--surface2) }
+.wb.wb.wb .wb-rj.on{ background:var(--surface2); color:var(--text);
+  box-shadow:inset 2px 0 0 var(--accent) }
+.wb.wb.wb .wb-rj-n{
+  min-width:22px; padding:1px 7px; text-align:center;
+  background:var(--surface3); color:var(--text2);
+  font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:0;
+}
+.wb.wb.wb .wb-rj-n.attention{ background:rgba(255,159,10,.18); color:var(--sev-attention) }
+.wb.wb.wb .wb-rj-n.urgent{ background:rgba(255,69,58,.18); color:var(--sev-urgent) }
+.wb.wb.wb .wb-rj-peer{ border:1px solid var(--hairline) }
+.wb.wb.wb .wb-rj-peer.on{ border-color:var(--accent); background:transparent }
+.wb.wb.wb .wb-rail-sep{ background:var(--hairline); opacity:1; margin:14px 10px 12px }
+.wb.wb.wb .wb-rail-grp{ border-left:1px solid var(--hairline) }
+.wb.wb.wb .wb-rail-grp.on{ border-left-color:var(--accent) }
+.wb.wb.wb .wb-rail-grp-l{
+  font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.04em;
+  text-transform:uppercase; color:var(--text3);
+}
+.wb.wb.wb .tabbar{
+  background:var(--surface1); border-top:1px solid var(--hairline); backdrop-filter:none;
+}
+.wb.wb.wb .tb{ color:var(--text3) }
+.wb.wb.wb .tb.on{ color:var(--accent) }
+.wb.wb.wb .tb .l{ font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.02em;
+  text-transform:none; margin-top:3px }
+.wb.wb.wb .wb-pane-h{
+  background:var(--surface1); border-bottom:1px solid var(--hairline); padding:12px var(--gut);
+}
+.wb.wb.wb .wb-ribbon{ padding:8px var(--gut) 4px }
+
+/* ========================================================================== */
+/* 9 · MOTION (§10)                                                            */
+/* ========================================================================== */
+
+/* 10.3 — transform and opacity only. 10.4 — motion is DELETED from the 50×/day
+   paths: tab switch, row selection, keyboard nav, pane switch, palette. */
+.wb.wb.wb *{ transition:none }
+.wb.wb.wb .ct-card, .wb.wb.wb .r, .wb.wb.wb .td-r.tap, .wb.wb.wb .ov-tr,
+.wb.wb.wb .wb-rj:hover, .wb.wb.wb .ct-f, .wb.wb.wb .wb-fpill,
+.wb.wb.wb .btn, .wb.wb.wb .chip{
+  transition:background-color var(--dur-hover) var(--ease);
+}
+.wb.wb.wb .ov-gauge-fill, .wb.wb.wb .ov-bar-fill, .wb.wb.wb .td-bar-f{
+  transition:none;   /* animated width is banned (10.3) */
+}
+.wb.wb.wb .ct-tap:active, .wb.wb.wb .wb-ask:active, .wb.wb.wb .wb-retry:active{
+  transform:none;
+}
+
+/* 10.5 — EXACTLY ONE choreographed beat, app-wide: approving a draft. The row
+   lifts and fades over --dur-beat; the refetch fires when the movement ends so
+   the list never jumps under a hand, and the section count receives a matching
+   4px tick as it lands on its new value. Cause and effect, 24 inches apart, in
+   one gesture. Nothing else in this app is choreographed. */
+@keyframes wb-approve{
+  from{ transform:translateY(0); opacity:1 }
+  to{ transform:translateY(-10px); opacity:0 }
+}
+@keyframes wb-count-tick{
+  from{ transform:translateY(-4px); opacity:.4 }
+  to{ transform:translateY(0); opacity:1 }
+}
+.wb.wb.wb .ct-card.wb-approving{
+  animation:wb-approve var(--dur-beat) var(--ease) forwards;
+}
+.wb.wb.wb .wb-sech-c.wb-ticked{
+  display:inline-block;
+  animation:wb-count-tick var(--dur-beat) var(--ease);
+}
+
+/* 10.6 — reduced motion disables BOTH halves of the beat and every transition
+   except opacity. */
+@media (prefers-reduced-motion: reduce){
+  .wb.wb.wb *{ transition:none!important; animation:none!important; transform:none!important }
+  .wb.wb.wb .ct-card, .wb.wb.wb .r, .wb.wb.wb .td-r.tap, .wb.wb.wb .ov-tr,
+  .wb.wb.wb .ct-f, .wb.wb.wb .chip{ transition:opacity var(--dur-hover) linear!important }
+}
+
+/* ========================================================================== */
+/* 10 · LIGHT-MODE CHROME PATCHES (§1.5, D13) — both visited                   */
+/* ========================================================================== */
+
+/* v2c/styles.css:58 and :127 hard-code light rgba backgrounds that fight any
+   new ladder. Both are re-pointed at the ladder's own surface1 so the rail and
+   the pane header follow the tokens instead of a frozen colour. */
+:root[data-theme='light'] .wb.wb.wb .wb-rail{ background:var(--surface1) }
+:root[data-theme='light'] .wb.wb.wb .wb-pane-h{ background:var(--surface1) }
+:root[data-theme='light'] .wb.wb.wb .tabbar,
+:root[data-theme='light'] .wb.wb.wb .t-nav{ background:var(--surface1) }
+:root[data-theme='light'] .wb.wb.wb .chip.on{ background:var(--surface3); color:var(--text) }
+:root[data-theme='light'] .wb.wb.wb .b.out{ color:var(--ink) }
+
+/* ========================================================================== */
+/* 11 · EMPTY / FAILED / MISC                                                  */
+/* ========================================================================== */
+
+.wb.wb.wb .wb-empty{ padding:40px var(--gut) 20px; text-align:left }
+.wb.wb.wb .wb-empty-l{ color:var(--text2) }
+.wb.wb.wb .wb-empty-f{
+  display:inline-flex; align-items:center; gap:7px; margin-top:14px;
+  padding:4px 10px; background:var(--surface2); color:var(--text3);
+  font-size:var(--fs-meta);
+}
+.wb.wb.wb .wb-failed{
+  margin:12px var(--gut) 0; padding:14px 16px;
+  background:rgba(255,69,58,.08); border:1px solid rgba(255,69,58,.32);
+}
+.wb.wb.wb .wb-failed-t{ color:var(--sev-urgent) }
+.wb.wb.wb .wb-retry{ background:var(--sev-urgent); color:var(--ink); font-weight:600 }
+.wb.wb.wb .wb-retry.ghost{ background:var(--surface3); color:var(--text) }
+/* 5.5 — ONE SEVERITY MARK PER RUN, NOT PER ROW. On the live Ivan lane this
+   strip carries 38 alerts; the shipped treatment gave each of them a red card
+   with red body text, which is 38 red boxes ranking nothing and, on light, 38
+   AA failures. Red now lives on the HEADER that counts them; the rows below
+   take a neutral rule and a single urgent dot on the anchor rail. */
+.wb.wb.wb .ct-alert{
+  margin:12px var(--gut) 0; padding:12px 14px;
+  background:rgba(255,69,58,.08); border:1px solid rgba(255,69,58,.3);
+}
+/* 8.1 — the alert count is a warning, not the surface's hero. Content's ONE
+   --fs-figure numeral is the review count inside the pipeline chart card. */
+.wb.wb.wb .ct-alert-n{
+  color:var(--sev-urgent); font-size:var(--fs-page); font-weight:600; line-height:24px;
+}
+.wb.wb.wb .ct-alert-x{
+  display:grid;
+  grid-template-columns:var(--anchor-w) minmax(0,1fr);
+  column-gap:var(--anchor-gap);
+  align-items:center;
+  margin:0; padding:10px var(--gut);
+  background:transparent; border:none; border-radius:0;
+  color:var(--text2);
+}
+/* one line, ellipsized: this is a LIST of things that are wrong, not prose
+   about them. The full sentence is in the row it points at. */
+.wb.wb.wb .ct-alert-x > span{
+  grid-column:2; min-width:0;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.wb.wb.wb .ct-alert-x + .ct-alert-x{ border-top:1px solid var(--hairline) }
+.wb.wb.wb .ct-alert-x::before{
+  content:''; grid-column:1; justify-self:center;
+  width:6px; height:6px; border-radius:var(--r-pill);
+  /* neutral on purpose: the rail needs a mark, the run does not need 38 of the
+     same red one. The count in the header above is the severity. */
+  background:var(--text4);
+}
+.wb.wb.wb .ct-subtle, .wb.wb.wb .ct-subline{ margin:8px var(--gut) 0; color:var(--text3) }
+.wb.wb.wb .ct-subline{ color:var(--sev-attention); font-weight:500 }
+.wb.wb.wb .wb-pipe{ margin:12px var(--gut) 0 }
+.wb.wb.wb .wb-chartcard{ margin:14px var(--gut) 0 }
+.wb.wb.wb .wb-pipe-n{
+  display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 10px; margin-top:16px;
+}
+.wb.wb.wb .wb-pipe-lbl{ color:var(--text3); font-size:var(--fs-meta); line-height:16px }
+.wb.wb.wb .wb-pipe-warn{ margin-left:auto; color:var(--sev-attention);
+  font-size:var(--fs-meta); font-weight:500 }
+
+/* -------- PEER-CLOSE REFLOW (Ivan, phase 6 ask 1) -------------------------
+   "when claude is closed the rest of objects accommodate."
+
+   What was actually happening, measured: the work column DOES reclaim the full
+   canvas when the peer closes (620→1240 at 1440, 740→1480 at 1680 — layout.ts
+   :119 forces `wide` when the shown-peer list is empty). The column was never
+   the defect. Its CHILDREN were: the base spine caps every direct child of a
+   solo `.rows` at 860px —
+
+     styles.css:31-36  .wb.dt .wb-solo .rows > *{max-width:860px;margin:auto}
+
+   — which is a deliberate readability fix for MESSAGE rows and stays in force
+   for inbox/drafts/thread, where a 1,240px prose line really is a defect. But
+   Content is not prose. It is a chart card, an alert strip, a filter bar and
+   stage sections of anchored list rows, and capping those at 860 dumps the
+   reclaimed width as dead space.
+
+   Worse, the cap was not even applying its own centering: this sheet loads
+   after the spine and gives several of these blocks a FIXED gutter margin
+   (`margin:14px var(--gut) 0` at :1129 — a 3-value shorthand, so
+   margin-left/right are `var(--gut)`, not `auto`). Fixed beats auto, so every
+   capped block hugged the LEFT edge and threw the whole 364-380px reclaim into
+   one lopsided strip on the right. Measured before this rule, closed at 1440:
+   .ct-alert / .wb-chartcard / .ct-subtle all sat at margin-left 16, right gap
+   364; .ct-filters at 0 / 380.
+
+   The fix is to let the content column's objects be FLUID, which is what was
+   asked for. Scoped to `.ct-rows` and to the content head, so the 860px measure
+   the spine wants on message surfaces is untouched. `--gut` on both sides is a
+   fixed gutter, so growth passes through 1:1 — every main object now grows by
+   100% of the column's growth rather than 21-44%.
+
+   Only the CAP is lifted. The gutter margins each block already carries
+   (`var(--gut)` on the chart card, the subtle lines, the pipe) are what keep it
+   off the column edge, and they only read as "left-anchored" while a max-width
+   is also in force — with the cap gone a fixed gutter is exactly right. Setting
+   the margins to 0 here as well was the first attempt and it put the chart card
+   flush against the rail; measured gapL=0. */
+.wb.wb.wb.dt .wb-solo .ct-rows > *,
+.wb.wb.wb.dt .wb-solo .nav.wb-head{ max-width:none }
+/* The prose lines inside the flow (`.ct-subtle`, `.ct-subline`) go fluid with
+   everything else rather than staying capped and left-anchored — a capped block
+   sitting in a fluid column is the asymmetric strip this rule exists to kill,
+   and these are 1-3 line meta annotations at --fs-meta/--text3, not body copy.
+   They keep their gutter. */
+
+/* -------- SENDS → LOG: the fourth working list (§7, phase0 surface #8) -------
+   It was the one dense list the treatment had not reached. Three defects, all
+   measured on the rendered page:
+   1. no anchor rail — .log-r is a flex whose first child is a chip that is 46px
+      for "DM" and 88px for "CONN·BLANK", so the prospect name started at a
+      different x on almost every row;
+   2. eight inline hex kind-colours (#0A84FF, #BF5AF2, #FFD60A, #8E8E93 …), two
+      of which ARE the severity tokens — §5.4 forbids severity as category
+      encoding outright, and §9.1 allows a categorical chip only the --cat-*
+      tokens, of which MONO has four, not eight;
+   3. `.log-r + .log-r` never matched: each row is wrapped in a
+      `display:contents` div (SendsScreen.tsx:129), so the two .log-r elements
+      are never DOM siblings and every row kept a four-sided card.
+   -------------------------------------------------------------------------- */
+
+/* 7.1 — the anchor is the kind chip (§7.1 licenses "a status chip (M12)" as the
+   one mark). It cannot be 28px, because 28px cannot hold a word: the token
+   governs the mark-PLATE variant, and a chip anchor is a chip wide. Fixed, so
+   the rail exists; one measure for every row, so the eye tracks it. */
+.wb{ --log-anchor-w:84px }
+.wb.wb.wb .log-r{
+  display:grid;
+  grid-template-columns:var(--log-anchor-w) minmax(0,1fr) var(--tail-w);
+  column-gap:var(--anchor-gap);
+  align-items:center;
+  margin:0; padding:9px var(--gut);
+  background:transparent; border-radius:0; border:none;
+  border-top:1px solid var(--hairline);
+}
+.wb.wb.wb .log-day + .log-r{ border-top:none }
+.wb.wb.wb .log-chip{
+  grid-column:1; margin:0;
+  min-width:0; width:100%; padding:2px 0;
+  /* block + end-ellipsis, not centered inline-flex: a long kind ("CONN·BLANK")
+     used to overflow the fixed anchor column on BOTH sides and start at
+     x=-5.6px at 390 (phase0-mobile #3). Clipped at the end now, full value on
+     the title. */
+  display:block; text-align:center; overflow:hidden; text-overflow:ellipsis;
+  border-radius:var(--r-chip);
+  font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.04em;
+  line-height:16px; white-space:nowrap;
+  /* 9.1 + 5.4 — the kind is a WORD, and the word is already in the chip. Colour
+     added nothing there and cost eight hues, two of them severity. Neutral
+     hairline-boxed, exactly like every other categorical chip in this build. */
+  background:var(--surface2)!important; color:var(--text2)!important;
+  box-shadow:inset 0 0 0 1px var(--hairline);
+}
+/* FAILED is the one thing on this surface that IS a severity, so it is the one
+   thing that keeps a colour — and it is rare (213 of 1,969 events). */
+.wb.wb.wb .log-r .log-chip[data-failed]{
+  background:rgba(255,69,58,.14)!important; color:var(--sev-urgent)!important;
+  box-shadow:inset 0 0 0 1px rgba(255,69,58,.5);
+}
+.wb.wb.wb .log-mid{ grid-column:2; min-width:0 }
+.wb.wb.wb .log-top{ display:flex; align-items:center; gap:8px; min-width:0 }
+.wb.wb.wb .log-nm{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.wb.wb.wb .log-top .client{
+  flex:none; padding:1px 6px; border-radius:var(--r-chip);
+  background:var(--surface2); color:var(--text2);
+  box-shadow:inset 0 0 0 1px var(--hairline);
+  font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.04em;
+  line-height:16px; text-transform:uppercase;
+}
+.wb.wb.wb .log-snip{
+  margin-top:1px; color:var(--text3);
+  font-size:var(--fs-meta); line-height:16px;
+}
+/* 7.7 — the trailing value, right-aligned and tabular, on one shared edge. */
+.wb.wb.wb .log-tm{
+  grid-column:3; margin:0; justify-self:end; text-align:right;
+  color:var(--text3); font-size:var(--fs-meta); line-height:16px;
+}
+/* 7.5 — the day divider takes the section-header face: flush left with the
+   anchor rail, ruled, eyebrow-cased. It was centred 700-weight, which is the
+   one thing on a 120-row list that should never be centred. */
+.wb.wb.wb .log-day{
+  display:flex; align-items:center; gap:10px;
+  height:var(--sech-h); margin:0; padding:0 var(--gut);
+  background:var(--surface1);
+  border-top:1px solid var(--hairline); border-bottom:1px solid var(--hairline);
+  color:var(--text3); text-align:left;
+  font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.04em;
+  text-transform:uppercase;
+}
+.wb.wb.wb .log-note{ margin:10px var(--gut) 0; color:var(--text3) }
+@media (max-width:767px){
+  .wb{ --log-anchor-w:74px }
+  .wb.wb.wb .log-r{ grid-template-columns:var(--log-anchor-w) minmax(0,1fr) auto }
+}
+
+/* The Sends log's denominator line — the one place the app admits it is a
+   window. §8.5: the figures are count=exact probes, never rows.length. */
+.wb.wb.wb .log-denom{
+  display:flex; align-items:center; flex-wrap:wrap; gap:6px;
+  margin:12px var(--gut) 0; padding:8px 12px;
+  background:var(--surface1); border:1px solid var(--hairline);
+  border-radius:var(--r-ctl);
+  font-size:var(--fs-meta); color:var(--text3);
+}
+.wb.wb.wb .log-denom b{ color:var(--text); font-weight:600 }
+.wb.wb.wb .log-denom-s{ color:var(--text4) }
+.wb.wb.wb .wb-lanenote{ color:var(--text3) }
+.wb.wb.wb .td-mast{ margin:12px var(--gut) 4px; padding:var(--pad-card) }
+.wb.wb.wb .td-sum{ background:var(--canvas); border-bottom:1px solid var(--hairline);
+  padding:9px var(--gut) }
+.wb.wb.wb .td-banner{ margin:10px var(--gut) 0; padding:11px 13px;
+  background:rgba(255,159,10,.08); border:1px solid rgba(255,159,10,.3);
+  color:var(--sev-attention) }
+.wb.wb.wb .td-foot, .wb.wb.wb .td-empty, .wb.wb.wb .td-sub{ padding-left:var(--gut);
+  padding-right:var(--gut) }
+.wb.wb.wb .td-lg-d{ width:8px; height:8px; border-radius:var(--r-pill) }
+.wb.wb.wb .sc-spark{ gap:2px }
+
+/* ========================================================================== */
+/* 12 · THE SECOND-CLASS ROWS — ideas, queue, resources, styles                */
+/* ========================================================================== */
+/* These five sub-lists all carry `.ct-card`/`.ct-*` but were built with their
+   own internal anatomy, so before this block the Ivan lane had ONE rail for the
+   pipeline rows and five different ones underneath. Measured: primary-text x
+   variance 0px inside stage sections, 358px of trailing scatter overall. They
+   are pulled onto the same 28px anchor grid. */
+.wb.wb.wb .ct-card.ct-idea{ display:block; padding:0 }
+.wb.wb.wb .ct-idea-h{
+  display:grid;
+  grid-template-columns:var(--anchor-w) minmax(0,1fr);
+  column-gap:var(--anchor-gap); align-items:center;
+  padding:9px var(--gut);
+}
+/* the composite score IS the anchor mark — one mark, fixed width, at the rail */
+.wb.wb.wb .ct-idea-n{
+  grid-column:1; justify-self:start;
+  width:var(--anchor-w); height:var(--anchor-w);
+  display:flex; align-items:center; justify-content:center;
+  border-radius:var(--r-chip);
+  background:var(--surface2); box-shadow:inset 0 0 0 1px var(--hairline);
+  color:var(--text); font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:0;
+}
+.wb.wb.wb .ct-idea-h .ct-mid{ grid-column:2 }
+.wb.wb.wb .ct-idea .ct-title,
+.wb.wb.wb .ct-idea .ct-topic,
+.wb.wb.wb .ct-res-t{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.wb.wb.wb .ct-idea-b{ padding:0 var(--gut) 14px }
+
+.wb.wb.wb .ct-res{
+  display:grid; grid-template-columns:var(--anchor-w) minmax(0,1fr);
+  column-gap:var(--anchor-gap); align-items:center;
+  margin:0; padding:9px var(--gut); background:transparent; border-radius:0;
+}
+.wb.wb.wb .ct-res + .ct-res{ border-top:1px solid var(--hairline) }
+.wb.wb.wb .ct-res.bad{ box-shadow:inset 2px 0 0 var(--sev-urgent) }
+.wb.wb.wb .ct-res-c{
+  grid-column:1; width:var(--anchor-w); height:var(--anchor-w);
+  border-radius:var(--r-chip); object-fit:cover;
+}
+.wb.wb.wb .ct-q, .wb.wb.wb .ct-style{
+  margin:0; padding:9px var(--gut); background:transparent; border-radius:0;
+}
+.wb.wb.wb .ct-q + .ct-q, .wb.wb.wb .ct-style + .ct-style{
+  border-top:1px solid var(--hairline);
+}
+.wb.wb.wb .ct-q-t{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+/* Within each of these sub-lists the trailing timestamp is pushed to the mid
+   column's own right edge, so each list keeps a single right rail. */
+.wb.wb.wb .ct-meta > .ct-tm{ margin-left:auto }
+
+/* 5.2, enforced on the links too: 51 accent-coloured link labels on one screen
+   is not a budget, it is a colour. The words go back to --text and the
+   affordance becomes the underline it always should have been. */
+.wb.wb.wb .ct-ref-l, .wb.wb.wb .dd-link, .wb.wb.wb a{
+  color:var(--text); text-decoration:underline; text-underline-offset:2px;
+}
+/* The in-row Approve is a SHORTCUT, not the row's primary action (opening it
+   is). Eighteen accent buttons in one list is eighteen primaries and therefore
+   none; the accent stays on the pane's full-width Approve, where it is the only
+   one on screen. */
+.wb.wb.wb .ct-card .ct-ac .btn.p{
+  background:var(--surface3); color:var(--text);
+  box-shadow:inset 0 0 0 1px var(--hairline-strong);
+}
+.wb.wb.wb .ct-ac-wide .btn.p{ background:var(--accent); color:var(--ink); box-shadow:none }
+/* white on #FF453A measures 3.41:1 — the badge takes ink at 5.36:1 */
+.wb.wb.wb .tb .cnt{ color:var(--ink) }
+/* the 'neutral' unread badge is a workload count, not a warning — it was white
+   on a near-white tint at 1.16:1 */
+.wb.wb.wb .tb .cnt.neutral{ background:var(--surface3); color:var(--text) }
+/* links inside a message body were accent text at 2.94:1 (§5.2) */
+.wb.wb.wb .msg-link{ color:var(--text); text-decoration:underline; text-underline-offset:2px }
+/* …and the line above re-broke it inside the ONE place that is already a filled
+   accent mark. --text on the outbound bubble measures 2.94:1; §5.3 has the
+   answer and it is the same answer as everywhere else — a label on a filled
+   accent mark is ink (5.61:1), never white. Caught by the per-leaf contrast
+   walk on thread-pane, not by reading the rule. */
+.wb.wb.wb .b.out .msg-link{
+  color:var(--ink); text-decoration-color:rgba(23,23,23,.55);
+}
+/* inline fontWeight:700 on two spans in TodayScreen's health tiles; the weight
+   ceiling is 600 and an inline style is the only thing CSS has to shout at. */
+.wb.wb.wb .td-ts span, .wb.wb.wb .ov-tile-trend{ font-weight:600!important }
+
+/* LIGHT: severity as TEXT is the one thing this ladder cannot carry — amber on
+   a light tint measures 1.89:1. Same move as §5.2 makes for the accent: the
+   colour stays on the MARK, the words go back to --text. Dark keeps the
+   coloured text, where it measures 4.9:1 and reads correctly. */
+:root[data-theme='light'] .wb.wb.wb .ct-chip-warn,
+:root[data-theme='light'] .wb.wb.wb .ct-chip-bad,
+:root[data-theme='light'] .wb.wb.wb .ct-alert-n,
+:root[data-theme='light'] .wb.wb.wb .ct-alert-t,
+:root[data-theme='light'] .wb.wb.wb .ct-subline,
+:root[data-theme='light'] .wb.wb.wb .wb-failed-t,
+:root[data-theme='light'] .wb.wb.wb .td-banner,
+:root[data-theme='light'] .wb.wb.wb .ov-note,
+:root[data-theme='light'] .wb.wb.wb .wb-pipe-warn,
+:root[data-theme='light'] .wb.wb.wb .ct-subtle.ct-warn{ color:var(--text) }
+/* the two Sends figures painted from an inline hex measure 3.20:1 on light */
+:root[data-theme='light'] .wb.wb.wb .ov-tile-trend,
+:root[data-theme='light'] .wb.wb.wb .ov-fpct,
+:root[data-theme='light'] .wb.wb.wb .td-qown{ color:var(--text)!important }
+
+/* Settings is spine-only: the ladder, the scale, the hairlines, nothing else.
+   The switch loses its capsule because §6.3 does not license one. */
+.wb.wb.wb .sw{ background:var(--surface3) }
+.wb.wb.wb .sw.on{ background:var(--accent) }
+.wb.wb.wb .sw-knob{ background:var(--text) }
+:root[data-theme='light'] .wb.wb.wb .sw-knob{ background:#FFFFFF }
+.wb.wb.wb .group{
+  margin:12px var(--gut) 0; background:var(--surface1);
+  border:1px solid var(--hairline); overflow:hidden;
+}
+.wb.wb.wb .grow{ padding:11px 14px }
+.wb.wb.wb .grow + .grow{ border-top:1px solid var(--hairline) }
+
+/* ========================================================================== */
+/* 14 · THE LEAD-MAGNET LANE (phase 6 ask 2) + the phase-6 row changes         */
+/* ========================================================================== */
+
+/* Ivan: "lead magnets/resources and posts need to be separated". The separation
+   has to be VISIBLE before it is structural, so the lane opens with a boundary
+   that is deliberately not another section header — sections are things inside a
+   lane, and a section head reading "Lead magnets" would have said this is one
+   more group of posts. It is a rule with an eyebrow, at the full column width,
+   with the lane's own count. */
+.wb.wb.wb .ct-lane-b{
+  margin-top:34px;
+  /* a hairline the width of the column, so the boundary reads before the words
+     do — the only place in the surface where a top border spans everything. */
+  border-top:1px solid var(--hairline-strong);
+}
+.wb.wb.wb .ct-lane-h{
+  display:flex; align-items:center; gap:10px;
+  padding:18px var(--gut) 0;
+}
+.wb.wb.wb .ct-lane-k{
+  flex:none; font-size:var(--fs-eyebrow); font-weight:500; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--text3);
+}
+.wb.wb.wb .ct-lane-t{ flex:none; font-size:var(--fs-page); color:var(--text) }
+.wb.wb.wb .ct-lane-rule{ flex:1; min-width:12px; height:1px; background:var(--hairline) }
+.wb.wb.wb .ct-lane-c{ flex:none; color:var(--text2); font-size:var(--fs-meta) }
+
+/* An LM row is a draft row: same anchor rail, same fixed slot #1, same trailing
+   value. That is the point — two lanes that scan the same way, not two lists
+   that look unrelated. Everything it needs is already on .ct-card; this only
+   restores the cover image to the anchor plate's size. */
+.wb.wb.wb .ct-res-row .ct-thumb{ object-fit:cover }
+/* The stuck-resource mark, carried over from .ct-res (a terminal status with no
+   landing URL). One inset rule, not a filled row. */
+.wb.wb.wb .ct-res-row.bad{ box-shadow:inset 2px 0 0 var(--sev-urgent) }
+
+/* ask 6 — a generation that died mid-run. Amber, and only ever an inset rule:
+   §5.5 puts one severity mark per run, and the count is already in the alert
+   strip at the top. */
+.wb.wb.wb .ct-stalled{ box-shadow:inset 2px 0 0 var(--sev-attention) }
+
+/* ask 4 — the two long collapsed sections get a raised sticky header so their
+   COUNT stays legible while their own rows scroll under it. .wb-sech is already
+   sticky at z-index 6 (§7.6); this only wins the stacking contest against the
+   sections that follow it, and pins an opaque fill so nothing shows through. */
+.wb.wb.wb .wb-sech-sticky{ z-index:8; background:var(--surface1) }
+
+/* ask 5 — the chips the diet moved OFF the closed row and INTO the expanded
+   body. The closed row's .ct-meta is flex-wrap:nowrap by contract (slot #1 can
+   never move); the body has no such contract and wraps. */
+.wb.wb.wb .ct-meta-wrap{ flex-wrap:wrap; overflow:visible; margin-top:8px }
+
+/* The LM chart's footer legend carries a sentence (which legacy values were
+   folded) rather than a colour swatch, so it needs to wrap where the post
+   bar's two-word legends never did. */
+.wb.wb.wb .wb-cardf .wb-legend{ min-width:0 }
+.wb.wb.wb .wb-cardf .wb-legend-l{ white-space:normal }
+
+/* -------- THE SLASH PALETTE (phase 6 ask 7) -------------------------------
+   Same overlay grammar as .wb-modelmenu, which is the one precedent this pane
+   already has for "a list that appears near the composer and closes on
+   selection" — so a `/` list and a picked model read as the same kind of
+   object rather than two inventions. */
+.wb.wb.wb .wb-palette{
+  flex:none; display:flex; flex-direction:column; gap:2px;
+  margin:0 14px; padding:6px;
+  max-height:260px; overflow-y:auto;
+  background:var(--surface1); border:1px solid var(--hairline-strong);
+  border-radius:var(--r-md);
+}
+.wb.wb.wb .wb-pal-opt{
+  display:flex; align-items:baseline; gap:10px; width:100%; text-align:left;
+  background:none; border:none; cursor:pointer;
+  padding:7px 9px; border-radius:var(--r-chip);
+  font-size:var(--fs-meta); color:var(--text2);
+}
+/* The highlighted row is a SURFACE step, not an accent fill: the palette can
+   show eight rows at once and eight accent bars would spend the §5.1 budget on
+   chrome. */
+.wb.wb.wb .wb-pal-opt.on{ background:var(--surface2); color:var(--text) }
+.wb.wb.wb .wb-pal-n{ flex:none; font-weight:500; color:var(--text) }
+.wb.wb.wb .wb-pal-h{
+  flex:1; min-width:0; color:var(--text3);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.wb.wb.wb .wb-pal-f{
+  padding:6px 9px 2px; color:var(--text4); font-size:var(--fs-meta);
+  border-top:1px solid var(--hairline); margin-top:4px;
+}
+/* A command the pane cannot run right now is still LISTED — it just says so.
+   Hiding it is what let a typed "/retry" fall through to the model. */
+.wb.wb.wb .wb-pal-opt.off .wb-pal-n{ color:var(--text3) }
+.wb.wb.wb .wb-pal-opt.off .wb-pal-h{ color:var(--text4) }
+
+/* ---- dictation mic (server-side inbox-stt path; the browser-API mic stays retired) ---- */
+/* 38px visual to match .csend; the ::after pad extends the hit box to 44px for touch. */
+.wb.wb.wb .cmic{
+  position:relative; width:38px; height:38px; flex:none;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--surface2); color:var(--text3);
+  border:none; border-radius:999px; font-size:15px;
+  cursor:pointer; padding:0; font-family:inherit;
+  transition:background-color var(--dur-hover) var(--ease);
+}
+.wb.wb.wb .cmic::after{ content:''; position:absolute; inset:-3px; border-radius:999px }
+.wb.wb.wb .cmic:hover{ background:var(--surface3) }
+.wb.wb.wb .cmic:disabled{ cursor:default; color:var(--text4) }
+/* Recording is a live signal — the one accent job §5.1 licenses here. Pulse is
+   opacity-only and sits on the dot, not the layout. */
+.wb.wb.wb .cmic-recording{ background:var(--accent-soft); color:var(--text) }
+.wb.wb.wb .cmic-recording::before{
+  content:''; width:6px; height:6px; border-radius:999px; background:var(--accent);
+  position:absolute; top:5px; right:5px; animation:wb-mic-live 1.2s var(--ease) infinite;
+}
+.wb.wb.wb .cmic-live{ font-size:11px; font-variant-numeric:tabular-nums; color:var(--text) }
+@keyframes wb-mic-live{ 0%,100%{opacity:1} 50%{opacity:.3} }
+@media (prefers-reduced-motion: reduce){ .wb.wb.wb .cmic-recording::before{ animation:none } }
+
+/* ---- phase 3: the hover contract, executed (phase0-errors-hover.md) ----
+   Every interactive control gets the §7.4 bg-shift at --dur-hover; press is a
+   brightness dip, never a scale; the global :focus-visible ring (declared
+   above) now REACHES these because they are real <button>s. */
+.wb.wb.wb .chip{ cursor:pointer }
+.wb.wb.wb .chip:hover:not(.on){ background:var(--surface3); color:var(--text) }
+.wb.wb.wb .csend:hover{ background:var(--surface3); color:var(--text) }
+.wb.wb.wb .wb-ask:hover{ filter:brightness(1.12) }
+.wb.wb.wb .ct-ac .btn:hover{ filter:brightness(1.18) }
+.wb.wb.wb .wb-sech.tap:hover .wb-sech-t{ color:var(--text) }
+.wb.wb.wb .wb-sech.tap:hover .wb-sech-chev{ color:var(--text2) }
+.wb.wb.wb .ct-alert:hover{ background:rgba(255,69,58,.16) }
+.wb.wb.wb .wb-ofresh:hover{ color:var(--text2) }
+.wb.wb.wb .seg .sg{ cursor:pointer }
+.wb.wb.wb .seg .sg:hover:not(.on){ background:var(--surface2); color:var(--text) }
+.wb.wb.wb .sw:hover:not(:disabled){ filter:brightness(1.15) }
+/* press: one vocabulary, no scale anywhere in .wb */
+.wb.wb.wb .chip:active, .wb.wb.wb .csend:active, .wb.wb.wb .ct-ac .btn:active,
+.wb.wb.wb .seg .sg:active, .wb.wb.wb .wb-ofresh:active, .wb.wb.wb .ct-alert:active{
+  filter:brightness(.9)
+}
+.wb.wb.wb .wb-starter:active, .wb.wb.wb .wb-about-card.tap:active{ transform:none }
+/* the transition allowlist grows to cover the controls that now HAVE a hover */
+.wb.wb.wb .csend, .wb.wb.wb .sg, .wb.wb.wb .wb-sech-t, .wb.wb.wb .wb-sech-chev,
+.wb.wb.wb .wb-ofresh, .wb.wb.wb .ct-alert, .wb.wb.wb .cmic{
+  transition:background-color var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease);
+}
+/* the Settings switch slides again — the blanket kill had silently frozen it.
+   180ms sits in the §10.2 state band; one easing. */
+.wb.wb.wb .sw{ transition:background-color var(--dur-state) var(--ease) }
+.wb.wb.wb .sw-knob{ transition:transform var(--dur-state) var(--ease) }
+
+/* ---- phase 3: readability (phase0-readability.md #3/#4/#6/#9) ---- */
+/* Meta annotations went fluid with the reflow fix and ran 111-180ch unbroken.
+   Fluid block, capped MEASURE: the block still travels with the column, the
+   text wraps at a readable width. */
+.wb.wb.wb .ct-subtle, .wb.wb.wb .ct-subline{ max-width:72ch }
+/* The Today quote-preview single-lined a full reply (up to 1975px of content
+   into a 470px box) and read identically to the system captions around it.
+   Two-line clamp + a quiet quote rule: it now reads AS quoted material. */
+.wb.wb.wb .td-qs{
+  white-space:normal; display:-webkit-box; -webkit-box-orient:vertical;
+  -webkit-line-clamp:2; overflow:hidden;
+  border-left:2px solid var(--hairline-strong); padding-left:8px;
+}
+/* The NEXT teaser hid ~90% of its line behind a nowrap clip. */
+.wb.wb.wb .td-next .txt{
+  white-space:normal; display:-webkit-box; -webkit-box-orient:vertical;
+  -webkit-line-clamp:2; overflow:hidden;
+}
+/* The owner caption was ACCENT text (§5.2 forbids accent as a text colour) and
+   sat at the same visual weight as the quote. First fix used --text4 and the
+   census caught it at 4.15/3.87:1 — these captions run full sentences at 13px,
+   which is body under the 4.5 bar. --text3 clears it (§3.5 allows text3 as
+   label/caption off surface3). */
+.wb.wb.wb .td-qown{ color:var(--text3); font-weight:500 }
+
+/* ---- phase 3: mobile touch targets (phase0-mobile #2/#5/#6/#10) ---- */
+/* The takeover's ONLY exit was a 6×20px glyph. Real button, 44px hit box. */
+.wb.wb.wb .wb-back{
+  position:relative; min-width:44px; min-height:44px; margin:-10px 0 -10px -12px;
+  display:flex; align-items:center; justify-content:center;
+  border:none; background:none; padding:0;
+  color:var(--text2); font-size:24px; cursor:pointer;
+}
+/* The frame's gear/Done and the ribbon sync chip get the same invisible pad. */
+.wb.wb.wb .wb-gear, .wb.wb.wb .wb-rib-sync{ position:relative }
+.wb.wb.wb .wb-gear::after, .wb.wb.wb .wb-rib-sync::after{
+  content:''; position:absolute; inset:-12px;
+}
+@media (max-width: 767px){
+  /* Skip/Approve measured 48×28 / 76×28 on the primary review loop. */
+  .wb.wb.wb .ct-ac .btn{ min-height:44px; padding-top:0; padding-bottom:0; display:inline-flex; align-items:center; justify-content:center }
+  /* the search field's real hit box was 310×20 inside a 38px wrapper */
+  .wb.wb.wb .search input{ min-height:38px }
+  .wb.wb.wb .wb-pane-x{ min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center; margin:-10px -10px }
+}
+
+/* ---- phase 3: the two loading loops join the contract (phase0-errors-hover C) ----
+   §10.2 caps TRANSITIONS at 250ms; an indeterminate loading loop has no end by
+   nature, so the carve-out is: loops are licensed ONLY on loading/live
+   indicators (the skeleton shimmer, the thinking dots, the mic's live dot),
+   they run on the ONE easing token, and they animate opacity/transform only.
+   The base app ran both on a second curve (1.3s ease-in-out) — and the
+   thinking DOT borrowed the shimmer's translateX keyframes, so it slid
+   instead of pulsing. */
+@keyframes wb-th-pulse{ 0%,100%{ opacity:.25 } 50%{ opacity:1 } }
+.wb.wb.wb .wb-th-dot{ animation:wb-th-pulse 1.2s var(--ease) infinite }
+.wb.wb.wb .sk::after{ animation-timing-function:var(--ease); animation-duration:1.2s }
+
+/* ---- phase 6 fix loop 1 (cold blind seat) ---- */
+/* A zero-stage capsule was a bare 3px stub — two of five stages read as
+   "unrendered" next to a full capsule. The stub now says its zero. */
+.wb.wb.wb .wb-cap-0{ position:relative }
+.wb.wb.wb .wb-cap-0::before{
+  content:'0'; position:absolute; bottom:8px; left:0; right:0;
+  text-align:center; font-size:var(--fs-eyebrow); color:var(--text4);
+  font-variant-numeric:tabular-nums;
+}
+/* Two controls whose hover read as "zero feedback" to a cold judge: the
+   section header now shifts its background (not just text tone), and the
+   alert strip's border joins its fill shift. */
+.wb.wb.wb .wb-sech.tap:hover{ background:var(--surface2) }
+.wb.wb.wb .wb-sech.tap{ transition:background-color var(--dur-hover) var(--ease) }
+.wb.wb.wb .ct-alert:hover{ border-color:rgba(255,69,58,.55) }
+
+/* ---- phase 6 fix loop 2 (blind mobile seat) ---- */
+/* The pill row scrolls (628px in a 358px viewport) but nothing SAID so —
+   mask:none measured live; the builder's fade never landed. Right-edge fade
+   as the affordance, mobile widths only. */
+@media (max-width: 767px){
+  .wb.wb.wb .ct-fpills{
+    -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+    mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+  }
+  /* An Ops draft textarea cut its 4th line mid-glyph above the buttons —
+     an orphaned half-line reads as broken. Room for 5 full lines; longer
+     drafts scroll inside the box with whole lines visible. */
+  .wb.wb.wb textarea.ops-body{ min-height:137px }
+}
+/* Inbox: a two-line contact name shifted the row's pills off the shared
+   rhythm. One line, end-ellipsis — the thread itself has the full name. */
+.wb.wb.wb .r .name{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0 }

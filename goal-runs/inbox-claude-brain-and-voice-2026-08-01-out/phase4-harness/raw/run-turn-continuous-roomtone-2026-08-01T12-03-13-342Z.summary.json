@@ -1,0 +1,14 @@
+[
+  {
+    "fixture": "f1",
+    "why": "IDLE",
+    "transcript": "approve the top draft in the queue",
+    "werPct": 0,
+    "uEnd_to_final_ms": 961.3,
+    "uEnd_to_firstAudibleProxy_ms": 988.8,
+    "uEnd_to_utteranceStartEvent_ms": 988.8,
+    "final_to_firstAudibleProxy_ms": 27.5,
+    "speakCalled_to_startEvent_ms": 26.3,
+    "recSpeechEnd_to_final_ms": -3.5
+  }
+]

@@ -45,6 +45,8 @@ export type DmDraft = {
   created_at: string
   prospect_id?: string | null
   client_id?: string | null
+  // Stamped by get-morning-brief once a draft is >7d old; absent on older payloads.
+  is_aging?: boolean | null
 }
 
 export type CommentDraft = {
@@ -54,6 +56,7 @@ export type CommentDraft = {
   post_excerpt?: string | null
   drafted_at?: string | null
   client_id?: string | null
+  is_aging?: boolean | null
   // Live-only (the LinkedIn post these drafts hang off). Never cached — a
   // link-through is worthless offline and the cache stays minimal.
   post_url?: string | null
@@ -270,6 +273,32 @@ export function approvalsTotal(c: BriefCounts): number {
   return c.approvals.comments + c.approvals.dms + c.approvals.feed
 }
 
+// ---------- the masthead number ----------
+//
+// An aggregating home's characteristic failure is a headline that drifts from its
+// parts: a big number sourced from one place, zones sourced from another, and the
+// operator learns to distrust both. So the headline is DEFINED as the sum of the
+// zone loads and nothing else, and the stacked bar renders those same three
+// numbers — drift is arithmetically impossible rather than merely unlikely.
+//
+// It takes BriefCounts because countsFromBrief() already derives every one of
+// these from the same arrays the zones render, so there is one derivation, not a
+// parallel one that has to be kept in step by hand.
+export type TodayLoad = {
+  urgent: number
+  approvals: number
+  going: number
+  total: number
+}
+
+export function todayLoad(c: BriefCounts | null): TodayLoad {
+  if (!c) return { urgent: 0, approvals: 0, going: 0, total: 0 }
+  const urgent = c.urgencies_count
+  const approvals = approvalsTotal(c)
+  const going = c.posts_today ?? 0
+  return { urgent, approvals, going, total: urgent + approvals + going }
+}
+
 // ---------- transport ----------
 
 export class BriefAuthError extends Error {}
@@ -333,12 +362,13 @@ export function projectBrief(b: Brief): Brief {
         id: d.id, post_author_name: d.post_author_name ?? null,
         comment_text: d.comment_text ?? null, post_excerpt: d.post_excerpt ?? null,
         drafted_at: d.drafted_at ?? null, client_id: d.client_id ?? null,
+        is_aging: d.is_aging ?? null,
       })),
       dm_drafts: b.needs_you.dm_drafts.slice(0, MAX_ROWS).map(d => ({
         id: d.id, prospect_name: d.prospect_name, message_text: d.message_text,
         channel: d.channel ?? null, matched_offer: d.matched_offer ?? null,
         created_at: d.created_at, prospect_id: d.prospect_id ?? null,
-        client_id: d.client_id ?? null,
+        client_id: d.client_id ?? null, is_aging: d.is_aging ?? null,
       })),
       feed_drafts: b.needs_you.feed_drafts.slice(0, MAX_ROWS).map(d => ({
         id: d.id, target_name: d.target_name ?? null, target_class: d.target_class ?? null,
@@ -495,6 +525,16 @@ export function ago(iso: string): string {
   const h = Math.floor(m / 60)
   if (h < 24) return `${h}h`
   return `${Math.floor(h / 24)}d`
+}
+
+// ago() returns a bare "now" under a minute, so callers that append " ago"
+// render "Checked now ago" on the freshest and most common read. Freshness copy
+// asks for a whole phrase, not a duration, so build it here once.
+export function checkedPhrase(iso: string | null | undefined): string {
+  if (!iso) return 'Never checked'
+  const a = ago(iso)
+  if (!a) return 'Never checked'
+  return a === 'now' ? 'Checked just now' : `Checked ${a} ago`
 }
 
 // Local time, always — a brief generated at 00:36Z is "21:36" in Buenos Aires

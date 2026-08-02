@@ -1,0 +1,1354 @@
+[
+  {
+    "shot": "today",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4175/#exp/v2c/today",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/today-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 2841,
+        "totalWords": 775,
+        "wordsPer1000px": 272.8,
+        "proseSharePct": 75.7,
+        "biggestNumberPx": 19,
+        "encodings": 5,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "today",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4175/#exp/v2c/today",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/today-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 2717,
+        "totalWords": 775,
+        "wordsPer1000px": 285.2,
+        "proseSharePct": 75.7,
+        "biggestNumberPx": 19,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 54,
+        "wordsPer1000px": 60,
+        "proseSharePct": 33.3,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "inbox",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4175/#exp/v2c/inbox",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/inbox-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83100,
+        "totalWords": 821,
+        "wordsPer1000px": 9.9,
+        "proseSharePct": 88.7,
+        "biggestNumberPx": 13,
+        "encodings": 6,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "inbox",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4175/#exp/v2c/inbox",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/inbox-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83093,
+        "totalWords": 885,
+        "wordsPer1000px": 10.7,
+        "proseSharePct": 87.3,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 54,
+        "wordsPer1000px": 60,
+        "proseSharePct": 33.3,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "drafts",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4175/#exp/v2c/drafts",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/drafts-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 741,
+        "totalWords": 15,
+        "wordsPer1000px": 20.2,
+        "proseSharePct": 0,
+        "biggestNumberPx": 0,
+        "encodings": 0,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "drafts",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4175/#exp/v2c/drafts",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/drafts-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 900,
+        "totalWords": 15,
+        "wordsPer1000px": 16.7,
+        "proseSharePct": 0,
+        "biggestNumberPx": 0,
+        "encodings": 0,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 54,
+        "wordsPer1000px": 60,
+        "proseSharePct": 33.3,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "content",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4175/#exp/v2c/content",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/content-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 2559,
+        "totalWords": 271,
+        "wordsPer1000px": 105.9,
+        "proseSharePct": 57.2,
+        "biggestNumberPx": 32,
+        "encodings": 16,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "content",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4175/#exp/v2c/content",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/content-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 2367,
+        "totalWords": 271,
+        "wordsPer1000px": 114.5,
+        "proseSharePct": 57.2,
+        "biggestNumberPx": 32,
+        "encodings": 16,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 52,
+        "wordsPer1000px": 57.8,
+        "proseSharePct": 34.6,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "sends",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4175/#exp/v2c/sends",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/sends-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 1985,
+        "totalWords": 270,
+        "wordsPer1000px": 136,
+        "proseSharePct": 21.9,
+        "biggestNumberPx": 28,
+        "encodings": 75,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "sends",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4175/#exp/v2c/sends",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/sends-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 2142,
+        "totalWords": 270,
+        "wordsPer1000px": 126.1,
+        "proseSharePct": 21.9,
+        "biggestNumberPx": 28,
+        "encodings": 31,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 52,
+        "wordsPer1000px": 57.8,
+        "proseSharePct": 34.6,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "ops",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4175/#exp/v2c/ops",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/ops-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 742,
+        "totalWords": 28,
+        "wordsPer1000px": 37.7,
+        "proseSharePct": 0,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "ops",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4175/#exp/v2c/ops",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/ops-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 900,
+        "totalWords": 28,
+        "wordsPer1000px": 31.1,
+        "proseSharePct": 0,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 57,
+        "wordsPer1000px": 63.3,
+        "proseSharePct": 31.6,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "settings",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4175/#exp/v2c/settings",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/settings-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 742,
+        "totalWords": 60,
+        "wordsPer1000px": 80.9,
+        "proseSharePct": 61.7,
+        "biggestNumberPx": 0,
+        "encodings": 0,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "settings",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4175/#exp/v2c/settings",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/settings-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 900,
+        "totalWords": 60,
+        "wordsPer1000px": 66.7,
+        "proseSharePct": 61.7,
+        "biggestNumberPx": 0,
+        "encodings": 0,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 54,
+        "wordsPer1000px": 60,
+        "proseSharePct": 33.3,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4175/#exp/v2c/inbox/chat",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/chat-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 852,
+        "totalWords": 54,
+        "wordsPer1000px": 63.4,
+        "proseSharePct": 33.3,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4175/#exp/v2c/inbox/chat",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/chat-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83093,
+        "totalWords": 885,
+        "wordsPer1000px": 10.7,
+        "proseSharePct": 87.3,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 54,
+        "wordsPer1000px": 60,
+        "proseSharePct": 33.3,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "thread",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4175/#exp/v2c/inbox",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/thread-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 852,
+        "totalWords": 153,
+        "wordsPer1000px": 179.6,
+        "proseSharePct": 85.6,
+        "biggestNumberPx": 0,
+        "encodings": 7,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "thread",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4175/#exp/v2c/inbox",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/thread-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83093,
+        "totalWords": 885,
+        "wordsPer1000px": 10.7,
+        "proseSharePct": 87.3,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 952,
+        "totalWords": 153,
+        "wordsPer1000px": 160.7,
+        "proseSharePct": 85.6,
+        "biggestNumberPx": 0,
+        "encodings": 7,
+        "overflow": false
+      },
+      {
+        "region": "peer2",
+        "height": 900,
+        "totalWords": 51,
+        "wordsPer1000px": 56.7,
+        "proseSharePct": 35.3,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "peers-thread-chat",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4175/#exp/v2c/inbox",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/peers-thread-chat-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83093,
+        "totalWords": 885,
+        "wordsPer1000px": 10.7,
+        "proseSharePct": 87.3,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 952,
+        "totalWords": 153,
+        "wordsPer1000px": 160.7,
+        "proseSharePct": 85.6,
+        "biggestNumberPx": 0,
+        "encodings": 7,
+        "overflow": false
+      },
+      {
+        "region": "peer2",
+        "height": 900,
+        "totalWords": 51,
+        "wordsPer1000px": 56.7,
+        "proseSharePct": 35.3,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "draft",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4175/#exp/v2c/content",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/draft-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 1727,
+        "totalWords": 649,
+        "wordsPer1000px": 375.9,
+        "proseSharePct": 86,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "draft",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4175/#exp/v2c/content",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/draft-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 2541,
+        "totalWords": 271,
+        "wordsPer1000px": 106.7,
+        "proseSharePct": 57.2,
+        "biggestNumberPx": 32,
+        "encodings": 16,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 1700,
+        "totalWords": 649,
+        "wordsPer1000px": 381.8,
+        "proseSharePct": 86,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      },
+      {
+        "region": "peer2",
+        "height": 900,
+        "totalWords": 61,
+        "wordsPer1000px": 67.8,
+        "proseSharePct": 29.5,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "peers-draft-chat",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4175/#exp/v2c/content",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/peers-draft-chat-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 2541,
+        "totalWords": 271,
+        "wordsPer1000px": 106.7,
+        "proseSharePct": 57.2,
+        "biggestNumberPx": 32,
+        "encodings": 16,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 1700,
+        "totalWords": 649,
+        "wordsPer1000px": 381.8,
+        "proseSharePct": 86,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      },
+      {
+        "region": "peer2",
+        "height": 900,
+        "totalWords": 61,
+        "wordsPer1000px": 67.8,
+        "proseSharePct": 29.5,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "inbox-solo",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4175/#exp/v2c/inbox",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/inbox-solo-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83093,
+        "totalWords": 885,
+        "wordsPer1000px": 10.7,
+        "proseSharePct": 87.3,
+        "biggestNumberPx": 13,
+        "encodings": 6,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat-about-mobile",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4175/#exp/v2c/inbox",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/chat-about-mobile-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 852,
+        "totalWords": 52,
+        "wordsPer1000px": 61,
+        "proseSharePct": 34.6,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat-streaming",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4175/#exp/v2c/inbox/chat",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/chat-streaming-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 852,
+        "totalWords": 58,
+        "wordsPer1000px": 68.1,
+        "proseSharePct": 34.5,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat-streaming",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4175/#exp/v2c/inbox/chat",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/chat-streaming-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83093,
+        "totalWords": 885,
+        "wordsPer1000px": 10.7,
+        "proseSharePct": 87.3,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 61,
+        "wordsPer1000px": 67.8,
+        "proseSharePct": 32.8,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat-done",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4175/#exp/v2c/inbox/chat",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/chat-done-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83093,
+        "totalWords": 885,
+        "wordsPer1000px": 10.7,
+        "proseSharePct": 87.3,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 83,
+        "wordsPer1000px": 92.2,
+        "proseSharePct": 48.2,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat-error",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4175/?wbmock=chat:error-cold#exp/v2c/inbox/chat",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/chat-error-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 852,
+        "totalWords": 24,
+        "wordsPer1000px": 28.2,
+        "proseSharePct": 0,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat-error",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4175/?wbmock=chat:error-cold#exp/v2c/inbox/chat",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/chat-error-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83093,
+        "totalWords": 885,
+        "wordsPer1000px": 10.7,
+        "proseSharePct": 87.3,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 24,
+        "wordsPer1000px": 26.7,
+        "proseSharePct": 0,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat-error-mid",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4175/?wbmock=chat:error-mid#exp/v2c/inbox/chat",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/chat-error-mid-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83093,
+        "totalWords": 885,
+        "wordsPer1000px": 10.7,
+        "proseSharePct": 87.3,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 53,
+        "wordsPer1000px": 58.9,
+        "proseSharePct": 0,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "voice-listening",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4175/#exp/v2c/inbox/chat",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/voice-listening-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 852,
+        "totalWords": 55,
+        "wordsPer1000px": 64.6,
+        "proseSharePct": 32.7,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "voice-listening",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4175/#exp/v2c/inbox/chat",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/voice-listening-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83093,
+        "totalWords": 885,
+        "wordsPer1000px": 10.7,
+        "proseSharePct": 87.3,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 55,
+        "wordsPer1000px": 61.1,
+        "proseSharePct": 32.7,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "voice-handsfree",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4175/#exp/v2c/inbox/chat",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/voice-handsfree-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 1003,
+        "totalWords": 72,
+        "wordsPer1000px": 71.8,
+        "proseSharePct": 43.1,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "voice-handsfree",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4175/#exp/v2c/inbox/chat",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/voice-handsfree-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83093,
+        "totalWords": 885,
+        "wordsPer1000px": 10.7,
+        "proseSharePct": 87.3,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 999,
+        "totalWords": 72,
+        "wordsPer1000px": 72.1,
+        "proseSharePct": 43.1,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "voice-denied",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4175/?wbmock=voice:denied#exp/v2c/inbox/chat",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/voice-denied-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 852,
+        "totalWords": 67,
+        "wordsPer1000px": 78.6,
+        "proseSharePct": 44.8,
+        "biggestNumberPx": 0,
+        "encodings": 2,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "voice-denied",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4175/?wbmock=voice:denied#exp/v2c/inbox/chat",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/voice-denied-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83093,
+        "totalWords": 885,
+        "wordsPer1000px": 10.7,
+        "proseSharePct": 87.3,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 67,
+        "wordsPer1000px": 74.4,
+        "proseSharePct": 44.8,
+        "biggestNumberPx": 0,
+        "encodings": 2,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "state-failed-inbox",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4175/?wbmock=fetch-error#exp/v2c/inbox",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/state-failed-inbox-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83100,
+        "totalWords": 849,
+        "wordsPer1000px": 10.2,
+        "proseSharePct": 85.7,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "state-failed-inbox",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4175/?wbmock=fetch-error#exp/v2c/inbox",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/state-failed-inbox-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83093,
+        "totalWords": 996,
+        "wordsPer1000px": 12,
+        "proseSharePct": 86.6,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 54,
+        "wordsPer1000px": 60,
+        "proseSharePct": 33.3,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "state-failed-ops",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4175/?wbmock=fetch-error#exp/v2c/ops",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/state-failed-ops-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 742,
+        "totalWords": 36,
+        "wordsPer1000px": 48.5,
+        "proseSharePct": 0,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "state-failed-ops",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4175/?wbmock=fetch-error#exp/v2c/ops",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/state-failed-ops-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 900,
+        "totalWords": 36,
+        "wordsPer1000px": 40,
+        "proseSharePct": 0,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 57,
+        "wordsPer1000px": 63.3,
+        "proseSharePct": 31.6,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "state-failed-content",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4175/?wbmock=fetch-error#exp/v2c/content",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/state-failed-content-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 741,
+        "totalWords": 26,
+        "wordsPer1000px": 35.1,
+        "proseSharePct": 0,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "state-failed-content",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4175/?wbmock=fetch-error#exp/v2c/content",
+    "file": "goal-runs/inbox-v2-revamp-2026-08-01/phase2-tournament/crops/v2c/state-failed-content-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 900,
+        "totalWords": 26,
+        "wordsPer1000px": 28.9,
+        "proseSharePct": 0,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 52,
+        "wordsPer1000px": 57.8,
+        "proseSharePct": 34.6,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "missedSteps": []
+  }
+]

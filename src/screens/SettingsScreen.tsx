@@ -20,14 +20,16 @@ function isStandalone(): boolean {
 
 function Switch({ on, busy, onToggle }: { on: boolean; busy?: boolean; onToggle: () => void }) {
   return (
-    <div
+    <button
+      type="button"
       className={`sw ${on ? 'on' : ''} ${busy ? 'busy' : ''}`}
       role="switch"
       aria-checked={on}
-      onClick={busy ? undefined : onToggle}
+      disabled={busy}
+      onClick={onToggle}
     >
-      <div className="sw-knob" />
-    </div>
+      <span className="sw-knob" />
+    </button>
   )
 }
 

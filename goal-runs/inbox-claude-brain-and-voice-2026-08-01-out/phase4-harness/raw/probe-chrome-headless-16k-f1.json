@@ -1,0 +1,63 @@
+{
+  "channel": "chrome",
+  "headless": true,
+  "wav": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-claude-brain-and-voice-2026-08-01-out/phase4-fixtures/16k/f1.wav",
+  "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/150.0.0.0 Safari/537.36",
+  "why": "ended",
+  "log": [
+    {
+      "t": 28.600000023841858,
+      "k": "ctor",
+      "v": {
+        "SpeechRecognition": true,
+        "webkitSpeechRecognition": true,
+        "secureContext": true
+      }
+    },
+    {
+      "t": 283.5,
+      "k": "gum-ok",
+      "v": {
+        "tracks": [
+          "Fake Default Audio Input"
+        ]
+      }
+    },
+    {
+      "t": 707.7000000476837,
+      "k": "stream-peak",
+      "v": {
+        "peak": 0.904646098613739
+      }
+    },
+    {
+      "t": 709,
+      "k": "start-called"
+    },
+    {
+      "t": 710.8000000715256,
+      "k": "onstart"
+    },
+    {
+      "t": 1010.5,
+      "k": "onaudiostart"
+    },
+    {
+      "t": 8861.700000047684,
+      "k": "onaudioend"
+    },
+    {
+      "t": 8862,
+      "k": "onerror",
+      "v": {
+        "error": "no-speech",
+        "message": ""
+      }
+    },
+    {
+      "t": 8862.300000071526,
+      "k": "onend"
+    }
+  ],
+  "console": []
+}

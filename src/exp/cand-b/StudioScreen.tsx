@@ -402,7 +402,7 @@ export function StudioScreen({ onPushChange }: { onPushChange?: (open: boolean) 
             <div style={{ padding: '0 16px' }}>
               {styles.resources.map(r => (
                 <a
-                  key={r.id} href={r.resource_url} target="_blank" rel="noreferrer"
+                  key={r.id} href={r.resource_url ?? undefined} target="_blank" rel="noreferrer"
                   className="log-r" style={{ textDecoration: 'none', color: 'inherit' }}
                 >
                   {r.cover_url ? (

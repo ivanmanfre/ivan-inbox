@@ -1,0 +1,12 @@
+{
+  "f1": "Approve the top draft in the queue",
+  "f2": "What failed in n8n overnight",
+  "f3": "Check the Supabase scheduled posts table for stuck rows",
+  "f4": "Move the ClickUp task to done and refresh the board",
+  "f5": "Did UniPile hit the read ceiling on Mattan's seat",
+  "f6": "Render the hyperframes video for the carousel draft",
+  "f7": "Pause the Smartlead cold email lane until Monday",
+  "f8": "Show me the RISE DTC board visibility for this week",
+  "f9_noisy": "Check the Supabase scheduled posts table for stuck rows",
+  "f10_fast": "What failed in n8n overnight and did the carousel publisher run"
+}
