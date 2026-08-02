@@ -1502,3 +1502,39 @@
    bar's two-word legends never did. */
 .wb.wb.wb .wb-cardf .wb-legend{ min-width:0 }
 .wb.wb.wb .wb-cardf .wb-legend-l{ white-space:normal }
+
+/* -------- THE SLASH PALETTE (phase 6 ask 7) -------------------------------
+   Same overlay grammar as .wb-modelmenu, which is the one precedent this pane
+   already has for "a list that appears near the composer and closes on
+   selection" — so a `/` list and a picked model read as the same kind of
+   object rather than two inventions. */
+.wb.wb.wb .wb-palette{
+  flex:none; display:flex; flex-direction:column; gap:2px;
+  margin:0 14px; padding:6px;
+  max-height:260px; overflow-y:auto;
+  background:var(--surface1); border:1px solid var(--hairline-strong);
+  border-radius:var(--r-md);
+}
+.wb.wb.wb .wb-pal-opt{
+  display:flex; align-items:baseline; gap:10px; width:100%; text-align:left;
+  background:none; border:none; cursor:pointer;
+  padding:7px 9px; border-radius:var(--r-chip);
+  font-size:var(--fs-meta); color:var(--text2);
+}
+/* The highlighted row is a SURFACE step, not an accent fill: the palette can
+   show eight rows at once and eight accent bars would spend the §5.1 budget on
+   chrome. */
+.wb.wb.wb .wb-pal-opt.on{ background:var(--surface2); color:var(--text) }
+.wb.wb.wb .wb-pal-n{ flex:none; font-weight:500; color:var(--text) }
+.wb.wb.wb .wb-pal-h{
+  flex:1; min-width:0; color:var(--text3);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.wb.wb.wb .wb-pal-f{
+  padding:6px 9px 2px; color:var(--text4); font-size:var(--fs-meta);
+  border-top:1px solid var(--hairline); margin-top:4px;
+}
+/* A command the pane cannot run right now is still LISTED — it just says so.
+   Hiding it is what let a typed "/retry" fall through to the model. */
+.wb.wb.wb .wb-pal-opt.off .wb-pal-n{ color:var(--text3) }
+.wb.wb.wb .wb-pal-opt.off .wb-pal-h{ color:var(--text4) }

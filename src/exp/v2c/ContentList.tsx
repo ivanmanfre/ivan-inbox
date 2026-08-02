@@ -452,7 +452,7 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
           content_type ride here too, labelled, rather than vanishing from both
           lanes. ask 4 — collapsed by default with a sticky header. */}
       <IdeasSection
-        ideas={ideas.split.post} kind="post" count={ideas.counts.post}
+        ideas={ideas.split.post} kind="post" n="01" count={ideas.counts.post}
         unclassified={ideas.split.other}
         loading={ideas.loading}
         error={ideas.error} loadedAt={ideas.loadedAt} refresh={ideas.refresh}
