@@ -32,6 +32,15 @@ const SHOTS = [
   // "Loading the brief…", which is a failed capture, not a design verdict.
   { name: 'today', hash: '#exp/v2/today', at: [M, D], settle: 9000 },
   { name: 'sends', hash: '#exp/v2/sends', at: [M, D] },
+  // The Log is phase0 surface #8 and is behind the view switcher, so it needs
+  // its own steps or it is never captured at all. `.seg .sg:nth-child(3)` is the
+  // Log segment (SendsScreen.tsx:292).
+  { name: 'sends-log', hash: '#exp/v2/sends', at: [M, D],
+    steps: [click('.seg .sg:nth-child(3)'), wait(3200)] },
+  { name: 'sends-lanes', hash: '#exp/v2/sends', at: [D],
+    steps: [click('.seg .sg:nth-child(2)'), wait(2400)] },
+  { name: 'sends-log-triad', hash: '#exp/v2/sends', at: [D], query: 'cat=triad',
+    steps: [click('.seg .sg:nth-child(3)'), wait(3200)] },
   { name: 'sends-triad', hash: '#exp/v2/sends', at: [D], query: 'cat=triad' },
   { name: 'content-triad', hash: '#exp/v2/content', at: [D], query: 'cat=triad' },
   { name: 'inbox', hash: '#exp/v2/inbox', at: [M, D] },
@@ -205,9 +214,25 @@ const MEASURE = function () {
       contentStatus: railOf('.ct-card', '.ct-st'),
       inbox: railOf('.rows .r', '.name'),
       today: railOf('.td-r', '.td-nm'),
+      sendsLog: railOf('.log-r', '.log-nm'),
     },
     tailRail,
-    band: { content: bandOf('.ct-card'), inbox: bandOf('.rows .r'), today: bandOf('.td-r') },
+    // The trailing timestamps on the log share one right edge or the column is
+    // a coincidence, not a column (7.7).
+    logTailRail: (() => {
+      const t = [...document.querySelectorAll('.log-r .log-tm')].filter(vis)
+      if (t.length === 0) return null
+      const xs = t.map((e) => Math.round(e.getBoundingClientRect().right))
+      return { n: xs.length, variance: Math.max(...xs) - Math.min(...xs) }
+    })(),
+    // 8.5 — the denominator line, read off the DOM. If this string does not
+    // carry two totals well above the rendered counts, the log is charting a
+    // window as if it were the population.
+    logDenom: document.querySelector('.log-denom')?.innerText?.replace(/\s+/g, ' ').trim() ?? null,
+    band: {
+      content: bandOf('.ct-card'), inbox: bandOf('.rows .r'), today: bandOf('.td-r'),
+      sendsLog: bandOf('.log-r'),
+    },
     livePathTransitions: livePaths,
     contrastFailures: bad.slice(0, 8),
     contrastFailureCount: bad.length,
@@ -249,6 +274,17 @@ for (const shot of SHOTS) {
       } catch (e) { errors.push(`MISSED ${step.sel}: ${String(e).slice(0, 60)}`) }
     }
     if (shot.steps) await page.waitForTimeout(700)
+    // The LAST gate, and the one the skeleton check cannot cover: several
+    // surfaces render a plain `Loading…` div with no .sk class at all
+    // (SendsScreen.tsx:102 is one, TodayScreen's brief is another), so a shot
+    // can clear every check above and still be a screenshot of the word
+    // "Loading". Poll the literal string out. Still never networkidle — the
+    // realtime WebSocket keeps that pending forever.
+    const loadingGone = await page.waitForFunction(
+      () => !/Loading/i.test(document.querySelector('.wb')?.innerText ?? ''),
+      null, { timeout: 30000 },
+    ).then(() => true).catch(() => false)
+    if (!loadingGone) errors.push('STILL LOADING at screenshot time — this capture is not evidence')
     const m = await page.evaluate(MEASURE)
     const file = `${outDir}/${shot.name}-${vp.tag}.png`
     await page.screenshot({ path: file, fullPage: false })

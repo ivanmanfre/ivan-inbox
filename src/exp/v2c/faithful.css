@@ -530,6 +530,16 @@
    right-aligned and tabular. Trailing values in one list share a right edge. */
 .wb.wb.wb .r .top, .wb.wb.wb .td-top{ display:flex; align-items:center; gap:8px; min-width:0 }
 .wb.wb.wb .r .snip, .wb.wb.wb .td-snip, .wb.wb.wb .ct-topic{ margin-top:1px; color:var(--text3) }
+/* 7.8 — the density FLOOR, which is a real bar and not just a ceiling. Measured
+   at 1440: Inbox rows and Sends-Log rows both came out at 37-38px content box,
+   two pixels UNDER the 40-60 band, because a 20px primary line and a 16px meta
+   line were separated by a 1px margin. A two-line row that is 2px short reads
+   as cramped rather than dense — the band exists to catch exactly that. The
+   margin becomes a real 5px gap and both lists land at 41px. */
+.wb.wb.wb .r .mid, .wb.wb.wb .log-mid{
+  display:flex; flex-direction:column; gap:5px;
+}
+.wb.wb.wb .r .mid > .snip, .wb.wb.wb .log-mid > .log-snip{ margin-top:0 }
 
 /* 7.4 — hover is a background shift; selection is a 2px inset accent spine,
    the same mark active nav uses, so "where am I" is one vocabulary app-wide.
@@ -1233,6 +1243,14 @@
 .wb.wb.wb .tb .cnt.neutral{ background:var(--surface3); color:var(--text) }
 /* links inside a message body were accent text at 2.94:1 (§5.2) */
 .wb.wb.wb .msg-link{ color:var(--text); text-decoration:underline; text-underline-offset:2px }
+/* …and the line above re-broke it inside the ONE place that is already a filled
+   accent mark. --text on the outbound bubble measures 2.94:1; §5.3 has the
+   answer and it is the same answer as everywhere else — a label on a filled
+   accent mark is ink (5.61:1), never white. Caught by the per-leaf contrast
+   walk on thread-pane, not by reading the rule. */
+.wb.wb.wb .b.out .msg-link{
+  color:var(--ink); text-decoration-color:rgba(23,23,23,.55);
+}
 /* inline fontWeight:700 on two spans in TodayScreen's health tiles; the weight
    ceiling is 600 and an inline style is the only thing CSS has to shout at. */
 .wb.wb.wb .td-ts span, .wb.wb.wb .ov-tile-trend{ font-weight:600!important }
