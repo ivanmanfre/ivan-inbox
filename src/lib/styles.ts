@@ -339,7 +339,7 @@ export const LM_STAGE_LABEL: Record<LmStage, string> = {
 // takes for a vocabulary that grows after the file was written. If Ivan wants
 // `live` to mean published, that is a one-line addition to LM_STATUS_ALIASES
 // and a decision he makes, not one a builder makes quietly.
-export function stageOfLm(r: Resource, now: number = Date.now()): LmStage {
+export function stageOfLm(r: Resource): LmStage {
   const s = normalizeLmStatus(r.status)
   switch (s) {
     case 'idea': return 'idea'
@@ -352,11 +352,10 @@ export function stageOfLm(r: Resource, now: number = Date.now()): LmStage {
     case 'error': return 'error'
     case 'disqualified':
     case 'skipped': return 'archived'
+    // Anything the n8n vocabulary grows after this file was written, plus
+    // `live`. Rendered at the bottom, never dropped.
     default: return 'other'
   }
-  // `now` is in the signature for symmetry with stageOf and for the day an LM
-  // row grows a time-dependent stage; it is unused today and deliberately not
-  // faked into one.
 }
 
 export type LmStages = Record<LmStage, Resource[]>
@@ -368,9 +367,12 @@ function emptyLmStages(): LmStages {
   }
 }
 
-export function groupByLmStage(rows: Resource[], now: number = Date.now()): LmStages {
+// No `now` parameter, unlike groupByStage: no LM stage is time-dependent today
+// (there is no LM equivalent of isStuckScheduled), and a parameter that is
+// threaded through but never read is a promise the function does not keep.
+export function groupByLmStage(rows: Resource[]): LmStages {
   const out = emptyLmStages()
-  for (const r of rows) out[stageOfLm(r, now)].push(r)
+  for (const r of rows) out[stageOfLm(r)].push(r)
   return out
 }
 
@@ -385,7 +387,7 @@ export const LM_GENERATING_STAGES: readonly LmStage[] = ['generating', 'generati
 // start timestamp, so updated_at is the only clock there is; genAge.ts's own
 // comment says exactly that.
 export function isStuckGeneratingLm(r: Resource, now: number = Date.now()): boolean {
-  if (!LM_GENERATING_STAGES.includes(stageOfLm(r, now))) return false
+  if (!LM_GENERATING_STAGES.includes(stageOfLm(r))) return false
   const m = elapsedMinutes(r.updated_at, now)
   return m !== null && m >= STUCK_GENERATING_MINUTES
 }

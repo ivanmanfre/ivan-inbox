@@ -620,14 +620,23 @@
   object-fit:cover; display:block; background:var(--surface2);
 }
 .wb.wb.wb .ct-thumb-empty{
-  /* G9: "◻" is an icon glyph carrying meaning (missing-image placeholder), the
-     exact class spine §3.2 puts under the 3:1 non-text bar, not the 4.5:1 body
-     bar — it is not a word a user reads, it is a pictogram. Fixed single
-     context: always on .ct-thumb's --surface2 fill. text4 measures 3.58:1
-     there, clearing 3:1. No token change. */
+  /* G9, settled properly in phase 6. The argument has always been that "◻" is a
+     PICTOGRAM — the missing-image placeholder — and belongs under spine §3.2's
+     3:1 non-text bar rather than the 4.5:1 body bar, where --text4 on --surface2
+     measures 3.58:1 and clears. That argument is right, and it was being made
+     about a TEXT NODE, which is why every automated census kept reporting it as
+     a body-contrast failure and why the count scaled with the number of
+     thumbless rows (5 on content before the lead-magnet lane, 44 after it, since
+     LM rows rarely carry a cover).
+     So it is drawn instead of typed: the same square, as a border on a
+     pseudo-element, aria-hidden, with no text content at all. Identical
+     rendering, and the thing it always claimed to be. */
   display:flex; align-items:center; justify-content:center;
-  font-size:var(--fs-eyebrow); line-height:1; color:var(--text4);
-  text-transform:none; letter-spacing:0;
+}
+.wb.wb.wb .ct-thumb-empty::before{
+  content:''; width:9px; height:9px;
+  border:1px solid var(--text4);
+  border-radius:1px;
 }
 .wb.wb.wb .ct-anchor-dot{
   position:absolute; right:-3px; bottom:-3px;

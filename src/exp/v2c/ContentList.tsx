@@ -94,7 +94,7 @@ function Card({ d, lane, refresh, onOpen, active }: {
       <div className="ct-anchor" data-st={stage} data-qa={qaState}>
         {thumb
           ? <img className="ct-thumb" src={thumb} alt="" />
-          : <div className="ct-thumb ct-thumb-empty">◻</div>}
+          : <div className="ct-thumb ct-thumb-empty" aria-hidden />}
         <span
           className="ct-anchor-dot"
           title={qa ? `QA ${d.qa_verdict}` : 'no QA verdict on this row'}
