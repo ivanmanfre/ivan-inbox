@@ -641,7 +641,10 @@
   position:sticky; top:0; z-index:6;
   display:flex; align-items:center; gap:10px;
   height:var(--sech-h); padding:0 var(--gut);
-  background:var(--surface1);
+  /* §3f / risk 3 — surface1 is the CARD colour now; a card-coloured sticky
+     stripe on the plate would read as chrome-gone-wrong. Sticky backgrounds
+     are CANVAS. */
+  background:var(--canvas);
   border-top:1px solid var(--hairline);
   border-bottom:1px solid var(--hairline);
 }
@@ -823,13 +826,15 @@
 /* 8.1 — METRIC CARD: eyebrow · direction glyph · big tabular numeral ·
    micro-caption. All four slots or it is not a metric card. --r-hero, generous
    padding: this is the reference read at face value. */
+/* §3f — reference cards are BORDERLESS flats; separation is the
+   surface1-on-canvas step itself. */
 .wb.wb.wb .ov-tile, .wb.wb.wb .ov-kpi, .wb.wb.wb .ov-gov, .wb.wb.wb .ov-rc,
 .wb.wb.wb .ov-pipe, .wb.wb.wb .ov-funnel, .wb.wb.wb .wb-chartcard{
   background:var(--surface1);
-  border:1px solid var(--hairline);
+  border:none;
   padding:var(--pad-card);
 }
-.wb.wb.wb .ov-tbl{ background:var(--surface1); border:1px solid var(--hairline); padding:0 }
+.wb.wb.wb .ov-tbl{ background:var(--surface1); border:none; padding:0 }
 .wb.wb.wb .ov-tbl .ov-tr{ padding:10px var(--pad-card) }
 .wb.wb.wb .ov-tile-lbl{ color:var(--text3) }
 .wb.wb.wb .ov-tile-big, .wb.wb.wb .wb-pipe-big, .wb.wb.wb .td-big{ color:var(--text) }
@@ -941,6 +946,14 @@
 .wb.wb.wb .wb-cap[data-cat='2']{ background:var(--cat-2); color:var(--cat-2-ink); background-image:var(--pat-2) }
 .wb.wb.wb .wb-cap[data-cat='3']{ background:var(--cat-3); color:var(--cat-3-ink); background-image:var(--pat-3) }
 .wb.wb.wb .wb-cap[data-cat='4']{ background:var(--cat-4); color:var(--cat-4-ink) }
+/* §5 move 2 — print-style value capsule: the numeral lives inside a drawn
+   18px-tall, min-22px-wide 999px capsule on the mark's own fill. Zero contrast
+   cost: the ink numeral stays on the fill's own ≥8.5:1. */
+.wb.wb.wb .wb-cap-v{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:22px; height:18px; padding:0 5px;
+  border-radius:999px; background:rgba(23,23,23,.14);
+}
 .wb.wb.wb .wb-cap-0{
   flex:1; min-width:22px; height:3px; align-self:flex-end;
   background:var(--surface3); border-radius:var(--r-pill);
@@ -963,20 +976,24 @@
 }
 .wb.wb.wb .ov-gauge{ height:10px }
 .wb.wb.wb .ov-gauge.sm{ height:7px }
+/* §3g — Today's horizontal capsule bars step up to the reference proportion. */
+.wb.wb.wb .td-bar{ height:12px }
 
 /* 3.3 — one separation device per boundary. The section rule above already
    separates; the cards below do not also need margins that read as gutters. */
-.wb.wb.wb .ov-sec{ margin-top:24px; padding:0 var(--gut) }
+.wb.wb.wb .ov-sec{ margin-top:28px; padding:0 var(--gut) }
 .wb.wb.wb .ov-sec:first-child{ margin-top:12px }
 .wb.wb.wb .ov-h{
   display:flex; align-items:center; gap:10px;
   height:var(--sech-h); margin-bottom:8px; color:var(--text3);
 }
 .wb.wb.wb .ov-h-sub{ margin-left:auto; color:var(--text2); font-weight:400 }
-.wb.wb.wb .ov-hero{ gap:12px }
-.wb.wb.wb .ov-kpis, .wb.wb.wb .ov-seats, .wb.wb.wb .ov-govs{ gap:12px }
+.wb.wb.wb .ov-hero{ gap:16px }
+.wb.wb.wb .ov-kpis, .wb.wb.wb .ov-seats, .wb.wb.wb .ov-govs{ gap:16px }
 .wb.wb.wb .ov-duo{ gap:0 }
-@media (min-width:1000px){ .wb.wb.wb .ov-duo{ gap:16px } }
+@media (min-width:1000px){ .wb.wb.wb .ov-duo{ gap:20px } }
+/* §3f — Today's desktop zone cards join the hero-radius family. */
+.wb.wb.wb .td-zone{ border-radius:var(--r-hero) }
 
 /* ========================================================================== */
 /* 8 · FILTER GRAMMAR (§11) — one vocabulary, two densities                    */
@@ -1437,7 +1454,7 @@
 .wb.wb.wb .ct-subtle, .wb.wb.wb .ct-subline{ margin:8px var(--gut) 0; color:var(--text3) }
 .wb.wb.wb .ct-subline{ color:var(--sev-attention); font-weight:500 }
 .wb.wb.wb .wb-pipe{ margin:12px var(--gut) 0 }
-.wb.wb.wb .wb-chartcard{ margin:14px var(--gut) 0 }
+.wb.wb.wb .wb-chartcard{ margin:16px var(--gut) 0 }
 .wb.wb.wb .wb-pipe-n{
   display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 10px; margin-top:16px;
 }
@@ -1569,7 +1586,7 @@
 .wb.wb.wb .log-day{
   display:flex; align-items:center; gap:10px;
   height:var(--sech-h); margin:0; padding:0 var(--gut);
-  background:var(--surface1);
+  background:var(--canvas);   /* §3f — sticky stripe = canvas, not card */
   border-top:1px solid var(--hairline); border-bottom:1px solid var(--hairline);
   color:var(--text3); text-align:left;
   font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.04em;
@@ -1690,6 +1707,37 @@
    ceiling is 600 and an inline style is the only thing CSS has to shout at. */
 .wb.wb.wb .td-ts span, .wb.wb.wb .ov-tile-trend{ font-weight:600!important }
 
+/* §3h + §5 move 4 — COLOURED DELTA TRIANGLES. Every ▲n/▼n stat glyph reads
+   the delta tokens: lime up, orange down — direction encoding, not severity.
+   The spans are painted by inline severity hexes in the shared screens (which
+   this skin may not edit), so the remap happens here: scoped to the ONE trend
+   span per surface (Sends hero Accept tile = first .ov-tile; Today Accept
+   tile = second .td-tile — the Governor tiles' mode labels share the class
+   and are deliberately NOT matched), keyed off the inline hex so ▲(green)
+   maps to --delta-up and ▼(amber/red) to --delta-down. React serialises the
+   inline style to rgb() in the attribute; both spellings are matched. Dark
+   only: light keeps its §10 neutralisation to --text (orange fails ≥3 on
+   white; lime glyphs ride --accent-ui elsewhere). The whole span takes the
+   colour — splitting glyph from numeral needs a DOM edit in src/screens,
+   which is out of this skin's licence (deviation noted in the build report). */
+:root:not([data-theme='light']) .wb.wb.wb .ov-hero .ov-tile:first-child .ov-tile-trend{
+  color:var(--delta-up)!important;
+}
+:root:not([data-theme='light']) .wb.wb.wb .ov-hero .ov-tile:first-child .ov-tile-trend[style*="255, 159, 10"],
+:root:not([data-theme='light']) .wb.wb.wb .ov-hero .ov-tile:first-child .ov-tile-trend[style*="ff9f0a" i],
+:root:not([data-theme='light']) .wb.wb.wb .ov-hero .ov-tile:first-child .ov-tile-trend[style*="255, 69, 58"],
+:root:not([data-theme='light']) .wb.wb.wb .ov-hero .ov-tile:first-child .ov-tile-trend[style*="ff453a" i]{
+  color:var(--delta-down)!important;
+}
+:root:not([data-theme='light']) .wb.wb.wb .td-tiles .td-tile:nth-child(2) .td-ts span[style*="16, 163, 127"],
+:root:not([data-theme='light']) .wb.wb.wb .td-tiles .td-tile:nth-child(2) .td-ts span[style*="10a37f" i]{
+  color:var(--delta-up)!important;
+}
+:root:not([data-theme='light']) .wb.wb.wb .td-tiles .td-tile:nth-child(2) .td-ts span[style*="255, 159, 10"],
+:root:not([data-theme='light']) .wb.wb.wb .td-tiles .td-tile:nth-child(2) .td-ts span[style*="ff9f0a" i]{
+  color:var(--delta-down)!important;
+}
+
 /* LIGHT: severity as TEXT is the one thing this ladder cannot carry — amber on
    a light tint measures 1.89:1. Same move as §5.2 makes for the accent: the
    colour stays on the MARK, the words go back to --text. Dark keeps the
@@ -1768,7 +1816,7 @@
    COUNT stays legible while their own rows scroll under it. .wb-sech is already
    sticky at z-index 6 (§7.6); this only wins the stacking contest against the
    sections that follow it, and pins an opaque fill so nothing shows through. */
-.wb.wb.wb .wb-sech-sticky{ z-index:8; background:var(--surface1) }
+.wb.wb.wb .wb-sech-sticky{ z-index:8; background:var(--canvas) }   /* §3f */
 
 /* ask 5 — the chips the diet moved OFF the closed row and INTO the expanded
    body. The closed row's .ct-meta is flex-wrap:nowrap by contract (slot #1 can
