@@ -1073,6 +1073,10 @@
   max-height:340px; overflow-y:auto; overscroll-behavior:contain;
 }
 .wb.wb.wb .ct-fmenu-wide{ min-width:250px }
+/* The flip, set by measurement (FilterRow's usePlace) rather than by guessing
+   which pill is last: the row's pill order changes with the facets the rows
+   produced. */
+.wb.wb.wb .ct-fmenu-r{ left:auto; right:0 }
 .wb.wb.wb .wb-fopt-l{
   flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
