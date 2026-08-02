@@ -34,6 +34,7 @@ const ALLOWED_ORIGINS = [
   'http://localhost:4174',
   'http://localhost:4175',
   'http://localhost:5173',
+  'http://localhost:5431', // the vis-faithful preview worktree — same list inbox-stt ships
 ]
 
 // Bound what a turn may carry. The upstream POST /chat/stream never reads
