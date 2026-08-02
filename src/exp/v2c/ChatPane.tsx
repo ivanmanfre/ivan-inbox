@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChatStreaming, ChatTurn } from './ChatMessage'
 import { HandsFreeSheet, VoiceControl, VoiceStrip } from './VoiceControl'
+import { useStt } from './chat/useStt'
 import { useVoice } from './useVoice'
 import { transportIsMock } from './chat/transport'
 import { CLAUDE_MODELS } from '../../lib/claude'
@@ -192,9 +193,20 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
   const [sheet, setSheet] = useState(false)
   const [turnDone, setTurnDone] = useState(false)
   const [models, setModels] = useState(false)
-  // ask 9 — the mic is unmounted unless the flag is on. See voiceEnabled().
+  // ask 9 — the OLD (browser-API) mic is unmounted unless the flag is on. See voiceEnabled().
   const [voiceOn] = useState(voiceEnabled)
   const scroller = useRef<HTMLDivElement>(null)
+  const field = useRef<HTMLInputElement>(null)
+
+  // The NEW mic — server-side dictation over inbox-stt, which cleared its
+  // return gate (WER 1.11% / p50 957ms, phase5-voice.md). Opposite default to
+  // the retired browser path: shown unless 'wb-voice' is explicitly 'off'.
+  // Transcripts are INSERTED into the composer, never auto-sent.
+  const [sttOn] = useState(() => { try { return localStorage.getItem('wb-voice') !== 'off' } catch { return true } })
+  const stt = useStt(t => {
+    setText(prev => (prev.trim() ? `${prev.replace(/\s+$/, '')} ${t}` : t))
+    field.current?.focus()
+  })
 
   // The palette is DERIVED from the composer's text, never a second piece of
   // state that could disagree with it. `cursor` is the only state it owns.
@@ -409,9 +421,24 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
             handsFree={handsFree}
           />
         )}
+        {sttOn && stt.supported && (
+          <button
+            type="button"
+            className={`cmic${stt.state !== 'idle' ? ` cmic-${stt.state}` : ''}`}
+            onClick={stt.toggle}
+            disabled={stt.state === 'transcribing'}
+            aria-label={stt.state === 'recording' ? 'Stop recording' : 'Dictate'}
+            title={stt.state === 'recording' ? 'Stop recording' : 'Dictate'}
+          >
+            {stt.state === 'recording'
+              ? <span className="cmic-live">{Math.floor(stt.elapsedMs / 1000)}s</span>
+              : stt.state === 'transcribing' ? '…' : '🎙'}
+          </button>
+        )}
         <input
+          ref={field}
           className="cfield"
-          placeholder={about ? `Ask about ${short(about, 22)}…` : 'Ask Claude…'}
+          placeholder={stt.note ?? (about ? `Ask about ${short(about, 22)}…` : 'Ask Claude…')}
           value={text}
           onChange={e => { setText(e.target.value); setCursor(0) }}
           // Enter sends here on purpose, unlike the outbound DM composer: a chat
