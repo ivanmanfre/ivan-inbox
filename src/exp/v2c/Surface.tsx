@@ -79,7 +79,11 @@ export function CalmEmpty({ line, loadedAt, sub }: {
 // One section-header primitive with optional slots, modelled on Today's .td-zh
 // (the strongest of the four unrelated patterns the audit counted). Count, dot
 // and chevron are slots; the rule and the letter-spaced label are the constant.
-export function SectionHead({ n, title, count, sev, open, onToggle, tail }: {
+// `sticky` (phase 6 ask 4) pins a collapsible header to the top of the scroller
+// so its COUNT stays readable while its own rows run under it. Used on the two
+// long collapsed sections (Ideas, and the lead-magnet lane header), never on
+// every section: a page of competing sticky bars is a page with no top.
+export function SectionHead({ n, title, count, sev, open, onToggle, tail, sticky }: {
   n?: string
   title: string
   count?: ReactNode
@@ -87,9 +91,10 @@ export function SectionHead({ n, title, count, sev, open, onToggle, tail }: {
   open?: boolean
   onToggle?: () => void
   tail?: ReactNode
+  sticky?: boolean
 }) {
   return (
-    <div className={`wb-sech${onToggle ? ' tap' : ''}`} onClick={onToggle}>
+    <div className={`wb-sech${onToggle ? ' tap' : ''}${sticky ? ' wb-sech-sticky' : ''}`} onClick={onToggle}>
       {n && <span className="wb-sech-n">{n}</span>}
       <span className="wb-sech-t">{title}</span>
       <span className="wb-sech-rule" />
@@ -98,6 +103,55 @@ export function SectionHead({ n, title, count, sev, open, onToggle, tail }: {
       {sev !== undefined && sev !== null && <span className={`wb-sech-dot ${sev}`} />}
       {onToggle && <span className="wb-sech-chev">{open ? '⌄' : '›'}</span>}
     </div>
+  )
+}
+
+// The capsule column-chart: one capsule per stage with the value printed INSIDE
+// the mark, the single most transferable object in the reference. It costs
+// nothing here because the series is always real — it is the stage histogram of
+// rows the list is already holding.
+//
+// Lifted out of ContentList's PipelineBar in phase 6 so the LEAD-MAGNET lane can
+// have the same chart as the post lane without either importing the other
+// (ContentList imports ContentSections, so the primitive has to live below
+// both). The post bar keeps its own hero figure and footer; only the plot is
+// shared.
+//
+// A zero stage still spends its slot (`.wb-cap-0`), collapsed to a stub rather
+// than omitted: on the LM lane four of the nine stages have never had a row, and
+// dropping them would draw a five-stage pipeline that does not exist.
+export function CapsuleChart({ parts, onJump }: {
+  parts: { key: string; label: string; n: number }[]
+  onJump?: (key: string) => void
+}) {
+  const peak = Math.max(1, ...parts.map(p => p.n))
+  // Cat index cycles 1-4; beyond four series MONO differentiates by PATTERN,
+  // not by colour, which is why the capsule reads the same in greyscale.
+  const cat = (i: number) => String((i % 4) + 1)
+  return (
+    <>
+      <div className="wb-caps">
+        {parts.map((p, i) => (
+          p.n === 0
+            ? <span className="wb-cap-0" key={p.key} title={`${p.label}: 0`} />
+            : (
+              <span
+                className="wb-cap"
+                key={p.key}
+                data-cat={cat(i)}
+                style={{ height: `${Math.max(22, Math.round((p.n / peak) * 120))}px` }}
+                onClick={onJump ? () => onJump(p.key) : undefined}
+                title={`${p.label}: ${p.n}`}
+              >
+                {p.n}
+              </span>
+            )
+        ))}
+      </div>
+      <div className="wb-caps-x">
+        {parts.map(p => <span className="wb-caps-xl" key={p.key}>{p.label}</span>)}
+      </div>
+    </>
   )
 }
 

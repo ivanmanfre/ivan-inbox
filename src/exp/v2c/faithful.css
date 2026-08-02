@@ -635,12 +635,28 @@
   border:2px solid var(--canvas);
   background:var(--text4);
 }
-.wb.wb.wb .ct-anchor[data-st='review'] .ct-anchor-dot{ background:var(--sev-attention) }
-.wb.wb.wb .ct-anchor[data-st='error'] .ct-anchor-dot,
-.wb.wb.wb .ct-anchor[data-st='stuck'] .ct-anchor-dot{ background:var(--sev-urgent) }
-.wb.wb.wb .ct-anchor[data-st='approved'] .ct-anchor-dot,
-.wb.wb.wb .ct-anchor[data-st='published'] .ct-anchor-dot{ background:var(--sev-clear) }
-.wb.wb.wb .ct-anchor[data-st='scheduled'] .ct-anchor-dot{ background:var(--cat-3) }
+/* GRAFT — phase 6 ask 8a, from candidate `split`. The dot used to encode the
+   STAGE, which is redundant: every row already sits inside a section whose
+   header names its stage, so the mark spent its whole budget repeating a fact
+   the eye had two rows above it. It carries the QA verdict now, in three states
+   and severity tokens only:
+
+     green  a literal PASS
+     amber  a verdict that is NOT a pass (FAIL / NEEDS_REGENERATE / REWRITE_OK)
+     grey   no verdict at all — the honest third state, and the reason this
+            replaces an amber-only dot: "not judged" and "judged fine" are
+            different facts and a two-colour dot cannot tell them apart.
+
+   Grey is the DEFAULT above, so a row that carries no QA needs no rule. */
+.wb.wb.wb .ct-anchor[data-qa='pass'] .ct-anchor-dot{ background:var(--sev-clear) }
+.wb.wb.wb .ct-anchor[data-qa='fail'] .ct-anchor-dot{ background:var(--sev-attention) }
+/* The lead-magnet lane has no QA column at all, so its dot keeps stage keying —
+   the same mark, reading the only status that table has. */
+.wb.wb.wb .ct-res-row .ct-anchor[data-st='review'] .ct-anchor-dot{ background:var(--sev-attention) }
+.wb.wb.wb .ct-res-row .ct-anchor[data-st='error'] .ct-anchor-dot{ background:var(--sev-urgent) }
+.wb.wb.wb .ct-res-row .ct-anchor[data-st='approved'] .ct-anchor-dot,
+.wb.wb.wb .ct-res-row .ct-anchor[data-st='published'] .ct-anchor-dot{ background:var(--sev-clear) }
+.wb.wb.wb .ct-res-row .ct-anchor[data-st='scheduled'] .ct-anchor-dot{ background:var(--cat-3) }
 
 /* Slot #1 can never reflow. flex-wrap:nowrap on a fixed first slot is the whole
    contract; the overflow of the REST of the meta row is what ellipsizes. */
@@ -1427,3 +1443,62 @@
 }
 .wb.wb.wb .grow{ padding:11px 14px }
 .wb.wb.wb .grow + .grow{ border-top:1px solid var(--hairline) }
+
+/* ========================================================================== */
+/* 14 · THE LEAD-MAGNET LANE (phase 6 ask 2) + the phase-6 row changes         */
+/* ========================================================================== */
+
+/* Ivan: "lead magnets/resources and posts need to be separated". The separation
+   has to be VISIBLE before it is structural, so the lane opens with a boundary
+   that is deliberately not another section header — sections are things inside a
+   lane, and a section head reading "Lead magnets" would have said this is one
+   more group of posts. It is a rule with an eyebrow, at the full column width,
+   with the lane's own count. */
+.wb.wb.wb .ct-lane-b{
+  margin-top:34px;
+  /* a hairline the width of the column, so the boundary reads before the words
+     do — the only place in the surface where a top border spans everything. */
+  border-top:1px solid var(--hairline-strong);
+}
+.wb.wb.wb .ct-lane-h{
+  display:flex; align-items:center; gap:10px;
+  padding:18px var(--gut) 0;
+}
+.wb.wb.wb .ct-lane-k{
+  flex:none; font-size:var(--fs-eyebrow); font-weight:500; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--text3);
+}
+.wb.wb.wb .ct-lane-t{ flex:none; font-size:var(--fs-page); color:var(--text) }
+.wb.wb.wb .ct-lane-rule{ flex:1; min-width:12px; height:1px; background:var(--hairline) }
+.wb.wb.wb .ct-lane-c{ flex:none; color:var(--text2); font-size:var(--fs-meta) }
+
+/* An LM row is a draft row: same anchor rail, same fixed slot #1, same trailing
+   value. That is the point — two lanes that scan the same way, not two lists
+   that look unrelated. Everything it needs is already on .ct-card; this only
+   restores the cover image to the anchor plate's size. */
+.wb.wb.wb .ct-res-row .ct-thumb{ object-fit:cover }
+/* The stuck-resource mark, carried over from .ct-res (a terminal status with no
+   landing URL). One inset rule, not a filled row. */
+.wb.wb.wb .ct-res-row.bad{ box-shadow:inset 2px 0 0 var(--sev-urgent) }
+
+/* ask 6 — a generation that died mid-run. Amber, and only ever an inset rule:
+   §5.5 puts one severity mark per run, and the count is already in the alert
+   strip at the top. */
+.wb.wb.wb .ct-stalled{ box-shadow:inset 2px 0 0 var(--sev-attention) }
+
+/* ask 4 — the two long collapsed sections get a raised sticky header so their
+   COUNT stays legible while their own rows scroll under it. .wb-sech is already
+   sticky at z-index 6 (§7.6); this only wins the stacking contest against the
+   sections that follow it, and pins an opaque fill so nothing shows through. */
+.wb.wb.wb .wb-sech-sticky{ z-index:8; background:var(--surface1) }
+
+/* ask 5 — the chips the diet moved OFF the closed row and INTO the expanded
+   body. The closed row's .ct-meta is flex-wrap:nowrap by contract (slot #1 can
+   never move); the body has no such contract and wraps. */
+.wb.wb.wb .ct-meta-wrap{ flex-wrap:wrap; overflow:visible; margin-top:8px }
+
+/* The LM chart's footer legend carries a sentence (which legacy values were
+   folded) rather than a colour swatch, so it needs to wrap where the post
+   bar's two-word legends never did. */
+.wb.wb.wb .wb-cardf .wb-legend{ min-width:0 }
+.wb.wb.wb .wb-cardf .wb-legend-l{ white-space:normal }

@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import {
-  LANE_POSSESSIVE, taxonomyFields, queueFailed,
+  elapsedMinutes, LANE_POSSESSIVE, STUCK_GENERATING_MINUTES, taxonomyFields, queueFailed,
   type ContentDraft, type ContentLane, type IdeaCandidate, type ScheduledQueueRow,
 } from '../../lib/content'
 import {
-  cleanStyleTitle, isStuckResource, previewKeyFor, previewsByStyle,
-  type Resource, type StylePrompt,
+  cleanStyleTitle, groupByLmStage, isStuckGeneratingLm, isStuckResource,
+  LM_PIPELINE_STAGES, LM_STAGE_LABEL, normalizeLmStatus, previewKeyFor, previewsByStyle,
+  stageOfLm,
+  type LmStage, type Resource, type StylePrompt,
 } from '../../lib/styles'
 import {
   applyFilters, buildFacets, IDEA_SPECS, QUEUE_SPECS, RESOURCE_SPECS, styleSpecs,
@@ -14,7 +16,7 @@ import {
 import type { AgentSummary } from '../../lib/agent'
 import { FilterBar, FilteredEmpty, Figure, KeyRows } from './ContentBits'
 import { absTime, relOrAhead, relTime } from './fmt'
-import { CalmEmpty, Failed, SectionHead } from './Surface'
+import { CalmEmpty, CapsuleChart, Failed, SectionHead } from './Surface'
 
 // The row sets that live INSIDE a lane — never as a third destination.
 //
@@ -69,16 +71,20 @@ function IdeaCard({ i }: { i: IdeaCandidate }) {
         <div className="ct-idea-n">{i.composite_score !== null ? i.composite_score : '—'}</div>
         <div className="ct-mid">
           <div className="ct-title ct-row-p">{title}</div>
-          {/* raw_topic rides IN the meta line rather than on a third line of its
-              own: a third line put this row at an 80px content box against a
-              40-60 band, and 59 idea rows is exactly where the band matters. */}
+          {/* CHIP DIET — phase 6 ask 5, "wtf with that chunk of tags".
+              This row carried up to four marks plus a topic echo plus a
+              timestamp, and at 57 rows that is a wall of grey rectangles with no
+              scanning order. ONE chip survives on the closed row: `source`.
+              The brief's rule is "source OR type, whichever is more
+              informative", and since ask 3 splits this list by content_type, the
+              TYPE is now constant within a section — every row in the post lane
+              says "post" — so it carries zero information here and source
+              (claude_sessions / search_demand / …) carries all of it.
+              `content_type`, `ivan_engaged` and the raw_topic echo moved into
+              the expanded body below, which is one click away. The timestamp
+              stays as the trailing value. */}
           <div className="ct-meta">
             {i.source && <span className="ct-chip">{i.source}</span>}
-            {i.content_type && <span className="ct-chip">{i.content_type}</span>}
-            {i.ivan_engaged === true && <span className="ct-lane">engaged</span>}
-            {i.raw_topic && i.raw_topic !== i.normalized_topic && (
-              <span className="ct-topic">{i.raw_topic}</span>
-            )}
             {i.ingested_at && <span className="ct-tm">{relTime(i.ingested_at)}</span>}
           </div>
         </div>
@@ -89,6 +95,15 @@ function IdeaCard({ i }: { i: IdeaCandidate }) {
             {scoreLine(i).filter(([, v]) => v !== null).map(([k, v]) => (
               <span className="ct-score" key={k}><i>{k}</i>{v}</span>
             ))}
+          </div>
+          {/* The three marks the diet took off the closed row. Nothing was
+              deleted; it moved one click down. */}
+          <div className="ct-meta ct-meta-wrap">
+            {i.content_type && <span className="ct-chip">{i.content_type}</span>}
+            {i.ivan_engaged === true && <span className="ct-lane">engaged</span>}
+            {i.raw_topic && i.raw_topic !== i.normalized_topic && (
+              <span className="ct-topic">{i.raw_topic}</span>
+            )}
           </div>
           {/* The scorer's own rubric, under its own names — never relabelled
               into the dashboard's 40/30/30 vocabulary, which is a different
@@ -115,25 +130,47 @@ function IdeaCard({ i }: { i: IdeaCandidate }) {
   )
 }
 
-export function IdeasSection({ ideas, count, loading, error, loadedAt, refresh }: {
+// Phase 6 ask 4: "ideas should be collapsible otherwise im gonna have to
+// scrolldown a bunch". It was pinned OPEN with no toggle at all (`open` literal,
+// `onToggle={undefined}`), so 57 idea cards stood between the pipeline chart and
+// the first draft that needed a decision. It is closed by default now, its
+// header is sticky so the count stays legible while the list scrolls under it,
+// and one click opens it.
+//
+// Phase 6 ask 3: `kind` scopes the section to ONE side of the content_type
+// partition, and `count` is that kind's own server-side exact figure — never the
+// whole reviewing count, which is what used to be printed here regardless of
+// what was in the list.
+export function IdeasSection({ ideas, kind, count, loading, error, loadedAt, refresh, n, title, unclassified }: {
   ideas: IdeaCandidate[]
+  kind: 'post' | 'lead_magnet'
   count: number | null
   loading: boolean
   error: string | null
   loadedAt: string | null
   refresh: () => void
+  n?: string
+  title?: string
+  // Rows whose content_type is NULL or unrecognised. They ride on the POST lane
+  // with a label rather than being filtered out of both — see splitIdeas.
+  unclassified?: IdeaCandidate[]
 }) {
   const [filters, setFilters] = useState<FilterState>({})
-  const facets = buildFacets(ideas, IDEA_SPECS)
-  const shown = applyFilters(ideas, IDEA_SPECS, filters)
+  const [open, setOpen] = useState(false)
+  const all = [...ideas, ...(unclassified ?? [])]
+  const facets = buildFacets(all, IDEA_SPECS)
+  const shown = applyFilters(all, IDEA_SPECS, filters)
   return (
-    <div id="wb-s-ideas">
-      <SectionHead n="01" title="Ideas" count={ideas.length} open onToggle={undefined} />
-      {error ? (
+    <div id={kind === 'post' ? 'wb-s-ideas' : 'wb-s-lm-ideas'}>
+      <SectionHead
+        n={n ?? '01'} title={title ?? 'Ideas'} count={all.length}
+        open={open} onToggle={() => setOpen(o => !o)} sticky
+      />
+      {!open ? null : error ? (
         <Failed what="The idea queue" message={error} onRetry={refresh} loadedAt={null} />
-      ) : loading && ideas.length === 0 ? (
+      ) : loading && all.length === 0 ? (
         <div className="ct-subtle">Reading lm_idea_candidates…</div>
-      ) : ideas.length === 0 ? (
+      ) : all.length === 0 ? (
         <CalmEmpty line="No ideas waiting to be scored." loadedAt={loadedAt} />
       ) : (
         <>
@@ -141,13 +178,16 @@ export function IdeasSection({ ideas, count, loading, error, loadedAt, refresh }
               from the LLM's own title, so a re-worded re-ingest is a different
               row and nothing dedups it. */}
           <div className="ct-subtle">
-            {ideas.length} rows at <code>reviewing</code>
-            {count !== null && count > ideas.length ? ` of ${count} in the database` : ''} ·
+            {ideas.length} {kind === 'post' ? 'post' : 'lead-magnet'} rows at <code>reviewing</code>
+            {count !== null && count > ideas.length ? ` of ${count} in the database` : ''}
+            {unclassified && unclassified.length > 0
+              ? ` · plus ${unclassified.length} with no content_type, shown here rather than dropped`
+              : ''} ·
             read-only here (promotion lives in Client Ops)
           </div>
           <FilterBar
             facets={facets} state={filters} setState={setFilters}
-            shown={shown.length} loaded={ideas.length} total={count} noun="ideas"
+            shown={shown.length} loaded={all.length} total={count} noun="ideas"
           />
           {shown.length === 0
             ? <FilteredEmpty noun="ideas" onClear={() => setFilters({})} />
@@ -227,27 +267,196 @@ export function QueueStrip({ rows, loading, error, loadedAt, refresh }: {
 // Resources — lm_drafts_v2, per lane, read-only ON PURPOSE
 // ---------------------------------------------------------------------------
 
-export function ResourcesSection({ rows, lane, loading, error, loadedAt, refresh }: {
+// One lead-magnet row. Same anchor-rail contract as a draft card (the cover is
+// the anchor, the corner dot carries the stage), so the LM lane scans the same
+// way the post lane does rather than being a second, differently-shaped list.
+function LmRow({ r }: { r: Resource }) {
+  const stage = stageOfLm(r)
+  const stalled = isStuckGeneratingLm(r)
+  const stuck = isStuckResource(r)
+  const mins = stalled ? elapsedMinutes(r.updated_at) : null
+  return (
+    <div className={`ct-card ct-res-row${stuck || stalled ? ' bad' : ''}`}>
+      <div className="ct-anchor" data-st={stage}>
+        {r.cover_url
+          ? <img className="ct-thumb" src={r.cover_url} alt="" />
+          : <div className="ct-thumb ct-thumb-empty">◻</div>}
+        <span className="ct-anchor-dot" />
+      </div>
+      <div className="ct-mid">
+        <div className="ct-title ct-row-p">{r.topic ?? 'Untitled'}</div>
+        <div className="ct-meta">
+          {/* Slot #1, fixed x, same rule as the draft card. On a stalled run it
+              carries the age instead of the stage, because that is the fact. */}
+          {stalled
+            ? <span className="ct-chip ct-st ct-chip-warn">{mins}m ⚠</span>
+            : (
+              <span className={`ct-chip ct-st${stuck ? ' ct-chip-bad' : ''}`}>
+                {LM_STAGE_LABEL[stage]}
+              </span>
+            )}
+          {r.format && <span className="ct-chip">{r.format}</span>}
+          {/* 🔴 The raw status is shown ONLY when the fold changed it, so a
+              legacy value is legible as a legacy value instead of silently
+              disappearing behind its canonical label. */}
+          {normalizeLmStatus(r.status) !== r.status && (
+            <span className="ct-topic">db: {r.status}</span>
+          )}
+          {r.landing_url
+            ? <a className="ct-ref-l" href={r.landing_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>landing ↗</a>
+            : <span className="ct-ref">no landing URL</span>}
+        </div>
+      </div>
+      <div className="ct-tail"><span className="ct-tm">{relTime(r.updated_at)}</span></div>
+    </div>
+  )
+}
+
+// A lead-magnet stage section. Deliberately the same shape as ContentList's
+// StageSection — the lanes differ in what they hold, not in how a stage renders.
+function LmStageSection({ s, n, rows, isOpen, toggle }: {
+  s: LmStage; n?: string; rows: Resource[]; isOpen: boolean; toggle: () => void
+}) {
+  if (rows.length === 0) return null
+  return (
+    <div id={`wb-s-lm-${s}`}>
+      <SectionHead
+        n={n} title={LM_STAGE_LABEL[s]} count={rows.length}
+        sev={s === 'review' ? 'attention' : null}
+        open={isOpen} onToggle={toggle}
+      />
+      {isOpen && rows.map(r => <LmRow key={r.id} r={r} />)}
+    </div>
+  )
+}
+
+// Ask 4 again: everything in flight is open, everything terminal is closed.
+// published (40 rows) and archived (34) are two thirds of this table and would
+// bury the handful actually moving.
+const LM_DEFAULT_OPEN: LmStage[] = ['idea', 'generating', 'generating_assets', 'review', 'approved']
+
+// ---------------------------------------------------------------------------
+// THE LEAD-MAGNET LANE (phase 6 ask 2)
+// ---------------------------------------------------------------------------
+//
+// Ivan: "lead magnets/resources and posts need to be separated" — and before
+// that, that the surface "doesn't show… lead magnet stages".
+//
+// What this replaces: `ResourcesSection`, a single collapsible called
+// "Resources" that rendered every lm_drafts_v2 row for the lane in one
+// undifferentiated list with a status FACET and no lifecycle at all. A published
+// LM and one stuck mid-generation sat in the same block, in updated_at order.
+//
+// What it is now: its own lane inside Content — its own rule, its own header,
+// its own pipeline chart, its own idea stage (from the content_type partition,
+// ask 3), its own stage sections, its own alert line. Structurally the same
+// object as the post lane above it, which is the point: the two are separated by
+// being two lanes, not by being one list with a filter.
+export function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loadedAt, refresh, ideaState }: {
   rows: Resource[]
   lane: ContentLane
+  // The lead-magnet side of the idea partition. Only the Ivan lane has one:
+  // lm_idea_candidates carries no tenancy column at all.
+  ideas: IdeaCandidate[] | null
+  ideaCount: number | null
   loading: boolean
   error: string | null
   loadedAt: string | null
   refresh: () => void
+  ideaState?: { loading: boolean; error: string | null; loadedAt: string | null; refresh: () => void }
 }) {
   const [filters, setFilters] = useState<FilterState>({})
+  const [open, setOpen] = useState<LmStage[]>(LM_DEFAULT_OPEN)
   const facets = buildFacets(rows, RESOURCE_SPECS)
   const shown = applyFilters(rows, RESOURCE_SPECS, filters)
+  const stages = groupByLmStage(shown)
+  // 🔴 Built from the UNFILTERED rows, exactly as the post lane's strip is: a
+  // filter may narrow the flow, it may never hide a broken row.
+  const stalled = rows.filter(isStuckGeneratingLm)
+  const stuck = rows.filter(isStuckResource)
+  const errored = rows.filter(r => stageOfLm(r) === 'error')
+
+  // Every stage spends a slot, including the four that have never had a row —
+  // a five-capsule chart would draw a five-stage pipeline that does not exist.
+  const parts = LM_PIPELINE_STAGES.map(s => ({
+    key: s, label: LM_STAGE_LABEL[s], n: groupByLmStage(rows)[s].length,
+  }))
+  const inFlight = parts
+    .filter(p => p.key !== 'published' && p.key !== 'idea')
+    .reduce((a, p) => a + p.n, 0)
+
+  const jump = (key: string) => {
+    const s = key as LmStage
+    setOpen(cur => (cur.includes(s) ? cur : [...cur, s]))
+    requestAnimationFrame(() => {
+      document.getElementById(`wb-s-lm-${s}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+
   return (
-    <Collapsible title="Resources" count={rows.length} defaultOpen={rows.length <= 8}>
+    <div id="wb-lm-lane" className="ct-lane-b">
+      {/* The separator Ivan asked for. It is a lane boundary, not another
+          section header, so it says what the lane IS and what table it reads. */}
+      <div className="ct-lane-h">
+        <span className="ct-lane-k">Lane</span>
+        <span className="ct-lane-t">Lead magnets</span>
+        <span className="ct-lane-rule" />
+        <span className="ct-lane-c">{rows.length}</span>
+      </div>
+      <div className="ct-subtle">
+        <code>lm_drafts_v2</code>, {LANE_POSSESSIVE[lane]} rows — a separate
+        pipeline from the posts above, with one in-flight stage posts don’t
+        have (<b>Generating resources</b> is the asset/page/cover build, a
+        different run from the body generation).
+      </div>
+
       {error ? (
-        <Failed what="Resources" message={error} onRetry={refresh} loadedAt={null} />
+        <Failed what="Lead magnets" message={error} onRetry={refresh} loadedAt={null} />
       ) : loading && rows.length === 0 ? (
         <div className="ct-subtle">Reading lm_drafts_v2…</div>
       ) : rows.length === 0 ? (
         <CalmEmpty line={`No lead magnets in ${LANE_POSSESSIVE[lane]} lane.`} loadedAt={loadedAt} />
       ) : (
         <>
+          {(errored.length + stuck.length + stalled.length) > 0 && (
+            <div className="ct-alert">
+              <span className="ct-alert-n">{errored.length + stuck.length + stalled.length}</span>
+              <span className="ct-alert-t">
+                {[
+                  errored.length > 0 && `${errored.length} errored`,
+                  stalled.length > 0 && `${stalled.length} generating past ${STUCK_GENERATING_MINUTES}m`,
+                  stuck.length > 0 && `${stuck.length} terminal with no landing URL`,
+                ].filter(Boolean).join(' · ')}
+              </span>
+            </div>
+          )}
+
+          <div className="wb-chartcard">
+            <div className="wb-cardh">
+              <span className="wb-cardh-t wb-eyebrow">Lead-magnet pipeline</span>
+              <span className="wb-cardh-x">···</span>
+            </div>
+            <CapsuleChart parts={parts} onJump={jump} />
+            <div className="wb-pipe-n">
+              <span className="wb-pipe-big">{stages.review.length}</span>
+              <span className="wb-pipe-lbl">
+                waiting on you<br />of {inFlight} still moving
+              </span>
+            </div>
+            <div className="wb-cardf">
+              {/* 🔴 The fold, stated where the numbers are drawn. Without this
+                  line a reader has no way to know that "Idea 37" is 37 rows the
+                  database still calls `pending`. */}
+              <span className="wb-legend">
+                <span className="wb-legend-l">
+                  Legacy values folded to canonical (<code>pending</code>→idea,{' '}
+                  <code>complete</code>→published, <code>lm_review</code>→review)
+                </span>
+              </span>
+              <span className="wb-total">Total: <b>{rows.length}</b> in this lane</span>
+            </div>
+          </div>
+
           {/* 🔴 Read-only on purpose: whether the publish watcher treats
               status='approved' as a trigger is unverifiable from either repo, so
               no affordance here may turn out to publish a page. */}
@@ -255,34 +464,56 @@ export function ResourcesSection({ rows, lane, loading, error, loadedAt, refresh
             Read-only. An approve here might be a publish — the watcher that owns
             this table is not readable from this app.
           </div>
+
           <FilterBar
             facets={facets} state={filters} setState={setFilters}
-            shown={shown.length} loaded={rows.length} total={null} noun="resources"
+            shown={shown.length} loaded={rows.length} total={null} noun="lead magnets"
           />
+
+          {ideas && ideaState && (
+            <IdeasSection
+              ideas={ideas} kind="lead_magnet" count={ideaCount}
+              loading={ideaState.loading} error={ideaState.error}
+              loadedAt={ideaState.loadedAt} refresh={ideaState.refresh}
+              n="01" title="Lead-magnet ideas"
+            />
+          )}
+
           {shown.length === 0
-            ? <FilteredEmpty noun="resources" onClear={() => setFilters({})} />
-            : shown.map(r => (
-              <div className={`ct-res${isStuckResource(r) ? ' bad' : ''}`} key={r.id}>
-                {r.cover_url && <img className="ct-res-c" src={r.cover_url} alt="" />}
-                <div className="ct-mid">
-                  <div className="ct-res-t">{r.topic ?? 'Untitled'}</div>
-                  <div className="ct-meta">
-                    <span className={`ct-chip${isStuckResource(r) ? ' ct-chip-bad' : ''}`}>{r.status}</span>
-                    {r.format && <span className="ct-chip">{r.format}</span>}
-                    <span className="ct-tm">{relTime(r.updated_at)}</span>
-                    {r.resource_url && (
-                      <a className="ct-ref-l" href={r.resource_url} target="_blank" rel="noreferrer">asset ↗</a>
-                    )}
-                    {r.landing_url
-                      ? <a className="ct-ref-l" href={r.landing_url} target="_blank" rel="noreferrer">landing ↗</a>
-                      : <span className="ct-ref">no landing URL</span>}
-                  </div>
-                </div>
-              </div>
-            ))}
+            ? <FilteredEmpty noun="lead magnets" onClear={() => setFilters({})} />
+            : (
+              <>
+                {LM_PIPELINE_STAGES.filter(s => s !== 'idea').map((s, i) => (
+                  <LmStageSection
+                    key={s} s={s} n={String(i + 2).padStart(2, '0')} rows={stages[s]}
+                    isOpen={open.includes(s)}
+                    toggle={() => setOpen(cur =>
+                      cur.includes(s) ? cur.filter(x => x !== s) : [...cur, s])}
+                  />
+                ))}
+                {/* The idea STAGE of this table (rows whose own status folds to
+                    idea) is distinct from the idea CANDIDATES above it — two
+                    different tables — so it renders as its own section rather
+                    than being merged into one figure. */}
+                <LmStageSection
+                  s="idea" rows={stages.idea}
+                  isOpen={open.includes('idea')}
+                  toggle={() => setOpen(cur =>
+                    cur.includes('idea') ? cur.filter(x => x !== 'idea') : [...cur, 'idea'])}
+                />
+                {(['error', 'archived', 'other'] as LmStage[]).map(s => (
+                  <LmStageSection
+                    key={s} s={s} rows={stages[s]}
+                    isOpen={open.includes(s)}
+                    toggle={() => setOpen(cur =>
+                      cur.includes(s) ? cur.filter(x => x !== s) : [...cur, s])}
+                  />
+                ))}
+              </>
+            )}
         </>
       )}
-    </Collapsible>
+    </div>
   )
 }
 
