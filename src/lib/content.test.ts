@@ -8,6 +8,7 @@ import {
   normalizeImageUrls, reviewActionable,
   CONTENT_LANES, LANE_LABEL, LANE_POSSESSIVE, isBackfillEntry, parseLogEntry,
   scoreProgression, normalizeSourceDetail, taxonomyExtras, taxonomyValue, queueFailed,
+  stampHumanEdit, stampOperatorDelete, operatorDeleted, selfContainedHtml,
 } from './content'
 
 const base: ContentDraft = {
@@ -554,5 +555,75 @@ describe('queueFailed', () => {
     expect(queueFailed(base)).toBe(false)
     expect(queueFailed({ ...base, error_message: '  ' })).toBe(false)
     expect(queueFailed({ ...base, status: 'failed', error_message: '429' })).toBe(true)
+  })
+})
+
+describe('taxonomy stamps (edit/delete markers)', () => {
+  it('merges human-edit markers into an object taxonomy without losing keys', () => {
+    const out = stampHumanEdit({ pillar: 'methodology', structure_used: 'TEARDOWN' }, '2026-08-03T10:00:00Z')
+    expect(out).toEqual({
+      pillar: 'methodology', structure_used: 'TEARDOWN',
+      human_edited: true, human_edited_at: '2026-08-03T10:00:00Z',
+    })
+  })
+  it('preserves a bare-string taxonomy as structure_used — the shape taxonomyFields reads', () => {
+    const out = stampHumanEdit('Teardown', '2026-08-03T10:00:00Z')
+    expect(out.structure_used).toBe('Teardown')
+    expect(out.human_edited).toBe(true)
+    // and the round trip through the reader still sees the structure
+    expect(taxonomyFields(out).structure_used).toBe('Teardown')
+  })
+  it('stamps onto a null/JSON-string taxonomy too', () => {
+    expect(stampHumanEdit(null, 'T').human_edited).toBe(true)
+    const fromJsonString = stampHumanEdit('{"pillar":"personal"}', 'T')
+    expect(fromJsonString.pillar).toBe('personal')
+    expect(fromJsonString.human_edited_at).toBe('T')
+  })
+  it('writes the operator-delete marker the fetch filter reads back', () => {
+    const out = stampOperatorDelete({ pillar: 'personal' }, '2026-08-03T10:00:00Z')
+    expect(out.deleted_by_operator).toBe(true)
+    expect(out.deleted_at).toBe('2026-08-03T10:00:00Z')
+    expect(operatorDeleted(out)).toBe(true)
+  })
+})
+
+describe('operatorDeleted', () => {
+  it('is true only on the explicit marker, across live taxonomy shapes', () => {
+    expect(operatorDeleted({ deleted_by_operator: true })).toBe(true)
+    expect(operatorDeleted('{"deleted_by_operator":"true"}')).toBe(true)
+    expect(operatorDeleted({ deleted_by_operator: false })).toBe(false)
+    expect(operatorDeleted({ pillar: 'personal' })).toBe(false)
+    expect(operatorDeleted('Teardown')).toBe(false)
+    expect(operatorDeleted(null)).toBe(false)
+    expect(operatorDeleted(undefined)).toBe(false)
+  })
+  it('a disqualified row with the marker must not even reach the archived bucket', () => {
+    // The fetch filter is the enforcement point; this pins the predicate the
+    // filter runs on the fallback-delete write's own output.
+    const t = stampOperatorDelete({ pillar: 'personal' })
+    expect(operatorDeleted(t)).toBe(true)
+  })
+})
+
+describe('selfContainedHtml — only a styled document earns the preview frame', () => {
+  it('accepts a document that ships its own <style>', () => {
+    expect(selfContainedHtml('<html><style>.a{color:red}</style><body>x</body></html>')).toBe(true)
+    expect(selfContainedHtml('<STYLE media="all">.a{}</STYLE><p>x</p>')).toBe(true)
+  })
+  it('accepts a stylesheet <link>', () => {
+    expect(selfContainedHtml('<link rel="stylesheet" href="kit.css"><section>x</section>')).toBe(true)
+  })
+  it('rejects the kit-CSS fragments the engines actually author', () => {
+    // Real shape measured 2026-08-03: class-based fragment, no styles anywhere.
+    expect(selfContainedHtml('<section class="card framework"><div class="frame">x</div></section>')).toBe(false)
+    expect(selfContainedHtml('<section class="slide bb-warning"><div class="toplabel">y</div></section>')).toBe(false)
+  })
+  it('rejects empty and null', () => {
+    expect(selfContainedHtml('')).toBe(false)
+    expect(selfContainedHtml(null)).toBe(false)
+    expect(selfContainedHtml(undefined)).toBe(false)
+  })
+  it('a non-stylesheet link is not presentation', () => {
+    expect(selfContainedHtml('<link rel="preconnect" href="https://x"><p>x</p>')).toBe(false)
   })
 })

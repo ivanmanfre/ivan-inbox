@@ -80,13 +80,15 @@ describe('job taxonomy', () => {
   it('knows which jobs hand rows to a peer', () => {
     expect(jobHasList('inbox')).toBe(true)
     expect(jobHasList('content')).toBe(true)
+    expect(jobHasList('magnets')).toBe(true)
     expect(jobHasList('sends')).toBe(false)
     expect(jobHasList('settings')).toBe(false)
   })
 
-  it('shares one mobile slot between Drafts and Content', () => {
+  it('shares one mobile slot between Drafts, Content and Magnets', () => {
     expect(isWorkJob('drafts')).toBe(true)
     expect(isWorkJob('content')).toBe(true)
+    expect(isWorkJob('magnets')).toBe(true)
     expect(isWorkJob('inbox')).toBe(false)
   })
 })
