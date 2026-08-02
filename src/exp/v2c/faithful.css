@@ -900,6 +900,27 @@
 .wb.wb.wb .wb-fpill.on{ background:var(--surface3) }
 @media (max-width:767px){ .wb.wb.wb .wb-fpill{ height:32px } }
 
+/* The pill's own dropdown (ask 8b). Absolutely positioned off the pill so the
+   nav row's height never changes when it opens — a filter that reflows the
+   header is a filter that moves the thing you were about to click. */
+.wb.wb.wb .wb-fpop{ position:relative }
+.wb.wb.wb .wb-fmenu{
+  position:absolute; top:calc(100% + 6px); right:0; z-index:20;
+  min-width:150px; display:flex; flex-direction:column;
+  background:var(--surface1); border:1px solid var(--hairline-strong);
+  border-radius:var(--r-md); padding:4px; box-shadow:0 10px 28px rgba(0,0,0,.42);
+}
+.wb.wb.wb .wb-fopt{
+  display:flex; align-items:center; gap:8px; width:100%; text-align:left;
+  background:none; border:none; cursor:pointer;
+  padding:7px 10px; border-radius:var(--r-chip);
+  font-size:var(--fs-meta); font-weight:400; color:var(--text2);
+}
+.wb.wb.wb .wb-fopt:hover{ background:var(--surface2) }
+/* 11.4 again — the chosen value is TEXT weight, not a filled accent row. */
+.wb.wb.wb .wb-fopt.on{ color:var(--text); font-weight:500 }
+.wb.wb.wb .wb-fopt-t{ margin-left:auto; color:var(--text3) }
+
 /* 11.2 — working lists: one compact inline pill in the search field's row,
    same anatomy at 26px. Not a second row of chips, not a filter bar. */
 .wb.wb.wb .ct-filters{ margin:0; padding:8px var(--gut) 10px }
@@ -1133,6 +1154,47 @@
 .wb.wb.wb .wb-pipe-lbl{ color:var(--text3); font-size:var(--fs-meta); line-height:16px }
 .wb.wb.wb .wb-pipe-warn{ margin-left:auto; color:var(--sev-attention);
   font-size:var(--fs-meta); font-weight:500 }
+
+/* -------- PEER-CLOSE REFLOW (Ivan, phase 6 ask 1) -------------------------
+   "when claude is closed the rest of objects accommodate."
+
+   What was actually happening, measured: the work column DOES reclaim the full
+   canvas when the peer closes (620→1240 at 1440, 740→1480 at 1680 — layout.ts
+   :119 forces `wide` when the shown-peer list is empty). The column was never
+   the defect. Its CHILDREN were: the base spine caps every direct child of a
+   solo `.rows` at 860px —
+
+     styles.css:31-36  .wb.dt .wb-solo .rows > *{max-width:860px;margin:auto}
+
+   — which is a deliberate readability fix for MESSAGE rows and stays in force
+   for inbox/drafts/thread, where a 1,240px prose line really is a defect. But
+   Content is not prose. It is a chart card, an alert strip, a filter bar and
+   stage sections of anchored list rows, and capping those at 860 dumps the
+   reclaimed width as dead space.
+
+   Worse, the cap was not even applying its own centering: this sheet loads
+   after the spine and gives several of these blocks a FIXED gutter margin
+   (`margin:14px var(--gut) 0` at :1129 — a 3-value shorthand, so
+   margin-left/right are `var(--gut)`, not `auto`). Fixed beats auto, so every
+   capped block hugged the LEFT edge and threw the whole 364-380px reclaim into
+   one lopsided strip on the right. Measured before this rule, closed at 1440:
+   .ct-alert / .wb-chartcard / .ct-subtle all sat at margin-left 16, right gap
+   364; .ct-filters at 0 / 380.
+
+   The fix is to let the content column's objects be FLUID, which is what was
+   asked for. Scoped to `.ct-rows` and to the content head, so the 860px measure
+   the spine wants on message surfaces is untouched. `--gut` on both sides is a
+   fixed gutter, so growth passes through 1:1 — every main object now grows by
+   100% of the column's growth rather than 21-44%. */
+.wb.wb.wb.dt .wb-solo .ct-rows > *,
+.wb.wb.wb.dt .wb-solo .nav.wb-head{
+  max-width:none; margin-left:0; margin-right:0;
+}
+/* The prose lines inside the flow (`.ct-subtle`, `.ct-subline`) go fluid with
+   everything else rather than staying capped and left-anchored — a capped block
+   sitting in a fluid column is the asymmetric strip this rule exists to kill,
+   and these are 1-3 line meta annotations at --fs-meta/--text3, not body copy.
+   They keep their gutter. */
 
 /* -------- SENDS → LOG: the fourth working list (§7, phase0 surface #8) -------
    It was the one dense list the treatment had not reached. Three defects, all
