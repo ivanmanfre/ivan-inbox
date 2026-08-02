@@ -1,0 +1,330 @@
+{
+  "content-1440x900": {
+    "open": {
+      "work": {
+        "width": 620,
+        "left": 200,
+        "maxWidth": "none",
+        "widthProp": "620px",
+        "flex": "1 1 0%",
+        "className": "wb-work list"
+      },
+      "titleBlock": {
+        "width": 619,
+        "left": 200,
+        "maxWidth": "none",
+        "widthProp": "619px",
+        "flex": "0 0 auto",
+        "className": "wb-workhead"
+      },
+      "chartCard": {
+        "width": 587,
+        "left": 216,
+        "maxWidth": "none",
+        "widthProp": "587px",
+        "flex": "0 1 auto",
+        "className": "wb-chartcard"
+      },
+      "listGroup": {
+        "width": 619,
+        "left": 200,
+        "maxWidth": "none",
+        "widthProp": "619px",
+        "flex": "1 1 0%",
+        "className": "rows ct-rows"
+      },
+      "peerCount": 1,
+      "workClass": "wb-work list"
+    },
+    "closed": {
+      "work": {
+        "width": 1240,
+        "left": 200,
+        "maxWidth": "none",
+        "widthProp": "1240px",
+        "flex": "1 1 0%",
+        "className": "wb-work wide wb-solo"
+      },
+      "titleBlock": {
+        "width": 1240,
+        "left": 200,
+        "maxWidth": "none",
+        "widthProp": "1240px",
+        "flex": "0 0 auto",
+        "className": "wb-workhead"
+      },
+      "chartCard": {
+        "width": 860,
+        "left": 216,
+        "maxWidth": "860px",
+        "widthProp": "860px",
+        "flex": "0 1 auto",
+        "className": "wb-chartcard"
+      },
+      "listGroup": {
+        "width": 1240,
+        "left": 200,
+        "maxWidth": "none",
+        "widthProp": "1240px",
+        "flex": "1 1 0%",
+        "className": "rows ct-rows"
+      },
+      "peerCount": 0,
+      "workClass": "wb-work wide wb-solo"
+    }
+  },
+  "sends-1440x900": {
+    "open": {
+      "work": {
+        "width": 620,
+        "left": 200,
+        "maxWidth": "none",
+        "widthProp": "619.5px",
+        "flex": "1 1 0%",
+        "className": "wb-work wide wb-narrow"
+      },
+      "titleBlock": {
+        "width": 620,
+        "left": 200,
+        "maxWidth": "none",
+        "widthProp": "619.5px",
+        "flex": "0 1 auto",
+        "className": "nav"
+      },
+      "chartCard": {
+        "width": 556,
+        "left": 232,
+        "maxWidth": "none",
+        "widthProp": "555.5px",
+        "flex": "0 1 auto",
+        "className": "ov-hero"
+      },
+      "spark": {
+        "width": 230,
+        "left": 253,
+        "maxWidth": "none",
+        "widthProp": "229.75px",
+        "flex": "0 1 auto",
+        "className": "sc-spark"
+      },
+      "listGroup": {
+        "width": 588,
+        "left": 216,
+        "maxWidth": "none",
+        "widthProp": "587.5px",
+        "flex": "0 1 auto",
+        "className": "ov-duo"
+      },
+      "peerCount": 1,
+      "workClass": "wb-work wide wb-narrow"
+    },
+    "closed": {
+      "work": {
+        "width": 1240,
+        "left": 200,
+        "maxWidth": "none",
+        "widthProp": "1240px",
+        "flex": "1 1 0%",
+        "className": "wb-work wide"
+      },
+      "titleBlock": {
+        "width": 1240,
+        "left": 200,
+        "maxWidth": "none",
+        "widthProp": "1240px",
+        "flex": "0 1 auto",
+        "className": "nav"
+      },
+      "chartCard": {
+        "width": 1176,
+        "left": 232,
+        "maxWidth": "none",
+        "widthProp": "1176px",
+        "flex": "0 1 auto",
+        "className": "ov-hero"
+      },
+      "spark": {
+        "width": 234,
+        "left": 253,
+        "maxWidth": "none",
+        "widthProp": "234px",
+        "flex": "0 1 auto",
+        "className": "sc-spark"
+      },
+      "listGroup": {
+        "width": 1208,
+        "left": 216,
+        "maxWidth": "none",
+        "widthProp": "1208px",
+        "flex": "0 1 auto",
+        "className": "ov-duo"
+      },
+      "peerCount": 0,
+      "workClass": "wb-work wide"
+    }
+  },
+  "content-1680x1000": {
+    "open": {
+      "work": {
+        "width": 740,
+        "left": 200,
+        "maxWidth": "none",
+        "widthProp": "740px",
+        "flex": "1 1 0%",
+        "className": "wb-work list"
+      },
+      "titleBlock": {
+        "width": 739,
+        "left": 200,
+        "maxWidth": "none",
+        "widthProp": "739px",
+        "flex": "0 0 auto",
+        "className": "wb-workhead"
+      },
+      "chartCard": {
+        "width": 707,
+        "left": 216,
+        "maxWidth": "none",
+        "widthProp": "707px",
+        "flex": "0 1 auto",
+        "className": "wb-chartcard"
+      },
+      "listGroup": {
+        "width": 739,
+        "left": 200,
+        "maxWidth": "none",
+        "widthProp": "739px",
+        "flex": "1 1 0%",
+        "className": "rows ct-rows"
+      },
+      "peerCount": 1,
+      "workClass": "wb-work list"
+    },
+    "closed": {
+      "work": {
+        "width": 1480,
+        "left": 200,
+        "maxWidth": "none",
+        "widthProp": "1480px",
+        "flex": "1 1 0%",
+        "className": "wb-work wide wb-solo"
+      },
+      "titleBlock": {
+        "width": 1480,
+        "left": 200,
+        "maxWidth": "none",
+        "widthProp": "1480px",
+        "flex": "0 0 auto",
+        "className": "wb-workhead"
+      },
+      "chartCard": {
+        "width": 860,
+        "left": 216,
+        "maxWidth": "860px",
+        "widthProp": "860px",
+        "flex": "0 1 auto",
+        "className": "wb-chartcard"
+      },
+      "listGroup": {
+        "width": 1480,
+        "left": 200,
+        "maxWidth": "none",
+        "widthProp": "1480px",
+        "flex": "1 1 0%",
+        "className": "rows ct-rows"
+      },
+      "peerCount": 0,
+      "workClass": "wb-work wide wb-solo"
+    }
+  },
+  "sends-1680x1000": {
+    "open": {
+      "work": {
+        "width": 740,
+        "left": 200,
+        "maxWidth": "none",
+        "widthProp": "739.5px",
+        "flex": "1 1 0%",
+        "className": "wb-work wide wb-narrow"
+      },
+      "titleBlock": {
+        "width": 740,
+        "left": 200,
+        "maxWidth": "none",
+        "widthProp": "739.5px",
+        "flex": "0 1 auto",
+        "className": "nav"
+      },
+      "chartCard": {
+        "width": 676,
+        "left": 232,
+        "maxWidth": "none",
+        "widthProp": "675.5px",
+        "flex": "0 1 auto",
+        "className": "ov-hero"
+      },
+      "spark": {
+        "width": 290,
+        "left": 253,
+        "maxWidth": "none",
+        "widthProp": "289.75px",
+        "flex": "0 1 auto",
+        "className": "sc-spark"
+      },
+      "listGroup": {
+        "width": 708,
+        "left": 216,
+        "maxWidth": "none",
+        "widthProp": "707.5px",
+        "flex": "0 1 auto",
+        "className": "ov-duo"
+      },
+      "peerCount": 1,
+      "workClass": "wb-work wide wb-narrow"
+    },
+    "closed": {
+      "work": {
+        "width": 1480,
+        "left": 200,
+        "maxWidth": "none",
+        "widthProp": "1480px",
+        "flex": "1 1 0%",
+        "className": "wb-work wide"
+      },
+      "titleBlock": {
+        "width": 1480,
+        "left": 200,
+        "maxWidth": "none",
+        "widthProp": "1480px",
+        "flex": "0 1 auto",
+        "className": "nav"
+      },
+      "chartCard": {
+        "width": 1416,
+        "left": 232,
+        "maxWidth": "none",
+        "widthProp": "1416px",
+        "flex": "0 1 auto",
+        "className": "ov-hero"
+      },
+      "spark": {
+        "width": 294,
+        "left": 253,
+        "maxWidth": "none",
+        "widthProp": "294px",
+        "flex": "0 1 auto",
+        "className": "sc-spark"
+      },
+      "listGroup": {
+        "width": 1448,
+        "left": 216,
+        "maxWidth": "none",
+        "widthProp": "1448px",
+        "flex": "0 1 auto",
+        "className": "ov-duo"
+      },
+      "peerCount": 0,
+      "workClass": "wb-work wide"
+    }
+  }
+}
