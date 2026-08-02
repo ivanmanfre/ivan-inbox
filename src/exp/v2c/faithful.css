@@ -635,6 +635,14 @@
   display:flex; align-items:center; gap:6px;
   flex-wrap:nowrap; overflow:hidden;
   margin-top:2px; min-width:0;
+  /* The clip is DELIBERATE — slot #1 may never reflow, so the tail of the meta
+     row is what gives way. But a chip cut off mid-glyph reads as a bug, not as
+     a decision: measured at 390, .ct-meta runs 182px of content through a 102px
+     box. A 14px fade at the trailing edge says "there is more, and it was
+     ranked below what you can see", which is exactly what happened. Costs no
+     colour, no motion and no layout — it is a mask on the existing clip. */
+  -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 14px),transparent);
+  mask-image:linear-gradient(to right,#000 calc(100% - 14px),transparent);
 }
 .wb.wb.wb .ct-meta > *{ flex:none }
 /* Slot #1 is a COLUMN, so it holds its width whether or not the row has a
@@ -785,7 +793,16 @@
 /* 8.3 — THE NUMBER LIVES INSIDE THE MARK (M9). A capsule bar prints its value
    inside; the label colour follows §9.5 per token — ink on every filled
    categorical except MONO --cat-4, which takes white. */
-.wb.wb.wb .wb-caps{ display:flex; align-items:flex-end; gap:10px; min-height:120px }
+/* The capsule column has to stay a CAPSULE. §6.3.7 licenses --r-pill on "chart
+   marks whose geometry IS a capsule" — and a mark 145px wide by 120px tall is
+   not one, it is a slab, and 999px turns it into an egg. Measured on the
+   rendered card: five flex:1 tracks across a 780px pane gave the PUBLISHED mark
+   a 145px width and drew it as an ellipse. Capping the PLOT (not the mark) at
+   320px keeps every track ~52px, which is the reference's proportion, and keeps
+   the bar row and the label row on the same flex tracks so the axis still
+   aligns. The chart sits left in its card, which is where the reference puts
+   it. */
+.wb.wb.wb .wb-caps{ display:flex; align-items:flex-end; gap:10px; min-height:120px; max-width:320px }
 .wb.wb.wb .wb-cap{
   flex:1; min-width:22px; position:relative;
   display:flex; align-items:flex-start; justify-content:center;
@@ -801,7 +818,7 @@
   background:var(--surface3); border-radius:var(--r-pill);
 }
 .wb.wb.wb .wb-caps-x{
-  display:flex; gap:10px; margin-top:8px;
+  display:flex; gap:10px; margin-top:8px; max-width:320px;
 }
 .wb.wb.wb .wb-caps-xl{
   flex:1; min-width:22px; text-align:center; color:var(--text3);
@@ -861,7 +878,12 @@
    same anatomy at 26px. Not a second row of chips, not a filter bar. */
 .wb.wb.wb .ct-filters{ margin:0; padding:8px var(--gut) 10px }
 .wb.wb.wb .ct-fbar{ display:flex; align-items:center; flex-wrap:wrap; gap:6px }
-.wb.wb.wb .ct-fg{ display:inline-flex; align-items:center; gap:6px }
+/* flex-wrap is NOT inherited from .ct-fbar: the bar wraps the GROUPS, but each
+   group was an inline-flex at the default nowrap, so a facet with eight values
+   (Structure, Image style, Hook, Source) ran straight off the pane edge and was
+   clipped — visible in the capture, invisible to the overflow instrument
+   because a clipped child does not grow document scrollWidth. */
+.wb.wb.wb .ct-fg{ display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap }
 .wb.wb.wb .ct-fgl{
   font-size:var(--fs-meta); font-weight:400; color:var(--text3);
   letter-spacing:0; text-transform:none;
