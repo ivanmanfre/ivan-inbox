@@ -42,9 +42,25 @@ async function captureRequest(model: ModelChoice | undefined): Promise<Record<st
 afterEach(() => { vi.unstubAllGlobals() })
 
 describe('emit — SSE frame parsing', () => {
-  it('reads a text delta from an assistant frame', () => {
-    expect(collect('data: {"type":"assistant","text":"hello"}'))
+  it('reads text out of a REAL assistant frame (nested message.content)', () => {
+    // Pinned against a live /chat/stream capture 2026-08-02 — the CLI nests its
+    // payload; a top-level `text` on an assistant frame does not exist in the
+    // real stream (the pre-fix parser read only that, and dropped every reply).
+    expect(collect('data: {"type":"assistant","message":{"content":[{"type":"text","text":"hello"}]}}'))
       .toEqual([{ kind: 'text', delta: 'hello' }])
+  })
+
+  it('reads a nested tool_use item from an assistant frame', () => {
+    expect(collect('data: {"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"ls"}}]}}'))
+      .toEqual([{ kind: 'tool', name: 'Bash', detail: '{"command":"ls"}' }])
+  })
+
+  it('an assistant frame with both text and tool_use emits both, in order', () => {
+    expect(collect('data: {"type":"assistant","message":{"content":[{"type":"text","text":"running"},{"type":"tool_use","name":"Read","input":{}}]}}'))
+      .toEqual([
+        { kind: 'text', delta: 'running' },
+        { kind: 'tool', name: 'Read', detail: '{}' },
+      ])
   })
 
   it('treats non-JSON data as raw text rather than dropping it', () => {
@@ -60,7 +76,7 @@ describe('emit — SSE frame parsing', () => {
   })
 
   it('joins multi-line data payloads before parsing', () => {
-    expect(collect('data: {"type":"assistant",\ndata: "text":"split"}'))
+    expect(collect('data: {"type":"text",\ndata: "text":"split"}'))
       .toEqual([{ kind: 'text', delta: 'split' }])
   })
 
