@@ -355,6 +355,24 @@
 /* 3 · SURFACES, HAIRLINES, FOCUS                                              */
 /* ========================================================================== */
 
+/* --- style-delta §3a — the two-surface inversion. The page is PISTACHIO; the
+       app is a dark PLATE floating on it. The plate wrapper is the one licensed
+       DOM addition (Shell.tsx, three roots); everything scrolls INSIDE it, and
+       overflow:hidden is what keeps scrolled content out of the corner radius
+       (risk 3). The box-shadow is §5 elevation move 1 — the ONE licensed
+       resting shadow in the app (§3.4 amended for exactly this element). --- */
+.wb.wb.wb.app{ background:var(--ground); padding:var(--plate-gap); height:100% }
+.wb.wb.wb .wb-plate{
+  flex:1; min-height:0; min-width:0; display:flex; flex-direction:column;
+  background:var(--canvas); border-radius:var(--plate-r);
+  overflow:hidden; position:relative;
+  box-shadow:0 24px 60px -20px rgba(0,0,0,.5);
+}
+.wb.wb.wb.dt .wb-plate{ flex-direction:row }   /* rail | regions */
+/* The takeover root (mobile chat/thread) is already an overlay over the whole
+   viewport and gets NO plate — it stays edge-to-edge canvas (risk 10). */
+.wb.wb.wb.app.wb-take{ background:var(--canvas); padding:0 }
+
 .wb.wb.wb .app,
 .wb.wb.wb .rows,
 .wb-regions,
