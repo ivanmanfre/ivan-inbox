@@ -262,6 +262,10 @@ function ZoneApprove({ brief, scope, loading, count, onOpenDrafts, onOpenOps }: 
   const dOldest = oldest(dms.map(d => d.created_at))
   const cOldest = oldest(comments.map(c => c.drafted_at))
   const fNewest = feed.map(f => f.created_at).filter(Boolean).sort().at(-1) ?? null
+  // Server-stamped (>7d). These rows are still owed — the honest move is an age
+  // tag, never hiding them. Absent on pre-stamp cached payloads, so 0 renders nothing.
+  const dAging = dms.filter(d => d.is_aging).length
+  const cAging = comments.filter(c => c.is_aging).length
 
   return (
     <section className="td-zone" id="td-z2">
@@ -279,7 +283,7 @@ function ZoneApprove({ brief, scope, loading, count, onOpenDrafts, onOpenOps }: 
               n={dms.length}
               title={dms.length === 1 ? 'DM draft' : 'DM drafts'}
               sub={dmPreview(dms[0])}
-              meta={`${dms.length} waiting${dOldest ? ` · oldest drafted ${ago(dOldest)} ago` : ''}`}
+              meta={`${dms.length} waiting${dOldest ? ` · oldest drafted ${ago(dOldest)} ago` : ''}${dAging > 0 ? ` · ${dAging} owed >7d` : ''}`}
               owner="live rows and Approve & send are in the DM queue — this list is the cached brief"
               onOpen={onOpenDrafts}
             />
@@ -289,7 +293,7 @@ function ZoneApprove({ brief, scope, loading, count, onOpenDrafts, onOpenOps }: 
               n={comments.length}
               title="Comment drafts"
               sub={commentPreview(comments[0])}
-              meta={`${comments.length} target${comments.length === 1 ? '' : 's'}${cOldest ? ` · oldest drafted ${ago(cOldest)} ago` : ''}`}
+              meta={`${comments.length} target${comments.length === 1 ? '' : 's'}${cOldest ? ` · oldest drafted ${ago(cOldest)} ago` : ''}${cAging > 0 ? ` · ${cAging} owed >7d` : ''}`}
               owner="posting is live on LinkedIn — approved in Ops"
               onOpen={onOpenOps}
             />
