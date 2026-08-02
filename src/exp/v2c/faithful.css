@@ -990,6 +990,149 @@
 .wb.wb.wb .ct-fcap{ color:var(--text4) }
 .wb.wb.wb .ct-fclear{ text-decoration:underline; cursor:pointer; margin-left:8px }
 
+/* -------------------------------------------------------------------------- */
+/* 8b · THE FILTER ROW (FilterRow.tsx) — what replaced the wall                 */
+/* -------------------------------------------------------------------------- */
+/* Measured before: 18 always-expanded facet groups / 105 chips over two stacked
+   walls, 1,068px of chrome at 1440×900 with the peer docked, first draft row at
+   y=1439. The rules above (.ct-fbar/.ct-fg/.ct-f) still serve the three
+   collapsed-by-default lists that keep the old bar (Ideas, publish queue, style
+   roster); the two WORKING lists use this row instead.
+   Anatomy is §11.2 and reuses .wb-fpill / .wb-fmenu / .wb-fopt verbatim, which
+   is the app's one existing precedent (SendsScreen's `Range: 7d ⌄`). */
+
+.wb.wb.wb .ct-fr{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:0;
+}
+/* The search field the old panel had and this surface never did. Client-side
+   substring over the loaded rows — same denominator discipline as the facets,
+   which is why the note below still prints both numbers. */
+.wb.wb.wb .ct-fsearch{
+  display:flex; align-items:center; gap:6px;
+  flex:1 1 180px; min-width:120px; max-width:100%;
+  height:26px; padding:0 10px;
+  background:var(--surface2); border-radius:var(--r-ctl);
+}
+.wb.wb.wb .ct-fsearch-i{ color:var(--text3); font-size:var(--fs-meta); flex:none }
+.wb.wb.wb .ct-fsearch-in{
+  flex:1; min-width:0; background:none; border:none; outline:none;
+  font-family:inherit; font-size:var(--fs-meta); font-weight:400; color:var(--text);
+  -webkit-appearance:none; appearance:none;
+}
+.wb.wb.wb .ct-fsearch-in::placeholder{ color:var(--text3) }
+.wb.wb.wb .ct-fsearch-in::-webkit-search-cancel-button{ display:none }
+
+.wb.wb.wb .ct-fpills{
+  display:flex; align-items:center; gap:6px; flex-wrap:wrap; min-width:0;
+}
+.wb.wb.wb .ct-fpop{ position:relative; display:inline-flex; align-items:center; gap:2px }
+.wb.wb.wb .ct-fpill{ height:26px; padding:0 11px; flex:none }
+.wb.wb.wb .ct-fpill i{ margin-left:2px }
+/* The demoted-facet badge is NOT a nav count badge, so it takes --r-chip and
+   stays outside the pill licence (§6.3.4 covers nav badges only). */
+.wb.wb.wb .ct-fn{
+  margin-left:5px; padding:0 5px; border-radius:var(--r-chip);
+  background:var(--surface3); color:var(--text); font-weight:500;
+}
+/* ✕ — its own button, so clearing one facet never travels through the control
+   that opens the menu. --r-chip, not a capsule: it is not on the §6.3 list. */
+.wb.wb.wb .ct-fx{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:20px; height:26px; padding:0; flex:none;
+  background:none; border:none; border-radius:var(--r-chip);
+  color:var(--text3); font-size:var(--fs-meta); cursor:pointer;
+}
+.wb.wb.wb .ct-fx:hover{ background:var(--surface2); color:var(--text) }
+.wb.wb.wb .ct-fx-in{ width:18px; height:20px }
+.wb.wb.wb .ct-fclear-all{
+  background:none; border:none; padding:0 4px; cursor:pointer;
+  font-family:inherit; font-size:var(--fs-meta); font-weight:400;
+  color:var(--text3); text-decoration:underline;
+}
+.wb.wb.wb .ct-fclear-all:hover{ color:var(--text) }
+
+/* The popover. Same overlay grammar as .wb-fmenu (and .wb-modelmenu, the app's
+   one precedent) — it just hangs off the LEFT edge of its own pill instead of
+   the right edge of a right-set header control, because these pills sit at the
+   start of the row. */
+.wb.wb.wb .ct-fmenu{
+  left:0; right:auto; min-width:210px; max-width:min(320px, 88vw);
+  max-height:340px; overflow-y:auto; overscroll-behavior:contain;
+}
+.wb.wb.wb .ct-fmenu-wide{ min-width:250px }
+.wb.wb.wb .wb-fopt-l{
+  flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+/* A group inside the "Filters" panel. One eyebrow per demoted facet, then that
+   facet's own options with their own counts — nothing was deleted, it moved. */
+.wb.wb.wb .ct-fgrp + .ct-fgrp{ margin-top:6px; border-top:1px solid var(--hairline); padding-top:6px }
+.wb.wb.wb .ct-fgrp-h{ padding:4px 10px 2px; color:var(--text3) }
+.wb.wb.wb .ct-fgrp-e{ padding:8px 10px; color:var(--text3); font-size:var(--fs-meta) }
+
+/* --- 390: the row scrolls, and the panels become bottom sheets ------------- */
+@media (max-width:767px){
+  .wb.wb.wb .ct-filters{ padding:8px var(--gut) 8px }
+  .wb.wb.wb .ct-fr{ flex-direction:column; align-items:stretch; gap:8px; position:relative }
+  .wb.wb.wb .ct-fsearch{ height:36px; flex:none }
+  /* A horizontal scroller WITH an announced edge. The previous scroller on this
+     surface was a defect because nothing said it scrolled (2,219px of content
+     in a 358px box, no scrollbar, no fade); six pills behind a faded edge is a
+     different control from eighty-one chips behind an invisible one. */
+  .wb.wb.wb .ct-fpills{
+    flex-wrap:nowrap; overflow-x:auto; overflow-y:visible;
+    overscroll-behavior-x:contain; scrollbar-width:none; padding-right:20px;
+  }
+  .wb.wb.wb .ct-fpills::-webkit-scrollbar{ display:none }
+  .wb.wb.wb .ct-fr::after{
+    content:''; position:absolute; right:0; bottom:0; width:26px; height:32px;
+    pointer-events:none;
+    background:linear-gradient(90deg, rgba(9,11,10,0), var(--canvas));
+  }
+  .wb.wb.wb .ct-fpill{ height:32px }
+  .wb.wb.wb .ct-fx{ height:32px; width:26px }
+  .wb.wb.wb .ct-fnote{ margin-top:6px }
+}
+
+/* The bottom sheet — its own overlay, tap-out or the grab handle to close.
+   Shadow is licensed here: a transient overlay is the one class §3.4 permits. */
+.wb.wb.wb .ct-fsheet-scrim{
+  position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.55);
+  display:flex; flex-direction:column; justify-content:flex-end;
+}
+.wb.wb.wb .ct-fsheet{
+  background:var(--surface1); border-top:1px solid var(--hairline-strong);
+  border-radius:var(--r-card) var(--r-card) 0 0;
+  max-height:72vh; display:flex; flex-direction:column;
+  padding-bottom:env(safe-area-inset-bottom);
+  box-shadow:0 -24px 60px rgba(0,0,0,.55);
+  animation:ct-sheet-up var(--dur-state) var(--ease);
+}
+@keyframes ct-sheet-up{ from{ transform:translateY(14px) } to{ transform:translateY(0) } }
+.wb.wb.wb .ct-fsheet-grab{
+  display:flex; align-items:center; justify-content:center;
+  width:100%; height:26px; background:none; border:none; cursor:pointer; padding:0;
+}
+/* 2px, not a capsule: the grab handle is not on the §6.3 pill licence list. */
+.wb.wb.wb .ct-fsheet-grab i{ display:block; width:38px; height:4px; border-radius:2px; background:var(--hairline-strong) }
+.wb.wb.wb .ct-fsheet-h{
+  padding:2px var(--gut) 8px; font-size:var(--fs-title); font-weight:500; color:var(--text);
+}
+.wb.wb.wb .ct-fsheet-b{ overflow-y:auto; overscroll-behavior:contain; padding:0 8px 12px }
+/* ≥44px touch rows, and the body tier rather than meta — a sheet is not a dense
+   list and reading it at 12px on a phone is the wall's mistake in miniature. */
+.wb.wb.wb .ct-fsheet-b .wb-fopt{ min-height:44px; font-size:var(--fs-body) }
+.wb.wb.wb .ct-fsheet-b .ct-fgrp-h{ padding:8px 10px 4px }
+
+/* Hover = one background shift, --dur-hover, var(--ease). No new curve, no
+   animated layout property. This is the only hover work in this phase's scope. */
+.wb.wb.wb .ct-fpill, .wb.wb.wb .ct-fx, .wb.wb.wb .ct-fclear-all,
+.wb.wb.wb .wb-fopt, .wb.wb.wb .ct-fsearch{
+  /* background-color only — §10.3 bans animated colour, and §7.4 names the
+     background shift as THE hover mark. One property, one duration, one curve. */
+  transition:background-color var(--dur-hover) var(--ease);
+}
+.wb.wb.wb .ct-fpill:hover{ background:var(--surface3) }
+
 /* The nav pills (M7). Chrome the reference wins on outright. */
 .wb.wb.wb .nav{ padding:18px var(--gut) 12px }
 /* The reference's top row, literally: oversized uppercase title flush left, pill
