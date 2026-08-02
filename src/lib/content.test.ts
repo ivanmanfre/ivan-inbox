@@ -8,7 +8,7 @@ import {
   normalizeImageUrls, reviewActionable,
   CONTENT_LANES, LANE_LABEL, LANE_POSSESSIVE, isBackfillEntry, parseLogEntry,
   scoreProgression, normalizeSourceDetail, taxonomyExtras, taxonomyValue, queueFailed,
-  stampHumanEdit, stampOperatorDelete, operatorDeleted,
+  stampHumanEdit, stampOperatorDelete, operatorDeleted, selfContainedHtml,
 } from './content'
 
 const base: ContentDraft = {
@@ -602,5 +602,28 @@ describe('operatorDeleted', () => {
     // filter runs on the fallback-delete write's own output.
     const t = stampOperatorDelete({ pillar: 'personal' })
     expect(operatorDeleted(t)).toBe(true)
+  })
+})
+
+describe('selfContainedHtml — only a styled document earns the preview frame', () => {
+  it('accepts a document that ships its own <style>', () => {
+    expect(selfContainedHtml('<html><style>.a{color:red}</style><body>x</body></html>')).toBe(true)
+    expect(selfContainedHtml('<STYLE media="all">.a{}</STYLE><p>x</p>')).toBe(true)
+  })
+  it('accepts a stylesheet <link>', () => {
+    expect(selfContainedHtml('<link rel="stylesheet" href="kit.css"><section>x</section>')).toBe(true)
+  })
+  it('rejects the kit-CSS fragments the engines actually author', () => {
+    // Real shape measured 2026-08-03: class-based fragment, no styles anywhere.
+    expect(selfContainedHtml('<section class="card framework"><div class="frame">x</div></section>')).toBe(false)
+    expect(selfContainedHtml('<section class="slide bb-warning"><div class="toplabel">y</div></section>')).toBe(false)
+  })
+  it('rejects empty and null', () => {
+    expect(selfContainedHtml('')).toBe(false)
+    expect(selfContainedHtml(null)).toBe(false)
+    expect(selfContainedHtml(undefined)).toBe(false)
+  })
+  it('a non-stylesheet link is not presentation', () => {
+    expect(selfContainedHtml('<link rel="preconnect" href="https://x"><p>x</p>')).toBe(false)
   })
 })

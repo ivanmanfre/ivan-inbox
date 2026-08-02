@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useDraftDetail } from '../../hooks/useContent'
 import {
   LANE_LABEL, STAGE_LABEL, deleteDraft, normalizeAgentLog, normalizeImageUrls,
-  normalizeKeyPoints, normalizeQa, normalizeSourceDetail, reviewActionable, stageOf,
+  normalizeKeyPoints, normalizeQa, normalizeSourceDetail, reviewActionable, selfContainedHtml, stageOf,
   taxonomyExtras, taxonomyFields, taxonomyValue, updateDraftBody,
   type ContentDraftDetail, type ContentLane,
 } from '../../lib/content'
@@ -287,7 +287,12 @@ function Body({ d, lane, refresh, onClose }: {
         </Block>
       )}
 
-      {authored && (
+      {/* Only a SELF-CONTAINED document earns the frame: authored_html is
+          usually a class-based fragment whose styles live in the render
+          service's kit CSS, and framing that shows raw serif text — the
+          opposite of "as it will appear". Those rows' honest render is the
+          cover image(s) above (the service's own screenshots). */}
+      {selfContainedHtml(authored) && (
         <Block label="Rendered preview">
           <HtmlPreview html={authored} title="Post as it will appear" />
         </Block>

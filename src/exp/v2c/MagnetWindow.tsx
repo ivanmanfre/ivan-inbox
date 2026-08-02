@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react'
 import { useResourceDetail } from '../../hooks/useContent'
 import {
-  LANE_LABEL, normalizeAgentLog, normalizeImageUrls, normalizeQa,
+  LANE_LABEL, normalizeAgentLog, normalizeImageUrls, normalizeQa, selfContainedHtml,
   type ContentLane,
 } from '../../lib/content'
 import { LM_STAGE_LABEL, stageOfLm, type ResourceDetail } from '../../lib/styles'
@@ -86,8 +86,10 @@ function Body({ d }: { d: ResourceDetail }) {
         </Block>
       )}
 
-      {/* The landing-page artifact — what this lead magnet actually IS. */}
-      {artifact && (
+      {/* The landing-page artifact — what this lead magnet actually IS. Only
+          a self-contained document earns the frame; a kit-CSS fragment would
+          render as raw text (same rule as the draft window). */}
+      {selfContainedHtml(artifact) && (
         <Block label="Landing artifact">
           <HtmlPreview html={artifact} title="Landing page artifact" />
         </Block>
