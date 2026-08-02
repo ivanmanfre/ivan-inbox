@@ -1258,3 +1258,16 @@ export function normalizeImageUrls(v: unknown): string[] {
   if (!Array.isArray(parsed)) return []
   return parsed.map(x => str(x)).filter((s): s is string => !!s)
 }
+
+// Whether an HTML artifact carries its own presentation. The engines author
+// carousel_drafts.authored_html as a CLASS-BASED FRAGMENT (`<section
+// class="card …">`) whose styles live in the render service's kit CSS — an
+// iframe would show it as raw serif text, which is the opposite of "the post
+// as it will appear" (the honest render of those rows is image_urls, the
+// service's own screenshots). Only a document that ships a <style> or a
+// stylesheet <link> earns the preview frame.
+export function selfContainedHtml(v: string | null | undefined): boolean {
+  const s = (v ?? '').trim()
+  if (!s) return false
+  return /<style[\s>]|<link[^>]*rel=["']?stylesheet/i.test(s)
+}
