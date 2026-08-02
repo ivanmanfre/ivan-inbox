@@ -1002,14 +1002,21 @@
    is the app's one existing precedent (SendsScreen's `Range: 7d ⌄`). */
 
 .wb.wb.wb .ct-fr{
-  display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:0;
+  /* flex-start, not center: the pill box is two rows tall in the 620px column
+     the docked peer leaves, and a centred search field then floats between
+     them. Top-aligned, the field shares a baseline with the first pill row. */
+  display:flex; align-items:flex-start; gap:8px; flex-wrap:wrap; min-width:0;
 }
 /* The search field the old panel had and this surface never did. Client-side
    substring over the loaded rows — same denominator discipline as the facets,
    which is why the note below still prints both numbers. */
 .wb.wb.wb .ct-fsearch{
   display:flex; align-items:center; gap:6px;
-  flex:1 1 180px; min-width:120px; max-width:100%;
+  /* Capped growth, and the measurement is the reason: left to fill the line the
+     field pushed every pill onto its own rows and the block measured 134px in
+     the 620px column the docked peer leaves. Capped, the first pills sit IN the
+     search field's row, which is what §11.2 actually describes. */
+  flex:1 1 180px; min-width:120px; max-width:250px;
   height:26px; padding:0 10px;
   background:var(--surface2); border-radius:var(--r-ctl);
 }
@@ -1024,6 +1031,12 @@
 
 .wb.wb.wb .ct-fpills{
   display:flex; align-items:center; gap:6px; flex-wrap:wrap; min-width:0;
+  /* A flex BASIS, not `auto`: at `auto` the pill box's hypothetical size is its
+     max-content (~660px), which exceeds the line and pushes the whole box onto
+     its own row before any shrinking happens — three rows of chrome instead of
+     two. With a basis it shares the search field's row, which is the §11.2
+     sentence ("one compact inline pill sitting in the search field's row"). */
+  flex:1 1 240px;
 }
 .wb.wb.wb .ct-fpop{ position:relative; display:inline-flex; align-items:center; gap:2px }
 .wb.wb.wb .ct-fpill{ height:26px; padding:0 11px; flex:none }
@@ -1083,12 +1096,14 @@
     flex-direction:column; flex-wrap:nowrap; align-items:stretch;
     gap:8px; position:relative;
   }
-  .wb.wb.wb .ct-fsearch{ height:36px; flex:none }
+  .wb.wb.wb .ct-fsearch{ height:36px; flex:none; max-width:none }
   /* A horizontal scroller WITH an announced edge. The previous scroller on this
      surface was a defect because nothing said it scrolled (2,219px of content
      in a 358px box, no scrollbar, no fade); six pills behind a faded edge is a
      different control from eighty-one chips behind an invisible one. */
   .wb.wb.wb .ct-fpills{
+    /* flex:none — the row is a COLUMN here, so a flex-basis would be a HEIGHT. */
+    flex:none;
     flex-wrap:nowrap; overflow-x:auto; overflow-y:visible;
     overscroll-behavior-x:contain; scrollbar-width:none; padding-right:20px;
   }
