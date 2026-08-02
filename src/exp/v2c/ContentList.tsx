@@ -6,20 +6,21 @@ import {
 } from '../../hooks/useContent'
 import {
   CONTENT_LANES, LANE_LABEL, LANE_POSSESSIVE, PIPELINE_STAGES,
-  STAGE_LABEL, countBoardVisible, countUndated, groupByStage, isStuckScheduled,
+  STAGE_LABEL, STUCK_GENERATING_MINUTES, countBoardVisible, countUndated,
+  elapsedMinutes, generatingSince, groupByStage, isStuckGenerating, isStuckScheduled,
   queueFailed, reviewActionable, stageOf,
   type ContentDraft, type ContentLane, type ContentStage, type ContentStages,
 } from '../../lib/content'
-import { isStuckResource } from '../../lib/styles'
+import { isStuckGeneratingLm, isStuckResource } from '../../lib/styles'
 import { applyFilters, buildFacets, draftScore, draftSpecs, type FilterState } from '../../lib/contentFilters'
 import { ReviewActions } from './ReviewActions'
 import { FilterBar, FilteredEmpty } from './ContentBits'
 import {
-  AlertCountLine, IdeasSection, PillarMix, QueueStrip, ResourcesSection,
+  AlertCountLine, IdeasSection, PillarMix, QueueStrip, ResourceLane,
   StyleRoster, SummariesSection,
 } from './ContentSections'
 import { relTime, typeLabel } from './fmt'
-import { CalmEmpty, Failed, SectionHead } from './Surface'
+import { CalmEmpty, CapsuleChart, Failed, SectionHead } from './Surface'
 import { hasMock } from './mock'
 
 // Content — TWO LANES, and nothing else.
@@ -73,42 +74,56 @@ function Card({ d, lane, refresh, onOpen, active }: {
   const score = draftScore(d)
   const stage = stageOf(d)
   const qa = d.qa_verdict?.trim().toUpperCase()
+  // GRAFT (phase 6 ask 8a, from candidate `split`): the corner dot carried the
+  // STAGE, which the section the row sits in already says. It carries the QA
+  // verdict now, in three states and severity tokens only — green a literal
+  // PASS, amber anything that is not (FAIL / NEEDS_REGENERATE / REWRITE_OK),
+  // grey no verdict at all. Grey is the honest third state: "not judged" is not
+  // "judged fine", and an amber-only dot could not say the difference.
+  const qaState = qa ? (qa === 'PASS' ? 'pass' : 'fail') : 'none'
+  // ask 6 — a generation that died mid-run. Amber, and its count joins the
+  // alert strip above.
+  const stalled = isStuckGenerating(d)
+  const genMins = stalled ? elapsedMinutes(generatingSince(d)) : null
   return (
     <div
-      className={`ct-card ct-tap${active ? ' wb-card-on' : ''}`}
+      className={`ct-card ct-tap${active ? ' wb-card-on' : ''}${stalled ? ' ct-stalled' : ''}`}
       onClick={() => onOpen(d.id, title)}
     >
-      {/* anchor slot — exactly ONE mark, at a fixed width, carrying the stage */}
-      <div className="ct-anchor" data-st={stage}>
+      {/* anchor slot — exactly ONE mark, at a fixed width, carrying the QA verdict */}
+      <div className="ct-anchor" data-st={stage} data-qa={qaState}>
         {thumb
           ? <img className="ct-thumb" src={thumb} alt="" />
           : <div className="ct-thumb ct-thumb-empty">◻</div>}
-        <span className="ct-anchor-dot" />
+        <span
+          className="ct-anchor-dot"
+          title={qa ? `QA ${d.qa_verdict}` : 'no QA verdict on this row'}
+        />
       </div>
       <div className="ct-mid">
         <div className="ct-title ct-row-p">{title}</div>
+        {/* CHIP DIET — phase 6 ask 5, "wtf with that chunk of tags". Up to five
+            marks per row became TWO, both load-bearing: the QA verdict (slot #1,
+            fixed x, the fact you scan a 70-row review list for) and the format.
+            funnel_stage, the board-visibility chip and the topic echo all moved
+            to the detail pane, which already renders every one of them
+            (DraftPane.tsx:87, :96) — nothing was deleted, and the board chip is
+            redundant on Mattan's lane anyway because that lane is GROUPED by it. */}
         <div className="ct-meta">
-          {/* SLOT #1 — never reflows, never moves. On a 70-row review list the
-              QA verdict is the fact you are scanning for, so it is the fact
-              that gets the fixed position; strictly, only a literal PASS is a
-              pass. Rows with no verdict still spend the slot, so the column
-              stays a column. */}
-          <span
-            className={`ct-chip ct-st ${qa ? (qa === 'PASS' ? 'ct-chip-ok' : 'ct-chip-warn') : 'ct-chip-none'}`}
-          >
-            {d.qa_verdict ? `${d.qa_verdict}${score !== null ? ` ${score}` : ''}` : '—'}
-          </span>
+          {/* SLOT #1 — never reflows, never moves. Strictly, only a literal PASS
+              is a pass. Rows with no verdict still spend the slot, so the column
+              stays a column. On a stalled generation the slot carries the age
+              instead: for that row, that IS the verdict. */}
+          {stalled
+            ? <span className="ct-chip ct-st ct-chip-warn">{genMins}m ⚠</span>
+            : (
+              <span
+                className={`ct-chip ct-st ${qa ? (qa === 'PASS' ? 'ct-chip-ok' : 'ct-chip-warn') : 'ct-chip-none'}`}
+              >
+                {d.qa_verdict ? `${d.qa_verdict}${score !== null ? ` ${score}` : ''}` : '—'}
+              </span>
+            )}
           <span className="ct-chip">{typeLabel(d.type)}</span>
-          {d.funnel_stage && <span className="ct-chip">{d.funnel_stage}</span>}
-          {lane === 'risedtc' && (
-            // On a read-only lane the fact that matters is whether the client
-            // can SEE the row, not that it is a client row. Strict === true:
-            // absence of the flag is not evidence of promotion.
-            <span className={d.board_visible === true ? 'ct-lane' : 'ct-chip'}>
-              {d.board_visible === true ? 'On Mattan’s board' : 'Internal'}
-            </span>
-          )}
-          {d.title && d.topic && d.title !== d.topic && <span className="ct-topic">{d.topic}</span>}
         </div>
       </div>
       {/* trailing slot — the two review controls stay INSIDE the row's third
@@ -171,40 +186,22 @@ function PipelineBar({ stages, ideasShown, ideasTotal, matched, laneTotal, onJum
     .filter(s => s !== 'ideas')
     .map(s => ({ stage: s, key: STAGE_LABEL[s], n: stages[s].length, color: STAGE_COLOR[s] }))
   const loaded = parts.reduce((s, p) => s + p.n, 0)
-  const peak = Math.max(1, ...parts.map(p => p.n))
   const review = stages.review.length
   const undated = countUndated(stages.approved)
-  // Cat index cycles 1-4; beyond four series MONO differentiates by PATTERN, not
-  // by colour, which is why the capsule reads the same in greyscale.
-  const cat = (i: number) => String((i % 4) + 1)
   return (
     <div className="wb-chartcard">
       <div className="wb-cardh">
-        <span className="wb-cardh-t wb-eyebrow">Pipeline</span>
+        <span className="wb-cardh-t wb-eyebrow">Post pipeline</span>
         <span className="wb-cardh-x">···</span>
       </div>
 
-      <div className="wb-caps">
-        {parts.map((p, i) => (
-          p.n === 0
-            ? <span className="wb-cap-0" key={p.key} title={`${p.key}: 0`} />
-            : (
-              <span
-                className="wb-cap"
-                key={p.key}
-                data-cat={cat(i)}
-                style={{ height: `${Math.max(22, Math.round((p.n / peak) * 120))}px` }}
-                onClick={() => onJump(p.stage)}
-                title={`${p.key}: ${p.n}`}
-              >
-                {p.n}
-              </span>
-            )
-        ))}
-      </div>
-      <div className="wb-caps-x">
-        {parts.map(p => <span className="wb-caps-xl" key={p.key}>{p.key}</span>)}
-      </div>
+      {/* The plot itself now lives in Surface.tsx so the lead-magnet lane can
+          draw the same chart (phase 6 ask 2) — the post bar keeps its own hero
+          figure and probe-backed footer. */}
+      <CapsuleChart
+        parts={parts.map(p => ({ key: p.stage, label: p.key, n: p.n }))}
+        onJump={k => onJump(k as ContentStage)}
+      />
 
       <div className="wb-pipe-n">
         <span className="wb-pipe-big">{review}</span>
@@ -225,7 +222,12 @@ function PipelineBar({ stages, ideasShown, ideasTotal, matched, laneTotal, onJum
         <span className="wb-legend">
           <span className="wb-legend-d" style={{ background: 'var(--cat-3)' }} />
           <span className="wb-legend-l">
-            Ideas {ideasShown} of {ideasTotal ?? '—'}
+            {/* ask 3: POST ideas only. This figure used to be every row in
+                lm_idea_candidates at `reviewing`, lead-magnet ideas included —
+                so the post pipeline's idea count quietly carried rows that were
+                never going to become posts. Both numbers are now scoped to
+                content_type='post', the denominator by its own exact probe. */}
+            Post ideas {ideasShown} of {ideasTotal ?? '—'}
           </span>
         </span>
         <span className="wb-total">
@@ -379,7 +381,25 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
   const alerts = [...stages.error, ...stages.stuck]
   const failedQueue = queue.rows.filter(queueFailed)
   const stuckRes = resources.rows.filter(isStuckResource)
+  // ask 6 — a generation that died mid-run, on BOTH lanes. The rows stay in
+  // their Generating section (that is still the stage they are in, and the row
+  // itself carries the amber age chip); what joins the strip is the COUNT, so a
+  // silently-dead run is visible without leaving the top of the page.
+  const stalledGen = stages.generating.filter(d => isStuckGenerating(d))
+  const stalledLm = resources.rows.filter(isStuckGeneratingLm)
   const extra = [
+    ...(stalledGen.length > 0
+      ? [{
+        key: 'stalled-gen',
+        line: `${stalledGen.length} draft${stalledGen.length === 1 ? '' : 's'} generating for over ${STUCK_GENERATING_MINUTES} minutes — the run that started ${stalledGen.length === 1 ? 'it' : 'them'} is probably dead.`,
+      }]
+      : []),
+    ...(stalledLm.length > 0
+      ? [{
+        key: 'stalled-lm',
+        line: `${stalledLm.length} lead magnet${stalledLm.length === 1 ? '' : 's'} generating for over ${STUCK_GENERATING_MINUTES} minutes.`,
+      }]
+      : []),
     ...(failedQueue.length > 0
       ? [{
         key: 'queue',
@@ -414,7 +434,7 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
       <AlertCountLine olderUnsent={digest.olderUnsent} />
       <AlertStrip drafts={alerts} lane="ivan" refresh={refresh} onOpen={onOpen} openId={openId} extra={extra} />
       <PipelineBar
-        stages={stages} ideasShown={ideas.rows.length} ideasTotal={ideas.count}
+        stages={stages} ideasShown={ideas.split.post.length} ideasTotal={ideas.counts.post}
         matched={matched} laneTotal={laneTotal} onJump={jump}
       />
       {/* Advisory denominator, never a quota, never a gate, never red. */}
@@ -428,8 +448,13 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
         shown={shown.length} loaded={drafts.length} total={matched} noun="drafts"
       />
 
+      {/* ask 3 — the POST side of the content_type partition only. Rows with no
+          content_type ride here too, labelled, rather than vanishing from both
+          lanes. ask 4 — collapsed by default with a sticky header. */}
       <IdeasSection
-        ideas={ideas.rows} count={ideas.count} loading={ideas.loading}
+        ideas={ideas.split.post} kind="post" count={ideas.counts.post}
+        unclassified={ideas.split.other}
+        loading={ideas.loading}
         error={ideas.error} loadedAt={ideas.loadedAt} refresh={ideas.refresh}
       />
 
@@ -465,11 +490,17 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
         />
       ))}
 
-      <PillarMix rows={drafts} />
-      <ResourcesSection
-        rows={resources.rows} lane="ivan" loading={resources.loading}
+      {/* ask 2 — the lead magnets LEAVE the posts list here. Everything above
+          this line is carousel_drafts; everything inside ResourceLane is
+          lm_drafts_v2, with its own nine-stage pipeline. */}
+      <ResourceLane
+        rows={resources.rows} lane="ivan"
+        ideas={ideas.split.lead_magnet} ideaCount={ideas.counts.lead_magnet}
+        ideaState={ideas}
+        loading={resources.loading}
         error={resources.error} loadedAt={resources.loadedAt} refresh={resources.refresh}
       />
+      <PillarMix rows={drafts} />
       <StyleRoster
         roster={roster.rows} laneRows={drafts} lane="ivan"
         loading={roster.loading} error={roster.error} refresh={roster.refresh}
@@ -598,8 +629,12 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, matc
           )
         })}
 
-      <ResourcesSection
-        rows={resources.rows} lane="risedtc" loading={resources.loading}
+      {/* Same lane object as Ivan's, minus the idea stage: lm_idea_candidates
+          carries no tenancy column at all, so there is no Mattan side of that
+          partition to render and inventing one would be a cross-tenant claim. */}
+      <ResourceLane
+        rows={resources.rows} lane="risedtc" ideas={null} ideaCount={null}
+        loading={resources.loading}
         error={resources.error} loadedAt={resources.loadedAt} refresh={resources.refresh}
       />
       <StyleRoster
