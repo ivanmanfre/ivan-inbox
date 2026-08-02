@@ -1025,6 +1025,12 @@
   background:transparent; border:none; border-radius:0;
   color:var(--text2);
 }
+/* one line, ellipsized: this is a LIST of things that are wrong, not prose
+   about them. The full sentence is in the row it points at. */
+.wb.wb.wb .ct-alert-x > span{
+  grid-column:2; min-width:0;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
 .wb.wb.wb .ct-alert-x + .ct-alert-x{ border-top:1px solid var(--hairline) }
 .wb.wb.wb .ct-alert-x::before{
   content:''; grid-column:1; justify-self:center;
