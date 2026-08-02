@@ -387,8 +387,8 @@ export function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loa
   // one lane's answer appear over the other's rows.
   const [sect, setSect] = useSectionState(`content.lm.${lane}`)
   const filters = sect.filters
-  const setFilters = (f: FilterState) => setSect({ ...sect, filters: f })
-  const setQ = (q: string) => setSect({ ...sect, q })
+  const setFilters = (f: FilterState) => setSect(p => ({ ...p, filters: f }))
+  const setQ = (q: string) => setSect(p => ({ ...p, q }))
   const [open, setOpen] = useState<LmStage[]>(LM_DEFAULT_OPEN)
   const facets = buildFacets(rows, RESOURCE_SPECS)
   const { prominent, demoted } = splitFacets(facets, RESOURCE_PROMINENT)
