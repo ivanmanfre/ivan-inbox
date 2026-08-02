@@ -157,7 +157,10 @@ export function CapsuleChart({ parts, onJump }: {
                 onClick={onJump ? () => onJump(p.key) : undefined}
                 title={`${p.label}: ${p.n}`}
               >
-                {p.n}
+                {/* style-delta §5 move 2 — the numeral sits in a drawn print
+                    capsule on the mark's own fill. Presentational span only;
+                    zero layout movement. */}
+                <span className="wb-cap-v">{p.n}</span>
               </span>
             )
         ))}
