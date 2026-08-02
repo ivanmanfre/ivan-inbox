@@ -1,9 +1,9 @@
-import { type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useDraftDetail } from '../../hooks/useContent'
 import {
-  LANE_LABEL, STAGE_LABEL, normalizeAgentLog, normalizeImageUrls,
+  LANE_LABEL, STAGE_LABEL, deleteDraft, normalizeAgentLog, normalizeImageUrls,
   normalizeKeyPoints, normalizeQa, normalizeSourceDetail, reviewActionable, stageOf,
-  taxonomyExtras, taxonomyFields, taxonomyValue,
+  taxonomyExtras, taxonomyFields, taxonomyValue, updateDraftBody,
   type ContentDraftDetail, type ContentLane,
 } from '../../lib/content'
 import { ReviewActions } from './ReviewActions'
@@ -35,6 +35,144 @@ function scalar(v: unknown): string | null {
   if (typeof v === 'string') return v.trim() || null
   if (typeof v === 'number' && Number.isFinite(v)) return String(v)
   return null
+}
+
+// The editable Post block (ask 3b: "also allow to edit the content").
+//
+// Ivan lane only — the write is scoped .is('client_id', null) like approve, and
+// the risedtc lane stays read-only by standing rule, so the affordance never
+// renders there. EXPLICIT save; editing never touches status. The saved text is
+// shown optimistically, with a visible Saved flash / red failed state, and the
+// human-edit taxonomy markers ride in the same PATCH (the regen-clobber
+// protection contract — see updateDraftBody).
+function PostBlock({ d, lane }: { d: ContentDraftDetail; lane: ContentLane }) {
+  const original = d.post_body ?? ''
+  const [editing, setEditing] = useState(false)
+  const [text, setText] = useState(original)
+  const [shown, setShown] = useState(original)
+  const [busy, setBusy] = useState(false)
+  const [state, setState] = useState<'idle' | 'saved' | 'failed'>('idle')
+  const taRef = useRef<HTMLTextAreaElement>(null)
+
+  // Autosize to the content — the textarea keeps the block's measure.
+  useEffect(() => {
+    if (!editing) return
+    const el = taRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight + 2}px`
+  }, [editing, text])
+
+  if (!shown && !editing) return null
+
+  const save = async () => {
+    const body = text
+    setBusy(true)
+    // Optimistic: the block shows the new text at once; the state chip says
+    // whether the database agreed.
+    setShown(body)
+    setEditing(false)
+    try {
+      await updateDraftBody(d.id, body, d.taxonomy)
+      setState('saved')
+      window.setTimeout(() => setState(s => (s === 'saved' ? 'idle' : s)), 2500)
+    } catch {
+      setState('failed')
+      setEditing(true)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Block
+      label="Post"
+      tail={lane === 'ivan' && !editing
+        ? (
+          <>
+            {state === 'saved' && <span className="wb-savestate ok">Saved</span>}
+            {state === 'failed' && <span className="wb-savestate bad">Save failed — retry</span>}
+            <button type="button" className="wb-editbtn" onClick={() => { setText(shown); setEditing(true) }}>
+              Edit
+            </button>
+          </>
+        )
+        : undefined}
+    >
+      {editing ? (
+        <div className="dd-card wb-editcard">
+          {state === 'failed' && (
+            <div className="wb-savestate bad wb-savestate-row">Save failed — the edit is still here, retry.</div>
+          )}
+          <textarea
+            ref={taRef}
+            className="wb-edit-ta"
+            value={text}
+            onChange={e => setText(e.target.value)}
+            disabled={busy}
+            autoFocus
+          />
+          <div className="ct-ac">
+            <button type="button" className="btn s" disabled={busy}
+              onClick={() => { setEditing(false); setText(shown); setState('idle') }}>
+              Cancel
+            </button>
+            <button type="button" className="btn p" disabled={busy} onClick={save}>
+              {busy ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="dd-card"><div className="dd-body dd-pre">{shown}</div></div>
+      )}
+    </Block>
+  )
+}
+
+// Delete, with its confirm INLINE (ask 3c: "there is no delete option").
+// Distinct from Skip: skip archives a review-stage row visibly; delete removes
+// the row from the surface entirely, at any stage. Ivan lane only — the write
+// path is scoped .is('client_id', null) and the button never renders on
+// risedtc. deleteDraft() carries the honest hard-DELETE-then-fallback contract.
+function DeleteDraft({ d, onDone }: { d: ContentDraftDetail; onDone: () => void }) {
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+
+  const run = async () => {
+    setBusy(true)
+    setErr('')
+    try {
+      await deleteDraft(d.id, d.taxonomy)
+      onDone()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not delete')
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="wb-delzone">
+      {err && <div className="ops-err">{err}</div>}
+      {confirming ? (
+        <div className="wb-delconfirm">
+          <span className="wb-delq">Delete this draft? This removes it permanently.</span>
+          <div className="ct-ac">
+            <button type="button" className="btn s" disabled={busy} onClick={() => setConfirming(false)}>
+              Cancel
+            </button>
+            <button type="button" className="btn wb-btn-danger" disabled={busy} onClick={run}>
+              {busy ? 'Deleting…' : 'Delete'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" className="wb-delbtn" onClick={() => setConfirming(true)}>
+          Delete draft
+        </button>
+      )}
+    </div>
+  )
 }
 
 function Body({ d, lane, refresh, onClose }: {
@@ -155,11 +293,7 @@ function Body({ d, lane, refresh, onClose }: {
         </Block>
       )}
 
-      {d.post_body && (
-        <Block label="Post">
-          <div className="dd-card"><div className="dd-body dd-pre">{d.post_body}</div></div>
-        </Block>
-      )}
+      <PostBlock d={d} lane={lane} />
 
       {/* QA directly under the artifact: the score is the thing you check
           before deciding on the post. */}
@@ -241,6 +375,9 @@ function Body({ d, lane, refresh, onClose }: {
       {reviewActionable(d.status, lane) && (
         <div className="dd-actions"><ReviewActions id={d.id} onDone={() => { refresh(); onClose() }} /></div>
       )}
+      {/* Skip ≠ Delete: Skip (above, review rows) archives visibly; Delete
+          removes the row from every list, at any stage. Ivan lane only. */}
+      {lane === 'ivan' && <DeleteDraft d={d} onDone={() => { refresh(); onClose() }} />}
       <div style={{ height: 28 }} />
     </>
   )

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import {
-  elapsedMinutes, LANE_POSSESSIVE, STUCK_GENERATING_MINUTES, taxonomyFields, queueFailed,
+  deleteIdea, elapsedMinutes, LANE_POSSESSIVE, STUCK_GENERATING_MINUTES,
+  taxonomyFields, queueFailed,
   type ContentDraft, type ContentLane, type IdeaCandidate, type ScheduledQueueRow,
 } from '../../lib/content'
 import {
@@ -60,9 +61,28 @@ function scoreLine(i: IdeaCandidate): [string, number | null][] {
   ]
 }
 
-function IdeaCard({ i }: { i: IdeaCandidate }) {
+function IdeaCard({ i, onDeleted }: { i: IdeaCandidate; onDeleted: () => void }) {
   const [open, setOpen] = useState(false)
+  // Delete-with-confirm (usability-voice ask 3c, extended to idea rows).
+  // deleteIdea() attempts the hard DELETE with representation and falls back
+  // to status='archived' — a real value in this table — throwing honestly if
+  // neither write landed. All clicks inside stopPropagation: the card's own
+  // onClick is the expand toggle.
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
   const title = i.normalized_topic || i.raw_topic || 'Untitled idea'
+  const runDelete = async () => {
+    setBusy(true)
+    setErr('')
+    try {
+      await deleteIdea(i.id)
+      onDeleted()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not delete')
+      setBusy(false)
+    }
+  }
   return (
     // ct-idea marks this as an IDEA card rather than a draft card: they share
     // the card shell, and a count that conflates them is a count of two
@@ -127,6 +147,26 @@ function IdeaCard({ i }: { i: IdeaCandidate }) {
             </div>
           )}
           {i.scored_at && <div className="ct-ref">Scored {absTime(i.scored_at)}</div>}
+          <div className="wb-delzone wb-delzone-idea" onClick={e => e.stopPropagation()}>
+            {err && <div className="ops-err">{err}</div>}
+            {confirming ? (
+              <div className="wb-delconfirm">
+                <span className="wb-delq">Delete this idea? This removes it permanently.</span>
+                <div className="ct-ac">
+                  <button type="button" className="btn s" disabled={busy} onClick={() => setConfirming(false)}>
+                    Cancel
+                  </button>
+                  <button type="button" className="btn wb-btn-danger" disabled={busy} onClick={runDelete}>
+                    {busy ? 'Deleting…' : 'Delete'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button type="button" className="wb-delbtn" onClick={() => setConfirming(true)}>
+                Delete idea
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -198,7 +238,7 @@ export function IdeasSection({ ideas, kind, count, loading, error, loadedAt, ref
           />
           {shown.length === 0
             ? <FilteredEmpty noun="ideas" onClear={() => setFilters({})} />
-            : shown.map(i => <IdeaCard key={i.id} i={i} />)}
+            : shown.map(i => <IdeaCard key={i.id} i={i} onDeleted={refresh} />)}
         </>
       )}
     </div>
