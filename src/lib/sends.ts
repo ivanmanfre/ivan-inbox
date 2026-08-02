@@ -156,7 +156,16 @@ export async function fetchSendLogTotals(
     base().not('sent_at', 'is', null),
     // The log itself drops discarded_in_inbox, so the denominator has to drop it
     // too or the fraction compares two different populations.
-    base().not('send_blocked_at', 'is', null).neq('send_blocked_reason', 'discarded_in_inbox'),
+    //
+    // …and it has to drop ONLY that. A bare `.neq()` is SQL three-valued logic:
+    // `NULL <> 'discarded_in_inbox'` evaluates to NULL, not TRUE, so PostgREST
+    // silently drops every block with no recorded reason. Measured against the
+    // live table: 246 blocked total, `neq` returns 210, this `or` returns 213 —
+    // the three NULL-reason blocks that `buildSendLog` above DOES render
+    // (`m.send_blocked_reason === 'discarded_in_inbox'` is false for null in JS)
+    // would have been invisible in their own denominator.
+    base().not('send_blocked_at', 'is', null)
+      .or('send_blocked_reason.is.null,send_blocked_reason.neq.discarded_in_inbox'),
   ])
   if (sent.error) throw sent.error
   if (blocked.error) throw blocked.error

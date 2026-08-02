@@ -1050,6 +1050,92 @@
 .wb.wb.wb .wb-pipe-warn{ margin-left:auto; color:var(--sev-attention);
   font-size:var(--fs-meta); font-weight:500 }
 
+/* -------- SENDS → LOG: the fourth working list (§7, phase0 surface #8) -------
+   It was the one dense list the treatment had not reached. Three defects, all
+   measured on the rendered page:
+   1. no anchor rail — .log-r is a flex whose first child is a chip that is 46px
+      for "DM" and 88px for "CONN·BLANK", so the prospect name started at a
+      different x on almost every row;
+   2. eight inline hex kind-colours (#0A84FF, #BF5AF2, #FFD60A, #8E8E93 …), two
+      of which ARE the severity tokens — §5.4 forbids severity as category
+      encoding outright, and §9.1 allows a categorical chip only the --cat-*
+      tokens, of which MONO has four, not eight;
+   3. `.log-r + .log-r` never matched: each row is wrapped in a
+      `display:contents` div (SendsScreen.tsx:129), so the two .log-r elements
+      are never DOM siblings and every row kept a four-sided card.
+   -------------------------------------------------------------------------- */
+
+/* 7.1 — the anchor is the kind chip (§7.1 licenses "a status chip (M12)" as the
+   one mark). It cannot be 28px, because 28px cannot hold a word: the token
+   governs the mark-PLATE variant, and a chip anchor is a chip wide. Fixed, so
+   the rail exists; one measure for every row, so the eye tracks it. */
+.wb{ --log-anchor-w:84px }
+.wb.wb.wb .log-r{
+  display:grid;
+  grid-template-columns:var(--log-anchor-w) minmax(0,1fr) var(--tail-w);
+  column-gap:var(--anchor-gap);
+  align-items:center;
+  margin:0; padding:9px var(--gut);
+  background:transparent; border-radius:0; border:none;
+  border-top:1px solid var(--hairline);
+}
+.wb.wb.wb .log-day + .log-r{ border-top:none }
+.wb.wb.wb .log-chip{
+  grid-column:1; margin:0;
+  min-width:0; width:100%; padding:2px 0;
+  display:inline-flex; align-items:center; justify-content:center;
+  border-radius:var(--r-chip);
+  font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.04em;
+  line-height:16px; white-space:nowrap;
+  /* 9.1 + 5.4 — the kind is a WORD, and the word is already in the chip. Colour
+     added nothing there and cost eight hues, two of them severity. Neutral
+     hairline-boxed, exactly like every other categorical chip in this build. */
+  background:var(--surface2)!important; color:var(--text2)!important;
+  box-shadow:inset 0 0 0 1px var(--hairline);
+}
+/* FAILED is the one thing on this surface that IS a severity, so it is the one
+   thing that keeps a colour — and it is rare (213 of 1,969 events). */
+.wb.wb.wb .log-r .log-chip[data-failed]{
+  background:rgba(255,69,58,.14)!important; color:var(--sev-urgent)!important;
+  box-shadow:inset 0 0 0 1px rgba(255,69,58,.5);
+}
+.wb.wb.wb .log-mid{ grid-column:2; min-width:0 }
+.wb.wb.wb .log-top{ display:flex; align-items:center; gap:8px; min-width:0 }
+.wb.wb.wb .log-nm{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.wb.wb.wb .log-top .client{
+  flex:none; padding:1px 6px; border-radius:var(--r-chip);
+  background:var(--surface2); color:var(--text2);
+  box-shadow:inset 0 0 0 1px var(--hairline);
+  font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.04em;
+  line-height:16px; text-transform:uppercase;
+}
+.wb.wb.wb .log-snip{
+  margin-top:1px; color:var(--text3);
+  font-size:var(--fs-meta); line-height:16px;
+}
+/* 7.7 — the trailing value, right-aligned and tabular, on one shared edge. */
+.wb.wb.wb .log-tm{
+  grid-column:3; margin:0; justify-self:end; text-align:right;
+  color:var(--text3); font-size:var(--fs-meta); line-height:16px;
+}
+/* 7.5 — the day divider takes the section-header face: flush left with the
+   anchor rail, ruled, eyebrow-cased. It was centred 700-weight, which is the
+   one thing on a 120-row list that should never be centred. */
+.wb.wb.wb .log-day{
+  display:flex; align-items:center; gap:10px;
+  height:var(--sech-h); margin:0; padding:0 var(--gut);
+  background:var(--surface1);
+  border-top:1px solid var(--hairline); border-bottom:1px solid var(--hairline);
+  color:var(--text3); text-align:left;
+  font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.04em;
+  text-transform:uppercase;
+}
+.wb.wb.wb .log-note{ margin:10px var(--gut) 0; color:var(--text3) }
+@media (max-width:767px){
+  .wb{ --log-anchor-w:74px }
+  .wb.wb.wb .log-r{ grid-template-columns:var(--log-anchor-w) minmax(0,1fr) auto }
+}
+
 /* The Sends log's denominator line — the one place the app admits it is a
    window. §8.5: the figures are count=exact probes, never rows.length. */
 .wb.wb.wb .log-denom{

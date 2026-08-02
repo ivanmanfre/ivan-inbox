@@ -125,8 +125,15 @@ function LogView({ client }: { client: Client }) {
           <div key={m.id} style={{ display: 'contents' }}>
             {showDay && <div className="log-day">{day}</div>}
             <div className="log-r">
+              {/* data-failed is a hook, not a colour. The kind palette here is
+                  eight inline hexes, two of which ARE the severity tokens; a
+                  treatment that wants to retone it needs one selector that can
+                  tell a severity apart from a category. The default app reads
+                  neither the attribute nor any rule keyed on it, so its own
+                  colours are untouched. */}
               <span
                 className="log-chip"
+                data-failed={m.kind === 'failed' ? '' : undefined}
                 style={m.kind === 'failed'
                   ? { background: 'rgba(255,69,58,.16)', color: '#FF453A' }
                   : { background: `${TYPE_COLOR[sendKind(m)] ?? '#10A37F'}22`, color: TYPE_COLOR[sendKind(m)] ?? '#10A37F' }}
