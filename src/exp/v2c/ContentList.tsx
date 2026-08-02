@@ -6,7 +6,7 @@ import {
 } from '../../hooks/useContent'
 import {
   CONTENT_LANES, LANE_LABEL, LANE_POSSESSIVE, PIPELINE_STAGES,
-  STAGE_LABEL, STUCK_GENERATING_MINUTES, countBoardVisible, countUndated,
+  STAGE_LABEL, STAGE_SHORT, STUCK_GENERATING_MINUTES, countBoardVisible, countUndated,
   elapsedMinutes, generatingSince, groupByStage, isStuckGenerating, isStuckScheduled,
   queueFailed, reviewActionable, stageOf,
   type ContentDraft, type ContentLane, type ContentStage, type ContentStages,
@@ -204,7 +204,7 @@ function PipelineBar({ stages, ideasShown, ideasTotal, matched, laneTotal, onJum
           draw the same chart (phase 6 ask 2) — the post bar keeps its own hero
           figure and probe-backed footer. */}
       <CapsuleChart
-        parts={parts.map(p => ({ key: p.stage, label: p.key, n: p.n }))}
+        parts={parts.map(p => ({ key: p.stage, label: p.key, short: STAGE_SHORT[p.stage], n: p.n }))}
         onJump={k => onJump(k as ContentStage)}
       />
 

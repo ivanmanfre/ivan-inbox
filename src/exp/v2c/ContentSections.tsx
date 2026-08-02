@@ -5,7 +5,7 @@ import {
 } from '../../lib/content'
 import {
   cleanStyleTitle, groupByLmStage, isStuckGeneratingLm, isStuckResource,
-  LM_PIPELINE_STAGES, LM_STAGE_LABEL, normalizeLmStatus, previewKeyFor, previewsByStyle,
+  LM_PIPELINE_STAGES, LM_STAGE_LABEL, LM_STAGE_SHORT, normalizeLmStatus, previewKeyFor, previewsByStyle,
   stageOfLm,
   type LmStage, type Resource, type StylePrompt,
 } from '../../lib/styles'
@@ -403,7 +403,7 @@ export function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loa
   // Every stage spends a slot, including the four that have never had a row —
   // a five-capsule chart would draw a five-stage pipeline that does not exist.
   const parts = LM_PIPELINE_STAGES.map(s => ({
-    key: s, label: LM_STAGE_LABEL[s], n: groupByLmStage(rows)[s].length,
+    key: s, label: LM_STAGE_LABEL[s], short: LM_STAGE_SHORT[s], n: groupByLmStage(rows)[s].length,
   }))
   const inFlight = parts
     .filter(p => p.key !== 'published' && p.key !== 'idea')

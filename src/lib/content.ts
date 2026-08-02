@@ -512,6 +512,22 @@ export const PIPELINE_STAGES = [
 // mid-flow: an error is not a step on the way to publishing.
 export const ALERT_STAGES = ['error', 'stuck'] as const
 
+// Chart-axis codes: the capsule chart's slots are ~40-57px wide, and full stage
+// names clipped to "PUBLIS" on every state (phase0-readability #1). Full names
+// stay on the section headers and the title tooltip; the axis wears the code.
+export const STAGE_SHORT: Record<ContentStage, string> = {
+  ideas: 'Ideas',
+  generating: 'Gen',
+  review: 'Review',
+  approved: 'Appr',
+  scheduled: 'Sched',
+  published: 'Pub',
+  error: 'Err',
+  stuck: 'Stuck',
+  archived: 'Arch',
+  other: 'Other',
+}
+
 export const STAGE_LABEL: Record<ContentStage, string> = {
   ideas: 'Ideas',
   generating: 'Generating',

@@ -128,7 +128,7 @@ export function SectionHead({ n, title, count, sev, open, onToggle, tail, sticky
 // than omitted: on the LM lane four of the nine stages have never had a row, and
 // dropping them would draw a five-stage pipeline that does not exist.
 export function CapsuleChart({ parts, onJump }: {
-  parts: { key: string; label: string; n: number }[]
+  parts: { key: string; label: string; short?: string; n: number }[]
   onJump?: (key: string) => void
 }) {
   const peak = Math.max(1, ...parts.map(p => p.n))
@@ -156,7 +156,7 @@ export function CapsuleChart({ parts, onJump }: {
         ))}
       </div>
       <div className="wb-caps-x">
-        {parts.map(p => <span className="wb-caps-xl" key={p.key}>{p.label}</span>)}
+        {parts.map(p => <span className="wb-caps-xl" key={p.key} title={p.label}>{p.short ?? p.label}</span>)}
       </div>
     </>
   )
