@@ -695,8 +695,8 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
   // no longer throws it away. Forgetting was never the safety property — not
   // crossing lanes was.
   const [sect, setSect] = useSectionState(`content.posts.${lane}`)
-  const setFilters = (f: FilterState) => setSect({ ...sect, filters: f })
-  const setQ = (q: string) => setSect({ ...sect, q })
+  const setFilters = (f: FilterState) => setSect(p => ({ ...p, filters: f }))
+  const setQ = (q: string) => setSect(p => ({ ...p, q }))
   const switchLane = (l: ContentLane) => setLane(l)
 
   const err = error ?? (hasMock('fetch-error') ? 'PostgREST returned 500 for carousel_drafts' : null)

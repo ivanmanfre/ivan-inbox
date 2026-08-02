@@ -1072,7 +1072,17 @@
 /* --- 390: the row scrolls, and the panels become bottom sheets ------------- */
 @media (max-width:767px){
   .wb.wb.wb .ct-filters{ padding:8px var(--gut) 8px }
-  .wb.wb.wb .ct-fr{ flex-direction:column; align-items:stretch; gap:8px; position:relative }
+  /* 🔴 flex-wrap:nowrap is load-bearing and the measurement is why: the base
+     rule wraps, and a WRAPPING column flex container sizes its single line to
+     the widest item's max-content instead of to the container — measured
+     .ct-fpills at 628px inside a 358px row, so the scroller had nothing to
+     scroll against and the pills were simply clipped by the .rows scroller.
+     That is the old wall's failure mode (a clipped row the document-overflow
+     instrument cannot see) reproduced in the fix for it. */
+  .wb.wb.wb .ct-fr{
+    flex-direction:column; flex-wrap:nowrap; align-items:stretch;
+    gap:8px; position:relative;
+  }
   .wb.wb.wb .ct-fsearch{ height:36px; flex:none }
   /* A horizontal scroller WITH an announced edge. The previous scroller on this
      surface was a defect because nothing said it scrolled (2,219px of content
