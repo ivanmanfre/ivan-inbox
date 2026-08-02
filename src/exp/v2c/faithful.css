@@ -1813,8 +1813,11 @@
   -webkit-line-clamp:2; overflow:hidden;
 }
 /* The owner caption was ACCENT text (§5.2 forbids accent as a text colour) and
-   sat at the same visual weight as the quote. Metadata token, metadata place. */
-.wb.wb.wb .td-qown{ color:var(--text4); font-weight:500 }
+   sat at the same visual weight as the quote. First fix used --text4 and the
+   census caught it at 4.15/3.87:1 — these captions run full sentences at 13px,
+   which is body under the 4.5 bar. --text3 clears it (§3.5 allows text3 as
+   label/caption off surface3). */
+.wb.wb.wb .td-qown{ color:var(--text3); font-weight:500 }
 
 /* ---- phase 3: mobile touch targets (phase0-mobile #2/#5/#6/#10) ---- */
 /* The takeover's ONLY exit was a 6×20px glyph. Real button, 44px hit box. */
