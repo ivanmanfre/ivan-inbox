@@ -877,13 +877,30 @@
 /* 11.2 — working lists: one compact inline pill in the search field's row,
    same anatomy at 26px. Not a second row of chips, not a filter bar. */
 .wb.wb.wb .ct-filters{ margin:0; padding:8px var(--gut) 10px }
-.wb.wb.wb .ct-fbar{ display:flex; align-items:center; flex-wrap:wrap; gap:6px }
+/* The base sheet makes this bar a horizontal SCROLLER (overflow-x:auto).
+   Measured at 390: scrollWidth 2219 against a 358px box, with no scrollbar, no
+   fade and no affordance of any kind — 84% of the filter vocabulary was sitting
+   off-screen behind a gesture nothing announced. It reads as a clipped row, and
+   the overflow instrument cannot fault it because the DOCUMENT never scrolls.
+   The bar wraps instead. */
+.wb.wb.wb .ct-fbar{
+  display:flex; align-items:flex-start; flex-wrap:wrap; gap:6px;
+  overflow-x:visible;
+}
 /* flex-wrap is NOT inherited from .ct-fbar: the bar wraps the GROUPS, but each
    group was an inline-flex at the default nowrap, so a facet with eight values
    (Structure, Image style, Hook, Source) ran straight off the pane edge and was
    clipped — visible in the capture, invisible to the overflow instrument
    because a clipped child does not grow document scrollWidth. */
-.wb.wb.wb .ct-fg{ display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap }
+/* …and `flex-wrap:wrap` on the group alone does nothing, which is why the first
+   pass did not fix 390: a flex ITEM sizes to max-content, so .ct-fg measured
+   548px inside a 358px bar and simply overflowed rather than wrapping its own
+   pills. It has to be CONSTRAINED before it can wrap. */
+.wb.wb.wb .ct-fg{
+  display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+  max-width:100%; min-width:0;
+}
+.wb.wb.wb .ct-fgl{ flex:none }
 .wb.wb.wb .ct-fgl{
   font-size:var(--fs-meta); font-weight:400; color:var(--text3);
   letter-spacing:0; text-transform:none;

@@ -208,7 +208,11 @@ const MEASURE = function () {
     clipped: all.filter((el) => {
       if (el.scrollWidth <= el.clientWidth + 1) return false
       const s = getComputedStyle(el)
-      if (s.overflowX !== 'hidden') return false
+      // hidden AND auto both hide content: an unmarked overflow-x:auto strip
+      // is worse than a clip, because the content is gone AND the affordance
+      // is a gesture nobody was told about. Measured 2219px of filter bar
+      // behind a 358px box at 390 with no scrollbar drawn.
+      if (s.overflowX !== 'hidden' && s.overflowX !== 'auto' && s.overflowX !== 'scroll') return false
       if (s.textOverflow === 'ellipsis' || s.whiteSpace === 'nowrap') return false
       // a trailing mask IS the affordance: the clip is announced, not hidden
       if ((s.maskImage ?? 'none') !== 'none' || (s.webkitMaskImage ?? 'none') !== 'none') return false
