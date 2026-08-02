@@ -1749,3 +1749,35 @@
 .wb.wb.wb .cmic-live{ font-size:11px; font-variant-numeric:tabular-nums; color:var(--text) }
 @keyframes wb-mic-live{ 0%,100%{opacity:1} 50%{opacity:.3} }
 @media (prefers-reduced-motion: reduce){ .wb.wb.wb .cmic-recording::before{ animation:none } }
+
+/* ---- phase 3: the hover contract, executed (phase0-errors-hover.md) ----
+   Every interactive control gets the §7.4 bg-shift at --dur-hover; press is a
+   brightness dip, never a scale; the global :focus-visible ring (declared
+   above) now REACHES these because they are real <button>s. */
+.wb.wb.wb .chip{ cursor:pointer }
+.wb.wb.wb .chip:hover:not(.on){ background:var(--surface3); color:var(--text) }
+.wb.wb.wb .csend:hover{ background:var(--surface3); color:var(--text) }
+.wb.wb.wb .wb-ask:hover{ filter:brightness(1.12) }
+.wb.wb.wb .ct-ac .btn:hover{ filter:brightness(1.18) }
+.wb.wb.wb .wb-sech.tap:hover .wb-sech-t{ color:var(--text) }
+.wb.wb.wb .wb-sech.tap:hover .wb-sech-chev{ color:var(--text2) }
+.wb.wb.wb .ct-alert:hover{ background:rgba(255,69,58,.16) }
+.wb.wb.wb .wb-ofresh:hover{ color:var(--text2) }
+.wb.wb.wb .seg .sg{ cursor:pointer }
+.wb.wb.wb .seg .sg:hover:not(.on){ background:var(--surface2); color:var(--text) }
+.wb.wb.wb .sw:hover:not(:disabled){ filter:brightness(1.15) }
+/* press: one vocabulary, no scale anywhere in .wb */
+.wb.wb.wb .chip:active, .wb.wb.wb .csend:active, .wb.wb.wb .ct-ac .btn:active,
+.wb.wb.wb .seg .sg:active, .wb.wb.wb .wb-ofresh:active, .wb.wb.wb .ct-alert:active{
+  filter:brightness(.9)
+}
+.wb.wb.wb .wb-starter:active, .wb.wb.wb .wb-about-card.tap:active{ transform:none }
+/* the transition allowlist grows to cover the controls that now HAVE a hover */
+.wb.wb.wb .csend, .wb.wb.wb .sg, .wb.wb.wb .wb-sech-t, .wb.wb.wb .wb-sech-chev,
+.wb.wb.wb .wb-ofresh, .wb.wb.wb .ct-alert, .wb.wb.wb .cmic{
+  transition:background-color var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease);
+}
+/* the Settings switch slides again — the blanket kill had silently frozen it.
+   180ms sits in the §10.2 state band; one easing. */
+.wb.wb.wb .sw{ transition:background-color var(--dur-state) var(--ease) }
+.wb.wb.wb .sw-knob{ transition:transform var(--dur-state) var(--ease) }

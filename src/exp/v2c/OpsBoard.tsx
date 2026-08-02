@@ -68,13 +68,13 @@ export function StateBand({ drafts, loadedAt, onRefresh }: {
         { key: 'done', n: done, color: 'rgba(235,235,245,.4)' },
         { key: 'blocked', n: blocked, color: '#FF9F0A' },
       ]} />
-      <div className={`wb-ofresh ${sev}`} onClick={onRefresh}>
+      <button type="button" className={`wb-ofresh ${sev}`} onClick={onRefresh}>
         <span className="wb-ofresh-d" />
         <span className="wb-ofresh-t">
           {loadedAt ? `Checked ${relAge(loadedAt)} · ${FRESHNESS_COPY[fresh]}` : FRESHNESS_COPY[fresh]}
         </span>
         <span className="wb-ofresh-r">↻</span>
-      </div>
+      </button>
     </div>
   )
 }

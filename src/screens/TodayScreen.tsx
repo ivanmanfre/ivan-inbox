@@ -590,13 +590,14 @@ export function TodayScreen({ onOpenDrafts, onOpenOps }: {
         </div>
         <div className="chips">
           {CHIPS.map(c => (
-            <span
+            <button
+              type="button"
               key={c.key}
               className={`chip ${scope === c.key ? 'on' : ''}`}
               onClick={() => setScope(c.key)}
             >
               {c.label}
-            </span>
+            </button>
           ))}
         </div>
       </div>

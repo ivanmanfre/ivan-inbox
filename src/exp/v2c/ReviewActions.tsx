@@ -50,10 +50,10 @@ export function ReviewActions({ id, onDone, compact }: {
       {/* A tap on a queue card opens the detail screen; the buttons must not
           also fire that. */}
       <div className={`ct-ac${compact ? '' : ' ct-ac-wide'}`} onClick={e => e.stopPropagation()}>
-        <div className="btn s" onClick={busy ? undefined : () => run('skip')}>Skip</div>
-        <div className="btn p" onClick={busy ? undefined : () => run('approve')}>
+        <button type="button" className="btn s" disabled={busy} onClick={() => run('skip')}>Skip</button>
+        <button type="button" className="btn p" disabled={busy} onClick={() => run('approve')}>
           {busy ? 'Working…' : 'Approve'}
-        </div>
+        </button>
       </div>
     </>
   )

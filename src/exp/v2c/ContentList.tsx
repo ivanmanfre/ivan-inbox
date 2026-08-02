@@ -282,7 +282,7 @@ function AlertStrip({ drafts, lane, refresh, onOpen, openId, extra }: {
           closed. The header is what you want to land on anyway — it carries the
           count and the breakdown. */}
       <div id="wb-s-error" />
-      <div className="ct-alert" onClick={() => setOpen(!isOpen)}>
+      <button type="button" className="ct-alert" onClick={() => setOpen(!isOpen)}>
         <span className="ct-alert-n">{n}</span>
         <span className="ct-alert-t">
           {[
@@ -292,7 +292,7 @@ function AlertStrip({ drafts, lane, refresh, onOpen, openId, extra }: {
           ].filter(Boolean).join(' · ')}
         </span>
         <span className="chev">{isOpen ? '⌄' : '›'}</span>
-      </div>
+      </button>
       {isOpen && (
         <>
           {/* the line is wrapped so it can ellipsize: a list of what is wrong,
@@ -717,9 +717,9 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
         </div>
         <div className="chips">
           {CONTENT_LANES.map(k => (
-            <span key={k} className={`chip ${lane === k ? 'on' : ''}`} onClick={() => switchLane(k)}>
+            <button type="button" key={k} className={`chip ${lane === k ? 'on' : ''}`} onClick={() => switchLane(k)}>
               {LANE_LABEL[k]}
-            </span>
+            </button>
           ))}
           {lane === 'risedtc' && drafts.length > 0 && (
             <span className="wb-lanenote">{onBoard} of {drafts.length} on {LANE_POSSESSIVE.risedtc} board</span>

@@ -312,21 +312,22 @@ export function SendsScreen({ client, setClient }: {
         <div className="sc-sub">Pipeline health</div>
         <div className="chips">
           {CHIPS.map(c => (
-            <span
+            <button
+              type="button"
               key={c.key}
               className={`chip ${client === c.key ? 'on' : ''}`}
               onClick={() => setClient(c.key)}
             >
               {c.label}
-            </span>
+            </button>
           ))}
         </div>
       </div>
 
       <div className="seg" style={{ margin: '10px 16px 0' }}>
-        <div className={`sg ${view === 'overview' ? 'on' : ''}`} onClick={() => setView('overview')}>Overview</div>
-        <div className={`sg ${view === 'lanes' ? 'on' : ''}`} onClick={() => setView('lanes')}>Lanes</div>
-        <div className={`sg ${view === 'log' ? 'on' : ''}`} onClick={() => setView('log')}>Log</div>
+        <button type="button" className={`sg ${view === 'overview' ? 'on' : ''}`} onClick={() => setView('overview')}>Overview</button>
+        <button type="button" className={`sg ${view === 'lanes' ? 'on' : ''}`} onClick={() => setView('lanes')}>Lanes</button>
+        <button type="button" className={`sg ${view === 'log' ? 'on' : ''}`} onClick={() => setView('log')}>Log</button>
       </div>
 
       {view === 'overview' && (

@@ -93,8 +93,15 @@ export function SectionHead({ n, title, count, sev, open, onToggle, tail, sticky
   tail?: ReactNode
   sticky?: boolean
 }) {
+  // Interactive headers are real <button>s (keyboard reach + the global focus
+  // ring); a header with nothing to toggle stays a plain div.
+  const Tag: 'button' | 'div' = onToggle ? 'button' : 'div'
   return (
-    <div className={`wb-sech${onToggle ? ' tap' : ''}${sticky ? ' wb-sech-sticky' : ''}`} onClick={onToggle}>
+    <Tag
+      {...(onToggle ? { type: 'button' as const } : {})}
+      className={`wb-sech${onToggle ? ' tap' : ''}${sticky ? ' wb-sech-sticky' : ''}`}
+      onClick={onToggle}
+    >
       {n && <span className="wb-sech-n">{n}</span>}
       <span className="wb-sech-t">{title}</span>
       <span className="wb-sech-rule" />
@@ -102,7 +109,7 @@ export function SectionHead({ n, title, count, sev, open, onToggle, tail, sticky
       {count !== undefined && <span className="wb-sech-c">{count}</span>}
       {sev !== undefined && sev !== null && <span className={`wb-sech-dot ${sev}`} />}
       {onToggle && <span className="wb-sech-chev">{open ? '⌄' : '›'}</span>}
-    </div>
+    </Tag>
   )
 }
 
