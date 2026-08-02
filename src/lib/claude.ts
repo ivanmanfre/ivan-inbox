@@ -242,7 +242,27 @@ export function emit(frame: string, onEvent: (e: ClaudeEvent) => void): void {
   // The container streams Claude Code's own stream-json shapes. Map the ones we
   // render and ignore the rest rather than guessing at unknown types.
   const type = typeof obj.type === 'string' ? obj.type : ''
-  if (type === 'assistant' || type === 'text' || typeof obj.text === 'string') {
+  // A REAL `assistant` frame nests its payload: {type:'assistant', message:
+  // {content:[{type:'text',text},{type:'tool_use',name,input}]}}. The old
+  // top-level read was written in Feb against a dead endpoint and could never
+  // have seen a live frame — it silently dropped every reply.
+  if (type === 'assistant') {
+    const msg = obj.message as { content?: unknown } | undefined
+    const content = Array.isArray(msg?.content) ? msg.content : []
+    for (const item of content as Array<Record<string, unknown>>) {
+      if (item?.type === 'text' && typeof item.text === 'string' && item.text) {
+        onEvent({ kind: 'text', delta: item.text })
+      } else if (item?.type === 'tool_use') {
+        onEvent({
+          kind: 'tool',
+          name: String(item.name ?? 'tool'),
+          detail: item.input ? JSON.stringify(item.input).slice(0, 200) : undefined,
+        })
+      }
+    }
+    return
+  }
+  if (type === 'text' || typeof obj.text === 'string') {
     const delta = typeof obj.text === 'string' ? obj.text
       : typeof obj.delta === 'string' ? obj.delta : ''
     if (delta) onEvent({ kind: 'text', delta })

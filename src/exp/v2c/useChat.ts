@@ -72,7 +72,15 @@ export function useChat() {
   // that existed when the callback was built.
   const turnsRef = useRef<Turn[]>(turns)
   turnsRef.current = turns
-  useEffect(() => () => { alive.current = false; abortRef.current?.abort() }, [])
+  // ⚠ StrictMode-proof shape: dev double-invoke runs mount→cleanup→mount, and a
+  // cleanup-only effect leaves `alive` permanently false after the rehearsal
+  // unmount — which silently broke EVERY dev-mode turn (the loop bailed after
+  // one event and the finalizer never cleared "Working"). Prod was never
+  // affected. Setting it true in the body makes the flag survive the rehearsal.
+  useEffect(() => {
+    alive.current = true
+    return () => { alive.current = false; abortRef.current?.abort() }
+  }, [])
 
   const send = useCallback(async (prompt: string, about?: string) => {
     const text = prompt.trim()
@@ -184,11 +192,26 @@ export function useChat() {
     void send(last.prompt, last.about)
   }, [send])
 
+  // The clean reset /clear needs: abort anything in flight, empty the
+  // transcript, forget the server session and the streamed remnants. The model
+  // CHOICE survives on purpose — picking Opus and then clearing the thread
+  // should not silently put the pane back on the default.
+  const reset = useCallback(() => {
+    abortRef.current?.abort()
+    lastSent.current = null
+    setTurns([])
+    setStreamText('')
+    setStreamTools([])
+    setSessionId(null)
+    setModel(null)
+    setStatus('idle')
+  }, [])
+
   const busy = status !== 'idle'
 
   return {
     turns, status, busy, streamText, streamTools, sessionId, model, slow,
     wanted, setWanted,
-    send, abort, retry,
+    send, abort, retry, reset,
   }
 }

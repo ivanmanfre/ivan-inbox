@@ -39,17 +39,16 @@ function modelLabel(id: string | null): string {
 // So the palette is entirely CLIENT-SIDE and every command short-circuits BEFORE
 // send() — nothing here adds a network call, a dependency, or a server contract.
 //
-// 🔴 THREE COMMANDS, and only three. The scout verified each of these is a pure
-// wrapper around a capability the pane already has and already exposes as a
-// click:
+// The commands are wrappers around capabilities useChat exposes:
 //   /model <id>  → chat.setWanted, the same setter the model menu calls
 //   /retry       → chat.retry, already wired to the last turn's retry control
 //   /stop        → chat.abort, already wired to the stop button while busy
-// `/clear` is deliberately ABSENT: useChat has no reset path — `turns` only
-// grows, and retry pops a tail rather than emptying it — so it would need new
-// state logic rather than a keyboard alias for an existing click. That is
-// outside the "pure wrapper" grant. `/about <off-screen id>` is absent for the
-// same reason (no path exists to reference a peer that is not open).
+//   /clear       → chat.reset — useChat gained a clean reset for this run
+//                  (empties the transcript, forgets the server session, keeps
+//                  the chosen model). Added under the revamp's explicit grant;
+//                  the parity pass had omitted it because no reset existed.
+// `/about <off-screen id>` stays absent (no path exists to reference a peer
+// that is not open).
 type Command = {
   name: string
   // What it does when it CAN run, and what is true instead when it cannot. The
@@ -79,6 +78,12 @@ const COMMANDS: Command[] = [
     ready: busy => busy,
     run: chat => chat.abort(),
   },
+  {
+    name: '/clear',
+    hint: (_b, hasTurns) => (hasTurns ? 'Start a fresh thread (keeps your model choice)' : 'nothing to clear yet'),
+    ready: (_b, hasTurns) => hasTurns,
+    run: chat => chat.reset(),
+  },
 ]
 
 /**
@@ -101,9 +106,18 @@ const COMMANDS: Command[] = [
 export function matchCommands(text: string): Command[] {
   if (text[0] !== '/') return []
   const q = text.slice(1).toLowerCase().trim()
-  // Substring, not prefix: "/model haiku" should find `/model claude-haiku-4-5`
-  // without Ivan typing the vendor prefix.
-  return COMMANDS.filter(c => q === '' || c.name.slice(1).toLowerCase().includes(q))
+  if (q === '') return COMMANDS
+  // Token-wise, not whole-string: "/model haiku" must find
+  // `/model claude-haiku-4-5` even though the contiguous substring
+  // "model haiku" appears in no command name. The live-transport probe caught
+  // the old whole-string match returning ZERO commands for exactly that input —
+  // which closed the palette and let Enter send the literal "/model haiku" to
+  // the model, the fall-through this palette exists to end.
+  const tokens = q.split(/\s+/)
+  return COMMANDS.filter(c => {
+    const name = c.name.slice(1).toLowerCase()
+    return tokens.every(t => name.includes(t))
+  })
 }
 
 // ---------------------------------------------------------------------------
