@@ -711,14 +711,19 @@
 .wb.wb.wb .ct-chip, .wb.wb.wb .ct-lane, .wb.wb.wb .td-kind, .wb.wb.wb .r .client{
   padding:1px 6px; white-space:nowrap;
 }
-/* Two-line clamp instead of a single-line clip: with both Content peers open
+/* Crushed titles wrap; comfortable titles clip. With both Content peers open
    the mid column crushes to ~125px and a nowrap title kept ~20 characters — the
-   very row you opened the peer to inspect (phase0-readability #2). Wrapped, a
-   crushed title still reads ~40 chars; at full width most titles stay one line
-   and the density band holds (a wrapped row measures ~56px, inside 40-60). */
-.wb.wb.wb .ct-title{
-  white-space:normal; overflow:hidden;
-  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
+   very row you opened the peer to inspect (phase0-readability #2). The wrap is
+   licensed ONLY when the column is actually crushed (container query), because
+   an unconditional 2-line clamp pushed long-title rows to 67px at 1440 and
+   broke the §7.8 40-60 band — the census caught it. */
+.wb.wb.wb .ct-mid{ container-type:inline-size; container-name:ctmid }
+.wb.wb.wb .ct-title{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+@container ctmid (max-width: 340px){
+  .wb.wb.wb .ct-title{
+    white-space:normal; text-overflow:clip;
+    display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
+  }
 }
 .wb.wb.wb .ct-tm{ color:var(--text3); font-weight:400 }
 
