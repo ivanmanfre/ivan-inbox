@@ -1,0 +1,312 @@
+[
+  {
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/final/wt-faithful/faithful-content-1440-top.png",
+    "bytes": 338618,
+    "innerTextLen": 37433,
+    "skeletons": 0,
+    "settled": true,
+    "consoleSrc": 0,
+    "consoleAllowedCors": 0,
+    "consoleOther": 0,
+    "consoleDetail": {
+      "srcCount": 0,
+      "allowedCorsPairCount": 0,
+      "otherCount": 0,
+      "src": [],
+      "allowedCorsPair": [],
+      "other": []
+    },
+    "scrollInfo": null,
+    "route": "content",
+    "viewport": "1440x900",
+    "band": "top-ivan-lane"
+  },
+  {
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/final/wt-faithful/faithful-content-1440-mid-lane.png",
+    "bytes": 509268,
+    "innerTextLen": 37433,
+    "skeletons": 0,
+    "settled": true,
+    "consoleSrc": 0,
+    "consoleAllowedCors": 0,
+    "consoleOther": 0,
+    "consoleDetail": {
+      "srcCount": 0,
+      "allowedCorsPairCount": 0,
+      "otherCount": 0,
+      "src": [],
+      "allowedCorsPair": [],
+      "other": []
+    },
+    "scrollInfo": {
+      "scrolled": true,
+      "cls": "rows ct-rows",
+      "scrollHeight": 14629,
+      "clientHeight": 759,
+      "scrollTop": 4855
+    },
+    "route": "content",
+    "viewport": "1440x900",
+    "band": "mid-ivan-lane"
+  },
+  {
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/final/wt-faithful/faithful-content-1440-deep-lane.png",
+    "bytes": 458580,
+    "innerTextLen": 37434,
+    "skeletons": 0,
+    "settled": true,
+    "consoleSrc": 0,
+    "consoleAllowedCors": 0,
+    "consoleOther": 0,
+    "consoleDetail": {
+      "srcCount": 0,
+      "allowedCorsPairCount": 0,
+      "otherCount": 0,
+      "src": [],
+      "allowedCorsPair": [],
+      "other": []
+    },
+    "scrollInfo": {
+      "scrolled": true,
+      "cls": "rows ct-rows",
+      "scrollHeight": 14629,
+      "clientHeight": 759,
+      "scrollTop": 9709
+    },
+    "route": "content",
+    "viewport": "1440x900",
+    "band": "deep-ivan-lane"
+  },
+  {
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/final/wt-faithful/faithful-content-1440-mattan-top.png",
+    "bytes": 432937,
+    "innerTextLen": 10787,
+    "skeletons": 0,
+    "settled": true,
+    "consoleSrc": 0,
+    "consoleAllowedCors": 0,
+    "consoleOther": 0,
+    "consoleDetail": {
+      "srcCount": 0,
+      "allowedCorsPairCount": 0,
+      "otherCount": 0,
+      "src": [],
+      "allowedCorsPair": [],
+      "other": []
+    },
+    "scrollInfo": null,
+    "route": "content",
+    "viewport": "1440x900",
+    "band": "top-mattan-lane"
+  },
+  {
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/final/wt-faithful/faithful-content-390-top.png",
+    "bytes": 151853,
+    "innerTextLen": 37055,
+    "skeletons": 0,
+    "settled": true,
+    "consoleSrc": 0,
+    "consoleAllowedCors": 0,
+    "consoleOther": 0,
+    "consoleDetail": {
+      "srcCount": 0,
+      "allowedCorsPairCount": 0,
+      "otherCount": 0,
+      "src": [],
+      "allowedCorsPair": [],
+      "other": []
+    },
+    "scrollInfo": null,
+    "route": "content",
+    "viewport": "390x844",
+    "band": "top-ivan-lane"
+  },
+  {
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/final/wt-faithful/faithful-content-390-mid-lane.png",
+    "bytes": 237325,
+    "innerTextLen": 37055,
+    "skeletons": 0,
+    "settled": true,
+    "consoleSrc": 0,
+    "consoleAllowedCors": 0,
+    "consoleOther": 0,
+    "consoleDetail": {
+      "srcCount": 0,
+      "allowedCorsPairCount": 0,
+      "otherCount": 0,
+      "src": [],
+      "allowedCorsPair": [],
+      "other": []
+    },
+    "scrollInfo": {
+      "scrolled": true,
+      "cls": "rows ct-rows",
+      "scrollHeight": 15505,
+      "clientHeight": 607,
+      "scrollTop": 5214
+    },
+    "route": "content",
+    "viewport": "390x844",
+    "band": "mid-ivan-lane"
+  },
+  {
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/final/wt-faithful/faithful-content-390-deep-lane.png",
+    "bytes": 222231,
+    "innerTextLen": 37055,
+    "skeletons": 0,
+    "settled": true,
+    "consoleSrc": 0,
+    "consoleAllowedCors": 0,
+    "consoleOther": 0,
+    "consoleDetail": {
+      "srcCount": 0,
+      "allowedCorsPairCount": 0,
+      "otherCount": 0,
+      "src": [],
+      "allowedCorsPair": [],
+      "other": []
+    },
+    "scrollInfo": {
+      "scrolled": true,
+      "cls": "rows ct-rows",
+      "scrollHeight": 15505,
+      "clientHeight": 607,
+      "scrollTop": 10429
+    },
+    "route": "content",
+    "viewport": "390x844",
+    "band": "deep-ivan-lane"
+  },
+  {
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/final/wt-faithful/faithful-today-1440-top.png",
+    "bytes": 349484,
+    "innerTextLen": 3055,
+    "skeletons": 0,
+    "settled": true,
+    "consoleSrc": 0,
+    "consoleAllowedCors": 0,
+    "consoleOther": 0,
+    "consoleDetail": {
+      "srcCount": 0,
+      "allowedCorsPairCount": 0,
+      "otherCount": 0,
+      "src": [],
+      "allowedCorsPair": [],
+      "other": []
+    },
+    "scrollInfo": null,
+    "route": "today",
+    "viewport": "1440x900",
+    "band": "top"
+  },
+  {
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/final/wt-faithful/faithful-today-390-top.png",
+    "bytes": 165805,
+    "innerTextLen": 2691,
+    "skeletons": 0,
+    "settled": true,
+    "consoleSrc": 0,
+    "consoleAllowedCors": 0,
+    "consoleOther": 0,
+    "consoleDetail": {
+      "srcCount": 0,
+      "allowedCorsPairCount": 0,
+      "otherCount": 0,
+      "src": [],
+      "allowedCorsPair": [],
+      "other": []
+    },
+    "scrollInfo": null,
+    "route": "today",
+    "viewport": "390x844",
+    "band": "top"
+  },
+  {
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/final/wt-faithful/faithful-sends-1440-top-mono.png",
+    "bytes": 309606,
+    "innerTextLen": 1953,
+    "skeletons": 0,
+    "settled": true,
+    "consoleSrc": 0,
+    "consoleAllowedCors": 0,
+    "consoleOther": 0,
+    "consoleDetail": {
+      "srcCount": 0,
+      "allowedCorsPairCount": 0,
+      "otherCount": 0,
+      "src": [],
+      "allowedCorsPair": [],
+      "other": []
+    },
+    "scrollInfo": null,
+    "route": "sends",
+    "viewport": "1440x900",
+    "band": "top-mono"
+  },
+  {
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/final/wt-faithful/faithful-sends-1440-top-triad.png",
+    "bytes": 309773,
+    "innerTextLen": 1953,
+    "skeletons": 0,
+    "settled": true,
+    "consoleSrc": 0,
+    "consoleAllowedCors": 0,
+    "consoleOther": 0,
+    "consoleDetail": {
+      "srcCount": 0,
+      "allowedCorsPairCount": 0,
+      "otherCount": 0,
+      "src": [],
+      "allowedCorsPair": [],
+      "other": []
+    },
+    "scrollInfo": null,
+    "route": "sends",
+    "viewport": "1440x900",
+    "band": "top-triad"
+  },
+  {
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/final/wt-faithful/faithful-inbox-1440-top.png",
+    "bytes": 433019,
+    "innerTextLen": 8657,
+    "skeletons": 0,
+    "settled": true,
+    "consoleSrc": 0,
+    "consoleAllowedCors": 0,
+    "consoleOther": 0,
+    "consoleDetail": {
+      "srcCount": 0,
+      "allowedCorsPairCount": 0,
+      "otherCount": 0,
+      "src": [],
+      "allowedCorsPair": [],
+      "other": []
+    },
+    "scrollInfo": null,
+    "route": "inbox",
+    "viewport": "1440x900",
+    "band": "top"
+  },
+  {
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/final/wt-faithful/faithful-ops-1440-top.png",
+    "bytes": 278345,
+    "innerTextLen": 707,
+    "skeletons": 0,
+    "settled": true,
+    "consoleSrc": 0,
+    "consoleAllowedCors": 0,
+    "consoleOther": 0,
+    "consoleDetail": {
+      "srcCount": 0,
+      "allowedCorsPairCount": 0,
+      "otherCount": 0,
+      "src": [],
+      "allowedCorsPair": [],
+      "other": []
+    },
+    "scrollInfo": null,
+    "route": "ops",
+    "viewport": "1440x900",
+    "band": "top"
+  }
+]

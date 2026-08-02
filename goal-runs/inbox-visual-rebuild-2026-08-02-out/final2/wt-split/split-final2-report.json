@@ -1,0 +1,202 @@
+[
+  {
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/final2/wt-split/split-content-1440-top.png",
+    "bytes": 434138,
+    "innerTextLen": 27051,
+    "skeletons": 0,
+    "settled": true,
+    "consoleSrc": 0,
+    "consoleAllowedCors": 0,
+    "consoleOther": 0,
+    "consoleDetail": {
+      "srcCount": 0,
+      "allowedCorsPairCount": 0,
+      "otherCount": 0,
+      "src": [],
+      "allowedCorsPair": [],
+      "other": []
+    },
+    "scrollInfo": null,
+    "route": "content",
+    "viewport": "1440x900",
+    "band": "top-ivan-lane"
+  },
+  {
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/final2/wt-split/split-content-1440-mid-lane.png",
+    "bytes": 540147,
+    "innerTextLen": 27051,
+    "skeletons": 0,
+    "settled": true,
+    "consoleSrc": 0,
+    "consoleAllowedCors": 0,
+    "consoleOther": 0,
+    "consoleDetail": {
+      "srcCount": 0,
+      "allowedCorsPairCount": 0,
+      "otherCount": 0,
+      "src": [],
+      "allowedCorsPair": [],
+      "other": []
+    },
+    "scrollInfo": {
+      "scrolled": true,
+      "cls": "rows ct-rows",
+      "scrollHeight": 12069,
+      "clientHeight": 767,
+      "scrollTop": 3956
+    },
+    "route": "content",
+    "viewport": "1440x900",
+    "band": "mid-ivan-lane"
+  },
+  {
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/final2/wt-split/split-content-1440-deep-lane.png",
+    "bytes": 529791,
+    "innerTextLen": 27051,
+    "skeletons": 0,
+    "settled": true,
+    "consoleSrc": 0,
+    "consoleAllowedCors": 0,
+    "consoleOther": 0,
+    "consoleDetail": {
+      "srcCount": 0,
+      "allowedCorsPairCount": 0,
+      "otherCount": 0,
+      "src": [],
+      "allowedCorsPair": [],
+      "other": []
+    },
+    "scrollInfo": {
+      "scrolled": true,
+      "cls": "rows ct-rows",
+      "scrollHeight": 12069,
+      "clientHeight": 767,
+      "scrollTop": 7911
+    },
+    "route": "content",
+    "viewport": "1440x900",
+    "band": "deep-ivan-lane"
+  },
+  {
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/final2/wt-split/split-content-1440-mattan-top.png",
+    "bytes": 453554,
+    "innerTextLen": 9269,
+    "skeletons": 0,
+    "settled": true,
+    "consoleSrc": 0,
+    "consoleAllowedCors": 0,
+    "consoleOther": 0,
+    "consoleDetail": {
+      "srcCount": 0,
+      "allowedCorsPairCount": 0,
+      "otherCount": 0,
+      "src": [],
+      "allowedCorsPair": [],
+      "other": []
+    },
+    "scrollInfo": null,
+    "route": "content",
+    "viewport": "1440x900",
+    "band": "top-mattan-lane"
+  },
+  {
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/final2/wt-split/split-content-390-top.png",
+    "bytes": 186808,
+    "innerTextLen": 25339,
+    "skeletons": 0,
+    "settled": true,
+    "consoleSrc": 0,
+    "consoleAllowedCors": 0,
+    "consoleOther": 0,
+    "consoleDetail": {
+      "srcCount": 0,
+      "allowedCorsPairCount": 0,
+      "otherCount": 0,
+      "src": [],
+      "allowedCorsPair": [],
+      "other": []
+    },
+    "scrollInfo": null,
+    "route": "content",
+    "viewport": "390x844",
+    "band": "top-ivan-lane"
+  },
+  {
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/final2/wt-split/split-content-390-mid-lane.png",
+    "bytes": 242450,
+    "innerTextLen": 25339,
+    "skeletons": 0,
+    "settled": true,
+    "consoleSrc": 0,
+    "consoleAllowedCors": 0,
+    "consoleOther": 0,
+    "consoleDetail": {
+      "srcCount": 0,
+      "allowedCorsPairCount": 0,
+      "otherCount": 0,
+      "src": [],
+      "allowedCorsPair": [],
+      "other": []
+    },
+    "scrollInfo": {
+      "scrolled": true,
+      "cls": "rows ct-rows",
+      "scrollHeight": 12981,
+      "clientHeight": 593,
+      "scrollTop": 4336
+    },
+    "route": "content",
+    "viewport": "390x844",
+    "band": "mid-ivan-lane"
+  },
+  {
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/final2/wt-split/split-content-390-deep-lane.png",
+    "bytes": 225203,
+    "innerTextLen": 25339,
+    "skeletons": 0,
+    "settled": true,
+    "consoleSrc": 0,
+    "consoleAllowedCors": 0,
+    "consoleOther": 0,
+    "consoleDetail": {
+      "srcCount": 0,
+      "allowedCorsPairCount": 0,
+      "otherCount": 0,
+      "src": [],
+      "allowedCorsPair": [],
+      "other": []
+    },
+    "scrollInfo": {
+      "scrolled": true,
+      "cls": "rows ct-rows",
+      "scrollHeight": 12981,
+      "clientHeight": 593,
+      "scrollTop": 8672
+    },
+    "route": "content",
+    "viewport": "390x844",
+    "band": "deep-ivan-lane"
+  },
+  {
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/final2/wt-split/split-content-390-mattan-top.png",
+    "bytes": 198482,
+    "innerTextLen": 8849,
+    "skeletons": 0,
+    "settled": true,
+    "consoleSrc": 0,
+    "consoleAllowedCors": 0,
+    "consoleOther": 0,
+    "consoleDetail": {
+      "srcCount": 0,
+      "allowedCorsPairCount": 0,
+      "otherCount": 0,
+      "src": [],
+      "allowedCorsPair": [],
+      "other": []
+    },
+    "scrollInfo": null,
+    "route": "content",
+    "viewport": "390x844",
+    "band": "top-mattan-lane"
+  }
+]

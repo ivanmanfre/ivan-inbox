@@ -1,0 +1,17 @@
+
+[§9 sends] elements=410
+  mono  --cat-1..4 = #10A37F #DBDFDD #A1A6A4 #747977
+  triad --cat-1..4 = #10A37F #3A93D0 #D099E8 #747977
+  colour changed: TRUE
+  layout shifts:  0
+
+[§9 content] elements=2043
+  mono  --cat-1..4 = #10A37F #DBDFDD #A1A6A4 #747977
+  triad --cat-1..4 = #10A37F #3A93D0 #D099E8 #747977
+  colour changed: TRUE
+  layout shifts:  0
+
+[§8.5 sends-log] innerText length = 44891
+  newest 113 of 1,524 sent
+  newest 7 of 208 blocked
+  Hey Frank 🙂 Went through your profile before reaching out, first three wins we'd go after for you: - Your comment-gated posts deliver free assets by DM, with no visible email capture in the flow. We build a lead magnet page linked from those posts so every commenter becomes a named, captured lead. - Up to 26 commenters per post explicitly request marketing systems, with no follow-up visible beyond the asset DM. We sequence those commenters into outreach that moves them from prompt-seeker to a call about what you actually sell. - Proof numbers of 65,000 leads, 15M reach, and 180K comments sit buried in a single bullet inside a giveaway post. We surface those as dedicated proof posts in your voice that give service business owners a reason to reach out. That's what my done-for-you inbound engine handles end to end, so leads come in without you writing a thing. We have been scaling agency owners like Kyle Hunt, an agency ops coach, from $30k to $80k a month in 90 days with it. May I send you your complete plan?

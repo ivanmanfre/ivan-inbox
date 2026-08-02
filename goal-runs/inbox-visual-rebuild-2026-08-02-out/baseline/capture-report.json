@@ -1,0 +1,377 @@
+[
+  {
+    "route": "today",
+    "viewport": "mobile",
+    "url": "http://localhost:5420/#exp/v2/today",
+    "attempt": 1,
+    "wordCount": 581,
+    "textLen": 3039,
+    "skeletonCount": 0,
+    "stuckLoading": false,
+    "consoleErrors": [],
+    "navErrors": [],
+    "captures": [
+      {
+        "band": 1,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/today-mobile-band1.png",
+        "bytes": 171009
+      },
+      {
+        "band": 2,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/today-mobile-band2.png",
+        "bytes": 161028
+      },
+      {
+        "band": 3,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/today-mobile-band3.png",
+        "bytes": 125753
+      }
+    ],
+    "flagged": false
+  },
+  {
+    "route": "today",
+    "viewport": "desktop",
+    "url": "http://localhost:5420/#exp/v2/today",
+    "attempt": 1,
+    "wordCount": 648,
+    "textLen": 3403,
+    "skeletonCount": 0,
+    "stuckLoading": false,
+    "consoleErrors": [],
+    "navErrors": [],
+    "captures": [
+      {
+        "band": 1,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/today-desktop-band1.png",
+        "bytes": 387032
+      },
+      {
+        "band": 2,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/today-desktop-band2.png",
+        "bytes": 291579
+      },
+      {
+        "band": 3,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/today-desktop-band3.png",
+        "bytes": 285051
+      }
+    ],
+    "flagged": false
+  },
+  {
+    "route": "inbox",
+    "viewport": "mobile",
+    "url": "http://localhost:5420/#exp/v2/inbox",
+    "attempt": 1,
+    "wordCount": 844,
+    "textLen": 4424,
+    "skeletonCount": 0,
+    "stuckLoading": false,
+    "consoleErrors": [],
+    "navErrors": [],
+    "captures": [
+      {
+        "band": 1,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/inbox-mobile-band1.png",
+        "bytes": 187291
+      },
+      {
+        "band": 2,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/inbox-mobile-band2.png",
+        "bytes": 192624
+      },
+      {
+        "band": 3,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/inbox-mobile-band3.png",
+        "bytes": 183133
+      },
+      {
+        "band": 4,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/inbox-mobile-band4.png",
+        "bytes": 188019
+      },
+      {
+        "band": 5,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/inbox-mobile-band5.png",
+        "bytes": 188200
+      }
+    ],
+    "flagged": false
+  },
+  {
+    "route": "inbox",
+    "viewport": "desktop",
+    "url": "http://localhost:5420/#exp/v2/inbox",
+    "attempt": 1,
+    "wordCount": 1058,
+    "textLen": 5537,
+    "skeletonCount": 0,
+    "stuckLoading": false,
+    "consoleErrors": [],
+    "navErrors": [],
+    "captures": [
+      {
+        "band": 1,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/inbox-desktop-band1.png",
+        "bytes": 438243
+      },
+      {
+        "band": 2,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/inbox-desktop-band2.png",
+        "bytes": 430325
+      },
+      {
+        "band": 3,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/inbox-desktop-band3.png",
+        "bytes": 432608
+      },
+      {
+        "band": 4,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/inbox-desktop-band4.png",
+        "bytes": 428355
+      },
+      {
+        "band": 5,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/inbox-desktop-band5.png",
+        "bytes": 425519
+      }
+    ],
+    "flagged": false
+  },
+  {
+    "route": "drafts",
+    "viewport": "mobile",
+    "url": "http://localhost:5420/#exp/v2/drafts",
+    "attempt": 1,
+    "wordCount": 111,
+    "textLen": 557,
+    "skeletonCount": 0,
+    "stuckLoading": false,
+    "consoleErrors": [],
+    "navErrors": [],
+    "captures": [
+      {
+        "band": 1,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/drafts-mobile-band1.png",
+        "bytes": 61318
+      }
+    ],
+    "flagged": false
+  },
+  {
+    "route": "drafts",
+    "viewport": "desktop",
+    "url": "http://localhost:5420/#exp/v2/drafts",
+    "attempt": 1,
+    "wordCount": 178,
+    "textLen": 922,
+    "skeletonCount": 0,
+    "stuckLoading": false,
+    "consoleErrors": [],
+    "navErrors": [],
+    "captures": [
+      {
+        "band": 1,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/drafts-desktop-band1.png",
+        "bytes": 187035
+      }
+    ],
+    "flagged": false
+  },
+  {
+    "route": "content",
+    "viewport": "mobile",
+    "url": "http://localhost:5420/#exp/v2/content",
+    "attempt": 1,
+    "wordCount": 6870,
+    "textLen": 41821,
+    "skeletonCount": 0,
+    "stuckLoading": false,
+    "consoleErrors": [],
+    "navErrors": [],
+    "captures": [
+      {
+        "band": 1,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/content-mobile-band1.png",
+        "bytes": 216443
+      },
+      {
+        "band": 2,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/content-mobile-band2.png",
+        "bytes": 206935
+      },
+      {
+        "band": 3,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/content-mobile-band3.png",
+        "bytes": 226403
+      },
+      {
+        "band": 4,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/content-mobile-band4.png",
+        "bytes": 221399
+      },
+      {
+        "band": 5,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/content-mobile-band5.png",
+        "bytes": 219832
+      }
+    ],
+    "flagged": false
+  },
+  {
+    "route": "content",
+    "viewport": "desktop",
+    "url": "http://localhost:5420/#exp/v2/content",
+    "attempt": 1,
+    "wordCount": 6935,
+    "textLen": 42200,
+    "skeletonCount": 0,
+    "stuckLoading": false,
+    "consoleErrors": [],
+    "navErrors": [],
+    "captures": [
+      {
+        "band": 1,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/content-desktop-band1.png",
+        "bytes": 444125
+      },
+      {
+        "band": 2,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/content-desktop-band2.png",
+        "bytes": 470690
+      },
+      {
+        "band": 3,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/content-desktop-band3.png",
+        "bytes": 454049
+      },
+      {
+        "band": 4,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/content-desktop-band4.png",
+        "bytes": 364929
+      },
+      {
+        "band": 5,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/content-desktop-band5.png",
+        "bytes": 445677
+      }
+    ],
+    "flagged": false
+  },
+  {
+    "route": "sends",
+    "viewport": "mobile",
+    "url": "http://localhost:5420/#exp/v2/sends",
+    "attempt": 1,
+    "wordCount": 304,
+    "textLen": 1468,
+    "skeletonCount": 0,
+    "stuckLoading": false,
+    "consoleErrors": [],
+    "navErrors": [],
+    "captures": [
+      {
+        "band": 1,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/sends-mobile-band1.png",
+        "bytes": 152670
+      },
+      {
+        "band": 2,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/sends-mobile-band2.png",
+        "bytes": 98537
+      },
+      {
+        "band": 3,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/sends-mobile-band3.png",
+        "bytes": 127816
+      },
+      {
+        "band": 4,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/sends-mobile-band4.png",
+        "bytes": 149640
+      }
+    ],
+    "flagged": false
+  },
+  {
+    "route": "sends",
+    "viewport": "desktop",
+    "url": "http://localhost:5420/#exp/v2/sends",
+    "attempt": 1,
+    "wordCount": 369,
+    "textLen": 1824,
+    "skeletonCount": 0,
+    "stuckLoading": false,
+    "consoleErrors": [],
+    "navErrors": [],
+    "captures": [
+      {
+        "band": 1,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/sends-desktop-band1.png",
+        "bytes": 299046
+      },
+      {
+        "band": 2,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/sends-desktop-band2.png",
+        "bytes": 253866
+      },
+      {
+        "band": 3,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/sends-desktop-band3.png",
+        "bytes": 293271
+      }
+    ],
+    "flagged": false
+  },
+  {
+    "route": "ops",
+    "viewport": "mobile",
+    "url": "http://localhost:5420/#exp/v2/ops",
+    "attempt": 1,
+    "wordCount": 96,
+    "textLen": 481,
+    "skeletonCount": 0,
+    "stuckLoading": false,
+    "consoleErrors": [],
+    "navErrors": [],
+    "captures": [
+      {
+        "band": 1,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/ops-mobile-band1.png",
+        "bytes": 162039
+      },
+      {
+        "band": 2,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/ops-mobile-band2.png",
+        "bytes": 152605
+      }
+    ],
+    "flagged": false
+  },
+  {
+    "route": "ops",
+    "viewport": "desktop",
+    "url": "http://localhost:5420/#exp/v2/ops",
+    "attempt": 1,
+    "wordCount": 166,
+    "textLen": 864,
+    "skeletonCount": 0,
+    "stuckLoading": false,
+    "consoleErrors": [],
+    "navErrors": [],
+    "captures": [
+      {
+        "band": 1,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/ops-desktop-band1.png",
+        "bytes": 318835
+      },
+      {
+        "band": 2,
+        "file": "goal-runs/inbox-visual-rebuild-2026-08-02-out/baseline/ops-desktop-band2.png",
+        "bytes": 316421
+      }
+    ],
+    "flagged": false
+  }
+]

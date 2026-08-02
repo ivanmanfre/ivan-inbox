@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>inbox-visual-rebuild — the ballot</title>
+<style>
+  :root{
+    --bg:#0B0D0C;
+    --panel:#141716;
+    --panel-2:#1B1F1D;
+    --border:#2A2F2C;
+    --text:#E7E9E7;
+    --text-dim:#A1A6A4;
+    --text-faint:#747977;
+    --accent:#10A37F;
+    --accent-soft:rgba(16,163,127,.16);
+    --pass:#10A37F;
+    --fail:#E5533D;
+    --mono-2:#DBDFDD;
+    --mono-3:#A1A6A4;
+    --mono-4:#747977;
+    --triad-2:#3A93D0;
+    --triad-3:#D099E8;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    line-height:1.55;
+    padding:0 0 80px 0;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:0 32px;}
+  header.hero{
+    border-bottom:1px solid var(--border);
+    padding:56px 0 40px 0;
+    background:linear-gradient(180deg,#111412 0%,#0B0D0C 100%);
+  }
+  header.hero h1{
+    font-size:34px;
+    font-weight:700;
+    letter-spacing:-0.02em;
+    margin:0 0 14px 0;
+    color:var(--text);
+  }
+  header.hero .lede{
+    color:var(--text-dim);
+    font-size:15px;
+    max-width:820px;
+    margin:0 0 18px 0;
+  }
+  .commit-row{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:8px;
+  }
+  .commit-chip{
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:12.5px;
+    background:var(--panel-2);
+    border:1px solid var(--border);
+    color:var(--text-dim);
+    padding:6px 10px;
+    border-radius:6px;
+  }
+  .commit-chip b{color:var(--text);font-weight:600;}
+  section{padding:48px 0;border-bottom:1px solid var(--border);}
+  section:last-of-type{border-bottom:none;}
+  h2{
+    font-size:22px;
+    font-weight:700;
+    letter-spacing:-0.01em;
+    margin:0 0 6px 0;
+    color:var(--text);
+  }
+  h2 .tag{
+    display:inline-block;
+    font-size:11px;
+    font-weight:600;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--accent);
+    background:var(--accent-soft);
+    padding:3px 8px;
+    border-radius:4px;
+    margin-right:10px;
+    vertical-align:middle;
+  }
+  .section-sub{color:var(--text-dim);font-size:14px;margin:0 0 28px 0;max-width:900px;}
+  .refs-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:24px;
+  }
+  figure{margin:0;}
+  figure img{
+    width:100%;
+    display:block;
+    border-radius:8px;
+    border:1px solid var(--border);
+    background:#000;
+    cursor:zoom-in;
+  }
+  figcaption{
+    margin-top:8px;
+    font-size:12.5px;
+    color:var(--text-dim);
+  }
+  figcaption b{color:var(--text);}
+  .candidate-block{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:28px;
+    margin-bottom:28px;
+  }
+  .candidate-head{
+    display:flex;
+    align-items:baseline;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-bottom:6px;
+  }
+  .candidate-head h3{
+    font-size:19px;
+    margin:0;
+    color:var(--text);
+    font-weight:700;
+  }
+  .candidate-head .commit{
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:12px;
+    color:var(--text-faint);
+  }
+  .thesis{
+    font-size:14.5px;
+    color:var(--text-dim);
+    margin:6px 0 18px 0;
+    font-style:normal;
+  }
+  .verdict-row{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:20px;
+  }
+  .verdict-pill{
+    font-size:12.5px;
+    padding:6px 12px;
+    border-radius:6px;
+    border:1px solid var(--border);
+    background:var(--panel-2);
+  }
+  .verdict-pill.pass{border-color:rgba(16,163,127,.4);color:var(--pass);}
+  .verdict-pill.fail{border-color:rgba(229,83,61,.4);color:var(--fail);}
+  .verdict-pill b{font-weight:700;}
+  .grid5{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:18px;
+    margin-bottom:14px;
+  }
+  .grid5 .wide{grid-column:span 1;}
+  .cmdblock{
+    background:#000;
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:14px 16px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:12.5px;
+    color:#B7F5DF;
+    overflow-x:auto;
+    white-space:pre;
+    margin-top:10px;
+  }
+  .cmdblock .url{color:var(--text-dim);display:block;margin-top:8px;}
+  .branch-label{
+    font-size:12.5px;
+    color:var(--text-faint);
+    margin-top:14px;
+  }
+  .colour-explain{
+    font-size:14.5px;
+    color:var(--text-dim);
+    max-width:900px;
+    margin-bottom:26px;
+  }
+  .hex-row{
+    display:flex;
+    gap:24px;
+    flex-wrap:wrap;
+    margin-bottom:30px;
+  }
+  .hex-group{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:14px 18px;
+  }
+  .hex-group h4{
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--text-faint);
+    margin:0 0 10px 0;
+  }
+  .swatches{display:flex;gap:8px;}
+  .swatch{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:6px;
+  }
+  .swatch .chip{width:34px;height:34px;border-radius:6px;border:1px solid rgba(255,255,255,.08);}
+  .swatch code{font-size:10.5px;color:var(--text-dim);}
+  .colour-pairs{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:20px;
+  }
+  .colour-pair h4{
+    font-size:13px;
+    color:var(--text);
+    margin:0 0 10px 0;
+  }
+  .colour-pair .pair-imgs{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+  .named-list{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:24px;
+    margin-top:10px;
+  }
+  .named-list .col h3{font-size:15px;margin:0 0 12px 0;color:var(--text);}
+  .named-list ul{margin:0;padding-left:18px;color:var(--text-dim);font-size:14px;}
+  .named-list li{margin-bottom:10px;}
+  .named-list b{color:var(--text);}
+  .footer-vote{
+    background:var(--panel);
+    border:1px solid var(--accent);
+    border-radius:10px;
+    padding:28px;
+  }
+  .footer-vote code{
+    background:#000;
+    border:1px solid var(--border);
+    padding:10px 14px;
+    border-radius:8px;
+    display:block;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:13.5px;
+    color:var(--accent);
+    margin-top:12px;
+  }
+  a{color:var(--accent);}
+  /* lightbox */
+  #lightbox{
+    position:fixed;inset:0;background:rgba(0,0,0,.92);
+    display:none;align-items:center;justify-content:center;
+    z-index:999;cursor:zoom-out;padding:40px;
+  }
+  #lightbox.open{display:flex;}
+  #lightbox img{max-width:100%;max-height:100%;border-radius:6px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+  @media (max-width:900px){
+    .refs-grid,.grid5,.named-list,.colour-pairs{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <h1>inbox-visual-rebuild — the ballot</h1>
+    <p class="lede">
+      Three candidates built blind off exp/brain against the Nixtio reference Ivan chose 2026-08-01;
+      all three survived 13 deterministic gates; nothing merges until Ivan votes.
+    </p>
+    <div class="commit-row">
+      <span class="commit-chip">faithful <b>22168ef</b></span>
+      <span class="commit-chip">spine <b>c16f184</b></span>
+      <span class="commit-chip">split <b>9d7441e</b></span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section>
+    <h2>The reference and the state it replaces</h2>
+    <p class="section-sub">Calibration pair the judge panel ranked correctly before viewing any candidate.</p>
+    <div class="refs-grid">
+      <figure>
+        <img src="refs/nixtio-checkbox.png" alt="Nixtio reference" onclick="openLightbox(this.src)">
+        <figcaption><b>The reference</b> — Ivan's pick, 2026-08-01.</figcaption>
+      </figure>
+      <figure>
+        <img src="baseline/content-desktop-band1.png" alt="Current state baseline" onclick="openLightbox(this.src)">
+        <figcaption><b>Current state</b> — captured 2026-08-02. The wall of red full-sentence rows, severity red spent on every row, no anchor column, iOS pill idiom.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="tag">Decision 1</span>Direction</h2>
+    <p class="section-sub">
+      Gate summary (instruments, all three SURVIVE): G1-G8, G10, G11, G13 PASS on all three.
+      G9 contrast — faithful FAIL then fixed loop 1 (4.15 to 9.21:1, two marks documented at the 3:1
+      non-text bar); spine PASS; split PASS. G12 censuses — faithful FAIL then fixed loop 1
+      (119 pill chips to 6px chip); spine FAIL then fixed loop 1 (20px rail fork); split PASS after its
+      own build-time loops.
+    </p>
+
+    <!-- FAITHFUL -->
+    <div class="candidate-block">
+      <div class="candidate-head">
+        <h3>faithful</h3>
+        <span class="commit">22168ef</span>
+      </div>
+      <p class="thesis">
+        The most reference moves shipped as moves: capsule pipeline with numbers inside the marks (M9),
+        hatch-pattern series separation doing MONO's work, legend + probe-backed <code>Total:</code>
+        footers (M4), the strongest M1 display presence, threshold bars on the decision tiles (M14).
+        Order vs anchor: faithful &gt; split &gt; spine.
+      </p>
+      <div class="verdict-row">
+        <span class="verdict-pill pass"><b>§7.9 row-find: PASS / PASS</b> — first attempt</span>
+        <span class="verdict-pill pass">"19 waiting on you" + NEEDS REVIEW header with amber dot answers before any row text; rail confirms.</span>
+      </div>
+      <div class="grid5">
+        <figure><img src="final/wt-faithful/faithful-content-1440-top.png" alt="faithful content 1440 top" onclick="openLightbox(this.src)"><figcaption>Content 1440 — top</figcaption></figure>
+        <figure><img src="final/wt-faithful/faithful-content-1440-mid-lane.png" alt="faithful content 1440 mid" onclick="openLightbox(this.src)"><figcaption>Content 1440 — mid lane</figcaption></figure>
+        <figure><img src="final/wt-faithful/faithful-content-1440-mattan-top.png" alt="faithful mattan lane" onclick="openLightbox(this.src)"><figcaption>Mattan lane (1440)</figcaption></figure>
+        <figure><img src="final/wt-faithful/faithful-content-390-top.png" alt="faithful content 390 top" onclick="openLightbox(this.src)"><figcaption>Content 390 — top</figcaption></figure>
+        <figure><img src="final/wt-faithful/faithful-content-390-mid-lane.png" alt="faithful content 390 mid" onclick="openLightbox(this.src)"><figcaption>Content 390 — mid lane</figcaption></figure>
+        <figure><img src="final/wt-faithful/faithful-today-1440-top.png" alt="faithful today 1440" onclick="openLightbox(this.src)"><figcaption>Today 1440</figcaption></figure>
+        <figure><img src="final/wt-faithful/faithful-sends-1440-top-mono.png" alt="faithful sends 1440 mono" onclick="openLightbox(this.src)"><figcaption>Sends 1440 (mono)</figcaption></figure>
+      </div>
+      <div class="branch-label">Branch: <code>exp/vis-faithful</code> @ <code>22168ef</code></div>
+      <div class="cmdblock">cd "/private/tmp/claude-501/-Users-ivanmanfredi-Desktop-Ivan---Content-System/40a160cc-d253-4d32-a586-b1dad7ce0fb2/scratchpad/wt-faithful" &amp;&amp; npm run dev -- --port 5431
+<span class="url">→ http://localhost:5431/#exp/v2/content</span></div>
+    </div>
+
+    <!-- SPINE -->
+    <div class="candidate-block">
+      <div class="candidate-head">
+        <h3>spine</h3>
+        <span class="commit">c16f184</span>
+      </div>
+      <p class="thesis">
+        Takes only M1 and the eyebrow/legend anatomy by design; its charts are deliberately Geist-grade,
+        further from the reference than the brief's own thesis requires on Sends. Ships the run's most
+        distinctive single object: a ticked section ruler + monogram anchor slot.
+      </p>
+      <div class="verdict-row">
+        <span class="verdict-pill pass"><b>PASS @ 1440</b></span>
+        <span class="verdict-pill fail"><b>FAIL @ 390</b> — loop 2 budget spent, residual below</span>
+        <span class="verdict-pill fail">actionable review rows at 390 stack title / chips / button pair into ~3-line cards, outside the §7.8 band; filled-vs-hollow QA squares too small to carry state at a glance</span>
+      </div>
+      <div class="grid5">
+        <figure><img src="final2/wt-spine/spine-content-1440-top.png" alt="spine content 1440 top" onclick="openLightbox(this.src)"><figcaption>Content 1440 — top (post-fix)</figcaption></figure>
+        <figure><img src="final2/wt-spine/spine-content-1440-mid-lane.png" alt="spine content 1440 mid" onclick="openLightbox(this.src)"><figcaption>Content 1440 — mid lane (post-fix)</figcaption></figure>
+        <figure><img src="final2/wt-spine/spine-content-1440-mattan-top.png" alt="spine mattan lane" onclick="openLightbox(this.src)"><figcaption>Mattan lane (1440, post-fix)</figcaption></figure>
+        <figure><img src="final2/wt-spine/spine-content-390-top.png" alt="spine content 390 top" onclick="openLightbox(this.src)"><figcaption>Content 390 — top (post-fix)</figcaption></figure>
+        <figure><img src="final2/wt-spine/spine-content-390-mid-lane.png" alt="spine content 390 mid" onclick="openLightbox(this.src)"><figcaption>Content 390 — mid lane (post-fix)</figcaption></figure>
+        <figure><img src="final/wt-spine/spine-today-1440-top.png" alt="spine today 1440" onclick="openLightbox(this.src)"><figcaption>Today 1440</figcaption></figure>
+        <figure><img src="final/wt-spine/spine-sends-1440-top-mono.png" alt="spine sends 1440 mono" onclick="openLightbox(this.src)"><figcaption>Sends 1440 (mono)</figcaption></figure>
+      </div>
+      <div class="branch-label">Branch: <code>exp/vis-spine</code> @ <code>c16f184</code></div>
+      <div class="cmdblock">cd "/private/tmp/claude-501/-Users-ivanmanfredi-Desktop-Ivan---Content-System/40a160cc-d253-4d32-a586-b1dad7ce0fb2/scratchpad/wt-spine" &amp;&amp; npm run dev -- --port 5442
+<span class="url">→ http://localhost:5442/#exp/v2/content</span></div>
+    </div>
+
+    <!-- SPLIT -->
+    <div class="candidate-block">
+      <div class="candidate-head">
+        <h3>split</h3>
+        <span class="commit">9d7441e</span>
+      </div>
+      <p class="thesis">
+        Delivers the reference on its overview class with the best chrome economy of the three:
+        <code>Range: 7d ⌄</code> as one M5 pill where the others spend a full segmented row, and
+        pattern-hatched sparkline marks. Proves the run's central bet: full expression on Today/Sends
+        beside a monastic Content.
+      </p>
+      <div class="verdict-row">
+        <span class="verdict-pill pass"><b>§7.9 row-find: PASS / PASS</b> — after its fix loop</span>
+        <span class="verdict-pill pass">SKIP/APPROVE pair locates the actionable band; corner dot verified by pixel crop as a real 3-colour QA signal (green PASS / gray NO QA / amber NEEDS_REGENERATE) at both widths; rows hold 1 title + 1 meta line at 390</span>
+      </div>
+      <div class="grid5">
+        <figure><img src="final2/wt-split/split-content-1440-top.png" alt="split content 1440 top" onclick="openLightbox(this.src)"><figcaption>Content 1440 — top (post-fix)</figcaption></figure>
+        <figure><img src="final2/wt-split/split-content-1440-mid-lane.png" alt="split content 1440 mid" onclick="openLightbox(this.src)"><figcaption>Content 1440 — mid lane (post-fix)</figcaption></figure>
+        <figure><img src="final2/wt-split/split-content-1440-mattan-top.png" alt="split mattan lane" onclick="openLightbox(this.src)"><figcaption>Mattan lane (1440, post-fix)</figcaption></figure>
+        <figure><img src="final2/wt-split/split-content-390-top.png" alt="split content 390 top" onclick="openLightbox(this.src)"><figcaption>Content 390 — top (post-fix)</figcaption></figure>
+        <figure><img src="final2/wt-split/split-content-390-mid-lane.png" alt="split content 390 mid" onclick="openLightbox(this.src)"><figcaption>Content 390 — mid lane (post-fix)</figcaption></figure>
+        <figure><img src="final/wt-split/split-today-1440-top.png" alt="split today 1440" onclick="openLightbox(this.src)"><figcaption>Today 1440</figcaption></figure>
+        <figure><img src="final/wt-split/split-sends-1440-top-mono.png" alt="split sends 1440 mono" onclick="openLightbox(this.src)"><figcaption>Sends 1440 (mono)</figcaption></figure>
+      </div>
+      <div class="branch-label">Branch: <code>exp/vis-split</code> @ <code>9d7441e</code></div>
+      <div class="cmdblock">cd "/private/tmp/claude-501/-Users-ivanmanfredi-Desktop-Ivan---Content-System/40a160cc-d253-4d32-a586-b1dad7ce0fb2/scratchpad/wt-split" &amp;&amp; npm run dev -- --port 5443
+<span class="url">→ http://localhost:5443/#exp/v2/content</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="tag">Decision 2</span>Colour — mono vs triad</h2>
+    <p class="colour-explain">
+      Mono is one accent plus three neutral tiers generated at the accent's own hue, with a pattern
+      system (solid / hatch / dotted / hollow) carrying any series beyond four so differentiation
+      survives greyscale and colour blindness. Triad is two derived data-viz-only hues found by a
+      maximin search across the full hue circle, verified under simulated protanopia and deuteranopia
+      so no two series collapse onto each other. Severity red and amber are never reused in either
+      answer, and the panel found craft parity between them — the choice is taste, not correctness.
+    </p>
+    <div class="hex-row">
+      <div class="hex-group">
+        <h4>Mono</h4>
+        <div class="swatches">
+          <div class="swatch"><div class="chip" style="background:#10A37F"></div><code>#10A37F</code></div>
+          <div class="swatch"><div class="chip" style="background:#DBDFDD"></div><code>#DBDFDD</code></div>
+          <div class="swatch"><div class="chip" style="background:#A1A6A4"></div><code>#A1A6A4</code></div>
+          <div class="swatch"><div class="chip" style="background:#747977"></div><code>#747977</code></div>
+        </div>
+      </div>
+      <div class="hex-group">
+        <h4>Triad</h4>
+        <div class="swatches">
+          <div class="swatch"><div class="chip" style="background:#10A37F"></div><code>#10A37F</code></div>
+          <div class="swatch"><div class="chip" style="background:#3A93D0"></div><code>#3A93D0</code></div>
+          <div class="swatch"><div class="chip" style="background:#D099E8"></div><code>#D099E8</code></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="colour-pairs">
+      <div class="colour-pair">
+        <h4>faithful</h4>
+        <div class="pair-imgs">
+          <figure><img src="final/wt-faithful/faithful-sends-1440-top-mono.png" alt="faithful sends mono" onclick="openLightbox(this.src)"><figcaption>mono</figcaption></figure>
+          <figure><img src="final/wt-faithful/faithful-sends-1440-top-triad.png" alt="faithful sends triad" onclick="openLightbox(this.src)"><figcaption>triad</figcaption></figure>
+        </div>
+      </div>
+      <div class="colour-pair">
+        <h4>spine</h4>
+        <div class="pair-imgs">
+          <figure><img src="final/wt-spine/spine-sends-1440-top-mono.png" alt="spine sends mono" onclick="openLightbox(this.src)"><figcaption>mono</figcaption></figure>
+          <figure><img src="final/wt-spine/spine-sends-1440-top-triad.png" alt="spine sends triad" onclick="openLightbox(this.src)"><figcaption>triad</figcaption></figure>
+        </div>
+      </div>
+      <div class="colour-pair">
+        <h4>split</h4>
+        <div class="pair-imgs">
+          <figure><img src="final/wt-split/split-sends-1440-top-mono.png" alt="split sends mono" onclick="openLightbox(this.src)"><figcaption>mono</figcaption></figure>
+          <figure><img src="final/wt-split/split-sends-1440-top-triad.png" alt="split sends triad" onclick="openLightbox(this.src)"><figcaption>triad</figcaption></figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Grafts the panel names regardless of winner</h2>
+    <div class="named-list">
+      <div class="col">
+        <h3>Named grafts</h3>
+        <ul>
+          <li><b>split → winner:</b> the <code>Range: 7d ⌄</code> single-pill filter replacing any second segmented row (M5/M13 as one object), and the 3-colour QA corner dot if faithful wins (its amber-only dot says less).</li>
+          <li><b>spine → winner:</b> the ticked section ruler (the most anti-template object in the run) and the monogram anchor for thumb-less rows.</li>
+          <li><b>faithful → winner if not itself:</b> the "N waiting on you / of M loaded" hero figure + probe-backed <code>Total:</code> footer pattern exactly as built.</li>
+        </ul>
+      </div>
+      <div class="col">
+        <h3>Residuals routed to the ballot</h3>
+        <ul>
+          <li><b>spine's 390 review-row anatomy</b> + QA-square subtlety.</li>
+          <li><b>split's one capture caveat:</b> the sole failing row sits one scroll below the 390 Mattan viewport — a data fact, not a defect.</li>
+          <li><b>Shared pre-existing <code>#null</code> Ops context label</b> (on base, all candidates inherit it).</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Open a live preview</h2>
+    <p class="section-sub">
+      Sign in with the usual email code if prompted. Branches also exist in the main repo
+      (<code>git switch exp/vis-&lt;id&gt;</code>) if the worktrees are gone.
+    </p>
+    <div class="candidate-block">
+      <div class="candidate-head"><h3>faithful</h3></div>
+      <div class="cmdblock">cd "/private/tmp/claude-501/-Users-ivanmanfredi-Desktop-Ivan---Content-System/40a160cc-d253-4d32-a586-b1dad7ce0fb2/scratchpad/wt-faithful" &amp;&amp; npm run dev -- --port 5431
+<span class="url">→ http://localhost:5431/#exp/v2/content</span></div>
+    </div>
+    <div class="candidate-block">
+      <div class="candidate-head"><h3>spine</h3></div>
+      <div class="cmdblock">cd "/private/tmp/claude-501/-Users-ivanmanfredi-Desktop-Ivan---Content-System/40a160cc-d253-4d32-a586-b1dad7ce0fb2/scratchpad/wt-spine" &amp;&amp; npm run dev -- --port 5442
+<span class="url">→ http://localhost:5442/#exp/v2/content</span></div>
+    </div>
+    <div class="candidate-block">
+      <div class="candidate-head"><h3>split</h3></div>
+      <div class="cmdblock">cd "/private/tmp/claude-501/-Users-ivanmanfredi-Desktop-Ivan---Content-System/40a160cc-d253-4d32-a586-b1dad7ce0fb2/scratchpad/wt-split" &amp;&amp; npm run dev -- --port 5443
+<span class="url">→ http://localhost:5443/#exp/v2/content</span></div>
+    </div>
+  </section>
+
+  <section style="border-bottom:none;">
+    <div class="footer-vote">
+      <h2 style="margin-bottom:10px;">How to vote</h2>
+      <p class="section-sub" style="margin-bottom:0;">
+        Nothing ships until you reply. Reply with:
+      </p>
+      <code>direction (faithful / spine / split / none), colour (mono / triad), and any grafts to fold in</code>
+    </div>
+  </section>
+
+</div>
+
+<div id="lightbox" onclick="closeLightbox()">
+  <img id="lightbox-img" src="" alt="expanded view">
+</div>
+
+<script>
+  function openLightbox(src){
+    var lb = document.getElementById('lightbox');
+    var img = document.getElementById('lightbox-img');
+    img.src = src;
+    lb.classList.add('open');
+  }
+  function closeLightbox(){
+    document.getElementById('lightbox').classList.remove('open');
+  }
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape') closeLightbox();
+  });
+</script>
+
+</body>
+</html>
