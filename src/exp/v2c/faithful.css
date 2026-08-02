@@ -182,7 +182,9 @@
 .wb.wb.wb .wb-display{
   font-size:var(--fs-display);
   font-weight:var(--fw-display);
-  letter-spacing:-.02em;
+  /* §3d — condensed-read tracking on the display tier only; the stack stays
+     the system grotesk, no new font file. */
+  letter-spacing:-.035em;
   line-height:1;
   text-transform:uppercase;
 }
@@ -989,7 +991,7 @@
 }
 .wb.wb.wb .wb-fpill{
   display:inline-flex; align-items:center; gap:6px;
-  height:30px; padding:0 14px;
+  height:36px; padding:0 16px;
   background:var(--surface2); border:none; color:var(--text3);
   font-size:var(--fs-meta); font-weight:400; cursor:pointer;
 }
@@ -998,7 +1000,12 @@
 /* 11.4 — the active state of a filter is the VALUE TEXT, not a coloured fill.
    A filter pill never takes --accent as a background; accent is reserved. */
 .wb.wb.wb .wb-fpill.on{ background:var(--surface3) }
-@media (max-width:767px){ .wb.wb.wb .wb-fpill{ height:32px } }
+/* §3e mobile: 36px visual + a -4px hit-extension → 44px touch (same pattern
+   as .cmic). */
+@media (max-width:767px){
+  .wb.wb.wb .wb-fpill{ height:36px; position:relative }
+  .wb.wb.wb .wb-fpill::after{ content:''; position:absolute; inset:-4px; border-radius:inherit }
+}
 
 /* The pill's own dropdown (ask 8b). Absolutely positioned off the pill so the
    nav row's height never changes when it opens — a filter that reflows the
@@ -1054,7 +1061,7 @@
 }
 .wb.wb.wb .ct-f{
   display:inline-flex; align-items:center; gap:5px;
-  height:26px; padding:0 11px;
+  height:28px; padding:0 11px;
   background:var(--surface2); border:none; color:var(--text3);
   font-size:var(--fs-meta); font-weight:400; cursor:pointer;
 }
@@ -1114,7 +1121,7 @@
   flex:1 1 240px;
 }
 .wb.wb.wb .ct-fpop{ position:relative; display:inline-flex; align-items:center; gap:2px }
-.wb.wb.wb .ct-fpill{ height:26px; padding:0 11px; flex:none }
+.wb.wb.wb .ct-fpill{ height:28px; padding:0 11px; flex:none }
 .wb.wb.wb .ct-fpill i{ margin-left:2px }
 /* The demoted-facet badge is NOT a nav count badge, so it takes --r-chip and
    stays outside the pill licence (§6.3.4 covers nav badges only). */
@@ -1126,7 +1133,7 @@
    that opens the menu. --r-chip, not a capsule: it is not on the §6.3 list. */
 .wb.wb.wb .ct-fx{
   display:inline-flex; align-items:center; justify-content:center;
-  width:20px; height:26px; padding:0; flex:none;
+  width:20px; height:28px; padding:0; flex:none;
   background:none; border:none; border-radius:var(--r-chip);
   color:var(--text3); font-size:var(--fs-meta); cursor:pointer;
 }
@@ -1192,8 +1199,12 @@
     pointer-events:none;
     background:linear-gradient(90deg, rgba(9,11,10,0), var(--canvas));
   }
-  .wb.wb.wb .ct-fpill{ height:32px }
-  .wb.wb.wb .ct-fx{ height:32px; width:26px }
+  /* §3e — 36px visual + -4px hit-extension → 44px touch. */
+  .wb.wb.wb .ct-fpill{ height:36px; position:relative }
+  .wb.wb.wb .ct-fx{ height:36px; width:26px; position:relative }
+  .wb.wb.wb .ct-fpill::after, .wb.wb.wb .ct-fx::after{
+    content:''; position:absolute; inset:-4px; border-radius:inherit;
+  }
   .wb.wb.wb .ct-fnote{ margin-top:6px }
 }
 
@@ -1238,7 +1249,9 @@
 .wb.wb.wb .ct-fpill:hover{ background:var(--surface3) }
 
 /* The nav pills (M7). Chrome the reference wins on outright. */
-.wb.wb.wb .nav{ padding:18px var(--gut) 12px }
+/* §3d — 24px top padding keeps the display title clear of the plate's 40px
+   top-left corner curve. */
+.wb.wb.wb .nav{ padding:24px var(--pad-card) 12px }
 /* The reference's top row, literally: oversized uppercase title flush left, pill
    chrome right-set on the same baseline. */
 .wb.wb.wb .wb-head{
@@ -1249,7 +1262,7 @@
 .wb.wb.wb .chips{ display:flex; align-items:center; gap:8px; margin:12px 0 0;
   flex-wrap:wrap; overflow:visible }
 .wb.wb.wb .chip{
-  height:30px; display:inline-flex; align-items:center; padding:0 14px;
+  height:36px; display:inline-flex; align-items:center; padding:0 16px;
   background:var(--surface2); color:var(--text3);
   font-size:var(--fs-meta); font-weight:500;
 }
@@ -1263,17 +1276,19 @@
 .wb.wb.wb .wb-workhead{ padding:10px var(--gut); border-bottom:1px solid var(--hairline) }
 .wb.wb.wb .wb-workhead-l{ color:var(--text3) }
 
-/* rail chrome */
+/* rail chrome — style-delta §3b: the reference's floating icon+label PILLS.
+   The rail sits ON the plate (transparent, no border); a job row is a 40px
+   capsule; the active mark is the filled pill + lime icon — the old inset
+   spine is DROPPED (a spine on a capsule reads as a defect). */
 .wb.wb.wb .wb-rail{
-  background:var(--surface1); border-right:1px solid var(--hairline); padding:16px 10px 12px;
+  width:216px; background:transparent; border-right:none; padding:20px 14px 16px;
 }
-.wb.wb.wb .wb-rj{ padding:8px 10px; color:var(--text2) }
-.wb.wb.wb .wb-rj:hover{ background:var(--surface2) }
-.wb.wb.wb .wb-rj.on{ background:var(--surface2); color:var(--text);
-  box-shadow:inset 2px 0 0 var(--accent) }
+.wb.wb.wb .wb-rj{ padding:10px 14px; color:var(--text2); border-radius:var(--r-pill) }
+.wb.wb.wb .wb-rj:hover{ background:var(--surface1) }
+.wb.wb.wb .wb-rj.on{ background:var(--surface1); color:var(--text) }
 .wb.wb.wb .wb-rj-n{
   min-width:22px; padding:1px 7px; text-align:center;
-  background:var(--surface3); color:var(--text2);
+  background:var(--surface2); color:var(--text2);
   font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:0;
 }
 .wb.wb.wb .wb-rj-n.attention{ background:rgba(255,159,10,.18); color:var(--sev-attention) }
@@ -1281,14 +1296,17 @@
 .wb.wb.wb .wb-rj-peer{ border:1px solid var(--hairline) }
 .wb.wb.wb .wb-rj-peer.on{ border-color:var(--accent); background:transparent }
 .wb.wb.wb .wb-rail-sep{ background:var(--hairline); opacity:1; margin:14px 10px 12px }
+.wb.wb.wb .wb-rail-sync{ border-radius:var(--r-pill) }   /* already behaves like a pill row */
 .wb.wb.wb .wb-rail-grp{ border-left:1px solid var(--hairline) }
 .wb.wb.wb .wb-rail-grp.on{ border-left-color:var(--accent) }
 .wb.wb.wb .wb-rail-grp-l{
   font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.04em;
   text-transform:uppercase; color:var(--text3);
 }
+/* §3c — the mobile tab bar lives INSIDE the plate now, so nothing shows
+   through: opaque canvas, no blur. */
 .wb.wb.wb .tabbar{
-  background:var(--surface1); border-top:1px solid var(--hairline); backdrop-filter:none;
+  background:var(--canvas); border-top:1px solid var(--hairline); backdrop-filter:none;
 }
 .wb.wb.wb .tb{ color:var(--text3) }
 .wb.wb.wb .tb.on{ color:var(--accent-ui, var(--accent)) }
