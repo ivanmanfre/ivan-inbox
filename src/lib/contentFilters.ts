@@ -81,6 +81,67 @@ export function activeFilters(state: FilterState): [string, string][] {
   return Object.entries(state).filter(([, v]) => !!v)
 }
 
+// ---------- prominence ----------
+//
+// The facets are all real and all counted honestly; what was wrong was that all
+// eighteen of them were on screen at once (105 chips, 1,068px of chrome above
+// the first draft row — phase0-facets.md §3). Splitting them is a PRESENTATION
+// decision and nothing else: every facet survives, every count survives, and a
+// demoted facet filters exactly as hard as a promoted one. Prominence is the
+// order a human triages in, not a claim about which data matters.
+
+export type FacetSplit = { prominent: Facet[]; demoted: Facet[] }
+
+/**
+ * Split derived facets into the ones that get their own pill and the ones that
+ * live behind the "Filters" disclosure.
+ *
+ * Prominent facets come back in the ORDER OF `keys`, not in the order they were
+ * derived — the pill row is a fixed vocabulary, so `Stage` is in the same place
+ * on both lanes even when one of them has an extra facet. A key with no facet
+ * (buildFacets dropped it because the loaded rows carry nothing for it) simply
+ * has no pill; it is never rendered empty, because a control with one side is
+ * decoration and a control with no sides is a lie.
+ */
+export function splitFacets(facets: Facet[], keys: string[]): FacetSplit {
+  const byKey = new Map(facets.map(f => [f.key, f]))
+  const prominent: Facet[] = []
+  for (const k of keys) {
+    const f = byKey.get(k)
+    if (f) prominent.push(f)
+  }
+  const promoted = new Set(prominent.map(f => f.key))
+  return { prominent, demoted: facets.filter(f => !promoted.has(f.key)) }
+}
+
+// The prominent set for the post lane. Chosen as the triage axes — where a row
+// is in the pipeline, what it is, which pillar it serves, where it came from,
+// and whether QA passed. Everything else (structure, image style, hook, funnel,
+// experiment arm, QA band, image, regenerated, backfilled) is a lens, not a
+// triage question, and rides behind the disclosure.
+export const DRAFT_PROMINENT: string[] = ['stage', 'kind', 'pillar', 'source', 'qa_verdict']
+
+// The lead-magnet lane's own four facets. Status and Format are the two that
+// change what you are looking at; the two URL-presence facets are audit
+// questions ("did the page ever ship") and are demoted.
+export const RESOURCE_PROMINENT: string[] = ['status', 'format']
+
+// ---------- search ----------
+
+/**
+ * Substring search over the fields the caller names, client-side over the rows
+ * already fetched. Case-insensitive, no operators, no scoping syntax — the same
+ * "Search by topic or body…" a human already knows from the old panel.
+ *
+ * It runs over the LOADED page, exactly like the facets do, which is why every
+ * caller prints both numbers.
+ */
+export function applySearch<T>(rows: T[], q: string, textOf: (row: T) => (string | null | undefined)[]): T[] {
+  const needle = q.trim().toLowerCase()
+  if (!needle) return rows
+  return rows.filter(r => textOf(r).some(s => (s ?? '').toLowerCase().includes(needle)))
+}
+
 // ---------- shared value helpers ----------
 
 const tag = (v: string | null | undefined, label?: string): Tagged | null => {

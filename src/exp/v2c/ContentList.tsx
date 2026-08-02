@@ -12,9 +12,14 @@ import {
   type ContentDraft, type ContentLane, type ContentStage, type ContentStages,
 } from '../../lib/content'
 import { isStuckGeneratingLm, isStuckResource } from '../../lib/styles'
-import { applyFilters, buildFacets, draftScore, draftSpecs, type FilterState } from '../../lib/contentFilters'
+import {
+  applyFilters, applySearch, buildFacets, draftScore, draftSpecs, DRAFT_PROMINENT, splitFacets,
+  type FilterState,
+} from '../../lib/contentFilters'
+import { useSectionState } from '../../hooks/useSectionState'
 import { ReviewActions } from './ReviewActions'
-import { FilterBar, FilteredEmpty } from './ContentBits'
+import { FilteredEmpty } from './ContentBits'
+import { FilterRow } from './FilterRow'
 import {
   AlertCountLine, IdeasSection, PillarMix, QueueStrip, ResourceLane,
   StyleRoster, SummariesSection,
@@ -357,7 +362,7 @@ function useOpenStages(initial: ContentStage[]) {
 // LANE A — Ivan
 // ---------------------------------------------------------------------------
 
-function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters, matched, laneTotal }: {
+function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters, q, setQ, matched, laneTotal }: {
   drafts: ContentDraft[]
   stages: ContentStages
   openId: string | null
@@ -365,6 +370,8 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
   refresh: () => void
   filters: FilterState
   setFilters: (f: FilterState) => void
+  q: string
+  setQ: (q: string) => void
   matched: number | null
   laneTotal: number | null
 }) {
@@ -420,8 +427,12 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
   }
 
   const specs = draftSpecs('ivan')
+  // Counts are derived over EVERY loaded row, not over the current result:
+  // "Published 109" is the fact the filter is being chosen against, and a count
+  // that already reflects the choice you have not made yet is a moving target.
   const facets = buildFacets(drafts, specs)
-  const shown = applyFilters(drafts, specs, filters)
+  const { prominent, demoted } = splitFacets(facets, DRAFT_PROMINENT)
+  const shown = applySearch(applyFilters(drafts, specs, filters), q, d => [d.title, d.topic])
   const shownStages = groupByStage(shown)
   const scheduledThisWeek = stages.scheduled.filter(d => {
     if (!d.scheduled_at) return false
@@ -443,8 +454,9 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
         denominator, not a quota. Nothing here blocks or scores against it.
       </div>
 
-      <FilterBar
-        facets={facets} state={filters} setState={setFilters}
+      <FilterRow
+        prominent={prominent} demoted={demoted}
+        state={filters} setState={setFilters} q={q} setQ={setQ}
         shown={shown.length} loaded={drafts.length} total={matched} noun="drafts"
       />
 
@@ -459,7 +471,7 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
       />
 
       {shown.length === 0 && drafts.length > 0
-        ? <FilteredEmpty noun="drafts" onClear={() => setFilters({})} />
+        ? <FilteredEmpty noun="drafts" onClear={() => { setFilters({}); setQ('') }} />
         : PIPELINE_STAGES.filter(s => s !== 'ideas').map((s, i) => (
           <div key={s}>
             <StageSection
@@ -527,13 +539,15 @@ const BOARD_GROUPS = [
   },
 ] as const
 
-function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, matched }: {
+function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, setQ, matched }: {
   drafts: ContentDraft[]
   openId: string | null
   onOpen: (id: string, label: string) => void
   refresh: () => void
   filters: FilterState
   setFilters: (f: FilterState) => void
+  q: string
+  setQ: (q: string) => void
   matched: number | null
 }) {
   const stageOpen = useOpenStages(['review', 'approved', 'scheduled', 'generating'])
@@ -543,7 +557,12 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, matc
 
   const specs = draftSpecs('risedtc')
   const facets = buildFacets(drafts, specs)
-  const shown = applyFilters(drafts, specs, filters)
+  // The same five prominent axes as Ivan's lane, deliberately WITHOUT `board`:
+  // this lane is already GROUPED by board visibility (BOARD_GROUPS below), so a
+  // board pill would be a second control for a distinction the page structure
+  // already draws — it stays available in the disclosure.
+  const { prominent, demoted } = splitFacets(facets, DRAFT_PROMINENT)
+  const shown = applySearch(applyFilters(drafts, specs, filters), q, d => [d.title, d.topic])
 
   const onBoard = countBoardVisible(drafts)
   const scheduled = drafts.filter(d => d.scheduled_at).length
@@ -586,13 +605,14 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, matc
         )}
       </div>
 
-      <FilterBar
-        facets={facets} state={filters} setState={setFilters}
+      <FilterRow
+        prominent={prominent} demoted={demoted}
+        state={filters} setState={setFilters} q={q} setQ={setQ}
         shown={shown.length} loaded={drafts.length} total={matched} noun="drafts"
       />
 
       {shown.length === 0 && drafts.length > 0
-        ? <FilteredEmpty noun="drafts" onClear={() => setFilters({})} />
+        ? <FilteredEmpty noun="drafts" onClear={() => { setFilters({}); setQ('') }} />
         : BOARD_GROUPS.map((g, gi) => {
           const rows = shown.filter(d => (g.key === 'board') === (d.board_visible === true))
           if (rows.length === 0) return null
@@ -658,13 +678,26 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
   const { drafts, stages, matched, laneTotal, loading, error, loadedAt, refresh } = useContent(lane)
   const rowsRef = useRef<HTMLDivElement>(null)
   const ptr = usePullToRefresh(rowsRef, () => refresh())
-  const [filters, setFilters] = useState<FilterState>({})
-
-  // 🔴 Filters are never persisted across a lane switch: the two lanes spell the
-  // same ideas differently ('story' vs 'story_opener'), so a carried filter
-  // would silently hide rows — the calm, wrong, empty board again, one level
-  // down. The Shell also remounts this component per lane; this is the belt.
-  const switchLane = (l: ContentLane) => { setFilters({}); setLane(l) }
+  // PERSISTENCE, and the reset it deliberately replaces.
+  //
+  // What was here (and is now gone): `const [filters, setFilters] =
+  // useState<FilterState>({})` plus `switchLane = (l) => { setFilters({});
+  // setLane(l) }` — filter state was reset on every lane switch AND lost on
+  // every reload, with the stated reason that "the two lanes spell the same
+  // ideas differently ('story' vs 'story_opener'), so a carried filter would
+  // silently hide rows."
+  //
+  // That reason is correct and it is preserved — by KEYING, not by amnesia. The
+  // section key carries the lane (`content.posts.ivan` vs
+  // `content.posts.risedtc`), so a filter set on one lane can never reach the
+  // other's vocabulary; there is no carried state to mis-apply. What changes is
+  // that coming BACK to a lane restores the answer you left there, and a reload
+  // no longer throws it away. Forgetting was never the safety property — not
+  // crossing lanes was.
+  const [sect, setSect] = useSectionState(`content.posts.${lane}`)
+  const setFilters = (f: FilterState) => setSect({ ...sect, filters: f })
+  const setQ = (q: string) => setSect({ ...sect, q })
+  const switchLane = (l: ContentLane) => setLane(l)
 
   const err = error ?? (hasMock('fetch-error') ? 'PostgREST returned 500 for carousel_drafts' : null)
   const firstLoad = loading && drafts.length === 0
@@ -722,12 +755,14 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
         ) : lane === 'ivan' ? (
           <IvanLane
             drafts={drafts} stages={stages} openId={openId} onOpen={onOpen} refresh={refresh}
-            filters={filters} setFilters={setFilters} matched={matched} laneTotal={laneTotal}
+            filters={sect.filters} setFilters={setFilters} q={sect.q} setQ={setQ}
+            matched={matched} laneTotal={laneTotal}
           />
         ) : (
           <MattanLane
             drafts={drafts} openId={openId} onOpen={onOpen} refresh={refresh}
-            filters={filters} setFilters={setFilters} matched={matched}
+            filters={sect.filters} setFilters={setFilters} q={sect.q} setQ={setQ}
+            matched={matched}
           />
         )}
         <div style={{ height: 24 }} />

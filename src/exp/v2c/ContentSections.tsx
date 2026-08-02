@@ -10,11 +10,14 @@ import {
   type LmStage, type Resource, type StylePrompt,
 } from '../../lib/styles'
 import {
-  applyFilters, buildFacets, IDEA_SPECS, QUEUE_SPECS, RESOURCE_SPECS, styleSpecs,
+  applyFilters, applySearch, buildFacets, IDEA_SPECS, QUEUE_SPECS, RESOURCE_SPECS,
+  RESOURCE_PROMINENT, splitFacets, styleSpecs,
   type FilterState,
 } from '../../lib/contentFilters'
+import { useSectionState } from '../../hooks/useSectionState'
 import type { AgentSummary } from '../../lib/agent'
 import { FilterBar, FilteredEmpty, Figure, KeyRows } from './ContentBits'
+import { FilterRow } from './FilterRow'
 import { absTime, relOrAhead, relTime } from './fmt'
 import { CalmEmpty, CapsuleChart, Failed, SectionHead } from './Surface'
 
@@ -378,10 +381,18 @@ export function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loa
   refresh: () => void
   ideaState?: { loading: boolean; error: string | null; loadedAt: string | null; refresh: () => void }
 }) {
-  const [filters, setFilters] = useState<FilterState>({})
+  // The LM lane is a SEPARATE working list with its own facets, so it gets its
+  // own filter row and its own persisted key — the post lane's `Stage: Review`
+  // has nothing to say about `lm_drafts_v2.status`, and one shared key would let
+  // one lane's answer appear over the other's rows.
+  const [sect, setSect] = useSectionState(`content.lm.${lane}`)
+  const filters = sect.filters
+  const setFilters = (f: FilterState) => setSect({ ...sect, filters: f })
+  const setQ = (q: string) => setSect({ ...sect, q })
   const [open, setOpen] = useState<LmStage[]>(LM_DEFAULT_OPEN)
   const facets = buildFacets(rows, RESOURCE_SPECS)
-  const shown = applyFilters(rows, RESOURCE_SPECS, filters)
+  const { prominent, demoted } = splitFacets(facets, RESOURCE_PROMINENT)
+  const shown = applySearch(applyFilters(rows, RESOURCE_SPECS, filters), sect.q, r => [r.topic])
   const stages = groupByLmStage(shown)
   // 🔴 Built from the UNFILTERED rows, exactly as the post lane's strip is: a
   // filter may narrow the flow, it may never hide a broken row.
@@ -478,9 +489,11 @@ export function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loa
             this table is not readable from this app.
           </div>
 
-          <FilterBar
-            facets={facets} state={filters} setState={setFilters}
+          <FilterRow
+            prominent={prominent} demoted={demoted}
+            state={filters} setState={setFilters} q={sect.q} setQ={setQ}
             shown={shown.length} loaded={rows.length} total={null} noun="lead magnets"
+            placeholder="Search lead magnets by topic…"
           />
 
           {ideas && ideaState && (
@@ -493,7 +506,7 @@ export function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loa
           )}
 
           {shown.length === 0
-            ? <FilteredEmpty noun="lead magnets" onClear={() => setFilters({})} />
+            ? <FilteredEmpty noun="lead magnets" onClear={() => setSect({ filters: {}, q: '' })} />
             : (
               <>
                 {/* 🔴 In LIFECYCLE ORDER, idea first. The first pass rendered

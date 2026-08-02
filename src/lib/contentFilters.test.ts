@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
-  applyFilters, buildFacets, draftSpecs, scoreBand, QUEUE_SPECS, RESOURCE_SPECS,
-  styleSpecs, type FacetSpec,
+  applyFilters, applySearch, buildFacets, draftSpecs, scoreBand, splitFacets,
+  DRAFT_PROMINENT, RESOURCE_PROMINENT, QUEUE_SPECS, RESOURCE_SPECS,
+  styleSpecs, type Facet, type FacetSpec,
 } from './contentFilters'
 import type { ContentDraft } from './content'
 import { previewKeyFor, type Resource, type StylePrompt } from './styles'
@@ -157,5 +158,77 @@ describe('queue, resource and style facets', () => {
     expect(examples.of(roster[1])!.value).toBe('yes')
     expect(examples.of(roster[0])!.value).toBe('no')
     expect(buildFacets(roster, specs).some(f => f.key === 'family')).toBe(true)
+  })
+})
+
+describe('splitFacets — prominence is presentation, never subtraction', () => {
+  const f = (key: string, n: number): Facet => ({
+    key, label: key, options: [{ value: 'a', label: 'a', n }],
+  })
+
+  it('splits into the named prominent set and everything else', () => {
+    const facets = [f('stage', 5), f('structure', 8), f('kind', 4), f('hook', 14)]
+    const { prominent, demoted } = splitFacets(facets, DRAFT_PROMINENT)
+    expect(prominent.map(x => x.key)).toEqual(['stage', 'kind'])
+    expect(demoted.map(x => x.key)).toEqual(['structure', 'hook'])
+  })
+
+  it('loses no facet and no count', () => {
+    const facets = [
+      { key: 'stage', label: 'Stage', options: [{ value: 'published', label: 'Published', n: 109 }] },
+      { key: 'source', label: 'Source', options: [{ value: 'Kyle call', label: 'Kyle call', n: 30 }] },
+      { key: 'hook', label: 'Hook', options: [{ value: 'story_opener', label: 'story_opener', n: 19 }] },
+    ]
+    const { prominent, demoted } = splitFacets(facets, DRAFT_PROMINENT)
+    // every facet lands on exactly one side…
+    expect([...prominent, ...demoted]).toHaveLength(facets.length)
+    expect(new Set([...prominent, ...demoted].map(x => x.key)).size).toBe(3)
+    // …and the option objects are the same ones, counts untouched. The counts
+    // were never the defect; the permanent wall was.
+    expect(prominent.find(x => x.key === 'stage')!.options[0].n).toBe(109)
+    expect(demoted.find(x => x.key === 'hook')!.options[0].n).toBe(19)
+  })
+
+  it('orders the pill row by the declared vocabulary, not by derivation order', () => {
+    // buildFacets emits in spec order; the pill row must read the same on both
+    // lanes even when one of them derives an extra facet in the middle.
+    const facets = [f('qa_verdict', 6), f('source', 19), f('kind', 4), f('stage', 5), f('pillar', 5)]
+    expect(splitFacets(facets, DRAFT_PROMINENT).prominent.map(x => x.key))
+      .toEqual(['stage', 'kind', 'pillar', 'source', 'qa_verdict'])
+  })
+
+  it('never renders a pill for a facet the rows did not produce', () => {
+    // Mattan's lane drops `arm` and `backfilled` from the data itself; a
+    // prominent key with no facet simply has no pill.
+    const { prominent } = splitFacets([f('stage', 5)], DRAFT_PROMINENT)
+    expect(prominent.map(x => x.key)).toEqual(['stage'])
+  })
+
+  it('gives the lead-magnet lane its own prominent pair', () => {
+    const facets = [f('status', 7), f('format', 13), f('landing', 2), f('asset', 2)]
+    const { prominent, demoted } = splitFacets(facets, RESOURCE_PROMINENT)
+    expect(prominent.map(x => x.key)).toEqual(['status', 'format'])
+    expect(demoted.map(x => x.key)).toEqual(['landing', 'asset'])
+  })
+})
+
+describe('applySearch', () => {
+  const rows = [
+    { title: 'The Kyle call teardown', topic: null },
+    { title: null, topic: 'attribution drift' },
+    { title: 'Something else', topic: 'kyle adjacent' },
+  ]
+  const text = (r: { title: string | null; topic: string | null }) => [r.title, r.topic]
+
+  it('is a case-insensitive substring over the named fields', () => {
+    expect(applySearch(rows, 'KYLE', text)).toHaveLength(2)
+    expect(applySearch(rows, 'attribution', text)).toHaveLength(1)
+  })
+  it('an empty or whitespace query is not a filter', () => {
+    expect(applySearch(rows, '', text)).toBe(rows)
+    expect(applySearch(rows, '   ', text)).toBe(rows)
+  })
+  it('tolerates rows carrying nothing in the searched fields', () => {
+    expect(applySearch([{ title: null, topic: null }], 'x', text)).toHaveLength(0)
   })
 })
