@@ -1217,7 +1217,7 @@
   .wb.wb.wb .ct-fr::after{
     content:''; position:absolute; right:0; bottom:0; width:26px; height:32px;
     pointer-events:none;
-    background:linear-gradient(90deg, rgba(9,11,10,0), var(--canvas));
+    background:linear-gradient(90deg, rgba(12,12,11,0), var(--canvas));
   }
   /* §3e — 36px visual + -4px hit-extension → 44px touch. */
   .wb.wb.wb .ct-fpill{ height:36px; position:relative }
