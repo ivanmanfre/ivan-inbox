@@ -371,7 +371,15 @@
 /* 2 · top-level nav / view-switcher segments (M7 pill nav) */
 .wb.wb.wb .chip, .wb.wb.wb .wb-ws, .wb.wb.wb .seg .sg{ border-radius:var(--r-pill) }
 /* 3 · filter pills + the inline list filter (M5 / M13) */
-.wb.wb.wb .ct-f, .wb.wb.wb .wb-fpill{ border-radius:var(--r-pill) }
+/* `.ct-f` is NOT this pill: it is ContentBits.tsx's FilterBar, an always-
+   expanded multi-facet chip browser (6+ facet groups, each rendering every
+   value as its own always-visible chip) — exactly the "second row of chips,
+   a filter bar" §11.2 bans by name, not the compact `label: value ⌄` grammar
+   this licence covers. The base app already had `.ct-f{border-radius:
+   var(--r-chip)}` (styles.css) correct; this override was shadowing it.
+   Removed here — `.ct-f` falls back to --r-chip. `.wb-fpill` (unused today,
+   reserved for the real §11.2 compact pill) keeps the licence. */
+.wb.wb.wb .wb-fpill{ border-radius:var(--r-pill) }
 /* 4 · numeric count badges attached to nav */
 .wb.wb.wb .wb-rj-n, .wb.wb.wb .tb .cnt{ border-radius:var(--r-pill) }
 /* 5 · the compose / primary FAB */
@@ -612,6 +620,11 @@
   object-fit:cover; display:block; background:var(--surface2);
 }
 .wb.wb.wb .ct-thumb-empty{
+  /* G9: "◻" is an icon glyph carrying meaning (missing-image placeholder), the
+     exact class spine §3.2 puts under the 3:1 non-text bar, not the 4.5:1 body
+     bar — it is not a word a user reads, it is a pictogram. Fixed single
+     context: always on .ct-thumb's --surface2 fill. text4 measures 3.58:1
+     there, clearing 3:1. No token change. */
   display:flex; align-items:center; justify-content:center;
   font-size:var(--fs-eyebrow); line-height:1; color:var(--text4);
   text-transform:none; letter-spacing:0;
@@ -655,7 +668,11 @@
   display:inline-flex; align-items:center;
 }
 .wb.wb.wb .ct-chip-none{
-  background:transparent; color:var(--text4);
+  /* G9 fix: the em dash IS text (a QA-verdict placeholder a user reads, same
+     column as a real "PASS 85"), not a disabled control — text4 tops out at
+     4.15:1 on canvas (worse on surface1/2/3), under the 4.5:1 body bar at
+     11px. text2 clears every ladder surface (9.21/8.57/7.94/7.24). */
+  background:transparent; color:var(--text2);
   box-shadow:inset 0 0 0 1px var(--hairline);
 }
 .wb.wb.wb .ct-meta > .ct-topic{ flex:1 1 auto; min-width:0;
@@ -793,6 +810,15 @@
 /* 8.3 — THE NUMBER LIVES INSIDE THE MARK (M9). A capsule bar prints its value
    inside; the label colour follows §9.5 per token — ink on every filled
    categorical except MONO --cat-4, which takes white. */
+/* G9: white-on-cat-4 (#747977) measures 4.43:1 — white is already the
+   brightest possible foreground (--text is #F3F6F5, dimmer than #FFFFFF), so
+   no brighter ladder token exists that improves this; 4.5:1 is mathematically
+   unreachable against this fill without darkening --cat-4 itself, which is a
+   locked, shared categorical token (§9) out of this fix's scope. Justified at
+   the 3:1 non-text-mark bar instead: this is a data value printed INSIDE a
+   chart mark's own fill (§8.3's own framing — "the number lives inside the
+   mark"), the same data-geometry status §6.3.7 already grants this element's
+   shape. 4.43:1 clears 3:1 with margin. No token change. */
 /* The capsule column has to stay a CAPSULE. §6.3.7 licenses --r-pill on "chart
    marks whose geometry IS a capsule" — and a mark 145px wide by 120px tall is
    not one, it is a slab, and 999px turns it into an egg. Measured on the
