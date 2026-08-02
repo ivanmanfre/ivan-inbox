@@ -252,6 +252,48 @@ export async function fetchResources(lane: ContentLane = 'ivan'): Promise<Resour
   return (data ?? []) as unknown as Resource[]
 }
 
+// ---------- LM detail (one full row, fetched when a row is opened) ----------
+//
+// Column list verified against a live row 2026-08-03 (select=* probe):
+// resource_html is the rendered landing/resource ARTIFACT, landing_url the live
+// page, resource_url the asset. Agent-written columns (qa, agent_log, spec,
+// notes, covers, landing_copy) are typed `unknown` so no call site can render
+// them without a normalizer — the same posture as ContentDraftDetail.
+export type ResourceDetail = Resource & {
+  description: string | null
+  post_body: string | null
+  email_copy: string | null
+  resource_html: string | null
+  gate_keyword: string | null
+  slug: string | null
+  vertical_slug: string | null
+  og_url: string | null
+  video_url: string | null
+  source: string | null
+  source_ref: string | null
+  campaign_id: string | null
+  workflow_file_id: string | null
+  created_at: string | null
+  landing_copy: unknown
+  notes: unknown
+  spec: unknown
+  covers: unknown
+  qa: unknown
+  agent_log: unknown
+  topic_strength: unknown
+}
+
+// select=* rather than a column list, exactly as fetchDraftDetail does: the row
+// is fetched one at a time, and a hand-maintained list would silently hide
+// fields the day an agent writes a new one. Returns null when the id is gone —
+// deleted and unreadable must not render the same.
+export async function fetchResourceDetail(id: string): Promise<ResourceDetail | null> {
+  const { data, error } = await supabase.from('lm_drafts_v2')
+    .select('*').eq('id', id).maybeSingle()
+  if (error) throw error
+  return (data ?? null) as ResourceDetail | null
+}
+
 // The approved-with-no-date detector, carried onto the resource row set
 // (IA §2.4 extension). The only real instance of that failure in the whole
 // database is here rather than in carousel_drafts: a resource at a
