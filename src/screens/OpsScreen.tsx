@@ -8,6 +8,7 @@ import {
   approveOpsDraft, approveWeeklyReport, blockedOps, canGenerateDraft, claimingOps, discardOpsDraft, engineLabel, expiresIn, generateCommentDraft, markCommentHandled, pendingOps, postCommentReply, sentOps,
   type OpsDraft, type OpsKind,
 } from '../lib/ops'
+import { checkedPhrase } from '../lib/today'
 
 function slotText(iso?: string): string {
   if (!iso) return ''
@@ -100,7 +101,10 @@ function ContextLine({ draft }: { draft: OpsDraft }) {
   )
 }
 
-function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void }) {
+// Exported so a host surface can own the FRAME (header, freshness, columns) and
+// still act on the queue through this one card. Duplicating it would mean two
+// approve paths with two sets of confirm copy for the same publish.
+export function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void }) {
   const [body, setBody] = useState(draft.body)
   const [busy, setBusy] = useState(false)
   const [drafting, setDrafting] = useState(false)
@@ -125,7 +129,12 @@ function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void 
   // idea it was.
   const canDraft = canGenerateDraft(draft)
   const onDemand = isComment && draft.context?.drafted_on_demand === true
-  const where = isNewsjack || isWeekly || isComment ? engineLabel(draft.client_id) : `#${draft.slack_channel}`
+  // A NULL slack_channel used to render the literal "#null" on the card
+  // (phase0-readability #5 / phase0-mobile #8). No channel = say whose engine
+  // it is instead of printing a database absence.
+  const where = isNewsjack || isWeekly || isComment || !draft.slack_channel
+    ? engineLabel(draft.client_id)
+    : `#${draft.slack_channel}`
   const left = isNewsjack ? expiresIn(draft.context?.expires_at) : null
 
   async function onApprove() {
@@ -322,18 +331,56 @@ function Section({ title, count, open, onToggle, children }: {
   )
 }
 
-export function OpsScreen() {
-  const { drafts, loading, refresh } = useOps()
+// The three read-only groups — what the queue already dealt with. Exported for
+// the same reason PendingCard is: a host that redesigns the frame must not
+// re-implement what "Working" means. `pad` lets a host that owns its own gutters
+// turn off the inline 16px this screen needs.
+export function OpsGroups({ drafts, pad = true, expanded = false }: {
+  drafts: OpsDraft[]
+  pad?: boolean
+  // A host whose queue is empty has a whole region to spend and nothing waiting
+  // to put in it: opening the history there is real content, not filler, and it
+  // is the difference between "clear" and "dead".
+  expanded?: boolean
+}) {
   const [claimingOpen, setClaimingOpen] = useState(true)
-  const [sentOpen, setSentOpen] = useState(false)
-  const [blockedOpen, setBlockedOpen] = useState(false)
+  const [sentOpen, setSentOpen] = useState(expanded)
+  const [blockedOpen, setBlockedOpen] = useState(expanded)
+  const claiming = claimingOps(drafts)
+  const sent = sentOps(drafts)
+  const blocked = blockedOps(drafts)
+  const style = pad ? { padding: '0 16px' } : undefined
+  return (
+    <>
+      <Section title="Working" count={claiming.length} open={claimingOpen} onToggle={() => setClaimingOpen(o => !o)}>
+        <div style={style}>
+          {claiming.map(d => <ReadOnlyRow key={d.id} draft={d} working />)}
+        </div>
+      </Section>
+      <Section title="Done" count={sent.length} open={sentOpen} onToggle={() => setSentOpen(o => !o)}>
+        <div style={style}>
+          {sent.map(d => <ReadOnlyRow key={d.id} draft={d} />)}
+        </div>
+      </Section>
+      <Section title="Blocked" count={blocked.length} open={blockedOpen} onToggle={() => setBlockedOpen(o => !o)}>
+        <div style={style}>
+          {blocked.map(d => <ReadOnlyRow key={d.id} draft={d} reason={d.send_blocked_reason ?? undefined} />)}
+        </div>
+      </Section>
+    </>
+  )
+}
+
+export function OpsScreen() {
+  // `error` used to be dropped on the floor here, so a failed fetch rendered the
+  // identical "Nothing waiting on you." as a genuinely clear queue (U2/U3). The
+  // three states are distinct now, which is also what earns the empty state the
+  // right to say it is a live read.
+  const { drafts, loading, error, loadedAt, refresh } = useOps()
   const rowsRef = useRef<HTMLDivElement>(null)
   const ptr = usePullToRefresh(rowsRef, () => refresh())
 
   const pending = pendingOps(drafts)
-  const claiming = claimingOps(drafts)
-  const sent = sentOps(drafts)
-  const blocked = blockedOps(drafts)
 
   if (loading && drafts.length === 0) {
     return (
@@ -353,26 +400,25 @@ export function OpsScreen() {
       </div>
       <div className="rows ops-rows" ref={rowsRef}>
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
-        {pending.length === 0 ? (
-          <div className="empty">Nothing waiting on you.</div>
-        ) : (
+        {error && (
+          <div className="ops-fail">
+            <span className="ops-fail-d" />
+            <span className="ops-fail-t">The ops queue didn’t load — {error}</span>
+            <button className="stalebtn" onClick={refresh}>Try again</button>
+          </div>
+        )}
+        {pending.length === 0 && !error ? (
+          <div className="empty">
+            Nothing waiting on you
+            <div className="empty-f">
+              <span className="empty-dot" />
+              {checkedPhrase(loadedAt)}. This is a live read, not a stall.
+            </div>
+          </div>
+        ) : pending.length === 0 ? null : (
           pending.map(d => <PendingCard key={d.id} draft={d} refresh={refresh} />)
         )}
-        <Section title="Working" count={claiming.length} open={claimingOpen} onToggle={() => setClaimingOpen(o => !o)}>
-          <div style={{ padding: '0 16px' }}>
-            {claiming.map(d => <ReadOnlyRow key={d.id} draft={d} working />)}
-          </div>
-        </Section>
-        <Section title="Done" count={sent.length} open={sentOpen} onToggle={() => setSentOpen(o => !o)}>
-          <div style={{ padding: '0 16px' }}>
-            {sent.map(d => <ReadOnlyRow key={d.id} draft={d} />)}
-          </div>
-        </Section>
-        <Section title="Blocked" count={blocked.length} open={blockedOpen} onToggle={() => setBlockedOpen(o => !o)}>
-          <div style={{ padding: '0 16px' }}>
-            {blocked.map(d => <ReadOnlyRow key={d.id} draft={d} reason={d.send_blocked_reason ?? undefined} />)}
-          </div>
-        </Section>
+        <OpsGroups drafts={drafts} />
       </div>
     </>
   )

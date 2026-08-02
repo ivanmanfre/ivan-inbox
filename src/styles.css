@@ -399,7 +399,12 @@ input.cfield::placeholder{color:var(--text3)}
    remainder is a hatched amber segment, so 98/50 reads "past the line" calmly. */
 .ov-gauge-over{position:absolute;top:0;bottom:0;right:0;background:repeating-linear-gradient(45deg,rgba(255,159,10,.6) 0 4px,rgba(255,159,10,.16) 4px 9px)}
 .ov-gauge-tick{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:rgba(235,235,245,.85);border-radius:1px}
-.ov-over-lbl{margin-left:8px;font-size:11px;font-weight:700;color:#FF9F0A;background:rgba(255,159,10,.14);padding:1px 7px;border-radius:6px;white-space:nowrap}
+/* The over-cap pill used to be white-space:nowrap inside a 3-up hero tile with
+   ~86px of measure at 390px, so "103% of cap" clipped mid-word to "103% of ca".
+   It keeps its shape but is allowed to break, and inside a hero tile it takes
+   its own line under the sub-text instead of competing for the same one. */
+.ov-over-lbl{margin-left:8px;font-size:11px;font-weight:700;color:#FF9F0A;background:rgba(255,159,10,.14);padding:1px 7px;border-radius:6px;white-space:normal;overflow-wrap:anywhere}
+.ov-tile-sub .ov-over-lbl{display:block;width:fit-content;max-width:100%;margin:6px 0 0}
 .ov-gauge-lbl{font-size:14px;font-weight:600;display:flex;align-items:center;flex-wrap:wrap;row-gap:4px}
 .ov-gauge-lbl b{font-size:17px;font-weight:800}
 .ov-gauge-lbl .ov-cap{display:inline;margin:0 0 0 4px;color:var(--text2)}
@@ -485,6 +490,34 @@ input.cfield::placeholder{color:var(--text3)}
   min-width:0;overflow:hidden;text-overflow:ellipsis}
 .td-sync.td-old{color:#FF9F0A}
 
+/* masthead — one number defined as the sum of the three zone loads, with a
+   stacked bar of those same three, so the headline cannot drift from its parts.
+   34px is the app's large-title size (.nav h2), i.e. the real top of this type
+   scale; the imported 40px gate was withdrawn in CALIBRATION.md for contradicting
+   it. */
+.td-mast{display:flex;gap:18px;align-items:stretch;margin:10px 16px 2px;padding:14px 16px;
+  background:var(--surface);border-radius:16px}
+.td-mast-l{flex:none;display:flex;flex-direction:column;justify-content:center;min-width:74px}
+.td-big{font-size:34px;font-weight:800;letter-spacing:-.035em;line-height:1}
+.td-big-c{margin-top:3px;font-size:10.5px;font-weight:800;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--text2);line-height:1.25}
+.td-mast-r{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:9px}
+.td-stack{display:flex;height:9px;border-radius:99px;overflow:hidden;background:var(--surface2)}
+.td-stack-s{height:100%}
+.td-stack-s.clear{background:rgba(16,163,127,.22)}
+.td-legend{display:flex;flex-wrap:wrap;align-items:center;gap:3px 13px}
+.td-lg{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;
+  color:var(--text3);white-space:nowrap}
+.td-lg b{font-size:13px;font-weight:800;color:var(--text)}
+.td-lg.off{opacity:.5}
+.td-lg.off b{color:var(--text3)}
+.td-lg-d{width:7px;height:7px;border-radius:2px;flex:none}
+.td-mast .td-sync{margin-left:0;padding-left:0}
+
+/* Where a pending item actually lives. An aggregating surface that shows you a
+   count it cannot act on has to name the owning surface inline. */
+.td-qown{font-size:11.5px;color:var(--accent);margin-top:4px;font-weight:600;line-height:1.35}
+
 .td-banner{margin:10px 16px 0;background:rgba(255,159,10,.1);border:1px solid rgba(255,159,10,.3);
   border-radius:14px;padding:10px 12px;font-size:12.5px;font-weight:600;color:#FF9F0A;line-height:1.4}
 .td-foot{margin:16px 22px 0;font-size:12px;color:var(--text3);line-height:1.45}
@@ -545,7 +578,10 @@ input.cfield::placeholder{color:var(--text3)}
 .td-dm-ac{display:flex;gap:10px;margin-top:12px}
 .td-dm-ac .btn{padding:10px 0;font-size:14.5px;cursor:pointer}
 .td-dm-ac .btn.off{background:var(--surface3);color:var(--text2)}
-.td-qrow{display:flex;align-items:center;gap:13px;padding:13px 22px;color:inherit;text-decoration:none}
+/* flex-start, not center: the hand-off row grew an owner line, and a count badge
+   floating beside the middle of a four-line block reads as a mistake. */
+.td-qrow{display:flex;align-items:flex-start;gap:13px;padding:13px 22px;color:inherit;text-decoration:none}
+.td-qrow .td-chev{margin-top:11px}
 .td-qrow + .td-qrow{border-top:.5px solid var(--sep)}
 .td-qrow.tap{cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background-color .15s ease}
 .td-qrow.tap:active{background:var(--surface2)}
@@ -653,3 +689,60 @@ textarea.ops-body{display:block;width:100%;background:var(--surface2);border:non
 .app.dt .ops-card,
 .app.dt .ops-sechdr,
 .app.dt .ops-rows .log-r{max-width:720px;margin-left:auto;margin-right:auto}
+
+/* The honest-empty footer. An empty list carrying a freshness stamp is a
+   CONFIRMED zero; an empty list carrying nothing is an unverified one, and until
+   this run they looked identical on Inbox, Drafts and Ops (U2/U3). */
+.empty-f{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:9px;
+  font-size:11.5px;font-weight:600;color:var(--text3);line-height:1.4}
+.empty-dot{flex:none;width:7px;height:7px;border-radius:99px;background:var(--accent)}
+.ops-fail{display:flex;align-items:center;gap:9px;margin:12px 16px 0;padding:11px 13px;
+  border-radius:14px;background:rgba(255,69,58,.1);border:1px solid rgba(255,69,58,.3)}
+.ops-fail-d{flex:none;width:8px;height:8px;border-radius:99px;background:#FF453A}
+.ops-fail-t{flex:1;min-width:0;font-size:12.5px;font-weight:600;color:#FF453A;line-height:1.4}
+
+/* The Range filter pill on Sends (phase 6 ask 8b). It replaced a second full-
+   width segmented row, which the plain app also rendered — so the BASE sheet
+   needs a working anatomy for it, or the stock app is left with an unstyled
+   button. Treatment (the spine §11.1 pill) still lives in the candidate sheet;
+   this is the structural floor only. :root is untouched. */
+.wb-fbar{display:flex;align-items:center;gap:8px;margin-left:auto}
+.wb-fpop{position:relative}
+.wb-fpill{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 13px;
+  border:none;border-radius:99px;background:var(--surface);color:var(--text2);
+  font:inherit;font-size:12.5px;cursor:pointer}
+.wb-fpill b{color:var(--text);font-weight:600}
+.wb-fpill i{font-style:normal;font-size:9px;color:var(--text3)}
+.wb-fmenu{position:absolute;top:calc(100% + 6px);right:0;z-index:20;min-width:150px;
+  display:flex;flex-direction:column;gap:2px;padding:5px;border-radius:14px;
+  background:var(--surface);border:1px solid var(--sep);box-shadow:0 10px 28px rgba(0,0,0,.35)}
+.wb-fopt{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:none;
+  background:none;font:inherit;font-size:12.5px;color:var(--text2);cursor:pointer;
+  padding:7px 10px;border-radius:9px}
+.wb-fopt.on{color:var(--text);font-weight:600}
+.wb-fopt-t{margin-left:auto;color:var(--text3)}
+
+/* Slash palette floor for the stock app (phase 6 ask 7) — treatment lives in
+   the candidate sheet; this keeps the control legible outside .wb. */
+.wb-palette{flex:none;display:flex;flex-direction:column;gap:2px;margin:0 14px;padding:6px;
+  max-height:260px;overflow-y:auto;background:var(--surface);border:1px solid var(--sep);
+  border-radius:14px}
+.wb-pal-opt{display:flex;align-items:baseline;gap:10px;width:100%;text-align:left;border:none;
+  background:none;font:inherit;font-size:12.5px;color:var(--text2);cursor:pointer;
+  padding:7px 9px;border-radius:9px}
+.wb-pal-opt.on{background:var(--surface2, rgba(120,120,128,.16));color:var(--text)}
+.wb-pal-n{flex:none;font-weight:600;color:var(--text)}
+.wb-pal-h{flex:1;min-width:0;color:var(--text3);overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap}
+.wb-pal-f{padding:6px 9px 2px;color:var(--text3);font-size:11.5px;
+  border-top:1px solid var(--sep);margin-top:4px}
+
+/* Controls that were spans/divs are real <button>s now (keyboard reach, the
+   focus ring). Zero-specificity reset so every class-defined look stays
+   byte-identical — :where() loses to any class rule, it only beats UA defaults. */
+:where(button.chip, button.sg, button.sw, button.csend, button.btn,
+       button.ct-alert, button.wb-ofresh, button.wb-sech){
+  font: inherit; color: inherit; letter-spacing: inherit; text-align: left;
+  border: none; background: none; padding: 0; margin: 0;
+  -webkit-appearance: none; appearance: none;
+}

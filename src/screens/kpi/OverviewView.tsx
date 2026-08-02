@@ -378,8 +378,8 @@ function KpiRow({ lanes, daily, client, timeframe, range }: {
     <section className="ov-sec">
       <div className="ov-h">Volume<span className="ov-h-sub">{timeframe === 'custom' && range ? `${shortDate(range.from)}→${shortDate(range.to)}` : timeframe}</span></div>
       <div className="ov-kpis">
-        {lanes.map(lane => (
-          <div key={lane.key} className="ov-kpi">
+        {lanes.map((lane, i) => (
+          <div key={lane.key} className="ov-kpi" data-cat={String((i % 4) + 1)}>
             <div className="ov-kpi-top">
               <span className="sc-dot" style={{ background: LANE_DOT[lane.key] }} />
               <span className="ov-kpi-nm">{lane.label}</span>
@@ -389,6 +389,21 @@ function KpiRow({ lanes, daily, client, timeframe, range }: {
             <Spark values={lane.daily} />
           </div>
         ))}
+      </div>
+      {/* M4 — legend + right-aligned Total. Every figure is a sum over the SAME
+          already-fetched aggregate rows the cards above are drawn from
+          (inbox_sends_daily_v / the sends view), so the footer and the plot can
+          never disagree, and nothing here is a rows.length of a capped page. */}
+      <div className="wb-cardf">
+        {lanes.map((lane, i) => (
+          <span className="wb-legend" key={lane.key}>
+            <span className="wb-legend-d" data-cat={String((i % 4) + 1)} />
+            <span className="wb-legend-l">{lane.label}</span>
+          </span>
+        ))}
+        <span className="wb-total">
+          Total: <b>{lanes.reduce((s, l) => s + laneCount(l, daily, client, timeframe, range), 0)}</b>
+        </span>
       </div>
     </section>
   )
@@ -578,6 +593,24 @@ function Pipeline({ rows, governor, client }: {
               </div>
             )
           })}
+          {/* M4 — the pipeline's own legend + Total. The three legend entries
+              are the runway thresholds the bar fills already encode (M14), so
+              the footer names the encoding rather than repeating the numbers. */}
+          <div className="wb-cardf">
+            <span className="wb-legend">
+              <span className="wb-legend-d" style={{ background: STATUS.live }} />
+              <span className="wb-legend-l">5d+</span>
+            </span>
+            <span className="wb-legend">
+              <span className="wb-legend-d" style={{ background: STATUS.slowing }} />
+              <span className="wb-legend-l">2-5d</span>
+            </span>
+            <span className="wb-legend">
+              <span className="wb-legend-d" style={{ background: STATUS.stale }} />
+              <span className="wb-legend-l">under 2d</span>
+            </span>
+            <span className="wb-total">Total: <b>{totalSendable}</b> sendable</span>
+          </div>
         </div>
       )}
     </section>
@@ -629,6 +662,18 @@ function Campaigns({ rows, client }: { rows: CampaignSend[]; client: Client }) {
               {showPaused && hidden.map(c => <CampaignRow key={c.campaign_id} c={c} />)}
             </>
           )}
+          {/* M4 — the table's Total is the sum of the rows it is SHOWING, and
+              it says so: `visible` is the scoped set, `shown` is what rendered.
+              inbox_campaign_sends_v is a server-side aggregate, so these are
+              full counts, not a page. */}
+          <div className="wb-cardf">
+            <span className="wb-legend-l">
+              {shown.length} of {visible.length} campaigns shown
+            </span>
+            <span className="wb-total">
+              Total: <b>{shown.reduce((s, c) => s + c.sent, 0).toLocaleString()}</b> sent
+            </span>
+          </div>
         </div>
       )}
     </section>
@@ -671,7 +716,7 @@ export function OverviewView({ client, timeframe, setClient, range = null }: {
 
   if (loading && !data) return <div className="rows ov"><div className="empty">Loading…</div></div>
   if (error) return <div className="rows ov"><div className="empty">{error}</div></div>
-  if (!data) return <div className="rows ov"><div className="empty">No data yet.</div></div>
+  if (!data) return <div className="rows ov"><div className="empty">No data yet — the call returned, it just had nothing in it.</div></div>
 
   const lanes = buildLanes(data.rows, data.daily, client)
 

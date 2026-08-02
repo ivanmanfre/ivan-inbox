@@ -2,7 +2,7 @@ import { type ReactNode, useState } from 'react'
 import { useDraftDetail } from '../../hooks/useContent'
 import {
   normalizeAgentLog, normalizeImageUrls, normalizeKeyPoints, normalizeQa,
-  reviewActionable, stageOf, taxonomyFields, STAGE_LABEL,
+  normalizeSourceDetail, reviewActionable, stageOf, taxonomyFields, STAGE_LABEL,
   type ContentDraftDetail, type ContentLane,
 } from '../../lib/content'
 import { ReviewActions } from './ReviewActions'
@@ -97,7 +97,15 @@ function Body({ d, lane, refresh, onBack }: {
   const source: [string, ReactNode][] = []
   if (tax.source) source.push(['Source', tax.source])
   if (d.source_label) source.push(['Label', d.source_label])
-  if (d.source_detail) source.push(['Detail', d.source_detail])
+  // source_detail is an OBJECT on 71 of 282 live rows; pushing it straight into
+  // a JSX child throws "Objects are not valid as a React child". This retired
+  // shell only needs to not crash — the register that renders the shape
+  // properly is v2c's DraftPane (normalizeSourceDetail).
+  {
+    const sd = normalizeSourceDetail(d.source_detail)
+    const detail = sd && (sd.text ?? sd.label ?? sd.kind)
+    if (detail) source.push(['Detail', detail])
+  }
   if (d.source_ref) source.push(['Ref', d.source_ref])
   if (d.client_idea_id) source.push(['From idea', d.client_idea_id])
 

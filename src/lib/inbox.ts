@@ -157,6 +157,14 @@ export function threadChatId(t: Thread): string | null {
   return t.messages.filter(m => m.unipile_chat_id).at(-1)?.unipile_chat_id ?? null
 }
 
+// U1: the guard used to be `.is('sent_at', null)` alone, so a stale view could
+// re-approve a row Ivan had already discarded — discardDraft only stamps
+// send_blocked_reason, and the dispatcher's real predicate is `approved_at NOT
+// NULL AND sent_at IS NULL` with no block check at all
+// (docs/send-path-verification.md). Any surface showing a cached or aggregated
+// draft list makes the replay reachable, so discard is now permanent AT THE
+// WRITE, not by UI convention: a stale approve becomes a zero-row no-op instead
+// of a message going out.
 export async function approveDraft(id: string, editedText: string, chatId?: string | null): Promise<void> {
   const patch: Record<string, unknown> = {
     message_text: editedText, approved_at: new Date().toISOString(),
@@ -164,7 +172,7 @@ export async function approveDraft(id: string, editedText: string, chatId?: stri
   if (chatId) patch.unipile_chat_id = chatId
   const { error } = await supabase.from('outreach_messages')
     .update(patch)
-    .eq('id', id).is('sent_at', null)
+    .eq('id', id).is('sent_at', null).is('send_blocked_reason', null)
   if (error) throw error
 }
 

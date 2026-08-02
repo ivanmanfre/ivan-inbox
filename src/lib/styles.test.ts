@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
   cleanStyleTitle, normalizeStyleKey, previewKey, previewKeyFor, previewsByStyle,
-  styleFamilyOf, styleKeysOf, MAX_PREVIEW_IMAGES, type StylePrompt,
+  styleFamilyOf, styleKeysOf, MAX_PREVIEW_IMAGES, isStuckResource,
+  RESOURCE_TERMINAL_STATUSES, type Resource, type StylePrompt,
 } from './styles'
 import type { ContentDraft } from './content'
 
@@ -251,5 +252,30 @@ describe('previewsByStyle', () => {
     expect(m.size).toBe(0)
     expect(m.get('structure:')).toBeUndefined()
     expect(m.get('image:')).toBeUndefined()
+  })
+})
+
+describe('isStuckResource', () => {
+  // The only real approved-with-no-date failure in the whole database is here
+  // rather than in carousel_drafts — and it is in MATTAN's lane, which the
+  // hardcoded `.is('client_id', null)` fetch could never see (IA §2.4).
+  const r = (o: Partial<Resource>): Resource => ({
+    id: 'bb07706c-afdf-45ef-ac03-59b1cd8c512f',
+    topic: 'The Shopify Report Card', format: 'AI Kit', status: 'approved',
+    resource_url: 'https://resources.risedtc.com/rise-dtc-repeat-customer-report-card/',
+    landing_url: null, cover_url: null, landing_slug: null,
+    updated_at: '2026-07-23T00:00:00Z', ...o,
+  })
+  it('calls a terminal status with no live URL stuck', () => {
+    expect(isStuckResource(r({}))).toBe(true)
+    expect(isStuckResource(r({ status: 'live', landing_url: '   ' }))).toBe(true)
+  })
+  it('never calls an in-flight row stuck, and never a published one with a URL', () => {
+    expect(isStuckResource(r({ status: 'review' }))).toBe(false)
+    expect(isStuckResource(r({ status: 'pending' }))).toBe(false)
+    expect(isStuckResource(r({ landing_url: 'https://x' }))).toBe(false)
+  })
+  it('keeps the terminal set explicit', () => {
+    expect(RESOURCE_TERMINAL_STATUSES).toEqual(['approved', 'published', 'live'])
   })
 })

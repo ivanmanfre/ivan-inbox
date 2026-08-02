@@ -133,6 +133,45 @@ export async function fetchSendLog(
   ).slice(0, limit)
 }
 
+// The log's own denominator.
+//
+// fetchSendLog above pulls the newest 360 sent and the newest 60 blocked and
+// renders 120 of them. Stating "120 sends" over that is a misrepresentation:
+// PostgREST caps a SELECT silently, so rows.length is the size of a WINDOW, not
+// the size of a fact. These are `Prefer: count=exact` HEAD probes (the same
+// convention as fetchLaneProbe in lib/content.ts) and they are the only honest
+// source for the denominator the log prints. They fetch no rows at all.
+export type SendLogTotals = { sent: number; blocked: number }
+
+export async function fetchSendLogTotals(
+  client: 'all' | 'ivan' | 'risedtc',
+): Promise<SendLogTotals> {
+  const base = () => {
+    const q = supabase.from('inbox_messages_v')
+      .select('id', { count: 'exact', head: true })
+      .eq('direction', 'outbound')
+    return client === 'all' ? q : q.eq('client_id', client)
+  }
+  const [sent, blocked] = await Promise.all([
+    base().not('sent_at', 'is', null),
+    // The log itself drops discarded_in_inbox, so the denominator has to drop it
+    // too or the fraction compares two different populations.
+    //
+    // …and it has to drop ONLY that. A bare `.neq()` is SQL three-valued logic:
+    // `NULL <> 'discarded_in_inbox'` evaluates to NULL, not TRUE, so PostgREST
+    // silently drops every block with no recorded reason. Measured against the
+    // live table: 246 blocked total, `neq` returns 210, this `or` returns 213 —
+    // the three NULL-reason blocks that `buildSendLog` above DOES render
+    // (`m.send_blocked_reason === 'discarded_in_inbox'` is false for null in JS)
+    // would have been invisible in their own denominator.
+    base().not('send_blocked_at', 'is', null)
+      .or('send_blocked_reason.is.null,send_blocked_reason.neq.discarded_in_inbox'),
+  ])
+  if (sent.error) throw sent.error
+  if (blocked.error) throw blocked.error
+  return { sent: sent.count ?? 0, blocked: blocked.count ?? 0 }
+}
+
 // The most recent actually-sent rows for one lane — powers the drill-in so you
 // can see WHAT went out, not just that the count moved. A historical insert
 // loop duplicated some DMs hundreds of times (identical text + timestamp), so

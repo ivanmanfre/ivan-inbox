@@ -1,5 +1,8 @@
 import { supabase } from './supabase'
-import type { ContentDraft } from './content'
+import {
+  elapsedMinutes, laneFilter, STUCK_GENERATING_MINUTES,
+  type ContentDraft, type ContentLane,
+} from './content'
 
 // Styles + resources domain.
 //
@@ -209,7 +212,11 @@ export type Resource = {
   topic: string | null
   format: string | null
   status: string
-  resource_url: string
+  resource_url: string | null
+  // The live page. Its ABSENCE at a terminal-looking status is the stuck signal
+  // (isStuckResource below) — it is a different column from resource_url, which
+  // is the asset.
+  landing_url: string | null
   cover_url: string | null
   landing_slug: string | null
   updated_at: string
@@ -219,15 +226,183 @@ export type Resource = {
 // treats lm_drafts_v2.status='approved' as a publish trigger is unverifiable
 // from either repo (skeptic verdict 2026-07-31), so the inbox does not offer
 // an approve/edit affordance that might turn out to publish a page.
-export async function fetchResources(): Promise<Resource[]> {
-  const { data, error } = await supabase.from('lm_drafts_v2')
-    .select('id, topic, format, status, resource_url, cover_url, landing_slug, updated_at')
-    // Same tenancy split as carousel_drafts: NULL = Ivan's own, non-null = a
-    // client board's LM, which belongs on that board and not here.
-    .is('client_id', null)
-    .not('resource_url', 'is', null)
+//
+// R6, the one read change this spec makes to this file (IA §7): the lane was
+// hardcoded `.is('client_id', null)`, so Mattan's 5 rows — including the only
+// real approved-but-undated failure in the database, bb07706c… (`approved`
+// since 07-23, landing_url still NULL) — could appear on no inbox surface at
+// all. laneFilter() is the only correct way to scope, so it scopes here too.
+//
+// The `_r1atest` row (client_id='_r1atest', disqualified) belongs to no lane and
+// is excluded by construction: an unrecognised tenant is never coalesced into
+// Ivan's, the same fail-closed posture as the cross-tenant rule (IA §4.4).
+export async function fetchResources(lane: ContentLane = 'ivan'): Promise<Resource[]> {
+  const f = laneFilter(lane)
+  let q = supabase.from('lm_drafts_v2')
+    .select('id, topic, format, status, resource_url, landing_url, cover_url, landing_slug, updated_at')
+  q = f.op === 'is' ? q.is(f.column, null) : q.eq(f.column, f.value)
+  // The resource_url filter this fetch used to carry is gone: "has a resource
+  // URL" is a FACET (AFFORDANCES §2.4), and a facet whose rows were already
+  // filtered out at the query is a control with one side. Dropping it is also
+  // what lets Mattan's lane render all 5 of its rows rather than 3.
+  const { data, error } = await q
     .order('updated_at', { ascending: false })
     .limit(200)
   if (error) throw error
   return (data ?? []) as unknown as Resource[]
+}
+
+// The approved-with-no-date detector, carried onto the resource row set
+// (IA §2.4 extension). The only real instance of that failure in the whole
+// database is here rather than in carousel_drafts: a resource at a
+// terminal-looking status with no live URL is stuck, evaluated per lane. This
+// is a read and a boolean; it adds no write.
+export const RESOURCE_TERMINAL_STATUSES = ['approved', 'published', 'live'] as const
+
+export function isStuckResource(r: Resource): boolean {
+  return (RESOURCE_TERMINAL_STATUSES as readonly string[]).includes(r.status)
+    && !(r.landing_url && r.landing_url.trim())
+}
+
+// ---------- the LM pipeline (phase 6 ask 2) ----------
+//
+// Ivan: "lead magnets/resources and posts need to be separated", and before
+// that, "[the new surface] doesn't show… lead magnet stages". Both are the same
+// hole: `lm_drafts_v2` was rendered as one flat, status-filterable list, while
+// carousel_drafts got a nine-section lifecycle. The old dashboard has treated
+// LMs as a full pipeline for a long time; nothing of that model survived the
+// rebuild.
+//
+// The MODEL is ported from personal-site — `lib/statusLabels.ts:21-31`
+// (LM_STATUSES) and `hooks/useLeadMagnets.ts:44-62` (LM_STATUS_ALIASES /
+// normalizeLmStatus) — reimplemented in this app's conventions (a `stageOfLm`
+// beside `stageOf`, a `groupByLmStage` beside `groupByStage`) rather than
+// copied, because the two repos disagree about almost everything else: this one
+// derives a STAGE from a status instead of rendering the status, and it never
+// drops a row it cannot classify.
+//
+// 🔴 The alias fold is the load-bearing half, and this is not theoretical. A
+// count=exact probe per status against live `lm_drafts_v2` on 2026-08-02:
+//
+//     pending 37 · published 40 · disqualified 34 · review 10 · complete 2
+//     lm_review 1 · approved 1 · error 1 · live 1        (127 rows total)
+//
+// 37 rows — the single largest group in the table, 29% of it — sit at the LEGACY
+// value `pending`, which the old dashboard folds to `idea`. Unfolded they render
+// as a phantom "Pending" status that exists in no pipeline. Same for `complete`
+// (→published) and `lm_review` (→review). Fold them, and the table is a
+// lifecycle; don't, and it is a bag of vocabularies.
+const LM_STATUS_ALIASES: Record<string, string> = {
+  draft: 'idea',
+  ready: 'published',
+  complete: 'published',
+  pending: 'idea',
+  lm_review: 'review',
+  generating_content: 'generating',
+}
+
+export function normalizeLmStatus(raw?: string | null): string {
+  const s = (raw ?? '').trim() || 'idea'
+  return LM_STATUS_ALIASES[s] ?? s
+}
+
+// The canonical nine, in lifecycle order. This is the LM_STATUSES array from
+// statusLabels.ts:21-31 minus the two off-pipeline states, which this app lifts
+// into the alert strip exactly as it does for posts — an error is not a step on
+// the way to publishing.
+export const LM_PIPELINE_STAGES = [
+  'idea', 'generating', 'generating_assets', 'review', 'approved', 'scheduled', 'published',
+] as const
+
+export type LmStage = (typeof LM_PIPELINE_STAGES)[number] | 'error' | 'archived' | 'other'
+
+// Same rule as STAGE_SHORT in content.ts: axis slots are too narrow for full
+// names; codes on the axis, full names on headers + tooltips.
+export const LM_STAGE_SHORT: Record<LmStage, string> = {
+  idea: 'Idea',
+  generating: 'Gen',
+  generating_assets: 'Assets',
+  review: 'Review',
+  approved: 'Appr',
+  scheduled: 'Sched',
+  published: 'Pub',
+  error: 'Err',
+  archived: 'Arch',
+  other: 'Other',
+}
+
+export const LM_STAGE_LABEL: Record<LmStage, string> = {
+  idea: 'Idea',
+  generating: 'Generating',
+  // The one in-flight stage posts do not have: body-gen and asset/page/cover
+  // build are separate runs with separate failure modes, and the old board keeps
+  // them apart (LeadMagnetStudioPanel.tsx:463-478).
+  generating_assets: 'Generating resources',
+  review: 'Needs review',
+  approved: 'Approved',
+  scheduled: 'Scheduled',
+  published: 'Published',
+  error: 'Errors',
+  archived: 'Archived',
+  other: 'Other',
+}
+
+// 🔴 `live` is NOT folded, deliberately. It is a real live value (1 row) and it
+// is NOT in the old dashboard's alias table, so folding it to `published` would
+// be a semantic claim this build invented rather than ported. It lands in
+// `other`, which is rendered and never dropped — the same posture stageOf()
+// takes for a vocabulary that grows after the file was written. If Ivan wants
+// `live` to mean published, that is a one-line addition to LM_STATUS_ALIASES
+// and a decision he makes, not one a builder makes quietly.
+export function stageOfLm(r: Resource): LmStage {
+  const s = normalizeLmStatus(r.status)
+  switch (s) {
+    case 'idea': return 'idea'
+    case 'generating': return 'generating'
+    case 'generating_assets': return 'generating_assets'
+    case 'review': return 'review'
+    case 'approved': return 'approved'
+    case 'scheduled': return 'scheduled'
+    case 'published': return 'published'
+    case 'error': return 'error'
+    case 'disqualified':
+    case 'skipped': return 'archived'
+    // Anything the n8n vocabulary grows after this file was written, plus
+    // `live`. Rendered at the bottom, never dropped.
+    default: return 'other'
+  }
+}
+
+export type LmStages = Record<LmStage, Resource[]>
+
+function emptyLmStages(): LmStages {
+  return {
+    idea: [], generating: [], generating_assets: [], review: [], approved: [],
+    scheduled: [], published: [], error: [], archived: [], other: [],
+  }
+}
+
+// No `now` parameter, unlike groupByStage: no LM stage is time-dependent today
+// (there is no LM equivalent of isStuckScheduled), and a parameter that is
+// threaded through but never read is a promise the function does not keep.
+export function groupByLmStage(rows: Resource[]): LmStages {
+  const out = emptyLmStages()
+  for (const r of rows) out[stageOfLm(r)].push(r)
+  return out
+}
+
+// The generating-class stages on this lane. TWO of them, which is the whole
+// reason the LM pipeline is nine stages and the post pipeline is eight: a body
+// generation and an asset/page/cover build are separate runs, so either can
+// stall on its own.
+export const LM_GENERATING_STAGES: readonly LmStage[] = ['generating', 'generating_assets']
+
+// Same threshold, same source (genAge.ts:11 — that file is shared by BOTH old
+// boards, so one number covers both lanes here too). LM rows carry no dedicated
+// start timestamp, so updated_at is the only clock there is; genAge.ts's own
+// comment says exactly that.
+export function isStuckGeneratingLm(r: Resource, now: number = Date.now()): boolean {
+  if (!LM_GENERATING_STAGES.includes(stageOfLm(r))) return false
+  const m = elapsedMinutes(r.updated_at, now)
+  return m !== null && m >= STUCK_GENERATING_MINUTES
 }

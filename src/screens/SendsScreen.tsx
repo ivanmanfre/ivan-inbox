@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  buildLanes, fetchLaneRecent, fetchSendLog, fetchSends, fetchSendsDaily, sendKind,
-  type Lane, type LaneKey, type RecentSend, type SendLogItem,
+  buildLanes, fetchLaneRecent, fetchSendLog, fetchSendLogTotals, fetchSends, fetchSendsDaily,
+  sendKind,
+  type Lane, type LaneKey, type RecentSend, type SendLogItem, type SendLogTotals,
 } from '../lib/sends'
 import { SendsSkeleton } from '../components/Skeleton'
 import { Linkified } from '../components/Linkified'
@@ -78,6 +79,10 @@ function LogView({ client }: { client: Client }) {
   const [items, setItems] = useState<SendLogItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // The denominator, from a count=exact HEAD probe — never rows.length of a
+  // truncated fetch. This log is a WINDOW on 1,700+ sends and 200+ blocks; a
+  // count taken off the window would understate failures by ~76%.
+  const [totals, setTotals] = useState<SendLogTotals | null>(null)
 
   useEffect(() => {
     let live = true
@@ -86,16 +91,31 @@ function LogView({ client }: { client: Client }) {
       .then(r => { if (live) setItems(r) })
       .catch(e => { if (live) setError(e instanceof Error ? e.message : 'Failed to load') })
       .finally(() => { if (live) setLoading(false) })
+    // A failed probe must never take the log down with it: no denominator is a
+    // smaller lie than a wrong one.
+    fetchSendLogTotals(client)
+      .then(t => { if (live) setTotals(t) })
+      .catch(() => { if (live) setTotals(null) })
     return () => { live = false }
   }, [client])
 
   if (loading) return <div className="rows sc-rows"><div className="empty">Loading…</div></div>
   if (error) return <div className="rows sc-rows"><div className="empty">{error}</div></div>
-  if (items.length === 0) return <div className="rows sc-rows"><div className="empty">No send activity yet.</div></div>
+  if (items.length === 0) return <div className="rows sc-rows"><div className="empty">No send activity yet — a verified zero, not a failed load.</div></div>
 
   let lastDay = ''
   return (
     <div className="rows sc-rows">
+      {/* The log is a window, and it now says so. Both figures are count=exact
+          probes; the two shown counts are of this render. */}
+      <div className="log-denom">
+        <span className="log-denom-l">Newest</span>
+        <b>{items.filter(m => m.kind !== 'failed').length}</b>
+        <span className="log-denom-l">of {totals ? totals.sent.toLocaleString() : '—'} sent</span>
+        <span className="log-denom-s">·</span>
+        <b>{items.filter(m => m.kind === 'failed').length}</b>
+        <span className="log-denom-l">of {totals ? totals.blocked.toLocaleString() : '—'} blocked</span>
+      </div>
       <div className="log-note">CONN = note attached and accepted by the API · CONN·BLANK = deliberate no-note A/B arm · CONN·BARE = note rejected, sent bare as a fallback.</div>
       {items.map(m => {
         const day = logDay(m.event_at)
@@ -105,8 +125,15 @@ function LogView({ client }: { client: Client }) {
           <div key={m.id} style={{ display: 'contents' }}>
             {showDay && <div className="log-day">{day}</div>}
             <div className="log-r">
+              {/* data-failed is a hook, not a colour. The kind palette here is
+                  eight inline hexes, two of which ARE the severity tokens; a
+                  treatment that wants to retone it needs one selector that can
+                  tell a severity apart from a category. The default app reads
+                  neither the attribute nor any rule keyed on it, so its own
+                  colours are untouched. */}
               <span
                 className="log-chip"
+                data-failed={m.kind === 'failed' ? '' : undefined}
                 style={m.kind === 'failed'
                   ? { background: 'rgba(255,69,58,.16)', color: '#FF453A' }
                   : { background: `${TYPE_COLOR[sendKind(m)] ?? '#10A37F'}22`, color: TYPE_COLOR[sendKind(m)] ?? '#10A37F' }}
@@ -182,7 +209,7 @@ function LaneDetail({ lane, client, onBack }: {
         ) : error ? (
           <div className="empty">{error}</div>
         ) : rows.length === 0 ? (
-          <div className="empty">No sends in this lane yet.</div>
+          <div className="empty">No sends in this lane yet — a verified zero, not a failed load.</div>
         ) : (
           rows.map(m => (
             <div key={m.id} className="ld">
@@ -210,6 +237,9 @@ export function SendsScreen({ client, setClient }: {
   const [openLane, setOpenLane] = useState<LaneKey | null>(null)
   const [view, setView] = useState<'overview' | 'lanes' | 'log'>('overview')
   const [timeframe, setTimeframe] = useState<Timeframe>('7d')
+  // The Range pill's dropdown (ask 8b). Open/closed only — the VALUE lives in
+  // `timeframe`, so closing the menu never changes what is shown.
+  const [range, setRange] = useState(false)
   const [rangeFrom, setRangeFrom] = useState('2026-07-11')
   const [rangeTo, setRangeTo] = useState(() => new Date().toISOString().slice(0, 10))
   const rowsRef = useRef<HTMLDivElement>(null)
@@ -243,41 +273,69 @@ export function SendsScreen({ client, setClient }: {
       <div className="nav">
         <div className="row-top">
           <h2>Sends</h2>
-          <div className="sc-refresh" onClick={load} title="Refresh">↻</div>
+          {/* GRAFT (phase 6 ask 8b, from candidate `split`): the range control
+              was a SECOND full-width segmented row stacked under the view
+              switcher — two identical-looking 44px bars, one of which is a view
+              and one of which is a filter, which is the "second segmented row"
+              spine §11.3 forbids (one filter vocabulary, not two chromes). It
+              is one `Range: 7d ⌄` pill now, right-set beside the display title
+              in the §11.1 anatomy: the label is never omitted, the VALUE is the
+              active state (§11.4), never a coloured fill. */}
+          <div className="wb-fbar">
+            {view === 'overview' && (
+              <div className="wb-fpop">
+                <button
+                  className={`wb-fpill${range ? ' on' : ''}`}
+                  onClick={() => setRange(v => !v)}
+                  title="The window every figure below is computed over"
+                >
+                  Range: <b>{TIMEFRAMES.find(t => t.key === timeframe)?.label}</b><i>⌄</i>
+                </button>
+                {range && (
+                  <div className="wb-fmenu">
+                    {TIMEFRAMES.map(t => (
+                      <button
+                        key={t.key}
+                        className={`wb-fopt${timeframe === t.key ? ' on' : ''}`}
+                        onClick={() => { setTimeframe(t.key); setRange(false) }}
+                      >
+                        {t.label}{timeframe === t.key && <span className="wb-fopt-t">✓</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="sc-refresh" onClick={load} title="Refresh">↻</div>
+          </div>
         </div>
         <div className="sc-sub">Pipeline health</div>
         <div className="chips">
           {CHIPS.map(c => (
-            <span
+            <button
+              type="button"
               key={c.key}
               className={`chip ${client === c.key ? 'on' : ''}`}
               onClick={() => setClient(c.key)}
             >
               {c.label}
-            </span>
+            </button>
           ))}
         </div>
       </div>
 
       <div className="seg" style={{ margin: '10px 16px 0' }}>
-        <div className={`sg ${view === 'overview' ? 'on' : ''}`} onClick={() => setView('overview')}>Overview</div>
-        <div className={`sg ${view === 'lanes' ? 'on' : ''}`} onClick={() => setView('lanes')}>Lanes</div>
-        <div className={`sg ${view === 'log' ? 'on' : ''}`} onClick={() => setView('log')}>Log</div>
+        <button type="button" className={`sg ${view === 'overview' ? 'on' : ''}`} onClick={() => setView('overview')}>Overview</button>
+        <button type="button" className={`sg ${view === 'lanes' ? 'on' : ''}`} onClick={() => setView('lanes')}>Lanes</button>
+        <button type="button" className={`sg ${view === 'log' ? 'on' : ''}`} onClick={() => setView('log')}>Log</button>
       </div>
 
       {view === 'overview' && (
         <>
-          <div className="seg" style={{ margin: '8px 16px 0' }}>
-            {TIMEFRAMES.map(t => (
-              <div
-                key={t.key}
-                className={`sg ${timeframe === t.key ? 'on' : ''}`}
-                onClick={() => setTimeframe(t.key)}
-              >
-                {t.label}
-              </div>
-            ))}
-          </div>
+          {/* the second segmented row used to be here — it is the Range pill in
+              the nav now (ask 8b). The custom date pair stays: it is a value
+              editor, not a second filter chrome, and only appears once the pill
+              has already chosen `Custom`. */}
           {timeframe === 'custom' && (
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '8px 16px 0' }}>
               <input
