@@ -1875,3 +1875,21 @@
 .wb.wb.wb .wb-sech.tap:hover{ background:var(--surface2) }
 .wb.wb.wb .wb-sech.tap{ transition:background-color var(--dur-hover) var(--ease) }
 .wb.wb.wb .ct-alert:hover{ border-color:rgba(255,69,58,.55) }
+
+/* ---- phase 6 fix loop 2 (blind mobile seat) ---- */
+/* The pill row scrolls (628px in a 358px viewport) but nothing SAID so —
+   mask:none measured live; the builder's fade never landed. Right-edge fade
+   as the affordance, mobile widths only. */
+@media (max-width: 767px){
+  .wb.wb.wb .ct-fpills{
+    -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+    mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+  }
+  /* An Ops draft textarea cut its 4th line mid-glyph above the buttons —
+     an orphaned half-line reads as broken. Room for 5 full lines; longer
+     drafts scroll inside the box with whole lines visible. */
+  .wb.wb.wb textarea.ops-body{ min-height:137px }
+}
+/* Inbox: a two-line contact name shifted the row's pills off the shared
+   rhythm. One line, end-ellipsis — the thread itself has the full name. */
+.wb.wb.wb .r .name{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0 }
