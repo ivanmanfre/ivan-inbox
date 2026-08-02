@@ -292,25 +292,29 @@ function LmRow({ r }: { r: Resource }) {
         <div className="ct-meta">
           {/* Slot #1, fixed x, same rule as the draft card. On a stalled run it
               carries the age instead of the stage, because that is the fact. */}
+          {/* SLOT #1, fixed x. On the post lane this is the QA verdict; LM rows
+              carry no QA column at all, so it is the FORMAT — the one fact that
+              varies row to row inside a stage section.
+              🔴 It is NOT the stage. The first build put the stage label here
+              and the capture showed why that is wrong: inside the Idea section,
+              37 consecutive rows each said "IDEA", which is the section header
+              repeated 37 times and exactly the tag-wall Ivan objected to. The
+              stage is carried by the section it is in and by the anchor dot.
+              The raw DB value rides on the title so the fold stays auditable —
+              a reader can find out that "Idea" is 37 rows the database still
+              calls `pending` — without spending a mark on it. */}
           {stalled
             ? <span className="ct-chip ct-st ct-chip-warn">{mins}m ⚠</span>
             : (
               <span
                 className={`ct-chip ct-st${stuck ? ' ct-chip-bad' : ''}`}
-                // 🔴 The raw DB value rides on the chip's title, not as a third
-                // mark. The fold has to stay AUDITABLE — a reader must be able
-                // to find out that "Idea" is 37 rows the database still calls
-                // `pending` — but ask 5 says two chips, and the folded-from
-                // value is a detail, not a scanning fact. It is stated once in
-                // prose under the chart, and per-row on hover.
                 title={normalizeLmStatus(r.status) !== r.status
                   ? `${LM_STAGE_LABEL[stage]} — folded from the database value “${r.status}”`
-                  : `status: ${r.status}`}
+                  : `${LM_STAGE_LABEL[stage]} (status: ${r.status})`}
               >
-                {LM_STAGE_LABEL[stage]}
+                {r.format ?? LM_STAGE_LABEL[stage]}
               </span>
             )}
-          {r.format && <span className="ct-chip">{r.format}</span>}
           {r.landing_url
             ? <a className="ct-ref-l" href={r.landing_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>landing ↗</a>
             : <span className="ct-ref">no landing URL</span>}
