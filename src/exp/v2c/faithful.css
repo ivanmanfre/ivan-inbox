@@ -1836,3 +1836,15 @@
   .wb.wb.wb .search input{ min-height:38px }
   .wb.wb.wb .wb-pane-x{ min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center; margin:-10px -10px }
 }
+
+/* ---- phase 3: the two loading loops join the contract (phase0-errors-hover C) ----
+   §10.2 caps TRANSITIONS at 250ms; an indeterminate loading loop has no end by
+   nature, so the carve-out is: loops are licensed ONLY on loading/live
+   indicators (the skeleton shimmer, the thinking dots, the mic's live dot),
+   they run on the ONE easing token, and they animate opacity/transform only.
+   The base app ran both on a second curve (1.3s ease-in-out) — and the
+   thinking DOT borrowed the shimmer's translateX keyframes, so it slid
+   instead of pulsing. */
+@keyframes wb-th-pulse{ 0%,100%{ opacity:.25 } 50%{ opacity:1 } }
+.wb.wb.wb .wb-th-dot{ animation:wb-th-pulse 1.2s var(--ease) infinite }
+.wb.wb.wb .sk::after{ animation-timing-function:var(--ease); animation-duration:1.2s }

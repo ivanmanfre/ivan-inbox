@@ -1,6 +1,31 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useConfirm } from '../../components/ConfirmSheet'
 import { approveDraft, skipDraft } from '../../lib/content'
+
+// §10.5 — the app's ONE choreographed beat. The row lifts and fades over
+// --dur-beat, the refetch fires when the movement ENDS (the list never jumps
+// under a hand), and the section count above ticks as it lands on its new
+// value. The keyframes have lived in faithful.css since the tournament; this
+// run wires them (phase0-errors-hover found them as dead code). Under
+// prefers-reduced-motion the animation is disabled by CSS, so the delay is
+// skipped and the refetch is immediate.
+const BEAT_MS = 200
+
+function reducedMotion(): boolean {
+  try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches } catch { return false }
+}
+
+function playBeat(from: HTMLElement | null, then: () => void): void {
+  const card = from?.closest('.ct-card') as HTMLElement | null
+  if (!card || reducedMotion()) { then(); return }
+  card.classList.add('wb-approving')
+  const count = card.closest('section, div')?.querySelector('.wb-sech-c')
+  window.setTimeout(() => {
+    count?.classList.add('wb-ticked')
+    window.setTimeout(() => count?.classList.remove('wb-ticked'), BEAT_MS + 50)
+    then()
+  }, BEAT_MS)
+}
 
 // The ONLY mutating affordance in the Content tab, now rendered from two places
 // (the queue card and the draft detail screen) — so it lives in one component
@@ -20,6 +45,7 @@ export function ReviewActions({ id, onDone, compact }: {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const confirm = useConfirm()
+  const rootRef = useRef<HTMLDivElement>(null)
 
   async function run(kind: 'approve' | 'skip') {
     const ok = await confirm(kind === 'approve' ? {
@@ -36,7 +62,10 @@ export function ReviewActions({ id, onDone, compact }: {
     setBusy(true); setError('')
     try {
       await (kind === 'approve' ? approveDraft(id) : skipDraft(id))
-      onDone()
+      // The beat plays only on APPROVE — intensity in proportion to rarity;
+      // a skip just leaves.
+      if (kind === 'approve') playBeat(rootRef.current, onDone)
+      else onDone()
     } catch (e) {
       setError(e instanceof Error ? e.message : `Could not ${kind}`)
     } finally {
@@ -49,7 +78,7 @@ export function ReviewActions({ id, onDone, compact }: {
       {error && <div className="ops-err" style={{ marginTop: 8 }}>{error}</div>}
       {/* A tap on a queue card opens the detail screen; the buttons must not
           also fire that. */}
-      <div className={`ct-ac${compact ? '' : ' ct-ac-wide'}`} onClick={e => e.stopPropagation()}>
+      <div ref={rootRef} className={`ct-ac${compact ? '' : ' ct-ac-wide'}`} onClick={e => e.stopPropagation()}>
         <button type="button" className="btn s" disabled={busy} onClick={() => run('skip')}>Skip</button>
         <button type="button" className="btn p" disabled={busy} onClick={() => run('approve')}>
           {busy ? 'Working…' : 'Approve'}
