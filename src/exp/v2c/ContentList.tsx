@@ -248,13 +248,25 @@ function AlertStrip({ drafts, lane, refresh, onOpen, openId, extra }: {
   openId: string | null
   extra: { key: string; line: string }[]
 }) {
-  const [open, setOpen] = useState(true)
+  // The strip opens itself only when it is small enough to READ. On the live
+  // Ivan lane it carries 38 rows, and 38 rows of "is published with no landing
+  // URL" above the pipeline chart buries every draft in the queue below it —
+  // measured: the first 1440×900 viewport of the test surface contained zero
+  // draft rows. The count, the breakdown and the chevron are all still there,
+  // and a handful still opens on sight.
+  const [open, setOpen] = useState(drafts.length + extra.length <= 6)
   const n = drafts.length + extra.length
   if (n === 0) return null
   const errored = drafts.filter(d => d.status === 'error').length
   const stuck = drafts.filter(d => isStuckScheduled(d)).length
   return (
     <>
+      {/* The jump target lives on the HEADER, not inside the collapsible body:
+          `jump()` (:385) scrolls to `wb-s-<stage>`, and an anchor that unmounts
+          with the body would send the error jump nowhere whenever the strip is
+          closed. The header is what you want to land on anyway — it carries the
+          count and the breakdown. */}
+      <div id="wb-s-error" />
       <div className="ct-alert" onClick={() => setOpen(o => !o)}>
         <span className="ct-alert-n">{n}</span>
         <span className="ct-alert-t">
@@ -268,8 +280,9 @@ function AlertStrip({ drafts, lane, refresh, onOpen, openId, extra }: {
       </div>
       {open && (
         <>
-          <div id="wb-s-error" />
-          {extra.map(e => <div className="ct-alert-x" key={e.key}>{e.line}</div>)}
+          {/* the line is wrapped so it can ellipsize: a list of what is wrong,
+              not prose about it. The full sentence lives on the row it points at. */}
+          {extra.map(e => <div className="ct-alert-x" key={e.key}><span>{e.line}</span></div>)}
           {drafts.map(d => (
             <Card key={d.id} d={d} lane={lane} refresh={refresh} onOpen={onOpen} active={openId === d.id} />
           ))}
