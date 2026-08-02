@@ -12,6 +12,7 @@ describe('parseWbHash', () => {
 
   it('reads a job off the trailing path', () => {
     expect(parseWbHash('#exp/v2/content')).toEqual({ job: 'content', focus: null })
+    expect(parseWbHash('#exp/v2/magnets')).toEqual({ job: 'magnets', focus: null })
     expect(parseWbHash('#exp/v2/ops')).toEqual({ job: 'ops', focus: null })
   })
 

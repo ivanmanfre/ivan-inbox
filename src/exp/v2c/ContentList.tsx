@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { PullIndicator } from '../../components/PullIndicator'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import {
-  useAgentDigest, useContent, useIdeaCandidates, useResources, useScheduledQueue, useStyleRoster,
+  useAgentDigest, useContent, useIdeaCandidates, useScheduledQueue, useStyleRoster,
 } from '../../hooks/useContent'
 import {
   CONTENT_LANES, LANE_LABEL, LANE_POSSESSIVE, PIPELINE_STAGES,
@@ -11,7 +11,6 @@ import {
   queueFailed, reviewActionable, stageOf,
   type ContentDraft, type ContentLane, type ContentStage, type ContentStages,
 } from '../../lib/content'
-import { isStuckGeneratingLm, isStuckResource } from '../../lib/styles'
 import {
   applyFilters, applySearch, buildFacets, draftScore, draftSpecs, DRAFT_PROMINENT, splitFacets,
   type FilterState,
@@ -21,7 +20,7 @@ import { ReviewActions } from './ReviewActions'
 import { FilteredEmpty } from './ContentBits'
 import { FilterRow } from './FilterRow'
 import {
-  AlertCountLine, IdeasSection, PillarMix, QueueStrip, ResourceLane,
+  AlertCountLine, IdeasSection, PillarMix, QueueStrip,
   StyleRoster, SummariesSection,
 } from './ContentSections'
 import { relTime, typeLabel } from './fmt'
@@ -388,33 +387,26 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
   }, [filterStage])
   const ideas = useIdeaCandidates(true)
   const queue = useScheduledQueue(true)
-  const resources = useResources('ivan')
   const roster = useStyleRoster()
   const digest = useAgentDigest(true)
 
   // Deliberately built from the UNFILTERED stages: a filter may narrow the
   // flow, but it may never hide a broken row. The strip sits above the flow for
-  // the same reason.
+  // the same reason. Lead-magnet alerts (stalled LM generations, stuck
+  // resources) moved to the Magnets job with the ResourceLane that renders
+  // them — this strip is posts-only now.
   const alerts = [...stages.error, ...stages.stuck]
   const failedQueue = queue.rows.filter(queueFailed)
-  const stuckRes = resources.rows.filter(isStuckResource)
-  // ask 6 — a generation that died mid-run, on BOTH lanes. The rows stay in
-  // their Generating section (that is still the stage they are in, and the row
-  // itself carries the amber age chip); what joins the strip is the COUNT, so a
-  // silently-dead run is visible without leaving the top of the page.
+  // ask 6 — a generation that died mid-run. The rows stay in their Generating
+  // section (that is still the stage they are in, and the row itself carries
+  // the amber age chip); what joins the strip is the COUNT, so a silently-dead
+  // run is visible without leaving the top of the page.
   const stalledGen = stages.generating.filter(d => isStuckGenerating(d))
-  const stalledLm = resources.rows.filter(isStuckGeneratingLm)
   const extra = [
     ...(stalledGen.length > 0
       ? [{
         key: 'stalled-gen',
         line: `${stalledGen.length} draft${stalledGen.length === 1 ? '' : 's'} generating for over ${STUCK_GENERATING_MINUTES} minutes — the run that started ${stalledGen.length === 1 ? 'it' : 'them'} is probably dead.`,
-      }]
-      : []),
-    ...(stalledLm.length > 0
-      ? [{
-        key: 'stalled-lm',
-        line: `${stalledLm.length} lead magnet${stalledLm.length === 1 ? '' : 's'} generating for over ${STUCK_GENERATING_MINUTES} minutes.`,
       }]
       : []),
     ...(failedQueue.length > 0
@@ -423,10 +415,6 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
         line: `${failedQueue.length} publish ${failedQueue.length === 1 ? 'failure' : 'failures'} in the queue — the only place a failed publish is written down.`,
       }]
       : []),
-    ...stuckRes.map(r => ({
-      key: r.id,
-      line: `Resource “${r.topic ?? r.id}” is ${r.status} with no landing URL (updated ${relTime(r.updated_at)}).`,
-    })),
   ]
 
   const jump = (s: ContentStage) => {
@@ -512,16 +500,9 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
         />
       ))}
 
-      {/* ask 2 — the lead magnets LEAVE the posts list here. Everything above
-          this line is carousel_drafts; everything inside ResourceLane is
-          lm_drafts_v2, with its own nine-stage pipeline. */}
-      <ResourceLane
-        rows={resources.rows} lane="ivan"
-        ideas={ideas.split.lead_magnet} ideaCount={ideas.counts.lead_magnet}
-        ideaState={ideas}
-        loading={resources.loading}
-        error={resources.error} loadedAt={resources.loadedAt} refresh={resources.refresh}
-      />
+      {/* The lead magnets LEFT this scroll entirely (usability-voice ask 1):
+          they are the Magnets job now. The Content scroll ends at the summary
+          sections below. */}
       <PillarMix rows={drafts} />
       <StyleRoster
         roster={roster.rows} laneRows={drafts} lane="ivan"
@@ -568,7 +549,6 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
     if (filterStage) stageOpen.ensure(filterStage)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterStage])
-  const resources = useResources('risedtc')
   const roster = useStyleRoster()
 
   const specs = draftSpecs('risedtc')
@@ -584,16 +564,13 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
   const scheduled = drafts.filter(d => d.scheduled_at).length
   const noImage = drafts.filter(d => d.status === 'review' && !(d.image_urls?.length)).length
 
+  // Stuck-resource lines moved to the Magnets job with the lane that renders
+  // them; this strip is posts-only now.
   const alerts = shown.filter(d => d.status === 'error' || isStuckScheduled(d))
-  const stuckRes = resources.rows.filter(isStuckResource)
-  const extra = stuckRes.map(r => ({
-    key: r.id,
-    line: `Resource “${r.topic ?? r.id}” is ${r.status} with no landing URL (updated ${relTime(r.updated_at)}).`,
-  }))
 
   return (
     <>
-      <AlertStrip drafts={alerts} lane="risedtc" refresh={refresh} onOpen={onOpen} openId={openId} extra={extra} />
+      <AlertStrip drafts={alerts} lane="risedtc" refresh={refresh} onOpen={onOpen} openId={openId} extra={[]} />
 
       {/* 🔴 The OBSERVED figures and no denominator: there is no weekly-cap
           constant anywhere in personal-site or in this app, and inventing
@@ -665,14 +642,9 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
           )
         })}
 
-      {/* Same lane object as Ivan's, minus the idea stage: lm_idea_candidates
-          carries no tenancy column at all, so there is no Mattan side of that
-          partition to render and inventing one would be a cross-tenant claim. */}
-      <ResourceLane
-        rows={resources.rows} lane="risedtc" ideas={null} ideaCount={null}
-        loading={resources.loading}
-        error={resources.error} loadedAt={resources.loadedAt} refresh={resources.refresh}
-      />
+      {/* The lead-magnet lane left this scroll for the Magnets job (the
+          no-Mattan-ideas rule travels with it — lm_idea_candidates carries no
+          tenancy column, so only the Ivan lane has an idea stage there). */}
       <StyleRoster
         roster={roster.rows} laneRows={drafts} lane="risedtc"
         loading={roster.loading} error={roster.error} refresh={roster.refresh}

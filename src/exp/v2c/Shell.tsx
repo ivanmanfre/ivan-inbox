@@ -13,6 +13,7 @@ import type { Filter } from '../../lib/inbox'
 import type { ContentLane } from '../../lib/content'
 import { MobileTabs, Rail, WorkSegment } from './Rail'
 import { ContentList } from './ContentList'
+import { MagnetsList } from './MagnetsList'
 import { DraftPane, draftContextLabel } from './DraftPane'
 import { ThreadPeer } from './ThreadPeer'
 import { InboxHead } from './InboxHead'
@@ -329,6 +330,14 @@ export default function Shell() {
           openId={ctx?.kind === 'draft' ? ctx.id : null}
           onOpen={openDraft}
         />
+      )}
+      {/* Magnets shares the SAME lane state as Content — switching lane in one
+          tab is reflected in the other. No badge on this job on purpose:
+          useContentBadge counts carousel_drafts rows at review (posts waiting
+          on Ivan); the LM lane is read-only here, so a count would advertise
+          an action this surface does not offer. */}
+      {job === 'magnets' && (
+        <MagnetsList lane={lane} setLane={setLane} />
       )}
       {job === 'sends' && <SendsScreen client={sendsClient} setClient={setSendsClient} />}
       {job === 'ops' && opsSurface}
