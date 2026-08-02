@@ -1445,7 +1445,11 @@
 .wb.wb.wb .log-chip{
   grid-column:1; margin:0;
   min-width:0; width:100%; padding:2px 0;
-  display:inline-flex; align-items:center; justify-content:center;
+  /* block + end-ellipsis, not centered inline-flex: a long kind ("CONN·BLANK")
+     used to overflow the fixed anchor column on BOTH sides and start at
+     x=-5.6px at 390 (phase0-mobile #3). Clipped at the end now, full value on
+     the title. */
+  display:block; text-align:center; overflow:hidden; text-overflow:ellipsis;
   border-radius:var(--r-chip);
   font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.04em;
   line-height:16px; white-space:nowrap;
@@ -1811,3 +1815,24 @@
 /* The owner caption was ACCENT text (§5.2 forbids accent as a text colour) and
    sat at the same visual weight as the quote. Metadata token, metadata place. */
 .wb.wb.wb .td-qown{ color:var(--text4); font-weight:500 }
+
+/* ---- phase 3: mobile touch targets (phase0-mobile #2/#5/#6/#10) ---- */
+/* The takeover's ONLY exit was a 6×20px glyph. Real button, 44px hit box. */
+.wb.wb.wb .wb-back{
+  position:relative; min-width:44px; min-height:44px; margin:-10px 0 -10px -12px;
+  display:flex; align-items:center; justify-content:center;
+  border:none; background:none; padding:0;
+  color:var(--text2); font-size:24px; cursor:pointer;
+}
+/* The frame's gear/Done and the ribbon sync chip get the same invisible pad. */
+.wb.wb.wb .wb-gear, .wb.wb.wb .wb-rib-sync{ position:relative }
+.wb.wb.wb .wb-gear::after, .wb.wb.wb .wb-rib-sync::after{
+  content:''; position:absolute; inset:-12px;
+}
+@media (max-width: 767px){
+  /* Skip/Approve measured 48×28 / 76×28 on the primary review loop. */
+  .wb.wb.wb .ct-ac .btn{ min-height:44px; padding-top:0; padding-bottom:0; display:inline-flex; align-items:center; justify-content:center }
+  /* the search field's real hit box was 310×20 inside a 38px wrapper */
+  .wb.wb.wb .search input{ min-height:38px }
+  .wb.wb.wb .wb-pane-x{ min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center; margin:-10px -10px }
+}

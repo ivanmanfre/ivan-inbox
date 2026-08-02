@@ -256,7 +256,7 @@ export function DraftPane({ id, lane, refresh, onClose, onAsk, mobile }: {
   return (
     <>
       <div className="wb-pane-h">
-        {mobile && <span className="back" onClick={onClose}>‹</span>}
+        {mobile && <button type="button" className="back wb-back" onClick={onClose} aria-label="Back">‹</button>}
         <span className="wb-pane-ic">▤</span>
         <div className="wb-pane-ttl">
           <div className="wb-pane-n">Content draft</div>
