@@ -170,6 +170,53 @@ export function isStuckScheduled(r: ContentDraft, now: number = Date.now()): boo
   return t < now
 }
 
+// ---------- stuck generation (phase 6 ask 6) ----------
+//
+// The gap the parity scout ranked third: a generation that died mid-run (the
+// n8n workflow fell over, the container 502'd) leaves the row sitting at
+// `generating` forever, and NOTHING on this surface said so. isStuckScheduled
+// above closes exactly this class of bug for the SCHEDULED case; the generating
+// case was left open.
+//
+// 🔴 THE THRESHOLD IS NOT INVENTED. The old dashboard already has one and has
+// had it for a while: `personal-site/components/dashboard/genAge.ts:11`,
+// `export const STUCK_MINUTES = 20`, shared by the Posts board and the LM board
+// and rendered as the `generating · 24m ⚠` chip. The brief allowed deriving a
+// p95 from observed generation times if the old board had no threshold — it
+// does, so the ported number wins over a fresh derivation, and there is nothing
+// to derive from anyway: a live probe on 2026-08-02 found ZERO rows at
+// `generating` in either table, so any p95 this build computed would have had
+// an empty sample behind it.
+export const STUCK_GENERATING_MINUTES = 20
+
+// Minutes since `iso`, or null when there is no timestamp to measure from —
+// never 0, which would be a claim that the run just started (genAge.ts:16-22).
+export function elapsedMinutes(iso: string | null | undefined, now: number = Date.now()): number | null {
+  if (!iso) return null
+  const t = new Date(iso).getTime()
+  if (!Number.isFinite(t)) return null
+  return Math.max(0, Math.round((now - t) / 60_000))
+}
+
+// The most precise start the row carries. genAge.ts's own comment names the
+// pair: carousel_drafts.taxonomy.generating_started_at when it is set, else
+// updated_at (LM rows have no dedicated start timestamp and always pass
+// updated_at). Reading updated_at as a fallback is slightly conservative — a
+// re-write bumps it and restarts the clock — which is the right direction for a
+// warning: it under-reports staleness rather than crying stuck on a live run.
+export function generatingSince(r: ContentDraft): string | null {
+  return taxonomyValue(r.taxonomy, 'generating_started_at') ?? r.updated_at ?? null
+}
+
+// True once a GENERATING row has been running past the threshold. Anything not
+// at that status is false: a stalled run is a fact about an in-flight row, and
+// asking it of a published row would answer a question nobody asked.
+export function isStuckGenerating(r: ContentDraft, now: number = Date.now()): boolean {
+  if (r.status !== 'generating') return false
+  const m = elapsedMinutes(generatingSince(r), now)
+  return m !== null && m >= STUCK_GENERATING_MINUTES
+}
+
 // ---------- reads ----------
 
 export type ContentPage = {
@@ -284,6 +331,74 @@ const IDEA_COLS =
   'format_recommendation, offer_ladder_map, content_type, post_angle, ' +
   'ivan_engaged, source_ref, slack_permalink, ingested_at, scored_at, ' +
   'promoted_draft_id, promoted_draft_table, promoted_clickup_task_id'
+
+// ---------- the idea split (phase 6 ask 3) ----------
+//
+// The conflation: `fetchIdeaCandidates` had no content-type filter, so LM ideas
+// were counted into the POSTS pipeline's "ideas" figure and rendered in the
+// posts idea list. "12 post ideas" quietly included lead-magnet ideas — the old
+// dashboard never did this (it runs two disjoint projections, ideaProjection.ts
+// for posts and lmIdeaProjection.ts for LMs).
+//
+// The discriminator EXISTS and is not inferred: `lm_idea_candidates.content_type`,
+// inspected on a live row and counted with count=exact head probes on
+// 2026-08-02, at status='reviewing':
+//
+//     content_type='post'          57
+//     content_type='lead_magnet'    3
+//     content_type IS NULL          0
+//     ------------------------------
+//     total at reviewing           60
+//
+// (Across the whole table, unfiltered by status: post 734, lead_magnet 31,
+// NULL 235 — so NULL is a real shape in the table, it just does not currently
+// occur at `reviewing`.)
+//
+// 🔴 The filter is applied by PARTITION, not by adding `.eq('content_type', …)`
+// to the query. A row whose content_type is NULL or an unrecognised value would
+// vanish from BOTH lanes under an equality filter — an idea that exists in the
+// database and appears on no surface, which is the exact failure mode this
+// app's lane scoping is written to refuse (see the `_r1atest` note above and
+// blank-board #3). Unclassified rows are rendered, labelled as unclassified, on
+// the posts lane.
+export type IdeaKind = 'post' | 'lead_magnet' | 'other'
+
+export function ideaKindOf(i: Pick<IdeaCandidate, 'content_type'>): IdeaKind {
+  const s = (i.content_type ?? '').trim().toLowerCase()
+  if (s === 'post') return 'post'
+  if (s === 'lead_magnet') return 'lead_magnet'
+  return 'other'
+}
+
+export type IdeaSplit = { post: IdeaCandidate[]; lead_magnet: IdeaCandidate[]; other: IdeaCandidate[] }
+
+export function splitIdeas(ideas: IdeaCandidate[]): IdeaSplit {
+  const out: IdeaSplit = { post: [], lead_magnet: [], other: [] }
+  for (const i of ideas) out[ideaKindOf(i)].push(i)
+  return out
+}
+
+// Per-kind SERVER-SIDE exact counts. Deriving these from the fetched page would
+// re-introduce the D2 problem one level down: the page is capped at 500 and the
+// bar would draw a proportion of whatever survived the cap. `other` is the only
+// figure computed rather than probed — total minus the two known kinds — because
+// PostgREST has no "not in this set" head probe that stays correct when a new
+// content_type value appears. Arithmetic over three exact counts is exact.
+export type IdeaCounts = { total: number | null; post: number | null; lead_magnet: number | null; other: number | null }
+
+export async function fetchIdeaCounts(): Promise<IdeaCounts> {
+  const head = async (kind?: 'post' | 'lead_magnet') => {
+    let q = supabase.from('lm_idea_candidates')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', IDEA_STATUS)
+    if (kind) q = q.eq('content_type', kind)
+    const { count, error } = await q
+    if (error) throw error
+    return count ?? 0
+  }
+  const [total, post, lead_magnet] = await Promise.all([head(), head('post'), head('lead_magnet')])
+  return { total, post, lead_magnet, other: Math.max(0, total - post - lead_magnet) }
+}
 
 export type IdeaPage = { ideas: IdeaCandidate[]; count: number | null }
 

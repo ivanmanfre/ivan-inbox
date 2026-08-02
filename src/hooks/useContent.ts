@@ -2,9 +2,9 @@ import { useCallback, useEffect, useId, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import {
   bucketDrafts, groupByStage, fetchContentDrafts, fetchDraftDetail, fetchIdeaCandidates,
-  fetchLaneProbe, fetchScheduledQueue,
+  fetchIdeaCounts, fetchLaneProbe, fetchScheduledQueue, splitIdeas,
   type ContentBuckets, type ContentDraft, type ContentDraftDetail, type ContentLane,
-  type ContentStages, type IdeaCandidate, type ScheduledQueueRow,
+  type ContentStages, type IdeaCandidate, type IdeaCounts, type ScheduledQueueRow,
 } from '../lib/content'
 import { fetchAlerts, fetchDailySummaries, type AgentSummary } from '../lib/agent'
 import { fetchResources, fetchStyleRoster, type Resource, type StylePrompt } from '../lib/styles'
@@ -147,14 +147,25 @@ export function useScheduledQueue(enabled: boolean) {
 }
 
 // R7 — the Ideas stage. Also tenancy-column-less, also Ivan by construction.
+//
+// Phase 6 ask 3: the rows come back whole and are PARTITIONED by content_type
+// here (splitIdeas), while the per-kind denominators come from their own
+// count=exact head probes rather than from the partition — the page is capped
+// at 500, and a proportion drawn off a capped page is the fabricated-figure
+// failure D2 names. The two lanes each read one side of `split`; nothing is
+// dropped, because `other` is a real bucket the posts lane renders.
+const EMPTY_COUNTS: IdeaCounts = { total: null, post: null, lead_magnet: null, other: null }
+
 export function useIdeaCandidates(enabled: boolean) {
   const [count, setCount] = useState<number | null>(null)
+  const [counts, setCounts] = useState<IdeaCounts>(EMPTY_COUNTS)
   const aux = useAux<IdeaCandidate[]>(
     () => (enabled
-      ? fetchIdeaCandidates().then(p => { setCount(p.count); return p.ideas })
+      ? Promise.all([fetchIdeaCandidates(), fetchIdeaCounts()])
+        .then(([p, c]) => { setCount(p.count); setCounts(c); return p.ideas })
       : Promise.resolve([])),
     [], [enabled])
-  return { ...aux, count }
+  return { ...aux, count, counts, split: splitIdeas(aux.rows) }
 }
 
 // R6 — resources, now lane-scoped (the read change IA §7 names).

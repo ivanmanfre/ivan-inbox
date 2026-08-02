@@ -1,5 +1,8 @@
 import { supabase } from './supabase'
-import { laneFilter, type ContentDraft, type ContentLane } from './content'
+import {
+  elapsedMinutes, laneFilter, STUCK_GENERATING_MINUTES,
+  type ContentDraft, type ContentLane,
+} from './content'
 
 // Styles + resources domain.
 //
@@ -259,4 +262,130 @@ export const RESOURCE_TERMINAL_STATUSES = ['approved', 'published', 'live'] as c
 export function isStuckResource(r: Resource): boolean {
   return (RESOURCE_TERMINAL_STATUSES as readonly string[]).includes(r.status)
     && !(r.landing_url && r.landing_url.trim())
+}
+
+// ---------- the LM pipeline (phase 6 ask 2) ----------
+//
+// Ivan: "lead magnets/resources and posts need to be separated", and before
+// that, "[the new surface] doesn't show… lead magnet stages". Both are the same
+// hole: `lm_drafts_v2` was rendered as one flat, status-filterable list, while
+// carousel_drafts got a nine-section lifecycle. The old dashboard has treated
+// LMs as a full pipeline for a long time; nothing of that model survived the
+// rebuild.
+//
+// The MODEL is ported from personal-site — `lib/statusLabels.ts:21-31`
+// (LM_STATUSES) and `hooks/useLeadMagnets.ts:44-62` (LM_STATUS_ALIASES /
+// normalizeLmStatus) — reimplemented in this app's conventions (a `stageOfLm`
+// beside `stageOf`, a `groupByLmStage` beside `groupByStage`) rather than
+// copied, because the two repos disagree about almost everything else: this one
+// derives a STAGE from a status instead of rendering the status, and it never
+// drops a row it cannot classify.
+//
+// 🔴 The alias fold is the load-bearing half, and this is not theoretical. A
+// count=exact probe per status against live `lm_drafts_v2` on 2026-08-02:
+//
+//     pending 37 · published 40 · disqualified 34 · review 10 · complete 2
+//     lm_review 1 · approved 1 · error 1 · live 1        (127 rows total)
+//
+// 37 rows — the single largest group in the table, 29% of it — sit at the LEGACY
+// value `pending`, which the old dashboard folds to `idea`. Unfolded they render
+// as a phantom "Pending" status that exists in no pipeline. Same for `complete`
+// (→published) and `lm_review` (→review). Fold them, and the table is a
+// lifecycle; don't, and it is a bag of vocabularies.
+const LM_STATUS_ALIASES: Record<string, string> = {
+  draft: 'idea',
+  ready: 'published',
+  complete: 'published',
+  pending: 'idea',
+  lm_review: 'review',
+  generating_content: 'generating',
+}
+
+export function normalizeLmStatus(raw?: string | null): string {
+  const s = (raw ?? '').trim() || 'idea'
+  return LM_STATUS_ALIASES[s] ?? s
+}
+
+// The canonical nine, in lifecycle order. This is the LM_STATUSES array from
+// statusLabels.ts:21-31 minus the two off-pipeline states, which this app lifts
+// into the alert strip exactly as it does for posts — an error is not a step on
+// the way to publishing.
+export const LM_PIPELINE_STAGES = [
+  'idea', 'generating', 'generating_assets', 'review', 'approved', 'scheduled', 'published',
+] as const
+
+export type LmStage = (typeof LM_PIPELINE_STAGES)[number] | 'error' | 'archived' | 'other'
+
+export const LM_STAGE_LABEL: Record<LmStage, string> = {
+  idea: 'Idea',
+  generating: 'Generating',
+  // The one in-flight stage posts do not have: body-gen and asset/page/cover
+  // build are separate runs with separate failure modes, and the old board keeps
+  // them apart (LeadMagnetStudioPanel.tsx:463-478).
+  generating_assets: 'Generating resources',
+  review: 'Needs review',
+  approved: 'Approved',
+  scheduled: 'Scheduled',
+  published: 'Published',
+  error: 'Errors',
+  archived: 'Archived',
+  other: 'Other',
+}
+
+// 🔴 `live` is NOT folded, deliberately. It is a real live value (1 row) and it
+// is NOT in the old dashboard's alias table, so folding it to `published` would
+// be a semantic claim this build invented rather than ported. It lands in
+// `other`, which is rendered and never dropped — the same posture stageOf()
+// takes for a vocabulary that grows after the file was written. If Ivan wants
+// `live` to mean published, that is a one-line addition to LM_STATUS_ALIASES
+// and a decision he makes, not one a builder makes quietly.
+export function stageOfLm(r: Resource, now: number = Date.now()): LmStage {
+  const s = normalizeLmStatus(r.status)
+  switch (s) {
+    case 'idea': return 'idea'
+    case 'generating': return 'generating'
+    case 'generating_assets': return 'generating_assets'
+    case 'review': return 'review'
+    case 'approved': return 'approved'
+    case 'scheduled': return 'scheduled'
+    case 'published': return 'published'
+    case 'error': return 'error'
+    case 'disqualified':
+    case 'skipped': return 'archived'
+    default: return 'other'
+  }
+  // `now` is in the signature for symmetry with stageOf and for the day an LM
+  // row grows a time-dependent stage; it is unused today and deliberately not
+  // faked into one.
+}
+
+export type LmStages = Record<LmStage, Resource[]>
+
+function emptyLmStages(): LmStages {
+  return {
+    idea: [], generating: [], generating_assets: [], review: [], approved: [],
+    scheduled: [], published: [], error: [], archived: [], other: [],
+  }
+}
+
+export function groupByLmStage(rows: Resource[], now: number = Date.now()): LmStages {
+  const out = emptyLmStages()
+  for (const r of rows) out[stageOfLm(r, now)].push(r)
+  return out
+}
+
+// The generating-class stages on this lane. TWO of them, which is the whole
+// reason the LM pipeline is nine stages and the post pipeline is eight: a body
+// generation and an asset/page/cover build are separate runs, so either can
+// stall on its own.
+export const LM_GENERATING_STAGES: readonly LmStage[] = ['generating', 'generating_assets']
+
+// Same threshold, same source (genAge.ts:11 — that file is shared by BOTH old
+// boards, so one number covers both lanes here too). LM rows carry no dedicated
+// start timestamp, so updated_at is the only clock there is; genAge.ts's own
+// comment says exactly that.
+export function isStuckGeneratingLm(r: Resource, now: number = Date.now()): boolean {
+  if (!LM_GENERATING_STAGES.includes(stageOfLm(r, now))) return false
+  const m = elapsedMinutes(r.updated_at, now)
+  return m !== null && m >= STUCK_GENERATING_MINUTES
 }
