@@ -875,7 +875,10 @@
    the bar row and the label row on the same flex tracks so the axis still
    aligns. The chart sits left in its card, which is where the reference puts
    it. */
-.wb.wb.wb .wb-caps{ display:flex; align-items:flex-end; gap:10px; min-height:120px; max-width:460px }
+/* min-height tracks the chart's own ceiling: the scale is sqrt with a 72px cap
+   (Surface.tsx capH), so a 120px well would hang 48px of dead air above every
+   plot. align-items:flex-end is what baseline-aligns the capsules. */
+.wb.wb.wb .wb-caps{ display:flex; align-items:flex-end; gap:10px; min-height:72px; max-width:460px }
 .wb.wb.wb .wb-cap{
   flex:1; min-width:22px; position:relative;
   display:flex; align-items:flex-start; justify-content:center;
