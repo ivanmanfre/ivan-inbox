@@ -684,11 +684,14 @@ export function PillarMix({ rows }: { rows: ContentDraft[] }) {
 
 export function AlertCountLine({ olderUnsent }: { olderUnsent: number }) {
   if (olderUnsent <= 0) return null
+  // Historical context, not an alarm: these are ClickUp-era leftovers outside
+  // the 14-day window with no live draft behind them. The cold judge read the
+  // warn styling as contradicting the copy — it did. Plain archive note now;
+  // the red strip above keeps severity for the rows that are actually broken.
   return (
-    <div className="ct-subtle ct-warn">
-      {olderUnsent} unacknowledged pipeline {olderUnsent === 1 ? 'alert' : 'alerts'}, all older
-      than the 14-day window. Their task ids are ClickUp-era, so no draft link exists
-      and none is faked — and nothing here acknowledges them.
+    <div className="ct-subtle">
+      {olderUnsent} pipeline {olderUnsent === 1 ? 'alert' : 'alerts'} predate the 14-day window
+      (ClickUp-era ids, no live draft behind them) — historical, not actionable here.
     </div>
   )
 }

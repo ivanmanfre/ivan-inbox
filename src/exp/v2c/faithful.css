@@ -462,8 +462,11 @@
    budget: on an 80-row list a green-bordered chip per passing row spends 80 of
    30. It takes the light categorical tier instead — still unmistakably not the
    amber FAIL, still not shouting. */
+/* A QA verdict is a STATUS, and status speaks severity — the outline used
+   --cat-2, which the triad default turned BLUE while the corner dot said green
+   (blind row-find seat caught the mismatch). One vocabulary now. */
 .wb.wb.wb .ct-chip-ok{ background:var(--surface2); color:var(--text);
-  box-shadow:inset 0 0 0 1px var(--cat-2) }
+  box-shadow:inset 0 0 0 1px rgba(16,163,127,.55) }
 .wb.wb.wb .ct-chip-warn{ background:rgba(255,159,10,.14); color:var(--sev-attention);
   box-shadow:inset 0 0 0 1px rgba(255,159,10,.5) }
 .wb.wb.wb .ct-chip-bad{ background:rgba(255,69,58,.14); color:var(--sev-urgent);
@@ -1856,3 +1859,19 @@
 @keyframes wb-th-pulse{ 0%,100%{ opacity:.25 } 50%{ opacity:1 } }
 .wb.wb.wb .wb-th-dot{ animation:wb-th-pulse 1.2s var(--ease) infinite }
 .wb.wb.wb .sk::after{ animation-timing-function:var(--ease); animation-duration:1.2s }
+
+/* ---- phase 6 fix loop 1 (cold blind seat) ---- */
+/* A zero-stage capsule was a bare 3px stub — two of five stages read as
+   "unrendered" next to a full capsule. The stub now says its zero. */
+.wb.wb.wb .wb-cap-0{ position:relative }
+.wb.wb.wb .wb-cap-0::before{
+  content:'0'; position:absolute; bottom:8px; left:0; right:0;
+  text-align:center; font-size:var(--fs-eyebrow); color:var(--text4);
+  font-variant-numeric:tabular-nums;
+}
+/* Two controls whose hover read as "zero feedback" to a cold judge: the
+   section header now shifts its background (not just text tone), and the
+   alert strip's border joins its fill shift. */
+.wb.wb.wb .wb-sech.tap:hover{ background:var(--surface2) }
+.wb.wb.wb .wb-sech.tap{ transition:background-color var(--dur-hover) var(--ease) }
+.wb.wb.wb .ct-alert:hover{ border-color:rgba(255,69,58,.55) }
