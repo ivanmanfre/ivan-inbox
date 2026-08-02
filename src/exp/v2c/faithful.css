@@ -107,7 +107,13 @@
        is the CVD remedy and is a contract, not a taste call. Do not harmonise
        it back down. --- */
 :root[data-cat='triad'] .wb{
-  --cat-1:#10A37F; --cat-2:#3A93D0; --cat-3:#D099E8; --cat-4:#747977;
+  /* --cat-4 is TRIAD's own neutral 4th slot (charts cycle %4; §9.3 defines 3
+     hues, the 4th stays neutral). #747977 held white ink at 4.43:1 — under the
+     4.5 body bar, flagged since the parity pass. Now that triad is the decided
+     answer the fix lands here: #6C716F carries white at 4.97:1 and stays ≥3.12:1
+     as a mark on every ladder surface (harness math in phase3-polish.md). MONO
+     keeps its published hexes untouched. */
+  --cat-1:#10A37F; --cat-2:#3A93D0; --cat-3:#D099E8; --cat-4:#6C716F;
   --cat-1-ink:var(--ink); --cat-2-ink:var(--ink); --cat-3-ink:var(--ink);
   --cat-4-ink:#FFFFFF;
   /* TRIAD separates on hue; the pattern layer stands down so the two answers
