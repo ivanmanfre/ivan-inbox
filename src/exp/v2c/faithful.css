@@ -92,6 +92,15 @@
   background:var(--canvas);
   color:var(--text);
 }
+/* 2.6 has exactly one hole, and it is not a rule anyone wrote: form controls do
+   not inherit the UA's font shorthand, so a <textarea> resets
+   font-variant-numeric to `normal` no matter what the ancestor declares. The
+   census caught one leaf — the Ops draft body (styles.css:674) — which is the
+   one place in this app where an operator reads a number back inside an
+   editable field. Re-declared on the controls themselves. */
+.wb.wb.wb input, .wb.wb.wb textarea, .wb.wb.wb select, .wb.wb.wb button{
+  font-variant-numeric:tabular-nums;
+}
 
 /* --- 9.3 · ANSWER TRIAD — two derived hues, separated on hue AND lightness.
        --cat-3 sits at L 0.7624, lifted from the accent's own 0.6374; that lift
