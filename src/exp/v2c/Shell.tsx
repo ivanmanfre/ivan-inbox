@@ -14,7 +14,8 @@ import type { ContentLane } from '../../lib/content'
 import { MobileTabs, Rail, WorkSegment } from './Rail'
 import { ContentList } from './ContentList'
 import { MagnetsList } from './MagnetsList'
-import { DraftPane, draftContextLabel } from './DraftPane'
+import { DraftWindow } from './DraftPane'
+import { MagnetWindow } from './MagnetWindow'
 import { ThreadPeer } from './ThreadPeer'
 import { InboxHead } from './InboxHead'
 import { ChatPane } from './ChatPane'
@@ -105,6 +106,10 @@ export default function Shell() {
   const [sendsClient, setSendsClient] = useState<'all' | 'ivan' | 'risedtc'>('ivan')
   const [lane, setLane] = useState<ContentLane>('ivan')
   const [contentBump, setContentBump] = useState(0)
+  // The reading window (usability-voice ask 2). A draft or a lead magnet opened
+  // from Content/Magnets is a TAKEOVER over the canvas, not a 420px peer — the
+  // peers model stays for chat and inbox threads only.
+  const [openItem, setOpenItem] = useState<{ kind: 'draft' | 'magnet'; id: string } | null>(null)
 
   // ---- data, mounted ONCE, here ----
   //
@@ -147,17 +152,11 @@ export default function Shell() {
   const ctxThread = ctx?.kind === 'thread'
     ? inbox.threads.find(t => t.prospect_id === ctx.id) ?? null
     : null
-  // What the chat pane says it is asking about. On the wide canvas this labels a
-  // pane Ivan can also see; on a phone it is the only surviving half of the pair.
-  const aboutLabel = ctx
-    ? ctx.kind === 'thread' ? ctxThread?.prospect_name ?? ctx.label ?? 'this thread' : ctx.label ?? 'this draft'
-    : null
-  // The label is what the pane PRINTS; this is what the payload SAYS. A draft
-  // carries its lane and its register so a voice check downstream cannot pick
-  // the wrong reference (IA §5.7).
-  const aboutContext = ctx?.kind === 'draft'
-    ? draftContextLabel(ctx.label ?? 'this draft', lane)
-    : aboutLabel
+  // What the chat pane says it is asking about. Only inbox threads dock as
+  // context peers now — a draft opens as a reading window instead, so the
+  // draft-flavoured context label went with the draft peer.
+  const aboutLabel = ctx ? ctxThread?.prospect_name ?? ctx.label ?? 'this thread' : null
+  const aboutContext = aboutLabel
 
   // ---- Fork 2 is DECIDED: Ivan voted TRIAD (2026-08-02, "color i want tried"). ----
   // Triad is the boot default — absence of any signal means triad. Mono stays
@@ -219,8 +218,11 @@ export default function Shell() {
   }, [focus])
 
   const openThread = useCallback((id: string) => openPeer({ kind: 'thread', id }), [openPeer])
-  const openDraft = useCallback(
-    (id: string, label?: string) => openPeer({ kind: 'draft', id, label }), [openPeer])
+  // Ask 2 — a draft is a READING surface, so it opens the takeover window, not
+  // a peer. Same for a lead-magnet row.
+  const openDraft = useCallback((id: string) => setOpenItem({ kind: 'draft', id }), [])
+  const openMagnet = useCallback((id: string) => setOpenItem({ kind: 'magnet', id }), [])
+  const closeItem = useCallback(() => setOpenItem(null), [])
 
   // ---- first paint ----
   // Spine §1.7 — the ONE licensed structural edit. At 390 the loading state used
@@ -327,7 +329,7 @@ export default function Shell() {
           key={`${lane}:${contentBump}`}
           lane={lane}
           setLane={setLane}
-          openId={ctx?.kind === 'draft' ? ctx.id : null}
+          openId={openItem?.kind === 'draft' ? openItem.id : null}
           onOpen={openDraft}
         />
       )}
@@ -337,7 +339,7 @@ export default function Shell() {
           on Ivan); the LM lane is read-only here, so a count would advertise
           an action this surface does not offer. */}
       {job === 'magnets' && (
-        <MagnetsList lane={lane} setLane={setLane} />
+        <MagnetsList lane={lane} setLane={setLane} onOpen={openMagnet} />
       )}
       {job === 'sends' && <SendsScreen client={sendsClient} setClient={setSendsClient} />}
       {job === 'ops' && opsSurface}
@@ -368,18 +370,9 @@ export default function Shell() {
         />
       )
     }
-    if (p.kind === 'draft') {
-      return (
-        <DraftPane
-          id={p.id}
-          lane={lane}
-          refresh={() => setContentBump(b => b + 1)}
-          onClose={() => closePeer(key)}
-          onAsk={() => { setPeers(cur => addPeer(cur, { kind: 'chat' })); setFocus('chat') }}
-          mobile={mobile}
-        />
-      )
-    }
+    // kind:'draft' peers are no longer created anywhere — a draft opens as the
+    // takeover window (openItem). The layout model keeps the kind so the pure
+    // functions stay general, but the Shell has no renderer for it.
     if (!ctxThread) {
       return (
         <div className="wb-empty">
@@ -399,6 +392,17 @@ export default function Shell() {
     )
   }
 
+  // ---- the reading window, over whichever frame is active ----
+  const itemWindow = openItem && (
+    openItem.kind === 'draft'
+      ? <DraftWindow
+          id={openItem.id} lane={lane}
+          refresh={() => setContentBump(b => b + 1)}
+          onClose={closeItem} mobile={mobile}
+        />
+      : <MagnetWindow id={openItem.id} lane={lane} onClose={closeItem} mobile={mobile} />
+  )
+
   // ---- mobile: one region at a time ----
   if (mobile) {
     if (plan.work === 'hidden' && plan.peers[0]) {
@@ -406,6 +410,7 @@ export default function Shell() {
       return (
         <div className={`app wb wb-take wb-take-${p.kind}`}>
           {renderPeer(p)}
+          {itemWindow}
         </div>
       )
     }
@@ -426,6 +431,7 @@ export default function Shell() {
         </div>
         <div className={`wb-work wide${plan.narrow ? ' wb-narrow' : ''}`}>{workSurface}</div>
         <MobileTabs job={job} counts={counts} chatLive={chat.busy} onJob={goJob} onChat={toggleChat} />
+        {itemWindow}
       </div>
     )
   }
@@ -458,6 +464,7 @@ export default function Shell() {
           </div>
         ))}
       </div>
+      {itemWindow}
     </div>
   )
 }

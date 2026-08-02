@@ -662,6 +662,40 @@
 .dd-vlist{display:flex;flex-direction:column;gap:3px}
 .dd-vli{font-size:13px;line-height:1.4;overflow-wrap:anywhere}
 
+/* ============================ takeover window ============================ */
+/* The reading register: a draft/LM opened from Content or Magnets covers the
+   canvas instead of squeezing into a 420px peer. z 50 sits below the confirm
+   sheets (z 60), which the delete flow opens on top. */
+.wb-tkscrim{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.55);
+  display:flex;overscroll-behavior:contain}
+.wb-tk{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;
+  background:var(--bg)}
+@media (min-width:1000px){
+  .wb-tkscrim{padding:26px 32px;justify-content:center}
+  .wb-tk{flex:0 1 960px;border-radius:var(--r-lg);border:1px solid var(--surface3);
+    box-shadow:0 24px 80px rgba(0,0,0,.5);overflow:hidden}
+}
+.wb-tk-head{flex:none;display:flex;align-items:center;gap:10px;padding:8px 10px 8px 16px;
+  border-bottom:.5px solid var(--sep);background:rgba(18,18,20,.92)}
+:root[data-theme='light'] .wb-tk-head{background:rgba(255,255,255,.92)}
+/* A REAL close affordance — 44px hit target, visible shape, not a glyph in a
+   corner. Esc and (desktop) backdrop click close too. */
+.wb-tk-x{flex:none;width:44px;height:44px;display:flex;align-items:center;justify-content:center;
+  border:none;border-radius:99px;background:var(--surface2);color:var(--text2);
+  font-family:inherit;font-size:16px;cursor:pointer}
+.wb-tk-x:hover{background:var(--surface3);color:var(--text)}
+.wb-tk-x:active{transform:scale(.95)}
+.wb-tk-body{overscroll-behavior:contain}
+/* The comfortable measure: text blocks run in a ~760px centered column (their
+   own 16px gutters bring the text to ~728px). */
+.wb-tk-col{max-width:760px;width:100%;margin:0 auto}
+.wb-tk-frame{display:block;width:calc(100% - 32px);margin:8px 16px 0;border:none;
+  border-radius:var(--r-md);background:#fff}
+/* Cover images render LARGE in the window — the 190px peer thumbnails were part
+   of the unreadable-detail complaint. */
+.wb-tk .dd-imgs{flex-wrap:wrap}
+.wb-tk .dd-img{width:min(100%, 400px)}
+
 /* ============================ model picker ============================ */
 /* Header-weight control, matched to .wb-mockchip and .wb-ask rather than
    introducing a new register — a later design phase re-skins this surface. */

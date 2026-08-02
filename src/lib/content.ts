@@ -623,6 +623,10 @@ export type ContentDraftDetail = ContentDraft & {
   funnel_stage: string | null
   published_at: string | null
   description: string | null
+  // The rendered post/carousel HTML artifact the pipeline authored — what the
+  // post will actually look like. Selected by `select('*')` below; rendered in
+  // the detail window inside a script-less sandboxed iframe, never as raw JSX.
+  authored_html: string | null
   key_points: unknown
   ig_caption: string | null
   pdf_url: string | null

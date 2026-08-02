@@ -7,7 +7,10 @@ import {
   type ContentStages, type IdeaCandidate, type IdeaCounts, type ScheduledQueueRow,
 } from '../lib/content'
 import { fetchAlerts, fetchDailySummaries, type AgentSummary } from '../lib/agent'
-import { fetchResources, fetchStyleRoster, type Resource, type StylePrompt } from '../lib/styles'
+import {
+  fetchResourceDetail, fetchResources, fetchStyleRoster,
+  type Resource, type ResourceDetail, type StylePrompt,
+} from '../lib/styles'
 
 export function useContent(lane: ContentLane = 'ivan') {
   const [drafts, setDrafts] = useState<ContentDraft[]>([])
@@ -104,6 +107,37 @@ export function useDraftDetail(id: string | null, reloadKey: unknown = 0) {
       })
     return () => { live = false }
   }, [id, reloadKey])
+
+  return { detail, missing, loading, error }
+}
+
+// One full lm_drafts_v2 row, fetched when an LM row is opened. Same contract as
+// useDraftDetail above: missing ≠ error, no realtime binding of its own.
+export function useResourceDetail(id: string | null) {
+  const [detail, setDetail] = useState<ResourceDetail | null>(null)
+  const [missing, setMissing] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!id) return
+    let live = true
+    setLoading(true)
+    fetchResourceDetail(id)
+      .then(row => {
+        if (!live) return
+        setDetail(row)
+        setMissing(row === null)
+        setError(null)
+        setLoading(false)
+      })
+      .catch((e: unknown) => {
+        if (!live) return
+        setError(e instanceof Error ? e.message : 'lead magnet unavailable')
+        setLoading(false)
+      })
+    return () => { live = false }
+  }, [id])
 
   return { detail, missing, loading, error }
 }
