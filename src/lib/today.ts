@@ -45,6 +45,8 @@ export type DmDraft = {
   created_at: string
   prospect_id?: string | null
   client_id?: string | null
+  // Stamped by get-morning-brief once a draft is >7d old; absent on older payloads.
+  is_aging?: boolean | null
 }
 
 export type CommentDraft = {
@@ -54,6 +56,7 @@ export type CommentDraft = {
   post_excerpt?: string | null
   drafted_at?: string | null
   client_id?: string | null
+  is_aging?: boolean | null
   // Live-only (the LinkedIn post these drafts hang off). Never cached — a
   // link-through is worthless offline and the cache stays minimal.
   post_url?: string | null
@@ -359,12 +362,13 @@ export function projectBrief(b: Brief): Brief {
         id: d.id, post_author_name: d.post_author_name ?? null,
         comment_text: d.comment_text ?? null, post_excerpt: d.post_excerpt ?? null,
         drafted_at: d.drafted_at ?? null, client_id: d.client_id ?? null,
+        is_aging: d.is_aging ?? null,
       })),
       dm_drafts: b.needs_you.dm_drafts.slice(0, MAX_ROWS).map(d => ({
         id: d.id, prospect_name: d.prospect_name, message_text: d.message_text,
         channel: d.channel ?? null, matched_offer: d.matched_offer ?? null,
         created_at: d.created_at, prospect_id: d.prospect_id ?? null,
-        client_id: d.client_id ?? null,
+        client_id: d.client_id ?? null, is_aging: d.is_aging ?? null,
       })),
       feed_drafts: b.needs_you.feed_drafts.slice(0, MAX_ROWS).map(d => ({
         id: d.id, target_name: d.target_name ?? null, target_class: d.target_class ?? null,
