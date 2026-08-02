@@ -158,14 +158,19 @@ export default function Shell() {
     ? draftContextLabel(ctx.label ?? 'this draft', lane)
     : aboutLabel
 
-  // ---- Fork 2: both colour answers ship, switched by an attribute on <html> ----
-  // Setting an ATTRIBUTE on the document element is not editing :root's tokens —
+  // ---- Fork 2 is DECIDED: Ivan voted TRIAD (2026-08-02, "color i want tried"). ----
+  // Triad is the boot default — absence of any signal means triad. Mono stays
+  // built and reachable (`?cat=mono`, or localStorage 'wb-cat'='mono'),
+  // undocumented. Setting an ATTRIBUTE on <html> is not editing :root's tokens —
   // MONO is declared in `.wb{…}` and TRIAD in `:root[data-cat='triad'] .wb{…}`,
-  // so the toggle changes colour values only and shifts no layout. `?cat=triad`
-  // exists so the ballot can link to a built surface rather than describe one.
+  // so the toggle changes colour values only and shifts no layout.
   useEffect(() => {
-    const cat = new URLSearchParams(location.search).get('cat')
-    document.documentElement.setAttribute('data-cat', cat === 'triad' ? 'triad' : 'mono')
+    const q = new URLSearchParams(location.search).get('cat')
+    let stored: string | null = null
+    try { stored = localStorage.getItem('wb-cat') } catch { /* private mode */ }
+    const cat = q ?? stored
+    document.documentElement.setAttribute('data-cat', cat === 'mono' ? 'mono' : 'triad')
+    if (q === 'mono' || q === 'triad') { try { localStorage.setItem('wb-cat', q) } catch { /* ok */ } }
   }, [])
 
   // ---- hash: job + focus are addressable, so every surface has a fresh-load URL ----
