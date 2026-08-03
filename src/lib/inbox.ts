@@ -151,9 +151,53 @@ function isConversation(t: Thread): boolean {
 // unanswered reply there would have scored zero. Reading a message is not
 // answering it. What answers it is a send that comes after it, which is exactly
 // what this compares.
-export function needsAnswer(t: Thread): boolean {
-  const lastInbound = t.messages.filter(m => m.direction === 'inbound').map(eventTime).sort().at(-1) ?? null
+// ...but "their message is last" is not the same as "Ivan owes a reply", and the
+// gap between those two is 43 rows (measured 2026-08-03, Ivan: "in theory i have
+// 0 dms to reply to rn"). What was in there: 11 out-of-office autoreplies, a
+// column of explicit noes ("No thanks", "I am retired", "I quit", "please remove
+// our details", "never text me again"), LinkedIn reactions rendered as messages
+// ("Nico reacted 👍"), sign-offs ("Thanks, you too" · "You're welcome, Ivan"),
+// and 15 threads on prospects he had already archived or skipped. Nothing there
+// is owed an answer.
+//
+// 🔴 THE UPSTREAM GAP THIS PAPERS OVER: a prospect who declines stays at
+// `prospect_stage='replied'` forever — the engine never closes the conversation.
+// Every decline older than the classifier is therefore indistinguishable, in the
+// data, from an open thread. The tags below are the classifier's own vocabulary;
+// the phrase list only catches what predates it. Fix the stage transition and
+// most of this becomes unnecessary.
+
+// The classifier's markers, written into message_text upstream. Same vocabulary
+// as the OOO gate — do not invent new spellings here.
+const DEAD_TAG = /^\s*\[(ooo_autoreply|negative|negative_optout|unsubscribe|auto_reply)/i
+// A LinkedIn reaction arrives as a message ("Nico reacted 👍"), and so does a
+// bare emoji. Neither is a question.
+const REACTION = /^\s*\S+\s+reacted\b|^[\s\p{Extended_Pictographic}\p{Emoji_Presentation}]+$/u
+// Declines the classifier never saw. Deliberately narrow: each phrase ends a
+// conversation on its own, and a false positive here HIDES a real lead, so
+// nothing ambiguous ("maybe later", "busy right now") belongs in this list.
+const DECLINE = /\b(no thanks|not interested|i'?m retired|i am retired|i quit|please remove|remove our details|do not (send|contact|text)|never text me again|unsubscribe|not at that stage)\b/i
+// A conversation nobody has touched in two weeks is backlog, not an inbox. It
+// stays reachable (search, and the 'waiting' bucket) and stops driving a badge
+// that is supposed to mean "today".
+const STALE_DAYS = 14
+
+// Closed by Ivan's own hand. He archived or skipped these; re-offering them as
+// work is the app arguing with him.
+const CLOSED_STAGES = new Set(['archived', 'skipped', 'disqualified', 'unsubscribed', 'blacklisted'])
+
+function isRealReply(m: InboxMessage): boolean {
+  const text = (m.message_text ?? '').trim()
+  if (!text) return false
+  return !DEAD_TAG.test(text) && !REACTION.test(text) && !DECLINE.test(text)
+}
+
+export function needsAnswer(t: Thread, now: number = Date.now()): boolean {
+  if (CLOSED_STAGES.has(t.stage)) return false
+  const lastInbound = t.messages.filter(m => m.direction === 'inbound' && isRealReply(m))
+    .map(eventTime).sort().at(-1) ?? null
   if (lastInbound === null) return false
+  if (now - Date.parse(lastInbound) > STALE_DAYS * 86_400_000) return false
   const lastSent = t.messages
     .filter(m => m.direction === 'outbound' && m.sent_at)
     .map(m => m.sent_at!).sort().at(-1) ?? null
