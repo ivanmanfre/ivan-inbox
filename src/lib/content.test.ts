@@ -9,6 +9,7 @@ import {
   CONTENT_LANES, LANE_LABEL, LANE_POSSESSIVE, isBackfillEntry, parseLogEntry,
   scoreProgression, normalizeSourceDetail, taxonomyExtras, taxonomyValue, queueFailed,
   stampHumanEdit, stampOperatorDelete, operatorDeleted, selfContainedHtml,
+  errorAt, isRecentError, ERROR_ALARM_HOURS,
 } from './content'
 
 const base: ContentDraft = {
@@ -625,5 +626,40 @@ describe('selfContainedHtml — only a styled document earns the preview frame',
   })
   it('a non-stylesheet link is not presentation', () => {
     expect(selfContainedHtml('<link rel="preconnect" href="https://x"><p>x</p>')).toBe(false)
+  })
+})
+
+// Ask 13 — the alert strip is an alarm, and only errors from the last 48h ring
+// it. Older errored rows stay in the Errors section, out of the count.
+describe('errorAt + isRecentError (the 48h alarm window)', () => {
+  it('prefers taxonomy.error_flipped_at over updated_at', () => {
+    const r = row({ status: 'error', taxonomy: { error_flipped_at: '2026-07-29T08:00:00Z' }, updated_at: '2026-07-31T10:00:00Z' })
+    expect(errorAt(r)).toBe('2026-07-29T08:00:00Z')
+  })
+  it('falls back to updated_at when the stamp is missing (4 of 7 live rows on 2026-08-03)', () => {
+    expect(errorAt(row({ status: 'error', taxonomy: null }))).toBe(base.updated_at)
+  })
+  it('an error inside the window is recent; one outside is not', () => {
+    // now = 2026-07-31T12:00Z; 47h ago is in, 49h ago is out
+    const inside = row({ status: 'error', taxonomy: { error_flipped_at: '2026-07-29T13:00:00Z' } })
+    const outside = row({ status: 'error', taxonomy: { error_flipped_at: '2026-07-29T11:00:00Z' } })
+    expect(isRecentError(inside, now)).toBe(true)
+    expect(isRecentError(outside, now)).toBe(false)
+  })
+  it('the boundary is exactly ERROR_ALARM_HOURS, inclusive', () => {
+    const exact = new Date(now - ERROR_ALARM_HOURS * 3600_000).toISOString()
+    expect(isRecentError(row({ status: 'error', taxonomy: { error_flipped_at: exact } }), now)).toBe(true)
+    const past = new Date(now - ERROR_ALARM_HOURS * 3600_000 - 1000).toISOString()
+    expect(isRecentError(row({ status: 'error', taxonomy: { error_flipped_at: past } }), now)).toBe(false)
+  })
+  it('never claims a non-error row, whatever its timestamps', () => {
+    expect(isRecentError(row({ status: 'review', updated_at: new Date(now).toISOString() }), now)).toBe(false)
+  })
+  it('an undatable error stays in the alarm — fail loud, never age out by accident', () => {
+    const und = row({ status: 'error', taxonomy: { error_flipped_at: 'not-a-date' } })
+    expect(isRecentError(und, now)).toBe(true)
+  })
+  it('old errors keep stageOf error, so the section still shows them', () => {
+    expect(stageOf(row({ status: 'error', taxonomy: { error_flipped_at: '2026-01-01T00:00:00Z' } }))).toBe('error')
   })
 })
