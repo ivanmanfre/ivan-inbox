@@ -786,8 +786,12 @@ textarea.ops-body{display:block;width:100%;background:var(--surface2);border:non
 
 /* DM history (2026-08-03) — the receipt section at the tail of DMs, and the
    kind/manual marks Ivan asked to read apart at a glance. */
-.r .client.kind-dm{background:rgba(16,163,127,.15);color:#10A37F}
+.r .client.kind-dm,.dmh-r .client.kind-dm{background:rgba(16,163,127,.15);color:#10A37F}
 .r .client.kind-manual,.dmh-r .client.kind-manual{background:rgba(255,214,10,.16);color:#FFD60A}
+.dmh-r .client{font-size:11px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:6px;background:var(--surface2);color:var(--text2)}
+.dmh-r .client.rise{background:var(--accent-soft);color:var(--accent)}
+.dmh-r .client.kind-inmail{background:rgba(191,90,242,.15);color:#BF5AF2}
+.dmh-r .client.kind-email{background:rgba(255,159,10,.15);color:#FF9F0A}
 .dmh{border-top:1px solid rgba(255,255,255,.07);margin-top:6px}
 .dmh-h{display:flex;align-items:center;gap:8px;width:100%;padding:14px 16px;background:none;border:0;color:inherit;text-align:left;cursor:pointer;min-height:44px}
 .dmh-h:hover{background:rgba(255,255,255,.03)}

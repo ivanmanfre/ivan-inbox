@@ -2301,3 +2301,26 @@
   .wb.wb.wb .ct-band-facts{ margin-top:8px; padding-top:8px; gap:4px 12px }
   .wb.wb.wb .ct-band{ padding-top:14px; padding-bottom:14px }
 }
+
+/* CHANNEL MARKS (2026-08-03, Ivan: "add diff color tags when inmail so i can
+   distinguish"). The chip rule above flattens every `.client` to neutral for the
+   accent budget's sake — correct for a client tag, wrong for the channel, which
+   is the one field he scans a thread list by. Three channels, three marks, from
+   the reference's own palette (lime · orange · white), each carrying its tint as
+   a fill and its hue as the ink so it reads at 11px on charcoal. `.dmh-r` is
+   listed beside `.r` because the DM history renders the same chips. */
+.wb.wb.wb .r .client.kind-inmail, .wb.wb.wb .dmh-r .client.kind-inmail{
+  background:rgba(255,155,34,.18); color:#FF9B22; box-shadow:inset 0 0 0 1px rgba(255,155,34,.5);
+}
+.wb.wb.wb .r .client.kind-dm, .wb.wb.wb .dmh-r .client.kind-dm{
+  background:rgba(184,255,102,.14); color:#B8FF66; box-shadow:inset 0 0 0 1px rgba(184,255,102,.42);
+}
+.wb.wb.wb .r .client.kind-email, .wb.wb.wb .dmh-r .client.kind-email{
+  background:rgba(255,255,255,.10); color:#F2F2EF; box-shadow:inset 0 0 0 1px rgba(255,255,255,.34);
+}
+/* Hand-typed is a PROVENANCE mark, not a channel, so it stays outline-only and
+   never competes with the three above. */
+.wb.wb.wb .r .client.kind-manual, .wb.wb.wb .dmh-r .client.kind-manual{
+  background:transparent; color:#CFD3CB; box-shadow:inset 0 0 0 1px rgba(207,211,203,.55);
+}
+.wb.wb.wb .b.out.manual{ box-shadow:inset 0 0 0 1px rgba(207,211,203,.5) }
