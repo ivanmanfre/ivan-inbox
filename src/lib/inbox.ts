@@ -170,6 +170,10 @@ function isConversation(t: Thread): boolean {
 // The classifier's markers, written into message_text upstream. Same vocabulary
 // as the OOO gate — do not invent new spellings here.
 const DEAD_TAG = /^\s*\[(ooo_autoreply|negative|negative_optout|unsubscribe|auto_reply)/i
+// An out-of-office judged by its WORDS, not its tag. Two of the survivors were
+// stamped `[positive]` by the classifier and read "Thank you for your message.
+// I'm on holiday until…" — a positive-sounding robot is still a robot.
+const OOO_TEXT = /\b(out of (the )?office|on holiday|on annual leave|on leave until|currently away|away from my desk|i am ooo|back in the office)\b/i
 // A LinkedIn reaction arrives as a message ("Nico reacted 👍"), and so does a
 // bare emoji. Neither is a question.
 const REACTION = /^\s*\S+\s+reacted\b|^[\s\p{Extended_Pictographic}\p{Emoji_Presentation}]+$/u
@@ -189,7 +193,7 @@ const CLOSED_STAGES = new Set(['archived', 'skipped', 'disqualified', 'unsubscri
 function isRealReply(m: InboxMessage): boolean {
   const text = (m.message_text ?? '').trim()
   if (!text) return false
-  return !DEAD_TAG.test(text) && !REACTION.test(text) && !DECLINE.test(text)
+  return !DEAD_TAG.test(text) && !OOO_TEXT.test(text) && !REACTION.test(text) && !DECLINE.test(text)
 }
 
 export function needsAnswer(t: Thread, now: number = Date.now()): boolean {
@@ -222,11 +226,11 @@ export type ThreadBucket = keyof InboxBreakdown
 export function threadBucket(t: Thread): ThreadBucket {
   if (needsAnswer(t)) return 'answer'
   if (t.draft !== null) return 'approve'
-  // 'flagged' now requires an actual inbound message. The detector's flag alone
-  // put 47 rows in this bucket that nobody had ever written to (see
-  // isConversation) — it can still RANK a real conversation, it can no longer
-  // invent one.
-  if (t.needsManualReply && t.messages.some(m => m.direction === 'inbound')) return 'flagged'
+  // 'flagged' is a MARKER now, never a bucket of its own. Live proof it had to
+  // stop counting: Nour Siakir Oglou's thread ends with Ivan's own "either way
+  // not my lane, all the best" and still rendered as NEEDS REPLY, because a
+  // stale detector flag outranked the answer sitting right there. If a thread
+  // genuinely owes a reply, needsAnswer above already says so.
   return 'waiting'
 }
 
