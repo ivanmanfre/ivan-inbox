@@ -1,30 +1,30 @@
-import type { Thread } from '../../lib/inbox'
+import { inboxBreakdown, type Thread } from '../../lib/inbox'
 import { StackBar, relAge } from './Surface'
 
 // What is actually in the list, drawn.
 //
-// The inbox is ~1,354 rows and nine of them are visible. Before this the only way
-// to know whether anything in there needed Ivan was to scroll it: the unread count
-// rode as a suffix on the "All" chip and nothing said how much of the list was a
-// draft waiting versus a message waiting versus already handled. The list column
-// on a workbench is a working surface, so it says what it holds — and it is the
-// list's visual encoding, which a column of rows on its own does not have.
+// Ask 11 — the head used to bucket by raw unread ("they replied" = any unread
+// row), which counted 28 already-answered threads as waiting. It now renders
+// the SAME non-overlapping buckets the badge sums (inboxBreakdown): replies to
+// answer, drafts to approve, threads the reply detector flagged
+// needs_manual_reply, and conversations simply waiting on them. The bar is the
+// badge, decomposed — they derive from one function and cannot disagree.
 //
-// Severity discipline: none of these are warnings. "They replied" is blue
-// (an action), "draft ready" is accent (clear), "waiting on them" is inert grey.
-// Amber and red stay reserved for something being wrong.
+// Severity discipline: none of these are warnings. "To answer" is blue (an
+// action), "draft ready" is accent (clear), "flagged" wears the cat-2 data
+// colour (an action the detector asked for, not an alarm), waiting is inert.
 export function InboxHead({ threads, loadedAt, onOpenDrafts }: {
   threads: Thread[]
   loadedAt: string | null
   onOpenDrafts: () => void
 }) {
-  const replied = threads.filter(t => t.unread > 0).length
-  const ready = threads.filter(t => t.draft !== null && t.unread === 0).length
-  const waiting = threads.length - replied - ready
+  const b = inboxBreakdown(threads)
+  const total = b.answer + b.approve + b.flagged + b.waiting
   const parts = [
-    { key: 'They replied', n: replied, color: 'var(--blue)' },
-    { key: 'Draft ready', n: ready, color: 'var(--accent)' },
-    { key: 'Waiting on them', n: waiting, color: 'var(--surface3)' },
+    { key: 'To answer', n: b.answer, color: 'var(--blue)' },
+    { key: 'Draft ready', n: b.approve, color: 'var(--accent)' },
+    { key: 'Flagged: needs your reply', n: b.flagged, color: 'var(--cat-2, var(--blue))' },
+    { key: 'Waiting on them', n: b.waiting, color: 'var(--surface3)' },
   ]
   return (
     <div className="wb-ihead">
@@ -42,7 +42,7 @@ export function InboxHead({ threads, loadedAt, onOpenDrafts }: {
         ))}
         <span className="wb-ihead-f">
           <span className="wb-ok-dot" />
-          {threads.length} threads · {relAge(loadedAt)}
+          {total} conversation{total === 1 ? '' : 's'} · sends live in Sends · {relAge(loadedAt)}
         </span>
       </div>
     </div>
