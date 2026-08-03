@@ -70,13 +70,13 @@ describe('projectSectionState — the field allowlist', () => {
 describe('read/write — versioning', () => {
   it('round-trips through storage', () => {
     const s = mem()
-    writeSectionState('content.posts.ivan', { filters: { stage: 'review' }, q: 'kyle' }, s)
-    expect(readSectionState('content.posts.ivan', s)).toEqual({ filters: { stage: 'review' }, q: 'kyle' })
+    writeSectionState('content.posts.ivan', { filters: { stage: 'review' }, q: 'kyle', open: [] }, s)
+    expect(readSectionState('content.posts.ivan', s)).toEqual({ filters: { stage: 'review' }, q: 'kyle', open: [] })
   })
 
   it('stamps the version and forgets a stored state that carries another one', () => {
     const s = mem()
-    writeSectionState('sec', { filters: { stage: 'review' }, q: '' }, s)
+    writeSectionState('sec', { filters: { stage: 'review' }, q: '', open: [] }, s)
     const raw = JSON.parse(s.getItem(sectionStorageKey('sec'))!)
     expect(raw.v).toBe(SECTION_STATE_VERSION)
     // A facet KEY is a data contract. When it changes, the honest move is to
@@ -108,16 +108,16 @@ describe('read/write — versioning', () => {
 
   it('deletes the entry when the state goes empty, so no filter leaves no trace', () => {
     const s = mem()
-    writeSectionState('sec', { filters: { stage: 'review' }, q: '' }, s)
+    writeSectionState('sec', { filters: { stage: 'review' }, q: '', open: [] }, s)
     expect(s.getItem(sectionStorageKey('sec'))).not.toBeNull()
-    writeSectionState('sec', { filters: {}, q: '' }, s)
+    writeSectionState('sec', { filters: {}, q: '', open: [] }, s)
     expect(s.getItem(sectionStorageKey('sec'))).toBeNull()
-    expect(isEmptySectionState({ filters: {}, q: '' })).toBe(true)
+    expect(isEmptySectionState({ filters: {}, q: '', open: [] })).toBe(true)
   })
 
   it('keys each section separately, which is what makes a lane switch safe', () => {
     const s = mem()
-    writeSectionState('content.posts.ivan', { filters: { hook: 'story_opener' }, q: '' }, s)
+    writeSectionState('content.posts.ivan', { filters: { hook: 'story_opener' }, q: '', open: [] }, s)
     // 'story' vs 'story_opener': the vocabularies differ per lane, so the other
     // lane must never see this value.
     expect(readSectionState('content.posts.risedtc', s)).toEqual(EMPTY_SECTION_STATE)

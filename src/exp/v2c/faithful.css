@@ -944,7 +944,11 @@
    lying-down pills — two chart types in one plot, which is what he saw. A
    capsule COLUMN is narrow and tall, so the width is fixed and the plot is
    taller than the widest mark. Same shape, same radius, every stage. */
-.wb.wb.wb .wb-caps{ display:flex; align-items:flex-end; gap:14px; min-height:96px; max-width:460px }
+/* `height`, not `min-height`: the marks size themselves as a PERCENTAGE of the
+   plot, and a percentage height resolves to `auto` against a parent that only
+   has a min-height — which rendered every stage at its floor and drew a flat
+   chart out of a 3/10/0/2 series. */
+.wb.wb.wb .wb-caps{ display:flex; align-items:flex-end; gap:14px; height:96px; max-width:460px }
 .wb.wb.wb .wb-cap{
   flex:0 0 56px; min-width:56px; position:relative;
   /* F6 (phase-2 review) — elevation move 2, finished: the reference centres the
@@ -2229,3 +2233,71 @@
    peak. One mark per surface — accent census unchanged. */
 .wb.wb.wb .ov-kpi[data-cat='1'] .sc-bar.peak:not(.zero){ background:var(--cat-1) }
 .wb.wb.wb .ov-kpi[data-cat='2'] .sc-bar.peak:not(.zero){ background:var(--cat-2) }
+
+/* ===========================================================================
+   §16 · CONTENT DENSITY (2026-08-03)
+   Ivan: "the content section windows still super hard to use i have to scroll
+   super vertical and long... compact stuff with collapsibles arrows and also
+   order things as well in horizontal so we have seen the main stuff easily..
+   like we have in our old interface".
+
+   Measured before: at 1440 the first stage header sat at y≈865 — the whole
+   opening viewport was chrome. Three of those pixels-budgets are addressed
+   here (the fourth, section defaults, is code): the pipeline card stops
+   stacking, the alert strip stops opening itself, and the two advisory prose
+   lines stop being paragraphs.
+   =========================================================================== */
+
+/* The pipeline card as a BAND: plot | hero figure | facts, across the width
+   instead of down it. Peers, vertically centred, so the block is one plot tall. */
+.wb.wb.wb .ct-band{
+  display:flex; align-items:center; gap:28px; flex-wrap:wrap;
+}
+.wb.wb.wb .ct-band-plot{ flex:0 0 auto; min-width:0 }
+.wb.wb.wb .ct-band .wb-cardh{ margin:0 0 10px }
+/* The hero figure keeps its size — it is the one figure on this surface — but
+   loses the top margin it needed when it sat UNDER the plot. */
+.wb.wb.wb .ct-band-fig{ flex:0 0 auto; margin:0; padding:0; border:none }
+/* The probe-backed facts sit right-set on the same line, wrapping to their own
+   row only when the canvas genuinely cannot hold them. */
+.wb.wb.wb .ct-band-facts{
+  flex:1 1 260px; min-width:0; margin:0; padding:0; border:none;
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end;
+  gap:6px 16px;
+}
+@media (max-width:999px){
+  /* Phone/narrow: back to a stack. A three-column band at 374px would be three
+     columns of nothing. */
+  .wb.wb.wb .ct-band{ display:block }
+  .wb.wb.wb .ct-band-fig{ margin-top:14px }
+  .wb.wb.wb .ct-band-facts{
+    justify-content:flex-start; margin-top:12px; padding-top:12px;
+    border-top:1px solid var(--hairline);
+  }
+}
+
+/* The two advisory lines above the queue (the ClickUp-era note and the cadence
+   denominator). Both are true, neither is actionable today, and together they
+   cost ~52px of paragraph directly above the work. They stay — demoted to one
+   quiet line each at the metadata tier, which is the register the alert-hygiene
+   rule asks for. */
+.wb.wb.wb .ct-rows > .ct-subtle{
+  margin:6px var(--gut); font-size:var(--fs-eyebrow); line-height:1.45;
+  color:var(--text4);
+}
+
+/* Narrow canvas: the pipeline card is the single biggest block above the queue
+   (~310px stacked), and at 390 the queue starts below the fold because of it.
+   It stays VISIBLE — it is the surface's one chart and Ivan asked for it to be
+   fixed, not hidden — and gets compact instead: a shorter plot, the hero figure
+   on the same line as its own label, and the probe footer on one wrapped line. */
+@media (max-width:767px){
+  .wb.wb.wb .ct-band .wb-caps{ height:64px }
+  .wb.wb.wb .ct-band .wb-cap{ flex:0 0 46px; min-width:46px }
+  .wb.wb.wb .ct-band .wb-cap-0{ flex:0 0 46px; min-width:46px }
+  .wb.wb.wb .ct-band .wb-caps-xl{ flex:0 0 46px; min-width:46px }
+  .wb.wb.wb .ct-band .wb-caps, .wb.wb.wb .ct-band .wb-caps-x{ gap:10px }
+  .wb.wb.wb .ct-band-fig{ margin-top:10px }
+  .wb.wb.wb .ct-band-facts{ margin-top:8px; padding-top:8px; gap:4px 12px }
+  .wb.wb.wb .ct-band{ padding-top:14px; padding-bottom:14px }
+}

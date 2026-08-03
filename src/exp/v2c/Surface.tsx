@@ -161,8 +161,13 @@ export function CapsuleChart({ parts, onJump }: {
   // The 24px floor is a DRAWING floor, not a data claim: it is what keeps a
   // 1-row stage from rendering thinner than the numeral printed inside it. A
   // zero never reaches it — zeros take the stub below and keep their slot.
-  const PLOT = 96
-  const capH = (n: number) => Math.max(28, Math.round(PLOT * (n / peak)))
+  // Heights are emitted as a PERCENTAGE of the plot, so the one place that
+  // decides how tall the plot is stays CSS (`.wb-caps{min-height}`) and the
+  // narrow-canvas rule can shorten the bars instead of only the box around
+  // them. The 28% floor is a DRAWING floor, not a data claim: it is what keeps
+  // a 1-row stage from rendering shorter than the numeral printed inside it.
+  // A zero never reaches it — zeros take the stub below and keep their slot.
+  const capH = (n: number) => Math.max(28, Math.round(100 * (n / peak)))
   return (
     <>
       <div className="wb-caps">
@@ -174,7 +179,7 @@ export function CapsuleChart({ parts, onJump }: {
                 className="wb-cap"
                 key={p.key}
                 data-cat={cat(i)}
-                style={{ height: `${capH(p.n)}px` }}
+                style={{ height: `${capH(p.n)}%` }}
                 onClick={onJump ? () => onJump(p.key) : undefined}
                 title={`${p.label}: ${p.n}`}
               >

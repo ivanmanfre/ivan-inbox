@@ -35,13 +35,22 @@ export type SectionState = {
   filters: Record<string, string>
   // Free-text search over the loaded rows. Client-side, never a query param.
   q: string
+  // Which collapsible sections the operator has OPENED, by stage key
+  // (2026-08-03: "compact stuff with collapsibles arrows"). Same class of data
+  // as a facet key — a code-side identifier, never row content — so it takes
+  // the same identifier shape and the same caps.
+  //
+  // Deliberately a list of what is OPEN rather than what is closed: a stage that
+  // did not exist when the state was written must default to the code's rule,
+  // not inherit "open" from a stale absence.
+  open: string[]
 }
 
 // The allowlist, as data rather than as prose. Exported so the test can assert
 // that a field nobody named cannot reach storage.
-export const SECTION_FIELDS = ['filters', 'q'] as const
+export const SECTION_FIELDS = ['filters', 'q', 'open'] as const
 
-export const EMPTY_SECTION_STATE: SectionState = { filters: {}, q: '' }
+export const EMPTY_SECTION_STATE: SectionState = { filters: {}, q: '', open: [] }
 
 // Caps. A facet key is a code-side identifier, a facet value is a database
 // value, and neither has any business being long. The caps exist so a corrupted
@@ -84,11 +93,27 @@ export function projectSectionState(input: unknown): SectionState {
   return {
     filters: projectFilters(o.filters),
     q: typeof o.q === 'string' ? o.q.slice(0, MAX_Q_LEN) : '',
+    open: projectOpen(o.open),
   }
 }
 
+// Same identifier discipline as a facet key, same caps, deduped and ordered so
+// two writes of the same set produce the same string.
+function projectOpen(input: unknown): string[] {
+  if (!Array.isArray(input)) return []
+  const out = new Set<string>()
+  for (const v of input) {
+    if (typeof v !== 'string') continue
+    const k = v.slice(0, MAX_KEY_LEN)
+    if (!KEY_RE.test(k)) continue
+    out.add(k)
+    if (out.size >= MAX_FACETS) break
+  }
+  return [...out].sort()
+}
+
 export function isEmptySectionState(s: SectionState): boolean {
-  return !s.q && Object.keys(s.filters).length === 0
+  return !s.q && Object.keys(s.filters).length === 0 && s.open.length === 0
 }
 
 // One namespace, so every adopting surface (Sends, Drafts, Ops) is one string
@@ -153,6 +178,7 @@ export function writeSectionState(
       v: SECTION_STATE_VERSION,
       filters: safe.filters,
       q: safe.q,
+      open: safe.open,
     }))
   } catch {
     // Quota or a disabled store. A filter that cannot be remembered is not an
