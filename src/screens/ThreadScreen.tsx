@@ -184,7 +184,14 @@ export function ThreadScreen({ thread, onBack, refresh }: {
             <div key={m.id} style={{ display: 'contents' }}>
               {showDay && <div className="day">{label}</div>}
               <div className="blbl r" style={lbl.failed ? { color: '#FF453A' } : undefined}>{lbl.text}</div>
-              <div className="b out"><Linkified text={m.message_text} /></div>
+              {/* A reply Ivan or Mattan typed in the LinkedIn app carries a
+                  different weight from one the engine sent, so it is MARKED and
+                  not merely footnoted (2026-08-03: "manual replies from linkedin
+                  are also highlighted on the chat view"). It is also the only
+                  evidence the mirror leaves of a hand-sent message. */}
+              <div className={`b out${m.ai_model === 'manual_mirror' ? ' manual' : ''}`}>
+                <Linkified text={m.message_text} />
+              </div>
             </div>
           )
         })}

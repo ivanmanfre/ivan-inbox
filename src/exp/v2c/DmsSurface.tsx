@@ -1,5 +1,6 @@
 import { DraftCard, OpsPending, StaleBar } from '../../screens/DraftsScreen'
 import { InboxScreen } from '../../screens/InboxScreen'
+import { DmHistory } from './DmHistory'
 import { STATUS_LABEL, filterThreads, type Filter, type Status, type Thread } from '../../lib/inbox'
 import { pendingDmLaneOps, type OpsDraft } from '../../lib/ops'
 import { InboxHead } from './InboxHead'
@@ -74,6 +75,10 @@ export function DmsSurface({
       // A draft is not a 73px row you read — it is a message you send or throw
       // away, so in that status the row IS the card, with the swipe gestures and
       // the confirm intact.
+      // DM HISTORY (Ivan, 2026-08-03: "so i know this is working"). With zero
+      // pending the surface would otherwise be an empty screen that proves
+      // nothing; the history is the receipt that the engine holds conversations.
+      after={<DmHistory threads={filterThreads(threads, filter)} onOpen={onOpenThread} />}
       renderRow={status === 'approve'
         ? t => <DraftCard key={t.prospect_id} thread={t} onOpenThread={onOpenThread} refresh={refresh} />
         : undefined}
