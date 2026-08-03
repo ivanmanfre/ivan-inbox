@@ -265,7 +265,7 @@ export default function Shell() {
             </div>
           </div>
           {mobile && (
-            <MobileTabs job={job} counts={{}} chatLive={false} onJob={goJob} onChat={toggleChat} />
+            <MobileTabs job={job} counts={{}} sev={{}} chatLive={false} onJob={goJob} onChat={toggleChat} />
           )}
         </div>
       </div>
@@ -436,7 +436,7 @@ export default function Shell() {
               : <span className="wb-gear" onClick={() => goJob('settings')}>⚙︎</span>}
           </div>
           <div className={`wb-work wide${plan.narrow ? ' wb-narrow' : ''}`}>{workSurface}</div>
-          <MobileTabs job={job} counts={counts} chatLive={chat.busy} onJob={goJob} onChat={toggleChat} />
+          <MobileTabs job={job} counts={counts} sev={sev} chatLive={chat.busy} onJob={goJob} onChat={toggleChat} />
         </div>
         {itemWindow}
       </div>

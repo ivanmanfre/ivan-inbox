@@ -160,9 +160,13 @@ const MOBILE: { job: Job; icon: string; label: string }[] = [
   { job: 'ops', icon: JOB_ICON.ops, label: 'Ops' },
 ]
 
-export function MobileTabs({ job, counts, chatLive, onJob, onChat }: {
+export function MobileTabs({ job, counts, sev, chatLive, onJob, onChat }: {
   job: Job
   counts: Counts
+  // Same severity map the rail reads. Without it the bar painted EVERY count
+  // red — 19 posts to review is a workload, not an alarm — which is the exact
+  // amber-vs-pending rule the rail comments already state and the bar ignored.
+  sev: Partial<Record<Job, 'attention' | 'urgent'>>
   chatLive: boolean
   onJob: (j: Job) => void
   onChat: () => void
@@ -179,10 +183,10 @@ export function MobileTabs({ job, counts, chatLive, onJob, onChat }: {
           <div key={t.job} className={`tb ${active ? 'on' : ''}`} onClick={() => onJob(t.job)}>
             <div className="ic bubble">
               {t.icon}
-              {/* Red is for what is waiting on Ivan. An unread count is a
-                  workload, not a warning — the audit's amber-vs-pending point,
-                  applied to the badge. */}
-              {n > 0 && <span className={`cnt${t.job === 'dms' ? ' neutral' : ''}`}>{n}</span>}
+              {/* Red is for a PROBLEM (a failed fetch, a stuck lane). A backlog
+                  is a workload and takes the neutral pill — the audit's
+                  amber-vs-pending point, applied to the badge. */}
+              {n > 0 && <span className={`cnt${sev[t.job] ? '' : ' neutral'}`}>{n}</span>}
             </div>
             <div className="l">{t.label}</div>
           </div>
