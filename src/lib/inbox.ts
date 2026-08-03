@@ -155,16 +155,46 @@ export function needsAnswer(t: Thread): boolean {
 // handled). Bigger where it is honest, smaller where it was noise.
 export type InboxBreakdown = { answer: number; approve: number; flagged: number; waiting: number }
 
+export type ThreadBucket = keyof InboxBreakdown
+
+// The single place a conversation is assigned its bucket. The breakdown bar, the
+// badge and (since the Inbox job was removed) the DMs status filter all read
+// THIS — so the bar Ivan clicks and the list he gets back cannot disagree, which
+// was the failure mode the old raw-unread badge had.
+export function threadBucket(t: Thread): ThreadBucket {
+  if (needsAnswer(t)) return 'answer'
+  if (t.draft !== null) return 'approve'
+  if (t.needsManualReply) return 'flagged'
+  return 'waiting'
+}
+
 export function inboxBreakdown(threads: Thread[]): InboxBreakdown {
   const out: InboxBreakdown = { answer: 0, approve: 0, flagged: 0, waiting: 0 }
   for (const t of threads) {
     if (!isConversation(t)) continue
-    if (needsAnswer(t)) out.answer += 1
-    else if (t.draft !== null) out.approve += 1
-    else if (t.needsManualReply) out.flagged += 1
-    else out.waiting += 1
+    out[threadBucket(t)] += 1
   }
   return out
+}
+
+// The status axis of the DMs surface. 'needs' is the default view — everything
+// waiting on Ivan, which is exactly what the badge counts — and 'all' is the
+// escape hatch that still shows the conversations where the ball is with them.
+export type Status = 'needs' | 'all' | ThreadBucket
+
+export const STATUS_LABEL: Record<Status, string> = {
+  needs: 'Needs you',
+  answer: 'To answer',
+  approve: 'Draft ready',
+  flagged: 'Flagged',
+  waiting: 'Waiting on them',
+  all: 'All',
+}
+
+export function filterByStatus(threads: Thread[], s: Status): Thread[] {
+  if (s === 'all') return threads
+  if (s === 'needs') return threads.filter(t => threadBucket(t) !== 'waiting')
+  return threads.filter(t => threadBucket(t) === s)
 }
 
 // THE badge number. Every surface that says "N waiting in the inbox" derives

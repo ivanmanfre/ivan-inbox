@@ -11,7 +11,18 @@
 // viewport. That is testable in node (below) instead of only in a browser, and
 // it is why the workbench can add a third region without a fifth fork.
 
-export type Job = 'today' | 'inbox' | 'drafts' | 'content' | 'magnets' | 'sends' | 'ops' | 'settings'
+// 2026-08-03, Ivan (twice): "the inbox section u can remove it i see no purpose
+// on it having dms and sends". The census (phase1-census.json) found the DMs
+// lane rendering ZERO rows — it only ever held threads with a pending draft —
+// while all 135 conversations, 70 of them waiting on him, lived in Inbox alone.
+// So Inbox was not deleted, it was ABSORBED: `dms` is now the conversation list
+// (the old `drafts` job, renamed because the surface is no longer a draft
+// queue), and the approve/discard cards became one status inside it.
+//
+// The removal freed a mobile slot, which is what lets DMs be a destination
+// again instead of half of a "Work" tab. WORK_JOBS is now what it always
+// described — the two CONTENT lanes.
+export type Job = 'today' | 'dms' | 'content' | 'magnets' | 'sends' | 'ops' | 'settings'
 
 // Three canvases, two media queries, one hook (useCanvas). 'wide' is where the
 // workbench can hold the working list AND two context peers at once — 1440px is
@@ -36,33 +47,39 @@ export function peerKey(p: Peer): PeerKey {
 
 // Rail order. Jobs first (they set the working surface), Claude last — it is
 // deliberately NOT a job (see dockChat below).
-export const JOBS: Job[] = ['today', 'inbox', 'drafts', 'content', 'magnets', 'sends', 'ops', 'settings']
+export const JOBS: Job[] = ['today', 'dms', 'content', 'magnets', 'sends', 'ops', 'settings']
 
 export const JOB_LABEL: Record<Job, string> = {
-  today: 'Today', inbox: 'Inbox', drafts: 'Drafts', content: 'Content',
+  today: 'Today', dms: 'DMs', content: 'Content',
   magnets: 'Magnets', sends: 'Sends', ops: 'Ops', settings: 'Settings',
 }
 
 // Unicode glyphs only, matching TabBar.tsx:9-30 — no icon set, no SVG sprite.
+// DMs inherits the Inbox glyph, not the old drafts sparkle: it is a
+// conversation list now, and the glyph is the honest one.
 export const JOB_ICON: Record<Job, string> = {
-  today: '☼', inbox: '◉', drafts: '✦', content: '▤', magnets: '▦',
+  today: '☼', dms: '◉', content: '▤', magnets: '▦',
   sends: '↑', ops: '◈', settings: '⚙︎',
 }
 
 // Jobs whose working surface is a LIST that can hand a row to a context peer.
 // Everything else is a whole-canvas reading/monitoring surface. This replaces
 // App.tsx:152's inline `tab === 'sends' || tab === 'ops' || tab === 'today'`.
-const LIST_JOBS: Job[] = ['inbox', 'drafts', 'content', 'magnets']
+const LIST_JOBS: Job[] = ['dms', 'content', 'magnets']
 
 export function jobHasList(job: Job): boolean {
   return LIST_JOBS.includes(job)
 }
 
-// On mobile the bottom bar cannot carry 8 jobs, so Drafts, Content and Magnets
-// share one slot ("Work") and the segmented control inside it sets the SAME job
-// state the desktop rail sets. One state, two renderings — not a second router.
-// The mobile bar does NOT grow when a job joins this list.
-export const WORK_JOBS: Job[] = ['drafts', 'content', 'magnets']
+// On mobile the bottom bar cannot carry every job, so the two CONTENT lanes
+// share one slot and the segmented control inside it sets the SAME job state the
+// desktop rail sets. One state, two renderings — not a second router. The mobile
+// bar does NOT grow when a job joins this list.
+//
+// DMs left this group when Inbox was absorbed into it: it is the conversation
+// list now, it is what the badge counts, and the freed slot is exactly what lets
+// it be one tap away again.
+export const WORK_JOBS: Job[] = ['content', 'magnets']
 
 export function isWorkJob(job: Job): boolean {
   return WORK_JOBS.includes(job)
