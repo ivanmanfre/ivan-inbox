@@ -938,9 +938,15 @@
 /* min-height tracks the chart's own ceiling: the scale is sqrt with a 72px cap
    (Surface.tsx capH), so a 120px well would hang 48px of dead air above every
    plot. align-items:flex-end is what baseline-aligns the capsules. */
-.wb.wb.wb .wb-caps{ display:flex; align-items:flex-end; gap:10px; min-height:72px; max-width:460px }
+/* ONE MARK VOCABULARY (2026-08-03, Ivan: "FIX Pipeline design"). The marks were
+   `flex:1` across a 460px card, so at 4-5 series each was ~80-100px WIDE against
+   a 22-72px height: the tall one resolved as an ellipse and the short ones as
+   lying-down pills — two chart types in one plot, which is what he saw. A
+   capsule COLUMN is narrow and tall, so the width is fixed and the plot is
+   taller than the widest mark. Same shape, same radius, every stage. */
+.wb.wb.wb .wb-caps{ display:flex; align-items:flex-end; gap:14px; min-height:96px; max-width:460px }
 .wb.wb.wb .wb-cap{
-  flex:1; min-width:22px; position:relative;
+  flex:0 0 56px; min-width:56px; position:relative;
   /* F6 (phase-2 review) — elevation move 2, finished: the reference centres the
      ink numeral IN its mark; top-pinned read as unfinished on the tall
      IDEA/PUB capsules. Centred both axes; short capsules are unaffected
@@ -962,14 +968,14 @@
   border-radius:999px; background:rgba(23,23,23,.14);
 }
 .wb.wb.wb .wb-cap-0{
-  flex:1; min-width:22px; height:3px; align-self:flex-end;
+  flex:0 0 56px; min-width:56px; height:3px; align-self:flex-end;
   background:var(--surface3); border-radius:var(--r-pill);
 }
 .wb.wb.wb .wb-caps-x{
-  display:flex; gap:10px; margin-top:8px; max-width:460px;
+  display:flex; gap:14px; margin-top:8px; max-width:460px;
 }
 .wb.wb.wb .wb-caps-xl{
-  flex:1; min-width:22px; text-align:center; color:var(--text3);
+  flex:0 0 56px; min-width:56px; text-align:center; color:var(--text3);
   font-size:var(--fs-eyebrow); letter-spacing:.04em; text-transform:uppercase;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }

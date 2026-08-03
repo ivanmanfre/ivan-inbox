@@ -443,16 +443,31 @@ export function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loa
   // 🔴 Built from the UNFILTERED rows, exactly as the post lane's strip is: a
   // filter may narrow the flow, it may never hide a broken row.
   const stalled = rows.filter(isStuckGeneratingLm)
-  const stuck = rows.filter(isStuckResource)
   const errored = rows.filter(r => stageOfLm(r) === 'error')
+  // ⚠ REMOVED FROM THE ALARM, 2026-08-03, Ivan: "delete this warning is normal
+  // '1 errored · 34 terminal with no landing URL' bc we used not to have
+  // landing." The early lead magnets predate landing pages, so a terminal row
+  // with no landing URL is HISTORY, not a defect — 34 of them fired an alarm
+  // nobody will ever clear, which is how a strip trains you to stop reading it.
+  // `isStuckResource` still exists and still marks the individual row (:323),
+  // where it is a property of that row rather than a claim on Ivan's day.
+  // THE TEST an alert has to pass: it names something actionable TODAY.
 
-  // Every stage spends a slot, including the four that have never had a row —
-  // a five-capsule chart would draw a five-stage pipeline that does not exist.
-  const parts = LM_PIPELINE_STAGES.map(s => ({
+  // Every stage spends a slot, including the ones that have never had a row —
+  // a chart that drops empty stages would draw a pipeline that does not exist.
+  //
+  // PUBLISHED IS NOT ONE OF THEM (2026-08-03, Ivan: "delete published we dont
+  // need to see that on that pipeline stuff"). It is an archive total, not a
+  // stage he acts on, and as the only stage that accumulates forever it set the
+  // peak and squashed every in-flight stage into its floor. The total is still
+  // stated in the card footer, as a line rather than a mark.
+  const parts = LM_PIPELINE_STAGES.filter(s => s !== 'published').map(s => ({
     key: s, label: LM_STAGE_LABEL[s], short: LM_STAGE_SHORT[s], n: groupByLmStage(rows)[s].length,
   }))
+  // `published` is already gone from `parts` (above), so only the idea stage is
+  // excluded here — "still moving" means in flight, and an idea has not started.
   const inFlight = parts
-    .filter(p => p.key !== 'published' && p.key !== 'idea')
+    .filter(p => p.key !== 'idea')
     .reduce((a, p) => a + p.n, 0)
 
   const jump = (key: string) => {
@@ -488,14 +503,13 @@ export function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loa
         <CalmEmpty line={`No lead magnets in ${LANE_POSSESSIVE[lane]} lane.`} loadedAt={loadedAt} />
       ) : (
         <>
-          {(errored.length + stuck.length + stalled.length) > 0 && (
+          {(errored.length + stalled.length) > 0 && (
             <div className="ct-alert">
-              <span className="ct-alert-n">{errored.length + stuck.length + stalled.length}</span>
+              <span className="ct-alert-n">{errored.length + stalled.length}</span>
               <span className="ct-alert-t">
                 {[
                   errored.length > 0 && `${errored.length} errored`,
                   stalled.length > 0 && `${stalled.length} generating past ${STUCK_GENERATING_MINUTES}m`,
-                  stuck.length > 0 && `${stuck.length} terminal with no landing URL`,
                 ].filter(Boolean).join(' · ')}
               </span>
             </div>

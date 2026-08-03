@@ -186,10 +186,22 @@ function PipelineBar({ stages, ideasShown, ideasTotal, matched, laneTotal, onJum
   laneTotal: number | null
   onJump: (s: ContentStage) => void
 }) {
+  // PUBLISHED IS NOT A STAGE ON THIS CHART (2026-08-03, Ivan: "delete published
+  // we dont need to see that on that pipeline stuff"). Two reasons and they
+  // agree: it is an archive count he never acts on, and it is the only stage
+  // that accumulates forever — 109 published against a peak of 11 in-flight set
+  // the scale, drew itself as a balloon, and squashed GEN/REVIEW/APPR/SCHED into
+  // stubs. The published total is still on the surface, in the footer's
+  // `Total: N of M in the lane` line, which is where an archive number belongs.
   const parts = PIPELINE_STAGES
-    .filter(s => s !== 'ideas')
+    .filter(s => s !== 'ideas' && s !== 'published')
     .map(s => ({ stage: s, key: STAGE_LABEL[s], n: stages[s].length, color: STAGE_COLOR[s] }))
-  const loaded = parts.reduce((s, p) => s + p.n, 0)
+  // Deliberately NOT `parts` — "of N loaded" means every row this lane loaded,
+  // published included. Narrowing the chart must not silently restate the
+  // denominator under the hero figure.
+  const loaded = PIPELINE_STAGES
+    .filter(s => s !== 'ideas')
+    .reduce((a, s) => a + stages[s].length, 0)
   const review = stages.review.length
   const undated = countUndated(stages.approved)
   return (

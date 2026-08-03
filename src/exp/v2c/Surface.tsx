@@ -152,13 +152,17 @@ export function CapsuleChart({ parts, onJump }: {
   // Cat index cycles 1-4; beyond four series MONO differentiates by PATTERN,
   // not by colour, which is why the capsule reads the same in greyscale.
   const cat = (i: number) => String((i % 4) + 1)
-  // SQRT scale, not linear. The live Ivan lane holds a 109-row Published stage
-  // beside 2-6-row in-flight stages; a linear map to 120px drew the outlier as
-  // a monster balloon and flattened every other capsule to its floor. sqrt
-  // compresses the top of the range (109 → 72px, 6 → 17px→floor 22) so the
-  // small stages stay readable against the big one. Cap is 72px by
-  // construction: sqrt(n/peak) ≤ 1.
-  const capH = (n: number) => Math.max(22, Math.round(72 * Math.sqrt(n / peak)))
+  // LINEAR again, 2026-08-03. The sqrt compression existed for exactly one
+  // reason — a 109-row Published stage sitting beside 2-6-row in-flight stages
+  // — and it bought that legibility by drawing every bar at the wrong height.
+  // Published is no longer a mark on either pipeline (Ivan's call), so the
+  // series is 0-11 and a linear map is both honest and readable.
+  //
+  // The 24px floor is a DRAWING floor, not a data claim: it is what keeps a
+  // 1-row stage from rendering thinner than the numeral printed inside it. A
+  // zero never reaches it — zeros take the stub below and keep their slot.
+  const PLOT = 96
+  const capH = (n: number) => Math.max(28, Math.round(PLOT * (n / peak)))
   return (
     <>
       <div className="wb-caps">
