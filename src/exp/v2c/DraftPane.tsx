@@ -3,10 +3,12 @@ import { useDraftDetail } from '../../hooks/useContent'
 import { useSectionState } from '../../hooks/useSectionState'
 import { useConfirm } from '../../components/ConfirmSheet'
 import {
-  DraftSaveConflict, LANE_LABEL, STAGE_LABEL, approveDraft, deleteDraft, normalizeAgentLog,
-  normalizeImageUrls, normalizeKeyPoints, normalizeQa, normalizeSourceDetail, reviewActionable,
-  saveDraftBody, selfContainedHtml, skipDraft, stageOf, taxonomyExtras, taxonomyFields,
-  taxonomyValue, type ContentDraft, type ContentDraftDetail, type ContentLane, type SaveConflict,
+  ClientRpcError, DraftSaveConflict, LANE_LABEL, STAGE_LABEL, approveDraft, boardGroupOf,
+  canPromote, canUnpromote, clientDeletable, clientEditable, clientStageLabel, deleteClientDraft,
+  deleteDraft, normalizeAgentLog, normalizeImageUrls, normalizeKeyPoints, normalizeQa,
+  normalizeSourceDetail, reviewActionable, saveClientDraftBody, saveDraftBody, selfContainedHtml,
+  setBoardVisible, skipDraft, stageOf, taxonomyExtras, taxonomyFields, taxonomyValue,
+  type ContentDraft, type ContentDraftDetail, type ContentLane, type SaveConflict,
 } from '../../lib/content'
 import { appendAgentNote, clearHumanEdit, planRegen, regenerateDraft, scheduleDraft } from '../../lib/studioActions'
 import { Block, KeyRows, Rows, Val } from './ContentBits'
@@ -344,6 +346,73 @@ function DeleteDraft({ d, onDone }: { d: ContentDraftDetail; onDone: () => void 
 }
 
 // ---------------------------------------------------------------------------
+// DELETE, on the CLIENT lane.
+//
+// 🔴 The one place a delete can reach a paying client. The board's `queue` is a
+// denormalised copy of the promoted drafts and only operator_set_board_visible
+// rebuilds it, so deleting a row that is ON the board removes it from our side
+// and leaves a full copy of it on Mattan's, with nothing scheduled to clean it
+// up. deleteClientDraft refuses that case server-side after re-reading
+// board_visible; this component refuses it on the surface AND says why, because
+// an affordance that is simply absent is what produced Ivan's message in the
+// first place.
+// ---------------------------------------------------------------------------
+
+function DeleteClientDraft({ d, onDone }: { d: ContentDraftDetail; onDone: () => void }) {
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+
+  if (!clientDeletable('risedtc', d.board_visible)) {
+    return (
+      <div className="wb-delzone">
+        <div className="ct-subtle">
+          On Mattan’s board, so it can’t be deleted from here — his board keeps its own copy of
+          every promoted post, and only taking it off the board rebuilds that copy. Take it off
+          first, then delete.
+        </div>
+      </div>
+    )
+  }
+
+  const run = async () => {
+    setBusy(true); setErr('')
+    try {
+      await deleteClientDraft(d.id, d.taxonomy)
+      onDone()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not delete')
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="wb-delzone">
+      {err && <div className="ops-err">{err}</div>}
+      {confirming ? (
+        <div className="wb-delconfirm">
+          <span className="wb-delq">
+            Delete this draft? Mattan has never seen it, and this removes it permanently.
+          </span>
+          <div className="ct-ac">
+            <button type="button" className="btn s" disabled={busy} onClick={() => setConfirming(false)}>
+              Cancel
+            </button>
+            <button type="button" className="btn wb-btn-danger" disabled={busy} onClick={run}>
+              {busy ? 'Deleting…' : 'Delete'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" className="wb-delbtn" onClick={() => setConfirming(true)}>
+          Delete draft
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // The note composer — `append_agent_log`, the reference's AgentLogFeed footer.
 // The generation register is written BY agents; this is the one place a human
 // writes back into it, which is what makes it a log rather than a transcript.
@@ -427,7 +496,15 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
   }, [sect.open.length, setSect])
 
   // ---- the editor ---------------------------------------------------------
-  const editable = lane === 'ivan'
+  //
+  // Mattan's lane is editable too now, through a DIFFERENT write. The Ivan-lane
+  // saveDraftBody is scoped `.is('client_id', null)` and always will be; the
+  // client path goes through operator_edit_draft_body, which is the mirror
+  // image (`client_id is not null`) and additionally refuses anything outside
+  // status review/scheduled. clientEditable carries that second rule, so the
+  // button is absent exactly when the database would refuse — and where it is
+  // absent, the note below the actions says why.
+  const editable = lane === 'ivan' || clientEditable(d.status, lane)
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState(d.post_body ?? '')
   // What the editor was OPENED on — the compare half of the compare-and-swap.
@@ -475,7 +552,9 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
     const body = text
     setBusy(true); setSaveErr(''); setConflict(null)
     try {
-      await saveDraftBody(d.id, body, d.taxonomy, baseRef.current, d.updated_at)
+      await (lane === 'ivan'
+        ? saveDraftBody(d.id, body, d.taxonomy, baseRef.current, d.updated_at)
+        : saveClientDraftBody(d.id, body, d.taxonomy, baseRef.current, d.updated_at))
       baseRef.current = body
       setShown(body)
       setEditing(false)
@@ -490,7 +569,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
         setSaveErr(e instanceof Error ? e.message : 'Save failed')
       }
     } finally { setBusy(false) }
-  }, [d.id, d.taxonomy, d.updated_at, text, refresh])
+  }, [d.id, d.taxonomy, d.updated_at, lane, text, refresh])
 
   // Resolving a conflict is an explicit act with two named outcomes.
   const takeTheirs = () => {
@@ -513,7 +592,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
   // ---- decisions ----------------------------------------------------------
   const actionable = reviewActionable(d.status, lane)
   const at = queue.findIndex(q => q.id === d.id)
-  const next = at >= 0 && at + 1 < queue.length ? queue[at + 1].id : null
+  const nextId = at >= 0 && at + 1 < queue.length ? queue[at + 1].id : null
 
   const [acting, setActing] = useState(false)
   const [actErr, setActErr] = useState('')
@@ -544,12 +623,72 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
     try {
       await (kind === 'approve' ? approveDraft(d.id) : skipDraft(d.id))
       refresh()
-      if (next) onPick(next)
+      if (nextId) onPick(nextId)
       else onClose()
     } catch (e) {
       setActErr(e instanceof Error ? e.message : `Could not ${kind}`)
     } finally { setActing(false) }
-  }, [actionable, acting, confirm, d.id, next, onPick, onClose, refresh])
+  }, [actionable, acting, confirm, d.id, nextId, onPick, onClose, refresh])
+
+  // ---- the CLIENT decision: promote / take back --------------------------
+  //
+  // Ivan: "in mattan's case, after i approve needs review it goes to the
+  // board". That is the lifecycle, and this is the write that performs it —
+  // NOT approveDraft, which on a client row would set status='approved' and
+  // thereby lock the draft off the board for good (operator_set_board_visible
+  // only promotes from 'review').
+  //
+  // Optimistic with rollback, exactly like the dashboard's own onToggle. The
+  // local flag is what makes the chip and the delete zone flip on the spot;
+  // the list underneath re-groups off its own refetch.
+  const [visible, setVisible] = useState<boolean | null | undefined>(d.board_visible)
+  useEffect(() => { setVisible(d.board_visible) }, [d.id, d.board_visible])
+  const [promoting, setPromoting] = useState(false)
+  const [promoteErr, setPromoteErr] = useState('')
+  // Both read the OPTIMISTIC flag, not the fetched row, so the pair of buttons
+  // swaps the instant the decision is taken rather than after the refetch.
+  const promotable = canPromote(d.status, lane) && visible !== true
+  const unpromotable = canUnpromote(lane, visible)
+
+  const promote = useCallback(async (next: boolean) => {
+    if (promoting) return
+    // 🔴 CLIENT-FACING. `true` is the only action in this whole app that puts
+    // something in front of a paying client, so the sheet says that first, in
+    // those words, and then says what it does NOT do — because "approve" in
+    // Ivan's other lane means a status mark, and the same key here means Mattan
+    // sees it.
+    const ok = await confirm(next ? {
+      title: 'Put this on Mattan’s board?',
+      message:
+        'Mattan sees it. This is the one action here that reaches a client — it fires his board’s '
+        + 'own sync, so it lands on his board within moments, not at some later batch. From there '
+        + 'the decisions are his: approve, edit, veto, schedule. '
+        + 'Nothing publishes — this writes board visibility and never touches the publisher.',
+      confirmText: 'Put it on his board',
+    } : {
+      title: 'Take this off Mattan’s board?',
+      message:
+        'It goes back to our side only and disappears from his board on the same sync. Nothing is '
+        + 'deleted and no status changes — the draft stays here, and you can put it back.',
+      confirmText: 'Take it off',
+    })
+    if (!ok) return
+    setPromoting(true); setPromoteErr('')
+    setVisible(next)
+    try {
+      await setBoardVisible(d.id, next)
+      refresh()
+      // Promoting clears the row out of the section it was opened from, so the
+      // reader walks on the way approve does. Taking one back is a correction —
+      // stay on it, so the result is visible.
+      if (next) { if (nextId) onPick(nextId); else onClose() }
+    } catch (e) {
+      setVisible(!next)
+      setPromoteErr(e instanceof ClientRpcError || e instanceof Error
+        ? e.message
+        : 'Could not change the board visibility')
+    } finally { setPromoting(false) }
+  }, [confirm, d.id, nextId, onClose, onPick, promoting, refresh])
 
   const [more, setMore] = useState(false)
 
@@ -577,17 +716,24 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
           if (at > 0) onPick(queue[at - 1].id)
           break
         }
-        case 'a': if (actionable) { e.preventDefault(); decide('approve') } break
+        // `a` is THE decision key, and each lane's decision is a different
+        // write: on Ivan's it marks the draft approved, on Mattan's it puts the
+        // post in front of the client. Both go through a confirm, and the
+        // client one says which of the two it is in its first sentence.
+        case 'a':
+          if (actionable) { e.preventDefault(); decide('approve') }
+          else if (promotable) { e.preventDefault(); promote(true) }
+          break
         case 'r': if (actionable) { e.preventDefault(); decide('skip') } break
         case 'e': if (editable) { e.preventDefault(); startEdit() } break
         // Move on without judging — the row keeps its status.
-        case 's': e.preventDefault(); if (next) onPick(next); break
+        case 's': e.preventDefault(); if (nextId) onPick(nextId); break
         case 'o': e.preventDefault(); setMore(m => !m); break
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [at, queue, editing, editable, actionable, decide, next, onPick, startEdit])
+  }, [at, queue, editing, editable, actionable, promotable, promote, decide, nextId, onPick, startEdit])
 
   // ---- derived registers --------------------------------------------------
   const dates: [string, ReactNode][] = []
@@ -642,13 +788,19 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
         </div>
         <div className="ct-meta" style={{ padding: '0 16px 4px' }}>
           <span className="ct-chip">{typeLabel(d.type)}</span>
+          {/* One status, two meanings. `review` here is "waiting on Mattan"
+              when he has it and "waiting on you" when he does not, so the chip
+              reads the promotion state rather than repeating the raw stage —
+              and it reads the OPTIMISTIC flag, so it flips on the decision. */}
           <span className={`ct-chip${stage === 'error' || stage === 'stuck' ? ' ct-chip-bad' : ''}`}>
-            {STAGE_LABEL[stage]}
+            {lane === 'risedtc'
+              ? clientStageLabel(stage, boardGroupOf({ board_visible: visible }))
+              : STAGE_LABEL[stage]}
           </span>
           <span className="ct-chip">{relTime(d.updated_at)}</span>
           {lane === 'risedtc' && (
-            <span className={d.board_visible === true ? 'ct-lane' : 'ct-chip'}>
-              {d.board_visible === true ? 'On Mattan’s board' : 'Internal'}
+            <span className={visible === true ? 'ct-lane' : 'ct-chip'}>
+              {visible === true ? 'On Mattan’s board' : 'Not on his board'}
             </span>
           )}
         </div>
@@ -759,7 +911,34 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
         )}
         {lane === 'ivan' && (
           <div style={{ marginBottom: 4 }}>
-            <DeleteDraft d={d} onDone={() => { refresh(); if (next) onPick(next); else onClose() }} />
+            <DeleteDraft d={d} onDone={() => { refresh(); if (nextId) onPick(nextId); else onClose() }} />
+          </div>
+        )}
+        {lane === 'risedtc' && (
+          <div style={{ marginBottom: 4 }}>
+            <DeleteClientDraft
+              d={{ ...d, board_visible: visible }}
+              onDone={() => { refresh(); if (nextId) onPick(nextId); else onClose() }}
+            />
+          </div>
+        )}
+
+        {promoteErr && <div className="ops-err" style={{ margin: '10px 16px 0' }}>{promoteErr}</div>}
+
+        {/* WHY THERE IS NO BUTTON. An affordance that is simply missing is what
+            produced Ivan's message; on this lane every gap now states the rule
+            that closes it, and the rule is the database's, not a house style. */}
+        {lane === 'risedtc' && !promotable && !unpromotable && (
+          <div className="ct-subtle dw-clientnote">
+            {d.status === 'error'
+              ? 'This one errored, and only a draft at Needs review can go on Mattan’s board. Fix or regenerate it on our side first — nothing here reaches him.'
+              : `Not promotable at ${STAGE_LABEL[stage].toLowerCase()} — the database only promotes a draft that is still at Needs review.`}
+          </div>
+        )}
+        {lane === 'risedtc' && !editable && (
+          <div className="ct-subtle dw-clientnote">
+            Mattan’s copy is only editable while the draft is at Needs review or Scheduled. At{' '}
+            {STAGE_LABEL[stage].toLowerCase()} the words are settled — edit it on his board instead.
           </div>
         )}
 
@@ -781,11 +960,27 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
               </button>
             </>
           )}
+          {/* 🔴 The client-facing decision. It wears the same `a` key and the
+              same primary weight as Ivan's Approve because it is the same
+              gesture in his hands — but never the same WORD, because this one
+              is seen by a paying client and "Approve" would not say so. */}
+          {promotable && (
+            <button type="button" className="dw-key p" disabled={promoting || editing}
+              onClick={() => promote(true)}>
+              <kbd>a</kbd> {promoting ? 'Putting it up…' : 'Put on Mattan’s board'}
+            </button>
+          )}
+          {unpromotable && (
+            <button type="button" className="dw-key" disabled={promoting || editing}
+              onClick={() => promote(false)}>
+              {promoting ? 'Taking it off…' : 'Take off his board'}
+            </button>
+          )}
           {editable && !editing && (
             <button type="button" className="dw-key" onClick={startEdit}><kbd>e</kbd> Edit</button>
           )}
-          {next && (
-            <button type="button" className="dw-key" disabled={editing} onClick={() => onPick(next)}>
+          {nextId && (
+            <button type="button" className="dw-key" disabled={editing} onClick={() => onPick(nextId)}>
               <kbd>s</kbd> Next
             </button>
           )}
