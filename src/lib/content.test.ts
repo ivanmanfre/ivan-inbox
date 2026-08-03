@@ -153,7 +153,10 @@ describe('reviewActionable', () => {
     expect(reviewActionable('review', 'ivan')).toBe(true)
     expect(reviewActionable('review', 'risedtc')).toBe(false)
     expect(reviewActionable('approved', 'ivan')).toBe(false)
-    expect(reviewActionable('error', 'ivan')).toBe(false)
+    // An errored (QA-blocked) row IS actionable — Ivan overrides the verdict or
+    // skips the row; before this it was the only backlog he could not clear.
+    expect(reviewActionable('error', 'ivan')).toBe(true)
+    expect(reviewActionable('error', 'risedtc')).toBe(false)
     expect(reviewActionable('scheduled', 'ivan')).toBe(false)
   })
 })

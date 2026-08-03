@@ -523,9 +523,15 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
   // a review queue feel like twelve separate errands.
   const decide = useCallback(async (kind: 'approve' | 'skip') => {
     if (!actionable || acting) return
+    // An errored row is one the QA engine refused. Approving it is a legitimate
+    // override (Ivan is the judge of last resort), so the confirm names the
+    // state instead of the button pretending the row is clean.
+    const overriding = d.status === 'error'
     const ok = await confirm(kind === 'approve' ? {
-      title: 'Approve this draft?',
-      message: 'Marks approved. Nothing publishes — scheduling is the separate act below.',
+      title: overriding ? 'Approve this draft anyway?' : 'Approve this draft?',
+      message: overriding
+        ? 'QA refused this one. Approving overrides that verdict. Nothing publishes — scheduling is the separate act below.'
+        : 'Marks approved. Nothing publishes — scheduling is the separate act below.',
       confirmText: 'Approve',
     } : {
       title: 'Skip this draft?',
@@ -740,12 +746,19 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
 
         {actErr && <div className="ops-err" style={{ margin: '10px 16px 0' }}>{actErr}</div>}
 
-        {/* The risky drawer: everything that spends money, replaces live copy or
-            arms a publisher lives one deliberate click behind `o`. */}
+        {/* The risky drawer: everything that spends money or arms a publisher
+            lives one deliberate click behind `o`. Delete came BACK OUT of it
+            (2026-08-03, Ivan: "there is no delete or approve option") — it
+            carries its own two-step confirm, so hiding it bought no safety and
+            cost him the affordance he had before. */}
         {more && lane === 'ivan' && (
           <div style={{ marginBottom: 4 }}>
             <RegenDraft d={d} onDone={refresh} />
             <ScheduleDraft d={d} onDone={refresh} />
+          </div>
+        )}
+        {lane === 'ivan' && (
+          <div style={{ marginBottom: 4 }}>
             <DeleteDraft d={d} onDone={() => { refresh(); if (next) onPick(next); else onClose() }} />
           </div>
         )}
