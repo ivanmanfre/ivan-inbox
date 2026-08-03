@@ -189,16 +189,20 @@ describe('filterThreads', () => {
     const shown = filterThreads(groupThreads(rows), 'all')
     expect(shown.map(t => t.prospect_id).sort()).toEqual(['p3', 'p4'])
   })
-  // The reply-blindspot case: 43 of 45 flagged prospects had ZERO inbound rows
-  // in the view. The flag is the only evidence — it must keep the thread listed.
-  it('keeps an outbound-only thread when needs_manual_reply is flagged', () => {
+  // REVERSED 2026-08-03 (second pass, measured): the flag is NOT evidence of a
+  // reply. Of 52 flagged prospects only 5 have any inbound row at all; the rest
+  // sit at enriched / inmail_ready / dm_sent with reply_count 0. An
+  // outbound-only thread stays OUT of the DM list no matter what the flag says.
+  it('drops an outbound-only thread even when needs_manual_reply is flagged', () => {
     const rows: InboxMessage[] = [
       { ...base, id: 'dm1', prospect_id: 'p1', prospect_stage: 'dm_sent', sent_at: '2026-07-22T10:00:00Z' },
     ]
     expect(filterThreads(groupThreads(rows), 'all')).toHaveLength(0)
     const flagged = groupThreads(rows, new Set(['p1']))
+    // The flag is still carried on the thread (it can rank a real conversation);
+    // it just cannot conjure one into the list.
     expect(flagged[0].needsManualReply).toBe(true)
-    expect(filterThreads(flagged, 'all')).toHaveLength(1)
+    expect(filterThreads(flagged, 'all')).toHaveLength(0)
   })
   it('filters by client and by email channel', () => {
     // every thread carries an inbound row: this test pins the client/email
@@ -232,8 +236,13 @@ describe('needsAnswer', () => {
     const t = groupThreads([inbound('b', '2026-07-21T10:00:00Z'), sent('c', '2026-07-22T10:00:00Z')])[0]
     expect(needsAnswer(t)).toBe(false)
   })
-  it('read threads and outbound-only threads are not waiting', () => {
-    expect(needsAnswer(groupThreads([inbound('b', '2026-07-21T10:00:00Z', true)])[0])).toBe(false)
+  // Reading a message is not answering it. Mattan's seat stamps read_at on all
+  // 22 inbound rows (he reads in the LinkedIn app), so an unread test scored his
+  // whole lane at zero. What answers a message is a send that comes after it.
+  it('a READ but unanswered reply is still waiting on Ivan', () => {
+    expect(needsAnswer(groupThreads([inbound('b', '2026-07-21T10:00:00Z', true)])[0])).toBe(true)
+  })
+  it('an outbound-only thread is never waiting', () => {
     expect(needsAnswer(groupThreads([sent('a', '2026-07-20T10:00:00Z')])[0])).toBe(false)
   })
 })
@@ -247,24 +256,24 @@ describe('inboxBreakdown + inboxWaitingCount', () => {
     { ...base, id: 'p2r', prospect_id: 'p2', direction: 'inbound', sent_at: '2026-07-21T10:00:00Z', created_at: '2026-07-21T10:00:00Z' },
     { ...base, id: 'p2s', prospect_id: 'p2', sent_at: '2026-07-22T10:00:00Z', created_at: '2026-07-22T10:00:00Z' },
     { ...base, id: 'p2d', prospect_id: 'p2', created_at: '2026-07-22T11:00:00Z' },
-    // p3: flagged needs_manual_reply, nothing inbound in the view -> flagged
+    // p3: flagged needs_manual_reply, nothing inbound in the view -> NO bucket
     { ...base, id: 'p3s', prospect_id: 'p3', prospect_stage: 'dm_sent', sent_at: '2026-07-22T10:00:00Z', created_at: '2026-07-22T10:00:00Z' },
-    // p4: read conversation, nothing pending -> waiting on them
+    // p4: they wrote, we answered after -> waiting on them
     { ...base, id: 'p4r', prospect_id: 'p4', direction: 'inbound', sent_at: '2026-07-21T10:00:00Z', created_at: '2026-07-21T10:00:00Z', read_at: '2026-07-21T10:05:00Z' },
     { ...base, id: 'p4s', prospect_id: 'p4', sent_at: '2026-07-22T10:00:00Z', created_at: '2026-07-22T10:00:00Z' },
     // p5: outbound-only echo -> in no bucket at all
     { ...base, id: 'p5s', prospect_id: 'p5', prospect_stage: 'dm_sent', sent_at: '2026-07-22T10:00:00Z', created_at: '2026-07-22T10:00:00Z' },
   ]
   const threads = groupThreads(rows, new Set(['p3']))
-  it('buckets are non-overlapping (priority answer > approve > flagged) and echoes count nowhere', () => {
-    expect(inboxBreakdown(threads)).toEqual({ answer: 1, approve: 1, flagged: 1, waiting: 1 })
+  it('buckets are non-overlapping, and a flag with no inbound counts nowhere', () => {
+    expect(inboxBreakdown(threads)).toEqual({ answer: 1, approve: 1, flagged: 0, waiting: 1 })
   })
   it('the badge is exactly the sum of what waits on Ivan', () => {
-    expect(inboxWaitingCount(threads)).toBe(3)
+    expect(inboxWaitingCount(threads)).toBe(2)
   })
   it('a thread both flagged and unanswered counts once, as answer', () => {
     const t = groupThreads(rows, new Set(['p1', 'p3']))
-    expect(inboxBreakdown(t)).toEqual({ answer: 1, approve: 1, flagged: 1, waiting: 1 })
+    expect(inboxBreakdown(t)).toEqual({ answer: 1, approve: 1, flagged: 0, waiting: 1 })
   })
 })
 
@@ -281,9 +290,10 @@ describe('threadBucket + filterByStatus (the DMs status axis)', () => {
     { ...base, id: 'p2r', prospect_id: 'p2', direction: 'inbound', sent_at: '2026-07-21T10:00:00Z', created_at: '2026-07-21T10:00:00Z' },
     { ...base, id: 'p2s', prospect_id: 'p2', sent_at: '2026-07-22T10:00:00Z', created_at: '2026-07-22T10:00:00Z' },
     { ...base, id: 'p2d', prospect_id: 'p2', created_at: '2026-07-22T11:00:00Z' },
-    // p3 flagged by the reply detector, zero inbound rows in the view -> flagged
+    // p3 flagged by the reply detector, zero inbound rows in the view -> not a
+    // conversation at all now: the flag alone cannot put a row in the DM list
     { ...base, id: 'p3s', prospect_id: 'p3', prospect_stage: 'dm_sent', sent_at: '2026-07-22T10:00:00Z', created_at: '2026-07-22T10:00:00Z' },
-    // p4 read conversation -> waiting on them
+    // p4 they wrote, we answered after -> waiting on them
     { ...base, id: 'p4r', prospect_id: 'p4', direction: 'inbound', sent_at: '2026-07-21T10:00:00Z', created_at: '2026-07-21T10:00:00Z', read_at: '2026-07-21T10:05:00Z' },
     { ...base, id: 'p4s', prospect_id: 'p4', sent_at: '2026-07-22T10:00:00Z', created_at: '2026-07-22T10:00:00Z' },
     // p5 outbound-only echo -> not a conversation, lives in Sends
@@ -294,7 +304,7 @@ describe('threadBucket + filterByStatus (the DMs status axis)', () => {
 
   it('assigns each conversation exactly one bucket', () => {
     expect(Object.fromEntries(convos.map(t => [t.prospect_id, threadBucket(t)])))
-      .toEqual({ p1: 'answer', p2: 'approve', p3: 'flagged', p4: 'waiting' })
+      .toEqual({ p1: 'answer', p2: 'approve', p4: 'waiting' })
   })
 
   it('every bucket filter returns exactly the rows the bar counted', () => {
@@ -303,12 +313,12 @@ describe('threadBucket + filterByStatus (the DMs status axis)', () => {
       expect(filterByStatus(convos, k)).toHaveLength(b[k])
     }
     expect(ids('answer')).toEqual(['p1'])
-    expect(ids('flagged')).toEqual(['p3'])
+    expect(ids('flagged')).toEqual([])
   })
 
   it('the default view is exactly what the badge counts — no more, no less', () => {
     expect(filterByStatus(convos, 'needs')).toHaveLength(inboxWaitingCount(convos))
-    expect(ids('needs')).toEqual(['p1', 'p2', 'p3'])
+    expect(ids('needs')).toEqual(['p1', 'p2'])
   })
 
   // 'all' means all PENDING now (2026-08-03) — the answered-and-waiting rows
@@ -317,10 +327,10 @@ describe('threadBucket + filterByStatus (the DMs status axis)', () => {
   // resolves, and InboxScreen bypasses this filter entirely while a search
   // query is typed.
   it('all == the three pending buckets, and waiting is off the browsable views', () => {
-    expect(ids('all')).toEqual(['p1', 'p2', 'p3'])
+    expect(ids('all')).toEqual(['p1', 'p2'])
     expect(ids('needs')).toEqual(ids('all'))
     expect(ids('waiting')).toEqual(['p4'])
-    expect([...ids('all'), ...ids('waiting')].sort()).toEqual(['p1', 'p2', 'p3', 'p4'])
+    expect([...ids('all'), ...ids('waiting')].sort()).toEqual(['p1', 'p2', 'p4'])
   })
 
   it('a send echo is in no view at all — it belongs to Sends', () => {

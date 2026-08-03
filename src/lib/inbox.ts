@@ -123,9 +123,15 @@ export function threadKind(t: Thread): 'email' | 'inmail' | 'linkedin' {
 //   Real conversations: 97 threads with inbound + 38 flagged-only + 0 drafts
 //   = 135. The Eric Osman connection_sent case (117 invites in the void) is a
 //   strict subset of what this hides.
+// 2026-08-03, second pass: `needsManualReply` LEFT this predicate. Measured on
+// the live DB, the flag does not mean what its name says — of 52 flagged
+// prospects only FIVE have a single inbound message between them (risedtc 1/14,
+// ivan 4/38); the rest sit at `enriched` / `inmail_ready` / `dm_sent` with
+// reply_count 0. Something upstream uses the column for "a human has to act",
+// not "a human wrote back". Admitting 38 of those into the DM list is what kept
+// putting rows there with nothing to reply to.
 function isConversation(t: Thread): boolean {
-  return t.draft !== null || t.needsManualReply
-    || t.messages.some(m => m.direction === 'inbound')
+  return t.draft !== null || t.messages.some(m => m.direction === 'inbound')
 }
 
 // Nobody has answered their last message: unread inbound exists and no real
@@ -137,13 +143,21 @@ function isConversation(t: Thread): boolean {
 // (replied in the LinkedIn app; the mirror writes the outbound row, nothing
 // stamps read_at). Genuinely unanswered: 28 (17 replied / 9 archived /
 // 2 skipped — archived stays counted: a real reply never read is real).
+// THE rule, restated 2026-08-03: the ball is with Ivan when THEIR message is the
+// last one in the thread. Unread is no longer part of it.
+//
+// The unread test was hiding real work on Mattan's seat, where all 22 inbound
+// messages carry a read_at (he reads them in the LinkedIn app) — every genuinely
+// unanswered reply there would have scored zero. Reading a message is not
+// answering it. What answers it is a send that comes after it, which is exactly
+// what this compares.
 export function needsAnswer(t: Thread): boolean {
-  if (t.unread === 0) return false
   const lastInbound = t.messages.filter(m => m.direction === 'inbound').map(eventTime).sort().at(-1) ?? null
+  if (lastInbound === null) return false
   const lastSent = t.messages
     .filter(m => m.direction === 'outbound' && m.sent_at)
     .map(m => m.sent_at!).sort().at(-1) ?? null
-  return !(lastInbound !== null && lastSent !== null && lastSent > lastInbound)
+  return lastSent === null || lastSent <= lastInbound
 }
 
 // What is genuinely waiting on Ivan, as non-overlapping buckets (each thread
@@ -164,7 +178,11 @@ export type ThreadBucket = keyof InboxBreakdown
 export function threadBucket(t: Thread): ThreadBucket {
   if (needsAnswer(t)) return 'answer'
   if (t.draft !== null) return 'approve'
-  if (t.needsManualReply) return 'flagged'
+  // 'flagged' now requires an actual inbound message. The detector's flag alone
+  // put 47 rows in this bucket that nobody had ever written to (see
+  // isConversation) — it can still RANK a real conversation, it can no longer
+  // invent one.
+  if (t.needsManualReply && t.messages.some(m => m.direction === 'inbound')) return 'flagged'
   return 'waiting'
 }
 
