@@ -5,7 +5,9 @@ import { defineConfig } from 'vitest/config'
 // valid session — a probe must never be able to fail a deploy gate for being
 // offline. They are spec files so they run the shipped functions.
 export default defineConfig({
-  root: '../..',
+  // Absolute: vitest resolves `root` against CWD, not against this file, so a
+  // relative '../..' silently made $HOME the root and found zero specs.
+  root: '/Users/ivanmanfredi/Desktop/ivan-inbox',
   test: {
     setupFiles: ['./src/test-setup.ts'],
     include: ['goal-runs/inbox-density-and-ia-2026-08-03-out/*.spec.ts'],

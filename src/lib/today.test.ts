@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest'
 import {
   checkedPhrase,
   asBrief, cacheSafe, countsFromBrief, isCountsShape, partitionUrgencies,
-  projectBrief, rollupReplies, todayLoad, type Brief, type BriefCounts,
+  projectBrief, rollupReplies, todayLoad, ageBandOf, ageTag, splitByAge,
+  isLivePost, postsToday, cancelledToday, todayPlate, approvalsTotal,
+  type Brief, type BriefCounts,
 } from './today'
 
 // A payload shaped like the real edge-fn response, including the capability
@@ -208,5 +210,125 @@ describe('checkedPhrase', () => {
     expect(checkedPhrase(null)).toBe('Never checked')
     expect(checkedPhrase(undefined)).toBe('Never checked')
     expect(checkedPhrase('not-a-date')).toBe('Never checked')
+  })
+})
+
+// ---- the age re-rank (2026-08-03, "the today stuff is all old shit") ----
+
+const NOW = new Date('2026-08-03T12:00:00Z')
+const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 3600000).toISOString()
+
+const plateBrief = (over: Partial<Brief> = {}): Brief => ({
+  generated_at: NOW.toISOString(),
+  urgencies: [
+    { id: 'u1', kind: 'reply', name: 'Fresh Reply', waiting_since: hoursAgo(3) },
+    { id: 'u2', kind: 'reply', name: 'Old Reply', waiting_since: hoursAgo(70) },
+    { id: 'u3', kind: 'reply', name: 'OOO', waiting_since: hoursAgo(2), is_autoreply: true },
+  ],
+  needs_you: {
+    comment_drafts: [{ id: 'c1', drafted_at: hoursAgo(864) }],
+    dm_drafts: [
+      { id: 'd1', prospect_name: 'New Guy', message_text: 'hi', created_at: hoursAgo(2) },
+      { id: 'd2', prospect_name: 'Old Guy', message_text: 'hi', created_at: hoursAgo(400) },
+    ],
+    feed_drafts: [{ id: 'f1', created_at: hoursAgo(1) }],
+  },
+  today_content: { scheduled_posts: [] },
+  content_calendar: { entries: [] },
+  outreach_queue: { total: null },
+  outreach_health: null,
+  ...over,
+})
+
+describe('age banding', () => {
+  it('splits at 24h, and an undated row is never accused of being old', () => {
+    expect(ageBandOf(hoursAgo(1), NOW)).toBe('new')
+    expect(ageBandOf(hoursAgo(23.9), NOW)).toBe('new')
+    expect(ageBandOf(hoursAgo(25), NOW)).toBe('carried')
+    expect(ageBandOf(null, NOW)).toBe('new')
+    expect(ageBandOf(undefined, NOW)).toBe('new')
+  })
+
+  it('prints an age instead of hiding one', () => {
+    expect(ageTag(hoursAgo(0.2), NOW)).toBe('now')
+    expect(ageTag(hoursAgo(5), NOW)).toBe('5h')
+    expect(ageTag(hoursAgo(72), NOW)).toBe('3d')
+    expect(ageTag(null, NOW)).toBe(null)
+  })
+
+  it('splitByAge keeps every row — it partitions, it never drops', () => {
+    const rows = [{ at: hoursAgo(1) }, { at: hoursAgo(100) }, { at: null }]
+    const s = splitByAge(rows, r => r.at, NOW)
+    expect(s.fresh.length + s.carried.length).toBe(rows.length)
+  })
+})
+
+describe('a cancelled slot is not a thing going out', () => {
+  it('rejects cancelled/skipped on the DIRECT path too (the live 2026-08-03 defect)', () => {
+    expect(isLivePost({ id: 'p', status: 'cancelled' })).toBe(false)
+    expect(isLivePost({ id: 'p', status: 'Canceled' })).toBe(false)
+    expect(isLivePost({ id: 'p', status: 'skipped' })).toBe(false)
+    expect(isLivePost({ id: 'p', status: 'scheduled' })).toBe(true)
+    expect(isLivePost({ id: 'p', status: null })).toBe(true)
+    const b = plateBrief({
+      today_content: { scheduled_posts: [{ id: 'p1', status: 'cancelled', scheduled_at: NOW.toISOString() }] },
+    })
+    expect(postsToday(b, 'all', NOW)).toHaveLength(0)
+    expect(cancelledToday(b, 'all', NOW)).toHaveLength(1)
+  })
+})
+
+describe('todayPlate — the re-rank preserves the totals exactly', () => {
+  it('leads with what arrived since yesterday', () => {
+    const p = todayPlate(plateBrief(), 'all', NOW)
+    expect(p.urgencies.fresh.map(u => u.id)).toEqual(['u1'])
+    expect(p.urgencies.carried.map(u => u.id)).toEqual(['u2'])
+    // an out-of-office is neither: it was already demoted out of the count
+    expect(p.autoreplies.map(u => u.id)).toEqual(['u3'])
+    expect(p.dms.fresh.map(d => d.id)).toEqual(['d1'])
+    expect(p.dms.carried.map(d => d.id)).toEqual(['d2'])
+    expect(p.oldest).toBe('36d')
+  })
+
+  it('new + carried is EXACTLY the masthead total — a re-rank is not a filter', () => {
+    const b = plateBrief()
+    const p = todayPlate(b, 'all', NOW)
+    const load = todayLoad(countsFromBrief(b, 'all', NOW))
+    expect(p.newCount + p.carriedCount).toBe(load.total)
+    // and it is genuinely split, not all-in-one-bucket
+    expect(p.newCount).toBe(3)
+    expect(p.carriedCount).toBe(3)
+  })
+
+  it('holds when everything is old (the actual Monday Ivan complained about)', () => {
+    const b = plateBrief({
+      urgencies: [{ id: 'u', kind: 'reply', name: 'x', waiting_since: hoursAgo(70) }],
+      needs_you: {
+        comment_drafts: [{ id: 'c', drafted_at: hoursAgo(864) }],
+        dm_drafts: [{ id: 'd', prospect_name: 'x', message_text: 'y', created_at: hoursAgo(400) }],
+        feed_drafts: [],
+      },
+    })
+    const p = todayPlate(b, 'all', NOW)
+    expect(p.newCount).toBe(0)
+    expect(p.carriedCount).toBe(3)
+    expect(p.newCount + p.carriedCount).toBe(todayLoad(countsFromBrief(b, 'all', NOW)).total)
+    expect(p.oldest).toBe('36d')
+  })
+
+  it('every approval still lands in exactly one band', () => {
+    const b = plateBrief()
+    const p = todayPlate(b, 'all', NOW)
+    const approvals = approvalsTotal(countsFromBrief(b, 'all', NOW))
+    const banded = p.dms.fresh.length + p.dms.carried.length
+      + p.comments.fresh.length + p.comments.carried.length
+      + p.feed.fresh.length + p.feed.carried.length
+    expect(banded).toBe(approvals)
+  })
+
+  it('a null brief is an empty plate, not a crash', () => {
+    const p = todayPlate(null, 'all', NOW)
+    expect(p.newCount + p.carriedCount).toBe(0)
+    expect(p.oldest).toBe(null)
   })
 })
