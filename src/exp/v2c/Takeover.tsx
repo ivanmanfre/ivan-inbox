@@ -30,9 +30,21 @@ export function Takeover({ label, sub, onClose, mobile, children, bodyClass }: {
   bodyClass?: string
 }) {
   // Esc closes, from anywhere — the window is modal.
+  //
+  // 🔴 EXCEPT out of a field. This listener is a NATIVE one on `window`; React
+  // attaches its synthetic handlers at the root container, which is BELOW
+  // window, so a `stopPropagation()` inside a textarea's onKeyDown cannot stop
+  // it. Before this guard, Escape in the draft editor cancelled the edit AND
+  // closed the whole window in the same keypress — the inner meaning of Escape
+  // (leave this field) has to win over the outer one (leave this window), and
+  // the second Escape still closes because the field is no longer focused.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.stopPropagation(); onClose() }
+      if (e.key !== 'Escape') return
+      const el = document.activeElement as HTMLElement | null
+      if (el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.isContentEditable)) return
+      e.stopPropagation()
+      onClose()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
