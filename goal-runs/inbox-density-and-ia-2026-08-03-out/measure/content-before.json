@@ -1,0 +1,174 @@
+{
+  "label": "before",
+  "origin": "https://ivanmanfre.github.io/ivan-inbox",
+  "route": "content",
+  "at": "2026-08-03T12:03:23.894Z",
+  "widths": {
+    "390": {
+      "scrollerClass": "rows",
+      "routeHeight": 2893,
+      "viewport": 588,
+      "screensOfScroll": 4.92,
+      "firstActionableTop": 1201,
+      "visibleWithoutScrolling": false,
+      "cards": 15,
+      "sections": 10,
+      "openSections": 0,
+      "above": [
+        {
+          "cls": "ct-subtle",
+          "top": 9,
+          "h": 48
+        },
+        {
+          "cls": "ct-alert",
+          "top": 69,
+          "h": 50
+        },
+        {
+          "cls": "ct-alert-n",
+          "top": 82,
+          "h": 24
+        },
+        {
+          "cls": "ct-alert-t",
+          "top": 84,
+          "h": 20
+        },
+        {
+          "cls": "chev",
+          "top": 84,
+          "h": 20
+        },
+        {
+          "cls": "ct-alert-x",
+          "top": 119,
+          "h": 40
+        },
+        {
+          "cls": "",
+          "top": 129,
+          "h": 20
+        },
+        {
+          "cls": "ct-card.ct-tap",
+          "top": 159,
+          "h": 80
+        },
+        {
+          "cls": "ct-mid",
+          "top": 169,
+          "h": 60
+        },
+        {
+          "cls": "ct-anchor",
+          "top": 185,
+          "h": 28
+        },
+        {
+          "cls": "ct-tail",
+          "top": 191,
+          "h": 16
+        },
+        {
+          "cls": "ct-card.ct-tap",
+          "top": 239,
+          "h": 81
+        },
+        {
+          "cls": "ct-mid",
+          "top": 250,
+          "h": 60
+        },
+        {
+          "cls": "ct-anchor",
+          "top": 266,
+          "h": 28
+        }
+      ]
+    },
+    "1440": {
+      "scrollerClass": "rows",
+      "routeHeight": 1909,
+      "viewport": 712,
+      "screensOfScroll": 2.68,
+      "firstActionableTop": 957,
+      "visibleWithoutScrolling": false,
+      "cards": 15,
+      "sections": 10,
+      "openSections": 0,
+      "above": [
+        {
+          "cls": "ct-subtle",
+          "top": 9,
+          "h": 16
+        },
+        {
+          "cls": "ct-alert",
+          "top": 37,
+          "h": 50
+        },
+        {
+          "cls": "ct-alert-n",
+          "top": 50,
+          "h": 24
+        },
+        {
+          "cls": "ct-alert-t",
+          "top": 52,
+          "h": 20
+        },
+        {
+          "cls": "chev",
+          "top": 52,
+          "h": 20
+        },
+        {
+          "cls": "ct-alert-x",
+          "top": 87,
+          "h": 40
+        },
+        {
+          "cls": "",
+          "top": 97,
+          "h": 20
+        },
+        {
+          "cls": "ct-card.ct-tap",
+          "top": 127,
+          "h": 58
+        },
+        {
+          "cls": "ct-mid",
+          "top": 136,
+          "h": 40
+        },
+        {
+          "cls": "ct-anchor",
+          "top": 142,
+          "h": 28
+        },
+        {
+          "cls": "ct-tail",
+          "top": 148,
+          "h": 16
+        },
+        {
+          "cls": "ct-card.ct-tap",
+          "top": 185,
+          "h": 59
+        },
+        {
+          "cls": "ct-mid",
+          "top": 195,
+          "h": 40
+        },
+        {
+          "cls": "ct-anchor",
+          "top": 201,
+          "h": 28
+        }
+      ]
+    }
+  }
+}

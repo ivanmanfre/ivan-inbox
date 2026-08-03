@@ -20,7 +20,7 @@ import { ReviewActions } from './ReviewActions'
 import { FilteredEmpty } from './ContentBits'
 import { FilterRow } from './FilterRow'
 import {
-  AlertCountLine, IdeasSection, PillarMix, QueueStrip,
+  IdeasSection, PillarMix, QueueStrip,
   StyleRoster, SummariesSection,
 } from './ContentSections'
 import { relTime, typeLabel } from './fmt'
@@ -205,21 +205,27 @@ function PipelineBar({ stages, ideasShown, ideasTotal, matched, laneTotal, onJum
   const review = stages.review.length
   const undated = countUndated(stages.approved)
   return (
-    <div className="wb-chartcard">
-      <div className="wb-cardh">
-        <span className="wb-cardh-t wb-eyebrow">Post pipeline</span>
-        <span className="wb-cardh-x">···</span>
+    <div className="wb-chartcard ct-band">
+      {/* 2026-08-03, Ivan: "order things as well in horizontal so we have seen
+          the main stuff easily". The card used to STACK header → plot → hero
+          figure → footer down a 1,150px-wide column, spending ~290px of height
+          to draw ~270px of chart. The three blocks are peers of the plot now, so
+          the whole block costs roughly one plot's height and the queue below it
+          moves up by the difference. Below 1000px it stacks again. */}
+      <div className="ct-band-plot">
+        <div className="wb-cardh">
+          <span className="wb-cardh-t wb-eyebrow">Post pipeline</span>
+        </div>
+        {/* The plot itself lives in Surface.tsx so the lead-magnet lane can draw
+            the same chart (phase 6 ask 2) — the post bar keeps its own hero
+            figure and probe-backed footer. */}
+        <CapsuleChart
+          parts={parts.map(p => ({ key: p.stage, label: p.key, short: STAGE_SHORT[p.stage], n: p.n }))}
+          onJump={k => onJump(k as ContentStage)}
+        />
       </div>
 
-      {/* The plot itself now lives in Surface.tsx so the lead-magnet lane can
-          draw the same chart (phase 6 ask 2) — the post bar keeps its own hero
-          figure and probe-backed footer. */}
-      <CapsuleChart
-        parts={parts.map(p => ({ key: p.stage, label: p.key, short: STAGE_SHORT[p.stage], n: p.n }))}
-        onJump={k => onJump(k as ContentStage)}
-      />
-
-      <div className="wb-pipe-n">
+      <div className="wb-pipe-n ct-band-fig">
         <span className="wb-pipe-big">{review}</span>
         <span className="wb-pipe-lbl">
           waiting on you<br />of {loaded} loaded
@@ -230,7 +236,7 @@ function PipelineBar({ stages, ideasShown, ideasTotal, matched, laneTotal, onJum
       </div>
 
       {/* M4 — legend + Total footer. Every figure below is a count probe. */}
-      <div className="wb-cardf">
+      <div className="wb-cardf ct-band-facts">
         <span className="wb-legend">
           <span className="wb-legend-d" style={{ background: 'var(--cat-1)' }} />
           <span className="wb-legend-l">In flight</span>
@@ -279,9 +285,15 @@ function AlertStrip({ drafts, lane, refresh, onOpen, openId, extra }: {
   // the pending fetch, so it latches `true` and the strip is stuck open once the
   // 38 rows land. State that is seeded from data which arrives later has to be
   // derived, not initialised.
+  // 2026-08-03: the "a handful still opens on sight" rule is withdrawn. On the
+  // live lane it resolved OPEN (4 rows ≤ 6) and cost ~420px directly above the
+  // queue — the alarm's own rows pushing the work off the screen, which is the
+  // failure it was written to prevent, just at a different count. The strip is
+  // now a closed summary on every count: the number, the breakdown and the
+  // chevron are the signal, and one click is the detail.
   const [open, setOpen] = useState<boolean | null>(null)
   const n = drafts.length + extra.length
-  const isOpen = open ?? n <= 6
+  const isOpen = open ?? false
   if (n === 0) return null
   const errored = drafts.filter(d => d.status === 'error').length
   const stuck = drafts.filter(d => isStuckScheduled(d)).length
@@ -357,15 +369,50 @@ function StageSection({ s, n, rows, lane, refresh, onOpen, openId, isOpen, toggl
   )
 }
 
-const DEFAULT_OPEN: ContentStage[] = ['ideas', 'generating', 'review', 'approved']
+// 2026-08-03, Ivan: "compact stuff with collapsibles arrows... default-collapsed
+// for everything except what needs him". What needs him is exactly one stage:
+// `reviewActionable` is true only for status='review' on the Ivan lane
+// (content.ts), and the pipeline's own hero figure calls it "waiting on you".
+// Everything else is a backlog he opens on purpose.
+//
+// Was ['ideas','generating','review','approved'] — four sections, ~13,700px of
+// rows on the live lane, and the one that needed him was third.
+const DEFAULT_OPEN: ContentStage[] = ['review']
 
-function useOpenStages(initial: ContentStage[]) {
-  const [open, setOpen] = useState<ContentStage[]>(initial)
+// TRIAGE ORDER, not lifecycle order. The stage that needs Ivan goes first; the
+// rest keep the pipeline's own sequence behind it. Lifecycle order put Review
+// third, under two collapsed-or-not sections and ~450px of chrome, which is the
+// "i have to scroll super vertical and long" he reported. The numbering follows
+// the render, so the section labelled 02 is always the top one.
+const TRIAGE_ORDER: ContentStage[] = [
+  'review', 'generating', 'approved', 'scheduled', 'published',
+]
+
+// A stage the operator has never touched follows the rule above. The moment he
+// opens or closes ANY section his answer wins and survives the reload — which
+// needs a way to tell "he closed everything" from "he has not decided yet",
+// because both are an empty list. TOUCHED is that marker: it rides in the same
+// array, takes the same identifier shape the store already validates, and
+// cannot collide with a stage id (the stages are named in ContentStage).
+const TOUCHED = 'touched'
+
+function useOpenStages(
+  persisted: string[],
+  setPersisted: (fn: (cur: string[]) => string[]) => void,
+  initial: ContentStage[],
+) {
+  const decided = persisted.includes(TOUCHED)
+  const open = decided ? persisted : (initial as string[])
+  const write = (next: (cur: string[]) => string[]) =>
+    setPersisted(cur => {
+      const base = cur.includes(TOUCHED) ? cur.filter(x => x !== TOUCHED) : (initial as string[])
+      return [...next(base), TOUCHED]
+    })
   return {
     isOpen: (s: ContentStage) => open.includes(s),
     toggle: (s: ContentStage) =>
-      setOpen(cur => (cur.includes(s) ? cur.filter(x => x !== s) : [...cur, s])),
-    ensure: (s: ContentStage) => setOpen(cur => (cur.includes(s) ? cur : [...cur, s])),
+      write(cur => (cur.includes(s) ? cur.filter(x => x !== s) : [...cur, s])),
+    ensure: (s: ContentStage) => write(cur => (cur.includes(s) ? cur : [...cur, s])),
   }
 }
 
@@ -373,7 +420,7 @@ function useOpenStages(initial: ContentStage[]) {
 // LANE A — Ivan
 // ---------------------------------------------------------------------------
 
-function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters, q, setQ, matched, laneTotal }: {
+function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters, q, setQ, matched, laneTotal, open, setOpen }: {
   drafts: ContentDraft[]
   stages: ContentStages
   openId: string | null
@@ -385,8 +432,10 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
   setQ: (q: string) => void
   matched: number | null
   laneTotal: number | null
+  open: string[]
+  setOpen: (fn: (cur: string[]) => string[]) => void
 }) {
-  const stageOpen = useOpenStages(DEFAULT_OPEN)
+  const stageOpen = useOpenStages(open, setOpen, DEFAULT_OPEN)
   // Determinism under a filter (phase1-review residual): picking Stage:
   // Published used to render a different card count before vs after a reload,
   // because the persisted filter landed on a section whose open/closed state
@@ -431,6 +480,17 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
         line: `${failedQueue.length} publish ${failedQueue.length === 1 ? 'failure' : 'failures'} in the queue — the only place a failed publish is written down.`,
       }]
       : []),
+    // Density (2026-08-03): this used to be its own two-line paragraph directly
+    // above the pipeline — ~36px of prose that names nothing actionable. It IS
+    // a footnote about the alert count, so it belongs inside the alert
+    // disclosure, where it costs nothing until the alerts are open. It keeps
+    // its non-alarm wording; it is history, not a defect.
+    ...(digest.olderUnsent > 0
+      ? [{
+        key: 'older-unsent',
+        line: `${digest.olderUnsent} pipeline ${digest.olderUnsent === 1 ? 'alert predates' : 'alerts predate'} the 14-day window (ClickUp-era ids, no live draft behind them) — historical, not actionable here.`,
+      }]
+      : []),
   ]
 
   const jump = (s: ContentStage) => {
@@ -456,16 +516,17 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
 
   return (
     <>
-      <AlertCountLine olderUnsent={digest.olderUnsent} />
       <AlertStrip drafts={alerts} lane="ivan" refresh={refresh} onOpen={onOpen} openId={openId} extra={extra} />
       <PipelineBar
         stages={stages} ideasShown={ideas.split.post.length} ideasTotal={ideas.counts.post}
         matched={matched} laneTotal={laneTotal} onJump={jump}
       />
-      {/* Advisory denominator, never a quota, never a gate, never red. */}
+      {/* Advisory denominator, never a quota, never a gate, never red. The
+          sentence explaining that it is not a quota was three lines of prose at
+          390 defending against a misreading the word "cadence" already
+          prevents; the FACT is the whole value. */}
       <div className="ct-subtle">
-        {scheduledThisWeek} scheduled in the next 7 days of a 4-a-week cadence — a
-        denominator, not a quota. Nothing here blocks or scores against it.
+        {scheduledThisWeek} scheduled in the next 7 days · 4-a-week cadence
       </div>
 
       <FilterRow
@@ -486,7 +547,7 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
 
       {shown.length === 0 && drafts.length > 0
         ? <FilteredEmpty noun="drafts" onClear={() => { setFilters({}); setQ('') }} />
-        : PIPELINE_STAGES.filter(s => s !== 'ideas').map((s, i) => (
+        : TRIAGE_ORDER.map((s, i) => (
           <div key={s}>
             <StageSection
               s={s} n={String(i + 2).padStart(2, '0')} rows={shownStages[s]} lane="ivan"
@@ -555,7 +616,7 @@ const BOARD_GROUPS = [
   },
 ] as const
 
-function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, setQ, matched }: {
+function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, setQ, matched, open, setOpen }: {
   drafts: ContentDraft[]
   openId: string | null
   onOpen: (id: string, label: string) => void
@@ -565,8 +626,13 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
   q: string
   setQ: (q: string) => void
   matched: number | null
+  open: string[]
+  setOpen: (fn: (cur: string[]) => string[]) => void
 }) {
-  const stageOpen = useOpenStages(['review', 'approved', 'scheduled', 'generating'])
+  // Same density rule as the Ivan lane, and the same persistence: only the stage
+  // that needs a decision opens itself. On this lane `review` means "available
+  // to be promoted to the board", which is still the one Ivan acts on.
+  const stageOpen = useOpenStages(open, setOpen, ['review'])
   const [groupOpen, setGroupOpen] = useState<string[]>(['board', 'internal'])
   // Same determinism rule as the Ivan lane: an active stage filter opens its section.
   const filterStage = filters.stage as ContentStage | undefined
@@ -712,6 +778,11 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
   const [sect, setSect] = useSectionState(`content.posts.${lane}`)
   const setFilters = (f: FilterState) => setSect(p => ({ ...p, filters: f }))
   const setQ = (q: string) => setSect(p => ({ ...p, q }))
+  // Collapse state rides in the SAME per-lane section entry as the filters, so
+  // "what I had open on Ivan's lane" cannot leak onto Mattan's — the same
+  // keying argument the filters were given.
+  const setOpenSections = (fn: (cur: string[]) => string[]) =>
+    setSect(p => ({ ...p, open: fn(p.open) }))
   const switchLane = (l: ContentLane) => setLane(l)
 
   const err = error ?? (hasMock('fetch-error') ? 'PostgREST returned 500 for carousel_drafts' : null)
@@ -772,12 +843,14 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
             drafts={drafts} stages={stages} openId={openId} onOpen={onOpen} refresh={refresh}
             filters={sect.filters} setFilters={setFilters} q={sect.q} setQ={setQ}
             matched={matched} laneTotal={laneTotal}
+            open={sect.open} setOpen={setOpenSections}
           />
         ) : (
           <MattanLane
             drafts={drafts} openId={openId} onOpen={onOpen} refresh={refresh}
             filters={sect.filters} setFilters={setFilters} q={sect.q} setQ={setQ}
             matched={matched}
+            open={sect.open} setOpen={setOpenSections}
           />
         )}
         <div style={{ height: 24 }} />

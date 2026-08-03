@@ -566,7 +566,7 @@ export function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loa
           )}
 
           {shown.length === 0
-            ? <FilteredEmpty noun="lead magnets" onClear={() => setSect({ filters: {}, q: '' })} />
+            ? <FilteredEmpty noun="lead magnets" onClear={() => setSect(cur => ({ ...cur, filters: {}, q: '' }))} />
             : (
               <>
                 {/* 🔴 In LIFECYCLE ORDER, idea first. The first pass rendered
