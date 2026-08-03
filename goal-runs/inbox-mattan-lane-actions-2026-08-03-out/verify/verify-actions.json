@@ -1,0 +1,127 @@
+[
+  {
+    "name": "board queue holds the promote target before we touch anything",
+    "pass": true,
+    "detail": {
+      "queueLen": 23
+    }
+  },
+  {
+    "name": "throwaway row created for the delete test",
+    "pass": true,
+    "detail": {
+      "id": "3470f504-c20b-46ed-9a74-4a474b75e0c7",
+      "status": 201
+    }
+  },
+  {
+    "name": "a promoted row offers \"Take off his board\" and NO delete button",
+    "pass": true,
+    "detail": {
+      "opened": "Video: Why we never take dropshipping brands",
+      "acts": [
+        "Take off his board",
+        "e Edit"
+      ],
+      "deleteZoneNote": "On Mattan’s board, so it can’t be deleted from here — his board keeps its own copy of every promoted post, and only taking it off the board rebuilds that copy. Take it off first, then delete."
+    }
+  },
+  {
+    "name": "UN-PROMOTE landed in the database",
+    "pass": true,
+    "detail": {
+      "board_visible": false,
+      "status": "review",
+      "sheetTitle": "Take this off Mattan’s board?"
+    }
+  },
+  {
+    "name": "RE-PROMOTE restored the row to Mattan’s board",
+    "pass": true,
+    "detail": {
+      "board_visible": true,
+      "viaUi": true
+    }
+  },
+  {
+    "name": "an internal review row offers Put-on-board AND Edit",
+    "pass": true,
+    "detail": {
+      "acts": [
+        "a Put on Mattan’s board",
+        "e Edit"
+      ]
+    }
+  },
+  {
+    "name": "EDIT landed through operator_edit_draft_body",
+    "pass": true,
+    "detail": {
+      "lenBefore": 1875,
+      "lenAfter": 1905
+    }
+  },
+  {
+    "name": "the db/025 regen guard was stamped (the RPC does not do this itself)",
+    "pass": true,
+    "detail": {
+      "human_edited": true,
+      "human_edited_at": "2026-08-03T15:02:08.438Z"
+    }
+  },
+  {
+    "name": "the RPC appended its Operator audit line",
+    "pass": true,
+    "detail": {
+      "entry": {
+        "ts": "2026-08-03T15:02:08Z",
+        "body": "Copy edited on the ops panel",
+        "agent": "Operator",
+        "source": "dashboard"
+      }
+    }
+  },
+  {
+    "name": "EDIT restored byte-identically",
+    "pass": true,
+    "detail": {
+      "ok": true,
+      "identical": true
+    }
+  },
+  {
+    "name": "the throwaway row opens",
+    "pass": true,
+    "detail": {
+      "opened": "ZZ verification row — safe to delete"
+    }
+  },
+  {
+    "name": "a NOT-on-board client row offers Delete",
+    "pass": true,
+    "detail": {}
+  },
+  {
+    "name": "DELETE removed the row from the database",
+    "pass": true,
+    "detail": {
+      "row": "gone"
+    }
+  },
+  {
+    "name": "🔴 MATTAN’S BOARD IS BACK EXACTLY AS IT WAS",
+    "pass": true,
+    "detail": {
+      "queueBefore": 23,
+      "queueAfter": 23,
+      "boardVisibleRows": 23
+    }
+  },
+  {
+    "name": "no uncaught page errors during any of it",
+    "pass": true,
+    "detail": {
+      "errors": []
+    }
+  }
+]
