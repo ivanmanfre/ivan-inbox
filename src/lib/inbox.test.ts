@@ -311,9 +311,16 @@ describe('threadBucket + filterByStatus (the DMs status axis)', () => {
     expect(ids('needs')).toEqual(['p1', 'p2', 'p3'])
   })
 
-  it('nothing is lost between the views: needs + waiting == all', () => {
-    expect(ids('all')).toEqual(['p1', 'p2', 'p3', 'p4'])
-    expect([...ids('needs'), ...ids('waiting')].sort()).toEqual(ids('all'))
+  // 'all' means all PENDING now (2026-08-03) — the answered-and-waiting rows
+  // left the browsable surface. They are still reachable two ways, which is why
+  // this is a narrowing and not a deletion: the 'waiting' bucket itself still
+  // resolves, and InboxScreen bypasses this filter entirely while a search
+  // query is typed.
+  it('all == the three pending buckets, and waiting is off the browsable views', () => {
+    expect(ids('all')).toEqual(['p1', 'p2', 'p3'])
+    expect(ids('needs')).toEqual(ids('all'))
+    expect(ids('waiting')).toEqual(['p4'])
+    expect([...ids('all'), ...ids('waiting')].sort()).toEqual(['p1', 'p2', 'p3', 'p4'])
   })
 
   it('a send echo is in no view at all — it belongs to Sends', () => {
