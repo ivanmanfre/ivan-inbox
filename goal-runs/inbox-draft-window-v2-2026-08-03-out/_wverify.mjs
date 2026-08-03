@@ -20,11 +20,25 @@ const FLOORS = () => {
   if (!tk) return { error: 'no window' }
   const de = document.documentElement
   // Every element inside the window that pokes past the viewport, named.
+  // A child of a deliberate horizontal SCROLLER is not horizontal overflow —
+  // the carousel strip is `overflow-x:auto` exactly as the reference's
+  // .ws-slides is, so its 148px tiles extend past the fold on purpose and the
+  // page does not move. Anything else that pokes out is a defect.
+  const inScrollerX = el => {
+    for (let p = el.parentElement; p && p !== tk.parentElement; p = p.parentElement) {
+      const ox = getComputedStyle(p).overflowX
+      if (ox === 'auto' || ox === 'scroll') return true
+    }
+    return false
+  }
   const over = []
+  const scrollerChildren = []
   for (const el of tk.querySelectorAll('*')) {
     const b = el.getBoundingClientRect()
     if (b.width > 0 && (b.right > window.innerWidth + 1 || b.left < -1)) {
-      over.push(`${el.tagName.toLowerCase()}.${(el.className || '').toString().split(' ')[0]}`)
+      const name = `${el.tagName.toLowerCase()}.${(el.className || '').toString().split(' ')[0]}`
+      if (inScrollerX(el)) scrollerChildren.push(name)
+      else over.push(name)
     }
   }
   // Tap targets. Measure the BORDER BOX plus any vertical padding a
@@ -53,6 +67,7 @@ const FLOORS = () => {
   return {
     hScroll: de.scrollWidth > de.clientWidth + 1,
     overflowers: [...new Set(over)].slice(0, 6),
+    insideHScrollers: [...new Set(scrollerChildren)].slice(0, 4),
     under44: [...new Set(small)].slice(0, 10),
     windowW: Math.round(tk.getBoundingClientRect().width),
     bodyScrollH: body?.scrollHeight ?? null,

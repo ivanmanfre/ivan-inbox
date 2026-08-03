@@ -1,0 +1,222 @@
+{
+  "origin": "https://ivanmanfre.github.io/ivan-inbox",
+  "at": "2026-08-03T14:10:23.214Z",
+  "widths": {
+    "390": {
+      "draft": {
+        "hScroll": false,
+        "overflowers": [],
+        "insideHScrollers": [
+          "img."
+        ],
+        "under44": [],
+        "windowW": 390,
+        "bodyScrollH": 1727,
+        "bodyClientH": 832,
+        "queue": {
+          "w": 390,
+          "scrollH": 159,
+          "clientH": 159
+        },
+        "main": {
+          "w": 390,
+          "scrollH": 1255,
+          "clientH": 1255
+        },
+        "insp": {
+          "w": 390,
+          "scrollH": 256,
+          "clientH": 256
+        },
+        "queueRows": 2,
+        "actionKeys": [
+          "a Approve",
+          "r Skip",
+          "e Edit",
+          "s Next",
+          "o More actions"
+        ],
+        "liActFont": "0px",
+        "liBody": {
+          "fontSize": "15px",
+          "lineHeight": "24px",
+          "color": "rgba(0, 0, 0, 0.9)"
+        }
+      },
+      "jk": {
+        "first": "LM promo: Opus 5 Effort Dial Kit (keyword DIAL)",
+        "second": "Founder video: why I cut my posting in half",
+        "back": "LM promo: Opus 5 Effort Dial Kit (keyword DIAL)",
+        "moved": true,
+        "returned": true
+      },
+      "cmdASafe": true,
+      "editInPlace": {
+        "before": {
+          "top": 250,
+          "left": 27,
+          "w": 336,
+          "fontSize": "15px",
+          "lineHeight": "24px"
+        },
+        "after": {
+          "top": 250,
+          "left": 22,
+          "w": 324,
+          "fontSize": "15px",
+          "lineHeight": "24px",
+          "focused": true,
+          "insideCard": true
+        }
+      },
+      "escCancels": {
+        "editorClosed": true,
+        "windowStillOpen": true
+      },
+      "escCloses": true,
+      "magnet": {
+        "hScroll": false,
+        "overflowers": [],
+        "insideHScrollers": [],
+        "under44": [],
+        "windowW": 390,
+        "bodyScrollH": 3429,
+        "bodyClientH": 832,
+        "queue": {
+          "w": 390,
+          "scrollH": 2646,
+          "clientH": 2646
+        },
+        "main": {
+          "w": 390,
+          "scrollH": 400,
+          "clientH": 400
+        },
+        "insp": {
+          "w": 390,
+          "scrollH": 325,
+          "clientH": 325
+        },
+        "queueRows": 38,
+        "actionKeys": [
+          "s Next",
+          "o More actions"
+        ],
+        "liActFont": "0px",
+        "liBody": {
+          "fontSize": "15px",
+          "lineHeight": "24px",
+          "color": "rgba(0, 0, 0, 0.9)"
+        }
+      },
+      "consoleErrors": []
+    },
+    "1440": {
+      "draft": {
+        "hScroll": false,
+        "overflowers": [],
+        "insideHScrollers": [],
+        "under44": [],
+        "windowW": 1380,
+        "bodyScrollH": 786,
+        "bodyClientH": 786,
+        "queue": {
+          "w": 232,
+          "scrollH": 754,
+          "clientH": 754
+        },
+        "main": {
+          "w": 786,
+          "scrollH": 966,
+          "clientH": 754
+        },
+        "insp": {
+          "w": 360,
+          "scrollH": 754,
+          "clientH": 754
+        },
+        "queueRows": 2,
+        "actionKeys": [
+          "a Approve",
+          "r Skip",
+          "e Edit",
+          "s Next",
+          "o More actions"
+        ],
+        "liActFont": "13px",
+        "liBody": {
+          "fontSize": "15px",
+          "lineHeight": "24px",
+          "color": "rgba(0, 0, 0, 0.9)"
+        }
+      },
+      "jk": {
+        "first": "LM promo: Opus 5 Effort Dial Kit (keyword DIAL)",
+        "second": "Founder video: why I cut my posting in half",
+        "back": "LM promo: Opus 5 Effort Dial Kit (keyword DIAL)",
+        "moved": true,
+        "returned": true
+      },
+      "cmdASafe": true,
+      "editInPlace": {
+        "before": {
+          "top": 251,
+          "left": 363,
+          "w": 586,
+          "fontSize": "15px",
+          "lineHeight": "24px"
+        },
+        "after": {
+          "top": 251,
+          "left": 358,
+          "w": 574,
+          "fontSize": "15px",
+          "lineHeight": "24px",
+          "focused": true,
+          "insideCard": true
+        }
+      },
+      "escCancels": {
+        "editorClosed": true,
+        "windowStillOpen": true
+      },
+      "escCloses": true,
+      "magnet": {
+        "hScroll": false,
+        "overflowers": [],
+        "insideHScrollers": [],
+        "under44": [],
+        "windowW": 1380,
+        "bodyScrollH": 786,
+        "bodyClientH": 786,
+        "queue": {
+          "w": 232,
+          "scrollH": 2759,
+          "clientH": 754
+        },
+        "main": {
+          "w": 786,
+          "scrollH": 754,
+          "clientH": 754
+        },
+        "insp": {
+          "w": 360,
+          "scrollH": 754,
+          "clientH": 754
+        },
+        "queueRows": 38,
+        "actionKeys": [
+          "s Next",
+          "o More actions"
+        ],
+        "liActFont": "13px",
+        "liBody": {
+          "fontSize": "15px",
+          "lineHeight": "24px",
+          "color": "rgba(0, 0, 0, 0.9)"
+        }
+      },
+      "consoleErrors": []
+    }
+  }
+}
