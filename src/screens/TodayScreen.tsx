@@ -5,10 +5,10 @@ import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useToday, type TodayHealth } from '../hooks/useToday'
 import { acceptRate, laneLabel, type GovernorRow } from '../lib/kpis'
 import {
-  ago, clockTime, countsFromBrief, dayTime,
-  inScope, longDate, nextUp, partitionUrgencies, postsToday, todayLoad,
+  ago, ageTag, clockTime, countsFromBrief, dayTime,
+  inScope, longDate, nextUp, todayLoad, todayPlate,
   type Brief, type BriefCounts, type CommentDraft, type DmDraft, type FeedDraft,
-  type Scope, type ScheduledPost, type Urgency,
+  type Scope, type ScheduledPost, type TodayPlate, type Urgency,
 } from '../lib/today'
 
 // Today = three staged zones (urgent → approve → today's content) plus a
@@ -35,17 +35,6 @@ function kindOf(k: string) {
   return KIND[k] ?? { label: k.replace(/_/g, ' '), cls: 'reply' }
 }
 
-// Zone progress ("2/9 cleared"): the baseline is the highest count seen since
-// this zone mounted, so the number is an honest "how many fewer than when you
-// opened it" — never a fabricated day total. Zones remount on scope change.
-function useProgress(count: number): { label: string; state: 'done' | 'pending' } {
-  const base = useRef(count)
-  if (count > base.current) base.current = count
-  const total = base.current
-  if (count === 0) return { label: total === 0 ? 'clear' : `${total}/${total} cleared`, state: 'done' }
-  return { label: `${total - count}/${total} cleared`, state: 'pending' }
-}
-
 function ZoneHead({ n, title, right, state }: {
   n: string; title: string; right: string; state: 'done' | 'pending' | 'hot'
 }) {
@@ -67,8 +56,8 @@ function ZoneHead({ n, title, right, state }: {
 // in CALIBRATION.md for contradicting this scale). It is the SUM of the three zone
 // loads and nothing else, and the segments beneath it are a stacked bar of those
 // same three counts, so the headline and the breakdown cannot disagree.
-function Masthead({ c, syncedAt, stale }: {
-  c: BriefCounts | null; syncedAt: string | null; stale: boolean
+function Masthead({ c, plate, syncedAt, stale }: {
+  c: BriefCounts | null; plate: TodayPlate | null; syncedAt: string | null; stale: boolean
 }) {
   const load = todayLoad(c)
   const segs = [
@@ -107,6 +96,16 @@ function Masthead({ c, syncedAt, stale }: {
             </span>
           ))}
         </div>
+        {/* The split Ivan actually asked about. The total above is unchanged —
+            this says how much of it is TODAY'S. */}
+        {c && plate && (
+          <div className="td-split">
+            <b>{plate.newCount}</b> new today
+            <span className="td-split-sep">·</span>
+            <b>{plate.carriedCount}</b> carried over
+            {plate.oldest && <span className="td-split-o">oldest {plate.oldest}</span>}
+          </div>
+        )}
         <span className={`td-sync ${stale ? 'td-old' : ''}`}>
           {syncedAt ? `${stale ? 'Cached' : 'Synced'} ${clockTime(syncedAt)} · ${ago(syncedAt)}` : 'Syncing…'}
         </span>
@@ -139,55 +138,46 @@ function UrgencyRow({ u, auto }: { u: Urgency; auto?: boolean }) {
   )
 }
 
-function ZoneUrgent({ brief, scope, loading, count }: {
-  brief: Brief | null; scope: Scope; loading: boolean
-  // From the masthead's single derivation, so the zone header and the headline can
-  // never state two different urgent counts.
-  count: number
+function ZoneNew({ plate, loading, brief, onOpenDrafts, onOpenOps }: {
+  plate: TodayPlate; loading: boolean; brief: Brief | null
+  onOpenDrafts: () => void; onOpenOps: () => void
 }) {
-  const [showAuto, setShowAuto] = useState(false)
-  const scoped = (brief?.urgencies ?? []).filter(u => inScope(u, scope))
-  const { visible, autoreplies } = partitionUrgencies(scoped)
-  // The fn's autoreply / aging scalars are whole-account numbers, so they only
-  // belong to the bucket that owns unscoped rows (client_id NULL = Ivan). Under
-  // a client scope we fall back to what the rows themselves say — never borrow
-  // an account-wide number and label it Rise's.
-  const wholeAccount = scope === 'all' || scope === 'ivan'
-  const autoCount = wholeAccount ? brief?.autoreplies_count ?? autoreplies.length : autoreplies.length
-  const aging = wholeAccount ? brief?.aging_count ?? 0 : 0
-  const prog = useProgress(count)
-  const state = count > 0 ? 'hot' : prog.state
-
+  const n = plate.newCount
   return (
     <section className="td-zone" id="td-z1">
-      <ZoneHead n="01" title="Urgent" right={prog.label} state={state} />
-      {visible.length === 0 ? (
+      <ZoneHead
+        n="01"
+        title="New today"
+        right={n === 0 ? 'nothing new' : `${n} since yesterday`}
+        state={n > 0 ? 'hot' : 'done'}
+      />
+      {n === 0 ? (
         <div className="td-empty">
           {loading && !brief
             ? 'Loading the brief…'
-            : `0 urgent — nothing needs you${scope === 'all' ? '' : ` on ${SCOPE_NAME[scope]}`}, and this is a live read, not a stall.`}
+            : 'Nothing new since yesterday. Everything on your plate is carried over — and this is a live read, not a stall.'}
         </div>
       ) : (
-        visible.map(u => <UrgencyRow key={u.id} u={u} />)
-      )}
-      {autoCount > 0 && (
         <>
-          <div className="td-more" onClick={() => setShowAuto(v => !v)}>
-            <span className="n">{showAuto ? '−' : '+'}{autoCount}</span>
-            <span>auto-replies</span>
-            <span className="tail">out of office — not waiting on you</span>
-          </div>
-          {showAuto && autoreplies.map(u => <UrgencyRow key={u.id} u={u} auto />)}
+          {plate.urgencies.fresh.map(u => <UrgencyRow key={u.id} u={u} />)}
+          <ApprovalRows
+            dms={plate.dms.fresh} comments={plate.comments.fresh} feed={plate.feed.fresh}
+            onOpenDrafts={onOpenDrafts} onOpenOps={onOpenOps}
+          />
+          {plate.posts.map(p => (
+            <div key={p.id} className="td-post">
+              <div className="td-post-t">{p.scheduled_at ? clockTime(p.scheduled_at) : '—'}</div>
+              <div className="td-mid">
+                <div className="td-post-x">{p.post_text ?? 'Untitled post'}</div>
+                <div className="td-org">{postLine(p)}</div>
+              </div>
+            </div>
+          ))}
         </>
-      )}
-      {aging > 0 && (
-        <div className="td-aging">aging out: {aging} — older than 3 days, out of the count</div>
       )}
     </section>
   )
 }
-
-// ---- zone 02: approve ----
 
 // ---- the counted hand-off ----
 //
@@ -202,7 +192,7 @@ function ZoneUrgent({ brief, scope, loading, count }: {
 //
 // The DB guard added to approveDraft (send_blocked_reason IS NULL) is the belt;
 // this is the braces. Approving DMs now happens only where the rows are live.
-function HandOff({ n, title, sub, meta, owner, href, onOpen }: {
+function HandOff({ n, title, sub, meta, owner, href, onOpen, age }: {
   n: number
   title: string
   sub?: string | null
@@ -213,12 +203,18 @@ function HandOff({ n, title, sub, meta, owner, href, onOpen }: {
   owner: string
   href?: string | null
   onOpen?: () => void
+  // The group's oldest item, printed ON the row. The age used to live only inside
+  // the meta sentence, which is where "16d ago" goes to not be read.
+  age?: string | null
 }) {
   const body = (
     <>
       <div className="td-qn">{n}</div>
       <div className="td-qmid">
-        <div className="td-qt">{title}</div>
+        <div className="td-qt">
+          {title}
+          {age && <span className="td-qage">{age}</span>}
+        </div>
         {sub && <div className="td-qs">{sub}</div>}
         {meta && <div className="td-qmeta">{meta}</div>}
         <div className="td-qown">{owner}</div>
@@ -245,72 +241,120 @@ function oldest(dates: (string | null | undefined)[]): string | null {
   return list[0] ?? null
 }
 
-function ZoneApprove({ brief, scope, loading, count, onOpenDrafts, onOpenOps }: {
-  brief: Brief | null; scope: Scope; loading: boolean
-  // Passed in from the masthead's load so the zone header and the headline read the
-  // same number out of the same derivation.
-  count: number
-  onOpenDrafts: () => void
-  onOpenOps: () => void
+// ---- zone 02: carried over ----
+//
+// The honest name for what this screen was already showing under the word TODAY.
+// Nothing here is hidden or dropped — it is the same rows, grouped, with their
+// age printed on them, BELOW the work that actually arrived today.
+function ZoneCarried({ plate, aging, loading, brief, onOpenDrafts, onOpenOps }: {
+  plate: TodayPlate; aging: number; loading: boolean; brief: Brief | null
+  onOpenDrafts: () => void; onOpenOps: () => void
 }) {
-  const dms = (brief?.needs_you.dm_drafts ?? []).filter(d => inScope(d, scope))
-  const comments = (brief?.needs_you.comment_drafts ?? []).filter(d => inScope(d, scope))
-  const feed = (brief?.needs_you.feed_drafts ?? []).filter(d => inScope(d, scope))
-  const total = count
-  const prog = useProgress(total)
-
-  const dOldest = oldest(dms.map(d => d.created_at))
-  const cOldest = oldest(comments.map(c => c.drafted_at))
-  const fNewest = feed.map(f => f.created_at).filter(Boolean).sort().at(-1) ?? null
-  // Server-stamped (>7d). These rows are still owed — the honest move is an age
-  // tag, never hiding them. Absent on pre-stamp cached payloads, so 0 renders nothing.
-  const dAging = dms.filter(d => d.is_aging).length
-  const cAging = comments.filter(c => c.is_aging).length
-
+  const [showAuto, setShowAuto] = useState(false)
+  const n = plate.carriedCount
+  const autoCount = plate.autoreplies.length
+  if (n === 0 && autoCount === 0 && aging === 0) {
+    return (
+      <section className="td-zone" id="td-z2">
+        <ZoneHead n="02" title="Carried over" right="clear" state="done" />
+        <div className="td-empty">
+          {loading && !brief ? 'Loading the brief…' : 'Nothing carried over — the plate is today\u2019s only.'}
+        </div>
+      </section>
+    )
+  }
   return (
     <section className="td-zone" id="td-z2">
-      <ZoneHead n="02" title="Approve" right={prog.label} state={total > 0 ? 'pending' : prog.state} />
-      {total === 0 ? (
-        <div className="td-empty">
-          {loading && !brief
-            ? 'Loading the brief…'
-            : 'Nothing waiting on your approval — and this is a live read, not a stall.'}
-        </div>
-      ) : (
+      <ZoneHead
+        n="02"
+        title="Carried over"
+        // Short on purpose: the zone title already says CARRIED OVER, and the
+        // long form clipped at 390 ("... OLDEST 35" with the d cut off).
+        right={n === 0 ? 'clear' : `${n}${plate.oldest ? ` · oldest ${plate.oldest}` : ''}`}
+        state={n === 0 ? 'done' : 'pending'}
+      />
+      {plate.urgencies.carried.map(u => <UrgencyRow key={u.id} u={u} />)}
+      <ApprovalRows
+        dms={plate.dms.carried} comments={plate.comments.carried} feed={plate.feed.carried}
+        onOpenDrafts={onOpenDrafts} onOpenOps={onOpenOps}
+      />
+      {/* The reply detector demotes replies older than 3 days out of the urgency
+          array entirely — the payload carries only a scalar, so there are no rows
+          to render here. That used to print as "out of the count", which reads as
+          a confession. It is a HAND-OFF: since DMs absorbed the conversation list
+          those people are one tap away, listed and countable. */}
+      {aging > 0 && (
+        <HandOff
+          n={aging}
+          title={`${aging} older ${aging === 1 ? 'reply' : 'replies'}`}
+          sub="Demoted out of the urgent count after 3 days — still owed."
+          meta="not in the plate number above"
+          owner="open them in DMs"
+          onOpen={onOpenDrafts}
+        />
+      )}
+      {autoCount > 0 && (
         <>
-          {dms.length > 0 && (
-            <HandOff
-              n={dms.length}
-              title={dms.length === 1 ? 'DM draft' : 'DM drafts'}
-              sub={dmPreview(dms[0])}
-              meta={`${dms.length} waiting${dOldest ? ` · oldest drafted ${ago(dOldest)} ago` : ''}${dAging > 0 ? ` · ${dAging} owed >7d` : ''}`}
-              owner="live rows and Approve & send are in the DM queue — this list is the cached brief"
-              onOpen={onOpenDrafts}
-            />
-          )}
-          {comments.length > 0 && (
-            <HandOff
-              n={comments.length}
-              title="Comment drafts"
-              sub={commentPreview(comments[0])}
-              meta={`${comments.length} target${comments.length === 1 ? '' : 's'}${cOldest ? ` · oldest drafted ${ago(cOldest)} ago` : ''}${cAging > 0 ? ` · ${cAging} owed >7d` : ''}`}
-              owner="posting is live on LinkedIn — approved in Ops"
-              onOpen={onOpenOps}
-            />
-          )}
-          {feed.length > 0 && (
-            <HandOff
-              n={feed.length}
-              title="Feed drafts"
-              sub={feedPreview(feed[0])}
-              meta={`${feed.length} pending${fNewest ? ` · newest ${ago(fNewest)} ago` : ''}`}
-              owner="approved in the feed lane, not here"
-              onOpen={onOpenOps}
-            />
-          )}
+          <div className="td-more" onClick={() => setShowAuto(v => !v)}>
+            <span className="n">{showAuto ? '−' : '+'}{autoCount}</span>
+            <span>auto-replies</span>
+            <span className="tail">out of office — not waiting on you</span>
+          </div>
+          {showAuto && plate.autoreplies.map(u => <UrgencyRow key={u.id} u={u} auto />)}
         </>
       )}
     </section>
+  )
+}
+
+// The three approval groups, rendered for ONE age band. Same HandOff contract as
+// before (single ownership: a count, a preview and a way in — never a second
+// mutating affordance), now with the group's oldest age on the row itself.
+function ApprovalRows({ dms, comments, feed, onOpenDrafts, onOpenOps }: {
+  dms: DmDraft[]; comments: CommentDraft[]; feed: FeedDraft[]
+  onOpenDrafts: () => void; onOpenOps: () => void
+}) {
+  const dOldest = oldest(dms.map(d => d.created_at))
+  const cOldest = oldest(comments.map(c => c.drafted_at))
+  const fOldest = oldest(feed.map(f => f.created_at))
+  const dAging = dms.filter(d => d.is_aging).length
+  const cAging = comments.filter(c => c.is_aging).length
+  return (
+    <>
+      {dms.length > 0 && (
+        <HandOff
+          n={dms.length}
+          title={dms.length === 1 ? 'DM draft' : 'DM drafts'}
+          age={ageTag(dOldest)}
+          sub={dmPreview(dms[0])}
+          meta={`${dms.length} waiting${dOldest ? ` · oldest drafted ${ago(dOldest)} ago` : ''}${dAging > 0 ? ` · ${dAging} owed >7d` : ''}`}
+          owner="live rows and Approve & send are in the DM queue — this list is the cached brief"
+          onOpen={onOpenDrafts}
+        />
+      )}
+      {comments.length > 0 && (
+        <HandOff
+          n={comments.length}
+          title="Comment drafts"
+          age={ageTag(cOldest)}
+          sub={commentPreview(comments[0])}
+          meta={`${comments.length} target${comments.length === 1 ? '' : 's'}${cOldest ? ` · oldest drafted ${ago(cOldest)} ago` : ''}${cAging > 0 ? ` · ${cAging} owed >7d` : ''}`}
+          owner="posting is live on LinkedIn — approved in Ops"
+          onOpen={onOpenOps}
+        />
+      )}
+      {feed.length > 0 && (
+        <HandOff
+          n={feed.length}
+          title="Feed drafts"
+          age={ageTag(fOldest)}
+          sub={feedPreview(feed[0])}
+          meta={`${feed.length} pending${fOldest ? ` · oldest ${ago(fOldest)} ago` : ''}`}
+          owner="approved in the feed lane, not here"
+          onOpen={onOpenOps}
+        />
+      )}
+    </>
   )
 }
 
@@ -328,16 +372,20 @@ function feedPreview(f: FeedDraft | undefined): string | null {
   return text ? `${who}${text}` : who || null
 }
 
-// ---- zone 03: today's content ----
+// ---- zone 03: the schedule ----
 
 function postLine(p: ScheduledPost): string {
   return [p.post_format, p.platform, p.status].filter(Boolean).join(' · ')
 }
 
-function ZoneToday({ brief, scope, loading, count }: {
-  brief: Brief | null; scope: Scope; loading: boolean; count: number
+// Today's posts moved UP into "New today" (a post going out today is today's by
+// definition), so this zone is what is COMING: the next slot, the send queue,
+// and — new — any slot that was called off, which used to be silently counted as
+// a thing going out.
+function ZoneSchedule({ brief, scope, loading, plate }: {
+  brief: Brief | null; scope: Scope; loading: boolean; plate: TodayPlate
 }) {
-  const posts = brief ? postsToday(brief, scope) : []
+  const posts = plate.posts
   const next = brief ? nextUp(brief, scope) : null
   // Queue total is an account-wide scalar — same rule as the aging line above.
   const queue = scope === 'risedtc' ? null : brief?.outreach_queue?.total ?? null
@@ -346,11 +394,11 @@ function ZoneToday({ brief, scope, loading, count }: {
     <section className="td-zone" id="td-z3">
       <ZoneHead
         n="03"
-        title="Today"
-        right={count === 0 ? 'clear' : `${count} scheduled`}
-        state={count === 0 ? 'done' : 'pending'}
+        title="Schedule"
+        right={posts.length === 0 ? 'nothing out today' : `${posts.length} out today`}
+        state={posts.length === 0 ? 'done' : 'pending'}
       />
-      {posts.length === 0 ? (
+      {posts.length === 0 && plate.cancelled.length === 0 && (
         <div className="td-card">
           <div className="td-card-t">
             {loading && !brief ? 'Loading the brief…' : 'Nothing scheduled today'}
@@ -361,16 +409,24 @@ function ZoneToday({ brief, scope, loading, count }: {
               : `No posts go out ${scope === 'risedtc' ? 'for Rise ' : ''}today. This zone stays clear until the next slot.`}
           </div>
         </div>
-      ) : (
-        posts.map(p => (
-          <div key={p.id} className="td-post">
-            <div className="td-post-t">{p.scheduled_at ? clockTime(p.scheduled_at) : '—'}</div>
-            <div className="td-mid">
-              <div className="td-post-x">{p.post_text ?? 'Untitled post'}</div>
-              <div className="td-org">{postLine(p)}</div>
-            </div>
+      )}
+      {posts.length > 0 && (
+        <div className="td-next">
+          <span className="lbl">OUT TODAY</span>
+          <span className="txt"><b>{posts.length}</b> listed under New today above</span>
+        </div>
+      )}
+      {/* A called-off slot is not load, but it is news: before this, one of these
+          was counted on the masthead as "1 going out". */}
+      {plate.cancelled.length > 0 && (
+        <div className="td-card">
+          <div className="td-card-t">
+            {plate.cancelled.length} slot{plate.cancelled.length === 1 ? '' : 's'} today cancelled
           </div>
-        ))
+          <div className="td-card-s">
+            Called off, so {plate.cancelled.length === 1 ? 'it is' : 'they are'} not counted as going out.
+          </div>
+        </div>
       )}
       {next && (
         <div className="td-next">
@@ -566,6 +622,10 @@ export function TodayScreen({ onOpenDrafts, onOpenOps }: {
   const t = useToday()
   const rowsRef = useRef<HTMLDivElement>(null)
   const ptr = usePullToRefresh(rowsRef, t.refresh)
+  // '#dms' since the Inbox job was absorbed into it; the workbench overrides
+  // both of these with in-app navigation.
+  const openDrafts = onOpenDrafts ?? (() => { location.hash = '#drafts' })
+  const openOps = onOpenOps ?? (() => { location.hash = '#ops' })
 
   // Once the payload lands, every number on this screen comes from it (scoped
   // by the chip) so the strip can't disagree with the zones. Before that, the
@@ -574,7 +634,14 @@ export function TodayScreen({ onOpenDrafts, onOpenOps }: {
   // ONE derivation feeds the masthead number, the stacked bar AND each zone's own
   // header count. The masthead cannot drift from the zones because it is not a
   // second reading of the data — it is the sum of theirs.
-  const load = todayLoad(counts)
+  // The re-rank. One derivation for the whole screen: the masthead's split, both
+  // banded zones and the schedule all read this, so "new today" cannot mean one
+  // thing in the headline and another in the list.
+  const plate = todayPlate(t.brief, scope)
+  // Whole-account scalar: it only belongs to the bucket that owns unscoped rows
+  // (client_id NULL = Ivan). Never borrow an account-wide number under a client
+  // scope and label it Rise's.
+  const aging = (scope === 'all' || scope === 'ivan') ? t.brief?.aging_count ?? 0 : 0
   const syncedAt = t.brief?.generated_at ?? t.counts?.generated_at ?? t.cachedAt ?? null
   const stale = t.fromCache || t.degraded || (t.error != null && t.brief != null)
 
@@ -604,7 +671,7 @@ export function TodayScreen({ onOpenDrafts, onOpenOps }: {
 
       <div className="rows td-rows" ref={rowsRef}>
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
-        <Masthead c={counts} syncedAt={syncedAt} stale={stale} />
+        <Masthead c={counts} plate={t.brief ? plate : null} syncedAt={syncedAt} stale={stale} />
 
         {t.authError && (
           <div className="td-banner">
@@ -624,18 +691,23 @@ export function TodayScreen({ onOpenDrafts, onOpenOps }: {
         )}
 
         <div className="td-zones" key={scope}>
-          <ZoneUrgent brief={t.brief} scope={scope} loading={t.loading || t.refreshing}
-            count={load.urgent} />
-          <ZoneApprove
+          <ZoneNew
+            plate={plate}
             brief={t.brief}
-            scope={scope}
             loading={t.loading || t.refreshing}
-            count={load.approvals}
-            onOpenDrafts={onOpenDrafts ?? (() => { location.hash = '#drafts' })}
-            onOpenOps={onOpenOps ?? (() => { location.hash = '#ops' })}
+            onOpenDrafts={openDrafts}
+            onOpenOps={openOps}
           />
-          <ZoneToday brief={t.brief} scope={scope} loading={t.loading || t.refreshing}
-            count={load.going} />
+          <ZoneCarried
+            plate={plate}
+            aging={aging}
+            brief={t.brief}
+            loading={t.loading || t.refreshing}
+            onOpenDrafts={openDrafts}
+            onOpenOps={openOps}
+          />
+          <ZoneSchedule brief={t.brief} scope={scope} loading={t.loading || t.refreshing}
+            plate={plate} />
           <HealthStrip health={t.health} brief={t.brief} scope={scope} />
         </div>
 

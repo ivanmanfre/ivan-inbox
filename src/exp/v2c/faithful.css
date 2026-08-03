@@ -1029,6 +1029,18 @@
 @media (max-width:767px){
   .wb.wb.wb .wb-fpill{ height:36px; position:relative }
   .wb.wb.wb .wb-fpill::after{ content:''; position:absolute; inset:-4px; border-radius:inherit }
+  /* The same treatment the fpill got in phase 2 of the skin run, applied to the
+     three controls that were missed and still measured 36 / 30 / 28px under a
+     thumb: the nav's client chips, the segmented controls, and the Work lane
+     switch. The extension is VERTICAL ONLY (`inset:-Npx 0`) — these sit in rows
+     with small gaps, and growing them sideways would make two neighbours fight
+     for the same finger. Measured back to ≥44px by the run's own probe. */
+  .wb.wb.wb .chips .chip{ position:relative }
+  .wb.wb.wb .chips .chip::after{ content:''; position:absolute; inset:-4px 0 }
+  .wb.wb.wb .seg .sg{ position:relative }
+  .wb.wb.wb .seg .sg::after{ content:''; position:absolute; inset:-7px 0 }
+  .wb.wb.wb .wb-ws{ position:relative }
+  .wb.wb.wb .wb-ws::after{ content:''; position:absolute; inset:-8px 0 }
 }
 
 /* The pill's own dropdown (ask 8b). Absolutely positioned off the pill so the
