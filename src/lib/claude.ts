@@ -254,7 +254,14 @@ export function emit(frame: string, onEvent: (e: ClaudeEvent) => void): void {
   // top-level read was written in Feb against a dead endpoint and could never
   // have seen a live frame — it silently dropped every reply.
   if (type === 'assistant') {
-    const msg = obj.message as { content?: unknown } | undefined
+    const msg = obj.message as { content?: unknown; model?: unknown } | undefined
+    // The frame names the model that is actually answering. The broker header
+    // can only report what the REQUEST asked for, which is the literal string
+    // 'container-default' whenever nothing was picked — true, and useless to
+    // read. This is the container's own answer to "what am I talking to".
+    if (typeof msg?.model === 'string' && msg.model) {
+      onEvent({ kind: 'model', model: msg.model, contextChars: null, shed: [] })
+    }
     const content = Array.isArray(msg?.content) ? msg.content : []
     for (const item of content as Array<Record<string, unknown>>) {
       if (item?.type === 'text' && typeof item.text === 'string' && item.text) {
