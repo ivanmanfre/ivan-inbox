@@ -16,12 +16,18 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 // z-index 50: below the confirm sheets (.sheet-scrim, z 60), which the delete
 // flow opens ON TOP of this window.
 
-export function Takeover({ label, sub, onClose, mobile, children }: {
+export function Takeover({ label, sub, onClose, mobile, children, bodyClass }: {
   label: string
   sub?: string | null
   onClose: () => void
   mobile: boolean
   children: ReactNode
+  /**
+   * Opt OUT of the centered 760px reading column. The draft/magnet windows are
+   * now multi-column readers that own their own geometry; everything else still
+   * gets the comfortable measure by default.
+   */
+  bodyClass?: string
 }) {
   // Esc closes, from anywhere — the window is modal.
   useEffect(() => {
@@ -53,8 +59,8 @@ export function Takeover({ label, sub, onClose, mobile, children }: {
           </div>
           <button type="button" className="wb-tk-x" onClick={onClose} aria-label="Close">✕</button>
         </div>
-        <div className="rows wb-tk-body">
-          <div className="wb-tk-col">{children}</div>
+        <div className={`rows wb-tk-body${bodyClass ? ` ${bodyClass}` : ''}`}>
+          {bodyClass ? children : <div className="wb-tk-col">{children}</div>}
         </div>
       </section>
     </div>

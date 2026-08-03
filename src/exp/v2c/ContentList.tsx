@@ -69,9 +69,18 @@ const STAGE_COLOR: Record<string, string> = {
 // The rail (anchor 28px + 12px gap) puts every row's PRIMARY text at an
 // identical x at 390 and at 1440. That is what makes a three-second row-find
 // possible on a list this long.
-function Card({ d, lane, refresh, onOpen, active }: {
+// Opening a draft hands the window the QUEUE it was opened from, so j/k and the
+// window's rail walk exactly the rows Ivan is looking at.
+export type OpenDraft = (id: string, label: string, queue: ContentDraft[]) => void
+
+function Card({ d, lane, refresh, onOpen, active, queue }: {
   d: ContentDraft; lane: ContentLane; refresh: () => void
-  onOpen: (id: string, label: string) => void; active: boolean
+  onOpen: OpenDraft; active: boolean
+  // The rows of the SECTION this card sits in, in render order. That order is
+  // what j/k walks and what the window's rail draws, so the queue is the list
+  // Ivan can actually see — filters, search and collapse state included — and
+  // cannot drift from it.
+  queue: ContentDraft[]
 }) {
   const thumb = d.image_urls?.[0]
   const title = d.title || d.topic || 'Untitled'
@@ -92,7 +101,7 @@ function Card({ d, lane, refresh, onOpen, active }: {
   return (
     <div
       className={`ct-card ct-tap${active ? ' wb-card-on' : ''}${stalled ? ' ct-stalled' : ''}`}
-      onClick={() => onOpen(d.id, title)}
+      onClick={() => onOpen(d.id, title, queue)}
     >
       {/* anchor slot — exactly ONE mark, at a fixed width, carrying the QA verdict */}
       <div className="ct-anchor" data-st={stage} data-qa={qaState}>
@@ -268,7 +277,7 @@ function AlertStrip({ drafts, lane, refresh, onOpen, openId, extra }: {
   drafts: ContentDraft[]
   lane: ContentLane
   refresh: () => void
-  onOpen: (id: string, label: string) => void
+  onOpen: OpenDraft
   openId: string | null
   extra: { key: string; line: string }[]
 }) {
@@ -322,7 +331,7 @@ function AlertStrip({ drafts, lane, refresh, onOpen, openId, extra }: {
               not prose about it. The full sentence lives on the row it points at. */}
           {extra.map(e => <div className="ct-alert-x" key={e.key}><span>{e.line}</span></div>)}
           {drafts.map(d => (
-            <Card key={d.id} d={d} lane={lane} refresh={refresh} onOpen={onOpen} active={openId === d.id} />
+            <Card key={d.id} d={d} lane={lane} refresh={refresh} onOpen={onOpen} active={openId === d.id} queue={drafts} />
           ))}
         </>
       )}
@@ -338,7 +347,7 @@ function StageSection({ s, n, rows, lane, refresh, onOpen, openId, isOpen, toggl
   rows: ContentDraft[]
   lane: ContentLane
   refresh: () => void
-  onOpen: (id: string, label: string) => void
+  onOpen: OpenDraft
   openId: string | null
   isOpen: boolean
   toggle: () => void
@@ -361,7 +370,7 @@ function StageSection({ s, n, rows, lane, refresh, onOpen, openId, isOpen, toggl
         <>
           {sub && <div className="ct-subline">{sub}</div>}
           {rows.map(d => (
-            <Card key={d.id} d={d} lane={lane} refresh={refresh} onOpen={onOpen} active={openId === d.id} />
+            <Card key={d.id} d={d} lane={lane} refresh={refresh} onOpen={onOpen} active={openId === d.id} queue={rows} />
           ))}
         </>
       )}
@@ -424,7 +433,7 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
   drafts: ContentDraft[]
   stages: ContentStages
   openId: string | null
-  onOpen: (id: string, label: string) => void
+  onOpen: OpenDraft
   refresh: () => void
   filters: FilterState
   setFilters: (f: FilterState) => void
@@ -619,7 +628,7 @@ const BOARD_GROUPS = [
 function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, setQ, matched, open, setOpen }: {
   drafts: ContentDraft[]
   openId: string | null
-  onOpen: (id: string, label: string) => void
+  onOpen: OpenDraft
   refresh: () => void
   filters: FilterState
   setFilters: (f: FilterState) => void
@@ -754,7 +763,7 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
   lane: ContentLane
   setLane: (l: ContentLane) => void
   openId: string | null
-  onOpen: (id: string, label: string) => void
+  onOpen: OpenDraft
 }) {
   const { drafts, stages, matched, laneTotal, loading, error, loadedAt, refresh } = useContent(lane)
   const rowsRef = useRef<HTMLDivElement>(null)
