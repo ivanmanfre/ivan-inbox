@@ -5,8 +5,9 @@ import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useOps } from '../hooks/useOps'
 import {
-  approveOpsDraft, approveWeeklyReport, blockedOps, canGenerateDraft, claimingOps, discardOpsDraft, engineLabel, expiresIn, generateCommentDraft, markCommentHandled, outboundApproveUrl, outboundSkipUrl, pendingOps, postCommentReply, sentOps,
-  type OpsDraft, type OpsKind,
+  approveOpsDraft, approveWeeklyReport, blockedOps, canGenerateDraft, claimingOps, discardOpsDraft, engineLabel, expiresIn, generateCommentDraft, markCommentHandled, outboundApproveUrl, outboundSkipUrl, pendingOps, postCommentReply, seatLabel, sentOps,
+  dispatchCommentGate, cardStateOf,
+  type OpsDraft, type OpsKind, type GateVerdict, type FeedState,
 } from '../lib/ops'
 import { checkedPhrase } from '../lib/today'
 
@@ -28,7 +29,10 @@ function timeAgo(iso: string): string {
   return `${d}d`
 }
 
-const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK', weekly_report: 'WEEKLY', comment_reply: 'COMMENT', comment_outbound: 'OUTBOUND' }
+// 'OUTBOUND' said what the ENGINE calls the lane, not what the card is. Ivan
+// reads these as comments, so they say Comments; `comment_reply` becomes REPLY
+// in the same pass so the two comment kinds cannot be told apart by an S.
+const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK', weekly_report: 'WEEKLY', comment_reply: 'REPLY', comment_outbound: 'COMMENTS' }
 // Escalations run warm/red (something needs attention); updates stay neutral/blue (fyi);
 // newsjack runs amber because it is the only kind with a clock on it.
 const KIND_COLOR: Record<OpsKind, string> = { escalation: '#FF453A', update: '#0A84FF', newsjack: '#FF9F0A', weekly_report: '#30D158', comment_reply: '#BF5AF2', comment_outbound: '#64D2FF' }
@@ -118,7 +122,18 @@ function ContextLine({ draft }: { draft: OpsDraft }) {
 // Exported so a host surface can own the FRAME (header, freshness, columns) and
 // still act on the queue through this one card. Duplicating it would mean two
 // approve paths with two sets of confirm copy for the same publish.
-export function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () => void }) {
+export function PendingCard({ draft, refresh, feed, onGateResult }: {
+  draft: OpsDraft
+  refresh: () => void
+  // The comment_feed row behind an outbound card, if the host loaded it. The
+  // poster writes NOTHING to ops_drafts, so this is the only durable answer to
+  // "did it actually go out" — and because it comes from the database, it
+  // survives a refresh and a second device instead of living in React memory.
+  feed?: FeedState
+  // Lets the host (which owns the retry line) learn what the gate said without
+  // this card having to know a queue exists.
+  onGateResult?: (id: string, v: GateVerdict) => void
+}) {
   const [body, setBody] = useState(draft.body)
   const [busy, setBusy] = useState(false)
   const [drafting, setDrafting] = useState(false)
@@ -126,6 +141,10 @@ export function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () =
   // that stops: a refusal Ivan cannot see reads as a broken button.
   const [refusal, setRefusal] = useState<string[]>([])
   const [error, setError] = useState('')
+  // The gate's last answer for THIS card, so a clock refusal can render as a
+  // queue position rather than as a red error.
+  const [gate, setGate] = useState<GateVerdict | null>(null)
+  const postState = cardStateOf(feed)
   const confirm = useConfirm()
 
   // Re-seed the editor if the row itself changes (e.g. realtime update lands
@@ -149,36 +168,64 @@ export function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () =
   // A NULL slack_channel used to render the literal "#null" on the card
   // (phase0-readability #5 / phase0-mobile #8). No channel = say whose engine
   // it is instead of printing a database absence.
-  const where = isNewsjack || isWeekly || isComment || isOutbound || !draft.slack_channel
-    ? engineLabel(draft.client_id)
-    : `#${draft.slack_channel}`
+  // A comment card names the SEAT it posts from (Ivan / Mattan Danino); every
+  // other kind keeps the engine register ("your feed" / "Rise").
+  const where = isComment || isOutbound
+    ? seatLabel(draft.client_id)
+    : isNewsjack || isWeekly || !draft.slack_channel
+      ? engineLabel(draft.client_id)
+      : `#${draft.slack_channel}`
   const left = isNewsjack ? expiresIn(draft.context?.expires_at) : null
 
   async function onApprove() {
     // Outbound comments: two lanes, one kind.
-    // ivan lane (approve_url present): the button opens the n8n gate webhook - the
-    // five poster gates + jitter own the LinkedIn write, and the tab shows their
-    // verdict. risedtc lane (no approve_url): copy + close; Ivan posts it from
-    // Mattan's seat by hand. Both double-stamp because no dispatcher exists here.
+    //
+    // ivan lane (approve_url present) — 2026-08-03, Ivan: "why u opening a new
+    // tab on n8n just send that shit lol... make it be 'Queued'". The gate is
+    // fired HERE and its verdict is read. That is a correctness fix as much as a
+    // convenience one: the five poster gates genuinely refuse (disarmed, stale
+    // post, 3/day cap, 10-minute spacing, one-in-flight, per-target cooldown),
+    // and this card used to stamp approved+sent regardless — a refused comment
+    // rendered as handled and never posted. Only an ACCEPT stamps now; a
+    // refusal shows the gate's own sentence and leaves the card actionable.
+    //
+    // risedtc lane (no approve_url): copy + close; Ivan posts it from Mattan's
+    // seat by hand. There is no poster for that lane by design, so it keeps the
+    // double-stamp.
     if (isOutbound) {
       const ok = await confirm({
         title: approveUrl ? `Send this to the ${where} comment gate?` : `Copy this to post as ${where}?`,
         message: approveUrl
-          ? 'Opens the gate link: rate caps, cooldown and jitter still apply before anything posts. The tab shows the verdict.'
+          ? 'The poster’s rate caps, cooldown and jitter still decide. You get their answer on the card — no new tab.'
           : 'Nothing is posted by the system. The comment goes to your clipboard - paste it under the post from Mattan’s seat.',
-        confirmText: approveUrl ? 'Approve & open gate' : 'Approve & copy',
+        confirmText: approveUrl ? 'Approve & queue' : 'Approve & copy',
       })
       if (!ok) return
       setBusy(true); setError('')
       try {
         if (approveUrl) {
-          window.open(approveUrl, '_blank', 'noopener')
+          const v = await dispatchCommentGate(approveUrl)
+          // `already` counts as an accept for stamping: the row has left
+          // `pending`, so a replay is the idempotent case, not a new send.
+          if (v.outcome === 'accepted' || v.outcome === 'already') {
+            await approveWeeklyReport(draft.id, body)
+            setGate(v)
+            onGateResult?.(draft.id, v)
+            refresh()
+          } else {
+            // NOT stamped. The card stays in the queue, says what the poster
+            // said, and (for a clock refusal) joins the retry line.
+            setGate(v)
+            onGateResult?.(draft.id, v)
+            // A clock refusal renders as a queue position, not as an error.
+            if (v.outcome !== 'timing') setError(v.message)
+          }
         } else {
           // Copy first: a blocked clipboard leaves the card recoverable.
           await navigator.clipboard.writeText(body)
+          await approveWeeklyReport(draft.id, body)
+          refresh()
         }
-        await approveWeeklyReport(draft.id, body)
-        refresh()
       } catch (e) { setError(errText(e)) }
       finally { setBusy(false) }
       return
@@ -323,12 +370,36 @@ export function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () =
       {isOutbound && (
         <div className="ops-ctx">
           {approveUrl
-            ? 'A comment on their post, from your seat. Approve opens the gate link - caps and cooldown still apply.'
+            ? 'A comment on their post, from your seat. Approve queues it here — caps, cooldown and jitter still decide.'
             : 'A comment on their post, from Mattan’s seat. Approve copies it - you paste it on LinkedIn yourself.'}
+        </div>
+      )}
+      {/* Read from comment_feed, the table the poster actually writes. A card
+          that painted "Queued" out of React state would keep saying it after a
+          refresh even though nothing was scheduled. */}
+      {postState === 'queued' && (
+        <div className="ops-state ops-state-q">
+          Queued — the poster has it. It posts after its jitter window unless you discard.
+        </div>
+      )}
+      {postState === 'posted' && (
+        <div className="ops-state ops-state-ok">Posted to LinkedIn.</div>
+      )}
+      {postState === 'failed' && (
+        <div className="ops-state ops-state-bad">
+          The poster could not post it{feed?.post_error ? `: ${feed.post_error}` : ''}. Still yours to act on.
         </div>
       )}
       {refusal.length > 0 && (
         <div className="ops-reason">Refused: {refusal.join(' · ')}</div>
+      )}
+      {/* A CLOCK refusal is not a failure — it is a queue position. The card
+          says what it is waiting on and stays actionable; nothing claims it was
+          sent. (The retry line lives on the host; see OpsBoard.) */}
+      {gate && gate.outcome === 'timing' && (
+        <div className="ops-state ops-state-wait">
+          Waiting for the send window — {gate.message}
+        </div>
       )}
       {error && <div className="ops-err">{error}</div>}
       <div className={canDraft ? 'ops-ac three' : 'ops-ac'}>
@@ -341,7 +412,7 @@ export function PendingCard({ draft, refresh }: { draft: OpsDraft; refresh: () =
         <div className="btn p" onClick={busy || drafting ? undefined : onApprove}>
           {busy
             ? (isNewsjack ? 'Claiming…' : isEscalatedComment ? 'Closing…' : isComment ? 'Posting…' : isOutbound ? (approveUrl ? 'Opening…' : 'Copying…') : isWeekly ? 'Copying…' : 'Sending…')
-            : (isNewsjack ? 'Approve & jump' : isEscalatedComment ? 'Mark handled' : isComment ? 'Approve & post' : isOutbound ? (approveUrl ? 'Approve & open gate' : 'Approve & copy') : isWeekly ? 'Approve & copy' : 'Approve & send')}
+            : (isNewsjack ? 'Approve & jump' : isEscalatedComment ? 'Mark handled' : isComment ? 'Approve & post' : isOutbound ? (approveUrl ? 'Approve & queue' : 'Approve & copy') : isWeekly ? 'Approve & copy' : 'Approve & send')}
         </div>
       </div>
     </div>
