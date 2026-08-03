@@ -1,0 +1,484 @@
+// useLive — the LIVE CONVERSATION loop. OpenAI-live-chat shape:
+// listen → fast model → speak → listen again, with real work escalating
+// through the full Railway Claude Code pipeline mid-conversation.
+//
+// The state machine is the EXISTING tested reducer in voice.ts, driven with
+// handsFree: true — extended by events, not rewritten. The invariant its
+// tests pin ("SPEAKING has no transition that arms the mic") survives here
+// twice over: the reducer has no such path, and this hook's audio pump
+// GATES frames on state — while SPEAKING, mic frames are dropped before
+// they reach the socket, so the model can never hear itself.
+//
+// Lanes (all measured 2026-08-03, numbers in phase3-latency-ledger.md):
+//   EARS   ElevenLabs scribe_v2_realtime — ONE WS session for the whole loop
+//          (one single-use token per loop open), partials drive the meter and
+//          client-side end-of-utterance; manual commit (server VAD returned an
+//          empty final on the bench — end-of-utterance stays ours).
+//   BRAIN  inbox-fast (direct Anthropic SSE, claude-haiku-4-5) — first text
+//          delta 1.0-1.3s. The Railway proxy measured 4.14s wall on a trivial
+//          turn, which fails the voice gate; that is why this lane exists.
+//   MOUTH  speechSynthesis — PICKED BY NUMBERS: 8-21ms first-audible vs
+//          ElevenLabs Flash's 400-945ms first-audio over WS. The loser ships
+//          as the fallback (speakEl below): used when speechSynthesis is
+//          absent/fails, or forced via localStorage 'wb-live-tts'='el'.
+//   WORK   <<ESCALATE: …>> in a fast reply → the caller dispatches the task
+//          through the EXISTING useChat.send (inbox-claude broker → Railway
+//          CLI) so progress streams into the chat pane; when that turn lands,
+//          feedResult() runs one more fast turn to SPEAK a summary.
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { supabase } from '../../../lib/supabase'
+import {
+  IDLE, NO_SPEECH_ROUNDS, speakableText, ttsSupported, voiceReduce,
+  type VoiceEvent, type VoiceState,
+} from './voice'
+import { floatToPcm16Base64, frameLevel, parseRtEvent, rtAudioFrame, rtSocketUrl, RT_SAMPLE_RATE } from './rtstt'
+import {
+  detectEscalation, EOU_SILENCE_MS, LIVE_TURN_CAP, parseFastFrame, resultFeed,
+  splitSseBuffer, trimHistory, type LiveMsg,
+} from './live'
+
+const RT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/inbox-rt-token`
+const FAST_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/inbox-fast`
+
+const SAMPLES_PER_SEND = 1600
+// Energy VAD: RMS above this is speech (AGC-normalised mic), below is quiet.
+const VAD_RMS = 0.015
+// A round of listening with no speech at all before a no-speech event.
+const NO_SPEECH_MS = 8000
+
+export type LiveExchange = { heard: string; reply: string }
+
+export function useLive({ onEscalate }: {
+  /** Dispatch an escalated task into the real pipeline (useChat.send). */
+  onEscalate: (task: string) => void
+}) {
+  const [state, setState] = useState<VoiceState>(IDLE)
+  const [level, setLevel] = useState(0)
+  const [interim, setInterim] = useState('')
+  const [last, setLast] = useState<LiveExchange | null>(null)
+  const [turns, setTurns] = useState(0)
+
+  const ws = useRef<WebSocket | null>(null)
+  const ctx = useRef<AudioContext | null>(null)
+  const stream = useRef<MediaStream | null>(null)
+  const node = useRef<AudioWorkletNode | ScriptProcessorNode | null>(null)
+  const acc = useRef<Float32Array[]>([])
+  const accLen = useRef(0)
+  const history = useRef<LiveMsg[]>([])
+  const rounds = useRef(0)
+  const turnCount = useRef(0)
+  const speechHeard = useRef(false)
+  const lastVoiceAt = useRef(0)
+  const listenStartedAt = useRef(0)
+  const queuedResult = useRef<string | null>(null)
+  const pendingUser = useRef<string | null>(null)
+  const eouTimer = useRef<number | null>(null)
+  const abortFast = useRef<AbortController | null>(null)
+  const stateRef = useRef<VoiceState>(IDLE)
+  stateRef.current = state
+  const onEscalateRef = useRef(onEscalate)
+  onEscalateRef.current = onEscalate
+  // ⚠ StrictMode alive-flag: set true in the effect BODY (useChat.ts:79).
+  const alive = useRef(true)
+  useEffect(() => {
+    alive.current = true
+    return () => { alive.current = false; hardStopRef.current() }
+  }, [])
+
+  const supported = typeof window !== 'undefined'
+    && typeof window.WebSocket !== 'undefined'
+    && typeof window.AudioContext !== 'undefined'
+    && !!navigator.mediaDevices?.getUserMedia
+
+  const dispatch = useCallback((ev: VoiceEvent) => {
+    setState(s => {
+      const next = voiceReduce(s, ev, { handsFree: true })
+      stateRef.current = next
+      return next
+    })
+  }, [])
+
+  const hardStop = useCallback(() => {
+    if (eouTimer.current) { clearInterval(eouTimer.current); eouTimer.current = null }
+    abortFast.current?.abort(); abortFast.current = null
+    if (ttsSupported()) window.speechSynthesis.cancel()
+    const w = ws.current; ws.current = null
+    if (w) { w.onmessage = null; w.onerror = null; w.onclose = null; try { w.close() } catch { /* dead */ } }
+    const n = node.current; node.current = null
+    if (n) { try { n.disconnect() } catch { /* dead */ } }
+    const c = ctx.current; ctx.current = null
+    if (c) { void c.close().catch(() => { /* dead */ }) }
+    const s = stream.current; stream.current = null
+    if (s) s.getTracks().forEach(t => t.stop())
+    acc.current = []; accLen.current = 0
+    history.current = []
+    queuedResult.current = null
+    pendingUser.current = null
+    rounds.current = 0
+    turnCount.current = 0
+    if (alive.current) { setLevel(0); setInterim(''); setTurns(0) }
+  }, [])
+  const hardStopRef = useRef(hardStop)
+  hardStopRef.current = hardStop
+
+  // ---- audio pump: gated on the machine's state. Frames flow to the socket
+  // ONLY while LISTENING — during SPEAKING/SENDING they are dropped here,
+  // before the network, which is the second lock on the echo bug.
+  const pushSamples = useCallback((samples: Float32Array) => {
+    const s = stateRef.current.s
+    if (s !== 'LISTENING' && s !== 'TRANSCRIBING') return
+    const rms = frameLevel(samples)
+    if (s === 'LISTENING') {
+      setLevel(l => l * 0.6 + Math.min(1, rms * 18) * 0.4)
+      dispatch({ e: 'level', level: Math.min(1, rms * 18) })
+      if (rms > VAD_RMS) { speechHeard.current = true; lastVoiceAt.current = Date.now() }
+    }
+    acc.current.push(samples)
+    accLen.current += samples.length
+    if (accLen.current < SAMPLES_PER_SEND) return
+    const joined = new Float32Array(accLen.current)
+    let off = 0
+    for (const chunk of acc.current) { joined.set(chunk, off); off += chunk.length }
+    acc.current = []; accLen.current = 0
+    const w = ws.current
+    if (w && w.readyState === WebSocket.OPEN) w.send(rtAudioFrame(floatToPcm16Base64(joined), false))
+  }, [dispatch])
+
+  // ---- ARMING → mic + single-use token + one WS for the whole loop ----
+  const arm = useCallback(async () => {
+    try {
+      const micP = navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      })
+      const { data } = await supabase.auth.getSession()
+      const jwt = data.session?.access_token
+      if (!jwt) throw new Error('no-key-broker')
+      const res = await fetch(RT_URL, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: 'stt' }),
+      })
+      if (!res.ok) throw new Error('no-key-broker')
+      const { token } = await res.json() as { token?: string }
+      if (!token) throw new Error('no-key-broker')
+
+      let mic: MediaStream
+      try { mic = await micP } catch { throw new Error('mic-denied') }
+      if (!alive.current) { mic.getTracks().forEach(t => t.stop()); return }
+      stream.current = mic
+      const c = new AudioContext({ sampleRate: RT_SAMPLE_RATE })
+      ctx.current = c
+      const src = c.createMediaStreamSource(mic)
+      try {
+        const workletSrc = `registerProcessor('live-pcm', class extends AudioWorkletProcessor {
+          process(inputs) { const ch = inputs[0] && inputs[0][0]; if (ch) this.port.postMessage(ch.slice(0)); return true }
+        })`
+        const url = URL.createObjectURL(new Blob([workletSrc], { type: 'application/javascript' }))
+        await c.audioWorklet.addModule(url)
+        URL.revokeObjectURL(url)
+        const n = new AudioWorkletNode(c, 'live-pcm')
+        n.port.onmessage = (e: MessageEvent<Float32Array>) => pushSamples(e.data)
+        src.connect(n)
+        node.current = n
+      } catch {
+        const n = c.createScriptProcessor(4096, 1, 1)
+        n.onaudioprocess = (e) => pushSamples(new Float32Array(e.inputBuffer.getChannelData(0)))
+        src.connect(n)
+        n.connect(c.destination)
+        node.current = n
+      }
+
+      const w = new WebSocket(rtSocketUrl(token))
+      ws.current = w
+      w.onerror = () => { if (ws.current === w) dispatch({ e: 'fail', reason: 'stt-network', retryable: true }) }
+      w.onmessage = (e) => {
+        const ev = parseRtEvent(e.data as string)
+        if (ev.kind === 'session') {
+          dispatch({ e: 'granted' })
+        } else if (ev.kind === 'partial') {
+          if (alive.current) setInterim(ev.text)
+          if (ev.text.trim()) { speechHeard.current = true; lastVoiceAt.current = Date.now() }
+        } else if (ev.kind === 'committed') {
+          if (alive.current) setInterim('')
+          const text = ev.text.trim()
+          // The machine's named path: empty commit = silence → LISTENING.
+          pendingUser.current = text || null
+          dispatch({ e: 'transcript', text })
+        } else if (ev.kind === 'error') {
+          const retryable = ev.code !== 'auth_error' && ev.code !== 'quota_exceeded'
+          dispatch({ e: 'fail', reason: 'stt-upstream', retryable })
+        }
+      }
+    } catch (e) {
+      const reason = e instanceof Error && (e.message === 'mic-denied' || e.message === 'no-key-broker')
+        ? e.message as 'mic-denied' | 'no-key-broker'
+        : 'stt-network'
+      dispatch({ e: 'fail', reason, retryable: reason !== 'mic-denied' })
+    }
+  }, [dispatch, pushSamples])
+
+  // ---- LISTENING: end-of-utterance + no-speech watchdog ----
+  useEffect(() => {
+    if (state.s !== 'LISTENING') {
+      if (eouTimer.current) { clearInterval(eouTimer.current); eouTimer.current = null }
+      return
+    }
+    speechHeard.current = false
+    lastVoiceAt.current = 0
+    listenStartedAt.current = Date.now()
+    setInterim('')
+    // A result that landed while we were speaking/working runs now.
+    if (queuedResult.current) {
+      const r = queuedResult.current
+      queuedResult.current = null
+      pendingUser.current = r
+      dispatch({ e: 'heard-silence' })
+      dispatch({ e: 'transcript', text: r })
+      return
+    }
+    eouTimer.current = window.setInterval(() => {
+      const now = Date.now()
+      if (speechHeard.current) {
+        if (now - lastVoiceAt.current >= EOU_SILENCE_MS) {
+          if (eouTimer.current) { clearInterval(eouTimer.current); eouTimer.current = null }
+          dispatch({ e: 'heard-silence' })
+          // Commit on a final silent frame; the committed_transcript that
+          // comes back drives the transcript event above.
+          const w = ws.current
+          if (w && w.readyState === WebSocket.OPEN) {
+            w.send(rtAudioFrame(floatToPcm16Base64(new Float32Array(SAMPLES_PER_SEND)), true))
+          }
+        }
+      } else if (now - listenStartedAt.current >= NO_SPEECH_MS) {
+        rounds.current += 1
+        if (rounds.current >= NO_SPEECH_ROUNDS) {
+          // Auto-disarm: three empty rounds means nobody is talking.
+          dispatch({ e: 'no-speech', round: rounds.current })
+        } else {
+          listenStartedAt.current = now
+          dispatch({ e: 'no-speech', round: rounds.current })
+        }
+      }
+    }, 200) as unknown as number
+    return () => {
+      if (eouTimer.current) { clearInterval(eouTimer.current); eouTimer.current = null }
+    }
+  }, [state.s, dispatch])
+
+  // ---- SENDING: one fast-lane turn ----
+  const runFastTurn = useCallback(async (userText: string) => {
+    turnCount.current += 1
+    if (alive.current) setTurns(turnCount.current)
+    if (turnCount.current > LIVE_TURN_CAP) {
+      dispatch({ e: 'fail', reason: 'stt-upstream', retryable: false })
+      return
+    }
+    history.current = trimHistory([...history.current, { role: 'user', content: userText }])
+    const ctrl = new AbortController()
+    abortFast.current = ctrl
+    let reply = ''
+    try {
+      const { data } = await supabase.auth.getSession()
+      const jwt = data.session?.access_token
+      if (!jwt) throw new Error('auth')
+      const res = await fetch(FAST_URL, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: history.current }),
+        signal: ctrl.signal,
+      })
+      if (!res.ok || !res.body) throw new Error(`fast_${res.status}`)
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buf = ''
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buf += decoder.decode(value, { stream: true })
+        const { frames, rest } = splitSseBuffer(buf)
+        buf = rest
+        for (const frame of frames) {
+          const ev = parseFastFrame(frame)
+          if (ev.kind === 'delta') reply += ev.text
+          else if (ev.kind === 'error') throw new Error(ev.detail)
+        }
+      }
+    } catch (e) {
+      abortFast.current = null
+      if (ctrl.signal.aborted) return
+      console.error('fast turn failed', e)
+      dispatch({ e: 'fail', reason: 'stt-network', retryable: true })
+      return
+    }
+    abortFast.current = null
+    if (!alive.current) return
+    history.current = [...history.current, { role: 'assistant', content: reply }]
+    const esc = detectEscalation(reply)
+    const toSpeak = esc ? esc.spoken : speakableText(reply)
+    if (esc) onEscalateRef.current(esc.task)
+    if (alive.current) setLast({ heard: userText, reply: toSpeak || reply })
+    rounds.current = 0
+    pendingSpeech.current = toSpeak
+    dispatch({ e: 'turn-done', speak: !!toSpeak })
+  }, [dispatch])
+
+  const pendingSpeech = useRef('')
+
+  useEffect(() => {
+    if (state.s === 'SENDING' && pendingUser.current) {
+      const text = pendingUser.current
+      pendingUser.current = null
+      void runFastTurn(text)
+    }
+  }, [state.s, runFastTurn])
+
+  // ---- SPEAKING: speechSynthesis primary (11ms first-audible), ElevenLabs
+  // Flash WS fallback (811ms median first-audio) — loser ships as fallback,
+  // forceable via localStorage 'wb-live-tts'='el'.
+  useEffect(() => {
+    if (state.s !== 'SPEAKING') return
+    const text = pendingSpeech.current
+    pendingSpeech.current = ''
+    if (!text) { dispatch({ e: 'speak-end' }); return }
+    let done = false
+    const end = () => { if (!done) { done = true; dispatch({ e: 'speak-end' }) } }
+    const wantEl = (() => { try { return localStorage.getItem('wb-live-tts') === 'el' } catch { return false } })()
+    if (!wantEl && ttsSupported()) {
+      try {
+        window.speechSynthesis.cancel()
+        const u = new SpeechSynthesisUtterance(text)
+        u.rate = 1.04
+        u.onend = end
+        u.onerror = () => { void speakEl(text).finally(end) }
+        window.speechSynthesis.speak(u)
+        return () => { window.speechSynthesis.cancel(); end() }
+      } catch { void speakEl(text).finally(end) }
+    } else {
+      void speakEl(text).finally(end)
+    }
+    return () => { end() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.s, dispatch])
+
+  // ---- public surface ----
+  const open = useCallback(() => {
+    if (stateRef.current.s !== 'IDLE') return
+    history.current = []
+    turnCount.current = 0
+    rounds.current = 0
+    setLast(null)
+    setTurns(0)
+    dispatch({ e: 'arm' })
+    void arm()
+  }, [arm, dispatch])
+
+  const close = useCallback(() => {
+    hardStop()
+    setState(IDLE)
+    stateRef.current = IDLE
+  }, [hardStop])
+
+  const skip = useCallback(() => {
+    if (ttsSupported()) window.speechSynthesis.cancel()
+    dispatch({ e: 'skip' })
+  }, [dispatch])
+
+  const resume = useCallback(() => {
+    rounds.current = 0
+    // The socket and mic are still armed; PAUSED→ARMING→granted is instant.
+    dispatch({ e: 'resume' })
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) dispatch({ e: 'granted' })
+  }, [dispatch])
+
+  /** ⌘D's "toggle the loop mic": LISTENING → PAUSED (frames stop flowing). */
+  const pause = useCallback(() => {
+    if (stateRef.current.s !== 'LISTENING') return
+    rounds.current = 0
+    dispatch({ e: 'no-speech', round: NO_SPEECH_ROUNDS })
+  }, [dispatch])
+
+  /** A completed pipeline turn — spoken as a summary on the next safe beat. */
+  const feedResult = useCallback((text: string) => {
+    const fed = resultFeed(text)
+    if (stateRef.current.s === 'LISTENING') {
+      pendingUser.current = fed
+      dispatch({ e: 'heard-silence' })
+      dispatch({ e: 'transcript', text: fed })
+    } else if (stateRef.current.s !== 'IDLE' && stateRef.current.s !== 'ERROR') {
+      queuedResult.current = fed
+    }
+  }, [dispatch])
+
+  return { state, level, interim, last, turns, supported, open, close, skip, resume, pause, feedResult }
+}
+
+// ---------------------------------------------------------------------------
+// ElevenLabs Flash fallback voice — Daniel over the tts_websocket single-use
+// token, PCM 22050 scheduled through a throwaway AudioContext. Measured
+// first-audio 400-945ms after text send; that is why it is the fallback and
+// not the default.
+// ---------------------------------------------------------------------------
+const EL_VOICE = 'onwK4e9ZLuTAKqWW03F9' // Daniel
+
+async function speakEl(text: string): Promise<void> {
+  try {
+    const { data } = await supabase.auth.getSession()
+    const jwt = data.session?.access_token
+    if (!jwt) return
+    const res = await fetch(RT_URL, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kind: 'tts' }),
+    })
+    if (!res.ok) return
+    const { token } = await res.json() as { token?: string }
+    if (!token) return
+    const ctx = new AudioContext({ sampleRate: 22050 })
+    await new Promise<void>((resolve) => {
+      const ws = new WebSocket(
+        `wss://api.elevenlabs.io/v1/text-to-speech/${EL_VOICE}/stream-input`
+        + `?model_id=eleven_flash_v2_5&output_format=pcm_22050&single_use_token=${encodeURIComponent(token)}`,
+      )
+      let playhead = 0
+      let closed = false
+      const finish = () => {
+        if (closed) return
+        closed = true
+        try { ws.close() } catch { /* dead */ }
+        const waitMs = Math.max(0, (playhead - ctx.currentTime) * 1000) + 100
+        setTimeout(() => { void ctx.close().catch(() => { /* dead */ }); resolve() }, waitMs)
+      }
+      const timeout = setTimeout(finish, 20000)
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ text: ' ' }))
+        ws.send(JSON.stringify({ text: `${text} ` }))
+        ws.send(JSON.stringify({ text: '' }))
+      }
+      ws.onerror = () => { clearTimeout(timeout); finish() }
+      ws.onclose = () => { clearTimeout(timeout); finish() }
+      ws.onmessage = (e) => {
+        let msg: { audio?: string; isFinal?: boolean }
+        try { msg = JSON.parse(e.data as string) } catch { return }
+        if (msg.audio) {
+          const bin = atob(msg.audio)
+          const samples = new Float32Array(bin.length / 2)
+          for (let i = 0; i < samples.length; i++) {
+            const lo = bin.charCodeAt(i * 2), hi = bin.charCodeAt(i * 2 + 1)
+            let v = (hi << 8) | lo
+            if (v >= 0x8000) v -= 0x10000
+            samples[i] = v / 0x8000
+          }
+          const buf = ctx.createBuffer(1, samples.length, 22050)
+          buf.copyToChannel(samples, 0)
+          const src = ctx.createBufferSource()
+          src.buffer = buf
+          src.connect(ctx.destination)
+          const at = Math.max(ctx.currentTime + 0.05, playhead)
+          src.start(at)
+          playhead = at + buf.duration
+        }
+        if (msg.isFinal) { clearTimeout(timeout); finish() }
+      }
+    })
+  } catch { /* fallback voice failing is a lost nicety, not an error state */ }
+}
