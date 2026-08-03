@@ -9,7 +9,7 @@ import { InboxSkeleton } from '../../components/Skeleton'
 import { useInbox } from '../../hooks/useInbox'
 import { useOps } from '../../hooks/useOps'
 import { pendingOps } from '../../lib/ops'
-import type { Filter } from '../../lib/inbox'
+import { inboxWaitingCount, type Filter } from '../../lib/inbox'
 import type { ContentLane } from '../../lib/content'
 import { MobileTabs, Rail, WorkSegment } from './Rail'
 import { ContentList } from './ContentList'
@@ -132,7 +132,13 @@ export default function Shell() {
   const opsPend = pendingOps(ops.drafts)
   const dmDrafts = inbox.threads.filter(t => t.draft).length
   const counts = {
-    inbox: inbox.threads.filter(t => t.unread > 0).length,
+    // Ask 11 — the "56" was every thread with an unread inbound row, 28 of
+    // which Ivan had already answered in the LinkedIn app (the mirror writes
+    // the outbound, nothing stamps read_at). The badge now counts only what is
+    // genuinely waiting: unanswered replies + drafts to approve + threads the
+    // reply detector flagged needs_manual_reply. Same derivation as the list
+    // and the InboxHead breakdown (lib/inbox.ts, inboxBreakdown).
+    inbox: inboxWaitingCount(inbox.threads),
     drafts: dmDrafts,
     ops: opsPend.length,
     content: badge.count,

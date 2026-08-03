@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { fetchMessages, groupThreads, type Thread } from '../lib/inbox'
+import { fetchManualReplyIds, fetchMessages, groupThreads, type Thread } from '../lib/inbox'
 import { playChime } from '../lib/chime'
 
 // A burst of dispatcher writes (one row every ~2 min per active lane, plus
@@ -31,13 +31,19 @@ export function useInbox() {
   // (useOps.ts:8-15, useContent.ts:28-35, useAgent.ts:21-26); it no longer is.
   const topic = `inbox:${useId()}`
   const refresh = useCallback(() => {
-    fetchMessages().then(rows => {
+    // The needs_manual_reply probe rides alongside the message fetch, never in
+    // front of it: a failed flag read degrades the badge (those threads drop to
+    // "waiting"), it must not take the whole inbox down with it.
+    Promise.all([
+      fetchMessages(),
+      fetchManualReplyIds().catch(() => new Set<string>()),
+    ]).then(([rows, manualReplyIds]) => {
       const latest = rows
         .filter(m => m.direction === 'inbound')
         .map(m => m.created_at).sort().at(-1) ?? null
       if (latest && newestInbound.current && latest > newestInbound.current) playChime()
       if (latest) newestInbound.current = latest
-      setThreads(groupThreads(rows))
+      setThreads(groupThreads(rows, manualReplyIds))
       setError(null)
       setLoadedAt(new Date().toISOString())
       setLoading(false)
