@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useResourceDetail } from '../../hooks/useContent'
 import {
   LANE_LABEL, normalizeAgentLog, normalizeImageUrls, normalizeQa, selfContainedHtml,
@@ -10,6 +10,7 @@ import { AgentRegister, QaRegister } from './Register'
 import { HtmlPreview, Takeover } from './Takeover'
 import { absTime, relTime } from './fmt'
 import { Failed } from './Surface'
+import { regenLmContent, regenLmCover } from '../../lib/studioActions'
 
 // A lead-magnet row (lm_drafts_v2), opened into the same takeover register as a
 // content draft. LM rows had NO detail surface at all before this — the row
@@ -28,6 +29,69 @@ function textBlock(label: string, v: string | null | undefined): ReactNode {
     <Block label={label}>
       <div className="dd-card"><div className="dd-body dd-pre">{s}</div></div>
     </Block>
+  )
+}
+
+// The lead-magnet ACTIONS Ivan named ("regen cover image and others like regen
+// copy"). Both hit the same n8n webhooks the old dashboard hits — lm-regen-cover-v2
+// and lm-gen-v2 — probed from this origin before shipping (OPTIONS returns
+// allow-methods OPTIONS, POST for this app's origin).
+//
+// Both cost real money and real time, so both confirm, and each says what it
+// touches: the cover regen writes cover_url and NOTHING else (the engine's own
+// guarantee, which is why it is safe on a reviewed body), while a content regen
+// replaces the written body.
+function LmActions({ d, hasCover }: { d: { id: string; topic?: string | null; format?: string | null }; hasCover: boolean }) {
+  const [asking, setAsking] = useState<'cover' | 'content' | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const [note, setNote] = useState('')
+
+  const run = async (what: 'cover' | 'content') => {
+    setBusy(true); setErr(''); setNote('')
+    try {
+      if (what === 'cover') {
+        await regenLmCover(d.id)
+        setNote('Cover regeneration started — it replaces the image in place, so it appears here on the next refresh.')
+      } else {
+        await regenLmContent(d)
+        setNote('Content regeneration started. The row sits in Generating until the run lands.')
+      }
+      setAsking(null)
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not start it')
+    } finally { setBusy(false) }
+  }
+
+  return (
+    <div className="wb-delzone">
+      {err && <div className="ops-err">{err}</div>}
+      {note && <div className="ct-subtle">{note}</div>}
+      {asking === null ? (
+        <div className="ct-ac">
+          <button type="button" className="wb-editbtn" onClick={() => setAsking('cover')}>
+            {hasCover ? 'Regen cover' : 'Generate cover'}
+          </button>
+          <button type="button" className="wb-editbtn" onClick={() => setAsking('content')}>
+            Regen content
+          </button>
+        </div>
+      ) : (
+        <div className="wb-delconfirm">
+          <span className="wb-delq">
+            {asking === 'cover'
+              ? 'Regenerate the cover image? It costs a paid image generation and takes a couple of minutes. It writes the cover only — the body is untouched.'
+              : 'Regenerate the written content? This replaces the body, email copy and resource for this lead magnet. The run takes around ten minutes.'}
+          </span>
+          <div className="ct-ac">
+            <button type="button" className="btn s" disabled={busy} onClick={() => setAsking(null)}>Cancel</button>
+            <button type="button" className="btn p" disabled={busy} onClick={() => run(asking)}>
+              {busy ? 'Starting…' : asking === 'cover' ? 'Regenerate cover' : 'Regenerate content'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -85,6 +149,8 @@ function Body({ d }: { d: ResourceDetail }) {
           </div>
         </Block>
       )}
+
+      <LmActions d={d} hasCover={heroImgs.length > 0} />
 
       {/* The landing-page artifact — what this lead magnet actually IS. Only
           a self-contained document earns the frame; a kit-CSS fragment would

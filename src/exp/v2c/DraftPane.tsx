@@ -4,8 +4,9 @@ import {
   LANE_LABEL, STAGE_LABEL, deleteDraft, normalizeAgentLog, normalizeImageUrls,
   normalizeKeyPoints, normalizeQa, normalizeSourceDetail, reviewActionable, selfContainedHtml, stageOf,
   taxonomyExtras, taxonomyFields, taxonomyValue, updateDraftBody,
-  type ContentDraftDetail, type ContentLane,
+  type ContentDraft, type ContentDraftDetail, type ContentLane,
 } from '../../lib/content'
+import { clearHumanEdit, planRegen, regenerateDraft } from '../../lib/studioActions'
 import { ReviewActions } from './ReviewActions'
 import { Block, KeyRows, Rows, Val } from './ContentBits'
 import { AgentRegister, QaRegister } from './Register'
@@ -126,6 +127,91 @@ function PostBlock({ d, lane }: { d: ContentDraftDetail; lane: ContentLane }) {
         <div className="dd-card"><div className="dd-body dd-pre">{shown}</div></div>
       )}
     </Block>
+  )
+}
+
+// REGENERATE — the old dashboard's "Regen copy", brought across (Ivan, ask:
+// "i have stuff like regen cover image and others like regen copy"). Fires the
+// SAME post-gen-v2 webhook the dashboard fires; nothing is reimplemented.
+//
+// It states the two conflicts instead of resolving them behind his back:
+//
+//  1. THE IMAGE. post-gen only writes image_urls when include_image='Yes', and
+//     the old dashboard sent Yes for every single_image row — which is the
+//     "regen wipes image_urls, re-pin the photo" trap. Here the default is
+//     copy-only, so a hand-pinned photo SURVIVES, and asking for a new image is
+//     a second, explicit button.
+//  2. THE GUARD. db/025 stops a service_role write from overwriting a
+//     human-edited body, so a regen on an edited row runs for ~8 minutes and
+//     lands nothing. The window says so up front and offers the documented
+//     escape hatch as its own deliberate act.
+function RegenDraft({ d, onDone }: { d: ContentDraftDetail; onDone: () => void }) {
+  const [asking, setAsking] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const [note, setNote] = useState('')
+  const plan = planRegen(d as unknown as ContentDraft)
+  const hasImage = normalizeImageUrls(d.image_urls).length > 0
+
+  const run = async (withImage: boolean, clearGuard: boolean) => {
+    setBusy(true); setErr(''); setNote('')
+    try {
+      if (clearGuard) await clearHumanEdit(d as unknown as ContentDraft)
+      const p = await regenerateDraft(d as unknown as ContentDraft, withImage)
+      setNote(
+        `Firing ${p.postFormat}${p.includeImage === 'Yes' ? ' with a new image' : ' (copy only)'}. `
+        + `The run takes minutes — the row sits in Generating until it lands.`,
+      )
+      onDone()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not start the regeneration')
+    } finally { setBusy(false) }
+  }
+
+  if (!asking) {
+    return (
+      <div className="wb-delzone">
+        {note && <div className="ct-subtle">{note}</div>}
+        <button type="button" className="wb-editbtn" onClick={() => setAsking(true)}>
+          Regenerate copy
+        </button>
+      </div>
+    )
+  }
+  return (
+    <div className="wb-delzone">
+      {err && <div className="ops-err">{err}</div>}
+      <div className="wb-delconfirm">
+        <span className="wb-delq">
+          Re-run the pipeline for this {plan.postFormat.toLowerCase()}? It replaces the copy.
+          {hasImage && ' Your pinned image is kept unless you pick the image option.'}
+        </span>
+        {plan.blockedByGuard && (
+          <div className="ct-subtle">
+            ⚠ You edited this draft by hand, so the database guard will refuse to overwrite your
+            words — the run would land nothing. “Replace my edit” clears that protection first.
+          </div>
+        )}
+        <div className="ct-ac">
+          <button type="button" className="btn s" disabled={busy} onClick={() => setAsking(false)}>
+            Cancel
+          </button>
+          <button type="button" className="btn s" disabled={busy} onClick={() => run(false, false)}>
+            {busy ? 'Firing…' : 'Copy only'}
+          </button>
+          {d.type === 'single_image' && (
+            <button type="button" className="btn s" disabled={busy} onClick={() => run(true, false)}>
+              Copy + new image
+            </button>
+          )}
+          {plan.blockedByGuard && (
+            <button type="button" className="btn wb-btn-danger" disabled={busy} onClick={() => run(false, true)}>
+              Replace my edit
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -382,6 +468,7 @@ function Body({ d, lane, refresh, onClose }: {
       )}
       {/* Skip ≠ Delete: Skip (above, review rows) archives visibly; Delete
           removes the row from every list, at any stage. Ivan lane only. */}
+      {lane === 'ivan' && <RegenDraft d={d} onDone={refresh} />}
       {lane === 'ivan' && <DeleteDraft d={d} onDone={() => { refresh(); onClose() }} />}
       <div style={{ height: 28 }} />
     </>
