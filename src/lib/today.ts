@@ -229,14 +229,94 @@ export function isToday(iso: string | null | undefined, now = new Date()): boole
     && d.getDate() === now.getDate()
 }
 
+// A slot that was called off is not a thing going out. The calendar path
+// already knew this (`status !== 'cancelled'`); the DIRECT path did not, and on
+// 2026-08-03 that is exactly what put "1 going out" on the masthead for a post
+// whose status was `cancelled` — the whole visible calendar was cancelled at the
+// time. One predicate, both paths, so they cannot disagree again.
+const DEAD_POST = new Set(['cancelled', 'canceled', 'skipped'])
+
+export function isLivePost(p: ScheduledPost): boolean {
+  return !DEAD_POST.has((p.status ?? '').toLowerCase())
+}
+
 // Posts that go out (or already went out) today. scheduled_posts is the fn's
 // own answer; the calendar is the fallback for payloads where that section is
 // empty but the calendar still carries today's slots.
 export function postsToday(b: Brief, scope: Scope, now = new Date()): ScheduledPost[] {
-  const direct = b.today_content.scheduled_posts.filter(p => inScope(p, scope))
+  const direct = b.today_content.scheduled_posts.filter(p => inScope(p, scope) && isLivePost(p))
   if (direct.length > 0) return direct
   return (b.content_calendar?.entries ?? [])
-    .filter(p => inScope(p, scope) && isToday(p.scheduled_at, now) && p.status !== 'cancelled')
+    .filter(p => inScope(p, scope) && isToday(p.scheduled_at, now) && isLivePost(p))
+}
+
+// Slots that WERE on today and are not happening. Never counted as load — but
+// never silent either: "nothing scheduled today" and "today's post was called
+// off" are different facts and the second one is news.
+export function cancelledToday(b: Brief, scope: Scope, now = new Date()): ScheduledPost[] {
+  const seen = new Set<string>()
+  return [...b.today_content.scheduled_posts, ...(b.content_calendar?.entries ?? [])]
+    .filter(p => inScope(p, scope) && !isLivePost(p)
+      && (isToday(p.scheduled_at, now) || b.today_content.scheduled_posts.includes(p)))
+    .filter(p => (seen.has(p.id) ? false : (seen.add(p.id), true)))
+}
+
+// ---------- age ----------
+//
+// Ivan, 2026-08-03: "the today stuff is all old shit". Measured on the live
+// brief the same afternoon (phase2-brief.json): of 15 things on the plate, the
+// one urgency was 2.9 days old, the 3 DM drafts 13.6-16.6d, the 6 comment
+// drafts 32.8-36.0d, and the single "going out" post was CANCELLED. Only 2 rows
+// were younger than a day.
+//
+// The screen was not lying about the counts — it was presenting a month-old
+// backlog under a heading that says TODAY. So age becomes a first-class axis:
+// what arrived since yesterday LEADS, everything else is grouped and labelled
+// as carried over WITH its age. Nothing is dropped; the totals are identical
+// before and after. A re-rank is not a filter.
+
+export type AgeBand = 'new' | 'carried'
+
+export const NEW_WINDOW_H = 24
+
+export function ageHours(iso: string | null | undefined, now = new Date()): number | null {
+  if (!iso) return null
+  const t = new Date(iso).getTime()
+  if (Number.isNaN(t)) return null
+  return Math.max(0, (now.getTime() - t) / 3600000)
+}
+
+// Undated rows count as NEW rather than carried over: the alternative is
+// labelling something "carried over from 36 days ago" on the strength of a null,
+// and an unprovable age is not evidence of an old item.
+export function ageBandOf(iso: string | null | undefined, now = new Date()): AgeBand {
+  const h = ageHours(iso, now)
+  return h === null || h < NEW_WINDOW_H ? 'new' : 'carried'
+}
+
+// "3d" / "16h" — the tag that rides on every carried-over group so the age is
+// on the screen rather than in a tooltip.
+export function ageTag(iso: string | null | undefined, now = new Date()): string | null {
+  const h = ageHours(iso, now)
+  if (h === null) return null
+  if (h < 1) return 'now'
+  if (h < 24) return `${Math.floor(h)}h`
+  return `${Math.floor(h / 24)}d`
+}
+
+export function splitByAge<T>(rows: T[], at: (r: T) => string | null | undefined, now = new Date()): {
+  fresh: T[]; carried: T[]
+} {
+  const fresh: T[] = []
+  const carried: T[] = []
+  for (const r of rows) (ageBandOf(at(r), now) === 'new' ? fresh : carried).push(r)
+  return { fresh, carried }
+}
+
+// The oldest thing on the plate, for the masthead's honest one-liner.
+export function oldestAge(dates: (string | null | undefined)[], now = new Date()): string | null {
+  const list = dates.filter((d): d is string => Boolean(d)).sort()
+  return list.length ? ageTag(list[0], now) : null
 }
 
 export function nextUp(b: Brief, scope: Scope, now = new Date()): ScheduledPost | null {
@@ -297,6 +377,63 @@ export function todayLoad(c: BriefCounts | null): TodayLoad {
   const approvals = approvalsTotal(c)
   const going = c.posts_today ?? 0
   return { urgent, approvals, going, total: urgent + approvals + going }
+}
+
+// ---------- the plate, ranked by age ----------
+//
+// THE re-rank. Every actionable row on this screen, split by whether it arrived
+// since yesterday, with the totals preserved exactly: `newCount + carriedCount`
+// is `todayLoad().total` by construction, and there is a test that says so. The
+// screen renders this and derives nothing of its own, so the heading, the
+// masthead and the zones cannot tell three different stories about the same day.
+
+export type AgedSplit<T> = { fresh: T[]; carried: T[] }
+
+export type TodayPlate = {
+  urgencies: AgedSplit<Urgency>
+  autoreplies: Urgency[]
+  dms: AgedSplit<DmDraft>
+  comments: AgedSplit<CommentDraft>
+  feed: AgedSplit<FeedDraft>
+  // A post going out today is today's by definition — it never carries over.
+  posts: ScheduledPost[]
+  cancelled: ScheduledPost[]
+  newCount: number
+  carriedCount: number
+  // Age of the oldest carried-over item, e.g. "36d" — printed, never hidden.
+  oldest: string | null
+}
+
+export function todayPlate(b: Brief | null, scope: Scope, now = new Date()): TodayPlate {
+  const empty: TodayPlate = {
+    urgencies: { fresh: [], carried: [] }, autoreplies: [],
+    dms: { fresh: [], carried: [] }, comments: { fresh: [], carried: [] },
+    feed: { fresh: [], carried: [] }, posts: [], cancelled: [],
+    newCount: 0, carriedCount: 0, oldest: null,
+  }
+  if (!b) return empty
+  const { visible, autoreplies } = partitionUrgencies(b.urgencies.filter(u => inScope(u, scope)))
+  const urgencies = splitByAge(visible, u => u.waiting_since, now)
+  const dms = splitByAge(b.needs_you.dm_drafts.filter(d => inScope(d, scope)), d => d.created_at, now)
+  const comments = splitByAge(b.needs_you.comment_drafts.filter(d => inScope(d, scope)), d => d.drafted_at, now)
+  const feed = splitByAge(b.needs_you.feed_drafts.filter(d => inScope(d, scope)), d => d.created_at, now)
+  const posts = postsToday(b, scope, now)
+  const newCount = urgencies.fresh.length + dms.fresh.length + comments.fresh.length
+    + feed.fresh.length + posts.length
+  const carriedCount = urgencies.carried.length + dms.carried.length + comments.carried.length
+    + feed.carried.length
+  return {
+    urgencies, autoreplies, dms, comments, feed, posts,
+    cancelled: cancelledToday(b, scope, now),
+    newCount,
+    carriedCount,
+    oldest: oldestAge([
+      ...urgencies.carried.map(u => u.waiting_since),
+      ...dms.carried.map(d => d.created_at),
+      ...comments.carried.map(d => d.drafted_at),
+      ...feed.carried.map(d => d.created_at),
+    ], now),
+  }
 }
 
 // ---------- transport ----------
