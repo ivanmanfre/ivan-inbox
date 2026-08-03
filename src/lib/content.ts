@@ -571,6 +571,110 @@ export async function updateDraftBody(id: string, body: string, taxonomy: unknow
   }
 }
 
+// ---------- the save CONFLICT contract (draft-window-v2) ----------
+//
+// The window is now an editor you can sit inside for minutes while four live
+// engines (phase1 sweep, db/025's header) rewrite post_body on a schedule, and
+// Proxy Health Recovery re-generates status='error' rows every ten minutes with
+// no human in the loop. The old save was a blind PATCH: last writer won, and
+// the loser was never told.
+//
+// db/025 protects an ALREADY-marked row from service_role. It does NOT protect
+// the FIRST edit — the flag only exists once a save has landed — and it does
+// not protect against the operator overwriting an engine's newer body without
+// being told there was one. So this path never picks a winner: if the stored
+// body has moved away from what the editor was opened on, the save STOPS and
+// hands both texts back.
+//
+// Two independent detectors, because we cannot see the table's triggers from an
+// anon key and must not depend on `updated_at` being maintained by one:
+//   1. a PRE-FLIGHT read of post_body — definitive, does not care about
+//      triggers, and catches the real case (an engine landing mid-edit);
+//   2. a compare-and-swap on `updated_at` in the UPDATE predicate — closes the
+//      read/write window IF the column is maintained, and is inert (never a
+//      false conflict) if it is not, because the value came from the same read.
+export type SaveConflict = {
+  kind: 'conflict' | 'gone'
+  /** What the database holds now. Null when the row is gone. */
+  theirs: string | null
+  theirUpdatedAt: string | null
+}
+
+export class DraftSaveConflict extends Error {
+  readonly detail: SaveConflict
+  constructor(detail: SaveConflict) {
+    super(detail.kind === 'gone'
+      ? 'This draft was deleted while you were editing it.'
+      : 'This draft changed in the database while you were editing it.')
+    this.name = 'DraftSaveConflict'
+    this.detail = detail
+  }
+}
+
+/**
+ * Save an edited body, refusing to clobber a body that moved underneath it.
+ *
+ * @param base  the post_body the editor was opened on — the compare half of the
+ *              compare-and-swap. Pass what was LOADED, never what is displayed.
+ * @param baseUpdatedAt the row's updated_at at load, or null to skip the CAS.
+ * @throws DraftSaveConflict when the stored body has moved, or the row is gone.
+ */
+export async function saveDraftBody(
+  id: string,
+  body: string,
+  taxonomy: unknown,
+  base: string | null,
+  baseUpdatedAt: string | null,
+): Promise<void> {
+  // 1 — pre-flight. A `maybeSingle` so a deleted row is a fact, not an error.
+  const pre = await supabase.from('carousel_drafts')
+    .select('post_body, updated_at')
+    .eq('id', id).is('client_id', null)
+    .maybeSingle()
+  if (pre.error) throw pre.error
+  if (!pre.data) throw new DraftSaveConflict({ kind: 'gone', theirs: null, theirUpdatedAt: null })
+  const stored = (pre.data.post_body ?? null) as string | null
+  if ((stored ?? '') !== (base ?? '')) {
+    throw new DraftSaveConflict({
+      kind: 'conflict',
+      theirs: stored,
+      theirUpdatedAt: (pre.data.updated_at ?? null) as string | null,
+    })
+  }
+
+  // 2 — the write, gated on updated_at not having moved since the pre-flight
+  // read. Using the PRE-FLIGHT value (not the load-time one) keeps the CAS about
+  // the window this function owns; a bookkeeping write between load and now has
+  // already been forgiven by step 1, which compared the thing that matters.
+  const freshUpdatedAt = (pre.data.updated_at ?? baseUpdatedAt) as string | null
+  let q = supabase.from('carousel_drafts')
+    .update({ post_body: body, taxonomy: stampHumanEdit(taxonomy) })
+    .eq('id', id).is('client_id', null)
+  if (freshUpdatedAt) q = q.eq('updated_at', freshUpdatedAt)
+  const { data, error } = await q.select('id')
+  if (error) throw error
+  if (!data || data.length === 0) {
+    // Zero rows means the predicate stopped matching. Re-read to say WHICH of
+    // the two reasons it was, rather than blaming the operator's session for a
+    // race or a race for an RLS refusal.
+    const post = await supabase.from('carousel_drafts')
+      .select('post_body, updated_at')
+      .eq('id', id).is('client_id', null)
+      .maybeSingle()
+    if (!post.error && !post.data) {
+      throw new DraftSaveConflict({ kind: 'gone', theirs: null, theirUpdatedAt: null })
+    }
+    if (!post.error && post.data && ((post.data.post_body ?? '') !== (base ?? ''))) {
+      throw new DraftSaveConflict({
+        kind: 'conflict',
+        theirs: (post.data.post_body ?? null) as string | null,
+        theirUpdatedAt: (post.data.updated_at ?? null) as string | null,
+      })
+    }
+    throw new Error('Save failed — the database did not accept the edit.')
+  }
+}
+
 // Delete, honestly. The RLS probe (2026-08-03) proved UPDATE on real rows but
 // left DELETE unproven: PostgREST answers 204 to a DELETE it silently filtered.
 // So: attempt the hard DELETE with return=representation; an EMPTY result
