@@ -1,0 +1,352 @@
+
+### client_boards reachable
+{
+  "httpStatus": 400,
+  "n": 0,
+  "slugs": []
+}
+
+### operator_client_drafts vs board_visible
+{
+  "n": 87,
+  "visible": 23,
+  "notVisible": 64,
+  "note": "the OPERATOR read returns both — so board_visible is a CLIENT-side gate, not an operator-side filter"
+}
+
+### client_board_actions (most recent 12)
+{
+  "httpStatus": 400,
+  "rows": {
+    "code": "42703",
+    "details": null,
+    "hint": null,
+    "message": "column client_board_actions.slug does not exist"
+  }
+}
+
+### client_boards select=*
+{
+  "s": 200,
+  "keys": []
+}
+
+### client_board_actions select=*
+{
+  "s": 200,
+  "body": []
+}
+
+### operator_clients_overview
+{
+  "s": 200,
+  "clients": [
+    {
+      "id": "risedtc",
+      "name": "RISE DTC (Mattan Danino)",
+      "slug": "risedtc-com",
+      "hasToken": true,
+      "drafts": {
+        "total": 87,
+        "review": 72,
+        "visible": 23
+      }
+    }
+  ]
+}
+
+### get_client_board (the CLIENT-facing read)
+{
+  "s": 200,
+  "topKeys": [
+    "lm",
+    "site",
+    "skin",
+    "brand",
+    "ideas",
+    "queue",
+    "voice",
+    "domain",
+    "founder",
+    "calendar",
+    "lm_ideas",
+    "logo_url",
+    "outreach",
+    "strategy",
+    "week_plan",
+    "newsletter",
+    "performance",
+    "company_name",
+    "lead_magnets",
+    "calendar_plan",
+    "lead_pipeline",
+    "content_styles",
+    "engine_updates",
+    "week_plan_focus",
+    "queue_updated_at",
+    "auto_publish_days",
+    "lead_pipeline_note"
+  ],
+  "queueLen": 23,
+  "queueSample": [
+    {
+      "id": "d9f2ebc3-63b0-4e19-a5ba-070e719d659f",
+      "body": "Pull up last month's P&L and run your finger down the cost side.\n\nRent moved. Ad spend moved. COGS moved. Payroll moved the second things got tight.\n\nEvery line on that sheet breathes with the business except one, and that one is the agency retainer sitting at the exact same number whether you just posted the best month you've ever run or you lost money on every single order that shipped.\n\nThink about how strange that is.\n\nThe one partner you brought in specifically to grow your bottom line is the only cost you carry that has nothing to do with your bottom line.\n\nAnd in fairness, that's how almost every good agency in this space has run for 25+ years. A base fee plus a percentage of whatever you spend on ads. Spend more, pay more. You take all the risk on day 1, the agency gets paid on day 1, and the invoice hits for the exact same amount whether the month was the best you've ever had or a complete wipeout.\n\nThat's BS.\n\nSo at RISE DTC we flipped it.\n\nWe only get paid on net incremental growth, after ad spend, discounts and returns. Take a brand from $20k to $30k a month, that's $10k of new revenue. Pull out $4k in ad spend, discounts and returns, and you're left with $6k of growth we actually created. We take 20% of that six. Flat month, we make close to nothing.\n\nWe can't run this for everyone though. It's for qualifying brands only. We say yes when we see a clear path to growth we can actually create. When we don't see it, we tell you upfront and pass.",
+      "hook": "Pull up last month's P&L and run your finger down the cost side.",
+      "kind": "post",
+      "image": "https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1/object/public/client-photos/risedtc-com/1784593214885-6-img_6782.jpg",
+      "stage": "review",
+      "style": "text",
+      "title": "Your agency invoice is the only line item in your P&L that never changes with results",
+      "pillar": "authority",
+      "lm_gate": null,
+      "post_body": "Pull up last month's P&L and run your finger down the cost side.\n\nRent moved. Ad spend moved. COGS moved. Payroll moved the second things got tight.\n\nEvery line on that sheet breathes with the business except one, and that one is the agency retainer sitting at the exact same number whether you just posted the best month you've ever run or you lost money on every single order that shipped.\n\nThink about how strange that is.\n\nThe one partner you brought in specifically to grow your bottom line is the only cost you carry that has nothing to do with your bottom line.\n\nAnd in fairness, that's how almost every good agency in this space has run for 25+ years. A base fee plus a percentage of whatever you spend on ads. Spend more, pay more. You take all the risk on day 1, the agency gets paid on day 1, and the invoice hits for the exact same amount whether the month was the best you've ever had or a complete wipeout.\n\nThat's BS.\n\nSo at RISE DTC we flipped it.\n\nWe only get paid on net incremental growth, after ad spend, discounts and returns. Take a brand from $20k to $30k a month, that's $10k of new revenue. Pull out $4k in ad spend, discounts and returns, and you're left with $6k of growth we actually created. We take 20% of that six. Flat month, we make close to nothing.\n\nWe can't run this for everyone though. It's for qualifying brands only. We say yes when we see a clear path to growth we can actually create. When we don't see it, we tell you upfront and pass.",
+      "alt_angles": [
+        {
+          "id": "alt-214c2c48",
+          "hook": "One product, one promise, one retention loop that prints cash.",
+          "title": "How Athletic Greens Built Its Subscription Engine",
+          "pillar": "teardown"
+        },
+        {
+          "id": "alt-37ad8604",
+          "hook": "What the brands clearing eight figures on BFCM actually set up back in October.",
+          "title": "Dissecting a DTC Brand's Black Friday Playbook",
+          "pillar": "teardown"
+        },
+        {
+          "id": "alt-1de13051",
+          "hook": "They raised average order value without changing their product lineup.",
+          "title": "Why This DTC Brand's AOV Strategy Worked",
+          "pillar": "teardown"
+        },
+        {
+          "id": "alt-70c9f7b7",
+          "hook": "Competitors can run ads on your brand name, and Google isn't always stopping them.",
+          "title": "Someone might be bidding on your brand name right now",
+          "pillar": "teardown"
+        },
+        {
+          "id": "alt-02a777f4",
+          "hook": "A 'pick any 6' upsell looks simple until you have to build the ops behind it.",
+          "title": "The hidden backend cost of 'pick any 6' bundles",
+          "pillar": "authority"
+        }
+      ],
+      "generating": false,
+      "image_urls": [
+        "https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1/object/public/client-photos/risedtc-com/1784593214885-6-img_6782.jpg"
+      ],
+      "agent_trail": [
+        {
+          "done": true,
+          "step": "Drafted",
+          "detail": "Written from your discovery call and your own posts"
+        },
+        {
+          "done": true,
+          "step": "Voice check",
+          "detail": "Reviewed against your voice profile before it reached this board"
+        },
+        {
+          "done": false,
+          "step": "Your review",
+          "detail": "On the board for your look before it is scheduled"
+        }
+      ],
+      "funnel_stage": "reach",
+      "publish_date": null,
+      "source_label": "Picked by Ivan",
+      "source_detail": {
+        "kind": "strategy",
+        "label": "RISE DTC content strategy"
+      }
+    },
+    {
+      "id": "f3ddece9-8dc8-4ab5-87b2-90201e746204",
+      "body": "For most of my career, I said yes to every kind of client.\n\nMostly B2B. SaaS, lead gen, services, inbound, paid media. If a business wanted growth, we took it.\n\nI thought saying yes to everything was the smart play. More clients, more revenue, more logos on the site.\n\n(I thought that was good.)\n\nWhat it actually got us: decent at a lot of things, great at almost nothing.\n\nA couple of years ago I made a call that scared me.\n\nWe cut most of what we did.\n\nEvery B2B service line we'd spent years building. Gone. On purpose.\n\nWe kept ONE thing:\n\n→ Growing DTC brands, profitably.\n\nThat's the whole business now.\n\nAnd no, I didn't blow up the team to get there. The whole team stayed. We just pointed everyone at the same target.\n\nPeople warned me I was shrinking the agency.\n\nThe opposite happened.\n\nWhen you work on the same kind of brand every single day, for the same kind of founder, you get sharp fast.\n\nThe margin guesswork drops off.\nSame with the vanity metrics.\nYou spot the profit gaps before the founder even brings them up.\n\nNiching down made us better 🙂\n\nI'll say the quiet part out loud: turning down good money is hard. It took me way too long to actually do it.\n\nIf you're a founder sitting on a business that does a little of everything and you're wondering whether to focus, I've lived both sides of it.\n\nI'd genuinely love to hear what you're building :)",
+      "hook": "18 years in the agency space.",
+      "kind": "post",
+      "image": "https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1/object/public/client-photos/risedtc-com/1784593213054-4-img_4373.jpg",
+      "stage": "review",
+      "style": "text",
+      "title": "The best thing we ever did was get a whole lot pickier",
+      "pillar": "personal",
+      "lm_gate": null,
+      "post_body": "For most of my career, I said yes to every kind of client.\n\nMostly B2B. SaaS, lead gen, services, inbound, paid media. If a business wanted growth, we took it.\n\nI thought saying yes to everything was the smart play. More clients, more revenue, more logos on the site.\n\n(I thought that was good.)\n\nWhat it actually got us: decent at a lot of things, great at almost nothing.\n\nA couple of years ago I made a call that scared me.\n\nWe cut most of what we did.\n\nEvery B2B service line we'd spent years building. Gone. On purpose.\n\nWe kept ONE thing:\n\n→ Growing DTC brands, profitably.\n\nThat's the whole business now.\n\nAnd no, I didn't blow up the team to get there. The whole team stayed. We just pointed everyone at the same target.\n\nPeople warned me I was shrinking the agency.\n\nThe opposite happened.\n\nWhen you work on the same kind of brand every single day, for the same kind of founder, you get sharp fast.\n\nThe margin guesswork drops off.\nSame with the vanity metrics.\nYou spot the profit gaps before the founder even brings them up.\n\nNiching down made us better 🙂\n\nI'll say the quiet part out loud: turning down good money is hard. It took me way too long to actually do it.\n\nIf you're a founder sitting on a business that does a little of everything and you're wondering whether to focus, I've lived both sides of it.\n\nI'd genuinely love to hear what you're building :)",
+      "alt_angles": [
+        {
+          "id": "alt-214c2c48",
+          "hook": "One product, one promise, one retention loop that prints cash.",
+          "title": "How Athletic Greens Built Its Subscription Engine",
+          "pillar": "teardown"
+        },
+        {
+          "id": "alt-37ad8604",
+          "hook": "What the brands clearing eight figures on BFCM actually set up back in October.",
+          "title": "Dissecting a DTC Brand's Black Friday Playbook",
+          "pillar": "teardown"
+        },
+        {
+          "id": "alt-1de13051",
+          "hook": "They raised average order value without changing their product lineup.",
+          "title": "Why This DTC Brand's AOV Strategy Worked",
+          "pillar": "teardown"
+        },
+        {
+          "id": "alt-70c9f7b7",
+          "hook": "Competitors can run ads on your brand name, and Google isn't always stopping them.",
+          "title": "Someone might be bidding on your brand name right now",
+          "pillar": "teardown"
+        },
+        {
+          "id": "alt-02a777f4",
+          "hook": "A 'pick any 6' upsell looks simple until you have to build the ops behind it.",
+          "title": "The hidden backend cost of 'pick any 6' bundles",
+          "pillar": "authority"
+        }
+      ],
+      "generating": false,
+      "image_urls": [
+        "https://bjbvqvzbzczjbatgmccb.supabase.co/storage/v1/object/public/client-photos/risedtc-com/1784593213054-4-img_4373.jpg"
+      ],
+      "agent_trail": [
+        {
+          "done": true,
+          "step": "Drafted",
+          "detail": "Written from your discovery call and your own posts"
+        },
+        {
+          "done": true,
+          "step": "Voice check",
+          "detail": "Reviewed against your voice profile before it reached this board"
+        },
+        {
+          "done": false,
+          "step": "Your review",
+          "detail": "On the board for your look before it is scheduled"
+        }
+      ],
+      "funnel_stage": "trust",
+      "publish_date": null,
+      "source_label": "From your own posts",
+      "source_detail": {
+        "kind": "own_posts",
+        "label": "From your own posts"
+      }
+    }
+  ]
+}
+
+### uuids in the client-facing board JSON
+{
+  "keys": [
+    "id",
+    "carousel_of"
+  ],
+  "n": 25,
+  "sample": [
+    "d9f2ebc3-63b0-4e19-a5ba-070e719d659f",
+    "f3ddece9-8dc8-4ab5-87b2-90201e746204",
+    "f283dcf6-1e13-4d2b-b9d6-d107a74b47f8",
+    "c95397c7-f8a1-4fb6-8e92-175fe0e6c2ac",
+    "ad3b9a7c-7102-4d54-99b3-b64d16ab4a2e",
+    "aed40840-5b8a-41d6-bd37-d044b45ae99f"
+  ]
+}
+
+### resolve to drafts?
+{
+  "matched": 25,
+  "notVisible": 2,
+  "sample": [
+    {
+      "id": "f0e7b915-f02c-4944-85fd-66eed489e2c8",
+      "status": "review",
+      "board_visible": false,
+      "client_id": "risedtc"
+    },
+    {
+      "id": "3d088236-841c-4340-84e3-87cbad2f414c",
+      "status": "review",
+      "board_visible": true,
+      "client_id": "risedtc"
+    },
+    {
+      "id": "1d8d5514-e09f-4d93-ad67-0caa8f1e8f25",
+      "status": "published",
+      "board_visible": true,
+      "client_id": "risedtc"
+    },
+    {
+      "id": "cbca673d-3239-440e-acba-799ea50a9024",
+      "status": "review",
+      "board_visible": true,
+      "client_id": "risedtc"
+    }
+  ]
+}
+
+### queue vs board_visible
+{
+  "queueLen": 23,
+  "visibleLen": 23,
+  "inQueueNotVisible": 0,
+  "visibleNotInQueue": 0,
+  "identical": true,
+  "queue_updated_at": "2026-08-03T13:53:14.090Z"
+}
+
+### queue entry stages
+[
+  [
+    "review",
+    13
+  ],
+  [
+    "published",
+    10
+  ]
+]
+
+### calendar/week refs
+{
+  "weekPlanKeys": [
+    "mix",
+    "text",
+    "items",
+    "week_start",
+    "generated_at"
+  ],
+  "calendarLen": "object",
+  "autoPublishDays": null,
+  "skin": "desk"
+}
+
+### visible rows by status
+[
+  [
+    "review",
+    13
+  ],
+  [
+    "published",
+    10
+  ]
+]
+
+### internal rows by status
+[
+  [
+    "review",
+    59
+  ],
+  [
+    "error",
+    3
+  ],
+  [
+    "disqualified",
+    2
+  ]
+]

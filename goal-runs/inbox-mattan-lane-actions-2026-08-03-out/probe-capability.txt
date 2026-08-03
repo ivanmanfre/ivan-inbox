@@ -1,0 +1,133 @@
+
+### whoami
+{
+  "httpStatus": 200,
+  "email": "im@ivanmanfredi.com",
+  "role": "authenticated",
+  "id": "6fda2a13-441e-4a95-ac41-c392a48ea904"
+}
+
+### rpc operator_set_board_visible
+{
+  "httpStatus": 200,
+  "body": {
+    "ok": false,
+    "error": "draft_not_found"
+  }
+}
+
+### rpc operator_schedule_draft
+{
+  "httpStatus": 200,
+  "body": {
+    "ok": false,
+    "error": "not_found"
+  }
+}
+
+### rpc operator_edit_draft_body
+{
+  "httpStatus": 200,
+  "body": {
+    "ok": false,
+    "error": "not_editable"
+  }
+}
+
+### rpc operator_client_drafts
+{
+  "httpStatus": 200,
+  "ok": true,
+  "drafts": 87,
+  "sampleKeys": [
+    "id",
+    "qa",
+    "type",
+    "title",
+    "status",
+    "qa_score",
+    "taxonomy",
+    "agent_log",
+    "has_media",
+    "post_body",
+    "created_at",
+    "image_urls",
+    "funnel_stage",
+    "published_at",
+    "scheduled_at",
+    "board_visible",
+    "idea_agent_log",
+    "idea_icp_score",
+    "source_post_id",
+    "idea_source_ref",
+    "idea_source_label"
+  ]
+}
+
+### rpc operator_set_board_visible WRONG GATE
+{
+  "httpStatus": 200,
+  "body": {
+    "ok": false,
+    "error": "bad_gate"
+  }
+}
+
+### risedtc rows
+{
+  "httpStatus": 200,
+  "n": 87,
+  "byStatus": [
+    [
+      "published",
+      10
+    ],
+    [
+      "review",
+      72
+    ],
+    [
+      "error",
+      3
+    ],
+    [
+      "disqualified",
+      2
+    ]
+  ],
+  "boardTrue": 23,
+  "boardFalse": 64,
+  "boardNull": 0,
+  "reviewInternal": 59,
+  "reviewOnBoard": 13
+}
+
+### update probe target
+{
+  "id": "cb66ba17-74b0-4b7b-bccd-8912aaf2baa6",
+  "status": "disqualified",
+  "board_visible": false,
+  "title": "Case Study: LP rebuild, +91% conversion rate (client unnamed)",
+  "bodyLen": 327,
+  "updated_at": "2026-07-27T20:18:39.450445+00:00"
+}
+
+### UPDATE on a client row (no-op body)
+{
+  "httpStatus": 200,
+  "landed": 1,
+  "updatedAtBefore": "2026-07-27T20:18:39.450445+00:00",
+  "updatedAtAfter": "2026-08-03T14:33:33.876258+00:00"
+}
+
+### DELETE probe (bogus id, client lane)
+{
+  "httpStatus": 200,
+  "body": []
+}
+
+### DELETE probe (bogus id, ivan lane — delete already ships here)
+{
+  "httpStatus": 200,
+  "body": []
+}
