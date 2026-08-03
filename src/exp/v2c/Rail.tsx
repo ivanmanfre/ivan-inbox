@@ -9,11 +9,16 @@ import { relAge } from './Surface'
 // answers to "what is Content" — a rail row on one, half a tab on the other.
 //
 // Resolved in favour of the grouping, because that is the model the phone's six
-// slots can actually hold: DRAFTS AND CONTENT ARE TWO LANES OF ONE JOB. This
-// strip is that model, rendered identically on both canvases directly above the
-// working surface, and the desktop rail shows the same two rows nested under a
-// WORK label so the rail agrees with it instead of contradicting it.
-export const WORK_LANE_LABEL: Record<string, string> = { drafts: 'DMs', content: 'Content', magnets: 'Magnets' }
+// slots can actually hold. This strip is that model, rendered identically on
+// both canvases directly above the working surface, and the desktop rail shows
+// the same rows nested under one label so the rail agrees with it instead of
+// contradicting it.
+//
+// 2026-08-03: the group's members changed. Inbox was absorbed into DMs, which
+// freed a mobile slot, so DMs left the group and became a destination on both
+// canvases. What remains grouped is what the label always described — the two
+// CONTENT lanes, posts and lead magnets.
+export const WORK_LANE_LABEL: Record<string, string> = { content: 'Content', magnets: 'Magnets' }
 
 export function WorkSegment({ job, counts, onJob }: {
   job: Job
@@ -23,7 +28,7 @@ export function WorkSegment({ job, counts, onJob }: {
   if (!isWorkJob(job)) return null
   return (
     <div className="wb-workhead">
-      <span className="wb-workhead-l">Work</span>
+      <span className="wb-workhead-l">Content</span>
       <div className="wb-workseg">
         {WORK_JOBS.map(j => (
           <span key={j} className={`wb-ws${job === j ? ' on' : ''}`} onClick={() => onJob(j)}>
@@ -98,7 +103,7 @@ export function Rail({ job, counts, sev, chatOn, chatLive, onJob, onChat, loaded
       <div className="wb-rail-jobs">
         {before.map(row)}
         <div className={`wb-rail-grp${isWorkJob(job) ? ' on' : ''}`}>
-          <div className="wb-rail-grp-l">Work</div>
+          <div className="wb-rail-grp-l">Content</div>
           {WORK_JOBS.map(row)}
         </div>
         {after.map(row)}
@@ -136,17 +141,21 @@ export function Rail({ job, counts, sev, chatOn, chatLive, onJob, onChat, loaded
   )
 }
 
-// The mobile bottom bar. Six slots, same as today's, but spent differently:
-// Settings leaves (it is the one unambiguously non-daily job, and the audit's own
-// recommendation is to cut it first), Claude takes a real slot because a
-// conversation you have to hunt for is one you stop having, and Drafts+Content
-// SHARE one slot as the two lanes of Work — the same grouping the rail shows and
-// the same WorkSegment inside the surface, setting the same `job` state. One
-// state, one model, two renderings; never a second router nested inside a tab.
+// The mobile bottom bar. Six slots, spent deliberately: Settings leaves (it is
+// the one unambiguously non-daily job, and the audit's own recommendation is to
+// cut it first), Claude takes a real slot because a conversation you have to
+// hunt for is one you stop having, and Content+Magnets SHARE one slot — the same
+// grouping the rail shows and the same WorkSegment inside the surface, setting
+// the same `job` state. One state, one model, two renderings; never a second
+// router nested inside a tab.
+//
+// The Inbox slot is gone (its rows now live in DMs), and DMs took its place
+// rather than staying a segment inside another tab: it is the surface that
+// carries the badge, so it cannot be two taps deep.
 const MOBILE: { job: Job; icon: string; label: string }[] = [
   { job: 'today', icon: JOB_ICON.today, label: 'Today' },
-  { job: 'inbox', icon: JOB_ICON.inbox, label: 'Inbox' },
-  { job: 'drafts', icon: '✦', label: 'Work' },
+  { job: 'dms', icon: JOB_ICON.dms, label: 'DMs' },
+  { job: 'content', icon: JOB_ICON.content, label: 'Content' },
   { job: 'sends', icon: JOB_ICON.sends, label: 'Sends' },
   { job: 'ops', icon: JOB_ICON.ops, label: 'Ops' },
 ]
@@ -164,8 +173,8 @@ export function MobileTabs({ job, counts, chatLive, onJob, onChat }: {
   return (
     <div className="tabbar">
       {MOBILE.map(t => {
-        const active = t.job === 'drafts' ? isWorkJob(job) : job === t.job
-        const n = t.job === 'drafts' ? workCount : counts[t.job] ?? 0
+        const active = t.job === 'content' ? isWorkJob(job) : job === t.job
+        const n = t.job === 'content' ? workCount : counts[t.job] ?? 0
         return (
           <div key={t.job} className={`tb ${active ? 'on' : ''}`} onClick={() => onJob(t.job)}>
             <div className="ic bubble">
@@ -173,7 +182,7 @@ export function MobileTabs({ job, counts, chatLive, onJob, onChat }: {
               {/* Red is for what is waiting on Ivan. An unread count is a
                   workload, not a warning — the audit's amber-vs-pending point,
                   applied to the badge. */}
-              {n > 0 && <span className={`cnt${t.job === 'inbox' ? ' neutral' : ''}`}>{n}</span>}
+              {n > 0 && <span className={`cnt${t.job === 'dms' ? ' neutral' : ''}`}>{n}</span>}
             </div>
             <div className="l">{t.label}</div>
           </div>

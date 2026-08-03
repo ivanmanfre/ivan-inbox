@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { InboxScreen } from '../../screens/InboxScreen'
-import { DraftsScreen } from '../../screens/DraftsScreen'
 import { SendsScreen } from '../../screens/SendsScreen'
 import { TodayScreen } from '../../screens/TodayScreen'
 import { SettingsScreen } from '../../screens/SettingsScreen'
@@ -9,7 +7,7 @@ import { InboxSkeleton } from '../../components/Skeleton'
 import { useInbox } from '../../hooks/useInbox'
 import { useOps } from '../../hooks/useOps'
 import { pendingOps } from '../../lib/ops'
-import { inboxWaitingCount, type Filter } from '../../lib/inbox'
+import { inboxWaitingCount, type Filter, type Status } from '../../lib/inbox'
 import type { ContentLane } from '../../lib/content'
 import { MobileTabs, Rail, WorkSegment } from './Rail'
 import { ContentList } from './ContentList'
@@ -17,7 +15,7 @@ import { MagnetsList } from './MagnetsList'
 import { DraftWindow } from './DraftPane'
 import { MagnetWindow } from './MagnetWindow'
 import { ThreadPeer } from './ThreadPeer'
-import { InboxHead } from './InboxHead'
+import { DmsSurface } from './DmsSurface'
 import { ChatPane } from './ChatPane'
 import { OpsBoard } from './OpsBoard'
 import { Failed, relAge } from './Surface'
@@ -92,7 +90,7 @@ export default function Shell() {
   const boot = useMemo(() => parseWbHash(location.hash), [])
 
   const [job, setJob] = useState<Job>(boot.job)
-  const [prevJob, setPrevJob] = useState<Job>(boot.job === 'settings' ? 'inbox' : boot.job)
+  const [prevJob, setPrevJob] = useState<Job>(boot.job === 'settings' ? 'dms' : boot.job)
   // Claude opens when Ivan opens it (his call, 2026-08-03) — never on boot. The
   // pane used to dock itself on any canvas with room, which meant the working
   // surface started the session sharing the width with a conversation nobody
@@ -102,6 +100,9 @@ export default function Shell() {
   )
   const [focus, setFocus] = useState<string | null>(boot.focus)
   const [filter, setFilter] = useState<Filter>('all')
+  // The status axis of DMs. 'needs' — what the badge counts — is the view the
+  // surface opens on; the other buckets are one click away in the head.
+  const [status, setStatus] = useState<Status>('needs')
   const [sendsClient, setSendsClient] = useState<'all' | 'ivan' | 'risedtc'>('ivan')
   const [lane, setLane] = useState<ContentLane>('ivan')
   const [contentBump, setContentBump] = useState(0)
@@ -129,7 +130,6 @@ export default function Shell() {
   const opsError = ops.error ?? (forceFail ? 'PostgREST returned 500 for ops_drafts' : null)
 
   const opsPend = pendingOps(ops.drafts)
-  const dmDrafts = inbox.threads.filter(t => t.draft).length
   const counts = {
     // Ask 11 — the "56" was every thread with an unread inbound row, 28 of
     // which Ivan had already answered in the LinkedIn app (the mirror writes
@@ -137,8 +137,7 @@ export default function Shell() {
     // genuinely waiting: unanswered replies + drafts to approve + threads the
     // reply detector flagged needs_manual_reply. Same derivation as the list
     // and the InboxHead breakdown (lib/inbox.ts, inboxBreakdown).
-    inbox: inboxWaitingCount(inbox.threads),
-    drafts: dmDrafts,
+    dms: inboxWaitingCount(inbox.threads),
     ops: opsPend.length,
     content: badge.count,
   }
@@ -146,7 +145,7 @@ export default function Shell() {
     // Only a real problem takes a severity tier. A backlog of approvals is work,
     // not a warning — the audit's point 8.
     ops: opsError ? ('urgent' as const) : undefined,
-    inbox: inboxError ? ('urgent' as const) : undefined,
+    dms: inboxError ? ('urgent' as const) : undefined,
   }
 
   const plan = planWorkbench(job, canvas, peers, focus)
@@ -261,7 +260,7 @@ export default function Shell() {
           )}
           <div className="wb-regions">
             <div className="wb-work wide">
-              <div className="nav"><div className="row-top"><h2>Inbox</h2></div></div>
+              <div className="nav"><div className="row-top"><h2>DMs</h2></div></div>
               <InboxSkeleton />
             </div>
           </div>
@@ -275,11 +274,26 @@ export default function Shell() {
 
   // ---- the working surface for the active job ----
   const stale = inbox.threads.length > 0
-  const inboxSurface = inboxError ? (
+  const dmsList = (
+    <DmsSurface
+      threads={inbox.threads}
+      opsDrafts={ops.drafts}
+      filter={filter} setFilter={setFilter}
+      status={status} setStatus={setStatus}
+      refresh={inbox.refresh}
+      onOpenThread={openThread}
+      onOpenOps={() => goJob('ops')}
+      // The Shell is the surface that KNOWS there was no error (it renders
+      // Failed below instead), so it is the one allowed to hand the list its
+      // freshness.
+      loadedAt={inbox.loadedAt}
+    />
+  )
+  const dmsSurface = inboxError ? (
     <>
-      <div className="nav"><div className="row-top"><h2>Inbox</h2><div className="avatar-me">IM</div></div></div>
+      <div className="nav"><div className="row-top"><h2>DMs</h2><div className="avatar-me">IM</div></div></div>
       <Failed
-        what="The inbox"
+        what="Your DMs"
         message={inboxError}
         onRetry={inbox.refresh}
         loadedAt={stale ? inbox.loadedAt : null}
@@ -287,36 +301,11 @@ export default function Shell() {
       {/* Stale rows still beat a void, and the banner above is what makes them
           honest — but the banner only CLAIMS stale data when there is some.
           wb-hidenav suppresses the WRAPPED screen's own header: the region above
-          already carries one, and two "Inbox" titles in a column is the exact
+          already carries one, and two "DMs" titles in a column is the exact
           doubled-render defect the panel flagged on Ops. */}
-      {stale && (
-        <div className="wb-stalewrap wb-hidenav">
-          <InboxScreen
-            threads={inbox.threads} filter={filter} setFilter={setFilter}
-            refresh={inbox.refresh} onOpenThread={openThread}
-            onOpenDrafts={() => goJob('drafts')}
-            activeThread={ctx?.kind === 'thread' ? ctx.id : null} windowed
-          />
-        </div>
-      )}
+      {stale && <div className="wb-stalewrap wb-hidenav">{dmsList}</div>}
     </>
-  ) : (
-    <InboxScreen
-      threads={inbox.threads}
-      filter={filter}
-      setFilter={setFilter}
-      refresh={inbox.refresh}
-      onOpenThread={openThread}
-      onOpenDrafts={() => goJob('drafts')}
-      activeThread={ctx?.kind === 'thread' ? ctx.id : null}
-      windowed
-      // The Shell is the surface that KNOWS there was no error (it renders Failed
-      // above instead), so it is the one allowed to hand the list its freshness.
-      verifiedAt={inbox.loadedAt}
-      head={<InboxHead threads={inbox.threads} loadedAt={inbox.loadedAt}
-        onOpenDrafts={() => goJob('drafts')} />}
-    />
-  )
+  ) : dmsList
 
   // Ops is no longer a wrapped production screen. OpsBoard owns the frame and
   // reuses the screen's PendingCard + OpsGroups, so there is exactly one header,
@@ -337,18 +326,7 @@ export default function Shell() {
       {/* One model, both canvases: the lane switch for Work lives HERE now, not in
           the mobile ribbon, so desktop and phone teach the same thing (MF3). */}
       <WorkSegment job={job} counts={counts} onJob={goJob} />
-      {job === 'inbox' && inboxSurface}
-      {job === 'drafts' && (
-        inboxError
-          ? <>
-            <div className="nav"><div className="row-top"><h2>Drafts</h2></div></div>
-            <Failed what="The draft queue" message={inboxError} onRetry={inbox.refresh}
-              loadedAt={inbox.threads.length > 0 ? inbox.loadedAt : null} />
-          </>
-          : <DraftsScreen threads={inbox.threads} onOpenThread={openThread}
-            refresh={inbox.refresh} onOpenOps={() => goJob('ops')}
-            verifiedAt={inbox.loadedAt} />
-      )}
+      {job === 'dms' && dmsSurface}
       {job === 'content' && (
         <ContentList
           key={`${lane}:${contentBump}`}
@@ -371,7 +349,7 @@ export default function Shell() {
       {/* Today aggregates, so its hand-off rows navigate INSIDE the workbench
           rather than through the default app's hash routes. */}
       {job === 'today' && (
-        <TodayScreen onOpenDrafts={() => goJob('drafts')} onOpenOps={() => goJob('ops')} />
+        <TodayScreen onOpenDrafts={() => goJob('dms')} onOpenOps={() => goJob('ops')} />
       )}
       {job === 'settings' && <SettingsScreen />}
     </>

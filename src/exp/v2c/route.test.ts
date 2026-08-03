@@ -6,7 +6,7 @@ import { DEFAULT_ROUTE, parseWbHash, wbHash } from './route'
 // because "the old link still works" is exactly the kind of claim that rots.
 
 describe('parseWbHash', () => {
-  it('defaults to inbox with nothing focused', () => {
+  it('defaults to DMs with nothing focused', () => {
     expect(parseWbHash('#exp/v2')).toEqual(DEFAULT_ROUTE)
   })
 
@@ -17,17 +17,29 @@ describe('parseWbHash', () => {
   })
 
   it('reads a focused chat peer', () => {
-    expect(parseWbHash('#exp/v2/inbox/chat')).toEqual({ job: 'inbox', focus: 'chat' })
+    expect(parseWbHash('#exp/v2/dms/chat')).toEqual({ job: 'dms', focus: 'chat' })
   })
 
   it('treats a bare /chat as chat over the default job', () => {
-    expect(parseWbHash('#exp/v2/chat')).toEqual({ job: 'inbox', focus: 'chat' })
+    expect(parseWbHash('#exp/v2/chat')).toEqual({ job: 'dms', focus: 'chat' })
   })
 
   it('still reads the tournament-era v2c links', () => {
     expect(parseWbHash('#exp/v2c')).toEqual(DEFAULT_ROUTE)
     expect(parseWbHash('#exp/v2c/sends')).toEqual({ job: 'sends', focus: null })
-    expect(parseWbHash('#exp/v2c/inbox/chat')).toEqual({ job: 'inbox', focus: 'chat' })
+    expect(parseWbHash('#exp/v2c/dms/chat')).toEqual({ job: 'dms', focus: 'chat' })
+  })
+
+  // The Inbox job was absorbed into DMs on 2026-08-03. A bookmark, an open tab
+  // or a ballot link on either retired id must land on the surface that now
+  // holds those rows — NOT 404, and not "the default happens to be right".
+  it('redirects the retired inbox and drafts jobs to DMs', () => {
+    expect(parseWbHash('#exp/v2/inbox')).toEqual({ job: 'dms', focus: null })
+    expect(parseWbHash('#exp/v2/drafts')).toEqual({ job: 'dms', focus: null })
+    expect(parseWbHash('#exp/v2/inbox/chat')).toEqual({ job: 'dms', focus: 'chat' })
+    expect(parseWbHash('#exp/v2c/drafts/chat')).toEqual({ job: 'dms', focus: 'chat' })
+    // and the alias is never written back out
+    expect(wbHash('dms', null)).toBe('#exp/v2/dms')
   })
 
   it('falls back rather than throwing on an unknown job', () => {
@@ -43,13 +55,13 @@ describe('parseWbHash', () => {
 describe('wbHash', () => {
   it('only ever writes the canonical v2 id', () => {
     expect(wbHash('content', null)).toBe('#exp/v2/content')
-    expect(wbHash('inbox', 'chat')).toBe('#exp/v2/inbox/chat')
+    expect(wbHash('dms', 'chat')).toBe('#exp/v2/dms/chat')
     // A context peer's key is a database id; it is deliberately not addressable.
-    expect(wbHash('inbox', 'thread:abc')).toBe('#exp/v2/inbox')
+    expect(wbHash('dms', 'thread:abc')).toBe('#exp/v2/dms')
   })
 
   it('round-trips through parseWbHash', () => {
     expect(parseWbHash(wbHash('ops', null))).toEqual({ job: 'ops', focus: null })
-    expect(parseWbHash(wbHash('drafts', 'chat'))).toEqual({ job: 'drafts', focus: 'chat' })
+    expect(parseWbHash(wbHash('dms', 'chat'))).toEqual({ job: 'dms', focus: 'chat' })
   })
 })

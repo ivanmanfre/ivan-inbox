@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Avatar } from '../components/Avatar'
 import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
-import { filterThreads, inboxWaitingCount, searchThreads, threadKind, type Filter, type Thread, eventTime } from '../lib/inbox'
+import { filterByStatus, filterThreads, inboxWaitingCount, searchThreads, threadKind, type Filter, type Status, type Thread, eventTime } from '../lib/inbox'
 import { checkedPhrase } from '../lib/today'
 
 function timeAgo(iso: string): string {
@@ -95,7 +95,7 @@ function clientLabel(id: string): string {
   return id.toUpperCase()
 }
 
-export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt }: {
+export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt, title = 'Inbox', status, before, rowsFor, renderRow, emptyLine }: {
   threads: Thread[]
   filter: Filter
   setFilter: (f: Filter) => void
@@ -112,22 +112,44 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
   // Supplied only by a host that has already established the fetch SUCCEEDED, so
   // an empty list can honestly say it was checked. Omitted = no claim made.
   verifiedAt?: string | null
+  // ---- optional, added when the Inbox job was folded into DMs (2026-08-03) ----
+  // Every one of these is opt-in so `#exp/stock` renders exactly what it always
+  // did: the pre-revamp shell passes none of them.
+  title?: string
+  // The status axis (bucket filter). Omitted = no status filtering, and the
+  // draft banner keeps its old job of pointing at a separate drafts screen.
+  status?: Status
+  // Slot INSIDE the scroller, above the rows — the DMs surface puts the draft
+  // approve/discard cards and the Ops pointer strip here.
+  before?: ReactNode
+  // Lets the host see (and act on) the exact set the list is about to render,
+  // so a "0 conversations, but 3 draft cards above" state is decidable by the
+  // host rather than guessed at.
+  rowsFor?: (shown: Thread[]) => void
+  // Replaces the 73px conversation row for the whole list. The DMs surface uses
+  // it for the "Draft ready" status, where the row IS the approve/discard card
+  // that DraftsScreen used to own. Windowing is off when it is supplied — the
+  // window maps a scroll offset onto a FIXED row height, and a card is not one.
+  renderRow?: (t: Thread) => ReactNode
+  emptyLine?: string
 }) {
   const rowsRef = useRef<HTMLDivElement>(null)
   const ptr = usePullToRefresh(rowsRef, () => refresh())
   const [query, setQuery] = useState('')
-  const shown = searchThreads(filterThreads(threads, filter), query)
-  const win = useRowWindow(rowsRef, shown.length, windowed)
+  const laned = filterThreads(threads, filter)
+  const shown = searchThreads(status ? filterByStatus(laned, status) : laned, query)
+  const win = useRowWindow(rowsRef, shown.length, windowed && !renderRow)
   const draftTotal = threads.filter(t => t.draft).length
   // Same derivation as the tab badge (lib/inbox.ts) — the chip suffix and the
   // bubble must never say two different numbers for the same list.
   const waitingTotal = inboxWaitingCount(threads)
+  rowsFor?.(shown)
 
   return (
     <>
       <div className="nav">
         <div className="row-top">
-          <h2>Inbox</h2>
+          <h2>{title}</h2>
           <div className="avatar-me">IM</div>
         </div>
         <div className="search">
@@ -157,7 +179,9 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
 
       {head}
 
-      {draftTotal > 0 && (
+      {/* With a status axis present, "drafts" is one of the statuses — a banner
+          pointing at a separate screen would be pointing at this one. */}
+      {status === undefined && draftTotal > 0 && (
         <div className="draftbanner" onClick={onOpenDrafts}>
           <div className="ic">✦</div>
           <div>
@@ -170,14 +194,16 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
 
       <div className="rows" ref={rowsRef}>
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
+        {before}
         {shown.length === 0 ? (
           query
             ? <div className="empty">No matches for “{query}”</div>
-            : <EmptyVerified line={EMPTY[filter]} verifiedAt={verifiedAt} />
+            : <EmptyVerified line={emptyLine ?? EMPTY[filter]} verifiedAt={verifiedAt} />
         ) : (
           <>
           {win.padTop > 0 && <div style={{ height: win.padTop }} aria-hidden />}
           {shown.slice(win.start, win.end).map(t => {
+            if (renderRow) return renderRow(t)
             const isDraftLast = t.draft != null && t.last.id === t.draft.id
             let snip = t.last.message_text
             if (isDraftLast) snip = `✦ Draft: ${t.last.message_text}`
