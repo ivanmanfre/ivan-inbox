@@ -3,7 +3,8 @@ import { OpsGroups, PendingCard } from '../../screens/OpsScreen'
 import { OpsSkeleton } from '../../components/Skeleton'
 import { PullIndicator } from '../../components/PullIndicator'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
-import { blockedOps, claimingOps, pendingOps, sentOps, type OpsDraft } from '../../lib/ops'
+import { blockedOps, claimingOps, outboundFeedId, pendingOps, sentOps, type OpsDraft } from '../../lib/ops'
+import { useCommentQueue } from '../../hooks/useCommentQueue'
 import { CalmEmpty, Failed, StackBar, relAge } from './Surface'
 import { FRESHNESS_COPY, freshnessOf, freshnessSeverity } from './freshness'
 
@@ -89,6 +90,9 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
   const rowsRef = useRef<HTMLDivElement>(null)
   const ptr = usePullToRefresh(rowsRef, refresh)
   const pending = pendingOps(drafts)
+  // The comment lane's queue lives here, not on the card: one line, one retry
+  // timer, one read of comment_feed for every outbound card on screen.
+  const queue = useCommentQueue(pending, refresh)
   const history = claimingOps(drafts).length + sentOps(drafts).length + blockedOps(drafts).length
 
   // ONE header, owned here. The wrapped screen's own nav is gone because the
@@ -155,7 +159,25 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
                 sub="Comment replies, newsjacks, weekly reports and escalations all clear."
               />
             ) : (
-              pending.map(d => <PendingCard key={d.id} draft={d} refresh={refresh} />)
+              <>
+              {/* The line, stated once. Ivan can approve several and leave; this
+                  says what is actually happening, because the poster takes one
+                  at a time and refuses the rest. */}
+              {queue.waiting.length > 0 && (
+                <div className={`ops-queue${queue.cappedToday ? ' capped' : ''}`}>
+                  {queue.cappedToday
+                    ? `${queue.waiting.length} comment${queue.waiting.length === 1 ? '' : 's'} held — the poster hit its 3-a-day cap. They stay here for tomorrow.`
+                    : `${queue.waiting.length} comment${queue.waiting.length === 1 ? '' : 's'} queued here — the poster takes one at a time, so this retries the next as its window opens. Leave the tab open.`}
+                </div>
+              )}
+              {pending.map(d => (
+                <PendingCard
+                  key={d.id} draft={d} refresh={refresh}
+                  feed={queue.feed.get(outboundFeedId(d) ?? '')}
+                  onGateResult={queue.record}
+                />
+              ))}
+              </>
             )}
           </div>
           {history > 0 && (

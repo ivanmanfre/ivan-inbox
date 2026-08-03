@@ -766,3 +766,20 @@ textarea.ops-body{display:block;width:100%;background:var(--surface2);border:non
   border: none; background: none; padding: 0; margin: 0;
   -webkit-appearance: none; appearance: none;
 }
+
+/* Ops card post-state (2026-08-03). Three facts, three registers: queued is
+   neutral information, posted is a clear/positive close, a poster failure and a
+   clock wait are DIFFERENT — the first is a problem, the second is a queue
+   position and must never wear the alarm colour. */
+.ops-state{margin:8px 0 0;padding:8px 10px;border-radius:10px;
+  font-size:12.5px;font-weight:600;line-height:1.4}
+.ops-state-q{background:rgba(235,235,245,.08);color:var(--text2)}
+.ops-state-ok{background:rgba(16,163,127,.12);color:#10A37F}
+.ops-state-bad{background:rgba(255,69,58,.10);color:#FF453A}
+.ops-state-wait{background:rgba(255,159,10,.12);color:#FF9F0A}
+/* The comment queue's own line. Neutral: a queue position is information, and
+   the capped variant is a fact about tomorrow, not an alarm about today. */
+.ops-queue{margin:0 0 12px;padding:10px 12px;border-radius:12px;
+  background:rgba(235,235,245,.07);color:var(--text2);
+  font-size:12.5px;font-weight:600;line-height:1.45}
+.ops-queue.capped{background:rgba(255,159,10,.10);color:#FF9F0A}

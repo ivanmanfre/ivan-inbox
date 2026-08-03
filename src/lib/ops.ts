@@ -58,6 +58,16 @@ export function engineLabel(clientId: string): string {
   return ENGINE_LABEL[clientId] ?? clientId
 }
 
+// WHOSE SEAT the comment goes out from. 2026-08-03, Ivan: "also says 'OUTBOUND
+// your feed' when it should be Comments - Ivan or Mattan". A comment is posted
+// BY a person from their account, so the card names the person; "your feed" is
+// the newsjack/publishing register and stays there. Derived from the row's own
+// client_id — never hardcoded, because both lanes render this card.
+export const SEAT_LABEL: Record<string, string> = { ivan: 'Ivan', risedtc: 'Mattan Danino' }
+export function seatLabel(clientId: string): string {
+  return SEAT_LABEL[clientId] ?? ENGINE_LABEL[clientId] ?? clientId
+}
+
 // Newsjack lift is ~24h and the card TTLs at 48h, so the countdown is the whole
 // point of the card — a stale one is worth discarding rather than running.
 export function expiresIn(iso?: string, now: number = Date.now()): string | null {
@@ -283,4 +293,147 @@ export async function discardOpsDraft(id: string): Promise<void> {
     .update({ send_blocked_reason: DISCARDED_REASON })
     .eq('id', id).is('sent_at', null)
   if (error) throw error
+}
+
+// ---------------------------------------------------------------------------
+// The comment gate, fired FROM THE APP (2026-08-03)
+// ---------------------------------------------------------------------------
+//
+// Ivan: "'Approve & open gate' in ops why u opening a new tab on n8n just send
+// that shit lol... dont make me go to a new tab and make it be 'Queued'".
+//
+// Opening a tab was not just clumsy — it hid a real failure. The gate REFUSES
+// (disarmed flag, stale post, daily cap, 10-minute spacing, one-in-flight,
+// per-target cooldown) and the card was stamped approved+sent unconditionally,
+// so a refused comment rendered as handled and never posted. Fired from here,
+// the verdict is read and only an ACCEPT stamps the card.
+//
+// Probed 2026-08-03 on the live webhook: CORS is open to this origin
+// (`access-control-allow-origin` echoed, `allow-methods: OPTIONS, GET`) and a
+// plain GET with no custom headers is a CORS-simple request, so no preflight
+// and no edge-function relay is needed. POST is NOT allowed (the node is GET)
+// and its preflight 500s — never change the method.
+//
+// The reply is BARE TEXT with HTTP 200 for every outcome, accept and refusal
+// alike, so the status code carries nothing and the sentence is the only
+// signal. That makes this classifier load-bearing, which is why it is a pure
+// function with tests rather than an inline regex at the call site.
+
+export type GateOutcome =
+  | 'accepted' // queued at the poster; jitter is running
+  | 'already' // idempotent replay — the row already left `pending`
+  | 'timing' // refused BY THE CLOCK: retrying later can succeed
+  | 'refused' // refused on the merits: retrying changes nothing today
+  | 'unknown' // could not be classified, or the call failed
+
+export type GateVerdict = { outcome: GateOutcome; message: string; retryable: boolean }
+
+// Ordered, longest-intent-first. Every string below is quoted from the live
+// workflow (lwuWECwQRbhzK5Bt, node "Validate + Approve").
+const GATE_RULES: { re: RegExp; outcome: GateOutcome }[] = [
+  { re: /^approved:/i, outcome: 'accepted' },
+  { re: /^queued:/i, outcome: 'accepted' },
+  { re: /^already /i, outcome: 'already' },
+  // THE clock refusals — the whole reason the app needs its own queue.
+  { re: /another comment is already queued/i, outcome: 'timing' },
+  { re: /too soon after the last post/i, outcome: 'timing' },
+  { re: /daily auto-post cap reached/i, outcome: 'timing' },
+  { re: /approve the rest in the morning/i, outcome: 'timing' },
+  // Merits: nothing about waiting changes these.
+  { re: /cooldown active/i, outcome: 'refused' },
+  { re: /DISARMED/i, outcome: 'refused' },
+  { re: /older than 5 days/i, outcome: 'refused' },
+  { re: /no draft on this row/i, outcome: 'refused' },
+  { re: /bad link|bad token|row not found/i, outcome: 'refused' },
+]
+
+export function classifyGateReply(raw: string): GateVerdict {
+  const message = (raw ?? '').trim()
+  for (const r of GATE_RULES) {
+    if (r.re.test(message)) {
+      return { outcome: r.outcome, message, retryable: r.outcome === 'timing' }
+    }
+  }
+  // FAIL CLOSED. An unrecognised sentence is never treated as an accept: the
+  // cost of a wrong 'accepted' is a card that says posted for a comment that
+  // never went out, which is the exact defect this replaced.
+  return {
+    outcome: 'unknown',
+    message: message || 'The gate returned nothing.',
+    retryable: true,
+  }
+}
+
+// Fire the gate. GET, no custom headers, no `mode:'no-cors'` — no-cors would
+// make the response opaque and throw the verdict away, which is what the
+// discard path used to do.
+export async function dispatchCommentGate(url: string): Promise<GateVerdict> {
+  let res: Response
+  try {
+    res = await fetch(url, { method: 'GET' })
+  } catch (e) {
+    return {
+      outcome: 'unknown',
+      message: `Could not reach the gate (${e instanceof Error ? e.message : 'network error'}).`,
+      retryable: true,
+    }
+  }
+  const text = await res.text().catch(() => '')
+  if (!res.ok) {
+    return { outcome: 'unknown', message: `The gate returned ${res.status}.`, retryable: true }
+  }
+  return classifyGateReply(text)
+}
+
+// ---- durable state: comment_feed, not React ----
+//
+// The poster writes NOTHING to ops_drafts (verified across all 250 workflows) —
+// it owns `comment_feed`, and `context.feed_id` on the card IS that row's id.
+// So "is this actually queued / did it post" is re-derived from the database on
+// every load instead of remembered in component state, which is what makes a
+// refresh safe.
+//
+// 🔴 EXPLICIT COLUMN LIST, NEVER `*`: comment_feed carries `approve_token`, a
+// live capability token. Selecting it would put a bearer credential into the
+// React tree and, via any future cache, into localStorage — the same class of
+// leak lib/today.ts's whitelist projection and fail-closed cacheSafe() exist to
+// prevent.
+export type FeedState = {
+  id: string
+  status: string
+  approved_at: string | null
+  posted_at: string | null
+  post_error: string | null
+}
+
+export function outboundFeedId(d: OpsDraft): string | null {
+  if (d.kind !== 'comment_outbound') return null
+  const f = d.context?.feed_id
+  return typeof f === 'string' && f.length > 0 ? f : null
+}
+
+export async function fetchCommentFeedStates(ids: string[]): Promise<Map<string, FeedState>> {
+  const out = new Map<string, FeedState>()
+  if (ids.length === 0) return out
+  const { data, error } = await supabase.from('comment_feed')
+    .select('id,status,approved_at,posted_at,post_error')
+    .in('id', ids.slice(0, 200))
+  if (error) throw error
+  for (const r of (data ?? []) as FeedState[]) out.set(r.id, r)
+  return out
+}
+
+// What the CARD says, derived from the feed row. `pending` deliberately maps to
+// null — the card is simply actionable again, which is the honest state for a
+// comment the gate declined: nothing is scheduled and nothing will retry it
+// server-side.
+export type CardPostState = 'queued' | 'posted' | 'failed' | 'dismissed' | null
+
+export function cardStateOf(f: FeedState | undefined): CardPostState {
+  if (!f) return null
+  if (f.status === 'approved' || f.status === 'posting') return 'queued'
+  if (f.status === 'posted') return 'posted'
+  if (f.status === 'failed' || f.status === 'expired') return 'failed'
+  if (f.status === 'dismissed') return 'dismissed'
+  return null
 }

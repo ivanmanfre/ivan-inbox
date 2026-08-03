@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { outboundApproveUrl, outboundSkipUrl, pendingOps, pendingDmLaneOps, sentOps, blockedOps, canGenerateDraft, claimingOps, engineLabel, expiresIn, DISCARDED_REASON, type OpsDraft } from './ops'
+import { outboundApproveUrl, outboundSkipUrl, pendingOps, pendingDmLaneOps, sentOps, blockedOps, canGenerateDraft, claimingOps, engineLabel, expiresIn, DISCARDED_REASON, classifyGateReply, cardStateOf, outboundFeedId, type OpsDraft } from './ops'
 
 const base: OpsDraft = {
   id: '1', client_id: 'risedtc', kind: 'escalation', slack_channel: '#rise-ops',
@@ -215,5 +215,78 @@ describe('canGenerateDraft', () => {
   it('needs the comment id the engine looks the row up by', () => {
     expect(canGenerateDraft({ ...card, context: { author_name: 'Clive William Kreft' } })).toBe(false)
     expect(canGenerateDraft({ ...card, context: null })).toBe(false)
+  })
+})
+
+// The gate replies in BARE TEXT with HTTP 200 for every outcome, so this
+// classifier is the only thing standing between a refusal and a card that
+// claims a comment posted. Every string below is quoted from the live n8n
+// workflow lwuWECwQRbhzK5Bt, node "Validate + Approve".
+describe('classifyGateReply', () => {
+  it('reads the two accept shapes', () => {
+    expect(classifyGateReply('approved: Luke Cashin - posting in ~6 min. tap the skip link before then to cancel.').outcome).toBe('accepted')
+    expect(classifyGateReply('queued: Luke Cashin will post around 7am BA. tap the skip link before then to cancel.').outcome).toBe('accepted')
+  })
+
+  it('separates CLOCK refusals (retry later works) from MERITS refusals (it never will)', () => {
+    for (const t of [
+      'another comment is already queued to post. wait for its confirmation first.',
+      'too soon after the last post. tap again in ~10 min.',
+      'daily auto-post cap reached (3). rest of the queue waits for tomorrow.',
+      'another comment is already queued to post. approve the rest in the morning.',
+    ]) {
+      const v = classifyGateReply(t)
+      expect(v.outcome, t).toBe('timing')
+      expect(v.retryable, t).toBe(true)
+    }
+    for (const t of [
+      'you commented on this person less than 3.5 days ago. cooldown active.',
+      'auto-posting is DISARMED (unipile_auto_commenting flag off). nothing was posted.',
+      'that post is older than 5 days now, not posting. comment by hand if still worth it.',
+      'no draft on this row',
+      'bad token',
+    ]) {
+      const v = classifyGateReply(t)
+      expect(v.outcome, t).toBe('refused')
+      expect(v.retryable, t).toBe(false)
+    }
+  })
+
+  it('treats a replay as idempotent rather than as a new send', () => {
+    expect(classifyGateReply('already approved').outcome).toBe('already')
+    expect(classifyGateReply('already posted').outcome).toBe('already')
+  })
+
+  it('FAILS CLOSED — an unrecognised sentence is never an accept', () => {
+    expect(classifyGateReply('¯\\_(ツ)_/¯').outcome).toBe('unknown')
+    expect(classifyGateReply('').outcome).toBe('unknown')
+    // the defect this replaced: anything not provably an accept must not stamp
+    for (const t of ['', 'something new the workflow started saying', '<html>502</html>']) {
+      expect(classifyGateReply(t).outcome).not.toBe('accepted')
+    }
+  })
+})
+
+describe('cardStateOf — the card reads the DATABASE, not React memory', () => {
+  it('maps the feed statuses a card can be in', () => {
+    const f = (status: string) => ({ id: 'f', status, approved_at: null, posted_at: null, post_error: null })
+    expect(cardStateOf(f('approved'))).toBe('queued')
+    expect(cardStateOf(f('posting'))).toBe('queued')
+    expect(cardStateOf(f('posted'))).toBe('posted')
+    expect(cardStateOf(f('failed'))).toBe('failed')
+    expect(cardStateOf(f('expired'))).toBe('failed')
+    expect(cardStateOf(f('dismissed'))).toBe('dismissed')
+  })
+  it('pending is NOT a queued state — the gate declined and nothing will retry it', () => {
+    expect(cardStateOf({ id: 'f', status: 'pending', approved_at: null, posted_at: null, post_error: null })).toBe(null)
+    expect(cardStateOf(undefined)).toBe(null)
+  })
+})
+
+describe('outboundFeedId', () => {
+  it('only reads a feed id off an outbound card', () => {
+    expect(outboundFeedId({ ...base, kind: 'comment_outbound', context: { feed_id: 'abc' } })).toBe('abc')
+    expect(outboundFeedId({ ...base, kind: 'escalation', context: { feed_id: 'abc' } })).toBe(null)
+    expect(outboundFeedId({ ...base, kind: 'comment_outbound', context: {} })).toBe(null)
   })
 })
