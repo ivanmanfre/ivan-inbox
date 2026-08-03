@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChatStreaming, ChatTurn } from './ChatMessage'
 import { HandsFreeSheet, VoiceControl, VoiceStrip } from './VoiceControl'
 import { LiveSheet } from './LiveSheet'
+import { CONTAINER_COMMANDS, CONTAINER_SKILLS } from './chat/containerPalette'
 import { useStt } from './chat/useStt'
 import { useRtStt } from './chat/useRtStt'
 import { useLive } from './chat/useLive'
@@ -60,6 +61,10 @@ type Command = {
   hint: (busy: boolean, hasTurns: boolean) => string
   ready: (busy: boolean, hasTurns: boolean) => boolean
   run: (chat: ChatHandle) => void
+  // Container entries (skills + slash commands the Railway CLI can expand)
+  // INSERT their template into the composer instead of running client-side —
+  // the turn is composed and sent by Ivan, never auto-fired by the palette.
+  insert?: string
 }
 
 const COMMANDS: Command[] = [
@@ -87,6 +92,26 @@ const COMMANDS: Command[] = [
     ready: (_b, hasTurns) => hasTurns,
     run: chat => chat.reset(),
   },
+  // ---- what the CONTAINER can run (feedback item 5: "missing like all the
+  // cmds and skills i see from here"). Probed, not copied from the local Mac
+  // (containerPalette.ts documents the probe method + date): the deployed
+  // container has 9 skills the local repo lacks and vice versa. Picking one
+  // INSERTS its template — the `run` is a no-op fallback that never fires
+  // because runCommand branches on `insert` first.
+  ...CONTAINER_COMMANDS.map((c): Command => ({
+    name: c.name,
+    hint: () => c.desc || 'container command',
+    ready: () => true,
+    run: () => {},
+    insert: c.insert,
+  })),
+  ...CONTAINER_SKILLS.map((s): Command => ({
+    name: `/skill ${s.name}`,
+    hint: () => s.desc || 'container skill',
+    ready: () => true,
+    run: () => {},
+    insert: s.insert,
+  })),
 ]
 
 /**
@@ -118,6 +143,14 @@ export function matchCommands(text: string): Command[] {
   // the model, the fall-through this palette exists to end.
   const tokens = q.split(/\s+/)
   return COMMANDS.filter(c => {
+    // An insert entry whose template is ALREADY in the composer stops
+    // matching: otherwise Enter re-runs the insertion forever and the bare
+    // command ("/gsd:help") could never be sent. Once the text covers the
+    // template, the palette's job is done and Enter means send.
+    if (c.insert) {
+      const done = c.insert.replace('⌶', '').trimEnd().toLowerCase()
+      if (text.trim().toLowerCase().startsWith(done)) return false
+    }
     const name = c.name.slice(1).toLowerCase()
     return tokens.every(t => name.includes(t))
   })
@@ -296,6 +329,14 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
 
   // A command NEVER reaches send(): it runs locally and clears the composer.
   const runCommand = useCallback((c: Command) => {
+    if (c.insert) {
+      // A container entry composes, never sends: the template lands in the
+      // composer (⌶ marks where typing continues — stripped here, cursor
+      // naturally at the end) and Ivan finishes the thought before Enter.
+      setText(c.insert.replace('⌶', ''))
+      setCursor(0)
+      return
+    }
     c.run(chat)
     setText('')
     setCursor(0)
@@ -477,6 +518,16 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
             </button>
           ))}
           <div className="wb-pal-f">↑↓ to move · ⏎ to run · esc to cancel</div>
+        </div>
+      )}
+      {/* Unknown slash input WARNS before Enter sends it as plain text — the
+          palette teaches its vocabulary instead of silently falling through
+          (feedback item 5's contract). A known container command that the user
+          finished typing also lands here, where "sends as written" is exactly
+          right: the CLI expands it upstream. */}
+      {!paletteOpen && text[0] === '/' && (
+        <div className="wb-palette">
+          <div className="wb-pal-f">No palette match — ⏎ sends this to Claude as written</div>
         </div>
       )}
 

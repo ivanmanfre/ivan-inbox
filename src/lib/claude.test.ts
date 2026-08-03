@@ -125,11 +125,12 @@ describe('error copy', () => {
 
 describe('model plumbing — never a silent fallback', () => {
   it('offers only models the broker will forward', () => {
-    // The broker's ALLOWED_MODELS is the enforcing copy; this list only decides
-    // what gets offered. Both were verified against the deployed /v1/models.
+    // The broker's ALLOWED_MODELS is the enforcing copy (a superset); this list
+    // decides what is OFFERED — the deduped truthful set probed 2026-08-03:
+    // opus-4-7/4-6 map to the same upstream "opus" alias as opus-4-8, so they
+    // were the same model under three names (phase4-model-probes.md).
     expect(CLAUDE_MODELS.map(m => m.id)).toEqual([
-      'claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6',
-      'claude-sonnet-4-6', 'claude-haiku-4-5',
+      'claude-opus-4-8', 'claude-sonnet-4-6', 'claude-haiku-4-5',
     ])
   })
 
