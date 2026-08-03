@@ -9,7 +9,7 @@ import { InboxSkeleton } from '../../components/Skeleton'
 import { useInbox } from '../../hooks/useInbox'
 import { useOps } from '../../hooks/useOps'
 import { pendingOps } from '../../lib/ops'
-import type { Filter } from '../../lib/inbox'
+import { inboxWaitingCount, type Filter } from '../../lib/inbox'
 import type { ContentLane } from '../../lib/content'
 import { MobileTabs, Rail, WorkSegment } from './Rail'
 import { ContentList } from './ContentList'
@@ -132,7 +132,13 @@ export default function Shell() {
   const opsPend = pendingOps(ops.drafts)
   const dmDrafts = inbox.threads.filter(t => t.draft).length
   const counts = {
-    inbox: inbox.threads.filter(t => t.unread > 0).length,
+    // Ask 11 — the "56" was every thread with an unread inbound row, 28 of
+    // which Ivan had already answered in the LinkedIn app (the mirror writes
+    // the outbound, nothing stamps read_at). The badge now counts only what is
+    // genuinely waiting: unanswered replies + drafts to approve + threads the
+    // reply detector flagged needs_manual_reply. Same derivation as the list
+    // and the InboxHead breakdown (lib/inbox.ts, inboxBreakdown).
+    inbox: inboxWaitingCount(inbox.threads),
     drafts: dmDrafts,
     ops: opsPend.length,
     content: badge.count,
@@ -231,19 +237,23 @@ export default function Shell() {
   if (inbox.loading && inbox.threads.length === 0 && !inboxError) {
     return (
       <div className={mobile ? 'app wb' : 'app dt wb'}>
-        {!mobile && (
-          <Rail job={job} counts={{}} sev={{}} chatOn={hasChat(peers)} chatLive={false}
-            onJob={goJob} onChat={toggleChat} loadedAt={null} stale={false} onRefresh={inbox.refresh} />
-        )}
-        <div className="wb-regions">
-          <div className="wb-work wide">
-            <div className="nav"><div className="row-top"><h2>Inbox</h2></div></div>
-            <InboxSkeleton />
+        {/* style-delta §3a — the ONE licensed DOM change: the app plate the
+            two-surface inversion rests on. Same wrapper at all three roots. */}
+        <div className="wb-plate">
+          {!mobile && (
+            <Rail job={job} counts={{}} sev={{}} chatOn={hasChat(peers)} chatLive={false}
+              onJob={goJob} onChat={toggleChat} loadedAt={null} stale={false} onRefresh={inbox.refresh} />
+          )}
+          <div className="wb-regions">
+            <div className="wb-work wide">
+              <div className="nav"><div className="row-top"><h2>Inbox</h2></div></div>
+              <InboxSkeleton />
+            </div>
           </div>
+          {mobile && (
+            <MobileTabs job={job} counts={{}} chatLive={false} onJob={goJob} onChat={toggleChat} />
+          )}
         </div>
-        {mobile && (
-          <MobileTabs job={job} counts={{}} chatLive={false} onJob={goJob} onChat={toggleChat} />
-        )}
       </div>
     )
   }
@@ -416,21 +426,25 @@ export default function Shell() {
     }
     return (
       <div className="app wb">
-        <div className="wb-ribbon">
-          {/* The lane switch moved into the working surface (WorkSegment) so both
-              viewports carry the identical control. The ribbon keeps what belongs
-              to the FRAME: how fresh the data is, and the way out to Settings. */}
-          <span className="wb-rib-j">{job === 'settings' ? 'Settings' : ''}</span>
-          <span className={`wb-rib-sync${inboxError ? ' bad' : ''}`} onClick={inbox.refresh}>
-            <span className={`wb-sync-dot${inboxError ? ' bad' : ''}`} />
-            {inboxError ? 'not syncing' : relAge(inbox.loadedAt)}
-          </span>
-          {job === 'settings'
-            ? <span className="wb-gear" onClick={() => goJob(prevJob)}>Done</span>
-            : <span className="wb-gear" onClick={() => goJob('settings')}>⚙︎</span>}
+        {/* style-delta §3a — the plate. The takeover window (itemWindow) is a
+            fixed overlay and stays OUTSIDE it. */}
+        <div className="wb-plate">
+          <div className="wb-ribbon">
+            {/* The lane switch moved into the working surface (WorkSegment) so both
+                viewports carry the identical control. The ribbon keeps what belongs
+                to the FRAME: how fresh the data is, and the way out to Settings. */}
+            <span className="wb-rib-j">{job === 'settings' ? 'Settings' : ''}</span>
+            <span className={`wb-rib-sync${inboxError ? ' bad' : ''}`} onClick={inbox.refresh}>
+              <span className={`wb-sync-dot${inboxError ? ' bad' : ''}`} />
+              {inboxError ? 'not syncing' : relAge(inbox.loadedAt)}
+            </span>
+            {job === 'settings'
+              ? <span className="wb-gear" onClick={() => goJob(prevJob)}>Done</span>
+              : <span className="wb-gear" onClick={() => goJob('settings')}>⚙︎</span>}
+          </div>
+          <div className={`wb-work wide${plan.narrow ? ' wb-narrow' : ''}`}>{workSurface}</div>
+          <MobileTabs job={job} counts={counts} chatLive={chat.busy} onJob={goJob} onChat={toggleChat} />
         </div>
-        <div className={`wb-work wide${plan.narrow ? ' wb-narrow' : ''}`}>{workSurface}</div>
-        <MobileTabs job={job} counts={counts} chatLive={chat.busy} onJob={goJob} onChat={toggleChat} />
         {itemWindow}
       </div>
     )
@@ -439,30 +453,34 @@ export default function Shell() {
   // ---- desktop / wide: rail + regions ----
   return (
     <div className={`app dt wb wb-${canvas}`}>
-      <Rail
-        job={job}
-        counts={counts}
-        sev={sev}
-        chatOn={hasChat(peers)}
-        chatLive={chat.busy}
-        onJob={goJob}
-        onChat={toggleChat}
-        loadedAt={inbox.loadedAt}
-        stale={!!inboxError}
-        onRefresh={inbox.refresh}
-      />
-      <div className={`wb-regions peers-${plan.peers.length}`}>
-        <div className={`wb-work ${plan.work}${plan.narrow ? ' wb-narrow' : ''}${solo ? ' wb-solo' : ''}`}>
-          {workSurface}
-        </div>
-        {plan.peers.map(p => (
-          <div
-            className={`wb-peer wb-peer-${p.kind}${focus === peerKey(p) ? ' on' : ''}`}
-            key={peerKey(p)}
-          >
-            {renderPeer(p)}
+      {/* style-delta §3a — the plate: rail | regions ride inside it; the
+          takeover window is a fixed overlay and stays outside. */}
+      <div className="wb-plate">
+        <Rail
+          job={job}
+          counts={counts}
+          sev={sev}
+          chatOn={hasChat(peers)}
+          chatLive={chat.busy}
+          onJob={goJob}
+          onChat={toggleChat}
+          loadedAt={inbox.loadedAt}
+          stale={!!inboxError}
+          onRefresh={inbox.refresh}
+        />
+        <div className={`wb-regions peers-${plan.peers.length}`}>
+          <div className={`wb-work ${plan.work}${plan.narrow ? ' wb-narrow' : ''}${solo ? ' wb-solo' : ''}`}>
+            {workSurface}
           </div>
-        ))}
+          {plan.peers.map(p => (
+            <div
+              className={`wb-peer wb-peer-${p.kind}${focus === peerKey(p) ? ' on' : ''}`}
+              key={peerKey(p)}
+            >
+              {renderPeer(p)}
+            </div>
+          ))}
+        </div>
       </div>
       {itemWindow}
     </div>

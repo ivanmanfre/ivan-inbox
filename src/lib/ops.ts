@@ -93,6 +93,23 @@ export function pendingOps(rows: OpsDraft[], now = Date.now()): OpsDraft[] {
     !d.approved_at && !d.sent_at && !d.send_blocked_reason && !isStaleComment(d, now))
 }
 
+// Ask 12 — "i see in dms that its showing drafts that arent dm they are comment
+// drafts... those go in Ops". The DM lane's ops preview listed EVERY pending
+// ops row, and the live queue on 2026-08-03 was exactly 2 pending rows, BOTH
+// kind=comment_outbound (one ivan, one risedtc) — so the "DMs" surface was
+// showing only comment drafts. Comment kinds are Ops cards (OpsScreen renders
+// and approves them); the DM lane shows the rest. outreach_messages itself
+// carries no comment rows (live message_type mix: connection_note / dm /
+// inmail / email / email_reply / audit_delivery), so this is the one source of
+// the leak.
+export function isCommentKind(kind: OpsKind): boolean {
+  return kind === 'comment_reply' || kind === 'comment_outbound'
+}
+
+export function pendingDmLaneOps(rows: OpsDraft[], now = Date.now()): OpsDraft[] {
+  return pendingOps(rows, now).filter(d => !isCommentKind(d.kind))
+}
+
 // Approved but not yet done. Slack rows sit here for ~2 minutes; a newsjack sits here
 // while it generates and QA-gates, which can run to an hour — without this group the
 // card would just vanish on approve and look like nothing happened.

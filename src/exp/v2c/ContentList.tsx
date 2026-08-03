@@ -5,10 +5,10 @@ import {
   useAgentDigest, useContent, useIdeaCandidates, useScheduledQueue, useStyleRoster,
 } from '../../hooks/useContent'
 import {
-  CONTENT_LANES, LANE_LABEL, LANE_POSSESSIVE, PIPELINE_STAGES,
+  CONTENT_LANES, ERROR_ALARM_HOURS, LANE_LABEL, LANE_POSSESSIVE, PIPELINE_STAGES,
   STAGE_LABEL, STAGE_SHORT, STUCK_GENERATING_MINUTES, countBoardVisible, countUndated,
-  elapsedMinutes, generatingSince, groupByStage, isStuckGenerating, isStuckScheduled,
-  queueFailed, reviewActionable, stageOf,
+  elapsedMinutes, generatingSince, groupByStage, isRecentError, isStuckGenerating,
+  isStuckScheduled, queueFailed, reviewActionable, stageOf,
   type ContentDraft, type ContentLane, type ContentStage, type ContentStages,
 } from '../../lib/content'
 import {
@@ -395,7 +395,11 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
   // the same reason. Lead-magnet alerts (stalled LM generations, stuck
   // resources) moved to the Magnets job with the ResourceLane that renders
   // them — this strip is posts-only now.
-  const alerts = [...stages.error, ...stages.stuck]
+  //
+  // Ask 13: the strip is an ALARM, so only errors from the last 48h ring it
+  // (isRecentError — taxonomy.error_flipped_at, updated_at fallback). Older
+  // errored rows move to the Errors section below, still visible, not alarming.
+  const alerts = [...stages.error.filter(d => isRecentError(d)), ...stages.stuck]
   const failedQueue = queue.rows.filter(queueFailed)
   // ask 6 — a generation that died mid-run. The rows stay in their Generating
   // section (that is still the stage they are in, and the row itself carries
@@ -492,6 +496,15 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
           </div>
         ))}
 
+      {/* Ask 13's other half: errors older than the 48h alarm window are still
+          IN the queue — a section, not a siren. The strip above no longer
+          counts them, so without this they would vanish from the lane. */}
+      <StageSection
+        s="error" rows={shownStages.error.filter(d => !isRecentError(d))} lane="ivan"
+        refresh={refresh} onOpen={onOpen} openId={openId}
+        isOpen={stageOpen.isOpen('error')} toggle={() => stageOpen.toggle('error')}
+        sub={`Errored more than ${ERROR_ALARM_HOURS} hours ago — out of the alarm strip, not out of the queue.`}
+      />
       {(['archived', 'other'] as const).map(s => (
         <StageSection
           key={s} s={s} rows={shownStages[s]} lane="ivan" refresh={refresh}
@@ -565,8 +578,10 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
   const noImage = drafts.filter(d => d.status === 'review' && !(d.image_urls?.length)).length
 
   // Stuck-resource lines moved to the Magnets job with the lane that renders
-  // them; this strip is posts-only now.
-  const alerts = shown.filter(d => d.status === 'error' || isStuckScheduled(d))
+  // them; this strip is posts-only now. Ask 13: same 48h alarm window as the
+  // Ivan lane — older errors keep their rows in the Errors section this lane
+  // already renders below.
+  const alerts = shown.filter(d => isRecentError(d) || isStuckScheduled(d))
 
   return (
     <>

@@ -6,7 +6,7 @@ import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { approveDraft, discardDraft, threadChatId, type Thread } from '../lib/inbox'
 import { useOps } from '../hooks/useOps'
-import { pendingOps, type OpsDraft, type OpsKind } from '../lib/ops'
+import { pendingDmLaneOps, type OpsDraft, type OpsKind } from '../lib/ops'
 import { checkedPhrase } from '../lib/today'
 
 // ops_drafts predates the risedtc client id and still writes 'rise' for the Slack
@@ -243,8 +243,10 @@ export function DraftsScreen({ threads, onOpenThread, refresh, onOpenOps, verifi
   const ptr = usePullToRefresh(rowsRef, () => { refresh(); refreshOps() })
   const draftThreads = threads.filter(t => t.draft !== null)
   // Everything waiting on Ivan lives in one count, so the tab badge and this
-  // screen cannot disagree about how much is pending.
-  const opsPend = pendingOps(opsAll)
+  // screen cannot disagree about how much is pending. Comment drafts are NOT in
+  // it (ask 12): they are Ops cards, approved on the Ops tab, and listing them
+  // under DMs made the lane read as a comment queue.
+  const opsPend = pendingDmLaneOps(opsAll)
   const opsIn = (seg: Seg) => seg === 'all' ? opsPend : opsPend.filter(d => opsSeg(d.client_id) === seg)
   const counts: Record<Seg, number> = {
     all: draftThreads.length + opsPend.length,
