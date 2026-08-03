@@ -783,3 +783,23 @@ textarea.ops-body{display:block;width:100%;background:var(--surface2);border:non
   background:rgba(235,235,245,.07);color:var(--text2);
   font-size:12.5px;font-weight:600;line-height:1.45}
 .ops-queue.capped{background:rgba(255,159,10,.10);color:#FF9F0A}
+
+/* DM history (2026-08-03) — the receipt section at the tail of DMs, and the
+   kind/manual marks Ivan asked to read apart at a glance. */
+.r .client.kind-dm{background:rgba(16,163,127,.15);color:#10A37F}
+.r .client.kind-manual,.dmh-r .client.kind-manual{background:rgba(255,214,10,.16);color:#FFD60A}
+.dmh{border-top:1px solid rgba(255,255,255,.07);margin-top:6px}
+.dmh-h{display:flex;align-items:center;gap:8px;width:100%;padding:14px 16px;background:none;border:0;color:inherit;text-align:left;cursor:pointer;min-height:44px}
+.dmh-h:hover{background:rgba(255,255,255,.03)}
+.dmh-c{opacity:.5;font-size:13px;width:10px}
+.dmh-n{font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600}
+.dmh-m{margin-left:auto;font-size:12px;opacity:.55;font-variant-numeric:tabular-nums}
+.dmh-r{display:flex;align-items:center;gap:12px;width:100%;padding:10px 16px;background:none;border:0;color:inherit;text-align:left;cursor:pointer;min-height:44px}
+.dmh-r:hover{background:rgba(255,255,255,.03)}
+.dmh-r .mid{min-width:0;flex:1}
+.dmh-r .top{display:flex;align-items:center;gap:6px}
+.dmh-r .name{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dmh-r .snip{font-size:13px;opacity:.6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dmh-r .time{font-size:12px;opacity:.45;white-space:nowrap}
+/* A hand-typed reply reads as its own object in the thread. */
+.b.out.manual{border:1px solid rgba(255,214,10,.4)}

@@ -95,7 +95,7 @@ function clientLabel(id: string): string {
   return id.toUpperCase()
 }
 
-export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt, title = 'Inbox', status, before, rowsFor, renderRow, emptyLine }: {
+export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt, title = 'Inbox', status, before, after, rowsFor, renderRow, emptyLine }: {
   threads: Thread[]
   filter: Filter
   setFilter: (f: Filter) => void
@@ -119,6 +119,9 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
   // The status axis (bucket filter). Omitted = no status filtering, and the
   // draft banner keeps its old job of pointing at a separate drafts screen.
   status?: Status
+  // Rendered BELOW the list, inside the same scroller: the DM history section
+  // lives here so it reads as the tail of the surface rather than a second page.
+  after?: React.ReactNode
   // Slot INSIDE the scroller, above the rows — the DMs surface puts the draft
   // approve/discard cards and the Ops pointer strip here.
   before?: ReactNode
@@ -229,6 +232,7 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
                     <span className={`client ${t.client_id === 'risedtc' ? 'rise' : ''}`}>{clientLabel(t.client_id)}</span>
                     {threadKind(t) === 'inmail' && <span className="client kind-inmail">INMAIL</span>}
                     {threadKind(t) === 'email' && <span className="client kind-email">EMAIL</span>}
+                    {threadKind(t) === 'linkedin' && <span className="client kind-dm">DM</span>}
                   </div>
                   <div className="snip">{snip}</div>
                 </div>
@@ -236,10 +240,9 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
                   <span className="time">{timeAgo(eventTime(t.last))}</span>
                   {t.unread > 0 && <span className="udot" />}
                   {t.draft != null && <span className="dpill">DRAFT</span>}
-                  {/* The detector's flag is the only visible evidence for the
-                      43 threads whose reply never reached this view — without a
-                      mark they read as ordinary waiting rows. */}
-                  {t.draft == null && t.needsManualReply && <span className="dpill">NEEDS REPLY</span>}
+                  {/* The NEEDS REPLY pill went with the flag's demotion: it sat
+                      on threads that end with Ivan's own reply (Nour Siakir
+                      Oglou), which is the opposite of what it claimed. */}
                 </div>
               </div>
             )
@@ -247,6 +250,7 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
           {win.padBottom > 0 && <div style={{ height: win.padBottom }} aria-hidden />}
           </>
         )}
+        {after}
       </div>
     </>
   )
