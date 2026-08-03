@@ -1,0 +1,30 @@
+{
+  "target": {
+    "id": "96b11b18-6112-4c1e-95d3-2dc1efd2bce1",
+    "title": "EU AI content labels go live today: what it means for agency owners posting AI-generated content on LinkedIn",
+    "bodyLen": 1707,
+    "taxonomyWasEdited": null
+  },
+  "save": {
+    "landedInDb": true,
+    "dbBodyEndsWith": "ent, or just the disguise?\n\n[draft-window-v2 round-trip 1785765841333]",
+    "humanEditedStamped": true,
+    "savedFlashShown": false
+  },
+  "conflict": {
+    "boxShown": true,
+    "headline": "This draft changed in the database while you were editing it.",
+    "showsTheirText": true,
+    "myTextStillInEditor": true,
+    "offersBothChoices": [
+      "Take theirs, drop mine",
+      "Keep mine, overwrite theirs"
+    ],
+    "dbUnchangedByTheRefusedSave": true
+  },
+  "restored": {
+    "bodyIdentical": true,
+    "taxonomyIdentical": true
+  },
+  "consoleErrors": []
+}

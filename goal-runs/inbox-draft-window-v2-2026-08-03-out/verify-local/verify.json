@@ -1,31 +1,33 @@
 {
   "origin": "http://localhost:5173",
-  "at": "2026-08-03T14:01:32.688Z",
+  "at": "2026-08-03T14:05:47.098Z",
   "widths": {
     "390": {
       "draft": {
         "hScroll": false,
-        "overflowers": [],
+        "overflowers": [
+          "img."
+        ],
         "under44": [],
         "windowW": 390,
-        "bodyScrollH": 5812,
+        "bodyScrollH": 1727,
         "bodyClientH": 832,
         "queue": {
           "w": 390,
-          "scrollH": 755,
-          "clientH": 755
+          "scrollH": 159,
+          "clientH": 159
         },
         "main": {
           "w": 390,
-          "scrollH": 2006,
-          "clientH": 2006
+          "scrollH": 1255,
+          "clientH": 1255
         },
         "insp": {
           "w": 390,
-          "scrollH": 2994,
-          "clientH": 2994
+          "scrollH": 256,
+          "clientH": 256
         },
-        "queueRows": 10,
+        "queueRows": 2,
         "actionKeys": [
           "a Approve",
           "r Skip",
@@ -41,23 +43,23 @@
         }
       },
       "jk": {
-        "first": "EU AI content labels go live today: what it means for agency owners posting AI-generated content on LinkedIn",
-        "second": "When delivery runs your calendar, pipeline is always the first thing that goes",
-        "back": "EU AI content labels go live today: what it means for agency owners posting AI-generated content on LinkedIn",
+        "first": "LM promo: Opus 5 Effort Dial Kit (keyword DIAL)",
+        "second": "Founder video: why I cut my posting in half",
+        "back": "LM promo: Opus 5 Effort Dial Kit (keyword DIAL)",
         "moved": true,
         "returned": true
       },
       "cmdASafe": true,
       "editInPlace": {
         "before": {
-          "top": 292,
+          "top": 250,
           "left": 27,
           "w": 336,
           "fontSize": "15px",
           "lineHeight": "24px"
         },
         "after": {
-          "top": 292,
+          "top": 250,
           "left": 22,
           "w": 324,
           "fontSize": "15px",
@@ -66,7 +68,11 @@
           "insideCard": true
         }
       },
-      "escCancels": true,
+      "escCancels": {
+        "editorClosed": true,
+        "windowStillOpen": true
+      },
+      "escCloses": true,
       "magnet": {
         "hScroll": false,
         "overflowers": [],
@@ -113,20 +119,20 @@
         "bodyClientH": 786,
         "queue": {
           "w": 232,
-          "scrollH": 787,
+          "scrollH": 754,
           "clientH": 754
         },
         "main": {
           "w": 786,
-          "scrollH": 1835,
+          "scrollH": 966,
           "clientH": 754
         },
         "insp": {
           "w": 360,
-          "scrollH": 3250,
+          "scrollH": 754,
           "clientH": 754
         },
-        "queueRows": 10,
+        "queueRows": 2,
         "actionKeys": [
           "a Approve",
           "r Skip",
@@ -142,23 +148,23 @@
         }
       },
       "jk": {
-        "first": "EU AI content labels go live today: what it means for agency owners posting AI-generated content on LinkedIn",
-        "second": "When delivery runs your calendar, pipeline is always the first thing that goes",
-        "back": "EU AI content labels go live today: what it means for agency owners posting AI-generated content on LinkedIn",
+        "first": "LM promo: Opus 5 Effort Dial Kit (keyword DIAL)",
+        "second": "Founder video: why I cut my posting in half",
+        "back": "LM promo: Opus 5 Effort Dial Kit (keyword DIAL)",
         "moved": true,
         "returned": true
       },
       "cmdASafe": true,
       "editInPlace": {
         "before": {
-          "top": 273,
+          "top": 251,
           "left": 363,
           "w": 586,
           "fontSize": "15px",
           "lineHeight": "24px"
         },
         "after": {
-          "top": 273,
+          "top": 251,
           "left": 358,
           "w": 574,
           "fontSize": "15px",
@@ -167,7 +173,11 @@
           "insideCard": true
         }
       },
-      "escCancels": true,
+      "escCancels": {
+        "editorClosed": true,
+        "windowStillOpen": true
+      },
+      "escCloses": true,
       "magnet": {
         "hScroll": false,
         "overflowers": [],

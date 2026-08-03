@@ -437,6 +437,13 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
   const [saved, setSaved] = useState(false)
   const [saveErr, setSaveErr] = useState('')
   const [conflict, setConflict] = useState<SaveConflict | null>(null)
+  const conflictRef = useRef<HTMLDivElement>(null)
+  // A refusal that renders below the fold reads as "nothing happened". The
+  // measured case: the caret sits at the end of a 1,700-character post, so the
+  // main column is scrolled past the box the save just produced.
+  useEffect(() => {
+    if (conflict) conflictRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [conflict])
 
   // A new row arrives (j/k, or a refetch after a write): re-seat the editor on
   // it. Keyed on the id AND the stored body, so an engine landing a rewrite
@@ -690,7 +697,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
 
         {conflict && (
           // The whole point: BOTH texts, no winner picked.
-          <div className="dw-conf">
+          <div className="dw-conf" ref={conflictRef}>
             <div className="dw-conf-h">
               {conflict.kind === 'gone'
                 ? 'This draft was deleted while you were editing it.'
@@ -743,13 +750,20 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
           </div>
         )}
 
+        {/* While the editor is open every one of these would leave the row —
+            approving, skipping or walking to the next draft all discard unsaved
+            words with no prompt. The keyboard already refuses (the `editing`
+            bail in the handler); the buttons have to refuse too, or the guard is
+            only a guard for people who use keys. */}
         <div className="dw-acts">
           {actionable && (
             <>
-              <button type="button" className="dw-key p" disabled={acting} onClick={() => decide('approve')}>
+              <button type="button" className="dw-key p" disabled={acting || editing}
+                onClick={() => decide('approve')}>
                 <kbd>a</kbd> Approve
               </button>
-              <button type="button" className="dw-key" disabled={acting} onClick={() => decide('skip')}>
+              <button type="button" className="dw-key" disabled={acting || editing}
+                onClick={() => decide('skip')}>
                 <kbd>r</kbd> Skip
               </button>
             </>
@@ -758,16 +772,21 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
             <button type="button" className="dw-key" onClick={startEdit}><kbd>e</kbd> Edit</button>
           )}
           {next && (
-            <button type="button" className="dw-key" onClick={() => onPick(next)}><kbd>s</kbd> Next</button>
+            <button type="button" className="dw-key" disabled={editing} onClick={() => onPick(next)}>
+              <kbd>s</kbd> Next
+            </button>
           )}
           {lane === 'ivan' && (
-            <button type="button" className="dw-key" aria-expanded={more} onClick={() => setMore(m => !m)}>
+            <button type="button" className="dw-key" disabled={editing} aria-expanded={more}
+              onClick={() => setMore(m => !m)}>
               <kbd>o</kbd> {more ? 'Hide actions' : 'More actions'}
             </button>
           )}
-          {queue.length > 1 && (
+          {editing ? (
+            <span className="dw-hint">Save or cancel the edit first</span>
+          ) : queue.length > 1 ? (
             <span className="dw-hint"><kbd>j</kbd><kbd>k</kbd> move · <kbd>esc</kbd> close</span>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

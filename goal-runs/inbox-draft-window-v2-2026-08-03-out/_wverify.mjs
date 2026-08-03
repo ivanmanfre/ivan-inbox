@@ -139,10 +139,16 @@ for (const w of [1440, 390]) {
     })
     rec.editInPlace = { before: beforeBox, after: afterBox }
     await page.screenshot({ path: `${OUT}/draft-editing-${w}.png` })
-    // Esc leaves without writing.
+    // Esc leaves the FIELD without writing — and must NOT also close the
+    // window in the same keypress (the native-vs-synthetic listener trap).
+    await page.keyboard.press('Escape'); await page.waitForTimeout(700)
+    rec.escCancels = {
+      editorClosed: !(await page.$('textarea.li-ta')),
+      windowStillOpen: !!(await page.$('.wb-tk')),
+    }
+    // The second Escape, now that no field is focused, closes the window.
     await page.keyboard.press('Escape'); await page.waitForTimeout(600)
-    rec.escCancels = !(await page.$('textarea.li-ta'))
-    await page.keyboard.press('Escape'); await page.waitForTimeout(400)
+    rec.escCloses = !(await page.$('.wb-tk'))
   } else {
     rec.draft = { error: 'draft window did not open' }
   }
