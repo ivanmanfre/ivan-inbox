@@ -174,6 +174,10 @@ const DEAD_TAG = /^\s*\[(ooo_autoreply|negative|negative_optout|unsubscribe|auto
 // stamped `[positive]` by the classifier and read "Thank you for your message.
 // I'm on holiday until…" — a positive-sounding robot is still a robot.
 const OOO_TEXT = /\b(out of (the )?office|on holiday|on annual leave|on leave until|currently away|away from my desk|i am ooo|back in the office)\b/i
+// A closing pleasantry: gratitude and nothing else. "Thanks Ivan." ends a
+// conversation; "Thanks Ivan, can you send the deck?" does not, which is why
+// this only matches when the whole message IS the thank-you.
+const SIGNOFF = /^[\s\p{P}]*(many )?(thanks?|thank you|thx|cheers|no worries|you'?re welcome|ok(ay)?|got it|sounds good|will do|appreciate it)[\s\p{P}\p{Extended_Pictographic}]*(ivan|iv[áa]n|mattan|matt)?[\s\p{P}\p{Extended_Pictographic}]*$/iu
 // A LinkedIn reaction arrives as a message ("Nico reacted 👍"), and so does a
 // bare emoji. Neither is a question.
 const REACTION = /^\s*\S+\s+reacted\b|^[\s\p{Extended_Pictographic}\p{Emoji_Presentation}]+$/u
@@ -193,7 +197,8 @@ const CLOSED_STAGES = new Set(['archived', 'skipped', 'disqualified', 'unsubscri
 function isRealReply(m: InboxMessage): boolean {
   const text = (m.message_text ?? '').trim()
   if (!text) return false
-  return !DEAD_TAG.test(text) && !OOO_TEXT.test(text) && !REACTION.test(text) && !DECLINE.test(text)
+  return !DEAD_TAG.test(text) && !OOO_TEXT.test(text) && !REACTION.test(text)
+    && !DECLINE.test(text) && !SIGNOFF.test(text)
 }
 
 export function needsAnswer(t: Thread, now: number = Date.now()): boolean {
@@ -202,6 +207,16 @@ export function needsAnswer(t: Thread, now: number = Date.now()): boolean {
     .map(eventTime).sort().at(-1) ?? null
   if (lastInbound === null) return false
   if (now - Date.parse(lastInbound) > STALE_DAYS * 86_400_000) return false
+  // DISCARDING A DRAFT IS AN ANSWER TO THE QUESTION "does this need a reply".
+  // Gabriel Amarazeanu (2026-08-03): Mattan replied on LinkedIn by hand and
+  // binned the drafted reply, so the thread's newest outbound row is a discard
+  // and the mirror never captured his manual send. Ivan: "gabriel was handled
+  // manually by mattan as you can see". A human already ruled on this thread;
+  // re-listing it is the app overruling him.
+  const discarded = t.messages
+    .filter(m => m.direction === 'outbound' && !m.sent_at && m.send_blocked_reason === 'discarded_in_inbox')
+    .map(eventTime).sort().at(-1) ?? null
+  if (discarded !== null && discarded > lastInbound) return false
   const lastSent = t.messages
     .filter(m => m.direction === 'outbound' && m.sent_at)
     .map(m => m.sent_at!).sort().at(-1) ?? null
