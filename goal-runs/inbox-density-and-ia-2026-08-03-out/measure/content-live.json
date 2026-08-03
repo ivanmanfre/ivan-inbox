@@ -1,0 +1,174 @@
+{
+  "label": "live",
+  "origin": "https://ivanmanfre.github.io/ivan-inbox",
+  "route": "content",
+  "at": "2026-08-03T12:25:58.514Z",
+  "widths": {
+    "390": {
+      "scrollerClass": "rows",
+      "routeHeight": 2266,
+      "viewport": 588,
+      "screensOfScroll": 3.85,
+      "firstActionableTop": 574,
+      "visibleWithoutScrolling": true,
+      "cards": 10,
+      "sections": 9,
+      "openSections": 0,
+      "above": [
+        {
+          "cls": "ct-alert",
+          "top": 13,
+          "h": 50
+        },
+        {
+          "cls": "ct-alert-n",
+          "top": 26,
+          "h": 24
+        },
+        {
+          "cls": "ct-alert-t",
+          "top": 28,
+          "h": 20
+        },
+        {
+          "cls": "chev",
+          "top": 28,
+          "h": 20
+        },
+        {
+          "cls": "wb-chartcard.ct-band",
+          "top": 79,
+          "h": 261
+        },
+        {
+          "cls": "ct-band-plot",
+          "top": 93,
+          "h": 119
+        },
+        {
+          "cls": "wb-pipe-n.ct-band-fig",
+          "top": 222,
+          "h": 47
+        },
+        {
+          "cls": "wb-cardf.ct-band-facts",
+          "top": 277,
+          "h": 49
+        },
+        {
+          "cls": "ct-subtle",
+          "top": 346,
+          "h": 16
+        },
+        {
+          "cls": "ct-filters",
+          "top": 368,
+          "h": 118
+        },
+        {
+          "cls": "ct-fr",
+          "top": 376,
+          "h": 80
+        },
+        {
+          "cls": "ct-fnote",
+          "top": 462,
+          "h": 16
+        },
+        {
+          "cls": "",
+          "top": 486,
+          "h": 44
+        },
+        {
+          "cls": "wb-sech-strip.wb-sech-strip-hi",
+          "top": 486,
+          "h": 44
+        }
+      ]
+    },
+    "1440": {
+      "scrollerClass": "rows",
+      "routeHeight": 1416,
+      "viewport": 712,
+      "screensOfScroll": 1.99,
+      "firstActionableTop": 464,
+      "visibleWithoutScrolling": true,
+      "cards": 10,
+      "sections": 9,
+      "openSections": 0,
+      "above": [
+        {
+          "cls": "ct-alert",
+          "top": 13,
+          "h": 50
+        },
+        {
+          "cls": "ct-alert-n",
+          "top": 26,
+          "h": 24
+        },
+        {
+          "cls": "ct-alert-t",
+          "top": 28,
+          "h": 20
+        },
+        {
+          "cls": "chev",
+          "top": 28,
+          "h": 20
+        },
+        {
+          "cls": "wb-chartcard.ct-band",
+          "top": 79,
+          "h": 199
+        },
+        {
+          "cls": "ct-band-plot",
+          "top": 103,
+          "h": 151
+        },
+        {
+          "cls": "wb-pipe-n.ct-band-fig",
+          "top": 155,
+          "h": 47
+        },
+        {
+          "cls": "wb-cardf.ct-band-facts",
+          "top": 169,
+          "h": 20
+        },
+        {
+          "cls": "ct-subtle",
+          "top": 284,
+          "h": 16
+        },
+        {
+          "cls": "ct-filters",
+          "top": 306,
+          "h": 70
+        },
+        {
+          "cls": "ct-fr",
+          "top": 314,
+          "h": 28
+        },
+        {
+          "cls": "ct-fnote",
+          "top": 350,
+          "h": 16
+        },
+        {
+          "cls": "",
+          "top": 376,
+          "h": 44
+        },
+        {
+          "cls": "wb-sech-strip.wb-sech-strip-hi",
+          "top": 376,
+          "h": 44
+        }
+      ]
+    }
+  }
+}
