@@ -1096,8 +1096,15 @@ const CLIENT_STAGE_LABEL: Record<BoardGroup, Partial<Record<ContentStage, string
   },
   // Our side: `review` is the decision Ivan is actually being asked for, and it
   // is named as that decision rather than as a status.
+  //
+  // Short on purpose. The GROUP header above it already says where the row is
+  // ("Not on his board"), so a stage label that repeated that would spend a
+  // header on a fact the reader just read — measured on the first live pass,
+  // which stacked "WAITING ON YOU" directly above "WAITING ON YOU — NOT ON HIS
+  // BOARD YET". Each header does one job: the group says where, the stage says
+  // whose turn.
   internal: {
-    review: 'Waiting on you — not on his board yet',
+    review: 'Waiting on you',
     approved: 'Approved, still ours',
     scheduled: 'Scheduled, still ours',
   },

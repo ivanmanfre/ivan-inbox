@@ -639,7 +639,7 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
 const BOARD_GROUPS = [
   {
     key: 'internal',
-    title: 'Waiting on you',
+    title: 'Not on his board',
     note: 'Ours only — Mattan has never seen these. Open one and put it on his board when it is ready.',
   },
   {

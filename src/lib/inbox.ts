@@ -191,9 +191,19 @@ export const STATUS_LABEL: Record<Status, string> = {
   all: 'All',
 }
 
+// 'all' means all PENDING now, never the send side. Ivan, 2026-08-03: "dms
+// section doesnt need to show sent stuff only receiveds pending response". The
+// 'waiting' rows are conversations he already answered — they live in Sends,
+// and a search still reaches them (InboxScreen bypasses this filter when a
+// query is typed), so nothing became unreachable.
+//
+// Checked before cutting, because a starved lane looks identical to a dead one:
+// Mattan's seat carries 14 flagged replies and ZERO unread inbound, so on that
+// seat `needsAnswer` never fires and the detector's flag is the ONLY thing that
+// surfaces a pending reply. 'flagged' therefore has to stay in every pending
+// view, on both seats.
 export function filterByStatus(threads: Thread[], s: Status): Thread[] {
-  if (s === 'all') return threads
-  if (s === 'needs') return threads.filter(t => threadBucket(t) !== 'waiting')
+  if (s === 'all' || s === 'needs') return threads.filter(t => threadBucket(t) !== 'waiting')
   return threads.filter(t => threadBucket(t) === s)
 }
 

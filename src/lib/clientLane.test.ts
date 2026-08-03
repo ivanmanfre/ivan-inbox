@@ -253,7 +253,15 @@ describe('clientStageLabel — one status, two meanings, two labels (Ivan’s it
   })
   it('names WHOSE review it is', () => {
     expect(clientStageLabel('review', 'board')).toBe('Waiting on Mattan')
-    expect(clientStageLabel('review', 'internal')).toBe('Waiting on you — not on his board yet')
+    expect(clientStageLabel('review', 'internal')).toBe('Waiting on you')
+  })
+  it('every stage that means two things renders as two different labels', () => {
+    // The whole of item 3: these are the stages a client draft can sit at on
+    // either side of the promotion line, and none of them may read the same in
+    // both categories. (published/error mean one thing, so they share a label.)
+    for (const s of ['review', 'approved', 'scheduled'] as const) {
+      expect(clientStageLabel(s, 'board')).not.toBe(clientStageLabel(s, 'internal'))
+    }
   })
   it('a stage with no client-specific meaning keeps the shared label', () => {
     expect(clientStageLabel('published', 'board')).toBe(STAGE_LABEL.published)
