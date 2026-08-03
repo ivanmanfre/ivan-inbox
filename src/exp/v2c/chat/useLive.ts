@@ -64,6 +64,12 @@ export function useLive({ onEscalate }: {
   const node = useRef<AudioWorkletNode | ScriptProcessorNode | null>(null)
   const acc = useRef<Float32Array[]>([])
   const accLen = useRef(0)
+  // Pre-session buffer: the mic chain comes up ~1s before session_started
+  // (token mint + WS open). Words spoken into that gap buffer here and flush
+  // on grant — same discipline as useRtStt, without it the loop's FIRST
+  // utterance loses its opening words (measured: "Check the Supabase…" arrived
+  // as "Supabase Q and the…"). Bounded; only fills during ARMING.
+  const preSession = useRef<string[]>([])
   const history = useRef<LiveMsg[]>([])
   const rounds = useRef(0)
   const turnCount = useRef(0)
@@ -111,6 +117,7 @@ export function useLive({ onEscalate }: {
     const s = stream.current; stream.current = null
     if (s) s.getTracks().forEach(t => t.stop())
     acc.current = []; accLen.current = 0
+    preSession.current = []
   }, [])
 
   const hardStop = useCallback(() => {
@@ -137,11 +144,13 @@ export function useLive({ onEscalate }: {
   // before the network, which is the second lock on the echo bug.
   const pushSamples = useCallback((samples: Float32Array) => {
     const s = stateRef.current.s
-    if (s !== 'LISTENING' && s !== 'TRANSCRIBING') return
+    if (s !== 'ARMING' && s !== 'LISTENING' && s !== 'TRANSCRIBING') return
     const rms = frameLevel(samples)
-    if (s === 'LISTENING') {
+    if (s === 'LISTENING' || s === 'ARMING') {
       setLevel(l => l * 0.6 + Math.min(1, rms * 18) * 0.4)
-      dispatch({ e: 'level', level: Math.min(1, rms * 18) })
+      if (s === 'LISTENING') dispatch({ e: 'level', level: Math.min(1, rms * 18) })
+      // Speech during ARMING counts as heard — it is buffered below and will
+      // be transcribed, so the EOU watchdog must know about it.
       if (rms > VAD_RMS) { speechHeard.current = true; lastVoiceAt.current = Date.now() }
     }
     acc.current.push(samples)
@@ -151,27 +160,42 @@ export function useLive({ onEscalate }: {
     let off = 0
     for (const chunk of acc.current) { joined.set(chunk, off); off += chunk.length }
     acc.current = []; accLen.current = 0
+    const b64 = floatToPcm16Base64(joined)
     const w = ws.current
-    if (w && w.readyState === WebSocket.OPEN) w.send(rtAudioFrame(floatToPcm16Base64(joined), false))
+    if (s === 'ARMING' || !w || w.readyState !== WebSocket.OPEN) {
+      // ~30s bound: past that something is wrong and growing a buffer isn't it.
+      if (preSession.current.length < 300) preSession.current.push(b64)
+      return
+    }
+    w.send(rtAudioFrame(b64, false))
   }, [dispatch])
 
   // ---- ARMING → mic + single-use token + one WS for the whole loop ----
   const arm = useCallback(async () => {
     try {
+      // Mic and token mint in PARALLEL, and the CAPTURE CHAIN goes up the
+      // moment the mic grants — before the mint resolves. Words spoken during
+      // the ~1s of token+socket setup land in the ARMING buffer instead of
+      // being lost (measured: the sequential order cost the first ~1.2s and
+      // turned "Check the Supabase…" into "Supabase Q and the…").
       const micP = navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       })
-      const { data } = await supabase.auth.getSession()
-      const jwt = data.session?.access_token
-      if (!jwt) throw new Error('no-key-broker')
-      const res = await fetch(RT_URL, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kind: 'stt' }),
-      })
-      if (!res.ok) throw new Error('no-key-broker')
-      const { token } = await res.json() as { token?: string }
-      if (!token) throw new Error('no-key-broker')
+      const tokenP = (async () => {
+        const { data } = await supabase.auth.getSession()
+        const jwt = data.session?.access_token
+        if (!jwt) throw new Error('no-key-broker')
+        const res = await fetch(RT_URL, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ kind: 'stt' }),
+        })
+        if (!res.ok) throw new Error('no-key-broker')
+        const { token } = await res.json() as { token?: string }
+        if (!token) throw new Error('no-key-broker')
+        return token
+      })()
+      tokenP.catch(() => { /* awaited below — this only silences the pre-await rejection warning */ })
 
       let mic: MediaStream
       try { mic = await micP } catch { throw new Error('mic-denied') }
@@ -199,12 +223,19 @@ export function useLive({ onEscalate }: {
         node.current = n
       }
 
+      // Capture is rolling into the ARMING buffer — now wait for the token.
+      const token = await tokenP
+      if (!alive.current) return
+
       const w = new WebSocket(rtSocketUrl(token))
       ws.current = w
       w.onerror = () => { if (ws.current === w) dispatch({ e: 'fail', reason: 'stt-network', retryable: true }) }
       w.onmessage = (e) => {
         const ev = parseRtEvent(e.data as string)
         if (ev.kind === 'session') {
+          // Words spoken while the session was coming up go first.
+          for (const b64 of preSession.current) w.send(rtAudioFrame(b64, false))
+          preSession.current = []
           dispatch({ e: 'granted' })
         } else if (ev.kind === 'partial') {
           if (alive.current) setInterim(ev.text)
@@ -497,10 +528,16 @@ export function useLive({ onEscalate }: {
       pendingUser.current = fed
       dispatch({ e: 'heard-silence' })
       dispatch({ e: 'transcript', text: fed })
+    } else if (stateRef.current.s === 'PAUSED') {
+      // "The fast lane speaks a summary when it lands" — a loop that idled
+      // into PAUSED while the pipeline worked WAKES for the result. The
+      // LISTENING effect consumes queuedResult on entry.
+      queuedResult.current = fed
+      resume()
     } else if (stateRef.current.s !== 'IDLE' && stateRef.current.s !== 'ERROR') {
       queuedResult.current = fed
     }
-  }, [dispatch])
+  }, [dispatch, resume])
 
   return { state, level, interim, last, turns, supported, open, close, skip, resume, pause, feedResult }
 }
