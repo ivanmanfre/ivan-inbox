@@ -17,16 +17,23 @@ import { supabase } from './supabase'
 
 const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/inbox-claude`
 
-// The models the broker will forward, in the order a picker should offer them.
-// Kept in step with ALLOWED_MODELS in supabase/functions/inbox-claude/index.ts —
-// the broker's copy is the enforcing one; this copy only decides what is offered.
-// A value that drifted out of the broker's list would be refused with
-// `model_not_allowed`, which is a visible failure rather than a silent one.
+// The models the picker offers — the TRUTHFUL working set, probed against the
+// deployed container on 2026-08-03 (goal-runs/inbox-usability-and-voice-live-
+// 2026-08-03-out/phase4-model-probes.md):
+//   - claude-opus-4-8: frames echo it back honestly. opus-4-7 and opus-4-6 map
+//     to the SAME CLI "opus" alias upstream, so offering them was offering the
+//     same model three times under three names — dropped as duplicates.
+//   - claude-sonnet-4-6 and claude-haiku-4-5 (runs -20251001): both honoured.
+//   - Claude 5 ids CANNOT run today: the container's MODEL_MAP rejects them on
+//     /chat, and the /v1/messages "acceptance" is a cosmetic echo that silently
+//     runs Sonnet. They are not offered.
+// The broker (supabase/functions/inbox-claude) still allowlists the old 5-id
+// set — a harmless SUPERSET of this list, deliberately left alone: the picker
+// is the minimal truthful surface, the broker's list only refuses ids, and a
+// drifted value would fail visibly with `model_not_allowed`, never silently.
 export const CLAUDE_MODELS = [
   { id: 'claude-opus-4-8', label: 'Opus 4.8', note: 'Most capable' },
-  { id: 'claude-opus-4-7', label: 'Opus 4.7', note: 'Container default' },
-  { id: 'claude-opus-4-6', label: 'Opus 4.6', note: 'Previous Opus' },
-  { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6', note: 'Faster, cheaper' },
+  { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6', note: 'Balanced' },
   { id: 'claude-haiku-4-5', label: 'Haiku 4.5', note: 'Fastest' },
 ] as const
 
