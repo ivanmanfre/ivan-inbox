@@ -722,12 +722,21 @@ export async function deleteIdea(id: string): Promise<'deleted' | 'archived'> {
 
 // The one rule that decides whether a row shows a mutating affordance at all,
 // in one place because round 2 renders those buttons from two surfaces (the
-// queue card and the draft detail screen). D6: only a row waiting on review is
-// actionable. D7: only in the Ivan lane — Mattan’s lane is read-only ambient
-// visibility, and approveDraft/skipDraft are both scoped .is('client_id', null)
-// anyway, so a button there would be a button that silently does nothing.
+// queue card and the draft detail screen). D7: only in the Ivan lane — Mattan’s
+// lane is read-only ambient visibility, and approveDraft/skipDraft are both
+// scoped .is('client_id', null) anyway, so a button there would be a button that
+// silently does nothing.
+//
+// 'error' joins 'review' (2026-08-03, Ivan: "there is no delete or approve
+// option"). The live lane is 3 review rows against 13 errored ones — the
+// QA_BLOCKED drafts at the top of his queue — and those had NO approve and NO
+// skip, so the only backlog he actually has to clear was the one the app
+// refused to act on. A failed QA verdict is an opinion about a draft, not a
+// lock on it: Ivan is the override, and skip is how an errored row leaves the
+// queue for good. The confirm names the state so an override is a decision, not
+// an accident.
 export function reviewActionable(status: string, lane: ContentLane): boolean {
-  return status === 'review' && lane === 'ivan'
+  return (status === 'review' || status === 'error') && lane === 'ivan'
 }
 
 // ---------- pipeline stages ----------
