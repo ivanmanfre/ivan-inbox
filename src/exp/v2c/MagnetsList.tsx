@@ -3,7 +3,7 @@ import { PullIndicator } from '../../components/PullIndicator'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { useIdeaCandidates, useResources } from '../../hooks/useContent'
 import { CONTENT_LANES, LANE_LABEL, type ContentLane } from '../../lib/content'
-import { ResourceLane } from './ContentSections'
+import { ResourceLane, type OpenMagnet } from './ContentSections'
 
 // Magnets — the lead-magnet pipeline as ITS OWN JOB (phase: usability-voice).
 //
@@ -25,8 +25,9 @@ import { ResourceLane } from './ContentSections'
 export function MagnetsList({ lane, setLane, onOpen }: {
   lane: ContentLane
   setLane: (l: ContentLane) => void
-  // Opens a lead-magnet row's detail window (the takeover register).
-  onOpen?: (id: string, label: string) => void
+  // Opens a lead-magnet row's detail window (the takeover register), carrying
+  // the section it was opened from as the window's queue.
+  onOpen?: OpenMagnet
 }) {
   const resources = useResources(lane)
   // Ivan lane only: the LM side of the content_type partition. The hook is

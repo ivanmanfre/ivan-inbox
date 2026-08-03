@@ -8,11 +8,36 @@ import { useInbox } from '../../hooks/useInbox'
 import { useOps } from '../../hooks/useOps'
 import { pendingOps } from '../../lib/ops'
 import { inboxWaitingCount, type Filter, type Status } from '../../lib/inbox'
-import type { ContentLane } from '../../lib/content'
+import type { ContentDraft, ContentLane } from '../../lib/content'
+import type { Resource } from '../../lib/styles'
+
+// The list row -> queue row projection. Only what the window's rail draws: no
+// bodies, no images, no taxonomy. A queue is a list of places to go, not a
+// second copy of the rows.
+function toLmQueueItem(r: Resource): QueueItem {
+  return {
+    id: r.id,
+    title: r.topic ?? 'Untitled',
+    type: r.format,
+    updated_at: r.updated_at,
+    status: r.status,
+  }
+}
+
+function toQueueItem(d: ContentDraft): QueueItem {
+  return {
+    id: d.id,
+    title: d.title || d.topic || 'Untitled',
+    type: d.type,
+    updated_at: d.updated_at,
+    status: d.status,
+  }
+}
 import { MobileTabs, Rail, WorkSegment } from './Rail'
-import { ContentList } from './ContentList'
+import { ContentList, type OpenDraft } from './ContentList'
 import { MagnetsList } from './MagnetsList'
-import { DraftWindow } from './DraftPane'
+import type { OpenMagnet } from './ContentSections'
+import { DraftWindow, type QueueItem } from './DraftPane'
 import { MagnetWindow } from './MagnetWindow'
 import { ThreadPeer } from './ThreadPeer'
 import { DmsSurface } from './DmsSurface'
@@ -109,7 +134,14 @@ export default function Shell() {
   // The reading window (usability-voice ask 2). A draft or a lead magnet opened
   // from Content/Magnets is a TAKEOVER over the canvas, not a 420px peer — the
   // peers model stays for chat and inbox threads only.
-  const [openItem, setOpenItem] = useState<{ kind: 'draft' | 'magnet'; id: string } | null>(null)
+  // draft-window-v2: the window now carries the QUEUE it was opened from, so
+  // j/k, the rail and "3 of 12" all read the rows Ivan can actually see —
+  // filtered, searched and collapsed exactly as the list has them. A queue is
+  // only ever replaced by an OPEN, never by a move: walking with j/k inside a
+  // queue must not re-scope the queue underneath the walk.
+  const [openItem, setOpenItem] = useState<
+    { kind: 'draft' | 'magnet'; id: string; queue: QueueItem[] } | null
+  >(null)
 
   // ---- data, mounted ONCE, here ----
   //
@@ -240,9 +272,17 @@ export default function Shell() {
   const openThread = useCallback((id: string) => openPeer({ kind: 'thread', id }), [openPeer])
   // Ask 2 — a draft is a READING surface, so it opens the takeover window, not
   // a peer. Same for a lead-magnet row.
-  const openDraft = useCallback((id: string) => setOpenItem({ kind: 'draft', id }), [])
-  const openMagnet = useCallback((id: string) => setOpenItem({ kind: 'magnet', id }), [])
+  const openDraft = useCallback<OpenDraft>((id, _label, queue) => {
+    setOpenItem({ kind: 'draft', id, queue: queue.map(toQueueItem) })
+  }, [])
+  const openMagnet = useCallback<OpenMagnet>((id, _label, queue) => {
+    setOpenItem({ kind: 'magnet', id, queue: queue.map(toLmQueueItem) })
+  }, [])
   const closeItem = useCallback(() => setOpenItem(null), [])
+  // Move WITHIN the open queue. The queue object is carried across untouched.
+  const pickItem = useCallback((id: string) => {
+    setOpenItem(cur => (cur ? { ...cur, id } : cur))
+  }, [])
 
   // ---- first paint ----
   // Spine §1.7 — the ONE licensed structural edit. At 390 the loading state used
@@ -399,11 +439,14 @@ export default function Shell() {
   const itemWindow = openItem && (
     openItem.kind === 'draft'
       ? <DraftWindow
-          id={openItem.id} lane={lane}
+          id={openItem.id} lane={lane} queue={openItem.queue}
           refresh={() => setContentBump(b => b + 1)}
-          onClose={closeItem} mobile={mobile}
+          onClose={closeItem} onPick={pickItem} mobile={mobile}
         />
-      : <MagnetWindow id={openItem.id} lane={lane} onClose={closeItem} mobile={mobile} />
+      : <MagnetWindow
+          id={openItem.id} lane={lane} queue={openItem.queue}
+          onClose={closeItem} onPick={pickItem} mobile={mobile}
+        />
   )
 
   // ---- mobile: one region at a time ----

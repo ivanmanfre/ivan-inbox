@@ -16,17 +16,35 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 // z-index 50: below the confirm sheets (.sheet-scrim, z 60), which the delete
 // flow opens ON TOP of this window.
 
-export function Takeover({ label, sub, onClose, mobile, children }: {
+export function Takeover({ label, sub, onClose, mobile, children, bodyClass }: {
   label: string
   sub?: string | null
   onClose: () => void
   mobile: boolean
   children: ReactNode
+  /**
+   * Opt OUT of the centered 760px reading column. The draft/magnet windows are
+   * now multi-column readers that own their own geometry; everything else still
+   * gets the comfortable measure by default.
+   */
+  bodyClass?: string
 }) {
   // Esc closes, from anywhere — the window is modal.
+  //
+  // 🔴 EXCEPT out of a field. This listener is a NATIVE one on `window`; React
+  // attaches its synthetic handlers at the root container, which is BELOW
+  // window, so a `stopPropagation()` inside a textarea's onKeyDown cannot stop
+  // it. Before this guard, Escape in the draft editor cancelled the edit AND
+  // closed the whole window in the same keypress — the inner meaning of Escape
+  // (leave this field) has to win over the outer one (leave this window), and
+  // the second Escape still closes because the field is no longer focused.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.stopPropagation(); onClose() }
+      if (e.key !== 'Escape') return
+      const el = document.activeElement as HTMLElement | null
+      if (el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.isContentEditable)) return
+      e.stopPropagation()
+      onClose()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -53,8 +71,8 @@ export function Takeover({ label, sub, onClose, mobile, children }: {
           </div>
           <button type="button" className="wb-tk-x" onClick={onClose} aria-label="Close">✕</button>
         </div>
-        <div className="rows wb-tk-body">
-          <div className="wb-tk-col">{children}</div>
+        <div className={`rows wb-tk-body${bodyClass ? ` ${bodyClass}` : ''}`}>
+          {bodyClass ? children : <div className="wb-tk-col">{children}</div>}
         </div>
       </section>
     </div>

@@ -825,3 +825,253 @@
 /* faithful.css sets sheet-wide radii at 0-3-0 (.wb.wb.wb …) — the orb is a
    CIRCLE and must out-rank that without touching the frozen sheet. */
 .wb.wb.wb .wb-live-orb{border-radius:50%;padding:0;flex:none}
+
+/* ===========================================================================
+   DRAFT WINDOW v2 (run/draft-window-v2, 2026-08-03)
+
+   Ivan: "the content window when open each post to see is nothing like
+   dashboard-v2/?section=posts&sub=pipeline with the html preview editable and
+   way better horizontal organization.. make it much better".
+
+   Measured before: the window's body scrolled 9,040px at 1440 and 13,150px at
+   390 — eleven and seventeen screens of a single 760px column. The decision
+   material (QA verdict, source, generation register) sat below all of it.
+
+   The rebuild is the reference's REVIEW READER, ported as structure:
+     .ws-reader  ->  .dw          (grid, three columns)
+     .ws-rail    ->  .dw-queue    (the queue you are working, 232px)
+     .ws-read-main -> .dw-main    (the artifact, capped at 640px)
+     .ws-inspect ->  .dw-insp     (the decision material, 300-360px)
+   Skin is this app's (style-delta law); only the geometry and the affordances
+   come across. No lucide, no sonner, no new dependency.
+   =========================================================================== */
+/* 🔴 SPECIFICITY, and why every selector below carries `.wb.wb.wb`:
+   faithful.css:171 flattens the whole sheet with `.wb.wb, .wb.wb *{ font-size:
+   var(--fs-body); line-height:20px }` before re-assigning its seven tiers. A
+   single-class rule (0-1-0) loses to that (0-2-0), so the first cut of this
+   file rendered the LinkedIn artifact's 15px/1.6 body at the app's 13px/20px —
+   measured, not guessed (verify-local/verify.json, liBody.fontSize "13px").
+   The style-delta's own rule already said this: new declarations go in at
+   `.wb.wb.wb` so they survive the flatten pass. */
+
+
+/* The window has to be wide enough to hold three columns before it earns them:
+   232 + 640 + 340 + two gaps + padding. Below that it is the old one-column
+   reading surface, which was never the problem. */
+@media (min-width:1180px){
+  .wb-tk{flex:0 1 1380px}
+  .wb-tkscrim{padding:22px 26px}
+}
+
+.wb.wb.wb .dw{display:block}
+.wb.wb.wb .dw-cols{display:block}
+
+/* ---- the three-column reader ---- */
+@media (min-width:1180px){
+  /* The takeover stops being a scroller and becomes a frame: each column
+     scrolls on its own, so reading the generation register never pushes the
+     post out of view. This is the one place we depart from the reference,
+     which keeps ONE page scroll because its rails live in the page (a capped
+     rail there traps the wheel). Here the page scroll is already locked behind
+     a modal, so there is no scroll for a column to steal. */
+  .wb-tk-body.dw-body{overflow:hidden;display:flex;min-height:0}
+  .wb.wb.wb .dw{flex:1;min-width:0;min-height:0;display:flex}
+  .wb.wb.wb .dw-cols{flex:1;min-width:0;min-height:0;display:grid;
+    grid-template-columns:232px minmax(0,1fr) minmax(300px,360px)}
+  /* A one-row queue does not earn a rail, and an empty 232px column would be a
+     lie about there being somewhere to go. */
+  .wb.wb.wb .dw-cols.dw-norail{grid-template-columns:minmax(0,1fr) minmax(300px,360px)}
+  /* The MARKUP order is main → evidence → queue, which is the phone order and
+     therefore the priority order. `order` puts the queue back on the left for
+     the wide layout without the DOM having to disagree with the phone. */
+  .wb.wb.wb .dw-queue{order:1}
+  .wb.wb.wb .dw-main{order:2}
+  .wb.wb.wb .dw-insp{order:3}
+  .wb.wb.wb .dw-queue, .wb.wb.wb .dw-main, .wb.wb.wb .dw-insp{min-width:0;min-height:0;overflow-y:auto;
+    overscroll-behavior:contain}
+  .wb.wb.wb .dw-queue{border-right:.5px solid var(--sep)}
+  .wb.wb.wb .dw-insp{border-left:.5px solid var(--sep)}
+  .wb.wb.wb .dw-main-in{max-width:640px;margin:0 auto}
+}
+
+/* ---- the queue rail: j/k made visible ---- */
+.wb.wb.wb .dw-queue-h{display:flex;align-items:baseline;gap:8px;padding:14px 14px 8px;
+  font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--text3)}
+.wb.wb.wb .dw-queue-h b{color:var(--text2);font-weight:800}
+.wb.wb.wb .dw-qrow{display:block;width:100%;text-align:left;background:none;border:0;
+  font-family:inherit;color:inherit;cursor:pointer;padding:9px 14px;
+  min-height:44px;box-sizing:border-box;border-bottom:.5px solid var(--sep)}
+.wb.wb.wb .dw-qrow:hover{background:var(--surface2)}
+.wb.wb.wb .dw-qrow.on{background:var(--surface2);box-shadow:inset 2px 0 0 var(--accent)}
+.wb.wb.wb .dw-qrow-t{font-size:12.5px;line-height:1.3;color:var(--text2);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.wb.wb.wb .dw-qrow.on .dw-qrow-t{color:var(--text);font-weight:700}
+.wb.wb.wb .dw-qrow-m{margin-top:3px;font-size:10.5px;letter-spacing:.02em;color:var(--text3)}
+
+/* ---- the main column ---- */
+.wb.wb.wb .dw-cap{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:14px 16px 10px}
+.wb.wb.wb .dw-cap-t{flex:1;min-width:160px;font-size:17px;font-weight:700;line-height:1.25;
+  letter-spacing:-.01em;color:var(--text)}
+.wb.wb.wb .dw-pos{flex:none;font-size:11px;font-weight:700;color:var(--text3);
+  font-variant-numeric:tabular-nums}
+.wb.wb.wb .dw-sub{padding:0 16px 6px;font-size:12px;line-height:1.4;color:var(--text3)}
+
+/* ---- the action bar: sticky, so the decision never scrolls away ---- */
+.wb.wb.wb .dw-acts{position:sticky;bottom:0;z-index:2;display:flex;flex-wrap:wrap;
+  align-items:center;gap:7px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+  margin-top:10px;background:var(--bg);border-top:.5px solid var(--sep)}
+.wb.wb.wb .dw-key{display:inline-flex;align-items:center;gap:6px;min-height:44px;
+  padding:0 13px;border-radius:var(--r-ctl);cursor:pointer;font-family:inherit;
+  font-size:13px;font-weight:600;color:var(--text);
+  background:var(--surface2);border:1px solid var(--surface3)}
+.wb.wb.wb .dw-key:hover{background:var(--surface3)}
+.wb.wb.wb .dw-key:active{transform:scale(.98)}
+.wb.wb.wb .dw-key:disabled{opacity:.45;cursor:default;transform:none}
+.wb.wb.wb .dw-key.p{background:var(--accent);border-color:var(--accent);color:var(--ink)}
+.wb.wb.wb .dw-key.p:hover{filter:brightness(1.06)}
+.wb.wb.wb .dw-key.d{color:#FF453A;border-color:rgba(255,69,58,.4);background:rgba(255,69,58,.08)}
+.wb.wb.wb .dw-key.d:hover{background:rgba(255,69,58,.16)}
+.wb.wb.wb .dw-key kbd{display:inline-flex;align-items:center;justify-content:center;
+  min-width:17px;height:17px;padding:0 3px;border-radius:4px;font-family:inherit;
+  font-size:10.5px;font-weight:800;line-height:1;
+  border:1px solid currentColor;opacity:.5}
+.wb.wb.wb .dw-hint{margin-left:auto;font-size:11px;color:var(--text3);display:flex;
+  align-items:center;gap:5px;flex-wrap:wrap}
+.wb.wb.wb .dw-hint kbd{display:inline-flex;align-items:center;justify-content:center;
+  min-width:15px;height:15px;padding:0 3px;border-radius:4px;font-size:10px;
+  font-weight:800;border:1px solid var(--surface3);color:var(--text3)}
+
+/* ---- the inspect column: collapsible sections ---- */
+.wb.wb.wb .dw-insp-h{display:flex;align-items:center;gap:8px;padding:14px 14px 6px;
+  font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--text3)}
+.wb.wb.wb .dw-sec{border-bottom:.5px solid var(--sep)}
+.wb.wb.wb .dw-sec-b{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;
+  padding:8px 14px;background:none;border:0;cursor:pointer;font-family:inherit;
+  text-align:left;color:var(--text2)}
+.wb.wb.wb .dw-sec-b:hover{background:var(--surface2)}
+.wb.wb.wb .dw-sec-n{flex:1;min-width:0;font-size:12px;font-weight:700;letter-spacing:.03em;
+  text-transform:uppercase}
+.wb.wb.wb .dw-sec-t{flex:none;font-size:11px;font-weight:600;color:var(--text3)}
+.wb.wb.wb .dw-sec-c{flex:none;font-size:11px;color:var(--text3);transition:transform var(--dur-fast,.14s) ease}
+.wb.wb.wb .dw-sec.on .dw-sec-c{transform:rotate(90deg)}
+.wb.wb.wb .dw-sec-body{padding-bottom:12px}
+/* Inside the rail the shared blocks lose the 16-22px page gutters: the rail is
+   340px and a 22px gutter each side spends 13% of it on nothing. */
+.wb.wb.wb .dw-insp .res-hdr{padding:14px 14px 4px}
+.dw-insp .dd-card,.dw-insp .wb-qa,.dw-insp .ct-quote,.dw-insp .ct-subtle,
+.wb.wb.wb .dw-insp .dd-link, .wb.wb.wb .dw-insp .ct-err, .wb.wb.wb .dw-insp .ct-ref-p, .wb.wb.wb .dw-insp .ct-warnbox{
+  margin-left:14px;margin-right:14px}
+.wb.wb.wb .dw-insp .wb-qa{padding:12px 13px}
+.wb.wb.wb .dw-insp .wb-qa-n{font-size:27px}
+
+/* ---- the note composer (append_agent_log) ---- */
+.wb.wb.wb .dw-note{margin:10px 14px 0;display:flex;flex-direction:column;gap:7px}
+.wb.wb.wb .dw-note textarea{display:block;width:100%;box-sizing:border-box;resize:vertical;
+  min-height:56px;background:var(--surface2);color:var(--text);
+  border:1px solid var(--surface3);border-radius:var(--r-sm);padding:9px 10px;
+  font-family:inherit;font-size:13px;line-height:1.45}
+.wb.wb.wb .dw-note textarea:focus{outline:none;border-color:rgba(184,255,102,.5)}
+
+/* ---- the schedule control ---- */
+.wb.wb.wb .dw-sched{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.wb.wb.wb .dw-sched input{min-height:44px;box-sizing:border-box;background:var(--surface2);
+  color:var(--text);border:1px solid var(--surface3);border-radius:var(--r-ctl);
+  padding:0 10px;font-family:inherit;font-size:13px;color-scheme:dark}
+:root[data-theme='light'] .wb.wb.wb .dw-sched input{color-scheme:light}
+
+/* ---- the save-conflict box: both texts, no winner picked ---- */
+.wb.wb.wb .dw-conf{margin:10px 16px 0;padding:12px 14px;border-radius:var(--r-md);
+  background:rgba(255,159,10,.1);border:1px solid rgba(255,159,10,.34)}
+.wb.wb.wb .dw-conf-h{font-size:13px;font-weight:700;line-height:1.4;color:var(--text)}
+.wb.wb.wb .dw-conf-s{margin-top:5px;font-size:12px;line-height:1.45;color:var(--text2)}
+.wb.wb.wb .dw-conf-t{margin-top:9px;max-height:190px;overflow-y:auto;padding:9px 10px;
+  border-radius:var(--r-sm);background:var(--surface2);font-size:12.5px;
+  line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--text2)}
+
+/* ===========================================================================
+   The LinkedIn artifact — a SANCTIONED platform depiction, so it keeps
+   LinkedIn's own light chrome and neutral system sans inside this dark app,
+   exactly as the reference argues (reviewShared.tsx header). It is the only
+   surface in the workbench allowed to do that, and it is allowed because it
+   is a picture of another product.
+   =========================================================================== */
+.wb.wb.wb .li-card{background:#fff;border-radius:10px;border:1px solid rgba(0,0,0,.10);
+  box-shadow:0 2px 10px rgba(15,23,42,.10);overflow:hidden;margin:0 16px}
+.wb.wb.wb .li-top{padding:16px 16px 0}
+.wb.wb.wb .li-head{display:flex;gap:10px;align-items:flex-start}
+.wb.wb.wb .li-av{width:48px;height:48px;border-radius:9999px;object-fit:cover;flex:none;display:block}
+.wb.wb.wb .li-av-mono{display:inline-flex;align-items:center;justify-content:center;
+  background:#e3ebf3;color:#0a66c2;font-size:16px;font-weight:700;letter-spacing:.02em}
+.wb.wb.wb .li-av-hide{display:none}
+.wb.wb.wb .li-who{line-height:1.25;min-width:0}
+.wb.wb.wb .li-name{font-size:14px;font-weight:600;color:rgba(0,0,0,.9)}
+.wb.wb.wb .li-deg{font-weight:400;color:rgba(0,0,0,.55)}
+.wb.wb.wb .li-hl{font-size:12px;color:rgba(0,0,0,.6)}
+.wb.wb.wb .li-when{font-size:12px;color:rgba(0,0,0,.55);display:flex;align-items:center;gap:4px}
+/* ONE declaration, shared by the read div and the textarea: that is what makes
+   the field land exactly where the words already were. */
+.wb.wb.wb .li-body, .wb.wb.wb .li-ta{font-family:inherit;font-size:15px;line-height:1.6;
+  color:rgba(0,0,0,.9);margin:14px 0 16px;white-space:pre-wrap;overflow-wrap:anywhere}
+.wb.wb.wb .li-ta{display:block;width:100%;box-sizing:border-box;background:transparent;
+  border:0;padding:0;resize:none;overflow:hidden;outline:none;
+  border-left:2px solid #0a66c2;padding-left:9px;margin-left:-11px}
+.wb.wb.wb .li-ta:disabled{opacity:.6}
+.wb.wb.wb .li-body-edit{cursor:text;border-radius:4px;margin-left:-6px;margin-right:-6px;
+  padding:0 6px}
+.wb.wb.wb .li-body-edit:hover{background:rgba(10,102,194,.06)}
+/* An empty body is still a tap target — on an LM row with no promo copy the
+   clickable div measured 586x20 (verify-local/verify.json). A control you can
+   press has to be pressable. */
+.wb.wb.wb .li-body-edit{min-height:44px}
+.wb.wb.wb .li-body-edit:focus-visible{outline:2px solid #0a66c2;outline-offset:1px}
+.wb.wb.wb .li-tok{color:#0a66c2;font-weight:600}
+.wb.wb.wb .li-empty{color:rgba(0,0,0,.4)}
+.wb.wb.wb .li-media{width:100%;background:#f3f2ef;overflow:hidden}
+.wb.wb.wb .li-media img{width:100%;display:block;object-fit:cover}
+.wb.wb.wb .li-foot{padding:8px 16px 4px}
+.wb.wb.wb .li-reacts{display:flex;align-items:center;gap:6px;padding-bottom:8px;
+  border-bottom:1px solid rgba(0,0,0,.08)}
+.wb.wb.wb .li-rs{display:inline-flex}
+.wb.wb.wb .li-r{width:18px;height:18px;border-radius:9999px;display:inline-flex;
+  align-items:center;justify-content:center;font-size:10px}
+.wb.wb.wb .li-bar{display:flex;justify-content:space-between;padding:4px 0 8px}
+.wb.wb.wb .li-act{display:inline-flex;align-items:center;gap:6px;font-size:13px;
+  font-weight:600;color:rgba(0,0,0,.6)}
+@media (max-width:430px){
+  /* Four labelled actions do not fit 390 minus gutters; the reference's own
+     preview drops the labels rather than truncating them. */
+  .wb.wb.wb .li-bar{justify-content:space-around}
+  .wb.wb.wb .li-act{font-size:0;gap:0}
+  .wb.wb.wb .li-act svg{width:19px;height:19px}
+}
+
+/* The in-card edit bar sits INSIDE the white artifact, so save/cancel belong
+   visibly to the words they act on. */
+.wb.wb.wb .li-editbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;
+  margin:0 0 14px;padding-top:10px;border-top:1px solid rgba(0,0,0,.08)}
+.wb.wb.wb .li-btn{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px;
+  border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;
+  border:1px solid rgba(0,0,0,.18);background:#fff;color:rgba(0,0,0,.75)}
+.wb.wb.wb .li-btn:hover{background:rgba(0,0,0,.04)}
+.wb.wb.wb .li-btn.p{background:#0a66c2;border-color:#0a66c2;color:#fff}
+.wb.wb.wb .li-btn.p:hover{background:#004182}
+.wb.wb.wb .li-btn:disabled{opacity:.5;cursor:default}
+.wb.wb.wb .li-editnote{font-size:11.5px;color:rgba(0,0,0,.55);margin-left:auto}
+.wb.wb.wb .li-saved{font-size:11.5px;font-weight:700;color:#0a6b3d;margin-left:auto}
+
+/* The carousel strip, as the reference draws it: a horizontal scroller BELOW
+   the card, never inside it. */
+.wb.wb.wb .dw-slides{display:flex;gap:8px;overflow-x:auto;padding:12px 16px 0;
+  overscroll-behavior-x:contain}
+.wb.wb.wb .dw-slides img{height:148px;width:148px;flex:0 0 auto;object-fit:cover;
+  border-radius:var(--r-sm);border:1px solid var(--surface3);background:var(--surface2)}
+
+/* ---- single-column fallback (<1180) ---- */
+@media (max-width:1179.98px){
+  .wb.wb.wb .dw-queue{border-top:.5px solid var(--sep);margin-top:14px}
+  .wb.wb.wb .dw-insp{border-top:.5px solid var(--sep);margin-top:10px}
+  /* Sticky against the ONE scroller the window has at this width. */
+  .wb.wb.wb .dw-acts{position:sticky;bottom:0}
+}
