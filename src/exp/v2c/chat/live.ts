@@ -64,6 +64,62 @@ export function resultFeed(text: string, cap = RESULT_FEED_CHARS): string {
 }
 
 // ---------------------------------------------------------------------------
+// Sentence-streaming speech. Waiting for the FULL fast reply before speaking
+// measured 2.9s median first-audible from end of speech (EOU 800ms +
+// commit→final ~180ms + full reply 1.2–2.3s) — that misses the 2.5s gate.
+// Speaking each sentence as it completes moves first-audible to roughly
+// EOU + commit + TTFB (~0.95–1.7s measured), which passes. These two pure
+// functions are the whole decision; the hook just feeds them deltas.
+// ---------------------------------------------------------------------------
+
+/**
+ * The prefix of the raw streaming reply that is SAFE to speak: complete
+ * `<<…>>` machine spans are removed, and everything from an unmatched `<<`
+ * (or a trailing `<` that may become one) is withheld until it resolves.
+ * Monotonic: text before the first machine span never changes, so a consumer
+ * can track how much of the frontier it has already spoken by index.
+ */
+export function speechFrontier(raw: string): string {
+  // Cut at an unmatched '<<' — that tail is withheld until '>>' arrives.
+  let s = raw
+  for (;;) {
+    const open = s.indexOf('<<')
+    if (open === -1) break
+    const close = s.indexOf('>>', open + 2)
+    if (close === -1) { s = s.slice(0, open); break }
+    s = s.slice(0, open) + s.slice(close + 2)
+  }
+  // A trailing '<' may be the first half of '<<' — hold it too.
+  if (s.endsWith('<')) s = s.slice(0, -1)
+  return s
+}
+
+/**
+ * Pull complete sentences off the pending speakable text. A sentence is
+ * complete when its terminal punctuation is followed by whitespace — a
+ * terminator at the very end of the buffer is NOT complete until `done`,
+ * because the stream may continue ("$3." vs "$3.5k"). On `done` the whole
+ * remainder flushes.
+ */
+export function drainSentences(pending: string, done: boolean): { speak: string[]; rest: string } {
+  const speak: string[] = []
+  let rest = pending
+  for (;;) {
+    const m = rest.match(/^[\s\S]*?[.!?…](?=\s)/)
+    if (!m) break
+    const sentence = m[0].trim()
+    if (sentence) speak.push(sentence)
+    rest = rest.slice(m[0].length)
+  }
+  if (done) {
+    const tail = rest.trim()
+    if (tail) speak.push(tail)
+    rest = ''
+  }
+  return { speak, rest }
+}
+
+// ---------------------------------------------------------------------------
 // The fast lane's SSE stream. inbox-fast relays Anthropic's Messages stream
 // verbatim (event:/data: frames); the only shapes the loop needs are
 // content_block_delta→text_delta and message_stop. Everything else is ignored
