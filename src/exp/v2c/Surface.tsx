@@ -96,20 +96,26 @@ export function SectionHead({ n, title, count, sev, open, onToggle, tail, sticky
   // Interactive headers are real <button>s (keyboard reach + the global focus
   // ring); a header with nothing to toggle stays a plain div.
   const Tag: 'button' | 'div' = onToggle ? 'button' : 'div'
+  // F3 (phase-2 review): the header itself is a content-hugging pill when it is
+  // a <button>, so IT cannot be the sticky element — scrolled rows slide around
+  // it at the same y. The STRIP is sticky: a full-width opaque canvas band the
+  // pill rides inside, so nothing ever shows through beside the chrome.
   return (
-    <Tag
-      {...(onToggle ? { type: 'button' as const } : {})}
-      className={`wb-sech${onToggle ? ' tap' : ''}${sticky ? ' wb-sech-sticky' : ''}`}
-      onClick={onToggle}
-    >
-      {n && <span className="wb-sech-n">{n}</span>}
-      <span className="wb-sech-t">{title}</span>
-      <span className="wb-sech-rule" />
-      {tail}
-      {count !== undefined && <span className="wb-sech-c">{count}</span>}
-      {sev !== undefined && sev !== null && <span className={`wb-sech-dot ${sev}`} />}
-      {onToggle && <span className="wb-sech-chev">{open ? '⌄' : '›'}</span>}
-    </Tag>
+    <div className={`wb-sech-strip${sticky ? ' wb-sech-strip-hi' : ''}`}>
+      <Tag
+        {...(onToggle ? { type: 'button' as const } : {})}
+        className={`wb-sech${onToggle ? ' tap' : ''}${sticky ? ' wb-sech-sticky' : ''}`}
+        onClick={onToggle}
+      >
+        {n && <span className="wb-sech-n">{n}</span>}
+        <span className="wb-sech-t">{title}</span>
+        <span className="wb-sech-rule" />
+        {tail}
+        {count !== undefined && <span className="wb-sech-c">{count}</span>}
+        {sev !== undefined && sev !== null && <span className={`wb-sech-dot ${sev}`} />}
+        {onToggle && <span className="wb-sech-chev">{open ? '⌄' : '›'}</span>}
+      </Tag>
+    </div>
   )
 }
 
@@ -127,6 +133,17 @@ export function SectionHead({ n, title, count, sev, open, onToggle, tail, sticky
 // A zero stage still spends its slot (`.wb-cap-0`), collapsed to a stub rather
 // than omitted: on the LM lane four of the nine stages have never had a row, and
 // dropping them would draw a five-stage pipeline that does not exist.
+// F8 (phase-2 review): at 390 the ~30px axis slots ellipsized the short codes
+// to garbage ("ASS… / REV… / SC…"). Fixed-width 3-char codes for the narrow
+// axis — a clipped label is a defect, an abbreviation is a decision. IDEA keeps
+// its 4 chars (it fits; "IDE" reads worse than the word).
+const AXIS_ABBR: Record<string, string> = {
+  ideas: 'IDEA', idea: 'IDEA', gen: 'GEN', assets: 'AST', review: 'REV',
+  appr: 'APR', sched: 'SCH', pub: 'PUB', err: 'ERR', stuck: 'STK',
+  arch: 'ARC', other: 'OTH',
+}
+const axisAbbr = (s: string) => AXIS_ABBR[s.toLowerCase()] ?? s.slice(0, 3).toUpperCase()
+
 export function CapsuleChart({ parts, onJump }: {
   parts: { key: string; label: string; short?: string; n: number }[]
   onJump?: (key: string) => void
@@ -166,7 +183,12 @@ export function CapsuleChart({ parts, onJump }: {
         ))}
       </div>
       <div className="wb-caps-x">
-        {parts.map(p => <span className="wb-caps-xl" key={p.key} title={p.label}>{p.short ?? p.label}</span>)}
+        {parts.map(p => (
+          <span className="wb-caps-xl" key={p.key} title={p.label}>
+            <span className="wb-caps-xl-f">{p.short ?? p.label}</span>
+            <span className="wb-caps-xl-a" aria-hidden>{axisAbbr(p.short ?? p.label)}</span>
+          </span>
+        ))}
       </div>
     </>
   )
