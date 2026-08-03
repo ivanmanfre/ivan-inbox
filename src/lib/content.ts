@@ -720,12 +720,284 @@ export async function deleteIdea(id: string): Promise<'deleted' | 'archived'> {
   return 'archived'
 }
 
+// ---------- THE CLIENT LANE (inbox-mattan-lane-actions) ----------
+//
+// Ivan, 2026-08-03: "there is no delete or approve option… also i dont see edit
+// option… in mattan's case, after i approve needs review it goes to the board".
+//
+// The whole Mattan lane was read-only, and the stated reason was sound but
+// incomplete: approveDraft/skipDraft ARE scoped `.is('client_id', null)`, so
+// wiring them to a client row would have been a button that silently does
+// nothing. What was missing is that the client lane has its OWN write path, and
+// it is not those functions.
+//
+// 🔴 EVERY RULE BELOW IS COPIED OFF THE LIVE FUNCTION BODY, not inferred.
+// pg_get_functiondef, 2026-08-03, saved in the run's rpc-defs.json:
+//
+//   operator_set_board_visible(p_gate text, p_draft_id uuid, p_visible boolean)
+//     · gate first                                           -> 'bad_gate'
+//     · client_id IS NULL                                    -> 'draft_not_found'
+//       (so it REFUSES an Ivan row by construction — this is a client-only RPC)
+//     · p_visible AND status <> 'review'                     -> 'not_in_review'
+//     · update carousel_drafts set board_visible, updated_at
+//     · net.http_post → n8n /webhook/client-board-queue-sync
+//     · returns {ok, id, board_visible, client_id, sync_request_id}
+//   It writes board_visible and NOTHING ELSE. It never touches status, never
+//   sets scheduled_at, and cannot publish.
+//
+//   operator_edit_draft_body(p_gate text, p_draft_id uuid, p_body text)
+//     · gate first                                           -> 'bad_gate'
+//     · empty/blank body                                     -> 'empty_body'
+//     · where client_id IS NOT NULL and status in ('review','scheduled')
+//       — zero rows                                          -> 'not_editable'
+//     · appends an {agent:'Operator'} agent_log entry
+//     · 🔴 does NOT stamp taxonomy.human_edited — see saveClientDraftBody.
+//
+// The gate string is NOT a secret: it ships in the dashboard's public JS
+// (clientops2/shared.tsx:21). operator_gate_ok compares its sha256 against
+// integration_config.operator_panel_gate_hash; the real authorization is the
+// authenticated-only EXECUTE grant.
+export const CLIENT_OPS_GATE = 'clientops'
+
+// A refusal from a gated RPC, carrying the server's own code so the surface can
+// say WHICH rule refused instead of "something went wrong".
+export class ClientRpcError extends Error {
+  readonly code: string
+  constructor(code: string, message: string) {
+    super(message)
+    this.name = 'ClientRpcError'
+    this.code = code
+  }
+}
+
+// The server's codes, in Ivan's words. Anything unmapped keeps the raw code
+// rather than being smoothed into a generic sentence — an unknown refusal is
+// still a fact and hiding its name makes it unsearchable.
+export const CLIENT_RPC_MESSAGES: Record<string, string> = {
+  bad_gate: 'The operator gate refused this. Nothing changed — the draft is exactly as it was.',
+  draft_not_found:
+    'The database has no client draft with this id. Nothing changed.',
+  not_in_review:
+    'Only a draft still at Needs review can go on Mattan’s board — that rule lives in the database, not here.',
+  not_editable:
+    'Mattan’s copy can only be edited while the draft is at Needs review or Scheduled.',
+  empty_body: 'An empty post cannot be saved.',
+  awaiting_media: 'That draft carries no image, and the scheduler refuses a client post without one.',
+}
+
+export function clientRpcMessage(code: string): string {
+  return CLIENT_RPC_MESSAGES[code] ?? `The database refused this: ${code}.`
+}
+
+function rpcOk(data: unknown, error: { message: string } | null): Record<string, unknown> {
+  if (error) throw new Error(error.message)
+  const r = (data ?? {}) as Record<string, unknown>
+  if (r.ok !== true) {
+    const code = typeof r.error === 'string' ? r.error : 'unknown'
+    throw new ClientRpcError(code, clientRpcMessage(code))
+  }
+  return r
+}
+
+// ---- the four policy rules, mirrored from the SQL above --------------------
+//
+// These exist as functions, tested against the predicates they mirror, because
+// the alternative is an inline `lane === 'risedtc' && status === 'review'` at
+// each of the three surfaces that renders these buttons — and the day the SQL
+// changes, three places have to be found.
+
+// PROMOTE. `status === 'review'` is the RPC's own predicate: it answers
+// 'not_in_review' for anything else. This is also why approveDraft must NEVER be
+// pointed at a client row — flipping one to 'approved' would make it
+// PERMANENTLY unpromotable.
+export function canPromote(status: string, lane: ContentLane): boolean {
+  return lane === 'risedtc' && status === 'review'
+}
+
+// UN-PROMOTE has no status rule in the SQL (the `not_in_review` branch is
+// guarded by `p_visible`), so taking a post back off the board works at any
+// stage — which is what makes it a real undo.
+export function canUnpromote(lane: ContentLane, boardVisible: boolean | null | undefined): boolean {
+  return lane === 'risedtc' && boardVisible === true
+}
+
+// EDIT. The RPC's `status in ('review','scheduled')` verbatim.
+export function clientEditable(status: string, lane: ContentLane): boolean {
+  return lane === 'risedtc' && (status === 'review' || status === 'scheduled')
+}
+
+// DELETE, and the one rule here that is OURS rather than the database's.
+//
+// 🔴 The client board's `queue` is a DENORMALISED COPY of the promoted drafts —
+// each entry carries the draft's id, title, post_body and images inline
+// (get_client_board, probed 2026-08-03: queue length 23, and its id set is
+// EXACTLY the board_visible=true set, 23/23, zero either way). Only
+// operator_set_board_visible fires the sync that rebuilds it. So deleting a
+// PROMOTED row removes it from our side while leaving a full copy of it sitting
+// on a paying client's live board, with nothing scheduled to ever clean it up.
+//
+// A never-promoted row cannot be in that queue (the set equality above is the
+// proof), so deleting one is exactly as safe as deleting an Ivan row.
+//
+// The order that IS safe is un-promote → delete: un-promoting fires the sync,
+// which rebuilds the queue without the row, and the delete cannot lose that race
+// because a sync that runs afterwards would not find the row either.
+export function clientDeletable(lane: ContentLane, boardVisible: boolean | null | undefined): boolean {
+  return lane === 'risedtc' && boardVisible !== true
+}
+
+// ---- the writes ------------------------------------------------------------
+
+/**
+ * Put a client draft on the client's board, or take it back off.
+ *
+ * 🔴 CLIENT-FACING. `true` is the moment a paying client can see this post: the
+ * RPC fires the queue-sync webhook inline, so the board's own copy is rebuilt
+ * without anyone pressing anything else. It does NOT publish — board_visible is
+ * the only column it writes.
+ */
+export async function setBoardVisible(id: string, visible: boolean): Promise<void> {
+  const { data, error } = await supabase.rpc('operator_set_board_visible', {
+    p_gate: CLIENT_OPS_GATE, p_draft_id: id, p_visible: visible,
+  })
+  rpcOk(data, error)
+}
+
+/**
+ * Save an edited body on a CLIENT row, refusing to clobber a body that moved.
+ *
+ * Three steps, in this order for a reason:
+ *
+ *  1. PRE-FLIGHT read of post_body — the same definitive detector the Ivan
+ *     lane's saveDraftBody uses, and the one that catches the real case (an
+ *     engine landing a rewrite mid-edit).
+ *
+ *  2. STAMP taxonomy.human_edited FIRST, with a compare-and-swap on updated_at.
+ *     Two things ride on the order:
+ *       · the CAS closes the read/write window the gated RPC cannot close
+ *         itself — it exposes no compare-and-swap of its own. updated_at is
+ *         VERIFIED maintained on this table (a no-op PATCH on a client row
+ *         moved it from 2026-07-27 to now, probe 2026-08-03), so this is a live
+ *         detector here, not the inert fallback the Ivan-lane comment allows for;
+ *       · once the flag is set, db/025's trigger refuses every service_role
+ *         post_body write on this row — so the window between step 2 and step 3
+ *         is protected rather than merely narrow.
+ *     operator_edit_draft_body does not stamp this itself, so without step 2 a
+ *     client-lane edit would be the ONLY edit in the app the regen guard does
+ *     not cover.
+ *
+ *  3. The BODY write goes through the gated RPC, never a direct PATCH. RLS would
+ *     allow the direct write (authenticated is FOR ALL using(true) on this
+ *     table, verified live) — but the RPC carries two things a direct write
+ *     throws away: the status guard that refuses an edit to an already-published
+ *     client post, and the Operator entry it appends to agent_log.
+ *
+ * @param base the post_body the editor was opened on. Pass what was LOADED.
+ * @throws DraftSaveConflict when the stored body moved, or the row is gone.
+ * @throws ClientRpcError when the database refuses the edit.
+ */
+export async function saveClientDraftBody(
+  id: string,
+  body: string,
+  taxonomy: unknown,
+  base: string | null,
+  baseUpdatedAt: string | null,
+): Promise<void> {
+  const pre = await supabase.from('carousel_drafts')
+    .select('post_body, updated_at')
+    .eq('id', id).not('client_id', 'is', null)
+    .maybeSingle()
+  if (pre.error) throw pre.error
+  if (!pre.data) throw new DraftSaveConflict({ kind: 'gone', theirs: null, theirUpdatedAt: null })
+  const stored = (pre.data.post_body ?? null) as string | null
+  if ((stored ?? '') !== (base ?? '')) {
+    throw new DraftSaveConflict({
+      kind: 'conflict',
+      theirs: stored,
+      theirUpdatedAt: (pre.data.updated_at ?? null) as string | null,
+    })
+  }
+
+  const freshUpdatedAt = (pre.data.updated_at ?? baseUpdatedAt) as string | null
+  let stamp = supabase.from('carousel_drafts')
+    .update({ taxonomy: stampHumanEdit(taxonomy) })
+    .eq('id', id).not('client_id', 'is', null)
+  if (freshUpdatedAt) stamp = stamp.eq('updated_at', freshUpdatedAt)
+  const stamped = await stamp.select('id')
+  if (stamped.error) throw stamped.error
+  if (!stamped.data || stamped.data.length === 0) {
+    // The predicate stopped matching between the read and the write. Say WHICH
+    // of the two reasons it was rather than blaming a race for an RLS refusal.
+    const post = await supabase.from('carousel_drafts')
+      .select('post_body, updated_at')
+      .eq('id', id).not('client_id', 'is', null)
+      .maybeSingle()
+    if (!post.error && !post.data) {
+      throw new DraftSaveConflict({ kind: 'gone', theirs: null, theirUpdatedAt: null })
+    }
+    throw new DraftSaveConflict({
+      kind: 'conflict',
+      theirs: (post.data?.post_body ?? null) as string | null,
+      theirUpdatedAt: (post.data?.updated_at ?? null) as string | null,
+    })
+  }
+
+  const { data, error } = await supabase.rpc('operator_edit_draft_body', {
+    p_gate: CLIENT_OPS_GATE, p_draft_id: id, p_body: body,
+  })
+  rpcOk(data, error)
+}
+
+/**
+ * Delete a client draft that is NOT on the board.
+ *
+ * The board check is re-read from the database rather than trusted from the
+ * row the surface is holding: a guard that lives only in the UI is not a guard,
+ * and this one is the difference between a tidy queue and a ghost post on a
+ * paying client's board (see clientDeletable).
+ *
+ * Same hard-delete-then-archive contract as the Ivan lane's deleteDraft, and
+ * the same honesty: an unverified write is a failure, never a "Deleted".
+ */
+export async function deleteClientDraft(id: string, taxonomy: unknown): Promise<'deleted' | 'disqualified'> {
+  const cur = await supabase.from('carousel_drafts')
+    .select('board_visible').eq('id', id).not('client_id', 'is', null)
+    .maybeSingle()
+  if (cur.error) throw cur.error
+  if (!cur.data) throw new Error('This draft is no longer in the database.')
+  if (cur.data.board_visible === true) {
+    throw new Error(
+      'This draft is on Mattan’s board. Take it off the board first — deleting it here '
+      + 'would leave a copy of it on his board with nothing to clean it up.',
+    )
+  }
+  const del = await supabase.from('carousel_drafts')
+    .delete()
+    .eq('id', id).not('client_id', 'is', null)
+    .select('id')
+  if (!del.error && del.data && del.data.length > 0) return 'deleted'
+  const upd = await supabase.from('carousel_drafts')
+    .update({ status: SKIP_STATUS, taxonomy: stampOperatorDelete(taxonomy) })
+    .eq('id', id).not('client_id', 'is', null)
+    .select('id')
+  if (upd.error) throw upd.error
+  if (!upd.data || upd.data.length === 0) {
+    throw new Error('Delete failed — the row was neither removed nor archived.')
+  }
+  return 'disqualified'
+}
+
 // The one rule that decides whether a row shows a mutating affordance at all,
 // in one place because round 2 renders those buttons from two surfaces (the
 // queue card and the draft detail screen). D7: only in the Ivan lane — Mattan’s
-// lane is read-only ambient visibility, and approveDraft/skipDraft are both
-// scoped .is('client_id', null) anyway, so a button there would be a button that
-// silently does nothing.
+// lane has its own decision (promote, above), and approveDraft/skipDraft are
+// both scoped .is('client_id', null) anyway, so a button there would be a button
+// that silently does nothing.
+//
+// 🔴 And worse than nothing, if the scope were ever relaxed: approve writes
+// status='approved', and operator_set_board_visible refuses to promote anything
+// that is not at 'review'. An "approve" on a client row would therefore lock it
+// off Mattan's board for good.
 //
 // 'error' joins 'review' (2026-08-03, Ivan: "there is no delete or approve
 // option"). The live lane is 3 review rows against 13 errored ones — the
@@ -794,6 +1066,52 @@ export const STAGE_LABEL: Record<ContentStage, string> = {
   stuck: 'Stuck',
   archived: 'Archived',
   other: 'Other',
+}
+
+// ---------- the client lane's two categories (Ivan's item 3) ----------
+//
+// Ivan, 2026-08-03: "i see the needs review and on mattan's board are different
+// but they are on the same category… in mattan's case, after i approve needs
+// review it goes to the board… and on mattan's board category leaving needs
+// review category".
+//
+// He is reading a real defect. The Mattan lane groups by promotion state and
+// then renders the stage sections INSIDE each group — so the word "Needs
+// review" appeared under "On Mattan's board" as well as under "Internal", 13
+// rows and 59 rows respectively on the live lane (probe 2026-08-03). Same
+// database status, two completely different meanings, one label.
+//
+// `review` on an INTERNAL row means Ivan has not decided whether Mattan should
+// see it. `review` on a PROMOTED row means Mattan has it and has not answered.
+// Neither of those is "needs review" without saying whose review, so neither
+// says it.
+export type BoardGroup = 'board' | 'internal'
+
+const CLIENT_STAGE_LABEL: Record<BoardGroup, Partial<Record<ContentStage, string>>> = {
+  // On his board: every stage here is a fact about HIM.
+  board: {
+    review: 'Waiting on Mattan',
+    approved: 'Mattan approved',
+    scheduled: 'Scheduled on his board',
+  },
+  // Our side: `review` is the decision Ivan is actually being asked for, and it
+  // is named as that decision rather than as a status.
+  internal: {
+    review: 'Waiting on you — not on his board yet',
+    approved: 'Approved, still ours',
+    scheduled: 'Scheduled, still ours',
+  },
+}
+
+export function clientStageLabel(s: ContentStage, group: BoardGroup): string {
+  return CLIENT_STAGE_LABEL[group][s] ?? STAGE_LABEL[s]
+}
+
+// A row is in the board group iff board_visible is literally true. NULL is not
+// evidence of promotion — the same rule countBoardVisible uses, kept as one
+// function so the grouping and the count can never disagree.
+export function boardGroupOf(r: Pick<ContentDraft, 'board_visible'>): BoardGroup {
+  return r.board_visible === true ? 'board' : 'internal'
 }
 
 // One row, one stage. Branch order is load-bearing in exactly one place:
