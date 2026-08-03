@@ -1,0 +1,150 @@
+{
+  "390": {
+    "today": {
+      "overflow": 0,
+      "askClaude": 0,
+      "nullLabel": false,
+      "plateRadius": "24px",
+      "ground": "rgb(197, 225, 165)",
+      "errors": 0,
+      "sample": []
+    },
+    "inbox": {
+      "overflow": 0,
+      "askClaude": 0,
+      "nullLabel": false,
+      "plateRadius": "24px",
+      "ground": "rgb(197, 225, 165)",
+      "errors": 0,
+      "sample": []
+    },
+    "drafts": {
+      "overflow": 0,
+      "askClaude": 0,
+      "nullLabel": false,
+      "plateRadius": "24px",
+      "ground": "rgb(197, 225, 165)",
+      "errors": 0,
+      "sample": []
+    },
+    "content": {
+      "overflow": 0,
+      "askClaude": 0,
+      "nullLabel": false,
+      "plateRadius": "24px",
+      "ground": "rgb(197, 225, 165)",
+      "errors": 0,
+      "sample": []
+    },
+    "magnets": {
+      "overflow": 0,
+      "askClaude": 0,
+      "nullLabel": false,
+      "plateRadius": "24px",
+      "ground": "rgb(197, 225, 165)",
+      "errors": 0,
+      "sample": []
+    },
+    "sends": {
+      "overflow": 0,
+      "askClaude": 0,
+      "nullLabel": false,
+      "plateRadius": "24px",
+      "ground": "rgb(197, 225, 165)",
+      "errors": 0,
+      "sample": []
+    },
+    "ops": {
+      "overflow": 0,
+      "askClaude": 0,
+      "nullLabel": false,
+      "plateRadius": "24px",
+      "ground": "rgb(197, 225, 165)",
+      "errors": 0,
+      "sample": []
+    },
+    "settings": {
+      "overflow": 0,
+      "askClaude": 0,
+      "nullLabel": false,
+      "plateRadius": "24px",
+      "ground": "rgb(197, 225, 165)",
+      "errors": 0,
+      "sample": []
+    }
+  },
+  "1440": {
+    "today": {
+      "overflow": 0,
+      "askClaude": 0,
+      "nullLabel": false,
+      "plateRadius": "40px",
+      "ground": "rgb(197, 225, 165)",
+      "errors": 0,
+      "sample": []
+    },
+    "inbox": {
+      "overflow": 0,
+      "askClaude": 0,
+      "nullLabel": false,
+      "plateRadius": "40px",
+      "ground": "rgb(197, 225, 165)",
+      "errors": 0,
+      "sample": []
+    },
+    "drafts": {
+      "overflow": 0,
+      "askClaude": 0,
+      "nullLabel": false,
+      "plateRadius": "40px",
+      "ground": "rgb(197, 225, 165)",
+      "errors": 0,
+      "sample": []
+    },
+    "content": {
+      "overflow": 0,
+      "askClaude": 0,
+      "nullLabel": false,
+      "plateRadius": "40px",
+      "ground": "rgb(197, 225, 165)",
+      "errors": 0,
+      "sample": []
+    },
+    "magnets": {
+      "overflow": 0,
+      "askClaude": 0,
+      "nullLabel": false,
+      "plateRadius": "40px",
+      "ground": "rgb(197, 225, 165)",
+      "errors": 0,
+      "sample": []
+    },
+    "sends": {
+      "overflow": 0,
+      "askClaude": 0,
+      "nullLabel": false,
+      "plateRadius": "40px",
+      "ground": "rgb(197, 225, 165)",
+      "errors": 0,
+      "sample": []
+    },
+    "ops": {
+      "overflow": 0,
+      "askClaude": 0,
+      "nullLabel": false,
+      "plateRadius": "40px",
+      "ground": "rgb(197, 225, 165)",
+      "errors": 0,
+      "sample": []
+    },
+    "settings": {
+      "overflow": 0,
+      "askClaude": 0,
+      "nullLabel": false,
+      "plateRadius": "40px",
+      "ground": "rgb(197, 225, 165)",
+      "errors": 0,
+      "sample": []
+    }
+  }
+}

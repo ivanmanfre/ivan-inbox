@@ -1,0 +1,182 @@
+{
+  "origin": "http://localhost:4173",
+  "at": "2026-08-03T11:29:31.258Z",
+  "routes": {
+    "today@1440": {
+      "hScroll": false,
+      "overflowers": [],
+      "scrollH": 860,
+      "clientH": 860,
+      "hash": "#exp/v2/today",
+      "title": "Today",
+      "firstActionableTop": null,
+      "tapUnder44": [],
+      "consoleErrors": []
+    },
+    "dms@1440": {
+      "hScroll": false,
+      "overflowers": [],
+      "scrollH": 860,
+      "clientH": 860,
+      "hash": "#exp/v2/dms",
+      "title": "DMs",
+      "firstActionableTop": 285,
+      "tapUnder44": [],
+      "consoleErrors": []
+    },
+    "content@1440": {
+      "hScroll": false,
+      "overflowers": [],
+      "scrollH": 860,
+      "clientH": 860,
+      "hash": "#exp/v2/content",
+      "title": "Content",
+      "firstActionableTop": 274,
+      "tapUnder44": [],
+      "consoleErrors": []
+    },
+    "magnets@1440": {
+      "hScroll": false,
+      "overflowers": [],
+      "scrollH": 860,
+      "clientH": 860,
+      "hash": "#exp/v2/magnets",
+      "title": "Lead magnets",
+      "firstActionableTop": 852,
+      "tapUnder44": [],
+      "consoleErrors": []
+    },
+    "sends@1440": {
+      "hScroll": false,
+      "overflowers": [],
+      "scrollH": 860,
+      "clientH": 860,
+      "hash": "#exp/v2/sends",
+      "title": "Sends",
+      "firstActionableTop": null,
+      "tapUnder44": [],
+      "consoleErrors": []
+    },
+    "ops@1440": {
+      "hScroll": false,
+      "overflowers": [],
+      "scrollH": 860,
+      "clientH": 860,
+      "hash": "#exp/v2/ops",
+      "title": "Ops",
+      "firstActionableTop": null,
+      "tapUnder44": [],
+      "consoleErrors": []
+    },
+    "settings@1440": {
+      "hScroll": false,
+      "overflowers": [],
+      "scrollH": 860,
+      "clientH": 860,
+      "hash": "#exp/v2/settings",
+      "title": "Settings",
+      "firstActionableTop": null,
+      "tapUnder44": [],
+      "consoleErrors": []
+    },
+    "today@390": {
+      "hScroll": false,
+      "overflowers": [],
+      "scrollH": 766,
+      "clientH": 766,
+      "hash": "#exp/v2/today",
+      "title": "Today",
+      "firstActionableTop": null,
+      "tapUnder44": [
+        "chip=36"
+      ],
+      "consoleErrors": []
+    },
+    "dms@390": {
+      "hScroll": false,
+      "overflowers": [],
+      "scrollH": 766,
+      "clientH": 766,
+      "hash": "#exp/v2/dms",
+      "title": "DMs",
+      "firstActionableTop": 363,
+      "tapUnder44": [
+        "chip=36"
+      ],
+      "consoleErrors": []
+    },
+    "content@390": {
+      "hScroll": false,
+      "overflowers": [
+        "div.ct-fpop@334,442",
+        "button.wb-fpill@334,442",
+        "b.@394,418",
+        "i.@426,431",
+        "div.ct-fpop@448,556",
+        "button.wb-fpill@448,576"
+      ],
+      "scrollH": 766,
+      "clientH": 766,
+      "hash": "#exp/v2/content",
+      "title": "Content",
+      "firstActionableTop": 336,
+      "tapUnder44": [
+        "wb-ws=28",
+        "chip=36"
+      ],
+      "consoleErrors": []
+    },
+    "magnets@390": {
+      "hScroll": false,
+      "overflowers": [],
+      "scrollH": 766,
+      "clientH": 766,
+      "hash": "#exp/v2/magnets",
+      "title": "Lead magnets",
+      "firstActionableTop": 1016,
+      "tapUnder44": [
+        "wb-ws=28",
+        "chip=36"
+      ],
+      "consoleErrors": []
+    },
+    "sends@390": {
+      "hScroll": false,
+      "overflowers": [],
+      "scrollH": 766,
+      "clientH": 766,
+      "hash": "#exp/v2/sends",
+      "title": "Sends",
+      "firstActionableTop": null,
+      "tapUnder44": [
+        "chip=36",
+        "sg=30"
+      ],
+      "consoleErrors": []
+    },
+    "ops@390": {
+      "hScroll": false,
+      "overflowers": [],
+      "scrollH": 766,
+      "clientH": 766,
+      "hash": "#exp/v2/ops",
+      "title": "Ops",
+      "firstActionableTop": null,
+      "tapUnder44": [],
+      "consoleErrors": []
+    },
+    "settings@390": {
+      "hScroll": false,
+      "overflowers": [],
+      "scrollH": 766,
+      "clientH": 766,
+      "hash": "#exp/v2/settings",
+      "title": "Settings",
+      "firstActionableTop": null,
+      "tapUnder44": [
+        "sg=30"
+      ],
+      "consoleErrors": []
+    }
+  }
+}

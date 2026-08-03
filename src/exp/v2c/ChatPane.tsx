@@ -24,7 +24,13 @@ const MODEL_OPTIONS: { id: string | null; label: string; note: string }[] = [
 
 function modelLabel(id: string | null): string {
   if (!id || id === 'container-default') return 'default'
-  return MODEL_OPTIONS.find(m => m.id === id)?.label ?? id
+  const exact = MODEL_OPTIONS.find(m => m.id === id)
+  if (exact) return exact.label
+  // The container names itself with a dated id (`claude-haiku-4-5-20251001`).
+  // Match the family so the pane says "Haiku 4.5" instead of printing a build
+  // stamp at Ivan, and fall back to the raw id rather than inventing a name.
+  const family = MODEL_OPTIONS.find(m => m.id && id.startsWith(m.id))
+  return family?.label ?? id
 }
 
 // ---------------------------------------------------------------------------
@@ -382,16 +388,25 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
         <span className="wb-pane-ic asst">✳</span>
         <div className="wb-pane-ttl">
           <div className="wb-pane-n">Claude</div>
-          <div className="wb-pane-s">
-            {/* The live broker has no session to name: the upstream never passes
-                --resume, so "no session yet" would imply one is coming. Say what
-                is true instead. */}
-            {chat.sessionId
+          {/* The one fact worth a subtitle is WHICH MODEL is answering. The
+              session line used to sit here and said "a fresh session every
+              turn" — true of the transport, meaningless to the person reading
+              it. It moved to the title, where it explains the cost note if
+              anyone goes looking. Before the first turn the pane names the
+              model that WILL run (the picked one, or the container's default);
+              after a turn it names what actually answered, per the container's
+              own frames. */}
+          <div
+            className="wb-pane-s"
+            title={chat.sessionId
               ? `session ${chat.sessionId}`
-              : mock ? 'no session yet' : 'a fresh session every turn'}
-            {/* What the last turn RAN on, per the broker — not what is selected.
-                Before any turn there is nothing to report, so nothing is shown. */}
-            {chat.model && ` · ran on ${modelLabel(chat.model)}`}
+              : mock ? 'no session yet' : 'Each turn starts a fresh container session — nothing is resumed.'}
+          >
+            {chat.model
+              ? modelLabel(chat.model)
+              : chat.wanted
+                ? `${modelLabel(chat.wanted)} · next turn`
+                : 'Container default'}
           </div>
         </div>
         <button

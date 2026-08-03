@@ -1,0 +1,191 @@
+{
+  "probed_at": "2026-08-03T11:26:56.604Z",
+  "raw": {
+    "inbox_messages_v_rows": 2243,
+    "flagged_prospects": 44,
+    "ops_drafts": 17
+  },
+  "threads_total": 1419,
+  "INBOX_surface_rows": 135,
+  "DMs_surface_rows_today": 0,
+  "badge": {
+    "answer": 28,
+    "approve": 0,
+    "flagged": 42,
+    "waiting": 65,
+    "waiting_badge": 70
+  },
+  "by_bucket": {
+    "answer": {
+      "n": 28,
+      "by_client": {
+        "ivan": 28
+      },
+      "by_kind": {
+        "email": 9,
+        "inmail": 3,
+        "linkedin": 16
+      },
+      "sample": [
+        {
+          "name": "John Marshall",
+          "client": "ivan",
+          "stage": "archived",
+          "unread": 1,
+          "flagged": false,
+          "draft": false
+        },
+        {
+          "name": "Hilary Borndahl",
+          "client": "ivan",
+          "stage": "archived",
+          "unread": 1,
+          "flagged": false,
+          "draft": false
+        },
+        {
+          "name": "Alicia Iveson",
+          "client": "ivan",
+          "stage": "archived",
+          "unread": 1,
+          "flagged": false,
+          "draft": false
+        },
+        {
+          "name": "Echo Zhong, CPA",
+          "client": "ivan",
+          "stage": "archived",
+          "unread": 1,
+          "flagged": false,
+          "draft": false
+        },
+        {
+          "name": "Tom Trewinnard",
+          "client": "ivan",
+          "stage": "archived",
+          "unread": 1,
+          "flagged": false,
+          "draft": false
+        }
+      ]
+    },
+    "approve": {
+      "n": 0,
+      "by_client": {},
+      "by_kind": {},
+      "sample": []
+    },
+    "flagged": {
+      "n": 42,
+      "by_client": {
+        "ivan": 30,
+        "risedtc": 12
+      },
+      "by_kind": {
+        "inmail": 37,
+        "linkedin": 5
+      },
+      "sample": [
+        {
+          "name": "Luke Cashin",
+          "client": "ivan",
+          "stage": "dm_sent",
+          "unread": 0,
+          "flagged": true,
+          "draft": false
+        },
+        {
+          "name": "Zach Masserant",
+          "client": "ivan",
+          "stage": "dm_sent",
+          "unread": 0,
+          "flagged": true,
+          "draft": false
+        },
+        {
+          "name": "Michael De Boeck",
+          "client": "ivan",
+          "stage": "dm_sent",
+          "unread": 0,
+          "flagged": true,
+          "draft": false
+        },
+        {
+          "name": "Ron Dukker",
+          "client": "ivan",
+          "stage": "dm_sent",
+          "unread": 0,
+          "flagged": true,
+          "draft": false
+        },
+        {
+          "name": "Ahmed Eid",
+          "client": "ivan",
+          "stage": "dm_sent",
+          "unread": 0,
+          "flagged": true,
+          "draft": false
+        }
+      ]
+    },
+    "waiting": {
+      "n": 65,
+      "by_client": {
+        "ivan": 54,
+        "risedtc": 11
+      },
+      "by_kind": {
+        "inmail": 19,
+        "linkedin": 39,
+        "email": 7
+      },
+      "sample": [
+        {
+          "name": "Muhammad Huzaifa",
+          "client": "ivan",
+          "stage": "dm_sent",
+          "unread": 0,
+          "flagged": false,
+          "draft": false
+        },
+        {
+          "name": "William K",
+          "client": "risedtc",
+          "stage": "dm_sent",
+          "unread": 0,
+          "flagged": false,
+          "draft": false
+        },
+        {
+          "name": "Edward Betancourt",
+          "client": "risedtc",
+          "stage": "archived",
+          "unread": 0,
+          "flagged": false,
+          "draft": false
+        },
+        {
+          "name": "Carlos Aguinaga",
+          "client": "risedtc",
+          "stage": "dm_sent",
+          "unread": 0,
+          "flagged": false,
+          "draft": false
+        },
+        {
+          "name": "Tom Patak",
+          "client": "ivan",
+          "stage": "dm_sent",
+          "unread": 0,
+          "flagged": false,
+          "draft": false
+        }
+      ]
+    }
+  },
+  "ops": {
+    "pending_total": 2,
+    "pending_dm_lane": 0
+  },
+  "non_conversation_threads": 1284
+}

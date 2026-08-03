@@ -23,7 +23,11 @@ const OPS_LABEL: Record<OpsKind, string> = {
 
 // One tappable line each: enough to know what is waiting, not a second Ops tab.
 // Acting on them stays on the Ops tab, which owns every approve path.
-function OpsPending({ drafts, onOpenOps }: { drafts: OpsDraft[]; onOpenOps: () => void }) {
+// Exported since 2026-08-03: the Inbox job was folded into DMs, and the DMs
+// surface is now the conversation list, so the three pieces that made this
+// screen worth having — the approve/discard card, the stale-draft bar and the
+// Ops pointer — travel there. This screen still renders for `#exp/stock`.
+export function OpsPending({ drafts, onOpenOps }: { drafts: OpsDraft[]; onOpenOps: () => void }) {
   if (drafts.length === 0) return null
   return (
     <>
@@ -100,7 +104,7 @@ const SWIPE_THRESHOLD = 72
 // on desktop too). A directional lock decides on the first move whether the
 // gesture is a horizontal swipe (we take it) or a vertical scroll (we bail),
 // so the list still scrolls normally under your finger.
-function DraftCard({ thread, onOpenThread, refresh }: {
+export function DraftCard({ thread, onOpenThread, refresh }: {
   thread: Thread; onOpenThread: (id: string) => void; refresh: () => void
 }) {
   const draft = thread.draft!
@@ -228,6 +232,41 @@ function DraftCard({ thread, onOpenThread, refresh }: {
   )
 }
 
+// The bulk exit from the stale-draft class (Ivan already answered in the
+// LinkedIn app, so the queued AI reply is answering a handled message). Lifted
+// out of DraftsScreen so the DMs surface gets the same one-tap escape.
+export function StaleBar({ stale, refresh }: { stale: Thread[]; refresh: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const confirm = useConfirm()
+  if (stale.length === 0) return null
+
+  async function discardAllStale() {
+    const ok = await confirm({
+      title: `Discard ${stale.length} stale draft${stale.length === 1 ? '' : 's'}?`,
+      message: 'These threads already have your own reply after the last inbound message. Nothing is sent.',
+      confirmText: 'Discard stale',
+      danger: true,
+    })
+    if (!ok) return
+    setBusy(true)
+    try {
+      for (const t of stale) await discardDraft(t.draft!.id)
+      refresh()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="stalebar">
+      <span>{stale.length} draft{stale.length === 1 ? '' : 's'} where you already replied</span>
+      <button className="stalebtn" disabled={busy} onClick={discardAllStale}>
+        {busy ? 'Discarding…' : 'Discard stale'}
+      </button>
+    </div>
+  )
+}
+
 export function DraftsScreen({ threads, onOpenThread, refresh, onOpenOps, verifiedAt }: {
   threads: Thread[]; onOpenThread: (id: string) => void; refresh: () => void
   onOpenOps: () => void
@@ -237,9 +276,7 @@ export function DraftsScreen({ threads, onOpenThread, refresh, onOpenOps, verifi
 }) {
   const { drafts: opsAll, refresh: refreshOps } = useOps()
   const [seg, setSeg] = useState<Seg>('all')
-  const [bulkBusy, setBulkBusy] = useState(false)
   const rowsRef = useRef<HTMLDivElement>(null)
-  const confirm = useConfirm()
   const ptr = usePullToRefresh(rowsRef, () => { refresh(); refreshOps() })
   const draftThreads = threads.filter(t => t.draft !== null)
   // Everything waiting on Ivan lives in one count, so the tab badge and this
@@ -257,23 +294,6 @@ export function DraftsScreen({ threads, onOpenThread, refresh, onOpenOps, verifi
   // Fresh drafts first; stale ones (Ivan already replied) sink to the bottom.
   const shown = [...segThreads.filter(t => !t.draftStale), ...segThreads.filter(t => t.draftStale)]
   const staleShown = segThreads.filter(t => t.draftStale)
-
-  async function discardAllStale() {
-    const ok = await confirm({
-      title: `Discard ${staleShown.length} stale draft${staleShown.length === 1 ? '' : 's'}?`,
-      message: 'These threads already have your own reply after the last inbound message. Nothing is sent.',
-      confirmText: 'Discard stale',
-      danger: true,
-    })
-    if (!ok) return
-    setBulkBusy(true)
-    try {
-      for (const t of staleShown) await discardDraft(t.draft!.id)
-      refresh()
-    } finally {
-      setBulkBusy(false)
-    }
-  }
 
   return (
     <>
@@ -296,14 +316,7 @@ export function DraftsScreen({ threads, onOpenThread, refresh, onOpenOps, verifi
       </div>
       <div className="rows" ref={rowsRef}>
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
-        {staleShown.length > 0 && (
-          <div className="stalebar">
-            <span>{staleShown.length} draft{staleShown.length === 1 ? '' : 's'} where you already replied</span>
-            <button className="stalebtn" disabled={bulkBusy} onClick={discardAllStale}>
-              {bulkBusy ? 'Discarding…' : 'Discard stale'}
-            </button>
-          </div>
-        )}
+        <StaleBar stale={staleShown} refresh={refresh} />
         <OpsPending drafts={opsIn(seg)} onOpenOps={onOpenOps} />
         {shown.length === 0 ? (
           opsIn(seg).length === 0
