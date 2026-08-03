@@ -1,0 +1,208 @@
+{
+  "origin": "http://localhost:5173",
+  "at": "2026-08-03T14:01:32.688Z",
+  "widths": {
+    "390": {
+      "draft": {
+        "hScroll": false,
+        "overflowers": [],
+        "under44": [],
+        "windowW": 390,
+        "bodyScrollH": 5812,
+        "bodyClientH": 832,
+        "queue": {
+          "w": 390,
+          "scrollH": 755,
+          "clientH": 755
+        },
+        "main": {
+          "w": 390,
+          "scrollH": 2006,
+          "clientH": 2006
+        },
+        "insp": {
+          "w": 390,
+          "scrollH": 2994,
+          "clientH": 2994
+        },
+        "queueRows": 10,
+        "actionKeys": [
+          "a Approve",
+          "r Skip",
+          "e Edit",
+          "s Next",
+          "o More actions"
+        ],
+        "liActFont": "0px",
+        "liBody": {
+          "fontSize": "15px",
+          "lineHeight": "24px",
+          "color": "rgba(0, 0, 0, 0.9)"
+        }
+      },
+      "jk": {
+        "first": "EU AI content labels go live today: what it means for agency owners posting AI-generated content on LinkedIn",
+        "second": "When delivery runs your calendar, pipeline is always the first thing that goes",
+        "back": "EU AI content labels go live today: what it means for agency owners posting AI-generated content on LinkedIn",
+        "moved": true,
+        "returned": true
+      },
+      "cmdASafe": true,
+      "editInPlace": {
+        "before": {
+          "top": 292,
+          "left": 27,
+          "w": 336,
+          "fontSize": "15px",
+          "lineHeight": "24px"
+        },
+        "after": {
+          "top": 292,
+          "left": 22,
+          "w": 324,
+          "fontSize": "15px",
+          "lineHeight": "24px",
+          "focused": true,
+          "insideCard": true
+        }
+      },
+      "escCancels": true,
+      "magnet": {
+        "hScroll": false,
+        "overflowers": [],
+        "under44": [],
+        "windowW": 390,
+        "bodyScrollH": 3429,
+        "bodyClientH": 832,
+        "queue": {
+          "w": 390,
+          "scrollH": 2646,
+          "clientH": 2646
+        },
+        "main": {
+          "w": 390,
+          "scrollH": 400,
+          "clientH": 400
+        },
+        "insp": {
+          "w": 390,
+          "scrollH": 325,
+          "clientH": 325
+        },
+        "queueRows": 38,
+        "actionKeys": [
+          "s Next",
+          "o More actions"
+        ],
+        "liActFont": "0px",
+        "liBody": {
+          "fontSize": "15px",
+          "lineHeight": "24px",
+          "color": "rgba(0, 0, 0, 0.9)"
+        }
+      },
+      "consoleErrors": []
+    },
+    "1440": {
+      "draft": {
+        "hScroll": false,
+        "overflowers": [],
+        "under44": [],
+        "windowW": 1380,
+        "bodyScrollH": 786,
+        "bodyClientH": 786,
+        "queue": {
+          "w": 232,
+          "scrollH": 787,
+          "clientH": 754
+        },
+        "main": {
+          "w": 786,
+          "scrollH": 1835,
+          "clientH": 754
+        },
+        "insp": {
+          "w": 360,
+          "scrollH": 3250,
+          "clientH": 754
+        },
+        "queueRows": 10,
+        "actionKeys": [
+          "a Approve",
+          "r Skip",
+          "e Edit",
+          "s Next",
+          "o More actions"
+        ],
+        "liActFont": "13px",
+        "liBody": {
+          "fontSize": "15px",
+          "lineHeight": "24px",
+          "color": "rgba(0, 0, 0, 0.9)"
+        }
+      },
+      "jk": {
+        "first": "EU AI content labels go live today: what it means for agency owners posting AI-generated content on LinkedIn",
+        "second": "When delivery runs your calendar, pipeline is always the first thing that goes",
+        "back": "EU AI content labels go live today: what it means for agency owners posting AI-generated content on LinkedIn",
+        "moved": true,
+        "returned": true
+      },
+      "cmdASafe": true,
+      "editInPlace": {
+        "before": {
+          "top": 273,
+          "left": 363,
+          "w": 586,
+          "fontSize": "15px",
+          "lineHeight": "24px"
+        },
+        "after": {
+          "top": 273,
+          "left": 358,
+          "w": 574,
+          "fontSize": "15px",
+          "lineHeight": "24px",
+          "focused": true,
+          "insideCard": true
+        }
+      },
+      "escCancels": true,
+      "magnet": {
+        "hScroll": false,
+        "overflowers": [],
+        "under44": [],
+        "windowW": 1380,
+        "bodyScrollH": 786,
+        "bodyClientH": 786,
+        "queue": {
+          "w": 232,
+          "scrollH": 2759,
+          "clientH": 754
+        },
+        "main": {
+          "w": 786,
+          "scrollH": 754,
+          "clientH": 754
+        },
+        "insp": {
+          "w": 360,
+          "scrollH": 754,
+          "clientH": 754
+        },
+        "queueRows": 38,
+        "actionKeys": [
+          "s Next",
+          "o More actions"
+        ],
+        "liActFont": "13px",
+        "liBody": {
+          "fontSize": "15px",
+          "lineHeight": "24px",
+          "color": "rgba(0, 0, 0, 0.9)"
+        }
+      },
+      "consoleErrors": []
+    }
+  }
+}

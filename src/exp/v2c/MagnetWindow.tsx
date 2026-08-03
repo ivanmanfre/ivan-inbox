@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useResourceDetail } from '../../hooks/useContent'
 import { useSectionState } from '../../hooks/useSectionState'
 import { useConfirm } from '../../components/ConfirmSheet'
@@ -66,8 +66,15 @@ function QueueRail({ queue, id, onPick }: {
 }) {
   const at = queue.findIndex(q => q.id === id)
   const ref = useRef<HTMLDivElement>(null)
+  // Keep the current row in view when j/k walks past the fold — but ONLY when
+  // the rail is its own scroller. Below 1180 the rail is the LAST block of the
+  // window's single scroller, and scrollIntoView walks every ancestor: it
+  // dragged the whole window down past the post to show a queue row nobody had
+  // asked for. Measured on the 390 shot before this guard.
   useEffect(() => {
-    ref.current?.querySelector('.dw-qrow.on')?.scrollIntoView({ block: 'nearest' })
+    const el = ref.current
+    if (!el || el.scrollHeight <= el.clientHeight) return
+    el.querySelector('.dw-qrow.on')?.scrollIntoView({ block: 'nearest' })
   }, [id])
   return (
     <aside className="dw-queue" ref={ref}>
@@ -561,9 +568,8 @@ export function MagnetWindow({ id, lane, queue, onClose, onPick, mobile }: {
   const [bump, setBump] = useState(0)
   const reload = useCallback(() => setBump(b => b + 1), [])
   const { detail, missing, loading, error } = useResourceDetail(id, bump)
-  const at = useMemo(() => queue.findIndex(q => q.id === id), [queue, id])
   const sub = `${LANE_LABEL[lane]}${detail?.format ? ` · ${detail.format}` : ''}`
-    + (queue.length > 1 && at >= 0 ? ` · ${at + 1} of ${queue.length}` : '')
+
 
   return (
     <Takeover label="Lead magnet" sub={sub} onClose={onClose} mobile={mobile} bodyClass="dw-body">

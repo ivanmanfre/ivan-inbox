@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useDraftDetail } from '../../hooks/useContent'
 import { useSectionState } from '../../hooks/useSectionState'
 import { useConfirm } from '../../components/ConfirmSheet'
@@ -87,11 +87,15 @@ function QueueRail({ queue, id, onPick }: {
 }) {
   const at = queue.findIndex(q => q.id === id)
   const ref = useRef<HTMLDivElement>(null)
-  // Keep the current row in view when j/k walks past the fold. `nearest` and
-  // not `center`: a rail that recentres on every keypress reads as the list
-  // moving rather than the cursor moving.
+  // Keep the current row in view when j/k walks past the fold — but ONLY when
+  // the rail is its own scroller. Below 1180 the rail is the LAST block of the
+  // window's single scroller, and scrollIntoView walks every ancestor: it
+  // dragged the whole window down past the post to show a queue row nobody had
+  // asked for. Measured on the 390 shot before this guard.
   useEffect(() => {
-    ref.current?.querySelector('.dw-qrow.on')?.scrollIntoView({ block: 'nearest' })
+    const el = ref.current
+    if (!el || el.scrollHeight <= el.clientHeight) return
+    el.querySelector('.dw-qrow.on')?.scrollIntoView({ block: 'nearest' })
   }, [id])
   if (queue.length < 2) return null
   return (
@@ -907,9 +911,8 @@ export function DraftWindow({ id, lane, queue, refresh, onClose, onPick, mobile 
 
   // The queue rail earns the three-column layout; a single-row queue does not,
   // and the sub-line should not claim a position that does not exist.
-  const at = useMemo(() => queue.findIndex(q => q.id === id), [queue, id])
   const sub = `${LANE_LABEL[lane]}${detail?.type ? ` · ${typeLabel(detail.type)}` : ''}`
-    + (queue.length > 1 && at >= 0 ? ` · ${at + 1} of ${queue.length}` : '')
+
 
   return (
     <Takeover label="Content draft" sub={sub} onClose={onClose} mobile={mobile} bodyClass="dw-body">
