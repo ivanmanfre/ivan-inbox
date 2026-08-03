@@ -28,17 +28,20 @@ export function InboxHead({ threads, loadedAt, status, setStatus }: {
   setStatus: (s: Status) => void
 }) {
   const b = inboxBreakdown(threads)
-  const total = b.answer + b.approve + b.flagged + b.waiting
+  // The bar is the PENDING side only — 'waiting on them' rows left the surface
+  // (Ivan, 2026-08-03), so a segment for them would advertise a view that no
+  // longer exists. The count itself stays in the footer, because 65
+  // conversations quietly vanishing is its own kind of lie.
+  const total = b.answer + b.approve + b.flagged
   const parts: { key: ThreadBucket; n: number; color: string }[] = [
     { key: 'answer', n: b.answer, color: 'var(--cat-1)' },
     { key: 'approve', n: b.approve, color: 'var(--cat-3)' },
     { key: 'flagged', n: b.flagged, color: 'var(--cat-2)' },
-    { key: 'waiting', n: b.waiting, color: 'var(--surface3)' },
   ]
-  // Which keys the CURRENT view includes. 'needs' lights the three that wait on
-  // Ivan; 'all' lights everything; a single bucket lights only itself.
+  // Which keys the CURRENT view includes. 'needs' and 'all' are now the same
+  // three pending buckets; a single bucket lights only itself.
   const lit = (k: ThreadBucket) =>
-    status === 'all' ? true : status === 'needs' ? k !== 'waiting' : status === k
+    status === 'all' || status === 'needs' ? true : status === k
   const pick = (s: Status) => setStatus(status === s ? 'needs' : s)
   const keyProps = (s: Status, isOn: boolean) => ({
     className: `wb-ihead-i tap${isOn ? ' on' : ''}`,
@@ -62,10 +65,11 @@ export function InboxHead({ threads, loadedAt, status, setStatus }: {
           </span>
         ))}
         <span {...keyProps('all', status === 'all')}>
-          <b>{total}</b> all
+          <b>{total}</b> pending
         </span>
         <span className="wb-ihead-f">
           <span className="wb-ok-dot" />
+          {b.waiting > 0 && `${b.waiting} answered, waiting on them · search finds them · `}
           sends live in Sends · {relAge(loadedAt)}
         </span>
       </div>
