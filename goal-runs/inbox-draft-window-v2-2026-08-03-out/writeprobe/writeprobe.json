@@ -1,0 +1,24 @@
+{
+  "appendAgentLog": {
+    "row": "773f19a3-2c11-4b76-940a-34332d5f7e0d",
+    "rpcOk": true,
+    "rpcStatus": 204,
+    "rpcError": null,
+    "entriesBefore": 0,
+    "entriesAfter": 1,
+    "noteLanded": true,
+    "restored": true
+  },
+  "lmFieldUpdate": {
+    "row": "aac57fa0-4954-4e98-a976-a920696752d4",
+    "rowsReturned": 1,
+    "httpStatus": 200,
+    "landed": true,
+    "restored": true
+  },
+  "scheduleDraft": {
+    "fired": false,
+    "why": "status=scheduled + scheduled_at is what the n8n Bridge (yzXqLDIpuNzuhUQq) reads to put a post on LinkedIn. Firing it at a real row to prove the write works would publish a post.",
+    "writePathProvenBy": "the same table, the same .is(client_id,null) scope and the same verified-write (.select() non-empty) contract as the edit round-trip, which landed and was restored on a live row."
+  }
+}
