@@ -113,7 +113,7 @@ export function useDraftDetail(id: string | null, reloadKey: unknown = 0) {
 
 // One full lm_drafts_v2 row, fetched when an LM row is opened. Same contract as
 // useDraftDetail above: missing ≠ error, no realtime binding of its own.
-export function useResourceDetail(id: string | null) {
+export function useResourceDetail(id: string | null, reloadKey: unknown = 0) {
   const [detail, setDetail] = useState<ResourceDetail | null>(null)
   const [missing, setMissing] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -137,7 +137,7 @@ export function useResourceDetail(id: string | null) {
         setLoading(false)
       })
     return () => { live = false }
-  }, [id])
+  }, [id, reloadKey])
 
   return { detail, missing, loading, error }
 }

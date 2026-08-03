@@ -317,7 +317,11 @@ export function QueueStrip({ rows, loading, error, loadedAt, refresh }: {
 // One lead-magnet row. Same anchor-rail contract as a draft card (the cover is
 // the anchor, the corner dot carries the stage), so the LM lane scans the same
 // way the post lane does rather than being a second, differently-shaped list.
-function LmRow({ r, onOpen }: { r: Resource; onOpen?: (id: string, label: string) => void }) {
+// Same contract as the Content side: opening a row hands the window the SECTION
+// it was opened from, so j/k and the rail walk what Ivan can see.
+export type OpenMagnet = (id: string, label: string, queue: Resource[]) => void
+
+function LmRow({ r, onOpen, queue }: { r: Resource; onOpen?: OpenMagnet; queue: Resource[] }) {
   const stage = stageOfLm(r)
   const stalled = isStuckGeneratingLm(r)
   const stuck = isStuckResource(r)
@@ -325,7 +329,7 @@ function LmRow({ r, onOpen }: { r: Resource; onOpen?: (id: string, label: string
   return (
     <div
       className={`ct-card ct-res-row${stuck || stalled ? ' bad' : ''}${onOpen ? ' ct-tap' : ''}`}
-      onClick={onOpen ? () => onOpen(r.id, r.topic ?? 'Untitled') : undefined}
+      onClick={onOpen ? () => onOpen(r.id, r.topic ?? 'Untitled', queue) : undefined}
     >
       <div className="ct-anchor" data-st={stage}>
         {r.cover_url
@@ -375,7 +379,7 @@ function LmRow({ r, onOpen }: { r: Resource; onOpen?: (id: string, label: string
 // StageSection — the lanes differ in what they hold, not in how a stage renders.
 function LmStageSection({ s, n, rows, isOpen, toggle, onOpen }: {
   s: LmStage; n?: string; rows: Resource[]; isOpen: boolean; toggle: () => void
-  onOpen?: (id: string, label: string) => void
+  onOpen?: OpenMagnet
 }) {
   if (rows.length === 0) return null
   return (
@@ -385,7 +389,7 @@ function LmStageSection({ s, n, rows, isOpen, toggle, onOpen }: {
         sev={s === 'review' ? 'attention' : null}
         open={isOpen} onToggle={toggle}
       />
-      {isOpen && rows.map(r => <LmRow key={r.id} r={r} onOpen={onOpen} />)}
+      {isOpen && rows.map(r => <LmRow key={r.id} r={r} onOpen={onOpen} queue={rows} />)}
     </div>
   )
 }
@@ -425,7 +429,7 @@ export function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loa
   refresh: () => void
   ideaState?: { loading: boolean; error: string | null; loadedAt: string | null; refresh: () => void }
   // Opens an LM row's detail window. Optional so the lane can render read-only.
-  onOpen?: (id: string, label: string) => void
+  onOpen?: OpenMagnet
 }) {
   // The LM lane is a SEPARATE working list with its own facets, so it gets its
   // own filter row and its own persisted key — the post lane's `Stage: Review`
