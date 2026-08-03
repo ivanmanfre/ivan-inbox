@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChatStreaming, ChatTurn } from './ChatMessage'
 import { HandsFreeSheet, VoiceControl, VoiceStrip } from './VoiceControl'
+import { LiveSheet } from './LiveSheet'
 import { useStt } from './chat/useStt'
+import { useRtStt } from './chat/useRtStt'
+import { useLive } from './chat/useLive'
 import { useVoice } from './useVoice'
 import { transportIsMock } from './chat/transport'
 import { CLAUDE_MODELS } from '../../lib/claude'
@@ -222,6 +225,61 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
     field.current?.focus()
   })
 
+  // Phase 3 — the LIVE mic. "Words must appear in the chat AS he speaks":
+  // realtime STT streams partials into a visually-distinct interim tail while
+  // committed segments become stable composer text (chat/useRtStt.ts, bench in
+  // phase3-latency-ledger.md: finals 0.00% WER vs batch 1.6% on the keyterm
+  // set). The batch mic above is KEPT as the fallback path — it drives the
+  // button whenever realtime capture is unsupported.
+  const rt = useRtStt(t => {
+    setText(prev => (prev.trim() ? `${prev.replace(/\s+$/, '')} ${t}` : t))
+  })
+  const rtOn = sttOn && rt.supported
+  const rtActive = rt.state !== 'idle'
+
+  // Phase 3 — the LIVE CONVERSATION loop. Escalations dispatch through the
+  // SAME chat.send as a typed message, so the work streams into this pane
+  // (visible the moment send() appends the user turn); when the pipeline turn
+  // lands, the fast lane speaks a trimmed summary (useLive.feedResult).
+  const [liveOpen, setLiveOpen] = useState(false)
+  const escalated = useRef(false)
+  const live = useLive({
+    onEscalate: useCallback((task: string) => {
+      escalated.current = true
+      void chat.send(task, aboutContext ?? about ?? undefined)
+    }, [chat, about, aboutContext]),
+  })
+  // When the escalated pipeline turn completes, feed its result back to the
+  // loop to be spoken. Watches busy's falling edge rather than adding a
+  // second completion channel to useChat.
+  const wasBusy = useRef(false)
+  useEffect(() => {
+    if (wasBusy.current && !chat.busy && escalated.current) {
+      escalated.current = false
+      const lastA = [...chat.turns].reverse().find(t => t.role === 'assistant')
+      if (lastA) live.feedResult(lastA.error ? `The task failed: ${lastA.error.message}` : lastA.text)
+    }
+    wasBusy.current = chat.busy
+  }, [chat.busy, chat.turns, live])
+
+  // ⌘D (Shell.tsx forwards it as 'wb-voice-toggle'): toggles the composer
+  // mic — or the LOOP's mic when the conversation sheet is open.
+  const liveStateS = live.state.s
+  useEffect(() => {
+    const onToggle = () => {
+      if (liveOpen) {
+        if (liveStateS === 'SPEAKING') live.skip()
+        else if (liveStateS === 'LISTENING') live.pause()
+        else if (liveStateS === 'PAUSED' || liveStateS === 'ERROR') live.resume()
+        return
+      }
+      if (rtOn) rt.toggle()
+      else if (sttOn && stt.supported) stt.toggle()
+    }
+    window.addEventListener('wb-voice-toggle', onToggle)
+    return () => window.removeEventListener('wb-voice-toggle', onToggle)
+  }, [liveOpen, liveStateS, live, rt, rtOn, stt, sttOn])
+
   // The palette is DERIVED from the composer's text, never a second piece of
   // state that could disagree with it. `cursor` is the only state it owns.
   const cmds = matchCommands(text)
@@ -435,7 +493,22 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
             handsFree={handsFree}
           />
         )}
-        {sttOn && stt.supported && (
+        {rtOn ? (
+          // The LIVE mic: partials render into the composer as he speaks.
+          // ⌘D toggles it (Shell forwards the keydown).
+          <button
+            type="button"
+            className={`cmic${rtActive ? ` cmic-rt-${rt.state}` : ''}`}
+            onClick={rt.toggle}
+            disabled={rt.state === 'finishing'}
+            aria-label={rt.state === 'listening' ? 'Stop dictating' : 'Dictate (⌘D)'}
+            title={rt.state === 'listening' ? 'Stop dictating (⌘D)' : 'Dictate (⌘D)'}
+          >
+            {rt.state === 'listening'
+              ? <span className="cmic-live">{Math.floor(rt.elapsedMs / 1000)}s</span>
+              : rt.state === 'starting' || rt.state === 'finishing' ? '…' : '🎙'}
+          </button>
+        ) : sttOn && stt.supported && (
           <button
             type="button"
             className={`cmic${stt.state !== 'idle' ? ` cmic-${stt.state}` : ''}`}
@@ -449,10 +522,31 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
               : stt.state === 'transcribing' ? '…' : '🎙'}
           </button>
         )}
+        {live.supported && (
+          <button
+            type="button"
+            className={`clive${liveOpen ? ' on' : ''}`}
+            onClick={() => { setLiveOpen(true); live.open() }}
+            aria-label="Start a live conversation"
+            title="Live conversation"
+          >Live</button>
+        )}
+        {rtActive ? (
+          // While dictating, the field is a read surface: committed text is
+          // stable, the newest partial is the visually-distinct interim tail.
+          // An <input> can't style substrings, so the field swaps for a div
+          // for exactly the duration of the session.
+          <div className="cfield cfield-rt" aria-live="polite">
+            {text && <span>{text}</span>}
+            <span className="cfield-interim">
+              {rt.interim || (rt.state === 'starting' ? 'starting…' : rt.state === 'finishing' ? '…' : 'listening…')}
+            </span>
+          </div>
+        ) : (
         <input
           ref={field}
           className="cfield"
-          placeholder={stt.note ?? (about ? `Ask about ${short(about, 22)}…` : 'Ask Claude…')}
+          placeholder={rt.note ?? stt.note ?? (about ? `Ask about ${short(about, 22)}…` : 'Ask Claude…')}
           value={text}
           onChange={e => { setText(e.target.value); setCursor(0) }}
           // Enter sends here on purpose, unlike the outbound DM composer: a chat
@@ -473,6 +567,7 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
             if (e.key === 'Enter' && !e.shiftKey) send(text)
           }}
         />
+        )}
         {chat.busy ? (
           <button type="button" className="csend wb-stop" onClick={chat.abort} title="Stop">◼</button>
         ) : (
@@ -494,6 +589,20 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
           onClose={() => { setSheet(false); setHandsFree(false); voice.cancel() }}
           onArm={voice.arm}
           onSkip={voice.skip}
+        />
+      )}
+
+      {liveOpen && (
+        <LiveSheet
+          state={live.state}
+          level={live.level}
+          interim={live.interim}
+          last={live.last}
+          turns={live.turns}
+          busyWork={chat.busy}
+          onClose={() => { setLiveOpen(false); live.close() }}
+          onSkip={live.skip}
+          onResume={live.resume}
         />
       )}
     </>
