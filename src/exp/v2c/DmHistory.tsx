@@ -23,6 +23,11 @@ import { relTime } from './fmt'
 // differently"). Email keeps its own mark; a plain LinkedIn thread says DM
 // rather than staying unlabelled, so the three channels read apart at a glance.
 const KIND_LABEL = { inmail: 'INMAIL', email: 'EMAIL', linkedin: 'DM' } as const
+// threadKind's key is 'linkedin'; the CHIP is called DM everywhere else, so the
+// class has to be too. Emitting `kind-linkedin` here is what left the DM chip
+// wearing the neutral default while INMAIL and EMAIL carried their colours —
+// caught by reading computed styles off the deploy, not by looking at it.
+const KIND_CLASS = { inmail: 'kind-inmail', email: 'kind-email', linkedin: 'kind-dm' } as const
 
 function manualCount(t: Thread): number {
   return t.messages.filter(m => m.direction === 'outbound' && m.ai_model === 'manual_mirror').length
@@ -75,7 +80,7 @@ export function DmHistory({ threads, onOpen }: {
                     <span className={`client ${t.client_id === 'risedtc' ? 'rise' : ''}`}>
                       {t.client_id === 'risedtc' ? 'RISE' : 'IVAN'}
                     </span>
-                    <span className={`client kind-${kind}`}>{KIND_LABEL[kind]}</span>
+                    <span className={`client ${KIND_CLASS[kind]}`}>{KIND_LABEL[kind]}</span>
                     {/* A hand-typed reply is the one thing in this list no
                         automation did, so it is marked rather than blended in. */}
                     {manual > 0 && <span className="client kind-manual">BY HAND</span>}
