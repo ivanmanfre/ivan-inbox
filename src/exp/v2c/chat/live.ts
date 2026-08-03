@@ -24,7 +24,11 @@ export const LIVE_HISTORY_TURNS = 12
 export const LIVE_TURN_CAP = 30
 
 // End-of-utterance: this much silence after speech commits the utterance.
-export const EOU_SILENCE_MS = 800
+// 800 → 650 (2026-08-03 gate tuning): first-audible measured 2.73s vs the
+// 2.5s gate, and this window was the only client-side lever left — the rest
+// of the budget is commit→final (~250ms) + fast-lane TTFB (~1-1.7s). 650ms
+// still clears a natural mid-sentence pause; re-measured after the change.
+export const EOU_SILENCE_MS = 650
 
 // A completed escalation result is trimmed to this before the fast lane is
 // asked to speak a summary — the full text is already in the chat pane.
