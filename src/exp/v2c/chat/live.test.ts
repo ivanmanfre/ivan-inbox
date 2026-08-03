@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  detectEscalation, LIVE_HISTORY_TURNS, LIVE_TURN_CAP, parseFastFrame, resultFeed,
-  RESULT_FEED_CHARS, splitSseBuffer, trimHistory, type LiveMsg,
+  detectEscalation, drainSentences, LIVE_HISTORY_TURNS, LIVE_TURN_CAP, parseFastFrame,
+  resultFeed, RESULT_FEED_CHARS, speechFrontier, splitSseBuffer, trimHistory, type LiveMsg,
 } from './live'
 
 // The escalation contract these tests pin is the one inbox-fast's DEPLOYED
@@ -117,6 +117,61 @@ describe('parseFastFrame — the relayed Anthropic SSE stream', () => {
   it('frames without data lines and garbage JSON are ignored', () => {
     expect(parseFastFrame('event: ping')).toEqual({ kind: 'ignore' })
     expect(parseFastFrame('data: not json')).toEqual({ kind: 'ignore' })
+  })
+})
+
+describe('speechFrontier — what streaming speech may say', () => {
+  it('passes plain text through', () => {
+    expect(speechFrontier('On it. Two things.')).toBe('On it. Two things.')
+  })
+
+  it('removes a complete machine span', () => {
+    expect(speechFrontier('Go. <<ESCALATE: check queue>> Next.')).toBe('Go.  Next.')
+  })
+
+  it('withholds everything from an unmatched << until it resolves', () => {
+    expect(speechFrontier('On it. <<ESCALATE: check the')).toBe('On it. ')
+    // …and a trailing single < that may become <<
+    expect(speechFrontier('On it. <')).toBe('On it. ')
+  })
+
+  it('is monotonic: what was speakable stays a stable prefix as deltas land', () => {
+    const raw = 'Kicking it off now. <<ESCALATE: audit the comment caps>> Done.'
+    let prev = ''
+    for (let i = 0; i <= raw.length; i++) {
+      const f = speechFrontier(raw.slice(0, i))
+      expect(f.startsWith(prev)).toBe(true)
+      prev = f
+    }
+  })
+})
+
+describe('drainSentences — speak each sentence as it completes', () => {
+  it('drains complete sentences and keeps the EXACT unfinished tail (buffer arithmetic)', () => {
+    const { speak, rest } = drainSentences('First one. Second one! And the th', false)
+    expect(speak).toEqual(['First one.', 'Second one!'])
+    // rest is the exact leftover, whitespace included — the hook re-feeds it.
+    expect(rest).toBe(' And the th')
+  })
+
+  it('a terminator at the buffer edge is NOT complete until done ("$3." vs "$3.5k")', () => {
+    const mid = drainSentences('The floor is $3.', false)
+    expect(mid.speak).toEqual([])
+    expect(mid.rest).toBe('The floor is $3.')
+    const end = drainSentences('The floor is $3.', true)
+    expect(end.speak).toEqual(['The floor is $3.'])
+    expect(end.rest).toBe('')
+  })
+
+  it('done flushes the remainder even without punctuation', () => {
+    const { speak, rest } = drainSentences('sure thing', true)
+    expect(speak).toEqual(['sure thing'])
+    expect(rest).toBe('')
+  })
+
+  it('whitespace-only input yields nothing', () => {
+    expect(drainSentences('  ', true)).toEqual({ speak: [], rest: '' })
+    expect(drainSentences('', false)).toEqual({ speak: [], rest: '' })
   })
 })
 

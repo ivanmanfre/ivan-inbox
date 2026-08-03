@@ -33,8 +33,8 @@ import {
 } from './voice'
 import { floatToPcm16Base64, frameLevel, parseRtEvent, rtAudioFrame, rtSocketUrl, RT_SAMPLE_RATE } from './rtstt'
 import {
-  detectEscalation, EOU_SILENCE_MS, LIVE_TURN_CAP, parseFastFrame, resultFeed,
-  splitSseBuffer, trimHistory, type LiveMsg,
+  detectEscalation, drainSentences, EOU_SILENCE_MS, LIVE_TURN_CAP, parseFastFrame,
+  resultFeed, speechFrontier, splitSseBuffer, trimHistory, type LiveMsg,
 } from './live'
 
 const RT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/inbox-rt-token`
@@ -98,10 +98,10 @@ export function useLive({ onEscalate }: {
     })
   }, [])
 
-  const hardStop = useCallback(() => {
-    if (eouTimer.current) { clearInterval(eouTimer.current); eouTimer.current = null }
-    abortFast.current?.abort(); abortFast.current = null
-    if (ttsSupported()) window.speechSynthesis.cancel()
+  // Release the capture chain (socket, worklet, context, mic) WITHOUT touching
+  // the conversation — resume-after-error re-arms through this so the loop
+  // keeps its history and turn count.
+  const releaseMedia = useCallback(() => {
     const w = ws.current; ws.current = null
     if (w) { w.onmessage = null; w.onerror = null; w.onclose = null; try { w.close() } catch { /* dead */ } }
     const n = node.current; node.current = null
@@ -111,13 +111,24 @@ export function useLive({ onEscalate }: {
     const s = stream.current; stream.current = null
     if (s) s.getTracks().forEach(t => t.stop())
     acc.current = []; accLen.current = 0
+  }, [])
+
+  const hardStop = useCallback(() => {
+    if (eouTimer.current) { clearInterval(eouTimer.current); eouTimer.current = null }
+    abortFast.current?.abort(); abortFast.current = null
+    if (ttsSupported()) window.speechSynthesis.cancel()
+    // Don't rely on cancel() firing every queued utterance's events.
+    speechDrained.current = null
+    utterPending.current = 0
+    activeUtters.current = []
+    releaseMedia()
     history.current = []
     queuedResult.current = null
     pendingUser.current = null
     rounds.current = 0
     turnCount.current = 0
     if (alive.current) { setLevel(0); setInterim(''); setTurns(0) }
-  }, [])
+  }, [releaseMedia])
   const hardStopRef = useRef(hardStop)
   hardStopRef.current = hardStop
 
@@ -265,6 +276,40 @@ export function useLive({ onEscalate }: {
     }
   }, [state.s, dispatch])
 
+  // ---- streaming speech queue (speechSynthesis path) ----
+  // Waiting for the FULL reply measured 2.9s median first-audible from end of
+  // speech — over the 2.5s gate. So on the default engine each sentence is
+  // spoken AS IT COMPLETES in the SSE stream (speechFrontier withholds the
+  // <<ESCALATE>> machine span; drainSentences decides sentence boundaries).
+  // Echo safety is unchanged: the mic pump drops frames outside LISTENING,
+  // so speech during SENDING can never reach the STT socket.
+  const utterPending = useRef(0)
+  const activeUtters = useRef<SpeechSynthesisUtterance[]>([]) // Chrome GC trap: unreferenced utterances lose their events
+  const speechDrained = useRef<(() => void) | null>(null)
+  const turnMode = useRef<'stream' | 'whole'>('whole')
+
+  const queueUtterance = useCallback((text: string) => {
+    const t = text.trim()
+    if (!t) return
+    utterPending.current += 1
+    const u = new SpeechSynthesisUtterance(t)
+    u.rate = 1.04
+    activeUtters.current.push(u)
+    const settle = () => {
+      const i = activeUtters.current.indexOf(u)
+      if (i < 0) return // skip()/hardStop() already zeroed this queue — a late event must not touch the NEXT turn's count
+      activeUtters.current.splice(i, 1)
+      utterPending.current -= 1
+      if (utterPending.current <= 0) {
+        utterPending.current = 0
+        speechDrained.current?.()
+      }
+    }
+    u.onend = settle
+    u.onerror = settle
+    window.speechSynthesis.speak(u) // queues natively behind the current utterance
+  }, [])
+
   // ---- SENDING: one fast-lane turn ----
   const runFastTurn = useCallback(async (userText: string) => {
     turnCount.current += 1
@@ -277,6 +322,22 @@ export function useLive({ onEscalate }: {
     const ctrl = new AbortController()
     abortFast.current = ctrl
     let reply = ''
+    // Streaming speech: on by default, off when ElevenLabs is forced (that
+    // path speaks the whole reply over one WS) or speechSynthesis is absent.
+    const wantEl = (() => { try { return localStorage.getItem('wb-live-tts') === 'el' } catch { return false } })()
+    const streaming = !wantEl && ttsSupported()
+    turnMode.current = streaming ? 'stream' : 'whole'
+    let frontierConsumed = 0
+    let sentenceBuf = ''
+    const feedSpeech = (done: boolean) => {
+      if (!streaming) return
+      const frontier = speechFrontier(reply)
+      sentenceBuf += frontier.slice(frontierConsumed)
+      frontierConsumed = frontier.length
+      const { speak, rest } = drainSentences(sentenceBuf, done)
+      sentenceBuf = rest
+      for (const s of speak) queueUtterance(s)
+    }
     try {
       const { data } = await supabase.auth.getSession()
       const jwt = data.session?.access_token
@@ -299,7 +360,7 @@ export function useLive({ onEscalate }: {
         buf = rest
         for (const frame of frames) {
           const ev = parseFastFrame(frame)
-          if (ev.kind === 'delta') reply += ev.text
+          if (ev.kind === 'delta') { reply += ev.text; feedSpeech(false) }
           else if (ev.kind === 'error') throw new Error(ev.detail)
         }
       }
@@ -318,9 +379,17 @@ export function useLive({ onEscalate }: {
     if (esc) onEscalateRef.current(esc.task)
     if (alive.current) setLast({ heard: userText, reply: toSpeak || reply })
     rounds.current = 0
-    pendingSpeech.current = toSpeak
-    dispatch({ e: 'turn-done', speak: !!toSpeak })
-  }, [dispatch])
+    if (streaming) {
+      // Flush the last (possibly unterminated) sentence, then hand SPEAKING
+      // a queue to drain instead of text to start.
+      feedSpeech(true)
+      pendingSpeech.current = ''
+      dispatch({ e: 'turn-done', speak: utterPending.current > 0 })
+    } else {
+      pendingSpeech.current = toSpeak
+      dispatch({ e: 'turn-done', speak: !!toSpeak })
+    }
+  }, [dispatch, queueUtterance])
 
   const pendingSpeech = useRef('')
 
@@ -337,6 +406,15 @@ export function useLive({ onEscalate }: {
   // forceable via localStorage 'wb-live-tts'='el'.
   useEffect(() => {
     if (state.s !== 'SPEAKING') return
+    // Stream mode: sentences were queued to speechSynthesis DURING the SSE
+    // stream — SPEAKING just waits for the queue to drain (or is already done).
+    if (turnMode.current === 'stream') {
+      let ended = false
+      const end = () => { if (!ended) { ended = true; speechDrained.current = null; dispatch({ e: 'speak-end' }) } }
+      if (utterPending.current <= 0) { end(); return }
+      speechDrained.current = end
+      return () => { speechDrained.current = null }
+    }
     const text = pendingSpeech.current
     pendingSpeech.current = ''
     if (!text) { dispatch({ e: 'speak-end' }); return }
@@ -380,15 +458,30 @@ export function useLive({ onEscalate }: {
 
   const skip = useCallback(() => {
     if (ttsSupported()) window.speechSynthesis.cancel()
+    // cancel() should settle every queued utterance, but browsers are flaky
+    // about firing events for not-yet-started ones — zero the queue ourselves
+    // so a stale count can never wedge the NEXT turn's SPEAKING.
+    speechDrained.current = null
+    utterPending.current = 0
+    activeUtters.current = []
     dispatch({ e: 'skip' })
   }, [dispatch])
 
   const resume = useCallback(() => {
     rounds.current = 0
-    // The socket and mic are still armed; PAUSED→ARMING→granted is instant.
     dispatch({ e: 'resume' })
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) dispatch({ e: 'granted' })
-  }, [dispatch])
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      // Socket and mic are still armed; PAUSED→ARMING→granted is instant.
+      dispatch({ e: 'granted' })
+    } else {
+      // The socket died (stt-network is the common retryable failure) — a
+      // "resume" that only waits for a dead socket would sit in ARMING
+      // forever. Re-arm from scratch: fresh mic chain, fresh single-use
+      // token, fresh WS. The conversation history survives on purpose.
+      releaseMedia()
+      void arm()
+    }
+  }, [dispatch, arm, releaseMedia])
 
   /** ⌘D's "toggle the loop mic": LISTENING → PAUSED (frames stop flowing). */
   const pause = useCallback(() => {
