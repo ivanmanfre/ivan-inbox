@@ -69,8 +69,15 @@ for (const w of [1440, 390]) {
       for (const el of document.querySelectorAll(sel)) {
         const b = el.getBoundingClientRect()
         if (b.width === 0) continue
+        // Measure the ::after hit-extension the way the browser resolves it.
+        // Reading computed `top` returns "auto" for a pseudo that was never
+        // laid out, which silently scored every extended control as unextended.
         const a = getComputedStyle(el, '::after')
-        const grow = a.content !== 'none' ? Math.abs(parseFloat(a.top || '0') || 0) * 2 : 0
+        let grow = 0
+        if (a.content && a.content !== 'none') {
+          const t = parseFloat(a.top), bt = parseFloat(a.bottom)
+          if (Number.isFinite(t) && Number.isFinite(bt)) grow = Math.abs(t) + Math.abs(bt)
+        }
         if (b.height + grow < 43.5) bad.push(`${(el.className || '').toString().split(' ')[0]}=${Math.round(b.height + grow)}`)
       }
       return [...new Set(bad)].slice(0, 8)

@@ -1,0 +1,30 @@
+{
+  "origin": "https://ivanmanfre.github.io/ivan-inbox",
+  "at": "2026-08-03T11:46:03.882Z",
+  "routes": {
+    "today@1440": {
+      "hScroll": false,
+      "overflowers": [],
+      "scrollH": 860,
+      "clientH": 860,
+      "hash": "#exp/v2/today",
+      "title": "Today",
+      "firstActionableTop": null,
+      "tapUnder44": [],
+      "consoleErrors": []
+    },
+    "today@390": {
+      "hScroll": false,
+      "overflowers": [],
+      "scrollH": 766,
+      "clientH": 766,
+      "hash": "#exp/v2/today",
+      "title": "Today",
+      "firstActionableTop": null,
+      "tapUnder44": [
+        "chip=36"
+      ],
+      "consoleErrors": []
+    }
+  }
+}

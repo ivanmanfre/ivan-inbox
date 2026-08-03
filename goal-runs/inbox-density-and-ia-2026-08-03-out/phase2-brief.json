@@ -1,0 +1,172 @@
+{
+  "status": 200,
+  "top_level_keys": [
+    "generated_at",
+    "urgencies",
+    "urgencies_count",
+    "autoreplies_count",
+    "aging_count",
+    "dm_aging_count",
+    "comment_aging_count",
+    "dm_superseded_count",
+    "needs_you",
+    "today_content",
+    "outreach_health",
+    "workflow_errors",
+    "urgent_tasks",
+    "content_performance",
+    "outreach_queue",
+    "content_calendar",
+    "client_errors",
+    "pipeline"
+  ],
+  "generated_at": "2026-08-03T11:36:29.270Z",
+  "scalars": {
+    "autoreplies_count": 0,
+    "aging_count": 6
+  },
+  "load": {
+    "urgent": 1,
+    "approvals": 13,
+    "going": 1,
+    "total": 15
+  },
+  "urgencies": {
+    "n": 1,
+    "visible": 1,
+    "autoreplies": 0,
+    "ages_days": [
+      2.88
+    ],
+    "rows": [
+      {
+        "name": "Nour Siakir Oglou",
+        "kind": "reply",
+        "age_d": 2.88,
+        "auto": null,
+        "client": "ivan"
+      }
+    ]
+  },
+  "dm_drafts": [
+    {
+      "name": "Vuk Sretenovic",
+      "age_d": 16.55,
+      "is_aging": true,
+      "client": "ivan"
+    },
+    {
+      "name": "Prakhar Vohra",
+      "age_d": 15.94,
+      "is_aging": true,
+      "client": "ivan"
+    },
+    {
+      "name": "Joachim Koch",
+      "age_d": 13.57,
+      "is_aging": true,
+      "client": "ivan"
+    }
+  ],
+  "comment_drafts": [
+    {
+      "who": "Chad Drew",
+      "age_d": 35.98,
+      "is_aging": true,
+      "client": "ivan"
+    },
+    {
+      "who": "Cameron England",
+      "age_d": 35.82,
+      "is_aging": true,
+      "client": "ivan"
+    },
+    {
+      "who": "David Dorsey",
+      "age_d": 33.9,
+      "is_aging": true,
+      "client": "ivan"
+    },
+    {
+      "who": "Muhammad Ali",
+      "age_d": 33.73,
+      "is_aging": true,
+      "client": "ivan"
+    },
+    {
+      "who": "Connor McLeod",
+      "age_d": 32.82,
+      "is_aging": true,
+      "client": "ivan"
+    },
+    {
+      "who": "Sadia Aman",
+      "age_d": 32.82,
+      "is_aging": true,
+      "client": "ivan"
+    }
+  ],
+  "feed_drafts": [
+    {
+      "who": "Ignacio Galarraga",
+      "age_d": 0,
+      "status": "pending",
+      "client": "ivan"
+    },
+    {
+      "who": "Ben Wild",
+      "age_d": 0,
+      "status": "pending",
+      "client": "ivan"
+    },
+    {
+      "who": "Shayne Williams",
+      "age_d": 1,
+      "status": "pending",
+      "client": "ivan"
+    },
+    {
+      "who": "Ernest Simonyan",
+      "age_d": 1.86,
+      "status": "failed",
+      "client": "ivan"
+    }
+  ],
+  "posts_today": [
+    {
+      "at": "2026-08-03T13:30:00+00:00",
+      "status": "cancelled"
+    }
+  ],
+  "calendar_next": [
+    {
+      "at": "2026-08-03T13:30:00+00:00",
+      "status": "cancelled"
+    },
+    {
+      "at": "2026-08-04T12:30:00+00:00",
+      "status": "cancelled"
+    },
+    {
+      "at": "2026-08-05T13:00:00+00:00",
+      "status": "cancelled"
+    },
+    {
+      "at": "2026-08-06T14:30:00+00:00",
+      "status": "cancelled"
+    }
+  ],
+  "scoped_ivan": {
+    "urgent": 1,
+    "approvals": 13,
+    "going": 1,
+    "total": 15
+  },
+  "scoped_rise": {
+    "urgent": 0,
+    "approvals": 0,
+    "going": 0,
+    "total": 0
+  },
+  "inScopeCheck": true
+}

@@ -514,6 +514,15 @@ input.cfield::placeholder{color:var(--text3)}
 .td-lg-d{width:7px;height:7px;border-radius:2px;flex:none}
 .td-mast .td-sync{margin-left:0;padding-left:0}
 
+/* The age split (2026-08-03, "the today stuff is all old shit"). Reads under the
+   category legend, in the same register, because it is a SECOND reading of the
+   same total — not a fourth category. The total above is unchanged. */
+.td-split{display:flex;flex-wrap:wrap;align-items:center;gap:3px 7px;margin-top:2px;
+  font-size:11.5px;font-weight:600;color:var(--text3);white-space:nowrap}
+.td-split b{font-size:13px;font-weight:800;color:var(--text)}
+.td-split-sep{color:var(--text4)}
+.td-split-o{color:var(--text4)}
+
 /* Where a pending item actually lives. An aggregating surface that shows you a
    count it cannot act on has to name the owning surface inline. */
 .td-qown{font-size:11.5px;color:var(--accent);margin-top:4px;font-weight:600;line-height:1.35}
@@ -528,7 +537,11 @@ input.cfield::placeholder{color:var(--text3)}
 .td-zn{font-size:11px;font-weight:800;letter-spacing:.14em;color:var(--text3);flex:none}
 .td-zt{font-size:12.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;flex:none}
 .td-zrule{flex:1;height:1px;background:var(--sep);opacity:.6;min-width:12px}
-.td-zc{flex:none;font-size:11.5px;font-weight:700;color:var(--text2);white-space:nowrap}
+/* `min-width:0` + ellipsis rather than `flex:none`: a zone count that grows
+   (e.g. "12 · oldest 35d") used to push its own tail off the 390 canvas and
+   render as "OLDEST 35". It now truncates visibly instead of lying quietly. */
+.td-zc{flex:0 1 auto;min-width:0;font-size:11.5px;font-weight:700;color:var(--text2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .td-zc.done{color:var(--accent)}
 .td-zmark{flex:none;width:16px;height:16px;border-radius:99px;border:1.5px solid rgba(235,235,245,.28);
   display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff}
@@ -589,7 +602,14 @@ input.cfield::placeholder{color:var(--text3)}
   border:1px solid rgba(16,163,127,.3);display:flex;align-items:center;justify-content:center;
   font-size:19px;font-weight:800;letter-spacing:-.02em;color:var(--accent)}
 .td-qmid{flex:1;min-width:0}
-.td-qt{font-size:15.5px;font-weight:700;letter-spacing:-.01em}
+.td-qt{font-size:15.5px;font-weight:700;letter-spacing:-.01em;
+  display:flex;align-items:center;gap:8px;min-width:0}
+/* The group's oldest item, ON the row. It is a FACT, not a severity — the
+   >7d/aging warnings keep their own amber in the meta line, so this stays the
+   neutral chip vocabulary and 36 of them in a column do not read as 36 alarms. */
+.td-qage{flex:none;padding:0 7px;height:19px;display:inline-flex;align-items:center;
+  border-radius:99px;background:var(--surface2);
+  font-size:10.5px;font-weight:800;letter-spacing:.02em;color:var(--text3)}
 .td-qs{font-size:13px;color:var(--text2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .td-qmeta{font-size:11.5px;color:var(--text3);margin-top:3px;font-weight:600}
 .td-chev{flex:none;color:var(--text3);font-size:19px;line-height:1}
