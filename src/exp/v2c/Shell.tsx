@@ -179,6 +179,22 @@ export default function Shell() {
     if (q === 'mono' || q === 'triad') { try { localStorage.setItem('wb-cat', q) } catch { /* ok */ } }
   }, [])
 
+  // ---- ⌘D: start/stop speaking (phase 3, Ivan's verbatim ask). One keydown
+  // listener while the workbench is mounted; ChatPane owns what "toggle"
+  // means (composer mic, or the live loop's mic when that sheet is open).
+  // Chrome binds ⌘D to "bookmark this page" — preventDefault() suppresses
+  // that inside the workbench, which is exactly what was asked for.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'd' || e.key === 'D')) {
+        e.preventDefault()
+        window.dispatchEvent(new CustomEvent('wb-voice-toggle'))
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   // ---- hash: job + focus are addressable, so every surface has a fresh-load URL ----
   useEffect(() => {
     const apply = () => {
