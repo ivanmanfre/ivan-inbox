@@ -93,13 +93,12 @@ export default function Shell() {
 
   const [job, setJob] = useState<Job>(boot.job)
   const [prevJob, setPrevJob] = useState<Job>(boot.job === 'settings' ? 'inbox' : boot.job)
-  // Claude is docked from the start on a canvas that has room for it. That is
-  // the deliberate answer to "what fills the right region": the default peer is
-  // the conversation, not a placeholder glyph.
+  // Claude opens when Ivan opens it (his call, 2026-08-03) — never on boot. The
+  // pane used to dock itself on any canvas with room, which meant the working
+  // surface started the session sharing the width with a conversation nobody
+  // had asked for. The rail button and #exp/v2/<job>/chat both still open it.
   const [peers, setPeers] = useState<Peer[]>(
-    // Docked by default wherever there is room for it; on a phone only when the
-    // URL asked for it, because a phone peer is a takeover.
-    () => (readCanvas() !== 'mobile' || boot.focus === 'chat' ? [{ kind: 'chat' } as Peer] : []),
+    () => (boot.focus === 'chat' ? [{ kind: 'chat' } as Peer] : []),
   )
   const [focus, setFocus] = useState<string | null>(boot.focus)
   const [filter, setFilter] = useState<Filter>('all')
