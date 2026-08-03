@@ -18,12 +18,23 @@ import { JOBS, type Job, type PeerKey } from './layout'
 
 export type WbRoute = { job: Job; focus: PeerKey | null }
 
-export const DEFAULT_ROUTE: WbRoute = { job: 'inbox', focus: null }
+export const DEFAULT_ROUTE: WbRoute = { job: 'dms', focus: null }
+
+// Jobs that no longer exist, and where they went. Both of these were REAL URLs
+// Ivan (and any bookmark, any ballot link) could be sitting on when the Inbox
+// job was absorbed into DMs, so they resolve instead of silently falling back to
+// a default that happens to be right today and wrong after the next rename.
+// `wbHash` only ever WRITES the canonical id, so an alias is read-once and then
+// rewritten in the address bar.
+const JOB_ALIAS: Record<string, Job> = { inbox: 'dms', drafts: 'dms' }
 
 export function parseWbHash(hash: string): WbRoute {
   const m = hash.match(/^#exp\/v2c?(?:\/([^/]*))?(?:\/([^/]*))?/)
   if (!m) return DEFAULT_ROUTE
-  const job = (JOBS as string[]).includes(m[1] ?? '') ? (m[1] as Job) : DEFAULT_ROUTE.job
+  const seg = m[1] ?? ''
+  const job = (JOBS as string[]).includes(seg)
+    ? (seg as Job)
+    : JOB_ALIAS[seg] ?? DEFAULT_ROUTE.job
   // Only 'chat' is addressable as a focus: a thread/draft peer key is a database
   // id, and a URL that pretends to restore one would 404 into an empty pane.
   const focus = m[2] === 'chat' || m[1] === 'chat' ? 'chat' : null

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isDraft, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, type InboxMessage } from './inbox'
+import { isDraft, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, threadBucket, filterByStatus, type InboxMessage, type Status } from './inbox'
 
 const base: InboxMessage = {
   id: '1', prospect_id: 'p1', direction: 'outbound', message_text: 'hey',
@@ -265,5 +265,58 @@ describe('inboxBreakdown + inboxWaitingCount', () => {
   it('a thread both flagged and unanswered counts once, as answer', () => {
     const t = groupThreads(rows, new Set(['p1', 'p3']))
     expect(inboxBreakdown(t)).toEqual({ answer: 1, approve: 1, flagged: 1, waiting: 1 })
+  })
+})
+
+// The Inbox job was removed on 2026-08-03 and DMs absorbed the conversation
+// list, so the breakdown bar became the STATUS FILTER. These assertions are the
+// reason that is safe: the bar's printed number and the list a click produces
+// come from one function, so a segment can never advertise 42 and hand back 7.
+describe('threadBucket + filterByStatus (the DMs status axis)', () => {
+  const rows: InboxMessage[] = [
+    // p1 unanswered reply -> answer
+    { ...base, id: 'p1s', prospect_id: 'p1', sent_at: '2026-07-20T10:00:00Z', created_at: '2026-07-20T10:00:00Z' },
+    { ...base, id: 'p1r', prospect_id: 'p1', direction: 'inbound', sent_at: '2026-07-21T10:00:00Z', created_at: '2026-07-21T10:00:00Z' },
+    // p2 answered, with a pending draft -> approve
+    { ...base, id: 'p2r', prospect_id: 'p2', direction: 'inbound', sent_at: '2026-07-21T10:00:00Z', created_at: '2026-07-21T10:00:00Z' },
+    { ...base, id: 'p2s', prospect_id: 'p2', sent_at: '2026-07-22T10:00:00Z', created_at: '2026-07-22T10:00:00Z' },
+    { ...base, id: 'p2d', prospect_id: 'p2', created_at: '2026-07-22T11:00:00Z' },
+    // p3 flagged by the reply detector, zero inbound rows in the view -> flagged
+    { ...base, id: 'p3s', prospect_id: 'p3', prospect_stage: 'dm_sent', sent_at: '2026-07-22T10:00:00Z', created_at: '2026-07-22T10:00:00Z' },
+    // p4 read conversation -> waiting on them
+    { ...base, id: 'p4r', prospect_id: 'p4', direction: 'inbound', sent_at: '2026-07-21T10:00:00Z', created_at: '2026-07-21T10:00:00Z', read_at: '2026-07-21T10:05:00Z' },
+    { ...base, id: 'p4s', prospect_id: 'p4', sent_at: '2026-07-22T10:00:00Z', created_at: '2026-07-22T10:00:00Z' },
+    // p5 outbound-only echo -> not a conversation, lives in Sends
+    { ...base, id: 'p5s', prospect_id: 'p5', prospect_stage: 'dm_sent', sent_at: '2026-07-22T10:00:00Z', created_at: '2026-07-22T10:00:00Z' },
+  ]
+  const convos = filterThreads(groupThreads(rows, new Set(['p3'])), 'all')
+  const ids = (s: Status) => filterByStatus(convos, s).map(t => t.prospect_id).sort()
+
+  it('assigns each conversation exactly one bucket', () => {
+    expect(Object.fromEntries(convos.map(t => [t.prospect_id, threadBucket(t)])))
+      .toEqual({ p1: 'answer', p2: 'approve', p3: 'flagged', p4: 'waiting' })
+  })
+
+  it('every bucket filter returns exactly the rows the bar counted', () => {
+    const b = inboxBreakdown(convos)
+    for (const k of ['answer', 'approve', 'flagged', 'waiting'] as const) {
+      expect(filterByStatus(convos, k)).toHaveLength(b[k])
+    }
+    expect(ids('answer')).toEqual(['p1'])
+    expect(ids('flagged')).toEqual(['p3'])
+  })
+
+  it('the default view is exactly what the badge counts — no more, no less', () => {
+    expect(filterByStatus(convos, 'needs')).toHaveLength(inboxWaitingCount(convos))
+    expect(ids('needs')).toEqual(['p1', 'p2', 'p3'])
+  })
+
+  it('nothing is lost between the views: needs + waiting == all', () => {
+    expect(ids('all')).toEqual(['p1', 'p2', 'p3', 'p4'])
+    expect([...ids('needs'), ...ids('waiting')].sort()).toEqual(ids('all'))
+  })
+
+  it('a send echo is in no view at all — it belongs to Sends', () => {
+    expect(ids('all')).not.toContain('p5')
   })
 })
