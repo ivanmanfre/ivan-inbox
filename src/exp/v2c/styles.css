@@ -981,6 +981,14 @@
   padding:0 10px;font-family:inherit;font-size:13px;color-scheme:dark}
 :root[data-theme='light'] .wb.wb.wb .dw-sched input{color-scheme:light}
 
+/* ---- WHY THERE IS NO BUTTON (client lane) ----
+   An explanation attached to a missing affordance, not another paragraph of
+   prose: the left rule ties it to the action bar above it, and it stays in the
+   subtle tier so it can never out-shout a control. Sits at .wb.wb.wb because
+   faithful.css:171's `.wb.wb *` flattens type at two-class specificity. */
+.wb.wb.wb .dw-clientnote{margin:8px 16px 0;padding-left:9px;
+  border-left:2px solid var(--surface3)}
+
 /* ---- the save-conflict box: both texts, no winner picked ---- */
 .wb.wb.wb .dw-conf{margin:10px 16px 0;padding:12px 14px;border-radius:var(--r-md);
   background:rgba(255,159,10,.1);border:1px solid rgba(255,159,10,.34)}

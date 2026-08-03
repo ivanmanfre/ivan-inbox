@@ -6,10 +6,11 @@ import {
 } from '../../hooks/useContent'
 import {
   CONTENT_LANES, ERROR_ALARM_HOURS, LANE_LABEL, LANE_POSSESSIVE, PIPELINE_STAGES,
-  STAGE_LABEL, STAGE_SHORT, STUCK_GENERATING_MINUTES, countBoardVisible, countUndated,
+  STAGE_LABEL, STAGE_SHORT, STUCK_GENERATING_MINUTES, boardGroupOf, canPromote, clientStageLabel,
+  countBoardVisible, countUndated,
   elapsedMinutes, generatingSince, groupByStage, isRecentError, isStuckGenerating,
   isStuckScheduled, queueFailed, reviewActionable, stageOf,
-  type ContentDraft, type ContentLane, type ContentStage, type ContentStages,
+  type BoardGroup, type ContentDraft, type ContentLane, type ContentStage, type ContentStages,
 } from '../../lib/content'
 import {
   applyFilters, applySearch, buildFacets, draftScore, draftSpecs, DRAFT_PROMINENT, splitFacets,
@@ -341,11 +342,15 @@ function AlertStrip({ drafts, lane, refresh, onOpen, openId, extra }: {
 
 // A stage section with its rows. Shared by both lanes — the lanes differ in how
 // they NEST these, not in how a stage renders.
-function StageSection({ s, n, rows, lane, refresh, onOpen, openId, isOpen, toggle, sub }: {
+function StageSection({ s, n, rows, lane, group, refresh, onOpen, openId, isOpen, toggle, sub }: {
   s: ContentStage
   n?: string
   rows: ContentDraft[]
   lane: ContentLane
+  // Which of the client lane's two categories this section is nested in. Absent
+  // on the Ivan lane, which has no such split. It changes the LABEL, because on
+  // the client lane one status means two different things — see clientStageLabel.
+  group?: BoardGroup
   refresh: () => void
   onOpen: OpenDraft
   openId: string | null
@@ -355,14 +360,16 @@ function StageSection({ s, n, rows, lane, refresh, onOpen, openId, isOpen, toggl
 }) {
   if (rows.length === 0) return null
   return (
-    <div id={`wb-s-${s}`}>
+    <div id={group ? `wb-s-${group}-${s}` : `wb-s-${s}`}>
       <SectionHead
         n={n}
-        title={STAGE_LABEL[s]}
+        title={group ? clientStageLabel(s, group) : STAGE_LABEL[s]}
         count={rows.length}
         // A backlog is not a warning. Only review carries a mark, and only the
-        // neutral "pending" one.
-        sev={s === 'review' && lane === 'ivan' ? 'attention' : null}
+        // neutral "pending" one — and on the client lane only in the category
+        // that is actually waiting on Ivan. A mark on the rows Mattan is sitting
+        // on would point at work that is not his to do or Ivan's to chase.
+        sev={s === 'review' && (lane === 'ivan' || group === 'internal') ? 'attention' : null}
         open={isOpen}
         onToggle={toggle}
       />
@@ -408,20 +415,20 @@ const TOUCHED = 'touched'
 function useOpenStages(
   persisted: string[],
   setPersisted: (fn: (cur: string[]) => string[]) => void,
-  initial: ContentStage[],
+  initial: string[],
 ) {
   const decided = persisted.includes(TOUCHED)
-  const open = decided ? persisted : (initial as string[])
+  const open = decided ? persisted : initial
   const write = (next: (cur: string[]) => string[]) =>
     setPersisted(cur => {
-      const base = cur.includes(TOUCHED) ? cur.filter(x => x !== TOUCHED) : (initial as string[])
+      const base = cur.includes(TOUCHED) ? cur.filter(x => x !== TOUCHED) : initial
       return [...next(base), TOUCHED]
     })
   return {
-    isOpen: (s: ContentStage) => open.includes(s),
-    toggle: (s: ContentStage) =>
+    isOpen: (s: string) => open.includes(s),
+    toggle: (s: string) =>
       write(cur => (cur.includes(s) ? cur.filter(x => x !== s) : [...cur, s])),
-    ensure: (s: ContentStage) => write(cur => (cur.includes(s) ? cur : [...cur, s])),
+    ensure: (s: string) => write(cur => (cur.includes(s) ? cur : [...cur, s])),
   }
 }
 
@@ -612,16 +619,33 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
 // LANE B — Mattan Danino
 // ---------------------------------------------------------------------------
 
+// THE TWO CATEGORIES, and why they are in this order.
+//
+// Ivan, 2026-08-03: "i see the needs review and on mattan's board are different
+// but they are on the same category… after i approve needs review it goes to
+// the board… and on mattan's board category leaving needs review category".
+//
+// Two things were wrong and they compounded. First, the group holding the work
+// that needed him was SECOND, under 23 rows he had already dealt with. Second,
+// both groups rendered a section called "Needs review" — 13 rows inside his
+// board and 59 inside ours (live counts, 2026-08-03) — so the same three words
+// meant "Mattan has not answered" in one place and "you have not decided" in
+// the other. clientStageLabel (content.ts) is the fix for the second; this
+// order is the fix for the first.
+//
+// The note on each group now says what the CATEGORY means, since that is the
+// distinction the eye has to make, and the promotion sentence is no longer a
+// lie: promotion happens right here.
 const BOARD_GROUPS = [
+  {
+    key: 'internal',
+    title: 'Waiting on you',
+    note: 'Ours only — Mattan has never seen these. Open one and put it on his board when it is ready.',
+  },
   {
     key: 'board',
     title: 'On Mattan’s board',
-    note: 'Mattan can see, edit, approve, veto and reschedule these on his own board.',
-  },
-  {
-    key: 'internal',
-    title: 'Internal',
-    note: 'Exists on our side only — Mattan has never seen it. Promotion happens in Client Ops, not here.',
+    note: 'Mattan can see these. From here the decisions are his: approve, edit, veto, schedule.',
   },
 ] as const
 
@@ -641,12 +665,20 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
   // Same density rule as the Ivan lane, and the same persistence: only the stage
   // that needs a decision opens itself. On this lane `review` means "available
   // to be promoted to the board", which is still the one Ivan acts on.
-  const stageOpen = useOpenStages(open, setOpen, ['review'])
+  // 🔴 The composite key, and it MUST match projectOpen's KEY_RE
+  // (/^[a-z][a-z0-9_]*$/ — sectionState.ts:65): a `group:stage` key would be
+  // silently dropped on write and every section would reopen on reload.
+  const stageOpen = useOpenStages(open, setOpen, ['internal_review'])
   const [groupOpen, setGroupOpen] = useState<string[]>(['board', 'internal'])
   // Same determinism rule as the Ivan lane: an active stage filter opens its section.
+  // Same determinism rule as the Ivan lane, applied to BOTH categories: a
+  // stage filter that opened only one of them would render a different row
+  // count before and after a reload, which is the bug this rule exists for.
   const filterStage = filters.stage as ContentStage | undefined
   useEffect(() => {
-    if (filterStage) stageOpen.ensure(filterStage)
+    if (!filterStage) return
+    stageOpen.ensure(`internal_${filterStage}`)
+    stageOpen.ensure(`board_${filterStage}`)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterStage])
   const roster = useStyleRoster()
@@ -661,6 +693,10 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
   const shown = applySearch(applyFilters(drafts, specs, filters), q, d => [d.title, d.topic])
 
   const onBoard = countBoardVisible(drafts)
+  // What the lane is actually asking Ivan for: a draft he can promote — at
+  // `review`, not already on the board. canPromote's rule, so the hero figure
+  // and the button that clears it can never count different things.
+  const waitingOnIvan = drafts.filter(d => canPromote(d.status, 'risedtc') && boardGroupOf(d) === 'internal').length
   const scheduled = drafts.filter(d => d.scheduled_at).length
   const noImage = drafts.filter(d => d.status === 'review' && !(d.image_urls?.length)).length
 
@@ -679,11 +715,18 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
           "of 4/wk" here would be fabricating a client commitment. */}
       <div className="wb-pipe">
         <div className="wb-pipe-n">
-          <span className="wb-pipe-big">{onBoard}</span>
+          {/* The hero figure is the WORK, the same as the Ivan lane's. It used
+              to be the board count — 23 — while 59 drafts sat waiting on a
+              decision from Ivan underneath it, so the biggest number on the
+              lane was the one he had already dealt with. The board count keeps
+              its place as the second fact, which is what it is. */}
+          <span className="wb-pipe-big">{waitingOnIvan}</span>
           <span className="wb-pipe-lbl">
-            on {LANE_POSSESSIVE.risedtc} board<br />of {drafts.length} in this lane
+            waiting on you<br />of {drafts.length} in this lane
           </span>
-          <span className="wb-pipe-i"><b>{scheduled}</b> with a date</span>
+          <span className="wb-pipe-i">
+            <b>{onBoard}</b> on {LANE_POSSESSIVE.risedtc} board · <b>{scheduled}</b> with a date
+          </span>
         </div>
         <div className="ct-subtle">
           His forward calendar lives on the client board, not in this column —
@@ -709,7 +752,10 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
       {shown.length === 0 && drafts.length > 0
         ? <FilteredEmpty noun="drafts" onClear={() => { setFilters({}); setQ('') }} />
         : BOARD_GROUPS.map((g, gi) => {
-          const rows = shown.filter(d => (g.key === 'board') === (d.board_visible === true))
+          // boardGroupOf, never an inline `board_visible === true`: the grouping
+          // and the count that heads the lane have to agree about NULL, and they
+          // only can if they ask the same function.
+          const rows = shown.filter(d => boardGroupOf(d) === g.key)
           if (rows.length === 0) return null
           const stages = groupByStage(rows)
           const open = groupOpen.includes(g.key)
@@ -733,9 +779,15 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
                     .filter(s => s !== 'ideas')
                     .map(s => (
                       <StageSection
-                        key={s} s={s} rows={stages[s]} lane="risedtc" refresh={refresh}
+                        key={s} s={s} rows={stages[s]} lane="risedtc" group={g.key}
+                        refresh={refresh}
                         onOpen={onOpen} openId={openId}
-                        isOpen={stageOpen.isOpen(s)} toggle={() => stageOpen.toggle(s)}
+                        // 🔴 Keyed by GROUP as well as stage. The two categories
+                        // each hold a `review` section and they are different
+                        // questions, so collapsing one must not collapse the
+                        // other — which a stage-only key did.
+                        isOpen={stageOpen.isOpen(`${g.key}_${s}`)}
+                        toggle={() => stageOpen.toggle(`${g.key}_${s}`)}
                       />
                     ))}
                 </>
