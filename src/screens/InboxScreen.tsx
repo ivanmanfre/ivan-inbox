@@ -137,7 +137,15 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
   const ptr = usePullToRefresh(rowsRef, () => refresh())
   const [query, setQuery] = useState('')
   const laned = filterThreads(threads, filter)
-  const shown = searchThreads(status ? filterByStatus(laned, status) : laned, query)
+  // A SEARCH reaches the whole lane; the LIST does not. Ivan, 2026-08-03: "dms
+  // section doesnt need to show sent stuff only receiveds pending response" —
+  // so the browsable list is what is waiting on him, while typing a name still
+  // finds a conversation where the ball is with them. Cutting those rows from
+  // search too would turn "I don't need to browse these" into "I can never look
+  // one up", which is a different and worse thing.
+  const shown = query
+    ? searchThreads(laned, query)
+    : (status ? filterByStatus(laned, status) : laned)
   const win = useRowWindow(rowsRef, shown.length, windowed && !renderRow)
   const draftTotal = threads.filter(t => t.draft).length
   // Same derivation as the tab badge (lib/inbox.ts) — the chip suffix and the
