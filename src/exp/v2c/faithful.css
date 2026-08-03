@@ -31,12 +31,23 @@
 /* ========================================================================== */
 
 .wb{
-  /* --- 3.1 ladder, adopted unchanged (no re-derivation; harness output in
-         spine §9.4 is this ladder's, verbatim, and already clears all three
-         bars). --text4 is the §4 CORRECTION value #6F7472, never #606562. --- */
-  --canvas:#090B0A; --surface1:#121513; --surface2:#191D1B; --surface3:#212523;
-  --hairline:#2C302E; --hairline-strong:#3E4240;
-  --text:#F3F6F5; --text2:#AEB2B0; --text3:#7F8582; --text4:#6F7472;
+  /* --- 3.1 ladder — RE-DERIVED per phase2-style-delta §1/§2 (Nixtio "Check
+         Box" reference, pixel-sampled). surface1 is now the CARD colour
+         (#1F1F1F on a near-black plate), not near-canvas chrome. --text3 is
+         the TUNED #949494 (sampled #8F8F8F fails 4.5:1 on surface2). --- */
+  --canvas:#0C0C0B; --surface1:#1F1F1F; --surface2:#2A2A29; --surface3:#353533;
+  --hairline:#303030; --hairline-strong:#4C4C4C;
+  --text:#FFFFFF; --text2:#C7C7C7; --text3:#949494; --text4:#6E6E6E;
+
+  /* --- the two-surface inversion (style-delta §3a): the page ground the plate
+         rests on, the plate's radius and the reveal gap around it. --- */
+  --ground:#C5E1A5;
+  --plate-r:40px; --plate-gap:20px;
+  /* directional stat glyphs (style-delta §3h / §5.4) — direction, not severity */
+  --delta-up:#B8FF66; --delta-down:#FF9B22;
+  /* lime as GLYPH/ICON colour. Dark: lime itself. Light overrides to #5A8A00
+     because lime cannot carry glyphs on white (1.4:1) — style-delta §2. */
+  --accent-ui:#B8FF66;
 
   /* --- 1.4 BRIDGE — the legacy names every stock screen actually reads.
          Without this block TodayScreen/OverviewView/DraftsScreen/OpsScreen stay
@@ -44,8 +55,8 @@
   --bg:var(--canvas);
   --surface:var(--surface1);
   --sep:var(--hairline);
-  --accent:#10A37F;
-  --accent-soft:rgba(16,163,127,.16);
+  --accent:#B8FF66;
+  --accent-soft:rgba(184,255,102,.14);
   --blue:var(--text2);          /* the undeclared second accent, retired to neutral */
 
   /* --- severity, 5.4. Meaning locked, never reused as category encoding. --- */
@@ -63,8 +74,8 @@
   --fs-glyph:20px;              /* the ONE glyph-only size (rail + tab icons) */
   --fw-display:700;             /* 2.4 — the single ≥700 exception, ≥28px only */
 
-  /* --- 6 · radius family --- */
-  --r-chip:6px; --r-ctl:10px; --r-card:18px; --r-hero:24px; --r-pill:999px;
+  /* --- 6 · radius family (style-delta §2: one step rounder, per reference) --- */
+  --r-chip:8px; --r-ctl:12px; --r-card:20px; --r-hero:28px; --r-pill:999px;
   /* v2c's local radii (styles.css:11-16) are treatment surface per §1.6 and are
      remapped onto the family rather than left to drift alongside it. */
   --r-sm:var(--r-ctl); --r-md:var(--r-card); --r-lg:var(--r-hero);
@@ -72,20 +83,21 @@
   /* --- 7 · dense-list geometry --- */
   --anchor-w:28px; --anchor-gap:12px; --tail-w:62px; --sech-h:32px; --indent:20px;
   --gut:16px;                   /* the one horizontal gutter for list surfaces */
-  --pad-card:20px;              /* expressive: generous overview card padding */
+  --pad-card:24px;              /* expressive: generous overview card padding */
 
   /* --- 10 · motion: ONE easing token, three durations, nothing above 250ms --- */
   --ease:cubic-bezier(.25,1,.5,1);
   --dur-hover:100ms; --dur-state:180ms; --dur-beat:200ms;
 
-  /* --- 9.2 · ANSWER MONO (default) — zero new hues --- */
-  --cat-1:#10A37F; --cat-2:#DBDFDD; --cat-3:#A1A6A4; --cat-4:#747977;
+  /* --- 9.2 · ANSWER MONO (fallback) — zero new hues, re-derived neutral on the
+         new ladder (style-delta §2): lime + 3 greys + patterns. --- */
+  --cat-1:#B8FF66; --cat-2:#E3E3E3; --cat-3:#A3A3A3; --cat-4:#707070;
   --cat-1-ink:var(--ink); --cat-2-ink:var(--ink); --cat-3-ink:var(--ink);
   --cat-4-ink:#FFFFFF;          /* 9.5 — MONO cat-4 is the one white label */
   /* Beyond four series, differentiation is PATTERN not colour (9.2). */
   --pat-1:none;
-  --pat-2:repeating-linear-gradient(45deg,rgba(9,11,10,.34) 0 3px,transparent 3px 7px);
-  --pat-3:repeating-linear-gradient(90deg,rgba(9,11,10,.40) 0 2px,transparent 2px 6px);
+  --pat-2:repeating-linear-gradient(45deg,rgba(12,12,11,.34) 0 3px,transparent 3px 7px);
+  --pat-3:repeating-linear-gradient(90deg,rgba(12,12,11,.40) 0 2px,transparent 2px 6px);
   --pat-4:none;
 
   font-variant-numeric:tabular-nums;   /* 2.6 — declared once, never unset */
@@ -107,13 +119,16 @@
        is the CVD remedy and is a contract, not a taste call. Do not harmonise
        it back down. --- */
 :root[data-cat='triad'] .wb{
-  /* --cat-4 is TRIAD's own neutral 4th slot (charts cycle %4; §9.3 defines 3
-     hues, the 4th stays neutral). #747977 held white ink at 4.43:1 — under the
-     4.5 body bar, flagged since the parity pass. Now that triad is the decided
-     answer the fix lands here: #6C716F carries white at 4.97:1 and stays ≥3.12:1
-     as a mark on every ladder surface (harness math in phase3-polish.md). MONO
-     keeps its published hexes untouched. */
-  --cat-1:#10A37F; --cat-2:#3A93D0; --cat-3:#D099E8; --cat-4:#6C716F;
+  /* TRIAD is the shipped BOOT DEFAULT (Shell.tsx: absence of any signal means
+     triad), so the reference's own data set lands HERE (style-delta §2, risk 7):
+     lime / orange / white-as-data / neutral 4th. --cat-4 is neutralised from
+     the old #6C716F at equal luminance to #707070 — white ink 4.95:1 (≥4.5 ✓).
+     ⚠ cat-2 #FF9B22 sits one hue-degree from --sev-attention #FF9F0A — DECIDED
+     collision (style-delta §1): severity amber only ever appears as text-chip/
+     dot/inset rule; cat-2 orange only ever as a chart mark carrying its own
+     ink numeral. Licensed fallback if the blind pass confuses them: swap
+     cat-2↔cat-3, never touch severity. */
+  --cat-1:#B8FF66; --cat-2:#FF9B22; --cat-3:#FFFFFF; --cat-4:#707070;
   --cat-1-ink:var(--ink); --cat-2-ink:var(--ink); --cat-3-ink:var(--ink);
   --cat-4-ink:#FFFFFF;
   /* TRIAD separates on hue; the pattern layer stands down so the two answers
@@ -127,17 +142,26 @@
 @media (min-width:768px){ .wb{ --fs-display:44px } }
 @media (min-width:1200px){ .wb{ --fs-display:56px } }
 
+/* The plate at phone widths: near-full-bleed with an 8px ground reveal, and a
+   corner radius the 374px plate can afford (style-delta §2/§3a). */
+@media (max-width:767px){ .wb{ --plate-r:24px; --plate-gap:8px } }
+
 /* Light theme: the ladder inverts, the accent and severities do not. Dark is the
    anchor; light must stay legible, which is what this block buys. */
 :root[data-theme='light'] .wb{
-  --canvas:#F4F6F5; --surface1:#FFFFFF; --surface2:#ECEFEE; --surface3:#E0E4E2;
-  --hairline:#D5D9D7; --hairline-strong:#A8ADAB;
-  /* text2/text3 measured at 4.35:1 on surface2 at the first pass — under the
-     4.5 bar. Darkened until every tier clears body contrast on the LIGHTEST
-     surface it can sit on, which on light is surface2, not the canvas. */
-  --text:#0B0E0D; --text2:#3A3F3D; --text3:#4F5452; --text4:#5E6361;
+  /* Re-derived per style-delta §2's light table, same inversion logic. --ground
+     is HELD (#C5E1A5, inherited from .wb) — the pistachio page survives both
+     themes; only the plate's ladder inverts. */
+  --canvas:#F7F7F5; --surface1:#FFFFFF; --surface2:#EFEFED; --surface3:#E3E3E0;
+  --hairline:#DBDBD8; --hairline-strong:#B5B5B2;
+  --text:#131313; --text2:#3D3D3B; --text3:#5C5C5A; --text4:#6E6E6E;
+  /* Lime CANNOT carry text/icons on white (1.4:1). Everywhere dark mode paints
+     lime GLYPHS reads var(--accent-ui, var(--accent)); lime FILLS keep
+     --accent + --ink label (14.97:1, theme-proof). 4.14:1 on white — ≥3 for
+     icons/marks/large text (style-delta §2). */
+  --accent-ui:#5A8A00;
   /* --ink is NOT overridden: the accent is the same hex in both themes, so the
-     label on a filled accent mark measures the same 5.61:1 and stays ink. */
+     label on a filled accent mark stays ink. */
 }
 
 /* ========================================================================== */
@@ -158,7 +182,9 @@
 .wb.wb.wb .wb-display{
   font-size:var(--fs-display);
   font-weight:var(--fw-display);
-  letter-spacing:-.02em;
+  /* §3d — condensed-read tracking on the display tier only; the stack stays
+     the system grotesk, no new font file. */
+  letter-spacing:-.035em;
   line-height:1;
   text-transform:uppercase;
 }
@@ -331,6 +357,24 @@
 /* 3 · SURFACES, HAIRLINES, FOCUS                                              */
 /* ========================================================================== */
 
+/* --- style-delta §3a — the two-surface inversion. The page is PISTACHIO; the
+       app is a dark PLATE floating on it. The plate wrapper is the one licensed
+       DOM addition (Shell.tsx, three roots); everything scrolls INSIDE it, and
+       overflow:hidden is what keeps scrolled content out of the corner radius
+       (risk 3). The box-shadow is §5 elevation move 1 — the ONE licensed
+       resting shadow in the app (§3.4 amended for exactly this element). --- */
+.wb.wb.wb.app{ background:var(--ground); padding:var(--plate-gap); height:100% }
+.wb.wb.wb .wb-plate{
+  flex:1; min-height:0; min-width:0; display:flex; flex-direction:column;
+  background:var(--canvas); border-radius:var(--plate-r);
+  overflow:hidden; position:relative;
+  box-shadow:0 24px 60px -20px rgba(0,0,0,.5);
+}
+.wb.wb.wb.dt .wb-plate{ flex-direction:row }   /* rail | regions */
+/* The takeover root (mobile chat/thread) is already an overlay over the whole
+   viewport and gets NO plate — it stays edge-to-edge canvas (risk 10). */
+.wb.wb.wb.app.wb-take{ background:var(--canvas); padding:0 }
+
 .wb.wb.wb .app,
 .wb.wb.wb .rows,
 .wb-regions,
@@ -446,7 +490,15 @@
 .wb.wb.wb .ct-fig b, .wb.wb.wb .ct-fnote b, .wb.wb.wb .wb-chat-empty-t b,
 .wb.wb.wb .wb-ws b, .wb.wb.wb .r.unread .time, .wb.wb.wb .t-nav .m b,
 .wb.wb.wb .dc-h .t, .wb.wb.wb .ct-fclear, .wb.wb.wb .back{ color:var(--text) }
-.wb.wb.wb .wb-rj.on .wb-rj-ic{ color:var(--accent) }   /* active nav — licensed */
+/* active nav — licensed. GLYPH colour, so it rides --accent-ui (lime on dark,
+   #5A8A00 on light — style-delta §2). */
+.wb.wb.wb .wb-rj.on .wb-rj-ic{ color:var(--accent-ui, var(--accent)) }
+/* Live/OK marks are lime GLYPHS, not fills-with-labels — same indirection so
+   they stay ≥3:1 on light (style-delta §2, §3l). .wb-live's .busy/.err states
+   keep their own severity paints: the :not() guard keeps this 0-4-0 rule from
+   beating those 0-2-0 states in v2c/styles.css. */
+.wb.wb.wb .wb-ok-dot{ background:var(--accent-ui, var(--accent)) }
+.wb.wb.wb .wb-live:not(.busy):not(.err){ background:var(--accent-ui, var(--accent)) }
 
 /* 5.3 — labels on a filled accent mark are ink, never white. */
 .wb.wb.wb .b.out, .wb.wb.wb .btn.p, .wb.wb.wb .wb-pane-ic.asst,
@@ -465,6 +517,9 @@
 /* A QA verdict is a STATUS, and status speaks severity — the outline used
    --cat-2, which the triad default turned BLUE while the corner dot said green
    (blind row-find seat caught the mismatch). One vocabulary now. */
+/* style-delta risk 5, decided: this ring is the ONE old-green literal that
+   SURVIVES the lime sweep — it encodes a PASS verdict, which is severity
+   (--sev-clear #10A37F), not accent. Same value, new meaning. */
 .wb.wb.wb .ct-chip-ok{ background:var(--surface2); color:var(--text);
   box-shadow:inset 0 0 0 1px rgba(16,163,127,.55) }
 .wb.wb.wb .ct-chip-warn{ background:rgba(255,159,10,.14); color:var(--sev-attention);
@@ -589,7 +644,10 @@
   position:sticky; top:0; z-index:6;
   display:flex; align-items:center; gap:10px;
   height:var(--sech-h); padding:0 var(--gut);
-  background:var(--surface1);
+  /* §3f / risk 3 — surface1 is the CARD colour now; a card-coloured sticky
+     stripe on the plate would read as chrome-gone-wrong. Sticky backgrounds
+     are CANVAS. */
+  background:var(--canvas);
   border-top:1px solid var(--hairline);
   border-bottom:1px solid var(--hairline);
 }
@@ -771,13 +829,15 @@
 /* 8.1 — METRIC CARD: eyebrow · direction glyph · big tabular numeral ·
    micro-caption. All four slots or it is not a metric card. --r-hero, generous
    padding: this is the reference read at face value. */
+/* §3f — reference cards are BORDERLESS flats; separation is the
+   surface1-on-canvas step itself. */
 .wb.wb.wb .ov-tile, .wb.wb.wb .ov-kpi, .wb.wb.wb .ov-gov, .wb.wb.wb .ov-rc,
 .wb.wb.wb .ov-pipe, .wb.wb.wb .ov-funnel, .wb.wb.wb .wb-chartcard{
   background:var(--surface1);
-  border:1px solid var(--hairline);
+  border:none;
   padding:var(--pad-card);
 }
-.wb.wb.wb .ov-tbl{ background:var(--surface1); border:1px solid var(--hairline); padding:0 }
+.wb.wb.wb .ov-tbl{ background:var(--surface1); border:none; padding:0 }
 .wb.wb.wb .ov-tbl .ov-tr{ padding:10px var(--pad-card) }
 .wb.wb.wb .ov-tile-lbl{ color:var(--text3) }
 .wb.wb.wb .ov-tile-big, .wb.wb.wb .wb-pipe-big, .wb.wb.wb .td-big{ color:var(--text) }
@@ -881,14 +941,26 @@
 .wb.wb.wb .wb-caps{ display:flex; align-items:flex-end; gap:10px; min-height:72px; max-width:460px }
 .wb.wb.wb .wb-cap{
   flex:1; min-width:22px; position:relative;
-  display:flex; align-items:flex-start; justify-content:center;
-  padding-top:7px;
+  /* F6 (phase-2 review) — elevation move 2, finished: the reference centres the
+     ink numeral IN its mark; top-pinned read as unfinished on the tall
+     IDEA/PUB capsules. Centred both axes; short capsules are unaffected
+     (22px floor barely exceeds the 18px value capsule either way). */
+  display:flex; align-items:center; justify-content:center;
+  padding-top:0;
   background:var(--cat-1); color:var(--cat-1-ink);
   font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.02em;
 }
 .wb.wb.wb .wb-cap[data-cat='2']{ background:var(--cat-2); color:var(--cat-2-ink); background-image:var(--pat-2) }
 .wb.wb.wb .wb-cap[data-cat='3']{ background:var(--cat-3); color:var(--cat-3-ink); background-image:var(--pat-3) }
 .wb.wb.wb .wb-cap[data-cat='4']{ background:var(--cat-4); color:var(--cat-4-ink) }
+/* §5 move 2 — print-style value capsule: the numeral lives inside a drawn
+   18px-tall, min-22px-wide 999px capsule on the mark's own fill. Zero contrast
+   cost: the ink numeral stays on the fill's own ≥8.5:1. */
+.wb.wb.wb .wb-cap-v{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:22px; height:18px; padding:0 5px;
+  border-radius:999px; background:rgba(23,23,23,.14);
+}
 .wb.wb.wb .wb-cap-0{
   flex:1; min-width:22px; height:3px; align-self:flex-end;
   background:var(--surface3); border-radius:var(--r-pill);
@@ -911,20 +983,24 @@
 }
 .wb.wb.wb .ov-gauge{ height:10px }
 .wb.wb.wb .ov-gauge.sm{ height:7px }
+/* §3g — Today's horizontal capsule bars step up to the reference proportion. */
+.wb.wb.wb .td-bar{ height:12px }
 
 /* 3.3 — one separation device per boundary. The section rule above already
    separates; the cards below do not also need margins that read as gutters. */
-.wb.wb.wb .ov-sec{ margin-top:24px; padding:0 var(--gut) }
+.wb.wb.wb .ov-sec{ margin-top:28px; padding:0 var(--gut) }
 .wb.wb.wb .ov-sec:first-child{ margin-top:12px }
 .wb.wb.wb .ov-h{
   display:flex; align-items:center; gap:10px;
   height:var(--sech-h); margin-bottom:8px; color:var(--text3);
 }
 .wb.wb.wb .ov-h-sub{ margin-left:auto; color:var(--text2); font-weight:400 }
-.wb.wb.wb .ov-hero{ gap:12px }
-.wb.wb.wb .ov-kpis, .wb.wb.wb .ov-seats, .wb.wb.wb .ov-govs{ gap:12px }
+.wb.wb.wb .ov-hero{ gap:16px }
+.wb.wb.wb .ov-kpis, .wb.wb.wb .ov-seats, .wb.wb.wb .ov-govs{ gap:16px }
 .wb.wb.wb .ov-duo{ gap:0 }
-@media (min-width:1000px){ .wb.wb.wb .ov-duo{ gap:16px } }
+@media (min-width:1000px){ .wb.wb.wb .ov-duo{ gap:20px } }
+/* §3f — Today's desktop zone cards join the hero-radius family. */
+.wb.wb.wb .td-zone{ border-radius:var(--r-hero) }
 
 /* ========================================================================== */
 /* 8 · FILTER GRAMMAR (§11) — one vocabulary, two densities                    */
@@ -939,7 +1015,7 @@
 }
 .wb.wb.wb .wb-fpill{
   display:inline-flex; align-items:center; gap:6px;
-  height:30px; padding:0 14px;
+  height:36px; padding:0 16px;
   background:var(--surface2); border:none; color:var(--text3);
   font-size:var(--fs-meta); font-weight:400; cursor:pointer;
 }
@@ -948,7 +1024,12 @@
 /* 11.4 — the active state of a filter is the VALUE TEXT, not a coloured fill.
    A filter pill never takes --accent as a background; accent is reserved. */
 .wb.wb.wb .wb-fpill.on{ background:var(--surface3) }
-@media (max-width:767px){ .wb.wb.wb .wb-fpill{ height:32px } }
+/* §3e mobile: 36px visual + a -4px hit-extension → 44px touch (same pattern
+   as .cmic). */
+@media (max-width:767px){
+  .wb.wb.wb .wb-fpill{ height:36px; position:relative }
+  .wb.wb.wb .wb-fpill::after{ content:''; position:absolute; inset:-4px; border-radius:inherit }
+}
 
 /* The pill's own dropdown (ask 8b). Absolutely positioned off the pill so the
    nav row's height never changes when it opens — a filter that reflows the
@@ -1004,7 +1085,7 @@
 }
 .wb.wb.wb .ct-f{
   display:inline-flex; align-items:center; gap:5px;
-  height:26px; padding:0 11px;
+  height:28px; padding:0 11px;
   background:var(--surface2); border:none; color:var(--text3);
   font-size:var(--fs-meta); font-weight:400; cursor:pointer;
 }
@@ -1064,7 +1145,7 @@
   flex:1 1 240px;
 }
 .wb.wb.wb .ct-fpop{ position:relative; display:inline-flex; align-items:center; gap:2px }
-.wb.wb.wb .ct-fpill{ height:26px; padding:0 11px; flex:none }
+.wb.wb.wb .ct-fpill{ height:28px; padding:0 11px; flex:none }
 .wb.wb.wb .ct-fpill i{ margin-left:2px }
 /* The demoted-facet badge is NOT a nav count badge, so it takes --r-chip and
    stays outside the pill licence (§6.3.4 covers nav badges only). */
@@ -1076,7 +1157,7 @@
    that opens the menu. --r-chip, not a capsule: it is not on the §6.3 list. */
 .wb.wb.wb .ct-fx{
   display:inline-flex; align-items:center; justify-content:center;
-  width:20px; height:26px; padding:0; flex:none;
+  width:20px; height:28px; padding:0; flex:none;
   background:none; border:none; border-radius:var(--r-chip);
   color:var(--text3); font-size:var(--fs-meta); cursor:pointer;
 }
@@ -1140,10 +1221,14 @@
   .wb.wb.wb .ct-fr::after{
     content:''; position:absolute; right:0; bottom:0; width:26px; height:32px;
     pointer-events:none;
-    background:linear-gradient(90deg, rgba(9,11,10,0), var(--canvas));
+    background:linear-gradient(90deg, rgba(12,12,11,0), var(--canvas));
   }
-  .wb.wb.wb .ct-fpill{ height:32px }
-  .wb.wb.wb .ct-fx{ height:32px; width:26px }
+  /* §3e — 36px visual + -4px hit-extension → 44px touch. */
+  .wb.wb.wb .ct-fpill{ height:36px; position:relative }
+  .wb.wb.wb .ct-fx{ height:36px; width:26px; position:relative }
+  .wb.wb.wb .ct-fpill::after, .wb.wb.wb .ct-fx::after{
+    content:''; position:absolute; inset:-4px; border-radius:inherit;
+  }
   .wb.wb.wb .ct-fnote{ margin-top:6px }
 }
 
@@ -1188,7 +1273,9 @@
 .wb.wb.wb .ct-fpill:hover{ background:var(--surface3) }
 
 /* The nav pills (M7). Chrome the reference wins on outright. */
-.wb.wb.wb .nav{ padding:18px var(--gut) 12px }
+/* §3d — 24px top padding keeps the display title clear of the plate's 40px
+   top-left corner curve. */
+.wb.wb.wb .nav{ padding:24px var(--pad-card) 12px }
 /* The reference's top row, literally: oversized uppercase title flush left, pill
    chrome right-set on the same baseline. */
 .wb.wb.wb .wb-head{
@@ -1199,7 +1286,7 @@
 .wb.wb.wb .chips{ display:flex; align-items:center; gap:8px; margin:12px 0 0;
   flex-wrap:wrap; overflow:visible }
 .wb.wb.wb .chip{
-  height:30px; display:inline-flex; align-items:center; padding:0 14px;
+  height:36px; display:inline-flex; align-items:center; padding:0 16px;
   background:var(--surface2); color:var(--text3);
   font-size:var(--fs-meta); font-weight:500;
 }
@@ -1213,17 +1300,19 @@
 .wb.wb.wb .wb-workhead{ padding:10px var(--gut); border-bottom:1px solid var(--hairline) }
 .wb.wb.wb .wb-workhead-l{ color:var(--text3) }
 
-/* rail chrome */
+/* rail chrome — style-delta §3b: the reference's floating icon+label PILLS.
+   The rail sits ON the plate (transparent, no border); a job row is a 40px
+   capsule; the active mark is the filled pill + lime icon — the old inset
+   spine is DROPPED (a spine on a capsule reads as a defect). */
 .wb.wb.wb .wb-rail{
-  background:var(--surface1); border-right:1px solid var(--hairline); padding:16px 10px 12px;
+  width:216px; background:transparent; border-right:none; padding:20px 14px 16px;
 }
-.wb.wb.wb .wb-rj{ padding:8px 10px; color:var(--text2) }
-.wb.wb.wb .wb-rj:hover{ background:var(--surface2) }
-.wb.wb.wb .wb-rj.on{ background:var(--surface2); color:var(--text);
-  box-shadow:inset 2px 0 0 var(--accent) }
+.wb.wb.wb .wb-rj{ padding:10px 14px; color:var(--text2); border-radius:var(--r-pill) }
+.wb.wb.wb .wb-rj:hover{ background:var(--surface1) }
+.wb.wb.wb .wb-rj.on{ background:var(--surface1); color:var(--text) }
 .wb.wb.wb .wb-rj-n{
   min-width:22px; padding:1px 7px; text-align:center;
-  background:var(--surface3); color:var(--text2);
+  background:var(--surface2); color:var(--text2);
   font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:0;
 }
 .wb.wb.wb .wb-rj-n.attention{ background:rgba(255,159,10,.18); color:var(--sev-attention) }
@@ -1231,22 +1320,44 @@
 .wb.wb.wb .wb-rj-peer{ border:1px solid var(--hairline) }
 .wb.wb.wb .wb-rj-peer.on{ border-color:var(--accent); background:transparent }
 .wb.wb.wb .wb-rail-sep{ background:var(--hairline); opacity:1; margin:14px 10px 12px }
+.wb.wb.wb .wb-rail-sync{ border-radius:var(--r-pill) }   /* already behaves like a pill row */
 .wb.wb.wb .wb-rail-grp{ border-left:1px solid var(--hairline) }
 .wb.wb.wb .wb-rail-grp.on{ border-left-color:var(--accent) }
 .wb.wb.wb .wb-rail-grp-l{
   font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.04em;
   text-transform:uppercase; color:var(--text3);
 }
+/* §3c — the mobile tab bar lives INSIDE the plate now, so nothing shows
+   through: opaque canvas, no blur. */
 .wb.wb.wb .tabbar{
-  background:var(--surface1); border-top:1px solid var(--hairline); backdrop-filter:none;
+  background:var(--canvas); border-top:1px solid var(--hairline); backdrop-filter:none;
 }
 .wb.wb.wb .tb{ color:var(--text3) }
-.wb.wb.wb .tb.on{ color:var(--accent) }
+.wb.wb.wb .tb.on{ color:var(--accent-ui, var(--accent)) }
 .wb.wb.wb .tb .l{ font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.02em;
   text-transform:none; margin-top:3px }
+/* §3j — pane chrome is PLATE chrome, not a card. */
 .wb.wb.wb .wb-pane-h{
-  background:var(--surface1); border-bottom:1px solid var(--hairline); padding:12px var(--gut);
+  background:var(--canvas); border-bottom:1px solid var(--hairline); padding:12px var(--gut);
 }
+/* §3i — the takeover window IS a second plate: hero radius rides the --r-lg
+   remap; the desktop border steps up to the strong hairline. (border-color
+   alone is inert on mobile, where the window has no border.) */
+.wb.wb.wb .wb-tk{ border-color:var(--hairline-strong) }
+/* §3j — composer field: card fill, hairline, control radius (NOT pill; §6.3
+   licence unchanged — the radius itself rides the .wb input remap). */
+.wb.wb.wb .cfield{ background:var(--surface1); border:1px solid var(--hairline) }
+/* §3k — ghost button: one surface step + secondary text (8.50:1). */
+.wb.wb.wb .btn.s{ background:var(--surface2); color:var(--text2) }
+/* §5 move 3 — signature monogram: the reference's white circle, ink initials,
+   with a --ground ring — the ONLY place the pistachio enters the plate.
+   Overridden HERE (risk 8): src/styles.css:37's gradient is outside .wb scope
+   and is never edited. The rail logo takes the same face at 40px. */
+.wb.wb.wb .avatar-me{
+  background:#FFFFFF; color:var(--ink);
+  box-shadow:0 0 0 2px var(--ground);
+}
+.wb.wb.wb .wb-rail-top .avatar-me{ width:40px; height:40px }
 .wb.wb.wb .wb-ribbon{ padding:8px var(--gut) 4px }
 
 /* ========================================================================== */
@@ -1302,12 +1413,14 @@
 /* ========================================================================== */
 
 /* v2c/styles.css:58 and :127 hard-code light rgba backgrounds that fight any
-   new ladder. Both are re-pointed at the ladder's own surface1 so the rail and
-   the pane header follow the tokens instead of a frozen colour. */
-:root[data-theme='light'] .wb.wb.wb .wb-rail{ background:var(--surface1) }
-:root[data-theme='light'] .wb.wb.wb .wb-pane-h{ background:var(--surface1) }
-:root[data-theme='light'] .wb.wb.wb .tabbar,
-:root[data-theme='light'] .wb.wb.wb .t-nav{ background:var(--surface1) }
+   new ladder. Re-derived for the plate inversion (style-delta risk 6): the
+   rail floats transparent ON the plate and pane/tab chrome is plate chrome —
+   in BOTH themes — so light points them at the same assignments §3b/§3c/§3j
+   made for dark, not at surface1 (which is now the light CARD colour). */
+:root[data-theme='light'] .wb.wb.wb .wb-rail{ background:transparent }
+:root[data-theme='light'] .wb.wb.wb .wb-pane-h{ background:var(--canvas) }
+:root[data-theme='light'] .wb.wb.wb .tabbar{ background:var(--canvas) }
+:root[data-theme='light'] .wb.wb.wb .t-nav{ background:var(--canvas) }
 :root[data-theme='light'] .wb.wb.wb .chip.on{ background:var(--surface3); color:var(--text) }
 :root[data-theme='light'] .wb.wb.wb .b.out{ color:var(--ink) }
 
@@ -1369,7 +1482,7 @@
 .wb.wb.wb .ct-subtle, .wb.wb.wb .ct-subline{ margin:8px var(--gut) 0; color:var(--text3) }
 .wb.wb.wb .ct-subline{ color:var(--sev-attention); font-weight:500 }
 .wb.wb.wb .wb-pipe{ margin:12px var(--gut) 0 }
-.wb.wb.wb .wb-chartcard{ margin:14px var(--gut) 0 }
+.wb.wb.wb .wb-chartcard{ margin:16px var(--gut) 0 }
 .wb.wb.wb .wb-pipe-n{
   display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 10px; margin-top:16px;
 }
@@ -1501,7 +1614,7 @@
 .wb.wb.wb .log-day{
   display:flex; align-items:center; gap:10px;
   height:var(--sech-h); margin:0; padding:0 var(--gut);
-  background:var(--surface1);
+  background:var(--canvas);   /* §3f — sticky stripe = canvas, not card */
   border-top:1px solid var(--hairline); border-bottom:1px solid var(--hairline);
   color:var(--text3); text-align:left;
   font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.04em;
@@ -1622,6 +1735,37 @@
    ceiling is 600 and an inline style is the only thing CSS has to shout at. */
 .wb.wb.wb .td-ts span, .wb.wb.wb .ov-tile-trend{ font-weight:600!important }
 
+/* §3h + §5 move 4 — COLOURED DELTA TRIANGLES. Every ▲n/▼n stat glyph reads
+   the delta tokens: lime up, orange down — direction encoding, not severity.
+   The spans are painted by inline severity hexes in the shared screens (which
+   this skin may not edit), so the remap happens here: scoped to the ONE trend
+   span per surface (Sends hero Accept tile = first .ov-tile; Today Accept
+   tile = second .td-tile — the Governor tiles' mode labels share the class
+   and are deliberately NOT matched), keyed off the inline hex so ▲(green)
+   maps to --delta-up and ▼(amber/red) to --delta-down. React serialises the
+   inline style to rgb() in the attribute; both spellings are matched. Dark
+   only: light keeps its §10 neutralisation to --text (orange fails ≥3 on
+   white; lime glyphs ride --accent-ui elsewhere). The whole span takes the
+   colour — splitting glyph from numeral needs a DOM edit in src/screens,
+   which is out of this skin's licence (deviation noted in the build report). */
+:root:not([data-theme='light']) .wb.wb.wb .ov-hero .ov-tile:first-child .ov-tile-trend{
+  color:var(--delta-up)!important;
+}
+:root:not([data-theme='light']) .wb.wb.wb .ov-hero .ov-tile:first-child .ov-tile-trend[style*="255, 159, 10"],
+:root:not([data-theme='light']) .wb.wb.wb .ov-hero .ov-tile:first-child .ov-tile-trend[style*="ff9f0a" i],
+:root:not([data-theme='light']) .wb.wb.wb .ov-hero .ov-tile:first-child .ov-tile-trend[style*="255, 69, 58"],
+:root:not([data-theme='light']) .wb.wb.wb .ov-hero .ov-tile:first-child .ov-tile-trend[style*="ff453a" i]{
+  color:var(--delta-down)!important;
+}
+:root:not([data-theme='light']) .wb.wb.wb .td-tiles .td-tile:nth-child(2) .td-ts span[style*="16, 163, 127"],
+:root:not([data-theme='light']) .wb.wb.wb .td-tiles .td-tile:nth-child(2) .td-ts span[style*="10a37f" i]{
+  color:var(--delta-up)!important;
+}
+:root:not([data-theme='light']) .wb.wb.wb .td-tiles .td-tile:nth-child(2) .td-ts span[style*="255, 159, 10"],
+:root:not([data-theme='light']) .wb.wb.wb .td-tiles .td-tile:nth-child(2) .td-ts span[style*="ff9f0a" i]{
+  color:var(--delta-down)!important;
+}
+
 /* LIGHT: severity as TEXT is the one thing this ladder cannot carry — amber on
    a light tint measures 1.89:1. Same move as §5.2 makes for the accent: the
    colour stays on the MARK, the words go back to --text. Dark keeps the
@@ -1700,7 +1844,7 @@
    COUNT stays legible while their own rows scroll under it. .wb-sech is already
    sticky at z-index 6 (§7.6); this only wins the stacking contest against the
    sections that follow it, and pins an opaque fill so nothing shows through. */
-.wb.wb.wb .wb-sech-sticky{ z-index:8; background:var(--surface1) }
+.wb.wb.wb .wb-sech-sticky{ z-index:8; background:var(--canvas) }   /* §3f */
 
 /* ask 5 — the chips the diet moved OFF the closed row and INTO the expanded
    body. The closed row's .ct-meta is flex-wrap:nowrap by contract (slot #1 can
@@ -1896,3 +2040,174 @@
 /* Inbox: a two-line contact name shifted the row's pills off the shared
    rhythm. One line, end-ellipsis — the thread itself has the full name. */
 .wb.wb.wb .r .name{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0 }
+
+/* ========================================================================== */
+/* 15 · PHASE-2 REVIEW FIX LOOP (per-section ledger F1-F16, F19 + taste)       */
+/* ========================================================================== */
+
+/* ---- F3 (P1) — sticky section-header pill collided with row content. -------
+   The header is a content-hugging pill when it renders as a <button>, so it
+   cannot be its own sticky backdrop: rows passed BEHIND and AROUND it on
+   Content + Magnets at both widths (14 screenshots). Surface.tsx now wraps
+   every SectionHead in .wb-sech-strip — THE STRIP is the sticky element, a
+   full-width opaque canvas band; the pill keeps its border and rides inside. */
+.wb.wb.wb .wb-sech-strip{
+  position:sticky; top:0; z-index:6;
+  background:var(--canvas); padding:6px 0;
+}
+.wb.wb.wb .wb-sech-strip-hi{ z-index:8 }   /* the two raised collapsed sections */
+.wb.wb.wb .wb-sech-strip > .wb-sech{ position:static }
+
+/* ---- F1 (P1) — Today hero segmented bar + legend wore the OLD palette. -----
+   Red → teal #10A37F → blue #0A84FF segments and matching legend dots — the
+   exact hues §2's token delta eliminated. The segments are painted inline by
+   the shared TodayScreen (which this skin may not edit), in a FIXED order:
+   urgent / to approve / going out. Severity stays licensed on urgent; the two
+   workload segments read cat tokens. 2px gaps let the track separate marks. */
+.wb.wb.wb .td-stack{ gap:2px }
+.wb.wb.wb .td-stack .td-stack-s:nth-child(1){ background:var(--sev-urgent)!important }
+.wb.wb.wb .td-stack .td-stack-s:nth-child(2){ background:var(--cat-1)!important }
+.wb.wb.wb .td-stack .td-stack-s:nth-child(3){ background:var(--cat-3)!important }
+.wb.wb.wb .td-stack .td-stack-s.clear{ background:var(--accent-soft)!important }
+.wb.wb.wb .td-legend .td-lg:nth-child(1) .td-lg-d{ background:var(--sev-urgent)!important }
+.wb.wb.wb .td-legend .td-lg:nth-child(2) .td-lg-d{ background:var(--cat-1)!important }
+.wb.wb.wb .td-legend .td-lg:nth-child(3) .td-lg-d{ background:var(--cat-3)!important }
+
+/* ---- F2 (P1) — Today "SENDS THIS 7D" lane bars: all-teal inline fills. -----
+   Height 12px is already set (§3g, .td-bar above); the FILLS are inline
+   SEV.live teal from the shared screen. Lanes render volume-sorted in a fixed
+   grid (Warm / Harvested / Cold / Engager): cat tokens by position — the same
+   assignment the Sends volume legend uses. Zero-sent fills are width:0 and
+   invisible, so the override cannot mislabel them. .td-lanes child 1 is the
+   .td-sub caption; lanes are children 2-5. */
+.wb.wb.wb .td-lanes .td-lane:nth-child(2) .td-bar-f{ background:var(--cat-1)!important }
+.wb.wb.wb .td-lanes .td-lane:nth-child(3) .td-bar-f{ background:var(--cat-2)!important }
+.wb.wb.wb .td-lanes .td-lane:nth-child(4) .td-bar-f{ background:var(--cat-3)!important }
+.wb.wb.wb .td-lanes .td-lane:nth-child(5) .td-bar-f{ background:var(--cat-4)!important }
+
+/* ---- F4 (P1) — Ops kind chip painted old blue (#0A84FF-family). ------------
+   Drafts renders the same chip neutral; Ops read an inline KIND_COLOR map
+   (blue / purple / iOS-green — all hues §2 removed). Neutral surface2+text2
+   like every categorical chip in this build. Escalation is the one kind that
+   IS a severity — keyed off its own inline urgent paint, it keeps the red
+   text-chip treatment (both inline spellings matched; React serialises to
+   rgb() client-side). */
+.wb.wb.wb .ops-kind{
+  background:var(--surface2)!important; color:var(--text2)!important;
+  box-shadow:inset 0 0 0 1px var(--hairline);
+}
+.wb.wb.wb .ops-kind[style*="255, 69, 58"],
+.wb.wb.wb .ops-kind[style*="ff453a" i]{
+  background:rgba(255,69,58,.14)!important; color:var(--sev-urgent)!important;
+  box-shadow:inset 0 0 0 1px rgba(255,69,58,.5);
+}
+
+/* ---- F5 (P2) — teal metric meters on the Sends DECISION tiles. -------------
+   §3h: ACCEPT and RUNWAY meters are METRICS, not verdicts → accent lime.
+   Keyed off the inline green so a genuinely amber/red state keeps its
+   severity paint; the Governor meter (tile 2) is a verdict and stays
+   severity-driven. Trend spans already ride --delta-up/--delta-down (§3h). */
+:root:not([data-theme='light']) .wb.wb.wb .ov-hero .ov-tile:first-child .ov-gauge-fill[style*="16, 163, 127"],
+:root:not([data-theme='light']) .wb.wb.wb .ov-hero .ov-tile:first-child .ov-gauge-fill[style*="10a37f" i],
+:root:not([data-theme='light']) .wb.wb.wb .ov-hero .ov-tile:nth-child(3) .ov-gauge-fill[style*="16, 163, 127"],
+:root:not([data-theme='light']) .wb.wb.wb .ov-hero .ov-tile:nth-child(3) .ov-gauge-fill[style*="10a37f" i]{
+  background:var(--accent)!important;
+}
+
+/* ---- F11 (P2) — avatar identity ramp was the old app's palette. ------------
+   Six teal/blue/purple/pink gradients on every row of the busiest surface —
+   the last place blue/purple survived the reskin. Re-derived from the
+   reference family: lime+ink / orange+ink / white+ink / neutral+white
+   (contrast 14.97 / 8.51 / 17.93 / 4.95 — delta-spec appendix). Overridden
+   HERE because Avatar.tsx and the .av.g* gradients are SHARED with the stock
+   shell (src/styles.css:61-66 stay untouched); the hash keeps its job, the
+   six buckets fold onto the four reference fills. */
+.wb.wb.wb .av.g1, .wb.wb.wb .av.g5{ background:var(--cat-1); color:var(--ink) }
+.wb.wb.wb .av.g2, .wb.wb.wb .av.g6{ background:var(--cat-2); color:var(--ink) }
+.wb.wb.wb .av.g3{ background:var(--cat-3); color:var(--ink) }
+.wb.wb.wb .av.g4{ background:var(--cat-4); color:#FFFFFF }
+
+/* ---- F10 (P2) — raw scroll-clip edges. -------------------------------------
+   Scrolled rows reappeared half-cut with nothing closing the boundary: under
+   the Inbox summary band, and under the mastheads on content/magnets/sends
+   at 1440. One hairline at the scroller's top edge makes the clip read as a
+   drawn boundary — the same device every sticky header already uses. */
+.wb.wb.wb .rows{ border-top:1px solid var(--hairline) }
+
+/* ---- F19-family (P3) — the Inbox band bar was the one hairline-era mark
+   left on its surface: ~9px grey strip. Reference bars are 12px capsules; the
+   segment colours moved to cat tokens in InboxHead.tsx (lime answers / white
+   drafts / orange flagged). */
+.wb.wb.wb .wb-ihead .wb-stack{ height:12px }
+
+/* ---- F9 (P2) — alert-card figure fused with its legend ("54 errored"). -----
+   14px of air plus a short vertical rule after the big numeral, so the count
+   and the breakdown are two objects. Applies to the post lane's 48h strip and
+   the LM lane's alert card alike. */
+.wb.wb.wb .ct-alert-n{
+  margin-right:4px; padding-right:14px;
+  border-right:1px solid var(--hairline-strong);
+}
+
+/* ---- F8 (P2) — capsule-chart axis at phone widths. -------------------------
+   The ~30px slots ellipsized 4-6 char codes to garbage ("ASS…"). At ≤480 the
+   axis swaps to the fixed 3-char codes Surface.tsx renders alongside the full
+   ones — never ellipsis on an axis label. */
+.wb.wb.wb .wb-caps-xl-a{ display:none }
+@media (max-width:480px){
+  .wb.wb.wb .wb-caps-xl{ text-overflow:clip }
+  .wb.wb.wb .wb-caps-xl-f{ display:none }
+  .wb.wb.wb .wb-caps-xl-a{ display:inline }
+}
+
+/* ---- F7 (P1) — Sends 390 DECISION labels truncated to "AC…/G…/R…". ---------
+   The 3-across grid kept --pad-card (24px) padding at 390, leaving ~48px for
+   the label. Tighter tile padding + a wrapping label: ACCEPT / GOVERNOR /
+   RUNWAY each fit their ~84px column at the eyebrow size. Applies to F18's
+   sibling symptom too (tile meta orphans). */
+@media (max-width:480px){
+  .wb.wb.wb .ov-hero{ gap:10px }
+  .wb.wb.wb .ov-hero .ov-tile{ padding:14px }
+  /* GOVERNOR is one unbreakable word: wrapping cannot save it, so the narrow
+     axis drops one type step and its tracking — same licence F8 uses. All
+     three labels then fit their column with margin; clip stays (no ellipsis
+     on chrome), it just never engages. */
+  .wb.wb.wb .ov-tile-lbl{
+    white-space:normal; text-overflow:clip; line-height:1.2;
+    font-size:9px; letter-spacing:0;
+  }
+  .wb.wb.wb .ov-tile-h{ gap:5px }
+}
+
+/* ---- F12 (P2) — Content 390 review rows: SKIP+APPROVE squeezed the title to
+   ~110px and clipped the meta row mid-chip. At ≤480 the action pair wraps
+   under the row on its own line, right-aligned; title and meta reclaim the
+   full column and the meta row's existing fade mask closes its clip. */
+@media (max-width:480px){
+  .wb.wb.wb .ct-card .ct-ac{
+    grid-column:2/-1; grid-row:2;
+    justify-content:flex-end; margin-top:8px;
+  }
+  .wb.wb.wb .ct-card .ops-err{ grid-row:3 }
+}
+
+/* ---- F16 (P3) — Sends 390 clips. -------------------------------------------
+   Seat cards go one-up at ≤420 so a 4-character name ("Rise") never
+   ellipsizes against its NORMAL chip; card footers let the Total wrap instead
+   of clipping "Total: 465 sen…" at the card edge. */
+@media (max-width:420px){
+  .wb.wb.wb .ov-seats{ grid-template-columns:1fr }
+}
+@media (max-width:480px){
+  .wb.wb.wb .ov-rc-badge{ flex:none }
+  .wb.wb.wb .wb-total{ white-space:normal; text-align:right }
+}
+
+/* ---- TASTE (licensed move) — peak-mark colouring on the Sends volume
+   sparklines. The reference never shows an all-white bar run — one coloured
+   mark per field. The max bar (class hook from OverviewView's Spark) takes
+   its card's own category colour: Connections lime, DMs orange; InMails'
+   marks are already white (cat-3) and the empty Emails card never earns a
+   peak. One mark per surface — accent census unchanged. */
+.wb.wb.wb .ov-kpi[data-cat='1'] .sc-bar.peak:not(.zero){ background:var(--cat-1) }
+.wb.wb.wb .ov-kpi[data-cat='2'] .sc-bar.peak:not(.zero){ background:var(--cat-2) }

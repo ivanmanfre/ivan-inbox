@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { outboundApproveUrl, outboundSkipUrl, pendingOps, sentOps, blockedOps, canGenerateDraft, claimingOps, engineLabel, expiresIn, DISCARDED_REASON, type OpsDraft } from './ops'
+import { outboundApproveUrl, outboundSkipUrl, pendingOps, pendingDmLaneOps, sentOps, blockedOps, canGenerateDraft, claimingOps, engineLabel, expiresIn, DISCARDED_REASON, type OpsDraft } from './ops'
 
 const base: OpsDraft = {
   id: '1', client_id: 'risedtc', kind: 'escalation', slack_channel: '#rise-ops',
@@ -16,6 +16,23 @@ describe('pendingOps', () => {
       { ...base, id: 'd', send_blocked_reason: 'rate_limited' },
     ]
     expect(pendingOps(rows).map(r => r.id)).toEqual(['a'])
+  })
+})
+
+// Ask 12 — the live DM lane was showing exactly 2 pending rows, both
+// comment_outbound. Comment kinds are Ops cards; the DM lane never lists them.
+describe('pendingDmLaneOps', () => {
+  it('drops comment kinds and keeps every other pending kind', () => {
+    const rows: OpsDraft[] = [
+      { ...base, id: 'esc' },
+      { ...base, id: 'cr', kind: 'comment_reply', context: { posted_at: '2026-07-24T09:00:00Z' } },
+      { ...base, id: 'co', kind: 'comment_outbound' },
+      { ...base, id: 'nj', kind: 'newsjack' },
+      { ...base, id: 'sent', sent_at: '2026-07-24T11:00:00Z' },
+    ]
+    const now = new Date('2026-07-24T12:00:00Z').getTime()
+    expect(pendingOps(rows, now).map(r => r.id)).toEqual(['esc', 'cr', 'co', 'nj'])
+    expect(pendingDmLaneOps(rows, now).map(r => r.id)).toEqual(['esc', 'nj'])
   })
 })
 

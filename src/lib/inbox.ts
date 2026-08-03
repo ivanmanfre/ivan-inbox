@@ -24,6 +24,13 @@ export type Thread = {
   // Antoine, Rudra). True when a real outbound send is newer than the last
   // inbound, so the pending draft is answering an already-handled message.
   draftStale: boolean;
+  // outreach_prospects.needs_manual_reply — the reply detector's own "a human
+  // has to answer this one" flag. It is NOT derivable from the messages: on
+  // 2026-08-03, 43 of the 45 flagged prospects had ZERO inbound rows in
+  // inbox_messages_v (the reply the detector saw never got mirrored into the
+  // view — the reply-blindspot class of bug). Going by message rows alone would
+  // make every one of them invisible, so the flag rides on the thread.
+  needsManualReply: boolean;
 }
 
 export type Filter = 'all' | 'ivan' | 'risedtc' | 'email'
@@ -57,7 +64,7 @@ export function dedupeMessages(rows: InboxMessage[]): InboxMessage[] {
 // which is what we want for a pending draft.
 export const eventTime = (m: InboxMessage): string => m.sent_at ?? m.created_at
 
-export function groupThreads(rows: InboxMessage[]): Thread[] {
+export function groupThreads(rows: InboxMessage[], manualReplyIds: ReadonlySet<string> = new Set()): Thread[] {
   const map = new Map<string, InboxMessage[]>()
   for (const m of rows) {
     if (!map.has(m.prospect_id)) map.set(m.prospect_id, [])
@@ -87,6 +94,7 @@ export function groupThreads(rows: InboxMessage[]): Thread[] {
       unread: messages.filter(m => m.direction === 'inbound' && !m.read_at).length,
       draft,
       draftStale: draft !== null && lastInbound !== null && lastSent !== null && lastSent > lastInbound,
+      needsManualReply: manualReplyIds.has(last.prospect_id),
       messages,
     })
   }
@@ -101,13 +109,70 @@ export function threadKind(t: Thread): 'email' | 'inmail' | 'linkedin' {
   return 'linkedin'
 }
 
-// An invite that nobody accepted is a send, not a conversation (Eric Osman case:
-// 117 of 1125 threads were connection notes sitting in the void). They live in
-// Sends -> Log; the Inbox shows them only once the prospect accepts (stage flips
-// off connection_sent when accept detection runs) or anything inbound lands.
+// A thread is a CONVERSATION only if the other person exists in it (or the
+// system says they do): real inbound, a pending draft to approve, or the reply
+// detector's needs_manual_reply flag. Everything else is a send echo — we
+// wrote, they never did — and lives in Sends, not here.
+//
+// DIAGNOSIS, live DB 2026-08-03 (inbox_messages_v, read-only), which is why
+// this predicate replaced the old "hide only stage=connection_sent" rule:
+//   2,220 rows -> 1,413 threads. Direction: 2,062 outbound / 158 inbound.
+//   Outbound mix: 1,333 connection_note · 407 dm · 223 inmail · 97 email.
+//   Old rule showed 1,169 threads, of which 1,072 (91.7%) were OUTBOUND-ONLY
+//   send echoes — Ivan's "it just seems to be logs from sends".
+//   Real conversations: 97 threads with inbound + 38 flagged-only + 0 drafts
+//   = 135. The Eric Osman connection_sent case (117 invites in the void) is a
+//   strict subset of what this hides.
 function isConversation(t: Thread): boolean {
-  if (t.stage !== 'connection_sent') return true
-  return t.draft !== null || t.messages.some(m => m.direction === 'inbound')
+  return t.draft !== null || t.needsManualReply
+    || t.messages.some(m => m.direction === 'inbound')
+}
+
+// Nobody has answered their last message: unread inbound exists and no real
+// outbound send is newer than it. Same two clocks as draftStale (eventTime for
+// inbound, sent_at for sends) — mixing them is the backfilled-reply bug.
+//
+// Diagnosis (2026-08-03): 56 threads carried unread inbound — THAT was the 56
+// on the bubble — but in 28 of them a later outbound already answered it
+// (replied in the LinkedIn app; the mirror writes the outbound row, nothing
+// stamps read_at). Genuinely unanswered: 28 (17 replied / 9 archived /
+// 2 skipped — archived stays counted: a real reply never read is real).
+export function needsAnswer(t: Thread): boolean {
+  if (t.unread === 0) return false
+  const lastInbound = t.messages.filter(m => m.direction === 'inbound').map(eventTime).sort().at(-1) ?? null
+  const lastSent = t.messages
+    .filter(m => m.direction === 'outbound' && m.sent_at)
+    .map(m => m.sent_at!).sort().at(-1) ?? null
+  return !(lastInbound !== null && lastSent !== null && lastSent > lastInbound)
+}
+
+// What is genuinely waiting on Ivan, as non-overlapping buckets (each thread
+// counts once, priority answer > approve > flagged) so the badge is exactly
+// their sum and the InboxHead breakdown can never disagree with it.
+//
+// Live values at diagnosis time: answer 28 · approve 0 · flagged 43 -> badge
+// 71, versus the old badge's 56 (raw unread-thread count, half of it already
+// handled). Bigger where it is honest, smaller where it was noise.
+export type InboxBreakdown = { answer: number; approve: number; flagged: number; waiting: number }
+
+export function inboxBreakdown(threads: Thread[]): InboxBreakdown {
+  const out: InboxBreakdown = { answer: 0, approve: 0, flagged: 0, waiting: 0 }
+  for (const t of threads) {
+    if (!isConversation(t)) continue
+    if (needsAnswer(t)) out.answer += 1
+    else if (t.draft !== null) out.approve += 1
+    else if (t.needsManualReply) out.flagged += 1
+    else out.waiting += 1
+  }
+  return out
+}
+
+// THE badge number. Every surface that says "N waiting in the inbox" derives
+// it from here — rail bubble, mobile tab, the All-chip suffix — so they cannot
+// drift apart.
+export function inboxWaitingCount(threads: Thread[]): number {
+  const b = inboxBreakdown(threads)
+  return b.answer + b.approve + b.flagged
 }
 
 // Free-text search over everything already loaded: person, company, and the
@@ -147,6 +212,20 @@ export async function fetchMessages(): Promise<InboxMessage[]> {
     if (!data || data.length < page) break
   }
   return dedupeMessages(all)
+}
+
+// The prospects the reply detector flagged as needing a human answer. Read-only,
+// tiny (45 rows live on 2026-08-03), and the ONLY way those threads surface at
+// all — see the Thread.needsManualReply comment. `.eq(..., true)` on purpose:
+// we want exactly the true rows, and NULL means not flagged (`is.false` vs NULL
+// traps don't apply to a positive probe).
+export async function fetchManualReplyIds(): Promise<Set<string>> {
+  const { data, error } = await supabase.from('outreach_prospects')
+    .select('id')
+    .eq('needs_manual_reply', true)
+    .limit(1000)
+  if (error) throw error
+  return new Set(((data ?? []) as { id: string }[]).map(r => r.id))
 }
 
 // The chat this thread already lives in on LinkedIn (InMail threads carry it on

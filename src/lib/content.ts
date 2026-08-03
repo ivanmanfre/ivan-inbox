@@ -217,6 +217,37 @@ export function isStuckGenerating(r: ContentDraft, now: number = Date.now()): bo
   return m !== null && m >= STUCK_GENERATING_MINUTES
 }
 
+// ---------- the error ALARM window (ask 13) ----------
+//
+// "in content the errors only show latest 48 hour errors" — the alert strip is
+// an ALARM, and an alarm that still rings for a June failure teaches the eye to
+// ignore it. Errors older than the window stay visible in the Errors section
+// and through the Stage filter; only the strip's count is time-scoped.
+//
+// When did it error? taxonomy.error_flipped_at is the honest stamp (the QA
+// gate writes it when it flips a row to error — TAXONOMY_CALLOUT_KEYS renders
+// it beside the stage chip); updated_at is the fallback for rows that predate
+// the stamp. Live probe 2026-08-03: 7 errored rows, only 3 carry
+// error_flipped_at, 2 fall inside 48h. The fallback over-reports recency if
+// anything else touches an errored row — the right direction for an alarm.
+export const ERROR_ALARM_HOURS = 48
+
+export function errorAt(r: ContentDraft): string | null {
+  return taxonomyValue(r.taxonomy, 'error_flipped_at') ?? r.updated_at ?? null
+}
+
+// True when an ERRORED row belongs in the alarm strip. A row with no parseable
+// timestamp at all stays in the alarm — an undatable error must fail loud, not
+// age out by accident.
+export function isRecentError(r: ContentDraft, now: number = Date.now()): boolean {
+  if (r.status !== 'error') return false
+  const at = errorAt(r)
+  if (!at) return true
+  const t = new Date(at).getTime()
+  if (!Number.isFinite(t)) return true
+  return now - t <= ERROR_ALARM_HOURS * 3600_000
+}
+
 // ---------- reads ----------
 
 export type ContentPage = {

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Avatar } from '../components/Avatar'
 import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
-import { filterThreads, searchThreads, threadKind, type Filter, type Thread, eventTime } from '../lib/inbox'
+import { filterThreads, inboxWaitingCount, searchThreads, threadKind, type Filter, type Thread, eventTime } from '../lib/inbox'
 import { checkedPhrase } from '../lib/today'
 
 function timeAgo(iso: string): string {
@@ -60,11 +60,13 @@ const CHIPS: { key: Filter; label: string }[] = [
   { key: 'email', label: 'Email' },
 ]
 
+// Ask 11 — the list holds CONVERSATIONS now (send echoes moved to Sends), so
+// an empty lane says exactly that instead of implying nothing was ever sent.
 const EMPTY: Record<Filter, string> = {
-  all: 'No threads yet',
-  ivan: 'No Ivan threads yet',
-  risedtc: 'No Rise threads yet',
-  email: 'No email threads yet',
+  all: 'No conversations — replies land here, sends live in Sends',
+  ivan: 'No Ivan conversations — sends live in Sends',
+  risedtc: 'No Rise conversations — sends live in Sends',
+  email: 'No email conversations — sends live in Sends',
 }
 
 // The honest-empty register. "No threads yet" and "the fetch failed" rendered the
@@ -117,7 +119,9 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
   const shown = searchThreads(filterThreads(threads, filter), query)
   const win = useRowWindow(rowsRef, shown.length, windowed)
   const draftTotal = threads.filter(t => t.draft).length
-  const unreadTotal = threads.filter(t => t.unread > 0).length
+  // Same derivation as the tab badge (lib/inbox.ts) — the chip suffix and the
+  // bubble must never say two different numbers for the same list.
+  const waitingTotal = inboxWaitingCount(threads)
 
   return (
     <>
@@ -145,7 +149,7 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
               onClick={() => setFilter(c.key)}
             >
               {c.label}
-              {c.key === 'all' && unreadTotal > 0 && <span className="ct"> ·{unreadTotal}</span>}
+              {c.key === 'all' && waitingTotal > 0 && <span className="ct"> ·{waitingTotal}</span>}
             </button>
           ))}
         </div>
@@ -198,6 +202,10 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
                   <span className="time">{timeAgo(eventTime(t.last))}</span>
                   {t.unread > 0 && <span className="udot" />}
                   {t.draft != null && <span className="dpill">DRAFT</span>}
+                  {/* The detector's flag is the only visible evidence for the
+                      43 threads whose reply never reached this view — without a
+                      mark they read as ordinary waiting rows. */}
+                  {t.draft == null && t.needsManualReply && <span className="dpill">NEEDS REPLY</span>}
                 </div>
               </div>
             )

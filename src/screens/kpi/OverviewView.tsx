@@ -52,12 +52,17 @@ function ago(iso: string): string {
 
 function Spark({ values }: { values: number[] }) {
   const max = Math.max(1, ...values)
+  // The peak mark: the max-value bar carries a `peak` class hook. The default
+  // app has no rule for it (zero visual change here); the workbench paints it
+  // with the card's own category colour — the reference never shows an
+  // all-white bar run (phase-2 review, licensed taste move).
+  const peakAt = values.some(v => v > 0) ? values.indexOf(max) : -1
   return (
     <div className="sc-spark">
       {values.map((v, i) => (
         <div
           key={i}
-          className={`sc-bar ${v === 0 ? 'zero' : ''}`}
+          className={`sc-bar ${v === 0 ? 'zero' : ''}${i === peakAt ? ' peak' : ''}`}
           style={{ height: `${Math.round((v / max) * 100)}%` }}
         />
       ))}
