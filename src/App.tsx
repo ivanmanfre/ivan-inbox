@@ -7,7 +7,7 @@ import { InboxScreen } from './screens/InboxScreen'
 import { ThreadScreen } from './screens/ThreadScreen'
 import { DraftsScreen } from './screens/DraftsScreen'
 import { useOps } from './hooks/useOps'
-import { pendingOps } from './lib/ops'
+import { pendingDmLaneOps } from './lib/ops'
 import { SettingsScreen } from './screens/SettingsScreen'
 import { SendsScreen } from './screens/SendsScreen'
 import { OpsScreen } from './screens/OpsScreen'
@@ -72,7 +72,10 @@ function Shell() {
   const desktop = useDesktop()
   // The badge counts everything waiting on Ivan, DM drafts and Ops alike. If it
   // only counted DMs it would read 0 with an Ops card sitting unanswered.
-  const draftCount = threads.filter(t => t.draft).length + pendingOps(opsDrafts).length
+  // Comment kinds are excluded (ask 12) because DraftsScreen no longer lists
+  // them — a badge that counts rows the screen behind it refuses to show is the
+  // phantom-badge defect. Comment cards live (and are approved) on the Ops tab.
+  const draftCount = threads.filter(t => t.draft).length + pendingDmLaneOps(opsDrafts).length
 
   // Hash mini-router. Shell only ever mounts once App has resolved a session
   // (getSession() settled and session is truthy), so writeback below is
