@@ -159,3 +159,75 @@ export async function regenLmContent(
     phase: 'content',
   })
 }
+
+// ---------------------------------------------------------------------------
+// SCHEDULE — the reference's `Approve & schedule` (studioActions.ts
+// `scheduleCarousel` over there), ported one-for-one.
+//
+// 🔴 THIS ARMS A PUBLISHER. status='scheduled' + scheduled_at is exactly what
+// the n8n Bridge (yzXqLDIpuNzuhUQq) reads to insert the publisher queue row
+// that puts a post on LinkedIn. It is the only affordance in the draft window
+// with a public consequence, which is why the call site confirms in those words
+// rather than calling it "scheduling".
+//
+// Ivan lane only (`.is('client_id', null)`), same scope as approve and the
+// edit — Mattan's lane schedules through the client board's own gates.
+// Verified like every other write here: PostgREST answers a silent 204 to an
+// UPDATE that RLS filtered away, so a `.select()` that comes back empty is a
+// failure, not a success.
+export async function scheduleDraft(id: string, scheduledAtIso: string): Promise<void> {
+  const { data, error } = await supabase.from('carousel_drafts')
+    .update({ status: 'scheduled', scheduled_at: scheduledAtIso })
+    .eq('id', id).is('client_id', null)
+    .select('id')
+  if (error) throw error
+  if (!data || data.length === 0) {
+    throw new Error('Schedule failed — the database did not accept the write.')
+  }
+}
+
+// ---------------------------------------------------------------------------
+// A HUMAN NOTE IN THE GENERATION REGISTER — the reference's AgentLogFeed
+// composer (`append_agent_log`). The log is written by a dozen agents; this is
+// the one place a person writes back into it, which is what makes it a log
+// rather than a transcript.
+//
+// The RPC appends rather than replacing, so two writers cannot clobber each
+// other the way a read-modify-write on the jsonb array would.
+export async function appendAgentNote(
+  table: 'carousel_drafts' | 'lm_drafts_v2',
+  id: string,
+  body: string,
+): Promise<void> {
+  const { error } = await supabase.rpc('append_agent_log', {
+    p_table: table, p_id: id, p_agent: 'Ivan', p_body: body,
+  })
+  if (error) throw error
+}
+
+// A text field on a lead-magnet row — the reference's LeadMagnetEditor
+// `Save changes` (studioActions `saveLMDraft` over there), narrowed to the two
+// fields this window edits.
+//
+// 🔴 `status` is NOT reachable through this function, and that is the point.
+// Whether an n8n watcher treats lm_drafts_v2.status='approved' as a publish
+// trigger is unverifiable from this repo, so the field list is an allowlist of
+// two rather than a patch object a caller could widen.
+//
+// Verified like every other write here: PostgREST answers a silent 204 to an
+// UPDATE that RLS filtered away, and a surface that says "Saved" off a
+// filtered-away write is lying.
+export async function saveLmField(
+  id: string,
+  field: 'post_body' | 'email_copy',
+  value: string,
+): Promise<void> {
+  const { data, error } = await supabase.from('lm_drafts_v2')
+    .update({ [field]: value })
+    .eq('id', id)
+    .select('id')
+  if (error) throw error
+  if (!data || data.length === 0) {
+    throw new Error('Save failed — the database did not accept the edit.')
+  }
+}

@@ -869,7 +869,15 @@
   .dw{flex:1;min-width:0;min-height:0;display:flex}
   .dw-cols{flex:1;min-width:0;min-height:0;display:grid;
     grid-template-columns:232px minmax(0,1fr) minmax(300px,360px)}
-  .dw-cols.dw-noinsp{grid-template-columns:232px minmax(0,1fr)}
+  /* A one-row queue does not earn a rail, and an empty 232px column would be a
+     lie about there being somewhere to go. */
+  .dw-cols.dw-norail{grid-template-columns:minmax(0,1fr) minmax(300px,360px)}
+  /* The MARKUP order is main → evidence → queue, which is the phone order and
+     therefore the priority order. `order` puts the queue back on the left for
+     the wide layout without the DOM having to disagree with the phone. */
+  .dw-queue{order:1}
+  .dw-main{order:2}
+  .dw-insp{order:3}
   .dw-queue,.dw-main,.dw-insp{min-width:0;min-height:0;overflow-y:auto;
     overscroll-behavior:contain}
   .dw-queue{border-right:.5px solid var(--sep)}
