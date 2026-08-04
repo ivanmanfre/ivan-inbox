@@ -102,9 +102,14 @@ body{
 .b{max-width:78%;padding:10px 14px;font-size:15.5px;line-height:1.4;border-radius:20px;white-space:pre-wrap;word-break:break-word}
 .b.in{align-self:flex-start;background:var(--surface2);border-bottom-left-radius:6px}
 .b.out{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:6px}
-.blbl{font-size:11px;color:var(--text3);margin:0 6px}
-.blbl.r{align-self:flex-end}
-.blbl.l{align-self:flex-start}
+/* The right/left modifiers are `blbl-r`/`blbl-l`, NOT `r`/`l`: the workbench
+   styles `.r` as the conversation-row GRID (faithful.css §7.1), so a label
+   carrying a bare `r` was laid out in that grid's 28px anchor column — which is
+   why "Sent · DM · typed on LinkedIn" rendered as a vertical stack overlapping
+   the label under it (Ivan, 2026-08-04). One-line by contract. */
+.blbl{font-size:11px;color:var(--text3);margin:0 6px;white-space:nowrap}
+.blbl-r{align-self:flex-end}
+.blbl-l{align-self:flex-start}
 
 .draftcard{margin:8px 14px 10px;background:var(--surface);border-radius:20px;overflow:hidden;border:1px solid rgba(16,163,127,.4);box-shadow:0 8px 30px rgba(0,0,0,.5)}
 .dc-h{display:flex;align-items:center;gap:8px;padding:11px 14px 0}

@@ -1,9 +1,7 @@
-import { DraftCard, OpsPending, StaleBar } from '../../screens/DraftsScreen'
+import { DraftCard, StaleBar } from '../../screens/DraftsScreen'
 import { InboxScreen } from '../../screens/InboxScreen'
 import { DmHistory } from './DmHistory'
 import { STATUS_LABEL, filterThreads, type Filter, type Status, type Thread } from '../../lib/inbox'
-import { pendingDmLaneOps, type OpsDraft } from '../../lib/ops'
-import { InboxHead } from './InboxHead'
 
 // DMs — the one surface a person waiting on Ivan can appear on.
 //
@@ -17,38 +15,37 @@ import { InboxHead } from './InboxHead'
 //
 // So the surfaces composed instead of one eating the other:
 //   · the CONVERSATION list (Inbox's job) is the body,
-//   · the BREAKDOWN BAR became the status axis — the same `threadBucket` the
-//     badge sums, so a segment's printed number and the list it produces are one
-//     derivation and cannot drift,
 //   · "Draft ready" renders the approve/discard DraftCard that DraftsScreen
 //     owned, so the affordance survived the job that hosted it,
-//   · the stale-draft bulk escape and the Ops DM-lane pointer are unchanged.
+//   · the stale-draft bulk escape is unchanged.
 //
-// Default view is `needs` — exactly what the rail badge counts. "Waiting on
-// them" is one click away and never hidden, because a conversation with the ball
-// in their court is still a conversation.
+// 2026-08-04, Ivan, twice: the breakdown head ("2 to answer · 2 pending · 103
+// answered, waiting on them · sends live in Sends") and the Ops pointer strip
+// are both GONE. The head was a status axis nobody asked for on a surface whose
+// whole job is "who is waiting on me", and the Ops strip put newsjacks and
+// escalations — work that is approved on the Ops tab — inside a conversation
+// list. DMs now shows conversations and nothing else; the rail badge still
+// counts what is waiting, and Ops still owns every ops card.
+//
+// The view is `needs` — exactly what the rail badge counts. A draft is still
+// approved from the thread it belongs to.
 export function DmsSurface({
-  threads, opsDrafts, filter, setFilter, status, setStatus,
-  refresh, onOpenThread, onOpenOps, loadedAt,
+  threads, filter, setFilter, status,
+  refresh, onOpenThread, loadedAt,
 }: {
   threads: Thread[]
-  opsDrafts: OpsDraft[]
   filter: Filter
   setFilter: (f: Filter) => void
   status: Status
-  setStatus: (s: Status) => void
   refresh: () => void
   onOpenThread: (id: string) => void
-  onOpenOps: () => void
   loadedAt: string | null
 }) {
-  // Both strips are lane-scoped so they agree with the list under them: the
-  // client chips filter the rows, and a stale-draft bar counting a lane Ivan is
-  // not looking at would be the tenancy version of a phantom badge.
+  // The stale-draft strip is lane-scoped so it agrees with the list under it: a
+  // bar counting a lane Ivan is not looking at would be the tenancy version of a
+  // phantom badge.
   const laned = filterThreads(threads, filter)
   const staleDrafts = laned.filter(t => t.draft !== null && t.draftStale)
-  const opsPend = pendingDmLaneOps(opsDrafts)
-    .filter(d => filter === 'all' || (d.client_id === 'rise' ? 'risedtc' : d.client_id) === filter)
 
   return (
     <InboxScreen
@@ -59,19 +56,12 @@ export function DmsSurface({
       status={status}
       refresh={refresh}
       onOpenThread={onOpenThread}
-      // The banner this prop used to feed pointed at a separate drafts screen;
-      // with a status axis the drafts ARE a view of this list, so the only
-      // caller left is the head's own key.
-      onOpenDrafts={() => setStatus('approve')}
+      // A `status` is passed, so InboxScreen renders no draft banner and this
+      // never fires — the drafts are rows in this same list.
+      onOpenDrafts={() => {}}
       windowed
       verifiedAt={loadedAt}
-      head={<InboxHead threads={threads} loadedAt={loadedAt} status={status} setStatus={setStatus} />}
-      before={
-        <>
-          <StaleBar stale={staleDrafts} refresh={refresh} />
-          <OpsPending drafts={opsPend} onOpenOps={onOpenOps} />
-        </>
-      }
+      before={<StaleBar stale={staleDrafts} refresh={refresh} />}
       // A draft is not a 73px row you read — it is a message you send or throw
       // away, so in that status the row IS the card, with the swipe gestures and
       // the confirm intact.
