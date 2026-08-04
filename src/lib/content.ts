@@ -1080,9 +1080,11 @@ export const STAGE_LABEL: Record<ContentStage, string> = {
 export type BoardGroup = 'board' | 'internal'
 
 const CLIENT_STAGE_LABEL: Record<BoardGroup, Partial<Record<ContentStage, string>>> = {
-  // On his board: every stage here is a fact about HIM.
+  // On his board: every stage here is a fact about HIM. "Buffer" is Ivan's own
+  // word for it (2026-08-04): these rows sit on the RISE DTC board waiting on
+  // Mattan's decision.
   board: {
-    review: 'Waiting on Mattan',
+    review: 'On buffer · RISE DTC board',
     approved: 'Mattan approved',
     scheduled: 'Scheduled on his board',
   },

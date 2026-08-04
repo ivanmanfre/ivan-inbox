@@ -111,7 +111,7 @@ function RowDelete({ d, lane, onDone }: { d: ContentDraft; lane: ContentLane; on
         type="button" className="ct-x" disabled={busy}
         title="Delete draft" aria-label="Delete draft"
         onClick={run}
-      >✕</button>
+      >{busy ? '…' : 'Delete'}</button>
     </>
   )
 }
@@ -141,11 +141,9 @@ function Card({ d, lane, refresh, onOpen, active, queue }: {
   // alert strip above.
   const stalled = isStuckGenerating(d)
   const genMins = stalled ? elapsedMinutes(generatingSince(d)) : null
-  // Ivan, 2026-08-04: "also add the source" + "I ALSO WANT TO SEE THE POST
-  // TYPE TAGS LIKE TEARDOWN CASE STUDY ETC... BUT ALSO REACH, TRUST, ETC".
-  // Source and pillar come off taxonomy (the same fields dashboard-v2 reads),
-  // funnel off the row's own column. This deliberately reverses part of the
-  // earlier chip diet: the diet was the run's guess, these three are his ask.
+  // Ivan, 2026-08-04, second pass: "We need to have different columns, not
+  // just put a tag on everything." Pillar / funnel / source render as fixed
+  // COLUMNS (dashboard-v2's ideas table anatomy), not as chips in the meta row.
   const src = taxonomyValue(d.taxonomy, 'source')
   const pillar = taxonomyValue(d.taxonomy, 'pillar')
   const funnel = d.funnel_stage?.trim() || null
@@ -188,11 +186,14 @@ function Card({ d, lane, refresh, onOpen, active, queue }: {
               </span>
             )}
           <span className="ct-chip">{typeLabel(d.type)}</span>
-          {pillar && <span className="ct-chip ct-chip-pillar" title={`pillar ${pillar}`}>{tagLabel(pillar)}</span>}
-          {funnel && <span className="ct-chip ct-chip-funnel" title={`funnel_stage ${funnel}`}>{tagLabel(funnel)}</span>}
-          {src && <span className="ct-chip ct-chip-src" title={`taxonomy.source ${src}`}>{sourceLabel(src)}</span>}
         </div>
       </div>
+      {/* The three facts as COLUMNS, one fixed x each, '—' when absent so the
+          column stays a column. Desktop only — below 1000px there is no width
+          for a table and the row keeps its two-line phone shape. */}
+      <span className="ct-colv" title={pillar ? `pillar ${pillar}` : undefined}>{pillar ? tagLabel(pillar) : '—'}</span>
+      <span className="ct-colv" title={funnel ? `funnel_stage ${funnel}` : undefined}>{funnel ? tagLabel(funnel) : '—'}</span>
+      <span className="ct-colv" title={src ? `taxonomy.source ${src}` : undefined}>{src ? sourceLabel(src) : '—'}</span>
       {/* trailing slot — the two review controls stay INSIDE the row's third
           column rather than growing a 44px button bar underneath it, which is
           what keeps a 285-row list inside the 40-60px density band. The value
@@ -432,6 +433,12 @@ function StageSection({ s, n, rows, lane, group, refresh, onOpen, openId, isOpen
       {isOpen && (
         <>
           {sub && <div className="ct-subline">{sub}</div>}
+          {/* Column labels once per section, on the same grid as the rows, so
+              the eye reads a TABLE (dashboard-v2's anatomy). Desktop only. */}
+          <div className="ct-cols-head" aria-hidden>
+            <span /><span>Title</span><span>Pillar</span><span>Funnel</span>
+            <span>Source</span><span /><span />
+          </div>
           {rows.map(d => (
             <Card key={d.id} d={d} lane={lane} refresh={refresh} onOpen={onOpen} active={openId === d.id} queue={rows} />
           ))}
@@ -673,7 +680,7 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
 // "Waiting on you" stage section inside a "Not on his board" group header —
 // two headers stacked over the same rows. The group level is gone: the lane
 // renders flat stage sections, ours first (the work), then his board's, and
-// clientStageLabel already carries the where ("Waiting on Mattan", "Mattan
+// clientStageLabel already carries the where ("On buffer · RISE DTC board", "Mattan
 // approved") so nothing is lost with the header.
 const BOARD_ORDER: BoardGroup[] = ['internal', 'board']
 

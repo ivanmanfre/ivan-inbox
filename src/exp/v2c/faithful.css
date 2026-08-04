@@ -67,9 +67,12 @@
   --fs-display:34px;            /* stepped by media query below, never clamped */
   --fs-figure:30px;
   --fs-page:20px;
-  --fs-title:15px;
-  --fs-body:13px;
-  --fs-meta:12px;
+  /* Bumped one step 2026-08-04 (Ivan: "make the sizing of the text a bit
+     larger. It's too annoying like that"). The flatten rule reads --fs-body,
+     so this raises the whole sheet together. */
+  --fs-title:16px;
+  --fs-body:14px;
+  --fs-meta:12.5px;
   --fs-eyebrow:11px;
   --fs-glyph:20px;              /* the ONE glyph-only size (rail + tab icons) */
   --fw-display:700;             /* 2.4 — the single ≥700 exception, ≥28px only */
@@ -808,15 +811,17 @@
   flex-basis:100%; margin:0; text-align:right;
   font-size:var(--fs-meta); color:var(--sev-urgent);
 }
-/* The row's ✕ — remove without opening. Quiet until hovered so a 285-row list
-   does not read as a wall of delete buttons; 28px hit target inside the band. */
+/* The row's Delete — remove without opening. VISIBLE, a bordered control like
+   the dashboard's row actions (Ivan, 2026-08-04: "i still dont see a easy way
+   to delete stuff" — the hover-quiet ✕ failed him within the hour). */
 .wb.wb.wb .ct-x{
-  flex:none; width:28px; height:28px; padding:0;
+  flex:none; height:26px; padding:0 10px;
   display:inline-flex; align-items:center; justify-content:center;
-  background:none; border:0; border-radius:var(--r-ctl);
-  color:var(--text3); font-size:var(--fs-meta); line-height:1; cursor:pointer;
+  background:none; border:1px solid var(--sep); border-radius:var(--r-ctl);
+  color:var(--text2); font-size:var(--fs-eyebrow); font-weight:600;
+  letter-spacing:.04em; text-transform:uppercase; line-height:1; cursor:pointer;
 }
-.wb.wb.wb .ct-x:hover{ background:var(--surface2); color:var(--sev-urgent) }
+.wb.wb.wb .ct-x:hover{ color:var(--sev-urgent); border-color:var(--sev-urgent) }
 .wb.wb.wb .ct-x:disabled{ opacity:.4; cursor:default }
 .wb.wb.wb .ct-card .ct-ac .btn{
   flex:none; padding:4px 10px; font-size:var(--fs-eyebrow); font-weight:600;
@@ -2338,3 +2343,51 @@
   background:transparent; color:#CFD3CB; box-shadow:inset 0 0 0 1px rgba(207,211,203,.55);
 }
 .wb.wb.wb .b.out.manual{ box-shadow:inset 0 0 0 1px rgba(207,211,203,.5) }
+
+/* ==========================================================================
+   THE CONTENT TABLE (2026-08-04, Ivan: "We need to have different columns,
+   not just put a tag on everything") — pillar / funnel / source as fixed
+   columns on every draft row, with a label row per section, dashboard-v2's
+   ideas-table anatomy. Phone keeps the two-line row: no width for a table.
+   ========================================================================== */
+.wb.wb.wb .ct-colv{ display:none }
+.wb.wb.wb .ct-cols-head{ display:none }
+@media (min-width:1000px){
+  .wb.wb.wb .ct-card{
+    grid-template-columns:var(--anchor-w) minmax(0,1fr) 104px 84px 130px auto var(--tail-w);
+  }
+  .wb.wb.wb .ct-card .ct-ac{ grid-column:6 }
+  .wb.wb.wb .ct-card .ct-tail{ grid-column:7 }
+  .wb.wb.wb .ct-colv{
+    display:block; min-width:0;
+    font-size:var(--fs-meta); color:var(--text2);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .wb.wb.wb .ct-cols-head{
+    display:grid;
+    grid-template-columns:var(--anchor-w) minmax(0,1fr) 104px 84px 130px auto var(--tail-w);
+    column-gap:var(--anchor-gap);
+    padding:8px var(--gut) 2px;
+    font-size:var(--fs-eyebrow); font-weight:700; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--text3);
+  }
+}
+
+/* The collapsible rail (2026-08-04). Icons keep their rows; every label,
+   count, group title and hint folds away with the width. */
+.wb.wb.wb .wb-rail-minbtn{
+  margin-left:auto; width:26px; height:26px; flex:none;
+  display:inline-flex; align-items:center; justify-content:center;
+  background:none; border:1px solid var(--sep); border-radius:var(--r-ctl);
+  color:var(--text2); font-size:var(--fs-body); line-height:1; cursor:pointer;
+}
+.wb.wb.wb .wb-rail-minbtn:hover{ background:var(--surface1); color:var(--text) }
+.wb.wb.wb .wb-rail.min{ width:64px; padding:20px 10px 16px }
+.wb.wb.wb .wb-rail.min .wb-rail-minbtn{ margin:0 auto }
+.wb.wb.wb .wb-rail.min .wb-rj-l,
+.wb.wb.wb .wb-rail.min .wb-rj-n,
+.wb.wb.wb .wb-rail.min .wb-rail-grp-l,
+.wb.wb.wb .wb-rail.min .wb-rail-hint,
+.wb.wb.wb .wb-rail.min .wb-sync-t{ display:none }
+.wb.wb.wb .wb-rail.min .wb-rj{ justify-content:center; padding:10px 0 }
+.wb.wb.wb .wb-rail.min .wb-rail-grp{ padding-left:0 }
