@@ -56,7 +56,7 @@ export function WorkSegment({ job, counts, onJob }: {
 
 type Counts = Partial<Record<Job, number>>
 
-export function Rail({ job, counts, sev, chatOn, chatLive, onJob, onChat, loadedAt, stale, onRefresh }: {
+export function Rail({ job, counts, sev, chatOn, chatLive, onJob, onChat, loadedAt, stale, onRefresh, collapsed, onToggle }: {
   job: Job
   counts: Counts
   // A count that is a PROBLEM rather than a workload (errored content, a stuck
@@ -70,6 +70,10 @@ export function Rail({ job, counts, sev, chatOn, chatLive, onJob, onChat, loaded
   loadedAt: string | null
   stale: boolean
   onRefresh: () => void
+  // Ivan, 2026-08-04: "make the navigator bar on the left collapsible". State
+  // lives in Shell (persisted), so both Rail mounts agree.
+  collapsed?: boolean
+  onToggle?: () => void
 }) {
   const row = (j: Job) => {
     const n = counts[j] ?? 0
@@ -94,10 +98,18 @@ export function Rail({ job, counts, sev, chatOn, chatLive, onJob, onChat, loaded
   const after = JOBS.filter(j => j === 'sends' || j === 'ops')
 
   return (
-    <nav className="wb-rail">
+    <nav className={`wb-rail${collapsed ? ' min' : ''}`}>
       <div className="wb-rail-top">
-        <span className="avatar-me">IM</span>
-        <span className="wb-rail-ttl">Workbench</span>
+        {!collapsed && <span className="avatar-me">IM</span>}
+        {!collapsed && <span className="wb-rail-ttl">Workbench</span>}
+        {onToggle && (
+          <button
+            type="button" className="wb-rail-minbtn"
+            title={collapsed ? 'Expand the rail' : 'Collapse the rail'}
+            aria-label={collapsed ? 'Expand the rail' : 'Collapse the rail'}
+            onClick={onToggle}
+          >{collapsed ? '»' : '«'}</button>
+        )}
       </div>
 
       <div className="wb-rail-jobs">

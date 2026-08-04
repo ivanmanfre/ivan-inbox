@@ -116,6 +116,14 @@ export default function Shell() {
   const boot = useMemo(() => parseWbHash(location.hash), [])
 
   const [job, setJob] = useState<Job>(boot.job)
+  // Ivan, 2026-08-04: the rail collapses. Persisted so it stays how he left it.
+  const [railMin, setRailMin] = useState(() => {
+    try { return localStorage.getItem('wb-railmin') === '1' } catch { return false }
+  })
+  const toggleRail = useCallback(() => setRailMin(m => {
+    try { localStorage.setItem('wb-railmin', m ? '0' : '1') } catch { /* private mode */ }
+    return !m
+  }), [])
   const [prevJob, setPrevJob] = useState<Job>(boot.job === 'settings' ? 'dms' : boot.job)
   // Claude opens when Ivan opens it (his call, 2026-08-03) — never on boot. The
   // pane used to dock itself on any canvas with room, which meant the working
@@ -297,7 +305,8 @@ export default function Shell() {
         <div className="wb-plate">
           {!mobile && (
             <Rail job={job} counts={{}} sev={{}} chatOn={hasChat(peers)} chatLive={false}
-              onJob={goJob} onChat={toggleChat} loadedAt={null} stale={false} onRefresh={inbox.refresh} />
+              onJob={goJob} onChat={toggleChat} loadedAt={null} stale={false} onRefresh={inbox.refresh}
+              collapsed={railMin} onToggle={toggleRail} />
           )}
           <div className="wb-regions">
             <div className="wb-work wide">
@@ -507,6 +516,8 @@ export default function Shell() {
           loadedAt={inbox.loadedAt}
           stale={!!inboxError}
           onRefresh={inbox.refresh}
+          collapsed={railMin}
+          onToggle={toggleRail}
         />
         <div className={`wb-regions peers-${plan.peers.length}`}>
           <div className={`wb-work ${plan.work}${plan.narrow ? ' wb-narrow' : ''}${solo ? ' wb-solo' : ''}`}>

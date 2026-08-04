@@ -252,7 +252,8 @@ describe('clientStageLabel — one status, two meanings, two labels (Ivan’s it
     expect(STAGE_LABEL.review).toBe('Needs review')
   })
   it('names WHOSE review it is', () => {
-    expect(clientStageLabel('review', 'board')).toBe('Waiting on Mattan')
+    // Ivan's own word for it, 2026-08-04: the rows sitting on his client board.
+    expect(clientStageLabel('review', 'board')).toBe('On buffer · RISE DTC board')
     expect(clientStageLabel('review', 'internal')).toBe('Waiting on you')
   })
   it('every stage that means two things renders as two different labels', () => {
