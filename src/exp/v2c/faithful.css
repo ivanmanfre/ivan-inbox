@@ -2353,13 +2353,14 @@
 .wb.wb.wb .ct-colv{ display:none }
 .wb.wb.wb .ct-cols-head{ display:none }
 @media (min-width:1000px){
-  /* Last track is max-content, NOT var(--tail-w): the tail now holds time +
-     Delete, and a fixed track made it overflow left ONTO the Approve button
-     (seen on shot-table-rows.png). */
+  /* FIXED trailing tracks, both grids: an `auto` action track collapses to 0
+     on the header row (its slot is empty) and on every non-review row, so the
+     header labels drifted off their own columns. 156/132 fit Skip+Approve and
+     time+Delete respectively (measured on shot-table-rows.png). */
   .wb.wb.wb .ct-card{
-    grid-template-columns:var(--anchor-w) minmax(0,1fr) 104px 84px 130px auto max-content;
+    grid-template-columns:var(--anchor-w) minmax(0,1fr) 104px 84px 130px 156px 132px;
   }
-  .wb.wb.wb .ct-card .ct-ac{ grid-column:6 }
+  .wb.wb.wb .ct-card .ct-ac{ grid-column:6; justify-content:flex-end }
   .wb.wb.wb .ct-card .ct-tail{ grid-column:7; min-width:0 }
   .wb.wb.wb .ct-colv{
     display:block; min-width:0;
@@ -2368,7 +2369,7 @@
   }
   .wb.wb.wb .ct-cols-head{
     display:grid;
-    grid-template-columns:var(--anchor-w) minmax(0,1fr) 104px 84px 130px auto max-content;
+    grid-template-columns:var(--anchor-w) minmax(0,1fr) 104px 84px 130px 156px 132px;
     column-gap:var(--anchor-gap);
     padding:8px var(--gut) 2px;
     font-size:var(--fs-eyebrow); font-weight:700; letter-spacing:.06em;
