@@ -203,7 +203,9 @@ export function IdeasSection({ ideas, kind, count, loading, error, loadedAt, ref
   unclassified?: IdeaCandidate[]
 }) {
   const [filters, setFilters] = useState<FilterState>({})
-  const [open, setOpen] = useState(false)
+  // Open by default (Ivan, 2026-08-04: "LOOK HOW ANNOYING IS NOW TO OPEN
+  // EVERYTHING" — dashboard-v2 shows the ideas table directly).
+  const [open, setOpen] = useState(true)
   const all = [...ideas, ...(unclassified ?? [])]
   const facets = buildFacets(all, IDEA_SPECS)
   const shown = applyFilters(all, IDEA_SPECS, filters)
@@ -617,13 +619,16 @@ function blurbOf(body: string | null): string | null {
   return s ? (s.length > 180 ? `${s.slice(0, 179)}…` : s) : null
 }
 
-export function StyleRoster({ roster, laneRows, lane, loading, error, refresh }: {
+export function StyleRoster({ roster, laneRows, lane, loading, error, refresh, bare }: {
   roster: StylePrompt[]
   laneRows: ContentDraft[]
   lane: ContentLane
   loading: boolean
   error: string | null
   refresh: () => void
+  // The Styles JOB renders this directly open, no Collapsible — it IS the
+  // surface there (Ivan, 2026-08-04: "STYLES SHOULD BE A TAB").
+  bare?: boolean
 }) {
   const [filters, setFilters] = useState<FilterState>({})
   // Computed from the PUBLISHED rows of the lane you are in, so the same roster
@@ -632,8 +637,8 @@ export function StyleRoster({ roster, laneRows, lane, loading, error, refresh }:
   const specs = styleSpecs(previews as Map<string, unknown>, previewKeyFor)
   const facets = buildFacets(roster, specs)
   const shown = applyFilters(roster, specs, filters)
-  return (
-    <Collapsible title="Styles" count={roster.length}>
+  const body = (
+    <>
       {error ? (
         // Never a hardcoded fallback list: three historical hardcoded catalogues
         // were each wrong the day after they were written.
@@ -681,8 +686,10 @@ export function StyleRoster({ roster, laneRows, lane, loading, error, refresh }:
             })}
         </>
       )}
-    </Collapsible>
+    </>
   )
+  if (bare) return body
+  return <Collapsible title="Styles" count={roster.length}>{body}</Collapsible>
 }
 
 // ---------------------------------------------------------------------------
@@ -760,10 +767,10 @@ export function AlertCountLine({ olderUnsent }: { olderUnsent: number }) {
   )
 }
 
-export function SummariesSection({ rows }: { rows: AgentSummary[] }) {
+export function SummariesSection({ rows, defaultOpen }: { rows: AgentSummary[]; defaultOpen?: boolean }) {
   if (rows.length === 0) return null
   return (
-    <Collapsible title="Daily summaries" count={rows.length}>
+    <Collapsible title="Daily summaries" count={rows.length} defaultOpen={defaultOpen}>
       <div className="ct-subtle">
         The only written record of content decisions made outside this app. Read-only.
       </div>

@@ -22,7 +22,7 @@
 // The removal freed a mobile slot, which is what lets DMs be a destination
 // again instead of half of a "Work" tab. WORK_JOBS is now what it always
 // described — the two CONTENT lanes.
-export type Job = 'today' | 'dms' | 'content' | 'magnets' | 'sends' | 'ops' | 'settings'
+export type Job = 'today' | 'dms' | 'content' | 'magnets' | 'styles' | 'sends' | 'ops' | 'settings'
 
 // Three canvases, two media queries, one hook (useCanvas). 'wide' is where the
 // workbench can hold the working list AND two context peers at once — 1440px is
@@ -47,18 +47,18 @@ export function peerKey(p: Peer): PeerKey {
 
 // Rail order. Jobs first (they set the working surface), Claude last — it is
 // deliberately NOT a job (see dockChat below).
-export const JOBS: Job[] = ['today', 'dms', 'content', 'magnets', 'sends', 'ops', 'settings']
+export const JOBS: Job[] = ['today', 'dms', 'content', 'magnets', 'styles', 'sends', 'ops', 'settings']
 
 export const JOB_LABEL: Record<Job, string> = {
   today: 'Today', dms: 'DMs', content: 'Content',
-  magnets: 'Magnets', sends: 'Sends', ops: 'Ops', settings: 'Settings',
+  magnets: 'Magnets', styles: 'Styles', sends: 'Sends', ops: 'Ops', settings: 'Settings',
 }
 
 // Unicode glyphs only, matching TabBar.tsx:9-30 — no icon set, no SVG sprite.
 // DMs inherits the Inbox glyph, not the old drafts sparkle: it is a
 // conversation list now, and the glyph is the honest one.
 export const JOB_ICON: Record<Job, string> = {
-  today: '☼', dms: '◉', content: '▤', magnets: '▦',
+  today: '☼', dms: '◉', content: '▤', magnets: '▦', styles: '▧',
   sends: '↑', ops: '◈', settings: '⚙︎',
 }
 
@@ -79,7 +79,7 @@ export function jobHasList(job: Job): boolean {
 // DMs left this group when Inbox was absorbed into it: it is the conversation
 // list now, it is what the badge counts, and the freed slot is exactly what lets
 // it be one tap away again.
-export const WORK_JOBS: Job[] = ['content', 'magnets']
+export const WORK_JOBS: Job[] = ['content', 'magnets', 'styles']
 
 export function isWorkJob(job: Job): boolean {
   return WORK_JOBS.includes(job)

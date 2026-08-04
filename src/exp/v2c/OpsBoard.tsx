@@ -5,6 +5,8 @@ import { PullIndicator } from '../../components/PullIndicator'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { blockedOps, claimingOps, outboundFeedId, pendingOps, sentOps, type OpsDraft } from '../../lib/ops'
 import { useCommentQueue } from '../../hooks/useCommentQueue'
+import { useAgentDigest } from '../../hooks/useContent'
+import { SummariesSection } from './ContentSections'
 import { CalmEmpty, Failed } from './Surface'
 
 // Ops, designed for the canvas it actually gets.
@@ -44,6 +46,9 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
   // timer, one read of comment_feed for every outbound card on screen.
   const queue = useCommentQueue(pending, refresh)
   const history = claimingOps(drafts).length + sentOps(drafts).length + blockedOps(drafts).length
+  // Daily summaries live HERE now, not at the bottom of the Content scroll
+  // (Ivan, 2026-08-04: "DAILY SUMMARIES INSIDE OPS AS A SUB TAB MAYBE").
+  const digest = useAgentDigest(true)
 
   // ONE header, owned here. The wrapped screen's own nav is gone because the
   // screen is no longer wrapped — the doubled render has no code path left.
@@ -143,6 +148,7 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
             </div>
           )}
         </div>
+        <SummariesSection rows={digest.rows} defaultOpen />
       </div>
     </>
   )
