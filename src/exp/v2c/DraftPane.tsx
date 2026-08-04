@@ -898,20 +898,21 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
 
         {actErr && <div className="ops-err" style={{ margin: '10px 16px 0' }}>{actErr}</div>}
 
-        {/* The risky drawer: everything that spends money or arms a publisher
-            lives one deliberate click behind `o`. Delete came BACK OUT of it
-            (2026-08-03, Ivan: "there is no delete or approve option") — it
-            carries its own two-step confirm, so hiding it bought no safety and
-            cost him the affordance he had before. */}
-        {more && lane === 'ivan' && (
-          <div style={{ marginBottom: 4 }}>
-            <RegenDraft d={d} onDone={refresh} />
-            <ScheduleDraft d={d} onDone={refresh} />
-          </div>
-        )}
+        {/* Regenerate and Delete sit in the open (2026-08-04, Ivan: "we need
+            edit option and regen option" — the drawer hid regen well enough
+            that he reported it missing, the same lesson delete taught on
+            08-03). Both carry their own two-step confirm, so visibility costs
+            no safety. Only Schedule stays behind `o`: it is the one affordance
+            here that ARMS A PUBLISHER. */}
         {lane === 'ivan' && (
           <div style={{ marginBottom: 4 }}>
+            <RegenDraft d={d} onDone={refresh} />
             <DeleteDraft d={d} onDone={() => { refresh(); if (nextId) onPick(nextId); else onClose() }} />
+          </div>
+        )}
+        {more && lane === 'ivan' && (
+          <div style={{ marginBottom: 4 }}>
+            <ScheduleDraft d={d} onDone={refresh} />
           </div>
         )}
         {lane === 'risedtc' && (
@@ -987,7 +988,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
           {lane === 'ivan' && (
             <button type="button" className="dw-key" disabled={editing} aria-expanded={more}
               onClick={() => setMore(m => !m)}>
-              <kbd>o</kbd> {more ? 'Hide actions' : 'More actions'}
+              <kbd>o</kbd> {more ? 'Hide schedule' : 'Schedule'}
             </button>
           )}
           {editing ? (
@@ -1003,7 +1004,8 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
   // ---- 03 · the evidence --------------------------------------------------
   const insp = (
     <aside className="dw-insp">
-      <div className="dw-insp-h">What decides it</div>
+      {/* The reference's own label for this rail (PostWorkSurface.tsx:539). */}
+      <div className="dw-insp-h">Backend depth</div>
 
       {qa ? (
         <Sec k="qa" label="QA verdict" tail={qa.score !== null ? `${qa.score}` : qa.verdict ?? undefined}

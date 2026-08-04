@@ -50,3 +50,25 @@ export function typeLabel(t: string | null): string {
   if (!t) return 'Text'
   return TYPE_LABEL[t] ?? t
 }
+
+// taxonomy.source slugs → a reading label, the same vocabulary dashboard-v2
+// uses on its ideas table (ideaProjection.ts SOURCE_LABEL). An unknown slug
+// renders as itself — the roster is the data's, never this map's.
+const SOURCE_LABEL: Record<string, string> = {
+  calls: 'Call',
+  kyle_call: 'Kyle call',
+  ivan_call: 'Call',
+  slack: 'Slack',
+  hacker_news: 'Hacker News',
+  search_demand: 'Search demand',
+  reddit_se: 'Reddit',
+  breaking_news: 'News',
+  model_launch: 'Model launch',
+  x_search: 'X search',
+  claude_sessions: 'Claude session',
+  client_work: 'Client work',
+}
+
+export function sourceLabel(s: string): string {
+  return SOURCE_LABEL[s] ?? s
+}

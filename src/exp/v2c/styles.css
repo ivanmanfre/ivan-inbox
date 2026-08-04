@@ -654,6 +654,21 @@
 .ct-prog-s i{font-style:normal;font-size:9.5px;font-weight:700;letter-spacing:.04em;
   text-transform:uppercase;color:var(--text3)}
 
+/* the compressed register row (dashboard-v2 style, 2026-08-04): one line per
+   entry — agent · chips · time · single-line preview — the full body folds
+   open in place. */
+.dd-logc{border-bottom:.5px solid var(--sep)}
+.dd-logc:last-child{border-bottom:none}
+.dd-logc-s{display:block;padding:9px 0;cursor:pointer;list-style:none}
+.dd-logc-s::-webkit-details-marker{display:none}
+.dd-logc-h{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.dd-logc-t{margin-left:auto;font-size:11px;font-weight:700;color:var(--text3);
+  letter-spacing:.02em;white-space:nowrap}
+.dd-logc-p{display:block;margin-top:3px;font-size:12.5px;color:var(--text2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dd-logc[open] .dd-logc-p{display:none}
+.dd-logc .dd-log{border-bottom:none;padding-top:0}
+
 /* one log entry — attribution first, then when, then the body IN FULL */
 .dd-log-h{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:5px}
 .dd-log-agent{font-size:12.5px;font-weight:800;letter-spacing:-.01em}

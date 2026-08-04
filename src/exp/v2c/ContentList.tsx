@@ -6,10 +6,10 @@ import {
 } from '../../hooks/useContent'
 import {
   CONTENT_LANES, ERROR_ALARM_HOURS, LANE_LABEL, LANE_POSSESSIVE, PIPELINE_STAGES,
-  STAGE_LABEL, STAGE_SHORT, STUCK_GENERATING_MINUTES, boardGroupOf, canPromote, clientStageLabel,
-  countBoardVisible, countUndated,
+  STAGE_LABEL, STAGE_SHORT, STUCK_GENERATING_MINUTES, boardGroupOf, clientStageLabel,
+  countBoardVisible, countUndated, deleteClientDraft, deleteDraft,
   elapsedMinutes, generatingSince, groupByStage, isRecentError, isStuckGenerating,
-  isStuckScheduled, queueFailed, reviewActionable, stageOf,
+  isStuckScheduled, queueFailed, reviewActionable, stageOf, taxonomyValue,
   type BoardGroup, type ContentDraft, type ContentLane, type ContentStage, type ContentStages,
 } from '../../lib/content'
 import {
@@ -17,6 +17,7 @@ import {
   type FilterState,
 } from '../../lib/contentFilters'
 import { useSectionState } from '../../hooks/useSectionState'
+import { useConfirm } from '../../components/ConfirmSheet'
 import { ReviewActions } from './ReviewActions'
 import { FilteredEmpty } from './ContentBits'
 import { FilterRow } from './FilterRow'
@@ -24,7 +25,7 @@ import {
   IdeasSection, PillarMix, QueueStrip,
   StyleRoster, SummariesSection,
 } from './ContentSections'
-import { relTime, typeLabel } from './fmt'
+import { relTime, sourceLabel, typeLabel } from './fmt'
 import { CalmEmpty, CapsuleChart, Failed, SectionHead } from './Surface'
 import { hasMock } from './mock'
 
@@ -74,6 +75,50 @@ const STAGE_COLOR: Record<string, string> = {
 // window's rail walk exactly the rows Ivan is looking at.
 export type OpenDraft = (id: string, label: string, queue: ContentDraft[]) => void
 
+// Removing a row WITHOUT opening it — Ivan, 2026-08-04: "cant remove any of
+// the content... which is super annoying". Same writes the draft window uses
+// (deleteDraft / deleteClientDraft), same confirm wording. The board rows keep
+// their guard: deleting a promoted draft leaves a ghost copy on Mattan's live
+// board (the queue is a denormalised copy only un-promotion rebuilds), so the
+// ✕ renders only where the delete is legal.
+function RowDelete({ d, lane, onDone }: { d: ContentDraft; lane: ContentLane; onDone: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const confirm = useConfirm()
+  if (lane === 'risedtc' && boardGroupOf(d) === 'board') return null
+  const run = async (e: React.MouseEvent) => {
+    // A tap on the card opens the window; the ✕ must not also fire that.
+    e.stopPropagation()
+    const ok = await confirm({
+      title: 'Delete this draft?',
+      message: lane === 'risedtc'
+        ? 'Mattan has never seen it, and this removes it permanently.'
+        : 'This removes it permanently.',
+      confirmText: 'Delete',
+      danger: true,
+    })
+    if (!ok) return
+    setBusy(true); setErr('')
+    try {
+      await (lane === 'risedtc' ? deleteClientDraft(d.id, d.taxonomy) : deleteDraft(d.id, d.taxonomy))
+      onDone()
+    } catch (er) {
+      setErr(er instanceof Error ? er.message : 'Could not delete')
+      setBusy(false)
+    }
+  }
+  return (
+    <>
+      {err && <span className="ops-err">{err}</span>}
+      <button
+        type="button" className="ct-x" disabled={busy}
+        title="Delete draft" aria-label="Delete draft"
+        onClick={run}
+      >✕</button>
+    </>
+  )
+}
+
 function Card({ d, lane, refresh, onOpen, active, queue }: {
   d: ContentDraft; lane: ContentLane; refresh: () => void
   onOpen: OpenDraft; active: boolean
@@ -99,6 +144,9 @@ function Card({ d, lane, refresh, onOpen, active, queue }: {
   // alert strip above.
   const stalled = isStuckGenerating(d)
   const genMins = stalled ? elapsedMinutes(generatingSince(d)) : null
+  // Ivan, 2026-08-04: "also add the source" — where the row came from, read
+  // from the same taxonomy.source dashboard-v2's editor header reads.
+  const src = taxonomyValue(d.taxonomy, 'source')
   return (
     <div
       className={`ct-card ct-tap${active ? ' wb-card-on' : ''}${stalled ? ' ct-stalled' : ''}`}
@@ -138,6 +186,7 @@ function Card({ d, lane, refresh, onOpen, active, queue }: {
               </span>
             )}
           <span className="ct-chip">{typeLabel(d.type)}</span>
+          {src && <span className="ct-chip ct-chip-src" title={`taxonomy.source ${src}`}>{sourceLabel(src)}</span>}
         </div>
       </div>
       {/* trailing slot — the two review controls stay INSIDE the row's third
@@ -146,7 +195,10 @@ function Card({ d, lane, refresh, onOpen, active, queue }: {
           itself is last, right-aligned and tabular, so every row in the list
           shares one right edge. */}
       {reviewActionable(d.status, lane) && <ReviewActions id={d.id} onDone={refresh} compact />}
-      <div className="ct-tail"><span className="ct-tm">{relTime(d.updated_at)}</span></div>
+      <div className="ct-tail">
+        <span className="ct-tm">{relTime(d.updated_at)}</span>
+        <RowDelete d={d} lane={lane} onDone={refresh} />
+      </div>
     </div>
   )
 }
@@ -619,35 +671,16 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
 // LANE B — Mattan Danino
 // ---------------------------------------------------------------------------
 
-// THE TWO CATEGORIES, and why they are in this order.
+// ONE LEVEL of sections, not two.
 //
-// Ivan, 2026-08-03: "i see the needs review and on mattan's board are different
-// but they are on the same category… after i approve needs review it goes to
-// the board… and on mattan's board category leaving needs review category".
-//
-// Two things were wrong and they compounded. First, the group holding the work
-// that needed him was SECOND, under 23 rows he had already dealt with. Second,
-// both groups rendered a section called "Needs review" — 13 rows inside his
-// board and 59 inside ours (live counts, 2026-08-03) — so the same three words
-// meant "Mattan has not answered" in one place and "you have not decided" in
-// the other. clientStageLabel (content.ts) is the fix for the second; this
-// order is the fix for the first.
-//
-// The note on each group now says what the CATEGORY means, since that is the
-// distinction the eye has to make, and the promotion sentence is no longer a
-// lie: promotion happens right here.
-const BOARD_GROUPS = [
-  {
-    key: 'internal',
-    title: 'Not on his board',
-    note: 'Ours only — Mattan has never seen these. Open one and put it on his board when it is ready.',
-  },
-  {
-    key: 'board',
-    title: 'On Mattan’s board',
-    note: 'Mattan can see these. From here the decisions are his: approve, edit, veto, schedule.',
-  },
-] as const
+// Ivan, 2026-08-04: "for mattan idk why there are 2 categories, not on his
+// board and waiting on u... bc those are the same". The old render nested a
+// "Waiting on you" stage section inside a "Not on his board" group header —
+// two headers stacked over the same rows. The group level is gone: the lane
+// renders flat stage sections, ours first (the work), then his board's, and
+// clientStageLabel already carries the where ("Waiting on Mattan", "Mattan
+// approved") so nothing is lost with the header.
+const BOARD_ORDER: BoardGroup[] = ['internal', 'board']
 
 function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, setQ, matched, open, setOpen }: {
   drafts: ContentDraft[]
@@ -669,7 +702,6 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
   // (/^[a-z][a-z0-9_]*$/ — sectionState.ts:65): a `group:stage` key would be
   // silently dropped on write and every section would reopen on reload.
   const stageOpen = useOpenStages(open, setOpen, ['internal_review'])
-  const [groupOpen, setGroupOpen] = useState<string[]>(['board', 'internal'])
   // Same determinism rule as the Ivan lane: an active stage filter opens its section.
   // Same determinism rule as the Ivan lane, applied to BOTH categories: a
   // stage filter that opened only one of them would render a different row
@@ -686,19 +718,11 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
   const specs = draftSpecs('risedtc')
   const facets = buildFacets(drafts, specs)
   // The same five prominent axes as Ivan's lane, deliberately WITHOUT `board`:
-  // this lane is already GROUPED by board visibility (BOARD_GROUPS below), so a
+  // this lane is already GROUPED by board visibility (BOARD_ORDER below), so a
   // board pill would be a second control for a distinction the page structure
   // already draws — it stays available in the disclosure.
   const { prominent, demoted } = splitFacets(facets, DRAFT_PROMINENT)
   const shown = applySearch(applyFilters(drafts, specs, filters), q, d => [d.title, d.topic])
-
-  const onBoard = countBoardVisible(drafts)
-  // What the lane is actually asking Ivan for: a draft he can promote — at
-  // `review`, not already on the board. canPromote's rule, so the hero figure
-  // and the button that clears it can never count different things.
-  const waitingOnIvan = drafts.filter(d => canPromote(d.status, 'risedtc') && boardGroupOf(d) === 'internal').length
-  const scheduled = drafts.filter(d => d.scheduled_at).length
-  const noImage = drafts.filter(d => d.status === 'review' && !(d.image_urls?.length)).length
 
   // Stuck-resource lines moved to the Magnets job with the lane that renders
   // them; this strip is posts-only now. Ask 13: same 48h alarm window as the
@@ -710,39 +734,6 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
     <>
       <AlertStrip drafts={alerts} lane="risedtc" refresh={refresh} onOpen={onOpen} openId={openId} extra={[]} />
 
-      {/* 🔴 The OBSERVED figures and no denominator: there is no weekly-cap
-          constant anywhere in personal-site or in this app, and inventing
-          "of 4/wk" here would be fabricating a client commitment. */}
-      <div className="wb-pipe">
-        <div className="wb-pipe-n">
-          {/* The hero figure is the WORK, the same as the Ivan lane's. It used
-              to be the board count — 23 — while 59 drafts sat waiting on a
-              decision from Ivan underneath it, so the biggest number on the
-              lane was the one he had already dealt with. The board count keeps
-              its place as the second fact, which is what it is. */}
-          <span className="wb-pipe-big">{waitingOnIvan}</span>
-          <span className="wb-pipe-lbl">
-            waiting on you<br />of {drafts.length} in this lane
-          </span>
-          <span className="wb-pipe-i">
-            <b>{onBoard}</b> on {LANE_POSSESSIVE.risedtc} board · <b>{scheduled}</b> with a date
-          </span>
-        </div>
-        <div className="ct-subtle">
-          His forward calendar lives on the client board, not in this column —
-          a buffer slot is today + 4 days, rolled off the weekend, so anything
-          closer than that was set by hand. This lane never writes it.
-        </div>
-        {noImage > 0 && (
-          <div className="ct-subtle ct-warn">
-            {noImage} rows at review carry no image. A regen clears
-            <code> image_urls</code>, and <code>operator_schedule_draft</code> refuses
-            a draft without media (<code>awaiting_media</code>) — the photo has to be
-            re-pinned first.
-          </div>
-        )}
-      </div>
-
       <FilterRow
         prominent={prominent} demoted={demoted}
         state={filters} setState={setFilters} q={q} setQ={setQ}
@@ -751,49 +742,28 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
 
       {shown.length === 0 && drafts.length > 0
         ? <FilteredEmpty noun="drafts" onClear={() => { setFilters({}); setQ('') }} />
-        : BOARD_GROUPS.map((g, gi) => {
+        : BOARD_ORDER.map(g => {
           // boardGroupOf, never an inline `board_visible === true`: the grouping
           // and the count that heads the lane have to agree about NULL, and they
           // only can if they ask the same function.
-          const rows = shown.filter(d => boardGroupOf(d) === g.key)
+          const rows = shown.filter(d => boardGroupOf(d) === g)
           if (rows.length === 0) return null
           const stages = groupByStage(rows)
-          const open = groupOpen.includes(g.key)
-          return (
-            <div key={g.key} id={`wb-g-${g.key}`}>
-              <SectionHead
-                n={String(gi + 1).padStart(2, '0')}
-                title={g.title}
-                count={rows.length}
-                open={open}
-                onToggle={() => setGroupOpen(cur =>
-                  cur.includes(g.key) ? cur.filter(x => x !== g.key) : [...cur, g.key])}
+          return ([...PIPELINE_STAGES, 'error', 'stuck', 'archived', 'other'] as ContentStage[])
+            .filter(s => s !== 'ideas')
+            .map(s => (
+              <StageSection
+                key={`${g}_${s}`} s={s} rows={stages[s]} lane="risedtc" group={g}
+                refresh={refresh}
+                onOpen={onOpen} openId={openId}
+                // 🔴 Keyed by GROUP as well as stage. Both halves of the lane
+                // hold a `review` section and they are different questions, so
+                // collapsing one must not collapse the other — which a
+                // stage-only key did.
+                isOpen={stageOpen.isOpen(`${g}_${s}`)}
+                toggle={() => stageOpen.toggle(`${g}_${s}`)}
               />
-              {open && (
-                <>
-                  <div className="ct-subtle">{g.note}</div>
-                  {/* Stage is the SECONDARY key inside a promotion group: on
-                      this lane `review` means "available to be promoted", not
-                      "waiting on Ivan", so it carries no attention mark. */}
-                  {([...PIPELINE_STAGES, 'error', 'stuck', 'archived', 'other'] as ContentStage[])
-                    .filter(s => s !== 'ideas')
-                    .map(s => (
-                      <StageSection
-                        key={s} s={s} rows={stages[s]} lane="risedtc" group={g.key}
-                        refresh={refresh}
-                        onOpen={onOpen} openId={openId}
-                        // 🔴 Keyed by GROUP as well as stage. The two categories
-                        // each hold a `review` section and they are different
-                        // questions, so collapsing one must not collapse the
-                        // other — which a stage-only key did.
-                        isOpen={stageOpen.isOpen(`${g.key}_${s}`)}
-                        toggle={() => stageOpen.toggle(`${g.key}_${s}`)}
-                      />
-                    ))}
-                </>
-              )}
-            </div>
-          )
+            ))
         })}
 
       {/* The lead-magnet lane left this scroll for the Magnets job (the
@@ -889,7 +859,7 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
             // An empty board and a broken filter must never render the same.
             <Failed
               what="The queue filter"
-              message={`Nothing matched, but ${laneTotal} draft${laneTotal === 1 ? '' : 's'} exist in this lane. The recent-or-active filter ate them.`}
+              message={`Nothing matched, but ${laneTotal} draft${laneTotal === 1 ? '' : 's'} exist in this lane. The lane query ate them.`}
               onRetry={refresh}
               loadedAt={null}
             />
