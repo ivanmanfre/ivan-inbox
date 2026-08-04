@@ -97,13 +97,6 @@ export function draftLane(r: { client_id?: string | null }): string {
 
 // ---------- buckets ----------
 
-// The statuses the queue is allowed to consider "in flight" — a row in one of
-// these is fetched regardless of how old it is, because an approved post from
-// 90 days ago that never got a time is exactly the backlog this surface exists
-// to expose.
-export const ACTIVE_STATUSES = ['review', 'error', 'generating', 'approved', 'scheduled'] as const
-export const RECENT_DAYS = 60
-
 export type ContentBucketName =
   | 'review' | 'error' | 'stuckScheduled' | 'approvedUnscheduled'
   | 'generating' | 'scheduled' | 'published' | 'archived' | 'unknown'
@@ -259,14 +252,17 @@ export type ContentPage = {
 }
 
 export async function fetchContentDrafts(lane: ContentLane): Promise<ContentPage> {
-  const since = new Date(Date.now() - RECENT_DAYS * 86400_000).toISOString()
   const f = laneFilter(lane)
   let q = supabase.from('carousel_drafts').select(COLS, { count: 'exact' })
   q = f.op === 'is' ? q.is(f.column, null) : q.eq(f.column, f.value)
+  // THE WHOLE LANE, the same set dashboard-v2's useContentLibrary reads (Ivan,
+  // 2026-08-04: "u missing stuff from dashboard-v2"). The recent-or-active
+  // window (updated_at within RECENT_DAYS OR an active status) silently dropped
+  // every published/disqualified row older than 60 days, so this list and the
+  // dashboard disagreed about what exists. Newest-first + the 1000 cap keeps
+  // the fetch bounded; `count` stays exact so a capped page is visible as
+  // "1000 of N" rather than passing as complete.
   const { data, error, count } = await q
-    // Recent OR still in flight. toISOString() ends in 'Z', never the '+00:00'
-    // form PostgREST needs percent-encoded inside a filter value.
-    .or(`updated_at.gte.${since},status.in.(${ACTIVE_STATUSES.join(',')})`)
     .order('updated_at', { ascending: false })
     .limit(1000)
   if (error) throw error
@@ -455,7 +451,7 @@ export async function fetchIdeaCandidates(): Promise<IdeaPage> {
 }
 
 export type LaneProbe = {
-  // Rows matching the queue's real filter (recent-or-active).
+  // Rows matching the queue's real filter (the whole lane, since 2026-08-04).
   scoped: number
   // Rows in this lane, full stop. total > 0 && scoped === 0 means the filter ate
   // everything — a broken query, not an empty board. Neither the dashboard nor
@@ -464,19 +460,15 @@ export type LaneProbe = {
 }
 
 export async function fetchLaneProbe(lane: ContentLane): Promise<LaneProbe> {
-  const since = new Date(Date.now() - RECENT_DAYS * 86400_000).toISOString()
+  // The queue reads the whole lane now (see fetchContentDrafts), so scoped and
+  // total are the same probe — the shape survives because useContent and the
+  // blank-board diagnosis read both names.
   const f = laneFilter(lane)
-  const base = () => {
-    const q = supabase.from('carousel_drafts').select('id', { count: 'exact', head: true })
-    return f.op === 'is' ? q.is(f.column, null) : q.eq(f.column, f.value)
-  }
-  const [scopedRes, totalRes] = await Promise.all([
-    base().or(`updated_at.gte.${since},status.in.(${ACTIVE_STATUSES.join(',')})`),
-    base(),
-  ])
-  if (scopedRes.error) throw scopedRes.error
+  const q = supabase.from('carousel_drafts').select('id', { count: 'exact', head: true })
+  const totalRes = await (f.op === 'is' ? q.is(f.column, null) : q.eq(f.column, f.value))
   if (totalRes.error) throw totalRes.error
-  return { scoped: scopedRes.count ?? 0, total: totalRes.count ?? 0 }
+  const total = totalRes.count ?? 0
+  return { scoped: total, total }
 }
 
 // ---------- writes ----------

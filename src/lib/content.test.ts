@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  bucketDrafts, isStuckScheduled, laneFilter, draftLane, ACTIVE_STATUSES,
+  bucketDrafts, isStuckScheduled, laneFilter, draftLane,
   SKIP_STATUS, type ContentDraft,
   groupByStage, stageOf, countUndated, countBoardVisible,
   PIPELINE_STAGES, ALERT_STAGES, STAGE_LABEL,
@@ -132,14 +132,6 @@ describe('write vocabulary', () => {
   // a future edit from inventing a 'skipped' value the engine never reads.
   it('persists a skip as the dashboard\'s disqualified', () => {
     expect(SKIP_STATUS).toBe('disqualified')
-  })
-  it('keeps approved out of the active-status set by accident-proofing the list', () => {
-    // ACTIVE_STATUSES is what makes an old row still get fetched. Drop
-    // 'approved' from it and a 90-day-old approved-with-no-time backlog stops
-    // being fetched at all, which is exactly how it hid in the first place.
-    expect([...ACTIVE_STATUSES]).toContain('approved')
-    expect([...ACTIVE_STATUSES]).toContain('scheduled')
-    expect([...ACTIVE_STATUSES]).toContain('error')
   })
 })
 

@@ -808,6 +808,16 @@
   flex-basis:100%; margin:0; text-align:right;
   font-size:var(--fs-meta); color:var(--sev-urgent);
 }
+/* The row's ✕ — remove without opening. Quiet until hovered so a 285-row list
+   does not read as a wall of delete buttons; 28px hit target inside the band. */
+.wb.wb.wb .ct-x{
+  flex:none; width:28px; height:28px; padding:0;
+  display:inline-flex; align-items:center; justify-content:center;
+  background:none; border:0; border-radius:var(--r-ctl);
+  color:var(--text3); font-size:var(--fs-meta); line-height:1; cursor:pointer;
+}
+.wb.wb.wb .ct-x:hover{ background:var(--surface2); color:var(--sev-urgent) }
+.wb.wb.wb .ct-x:disabled{ opacity:.4; cursor:default }
 .wb.wb.wb .ct-card .ct-ac .btn{
   flex:none; padding:4px 10px; font-size:var(--fs-eyebrow); font-weight:600;
   letter-spacing:.04em; text-transform:uppercase; border-radius:var(--r-ctl);

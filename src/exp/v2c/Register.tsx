@@ -7,10 +7,11 @@ import { absTime } from './fmt'
 
 // The two registers.
 //
-// A register is a DOCUMENT, not a card: nothing here is truncated, clamped, or
-// hidden behind "Show more". The shipped pane clamped every log body to 5 lines
-// and read 3 of the 23 live `qa` keys, which is how a rewrite that changed what
-// actually shipped could sit in the row and be invisible on every surface.
+// A register is a DOCUMENT, not a card: nothing here is dropped. The QA
+// register still renders in full. The generation register FOLDS (2026-08-04,
+// Ivan: agents compressed, dashboard-v2 style): every entry is a one-line
+// summary that opens in place to the complete body — a fold announces there is
+// more, which is what the old silent 5-line clamp never did.
 
 function chipClass(status: string | null): string {
   if (status === 'PASS' || status === 'APPROVED') return 'ct-chip ct-chip-ok'
@@ -188,47 +189,56 @@ export function AgentRegister({ log }: { log: AgentLogEntry[] }) {
         </div>
       )}
 
+      {/* COMPRESSED, the dashboard-v2 way (Ivan, 2026-08-04: "make agent log
+          nicer to read like dashboard-v2 with the dif agents compressed").
+          Every entry is one line — who, the verdict chips, when, and a
+          single-line preview of what it said — and the full body (rewrite and
+          payload included) opens on that line. Nothing is dropped; it is
+          folded, which is the difference between this and the clamp the old
+          pane was criticised for: the fold SAYS there is more and opens in
+          place. */}
       <div className="dd-card">
         {log.map((e, i) => {
           const p = parseLogEntry(e)
           const since = gap(log[i - 1]?.ts ?? null, e.ts)
           return (
-            <div className="dd-log" key={i}>
-              <div className="dd-log-h">
-                {/* WHO. Unknown names render as themselves — the roster is
-                    enumerated from the data, never hardcoded. */}
-                <span className="dd-log-agent">{e.agent ?? 'Unattributed'}</span>
-                {p.status && <span className={chipClass(p.status)}>{p.status}</span>}
-                {p.score !== null && (
-                  <span className="ct-chip">{p.score}{p.scoreMax ? `/${p.scoreMax}` : ''}</span>
+            <details className="dd-logc" key={i}>
+              <summary className="dd-logc-s">
+                <span className="dd-logc-h">
+                  {/* WHO. Unknown names render as themselves — the roster is
+                      enumerated from the data, never hardcoded. */}
+                  <span className="dd-log-agent">{e.agent ?? 'Unattributed'}</span>
+                  {p.status && <span className={chipClass(p.status)}>{p.status}</span>}
+                  {p.score !== null && (
+                    <span className="ct-chip">{p.score}{p.scoreMax ? `/${p.scoreMax}` : ''}</span>
+                  )}
+                  {p.issues !== null && <span className="ct-chip">{p.issues} issues</span>}
+                  {isBackfillEntry(e) && <span className="ct-chip ct-chip-warn">backfill</span>}
+                  {e.source && !isBackfillEntry(e) && <span className="dd-log-src">{e.source}</span>}
+                  <span className="dd-logc-t">
+                    {e.ts ? absTime(e.ts) : 'no timestamp'}
+                    {/* Elapsed since the previous entry is what makes a stall
+                        legible — the proof row opens on a Stuck Sentinel entry
+                        23 minutes into silence. */}
+                    {since && <span className="dd-log-gap">{since}</span>}
+                  </span>
+                </span>
+                <span className="dd-logc-p">{p.text.replace(/\s+/g, ' ').trim() || '(empty entry)'}</span>
+              </summary>
+              <div className="dd-log">
+                {e.comment_id && <div className="dd-log-ts">{e.comment_id}</div>}
+                <div className="dd-body dd-pre">{p.text}</div>
+                {p.rewrite && (
+                  <div className="dd-log-rw"><div className="dd-body dd-pre">{p.rewrite}</div></div>
                 )}
-                {p.issues !== null && <span className="ct-chip">{p.issues} issues</span>}
-                {isBackfillEntry(e) && <span className="ct-chip ct-chip-warn">backfill</span>}
-                {e.source && !isBackfillEntry(e) && <span className="dd-log-src">{e.source}</span>}
+                {p.json && (
+                  <details className="dd-log-raw">
+                    <summary>payload</summary>
+                    <Val v={p.json} />
+                  </details>
+                )}
               </div>
-              <div className="dd-log-ts">
-                {e.ts ? absTime(e.ts) : 'no timestamp'}
-                {/* Elapsed since the previous entry is what makes a stall
-                    legible — the proof row opens on a Stuck Sentinel entry 23
-                    minutes into silence. */}
-                {since && <span className="dd-log-gap">{since}</span>}
-                {e.comment_id && <span className="dd-log-gap">{e.comment_id}</span>}
-              </div>
-              {/* In full. No clamp, no "Show more" — this is the register. */}
-              <div className="dd-body dd-pre">{p.text}</div>
-              {p.rewrite && (
-                <div className="dd-log-rw"><div className="dd-body dd-pre">{p.rewrite}</div></div>
-              )}
-              {p.json && (
-                // The raw payload stays reachable IN PLACE rather than being
-                // dropped: the dashboard slims it because it truncates to 160
-                // characters, and this surface does not truncate.
-                <details className="dd-log-raw">
-                  <summary>payload</summary>
-                  <Val v={p.json} />
-                </details>
-              )}
-            </div>
+            </details>
           )
         })}
       </div>
