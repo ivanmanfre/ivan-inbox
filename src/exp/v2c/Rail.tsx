@@ -18,7 +18,7 @@ import { relAge } from './Surface'
 // freed a mobile slot, so DMs left the group and became a destination on both
 // canvases. What remains grouped is what the label always described — the two
 // CONTENT lanes, posts and lead magnets.
-export const WORK_LANE_LABEL: Record<string, string> = { content: 'Content', magnets: 'Magnets' }
+export const WORK_LANE_LABEL: Record<string, string> = { content: 'Content', magnets: 'Magnets', styles: 'Styles' }
 
 export function WorkSegment({ job, counts, onJob }: {
   job: Job

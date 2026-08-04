@@ -36,6 +36,7 @@ function toQueueItem(d: ContentDraft): QueueItem {
 import { MobileTabs, Rail, WorkSegment } from './Rail'
 import { ContentList, type OpenDraft } from './ContentList'
 import { MagnetsList } from './MagnetsList'
+import { StylesList } from './StylesList'
 import type { OpenMagnet } from './ContentSections'
 import { DraftWindow, type QueueItem } from './DraftPane'
 import { MagnetWindow } from './MagnetWindow'
@@ -381,6 +382,11 @@ export default function Shell() {
           an action this surface does not offer. */}
       {job === 'magnets' && (
         <MagnetsList lane={lane} setLane={setLane} onOpen={openMagnet} />
+      )}
+      {/* Styles left the Content scroll the same way Magnets did (Ivan,
+          2026-08-04: "STYLES SHOULD BE A TAB"). Same shared lane state. */}
+      {job === 'styles' && (
+        <StylesList lane={lane} setLane={setLane} />
       )}
       {job === 'sends' && <SendsScreen client={sendsClient} setClient={setSendsClient} />}
       {job === 'ops' && opsSurface}

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { PullIndicator } from '../../components/PullIndicator'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import {
-  useAgentDigest, useContent, useIdeaCandidates, useScheduledQueue, useStyleRoster,
+  useAgentDigest, useContent, useIdeaCandidates, useScheduledQueue,
 } from '../../hooks/useContent'
 import {
   CONTENT_LANES, ERROR_ALARM_HOURS, LANE_LABEL, LANE_POSSESSIVE, PIPELINE_STAGES,
@@ -21,10 +21,7 @@ import { useConfirm } from '../../components/ConfirmSheet'
 import { ReviewActions } from './ReviewActions'
 import { FilteredEmpty } from './ContentBits'
 import { FilterRow } from './FilterRow'
-import {
-  IdeasSection, PillarMix, QueueStrip,
-  StyleRoster, SummariesSection,
-} from './ContentSections'
+import { IdeasSection, PillarMix, QueueStrip } from './ContentSections'
 import { relTime, sourceLabel, tagLabel, typeLabel } from './fmt'
 import { CalmEmpty, CapsuleChart, Failed, SectionHead } from './Surface'
 import { hasMock } from './mock'
@@ -444,15 +441,12 @@ function StageSection({ s, n, rows, lane, group, refresh, onOpen, openId, isOpen
   )
 }
 
-// 2026-08-03, Ivan: "compact stuff with collapsibles arrows... default-collapsed
-// for everything except what needs him". What needs him is exactly one stage:
-// `reviewActionable` is true only for status='review' on the Ivan lane
-// (content.ts), and the pipeline's own hero figure calls it "waiting on you".
-// Everything else is a backlog he opens on purpose.
-//
-// Was ['ideas','generating','review','approved'] — four sections, ~13,700px of
-// rows on the live lane, and the one that needed him was third.
-const DEFAULT_OPEN: ContentStage[] = ['review']
+// 2026-08-04, Ivan, reversing 08-03's default-collapsed rule: "LOOK HOW
+// ANNOYING IS NOW TO OPEN EVERYTHING COMPARED TO PREVIOUS DASHBOARD WHERE...
+// THINGS ARE DIRECTLY OPEN". The working stages open themselves; only the two
+// archives (published 109, archived 84) and the odd tails stay behind a click,
+// because those are the sections whose row count buries the work.
+const DEFAULT_OPEN: ContentStage[] = ['review', 'generating', 'approved', 'scheduled', 'error']
 
 // TRIAGE ORDER, not lifecycle order. The stage that needs Ivan goes first; the
 // rest keep the pipeline's own sequence behind it. Lifecycle order put Review
@@ -523,7 +517,6 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
   }, [filterStage])
   const ideas = useIdeaCandidates(true)
   const queue = useScheduledQueue(true)
-  const roster = useStyleRoster()
   const digest = useAgentDigest(true)
 
   // Deliberately built from the UNFILTERED stages: a filter may narrow the
@@ -661,15 +654,10 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
         />
       ))}
 
-      {/* The lead magnets LEFT this scroll entirely (usability-voice ask 1):
-          they are the Magnets job now. The Content scroll ends at the summary
-          sections below. */}
+      {/* Magnets left this scroll on 08-03; Styles followed on 08-04 (its own
+          job now) and the daily summaries moved to Ops. The Content scroll
+          ends at the pillar mix. */}
       <PillarMix rows={drafts} />
-      <StyleRoster
-        roster={roster.rows} laneRows={drafts} lane="ivan"
-        loading={roster.loading} error={roster.error} refresh={roster.refresh}
-      />
-      <SummariesSection rows={digest.rows} />
     </>
   )
 }
@@ -708,7 +696,10 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
   // 🔴 The composite key, and it MUST match projectOpen's KEY_RE
   // (/^[a-z][a-z0-9_]*$/ — sectionState.ts:65): a `group:stage` key would be
   // silently dropped on write and every section would reopen on reload.
-  const stageOpen = useOpenStages(open, setOpen, ['internal_review'])
+  const stageOpen = useOpenStages(open, setOpen, [
+    'internal_review', 'internal_generating', 'internal_approved', 'internal_scheduled',
+    'board_review', 'board_approved', 'board_scheduled',
+  ])
   // Same determinism rule as the Ivan lane: an active stage filter opens its section.
   // Same determinism rule as the Ivan lane, applied to BOTH categories: a
   // stage filter that opened only one of them would render a different row
@@ -720,8 +711,6 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
     stageOpen.ensure(`board_${filterStage}`)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterStage])
-  const roster = useStyleRoster()
-
   const specs = draftSpecs('risedtc')
   const facets = buildFacets(drafts, specs)
   // The same five prominent axes as Ivan's lane, deliberately WITHOUT `board`:
@@ -773,15 +762,9 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
             ))
         })}
 
-      {/* The lead-magnet lane left this scroll for the Magnets job (the
-          no-Mattan-ideas rule travels with it — lm_idea_candidates carries no
-          tenancy column, so only the Ivan lane has an idea stage there). */}
-      <StyleRoster
-        roster={roster.rows} laneRows={drafts} lane="risedtc"
-        loading={roster.loading} error={roster.error} refresh={roster.refresh}
-      />
-      {/* No pillar TARGET on this lane: the target constant is Ivan's editorial
-          strategy. Pillar renders here as a tag and a facet, with no target. */}
+      {/* The lead-magnet lane left this scroll for the Magnets job; Styles is
+          its own job now (08-04). No pillar TARGET on this lane either: the
+          target constant is Ivan's editorial strategy. */}
     </>
   )
 }
@@ -813,7 +796,10 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
   // that coming BACK to a lane restores the answer you left there, and a reload
   // no longer throws it away. Forgetting was never the safety property — not
   // crossing lanes was.
-  const [sect, setSect] = useSectionState(`content.posts.${lane}`)
+  // `posts2`, not `posts`: the 08-04 default-open reversal has to reach a
+  // browser whose stored `posts` entry carries the TOUCHED marker — the old
+  // key's answer would silently override the new defaults forever.
+  const [sect, setSect] = useSectionState(`content.posts2.${lane}`)
   const setFilters = (f: FilterState) => setSect(p => ({ ...p, filters: f }))
   const setQ = (q: string) => setSect(p => ({ ...p, q }))
   // Collapse state rides in the SAME per-lane section entry as the filters, so
