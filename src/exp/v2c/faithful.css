@@ -2353,11 +2353,14 @@
 .wb.wb.wb .ct-colv{ display:none }
 .wb.wb.wb .ct-cols-head{ display:none }
 @media (min-width:1000px){
+  /* Last track is max-content, NOT var(--tail-w): the tail now holds time +
+     Delete, and a fixed track made it overflow left ONTO the Approve button
+     (seen on shot-table-rows.png). */
   .wb.wb.wb .ct-card{
-    grid-template-columns:var(--anchor-w) minmax(0,1fr) 104px 84px 130px auto var(--tail-w);
+    grid-template-columns:var(--anchor-w) minmax(0,1fr) 104px 84px 130px auto max-content;
   }
   .wb.wb.wb .ct-card .ct-ac{ grid-column:6 }
-  .wb.wb.wb .ct-card .ct-tail{ grid-column:7 }
+  .wb.wb.wb .ct-card .ct-tail{ grid-column:7; min-width:0 }
   .wb.wb.wb .ct-colv{
     display:block; min-width:0;
     font-size:var(--fs-meta); color:var(--text2);
@@ -2365,7 +2368,7 @@
   }
   .wb.wb.wb .ct-cols-head{
     display:grid;
-    grid-template-columns:var(--anchor-w) minmax(0,1fr) 104px 84px 130px auto var(--tail-w);
+    grid-template-columns:var(--anchor-w) minmax(0,1fr) 104px 84px 130px auto max-content;
     column-gap:var(--anchor-gap);
     padding:8px var(--gut) 2px;
     font-size:var(--fs-eyebrow); font-weight:700; letter-spacing:.06em;
