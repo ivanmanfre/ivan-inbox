@@ -125,9 +125,9 @@ export default function Shell() {
   )
   const [focus, setFocus] = useState<string | null>(boot.focus)
   const [filter, setFilter] = useState<Filter>('all')
-  // The status axis of DMs. 'needs' — what the badge counts — is the view the
-  // surface opens on; the other buckets are one click away in the head.
-  const [status, setStatus] = useState<Status>('needs')
+  // The DMs view. 'needs' — what the badge counts — is the only one now: the
+  // head that switched between buckets was removed on 2026-08-04.
+  const [status] = useState<Status>('needs')
   const [sendsClient, setSendsClient] = useState<'all' | 'ivan' | 'risedtc'>('ivan')
   const [lane, setLane] = useState<ContentLane>('ivan')
   const [contentBump, setContentBump] = useState(0)
@@ -317,12 +317,10 @@ export default function Shell() {
   const dmsList = (
     <DmsSurface
       threads={inbox.threads}
-      opsDrafts={ops.drafts}
       filter={filter} setFilter={setFilter}
-      status={status} setStatus={setStatus}
+      status={status}
       refresh={inbox.refresh}
       onOpenThread={openThread}
-      onOpenOps={() => goJob('ops')}
       // The Shell is the surface that KNOWS there was no error (it renders
       // Failed below instead), so it is the one allowed to hand the list its
       // freshness.

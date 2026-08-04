@@ -5,8 +5,7 @@ import { PullIndicator } from '../../components/PullIndicator'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { blockedOps, claimingOps, outboundFeedId, pendingOps, sentOps, type OpsDraft } from '../../lib/ops'
 import { useCommentQueue } from '../../hooks/useCommentQueue'
-import { CalmEmpty, Failed, StackBar, relAge } from './Surface'
-import { FRESHNESS_COPY, freshnessOf, freshnessSeverity } from './freshness'
+import { CalmEmpty, Failed } from './Surface'
 
 // Ops, designed for the canvas it actually gets.
 //
@@ -30,55 +29,6 @@ import { FRESHNESS_COPY, freshnessOf, freshnessSeverity } from './freshness'
 //   3. TWO COLUMNS above 1000px — the queue on the left at a readable measure,
 //      the read-only history on the right, so neither has to stretch to 1240px
 //      and neither leaves the other's half black.
-
-function Tile({ n, label, sub, color, big }: {
-  n: number; label: string; sub?: string; color: string; big?: boolean
-}) {
-  return (
-    <div className={`wb-otile${big ? ' big' : ''}`}>
-      <div className="wb-otile-n" style={{ color: n === 0 ? 'var(--text3)' : color }}>{n}</div>
-      <div className="wb-otile-l">{label}</div>
-      {sub && <div className="wb-otile-s">{sub}</div>}
-    </div>
-  )
-}
-
-export function StateBand({ drafts, loadedAt, onRefresh }: {
-  drafts: OpsDraft[]; loadedAt: string | null; onRefresh: () => void
-}) {
-  const pending = pendingOps(drafts).length
-  const working = claimingOps(drafts).length
-  const done = sentOps(drafts).length
-  const blocked = blockedOps(drafts).length
-  const fresh = freshnessOf(loadedAt)
-  const sev = freshnessSeverity(fresh)
-  return (
-    <div className="wb-oband">
-      <div className="wb-otiles">
-        <Tile n={pending} label="waiting on you" color="var(--accent)" big
-          sub={pending === 0 ? 'queue clear' : 'approve, edit or discard'} />
-        <Tile n={working} label="working" color="var(--blue)"
-          sub={working > 0 ? 'the engine has these' : 'nothing mid-flight'} />
-        <Tile n={done} label="done" color="var(--text2)" sub="last 10 sent" />
-        <Tile n={blocked} label="blocked" color={blocked > 0 ? '#FF9F0A' : 'var(--text3)'}
-          sub={blocked > 0 ? 'read the reason' : 'none refused'} />
-      </div>
-      <StackBar parts={[
-        { key: 'waiting', n: pending, color: 'var(--accent)' },
-        { key: 'working', n: working, color: 'var(--blue)' },
-        { key: 'done', n: done, color: 'rgba(235,235,245,.4)' },
-        { key: 'blocked', n: blocked, color: '#FF9F0A' },
-      ]} />
-      <button type="button" className={`wb-ofresh ${sev}`} onClick={onRefresh}>
-        <span className="wb-ofresh-d" />
-        <span className="wb-ofresh-t">
-          {loadedAt ? `Checked ${relAge(loadedAt)} · ${FRESHNESS_COPY[fresh]}` : FRESHNESS_COPY[fresh]}
-        </span>
-        <span className="wb-ofresh-r">↻</span>
-      </button>
-    </div>
-  )
-}
 
 export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
   drafts: OpsDraft[]
@@ -141,7 +91,13 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
       {head}
       <div className="rows ops-rows" ref={rowsRef}>
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
-        <StateBand drafts={drafts} loadedAt={loadedAt} onRefresh={refresh} />
+        {/* The state band (four count tiles + stacked bar + freshness line) was
+            removed on 2026-08-04 at Ivan's word: on a queue he reads every day
+            it was four numbers describing what the cards under it already show.
+            The freshness claim survives where it is load-bearing — CalmEmpty
+            still says when it last checked, because an empty queue and a
+            stalled feed are the one pair this screen cannot tell apart on its
+            own (audit A5). StateBand stays exported and unmounted. */}
         {/* Two columns only when BOTH have something to hold. A queue of zero
             beside five history rows is the column-stranding the panel marked as
             v2b's weakness (300px of black under the short column); one centered

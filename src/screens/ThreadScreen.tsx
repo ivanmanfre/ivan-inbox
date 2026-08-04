@@ -183,7 +183,7 @@ export function ThreadScreen({ thread, onBack, refresh }: {
           return (
             <div key={m.id} style={{ display: 'contents' }}>
               {showDay && <div className="day">{label}</div>}
-              <div className="blbl r" style={lbl.failed ? { color: '#FF453A' } : undefined}>{lbl.text}</div>
+              <div className="blbl blbl-r" style={lbl.failed ? { color: '#FF453A' } : undefined}>{lbl.text}</div>
               {/* A reply Ivan or Mattan typed in the LinkedIn app carries a
                   different weight from one the engine sent, so it is MARKED and
                   not merely footnoted (2026-08-03: "manual replies from linkedin
