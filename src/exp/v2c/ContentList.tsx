@@ -25,7 +25,7 @@ import {
   IdeasSection, PillarMix, QueueStrip,
   StyleRoster, SummariesSection,
 } from './ContentSections'
-import { relTime, sourceLabel, typeLabel } from './fmt'
+import { relTime, sourceLabel, tagLabel, typeLabel } from './fmt'
 import { CalmEmpty, CapsuleChart, Failed, SectionHead } from './Surface'
 import { hasMock } from './mock'
 
@@ -144,9 +144,14 @@ function Card({ d, lane, refresh, onOpen, active, queue }: {
   // alert strip above.
   const stalled = isStuckGenerating(d)
   const genMins = stalled ? elapsedMinutes(generatingSince(d)) : null
-  // Ivan, 2026-08-04: "also add the source" — where the row came from, read
-  // from the same taxonomy.source dashboard-v2's editor header reads.
+  // Ivan, 2026-08-04: "also add the source" + "I ALSO WANT TO SEE THE POST
+  // TYPE TAGS LIKE TEARDOWN CASE STUDY ETC... BUT ALSO REACH, TRUST, ETC".
+  // Source and pillar come off taxonomy (the same fields dashboard-v2 reads),
+  // funnel off the row's own column. This deliberately reverses part of the
+  // earlier chip diet: the diet was the run's guess, these three are his ask.
   const src = taxonomyValue(d.taxonomy, 'source')
+  const pillar = taxonomyValue(d.taxonomy, 'pillar')
+  const funnel = d.funnel_stage?.trim() || null
   return (
     <div
       className={`ct-card ct-tap${active ? ' wb-card-on' : ''}${stalled ? ' ct-stalled' : ''}`}
@@ -186,6 +191,8 @@ function Card({ d, lane, refresh, onOpen, active, queue }: {
               </span>
             )}
           <span className="ct-chip">{typeLabel(d.type)}</span>
+          {pillar && <span className="ct-chip ct-chip-pillar" title={`pillar ${pillar}`}>{tagLabel(pillar)}</span>}
+          {funnel && <span className="ct-chip ct-chip-funnel" title={`funnel_stage ${funnel}`}>{tagLabel(funnel)}</span>}
           {src && <span className="ct-chip ct-chip-src" title={`taxonomy.source ${src}`}>{sourceLabel(src)}</span>}
         </div>
       </div>

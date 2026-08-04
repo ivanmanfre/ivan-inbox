@@ -72,3 +72,14 @@ const SOURCE_LABEL: Record<string, string> = {
 export function sourceLabel(s: string): string {
   return SOURCE_LABEL[s] ?? s
 }
+
+// A raw taxonomy slug ('case_study', 'reach') as a reading label ('Case Study',
+// 'Reach'). Generic on purpose: the pillar and funnel vocabularies are the
+// engine's to grow, and an unmapped value must render, not vanish.
+export function tagLabel(s: string): string {
+  return s
+    .split(/[_\s]+/)
+    .filter(Boolean)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
+}
