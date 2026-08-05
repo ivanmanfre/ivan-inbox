@@ -2395,3 +2395,27 @@
 .wb.wb.wb .wb-rail.min .wb-sync-t{ display:none }
 .wb.wb.wb .wb-rail.min .wb-rj{ justify-content:center; padding:10px 0 }
 .wb.wb.wb .wb-rail.min .wb-rail-grp{ padding-left:0 }
+
+/* ==========================================================================
+   AUDIT FIXES 2026-08-05 (full-surface screenshot pass, 8 jobs × 4 viewports)
+   ========================================================================== */
+
+/* 🔴 THE CAPSULE CHART MUST FIT ITS CARD. Measured at 390: the lead-magnet lane
+   draws SIX stages at a fixed 56px basis + 14px gaps = 406px of plot inside a
+   294px card, so the last stage was clipped off the right edge (m390-magnets).
+   The post lane draws four and fits, which is why this survived until a lane
+   with more stages was screenshotted. The marks now SHARE the width instead of
+   demanding it, so the chart fits at any stage count; the 34px floor keeps a
+   two-digit value capsule legible and the labels already ellipsize. */
+@media (max-width:760px){
+  .wb.wb.wb .wb-caps, .wb.wb.wb .wb-caps-x{ gap:8px; max-width:100% }
+  .wb.wb.wb .wb-cap, .wb.wb.wb .wb-cap-0, .wb.wb.wb .wb-caps-xl{
+    flex:1 1 0; min-width:34px;
+  }
+}
+
+/* The last sub-11px type in the app. The 08-04 bump raised the TOKENS, but
+   these were hardcoded and escaped it — the filter pill's count rendered at
+   9px on every surface and every viewport (6 of them on Content). 11px is the
+   eyebrow tier, which is the floor this sheet uses everywhere else. */
+.wb.wb.wb .wb-fpill i{ font-size:var(--fs-eyebrow) }
