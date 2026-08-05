@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { Avatar } from '../components/Avatar'
 import { PullIndicator } from '../components/PullIndicator'
+import { SystemAlertStrip } from '../components/SystemAlertStrip'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useToday, type TodayHealth } from '../hooks/useToday'
 import { acceptRate, laneLabel, type GovernorRow } from '../lib/kpis'
@@ -671,6 +672,11 @@ export function TodayScreen({ onOpenDrafts, onOpenOps }: {
 
       <div className="rows td-rows" ref={rowsRef}>
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
+        {/* Above the masthead and above every zone, because an expiring OAuth
+            grant outranks the day's queue: the queue waits, a lapsed grant
+            cannot be recovered without the client clicking a new link. Renders
+            nothing at all when nothing is open. */}
+        <SystemAlertStrip />
         <Masthead c={counts} plate={t.brief ? plate : null} syncedAt={syncedAt} stale={stale} />
 
         {t.authError && (
