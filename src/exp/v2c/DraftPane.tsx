@@ -3,7 +3,7 @@ import { useDraftDetail } from '../../hooks/useContent'
 import { useSectionState } from '../../hooks/useSectionState'
 import { useConfirm } from '../../components/ConfirmSheet'
 import {
-  ClientRpcError, DraftSaveConflict, LANE_LABEL, STAGE_LABEL, approveDraft, boardGroupOf,
+  ClientRpcError, DraftSaveConflict, LANE_LABEL, STAGE_LABEL, approveDraft, boardGroupOf, groupLogByAgent,
   canPromote, canUnpromote, clientDeletable, clientEditable, clientStageLabel, deleteClientDraft,
   deleteDraft, normalizeAgentLog, normalizeImageUrls, normalizeKeyPoints, normalizeQa,
   normalizeSourceDetail, reviewActionable, saveClientDraftBody, saveDraftBody, selfContainedHtml,
@@ -469,6 +469,9 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
   const tax = taxonomyFields(d.taxonomy)
   const extras = taxonomyExtras(d.taxonomy)
   const log = normalizeAgentLog(d.agent_log)
+  // The section header counts AGENTS, because that is what the register now
+  // renders — 43 entries from 14 agents reads as "14", not as "43".
+  const agentCount = groupLogByAgent(log).length
   const qa = normalizeQa(d.qa)
   const points = normalizeKeyPoints(d.key_points)
   const images = normalizeImageUrls(d.image_urls)
@@ -1069,7 +1072,8 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
         </Sec>
       )}
 
-      <Sec k="log" label="Generation register" tail={log.length ? `${log.length}` : 'note only'}
+      <Sec k="log" label="Generation register"
+        tail={log.length ? `${agentCount} agent${agentCount === 1 ? '' : 's'}` : 'note only'}
         open={open} toggle={toggle}>
         <AgentRegister log={log} />
         {lane === 'ivan' && <NoteComposer id={d.id} onDone={refresh} />}
