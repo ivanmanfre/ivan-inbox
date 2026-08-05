@@ -657,6 +657,21 @@
 /* the compressed register row (dashboard-v2 style, 2026-08-04): one line per
    entry — agent · chips · time · single-line preview — the full body folds
    open in place. */
+/* THE AGENT GROUP — outer fold. One row per agent, however many passes it ran
+   (2026-08-04: 43 entries from 14 agents on the richest live draft). */
+.dd-agrp{border-bottom:.5px solid var(--sep)}
+.dd-agrp:last-child{border-bottom:none}
+.dd-agrp-s{display:flex;align-items:center;gap:7px;flex-wrap:wrap;
+  padding:10px 0;cursor:pointer;list-style:none}
+.dd-agrp-s::-webkit-details-marker{display:none}
+.dd-agrp-s:hover .dd-log-agent{color:var(--accent)}
+.dd-agrp-g{flex:none;width:18px;text-align:center;color:var(--text3);font-size:12px}
+.dd-agrp-n{font-size:11px;font-weight:800;color:var(--text3);letter-spacing:.02em}
+.dd-agrp-t{margin-left:auto;font-size:11px;font-weight:700;color:var(--text3);
+  letter-spacing:.02em;white-space:nowrap}
+/* the passes, indented under their agent so the nesting is legible */
+.dd-agrp-b{padding-left:25px;border-left:1px solid var(--sep);margin:0 0 8px 8px}
+
 .dd-logc{border-bottom:.5px solid var(--sep)}
 .dd-logc:last-child{border-bottom:none}
 .dd-logc-s{display:block;padding:9px 0;cursor:pointer;list-style:none}
@@ -874,7 +889,12 @@
    232 + 640 + 340 + two gaps + padding. Below that it is the old one-column
    reading surface, which was never the problem. */
 @media (min-width:1180px){
-  .wb-tk{flex:0 1 1380px}
+  /* 🔴 GROW, don't sit at 1380 (Ivan, 2026-08-05: "the content window when its
+     full screen it breaks and gets all black"). `flex:0 1 1380px` cannot grow,
+     so on a full-screen 2560px display the window stayed 1380px and ~1,180px
+     of the screen was dimmed scrim — measured, not guessed. It fills the space
+     now, with a ceiling so the reader never runs to a 2,500px line. */
+  .wb-tk{flex:1 1 1380px; max-width:1760px}
   .wb-tkscrim{padding:22px 26px}
 }
 
@@ -907,6 +927,15 @@
   .wb.wb.wb .dw-queue{border-right:.5px solid var(--sep)}
   .wb.wb.wb .dw-insp{border-left:.5px solid var(--sep)}
   .wb.wb.wb .dw-main-in{max-width:640px;margin:0 auto}
+}
+
+/* Where the extra width goes once the window can grow. NOT to the artifact:
+   640px is the LinkedIn-faithful measure and widening it would make the
+   preview lie about how the post will look. It goes to the two rails, which
+   hold the queue titles and the QA/register text that actually wants room. */
+@media (min-width:1700px){
+  .wb.wb.wb .dw-cols{grid-template-columns:280px minmax(0,1fr) minmax(420px,520px)}
+  .wb.wb.wb .dw-cols.dw-norail{grid-template-columns:minmax(0,1fr) minmax(420px,520px)}
 }
 
 /* ---- the queue rail: j/k made visible ---- */

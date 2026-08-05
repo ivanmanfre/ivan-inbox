@@ -7,7 +7,7 @@ import {
   normalizeAgentLog, normalizeQa, taxonomyFields, normalizeKeyPoints,
   normalizeImageUrls, reviewActionable,
   CONTENT_LANES, LANE_LABEL, LANE_POSSESSIVE, isBackfillEntry, parseLogEntry,
-  scoreProgression, normalizeSourceDetail, taxonomyExtras, taxonomyValue, queueFailed,
+  scoreProgression, groupLogByAgent, normalizeSourceDetail, taxonomyExtras, taxonomyValue, queueFailed,
   stampHumanEdit, stampOperatorDelete, operatorDeleted, selfContainedHtml,
   errorAt, isRecentError, ERROR_ALARM_HOURS,
 } from './content'
@@ -448,6 +448,69 @@ describe('parseLogEntry', () => {
       { body: 'VERDICT: REWRITE_OK SCORE: 74/90', agent: 'QA Agent' },
     ])
     expect(scoreProgression(log).map(s => s.score)).toEqual([68, 74])
+  })
+
+  // 🔴 The live QA body: a total on a scale the bare pattern never knew, and a
+  // "Scores:" block of ten-point subscores directly under it. Before the
+  // anchored patterns, this returned 7/10 — the VOICE subscore — as the post's
+  // score, which is a wrong number rather than a missing one.
+  it('reads the total off any scale and never off a subscore', () => {
+    const qa = parseLogEntry(entry(
+      'VERDICT: NEEDS_REGENERATE (total 93/120)\n\nScores:\n VOICE: 7/10\n SUBSTANCE: 7/10',
+    ))
+    expect(qa.score).toBe(93)
+    expect(qa.scoreMax).toBe(120)
+  })
+  it('reads a parenthesised score, the regen loop\'s own form', () => {
+    const p = parseLogEntry(entry('Attempt 1/2: RECOVERED on the QA rewrite (74/90, clears floor 60).'))
+    expect(p.score).toBe(74)
+    expect(p.scoreMax).toBe(90)
+  })
+})
+
+describe('groupLogByAgent — the register compressed (Ivan, 2026-08-04)', () => {
+  const log = normalizeAgentLog([
+    { body: 'promoted', agent: 'Promoter', ts: '2026-07-25T12:00:00Z' },
+    { body: 'VERDICT: PASS', agent: 'Lint Gate', ts: '2026-07-25T12:13:00Z' },
+    { body: 'VERDICT: NEEDS_REGENERATE (total 62/90)', agent: 'QA Agent', ts: '2026-07-25T12:19:00Z' },
+    { body: 'VERDICT: FAIL', agent: 'Lint Gate', ts: '2026-07-30T10:48:00Z' },
+    { body: 'VERDICT: NEEDS_REGENERATE (total 93/120)', agent: 'QA Agent', ts: '2026-07-30T11:30:00Z' },
+    { body: 'VERDICT: PASS', agent: 'Lint Gate', ts: '2026-08-03T15:31:00Z' },
+    { body: 'unattributed note' },
+  ])
+
+  it('collapses repeats of one agent into a single group', () => {
+    const g = groupLogByAgent(log)
+    expect(g).toHaveLength(4)
+    expect(g.map(x => x.agent)).toEqual(['Promoter', 'Lint Gate', 'QA Agent', null])
+    expect(g[1].entries).toHaveLength(3)
+  })
+  it('orders groups by first appearance, so the pipeline still reads in order', () => {
+    expect(groupLogByAgent(log)[0].agent).toBe('Promoter')
+  })
+  it('carries the LAST status, because a gate that failed then passed passed', () => {
+    const lint = groupLogByAgent(log).find(g => g.agent === 'Lint Gate')!
+    expect(lint.status).toBe('PASS')
+  })
+  it('collects every score in order, across scales', () => {
+    const qa = groupLogByAgent(log).find(g => g.agent === 'QA Agent')!
+    expect(qa.scores).toEqual([62, 93])
+    expect(qa.scoreMax).toBe(120)
+  })
+  it('spans first to last timestamp', () => {
+    const lint = groupLogByAgent(log).find(g => g.agent === 'Lint Gate')!
+    expect(lint.firstTs).toBe('2026-07-25T12:13:00Z')
+    expect(lint.lastTs).toBe('2026-08-03T15:31:00Z')
+  })
+  it('keeps unattributed entries as their own group rather than dropping them', () => {
+    expect(groupLogByAgent(log).find(g => g.agent === null)!.entries).toHaveLength(1)
+  })
+  it('preserves original indices so the entry rows keep their position', () => {
+    const qa = groupLogByAgent(log).find(g => g.agent === 'QA Agent')!
+    expect(qa.entries.map(e => e.i)).toEqual([2, 4])
+  })
+  it('is empty for an empty log', () => {
+    expect(groupLogByAgent([])).toEqual([])
   })
 })
 
