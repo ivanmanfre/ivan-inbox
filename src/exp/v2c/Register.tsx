@@ -160,18 +160,22 @@ export function AgentRegister({ log }: { log: AgentLogEntry[] }) {
   const steps = scoreProgression(log)
   const groups = groupLogByAgent(log)
   const backfilled = log.filter(isBackfillEntry).length
-  const delta = steps.length > 1 ? steps[steps.length - 1].score - steps[0].score : null
+  // 🔴 A DELTA ACROSS TWO SCALES IS A WRONG NUMBER. The live proof row runs
+  // Promoter 8/10 → QA 50/90 → QA Regen 102/120, and last-minus-first printed
+  // "+42 since first pass" — arithmetic on three different denominators, which
+  // reads as a climb that was never measured. The delta only appears when the
+  // first and last step were scored on the SAME scale; the steps themselves
+  // each carry their own denominator and stay visible either way.
+  const first = steps[0]
+  const last = steps[steps.length - 1]
+  const delta = steps.length > 1 && first.max === last.max ? last.score - first.score : null
 
   return (
-    <Block
-      label="Generation register"
-      tail={`${groups.length} agent${groups.length === 1 ? '' : 's'} · ${log.length} entries`}
-    >
-      {backfilled > 0 && (
-        <div className="ct-subtle">
-          {backfilled} of {log.length} entries were reconstructed from ClickUp, not live agent steps
-        </div>
-      )}
+    <>
+      <div className="ct-subtle">
+        {groups.length} agent{groups.length === 1 ? '' : 's'} · {log.length} entries
+        {backfilled > 0 && ` · ${backfilled} reconstructed from ClickUp, not live agent steps`}
+      </div>
 
       {steps.length > 1 && (
         // The score progression across attempts, which is what makes a
@@ -203,7 +207,7 @@ export function AgentRegister({ log }: { log: AgentLogEntry[] }) {
       <div className="dd-card">
         {groups.map((g, gi) => <AgentGroupRow key={gi} g={g} log={log} />)}
       </div>
-    </Block>
+    </>
   )
 }
 
