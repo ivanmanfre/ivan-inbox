@@ -1,6 +1,6 @@
 import {
-  isBackfillEntry, parseLogEntry, scoreProgression,
-  type AgentLogEntry, type QaSummary,
+  groupLogByAgent, isBackfillEntry, parseLogEntry, scoreProgression,
+  type AgentGroup, type AgentLogEntry, type QaSummary,
 } from '../../lib/content'
 import { Block, KeyRows, Rows, Val } from './ContentBits'
 import { absTime } from './fmt'
@@ -158,16 +158,20 @@ export function QaRegister({ qa }: { qa: QaSummary }) {
 export function AgentRegister({ log }: { log: AgentLogEntry[] }) {
   if (log.length === 0) return null
   const steps = scoreProgression(log)
-  const named = log.filter(e => e.agent).length
+  const groups = groupLogByAgent(log)
   const backfilled = log.filter(isBackfillEntry).length
   const delta = steps.length > 1 ? steps[steps.length - 1].score - steps[0].score : null
 
   return (
-    <Block label="Generation register" tail={`${log.length} entries`}>
-      <div className="ct-subtle">
-        {named} of {log.length} entries name the agent that wrote them
-        {backfilled > 0 && ` · ${backfilled} reconstructed from ClickUp, not live agent steps`}
-      </div>
+    <Block
+      label="Generation register"
+      tail={`${groups.length} agent${groups.length === 1 ? '' : 's'} · ${log.length} entries`}
+    >
+      {backfilled > 0 && (
+        <div className="ct-subtle">
+          {backfilled} of {log.length} entries were reconstructed from ClickUp, not live agent steps
+        </div>
+      )}
 
       {steps.length > 1 && (
         // The score progression across attempts, which is what makes a
@@ -189,59 +193,115 @@ export function AgentRegister({ log }: { log: AgentLogEntry[] }) {
         </div>
       )}
 
-      {/* COMPRESSED, the dashboard-v2 way (Ivan, 2026-08-04: "make agent log
-          nicer to read like dashboard-v2 with the dif agents compressed").
-          Every entry is one line — who, the verdict chips, when, and a
-          single-line preview of what it said — and the full body (rewrite and
-          payload included) opens on that line. Nothing is dropped; it is
-          folded, which is the difference between this and the clamp the old
-          pane was criticised for: the fold SAYS there is more and opens in
-          place. */}
+      {/* COMPRESSED BY AGENT (Ivan, 2026-08-04: "the dif agents compressed").
+          Two folds, not one. Measured on the live lane: the richest draft is 43
+          entries from 14 agents, so the first fold turns 43 peer rows into 14
+          agent rows — each carrying that agent's own passes, its final verdict
+          and its score run — and the second opens a single pass to its complete
+          body. Nothing is dropped, and a fold announces what it holds, which is
+          what the silent 5-line clamp never did. */}
       <div className="dd-card">
-        {log.map((e, i) => {
-          const p = parseLogEntry(e)
-          const since = gap(log[i - 1]?.ts ?? null, e.ts)
-          return (
-            <details className="dd-logc" key={i}>
-              <summary className="dd-logc-s">
-                <span className="dd-logc-h">
-                  {/* WHO. Unknown names render as themselves — the roster is
-                      enumerated from the data, never hardcoded. */}
-                  <span className="dd-log-agent">{e.agent ?? 'Unattributed'}</span>
-                  {p.status && <span className={chipClass(p.status)}>{p.status}</span>}
-                  {p.score !== null && (
-                    <span className="ct-chip">{p.score}{p.scoreMax ? `/${p.scoreMax}` : ''}</span>
-                  )}
-                  {p.issues !== null && <span className="ct-chip">{p.issues} issues</span>}
-                  {isBackfillEntry(e) && <span className="ct-chip ct-chip-warn">backfill</span>}
-                  {e.source && !isBackfillEntry(e) && <span className="dd-log-src">{e.source}</span>}
-                  <span className="dd-logc-t">
-                    {e.ts ? absTime(e.ts) : 'no timestamp'}
-                    {/* Elapsed since the previous entry is what makes a stall
-                        legible — the proof row opens on a Stuck Sentinel entry
-                        23 minutes into silence. */}
-                    {since && <span className="dd-log-gap">{since}</span>}
-                  </span>
-                </span>
-                <span className="dd-logc-p">{p.text.replace(/\s+/g, ' ').trim() || '(empty entry)'}</span>
-              </summary>
-              <div className="dd-log">
-                {e.comment_id && <div className="dd-log-ts">{e.comment_id}</div>}
-                <div className="dd-body dd-pre">{p.text}</div>
-                {p.rewrite && (
-                  <div className="dd-log-rw"><div className="dd-body dd-pre">{p.rewrite}</div></div>
-                )}
-                {p.json && (
-                  <details className="dd-log-raw">
-                    <summary>payload</summary>
-                    <Val v={p.json} />
-                  </details>
-                )}
-              </div>
-            </details>
-          )
-        })}
+        {groups.map((g, gi) => <AgentGroupRow key={gi} g={g} log={log} />)}
       </div>
     </Block>
+  )
+}
+
+// A glyph per agent, purely presentational, with a fallback that means the
+// roster stays the DATA's (36 distinct names are live and growing) — an unknown
+// agent renders with the generic mark and its own name, never as "unknown".
+const AGENT_GLYPH: [RegExp, string][] = [
+  [/give-?up|halt|stuck|error/i, '⚠'],
+  [/qa|verdict|gate|lint|claim|slop|forbidden/i, '✓'],
+  [/regen|loop|rewrit/i, '↻'],
+  [/hook|content|editorial|caption|structur/i, '✎'],
+  [/image|cover|video/i, '◧'],
+  [/publish|schedul|promot/i, '↑'],
+  [/ivan|operator/i, '☺'],
+]
+
+function glyphFor(agent: string | null): string {
+  if (!agent) return '·'
+  for (const [re, g] of AGENT_GLYPH) if (re.test(agent)) return g
+  return '◆'
+}
+
+function AgentGroupRow({ g, log }: { g: AgentGroup; log: AgentLogEntry[] }) {
+  const n = g.entries.length
+  // The score run is the whole reason to group: 62 → 93 → 90 across four passes
+  // is a story, and three separate rows is not.
+  const run = g.scores.length > 1
+    ? `${g.scores.join(' → ')}${g.scoreMax ? `/${g.scoreMax}` : ''}`
+    : g.scores.length === 1
+      ? `${g.scores[0]}${g.scoreMax ? `/${g.scoreMax}` : ''}`
+      : null
+  const span = g.firstTs
+    ? (g.lastTs && g.lastTs !== g.firstTs
+      ? `${absTime(g.firstTs)} → ${absTime(g.lastTs)}`
+      : absTime(g.firstTs))
+    : 'no timestamp'
+  return (
+    <details className="dd-agrp">
+      <summary className="dd-agrp-s">
+        <span className="dd-agrp-g" aria-hidden>{glyphFor(g.agent)}</span>
+        <span className="dd-log-agent">{g.agent ?? 'Unattributed'}</span>
+        {n > 1 && <span className="dd-agrp-n">×{n}</span>}
+        {g.status && <span className={chipClass(g.status)}>{g.status}</span>}
+        {run && <span className="ct-chip">{run}</span>}
+        <span className="dd-agrp-t">{span}</span>
+      </summary>
+      <div className="dd-agrp-b">
+        {g.entries.map(({ entry, i }) => (
+          <LogEntryRow key={i} e={entry} prev={log[i - 1] ?? null} />
+        ))}
+      </div>
+    </details>
+  )
+}
+
+function LogEntryRow({ e, prev }: { e: AgentLogEntry; prev: AgentLogEntry | null }) {
+  const p = parseLogEntry(e)
+  // Elapsed since the previous entry IN THE WHOLE LOG, not since this agent's
+  // last pass — what makes a stall legible is the silence on the pipeline, and
+  // the proof row opens on a Stuck Sentinel 23 minutes into one.
+  const since = gap(prev?.ts ?? null, e.ts)
+  return (
+    <details className="dd-logc">
+      <summary className="dd-logc-s">
+        <span className="dd-logc-h">
+          {p.status && <span className={chipClass(p.status)}>{p.status}</span>}
+          {p.score !== null && (
+            <span className="ct-chip">{p.score}{p.scoreMax ? `/${p.scoreMax}` : ''}</span>
+          )}
+          {p.issues !== null && <span className="ct-chip">{p.issues} issues</span>}
+          {isBackfillEntry(e) && <span className="ct-chip ct-chip-warn">backfill</span>}
+          {e.source && !isBackfillEntry(e) && <span className="dd-log-src">{e.source}</span>}
+          <span className="dd-logc-t">
+            {e.ts ? absTime(e.ts) : 'no timestamp'}
+            {since && <span className="dd-log-gap">{since}</span>}
+          </span>
+        </span>
+        {/* The first LINE of the humanised body, never the first 110 characters
+            of it: a QA body opens "VERDICT: NEEDS_REGENERATE (total 93/120)"
+            and then runs 13,000 characters, so the line IS the summary and a
+            character count would cut it mid-verdict. */}
+        <span className="dd-logc-p">
+          {p.text.split('\n').map(l => l.trim()).find(Boolean)?.slice(0, 160) || '(empty entry)'}
+        </span>
+      </summary>
+      <div className="dd-log">
+        {e.comment_id && <div className="dd-log-ts">{e.comment_id}</div>}
+        <div className="dd-body dd-pre">{p.text}</div>
+        {p.rewrite && (
+          <div className="dd-log-rw"><div className="dd-body dd-pre">{p.rewrite}</div></div>
+        )}
+        {p.json && (
+          <details className="dd-log-raw">
+            <summary>payload</summary>
+            <Val v={p.json} />
+          </details>
+        )}
+      </div>
+    </details>
   )
 }

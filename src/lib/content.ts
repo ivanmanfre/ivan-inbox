@@ -1393,7 +1393,18 @@ export function parseLogEntry(e: AgentLogEntry): LogParse {
     : verdict
       ? (verdict[1].toUpperCase() as LogStatus)
       : approved ? 'APPROVED' : null
-  const score = first(/\bSCORE\s*:?\s*(\d{1,3})(?:\s*\/\s*(\d{1,3}))?/i)
+  // SCORE, in the four shapes the engines actually emit. Order is by how
+  // specific the anchor is, and the two anchored forms come FIRST for a
+  // measured reason: the QA gate's own summary is "(total 93/120)" followed by
+  // a "Scores:" block of "VOICE: 7/10" subscores, and the bare fallback below
+  // only knows the /90 and /100 scales — so on a /120 row it skipped the total
+  // and reported 7/10, the VOICE subscore, as the post's score. Live denominators
+  // measured 2026-08-05 across every Ivan-lane log: 90 (101), 120 (59), 80 (30),
+  // 70 (5). The anchored forms take any denominator and cannot drift onto a
+  // subscore; the bare form stays scale-limited because it has no anchor.
+  const score = first(/\btotal\s+(\d{1,3})\s*\/\s*(\d{1,3})\b/i)
+    ?? first(/\((\d{1,3})\s*\/\s*(\d{1,3})\s*[,)]/)
+    ?? first(/\bSCORE\s*:?\s*(\d{1,3})(?:\s*\/\s*(\d{1,3}))?/i)
     ?? first(/\b(\d{1,3})\s*\/\s*(90|100|10)\b/)
   const issues = first(/\bISSUES?\s*:\s*(\d+)/i)
   const iter = first(/\b(?:iteration|attempt|regeneration attempt)\D{0,12}?(\d+)/i)
@@ -1427,6 +1438,63 @@ export function scoreProgression(log: AgentLogEntry[]): ScoreStep[] {
     if (p.score !== null) out.push({ i, score: p.score, max: p.scoreMax, agent: e.agent })
   })
   return out
+}
+
+// ---------- the register, compressed BY AGENT ----------
+//
+// Ivan, 2026-08-04: "make agent log nicer to read... with the dif agents
+// compressed". Measured on the live lane: the richest draft carries 43 entries
+// from 14 distinct agents across four generation passes, and QA Agent bodies
+// average 7,206 characters. Forty-three peer rows is not a register anyone
+// reads; fourteen agent rows that each open to their own passes is.
+//
+// The grouping key is the agent NAME and nothing else, so an agent that ran in
+// four separate passes is ONE row carrying four entries — which is exactly the
+// question the log gets asked ("what did QA say, across the attempts").
+// Unattributed entries group together under a null agent rather than being
+// dropped or scattered.
+//
+// Order is FIRST APPEARANCE, so the groups still read as the pipeline ran:
+// Promoter first, QA Give-Up last. Sorting by count or by score would put the
+// story out of order to save a row.
+export type AgentGroup = {
+  agent: string | null
+  // Original log indices, preserved: the entry rows still need their position
+  // for the elapsed-time gap and for a stable key.
+  entries: { entry: AgentLogEntry; i: number }[]
+  firstTs: string | null
+  lastTs: string | null
+  // The LAST status the agent reached — a gate that failed twice and then
+  // passed is a pass, and the group header should say so.
+  status: LogStatus | null
+  scores: number[]
+  scoreMax: number | null
+}
+
+export function groupLogByAgent(log: AgentLogEntry[]): AgentGroup[] {
+  const order: (string | null)[] = []
+  const byAgent = new Map<string | null, AgentGroup>()
+  log.forEach((entry, i) => {
+    const key = entry.agent ?? null
+    let g = byAgent.get(key)
+    if (!g) {
+      g = { agent: key, entries: [], firstTs: null, lastTs: null, status: null, scores: [], scoreMax: null }
+      byAgent.set(key, g)
+      order.push(key)
+    }
+    g.entries.push({ entry, i })
+    const p = parseLogEntry(entry)
+    if (p.status) g.status = p.status
+    if (p.score !== null) {
+      g.scores.push(p.score)
+      if (p.scoreMax !== null) g.scoreMax = p.scoreMax
+    }
+    if (entry.ts) {
+      if (!g.firstTs) g.firstTs = entry.ts
+      g.lastTs = entry.ts
+    }
+  })
+  return order.map(k => byAgent.get(k)!)
 }
 
 export type QaRegenAttempt = {
