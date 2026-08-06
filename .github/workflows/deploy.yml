@@ -20,7 +20,4 @@ jobs:
     runs-on: ubuntu-latest
     environment: { name: github-pages }
     steps:
-      # Pages sat in `deployment_queued` past the action's 10-minute default twice
-      # on 2026-08-06 and aborted a green build. 30 minutes rides it out.
       - uses: actions/deploy-pages@v4
-        with: { timeout: 1800000 }
