@@ -18,6 +18,9 @@ export type OpsContext = {
   expires_at?: string
   slot?: string
   incumbent_moved_to?: string
+  // Stamped by the claim workflow when it stops at the draft (the default): the
+  // post is in the board's review buffer and nothing was scheduled.
+  buffered?: boolean
   // weekly_report
   week?: string
   report_url?: string
@@ -51,8 +54,10 @@ export type OpsContext = {
   [key: string]: unknown
 }
 
-// Newsjack cards are not Slack-bound: approving one fires generation and claims the
-// next publish slot on the matching engine. Same table, different destination.
+// Newsjack cards are not Slack-bound: approving one fires generation on the matching
+// engine and leaves the draft in that board's review buffer. Same table, different
+// destination. (The queue-jump it used to do is now opt-in, off by default:
+// integration_config.newsjack_auto_jump.)
 export const ENGINE_LABEL: Record<string, string> = { ivan: 'your feed', risedtc: 'Rise' }
 export function engineLabel(clientId: string): string {
   return ENGINE_LABEL[clientId] ?? clientId
@@ -121,8 +126,9 @@ export function pendingDmLaneOps(rows: OpsDraft[], now = Date.now()): OpsDraft[]
 }
 
 // Approved but not yet done. Slack rows sit here for ~2 minutes; a newsjack sits here
-// while it generates and QA-gates, which can run to an hour — without this group the
-// card would just vanish on approve and look like nothing happened.
+// while it generates and QA-gates (it clears once the draft is in the buffer), which
+// can run to an hour — without this group the card would just vanish on approve and
+// look like nothing happened.
 export function claimingOps(rows: OpsDraft[]): OpsDraft[] {
   return rows
     .filter(d => d.approved_at && !d.sent_at && !d.send_blocked_reason)
