@@ -189,9 +189,15 @@ export function ThreadScreen({ thread, onBack, refresh }: {
                   not merely footnoted (2026-08-03: "manual replies from linkedin
                   are also highlighted on the chat view"). It is also the only
                   evidence the mirror leaves of a hand-sent message. */}
-              <div className={`b out${m.ai_model === 'manual_mirror' ? ' manual' : ''}`}>
-                <Linkified text={m.message_text} />
-              </div>
+              {/* The dispatcher stores a multi-bubble reply as ONE row whose bubbles are
+                  joined by "\n---\n", but LinkedIn delivers one bubble per segment. Render
+                  it the way the recipient actually saw it; otherwise the separator shows up
+                  as a literal "---" line in the thread (Chas Waters, 2026-08-05). */}
+              {(m.message_text ?? '').split('\n---\n').map((part, i) => (
+                <div key={i} className={`b out${m.ai_model === 'manual_mirror' ? ' manual' : ''}`}>
+                  <Linkified text={part} />
+                </div>
+              ))}
             </div>
           )
         })}
