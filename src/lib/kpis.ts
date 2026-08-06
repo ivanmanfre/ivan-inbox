@@ -22,6 +22,12 @@ export type GovernorRow = {
   gov_used?: number | null; gov_cap?: number | null // raw shared enforcement counter
   cohort_opens_at?: string | null // date the Rise cohort starts maturing
 }
+// Daily inflow (rows crossing their lane's ICP floor) vs outflow (invites sent).
+// db/029_replacement_rate.sql. Absent until that file is applied → fetch returns [].
+export type ReplacementRow = {
+  client_id: string; lane: string; day: string
+  qualified_in: number; sent_out: number
+}
 export type ScanOpenRow = {
   client_id: string; opens_7d: number; opens_30d: number; opens_total: number
   distinct_prospects: number; last_open: string | null
@@ -44,6 +50,15 @@ export const fetchAccept = () => selectAll<AcceptRow>('inbox_accept_v2')
 export const fetchPipeline = () => selectAll<PipelineRow>('inbox_pipeline_v')
 export const fetchScanOpens = () => selectAll<ScanOpenRow>('inbox_scan_opens_v')
 export const fetchOutcomes = () => selectAll<OutcomeRow>('inbox_outcomes_v')
+
+// Soft-fails to [] when the view is not applied yet, so the Overview keeps rendering
+// its other three tiles instead of erroring the whole screen on one missing relation.
+// Same pre-apply discipline as fetchCampaignSends.
+export async function fetchReplacement(): Promise<ReplacementRow[]> {
+  const { data, error } = await supabase.from('inbox_replacement_v').select('*')
+  if (error) return []
+  return (data ?? []) as ReplacementRow[]
+}
 
 export type RangeKpiRow = {
   client_id: string; sent: number; accepted: number; convos: number; calls: number
@@ -70,6 +85,25 @@ export function acceptRate(sent: number, accepted: number): number {
 export function runwayDays(sendable: number, dailyRate: number): number {
   if (dailyRate <= 0) return 999
   return Math.floor(sendable / dailyRate)
+}
+
+// Replacement rate = qualified IN / invites OUT over the window.
+// null when nothing went out (a rate against zero sends is not a fact about the pipeline).
+// Deliberately NOT clamped: 3.4x is a real and useful reading on a backfill day.
+export function replacementRate(qualifiedIn: number, sentOut: number): number | null {
+  if (sentOut <= 0) return null
+  return Math.round((qualifiedIn / sentOut) * 100) / 100
+}
+
+// Days until the pool empties at the CURRENT net drain, given today's send rate.
+// Only meaningful while draining (rate < 1): above 1.0 the pool is growing and there is
+// no depletion date. Returns null when it does not apply, so the tile can say so rather
+// than print a confident number about an event that is not going to happen.
+export function daysToEmpty(sendable: number, dailyOut: number, rate: number | null): number | null {
+  if (rate == null || rate >= 1 || dailyOut <= 0) return null
+  const net = dailyOut * (1 - rate)   // rows lost per day
+  if (net <= 0) return null
+  return Math.floor(sendable / net)
 }
 
 export function governorHeadroomPct(used: number, cap: number): number {

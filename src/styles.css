@@ -347,7 +347,10 @@ input.cfield::placeholder{color:var(--text3)}
 .ov-badge{font-size:10px;font-weight:800;letter-spacing:.05em;padding:3px 8px;border-radius:7px;white-space:nowrap}
 
 /* HERO — three decision tiles (converting? throttled? runway?) */
-.ov-hero{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+/* 2026-08-06: 3 -> 4 tiles (Refill joined Accept/Governor/Runway). auto-fit keeps the
+   narrow-window layout honest: 4 across on wide, 2x2 when there is not room, rather
+   than a hardcoded 4 that would crush the 30px numbers on a small pane. */
+.ov-hero{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px}
 .ov-tile{background:var(--surface);border-radius:16px;padding:13px 13px 14px;display:flex;flex-direction:column;gap:8px;min-width:0}
 .ov-tile-h{display:flex;align-items:center;gap:7px}
 .ov-tile-lbl{flex:1;min-width:0;font-size:10.5px;font-weight:700;letter-spacing:.01em;text-transform:uppercase;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
