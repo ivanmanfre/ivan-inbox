@@ -276,11 +276,15 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
       return
     }
     const ok = await confirm({
-      title: isNewsjack ? `Take the next slot on ${where}?` : `Post to ${draft.slack_channel}?`,
+      // 2026-08-06, Ivan: "make newsjack not autojump at first, just add to buffer
+      // in mattan panel bc i wanna see and approve first". Approving writes the post
+      // and stops: it lands in review on the board with every other draft and takes
+      // a slot only when Ivan gives it one.
+      title: isNewsjack ? `Write this one for ${where}?` : `Post to ${draft.slack_channel}?`,
       message: isNewsjack
-        ? 'Writes the post now, then swaps it into the next publish slot. Whatever sits there moves to the next open weekday.'
+        ? 'Writes the post now and drops it in the buffer for review. Nothing is scheduled and nothing already in the queue moves.'
         : 'The dispatcher posts this to Slack within about 2 minutes.',
-      confirmText: isNewsjack ? 'Approve & jump' : 'Approve & send',
+      confirmText: isNewsjack ? 'Approve & draft' : 'Approve & send',
     })
     if (!ok) return
     setBusy(true); setError('')
@@ -411,8 +415,8 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
         )}
         <div className="btn p" onClick={busy || drafting ? undefined : onApprove}>
           {busy
-            ? (isNewsjack ? 'Claiming…' : isEscalatedComment ? 'Closing…' : isComment ? 'Posting…' : isOutbound ? (approveUrl ? 'Opening…' : 'Copying…') : isWeekly ? 'Copying…' : 'Sending…')
-            : (isNewsjack ? 'Approve & jump' : isEscalatedComment ? 'Mark handled' : isComment ? 'Approve & post' : isOutbound ? (approveUrl ? 'Approve & queue' : 'Approve & copy') : isWeekly ? 'Approve & copy' : 'Approve & send')}
+            ? (isNewsjack ? 'Writing…' : isEscalatedComment ? 'Closing…' : isComment ? 'Posting…' : isOutbound ? (approveUrl ? 'Opening…' : 'Copying…') : isWeekly ? 'Copying…' : 'Sending…')
+            : (isNewsjack ? 'Approve & draft' : isEscalatedComment ? 'Mark handled' : isComment ? 'Approve & post' : isOutbound ? (approveUrl ? 'Approve & queue' : 'Approve & copy') : isWeekly ? 'Approve & copy' : 'Approve & send')}
         </div>
       </div>
     </div>
@@ -437,9 +441,14 @@ function ReadOnlyRow({ draft, reason, working }: { draft: OpsDraft; reason?: str
           {draft.kind === 'newsjack' && draft.context?.slot && (
             <span className="ops-chan">publishes {slotText(draft.context.slot)}</span>
           )}
+          {/* The default path schedules nothing, so the row says where the post
+              actually went instead of leaving a done card with no destination. */}
+          {draft.kind === 'newsjack' && !draft.context?.slot && draft.context?.buffered === true && (
+            <span className="ops-chan">in the buffer, waiting on you</span>
+          )}
         </div>
         <div className="log-snip">{draft.body}</div>
-        {working && <div className="ops-ctx">{draft.kind === 'newsjack' ? 'Writing the post, then claiming the slot…' : 'Posting…'}</div>}
+        {working && <div className="ops-ctx">{draft.kind === 'newsjack' ? 'Writing the post…' : 'Posting…'}</div>}
         {reason && <div className="ops-reason">Blocked: {reason}</div>}
       </div>
       <span className="log-tm">{timeAgo(draft.sent_at ?? draft.created_at)}</span>
