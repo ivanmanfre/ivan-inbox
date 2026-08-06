@@ -5,8 +5,10 @@ import {
 } from '../../lib/sends'
 import {
   fetchAccept, fetchPipeline, fetchGovernor, fetchScanOpens, fetchOutcomes, fetchRangeKpis,
+  fetchReplacement, replacementRate, daysToEmpty,
   acceptRate, runwayDays, laneLabel, governorEnforcementGap,
   type AcceptRow, type PipelineRow, type GovernorRow, type ScanOpenRow, type OutcomeRow, type RangeKpiRow,
+  type ReplacementRow,
 } from '../../lib/kpis'
 
 type Client = 'all' | 'ivan' | 'risedtc'
@@ -137,9 +139,10 @@ function OverPill({ used, cap }: { used: number; cap: number }) {
   return <span className="ov-over-lbl">{Math.round((used / cap) * 100)}% of cap</span>
 }
 
-// ---- HERO: three decision tiles (Is it converting? Am I throttled? Runway?) ----
-function Hero({ accept, governor, pipeline, client }: {
-  accept: AcceptRow[]; governor: GovernorRow[]; pipeline: PipelineRow[]; client: Client
+// ---- HERO: four decision tiles (Converting? Throttled? Runway? Refilling?) ----
+function Hero({ accept, governor, pipeline, replacement, client }: {
+  accept: AcceptRow[]; governor: GovernorRow[]; pipeline: PipelineRow[]
+  replacement: ReplacementRow[]; client: Client
 }) {
   // Q1 — Is outreach converting? Acceptance 7d vs 30d baseline. Neutral (grey)
   // when the 7d cohort is too thin to judge — never a false green/red.
@@ -179,6 +182,20 @@ function Hero({ accept, governor, pipeline, client }: {
   const dailyRate = Math.max(avg7, govDaily)
   const runway = runwayDays(totalSendable, dailyRate)
   const rSev: Sev = pRows.length === 0 ? 'neutral' : runway < 2 ? 'red' : runway < 5 ? 'amber' : 'green'
+
+  // Q4 — Is it refilling? Qualified IN / invites OUT over 7d. Runway above is a STOCK
+  // measure and cannot see this: a pool draining every day still prints a positive
+  // runway right until it hits zero. Measured 07-25..08-06, Ivan sat under 1.0x on 6 of
+  // 13 days while Runway never once read 0.
+  const cutoff = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10)
+  const repRows = replacement.filter(r => inClient(r.client_id, client) && r.day >= cutoff)
+  const qIn = sum(repRows, 'qualified_in'), qOut = sum(repRows, 'sent_out')
+  const rate = replacementRate(qIn, qOut)
+  const dailyOut = qOut / 7
+  const empty = daysToEmpty(totalSendable, dailyOut, rate)
+  // Under 1.0 the pool shrinks every day, so amber starts at break-even, not below it.
+  const repSev: Sev = repRows.length === 0 || rate == null ? 'neutral'
+    : rate >= 1.2 ? 'green' : rate >= 1 ? 'amber' : 'red'
 
   const trendArrow = trend > 0 ? '▲' : trend < 0 ? '▼' : '±'
   const trendSev: Sev = trend >= 0 ? 'green' : trend >= -Math.max(3, r30 * 0.35) ? 'amber' : 'red'
@@ -239,6 +256,30 @@ function Hero({ accept, governor, pipeline, client }: {
               <div className="ov-tile-big">{runway >= 999 ? '∞' : runway}<span className="ov-tile-unit">{runway >= 999 ? '' : 'd'}</span></div>
               <BarGauge pct={runway >= 999 ? 100 : (runway / 14) * 100} color={SEV_COLOR[rSev === 'neutral' ? 'green' : rSev]} sm />
               <div className="ov-tile-sub">{totalSendable} sendable</div>
+            </>
+          )}
+        </div>
+        {/* Refill — the flow tile. Runway says how long the tank lasts; this says
+            whether the tap is on. */}
+        <div className="ov-tile">
+          <div className="ov-tile-h">
+            <span className="ov-tile-lbl">Refill</span>
+            <span className="sc-dot" style={{ background: SEV_COLOR[repSev] }} />
+          </div>
+          {repRows.length === 0 || rate == null ? (
+            <div className="ov-tile-empty">No data</div>
+          ) : (
+            <>
+              <div className="ov-tile-big">{rate.toFixed(2)}<span className="ov-tile-unit">x</span></div>
+              {/* 1.0x sits at the half mark, so "is the bar past halfway" reads as
+                  "is the pool growing" without needing the number. */}
+              <BarGauge pct={Math.min(100, (rate / 2) * 100)} color={SEV_COLOR[repSev === 'neutral' ? 'green' : repSev]} sm />
+              <div className="ov-tile-sub">
+                {qIn} in / {qOut} out · 7d
+                {empty != null && (
+                  <span className="ov-tile-trend" style={{ color: SEV_COLOR.red }}> · empty in {empty}d</span>
+                )}
+              </div>
             </>
           )}
         </div>
@@ -694,6 +735,7 @@ type OverviewData = {
   scans: ScanOpenRow[]
   outcomes: OutcomeRow[]
   campaigns: CampaignSend[]
+  replacement: ReplacementRow[]
 }
 
 export function OverviewView({ client, timeframe, setClient, range = null }: {
@@ -710,9 +752,10 @@ export function OverviewView({ client, timeframe, setClient, range = null }: {
     Promise.all([
       fetchSends(), fetchSendsDaily(), fetchAccept(), fetchPipeline(),
       fetchGovernor(), fetchScanOpens(), fetchOutcomes(), fetchCampaignSends(client),
+      fetchReplacement(),
     ])
-      .then(([rows, daily, accept, pipeline, governor, scans, outcomes, campaigns]) => {
-        if (live) setData({ rows, daily, accept, pipeline, governor, scans, outcomes, campaigns })
+      .then(([rows, daily, accept, pipeline, governor, scans, outcomes, campaigns, replacement]) => {
+        if (live) setData({ rows, daily, accept, pipeline, governor, scans, outcomes, campaigns, replacement })
       })
       .catch(e => { if (live) setError(e instanceof Error ? e.message : 'Failed to load') })
       .finally(() => { if (live) setLoading(false) })
@@ -727,7 +770,7 @@ export function OverviewView({ client, timeframe, setClient, range = null }: {
 
   return (
     <div className="rows ov">
-      <Hero accept={data.accept} governor={data.governor} pipeline={data.pipeline} client={client} />
+      <Hero accept={data.accept} governor={data.governor} pipeline={data.pipeline} replacement={data.replacement} client={client} />
       {timeframe === 'custom' && range && <RangeSummary range={range} client={client} />}
       <Funnel accept={data.accept} scans={data.scans} outcomes={data.outcomes} client={client} />
       <div className="ov-duo">

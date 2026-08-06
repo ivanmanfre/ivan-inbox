@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { acceptRate, runwayDays, governorHeadroomPct, laneLabel, governorEnforcementGap } from './kpis'
+import { acceptRate, runwayDays, governorHeadroomPct, laneLabel, governorEnforcementGap, replacementRate, daysToEmpty } from './kpis'
 
 describe('acceptRate', () => {
   it('rounds accepted/sent to a whole percent', () => {
@@ -54,5 +54,33 @@ describe('governorEnforcementGap', () => {
     expect(governorEnforcementGap(41, 50, null, null)).toBe(false)
     expect(governorEnforcementGap(41, 50, 98, null)).toBe(false)
     expect(governorEnforcementGap(41, 50, null, 50)).toBe(false)
+  })
+})
+
+describe('replacementRate', () => {
+  it('is IN / OUT to 2dp', () => {
+    expect(replacementRate(116, 106)).toBe(1.09)
+    expect(replacementRate(60, 40)).toBe(1.5)
+  })
+  it('is null against zero sends — a rate over 0 out is not a fact about the pipeline', () => {
+    expect(replacementRate(50, 0)).toBeNull()
+  })
+  it('does NOT clamp: a backfill day is allowed to read high', () => {
+    expect(replacementRate(50, 2)).toBe(25)
+  })
+})
+
+describe('daysToEmpty', () => {
+  it('counts down only while draining', () => {
+    // 40 sendable, 40/day out, 0.5x refill -> losing 20/day -> 2 days
+    expect(daysToEmpty(40, 40, 0.5)).toBe(2)
+  })
+  it('is null at or above break-even (no depletion date exists)', () => {
+    expect(daysToEmpty(40, 40, 1)).toBeNull()
+    expect(daysToEmpty(40, 40, 1.5)).toBeNull()
+  })
+  it('is null when the rate is unknown or nothing is going out', () => {
+    expect(daysToEmpty(40, 40, null)).toBeNull()
+    expect(daysToEmpty(40, 0, 0.5)).toBeNull()
   })
 })
