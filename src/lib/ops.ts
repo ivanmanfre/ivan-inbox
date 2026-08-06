@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 
-export type OpsKind = 'escalation' | 'update' | 'newsjack' | 'weekly_report' | 'comment_reply' | 'comment_outbound'
+export type OpsKind = 'escalation' | 'update' | 'newsjack' | 'weekly_report' | 'comment_reply' | 'comment_outbound' | 'booking'
 
 // The row shape varies by kind (escalation carries a prospect, update carries
 // receipts, newsjack carries the idea it will generate from), so context stays a
@@ -43,6 +43,20 @@ export type OpsContext = {
   // Stamped by rise-comment-draft: this body came from the button, not from the
   // pipeline, so the card says so before Ivan posts it.
   drafted_on_demand?: boolean
+  // booking — someone booked off the client's own LinkedIn link. Slack-bound, same
+  // dispatcher contract as escalation/update: approve here, it posts to the client
+  // channel ~2 minutes later. `matched_prospect` false means the booker is not in our
+  // outreach tables, so the brief has no lane history and the claim "from outbound"
+  // is not ours to make.
+  meeting_id?: string
+  when_iso?: string
+  when_str?: string
+  brief_url?: string
+  scan_url?: string
+  booked_note?: string
+  hubspot_url?: string
+  matched_prospect?: boolean
+  stamped?: boolean
   // comment_outbound (a draft comment on someone ELSE's post)
   feed_id?: string
   target_name?: string

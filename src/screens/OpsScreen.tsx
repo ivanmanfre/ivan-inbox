@@ -32,10 +32,18 @@ function timeAgo(iso: string): string {
 // 'OUTBOUND' said what the ENGINE calls the lane, not what the card is. Ivan
 // reads these as comments, so they say Comments; `comment_reply` becomes REPLY
 // in the same pass so the two comment kinds cannot be told apart by an S.
-const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK', weekly_report: 'WEEKLY', comment_reply: 'REPLY', comment_outbound: 'COMMENTS' }
+const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK', weekly_report: 'WEEKLY', comment_reply: 'REPLY', comment_outbound: 'COMMENTS', booking: 'BOOKED' }
 // Escalations run warm/red (something needs attention); updates stay neutral/blue (fyi);
-// newsjack runs amber because it is the only kind with a clock on it.
-const KIND_COLOR: Record<OpsKind, string> = { escalation: '#FF453A', update: '#0A84FF', newsjack: '#FF9F0A', weekly_report: '#30D158', comment_reply: '#BF5AF2', comment_outbound: '#64D2FF' }
+// newsjack runs amber because it is the only kind with a clock on it. Booking takes the
+// Rise accent gold: it is the only card that reports money arriving rather than work owed.
+const KIND_COLOR: Record<OpsKind, string> = { escalation: '#FF453A', update: '#0A84FF', newsjack: '#FF9F0A', weekly_report: '#30D158', comment_reply: '#BF5AF2', comment_outbound: '#64D2FF', booking: '#FFD60A' }
+
+// Slack channel ids are unreadable on a card. escalation/update/booking all print a
+// destination, so name the ones we own and fall back to the raw id for anything else.
+const CHANNEL_NAME: Record<string, string> = { C0BJ72F58BY: 'the Rise DTC channel' }
+function channelLabel(id: string): string {
+  return CHANNEL_NAME[id] ?? `#${id}`
+}
 
 function errText(e: unknown): string {
   return e instanceof Error ? e.message : String(e)
@@ -73,6 +81,27 @@ function ContextLine({ draft }: { draft: OpsDraft }) {
         {parts.length > 0 && <span>{parts.join(' · ')}</span>}
         {ctx.report_url && (
           <a href={ctx.report_url} target="_blank" rel="noreferrer">read the page</a>
+        )}
+      </div>
+    )
+  }
+  // A booking card is read in about three seconds: who, when, and the brief. The
+  // unmatched warning is load-bearing - without a prospect row we cannot claim the
+  // lead came from outbound, and the body says "from outbound" by default.
+  if (draft.kind === 'booking') {
+    return (
+      <div className="ops-ctx">
+        <span>{[ctx.prospect_name, ctx.company || ctx.domain].filter(Boolean).join(' · ')}</span>
+        {ctx.when_str && <span>{ctx.when_str}</span>}
+        {ctx.booked_note && <span>{ctx.booked_note}</span>}
+        {ctx.matched_prospect === false && (
+          <span className="ops-replay">no lane history, check before claiming outbound</span>
+        )}
+        {ctx.brief_url && (
+          <a href={ctx.brief_url} target="_blank" rel="noreferrer">read the brief</a>
+        )}
+        {ctx.hubspot_url && (
+          <a href={ctx.hubspot_url} target="_blank" rel="noreferrer">HubSpot</a>
         )}
       </div>
     )
@@ -174,7 +203,7 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
     ? seatLabel(draft.client_id)
     : isNewsjack || isWeekly || !draft.slack_channel
       ? engineLabel(draft.client_id)
-      : `#${draft.slack_channel}`
+      : channelLabel(draft.slack_channel)
   const left = isNewsjack ? expiresIn(draft.context?.expires_at) : null
 
   async function onApprove() {
@@ -280,7 +309,7 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
       // in mattan panel bc i wanna see and approve first". Approving writes the post
       // and stops: it lands in review on the board with every other draft and takes
       // a slot only when Ivan gives it one.
-      title: isNewsjack ? `Write this one for ${where}?` : `Post to ${draft.slack_channel}?`,
+      title: isNewsjack ? `Write this one for ${where}?` : `Post to ${where}?`,
       message: isNewsjack
         ? 'Writes the post now and drops it in the buffer for review. Nothing is scheduled and nothing already in the queue moves.'
         : 'The dispatcher posts this to Slack within about 2 minutes.',
