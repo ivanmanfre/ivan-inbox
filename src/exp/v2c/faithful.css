@@ -3556,3 +3556,257 @@
    bar's own nav labels, and the LinkedIn artifact's 12px chrome — which is a
    PICTURE of another product and keeps its measurements by contract. */
 .wb.wb.wb .dw-qrow-m, .wb.wb.wb .dw-tab-t{ font-size:var(--fs-meta) }
+
+/* ==========================================================================
+   R6 · THE CALENDAR, and the Ops note that replaced the strip's alarm band
+   (2026-08-07)
+   ==========================================================================
+   Two changes shipped together. The strip lost three marks at Ivan's word
+   ("228 loaded · 2 scheduled · 7d cadence" and the "6 │ 6 errored +2 notes"
+   band, verbatim "all not needed"), and the Content area gained a per-lane
+   month view.
+   The calendar obeys the readability pass it is built on top of: 13px floor on
+   anything a person reads, mono only where a figure is DATA (the time on a
+   chip, the day number), every hit at least 32px, and an empty day drawn as
+   nothing at all — a month with four posts in it should look like a month with
+   four posts in it. */
+
+/* THE STRIP, after the subtraction. The alarm wrapper and the two advisory
+   marks have no markup left; the rules stay one line each so a stylesheet
+   search for them lands on the reason rather than on nothing. */
+.wb.wb.wb .ct-cmd-alarm, .wb.wb.wb .ct-cmd-cad, .wb.wb.wb .ct-cmd-tot{ display:none }
+/* The view switch is the lane switch's sibling and shares its pill grammar; a
+   hairline is what says they are two groups rather than one run of four. */
+.wb.wb.wb .ct-cmd-views{ margin-left:var(--sp-2) }
+
+/* ---- the frame ---------------------------------------------------------- */
+.wb.wb.wb .cal{ padding:0 0 var(--sp-6) }
+.wb.wb.wb .cal-bar{
+  display:flex; align-items:center; gap:var(--sp-3);
+  padding:var(--sp-3) var(--gut) var(--sp-2);
+  flex-wrap:wrap;
+}
+.wb.wb.wb .cal-nav{ display:flex; align-items:center; gap:var(--sp-1) }
+.wb.wb.wb .cal-navb{
+  width:34px; height:34px; flex:none;
+  background:var(--surface2); color:var(--text2);
+  box-shadow:inset 0 0 0 1px var(--hairline);
+  font-size:var(--fs-title); line-height:1;
+}
+.wb.wb.wb .cal-navb:hover{ color:var(--text) }
+.wb.wb.wb .cal-month{
+  font-size:var(--fs-title); font-weight:600; color:var(--text);
+  min-width:150px; padding:0 var(--sp-1);
+}
+.wb.wb.wb .cal-today{
+  height:34px; padding:0 var(--sp-3); flex:none;
+  background:var(--surface2); color:var(--text2); font-size:13px;
+  box-shadow:inset 0 0 0 1px var(--hairline);
+}
+.wb.wb.wb .cal-today:hover{ color:var(--text) }
+/* ONE WORD PER NUMBER — the strip's rule, kept where the strip stopped. */
+.wb.wb.wb .cal-count{
+  margin-left:auto; display:flex; align-items:baseline; gap:5px;
+  font-size:13px; color:var(--text3);
+}
+.wb.wb.wb .cal-count b{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-weight:600; color:var(--text2); font-variant-numeric:tabular-nums;
+}
+
+.wb.wb.wb .cal-body{ padding:0 var(--gut) }
+
+/* ---- the month grid ----------------------------------------------------- */
+.wb.wb.wb .cal-head{
+  display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:var(--sp-1);
+  padding:0 0 6px;
+}
+.wb.wb.wb .cal-head span{
+  font-size:var(--fs-eyebrow); letter-spacing:.06em; text-transform:uppercase;
+  color:var(--text4); font-weight:600;
+}
+.wb.wb.wb .cal-week{
+  display:grid; grid-template-columns:repeat(7,minmax(0,1fr));
+  gap:var(--sp-1); margin-bottom:var(--sp-1);
+}
+.wb.wb.wb .cal-day{
+  min-height:104px; padding:6px; display:flex; flex-direction:column; gap:4px;
+  border-radius:var(--r-ctl);
+  box-shadow:inset 0 0 0 1px var(--hairline);
+  background:var(--surface1);
+}
+/* QUIET, and this is the whole rule: an empty day is a hairline and a numeral,
+   no fill, no label, nothing to read. */
+.wb.wb.wb .cal-day-empty{ background:transparent }
+.wb.wb.wb .cal-day-out{ opacity:.42 }
+.wb.wb.wb .cal-day-now{ box-shadow:inset 0 0 0 1px var(--hairline-strong) }
+.wb.wb.wb .cal-dn{ display:flex; align-items:baseline; gap:6px; min-height:16px }
+.wb.wb.wb .cal-dn-n{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:13px; color:var(--text4); font-variant-numeric:tabular-nums;
+}
+.wb.wb.wb .cal-day-now .cal-dn-n{ color:var(--text) }
+.wb.wb.wb .cal-dn-w{ display:none }
+
+/* ---- a chip ------------------------------------------------------------- */
+.wb.wb.wb .cal-chip{
+  display:flex; align-items:stretch; min-height:32px;
+  border-radius:var(--r-ctl); overflow:hidden;
+  background:var(--surface2);
+  box-shadow:inset 0 0 0 1px var(--hairline);
+  border-left:3px solid var(--text4);
+}
+/* Stage colour, and it is THE SAME ENCODING the list rows use (STAGE_COLOR in
+   ContentList) — a scheduled post is the same green in both views. Past due
+   takes the severity token, because that is what it is. */
+.wb.wb.wb .cal-chip[data-st='review']{ border-left-color:#FFD60A }
+.wb.wb.wb .cal-chip[data-st='approved']{ border-left-color:#10A37F }
+.wb.wb.wb .cal-chip[data-st='scheduled']{ border-left-color:rgba(16,163,127,.75) }
+.wb.wb.wb .cal-chip[data-st='published']{ border-left-color:rgba(235,235,245,.45) }
+.wb.wb.wb .cal-chip[data-st='stuck']{ border-left-color:var(--sev-attention) }
+.wb.wb.wb .cal-chip-t{
+  flex:1 1 auto; min-width:0; display:flex; align-items:center; gap:6px;
+  padding:0 8px; text-align:left; background:none; color:var(--text2);
+  font-size:13px; line-height:1.25;
+}
+.wb.wb.wb .cal-chip-t:hover{ color:var(--text) }
+/* THE TIME IS AN AGENDA FACT, NOT A GRID ONE. Measured at 1440: a day cell is
+   ~150px, and `17:00` ate 44 of them — every title on the month grid truncated
+   to two characters. The unit this view edits is the DAY; the time of day is
+   preserved by the move and never chosen here. So the grid spends its width on
+   the title, and the time comes back at ≤767 where the chip is full-bleed and
+   has room for both. It stays on the chip's tooltip on every canvas. */
+.wb.wb.wb .cal-chip-h{ display:none }
+@media (max-width:767px){
+  .wb.wb.wb .cal-chip-h{
+    display:inline; flex:none;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:var(--fs-meta); color:var(--text4); font-variant-numeric:tabular-nums;
+  }
+}
+.wb.wb.wb .cal-chip-n{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.wb.wb.wb .cal-chip-mv{
+  flex:none; width:32px; min-height:32px; background:none; color:var(--text4);
+  font-size:13px; box-shadow:inset 1px 0 0 var(--hairline);
+}
+.wb.wb.wb .cal-chip-mv:hover{ color:var(--text); background:var(--surface3) }
+
+/* ---- the rail ----------------------------------------------------------- */
+.wb.wb.wb .cal-rail{ margin-top:var(--sp-4) }
+.wb.wb.wb .cal-rail-e{ padding:6px 0; font-size:13px; color:var(--text3) }
+.wb.wb.wb .cal-rr{
+  display:flex; align-items:center; gap:var(--sp-2);
+  min-height:40px; padding:4px 0;
+  border-bottom:1px solid var(--hairline);
+}
+.wb.wb.wb .cal-rr-t{
+  flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:2px;
+  background:none; text-align:left; min-height:32px; justify-content:center;
+}
+.wb.wb.wb .cal-rr-n{
+  font-size:13px; color:var(--text2);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.wb.wb.wb .cal-rr-t:hover .cal-rr-n{ color:var(--text) }
+.wb.wb.wb .cal-rr-m{ font-size:var(--fs-meta); color:var(--text4) }
+.wb.wb.wb .cal-mv{
+  flex:none; min-height:32px; padding:0 var(--sp-3); font-size:13px;
+  background:var(--surface2); color:var(--text2);
+  box-shadow:inset 0 0 0 1px var(--hairline);
+}
+.wb.wb.wb .cal-mv:hover{ color:var(--text) }
+.wb.wb.wb .cal-note{
+  margin-top:var(--sp-3); padding:10px 12px; border-radius:var(--r-ctl);
+  background:var(--surface1); box-shadow:inset 0 0 0 1px var(--hairline);
+  font-size:13px; line-height:1.5; color:var(--text3);
+}
+.wb.wb.wb .cal-note code{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--text2) }
+
+/* ---- the move panel ----------------------------------------------------- */
+/* Anchored to the surface, not to the chip: a popover positioned against a cell
+   inside a 7-column grid is the one part of this that would be fragile at 390,
+   and the panel has to be reachable with the keyboard either way. */
+.wb.wb.wb .cal-move{
+  position:sticky; bottom:0; z-index:3;
+  margin:var(--sp-4) var(--gut) 0; padding:12px;
+  border-radius:var(--r-ctl); background:var(--surface1);
+  box-shadow:inset 0 0 0 1px var(--hairline-strong), 0 -8px 24px rgba(0,0,0,.35);
+}
+.wb.wb.wb .cal-move-t{ font-size:13px; color:var(--text3); margin-bottom:8px }
+.wb.wb.wb .cal-move-t b{ color:var(--text); font-weight:600 }
+.wb.wb.wb .cal-move-r{ display:flex; align-items:center; gap:var(--sp-2); flex-wrap:wrap }
+.wb.wb.wb .cal-move-d{
+  min-height:34px; padding:0 10px; font-size:13px;
+  background:var(--surface2); color:var(--text);
+  box-shadow:inset 0 0 0 1px var(--hairline);
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+.wb.wb.wb .cal-move .btn{ min-height:34px; padding:0 var(--sp-3); font-size:13px }
+.wb.wb.wb .cal-move .btn.s{ background:var(--surface2); color:var(--text2) }
+.wb.wb.wb .cal-move-s{ margin-top:8px; font-size:13px; line-height:1.45; color:var(--text3) }
+.wb.wb.wb .cal-err, .wb.wb.wb .cal-done{ margin:var(--sp-3) var(--gut) 0; font-size:13px }
+.wb.wb.wb .cal-done{ color:var(--sev-clear) }
+
+/* ---- 1000px+: the rail moves beside the grid ---------------------------- */
+@media (min-width:1000px){
+  .wb.wb.wb .cal-body{
+    display:grid; grid-template-columns:minmax(0,1fr) 264px; gap:var(--sp-5);
+    align-items:start;
+  }
+  .wb.wb.wb .cal-rail{ margin-top:0 }
+}
+
+/* ---- ≤767px: the SAME DOM becomes an agenda ----------------------------- */
+/* The month grid does not shrink to 390 — seven columns of chips is 40px a
+   cell. It unstacks instead: week rows become blocks, empty days are removed
+   entirely (they carry nothing to read), and the day number is replaced by the
+   full weekday so a list of days still says which day each one is. */
+@media (max-width:767px){
+  .wb.wb.wb .cal-head{ display:none }
+  .wb.wb.wb .cal-week{ display:block; margin:0 }
+  .wb.wb.wb .cal-day-empty{ display:none }
+  .wb.wb.wb .cal-day{
+    min-height:0; border-radius:0; background:none;
+    box-shadow:none; border-bottom:1px solid var(--hairline);
+    padding:10px 0;
+  }
+  .wb.wb.wb .cal-day-out{ opacity:1 }
+  .wb.wb.wb .cal-day-now{ box-shadow:none }
+  .wb.wb.wb .cal-dn-n{ display:none }
+  .wb.wb.wb .cal-dn-w{
+    display:inline; font-size:var(--fs-meta); font-weight:600;
+    letter-spacing:.04em; color:var(--text3);
+  }
+  .wb.wb.wb .cal-day-now .cal-dn-w{ color:var(--accent-ui, var(--accent)) }
+  .wb.wb.wb .cal-chip{ min-height:40px }
+  .wb.wb.wb .cal-chip-mv{ width:40px }
+  .wb.wb.wb .cal-move{ margin:var(--sp-3) var(--gut) 0 }
+  .wb.wb.wb .cal-move-d{ flex:1 1 140px }
+}
+
+/* ---- Ops: the rehomed pipeline notes ------------------------------------ */
+/* Quieter than a card and louder than nothing: it is a count plus the
+   sentences that name what the count is made of, and it renders only when
+   something is actually wrong. */
+.wb.wb.wb .ops-pipe{
+  margin:var(--sp-5) var(--gut) 0; padding:12px 14px;
+  border-radius:var(--r-ctl); background:var(--surface1);
+  box-shadow:inset 0 0 0 1px var(--hairline);
+}
+.wb.wb.wb .ops-pipe-h{ display:flex; align-items:center; gap:var(--sp-2); margin-bottom:6px }
+.wb.wb.wb .ops-pipe-t{
+  font-size:var(--fs-eyebrow); letter-spacing:.06em; text-transform:uppercase;
+  color:var(--text3); font-weight:600;
+}
+.wb.wb.wb .ops-pipe-n{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:var(--fs-meta); color:var(--sev-attention);
+  font-variant-numeric:tabular-nums;
+}
+.wb.wb.wb .ops-pipe-l{ font-size:13px; line-height:1.5; color:var(--text2); padding:2px 0 }
+.wb.wb.wb .ops-pipe-b{
+  margin-top:8px; min-height:34px; padding:0 var(--sp-3); font-size:13px;
+  background:var(--surface2); color:var(--text2);
+  box-shadow:inset 0 0 0 1px var(--hairline);
+}
+.wb.wb.wb .ops-pipe-b:hover{ color:var(--text) }

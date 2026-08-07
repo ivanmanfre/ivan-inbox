@@ -365,6 +365,17 @@ export default function Shell() {
       error={opsError}
       loadedAt={ops.loadedAt}
       refresh={ops.refresh}
+      // The reach the Content strip's alarm band used to be (2026-08-07). Ops
+      // counts the pipeline's broken rows; the rows themselves live on Content,
+      // so the jump crosses jobs here — the one place that owns both.
+      onOpenErrors={() => {
+        goJob('content')
+        setLane('ivan')
+        // The Content surface owns the view switch and the section's open flag,
+        // so it is told what to do rather than reached into. It is mounted in
+        // both views, so this lands whichever one Ivan left it in.
+        setTimeout(() => window.dispatchEvent(new CustomEvent('wb-open-content-errors')), 0)
+      }}
     />
   )
 

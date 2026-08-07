@@ -2,14 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { PullIndicator } from '../../components/PullIndicator'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import {
-  useAgentDigest, useContent, useIdeaCandidates, useScheduledQueue,
+  useContent, useIdeaCandidates, useScheduledQueue,
 } from '../../hooks/useContent'
 import {
   CONTENT_LANES, ERROR_ALARM_HOURS, LANE_LABEL, LANE_POSSESSIVE, PIPELINE_STAGES,
-  STAGE_LABEL, STAGE_SHORT, STUCK_GENERATING_MINUTES, boardGroupOf, clientStageLabel,
+  STAGE_LABEL, STAGE_SHORT, boardGroupOf, clientStageLabel,
   countBoardVisible, countUndated, deleteClientDraft, deleteDraft, draftExcerpt,
   elapsedMinutes, generatingSince, groupByStage, isRecentError, isStuckGenerating,
-  isStuckScheduled, queueFailed, reviewActionable, stageOf, taxonomyValue,
+  reviewActionable, stageOf, taxonomyValue,
   type BoardGroup, type ContentDraft, type ContentLane, type ContentStage, type ContentStages,
 } from '../../lib/content'
 import {
@@ -28,6 +28,14 @@ import { IdeasSection, PillarMix, QueueStrip } from './ContentSections'
 import { relOrAhead, relTime, sourceLabel, tagLabel, typeLabel } from './fmt'
 import { CalmEmpty, Failed, SectionHead, StatChip } from './Surface'
 import { hasMock } from './mock'
+import { ContentCalendar } from './ContentCalendar'
+
+// The Content area holds two views of the SAME rows, and the lane tabs select
+// whose. Flow is the pipeline queue; Calendar is the month those rows are
+// dated into. Both read one fetch and one filter state, so they can never
+// disagree about what is scheduled.
+export type ContentView = 'flow' | 'calendar'
+const VIEW_KEY = 'wb-content-view'
 
 // Content — TWO LANES, and nothing else.
 //
@@ -273,16 +281,28 @@ function Skeleton() {
 //     complete one draws a proportion that does not exist;
 //   · published keeps its slot as a lane fact, never as a pipeline mark — it
 //     accumulates forever and would set the scale on its own.
+//
+// 🔴 2026-08-07 — THREE MARKS CAME OFF IT, AT IVAN'S WORD. "228 loaded · 2
+// scheduled · 7d cadence" and the "6 │ 6 errored +2 notes" band are, verbatim,
+// "all not needed". That consciously reverses part of D11 (the error band's
+// arithmetic fix) and retires the lane figure D5 was written about — those
+// notes stay above because they are the reasoning that produced the marks, and
+// a deleted rationale is how the same mark grows back.
+//
+// What the strip carries now: the lane switch, the view switch, the four stage
+// marks, search, Filters. Nothing that was REACHABLE only through the removed
+// band was deleted with it — the errored and past-due rows have their own
+// sections below, and the pipeline notes moved to Ops (OpsBoard, PipelineNotes).
 function CommandStrip({
-  lane, setLane, laneNote, stats, alert, filter, tail,
+  lane, setLane, view, setView, laneNote, stats, filter,
 }: {
   lane: ContentLane
   setLane: (l: ContentLane) => void
+  view?: ContentView
+  setView?: (v: ContentView) => void
   laneNote?: React.ReactNode
   stats?: React.ReactNode
-  alert?: React.ReactNode
   filter: React.ReactNode
-  tail?: React.ReactNode
 }) {
   const ref = useRef<HTMLDivElement>(null)
   // The strip is sticky at the top of the scroller and the SECTION HEADS are
@@ -304,13 +324,7 @@ function CommandStrip({
     <div className="ct-cmd" ref={ref}>
       {/* `display:contents` on the wide pointer canvas, so these are direct
           members of the strip's one flex line; TWO 44px LINES below 1200 and on
-          the phone. One element, three behaviours, no second DOM.
-          🔴 THE ALARM IS NOT INSIDE `.ct-cmd-scroll`. Everything else in the top
-          row may scroll out of sight on a 390px canvas; the error chip may not,
-          because the one thing a sticky strip exists to keep on screen is the
-          thing that says something is broken. It is a sibling of the scroller,
-          `flex:none`, and the mobile probe drives the scroller to its end and
-          asserts the chip is still inside the viewport. */}
+          the phone. One element, three behaviours, no second DOM. */}
       <div className="ct-cmd-top">
         <div className="ct-cmd-scroll">
           <div className="ct-cmd-id">
@@ -329,16 +343,27 @@ function CommandStrip({
                 >{LANE_LABEL[k]}</button>
               ))}
             </div>
+            {/* The Flow/Calendar switch sits INSIDE the id cluster, beside the
+                lane pills, because it answers the same kind of question: which
+                view of this lane am I looking at. Same pill grammar, and the
+                lane it switches inside is the calendar's only selector — there
+                is no second lane control on the calendar. */}
+            {view && setView && (
+              <div className="ct-cmd-lanes ct-cmd-views">
+                {(['flow', 'calendar'] as const).map(v => (
+                  <button
+                    type="button" key={v}
+                    className={`ct-cmd-lane${view === v ? ' on' : ''}`}
+                    aria-current={view === v ? 'true' : undefined}
+                    onClick={() => setView(v)}
+                  >{v === 'flow' ? 'Flow' : 'Calendar'}</button>
+                ))}
+              </div>
+            )}
             {laneNote}
           </div>
           {stats}
-          {tail}
         </div>
-        {/* The cluster, not the chip: AlertChip renders its scroll anchor
-            (`#wb-s-error`) beside the button, and the anchor must live wherever
-            the button lives or the error jump lands nowhere. `:empty` hides the
-            wrapper on a lane with nothing wrong, so a quiet strip stays quiet. */}
-        <div className="ct-cmd-alarm">{alert}</div>
       </div>
       <div className="ct-cmd-f">{filter}</div>
     </div>
@@ -352,10 +377,8 @@ function CommandStrip({
 // and the only stage that accumulates forever, so it would set the scale by
 // itself. It keeps its number, in the lane figure at the end of the row, which
 // is where an archive total belongs.
-function PipelineStats({ stages, matched, laneTotal, onJump }: {
+function PipelineStats({ stages, onJump }: {
   stages: ContentStages
-  matched: number | null
-  laneTotal: number | null
   onJump: (s: ContentStage) => void
 }) {
   const parts = PIPELINE_STAGES
@@ -393,103 +416,36 @@ function PipelineStats({ stages, matched, laneTotal, onJump }: {
           onClick={() => onJump(p.stage)}
         />
       ))}
-      {/* Same rule as the cadence mark: the figure gets its word. `227` alone
-          was the second unlabelled token on the strip — a reader had to hover to
-          learn whether it was rows, drafts or the lane. */}
-      <span
-        className="ct-cmd-tot"
-        title={`${matched ?? inPipeline} rows loaded${laneTotal !== null ? ` of ${laneTotal} in this lane` : ''}`}
-      >
-        <b>{matched ?? inPipeline}</b>
-        {laneTotal !== null && laneTotal !== matched ? <i>/{laneTotal}</i> : null}
-        <span>loaded</span>
-      </span>
+      {/* 🔴 THE LANE FIGURE IS GONE (2026-08-07, "228 loaded … not needed"). The
+          filter row still prints `9 of 224 shown` whenever a filter is on, which
+          is the one place that denominator does work; the idle count stays
+          suppressed on Ivan's lane exactly as it was. */}
     </div>
   )
 }
 
-// THE ALARM, and the one arithmetic fix it needed (D11).
+// THE ALARM BAND IS GONE (2026-08-07), and this is the note that keeps its
+// reasoning where the next reader will find it.
 //
-// What was printed: `7 │ 5 errored · 2 elsewhere`, where 7 = draft ROWS plus
-// pipeline NOTES and the breakdown was built from a different set — so a
-// `stages.stuck` row that was neither errored nor past-due inflated the total
-// without ever appearing in the words under it, and "elsewhere" was literally
-// `extra.length`, a word for a number the reader had no way to resolve.
+// Ivan, verbatim: the "6 │ 6 errored +2 notes" band is "all not needed". That
+// reverses part of D11 — the arithmetic fix that made the band's number count
+// ROWS and its breakdown sum to it. The fix was correct; the band was still one
+// more thing on a strip he reads every day.
 //
-// The rule now: THE NUMBER COUNTS ROWS. Its breakdown is exhaustive by
-// construction — errored, past due, and everything else in the same array named
-// as such — so the parts always sum to the whole. The notes are not rows and
-// are never added to it; they are a separate, named tail.
-function alertParts(drafts: ContentDraft[]): { errored: number; stuck: number; other: number } {
-  const errored = drafts.filter(d => d.status === 'error').length
-  const stuck = drafts.filter(d => d.status !== 'error' && isStuckScheduled(d)).length
-  return { errored, stuck, other: drafts.length - errored - stuck }
-}
-
-// The chip that rides in the command strip. It is the whole alarm at rest: the
-// row count, the breakdown that sums to it, and the note tail.
-function AlertChip({ drafts, extra, open, onToggle }: {
-  drafts: ContentDraft[]
-  extra: { key: string; line: string }[]
-  open: boolean
-  onToggle: () => void
-}) {
-  if (drafts.length === 0 && extra.length === 0) return null
-  const { errored, stuck, other } = alertParts(drafts)
-  const words = [
-    errored > 0 && `${errored} errored`,
-    stuck > 0 && `${stuck} past due`,
-    other > 0 && `${other} other`,
-  ].filter(Boolean).join(' · ')
-  return (
-    <>
-      {/* The jump target lives on the CHIP, not inside the collapsible body:
-          `jump()` scrolls to `wb-s-<stage>`, and an anchor that unmounts with
-          the body would send the error jump nowhere whenever it is closed. */}
-      <div id="wb-s-error" />
-      <button
-        type="button" className="ct-alert ct-alert-chip" onClick={onToggle}
-        aria-expanded={open}
-        title={drafts.length > 0
-          ? `${drafts.length} draft rows need attention: ${words}${extra.length > 0 ? ` · plus ${extra.length} pipeline notes, which are not rows` : ''}`
-          : `${extra.length} pipeline notes — no draft row is in trouble`}
-      >
-        {drafts.length > 0 && <span className="ct-alert-n">{drafts.length}</span>}
-        <span className="ct-alert-t">
-          {drafts.length > 0 ? words : `${extra.length} pipeline ${extra.length === 1 ? 'note' : 'notes'}`}
-        </span>
-        {drafts.length > 0 && extra.length > 0 && (
-          // NOT added into the number above it. A note is a sentence about the
-          // pipeline; a row is a draft you can open.
-          <span className="ct-alert-x-n">+{extra.length} notes</span>
-        )}
-        <span className="chev">{open ? '⌄' : '›'}</span>
-      </button>
-    </>
-  )
-}
-
-// The disclosure body, below the strip and above the flow.
-function AlertBody({ drafts, lane, refresh, onOpen, openId, extra }: {
-  drafts: ContentDraft[]
-  lane: ContentLane
-  refresh: () => void
-  onOpen: OpenDraft
-  openId: string | null
-  extra: { key: string; line: string }[]
-}) {
-  return (
-    <div className="ct-alert-body">
-      {/* the line is wrapped so it can ellipsize: a list of what is wrong, not
-          prose about it. The full sentence lives on the row it points at. */}
-      {extra.map(e => <div className="ct-alert-x" key={e.key}><span>{e.line}</span></div>)}
-      {drafts.map(d => (
-        <Card key={d.id} d={d} lane={lane} refresh={refresh} onOpen={onOpen} active={openId === d.id} queue={drafts} />
-      ))}
-    </div>
-  )
-}
-
+// 🔴 REMOVING IT WOULD HAVE DELETED REACH, and that part was not allowed. Three
+// things were reachable through the band and nowhere else, so each was rehomed
+// BEFORE the band came out (verified, not assumed — the Ops rail badge counts
+// `ops_drafts`, which has never contained a carousel_drafts row):
+//
+//   · errors from the last 48h — the Errors section used to exclude exactly the
+//     rows the alarm was holding (`!isRecentError`). It now renders EVERY
+//     errored row, newest first, and says which of them are inside the window;
+//   · past-due schedules (`stages.stuck`) — no section rendered that stage on
+//     this lane at all. It has one now;
+//   · the pipeline NOTES (a dead generation run, a failed publish, the
+//     pre-window alert backlog) — those moved to Ops, where the quiet count
+//     belongs, and Ops can jump straight back to the Errors section here.
+//
 // A stage section with its rows. Shared by both lanes — the lanes differ in how
 // they NEST these, not in how a stage renders.
 function StageSection({ s, n, rows, lane, group, refresh, onOpen, openId, isOpen, toggle, sub }: {
@@ -595,7 +551,7 @@ function useOpenStages(
 // LANE A — Ivan
 // ---------------------------------------------------------------------------
 
-function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters, q, setQ, matched, laneTotal, open, setOpen, lane, setLane }: {
+function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters, q, setQ, matched, view, setView, open, setOpen, lane, setLane }: {
   drafts: ContentDraft[]
   stages: ContentStages
   lane: ContentLane
@@ -608,17 +564,12 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
   q: string
   setQ: (q: string) => void
   matched: number | null
-  laneTotal: number | null
+  view: ContentView
+  setView: (v: ContentView) => void
   open: string[]
   setOpen: (fn: (cur: string[]) => string[]) => void
 }) {
   const stageOpen = useOpenStages(open, setOpen, DEFAULT_OPEN)
-  // The alarm is a CLOSED SUMMARY on every count, and the state lives out here
-  // because the chip rides in the command strip while its rows render below it.
-  // 2026-08-03 measured why it never auto-opens: on the live lane it resolved
-  // open at 4 rows and cost ~420px directly above the queue — the alarm's own
-  // rows pushing the work off screen, which is the failure it exists to prevent.
-  const [alertOpen, setAlertOpen] = useState(false)
   // Determinism under a filter (phase1-review residual): picking Stage:
   // Published used to render a different card count before vs after a reload,
   // because the persisted filter landed on a section whose open/closed state
@@ -631,49 +582,14 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
   }, [filterStage])
   const ideas = useIdeaCandidates(true)
   const queue = useScheduledQueue(true)
-  const digest = useAgentDigest(true)
 
-  // Deliberately built from the UNFILTERED stages: a filter may narrow the
-  // flow, but it may never hide a broken row. The strip sits above the flow for
-  // the same reason. Lead-magnet alerts (stalled LM generations, stuck
-  // resources) moved to the Magnets job with the ResourceLane that renders
-  // them — this strip is posts-only now.
-  //
-  // Ask 13: the strip is an ALARM, so only errors from the last 48h ring it
-  // (isRecentError — taxonomy.error_flipped_at, updated_at fallback). Older
-  // errored rows move to the Errors section below, still visible, not alarming.
-  const alerts = [...stages.error.filter(d => isRecentError(d)), ...stages.stuck]
-  const failedQueue = queue.rows.filter(queueFailed)
-  // ask 6 — a generation that died mid-run. The rows stay in their Generating
-  // section (that is still the stage they are in, and the row itself carries
-  // the amber age chip); what joins the strip is the COUNT, so a silently-dead
-  // run is visible without leaving the top of the page.
-  const stalledGen = stages.generating.filter(d => isStuckGenerating(d))
-  const extra = [
-    ...(stalledGen.length > 0
-      ? [{
-        key: 'stalled-gen',
-        line: `${stalledGen.length} draft${stalledGen.length === 1 ? '' : 's'} generating for over ${STUCK_GENERATING_MINUTES} minutes — the run that started ${stalledGen.length === 1 ? 'it' : 'them'} is probably dead.`,
-      }]
-      : []),
-    ...(failedQueue.length > 0
-      ? [{
-        key: 'queue',
-        line: `${failedQueue.length} publish ${failedQueue.length === 1 ? 'failure' : 'failures'} in the queue — the only place a failed publish is written down.`,
-      }]
-      : []),
-    // Density (2026-08-03): this used to be its own two-line paragraph directly
-    // above the pipeline — ~36px of prose that names nothing actionable. It IS
-    // a footnote about the alert count, so it belongs inside the alert
-    // disclosure, where it costs nothing until the alerts are open. It keeps
-    // its non-alarm wording; it is history, not a defect.
-    ...(digest.olderUnsent > 0
-      ? [{
-        key: 'older-unsent',
-        line: `${digest.olderUnsent} pipeline ${digest.olderUnsent === 1 ? 'alert predates' : 'alerts predate'} the 14-day window (ClickUp-era ids, no live draft behind them) — historical, not actionable here.`,
-      }]
-      : []),
-  ]
+  // WHAT USED TO BE COMPUTED HERE and is not any more: `alerts` (recent errors
+  // plus past-due schedules) and `extra` (the three pipeline notes). Both fed
+  // the strip band Ivan retired on 2026-08-07. The rows they held are rendered
+  // as their own sections below — every errored row, not just the old ones, and
+  // a Past due section this lane never had — and the notes are computed in Ops
+  // now (usePipelineHealth), which is also where the digest read that fed the
+  // third one went. Nothing derives them twice.
 
   const jump = (s: ContentStage) => {
     stageOpen.ensure(s)
@@ -681,6 +597,21 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
       document.getElementById(`wb-s-${s}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     })
   }
+
+  // The other end of Ops' jump. The section is opened here and the scroll is
+  // given a frame's grace: the view may be flipping from calendar to flow in
+  // the same tick, and `wb-s-error` does not exist until that render lands.
+  useEffect(() => {
+    const on = () => {
+      stageOpen.ensure('error')
+      setTimeout(() => {
+        document.getElementById('wb-s-error')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 80)
+    }
+    window.addEventListener('wb-open-content-errors', on)
+    return () => window.removeEventListener('wb-open-content-errors', on)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const specs = draftSpecs('ivan')
   // Counts are derived over EVERY loaded row, not over the current result:
@@ -691,27 +622,24 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
   const shown = applySearch(applyFilters(drafts, specs, filters), q, d => [d.title, d.topic])
   const shownStages = groupByStage(shown)
   const ideasHidden = draftFacetsActive(filters, q)
-  const scheduledThisWeek = stages.scheduled.filter(d => {
-    if (!d.scheduled_at) return false
-    const t = Date.parse(d.scheduled_at)
-    return Number.isFinite(t) && t >= Date.now() && t < Date.now() + 7 * 86400_000
-  }).length
 
   return (
     <>
       <CommandStrip
-        lane={lane} setLane={setLane}
+        lane={lane} setLane={setLane} view={view} setView={setView}
         stats={
-          <PipelineStats stages={stages} matched={matched} laneTotal={laneTotal} onJump={jump} />
-        }
-        alert={
-          <AlertChip drafts={alerts} extra={extra} open={alertOpen} onToggle={() => setAlertOpen(o => !o)} />
+          // In calendar view a stage mark still counts the lane, and clicking it
+          // still means "take me to those rows" — so it switches the view back
+          // and jumps. A control that goes dead in one of two views is a control
+          // the reader has to learn twice.
+          <PipelineStats stages={stages} onJump={s => { setView('flow'); jump(s) }} />
         }
         filter={
-          // idleCount={false}: the strip's own lane figure two slots left already
-          // states this total, and the unfiltered note here would be that number a
-          // second time on the same band. The FILTERED line is never suppressed —
-          // `9 of 224 shown` is the number doing work.
+          // idleCount={false}: an unfiltered total on Ivan's lane was the figure
+          // the strip printed two slots left. That figure is gone now, and this
+          // stays suppressed for the reason it was suppressed on 08-04 — the
+          // FILTERED line (`9 of 224 shown`) is the number doing work, and it is
+          // never suppressed.
           <FilterRow
             prominent={prominent} demoted={demoted}
             state={filters} setState={setFilters} q={q} setQ={setQ}
@@ -719,32 +647,12 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
             idleCount={false} inline
           />
         }
-        tail={
-          // Advisory denominator, never a quota, never a gate, never red — and
-          // a mark rather than a line of prose. The word "cadence" is what stops
-          // it reading as a target, which is why it is still printed.
-          //
-          // 🔴 IT WAS `1↗7d` UNTIL THE BALLOT. Two numbers, one arrow, no noun:
-          // the craft seat read it as a toolbar overflow glyph rather than a
-          // designed mark, and it was right — nothing on the strip said which
-          // number was the count and which was the window. EVERY FIGURE ON THIS
-          // STRIP NOW CARRIES ITS OWN WORD: the numeral is the data tier
-          // (tabular, `<b>`), the word beside it is the label tier, and the two
-          // never share a type register. The full sentence stays on the title.
-          <span
-            className="ct-cmd-cad"
-            title={`${scheduledThisWeek} posts are scheduled in the next 7 days. The 4-a-week cadence is an editorial rhythm, not a quota and not a gate.`}
-          >
-            <b>{scheduledThisWeek}</b><span>scheduled</span>
-            <i aria-hidden>·</i>
-            <b>7d</b><span>cadence</span>
-          </span>
-        }
       />
-      {alertOpen && (
-        <AlertBody drafts={alerts} lane="ivan" refresh={refresh} onOpen={onOpen} openId={openId} extra={extra} />
-      )}
 
+      {view === 'calendar' ? (
+        <ContentCalendar rows={shown} lane="ivan" onOpen={onOpen} refresh={refresh} />
+      ) : (
+      <>
       {/* ask 3 — the POST side of the content_type partition only. Rows with no
           content_type ride here too, labelled, rather than vanishing from both
           lanes. ask 4 — open by default, sticky header, and the open flag is
@@ -789,14 +697,33 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
           </div>
         ))}
 
-      {/* Ask 13's other half: errors older than the 48h alarm window are still
-          IN the queue — a section, not a siren. The strip above no longer
-          counts them, so without this they would vanish from the lane. */}
+      {/* 🔴 EVERY ERRORED ROW, not the old ones only.
+          This section used to render `shownStages.error.filter(d => !isRecentError(d))`,
+          because the last 48 hours belonged to the alarm band. The band is gone
+          (2026-08-07), so that filter would have quietly deleted the newest
+          errors — the ones most likely to still be fixable — from the surface
+          entirely. The window is not lost: it is stated in the sub-line, which
+          is where a time scope belongs once it is no longer a siren. */}
       <StageSection
-        s="error" rows={shownStages.error.filter(d => !isRecentError(d))} lane="ivan"
+        s="error" rows={shownStages.error} lane="ivan"
         refresh={refresh} onOpen={onOpen} openId={openId}
         isOpen={stageOpen.isOpen('error')} toggle={() => stageOpen.toggle('error')}
-        sub={`Errored more than ${ERROR_ALARM_HOURS} hours ago — out of the alarm strip, not out of the queue.`}
+        sub={(() => {
+          const recent = shownStages.error.filter(d => isRecentError(d)).length
+          return recent > 0
+            ? `${recent} of these errored inside the last ${ERROR_ALARM_HOURS} hours.`
+            : `Nothing has errored in the last ${ERROR_ALARM_HOURS} hours.`
+        })()}
+      />
+      {/* PAST DUE — a stage this lane rendered NOWHERE. `stuck` is a scheduled
+          row whose time came and went with no `source_post_id`: it silently
+          never went out. It was only ever visible inside the alarm band, so it
+          gets its own section rather than disappearing with it. */}
+      <StageSection
+        s="stuck" rows={shownStages.stuck} lane="ivan"
+        refresh={refresh} onOpen={onOpen} openId={openId}
+        isOpen={stageOpen.isOpen('stuck')} toggle={() => stageOpen.toggle('stuck')}
+        sub="Their time passed and no published post came back — they never went out."
       />
       {(['archived', 'other'] as const).map(s => (
         <StageSection
@@ -810,6 +737,8 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
           job now) and the daily summaries moved to Ops. The Content scroll
           ends at the pillar mix. */}
       <PillarMix rows={drafts} />
+      </>
+      )}
     </>
   )
 }
@@ -829,7 +758,7 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
 // approved") so nothing is lost with the header.
 const BOARD_ORDER: BoardGroup[] = ['internal', 'board']
 
-function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, setQ, matched, open, setOpen, lane, setLane, onBoard }: {
+function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, setQ, matched, view, setView, open, setOpen, lane, setLane, onBoard }: {
   drafts: ContentDraft[]
   lane: ContentLane
   setLane: (l: ContentLane) => void
@@ -845,6 +774,8 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
   q: string
   setQ: (q: string) => void
   matched: number | null
+  view: ContentView
+  setView: (v: ContentView) => void
   open: string[]
   setOpen: (fn: (cur: string[]) => string[]) => void
 }) {
@@ -858,7 +789,6 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
     'internal_review', 'internal_generating', 'internal_approved', 'internal_scheduled',
     'board_review', 'board_approved', 'board_scheduled',
   ])
-  const [alertOpen, setAlertOpen] = useState(false)
   // Same determinism rule as the Ivan lane: an active stage filter opens its section.
   // Same determinism rule as the Ivan lane, applied to BOTH categories: a
   // stage filter that opened only one of them would render a different row
@@ -879,16 +809,15 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
   const { prominent, demoted } = splitFacets(facets, DRAFT_PROMINENT)
   const shown = applySearch(applyFilters(drafts, specs, filters), q, d => [d.title, d.topic])
 
-  // Stuck-resource lines moved to the Magnets job with the lane that renders
-  // them; this strip is posts-only now. Ask 13: same 48h alarm window as the
-  // Ivan lane — older errors keep their rows in the Errors section this lane
-  // already renders below.
-  const alerts = shown.filter(d => isRecentError(d) || isStuckScheduled(d))
+  // No alarm band here either (2026-08-07). This lane never needed a rehoming
+  // pass for it: it already renders EVERY stage — `error` and `stuck` included —
+  // inside both board categories, so the band was the only surface on which
+  // those rows appeared twice.
 
   return (
     <>
       <CommandStrip
-        lane={lane} setLane={setLane}
+        lane={lane} setLane={setLane} view={view} setView={setView}
         laneNote={drafts.length > 0
           ? (
             <span className="ct-cmd-note" title={`${onBoard} of the ${drafts.length} loaded drafts are visible on ${LANE_POSSESSIVE.risedtc} board`}>
@@ -896,23 +825,23 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
             </span>
           )
           : undefined}
-        alert={
-          <AlertChip drafts={alerts} extra={[]} open={alertOpen} onToggle={() => setAlertOpen(o => !o)} />
-        }
         filter={
+          // idleCount={false}, matching Ivan's lane (2026-08-07). With the
+          // strip's own lane figure retired, an unfiltered `103 drafts` here was
+          // the last survivor of exactly the cluster he called not needed. The
+          // FILTERED line is untouched — that one is the number doing work.
           <FilterRow
             prominent={prominent} demoted={demoted}
             state={filters} setState={setFilters} q={q} setQ={setQ}
             shown={shown.length} loaded={drafts.length} total={matched} noun="drafts"
-            inline
+            idleCount={false} inline
           />
         }
       />
-      {alertOpen && (
-        <AlertBody drafts={alerts} lane="risedtc" refresh={refresh} onOpen={onOpen} openId={openId} extra={[]} />
-      )}
 
-      {shown.length === 0 && drafts.length > 0
+      {view === 'calendar' ? (
+        <ContentCalendar rows={shown} lane="risedtc" onOpen={onOpen} refresh={refresh} />
+      ) : shown.length === 0 && drafts.length > 0
         ? <FilteredEmpty noun="drafts" onClear={() => { setFilters({}); setQ('') }} />
         : BOARD_ORDER.map(g => {
           // boardGroupOf, never an inline `board_visible === true`: the grouping
@@ -976,6 +905,18 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
   // browser whose stored `posts` entry carries the TOUCHED marker — the old
   // key's answer would silently override the new defaults forever.
   const [sect, setSect] = useSectionState(`content.posts2.${lane}`)
+  // FLOW vs CALENDAR. Deliberately NOT in the per-lane section entry: the view
+  // is a property of how Ivan is working right now, not of a lane's vocabulary,
+  // and switching lane inside the calendar has to keep him in the calendar —
+  // that is what makes the lane tabs the calendar's selector. Same one-key
+  // localStorage shape the rail's collapse uses.
+  const [view, setViewState] = useState<ContentView>(() => {
+    try { return localStorage.getItem(VIEW_KEY) === 'calendar' ? 'calendar' : 'flow' } catch { return 'flow' }
+  })
+  const setView = (v: ContentView) => {
+    setViewState(v)
+    try { localStorage.setItem(VIEW_KEY, v) } catch { /* private mode */ }
+  }
   const setFilters = (f: FilterState) => setSect(p => ({ ...p, filters: f }))
   const setQ = (q: string) => setSect(p => ({ ...p, q }))
   // Collapse state rides in the SAME per-lane section entry as the filters, so
@@ -984,6 +925,16 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
   const setOpenSections = (fn: (cur: string[]) => string[]) =>
     setSect(p => ({ ...p, open: fn(p.open) }))
   const switchLane = (l: ContentLane) => setLane(l)
+
+  // Ops' "Open them in Content" (OpsBoard, PipelineNotes). The errored rows are
+  // a FLOW thing — the calendar draws dated posts, and an errored draft has no
+  // date to draw — so the view flips before the section is jumped to.
+  useEffect(() => {
+    const on = () => setView('flow')
+    window.addEventListener('wb-open-content-errors', on)
+    return () => window.removeEventListener('wb-open-content-errors', on)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const err = error ?? (hasMock('fetch-error') ? 'PostgREST returned 500 for carousel_drafts' : null)
   const firstLoad = loading && drafts.length === 0
@@ -1009,7 +960,7 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
             rendered on the happy path. The strip drops its numbers here (there
             are none) and keeps its switch. */}
         {(err || firstLoad || nothingMatched) && (
-          <CommandStrip lane={lane} setLane={switchLane} filter={null} />
+          <CommandStrip lane={lane} setLane={switchLane} view={view} setView={setView} filter={null} />
         )}
         {err ? (
           <Failed
@@ -1040,7 +991,7 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
             drafts={drafts} stages={stages} openId={openId} onOpen={onOpen} refresh={refresh}
             lane={lane} setLane={switchLane}
             filters={sect.filters} setFilters={setFilters} q={sect.q} setQ={setQ}
-            matched={matched} laneTotal={laneTotal}
+            matched={matched} view={view} setView={setView}
             open={sect.open} setOpen={setOpenSections}
           />
         ) : (
@@ -1048,7 +999,7 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
             drafts={drafts} openId={openId} onOpen={onOpen} refresh={refresh}
             lane={lane} setLane={switchLane} onBoard={onBoard}
             filters={sect.filters} setFilters={setFilters} q={sect.q} setQ={setQ}
-            matched={matched}
+            matched={matched} view={view} setView={setView}
             open={sect.open} setOpen={setOpenSections}
           />
         )}

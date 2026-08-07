@@ -5,7 +5,8 @@ import { PullIndicator } from '../../components/PullIndicator'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { blockedOps, claimingOps, outboundFeedId, pendingOps, sentOps, type OpsDraft } from '../../lib/ops'
 import { useCommentQueue } from '../../hooks/useCommentQueue'
-import { useAgentDigest } from '../../hooks/useContent'
+import { useAgentDigest, usePipelineHealth } from '../../hooks/useContent'
+import { pipelineHealthTotal, STUCK_GENERATING_MINUTES, type PipelineHealth } from '../../lib/content'
 import { SummariesSection } from './ContentSections'
 import { CalmEmpty, Failed } from './Surface'
 
@@ -32,12 +33,61 @@ import { CalmEmpty, Failed } from './Surface'
 //      the read-only history on the right, so neither has to stretch to 1240px
 //      and neither leaves the other's half black.
 
-export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
+// THE PIPELINE NOTES, rehomed (2026-08-07).
+//
+// Ivan retired the Content strip's alarm band. Four facts it carried had no
+// other surface, and 🔴 the assumption that Ops already counted them is FALSE —
+// verified, not assumed: the rail's Ops badge is `pendingOps(ops_drafts)`, a
+// table that has never held a carousel_drafts row, and the Content badge is a
+// head count of `status='review'`. Neither has ever counted an errored draft.
+//
+// So the count lands here, quietly, and the button goes back to the rows: Ops
+// is where "something needs a person" already lives, and this is that, one tier
+// below an approval. It renders NOTHING when the pipeline is clean.
+function PipelineNotes({ health, olderUnsent, onOpenErrors }: {
+  health: PipelineHealth
+  olderUnsent: number
+  onOpenErrors?: () => void
+}) {
+  const total = pipelineHealthTotal(health)
+  if (total === 0 && olderUnsent === 0) return null
+  const lines = [
+    health.errored > 0
+      && `${health.errored} draft${health.errored === 1 ? '' : 's'} errored in the content pipeline.`,
+    health.pastDue > 0
+      && `${health.pastDue} scheduled post${health.pastDue === 1 ? '' : 's'} went past ${health.pastDue === 1 ? 'its' : 'their'} time with nothing published back.`,
+    health.stalledGenerating > 0
+      && `${health.stalledGenerating} draft${health.stalledGenerating === 1 ? '' : 's'} generating for over ${STUCK_GENERATING_MINUTES} minutes — the run that started ${health.stalledGenerating === 1 ? 'it' : 'them'} is probably dead.`,
+    health.failedPublish > 0
+      && `${health.failedPublish} publish ${health.failedPublish === 1 ? 'failure' : 'failures'} in the queue — the only place a failed publish is written down.`,
+    // History, not a defect — it keeps the wording it had inside the band.
+    olderUnsent > 0
+      && `${olderUnsent} pipeline ${olderUnsent === 1 ? 'alert predates' : 'alerts predate'} the 14-day window (ClickUp-era ids, no live draft behind them) — historical, not actionable here.`,
+  ].filter((l): l is string => typeof l === 'string')
+  return (
+    <div className="ops-pipe">
+      <div className="ops-pipe-h">
+        <span className="ops-pipe-t">Content pipeline</span>
+        {total > 0 && <span className="ops-pipe-n">{total}</span>}
+      </div>
+      {lines.map(l => <div className="ops-pipe-l" key={l}>{l}</div>)}
+      {onOpenErrors && (health.errored > 0 || health.pastDue > 0) && (
+        <button type="button" className="btn s ops-pipe-b" onClick={onOpenErrors}>
+          Open them in Content
+        </button>
+      )}
+    </div>
+  )
+}
+
+export function OpsBoard({ drafts, loading, error, loadedAt, refresh, onOpenErrors }: {
   drafts: OpsDraft[]
   loading: boolean
   error: string | null
   loadedAt: string | null
   refresh: () => void
+  // Ops does not own the Content job, so the jump is handed in by the Shell.
+  onOpenErrors?: () => void
 }) {
   const rowsRef = useRef<HTMLDivElement>(null)
   const ptr = usePullToRefresh(rowsRef, refresh)
@@ -49,6 +99,8 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
   // Daily summaries live HERE now, not at the bottom of the Content scroll
   // (Ivan, 2026-08-04: "DAILY SUMMARIES INSIDE OPS AS A SUB TAB MAYBE").
   const digest = useAgentDigest(true)
+  // Four head counts, no rows — the rehomed alarm band (PipelineNotes above).
+  const health = usePipelineHealth(true)
 
   // ONE header, owned here. The wrapped screen's own nav is gone because the
   // screen is no longer wrapped — the doubled render has no code path left.
@@ -148,6 +200,9 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
             </div>
           )}
         </div>
+        <PipelineNotes
+          health={health.rows} olderUnsent={digest.olderUnsent} onOpenErrors={onOpenErrors}
+        />
         <SummariesSection rows={digest.rows} defaultOpen />
       </div>
     </>
