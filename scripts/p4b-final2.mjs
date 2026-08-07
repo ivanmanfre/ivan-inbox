@@ -108,10 +108,15 @@ const MEASURE = function () {
         railClientH: insp ? insp.clientHeight : null,
         screens: insp && insp.clientHeight
           ? +(insp.scrollHeight / insp.clientHeight).toFixed(2) : null,
-        rewriteFolded: !!document.querySelector('.qa-rw') &&
-          !document.querySelector('.qa-rw[open]'),
+        // Every evidence fold, and whether it is shut in the default state —
+        // the rewrite is the one the spec named, so it is called out by itself.
         folds: [...document.querySelectorAll('.dw-tabbody details')].map(
-          (el) => (el.querySelector('summary')?.textContent ?? '').trim().slice(0, 60)),
+          (el) => ({ s: (el.querySelector('summary')?.textContent ?? '').trim().slice(0, 60), open: el.open })),
+        rewriteFolded: (() => {
+          const f = [...document.querySelectorAll('.dw-tabbody details.qa-fold')]
+            .find((el) => /applied rewrite/i.test(el.querySelector('summary')?.textContent ?? ''))
+          return f ? !f.open : null
+        })(),
       }
       : null,
   }
