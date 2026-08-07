@@ -4,8 +4,7 @@ import {
   publishAtForDay, shiftMonth, type CalendarItem,
 } from '../../lib/calendarItems'
 import {
-  ClientRpcError, LANE_POSSESSIVE, scheduleDraftAt, STAGE_LABEL,
-  type ContentDraft, type ContentLane,
+  ClientRpcError, setScheduleDateAt, STAGE_LABEL, type ContentDraft,
 } from '../../lib/content'
 import { useConfirm } from '../../components/ConfirmSheet'
 import { SectionHead } from './Surface'
@@ -19,11 +18,18 @@ import type { OpenDraft } from './ContentList'
 // there is no second source that can disagree with the queue about what is
 // scheduled.
 //
-// What it is NOT: a second write path. Exactly one thing on this surface
-// changes the database — `scheduleDraftAt`, the gated RPC (content.ts) — and it
-// is only offered where the RPC will actually accept it. On Ivan's lane it will
-// not, and the rail says so in the database's own words rather than rendering a
-// button that answers `not_a_client_draft`.
+// What it is NOT: an arming surface. Exactly one thing here changes the
+// database — `setScheduleDateAt`, the gated date-only RPC (content.ts, db/032)
+// — and `scheduled_at` is the ONLY column it writes. Status and board
+// visibility are left exactly as they were, which is what makes a date move a
+// date move: nothing on a client's board appears, disappears, or gets armed
+// because a post was dragged to a different Tuesday. Arming is still a separate,
+// deliberate act on the draft pane (`scheduleDraftAt`).
+//
+// It is offered on BOTH lanes: the new RPC has no `client_id` branch, so Ivan's
+// own drafts are accepted. The one refusal left is the database's status line
+// (`review`/`scheduled`), and canMoveDate mirrors it, so a control is drawn only
+// where the write will land.
 //
 // Mobile is the SAME DOM. The grid becomes an agenda list in CSS (`.cal` at
 // ≤767px): the week rows unstack, empty days are display:none, and the day
@@ -33,9 +39,11 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 type Moving = { id: string; title: string; at: string | null; day: string }
 
-export function ContentCalendar({ rows, lane, onOpen, refresh }: {
+// No `lane` prop any more, and its absence is the change: every rule this
+// surface had that forked on the lane belonged to the arming RPC, and the
+// date-only one has none. It draws whatever rows it is handed.
+export function ContentCalendar({ rows, onOpen, refresh }: {
   rows: ContentDraft[]
-  lane: ContentLane
   onOpen: OpenDraft
   refresh: () => void
 }) {
@@ -50,8 +58,8 @@ export function ContentCalendar({ rows, lane, onOpen, refresh }: {
   const [done, setDone] = useState<string | null>(null)
   const confirm = useConfirm()
 
-  const items = useMemo(() => buildCalendarItems(rows, lane), [rows, lane])
-  const rail = useMemo(() => buildCalendarRail(rows, lane), [rows, lane])
+  const items = useMemo(() => buildCalendarItems(rows), [rows])
+  const rail = useMemo(() => buildCalendarRail(rows), [rows])
   const byDay = useMemo(() => groupByDay(items), [items])
   const weeks = useMemo(() => monthWeeks(anchor.year, anchor.month), [anchor])
   // The queue the draft window walks with j/k: the month's chips in time order,
@@ -73,19 +81,17 @@ export function ContentCalendar({ rows, lane, onOpen, refresh }: {
 
   const commit = async () => {
     if (!moving) return
-    // 🔴 The RPC is not a date-only write: it also sets status='scheduled' and
-    // board_visible=true, so this is the moment a paying client can see the
-    // post. It gets said out loud before it fires, every time.
+    // The RPC writes `scheduled_at` and nothing else, so the confirm says the
+    // one thing that changes — and, just as importantly, the two that do not.
     const ok = await confirm({
       title: 'Move this post?',
-      message: `It moves to ${moving.day}, is marked scheduled, and goes onto ${LANE_POSSESSIVE[lane]} board. `
-        + 'That is what the scheduler does — there is no date-only version of it here.',
+      message: `Moves to ${longDay(moving.day)}. Status and board visibility stay as they are.`,
       confirmText: 'Move it',
     })
     if (!ok) return
     setBusy(true); setErr(null)
     try {
-      const at = await scheduleDraftAt(moving.id, publishAtForDay(moving.at, moving.day))
+      const at = await setScheduleDateAt(moving.id, publishAtForDay(moving.at, moving.day))
       setDone(`Moved to ${dayKeyOf(at) ?? moving.day}.`)
       setMoving(null)
       refresh()
@@ -174,17 +180,15 @@ export function ContentCalendar({ rows, lane, onOpen, refresh }: {
               </div>
             ))
           )}
-          {lane === 'ivan' && (
-            // The honest version of a missing button. Read off the live function
-            // body: operator_schedule_draft answers `not_a_client_draft` for
-            // client_id IS NULL, and the only other way to set a date is a direct
-            // write to scheduled_at — which is exactly what the publish bridge
-            // acts on. So this lane gets no move control anywhere on the surface.
+          {rail.some(r => !r.movable) && (
+            // The honest version of a missing button, kept for the one row the
+            // new RPC still refuses. `status not in ('review','scheduled')` is
+            // its whole guard, so an approved-but-undated row cannot be given a
+            // date here — and it says which rule, rather than just omitting the
+            // control and letting the omission look like an oversight.
             <div className="cal-note">
-              Dates on your own lane are not editable here. The scheduler RPC only accepts a
-              client’s draft (<code>not_a_client_draft</code>), and writing <code>scheduled_at</code>
-              {' '}straight into the table is what hands a post to the publisher — so this surface
-              does not do it.
+              Some of these have no <b>Give it a date</b> button: the date RPC takes a draft at
+              Needs review or Scheduled only (<code>bad_status</code>), and these are approved.
             </div>
           )}
         </div>
@@ -204,7 +208,7 @@ export function ContentCalendar({ rows, lane, onOpen, refresh }: {
             <button type="button" className="btn s" disabled={busy} onClick={() => setMoving(null)}>Cancel</button>
           </div>
           <div className="cal-move-s">
-            This also marks it scheduled and puts it on {LANE_POSSESSIVE[lane]} board.
+            Only the date changes — status and board visibility stay as they are.
             {moving.at ? ' Its time of day is kept.' : ' It has no time yet, so it goes out at 09:00.'}
           </div>
           {err && <div className="ops-err">{err}</div>}

@@ -1069,6 +1069,12 @@ export const CLIENT_RPC_MESSAGES: Record<string, string> = {
   not_a_client_draft:
     'That is one of your own drafts, and the scheduler RPC only accepts a client’s. '
     + 'Nothing changed — its date is exactly as it was.',
+  // operator_set_schedule_date's only rule beyond the gate: `status in
+  // ('review','scheduled')`. A published post is the case this refuses in
+  // practice, and the refusal is the database's, not ours.
+  bad_status:
+    'Only a draft at Needs review or Scheduled can be re-dated. '
+    + 'Nothing changed — its date is exactly as it was.',
 }
 
 export function clientRpcMessage(code: string): string {
@@ -1165,6 +1171,39 @@ export async function scheduleDraftAt(id: string, publishAt: string): Promise<st
   })
   const r = rpcOk(data, error)
   return typeof r.scheduled_at === 'string' ? r.scheduled_at : publishAt
+}
+
+/**
+ * Move a draft's DATE, and nothing else. Either lane.
+ *
+ * The calendar's write path (db/032, live 2026-08-07). It is the same gate and
+ * the same shape as scheduleDraftAt above, and the whole difference is what it
+ * leaves alone:
+ *
+ *   operator_set_schedule_date(p_gate text, p_draft_id uuid, p_scheduled_at timestamptz)
+ *     · gate first                                  -> 'bad_gate'
+ *     · no such row                                 -> 'not_found'
+ *     · status not in ('review','scheduled')        -> 'bad_status'
+ *     · update set scheduled_at = p_scheduled_at
+ *
+ * So: no `status='scheduled'`, no `board_visible=true`, and NO client_id test —
+ * a row that was not armed stays unarmed, a post that is not on the client's
+ * board does not appear on it, and Ivan's own lane is accepted. That is why the
+ * calendar can offer a move on both lanes without it being an arming action.
+ *
+ * scheduleDraftAt stays the ARMING call and keeps its own callers (the draft
+ * pane's Schedule button): promoting a client post to the board is a real
+ * decision, and this function deliberately cannot make it.
+ *
+ * @returns the `scheduled_at` the database ended up holding.
+ * @throws ClientRpcError carrying the server's own refusal code.
+ */
+export async function setScheduleDateAt(id: string, scheduledAt: string): Promise<string> {
+  const { data, error } = await supabase.rpc('operator_set_schedule_date', {
+    p_gate: CLIENT_OPS_GATE, p_draft_id: id, p_scheduled_at: scheduledAt,
+  })
+  const r = rpcOk(data, error)
+  return typeof r.scheduled_at === 'string' ? r.scheduled_at : scheduledAt
 }
 
 export async function setBoardVisible(id: string, visible: boolean): Promise<void> {

@@ -1,4 +1,4 @@
-import { stageOf, type ContentDraft, type ContentLane, type ContentStage } from './content'
+import { stageOf, type ContentDraft, type ContentStage } from './content'
 
 // THE CALENDAR, derived — never a second copy of the rows.
 //
@@ -12,8 +12,8 @@ import { stageOf, type ContentDraft, type ContentLane, type ContentStage } from 
 //     there is no dedupe rule, no `clickup_task_id` join, and no way for a chip
 //     to point at a row the list does not have;
 //   · `reschedulable` there was a guess about which rows a direct UPDATE would
-//     silently no-op on. Here it mirrors a live function body (canMoveDate in
-//     content.ts) plus one guard of our own, stated where it is made.
+//     silently no-op on. Here it is a live function body, verbatim and with
+//     nothing added: canMoveDate is operator_set_schedule_date's status line.
 //
 // Everything below is pure: no fetch, no supabase, no Date.now() that isn't
 // injectable. That is what makes it testable, and the derivation is where the
@@ -87,7 +87,6 @@ const DATED_STAGES = new Set<ContentStage>(['review', 'approved', 'scheduled', '
  */
 export function buildCalendarItems(
   rows: ContentDraft[],
-  lane: ContentLane,
   now: number = Date.now(),
 ): CalendarItem[] {
   const out: CalendarItem[] = []
@@ -104,7 +103,7 @@ export function buildCalendarItems(
       at: d.scheduled_at,
       stage,
       type: d.type,
-      movable: canMoveDate(d, lane),
+      movable: canMoveDate(d),
     })
   }
   return out.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0))
@@ -116,45 +115,41 @@ export function buildCalendarItems(
  * Same predicate the Approved section's sub-line already counts ("N approved
  * without a date — on no other surface"), so the two can never disagree.
  */
-export function buildCalendarRail(rows: ContentDraft[], lane: ContentLane): CalendarRail[] {
+export function buildCalendarRail(rows: ContentDraft[]): CalendarRail[] {
   return rows
     .filter(d => d.status === 'approved' && !d.scheduled_at)
-    .map(d => ({ id: d.id, title: draftTitle(d), type: d.type, movable: canMoveDate(d, lane) }))
+    .map(d => ({ id: d.id, title: draftTitle(d), type: d.type, movable: canMoveDate(d) }))
 }
 
 /**
- * WHICH ROWS THIS SURFACE MAY RE-DATE, and both halves of the rule.
+ * WHICH ROWS THIS SURFACE MAY RE-DATE — now one rule, and it is the database's.
  *
- * Read off the LIVE function body (pg_get_functiondef, 2026-08-07):
+ * The calendar's write path is operator_set_schedule_date (db/032), NOT the
+ * arming RPC. Read off the LIVE function body (pg_get_functiondef, 2026-08-07):
  *
- *   operator_schedule_draft(p_gate text, p_draft_id uuid, p_publish_at timestamptz)
- *     · gate first                                   -> 'bad_gate'
- *     · no such row                                  -> 'not_found'
- *     · 🔴 client_id IS NULL                          -> 'not_a_client_draft'
- *     · single_image/carousel with no image_urls
- *       (carousel: or no slides)                     -> 'awaiting_media'
- *     · update set status='scheduled', scheduled_at=p_publish_at,
- *                  board_visible=true
+ *   operator_set_schedule_date(p_gate text, p_draft_id uuid, p_scheduled_at timestamptz)
+ *     · gate first                                  -> 'bad_gate'
+ *     · no such row                                 -> 'not_found'
+ *     · status not in ('review','scheduled')        -> 'bad_status'
+ *     · update set scheduled_at = p_scheduled_at        (and NOTHING else)
  *
- * So:
- *  1. THE IVAN LANE HAS NO PATH. The RPC refuses `client_id IS NULL` by
- *     construction, and the only other way to move a date is a direct write to
- *     `carousel_drafts.scheduled_at` — which is precisely what the publish
- *     bridge acts on, and what this app has refused to do since the parity
- *     ledger (AFFORDANCES A5). A surface with no legal write offers no button.
- *  2. PUBLISHED IS OURS, not the database's. The SQL has no status guard at
- *     all, so re-dating a published row would flip it back to 'scheduled' and
- *     hand it to the publisher a second time. The old board's calendar drew the
- *     same line ("carousel posts are reschedulable until published").
+ * What changed, and why the predicate got shorter:
+ *  1. NO LANE TEST. There is no `client_id` branch in the new body, so Ivan's
+ *     own drafts are accepted — the `not_a_client_draft` refusal belonged to
+ *     the arming RPC alone. This surface no longer has a lane it cannot serve.
+ *  2. PUBLISHED IS THE DATABASE'S RULE NOW, not ours. `status not in
+ *     ('review','scheduled')` refuses a published row outright, so the guard
+ *     that used to be a promise we kept in TypeScript is enforced in SQL.
+ *  3. THAT SAME LINE ALSO REFUSES `approved`. Nothing on either lane sits at
+ *     that status today (live census 2026-08-07: 0 rows, both lanes), but an
+ *     approved row would be shown WITHOUT a move control rather than handed a
+ *     button that answers `bad_status`.
  *
- * The media guard is deliberately NOT mirrored here: `slides` is not on the
- * list row, so a client-side "this will fail" would be a guess. The refusal is
- * surfaced verbatim instead (CLIENT_RPC_MESSAGES.awaiting_media).
+ * The media guard is gone with the arming RPC: a date-only write has no
+ * `awaiting_media` branch, so there is nothing left to mirror or to guess at.
  */
-export function canMoveDate(d: Pick<ContentDraft, 'status' | 'client_id'>, lane: ContentLane): boolean {
-  if (lane !== 'risedtc') return false
-  if (!d.client_id) return false
-  return d.status !== 'published'
+export function canMoveDate(d: Pick<ContentDraft, 'status'>): boolean {
+  return d.status === 'review' || d.status === 'scheduled'
 }
 
 /**
