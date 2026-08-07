@@ -242,7 +242,14 @@ function IdeaCard({ i, onDeleted, onDecided }: {
                 </div>
               </div>
             ) : (
-              <button type="button" className="wb-delbtn" onClick={() => setConfirming(true)}>
+              // 🔴 Shut while a decision is in flight. Approve fires the
+              // curator's promote run and only THEN stamps the row; deleting
+              // the candidate underneath that run leaves a promoted draft whose
+              // idea no longer exists, and nothing reconciles the two.
+              <button
+                type="button" className="wb-delbtn" disabled={!!deciding}
+                onClick={() => setConfirming(true)}
+              >
                 Delete idea
               </button>
             )}

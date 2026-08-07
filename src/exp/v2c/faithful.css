@@ -837,10 +837,12 @@
    review row could only be read by opening it.
    It rides in `.ct-mid`, i.e. INSIDE the existing middle track — the row's grid
    is untouched, and so is the anchor rail and the right edge.
-   A DELIBERATE, SCOPED EXCEPTION TO §7.8: two clamped meta lines take these
-   rows to ~72px at 1440, over the 40-60 band. It is licensed for the ~9 rows of
-   the one section where a decision is being made, and for no other stage —
-   which is what `glance` gates (ContentList.tsx Card). */
+   A DELIBERATE, SCOPED EXCEPTION TO §7.8. MEASURED, not estimated: at 1440 the
+   mid column runs 332px, the clamp fills both lines at 33.8px, and the row's
+   content box lands at 77.8px — a 95.8px row against the 40-60 band. Licensed
+   for the ~9 rows of the one section where a decision is being made, and for no
+   other stage — which is what `glance` gates (ContentList.tsx Card). The scope
+   IS the licence: at 285 rows this rule would cost ~10,000px of scroll. */
 .wb.wb.wb .ct-ex{
   margin-top:3px;
   font-size:var(--fs-meta); line-height:1.35; color:var(--text3);
@@ -853,6 +855,14 @@
 .wb.wb.wb .ct-chip-when{
   background:transparent; color:var(--text2);
   box-shadow:inset 0 0 0 1px var(--hairline);
+  /* 🔴 RANKED ABOVE THE FORMAT CHIP, and the meta row's own contract is why:
+     `.ct-meta` is nowrap + a 14px trailing fade, so the LAST chip is the one
+     that gives way when the mid column crushes (measured 182px of content
+     through a 102px box at 390). Format is constant within a section — the
+     chip diet's own reasoning — so it carries ~zero information here, while the
+     armed date is the fact this row is being read for. Slot #1 keeps its own
+     order:-1 and its DOM position, so the QA verdict never moves. */
+  order:-1;
 }
 
 /* 7.8 — DENSITY BAND. 40-60px content box at 1440; ≤72px at 390 where a second
@@ -1748,6 +1758,9 @@
 .wb.wb.wb .ct-idea-decide{ margin-top:10px }
 .wb.wb.wb .ct-idea-note{
   width:100%; margin:0; padding:7px 10px;
+  /* §6 — 32px floor. --fs-meta in a 7px pad lands at 29px, which is a control
+     you can miss with a thumb; the note is the only field in this card. */
+  min-height:34px; box-sizing:border-box;
   background:var(--surface2); border:none; border-radius:var(--r-ctl);
   box-shadow:inset 0 0 0 1px var(--hairline);
   color:var(--text); font-family:inherit; font-size:var(--fs-meta);
@@ -1755,6 +1768,28 @@
 .wb.wb.wb .ct-idea-note::placeholder{ color:var(--text3) }
 .wb.wb.wb .ct-idea-note:disabled{ opacity:.5 }
 .wb.wb.wb .ct-idea-decide .ct-ref{ margin-top:6px }
+/* 🔴 RESTATED AT CARD DEPTH ON PURPOSE. `.ct-ac-wide` cannot reach these two:
+   it scores one class BELOW `.ct-card .ct-ac .btn` (§7.7), which is written for
+   the COMPACT in-row pair — 4px of padding at the 11px eyebrow step, ~21px
+   tall. Inherited unchanged, the band's two decisions would ship as the
+   smallest controls on the surface. */
+.wb.wb.wb .ct-card .ct-idea-decide .ct-ac{ margin:12px 0 0; gap:8px }
+.wb.wb.wb .ct-card .ct-idea-decide .ct-ac .btn{
+  flex:1; min-height:36px; padding:8px 12px;
+  display:inline-flex; align-items:center; justify-content:center;
+  font-size:var(--fs-body); font-weight:600;
+  letter-spacing:0; text-transform:none;
+}
+/* And the accent DOES belong on Approve here — the demotion rule at §5.3 is
+   not a ban on accent, it is a ban on EIGHTEEN of them: it demotes the in-row
+   Approve because one per row in a 285-row list is no primary at all. This one
+   lives in the single expanded card, at most one on screen, and it is the act
+   the whole band exists for — the same case the pane's full-width Approve is
+   granted the accent for. */
+.wb.wb.wb .ct-card .ct-idea-decide .ct-ac .btn.p{
+  background:var(--accent); color:var(--ink); box-shadow:none;
+}
+.wb.wb.wb .ct-card .ct-idea-decide .ct-ac .btn:disabled{ opacity:.5; cursor:default }
 
 .wb.wb.wb .ct-res{
   display:grid; grid-template-columns:var(--anchor-w) minmax(0,1fr);

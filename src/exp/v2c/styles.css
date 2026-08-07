@@ -765,6 +765,7 @@
   background:none;border:1px solid rgba(255,69,58,.35);padding:7px 14px;
   border-radius:99px;cursor:pointer}
 .wb-delbtn:hover{background:rgba(255,69,58,.1)}
+.wb-delbtn:disabled{opacity:.45;cursor:default;background:none}
 .wb-delconfirm{padding:12px 14px;border-radius:var(--r-md);
   background:rgba(255,69,58,.08);border:1px solid rgba(255,69,58,.3)}
 .wb-delq{display:block;font-size:13px;font-weight:600;color:#FF453A;line-height:1.4}
