@@ -29,12 +29,21 @@ export function WorkSegment({ job, counts, onJob }: {
   return (
     <div className="wb-workhead">
       <span className="wb-workhead-l">Content</span>
+      {/* Real buttons, not `<span onClick>`: this strip is how a keyboard or a
+          screen reader reaches Magnets and Styles at all, and a span reached
+          neither (no role, no tab stop — a probe looking for a button or a role
+          could not even find it). The look is unchanged; the button chrome is
+          stripped and the 28px box gets its hit extension in faithful.css. */}
       <div className="wb-workseg">
         {WORK_JOBS.map(j => (
-          <span key={j} className={`wb-ws${job === j ? ' on' : ''}`} onClick={() => onJob(j)}>
+          <button
+            key={j} type="button" className={`wb-ws${job === j ? ' on' : ''}`}
+            aria-current={job === j ? 'page' : undefined}
+            onClick={() => onJob(j)}
+          >
             {WORK_LANE_LABEL[j]}
             {(counts[j] ?? 0) > 0 && <b>{counts[j]}</b>}
-          </span>
+          </button>
         ))}
       </div>
     </div>
