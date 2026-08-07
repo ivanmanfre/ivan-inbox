@@ -221,6 +221,11 @@ export function ThreadScreen({ thread, onBack, refresh }: {
             onChange={e => setEdited(e.target.value)}
             disabled={busy}
           />
+          {draft.recipient_email && (
+            <div className="alsoemail" style={{ margin: '0 14px 10px' }}>
+              Approving also emails the scan to {draft.recipient_email} (from itsmattan@risedtc.com)
+            </div>
+          )}
           <div className="dc-a">
             <div className="btn s" onClick={busy ? undefined : onDiscard}>Discard</div>
             <div className="btn p" onClick={busy ? undefined : onApprove}>Approve &amp; send</div>
