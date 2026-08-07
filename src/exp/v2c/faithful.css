@@ -2476,6 +2476,41 @@
   }
 }
 
+/* ---- THE TABLE SHEDS COLUMNS BEFORE IT CRUSHES THE TITLE (post-ballot) ---- */
+/* 🔴🔴 MEASURED, NOT REASONED: the seven-column form above turns ON at 1000px
+   and DOES NOT FIT UNTIL ~1300px. The five fixed tracks are 96+84+168+156+132 =
+   636px plus a 28px anchor and six 12px gaps = 736px of a card that is only
+   744px wide at the 1000px breakpoint, so `minmax(0,1fr)` — the TITLE, the one
+   column a reader actually scans — resolved to:
+       1000→0px   1050→26px   1100→76px   1150→126px   1200→176px   1300→276px
+   A 0px title is not a dense table, it is a table that switched on 300px early.
+   The probe caught it as three rows whose title ellipsized inside 76px while
+   636px sat in metadata beside them.
+
+   The band the fix spec re-opened (below 1200) is exactly the band this breaks
+   in, and the answer is the same one the strip took: SHED, NEVER CRUSH. Below
+   1300 the two widest data columns (funnel 84, source 168) fold away and pillar
+   — the one Ivan names first — stays. The title then never drops below ~284px
+   anywhere the table is on, and the two columns come back at the width they
+   genuinely fit. Nothing is dropped from the ROW: both values keep their `title`
+   tooltip on the pillar cell's siblings in the draft pane, which is where the
+   full taxonomy has always lived.
+     `.ct-colv + .ct-colv` is every colv after the first — funnel and source,
+   without touching the markup or inventing per-column classes. */
+@media (min-width:1000px) and (max-width:1299.98px){
+  .wb.wb.wb .ct-card,
+  .wb.wb.wb .ct-cols-head{
+    grid-template-columns:var(--anchor-w) minmax(0,1fr) 96px 156px 132px;
+  }
+  .wb.wb.wb .ct-card .ct-ac{ grid-column:4 }
+  .wb.wb.wb .ct-card .ct-tail{ grid-column:5 }
+  .wb.wb.wb .ct-colv + .ct-colv{ display:none }
+  /* The head is seven positional spans; 4 and 5 are Funnel and Source and must
+     leave with the columns they label, or the labels slide onto Skip/Approve. */
+  .wb.wb.wb .ct-cols-head > span:nth-child(4),
+  .wb.wb.wb .ct-cols-head > span:nth-child(5){ display:none }
+}
+
 /* The collapsible rail (2026-08-04). Icons keep their rows; every label,
    count, group title and hint folds away with the width. */
 .wb.wb.wb .wb-rail-minbtn{
