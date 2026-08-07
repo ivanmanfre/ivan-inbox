@@ -345,6 +345,62 @@ export function queueFailed(r: ScheduledQueueRow): boolean {
   return !!(r.error_message && r.error_message.trim())
 }
 
+// ---------- the pipeline's quiet vital signs (2026-08-07) ----------
+//
+// Ivan retired the Content strip's alarm band ("all not needed"). Three of the
+// things it counted had no other home, so they moved to Ops — the surface for
+// "something needs a person" — and this is what feeds them.
+//
+// 🔴 COUNTS, NEVER ROWS. The band was fed by the lane's own 1,000-row page. Ops
+// must not pull that page a second time just to print four numbers, so every
+// figure here is a `head: true` count query (the same argument useContentBadge
+// makes). The rows themselves stay one click away, in the Content sections that
+// render them.
+//
+// Ivan's rows carry client_id NULL, never 'ivan'.
+export type PipelineHealth = {
+  errored: number
+  pastDue: number
+  stalledGenerating: number
+  failedPublish: number
+}
+
+export async function fetchPipelineHealth(now: number = Date.now()): Promise<PipelineHealth> {
+  const nowISO = new Date(now).toISOString()
+  const genCutoff = new Date(now - STUCK_GENERATING_MINUTES * 60_000).toISOString()
+  const head = { count: 'exact' as const, head: true }
+  const [err, due, gen, pub] = await Promise.all([
+    supabase.from('carousel_drafts').select('id', head)
+      .is('client_id', null).eq('status', 'error'),
+    // isStuckScheduled, expressed in PostgREST: scheduled, nothing published
+    // back, and either past its time or carrying no time at all.
+    supabase.from('carousel_drafts').select('id', head)
+      .is('client_id', null).eq('status', 'scheduled').is('source_post_id', null)
+      .or(`scheduled_at.is.null,scheduled_at.lt.${nowISO}`),
+    // isStuckGenerating's UPDATED_AT half only: taxonomy.generating_started_at
+    // is the more precise stamp the row-level check prefers, and it is not
+    // cheaply filterable here. The count can therefore lag the row by minutes —
+    // it can never claim a stall the rows do not have.
+    supabase.from('carousel_drafts').select('id', head)
+      .is('client_id', null).eq('status', 'generating').lt('updated_at', genCutoff),
+    supabase.from('scheduled_posts').select('id', head)
+      .in('status', QUEUE_STATUSES as unknown as string[])
+      .not('error_message', 'is', null).neq('error_message', ''),
+  ])
+  const first = [err, due, gen, pub].find(r => r.error)
+  if (first?.error) throw first.error
+  return {
+    errored: err.count ?? 0,
+    pastDue: due.count ?? 0,
+    stalledGenerating: gen.count ?? 0,
+    failedPublish: pub.count ?? 0,
+  }
+}
+
+export function pipelineHealthTotal(h: PipelineHealth): number {
+  return h.errored + h.pastDue + h.stalledGenerating + h.failedPublish
+}
+
 // ---------- ideas (R7 — a NEW read, per IA §7) ----------
 //
 // lm_idea_candidates has NO tenancy column (client_id 42703s; workspace_type and
@@ -1005,6 +1061,20 @@ export const CLIENT_RPC_MESSAGES: Record<string, string> = {
     'Mattan’s copy can only be edited while the draft is at Needs review or Scheduled.',
   empty_body: 'An empty post cannot be saved.',
   awaiting_media: 'That draft carries no image, and the scheduler refuses a client post without one.',
+  // The Ivan lane's refusal, verbatim from the function body. It is not an
+  // error state to route around: this RPC is the client lane's write path and
+  // has no Ivan-lane equivalent, which is why the calendar offers no move
+  // control on that lane at all (calendarItems.ts, canMoveDate).
+  not_found: 'The database has no draft with this id. Nothing changed.',
+  not_a_client_draft:
+    'That is one of your own drafts, and the scheduler RPC only accepts a client’s. '
+    + 'Nothing changed — its date is exactly as it was.',
+  // operator_set_schedule_date's only rule beyond the gate: `status in
+  // ('review','scheduled')`. A published post is the case this refuses in
+  // practice, and the refusal is the database's, not ours.
+  bad_status:
+    'Only a draft at Needs review or Scheduled can be re-dated. '
+    + 'Nothing changed — its date is exactly as it was.',
 }
 
 export function clientRpcMessage(code: string): string {
@@ -1078,6 +1148,64 @@ export function clientDeletable(lane: ContentLane, boardVisible: boolean | null 
  * without anyone pressing anything else. It does NOT publish — board_visible is
  * the only column it writes.
  */
+/**
+ * Move a CLIENT draft to a day the operator picked.
+ *
+ * 🔴 THIS IS THE ONLY DATE WRITE IN THE APP, and it is a gated RPC on purpose.
+ * A direct `carousel_drafts.update({ scheduled_at })` is what the publish
+ * bridge acts on, and the client board renders a denormalised snapshot that
+ * only the RPC's own flow rebuilds — so a direct write moves the date on our
+ * side and nowhere else. Same path the dashboard's drag-to-reschedule uses
+ * (clientops2/shared.tsx `onReschedule`); only the picked day differs.
+ *
+ * 🔴 IT IS NOT A DATE-ONLY WRITE. The function body also sets
+ * `status='scheduled'` and `board_visible=true`, so moving a draft PROMOTES it
+ * onto the client's live board. Every caller has to say so before it fires.
+ *
+ * @returns the `scheduled_at` the database ended up holding.
+ * @throws ClientRpcError carrying the server's own refusal code.
+ */
+export async function scheduleDraftAt(id: string, publishAt: string): Promise<string> {
+  const { data, error } = await supabase.rpc('operator_schedule_draft', {
+    p_gate: CLIENT_OPS_GATE, p_draft_id: id, p_publish_at: publishAt,
+  })
+  const r = rpcOk(data, error)
+  return typeof r.scheduled_at === 'string' ? r.scheduled_at : publishAt
+}
+
+/**
+ * Move a draft's DATE, and nothing else. Either lane.
+ *
+ * The calendar's write path (db/032, live 2026-08-07). It is the same gate and
+ * the same shape as scheduleDraftAt above, and the whole difference is what it
+ * leaves alone:
+ *
+ *   operator_set_schedule_date(p_gate text, p_draft_id uuid, p_scheduled_at timestamptz)
+ *     · gate first                                  -> 'bad_gate'
+ *     · no such row                                 -> 'not_found'
+ *     · status not in ('review','scheduled')        -> 'bad_status'
+ *     · update set scheduled_at = p_scheduled_at
+ *
+ * So: no `status='scheduled'`, no `board_visible=true`, and NO client_id test —
+ * a row that was not armed stays unarmed, a post that is not on the client's
+ * board does not appear on it, and Ivan's own lane is accepted. That is why the
+ * calendar can offer a move on both lanes without it being an arming action.
+ *
+ * scheduleDraftAt stays the ARMING call and keeps its own callers (the draft
+ * pane's Schedule button): promoting a client post to the board is a real
+ * decision, and this function deliberately cannot make it.
+ *
+ * @returns the `scheduled_at` the database ended up holding.
+ * @throws ClientRpcError carrying the server's own refusal code.
+ */
+export async function setScheduleDateAt(id: string, scheduledAt: string): Promise<string> {
+  const { data, error } = await supabase.rpc('operator_set_schedule_date', {
+    p_gate: CLIENT_OPS_GATE, p_draft_id: id, p_scheduled_at: scheduledAt,
+  })
+  const r = rpcOk(data, error)
+  return typeof r.scheduled_at === 'string' ? r.scheduled_at : scheduledAt
+}
+
 export async function setBoardVisible(id: string, visible: boolean): Promise<void> {
   const { data, error } = await supabase.rpc('operator_set_board_visible', {
     p_gate: CLIENT_OPS_GATE, p_draft_id: id, p_visible: visible,

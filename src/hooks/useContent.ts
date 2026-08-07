@@ -2,9 +2,10 @@ import { useCallback, useEffect, useId, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import {
   bucketDrafts, groupByStage, fetchContentDrafts, fetchDraftDetail, fetchIdeaCandidates,
-  fetchIdeaCounts, fetchLaneProbe, fetchScheduledQueue, splitIdeas,
+  fetchIdeaCounts, fetchLaneProbe, fetchPipelineHealth, fetchScheduledQueue, splitIdeas,
   type ContentBuckets, type ContentDraft, type ContentDraftDetail, type ContentLane,
-  type ContentStages, type IdeaCandidate, type IdeaCounts, type ScheduledQueueRow,
+  type ContentStages, type IdeaCandidate, type IdeaCounts, type PipelineHealth,
+  type ScheduledQueueRow,
 } from '../lib/content'
 import { fetchAlerts, fetchDailySummaries, type AgentSummary } from '../lib/agent'
 import {
@@ -178,6 +179,18 @@ function useAux<T>(load: () => Promise<T>, initial: T, deps: unknown[]): Aux<T> 
 export function useScheduledQueue(enabled: boolean) {
   return useAux<ScheduledQueueRow[]>(
     () => (enabled ? fetchScheduledQueue() : Promise.resolve([])), [], [enabled])
+}
+
+// The pipeline's vital signs, for Ops (2026-08-07). Four head-count queries, no
+// rows — see fetchPipelineHealth for why Ops does not mount the lane's page.
+export function usePipelineHealth(enabled: boolean) {
+  return useAux<PipelineHealth>(
+    () => (enabled ? fetchPipelineHealth() : Promise.resolve(EMPTY_HEALTH)),
+    EMPTY_HEALTH, [enabled])
+}
+
+const EMPTY_HEALTH: PipelineHealth = {
+  errored: 0, pastDue: 0, stalledGenerating: 0, failedPublish: 0,
 }
 
 // R7 — the Ideas stage. Also tenancy-column-less, also Ivan by construction.
