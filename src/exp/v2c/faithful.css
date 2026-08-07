@@ -1734,9 +1734,33 @@
   border-top:1px solid var(--hairline);
 }
 .wb.wb.wb .ct-q-t{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
-/* Within each of these sub-lists the trailing timestamp is pushed to the mid
-   column's own right edge, so each list keeps a single right rail. */
-.wb.wb.wb .ct-meta > .ct-tm{ margin-left:auto }
+/* Within each of these sub-lists the trailing timestamp keeps the list's single
+   right rail — but from its OWN `.ct-tail`, never as the last child of
+   `.ct-meta`. `.ct-meta` carries a 14px trailing fade for chips that overflow
+   it (:746) and `margin-left:auto` used to park the timestamp precisely inside
+   that ramp, which is why every idea, queue and style row read "13d ag". The
+   fade is correct for chips and is untouched; the value moved out from under
+   it, into the same slot a draft row has always used (ContentList.tsx:204).
+   These three rules are the layout that move costs — one extra track per
+   sub-list, nothing else. */
+.wb.wb.wb .ct-idea-h{ grid-template-columns:var(--anchor-w) minmax(0,1fr) auto }
+/* 🔴 `.ct-card` in the selector, and it is load-bearing: the ≥1000px table rule
+   (`.ct-card .ct-tail{grid-column:7}`, :2364) is a DESCENDANT selector, so it
+   reaches this tail too and outranks a shorter one by source order. Measured at
+   1440 before the fix: the tail landed in implicit column 7 and the four empty
+   tracks between charged 48px of gap to the title's column. */
+.wb.wb.wb .ct-card .ct-idea-h > .ct-tail{ grid-column:3 }
+.wb.wb.wb .ct-q{ display:grid; grid-template-columns:minmax(0,1fr) auto; column-gap:10px }
+.wb.wb.wb .ct-q > *{ grid-column:1 }
+.wb.wb.wb .ct-q > .ct-tail{ grid-column:2; grid-row:2 }
+.wb.wb.wb .ct-style{ display:grid; grid-template-columns:minmax(0,1fr) auto; column-gap:10px }
+.wb.wb.wb .ct-style > *{ grid-column:1 }
+.wb.wb.wb .ct-style > .ct-tail{ grid-column:2; grid-row:1 }
+/* The tail in these three is a VALUE, not the draft row's action column, so it
+   drops that column's reserved width and its own left gap. */
+.wb.wb.wb .ct-card .ct-idea-h > .ct-tail,
+.wb.wb.wb .ct-q > .ct-tail,
+.wb.wb.wb .ct-style > .ct-tail{ min-width:0; align-self:center; justify-self:end }
 
 /* 5.2, enforced on the links too: 51 accent-coloured link labels on one screen
    is not a budget, it is a colour. The words go back to --text and the
@@ -2419,3 +2443,50 @@
    9px on every surface and every viewport (6 of them on Content). 11px is the
    eyebrow tier, which is the floor this sheet uses everywhere else. */
 .wb.wb.wb .wb-fpill i{ font-size:var(--fs-eyebrow) }
+
+/* ==========================================================================
+   USABILITY OVERHAUL 2026-08-07 — lane A (D12, D19, D31)
+   ========================================================================== */
+
+/* D12 — the filter pills were the only ≥36px-hit control that got its hit
+   extension inside `@media (max-width:767px)` (:1055). A mouse is not a
+   precision instrument either, and `.ct-fpill` renders 28px tall on Content, so
+   the desktop row measured seven sub-32px targets. Same treatment, same
+   pattern, above the breakpoint: the VISUAL height is unchanged (the compact
+   pill is the §11.2 grammar) and only the hit box grows — 28 + 4 + 4 = 36.
+   🔴 VERTICAL ONLY, the rule the mobile block already states at :1059: these
+   sit 6px apart in a row, and a sideways extension makes two neighbours fight
+   for the same click. */
+@media (min-width:768px){
+  .wb.wb.wb .wb-fpill{ position:relative }
+  .wb.wb.wb .wb-fpill::after{
+    content:''; position:absolute; inset:-4px 0; border-radius:inherit;
+  }
+}
+
+/* D19 — the example-thumb strip scrolls (`overflow-x:auto`, no scrollbar) and
+   nothing said so, so the 4th thumb read as a cut-off card rather than as more
+   content. The same right-edge fade `.ct-fpills` got at :2068, at every width
+   because this strip overflows at 1440 too. A strip that does not overflow has
+   nothing under the ramp and reads unchanged. */
+.wb.wb.wb .ct-style-i{
+  -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+  mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+}
+
+/* D31 — the work segments became real <button>s (Rail.tsx:34). The look is
+   defined once, in `.wb-ws`, so all this does is strip the chrome a button
+   brings with it that a span never had, and give the 28px box the same
+   vertical hit extension the pills just took. The mobile block already extends
+   it to 44 (:1067) and is left alone. */
+.wb.wb.wb button.wb-ws{
+  /* 🔴 font-FAMILY only, never the `font` shorthand: this selector outranks
+     `.wb.wb.wb .wb-ws`, so a shorthand would reset the size and weight that
+     rule sets and shrink the segments to the UA's 13.33px. */
+  margin:0; border:none; font-family:inherit; letter-spacing:inherit;
+  -webkit-appearance:none; appearance:none; cursor:pointer; text-align:left;
+}
+@media (min-width:768px){
+  .wb.wb.wb .wb-ws{ position:relative }
+  .wb.wb.wb .wb-ws::after{ content:''; position:absolute; inset:-4px 0 }
+}

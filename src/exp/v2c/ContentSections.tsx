@@ -72,6 +72,10 @@ function IdeaCard({ i, onDeleted }: { i: IdeaCandidate; onDeleted: () => void })
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const title = i.normalized_topic || i.raw_topic || 'Untitled idea'
+  // source_ref is a LINK on some sources and the source row's own ULID on
+  // others (claude_sessions, kyle_call). A ULID under a "TEXT" chip is a fact
+  // about our storage, not about the idea, so only the link shape is drawn.
+  const sourceUrl = i.source_ref && /^https?:/.test(i.source_ref) ? i.source_ref : null
   const runDelete = async () => {
     setBusy(true)
     setErr('')
@@ -108,9 +112,16 @@ function IdeaCard({ i, onDeleted }: { i: IdeaCandidate; onDeleted: () => void })
               stays as the trailing value. */}
           <div className="ct-meta">
             {i.source && <span className="ct-chip">{i.source}</span>}
-            {i.ingested_at && <span className="ct-tm">{relTime(i.ingested_at)}</span>}
           </div>
         </div>
+        {/* The timestamp rides in `.ct-tail`, OUTSIDE the meta flex, exactly as
+            a draft row does (ContentList.tsx:204). `.ct-meta` carries a 14px
+            trailing fade for chips that overflow it; the last child of that
+            flex is always the thing the fade eats, which is how every idea row
+            came to read "13d ag". The fade is right for chips and stays. */}
+        {i.ingested_at && (
+          <div className="ct-tail"><span className="ct-tm">{relTime(i.ingested_at)}</span></div>
+        )}
       </div>
       {open && (
         <div className="ct-idea-b">
@@ -136,11 +147,11 @@ function IdeaCard({ i, onDeleted }: { i: IdeaCandidate; onDeleted: () => void })
           {i.format_recommendation && (
             <div className="ct-meta"><span className="ct-chip">{i.format_recommendation}</span></div>
           )}
-          {(i.source_ref || i.slack_permalink) && (
+          {(sourceUrl || i.slack_permalink) && (
             <div className="ct-links">
-              {i.source_ref && /^https?:/.test(i.source_ref)
-                ? <a className="dd-link" href={i.source_ref} target="_blank" rel="noreferrer">Source ↗</a>
-                : i.source_ref && <div className="ct-ref">{i.source_ref}</div>}
+              {sourceUrl && (
+                <a className="dd-link" href={sourceUrl} target="_blank" rel="noreferrer">Source ↗</a>
+              )}
               {i.slack_permalink && (
                 <a className="dd-link" href={i.slack_permalink} target="_blank" rel="noreferrer">Slack ↗</a>
               )}
@@ -184,7 +195,10 @@ function IdeaCard({ i, onDeleted }: { i: IdeaCandidate; onDeleted: () => void })
 // partition, and `count` is that kind's own server-side exact figure — never the
 // whole reviewing count, which is what used to be printed here regardless of
 // what was in the list.
-export function IdeasSection({ ideas, kind, count, loading, error, loadedAt, refresh, n, title, unclassified }: {
+export function IdeasSection({
+  ideas, kind, count, loading, error, loadedAt, refresh, n, title, unclassified,
+  hiddenByFilter, isOpen, onToggle,
+}: {
   ideas: IdeaCandidate[]
   kind: 'post' | 'lead_magnet'
   count: number | null
@@ -201,11 +215,26 @@ export function IdeasSection({ ideas, kind, count, loading, error, loadedAt, ref
   // Rows whose content_type is NULL or unrecognised. They ride on the POST lane
   // with a label rather than being filtered out of both — see splitIdeas.
   unclassified?: IdeaCandidate[]
+  // A DRAFT facet or the draft search box is set. These rows are
+  // lm_idea_candidates — a different table from the drafts those controls run
+  // over — so no facet can ever narrow them, and a band that cannot answer the
+  // question being asked must not be the first thing under it. The header, the
+  // count and the reason stay; the rows do not.
+  hiddenByFilter?: boolean
+  // Open/closed, owned by the caller when the caller has somewhere to persist
+  // it. Both are optional so a lane with no store keeps the local flag.
+  isOpen?: boolean
+  onToggle?: () => void
 }) {
   const [filters, setFilters] = useState<FilterState>({})
   // Open by default (Ivan, 2026-08-04: "LOOK HOW ANNOYING IS NOW TO OPEN
-  // EVERYTHING" — dashboard-v2 shows the ideas table directly).
-  const [open, setOpen] = useState(true)
+  // EVERYTHING" — dashboard-v2 shows the ideas table directly). The DEFAULT was
+  // his ruling; the non-persistence never was, and it is what made the collapse
+  // feel useless — every reload re-expanded 74 rows. A caller that can persist
+  // the flag passes it in; this local state is the fallback.
+  const [localOpen, setLocalOpen] = useState(true)
+  const open = isOpen ?? localOpen
+  const toggle = onToggle ?? (() => setLocalOpen(o => !o))
   const all = [...ideas, ...(unclassified ?? [])]
   const facets = buildFacets(all, IDEA_SPECS)
   const shown = applyFilters(all, IDEA_SPECS, filters)
@@ -213,9 +242,16 @@ export function IdeasSection({ ideas, kind, count, loading, error, loadedAt, ref
     <div id={kind === 'post' ? 'wb-s-ideas' : 'wb-s-lm-ideas'}>
       <SectionHead
         n={n} title={title ?? 'Ideas'} count={all.length}
-        open={open} onToggle={() => setOpen(o => !o)} sticky
+        open={open} onToggle={toggle} sticky
       />
-      {!open ? null : error ? (
+      {!open ? null : hiddenByFilter ? (
+        <div className="ct-subtle">
+          Hidden while a draft filter is on. These {all.length} rows are{' '}
+          <code>lm_idea_candidates</code> — a different table from the drafts the
+          facets and the search box run over, so no filter here can narrow them.
+          Clear the filter to read them.
+        </div>
+      ) : error ? (
         <Failed what="The idea queue" message={error} onRetry={refresh} loadedAt={null} />
       ) : loading && all.length === 0 ? (
         <div className="ct-subtle">Reading lm_idea_candidates…</div>
@@ -263,12 +299,17 @@ function QueueRow({ r }: { r: ScheduledQueueRow }) {
         {r.post_kind && <span className="ct-chip">{r.post_kind}</span>}
         {r.platform && <span className="ct-chip">{r.platform}</span>}
         {r.is_repost === true && <span className="ct-chip">repost</span>}
-        {r.posted_at
-          ? <span className="ct-tm">posted {relTime(r.posted_at)}</span>
-          : r.scheduled_at && <span className="ct-tm">{relOrAhead(r.scheduled_at)}</span>}
         {r.unipile_share_url && (
           <a className="ct-ref-l" href={r.unipile_share_url} target="_blank" rel="noreferrer">live ↗</a>
         )}
+      </div>
+      {/* Outside the meta flex and its 14px chip fade — same move as the idea
+          row above, and for the same reason: this timestamp is the value, not
+          the overflow. */}
+      <div className="ct-tail">
+        {r.posted_at
+          ? <span className="ct-tm">posted {relTime(r.posted_at)}</span>
+          : r.scheduled_at && <span className="ct-tm">{relOrAhead(r.scheduled_at)}</span>}
       </div>
       {r.error_message && <div className="ct-q-e">{r.error_message}</div>}
     </div>
@@ -610,13 +651,35 @@ export function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loa
 // The style roster — content_prompts, enumerated live, previews per lane
 // ---------------------------------------------------------------------------
 
+// The inline markdown a prompt body is written in. STRIPPED, never rendered:
+// this is a card blurb, not a document, and the shipped card printed
+// "**Version 3.0 — 2026-07-10 Black Box rewrite…**" asterisks and all.
+// 🔴 A lone `_` is deliberately left alone — these bodies are full of
+// snake_case column names, and unpairing those would corrupt real values.
+function stripMarkdown(line: string): string {
+  return line.replace(/\*\*/g, '').replace(/__/g, '').replace(/`/g, '').trim()
+}
+
 // First ~2 non-heading lines of the prompt body, ≤180 chars, as StylesLive does.
+// Heading and rule lines are still DROPPED whole (they are structure, not
+// prose); the strip above only cleans what survives that filter.
 function blurbOf(body: string | null): string | null {
   if (!body) return null
   const lines = body.split('\n').map(l => l.trim())
     .filter(l => l && !l.startsWith('#') && !l.startsWith('---'))
+    .map(stripMarkdown)
+    .filter(Boolean)
   const s = lines.slice(0, 2).join(' ')
   return s ? (s.length > 180 ? `${s.slice(0, 179)}…` : s) : null
+}
+
+// A Google Drive /file/…/view URL is a SHARE PAGE — HTML, not an image — so the
+// browser blocks it (ERR_BLOCKED_BY_ORB) and the <img> draws the broken glyph.
+// Six of the sixteen example thumbs on this surface were exactly that. The row
+// is not repaired here (image_urls is written elsewhere); the thumb is dropped,
+// because a broken glyph claims a published example that cannot be shown.
+function drawableThumb(u: string): boolean {
+  return !/^https?:\/\/(?:[a-z0-9-]+\.)*drive\.google\.com\/file\//i.test(u)
 }
 
 export function StyleRoster({ roster, laneRows, lane, loading, error, refresh, bare }: {
@@ -663,20 +726,32 @@ export function StyleRoster({ roster, laneRows, lane, loading, error, refresh, b
               // on 'before-after' and a family-blind key hands the image
               // family's examples to the structure card.
               const pv = previews.get(previewKeyFor(p))
+              const thumbs = pv ? pv.imageUrls.filter(drawableThumb) : []
               return (
                 <div className="ct-style" key={p.slug}>
                   <div className="ct-meta">
                     <span className="ct-chip">{p.family}</span>
                     <span className="ct-style-t">{cleanStyleTitle(p.title)}</span>
-                    <span className="ct-tm">{relTime(p.updated_at)}</span>
                   </div>
+                  {/* Out of the meta flex, same as the idea and queue rows: the
+                      14px chip fade was eating "27d ago" on every style card. */}
+                  <div className="ct-tail"><span className="ct-tm">{relTime(p.updated_at)}</span></div>
                   {blurbOf(p.body) && <div className="ct-style-b">{blurbOf(p.body)}</div>}
                   {pv
                     ? <>
                       <div className="ct-ref">{pv.count} published {pv.count === 1 ? 'post' : 'posts'}</div>
-                      {pv.imageUrls.length > 0 && (
+                      {thumbs.length > 0 && (
                         <div className="ct-style-i">
-                          {pv.imageUrls.map((u, i) => <img src={u} alt="" key={`${u}-${i}`} />)}
+                          {/* Second guard, because the first one only knows the
+                              shapes we have already met: anything else that
+                              fails to decode removes ITSELF rather than leaving
+                              a broken-image glyph in the strip. */}
+                          {thumbs.map((u, i) => (
+                            <img
+                              src={u} alt="" key={`${u}-${i}`}
+                              onError={e => { e.currentTarget.style.display = 'none' }}
+                            />
+                          ))}
                         </div>
                       )}
                     </>

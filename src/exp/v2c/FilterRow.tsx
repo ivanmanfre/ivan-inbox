@@ -266,6 +266,7 @@ function MorePill({ facets, state, setState, sheet }: {
  */
 export function FilterRow({
   prominent, demoted, state, setState, q, setQ, shown, loaded, total, noun, placeholder,
+  idleCount = true,
 }: {
   prominent: Facet[]
   demoted: Facet[]
@@ -278,6 +279,13 @@ export function FilterRow({
   total: number | null
   noun: string
   placeholder?: string
+  // Set false by a caller that already prints this same total right above the
+  // row (the post lane's chart card footer: `Total: 224 of 285 in the lane`).
+  // With no filter on, "224 drafts" here is that number said a second time
+  // 150px lower — and two statements of one figure read as two figures. The
+  // FILTERED line is never suppressed: `9 of 224 shown` is the number doing
+  // work.
+  idleCount?: boolean
 }) {
   const sheet = useSheetMode()
   const activeN = Object.values(state).filter(Boolean).length + (q.trim() ? 1 : 0)
@@ -316,17 +324,21 @@ export function FilterRow({
           )}
         </div>
       </div>
-      <div className="ct-fnote">
-        {activeN > 0
-          ? <><b>{shown}</b> of {loaded} {noun} shown</>
-          : <>{loaded} {noun}</>}
-        {total !== null && total > loaded && (
-          // PostgREST caps a SELECT at 1000 long before a header count notices,
-          // so a filter that ran over the page must never imply it ran over the
-          // whole lane.
-          <span className="ct-fcap">filtering the {loaded} loaded of {total} in the database</span>
-        )}
-      </div>
+      {/* The note line is dropped entirely when it would be empty — an empty
+          footnote is 18px of chrome saying nothing. */}
+      {(activeN > 0 || idleCount || (total !== null && total > loaded)) && (
+        <div className="ct-fnote">
+          {activeN > 0
+            ? <><b>{shown}</b> of {loaded} {noun} shown</>
+            : idleCount ? <>{loaded} {noun}</> : null}
+          {total !== null && total > loaded && (
+            // PostgREST caps a SELECT at 1000 long before a header count notices,
+            // so a filter that ran over the page must never imply it ran over the
+            // whole lane.
+            <span className="ct-fcap">filtering the {loaded} loaded of {total} in the database</span>
+          )}
+        </div>
+      )}
     </div>
   )
 }

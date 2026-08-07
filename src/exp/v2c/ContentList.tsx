@@ -17,6 +17,7 @@ import {
   type FilterState,
 } from '../../lib/contentFilters'
 import { useSectionState } from '../../hooks/useSectionState'
+import { draftFacetsActive, ideasIsOpen, toggleIdeasOpen } from './contentIdeas'
 import { useConfirm } from '../../components/ConfirmSheet'
 import { ReviewActions } from './ReviewActions'
 import { FilteredEmpty } from './ContentBits'
@@ -263,10 +264,13 @@ function PipelineBar({ stages, ideasShown, ideasTotal, matched, laneTotal, onJum
   const parts = PIPELINE_STAGES
     .filter(s => s !== 'ideas' && s !== 'published')
     .map(s => ({ stage: s, key: STAGE_LABEL[s], n: stages[s].length, color: STAGE_COLOR[s] }))
-  // Deliberately NOT `parts` — "of N loaded" means every row this lane loaded,
-  // published included. Narrowing the chart must not silently restate the
-  // denominator under the hero figure.
-  const loaded = PIPELINE_STAGES
+  // 🔴 ONE WORD PER NUMBER. This sum is every PIPELINE stage, published
+  // included — deliberately wider than `parts`, so narrowing the chart does not
+  // silently restate the denominator under the hero figure. But it is NOT the
+  // lane: error, stuck, archived and other are 105 more rows it never counts,
+  // and calling it "loaded" gave that word two values 150px apart (the filter
+  // row's "loaded" is every row in the lane). It is named for what it sums.
+  const inPipeline = PIPELINE_STAGES
     .filter(s => s !== 'ideas')
     .reduce((a, s) => a + stages[s].length, 0)
   const review = stages.review.length
@@ -295,7 +299,7 @@ function PipelineBar({ stages, ideasShown, ideasTotal, matched, laneTotal, onJum
       <div className="wb-pipe-n ct-band-fig">
         <span className="wb-pipe-big">{review}</span>
         <span className="wb-pipe-lbl">
-          waiting on you<br />of {loaded} loaded
+          waiting on you<br />of {inPipeline} in pipeline
         </span>
         {undated > 0 && (
           <span className="wb-pipe-warn">{undated} approved with no date</span>
@@ -320,7 +324,7 @@ function PipelineBar({ stages, ideasShown, ideasTotal, matched, laneTotal, onJum
           </span>
         </span>
         <span className="wb-total">
-          Total: <b>{matched ?? loaded}</b>
+          Total: <b>{matched ?? inPipeline}</b>
           {laneTotal !== null && laneTotal !== matched ? ` of ${laneTotal} in the lane` : ''}
         </span>
       </div>
@@ -583,6 +587,7 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
   const { prominent, demoted } = splitFacets(facets, DRAFT_PROMINENT)
   const shown = applySearch(applyFilters(drafts, specs, filters), q, d => [d.title, d.topic])
   const shownStages = groupByStage(shown)
+  const ideasHidden = draftFacetsActive(filters, q)
   const scheduledThisWeek = stages.scheduled.filter(d => {
     if (!d.scheduled_at) return false
     const t = Date.parse(d.scheduled_at)
@@ -604,22 +609,36 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
         {scheduledThisWeek} scheduled in the next 7 days · 4-a-week cadence
       </div>
 
+      {/* idleCount={false}: the chart card's footer six lines up already states
+          this lane's total (`Total: 224 of 285 in the lane`), and the unfiltered
+          note here is that same figure a second time. One number, one place. */}
       <FilterRow
         prominent={prominent} demoted={demoted}
         state={filters} setState={setFilters} q={q} setQ={setQ}
         shown={shown.length} loaded={drafts.length} total={matched} noun="drafts"
+        idleCount={false}
       />
 
       {/* ask 3 — the POST side of the content_type partition only. Rows with no
           content_type ride here too, labelled, rather than vanishing from both
-          lanes. ask 4 — collapsed by default with a sticky header. */}
+          lanes. ask 4 — open by default, sticky header, and the open flag is
+          persisted alongside the stage sections' (contentIdeas.ts). While a draft
+          facet is on the band keeps its header and its count and drops its
+          rows, so the drafts the filter DID find are the next thing on screen. */}
       <IdeasSection
         ideas={ideas.split.post} kind="post" n="01" count={ideas.counts.post}
         unclassified={ideas.split.other}
         loading={ideas.loading}
         error={ideas.error} loadedAt={ideas.loadedAt} refresh={ideas.refresh}
+        hiddenByFilter={ideasHidden}
+        isOpen={ideasIsOpen(open)} onToggle={() => setOpen(toggleIdeasOpen)}
       />
 
+      {/* The escape and the band above it are driven by the SAME predicate: when
+          nothing matched, the ideas band is already down to its header, so "No
+          drafts match this filter" is the first thing under the filter row
+          instead of the 75th. Clearing here restores both — one control, both
+          row sets. */}
       {shown.length === 0 && drafts.length > 0
         ? <FilteredEmpty noun="drafts" onClear={() => { setFilters({}); setQ('') }} />
         : TRIAGE_ORDER.map((s, i) => (
