@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { draftFacetsActive, ideasIsOpen, toggleIdeasOpen, withoutDecided } from './contentIdeas'
+import {
+  draftFacetsActive, ideasIsOpen, toggleIdeasOpen, withoutDecided,
+  stagesWriteBase, STAGES_TOUCHED,
+} from './contentIdeas'
 import { projectSectionState } from '../../lib/sectionState'
 
 // The D1 contract, pinned at its only seam.
@@ -79,6 +82,84 @@ describe('ideasIsOpen / toggleIdeasOpen', () => {
     const closed = toggleIdeasOpen(['review', 'touched'])
     expect(projectSectionState({ open: closed }).open.sort()).toEqual([...closed].sort())
     expect(ideasIsOpen(projectSectionState({ open: closed }).open)).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+
+// 🔴 THE OTHER DIRECTION — one array, two writers, and the order they are used
+// in must not matter. `toggleIdeasOpen` was tested against a browser that had
+// already decided about stages; this is the mirror, the one that was broken:
+// the ideas band written FIRST, the stage sections rebuilding the array LATER.
+//
+// `stagesWrite` below is useOpenStages' write (ContentList.tsx), verbatim — the
+// hook is a hook, but its write is this one composition, and the drop lived in
+// the base it rebuilds from.
+describe('stagesWriteBase — the stage sections cannot wipe the ideas answer', () => {
+  const DEFAULT_OPEN = ['review', 'generating', 'approved', 'scheduled', 'error']
+  const stagesWrite = (cur: string[], next: (c: string[]) => string[], initial = DEFAULT_OPEN) =>
+    [...next(stagesWriteBase(cur, initial)), STAGES_TOUCHED]
+  const toggleStage = (s: string) => (cur: string[]) =>
+    cur.includes(s) ? cur.filter(x => x !== s) : [...cur, s]
+
+  it('🔴 keeps a band collapsed through the FIRST-EVER stage toggle', () => {
+    // The reported sequence: collapse the ideas band (74 rows), then later
+    // collapse a stage section for the first time. The stages' rebuild starts
+    // from DEFAULT_OPEN because their own sentinel is not there yet — and used
+    // to drop `ideas_touched` with it, reopening the band on the next render.
+    const afterIdeas = toggleIdeasOpen([])
+    expect(ideasIsOpen(afterIdeas)).toBe(false)
+    const afterStage = stagesWrite(afterIdeas, toggleStage('review'))
+    expect(ideasIsOpen(afterStage)).toBe(false)
+  })
+
+  it('keeps an explicitly REOPENED band open through that same first toggle', () => {
+    // The mirror of the mirror: a band closed and reopened carries `ideas` too,
+    // and both keys have to make the trip or the next toggle re-decides it.
+    const reopened = toggleIdeasOpen(toggleIdeasOpen([]))
+    expect(ideasIsOpen(reopened)).toBe(true)
+    const after = stagesWrite(reopened, toggleStage('review'))
+    expect(after).toContain('ideas')
+    expect(after).toContain('ideas_touched')
+  })
+
+  it('still gives the STAGES their default answer on that first toggle', () => {
+    // The carried keys are the band's, not the stages': the rebuild is still
+    // DEFAULT_OPEN minus whatever was just toggled, and an ideas key must never
+    // be read as an open section.
+    const after = stagesWrite(toggleIdeasOpen([]), toggleStage('review'))
+    expect(after.filter(x => !x.startsWith('ideas') && x !== STAGES_TOUCHED).sort())
+      .toEqual(['approved', 'error', 'generating', 'scheduled'])
+  })
+
+  it('invents no ideas key for a browser that only ever touched stages', () => {
+    // The 08-04 default-open ruling: absence means OPEN, so the rebuild must
+    // not manufacture `ideas_touched` out of a stage toggle.
+    const after = stagesWrite([], toggleStage('review'))
+    expect(after.some(x => x.startsWith('ideas'))).toBe(false)
+    expect(ideasIsOpen(after)).toBe(true)
+  })
+
+  it('survives in the OTHER order too — stages first, then the band', () => {
+    const afterStage = stagesWrite([], toggleStage('review'))
+    const afterIdeas = toggleIdeasOpen(afterStage)
+    expect(ideasIsOpen(afterIdeas)).toBe(false)
+    expect(afterIdeas).toContain(STAGES_TOUCHED)
+    // …and a SECOND stage toggle after that keeps both answers.
+    const again = stagesWrite(afterIdeas, toggleStage('approved'))
+    expect(ideasIsOpen(again)).toBe(false)
+    expect(again).not.toContain('approved')
+    expect(again).toContain('generating')
+  })
+
+  it('round-trips the interleaved answer through storage', () => {
+    // Same projection gate as above: a key storage refuses is an answer that
+    // never survives the reload, which is the defect class this whole entry is.
+    const interleaved = stagesWrite(toggleIdeasOpen([]), toggleStage('review'))
+    const stored = projectSectionState({ open: interleaved }).open
+    expect(ideasIsOpen(stored)).toBe(false)
+    expect(stored).toContain(STAGES_TOUCHED)
+    expect([...stored].sort()).toEqual([...new Set(interleaved)].sort())
   })
 })
 

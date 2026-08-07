@@ -17,7 +17,9 @@ import {
   type FilterState,
 } from '../../lib/contentFilters'
 import { useSectionState } from '../../hooks/useSectionState'
-import { draftFacetsActive, ideasIsOpen, toggleIdeasOpen } from './contentIdeas'
+import {
+  draftFacetsActive, ideasIsOpen, toggleIdeasOpen, stagesWriteBase, STAGES_TOUCHED,
+} from './contentIdeas'
 import { useConfirm } from '../../components/ConfirmSheet'
 import { ReviewActions } from './ReviewActions'
 import { FilteredEmpty } from './ContentBits'
@@ -502,7 +504,11 @@ const TRIAGE_ORDER: ContentStage[] = [
 // because both are an empty list. TOUCHED is that marker: it rides in the same
 // array, takes the same identifier shape the store already validates, and
 // cannot collide with a stage id (the stages are named in ContentStage).
-const TOUCHED = 'touched'
+//
+// The sentinel and the rebuild it drives live in contentIdeas.ts, with the
+// ideas band's two keys: the array has TWO writers and neither rebuild is
+// correct read on its own (contentIdeas.ts, "ONE ARRAY, TWO WRITERS").
+const TOUCHED = STAGES_TOUCHED
 
 function useOpenStages(
   persisted: string[],
@@ -512,10 +518,7 @@ function useOpenStages(
   const decided = persisted.includes(TOUCHED)
   const open = decided ? persisted : initial
   const write = (next: (cur: string[]) => string[]) =>
-    setPersisted(cur => {
-      const base = cur.includes(TOUCHED) ? cur.filter(x => x !== TOUCHED) : initial
-      return [...next(base), TOUCHED]
-    })
+    setPersisted(cur => [...next(stagesWriteBase(cur, initial)), TOUCHED])
   return {
     isOpen: (s: string) => open.includes(s),
     toggle: (s: string) =>

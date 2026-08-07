@@ -579,6 +579,19 @@ export function canRestartToIdea(status: string, lane: ContentLane): boolean {
   return lane === 'ivan' && !RESTART_BLOCKED_STATUS.includes(status)
 }
 
+// The same list as a PostgREST `not.in` value, so the exclusion is enforced by
+// the WRITE and not only by the button. `canRestartToIdea` is a UI predicate,
+// and a guard that lives only in the UI is not a guard — the same argument
+// deleteClientDraft makes for its board check (see its header below).
+//
+// It rides IN the UPDATE rather than in a read before it because the danger
+// here is a RACE: the n8n Bridge can arm a row, or the publisher ship it,
+// between the render that drew the button and the click that fires this. A
+// re-read cannot close that window; one statement can — a row that turned
+// 'scheduled' matches no filter, no write happens, and the zero-row result
+// falls into the landed-write check this function already has.
+export const RESTART_BLOCKED_FILTER = `(${RESTART_BLOCKED_STATUS.join(',')})`
+
 // Verbatim from PostStudioPanel.tsx:717-719, including the conditional " and
 // image" — the one adaptation is the noun: the reference interpolates the raw
 // `type` column, so its own dialog reads "Regenerate this single_image?".
@@ -604,10 +617,14 @@ export async function restartDraftToIdea(
   const { data, error } = await supabase.from('carousel_drafts')
     .update({ status: RESTART_STATUS })
     .eq('id', d.id).is('client_id', null)
+    .not('status', 'in', RESTART_BLOCKED_FILTER)
     .select('id')
   if (error) throw error
   if (!data || data.length === 0) {
-    throw new Error('Restart failed — the database did not accept the status change.')
+    throw new Error(
+      'Restart failed — the database did not accept the status change. A post that was '
+      + 'scheduled or published since this window loaded cannot be sent back to idea.',
+    )
   }
   return true
 }
