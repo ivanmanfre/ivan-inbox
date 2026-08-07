@@ -31,6 +31,33 @@ export function toggleIdeasOpen(persisted: string[]): string[] {
     : [...rest, IDEAS_OPEN, IDEAS_TOUCHED]
 }
 
+// 🔴 ONE ARRAY, TWO WRITERS — so the OTHER writer's rebuild lives here too.
+//
+// The stage sections carry their own sentinel in this same array and rebuild
+// the array from their DEFAULT_OPEN the first time the operator touches a
+// section (until then their sentinel is absent, and an empty answer has to stay
+// distinguishable from an undecided one). That rebuild used to be written
+// against `initial` alone, which was harmless while the stage sections were the
+// array's only writer — and silently wrong the moment the ideas band started
+// writing into it: collapse the band FIRST, toggle any stage section LATER, and
+// the rebuild dropped `ideas_touched`, reopening a band the operator had
+// explicitly closed, with no error and nothing to notice.
+//
+// Both decisions now survive in EITHER order: `toggleIdeasOpen` keeps every key
+// it does not own (including the stages' sentinel), and `stagesWriteBase` keeps
+// the ideas keys across the stage rebuild. The two sentinels stay separate on
+// purpose — see the note above on why the ideas band cannot ride TOUCHED.
+export const STAGES_TOUCHED = 'touched'
+
+export function isIdeasKey(k: string): boolean {
+  return k === IDEAS_OPEN || k === IDEAS_TOUCHED
+}
+
+export function stagesWriteBase(persisted: string[], initial: string[]): string[] {
+  if (persisted.includes(STAGES_TOUCHED)) return persisted.filter(x => x !== STAGES_TOUCHED)
+  return [...initial, ...persisted.filter(isIdeasKey)]
+}
+
 /**
  * Is a DRAFT facet or the draft search box set?
  *
