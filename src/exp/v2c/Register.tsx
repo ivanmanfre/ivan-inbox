@@ -4,6 +4,7 @@ import {
 } from '../../lib/content'
 import { Block, KeyRows, Rows, Val } from './ContentBits'
 import { absTime } from './fmt'
+import { parseRubric, verdictsDisagree } from './rubric'
 
 // The two registers.
 //
@@ -37,6 +38,66 @@ function gap(prev: string | null, cur: string | null): string | null {
 // ---------------------------------------------------------------------------
 // QA — the full verdict register
 // ---------------------------------------------------------------------------
+
+function DimBar({ d }: { d: { key: string; score: number; max: number; note: string | null } }) {
+  const pct = Math.max(0, Math.min(100, (d.score / d.max) * 100))
+  return (
+    <div className="qa-dim" title={d.note ? `${d.key} ${d.score}/${d.max} — ${d.note}` : `${d.key} ${d.score}/${d.max}`}>
+      <span className="qa-dim-k">{d.key}</span>
+      <span className="qa-dim-g" aria-hidden>
+        {/* The threshold is the judge's own pass mark for a dimension, and it
+            is drawn rather than stated: at or above 70% of ITS OWN max the fill
+            is neutral, below it the fill takes attention. No average is ever
+            computed across dimensions — they do not share a denominator. */}
+        <i className={pct >= 70 ? '' : 'low'} style={{ width: `${pct}%` }} />
+      </span>
+      <span className="qa-dim-n">{d.score}<i>/{d.max}</i></span>
+    </div>
+  )
+}
+
+function QaFeedback({ feedback, verdict }: { feedback: string; verdict: string | null }) {
+  const r = parseRubric(feedback)
+  const clash = verdictsDisagree(verdict, r.verdict)
+  if (!r.ok) {
+    // FALLBACK, and it is the previous behaviour exactly: verbatim, unfolded,
+    // nothing hidden. A body this module cannot read is a body it must not
+    // pretend to have read.
+    return <div className="dd-card"><div className="dd-body dd-pre">{feedback}</div></div>
+  }
+  return (
+    <>
+      {clash && (
+        // 🔴 THE CONTRADICTION IS THE INFORMATION (content.ts:1561-1565). A live
+        // row stores verdict:'PASS' while its own body opens "VERDICT:
+        // REWRITE_OK". Both are printed and neither is resolved — the pane's
+        // job is to make the disagreement visible, not to pick a winner.
+        <div className="qa-clash">
+          <span className="ct-chip ct-chip-warn">{r.verdict}</span>
+          <span>
+            The judge wrote <b>{r.verdict}</b>{r.total ? ` (total ${r.total.score}/${r.total.max})` : ''} in its own
+            body; the row stores <b>{verdict}</b>. Both are on this page and neither is derived from the other.
+          </span>
+        </div>
+      )}
+      <div className="dd-card qa-rubric">
+        {r.dims.map(d => <DimBar key={d.key} d={d} />)}
+      </div>
+      {(r.summary || r.spice) && (
+        <div className="dd-card qa-prose">
+          {r.summary && <div className="qa-p"><span>Summary</span>{r.summary}</div>}
+          {r.spice && <div className="qa-p"><span>Spice</span>{r.spice}</div>}
+        </div>
+      )}
+      {/* Nothing is dropped and the fold says what it holds — an unannounced
+          clamp is what the 1,240px block was replacing. */}
+      <details className="dd-log-raw qa-raw">
+        <summary>Raw judge output · {feedback.length.toLocaleString()} characters</summary>
+        <div className="dd-card"><div className="dd-body dd-pre">{feedback}</div></div>
+      </details>
+    </>
+  )
+}
 
 export function QaRegister({ qa }: { qa: QaSummary }) {
   const provenance: [string, React.ReactNode][] = []
@@ -73,12 +134,16 @@ export function QaRegister({ qa }: { qa: QaSummary }) {
         </div>
       </div>
 
-      {/* Verbatim, never re-derived: a live row carries verdict:'PASS' with
-          feedback opening "VERDICT: REWRITE_OK", and the contradiction is the
-          information. */}
-      {qa.feedback && (
-        <div className="dd-card"><div className="dd-body dd-pre">{qa.feedback}</div></div>
-      )}
+      {/* THE RUBRIC, DRAWN (D14).
+          The nine dimensions the judge scored have no field anywhere in the
+          schema — they live only inside this free-text body, which is why the
+          pane rendered 2,187 characters of monospace and called it a verdict.
+          They are parsed out, best effort, and the raw string is kept below
+          them, always, under a fold that says how long it is. Under three
+          matched dimensions the parse is declared failed and the dump renders
+          exactly as it did before: a half-drawn rubric would read as a
+          dimension that scored nothing. */}
+      {qa.feedback && <QaFeedback feedback={qa.feedback} verdict={qa.verdict} />}
 
       {qa.rewriteText && (
         // 🔴 What actually SHIPPED when a gate rewrote the post — present on 150

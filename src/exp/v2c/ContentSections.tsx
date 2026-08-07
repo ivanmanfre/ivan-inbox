@@ -13,14 +13,14 @@ import {
   type LmStage, type Resource, type StylePrompt,
 } from '../../lib/styles'
 import {
-  applyFilters, applySearch, buildFacets, IDEA_SPECS, QUEUE_SPECS, RESOURCE_SPECS,
-  RESOURCE_PROMINENT, splitFacets, styleSpecs,
+  applyFilters, applySearch, buildFacets, IDEA_PROMINENT, IDEA_SPECS, QUEUE_PROMINENT,
+  QUEUE_SPECS, RESOURCE_SPECS, RESOURCE_PROMINENT, STYLE_PROMINENT, splitFacets, styleSpecs,
   type FilterState,
 } from '../../lib/contentFilters'
 import { useSectionState } from '../../hooks/useSectionState'
 import { withoutDecided } from './contentIdeas'
 import type { AgentSummary } from '../../lib/agent'
-import { FilterBar, FilteredEmpty, Figure, KeyRows } from './ContentBits'
+import { FilteredEmpty, Figure, KeyRows } from './ContentBits'
 import { FilterRow } from './FilterRow'
 import { absTime, relOrAhead, relTime } from './fmt'
 import { CalmEmpty, CapsuleChart, Failed, SectionHead } from './Surface'
@@ -323,7 +323,8 @@ export function IdeasSection({
   const kindRows = withoutDecided(ideas, decided)
   const otherRows = withoutDecided(unclassified ?? [], decided)
   const all = [...kindRows, ...otherRows]
-  const facets = buildFacets(all, IDEA_SPECS)
+  const { prominent: ideaProminent, demoted: ideaDemoted } =
+    splitFacets(buildFacets(all, IDEA_SPECS), IDEA_PROMINENT)
   const shown = applyFilters(all, IDEA_SPECS, filters)
   return (
     <div id={kind === 'post' ? 'wb-s-ideas' : 'wb-s-lm-ideas'}>
@@ -363,9 +364,17 @@ export function IdeasSection({
               : ''} ·
             open one to approve or reject it
           </div>
-          <FilterBar
-            facets={facets} state={filters} setState={setFilters}
+          {/* D9 — ONE FILTER SYSTEM. This band used to render `FilterBar`, a
+              permanently-expanded chip browser over the same facet contract the
+              drafts above it drive with pills: 238px of a second grammar
+              stacked under the first at 390. The STATE stays its own (these are
+              lm_idea_candidates, a different table, and no draft facet can
+              narrow them); only the chrome is shared. */}
+          <FilterRow
+            prominent={ideaProminent} demoted={ideaDemoted}
+            state={filters} setState={setFilters}
             shown={shown.length} loaded={all.length} total={count} noun="ideas"
+            inline
           />
           {shown.length === 0
             ? <FilteredEmpty noun="ideas" onClear={() => setFilters({})} />
@@ -419,7 +428,8 @@ export function QueueStrip({ rows, loading, error, loadedAt, refresh }: {
   refresh: () => void
 }) {
   const [filters, setFilters] = useState<FilterState>({})
-  const facets = buildFacets(rows, QUEUE_SPECS)
+  const { prominent: queueProminent, demoted: queueDemoted } =
+    splitFacets(buildFacets(rows, QUEUE_SPECS), QUEUE_PROMINENT)
   const shown = applyFilters(rows, QUEUE_SPECS, filters)
   if (error) return <Failed what="The publish queue" message={error} onRetry={refresh} loadedAt={null} />
   if (loading && rows.length === 0) return <div className="ct-subtle">Reading scheduled_posts…</div>
@@ -434,9 +444,11 @@ export function QueueStrip({ rows, loading, error, loadedAt, refresh }: {
         vocabulary — unrelated to a draft's status — and this strip mirrors the
         publish bridge rather than controlling it.
       </div>
-      <FilterBar
-        facets={facets} state={filters} setState={setFilters}
+      <FilterRow
+        prominent={queueProminent} demoted={queueDemoted}
+        state={filters} setState={setFilters}
         shown={shown.length} loaded={rows.length} total={null} noun="queue rows"
+        inline
       />
       {shown.length === 0
         ? <FilteredEmpty noun="queue rows" onClear={() => setFilters({})} />
@@ -793,7 +805,8 @@ export function StyleRoster({ roster, laneRows, lane, loading, error, refresh, b
   // reads differently per lane — which is the honest outcome.
   const previews = previewsByStyle(laneRows)
   const specs = styleSpecs(previews as Map<string, unknown>, previewKeyFor)
-  const facets = buildFacets(roster, specs)
+  const { prominent: styleProminent, demoted: styleDemoted } =
+    splitFacets(buildFacets(roster, specs), STYLE_PROMINENT)
   const shown = applyFilters(roster, specs, filters)
   const body = (
     <>
@@ -810,9 +823,11 @@ export function StyleRoster({ roster, laneRows, lane, loading, error, refresh, b
             {LANE_POSSESSIVE[lane]} published rows, so an empty preview is a
             designed state — a wrong one would be a lie.
           </div>
-          <FilterBar
-            facets={facets} state={filters} setState={setFilters}
+          <FilterRow
+            prominent={styleProminent} demoted={styleDemoted}
+            state={filters} setState={setFilters}
             shown={shown.length} loaded={roster.length} total={null} noun="styles"
+            inline
           />
           {shown.length === 0
             ? <FilteredEmpty noun="styles" onClear={() => setFilters({})} />
