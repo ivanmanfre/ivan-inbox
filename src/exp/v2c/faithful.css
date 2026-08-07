@@ -2604,7 +2604,20 @@
    so the height is a measurement and never a constant). */
 .wb.wb.wb .ct-rows .wb-sech-strip{ top:var(--ct-cmdh, 0px) }
 
-.wb.wb.wb .ct-cmd-top{ display:contents }
+/* WIDE ONLY. Above 1200 the strip is genuinely one line and the two wrappers
+   flatten out of the way; below it they become real boxes and the strip takes
+   two 44px lines. Both are declared, neither is a fallback. */
+.wb.wb.wb .ct-cmd-top, .wb.wb.wb .ct-cmd-scroll{ display:contents }
+/* The order the eye reads, held explicitly, because `.ct-cmd-alarm` is now a
+   sibling of the scroller rather than a member of it: lane · counts · ALARM ·
+   cadence · filters. The alarm never sits after an advisory mark. */
+.wb.wb.wb .ct-cmd-id{ order:0 }
+.wb.wb.wb .ct-cmd-stats{ order:1 }
+.wb.wb.wb .ct-cmd-alarm{ order:2 }
+.wb.wb.wb .ct-cmd-cad, .wb.wb.wb .ct-cmd-note{ order:3 }
+.wb.wb.wb .ct-cmd-f{ order:4 }
+.wb.wb.wb .ct-cmd-alarm{ flex:none; display:flex; align-items:center; min-width:0 }
+.wb.wb.wb .ct-cmd-alarm:empty{ display:none }
 .wb.wb.wb .ct-cmd-id{ flex:none; display:flex; align-items:center; gap:8px; min-width:0 }
 /* The job name is for the phone, where there is no rail to print it. On the
    pointer canvas the rail names the job 200px to the left and the work segment
@@ -2658,14 +2671,16 @@
 .wb.wb.wb .wb-stat.attention{ box-shadow:inset 0 0 0 1px var(--sev-attention) }
 .wb.wb.wb .wb-stat.urgent{ box-shadow:inset 0 0 0 1px var(--sev-urgent) }
 
-/* The lane figure. `224/285` — the second number appears only when the server's
-   exact count and the loaded count disagree, so the slash never claims a
-   denominator that is not there. */
+/* The lane figure. `224/285 loaded` — the second number appears only when the
+   server's exact count and the loaded count disagree, so the slash never claims
+   a denominator that is not there, and the WORD is not optional: a bare figure
+   on a strip of figures is the token the craft seat called cryptic. */
 .wb.wb.wb .ct-cmd-tot{
-  flex:none; color:var(--text3); font-size:var(--fs-meta); white-space:nowrap;
+  flex:none; display:inline-flex; align-items:baseline; gap:4px;
+  color:var(--text3); font-size:var(--fs-meta); white-space:nowrap;
 }
 .wb.wb.wb .ct-cmd-tot b{ color:var(--text2); font-weight:600 }
-.wb.wb.wb .ct-cmd-tot i{ font-style:normal; color:var(--text4) }
+.wb.wb.wb .ct-cmd-tot i{ font-style:normal; color:var(--text4); margin-left:-4px }
 
 /* ---- the alarm, as a chip ------------------------------------------------ */
 .wb.wb.wb .ct-alert-chip{
@@ -2683,13 +2698,24 @@
 .wb.wb.wb .ct-alert-chip .chev{ flex:none; color:var(--text3) }
 .wb.wb.wb .ct-alert-body{ border-bottom:1px solid var(--hairline) }
 
-/* ---- the cadence and the lane note, as marks rather than sentences -------- */
+/* ---- the cadence and the lane note, as LABELLED marks --------------------- */
+/* MONO FOR DATA, WORDS FOR LABELS — two tiers, never one. `1↗7d` put a count,
+   a glyph and a window into a single 11px run with no noun anywhere in it; the
+   craft seat read the strip as a toolbar overflow bug because of it. The
+   numerals now sit in the tabular data tier, each with its own word beside it,
+   and the separator is the only glyph left. */
 .wb.wb.wb .ct-cmd-cad, .wb.wb.wb .ct-cmd-note{
-  flex:none; display:inline-flex; align-items:center; gap:5px;
+  flex:none; display:inline-flex; align-items:baseline; gap:4px;
   color:var(--text3); font-size:var(--fs-eyebrow); white-space:nowrap;
 }
-.wb.wb.wb .ct-cmd-cad b, .wb.wb.wb .ct-cmd-note b{ color:var(--text2); font-weight:600 }
-.wb.wb.wb .ct-cmd-cad i{ font-style:normal; color:var(--text4) }
+.wb.wb.wb .ct-cmd-cad b, .wb.wb.wb .ct-cmd-note b{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:var(--fs-meta); font-weight:600; color:var(--text2); letter-spacing:-.01em;
+}
+.wb.wb.wb .ct-cmd-tot b{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:-.01em;
+}
+.wb.wb.wb .ct-cmd-cad i{ font-style:normal; color:var(--text4); margin:0 1px }
 
 /* ---- the filters, inline ------------------------------------------------- */
 .wb.wb.wb .ct-cmd-f{ flex:1 1 180px; min-width:0 }
@@ -2720,6 +2746,45 @@
 .wb.wb.wb .ct-fsearch{ min-height:32px }
 .wb.wb.wb .wb-rail-minbtn{ width:32px; height:32px }
 .wb.wb.wb .seg .sg{ min-height:32px }
+
+/* ---- THE SECOND BREAKPOINT · 768-1200 (post-ballot, craft seat) ----------- */
+/* The flaw, named: at 1100 the strip still tried to be one line, so it paid for
+   the attempt by shrinking its own search field toward the 104px min-width and
+   letting the pill scroller eat the rest. A field that truncates its own
+   placeholder is a field that has stopped being a control, and a bar that
+   solves its own overflow by shrinking is what reads as a toolbar bug.
+   THE ANSWER IS A LINE, NOT A SMALLER CONTROL. Below 1200 the strip wraps to
+   two, each a real 44px band:
+     line 1 — search + filters, the things you TYPE and TOUCH, full width;
+     line 2 — counts + the alarm, the things you READ.
+   Nothing is dropped, nothing is truncated, and the strip still measures itself
+   into --ct-cmdh so the sticky section heads follow it down. */
+@media (min-width:768px) and (max-width:1200px){
+  .wb.wb.wb .ct-cmd{ gap:4px 10px; padding:5px var(--gut) }
+  .wb.wb.wb .ct-cmd-top{
+    order:2; flex:1 0 100%; min-width:0;
+    display:flex; align-items:center; gap:8px 10px; min-height:44px;
+  }
+  .wb.wb.wb .ct-cmd-scroll{
+    flex:1 1 auto; min-width:0;
+    display:flex; align-items:center; gap:8px 10px;
+    flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden;
+    overscroll-behavior-x:contain; scrollbar-width:none;
+    mask-image:linear-gradient(to right,#000 calc(100% - 20px),transparent);
+  }
+  .wb.wb.wb .ct-cmd-scroll::-webkit-scrollbar{ display:none }
+  .wb.wb.wb .ct-cmd-f{ order:1; flex:1 0 100%; min-width:0; min-height:44px;
+    display:flex; align-items:center }
+  /* 🔴 SCOPED TO THE STRIP'S COPY. `.ct-fr-in` is the shared inline filter row
+     and the ideas band renders one BESIDE its provenance sentence — an
+     unscoped `flex:1` here took the whole band line and crushed that sentence to
+     one word per line, which measured as the first draft row moving from y=200
+     to y=388. The strip owns this rule; the band keeps its own. */
+  .wb.wb.wb .ct-cmd-f .ct-fr-in{ flex:1 1 auto; min-width:0 }
+  /* The search field gets back the width it was giving away to the one-line
+     attempt: 104px of min-width was a control that had stopped being one. */
+  .wb.wb.wb .ct-cmd-f .ct-fr-in .ct-fsearch{ flex:0 1 340px; min-width:240px }
+}
 
 /* ---- D6 · the doubled work nav ------------------------------------------- */
 /* `.dt` is set exactly when the rail is on screen, and the rail already carries
@@ -2764,20 +2829,38 @@
   .wb.wb.wb .ct-cmd{ padding:6px var(--gut); gap:6px 8px; flex-wrap:nowrap; flex-direction:column;
     align-items:stretch }
   /* TWO ROWS, and they are the whole budget. Row one is the lane switch, the
-     pipeline marks, the alarm and the cadence, in ONE horizontal scroller with
-     an announced edge — four controls do not share 358px, and stacking them was
-     three rows of chrome above the work. Row two is the filter, which always
-     earns its own line: a search field squeezed to 90px is a field nobody types
-     in. */
+     pipeline marks and the cadence in ONE horizontal scroller with an announced
+     edge — four controls do not share 358px, and stacking them was three rows of
+     chrome above the work — WITH THE ALARM PINNED BESIDE IT. Row two is the
+     filter, which always earns its own line: a search field squeezed to 90px is
+     a field nobody types in.
+
+     🔴🔴 THE ALARM USED TO BE IN THE SCROLLER, AND IT MEASURED AT left:499 ON A
+     390px CANVAS — a sticky strip whose one job is to keep the broken thing on
+     screen was rendering the broken thing 109px past the right edge, reachable
+     only by a horizontal swipe nobody knows is there. That is the ergonomics
+     seat's flaw and it is the reason this row is now two boxes rather than one:
+     `.ct-cmd-scroll` scrolls, `.ct-cmd-alarm` does not. Everything else on the
+     row may leave; the error count may not. */
   .wb.wb.wb .ct-cmd-top{
     display:flex; align-items:center; gap:8px; flex:none;
+    flex-wrap:nowrap; min-width:0; overflow:visible;
+  }
+  .wb.wb.wb .ct-cmd-scroll{
+    display:flex; align-items:center; gap:8px;
+    flex:1 1 auto; min-width:0;
     flex-wrap:nowrap; overflow-x:auto; overflow-y:visible;
     overscroll-behavior-x:contain; scrollbar-width:none;
     mask-image:linear-gradient(to right,#000 calc(100% - 20px),transparent);
   }
-  .wb.wb.wb .ct-cmd-top::-webkit-scrollbar{ display:none }
+  .wb.wb.wb .ct-cmd-scroll::-webkit-scrollbar{ display:none }
+  .wb.wb.wb .ct-cmd-alarm{ flex:none; max-width:52% }
   .wb.wb.wb .ct-cmd-f{ flex:none }
-  .wb.wb.wb .ct-alert-chip{ max-width:none }
+  /* Pinned means it competes for the row's width, so it takes the honest
+     truncation contract instead of `none`: the chip's own title carries the
+     whole sentence, and the COUNT — the part that must survive — is the one
+     glyph that never ellipsizes. */
+  .wb.wb.wb .ct-alert-chip{ max-width:100%; min-width:0 }
   /* The base `.ct-fr` becomes a COLUMN at this width (a flex-basis there would
      be a height). The strip's copy of it stays a row: it holds two controls,
      not eight pills. */
@@ -2815,7 +2898,10 @@
 .wb.wb.wb .dw-tab{ border-radius:var(--r-pill); min-height:32px }
 .wb.wb.wb .dw-tab-n{ font-size:var(--fs-meta) }
 .wb.wb.wb .dw-tab-t, .wb.wb.wb .qa-dim-k, .wb.wb.wb .qa-p > span,
-.wb.wb.wb .qa-raw > summary{ font-size:var(--fs-eyebrow) }
+.wb.wb.wb .qa-raw > summary, .wb.wb.wb .qa-fold-t{ font-size:var(--fs-eyebrow) }
+/* The evidence folds sit on the workbench's own header tier — the same one
+   `.res-hdr` wears, because a fold here IS the header it replaced. */
+.wb.wb.wb .qa-fold > summary{ font-size:var(--fs-meta) }
 .wb.wb.wb .qa-dim-n, .wb.wb.wb .qa-clash{ font-size:var(--fs-meta) }
 .wb.wb.wb .qa-p{ font-size:var(--fs-body) }
 .wb.wb.wb .qa-dim-g > i{ background:var(--accent) }
