@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import {
-  deleteIdea, elapsedMinutes, LANE_POSSESSIVE, STUCK_GENERATING_MINUTES,
+  decideIdea, deleteIdea, elapsedMinutes, ideaDecidable, IDEA_NOT_OURS,
+  LANE_POSSESSIVE, STUCK_GENERATING_MINUTES,
   taxonomyFields, queueFailed,
-  type ContentDraft, type ContentLane, type IdeaCandidate, type ScheduledQueueRow,
+  type ContentDraft, type ContentLane, type IdeaCandidate, type IdeaDecision,
+  type ScheduledQueueRow,
 } from '../../lib/content'
 import {
   cleanStyleTitle, groupByLmStage, isStuckGeneratingLm, isStuckResource,
@@ -16,6 +18,7 @@ import {
   type FilterState,
 } from '../../lib/contentFilters'
 import { useSectionState } from '../../hooks/useSectionState'
+import { withoutDecided } from './contentIdeas'
 import type { AgentSummary } from '../../lib/agent'
 import { FilterBar, FilteredEmpty, Figure, KeyRows } from './ContentBits'
 import { FilterRow } from './FilterRow'
@@ -61,7 +64,13 @@ function scoreLine(i: IdeaCandidate): [string, number | null][] {
   ]
 }
 
-function IdeaCard({ i, onDeleted }: { i: IdeaCandidate; onDeleted: () => void }) {
+function IdeaCard({ i, onDeleted, onDecided }: {
+  i: IdeaCandidate
+  onDeleted: () => void
+  // A decision LANDED. The caller drops the row on the spot and refetches
+  // behind it (withoutDecided) — the row has left `reviewing` either way.
+  onDecided: (id: string) => void
+}) {
   const [open, setOpen] = useState(false)
   // Delete-with-confirm (usability-voice ask 3c, extended to idea rows).
   // deleteIdea() attempts the hard DELETE with representation and falls back
@@ -71,6 +80,18 @@ function IdeaCard({ i, onDeleted }: { i: IdeaCandidate; onDeleted: () => void })
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  // Approve / Reject — the old board's two idea decisions (IdeaDetail.tsx:136-151),
+  // through the same endpoint, with the same optional note ("steers the curator
+  // / logs the reason", IdeaDetail.tsx:129-134 — reject writes it into
+  // archived_reason).
+  //
+  // NEITHER GETS A CONFIRM SHEET, and that is the old board's shape, not
+  // laziness: both decisions are reversible AT THE SAME ENDPOINT (`revert`
+  // un-promotes, `rescue` un-archives), and this band exists to be triaged.
+  // Delete keeps its confirm because delete is the one act nothing undoes.
+  const [note, setNote] = useState('')
+  const [deciding, setDeciding] = useState<IdeaDecision | null>(null)
+  const decidable = ideaDecidable(i)
   const title = i.normalized_topic || i.raw_topic || 'Untitled idea'
   // source_ref is a LINK on some sources and the source row's own ULID on
   // others (claude_sessions, kyle_call). A ULID under a "TEXT" chip is a fact
@@ -85,6 +106,17 @@ function IdeaCard({ i, onDeleted }: { i: IdeaCandidate; onDeleted: () => void })
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not delete')
       setBusy(false)
+    }
+  }
+  const runDecide = async (decision: IdeaDecision) => {
+    setDeciding(decision)
+    setErr('')
+    try {
+      await decideIdea(i, decision, note)
+      onDecided(i.id)
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : `Could not ${decision}`)
+      setDeciding(null)
     }
   }
   return (
@@ -160,6 +192,43 @@ function IdeaCard({ i, onDeleted }: { i: IdeaCandidate; onDeleted: () => void })
           {i.scored_at && <div className="ct-ref">Scored {absTime(i.scored_at)}</div>}
           <div className="wb-delzone wb-delzone-idea" onClick={e => e.stopPropagation()}>
             {err && <div className="ops-err">{err}</div>}
+            {decidable ? (
+              <div className="ct-idea-decide">
+                <input
+                  className="ct-idea-note" type="text" value={note}
+                  onChange={e => setNote(e.target.value)}
+                  placeholder="Optional note — steers the curator, and is logged as the reject reason"
+                  disabled={!!deciding}
+                />
+                <div className="ct-ac ct-ac-wide">
+                  <button
+                    type="button" className="btn s" disabled={busy || !!deciding}
+                    onClick={() => runDecide('reject')}
+                  >
+                    {deciding === 'reject' ? 'Rejecting…' : 'Reject'}
+                  </button>
+                  <button
+                    type="button" className="btn p" disabled={busy || !!deciding}
+                    onClick={() => runDecide('approve')}
+                  >
+                    {deciding === 'approve' ? 'Approving…' : 'Approve'}
+                  </button>
+                </div>
+                {/* Both consequences named, because neither is obvious from the
+                    verb: approve does not just mark a row, it fires the promote
+                    run that writes the draft. */}
+                <div className="ct-ref">
+                  Approve fires the curator's promote run and the draft appears in
+                  Generating · Reject archives the idea. Both are reversible at the
+                  same endpoint.
+                </div>
+              </div>
+            ) : (
+              // The guard, stated rather than a greyed button: this row carries a
+              // workspace/campaign scope, and the decide endpoint has no client
+              // check of its own to fall back on.
+              <div className="ct-ref">{IDEA_NOT_OURS}</div>
+            )}
             {confirming ? (
               <div className="wb-delconfirm">
                 <span className="wb-delq">Delete this idea? This removes it permanently.</span>
@@ -235,7 +304,18 @@ export function IdeasSection({
   const [localOpen, setLocalOpen] = useState(true)
   const open = isOpen ?? localOpen
   const toggle = onToggle ?? (() => setLocalOpen(o => !o))
-  const all = [...ideas, ...(unclassified ?? [])]
+  // Rows decided in this session leave the band on the click, not on the
+  // refetch — the rule and the reason it cannot poison a re-ingest are in
+  // contentIdeas.ts (withoutDecided). Every count below reads the same filtered
+  // arrays, so the header never disagrees with the rows under it.
+  const [decided, setDecided] = useState<ReadonlySet<string>>(() => new Set())
+  const markDecided = (id: string) => {
+    setDecided(cur => new Set(cur).add(id))
+    refresh()
+  }
+  const kindRows = withoutDecided(ideas, decided)
+  const otherRows = withoutDecided(unclassified ?? [], decided)
+  const all = [...kindRows, ...otherRows]
   const facets = buildFacets(all, IDEA_SPECS)
   const shown = applyFilters(all, IDEA_SPECS, filters)
   return (
@@ -262,13 +342,19 @@ export function IdeasSection({
           {/* 🔴 "N rows", never "N distinct topics": an idea's identity derives
               from the LLM's own title, so a re-worded re-ingest is a different
               row and nothing dedups it. */}
+          {/* The "read-only here (promotion lives in Client Ops)" line that used
+              to close this sentence was TRUE ONLY WHILE THE BAND HAD NO DECIDE
+              BUTTON, and it is the sentence Ivan was reading when he said "i
+              cant even approve the ideas". Promotion never lived in Client Ops
+              for these rows either — Client Ops is the CLIENT lane's gate, and
+              lm_idea_candidates has no client lane. */}
           <div className="ct-subtle">
-            {ideas.length} {kind === 'post' ? 'post' : 'lead-magnet'} rows at <code>reviewing</code>
-            {count !== null && count > ideas.length ? ` of ${count} in the database` : ''}
-            {unclassified && unclassified.length > 0
-              ? ` · plus ${unclassified.length} with no content_type, shown here rather than dropped`
+            {kindRows.length} {kind === 'post' ? 'post' : 'lead-magnet'} rows at <code>reviewing</code>
+            {count !== null && count > kindRows.length ? ` of ${count} in the database` : ''}
+            {otherRows.length > 0
+              ? ` · plus ${otherRows.length} with no content_type, shown here rather than dropped`
               : ''} ·
-            read-only here (promotion lives in Client Ops)
+            open one to approve or reject it
           </div>
           <FilterBar
             facets={facets} state={filters} setState={setFilters}
@@ -276,7 +362,9 @@ export function IdeasSection({
           />
           {shown.length === 0
             ? <FilteredEmpty noun="ideas" onClear={() => setFilters({})} />
-            : shown.map(i => <IdeaCard key={i.id} i={i} onDeleted={refresh} />)}
+            : shown.map(i => (
+              <IdeaCard key={i.id} i={i} onDeleted={refresh} onDecided={markDecided} />
+            ))}
         </>
       )}
     </div>

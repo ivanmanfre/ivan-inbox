@@ -45,3 +45,24 @@ export function toggleIdeasOpen(persisted: string[]): string[] {
 export function draftFacetsActive(filters: FilterState, q: string): boolean {
   return Object.values(filters).some(v => !!v) || q.trim() !== ''
 }
+
+/**
+ * Rows minus the ones already decided in this session.
+ *
+ * The optimistic half of approve/reject. `decideIdea` promotes or archives the
+ * candidate, so the row genuinely leaves `reviewing` — but the refetch behind it
+ * takes a round trip (approve waits on the n8n promote run before the status is
+ * even stamped), and a decided row that sits there for two seconds invites a
+ * second click on an act that fires a pipeline.
+ *
+ * 🔴 Keying on the id is safe HERE and nowhere near a cache. content.ts:329 bans
+ * keying UI state on an idea id ACROSS refreshes because a re-worded re-ingest
+ * is a different row — a decided id points at a row that has left the band for
+ * good, and the re-ingest arrives under a NEW id, so it can never be hidden by
+ * an older decision. The set is session-local and dies with the mount.
+ */
+export function withoutDecided<T extends { id: string }>(
+  rows: T[], decided: ReadonlySet<string>,
+): T[] {
+  return decided.size === 0 ? rows : rows.filter(r => !decided.has(r.id))
+}
