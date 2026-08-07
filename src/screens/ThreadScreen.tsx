@@ -223,7 +223,10 @@ export function ThreadScreen({ thread, onBack, refresh }: {
           />
           {draft.recipient_email && (
             <div className="alsoemail" style={{ margin: '0 14px 10px' }}>
-              Approving also emails the scan to {draft.recipient_email} (from itsmattan@risedtc.com)
+              <div>Approving also emails the scan to {draft.recipient_email} (from itsmattan@risedtc.com)</div>
+              {draft.email_mirror_text && (
+                <div className="emailpreview"><Linkified text={draft.email_mirror_text} /></div>
+              )}
             </div>
           )}
           <div className="dc-a">

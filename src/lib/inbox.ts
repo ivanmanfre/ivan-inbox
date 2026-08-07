@@ -17,6 +17,9 @@ export type InboxMessage = {
   // fetchDraftEmailStamps() probe. When set on a draft, approving it makes the
   // dispatcher ALSO email the scan to this address (rise_dm2_scan_delivery_v1 rows).
   recipient_email?: string | null;
+  // The exact email body the dispatcher will send (composed + stored by the
+  // drafter). Shown verbatim under the badge so approval sees the real send.
+  email_mirror_text?: string | null;
 }
 
 export type Thread = {
@@ -359,17 +362,19 @@ export async function fetchManualReplyIds(): Promise<Set<string>> {
 // The view doesn't expose recipient_email, so this reads the base table directly
 // (authed role already reads outreach_prospects the same way). Tiny by
 // construction: only unsent, unapproved, unblocked drafts with a stamp.
-export async function fetchDraftEmailStamps(): Promise<Map<string, string>> {
+export type DraftEmailStamp = { recipient_email: string; email_mirror_text: string | null }
+
+export async function fetchDraftEmailStamps(): Promise<Map<string, DraftEmailStamp>> {
   const { data, error } = await supabase.from('outreach_messages')
-    .select('id,recipient_email')
+    .select('id,recipient_email,email_mirror_text')
     .eq('direction', 'outbound')
     .is('sent_at', null).is('approved_at', null).is('send_blocked_at', null)
     .not('recipient_email', 'is', null)
     .limit(500)
   if (error) throw error
-  const m = new Map<string, string>()
-  for (const r of (data ?? []) as { id: string; recipient_email: string | null }[]) {
-    if (r.recipient_email) m.set(r.id, r.recipient_email)
+  const m = new Map<string, DraftEmailStamp>()
+  for (const r of (data ?? []) as { id: string; recipient_email: string | null; email_mirror_text: string | null }[]) {
+    if (r.recipient_email) m.set(r.id, { recipient_email: r.recipient_email, email_mirror_text: r.email_mirror_text })
   }
   return m
 }

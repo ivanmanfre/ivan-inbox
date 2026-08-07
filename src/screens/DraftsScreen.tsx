@@ -221,7 +221,12 @@ export function DraftCard({ thread, onOpenThread, refresh }: {
         <div className="stale">You already replied after their last message — probably not needed</div>
       )}
       {draft.recipient_email && (
-        <div className="alsoemail">Approving also emails the scan to {draft.recipient_email} (from itsmattan@risedtc.com)</div>
+        <div className="alsoemail">
+          <div>Approving also emails the scan to {draft.recipient_email} (from itsmattan@risedtc.com)</div>
+          {draft.email_mirror_text && (
+            <div className="emailpreview"><Linkified text={draft.email_mirror_text} /></div>
+          )}
+        </div>
       )}
       <div className="bd" onClick={() => onOpenThread(thread.prospect_id)}>
         <Linkified text={draft.message_text} />
