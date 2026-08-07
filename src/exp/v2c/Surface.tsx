@@ -203,6 +203,55 @@ export function CapsuleChart({ parts, onJump }: {
   )
 }
 
+// ---------------------------------------------------------------------------
+// STAT CHIP — the pipeline as a strip of inline marks (candidate B, D10)
+// ---------------------------------------------------------------------------
+//
+// It replaces a 261px chart card with a 32px chip, and in doing so it drops two
+// dishonesties the card carried and could not shed:
+//
+//   1. NO DRAWING FLOOR. `CapsuleChart` floors every mark at 28% of the plot so
+//      a 1-row stage still fits the numeral printed inside it — which draws
+//      SCHED=1 beside REVIEW=9 as 28% vs 100% when the true ratio is 11%, a
+//      2.5x overstatement. Here the numeral lives OUTSIDE the mark, so the mark
+//      is free to be exactly `n / peak` with no floor at all. A 1-of-9 stage
+//      draws 11% of the rule, and a zero draws nothing.
+//   2. THE HUE IS THE STAGE. The capsule's `cat(i) = (i%4)+1` encodes a stage's
+//      POSITION in the array, so re-ordering the pipeline silently recolours it.
+//      The colour is passed in, from the stage's own entry in STAGE_COLOR.
+//
+// `peak` is stated in the title on every chip, because a bar you cannot read the
+// denominator of is a picture, not a measurement.
+export function StatChip({ label, full, n, peak, color, tone, title, onClick }: {
+  label: string
+  full: string
+  n: number
+  peak: number
+  color?: string
+  // Severity is licensed here for exactly one thing: a stage that is waiting on
+  // Ivan (review) or holding a defect (approved-with-no-date). A backlog never
+  // takes it — the audit's amber-vs-pending rule.
+  tone?: 'attention' | 'urgent' | null
+  title: string
+  onClick?: () => void
+}) {
+  const share = peak > 0 ? n / peak : 0
+  const Tag: 'button' | 'div' = onClick ? 'button' : 'div'
+  return (
+    <Tag
+      {...(onClick ? { type: 'button' as const, onClick } : {})}
+      className={`wb-stat${tone ? ` ${tone}` : ''}${n === 0 ? ' wb-stat-0' : ''}`}
+      title={`${full}: ${n} · bar is ${n} of ${peak}, the largest stage${title ? ` · ${title}` : ''}`}
+    >
+      <span className="wb-stat-l">{label}</span>
+      <span className="wb-stat-n">{n}</span>
+      <span className="wb-stat-r" aria-hidden>
+        <i style={{ width: `${share * 100}%`, background: color ?? 'var(--cat-2)' }} />
+      </span>
+    </Tag>
+  )
+}
+
 // A proportion bar built from parts. This is the workbench's answer to "every
 // section encodes something visually": a stage/lane breakdown is drawn once at
 // the top of a list instead of being a column of numbers.

@@ -2,8 +2,10 @@ import {
   groupLogByAgent, isBackfillEntry, parseLogEntry, scoreProgression,
   type AgentGroup, type AgentLogEntry, type QaSummary,
 } from '../../lib/content'
-import { Block, KeyRows, Rows, Val } from './ContentBits'
+import type { ReactNode } from 'react'
+import { KeyRows, Rows, Val } from './ContentBits'
 import { absTime } from './fmt'
+import { parseRubric, verdictsDisagree } from './rubric'
 
 // The two registers.
 //
@@ -37,6 +39,113 @@ function gap(prev: string | null, cur: string | null): string | null {
 // ---------------------------------------------------------------------------
 // QA — the full verdict register
 // ---------------------------------------------------------------------------
+
+// THE QA TAB'S DEFAULT STATE (post-ballot, IA seat).
+//
+// Measured on the live proof row: 2,432px of panel against a 754px rail — 3.35
+// screens, on the tab that opens first. The tabbing already fixed the RAIL; it
+// left the tab itself a scroll. What is actually in those pixels is two
+// different kinds of thing, and only one of them is the verdict:
+//
+//   the VERDICT — score, the stored-vs-body disagreement, the rubric, the
+//   judge's own summary. This is what you read to decide. It stays open.
+//   the EVIDENCE — the copy the gate substituted, the regeneration
+//   instruction (620px of prose on the proof row), the attempt history, the
+//   gate detail (527px of key/value), the provenance, the unnamed keys. This
+//   is what you read when the verdict surprises you. It folds.
+//
+// Same rule the raw judge output has carried since D14: NOTHING IS DROPPED and
+// the fold states what it holds, so a reader knows the thing exists and what it
+// costs to open. A summary line is ~34px; the block behind it is 200-620.
+// `Block`'s `res-hdr` and this summary print the same label and the same tail —
+// the fold is a header that opens, not a new piece of vocabulary.
+function Fold({ label, tail, children, defaultOpen }: {
+  label: string; tail?: ReactNode; children: ReactNode; defaultOpen?: boolean
+}) {
+  return (
+    <details className="qa-fold" open={defaultOpen}>
+      <summary className="qa-fold-s">
+        <span className="qa-fold-c" aria-hidden>›</span>
+        <span className="qa-fold-k">{label}</span>
+        {tail && <span className="qa-fold-t">{tail}</span>}
+      </summary>
+      <div className="qa-fold-b">{children}</div>
+    </details>
+  )
+}
+
+function DimBar({ d }: { d: { key: string; score: number; max: number; note: string | null } }) {
+  const pct = Math.max(0, Math.min(100, (d.score / d.max) * 100))
+  return (
+    <div className="qa-dim" title={d.note ? `${d.key} ${d.score}/${d.max} — ${d.note}` : `${d.key} ${d.score}/${d.max}`}>
+      <span className="qa-dim-k">{d.key}</span>
+      <span className="qa-dim-g" aria-hidden>
+        {/* The threshold is the judge's own pass mark for a dimension, and it
+            is drawn rather than stated: at or above 70% of ITS OWN max the fill
+            is neutral, below it the fill takes attention. No average is ever
+            computed across dimensions — they do not share a denominator. */}
+        <i className={pct >= 70 ? '' : 'low'} style={{ width: `${pct}%` }} />
+      </span>
+      <span className="qa-dim-n">{d.score}<i>/{d.max}</i></span>
+    </div>
+  )
+}
+
+function QaFeedback({ feedback, verdict }: { feedback: string; verdict: string | null }) {
+  const r = parseRubric(feedback)
+  const clash = verdictsDisagree(verdict, r.verdict)
+  if (!r.ok) {
+    // FALLBACK, and it is the previous behaviour exactly: verbatim, unfolded,
+    // nothing hidden. A body this module cannot read is a body it must not
+    // pretend to have read.
+    return <div className="dd-card"><div className="dd-body dd-pre">{feedback}</div></div>
+  }
+  return (
+    <>
+      {clash && (
+        // 🔴 THE CONTRADICTION IS THE INFORMATION (content.ts:1561-1565). A live
+        // row stores verdict:'PASS' while its own body opens "VERDICT:
+        // REWRITE_OK". Both are printed and neither is resolved — the pane's
+        // job is to make the disagreement visible, not to pick a winner.
+        // The chip that used to sit here printed the same word the sentence
+        // opens with, one line apart. Two prints of one verdict inside a block
+        // whose entire subject is that a verdict was printed twice.
+        <div className="qa-clash">
+          Judge body says <b>{r.verdict}</b>{r.total ? ` (${r.total.score}/${r.total.max})` : ''};
+          {' '}the row stores <b>{verdict}</b>. Neither is derived from the other.
+        </div>
+      )}
+      <div className="dd-card qa-rubric">
+        {r.dims.map(d => <DimBar key={d.key} d={d} />)}
+      </div>
+      {(r.summary || r.spice) && (
+        <div className="dd-card qa-prose">
+          {/* The judge's own summary is the one piece of prose that IS the
+              verdict — it says why the numbers came out where they did — so it
+              is never folded. */}
+          {r.summary && <div className="qa-p"><span>Summary</span>{r.summary}</div>}
+          {/* Spice is the gate reporting on a REQUEST ("requested 2, delivered
+              yes"), which is a parameter check rather than a judgement, and it
+              measured at 102px directly under a 302px summary on the tab that
+              opens first. Announced fold, same grammar as the raw output —
+              nothing dropped, and the reader is told it is there. */}
+          {r.spice && (
+            <details className="dd-log-raw qa-raw qa-spice">
+              <summary>Spice check</summary>
+              <div className="qa-p qa-p-b">{r.spice}</div>
+            </details>
+          )}
+        </div>
+      )}
+      {/* Nothing is dropped and the fold says what it holds — an unannounced
+          clamp is what the 1,240px block was replacing. */}
+      <details className="dd-log-raw qa-raw">
+        <summary>Raw judge output · {feedback.length.toLocaleString()} characters</summary>
+        <div className="dd-card"><div className="dd-body dd-pre">{feedback}</div></div>
+      </details>
+    </>
+  )
+}
 
 export function QaRegister({ qa }: { qa: QaSummary }) {
   const provenance: [string, React.ReactNode][] = []
@@ -73,40 +182,57 @@ export function QaRegister({ qa }: { qa: QaSummary }) {
         </div>
       </div>
 
-      {/* Verbatim, never re-derived: a live row carries verdict:'PASS' with
-          feedback opening "VERDICT: REWRITE_OK", and the contradiction is the
-          information. */}
-      {qa.feedback && (
-        <div className="dd-card"><div className="dd-body dd-pre">{qa.feedback}</div></div>
-      )}
+      {/* THE RUBRIC, DRAWN (D14).
+          The nine dimensions the judge scored have no field anywhere in the
+          schema — they live only inside this free-text body, which is why the
+          pane rendered 2,187 characters of monospace and called it a verdict.
+          They are parsed out, best effort, and the raw string is kept below
+          them, always, under a fold that says how long it is. Under three
+          matched dimensions the parse is declared failed and the dump renders
+          exactly as it did before: a half-drawn rubric would read as a
+          dimension that scored nothing. */}
+      {qa.feedback && <QaFeedback feedback={qa.feedback} verdict={qa.verdict} />}
 
       {qa.rewriteText && (
         // 🔴 What actually SHIPPED when a gate rewrote the post — present on 150
         // rows and dropped by every surface until now. This is the voice-drift
         // blind spot the dashboard's QA panel exists to close.
-        <Block
+        //
+        // FOLDED, NOT DROPPED (post-ballot). 620px of substituted copy was the
+        // single largest block on the tab that opens first, and it answers a
+        // question you only ask after the verdict has surprised you. The
+        // character count is on the summary so the fold states its own cost, and
+        // the word "substituted" is on it too — the label alone ("The applied
+        // rewrite") does not say that this is what published.
+        <Fold
           label="The applied rewrite"
           // The field's own name and value, not a sentence about it: what
           // rewrite_total counts is the gate's business, and paraphrasing it
           // ("75 rewritten") invents a unit.
-          tail={qa.rewriteTotal !== null ? `rewrite_total ${qa.rewriteTotal}` : undefined}
+          tail={`the copy that published · ${qa.rewriteText.length.toLocaleString()} chars${
+            qa.rewriteTotal !== null ? ` · rewrite_total ${qa.rewriteTotal}` : ''}`}
         >
           <div className="ct-subtle">
             This is the copy the gate substituted. It is what published, not the
             draft body above it.
           </div>
           <div className="dd-card"><div className="dd-body dd-pre">{qa.rewriteText}</div></div>
-        </Block>
+        </Fold>
       )}
 
       {qa.regenerateInstruction && (
-        <Block label="Regeneration instruction">
+        // Same class of thing and the same treatment: the judge's brief for the
+        // NEXT run, 620px of it on the live proof row. It is not the verdict.
+        <Fold
+          label="Regeneration instruction"
+          tail={`${qa.regenerateInstruction.length.toLocaleString()} chars`}
+        >
           <div className="dd-card"><div className="dd-body dd-pre">{qa.regenerateInstruction}</div></div>
-        </Block>
+        </Fold>
       )}
 
       {(qa.regenHistory.length > 0 || qa.regenAttempts !== null) && (
-        <Block
+        <Fold
           label="Regeneration history"
           tail={qa.regenAttempts !== null ? `${qa.regenAttempts} attempts` : undefined}
         >
@@ -131,21 +257,31 @@ export function QaRegister({ qa }: { qa: QaSummary }) {
               with no per-attempt detail stored.
             </div>
           )}
-        </Block>
+        </Fold>
       )}
 
+      {/* The three flat key/value registers. 527px of gate detail and 186px of
+          provenance on the proof row, and both are lookups — you come to them
+          with a question ("did the claim check run?"), never by scrolling past
+          them. The COUNT rides on each summary so the fold is not a guess. */}
       {qa.gates.length > 0 && (
-        <Block label="Gate detail"><KeyRows items={qa.gates} /></Block>
+        <Fold label="Gate detail" tail={`${qa.gates.length} ${qa.gates.length === 1 ? 'gate' : 'gates'}`}>
+          <KeyRows items={qa.gates} />
+        </Fold>
       )}
 
       {provenance.length > 0 && (
-        <Block label="Verdict provenance"><Rows items={provenance} /></Block>
+        <Fold label="Verdict provenance" tail={`${provenance.length} fields`}>
+          <Rows items={provenance} />
+        </Fold>
       )}
 
       {/* Every qa key this code does not name. ~23 are live and the generator
           adds more; an unnamed key appears the day it appears. */}
       {qa.rest.length > 0 && (
-        <Block label="Other QA fields"><KeyRows items={qa.rest} /></Block>
+        <Fold label="Other QA fields" tail={`${qa.rest.length} keys`}>
+          <KeyRows items={qa.rest} />
+        </Fold>
       )}
     </>
   )
