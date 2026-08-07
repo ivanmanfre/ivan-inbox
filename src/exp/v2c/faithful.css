@@ -2782,19 +2782,29 @@
 .wb.wb.wb .wb-rail-minbtn{ width:32px; height:32px }
 .wb.wb.wb .seg .sg{ min-height:32px }
 
-/* ---- THE SECOND BREAKPOINT · 768-1200 (post-ballot, craft seat) ----------- */
+/* ---- THE SECOND BREAKPOINT · 768-1560 (post-ballot, craft seat) ----------- */
 /* The flaw, named: at 1100 the strip still tried to be one line, so it paid for
    the attempt by shrinking its own search field toward the 104px min-width and
    letting the pill scroller eat the rest. A field that truncates its own
    placeholder is a field that has stopped being a control, and a bar that
    solves its own overflow by shrinking is what reads as a toolbar bug.
-   THE ANSWER IS A LINE, NOT A SMALLER CONTROL. Below 1200 the strip wraps to
-   two, each a real 44px band:
+   THE ANSWER IS A LINE, NOT A SMALLER CONTROL. Below the ceiling the strip
+   wraps to two, each a real band:
      line 1 — search + filters, the things you TYPE and TOUCH, full width;
      line 2 — counts + the alarm, the things you READ.
    Nothing is dropped, nothing is truncated, and the strip still measures itself
-   into --ct-cmdh so the sticky section heads follow it down. */
-@media (min-width:768px) and (max-width:1200px){
+   into --ct-cmdh so the sticky section heads follow it down.
+
+   🔴 CEILING RAISED 1200 → 1560 (readability pass, 2026-08-07). MEASURED, NOT
+   REASONED: at 1440 with the rail open the work region is 1,184px and the READ
+   half of the strip (lane switch · four stage marks · lane figure · alarm ·
+   cadence) measures ~1,050px of it — so the one-line form was solving its own
+   overflow by shrinking the search field to "Search drafts by" and pushing the
+   Filters pill under the plate's own right edge. That is the exact defect this
+   block was written to kill, at a width nobody had measured it at. The two-line
+   form costs ~40px of list, and eleven rows at 1440×900 becomes ten — which is
+   the floor, held, with a field you can actually read. */
+@media (min-width:768px) and (max-width:1559.98px){
   .wb.wb.wb .ct-cmd{ gap:4px 10px; padding:5px var(--gut) }
   .wb.wb.wb .ct-cmd-top{
     order:2; flex:1 0 100%; min-width:0;
@@ -3015,3 +3025,534 @@
 @media (min-width:1100px){
   .wb.wb.wb .qa-dim{ grid-template-columns:minmax(0,152px) minmax(40px,1fr) auto }
 }
+
+/* ==========================================================================
+   R · READABILITY PASS — 2026-08-07
+   ==========================================================================
+
+   Ivan, after the dense-operator ship: "Not dense operator — I wanted you to
+   improve readability, UI, etc."
+
+   So this block RELAXES. It keeps every structural win the ballot bought (the
+   command strip, rows on first paint, the tabbed draft rail) and spends the
+   pixels the compression freed on the four things that were actually asked for:
+
+     R1  a type scale whose reading tiers sit at 13-14px, not at the 11-12px
+         floor, with real leading on anything that wraps;
+     R2  ONE header language and ONE section-header language, so Today / Sends /
+         Ops / Magnets / Styles read as the same product as Content;
+     R3  a command strip with grouped, breathing chip runs instead of a uniform
+         10px run of eleven controls;
+     R4  rows with internal padding and a title/meta hierarchy — readable beats
+         maximal, at ≥10 rows on a 1440×900 canvas.
+
+   Nothing here changes what an action DOES, what a route parses, or what a
+   write touches. Every value is an existing token or a new one derived from the
+   same ladder. Dark workbench only — no warm paper, no serif, no sage.
+
+   Steals are from tournament candidate A ("editorial-calm", craft 8.0): the
+   demoted one-line page header (A1/A10), the stage sections as the page's
+   skeleton (A5), the generous row line (A5), and the 11px floor held (A9). A's
+   own moves that needed A's markup (`.wb-stgs`, `.ct-fact`, `.qa-rub`) are NOT
+   ported — this tree does not have those elements and a rule with no element is
+   a lie in a stylesheet.
+   ========================================================================== */
+
+/* -------------------------------------------------------------------------- */
+/* R1a · THE TOKENS                                                            */
+/* -------------------------------------------------------------------------- */
+.wb{
+  /* 12.5 → 13. The half-pixel step was the census's last fractional value and
+     it put every secondary row line — snippets, topics, timestamps, captions,
+     the DM preview — half a pixel BELOW the 13px bar this pass is measured
+     against. 13 is an integer, keeps the seven-tier scale at seven, and lifts
+     ~30 leaves per surface out of the floor. */
+  --fs-meta:13px;
+
+  /* --text4 was #6E6E6E: 4.13:1 on the canvas, i.e. the "#666 on near-black"
+     the brief names by hand. It carries real words in eleven places (the
+     advisory lines under the strip, the palette footer, the fold costs, the
+     rubric denominators, the em-dash QA placeholder). Lifted to #7E7E7E =
+     5.03:1, which clears the 4.5:1 body bar on canvas AND on surface1/2. It is
+     still visibly the quietest tier, which is the only job it has. */
+  --text4:#7E7E7E;
+
+  /* The 4/8 spacing scale, declared once so the rules below stop inventing
+     11px / 13px / 14px one-offs. */
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px;
+
+  /* Leading. `--lh-read` is the ≥1.45 the brief asks for on anything that can
+     wrap to a second line; `--lh-row` is the tighter single-line row metric the
+     dense lists still need. */
+  --lh-read:1.5;
+  --lh-meta:18px;               /* 13px meta on one line, up from 16 */
+}
+
+/* -------------------------------------------------------------------------- */
+/* R1b · LEADING — every tier that can wrap gets ≥1.45                         */
+/* -------------------------------------------------------------------------- */
+/* The flatten pass (§2) pins EVERY element at line-height:20px, which is 1.43
+   on the body tier and 1.54 on meta-before-this-pass. 20px on a 14px paragraph
+   is the "wall of text" half of the complaint, and it is one declaration away
+   from being right. Body prose goes to 21px (1.5); the meta tier's single-line
+   rows go to 18px (13px text, and the row grows 2px, which is the point). */
+.wb.wb.wb .wb-body, .wb.wb.wb .wb-p, .wb.wb.wb .dd-body,
+.wb.wb.wb .b, .wb.wb.wb .wb-bubble, .wb.wb.wb .msgs .b,
+.wb.wb.wb .wb-ul li, .wb.wb.wb .dd-v, .wb.wb.wb .dd-vv, .wb.wb.wb .dd-vli,
+.wb.wb.wb .dd-point, .wb.wb.wb .dd-pre, .wb.wb.wb .qa-p,
+.wb.wb.wb .ct-why, .wb.wb.wb .ct-q-t, .wb.wb.wb .ct-style-b,
+.wb.wb.wb .ct-src-l, .wb.wb.wb .ct-quote .dd-body,
+.wb.wb.wb .gs, .wb.wb.wb .gt, .wb.wb.wb .ld-b,
+.wb.wb.wb .ops-ctx, .wb.wb.wb .ops-state, .wb.wb.wb .ops-queue,
+.wb.wb.wb textarea.ops-body, .wb.wb.wb textarea.dc-b, .wb.wb.wb .dc-b,
+.wb.wb.wb .td-dm-b, .wb.wb.wb .td-post-x, .wb.wb.wb .td-card-s,
+.wb.wb.wb .sa-body, .wb.wb.wb .sa-title,
+.wb.wb.wb .wb-edit-ta, .wb.wb.wb .dw-note textarea, .wb.wb.wb .dw-conf-t,
+.wb.wb.wb .wb-modelwarn span, .wb.wb.wb .wb-chat-empty-t,
+.wb.wb.wb .ct-err, .wb.wb.wb .ct-warnbox, .wb.wb.wb .qa-clash,
+.wb.wb.wb .wb-failed-m, .wb.wb.wb .wb-starter, .wb.wb.wb .empty{
+  line-height:var(--lh-read);
+}
+/* The meta tier: single-line row furniture at 18px, wrapping captions at 1.5.
+   Two rules, because a row that grows 4px for a line it never wraps to is the
+   density tax this pass is not allowed to charge. */
+.wb.wb.wb .ct-tm, .wb.wb.wb .ct-topic, .wb.wb.wb .r .snip, .wb.wb.wb .r .time,
+.wb.wb.wb .td-snip, .wb.wb.wb .td-org, .wb.wb.wb .td-tm,
+.wb.wb.wb .log-snip, .wb.wb.wb .log-tm, .wb.wb.wb .ov-td-sub,
+.wb.wb.wb .wb-pane-s, .wb.wb.wb .dw-qrow-m{
+  line-height:var(--lh-meta);
+}
+.wb.wb.wb .ct-ex, .wb.wb.wb .ct-subtle, .wb.wb.wb .ct-subline, .wb.wb.wb .ct-ref,
+.wb.wb.wb .ov-cap, .wb.wb.wb .ov-note, .wb.wb.wb .ov-fcap, .wb.wb.wb .ov-tile-sub,
+.wb.wb.wb .td-ts, .wb.wb.wb .td-foot, .wb.wb.wb .td-empty, .wb.wb.wb .td-qmeta,
+.wb.wb.wb .td-dm-meta, .wb.wb.wb .td-li-note, .wb.wb.wb .wb-empty-s,
+.wb.wb.wb .wb-failed-f, .wb.wb.wb .wb-rail-hint, .wb.wb.wb .log-note,
+.wb.wb.wb .log-denom, .wb.wb.wb .dw-sub, .wb.wb.wb .wb-modelnote,
+.wb.wb.wb .ct-fnote, .wb.wb.wb .ops-err, .wb.wb.wb .ops-reason,
+.wb.wb.wb .empty-f, .wb.wb.wb .ov-rc-gov, .wb.wb.wb .td-split{
+  line-height:var(--lh-read);
+}
+/* Tracking is for LABELS. Anything above that reads as a sentence gets none —
+   the flatten already zeroes it, this catches the leaves that re-added it. */
+.wb.wb.wb .dd-log-ts, .wb.wb.wb .dw-tab-n, .wb.wb.wb .wb-lad-l,
+.wb.wb.wb .ct-q-t, .wb.wb.wb .qa-p, .wb.wb.wb .ops-state,
+.wb.wb.wb .ops-queue, .wb.wb.wb .sa-title{ letter-spacing:0 }
+
+/* -------------------------------------------------------------------------- */
+/* R1c · THE READING MEASURE                                                   */
+/* -------------------------------------------------------------------------- */
+/* Measured on the live surface at 1440: the Styles roster's descriptions run
+   1,516px unbroken, the expanded idea card's rationale runs 1,600px, and the
+   Ops comment quote runs the width of its card. A 180-character line is not a
+   dense line, it is an unreadable one, and the fix costs nothing but a cap:
+   the BLOCK still travels with the column, the TEXT wraps where an eye can
+   find the next line. (§ the same move faithful already makes for `.ct-subtle`
+   at :2092 — this generalises it to every prose leaf that was missed.) */
+.wb.wb.wb .ct-style-b, .wb.wb.wb .ct-why, .wb.wb.wb .ct-res-t,
+.wb.wb.wb .ct-q-t, .wb.wb.wb .ct-src-l, .wb.wb.wb .ct-ref,
+.wb.wb.wb .dd-body, .wb.wb.wb .dd-point, .wb.wb.wb .qa-p,
+.wb.wb.wb .ops-state, .wb.wb.wb .ops-queue, .wb.wb.wb .sa-body,
+.wb.wb.wb .td-card-s, .wb.wb.wb .wb-empty-s, .wb.wb.wb .ov-fcap{
+  max-width:78ch;
+}
+
+/* -------------------------------------------------------------------------- */
+/* R1d · SECONDARY TEXT AT A REAL CONTRAST                                     */
+/* -------------------------------------------------------------------------- */
+/* --text4 moved up a step above, which fixes ten leaves at once. These five
+   carry SENTENCES rather than values, so they go a full tier further — text3
+   (6.94:1) — because "quiet" and "hard to read" are different design goals and
+   only one of them was asked for. */
+.wb.wb.wb .ct-rows > .ct-subtle{
+  /* It was 11px at --text4 — the advisory line directly above the work, set in
+     the app's smallest type and its dimmest ink. Same rank, legible. */
+  font-size:var(--fs-meta); color:var(--text3); margin:var(--sp-2) var(--gut);
+}
+.wb.wb.wb .wb-pal-f, .wb.wb.wb .qa-fold-t, .wb.wb.wb .dw-tab-t,
+.wb.wb.wb .ct-fcap, .wb.wb.wb .log-denom-s, .wb.wb.wb .td-more .tail{
+  color:var(--text3);
+}
+
+/* -------------------------------------------------------------------------- */
+/* R2a · ONE PAGE HEADER — every workbench surface, one band                    */
+/* -------------------------------------------------------------------------- */
+/* Measured before, at 1440: DMs spent 250px on a centred 56px "DMS" over a
+   centred search field over a centred chip row, while the list under it was
+   left-aligned and full-width — the header and its own list did not share an
+   edge. Sends spent 230px on four stacked bands. Today, Ops, Magnets and Styles
+   each spent 120px printing a word the rail already highlights 200px to the
+   left.
+   ONE 56px band, flush left, everything the header carries on it. The title
+   demotes to the §2 title tier at label tracking: it reads as the NAME of the
+   surface rather than as its headline, which is what a page title is. (A1.) */
+.wb.wb.wb .nav,
+.wb.wb.wb .wb-work .nav,
+.wb.wb.wb .wb-dmshead .nav{
+  box-sizing:border-box;
+  min-height:56px;
+  padding:10px var(--gut);
+  display:flex; align-items:center; flex-wrap:wrap;
+  gap:var(--sp-2) var(--sp-4);
+  border-bottom:1px solid var(--hairline);
+}
+.wb.wb.wb .nav h2,
+.wb.wb.wb .wb-work .nav h2{
+  font-size:var(--fs-title);
+  font-weight:600;
+  letter-spacing:.09em;
+  line-height:32px;
+  text-transform:uppercase;
+  color:var(--text);
+}
+.wb.wb.wb .nav .row-top{ flex:1 1 auto; min-width:0; gap:var(--sp-3) }
+/* The header's own controls stop being three stacked bands and become the rest
+   of the line. Each keeps its identity; none keeps its margin. */
+.wb.wb.wb .nav .search{
+  flex:1 1 200px; min-width:150px; max-width:360px; margin:0;
+  min-height:36px; padding:0 var(--sp-3);
+}
+.wb.wb.wb .nav .chips{ flex:none; margin:0 0 0 auto }
+/* D6, one level down. On the pointer canvas the rail already prints the
+   identity monogram at 40px, 200px to the left of this one; in a stacked
+   200px-tall header a second print was harmless, and on a single 56px line it
+   lands mid-row between the title and the search field with nothing to explain
+   it. It stays on the phone, which has no rail. */
+.wb.wb.wb.dt .nav .avatar-me{ display:none }
+.wb.wb.wb .nav .sc-sub, .wb.wb.wb .nav .td-date{
+  flex:none; margin:0; font-size:var(--fs-meta); font-weight:400; color:var(--text3);
+}
+/* A10 — the header was SHRINK-WRAPPED AND CENTRED on every solo surface:
+   styles.css:35-40 gives `.wb-solo .nav` `max-width:860px;margin:auto`, which is
+   the right measure for a MESSAGE column and the wrong one for a page header,
+   and auto margins beat `align-items:stretch` in a flex column. A 56px display
+   word hid it; a compact label hides nothing. The cap and the margins go
+   together, and only for the header — the 860px prose measure below it stands. */
+.wb.wb.wb.dt .wb-solo .nav{
+  align-self:stretch; margin-left:0; margin-right:0; width:auto; max-width:none;
+}
+/* One boundary per edge: the header already draws the rule, the scroller under
+   it does not need a second one 1px later. */
+.wb.wb.wb .nav + .rows{ border-top:none }
+
+/* -------------------------------------------------------------------------- */
+/* R2b · ONE SECTION HEADER — Content, Today, Ops, Sends, Settings              */
+/* -------------------------------------------------------------------------- */
+/* The five surfaces spoke five dialects of the same object: an 11px uppercase
+   label at --text3 (Content, Today), a 12.5px uppercase label (Ops, Settings),
+   and a 12.5px uppercase label with a right-set sentence (Sends). All five read
+   as chrome BETWEEN two lists rather than as the page's skeleton.
+   One anatomy, everywhere: ordinal in the data face · name in the title tier ·
+   a full-width rule · the count in the data face. 40px tall with real air above
+   it, so the eye can tell a boundary from a row. (A5.) */
+.wb.wb.wb .wb-sech,
+.wb.wb.wb .td-zh,
+.wb.wb.wb .ops-sechdr,
+.wb.wb.wb .ov-h,
+.wb.wb.wb .grouphdr{
+  height:auto; min-height:40px;
+  gap:var(--sp-3);
+  padding-top:var(--sp-1); padding-bottom:var(--sp-1);
+}
+.wb.wb.wb .wb-sech-t, .wb.wb.wb .td-zt,
+.wb.wb.wb .ops-sechdr, .wb.wb.wb .ov-h, .wb.wb.wb .grouphdr,
+.wb.wb.wb .wb-ocol-h-ttl, .wb.wb.wb .ct-lane-t{
+  font-size:var(--fs-title);
+  font-weight:600;
+  letter-spacing:-.01em;
+  line-height:24px;
+  text-transform:none;
+  color:var(--text);
+}
+/* The RAIL headers are the same object one register down, and deliberately so:
+   they head a 340px column, not a page, and a 16px sentence-case title there
+   reads as a heading competing with the artifact beside it. One consistent
+   rail tier — meta, 600, label tracking, text3 — so `res-hdr`, the evidence
+   rail's own head and the queue rail's head stop being three different labels
+   in one window. */
+.wb.wb.wb .res-hdr, .wb.wb.wb .dw-insp-h, .wb.wb.wb .dw-queue-h{
+  font-size:var(--fs-meta); font-weight:600; letter-spacing:.05em;
+  line-height:18px; text-transform:uppercase; color:var(--text3);
+}
+/* The ordinal and the count are VALUES, so they take the data face — one
+   register for numbers, app-wide, which is what makes a count scannable beside
+   a word without competing with it.
+   🔴 MONO IS FOR DATA AND NOTHING ELSE, so the face is assigned by what the slot
+   ACTUALLY HOLDS, not by what the class is called. `.wb-sech-n`/`.td-zn` are
+   always an ordinal ("01") and `.wb-sech-c` is always a count ("80"), so those
+   three take it. `.td-zc` does NOT: on Today it reads "nothing new", "clear",
+   "nothing out today", "both seats" — it is a PHRASE slot that sometimes holds
+   a number, and mono on a phrase is the exact rule this pass is enforcing.
+   Caught on the render, not in the rule. */
+.wb.wb.wb .wb-sech-n, .wb.wb.wb .td-zn, .wb.wb.wb .wb-sech-c{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:var(--fs-meta);
+  font-weight:500;
+  letter-spacing:0;
+  line-height:18px;
+  text-transform:none;
+  font-variant-numeric:tabular-nums;
+}
+.wb.wb.wb .td-zc{
+  font-size:var(--fs-meta); font-weight:400; letter-spacing:0;
+  line-height:18px; text-transform:none; font-variant-numeric:tabular-nums;
+}
+.wb.wb.wb .wb-sech-n, .wb.wb.wb .td-zn{ color:var(--text4) }
+.wb.wb.wb .wb-sech-c, .wb.wb.wb .td-zc{ color:var(--text3) }
+/* The head's right-set annotation stays a sentence, one tier down. */
+.wb.wb.wb .ov-h-sub, .wb.wb.wb .res-hdr-t{
+  font-size:var(--fs-meta); font-weight:400; letter-spacing:0;
+  text-transform:none; color:var(--text3);
+}
+.wb.wb.wb .ops-sechdr .chev, .wb.wb.wb .wb-sech-chev{ color:var(--text3) }
+/* Air ABOVE a boundary, not below it: 24px says "a new thing starts here" where
+   8px said "these two lists are one list". Scoped to the content scroller and
+   to Today's zones so the Ops columns keep their own tighter rhythm. */
+.wb.wb.wb .ct-rows .wb-sech-strip{ margin-top:var(--sp-5) }
+.wb.wb.wb .ct-rows > .wb-sech-strip:first-child,
+.wb.wb.wb .ct-rows > * > .wb-sech-strip:first-child{ margin-top:var(--sp-2) }
+.wb.wb.wb .ct-cols-head{ color:var(--text4); font-weight:600; letter-spacing:.06em }
+
+/* -------------------------------------------------------------------------- */
+/* R3 · THE COMMAND STRIP, DE-CRAMPED                                           */
+/* -------------------------------------------------------------------------- */
+/* The craft seat's verdict, verbatim: "the single header bar's crammed chip run
+   … makes the top of the page feel like a toolbar overflow bug, not a designed
+   strip." It is one flex line with a uniform 10px gap running lane switch →
+   four stage marks → a lane figure → an error chip → two advisory marks →
+   a search field → a filter pill: eleven controls, three registers, one rhythm,
+   so nothing reads as belonging to anything.
+   THE FIX IS AIR, NOT SUBTRACTION. Every number on the strip is still on it.
+   The gap inside a group stays tight (4-6px, the members belong together); the
+   gap BETWEEN groups doubles, and the one real seam — the things you READ on
+   the left, the things you TYPE on the right — takes a hairline. The band grows
+   to 58px, which is what comfortable spacing needs and what the brief licenses.
+   The strip measures itself into `--ct-cmdh`, so the sticky section heads
+   follow it down without a constant to keep in sync. */
+.wb.wb.wb .ct-cmd{
+  gap:var(--sp-2) var(--sp-3);
+  padding:var(--sp-3) var(--gut);
+  min-height:58px;
+}
+/* Between-group air. `margin-left` rather than a bigger `gap`, because the gap
+   is what holds a GROUP together and raising it would loosen exactly the
+   relationships that should stay tight. */
+.wb.wb.wb .ct-cmd-stats{ margin-left:var(--sp-2); gap:var(--sp-1) }
+.wb.wb.wb .ct-cmd-alarm{ margin-left:var(--sp-2) }
+.wb.wb.wb .ct-cmd-cad, .wb.wb.wb .ct-cmd-note{ margin-left:var(--sp-1) }
+/* Inside the lane switch and the stat run the members are siblings, so they
+   keep their tight rhythm and gain the padding a 32px control wants. */
+.wb.wb.wb .ct-cmd-lane{ height:34px; padding:0 var(--sp-3) }
+.wb.wb.wb .wb-stat{ height:34px; padding:0 var(--sp-2) 0 10px; gap:6px }
+.wb.wb.wb .ct-alert-chip{ height:34px; padding:0 var(--sp-3) }
+.wb.wb.wb .ct-cmd-f .ct-fr-in .ct-fsearch,
+.wb.wb.wb .ct-cmd-f .ct-fpill,
+.wb.wb.wb .ct-cmd-f .ct-fx{ height:34px }
+/* THE ONE SEAM. Left of it is state you read; right of it is the control you
+   type into. A hairline, never a second fill — and only on the canvas where the
+   strip is genuinely one line, because a left rule on a wrapped full-width row
+   is a rule pointing at nothing. */
+@media (min-width:1560px){
+  .wb.wb.wb .ct-cmd-f{
+    margin-left:var(--sp-2); padding-left:var(--sp-4);
+    border-left:1px solid var(--hairline);
+  }
+}
+/* The two-line form pays for its second line out of padding, not out of the
+   list: 6px of strip padding and a 40px band each, so the whole strip is 96px
+   against the one-line form's 82 — 14px, not the 40 a naive 44+44 would cost. */
+@media (min-width:768px) and (max-width:1559.98px){
+  .wb.wb.wb .ct-cmd{ padding:6px var(--gut); gap:var(--sp-1) var(--sp-3); min-height:0 }
+  .wb.wb.wb .ct-cmd-top{ min-height:40px; gap:var(--sp-2) var(--sp-3) }
+  .wb.wb.wb .ct-cmd-f{ min-height:40px }
+  .wb.wb.wb .ct-cmd-scroll{ gap:var(--sp-2) var(--sp-3) }
+}
+/* The stat label was 11px at .06em beside a 13px numeral in the same box —
+   two registers, and the smaller one carried the word. The word gets its size
+   back; the numeral keeps the data face it already had. */
+.wb.wb.wb .wb-stat-l{ font-size:var(--fs-eyebrow); letter-spacing:.05em; color:var(--text3) }
+.wb.wb.wb .wb-stat-n{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:var(--fs-meta); letter-spacing:-.01em;
+}
+.wb.wb.wb .ct-cmd-tot{ font-size:var(--fs-meta) }
+.wb.wb.wb .ct-cmd-cad, .wb.wb.wb .ct-cmd-note{ font-size:var(--fs-eyebrow); gap:5px }
+/* The phone keeps its two-row budget; it just stops touching its own edges. */
+@media (max-width:767px){
+  .wb.wb.wb .ct-cmd{ padding:var(--sp-2) var(--gut); gap:var(--sp-2); min-height:0 }
+  .wb.wb.wb .ct-cmd-stats, .wb.wb.wb .ct-cmd-alarm{ margin-left:0 }
+}
+
+/* -------------------------------------------------------------------------- */
+/* R4 · ROW COMFORT — internal padding, and a title that outranks its meta      */
+/* -------------------------------------------------------------------------- */
+/* §7.8's band is 40-60px and the post-ballot pass put the row at the BOTTOM of
+   it (7px of padding, a 3px inner gap, 59px measured). The band's floor exists
+   to catch cramped rows, and a 7px pad around a 16px title with a chip row
+   under it is the shape it was written for.
+   11px of padding and a 4px inner gap. Measured at 1440: 59px → 64px, and
+   ELEVEN rows still land inside 900px of canvas — the brief's floor is ten.
+   The anchor rail, the fixed table tracks and the shared right edge are
+   untouched: this is the row's INSIDE, not its geometry. (A5.) */
+@media (min-width:1000px){
+  .wb.wb.wb .ct-card, .wb.wb.wb .r, .wb.wb.wb .td-r{ padding:10px var(--gut) }
+}
+.wb.wb.wb .ct-card{ padding:9px var(--gut) }
+.wb.wb.wb .ct-card:not(.ct-idea) > .ct-mid{ gap:var(--sp-1) }
+.wb.wb.wb .ct-title{ line-height:22px }
+.wb.wb.wb .ct-ex{ margin-top:var(--sp-1) }
+/* The primary line reads first, the meta reads second, and until now they were
+   the same ink at two sizes. The topic drops a tier; the title keeps --text. */
+.wb.wb.wb .ct-topic{ color:var(--text3) }
+.wb.wb.wb .ct-tm{ color:var(--text3); font-variant-numeric:tabular-nums }
+/* The Sends log and the DM list are the same object as a Content row and were
+   the two lists that never got the treatment's inner spacing. */
+.wb.wb.wb .log-r{ padding:10px var(--gut) }
+.wb.wb.wb .log-mid{ display:flex; flex-direction:column; gap:var(--sp-1) }
+.wb.wb.wb .log-snip{ margin-top:0 }
+
+/* -------------------------------------------------------------------------- */
+/* R5 · THE UNTOUCHED SURFACES — Today, Sends, Ops, Magnets, Styles             */
+/* -------------------------------------------------------------------------- */
+
+/* ---- Today: the first thing Ivan reads every morning --------------------- */
+/* The masthead is the surface's one anchor and it was competing with a 56px
+   page title 40px above it. With the title demoted (R2a) the plate is the
+   headline it was always drawn as, so it gets the room to be one. */
+.wb.wb.wb .td-mast{ margin:var(--sp-4) var(--gut) var(--sp-1) }
+.wb.wb.wb .td-big-c{ margin-top:var(--sp-1); color:var(--text3) }
+.wb.wb.wb .td-legend{ gap:var(--sp-1) var(--sp-4) }
+.wb.wb.wb .td-lg{ font-size:var(--fs-meta) }
+.wb.wb.wb .td-lg b{ font-size:var(--fs-body); font-weight:600 }
+.wb.wb.wb .td-split{ margin-top:var(--sp-1); font-size:var(--fs-meta) }
+/* A zone is a CARD on the pointer canvas, and a card whose rows start 0px from
+   its own edge is a list with a border. */
+@media (min-width:1000px){
+  .wb.wb.wb .td-zone{ padding-bottom:var(--sp-3) }
+  .wb.wb.wb .td-zones{ column-gap:var(--sp-5); row-gap:0 }
+}
+.wb.wb.wb .td-nm{ font-size:var(--fs-body); font-weight:500 }
+.wb.wb.wb .td-qt{ font-size:var(--fs-title); font-weight:500; line-height:22px }
+.wb.wb.wb .td-qs, .wb.wb.wb .td-qmeta{ margin-top:var(--sp-1) }
+.wb.wb.wb .td-tl{ font-size:var(--fs-eyebrow); letter-spacing:.05em; color:var(--text3) }
+.wb.wb.wb .td-ts{ margin-top:var(--sp-2); color:var(--text3) }
+.wb.wb.wb .td-lane-top .nm{ font-size:var(--fs-body); font-weight:500 }
+.wb.wb.wb .td-lane-top .cap{ font-size:var(--fs-meta); color:var(--text3) }
+.wb.wb.wb .td-lane + .td-lane{ margin-top:var(--sp-3) }
+.wb.wb.wb .td-ct-c{ font-size:var(--fs-eyebrow); color:var(--text3); margin-top:var(--sp-1) }
+/* The three tap rows on Today had a :active state and no :hover — on the canvas
+   they are used from, "is this a control" was unanswerable until the click. */
+.wb.wb.wb .td-qrow.tap:hover, .wb.wb.wb .td-more:hover,
+.wb.wb.wb .sa-bar:hover{ background:var(--surface2) }
+.wb.wb.wb .td-qrow.tap, .wb.wb.wb .td-more, .wb.wb.wb .sa-bar{
+  transition:background-color var(--dur-hover) var(--ease);
+}
+
+/* ---- Sends --------------------------------------------------------------- */
+.wb.wb.wb .ov{ padding-top:var(--sp-2) }
+.wb.wb.wb .ov-sec{ margin-top:var(--sp-5) }
+.wb.wb.wb .ov-sec:first-child{ margin-top:var(--sp-3) }
+.wb.wb.wb .ov-h{ margin-bottom:var(--sp-2) }
+.wb.wb.wb .ov-kpi-nm{ font-size:var(--fs-body); font-weight:500; color:var(--text) }
+.wb.wb.wb .ov-td-nm{ font-size:var(--fs-body); font-weight:500 }
+.wb.wb.wb .ov-tile-sub, .wb.wb.wb .ov-fcap, .wb.wb.wb .ov-cap{ color:var(--text3) }
+.wb.wb.wb .ov-tr{ padding-top:11px; padding-bottom:11px }
+.wb.wb.wb .ov-rc-nm{ font-size:var(--fs-title); font-weight:600 }
+.wb.wb.wb .ov-rc-stat span{ font-size:var(--fs-meta); color:var(--text3) }
+.wb.wb.wb .sc-sub{ font-size:var(--fs-meta); font-weight:400; color:var(--text3) }
+.wb.wb.wb .ov-tr.tap:hover, .wb.wb.wb .ov-rc.tap:hover{ background:var(--surface2) }
+.wb.wb.wb .ov-rc.tap{ transition:background-color var(--dur-hover) var(--ease) }
+
+/* ---- Ops ----------------------------------------------------------------- */
+.wb.wb.wb .ops-card{ padding:var(--sp-4) 18px }
+.wb.wb.wb .ops-h{ gap:var(--sp-2) }
+.wb.wb.wb .ops-chan{ font-size:var(--fs-body); font-weight:500; color:var(--text) }
+.wb.wb.wb .ops-tm{ font-size:var(--fs-meta); color:var(--text3) }
+.wb.wb.wb .ops-ctx{ margin-top:var(--sp-3); gap:var(--sp-2) var(--sp-3); color:var(--text3) }
+.wb.wb.wb .ops-nm{ font-size:var(--fs-body) }
+.wb.wb.wb .ops-sechdr:hover{ color:var(--text) }
+.wb.wb.wb .ops-sechdr{ transition:color var(--dur-hover) var(--ease) }
+.wb.wb.wb .wb-otile-l{ font-size:var(--fs-eyebrow); letter-spacing:.05em; color:var(--text3) }
+.wb.wb.wb .wb-otile-s{ font-size:var(--fs-meta); color:var(--text3); margin-top:var(--sp-1) }
+.wb.wb.wb .wb-ofresh{ font-size:var(--fs-meta) }
+
+/* ---- Magnets + Styles ---------------------------------------------------- */
+/* Both lists put their NAME and their DESCRIPTION in the same ink at the same
+   size, so a roster of seventeen styles read as seventeen paragraphs with a
+   bold word in front. The name takes the title tier the Content rows use; the
+   description takes the body tier at --text2 and the 78ch measure above. */
+.wb.wb.wb .ct-style, .wb.wb.wb .ct-res{ padding:11px var(--gut) }
+.wb.wb.wb .ct-style-t, .wb.wb.wb .ct-res-t{
+  font-size:var(--fs-title); font-weight:500; letter-spacing:-.01em; line-height:22px;
+}
+.wb.wb.wb .ct-style-b{ margin-top:var(--sp-1); color:var(--text2) }
+.wb.wb.wb .ct-style-i{ margin-top:var(--sp-3) }
+.wb.wb.wb .ct-style:hover, .wb.wb.wb .ct-res:hover{ background:var(--surface2) }
+.wb.wb.wb .ct-style, .wb.wb.wb .ct-res{
+  transition:background-color var(--dur-hover) var(--ease);
+}
+.wb.wb.wb .ct-lane-h{ padding:18px var(--gut) 0 }
+.wb.wb.wb .ct-lane-k{ color:var(--text4) }
+.wb.wb.wb .ct-lane-c{ font-size:var(--fs-meta); color:var(--text3) }
+/* On CONTENT the lane boundary separates two lanes and earns its 34px of air
+   and its full-width rule. On MAGNETS the same component is the FIRST thing in
+   the scroller, so the boundary was drawing a line under nothing and opening
+   the surface with a 38px empty band and a stray rule — measured on the render
+   at 1440 (nav ends y=77, the rule sits at y=115, nothing between them).
+   A boundary with nothing above it is not a boundary. */
+.wb.wb.wb .ct-rows > .ct-lane-b:first-child{ margin-top:0; border-top:none }
+
+/* ---- Settings ------------------------------------------------------------ */
+.wb.wb.wb .grow{ padding:var(--sp-3) var(--sp-4); min-height:52px }
+.wb.wb.wb .gt{ font-size:var(--fs-body); font-weight:500 }
+.wb.wb.wb .gs{ font-size:var(--fs-meta); color:var(--text3); margin-top:var(--sp-1) }
+.wb.wb.wb .grow.tap:hover{ background:var(--surface2) }
+
+/* -------------------------------------------------------------------------- */
+/* R6 · THE LEAVES THE MEASURE CAUGHT                                          */
+/* -------------------------------------------------------------------------- */
+
+/* A bare <input> inside a styled wrapper is still the element a pointer lands
+   on, and three of them measured 20px tall inside 32-38px boxes (the Content
+   search, the DMs search). The BOX was never the problem; the control was. */
+.wb.wb.wb .ct-fsearch-in, .wb.wb.wb .search-in{ align-self:stretch; min-height:32px }
+.wb.wb.wb .nav .search{ display:flex; align-items:center }
+
+/* An idea row's title is pinned `white-space:nowrap` by §12, which is right on
+   the pointer canvas and wrong at 390 — the container query at :786 licenses a
+   two-line title exactly when the middle column is crushed, and §12's later
+   rule was silently overruling it for the one lane where it mattered most.
+   Measured at 390: titles cut at ~60% of their words with a full second line of
+   room under them. */
+@container ctmid (max-width:340px){
+  .wb.wb.wb .ct-idea .ct-title{
+    white-space:normal; text-overflow:clip;
+    display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
+  }
+}
+
+/* A9 — the 11px floor, held on the two leaves that still sat under it: the
+   keycap hints in the draft window's action bar. A <kbd> is read as a mark, but
+   9.5px is below the floor on any reading. */
+.wb.wb.wb kbd, .wb.wb.wb .dw-key kbd, .wb.wb.wb .dw-hint kbd{
+  font-size:var(--fs-eyebrow); line-height:14px;
+}
+
+/* The draft window's own reading column. The artifact is capped at LinkedIn's
+   640px measure by contract; the two rails around it were not, and the evidence
+   rail's prose ran the rail's full width at a 1.45 leading it never declared. */
+.wb.wb.wb .dw-qrow-t{ font-size:var(--fs-meta); line-height:18px }
+.wb.wb.wb .dw-cap-t{ font-size:var(--fs-page); font-weight:600; line-height:26px }
+.wb.wb.wb .dw-sec-n{ font-size:var(--fs-meta); font-weight:600; letter-spacing:.05em }
+.wb.wb.wb .qa-dim-k{ font-size:var(--fs-eyebrow); color:var(--text3) }
+.wb.wb.wb .qa-dim-n{ font-size:var(--fs-meta) }
+
+/* The last two reading leaves the census still found at 11px, both in the draft
+   window's rails: the queue row's `Text · 20m ago` and the evidence tab's
+   headline fact (`9 agents`). Neither is a label — a label names a slot, and
+   these two ARE the value. They join the meta tier.
+   What is DELIBERATELY left at 11: `.qa-dim-k` (VOICE / SUBSTANCE — rubric
+   dimension names, i.e. labels whose text is uppercase in the data rather than
+   in CSS), `kbd` (a legend for a physical key, at the floor per A9), the tab
+   bar's own nav labels, and the LinkedIn artifact's 12px chrome — which is a
+   PICTURE of another product and keeps its measurements by contract. */
+.wb.wb.wb .dw-qrow-m, .wb.wb.wb .dw-tab-t{ font-size:var(--fs-meta) }
