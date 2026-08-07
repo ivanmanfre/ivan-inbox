@@ -125,6 +125,21 @@ export const DRAFT_PROMINENT: string[] = ['stage', 'kind', 'pillar', 'source', '
 // change what you are looking at; the two URL-presence facets are audit
 // questions ("did the page ever ship") and are demoted.
 export const RESOURCE_PROMINENT: string[] = ['status', 'format']
+// The idea band's triage axes. Same split, same grammar, same component as the
+// draft row above it (D9): where the idea came from and how it scored are what
+// a decision is made on; type, format and the engagement flag are audit
+// questions and ride in the disclosure.
+export const IDEA_PROMINENT: string[] = ['source', 'band']
+
+// The publish queue's two triage axes: what the bridge did with the row, and
+// what kind of post it was. Platform, repost and the error flag are audit
+// questions and ride in the disclosure.
+export const QUEUE_PROMINENT: string[] = ['status', 'post_kind']
+
+// The style roster: which family a prompt belongs to, and whether it can show
+// you what it produces. `recent` is an audit question and is demoted.
+export const STYLE_PROMINENT: string[] = ['family', 'examples']
+
 
 // ---------- search ----------
 
