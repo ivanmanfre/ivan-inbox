@@ -302,32 +302,43 @@ function CommandStrip({
   }, [])
   return (
     <div className="ct-cmd" ref={ref}>
-      {/* `display:contents` on the pointer canvas, so these four are direct
-          members of the strip's one flex line; a real scrolling row on the
-          phone, where four controls cannot share 358px and stacking them was
-          three rows of chrome. One element, two behaviours, no second DOM. */}
+      {/* `display:contents` on the wide pointer canvas, so these are direct
+          members of the strip's one flex line; TWO 44px LINES below 1200 and on
+          the phone. One element, three behaviours, no second DOM.
+          🔴 THE ALARM IS NOT INSIDE `.ct-cmd-scroll`. Everything else in the top
+          row may scroll out of sight on a 390px canvas; the error chip may not,
+          because the one thing a sticky strip exists to keep on screen is the
+          thing that says something is broken. It is a sibling of the scroller,
+          `flex:none`, and the mobile probe drives the scroller to its end and
+          asserts the chip is still inside the viewport. */}
       <div className="ct-cmd-top">
-        <div className="ct-cmd-id">
-          {/* NO JOB TITLE. The rail names the job on the pointer canvas and the
-              work segment names it on the phone, in every data state — a third
-              print inside the strip is the D6 doubling one level down. */}
-          {/* The lane switch is a VIEW switcher, so it keeps the pill grammar it
-              has always had; it is not a filter and never takes `label: value ⌄`. */}
-          <div className="ct-cmd-lanes">
-            {CONTENT_LANES.map(k => (
-              <button
-                type="button" key={k}
-                className={`ct-cmd-lane${lane === k ? ' on' : ''}`}
-                aria-current={lane === k ? 'true' : undefined}
-                onClick={() => setLane(k)}
-              >{LANE_LABEL[k]}</button>
-            ))}
+        <div className="ct-cmd-scroll">
+          <div className="ct-cmd-id">
+            {/* NO JOB TITLE. The rail names the job on the pointer canvas and the
+                work segment names it on the phone, in every data state — a third
+                print inside the strip is the D6 doubling one level down. */}
+            {/* The lane switch is a VIEW switcher, so it keeps the pill grammar it
+                has always had; it is not a filter and never takes `label: value ⌄`. */}
+            <div className="ct-cmd-lanes">
+              {CONTENT_LANES.map(k => (
+                <button
+                  type="button" key={k}
+                  className={`ct-cmd-lane${lane === k ? ' on' : ''}`}
+                  aria-current={lane === k ? 'true' : undefined}
+                  onClick={() => setLane(k)}
+                >{LANE_LABEL[k]}</button>
+              ))}
+            </div>
+            {laneNote}
           </div>
-          {laneNote}
+          {stats}
+          {tail}
         </div>
-        {stats}
-        {alert}
-        {tail}
+        {/* The cluster, not the chip: AlertChip renders its scroll anchor
+            (`#wb-s-error`) beside the button, and the anchor must live wherever
+            the button lives or the error jump lands nowhere. `:empty` hides the
+            wrapper on a lane with nothing wrong, so a quiet strip stays quiet. */}
+        <div className="ct-cmd-alarm">{alert}</div>
       </div>
       <div className="ct-cmd-f">{filter}</div>
     </div>
@@ -382,12 +393,16 @@ function PipelineStats({ stages, matched, laneTotal, onJump }: {
           onClick={() => onJump(p.stage)}
         />
       ))}
+      {/* Same rule as the cadence mark: the figure gets its word. `227` alone
+          was the second unlabelled token on the strip — a reader had to hover to
+          learn whether it was rows, drafts or the lane. */}
       <span
         className="ct-cmd-tot"
         title={`${matched ?? inPipeline} rows loaded${laneTotal !== null ? ` of ${laneTotal} in this lane` : ''}`}
       >
         <b>{matched ?? inPipeline}</b>
         {laneTotal !== null && laneTotal !== matched ? <i>/{laneTotal}</i> : null}
+        <span>loaded</span>
       </span>
     </div>
   )
@@ -706,13 +721,23 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
         }
         tail={
           // Advisory denominator, never a quota, never a gate, never red — and
-          // now a mark rather than a line of prose. The word "cadence" is what
-          // stops it reading as a target, which is why it is still printed.
+          // a mark rather than a line of prose. The word "cadence" is what stops
+          // it reading as a target, which is why it is still printed.
+          //
+          // 🔴 IT WAS `1↗7d` UNTIL THE BALLOT. Two numbers, one arrow, no noun:
+          // the craft seat read it as a toolbar overflow glyph rather than a
+          // designed mark, and it was right — nothing on the strip said which
+          // number was the count and which was the window. EVERY FIGURE ON THIS
+          // STRIP NOW CARRIES ITS OWN WORD: the numeral is the data tier
+          // (tabular, `<b>`), the word beside it is the label tier, and the two
+          // never share a type register. The full sentence stays on the title.
           <span
             className="ct-cmd-cad"
             title={`${scheduledThisWeek} posts are scheduled in the next 7 days. The 4-a-week cadence is an editorial rhythm, not a quota and not a gate.`}
           >
-            <b>{scheduledThisWeek}</b>↗7d
+            <b>{scheduledThisWeek}</b><span>scheduled</span>
+            <i aria-hidden>·</i>
+            <b>7d</b><span>cadence</span>
           </span>
         }
       />
