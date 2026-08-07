@@ -273,7 +273,7 @@ function MorePill({ facets, state, setState, sheet, badgeKeys, label }: {
  */
 export function FilterRow({
   prominent, demoted, state, setState, q, setQ, shown, loaded, total, noun, placeholder,
-  idleCount = true, inline = false,
+  idleCount = true, inline = false, label,
 }: {
   prominent: Facet[]
   demoted: Facet[]
@@ -303,6 +303,13 @@ export function FilterRow({
   // removed: every facet, every count, every escape is the same control in the
   // same order. This is the whole of "one filter system" on the strip's side.
   inline?: boolean
+  // D9 · WHAT THE DISCLOSURE IS SCOPED TO. Two rows on this surface run
+  // filters and they run over DIFFERENT TABLES — the strip's over `content`,
+  // the ideas band's over `lm_idea_candidates` — so their state cannot be
+  // shared and the honest fix is not one control, it is one GRAMMAR plus a
+  // name. Two chips both reading "Filters" 90px apart is the ambiguity the
+  // ledger row was actually about; "Idea filters" is not.
+  label?: string
 }) {
   const sheet = useSheetMode()
   const searchable = typeof setQ === 'function'
@@ -365,6 +372,7 @@ export function FilterRow({
       <MorePill
         facets={inPanel} state={state} setState={setState} sheet={sheet}
         badgeKeys={inline ? demoted.map(f => f.key) : undefined}
+        label={label}
       />
       {activeN > 0 && (
         <button

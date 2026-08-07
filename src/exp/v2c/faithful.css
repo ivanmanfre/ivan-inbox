@@ -2838,3 +2838,59 @@
   .wb.wb.wb .wb-work .nav{ padding:10px var(--gut) 6px }
   .wb.wb.wb .wb-work .nav h2{ font-size:var(--fs-page) }
 }
+
+/* ---- the band line: one row where the ideas band had three ---------------- */
+/* The provenance sentence and the band's own filter disclosure were two
+   stacked blocks under a section head that already prints the count. They
+   share a line: the fact left, the control right. The sentence keeps every
+   clause it had — dropping one would be a silent omission, not density — and
+   at 767 the control drops UNDER it rather than squeezing it, because a
+   sentence compressed to 90px is a sentence nobody reads. */
+.wb.wb.wb .ct-bandline{
+  display:flex; align-items:center; gap:10px;
+  padding:2px var(--gut) 4px;
+}
+.wb.wb.wb .ct-bandline > .ct-subtle{ flex:1 1 auto; min-width:0; margin:0; padding:0 }
+.wb.wb.wb .ct-bandline > .ct-fr-in{ flex:0 0 auto }
+.wb.wb.wb .ct-bandline .ct-fpills{ flex:0 0 auto; mask-image:none }
+/* It stays a ROW on the phone, where the saving matters most: the sentence
+   wraps to three lines beside a 110px chip (50px of band) instead of stacking
+   above it (72px). The chip pins to the top of the wrap so it reads as the
+   band's control rather than as punctuation in the middle of the sentence. */
+@media (max-width:767px){
+  .wb.wb.wb .ct-bandline{ align-items:flex-start; gap:8px }
+  .wb.wb.wb .ct-bandline > .ct-fr-in{ padding-top:1px }
+}
+
+/* ---- the last two clipped strings ---------------------------------------- */
+/* TRUNCATION IS HONEST, and neither of these was. The funnel labels lost their
+   last letters to a fixed column with `text-overflow:clip` — "Accepte", not
+   "Accepted…" — so the column wraps instead: a two-line label costs 13px and
+   loses nothing. */
+@media (max-width:520px){
+  .wb.wb.wb .ov-fl{ white-space:normal; overflow-wrap:anywhere; letter-spacing:.02em }
+}
+/* The gear was a 14px glyph in a 4px box: clipped, and 22px tall against a
+   32px floor it should never have been exempt from. */
+.wb.wb.wb .wb-gear{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:32px; min-height:32px; padding:0;
+}
+/* Its 44px touch target was bought with an `inset:-12px` ::after on a 22px
+   box. The box is 32 now, so the extension only needs 6 — and the smaller it
+   is the less it inflates `scrollWidth`, which is what made a glyph that loses
+   no text read as a clipped string in the measure. It is still a phantom in
+   that number; it is now a 12px one. */
+.wb.wb.wb .wb-gear::after{ inset:-6px }
+
+/* ---- the rubric key column, wide enough for the judge's longest key ------- */
+/* `NARRATIVE_C…` and `FIRST_PERSO…` are two of the twelve dimensions and both
+   were cut at 86px — with an ellipsis and a title, so the truncation was
+   honest, but a dimension you cannot name is a dimension you cannot act on.
+   The rail has the width; the bar does not need 200px to read as a bar.
+   The longest key the live judge prints is `FIRST_PERSON_PRESENCE` at 21
+   characters — 152px at this tier — and the bar still gets ~170px, which is
+   more than enough for a proportion nobody reads to the pixel. */
+@media (min-width:1100px){
+  .wb.wb.wb .qa-dim{ grid-template-columns:minmax(0,152px) minmax(40px,1fr) auto }
+}

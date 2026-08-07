@@ -72,12 +72,12 @@ function QaFeedback({ feedback, verdict }: { feedback: string; verdict: string |
         // row stores verdict:'PASS' while its own body opens "VERDICT:
         // REWRITE_OK". Both are printed and neither is resolved — the pane's
         // job is to make the disagreement visible, not to pick a winner.
+        // The chip that used to sit here printed the same word the sentence
+        // opens with, one line apart. Two prints of one verdict inside a block
+        // whose entire subject is that a verdict was printed twice.
         <div className="qa-clash">
-          <span className="ct-chip ct-chip-warn">{r.verdict}</span>
-          <span>
-            The judge wrote <b>{r.verdict}</b>{r.total ? ` (total ${r.total.score}/${r.total.max})` : ''} in its own
-            body; the row stores <b>{verdict}</b>. Both are on this page and neither is derived from the other.
-          </span>
+          Judge body says <b>{r.verdict}</b>{r.total ? ` (${r.total.score}/${r.total.max})` : ''};
+          {' '}the row stores <b>{verdict}</b>. Neither is derived from the other.
         </div>
       )}
       <div className="dd-card qa-rubric">
