@@ -650,7 +650,7 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
       />
 
       {view === 'calendar' ? (
-        <ContentCalendar rows={shown} lane="ivan" onOpen={onOpen} refresh={refresh} />
+        <ContentCalendar rows={shown} onOpen={onOpen} refresh={refresh} />
       ) : (
       <>
       {/* ask 3 — the POST side of the content_type partition only. Rows with no
@@ -840,7 +840,7 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
       />
 
       {view === 'calendar' ? (
-        <ContentCalendar rows={shown} lane="risedtc" onOpen={onOpen} refresh={refresh} />
+        <ContentCalendar rows={shown} onOpen={onOpen} refresh={refresh} />
       ) : shown.length === 0 && drafts.length > 0
         ? <FilteredEmpty noun="drafts" onClear={() => { setFilters({}); setQ('') }} />
         : BOARD_ORDER.map(g => {

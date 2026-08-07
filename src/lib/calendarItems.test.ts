@@ -19,52 +19,52 @@ const d = (over: Partial<ContentDraft> = {}): ContentDraft => ({
 
 describe('buildCalendarItems — which rows become chips', () => {
   it('a scheduled draft becomes one chip on its own local day', () => {
-    const items = buildCalendarItems([d()], 'risedtc', NOW)
+    const items = buildCalendarItems([d()], NOW)
     expect(items).toHaveLength(1)
     expect(items[0]).toMatchObject({ id: 'd1', stage: 'scheduled', title: 'A post' })
     expect(items[0].day).toBe(dayKeyOf('2026-08-12T10:30:00Z'))
   })
 
   it('published rows stay on the calendar — the month is a record, not just a plan', () => {
-    const items = buildCalendarItems([d({ status: 'published', source_post_id: 'urn:li:activity:1' })], 'risedtc', NOW)
+    const items = buildCalendarItems([d({ status: 'published', source_post_id: 'urn:li:activity:1' })], NOW)
     expect(items[0].stage).toBe('published')
   })
 
   it('a past-due schedule keeps its own stage (stuck), never drawn as a plan', () => {
-    const items = buildCalendarItems([d({ scheduled_at: '2026-08-01T10:00:00Z' })], 'risedtc', NOW)
+    const items = buildCalendarItems([d({ scheduled_at: '2026-08-01T10:00:00Z' })], NOW)
     expect(items[0].stage).toBe('stuck')
   })
 
   it('a row with no date is NOT drawn — there is no day to draw it on', () => {
-    expect(buildCalendarItems([d({ scheduled_at: null })], 'risedtc', NOW)).toHaveLength(0)
+    expect(buildCalendarItems([d({ scheduled_at: null })], NOW)).toHaveLength(0)
   })
 
   it('an unparseable date is dropped rather than bucketed as today', () => {
-    expect(buildCalendarItems([d({ scheduled_at: 'not-a-date' })], 'risedtc', NOW)).toHaveLength(0)
+    expect(buildCalendarItems([d({ scheduled_at: 'not-a-date' })], NOW)).toHaveLength(0)
   })
 
   it('an errored or archived row carrying an old date is NOT drawn as a future post', () => {
     const rows = [d({ status: 'error' }), d({ id: 'd2', status: 'disqualified' }), d({ id: 'd3', status: 'skipped' })]
-    expect(buildCalendarItems(rows, 'risedtc', NOW)).toHaveLength(0)
+    expect(buildCalendarItems(rows, NOW)).toHaveLength(0)
   })
 
   it('🔴 a DATED REVIEW row is drawn — that is what the client lane\'s forward schedule IS', () => {
     // Probed 2026-08-07: risedtc holds 9 dated `review` rows, 13 published and
     // ZERO at `scheduled`. Drawing `scheduled` only showed his history and
     // nothing ahead of today.
-    const items = buildCalendarItems([d({ status: 'review' })], 'risedtc', NOW)
+    const items = buildCalendarItems([d({ status: 'review' })], NOW)
     expect(items).toHaveLength(1)
     expect(items[0]).toMatchObject({ stage: 'review', movable: true })
   })
 
-  it('a dated approved row is drawn too, and stays movable', () => {
-    const items = buildCalendarItems([d({ status: 'approved' })], 'risedtc', NOW)
-    expect(items[0]).toMatchObject({ stage: 'approved', movable: true })
+  it('a dated approved row is drawn too — but the date RPC will not take it', () => {
+    const items = buildCalendarItems([d({ status: 'approved' })], NOW)
+    expect(items[0]).toMatchObject({ stage: 'approved', movable: false })
   })
 
   it('titles fall back topic → Untitled, never blank', () => {
-    expect(buildCalendarItems([d({ title: null, topic: 'The topic' })], 'risedtc', NOW)[0].title).toBe('The topic')
-    expect(buildCalendarItems([d({ title: null, topic: null })], 'risedtc', NOW)[0].title).toBe('Untitled')
+    expect(buildCalendarItems([d({ title: null, topic: 'The topic' })], NOW)[0].title).toBe('The topic')
+    expect(buildCalendarItems([d({ title: null, topic: null })], NOW)[0].title).toBe('Untitled')
   })
 
   it('chips come back in time order, so the day cell reads top-to-bottom', () => {
@@ -72,30 +72,37 @@ describe('buildCalendarItems — which rows become chips', () => {
       d({ id: 'late', scheduled_at: '2026-08-12T18:00:00Z' }),
       d({ id: 'early', scheduled_at: '2026-08-12T08:00:00Z' }),
     ]
-    expect(buildCalendarItems(rows, 'risedtc', NOW).map(i => i.id)).toEqual(['early', 'late'])
+    expect(buildCalendarItems(rows, NOW).map(i => i.id)).toEqual(['early', 'late'])
   })
 })
 
-describe('canMoveDate — mirrors operator_schedule_draft, plus one guard of ours', () => {
-  it('🔴 the Ivan lane has NO path: the RPC answers not_a_client_draft on client_id IS NULL', () => {
-    expect(canMoveDate({ status: 'scheduled', client_id: null }, 'ivan')).toBe(false)
-    // and not even a mis-laned client row can smuggle one in
-    expect(canMoveDate({ status: 'scheduled', client_id: 'risedtc' }, 'ivan')).toBe(false)
-    expect(canMoveDate({ status: 'scheduled', client_id: null }, 'risedtc')).toBe(false)
+describe('canMoveDate — operator_set_schedule_date’s status line, and nothing else', () => {
+  it('🔴 IVAN’S OWN DRAFTS MOVE NOW: the date RPC has no client_id branch at all', () => {
+    // The refusal this used to encode (`not_a_client_draft`) belongs to the
+    // ARMING rpc. db/032 tests status only, so the lane stopped mattering —
+    // and the signature says so: canMoveDate cannot even SEE client_id now.
+    const row = (status: string, client_id: string | null) => ({ status, client_id })
+    expect(canMoveDate(row('scheduled', null))).toBe(true)
+    expect(canMoveDate(row('review', null))).toBe(true)
+    expect(canMoveDate(row('scheduled', 'risedtc'))).toBe(true)
   })
-  it('a client draft moves from every pre-publish status — the SQL has no status guard', () => {
-    for (const s of ['review', 'approved', 'scheduled', 'generating', 'error']) {
-      expect(canMoveDate({ status: s, client_id: 'risedtc' }, 'risedtc')).toBe(true)
+  it('the two statuses the SQL names, verbatim — and nothing outside them', () => {
+    for (const s of ['review', 'scheduled']) {
+      expect(canMoveDate({ status: s })).toBe(true)
+    }
+    for (const s of ['approved', 'generating', 'error', 'disqualified', 'skipped']) {
+      expect(canMoveDate({ status: s })).toBe(false)
     }
   })
-  it('🔴 published is OURS: re-dating one would hand it to the publisher twice', () => {
-    expect(canMoveDate({ status: 'published', client_id: 'risedtc' }, 'risedtc')).toBe(false)
+  it('🔴 published is refused BY THE DATABASE now, not by a promise we keep here', () => {
+    expect(canMoveDate({ status: 'published' })).toBe(false)
   })
   it('the chips carry that answer, so a locked row never renders a move control', () => {
-    const items = buildCalendarItems([d(), d({ id: 'p', status: 'published' })], 'risedtc', NOW)
+    const items = buildCalendarItems([d(), d({ id: 'p', status: 'published' })], NOW)
     expect(items.find(i => i.id === 'd1')?.movable).toBe(true)
     expect(items.find(i => i.id === 'p')?.movable).toBe(false)
-    expect(buildCalendarItems([d({ client_id: null })], 'ivan', NOW)[0].movable).toBe(false)
+    // the same row on Ivan's lane — dated, scheduled, no client_id — is movable
+    expect(buildCalendarItems([d({ client_id: null })], NOW)[0].movable).toBe(true)
   })
 })
 
@@ -106,12 +113,12 @@ describe('buildCalendarRail — Ready, no date', () => {
       d({ id: 'b', status: 'approved', scheduled_at: '2026-08-12T10:00:00Z' }),
       d({ id: 'c', status: 'review', scheduled_at: null }),
     ]
-    expect(buildCalendarRail(rows, 'risedtc').map(r => r.id)).toEqual(['a'])
+    expect(buildCalendarRail(rows).map(r => r.id)).toEqual(['a'])
   })
-  it('carries the same movability answer as a chip', () => {
-    const row = [d({ status: 'approved', scheduled_at: null })]
-    expect(buildCalendarRail(row, 'risedtc')[0].movable).toBe(true)
-    expect(buildCalendarRail([{ ...row[0], client_id: null }], 'ivan')[0].movable).toBe(false)
+  it('carries the same movability answer as a chip — approved is refused on BOTH lanes', () => {
+    const row = d({ status: 'approved', scheduled_at: null })
+    expect(buildCalendarRail([row])[0].movable).toBe(false)
+    expect(buildCalendarRail([{ ...row, client_id: null }])[0].movable).toBe(false)
   })
 })
 
@@ -168,7 +175,7 @@ describe('the grid', () => {
     expect(shiftMonth(2026, 0, -1)).toEqual({ year: 2025, month: 11 })
   })
   it('groupByDay buckets by the same key the grid draws', () => {
-    const items = buildCalendarItems([d(), d({ id: 'd2' })], 'risedtc', NOW)
+    const items = buildCalendarItems([d(), d({ id: 'd2' })], NOW)
     const byDay = groupByDay(items)
     expect(byDay.get(items[0].day)).toHaveLength(2)
   })
