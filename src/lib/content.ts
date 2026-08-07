@@ -505,6 +505,75 @@ export async function skipDraft(id: string): Promise<void> {
   if (error) throw error
 }
 
+// ---------- restart-to-idea (old-board parity 3b) ----------
+//
+// The old board could send a later-stage row back to the START of the pipeline
+// from its inline status control (PostStudioPanel.tsx:610-614, 715-725). v2 had
+// no equivalent: a draft the pipeline had already ruined could only be
+// regenerated in place (same row, same stage) or deleted.
+//
+// Two things here differ from the reference, both deliberate:
+//  1. THE OLD CONFIRM DESCRIBED A WRITE IT DID NOT MAKE. Its body says "flipping
+//     to 'idea'", and then `regenerateFromIdea` calls `regenerateDraft()` —
+//     status='generating' plus the webhook, never 'idea'. The warning was true
+//     about the consequence and false about the mechanism. The write below IS
+//     status='idea', so the same sentence is now literally true.
+//  2. THE CONFIRM IS IN THE SIGNATURE. approveDraft/skipDraft trust their caller
+//     to ask first; this one overwrites the copy AND the image, so it takes the
+//     answer as an argument and a caller that forgets the sheet does not
+//     compile. The prompt is built here too, so the wording cannot drift away
+//     from the board Ivan already knows.
+//
+// Ivan lane only, `.is('client_id', null)`, exactly like approve/skip — this
+// throws a draft back to the pipeline and Mattan's lane is read-only here.
+export const RESTART_STATUS = 'idea'
+
+export type RestartPrompt = { title: string; message: string; confirmText: string }
+
+// SCHEDULED and PUBLISHED are excluded, which the old board did NOT do. A
+// scheduled row is armed at the n8n Bridge and a published one is already on
+// LinkedIn; sending either back to 'idea' from this window would be a schedule/
+// publish-path decision wearing a content-editing button, and this app does not
+// make those (see the writes header above).
+export const RESTART_BLOCKED_STATUS = ['scheduled', 'published', 'idea', 'suggestion']
+
+export function canRestartToIdea(status: string, lane: ContentLane): boolean {
+  return lane === 'ivan' && !RESTART_BLOCKED_STATUS.includes(status)
+}
+
+// Verbatim from PostStudioPanel.tsx:717-719, including the conditional " and
+// image" — the one adaptation is the noun: the reference interpolates the raw
+// `type` column, so its own dialog reads "Regenerate this single_image?".
+export function restartToIdeaPrompt(d: Pick<ContentDraft, 'type' | 'image_urls'>): RestartPrompt {
+  const kind = d.type === 'carousel' ? 'carousel' : 'post'
+  const hasImage = normalizeImageUrls(d.image_urls).length > 0
+  return {
+    title: `Regenerate this ${kind}?`,
+    message: `Flipping to 'idea' will refire the pipeline and overwrite the current copy${hasImage ? ' and image' : ''}.`,
+    confirmText: 'Regenerate',
+  }
+}
+
+export async function restartDraftToIdea(
+  d: Pick<ContentDraft, 'id' | 'type' | 'image_urls'>,
+  ask: (p: RestartPrompt) => Promise<boolean>,
+): Promise<boolean> {
+  const ok = await ask(restartToIdeaPrompt(d))
+  if (!ok) return false
+  // `.select()` for the same reason the edit/delete writes carry one: PostgREST
+  // answers a silent 204 when RLS filters the row away, and a window that says
+  // "sent back to idea" off a filtered-away write is lying.
+  const { data, error } = await supabase.from('carousel_drafts')
+    .update({ status: RESTART_STATUS })
+    .eq('id', d.id).is('client_id', null)
+    .select('id')
+  if (error) throw error
+  if (!data || data.length === 0) {
+    throw new Error('Restart failed — the database did not accept the status change.')
+  }
+  return true
+}
+
 // ---------- edit / delete (usability-voice ask 3) ----------
 //
 // Both are IVAN-LANE ONLY, mirroring approveDraft's `.is('client_id', null)`

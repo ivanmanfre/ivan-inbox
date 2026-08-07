@@ -980,6 +980,13 @@
   min-width:17px;height:17px;padding:0 3px;border-radius:4px;font-family:inherit;
   font-size:10.5px;font-weight:800;line-height:1;
   border:1px solid currentColor;opacity:.5}
+/* A row of the bar's own, claimed by wrapping rather than by nesting: the
+   Regenerate / Delete confirms and their notes are children of `.dw-acts`
+   itself (D13 moved the triggers into the bar), and a confirm that shared a
+   line with the buttons it is asking about would be unreadable. `order:1`
+   keeps every such row BELOW the whole button set — a confirm rendered in DOM
+   order would otherwise land mid-bar and split its own siblings across it. */
+.wb.wb.wb .dw-actrow{order:1;flex:1 0 100%;min-width:0;margin:0}
 .wb.wb.wb .dw-hint{margin-left:auto;font-size:11px;color:var(--text3);display:flex;
   align-items:center;gap:5px;flex-wrap:wrap}
 .wb.wb.wb .dw-hint kbd{display:inline-flex;align-items:center;justify-content:center;
@@ -1126,4 +1133,24 @@
   .wb.wb.wb .dw-insp{border-top:.5px solid var(--sep);margin-top:10px}
   /* Sticky against the ONE scroller the window has at this width. */
   .wb.wb.wb .dw-acts{position:sticky;bottom:0}
+  /* D15 — and therefore it lands ON TOP of whatever is at the foot of the
+     artifact column, which at 390 was measured as ~2 lines of the post. The
+     clearance sits on `.dw-main`, OUTSIDE the sticky element's containing
+     block (`.dw-main-in`), so it buys the column room without extending the
+     range over which the bar stays pinned. `--dw-actsh` is the bar's measured
+     height (DraftPane.tsx, ResizeObserver); the 0 fallback means no other
+     window that reuses this markup pays for it. */
+  .wb.wb.wb .dw-main{padding-bottom:var(--dw-actsh, 0px)}
+}
+
+@media (max-width:430px){
+  /* D13 put three more acts in this bar, and on a 390 phone that took it from
+     two rows to three — 194px of a 776px window, measured. The buttons are all
+     still here and all still 44px of TARGET (min-height untouched, and the kbd
+     hints stay: they are the same hints on a keyboard-attached iPad). What
+     gives up the width is padding, the gap and the chip, which buys the row
+     back: measured 194px/3 → 133px/2 at 390. */
+  .wb.wb.wb .dw-acts{gap:5px;padding-left:10px;padding-right:10px}
+  .wb.wb.wb .dw-key{padding:0 8px;font-size:12.5px;gap:4px}
+  .wb.wb.wb .dw-key kbd{min-width:14px;height:15px;font-size:9.5px;padding:0 2px}
 }

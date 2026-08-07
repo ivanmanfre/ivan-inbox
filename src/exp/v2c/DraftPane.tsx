@@ -4,9 +4,9 @@ import { useSectionState } from '../../hooks/useSectionState'
 import { useConfirm } from '../../components/ConfirmSheet'
 import {
   ClientRpcError, DraftSaveConflict, LANE_LABEL, STAGE_LABEL, approveDraft, boardGroupOf, groupLogByAgent,
-  canPromote, canUnpromote, clientDeletable, clientEditable, clientStageLabel, deleteClientDraft,
+  canPromote, canRestartToIdea, canUnpromote, clientDeletable, clientEditable, clientStageLabel, deleteClientDraft,
   deleteDraft, normalizeAgentLog, normalizeImageUrls, normalizeKeyPoints, normalizeQa,
-  normalizeSourceDetail, reviewActionable, saveClientDraftBody, saveDraftBody, selfContainedHtml,
+  normalizeSourceDetail, restartDraftToIdea, reviewActionable, saveClientDraftBody, saveDraftBody, selfContainedHtml,
   setBoardVisible, skipDraft, stageOf, taxonomyExtras, taxonomyFields, taxonomyValue,
   type ContentDraft, type ContentDraftDetail, type ContentLane, type SaveConflict,
 } from '../../lib/content'
@@ -143,7 +143,16 @@ function Sec({ k, label, tail, open, toggle, children }: {
 }
 
 // ---------------------------------------------------------------------------
-// REGENERATE — unchanged contract, restyled into the actions drawer.
+// REGENERATE — unchanged contract, now IN THE STICKY ACTION BAR.
+//
+// It lived at the bottom of the scrolling artifact column until 2026-08-07,
+// which measured as the same defect the drawer had: `.dw-main` clientHeight
+// 754 against scrollHeight 1984, the button's top at 1887 — 1,133px below the
+// fold, off screen at 1440x900 AND at 390x844, while five keyboard actions sat
+// pinned on screen. "Unconditionally rendered" was never the ask; "on screen"
+// was. The trigger is a `.dw-key` like every other decision, and the confirm
+// unfolds as a full-width row inside the same bar, so the warning arrives
+// pinned rather than wherever the reader happens to be scrolled.
 //
 // It states the two conflicts instead of resolving them behind Ivan's back:
 //  1. THE IMAGE. post-gen only writes image_urls when include_image='Yes', and
@@ -157,7 +166,9 @@ function Sec({ k, label, tail, open, toggle, children }: {
 //     escape hatch as its own deliberate act.
 // ---------------------------------------------------------------------------
 
-function RegenDraft({ d, onDone }: { d: ContentDraftDetail; onDone: () => void }) {
+function RegenDraft({ d, onDone, disabled }: {
+  d: ContentDraftDetail; onDone: () => void; disabled?: boolean
+}) {
   const [asking, setAsking] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -184,51 +195,101 @@ function RegenDraft({ d, onDone }: { d: ContentDraftDetail; onDone: () => void }
     } finally { setBusy(false) }
   }
 
-  if (!asking) {
-    return (
-      <div className="wb-delzone">
-        {note && <div className="ct-subtle">{note}</div>}
-        <button type="button" className="wb-editbtn" onClick={() => setAsking(true)}>
-          {first ? 'Generate copy' : 'Regenerate copy'}
-        </button>
-      </div>
-    )
-  }
+  // A Fragment, not a wrapper: these are children of `.dw-acts` itself, so the
+  // button sits in the button row and the confirm claims a row of its own
+  // (`.dw-actrow` is `flex:1 0 100%` against the bar's wrap).
   return (
-    <div className="wb-delzone">
-      {err && <div className="ops-err">{err}</div>}
-      <div className="wb-delconfirm">
-        <span className="wb-delq">
-          {first ? 'Run' : 'Re-run'} the pipeline for this {plan.postFormat.toLowerCase()}?
-          {!first && ' It replaces the copy.'}
-          {hasImage && !first && ' Your pinned image is kept unless you pick the image option.'}
-        </span>
-        {plan.blockedByGuard && (
-          <div className="ct-subtle">
-            ⚠ You edited this draft by hand, so the database guard will refuse to overwrite your
-            words — the run would land nothing. “Replace my edit” clears that protection first.
-          </div>
-        )}
-        <div className="ct-ac">
-          <button type="button" className="btn s" disabled={busy} onClick={() => setAsking(false)}>
-            Cancel
-          </button>
-          <button type="button" className="btn s" disabled={busy} onClick={() => run(false, false)}>
-            {busy ? 'Firing…' : 'Copy only'}
-          </button>
-          {d.type === 'single_image' && (
-            <button type="button" className="btn s" disabled={busy} onClick={() => run(true, false)}>
-              Copy + new image
-            </button>
-          )}
+    <>
+      {note && <div className="dw-actrow ct-subtle">{note}</div>}
+      {err && <div className="dw-actrow ops-err">{err}</div>}
+      {/* "Regenerate copy" until 08-07. The noun moved into the confirm, which
+          is where the copy/image fork is actually decided ("Copy only" /
+          "Copy + new image") — and the two words it costs are a whole wrapped
+          row of a 390px bar. */}
+      <button type="button" className="dw-key" disabled={disabled} aria-expanded={asking}
+        onClick={() => setAsking(a => !a)}>
+        {first ? 'Generate' : 'Regenerate'}
+      </button>
+      {asking && (
+        <div className="dw-actrow wb-delconfirm">
+          <span className="wb-delq">
+            {first ? 'Run' : 'Re-run'} the pipeline for this {plan.postFormat.toLowerCase()}?
+            {!first && ' It replaces the copy.'}
+            {hasImage && !first && ' Your pinned image is kept unless you pick the image option.'}
+          </span>
           {plan.blockedByGuard && (
-            <button type="button" className="btn wb-btn-danger" disabled={busy} onClick={() => run(false, true)}>
-              Replace my edit
-            </button>
+            <div className="ct-subtle">
+              ⚠ You edited this draft by hand, so the database guard will refuse to overwrite your
+              words — the run would land nothing. “Replace my edit” clears that protection first.
+            </div>
           )}
+          <div className="ct-ac">
+            <button type="button" className="btn s" disabled={busy} onClick={() => setAsking(false)}>
+              Cancel
+            </button>
+            <button type="button" className="btn s" disabled={busy} onClick={() => run(false, false)}>
+              {busy ? 'Firing…' : 'Copy only'}
+            </button>
+            {d.type === 'single_image' && (
+              <button type="button" className="btn s" disabled={busy} onClick={() => run(true, false)}>
+                Copy + new image
+              </button>
+            )}
+            {plan.blockedByGuard && (
+              <button type="button" className="btn wb-btn-danger" disabled={busy} onClick={() => run(false, true)}>
+                Replace my edit
+              </button>
+            )}
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+    </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// RESTART TO IDEA — the old board's third regeneration verb, ported (parity 3b).
+//
+// Regenerate re-runs the pipeline ON this row. This one sends the row back to
+// the START of the pipeline: status='idea', so the whole chain re-derives it.
+// The board offered it from the inline status control (PostStudioPanel.tsx:
+// 610-614) and v2 offered nothing, so a draft whose generation had gone wrong
+// at the source could only be regenerated in place or deleted.
+//
+// The write, the Ivan-lane scope and the warning all live in
+// content.ts:restartDraftToIdea, which takes the confirm as an ARGUMENT — this
+// component cannot skip the sheet, and the words are the board's own.
+// ---------------------------------------------------------------------------
+
+function RestartDraft({ d, onDone, disabled }: {
+  d: ContentDraftDetail; onDone: () => void; disabled?: boolean
+}) {
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const [note, setNote] = useState('')
+  const confirm = useConfirm()
+
+  const run = async () => {
+    setBusy(true); setErr(''); setNote('')
+    try {
+      const did = await restartDraftToIdea(d, confirm)
+      if (did) {
+        setNote('Back at Idea. The pipeline re-derives it from there — the row sits at Idea until it does.')
+        onDone()
+      }
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not send it back to idea')
+    } finally { setBusy(false) }
+  }
+
+  return (
+    <>
+      {note && <div className="dw-actrow ct-subtle">{note}</div>}
+      {err && <div className="dw-actrow ops-err">{err}</div>}
+      <button type="button" className="dw-key" disabled={busy || disabled} onClick={run}>
+        {busy ? 'Sending back…' : 'Back to idea'}
+      </button>
+    </>
   )
 }
 
@@ -303,9 +364,15 @@ function ScheduleDraft({ d, onDone }: { d: ContentDraftDetail; onDone: () => voi
 // DELETE — confirm inline. Distinct from Skip: skip archives a review-stage row
 // visibly; delete removes it from the surface entirely, at any stage. Ivan lane
 // only; deleteDraft() carries the hard-DELETE-then-fallback contract.
+//
+// It rides in the same sticky bar as Regenerate (2026-08-07), LAST and in the
+// danger register, so the destructive act is reachable without being the one
+// the thumb lands on.
 // ---------------------------------------------------------------------------
 
-function DeleteDraft({ d, onDone }: { d: ContentDraftDetail; onDone: () => void }) {
+function DeleteDraft({ d, onDone, disabled }: {
+  d: ContentDraftDetail; onDone: () => void; disabled?: boolean
+}) {
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -322,10 +389,14 @@ function DeleteDraft({ d, onDone }: { d: ContentDraftDetail; onDone: () => void 
   }
 
   return (
-    <div className="wb-delzone">
-      {err && <div className="ops-err">{err}</div>}
-      {confirming ? (
-        <div className="wb-delconfirm">
+    <>
+      {err && <div className="dw-actrow ops-err">{err}</div>}
+      <button type="button" className="dw-key d" disabled={disabled} aria-expanded={confirming}
+        onClick={() => setConfirming(c => !c)}>
+        Delete
+      </button>
+      {confirming && (
+        <div className="dw-actrow wb-delconfirm">
           <span className="wb-delq">Delete this draft? This removes it permanently.</span>
           <div className="ct-ac">
             <button type="button" className="btn s" disabled={busy} onClick={() => setConfirming(false)}>
@@ -336,12 +407,8 @@ function DeleteDraft({ d, onDone }: { d: ContentDraftDetail; onDone: () => void 
             </button>
           </div>
         </div>
-      ) : (
-        <button type="button" className="wb-delbtn" onClick={() => setConfirming(true)}>
-          Delete draft
-        </button>
       )}
-    </div>
+    </>
   )
 }
 
@@ -779,9 +846,32 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
   const hero = d.type !== 'carousel' && images[0] ? imageSrc(images[0]) : null
   const slides = d.type === 'carousel' ? images : images.slice(1)
 
+  // ---- the sticky bar's REAL height ---------------------------------------
+  //
+  // Below 1180 the window is one scroller and the bar is pinned to the bottom
+  // of it, so whatever sits at the end of the artifact column ends up under it
+  // (D15). The clearance underneath has to be the bar's MEASURED height, not a
+  // constant: the bar wraps, and how many rows it wraps to depends on the lane,
+  // the stage and whether a confirm is unfolded inside it — 92px was already
+  // two rows before this run added three buttons to it. The var is read by
+  // `.dw-main{padding-bottom}` in the ≤1180 block, and defaults to 0, so the
+  // magnets window (same markup, no observer) is untouched.
+  const actsRef = useRef<HTMLDivElement>(null)
+  const mainRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const bar = actsRef.current
+    const col = mainRef.current
+    if (!bar || !col || typeof ResizeObserver === 'undefined') return
+    const set = () => col.style.setProperty('--dw-actsh', `${Math.ceil(bar.getBoundingClientRect().height)}px`)
+    set()
+    const ro = new ResizeObserver(set)
+    ro.observe(bar)
+    return () => ro.disconnect()
+  }, [])
+
   // ---- 02 · the artifact --------------------------------------------------
   const main = (
-    <div className="dw-main">
+    <div className="dw-main" ref={mainRef}>
       <div className="dw-main-in">
         <div className="dw-cap">
           <div className="dw-cap-t">{d.title || d.topic || 'Untitled'}</div>
@@ -901,18 +991,12 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
 
         {actErr && <div className="ops-err" style={{ margin: '10px 16px 0' }}>{actErr}</div>}
 
-        {/* Regenerate and Delete sit in the open (2026-08-04, Ivan: "we need
-            edit option and regen option" — the drawer hid regen well enough
-            that he reported it missing, the same lesson delete taught on
-            08-03). Both carry their own two-step confirm, so visibility costs
-            no safety. Only Schedule stays behind `o`: it is the one affordance
-            here that ARMS A PUBLISHER. */}
-        {lane === 'ivan' && (
-          <div style={{ marginBottom: 4 }}>
-            <RegenDraft d={d} onDone={refresh} />
-            <DeleteDraft d={d} onDone={() => { refresh(); if (nextId) onPick(nextId); else onClose() }} />
-          </div>
-        )}
+        {/* Regenerate, Back to idea and Delete used to sit HERE, at the foot of
+            the scrolling column (2026-08-04, Ivan: "we need edit option and
+            regen option"). Rendering them unconditionally was not enough —
+            measured 1,133px below the fold at both viewports — so they moved
+            into the sticky bar below. Only Schedule stays behind `o`: it is the
+            one affordance here that ARMS A PUBLISHER. */}
         {more && lane === 'ivan' && (
           <div style={{ marginBottom: 4 }}>
             <ScheduleDraft d={d} onDone={refresh} />
@@ -951,7 +1035,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
             words with no prompt. The keyboard already refuses (the `editing`
             bail in the handler); the buttons have to refuse too, or the guard is
             only a guard for people who use keys. */}
-        <div className="dw-acts">
+        <div className="dw-acts" ref={actsRef}>
           {actionable && (
             <>
               <button type="button" className="dw-key p" disabled={acting || editing}
@@ -993,6 +1077,23 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
               onClick={() => setMore(m => !m)}>
               <kbd>o</kbd> {more ? 'Hide schedule' : 'Schedule'}
             </button>
+          )}
+          {/* The three regeneration/removal acts, on screen. They carry no key
+              — the five lettered actions above are the queue-walking ones — and
+              they refuse while the editor is open for the same reason those do:
+              each of them discards unsaved words without asking. */}
+          {lane === 'ivan' && (
+            <>
+              <RegenDraft d={d} onDone={refresh} disabled={editing} />
+              {canRestartToIdea(d.status, lane) && (
+                <RestartDraft d={d} onDone={refresh} disabled={editing} />
+              )}
+              <DeleteDraft
+                d={d}
+                disabled={editing}
+                onDone={() => { refresh(); if (nextId) onPick(nextId); else onClose() }}
+              />
+            </>
           )}
           {editing ? (
             <span className="dw-hint">Save or cancel the edit first</span>
