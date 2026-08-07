@@ -59,7 +59,7 @@ function ContextLine({ draft }: { draft: OpsDraft }) {
     return (
       <div className="ops-ctx">
         {ctx.source_url
-          ? <a href={ctx.source_url} target="_blank" rel="noreferrer">{ctx.headline}</a>
+          ? <a className="ops-link" href={ctx.source_url} target="_blank" rel="noreferrer">{ctx.headline}</a>
           : <span>{ctx.headline}</span>}
       </div>
     )
@@ -80,7 +80,7 @@ function ContextLine({ draft }: { draft: OpsDraft }) {
         {ctx.week && <span>week of {ctx.week}</span>}
         {parts.length > 0 && <span>{parts.join(' · ')}</span>}
         {ctx.report_url && (
-          <a href={ctx.report_url} target="_blank" rel="noreferrer">read the page</a>
+          <a className="ops-link" href={ctx.report_url} target="_blank" rel="noreferrer">read the page</a>
         )}
       </div>
     )
@@ -98,10 +98,10 @@ function ContextLine({ draft }: { draft: OpsDraft }) {
           <span className="ops-replay">no lane history, check before claiming outbound</span>
         )}
         {ctx.brief_url && (
-          <a href={ctx.brief_url} target="_blank" rel="noreferrer">read the brief</a>
+          <a className="ops-link" href={ctx.brief_url} target="_blank" rel="noreferrer">read the brief</a>
         )}
         {ctx.hubspot_url && (
-          <a href={ctx.hubspot_url} target="_blank" rel="noreferrer">HubSpot</a>
+          <a className="ops-link" href={ctx.hubspot_url} target="_blank" rel="noreferrer">HubSpot</a>
         )}
       </div>
     )
@@ -115,7 +115,7 @@ function ContextLine({ draft }: { draft: OpsDraft }) {
         {ctx.comment_text && <span>&ldquo;{ctx.comment_text}&rdquo;</span>}
         {ctx.category && <span className="ops-replay">{ctx.category}</span>}
         {ctx.post_url && (
-          <a href={ctx.post_url} target="_blank" rel="noreferrer">open the post</a>
+          <a className="ops-link" href={ctx.post_url} target="_blank" rel="noreferrer">open the post</a>
         )}
       </div>
     )
@@ -129,7 +129,7 @@ function ContextLine({ draft }: { draft: OpsDraft }) {
         {ctx.post_excerpt && <span>&ldquo;{ctx.post_excerpt}&rdquo;</span>}
         {ctx.hook && <span className="ops-replay">{ctx.hook}</span>}
         {ctx.post_url && (
-          <a href={ctx.post_url} target="_blank" rel="noreferrer">open the post</a>
+          <a className="ops-link" href={ctx.post_url} target="_blank" rel="noreferrer">open the post</a>
         )}
       </div>
     )

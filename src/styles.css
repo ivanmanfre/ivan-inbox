@@ -131,7 +131,14 @@ input.cfield::placeholder{color:var(--text3)}
 
 /* ---- drafts queue ---- */
 .seg{display:flex;background:var(--surface);border-radius:10px;padding:2px;margin:16px 22px 4px}
-.sg{flex:1;text-align:center;font-size:13.5px;font-weight:600;padding:7px 0;border-radius:8px;color:var(--text2)}
+/* Overview/Lanes/Log measured 30px tall on BOTH viewports (D28) — 7px of pad
+   around a 16px line box. `min-height`, not `height`, on purpose: the v2 sheet
+   sets `.seg .sg{height:30px}` at a specificity this rule cannot reach, and
+   min-height wins over height in the used value regardless, so one declaration
+   raises the target in both shells. The look is unchanged — same fill, same
+   radius, same 13.5px label — it is the BOX that grows, and the label is
+   centred by the flex so the extra 6px does not fall to the bottom. */
+.sg{flex:1;display:flex;align-items:center;justify-content:center;min-height:36px;text-align:center;font-size:13.5px;font-weight:600;padding:7px 0;border-radius:8px;color:var(--text2)}
 .sg.on{background:var(--surface3);color:var(--text)}
 .qc{margin:14px 16px 0;background:var(--surface);border-radius:20px;padding:16px;touch-action:pan-y;user-select:none;-webkit-user-select:none}
 .qc.dragging{box-shadow:0 10px 30px rgba(0,0,0,.4)}
@@ -720,7 +727,21 @@ input.cfield::placeholder{color:var(--text3)}
 .ops-tm{margin-left:auto;font-size:12.5px;color:var(--text3)}
 .ops-ctx{font-size:12.5px;color:var(--text2);margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .ops-replay{font-size:10px;font-weight:800;letter-spacing:.04em;color:var(--accent);background:var(--accent-soft);border-radius:6px;padding:2px 7px;text-transform:uppercase}
-textarea.ops-body{display:block;width:100%;background:var(--surface2);border:none;border-radius:14px;color:var(--text);font-family:inherit;font-size:15px;line-height:1.5;padding:12px 14px;margin:12px 0;resize:none;outline:none;min-height:80px;max-height:44vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+/* min-height is 5 FULL LINES, not a round number: 5 x (15px x 1.5) + 24px of
+   padding = 136.5. At the old 80px the box was 2.5 line boxes and the third
+   line was sliced through the middle of its glyphs above the buttons, which
+   reads as broken rather than as "there is more" (D25). The mobile sheet fixed
+   exactly this at ≤767px and desktop never got it; longer drafts still scroll
+   inside the box, now on whole lines. */
+textarea.ops-body{display:block;width:100%;background:var(--surface2);border:none;border-radius:14px;color:var(--text);font-family:inherit;font-size:15px;line-height:1.5;padding:12px 14px;margin:12px 0;resize:none;outline:none;min-height:137px;max-height:44vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+/* The ops context links ("read the brief", "HubSpot", "open the post") were
+   20px-tall finger targets sitting in a 12.5px text row. The REGISTER stays
+   text — same size, same underline — and only the box grows: 32px tall with a
+   real horizontal pad, so the target is a target on a phone. No negative
+   margin: `.ops-ctx` is a wrapping flex with an 8px gap, and pulling the pad
+   back out of it would let two adjacent links overlap. */
+.ops-link{display:inline-flex;align-items:center;min-height:32px;padding:4px 9px;border-radius:9px}
+.ops-link:hover{background:var(--surface2)}
 .ops-ac{display:flex;gap:10px}
 .ops-ac .btn{cursor:pointer}
 /* Three actions only ever happen on an empty comment card (Discard · Draft it ·
