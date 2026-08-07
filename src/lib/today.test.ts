@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   checkedPhrase,
-  asBrief, cacheSafe, countsFromBrief, isCountsShape, partitionUrgencies,
+  asBrief, cacheSafe, cleanSnippet, countsFromBrief, isCountsShape, partitionUrgencies,
   projectBrief, rollupReplies, todayLoad, ageBandOf, ageTag, splitByAge,
   isLivePost, postsToday, cancelledToday, todayPlate, approvalsTotal,
   type Brief, type BriefCounts,
@@ -210,6 +210,32 @@ describe('checkedPhrase', () => {
     expect(checkedPhrase(null)).toBe('Never checked')
     expect(checkedPhrase(undefined)).toBe('Never checked')
     expect(checkedPhrase('not-a-date')).toBe('Never checked')
+  })
+})
+
+describe('cleanSnippet — D23/D24, the classifier tag and the HTML entities', () => {
+  it('strips the classifier bracket tag the same way inbox.ts\'s DEAD_TAG detects it', () => {
+    expect(cleanSnippet('[negative] nope Bill Boris-Schacter is not interested'))
+      .toBe('nope Bill Boris-Schacter is not interested')
+    expect(cleanSnippet('[negative_optout] Stop On Thu…')).toBe('Stop On Thu…')
+    expect(cleanSnippet('[ooo_autoreply] I am on holiday')).toBe('I am on holiday')
+  })
+
+  it('decodes HTML entities leaking from email-channel replies', () => {
+    expect(cleanSnippet('Ivan Manfredi &lt; iva…')).toBe('Ivan Manfredi < iva…')
+    expect(cleanSnippet('Tom &amp; Jerry &quot;deal&quot;')).toBe('Tom & Jerry "deal"')
+    expect(cleanSnippet('caf&#233; &#x2013; yes')).toBe('café – yes')
+  })
+
+  it('does both at once and leaves an untagged, entity-free snippet untouched', () => {
+    expect(cleanSnippet('[negative] Ivan Manfredi &lt; iva…')).toBe('Ivan Manfredi < iva…')
+    expect(cleanSnippet('plain snippet, nothing to clean')).toBe('plain snippet, nothing to clean')
+  })
+
+  it('is null-safe', () => {
+    expect(cleanSnippet(null)).toBe('')
+    expect(cleanSnippet(undefined)).toBe('')
+    expect(cleanSnippet('')).toBe('')
   })
 })
 

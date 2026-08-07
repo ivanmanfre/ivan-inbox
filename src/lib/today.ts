@@ -650,6 +650,41 @@ export async function fetchReplyCounts(): Promise<ReplyCount[]> {
   return rollupReplies((data ?? []) as InboundRow[])
 }
 
+// ---------- snippet display ----------
+// D23/D24: TodayScreen printed u.snippet verbatim — classifier bracket tags
+// ("[negative] nope Bill…") and unescaped HTML entities from email-channel
+// replies ("Ivan Manfredi &lt; iva…") both reached the operator. Cleaned once
+// here so every renderer gets prose.
+
+// Same tag vocabulary as inbox.ts's DEAD_TAG (inbox.ts:172) — mirrored, not
+// imported, because that const is module-private and inbox.ts is out of this
+// run's write scope. Keep the spellings in sync if inbox.ts's list changes.
+const SNIPPET_TAG = /^\s*\[(ooo_autoreply|negative|negative_optout|unsubscribe|auto_reply)\]\s*/i
+
+const NAMED_ENTITIES: Record<string, string> = {
+  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ',
+}
+
+// Email-channel replies carry escaped HTML in message_text. There is no DOM in
+// the test runner or the service worker, so this is a small manual decoder
+// rather than the browser textarea trick — same result, works everywhere the
+// app runs, no new dependency.
+function decodeEntities(s: string): string {
+  return s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (whole, ent: string) => {
+    if (ent[0] === '#') {
+      const code = ent[1] === 'x' || ent[1] === 'X' ? parseInt(ent.slice(2), 16) : parseInt(ent.slice(1), 10)
+      return Number.isNaN(code) ? whole : String.fromCodePoint(code)
+    }
+    const val = NAMED_ENTITIES[ent.toLowerCase()]
+    return val ?? whole
+  })
+}
+
+export function cleanSnippet(s: string | null | undefined): string {
+  if (!s) return ''
+  return decodeEntities(s.replace(SNIPPET_TAG, ''))
+}
+
 // ---------- formatting ----------
 
 export function ago(iso: string): string {

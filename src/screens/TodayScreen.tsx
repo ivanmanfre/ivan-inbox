@@ -6,10 +6,10 @@ import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useToday, type TodayHealth } from '../hooks/useToday'
 import { acceptRate, laneLabel, type GovernorRow } from '../lib/kpis'
 import {
-  ago, ageTag, clockTime, countsFromBrief, dayTime,
-  inScope, longDate, nextUp, todayLoad, todayPlate,
+  ago, ageTag, cleanSnippet, clockTime, countsFromBrief, dayTime,
+  longDate, nextUp, todayLoad, todayPlate,
   type Brief, type BriefCounts, type CommentDraft, type DmDraft, type FeedDraft,
-  type Scope, type ScheduledPost, type TodayPlate, type Urgency,
+  type ScheduledPost, type TodayPlate, type Urgency,
 } from '../lib/today'
 
 // Today = three staged zones (urgent → approve → today's content) plus a
@@ -17,14 +17,6 @@ import {
 // zone and any scan-report-open row — Ivan cut both from this surface.
 
 const SEV = { live: '#10A37F', slowing: '#FF9F0A', stale: '#FF453A' }
-
-const CHIPS: { key: Scope; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'ivan', label: 'Ivan' },
-  { key: 'risedtc', label: 'Rise' },
-]
-
-const SCOPE_NAME: Record<Scope, string> = { all: '', ivan: 'Ivan', risedtc: 'Rise' }
 
 const KIND: Record<string, { label: string; cls: string }> = {
   reply: { label: 'Reply', cls: 'reply' },
@@ -125,13 +117,18 @@ function UrgencyRow({ u, auto }: { u: Urgency; auto?: boolean }) {
     : undefined
   return (
     <div className={`td-r ${open ? 'tap' : ''}`} onClick={open}>
-      <Avatar name={u.name} channel="linkedin" size={42} />
+      {/* D22: no explicit size — the workbench grid track (.wb .av, 28px,
+          faithful.css) sizes this; a hardcoded 42 used to win over it and
+          spill into the text column. */}
+      <Avatar name={u.name} channel="linkedin" />
       <div className="td-mid">
         <div className="td-top">
           <span className="td-nm">{u.name}</span>
           <span className={`td-kind ${k.cls}`}>{k.label}</span>
         </div>
-        {u.snippet && <div className="td-snip">{u.snippet}</div>}
+        {/* D23/D24: cleanSnippet strips the classifier's bracket tag and
+            decodes HTML entities so this reads as prose, not wire text. */}
+        {u.snippet && <div className="td-snip">{cleanSnippet(u.snippet)}</div>}
         {org && <div className="td-org">{org}</div>}
       </div>
       <div className="td-right"><span className="td-tm">{ago(u.waiting_since)}</span></div>
@@ -383,13 +380,12 @@ function postLine(p: ScheduledPost): string {
 // definition), so this zone is what is COMING: the next slot, the send queue,
 // and — new — any slot that was called off, which used to be silently counted as
 // a thing going out.
-function ZoneSchedule({ brief, scope, loading, plate }: {
-  brief: Brief | null; scope: Scope; loading: boolean; plate: TodayPlate
+function ZoneSchedule({ brief, loading, plate }: {
+  brief: Brief | null; loading: boolean; plate: TodayPlate
 }) {
   const posts = plate.posts
-  const next = brief ? nextUp(brief, scope) : null
-  // Queue total is an account-wide scalar — same rule as the aging line above.
-  const queue = scope === 'risedtc' ? null : brief?.outreach_queue?.total ?? null
+  const next = brief ? nextUp(brief, 'all') : null
+  const queue = brief?.outreach_queue?.total ?? null
 
   return (
     <section className="td-zone" id="td-z3">
@@ -407,7 +403,7 @@ function ZoneSchedule({ brief, scope, loading, plate }: {
           <div className="td-card-s">
             {loading && !brief
               ? ' '
-              : `No posts go out ${scope === 'risedtc' ? 'for Rise ' : ''}today. This zone stays clear until the next slot.`}
+              : 'No posts go out today. This zone stays clear until the next slot.'}
           </div>
         </div>
       )}
@@ -462,8 +458,8 @@ function govMode(g: GovernorRow | undefined): { label: string; color: string } {
   return { label: 'NORMAL', color: SEV.live }
 }
 
-function HealthStrip({ health, brief, scope }: {
-  health: TodayHealth | null; brief: Brief | null; scope: Scope
+function HealthStrip({ health, brief }: {
+  health: TodayHealth | null; brief: Brief | null
 }) {
   if (!health) {
     return (
@@ -474,10 +470,12 @@ function HealthStrip({ health, brief, scope }: {
     )
   }
 
-  const accept = health.accept.filter(r => inScope(r, scope))
-  const pipeline = health.pipeline.filter(r => inScope(r, scope))
-  const governors = health.governor.filter(r => inScope(r, scope))
-  const replies = health.replies.filter(r => inScope(r, scope))
+  // D21 mitigation: no per-lane scope to filter by (the chip is gone — see the
+  // removal note in TodayScreen()), so this is every seat's data, unfiltered.
+  const accept = health.accept
+  const pipeline = health.pipeline
+  const governors = health.governor
+  const replies = health.replies
 
   const r7 = acceptRate(sum(accept, 'sent_7d'), sum(accept, 'accepted_7d'))
   const r30 = acceptRate(sum(accept, 'sent_30d'), sum(accept, 'accepted_30d'))
@@ -513,7 +511,7 @@ function HealthStrip({ health, brief, scope }: {
       <ZoneHead
         n="04"
         title="Campaign health"
-        right={scope === 'all' ? 'both seats' : SCOPE_NAME[scope]}
+        right="both seats"
         state="pending"
       />
       {!hasKpis ? (
@@ -619,7 +617,6 @@ export function TodayScreen({ onOpenDrafts, onOpenOps }: {
   onOpenDrafts?: () => void
   onOpenOps?: () => void
 } = {}) {
-  const [scope, setScope] = useState<Scope>('ivan')
   const t = useToday()
   const rowsRef = useRef<HTMLDivElement>(null)
   const ptr = usePullToRefresh(rowsRef, t.refresh)
@@ -628,21 +625,27 @@ export function TodayScreen({ onOpenDrafts, onOpenOps }: {
   const openDrafts = onOpenDrafts ?? (() => { location.hash = '#drafts' })
   const openOps = onOpenOps ?? (() => { location.hash = '#ops' })
 
-  // Once the payload lands, every number on this screen comes from it (scoped
-  // by the chip) so the strip can't disagree with the zones. Before that, the
-  // fast counts call carries the strip.
-  const counts = t.brief ? countsFromBrief(t.brief, scope) : t.counts
+  // D21 mitigation (not the full fix): this screen used to run an Ivan/Rise/All
+  // lane chip over these rows, but get-morning-brief's payload carries neither
+  // client_id nor prospect_id on urgencies/dm_drafts/comment_drafts, and the
+  // underlying tables (outreach_messages, commenting_log) have no client_id
+  // column at all — tenancy is two hops away via outreach_campaigns.client_id,
+  // and comment rows have no join path to it whatsoever. So the chip was a
+  // proven no-op that banked every row onto Ivan and showed Rise as dead
+  // (phase2-defect-ledger.md D21). The real fix is a JOIN inside
+  // get-morning-brief (out of this run's write scope) — a derivation already
+  // exists in-app for the DM/urgency side: the inbox_messages_v view resolves
+  // a real client_id today. Until that ships, this screen shows everything,
+  // unscoped, rather than mislabel it.
+  const counts = t.brief ? countsFromBrief(t.brief, 'all') : t.counts
   // ONE derivation feeds the masthead number, the stacked bar AND each zone's own
   // header count. The masthead cannot drift from the zones because it is not a
   // second reading of the data — it is the sum of theirs.
   // The re-rank. One derivation for the whole screen: the masthead's split, both
   // banded zones and the schedule all read this, so "new today" cannot mean one
   // thing in the headline and another in the list.
-  const plate = todayPlate(t.brief, scope)
-  // Whole-account scalar: it only belongs to the bucket that owns unscoped rows
-  // (client_id NULL = Ivan). Never borrow an account-wide number under a client
-  // scope and label it Rise's.
-  const aging = (scope === 'all' || scope === 'ivan') ? t.brief?.aging_count ?? 0 : 0
+  const plate = todayPlate(t.brief, 'all')
+  const aging = t.brief?.aging_count ?? 0
   const syncedAt = t.brief?.generated_at ?? t.counts?.generated_at ?? t.cachedAt ?? null
   const stale = t.fromCache || t.degraded || (t.error != null && t.brief != null)
 
@@ -655,18 +658,6 @@ export function TodayScreen({ onOpenDrafts, onOpenOps }: {
             <div className="td-date">{longDate()}</div>
           </div>
           <div className="sc-refresh" onClick={() => { t.refresh() }} title="Refresh">↻</div>
-        </div>
-        <div className="chips">
-          {CHIPS.map(c => (
-            <button
-              type="button"
-              key={c.key}
-              className={`chip ${scope === c.key ? 'on' : ''}`}
-              onClick={() => setScope(c.key)}
-            >
-              {c.label}
-            </button>
-          ))}
         </div>
       </div>
 
@@ -696,7 +687,7 @@ export function TodayScreen({ onOpenDrafts, onOpenOps }: {
           <div className="empty">{t.error}</div>
         )}
 
-        <div className="td-zones" key={scope}>
+        <div className="td-zones">
           <ZoneNew
             plate={plate}
             brief={t.brief}
@@ -712,17 +703,9 @@ export function TodayScreen({ onOpenDrafts, onOpenOps }: {
             onOpenDrafts={openDrafts}
             onOpenOps={openOps}
           />
-          <ZoneSchedule brief={t.brief} scope={scope} loading={t.loading || t.refreshing}
-            plate={plate} />
-          <HealthStrip health={t.health} brief={t.brief} scope={scope} />
+          <ZoneSchedule brief={t.brief} loading={t.loading || t.refreshing} plate={plate} />
+          <HealthStrip health={t.health} brief={t.brief} />
         </div>
-
-        {scope === 'risedtc' && t.brief && (
-          <div className="td-foot">
-            The morning brief doesn’t carry client scope yet — unscoped rows read as Ivan’s
-            (client_id NULL = Ivan). Campaign health above is genuinely Rise-scoped.
-          </div>
-        )}
       </div>
     </>
   )
