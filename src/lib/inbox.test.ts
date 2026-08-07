@@ -1,5 +1,25 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { isDraft, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, threadBucket, filterByStatus, type InboxMessage, type Status } from './inbox'
+
+// inbox.ts:191 gates needsAnswer on a 14-day wall-clock staleness window
+// (STALE_DAYS), measured against Date.now() by default -- and most callers
+// here (threadBucket, inboxBreakdown, filterByStatus, inboxWaitingCount) call
+// needsAnswer(t) with no `now` argument, so they can only ever see the real
+// clock. Every fixture below is dated 2026-07-20/21/22. Freeze the clock a
+// couple of days after the fixtures (comfortably inside the 14-day window)
+// instead of injecting `now` per-call or rewriting fixtures to relative
+// dates -- either of those would either miss the no-clock-param callers or
+// silently delete staleness coverage.
+const FROZEN_NOW = new Date('2026-07-22T20:00:00Z')
+
+beforeEach(() => {
+  vi.useFakeTimers()
+  vi.setSystemTime(FROZEN_NOW)
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 const base: InboxMessage = {
   id: '1', prospect_id: 'p1', direction: 'outbound', message_text: 'hey',
@@ -244,6 +264,19 @@ describe('needsAnswer', () => {
   })
   it('an outbound-only thread is never waiting', () => {
     expect(needsAnswer(groupThreads([sent('a', '2026-07-20T10:00:00Z')])[0])).toBe(false)
+  })
+  // STALE_DAYS = 14 (inbox.ts:191): a reply nobody answered eventually ages
+  // out of the badge -- it stays reachable via search/'waiting', it just
+  // stops driving a "today" count. Gate had zero intentional coverage.
+  it('an inbound reply older than STALE_DAYS drops out of needsAnswer', () => {
+    // FROZEN_NOW is 2026-07-22T20:00:00Z; 15 days earlier is outside the window.
+    const t = groupThreads([inbound('old', '2026-07-07T19:00:00Z')])[0]
+    expect(needsAnswer(t)).toBe(false)
+  })
+  it('an inbound reply just inside STALE_DAYS still needs an answer', () => {
+    // 13 days before FROZEN_NOW -- well inside the 14-day window.
+    const t = groupThreads([inbound('fresh', '2026-07-09T20:00:00Z')])[0]
+    expect(needsAnswer(t)).toBe(true)
   })
 })
 
