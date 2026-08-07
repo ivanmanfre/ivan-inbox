@@ -864,6 +864,12 @@ export const IDEA_DECISION_STATUS: Record<IdeaDecision, string> = {
   reject: 'archived',
 }
 
+// The whole set this app is willing to send, and the runtime half of the type.
+// ⛔ `defer`, `revert` and `rescue` are all VALID at the endpoint (index.ts:5)
+// and none of them is here: defer is the no-op named above, and the other two
+// are un-decisions of rows this band cannot see (they have left `reviewing`).
+export const IDEA_DECISIONS: readonly IdeaDecision[] = Object.freeze(['approve', 'reject'])
+
 // 🔴 THE LANE GUARD, and it is OURS BECAUSE THE SERVER HAS NONE.
 // `lm-curator-decide` runs under SERVICE_ROLE, accepts any candidate_id from a
 // bare anon bearer, and fetches + PATCHes by id with ZERO client check
@@ -894,6 +900,13 @@ export async function decideIdea(
   reason?: string,
 ): Promise<Record<string, unknown>> {
   if (!ideaDecidable(i)) throw new Error(IDEA_NOT_OURS)
+  // 🔴 EXPLICIT OR NOTHING. `JSON.stringify` DROPS an undefined value, so a
+  // missing decision does not fail loudly here — it ships `{candidate_id}`
+  // alone and lets the edge function answer `invalid_decision` (index.ts:41-44),
+  // i.e. a real POST at a live endpoint for a call this app never meant to
+  // make. The types stop it at compile time; this stops it at the seam, which
+  // is where the two callers that are NOT typed (a test, a future one) live.
+  if (!IDEA_DECISIONS.includes(decision)) throw new Error(`decide: no decision (${String(decision)})`)
   const body: Record<string, string> = { candidate_id: i.id, decision }
   const note = reason?.trim()
   if (note) body.reason = note
