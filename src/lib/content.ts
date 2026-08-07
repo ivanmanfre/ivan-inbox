@@ -241,6 +241,32 @@ export function isRecentError(r: ContentDraft, now: number = Date.now()): boolea
   return now - t <= ERROR_ALARM_HOURS * 3600_000
 }
 
+// ---------- the at-a-glance excerpt (old-board parity #2) ----------
+//
+// Ivan, complaint #2: a review row could be read only by OPENING it. The old
+// board never made him do that — StudioListView.tsx:463-503 kept a persistent
+// snippet of post_body under every title, and StudioListView.tsx:8-18 names it
+// as the reason the list is scannable at all ("the operator reads without
+// opening").
+//
+// The rules here are the ones a one-line preview needs to stay honest:
+//  · the HOOK is the first non-empty line, because that is the only part of a
+//    LinkedIn post the feed itself shows before "…see more";
+//  · line breaks collapse to " · " rather than to a space, so two separate
+//    lines never read as one sentence the draft does not contain;
+//  · truncation is marked with an ellipsis, never silent — a clipped claim that
+//    looks complete is the one way an excerpt can lie.
+// It returns null rather than '' so a caller cannot render an empty line for a
+// draft whose body has not been generated yet (every `generating` row).
+export const EXCERPT_CHARS = 180
+
+export function draftExcerpt(body: string | null | undefined, max: number = EXCERPT_CHARS): string | null {
+  const lines = (body ?? '').split('\n').map(l => l.trim()).filter(Boolean)
+  if (lines.length === 0) return null
+  const s = lines.join(' · ')
+  return s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s
+}
+
 // ---------- reads ----------
 
 export type ContentPage = {
@@ -358,6 +384,13 @@ export type IdeaCandidate = {
   promoted_draft_id: string | null
   promoted_draft_table: string | null
   promoted_clickup_task_id: string | null
+  // The two tenancy columns this table DOES have (the header above says
+  // client_id 42703s, and that stays true). Both are NULL on every reviewing
+  // row today — which is a fact about the DATA, not about the schema, so they
+  // are SELECTED rather than assumed, and `ideaDecidable` reads them before any
+  // decision leaves this app. Optional on the type so existing fixtures compile.
+  workspace_type?: string | null
+  campaign_id?: string | null
 }
 
 const IDEA_COLS =
@@ -365,7 +398,12 @@ const IDEA_COLS =
   'virality_score, gap_score, beat_fit_score, composite_score, why_score, ' +
   'format_recommendation, offer_ladder_map, content_type, post_angle, ' +
   'ivan_engaged, source_ref, slack_permalink, ingested_at, scored_at, ' +
-  'promoted_draft_id, promoted_draft_table, promoted_clickup_task_id'
+  'promoted_draft_id, promoted_draft_table, promoted_clickup_task_id, ' +
+  // 🔴 Read, never filtered on. A `.is('workspace_type', null)` here would make
+  // a client-scoped idea VANISH from every surface this app has, which is the
+  // failure mode the partition note above refuses for content_type. The row is
+  // shown; the decision is what gets withheld (ideaDecidable).
+  'workspace_type, campaign_id'
 
 // ---------- the idea split (phase 6 ask 3) ----------
 //
@@ -779,6 +817,99 @@ export async function deleteIdea(id: string): Promise<'deleted' | 'archived'> {
     throw new Error('Delete failed — the idea was neither removed nor archived.')
   }
   return 'archived'
+}
+
+// ---------- idea decisions (old-board parity #1: "i cant even approve the ideas") ----------
+//
+// The one act this band was missing. An idea left this app only by being
+// DELETED, which is the one decision the pipeline cannot act on: the curator's
+// promote run is what turns a scored candidate into a generating draft, and
+// nothing in v2 could ask for it.
+//
+// 🔴 THE WRITE IS NOT OURS AND MUST NOT BECOME OURS. `approve` cascades — the
+// edge function fires n8n `lm-curator-promote` FIRST, throws if that fails, and
+// only then stamps the candidate — so a client-side `UPDATE status='promoted'`
+// would mark an idea promoted that no run ever picked up. This calls the SAME
+// deployed function the old board calls, unchanged:
+//
+//   personal-site/lib/ideaProjection.ts:216-229 (`decideIdea`)
+//     POST ${VITE_SUPABASE_URL}/functions/v1/lm-curator-decide
+//     headers  Content-Type: application/json
+//              Authorization: Bearer <VITE_SUPABASE_ANON_KEY>
+//     body     { candidate_id, decision }   // `reason` added ONLY when non-empty
+//
+// Bare fetch(), never supabase.functions.invoke() — the same rule claude.ts:6-10
+// and today.ts:6-8 record: invoke() adds an X-Client-Info header that dies in
+// this project's CORS preflight.
+//
+// Statuses the function writes (read off the deployed body,
+// resources/supabase/functions/lm-curator-decide/index.ts:63-101), not inferred:
+//   approve → status='promoted'  + promoted_clickup_task_id, after the n8n run
+//   reject  → status='archived'  + archived_reason='ivan_rejected[:reason]'
+// Either way the row leaves `reviewing`, which is why it leaves this band.
+//
+// ⛔ DEFER IS DELIBERATELY NOT SHIPPED. The endpoint accepts it, and it writes
+// status='reviewing' — the value every row in this band already holds. On the
+// old board's projection that was still a log entry; here it would be a button
+// that changes nothing and reads as a state change. Log-only acts do not get
+// buttons in this app.
+const IDEA_DECIDE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/lm-curator-decide`
+
+export type IdeaDecision = 'approve' | 'reject'
+
+// What the endpoint writes for each decision we ship. Exported so a test can
+// pin the strings against the deployed function rather than against this file.
+export const IDEA_DECISION_STATUS: Record<IdeaDecision, string> = {
+  approve: 'promoted',
+  reject: 'archived',
+}
+
+// 🔴 THE LANE GUARD, and it is OURS BECAUSE THE SERVER HAS NONE.
+// `lm-curator-decide` runs under SERVICE_ROLE, accepts any candidate_id from a
+// bare anon bearer, and fetches + PATCHes by id with ZERO client check
+// (index.ts:2, 17-26, 47, 106). So every scoping rule this app obeys has to be
+// enforced on this side of the call.
+//
+// The columns are real: `client_id` 42703s on this table, but `workspace_type`
+// and `campaign_id` BOTH EXIST (live census 2026-08-07) — they are merely NULL
+// on all 77 reviewing rows today. "Nobody has populated the column yet" is the
+// icp-scorer shape of safety and it is not one; this converts it into a code
+// guarantee that survives the day someone does populate it.
+//
+// Two more things make the scope structural rather than hopeful:
+//   · the argument is the ROW, not a bare id, so the only candidate ids that
+//     can reach the endpoint are ones this app's own ideas read returned;
+//   · the same predicate gates the buttons, so a guarded row is never offered.
+export function ideaDecidable(i: Pick<IdeaCandidate, 'workspace_type' | 'campaign_id'>): boolean {
+  const w = (i.workspace_type ?? '').trim().toLowerCase()
+  return (w === '' || w === 'own') && (i.campaign_id ?? null) === null
+}
+
+export const IDEA_NOT_OURS =
+  'This idea is scoped to another workspace — decide it where that workspace lives.'
+
+export async function decideIdea(
+  i: Pick<IdeaCandidate, 'id' | 'workspace_type' | 'campaign_id'>,
+  decision: IdeaDecision,
+  reason?: string,
+): Promise<Record<string, unknown>> {
+  if (!ideaDecidable(i)) throw new Error(IDEA_NOT_OURS)
+  const body: Record<string, string> = { candidate_id: i.id, decision }
+  const note = reason?.trim()
+  if (note) body.reason = note
+  const res = await fetch(IDEA_DECIDE_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+    },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err?.error || `decide ${res.status}`)
+  }
+  return (await res.json().catch(() => ({}))) as Record<string, unknown>
 }
 
 // ---------- THE CLIENT LANE (inbox-mattan-lane-actions) ----------

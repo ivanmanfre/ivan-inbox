@@ -7,7 +7,7 @@ import {
 import {
   CONTENT_LANES, ERROR_ALARM_HOURS, LANE_LABEL, LANE_POSSESSIVE, PIPELINE_STAGES,
   STAGE_LABEL, STAGE_SHORT, STUCK_GENERATING_MINUTES, boardGroupOf, clientStageLabel,
-  countBoardVisible, countUndated, deleteClientDraft, deleteDraft,
+  countBoardVisible, countUndated, deleteClientDraft, deleteDraft, draftExcerpt,
   elapsedMinutes, generatingSince, groupByStage, isRecentError, isStuckGenerating,
   isStuckScheduled, queueFailed, reviewActionable, stageOf, taxonomyValue,
   type BoardGroup, type ContentDraft, type ContentLane, type ContentStage, type ContentStages,
@@ -23,7 +23,7 @@ import { ReviewActions } from './ReviewActions'
 import { FilteredEmpty } from './ContentBits'
 import { FilterRow } from './FilterRow'
 import { IdeasSection, PillarMix, QueueStrip } from './ContentSections'
-import { relTime, sourceLabel, tagLabel, typeLabel } from './fmt'
+import { relOrAhead, relTime, sourceLabel, tagLabel, typeLabel } from './fmt'
 import { CalmEmpty, CapsuleChart, Failed, SectionHead } from './Surface'
 import { hasMock } from './mock'
 
@@ -117,7 +117,7 @@ function RowDelete({ d, lane, onDone }: { d: ContentDraft; lane: ContentLane; on
   )
 }
 
-function Card({ d, lane, refresh, onOpen, active, queue }: {
+function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
   d: ContentDraft; lane: ContentLane; refresh: () => void
   onOpen: OpenDraft; active: boolean
   // The rows of the SECTION this card sits in, in render order. That order is
@@ -125,6 +125,14 @@ function Card({ d, lane, refresh, onOpen, active, queue }: {
   // Ivan can actually see — filters, search and collapse state included — and
   // cannot drift from it.
   queue: ContentDraft[]
+  // AT-A-GLANCE (old-board parity #2, Ivan's complaint #2). The body excerpt and
+  // the armed date, on the row, so a decision can be made without opening it.
+  //
+  // 🔴 NEEDS-REVIEW ONLY, and the scope is the point. This is the section where
+  // Ivan is deciding, so it is the one section worth spending a third line on;
+  // published (109) and archived (84) are two thirds of the lane and fattening
+  // those rows would cost the §7.8 density band ~200 rows deep for nothing.
+  glance?: boolean
 }) {
   const thumb = d.image_urls?.[0]
   const title = d.title || d.topic || 'Untitled'
@@ -148,6 +156,7 @@ function Card({ d, lane, refresh, onOpen, active, queue }: {
   const src = taxonomyValue(d.taxonomy, 'source')
   const pillar = taxonomyValue(d.taxonomy, 'pillar')
   const funnel = d.funnel_stage?.trim() || null
+  const excerpt = glance ? draftExcerpt(d.post_body) : null
   return (
     <div
       className={`ct-card ct-tap${active ? ' wb-card-on' : ''}${stalled ? ' ct-stalled' : ''}`}
@@ -187,7 +196,21 @@ function Card({ d, lane, refresh, onOpen, active, queue }: {
               </span>
             )}
           <span className="ct-chip">{typeLabel(d.type)}</span>
+          {/* Slot #3, glance rows only, and only when the row HAS a date. A
+              review-stage draft normally does not, so an always-rendered '—'
+              here would spend a mark on the absence of a fact rather than on a
+              fact — unlike the pillar/funnel/source columns, which are columns
+              and have to hold their x. */}
+          {glance && d.scheduled_at && (
+            <span className="ct-chip ct-chip-when" title={`scheduled_at ${d.scheduled_at}`}>
+              {relOrAhead(d.scheduled_at)}
+            </span>
+          )}
         </div>
+        {/* The line the old board never made him open a row for
+            (StudioListView.tsx:463-503). Absent — not blank — when the body has
+            not been generated yet. */}
+        {glance && excerpt && <div className="ct-ex">{excerpt}</div>}
       </div>
       {/* The three facts as COLUMNS, one fixed x each, '—' when absent so the
           column stays a column. Desktop only — below 1000px there is no width
@@ -444,7 +467,12 @@ function StageSection({ s, n, rows, lane, group, refresh, onOpen, openId, isOpen
             <span>Source</span><span /><span />
           </div>
           {rows.map(d => (
-            <Card key={d.id} d={d} lane={lane} refresh={refresh} onOpen={onOpen} active={openId === d.id} queue={rows} />
+            <Card
+              key={d.id} d={d} lane={lane} refresh={refresh} onOpen={onOpen}
+              active={openId === d.id} queue={rows}
+              // The decision surface, and only it — see Card's `glance` note.
+              glance={s === 'review'}
+            />
           ))}
         </>
       )}

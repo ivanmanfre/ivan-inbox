@@ -831,6 +831,30 @@
 .wb.wb.wb .ct-ac-wide{ grid-column:1/-1; margin:12px 0 0 }
 .wb.wb.wb .ct-ac-wide .btn{ flex:1; padding:9px 0; font-size:var(--fs-body) }
 
+/* AT-A-GLANCE, NEEDS-REVIEW ROWS ONLY (old-board parity #2). The old board kept
+   a body snippet under every title and called it the reason the list is
+   readable at all (StudioListView.tsx:8-18); v2 shipped without one, so a
+   review row could only be read by opening it.
+   It rides in `.ct-mid`, i.e. INSIDE the existing middle track — the row's grid
+   is untouched, and so is the anchor rail and the right edge.
+   A DELIBERATE, SCOPED EXCEPTION TO §7.8: two clamped meta lines take these
+   rows to ~72px at 1440, over the 40-60 band. It is licensed for the ~9 rows of
+   the one section where a decision is being made, and for no other stage —
+   which is what `glance` gates (ContentList.tsx Card). */
+.wb.wb.wb .ct-ex{
+  margin-top:3px;
+  font-size:var(--fs-meta); line-height:1.35; color:var(--text3);
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
+  overflow:hidden;
+}
+/* The armed date, in the meta row's third slot. Outlined, never filled: it is a
+   FACT about the row, not a verdict on it, and a filled chip here would read as
+   a third severity beside the QA pass/fail it sits next to. */
+.wb.wb.wb .ct-chip-when{
+  background:transparent; color:var(--text2);
+  box-shadow:inset 0 0 0 1px var(--hairline);
+}
+
 /* 7.8 — DENSITY BAND. 40-60px content box at 1440; ≤72px at 390 where a second
    meta line is permitted. The list is 285 rows; the band is the whole point. */
 @media (min-width:1000px){
@@ -1715,6 +1739,22 @@
 .wb.wb.wb .ct-idea .ct-topic,
 .wb.wb.wb .ct-res-t{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
 .wb.wb.wb .ct-idea-b{ padding:0 var(--gut) 14px }
+
+/* The idea DECISION block — approve / reject, the act the band was missing.
+   It sits above the delete zone's hairline, in the roomier register the
+   expanded card is already in (the same `.ct-ac-wide` the draft window's
+   Approve uses), because these two buttons fire a pipeline run and archive a
+   row respectively — not the tight in-row shortcut register. */
+.wb.wb.wb .ct-idea-decide{ margin-top:10px }
+.wb.wb.wb .ct-idea-note{
+  width:100%; margin:0; padding:7px 10px;
+  background:var(--surface2); border:none; border-radius:var(--r-ctl);
+  box-shadow:inset 0 0 0 1px var(--hairline);
+  color:var(--text); font-family:inherit; font-size:var(--fs-meta);
+}
+.wb.wb.wb .ct-idea-note::placeholder{ color:var(--text3) }
+.wb.wb.wb .ct-idea-note:disabled{ opacity:.5 }
+.wb.wb.wb .ct-idea-decide .ct-ref{ margin-top:6px }
 
 .wb.wb.wb .ct-res{
   display:grid; grid-template-columns:var(--anchor-w) minmax(0,1fr);
