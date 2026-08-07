@@ -2565,3 +2565,276 @@
   .wb.wb.wb .wb-ws{ position:relative }
   .wb.wb.wb .wb-ws::after{ content:''; position:absolute; inset:-4px 0 }
 }
+
+/* ==========================================================================
+   G · THE COMMAND STRIP — candidate B ("dense-operator"), 2026-08-07
+   ==========================================================================
+
+   ONE BAND replaces five. Measured before, at 390 (usable height 765px after
+   the status bar and the tab bar):
+
+     work segment  49  ·  display hero 122  ·  alert 50  ·  pipeline card 261
+     cadence       16  ·  filter block  96  ·  section head 44   = 638px
+
+   …and the first draft row at y=1029. The band below is 44-52px on the pointer
+   canvas and two 40px rows on the phone, and every number that was in those
+   blocks is still on it. The rules that survive the compression:
+
+     · DENSE IS NOT CRAMPED. 11px is the floor and nothing on this strip is
+       below it; every control is ≥32px tall including the ones that only look
+       like text.
+     · MONO FOR DATA. Counts, ratios and denominators are tabular (the .wb root
+       declares font-variant-numeric once), and a figure never sits in the same
+       type tier as the word describing it.
+     · TRUNCATION IS HONEST. Anything that can be cut carries a title
+       attribute that states the whole fact.
+   ========================================================================== */
+
+.wb.wb.wb .ct-cmd{
+  position:sticky; top:0; z-index:12;
+  display:flex; align-items:center; flex-wrap:wrap;
+  gap:8px 10px;
+  padding:7px var(--gut);
+  background:var(--canvas);
+  border-bottom:1px solid var(--hairline);
+}
+/* The section heads are sticky too, so they have to be told where the strip
+   ends or they scroll underneath it and a 285-row list loses the label of the
+   section it is showing. CommandStrip measures itself into --ct-cmdh (it wraps,
+   so the height is a measurement and never a constant). */
+.wb.wb.wb .ct-rows .wb-sech-strip{ top:var(--ct-cmdh, 0px) }
+
+.wb.wb.wb .ct-cmd-top{ display:contents }
+.wb.wb.wb .ct-cmd-id{ flex:none; display:flex; align-items:center; gap:8px; min-width:0 }
+/* The job name is for the phone, where there is no rail to print it. On the
+   pointer canvas the rail names the job 200px to the left and the work segment
+   named it again 44px above — three prints of one word (D6). */
+.wb.wb.wb .ct-cmd-j{
+  flex:none; color:var(--text3);
+  font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.08em; text-transform:uppercase;
+}
+.wb.wb.wb .ct-cmd-lanes{
+  flex:none; display:flex; gap:2px; padding:2px;
+  background:var(--surface2); border-radius:var(--r-pill);
+}
+.wb.wb.wb .ct-cmd-lane{
+  flex:none; height:32px; padding:0 10px;
+  display:inline-flex; align-items:center;
+  background:none; border:none; border-radius:var(--r-pill);
+  color:var(--text3); font-size:var(--fs-meta); font-weight:500; cursor:pointer;
+  white-space:nowrap;
+}
+.wb.wb.wb .ct-cmd-lane.on{ background:var(--surface3); color:var(--text) }
+.wb.wb.wb .ct-cmd-lane:hover:not(.on){ color:var(--text2) }
+
+/* ---- the pipeline, as marks ---------------------------------------------- */
+.wb.wb.wb .ct-cmd-stats{ flex:none; display:flex; align-items:center; gap:4px }
+.wb.wb.wb .wb-stat{
+  position:relative; overflow:hidden;
+  flex:none; display:inline-flex; align-items:center; gap:5px;
+  height:32px; padding:0 8px;
+  background:var(--surface2); border:none; border-radius:var(--r-chip);
+  cursor:pointer; text-align:left;
+}
+.wb.wb.wb div.wb-stat{ cursor:default }
+.wb.wb.wb .wb-stat:hover{ background:var(--surface3) }
+.wb.wb.wb .wb-stat-l{
+  flex:none; color:var(--text3);
+  font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.06em;
+}
+.wb.wb.wb .wb-stat-n{ flex:none; color:var(--text); font-size:var(--fs-meta); font-weight:600 }
+.wb.wb.wb .wb-stat-0 .wb-stat-n{ color:var(--text4) }
+/* The mark. No drawing floor — its width IS n/peak, so a 1-of-9 stage draws
+   11% and a zero draws nothing at all. The numeral lives outside it, which is
+   what buys the honesty: the capsule chart floored every bar at 28% precisely
+   so the number printed INSIDE could still fit. */
+.wb.wb.wb .wb-stat-r{
+  position:absolute; left:0; right:0; bottom:0; height:2px; background:var(--surface3);
+}
+.wb.wb.wb .wb-stat-r > i{ display:block; height:100%; border-radius:0 var(--r-pill) var(--r-pill) 0 }
+/* 5.4 — severity is licensed on ONE thing here: a stage that is waiting on
+   Ivan, or an approved stage holding rows with no date. A backlog never takes
+   it. The mark is a hairline, never a fill: accent and severity are spent. */
+.wb.wb.wb .wb-stat.attention{ box-shadow:inset 0 0 0 1px var(--sev-attention) }
+.wb.wb.wb .wb-stat.urgent{ box-shadow:inset 0 0 0 1px var(--sev-urgent) }
+
+/* The lane figure. `224/285` — the second number appears only when the server's
+   exact count and the loaded count disagree, so the slash never claims a
+   denominator that is not there. */
+.wb.wb.wb .ct-cmd-tot{
+  flex:none; color:var(--text3); font-size:var(--fs-meta); white-space:nowrap;
+}
+.wb.wb.wb .ct-cmd-tot b{ color:var(--text2); font-weight:600 }
+.wb.wb.wb .ct-cmd-tot i{ font-style:normal; color:var(--text4) }
+
+/* ---- the alarm, as a chip ------------------------------------------------ */
+.wb.wb.wb .ct-alert-chip{
+  flex:none; display:inline-flex; align-items:center; gap:7px;
+  height:32px; margin:0; padding:0 10px;
+  border-radius:var(--r-chip);
+  max-width:190px;
+}
+.wb.wb.wb .ct-alert-chip .ct-alert-n{ font-size:var(--fs-meta); line-height:1 }
+.wb.wb.wb .ct-alert-chip .ct-alert-t{
+  min-width:0; color:var(--text2); font-size:var(--fs-meta);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.wb.wb.wb .ct-alert-x-n{ flex:none; color:var(--text3); font-size:var(--fs-eyebrow) }
+.wb.wb.wb .ct-alert-chip .chev{ flex:none; color:var(--text3) }
+.wb.wb.wb .ct-alert-body{ border-bottom:1px solid var(--hairline) }
+
+/* ---- the cadence and the lane note, as marks rather than sentences -------- */
+.wb.wb.wb .ct-cmd-cad, .wb.wb.wb .ct-cmd-note{
+  flex:none; display:inline-flex; align-items:center; gap:5px;
+  color:var(--text3); font-size:var(--fs-eyebrow); white-space:nowrap;
+}
+.wb.wb.wb .ct-cmd-cad b, .wb.wb.wb .ct-cmd-note b{ color:var(--text2); font-weight:600 }
+.wb.wb.wb .ct-cmd-cad i{ font-style:normal; color:var(--text4) }
+
+/* ---- the filters, inline ------------------------------------------------- */
+.wb.wb.wb .ct-cmd-f{ flex:1 1 180px; min-width:0 }
+.wb.wb.wb .ct-fr-in{ display:flex; flex-wrap:nowrap; align-items:center; gap:8px; min-width:0 }
+.wb.wb.wb .ct-fr-in .ct-fsearch{
+  flex:0 1 190px; min-width:104px; height:32px; margin:0;
+}
+/* The pill strip is a scroller inside a shared band, so it gets the fade that
+   announces one — the same affordance the phone's pill row already carries. An
+   unannounced scroller and an announced one are not the same control. Set
+   filters sort to the front (FilterRow.tsx), so the ones doing work are the
+   ones that cannot scroll away. */
+.wb.wb.wb .ct-fr-in .ct-fpills{
+  flex:1 1 auto; min-width:0; flex-wrap:nowrap;
+  overflow-x:auto; overflow-y:hidden; scrollbar-width:none;
+  mask-image:linear-gradient(to right,#000 calc(100% - 22px),transparent);
+}
+.wb.wb.wb .ct-fr-in .ct-fpills::-webkit-scrollbar{ display:none }
+.wb.wb.wb .ct-fnote-in{
+  flex:none; margin:0 2px 0 4px; color:var(--text3); white-space:nowrap;
+}
+.wb.wb.wb .ct-fnote-in .ct-fcap{ display:none }   /* it is a title on the chip, not a second line */
+
+/* 3.2 / D12 — the 32px floor is not a phone rule. `.wb-fpill` took its hit
+   extension only below 767px, so seven controls on the pointer canvas were
+   26-28px. Everything on this strip is a real 32. */
+.wb.wb.wb .wb-fpill, .wb.wb.wb .ct-fclear-all{ min-height:32px }
+.wb.wb.wb .ct-fsearch{ min-height:32px }
+.wb.wb.wb .wb-rail-minbtn{ width:32px; height:32px }
+.wb.wb.wb .seg .sg{ min-height:32px }
+
+/* ---- D6 · the doubled work nav ------------------------------------------- */
+/* `.dt` is set exactly when the rail is on screen, and the rail already carries
+   Content / Magnets / Styles as three rows under one CONTENT label. The strip
+   above the surface is the phone's only route to those two siblings, so it
+   stays there and leaves the pointer canvas to the rail. One nav per canvas. */
+.wb.wb.dt .wb-workhead{ display:none }
+.wb.wb.dt .ct-cmd-j{ display:none }
+
+/* ---- density: the row ---------------------------------------------------- */
+/* §7.8's band is 40-60px and the two-line row was sitting at 58 — the top of
+   it. 7px of padding and a 4px inner gap put it at ~50 and buy two more rows
+   per screen without touching the type floor or the 32px tap rule (the ROW is
+   the tap target and it is 50px). */
+.wb.wb.wb .ct-card{ padding:7px var(--gut) }
+.wb.wb.wb .ct-card:not(.ct-idea) > .ct-mid{ display:flex; flex-direction:column; gap:3px }
+
+/* Inline decision affordances. They are always in the DOM and always in the tab
+   order — a control that is display:none for a mouse user is missing for a
+   keyboard user too, which is the trap this treatment exists to avoid. What
+   changes is contrast: quiet while the eye is scanning 285 rows, full the
+   moment the pointer is on the row that owns them. Pointerless canvases never
+   dim (the @media guard), and the open row keeps them lit. */
+@media (hover:hover) and (pointer:fine){
+  .wb.wb.wb .ct-card .ct-tail .ct-x,
+  .wb.wb.wb .ct-card > .ct-ac{
+    opacity:.28; transition:opacity var(--dur-hover) var(--ease);
+  }
+  .wb.wb.wb .ct-card:hover .ct-tail .ct-x,
+  .wb.wb.wb .ct-card:focus-within .ct-tail .ct-x,
+  .wb.wb.wb .ct-card.wb-card-on .ct-tail .ct-x,
+  .wb.wb.wb .ct-card:hover > .ct-ac,
+  .wb.wb.wb .ct-card:focus-within > .ct-ac,
+  .wb.wb.wb .ct-card.wb-card-on > .ct-ac{ opacity:1 }
+}
+/* D12's row half: the delete control was a 26px box. */
+.wb.wb.wb .ct-x{ min-height:32px }
+.wb.wb.wb .ct-card .ct-ac .btn{ min-height:32px; display:inline-flex; align-items:center }
+
+/* ---- the phone: the strip takes two rows, and that is the whole budget ---- */
+@media (max-width:767px){
+  .wb.wb.wb .ct-cmd{ padding:6px var(--gut); gap:6px 8px; flex-wrap:nowrap; flex-direction:column;
+    align-items:stretch }
+  /* TWO ROWS, and they are the whole budget. Row one is the lane switch, the
+     pipeline marks, the alarm and the cadence, in ONE horizontal scroller with
+     an announced edge — four controls do not share 358px, and stacking them was
+     three rows of chrome above the work. Row two is the filter, which always
+     earns its own line: a search field squeezed to 90px is a field nobody types
+     in. */
+  .wb.wb.wb .ct-cmd-top{
+    display:flex; align-items:center; gap:8px; flex:none;
+    flex-wrap:nowrap; overflow-x:auto; overflow-y:visible;
+    overscroll-behavior-x:contain; scrollbar-width:none;
+    mask-image:linear-gradient(to right,#000 calc(100% - 20px),transparent);
+  }
+  .wb.wb.wb .ct-cmd-top::-webkit-scrollbar{ display:none }
+  .wb.wb.wb .ct-cmd-f{ flex:none }
+  .wb.wb.wb .ct-alert-chip{ max-width:none }
+  /* The base `.ct-fr` becomes a COLUMN at this width (a flex-basis there would
+     be a height). The strip's copy of it stays a row: it holds two controls,
+     not eight pills. */
+  .wb.wb.wb .ct-fr-in{ flex-direction:row; align-items:center; gap:6px }
+  .wb.wb.wb .ct-fr-in .ct-fsearch{ flex:1 1 auto; max-width:none; height:32px }
+  .wb.wb.wb .ct-fr-in .ct-fpills{ flex:0 1 auto; padding-right:0; mask-image:none }
+  .wb.wb.wb .ct-fr-in::after{ content:none }
+}
+/* At 430 and below the strip drops the two advisory marks rather than wrapping
+   to a third row. They are the only things on it that are not a count, a
+   filter or an alarm — and both keep their full sentence in a title attribute
+   on the mark that remains. */
+@media (max-width:430px){
+  .wb.wb.wb .ct-cmd-cad{ display:none }
+}
+
+/* ---- D27 · the last 9px type, removed rather than re-licensed ------------- */
+/* The 08-05 pass ended at "the last 9px type is gone" and this rule put four
+   labels back — a licensed exception that shrank ACCEPT / GOVERNOR / RUNWAY /
+   REFILL so an unbreakable word would fit its column. The dense answer is not a
+   smaller word, it is a wider column: the hero grid goes to two columns at 480
+   instead of four, which more than doubles the label track and lets all four
+   sit at the eyebrow tier with room. The type floor stays 11px, everywhere. */
+@media (max-width:480px){
+  .wb.wb.wb .ov-hero{ grid-template-columns:repeat(2,minmax(0,1fr)) }
+  .wb.wb.wb .ov-tile-lbl{
+    white-space:normal; text-overflow:clip; line-height:1.25;
+    font-size:var(--fs-eyebrow); letter-spacing:.04em;
+  }
+}
+
+/* ---- the tabbed evidence rail, on the workbench's own ladder ------------- */
+/* The base sheet gives these their geometry (styles.css); the skin owns their
+   type tier and radius, like every other control in here. */
+.wb.wb.wb .dw-tab{ border-radius:var(--r-pill); min-height:32px }
+.wb.wb.wb .dw-tab-n{ font-size:var(--fs-meta) }
+.wb.wb.wb .dw-tab-t, .wb.wb.wb .qa-dim-k, .wb.wb.wb .qa-p > span,
+.wb.wb.wb .qa-raw > summary{ font-size:var(--fs-eyebrow) }
+.wb.wb.wb .qa-dim-n, .wb.wb.wb .qa-clash{ font-size:var(--fs-meta) }
+.wb.wb.wb .qa-p{ font-size:var(--fs-body) }
+.wb.wb.wb .qa-dim-g > i{ background:var(--accent) }
+.wb.wb.wb .qa-dim-g > i.low{ background:var(--sev-attention) }
+.wb.wb.wb .qa-clash{ border-radius:var(--r-ctl) }
+/* The work segment's 28px box got its 44px touch target from a ::after
+   extension; the visible box is now 32 as well, so the measured floor and the
+   touched one agree. */
+@media (max-width:767px){
+  .wb.wb.wb .wb-ws{ min-height:32px }
+}
+
+/* ---- D33 · the DMs hero, in the strip's language ------------------------- */
+/* Same argument as Content's: 24px of padding and a 34px display word above a
+   list whose job is "who is waiting on me". The title stays (DMs has no strip
+   to carry it) and the band around it stops costing a fifth of the phone's
+   first screen. */
+.wb.wb.wb .wb-dmshead .nav, .wb.wb.wb .wb-work .nav{ padding:12px var(--pad-card) 8px }
+@media (max-width:767px){
+  .wb.wb.wb .wb-work .nav{ padding:10px var(--gut) 6px }
+  .wb.wb.wb .wb-work .nav h2{ font-size:var(--fs-page) }
+}

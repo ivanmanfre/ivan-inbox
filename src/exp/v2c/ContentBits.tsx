@@ -1,5 +1,4 @@
 import { type ReactNode } from 'react'
-import type { Facet, FilterState } from '../../lib/contentFilters'
 
 // Shared primitives for the content section.
 //
@@ -73,69 +72,13 @@ export function KeyRows({ items }: { items: [string, unknown][] }) {
   return <Rows items={items.map(([k, v]) => [k.replace(/_/g, ' '), <Val v={v} key={k} />])} />
 }
 
-/**
- * The filter bar.
- *
- * Rules it encodes (AFFORDANCES §3), all of which are about not lying:
- *  - facets come from the loaded rows, so nothing here is a hardcoded list;
- *  - a filter always shows BOTH numbers, and says so when the server's exact
- *    count exceeds what the page holds;
- *  - no filter is a default — a default filter is a hidden row;
- *  - filters are dropped on a lane switch by the caller, because a filter
- *    carried across lanes hides rows in a vocabulary that does not match.
- */
-export function FilterBar({ facets, state, setState, shown, loaded, total, noun }: {
-  facets: Facet[]
-  state: FilterState
-  setState: (s: FilterState) => void
-  shown: number
-  loaded: number
-  total: number | null
-  noun: string
-}) {
-  const active = Object.entries(state).filter(([, v]) => !!v)
-  if (facets.length === 0 && active.length === 0) return null
-  const toggle = (key: string, value: string) => {
-    const next = { ...state }
-    if (next[key] === value) delete next[key]
-    else next[key] = value
-    setState(next)
-  }
-  return (
-    <div className="ct-filters">
-      <div className="ct-fbar">
-        {facets.map(f => (
-          <div className="ct-fg" key={f.key}>
-            <span className="ct-fgl">{f.label}</span>
-            {f.options.map(o => (
-              <span
-                className={`ct-f${state[f.key] === o.value ? ' on' : ''}`}
-                key={o.value}
-                onClick={() => toggle(f.key, o.value)}
-              >
-                {o.label}<i>{o.n}</i>
-              </span>
-            ))}
-          </div>
-        ))}
-      </div>
-      <div className="ct-fnote">
-        {active.length > 0
-          ? <>
-            <b>{shown}</b> of {loaded} {noun} shown
-            <span className="ct-fclear" onClick={() => setState({})}>clear</span>
-          </>
-          : <>{loaded} {noun}</>}
-        {total !== null && total > loaded && (
-          // PostgREST caps a SELECT at 1000 long before a header count notices,
-          // so a filter that ran over the page must never imply it ran over the
-          // whole lane.
-          <span className="ct-fcap">filtering the {loaded} loaded of {total} in the database</span>
-        )}
-      </div>
-    </div>
-  )
-}
+// THE FILTER BAR IS GONE (D9, 2026-08-07). It rendered every facet and every
+// value of every facet, always, as a permanently-expanded chip browser —
+// measured 238px on the phone, stacked directly under `FilterRow`'s pills over
+// the SAME facet contract. Two grammars for one control. Its three remaining
+// callers (the ideas band, the publish queue, the style roster) now render
+// `FilterRow inline`; every count it printed is still printed, per value,
+// inside the pill it belongs to.
 
 // The filtered-empty state. An empty result caused by a filter and an empty lane
 // must never look the same — the same distinction fetchLaneProbe draws at lane

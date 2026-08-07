@@ -125,20 +125,53 @@ function QueueRail({ queue, id, onPick }: {
 // A collapsible inspect section, with its open state persisted
 // ---------------------------------------------------------------------------
 
-function Sec({ k, label, tail, open, toggle, children }: {
-  k: string; label: string; tail?: ReactNode
-  open: string[]; toggle: (k: string) => void; children: ReactNode
+// THE EVIDENCE RAIL IS TABBED (D16).
+//
+// It was five accordions in one scroller and measured 3,313px of scrollHeight
+// against a 754px column — 4.4 screens, of which the QA section alone was
+// 1,240px. Every section could be open at once, so "where is the source
+// briefing" was a scroll through the judge's prose rather than a click. Same
+// five sections, same order, same content, one at a time: the rail is now the
+// height of ONE section and the other four are one tap away with their headline
+// fact printed on the tab.
+//
+// A tab whose content does not exist on this row is never rendered — the
+// artifact and the source briefing are genuinely absent on most drafts, and a
+// dead tab is a worse lie than a missing one.
+type InspTab = { k: string; label: string; tail?: ReactNode; body: ReactNode }
+
+function InspRail({ tabs, tab, pick }: {
+  tabs: InspTab[]; tab: string; pick: (k: string) => void
 }) {
-  const on = open.includes(k)
+  // The stored answer can name a tab this row does not have (the store is
+  // shared across every draft the window opens). Fall back to the first, never
+  // to an empty panel.
+  const active = tabs.find(t => t.k === tab) ?? tabs[0]
   return (
-    <div className={`dw-sec${on ? ' on' : ''}`}>
-      <button type="button" className="dw-sec-b" onClick={() => toggle(k)} aria-expanded={on}>
-        <span className="dw-sec-n">{label}</span>
-        {tail && <span className="dw-sec-t">{tail}</span>}
-        <span className="dw-sec-c" aria-hidden>›</span>
-      </button>
-      {on && <div className="dw-sec-body">{children}</div>}
-    </div>
+    <aside className="dw-insp">
+      {/* The reference's own label for this rail (PostWorkSurface.tsx:539) —
+          now the tab strip's own eyebrow, so the rail still says what it is. */}
+      <div className="dw-insp-h">Backend depth</div>
+      <div className="dw-tabs" role="tablist" aria-label="Backend depth">
+        {tabs.map(t => (
+          <button
+            key={t.k} type="button" role="tab"
+            aria-selected={active?.k === t.k}
+            className={`dw-tab${active?.k === t.k ? ' on' : ''}`}
+            onClick={() => pick(t.k)}
+            title={t.tail ? `${t.label} — ${t.tail}` : t.label}
+          >
+            <span className="dw-tab-n">{t.label}</span>
+            {/* The headline fact rides ON the tab, so the score, the agent
+                count and the source kind are readable without opening any of
+                them — which is the whole reason five accordions were open at
+                once in the first place. */}
+            {t.tail && <span className="dw-tab-t">{t.tail}</span>}
+          </button>
+        ))}
+      </div>
+      <div className="dw-sec-body dw-tabbody" role="tabpanel">{active?.body}</div>
+    </aside>
   )
 }
 
@@ -551,19 +584,15 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
   const confirm = useConfirm()
 
   // ---- collapse state, persisted (same store as the lane's filters) --------
+  // ---- the evidence rail's ACTIVE TAB, persisted (same store as before) ----
+  // The array now holds exactly one key. A browser carrying the old multi-open
+  // answer reads its first entry, which is the section that was at the top of
+  // that scroller anyway — so nobody lands on a rail they did not choose.
   const [sect, setSect] = useSectionState('content.draftwindow')
-  const open = sect.open
-  const toggle = useCallback((k: string) => {
-    setSect(p => ({ ...p, open: p.open.includes(k) ? p.open.filter(x => x !== k) : [...p.open, k] }))
+  const tab = sect.open[0] ?? 'qa'
+  const pickTab = useCallback((k: string) => {
+    setSect(p => ({ ...p, open: [k] }))
   }, [setSect])
-  // First visit has no stored answer: QA open (it is the number you check
-  // before deciding), everything else closed.
-  const seeded = useRef(false)
-  useEffect(() => {
-    if (seeded.current) return
-    seeded.current = true
-    if (sect.open.length === 0) setSect(p => ({ ...p, open: ['qa'] }))
-  }, [sect.open.length, setSect])
 
   // ---- the editor ---------------------------------------------------------
   //
@@ -1106,106 +1135,110 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
   )
 
   // ---- 03 · the evidence --------------------------------------------------
-  const insp = (
-    <aside className="dw-insp">
-      {/* The reference's own label for this rail (PostWorkSurface.tsx:539). */}
-      <div className="dw-insp-h">Backend depth</div>
-
-      {qa ? (
-        <Sec k="qa" label="QA verdict" tail={qa.score !== null ? `${qa.score}` : qa.verdict ?? undefined}
-          open={open} toggle={toggle}>
-          <QaRegister qa={qa} />
-        </Sec>
-      ) : (
-        <Sec k="qa" label="QA verdict" tail="none" open={open} toggle={toggle}>
-          <div className="ct-subtle">No gate has scored this row.</div>
-        </Sec>
-      )}
-
-      {selfContainedHtml(authored) && (
-        <Sec k="art" label="Rendered artifact" open={open} toggle={toggle}>
-          {/* Only a SELF-CONTAINED document earns the frame: authored_html is
-              usually a class-based fragment whose styles live in the render
-              service's kit CSS, and framing that shows raw serif text — the
-              opposite of "as it will appear". */}
-          <HtmlPreview html={authored} title="Post as it will appear" />
-        </Sec>
-      )}
-
-      {(source.length > 0 || detail || points.length > 0 || d.description) && (
-        <Sec k="src" label="Source briefing" tail={detail?.kind ?? undefined} open={open} toggle={toggle}>
-          <Rows items={source} />
-          {detail && (
-            <>
-              {(detail.kind || detail.label) && (
-                <div className="ct-meta ct-src-m">
-                  {detail.kind && <span className="ct-chip">{detail.kind}</span>}
-                  {detail.label && <span className="ct-src-l">{detail.label}</span>}
-                </div>
-              )}
-              {detail.quote && (
-                <div className="ct-quote">
-                  <div className="dd-body">“{detail.quote}”</div>
-                  {detail.callTitle && <div className="ct-ref">{detail.callTitle}</div>}
-                </div>
-              )}
-              {!detail.quote && detail.callTitle && <div className="ct-ref ct-ref-p">{detail.callTitle}</div>}
-              {detail.text && <div className="dd-card"><div className="dd-body">{detail.text}</div></div>}
-              {detail.links.map(([k, url]) => (
-                <a className="dd-link" href={url} target="_blank" rel="noreferrer" key={k}>{k} ↗</a>
-              ))}
-              <KeyRows items={detail.rows} />
-            </>
+  const inspTabs: InspTab[] = [
+    {
+      k: 'qa', label: 'QA',
+      tail: qa ? (qa.score !== null ? `${qa.score}` : qa.verdict ?? undefined) : 'none',
+      body: qa
+        ? <QaRegister qa={qa} />
+        : <div className="ct-subtle">No gate has scored this row.</div>,
+    },
+    ...(selfContainedHtml(authored)
+      ? [{
+        k: 'art', label: 'Artifact',
+        // Only a SELF-CONTAINED document earns the frame: authored_html is
+        // usually a class-based fragment whose styles live in the render
+        // service's kit CSS, and framing that shows raw serif text — the
+        // opposite of "as it will appear".
+        body: <HtmlPreview html={authored} title="Post as it will appear" />,
+      }]
+      : []),
+    ...((source.length > 0 || detail || points.length > 0 || d.description)
+      ? [{
+        k: 'src', label: 'Source', tail: detail?.kind ?? undefined,
+        body: (
+          <>
+            <Rows items={source} />
+            {detail && (
+              <>
+                {(detail.kind || detail.label) && (
+                  <div className="ct-meta ct-src-m">
+                    {detail.kind && <span className="ct-chip">{detail.kind}</span>}
+                    {detail.label && <span className="ct-src-l">{detail.label}</span>}
+                  </div>
+                )}
+                {detail.quote && (
+                  <div className="ct-quote">
+                    <div className="dd-body">“{detail.quote}”</div>
+                    {detail.callTitle && <div className="ct-ref">{detail.callTitle}</div>}
+                  </div>
+                )}
+                {!detail.quote && detail.callTitle && <div className="ct-ref ct-ref-p">{detail.callTitle}</div>}
+                {detail.text && <div className="dd-card"><div className="dd-body">{detail.text}</div></div>}
+                {detail.links.map(([k, url]) => (
+                  <a className="dd-link" href={url} target="_blank" rel="noreferrer" key={k}>{k} ↗</a>
+                ))}
+                <KeyRows items={detail.rows} />
+              </>
+            )}
+            {points.length > 0 && (
+              <Block label="Key points">
+                <div className="dd-card">{points.map((p, i) => <div className="dd-point" key={i}>{p}</div>)}</div>
+              </Block>
+            )}
+            {d.description && (
+              <Block label="Description">
+                <div className="dd-card"><div className="dd-body dd-pre">{d.description}</div></div>
+              </Block>
+            )}
+            {source.length === 0 && !detail && points.length === 0 && !d.description && (
+              <div className="ct-subtle">Pre-pipeline draft — no linked idea.</div>
+            )}
+          </>
+        ),
+      }]
+      : []),
+    {
+      k: 'log', label: 'Log',
+      tail: log.length ? `${agentCount} agent${agentCount === 1 ? '' : 's'}` : 'note only',
+      body: (
+        <>
+          <AgentRegister log={log} />
+          {lane === 'ivan' && <NoteComposer id={d.id} onDone={refresh} />}
+          {lane !== 'ivan' && log.length === 0 && (
+            <div className="ct-subtle">No agent activity recorded on this row.</div>
           )}
-          {points.length > 0 && (
-            <Block label="Key points">
-              <div className="dd-card">{points.map((p, i) => <div className="dd-point" key={i}>{p}</div>)}</div>
+        </>
+      ),
+    },
+    {
+      k: 'meta', label: 'Fields',
+      body: (
+        <>
+          {dates.length > 0 && <Block label="Dates"><Rows items={dates} /></Block>}
+          {taxRows.length > 0 && <Block label="Taxonomy"><Rows items={taxRows} /></Block>}
+          {/* ~25 further keys are live beyond the six named above. They render
+              after the known ones, sorted, so a new key appears without a code
+              edit. */}
+          {extras.length > 0 && <Block label="Taxonomy · other keys"><KeyRows items={extras} /></Block>}
+          {d.ig_caption && (
+            <Block label="IG caption"><div className="dd-card"><div className="dd-body dd-pre">{d.ig_caption}</div></div></Block>
+          )}
+          {d.pdf_url && (
+            <Block label="PDF">
+              <a className="dd-link" href={d.pdf_url} target="_blank" rel="noreferrer">Open PDF ↗</a>
             </Block>
           )}
-          {d.description && (
-            <Block label="Description">
-              <div className="dd-card"><div className="dd-body dd-pre">{d.description}</div></div>
-            </Block>
+          {/* style_id is NULL on all 282 rows, regen_slides on all 282,
+              video_status on all 282 — named so nobody re-adds them as empty rows. */}
+          {d.slide_metadata !== undefined && d.slide_metadata !== null && (
+            <Block label="Slides"><Rows items={[['Slide metadata', <Val v={d.slide_metadata} key="s" />]]} /></Block>
           )}
-          {source.length === 0 && !detail && points.length === 0 && !d.description && (
-            <div className="ct-subtle">Pre-pipeline draft — no linked idea.</div>
-          )}
-        </Sec>
-      )}
-
-      <Sec k="log" label="Generation register"
-        tail={log.length ? `${agentCount} agent${agentCount === 1 ? '' : 's'}` : 'note only'}
-        open={open} toggle={toggle}>
-        <AgentRegister log={log} />
-        {lane === 'ivan' && <NoteComposer id={d.id} onDone={refresh} />}
-        {lane !== 'ivan' && log.length === 0 && (
-          <div className="ct-subtle">No agent activity recorded on this row.</div>
-        )}
-      </Sec>
-
-      <Sec k="meta" label="Dates &amp; fields" open={open} toggle={toggle}>
-        {dates.length > 0 && <Block label="Dates"><Rows items={dates} /></Block>}
-        {taxRows.length > 0 && <Block label="Taxonomy"><Rows items={taxRows} /></Block>}
-        {/* ~25 further keys are live beyond the six named above. They render
-            after the known ones, sorted, so a new key appears without a code
-            edit. */}
-        {extras.length > 0 && <Block label="Taxonomy · other keys"><KeyRows items={extras} /></Block>}
-        {d.ig_caption && (
-          <Block label="IG caption"><div className="dd-card"><div className="dd-body dd-pre">{d.ig_caption}</div></div></Block>
-        )}
-        {d.pdf_url && (
-          <Block label="PDF">
-            <a className="dd-link" href={d.pdf_url} target="_blank" rel="noreferrer">Open PDF ↗</a>
-          </Block>
-        )}
-        {/* style_id is NULL on all 282 rows, regen_slides on all 282,
-            video_status on all 282 — named so nobody re-adds them as empty rows. */}
-        {d.slide_metadata !== undefined && d.slide_metadata !== null && (
-          <Block label="Slides"><Rows items={[['Slide metadata', <Val v={d.slide_metadata} key="s" />]]} /></Block>
-        )}
-      </Sec>
-    </aside>
-  )
+        </>
+      ),
+    },
+  ]
+  const insp = <InspRail tabs={inspTabs} tab={tab} pick={pickTab} />
 
   // A one-row queue has nowhere to walk to, so it draws no rail and the grid
   // gives the 232px back to the artifact.

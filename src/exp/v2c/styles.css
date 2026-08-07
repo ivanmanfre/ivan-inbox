@@ -1155,3 +1155,47 @@
   .wb.wb.wb .dw-key{padding:0 8px;font-size:12.5px;gap:4px}
   .wb.wb.wb .dw-key kbd{min-width:14px;height:15px;font-size:9.5px;padding:0 2px}
 }
+
+/* ==========================================================================
+   The evidence rail, tabbed (D16) + the QA rubric drawn as structure (D14).
+   Candidate B, 2026-08-07.
+   ========================================================================== */
+
+.dw-tabs{display:flex;gap:2px;padding:0 12px 8px;overflow-x:auto;scrollbar-width:none}
+.dw-tabs::-webkit-scrollbar{display:none}
+.dw-tab{display:flex;align-items:center;gap:6px;flex:none;min-height:32px;padding:0 10px;
+  background:var(--surface2);border:none;border-radius:999px;cursor:pointer;color:var(--text3)}
+.dw-tab.on{background:var(--surface3);color:var(--text)}
+.dw-tab-n{font-size:12px;font-weight:600;letter-spacing:.02em}
+/* The headline fact rides on the tab, which is what lets four closed panels
+   still answer "what is the score / how many agents / what kind of source". */
+.dw-tab-t{font-size:11px;font-weight:600;color:var(--text4)}
+.dw-tab.on .dw-tab-t{color:var(--text2)}
+.dw-tabbody{padding-bottom:24px}
+
+/* ---- the rubric ---------------------------------------------------------- */
+.qa-rubric{display:flex;flex-direction:column;gap:6px;padding:12px 13px}
+.qa-dim{display:grid;grid-template-columns:minmax(0,86px) minmax(40px,1fr) auto;
+  align-items:center;column-gap:9px}
+.qa-dim-k{min-width:0;font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--text3);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qa-dim-g{height:6px;border-radius:999px;background:var(--surface3);overflow:hidden}
+.qa-dim-g > i{display:block;height:100%;border-radius:999px;background:var(--accent)}
+.qa-dim-g > i.low{background:#FF9F0A}
+.qa-dim-n{font-size:12px;font-weight:600;color:var(--text2);white-space:nowrap}
+.qa-dim-n i{font-style:normal;font-weight:400;color:var(--text4)}
+
+.qa-prose{padding:11px 13px;display:flex;flex-direction:column;gap:8px}
+.qa-p{font-size:13px;line-height:1.45;color:var(--text2)}
+.qa-p > span{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--text3);margin-bottom:2px}
+
+/* The disagreement between the stored verdict and the one inside the body.
+   Amber, never red: it is a fact about the gate, not a failure of the draft. */
+.qa-clash{display:flex;align-items:flex-start;gap:9px;margin:0 0 10px;padding:10px 12px;
+  border-radius:12px;background:rgba(255,159,10,.10);border:1px solid rgba(255,159,10,.30);
+  font-size:12.5px;line-height:1.45;color:var(--text2)}
+.qa-clash b{font-weight:700;color:var(--text)}
+.qa-raw > summary{cursor:pointer;padding:8px 2px;font-size:11px;font-weight:600;
+  letter-spacing:.04em;text-transform:uppercase;color:var(--text3)}
+.qa-raw[open] > summary{color:var(--text2)}

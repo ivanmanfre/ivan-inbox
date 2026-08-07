@@ -26,7 +26,7 @@ import { FilteredEmpty } from './ContentBits'
 import { FilterRow } from './FilterRow'
 import { IdeasSection, PillarMix, QueueStrip } from './ContentSections'
 import { relOrAhead, relTime, sourceLabel, tagLabel, typeLabel } from './fmt'
-import { CalmEmpty, CapsuleChart, Failed, SectionHead } from './Surface'
+import { CalmEmpty, Failed, SectionHead, StatChip } from './Surface'
 import { hasMock } from './mock'
 
 // Content — TWO LANES, and nothing else.
@@ -256,111 +256,206 @@ function Skeleton() {
   )
 }
 
-// The pipeline drawn once, at the top, as a CHART CARD in the reference's full
-// anatomy (M2/M4/M9): eyebrow · the plot · legend · right-aligned Total footer
-// carrying the real denominator.
+// THE COMMAND STRIP — candidate B's one structural bet.
 //
-// The plot is a capsule column per stage with the value printed INSIDE the mark
-// — the single most transferable thing in the Nixtio shot, and it costs nothing
-// here because the series is real: it is the stage histogram of the rows this
-// list is already holding.
+// It replaces, on one band, five stacked ones: the 122px display hero, the 50px
+// alert strip, the 261px pipeline chart card, the 16px cadence line and the
+// 96px filter block. Measured on the live Ivan lane at 390: 707 of the 765
+// usable pixels were chrome and the first screen held ZERO rows (D3). The
+// numbers did not go away — every one of them is still on this strip, drawn as
+// a mark small enough to sit beside the work instead of above it.
 //
-// DATA HONESTY. Two denominators, both from `Prefer: count=exact` probes and
-// neither from rows.length: `matched` is the server's count of the same filter
-// this list ran, `laneTotal` is every row in the lane. The ideas bank is stated
-// separately and NOT folded into the bar, because the lane renders 59 of 1,716
-// idea candidates — putting a truncated 59 in the same chart as a complete 285
-// would draw a proportion that does not exist.
-function PipelineBar({ stages, ideasShown, ideasTotal, matched, laneTotal, onJump }: {
-  stages: ContentStages
-  ideasShown: number
-  ideasTotal: number | null
-  matched: number | null
-  laneTotal: number | null
-  onJump: (s: ContentStage) => void
+// The rules it keeps, because they are the reasons those blocks were built:
+//   · ONE WORD PER NUMBER — `in pipeline`, `in the lane` and `loaded` are three
+//     different denominators and each is stated where it is used (D5);
+//   · the ideas bank is NOT folded into the pipeline marks — the lane renders a
+//     truncated slice of lm_idea_candidates and a truncated series beside a
+//     complete one draws a proportion that does not exist;
+//   · published keeps its slot as a lane fact, never as a pipeline mark — it
+//     accumulates forever and would set the scale on its own.
+function CommandStrip({
+  lane, setLane, laneNote, stats, alert, filter, tail,
+}: {
+  lane: ContentLane
+  setLane: (l: ContentLane) => void
+  laneNote?: React.ReactNode
+  stats?: React.ReactNode
+  alert?: React.ReactNode
+  filter: React.ReactNode
+  tail?: React.ReactNode
 }) {
-  // PUBLISHED IS NOT A STAGE ON THIS CHART (2026-08-03, Ivan: "delete published
-  // we dont need to see that on that pipeline stuff"). Two reasons and they
-  // agree: it is an archive count he never acts on, and it is the only stage
-  // that accumulates forever — 109 published against a peak of 11 in-flight set
-  // the scale, drew itself as a balloon, and squashed GEN/REVIEW/APPR/SCHED into
-  // stubs. The published total is still on the surface, in the footer's
-  // `Total: N of M in the lane` line, which is where an archive number belongs.
-  const parts = PIPELINE_STAGES
-    .filter(s => s !== 'ideas' && s !== 'published')
-    .map(s => ({ stage: s, key: STAGE_LABEL[s], n: stages[s].length, color: STAGE_COLOR[s] }))
-  // 🔴 ONE WORD PER NUMBER. This sum is every PIPELINE stage, published
-  // included — deliberately wider than `parts`, so narrowing the chart does not
-  // silently restate the denominator under the hero figure. But it is NOT the
-  // lane: error, stuck, archived and other are 105 more rows it never counts,
-  // and calling it "loaded" gave that word two values 150px apart (the filter
-  // row's "loaded" is every row in the lane). It is named for what it sums.
-  const inPipeline = PIPELINE_STAGES
-    .filter(s => s !== 'ideas')
-    .reduce((a, s) => a + stages[s].length, 0)
-  const review = stages.review.length
-  const undated = countUndated(stages.approved)
+  const ref = useRef<HTMLDivElement>(null)
+  // The strip is sticky at the top of the scroller and the SECTION HEADS are
+  // sticky too, so the heads have to be told where the strip ends or they slide
+  // underneath it and a 285-row list loses the label of the section it is
+  // showing. The strip wraps at narrow widths, so its height is a measurement,
+  // never a constant.
+  useEffect(() => {
+    const el = ref.current
+    const rows = el?.closest('.rows') as HTMLElement | null
+    if (!el || !rows || typeof ResizeObserver === 'undefined') return
+    const set = () => rows.style.setProperty('--ct-cmdh', `${Math.ceil(el.getBoundingClientRect().height)}px`)
+    set()
+    const ro = new ResizeObserver(set)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   return (
-    <div className="wb-chartcard ct-band">
-      {/* 2026-08-03, Ivan: "order things as well in horizontal so we have seen
-          the main stuff easily". The card used to STACK header → plot → hero
-          figure → footer down a 1,150px-wide column, spending ~290px of height
-          to draw ~270px of chart. The three blocks are peers of the plot now, so
-          the whole block costs roughly one plot's height and the queue below it
-          moves up by the difference. Below 1000px it stacks again. */}
-      <div className="ct-band-plot">
-        <div className="wb-cardh">
-          <span className="wb-cardh-t wb-eyebrow">Post pipeline</span>
+    <div className="ct-cmd" ref={ref}>
+      {/* `display:contents` on the pointer canvas, so these four are direct
+          members of the strip's one flex line; a real scrolling row on the
+          phone, where four controls cannot share 358px and stacking them was
+          three rows of chrome. One element, two behaviours, no second DOM. */}
+      <div className="ct-cmd-top">
+        <div className="ct-cmd-id">
+          {/* NO JOB TITLE. The rail names the job on the pointer canvas and the
+              work segment names it on the phone, in every data state — a third
+              print inside the strip is the D6 doubling one level down. */}
+          {/* The lane switch is a VIEW switcher, so it keeps the pill grammar it
+              has always had; it is not a filter and never takes `label: value ⌄`. */}
+          <div className="ct-cmd-lanes">
+            {CONTENT_LANES.map(k => (
+              <button
+                type="button" key={k}
+                className={`ct-cmd-lane${lane === k ? ' on' : ''}`}
+                aria-current={lane === k ? 'true' : undefined}
+                onClick={() => setLane(k)}
+              >{LANE_LABEL[k]}</button>
+            ))}
+          </div>
+          {laneNote}
         </div>
-        {/* The plot itself lives in Surface.tsx so the lead-magnet lane can draw
-            the same chart (phase 6 ask 2) — the post bar keeps its own hero
-            figure and probe-backed footer. */}
-        <CapsuleChart
-          parts={parts.map(p => ({ key: p.stage, label: p.key, short: STAGE_SHORT[p.stage], n: p.n }))}
-          onJump={k => onJump(k as ContentStage)}
-        />
+        {stats}
+        {alert}
+        {tail}
       </div>
-
-      <div className="wb-pipe-n ct-band-fig">
-        <span className="wb-pipe-big">{review}</span>
-        <span className="wb-pipe-lbl">
-          waiting on you<br />of {inPipeline} in pipeline
-        </span>
-        {undated > 0 && (
-          <span className="wb-pipe-warn">{undated} approved with no date</span>
-        )}
-      </div>
-
-      {/* M4 — legend + Total footer. Every figure below is a count probe. */}
-      <div className="wb-cardf ct-band-facts">
-        <span className="wb-legend">
-          <span className="wb-legend-d" style={{ background: 'var(--cat-1)' }} />
-          <span className="wb-legend-l">In flight</span>
-        </span>
-        <span className="wb-legend">
-          <span className="wb-legend-d" style={{ background: 'var(--cat-3)' }} />
-          <span className="wb-legend-l">
-            {/* ask 3: POST ideas only. This figure used to be every row in
-                lm_idea_candidates at `reviewing`, lead-magnet ideas included —
-                so the post pipeline's idea count quietly carried rows that were
-                never going to become posts. Both numbers are now scoped to
-                content_type='post', the denominator by its own exact probe. */}
-            Post ideas {ideasShown} of {ideasTotal ?? '—'}
-          </span>
-        </span>
-        <span className="wb-total">
-          Total: <b>{matched ?? inPipeline}</b>
-          {laneTotal !== null && laneTotal !== matched ? ` of ${laneTotal} in the lane` : ''}
-        </span>
-      </div>
+      <div className="ct-cmd-f">{filter}</div>
     </div>
   )
 }
 
-// The alert strip. error + stuck drafts, the publish queue's failures, and the
-// stuck resource all land here: a failed publish and a failed generation are the
-// same class of fact to the operator even though they live in three tables.
-function AlertStrip({ drafts, lane, refresh, onOpen, openId, extra }: {
+// The pipeline, as marks that fit on the strip.
+//
+// PUBLISHED IS NOT A MARK (2026-08-03, Ivan: "delete published we dont need to
+// see that on that pipeline stuff") — it is an archive count he never acts on
+// and the only stage that accumulates forever, so it would set the scale by
+// itself. It keeps its number, in the lane figure at the end of the row, which
+// is where an archive total belongs.
+function PipelineStats({ stages, matched, laneTotal, onJump }: {
+  stages: ContentStages
+  matched: number | null
+  laneTotal: number | null
+  onJump: (s: ContentStage) => void
+}) {
+  const parts = PIPELINE_STAGES
+    .filter(s => s !== 'ideas' && s !== 'published')
+    .map(s => ({ stage: s, n: stages[s].length }))
+  const peak = Math.max(1, ...parts.map(p => p.n))
+  // 🔴 ONE WORD PER NUMBER (D5). This sum is every PIPELINE stage, published
+  // included — deliberately wider than the marks, so narrowing the drawing does
+  // not silently restate the denominator. It is NOT the lane: error, stuck,
+  // archived and other are ~105 more rows it never counts, which is why the
+  // lane figure beside it reads `of N in the lane` and the filter row's own
+  // count says `loaded`. Three numbers, three words, none of them shared.
+  const inPipeline = PIPELINE_STAGES
+    .filter(s => s !== 'ideas')
+    .reduce((a, s) => a + stages[s].length, 0)
+  const undated = countUndated(stages.approved)
+  return (
+    <div className="ct-cmd-stats">
+      {parts.map(p => (
+        <StatChip
+          key={p.stage}
+          label={STAGE_SHORT[p.stage]}
+          full={STAGE_LABEL[p.stage]}
+          n={p.n}
+          peak={peak}
+          color={STAGE_COLOR[p.stage]}
+          tone={p.stage === 'review' && p.n > 0
+            ? 'attention'
+            : p.stage === 'approved' && undated > 0 ? 'attention' : null}
+          title={p.stage === 'review'
+            ? `waiting on you · ${inPipeline} in pipeline`
+            : p.stage === 'approved' && undated > 0
+              ? `${undated} of them approved with no date — on no other surface`
+              : `${inPipeline} in pipeline`}
+          onClick={() => onJump(p.stage)}
+        />
+      ))}
+      <span
+        className="ct-cmd-tot"
+        title={`${matched ?? inPipeline} rows loaded${laneTotal !== null ? ` of ${laneTotal} in this lane` : ''}`}
+      >
+        <b>{matched ?? inPipeline}</b>
+        {laneTotal !== null && laneTotal !== matched ? <i>/{laneTotal}</i> : null}
+      </span>
+    </div>
+  )
+}
+
+// THE ALARM, and the one arithmetic fix it needed (D11).
+//
+// What was printed: `7 │ 5 errored · 2 elsewhere`, where 7 = draft ROWS plus
+// pipeline NOTES and the breakdown was built from a different set — so a
+// `stages.stuck` row that was neither errored nor past-due inflated the total
+// without ever appearing in the words under it, and "elsewhere" was literally
+// `extra.length`, a word for a number the reader had no way to resolve.
+//
+// The rule now: THE NUMBER COUNTS ROWS. Its breakdown is exhaustive by
+// construction — errored, past due, and everything else in the same array named
+// as such — so the parts always sum to the whole. The notes are not rows and
+// are never added to it; they are a separate, named tail.
+function alertParts(drafts: ContentDraft[]): { errored: number; stuck: number; other: number } {
+  const errored = drafts.filter(d => d.status === 'error').length
+  const stuck = drafts.filter(d => d.status !== 'error' && isStuckScheduled(d)).length
+  return { errored, stuck, other: drafts.length - errored - stuck }
+}
+
+// The chip that rides in the command strip. It is the whole alarm at rest: the
+// row count, the breakdown that sums to it, and the note tail.
+function AlertChip({ drafts, extra, open, onToggle }: {
+  drafts: ContentDraft[]
+  extra: { key: string; line: string }[]
+  open: boolean
+  onToggle: () => void
+}) {
+  if (drafts.length === 0 && extra.length === 0) return null
+  const { errored, stuck, other } = alertParts(drafts)
+  const words = [
+    errored > 0 && `${errored} errored`,
+    stuck > 0 && `${stuck} past due`,
+    other > 0 && `${other} other`,
+  ].filter(Boolean).join(' · ')
+  return (
+    <>
+      {/* The jump target lives on the CHIP, not inside the collapsible body:
+          `jump()` scrolls to `wb-s-<stage>`, and an anchor that unmounts with
+          the body would send the error jump nowhere whenever it is closed. */}
+      <div id="wb-s-error" />
+      <button
+        type="button" className="ct-alert ct-alert-chip" onClick={onToggle}
+        aria-expanded={open}
+        title={drafts.length > 0
+          ? `${drafts.length} draft rows need attention: ${words}${extra.length > 0 ? ` · plus ${extra.length} pipeline notes, which are not rows` : ''}`
+          : `${extra.length} pipeline notes — no draft row is in trouble`}
+      >
+        {drafts.length > 0 && <span className="ct-alert-n">{drafts.length}</span>}
+        <span className="ct-alert-t">
+          {drafts.length > 0 ? words : `${extra.length} pipeline ${extra.length === 1 ? 'note' : 'notes'}`}
+        </span>
+        {drafts.length > 0 && extra.length > 0 && (
+          // NOT added into the number above it. A note is a sentence about the
+          // pipeline; a row is a draft you can open.
+          <span className="ct-alert-x-n">+{extra.length} notes</span>
+        )}
+        <span className="chev">{open ? '⌄' : '›'}</span>
+      </button>
+    </>
+  )
+}
+
+// The disclosure body, below the strip and above the flow.
+function AlertBody({ drafts, lane, refresh, onOpen, openId, extra }: {
   drafts: ContentDraft[]
   lane: ContentLane
   refresh: () => void
@@ -368,61 +463,15 @@ function AlertStrip({ drafts, lane, refresh, onOpen, openId, extra }: {
   openId: string | null
   extra: { key: string; line: string }[]
 }) {
-  // The strip opens itself only when it is small enough to READ. On the live
-  // Ivan lane it carries 38 rows, and 38 rows of "is published with no landing
-  // URL" above the pipeline chart buries every draft in the queue below it —
-  // measured: the first 1440×900 viewport of the test surface contained zero
-  // draft rows. The count, the breakdown and the chevron are all still there,
-  // and a handful still opens on sight.
-  //
-  // `null` = the operator has not decided yet, so follow the data. A plain
-  // `useState(n <= 6)` does NOT work here and the screenshot proved it: the
-  // initialiser runs on the FIRST render, when both arrays are still empty from
-  // the pending fetch, so it latches `true` and the strip is stuck open once the
-  // 38 rows land. State that is seeded from data which arrives later has to be
-  // derived, not initialised.
-  // 2026-08-03: the "a handful still opens on sight" rule is withdrawn. On the
-  // live lane it resolved OPEN (4 rows ≤ 6) and cost ~420px directly above the
-  // queue — the alarm's own rows pushing the work off the screen, which is the
-  // failure it was written to prevent, just at a different count. The strip is
-  // now a closed summary on every count: the number, the breakdown and the
-  // chevron are the signal, and one click is the detail.
-  const [open, setOpen] = useState<boolean | null>(null)
-  const n = drafts.length + extra.length
-  const isOpen = open ?? false
-  if (n === 0) return null
-  const errored = drafts.filter(d => d.status === 'error').length
-  const stuck = drafts.filter(d => isStuckScheduled(d)).length
   return (
-    <>
-      {/* The jump target lives on the HEADER, not inside the collapsible body:
-          `jump()` (:385) scrolls to `wb-s-<stage>`, and an anchor that unmounts
-          with the body would send the error jump nowhere whenever the strip is
-          closed. The header is what you want to land on anyway — it carries the
-          count and the breakdown. */}
-      <div id="wb-s-error" />
-      <button type="button" className="ct-alert" onClick={() => setOpen(!isOpen)}>
-        <span className="ct-alert-n">{n}</span>
-        <span className="ct-alert-t">
-          {[
-            errored > 0 && `${errored} errored`,
-            stuck > 0 && `${stuck} past due, never posted`,
-            extra.length > 0 && `${extra.length} elsewhere`,
-          ].filter(Boolean).join(' · ')}
-        </span>
-        <span className="chev">{isOpen ? '⌄' : '›'}</span>
-      </button>
-      {isOpen && (
-        <>
-          {/* the line is wrapped so it can ellipsize: a list of what is wrong,
-              not prose about it. The full sentence lives on the row it points at. */}
-          {extra.map(e => <div className="ct-alert-x" key={e.key}><span>{e.line}</span></div>)}
-          {drafts.map(d => (
-            <Card key={d.id} d={d} lane={lane} refresh={refresh} onOpen={onOpen} active={openId === d.id} queue={drafts} />
-          ))}
-        </>
-      )}
-    </>
+    <div className="ct-alert-body">
+      {/* the line is wrapped so it can ellipsize: a list of what is wrong, not
+          prose about it. The full sentence lives on the row it points at. */}
+      {extra.map(e => <div className="ct-alert-x" key={e.key}><span>{e.line}</span></div>)}
+      {drafts.map(d => (
+        <Card key={d.id} d={d} lane={lane} refresh={refresh} onOpen={onOpen} active={openId === d.id} queue={drafts} />
+      ))}
+    </div>
   )
 }
 
@@ -531,9 +580,11 @@ function useOpenStages(
 // LANE A — Ivan
 // ---------------------------------------------------------------------------
 
-function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters, q, setQ, matched, laneTotal, open, setOpen }: {
+function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters, q, setQ, matched, laneTotal, open, setOpen, lane, setLane }: {
   drafts: ContentDraft[]
   stages: ContentStages
+  lane: ContentLane
+  setLane: (l: ContentLane) => void
   openId: string | null
   onOpen: OpenDraft
   refresh: () => void
@@ -547,6 +598,12 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
   setOpen: (fn: (cur: string[]) => string[]) => void
 }) {
   const stageOpen = useOpenStages(open, setOpen, DEFAULT_OPEN)
+  // The alarm is a CLOSED SUMMARY on every count, and the state lives out here
+  // because the chip rides in the command strip while its rows render below it.
+  // 2026-08-03 measured why it never auto-opens: on the live lane it resolved
+  // open at 4 rows and cost ~420px directly above the queue — the alarm's own
+  // rows pushing the work off screen, which is the failure it exists to prevent.
+  const [alertOpen, setAlertOpen] = useState(false)
   // Determinism under a filter (phase1-review residual): picking Stage:
   // Published used to render a different card count before vs after a reload,
   // because the persisted filter landed on a section whose open/closed state
@@ -627,28 +684,41 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
 
   return (
     <>
-      <AlertStrip drafts={alerts} lane="ivan" refresh={refresh} onOpen={onOpen} openId={openId} extra={extra} />
-      <PipelineBar
-        stages={stages} ideasShown={ideas.split.post.length} ideasTotal={ideas.counts.post}
-        matched={matched} laneTotal={laneTotal} onJump={jump}
+      <CommandStrip
+        lane={lane} setLane={setLane}
+        stats={
+          <PipelineStats stages={stages} matched={matched} laneTotal={laneTotal} onJump={jump} />
+        }
+        alert={
+          <AlertChip drafts={alerts} extra={extra} open={alertOpen} onToggle={() => setAlertOpen(o => !o)} />
+        }
+        filter={
+          // idleCount={false}: the strip's own lane figure two slots left already
+          // states this total, and the unfiltered note here would be that number a
+          // second time on the same band. The FILTERED line is never suppressed —
+          // `9 of 224 shown` is the number doing work.
+          <FilterRow
+            prominent={prominent} demoted={demoted}
+            state={filters} setState={setFilters} q={q} setQ={setQ}
+            shown={shown.length} loaded={drafts.length} total={matched} noun="drafts"
+            idleCount={false} inline
+          />
+        }
+        tail={
+          // Advisory denominator, never a quota, never a gate, never red — and
+          // now a mark rather than a line of prose. The word "cadence" is what
+          // stops it reading as a target, which is why it is still printed.
+          <span
+            className="ct-cmd-cad"
+            title={`${scheduledThisWeek} posts are scheduled in the next 7 days. The 4-a-week cadence is an editorial rhythm, not a quota and not a gate.`}
+          >
+            <b>{scheduledThisWeek}</b>↗7d
+          </span>
+        }
       />
-      {/* Advisory denominator, never a quota, never a gate, never red. The
-          sentence explaining that it is not a quota was three lines of prose at
-          390 defending against a misreading the word "cadence" already
-          prevents; the FACT is the whole value. */}
-      <div className="ct-subtle">
-        {scheduledThisWeek} scheduled in the next 7 days · 4-a-week cadence
-      </div>
-
-      {/* idleCount={false}: the chart card's footer six lines up already states
-          this lane's total (`Total: 224 of 285 in the lane`), and the unfiltered
-          note here is that same figure a second time. One number, one place. */}
-      <FilterRow
-        prominent={prominent} demoted={demoted}
-        state={filters} setState={setFilters} q={q} setQ={setQ}
-        shown={shown.length} loaded={drafts.length} total={matched} noun="drafts"
-        idleCount={false}
-      />
+      {alertOpen && (
+        <AlertBody drafts={alerts} lane="ivan" refresh={refresh} onOpen={onOpen} openId={openId} extra={extra} />
+      )}
 
       {/* ask 3 — the POST side of the content_type partition only. Rows with no
           content_type ride here too, labelled, rather than vanishing from both
@@ -734,8 +804,14 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
 // approved") so nothing is lost with the header.
 const BOARD_ORDER: BoardGroup[] = ['internal', 'board']
 
-function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, setQ, matched, open, setOpen }: {
+function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, setQ, matched, open, setOpen, lane, setLane, onBoard }: {
   drafts: ContentDraft[]
+  lane: ContentLane
+  setLane: (l: ContentLane) => void
+  // The lane's one standing fact, and it belongs on the strip beside the lane
+  // switch rather than under a display title: how much of what we hold he can
+  // actually see.
+  onBoard: number
   openId: string | null
   onOpen: OpenDraft
   refresh: () => void
@@ -757,6 +833,7 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
     'internal_review', 'internal_generating', 'internal_approved', 'internal_scheduled',
     'board_review', 'board_approved', 'board_scheduled',
   ])
+  const [alertOpen, setAlertOpen] = useState(false)
   // Same determinism rule as the Ivan lane: an active stage filter opens its section.
   // Same determinism rule as the Ivan lane, applied to BOTH categories: a
   // stage filter that opened only one of them would render a different row
@@ -785,13 +862,30 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
 
   return (
     <>
-      <AlertStrip drafts={alerts} lane="risedtc" refresh={refresh} onOpen={onOpen} openId={openId} extra={[]} />
-
-      <FilterRow
-        prominent={prominent} demoted={demoted}
-        state={filters} setState={setFilters} q={q} setQ={setQ}
-        shown={shown.length} loaded={drafts.length} total={matched} noun="drafts"
+      <CommandStrip
+        lane={lane} setLane={setLane}
+        laneNote={drafts.length > 0
+          ? (
+            <span className="ct-cmd-note" title={`${onBoard} of the ${drafts.length} loaded drafts are visible on ${LANE_POSSESSIVE.risedtc} board`}>
+              <b>{onBoard}</b>/{drafts.length} on his board
+            </span>
+          )
+          : undefined}
+        alert={
+          <AlertChip drafts={alerts} extra={[]} open={alertOpen} onToggle={() => setAlertOpen(o => !o)} />
+        }
+        filter={
+          <FilterRow
+            prominent={prominent} demoted={demoted}
+            state={filters} setState={setFilters} q={q} setQ={setQ}
+            shown={shown.length} loaded={drafts.length} total={matched} noun="drafts"
+            inline
+          />
+        }
       />
+      {alertOpen && (
+        <AlertBody drafts={alerts} lane="risedtc" refresh={refresh} onOpen={onOpen} openId={openId} extra={[]} />
+      )}
 
       {shown.length === 0 && drafts.length > 0
         ? <FilteredEmpty noun="drafts" onClear={() => { setFilters({}); setQ('') }} />
@@ -874,27 +968,24 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
 
   return (
     <>
-      {/* M1 — the display title flush left with the pill switcher right-set
-          beside it, which is the reference's whole top row. The lane switch is a
-          view switcher, so it keeps the pill (§6.3.2); it is not a filter and
-          does not take the `label: value ⌄` grammar. */}
-      <div className="nav wb-head">
-        <div className="row-top">
-          <h2>Content</h2>
-        </div>
-        <div className="chips">
-          {CONTENT_LANES.map(k => (
-            <button type="button" key={k} className={`chip ${lane === k ? 'on' : ''}`} onClick={() => switchLane(k)}>
-              {LANE_LABEL[k]}
-            </button>
-          ))}
-          {lane === 'risedtc' && drafts.length > 0 && (
-            <span className="wb-lanenote">{onBoard} of {drafts.length} on {LANE_POSSESSIVE.risedtc} board</span>
-          )}
-        </div>
-      </div>
+      {/* THE DISPLAY HERO IS GONE (D3/D6). It cost 122px at 390 to print one
+          word — a word the segmented bar 44px above it and the rail beside it
+          were both already printing — plus the lane pills, which moved onto the
+          command strip where they sit beside the numbers they switch. The three
+          error/empty states below still render their own header through
+          `Failed` / `CalmEmpty`, so a surface that cannot draw a strip is never
+          a surface with no title. */}
       <div className="rows ct-rows" ref={rowsRef}>
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
+        {/* 🔴 The lane switch is the ONE control that must survive every data
+            state. The two lanes read different tables, so an empty or broken
+            Mattan lane with no way back to Ivan is a dead surface — which is
+            exactly what deleting the hero would have caused if the strip only
+            rendered on the happy path. The strip drops its numbers here (there
+            are none) and keeps its switch. */}
+        {(err || firstLoad || nothingMatched) && (
+          <CommandStrip lane={lane} setLane={switchLane} filter={null} />
+        )}
         {err ? (
           <Failed
             what="The content pipeline"
@@ -922,6 +1013,7 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
         ) : lane === 'ivan' ? (
           <IvanLane
             drafts={drafts} stages={stages} openId={openId} onOpen={onOpen} refresh={refresh}
+            lane={lane} setLane={switchLane}
             filters={sect.filters} setFilters={setFilters} q={sect.q} setQ={setQ}
             matched={matched} laneTotal={laneTotal}
             open={sect.open} setOpen={setOpenSections}
@@ -929,6 +1021,7 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
         ) : (
           <MattanLane
             drafts={drafts} openId={openId} onOpen={onOpen} refresh={refresh}
+            lane={lane} setLane={switchLane} onBoard={onBoard}
             filters={sect.filters} setFilters={setFilters} q={sect.q} setQ={setQ}
             matched={matched}
             open={sect.open} setOpen={setOpenSections}

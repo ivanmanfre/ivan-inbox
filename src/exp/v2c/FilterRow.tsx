@@ -201,13 +201,20 @@ function FacetPill({ f, state, setState, sheet }: {
 // The disclosure. Every demoted facet in ONE scrollable panel, each with the
 // same option-with-count rows, and a live badge of how many of them are set —
 // because a filter you cannot see is the one that hides rows.
-function MorePill({ facets, state, setState, sheet }: {
+function MorePill({ facets, state, setState, sheet, badgeKeys, label }: {
   facets: Facet[]; state: FilterState; setState: (s: FilterState) => void; sheet: boolean
+  // Which facets this pill is allowed to COUNT. On the command strip it holds
+  // every facet, including the ones already rendered as their own active pill
+  // beside it — counting those would print "2" next to two visible chips that
+  // between them say the same thing. It counts what it alone is hiding.
+  badgeKeys?: string[]
+  label?: string
 }) {
   const [open, setOpen] = useState(false)
   const ref = useDismiss(open && !sheet, () => setOpen(false))
   const place = usePlace(open && !sheet)
-  const n = facets.filter(f => state[f.key]).length
+  const counted = badgeKeys ? facets.filter(f => badgeKeys.includes(f.key)) : facets
+  const n = counted.filter(f => state[f.key]).length
   const pick = (key: string, value: string) => {
     const next = { ...state }
     if (value) next[key] = value
@@ -237,9 +244,9 @@ function MorePill({ facets, state, setState, sheet }: {
         onClick={() => setOpen(v => !v)}
         aria-expanded={open}
         type="button"
-        title="Structure, image style, hook, funnel, experiment, QA score and the rest"
+        title={facets.map(f => f.label).join(' · ') || 'Every facet in the loaded rows'}
       >
-        Filters{n > 0 && <b className="ct-fn">{n}</b>}<i>⌄</i>
+        {label ?? 'Filters'}{n > 0 && <b className="ct-fn">{n}</b>}<i>⌄</i>
       </button>
       {open && (sheet
         ? <Sheet title="All filters" onClose={() => setOpen(false)}>{body}</Sheet>
@@ -266,14 +273,18 @@ function MorePill({ facets, state, setState, sheet }: {
  */
 export function FilterRow({
   prominent, demoted, state, setState, q, setQ, shown, loaded, total, noun, placeholder,
-  idleCount = true,
+  idleCount = true, inline = false,
 }: {
   prominent: Facet[]
   demoted: Facet[]
   state: FilterState
   setState: (s: FilterState) => void
-  q: string
-  setQ: (q: string) => void
+  // Optional, and the absence is a real state rather than an empty box: the
+  // idea band, the publish queue and the style roster have no free-text search
+  // (their rows carry no title/topic pair to run one over), so they render the
+  // pills without a field that would match nothing.
+  q?: string
+  setQ?: (q: string) => void
   shown: number
   loaded: number
   total: number | null
@@ -286,59 +297,103 @@ export function FilterRow({
   // FILTERED line is never suppressed: `9 of 224 shown` is the number doing
   // work.
   idleCount?: boolean
+  // INLINE (candidate B): the row is a member of the command strip rather than a
+  // band of its own, so it drops the `.ct-filters` box and its own footnote LINE
+  // — the count rides at the end of the pill row as one mono chunk. Nothing is
+  // removed: every facet, every count, every escape is the same control in the
+  // same order. This is the whole of "one filter system" on the strip's side.
+  inline?: boolean
 }) {
   const sheet = useSheetMode()
-  const activeN = Object.values(state).filter(Boolean).length + (q.trim() ? 1 : 0)
+  const searchable = typeof setQ === 'function'
+  const qv = q ?? ''
+  const activeN = Object.values(state).filter(Boolean).length + (qv.trim() ? 1 : 0)
   if (prominent.length === 0 && demoted.length === 0 && activeN === 0) return null
+  // ONLY THE SET ONES, and only in the inline row.
+  //
+  // On the command strip the five prominent facets were 500px of `Stage: Any ·
+  // Kind: Any · Pillar: Any · Source: Any · QA: Any` — five controls printing
+  // the word "Any", which is the state of a filter that is doing nothing. They
+  // fold into the ONE disclosure that already holds every facet, every value
+  // and every count, grouped and labelled. What earns a standing slot is a
+  // filter that is ON: it hides rows, so it is never one click away.
+  //
+  // Nothing is removed and nothing is renamed — same component, same panel,
+  // same option rows with the same counts. The band goes from two rows to one.
+  const pills = inline ? prominent.filter(f => state[f.key]) : prominent
+  const inPanel = inline ? [...prominent, ...demoted] : demoted
+  const note = (activeN > 0 || idleCount || (total !== null && total > loaded))
+    ? (
+      <>
+        {activeN > 0
+          ? <><b>{shown}</b> of {loaded} {noun} shown</>
+          : idleCount ? <>{loaded} {noun}</> : null}
+        {total !== null && total > loaded && (
+          // PostgREST caps a SELECT at 1000 long before a header count notices,
+          // so a filter that ran over the page must never imply it ran over the
+          // whole lane.
+          <span className="ct-fcap">filtering the {loaded} loaded of {total} in the database</span>
+        )}
+      </>
+    )
+    : null
+
+  const search = !searchable ? null : (
+    <div className="ct-fsearch">
+      <span className="ct-fsearch-i" aria-hidden>⌕</span>
+      <input
+        className="ct-fsearch-in"
+        type="search"
+        value={qv}
+        placeholder={placeholder ?? `Search ${noun} by title or topic…`}
+        onChange={e => setQ?.(e.target.value)}
+        aria-label={`Search ${noun}`}
+      />
+      {qv && (
+        <button
+          className="ct-fx ct-fx-in" onClick={() => setQ?.('')} type="button"
+          aria-label="Clear search"
+        >✕</button>
+      )}
+    </div>
+  )
+  const pillRow = (
+    <div className="ct-fpills">
+      {pills.map(f => (
+        <FacetPill key={f.key} f={f} state={state} setState={setState} sheet={sheet} />
+      ))}
+      <MorePill
+        facets={inPanel} state={state} setState={setState} sheet={sheet}
+        badgeKeys={inline ? demoted.map(f => f.key) : undefined}
+      />
+      {activeN > 0 && (
+        <button
+          className="ct-fclear-all"
+          onClick={() => { setState({}); setQ?.('') }}
+          type="button"
+        >Clear all</button>
+      )}
+      {inline && note && <span className="ct-fnote ct-fnote-in">{note}</span>}
+    </div>
+  )
+
+  if (inline) {
+    return (
+      <div className="ct-fr ct-fr-in">
+        {search}
+        {pillRow}
+      </div>
+    )
+  }
   return (
     <div className="ct-filters">
       <div className="ct-fr">
-        <div className="ct-fsearch">
-          <span className="ct-fsearch-i" aria-hidden>⌕</span>
-          <input
-            className="ct-fsearch-in"
-            type="search"
-            value={q}
-            placeholder={placeholder ?? `Search ${noun} by title or topic…`}
-            onChange={e => setQ(e.target.value)}
-            aria-label={`Search ${noun}`}
-          />
-          {q && (
-            <button
-              className="ct-fx ct-fx-in" onClick={() => setQ('')} type="button"
-              aria-label="Clear search"
-            >✕</button>
-          )}
-        </div>
-        <div className="ct-fpills">
-          {prominent.map(f => (
-            <FacetPill key={f.key} f={f} state={state} setState={setState} sheet={sheet} />
-          ))}
-          <MorePill facets={demoted} state={state} setState={setState} sheet={sheet} />
-          {activeN > 0 && (
-            <button
-              className="ct-fclear-all"
-              onClick={() => { setState({}); setQ('') }}
-              type="button"
-            >Clear all</button>
-          )}
-        </div>
+        {search}
+        {pillRow}
       </div>
       {/* The note line is dropped entirely when it would be empty — an empty
           footnote is 18px of chrome saying nothing. */}
-      {(activeN > 0 || idleCount || (total !== null && total > loaded)) && (
-        <div className="ct-fnote">
-          {activeN > 0
-            ? <><b>{shown}</b> of {loaded} {noun} shown</>
-            : idleCount ? <>{loaded} {noun}</> : null}
-          {total !== null && total > loaded && (
-            // PostgREST caps a SELECT at 1000 long before a header count notices,
-            // so a filter that ran over the page must never imply it ran over the
-            // whole lane.
-            <span className="ct-fcap">filtering the {loaded} loaded of {total} in the database</span>
-          )}
-        </div>
-      )}
+      {note && <div className="ct-fnote">{note}</div>}
     </div>
   )
 }
