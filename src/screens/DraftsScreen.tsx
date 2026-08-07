@@ -220,6 +220,9 @@ export function DraftCard({ thread, onOpenThread, refresh }: {
       {thread.draftStale && (
         <div className="stale">You already replied after their last message — probably not needed</div>
       )}
+      {draft.recipient_email && (
+        <div className="alsoemail">Approving also emails the scan to {draft.recipient_email} (from itsmattan@risedtc.com)</div>
+      )}
       <div className="bd" onClick={() => onOpenThread(thread.prospect_id)}>
         <Linkified text={draft.message_text} />
         <span className="editcue">Tap to edit</span>

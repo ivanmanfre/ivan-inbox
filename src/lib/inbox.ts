@@ -13,6 +13,10 @@ export type InboxMessage = {
   prospect_name: string; prospect_company: string | null; prospect_headline: string | null;
   prospect_stage: string; prospect_email: string | null; profile_photo_url: string | null;
   campaign_name: string; client_id: string;
+  // Not in inbox_messages_v — annotated onto pending drafts by useInbox from the
+  // fetchDraftEmailStamps() probe. When set on a draft, approving it makes the
+  // dispatcher ALSO email the scan to this address (rise_dm2_scan_delivery_v1 rows).
+  recipient_email?: string | null;
 }
 
 export type Thread = {
@@ -347,6 +351,27 @@ export async function fetchManualReplyIds(): Promise<Set<string>> {
     .limit(1000)
   if (error) throw error
   return new Set(((data ?? []) as { id: string }[]).map(r => r.id))
+}
+
+// Pending drafts whose approval ALSO fires an email (scan deliveries where the
+// prospect gave their address in-thread — the RISE drafter stamps recipient_email
+// on the draft row, the dispatcher emails the scan after the LinkedIn send).
+// The view doesn't expose recipient_email, so this reads the base table directly
+// (authed role already reads outreach_prospects the same way). Tiny by
+// construction: only unsent, unapproved, unblocked drafts with a stamp.
+export async function fetchDraftEmailStamps(): Promise<Map<string, string>> {
+  const { data, error } = await supabase.from('outreach_messages')
+    .select('id,recipient_email')
+    .eq('direction', 'outbound')
+    .is('sent_at', null).is('approved_at', null).is('send_blocked_at', null)
+    .not('recipient_email', 'is', null)
+    .limit(500)
+  if (error) throw error
+  const m = new Map<string, string>()
+  for (const r of (data ?? []) as { id: string; recipient_email: string | null }[]) {
+    if (r.recipient_email) m.set(r.id, r.recipient_email)
+  }
+  return m
 }
 
 // The chat this thread already lives in on LinkedIn (InMail threads carry it on

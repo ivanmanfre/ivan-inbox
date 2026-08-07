@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { fetchManualReplyIds, fetchMessages, groupThreads, type Thread } from '../lib/inbox'
+import { fetchDraftEmailStamps, fetchManualReplyIds, fetchMessages, groupThreads, type Thread } from '../lib/inbox'
 import { playChime } from '../lib/chime'
 
 // A burst of dispatcher writes (one row every ~2 min per active lane, plus
@@ -37,7 +37,14 @@ export function useInbox() {
     Promise.all([
       fetchMessages(),
       fetchManualReplyIds().catch(() => new Set<string>()),
-    ]).then(([rows, manualReplyIds]) => {
+      // Same degrade rule as the flag probe: a failed stamp read only loses the
+      // "also emails" badge, it must never take the inbox down.
+      fetchDraftEmailStamps().catch(() => new Map<string, string>()),
+    ]).then(([rows, manualReplyIds, emailStamps]) => {
+      for (const m of rows) {
+        const em = emailStamps.get(m.id)
+        if (em) m.recipient_email = em
+      }
       const latest = rows
         .filter(m => m.direction === 'inbound')
         .map(m => m.created_at).sort().at(-1) ?? null
