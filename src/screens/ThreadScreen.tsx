@@ -53,6 +53,10 @@ export function ThreadScreen({ thread, onBack, refresh }: {
 }) {
   const draft = thread.draft
   const [edited, setEdited] = useState(draft?.message_text ?? '')
+  // Collapsed by default: the composer sits BELOW the scrollable .msgs pane inside an
+  // overflow:hidden shell, so anything that grows it can push Approve/Discard off-screen
+  // with no way to scroll to them (broke live 2026-08-07, first email-preview version).
+  const [showEmail, setShowEmail] = useState(false)
   const [draftErr, setDraftErr] = useState('')
   const [reply, setReply] = useState('')
   const [composeErr, setComposeErr] = useState('')
@@ -223,8 +227,15 @@ export function ThreadScreen({ thread, onBack, refresh }: {
           />
           {draft.recipient_email && (
             <div className="alsoemail" style={{ margin: '0 14px 10px' }}>
-              <div>Approving also emails the scan to {draft.recipient_email} (from itsmattan@risedtc.com)</div>
-              {draft.email_mirror_text && (
+              <div>
+                Approving also emails the scan to {draft.recipient_email}
+                {draft.email_mirror_text && (
+                  <span className="emailtoggle" onClick={() => setShowEmail(v => !v)}>
+                    {showEmail ? 'Hide email' : 'Show email'}
+                  </span>
+                )}
+              </div>
+              {showEmail && draft.email_mirror_text && (
                 <div className="emailpreview"><Linkified text={draft.email_mirror_text} /></div>
               )}
             </div>
