@@ -38,6 +38,8 @@ import type { OpenDraft } from './ContentList'
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 type Moving = { id: string; title: string; at: string | null; day: string }
+/** A chip mid-drag. `day` is where it started, so a drop on its own day is a no-op. */
+type Dragging = { id: string; title: string; at: string; day: string }
 
 // No `lane` prop any more, and its absence is the change: every rule this
 // surface had that forked on the lane belonged to the arming RPC, and the
@@ -53,6 +55,8 @@ export function ContentCalendar({ rows, onOpen, refresh }: {
     return { year: n.getFullYear(), month: n.getMonth() }
   })
   const [moving, setMoving] = useState<Moving | null>(null)
+  const [drag, setDrag] = useState<Dragging | null>(null)
+  const [over, setOver] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
@@ -79,27 +83,49 @@ export function ContentCalendar({ rows, onOpen, refresh }: {
     setMoving({ id, title, at, day: at ? (dayKeyOf(at) ?? today) : today })
   }
 
-  const commit = async () => {
-    if (!moving) return
+  // ONE write path for both gestures. The date picker and the drag land on the
+  // same RPC with the same confirm — a drag is a faster way to say the thing the
+  // picker says, not a second, quieter way to change the database.
+  const move = async (id: string, at: string | null, day: string): Promise<boolean> => {
     // The RPC writes `scheduled_at` and nothing else, so the confirm says the
     // one thing that changes — and, just as importantly, the two that do not.
     const ok = await confirm({
       title: 'Move this post?',
-      message: `Moves to ${longDay(moving.day)}. Status and board visibility stay as they are.`,
+      message: `Moves to ${longDay(day)}. Status and board visibility stay as they are.`,
       confirmText: 'Move it',
     })
-    if (!ok) return
+    if (!ok) return false
     setBusy(true); setErr(null)
     try {
-      const at = await setScheduleDateAt(moving.id, publishAtForDay(moving.at, moving.day))
-      setDone(`Moved to ${dayKeyOf(at) ?? moving.day}.`)
-      setMoving(null)
+      const to = await setScheduleDateAt(id, publishAtForDay(at, day))
+      setDone(`Moved to ${dayKeyOf(to) ?? day}.`)
       refresh()
+      return true
     } catch (e) {
       setErr(e instanceof ClientRpcError || e instanceof Error ? e.message : 'The move failed.')
+      return false
     } finally {
       setBusy(false)
     }
+  }
+
+  const commit = async () => {
+    if (!moving) return
+    setDone(null)
+    if (await move(moving.id, moving.at, moving.day)) setMoving(null)
+  }
+
+  // DROP. Guarded three ways before it can write: something must be in flight,
+  // the target day must differ from where the chip started, and the row must
+  // still be movable (only movable chips are given draggable in the first
+  // place). A drop on the day it came from is a cancelled drag, not a no-op
+  // write — it never reaches the RPC and never asks for a confirm.
+  const drop = async (day: string) => {
+    const d = drag
+    setDrag(null); setOver(null)
+    if (!d || d.day === day) return
+    setErr(null); setDone(null)
+    await move(d.id, d.at, day)
   }
 
   return (
@@ -135,10 +161,17 @@ export function ContentCalendar({ rows, onOpen, refresh }: {
               {week.map(k => {
                 const day = byDay.get(k) ?? []
                 const outside = !k.startsWith(monthPrefix(anchor.year, anchor.month))
+                // A day lights up only while a chip that could actually land
+                // there is over it — its own day never does, so the highlight
+                // never promises a write that drop() will refuse.
+                const target = !!drag && drag.day !== k
                 return (
                   <div
                     key={k}
-                    className={`cal-day${day.length === 0 ? ' cal-day-empty' : ''}${outside ? ' cal-day-out' : ''}${k === today ? ' cal-day-now' : ''}`}
+                    className={`cal-day${day.length === 0 ? ' cal-day-empty' : ''}${outside ? ' cal-day-out' : ''}${k === today ? ' cal-day-now' : ''}${target && over === k ? ' cal-day-over' : ''}`}
+                    onDragOver={target ? (e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (over !== k) setOver(k) }) : undefined}
+                    onDragLeave={target ? (() => setOver(o => (o === k ? null : o))) : undefined}
+                    onDrop={target ? (e => { e.preventDefault(); void drop(k) }) : undefined}
                   >
                     <div className="cal-dn">
                       <span className="cal-dn-n">{Number(k.slice(8))}</span>
@@ -147,8 +180,11 @@ export function ContentCalendar({ rows, onOpen, refresh }: {
                     {day.map(it => (
                       <Chip
                         key={it.id} it={it}
+                        dragging={drag?.id === it.id}
                         onOpen={() => onOpen(it.id, it.title, queue)}
                         onMove={() => startMove(it.id, it.title, it.at)}
+                        onDragStart={() => setDrag({ id: it.id, title: it.title, at: it.at, day: k })}
+                        onDragEnd={() => { setDrag(null); setOver(null) }}
                       />
                     ))}
                   </div>
@@ -220,14 +256,53 @@ export function ContentCalendar({ rows, onOpen, refresh }: {
   )
 }
 
-function Chip({ it, onOpen, onMove }: { it: CalendarItem; onOpen: () => void; onMove: () => void }) {
+/**
+ * A CHIP.
+ *
+ * Two lines, and the split is the point. Line one is the clock — the time this
+ * post is set for, or, once it is out, the time it ACTUALLY went out. Line two
+ * is the title, wrapped to two lines instead of ellipsed at the first word: the
+ * single-row chip spent its 150px on a `17:00` and left two characters of
+ * headline behind it, which is a chip that names nothing.
+ *
+ * DRAG. A movable chip is `draggable` and drops onto any other day, which is
+ * the same write the ⇄ button opens. The button STAYS: HTML5 drag does not
+ * exist on touch, and ⇄ is also the only keyboard route to a move.
+ */
+function Chip({ it, dragging, onOpen, onMove, onDragStart, onDragEnd }: {
+  it: CalendarItem
+  dragging: boolean
+  onOpen: () => void
+  onMove: () => void
+  onDragStart: () => void
+  onDragEnd: () => void
+}) {
+  // What the clock says. `postedAt` wins when it exists, because on a published
+  // row the question is never "when was it meant to go" — it is "when did it go".
+  const posted = it.stage === 'published' ? it.postedAt : null
+  const clock = hhmm(posted ?? it.at)
+  // Set for 08:00, out at 08:14 — the gap is worth seeing, so it is in the
+  // tooltip rather than silently rounded away.
+  const drifted = !!posted && hhmm(posted) !== hhmm(it.at)
+  const tip = posted
+    ? `Posted ${hhmm(posted)}${drifted ? ` (was set for ${hhmm(it.at)})` : ''} · ${it.title} — ${STAGE_LABEL[it.stage]}`
+    : `${hhmm(it.at)} · ${it.title} — ${STAGE_LABEL[it.stage]}${it.movable ? ' · drag to another day' : ''}`
   return (
-    <div className={`cal-chip${it.movable ? '' : ' cal-chip-lock'}`} data-st={it.stage}>
-      <button
-        type="button" className="cal-chip-t" onClick={onOpen}
-        title={`${hhmm(it.at)} · ${it.title} — ${STAGE_LABEL[it.stage]}`}
-      >
-        <span className="cal-chip-h">{hhmm(it.at)}</span>
+    <div
+      className={`cal-chip${it.movable ? '' : ' cal-chip-lock'}${dragging ? ' cal-chip-drag' : ''}`}
+      data-st={it.stage}
+      draggable={it.movable}
+      onDragStart={it.movable ? (e => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', it.id); onDragStart() }) : undefined}
+      onDragEnd={it.movable ? onDragEnd : undefined}
+    >
+      <button type="button" className="cal-chip-t" onClick={onOpen} title={tip}>
+        {/* The tick, not the word "posted": measured at a 112px cell, `08:14
+            posted` truncated to `08:14 pos…`, and a truncated word reads as a
+            bug. `✓ 08:14` always fits, and the button title spells it out. */}
+        <span className="cal-chip-h">
+          {posted && <span className="cal-chip-out" aria-hidden>✓</span>}
+          <span className="cal-chip-hh">{clock}</span>
+        </span>
         <span className="cal-chip-n">{it.title}</span>
       </button>
       {it.movable && (

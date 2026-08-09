@@ -52,6 +52,71 @@ describe('the move control', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// 2026-08-09 — the incident batch.
+//
+// Ivan's post that morning went out with copy he had not written and no image,
+// and the board could not tell him what time any of it happened. The publisher
+// half is fixed in n8n; this half is the surface: the clock is on the chip, it
+// reads the REAL posted time once a post is out, and a movable chip can be
+// dragged.
+// ---------------------------------------------------------------------------
+describe('the time of posting', () => {
+  it('🔴 IS ON THE CHIP — it was display:none above 767px and lived only in a tooltip', () => {
+    const out = html([d({ title: 'Timed', scheduled_at: inDays(1, 8) })])
+    expect(out).toContain('cal-chip-hh')
+    expect(out).toContain('08:30')
+  })
+
+  it('🔴 a published chip reads published_at, NOT the slot it was queued for', () => {
+    const out = html([d({
+      title: 'Went out', status: 'published', source_post_id: 'urn:li:activity:1',
+      scheduled_at: inDays(-1, 8), published_at: inDays(-1, 9),
+    })])
+    // The VISIBLE clock is the posted one. The slot survives in the tooltip
+    // only, which is the next assertion's subject.
+    expect(out).toContain('<span class="cal-chip-hh">09:30</span>')
+    expect(out).not.toContain('<span class="cal-chip-hh">08:30</span>')
+    expect(out).toContain('cal-chip-out')          // the published tick
+    expect(out).toContain('title="Posted 09:30')   // spelled out where it has room
+  })
+
+  it('and says so in the tooltip when the two disagree', () => {
+    const out = html([d({
+      title: 'Late', status: 'published', source_post_id: 'urn:li:activity:1',
+      scheduled_at: inDays(-1, 8), published_at: inDays(-1, 9),
+    })])
+    expect(out).toContain('was set for 08:30')
+  })
+
+  it('falls back to the slot on a published row with no published_at (legacy rows)', () => {
+    const out = html([d({
+      title: 'Old', status: 'published', source_post_id: 'urn:li:activity:1',
+      scheduled_at: inDays(-1, 8), published_at: null,
+    })])
+    expect(out).toContain('<span class="cal-chip-hh">08:30</span>')
+    expect(out).not.toContain('cal-chip-out')
+  })
+})
+
+describe('drag to another day', () => {
+  it('a movable chip is draggable', () => {
+    const out = html([d({ title: 'Draggable' })])
+    expect(out).toContain('draggable="true"')
+  })
+
+  it('🔴 a locked chip is NOT — drag must not offer a write the RPC refuses', () => {
+    const out = html([d({ title: 'Gone out', status: 'published', source_post_id: 'urn:li:activity:1' })])
+    expect(out).not.toContain('draggable="true"')
+  })
+
+  it('keeps the ⇄ button beside it — HTML5 drag does not exist on touch', () => {
+    const out = html([d({ title: 'Both ways' })])
+    expect(out).toContain('draggable="true"')
+    expect(out).toContain('aria-label="Move Both ways to another day"')
+  })
+})
+
 describe('what the surface no longer says', () => {
   it('🔴 the Ivan-lane “not editable here” notice is GONE — it named a rule that no longer exists', () => {
     const out = html([d({ client_id: null })])
