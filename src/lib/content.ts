@@ -2166,3 +2166,66 @@ export function selfContainedHtml(v: string | null | undefined): boolean {
   if (!s) return false
   return /<style[\s>]|<link[^>]*rel=["']?stylesheet/i.test(s)
 }
+
+// ---------------------------------------------------------------------------
+// The still library — swapping the photo on a post
+// ---------------------------------------------------------------------------
+//
+// 2026-08-09, Ivan: "we do need regen copy - swap image so we can add other
+// library image". Until now the ONLY way to change a post's photo was to let
+// `Text Post Photo Assigner` pick one, and a regeneration wipes `image_urls`
+// outright — so a post whose photo was wrong had no operator-side fix.
+//
+// The source is the PUBLIC `post-stills` bucket, which the anon key can list
+// (verified 2026-08-09: library 49, selfie-pool-a 14, selfie-pool-b 14). Three
+// folders, in the order an operator wants them: the general library first, then
+// the two selfie pools the assigner draws from.
+
+export const STILL_FOLDERS = ['library', 'selfie-pool-a', 'selfie-pool-b'] as const
+export type StillFolder = (typeof STILL_FOLDERS)[number]
+export type Still = { name: string; url: string; folder: StillFolder }
+
+const STILL_BUCKET = 'post-stills'
+const IMAGE_RE = /\.(jpe?g|png|webp|gif|avif)$/i
+
+/**
+ * Every still in one folder, newest first.
+ *
+ * Non-images are dropped (the bucket also holds `_edit_preview` PNG scratch and
+ * the odd stray), and so is the `.emptyFolderPlaceholder` row Supabase creates
+ * for an empty prefix — it has a name and a size and would render as a broken
+ * tile.
+ */
+export async function listStills(folder: StillFolder): Promise<Still[]> {
+  const { data, error } = await supabase.storage.from(STILL_BUCKET).list(folder, {
+    limit: 200,
+    sortBy: { column: 'created_at', order: 'desc' },
+  })
+  if (error) throw error
+  return (data ?? [])
+    .filter(o => o.name && IMAGE_RE.test(o.name))
+    .map(o => ({
+      name: o.name,
+      folder,
+      url: supabase.storage.from(STILL_BUCKET).getPublicUrl(`${folder}/${o.name}`).data.publicUrl,
+    }))
+}
+
+/**
+ * Pin a photo onto one of IVAN'S drafts.
+ *
+ * `.is('client_id', null)` is the same lane guard every other write in this
+ * file carries: a client row's media is the client board's business and is
+ * never editable from here.
+ *
+ * 🔴 This does NOT stamp `human_edited`. That flag exists to stop the ENGINES
+ * from overwriting words Ivan wrote (protect_human_edited_draft, which also
+ * preserves image_urls when the old row had any). Setting it from a photo swap
+ * would freeze the COPY too, and the operator only said which picture to use.
+ */
+export async function setDraftImage(id: string, url: string | null): Promise<void> {
+  const { error } = await supabase.from('carousel_drafts')
+    .update({ image_urls: url ? [url] : [] })
+    .eq('id', id).is('client_id', null)
+  if (error) throw error
+}

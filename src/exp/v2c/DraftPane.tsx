@@ -7,8 +7,10 @@ import {
   canPromote, canRestartToIdea, canUnpromote, clientDeletable, clientEditable, clientStageLabel, deleteClientDraft,
   deleteDraft, normalizeAgentLog, normalizeImageUrls, normalizeKeyPoints, normalizeQa,
   normalizeSourceDetail, restartDraftToIdea, reviewActionable, saveClientDraftBody, saveDraftBody, selfContainedHtml,
-  setBoardVisible, skipDraft, stageOf, taxonomyExtras, taxonomyFields, taxonomyValue,
+  setBoardVisible, setDraftImage, skipDraft, stageOf, STILL_FOLDERS, listStills,
+  taxonomyExtras, taxonomyFields, taxonomyValue,
   type ContentDraft, type ContentDraftDetail, type ContentLane, type SaveConflict,
+  type Still, type StillFolder,
 } from '../../lib/content'
 import { appendAgentNote, clearHumanEdit, planRegen, regenerateDraft, scheduleDraft } from '../../lib/studioActions'
 import { Block, KeyRows, Rows, Val } from './ContentBits'
@@ -149,28 +151,38 @@ function InspRail({ tabs, tab, pick }: {
   const active = tabs.find(t => t.k === tab) ?? tabs[0]
   return (
     <aside className="dw-insp">
-      {/* The reference's own label for this rail (PostWorkSurface.tsx:539) —
-          now the tab strip's own eyebrow, so the rail still says what it is. */}
-      <div className="dw-insp-h">Backend depth</div>
-      <div className="dw-tabs" role="tablist" aria-label="Backend depth">
-        {tabs.map(t => (
-          <button
-            key={t.k} type="button" role="tab"
-            aria-selected={active?.k === t.k}
-            className={`dw-tab${active?.k === t.k ? ' on' : ''}`}
-            onClick={() => pick(t.k)}
-            title={t.tail ? `${t.label} — ${t.tail}` : t.label}
-          >
-            <span className="dw-tab-n">{t.label}</span>
-            {/* The headline fact rides ON the tab, so the score, the agent
-                count and the source kind are readable without opening any of
-                them — which is the whole reason five accordions were open at
-                once in the first place. */}
-            {t.tail && <span className="dw-tab-t">{t.tail}</span>}
-          </button>
-        ))}
+      {/* NO TABS (2026-08-09, Ivan: "the right side is also pretty disgusting
+          it would be better if i can actually have 3 columns to see stuff
+          faster"). Every panel is on the page, one under the other, with its
+          headline fact on its own header — so QA, Source, Log and Fields are
+          read by SCROLLING, not by remembering which of four buttons holds the
+          thing you wanted. The tab state is kept and now scrolls to a section
+          instead of hiding the other three. */}
+      <div className="dw-insp-h">
+        <span>Backend depth</span>
+        <span className="dw-insp-j">
+          {tabs.map(t => (
+            <button key={t.k} type="button"
+              className={`dw-jump${active?.k === t.k ? ' on' : ''}`}
+              onClick={() => {
+                pick(t.k)
+                document.getElementById(`dw-sec-${t.k}`)?.scrollIntoView({ block: 'start' })
+              }}
+            >{t.label}</button>
+          ))}
+        </span>
       </div>
-      <div className="dw-sec-body dw-tabbody" role="tabpanel">{active?.body}</div>
+      {tabs.map(t => (
+        <section className="dw-sec" id={`dw-sec-${t.k}`} key={t.k}>
+          <div className="dw-sec-h">
+            <span className="dw-sec-n">{t.label}</span>
+            {/* The headline fact stays on the header — the score, the agent
+                count and the source kind readable without reading the panel. */}
+            {t.tail && <span className="dw-sec-t">{t.tail}</span>}
+          </div>
+          <div className="dw-sec-body">{t.body}</div>
+        </section>
+      ))}
     </aside>
   )
 }
@@ -390,6 +402,104 @@ function ScheduleDraft({ d, onDone }: { d: ContentDraftDetail; onDone: () => voi
         <div className="ct-subtle">Currently set for {absTime(d.scheduled_at)}.</div>
       )}
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// SWAP IMAGE — pick the post's photo out of the still library.
+//
+// 2026-08-09, Ivan: "we do need regen copy - swap image so we can add other
+// library image". Before this the photo was whatever `Text Post Photo Assigner`
+// pinned, a regeneration wiped `image_urls` outright, and the operator had no
+// way to say "not that one, this one" short of a SQL update.
+//
+// It unfolds INSIDE the sticky bar, like the Regenerate and Delete confirms —
+// the bar is where the acts live and a picker that opened its own modal on top
+// of a modal would be the third layer of window on this screen.
+// ---------------------------------------------------------------------------
+
+function SwapImage({ d, onDone, disabled }: {
+  d: ContentDraftDetail; onDone: () => void; disabled?: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const [folder, setFolder] = useState<StillFolder>(STILL_FOLDERS[0])
+  const [stills, setStills] = useState<Still[] | null>(null)
+  const [busy, setBusy] = useState('')
+  const [err, setErr] = useState('')
+  const current = normalizeImageUrls(d.image_urls)[0] ?? null
+
+  // Load on open, and again per folder. Not on mount: an operator who never
+  // opens the picker should never pay three storage LISTs for it.
+  useEffect(() => {
+    if (!open) return
+    let live = true
+    setStills(null); setErr('')
+    listStills(folder)
+      .then(s => { if (live) setStills(s) })
+      .catch(e => { if (live) setErr(e instanceof Error ? e.message : 'Could not read the library.') })
+    return () => { live = false }
+  }, [open, folder])
+
+  const pick = async (url: string | null) => {
+    setBusy(url ?? 'none'); setErr('')
+    try {
+      await setDraftImage(d.id, url)
+      setOpen(false)
+      onDone()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'The swap failed.')
+    } finally {
+      setBusy('')
+    }
+  }
+
+  return (
+    <>
+      <button type="button" className="dw-key" disabled={disabled} aria-expanded={open}
+        onClick={() => setOpen(o => !o)}>
+        {current ? 'Swap image' : 'Add image'}
+      </button>
+      {open && (
+        <div className="dw-swap">
+          <div className="dw-swap-h">
+            {STILL_FOLDERS.map(f => (
+              <button key={f} type="button"
+                className={`ct-chip dw-swap-f${f === folder ? ' on' : ''}`}
+                onClick={() => setFolder(f)}
+              >{f}</button>
+            ))}
+            <span className="dw-swap-sp" />
+            {current && (
+              <button type="button" className="dw-swap-clr" disabled={!!busy} onClick={() => pick(null)}>
+                {busy === 'none' ? 'Removing…' : 'Remove photo'}
+              </button>
+            )}
+          </div>
+          {err && <div className="ops-err">{err}</div>}
+          {!stills && !err && <div className="ct-subtle">Reading the library…</div>}
+          {stills && stills.length === 0 && <div className="ct-subtle">Nothing in this folder.</div>}
+          {stills && stills.length > 0 && (
+            <div className="dw-swap-g">
+              {stills.map(s => (
+                <button key={s.url} type="button" title={s.name} disabled={!!busy}
+                  className={`dw-swap-t${s.url === current ? ' on' : ''}`}
+                  onClick={() => pick(s.url)}
+                >
+                  <img src={s.url} alt={s.name} loading="lazy" />
+                  {busy === s.url && <span className="dw-swap-b">Pinning…</span>}
+                </button>
+              ))}
+            </div>
+          )}
+          {/* 🔴 The photo is not sticky. A regeneration clears image_urls, so a
+              swap made BEFORE a regen is discarded by it — pin the picture
+              after the words are settled. */}
+          <div className="ct-subtle dw-swap-n">
+            A regeneration clears <code>image_urls</code>, so pin the photo after the copy is final.
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -804,6 +914,11 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
       const el = e.target as HTMLElement | null
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return
       if (editing) return
+      // THE LETTER KEYS ARE GONE (2026-08-09, Ivan: "no need for keyboard quick
+      // access"). a/r/e/s/o each carried a <kbd> badge on its button, and the
+      // badges were half the visual noise in the action bar for an operator who
+      // uses the mouse. j/k stay: they walk the queue, cost no chrome, and the
+      // rail on the left already shows what they move through.
       switch (e.key) {
         case 'j': {
           e.preventDefault()
@@ -815,19 +930,6 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
           if (at > 0) onPick(queue[at - 1].id)
           break
         }
-        // `a` is THE decision key, and each lane's decision is a different
-        // write: on Ivan's it marks the draft approved, on Mattan's it puts the
-        // post in front of the client. Both go through a confirm, and the
-        // client one says which of the two it is in its first sentence.
-        case 'a':
-          if (actionable) { e.preventDefault(); decide('approve') }
-          else if (promotable) { e.preventDefault(); promote(true) }
-          break
-        case 'r': if (actionable) { e.preventDefault(); decide('skip') } break
-        case 'e': if (editable) { e.preventDefault(); startEdit() } break
-        // Move on without judging — the row keeps its status.
-        case 's': e.preventDefault(); if (nextId) onPick(nextId); break
-        case 'o': e.preventDefault(); setMore(m => !m); break
       }
     }
     window.addEventListener('keydown', onKey)
@@ -1065,17 +1167,16 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
             bail in the handler); the buttons have to refuse too, or the guard is
             only a guard for people who use keys. */}
         <div className="dw-acts" ref={actsRef}>
+          {/* Skip is GONE (2026-08-09). It archived the row — a destructive act
+              wearing a neutral word, sitting second in the bar next to Approve.
+              Delete, at the far end and behind a confirm, is the honest version
+              of "get this out of my queue", and the queue rail walks past a row
+              without judging it. */}
           {actionable && (
-            <>
-              <button type="button" className="dw-key p" disabled={acting || editing}
-                onClick={() => decide('approve')}>
-                <kbd>a</kbd> Approve
-              </button>
-              <button type="button" className="dw-key" disabled={acting || editing}
-                onClick={() => decide('skip')}>
-                <kbd>r</kbd> Skip
-              </button>
-            </>
+            <button type="button" className="dw-key p" disabled={acting || editing}
+              onClick={() => decide('approve')}>
+              Approve
+            </button>
           )}
           {/* 🔴 The client-facing decision. It wears the same `a` key and the
               same primary weight as Ivan's Approve because it is the same
@@ -1084,7 +1185,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
           {promotable && (
             <button type="button" className="dw-key p" disabled={promoting || editing}
               onClick={() => promote(true)}>
-              <kbd>a</kbd> {promoting ? 'Putting it up…' : 'Put on Mattan’s board'}
+              {promoting ? 'Putting it up…' : 'Put on Mattan’s board'}
             </button>
           )}
           {unpromotable && (
@@ -1094,26 +1195,24 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
             </button>
           )}
           {editable && !editing && (
-            <button type="button" className="dw-key" onClick={startEdit}><kbd>e</kbd> Edit</button>
+            <button type="button" className="dw-key" onClick={startEdit}>Edit</button>
           )}
-          {nextId && (
-            <button type="button" className="dw-key" disabled={editing} onClick={() => onPick(nextId)}>
-              <kbd>s</kbd> Next
-            </button>
-          )}
+          {/* `Next` is GONE too: the queue rail on the left is the queue, every
+              row of it is one click, and a button that only ever means "the one
+              below this one" was a worse version of the list. */}
           {lane === 'ivan' && (
             <button type="button" className="dw-key" disabled={editing} aria-expanded={more}
               onClick={() => setMore(m => !m)}>
-              <kbd>o</kbd> {more ? 'Hide schedule' : 'Schedule'}
+              {more ? 'Hide schedule' : 'Schedule'}
             </button>
           )}
-          {/* The three regeneration/removal acts, on screen. They carry no key
-              — the five lettered actions above are the queue-walking ones — and
-              they refuse while the editor is open for the same reason those do:
-              each of them discards unsaved words without asking. */}
+          {/* The regeneration/media/removal acts. They refuse while the editor
+              is open for the same reason the decisions do: each of them
+              discards unsaved words without asking. */}
           {lane === 'ivan' && (
             <>
               <RegenDraft d={d} onDone={refresh} disabled={editing} />
+              <SwapImage d={d} onDone={refresh} disabled={editing} />
               {canRestartToIdea(d.status, lane) && (
                 <RestartDraft d={d} onDone={refresh} disabled={editing} />
               )}
@@ -1124,11 +1223,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
               />
             </>
           )}
-          {editing ? (
-            <span className="dw-hint">Save or cancel the edit first</span>
-          ) : queue.length > 1 ? (
-            <span className="dw-hint"><kbd>j</kbd><kbd>k</kbd> move · <kbd>esc</kbd> close</span>
-          ) : null}
+          {editing && <span className="dw-hint">Save or cancel the edit first</span>}
         </div>
       </div>
     </div>

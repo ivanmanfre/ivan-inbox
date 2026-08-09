@@ -719,10 +719,11 @@
   display:flex;overscroll-behavior:contain}
 .wb-tk{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;
   background:var(--bg)}
+/* Full bleed from 1000px up — see the 1180 block for why the framed card went.
+   overflow:hidden stays: the columns inside scroll themselves. */
 @media (min-width:1000px){
-  .wb-tkscrim{padding:26px 32px;justify-content:center}
-  .wb-tk{flex:0 1 960px;border-radius:var(--r-lg);border:1px solid var(--surface3);
-    box-shadow:0 24px 80px rgba(0,0,0,.5);overflow:hidden}
+  .wb-tkscrim{padding:0;justify-content:center}
+  .wb-tk{flex:1;overflow:hidden}
 }
 .wb-tk-head{flex:none;display:flex;align-items:center;gap:10px;padding:8px 10px 8px 16px;
   border-bottom:.5px solid var(--sep);background:rgba(31,31,31,.92)}
@@ -895,8 +896,15 @@
      so on a full-screen 2560px display the window stayed 1380px and ~1,180px
      of the screen was dimmed scrim — measured, not guessed. It fills the space
      now, with a ceiling so the reader never runs to a 2,500px line. */
-  .wb-tk{flex:1 1 1380px; max-width:1760px}
-  .wb-tkscrim{padding:22px 26px}
+  /* FULL BLEED (2026-08-09, Ivan: "for the whole inbox take advantage of the
+     full size of this window instead of having that green background"). The
+     26px of scrim padding plus the 1760px ceiling meant a 3024px display drew a
+     green-tinted frame on all four sides of a window that had three columns
+     fighting for width inside it. The window IS the screen now: no padding, no
+     ceiling, no radius, no shadow — the header's ✕ and Esc close it, and the
+     backdrop-click affordance is gone with the backdrop it needed. */
+  .wb-tk{flex:1; max-width:none; border-radius:0; border:none; box-shadow:none}
+  .wb-tkscrim{padding:0}
 }
 
 .wb.wb.wb .dw{display:block}
@@ -1232,3 +1240,70 @@
   transition:transform .14s ease}
 .qa-fold[open] > summary .qa-fold-c{transform:rotate(90deg)}
 .qa-fold-b{padding-bottom:6px}
+
+/* ==========================================================================
+   2026-08-09 — the draft window, per Ivan's read of it:
+   "smaller html of the linkedin body.. with pic right below … the right side
+    is also pretty disgusting it would be better if i can actually have 3
+    columns to see stuff faster … take advantage of the full size"
+   ========================================================================== */
+
+/* ---- 1 · a smaller post ----
+   15px/1.6 in a 640px column is a READING measure, and this column is not for
+   reading a post end to end — it is for judging one against the evidence beside
+   it. 14px/1.5 with tighter card padding fits the body AND the photo in one
+   screen, which is the actual request. */
+@media (min-width:1180px){
+  .wb.wb.wb .li-body, .wb.wb.wb .li-ta{font-size:14px;line-height:1.5}
+  .wb.wb.wb .li-card{padding-top:10px;padding-bottom:10px}
+  /* The photo sits directly under the words, capped so it can never push the
+     action bar off screen on a 13" laptop. */
+  .wb.wb.wb .li-media img{max-height:46vh;object-fit:cover}
+}
+
+/* ---- 2 · the evidence column: sections, not tabs ----
+   Four panels stacked and scrollable. The jump row at the top is navigation,
+   not a filter — clicking one scrolls to it and leaves the other three on the
+   page, which is the difference Ivan asked for. */
+.wb.wb.wb .dw-insp-h{justify-content:space-between;flex-wrap:wrap;position:sticky;top:0;z-index:1;
+  background:var(--bg);padding-bottom:8px}
+.wb.wb.wb .dw-insp-j{display:flex;gap:2px;flex-wrap:wrap}
+.wb.wb.wb .dw-jump{min-height:24px;padding:0 8px;border:0;border-radius:var(--r-ctl);
+  background:var(--surface2);color:var(--text3);font-family:inherit;font-size:11px;
+  font-weight:700;letter-spacing:.03em;text-transform:uppercase;cursor:pointer}
+.wb.wb.wb .dw-jump:hover{background:var(--surface3);color:var(--text)}
+.wb.wb.wb .dw-jump.on{background:var(--surface3);color:var(--text)}
+/* Each section carries its own header — a label and its headline fact — so the
+   score, the agent count and the source kind read at a glance while scrolling. */
+.wb.wb.wb .dw-sec-h{display:flex;align-items:baseline;gap:8px;padding:12px 14px 4px}
+.wb.wb.wb .dw-sec-h .dw-sec-n{flex:1;min-width:0;font-size:11px;font-weight:800;
+  letter-spacing:.05em;text-transform:uppercase;color:var(--text3)}
+.wb.wb.wb .dw-sec-h .dw-sec-t{flex:none;font-size:11px;font-weight:600;color:var(--text4)}
+
+/* ---- 3 · the swap-image picker ----
+   It unfolds full-width inside the sticky bar, on the same `order:1` row the
+   Regenerate and Delete confirms use, so it never splits the button set. */
+.wb.wb.wb .dw-swap{order:1;flex:1 0 100%;min-width:0;margin-top:8px;
+  border-top:.5px solid var(--sep);padding-top:10px}
+.wb.wb.wb .dw-swap-h{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.wb.wb.wb .dw-swap-f{cursor:pointer;border:0;font-family:inherit}
+.wb.wb.wb .dw-swap-f.on{background:var(--accent);color:var(--ink)}
+.wb.wb.wb .dw-swap-sp{flex:1}
+.wb.wb.wb .dw-swap-clr{min-height:28px;padding:0 10px;border:0;border-radius:var(--r-ctl);
+  background:rgba(255,69,58,.10);color:#FF453A;font-family:inherit;font-size:12px;
+  font-weight:600;cursor:pointer}
+.wb.wb.wb .dw-swap-clr:hover{background:rgba(255,69,58,.18)}
+/* A grid, not a filmstrip: 49 stills in one horizontal scroller is a haystack.
+   Fixed tile height so the rows line up whatever the source aspect ratio is. */
+.wb.wb.wb .dw-swap-g{display:grid;gap:6px;max-height:38vh;overflow-y:auto;
+  grid-template-columns:repeat(auto-fill,minmax(84px,1fr))}
+.wb.wb.wb .dw-swap-t{position:relative;padding:0;border:0;border-radius:var(--r-ctl);
+  overflow:hidden;background:var(--surface2);cursor:pointer;aspect-ratio:1;
+  box-shadow:inset 0 0 0 1px var(--hairline)}
+.wb.wb.wb .dw-swap-t img{width:100%;height:100%;object-fit:cover;display:block}
+.wb.wb.wb .dw-swap-t:hover{box-shadow:inset 0 0 0 1px var(--text3)}
+.wb.wb.wb .dw-swap-t.on{box-shadow:inset 0 0 0 2px var(--accent)}
+.wb.wb.wb .dw-swap-t:disabled{cursor:default}
+.wb.wb.wb .dw-swap-b{position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;background:rgba(0,0,0,.6);color:#fff;font-size:11px;font-weight:700}
+.wb.wb.wb .dw-swap-n{margin-top:8px;font-size:12px}
