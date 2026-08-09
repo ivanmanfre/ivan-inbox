@@ -3649,13 +3649,29 @@
 .wb.wb.wb .cal-dn-w{ display:none }
 
 /* ---- a chip ------------------------------------------------------------- */
+/* FLAT. The chip used to carry a filled surface AND a full inset ring AND a
+   3px bevel rail — three elevation cues stacked on a 32px control, which is
+   what read as a raised 2015 button. One cue is enough and the stage rail is
+   the one that carries meaning, so the fill and the ring are gone: the chip is
+   a tinted plate that fills in on hover, and the rail stays because it is the
+   only thing here encoding status. */
 .wb.wb.wb .cal-chip{
-  display:flex; align-items:stretch; min-height:32px;
+  position:relative;
+  display:flex; align-items:stretch; min-height:38px;
+  min-width:0; max-width:100%;
   border-radius:var(--r-ctl); overflow:hidden;
-  background:var(--surface2);
-  box-shadow:inset 0 0 0 1px var(--hairline);
+  background:var(--surface1);
   border-left:3px solid var(--text4);
 }
+.wb.wb.wb .cal-chip:hover{ background:var(--surface2) }
+/* Drag: grab on the plate, but the two buttons inside keep their own cursors
+   so the chip never looks like it can only be dragged. */
+.wb.wb.wb .cal-chip[draggable='true']{ cursor:grab }
+.wb.wb.wb .cal-chip[draggable='true']:active{ cursor:grabbing }
+.wb.wb.wb .cal-chip-t, .wb.wb.wb .cal-chip-mv{ cursor:pointer }
+/* The dragged chip dims in place — the ghost the browser draws is the thing
+   that moves, so the original stays put and stays legible. */
+.wb.wb.wb .cal-chip-drag{ opacity:.4 }
 /* Stage colour, and it is THE SAME ENCODING the list rows use (STAGE_COLOR in
    ContentList) — a scheduled post is the same green in both views. Past due
    takes the severity token, because that is what it is. */
@@ -3664,32 +3680,80 @@
 .wb.wb.wb .cal-chip[data-st='scheduled']{ border-left-color:rgba(16,163,127,.75) }
 .wb.wb.wb .cal-chip[data-st='published']{ border-left-color:rgba(235,235,245,.45) }
 .wb.wb.wb .cal-chip[data-st='stuck']{ border-left-color:var(--sev-attention) }
+/* TWO LINES, not one row. The old chip put the clock and the headline on the
+   same 150px line, so `17:00` ate a third of the cell and the title ellipsed to
+   about two characters — a chip that names nothing is a chip you have to open
+   to identify. Stacked, the clock gets a meta-size line of its own and the
+   title gets the full width on two lines. */
 .wb.wb.wb .cal-chip-t{
-  flex:1 1 auto; min-width:0; display:flex; align-items:center; gap:6px;
-  padding:0 8px; text-align:left; background:none; color:var(--text2);
-  font-size:13px; line-height:1.25;
+  flex:1 1 auto; min-width:0; width:100%;
+  display:flex; flex-direction:column; align-items:flex-start; gap:1px;
+  padding:5px 8px; text-align:left; background:none; color:var(--text2);
+  font-size:13px; line-height:1.3;
+  /* the .wb button remap (§ control radius) rounds every button; on a chip that
+     draws a seam down the middle of one plate */
+  border-radius:0;
 }
 .wb.wb.wb .cal-chip-t:hover{ color:var(--text) }
-/* THE TIME IS AN AGENDA FACT, NOT A GRID ONE. Measured at 1440: a day cell is
-   ~150px, and `17:00` ate 44 of them — every title on the month grid truncated
-   to two characters. The unit this view edits is the DAY; the time of day is
-   preserved by the move and never chosen here. So the grid spends its width on
-   the title, and the time comes back at ≤767 where the chip is full-bleed and
-   has room for both. It stays on the chip's tooltip on every canvas. */
-.wb.wb.wb .cal-chip-h{ display:none }
-@media (max-width:767px){
-  .wb.wb.wb .cal-chip-h{
-    display:inline; flex:none;
-    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-    font-size:var(--fs-meta); color:var(--text4); font-variant-numeric:tabular-nums;
-  }
+/* THE TIME IS ON EVERY CANVAS. It used to be display:none above 767px, on the
+   reasoning that the grid edits days and not times — but "what time does this
+   go out, and what time did it actually go out" is the first question this
+   surface gets asked, and a tooltip is not an answer you can scan. Restored
+   2026-08-09. */
+/* min-width:0 + overflow are load-bearing: without them `08:14 posted` sets the
+   chip's intrinsic width and the chip grows straight out of its day cell. */
+.wb.wb.wb .cal-chip-h{
+  display:flex; align-items:baseline; gap:5px;
+  flex:none; min-width:0; max-width:100%; overflow:hidden; white-space:nowrap;
 }
-.wb.wb.wb .cal-chip-n{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.wb.wb.wb .cal-chip-hh{
+  flex:none;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:var(--fs-meta); color:var(--text3); font-variant-numeric:tabular-nums;
+}
+/* Published rows read their REAL posted time, and say so — otherwise a clock on
+   a past chip is ambiguous between "was set for" and "went out at". */
+.wb.wb.wb .cal-chip-out{
+  flex:none; font-size:var(--fs-meta); line-height:1; color:var(--sev-clear,var(--text3));
+}
+.wb.wb.wb .cal-chip[data-st='published'] .cal-chip-hh{ color:var(--text4) }
+/* Two lines, then clamp. Wrapping beats ellipsing at 150px: most titles fit. */
+.wb.wb.wb .cal-chip-n{
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2;
+  overflow:hidden; white-space:normal; overflow-wrap:anywhere; color:var(--text2);
+}
+.wb.wb.wb .cal-chip:hover .cal-chip-n{ color:var(--text) }
+/* THE ⇄ NO LONGER TAKES A COLUMN. As a 30px flex sibling it was eating a third
+   of a ~110px chip and pushing the title into two words — and now that the chip
+   itself drags, it is the fallback route (touch, keyboard), not the main one.
+   So it floats over the top-right corner and only appears on hover or focus.
+   Below 767px the chip is full-bleed and there is no hover, so it stays put. */
 .wb.wb.wb .cal-chip-mv{
-  flex:none; width:32px; min-height:32px; background:none; color:var(--text4);
-  font-size:13px; box-shadow:inset 1px 0 0 var(--hairline);
+  position:absolute; top:2px; right:2px; z-index:1;
+  width:24px; min-height:22px; padding:0;
+  background:var(--surface3); color:var(--text3);
+  font-size:12px; border-radius:var(--r-ctl);
+  opacity:0; pointer-events:none;
 }
-.wb.wb.wb .cal-chip-mv:hover{ color:var(--text); background:var(--surface3) }
+.wb.wb.wb .cal-chip:hover .cal-chip-mv,
+.wb.wb.wb .cal-chip-mv:focus-visible{ opacity:1; pointer-events:auto }
+.wb.wb.wb .cal-chip-mv:hover{ color:var(--text); background:var(--surface4,var(--surface3)) }
+/* Room for it so it never lands on the clock. */
+.wb.wb.wb .cal-chip:hover .cal-chip-h{ padding-right:26px }
+@media (max-width:767px){
+  .wb.wb.wb .cal-chip-mv{
+    position:static; opacity:1; pointer-events:auto;
+    width:32px; align-self:stretch; background:none; border-radius:0;
+    box-shadow:inset 1px 0 0 var(--hairline);
+  }
+  .wb.wb.wb .cal-chip:hover .cal-chip-h{ padding-right:0 }
+}
+/* The day under a live drag. A dashed hairline, not a fill: the cell already
+   holds chips and a fill would restate them as selected. */
+.wb.wb.wb .cal-day-over{
+  box-shadow:inset 0 0 0 1px var(--accent);
+  background:rgba(16,163,127,.10);
+}
 
 /* ---- the rail ----------------------------------------------------------- */
 .wb.wb.wb .cal-rail{ margin-top:var(--sp-4) }

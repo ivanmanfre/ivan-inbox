@@ -39,6 +39,12 @@ export type ContentDraft = {
   // Its absence past scheduled_at is the ONLY signal that a schedule died
   // silently (PostWorkSurface.tsx:117 uses exactly this pair).
   source_post_id: string | null
+  // When it ACTUALLY went out — stamped from scheduled_posts.posted_at by the
+  // write-back workflow (MZzvhOvlNuvSWllo). Carried on the LIST row, not just
+  // the detail, because "what time did this post" is a calendar question:
+  // scheduled_at is the intent, published_at is the event, and the two are not
+  // always the same minute. Optional on the TYPE so existing fixtures compile.
+  published_at?: string | null
   image_urls: string[] | null
   // Sometimes a jsonb object ({structure_used, image_style, pillar, …}),
   // sometimes a bare string. Both shapes are live today (ACCESS-MATRIX check 3).
@@ -65,7 +71,7 @@ export type ContentDraft = {
 }
 
 const COLS =
-  'id, client_id, status, type, title, topic, post_body, scheduled_at, ' +
+  'id, client_id, status, type, title, topic, post_body, scheduled_at, published_at, ' +
   'source_post_id, image_urls, taxonomy, updated_at, created_at, board_visible, ' +
   'funnel_stage, qa_verdict:qa->>verdict, qa_score:qa->>score, ' +
   'qa_regen:qa->>qa_regen_attempts, qa_backfilled:qa->>backfilled'

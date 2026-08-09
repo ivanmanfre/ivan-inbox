@@ -26,6 +26,15 @@ export type CalendarItem = {
   day: string
   /** The row's own `scheduled_at`, carried so a move can preserve its time of day. */
   at: string
+  /**
+   * When it ACTUALLY went out (`published_at`), or null while it is still ahead.
+   * Carried separately from `at` and never folded into it: the chip shows the
+   * intended time for anything pending and the real one for anything published,
+   * and conflating them would hide a post that fired at a different minute than
+   * the slot said — which is exactly the class of failure the 2026-08-09
+   * incident was (queued 08-07, regenerated 07:56Z, published 08:00:58Z).
+   */
+  postedAt: string | null
   /** The list's stage vocabulary, so a chip and a row are coloured by the same fact. */
   stage: ContentStage
   type: string | null
@@ -101,6 +110,7 @@ export function buildCalendarItems(
       title: draftTitle(d),
       day,
       at: d.scheduled_at,
+      postedAt: d.published_at ?? null,
       stage,
       type: d.type,
       movable: canMoveDate(d),
