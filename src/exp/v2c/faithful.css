@@ -3613,6 +3613,11 @@
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
   font-weight:600; color:var(--text2); font-variant-numeric:tabular-nums;
 }
+/* The queue-only figure sits BESIDE the month count, never instead of it: the
+   first number is how much is dated, the second is how much of that has no
+   draft behind it. `margin-left:0` cancels the auto that pushes the first one
+   right, so the pair stays a pair. */
+.wb.wb.wb .cal-count-q{ margin-left:0; padding-left:var(--sp-3) }
 
 .wb.wb.wb .cal-body{ padding:0 var(--gut) }
 
@@ -3680,6 +3685,18 @@
 .wb.wb.wb .cal-chip[data-st='scheduled']{ border-left-color:rgba(16,163,127,.75) }
 .wb.wb.wb .cal-chip[data-st='published']{ border-left-color:rgba(235,235,245,.45) }
 .wb.wb.wb .cal-chip[data-st='stuck']{ border-left-color:var(--sev-attention) }
+/* A PUBLISH-QUEUE CHIP (scheduled_posts, no draft row). Dashed left edge, and
+   that is the whole visual difference on purpose: it is the same post at the
+   same time as any other chip, it just cannot be opened or moved from here. A
+   dimmed or greyed chip would say "less real", and today's 12:00 post is the
+   most real thing on the month. */
+.wb.wb.wb .cal-chip-queue{ border-left-style:dashed }
+.wb.wb.wb .cal-chip-queue:hover{ background:var(--surface1) }
+/* Static face: no pointer, no hover lift, because there is nothing to click. */
+.wb.wb.wb .cal-chip-t-static{ cursor:default }
+.wb.wb.wb .cal-chip-q{
+  flex:none; font-size:var(--fs-meta); line-height:1; color:var(--text4);
+}
 /* TWO LINES, not one row. The old chip put the clock and the headline on the
    same 150px line, so `17:00` ate a third of the cell and the title ellipsed to
    about two characters — a chip that names nothing is a chip you have to open

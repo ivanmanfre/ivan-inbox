@@ -657,7 +657,7 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
       />
 
       {view === 'calendar' ? (
-        <ContentCalendar rows={shown} onOpen={onOpen} refresh={refresh} />
+        <ContentCalendar rows={shown} queue={queue.rows} onOpen={onOpen} refresh={refresh} />
       ) : (
       <>
       {/* ask 3 — the POST side of the content_type partition only. Rows with no
