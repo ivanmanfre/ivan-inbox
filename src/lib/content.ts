@@ -325,6 +325,11 @@ export type ScheduledQueueRow = {
   // `source` is NULL on all 152 rows and is deliberately not selected.
   post_kind: string | null
   unipile_share_url: string | null
+  // The queue's own format column ('text' / 'single_image' / …). Selected since
+  // 2026-08-10 because the calendar draws queue rows now and a chip's type label
+  // has to come from somewhere: these rows have no carousel_drafts twin to read
+  // a `type` off. Optional on the TYPE so existing fixtures keep compiling.
+  post_format?: string | null
 }
 
 // The publish queue behind BOTH lanes — its own status vocabulary, unrelated to
@@ -335,7 +340,7 @@ export const QUEUE_STATUSES = ['pending', 'queued_v2', 'posting', 'posted', 'fai
 // at all (42703), so it is Ivan's BY CONSTRUCTION, not by filter (IA §2.3 / R4).
 export async function fetchScheduledQueue(): Promise<ScheduledQueueRow[]> {
   const { data, error } = await supabase.from('scheduled_posts')
-    .select('id, clickup_task_id, post_text, scheduled_at, posted_at, status, platform, is_repost, error_message, created_at, post_kind, unipile_share_url')
+    .select('id, clickup_task_id, post_text, scheduled_at, posted_at, status, platform, is_repost, error_message, created_at, post_kind, unipile_share_url, post_format')
     .in('status', QUEUE_STATUSES as unknown as string[])
     .order('scheduled_at', { ascending: false })
     .limit(500)

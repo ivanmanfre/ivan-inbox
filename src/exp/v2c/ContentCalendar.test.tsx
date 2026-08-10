@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { ContentCalendar } from './ContentCalendar'
-import type { ContentDraft } from '../../lib/content'
+import type { ContentDraft, ScheduledQueueRow } from '../../lib/content'
 
 // WHICH CONTROLS GET DRAWN — asserted on the markup, not on a prop.
 //
@@ -28,8 +28,16 @@ const d = (over: Partial<ContentDraft> = {}): ContentDraft => ({
   ...over,
 })
 
-const html = (rows: ContentDraft[]) => renderToStaticMarkup(
-  <ContentCalendar rows={rows} onOpen={() => {}} refresh={() => {}} />,
+const q = (over: Partial<ScheduledQueueRow> = {}): ScheduledQueueRow => ({
+  id: 'q1', clickup_task_id: null, post_text: 'A queued post nobody drafted.\n\nRest.',
+  scheduled_at: inDays(2), posted_at: null, status: 'pending',
+  platform: 'linkedin', is_repost: false, error_message: null,
+  created_at: inDays(-3), post_kind: 'reach', unipile_share_url: null, post_format: 'text',
+  ...over,
+})
+
+const html = (rows: ContentDraft[], queue: ScheduledQueueRow[] = []) => renderToStaticMarkup(
+  <ContentCalendar rows={rows} queue={queue} onOpen={() => {}} refresh={() => {}} />,
 )
 
 describe('the move control', () => {
@@ -153,5 +161,42 @@ describe('Ready, no date', () => {
     const out = html([d()])
     expect(out).toContain('Nothing approved is sitting without a date.')
     expect(out).not.toContain('bad_status')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 2026-08-10 — the post that was on LinkedIn and not on the calendar.
+//
+// scheduled_posts bc8cf413 went out at 12:01Z with no carousel_drafts row
+// behind it, and this surface read carousel_drafts alone. 45 posted and 9
+// pending queue rows were in the same position. The queue is a second source
+// now; these assert the two properties that keep it honest.
+// ---------------------------------------------------------------------------
+
+describe('the publish queue as a second source', () => {
+  it('THE BUG: a queued post with no draft is drawn', () => {
+    const out = html([], [q({ post_text: 'The post Ivan actually saw.' })])
+    expect(out).toContain('The post Ivan actually saw.')
+    expect(out).toContain('cal-chip-queue')
+  })
+
+  it('it is inert — no open button, no move control, and it says why', () => {
+    const out = html([], [q({ post_text: 'Queued only.' })])
+    expect(out).not.toContain('aria-label="Move Queued only. to another day"')
+    expect(out).toContain('cal-chip-t-static')
+    expect(out).toContain('publish queue')
+  })
+
+  it('a queue row the drafts already draw is NOT drawn twice', () => {
+    const at = inDays(3)
+    const out = html([d({ id: 'twin', title: 'The twin', scheduled_at: at })], [q({ scheduled_at: at })])
+    expect(out).toContain('The twin')
+    expect(out).not.toContain('A queued post nobody drafted.')
+    expect(out).not.toContain('cal-chip-queue')
+  })
+
+  it('the bar names the queue-only count separately, and only when there is one', () => {
+    expect(html([], [q()])).toContain('queue only')
+    expect(html([d()])).not.toContain('queue only')
   })
 })

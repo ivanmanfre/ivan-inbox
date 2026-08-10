@@ -5,6 +5,7 @@ import {
 } from '../../lib/calendarItems'
 import {
   ClientRpcError, setScheduleDateAt, STAGE_LABEL, type ContentDraft,
+  type ScheduledQueueRow,
 } from '../../lib/content'
 import { useConfirm } from '../../components/ConfirmSheet'
 import { SectionHead } from './Surface'
@@ -44,8 +45,20 @@ type Dragging = { id: string; title: string; at: string; day: string }
 // No `lane` prop any more, and its absence is the change: every rule this
 // surface had that forked on the lane belonged to the arming RPC, and the
 // date-only one has none. It draws whatever rows it is handed.
-export function ContentCalendar({ rows, onOpen, refresh }: {
+//
+// `queue` is the PUBLISH QUEUE (scheduled_posts), and it is optional because it
+// is Ivan's by construction — the table has no client_id column, so the Mattan
+// lane passes nothing. Queue rows the drafts already account for are deduped
+// away inside buildCalendarItems; what survives is the set of posts that go out
+// with no draft row behind them, which before 2026-08-10 appeared NOWHERE.
+//
+// ⚠ Queue chips are NOT filtered by the lane's search/stage filters. `rows`
+// arrives pre-filtered and `queue` does not, deliberately: a calendar that hides
+// live posts because a filter is on is the same failure this merge exists to
+// fix. The count in the bar names them separately so the difference is visible.
+export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
   rows: ContentDraft[]
+  queue?: ScheduledQueueRow[]
   onOpen: OpenDraft
   refresh: () => void
 }) {
@@ -62,21 +75,27 @@ export function ContentCalendar({ rows, onOpen, refresh }: {
   const [done, setDone] = useState<string | null>(null)
   const confirm = useConfirm()
 
-  const items = useMemo(() => buildCalendarItems(rows), [rows])
+  const items = useMemo(() => buildCalendarItems(rows, queue), [rows, queue])
   const rail = useMemo(() => buildCalendarRail(rows), [rows])
   const byDay = useMemo(() => groupByDay(items), [items])
   const weeks = useMemo(() => monthWeeks(anchor.year, anchor.month), [anchor])
-  // The queue the draft window walks with j/k: the month's chips in time order,
-  // so the window's rail matches what is on screen — the same contract the list
-  // rows have (a queue is the list you can actually see).
-  const queue = useMemo(() => {
-    const inMonth = new Set(weeks.flat())
-    const ids = items.filter(i => inMonth.has(i.day)).map(i => i.id)
+  const inMonth = useMemo(() => new Set(weeks.flat()), [weeks])
+  // The walk-queue the draft window steps through with j/k: the month's chips in
+  // time order, so the window's rail matches what is on screen — the same
+  // contract the list rows have (a queue is the list you can actually see).
+  // Queue-source chips are absent from it BY THE FILTER BELOW, not by accident:
+  // they have no draft row, so there is nothing for the window to open.
+  const walk = useMemo(() => {
+    const ids = items.filter(i => i.source === 'draft' && inMonth.has(i.day)).map(i => i.id)
     const byId = new Map(rows.map(r => [r.id, r]))
     return ids.map(id => byId.get(id)).filter((r): r is ContentDraft => !!r)
-  }, [items, weeks, rows])
+  }, [items, inMonth, rows])
 
-  const monthCount = queue.length
+  const monthItems = useMemo(() => items.filter(i => inMonth.has(i.day)), [items, inMonth])
+  const monthCount = monthItems.length
+  // Named separately because they behave differently — no open, no move — and a
+  // reader who cannot see WHY a chip is inert reads it as a broken chip.
+  const monthQueueOnly = monthItems.filter(i => i.source === 'queue').length
 
   const startMove = (id: string, title: string, at: string | null) => {
     setErr(null); setDone(null)
@@ -147,8 +166,18 @@ export function ContentCalendar({ rows, onOpen, refresh }: {
           >Today</button>
         </div>
         {/* ONE WORD PER NUMBER, the strip's own rule — this is the month, not
-            the lane and not the pipeline. */}
+            the lane and not the pipeline. The second figure appears only when
+            there is one: on a month whose posts all have drafts behind them,
+            the distinction is noise. */}
         <span className="cal-count"><b>{monthCount}</b><span>dated this month</span></span>
+        {monthQueueOnly > 0 && (
+          <span
+            className="cal-count cal-count-q"
+            title="Posts that live in the publish queue (scheduled_posts) with no draft row behind them. They are drawn here so the calendar matches what actually goes out, but they cannot be opened or moved from this surface."
+          >
+            <b>{monthQueueOnly}</b><span>queue only</span>
+          </span>
+        )}
       </div>
 
       <div className="cal-body">
@@ -181,7 +210,7 @@ export function ContentCalendar({ rows, onOpen, refresh }: {
                       <Chip
                         key={it.id} it={it}
                         dragging={drag?.id === it.id}
-                        onOpen={() => onOpen(it.id, it.title, queue)}
+                        onOpen={() => onOpen(it.id, it.title, walk)}
                         onMove={() => startMove(it.id, it.title, it.at)}
                         onDragStart={() => setDrag({ id: it.id, title: it.title, at: it.at, day: k })}
                         onDragEnd={() => { setDrag(null); setOver(null) }}
@@ -268,6 +297,14 @@ export function ContentCalendar({ rows, onOpen, refresh }: {
  * DRAG. A movable chip is `draggable` and drops onto any other day, which is
  * the same write the ⇄ button opens. The button STAYS: HTML5 drag does not
  * exist on touch, and ⇄ is also the only keyboard route to a move.
+ *
+ * A QUEUE CHIP IS A DIFFERENT ANIMAL and is drawn as one. It comes from
+ * scheduled_posts, has no draft row, and therefore has nothing to open and no
+ * id the date RPC would accept — so its face is a plain `<span>`, not a button
+ * that would look clickable and do nothing. It carries a `⇢` marker and says in
+ * its tooltip which table it came from, because an inert chip with no
+ * explanation reads as a bug and this one is the opposite: it is the post the
+ * calendar used to hide.
  */
 function Chip({ it, dragging, onOpen, onMove, onDragStart, onDragEnd }: {
   it: CalendarItem
@@ -277,6 +314,7 @@ function Chip({ it, dragging, onOpen, onMove, onDragStart, onDragEnd }: {
   onDragStart: () => void
   onDragEnd: () => void
 }) {
+  const fromQueue = it.source === 'queue'
   // What the clock says. `postedAt` wins when it exists, because on a published
   // row the question is never "when was it meant to go" — it is "when did it go".
   const posted = it.stage === 'published' ? it.postedAt : null
@@ -284,27 +322,39 @@ function Chip({ it, dragging, onOpen, onMove, onDragStart, onDragEnd }: {
   // Set for 08:00, out at 08:14 — the gap is worth seeing, so it is in the
   // tooltip rather than silently rounded away.
   const drifted = !!posted && hhmm(posted) !== hhmm(it.at)
+  const origin = fromQueue
+    ? ' · from the publish queue (scheduled_posts) — no draft row, so it cannot be opened or moved here'
+    : ''
   const tip = posted
-    ? `Posted ${hhmm(posted)}${drifted ? ` (was set for ${hhmm(it.at)})` : ''} · ${it.title} — ${STAGE_LABEL[it.stage]}`
-    : `${hhmm(it.at)} · ${it.title} — ${STAGE_LABEL[it.stage]}${it.movable ? ' · drag to another day' : ''}`
+    ? `Posted ${hhmm(posted)}${drifted ? ` (was set for ${hhmm(it.at)})` : ''} · ${it.title} — ${STAGE_LABEL[it.stage]}${origin}`
+    : `${hhmm(it.at)} · ${it.title} — ${STAGE_LABEL[it.stage]}${it.movable ? ' · drag to another day' : ''}${origin}`
+  const face = (
+    <>
+      {/* The tick, not the word "posted": measured at a 112px cell, `08:14
+          posted` truncated to `08:14 pos…`, and a truncated word reads as a
+          bug. `✓ 08:14` always fits, and the button title spells it out. */}
+      <span className="cal-chip-h">
+        {posted && <span className="cal-chip-out" aria-hidden>✓</span>}
+        <span className="cal-chip-hh">{clock}</span>
+        {fromQueue && <span className="cal-chip-q" aria-hidden>⇢</span>}
+      </span>
+      <span className="cal-chip-n">{it.title}</span>
+    </>
+  )
   return (
     <div
-      className={`cal-chip${it.movable ? '' : ' cal-chip-lock'}${dragging ? ' cal-chip-drag' : ''}`}
+      className={`cal-chip${it.movable ? '' : ' cal-chip-lock'}${dragging ? ' cal-chip-drag' : ''}${fromQueue ? ' cal-chip-queue' : ''}`}
       data-st={it.stage}
+      data-src={it.source}
       draggable={it.movable}
       onDragStart={it.movable ? (e => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', it.id); onDragStart() }) : undefined}
       onDragEnd={it.movable ? onDragEnd : undefined}
     >
-      <button type="button" className="cal-chip-t" onClick={onOpen} title={tip}>
-        {/* The tick, not the word "posted": measured at a 112px cell, `08:14
-            posted` truncated to `08:14 pos…`, and a truncated word reads as a
-            bug. `✓ 08:14` always fits, and the button title spells it out. */}
-        <span className="cal-chip-h">
-          {posted && <span className="cal-chip-out" aria-hidden>✓</span>}
-          <span className="cal-chip-hh">{clock}</span>
-        </span>
-        <span className="cal-chip-n">{it.title}</span>
-      </button>
+      {fromQueue ? (
+        <span className="cal-chip-t cal-chip-t-static" title={tip}>{face}</span>
+      ) : (
+        <button type="button" className="cal-chip-t" onClick={onOpen} title={tip}>{face}</button>
+      )}
       {it.movable && (
         <button type="button" className="cal-chip-mv" onClick={onMove} title="Move to another day" aria-label={`Move ${it.title} to another day`}>
           ⇄
