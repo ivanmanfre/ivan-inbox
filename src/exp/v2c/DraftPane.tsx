@@ -14,10 +14,10 @@ import {
 } from '../../lib/content'
 import { appendAgentNote, clearHumanEdit, planRegen, regenerateDraft, scheduleDraft } from '../../lib/studioActions'
 import { Block, KeyRows, Rows, Val } from './ContentBits'
-import { AgentRegister, QaRegister } from './Register'
+import { AgentRegister, Fold, QaRegister } from './Register'
 import { HtmlPreview, Takeover } from './Takeover'
 import { LinkedInPost } from './LinkedInPost'
-import { absTime, relOrAhead, relTime, typeLabel } from './fmt'
+import { absTime, postTime, relOrAhead, relTime, typeLabel } from './fmt'
 import { Failed } from './Surface'
 
 // THE DRAFT TAKEOVER WINDOW, rebuilt to the dashboard-v2 standard.
@@ -84,7 +84,12 @@ export function imageSrc(url: string, size = 800): string {
 // The queue rail — j/k made visible
 // ---------------------------------------------------------------------------
 
-export type QueueItem = { id: string; title: string; type: string | null; updated_at: string; status: string }
+export type QueueItem = {
+  id: string; title: string; type: string | null; updated_at: string; status: string
+  // WHEN IT POSTS. Optional because the LM queue (`toLmQueueItem`) has no such
+  // column — a resource is not scheduled, it is published or it is not.
+  scheduled_at?: string | null
+}
 
 function QueueRail({ queue, id, onPick }: {
   queue: QueueItem[]; id: string; onPick: (id: string) => void
@@ -104,19 +109,38 @@ function QueueRail({ queue, id, onPick }: {
   if (queue.length < 2) return null
   return (
     <aside className="dw-queue" ref={ref}>
+      {/* Sticky, because a 16-row rail scrolls past its own header and "1/16"
+          is the one fact on it that stays true while you walk. */}
       <div className="dw-queue-h">
         <span>In this queue</span>
         <b>{at >= 0 ? at + 1 : '–'}/{queue.length}</b>
       </div>
-      {queue.map(q => (
+      {queue.map((q, i) => (
         <button
           type="button"
           key={q.id}
           className={`dw-qrow${q.id === id ? ' on' : ''}`}
           onClick={() => onPick(q.id)}
         >
-          <div className="dw-qrow-t">{q.title || 'Untitled'}</div>
-          <div className="dw-qrow-m">{typeLabel(q.type)} · {relTime(q.updated_at)}</div>
+          {/* The ordinal, at a fixed x, tabular — it is what makes the rail read
+              as a QUEUE and not as a second copy of the list. It also gives the
+              title one left edge to run from at every row. */}
+          <span className="dw-qrow-i">{i + 1}</span>
+          <span className="dw-qrow-b">
+            {/* ONE line, not two (2026-08-10, "the queue as well nicer looking...
+                cleaner"). Two clamped lines gave every row a ragged height and a
+                second edge; the row you are ON opens to two, because that is the
+                one title worth reading in full. */}
+            <span className="dw-qrow-t">{q.title || 'Untitled'}</span>
+            {/* WHEN IT POSTS, when the row has a time. `Text · 1d ago` spent the
+                whole meta line on the format (identical down the rail) and the
+                row's age (not a fact you schedule around). */}
+            <span className="dw-qrow-m">
+              {q.scheduled_at
+                ? <b className="dw-qrow-w">{postTime(q.scheduled_at)}</b>
+                : `${typeLabel(q.type)} · ${relTime(q.updated_at)}`}
+            </span>
+          </span>
         </button>
       ))}
     </aside>
@@ -485,7 +509,18 @@ function SwapImage({ d, onDone, disabled }: {
                   className={`dw-swap-t${s.url === current ? ' on' : ''}`}
                   onClick={() => pick(s.url)}
                 >
-                  <img src={s.url} alt={s.name} loading="lazy" />
+                  <img
+                    src={s.thumb}
+                    alt={s.name}
+                    loading="lazy"
+                    // The render endpoint is a paid storage feature. If it is
+                    // ever off, the tile shows the original rather than a
+                    // broken-image glyph in a picker.
+                    onError={e => {
+                      const el = e.currentTarget
+                      if (el.src !== s.url) el.src = s.url
+                    }}
+                  />
                   {busy === s.url && <span className="dw-swap-b">Pinning…</span>}
                 </button>
               ))}
@@ -1021,7 +1056,25 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
               ? clientStageLabel(stage, boardGroupOf({ board_visible: visible }))
               : STAGE_LABEL[stage]}
           </span>
-          <span className="ct-chip">{relTime(d.updated_at)}</span>
+          {/* 🔴 WHEN IT POSTS, FIRST-CLASS (2026-08-10, Ivan: "i cant really
+              see post time"). It existed only as one row of the Fields panel,
+              four sections down a 4,527px rail, while the chip in this slot
+              printed how old the ROW was. On an armed draft that is the fact the
+              whole window is about, so it gets its own mark, ahead of the age,
+              and the age keeps its own chip rather than being replaced by it. */}
+          {d.scheduled_at && (
+            <span className="ct-chip ct-chip-when" title={`scheduled_at ${d.scheduled_at}`}>
+              {/* "Posts" only while the time is still ahead. A scheduled row
+                  whose slot has passed has either published or missed, and this
+                  chip knows neither — so it states the time and how long ago it
+                  was, and claims nothing about what happened at it. */}
+              {Date.parse(d.scheduled_at) > Date.now() ? 'Posts ' : 'Post time '}
+              {postTime(d.scheduled_at)} · {relOrAhead(d.scheduled_at)}
+            </span>
+          )}
+          <span className="ct-chip" title={`updated_at ${d.updated_at}`}>
+            edited {relTime(d.updated_at)}
+          </span>
           {lane === 'risedtc' && (
             <span className={visible === true ? 'ct-lane' : 'ct-chip'}>
               {visible === true ? 'On Mattan’s board' : 'Not on his board'}
@@ -1314,10 +1367,26 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
           {taxRows.length > 0 && <Block label="Taxonomy"><Rows items={taxRows} /></Block>}
           {/* ~25 further keys are live beyond the six named above. They render
               after the known ones, sorted, so a new key appears without a code
-              edit. */}
-          {extras.length > 0 && <Block label="Taxonomy · other keys"><KeyRows items={extras} /></Block>}
+              edit.
+
+              🔴 FOLDED 2026-08-10 ("the back end depth i need to scroll a lot").
+              Measured 569px on the live proof row, in the LAST panel of a
+              4,527px rail, and every row of it is a LOOKUP — you arrive at it
+              with a key in mind, never by scrolling past it. Same control and
+              same grammar as the QA panel's folds, with the count on the
+              summary so the fold states its own cost. Nothing is dropped. */}
+          {extras.length > 0 && (
+            <Fold label="Taxonomy · other keys" tail={`${extras.length} keys`}>
+              <KeyRows items={extras} />
+            </Fold>
+          )}
+          {/* 457px of caption on a row nobody opened this window to read: the IG
+              mirror has its own surface, and this panel is where you come to
+              check a field, not to proof the caption. */}
           {d.ig_caption && (
-            <Block label="IG caption"><div className="dd-card"><div className="dd-body dd-pre">{d.ig_caption}</div></div></Block>
+            <Fold label="IG caption" tail={`${d.ig_caption.length.toLocaleString()} chars`}>
+              <div className="dd-card"><div className="dd-body dd-pre">{d.ig_caption}</div></div>
+            </Fold>
           )}
           {d.pdf_url && (
             <Block label="PDF">

@@ -2,7 +2,7 @@ import {
   groupLogByAgent, isBackfillEntry, parseLogEntry, scoreProgression,
   type AgentGroup, type AgentLogEntry, type QaSummary,
 } from '../../lib/content'
-import type { ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { KeyRows, Rows, Val } from './ContentBits'
 import { absTime } from './fmt'
 import { parseRubric, verdictsDisagree } from './rubric'
@@ -59,7 +59,10 @@ function gap(prev: string | null, cur: string | null): string | null {
 // costs to open. A summary line is ~34px; the block behind it is 200-620.
 // `Block`'s `res-hdr` and this summary print the same label and the same tail —
 // the fold is a header that opens, not a new piece of vocabulary.
-function Fold({ label, tail, children, defaultOpen }: {
+// Exported since 2026-08-10: the Fields panel folds its two longest blocks with
+// the same control, and a second grammar for "there is more here" is exactly
+// what this component exists to prevent.
+export function Fold({ label, tail, children, defaultOpen }: {
   label: string; tail?: ReactNode; children: ReactNode; defaultOpen?: boolean
 }) {
   return (
@@ -71,6 +74,48 @@ function Fold({ label, tail, children, defaultOpen }: {
       </summary>
       <div className="qa-fold-b">{children}</div>
     </details>
+  )
+}
+
+// A CLAMP, WHICH IS NOT A FOLD (2026-08-10, Ivan: "the back end depth i need to
+// scroll a lot which is annoying").
+//
+// The judge's summary is the one piece of prose that IS the verdict, so D14's
+// rule that it is never folded stands: a fold shows you a label, this shows you
+// the prose and stops. Measured on the live proof row the summary ran 590px of
+// a 1,248px panel — thirty lines, of which the first ten carry the finding and
+// the rest carry the argument for it. Ten lines stay on the page; the reader is
+// told, in characters, what the other twenty cost.
+//
+// It only ever renders a control when the text actually overflows the clamp,
+// which most summaries do not — a "more" under nine lines of prose is a lie
+// about there being an eleventh.
+function Clamp({ lines, children, chars }: { lines: number; children: ReactNode; chars: number }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const [over, setOver] = useState(false)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    // scrollHeight against clientHeight while clamped — the only honest test,
+    // because a character count cannot know the rail's width.
+    setOver(el.scrollHeight - el.clientHeight > 4)
+  }, [children])
+  return (
+    <>
+      <div
+        ref={ref}
+        className={`qa-clamp${open ? ' on' : ''}`}
+        style={open ? undefined : { WebkitLineClamp: lines }}
+      >
+        {children}
+      </div>
+      {(over || open) && (
+        <button type="button" className="qa-more" onClick={() => setOpen(o => !o)}>
+          {open ? 'Show less' : `Show all ${chars.toLocaleString()} characters`}
+        </button>
+      )}
+    </>
   )
 }
 
@@ -123,7 +168,12 @@ function QaFeedback({ feedback, verdict }: { feedback: string; verdict: string |
           {/* The judge's own summary is the one piece of prose that IS the
               verdict — it says why the numbers came out where they did — so it
               is never folded. */}
-          {r.summary && <div className="qa-p"><span>Summary</span>{r.summary}</div>}
+          {r.summary && (
+            <div className="qa-p">
+              <span>Summary</span>
+              <Clamp lines={10} chars={r.summary.length}>{r.summary}</Clamp>
+            </div>
+          )}
           {/* Spice is the gate reporting on a REQUEST ("requested 2, delivered
               yes"), which is a parameter check rather than a judgement, and it
               measured at 102px directly under a 302px summary on the tab that

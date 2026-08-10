@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import {
   bucketDrafts, isStuckScheduled, laneFilter, draftLane,
   SKIP_STATUS, type ContentDraft,
@@ -10,6 +10,7 @@ import {
   scoreProgression, groupLogByAgent, normalizeSourceDetail, taxonomyExtras, taxonomyValue, queueFailed,
   stampHumanEdit, stampOperatorDelete, operatorDeleted, selfContainedHtml,
   errorAt, isRecentError, ERROR_ALARM_HOURS,
+  listStills,
 } from './content'
 
 const base: ContentDraft = {
@@ -719,5 +720,86 @@ describe('errorAt + isRecentError (the 48h alarm window)', () => {
   })
   it('old errors keep stageOf error, so the section still shows them', () => {
     expect(stageOf(row({ status: 'error', taxonomy: { error_flipped_at: '2026-01-01T00:00:00Z' } }))).toBe('error')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// listStills — the picker that read "Nothing in this folder" over a full bucket
+// ---------------------------------------------------------------------------
+//
+// 2026-08-10: the Swap-image picker showed an empty library while post-stills
+// held 49 + 14 + 14 images. Cause: `supabase.storage.from(...).list()` carries
+// the logged-in operator's JWT, and role=`authenticated` has no SELECT policy
+// on `storage.objects` for that bucket — so it returns `[]` with NO error, and
+// an empty array is indistinguishable from an empty folder. Measured the same
+// second against the same prefix: anon 49, authed 0.
+//
+// The pin is on the DISCRIMINATOR, not on the fix's shape: this function must
+// present the ANON key, because the moment it presents a session token the
+// picker silently empties again and nothing throws.
+describe('listStills', () => {
+  const ANON = 'anon-key-under-test'
+  let calls: { url: string; init: RequestInit }[] = []
+
+  beforeEach(() => {
+    calls = []
+    vi.stubEnv('VITE_SUPABASE_URL', 'https://project.supabase.co')
+    vi.stubEnv('VITE_SUPABASE_ANON_KEY', ANON)
+    vi.stubGlobal('fetch', (url: string, init: RequestInit) => {
+      calls.push({ url: String(url), init })
+      return Promise.resolve(new Response(JSON.stringify([
+        { name: 'selfie-14.jpg' },
+        { name: 'shot.PNG' },
+        // The row Supabase materialises for an empty prefix. It has a name and
+        // a size and would draw as a broken tile.
+        { name: '.emptyFolderPlaceholder' },
+        { name: 'notes.txt' },
+      ]), { status: 200 }))
+    })
+  })
+  afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals() })
+
+  it('lists as ANON, never on the caller’s session', async () => {
+    await listStills('library')
+    expect(calls).toHaveLength(1)
+    expect(calls[0].url).toBe('https://project.supabase.co/storage/v1/object/list/post-stills')
+    expect(calls[0].init.method).toBe('POST')
+    const headers = calls[0].init.headers as Record<string, string>
+    expect(headers.apikey).toBe(ANON)
+    // 🔴 The bug in one assertion. A bearer that is not the anon key is a
+    // bearer that lists zero rows and reports success.
+    expect(headers.Authorization).toBe(`Bearer ${ANON}`)
+  })
+
+  it('asks for the folder it was given, newest first', async () => {
+    await listStills('selfie-pool-b')
+    expect(JSON.parse(String(calls[0].init.body))).toEqual({
+      prefix: 'selfie-pool-b',
+      limit: 200,
+      sortBy: { column: 'created_at', order: 'desc' },
+    })
+  })
+
+  it('keeps images of any case and drops the placeholder and the strays', async () => {
+    const out = await listStills('library')
+    expect(out.map(s => s.name)).toEqual(['selfie-14.jpg', 'shot.PNG'])
+    expect(out.every(s => s.folder === 'library')).toBe(true)
+  })
+
+  it('gives the grid a rendered thumb and the DRAFT the full asset', async () => {
+    const [first] = await listStills('library')
+    // What gets pinned is the object itself — a 200px render on LinkedIn would
+    // be a thumbnail on the feed.
+    expect(first.url).toContain('/object/public/post-stills/library/selfie-14.jpg')
+    expect(first.url).not.toContain('width=')
+    // What the 84px tile loads is not the 1-2MB original.
+    expect(first.thumb).toContain('/render/image/public/post-stills/library/selfie-14.jpg')
+    expect(first.thumb).toContain('width=200')
+    expect(first.thumb).not.toBe(first.url)
+  })
+
+  it('throws on a refusal instead of reporting an empty library', async () => {
+    vi.stubGlobal('fetch', () => Promise.resolve(new Response('{}', { status: 403 })))
+    await expect(listStills('library')).rejects.toThrow(/403/)
   })
 })
