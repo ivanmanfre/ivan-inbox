@@ -46,8 +46,15 @@ export type CalendarItem = {
   title: string
   /** Local day key, `YYYY-MM-DD`. The grid is drawn in Ivan's timezone, not UTC. */
   day: string
-  /** The row's own `scheduled_at`, carried so a move can preserve its time of day. */
+  /** When it fires, per the table that fires it. A move preserves its time of day. */
   at: string
+  /**
+   * The draft's OWN `scheduled_at`, and only when it disagrees with `at` — i.e.
+   * when the publish queue holds a different time for the same post. Null on
+   * every row where the two tables agree, which is every row today. See
+   * queueDriftByBody.
+   */
+  plannedAt: string | null
   /**
    * When it ACTUALLY went out (`published_at`), or null while it is still ahead.
    * Carried separately from `at` and never folded into it: the chip shows the
@@ -116,24 +123,49 @@ const DATED_STAGES = new Set<ContentStage>(['review', 'approved', 'scheduled', '
  * database does not hold. Undated approved rows get the rail instead, which is
  * the honest place for "ready, nobody has said when".
  */
+/**
+ * WHICH DAY A CHIP LANDS ON.
+ *
+ * 🔴 ONCE A POST HAS GONE OUT, THE DAY IT WENT OUT IS THE DAY. `scheduled_at` is
+ * intent and `published_at` is the event, and the two are not always the same —
+ * the chip already read the posted TIME on its face while still sitting in the
+ * planned day's cell, which is a chip that contradicts itself.
+ *
+ * Live census 2026-08-10 (Ivan's lane): 54 published rows carry a published_at,
+ * and ONE of them lands on a different day than it was scheduled for
+ * (25813de4 — set for Jun 6 12:00, out Jun 8 12:00). One row is not a reason to
+ * skip a rule; it is the proof that the rule is not hypothetical, and every
+ * queue row that fires late gets it right for free.
+ */
+export function itemDayISO(plannedISO: string, actualISO: string | null | undefined): string {
+  if (!actualISO) return plannedISO
+  return Number.isFinite(Date.parse(actualISO)) ? actualISO : plannedISO
+}
+
 export function buildCalendarItems(
   rows: ContentDraft[],
   queue: ScheduledQueueRow[] = [],
   now: number = Date.now(),
 ): CalendarItem[] {
   const out: CalendarItem[] = []
+  const drift = queueDriftByBody(rows, queue)
   for (const d of rows) {
     if (!d.scheduled_at) continue
-    const day = dayKeyOf(d.scheduled_at)
-    if (!day) continue
     const stage = stageOf(d, now)
     if (!DATED_STAGES.has(stage)) continue
+    // A post that has not gone out fires on the QUEUE's clock, whatever the
+    // draft says — see queueDriftByBody. A post that HAS gone out is placed on
+    // the day it really went out.
+    const at = drift.get(bodyKey(d.post_body)) ?? d.scheduled_at
+    const day = dayKeyOf(itemDayISO(at, d.published_at))
+    if (!day) continue
     out.push({
       id: d.id,
       source: 'draft',
       title: draftTitle(d),
       day,
-      at: d.scheduled_at,
+      at,
+      plannedAt: at === d.scheduled_at ? null : d.scheduled_at,
       postedAt: d.published_at ?? null,
       stage,
       type: d.type,
@@ -192,8 +224,60 @@ export function queueTitle(text: string | null | undefined): string {
 }
 
 /** Whitespace-insensitive body compare — the second dedupe net. */
-function bodyKey(s: string | null | undefined): string {
+export function bodyKey(s: string | null | undefined): string {
   return (s ?? '').replace(/\s+/g, ' ').trim()
+}
+
+/**
+ * WHEN THE TWO TABLES DISAGREE ABOUT WHEN A POST GOES OUT.
+ *
+ * 🔴🔴 THE TWO DATES DRIFT, AND IT IS NOT RARE. Live 2026-08-10: matched on body,
+ * the draft and its queue row disagree on 20+ historical pairs, some by DAYS —
+ * `1a8d5277` says May 24 02:00, its queue row fired May 31 13:00; `25813de4`
+ * says Jun 6, its queue row fired Jun 8. Nothing re-syncs a draft's
+ * `scheduled_at` from the queue.
+ *
+ * That matters now for one reason: the body net dedupes the queue row away, so
+ * before this function the surviving chip carried the DRAFT's date. On a post
+ * that has not gone out yet, that is a calendar drawing a day the publisher has
+ * no intention of using — the same class of wrong as not drawing it at all.
+ *
+ * So: for a body-matched pair that has NOT been published, the QUEUE's time
+ * wins, because `scheduled_posts` is the table the publisher reads. The draft's
+ * own time is kept on the item as `plannedAt` so the chip can say the two
+ * disagree rather than quietly picking a winner.
+ *
+ * ⛔ Published pairs are left alone — they already have a `published_at`, which
+ * is a better answer than either plan (itemDayISO).
+ * ⛔ Cancelled queue rows never win: a cancelled row is not going out at all,
+ * and letting it move a live draft's chip would be the tail wagging the dog.
+ *
+ * Zero rows are affected today (all 8 August twins agree to the minute). It
+ * ships anyway: the drift is a property of the pipeline, not of this month.
+ */
+export function queueDriftByBody(
+  rows: ContentDraft[],
+  queue: ScheduledQueueRow[],
+): Map<string, string> {
+  const out = new Map<string, string>()
+  if (queue.length === 0) return out
+  const planned = new Map<string, string>()
+  for (const d of rows) {
+    if (!d.scheduled_at || d.published_at) continue
+    const b = bodyKey(d.post_body)
+    if (b) planned.set(b, d.scheduled_at)
+  }
+  if (planned.size === 0) return out
+  for (const r of queue) {
+    if (r.status === 'cancelled' || r.posted_at || !r.scheduled_at) continue
+    const b = bodyKey(r.post_text)
+    if (!b) continue
+    const mine = planned.get(b)
+    if (!mine) continue
+    if (Date.parse(mine) === Date.parse(r.scheduled_at)) continue
+    out.set(b, r.scheduled_at)
+  }
+  return out
 }
 
 /**
@@ -237,7 +321,9 @@ export function queueOnlyItems(
     if (b && bodies.has(b)) continue
     const stage = queueStage(r, now)
     if (!stage) continue
-    const day = dayKeyOf(r.scheduled_at)
+    // Same rule the draft side keeps: once it is out, the day it went out IS
+    // the day. A queue row that fired late belongs in the cell it fired in.
+    const day = dayKeyOf(itemDayISO(r.scheduled_at, r.posted_at))
     if (!day) continue
     out.push({
       id: r.id,
@@ -245,6 +331,7 @@ export function queueOnlyItems(
       title: queueTitle(r.post_text),
       day,
       at: r.scheduled_at,
+      plannedAt: null,
       postedAt: r.posted_at ?? null,
       stage,
       type: r.post_format ?? null,

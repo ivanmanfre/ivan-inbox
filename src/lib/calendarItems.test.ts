@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
   buildCalendarItems, buildCalendarRail, canMoveDate, dayKey, dayKeyOf,
-  groupByDay, monthLabel, monthWeeks, publishAtForDay, queueOnlyItems,
-  queueStage, queueTitle, shiftMonth,
+  groupByDay, itemDayISO, monthLabel, monthWeeks, publishAtForDay, queueDriftByBody,
+  queueOnlyItems, queueStage, queueTitle, shiftMonth,
 } from './calendarItems'
 import type { ContentDraft, ScheduledQueueRow } from './content'
 
@@ -293,5 +293,84 @@ describe('buildCalendarItems — the merged grid', () => {
 
   it('passing no queue is the old behaviour exactly', () => {
     expect(buildCalendarItems([d()], [], NOW)).toEqual(buildCalendarItems([d()]))
+  })
+})
+
+// ---------------------------------------------------------------------------
+// STAYING IN SYNC (2026-08-10, Ivan: "just make sure it's on sync")
+//
+// Two ways the grid can be out of step with reality even once it can SEE both
+// tables: a chip drawn on the day a post was planned rather than the day it
+// went out, and a chip drawn on the draft's time when the publisher holds a
+// different one.
+// ---------------------------------------------------------------------------
+
+describe('itemDayISO — the day it happened beats the day it was planned', () => {
+  it('falls back to the plan while nothing has happened yet', () => {
+    expect(itemDayISO('2026-08-12T10:00:00Z', null)).toBe('2026-08-12T10:00:00Z')
+  })
+  it('the real publish time wins once there is one', () => {
+    expect(itemDayISO('2026-06-06T12:00:00Z', '2026-06-08T12:00:56Z')).toBe('2026-06-08T12:00:56Z')
+  })
+  it('an unparseable stamp never displaces a good plan', () => {
+    expect(itemDayISO('2026-08-12T10:00:00Z', 'nonsense')).toBe('2026-08-12T10:00:00Z')
+  })
+})
+
+describe('a published chip sits in the cell it actually went out in', () => {
+  it('🔴 live row 25813de4: set for Jun 6, out Jun 8 — it is drawn on Jun 8', () => {
+    const items = buildCalendarItems([d({
+      status: 'published', source_post_id: 'urn:li:activity:1',
+      scheduled_at: '2026-06-06T12:00:00Z', published_at: '2026-06-08T12:00:56Z',
+    })], [], NOW)
+    expect(items[0].day).toBe(dayKeyOf('2026-06-08T12:00:56Z'))
+    expect(items[0].day).not.toBe(dayKeyOf('2026-06-06T12:00:00Z'))
+  })
+  it('the same rule on the queue side — a late fire lands where it fired', () => {
+    const items = queueOnlyItems([], [q({
+      status: 'posted', scheduled_at: '2026-06-06T12:00:00Z', posted_at: '2026-06-08T12:00:56Z',
+    })], NOW)
+    expect(items[0].day).toBe(dayKeyOf('2026-06-08T12:00:56Z'))
+  })
+})
+
+describe('queueDriftByBody — when the two tables disagree about when it fires', () => {
+  const body = 'The same post, in both tables.'
+
+  it('the QUEUE wins for a post that has not gone out — it is what fires', () => {
+    const draft = d({ post_body: body, scheduled_at: '2026-08-20T09:00:00Z' })
+    const items = buildCalendarItems([draft], [q({ post_text: body, scheduled_at: '2026-08-22T16:00:00Z' })], NOW)
+    expect(items).toHaveLength(1)                       // still deduped to one chip
+    expect(items[0].day).toBe(dayKeyOf('2026-08-22T16:00:00Z'))
+    expect(items[0].at).toBe('2026-08-22T16:00:00Z')
+    // and the draft's own time is kept so the chip can say they disagree
+    expect(items[0].plannedAt).toBe('2026-08-20T09:00:00Z')
+  })
+
+  it('agreement leaves plannedAt null — no warning on a row that is fine', () => {
+    const at = '2026-08-20T09:00:00Z'
+    const items = buildCalendarItems([d({ post_body: body, scheduled_at: at })], [q({ post_text: body, scheduled_at: at })], NOW)
+    expect(items[0].plannedAt).toBeNull()
+  })
+
+  it('⛔ a CANCELLED queue row never moves a live draft', () => {
+    const draft = d({ post_body: body, scheduled_at: '2026-08-20T09:00:00Z' })
+    const items = buildCalendarItems([draft], [q({ post_text: body, status: 'cancelled', scheduled_at: '2026-08-22T16:00:00Z' })], NOW)
+    expect(items[0].at).toBe('2026-08-20T09:00:00Z')
+    expect(items[0].plannedAt).toBeNull()
+  })
+
+  it('⛔ a published pair is left alone — published_at is a better answer than either plan', () => {
+    const draft = d({
+      post_body: body, status: 'published', source_post_id: 'urn:li:activity:1',
+      scheduled_at: '2026-06-06T12:00:00Z', published_at: '2026-06-08T12:00:56Z',
+    })
+    const items = buildCalendarItems([draft], [q({ post_text: body, status: 'posted', scheduled_at: '2026-06-07T12:00:00Z', posted_at: '2026-06-08T12:00:56Z' })], NOW)
+    expect(items[0].plannedAt).toBeNull()
+    expect(items[0].day).toBe(dayKeyOf('2026-06-08T12:00:56Z'))
+  })
+
+  it('an empty queue is a no-op, never a map of nulls', () => {
+    expect(queueDriftByBody([d()], []).size).toBe(0)
   })
 })

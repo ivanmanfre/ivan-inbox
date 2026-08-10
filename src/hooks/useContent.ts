@@ -173,12 +173,43 @@ function useAux<T>(load: () => Promise<T>, initial: T, deps: unknown[]): Aux<T> 
   return { rows, loading, error, loadedAt, refresh }
 }
 
-// R4 — the publish queue. 152 rows read by NOTHING in the shipped app; this is
-// its first consumer. No lane argument and none needed: scheduled_posts has no
-// client_id column, so it is Ivan's by construction (IA §2.3).
+// R4 — the publish queue. No lane argument and none needed: scheduled_posts has
+// no client_id column, so it is Ivan's by construction (IA §2.3).
+//
+// 🔴🔴 THIS ONE IS LIVE, AND THE useAux HEADER ABOVE IS WRONG ABOUT IT. "None of
+// these tables changes while Ivan is looking at it" was true when this read fed
+// a static strip. It stopped being true on 2026-08-10, when the calendar started
+// drawing these rows: `scheduled_posts` is the ONLY table on this surface that
+// changes on a CLOCK. A post fires at 12:00, the row flips pending → posted and
+// gains a posted_at, and a fetch-on-mount read kept drawing it as pending until
+// someone reloaded the page — a calendar that is stale about the one table that
+// moves on its own is the same complaint as a calendar that cannot see it.
+//
+// So this read gets the SAME three-way freshness contract useContent has:
+// postgres_changes, window focus, and its caller's refresh. `scheduled_posts`
+// was added to the supabase_realtime publication for it (db/033) — it was not a
+// member, so a subscription before that change would have bound cleanly and
+// then simply never fired.
+//
+// 🔴 The topic carries its own useId(), for the reason useContent's does:
+// supabase.channel() hands back the EXISTING channel for a topic it already
+// holds, and binding postgres_changes to an already-subscribed channel throws
+// inside the effect and takes the tree to a black screen (the 754d32d fix).
 export function useScheduledQueue(enabled: boolean) {
-  return useAux<ScheduledQueueRow[]>(
+  const aux = useAux<ScheduledQueueRow[]>(
     () => (enabled ? fetchScheduledQueue() : Promise.resolve([])), [], [enabled])
+  const { refresh } = aux
+  const topic = `scheduled_posts:${useId()}`
+  useEffect(() => {
+    if (!enabled) return
+    const ch = supabase.channel(topic)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'scheduled_posts' }, refresh)
+      .subscribe()
+    const onFocus = () => refresh()
+    window.addEventListener('focus', onFocus)
+    return () => { supabase.removeChannel(ch); window.removeEventListener('focus', onFocus) }
+  }, [enabled, refresh, topic])
+  return aux
 }
 
 // The pipeline's vital signs, for Ops (2026-08-07). Four head-count queries, no

@@ -325,9 +325,15 @@ function Chip({ it, dragging, onOpen, onMove, onDragStart, onDragEnd }: {
   const origin = fromQueue
     ? ' · from the publish queue (scheduled_posts) — no draft row, so it cannot be opened or moved here'
     : ''
+  // The two tables holding different times for the same post is a fact worth
+  // saying out loud, not a tie to break silently. The chip sits on the
+  // publisher's time (that is when it goes out) and names the draft's.
+  const outOfSync = it.plannedAt
+    ? ` · ⚠ the publish queue fires this at ${hhmm(it.at)}; the draft still says ${hhmm(it.plannedAt)}`
+    : ''
   const tip = posted
     ? `Posted ${hhmm(posted)}${drifted ? ` (was set for ${hhmm(it.at)})` : ''} · ${it.title} — ${STAGE_LABEL[it.stage]}${origin}`
-    : `${hhmm(it.at)} · ${it.title} — ${STAGE_LABEL[it.stage]}${it.movable ? ' · drag to another day' : ''}${origin}`
+    : `${hhmm(it.at)} · ${it.title} — ${STAGE_LABEL[it.stage]}${it.movable ? ' · drag to another day' : ''}${origin}${outOfSync}`
   const face = (
     <>
       {/* The tick, not the word "posted": measured at a 112px cell, `08:14
@@ -337,6 +343,7 @@ function Chip({ it, dragging, onOpen, onMove, onDragStart, onDragEnd }: {
         {posted && <span className="cal-chip-out" aria-hidden>✓</span>}
         <span className="cal-chip-hh">{clock}</span>
         {fromQueue && <span className="cal-chip-q" aria-hidden>⇢</span>}
+        {it.plannedAt && <span className="cal-chip-drift" aria-hidden>⚠</span>}
       </span>
       <span className="cal-chip-n">{it.title}</span>
     </>
