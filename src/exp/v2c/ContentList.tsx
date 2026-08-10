@@ -657,7 +657,14 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
       />
 
       {view === 'calendar' ? (
-        <ContentCalendar rows={shown} queue={queue.rows} onOpen={onOpen} refresh={refresh} />
+        // 🔴 BOTH SOURCES, one refresh. The calendar draws drafts AND the
+        // publish queue, so a move that re-read only the drafts would leave half
+        // the grid on the copy it was mounted with — the stale half being the
+        // one that changes on a clock.
+        <ContentCalendar
+          rows={shown} queue={queue.rows} onOpen={onOpen}
+          refresh={() => { refresh(); queue.refresh() }}
+        />
       ) : (
       <>
       {/* ask 3 — the POST side of the content_type partition only. Rows with no

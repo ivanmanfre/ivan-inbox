@@ -3697,6 +3697,12 @@
 .wb.wb.wb .cal-chip-q{
   flex:none; font-size:var(--fs-meta); line-height:1; color:var(--text4);
 }
+/* The two tables hold different times for this post. Severity token, because
+   the number on the chip's own face is the one that is going to happen and the
+   draft disagrees with it. */
+.wb.wb.wb .cal-chip-drift{
+  flex:none; font-size:var(--fs-meta); line-height:1; color:var(--sev-attention);
+}
 /* TWO LINES, not one row. The old chip put the clock and the headline on the
    same 150px line, so `17:00` ate a third of the cell and the title ellipsed to
    about two characters — a chip that names nothing is a chip you have to open
