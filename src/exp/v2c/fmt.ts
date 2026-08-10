@@ -31,6 +31,24 @@ export function relOrAhead(iso: string): string {
   return `in ${Math.floor(h / 24)}d`
 }
 
+// WHEN IT POSTS, as a clock time (2026-08-10, Ivan: "i cant really see post
+// time"). Every surface that showed a scheduled row showed `updated_at` as
+// "1d ago" — how old the ROW is, which is not a fact anyone schedules around.
+// Weekday and clock, because the two questions asked of an armed draft are
+// "which day" and "what time"; the date is only spelled out once the post is
+// further away than a week, when the weekday alone stops locating it.
+export function postTime(iso: string): string {
+  const d = new Date(iso)
+  if (!Number.isFinite(d.getTime())) return ''
+  const within7d = Math.abs(d.getTime() - Date.now()) < 7 * 864e5
+  return d.toLocaleString(undefined, {
+    weekday: 'short',
+    ...(within7d ? {} : { month: 'short', day: 'numeric' }),
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 // Absolute, local, no year unless it isn't this one — the detail screen shows
 // both forms because "3d ago" is useless when you're reconstructing what an
 // agent did at 12:00:08.

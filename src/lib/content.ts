@@ -2183,7 +2183,25 @@ export function selfContainedHtml(v: string | null | undefined): boolean {
 
 export const STILL_FOLDERS = ['library', 'selfie-pool-a', 'selfie-pool-b'] as const
 export type StillFolder = (typeof STILL_FOLDERS)[number]
-export type Still = { name: string; url: string; folder: StillFolder }
+export type Still = {
+  name: string
+  /** The full asset — what gets pinned to the draft. */
+  url: string
+  /**
+   * A ~200px render of the same object, for the picker grid ONLY.
+   *
+   * The grid draws 48 tiles at 84px and was pointing every one of them at the
+   * full-size original: measured 2.09MB for one PNG and 1.06MB for one JPG, so
+   * one open of the library pulled tens of megabytes to fill 84px squares. The
+   * same object through storage's render endpoint is 39.9KB at width=200 —
+   * measured, same file, 26x lighter.
+   *
+   * NEVER pinned to a draft: `pick()` sends `url`. A 200px render is a preview,
+   * and publishing one would put a thumbnail on LinkedIn.
+   */
+  thumb: string
+  folder: StillFolder
+}
 
 const STILL_BUCKET = 'post-stills'
 const IMAGE_RE = /\.(jpe?g|png|webp|gif|avif)$/i
@@ -2195,19 +2213,50 @@ const IMAGE_RE = /\.(jpe?g|png|webp|gif|avif)$/i
  * the odd stray), and so is the `.emptyFolderPlaceholder` row Supabase creates
  * for an empty prefix — it has a name and a size and would render as a broken
  * tile.
+ *
+ * 🔴 LISTED AS ANON, DELIBERATELY, and not through the SDK client.
+ * `supabase.storage.from(...).list()` carries the logged-in operator's JWT
+ * (role=`authenticated`), and that role has no SELECT policy on
+ * `storage.objects` for this bucket after the 2026-07-19 RLS closure. The list
+ * comes back `[]` with NO error — which is why the picker read "Nothing in this
+ * folder" while the bucket held 49 + 14 + 14 images (measured 2026-08-10: anon
+ * 49, authed 0, same prefix, same second). personal-site hit this first and
+ * fixed it the same way (`listPostStills`, @7af2fef).
+ *
+ * post-stills is a PUBLIC bucket, so listing it as anon is what the bucket
+ * already says it allows. The proper fix is a `storage.objects` SELECT policy
+ * for `authenticated`, which is DDL and not ours to run from here.
  */
 export async function listStills(folder: StillFolder): Promise<Still[]> {
-  const { data, error } = await supabase.storage.from(STILL_BUCKET).list(folder, {
-    limit: 200,
-    sortBy: { column: 'created_at', order: 'desc' },
+  const base = import.meta.env.VITE_SUPABASE_URL
+  const key = import.meta.env.VITE_SUPABASE_ANON_KEY
+  const res = await fetch(`${base}/storage/v1/object/list/${STILL_BUCKET}`, {
+    method: 'POST',
+    headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      prefix: folder,
+      limit: 200,
+      sortBy: { column: 'created_at', order: 'desc' },
+    }),
   })
-  if (error) throw error
-  return (data ?? [])
-    .filter(o => o.name && IMAGE_RE.test(o.name))
+  if (!res.ok) throw new Error(`The library would not list (${res.status}).`)
+  const data: unknown = await res.json()
+  if (!Array.isArray(data)) throw new Error('The library returned a shape this app cannot read.')
+  return (data as { name?: string }[])
+    .filter(o => typeof o.name === 'string' && IMAGE_RE.test(o.name))
     .map(o => ({
-      name: o.name,
+      name: o.name as string,
       folder,
+      // getPublicUrl is pure string building — no auth, no request — so the URL
+      // still comes from the SDK and stays encoded the way it encodes it.
       url: supabase.storage.from(STILL_BUCKET).getPublicUrl(`${folder}/${o.name}`).data.publicUrl,
+      // Same path, the render endpoint instead of the object endpoint. If image
+      // transformation is ever off on this project the render URL 4xxs and the
+      // tile falls back to `url` in the picker's onError — a heavy grid is a
+      // worse outcome than a slow one, and a blank grid is worse than both.
+      thumb: supabase.storage.from(STILL_BUCKET)
+        .getPublicUrl(`${folder}/${o.name}`, { transform: { width: 200, quality: 70 } })
+        .data.publicUrl,
     }))
 }
 

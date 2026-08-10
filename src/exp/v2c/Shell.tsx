@@ -31,6 +31,8 @@ function toQueueItem(d: ContentDraft): QueueItem {
     type: d.type,
     updated_at: d.updated_at,
     status: d.status,
+    // The rail draws the post time on any row that has one — see QueueRail.
+    scheduled_at: d.scheduled_at,
   }
 }
 import { MobileTabs, Rail, WorkSegment } from './Rail'

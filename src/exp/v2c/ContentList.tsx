@@ -25,7 +25,7 @@ import { ReviewActions } from './ReviewActions'
 import { FilteredEmpty } from './ContentBits'
 import { FilterRow } from './FilterRow'
 import { IdeasSection, PillarMix, QueueStrip } from './ContentSections'
-import { relOrAhead, relTime, sourceLabel, tagLabel, typeLabel } from './fmt'
+import { postTime, relTime, sourceLabel, tagLabel, typeLabel } from './fmt'
 import { CalmEmpty, Failed, SectionHead, StatChip } from './Surface'
 import { hasMock } from './mock'
 import { ContentCalendar } from './ContentCalendar'
@@ -206,14 +206,21 @@ function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
               </span>
             )}
           <span className="ct-chip">{typeLabel(d.type)}</span>
-          {/* Slot #3, glance rows only, and only when the row HAS a date. A
-              review-stage draft normally does not, so an always-rendered '—'
-              here would spend a mark on the absence of a fact rather than on a
-              fact — unlike the pillar/funnel/source columns, which are columns
-              and have to hold their x. */}
-          {glance && d.scheduled_at && (
+          {/* Slot #3, and only when the row HAS a date. A review-stage draft
+              normally does not, so an always-rendered '—' here would spend a
+              mark on the absence of a fact rather than on a fact — unlike the
+              pillar/funnel/source columns, which are columns and have to hold
+              their x.
+
+              🔴 NO LONGER GLANCE-ONLY (2026-08-10, Ivan: "i cant really see post
+              time"). The gate was `glance`, which is the review section alone —
+              so the SCHEDULED section, the one where every row has an armed
+              time and that time is the only reason to look, printed nothing but
+              `1d ago`. It shows the CLOCK now, not "in 2d": the question asked
+              of an armed row is which day and what time. */}
+          {d.scheduled_at && (
             <span className="ct-chip ct-chip-when" title={`scheduled_at ${d.scheduled_at}`}>
-              {relOrAhead(d.scheduled_at)}
+              {postTime(d.scheduled_at)}
             </span>
           )}
         </div>
