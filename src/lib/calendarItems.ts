@@ -27,12 +27,15 @@ import { stageOf, type ContentDraft, type ContentStage, type ScheduledQueueRow }
 // posts that happened to come through post-gen.
 //
 // So the queue is a SECOND SOURCE now, and the two rules that keeps honest:
-//   1. DEDUPE, or the same post draws twice. There is no foreign key between the
-//      tables (scheduled_posts has clickup_task_id, carousel_drafts has no such
-//      column — 42703), so the join is the SCHEDULED INSTANT, with an exact body
-//      match as a second net. Verified on the live August set: every twin agrees
-//      to the minute (8/8), and every un-twinned queue row lands on a minute no
-//      draft holds.
+//   1. DEDUPE, or the same post draws twice. 🔴 THE 08-10 VERSION OF THIS NOTE
+//      SAID THERE IS NO JOIN. There is no foreign KEY — but
+//      `scheduled_posts.clickup_task_id` CARRIES THE DRAFT'S OWN UUID (the
+//      Bridge writes `clickup_task_id: d.id`, the publisher re-reads the draft
+//      with it at send time, the write-back resolves it with it afterwards).
+//      Live 2026-08-11: 8/8 pending Ivan-lane queue rows and 54 posted ones
+//      resolve by that column. So the key is THE LINK first (queueDraftId), with
+//      the scheduled INSTANT and an exact body match kept as the nets for rows
+//      that carry a legacy ClickUp id or no link at all.
 //   2. A QUEUE CHIP IS INERT. It has no draft to open and no draft id for
 //      operator_set_schedule_date to take, so it is not clickable and not
 //      movable, and it says which table it came from.
@@ -148,6 +151,7 @@ export function buildCalendarItems(
   now: number = Date.now(),
 ): CalendarItem[] {
   const out: CalendarItem[] = []
+  const driftById = queueDriftByDraftId(rows, queue)
   const drift = queueDriftByBody(rows, queue)
   for (const d of rows) {
     if (!d.scheduled_at) continue
@@ -155,8 +159,9 @@ export function buildCalendarItems(
     if (!DATED_STAGES.has(stage)) continue
     // A post that has not gone out fires on the QUEUE's clock, whatever the
     // draft says — see queueDriftByBody. A post that HAS gone out is placed on
-    // the day it really went out.
-    const at = drift.get(bodyKey(d.post_body)) ?? d.scheduled_at
+    // the day it really went out. The id link is consulted first: it survives
+    // the copy drifting apart, which the body key cannot.
+    const at = driftById.get(d.id) ?? drift.get(bodyKey(d.post_body)) ?? d.scheduled_at
     const day = dayKeyOf(itemDayISO(at, d.published_at))
     if (!day) continue
     out.push({
@@ -226,6 +231,63 @@ export function queueTitle(text: string | null | undefined): string {
 /** Whitespace-insensitive body compare — the second dedupe net. */
 export function bodyKey(s: string | null | undefined): string {
   return (s ?? '').replace(/\s+/g, ' ').trim()
+}
+
+/**
+ * THE JOIN THIS FILE SPENT A DAY INSISTING DID NOT EXIST.
+ *
+ * The header above says there is no foreign key between the tables, and reads it
+ * as "there is no join". Only the first half is true. `scheduled_posts` has no
+ * FK, but `clickup_task_id` CARRIES THE DRAFT'S OWN UUID — the Bridge writes
+ * `clickup_task_id: d.id` on every insert, the publisher re-reads the draft with
+ * it at send time, and the write-back resolves the draft with it afterwards.
+ * Measured live 2026-08-11: 8 of 8 pending Ivan-lane queue rows and 54 posted
+ * ones resolve to a carousel_drafts row by that column.
+ *
+ * It matters because the instant and the body are both stand-ins that FAIL in
+ * the case that hurts: the same post held twice with different copy (the Bridge
+ * snapshots post_body once and only ever re-syncs the DATE), where the body key
+ * cannot see the pair and the instant key stops seeing it the moment either side
+ * is re-dated.
+ *
+ * The column is legacy-shaped: it held real ClickUp task ids before the Supabase
+ * lane existed, and those are NOT draft ids. Only a uuid is treated as a link,
+ * exactly as the publisher's own guard does (`draftUuidRE`).
+ */
+const DRAFT_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export function queueDraftId(r: ScheduledQueueRow): string | null {
+  const t = (r.clickup_task_id ?? '').trim()
+  return DRAFT_UUID_RE.test(t) ? t : null
+}
+
+/**
+ * The same rule as queueDriftByBody — for an unpublished post the QUEUE's time
+ * wins, because scheduled_posts is what the publisher reads — keyed on the link
+ * instead of on the copy, so a pair whose bodies have drifted apart is still
+ * recognised as one post. Returns draft id → the time it really fires at.
+ */
+export function queueDriftByDraftId(
+  rows: ContentDraft[],
+  queue: ScheduledQueueRow[],
+): Map<string, string> {
+  const out = new Map<string, string>()
+  if (queue.length === 0) return out
+  const planned = new Map<string, string>()
+  for (const d of rows) {
+    if (!d.scheduled_at || d.published_at) continue
+    planned.set(d.id, d.scheduled_at)
+  }
+  for (const r of queue) {
+    if (r.status === 'cancelled' || r.posted_at || !r.scheduled_at) continue
+    const id = queueDraftId(r)
+    if (!id) continue
+    const mine = planned.get(id)
+    if (!mine) continue
+    if (Date.parse(mine) === Date.parse(r.scheduled_at)) continue
+    out.set(id, r.scheduled_at)
+  }
+  return out
 }
 
 /**
@@ -303,9 +365,13 @@ export function queueOnlyItems(
 ): CalendarItem[] {
   const instants = new Set<number>()
   const bodies = new Set<string>()
+  // The link, checked before either stand-in: a queue row that names a drawn
+  // draft IS that draft's post, whatever the copy or the minute now says.
+  const drawnIds = new Set<string>()
   for (const d of rows) {
     if (!d.scheduled_at) continue
     if (!DATED_STAGES.has(stageOf(d, now))) continue
+    drawnIds.add(d.id)
     const t = Date.parse(d.scheduled_at)
     if (Number.isFinite(t)) instants.add(t)
     const b = bodyKey(d.post_body)
@@ -316,6 +382,8 @@ export function queueOnlyItems(
     if (!r.scheduled_at) continue
     const t = Date.parse(r.scheduled_at)
     if (!Number.isFinite(t)) continue
+    const linked = queueDraftId(r)
+    if (linked && drawnIds.has(linked)) continue
     if (instants.has(t)) continue
     const b = bodyKey(r.post_text)
     if (b && bodies.has(b)) continue
