@@ -870,7 +870,10 @@ export async function deleteDraft(id: string, taxonomy: unknown): Promise<'delet
     .delete()
     .eq('id', id).is('client_id', null)
     .select('id')
-  if (!del.error && del.data && del.data.length > 0) return 'deleted'
+  if (!del.error && del.data && del.data.length > 0) {
+    await cancelQueueRowsFor(id)
+    return 'deleted'
+  }
   const upd = await supabase.from('carousel_drafts')
     .update({ status: SKIP_STATUS, taxonomy: stampOperatorDelete(taxonomy) })
     .eq('id', id).is('client_id', null)
@@ -879,7 +882,38 @@ export async function deleteDraft(id: string, taxonomy: unknown): Promise<'delet
   if (!upd.data || upd.data.length === 0) {
     throw new Error('Delete failed — the row was neither removed nor archived.')
   }
+  await cancelQueueRowsFor(id)
   return 'disqualified'
+}
+
+/**
+ * A DELETE THAT ONLY REACHES ONE TABLE IS NOT A DELETE.
+ *
+ * `scheduled_posts` is the table the publisher fires from, and nothing links it
+ * back to the draft except `clickup_task_id` carrying the draft's own uuid —
+ * no foreign key, no cascade. So a deleted draft used to leave a live queue row
+ * holding the copy it was bridged with, which then published on schedule from a
+ * row that has no draft to open, edit or move.
+ *
+ * Measured 2026-08-11: 8 of 16 pending queue rows pointed at draft ids that
+ * exist in NO table in the database, and the publisher's send-time refresh
+ * fail-softs on a missing draft, so each one was primed to publish its snapshot.
+ *
+ * `cancelled`, not deleted: it is the one queue status the calendar already
+ * refuses to draw (queueStage), and it leaves the record of the slot intact.
+ * Posted and failed rows are history and are never touched. Fail-soft on error —
+ * the draft is already gone from the board, and throwing here would report a
+ * delete that visibly happened as a failure.
+ */
+async function cancelQueueRowsFor(draftId: string): Promise<void> {
+  try {
+    await supabase.from('scheduled_posts')
+      .update({ status: 'cancelled', error_message: 'draft_deleted_by_operator' })
+      .eq('clickup_task_id', draftId)
+      .in('status', ['pending', 'queued_v2', 'posting'])
+  } catch {
+    // see above: never fail a completed delete on the second write
+  }
 }
 
 // Idea delete, same honesty contract. The fallback status is 'archived' — a

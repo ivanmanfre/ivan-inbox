@@ -374,3 +374,58 @@ describe('queueDriftByBody — when the two tables disagree about when it fires'
     expect(queueDriftByBody([d()], []).size).toBe(0)
   })
 })
+
+// ---------------------------------------------------------------------------
+// The link that was there all along (2026-08-11)
+// ---------------------------------------------------------------------------
+//
+// This file used to say, in its header, that there is NO join between the two
+// tables. That is wrong, and the wrongness is why a chip and the post that fires
+// could disagree: `scheduled_posts.clickup_task_id` CARRIES THE DRAFT'S OWN
+// UUID. Measured live 2026-08-11: 8 of 8 pending Ivan-lane queue rows resolve to
+// a carousel_drafts row by that column, and so do 54 posted ones. The instant
+// and the body were stand-ins for a key that exists.
+
+describe('the draft link — dedupe and drift key on the id, not on a guess', () => {
+  // A REAL uuid, because the link only counts as a link when it is one: the
+  // column also holds legacy ClickUp task ids, and those name nothing here.
+  const ID = 'c838e37e-3a33-4058-a8d6-3f00b0c00fc6'
+  const linked = (over: Partial<ScheduledQueueRow> = {}) =>
+    q({ clickup_task_id: ID, ...over })
+
+  it('a queue row linked to a DRAWN draft is one post, however far the copy drifted', () => {
+    // The live 2026-08-18 pair: same slot, same draft id, different opener,
+    // because the draft was rewritten after it was bridged.
+    const draft = d({ id: ID, scheduled_at: '2026-08-18T16:00:00Z', post_body: 'Niching down dropped my pipeline' })
+    const queue = linked({ scheduled_at: '2026-08-19T09:00:00Z', post_text: 'A few months back I cut what I do' })
+    expect(queueOnlyItems([draft], [queue], NOW)).toHaveLength(0)
+  })
+
+  it('the QUEUE time still wins on a linked pair whose bodies no longer match', () => {
+    const draft = d({ id: ID, scheduled_at: '2026-08-20T09:00:00Z', post_body: 'the edited copy' })
+    const items = buildCalendarItems([draft], [linked({ scheduled_at: '2026-08-22T16:00:00Z', post_text: 'the queued copy' })], NOW)
+    expect(items).toHaveLength(1)
+    expect(items[0].at).toBe('2026-08-22T16:00:00Z')
+    expect(items[0].plannedAt).toBe('2026-08-20T09:00:00Z')
+  })
+
+  it('a link to a draft the calendar does NOT draw still draws the queue row', () => {
+    const dead = d({ id: ID, status: 'disqualified', scheduled_at: '2026-08-18T16:00:00Z' })
+    expect(queueOnlyItems([dead], [linked({ scheduled_at: '2026-08-18T16:00:00Z' })], NOW)).toHaveLength(1)
+  })
+
+  it('a legacy ClickUp id is not a draft id and never dedupes by it', () => {
+    const draft = d({ id: '86abc123', scheduled_at: '2026-08-30T09:00:00Z', post_body: 'unrelated' })
+    const queue = q({ clickup_task_id: '86abc123', scheduled_at: '2026-08-31T09:00:00Z' })
+    expect(queueOnlyItems([draft], [queue], NOW)).toHaveLength(1)
+  })
+
+  it('⛔ a cancelled or posted queue row never re-times its draft', () => {
+    const draft = d({ id: ID, scheduled_at: '2026-08-20T09:00:00Z' })
+    for (const over of [{ status: 'cancelled' }, { status: 'posted', posted_at: '2026-08-22T16:01:00Z' }]) {
+      const items = buildCalendarItems([draft], [linked({ scheduled_at: '2026-08-22T16:00:00Z', ...over })], NOW)
+      expect(items[0].at).toBe('2026-08-20T09:00:00Z')
+      expect(items[0].plannedAt).toBeNull()
+    }
+  })
+})
