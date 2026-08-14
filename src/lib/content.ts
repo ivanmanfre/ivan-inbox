@@ -68,13 +68,22 @@ export type ContentDraft = {
   qa_score?: string | null
   qa_regen?: string | null
   qa_backfilled?: string | null
+  // The richer, human-written source (91% of drafts carry it — Ivan's own kill
+  // notes on 08-13/14's audit sample — vs. taxonomy.source's coarse slug). It
+  // was selected only by fetchDraftDetail's `select('*')` and rendered only in
+  // the detail pane (DraftPane.tsx:987); the list card never carried it, so
+  // Mattan-lane rows had no source legibility at all below the 1300px
+  // breakpoint where the ct-colv source column folds away (faithful.css "THE
+  // TABLE SHEDS COLUMNS"). Optional on the TYPE so every existing fixture
+  // keeps compiling — the column is selected below, so live rows carry it.
+  source_label?: string | null
 }
 
 const COLS =
   'id, client_id, status, type, title, topic, post_body, scheduled_at, published_at, ' +
   'source_post_id, image_urls, taxonomy, updated_at, created_at, board_visible, ' +
   'funnel_stage, qa_verdict:qa->>verdict, qa_score:qa->>score, ' +
-  'qa_regen:qa->>qa_regen_attempts, qa_backfilled:qa->>backfilled'
+  'qa_regen:qa->>qa_regen_attempts, qa_backfilled:qa->>backfilled, source_label'
 
 // ---------- lane scoping ----------
 

@@ -849,6 +849,16 @@
   display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
   overflow:hidden;
 }
+/* Mattan-lane source_label (phase7, D5 second half). Deliberately NOT inside
+   a min-width media query — the whole point is that this reads at every
+   width, unlike the .ct-colv source column above, which is display:none
+   below 1000px and sheds again below 1300px. One line + ellipsis: the value
+   can be a whole sentence (Ivan's kill notes) and must never grow the row. */
+.wb.wb.wb .ct-src{
+  margin-top:2px;
+  font-size:var(--fs-meta); color:var(--text3);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
 /* The armed date, in the meta row's third slot. Outlined, never filled: it is a
    FACT about the row, not a verdict on it, and a filled chip here would read as
    a third severity beside the QA pass/fail it sits next to. */

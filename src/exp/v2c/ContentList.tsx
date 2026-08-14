@@ -228,6 +228,17 @@ function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
             (StudioListView.tsx:463-503). Absent — not blank — when the body has
             not been generated yet. */}
         {glance && excerpt && <div className="ct-ex">{excerpt}</div>}
+        {/* SOURCE LEGIBILITY, Mattan-lane only (phase7). d.source_label is the
+            richer source (a whole sentence, on 91% of his drafts) that used to
+            live in the detail pane alone — the .ct-colv source column three
+            spans down is a coarser taxonomy.source slug AND folds away below
+            1300px (faithful.css "THE TABLE SHEDS COLUMNS"). This rides in
+            .ct-mid instead, so it is never gated by that breakpoint and reads
+            at every width. Quiet on purpose (text3, one line, ellipsis) — this
+            is an operator surface, not a redesign. */}
+        {lane === 'risedtc' && d.source_label && (
+          <div className="ct-src" title={d.source_label}>{d.source_label}</div>
+        )}
       </div>
       {/* The three facts as COLUMNS, one fixed x each, '—' when absent so the
           column stays a column. Desktop only — below 1000px there is no width
