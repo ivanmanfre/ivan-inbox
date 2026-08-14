@@ -40,7 +40,7 @@ export type Thread = {
   needsManualReply: boolean;
 }
 
-export type Filter = 'all' | 'ivan' | 'risedtc' | 'email'
+export type Filter = 'all' | 'ivan' | 'risedtc' | 'arch' | 'email'
 
 export function isDraft(m: InboxMessage): boolean {
   return m.direction === 'outbound' && !m.sent_at && !m.approved_at && !m.send_blocked_at

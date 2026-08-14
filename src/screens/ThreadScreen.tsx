@@ -9,6 +9,7 @@ import {
 
 function clientName(id: string): string {
   if (id === 'risedtc') return 'Rise'
+  if (id === 'arch') return 'Arch'
   if (id === 'ivan') return 'Ivan'
   return id.charAt(0).toUpperCase() + id.slice(1)
 }

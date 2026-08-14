@@ -44,7 +44,7 @@ export default function Shell() {
   const { buckets: ivanBuckets } = useContent('ivan')
   const [openThread, setOpenThread] = useState<string | null>(null)
   const [filter, setFilter] = useState<Filter>('all')
-  const [sendsClient, setSendsClient] = useState<'all' | 'ivan' | 'risedtc'>('ivan')
+  const [sendsClient, setSendsClient] = useState<'all' | 'ivan' | 'risedtc' | 'arch'>('ivan')
   // Lifted up rather than owned inside WorkScreen: the desktop layout branch
   // below needs to know the active segment to decide dt-full vs the
   // dt-list/dt-detail split.

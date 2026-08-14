@@ -67,7 +67,7 @@ function Shell() {
   const { drafts: opsDrafts } = useOps()
   const [openThread, setOpenThread] = useState<string | null>(null)
   const [filter, setFilter] = useState<Filter>('all')
-  const [sendsClient, setSendsClient] = useState<'all' | 'ivan' | 'risedtc'>('ivan')
+  const [sendsClient, setSendsClient] = useState<'all' | 'ivan' | 'risedtc' | 'arch'>('ivan')
   const { threads, loading, refresh } = useInbox()
   const desktop = useDesktop()
   // The badge counts everything waiting on Ivan, DM drafts and Ops alike. If it
