@@ -57,6 +57,7 @@ const CHIPS: { key: Filter; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'ivan', label: 'Ivan' },
   { key: 'risedtc', label: 'Rise' },
+  { key: 'arch', label: 'Arch' },
   { key: 'email', label: 'Email' },
 ]
 
@@ -66,6 +67,7 @@ const EMPTY: Record<Filter, string> = {
   all: 'No conversations — replies land here, sends live in Sends',
   ivan: 'No Ivan conversations — sends live in Sends',
   risedtc: 'No Rise conversations — sends live in Sends',
+  arch: 'No Arch conversations — the reply detector for Davorin’s seat is not armed yet',
   email: 'No email conversations — sends live in Sends',
 }
 

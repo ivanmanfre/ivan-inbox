@@ -11,7 +11,7 @@ import {
   type ReplacementRow,
 } from '../../lib/kpis'
 
-type Client = 'all' | 'ivan' | 'risedtc'
+type Client = 'all' | 'ivan' | 'risedtc' | 'arch'
 type Timeframe = '7d' | '30d' | 'custom'
 type DateRange = { from: string; to: string }
 

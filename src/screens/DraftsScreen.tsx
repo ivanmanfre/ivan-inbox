@@ -73,18 +73,20 @@ function timeAgo(iso: string): string {
   return `${d}d`
 }
 
-type Seg = 'all' | 'ivan' | 'risedtc'
+type Seg = 'all' | 'ivan' | 'risedtc' | 'arch'
 
 const SEGS: { key: Seg; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'ivan', label: 'Ivan' },
   { key: 'risedtc', label: 'Rise' },
+  { key: 'arch', label: 'Arch' },
 ]
 
 const SEG_EMPTY: Record<Seg, string> = {
   all: 'Nothing waiting on you',
   ivan: 'Nothing waiting on you in Ivan',
   risedtc: 'Nothing waiting on you in Rise',
+  arch: 'Nothing waiting on you in Arch',
 }
 
 function clientTitle(id: string): string {
@@ -298,6 +300,7 @@ export function DraftsScreen({ threads, onOpenThread, refresh, onOpenOps, verifi
     all: draftThreads.length + opsPend.length,
     ivan: draftThreads.filter(t => t.client_id === 'ivan').length + opsIn('ivan').length,
     risedtc: draftThreads.filter(t => t.client_id === 'risedtc').length + opsIn('risedtc').length,
+    arch: draftThreads.filter(t => t.client_id === 'arch').length + opsIn('arch').length,
   }
   const segThreads = seg === 'all' ? draftThreads : draftThreads.filter(t => t.client_id === seg)
   // Fresh drafts first; stale ones (Ivan already replied) sink to the bottom.

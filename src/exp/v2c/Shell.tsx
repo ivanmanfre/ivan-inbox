@@ -139,7 +139,7 @@ export default function Shell() {
   // The DMs view. 'needs' — what the badge counts — is the only one now: the
   // head that switched between buckets was removed on 2026-08-04.
   const [status] = useState<Status>('needs')
-  const [sendsClient, setSendsClient] = useState<'all' | 'ivan' | 'risedtc'>('ivan')
+  const [sendsClient, setSendsClient] = useState<'all' | 'ivan' | 'risedtc' | 'arch'>('ivan')
   const [lane, setLane] = useState<ContentLane>('ivan')
   const [contentBump, setContentBump] = useState(0)
   // The reading window (usability-voice ask 2). A draft or a lead magnet opened

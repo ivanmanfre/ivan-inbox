@@ -113,7 +113,7 @@ export function buildSendLog(sent: LogRow[], failed: LogRow[]): SendLogItem[] {
 }
 
 export async function fetchSendLog(
-  client: 'all' | 'ivan' | 'risedtc',
+  client: 'all' | 'ivan' | 'risedtc' | 'arch',
   limit = 120,
 ): Promise<SendLogItem[]> {
   const cols = 'id, prospect_id, prospect_name, client_id, message_type, ai_model, message_text, sent_at, send_blocked_at, send_blocked_reason'
@@ -144,7 +144,7 @@ export async function fetchSendLog(
 export type SendLogTotals = { sent: number; blocked: number }
 
 export async function fetchSendLogTotals(
-  client: 'all' | 'ivan' | 'risedtc',
+  client: 'all' | 'ivan' | 'risedtc' | 'arch',
 ): Promise<SendLogTotals> {
   const base = () => {
     const q = supabase.from('inbox_messages_v')
@@ -179,7 +179,7 @@ export async function fetchSendLogTotals(
 // otherwise one phantom burst would fill the whole list.
 export async function fetchLaneRecent(
   key: LaneKey,
-  client: 'all' | 'ivan' | 'risedtc',
+  client: 'all' | 'ivan' | 'risedtc' | 'arch',
   limit = 25,
 ): Promise<RecentSend[]> {
   let q = supabase.from('inbox_messages_v')
@@ -221,7 +221,7 @@ export type CampaignSend = {
 // the client-side count below. If the view isn't applied yet, fall back to the
 // legacy by-name count so the app runs clean against both DB worlds.
 export async function fetchCampaignSends(
-  client: 'all' | 'ivan' | 'risedtc',
+  client: 'all' | 'ivan' | 'risedtc' | 'arch',
 ): Promise<CampaignSend[]> {
   const { data, error } = await supabase.from('inbox_campaign_sends_v').select('*')
   if (!error && data) {
@@ -253,7 +253,7 @@ export async function fetchCampaignSends(
 // paused-but-empty lanes show. Truncated by PostgREST's 1000-row cap; the view
 // above supersedes it once applied.
 async function fetchCampaignSendsLegacy(
-  client: 'all' | 'ivan' | 'risedtc',
+  client: 'all' | 'ivan' | 'risedtc' | 'arch',
 ): Promise<CampaignSend[]> {
   // Raw outreach_campaigns stores Ivan's client_id as NULL (only inbox_messages_v
   // coalesces it to 'ivan'), so a server-side .eq('client_id','ivan') matches
@@ -328,7 +328,7 @@ function maxIso(a: string | null, b: string | null): string | null {
 export function buildLanes(
   rows: SendRow[],
   daily: DailyRow[],
-  client: 'all' | 'ivan' | 'risedtc',
+  client: 'all' | 'ivan' | 'risedtc' | 'arch',
 ): Lane[] {
   const inClient = (id: string) => client === 'all' || id === client
 
