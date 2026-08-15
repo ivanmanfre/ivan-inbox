@@ -1,5 +1,5 @@
 import {
-  STAGE_LABEL, stageOf, taxonomyFields,
+  LANE_POSSESSIVE, STAGE_LABEL, stageOf, taxonomyFields,
   type ContentDraft, type ContentLane, type IdeaCandidate, type ScheduledQueueRow,
 } from './content'
 import { normalizeStyleKey, previewKey, type Resource, type StylePrompt } from './styles'
@@ -204,7 +204,7 @@ export function draftSpecs(lane: ContentLane): FacetSpec<ContentDraft>[] {
     specs.push({
       key: 'board',
       label: 'Board',
-      of: d => yesNo(d.board_visible === true, 'On Mattan’s board', 'Internal'),
+      of: d => yesNo(d.board_visible === true, `On ${LANE_POSSESSIVE[lane]} board`, 'Internal'),
     })
   }
   specs.push(

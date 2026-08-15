@@ -496,7 +496,7 @@ function GovGauge({ g }: { g: GovernorRow }) {
 }
 
 function Governor({ rows, client }: { rows: GovernorRow[]; client: Client }) {
-  const targets: string[] = client === 'all' ? ['ivan', 'risedtc'] : [client]
+  const targets: string[] = client === 'all' ? ['ivan', 'risedtc', 'arch'] : [client]
   const cards = targets
     .map(t => rows.find(r => r.client_id === t))
     .filter((g): g is GovernorRow => Boolean(g))
@@ -572,7 +572,7 @@ function SeatCard({ p, selected, neutral, onSelect }: {
 function Seats({ data, client, setClient }: {
   data: OverviewData; client: Client; setClient?: (c: Client) => void
 }) {
-  const people = [personSummary(data, 'ivan'), personSummary(data, 'risedtc')]
+  const people = [personSummary(data, 'ivan'), personSummary(data, 'risedtc'), personSummary(data, 'arch')]
   const neutral = client === 'all'
   return (
     <section className="ov-sec">

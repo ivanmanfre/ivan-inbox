@@ -93,14 +93,14 @@ function RowDelete({ d, lane, onDone }: { d: ContentDraft; lane: ContentLane; on
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const confirm = useConfirm()
-  if (lane === 'risedtc' && boardGroupOf(d) === 'board') return null
+  if (lane !== 'ivan' && boardGroupOf(d) === 'board') return null
   const run = async (e: React.MouseEvent) => {
     // A tap on the card opens the window; the ✕ must not also fire that.
     e.stopPropagation()
     const ok = await confirm({
       title: 'Delete this draft?',
-      message: lane === 'risedtc'
-        ? 'Mattan has never seen it, and this removes it permanently.'
+      message: lane !== 'ivan'
+        ? `${LANE_LABEL[lane]} has never seen it, and this removes it permanently.`
         : 'This removes it permanently.',
       confirmText: 'Delete',
       danger: true,
@@ -108,7 +108,7 @@ function RowDelete({ d, lane, onDone }: { d: ContentDraft; lane: ContentLane; on
     if (!ok) return
     setBusy(true); setErr('')
     try {
-      await (lane === 'risedtc' ? deleteClientDraft(d.id, d.taxonomy) : deleteDraft(d.id, d.taxonomy))
+      await (lane !== 'ivan' ? deleteClientDraft(d.id, d.taxonomy) : deleteDraft(d.id, d.taxonomy))
       onDone()
     } catch (er) {
       setErr(er instanceof Error ? er.message : 'Could not delete')
@@ -236,7 +236,7 @@ function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
             .ct-mid instead, so it is never gated by that breakpoint and reads
             at every width. Quiet on purpose (text3, one line, ellipsis) — this
             is an operator surface, not a redesign. */}
-        {lane === 'risedtc' && d.source_label && (
+        {lane !== 'ivan' && d.source_label && (
           <div className="ct-src" title={d.source_label}>{d.source_label}</div>
         )}
       </div>
@@ -825,7 +825,7 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
     stageOpen.ensure(`board_${filterStage}`)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterStage])
-  const specs = draftSpecs('risedtc')
+  const specs = draftSpecs(lane)
   const facets = buildFacets(drafts, specs)
   // The same five prominent axes as Ivan's lane, deliberately WITHOUT `board`:
   // this lane is already GROUPED by board visibility (BOARD_ORDER below), so a

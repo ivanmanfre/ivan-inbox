@@ -367,14 +367,17 @@ describe('lane labels', () => {
   // 'risedtc' is a DATABASE VALUE. Lane B is called "Mattan Danino" everywhere a
   // human reads it (IA §0), and the mapping lives in exactly one place so a
   // rename cannot half-land the way the shipped "Rise" chips did.
-  it('names lane B after the person, never after the account', () => {
+  it('names client lanes after the person, never after the account', () => {
     expect(LANE_LABEL.risedtc).toBe('Mattan Danino')
+    expect(LANE_LABEL.arch).toBe('Davorin Smit')
     expect(LANE_LABEL.ivan).toBe('Ivan')
     expect(Object.values(LANE_LABEL).join(' ')).not.toMatch(/Rise/)
+    expect(Object.values(LANE_LABEL).join(' ')).not.toMatch(/ARCH/)
     expect(LANE_POSSESSIVE.risedtc).toBe('Mattan’s')
+    expect(LANE_POSSESSIVE.arch).toBe('Davorin’s')
   })
-  it('keeps exactly two lanes', () => {
-    expect(CONTENT_LANES).toEqual(['ivan', 'risedtc'])
+  it('keeps exactly three lanes', () => {
+    expect(CONTENT_LANES).toEqual(['ivan', 'risedtc', 'arch'])
   })
 })
 

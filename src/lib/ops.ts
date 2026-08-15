@@ -72,7 +72,7 @@ export type OpsContext = {
 // engine and leaves the draft in that board's review buffer. Same table, different
 // destination. (The queue-jump it used to do is now opt-in, off by default:
 // integration_config.newsjack_auto_jump.)
-export const ENGINE_LABEL: Record<string, string> = { ivan: 'your feed', risedtc: 'Rise' }
+export const ENGINE_LABEL: Record<string, string> = { ivan: 'your feed', risedtc: 'Rise', arch: 'Arch' }
 export function engineLabel(clientId: string): string {
   return ENGINE_LABEL[clientId] ?? clientId
 }
@@ -82,7 +82,7 @@ export function engineLabel(clientId: string): string {
 // BY a person from their account, so the card names the person; "your feed" is
 // the newsjack/publishing register and stays there. Derived from the row's own
 // client_id — never hardcoded, because both lanes render this card.
-export const SEAT_LABEL: Record<string, string> = { ivan: 'Ivan', risedtc: 'Mattan Danino' }
+export const SEAT_LABEL: Record<string, string> = { ivan: 'Ivan', risedtc: 'Mattan Danino', arch: 'Davorin Smit' }
 export function seatLabel(clientId: string): string {
   return SEAT_LABEL[clientId] ?? ENGINE_LABEL[clientId] ?? clientId
 }
