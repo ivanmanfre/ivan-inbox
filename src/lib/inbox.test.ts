@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { isDraft, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, threadBucket, filterByStatus, type InboxMessage, type Status } from './inbox'
+import { isDraft, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, type InboxMessage, type Status } from './inbox'
 
 // inbox.ts:191 gates needsAnswer on a 14-day wall-clock staleness window
 // (STALE_DAYS), measured against Date.now() by default -- and most callers
@@ -368,5 +368,38 @@ describe('threadBucket + filterByStatus (the DMs status axis)', () => {
 
   it('a send echo is in no view at all — it belongs to Sends', () => {
     expect(ids('all')).not.toContain('p5')
+  })
+})
+
+// Lead-magnet deliveries (2026-08-15). They are outbound-only until the person
+// writes back, so every rule that requires an inbound row hid them: Ivan asked
+// for a magnet gate on 08-14, three DMs went out, and none of them appeared.
+describe('lead magnet deliveries', () => {
+  const lm: InboxMessage = {
+    ...base, id: 'lm1', prospect_id: 'lm', direction: 'outbound',
+    message_text: "hey! here's the kit: https://resources.risedtc.com/x/",
+    sent_at: '2026-07-22T11:00:00Z', approved_at: '2026-07-22T11:00:00Z',
+    ai_model: 'lm_gate_v1', prospect_name: 'Magnet Asker', prospect_stage: 'lm_delivered',
+  }
+
+  it('shows in the conversation list even with no inbound row', () => {
+    const [t] = groupThreads([lm])
+    expect(isLeadMagnet(t)).toBe(true)
+    expect(filterThreads([t], 'all').map(x => x.prospect_id)).toEqual(['lm'])
+  })
+
+  it('an ordinary outbound-only send stays hidden', () => {
+    const echo = { ...lm, id: 'e1', prospect_id: 'echo', ai_model: null }
+    const [t] = groupThreads([echo])
+    expect(isLeadMagnet(t)).toBe(false)
+    expect(filterThreads([t], 'all')).toEqual([])
+  })
+
+  it("rides the 'all' status view but never the badge", () => {
+    const [t] = groupThreads([lm])
+    expect(threadBucket(t)).toBe('waiting')
+    expect(filterByStatus([t], 'all').map(x => x.prospect_id)).toEqual(['lm'])
+    expect(filterByStatus([t], 'needs')).toEqual([])
+    expect(inboxWaitingCount([t])).toBe(0)
   })
 })

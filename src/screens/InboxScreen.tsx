@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Avatar } from '../components/Avatar'
 import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
-import { filterByStatus, filterThreads, inboxWaitingCount, searchThreads, threadKind, type Filter, type Status, type Thread, eventTime } from '../lib/inbox'
+import { filterByStatus, filterThreads, inboxWaitingCount, isLeadMagnet, searchThreads, threadKind, type Filter, type Status, type Thread, eventTime } from '../lib/inbox'
 import { checkedPhrase } from '../lib/today'
 
 function timeAgo(iso: string): string {
@@ -235,6 +235,7 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
                     {threadKind(t) === 'inmail' && <span className="client kind-inmail">INMAIL</span>}
                     {threadKind(t) === 'email' && <span className="client kind-email">EMAIL</span>}
                     {threadKind(t) === 'linkedin' && <span className="client kind-dm">DM</span>}
+                    {isLeadMagnet(t) && <span className="client kind-lm">LEAD MAGNET</span>}
                   </div>
                   <div className="snip">{snip}</div>
                 </div>

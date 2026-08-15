@@ -137,8 +137,18 @@ export function threadKind(t: Thread): 'email' | 'inmail' | 'linkedin' {
 // reply_count 0. Something upstream uses the column for "a human has to act",
 // not "a human wrote back". Admitting 38 of those into the DM list is what kept
 // putting rows there with nothing to reply to.
+// A lead-magnet delivery: the comment gate DM'd them the resource they asked for
+// by commenting the keyword. Written by the gate handler with ai_model='lm_gate_v1'.
+// These are outbound-only until the person writes back, so the send-echo rule below
+// hid every one of them (Ivan, 2026-08-15: "i dont see them on inbox history").
+// They are exempt because the person DID initiate — they commented first — which is
+// exactly the thing the echo rule is trying to require.
+export function isLeadMagnet(t: Thread): boolean {
+  return t.messages.some(m => m.ai_model === 'lm_gate_v1')
+}
+
 function isConversation(t: Thread): boolean {
-  return t.draft !== null || t.messages.some(m => m.direction === 'inbound')
+  return t.draft !== null || t.messages.some(m => m.direction === 'inbound') || isLeadMagnet(t)
 }
 
 // Nobody has answered their last message: unread inbound exists and no real
@@ -290,8 +300,12 @@ export const STATUS_LABEL: Record<Status, string> = {
 // seat `needsAnswer` never fires and the detector's flag is the ONLY thing that
 // surfaces a pending reply. 'flagged' therefore has to stay in every pending
 // view, on both seats.
+// Lead-magnet deliveries ride in 'all' even though the ball is with them: Ivan wants to
+// see who asked for a magnet without hunting through Sends. 'needs' stays clean, so the
+// badge still counts only work he owes.
 export function filterByStatus(threads: Thread[], s: Status): Thread[] {
-  if (s === 'all' || s === 'needs') return threads.filter(t => threadBucket(t) !== 'waiting')
+  if (s === 'needs') return threads.filter(t => threadBucket(t) !== 'waiting')
+  if (s === 'all') return threads.filter(t => threadBucket(t) !== 'waiting' || isLeadMagnet(t))
   return threads.filter(t => threadBucket(t) === s)
 }
 

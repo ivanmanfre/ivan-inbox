@@ -2452,6 +2452,12 @@
   background:transparent; color:#CFD3CB; box-shadow:inset 0 0 0 1px rgba(207,211,203,.55);
 }
 .wb.wb.wb .b.out.manual{ box-shadow:inset 0 0 0 1px rgba(207,211,203,.5) }
+/* A lead-magnet delivery is a SOURCE mark: they asked for it in a comment. Filled
+   amber so it reads as the one warm row in a list of cold sends, and distinct from
+   the outlined provenance marks above. */
+.wb.wb.wb .r .client.kind-lm, .wb.wb.wb .dmh-r .client.kind-lm{
+  background:rgba(255,199,29,.18); color:#FFC71D; box-shadow:inset 0 0 0 1px rgba(255,199,29,.45);
+}
 
 /* ==========================================================================
    THE CONTENT TABLE (2026-08-04, Ivan: "We need to have different columns,
