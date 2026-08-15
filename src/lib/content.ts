@@ -4,22 +4,25 @@ import { supabase } from './supabase'
 // of the same carousel_drafts table. There is no per-client table fork — the
 // whole tenancy split is one nullable column (phase1b §1).
 //
-// 'risedtc' is a DATABASE VALUE and never a label: lane B is called "Mattan
-// Danino" everywhere a human reads it (IA §0). LANE_LABEL is the only place that
-// mapping lives, so a rename can never half-land again.
-export type ContentLane = 'ivan' | 'risedtc'
+// 'risedtc' / 'arch' are DATABASE VALUES and never labels: client lanes are
+// called "Mattan Danino" / "Davorin Smit" everywhere a human reads them (IA §0).
+// LANE_LABEL is the only place that mapping lives, so a rename can never
+// half-land again.
+export type ContentLane = 'ivan' | 'risedtc' | 'arch'
 
-export const CONTENT_LANES = ['ivan', 'risedtc'] as const
+export const CONTENT_LANES = ['ivan', 'risedtc', 'arch'] as const
 
 export const LANE_LABEL: Record<ContentLane, string> = {
   ivan: 'Ivan',
   risedtc: 'Mattan Danino',
+  arch: 'Davorin Smit',
 }
 
 // Possessive form, for "on Mattan's board" / "Ivan's drafts".
 export const LANE_POSSESSIVE: Record<ContentLane, string> = {
   ivan: 'Ivan’s',
   risedtc: 'Mattan’s',
+  arch: 'Davorin’s',
 }
 
 // Only the fields a queue/preview surface actually renders. Column names
@@ -101,7 +104,7 @@ export type LaneFilter =
 export function laneFilter(lane: ContentLane): LaneFilter {
   return lane === 'ivan'
     ? { column: 'client_id', op: 'is', value: null }
-    : { column: 'client_id', op: 'eq', value: 'risedtc' }
+    : { column: 'client_id', op: 'eq', value: lane }
 }
 
 // NULL→'ivan' the same way every existing screen does, so a raw carousel_drafts
@@ -1110,9 +1113,9 @@ export const CLIENT_RPC_MESSAGES: Record<string, string> = {
   draft_not_found:
     'The database has no client draft with this id. Nothing changed.',
   not_in_review:
-    'Only a draft still at Needs review can go on Mattan’s board — that rule lives in the database, not here.',
+    'Only a draft still at Needs review can go on the client’s board — that rule lives in the database, not here.',
   not_editable:
-    'Mattan’s copy can only be edited while the draft is at Needs review or Scheduled.',
+    'The client’s copy can only be edited while the draft is at Needs review or Scheduled.',
   empty_body: 'An empty post cannot be saved.',
   awaiting_media: 'That draft carries no image, and the scheduler refuses a client post without one.',
   // The Ivan lane's refusal, verbatim from the function body. It is not an
@@ -1157,19 +1160,19 @@ function rpcOk(data: unknown, error: { message: string } | null): Record<string,
 // pointed at a client row — flipping one to 'approved' would make it
 // PERMANENTLY unpromotable.
 export function canPromote(status: string, lane: ContentLane): boolean {
-  return lane === 'risedtc' && status === 'review'
+  return lane !== 'ivan' && status === 'review'
 }
 
 // UN-PROMOTE has no status rule in the SQL (the `not_in_review` branch is
 // guarded by `p_visible`), so taking a post back off the board works at any
 // stage — which is what makes it a real undo.
 export function canUnpromote(lane: ContentLane, boardVisible: boolean | null | undefined): boolean {
-  return lane === 'risedtc' && boardVisible === true
+  return lane !== 'ivan' && boardVisible === true
 }
 
 // EDIT. The RPC's `status in ('review','scheduled')` verbatim.
 export function clientEditable(status: string, lane: ContentLane): boolean {
-  return lane === 'risedtc' && (status === 'review' || status === 'scheduled')
+  return lane !== 'ivan' && (status === 'review' || status === 'scheduled')
 }
 
 // DELETE, and the one rule here that is OURS rather than the database's.
@@ -1189,7 +1192,7 @@ export function clientEditable(status: string, lane: ContentLane): boolean {
 // which rebuilds the queue without the row, and the delete cannot lose that race
 // because a sync that runs afterwards would not find the row either.
 export function clientDeletable(lane: ContentLane, boardVisible: boolean | null | undefined): boolean {
-  return lane === 'risedtc' && boardVisible !== true
+  return lane !== 'ivan' && boardVisible !== true
 }
 
 // ---- the writes ------------------------------------------------------------
@@ -1371,7 +1374,7 @@ export async function deleteClientDraft(id: string, taxonomy: unknown): Promise<
   if (!cur.data) throw new Error('This draft is no longer in the database.')
   if (cur.data.board_visible === true) {
     throw new Error(
-      'This draft is on Mattan’s board. Take it off the board first — deleting it here '
+      'This draft is on the client’s board. Take it off the board first — deleting it here '
       + 'would leave a copy of it on his board with nothing to clean it up.',
     )
   }
@@ -1496,8 +1499,8 @@ const CLIENT_STAGE_LABEL: Record<BoardGroup, Partial<Record<ContentStage, string
   // word for it (2026-08-04): these rows sit on the RISE DTC board waiting on
   // Mattan's decision.
   board: {
-    review: 'On buffer · RISE DTC board',
-    approved: 'Mattan approved',
+    review: 'On buffer · client board',
+    approved: 'Client approved',
     scheduled: 'Scheduled on his board',
   },
   // Our side: `review` is the decision Ivan is actually being asked for, and it

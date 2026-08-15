@@ -48,6 +48,12 @@ const AUTHOR: Record<ContentLane, { name: string; headline: string; initials: st
     initials: 'MD',
     photo: null,
   },
+  arch: {
+    name: 'Davorin Smit',
+    headline: 'Founder, ARCH. Influencer Agency',
+    initials: 'DS',
+    photo: null,
+  },
 }
 
 function Avatar({ lane }: { lane: ContentLane }) {

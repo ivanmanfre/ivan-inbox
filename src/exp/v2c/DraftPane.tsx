@@ -3,7 +3,7 @@ import { useDraftDetail } from '../../hooks/useContent'
 import { useSectionState } from '../../hooks/useSectionState'
 import { useConfirm } from '../../components/ConfirmSheet'
 import {
-  ClientRpcError, DraftSaveConflict, LANE_LABEL, STAGE_LABEL, approveDraft, boardGroupOf, groupLogByAgent,
+  ClientRpcError, DraftSaveConflict, LANE_LABEL, LANE_POSSESSIVE, STAGE_LABEL, approveDraft, boardGroupOf, groupLogByAgent,
   canPromote, canRestartToIdea, canUnpromote, clientDeletable, clientEditable, clientStageLabel, deleteClientDraft,
   deleteDraft, normalizeAgentLog, normalizeImageUrls, normalizeKeyPoints, normalizeQa,
   normalizeSourceDetail, restartDraftToIdea, reviewActionable, saveClientDraftBody, saveDraftBody, selfContainedHtml,
@@ -603,16 +603,16 @@ function DeleteDraft({ d, onDone, disabled }: {
 // first place.
 // ---------------------------------------------------------------------------
 
-function DeleteClientDraft({ d, onDone }: { d: ContentDraftDetail; onDone: () => void }) {
+function DeleteClientDraft({ d, lane, onDone }: { d: ContentDraftDetail; lane: ContentLane; onDone: () => void }) {
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
-  if (!clientDeletable('risedtc', d.board_visible)) {
+  if (!clientDeletable(lane, d.board_visible)) {
     return (
       <div className="wb-delzone">
         <div className="ct-subtle">
-          On Mattan’s board, so it can’t be deleted from here — his board keeps its own copy of
+          On {LANE_POSSESSIVE[lane]} board, so it can’t be deleted from here — his board keeps its own copy of
           every promoted post, and only taking it off the board rebuilds that copy. Take it off
           first, then delete.
         </div>
@@ -1052,7 +1052,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
               reads the promotion state rather than repeating the raw stage —
               and it reads the OPTIMISTIC flag, so it flips on the decision. */}
           <span className={`ct-chip${stage === 'error' || stage === 'stuck' ? ' ct-chip-bad' : ''}`}>
-            {lane === 'risedtc'
+            {lane !== 'ivan'
               ? clientStageLabel(stage, boardGroupOf({ board_visible: visible }))
               : STAGE_LABEL[stage]}
           </span>
@@ -1075,9 +1075,9 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
           <span className="ct-chip" title={`updated_at ${d.updated_at}`}>
             edited {relTime(d.updated_at)}
           </span>
-          {lane === 'risedtc' && (
+          {lane !== 'ivan' && (
             <span className={visible === true ? 'ct-lane' : 'ct-chip'}>
-              {visible === true ? 'On Mattan’s board' : 'Not on his board'}
+              {visible === true ? `On ${LANE_POSSESSIVE[lane]} board` : 'Not on his board'}
             </span>
           )}
         </div>
@@ -1094,7 +1094,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
           </div>
         ))}
 
-        {lane === 'risedtc' && images.length === 0 && d.status === 'review' && (
+        {lane !== 'ivan' && images.length === 0 && d.status === 'review' && (
           // 🔴 operator_schedule_draft refuses a draft with no media and returns
           // 'awaiting_media'. A regeneration CLEARS image_urls, so the photo has
           // to be re-pinned first.
@@ -1186,10 +1186,11 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
             <ScheduleDraft d={d} onDone={refresh} />
           </div>
         )}
-        {lane === 'risedtc' && (
+        {lane !== 'ivan' && (
           <div style={{ marginBottom: 4 }}>
             <DeleteClientDraft
               d={{ ...d, board_visible: visible }}
+              lane={lane}
               onDone={() => { refresh(); if (nextId) onPick(nextId); else onClose() }}
             />
           </div>
@@ -1200,16 +1201,16 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
         {/* WHY THERE IS NO BUTTON. An affordance that is simply missing is what
             produced Ivan's message; on this lane every gap now states the rule
             that closes it, and the rule is the database's, not a house style. */}
-        {lane === 'risedtc' && !promotable && !unpromotable && (
+        {lane !== 'ivan' && !promotable && !unpromotable && (
           <div className="ct-subtle dw-clientnote">
             {d.status === 'error'
-              ? 'This one errored, and only a draft at Needs review can go on Mattan’s board. Fix or regenerate it on our side first — nothing here reaches him.'
+              ? `This one errored, and only a draft at Needs review can go on ${LANE_POSSESSIVE[lane]} board. Fix or regenerate it on our side first — nothing here reaches him.`
               : `Not promotable at ${STAGE_LABEL[stage].toLowerCase()} — the database only promotes a draft that is still at Needs review.`}
           </div>
         )}
-        {lane === 'risedtc' && !editable && (
+        {lane !== 'ivan' && !editable && (
           <div className="ct-subtle dw-clientnote">
-            Mattan’s copy is only editable while the draft is at Needs review or Scheduled. At{' '}
+            {LANE_POSSESSIVE[lane]} copy is only editable while the draft is at Needs review or Scheduled. At{' '}
             {STAGE_LABEL[stage].toLowerCase()} the words are settled — edit it on his board instead.
           </div>
         )}
