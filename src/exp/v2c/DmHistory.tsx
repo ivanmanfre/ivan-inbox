@@ -1,6 +1,6 @@
 import { useSectionState } from '../../hooks/useSectionState'
 import { Avatar } from '../../components/Avatar'
-import { eventTime, threadKind, type Thread } from '../../lib/inbox'
+import { eventTime, isLeadMagnet, threadKind, type Thread } from '../../lib/inbox'
 import { relTime } from './fmt'
 
 // DM HISTORY — the receipt.
@@ -39,12 +39,19 @@ export function DmHistory({ threads, onOpen }: {
 }) {
   const [sect, setSect] = useSectionState('dms.history')
   const open = sect.open.includes('history')
+  // 2026-08-15 (Ivan): lead-magnet deliveries belong here too. They carry no inbound
+  // row — the person commented the keyword on a POST rather than writing back — so the
+  // raw "had any response" rule hid every one of them. Commenting to ask for something
+  // is the same evidence of a human on the other end that this section exists to show.
   const answered = threads
-    .filter(t => t.messages.some(m => m.direction === 'inbound'))
+    .filter(t => t.messages.some(m => m.direction === 'inbound') || isLeadMagnet(t))
     .sort((a, b) => eventTime(b.last).localeCompare(eventTime(a.last)))
   if (answered.length === 0) return null
 
   const replies = answered.reduce((n, t) => n + t.messages.filter(m => m.direction === 'inbound').length, 0)
+  // Counted apart: a magnet delivery is not a reply, and rolling it into the replies
+  // number would overstate what the engine got back.
+  const magnets = answered.filter(isLeadMagnet).length
 
   return (
     <div className={`dmh${open ? ' on' : ''}`}>
@@ -59,7 +66,10 @@ export function DmHistory({ threads, onOpen }: {
       >
         <span className="dmh-c" aria-hidden>{open ? '⌄' : '›'}</span>
         <span className="dmh-n">DM history</span>
-        <span className="dmh-m">{answered.length} conversations · {replies} replies</span>
+        <span className="dmh-m">
+          {answered.length} conversations · {replies} replies
+          {magnets > 0 && ` · ${magnets} lead magnet${magnets === 1 ? '' : 's'}`}
+        </span>
       </button>
 
       {open && (
@@ -84,6 +94,9 @@ export function DmHistory({ threads, onOpen }: {
                     {/* A hand-typed reply is the one thing in this list no
                         automation did, so it is marked rather than blended in. */}
                     {manual > 0 && <span className="client kind-manual">BY HAND</span>}
+                    {/* They commented the gate keyword and the engine sent them the
+                        resource. Marked so a delivery never reads as a cold send. */}
+                    {isLeadMagnet(t) && <span className="client kind-lm">LEAD MAGNET</span>}
                   </div>
                   <div className="snip">{snip}</div>
                 </div>
