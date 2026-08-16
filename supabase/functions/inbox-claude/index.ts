@@ -255,10 +255,34 @@ Deno.serve(async (req) => {
       `${appendSystemPrompt.length} > ${MAX_SYSTEM_PROMPT_CHARS}`)
   }
 
+  // 🔴 PERMISSION MODE IS SENT EXPLICITLY, AND IT IS A DELIBERATE GRANT.
+  //
+  // The header of this file has always SAID the upstream runs with
+  // bypassPermissions. It did not: nothing here ever sent `permission_mode`, so
+  // the container fell through to its own default of `acceptEdits`
+  // (claude-code-railway/main.py:86). In that mode every Bash call waits for an
+  // approval that nobody on this path can give, because the caller is a voice
+  // session or a chat pane, not a terminal with a human at it. Measured
+  // 2026-08-16: every escalated turn ended with the model asking to have the
+  // next Bash call approved, so the lane could talk about his data and never
+  // read it.
+  //
+  // What this grant costs, stated plainly rather than discovered later: a turn
+  // dispatched from here runs unattended Bash on a filesystem that holds every
+  // client's credentials, and pinning the workspace does NOT sandbox that. The
+  // controls actually containing this surface are the ones above — the verified
+  // bearer, the single-operator allowlist, the scoped origins — and they are now
+  // the ONLY ones. Ivan authorised this explicitly on 2026-08-16 after the risk
+  // was put to him in those words; it is the same trust level as him typing the
+  // command himself, which is what this lane exists to replace.
+  //
+  // To take the grant back: delete the line. The container returns to
+  // acceptEdits on the next request, no deploy needed upstream.
   const upstreamBody = {
     prompt: context ? `${context}\n\n---\n\n${prompt}` : prompt,
     stream: true,
     append_system_prompt: appendSystemPrompt,
+    permission_mode: 'bypassPermissions',
     ...(wantModel ? { model: wantModel } : {}),
   }
 
