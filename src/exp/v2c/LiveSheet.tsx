@@ -1,6 +1,12 @@
 import { VOICE_COPY, VOICE_LABEL, type VoiceState } from './chat/voice'
 import type { LiveExchange } from './chat/useLive'
 
+// 🔴 RETIRED 2026-08-16 — superseded by VoiceDock.tsx, and NOT mounted anywhere.
+// It is kept because it is the spec of what the dock had to carry over
+// (VOICE_LABEL/VOICE_COPY, the state-encoding orb, the level-driven shadow, the
+// interim line). Do not wire it back: the takeover it implements is the exact
+// complaint the dock exists to answer.
+//
 // The LIVE CONVERSATION takeover. Reuses the app's existing .sheet-scrim /
 // .sheet-card grammar (the same choice HandsFreeSheet made) so it inherits
 // the sheet keyframes instead of adding new ones, and the existing
