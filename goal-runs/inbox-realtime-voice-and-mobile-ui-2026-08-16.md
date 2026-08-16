@@ -317,3 +317,12 @@ rather than only the number.
 ### Still open
 
 - **iPhone installed-PWA screen-lock survival.** Human-blocked, as above.
+
+### ⚠ Harness trap worth keeping
+
+Chrome **loops** `--use-file-for-fake-audio-capture`. A 45s fixture therefore re-asks
+the question every 45s, which in the app reads as the model re-dispatching in a loop —
+three dispatches in four minutes, and two runs that appeared to end on "let me check
+again" instead of an answer. Re-run with a 5-minute silent tail: exactly **one**
+dispatch, one clean answer. Pad voice fixtures with minutes of silence or you will
+debug a bug you created.
