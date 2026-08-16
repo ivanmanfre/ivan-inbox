@@ -110,9 +110,35 @@ Deno.serve(async (req) => {
     return fail(400, 'bad_body', origin)
   }
 
+  // TOOLS ARE MINT-TIME, NOT session.update. Sending a session.update carrying
+  // only {tools, tool_choice} REPLACES the session config and silently drops
+  // the instructions set here — measured 2026-08-16: `session.updated` came
+  // back fine, the model then answered from its own head instead of escalating,
+  // and no function_call event was ever emitted. One config, set once, here.
+  const TOOLS = [{
+    type: 'function',
+    name: 'escalate_to_workbench',
+    description:
+      'Dispatch real work to the full Claude Code pipeline: anything factual about '
+      + "Ivan's system or data, any lookup, and any action (read, edit, run, write, "
+      + 'analyse). Use this rather than answering from your own knowledge.',
+    parameters: {
+      type: 'object',
+      properties: {
+        task: {
+          type: 'string',
+          description: 'The task, one clear line, as you would type it to a capable engineer.',
+        },
+      },
+      required: ['task'],
+    },
+  }]
+
   const session: Record<string, unknown> = {
     type: 'realtime',
     model: MODEL,
+    tools: TOOLS,
+    tool_choice: 'auto',
     // Reasoning on speech-to-speech: OpenAI's own guidance is to start at low
     // effort for production voice agents and only raise it if the task needs it.
     // Latency is the whole point of this lane, so low it is.

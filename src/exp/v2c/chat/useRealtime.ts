@@ -57,25 +57,6 @@ const INSTRUCTIONS = [
   'what he just said, and helping him phrase the task he wants to dispatch.',
 ].join('\n')
 
-const TOOLS = [{
-  type: 'function',
-  name: 'escalate_to_workbench',
-  description:
-    'Dispatch real work to the full Claude Code pipeline: anything factual about '
-    + 'Ivan\'s system or data, any lookup, and any action (read, edit, run, write, '
-    + 'analyse). Use this rather than answering from your own knowledge.',
-  parameters: {
-    type: 'object',
-    properties: {
-      task: {
-        type: 'string',
-        description: 'The task, one clear line, as you would type it to a capable engineer.',
-      },
-    },
-    required: ['task'],
-  },
-}]
-
 export function useRealtime({ onEscalate }: {
   onEscalate: (task: string) => void
 }) {
@@ -124,9 +105,12 @@ export function useRealtime({ onEscalate }: {
     // --- turn-taking, decided by the model rather than by our silence timer ---
     if (/input_audio_buffer\.speech_started/.test(t)) {
       // Hot mic during SPEAKING is deliberate: this IS the barge-in path.
+      // Do NOT clear reply here: barge-in fires this WHILE a response is still
+      // streaming, which wiped the text before response.done could read it.
       setState({ s: 'LISTENING', level: 0 })
-      reply.current = ''
     }
+    // A new response is the only correct place to reset the reply buffer.
+    if (/response\.created/.test(t)) reply.current = ''
 
     // --- what he said ---
     if (/input_audio_transcription\.delta/.test(t)) {
@@ -226,9 +210,10 @@ export function useRealtime({ onEscalate }: {
         try { onEvent(JSON.parse(e.data as string) as RtEvent) } catch { /* not ours */ }
       }
       chan.onopen = () => {
-        // Tools are set here rather than at mint time so the contract lives
-        // next to the handler that answers it.
-        send({ type: 'session.update', session: { type: 'realtime', tools: TOOLS, tool_choice: 'auto' } })
+        // NO session.update here. Tools AND instructions are set once, at mint
+        // time, by inbox-rt-session. Sending a partial session object replaces
+        // the config and silently drops the instructions — measured 2026-08-16:
+        // session.updated acked, then the model stopped escalating entirely.
         setState({ s: 'LISTENING', level: 0 })
       }
 
