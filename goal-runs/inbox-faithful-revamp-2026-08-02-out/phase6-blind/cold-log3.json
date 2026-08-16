@@ -1,0 +1,62 @@
+{
+  "draftOpened": true,
+  "bodyAfterDraftClick": "IM\nWorkbench\n☼\nToday\n◉\nInbox\n56\nWORK\n✦\nDMs\n▤\nContent\n19\n↑\nSends\n◈\nOps\n2\n✳\nClaude\nDocked beside your work\n⚙︎\nSettings\njust now\n↻\nWORK\nDMs\nContent\n19\nCONTENT\nIvan\nMattan Danino\n20 unacknowledged pipeline alerts, all older than the 14-day window. Their task ids are ClickUp-era, so no draft link exists and none is faked — and nothing here acknowledges them.\n39\n4 errored · 35 elsewhere\n›\nPOST PIPELINE\n···\n19\n2\n109\nGEN\nREVIEW\nAPPR\nSCHED\nPUB\n19\nwaiting on you\nof 130 loaded\nIN FLIGHT\nPOST IDEAS 57 OF 57\nTotal: 173 of 203 in the lane\n0 scheduled in the next 7 days of a 4-a-week cadence — a denominator, not a quota. Nothing here blocks or scores against it.\n⌕\nStage:\nAny\n⌄\nKind:\nAny\n⌄\nPillar:\nAny\n⌄\nSource:\nAny\n⌄\nQA verdict:\nAny\n⌄\nFilters\n⌄\n173 drafts\n01\nIDEAS\n57\n›\n03\nNEEDS REVIEW\n19\n⌄\nAnthropic says its own AI models hacked 3 organizations during safety testing\nPASS 79\nIMAGE\nSKIP\nAPPROVE\n5h ago\nAI faked its way through peer review - agency owners posting AI content are running the same risk with their audience\nPASS 78\nTEXT\nSKIP\nAPPROVE\n1d ago\nWhen delivery runs your calendar, pipeline is always the first thing that goes\nPASS 83\nTEXT\nSKIP\nAPPROVE\n1d ago\n[Lifestyle] An underdiscussed fact about content operations: most systems log what\n—\nTEXT\nSKIP\nAPPROVE\n1d ago\n[Lifestyle] Six months of scheduled posts. Not one record of who edited them after\n—\nTEXT\nSKIP\nAPPROVE\n1d ago\n[Lifestyle] It hit 32 degrees in Warsaw today and I moved my laptop to the only ta\n—\nIMAGE\nSKIP\nAPPROVE\n1d ago\n[Lifestyl",
+  "probe": [
+    {
+      "x": 1414,
+      "y": 33,
+      "found": true,
+      "path": [
+        "SPAN.wb-pane-x",
+        "DIV.wb-pane-h",
+        "DIV.wb-peer wb-peer-chat",
+        "DIV.wb-regions peers-1"
+      ]
+    },
+    {
+      "x": 1410,
+      "y": 33,
+      "found": true,
+      "path": [
+        "SPAN.wb-pane-x",
+        "DIV.wb-pane-h",
+        "DIV.wb-peer wb-peer-chat",
+        "DIV.wb-regions peers-1"
+      ]
+    },
+    {
+      "x": 1418,
+      "y": 33,
+      "found": true,
+      "path": [
+        "SPAN.wb-pane-x",
+        "DIV.wb-pane-h",
+        "DIV.wb-peer wb-peer-chat",
+        "DIV.wb-regions peers-1"
+      ]
+    },
+    {
+      "x": 1414,
+      "y": 24,
+      "found": true,
+      "path": [
+        "SPAN.wb-pane-x",
+        "DIV.wb-pane-h",
+        "DIV.wb-peer wb-peer-chat",
+        "DIV.wb-regions peers-1"
+      ]
+    },
+    {
+      "x": 1414,
+      "y": 40,
+      "found": true,
+      "path": [
+        "SPAN.wb-pane-x",
+        "DIV.wb-pane-h",
+        "DIV.wb-peer wb-peer-chat",
+        "DIV.wb-regions peers-1"
+      ]
+    }
+  ],
+  "bodyAfterClose": "IM\nWorkbench\n☼\nToday\n◉\nInbox\n56\nWORK\n✦\nDMs\n▤\nContent\n19\n↑\nSends\n◈\nOps\n2\n✳\nClaude\nDock it beside your work\n⚙︎\nSettings\njust now\n↻\nWORK\nDMs\nContent\n19\nCONTENT\nIvan\nMattan Danino\n20 unacknowledged pipeline alerts, all older than the 14-day window. Their task ids are ClickUp-era, so no draft link exists and none is faked — and nothing here acknowledges them.\n39\n4 errored · 35 elsewhere\n›\nPOST PIPELINE"
+}

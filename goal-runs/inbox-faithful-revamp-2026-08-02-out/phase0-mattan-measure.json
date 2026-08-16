@@ -1,0 +1,165 @@
+{
+  "filterBlockCount": 2,
+  "totalFilterHeight": 684,
+  "groups": [
+    {
+      "label": "Stage",
+      "chipCount": 5,
+      "chips": [
+        "Needs review\n70",
+        "Published\n9",
+        "Errors\n3",
+        "Other\n3",
+        "Archived\n2"
+      ]
+    },
+    {
+      "label": "Kind",
+      "chipCount": 4,
+      "chips": [
+        "single_image\n41",
+        "text\n26",
+        "carousel\n17",
+        "video\n3"
+      ]
+    },
+    {
+      "label": "Board",
+      "chipCount": 2,
+      "chips": [
+        "Internal\n64",
+        "On Mattan’s board\n23"
+      ]
+    },
+    {
+      "label": "Pillar",
+      "chipCount": 2,
+      "chips": [
+        "case_study\n50",
+        "teardown\n4"
+      ]
+    },
+    {
+      "label": "Structure",
+      "chipCount": 8,
+      "chips": [
+        "HOW-TO / DECLARATIVE\n22",
+        "TEARDOWN\n12",
+        "FRAMEWORK WALKTHROUGH\n11",
+        "STORY\n8",
+        "CONFESSIONAL\n6",
+        "DATA-LED\n6"
+      ]
+    },
+    {
+      "label": "Image style",
+      "chipCount": 3,
+      "chips": [
+        "Concept Visual\n71",
+        "Real client photo\n1",
+        "RISE frame + real client photo + Gemini mockups\n1"
+      ]
+    },
+    {
+      "label": "Hook",
+      "chipCount": 10,
+      "chips": [
+        "other\n25",
+        "story\n18",
+        "story_opener\n10",
+        "data\n7",
+        "how_to_declarative\n4",
+        "pattern_interrupt\n4"
+      ]
+    },
+    {
+      "label": "Source",
+      "chipCount": 2,
+      "chips": [
+        "client-risedtc\n73",
+        "Studio\n1"
+      ]
+    },
+    {
+      "label": "Funnel",
+      "chipCount": 3,
+      "chips": [
+        "buyers\n57",
+        "trust\n15",
+        "reach\n11"
+      ]
+    },
+    {
+      "label": "QA verdict",
+      "chipCount": 4,
+      "chips": [
+        "PASS\n40",
+        "NEEDS_REGENERATE\n29",
+        "QA_BLOCKED\n2",
+        "LINT_FAIL\n1"
+      ]
+    },
+    {
+      "label": "QA score",
+      "chipCount": 4,
+      "chips": [
+        "60–79\n42",
+        "Under 60\n18",
+        "Unscored\n16",
+        "80+\n11"
+      ]
+    },
+    {
+      "label": "Image",
+      "chipCount": 2,
+      "chips": [
+        "Has image\n73",
+        "No image\n14"
+      ]
+    },
+    {
+      "label": "Regenerated",
+      "chipCount": 1,
+      "chips": [
+        "Regenerated\n2"
+      ]
+    },
+    {
+      "label": "Status",
+      "chipCount": 4,
+      "chips": [
+        "disqualified\n2",
+        "approved\n1",
+        "live\n1",
+        "review\n1"
+      ]
+    },
+    {
+      "label": "Format",
+      "chipCount": 4,
+      "chips": [
+        "Guide\n2",
+        "AI Kit\n1",
+        "calculator\n1",
+        "client_kit\n1"
+      ]
+    },
+    {
+      "label": "Landing URL",
+      "chipCount": 2,
+      "chips": [
+        "No landing URL\n3",
+        "Has landing URL\n2"
+      ]
+    },
+    {
+      "label": "Resource URL",
+      "chipCount": 2,
+      "chips": [
+        "Has resource URL\n3",
+        "No resource URL\n2"
+      ]
+    }
+  ],
+  "totalChips": 62
+}

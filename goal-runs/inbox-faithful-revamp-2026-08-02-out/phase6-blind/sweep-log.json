@@ -1,0 +1,1503 @@
+{
+  "log": [
+    {
+      "route": "today",
+      "phase": "top",
+      "hash": "#exp/v2/today",
+      "hOverflow": false,
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "smallTargetsCount": 7,
+      "smallTargetsSample": [
+        {
+          "tag": "H2",
+          "cls": "",
+          "w": 109,
+          "h": 34,
+          "text": "Today"
+        },
+        {
+          "tag": "DIV",
+          "cls": "td-date",
+          "w": 109,
+          "h": 20,
+          "text": "Sunday, August 2"
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-refresh",
+          "w": 34,
+          "h": 34,
+          "text": "↻"
+        },
+        {
+          "tag": "DIV",
+          "cls": "chips",
+          "w": 358,
+          "h": 30,
+          "text": "AllIvanRise"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 43,
+          "h": 30,
+          "text": "All"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip on",
+          "w": 52,
+          "h": 30,
+          "text": "Ivan"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 53,
+          "h": 30,
+          "text": "Rise"
+        }
+      ],
+      "clipped": [],
+      "textLen": 2733
+    },
+    {
+      "route": "today",
+      "phase": "scroll",
+      "scrollInfo": {
+        "mode": "scroller(generic)",
+        "cls": "rows td-rows",
+        "scrollTop": 689,
+        "scrollHeight": 1723,
+        "clientHeight": 592
+      },
+      "hash": "#exp/v2/today",
+      "hOverflow": false,
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "smallTargetsCount": 7,
+      "smallTargetsSample": [
+        {
+          "tag": "H2",
+          "cls": "",
+          "w": 109,
+          "h": 34,
+          "text": "Today"
+        },
+        {
+          "tag": "DIV",
+          "cls": "td-date",
+          "w": 109,
+          "h": 20,
+          "text": "Sunday, August 2"
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-refresh",
+          "w": 34,
+          "h": 34,
+          "text": "↻"
+        },
+        {
+          "tag": "DIV",
+          "cls": "chips",
+          "w": 358,
+          "h": 30,
+          "text": "AllIvanRise"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 43,
+          "h": 30,
+          "text": "All"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip on",
+          "w": 52,
+          "h": 30,
+          "text": "Ivan"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 53,
+          "h": 30,
+          "text": "Rise"
+        }
+      ],
+      "clipped": [],
+      "textLen": 2733
+    },
+    {
+      "route": "inbox",
+      "phase": "top",
+      "hash": "#exp/v2/inbox",
+      "hOverflow": false,
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "smallTargetsCount": 11,
+      "smallTargetsSample": [
+        {
+          "tag": "DIV",
+          "cls": "row-top",
+          "w": 358,
+          "h": 34,
+          "text": "InboxIM"
+        },
+        {
+          "tag": "H2",
+          "cls": "",
+          "w": 101,
+          "h": 34,
+          "text": "Inbox"
+        },
+        {
+          "tag": "DIV",
+          "cls": "avatar-me",
+          "w": 34,
+          "h": 34,
+          "text": "IM"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "",
+          "w": 16,
+          "h": 20,
+          "text": "🔍"
+        },
+        {
+          "tag": "INPUT",
+          "cls": "search-in",
+          "w": 310,
+          "h": 38,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "chips",
+          "w": 358,
+          "h": 30,
+          "text": "All ·56IvanRiseEmail"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip on",
+          "w": 63,
+          "h": 30,
+          "text": "All ·56"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct",
+          "w": 20,
+          "h": 20,
+          "text": "·56"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 52,
+          "h": 30,
+          "text": "Ivan"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 53,
+          "h": 30,
+          "text": "Rise"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 59,
+          "h": 30,
+          "text": "Email"
+        }
+      ],
+      "clipped": [],
+      "textLen": 8684
+    },
+    {
+      "route": "inbox",
+      "phase": "scroll",
+      "scrollInfo": {
+        "mode": "scroller(generic)",
+        "cls": "rows",
+        "scrollTop": 33930,
+        "scrollHeight": 84827,
+        "clientHeight": 443
+      },
+      "hash": "#exp/v2/inbox",
+      "hOverflow": false,
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "smallTargetsCount": 11,
+      "smallTargetsSample": [
+        {
+          "tag": "DIV",
+          "cls": "row-top",
+          "w": 358,
+          "h": 34,
+          "text": "InboxIM"
+        },
+        {
+          "tag": "H2",
+          "cls": "",
+          "w": 101,
+          "h": 34,
+          "text": "Inbox"
+        },
+        {
+          "tag": "DIV",
+          "cls": "avatar-me",
+          "w": 34,
+          "h": 34,
+          "text": "IM"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "",
+          "w": 16,
+          "h": 20,
+          "text": "🔍"
+        },
+        {
+          "tag": "INPUT",
+          "cls": "search-in",
+          "w": 310,
+          "h": 38,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "chips",
+          "w": 358,
+          "h": 30,
+          "text": "All ·56IvanRiseEmail"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip on",
+          "w": 63,
+          "h": 30,
+          "text": "All ·56"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct",
+          "w": 20,
+          "h": 20,
+          "text": "·56"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 52,
+          "h": 30,
+          "text": "Ivan"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 53,
+          "h": 30,
+          "text": "Rise"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 59,
+          "h": 30,
+          "text": "Email"
+        }
+      ],
+      "clipped": [],
+      "textLen": 4477
+    },
+    {
+      "route": "inbox",
+      "phase": "detail",
+      "hashBefore": "#exp/v2/inbox",
+      "hashAfter": "#exp/v2/inbox",
+      "hash": "#exp/v2/inbox",
+      "hOverflow": false,
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "smallTargetsCount": 7,
+      "smallTargetsSample": [
+        {
+          "tag": "BUTTON",
+          "cls": "wb-ask",
+          "w": 92,
+          "h": 34,
+          "text": "Ask Claude"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "back",
+          "w": 6,
+          "h": 20,
+          "text": "‹"
+        },
+        {
+          "tag": "DIV",
+          "cls": "n",
+          "w": 266,
+          "h": 24,
+          "text": "Caitlin Quigley ⓘ"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ctx-i",
+          "w": 13,
+          "h": 16,
+          "text": "ⓘ"
+        },
+        {
+          "tag": "B",
+          "cls": "",
+          "w": 26,
+          "h": 16,
+          "text": "Ivan"
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g5",
+          "w": 36,
+          "h": 36,
+          "text": "CQin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        }
+      ],
+      "clipped": [],
+      "textLen": 282
+    },
+    {
+      "route": "inbox",
+      "phase": "afterback",
+      "backOk": false,
+      "hash": "#exp/v2/inbox",
+      "hOverflow": false,
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "smallTargetsCount": 11,
+      "smallTargetsSample": [
+        {
+          "tag": "DIV",
+          "cls": "row-top",
+          "w": 358,
+          "h": 34,
+          "text": "InboxIM"
+        },
+        {
+          "tag": "H2",
+          "cls": "",
+          "w": 101,
+          "h": 34,
+          "text": "Inbox"
+        },
+        {
+          "tag": "DIV",
+          "cls": "avatar-me",
+          "w": 34,
+          "h": 34,
+          "text": "IM"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "",
+          "w": 16,
+          "h": 20,
+          "text": "🔍"
+        },
+        {
+          "tag": "INPUT",
+          "cls": "search-in",
+          "w": 310,
+          "h": 38,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "chips",
+          "w": 358,
+          "h": 30,
+          "text": "All ·56IvanRiseEmail"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip on",
+          "w": 63,
+          "h": 30,
+          "text": "All ·56"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct",
+          "w": 20,
+          "h": 20,
+          "text": "·56"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 52,
+          "h": 30,
+          "text": "Ivan"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 53,
+          "h": 30,
+          "text": "Rise"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 59,
+          "h": 30,
+          "text": "Email"
+        }
+      ],
+      "clipped": [],
+      "textLen": 8684
+    },
+    {
+      "route": "drafts",
+      "phase": "top",
+      "hash": "#exp/v2/drafts",
+      "hOverflow": false,
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "smallTargetsCount": 11,
+      "smallTargetsSample": [
+        {
+          "tag": "SPAN",
+          "cls": "wb-ws on",
+          "w": 50,
+          "h": 28,
+          "text": "DMs"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-ws",
+          "w": 93,
+          "h": 28,
+          "text": "Content19"
+        },
+        {
+          "tag": "B",
+          "cls": "",
+          "w": 17,
+          "h": 20,
+          "text": "19"
+        },
+        {
+          "tag": "DIV",
+          "cls": "row-top",
+          "w": 358,
+          "h": 34,
+          "text": "DraftsIM"
+        },
+        {
+          "tag": "H2",
+          "cls": "",
+          "w": 128,
+          "h": 34,
+          "text": "Drafts"
+        },
+        {
+          "tag": "DIV",
+          "cls": "avatar-me",
+          "w": 34,
+          "h": 34,
+          "text": "IM"
+        },
+        {
+          "tag": "DIV",
+          "cls": "sg on",
+          "w": 115,
+          "h": 30,
+          "text": "All · 2"
+        },
+        {
+          "tag": "DIV",
+          "cls": "sg ",
+          "w": 115,
+          "h": 30,
+          "text": "Ivan · 1"
+        },
+        {
+          "tag": "DIV",
+          "cls": "sg ",
+          "w": 115,
+          "h": 30,
+          "text": "Rise · 1"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "log-chip",
+          "w": 74,
+          "h": 20,
+          "text": "comment_outbound"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "log-chip",
+          "w": 74,
+          "h": 20,
+          "text": "comment_outbound"
+        }
+      ],
+      "clipped": [],
+      "textLen": 492
+    },
+    {
+      "route": "drafts",
+      "phase": "scroll",
+      "scrollInfo": {
+        "mode": "window",
+        "scrollY": 0,
+        "bodyH": 844
+      },
+      "hash": "#exp/v2/drafts",
+      "hOverflow": false,
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "smallTargetsCount": 11,
+      "smallTargetsSample": [
+        {
+          "tag": "SPAN",
+          "cls": "wb-ws on",
+          "w": 50,
+          "h": 28,
+          "text": "DMs"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-ws",
+          "w": 93,
+          "h": 28,
+          "text": "Content19"
+        },
+        {
+          "tag": "B",
+          "cls": "",
+          "w": 17,
+          "h": 20,
+          "text": "19"
+        },
+        {
+          "tag": "DIV",
+          "cls": "row-top",
+          "w": 358,
+          "h": 34,
+          "text": "DraftsIM"
+        },
+        {
+          "tag": "H2",
+          "cls": "",
+          "w": 128,
+          "h": 34,
+          "text": "Drafts"
+        },
+        {
+          "tag": "DIV",
+          "cls": "avatar-me",
+          "w": 34,
+          "h": 34,
+          "text": "IM"
+        },
+        {
+          "tag": "DIV",
+          "cls": "sg on",
+          "w": 115,
+          "h": 30,
+          "text": "All · 2"
+        },
+        {
+          "tag": "DIV",
+          "cls": "sg ",
+          "w": 115,
+          "h": 30,
+          "text": "Ivan · 1"
+        },
+        {
+          "tag": "DIV",
+          "cls": "sg ",
+          "w": 115,
+          "h": 30,
+          "text": "Rise · 1"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "log-chip",
+          "w": 74,
+          "h": 20,
+          "text": "comment_outbound"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "log-chip",
+          "w": 74,
+          "h": 20,
+          "text": "comment_outbound"
+        }
+      ],
+      "clipped": [],
+      "textLen": 492
+    },
+    {
+      "event": "no-row-found",
+      "route": "drafts"
+    },
+    {
+      "route": "content",
+      "phase": "top",
+      "hash": "#exp/v2/content",
+      "hOverflow": false,
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "smallTargetsCount": 118,
+      "smallTargetsSample": [
+        {
+          "tag": "SPAN",
+          "cls": "wb-ws",
+          "w": 50,
+          "h": 28,
+          "text": "DMs"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-ws on",
+          "w": 93,
+          "h": 28,
+          "text": "Content19"
+        },
+        {
+          "tag": "B",
+          "cls": "",
+          "w": 17,
+          "h": 20,
+          "text": "19"
+        },
+        {
+          "tag": "DIV",
+          "cls": "row-top",
+          "w": 157,
+          "h": 34,
+          "text": "Content"
+        },
+        {
+          "tag": "H2",
+          "cls": "",
+          "w": 157,
+          "h": 34,
+          "text": "Content"
+        },
+        {
+          "tag": "DIV",
+          "cls": "chips",
+          "w": 172,
+          "h": 30,
+          "text": "IvanMattan Danino"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip on",
+          "w": 52,
+          "h": 30,
+          "text": "Ivan"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 112,
+          "h": 30,
+          "text": "Mattan Danino"
+        },
+        {
+          "tag": "INPUT",
+          "cls": "ct-fsearch-in",
+          "w": 325,
+          "h": 20,
+          "text": ""
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill ct-fpill",
+          "w": 101,
+          "h": 32,
+          "text": "Stage: Any⌄"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill ct-fpill",
+          "w": 94,
+          "h": 32,
+          "text": "Kind: Any⌄"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill ct-fpill",
+          "w": 96,
+          "h": 32,
+          "text": "Pillar: Any⌄"
+        }
+      ],
+      "clipped": [
+        "DIV.ct-meta 130>102",
+        "DIV.ct-meta 123>102",
+        "DIV.ct-meta 123>102",
+        "DIV.ct-meta 123>102",
+        "DIV.ct-meta 123>102",
+        "DIV.ct-meta 130>102",
+        "DIV.ct-meta 123>102",
+        "DIV.ct-meta 123>102",
+        "DIV.ct-meta 130>102",
+        "DIV.ct-meta 130>102"
+      ],
+      "textLen": 8405
+    },
+    {
+      "route": "content",
+      "phase": "scroll",
+      "scrollInfo": {
+        "mode": "scroller(.rows.ct-rows)",
+        "scrollTop": 2960,
+        "scrollHeight": 7402,
+        "clientHeight": 607
+      },
+      "hash": "#exp/v2/content",
+      "hOverflow": false,
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "smallTargetsCount": 118,
+      "smallTargetsSample": [
+        {
+          "tag": "SPAN",
+          "cls": "wb-ws",
+          "w": 50,
+          "h": 28,
+          "text": "DMs"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-ws on",
+          "w": 93,
+          "h": 28,
+          "text": "Content19"
+        },
+        {
+          "tag": "B",
+          "cls": "",
+          "w": 17,
+          "h": 20,
+          "text": "19"
+        },
+        {
+          "tag": "DIV",
+          "cls": "row-top",
+          "w": 157,
+          "h": 34,
+          "text": "Content"
+        },
+        {
+          "tag": "H2",
+          "cls": "",
+          "w": 157,
+          "h": 34,
+          "text": "Content"
+        },
+        {
+          "tag": "DIV",
+          "cls": "chips",
+          "w": 172,
+          "h": 30,
+          "text": "IvanMattan Danino"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip on",
+          "w": 52,
+          "h": 30,
+          "text": "Ivan"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 112,
+          "h": 30,
+          "text": "Mattan Danino"
+        },
+        {
+          "tag": "INPUT",
+          "cls": "ct-fsearch-in",
+          "w": 325,
+          "h": 20,
+          "text": ""
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill ct-fpill",
+          "w": 101,
+          "h": 32,
+          "text": "Stage: Any⌄"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill ct-fpill",
+          "w": 94,
+          "h": 32,
+          "text": "Kind: Any⌄"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill ct-fpill",
+          "w": 96,
+          "h": 32,
+          "text": "Pillar: Any⌄"
+        }
+      ],
+      "clipped": [
+        "DIV.ct-meta 130>102",
+        "DIV.ct-meta 123>102",
+        "DIV.ct-meta 123>102",
+        "DIV.ct-meta 123>102",
+        "DIV.ct-meta 123>102",
+        "DIV.ct-meta 130>102",
+        "DIV.ct-meta 123>102",
+        "DIV.ct-meta 123>102",
+        "DIV.ct-meta 130>102",
+        "DIV.ct-meta 130>102"
+      ],
+      "textLen": 8405
+    },
+    {
+      "route": "content",
+      "phase": "filter",
+      "hash": "#exp/v2/content",
+      "hOverflow": false,
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "smallTargetsCount": 118,
+      "smallTargetsSample": [
+        {
+          "tag": "SPAN",
+          "cls": "wb-ws",
+          "w": 50,
+          "h": 28,
+          "text": "DMs"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-ws on",
+          "w": 93,
+          "h": 28,
+          "text": "Content19"
+        },
+        {
+          "tag": "B",
+          "cls": "",
+          "w": 17,
+          "h": 20,
+          "text": "19"
+        },
+        {
+          "tag": "DIV",
+          "cls": "row-top",
+          "w": 157,
+          "h": 34,
+          "text": "Content"
+        },
+        {
+          "tag": "H2",
+          "cls": "",
+          "w": 157,
+          "h": 34,
+          "text": "Content"
+        },
+        {
+          "tag": "DIV",
+          "cls": "chips",
+          "w": 172,
+          "h": 30,
+          "text": "IvanMattan Danino"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip on",
+          "w": 52,
+          "h": 30,
+          "text": "Ivan"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 112,
+          "h": 30,
+          "text": "Mattan Danino"
+        },
+        {
+          "tag": "INPUT",
+          "cls": "ct-fsearch-in",
+          "w": 325,
+          "h": 20,
+          "text": ""
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill ct-fpill",
+          "w": 101,
+          "h": 32,
+          "text": "Stage: Any⌄"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill ct-fpill",
+          "w": 94,
+          "h": 32,
+          "text": "Kind: Any⌄"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill ct-fpill",
+          "w": 96,
+          "h": 32,
+          "text": "Pillar: Any⌄"
+        }
+      ],
+      "clipped": [
+        "DIV.ct-meta 130>102",
+        "DIV.ct-meta 123>102",
+        "DIV.ct-meta 123>102",
+        "DIV.ct-meta 123>102",
+        "DIV.ct-meta 123>102",
+        "DIV.ct-meta 130>102",
+        "DIV.ct-meta 123>102",
+        "DIV.ct-meta 123>102",
+        "DIV.ct-meta 130>102",
+        "DIV.ct-meta 130>102"
+      ],
+      "textLen": 8405
+    },
+    {
+      "route": "sends",
+      "phase": "top",
+      "hash": "#exp/v2/sends",
+      "hOverflow": false,
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "smallTargetsCount": 15,
+      "smallTargetsSample": [
+        {
+          "tag": "DIV",
+          "cls": "row-top",
+          "w": 358,
+          "h": 34,
+          "text": "SendsRange: 7d⌄↻"
+        },
+        {
+          "tag": "H2",
+          "cls": "",
+          "w": 109,
+          "h": 34,
+          "text": "Sends"
+        },
+        {
+          "tag": "DIV",
+          "cls": "wb-fbar",
+          "w": 143,
+          "h": 34,
+          "text": "Range: 7d⌄↻"
+        },
+        {
+          "tag": "DIV",
+          "cls": "wb-fpop",
+          "w": 101,
+          "h": 32,
+          "text": "Range: 7d⌄"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill",
+          "w": 101,
+          "h": 32,
+          "text": "Range: 7d⌄"
+        },
+        {
+          "tag": "B",
+          "cls": "",
+          "w": 16,
+          "h": 20,
+          "text": "7d"
+        },
+        {
+          "tag": "I",
+          "cls": "",
+          "w": 5,
+          "h": 20,
+          "text": "⌄"
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-refresh",
+          "w": 34,
+          "h": 34,
+          "text": "↻"
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-sub",
+          "w": 358,
+          "h": 20,
+          "text": "Pipeline health"
+        },
+        {
+          "tag": "DIV",
+          "cls": "chips",
+          "w": 358,
+          "h": 30,
+          "text": "IvanRise"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip on",
+          "w": 52,
+          "h": 30,
+          "text": "Ivan"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 53,
+          "h": 30,
+          "text": "Rise"
+        }
+      ],
+      "clipped": [],
+      "textLen": 1595
+    },
+    {
+      "route": "sends",
+      "phase": "scroll",
+      "scrollInfo": {
+        "mode": "scroller(generic)",
+        "cls": "rows ov",
+        "scrollTop": 954,
+        "scrollHeight": 2386,
+        "clientHeight": 550
+      },
+      "hash": "#exp/v2/sends",
+      "hOverflow": false,
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "smallTargetsCount": 15,
+      "smallTargetsSample": [
+        {
+          "tag": "DIV",
+          "cls": "row-top",
+          "w": 358,
+          "h": 34,
+          "text": "SendsRange: 7d⌄↻"
+        },
+        {
+          "tag": "H2",
+          "cls": "",
+          "w": 109,
+          "h": 34,
+          "text": "Sends"
+        },
+        {
+          "tag": "DIV",
+          "cls": "wb-fbar",
+          "w": 143,
+          "h": 34,
+          "text": "Range: 7d⌄↻"
+        },
+        {
+          "tag": "DIV",
+          "cls": "wb-fpop",
+          "w": 101,
+          "h": 32,
+          "text": "Range: 7d⌄"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill",
+          "w": 101,
+          "h": 32,
+          "text": "Range: 7d⌄"
+        },
+        {
+          "tag": "B",
+          "cls": "",
+          "w": 16,
+          "h": 20,
+          "text": "7d"
+        },
+        {
+          "tag": "I",
+          "cls": "",
+          "w": 5,
+          "h": 20,
+          "text": "⌄"
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-refresh",
+          "w": 34,
+          "h": 34,
+          "text": "↻"
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-sub",
+          "w": 358,
+          "h": 20,
+          "text": "Pipeline health"
+        },
+        {
+          "tag": "DIV",
+          "cls": "chips",
+          "w": 358,
+          "h": 30,
+          "text": "IvanRise"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip on",
+          "w": 52,
+          "h": 30,
+          "text": "Ivan"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 53,
+          "h": 30,
+          "text": "Rise"
+        }
+      ],
+      "clipped": [],
+      "textLen": 1595
+    },
+    {
+      "event": "NOT-SETTLED",
+      "hash": "#exp/v2/ops"
+    },
+    {
+      "route": "ops",
+      "phase": "top",
+      "hash": "#exp/v2/ops",
+      "hOverflow": false,
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "smallTargetsCount": 4,
+      "smallTargetsSample": [
+        {
+          "tag": "DIV",
+          "cls": "row-top",
+          "w": 358,
+          "h": 34,
+          "text": "OpsIM"
+        },
+        {
+          "tag": "H2",
+          "cls": "",
+          "w": 67,
+          "h": 34,
+          "text": "Ops"
+        },
+        {
+          "tag": "DIV",
+          "cls": "avatar-me",
+          "w": 34,
+          "h": 34,
+          "text": "IM"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-ofresh clear",
+          "w": 201,
+          "h": 20,
+          "text": "Checked just now · live "
+        }
+      ],
+      "clipped": [],
+      "textLen": 329
+    },
+    {
+      "route": "ops",
+      "phase": "scroll",
+      "scrollInfo": {
+        "mode": "scroller(generic)",
+        "cls": "rows ops-rows",
+        "scrollTop": 203,
+        "scrollHeight": 859,
+        "clientHeight": 656
+      },
+      "hash": "#exp/v2/ops",
+      "hOverflow": false,
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "smallTargetsCount": 4,
+      "smallTargetsSample": [
+        {
+          "tag": "DIV",
+          "cls": "row-top",
+          "w": 358,
+          "h": 34,
+          "text": "OpsIM"
+        },
+        {
+          "tag": "H2",
+          "cls": "",
+          "w": 67,
+          "h": 34,
+          "text": "Ops"
+        },
+        {
+          "tag": "DIV",
+          "cls": "avatar-me",
+          "w": 34,
+          "h": 34,
+          "text": "IM"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-ofresh clear",
+          "w": 201,
+          "h": 20,
+          "text": "Checked just now · live "
+        }
+      ],
+      "clipped": [],
+      "textLen": 329
+    },
+    {
+      "event": "no-row-found",
+      "route": "ops"
+    },
+    {
+      "route": "settings",
+      "phase": "top",
+      "hash": "#exp/v2/settings",
+      "hOverflow": false,
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "smallTargetsCount": 6,
+      "smallTargetsSample": [
+        {
+          "tag": "DIV",
+          "cls": "row-top",
+          "w": 358,
+          "h": 34,
+          "text": "SettingsIM"
+        },
+        {
+          "tag": "H2",
+          "cls": "",
+          "w": 159,
+          "h": 34,
+          "text": "Settings"
+        },
+        {
+          "tag": "DIV",
+          "cls": "avatar-me",
+          "w": 34,
+          "h": 34,
+          "text": "IM"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "sw on ",
+          "w": 51,
+          "h": 31,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sg on",
+          "w": 74,
+          "h": 30,
+          "text": "Dark"
+        },
+        {
+          "tag": "DIV",
+          "cls": "sg",
+          "w": 74,
+          "h": 30,
+          "text": "Light"
+        }
+      ],
+      "clipped": [],
+      "textLen": 448
+    },
+    {
+      "route": "settings",
+      "phase": "scroll",
+      "scrollInfo": {
+        "mode": "window",
+        "scrollY": 0,
+        "bodyH": 844
+      },
+      "hash": "#exp/v2/settings",
+      "hOverflow": false,
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "smallTargetsCount": 6,
+      "smallTargetsSample": [
+        {
+          "tag": "DIV",
+          "cls": "row-top",
+          "w": 358,
+          "h": 34,
+          "text": "SettingsIM"
+        },
+        {
+          "tag": "H2",
+          "cls": "",
+          "w": 159,
+          "h": 34,
+          "text": "Settings"
+        },
+        {
+          "tag": "DIV",
+          "cls": "avatar-me",
+          "w": 34,
+          "h": 34,
+          "text": "IM"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "sw on ",
+          "w": 51,
+          "h": 31,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sg on",
+          "w": 74,
+          "h": 30,
+          "text": "Dark"
+        },
+        {
+          "tag": "DIV",
+          "cls": "sg",
+          "w": 74,
+          "h": 30,
+          "text": "Light"
+        }
+      ],
+      "clipped": [],
+      "textLen": 448
+    },
+    {
+      "event": "no-row-found",
+      "route": "settings"
+    },
+    {
+      "event": "nav-star-discovery",
+      "found": true,
+      "tag": "DIV",
+      "cls": "ic bubble",
+      "w": 15,
+      "h": 20
+    },
+    {
+      "route": "claude",
+      "phase": "top",
+      "hash": "#exp/v2/today/chat",
+      "hOverflow": false,
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "smallTargetsCount": 3,
+      "smallTargetsSample": [
+        {
+          "tag": "BUTTON",
+          "cls": "wb-modelbtn",
+          "w": 60,
+          "h": 28,
+          "text": "default"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "cmic",
+          "w": 38,
+          "h": 38,
+          "text": "🎙"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "csend",
+          "w": 38,
+          "h": 38,
+          "text": "↑"
+        }
+      ],
+      "clipped": [],
+      "textLen": 302
+    },
+    {
+      "route": "claude",
+      "phase": "scroll",
+      "hash": "#exp/v2/today/chat",
+      "hOverflow": false,
+      "scrollWidth": 390,
+      "innerWidth": 390,
+      "smallTargetsCount": 3,
+      "smallTargetsSample": [
+        {
+          "tag": "BUTTON",
+          "cls": "wb-modelbtn",
+          "w": 60,
+          "h": 28,
+          "text": "default"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "cmic",
+          "w": 38,
+          "h": 38,
+          "text": "🎙"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "csend",
+          "w": 38,
+          "h": 38,
+          "text": "↑"
+        }
+      ],
+      "clipped": [],
+      "textLen": 302
+    },
+    {
+      "event": "claude-composer-check",
+      "composerFound": true,
+      "sendBtnFound": true
+    },
+    {
+      "event": "bottom-nav-tabs-detected",
+      "navTabs": []
+    },
+    {
+      "event": "tab-switch-tap-fail",
+      "err": "Error: page.waitForTimeout: Target page, context or browser has been closed"
+    }
+  ],
+  "consoleErrors": []
+}

@@ -1,0 +1,216 @@
+{
+  "today": {
+    "settled": true,
+    "scrollInfo": {
+      "found": false
+    },
+    "shots": [
+      "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-blind/cold-today-1-top.png"
+    ],
+    "textLen": 3098
+  },
+  "inbox": {
+    "settled": true,
+    "scrollInfo": {
+      "found": false
+    },
+    "shots": [
+      "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-blind/cold-inbox-1-top.png"
+    ],
+    "textLen": 9605
+  },
+  "drafts": {
+    "settled": true,
+    "scrollInfo": {
+      "found": false
+    },
+    "shots": [
+      "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-blind/cold-drafts-1-top.png"
+    ],
+    "textLen": 858
+  },
+  "content": {
+    "settled": true,
+    "scrollInfo": {
+      "found": true,
+      "scrollHeight": 6300,
+      "clientHeight": 759
+    },
+    "shots": [
+      "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-blind/cold-content-1-top.png",
+      "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-blind/cold-content-2-scroll.png"
+    ],
+    "textLen": 8841
+  },
+  "sends": {
+    "settled": true,
+    "scrollInfo": {
+      "found": false
+    },
+    "shots": [
+      "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-blind/cold-sends-1-top.png"
+    ],
+    "textLen": 1952
+  },
+  "ops": {
+    "settled": true,
+    "scrollInfo": {
+      "found": false
+    },
+    "shots": [
+      "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-blind/cold-ops-1-top.png"
+    ],
+    "textLen": 711
+  },
+  "settings": {
+    "settled": true,
+    "scrollInfo": {
+      "found": false
+    },
+    "shots": [
+      "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-blind/cold-settings-1-top.png"
+    ],
+    "textLen": 805
+  },
+  "hoverCandidates": [
+    {
+      "tag": "BUTTON",
+      "cls": "chip on",
+      "text": "Ivan",
+      "x": 657.09375,
+      "y": 95
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "ct-alert",
+      "text": "394 errored · 35 elsewhere›",
+      "x": 330.46875,
+      "y": 218
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "wb-fpill ct-fpill",
+      "text": "Stage: Any⌄",
+      "x": 524.703125,
+      "y": 654
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "wb-sech tap wb-sech-sticky",
+      "text": "01Ideas57›",
+      "x": 279.3046875,
+      "y": 749
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "btn s",
+      "text": "Skip",
+      "x": 622.9921875,
+      "y": 836
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "wb-modelbtn",
+      "text": "default",
+      "x": 1346.4765625,
+      "y": 32.5
+    }
+  ],
+  "hover_0": {
+    "candidate": {
+      "tag": "BUTTON",
+      "cls": "chip on",
+      "text": "Ivan",
+      "x": 657.09375,
+      "y": 95
+    },
+    "before": "pointer|rgb(33, 37, 35)",
+    "after": "pointer|rgb(33, 37, 35)",
+    "changed": false
+  },
+  "hover_1": {
+    "candidate": {
+      "tag": "BUTTON",
+      "cls": "ct-alert",
+      "text": "394 errored · 35 elsewhere›",
+      "x": 330.46875,
+      "y": 218
+    },
+    "before": "pointer|rgba(0, 0, 0, 0)",
+    "after": "pointer|rgba(0, 0, 0, 0)",
+    "changed": false
+  },
+  "hover_2": {
+    "candidate": {
+      "tag": "BUTTON",
+      "cls": "wb-fpill ct-fpill",
+      "text": "Stage: Any⌄",
+      "x": 524.703125,
+      "y": 654
+    },
+    "before": "pointer|rgb(25, 29, 27)",
+    "after": "pointer|rgb(33, 37, 35)",
+    "changed": true
+  },
+  "hover_3": {
+    "candidate": {
+      "tag": "BUTTON",
+      "cls": "wb-sech tap wb-sech-sticky",
+      "text": "01Ideas57›",
+      "x": 279.3046875,
+      "y": 749
+    },
+    "before": "pointer|rgb(18, 21, 19)",
+    "after": "pointer|rgb(18, 21, 19)",
+    "changed": false
+  },
+  "pillInfo": [
+    {
+      "text": "Filters⌄",
+      "cls": "wb-fpill ct-fpill"
+    },
+    {
+      "text": "01Ideas57›",
+      "cls": "wb-sech tap wb-sech-sticky"
+    },
+    {
+      "text": "03Needs review19⌄",
+      "cls": "wb-sech tap"
+    },
+    {
+      "text": "Approve",
+      "cls": "btn p"
+    },
+    {
+      "text": "Approve",
+      "cls": "btn p"
+    },
+    {
+      "text": "Approve",
+      "cls": "btn p"
+    },
+    {
+      "text": "Approve",
+      "cls": "btn p"
+    },
+    {
+      "text": "Approve",
+      "cls": "btn p"
+    },
+    {
+      "text": "Approve",
+      "cls": "btn p"
+    },
+    {
+      "text": "Approve",
+      "cls": "btn p"
+    }
+  ],
+  "filterBtnFound": true,
+  "draftRowFound": false,
+  "cfieldFound": true,
+  "paletteHTML": "/model defaultContainer default/model claude-opus-4-8Opus 4.8/model claude-opus-4-7Opus 4.7/model claude-opus-4-6Opus 4.6/model claude-sonnet-4-6Sonnet 4.6/model claude-haiku-4-5Haiku 4.5/retrynothing to retry yet/stopnothing is running/clearnothing to clear yet↑↓ to move · ⏎ to run · esc to cancel",
+  "closeCandidates": [],
+  "closeBtnFound": false,
+  "consoleErrors": []
+}

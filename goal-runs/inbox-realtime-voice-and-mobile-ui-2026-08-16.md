@@ -214,3 +214,82 @@ Safari tab or a native shell. Probe this **before** building on top of it.
    revisited whenever that changes.
 5. **`sttSupported()` lies** on browsers that cannot transcribe. Any new capability probe must be
    proven able to fail before its result is trusted.
+
+---
+
+## 7. RESULTS — phases 0-6 shipped 2026-08-16
+
+Live at https://ivanmanfre.github.io/ivan-inbox/ (commits `b0fa6a9` … `b33b00c`).
+
+### Gates, re-measured on the built app
+
+| Gate | Target | Measured | |
+|---|---|---|---|
+| Barge-in → assistant stops | < 150ms | **6-11ms** | PASS |
+| WER on the jargon set | < 15% | near-zero; 3/3 verbatim | PASS |
+| Turn completion | > 95% | 7/7, 8/8, 3/3 | PASS |
+| Utterance end → first audible | p50 < 500ms | **p50 1352ms** | **FAIL** |
+| Cost per session | logged, visible | **$0.02 / 2.2min, on the state line** | PASS |
+
+**The latency gate misses and reasoning is not why.** A/B on the same fixture,
+8 turns each: `reasoning=low` 1352ms, `reasoning=off` 1189ms. Reasoning costs
+~163ms (12%). Kept at `low` — 163ms is not worth degrading the escalate-vs-answer
+decision, which is the thing stopping the model confabulating about his system.
+It is an env knob (`INBOX_RT_REASONING`) if that trade is ever re-judged.
+Both numbers come from a headless harness on a synthetic mic; the on-device
+number is what `rt-probe.html` reports and it has not been read on his hardware.
+
+### What the measurement caught that reading the code did not
+
+1. **`session.update` silently replaces the session config.** Sending
+   `{tools, tool_choice}` dropped the broker's `instructions`; `session.updated`
+   acked, and the model then answered from its own weights instead of escalating.
+   Tools moved to mint time.
+2. **`input_audio_buffer.append` IS accepted over the WebRTC data channel** —
+   contrary to the assumption that it is a WebSocket-only path. That is what
+   made the pre-session buffer possible at all.
+3. **Appends land at the END of the buffer**, so the live track must not be
+   flowing yet: "Check my database and tell me how many content drafts are
+   pending right now" came back as "Can't check my database and tell me how
+   graphs are pending right now".
+4. **Gating the outbound track with `track.enabled` costs ~0.5s** of speech when
+   it flips back on. The gate is a `GainNode`; the encoder stays warm.
+5. **`send()` only queues.** Opening the mic on the last queued append still
+   races SCTP against RTP. The gate waits on `bufferedAmount === 0`.
+6. **There are no audio deltas on this transport.** Over WebRTC the assistant's
+   audio is on the RTP track and only transcript deltas reach the data channel,
+   so `SPEAKING` never fired and tap-to-skip was unreachable by touch. Found by
+   the per-state screenshot pass, not by reading.
+7. **Transcription routinely completes AFTER `response.done`**, pairing an
+   exchange with an empty `heard`.
+
+### The harness was made able to fail
+
+The first pre-session-buffer test passed with the buffer DISABLED — Chrome loops
+the fake-audio file, so a later repetition supplied the sentence. Rebuilt with
+one utterance at t=0 followed by 40s of silence. Control (flush off) loses the
+opening: *"How many content drafts are pending right now?"*. Treatment returns it
+verbatim, three runs running.
+
+### The invariant did NOT invert
+
+The scope expected `voice.ts`'s "SPEAKING never arms the mic" to be inverted. It
+should not be: the reducer governs DICTATION (`useVoice`), where it is still
+right, and the live loop never goes through it. `voice.test.ts` now pins the
+split, including a source guard that `useRealtime` must never import
+`voiceReduce` — doing so would silently delete barge-in while the UI kept
+looking healthy.
+
+### Still open
+
+- **iPhone installed-PWA screen-lock survival.** Human-blocked. `rt-probe.html`
+  logs `visibilitychange` with the pc and mic state; run it installed.
+- **🔴 The escalated work cannot touch the database, and it is not a voice bug.**
+  `inbox-claude` never sends `permission_mode`, so the container runs at
+  `main.py:86`'s default `acceptEdits`, where every Bash call needs an approval
+  nobody is there to give. Every escalation ends "approve the next Bash call".
+  One line fixes it (`permission_mode: 'bypassPermissions'` in `upstreamBody`)
+  and it is deliberately NOT taken here: this file's own header says the box
+  holds every client's credentials on one filesystem and that pinning the
+  workspace does not sandbox a Bash turn, so that flip lets a spoken sentence run
+  unattended bash against all of them. Ivan's call.

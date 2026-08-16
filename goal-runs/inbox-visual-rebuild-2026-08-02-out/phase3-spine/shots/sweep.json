@@ -1,0 +1,4106 @@
+[
+  {
+    "shot": "content",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:15432/#exp/v2/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/content-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "innerTextLen": 28190,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "34px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#DBDFDD",
+      "--cat-3": "#A1A6A4",
+      "--cat-4": "#747977"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": null,
+      "paneH": null,
+      "surface1": "#121513"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      20,
+      30,
+      34
+    ],
+    "typeCount": 7,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 411,
+      "500": 210,
+      "600": 629,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 34,
+        "text": "Content"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 4,
+    "accentWho": [
+      "wb-sync-dot [bg]",
+      "tb on [color+border]",
+      "ic bubble [color+border]",
+      "l [color+border]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": {
+        "rows": 77,
+        "measured": 77,
+        "unmeasured": 0,
+        "groups": 2,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 59,
+            "x": 73,
+            "variance": 0
+          },
+          {
+            "n": 18,
+            "x": 73,
+            "variance": 0
+          }
+        ]
+      },
+      "contentRes": {
+        "rows": 121,
+        "measured": 121,
+        "unmeasured": 0,
+        "groups": 1,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 121,
+            "x": 73,
+            "variance": 0
+          }
+        ]
+      },
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "trails": {
+      "content": {
+        "n": 18,
+        "worstInGroup": 0
+      },
+      "inbox": null
+    },
+    "density": {
+      "content": {
+        "n": 77,
+        "min": 44,
+        "max": 61,
+        "median": 45
+      },
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "restingShadows": [],
+    "insetShadows": [],
+    "selected": [],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": []
+  },
+  {
+    "shot": "content",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:15432/#exp/v2/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/content-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "innerTextLen": 28569,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "56px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#DBDFDD",
+      "--cat-3": "#A1A6A4",
+      "--cat-4": "#747977"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": "rgb(18, 21, 19)",
+      "paneH": "rgb(18, 21, 19)",
+      "surface1": "#121513"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      20,
+      30,
+      56
+    ],
+    "typeCount": 7,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 425,
+      "500": 222,
+      "600": 627,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 56,
+        "text": "Content"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 6,
+    "accentWho": [
+      "wb-rj on wb-rj-lane [spine]",
+      "wb-rj wb-rj-peer on [spine]",
+      "wb-peer-dot on [bg]",
+      "wb-sync-dot [bg]",
+      "wb-pane-ic asst [bg]",
+      "wb-live [bg]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": {
+        "rows": 77,
+        "measured": 77,
+        "unmeasured": 0,
+        "groups": 2,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 59,
+            "x": 273,
+            "variance": 0
+          },
+          {
+            "n": 18,
+            "x": 273,
+            "variance": 0
+          }
+        ]
+      },
+      "contentRes": {
+        "rows": 121,
+        "measured": 121,
+        "unmeasured": 0,
+        "groups": 1,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 121,
+            "x": 273,
+            "variance": 0
+          }
+        ]
+      },
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "trails": {
+      "content": {
+        "n": 18,
+        "worstInGroup": 0
+      },
+      "inbox": null
+    },
+    "density": {
+      "content": {
+        "n": 77,
+        "min": 44,
+        "max": 45,
+        "median": 45
+      },
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "restingShadows": [],
+    "insetShadows": [
+      {
+        "cls": "wb-rj on wb-rj-lane",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      }
+    ],
+    "selected": [
+      {
+        "cls": "wb-rj on wb-rj-lane",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "0px rgba(0, 0, 0, 0)",
+        "pass": true
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "1px rgba(0, 0, 0, 0)",
+        "pass": true
+      }
+    ],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": []
+  },
+  {
+    "shot": "content-mattan",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:15432/#exp/v2/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/content-mattan-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "innerTextLen": 8449,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "34px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#DBDFDD",
+      "--cat-3": "#A1A6A4",
+      "--cat-4": "#747977"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": null,
+      "paneH": null,
+      "surface1": "#121513"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      20,
+      30,
+      34
+    ],
+    "typeCount": 7,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 135,
+      "500": 86,
+      "600": 318,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 34,
+        "text": "Content"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 4,
+    "accentWho": [
+      "wb-sync-dot [bg]",
+      "tb on [color+border]",
+      "ic bubble [color+border]",
+      "l [color+border]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": {
+        "rows": 70,
+        "measured": 70,
+        "unmeasured": 0,
+        "groups": 2,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 11,
+            "x": 93,
+            "variance": 0
+          },
+          {
+            "n": 59,
+            "x": 93,
+            "variance": 0
+          }
+        ]
+      },
+      "contentRes": {
+        "rows": 5,
+        "measured": 5,
+        "unmeasured": 0,
+        "groups": 1,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 5,
+            "x": 73,
+            "variance": 0
+          }
+        ]
+      },
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "trails": {
+      "content": {
+        "n": 70,
+        "worstInGroup": 0
+      },
+      "inbox": null
+    },
+    "density": {
+      "content": {
+        "n": 70,
+        "min": 44,
+        "max": 45,
+        "median": 45
+      },
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "restingShadows": [],
+    "insetShadows": [],
+    "selected": [],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": []
+  },
+  {
+    "shot": "content-mattan",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:15432/#exp/v2/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/content-mattan-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "innerTextLen": 8828,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "56px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#DBDFDD",
+      "--cat-3": "#A1A6A4",
+      "--cat-4": "#747977"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": "rgb(18, 21, 19)",
+      "paneH": "rgb(18, 21, 19)",
+      "surface1": "#121513"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      20,
+      30,
+      56
+    ],
+    "typeCount": 7,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 149,
+      "500": 98,
+      "600": 316,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 56,
+        "text": "Content"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 6,
+    "accentWho": [
+      "wb-rj on wb-rj-lane [spine]",
+      "wb-rj wb-rj-peer on [spine]",
+      "wb-peer-dot on [bg]",
+      "wb-sync-dot [bg]",
+      "wb-pane-ic asst [bg]",
+      "wb-live [bg]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": {
+        "rows": 70,
+        "measured": 70,
+        "unmeasured": 0,
+        "groups": 2,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 11,
+            "x": 293,
+            "variance": 0
+          },
+          {
+            "n": 59,
+            "x": 293,
+            "variance": 0
+          }
+        ]
+      },
+      "contentRes": {
+        "rows": 5,
+        "measured": 5,
+        "unmeasured": 0,
+        "groups": 1,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 5,
+            "x": 273,
+            "variance": 0
+          }
+        ]
+      },
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "trails": {
+      "content": {
+        "n": 70,
+        "worstInGroup": 0
+      },
+      "inbox": null
+    },
+    "density": {
+      "content": {
+        "n": 70,
+        "min": 44,
+        "max": 45,
+        "median": 45
+      },
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "restingShadows": [],
+    "insetShadows": [
+      {
+        "cls": "wb-rj on wb-rj-lane",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      }
+    ],
+    "selected": [
+      {
+        "cls": "wb-rj on wb-rj-lane",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "0px rgba(0, 0, 0, 0)",
+        "pass": true
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "1px rgba(0, 0, 0, 0)",
+        "pass": true
+      }
+    ],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": []
+  },
+  {
+    "shot": "today",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:15432/#exp/v2/today",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/today-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "innerTextLen": 3040,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "34px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#DBDFDD",
+      "--cat-3": "#A1A6A4",
+      "--cat-4": "#747977"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": null,
+      "paneH": null,
+      "surface1": "#121513"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      30,
+      34
+    ],
+    "typeCount": 6,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 32,
+      "500": 26,
+      "600": 57,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 34,
+        "text": "Today"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 10,
+    "accentWho": [
+      "wb-sync-dot [bg]",
+      "td-stack-s [bg]",
+      "td-lg-d [bg]",
+      "td-zmark done [bg]",
+      "td-bar-f [bg]",
+      "td-bar-f [bg]",
+      "td-bar-f [bg]",
+      "tb on [color+border]",
+      "ic bubble [color+border]",
+      "l [color+border]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": null,
+      "contentRes": null,
+      "inbox": null,
+      "today": {
+        "rows": 6,
+        "measured": 6,
+        "unmeasured": 0,
+        "groups": 2,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 3,
+            "x": 57,
+            "variance": 0
+          },
+          {
+            "n": 3,
+            "x": 57,
+            "variance": 0
+          }
+        ]
+      },
+      "log": null
+    },
+    "trails": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "today": {
+        "n": 3,
+        "min": 40,
+        "max": 59,
+        "median": 59
+      },
+      "log": null
+    },
+    "restingShadows": [],
+    "insetShadows": [],
+    "selected": [],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": []
+  },
+  {
+    "shot": "today",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:15432/#exp/v2/today",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/today-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "innerTextLen": 3404,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "56px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#DBDFDD",
+      "--cat-3": "#A1A6A4",
+      "--cat-4": "#747977"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": "rgb(18, 21, 19)",
+      "paneH": "rgb(18, 21, 19)",
+      "surface1": "#121513"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      20,
+      30,
+      56
+    ],
+    "typeCount": 7,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 46,
+      "500": 38,
+      "600": 55,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 56,
+        "text": "Today"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 12,
+    "accentWho": [
+      "wb-rj on [spine]",
+      "wb-rj wb-rj-peer on [spine]",
+      "wb-peer-dot on [bg]",
+      "wb-sync-dot [bg]",
+      "td-stack-s [bg]",
+      "td-lg-d [bg]",
+      "td-zmark done [bg]",
+      "td-bar-f [bg]",
+      "td-bar-f [bg]",
+      "td-bar-f [bg]",
+      "wb-pane-ic asst [bg]",
+      "wb-live [bg]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": null,
+      "contentRes": null,
+      "inbox": null,
+      "today": {
+        "rows": 6,
+        "measured": 6,
+        "unmeasured": 0,
+        "groups": 2,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 3,
+            "x": 273,
+            "variance": 0
+          },
+          {
+            "n": 3,
+            "x": 273,
+            "variance": 0
+          }
+        ]
+      },
+      "log": null
+    },
+    "trails": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "today": {
+        "n": 3,
+        "min": 40,
+        "max": 59,
+        "median": 59
+      },
+      "log": null
+    },
+    "restingShadows": [],
+    "insetShadows": [
+      {
+        "cls": "wb-rj on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      }
+    ],
+    "selected": [
+      {
+        "cls": "wb-rj on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "0px rgba(0, 0, 0, 0)",
+        "pass": true
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "1px rgba(0, 0, 0, 0)",
+        "pass": true
+      }
+    ],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": []
+  },
+  {
+    "shot": "sends",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:15432/#exp/v2/sends",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/sends-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "innerTextLen": 1469,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "34px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#DBDFDD",
+      "--cat-3": "#A1A6A4",
+      "--cat-4": "#747977"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": null,
+      "paneH": null,
+      "surface1": "#121513"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      20,
+      34
+    ],
+    "typeCount": 6,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 42,
+      "500": 17,
+      "600": 74,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 34,
+        "text": "Sends"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 18,
+    "accentWho": [
+      "wb-sync-dot [bg]",
+      "sc-dot [bg]",
+      "ov-gauge-fill [bg]",
+      "sc-dot [bg]",
+      "ov-gauge-fill [bg]",
+      "sc-dot [bg]",
+      "ov-gauge-fill [bg]",
+      "sc-dot [bg]",
+      "sc-bar  [bg]",
+      "sc-dot [bg]",
+      "ov-gauge-fill [bg]",
+      "ov-gauge-fill [bg]",
+      "ov-rc on  [border]",
+      "ov-gauge-fill [bg]",
+      "ov-gauge-fill [bg]",
+      "tb on [color+border]",
+      "ic bubble [color+border]",
+      "l [color+border]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": null,
+      "contentRes": null,
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "trails": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "restingShadows": [],
+    "insetShadows": [],
+    "selected": [],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": []
+  },
+  {
+    "shot": "sends",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:15432/#exp/v2/sends",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/sends-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "innerTextLen": 1825,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "56px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#DBDFDD",
+      "--cat-3": "#A1A6A4",
+      "--cat-4": "#747977"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": "rgb(18, 21, 19)",
+      "paneH": "rgb(18, 21, 19)",
+      "surface1": "#121513"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      20,
+      56
+    ],
+    "typeCount": 6,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 56,
+      "500": 29,
+      "600": 72,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 56,
+        "text": "Sends"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 20,
+    "accentWho": [
+      "wb-rj on [spine]",
+      "wb-rj wb-rj-peer on [spine]",
+      "wb-peer-dot on [bg]",
+      "wb-sync-dot [bg]",
+      "sc-dot [bg]",
+      "ov-gauge-fill [bg]",
+      "sc-dot [bg]",
+      "ov-gauge-fill [bg]",
+      "sc-dot [bg]",
+      "ov-gauge-fill [bg]",
+      "sc-dot [bg]",
+      "sc-bar  [bg]",
+      "sc-dot [bg]",
+      "ov-gauge-fill [bg]",
+      "ov-gauge-fill [bg]",
+      "ov-rc on  [border]",
+      "ov-gauge-fill [bg]",
+      "ov-gauge-fill [bg]",
+      "wb-pane-ic asst [bg]",
+      "wb-live [bg]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": null,
+      "contentRes": null,
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "trails": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "restingShadows": [],
+    "insetShadows": [
+      {
+        "cls": "wb-rj on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      }
+    ],
+    "selected": [
+      {
+        "cls": "wb-rj on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "0px rgba(0, 0, 0, 0)",
+        "pass": true
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "1px rgba(0, 0, 0, 0)",
+        "pass": true
+      }
+    ],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": []
+  },
+  {
+    "shot": "sends-lanes",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:15432/#exp/v2/sends",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/sends-lanes-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "innerTextLen": 657,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "56px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#DBDFDD",
+      "--cat-3": "#A1A6A4",
+      "--cat-4": "#747977"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": "rgb(18, 21, 19)",
+      "paneH": "rgb(18, 21, 19)",
+      "surface1": "#121513"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      20,
+      56
+    ],
+    "typeCount": 6,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 39,
+      "500": 16,
+      "600": 16,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 56,
+        "text": "Sends"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 10,
+    "accentWho": [
+      "wb-rj on [spine]",
+      "wb-rj wb-rj-peer on [spine]",
+      "wb-peer-dot on [bg]",
+      "wb-sync-dot [bg]",
+      "sc-dot [bg]",
+      "sc-bar  [bg]",
+      "sc-dot [bg]",
+      "sc-dot [bg]",
+      "wb-pane-ic asst [bg]",
+      "wb-live [bg]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": null,
+      "contentRes": null,
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "trails": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "restingShadows": [],
+    "insetShadows": [
+      {
+        "cls": "wb-rj on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      }
+    ],
+    "selected": [
+      {
+        "cls": "wb-rj on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "0px rgba(0, 0, 0, 0)",
+        "pass": true
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "1px rgba(0, 0, 0, 0)",
+        "pass": true
+      }
+    ],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": []
+  },
+  {
+    "shot": "sends-log",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:15432/#exp/v2/sends",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/sends-log-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "innerTextLen": 44488,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "34px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#DBDFDD",
+      "--cat-3": "#A1A6A4",
+      "--cat-4": "#747977"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": null,
+      "paneH": null,
+      "surface1": "#121513"
+    },
+    "denominators": [
+      "NEWEST 113 OF 1,524 SENT · NEWEST 7 OF 208 BLOCKED · CONN = note attached and accepted by the API · CONN"
+    ],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      16,
+      34
+    ],
+    "typeCount": 6,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 372,
+      "500": 120,
+      "600": 135,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 34,
+        "text": "Sends"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 4,
+    "accentWho": [
+      "wb-sync-dot [bg]",
+      "tb on [color+border]",
+      "ic bubble [color+border]",
+      "l [color+border]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": null,
+      "contentRes": null,
+      "inbox": null,
+      "today": null,
+      "log": {
+        "rows": 120,
+        "measured": 120,
+        "unmeasured": 0,
+        "groups": 1,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 120,
+            "x": 110,
+            "variance": 0
+          }
+        ]
+      }
+    },
+    "trails": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "log": {
+        "n": 120,
+        "min": 38,
+        "max": 38,
+        "median": 38
+      }
+    },
+    "restingShadows": [],
+    "insetShadows": [],
+    "selected": [],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": []
+  },
+  {
+    "shot": "sends-log",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:15432/#exp/v2/sends",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/sends-log-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "innerTextLen": 44844,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "56px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#DBDFDD",
+      "--cat-3": "#A1A6A4",
+      "--cat-4": "#747977"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": "rgb(18, 21, 19)",
+      "paneH": "rgb(18, 21, 19)",
+      "surface1": "#121513"
+    },
+    "denominators": [
+      "NEWEST 113 OF 1,524 SENT · NEWEST 7 OF 208 BLOCKED · CONN = note attached and accepted by the API · CONN"
+    ],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      16,
+      20,
+      56
+    ],
+    "typeCount": 7,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 386,
+      "500": 132,
+      "600": 133,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 56,
+        "text": "Sends"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 6,
+    "accentWho": [
+      "wb-rj on [spine]",
+      "wb-rj wb-rj-peer on [spine]",
+      "wb-peer-dot on [bg]",
+      "wb-sync-dot [bg]",
+      "wb-pane-ic asst [bg]",
+      "wb-live [bg]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": null,
+      "contentRes": null,
+      "inbox": null,
+      "today": null,
+      "log": {
+        "rows": 120,
+        "measured": 120,
+        "unmeasured": 0,
+        "groups": 1,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 120,
+            "x": 310,
+            "variance": 0
+          }
+        ]
+      }
+    },
+    "trails": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "log": {
+        "n": 120,
+        "min": 40,
+        "max": 40,
+        "median": 40
+      }
+    },
+    "restingShadows": [],
+    "insetShadows": [
+      {
+        "cls": "wb-rj on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      }
+    ],
+    "selected": [
+      {
+        "cls": "wb-rj on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "0px rgba(0, 0, 0, 0)",
+        "pass": true
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "1px rgba(0, 0, 0, 0)",
+        "pass": true
+      }
+    ],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": []
+  },
+  {
+    "shot": "inbox",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:15432/#exp/v2/inbox",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/inbox-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "innerTextLen": 4427,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "34px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#DBDFDD",
+      "--cat-3": "#A1A6A4",
+      "--cat-4": "#747977"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": null,
+      "paneH": null,
+      "surface1": "#121513"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      34
+    ],
+    "typeCount": 5,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 31,
+      "500": 27,
+      "600": 36,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 34,
+        "text": "Inbox"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 5,
+    "accentWho": [
+      "wb-sync-dot [bg]",
+      "wb-ok-dot [bg]",
+      "tb on [color+border]",
+      "ic bubble [color+border]",
+      "l [color+border]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": null,
+      "contentRes": null,
+      "inbox": {
+        "rows": 13,
+        "measured": 13,
+        "unmeasured": 0,
+        "groups": 1,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 13,
+            "x": 56,
+            "variance": 0
+          }
+        ]
+      },
+      "today": null,
+      "log": null
+    },
+    "trails": {
+      "content": null,
+      "inbox": {
+        "n": 13,
+        "worstInGroup": 0
+      }
+    },
+    "density": {
+      "content": null,
+      "inbox": {
+        "n": 13,
+        "min": 41,
+        "max": 42,
+        "median": 42
+      },
+      "today": null,
+      "log": null
+    },
+    "restingShadows": [],
+    "insetShadows": [],
+    "selected": [],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": []
+  },
+  {
+    "shot": "inbox",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:15432/#exp/v2/inbox",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/inbox-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "innerTextLen": 5540,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "56px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#DBDFDD",
+      "--cat-3": "#A1A6A4",
+      "--cat-4": "#747977"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": "rgb(18, 21, 19)",
+      "paneH": "rgb(18, 21, 19)",
+      "surface1": "#121513"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      20,
+      56
+    ],
+    "typeCount": 6,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 49,
+      "500": 43,
+      "600": 38,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 56,
+        "text": "Inbox"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 7,
+    "accentWho": [
+      "wb-rj on [spine]",
+      "wb-rj wb-rj-peer on [spine]",
+      "wb-peer-dot on [bg]",
+      "wb-sync-dot [bg]",
+      "wb-ok-dot [bg]",
+      "wb-pane-ic asst [bg]",
+      "wb-live [bg]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": null,
+      "contentRes": null,
+      "inbox": {
+        "rows": 15,
+        "measured": 15,
+        "unmeasured": 0,
+        "groups": 1,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 15,
+            "x": 256,
+            "variance": 0
+          }
+        ]
+      },
+      "today": null,
+      "log": null
+    },
+    "trails": {
+      "content": null,
+      "inbox": {
+        "n": 15,
+        "worstInGroup": 0
+      }
+    },
+    "density": {
+      "content": null,
+      "inbox": {
+        "n": 15,
+        "min": 41,
+        "max": 42,
+        "median": 42
+      },
+      "today": null,
+      "log": null
+    },
+    "restingShadows": [],
+    "insetShadows": [
+      {
+        "cls": "wb-rj on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      }
+    ],
+    "selected": [
+      {
+        "cls": "wb-rj on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "0px rgba(0, 0, 0, 0)",
+        "pass": true
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "1px rgba(0, 0, 0, 0)",
+        "pass": true
+      }
+    ],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": []
+  },
+  {
+    "shot": "ops",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:15432/#exp/v2/ops",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/ops-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "innerTextLen": 294,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "34px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#DBDFDD",
+      "--cat-3": "#A1A6A4",
+      "--cat-4": "#747977"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": null,
+      "paneH": null,
+      "surface1": "#121513"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      20,
+      30,
+      34
+    ],
+    "typeCount": 7,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 15,
+      "500": 1,
+      "600": 22,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 34,
+        "text": "Ops"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 8,
+    "accentWho": [
+      "wb-sync-dot [bg]",
+      "wb-otile-n [color+border]",
+      "wb-stack-seg [bg]",
+      "wb-ofresh-d [bg]",
+      "btn p [bg+border]",
+      "tb on [color+border]",
+      "ic bubble [color+border]",
+      "l [color+border]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": null,
+      "contentRes": null,
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "trails": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "restingShadows": [],
+    "insetShadows": [],
+    "selected": [],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": []
+  },
+  {
+    "shot": "ops",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:15432/#exp/v2/ops",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/ops-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "innerTextLen": 675,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "56px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#DBDFDD",
+      "--cat-3": "#A1A6A4",
+      "--cat-4": "#747977"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": "rgb(18, 21, 19)",
+      "paneH": "rgb(18, 21, 19)",
+      "surface1": "#121513"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      20,
+      30,
+      56
+    ],
+    "typeCount": 7,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 29,
+      "500": 13,
+      "600": 20,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 56,
+        "text": "Ops"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 10,
+    "accentWho": [
+      "wb-rj on [spine]",
+      "wb-rj wb-rj-peer on [spine]",
+      "wb-peer-dot on [bg]",
+      "wb-sync-dot [bg]",
+      "wb-otile-n [color+border]",
+      "wb-stack-seg [bg]",
+      "wb-ofresh-d [bg]",
+      "btn p [bg+border]",
+      "wb-pane-ic asst [bg]",
+      "wb-live [bg]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": null,
+      "contentRes": null,
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "trails": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "restingShadows": [],
+    "insetShadows": [
+      {
+        "cls": "wb-rj on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      }
+    ],
+    "selected": [
+      {
+        "cls": "wb-rj on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "0px rgba(0, 0, 0, 0)",
+        "pass": true
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "1px rgba(0, 0, 0, 0)",
+        "pass": true
+      }
+    ],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": []
+  },
+  {
+    "shot": "drafts",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:15432/#exp/v2/drafts",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/drafts-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "innerTextLen": 330,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "34px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#DBDFDD",
+      "--cat-3": "#A1A6A4",
+      "--cat-4": "#747977"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": null,
+      "paneH": null,
+      "surface1": "#121513"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      15,
+      34
+    ],
+    "typeCount": 4,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 7,
+      "500": 2,
+      "600": 17,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 34,
+        "text": "Drafts"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 4,
+    "accentWho": [
+      "wb-sync-dot [bg]",
+      "tb on [color+border]",
+      "ic bubble [color+border]",
+      "l [color+border]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": null,
+      "contentRes": null,
+      "inbox": null,
+      "today": null,
+      "log": {
+        "rows": 1,
+        "measured": 1,
+        "unmeasured": 0,
+        "groups": 1,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 1,
+            "x": 94,
+            "variance": 0
+          }
+        ]
+      }
+    },
+    "trails": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "log": {
+        "n": 1,
+        "min": 38,
+        "max": 38,
+        "median": 38
+      }
+    },
+    "restingShadows": [],
+    "insetShadows": [],
+    "selected": [],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": []
+  },
+  {
+    "shot": "drafts",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:15432/#exp/v2/drafts",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/drafts-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "innerTextLen": 695,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "56px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#DBDFDD",
+      "--cat-3": "#A1A6A4",
+      "--cat-4": "#747977"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": "rgb(18, 21, 19)",
+      "paneH": "rgb(18, 21, 19)",
+      "surface1": "#121513"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      20,
+      56
+    ],
+    "typeCount": 6,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 21,
+      "500": 14,
+      "600": 15,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 56,
+        "text": "Drafts"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 6,
+    "accentWho": [
+      "wb-rj on wb-rj-lane [spine]",
+      "wb-rj wb-rj-peer on [spine]",
+      "wb-peer-dot on [bg]",
+      "wb-sync-dot [bg]",
+      "wb-pane-ic asst [bg]",
+      "wb-live [bg]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": null,
+      "contentRes": null,
+      "inbox": null,
+      "today": null,
+      "log": {
+        "rows": 1,
+        "measured": 1,
+        "unmeasured": 0,
+        "groups": 1,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 1,
+            "x": 294,
+            "variance": 0
+          }
+        ]
+      }
+    },
+    "trails": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "log": {
+        "n": 1,
+        "min": 40,
+        "max": 40,
+        "median": 40
+      }
+    },
+    "restingShadows": [],
+    "insetShadows": [
+      {
+        "cls": "wb-rj on wb-rj-lane",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      }
+    ],
+    "selected": [
+      {
+        "cls": "wb-rj on wb-rj-lane",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "0px rgba(0, 0, 0, 0)",
+        "pass": true
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "1px rgba(0, 0, 0, 0)",
+        "pass": true
+      }
+    ],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": []
+  },
+  {
+    "shot": "settings",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:15432/#exp/v2/settings",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/settings-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "innerTextLen": 448,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "34px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#DBDFDD",
+      "--cat-3": "#A1A6A4",
+      "--cat-4": "#747977"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": null,
+      "paneH": null,
+      "surface1": "#121513"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      34
+    ],
+    "typeCount": 5,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 7,
+      "500": 5,
+      "600": 14,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 34,
+        "text": "Settings"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 1,
+    "accentWho": [
+      "wb-sync-dot [bg]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": null,
+      "contentRes": null,
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "trails": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "restingShadows": [],
+    "insetShadows": [],
+    "selected": [],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": []
+  },
+  {
+    "shot": "settings",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:15432/#exp/v2/settings",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/settings-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "innerTextLen": 804,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "56px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#DBDFDD",
+      "--cat-3": "#A1A6A4",
+      "--cat-4": "#747977"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": "rgb(18, 21, 19)",
+      "paneH": "rgb(18, 21, 19)",
+      "surface1": "#121513"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      20,
+      56
+    ],
+    "typeCount": 6,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 21,
+      "500": 17,
+      "600": 11,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 56,
+        "text": "Settings"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 6,
+    "accentWho": [
+      "wb-rj wb-rj-peer on [spine]",
+      "wb-peer-dot on [bg]",
+      "wb-rj on [spine]",
+      "wb-sync-dot [bg]",
+      "wb-pane-ic asst [bg]",
+      "wb-live [bg]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": null,
+      "contentRes": null,
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "trails": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "restingShadows": [],
+    "insetShadows": [
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      },
+      {
+        "cls": "wb-rj on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      }
+    ],
+    "selected": [
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "1px rgba(0, 0, 0, 0)",
+        "pass": true
+      },
+      {
+        "cls": "wb-rj on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "0px rgba(0, 0, 0, 0)",
+        "pass": true
+      }
+    ],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": []
+  },
+  {
+    "shot": "draft-pane",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:15432/#exp/v2/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/draft-pane-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "innerTextLen": 17043,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "34px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#DBDFDD",
+      "--cat-3": "#A1A6A4",
+      "--cat-4": "#747977"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": null,
+      "paneH": "rgb(18, 21, 19)",
+      "surface1": "#121513"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      20,
+      30
+    ],
+    "typeCount": 6,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 156,
+      "500": 12,
+      "600": 180
+    },
+    "heavy": [],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 2,
+    "accentWho": [
+      "wb-qa-fill [bg]",
+      "btn p [bg+border]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": null,
+      "contentRes": null,
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "trails": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "restingShadows": [],
+    "insetShadows": [],
+    "selected": [],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": []
+  },
+  {
+    "shot": "draft-pane",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:15432/#exp/v2/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/draft-pane-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "innerTextLen": 45671,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "56px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#DBDFDD",
+      "--cat-3": "#A1A6A4",
+      "--cat-4": "#747977"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": "rgb(18, 21, 19)",
+      "paneH": "rgb(18, 21, 19)",
+      "surface1": "#121513"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      20,
+      30,
+      56
+    ],
+    "typeCount": 7,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 582,
+      "500": 234,
+      "600": 808,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 56,
+        "text": "Content"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 10,
+    "accentWho": [
+      "wb-rj on wb-rj-lane [spine]",
+      "wb-rj wb-rj-peer on [spine]",
+      "wb-peer-dot on [bg]",
+      "wb-sync-dot [bg]",
+      "ct-card ct-tap wb-card-on [spine]",
+      "wb-peer wb-peer-draft on [spine]",
+      "wb-qa-fill [bg]",
+      "btn p [bg+border]",
+      "wb-pane-ic asst [bg]",
+      "wb-live [bg]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": {
+        "rows": 77,
+        "measured": 77,
+        "unmeasured": 0,
+        "groups": 2,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 59,
+            "x": 273,
+            "variance": 0
+          },
+          {
+            "n": 18,
+            "x": 273,
+            "variance": 0
+          }
+        ]
+      },
+      "contentRes": {
+        "rows": 121,
+        "measured": 121,
+        "unmeasured": 0,
+        "groups": 1,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 121,
+            "x": 273,
+            "variance": 0
+          }
+        ]
+      },
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "trails": {
+      "content": {
+        "n": 18,
+        "worstInGroup": 0
+      },
+      "inbox": null
+    },
+    "density": {
+      "content": {
+        "n": 77,
+        "min": 44,
+        "max": 45,
+        "median": 45
+      },
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "restingShadows": [],
+    "insetShadows": [
+      {
+        "cls": "wb-rj on wb-rj-lane",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      },
+      {
+        "cls": "ct-card ct-tap wb-card-on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      },
+      {
+        "cls": "wb-peer wb-peer-draft on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(9, 11, 10)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      }
+    ],
+    "selected": [
+      {
+        "cls": "wb-rj on wb-rj-lane",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "0px rgba(0, 0, 0, 0)",
+        "pass": true
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "1px rgba(0, 0, 0, 0)",
+        "pass": true
+      },
+      {
+        "cls": "ct-card ct-tap wb-card-on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "0px rgb(243, 246, 245)",
+        "pass": true
+      },
+      {
+        "cls": "wb-peer wb-peer-draft on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(9, 11, 10)",
+        "border": "0px rgb(243, 246, 245)",
+        "pass": true
+      }
+    ],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": []
+  },
+  {
+    "shot": "thread-pane",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:15432/#exp/v2/inbox",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/thread-pane-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "innerTextLen": 6520,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "56px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#DBDFDD",
+      "--cat-3": "#A1A6A4",
+      "--cat-4": "#747977"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": "rgb(18, 21, 19)",
+      "paneH": "rgb(18, 21, 19)",
+      "surface1": "#121513"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      20,
+      56
+    ],
+    "typeCount": 6,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 62,
+      "500": 45,
+      "600": 41,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 56,
+        "text": "Inbox"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 14,
+    "accentWho": [
+      "wb-rj on [spine]",
+      "wb-rj wb-rj-peer on [spine]",
+      "wb-peer-dot on [bg]",
+      "wb-sync-dot [bg]",
+      "wb-ok-dot [bg]",
+      "r  active [spine]",
+      "wb-peer wb-peer-thread on [spine]",
+      "wb-lad-dot on [bg]",
+      "wb-lad-dot on [bg]",
+      "wb-lad-dot now [bg]",
+      "b out [bg]",
+      "b out [bg]",
+      "wb-pane-ic asst [bg]",
+      "wb-live [bg]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": null,
+      "contentRes": null,
+      "inbox": {
+        "rows": 15,
+        "measured": 15,
+        "unmeasured": 0,
+        "groups": 1,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 15,
+            "x": 256,
+            "variance": 0
+          }
+        ]
+      },
+      "today": null,
+      "log": null
+    },
+    "trails": {
+      "content": null,
+      "inbox": {
+        "n": 15,
+        "worstInGroup": 0
+      }
+    },
+    "density": {
+      "content": null,
+      "inbox": {
+        "n": 15,
+        "min": 41,
+        "max": 42,
+        "median": 42
+      },
+      "today": null,
+      "log": null
+    },
+    "restingShadows": [],
+    "insetShadows": [
+      {
+        "cls": "wb-rj on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      },
+      {
+        "cls": "r  active",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(18, 21, 19)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      },
+      {
+        "cls": "wb-peer wb-peer-thread on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(9, 11, 10)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      }
+    ],
+    "selected": [
+      {
+        "cls": "wb-rj on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "0px rgba(0, 0, 0, 0)",
+        "pass": true
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "1px rgba(0, 0, 0, 0)",
+        "pass": true
+      },
+      {
+        "cls": "r  active",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(18, 21, 19)",
+        "border": "0px rgb(243, 246, 245)",
+        "pass": true
+      },
+      {
+        "cls": "wb-peer wb-peer-thread on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(9, 11, 10)",
+        "border": "0px rgb(243, 246, 245)",
+        "pass": true
+      }
+    ],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": []
+  },
+  {
+    "shot": "cat-mono-content",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:15432/#exp/v2/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/cat-mono-content-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "innerTextLen": 28569,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "56px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#DBDFDD",
+      "--cat-3": "#A1A6A4",
+      "--cat-4": "#747977"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": "rgb(18, 21, 19)",
+      "paneH": "rgb(18, 21, 19)",
+      "surface1": "#121513"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      20,
+      30,
+      56
+    ],
+    "typeCount": 7,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 425,
+      "500": 222,
+      "600": 627,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 56,
+        "text": "Content"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 6,
+    "accentWho": [
+      "wb-rj on wb-rj-lane [spine]",
+      "wb-rj wb-rj-peer on [spine]",
+      "wb-peer-dot on [bg]",
+      "wb-sync-dot [bg]",
+      "wb-pane-ic asst [bg]",
+      "wb-live [bg]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": {
+        "rows": 77,
+        "measured": 77,
+        "unmeasured": 0,
+        "groups": 2,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 59,
+            "x": 273,
+            "variance": 0
+          },
+          {
+            "n": 18,
+            "x": 273,
+            "variance": 0
+          }
+        ]
+      },
+      "contentRes": {
+        "rows": 121,
+        "measured": 121,
+        "unmeasured": 0,
+        "groups": 1,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 121,
+            "x": 273,
+            "variance": 0
+          }
+        ]
+      },
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "trails": {
+      "content": {
+        "n": 18,
+        "worstInGroup": 0
+      },
+      "inbox": null
+    },
+    "density": {
+      "content": {
+        "n": 77,
+        "min": 44,
+        "max": 45,
+        "median": 45
+      },
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "restingShadows": [],
+    "insetShadows": [
+      {
+        "cls": "wb-rj on wb-rj-lane",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      }
+    ],
+    "selected": [
+      {
+        "cls": "wb-rj on wb-rj-lane",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "0px rgba(0, 0, 0, 0)",
+        "pass": true
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "1px rgba(0, 0, 0, 0)",
+        "pass": true
+      }
+    ],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": [
+      "catToggle mono->triad: zero layout shift (2432 els)",
+      "catHex triad: exact",
+      "catHex mono: exact"
+    ]
+  },
+  {
+    "shot": "cat-triad-content",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:15432/#exp/v2/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/cat-triad-content-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "innerTextLen": 28569,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "56px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#3A93D0",
+      "--cat-3": "#D099E8",
+      "--cat-4": "#A1A6A4"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": "rgb(18, 21, 19)",
+      "paneH": "rgb(18, 21, 19)",
+      "surface1": "#121513"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      20,
+      30,
+      56
+    ],
+    "typeCount": 7,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 425,
+      "500": 222,
+      "600": 627,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 56,
+        "text": "Content"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 6,
+    "accentWho": [
+      "wb-rj on wb-rj-lane [spine]",
+      "wb-rj wb-rj-peer on [spine]",
+      "wb-peer-dot on [bg]",
+      "wb-sync-dot [bg]",
+      "wb-pane-ic asst [bg]",
+      "wb-live [bg]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": {
+        "rows": 77,
+        "measured": 77,
+        "unmeasured": 0,
+        "groups": 2,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 59,
+            "x": 273,
+            "variance": 0
+          },
+          {
+            "n": 18,
+            "x": 273,
+            "variance": 0
+          }
+        ]
+      },
+      "contentRes": {
+        "rows": 121,
+        "measured": 121,
+        "unmeasured": 0,
+        "groups": 1,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 121,
+            "x": 273,
+            "variance": 0
+          }
+        ]
+      },
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "trails": {
+      "content": {
+        "n": 18,
+        "worstInGroup": 0
+      },
+      "inbox": null
+    },
+    "density": {
+      "content": {
+        "n": 77,
+        "min": 44,
+        "max": 45,
+        "median": 45
+      },
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "restingShadows": [],
+    "insetShadows": [
+      {
+        "cls": "wb-rj on wb-rj-lane",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      }
+    ],
+    "selected": [
+      {
+        "cls": "wb-rj on wb-rj-lane",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "0px rgba(0, 0, 0, 0)",
+        "pass": true
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "1px rgba(0, 0, 0, 0)",
+        "pass": true
+      }
+    ],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": [
+      "catToggle triad->mono: zero layout shift (2432 els)",
+      "catHex mono: exact",
+      "catHex triad: exact"
+    ]
+  },
+  {
+    "shot": "cat-mono-sends",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:15432/#exp/v2/sends",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/cat-mono-sends-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "innerTextLen": 1825,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "56px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#DBDFDD",
+      "--cat-3": "#A1A6A4",
+      "--cat-4": "#747977"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": "rgb(18, 21, 19)",
+      "paneH": "rgb(18, 21, 19)",
+      "surface1": "#121513"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      20,
+      56
+    ],
+    "typeCount": 6,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 56,
+      "500": 29,
+      "600": 72,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 56,
+        "text": "Sends"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 20,
+    "accentWho": [
+      "wb-rj on [spine]",
+      "wb-rj wb-rj-peer on [spine]",
+      "wb-peer-dot on [bg]",
+      "wb-sync-dot [bg]",
+      "sc-dot [bg]",
+      "ov-gauge-fill [bg]",
+      "sc-dot [bg]",
+      "ov-gauge-fill [bg]",
+      "sc-dot [bg]",
+      "ov-gauge-fill [bg]",
+      "sc-dot [bg]",
+      "sc-bar  [bg]",
+      "sc-dot [bg]",
+      "ov-gauge-fill [bg]",
+      "ov-gauge-fill [bg]",
+      "ov-rc on  [border]",
+      "ov-gauge-fill [bg]",
+      "ov-gauge-fill [bg]",
+      "wb-pane-ic asst [bg]",
+      "wb-live [bg]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": null,
+      "contentRes": null,
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "trails": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "restingShadows": [],
+    "insetShadows": [
+      {
+        "cls": "wb-rj on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      }
+    ],
+    "selected": [
+      {
+        "cls": "wb-rj on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "0px rgba(0, 0, 0, 0)",
+        "pass": true
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "1px rgba(0, 0, 0, 0)",
+        "pass": true
+      }
+    ],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": [
+      "catToggle mono->triad: zero layout shift (368 els)",
+      "catHex triad: exact",
+      "catHex mono: exact"
+    ]
+  },
+  {
+    "shot": "cat-triad-sends",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:15432/#exp/v2/sends",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/cat-triad-sends-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "innerTextLen": 1825,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "56px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#3A93D0",
+      "--cat-3": "#D099E8",
+      "--cat-4": "#A1A6A4"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": "rgb(18, 21, 19)",
+      "paneH": "rgb(18, 21, 19)",
+      "surface1": "#121513"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      20,
+      56
+    ],
+    "typeCount": 6,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 56,
+      "500": 29,
+      "600": 72,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 56,
+        "text": "Sends"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 20,
+    "accentWho": [
+      "wb-rj on [spine]",
+      "wb-rj wb-rj-peer on [spine]",
+      "wb-peer-dot on [bg]",
+      "wb-sync-dot [bg]",
+      "sc-dot [bg]",
+      "ov-gauge-fill [bg]",
+      "sc-dot [bg]",
+      "ov-gauge-fill [bg]",
+      "sc-dot [bg]",
+      "ov-gauge-fill [bg]",
+      "sc-dot [bg]",
+      "sc-bar  [bg]",
+      "sc-dot [bg]",
+      "ov-gauge-fill [bg]",
+      "ov-gauge-fill [bg]",
+      "ov-rc on  [border]",
+      "ov-gauge-fill [bg]",
+      "ov-gauge-fill [bg]",
+      "wb-pane-ic asst [bg]",
+      "wb-live [bg]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": null,
+      "contentRes": null,
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "trails": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "restingShadows": [],
+    "insetShadows": [
+      {
+        "cls": "wb-rj on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      }
+    ],
+    "selected": [
+      {
+        "cls": "wb-rj on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "0px rgba(0, 0, 0, 0)",
+        "pass": true
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "1px rgba(0, 0, 0, 0)",
+        "pass": true
+      }
+    ],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": [
+      "catToggle triad->mono: zero layout shift (368 els)",
+      "catHex mono: exact",
+      "catHex triad: exact"
+    ]
+  },
+  {
+    "shot": "cat-mono-today",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:15432/#exp/v2/today",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/cat-mono-today-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "innerTextLen": 3404,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "56px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#DBDFDD",
+      "--cat-3": "#A1A6A4",
+      "--cat-4": "#747977"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": "rgb(18, 21, 19)",
+      "paneH": "rgb(18, 21, 19)",
+      "surface1": "#121513"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      20,
+      30,
+      56
+    ],
+    "typeCount": 7,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 46,
+      "500": 38,
+      "600": 55,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 56,
+        "text": "Today"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 12,
+    "accentWho": [
+      "wb-rj on [spine]",
+      "wb-rj wb-rj-peer on [spine]",
+      "wb-peer-dot on [bg]",
+      "wb-sync-dot [bg]",
+      "td-stack-s [bg]",
+      "td-lg-d [bg]",
+      "td-zmark done [bg]",
+      "td-bar-f [bg]",
+      "td-bar-f [bg]",
+      "td-bar-f [bg]",
+      "wb-pane-ic asst [bg]",
+      "wb-live [bg]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": null,
+      "contentRes": null,
+      "inbox": null,
+      "today": {
+        "rows": 6,
+        "measured": 6,
+        "unmeasured": 0,
+        "groups": 2,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 3,
+            "x": 273,
+            "variance": 0
+          },
+          {
+            "n": 3,
+            "x": 273,
+            "variance": 0
+          }
+        ]
+      },
+      "log": null
+    },
+    "trails": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "today": {
+        "n": 3,
+        "min": 40,
+        "max": 59,
+        "median": 59
+      },
+      "log": null
+    },
+    "restingShadows": [],
+    "insetShadows": [
+      {
+        "cls": "wb-rj on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      }
+    ],
+    "selected": [
+      {
+        "cls": "wb-rj on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "0px rgba(0, 0, 0, 0)",
+        "pass": true
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "1px rgba(0, 0, 0, 0)",
+        "pass": true
+      }
+    ],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": [
+      "catToggle mono->triad: zero layout shift (263 els)",
+      "catHex triad: exact",
+      "catHex mono: exact"
+    ]
+  },
+  {
+    "shot": "cat-triad-today",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:15432/#exp/v2/today",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/cat-triad-today-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "innerTextLen": 3404,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "fsDisplay": "56px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#3A93D0",
+      "--cat-3": "#D099E8",
+      "--cat-4": "#A1A6A4"
+    },
+    "lightPatch": {
+      "theme": null,
+      "rail": "rgb(18, 21, 19)",
+      "paneH": "rgb(18, 21, 19)",
+      "surface1": "#121513"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      20,
+      30,
+      56
+    ],
+    "typeCount": 7,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 46,
+      "500": 38,
+      "600": 55,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 56,
+        "text": "Today"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 12,
+    "accentWho": [
+      "wb-rj on [spine]",
+      "wb-rj wb-rj-peer on [spine]",
+      "wb-peer-dot on [bg]",
+      "wb-sync-dot [bg]",
+      "td-stack-s [bg]",
+      "td-lg-d [bg]",
+      "td-zmark done [bg]",
+      "td-bar-f [bg]",
+      "td-bar-f [bg]",
+      "td-bar-f [bg]",
+      "wb-pane-ic asst [bg]",
+      "wb-live [bg]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": null,
+      "contentRes": null,
+      "inbox": null,
+      "today": {
+        "rows": 6,
+        "measured": 6,
+        "unmeasured": 0,
+        "groups": 2,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 3,
+            "x": 273,
+            "variance": 0
+          },
+          {
+            "n": 3,
+            "x": 273,
+            "variance": 0
+          }
+        ]
+      },
+      "log": null
+    },
+    "trails": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "today": {
+        "n": 3,
+        "min": 40,
+        "max": 59,
+        "median": 59
+      },
+      "log": null
+    },
+    "restingShadows": [],
+    "insetShadows": [
+      {
+        "cls": "wb-rj on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      }
+    ],
+    "selected": [
+      {
+        "cls": "wb-rj on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "0px rgba(0, 0, 0, 0)",
+        "pass": true
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(25, 29, 27)",
+        "border": "1px rgba(0, 0, 0, 0)",
+        "pass": true
+      }
+    ],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": [
+      "catToggle triad->mono: zero layout shift (263 els)",
+      "catHex mono: exact",
+      "catHex triad: exact"
+    ]
+  },
+  {
+    "shot": "light-content",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:15432/#exp/v2/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/light-content-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "innerTextLen": 28569,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#F7F8F7",
+    "bridgeBlue": "#525855",
+    "fsDisplay": "56px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#3F4442",
+      "--cat-3": "#767B79",
+      "--cat-4": "#A4A9A7"
+    },
+    "lightPatch": {
+      "theme": "light",
+      "rail": "rgb(255, 255, 255)",
+      "paneH": "rgb(255, 255, 255)",
+      "surface1": "#FFFFFF"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      20,
+      30,
+      56
+    ],
+    "typeCount": 7,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 425,
+      "500": 222,
+      "600": 627,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 56,
+        "text": "Content"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 6,
+    "accentWho": [
+      "wb-rj on wb-rj-lane [spine]",
+      "wb-rj wb-rj-peer on [spine]",
+      "wb-peer-dot on [bg]",
+      "wb-sync-dot [bg]",
+      "wb-pane-ic asst [bg]",
+      "wb-live [bg]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": {
+        "rows": 77,
+        "measured": 77,
+        "unmeasured": 0,
+        "groups": 2,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 59,
+            "x": 273,
+            "variance": 0
+          },
+          {
+            "n": 18,
+            "x": 273,
+            "variance": 0
+          }
+        ]
+      },
+      "contentRes": {
+        "rows": 121,
+        "measured": 121,
+        "unmeasured": 0,
+        "groups": 1,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 121,
+            "x": 273,
+            "variance": 0
+          }
+        ]
+      },
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "trails": {
+      "content": {
+        "n": 18,
+        "worstInGroup": 0
+      },
+      "inbox": null
+    },
+    "density": {
+      "content": {
+        "n": 77,
+        "min": 44,
+        "max": 45,
+        "median": 45
+      },
+      "inbox": null,
+      "today": null,
+      "log": null
+    },
+    "restingShadows": [],
+    "insetShadows": [
+      {
+        "cls": "wb-rj on wb-rj-lane",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(240, 242, 241)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(240, 242, 241)",
+        "isAccent": true,
+        "is2px": true,
+        "bgIsAccent": false
+      }
+    ],
+    "selected": [
+      {
+        "cls": "wb-rj on wb-rj-lane",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(240, 242, 241)",
+        "border": "0px rgba(0, 0, 0, 0)",
+        "pass": true
+      },
+      {
+        "cls": "wb-rj wb-rj-peer on",
+        "shadow": "rgb(16, 163, 127) 2px 0px 0px 0px inset",
+        "bg": "rgb(240, 242, 241)",
+        "border": "1px rgba(0, 0, 0, 0)",
+        "pass": true
+      }
+    ],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": []
+  },
+  {
+    "shot": "light-today",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:15432/#exp/v2/today",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-spine/shots/light-today-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "innerTextLen": 3040,
+    "loadingLiterals": [],
+    "loginVisible": false,
+    "skeletons": 0,
+    "bridgeBg": "#F7F8F7",
+    "bridgeBlue": "#525855",
+    "fsDisplay": "34px",
+    "catTokens": {
+      "--cat-1": "#10A37F",
+      "--cat-2": "#3F4442",
+      "--cat-3": "#767B79",
+      "--cat-4": "#A4A9A7"
+    },
+    "lightPatch": {
+      "theme": "light",
+      "rail": null,
+      "paneH": null,
+      "surface1": "#FFFFFF"
+    },
+    "denominators": [],
+    "typeSizes": [
+      11,
+      12,
+      13,
+      15,
+      30,
+      34
+    ],
+    "typeCount": 6,
+    "fractional": [],
+    "fractionalWho": [],
+    "weights": {
+      "400": 32,
+      "500": 26,
+      "600": 57,
+      "700": 1
+    },
+    "heavy": [
+      {
+        "cls": "H2",
+        "px": 34,
+        "text": "Today"
+      }
+    ],
+    "numeralNotTabular": [],
+    "numeralNotTabularCount": 0,
+    "accent": 10,
+    "accentWho": [
+      "wb-sync-dot [bg]",
+      "td-stack-s [bg]",
+      "td-lg-d [bg]",
+      "td-zmark done [bg]",
+      "td-bar-f [bg]",
+      "td-bar-f [bg]",
+      "td-bar-f [bg]",
+      "tb on [color+border]",
+      "ic bubble [color+border]",
+      "l [color+border]"
+    ],
+    "pillViolations": [],
+    "pillViolationCount": 0,
+    "rails": {
+      "content": null,
+      "contentRes": null,
+      "inbox": null,
+      "today": {
+        "rows": 6,
+        "measured": 6,
+        "unmeasured": 0,
+        "groups": 2,
+        "globalVariance": 0,
+        "worstInGroup": 0,
+        "groupX": [
+          {
+            "n": 3,
+            "x": 57,
+            "variance": 0
+          },
+          {
+            "n": 3,
+            "x": 57,
+            "variance": 0
+          }
+        ]
+      },
+      "log": null
+    },
+    "trails": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "today": {
+        "n": 3,
+        "min": 40,
+        "max": 59,
+        "median": 59
+      },
+      "log": null
+    },
+    "restingShadows": [],
+    "insetShadows": [],
+    "selected": [],
+    "motionLeaks": [],
+    "clipped": [],
+    "errors": [],
+    "notes": []
+  }
+]

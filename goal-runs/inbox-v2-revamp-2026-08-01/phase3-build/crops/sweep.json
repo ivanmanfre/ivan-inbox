@@ -1,0 +1,1464 @@
+[
+  {
+    "shot": "today",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4188/#exp/v2/today",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/today-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 1695,
+        "totalWords": 396,
+        "wordsPer1000px": 233.6,
+        "proseSharePct": 55.1,
+        "biggestNumberPx": 34,
+        "encodings": 11,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "today",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4188/#exp/v2/today",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/today-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 1690,
+        "totalWords": 396,
+        "wordsPer1000px": 234.3,
+        "proseSharePct": 55.1,
+        "biggestNumberPx": 34,
+        "encodings": 11,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 55,
+        "wordsPer1000px": 61.1,
+        "proseSharePct": 32.7,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "inbox",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4188/#exp/v2/inbox",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/inbox-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83173,
+        "totalWords": 858,
+        "wordsPer1000px": 10.3,
+        "proseSharePct": 90,
+        "biggestNumberPx": 13,
+        "encodings": 6,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "inbox",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4188/#exp/v2/inbox",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/inbox-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83166,
+        "totalWords": 884,
+        "wordsPer1000px": 10.6,
+        "proseSharePct": 87.3,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 55,
+        "wordsPer1000px": 61.1,
+        "proseSharePct": 32.7,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "drafts",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4188/#exp/v2/drafts",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/drafts-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 742,
+        "totalWords": 14,
+        "wordsPer1000px": 18.9,
+        "proseSharePct": 0,
+        "biggestNumberPx": 11,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "drafts",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4188/#exp/v2/drafts",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/drafts-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 900,
+        "totalWords": 14,
+        "wordsPer1000px": 15.6,
+        "proseSharePct": 0,
+        "biggestNumberPx": 11,
+        "encodings": 1,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 55,
+        "wordsPer1000px": 61.1,
+        "proseSharePct": 32.7,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "content",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4188/#exp/v2/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/content-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 2595,
+        "totalWords": 274,
+        "wordsPer1000px": 105.6,
+        "proseSharePct": 56.6,
+        "biggestNumberPx": 32,
+        "encodings": 16,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "content",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4188/#exp/v2/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/content-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 2403,
+        "totalWords": 274,
+        "wordsPer1000px": 114,
+        "proseSharePct": 56.6,
+        "biggestNumberPx": 32,
+        "encodings": 16,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 53,
+        "wordsPer1000px": 58.9,
+        "proseSharePct": 34,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "sends",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4188/#exp/v2/sends",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/sends-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 1963,
+        "totalWords": 261,
+        "wordsPer1000px": 133,
+        "proseSharePct": 22.6,
+        "biggestNumberPx": 28,
+        "encodings": 73,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "sends",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4188/#exp/v2/sends",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/sends-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 2119,
+        "totalWords": 261,
+        "wordsPer1000px": 123.2,
+        "proseSharePct": 22.6,
+        "biggestNumberPx": 28,
+        "encodings": 30,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 53,
+        "wordsPer1000px": 58.9,
+        "proseSharePct": 34,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "ops",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4188/#exp/v2/ops",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/ops-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 906,
+        "totalWords": 144,
+        "wordsPer1000px": 158.9,
+        "proseSharePct": 45.8,
+        "biggestNumberPx": 30,
+        "encodings": 5,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "ops",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4188/#exp/v2/ops",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/ops-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 900,
+        "totalWords": 144,
+        "wordsPer1000px": 160,
+        "proseSharePct": 45.8,
+        "biggestNumberPx": 30,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 58,
+        "wordsPer1000px": 64.4,
+        "proseSharePct": 31,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "settings",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4188/#exp/v2/settings",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/settings-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 742,
+        "totalWords": 60,
+        "wordsPer1000px": 80.9,
+        "proseSharePct": 61.7,
+        "biggestNumberPx": 0,
+        "encodings": 0,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "settings",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4188/#exp/v2/settings",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/settings-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 900,
+        "totalWords": 60,
+        "wordsPer1000px": 66.7,
+        "proseSharePct": 61.7,
+        "biggestNumberPx": 0,
+        "encodings": 0,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 55,
+        "wordsPer1000px": 61.1,
+        "proseSharePct": 32.7,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4188/#exp/v2/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/chat-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 852,
+        "totalWords": 55,
+        "wordsPer1000px": 64.6,
+        "proseSharePct": 32.7,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4188/#exp/v2/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/chat-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83166,
+        "totalWords": 884,
+        "wordsPer1000px": 10.6,
+        "proseSharePct": 87.3,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 55,
+        "wordsPer1000px": 61.1,
+        "proseSharePct": 32.7,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "thread",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4188/#exp/v2/inbox",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/thread-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 852,
+        "totalWords": 56,
+        "wordsPer1000px": 65.7,
+        "proseSharePct": 76.8,
+        "biggestNumberPx": 0,
+        "encodings": 7,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "thread",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4188/#exp/v2/inbox",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/thread-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83166,
+        "totalWords": 884,
+        "wordsPer1000px": 10.6,
+        "proseSharePct": 87.3,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 56,
+        "wordsPer1000px": 62.2,
+        "proseSharePct": 76.8,
+        "biggestNumberPx": 0,
+        "encodings": 7,
+        "overflow": false
+      },
+      {
+        "region": "peer2",
+        "height": 900,
+        "totalWords": 52,
+        "wordsPer1000px": 57.8,
+        "proseSharePct": 34.6,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "peers-thread-chat",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4188/#exp/v2/inbox",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/peers-thread-chat-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83166,
+        "totalWords": 884,
+        "wordsPer1000px": 10.6,
+        "proseSharePct": 87.3,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 56,
+        "wordsPer1000px": 62.2,
+        "proseSharePct": 76.8,
+        "biggestNumberPx": 0,
+        "encodings": 7,
+        "overflow": false
+      },
+      {
+        "region": "peer2",
+        "height": 900,
+        "totalWords": 52,
+        "wordsPer1000px": 57.8,
+        "proseSharePct": 34.6,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "draft",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4188/#exp/v2/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/draft-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 1727,
+        "totalWords": 649,
+        "wordsPer1000px": 375.9,
+        "proseSharePct": 86,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "draft",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4188/#exp/v2/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/draft-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 2577,
+        "totalWords": 274,
+        "wordsPer1000px": 106.3,
+        "proseSharePct": 56.6,
+        "biggestNumberPx": 32,
+        "encodings": 16,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 1700,
+        "totalWords": 649,
+        "wordsPer1000px": 381.8,
+        "proseSharePct": 86,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      },
+      {
+        "region": "peer2",
+        "height": 900,
+        "totalWords": 62,
+        "wordsPer1000px": 68.9,
+        "proseSharePct": 29,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "peers-draft-chat",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4188/#exp/v2/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/peers-draft-chat-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 2577,
+        "totalWords": 274,
+        "wordsPer1000px": 106.3,
+        "proseSharePct": 56.6,
+        "biggestNumberPx": 32,
+        "encodings": 16,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 1700,
+        "totalWords": 649,
+        "wordsPer1000px": 381.8,
+        "proseSharePct": 86,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      },
+      {
+        "region": "peer2",
+        "height": 900,
+        "totalWords": 62,
+        "wordsPer1000px": 68.9,
+        "proseSharePct": 29,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "inbox-solo",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4188/#exp/v2/inbox",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/inbox-solo-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83166,
+        "totalWords": 884,
+        "wordsPer1000px": 10.6,
+        "proseSharePct": 87.3,
+        "biggestNumberPx": 13,
+        "encodings": 6,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat-about-mobile",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4188/#exp/v2/inbox",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/chat-about-mobile-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 852,
+        "totalWords": 53,
+        "wordsPer1000px": 62.2,
+        "proseSharePct": 34,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat-unarmed",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4188/#exp/v2/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/chat-unarmed-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 852,
+        "totalWords": 34,
+        "wordsPer1000px": 39.9,
+        "proseSharePct": 41.2,
+        "biggestNumberPx": 0,
+        "encodings": 2,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [
+      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)"
+    ],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat-unarmed",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4188/#exp/v2/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/chat-unarmed-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83166,
+        "totalWords": 884,
+        "wordsPer1000px": 10.6,
+        "proseSharePct": 87.3,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 34,
+        "wordsPer1000px": 37.8,
+        "proseSharePct": 41.2,
+        "biggestNumberPx": 0,
+        "encodings": 2,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [
+      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)"
+    ],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat-streaming",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4188/?wbmock=chat:on#exp/v2/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/chat-streaming-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 852,
+        "totalWords": 61,
+        "wordsPer1000px": 71.6,
+        "proseSharePct": 32.8,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat-streaming",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4188/?wbmock=chat:on#exp/v2/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/chat-streaming-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83166,
+        "totalWords": 884,
+        "wordsPer1000px": 10.6,
+        "proseSharePct": 87.3,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 61,
+        "wordsPer1000px": 67.8,
+        "proseSharePct": 32.8,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat-done",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4188/?wbmock=chat:on#exp/v2/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/chat-done-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83166,
+        "totalWords": 884,
+        "wordsPer1000px": 10.6,
+        "proseSharePct": 87.3,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 85,
+        "wordsPer1000px": 94.4,
+        "proseSharePct": 47.1,
+        "biggestNumberPx": 0,
+        "encodings": 3,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat-error",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4188/?wbmock=chat:error-cold#exp/v2/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/chat-error-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 852,
+        "totalWords": 26,
+        "wordsPer1000px": 30.5,
+        "proseSharePct": 0,
+        "biggestNumberPx": 0,
+        "encodings": 2,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat-error",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4188/?wbmock=chat:error-cold#exp/v2/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/chat-error-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83166,
+        "totalWords": 884,
+        "wordsPer1000px": 10.6,
+        "proseSharePct": 87.3,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 26,
+        "wordsPer1000px": 28.9,
+        "proseSharePct": 0,
+        "biggestNumberPx": 0,
+        "encodings": 2,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "chat-error-mid",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4188/?wbmock=chat:error-mid#exp/v2/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/chat-error-mid-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83166,
+        "totalWords": 884,
+        "wordsPer1000px": 10.6,
+        "proseSharePct": 87.3,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 55,
+        "wordsPer1000px": 61.1,
+        "proseSharePct": 0,
+        "biggestNumberPx": 0,
+        "encodings": 2,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "voice-listening",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4188/?wbmock=voice:on#exp/v2/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/voice-listening-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 852,
+        "totalWords": 56,
+        "wordsPer1000px": 65.7,
+        "proseSharePct": 32.1,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "voice-listening",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4188/?wbmock=voice:on#exp/v2/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/voice-listening-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83166,
+        "totalWords": 884,
+        "wordsPer1000px": 10.6,
+        "proseSharePct": 87.3,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 56,
+        "wordsPer1000px": 62.2,
+        "proseSharePct": 32.1,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "voice-handsfree",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4188/?wbmock=voice:on#exp/v2/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/voice-handsfree-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 1003,
+        "totalWords": 73,
+        "wordsPer1000px": 72.8,
+        "proseSharePct": 42.5,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "voice-handsfree",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4188/?wbmock=voice:on#exp/v2/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/voice-handsfree-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83166,
+        "totalWords": 884,
+        "wordsPer1000px": 10.6,
+        "proseSharePct": 87.3,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 999,
+        "totalWords": 73,
+        "wordsPer1000px": 73.1,
+        "proseSharePct": 42.5,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "voice-denied",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4188/?wbmock=voice:denied#exp/v2/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/voice-denied-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "takeover",
+        "height": 852,
+        "totalWords": 68,
+        "wordsPer1000px": 79.8,
+        "proseSharePct": 44.1,
+        "biggestNumberPx": 0,
+        "encodings": 2,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "voice-denied",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4188/?wbmock=voice:denied#exp/v2/inbox/chat",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/voice-denied-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83166,
+        "totalWords": 884,
+        "wordsPer1000px": 10.6,
+        "proseSharePct": 87.3,
+        "biggestNumberPx": 13,
+        "encodings": 5,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 68,
+        "wordsPer1000px": 75.6,
+        "proseSharePct": 44.1,
+        "biggestNumberPx": 0,
+        "encodings": 2,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "state-failed-inbox",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4188/?wbmock=fetch-error#exp/v2/inbox",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/state-failed-inbox-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83173,
+        "totalWords": 886,
+        "wordsPer1000px": 10.7,
+        "proseSharePct": 87.1,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "state-failed-inbox",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4188/?wbmock=fetch-error#exp/v2/inbox",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/state-failed-inbox-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 83166,
+        "totalWords": 950,
+        "wordsPer1000px": 11.4,
+        "proseSharePct": 86,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 55,
+        "wordsPer1000px": 61.1,
+        "proseSharePct": 32.7,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "state-failed-ops",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4188/?wbmock=fetch-error#exp/v2/ops",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/state-failed-ops-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 742,
+        "totalWords": 33,
+        "wordsPer1000px": 44.5,
+        "proseSharePct": 0,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "state-failed-ops",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4188/?wbmock=fetch-error#exp/v2/ops",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/state-failed-ops-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 900,
+        "totalWords": 33,
+        "wordsPer1000px": 36.7,
+        "proseSharePct": 0,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 58,
+        "wordsPer1000px": 64.4,
+        "proseSharePct": 31,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "state-failed-content",
+    "tag": "mobile",
+    "width": 390,
+    "url": "http://localhost:4188/?wbmock=fetch-error#exp/v2/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/state-failed-content-mobile.png",
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 742,
+        "totalWords": 29,
+        "wordsPer1000px": 39.1,
+        "proseSharePct": 0,
+        "biggestNumberPx": 11,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  },
+  {
+    "shot": "state-failed-content",
+    "tag": "desktop",
+    "width": 1440,
+    "url": "http://localhost:4188/?wbmock=fetch-error#exp/v2/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-v2-revamp-2026-08-01/phase3-build/crops/state-failed-content-desktop.png",
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "clipped": [],
+    "loginVisible": false,
+    "regions": [
+      {
+        "region": "work",
+        "height": 900,
+        "totalWords": 29,
+        "wordsPer1000px": 32.2,
+        "proseSharePct": 0,
+        "biggestNumberPx": 11,
+        "encodings": 1,
+        "overflow": false
+      },
+      {
+        "region": "peer1",
+        "height": 900,
+        "totalWords": 53,
+        "wordsPer1000px": 58.9,
+        "proseSharePct": 34,
+        "biggestNumberPx": 0,
+        "encodings": 1,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "transportNoise": [],
+    "missedSteps": []
+  }
+]

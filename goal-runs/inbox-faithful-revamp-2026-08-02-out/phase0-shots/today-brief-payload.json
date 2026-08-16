@@ -1,0 +1,621 @@
+{
+  "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/functions/v1/get-morning-brief",
+  "status": 200,
+  "json": {
+    "generated_at": "2026-08-02T18:31:37.855Z",
+    "urgencies": [
+      {
+        "id": "reply:b2a0e682-702e-4cce-8975-5df52c3fbdf1",
+        "kind": "reply",
+        "name": "Nour Siakir Oglou",
+        "company": null,
+        "title": null,
+        "linkedin_url": "https://www.linkedin.com/in/ACoAACnTpukB9QAIU_bVouljj-oaoKswfqJeiYU",
+        "snippet": "Hi Iván, I'm reaching out because you expressed interest in becoming a founding member of Swipeless.ai — a YouTube AI longform content gener",
+        "waiting_since": "2026-07-31T14:31:48.912546+00:00",
+        "action_url": "https://www.linkedin.com/in/ACoAACnTpukB9QAIU_bVouljj-oaoKswfqJeiYU"
+      }
+    ],
+    "urgencies_count": 1,
+    "autoreplies_count": 0,
+    "aging_count": 6,
+    "needs_you": {
+      "comment_drafts": [
+        {
+          "id": "1137b646-5db9-4c81-bd88-46210a3d7498",
+          "post_author_name": "Connor McLeod",
+          "comment_text": "Quality staying stable is where mine break. The workflow repeats fine, then one weird input and it needs me to rescue the delivery again.",
+          "post_excerpt": "One of our first product lessons came from a tool we originally built for ourselves.\n\nWe needed fast competitive marketing audits.\n\nSo we built an AI workflow that could research a company, analyze competitors, find positioning gaps, and produce an audit without a human in the loop.\n\nAt first, it wa",
+          "post_url": "https://www.linkedin.com/posts/connorraymcleod_one-of-our-first-product-lessons-came-from-activity-7477723878560120832-nLBr",
+          "drafted_at": "2026-07-01T16:00:57.303+00:00"
+        },
+        {
+          "id": "9aadb35f-49b5-4c71-83b1-8a353d77d95c",
+          "post_author_name": "Sadia Aman",
+          "comment_text": "923,000 variations inside one \"standard\" process is wild. The gap always hides in the data",
+          "post_excerpt": "𝐒𝐢𝐞𝐦𝐞𝐧𝐬 𝐫𝐮𝐧𝐬 𝐨𝐧𝐞 𝐨𝐟 𝐭𝐡𝐞 𝐥𝐚𝐫𝐠𝐞𝐬𝐭 𝐨𝐫𝐝𝐞𝐫-𝐭𝐨-𝐜𝐚𝐬𝐡 𝐨𝐩𝐞𝐫𝐚𝐭𝐢𝐨𝐧𝐬 𝐢𝐧 𝐭𝐡𝐞 𝐰𝐨𝐫𝐥𝐝, 𝐰𝐢𝐭𝐡 𝟑𝟎 𝐦𝐢𝐥𝐥𝐢𝐨𝐧 𝐢𝐭𝐞𝐦𝐬 𝐩𝐫𝐨𝐜𝐞𝐬𝐬𝐞𝐝 𝐩𝐞𝐫 𝐲𝐞𝐚𝐫.\n\nOn paper, it's one standard process. But when they analyzed their actual data, they discovered ",
+          "post_url": "https://www.linkedin.com/posts/sadia-aman-28937730_%F0%9D%90%92%F0%9D%90%A2%F0%9D%90%9E%F0%9D%90%A6%F0%9D%90%9E%F0%9D%90%A7%F0%9D%90%AC-%F0%9D%90%AB%F0%9D%90%AE%F0%9D%90%A7%F0%9D%90%AC-%F0%9D%90%A8%F0%9D%90%A7%F0%9D%90%9E-%F0%9D%90%A8%F0%9D%90%9F-%F0%9D%90%AD%F0%9D%90%A1%F0%9D%90%9E-activity-7477586810861309952-N5ql",
+          "drafted_at": "2026-07-01T16:00:57.303+00:00"
+        },
+        {
+          "id": "f5714ffd-f31b-4b7b-b1f3-03c381650da7",
+          "post_author_name": "Muhammad Ali",
+          "comment_text": "That stale earnings catch only happened because the reasoning was visible. I've had the same thing on agents I built, a confidence score would have buried it.",
+          "post_excerpt": "I gave an AI trading desk a real portfolio and told it to argue with itself before it touched a single position.\n\nNot a chatbot picking stocks. A desk. One agent builds the bull case. Another tears it apart. A risk manager sizes the position and tells you how much you lose if you are wrong. Then it ",
+          "post_url": "https://www.linkedin.com/posts/muhammad-ali-64b110317_i-gave-an-ai-trading-desk-a-real-portfolio-activity-7477368090050183168-DfhO",
+          "drafted_at": "2026-06-30T18:00:55.569+00:00"
+        },
+        {
+          "id": "6f8f1362-ef9d-4e96-82f5-dc80ba70c4cd",
+          "post_author_name": "David Dorsey",
+          "comment_text": "Whenever I build follow-up automation the dead quote list is the first place I look, the intent was already there and it's just sitting untouched in the CRM",
+          "post_excerpt": "You quoted them. You did the work. And then they went quiet.\nThat was months ago for some of them. Maybe longer. And somewhere in the back of your head, you already know what that pipeline gap is worth.\nHere's something you need to think about:\nDo you think you're the only agency that quoted them?\nB",
+          "post_url": "https://www.linkedin.com/posts/david-dorsey-38708413_insuranceagency-independentagent-agencygrowth-activity-7477405568274513920-EggO",
+          "drafted_at": "2026-06-30T14:00:57.281+00:00"
+        },
+        {
+          "id": "b3ab5f64-1793-4f82-a246-3e4c01f25243",
+          "post_author_name": "Cameron England",
+          "comment_text": "Having the client decide which leads count as qualified would kill it for me. You hit 100 and still get argued down to nothing on payday.",
+          "post_excerpt": "Pay-per-lead is the wrong model for 95% of agencies.\n\n(Not because it doesn’t work)\n\nBecause most agency owners optimise for closing clients instead of building a business.\n\nThe biggest reason people move to pay-per-lead is because it's an incredibly easy offer to sell.\n\n\"If we don't generate leads,",
+          "post_url": "https://www.linkedin.com/posts/iamcameronengland_pay-per-lead-is-the-wrong-model-for-95-of-activity-7476377305192419328-El2a",
+          "drafted_at": "2026-06-28T16:01:12.39+00:00"
+        },
+        {
+          "id": "b403b156-eb28-460d-bff0-cfd2ca4b7078",
+          "post_author_name": "Chad Drew",
+          "comment_text": "Same thing I keep hitting, the second a build needs its own login adoption dies, the stuff that sticks just runs inside whatever they already have open all day",
+          "post_excerpt": "The best AI for your business isn't the smartest one. It's the one you'll actually use.\n\nDoes this sound familiar ? An owner gets sold a slick AI platform. Big demo, lots of buttons, a dashboard that looks like a spaceship. Three weeks later it's a $400-a-month browser tab nobody opens.\n\nNot because",
+          "post_url": "https://www.linkedin.com/posts/chaddrew_the-best-ai-for-your-business-isnt-the-smartest-activity-7475955954518462469-Uyqk",
+          "drafted_at": "2026-06-28T12:01:07.621+00:00"
+        }
+      ],
+      "dm_drafts": [
+        {
+          "id": "9a77664b-1f00-4b83-8d25-8069f1429f49",
+          "prospect_name": "David Card",
+          "message_text": "Cool, give me a couple days.\n\nI'll pull your positioning from the profile and put together a sample post and lead magnet concept off your own angles, so you can see what it actually looks like for your audience specifically.\n\nI'll drop a page for you with everything laid out, easier than explaining the whole thing in DMs.",
+          "channel": "linkedin",
+          "matched_offer": null,
+          "created_at": "2026-07-29T20:30:43.185787+00:00"
+        },
+        {
+          "id": "c2bbf068-ce9a-4e19-8357-173e5fd58443",
+          "prospect_name": "Joachim Koch",
+          "message_text": "Hey Joachim, did you get a chance to read my last message?",
+          "channel": "linkedin",
+          "matched_offer": null,
+          "created_at": "2026-07-20T22:00:51.200546+00:00"
+        },
+        {
+          "id": "a181861f-dbbd-42fb-9064-3499d1fadc26",
+          "prospect_name": "Prakhar Vohra",
+          "message_text": "Hey Prakhar, looks like your reply didn't come through on my end, might be a glitch.\n\nEither way, I haven't put your personalized page together yet and happy to do that now.\n\nGive me your main service or a recent win you'd want leads seeing first, and I'll mock up exactly what a post and lead magnet would look like for you specifically.",
+          "channel": "linkedin",
+          "matched_offer": null,
+          "created_at": "2026-07-18T13:00:28.675975+00:00"
+        },
+        {
+          "id": "699c248a-a757-4a30-9397-2639db7249ce",
+          "prospect_name": "Vuk Sretenovic",
+          "message_text": "That's exactly the idea, yeah\n\nI ran an audit of your inbound potential off your LinkedIn, what's there today and what we'd run for you: inboundonsteroids.com/scan/vuk-sretenovic-1d/\n\nHave a look, and if it sounds like we could give you a hand I'll demo how it works live :)\n\nhttps://calendly.com/im-ivanmanfredi/30min",
+          "channel": "linkedin",
+          "matched_offer": null,
+          "created_at": "2026-07-17T22:30:43.389342+00:00"
+        }
+      ],
+      "feed_drafts": [
+        {
+          "id": "4542e3bd-492e-4092-8035-2b4a4f095fe3",
+          "target_name": "Shayne Williams",
+          "target_class": "A",
+          "hook": "paid into a brand nobody has heard of is a tax",
+          "draft": "the paid into an unknown brand is a tax part matches what i see, im small on here so anything i push barely moves without the base first",
+          "post_url": "https://www.linkedin.com/posts/shaynewilliams_beautypr-fragrancebrands-earnedmedia-activity-7488970414627479553-0X5-",
+          "status": "pending",
+          "post_error": null,
+          "posted_at": null,
+          "created_at": "2026-08-02T11:31:21.091127+00:00",
+          "approve_url": "https://n8n.ivanmanfredi.com/webhook/comment-approve?id=4542e3bd-492e-4092-8035-2b4a4f095fe3&k=f59ba5be-a943-4ee4-88b0-ccbbff64fe5e",
+          "skip_url": "https://n8n.ivanmanfredi.com/webhook/comment-approve?id=4542e3bd-492e-4092-8035-2b4a4f095fe3&k=f59ba5be-a943-4ee4-88b0-ccbbff64fe5e&dismiss=1"
+        },
+        {
+          "id": "3a0aff25-a108-4c95-983d-21abed0f135b",
+          "target_name": "Ernest Simonyan",
+          "target_class": "A",
+          "hook": "promote your brand's weakness, own the flaw out loud",
+          "draft": "does this work the same for a tiny brand nobody knows yet or do you need some trust first",
+          "post_url": "https://www.linkedin.com/posts/ernest-simonyan_promoting-your-weaknesses-activity-7488994485427814400-Vt3h",
+          "status": "failed",
+          "post_error": "Request failed with status code 422",
+          "posted_at": null,
+          "created_at": "2026-08-01T14:54:04.169128+00:00",
+          "approve_url": "https://n8n.ivanmanfredi.com/webhook/comment-approve?id=3a0aff25-a108-4c95-983d-21abed0f135b&k=f9801110-52ee-4380-ad4f-297abc615b3a",
+          "skip_url": "https://n8n.ivanmanfredi.com/webhook/comment-approve?id=3a0aff25-a108-4c95-983d-21abed0f135b&k=f9801110-52ee-4380-ad4f-297abc615b3a&dismiss=1"
+        }
+      ]
+    },
+    "today_content": {
+      "scheduled_posts": []
+    },
+    "outreach_health": {
+      "linkedin": {
+        "fresh_supply": 307,
+        "sends_today": 0,
+        "accepts_today": 3,
+        "replies_today": 0,
+        "needs_reply": 44,
+        "stuck": 243
+      },
+      "cold_email": {
+        "connected": false,
+        "note": "Smartlead not connected"
+      }
+    },
+    "workflow_errors": [
+      {
+        "workflow": "Kyle Call Mirror Receiver",
+        "last_error_at": "2026-08-02T17:38:43.467Z",
+        "count": 1,
+        "message": "execution error"
+      },
+      {
+        "workflow": "Lead Pipeline",
+        "last_error_at": "2026-08-02T14:00:02.762Z",
+        "count": 1,
+        "message": "execution error"
+      },
+      {
+        "workflow": "Post Generation",
+        "last_error_at": "2026-08-02T12:19:56.501Z",
+        "count": 1,
+        "message": "execution error"
+      },
+      {
+        "workflow": "(unknown)",
+        "last_error_at": "2026-08-02T11:30:43.286Z",
+        "count": 1,
+        "message": "execution error"
+      },
+      {
+        "workflow": "Recording Lifecycle Cleanup",
+        "last_error_at": "2026-08-02T07:01:01.043Z",
+        "count": 1,
+        "message": "execution error"
+      },
+      {
+        "workflow": "(unknown)",
+        "last_error_at": "2026-08-02T06:10:15.848Z",
+        "count": 1,
+        "message": "execution error"
+      },
+      {
+        "workflow": "Proxy Health Probe + Recovery",
+        "last_error_at": "2026-08-02T06:10:15.848Z",
+        "count": 1,
+        "message": "execution error"
+      },
+      {
+        "workflow": "Outreach - Wins Builder",
+        "last_error_at": "2026-08-02T06:10:15.789Z",
+        "count": 1,
+        "message": "execution error"
+      },
+      {
+        "workflow": "GITHUB BACKUPS",
+        "last_error_at": "2026-08-02T04:00:03.818Z",
+        "count": 1,
+        "message": "execution error"
+      },
+      {
+        "workflow": "Outreach - RISE Reply Detector (Mattan seat)",
+        "last_error_at": "2026-08-02T00:00:52.082Z",
+        "count": 1,
+        "message": "execution error"
+      }
+    ],
+    "urgent_tasks": [
+      {
+        "id": "9ef0ac67-f87f-4c22-9529-3d999bba83cc",
+        "title": "Pull TXR050000 active permittee list (TX Industrial MSGP) for Derek",
+        "source": "agent",
+        "priority": "high",
+        "due_date": "2026-06-13T09:00:00+00:00",
+        "status": "open"
+      },
+      {
+        "id": "db2a5fdd-5d25-49de-84d4-dbb424215a7b",
+        "title": "Build Derek's Apollo + Pipedrive lead interface",
+        "source": "agent",
+        "priority": "high",
+        "due_date": "2026-06-16T09:00:00+00:00",
+        "status": "open"
+      }
+    ],
+    "content_performance": {
+      "recent_posts": [
+        {
+          "id": "77ea3bac-5b44-45ca-86e0-38fc5f9f71ee",
+          "post_text": "The format I post least on LinkedIn reaches the furthest, by like 50%.\n\nI had Claude pull the impressions on all 226 of my posts this week. Everything logs to one table, so the numbers were already sitting there.\n\nCarousels average 133 impressions. Text 90, images 85. And carousels were 5% of what I put out.\n\nThe big 2026 datasets say it louder. Metricool measured 673,658 posts in Jan and Feb: on personal profiles carousels average 1,451 impressions, video gets 606. And van der Blom's report, 1.3 million posts, moved the cadence ceiling to 2-4 posts a week. I had the engine built around 5.\n\nSo I had Claude rewire the scheduler this week. 4 posts a week max, 2 of them carousels, the mix enforced in one config row now.\n\nWhich format does your feed default to when you're busy?",
+          "posted_at": "2026-07-29T12:31:01.446+00:00",
+          "num_impressions": 0,
+          "num_likes": 0,
+          "num_comments": 0,
+          "pillar": null
+        },
+        {
+          "id": "34ebb02c-a5ba-4005-be60-71ad6c297624",
+          "post_text": "It's Sunday and next week's content is already sitting in a queue.\n\nTwo carousels, three posts, finished during the week between client calls. I used to burn Sundays writing for the week, and it always felt like homework I kept assigning myself.\n\nThe bigger change is what the posts do now. Each one has a job: one pulls replies from agency owners, one carries a free resource, one just shows the work. The leads land in my inbox while I'm delivering.\n\nI still open the board on Sundays. Old habit, there's nothing left to do there.\n\nIdk what to do with a Sunday that doesn't owe anyone content yet...",
+          "posted_at": "2026-07-26T15:00:59.766+00:00",
+          "num_impressions": 0,
+          "num_likes": 0,
+          "num_comments": 0,
+          "pillar": null
+        },
+        {
+          "id": "4e2036da-e036-4e41-9a87-50b2dbfbc418",
+          "post_text": "A CRO person I know books 8 calls a month off LinkedIn, and she posts less than most founders grinding at it.\n\nBeauty and wellness only, nothing else. One $800 audit anyone can book, sitting right there in her feed. 800 times 8 is $6,400 a month.\n\nAn agency owner showed me his feed last week for contrast. Three years posting, good comments, steady reactions, almost 0 inbound. His plan was to post more.\n\nHe was already consistent though. The posts landed, people reacted, and none of it ever converted into something more. Reactions tell you a post got seen, they don't put a name in your inbox.\n\nHer feed is narrow enough that the right people know it's for them, with one $800 thing to book. His reached everyone for three years and captured 0.",
+          "posted_at": "2026-07-23T16:00:54.185+00:00",
+          "num_impressions": 155,
+          "num_likes": 2,
+          "num_comments": 2,
+          "pillar": "methodology"
+        },
+        {
+          "id": "20111fd1-765d-4860-bf88-c923ddd5b0e7",
+          "post_text": "An agency owner told me last week she had nothing to post about. She'd been staring at a blank composer for weeks, sure she had no material worth putting up.\n\nSo we opened her call recordings from last quarter and read back through them.\n\nThe recordings were all there. Every sales call from three months, sitting in a Fathom folder, transcribed and searchable. On paper she already had a content machine running.\n\nA folder of transcripts does nothing on its own though. The folder was the part that was broken.\n\nOn one call a prospect pushed back on her price, the usual freelancer-is-cheaper line. She had an answer that landed the deal, in the buyer's exact words, with the objection and the proof sitting right next to it. That's a post.\n\nSame call, she described the client's problem back to them sharper than any headline she'd write from a blank page. Another one.\n\nTwo calls later, a client on camera telling her what the work actually changed for them. She recorded that herself and never used it.\n\nWe counted something like 30, 40 posts worth of material in there. She'd never once opened the folder to write from.\n\nSo the recording was fine. Nobody ran a pass over the transcripts to pull the moments out, so the best stuff just sat there as hours of audio. Kind of annoys me watching people grind for takes they don't have while the real ones sit unread.\n\nI run this exact pass on my own calls. Read the quarter, mark the objection, the wording, the closed-deal proof, draft from those.\n\nBefore you sit down to invent a take, go read your last quarter of calls first.",
+          "posted_at": "2026-07-22T15:00:54.943+00:00",
+          "num_impressions": 71,
+          "num_likes": 0,
+          "num_comments": 0,
+          "pillar": "methodology"
+        },
+        {
+          "id": "28642bf9-ff27-4f06-9100-e532d569acac",
+          "post_text": "Your own LinkedIn profile can send around 100 connection requests a week, roughly 5,000 buyers a year you could put in front of your work.\n\nRoute everything through your company page instead and that number is 0. A company page can't send a single connection request or cold message to anyone who doesn't already follow it, so it posts and waits for the feed to hand it strangers.\n\nThe people who do follow it are mostly there to track a brand, a competitor watching your moves or the odd jobseeker. The wrong audience, collected before you wrote a word. And every post goes out under the logo, so the buyer never sees the person who'd do the work.\n\nSo the page stays quiet and the profile with your name on it is the one buyers actually reply to.\n\nMove the posts you already wrote to your own profile, change nothing else, see where the replies land.",
+          "posted_at": "2026-07-19T16:55:40.647+00:00",
+          "num_impressions": 73,
+          "num_likes": 0,
+          "num_comments": 0,
+          "pillar": "methodology"
+        },
+        {
+          "id": "4abe2e8d-4d40-412f-8795-4fb86647567b",
+          "post_text": "I talked to a marketing agency co-founder last week whose biggest client is close to 40% of her revenue. She can see it ending. Her words: 'we do have a bit of that cliff that we're going to be hitting there at the end.'\n\nThe retainer felt like the stable part of the business for years. Smooth, predictable, the number she built the roster around. That's exactly why nobody touches it, and it's why the month that client walks, 40% goes at once.\n\nA retainer buys the client's money. It never buys their audience, so when they leave you're restarting from zero at the worst time.\n\nShe had no plan for the gap except hoping the client stayed.\n\nThe move that turns this into a bad month instead of a countdown is boring. Spend the stable months building a list you own, so named leads keep landing in the inbox no matter which account stays or goes.",
+          "posted_at": "2026-07-18T12:20:34.843+00:00",
+          "num_impressions": 88,
+          "num_likes": 4,
+          "num_comments": 0,
+          "pillar": "methodology"
+        },
+        {
+          "id": "6935863b-baf4-4654-8304-0c0ada2a5039",
+          "post_text": "He wrote about 700 blog posts over 18 years. Roughly 39 a year, one every 9 or 10 days.\n\nThen he rebranded. B2B to DTC, new name, new domain. Same crew he'd worked with for years, he just narrowed to e-commerce. His words on our call: \"all that's on the other brand.. I don't have an inbound pipeline here.\"\n\nSo 700 posts and 0 inbound on the new site. The writing was fine. It sat on a domain he walked away from, and a blog doesn't move when the name over the door changes.\n\nA .com renews for about $12 a year. He paid that for 18 years, roughly $216, and none of it followed him.\n\nA LinkedIn profile caps at 30,000 connections, and the followers past that have no limit. Those follow the person even after the company name changes. He's rebuilding inbound from scratch, and this time I'd put those hours there.",
+          "posted_at": "2026-07-17T11:55:34.633+00:00",
+          "num_impressions": 46,
+          "num_likes": 0,
+          "num_comments": 0,
+          "pillar": "methodology"
+        },
+        {
+          "id": "cec576d5-e1b2-4a19-879e-57f3acbe5c5a",
+          "post_text": "You can't hire your way out of being the bottleneck. I've watched a few founders try, and it fails the same way every time.\n\nAn agency owner running 17 clients said it to me straight: \"I don't want to be the bottleneck, and the amount of information that I know stops us from growing past what I know.\" Her fix was a COO.\n\nA senior hire runs the calendar and chases deliverables. They still can't make the call she makes without thinking, which angle a launch needs, where the quality bar sits. The judgment stays in one head, and now two people need her to get it right instead of one.\n\nThe ceiling only moves when that judgment lives somewhere outside her. A feed carrying her actual take, a lead magnet that drops a named lead in her inbox while she's heads-down on client work.",
+          "posted_at": "2026-07-15T12:40:34.891+00:00",
+          "num_impressions": 110,
+          "num_likes": 1,
+          "num_comments": 0,
+          "pillar": "methodology"
+        }
+      ]
+    },
+    "outreach_queue": {
+      "items": [
+        {
+          "id": "36249c4a-7eb5-484a-975f-7beec03bf785",
+          "name": "Kerim Al-Lami",
+          "title": "Founder",
+          "company": "Piwot",
+          "icp_score": 10,
+          "send_priority": 0,
+          "trigger_type": null,
+          "matched_offer": null
+        },
+        {
+          "id": "5ba446aa-fbb0-4e54-a59a-61552bc31d34",
+          "name": "Dennis Harry",
+          "title": "Founder",
+          "company": "Lost Souls Creative",
+          "icp_score": 9,
+          "send_priority": 0,
+          "trigger_type": null,
+          "matched_offer": null
+        },
+        {
+          "id": "0ffaca9f-1ee0-4005-bb88-c4dd514eb165",
+          "name": "Brandon Horvatic",
+          "title": "Co-Founder",
+          "company": "Yes Chef Studio",
+          "icp_score": 9,
+          "send_priority": 0,
+          "trigger_type": "content_engagement",
+          "matched_offer": null
+        },
+        {
+          "id": "86b405df-df25-42e6-848f-4a9f02b0f97c",
+          "name": "Pierre-Lewis Coombes",
+          "title": "Founder / UK Managing Director",
+          "company": "Big Wolf Marketing",
+          "icp_score": 9,
+          "send_priority": 0,
+          "trigger_type": null,
+          "matched_offer": null
+        },
+        {
+          "id": "038ece92-3c5d-444a-89ab-6bb7d7e1a3fe",
+          "name": "Braden Lint",
+          "title": "Co-Founder",
+          "company": "Cider Creative",
+          "icp_score": 9,
+          "send_priority": 0,
+          "trigger_type": null,
+          "matched_offer": null
+        },
+        {
+          "id": "721725dd-2f5f-4e8e-8da6-8d672576b63c",
+          "name": "Michael Barrett",
+          "title": "Co-Founder & CSO",
+          "company": "Supercharger",
+          "icp_score": 9,
+          "send_priority": 0,
+          "trigger_type": null,
+          "matched_offer": null
+        },
+        {
+          "id": "663aa319-57fc-4eed-ade4-ed7ef1454b27",
+          "name": "James Lincoln",
+          "title": "Founder",
+          "company": "Goodly",
+          "icp_score": 9,
+          "send_priority": 0,
+          "trigger_type": "content_engagement",
+          "matched_offer": null
+        },
+        {
+          "id": "b9402f31-ce2f-4e02-b07a-1f8a58908cca",
+          "name": "Karen Maddison",
+          "title": "Founder and Managing Director",
+          "company": "The Drum Consultancy",
+          "icp_score": 9,
+          "send_priority": 0,
+          "trigger_type": null,
+          "matched_offer": null
+        },
+        {
+          "id": "ae085729-3e83-4bf7-a2d3-1ead476b85b4",
+          "name": "Clare Benson-Geddes",
+          "title": "Managing Director",
+          "company": "YeahNice",
+          "icp_score": 9,
+          "send_priority": 0,
+          "trigger_type": "content_engagement",
+          "matched_offer": null
+        },
+        {
+          "id": "547e14b6-dcd0-4d8d-8aa0-3f4737ce20c9",
+          "name": "Marc Rust",
+          "title": "Founder & CEO",
+          "company": "Consequently Creative",
+          "icp_score": 9,
+          "send_priority": 0,
+          "trigger_type": "content_engagement",
+          "matched_offer": null
+        }
+      ],
+      "total": 217
+    },
+    "content_calendar": {
+      "entries": [
+        {
+          "id": "3e105766-055e-494b-9943-04ebab0e7ed6",
+          "post_text": "An agency owner told me on a call: \"when you outsource your writing to ChatGPT and these other tools, we just completely lose all of that uniqueness.\"\n\nHe's right. Then he read it as a reason to go back to writing every post by hand. I get the instinct, but hand-writing everything isn't where the uniqueness gets saved.\n\nThe stuff that makes your writing yours is the friction. The half-formed take you'd only say out loud, the phrasing that's a little off, the opinion you haven't cleaned up yet. A raw AI draft sands all of that down into the same smooth copy every other agency is already posting.\n\nIt doesn't show up right away. The feed fills up, you post daily, it looks like progress. Then 90 days in the calendar is empty and you can't work out why, because the posts read fine.. they just read like anyone.\n\nI tried writing every post myself for months. Stayed generic anyway, because I was busy tuning the AI to sound human and nothing was reading the output after it generated.\n\nWhat fixed it was keeping the point of view as the input, from the owner every time. Then a second pass reads the finished draft against a ban list of AI patterns and kills every line that sounds like a machine wrote it before it ships. I've run that gate on my own feed and every client feed for months.\n\nThe AI handles the volume, but it doesn't get to decide what you sound like.",
+          "post_format": "text",
+          "platform": "linkedin",
+          "scheduled_at": "2026-07-31T13:00:00+00:00",
+          "status": "cancelled",
+          "error_message": "superseded_by_week2_founder_schedule_2026-07-24 (goal-run ivan-week2-schedule-and-lms; restore: PATCH status=pending)",
+          "clickup_task_id": "9974f552-c3fa-4a00-845f-afac417bd072",
+          "kind": "carousel"
+        },
+        {
+          "id": "5d2d87fc-f562-425b-8f6e-4d74810f5030",
+          "post_text": "$10k a month, gone at month 8. Eight times ten is $80k of booked revenue walking off a delivery call.\n\nYou know your rates, your margins, your delivery hours to the decimal. This multiplication you've never run.\n\nThe $80k already cleared your account though. What actually costs you is how long it takes to replace that client, and that gap is the number that stays untracked.\n\nRun it. From the day someone pauses, how many days until a new client's first payment lands? First conversation, qualifying, the proposal, the two weeks they go quiet on you, the signature, onboarding. Add those up honestly and you're rarely under two months.\n\nNow hold the two numbers side by side. A churn gives you zero days of notice. Replacement takes two months, often more. So the month a client walks, the earliest fix is already deep into next quarter, and only if a qualified conversation happens that same afternoon.\n\nA quiet month shows up with no warning because the gap was set before the client ever paused. Nothing random about it.\n\nSo track it like a real metric, median days from a client leaving to the next one's first invoice, sitting right next to your margins. Then pull it down by owning where the replacement comes from, a feed and a lead magnet dropping named leads in your inbox before the current client ever walks.\n\nIdk what your number is. I'd bet you don't either, and it's the one that tells you how many months of runway a single churn really burns.\n\nGo compute it this week. Average sales-cycle length in days, against the notice a churn gives you, which is zero.",
+          "post_format": "single_image",
+          "platform": "linkedin",
+          "scheduled_at": "2026-08-03T13:30:00+00:00",
+          "status": "cancelled",
+          "error_message": "killed_by_ivan_2026-07-31 (rejected week 08-03 slate: AI-pattern verdict; run ivan-week-0803-content-plan)",
+          "clickup_task_id": "af675c8c-2774-4df9-a223-928f29164cbf",
+          "kind": "carousel"
+        },
+        {
+          "id": "c955d55a-b9dd-4fe7-876c-6e64010cf20e",
+          "post_text": "Opus 5 became the default on Claude Max the day it launched. Which means it's already running on your client work, and nobody checked.\n\nAnthropic says it comes close to their smartest model at half the price. Maybe true for your work, maybe not. The launch post is Anthropic's receipt. You still need your own.\n\nI built a kit that gets you one. It interviews you for your five hardest recurring tasks, runs each twice at two effort settings, scores the outputs against a plain rubric with worked examples, and hands back a verdict per task: deploy, keep a human, or retest.\n\nEvery file is the actual working asset. The runner skill, the rubric, the report template. Import into Claude Code or a claude.ai Project, about 30 minutes, no code.\n\nI ran my own five before letting the new default near anything client-facing.\n\nWant the kit?\nComment PROVE and send me a connection request, I'll send it over.",
+          "post_format": "carousel",
+          "platform": "linkedin",
+          "scheduled_at": "2026-08-04T12:30:00+00:00",
+          "status": "cancelled",
+          "error_message": "killed_by_ivan_2026-07-31 (rejected week 08-03 slate: AI-pattern verdict; run ivan-week-0803-content-plan)",
+          "clickup_task_id": "2e8db55d-4771-4782-ac3f-0f58c2ed773c",
+          "kind": "carousel"
+        },
+        {
+          "id": "57ab44e1-f97b-4fb4-bed2-e14105669a5b",
+          "post_text": "I had Claude read my last 30 posts against how I actually write. 30 out of 30 carried zero of my real markers.\n\nSo I pulled my own typed messages to check, 2,567 of them, and about 1 in 3 has a tbh or a kinda or a tho sitting in it. That's just how I write. On the feed: none of it, 30 posts straight.\n\nThe uncomfortable part is every one of those posts passed my banned-word QA gate clean. Nothing wrong at the sentence level. What gave it away was the whole feed reading scrubbed, and 40% of the posts opening on the same 'an agency owner told me' line.\n\nSo I rebuilt the voice profile off the real messages and ran a blind test. A judge model trying to tell AI drafts from my real writing dropped from 100% right to 61%, barely over a coin flip.\n\nA clean ban list clearly wasn't enough, and that one got to me tbh.",
+          "post_format": "single_image",
+          "platform": "linkedin",
+          "scheduled_at": "2026-08-05T13:00:00+00:00",
+          "status": "cancelled",
+          "error_message": "killed_by_ivan_2026-07-31 (rejected week 08-03 slate: AI-pattern verdict; run ivan-week-0803-content-plan)",
+          "clickup_task_id": "2e7c9a35-82af-4483-9009-a6d0491feac9",
+          "kind": "carousel"
+        },
+        {
+          "id": "f3306bb4-47db-4ff0-8e1a-cb28907dff9b",
+          "post_text": "Nate Herk plugged Claude Code into Clay last week. It pulled 50 leads matching an avatar, enriched them with business data and Google reviews, and wrote a personalized cold email for every one.\n\nHis line: \"this took me about 20 minutes by just asking Claude code with my natural language.\"\n\nThe speed is real. You can wire that same run so it leaves you something you keep.\n\nKeep the Clay list and the enrichment. That part's the good part. Change one thing, what the email asks for. Make it offer a resource built for that exact avatar, with a link to a page that trades the resource for an email.\n\nRun the math on a single batch of 50. Pitch cold, and the leads who don't reply are gone the second the email lands. You sent 50, you kept 0 names. Point the same 50 at a capture page and every click drops a named lead into a list you own, reply or no reply.\n\nThat list is the part that survives a quiet week. It sits there while you go heads down on client work, and next month you follow up without sending anything cold again, because you already have the name.\n\nI ran cold outbound hard for a stretch myself. Deliverability was good, and it still reset to nothing every time I paused to deliver client work.\n\nThe 20-minute run is worth doing.\n\nSo before you point AI at more sending, ask the thing the demo skips. Once this batch has landed and disappeared, what's left in your pipeline that you didn't have to rebuild from a cold list?",
+          "post_format": "single_image",
+          "platform": "linkedin",
+          "scheduled_at": "2026-08-06T14:30:00+00:00",
+          "status": "cancelled",
+          "error_message": "killed_by_ivan_2026-07-31 (rejected week 08-03 slate: AI-pattern verdict; run ivan-week-0803-content-plan)",
+          "clickup_task_id": "b82ee937-844f-4f3d-b8b3-4713609785a9",
+          "kind": "carousel"
+        },
+        {
+          "id": "bebf6a7b-f4ee-45f0-b835-0c98d7f847a7",
+          "post_text": "Comment-to-DM inbound is the whole reason I post. Someone comments a keyword under a post, the engine catches it and DMs them the resource, and it lands in my inbox as a named lead while I'm doing client work.\n\nI packaged the starter version of that capture system as a free kit: four Claude skill files (intake, draft, lint, cover), the voice profile template you fill once, the scoring rubric that archives 3 of every 4 ideas before they waste a slot, and the n8n skeleton that wires it all together. Real working files, yours to copy and change.\n\nI run this exact engine on my own feed, and the leads come in with a name attached.\n\nWant the files?\nComment ENGINE and send me a connection request, I'll send it over.",
+          "post_format": "carousel",
+          "platform": "linkedin",
+          "scheduled_at": "2026-08-12T12:30:00+00:00",
+          "status": "pending",
+          "error_message": null,
+          "clickup_task_id": "e0858866-1275-4fdb-8b23-42b04eaf64fe",
+          "kind": "carousel"
+        }
+      ]
+    },
+    "client_errors": {
+      "fresh_count": 5,
+      "items": [
+        {
+          "client_name": "Ivan System",
+          "workflow_name": "Kyle Call Mirror Receiver",
+          "severity": "high",
+          "occurrence_count": 3,
+          "first_seen": "2026-08-02T17:40:59.913+00:00",
+          "last_seen": "2026-08-02T18:01:02.902687+00:00",
+          "error_line": "unauthorized [line 4]"
+        },
+        {
+          "client_name": "Ivan System",
+          "workflow_name": "Post Generation",
+          "severity": "high",
+          "occurrence_count": 3,
+          "first_seen": "2026-08-02T12:21:01.154+00:00",
+          "last_seen": "2026-08-02T12:40:55.013492+00:00",
+          "error_line": "draft 954d3c81-9af0-46f9-990c-e6e202b5597f failed QA (NEEDS_REGENERATE 53/120) and 2 regeneration attempt(s) did not recover it. Draft set t"
+        },
+        {
+          "client_name": "ProSWPPP",
+          "workflow_name": "Weekly SEO Content Ideas",
+          "severity": "high",
+          "occurrence_count": 12,
+          "first_seen": "2026-07-06T12:01:06.871+00:00",
+          "last_seen": "2026-07-27T12:20:58.789242+00:00",
+          "error_line": "Payment required - perhaps check your payment details?"
+        },
+        {
+          "client_name": "Ivan System",
+          "workflow_name": "LM Curator - Slack Ingestor",
+          "severity": "high",
+          "occurrence_count": 9,
+          "first_seen": "2026-06-08T11:01:06.119+00:00",
+          "last_seen": "2026-07-27T11:20:57.490125+00:00",
+          "error_line": "failed to fetch extractor prompt from ClickUp 2ky5ezad-3173 [line 6]"
+        },
+        {
+          "client_name": "Ivan System",
+          "workflow_name": "Lead Pipeline",
+          "severity": "medium",
+          "occurrence_count": 92,
+          "first_seen": "2026-07-03T14:11:18.947+00:00",
+          "last_seen": "2026-08-02T14:20:55.056818+00:00",
+          "error_line": "Request failed with status code 400 [line 25]"
+        },
+        {
+          "client_name": "Ivan System",
+          "workflow_name": "AI Opportunity Scan",
+          "severity": "medium",
+          "occurrence_count": 3,
+          "first_seen": "2026-07-28T07:11:04.858+00:00",
+          "last_seen": "2026-07-28T07:30:55.012964+00:00",
+          "error_line": "Cannot read properties of null (reading '0') [line 755]"
+        },
+        {
+          "client_name": "Ivan System",
+          "workflow_name": "CLIENT Rise DTC - Reddit Founder-Pain Ingestor (born-dead)",
+          "severity": "medium",
+          "occurrence_count": 2,
+          "first_seen": "2026-07-27T12:01:11.348+00:00",
+          "last_seen": "2026-07-27T12:10:58.789951+00:00",
+          "error_line": "Unexpected identifier 's'"
+        },
+        {
+          "client_name": "Ivan System",
+          "workflow_name": "AI Opportunity Scan",
+          "severity": "medium",
+          "occurrence_count": 3,
+          "first_seen": "2026-07-27T07:11:06.025+00:00",
+          "last_seen": "2026-07-27T07:30:57.80685+00:00",
+          "error_line": "Task request timed out after 60 seconds"
+        }
+      ],
+      "folded_count": 59
+    },
+    "pipeline": {
+      "errors": [
+        {
+          "id": "5f2b3f0f-14c5-431a-b15e-03bb8d661d49",
+          "kind": "lm",
+          "title": "Fable 5: Your AI Ops Manager",
+          "age_days": 27
+        },
+        {
+          "id": "22003e62-1794-4c26-a23d-2826b6ade9da",
+          "kind": "carousel",
+          "title": "A great ROAS can still be a losing business",
+          "age_days": 3
+        },
+        {
+          "id": "cd394bcc-27dc-4afa-9e4e-c16125960c3b",
+          "kind": "carousel",
+          "title": "A great ROAS can still be a losing business",
+          "age_days": 3
+        },
+        {
+          "id": "35f1e9ad-2127-4544-a4ef-75b82da224da",
+          "kind": "carousel",
+          "title": "The one-man-show PMax account red flag",
+          "age_days": 9
+        },
+        {
+          "id": "84b068cd-7b8a-4a53-8329-2d078cf063a7",
+          "kind": "carousel",
+          "title": "The best cold email campaigns in 2026 aren't AI-personalized. They're just a good list.",
+          "age_days": 1
+        },
+        {
+          "id": "8139a26b-4e53-455e-b54f-a2c40ec7b2b0",
+          "kind": "carousel",
+          "title": "If your agency can't generate its own leads, the pitch to every new client gets harder to make",
+          "age_days": 3
+        },
+        {
+          "id": "a3132534-a0b5-4d47-8562-029e1a267e5a",
+          "kind": "carousel",
+          "title": "The agency that couldn't get commission cold callers to bite doesn't have a sales problem",
+          "age_days": 3
+        },
+        {
+          "id": "954d3c81-9af0-46f9-990c-e6e202b5597f",
+          "kind": "carousel",
+          "title": "When referral pipeline hits its ceiling: how agency founders spot the structural gap and build past it",
+          "age_days": 0
+        }
+      ],
+      "review_aging": {
+        "count": 85,
+        "oldest_days": 57
+      }
+    }
+  }
+}

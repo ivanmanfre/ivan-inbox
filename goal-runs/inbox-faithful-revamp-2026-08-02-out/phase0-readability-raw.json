@@ -1,0 +1,4484 @@
+[
+  {
+    "job": "today",
+    "viewport": "1440",
+    "state": "peer-open",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-today-1440-peeropen.png",
+    "audit": {
+      "leafCount": 127,
+      "sizesSeen": [
+        11,
+        12,
+        13,
+        15,
+        20,
+        30,
+        56
+      ],
+      "lineLenFindings": [],
+      "truncFindings": [
+        {
+          "cls": "div.rows.td-rows > div.td-zones > section.td-zone > div.td-r > div.td-mid > div.td-snip",
+          "text": "Hi Iván, I'm reaching out because you expressed interest in becoming a founding ",
+          "scrollWidth": 819,
+          "clientWidth": 430,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.td-rows > div.td-zones > section.td-zone > div.td-qrow.tap > div.td-qmid > div.td-qs",
+          "text": "David Card — Cool, give me a couple days.\n\nI'll pull your positioning from the p",
+          "scrollWidth": 1975,
+          "clientWidth": 478,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.td-rows > div.td-zones > section.td-zone > div.td-qrow.tap > div.td-qmid > div.td-qs",
+          "text": "Connor McLeod — Quality staying stable is where mine break. The workflow repeats",
+          "scrollWidth": 939,
+          "clientWidth": 478,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.td-rows > div.td-zones > section.td-zone > div.td-qrow.tap > div.td-qmid > div.td-qs",
+          "text": "Shayne Williams (A) — the paid into an unknown brand is a tax part matches what ",
+          "scrollWidth": 959,
+          "clientWidth": 478,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.wide.wb-narrow > div.rows.td-rows > div.td-zones > section.td-zone > div.td-next > span.txt (ancestor of \"Wed, Aug 12, 02:30 PM\")",
+          "text": "Wed, Aug 12, 02:30 PM · carousel — Comment-to-DM inbound is the whole reason I p",
+          "scrollWidth": 4514,
+          "clientWidth": 491,
+          "fontSize": 13,
+          "ellipsis": true
+        }
+      ],
+      "tokenFindings": [],
+      "contrastFindings": []
+    }
+  },
+  {
+    "job": "today",
+    "viewport": "1440",
+    "state": "peer-closed",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-today-1440-peerclosed.png",
+    "audit": {
+      "leafCount": 116,
+      "sizesSeen": [
+        11,
+        12,
+        13,
+        15,
+        20,
+        30,
+        56
+      ],
+      "lineLenFindings": [],
+      "truncFindings": [
+        {
+          "cls": "div.rows.td-rows > div.td-zones > section.td-zone > div.td-r > div.td-mid > div.td-snip",
+          "text": "Hi Iván, I'm reaching out because you expressed interest in becoming a founding ",
+          "scrollWidth": 819,
+          "clientWidth": 456,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.td-rows > div.td-zones > section.td-zone > div.td-qrow.tap > div.td-qmid > div.td-qs",
+          "text": "David Card — Cool, give me a couple days.\n\nI'll pull your positioning from the p",
+          "scrollWidth": 1975,
+          "clientWidth": 459,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.td-rows > div.td-zones > section.td-zone > div.td-qrow.tap > div.td-qmid > div.td-qs",
+          "text": "Connor McLeod — Quality staying stable is where mine break. The workflow repeats",
+          "scrollWidth": 939,
+          "clientWidth": 459,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.td-rows > div.td-zones > section.td-zone > div.td-qrow.tap > div.td-qmid > div.td-qs",
+          "text": "Shayne Williams (A) — the paid into an unknown brand is a tax part matches what ",
+          "scrollWidth": 959,
+          "clientWidth": 459,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.wide > div.rows.td-rows > div.td-zones > section.td-zone > div.td-next > span.txt (ancestor of \"Wed, Aug 12, 02:30 PM\")",
+          "text": "Wed, Aug 12, 02:30 PM · carousel — Comment-to-DM inbound is the whole reason I p",
+          "scrollWidth": 4514,
+          "clientWidth": 518,
+          "fontSize": 13,
+          "ellipsis": true
+        }
+      ],
+      "tokenFindings": [],
+      "contrastFindings": []
+    }
+  },
+  {
+    "job": "inbox",
+    "viewport": "1440",
+    "state": "peer-open",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-inbox-1440-peeropen.png",
+    "audit": {
+      "leafCount": 133,
+      "sizesSeen": [
+        11,
+        12,
+        13,
+        15,
+        20,
+        56
+      ],
+      "lineLenFindings": [],
+      "truncFindings": [
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hey Muhammad,\n\nSaw you around Kyle Hunt's content so figured we run in the ",
+          "scrollWidth": 2617,
+          "clientWidth": 461,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hey Zach,\n\nSaw you around Kyle Hunt's content so figured we run in the same",
+          "scrollWidth": 2579,
+          "clientWidth": 461,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hey Michael,\n\nSaw you around Kyle Hunt's content so figured we run in the s",
+          "scrollWidth": 2594,
+          "clientWidth": 461,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hey Ron,\n\nSaw you around Kyle Hunt's content so figured we run in the same ",
+          "scrollWidth": 7063,
+          "clientWidth": 461,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hey Ahmed,\n\nSaw you around Kyle Hunt's content so figured we run in the sam",
+          "scrollWidth": 2590,
+          "clientWidth": 461,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hi Campbell,\n\nI build and run an inbound system for founders and fractional",
+          "scrollWidth": 3039,
+          "clientWidth": 461,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hi Michiel,\n\nI build and run an inbound system for founders and fractionals",
+          "scrollWidth": 3026,
+          "clientWidth": 461,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hi Jacob,\n\nI build and run an inbound system for founders and fractionals w",
+          "scrollWidth": 3020,
+          "clientWidth": 461,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hi Anton,\n\nI build and run an inbound system for founders and fractionals w",
+          "scrollWidth": 3020,
+          "clientWidth": 461,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hi Robert,\n\nI build and run an inbound system for founders and fractionals ",
+          "scrollWidth": 3024,
+          "clientWidth": 461,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hey Abdulqadir,\n\nSaw you around Kyle Hunt's content so figured we run in th",
+          "scrollWidth": 9579,
+          "clientWidth": 461,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hi Ollie, working with a few small service teams right now on turning their",
+          "scrollWidth": 830,
+          "clientWidth": 461,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Here's the growth scan:\nhttps://resources.risedtc.com/scan/krack-d-snacks-a",
+          "scrollWidth": 2531,
+          "clientWidth": 461,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hi Alex 🙂\n\nTook the liberty of pulling a growth scan on Krakatoa Underwear",
+          "scrollWidth": 1330,
+          "clientWidth": 461,
+          "fontSize": 12,
+          "ellipsis": true
+        }
+      ],
+      "tokenFindings": [],
+      "contrastFindings": []
+    }
+  },
+  {
+    "job": "inbox",
+    "viewport": "1440",
+    "state": "peer-closed",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-inbox-1440-peerclosed.png",
+    "audit": {
+      "leafCount": 122,
+      "sizesSeen": [
+        11,
+        12,
+        13,
+        15,
+        20,
+        56
+      ],
+      "lineLenFindings": [],
+      "truncFindings": [
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hey Muhammad,\n\nSaw you around Kyle Hunt's content so figured we run in the ",
+          "scrollWidth": 2617,
+          "clientWidth": 702,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hey Zach,\n\nSaw you around Kyle Hunt's content so figured we run in the same",
+          "scrollWidth": 2579,
+          "clientWidth": 702,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hey Michael,\n\nSaw you around Kyle Hunt's content so figured we run in the s",
+          "scrollWidth": 2594,
+          "clientWidth": 702,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hey Ron,\n\nSaw you around Kyle Hunt's content so figured we run in the same ",
+          "scrollWidth": 7063,
+          "clientWidth": 702,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hey Ahmed,\n\nSaw you around Kyle Hunt's content so figured we run in the sam",
+          "scrollWidth": 2590,
+          "clientWidth": 702,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hi Campbell,\n\nI build and run an inbound system for founders and fractional",
+          "scrollWidth": 3039,
+          "clientWidth": 702,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hi Michiel,\n\nI build and run an inbound system for founders and fractionals",
+          "scrollWidth": 3026,
+          "clientWidth": 702,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hi Jacob,\n\nI build and run an inbound system for founders and fractionals w",
+          "scrollWidth": 3020,
+          "clientWidth": 702,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hi Anton,\n\nI build and run an inbound system for founders and fractionals w",
+          "scrollWidth": 3020,
+          "clientWidth": 702,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hi Robert,\n\nI build and run an inbound system for founders and fractionals ",
+          "scrollWidth": 3024,
+          "clientWidth": 702,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hey Abdulqadir,\n\nSaw you around Kyle Hunt's content so figured we run in th",
+          "scrollWidth": 9579,
+          "clientWidth": 702,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hi Ollie, working with a few small service teams right now on turning their",
+          "scrollWidth": 830,
+          "clientWidth": 702,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Here's the growth scan:\nhttps://resources.risedtc.com/scan/krack-d-snacks-a",
+          "scrollWidth": 2531,
+          "clientWidth": 702,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hi Alex 🙂\n\nTook the liberty of pulling a growth scan on Krakatoa Underwear",
+          "scrollWidth": 1330,
+          "clientWidth": 702,
+          "fontSize": 12,
+          "ellipsis": true
+        }
+      ],
+      "tokenFindings": [],
+      "contrastFindings": []
+    }
+  },
+  {
+    "job": "drafts",
+    "viewport": "1440",
+    "state": "peer-open",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-drafts-1440-peeropen.png",
+    "audit": {
+      "leafCount": 58,
+      "sizesSeen": [
+        11,
+        12,
+        13,
+        15,
+        20,
+        56
+      ],
+      "lineLenFindings": [],
+      "truncFindings": [
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.log-r > div.log-mid > div.log-snip",
+          "text": "Getting SpaceTime into a NASA facility is wild -- congrats on that one. Sounds l",
+          "scrollWidth": 560,
+          "clientWidth": 417,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.log-r > div.log-mid > div.log-snip",
+          "text": "the paid into an unknown brand is a tax part matches what i see, im small on her",
+          "scrollWidth": 767,
+          "clientWidth": 417,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.log-r > div.log-mid > div.log-snip",
+          "text": "Respect turning down a signature that fast. We screen margin first for the same ",
+          "scrollWidth": 821,
+          "clientWidth": 417,
+          "fontSize": 12,
+          "ellipsis": true
+        }
+      ],
+      "tokenFindings": [],
+      "contrastFindings": []
+    }
+  },
+  {
+    "job": "drafts",
+    "viewport": "1440",
+    "state": "peer-closed",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-drafts-1440-peerclosed.png",
+    "audit": {
+      "leafCount": 47,
+      "sizesSeen": [
+        11,
+        12,
+        13,
+        15,
+        20,
+        56
+      ],
+      "lineLenFindings": [],
+      "truncFindings": [
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.log-r > div.log-mid > div.log-snip",
+          "text": "the paid into an unknown brand is a tax part matches what i see, im small on her",
+          "scrollWidth": 767,
+          "clientWidth": 658,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.log-r > div.log-mid > div.log-snip",
+          "text": "Respect turning down a signature that fast. We screen margin first for the same ",
+          "scrollWidth": 821,
+          "clientWidth": 658,
+          "fontSize": 12,
+          "ellipsis": true
+        }
+      ],
+      "tokenFindings": [],
+      "contrastFindings": []
+    }
+  },
+  {
+    "job": "content",
+    "viewport": "1440",
+    "state": "peer-open",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-content-1440-peeropen.png",
+    "audit": {
+      "leafCount": 562,
+      "sizesSeen": [
+        11,
+        12,
+        13,
+        15,
+        20,
+        30,
+        56
+      ],
+      "lineLenFindings": [],
+      "truncFindings": [
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Generating",
+          "scrollWidth": 75,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Needs review",
+          "scrollWidth": 87,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Approved",
+          "scrollWidth": 63,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Scheduled",
+          "scrollWidth": 71,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Published",
+          "scrollWidth": 66,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Anthropic says its own AI models hacked 3 organizations during safety testing",
+          "scrollWidth": 473,
+          "clientWidth": 331,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "AI faked its way through peer review - agency owners posting AI content are runn",
+          "scrollWidth": 714,
+          "clientWidth": 331,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "When delivery runs your calendar, pipeline is always the first thing that goes",
+          "scrollWidth": 460,
+          "clientWidth": 331,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "[Lifestyle] An underdiscussed fact about content operations: most systems log wh",
+          "scrollWidth": 511,
+          "clientWidth": 331,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "[Lifestyle] Six months of scheduled posts. Not one record of who edited them aft",
+          "scrollWidth": 502,
+          "clientWidth": 331,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "[Lifestyle] It hit 32 degrees in Warsaw today and I moved my laptop to the only ",
+          "scrollWidth": 490,
+          "clientWidth": 331,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "[Lifestyle] Walked past the same bakery on Hoża three times this week without go",
+          "scrollWidth": 507,
+          "clientWidth": 331,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "[Lifestyle] Right now I'm debating whether checking something daily makes you be",
+          "scrollWidth": 511,
+          "clientWidth": 331,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Your agency's Google rankings don't matter if you're invisible to LLMs answering",
+          "scrollWidth": 590,
+          "clientWidth": 331,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Your Zoom library is a better content engine than any editorial calendar",
+          "scrollWidth": 430,
+          "clientWidth": 331,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Mira Murati's Thinking Machines drops Inkling — reviewers call it the best open ",
+          "scrollWidth": 589,
+          "clientWidth": 331,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "$224k/mo on referrals alone: the single point of failure most agency owners igno",
+          "scrollWidth": 500,
+          "clientWidth": 331,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "That viral Claude Code skill post everyone liked: here's what's actually inside ",
+          "scrollWidth": 476,
+          "clientWidth": 331,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The PDF lead magnet era is over. Functional AI skills convert better.",
+          "scrollWidth": 407,
+          "clientWidth": 331,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Two-agent AI QA still leaks AI copy. The founder voice pass is the irreducible f",
+          "scrollWidth": 497,
+          "clientWidth": 331,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Trump administration reviving push to ban Chinese AI models after Kimi K3, citin",
+          "scrollWidth": 581,
+          "clientWidth": 331,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The slop wall is real: why AI-generated LinkedIn content kills your inbound",
+          "scrollWidth": 448,
+          "clientWidth": 331,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Generating",
+          "scrollWidth": 75,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Generating resources",
+          "scrollWidth": 149,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Needs review",
+          "scrollWidth": 87,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Approved",
+          "scrollWidth": 63,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Scheduled",
+          "scrollWidth": 71,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Published",
+          "scrollWidth": 66,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Does Your Brand Hold Up at Close Range? A Messaging Audit for Software Companies",
+          "scrollWidth": 521,
+          "clientWidth": 461,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Agency Legal Audit: Systems to Have in Place Before Problems Show Up",
+          "scrollWidth": 464,
+          "clientWidth": 461,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Referral-Exit Audit: Are You Set Up to Win Clients You Have Not Met Yet?",
+          "scrollWidth": 465,
+          "clientWidth": 461,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Pressure Test: 6 Questions Every People Leader Should Ask After a Hard Week",
+          "scrollWidth": 502,
+          "clientWidth": 461,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The B2B Paid Media Measurement Checklist: 7 Things to Lock In Before You Spend A",
+          "scrollWidth": 593,
+          "clientWidth": 461,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Reactive AM Audit: 7 Questions That Reveal Where Account Growth Breaks Down",
+          "scrollWidth": 518,
+          "clientWidth": 461,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The 4-Channel Outreach Checklist: Fill Your Pipeline Without Relying on One Plat",
+          "scrollWidth": 517,
+          "clientWidth": 461,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Paid Ads Hiring Filter: 7 Questions That Expose Real Experts From Resume Blu",
+          "scrollWidth": 528,
+          "clientWidth": 461,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Subscription Retention Checklist: 6 Leaks Killing Your LTV (And How to Find ",
+          "scrollWidth": 527,
+          "clientWidth": 461,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Agency Scale Audit: 3 Questions That Separate the Ones That Double From the ",
+          "scrollWidth": 602,
+          "clientWidth": 461,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Creative Gap Diagnostic: 5 Questions to Find Where Your Creative Ops Are Ble",
+          "scrollWidth": 534,
+          "clientWidth": 461,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Recruitment Cost Audit: 7 Questions to Find Out If Your Hiring Model Is Cost",
+          "scrollWidth": 656,
+          "clientWidth": 461,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Recruitment Cost Audit: 7 Questions Every Growing Business Should Answer",
+          "scrollWidth": 491,
+          "clientWidth": 461,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Cold Email Audit: 4 Questions That Tell You Why Your Campaign Isn't Working",
+          "scrollWidth": 496,
+          "clientWidth": 461,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Lifecycle Revenue Leak: An Audit Every DTC Brand Should Run Before Scaling P",
+          "scrollWidth": 526,
+          "clientWidth": 461,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Brand Credibility Audit: 7 questions to find out why buyers say 'we'll think",
+          "scrollWidth": 525,
+          "clientWidth": 461,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The AI-tell hit list: patterns that flag your LinkedIn posts as slop, with a cle",
+          "scrollWidth": 577,
+          "clientWidth": 461,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Is Your LinkedIn Inbound Funnel Bleeding Leads? A Self-Assessment for Agency Fou",
+          "scrollWidth": 543,
+          "clientWidth": 461,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Claude skill stack behind a done-for-you LinkedIn engine: intake, draft, lin",
+          "scrollWidth": 614,
+          "clientWidth": 461,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The AI-tell hit list: patterns that flag your LinkedIn posts as slop, with a cle",
+          "scrollWidth": 577,
+          "clientWidth": 461,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Voice Match Skill: make Claude write in your exact voice (real, installable ",
+          "scrollWidth": 497,
+          "clientWidth": 461,
+          "fontSize": 13,
+          "ellipsis": true
+        }
+      ],
+      "tokenFindings": [],
+      "contrastFindings": [
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows.ct-rows > div.wb-chartcard > div.wb-caps > span.wb-cap",
+          "sample": "2",
+          "fontSize": 11,
+          "contrast": 4.43,
+          "fg": "rgb(255, 255, 255)",
+          "bgHex": "#747977",
+          "under3": false
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps > span.wb-cap",
+          "sample": "10",
+          "fontSize": 11,
+          "contrast": 4.43,
+          "fg": "rgb(255, 255, 255)",
+          "bgHex": "#747977",
+          "under3": false
+        }
+      ]
+    }
+  },
+  {
+    "job": "content",
+    "viewport": "1440",
+    "state": "peer-closed",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-content-1440-peerclosed.png",
+    "audit": {
+      "leafCount": 551,
+      "sizesSeen": [
+        11,
+        12,
+        13,
+        15,
+        20,
+        30,
+        56
+      ],
+      "lineLenFindings": [
+        {
+          "cls": "div.app.dt.wb > div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows.ct-rows > div.ct-lane-b > div.ct-subtle",
+          "sample": "Read-only. An approve here might be a publish — the watcher that owns this table is not readable fro",
+          "textLen": 111,
+          "lines": 1,
+          "charsPerLine": 111,
+          "widthPx": 1208,
+          "fontSize": 12
+        }
+      ],
+      "truncFindings": [
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Generating",
+          "scrollWidth": 75,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Needs review",
+          "scrollWidth": 87,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Approved",
+          "scrollWidth": 63,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Scheduled",
+          "scrollWidth": 71,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Published",
+          "scrollWidth": 66,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.wide.wb-solo > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Generating",
+          "scrollWidth": 75,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.wide.wb-solo > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Generating resources",
+          "scrollWidth": 149,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.wide.wb-solo > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Needs review",
+          "scrollWidth": 87,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.wide.wb-solo > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Approved",
+          "scrollWidth": 63,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.wide.wb-solo > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Scheduled",
+          "scrollWidth": 71,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.wide.wb-solo > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Published",
+          "scrollWidth": 66,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        }
+      ],
+      "tokenFindings": [],
+      "contrastFindings": [
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows.ct-rows > div.wb-chartcard > div.wb-caps > span.wb-cap",
+          "sample": "2",
+          "fontSize": 11,
+          "contrast": 4.43,
+          "fg": "rgb(255, 255, 255)",
+          "bgHex": "#747977",
+          "under3": false
+        },
+        {
+          "cls": "div.wb-work.wide.wb-solo > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps > span.wb-cap",
+          "sample": "10",
+          "fontSize": 11,
+          "contrast": 4.43,
+          "fg": "rgb(255, 255, 255)",
+          "bgHex": "#747977",
+          "under3": false
+        }
+      ]
+    }
+  },
+  {
+    "job": "content",
+    "viewport": "1440",
+    "state": "draft-peer",
+    "settled": true,
+    "opened": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-content-1440-draftpeer.png",
+    "audit": {
+      "leafCount": 926,
+      "sizesSeen": [
+        11,
+        12,
+        13,
+        15,
+        20,
+        30,
+        56
+      ],
+      "lineLenFindings": [],
+      "truncFindings": [
+        {
+          "cls": "div.wb-regions.peers-2 > div.wb-work.list > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Generating",
+          "scrollWidth": 75,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-2 > div.wb-work.list > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Needs review",
+          "scrollWidth": 87,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-2 > div.wb-work.list > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Approved",
+          "scrollWidth": 63,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-2 > div.wb-work.list > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Scheduled",
+          "scrollWidth": 71,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-2 > div.wb-work.list > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Published",
+          "scrollWidth": 66,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap.wb-card-on > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Anthropic says its own AI models hacked 3 organizations during safety testing",
+          "scrollWidth": 473,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap.wb-card-on > div.ct-mid > div.ct-meta (ancestor of \"PASS 79\")",
+          "text": "PASS 79Image",
+          "scrollWidth": 130,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap.wb-card-on > div.ct-mid > div.ct-meta (ancestor of \"Image\")",
+          "text": "PASS 79Image",
+          "scrollWidth": 130,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "AI faked its way through peer review - agency owners posting AI content are runn",
+          "scrollWidth": 714,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "When delivery runs your calendar, pipeline is always the first thing that goes",
+          "scrollWidth": 460,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "[Lifestyle] An underdiscussed fact about content operations: most systems log wh",
+          "scrollWidth": 511,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "[Lifestyle] Six months of scheduled posts. Not one record of who edited them aft",
+          "scrollWidth": 502,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "[Lifestyle] It hit 32 degrees in Warsaw today and I moved my laptop to the only ",
+          "scrollWidth": 490,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"—\")",
+          "text": "—Image",
+          "scrollWidth": 130,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"Image\")",
+          "text": "—Image",
+          "scrollWidth": 130,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "[Lifestyle] Walked past the same bakery on Hoża three times this week without go",
+          "scrollWidth": 507,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "[Lifestyle] Right now I'm debating whether checking something daily makes you be",
+          "scrollWidth": 511,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Your agency's Google rankings don't matter if you're invisible to LLMs answering",
+          "scrollWidth": 590,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"PASS 82\")",
+          "text": "PASS 82Image",
+          "scrollWidth": 130,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"Image\")",
+          "text": "PASS 82Image",
+          "scrollWidth": 130,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Your Zoom library is a better content engine than any editorial calendar",
+          "scrollWidth": 430,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"PASS 82\")",
+          "text": "PASS 82Image",
+          "scrollWidth": 130,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"Image\")",
+          "text": "PASS 82Image",
+          "scrollWidth": 130,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Mira Murati's Thinking Machines drops Inkling — reviewers call it the best open ",
+          "scrollWidth": 589,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "$224k/mo on referrals alone: the single point of failure most agency owners igno",
+          "scrollWidth": 500,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"PASS 88\")",
+          "text": "PASS 88Image",
+          "scrollWidth": 130,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"Image\")",
+          "text": "PASS 88Image",
+          "scrollWidth": 130,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "That viral Claude Code skill post everyone liked: here's what's actually inside ",
+          "scrollWidth": 476,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The PDF lead magnet era is over. Functional AI skills convert better.",
+          "scrollWidth": 407,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"PASS 63\")",
+          "text": "PASS 63Image",
+          "scrollWidth": 130,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"Image\")",
+          "text": "PASS 63Image",
+          "scrollWidth": 130,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "LM promo: Opus 5 Effort Dial Kit (keyword DIAL)",
+          "scrollWidth": 293,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"—\")",
+          "text": "—Carousel",
+          "scrollWidth": 157,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"Carousel\")",
+          "text": "—Carousel",
+          "scrollWidth": 157,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Two-agent AI QA still leaks AI copy. The founder voice pass is the irreducible f",
+          "scrollWidth": 497,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Founder video: why I cut my posting in half",
+          "scrollWidth": 259,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"—\")",
+          "text": "—video",
+          "scrollWidth": 129,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"video\")",
+          "text": "—video",
+          "scrollWidth": 129,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Trump administration reviving push to ban Chinese AI models after Kimi K3, citin",
+          "scrollWidth": 581,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The slop wall is real: why AI-generated LinkedIn content kills your inbound",
+          "scrollWidth": 448,
+          "clientWidth": 125,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Generating",
+          "scrollWidth": 75,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Generating resources",
+          "scrollWidth": 149,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Needs review",
+          "scrollWidth": 87,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Approved",
+          "scrollWidth": 63,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Scheduled",
+          "scrollWidth": 71,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Published",
+          "scrollWidth": 66,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Does Your Brand Hold Up at Close Range? A Messaging Audit for Software Companies",
+          "scrollWidth": 521,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Lead-to-Client Audit: 7 Questions to Find Where Revenue Gets Lost",
+          "scrollWidth": 435,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Agency Legal Audit: Systems to Have in Place Before Problems Show Up",
+          "scrollWidth": 464,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Before You Run Ads: The Digital Foundation Checklist",
+          "scrollWidth": 323,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Referral-Exit Audit: Are You Set Up to Win Clients You Have Not Met Yet?",
+          "scrollWidth": 465,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The 2am Test: A Brand Standards Audit for When Anyone Can Make Things",
+          "scrollWidth": 454,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "7 Checks Before You Scale Any Ad Account",
+          "scrollWidth": 262,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Pressure Test: 6 Questions Every People Leader Should Ask After a Hard Week",
+          "scrollWidth": 502,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Story-First Brief: 7 Questions Before You Greenlight Any Campaign",
+          "scrollWidth": 431,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The B2B Paid Media Measurement Checklist: 7 Things to Lock In Before You Spend A",
+          "scrollWidth": 593,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Reactive AM Audit: 7 Questions That Reveal Where Account Growth Breaks Down",
+          "scrollWidth": 518,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Account Growth Audit: 7 Questions Every Agency Should Answer",
+          "scrollWidth": 420,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The 4-Channel Outreach Checklist: Fill Your Pipeline Without Relying on One Plat",
+          "scrollWidth": 517,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Paid Ads Hiring Filter: 7 Questions That Expose Real Experts From Resume Blu",
+          "scrollWidth": 528,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Subscription Retention Checklist: 6 Leaks Killing Your LTV (And How to Find ",
+          "scrollWidth": 527,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Agency Scale Audit: 3 Questions That Separate the Ones That Double From the ",
+          "scrollWidth": 602,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Le vrai travail d'un media buyer à 3 000 $/jour",
+          "scrollWidth": 277,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Is Your B2B SaaS Website Working Against You? A 7-Question Audit",
+          "scrollWidth": 411,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Is Your YouTube Channel Actually Selling? A 7-Question Audit",
+          "scrollWidth": 372,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "AI Citation Readiness Checklist for B2B Content Teams",
+          "scrollWidth": 332,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Creative Gap Diagnostic: 5 Questions to Find Where Your Creative Ops Are Ble",
+          "scrollWidth": 534,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Does Your Brand Have Operating Rules? A 7-Question Self-Audit",
+          "scrollWidth": 391,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Recruitment Cost Audit: 7 Questions to Find Out If Your Hiring Model Is Cost",
+          "scrollWidth": 656,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Recruitment Cost Audit: 7 Questions Every Growing Business Should Answer",
+          "scrollWidth": 491,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Signal Audit: 7 Questions to Cut What Marketing Can't Prove",
+          "scrollWidth": 393,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Cold Email Audit: 4 Questions That Tell You Why Your Campaign Isn't Working",
+          "scrollWidth": 496,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Email Audit: 7 Questions Every DTC Brand Avoids Asking",
+          "scrollWidth": 369,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Lifecycle Revenue Leak: An Audit Every DTC Brand Should Run Before Scaling P",
+          "scrollWidth": 526,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The AI Playbook Starter Kit: Get 8 Hours of Work Done Without Being There",
+          "scrollWidth": 457,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The PPC Audit You're Probably Not Running (But Should Be)",
+          "scrollWidth": 364,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Brand Credibility Audit: 7 questions to find out why buyers say 'we'll think",
+          "scrollWidth": 525,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The AI-tell hit list: patterns that flag your LinkedIn posts as slop, with a cle",
+          "scrollWidth": 577,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Is Your LinkedIn Inbound Funnel Bleeding Leads? A Self-Assessment for Agency Fou",
+          "scrollWidth": 543,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-meta (ancestor of \"Interactive Assessment\")",
+          "text": "Interactive Assessmentno landing URL",
+          "scrollWidth": 273,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-meta (ancestor of \"no landing URL\")",
+          "text": "Interactive Assessmentno landing URL",
+          "scrollWidth": 273,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Paste Your Whole Agency Into One Prompt",
+          "scrollWidth": 258,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Claude skill stack behind a done-for-you LinkedIn engine: intake, draft, lin",
+          "scrollWidth": 614,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The AI-tell hit list: patterns that flag your LinkedIn posts as slop, with a cle",
+          "scrollWidth": 577,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Voice Match Skill: make Claude write in your exact voice (real, installable ",
+          "scrollWidth": 497,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Creative Audit: is your Meta ad account ready to scale past $20k a day",
+          "scrollWidth": 453,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Hook Grader: paste your lead magnet hook, see who it lets in",
+          "scrollWidth": 395,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-meta (ancestor of \"Interactive Assessment\")",
+          "text": "Interactive Assessmentno landing URL",
+          "scrollWidth": 273,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-meta (ancestor of \"no landing URL\")",
+          "text": "Interactive Assessmentno landing URL",
+          "scrollWidth": 273,
+          "clientWidth": 254,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div > div.app.dt.wb > div.wb-regions.peers-2 > div.wb-peer.wb-peer-chat > div.wb-about-card > span.wb-about-n",
+          "text": "Anthropic says its own AI models hacked 3 organizat…",
+          "scrollWidth": 329,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        }
+      ],
+      "tokenFindings": [],
+      "contrastFindings": [
+        {
+          "cls": "div.wb-regions.peers-2 > div.wb-work.list > div.rows.ct-rows > div.wb-chartcard > div.wb-caps > span.wb-cap",
+          "sample": "2",
+          "fontSize": 11,
+          "contrast": 4.43,
+          "fg": "rgb(255, 255, 255)",
+          "bgHex": "#747977",
+          "under3": false
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps > span.wb-cap",
+          "sample": "10",
+          "fontSize": 11,
+          "contrast": 4.43,
+          "fg": "rgb(255, 255, 255)",
+          "bgHex": "#747977",
+          "under3": false
+        }
+      ]
+    }
+  },
+  {
+    "job": "sends",
+    "viewport": "1440",
+    "state": "peer-open",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-sends-1440-peeropen.png",
+    "audit": {
+      "leafCount": 167,
+      "sizesSeen": [
+        9,
+        11,
+        12,
+        13,
+        15,
+        20,
+        56
+      ],
+      "lineLenFindings": [],
+      "truncFindings": [],
+      "tokenFindings": [],
+      "contrastFindings": []
+    }
+  },
+  {
+    "job": "sends",
+    "viewport": "1440",
+    "state": "peer-closed",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-sends-1440-peerclosed.png",
+    "audit": {
+      "leafCount": 156,
+      "sizesSeen": [
+        9,
+        11,
+        12,
+        13,
+        15,
+        20,
+        56
+      ],
+      "lineLenFindings": [
+        {
+          "cls": "div.app.dt.wb > div.wb-regions.peers-0 > div.wb-work.wide > div.rows.ov > section.ov-sec > div.ov-note",
+          "sample": "Ivan scope counts the warm-lane era only (since 07-11); Rise counts full history. Recent sends are s",
+          "textLen": 139,
+          "lines": 1,
+          "charsPerLine": 139,
+          "widthPx": 1176,
+          "fontSize": 12
+        }
+      ],
+      "truncFindings": [],
+      "tokenFindings": [],
+      "contrastFindings": []
+    }
+  },
+  {
+    "job": "ops",
+    "viewport": "1440",
+    "state": "peer-open",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-ops-1440-peeropen.png",
+    "audit": {
+      "leafCount": 72,
+      "sizesSeen": [
+        11,
+        12,
+        13,
+        15,
+        20,
+        30,
+        56
+      ],
+      "lineLenFindings": [
+        {
+          "cls": "div.wb-work.wide.wb-narrow > div.rows.ops-rows > div.wb-ocols > div.wb-ocol.wb-ocol-q > div.ops-card > textarea.ops-body",
+          "sample": "Getting SpaceTime into a NASA facility is wild -- congrats on that one. Sounds like a hell of a July",
+          "textLen": 103,
+          "lines": 1,
+          "charsPerLine": 103,
+          "widthPx": 588,
+          "fontSize": 13
+        },
+        {
+          "cls": "div.wb-work.wide.wb-narrow > div.rows.ops-rows > div.wb-ocols > div.wb-ocol.wb-ocol-q > div.ops-card > textarea.ops-body",
+          "sample": "the paid into an unknown brand is a tax part matches what i see, im small on here so anything i push",
+          "textLen": 136,
+          "lines": 1,
+          "charsPerLine": 136,
+          "widthPx": 588,
+          "fontSize": 13
+        },
+        {
+          "cls": "div.wb-work.wide.wb-narrow > div.rows.ops-rows > div.wb-ocols > div.wb-ocol.wb-ocol-q > div.ops-card > textarea.ops-body",
+          "sample": "Respect turning down a signature that fast. We screen margin first for the same reason -- only about",
+          "textLen": 144,
+          "lines": 1,
+          "charsPerLine": 144,
+          "widthPx": 588,
+          "fontSize": 13
+        }
+      ],
+      "truncFindings": [],
+      "tokenFindings": [],
+      "contrastFindings": []
+    }
+  },
+  {
+    "job": "ops",
+    "viewport": "1440",
+    "state": "peer-closed",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-ops-1440-peerclosed.png",
+    "audit": {
+      "leafCount": 61,
+      "sizesSeen": [
+        11,
+        12,
+        13,
+        15,
+        20,
+        30,
+        56
+      ],
+      "lineLenFindings": [
+        {
+          "cls": "div.wb-work.wide > div.rows.ops-rows > div.wb-ocols > div.wb-ocol.wb-ocol-q > div.ops-card > textarea.ops-body",
+          "sample": "Getting SpaceTime into a NASA facility is wild -- congrats on that one. Sounds like a hell of a July",
+          "textLen": 103,
+          "lines": 1,
+          "charsPerLine": 103,
+          "widthPx": 646,
+          "fontSize": 13
+        },
+        {
+          "cls": "div.wb-work.wide > div.rows.ops-rows > div.wb-ocols > div.wb-ocol.wb-ocol-q > div.ops-card > textarea.ops-body",
+          "sample": "the paid into an unknown brand is a tax part matches what i see, im small on here so anything i push",
+          "textLen": 136,
+          "lines": 1,
+          "charsPerLine": 136,
+          "widthPx": 646,
+          "fontSize": 13
+        },
+        {
+          "cls": "div.wb-work.wide > div.rows.ops-rows > div.wb-ocols > div.wb-ocol.wb-ocol-q > div.ops-card > textarea.ops-body",
+          "sample": "Respect turning down a signature that fast. We screen margin first for the same reason -- only about",
+          "textLen": 144,
+          "lines": 1,
+          "charsPerLine": 144,
+          "widthPx": 646,
+          "fontSize": 13
+        }
+      ],
+      "truncFindings": [],
+      "tokenFindings": [],
+      "contrastFindings": []
+    }
+  },
+  {
+    "job": "settings",
+    "viewport": "1440",
+    "state": "peer-open",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-settings-1440-peeropen.png",
+    "audit": {
+      "leafCount": 49,
+      "sizesSeen": [
+        11,
+        12,
+        13,
+        15,
+        20,
+        56
+      ],
+      "lineLenFindings": [],
+      "truncFindings": [],
+      "tokenFindings": [],
+      "contrastFindings": []
+    }
+  },
+  {
+    "job": "settings",
+    "viewport": "1440",
+    "state": "peer-closed",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-settings-1440-peerclosed.png",
+    "audit": {
+      "leafCount": 38,
+      "sizesSeen": [
+        11,
+        12,
+        13,
+        15,
+        20,
+        56
+      ],
+      "lineLenFindings": [],
+      "truncFindings": [],
+      "tokenFindings": [],
+      "contrastFindings": []
+    }
+  },
+  {
+    "job": "today",
+    "viewport": "1024",
+    "state": "peer-open",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-today-1024-peeropen.png",
+    "audit": {
+      "leafCount": 127,
+      "sizesSeen": [
+        11,
+        12,
+        13,
+        15,
+        20,
+        30,
+        44
+      ],
+      "lineLenFindings": [],
+      "truncFindings": [
+        {
+          "cls": "div.rows.td-rows > div.td-zones > section.td-zone > div.td-r > div.td-mid > div.td-snip",
+          "text": "Hi Iván, I'm reaching out because you expressed interest in becoming a founding ",
+          "scrollWidth": 819,
+          "clientWidth": 222,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.td-rows > div.td-zones > section.td-zone > div.td-qrow.tap > div.td-qmid > div.td-qs",
+          "text": "David Card — Cool, give me a couple days.\n\nI'll pull your positioning from the p",
+          "scrollWidth": 1975,
+          "clientWidth": 270,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.td-rows > div.td-zones > section.td-zone > div.td-qrow.tap > div.td-qmid > div.td-qs",
+          "text": "Connor McLeod — Quality staying stable is where mine break. The workflow repeats",
+          "scrollWidth": 939,
+          "clientWidth": 270,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.td-rows > div.td-zones > section.td-zone > div.td-qrow.tap > div.td-qmid > div.td-qs",
+          "text": "Shayne Williams (A) — the paid into an unknown brand is a tax part matches what ",
+          "scrollWidth": 959,
+          "clientWidth": 270,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.wide.wb-narrow > div.rows.td-rows > div.td-zones > section.td-zone > div.td-next > span.txt (ancestor of \"Wed, Aug 12, 02:30 PM\")",
+          "text": "Wed, Aug 12, 02:30 PM · carousel — Comment-to-DM inbound is the whole reason I p",
+          "scrollWidth": 4514,
+          "clientWidth": 283,
+          "fontSize": 13,
+          "ellipsis": true
+        }
+      ],
+      "tokenFindings": [],
+      "contrastFindings": []
+    }
+  },
+  {
+    "job": "today",
+    "viewport": "1024",
+    "state": "peer-closed",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-today-1024-peerclosed.png",
+    "audit": {
+      "leafCount": 116,
+      "sizesSeen": [
+        11,
+        12,
+        13,
+        15,
+        20,
+        30,
+        44
+      ],
+      "lineLenFindings": [],
+      "truncFindings": [
+        {
+          "cls": "div.rows.td-rows > div.td-zones > section.td-zone > div.td-r > div.td-mid > div.td-snip",
+          "text": "Hi Iván, I'm reaching out because you expressed interest in becoming a founding ",
+          "scrollWidth": 819,
+          "clientWidth": 240,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.td-rows > div.td-zones > section.td-zone > div.td-qrow.tap > div.td-qmid > div.td-qs",
+          "text": "David Card — Cool, give me a couple days.\n\nI'll pull your positioning from the p",
+          "scrollWidth": 1975,
+          "clientWidth": 259,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.td-rows > div.td-zones > section.td-zone > div.td-qrow.tap > div.td-qmid > div.td-qs",
+          "text": "Connor McLeod — Quality staying stable is where mine break. The workflow repeats",
+          "scrollWidth": 939,
+          "clientWidth": 259,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.td-rows > div.td-zones > section.td-zone > div.td-qrow.tap > div.td-qmid > div.td-qs",
+          "text": "Shayne Williams (A) — the paid into an unknown brand is a tax part matches what ",
+          "scrollWidth": 959,
+          "clientWidth": 259,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.wide > div.rows.td-rows > div.td-zones > section.td-zone > div.td-next > span.txt (ancestor of \"Wed, Aug 12, 02:30 PM\")",
+          "text": "Wed, Aug 12, 02:30 PM · carousel — Comment-to-DM inbound is the whole reason I p",
+          "scrollWidth": 4514,
+          "clientWidth": 302,
+          "fontSize": 13,
+          "ellipsis": true
+        }
+      ],
+      "tokenFindings": [],
+      "contrastFindings": []
+    }
+  },
+  {
+    "job": "inbox",
+    "viewport": "1024",
+    "state": "peer-open",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-inbox-1024-peeropen.png",
+    "audit": {
+      "leafCount": 122,
+      "sizesSeen": [
+        11,
+        12,
+        13,
+        15,
+        20,
+        44
+      ],
+      "lineLenFindings": [],
+      "truncFindings": [
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hey Muhammad,\n\nSaw you around Kyle Hunt's content so figured we run in the ",
+          "scrollWidth": 2617,
+          "clientWidth": 253,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hey Zach,\n\nSaw you around Kyle Hunt's content so figured we run in the same",
+          "scrollWidth": 2579,
+          "clientWidth": 253,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hey Michael,\n\nSaw you around Kyle Hunt's content so figured we run in the s",
+          "scrollWidth": 2594,
+          "clientWidth": 253,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hey Ron,\n\nSaw you around Kyle Hunt's content so figured we run in the same ",
+          "scrollWidth": 7063,
+          "clientWidth": 253,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hey Ahmed,\n\nSaw you around Kyle Hunt's content so figured we run in the sam",
+          "scrollWidth": 2590,
+          "clientWidth": 253,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hi Campbell,\n\nI build and run an inbound system for founders and fractional",
+          "scrollWidth": 3039,
+          "clientWidth": 253,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hi Michiel,\n\nI build and run an inbound system for founders and fractionals",
+          "scrollWidth": 3026,
+          "clientWidth": 253,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hi Jacob,\n\nI build and run an inbound system for founders and fractionals w",
+          "scrollWidth": 3020,
+          "clientWidth": 253,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hi Anton,\n\nI build and run an inbound system for founders and fractionals w",
+          "scrollWidth": 3020,
+          "clientWidth": 253,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hi Robert,\n\nI build and run an inbound system for founders and fractionals ",
+          "scrollWidth": 3024,
+          "clientWidth": 253,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hey Abdulqadir,\n\nSaw you around Kyle Hunt's content so figured we run in th",
+          "scrollWidth": 9579,
+          "clientWidth": 253,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hi Ollie, working with a few small service teams right now on turning their",
+          "scrollWidth": 830,
+          "clientWidth": 253,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Here's the growth scan:\nhttps://resources.risedtc.com/scan/krack-d-snacks-a",
+          "scrollWidth": 2531,
+          "clientWidth": 253,
+          "fontSize": 12,
+          "ellipsis": true
+        }
+      ],
+      "tokenFindings": [],
+      "contrastFindings": []
+    }
+  },
+  {
+    "job": "inbox",
+    "viewport": "1024",
+    "state": "peer-closed",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-inbox-1024-peerclosed.png",
+    "audit": {
+      "leafCount": 111,
+      "sizesSeen": [
+        11,
+        12,
+        13,
+        15,
+        20,
+        44
+      ],
+      "lineLenFindings": [],
+      "truncFindings": [
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hey Muhammad,\n\nSaw you around Kyle Hunt's content so figured we run in the ",
+          "scrollWidth": 2617,
+          "clientWidth": 666,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hey Zach,\n\nSaw you around Kyle Hunt's content so figured we run in the same",
+          "scrollWidth": 2579,
+          "clientWidth": 666,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hey Michael,\n\nSaw you around Kyle Hunt's content so figured we run in the s",
+          "scrollWidth": 2594,
+          "clientWidth": 666,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hey Ron,\n\nSaw you around Kyle Hunt's content so figured we run in the same ",
+          "scrollWidth": 7063,
+          "clientWidth": 666,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hey Ahmed,\n\nSaw you around Kyle Hunt's content so figured we run in the sam",
+          "scrollWidth": 2590,
+          "clientWidth": 666,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hi Campbell,\n\nI build and run an inbound system for founders and fractional",
+          "scrollWidth": 3039,
+          "clientWidth": 666,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hi Michiel,\n\nI build and run an inbound system for founders and fractionals",
+          "scrollWidth": 3026,
+          "clientWidth": 666,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hi Jacob,\n\nI build and run an inbound system for founders and fractionals w",
+          "scrollWidth": 3020,
+          "clientWidth": 666,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hi Anton,\n\nI build and run an inbound system for founders and fractionals w",
+          "scrollWidth": 3020,
+          "clientWidth": 666,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hi Robert,\n\nI build and run an inbound system for founders and fractionals ",
+          "scrollWidth": 3024,
+          "clientWidth": 666,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hey Abdulqadir,\n\nSaw you around Kyle Hunt's content so figured we run in th",
+          "scrollWidth": 9579,
+          "clientWidth": 666,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Hi Ollie, working with a few small service teams right now on turning their",
+          "scrollWidth": 830,
+          "clientWidth": 666,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.r > div.mid > div.snip",
+          "text": "You: Here's the growth scan:\nhttps://resources.risedtc.com/scan/krack-d-snacks-a",
+          "scrollWidth": 2531,
+          "clientWidth": 666,
+          "fontSize": 12,
+          "ellipsis": true
+        }
+      ],
+      "tokenFindings": [],
+      "contrastFindings": []
+    }
+  },
+  {
+    "job": "drafts",
+    "viewport": "1024",
+    "state": "peer-open",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-drafts-1024-peeropen.png",
+    "audit": {
+      "leafCount": 58,
+      "sizesSeen": [
+        11,
+        12,
+        13,
+        15,
+        20,
+        44
+      ],
+      "lineLenFindings": [],
+      "truncFindings": [
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.log-r > div.log-mid > div.log-snip",
+          "text": "Getting SpaceTime into a NASA facility is wild -- congrats on that one. Sounds l",
+          "scrollWidth": 560,
+          "clientWidth": 209,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.log-r > div.log-mid > div.log-snip",
+          "text": "the paid into an unknown brand is a tax part matches what i see, im small on her",
+          "scrollWidth": 767,
+          "clientWidth": 209,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows > div.log-r > div.log-mid > div.log-snip",
+          "text": "Respect turning down a signature that fast. We screen margin first for the same ",
+          "scrollWidth": 821,
+          "clientWidth": 209,
+          "fontSize": 12,
+          "ellipsis": true
+        }
+      ],
+      "tokenFindings": [],
+      "contrastFindings": []
+    }
+  },
+  {
+    "job": "drafts",
+    "viewport": "1024",
+    "state": "peer-closed",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-drafts-1024-peerclosed.png",
+    "audit": {
+      "leafCount": 47,
+      "sizesSeen": [
+        11,
+        12,
+        13,
+        15,
+        20,
+        44
+      ],
+      "lineLenFindings": [],
+      "truncFindings": [
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.log-r > div.log-mid > div.log-snip",
+          "text": "the paid into an unknown brand is a tax part matches what i see, im small on her",
+          "scrollWidth": 767,
+          "clientWidth": 622,
+          "fontSize": 12,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows > div.log-r > div.log-mid > div.log-snip",
+          "text": "Respect turning down a signature that fast. We screen margin first for the same ",
+          "scrollWidth": 821,
+          "clientWidth": 622,
+          "fontSize": 12,
+          "ellipsis": true
+        }
+      ],
+      "tokenFindings": [],
+      "contrastFindings": []
+    }
+  },
+  {
+    "job": "content",
+    "viewport": "1024",
+    "state": "peer-open",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-content-1024-peeropen.png",
+    "audit": {
+      "leafCount": 562,
+      "sizesSeen": [
+        11,
+        12,
+        13,
+        15,
+        20,
+        30,
+        44
+      ],
+      "lineLenFindings": [],
+      "truncFindings": [
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Generating",
+          "scrollWidth": 75,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Needs review",
+          "scrollWidth": 87,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Approved",
+          "scrollWidth": 63,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Scheduled",
+          "scrollWidth": 71,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Published",
+          "scrollWidth": 66,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Anthropic says its own AI models hacked 3 organizations during safety testing",
+          "scrollWidth": 473,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"PASS 79\")",
+          "text": "PASS 79Image",
+          "scrollWidth": 130,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"Image\")",
+          "text": "PASS 79Image",
+          "scrollWidth": 130,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "AI faked its way through peer review - agency owners posting AI content are runn",
+          "scrollWidth": 714,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "When delivery runs your calendar, pipeline is always the first thing that goes",
+          "scrollWidth": 460,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "[Lifestyle] An underdiscussed fact about content operations: most systems log wh",
+          "scrollWidth": 511,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "[Lifestyle] Six months of scheduled posts. Not one record of who edited them aft",
+          "scrollWidth": 502,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "[Lifestyle] It hit 32 degrees in Warsaw today and I moved my laptop to the only ",
+          "scrollWidth": 490,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"—\")",
+          "text": "—Image",
+          "scrollWidth": 130,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"Image\")",
+          "text": "—Image",
+          "scrollWidth": 130,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "[Lifestyle] Walked past the same bakery on Hoża three times this week without go",
+          "scrollWidth": 507,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "[Lifestyle] Right now I'm debating whether checking something daily makes you be",
+          "scrollWidth": 511,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Your agency's Google rankings don't matter if you're invisible to LLMs answering",
+          "scrollWidth": 590,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"PASS 82\")",
+          "text": "PASS 82Image",
+          "scrollWidth": 130,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"Image\")",
+          "text": "PASS 82Image",
+          "scrollWidth": 130,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Your Zoom library is a better content engine than any editorial calendar",
+          "scrollWidth": 430,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"PASS 82\")",
+          "text": "PASS 82Image",
+          "scrollWidth": 130,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"Image\")",
+          "text": "PASS 82Image",
+          "scrollWidth": 130,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Mira Murati's Thinking Machines drops Inkling — reviewers call it the best open ",
+          "scrollWidth": 589,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "$224k/mo on referrals alone: the single point of failure most agency owners igno",
+          "scrollWidth": 500,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"PASS 88\")",
+          "text": "PASS 88Image",
+          "scrollWidth": 130,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"Image\")",
+          "text": "PASS 88Image",
+          "scrollWidth": 130,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "That viral Claude Code skill post everyone liked: here's what's actually inside ",
+          "scrollWidth": 476,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The PDF lead magnet era is over. Functional AI skills convert better.",
+          "scrollWidth": 407,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"PASS 63\")",
+          "text": "PASS 63Image",
+          "scrollWidth": 130,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"Image\")",
+          "text": "PASS 63Image",
+          "scrollWidth": 130,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "LM promo: Opus 5 Effort Dial Kit (keyword DIAL)",
+          "scrollWidth": 293,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"—\")",
+          "text": "—Carousel",
+          "scrollWidth": 157,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"Carousel\")",
+          "text": "—Carousel",
+          "scrollWidth": 157,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Two-agent AI QA still leaks AI copy. The founder voice pass is the irreducible f",
+          "scrollWidth": 497,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Founder video: why I cut my posting in half",
+          "scrollWidth": 259,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"—\")",
+          "text": "—video",
+          "scrollWidth": 129,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"video\")",
+          "text": "—video",
+          "scrollWidth": 129,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Trump administration reviving push to ban Chinese AI models after Kimi K3, citin",
+          "scrollWidth": 581,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The slop wall is real: why AI-generated LinkedIn content kills your inbound",
+          "scrollWidth": 448,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Generating",
+          "scrollWidth": 75,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Generating resources",
+          "scrollWidth": 149,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Needs review",
+          "scrollWidth": 87,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Approved",
+          "scrollWidth": 63,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Scheduled",
+          "scrollWidth": 71,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Published",
+          "scrollWidth": 66,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Does Your Brand Hold Up at Close Range? A Messaging Audit for Software Companies",
+          "scrollWidth": 521,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Lead-to-Client Audit: 7 Questions to Find Where Revenue Gets Lost",
+          "scrollWidth": 435,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Agency Legal Audit: Systems to Have in Place Before Problems Show Up",
+          "scrollWidth": 464,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Before You Run Ads: The Digital Foundation Checklist",
+          "scrollWidth": 323,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Referral-Exit Audit: Are You Set Up to Win Clients You Have Not Met Yet?",
+          "scrollWidth": 465,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The 2am Test: A Brand Standards Audit for When Anyone Can Make Things",
+          "scrollWidth": 454,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "7 Checks Before You Scale Any Ad Account",
+          "scrollWidth": 262,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Pressure Test: 6 Questions Every People Leader Should Ask After a Hard Week",
+          "scrollWidth": 502,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Story-First Brief: 7 Questions Before You Greenlight Any Campaign",
+          "scrollWidth": 431,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The B2B Paid Media Measurement Checklist: 7 Things to Lock In Before You Spend A",
+          "scrollWidth": 593,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Reactive AM Audit: 7 Questions That Reveal Where Account Growth Breaks Down",
+          "scrollWidth": 518,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Account Growth Audit: 7 Questions Every Agency Should Answer",
+          "scrollWidth": 420,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The 4-Channel Outreach Checklist: Fill Your Pipeline Without Relying on One Plat",
+          "scrollWidth": 517,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Paid Ads Hiring Filter: 7 Questions That Expose Real Experts From Resume Blu",
+          "scrollWidth": 528,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Subscription Retention Checklist: 6 Leaks Killing Your LTV (And How to Find ",
+          "scrollWidth": 527,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Agency Scale Audit: 3 Questions That Separate the Ones That Double From the ",
+          "scrollWidth": 602,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Le vrai travail d'un media buyer à 3 000 $/jour",
+          "scrollWidth": 277,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Is Your B2B SaaS Website Working Against You? A 7-Question Audit",
+          "scrollWidth": 411,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Is Your YouTube Channel Actually Selling? A 7-Question Audit",
+          "scrollWidth": 372,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "AI Citation Readiness Checklist for B2B Content Teams",
+          "scrollWidth": 332,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Creative Gap Diagnostic: 5 Questions to Find Where Your Creative Ops Are Ble",
+          "scrollWidth": 534,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Does Your Brand Have Operating Rules? A 7-Question Self-Audit",
+          "scrollWidth": 391,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Recruitment Cost Audit: 7 Questions to Find Out If Your Hiring Model Is Cost",
+          "scrollWidth": 656,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Recruitment Cost Audit: 7 Questions Every Growing Business Should Answer",
+          "scrollWidth": 491,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Signal Audit: 7 Questions to Cut What Marketing Can't Prove",
+          "scrollWidth": 393,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Cold Email Audit: 4 Questions That Tell You Why Your Campaign Isn't Working",
+          "scrollWidth": 496,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Email Audit: 7 Questions Every DTC Brand Avoids Asking",
+          "scrollWidth": 369,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Lifecycle Revenue Leak: An Audit Every DTC Brand Should Run Before Scaling P",
+          "scrollWidth": 526,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The AI Playbook Starter Kit: Get 8 Hours of Work Done Without Being There",
+          "scrollWidth": 457,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The PPC Audit You're Probably Not Running (But Should Be)",
+          "scrollWidth": 364,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Brand Credibility Audit: 7 questions to find out why buyers say 'we'll think",
+          "scrollWidth": 525,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The AI-tell hit list: patterns that flag your LinkedIn posts as slop, with a cle",
+          "scrollWidth": 577,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Is Your LinkedIn Inbound Funnel Bleeding Leads? A Self-Assessment for Agency Fou",
+          "scrollWidth": 543,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-meta (ancestor of \"Interactive Assessment\")",
+          "text": "Interactive Assessmentno landing URL",
+          "scrollWidth": 273,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-meta (ancestor of \"no landing URL\")",
+          "text": "Interactive Assessmentno landing URL",
+          "scrollWidth": 273,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Paste Your Whole Agency Into One Prompt",
+          "scrollWidth": 258,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Claude skill stack behind a done-for-you LinkedIn engine: intake, draft, lin",
+          "scrollWidth": 614,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The AI-tell hit list: patterns that flag your LinkedIn posts as slop, with a cle",
+          "scrollWidth": 577,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Voice Match Skill: make Claude write in your exact voice (real, installable ",
+          "scrollWidth": 497,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Creative Audit: is your Meta ad account ready to scale past $20k a day",
+          "scrollWidth": 453,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Hook Grader: paste your lead magnet hook, see who it lets in",
+          "scrollWidth": 395,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-meta (ancestor of \"Interactive Assessment\")",
+          "text": "Interactive Assessmentno landing URL",
+          "scrollWidth": 273,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-meta (ancestor of \"no landing URL\")",
+          "text": "Interactive Assessmentno landing URL",
+          "scrollWidth": 273,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": false
+        }
+      ],
+      "tokenFindings": [],
+      "contrastFindings": [
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows.ct-rows > div.wb-chartcard > div.wb-caps > span.wb-cap",
+          "sample": "2",
+          "fontSize": 11,
+          "contrast": 4.43,
+          "fg": "rgb(255, 255, 255)",
+          "bgHex": "#747977",
+          "under3": false
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps > span.wb-cap",
+          "sample": "10",
+          "fontSize": 11,
+          "contrast": 4.43,
+          "fg": "rgb(255, 255, 255)",
+          "bgHex": "#747977",
+          "under3": false
+        }
+      ]
+    }
+  },
+  {
+    "job": "content",
+    "viewport": "1024",
+    "state": "peer-closed",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-content-1024-peerclosed.png",
+    "audit": {
+      "leafCount": 551,
+      "sizesSeen": [
+        11,
+        12,
+        13,
+        15,
+        20,
+        30,
+        44
+      ],
+      "lineLenFindings": [
+        {
+          "cls": "div.app.dt.wb > div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows.ct-rows > div.ct-lane-b > div.ct-subtle",
+          "sample": "Read-only. An approve here might be a publish — the watcher that owns this table is not readable fro",
+          "textLen": 111,
+          "lines": 1,
+          "charsPerLine": 111,
+          "widthPx": 792,
+          "fontSize": 12
+        }
+      ],
+      "truncFindings": [
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Generating",
+          "scrollWidth": 75,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Needs review",
+          "scrollWidth": 87,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Approved",
+          "scrollWidth": 63,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Scheduled",
+          "scrollWidth": 71,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Published",
+          "scrollWidth": 66,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "AI faked its way through peer review - agency owners posting AI content are runn",
+          "scrollWidth": 714,
+          "clientWidth": 536,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Your agency's Google rankings don't matter if you're invisible to LLMs answering",
+          "scrollWidth": 590,
+          "clientWidth": 536,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Mira Murati's Thinking Machines drops Inkling — reviewers call it the best open ",
+          "scrollWidth": 589,
+          "clientWidth": 536,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Trump administration reviving push to ban Chinese AI models after Kimi K3, citin",
+          "scrollWidth": 581,
+          "clientWidth": 536,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.wide.wb-solo > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Generating",
+          "scrollWidth": 75,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.wide.wb-solo > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Generating resources",
+          "scrollWidth": 149,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.wide.wb-solo > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Needs review",
+          "scrollWidth": 87,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.wide.wb-solo > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Approved",
+          "scrollWidth": 63,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.wide.wb-solo > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Scheduled",
+          "scrollWidth": 71,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.wide.wb-solo > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Published",
+          "scrollWidth": 66,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        }
+      ],
+      "tokenFindings": [],
+      "contrastFindings": [
+        {
+          "cls": "div.wb-regions.peers-0 > div.wb-work.wide.wb-solo > div.rows.ct-rows > div.wb-chartcard > div.wb-caps > span.wb-cap",
+          "sample": "2",
+          "fontSize": 11,
+          "contrast": 4.43,
+          "fg": "rgb(255, 255, 255)",
+          "bgHex": "#747977",
+          "under3": false
+        },
+        {
+          "cls": "div.wb-work.wide.wb-solo > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps > span.wb-cap",
+          "sample": "10",
+          "fontSize": 11,
+          "contrast": 4.43,
+          "fg": "rgb(255, 255, 255)",
+          "bgHex": "#747977",
+          "under3": false
+        }
+      ]
+    }
+  },
+  {
+    "job": "content",
+    "viewport": "1024",
+    "state": "draft-peer",
+    "settled": true,
+    "opened": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-content-1024-draftpeer.png",
+    "audit": {
+      "leafCount": 913,
+      "sizesSeen": [
+        11,
+        12,
+        13,
+        15,
+        20,
+        30,
+        44
+      ],
+      "lineLenFindings": [],
+      "truncFindings": [
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Generating",
+          "scrollWidth": 75,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Needs review",
+          "scrollWidth": 87,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Approved",
+          "scrollWidth": 63,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Scheduled",
+          "scrollWidth": 71,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows.ct-rows > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Published",
+          "scrollWidth": 66,
+          "clientWidth": 56,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap.wb-card-on > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Anthropic says its own AI models hacked 3 organizations during safety testing",
+          "scrollWidth": 473,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap.wb-card-on > div.ct-mid > div.ct-meta (ancestor of \"PASS 79\")",
+          "text": "PASS 79Image",
+          "scrollWidth": 130,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap.wb-card-on > div.ct-mid > div.ct-meta (ancestor of \"Image\")",
+          "text": "PASS 79Image",
+          "scrollWidth": 130,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "AI faked its way through peer review - agency owners posting AI content are runn",
+          "scrollWidth": 714,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "When delivery runs your calendar, pipeline is always the first thing that goes",
+          "scrollWidth": 460,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "[Lifestyle] An underdiscussed fact about content operations: most systems log wh",
+          "scrollWidth": 511,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "[Lifestyle] Six months of scheduled posts. Not one record of who edited them aft",
+          "scrollWidth": 502,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "[Lifestyle] It hit 32 degrees in Warsaw today and I moved my laptop to the only ",
+          "scrollWidth": 490,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"—\")",
+          "text": "—Image",
+          "scrollWidth": 130,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"Image\")",
+          "text": "—Image",
+          "scrollWidth": 130,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "[Lifestyle] Walked past the same bakery on Hoża three times this week without go",
+          "scrollWidth": 507,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "[Lifestyle] Right now I'm debating whether checking something daily makes you be",
+          "scrollWidth": 511,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Your agency's Google rankings don't matter if you're invisible to LLMs answering",
+          "scrollWidth": 590,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"PASS 82\")",
+          "text": "PASS 82Image",
+          "scrollWidth": 130,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"Image\")",
+          "text": "PASS 82Image",
+          "scrollWidth": 130,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Your Zoom library is a better content engine than any editorial calendar",
+          "scrollWidth": 430,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"PASS 82\")",
+          "text": "PASS 82Image",
+          "scrollWidth": 130,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"Image\")",
+          "text": "PASS 82Image",
+          "scrollWidth": 130,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Mira Murati's Thinking Machines drops Inkling — reviewers call it the best open ",
+          "scrollWidth": 589,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "$224k/mo on referrals alone: the single point of failure most agency owners igno",
+          "scrollWidth": 500,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"PASS 88\")",
+          "text": "PASS 88Image",
+          "scrollWidth": 130,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"Image\")",
+          "text": "PASS 88Image",
+          "scrollWidth": 130,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "That viral Claude Code skill post everyone liked: here's what's actually inside ",
+          "scrollWidth": 476,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The PDF lead magnet era is over. Functional AI skills convert better.",
+          "scrollWidth": 407,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"PASS 63\")",
+          "text": "PASS 63Image",
+          "scrollWidth": 130,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"Image\")",
+          "text": "PASS 63Image",
+          "scrollWidth": 130,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "LM promo: Opus 5 Effort Dial Kit (keyword DIAL)",
+          "scrollWidth": 293,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"—\")",
+          "text": "—Carousel",
+          "scrollWidth": 157,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"Carousel\")",
+          "text": "—Carousel",
+          "scrollWidth": 157,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Two-agent AI QA still leaks AI copy. The founder voice pass is the irreducible f",
+          "scrollWidth": 497,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Founder video: why I cut my posting in half",
+          "scrollWidth": 259,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"—\")",
+          "text": "—video",
+          "scrollWidth": 129,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-meta (ancestor of \"video\")",
+          "text": "—video",
+          "scrollWidth": 129,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Trump administration reviving push to ban Chinese AI models after Kimi K3, citin",
+          "scrollWidth": 581,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div > div > div.ct-card.ct-tap > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The slop wall is real: why AI-generated LinkedIn content kills your inbound",
+          "scrollWidth": 448,
+          "clientWidth": 123,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Generating",
+          "scrollWidth": 75,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Generating resources",
+          "scrollWidth": 149,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Needs review",
+          "scrollWidth": 87,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Approved",
+          "scrollWidth": 63,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Scheduled",
+          "scrollWidth": 71,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps-x > span.wb-caps-xl",
+          "text": "Published",
+          "scrollWidth": 66,
+          "clientWidth": 37,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Does Your Brand Hold Up at Close Range? A Messaging Audit for Software Companies",
+          "scrollWidth": 521,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Lead-to-Client Audit: 7 Questions to Find Where Revenue Gets Lost",
+          "scrollWidth": 435,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Agency Legal Audit: Systems to Have in Place Before Problems Show Up",
+          "scrollWidth": 464,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Before You Run Ads: The Digital Foundation Checklist",
+          "scrollWidth": 323,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Referral-Exit Audit: Are You Set Up to Win Clients You Have Not Met Yet?",
+          "scrollWidth": 465,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The 2am Test: A Brand Standards Audit for When Anyone Can Make Things",
+          "scrollWidth": 454,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "7 Checks Before You Scale Any Ad Account",
+          "scrollWidth": 262,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Pressure Test: 6 Questions Every People Leader Should Ask After a Hard Week",
+          "scrollWidth": 502,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Story-First Brief: 7 Questions Before You Greenlight Any Campaign",
+          "scrollWidth": 431,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The B2B Paid Media Measurement Checklist: 7 Things to Lock In Before You Spend A",
+          "scrollWidth": 593,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Reactive AM Audit: 7 Questions That Reveal Where Account Growth Breaks Down",
+          "scrollWidth": 518,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Account Growth Audit: 7 Questions Every Agency Should Answer",
+          "scrollWidth": 420,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The 4-Channel Outreach Checklist: Fill Your Pipeline Without Relying on One Plat",
+          "scrollWidth": 517,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Paid Ads Hiring Filter: 7 Questions That Expose Real Experts From Resume Blu",
+          "scrollWidth": 528,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Subscription Retention Checklist: 6 Leaks Killing Your LTV (And How to Find ",
+          "scrollWidth": 527,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Agency Scale Audit: 3 Questions That Separate the Ones That Double From the ",
+          "scrollWidth": 602,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Le vrai travail d'un media buyer à 3 000 $/jour",
+          "scrollWidth": 277,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Is Your B2B SaaS Website Working Against You? A 7-Question Audit",
+          "scrollWidth": 411,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Is Your YouTube Channel Actually Selling? A 7-Question Audit",
+          "scrollWidth": 372,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "AI Citation Readiness Checklist for B2B Content Teams",
+          "scrollWidth": 332,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Creative Gap Diagnostic: 5 Questions to Find Where Your Creative Ops Are Ble",
+          "scrollWidth": 534,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Does Your Brand Have Operating Rules? A 7-Question Self-Audit",
+          "scrollWidth": 391,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Recruitment Cost Audit: 7 Questions to Find Out If Your Hiring Model Is Cost",
+          "scrollWidth": 656,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Recruitment Cost Audit: 7 Questions Every Growing Business Should Answer",
+          "scrollWidth": 491,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Signal Audit: 7 Questions to Cut What Marketing Can't Prove",
+          "scrollWidth": 393,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Cold Email Audit: 4 Questions That Tell You Why Your Campaign Isn't Working",
+          "scrollWidth": 496,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Email Audit: 7 Questions Every DTC Brand Avoids Asking",
+          "scrollWidth": 369,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Lifecycle Revenue Leak: An Audit Every DTC Brand Should Run Before Scaling P",
+          "scrollWidth": 526,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The AI Playbook Starter Kit: Get 8 Hours of Work Done Without Being There",
+          "scrollWidth": 457,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The PPC Audit You're Probably Not Running (But Should Be)",
+          "scrollWidth": 364,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Brand Credibility Audit: 7 questions to find out why buyers say 'we'll think",
+          "scrollWidth": 525,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The AI-tell hit list: patterns that flag your LinkedIn posts as slop, with a cle",
+          "scrollWidth": 577,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Is Your LinkedIn Inbound Funnel Bleeding Leads? A Self-Assessment for Agency Fou",
+          "scrollWidth": 543,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-meta (ancestor of \"Interactive Assessment\")",
+          "text": "Interactive Assessmentno landing URL",
+          "scrollWidth": 273,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-meta (ancestor of \"no landing URL\")",
+          "text": "Interactive Assessmentno landing URL",
+          "scrollWidth": 273,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "Paste Your Whole Agency Into One Prompt",
+          "scrollWidth": 258,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Claude skill stack behind a done-for-you LinkedIn engine: intake, draft, lin",
+          "scrollWidth": 614,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The AI-tell hit list: patterns that flag your LinkedIn posts as slop, with a cle",
+          "scrollWidth": 577,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Voice Match Skill: make Claude write in your exact voice (real, installable ",
+          "scrollWidth": 497,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Creative Audit: is your Meta ad account ready to scale past $20k a day",
+          "scrollWidth": 453,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-title.ct-row-p",
+          "text": "The Hook Grader: paste your lead magnet hook, see who it lets in",
+          "scrollWidth": 395,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-meta (ancestor of \"Interactive Assessment\")",
+          "text": "Interactive Assessmentno landing URL",
+          "scrollWidth": 273,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": false
+        },
+        {
+          "cls": "div.rows.ct-rows > div.ct-lane-b > div > div.ct-card.ct-res-row > div.ct-mid > div.ct-meta (ancestor of \"no landing URL\")",
+          "text": "Interactive Assessmentno landing URL",
+          "scrollWidth": 273,
+          "clientWidth": 253,
+          "fontSize": 13,
+          "ellipsis": false
+        }
+      ],
+      "tokenFindings": [],
+      "contrastFindings": [
+        {
+          "cls": "div.wb-regions.peers-1 > div.wb-work.list > div.rows.ct-rows > div.wb-chartcard > div.wb-caps > span.wb-cap",
+          "sample": "2",
+          "fontSize": 11,
+          "contrast": 4.43,
+          "fg": "rgb(255, 255, 255)",
+          "bgHex": "#747977",
+          "under3": false
+        },
+        {
+          "cls": "div.wb-work.list > div.rows.ct-rows > div.ct-lane-b > div.wb-chartcard > div.wb-caps > span.wb-cap",
+          "sample": "10",
+          "fontSize": 11,
+          "contrast": 4.43,
+          "fg": "rgb(255, 255, 255)",
+          "bgHex": "#747977",
+          "under3": false
+        }
+      ]
+    }
+  },
+  {
+    "job": "sends",
+    "viewport": "1024",
+    "state": "peer-open",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-sends-1024-peeropen.png",
+    "audit": {
+      "leafCount": 167,
+      "sizesSeen": [
+        9,
+        11,
+        12,
+        13,
+        15,
+        20,
+        44
+      ],
+      "lineLenFindings": [],
+      "truncFindings": [
+        {
+          "cls": "div.rows.ov > section.ov-sec > div.ov-hero > div.ov-tile > div.ov-tile-h > span.ov-tile-lbl",
+          "text": "Governor",
+          "scrollWidth": 67,
+          "clientWidth": 48,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.rows.ov > section.ov-sec > div.ov-hero > div.ov-tile > div.ov-tile-h > span.ov-tile-lbl",
+          "text": "Runway",
+          "scrollWidth": 52,
+          "clientWidth": 48,
+          "fontSize": 11,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.ov-duo > div.ov-rcol > section.ov-sec > div.ov-tbl > div.ov-tr > span.ov-td-nm",
+          "text": "Warm - Creators' Lead-Magnet Commenters",
+          "scrollWidth": 276,
+          "clientWidth": 151,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.ov-duo > div.ov-rcol > section.ov-sec > div.ov-tbl > div.ov-tr > span.ov-td-nm",
+          "text": "Agency-Focused Consultants & Fractionals",
+          "scrollWidth": 267,
+          "clientWidth": 151,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.ov-duo > div.ov-rcol > section.ov-sec > div.ov-tbl > div.ov-tr > span.ov-td-nm",
+          "text": "Agency Owners & Ops Leaders",
+          "scrollWidth": 191,
+          "clientWidth": 158,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.ov-duo > div.ov-rcol > section.ov-sec > div.ov-tbl > div.ov-tr > span.ov-td-nm",
+          "text": "Warm - Engagement Harvest",
+          "scrollWidth": 179,
+          "clientWidth": 151,
+          "fontSize": 13,
+          "ellipsis": true
+        }
+      ],
+      "tokenFindings": [],
+      "contrastFindings": []
+    }
+  },
+  {
+    "job": "sends",
+    "viewport": "1024",
+    "state": "peer-closed",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-sends-1024-peerclosed.png",
+    "audit": {
+      "leafCount": 156,
+      "sizesSeen": [
+        9,
+        11,
+        12,
+        13,
+        15,
+        20,
+        44
+      ],
+      "lineLenFindings": [],
+      "truncFindings": [
+        {
+          "cls": "div.ov-duo > div.ov-rcol > section.ov-sec > div.ov-tbl > div.ov-tr > span.ov-td-nm",
+          "text": "Warm - Creators' Lead-Magnet Commenters",
+          "scrollWidth": 276,
+          "clientWidth": 159,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.ov-duo > div.ov-rcol > section.ov-sec > div.ov-tbl > div.ov-tr > span.ov-td-nm",
+          "text": "Agency-Focused Consultants & Fractionals",
+          "scrollWidth": 267,
+          "clientWidth": 159,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.ov-duo > div.ov-rcol > section.ov-sec > div.ov-tbl > div.ov-tr > span.ov-td-nm",
+          "text": "Agency Owners & Ops Leaders",
+          "scrollWidth": 191,
+          "clientWidth": 167,
+          "fontSize": 13,
+          "ellipsis": true
+        },
+        {
+          "cls": "div.ov-duo > div.ov-rcol > section.ov-sec > div.ov-tbl > div.ov-tr > span.ov-td-nm",
+          "text": "Warm - Engagement Harvest",
+          "scrollWidth": 179,
+          "clientWidth": 159,
+          "fontSize": 13,
+          "ellipsis": true
+        }
+      ],
+      "tokenFindings": [],
+      "contrastFindings": []
+    }
+  },
+  {
+    "job": "ops",
+    "viewport": "1024",
+    "state": "peer-open",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-ops-1024-peeropen.png",
+    "audit": {
+      "leafCount": 72,
+      "sizesSeen": [
+        11,
+        12,
+        13,
+        15,
+        20,
+        30,
+        44
+      ],
+      "lineLenFindings": [
+        {
+          "cls": "div.wb-work.wide.wb-narrow > div.rows.ops-rows > div.wb-ocols > div.wb-ocol.wb-ocol-q > div.ops-card > textarea.ops-body",
+          "sample": "Getting SpaceTime into a NASA facility is wild -- congrats on that one. Sounds like a hell of a July",
+          "textLen": 103,
+          "lines": 1,
+          "charsPerLine": 103,
+          "widthPx": 380,
+          "fontSize": 13
+        },
+        {
+          "cls": "div.wb-work.wide.wb-narrow > div.rows.ops-rows > div.wb-ocols > div.wb-ocol.wb-ocol-q > div.ops-card > textarea.ops-body",
+          "sample": "the paid into an unknown brand is a tax part matches what i see, im small on here so anything i push",
+          "textLen": 136,
+          "lines": 1,
+          "charsPerLine": 136,
+          "widthPx": 380,
+          "fontSize": 13
+        },
+        {
+          "cls": "div.wb-work.wide.wb-narrow > div.rows.ops-rows > div.wb-ocols > div.wb-ocol.wb-ocol-q > div.ops-card > textarea.ops-body",
+          "sample": "Respect turning down a signature that fast. We screen margin first for the same reason -- only about",
+          "textLen": 144,
+          "lines": 1,
+          "charsPerLine": 144,
+          "widthPx": 380,
+          "fontSize": 13
+        }
+      ],
+      "truncFindings": [],
+      "tokenFindings": [],
+      "contrastFindings": []
+    }
+  },
+  {
+    "job": "ops",
+    "viewport": "1024",
+    "state": "peer-closed",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-ops-1024-peerclosed.png",
+    "audit": {
+      "leafCount": 61,
+      "sizesSeen": [
+        11,
+        12,
+        13,
+        15,
+        20,
+        30,
+        44
+      ],
+      "lineLenFindings": [
+        {
+          "cls": "div.wb-work.wide > div.rows.ops-rows > div.wb-ocols > div.wb-ocol.wb-ocol-q > div.ops-card > textarea.ops-body",
+          "sample": "Getting SpaceTime into a NASA facility is wild -- congrats on that one. Sounds like a hell of a July",
+          "textLen": 103,
+          "lines": 1,
+          "charsPerLine": 103,
+          "widthPx": 417,
+          "fontSize": 13
+        },
+        {
+          "cls": "div.wb-work.wide > div.rows.ops-rows > div.wb-ocols > div.wb-ocol.wb-ocol-q > div.ops-card > textarea.ops-body",
+          "sample": "the paid into an unknown brand is a tax part matches what i see, im small on here so anything i push",
+          "textLen": 136,
+          "lines": 1,
+          "charsPerLine": 136,
+          "widthPx": 417,
+          "fontSize": 13
+        },
+        {
+          "cls": "div.wb-work.wide > div.rows.ops-rows > div.wb-ocols > div.wb-ocol.wb-ocol-q > div.ops-card > textarea.ops-body",
+          "sample": "Respect turning down a signature that fast. We screen margin first for the same reason -- only about",
+          "textLen": 144,
+          "lines": 1,
+          "charsPerLine": 144,
+          "widthPx": 417,
+          "fontSize": 13
+        }
+      ],
+      "truncFindings": [],
+      "tokenFindings": [],
+      "contrastFindings": []
+    }
+  },
+  {
+    "job": "settings",
+    "viewport": "1024",
+    "state": "peer-open",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-settings-1024-peeropen.png",
+    "audit": {
+      "leafCount": 49,
+      "sizesSeen": [
+        11,
+        12,
+        13,
+        15,
+        20,
+        44
+      ],
+      "lineLenFindings": [],
+      "truncFindings": [],
+      "tokenFindings": [],
+      "contrastFindings": []
+    }
+  },
+  {
+    "job": "settings",
+    "viewport": "1024",
+    "state": "peer-closed",
+    "settled": true,
+    "errors": [],
+    "shot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase0-shots/read-settings-1024-peerclosed.png",
+    "audit": {
+      "leafCount": 38,
+      "sizesSeen": [
+        11,
+        12,
+        13,
+        15,
+        20,
+        44
+      ],
+      "lineLenFindings": [],
+      "truncFindings": [],
+      "tokenFindings": [],
+      "contrastFindings": []
+    }
+  }
+]

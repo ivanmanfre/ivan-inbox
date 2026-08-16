@@ -1,0 +1,388 @@
+[
+  {
+    "route": "today",
+    "viewport": "1440x900",
+    "url": "http://localhost:5431/#exp/v2/today",
+    "consoleMsgs": [],
+    "failedRequests": [
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      }
+    ],
+    "interactionNote": "no list to open (aggregate surface)"
+  },
+  {
+    "route": "inbox",
+    "viewport": "1440x900",
+    "url": "http://localhost:5431/#exp/v2/inbox",
+    "consoleMsgs": [],
+    "failedRequests": [
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      }
+    ],
+    "interactionNote": "opened first inbox row"
+  },
+  {
+    "route": "drafts",
+    "viewport": "1440x900",
+    "url": "http://localhost:5431/#exp/v2/drafts",
+    "consoleMsgs": [],
+    "failedRequests": [
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      }
+    ],
+    "interactionNote": "none attempted"
+  },
+  {
+    "route": "content",
+    "viewport": "1440x900",
+    "url": "http://localhost:5431/#exp/v2/content",
+    "consoleMsgs": [],
+    "failedRequests": [
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&or=%28updated_at.gte.2026-06-03T18%3A28%3A26.497Z%2Cstatus.in.%28review%2Cerror%2Cgenerating%2Capproved%2Cscheduled%29%29",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&or=%28updated_at.gte.2026-06-03T18%3A28%3A26.509Z%2Cstatus.in.%28review%2Cerror%2Cgenerating%2Capproved%2Cscheduled%29%29",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/n8nclaw_proactive_alerts?select=id&created_at=lt.2026-07-19T18%3A28%3A27.247Z&or=%28sent.is.null%2Csent.eq.false%29",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/lm_idea_candidates?select=id&status=eq.reviewing",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/lm_idea_candidates?select=id&status=eq.reviewing",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/lm_idea_candidates?select=id&status=eq.reviewing&content_type=eq.lead_magnet",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/lm_idea_candidates?select=id&status=eq.reviewing&content_type=eq.post",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/n8nclaw_proactive_alerts?select=id&created_at=lt.2026-07-19T18%3A28%3A27.250Z&or=%28sent.is.null%2Csent.eq.false%29",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/lm_idea_candidates?select=id&status=eq.reviewing&content_type=eq.post",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/lm_idea_candidates?select=id&status=eq.reviewing&content_type=eq.lead_magnet",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      }
+    ],
+    "interactionNote": "switched lane + opened first content row"
+  },
+  {
+    "route": "sends",
+    "viewport": "1440x900",
+    "url": "http://localhost:5431/#exp/v2/sends",
+    "consoleMsgs": [],
+    "failedRequests": [
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      }
+    ],
+    "interactionNote": "switched client/lane segment"
+  },
+  {
+    "route": "ops",
+    "viewport": "1440x900",
+    "url": "http://localhost:5431/#exp/v2/ops",
+    "consoleMsgs": [],
+    "failedRequests": [
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      }
+    ],
+    "interactionNote": "toggled a section"
+  },
+  {
+    "route": "settings",
+    "viewport": "1440x900",
+    "url": "http://localhost:5431/#exp/v2/settings",
+    "consoleMsgs": [],
+    "failedRequests": [
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      }
+    ],
+    "interactionNote": "no interactive list"
+  },
+  {
+    "route": "today",
+    "viewport": "390x844",
+    "url": "http://localhost:5431/#exp/v2/today",
+    "consoleMsgs": [],
+    "failedRequests": [
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      }
+    ],
+    "interactionNote": "no list to open (aggregate surface)"
+  },
+  {
+    "route": "inbox",
+    "viewport": "390x844",
+    "url": "http://localhost:5431/#exp/v2/inbox",
+    "consoleMsgs": [],
+    "failedRequests": [
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      }
+    ],
+    "interactionNote": "opened first inbox row"
+  },
+  {
+    "route": "drafts",
+    "viewport": "390x844",
+    "url": "http://localhost:5431/#exp/v2/drafts",
+    "consoleMsgs": [],
+    "failedRequests": [
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      }
+    ],
+    "interactionNote": "none attempted"
+  },
+  {
+    "route": "content",
+    "viewport": "390x844",
+    "url": "http://localhost:5431/#exp/v2/content",
+    "consoleMsgs": [],
+    "failedRequests": [
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&or=%28updated_at.gte.2026-06-03T18%3A29%3A18.285Z%2Cstatus.in.%28review%2Cerror%2Cgenerating%2Capproved%2Cscheduled%29%29",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&or=%28updated_at.gte.2026-06-03T18%3A29%3A18.285Z%2Cstatus.in.%28review%2Cerror%2Cgenerating%2Capproved%2Cscheduled%29%29",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/lm_idea_candidates?select=id&status=eq.reviewing",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/lm_idea_candidates?select=id&status=eq.reviewing&content_type=eq.lead_magnet",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/lm_idea_candidates?select=id&status=eq.reviewing&content_type=eq.post",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/n8nclaw_proactive_alerts?select=id&created_at=lt.2026-07-19T18%3A29%3A18.925Z&or=%28sent.is.null%2Csent.eq.false%29",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/n8nclaw_proactive_alerts?select=id&created_at=lt.2026-07-19T18%3A29%3A18.926Z&or=%28sent.is.null%2Csent.eq.false%29",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/lm_idea_candidates?select=id&status=eq.reviewing",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/lm_idea_candidates?select=id&status=eq.reviewing&content_type=eq.lead_magnet",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/lm_idea_candidates?select=id&status=eq.reviewing&content_type=eq.post",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      }
+    ],
+    "interactionNote": "switched lane + opened first content row"
+  },
+  {
+    "route": "sends",
+    "viewport": "390x844",
+    "url": "http://localhost:5431/#exp/v2/sends",
+    "consoleMsgs": [],
+    "failedRequests": [
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      }
+    ],
+    "interactionNote": "switched client/lane segment"
+  },
+  {
+    "route": "ops",
+    "viewport": "390x844",
+    "url": "http://localhost:5431/#exp/v2/ops",
+    "consoleMsgs": [],
+    "failedRequests": [
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      }
+    ],
+    "interactionNote": "toggled a section"
+  },
+  {
+    "route": "settings",
+    "viewport": "390x844",
+    "url": "http://localhost:5431/#exp/v2/settings",
+    "consoleMsgs": [],
+    "failedRequests": [
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "method": "HEAD",
+        "failure": "net::ERR_ABORTED"
+      }
+    ],
+    "interactionNote": "no interactive list"
+  }
+]

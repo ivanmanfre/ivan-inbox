@@ -1,0 +1,34 @@
+[
+  {
+    "viewport": "1440x900",
+    "inputCount": 0,
+    "consoleMsgs": [],
+    "failedRequests": [
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "failure": "net::ERR_ABORTED"
+      }
+    ],
+    "newResponses": []
+  },
+  {
+    "viewport": "390x844",
+    "inputCount": 0,
+    "consoleMsgs": [],
+    "failedRequests": [
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "failure": "net::ERR_ABORTED"
+      },
+      {
+        "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?select=id&client_id=is.null&status=eq.review",
+        "failure": "net::ERR_ABORTED"
+      }
+    ],
+    "newResponses": []
+  }
+]

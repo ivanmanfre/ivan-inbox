@@ -1,0 +1,131 @@
+IM
+Workbench
+☼
+Today
+◉
+Inbox
+56
+WORK
+✦
+DMs
+▤
+Content
+19
+↑
+Sends
+◈
+Ops
+3
+✳
+Claude
+Docked beside your work
+⚙︎
+Settings
+just now
+↻
+TODAY
+Sunday, August 2
+↻
+All
+Ivan
+Rise
+13
+THINGS ON YOUR PLATE
+1
+urgent
+12
+to approve
+0
+going out
+Synced 20:31 · now
+01
+URGENT
+0/1 CLEARED
+NO
+in
+Nour Siakir Oglou
+REPLY
+Hi Iván, I'm reaching out because you expressed interest in becoming a founding member of Swipeless.ai — a YouTube AI longform content gener
+2d
+aging out: 6 — older than 3 days, out of the count
+02
+APPROVE
+0/12 CLEARED
+4
+DM drafts
+David Card — Cool, give me a couple days. I'll pull your positioning from the profile and put together a sample post and lead magnet concept off your own angles, so you can see what it actually looks like for your audience specifically. I'll drop a page for you with everything laid out, easier than explaining the whole thing in DMs.
+4 waiting · oldest drafted 15d ago
+live rows and Approve & send are in the DM queue — this list is the cached brief
+›
+6
+Comment drafts
+Connor McLeod — Quality staying stable is where mine break. The workflow repeats fine, then one weird input and it needs me to rescue the delivery again.
+6 targets · oldest drafted 35d ago
+posting is live on LinkedIn — approved in Ops
+›
+2
+Feed drafts
+Shayne Williams (A) — the paid into an unknown brand is a tax part matches what i see, im small on here so anything i push barely moves without the base first
+2 pending · newest 7h ago
+approved in the feed lane, not here
+›
+03
+TODAY
+CLEAR
+✓
+Nothing scheduled today
+No posts go out today. This zone stays clear until the next slot.
+NEXT
+Wed, Aug 12, 02:30 PM · carousel — Comment-to-DM inbound is the whole reason I post. Someone comments a keyword under a post, the engine catches it and DMs them the resource, and it lands in my inbox as a named lead while I'm doing client work. I packaged the starter version of that capture system as a free kit: four Claude skill files (intake, draft, lint, cover), the voice profile template you fill once, the scoring rubric that archives 3 of every 4 ideas before they waste a slot, and the n8n skeleton that wires it all together. Real working files, yours to copy and change. I run this exact engine on my own feed, and the leads come in with a name attached. Want the files? Comment ENGINE and send me a connection request, I'll send it over.
+QUEUE
+217 prospects ready to send
+04
+CAMPAIGN HEALTH
+IVAN
+REPLIES
+0 today
+25 in 7d
+ACCEPT
+27%
+7d · ▲3 vs 30d (24%)
+GOVERNOR
+102/125
+NORMAL · 5 left today
+SENDS THIS 7D VS THE WEEK CAP (125)
+Warm / Orbit
+60
+17 sendable
+Harvested
+33
+4 sendable
+Cold
+9
+60 sendable
+Engager
+1
+0 sendable
+LINKEDIN LANE · ALL SEATS
+307
+FRESH SUPPLY
+0
+SENT TODAY
+3
+ACCEPTS
+0
+REPLIES
+44
+NEED REPLY
+243
+STUCK
+Cold email: Smartlead not connected.
+✳
+Claude
+a fresh session every turn
+default
+✕
+Ask about the today you’re looking at.
+Every turn starts a fresh Claude session — the transcript above is the continuity, not the model’s memory.
+What did useInbox do on every window focus?
+Which drafts are stale and why?
+Walk me through the send path
+↑

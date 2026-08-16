@@ -1,0 +1,111 @@
+{
+  "f1": {
+    "mintMs": 588,
+    "wsOpenMs": 416.8000000715256,
+    "sessionStartedMs": 418.8000000715256,
+    "firstPartialMs": 2233.7999999523163,
+    "partials": [
+      "Check the Supab",
+      "Check the Supabase queue and",
+      "Check the Supabase Q and the n8n",
+      "Check the Supabase queue and the n8n workflow.",
+      "Check the Supabase queue and the n8n workflow for the RISE",
+      "Check the Supabase queue and the n8n workflow for the RISE DTC carousel."
+    ],
+    "committed": [
+      "Check the Supabase queue and the n8n workflow for the RISE DTC carousel."
+    ],
+    "errors": [],
+    "commitToFinalMs": 253.10000002384186,
+    "truth": "Check the Supabase queue and the n8n workflow for the RISE DTC carousel."
+  },
+  "f2": {
+    "mintMs": 1747,
+    "wsOpenMs": 260.2000000476837,
+    "sessionStartedMs": 260.3000000715256,
+    "firstPartialMs": 2316.0999999046326,
+    "partials": [
+      "Draft a LinkedIn-",
+      "Draft a LinkedIn DM to",
+      "Draft a LinkedIn DM to Mattan about",
+      "Draft a LinkedIn DM to Mattan about the lead magnet-",
+      "Draft a LinkedIn DM to Mattan about the lead magnet and the QA."
+    ],
+    "committed": [
+      "Draft a LinkedIn DM to Mattan about the lead magnet and the QA verdict."
+    ],
+    "errors": [],
+    "commitToFinalMs": 210.20000004768372,
+    "truth": "Draft a LinkedIn DM to Mattan about the lead magnet and the QA verdict."
+  },
+  "f3": {
+    "mintMs": 598,
+    "wsOpenMs": 263.90000009536743,
+    "sessionStartedMs": 264.10000002384186,
+    "firstPartialMs": 2324.7000000476837,
+    "partials": [
+      "The Railway,",
+      "The Railway edge function, R-",
+      "The Railway edge function returned an O-",
+      "The Railway edge function returned an OAuth error on",
+      "The Railway edge function returned an OAuth error on the Smartlead account."
+    ],
+    "committed": [
+      "The Railway edge function returned an OAuth error on the Smartlead campaign."
+    ],
+    "errors": [],
+    "commitToFinalMs": 826.8999999761581,
+    "truth": "The Railway edge function returned an OAuth error on the Smartlead campaign."
+  },
+  "f4": {
+    "mintMs": 981,
+    "wsOpenMs": 250.5,
+    "sessionStartedMs": 250.89999997615814,
+    "firstPartialMs": 2385.9000000953674,
+    "partials": [
+      "Open the work",
+      "Open the worktree and fix-",
+      "Open the worktree and fix the PostgREST",
+      "Open the worktree and fix the PostgREST filter in the",
+      "Open the worktree and fix the PostgREST filter in the UniPile sync."
+    ],
+    "committed": [
+      "Open the worktree and fix the PostgREST filter in the UniPile sync."
+    ],
+    "errors": [],
+    "commitToFinalMs": 215.89999997615814,
+    "truth": "Open the worktree and fix the PostgREST filter in the UniPile sync."
+  },
+  "f5": {
+    "mintMs": 604,
+    "wsOpenMs": 260.89999997615814,
+    "sessionStartedMs": 261.10000002384186,
+    "firstPartialMs": 2441.5999999046326,
+    "partials": [
+      "Push the hyper",
+      "Push the hyperframes video to Click",
+      "Push the hyperframes video to ClickUp and up",
+      "Push the hyperframes video to ClickUp and update ivanman",
+      "Push the hyperframes video to ClickUp and update ivanmanfredi.com."
+    ],
+    "committed": [
+      "Push the hyperframes video to ClickUp and update ivanmanfredi.com."
+    ],
+    "errors": [],
+    "commitToFinalMs": 222.80000007152557,
+    "truth": "Push the hyperframes video to ClickUp and update ivanmanfredi.com."
+  },
+  "silence": {
+    "mintMs": 677,
+    "wsOpenMs": 246.20000004768372,
+    "sessionStartedMs": 246.60000002384186,
+    "firstPartialMs": null,
+    "partials": [],
+    "committed": [
+      ""
+    ],
+    "errors": [],
+    "commitToFinalMs": 244.5,
+    "truth": ""
+  }
+}

@@ -1,0 +1,2733 @@
+[
+  {
+    "shot": "content",
+    "tag": "mobile",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-faithful/shots/content-mobile.png",
+    "dataCat": "mono",
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "docOverflow": false,
+    "clipped": [],
+    "innerTextLen": 36742,
+    "loginVisible": false,
+    "skeletons": 0,
+    "type": {
+      "distinct": 6,
+      "sizes": {
+        "11px": 558,
+        "12px": 290,
+        "13px": 489,
+        "34px": 1,
+        "20px": 1,
+        "30px": 1
+      },
+      "fractional": [],
+      "glyphSizes": [
+        "15px",
+        "13px",
+        "11px",
+        "20px"
+      ]
+    },
+    "heavy": [
+      {
+        "cls": "",
+        "px": 34,
+        "text": "Content"
+      }
+    ],
+    "nonTabular": [],
+    "accentCount": 6,
+    "accentBy": [
+      [
+        "wb-sync-dot",
+        1
+      ],
+      [
+        "wb-cap",
+        1
+      ],
+      [
+        "wb-legend-d",
+        1
+      ],
+      [
+        "tb on",
+        1
+      ],
+      [
+        "ic bubble",
+        1
+      ],
+      [
+        "l",
+        1
+      ]
+    ],
+    "illegalPills": [],
+    "rails": {
+      "content": {
+        "n": 77,
+        "min": 56,
+        "max": 56,
+        "variance": 0
+      },
+      "contentAll": {
+        "n": 77,
+        "min": 56,
+        "max": 56,
+        "variance": 0
+      },
+      "ideas": {
+        "n": 59,
+        "min": 56,
+        "max": 56,
+        "variance": 0
+      },
+      "contentStatus": {
+        "n": 18,
+        "min": 56,
+        "max": 56,
+        "variance": 0
+      },
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "tailRail": {
+      "n": 77,
+      "variance": 0
+    },
+    "logTailRail": null,
+    "logDenom": null,
+    "band": {
+      "content": {
+        "n": 77,
+        "min": 40,
+        "max": 41,
+        "median": 40
+      },
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "livePathTransitions": 0,
+    "contrastFailures": [
+      "wb-cap 11px 4.43:1 \"2\""
+    ],
+    "contrastFailureCount": 1,
+    "errors": []
+  },
+  {
+    "shot": "content",
+    "tag": "desktop",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-faithful/shots/content-desktop.png",
+    "dataCat": "mono",
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "docOverflow": false,
+    "clipped": [],
+    "innerTextLen": 37121,
+    "loginVisible": false,
+    "skeletons": 0,
+    "type": {
+      "distinct": 7,
+      "sizes": {
+        "13px": 501,
+        "20px": 3,
+        "11px": 556,
+        "12px": 297,
+        "56px": 1,
+        "30px": 1,
+        "15px": 1
+      },
+      "fractional": [],
+      "glyphSizes": [
+        "20px",
+        "15px",
+        "13px",
+        "11px"
+      ]
+    },
+    "heavy": [
+      {
+        "cls": "",
+        "px": 56,
+        "text": "Content"
+      }
+    ],
+    "nonTabular": [],
+    "accentCount": 12,
+    "accentBy": [
+      [
+        "wb-rj-ic",
+        2
+      ],
+      [
+        "avatar-me",
+        1
+      ],
+      [
+        "wb-rail-grp on",
+        1
+      ],
+      [
+        "wb-rj on wb-rj-lane",
+        1
+      ],
+      [
+        "wb-rj wb-rj-peer on",
+        1
+      ],
+      [
+        "wb-peer-dot on",
+        1
+      ],
+      [
+        "wb-sync-dot",
+        1
+      ],
+      [
+        "wb-cap",
+        1
+      ]
+    ],
+    "illegalPills": [],
+    "rails": {
+      "content": {
+        "n": 77,
+        "min": 256,
+        "max": 256,
+        "variance": 0
+      },
+      "contentAll": {
+        "n": 77,
+        "min": 256,
+        "max": 256,
+        "variance": 0
+      },
+      "ideas": {
+        "n": 59,
+        "min": 256,
+        "max": 256,
+        "variance": 0
+      },
+      "contentStatus": {
+        "n": 18,
+        "min": 256,
+        "max": 256,
+        "variance": 0
+      },
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "tailRail": {
+      "n": 77,
+      "variance": 0
+    },
+    "logTailRail": null,
+    "logDenom": null,
+    "band": {
+      "content": {
+        "n": 77,
+        "min": 40,
+        "max": 41,
+        "median": 40
+      },
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "livePathTransitions": 0,
+    "contrastFailures": [
+      "wb-cap 11px 4.43:1 \"2\""
+    ],
+    "contrastFailureCount": 1,
+    "errors": []
+  },
+  {
+    "shot": "content-mattan",
+    "tag": "mobile",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-faithful/shots/content-mattan-mobile.png",
+    "dataCat": "mono",
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "docOverflow": false,
+    "clipped": [],
+    "innerTextLen": 10408,
+    "loginVisible": false,
+    "skeletons": 0,
+    "type": {
+      "distinct": 6,
+      "sizes": {
+        "11px": 321,
+        "12px": 108,
+        "13px": 156,
+        "34px": 1,
+        "20px": 1,
+        "30px": 1
+      },
+      "fractional": [],
+      "glyphSizes": [
+        "15px",
+        "11px",
+        "20px"
+      ]
+    },
+    "heavy": [
+      {
+        "cls": "",
+        "px": 34,
+        "text": "Content"
+      }
+    ],
+    "nonTabular": [],
+    "accentCount": 4,
+    "accentBy": [
+      [
+        "wb-sync-dot",
+        1
+      ],
+      [
+        "tb on",
+        1
+      ],
+      [
+        "ic bubble",
+        1
+      ],
+      [
+        "l",
+        1
+      ]
+    ],
+    "illegalPills": [],
+    "rails": {
+      "content": {
+        "n": 73,
+        "min": 56,
+        "max": 56,
+        "variance": 0
+      },
+      "contentAll": {
+        "n": 73,
+        "min": 56,
+        "max": 56,
+        "variance": 0
+      },
+      "ideas": null,
+      "contentStatus": {
+        "n": 73,
+        "min": 56,
+        "max": 56,
+        "variance": 0
+      },
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "tailRail": {
+      "n": 73,
+      "variance": 0
+    },
+    "logTailRail": null,
+    "logDenom": null,
+    "band": {
+      "content": {
+        "n": 73,
+        "min": 40,
+        "max": 41,
+        "median": 41
+      },
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "livePathTransitions": 0,
+    "contrastFailures": [],
+    "contrastFailureCount": 0,
+    "errors": []
+  },
+  {
+    "shot": "content-mattan",
+    "tag": "desktop",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-faithful/shots/content-mattan-desktop.png",
+    "dataCat": "mono",
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "docOverflow": false,
+    "clipped": [],
+    "innerTextLen": 10787,
+    "loginVisible": false,
+    "skeletons": 0,
+    "type": {
+      "distinct": 7,
+      "sizes": {
+        "13px": 168,
+        "20px": 3,
+        "11px": 319,
+        "12px": 119,
+        "56px": 1,
+        "30px": 1,
+        "15px": 1
+      },
+      "fractional": [],
+      "glyphSizes": [
+        "20px",
+        "15px",
+        "11px",
+        "13px"
+      ]
+    },
+    "heavy": [
+      {
+        "cls": "",
+        "px": 56,
+        "text": "Content"
+      }
+    ],
+    "nonTabular": [],
+    "accentCount": 10,
+    "accentBy": [
+      [
+        "wb-rj-ic",
+        2
+      ],
+      [
+        "avatar-me",
+        1
+      ],
+      [
+        "wb-rail-grp on",
+        1
+      ],
+      [
+        "wb-rj on wb-rj-lane",
+        1
+      ],
+      [
+        "wb-rj wb-rj-peer on",
+        1
+      ],
+      [
+        "wb-peer-dot on",
+        1
+      ],
+      [
+        "wb-sync-dot",
+        1
+      ],
+      [
+        "wb-pane-ic asst",
+        1
+      ]
+    ],
+    "illegalPills": [],
+    "rails": {
+      "content": {
+        "n": 73,
+        "min": 256,
+        "max": 256,
+        "variance": 0
+      },
+      "contentAll": {
+        "n": 73,
+        "min": 256,
+        "max": 256,
+        "variance": 0
+      },
+      "ideas": null,
+      "contentStatus": {
+        "n": 73,
+        "min": 256,
+        "max": 256,
+        "variance": 0
+      },
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "tailRail": {
+      "n": 73,
+      "variance": 0
+    },
+    "logTailRail": null,
+    "logDenom": null,
+    "band": {
+      "content": {
+        "n": 73,
+        "min": 40,
+        "max": 41,
+        "median": 41
+      },
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "livePathTransitions": 0,
+    "contrastFailures": [],
+    "contrastFailureCount": 0,
+    "errors": []
+  },
+  {
+    "shot": "today",
+    "tag": "mobile",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-faithful/shots/today-mobile.png",
+    "dataCat": "mono",
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "docOverflow": false,
+    "clipped": [],
+    "innerTextLen": 3040,
+    "loginVisible": false,
+    "skeletons": 0,
+    "type": {
+      "distinct": 5,
+      "sizes": {
+        "34px": 1,
+        "13px": 66,
+        "12px": 11,
+        "30px": 1,
+        "11px": 27
+      },
+      "fractional": [],
+      "glyphSizes": [
+        "15px",
+        "13px",
+        "20px"
+      ]
+    },
+    "heavy": [
+      {
+        "cls": "",
+        "px": 34,
+        "text": "Today"
+      }
+    ],
+    "nonTabular": [],
+    "accentCount": 16,
+    "accentBy": [
+      [
+        "td-qn",
+        3
+      ],
+      [
+        "td-bar-f",
+        3
+      ],
+      [
+        "SPAN",
+        2
+      ],
+      [
+        "wb-sync-dot",
+        1
+      ],
+      [
+        "sc-refresh",
+        1
+      ],
+      [
+        "td-stack-s",
+        1
+      ],
+      [
+        "td-lg-d",
+        1
+      ],
+      [
+        "td-zmark done",
+        1
+      ]
+    ],
+    "illegalPills": [],
+    "rails": {
+      "content": null,
+      "contentAll": null,
+      "ideas": null,
+      "contentStatus": null,
+      "inbox": null,
+      "today": {
+        "n": 3,
+        "min": 56,
+        "max": 56,
+        "variance": 0
+      },
+      "sendsLog": null
+    },
+    "tailRail": null,
+    "logTailRail": null,
+    "logDenom": null,
+    "band": {
+      "content": null,
+      "inbox": null,
+      "today": {
+        "n": 3,
+        "min": 42,
+        "max": 56,
+        "median": 56
+      },
+      "sendsLog": null
+    },
+    "livePathTransitions": 0,
+    "contrastFailures": [],
+    "contrastFailureCount": 0,
+    "errors": []
+  },
+  {
+    "shot": "today",
+    "tag": "desktop",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-faithful/shots/today-desktop.png",
+    "dataCat": "mono",
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "docOverflow": false,
+    "clipped": [],
+    "innerTextLen": 3404,
+    "loginVisible": false,
+    "skeletons": 0,
+    "type": {
+      "distinct": 7,
+      "sizes": {
+        "13px": 78,
+        "20px": 2,
+        "11px": 25,
+        "12px": 13,
+        "56px": 1,
+        "30px": 1,
+        "15px": 1
+      },
+      "fractional": [],
+      "glyphSizes": [
+        "20px",
+        "15px",
+        "13px"
+      ]
+    },
+    "heavy": [
+      {
+        "cls": "",
+        "px": 56,
+        "text": "Today"
+      }
+    ],
+    "nonTabular": [],
+    "accentCount": 21,
+    "accentBy": [
+      [
+        "td-qn",
+        3
+      ],
+      [
+        "td-bar-f",
+        3
+      ],
+      [
+        "wb-rj-ic",
+        2
+      ],
+      [
+        "SPAN",
+        2
+      ],
+      [
+        "avatar-me",
+        1
+      ],
+      [
+        "wb-rj on",
+        1
+      ],
+      [
+        "wb-rj wb-rj-peer on",
+        1
+      ],
+      [
+        "wb-peer-dot on",
+        1
+      ]
+    ],
+    "illegalPills": [],
+    "rails": {
+      "content": null,
+      "contentAll": null,
+      "ideas": null,
+      "contentStatus": null,
+      "inbox": null,
+      "today": {
+        "n": 3,
+        "min": 272,
+        "max": 272,
+        "variance": 0
+      },
+      "sendsLog": null
+    },
+    "tailRail": null,
+    "logTailRail": null,
+    "logDenom": null,
+    "band": {
+      "content": null,
+      "inbox": null,
+      "today": {
+        "n": 3,
+        "min": 42,
+        "max": 56,
+        "median": 56
+      },
+      "sendsLog": null
+    },
+    "livePathTransitions": 0,
+    "contrastFailures": [],
+    "contrastFailureCount": 0,
+    "errors": []
+  },
+  {
+    "shot": "sends",
+    "tag": "mobile",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-faithful/shots/sends-mobile.png",
+    "dataCat": "mono",
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "docOverflow": false,
+    "clipped": [],
+    "innerTextLen": 1587,
+    "loginVisible": false,
+    "skeletons": 0,
+    "type": {
+      "distinct": 6,
+      "sizes": {
+        "34px": 1,
+        "13px": 59,
+        "12px": 30,
+        "11px": 33,
+        "15px": 5,
+        "20px": 8
+      },
+      "fractional": [],
+      "glyphSizes": [
+        "15px",
+        "13px",
+        "20px"
+      ]
+    },
+    "heavy": [
+      {
+        "cls": "",
+        "px": 34,
+        "text": "Sends"
+      }
+    ],
+    "nonTabular": [],
+    "accentCount": 22,
+    "accentBy": [
+      [
+        "ov-gauge-fill",
+        7
+      ],
+      [
+        "sc-dot",
+        5
+      ],
+      [
+        "ov-tile-trend",
+        2
+      ],
+      [
+        "wb-legend-d",
+        2
+      ],
+      [
+        "wb-sync-dot",
+        1
+      ],
+      [
+        "sc-refresh",
+        1
+      ],
+      [
+        "ov-fpct",
+        1
+      ],
+      [
+        "tb on",
+        1
+      ]
+    ],
+    "illegalPills": [],
+    "rails": {
+      "content": null,
+      "contentAll": null,
+      "ideas": null,
+      "contentStatus": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "tailRail": null,
+    "logTailRail": null,
+    "logDenom": null,
+    "band": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "livePathTransitions": 0,
+    "contrastFailures": [],
+    "contrastFailureCount": 0,
+    "errors": []
+  },
+  {
+    "shot": "sends",
+    "tag": "desktop",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-faithful/shots/sends-desktop.png",
+    "dataCat": "mono",
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "docOverflow": false,
+    "clipped": [],
+    "innerTextLen": 1943,
+    "loginVisible": false,
+    "skeletons": 0,
+    "type": {
+      "distinct": 6,
+      "sizes": {
+        "13px": 71,
+        "20px": 10,
+        "11px": 31,
+        "12px": 32,
+        "56px": 1,
+        "15px": 6
+      },
+      "fractional": [],
+      "glyphSizes": [
+        "20px",
+        "15px",
+        "13px"
+      ]
+    },
+    "heavy": [
+      {
+        "cls": "",
+        "px": 56,
+        "text": "Sends"
+      }
+    ],
+    "nonTabular": [],
+    "accentCount": 27,
+    "accentBy": [
+      [
+        "ov-gauge-fill",
+        7
+      ],
+      [
+        "sc-dot",
+        5
+      ],
+      [
+        "wb-rj-ic",
+        2
+      ],
+      [
+        "ov-tile-trend",
+        2
+      ],
+      [
+        "wb-legend-d",
+        2
+      ],
+      [
+        "avatar-me",
+        1
+      ],
+      [
+        "wb-rj on",
+        1
+      ],
+      [
+        "wb-rj wb-rj-peer on",
+        1
+      ]
+    ],
+    "illegalPills": [],
+    "rails": {
+      "content": null,
+      "contentAll": null,
+      "ideas": null,
+      "contentStatus": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "tailRail": null,
+    "logTailRail": null,
+    "logDenom": null,
+    "band": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "livePathTransitions": 0,
+    "contrastFailures": [],
+    "contrastFailureCount": 0,
+    "errors": []
+  },
+  {
+    "shot": "sends-log",
+    "tag": "mobile",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-faithful/shots/sends-log-mobile.png",
+    "dataCat": "mono",
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "docOverflow": false,
+    "clipped": [],
+    "innerTextLen": 44479,
+    "loginVisible": false,
+    "skeletons": 0,
+    "type": {
+      "distinct": 4,
+      "sizes": {
+        "34px": 1,
+        "13px": 130,
+        "12px": 245,
+        "11px": 252
+      },
+      "fractional": [],
+      "glyphSizes": [
+        "15px",
+        "13px",
+        "20px"
+      ]
+    },
+    "heavy": [
+      {
+        "cls": "",
+        "px": 34,
+        "text": "Sends"
+      }
+    ],
+    "nonTabular": [],
+    "accentCount": 5,
+    "accentBy": [
+      [
+        "wb-sync-dot",
+        1
+      ],
+      [
+        "sc-refresh",
+        1
+      ],
+      [
+        "tb on",
+        1
+      ],
+      [
+        "ic bubble",
+        1
+      ],
+      [
+        "l",
+        1
+      ]
+    ],
+    "illegalPills": [],
+    "rails": {
+      "content": null,
+      "contentAll": null,
+      "ideas": null,
+      "contentStatus": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": {
+        "n": 120,
+        "min": 118,
+        "max": 118,
+        "variance": 0
+      }
+    },
+    "tailRail": null,
+    "logTailRail": {
+      "n": 120,
+      "variance": 0
+    },
+    "logDenom": "Newest 113 of 1,524 sent · 7 of 211 blocked",
+    "band": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": {
+        "n": 120,
+        "min": 41,
+        "max": 42,
+        "median": 42
+      }
+    },
+    "livePathTransitions": 0,
+    "contrastFailures": [],
+    "contrastFailureCount": 0,
+    "errors": []
+  },
+  {
+    "shot": "sends-log",
+    "tag": "desktop",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-faithful/shots/sends-log-desktop.png",
+    "dataCat": "mono",
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "docOverflow": false,
+    "clipped": [],
+    "innerTextLen": 44835,
+    "loginVisible": false,
+    "skeletons": 0,
+    "type": {
+      "distinct": 6,
+      "sizes": {
+        "13px": 142,
+        "20px": 2,
+        "11px": 250,
+        "12px": 247,
+        "56px": 1,
+        "15px": 1
+      },
+      "fractional": [],
+      "glyphSizes": [
+        "20px",
+        "15px",
+        "13px"
+      ]
+    },
+    "heavy": [
+      {
+        "cls": "",
+        "px": 56,
+        "text": "Sends"
+      }
+    ],
+    "nonTabular": [],
+    "accentCount": 10,
+    "accentBy": [
+      [
+        "wb-rj-ic",
+        2
+      ],
+      [
+        "avatar-me",
+        1
+      ],
+      [
+        "wb-rj on",
+        1
+      ],
+      [
+        "wb-rj wb-rj-peer on",
+        1
+      ],
+      [
+        "wb-peer-dot on",
+        1
+      ],
+      [
+        "wb-sync-dot",
+        1
+      ],
+      [
+        "sc-refresh",
+        1
+      ],
+      [
+        "wb-pane-ic asst",
+        1
+      ]
+    ],
+    "illegalPills": [],
+    "rails": {
+      "content": null,
+      "contentAll": null,
+      "ideas": null,
+      "contentStatus": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": {
+        "n": 120,
+        "min": 328,
+        "max": 328,
+        "variance": 0
+      }
+    },
+    "tailRail": null,
+    "logTailRail": {
+      "n": 120,
+      "variance": 0
+    },
+    "logDenom": "Newest 113 of 1,524 sent · 7 of 211 blocked",
+    "band": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": {
+        "n": 120,
+        "min": 41,
+        "max": 42,
+        "median": 42
+      }
+    },
+    "livePathTransitions": 0,
+    "contrastFailures": [],
+    "contrastFailureCount": 0,
+    "errors": []
+  },
+  {
+    "shot": "sends-lanes",
+    "tag": "desktop",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-faithful/shots/sends-lanes-desktop.png",
+    "dataCat": "mono",
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "docOverflow": false,
+    "clipped": [],
+    "innerTextLen": 657,
+    "loginVisible": false,
+    "skeletons": 0,
+    "type": {
+      "distinct": 6,
+      "sizes": {
+        "13px": 39,
+        "20px": 2,
+        "11px": 4,
+        "12px": 7,
+        "56px": 1,
+        "15px": 1
+      },
+      "fractional": [],
+      "glyphSizes": [
+        "20px",
+        "15px",
+        "13px"
+      ]
+    },
+    "heavy": [
+      {
+        "cls": "",
+        "px": 56,
+        "text": "Sends"
+      }
+    ],
+    "nonTabular": [],
+    "accentCount": 16,
+    "accentBy": [
+      [
+        "sc-dot",
+        3
+      ],
+      [
+        "sc-status s-live",
+        3
+      ],
+      [
+        "wb-rj-ic",
+        2
+      ],
+      [
+        "avatar-me",
+        1
+      ],
+      [
+        "wb-rj on",
+        1
+      ],
+      [
+        "wb-rj wb-rj-peer on",
+        1
+      ],
+      [
+        "wb-peer-dot on",
+        1
+      ],
+      [
+        "wb-sync-dot",
+        1
+      ]
+    ],
+    "illegalPills": [],
+    "rails": {
+      "content": null,
+      "contentAll": null,
+      "ideas": null,
+      "contentStatus": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "tailRail": null,
+    "logTailRail": null,
+    "logDenom": null,
+    "band": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "livePathTransitions": 0,
+    "contrastFailures": [],
+    "contrastFailureCount": 0,
+    "errors": []
+  },
+  {
+    "shot": "sends-log-triad",
+    "tag": "desktop",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-faithful/shots/sends-log-triad-desktop.png",
+    "dataCat": "triad",
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "docOverflow": false,
+    "clipped": [],
+    "innerTextLen": 44835,
+    "loginVisible": false,
+    "skeletons": 0,
+    "type": {
+      "distinct": 6,
+      "sizes": {
+        "13px": 142,
+        "20px": 2,
+        "11px": 250,
+        "12px": 247,
+        "56px": 1,
+        "15px": 1
+      },
+      "fractional": [],
+      "glyphSizes": [
+        "20px",
+        "15px",
+        "13px"
+      ]
+    },
+    "heavy": [
+      {
+        "cls": "",
+        "px": 56,
+        "text": "Sends"
+      }
+    ],
+    "nonTabular": [],
+    "accentCount": 10,
+    "accentBy": [
+      [
+        "wb-rj-ic",
+        2
+      ],
+      [
+        "avatar-me",
+        1
+      ],
+      [
+        "wb-rj on",
+        1
+      ],
+      [
+        "wb-rj wb-rj-peer on",
+        1
+      ],
+      [
+        "wb-peer-dot on",
+        1
+      ],
+      [
+        "wb-sync-dot",
+        1
+      ],
+      [
+        "sc-refresh",
+        1
+      ],
+      [
+        "wb-pane-ic asst",
+        1
+      ]
+    ],
+    "illegalPills": [],
+    "rails": {
+      "content": null,
+      "contentAll": null,
+      "ideas": null,
+      "contentStatus": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": {
+        "n": 120,
+        "min": 328,
+        "max": 328,
+        "variance": 0
+      }
+    },
+    "tailRail": null,
+    "logTailRail": {
+      "n": 120,
+      "variance": 0
+    },
+    "logDenom": "Newest 113 of 1,524 sent · 7 of 211 blocked",
+    "band": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": {
+        "n": 120,
+        "min": 41,
+        "max": 42,
+        "median": 42
+      }
+    },
+    "livePathTransitions": 0,
+    "contrastFailures": [],
+    "contrastFailureCount": 0,
+    "errors": []
+  },
+  {
+    "shot": "sends-triad",
+    "tag": "desktop",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-faithful/shots/sends-triad-desktop.png",
+    "dataCat": "triad",
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "docOverflow": false,
+    "clipped": [],
+    "innerTextLen": 1943,
+    "loginVisible": false,
+    "skeletons": 0,
+    "type": {
+      "distinct": 6,
+      "sizes": {
+        "13px": 71,
+        "20px": 10,
+        "11px": 31,
+        "12px": 32,
+        "56px": 1,
+        "15px": 6
+      },
+      "fractional": [],
+      "glyphSizes": [
+        "20px",
+        "15px",
+        "13px"
+      ]
+    },
+    "heavy": [
+      {
+        "cls": "",
+        "px": 56,
+        "text": "Sends"
+      }
+    ],
+    "nonTabular": [],
+    "accentCount": 27,
+    "accentBy": [
+      [
+        "ov-gauge-fill",
+        7
+      ],
+      [
+        "sc-dot",
+        5
+      ],
+      [
+        "wb-rj-ic",
+        2
+      ],
+      [
+        "ov-tile-trend",
+        2
+      ],
+      [
+        "wb-legend-d",
+        2
+      ],
+      [
+        "avatar-me",
+        1
+      ],
+      [
+        "wb-rj on",
+        1
+      ],
+      [
+        "wb-rj wb-rj-peer on",
+        1
+      ]
+    ],
+    "illegalPills": [],
+    "rails": {
+      "content": null,
+      "contentAll": null,
+      "ideas": null,
+      "contentStatus": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "tailRail": null,
+    "logTailRail": null,
+    "logDenom": null,
+    "band": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "livePathTransitions": 0,
+    "contrastFailures": [],
+    "contrastFailureCount": 0,
+    "errors": []
+  },
+  {
+    "shot": "content-triad",
+    "tag": "desktop",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-faithful/shots/content-triad-desktop.png",
+    "dataCat": "triad",
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "docOverflow": false,
+    "clipped": [],
+    "innerTextLen": 37121,
+    "loginVisible": false,
+    "skeletons": 0,
+    "type": {
+      "distinct": 7,
+      "sizes": {
+        "13px": 501,
+        "20px": 3,
+        "11px": 556,
+        "12px": 297,
+        "56px": 1,
+        "30px": 1,
+        "15px": 1
+      },
+      "fractional": [],
+      "glyphSizes": [
+        "20px",
+        "15px",
+        "13px",
+        "11px"
+      ]
+    },
+    "heavy": [
+      {
+        "cls": "",
+        "px": 56,
+        "text": "Content"
+      }
+    ],
+    "nonTabular": [],
+    "accentCount": 12,
+    "accentBy": [
+      [
+        "wb-rj-ic",
+        2
+      ],
+      [
+        "avatar-me",
+        1
+      ],
+      [
+        "wb-rail-grp on",
+        1
+      ],
+      [
+        "wb-rj on wb-rj-lane",
+        1
+      ],
+      [
+        "wb-rj wb-rj-peer on",
+        1
+      ],
+      [
+        "wb-peer-dot on",
+        1
+      ],
+      [
+        "wb-sync-dot",
+        1
+      ],
+      [
+        "wb-cap",
+        1
+      ]
+    ],
+    "illegalPills": [],
+    "rails": {
+      "content": {
+        "n": 77,
+        "min": 256,
+        "max": 256,
+        "variance": 0
+      },
+      "contentAll": {
+        "n": 77,
+        "min": 256,
+        "max": 256,
+        "variance": 0
+      },
+      "ideas": {
+        "n": 59,
+        "min": 256,
+        "max": 256,
+        "variance": 0
+      },
+      "contentStatus": {
+        "n": 18,
+        "min": 256,
+        "max": 256,
+        "variance": 0
+      },
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "tailRail": {
+      "n": 77,
+      "variance": 0
+    },
+    "logTailRail": null,
+    "logDenom": null,
+    "band": {
+      "content": {
+        "n": 77,
+        "min": 40,
+        "max": 41,
+        "median": 40
+      },
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "livePathTransitions": 0,
+    "contrastFailures": [
+      "wb-cap 11px 4.43:1 \"2\""
+    ],
+    "contrastFailureCount": 1,
+    "errors": []
+  },
+  {
+    "shot": "inbox",
+    "tag": "mobile",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-faithful/shots/inbox-mobile.png",
+    "dataCat": "mono",
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "docOverflow": false,
+    "clipped": [],
+    "innerTextLen": 4427,
+    "loginVisible": false,
+    "skeletons": 0,
+    "type": {
+      "distinct": 4,
+      "sizes": {
+        "34px": 1,
+        "13px": 20,
+        "12px": 29,
+        "11px": 40
+      },
+      "fractional": [],
+      "glyphSizes": [
+        "15px",
+        "13px",
+        "20px"
+      ]
+    },
+    "heavy": [
+      {
+        "cls": "",
+        "px": 34,
+        "text": "Inbox"
+      }
+    ],
+    "nonTabular": [],
+    "accentCount": 6,
+    "accentBy": [
+      [
+        "wb-sync-dot",
+        1
+      ],
+      [
+        "avatar-me",
+        1
+      ],
+      [
+        "wb-ok-dot",
+        1
+      ],
+      [
+        "tb on",
+        1
+      ],
+      [
+        "ic bubble",
+        1
+      ],
+      [
+        "l",
+        1
+      ]
+    ],
+    "illegalPills": [],
+    "rails": {
+      "content": null,
+      "contentAll": null,
+      "ideas": null,
+      "contentStatus": null,
+      "inbox": {
+        "n": 13,
+        "min": 56,
+        "max": 56,
+        "variance": 0
+      },
+      "today": null,
+      "sendsLog": null
+    },
+    "tailRail": null,
+    "logTailRail": null,
+    "logDenom": null,
+    "band": {
+      "content": null,
+      "inbox": {
+        "n": 13,
+        "min": 41,
+        "max": 62,
+        "median": 42
+      },
+      "today": null,
+      "sendsLog": null
+    },
+    "livePathTransitions": 0,
+    "contrastFailures": [],
+    "contrastFailureCount": 0,
+    "errors": []
+  },
+  {
+    "shot": "inbox",
+    "tag": "desktop",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-faithful/shots/inbox-desktop.png",
+    "dataCat": "mono",
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "docOverflow": false,
+    "clipped": [],
+    "innerTextLen": 5540,
+    "loginVisible": false,
+    "skeletons": 0,
+    "type": {
+      "distinct": 6,
+      "sizes": {
+        "13px": 34,
+        "20px": 2,
+        "11px": 44,
+        "12px": 35,
+        "56px": 1,
+        "15px": 1
+      },
+      "fractional": [],
+      "glyphSizes": [
+        "20px",
+        "15px",
+        "13px"
+      ]
+    },
+    "heavy": [
+      {
+        "cls": "",
+        "px": 56,
+        "text": "Inbox"
+      }
+    ],
+    "nonTabular": [],
+    "accentCount": 11,
+    "accentBy": [
+      [
+        "avatar-me",
+        2
+      ],
+      [
+        "wb-rj-ic",
+        2
+      ],
+      [
+        "wb-rj on",
+        1
+      ],
+      [
+        "wb-rj wb-rj-peer on",
+        1
+      ],
+      [
+        "wb-peer-dot on",
+        1
+      ],
+      [
+        "wb-sync-dot",
+        1
+      ],
+      [
+        "wb-ok-dot",
+        1
+      ],
+      [
+        "wb-pane-ic asst",
+        1
+      ]
+    ],
+    "illegalPills": [],
+    "rails": {
+      "content": null,
+      "contentAll": null,
+      "ideas": null,
+      "contentStatus": null,
+      "inbox": {
+        "n": 15,
+        "min": 256,
+        "max": 256,
+        "variance": 0
+      },
+      "today": null,
+      "sendsLog": null
+    },
+    "tailRail": null,
+    "logTailRail": null,
+    "logDenom": null,
+    "band": {
+      "content": null,
+      "inbox": {
+        "n": 15,
+        "min": 41,
+        "max": 42,
+        "median": 42
+      },
+      "today": null,
+      "sendsLog": null
+    },
+    "livePathTransitions": 0,
+    "contrastFailures": [],
+    "contrastFailureCount": 0,
+    "errors": []
+  },
+  {
+    "shot": "ops",
+    "tag": "mobile",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-faithful/shots/ops-mobile.png",
+    "dataCat": "mono",
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "docOverflow": false,
+    "clipped": [],
+    "innerTextLen": 294,
+    "loginVisible": false,
+    "skeletons": 0,
+    "type": {
+      "distinct": 5,
+      "sizes": {
+        "34px": 1,
+        "13px": 21,
+        "30px": 1,
+        "20px": 3,
+        "11px": 6
+      },
+      "fractional": [],
+      "glyphSizes": [
+        "15px",
+        "13px",
+        "20px"
+      ]
+    },
+    "heavy": [
+      {
+        "cls": "",
+        "px": 34,
+        "text": "Ops"
+      }
+    ],
+    "nonTabular": [],
+    "accentCount": 9,
+    "accentBy": [
+      [
+        "wb-sync-dot",
+        1
+      ],
+      [
+        "avatar-me",
+        1
+      ],
+      [
+        "wb-otile-n",
+        1
+      ],
+      [
+        "wb-stack-seg",
+        1
+      ],
+      [
+        "wb-ofresh-d",
+        1
+      ],
+      [
+        "btn p",
+        1
+      ],
+      [
+        "tb on",
+        1
+      ],
+      [
+        "ic bubble",
+        1
+      ]
+    ],
+    "illegalPills": [],
+    "rails": {
+      "content": null,
+      "contentAll": null,
+      "ideas": null,
+      "contentStatus": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "tailRail": null,
+    "logTailRail": null,
+    "logDenom": null,
+    "band": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "livePathTransitions": 0,
+    "contrastFailures": [],
+    "contrastFailureCount": 0,
+    "errors": []
+  },
+  {
+    "shot": "ops",
+    "tag": "desktop",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-faithful/shots/ops-desktop.png",
+    "dataCat": "mono",
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "docOverflow": false,
+    "clipped": [],
+    "innerTextLen": 675,
+    "loginVisible": false,
+    "skeletons": 0,
+    "type": {
+      "distinct": 7,
+      "sizes": {
+        "13px": 33,
+        "20px": 5,
+        "11px": 4,
+        "12px": 2,
+        "56px": 1,
+        "30px": 1,
+        "15px": 1
+      },
+      "fractional": [],
+      "glyphSizes": [
+        "20px",
+        "15px",
+        "13px"
+      ]
+    },
+    "heavy": [
+      {
+        "cls": "",
+        "px": 56,
+        "text": "Ops"
+      }
+    ],
+    "nonTabular": [],
+    "accentCount": 14,
+    "accentBy": [
+      [
+        "avatar-me",
+        2
+      ],
+      [
+        "wb-rj-ic",
+        2
+      ],
+      [
+        "wb-rj on",
+        1
+      ],
+      [
+        "wb-rj wb-rj-peer on",
+        1
+      ],
+      [
+        "wb-peer-dot on",
+        1
+      ],
+      [
+        "wb-sync-dot",
+        1
+      ],
+      [
+        "wb-otile-n",
+        1
+      ],
+      [
+        "wb-stack-seg",
+        1
+      ]
+    ],
+    "illegalPills": [],
+    "rails": {
+      "content": null,
+      "contentAll": null,
+      "ideas": null,
+      "contentStatus": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "tailRail": null,
+    "logTailRail": null,
+    "logDenom": null,
+    "band": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "livePathTransitions": 0,
+    "contrastFailures": [],
+    "contrastFailureCount": 0,
+    "errors": []
+  },
+  {
+    "shot": "drafts",
+    "tag": "mobile",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-faithful/shots/drafts-mobile.png",
+    "dataCat": "mono",
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "docOverflow": false,
+    "clipped": [],
+    "innerTextLen": 330,
+    "loginVisible": false,
+    "skeletons": 0,
+    "type": {
+      "distinct": 4,
+      "sizes": {
+        "11px": 8,
+        "12px": 6,
+        "13px": 7,
+        "34px": 1
+      },
+      "fractional": [],
+      "glyphSizes": [
+        "15px",
+        "13px",
+        "20px"
+      ]
+    },
+    "heavy": [
+      {
+        "cls": "",
+        "px": 34,
+        "text": "Drafts"
+      }
+    ],
+    "nonTabular": [],
+    "accentCount": 5,
+    "accentBy": [
+      [
+        "wb-sync-dot",
+        1
+      ],
+      [
+        "avatar-me",
+        1
+      ],
+      [
+        "tb on",
+        1
+      ],
+      [
+        "ic bubble",
+        1
+      ],
+      [
+        "l",
+        1
+      ]
+    ],
+    "illegalPills": [],
+    "rails": {
+      "content": null,
+      "contentAll": null,
+      "ideas": null,
+      "contentStatus": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": {
+        "n": 1,
+        "min": 102,
+        "max": 102,
+        "variance": 0
+      }
+    },
+    "tailRail": null,
+    "logTailRail": {
+      "n": 1,
+      "variance": 0
+    },
+    "logDenom": null,
+    "band": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": {
+        "n": 1,
+        "min": 42,
+        "max": 42,
+        "median": 42
+      }
+    },
+    "livePathTransitions": 0,
+    "contrastFailures": [],
+    "contrastFailureCount": 0,
+    "errors": []
+  },
+  {
+    "shot": "drafts",
+    "tag": "desktop",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-faithful/shots/drafts-desktop.png",
+    "dataCat": "mono",
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "docOverflow": false,
+    "clipped": [],
+    "innerTextLen": 695,
+    "loginVisible": false,
+    "skeletons": 0,
+    "type": {
+      "distinct": 6,
+      "sizes": {
+        "13px": 19,
+        "20px": 2,
+        "11px": 6,
+        "12px": 8,
+        "56px": 1,
+        "15px": 1
+      },
+      "fractional": [],
+      "glyphSizes": [
+        "20px",
+        "15px",
+        "13px"
+      ]
+    },
+    "heavy": [
+      {
+        "cls": "",
+        "px": 56,
+        "text": "Drafts"
+      }
+    ],
+    "nonTabular": [],
+    "accentCount": 11,
+    "accentBy": [
+      [
+        "avatar-me",
+        2
+      ],
+      [
+        "wb-rj-ic",
+        2
+      ],
+      [
+        "wb-rail-grp on",
+        1
+      ],
+      [
+        "wb-rj on wb-rj-lane",
+        1
+      ],
+      [
+        "wb-rj wb-rj-peer on",
+        1
+      ],
+      [
+        "wb-peer-dot on",
+        1
+      ],
+      [
+        "wb-sync-dot",
+        1
+      ],
+      [
+        "wb-pane-ic asst",
+        1
+      ]
+    ],
+    "illegalPills": [],
+    "rails": {
+      "content": null,
+      "contentAll": null,
+      "ideas": null,
+      "contentStatus": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": {
+        "n": 1,
+        "min": 312,
+        "max": 312,
+        "variance": 0
+      }
+    },
+    "tailRail": null,
+    "logTailRail": {
+      "n": 1,
+      "variance": 0
+    },
+    "logDenom": null,
+    "band": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": {
+        "n": 1,
+        "min": 42,
+        "max": 42,
+        "median": 42
+      }
+    },
+    "livePathTransitions": 0,
+    "contrastFailures": [],
+    "contrastFailureCount": 0,
+    "errors": []
+  },
+  {
+    "shot": "settings",
+    "tag": "mobile",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-faithful/shots/settings-mobile.png",
+    "dataCat": "mono",
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "docOverflow": false,
+    "clipped": [],
+    "innerTextLen": 448,
+    "loginVisible": false,
+    "skeletons": 0,
+    "type": {
+      "distinct": 5,
+      "sizes": {
+        "11px": 7,
+        "15px": 1,
+        "34px": 1,
+        "13px": 13,
+        "12px": 2
+      },
+      "fractional": [],
+      "glyphSizes": [
+        "20px"
+      ]
+    },
+    "heavy": [
+      {
+        "cls": "",
+        "px": 34,
+        "text": "Settings"
+      }
+    ],
+    "nonTabular": [],
+    "accentCount": 3,
+    "accentBy": [
+      [
+        "wb-sync-dot",
+        1
+      ],
+      [
+        "avatar-me",
+        1
+      ],
+      [
+        "sw on ",
+        1
+      ]
+    ],
+    "illegalPills": [],
+    "rails": {
+      "content": null,
+      "contentAll": null,
+      "ideas": null,
+      "contentStatus": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "tailRail": null,
+    "logTailRail": null,
+    "logDenom": null,
+    "band": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "livePathTransitions": 0,
+    "contrastFailures": [],
+    "contrastFailureCount": 0,
+    "errors": []
+  },
+  {
+    "shot": "settings",
+    "tag": "desktop",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-faithful/shots/settings-desktop.png",
+    "dataCat": "mono",
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "docOverflow": false,
+    "clipped": [],
+    "innerTextLen": 804,
+    "loginVisible": false,
+    "skeletons": 0,
+    "type": {
+      "distinct": 6,
+      "sizes": {
+        "13px": 25,
+        "20px": 2,
+        "11px": 4,
+        "12px": 4,
+        "56px": 1,
+        "15px": 1
+      },
+      "fractional": [],
+      "glyphSizes": [
+        "20px",
+        "15px",
+        "13px"
+      ]
+    },
+    "heavy": [
+      {
+        "cls": "",
+        "px": 56,
+        "text": "Settings"
+      }
+    ],
+    "nonTabular": [],
+    "accentCount": 11,
+    "accentBy": [
+      [
+        "avatar-me",
+        2
+      ],
+      [
+        "wb-rj-ic",
+        2
+      ],
+      [
+        "wb-rj wb-rj-peer on",
+        1
+      ],
+      [
+        "wb-peer-dot on",
+        1
+      ],
+      [
+        "wb-rj on",
+        1
+      ],
+      [
+        "wb-sync-dot",
+        1
+      ],
+      [
+        "sw on ",
+        1
+      ],
+      [
+        "wb-pane-ic asst",
+        1
+      ]
+    ],
+    "illegalPills": [],
+    "rails": {
+      "content": null,
+      "contentAll": null,
+      "ideas": null,
+      "contentStatus": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "tailRail": null,
+    "logTailRail": null,
+    "logDenom": null,
+    "band": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "livePathTransitions": 0,
+    "contrastFailures": [],
+    "contrastFailureCount": 0,
+    "errors": []
+  },
+  {
+    "shot": "draft-pane",
+    "tag": "desktop",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-faithful/shots/draft-pane-desktop.png",
+    "dataCat": "mono",
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "docOverflow": false,
+    "clipped": [],
+    "innerTextLen": 54225,
+    "loginVisible": false,
+    "skeletons": 0,
+    "type": {
+      "distinct": 6,
+      "sizes": {
+        "13px": 812,
+        "20px": 5,
+        "11px": 573,
+        "12px": 308,
+        "56px": 1,
+        "30px": 1
+      },
+      "fractional": [],
+      "glyphSizes": [
+        "20px",
+        "15px",
+        "13px",
+        "11px"
+      ]
+    },
+    "heavy": [
+      {
+        "cls": "",
+        "px": 56,
+        "text": "Content"
+      }
+    ],
+    "nonTabular": [],
+    "accentCount": 17,
+    "accentBy": [
+      [
+        "wb-rj-ic",
+        2
+      ],
+      [
+        "avatar-me",
+        1
+      ],
+      [
+        "wb-rail-grp on",
+        1
+      ],
+      [
+        "wb-rj on wb-rj-lane",
+        1
+      ],
+      [
+        "wb-rj wb-rj-peer on",
+        1
+      ],
+      [
+        "wb-peer-dot on",
+        1
+      ],
+      [
+        "wb-sync-dot",
+        1
+      ],
+      [
+        "wb-cap",
+        1
+      ]
+    ],
+    "illegalPills": [],
+    "rails": {
+      "content": {
+        "n": 77,
+        "min": 256,
+        "max": 256,
+        "variance": 0
+      },
+      "contentAll": {
+        "n": 77,
+        "min": 256,
+        "max": 256,
+        "variance": 0
+      },
+      "ideas": {
+        "n": 59,
+        "min": 256,
+        "max": 256,
+        "variance": 0
+      },
+      "contentStatus": {
+        "n": 18,
+        "min": 256,
+        "max": 256,
+        "variance": 0
+      },
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "tailRail": {
+      "n": 77,
+      "variance": 0
+    },
+    "logTailRail": null,
+    "logDenom": null,
+    "band": {
+      "content": {
+        "n": 77,
+        "min": 40,
+        "max": 41,
+        "median": 40
+      },
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "livePathTransitions": 0,
+    "contrastFailures": [
+      "wb-cap 11px 4.43:1 \"2\""
+    ],
+    "contrastFailureCount": 1,
+    "errors": []
+  },
+  {
+    "shot": "thread-pane",
+    "tag": "desktop",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-faithful/shots/thread-pane-desktop.png",
+    "dataCat": "mono",
+    "bridgeBg": "#090B0A",
+    "bridgeBlue": "#AEB2B0",
+    "docOverflow": false,
+    "clipped": [],
+    "innerTextLen": 6524,
+    "loginVisible": false,
+    "skeletons": 0,
+    "type": {
+      "distinct": 5,
+      "sizes": {
+        "13px": 48,
+        "20px": 2,
+        "11px": 46,
+        "12px": 35,
+        "56px": 1
+      },
+      "fractional": [],
+      "glyphSizes": [
+        "20px",
+        "15px",
+        "13px"
+      ]
+    },
+    "heavy": [
+      {
+        "cls": "",
+        "px": 56,
+        "text": "Inbox"
+      }
+    ],
+    "nonTabular": [],
+    "accentCount": 21,
+    "accentBy": [
+      [
+        "avatar-me",
+        2
+      ],
+      [
+        "wb-rj-ic",
+        2
+      ],
+      [
+        "wb-lad-dot on",
+        2
+      ],
+      [
+        "wb-lad-bar on",
+        2
+      ],
+      [
+        "b out",
+        2
+      ],
+      [
+        "wb-rj on",
+        1
+      ],
+      [
+        "wb-rj wb-rj-peer on",
+        1
+      ],
+      [
+        "wb-peer-dot on",
+        1
+      ]
+    ],
+    "illegalPills": [],
+    "rails": {
+      "content": null,
+      "contentAll": null,
+      "ideas": null,
+      "contentStatus": null,
+      "inbox": {
+        "n": 15,
+        "min": 256,
+        "max": 256,
+        "variance": 0
+      },
+      "today": null,
+      "sendsLog": null
+    },
+    "tailRail": null,
+    "logTailRail": null,
+    "logDenom": null,
+    "band": {
+      "content": null,
+      "inbox": {
+        "n": 15,
+        "min": 41,
+        "max": 42,
+        "median": 42
+      },
+      "today": null,
+      "sendsLog": null
+    },
+    "livePathTransitions": 0,
+    "contrastFailures": [],
+    "contrastFailureCount": 0,
+    "errors": []
+  },
+  {
+    "shot": "content-light",
+    "tag": "desktop",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-faithful/shots/content-light-desktop.png",
+    "dataCat": "mono",
+    "bridgeBg": "#F4F6F5",
+    "bridgeBlue": "#3A3F3D",
+    "docOverflow": false,
+    "clipped": [],
+    "innerTextLen": 37121,
+    "loginVisible": false,
+    "skeletons": 0,
+    "type": {
+      "distinct": 7,
+      "sizes": {
+        "13px": 501,
+        "20px": 3,
+        "11px": 556,
+        "12px": 297,
+        "56px": 1,
+        "30px": 1,
+        "15px": 1
+      },
+      "fractional": [],
+      "glyphSizes": [
+        "20px",
+        "15px",
+        "13px",
+        "11px"
+      ]
+    },
+    "heavy": [
+      {
+        "cls": "",
+        "px": 56,
+        "text": "Content"
+      }
+    ],
+    "nonTabular": [],
+    "accentCount": 12,
+    "accentBy": [
+      [
+        "wb-rj-ic",
+        2
+      ],
+      [
+        "avatar-me",
+        1
+      ],
+      [
+        "wb-rail-grp on",
+        1
+      ],
+      [
+        "wb-rj on wb-rj-lane",
+        1
+      ],
+      [
+        "wb-rj wb-rj-peer on",
+        1
+      ],
+      [
+        "wb-peer-dot on",
+        1
+      ],
+      [
+        "wb-sync-dot",
+        1
+      ],
+      [
+        "wb-cap",
+        1
+      ]
+    ],
+    "illegalPills": [],
+    "rails": {
+      "content": {
+        "n": 77,
+        "min": 256,
+        "max": 256,
+        "variance": 0
+      },
+      "contentAll": {
+        "n": 77,
+        "min": 256,
+        "max": 256,
+        "variance": 0
+      },
+      "ideas": {
+        "n": 59,
+        "min": 256,
+        "max": 256,
+        "variance": 0
+      },
+      "contentStatus": {
+        "n": 18,
+        "min": 256,
+        "max": 256,
+        "variance": 0
+      },
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "tailRail": {
+      "n": 77,
+      "variance": 0
+    },
+    "logTailRail": null,
+    "logDenom": null,
+    "band": {
+      "content": {
+        "n": 77,
+        "min": 40,
+        "max": 41,
+        "median": 40
+      },
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "livePathTransitions": 0,
+    "contrastFailures": [
+      "wb-cap 11px 4.43:1 \"2\""
+    ],
+    "contrastFailureCount": 1,
+    "errors": []
+  },
+  {
+    "shot": "sends-light",
+    "tag": "desktop",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-faithful/shots/sends-light-desktop.png",
+    "dataCat": "mono",
+    "bridgeBg": "#F4F6F5",
+    "bridgeBlue": "#3A3F3D",
+    "docOverflow": false,
+    "clipped": [],
+    "innerTextLen": 1943,
+    "loginVisible": false,
+    "skeletons": 0,
+    "type": {
+      "distinct": 6,
+      "sizes": {
+        "13px": 71,
+        "20px": 10,
+        "11px": 31,
+        "12px": 32,
+        "56px": 1,
+        "15px": 6
+      },
+      "fractional": [],
+      "glyphSizes": [
+        "20px",
+        "15px",
+        "13px"
+      ]
+    },
+    "heavy": [
+      {
+        "cls": "",
+        "px": 56,
+        "text": "Sends"
+      }
+    ],
+    "nonTabular": [],
+    "accentCount": 24,
+    "accentBy": [
+      [
+        "ov-gauge-fill",
+        7
+      ],
+      [
+        "sc-dot",
+        5
+      ],
+      [
+        "wb-rj-ic",
+        2
+      ],
+      [
+        "wb-legend-d",
+        2
+      ],
+      [
+        "avatar-me",
+        1
+      ],
+      [
+        "wb-rj on",
+        1
+      ],
+      [
+        "wb-rj wb-rj-peer on",
+        1
+      ],
+      [
+        "wb-peer-dot on",
+        1
+      ]
+    ],
+    "illegalPills": [],
+    "rails": {
+      "content": null,
+      "contentAll": null,
+      "ideas": null,
+      "contentStatus": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "tailRail": null,
+    "logTailRail": null,
+    "logDenom": null,
+    "band": {
+      "content": null,
+      "inbox": null,
+      "today": null,
+      "sendsLog": null
+    },
+    "livePathTransitions": 0,
+    "contrastFailures": [],
+    "contrastFailureCount": 0,
+    "errors": []
+  }
+]

@@ -1,0 +1,197 @@
+{
+  "filterBlockCount": 2,
+  "totalFilterHeight": 1068,
+  "firstFilterRect": {
+    "top": 633,
+    "bottom": 1439,
+    "height": 806
+  },
+  "rowsRect": {
+    "top": 141,
+    "height": 759
+  },
+  "groups": [
+    {
+      "label": "Stage",
+      "chipCount": 5,
+      "chips": [
+        "Published\n109",
+        "Archived\n39",
+        "Needs review\n19",
+        "Errors\n4",
+        "Scheduled\n2"
+      ]
+    },
+    {
+      "label": "Kind",
+      "chipCount": 4,
+      "chips": [
+        "single_image\n86",
+        "text\n73",
+        "carousel\n13",
+        "video\n1"
+      ]
+    },
+    {
+      "label": "Pillar",
+      "chipCount": 5,
+      "chips": [
+        "methodology\n60",
+        "translator\n39",
+        "teardown\n19",
+        "personal\n16",
+        "case_study\n10"
+      ]
+    },
+    {
+      "label": "Structure",
+      "chipCount": 8,
+      "chips": [
+        "HOT TAKE\n11",
+        "TEARDOWN\n9",
+        "CONFESSIONAL\n7",
+        "DATA-LED\n6",
+        "HOW-TO / DECLARATIVE\n4",
+        "STORY\n4"
+      ]
+    },
+    {
+      "label": "Image style",
+      "chipCount": 7,
+      "chips": [
+        "Concept Visual\n71",
+        "Framework Diagram\n24",
+        "Stat Card\n21",
+        "Before/After\n10",
+        "Brand Newsjack\n3",
+        "Lifestyle Photo\n1"
+      ]
+    },
+    {
+      "label": "Hook",
+      "chipCount": 14,
+      "chips": [
+        "story_opener\n19",
+        "data_led\n18",
+        "specific_receipt\n15",
+        "other\n12",
+        "confessional\n11",
+        "quote_cold_open\n10"
+      ]
+    },
+    {
+      "label": "Source",
+      "chipCount": 19,
+      "chips": [
+        "Client Calls\n31",
+        "Kyle call\n30",
+        "Web Research\n29",
+        "Breaking news\n17",
+        "Reddit\n8",
+        "Ivan call\n7"
+      ]
+    },
+    {
+      "label": "Funnel",
+      "chipCount": 3,
+      "chips": [
+        "buyers\n63",
+        "reach\n52",
+        "trust\n45"
+      ]
+    },
+    {
+      "label": "Experiment",
+      "chipCount": 2,
+      "chips": [
+        "text\n29",
+        "text_image\n17"
+      ]
+    },
+    {
+      "label": "QA verdict",
+      "chipCount": 6,
+      "chips": [
+        "PASS\n95",
+        "REWRITE_OK\n32",
+        "QA_BLOCKED\n10",
+        "FAIL\n8",
+        "NEEDS_REGENERATE\n5",
+        "APPROVE\n3"
+      ]
+    },
+    {
+      "label": "QA score",
+      "chipCount": 4,
+      "chips": [
+        "Unscored\n82",
+        "60–79\n48",
+        "80+\n30",
+        "Under 60\n13"
+      ]
+    },
+    {
+      "label": "Image",
+      "chipCount": 2,
+      "chips": [
+        "Has image\n104",
+        "No image\n69"
+      ]
+    },
+    {
+      "label": "Regenerated",
+      "chipCount": 1,
+      "chips": [
+        "Regenerated\n10"
+      ]
+    },
+    {
+      "label": "Evidence",
+      "chipCount": 1,
+      "chips": [
+        "Backfilled\n57"
+      ]
+    },
+    {
+      "label": "Status",
+      "chipCount": 7,
+      "chips": [
+        "published\n40",
+        "pending\n37",
+        "disqualified\n31",
+        "review\n9",
+        "complete\n2",
+        "error\n1"
+      ]
+    },
+    {
+      "label": "Format",
+      "chipCount": 13,
+      "chips": [
+        "checklist\n61",
+        "Guide\n15",
+        "Interactive Assessment\n12",
+        "Checklist\n8",
+        "AI Kit\n6",
+        "N8N Workflow\n6"
+      ]
+    },
+    {
+      "label": "Landing URL",
+      "chipCount": 2,
+      "chips": [
+        "No landing URL\n114",
+        "Has landing URL\n7"
+      ]
+    },
+    {
+      "label": "Resource URL",
+      "chipCount": 2,
+      "chips": [
+        "No resource URL\n77",
+        "Has resource URL\n44"
+      ]
+    }
+  ],
+  "totalChips": 105
+}

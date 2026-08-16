@@ -1,0 +1,18 @@
+import { chromium } from 'playwright'
+import { readFileSync } from 'node:fs'
+const sess = readFileSync('.session.json','utf8')
+const b = await chromium.launch()
+const pg = await (await b.newContext({viewport:{width:1440,height:900}})).newPage()
+await pg.goto('http://localhost:5431/', {waitUntil:'domcontentloaded'})
+await pg.evaluate(s => localStorage.setItem('sb-bjbvqvzbzczjbatgmccb-auth-token', s), sess)
+await pg.goto('http://localhost:5431/#exp/v2/today', {waitUntil:'domcontentloaded'})
+await pg.reload({waitUntil:'domcontentloaded'})
+await pg.waitForTimeout(5000)
+await pg.locator('.chips').first().screenshot({path:'/tmp/chips-wb.png'})
+// stock app chips too (default app regression)
+await pg.goto('http://localhost:5431/#today', {waitUntil:'domcontentloaded'})
+await pg.reload({waitUntil:'domcontentloaded'})
+await pg.waitForTimeout(4000)
+const c = await pg.locator('.chips').first()
+if (await c.count()) await c.screenshot({path:'/tmp/chips-stock.png'})
+await b.close()

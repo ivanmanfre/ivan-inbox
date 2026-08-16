@@ -1,0 +1,329 @@
+{
+  "bodyLen1440": 8906,
+  "at1440": {
+    "filterBlocks": 2,
+    "blockHeights": [
+      100,
+      68
+    ],
+    "totalFilterHeight": 168,
+    "firstFilterTop": 633,
+    "firstCardY": 797,
+    "cardsInFirstViewport": 2,
+    "rowsTop": 141,
+    "pills": [
+      {
+        "t": "Stage: Any ⌄",
+        "h": 26
+      },
+      {
+        "t": "Kind: Any ⌄",
+        "h": 26
+      },
+      {
+        "t": "Pillar: Any ⌄",
+        "h": 26
+      },
+      {
+        "t": "Source: Any ⌄",
+        "h": 26
+      },
+      {
+        "t": "QA verdict: Any ⌄",
+        "h": 26
+      },
+      {
+        "t": "Filters ⌄",
+        "h": 26
+      },
+      {
+        "t": "Status: Any ⌄",
+        "h": 26
+      },
+      {
+        "t": "Format: Any ⌄",
+        "h": 26
+      },
+      {
+        "t": "Filters ⌄",
+        "h": 26
+      }
+    ],
+    "pillCount": 9,
+    "legacyChipsInFilterRow": 0,
+    "legacyGroupsInFilterRow": 0,
+    "searchFields": 2,
+    "docOverflow": 0,
+    "pillsScroller": {
+      "scrollWidth": 329,
+      "clientWidth": 329,
+      "scrollable": false
+    }
+  },
+  "panelOpen": {
+    "h": 183,
+    "w": 210,
+    "optCount": 20,
+    "opts": [
+      "Any source",
+      "Client Calls 31",
+      "Kyle call 30",
+      "Web Research 29",
+      "Breaking news 17",
+      "Reddit 8",
+      "Ivan call 7",
+      "News / HN 7"
+    ]
+  },
+  "filterApplied": {
+    "cardsBefore": 66,
+    "cards": 48,
+    "note": "31 of 173 drafts shown",
+    "pills": [
+      "Stage: Any ⌄",
+      "Kind: Any ⌄",
+      "Pillar: Any ⌄",
+      "Source: Client Calls ⌄",
+      "QA verdict: Any ⌄",
+      "Filters ⌄",
+      "Status: Any ⌄",
+      "Format: Any ⌄",
+      "Filters ⌄"
+    ],
+    "ls": [
+      "wb-section:content.posts.ivan"
+    ],
+    "lsVal": "{\"v\":1,\"filters\":{\"source\":\"Client Calls\"},\"q\":\"\"}"
+  },
+  "twoFacets": {
+    "cards": 48,
+    "note": "16 of 173 drafts shown",
+    "lsVal": "{\"v\":1,\"filters\":{\"source\":\"Client Calls\",\"kind\":\"single_image\"},\"q\":\"\"}"
+  },
+  "searched": {
+    "cards": 48,
+    "note": "16 of 173 drafts shown",
+    "lsVal": "{\"v\":1,\"filters\":{\"source\":\"Client Calls\",\"kind\":\"single_image\"},\"q\":\"a\"}"
+  },
+  "afterReload": {
+    "pills": [
+      "Stage: Any ⌄",
+      "Kind: single_image ⌄",
+      "Pillar: Any ⌄",
+      "Source: Client Calls ⌄",
+      "QA verdict: Any ⌄",
+      "Filters ⌄",
+      "Status: Any ⌄",
+      "Format: Any ⌄",
+      "Filters ⌄"
+    ],
+    "q": "a",
+    "note": "16 of 173 drafts shown"
+  },
+  "mattan": {
+    "pills": [
+      "Stage: Any ⌄",
+      "Kind: Any ⌄",
+      "Pillar: Any ⌄",
+      "Source: Any ⌄",
+      "QA verdict: Any ⌄",
+      "Filters ⌄",
+      "Status: Any ⌄",
+      "Format: Any ⌄",
+      "Filters ⌄"
+    ],
+    "q": "",
+    "filterHeights": [
+      100,
+      68
+    ],
+    "firstCardY": 289
+  },
+  "backToIvan": {
+    "pills": [
+      "Stage: Any ⌄",
+      "Kind: single_image ⌄",
+      "Pillar: Any ⌄",
+      "Source: Client Calls ⌄",
+      "QA verdict: Any ⌄",
+      "Filters ⌄",
+      "Status: Any ⌄",
+      "Format: Any ⌄",
+      "Filters ⌄"
+    ],
+    "q": "a"
+  },
+  "cleared": {
+    "ls": null,
+    "note": "173 drafts"
+  },
+  "at1440clean": {
+    "filterBlocks": 2,
+    "blockHeights": [
+      100,
+      68
+    ],
+    "totalFilterHeight": 168,
+    "firstFilterTop": 633,
+    "firstCardY": 797,
+    "cardsInFirstViewport": 2,
+    "rowsTop": 141,
+    "pills": [
+      {
+        "t": "Stage: Any ⌄",
+        "h": 26
+      },
+      {
+        "t": "Kind: Any ⌄",
+        "h": 26
+      },
+      {
+        "t": "Pillar: Any ⌄",
+        "h": 26
+      },
+      {
+        "t": "Source: Any ⌄",
+        "h": 26
+      },
+      {
+        "t": "QA verdict: Any ⌄",
+        "h": 26
+      },
+      {
+        "t": "Filters ⌄",
+        "h": 26
+      },
+      {
+        "t": "Status: Any ⌄",
+        "h": 26
+      },
+      {
+        "t": "Format: Any ⌄",
+        "h": 26
+      },
+      {
+        "t": "Filters ⌄",
+        "h": 26
+      }
+    ],
+    "pillCount": 9,
+    "legacyChipsInFilterRow": 0,
+    "legacyGroupsInFilterRow": 0,
+    "searchFields": 2,
+    "docOverflow": 0,
+    "pillsScroller": {
+      "scrollWidth": 329,
+      "clientWidth": 329,
+      "scrollable": false
+    }
+  },
+  "census": {
+    "accent": 24,
+    "sizes": [
+      "11px",
+      "12px",
+      "13px",
+      "15px",
+      "20px",
+      "30px",
+      "56px",
+      "9px"
+    ],
+    "sizeCount": 8,
+    "heavy": 1,
+    "heavyEls": [
+      [
+        "",
+        "56px"
+      ]
+    ],
+    "unlicensedPillsInNewChrome": [
+      "wb-fpill ct-fpill",
+      "wb-fpill ct-fpill",
+      "wb-fpill ct-fpill",
+      "wb-fpill ct-fpill",
+      "wb-fpill ct-fpill",
+      "wb-fpill ct-fpill",
+      "wb-fpill ct-fpill",
+      "wb-fpill ct-fpill",
+      "wb-fpill ct-fpill"
+    ]
+  },
+  "consoleErrors1440": [],
+  "bodyLen390": 8529,
+  "at390": {
+    "filterBlocks": 2,
+    "blockHeights": [
+      114,
+      114
+    ],
+    "totalFilterHeight": 228,
+    "firstFilterTop": 701,
+    "firstCardY": 879,
+    "cardsInFirstViewport": 0,
+    "rowsTop": 155,
+    "pills": [
+      {
+        "t": "Stage: Any ⌄",
+        "h": 32
+      },
+      {
+        "t": "Kind: Any ⌄",
+        "h": 32
+      },
+      {
+        "t": "Pillar: Any ⌄",
+        "h": 32
+      },
+      {
+        "t": "Source: Any ⌄",
+        "h": 32
+      },
+      {
+        "t": "QA verdict: Any ⌄",
+        "h": 32
+      },
+      {
+        "t": "Filters ⌄",
+        "h": 32
+      },
+      {
+        "t": "Status: Any ⌄",
+        "h": 32
+      },
+      {
+        "t": "Format: Any ⌄",
+        "h": 32
+      },
+      {
+        "t": "Filters ⌄",
+        "h": 32
+      }
+    ],
+    "pillCount": 9,
+    "legacyChipsInFilterRow": 0,
+    "legacyGroupsInFilterRow": 0,
+    "searchFields": 2,
+    "docOverflow": 0,
+    "pillsScroller": {
+      "scrollWidth": 628,
+      "clientWidth": 358,
+      "scrollable": true
+    }
+  },
+  "pillScrollProof": {
+    "start": 0,
+    "after": 270,
+    "scrollWidth": 628,
+    "clientWidth": 358
+  },
+  "sheet": {
+    "h": 333,
+    "rowCount": 6,
+    "minRowH": 44,
+    "grab": 26,
+    "title": "Stage"
+  },
+  "sheetClosed": true,
+  "consoleErrors390": []
+}

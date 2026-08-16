@@ -1,0 +1,8983 @@
+{
+  "routes": [
+    {
+      "route": "today",
+      "tag": "mobile",
+      "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-instrument/today-mobile.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "loadingGone": true,
+      "settled": true,
+      "bridgeBg": "#090B0A",
+      "bridgeBlue": "#AEB2B0",
+      "docOverflowX": false,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "innerTextLen": 2733,
+      "skeletons": 0,
+      "stillLoading": false,
+      "type": {
+        "distinct": 5,
+        "sizes": {
+          "34px": 1,
+          "13px": 64,
+          "12px": 5,
+          "30px": 1,
+          "11px": 23
+        },
+        "fractional": [],
+        "glyphSizes": [
+          "15px",
+          "13px",
+          "20px"
+        ]
+      },
+      "heavy": [
+        {
+          "cls": "",
+          "px": 34,
+          "text": "Today"
+        }
+      ],
+      "nonTabular": [],
+      "accentCount": 17,
+      "pillEls": [
+        {
+          "tag": "SPAN",
+          "cls": "wb-sync-dot",
+          "w": 7,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-refresh",
+          "w": 34,
+          "h": 34,
+          "text": "↻"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 43,
+          "h": 30,
+          "text": "All"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip on",
+          "w": 52,
+          "h": 30,
+          "text": "Ivan"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 53,
+          "h": 30,
+          "text": "Rise"
+        },
+        {
+          "tag": "DIV",
+          "cls": "td-stack",
+          "w": 155,
+          "h": 9,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "td-lg-d",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "td-lg-d",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "td-lg-d",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "td-zmark hot",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g4",
+          "w": 42,
+          "h": 42,
+          "text": "NOin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "td-zmark pending",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "td-zmark done",
+          "w": 8,
+          "h": 8,
+          "text": "✓"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "td-zmark pending",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "td-bar",
+          "w": 330,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "td-bar-f",
+          "w": 158,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "td-bar",
+          "w": 330,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "td-bar-f",
+          "w": 86,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "td-bar",
+          "w": 330,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "td-bar-f",
+          "w": 23,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "td-bar",
+          "w": 330,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "td-bar-f",
+          "w": 3,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "cnt neutral",
+          "w": 26,
+          "h": 22,
+          "text": "56"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "cnt",
+          "w": 26,
+          "h": 22,
+          "text": "19"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "cnt",
+          "w": 18,
+          "h": 22,
+          "text": "2"
+        }
+      ],
+      "rails": {
+        "content": null,
+        "contentIdeas": null,
+        "inbox": null,
+        "today": {
+          "n": 1,
+          "min": 56,
+          "max": 56,
+          "variance": 0
+        },
+        "drafts": null,
+        "sendsLog": null
+      },
+      "tailRails": {
+        "content": null,
+        "sendsLog": null
+      },
+      "bands": {
+        "content": null,
+        "inbox": null,
+        "today": {
+          "n": 1,
+          "min": 42,
+          "max": 42
+        },
+        "sendsLog": null
+      },
+      "contrastFailCount": 0,
+      "contrastFails": [],
+      "contrastSampleAll": [
+        {
+          "cls": "wb-gear",
+          "px": 15,
+          "bold": false,
+          "ratio": 9.21,
+          "bar": 4.5,
+          "text": "⚙︎"
+        },
+        {
+          "cls": "",
+          "px": 34,
+          "bold": true,
+          "ratio": 18.15,
+          "bar": 3,
+          "text": "Today"
+        },
+        {
+          "cls": "td-date",
+          "px": 13,
+          "bold": false,
+          "ratio": 9.21,
+          "bar": 4.5,
+          "text": "Sunday, August 2"
+        },
+        {
+          "cls": "sc-refresh",
+          "px": 13,
+          "bold": false,
+          "ratio": 5.75,
+          "bar": 4.5,
+          "text": "↻"
+        },
+        {
+          "cls": "chip ",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "All"
+        },
+        {
+          "cls": "chip on",
+          "px": 12,
+          "bold": false,
+          "ratio": 14.27,
+          "bar": 4.5,
+          "text": "Ivan"
+        },
+        {
+          "cls": "chip ",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "Rise"
+        },
+        {
+          "cls": "td-big",
+          "px": 30,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 3,
+          "text": "12"
+        },
+        {
+          "cls": "td-big-c",
+          "px": 11,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "things on your plate"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "1"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "11"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "0"
+        },
+        {
+          "cls": "td-sync ",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Synced 22:49 · now"
+        },
+        {
+          "cls": "td-zn",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "01"
+        },
+        {
+          "cls": "td-zt",
+          "px": 11,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "Urgent"
+        },
+        {
+          "cls": "td-zc hot",
+          "px": 11,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "0/1 cleared"
+        },
+        {
+          "cls": "badge",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.94,
+          "bar": 4.5,
+          "text": "in"
+        },
+        {
+          "cls": "td-nm",
+          "px": 13,
+          "bold": false,
+          "ratio": 18.15,
+          "bar": 4.5,
+          "text": "Nour Siakir Oglou"
+        },
+        {
+          "cls": "td-kind reply",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.94,
+          "bar": 4.5,
+          "text": "Reply"
+        },
+        {
+          "cls": "td-snip",
+          "px": 12,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "Hi Iván, I'm reaching "
+        },
+        {
+          "cls": "td-tm",
+          "px": 12,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "2d"
+        },
+        {
+          "cls": "td-aging",
+          "px": 13,
+          "bold": false,
+          "ratio": 9.6,
+          "bar": 4.5,
+          "text": "aging out: 6 — older t"
+        },
+        {
+          "cls": "td-zn",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "02"
+        },
+        {
+          "cls": "td-zt",
+          "px": 11,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "Approve"
+        },
+        {
+          "cls": "td-zc pending",
+          "px": 11,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "0/11 cleared"
+        },
+        {
+          "cls": "td-qn",
+          "px": 13,
+          "bold": false,
+          "ratio": 6.17,
+          "bar": 4.5,
+          "text": "3"
+        },
+        {
+          "cls": "td-qt",
+          "px": 13,
+          "bold": false,
+          "ratio": 18.15,
+          "bar": 4.5,
+          "text": "DM drafts"
+        },
+        {
+          "cls": "td-qs",
+          "px": 13,
+          "bold": false,
+          "ratio": 9.21,
+          "bar": 4.5,
+          "text": "Vuk Sretenovic — That'"
+        },
+        {
+          "cls": "td-qmeta",
+          "px": 13,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "3 waiting · oldest dra"
+        },
+        {
+          "cls": "td-qown",
+          "px": 13,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "live rows and Approve "
+        },
+        {
+          "cls": "td-chev",
+          "px": 13,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "›"
+        },
+        {
+          "cls": "td-qn",
+          "px": 13,
+          "bold": false,
+          "ratio": 6.17,
+          "bar": 4.5,
+          "text": "6"
+        },
+        {
+          "cls": "td-qt",
+          "px": 13,
+          "bold": false,
+          "ratio": 18.15,
+          "bar": 4.5,
+          "text": "Comment drafts"
+        },
+        {
+          "cls": "td-qs",
+          "px": 13,
+          "bold": false,
+          "ratio": 9.21,
+          "bar": 4.5,
+          "text": "Chad Drew — Same thing"
+        },
+        {
+          "cls": "td-qmeta",
+          "px": 13,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "6 targets · oldest dra"
+        },
+        {
+          "cls": "td-qown",
+          "px": 13,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "posting is live on Lin"
+        },
+        {
+          "cls": "td-chev",
+          "px": 13,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "›"
+        },
+        {
+          "cls": "td-qn",
+          "px": 13,
+          "bold": false,
+          "ratio": 6.17,
+          "bar": 4.5,
+          "text": "2"
+        },
+        {
+          "cls": "td-qt",
+          "px": 13,
+          "bold": false,
+          "ratio": 18.15,
+          "bar": 4.5,
+          "text": "Feed drafts"
+        },
+        {
+          "cls": "td-qs",
+          "px": 13,
+          "bold": false,
+          "ratio": 9.21,
+          "bar": 4.5,
+          "text": "Shayne Williams (A) — "
+        }
+      ],
+      "catAttr": "triad",
+      "logDenom": null
+    },
+    {
+      "route": "today",
+      "tag": "desktop",
+      "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-instrument/today-desktop.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "loadingGone": true,
+      "settled": true,
+      "bridgeBg": "#090B0A",
+      "bridgeBlue": "#AEB2B0",
+      "docOverflowX": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "innerTextLen": 3098,
+      "skeletons": 0,
+      "stillLoading": false,
+      "type": {
+        "distinct": 7,
+        "sizes": {
+          "13px": 76,
+          "20px": 2,
+          "11px": 21,
+          "12px": 7,
+          "56px": 1,
+          "30px": 1,
+          "15px": 1
+        },
+        "fractional": [],
+        "glyphSizes": [
+          "20px",
+          "15px",
+          "13px"
+        ]
+      },
+      "heavy": [
+        {
+          "cls": "",
+          "px": 56,
+          "text": "Today"
+        }
+      ],
+      "nonTabular": [],
+      "accentCount": 22,
+      "pillEls": [
+        {
+          "tag": "SPAN",
+          "cls": "avatar-me",
+          "w": 34,
+          "h": 34,
+          "text": "IM"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-rj-n",
+          "w": 29,
+          "h": 22,
+          "text": "56"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-rj-n",
+          "w": 29,
+          "h": 22,
+          "text": "19"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-rj-n",
+          "w": 22,
+          "h": 22,
+          "text": "2"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-peer-dot on",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-sync-dot",
+          "w": 7,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-refresh",
+          "w": 34,
+          "h": 34,
+          "text": "↻"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 43,
+          "h": 30,
+          "text": "All"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip on",
+          "w": 52,
+          "h": 30,
+          "text": "Ivan"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 53,
+          "h": 30,
+          "text": "Rise"
+        },
+        {
+          "tag": "DIV",
+          "cls": "td-stack",
+          "w": 385,
+          "h": 9,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "td-lg-d",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "td-lg-d",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "td-lg-d",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "td-zmark hot",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g4",
+          "w": 42,
+          "h": 42,
+          "text": "NOin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "td-zmark pending",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "td-zmark done",
+          "w": 8,
+          "h": 8,
+          "text": "✓"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "td-zmark pending",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "td-bar",
+          "w": 536,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "td-bar-f",
+          "w": 257,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "td-bar",
+          "w": 536,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "td-bar-f",
+          "w": 139,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "td-bar",
+          "w": 536,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "td-bar-f",
+          "w": 37,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "td-bar",
+          "w": 536,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "td-bar-f",
+          "w": 5,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-pane-ic asst",
+          "w": 28,
+          "h": 28,
+          "text": "✳"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-live",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "cmic",
+          "w": 38,
+          "h": 38,
+          "text": "🎙"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "csend",
+          "w": 38,
+          "h": 38,
+          "text": "↑"
+        }
+      ],
+      "rails": {
+        "content": null,
+        "contentIdeas": null,
+        "inbox": null,
+        "today": {
+          "n": 1,
+          "min": 272,
+          "max": 272,
+          "variance": 0
+        },
+        "drafts": null,
+        "sendsLog": null
+      },
+      "tailRails": {
+        "content": null,
+        "sendsLog": null
+      },
+      "bands": {
+        "content": null,
+        "inbox": null,
+        "today": {
+          "n": 1,
+          "min": 42,
+          "max": 42
+        },
+        "sendsLog": null
+      },
+      "contrastFailCount": 0,
+      "contrastFails": [],
+      "contrastSampleAll": [
+        {
+          "cls": "avatar-me",
+          "px": 13,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "IM"
+        },
+        {
+          "cls": "wb-rail-ttl",
+          "px": 20,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "Workbench"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 5.33,
+          "bar": 4.5,
+          "text": "☼"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 15.66,
+          "bar": 4.5,
+          "text": "Today"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "◉"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Inbox"
+        },
+        {
+          "cls": "wb-rj-n",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.24,
+          "bar": 4.5,
+          "text": "56"
+        },
+        {
+          "cls": "wb-rail-grp-l",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Work"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "✦"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "DMs"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "▤"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Content"
+        },
+        {
+          "cls": "wb-rj-n",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.24,
+          "bar": 4.5,
+          "text": "19"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "↑"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Sends"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "◈"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Ops"
+        },
+        {
+          "cls": "wb-rj-n",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.24,
+          "bar": 4.5,
+          "text": "2"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 5.75,
+          "bar": 4.5,
+          "text": "✳"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "Claude"
+        },
+        {
+          "cls": "wb-rail-hint",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Docked beside your wor"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "⚙︎"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Settings"
+        },
+        {
+          "cls": "wb-sync-t",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "just now"
+        },
+        {
+          "cls": "wb-sync-r",
+          "px": 15,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "↻"
+        },
+        {
+          "cls": "",
+          "px": 56,
+          "bold": true,
+          "ratio": 18.15,
+          "bar": 3,
+          "text": "Today"
+        },
+        {
+          "cls": "td-date",
+          "px": 13,
+          "bold": false,
+          "ratio": 9.21,
+          "bar": 4.5,
+          "text": "Sunday, August 2"
+        },
+        {
+          "cls": "sc-refresh",
+          "px": 13,
+          "bold": false,
+          "ratio": 5.75,
+          "bar": 4.5,
+          "text": "↻"
+        },
+        {
+          "cls": "chip ",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "All"
+        },
+        {
+          "cls": "chip on",
+          "px": 12,
+          "bold": false,
+          "ratio": 14.27,
+          "bar": 4.5,
+          "text": "Ivan"
+        },
+        {
+          "cls": "chip ",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "Rise"
+        },
+        {
+          "cls": "td-big",
+          "px": 30,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 3,
+          "text": "12"
+        },
+        {
+          "cls": "td-big-c",
+          "px": 11,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "things on your plate"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "1"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "11"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "0"
+        },
+        {
+          "cls": "td-sync ",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Synced 22:49 · now"
+        },
+        {
+          "cls": "td-zn",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "01"
+        },
+        {
+          "cls": "td-zt",
+          "px": 11,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "Urgent"
+        },
+        {
+          "cls": "td-zc hot",
+          "px": 11,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "0/1 cleared"
+        }
+      ],
+      "catAttr": "triad",
+      "logDenom": null
+    },
+    {
+      "route": "inbox",
+      "tag": "mobile",
+      "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-instrument/inbox-mobile.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "loadingGone": true,
+      "settled": true,
+      "bridgeBg": "#090B0A",
+      "bridgeBlue": "#AEB2B0",
+      "docOverflowX": false,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "innerTextLen": 8684,
+      "skeletons": 0,
+      "stillLoading": false,
+      "type": {
+        "distinct": 4,
+        "sizes": {
+          "34px": 1,
+          "13px": 20,
+          "12px": 29,
+          "11px": 44
+        },
+        "fractional": [],
+        "glyphSizes": [
+          "15px",
+          "13px",
+          "20px"
+        ]
+      },
+      "heavy": [
+        {
+          "cls": "",
+          "px": 34,
+          "text": "Inbox"
+        }
+      ],
+      "nonTabular": [],
+      "accentCount": 6,
+      "pillEls": [
+        {
+          "tag": "SPAN",
+          "cls": "wb-sync-dot",
+          "w": 7,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "avatar-me",
+          "w": 34,
+          "h": 34,
+          "text": "IM"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip on",
+          "w": 63,
+          "h": 30,
+          "text": "All ·56"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 52,
+          "h": 30,
+          "text": "Ivan"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 53,
+          "h": 30,
+          "text": "Rise"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 59,
+          "h": 30,
+          "text": "Email"
+        },
+        {
+          "tag": "DIV",
+          "cls": "wb-stack",
+          "w": 330,
+          "h": 9,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-ok-dot",
+          "w": 6,
+          "h": 6,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g4",
+          "w": 28,
+          "h": 28,
+          "text": "LCin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g5",
+          "w": 28,
+          "h": 28,
+          "text": "MHin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g5",
+          "w": 28,
+          "h": 28,
+          "text": "ZMin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g5",
+          "w": 28,
+          "h": 28,
+          "text": "MBin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g4",
+          "w": 28,
+          "h": 28,
+          "text": "RDin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g2",
+          "w": 28,
+          "h": 28,
+          "text": "AEin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g4",
+          "w": 28,
+          "h": 28,
+          "text": "CGin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g4",
+          "w": 28,
+          "h": 28,
+          "text": "MGin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g4",
+          "w": 28,
+          "h": 28,
+          "text": "JHin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g6",
+          "w": 28,
+          "h": 28,
+          "text": "AVin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g5",
+          "w": 28,
+          "h": 28,
+          "text": "RPin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g3",
+          "w": 28,
+          "h": 28,
+          "text": "A(in"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g5",
+          "w": 28,
+          "h": 28,
+          "text": "OMin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "cnt neutral",
+          "w": 26,
+          "h": 22,
+          "text": "56"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "cnt",
+          "w": 26,
+          "h": 22,
+          "text": "19"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "cnt",
+          "w": 18,
+          "h": 22,
+          "text": "2"
+        }
+      ],
+      "rails": {
+        "content": null,
+        "contentIdeas": null,
+        "inbox": {
+          "n": 13,
+          "min": 56,
+          "max": 56,
+          "variance": 0
+        },
+        "today": null,
+        "drafts": null,
+        "sendsLog": null
+      },
+      "tailRails": {
+        "content": null,
+        "sendsLog": null
+      },
+      "bands": {
+        "content": null,
+        "inbox": {
+          "n": 13,
+          "min": 41,
+          "max": 62
+        },
+        "today": null,
+        "sendsLog": null
+      },
+      "contrastFailCount": 0,
+      "contrastFails": [],
+      "contrastSampleAll": [
+        {
+          "cls": "wb-gear",
+          "px": 15,
+          "bold": false,
+          "ratio": 9.21,
+          "bar": 4.5,
+          "text": "⚙︎"
+        },
+        {
+          "cls": "",
+          "px": 34,
+          "bold": true,
+          "ratio": 18.15,
+          "bar": 3,
+          "text": "Inbox"
+        },
+        {
+          "cls": "avatar-me",
+          "px": 13,
+          "bold": false,
+          "ratio": 18.15,
+          "bar": 4.5,
+          "text": "IM"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "🔍"
+        },
+        {
+          "cls": "ct",
+          "px": 13,
+          "bold": false,
+          "ratio": 14.27,
+          "bar": 4.5,
+          "text": "·56"
+        },
+        {
+          "cls": "chip ",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "Ivan"
+        },
+        {
+          "cls": "chip ",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "Rise"
+        },
+        {
+          "cls": "chip ",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "Email"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "56"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "1351"
+        },
+        {
+          "cls": "badge",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.94,
+          "bar": 4.5,
+          "text": "in"
+        },
+        {
+          "cls": "name",
+          "px": 13,
+          "bold": false,
+          "ratio": 18.15,
+          "bar": 4.5,
+          "text": "Luke Cashin"
+        },
+        {
+          "cls": "client ",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.94,
+          "bar": 4.5,
+          "text": "IVAN"
+        },
+        {
+          "cls": "client kind-inmail",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.94,
+          "bar": 4.5,
+          "text": "INMAIL"
+        },
+        {
+          "cls": "snip",
+          "px": 12,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "You: Hey Luke,\n\nSaw yo"
+        },
+        {
+          "cls": "time",
+          "px": 12,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "1h"
+        },
+        {
+          "cls": "badge",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.94,
+          "bar": 4.5,
+          "text": "in"
+        },
+        {
+          "cls": "name",
+          "px": 13,
+          "bold": false,
+          "ratio": 18.15,
+          "bar": 4.5,
+          "text": "Muhammad Huzaifa"
+        },
+        {
+          "cls": "client ",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.94,
+          "bar": 4.5,
+          "text": "IVAN"
+        },
+        {
+          "cls": "client kind-inmail",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.94,
+          "bar": 4.5,
+          "text": "INMAIL"
+        },
+        {
+          "cls": "snip",
+          "px": 12,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "You: Hey Muhammad,\n\nSa"
+        },
+        {
+          "cls": "time",
+          "px": 12,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "2h"
+        },
+        {
+          "cls": "badge",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.94,
+          "bar": 4.5,
+          "text": "in"
+        },
+        {
+          "cls": "name",
+          "px": 13,
+          "bold": false,
+          "ratio": 18.15,
+          "bar": 4.5,
+          "text": "Zach Masserant"
+        },
+        {
+          "cls": "client ",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.94,
+          "bar": 4.5,
+          "text": "IVAN"
+        },
+        {
+          "cls": "client kind-inmail",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.94,
+          "bar": 4.5,
+          "text": "INMAIL"
+        },
+        {
+          "cls": "snip",
+          "px": 12,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "You: Hey Zach,\n\nSaw yo"
+        },
+        {
+          "cls": "time",
+          "px": 12,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "3h"
+        },
+        {
+          "cls": "badge",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.94,
+          "bar": 4.5,
+          "text": "in"
+        },
+        {
+          "cls": "name",
+          "px": 13,
+          "bold": false,
+          "ratio": 18.15,
+          "bar": 4.5,
+          "text": "Michael De Boeck"
+        },
+        {
+          "cls": "client ",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.94,
+          "bar": 4.5,
+          "text": "IVAN"
+        },
+        {
+          "cls": "client kind-inmail",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.94,
+          "bar": 4.5,
+          "text": "INMAIL"
+        },
+        {
+          "cls": "snip",
+          "px": 12,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "You: Hey Michael,\n\nSaw"
+        },
+        {
+          "cls": "time",
+          "px": 12,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "4h"
+        },
+        {
+          "cls": "badge",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.94,
+          "bar": 4.5,
+          "text": "in"
+        },
+        {
+          "cls": "name",
+          "px": 13,
+          "bold": false,
+          "ratio": 18.15,
+          "bar": 4.5,
+          "text": "Ron Dukker"
+        },
+        {
+          "cls": "client ",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.94,
+          "bar": 4.5,
+          "text": "IVAN"
+        },
+        {
+          "cls": "client kind-inmail",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.94,
+          "bar": 4.5,
+          "text": "INMAIL"
+        },
+        {
+          "cls": "snip",
+          "px": 12,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "You: Hey Ron,\n\nSaw you"
+        },
+        {
+          "cls": "time",
+          "px": 12,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "5h"
+        }
+      ],
+      "catAttr": "triad",
+      "logDenom": null
+    },
+    {
+      "route": "inbox",
+      "tag": "desktop",
+      "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-instrument/inbox-desktop.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "loadingGone": true,
+      "settled": true,
+      "bridgeBg": "#090B0A",
+      "bridgeBlue": "#AEB2B0",
+      "docOverflowX": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "innerTextLen": 9605,
+      "skeletons": 0,
+      "stillLoading": false,
+      "type": {
+        "distinct": 6,
+        "sizes": {
+          "13px": 34,
+          "20px": 2,
+          "11px": 47,
+          "12px": 35,
+          "56px": 1,
+          "15px": 1
+        },
+        "fractional": [],
+        "glyphSizes": [
+          "20px",
+          "15px",
+          "13px"
+        ]
+      },
+      "heavy": [
+        {
+          "cls": "",
+          "px": 56,
+          "text": "Inbox"
+        }
+      ],
+      "nonTabular": [],
+      "accentCount": 11,
+      "pillEls": [
+        {
+          "tag": "SPAN",
+          "cls": "avatar-me",
+          "w": 34,
+          "h": 34,
+          "text": "IM"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-rj-n",
+          "w": 29,
+          "h": 22,
+          "text": "56"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-rj-n",
+          "w": 29,
+          "h": 22,
+          "text": "19"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-rj-n",
+          "w": 22,
+          "h": 22,
+          "text": "2"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-peer-dot on",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-sync-dot",
+          "w": 7,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "avatar-me",
+          "w": 34,
+          "h": 34,
+          "text": "IM"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip on",
+          "w": 63,
+          "h": 30,
+          "text": "All ·56"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 52,
+          "h": 30,
+          "text": "Ivan"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 53,
+          "h": 30,
+          "text": "Rise"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 59,
+          "h": 30,
+          "text": "Email"
+        },
+        {
+          "tag": "DIV",
+          "cls": "wb-stack",
+          "w": 559,
+          "h": 9,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-ok-dot",
+          "w": 6,
+          "h": 6,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g4",
+          "w": 28,
+          "h": 28,
+          "text": "LCin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g5",
+          "w": 28,
+          "h": 28,
+          "text": "MHin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g5",
+          "w": 28,
+          "h": 28,
+          "text": "ZMin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g5",
+          "w": 28,
+          "h": 28,
+          "text": "MBin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g4",
+          "w": 28,
+          "h": 28,
+          "text": "RDin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g2",
+          "w": 28,
+          "h": 28,
+          "text": "AEin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g4",
+          "w": 28,
+          "h": 28,
+          "text": "CGin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g4",
+          "w": 28,
+          "h": 28,
+          "text": "MGin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g4",
+          "w": 28,
+          "h": 28,
+          "text": "JHin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g6",
+          "w": 28,
+          "h": 28,
+          "text": "AVin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g5",
+          "w": 28,
+          "h": 28,
+          "text": "RPin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g3",
+          "w": 28,
+          "h": 28,
+          "text": "A(in"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g5",
+          "w": 28,
+          "h": 28,
+          "text": "OMin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g3",
+          "w": 28,
+          "h": 28,
+          "text": "WKin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "DIV",
+          "cls": "av g1",
+          "w": 28,
+          "h": 28,
+          "text": "JBin"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "badge",
+          "w": 15,
+          "h": 15,
+          "text": "in"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-pane-ic asst",
+          "w": 28,
+          "h": 28,
+          "text": "✳"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-live",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "cmic",
+          "w": 38,
+          "h": 38,
+          "text": "🎙"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "csend",
+          "w": 38,
+          "h": 38,
+          "text": "↑"
+        }
+      ],
+      "rails": {
+        "content": null,
+        "contentIdeas": null,
+        "inbox": {
+          "n": 15,
+          "min": 256,
+          "max": 256,
+          "variance": 0
+        },
+        "today": null,
+        "drafts": null,
+        "sendsLog": null
+      },
+      "tailRails": {
+        "content": null,
+        "sendsLog": null
+      },
+      "bands": {
+        "content": null,
+        "inbox": {
+          "n": 15,
+          "min": 41,
+          "max": 42
+        },
+        "today": null,
+        "sendsLog": null
+      },
+      "contrastFailCount": 0,
+      "contrastFails": [],
+      "contrastSampleAll": [
+        {
+          "cls": "avatar-me",
+          "px": 13,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "IM"
+        },
+        {
+          "cls": "wb-rail-ttl",
+          "px": 20,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "Workbench"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "☼"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Today"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 5.33,
+          "bar": 4.5,
+          "text": "◉"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 15.66,
+          "bar": 4.5,
+          "text": "Inbox"
+        },
+        {
+          "cls": "wb-rj-n",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.24,
+          "bar": 4.5,
+          "text": "56"
+        },
+        {
+          "cls": "wb-rail-grp-l",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Work"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "✦"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "DMs"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "▤"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Content"
+        },
+        {
+          "cls": "wb-rj-n",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.24,
+          "bar": 4.5,
+          "text": "19"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "↑"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Sends"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "◈"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Ops"
+        },
+        {
+          "cls": "wb-rj-n",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.24,
+          "bar": 4.5,
+          "text": "2"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 5.75,
+          "bar": 4.5,
+          "text": "✳"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "Claude"
+        },
+        {
+          "cls": "wb-rail-hint",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Docked beside your wor"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "⚙︎"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Settings"
+        },
+        {
+          "cls": "wb-sync-t",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "just now"
+        },
+        {
+          "cls": "wb-sync-r",
+          "px": 15,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "↻"
+        },
+        {
+          "cls": "",
+          "px": 56,
+          "bold": true,
+          "ratio": 18.15,
+          "bar": 3,
+          "text": "Inbox"
+        },
+        {
+          "cls": "avatar-me",
+          "px": 13,
+          "bold": false,
+          "ratio": 18.15,
+          "bar": 4.5,
+          "text": "IM"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "🔍"
+        },
+        {
+          "cls": "ct",
+          "px": 13,
+          "bold": false,
+          "ratio": 14.27,
+          "bar": 4.5,
+          "text": "·56"
+        },
+        {
+          "cls": "chip ",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "Ivan"
+        },
+        {
+          "cls": "chip ",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "Rise"
+        },
+        {
+          "cls": "chip ",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "Email"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "56"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "1351"
+        },
+        {
+          "cls": "badge",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.94,
+          "bar": 4.5,
+          "text": "in"
+        },
+        {
+          "cls": "name",
+          "px": 13,
+          "bold": false,
+          "ratio": 18.15,
+          "bar": 4.5,
+          "text": "Luke Cashin"
+        },
+        {
+          "cls": "client ",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.94,
+          "bar": 4.5,
+          "text": "IVAN"
+        },
+        {
+          "cls": "client kind-inmail",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.94,
+          "bar": 4.5,
+          "text": "INMAIL"
+        },
+        {
+          "cls": "snip",
+          "px": 12,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "You: Hey Luke,\n\nSaw yo"
+        },
+        {
+          "cls": "time",
+          "px": 12,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "1h"
+        }
+      ],
+      "catAttr": "triad",
+      "logDenom": null
+    },
+    {
+      "route": "drafts",
+      "tag": "mobile",
+      "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-instrument/drafts-mobile.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "loadingGone": true,
+      "settled": true,
+      "bridgeBg": "#090B0A",
+      "bridgeBlue": "#AEB2B0",
+      "docOverflowX": false,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "innerTextLen": 492,
+      "skeletons": 0,
+      "stillLoading": false,
+      "type": {
+        "distinct": 4,
+        "sizes": {
+          "11px": 9,
+          "12px": 8,
+          "13px": 8,
+          "34px": 1
+        },
+        "fractional": [],
+        "glyphSizes": [
+          "15px",
+          "13px",
+          "20px"
+        ]
+      },
+      "heavy": [
+        {
+          "cls": "",
+          "px": 34,
+          "text": "Drafts"
+        }
+      ],
+      "nonTabular": [],
+      "accentCount": 5,
+      "pillEls": [
+        {
+          "tag": "SPAN",
+          "cls": "wb-sync-dot",
+          "w": 7,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-ws on",
+          "w": 50,
+          "h": 28,
+          "text": "DMs"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-ws",
+          "w": 93,
+          "h": 28,
+          "text": "Content19"
+        },
+        {
+          "tag": "DIV",
+          "cls": "avatar-me",
+          "w": 34,
+          "h": 34,
+          "text": "IM"
+        },
+        {
+          "tag": "DIV",
+          "cls": "sg on",
+          "w": 115,
+          "h": 30,
+          "text": "All · 2"
+        },
+        {
+          "tag": "DIV",
+          "cls": "sg ",
+          "w": 115,
+          "h": 30,
+          "text": "Ivan · 1"
+        },
+        {
+          "tag": "DIV",
+          "cls": "sg ",
+          "w": 115,
+          "h": 30,
+          "text": "Rise · 1"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "cnt neutral",
+          "w": 26,
+          "h": 22,
+          "text": "56"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "cnt",
+          "w": 26,
+          "h": 22,
+          "text": "19"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "cnt",
+          "w": 18,
+          "h": 22,
+          "text": "2"
+        }
+      ],
+      "rails": {
+        "content": null,
+        "contentIdeas": null,
+        "inbox": null,
+        "today": null,
+        "drafts": {
+          "n": 2,
+          "min": 102,
+          "max": 102,
+          "variance": 0
+        },
+        "sendsLog": {
+          "n": 2,
+          "min": 102,
+          "max": 102,
+          "variance": 0
+        }
+      },
+      "tailRails": {
+        "content": null,
+        "sendsLog": {
+          "n": 2,
+          "variance": 0
+        }
+      },
+      "bands": {
+        "content": null,
+        "inbox": null,
+        "today": null,
+        "sendsLog": {
+          "n": 2,
+          "min": 42,
+          "max": 42
+        }
+      },
+      "contrastFailCount": 0,
+      "contrastFails": [],
+      "contrastSampleAll": [
+        {
+          "cls": "wb-gear",
+          "px": 15,
+          "bold": false,
+          "ratio": 9.21,
+          "bar": 4.5,
+          "text": "⚙︎"
+        },
+        {
+          "cls": "wb-workhead-l",
+          "px": 11,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "Work"
+        },
+        {
+          "cls": "wb-ws on",
+          "px": 12,
+          "bold": false,
+          "ratio": 14.27,
+          "bar": 4.5,
+          "text": "DMs"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 15.66,
+          "bar": 4.5,
+          "text": "19"
+        },
+        {
+          "cls": "",
+          "px": 34,
+          "bold": true,
+          "ratio": 18.15,
+          "bar": 3,
+          "text": "Drafts"
+        },
+        {
+          "cls": "avatar-me",
+          "px": 13,
+          "bold": false,
+          "ratio": 18.15,
+          "bar": 4.5,
+          "text": "IM"
+        },
+        {
+          "cls": "sg on",
+          "px": 12,
+          "bold": false,
+          "ratio": 14.27,
+          "bar": 4.5,
+          "text": "All · 2"
+        },
+        {
+          "cls": "sg ",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "Ivan · 1"
+        },
+        {
+          "cls": "sg ",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "Rise · 1"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Ops · 2 — approved in "
+        },
+        {
+          "cls": "chev",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "›"
+        },
+        {
+          "cls": "log-chip",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.94,
+          "bar": 4.5,
+          "text": "comment_outbound"
+        },
+        {
+          "cls": "log-nm",
+          "px": 13,
+          "bold": false,
+          "ratio": 18.15,
+          "bar": 4.5,
+          "text": "Ivan"
+        },
+        {
+          "cls": "log-snip",
+          "px": 12,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "the paid into an unkno"
+        },
+        {
+          "cls": "log-tm",
+          "px": 12,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "9h"
+        },
+        {
+          "cls": "log-chip",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.94,
+          "bar": 4.5,
+          "text": "comment_outbound"
+        },
+        {
+          "cls": "log-nm",
+          "px": 13,
+          "bold": false,
+          "ratio": 18.15,
+          "bar": 4.5,
+          "text": "Rise"
+        },
+        {
+          "cls": "log-snip",
+          "px": 12,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "Respect turning down a"
+        },
+        {
+          "cls": "log-tm",
+          "px": 12,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "22h"
+        },
+        {
+          "cls": "ic bubble",
+          "px": 20,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "☼"
+        },
+        {
+          "cls": "l",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Today"
+        },
+        {
+          "cls": "cnt neutral",
+          "px": 13,
+          "bold": false,
+          "ratio": 14.27,
+          "bar": 4.5,
+          "text": "56"
+        },
+        {
+          "cls": "l",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Inbox"
+        },
+        {
+          "cls": "cnt",
+          "px": 13,
+          "bold": false,
+          "ratio": 5.26,
+          "bar": 4.5,
+          "text": "19"
+        },
+        {
+          "cls": "l",
+          "px": 11,
+          "bold": false,
+          "ratio": 5.75,
+          "bar": 4.5,
+          "text": "Work"
+        },
+        {
+          "cls": "ic bubble",
+          "px": 20,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "↑"
+        },
+        {
+          "cls": "l",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Sends"
+        },
+        {
+          "cls": "cnt",
+          "px": 13,
+          "bold": false,
+          "ratio": 5.26,
+          "bar": 4.5,
+          "text": "2"
+        },
+        {
+          "cls": "l",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Ops"
+        },
+        {
+          "cls": "ic bubble",
+          "px": 20,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "✳"
+        },
+        {
+          "cls": "l",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Claude"
+        }
+      ],
+      "catAttr": "triad",
+      "logDenom": null
+    },
+    {
+      "route": "drafts",
+      "tag": "desktop",
+      "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-instrument/drafts-desktop.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "loadingGone": true,
+      "settled": true,
+      "bridgeBg": "#090B0A",
+      "bridgeBlue": "#AEB2B0",
+      "docOverflowX": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "innerTextLen": 858,
+      "skeletons": 0,
+      "stillLoading": false,
+      "type": {
+        "distinct": 6,
+        "sizes": {
+          "13px": 20,
+          "20px": 2,
+          "11px": 7,
+          "12px": 10,
+          "56px": 1,
+          "15px": 1
+        },
+        "fractional": [],
+        "glyphSizes": [
+          "20px",
+          "15px",
+          "13px"
+        ]
+      },
+      "heavy": [
+        {
+          "cls": "",
+          "px": 56,
+          "text": "Drafts"
+        }
+      ],
+      "nonTabular": [],
+      "accentCount": 11,
+      "pillEls": [
+        {
+          "tag": "SPAN",
+          "cls": "avatar-me",
+          "w": 34,
+          "h": 34,
+          "text": "IM"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-rj-n",
+          "w": 29,
+          "h": 22,
+          "text": "56"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-rj-n",
+          "w": 29,
+          "h": 22,
+          "text": "19"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-rj-n",
+          "w": 22,
+          "h": 22,
+          "text": "2"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-peer-dot on",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-sync-dot",
+          "w": 7,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-ws on",
+          "w": 50,
+          "h": 28,
+          "text": "DMs"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-ws",
+          "w": 93,
+          "h": 28,
+          "text": "Content19"
+        },
+        {
+          "tag": "DIV",
+          "cls": "avatar-me",
+          "w": 34,
+          "h": 34,
+          "text": "IM"
+        },
+        {
+          "tag": "DIV",
+          "cls": "sg on",
+          "w": 192,
+          "h": 30,
+          "text": "All · 2"
+        },
+        {
+          "tag": "DIV",
+          "cls": "sg ",
+          "w": 192,
+          "h": 30,
+          "text": "Ivan · 1"
+        },
+        {
+          "tag": "DIV",
+          "cls": "sg ",
+          "w": 192,
+          "h": 30,
+          "text": "Rise · 1"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-pane-ic asst",
+          "w": 28,
+          "h": 28,
+          "text": "✳"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-live",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "cmic",
+          "w": 38,
+          "h": 38,
+          "text": "🎙"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "csend",
+          "w": 38,
+          "h": 38,
+          "text": "↑"
+        }
+      ],
+      "rails": {
+        "content": null,
+        "contentIdeas": null,
+        "inbox": null,
+        "today": null,
+        "drafts": {
+          "n": 2,
+          "min": 312,
+          "max": 312,
+          "variance": 0
+        },
+        "sendsLog": {
+          "n": 2,
+          "min": 312,
+          "max": 312,
+          "variance": 0
+        }
+      },
+      "tailRails": {
+        "content": null,
+        "sendsLog": {
+          "n": 2,
+          "variance": 0
+        }
+      },
+      "bands": {
+        "content": null,
+        "inbox": null,
+        "today": null,
+        "sendsLog": {
+          "n": 2,
+          "min": 42,
+          "max": 42
+        }
+      },
+      "contrastFailCount": 0,
+      "contrastFails": [],
+      "contrastSampleAll": [
+        {
+          "cls": "avatar-me",
+          "px": 13,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "IM"
+        },
+        {
+          "cls": "wb-rail-ttl",
+          "px": 20,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "Workbench"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "☼"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Today"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "◉"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Inbox"
+        },
+        {
+          "cls": "wb-rj-n",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.24,
+          "bar": 4.5,
+          "text": "56"
+        },
+        {
+          "cls": "wb-rail-grp-l",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Work"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 5.33,
+          "bar": 4.5,
+          "text": "✦"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 15.66,
+          "bar": 4.5,
+          "text": "DMs"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "▤"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Content"
+        },
+        {
+          "cls": "wb-rj-n",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.24,
+          "bar": 4.5,
+          "text": "19"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "↑"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Sends"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "◈"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Ops"
+        },
+        {
+          "cls": "wb-rj-n",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.24,
+          "bar": 4.5,
+          "text": "2"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 5.75,
+          "bar": 4.5,
+          "text": "✳"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "Claude"
+        },
+        {
+          "cls": "wb-rail-hint",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Docked beside your wor"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "⚙︎"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Settings"
+        },
+        {
+          "cls": "wb-sync-t",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "just now"
+        },
+        {
+          "cls": "wb-sync-r",
+          "px": 15,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "↻"
+        },
+        {
+          "cls": "wb-workhead-l",
+          "px": 11,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "Work"
+        },
+        {
+          "cls": "wb-ws on",
+          "px": 12,
+          "bold": false,
+          "ratio": 14.27,
+          "bar": 4.5,
+          "text": "DMs"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 15.66,
+          "bar": 4.5,
+          "text": "19"
+        },
+        {
+          "cls": "",
+          "px": 56,
+          "bold": true,
+          "ratio": 18.15,
+          "bar": 3,
+          "text": "Drafts"
+        },
+        {
+          "cls": "avatar-me",
+          "px": 13,
+          "bold": false,
+          "ratio": 18.15,
+          "bar": 4.5,
+          "text": "IM"
+        },
+        {
+          "cls": "sg on",
+          "px": 12,
+          "bold": false,
+          "ratio": 14.27,
+          "bar": 4.5,
+          "text": "All · 2"
+        },
+        {
+          "cls": "sg ",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "Ivan · 1"
+        },
+        {
+          "cls": "sg ",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "Rise · 1"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Ops · 2 — approved in "
+        },
+        {
+          "cls": "chev",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "›"
+        },
+        {
+          "cls": "log-chip",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.94,
+          "bar": 4.5,
+          "text": "comment_outbound"
+        },
+        {
+          "cls": "log-nm",
+          "px": 13,
+          "bold": false,
+          "ratio": 18.15,
+          "bar": 4.5,
+          "text": "Ivan"
+        },
+        {
+          "cls": "log-snip",
+          "px": 12,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "the paid into an unkno"
+        },
+        {
+          "cls": "log-tm",
+          "px": 12,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "9h"
+        },
+        {
+          "cls": "log-chip",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.94,
+          "bar": 4.5,
+          "text": "comment_outbound"
+        }
+      ],
+      "catAttr": "triad",
+      "logDenom": null
+    },
+    {
+      "route": "content",
+      "tag": "mobile",
+      "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-instrument/content-mobile.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "loadingGone": true,
+      "settled": true,
+      "bridgeBg": "#090B0A",
+      "bridgeBlue": "#AEB2B0",
+      "docOverflowX": false,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "innerTextLen": 8461,
+      "skeletons": 0,
+      "stillLoading": false,
+      "type": {
+        "distinct": 6,
+        "sizes": {
+          "11px": 180,
+          "12px": 79,
+          "13px": 130,
+          "34px": 1,
+          "20px": 3,
+          "30px": 2
+        },
+        "fractional": [],
+        "glyphSizes": [
+          "15px",
+          "13px",
+          "12px",
+          "9px",
+          "11px",
+          "20px"
+        ]
+      },
+      "heavy": [
+        {
+          "cls": "",
+          "px": 34,
+          "text": "Content"
+        }
+      ],
+      "nonTabular": [],
+      "accentCount": 19,
+      "pillEls": [
+        {
+          "tag": "SPAN",
+          "cls": "wb-sync-dot",
+          "w": 7,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-ws",
+          "w": 50,
+          "h": 28,
+          "text": "DMs"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-ws on",
+          "w": 93,
+          "h": 28,
+          "text": "Content19"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip on",
+          "w": 52,
+          "h": 30,
+          "text": "Ivan"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 112,
+          "h": 30,
+          "text": "Mattan Danino"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-cap-0",
+          "w": 55,
+          "h": 3,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-cap",
+          "w": 55,
+          "h": 22,
+          "text": "19"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-cap-0",
+          "w": 55,
+          "h": 3,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-cap",
+          "w": 55,
+          "h": 22,
+          "text": "2"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-cap",
+          "w": 55,
+          "h": 120,
+          "text": "109"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-legend-d",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-legend-d",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill ct-fpill",
+          "w": 101,
+          "h": 32,
+          "text": "Stage: Any⌄"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill ct-fpill",
+          "w": 94,
+          "h": 32,
+          "text": "Kind: Any⌄"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill ct-fpill",
+          "w": 96,
+          "h": 32,
+          "text": "Pillar: Any⌄"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill ct-fpill",
+          "w": 108,
+          "h": 32,
+          "text": "Source: Any⌄"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill ct-fpill",
+          "w": 128,
+          "h": 32,
+          "text": "QA verdict: Any⌄"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill ct-fpill",
+          "w": 70,
+          "h": 32,
+          "text": "Filters⌄"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-sech-dot attention",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-cap",
+          "w": 37,
+          "h": 106,
+          "text": "37"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-cap-0",
+          "w": 37,
+          "h": 3,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-cap-0",
+          "w": 37,
+          "h": 3,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-cap",
+          "w": 37,
+          "h": 29,
+          "text": "10"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-cap-0",
+          "w": 37,
+          "h": 3,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-cap-0",
+          "w": 37,
+          "h": 3,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-cap",
+          "w": 37,
+          "h": 120,
+          "text": "42"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill ct-fpill",
+          "w": 105,
+          "h": 32,
+          "text": "Status: Any⌄"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill ct-fpill",
+          "w": 109,
+          "h": 32,
+          "text": "Format: Any⌄"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill ct-fpill",
+          "w": 70,
+          "h": 32,
+          "text": "Filters⌄"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-sech-dot attention",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "cnt neutral",
+          "w": 26,
+          "h": 22,
+          "text": "56"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "cnt",
+          "w": 26,
+          "h": 22,
+          "text": "19"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "cnt",
+          "w": 18,
+          "h": 22,
+          "text": "2"
+        }
+      ],
+      "rails": {
+        "content": {
+          "n": 66,
+          "min": 56,
+          "max": 56,
+          "variance": 0
+        },
+        "contentIdeas": null,
+        "inbox": null,
+        "today": null,
+        "drafts": null,
+        "sendsLog": null
+      },
+      "tailRails": {
+        "content": {
+          "n": 66,
+          "variance": 0
+        },
+        "sendsLog": null
+      },
+      "bands": {
+        "content": {
+          "n": 66,
+          "min": 47,
+          "max": 67
+        },
+        "inbox": null,
+        "today": null,
+        "sendsLog": null
+      },
+      "contrastFailCount": 0,
+      "contrastFails": [],
+      "contrastSampleAll": [
+        {
+          "cls": "wb-gear",
+          "px": 15,
+          "bold": false,
+          "ratio": 9.21,
+          "bar": 4.5,
+          "text": "⚙︎"
+        },
+        {
+          "cls": "wb-workhead-l",
+          "px": 11,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "Work"
+        },
+        {
+          "cls": "wb-ws",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "DMs"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 14.27,
+          "bar": 4.5,
+          "text": "19"
+        },
+        {
+          "cls": "",
+          "px": 34,
+          "bold": true,
+          "ratio": 18.15,
+          "bar": 3,
+          "text": "Content"
+        },
+        {
+          "cls": "chip on",
+          "px": 12,
+          "bold": false,
+          "ratio": 14.27,
+          "bar": 4.5,
+          "text": "Ivan"
+        },
+        {
+          "cls": "chip ",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "Mattan Danino"
+        },
+        {
+          "cls": "ct-subtle ct-warn",
+          "px": 12,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "20 unacknowledged pipe"
+        },
+        {
+          "cls": "ct-alert-n",
+          "px": 20,
+          "bold": false,
+          "ratio": 5.79,
+          "bar": 4.5,
+          "text": "39"
+        },
+        {
+          "cls": "ct-alert-t",
+          "px": 13,
+          "bold": false,
+          "ratio": 5.79,
+          "bar": 4.5,
+          "text": "4 errored · 35 elsewhe"
+        },
+        {
+          "cls": "chev",
+          "px": 15,
+          "bold": false,
+          "ratio": 5.79,
+          "bar": 4.5,
+          "text": "›"
+        },
+        {
+          "cls": "wb-cardh-t wb-eyebrow",
+          "px": 11,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "Post pipeline"
+        },
+        {
+          "cls": "wb-cardh-x",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "···"
+        },
+        {
+          "cls": "wb-cap",
+          "px": 11,
+          "bold": false,
+          "ratio": 5.35,
+          "bar": 4.5,
+          "text": "19"
+        },
+        {
+          "cls": "wb-cap",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.97,
+          "bar": 4.5,
+          "text": "2"
+        },
+        {
+          "cls": "wb-cap",
+          "px": 11,
+          "bold": false,
+          "ratio": 5.61,
+          "bar": 4.5,
+          "text": "109"
+        },
+        {
+          "cls": "wb-caps-xl",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Gen"
+        },
+        {
+          "cls": "wb-caps-xl",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Review"
+        },
+        {
+          "cls": "wb-caps-xl",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Appr"
+        },
+        {
+          "cls": "wb-caps-xl",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Sched"
+        },
+        {
+          "cls": "wb-caps-xl",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Pub"
+        },
+        {
+          "cls": "wb-pipe-big",
+          "px": 30,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 3,
+          "text": "19"
+        },
+        {
+          "cls": "wb-legend-l",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "In flight"
+        },
+        {
+          "cls": "wb-legend-l",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Post ideas 57 of 57"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "173"
+        },
+        {
+          "cls": "ct-subtle",
+          "px": 12,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "0 scheduled in the nex"
+        },
+        {
+          "cls": "ct-fsearch-i",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "⌕"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 15.66,
+          "bar": 4.5,
+          "text": "Any"
+        },
+        {
+          "cls": "",
+          "px": 9,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "⌄"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 15.66,
+          "bar": 4.5,
+          "text": "Any"
+        },
+        {
+          "cls": "",
+          "px": 9,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "⌄"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 15.66,
+          "bar": 4.5,
+          "text": "Any"
+        },
+        {
+          "cls": "",
+          "px": 9,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "⌄"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 15.66,
+          "bar": 4.5,
+          "text": "Any"
+        },
+        {
+          "cls": "",
+          "px": 9,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "⌄"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 15.66,
+          "bar": 4.5,
+          "text": "Any"
+        },
+        {
+          "cls": "",
+          "px": 9,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "⌄"
+        },
+        {
+          "cls": "",
+          "px": 9,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "⌄"
+        },
+        {
+          "cls": "ct-fnote",
+          "px": 12,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "173 drafts"
+        },
+        {
+          "cls": "wb-sech-n",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "01"
+        }
+      ],
+      "catAttr": "triad",
+      "logDenom": null
+    },
+    {
+      "route": "content",
+      "tag": "desktop",
+      "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-instrument/content-desktop.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "loadingGone": true,
+      "settled": true,
+      "bridgeBg": "#090B0A",
+      "bridgeBlue": "#AEB2B0",
+      "docOverflowX": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "innerTextLen": 8841,
+      "skeletons": 0,
+      "stillLoading": false,
+      "type": {
+        "distinct": 7,
+        "sizes": {
+          "13px": 142,
+          "20px": 5,
+          "11px": 178,
+          "12px": 81,
+          "56px": 1,
+          "30px": 2,
+          "15px": 1
+        },
+        "fractional": [],
+        "glyphSizes": [
+          "20px",
+          "15px",
+          "13px",
+          "12px",
+          "9px",
+          "11px"
+        ]
+      },
+      "heavy": [
+        {
+          "cls": "",
+          "px": 56,
+          "text": "Content"
+        }
+      ],
+      "nonTabular": [],
+      "accentCount": 25,
+      "pillEls": [
+        {
+          "tag": "SPAN",
+          "cls": "avatar-me",
+          "w": 34,
+          "h": 34,
+          "text": "IM"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-rj-n",
+          "w": 29,
+          "h": 22,
+          "text": "56"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-rj-n",
+          "w": 29,
+          "h": 22,
+          "text": "19"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-rj-n",
+          "w": 22,
+          "h": 22,
+          "text": "2"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-peer-dot on",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-sync-dot",
+          "w": 7,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-ws",
+          "w": 50,
+          "h": 28,
+          "text": "DMs"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-ws on",
+          "w": 93,
+          "h": 28,
+          "text": "Content19"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip on",
+          "w": 52,
+          "h": 30,
+          "text": "Ivan"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 112,
+          "h": 30,
+          "text": "Mattan Danino"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-cap-0",
+          "w": 84,
+          "h": 3,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-cap",
+          "w": 84,
+          "h": 22,
+          "text": "19"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-cap-0",
+          "w": 84,
+          "h": 3,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-cap",
+          "w": 84,
+          "h": 22,
+          "text": "2"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-cap",
+          "w": 84,
+          "h": 120,
+          "text": "109"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-legend-d",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-legend-d",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill ct-fpill",
+          "w": 101,
+          "h": 26,
+          "text": "Stage: Any⌄"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill ct-fpill",
+          "w": 94,
+          "h": 26,
+          "text": "Kind: Any⌄"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill ct-fpill",
+          "w": 96,
+          "h": 26,
+          "text": "Pillar: Any⌄"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill ct-fpill",
+          "w": 108,
+          "h": 26,
+          "text": "Source: Any⌄"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill ct-fpill",
+          "w": 128,
+          "h": 26,
+          "text": "QA verdict: Any⌄"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill ct-fpill",
+          "w": 70,
+          "h": 26,
+          "text": "Filters⌄"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-sech-dot attention",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-cap",
+          "w": 57,
+          "h": 106,
+          "text": "37"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-cap-0",
+          "w": 57,
+          "h": 3,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-cap-0",
+          "w": 57,
+          "h": 3,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-cap",
+          "w": 57,
+          "h": 29,
+          "text": "10"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-cap-0",
+          "w": 57,
+          "h": 3,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-cap-0",
+          "w": 57,
+          "h": 3,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-cap",
+          "w": 57,
+          "h": 120,
+          "text": "42"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill ct-fpill",
+          "w": 105,
+          "h": 26,
+          "text": "Status: Any⌄"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill ct-fpill",
+          "w": 109,
+          "h": 26,
+          "text": "Format: Any⌄"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill ct-fpill",
+          "w": 70,
+          "h": 26,
+          "text": "Filters⌄"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-sech-dot attention",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "ct-anchor-dot",
+          "w": 10,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-pane-ic asst",
+          "w": 28,
+          "h": 28,
+          "text": "✳"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-live",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "cmic",
+          "w": 38,
+          "h": 38,
+          "text": "🎙"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "csend",
+          "w": 38,
+          "h": 38,
+          "text": "↑"
+        }
+      ],
+      "rails": {
+        "content": {
+          "n": 66,
+          "min": 256,
+          "max": 256,
+          "variance": 0
+        },
+        "contentIdeas": null,
+        "inbox": null,
+        "today": null,
+        "drafts": null,
+        "sendsLog": null
+      },
+      "tailRails": {
+        "content": {
+          "n": 66,
+          "variance": 0
+        },
+        "sendsLog": null
+      },
+      "bands": {
+        "content": {
+          "n": 66,
+          "min": 41,
+          "max": 61
+        },
+        "inbox": null,
+        "today": null,
+        "sendsLog": null
+      },
+      "contrastFailCount": 0,
+      "contrastFails": [],
+      "contrastSampleAll": [
+        {
+          "cls": "avatar-me",
+          "px": 13,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "IM"
+        },
+        {
+          "cls": "wb-rail-ttl",
+          "px": 20,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "Workbench"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "☼"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Today"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "◉"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Inbox"
+        },
+        {
+          "cls": "wb-rj-n",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.24,
+          "bar": 4.5,
+          "text": "56"
+        },
+        {
+          "cls": "wb-rail-grp-l",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Work"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "✦"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "DMs"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 5.33,
+          "bar": 4.5,
+          "text": "▤"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 15.66,
+          "bar": 4.5,
+          "text": "Content"
+        },
+        {
+          "cls": "wb-rj-n",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.24,
+          "bar": 4.5,
+          "text": "19"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "↑"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Sends"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "◈"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Ops"
+        },
+        {
+          "cls": "wb-rj-n",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.24,
+          "bar": 4.5,
+          "text": "2"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 5.75,
+          "bar": 4.5,
+          "text": "✳"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "Claude"
+        },
+        {
+          "cls": "wb-rail-hint",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Docked beside your wor"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "⚙︎"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Settings"
+        },
+        {
+          "cls": "wb-sync-t",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "just now"
+        },
+        {
+          "cls": "wb-sync-r",
+          "px": 15,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "↻"
+        },
+        {
+          "cls": "wb-workhead-l",
+          "px": 11,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "Work"
+        },
+        {
+          "cls": "wb-ws",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "DMs"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 14.27,
+          "bar": 4.5,
+          "text": "19"
+        },
+        {
+          "cls": "",
+          "px": 56,
+          "bold": true,
+          "ratio": 18.15,
+          "bar": 3,
+          "text": "Content"
+        },
+        {
+          "cls": "chip on",
+          "px": 12,
+          "bold": false,
+          "ratio": 14.27,
+          "bar": 4.5,
+          "text": "Ivan"
+        },
+        {
+          "cls": "chip ",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "Mattan Danino"
+        },
+        {
+          "cls": "ct-subtle ct-warn",
+          "px": 12,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "20 unacknowledged pipe"
+        },
+        {
+          "cls": "ct-alert-n",
+          "px": 20,
+          "bold": false,
+          "ratio": 5.79,
+          "bar": 4.5,
+          "text": "39"
+        },
+        {
+          "cls": "ct-alert-t",
+          "px": 13,
+          "bold": false,
+          "ratio": 5.79,
+          "bar": 4.5,
+          "text": "4 errored · 35 elsewhe"
+        },
+        {
+          "cls": "chev",
+          "px": 15,
+          "bold": false,
+          "ratio": 5.79,
+          "bar": 4.5,
+          "text": "›"
+        },
+        {
+          "cls": "wb-cardh-t wb-eyebrow",
+          "px": 11,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "Post pipeline"
+        },
+        {
+          "cls": "wb-cardh-x",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "···"
+        },
+        {
+          "cls": "wb-cap",
+          "px": 11,
+          "bold": false,
+          "ratio": 5.35,
+          "bar": 4.5,
+          "text": "19"
+        },
+        {
+          "cls": "wb-cap",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.97,
+          "bar": 4.5,
+          "text": "2"
+        },
+        {
+          "cls": "wb-cap",
+          "px": 11,
+          "bold": false,
+          "ratio": 5.61,
+          "bar": 4.5,
+          "text": "109"
+        }
+      ],
+      "catAttr": "triad",
+      "logDenom": null
+    },
+    {
+      "route": "sends",
+      "tag": "mobile",
+      "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-instrument/sends-mobile.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "loadingGone": true,
+      "settled": true,
+      "bridgeBg": "#090B0A",
+      "bridgeBlue": "#AEB2B0",
+      "docOverflowX": false,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "innerTextLen": 1595,
+      "skeletons": 0,
+      "stillLoading": false,
+      "type": {
+        "distinct": 6,
+        "sizes": {
+          "34px": 1,
+          "13px": 60,
+          "12px": 27,
+          "11px": 33,
+          "15px": 5,
+          "20px": 8
+        },
+        "fractional": [],
+        "glyphSizes": [
+          "15px",
+          "9px",
+          "13px",
+          "20px"
+        ]
+      },
+      "heavy": [
+        {
+          "cls": "",
+          "px": 34,
+          "text": "Sends"
+        }
+      ],
+      "nonTabular": [],
+      "accentCount": 22,
+      "pillEls": [
+        {
+          "tag": "SPAN",
+          "cls": "wb-sync-dot",
+          "w": 7,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill",
+          "w": 101,
+          "h": 32,
+          "text": "Range: 7d⌄"
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-refresh",
+          "w": 34,
+          "h": 34,
+          "text": "↻"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip on",
+          "w": 52,
+          "h": 30,
+          "text": "Ivan"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 53,
+          "h": 30,
+          "text": "Rise"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "sg on",
+          "w": 115,
+          "h": 30,
+          "text": "Overview"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "sg ",
+          "w": 115,
+          "h": 30,
+          "text": "Lanes"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "sg ",
+          "w": 115,
+          "h": 30,
+          "text": "Log"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "sc-dot",
+          "w": 11,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge sm",
+          "w": 59,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge-fill",
+          "w": 16,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "sc-dot",
+          "w": 11,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge sm ",
+          "w": 59,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge-fill",
+          "w": 48,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "sc-dot",
+          "w": 11,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge sm",
+          "w": 59,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge-fill",
+          "w": 21,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "sc-dot",
+          "w": 11,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 4,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 18,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 4,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 22,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 15,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 18,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 4,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 13,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "sc-dot",
+          "w": 11,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 18,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 12,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 12,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 6,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 4,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 22,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 18,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 12,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 6,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "sc-dot",
+          "w": 11,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 22,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 22,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 16,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 6,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 6,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 6,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 6,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 6,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 6,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 22,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 22,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 22,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 6,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 6,
+          "h": 22,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "sc-dot",
+          "w": 11,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 6,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 6,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 6,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 6,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 6,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 6,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 6,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 6,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 6,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 6,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 6,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 6,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 6,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 6,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-legend-d",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-legend-d",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-legend-d",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-legend-d",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "sc-dot",
+          "w": 11,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-bar",
+          "w": 284,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "sc-dot",
+          "w": 11,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-bar",
+          "w": 284,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-bar-fill",
+          "w": 17,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "sc-dot",
+          "w": 11,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-bar",
+          "w": 284,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-bar-fill",
+          "w": 284,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "sc-dot",
+          "w": 11,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-bar",
+          "w": 284,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-bar-fill",
+          "w": 74,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-legend-d",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-legend-d",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-legend-d",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "sc-dot",
+          "w": 11,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge  ",
+          "w": 284,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge-fill",
+          "w": 230,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge sm ",
+          "w": 284,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge-fill",
+          "w": 213,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge sm ",
+          "w": 115,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge-fill",
+          "w": 93,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge sm ",
+          "w": 115,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge-fill",
+          "w": 104,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "cnt neutral",
+          "w": 26,
+          "h": 22,
+          "text": "56"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "cnt",
+          "w": 26,
+          "h": 22,
+          "text": "19"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "cnt",
+          "w": 18,
+          "h": 22,
+          "text": "2"
+        }
+      ],
+      "rails": {
+        "content": null,
+        "contentIdeas": null,
+        "inbox": null,
+        "today": null,
+        "drafts": null,
+        "sendsLog": null
+      },
+      "tailRails": {
+        "content": null,
+        "sendsLog": null
+      },
+      "bands": {
+        "content": null,
+        "inbox": null,
+        "today": null,
+        "sendsLog": null
+      },
+      "contrastFailCount": 0,
+      "contrastFails": [],
+      "contrastSampleAll": [
+        {
+          "cls": "wb-gear",
+          "px": 15,
+          "bold": false,
+          "ratio": 9.21,
+          "bar": 4.5,
+          "text": "⚙︎"
+        },
+        {
+          "cls": "",
+          "px": 34,
+          "bold": true,
+          "ratio": 18.15,
+          "bar": 3,
+          "text": "Sends"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 15.66,
+          "bar": 4.5,
+          "text": "7d"
+        },
+        {
+          "cls": "",
+          "px": 9,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "⌄"
+        },
+        {
+          "cls": "sc-refresh",
+          "px": 13,
+          "bold": false,
+          "ratio": 5.75,
+          "bar": 4.5,
+          "text": "↻"
+        },
+        {
+          "cls": "sc-sub",
+          "px": 13,
+          "bold": false,
+          "ratio": 9.21,
+          "bar": 4.5,
+          "text": "Pipeline health"
+        },
+        {
+          "cls": "chip on",
+          "px": 12,
+          "bold": false,
+          "ratio": 14.27,
+          "bar": 4.5,
+          "text": "Ivan"
+        },
+        {
+          "cls": "chip ",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "Rise"
+        },
+        {
+          "cls": "sg on",
+          "px": 12,
+          "bold": false,
+          "ratio": 14.27,
+          "bar": 4.5,
+          "text": "Overview"
+        },
+        {
+          "cls": "sg ",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "Lanes"
+        },
+        {
+          "cls": "sg ",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "Log"
+        },
+        {
+          "cls": "ov-h-sub",
+          "px": 13,
+          "bold": false,
+          "ratio": 9.21,
+          "bar": 4.5,
+          "text": "where do I stand right"
+        },
+        {
+          "cls": "ov-tile-lbl",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Accept"
+        },
+        {
+          "cls": "ov-tile-unit",
+          "px": 15,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "%"
+        },
+        {
+          "cls": "ov-tile-trend",
+          "px": 13,
+          "bold": false,
+          "ratio": 5.75,
+          "bar": 4.5,
+          "text": "▲3 · 30d"
+        },
+        {
+          "cls": "ov-tile-lbl",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Governor"
+        },
+        {
+          "cls": "ov-tile-unit",
+          "px": 15,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "/125"
+        },
+        {
+          "cls": "ov-tile-trend",
+          "px": 13,
+          "bold": false,
+          "ratio": 5.75,
+          "bar": 4.5,
+          "text": "NORMAL"
+        },
+        {
+          "cls": "ov-tile-lbl",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Runway"
+        },
+        {
+          "cls": "ov-tile-unit",
+          "px": 15,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "d"
+        },
+        {
+          "cls": "ov-tile-sub",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "86 sendable"
+        },
+        {
+          "cls": "ov-h-sub",
+          "px": 13,
+          "bold": false,
+          "ratio": 9.21,
+          "bar": 4.5,
+          "text": "last 7d"
+        },
+        {
+          "cls": "ov-fn",
+          "px": 20,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "102"
+        },
+        {
+          "cls": "ov-fl",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Sent"
+        },
+        {
+          "cls": "ov-fpct",
+          "px": 13,
+          "bold": false,
+          "ratio": 5.75,
+          "bar": 4.5,
+          "text": "27%"
+        },
+        {
+          "cls": "ov-fchev",
+          "px": 15,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "→"
+        },
+        {
+          "cls": "ov-fn",
+          "px": 20,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "28"
+        },
+        {
+          "cls": "ov-fl",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Accepted"
+        },
+        {
+          "cls": "ov-fdot",
+          "px": 15,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "·"
+        },
+        {
+          "cls": "ov-fn",
+          "px": 20,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "15"
+        },
+        {
+          "cls": "ov-fl",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Convos"
+        },
+        {
+          "cls": "ov-fdot",
+          "px": 15,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "·"
+        },
+        {
+          "cls": "ov-fn",
+          "px": 20,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "0"
+        },
+        {
+          "cls": "ov-fl",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Calls"
+        },
+        {
+          "cls": "ov-fcap",
+          "px": 12,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "Era totals · convos 34"
+        },
+        {
+          "cls": "ov-fcap",
+          "px": 12,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "30d · accepted 56/238 "
+        },
+        {
+          "cls": "ov-note",
+          "px": 12,
+          "bold": false,
+          "ratio": 9.6,
+          "bar": 4.5,
+          "text": "Ivan scope counts the "
+        },
+        {
+          "cls": "ov-h-sub",
+          "px": 13,
+          "bold": false,
+          "ratio": 9.21,
+          "bar": 4.5,
+          "text": "7d"
+        },
+        {
+          "cls": "ov-kpi-nm",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Connections"
+        },
+        {
+          "cls": "ov-kpi-big",
+          "px": 20,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "102"
+        }
+      ],
+      "catAttr": "triad",
+      "logDenom": null
+    },
+    {
+      "route": "sends",
+      "tag": "desktop",
+      "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-instrument/sends-desktop.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "loadingGone": true,
+      "settled": true,
+      "bridgeBg": "#090B0A",
+      "bridgeBlue": "#AEB2B0",
+      "docOverflowX": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "innerTextLen": 1952,
+      "skeletons": 0,
+      "stillLoading": false,
+      "type": {
+        "distinct": 6,
+        "sizes": {
+          "13px": 72,
+          "20px": 10,
+          "11px": 31,
+          "12px": 29,
+          "56px": 1,
+          "15px": 6
+        },
+        "fractional": [],
+        "glyphSizes": [
+          "20px",
+          "15px",
+          "9px",
+          "13px"
+        ]
+      },
+      "heavy": [
+        {
+          "cls": "",
+          "px": 56,
+          "text": "Sends"
+        }
+      ],
+      "nonTabular": [],
+      "accentCount": 27,
+      "pillEls": [
+        {
+          "tag": "SPAN",
+          "cls": "avatar-me",
+          "w": 34,
+          "h": 34,
+          "text": "IM"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-rj-n",
+          "w": 29,
+          "h": 22,
+          "text": "56"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-rj-n",
+          "w": 29,
+          "h": 22,
+          "text": "19"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-rj-n",
+          "w": 22,
+          "h": 22,
+          "text": "2"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-peer-dot on",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-sync-dot",
+          "w": 7,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "wb-fpill",
+          "w": 101,
+          "h": 30,
+          "text": "Range: 7d⌄"
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-refresh",
+          "w": 34,
+          "h": 34,
+          "text": "↻"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip on",
+          "w": 52,
+          "h": 30,
+          "text": "Ivan"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "chip ",
+          "w": 53,
+          "h": 30,
+          "text": "Rise"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "sg on",
+          "w": 192,
+          "h": 30,
+          "text": "Overview"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "sg ",
+          "w": 192,
+          "h": 30,
+          "text": "Lanes"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "sg ",
+          "w": 192,
+          "h": 30,
+          "text": "Log"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "sc-dot",
+          "w": 11,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge sm",
+          "w": 135,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge-fill",
+          "w": 36,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "sc-dot",
+          "w": 11,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge sm ",
+          "w": 135,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge-fill",
+          "w": 109,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "sc-dot",
+          "w": 11,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge sm",
+          "w": 135,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge-fill",
+          "w": 48,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "sc-dot",
+          "w": 11,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 4,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 18,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 4,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 22,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 15,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 18,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 4,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 13,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "sc-dot",
+          "w": 11,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 18,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 12,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 12,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 6,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 4,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 22,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 18,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 12,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 15,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "sc-dot",
+          "w": 11,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 22,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 22,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 16,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 15,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 15,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 15,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 15,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 15,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 15,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 22,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 22,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 22,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 15,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar ",
+          "w": 15,
+          "h": 22,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "sc-dot",
+          "w": 11,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 15,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 15,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 15,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 15,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 15,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 15,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 15,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 15,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 15,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 15,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 15,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 15,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 15,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "sc-bar zero",
+          "w": 15,
+          "h": 2,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-legend-d",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-legend-d",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-legend-d",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-legend-d",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "sc-dot",
+          "w": 11,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-bar",
+          "w": 514,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "sc-dot",
+          "w": 11,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-bar",
+          "w": 514,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-bar-fill",
+          "w": 31,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "sc-dot",
+          "w": 11,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-bar",
+          "w": 514,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-bar-fill",
+          "w": 514,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "sc-dot",
+          "w": 11,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-bar",
+          "w": 514,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-bar-fill",
+          "w": 134,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-legend-d",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-legend-d",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-legend-d",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "sc-dot",
+          "w": 11,
+          "h": 11,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge  ",
+          "w": 514,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge-fill",
+          "w": 416,
+          "h": 10,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge sm ",
+          "w": 514,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge-fill",
+          "w": 385,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge sm ",
+          "w": 514,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge-fill",
+          "w": 416,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge sm ",
+          "w": 514,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "ov-gauge-fill",
+          "w": 462,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-pane-ic asst",
+          "w": 28,
+          "h": 28,
+          "text": "✳"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-live",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "cmic",
+          "w": 38,
+          "h": 38,
+          "text": "🎙"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "csend",
+          "w": 38,
+          "h": 38,
+          "text": "↑"
+        }
+      ],
+      "rails": {
+        "content": null,
+        "contentIdeas": null,
+        "inbox": null,
+        "today": null,
+        "drafts": null,
+        "sendsLog": null
+      },
+      "tailRails": {
+        "content": null,
+        "sendsLog": null
+      },
+      "bands": {
+        "content": null,
+        "inbox": null,
+        "today": null,
+        "sendsLog": null
+      },
+      "contrastFailCount": 0,
+      "contrastFails": [],
+      "contrastSampleAll": [
+        {
+          "cls": "avatar-me",
+          "px": 13,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "IM"
+        },
+        {
+          "cls": "wb-rail-ttl",
+          "px": 20,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "Workbench"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "☼"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Today"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "◉"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Inbox"
+        },
+        {
+          "cls": "wb-rj-n",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.24,
+          "bar": 4.5,
+          "text": "56"
+        },
+        {
+          "cls": "wb-rail-grp-l",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Work"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "✦"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "DMs"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "▤"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Content"
+        },
+        {
+          "cls": "wb-rj-n",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.24,
+          "bar": 4.5,
+          "text": "19"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 5.33,
+          "bar": 4.5,
+          "text": "↑"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 15.66,
+          "bar": 4.5,
+          "text": "Sends"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "◈"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Ops"
+        },
+        {
+          "cls": "wb-rj-n",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.24,
+          "bar": 4.5,
+          "text": "2"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 5.75,
+          "bar": 4.5,
+          "text": "✳"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "Claude"
+        },
+        {
+          "cls": "wb-rail-hint",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Docked beside your wor"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "⚙︎"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Settings"
+        },
+        {
+          "cls": "wb-sync-t",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "just now"
+        },
+        {
+          "cls": "wb-sync-r",
+          "px": 15,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "↻"
+        },
+        {
+          "cls": "",
+          "px": 56,
+          "bold": true,
+          "ratio": 18.15,
+          "bar": 3,
+          "text": "Sends"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 15.66,
+          "bar": 4.5,
+          "text": "7d"
+        },
+        {
+          "cls": "",
+          "px": 9,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "⌄"
+        },
+        {
+          "cls": "sc-refresh",
+          "px": 13,
+          "bold": false,
+          "ratio": 5.75,
+          "bar": 4.5,
+          "text": "↻"
+        },
+        {
+          "cls": "sc-sub",
+          "px": 13,
+          "bold": false,
+          "ratio": 9.21,
+          "bar": 4.5,
+          "text": "Pipeline health"
+        },
+        {
+          "cls": "chip on",
+          "px": 12,
+          "bold": false,
+          "ratio": 14.27,
+          "bar": 4.5,
+          "text": "Ivan"
+        },
+        {
+          "cls": "chip ",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "Rise"
+        },
+        {
+          "cls": "sg on",
+          "px": 12,
+          "bold": false,
+          "ratio": 14.27,
+          "bar": 4.5,
+          "text": "Overview"
+        },
+        {
+          "cls": "sg ",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "Lanes"
+        },
+        {
+          "cls": "sg ",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.53,
+          "bar": 4.5,
+          "text": "Log"
+        },
+        {
+          "cls": "ov-h-sub",
+          "px": 13,
+          "bold": false,
+          "ratio": 9.21,
+          "bar": 4.5,
+          "text": "where do I stand right"
+        },
+        {
+          "cls": "ov-tile-lbl",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Accept"
+        },
+        {
+          "cls": "ov-tile-unit",
+          "px": 15,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "%"
+        },
+        {
+          "cls": "ov-tile-trend",
+          "px": 13,
+          "bold": false,
+          "ratio": 5.75,
+          "bar": 4.5,
+          "text": "▲3 · 30d"
+        },
+        {
+          "cls": "ov-tile-lbl",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Governor"
+        }
+      ],
+      "catAttr": "triad",
+      "logDenom": null
+    },
+    {
+      "route": "ops",
+      "tag": "mobile",
+      "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-instrument/ops-mobile.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "loadingGone": true,
+      "settled": true,
+      "bridgeBg": "#090B0A",
+      "bridgeBlue": "#AEB2B0",
+      "docOverflowX": false,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "innerTextLen": 329,
+      "skeletons": 0,
+      "stillLoading": false,
+      "type": {
+        "distinct": 5,
+        "sizes": {
+          "34px": 1,
+          "13px": 26,
+          "30px": 1,
+          "20px": 3,
+          "11px": 6
+        },
+        "fractional": [],
+        "glyphSizes": [
+          "15px",
+          "13px",
+          "20px"
+        ]
+      },
+      "heavy": [
+        {
+          "cls": "",
+          "px": 34,
+          "text": "Ops"
+        }
+      ],
+      "nonTabular": [],
+      "accentCount": 10,
+      "pillEls": [
+        {
+          "tag": "SPAN",
+          "cls": "wb-sync-dot",
+          "w": 7,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "avatar-me",
+          "w": 34,
+          "h": 34,
+          "text": "IM"
+        },
+        {
+          "tag": "DIV",
+          "cls": "wb-stack",
+          "w": 326,
+          "h": 9,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-ofresh-d",
+          "w": 7,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "cnt neutral",
+          "w": 26,
+          "h": 22,
+          "text": "56"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "cnt",
+          "w": 26,
+          "h": 22,
+          "text": "19"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "cnt",
+          "w": 18,
+          "h": 22,
+          "text": "2"
+        }
+      ],
+      "rails": {
+        "content": null,
+        "contentIdeas": null,
+        "inbox": null,
+        "today": null,
+        "drafts": null,
+        "sendsLog": null
+      },
+      "tailRails": {
+        "content": null,
+        "sendsLog": null
+      },
+      "bands": {
+        "content": null,
+        "inbox": null,
+        "today": null,
+        "sendsLog": null
+      },
+      "contrastFailCount": 0,
+      "contrastFails": [],
+      "contrastSampleAll": [
+        {
+          "cls": "wb-gear",
+          "px": 15,
+          "bold": false,
+          "ratio": 9.21,
+          "bar": 4.5,
+          "text": "⚙︎"
+        },
+        {
+          "cls": "",
+          "px": 34,
+          "bold": true,
+          "ratio": 18.15,
+          "bar": 3,
+          "text": "Ops"
+        },
+        {
+          "cls": "avatar-me",
+          "px": 13,
+          "bold": false,
+          "ratio": 18.15,
+          "bar": 4.5,
+          "text": "IM"
+        },
+        {
+          "cls": "wb-otile-n",
+          "px": 30,
+          "bold": false,
+          "ratio": 5.75,
+          "bar": 3,
+          "text": "2"
+        },
+        {
+          "cls": "wb-otile-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "waiting on you"
+        },
+        {
+          "cls": "wb-otile-s",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "approve, edit or disca"
+        },
+        {
+          "cls": "wb-otile-n",
+          "px": 20,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "0"
+        },
+        {
+          "cls": "wb-otile-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "working"
+        },
+        {
+          "cls": "wb-otile-s",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "nothing mid-flight"
+        },
+        {
+          "cls": "wb-otile-n",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "4"
+        },
+        {
+          "cls": "wb-otile-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "done"
+        },
+        {
+          "cls": "wb-otile-s",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "last 10 sent"
+        },
+        {
+          "cls": "wb-otile-n",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.94,
+          "bar": 4.5,
+          "text": "3"
+        },
+        {
+          "cls": "wb-otile-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "blocked"
+        },
+        {
+          "cls": "wb-otile-s",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "read the reason"
+        },
+        {
+          "cls": "wb-ofresh-t",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Checked just now · liv"
+        },
+        {
+          "cls": "wb-ofresh-r",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "↻"
+        },
+        {
+          "cls": "ops-chan",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "your feed"
+        },
+        {
+          "cls": "ops-tm",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "9h"
+        },
+        {
+          "cls": "ops-body",
+          "px": 13,
+          "bold": false,
+          "ratio": 15.66,
+          "bar": 4.5,
+          "text": "the paid into an unkno"
+        },
+        {
+          "cls": "btn s",
+          "px": 13,
+          "bold": false,
+          "ratio": 15.66,
+          "bar": 4.5,
+          "text": "Discard"
+        },
+        {
+          "cls": "btn p",
+          "px": 13,
+          "bold": false,
+          "ratio": 5.61,
+          "bar": 4.5,
+          "text": "Approve & send"
+        },
+        {
+          "cls": "ops-chan",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Rise"
+        },
+        {
+          "cls": "ops-tm",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "22h"
+        },
+        {
+          "cls": "ops-body",
+          "px": 13,
+          "bold": false,
+          "ratio": 15.66,
+          "bar": 4.5,
+          "text": "Respect turning down a"
+        },
+        {
+          "cls": "btn s",
+          "px": 13,
+          "bold": false,
+          "ratio": 15.66,
+          "bar": 4.5,
+          "text": "Discard"
+        },
+        {
+          "cls": "btn p",
+          "px": 13,
+          "bold": false,
+          "ratio": 5.61,
+          "bar": 4.5,
+          "text": "Approve & send"
+        },
+        {
+          "cls": "wb-ocol-h-ttl",
+          "px": 13,
+          "bold": false,
+          "ratio": 5.24,
+          "bar": 4.5,
+          "text": "Already handled"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Done · 4"
+        },
+        {
+          "cls": "chev",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "›"
+        },
+        {
+          "cls": "",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Blocked · 3"
+        },
+        {
+          "cls": "chev",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "›"
+        },
+        {
+          "cls": "ic bubble",
+          "px": 20,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "☼"
+        },
+        {
+          "cls": "l",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Today"
+        },
+        {
+          "cls": "cnt neutral",
+          "px": 13,
+          "bold": false,
+          "ratio": 14.27,
+          "bar": 4.5,
+          "text": "56"
+        },
+        {
+          "cls": "l",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Inbox"
+        },
+        {
+          "cls": "cnt",
+          "px": 13,
+          "bold": false,
+          "ratio": 5.26,
+          "bar": 4.5,
+          "text": "19"
+        },
+        {
+          "cls": "l",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Work"
+        },
+        {
+          "cls": "ic bubble",
+          "px": 20,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "↑"
+        },
+        {
+          "cls": "l",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Sends"
+        }
+      ],
+      "catAttr": "triad",
+      "logDenom": null
+    },
+    {
+      "route": "ops",
+      "tag": "desktop",
+      "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-instrument/ops-desktop.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "loadingGone": true,
+      "settled": true,
+      "bridgeBg": "#090B0A",
+      "bridgeBlue": "#AEB2B0",
+      "docOverflowX": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "innerTextLen": 711,
+      "skeletons": 0,
+      "stillLoading": false,
+      "type": {
+        "distinct": 7,
+        "sizes": {
+          "13px": 38,
+          "20px": 5,
+          "11px": 4,
+          "12px": 2,
+          "56px": 1,
+          "30px": 1,
+          "15px": 1
+        },
+        "fractional": [],
+        "glyphSizes": [
+          "20px",
+          "15px",
+          "13px"
+        ]
+      },
+      "heavy": [
+        {
+          "cls": "",
+          "px": 56,
+          "text": "Ops"
+        }
+      ],
+      "nonTabular": [],
+      "accentCount": 15,
+      "pillEls": [
+        {
+          "tag": "SPAN",
+          "cls": "avatar-me",
+          "w": 34,
+          "h": 34,
+          "text": "IM"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-rj-n",
+          "w": 29,
+          "h": 22,
+          "text": "56"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-rj-n",
+          "w": 29,
+          "h": 22,
+          "text": "19"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-rj-n",
+          "w": 22,
+          "h": 22,
+          "text": "2"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-peer-dot on",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-sync-dot",
+          "w": 7,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "DIV",
+          "cls": "avatar-me",
+          "w": 34,
+          "h": 34,
+          "text": "IM"
+        },
+        {
+          "tag": "DIV",
+          "cls": "wb-stack",
+          "w": 556,
+          "h": 9,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-ofresh-d",
+          "w": 7,
+          "h": 7,
+          "text": ""
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-pane-ic asst",
+          "w": 28,
+          "h": 28,
+          "text": "✳"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "wb-live",
+          "w": 8,
+          "h": 8,
+          "text": ""
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "cmic",
+          "w": 38,
+          "h": 38,
+          "text": "🎙"
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "csend",
+          "w": 38,
+          "h": 38,
+          "text": "↑"
+        }
+      ],
+      "rails": {
+        "content": null,
+        "contentIdeas": null,
+        "inbox": null,
+        "today": null,
+        "drafts": null,
+        "sendsLog": null
+      },
+      "tailRails": {
+        "content": null,
+        "sendsLog": null
+      },
+      "bands": {
+        "content": null,
+        "inbox": null,
+        "today": null,
+        "sendsLog": null
+      },
+      "contrastFailCount": 0,
+      "contrastFails": [],
+      "contrastSampleAll": [
+        {
+          "cls": "avatar-me",
+          "px": 13,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "IM"
+        },
+        {
+          "cls": "wb-rail-ttl",
+          "px": 20,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "Workbench"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "☼"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Today"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "◉"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Inbox"
+        },
+        {
+          "cls": "wb-rj-n",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.24,
+          "bar": 4.5,
+          "text": "56"
+        },
+        {
+          "cls": "wb-rail-grp-l",
+          "px": 11,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Work"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "✦"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "DMs"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "▤"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Content"
+        },
+        {
+          "cls": "wb-rj-n",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.24,
+          "bar": 4.5,
+          "text": "19"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "↑"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Sends"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 5.33,
+          "bar": 4.5,
+          "text": "◈"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 15.66,
+          "bar": 4.5,
+          "text": "Ops"
+        },
+        {
+          "cls": "wb-rj-n",
+          "px": 11,
+          "bold": false,
+          "ratio": 7.24,
+          "bar": 4.5,
+          "text": "2"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 5.75,
+          "bar": 4.5,
+          "text": "✳"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 16.9,
+          "bar": 4.5,
+          "text": "Claude"
+        },
+        {
+          "cls": "wb-rail-hint",
+          "px": 12,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Docked beside your wor"
+        },
+        {
+          "cls": "wb-rj-ic",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "⚙︎"
+        },
+        {
+          "cls": "wb-rj-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "Settings"
+        },
+        {
+          "cls": "wb-sync-t",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "just now"
+        },
+        {
+          "cls": "wb-sync-r",
+          "px": 15,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "↻"
+        },
+        {
+          "cls": "",
+          "px": 56,
+          "bold": true,
+          "ratio": 18.15,
+          "bar": 3,
+          "text": "Ops"
+        },
+        {
+          "cls": "avatar-me",
+          "px": 13,
+          "bold": false,
+          "ratio": 18.15,
+          "bar": 4.5,
+          "text": "IM"
+        },
+        {
+          "cls": "wb-otile-n",
+          "px": 30,
+          "bold": false,
+          "ratio": 5.75,
+          "bar": 3,
+          "text": "2"
+        },
+        {
+          "cls": "wb-otile-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "waiting on you"
+        },
+        {
+          "cls": "wb-otile-s",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "approve, edit or disca"
+        },
+        {
+          "cls": "wb-otile-n",
+          "px": 20,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "0"
+        },
+        {
+          "cls": "wb-otile-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "working"
+        },
+        {
+          "cls": "wb-otile-s",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "nothing mid-flight"
+        },
+        {
+          "cls": "wb-otile-n",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "4"
+        },
+        {
+          "cls": "wb-otile-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "done"
+        },
+        {
+          "cls": "wb-otile-s",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "last 10 sent"
+        },
+        {
+          "cls": "wb-otile-n",
+          "px": 20,
+          "bold": false,
+          "ratio": 8.94,
+          "bar": 4.5,
+          "text": "3"
+        },
+        {
+          "cls": "wb-otile-l",
+          "px": 13,
+          "bold": false,
+          "ratio": 8.57,
+          "bar": 4.5,
+          "text": "blocked"
+        },
+        {
+          "cls": "wb-otile-s",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "read the reason"
+        },
+        {
+          "cls": "wb-ofresh-t",
+          "px": 13,
+          "bold": false,
+          "ratio": 4.88,
+          "bar": 4.5,
+          "text": "Checked just now · liv"
+        }
+      ],
+      "catAttr": "triad",
+      "logDenom": null
+    }
+  ]
+}

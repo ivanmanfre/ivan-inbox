@@ -1,0 +1,149 @@
+[
+  {
+    "route": "today",
+    "kind": "TOUCH-TARGET",
+    "detail": "4 interactive elements under 44x44: [{\"sel\":\"span.wb-gear\",\"w\":17,\"h\":24,\"top\":8,\"left\":357,\"text\":\"⚙︎\"},{\"sel\":\"span.chip\",\"w\":43,\"h\":30,\"top\":122,\"left\":16,\"text\":\"All\"},{\"sel\":\"span.chip.on\",\"w\":52,\"h\":30,\"top\":122,\"left\":67,\"text\":\"Ivan\"},{\"sel\":\"span.chip\",\"w\":53,\"h\":30,\"top\":122,\"left\":127,\"text\":\"Rise\"}]",
+    "shot": null,
+    "ts": 1785695296158
+  },
+  {
+    "route": "today",
+    "kind": "ROW-DENSITY",
+    "detail": "scroller \"rows td-rows\": 2/2 rows exceed 72px (max=1402); sample heights=[153,1402]",
+    "shot": null,
+    "ts": 1785695296166
+  },
+  {
+    "route": "today",
+    "kind": "CLIPPED-TEXT",
+    "detail": "5 truncated labels: [{\"sel\":\"div.td-snip\",\"text\":\"Hi Iván, I'm reaching out because you expressed interest in \",\"scrollWidth\":819,\"clientWidth\":232},{\"sel\":\"div.td-qs\",\"text\":\"David Card — Cool, give me a couple days.\\n\\nI'll pull your po\",\"scrollWidth\":1975,\"clientWidth\":272},{\"sel\":\"div.td-qs\",\"text\":\"Connor McLeod — Quality staying stable is where mine break. \",\"scrollWidth\":939,\"clientWidth\":272},{\"sel\":\"div.td-qs\",\"text\":\"Shayne Williams (A) — the paid into an unknown brand is a ta\",\"scrollWidth\":959,\"clientWidth\":272},{\"sel\":\"span.txt\",\"text\":\"Wed, Aug 12, 02:30 PM · carousel — Comment-to-DM inbound is \",\"scrollWidth\":4514,\"clientWidth\":286}]",
+    "shot": null,
+    "ts": 1785695296204
+  },
+  {
+    "route": "inbox",
+    "kind": "TOUCH-TARGET",
+    "detail": "6 interactive elements under 44x44: [{\"sel\":\"span.wb-gear\",\"w\":17,\"h\":24,\"top\":8,\"left\":357,\"text\":\"⚙︎\"},{\"sel\":\"input.search-in\",\"w\":310,\"h\":20,\"top\":111,\"left\":52,\"text\":\"\"},{\"sel\":\"span.chip.on\",\"w\":63,\"h\":30,\"top\":152,\"left\":16,\"text\":\"All ·56\"},{\"sel\":\"span.chip\",\"w\":52,\"h\":30,\"top\":152,\"left\":87,\"text\":\"Ivan\"},{\"sel\":\"span.chip\",\"w\":53,\"h\":30,\"top\":152,\"left\":147,\"text\":\"Rise\"},{\"sel\":\"span.chip\",\"w\":59,\"h\":30,\"top\":152,\"left\":207,\"text\":\"Email\"}]",
+    "shot": null,
+    "ts": 1785695313612
+  },
+  {
+    "route": "inbox",
+    "kind": "ROW-DENSITY",
+    "detail": "scroller \"rows\": 3/14 rows exceed 72px (max=83950); sample heights=[81,62,62,62,62,62,62,62,62,62,82,62,62,83950]",
+    "shot": null,
+    "ts": 1785695313625
+  },
+  {
+    "route": "inbox",
+    "kind": "CLIPPED-TEXT",
+    "detail": "13 truncated labels: [{\"sel\":\"div.snip\",\"text\":\"You: Hey Muhammad,\\n\\nSaw you around Kyle Hunt's content so fi\",\"scrollWidth\":2617,\"clientWidth\":232},{\"sel\":\"div.snip\",\"text\":\"You: Hey Zach,\\n\\nSaw you around Kyle Hunt's content so figure\",\"scrollWidth\":2579,\"clientWidth\":232},{\"sel\":\"div.snip\",\"text\":\"You: Hey Michael,\\n\\nSaw you around Kyle Hunt's content so fig\",\"scrollWidth\":2594,\"clientWidth\":232},{\"sel\":\"div.snip\",\"text\":\"You: Hey Ron,\\n\\nSaw you around Kyle Hunt's content so figured\",\"scrollWidth\":7063,\"clientWidth\":232},{\"sel\":\"div.snip\",\"text\":\"You: Hey Ahmed,\\n\\nSaw you around Kyle Hunt's content so figur\",\"scrollWidth\":2590,\"clientWidth\":232},{\"sel\":\"div.snip\",\"text\":\"You: Hi Campbell,\\n\\nI build and run an inbound system for fou\",\"scrollWidth\":3039,\"clientWidth\":232},{\"sel\":\"div.snip\",\"text\":\"You: Hi Michiel,\\n\\nI build and run an inbound system for foun\",\"scrollWidth\":3026,\"clientWidth\":232},{\"sel\":\"div.snip\",\"text\":\"You: Hi Jacob,\\n\\nI build and run an inbound system for founde\",\"scrollWidth\":3020,\"clientWidth\":232},{\"sel\":\"div.snip\",\"text\":\"You: Hi Anton,\\n\\nI build and run an inbound system for founde\",\"scrollWidth\":3020,\"clientWidth\":232},{\"sel\":\"div.snip\",\"text\":\"You: Hi Robert,\\n\\nI build and run an inbound system for found\",\"scrollWidth\":3024,\"clientWidth\":232},{\"sel\":\"div.snip\",\"text\":\"You: Hey Abdulqadir,\\n\\nSaw you around Kyle Hunt's content so \",\"scrollWidth\":9579,\"clientWidth\":232},{\"sel\":\"div.snip\",\"text\":\"You: Hi Ollie, working with a few small service teams right \",\"scrollWidth\":830,\"clientWidth\":232},{\"sel\":\"div.snip\",\"text\":\"You: Here's the growth scan:\\nhttps://resources.risedtc.com/s\",\"scrollWidth\":2531,\"clientWidth\":232}]",
+    "shot": null,
+    "ts": 1785695313653
+  },
+  {
+    "route": "drafts",
+    "kind": "TOUCH-TARGET",
+    "detail": "3 interactive elements under 44x44: [{\"sel\":\"span.wb-gear\",\"w\":17,\"h\":24,\"top\":8,\"left\":357,\"text\":\"⚙︎\"},{\"sel\":\"span.wb-ws.on\",\"w\":50,\"h\":28,\"top\":46,\"left\":64,\"text\":\"DMs\"},{\"sel\":\"span.wb-ws\",\"w\":93,\"h\":28,\"top\":46,\"left\":120,\"text\":\"Content19\"}]",
+    "shot": null,
+    "ts": 1785695353895
+  },
+  {
+    "route": "drafts",
+    "kind": "CLIPPED-TEXT",
+    "detail": "3 truncated labels: [{\"sel\":\"div.log-snip\",\"text\":\"Getting SpaceTime into a NASA facility is wild -- congrats o\",\"scrollWidth\":560,\"clientWidth\":234},{\"sel\":\"div.log-snip\",\"text\":\"the paid into an unknown brand is a tax part matches what i \",\"scrollWidth\":767,\"clientWidth\":245},{\"sel\":\"div.log-snip\",\"text\":\"Respect turning down a signature that fast. We screen margin\",\"scrollWidth\":821,\"clientWidth\":238}]",
+    "shot": null,
+    "ts": 1785695353914
+  },
+  {
+    "route": "drafts",
+    "kind": "INFO",
+    "detail": "no scroll needed or scroller not found (sel=.rows), scrollInfo={\"scrollHeight\":565,\"clientHeight\":565}",
+    "shot": null,
+    "ts": 1785695353923
+  },
+  {
+    "route": "content",
+    "kind": "TOUCH-TARGET",
+    "detail": "43 interactive elements under 44x44: [{\"sel\":\"span.wb-gear\",\"w\":17,\"h\":24,\"top\":8,\"left\":357,\"text\":\"⚙︎\"},{\"sel\":\"span.wb-ws\",\"w\":50,\"h\":28,\"top\":46,\"left\":64,\"text\":\"DMs\"},{\"sel\":\"span.wb-ws.on\",\"w\":93,\"h\":28,\"top\":46,\"left\":120,\"text\":\"Content19\"},{\"sel\":\"span.chip.on\",\"w\":52,\"h\":30,\"top\":105,\"left\":202,\"text\":\"Ivan\"},{\"sel\":\"span.chip\",\"w\":112,\"h\":30,\"top\":105,\"left\":262,\"text\":\"Mattan Danino\"},{\"sel\":\"div.btn.s\",\"w\":48,\"h\":28,\"top\":2067,\"left\":170,\"text\":\"Skip\"},{\"sel\":\"div.btn.p\",\"w\":76,\"h\":28,\"top\":2067,\"left\":224,\"text\":\"Approve\"},{\"sel\":\"div.btn.s\",\"w\":48,\"h\":28,\"top\":2128,\"left\":170,\"text\":\"Skip\"},{\"sel\":\"div.btn.p\",\"w\":76,\"h\":28,\"top\":2128,\"left\":224,\"text\":\"Approve\"},{\"sel\":\"div.btn.s\",\"w\":48,\"h\":28,\"top\":2189,\"left\":170,\"text\":\"Skip\"},{\"sel\":\"div.btn.p\",\"w\":76,\"h\":28,\"top\":2189,\"left\":224,\"text\":\"Approve\"},{\"sel\":\"div.btn.s\",\"w\":48,\"h\":28,\"top\":2250,\"left\":170,\"text\":\"Skip\"},{\"sel\":\"div.btn.p\",\"w\":76,\"h\":28,\"top\":2250,\"left\":224,\"text\":\"Approve\"},{\"sel\":\"div.btn.s\",\"w\":48,\"h\":28,\"top\":2311,\"left\":170,\"text\":\"Skip\"},{\"sel\":\"div.btn.p\",\"w\":76,\"h\":28,\"top\":2311,\"left\":224,\"text\":\"Approve\"},{\"sel\":\"div.btn.s\",\"w\":48,\"h\":28,\"top\":2372,\"left\":170,\"text\":\"Skip\"},{\"sel\":\"div.btn.p\",\"w\":76,\"h\":28,\"top\":2372,\"left\":224,\"text\":\"Approve\"},{\"sel\":\"div.btn.s\",\"w\":48,\"h\":28,\"top\":2433,\"left\":170,\"text\":\"Skip\"},{\"sel\":\"div.btn.p\",\"w\":76,\"h\":28,\"top\":2433,\"left\":224,\"text\":\"Approve\"},{\"sel\":\"div.btn.s\",\"w\":48,\"h\":28,\"top\":2494,\"left\":170,\"text\":\"Skip\"}]",
+    "shot": null,
+    "ts": 1785695365699
+  },
+  {
+    "route": "content",
+    "kind": "ROW-DENSITY",
+    "detail": "scroller \"rows ct-rows\": 4/15 rows exceed 72px (max=4414); sample heights=[48,50,358,48,1286,32,1190,32,32,32,4414,32,32,32,24]",
+    "shot": null,
+    "ts": 1785695365703
+  },
+  {
+    "route": "content",
+    "kind": "CLIPPED-TEXT",
+    "detail": "64 truncated labels: [{\"sel\":\"span.wb-caps-xl\",\"text\":\"Generating\",\"scrollWidth\":75,\"clientWidth\":55},{\"sel\":\"span.wb-caps-xl\",\"text\":\"Needs review\",\"scrollWidth\":87,\"clientWidth\":55},{\"sel\":\"span.wb-caps-xl\",\"text\":\"Approved\",\"scrollWidth\":63,\"clientWidth\":55},{\"sel\":\"span.wb-caps-xl\",\"text\":\"Scheduled\",\"scrollWidth\":71,\"clientWidth\":55},{\"sel\":\"span.wb-caps-xl\",\"text\":\"Published\",\"scrollWidth\":66,\"clientWidth\":55},{\"sel\":\"div.ct-title.ct-row-p\",\"text\":\"Anthropic says its own AI models hacked 3 organizations duri\",\"scrollWidth\":473,\"clientWidth\":102},{\"sel\":\"div.ct-title.ct-row-p\",\"text\":\"AI faked its way through peer review - agency owners posting\",\"scrollWidth\":714,\"clientWidth\":102},{\"sel\":\"div.ct-title.ct-row-p\",\"text\":\"When delivery runs your calendar, pipeline is always the fir\",\"scrollWidth\":460,\"clientWidth\":102},{\"sel\":\"div.ct-title.ct-row-p\",\"text\":\"[Lifestyle] An underdiscussed fact about content operations:\",\"scrollWidth\":511,\"clientWidth\":102},{\"sel\":\"div.ct-title.ct-row-p\",\"text\":\"[Lifestyle] Six months of scheduled posts. Not one record of\",\"scrollWidth\":502,\"clientWidth\":102},{\"sel\":\"div.ct-title.ct-row-p\",\"text\":\"[Lifestyle] It hit 32 degrees in Warsaw today and I moved my\",\"scrollWidth\":490,\"clientWidth\":102},{\"sel\":\"div.ct-title.ct-row-p\",\"text\":\"[Lifestyle] Walked past the same bakery on Hoża three times \",\"scrollWidth\":507,\"clientWidth\":102},{\"sel\":\"div.ct-title.ct-row-p\",\"text\":\"[Lifestyle] Right now I'm debating whether checking somethin\",\"scrollWidth\":511,\"clientWidth\":102},{\"sel\":\"div.ct-title.ct-row-p\",\"text\":\"Your agency's Google rankings don't matter if you're invisib\",\"scrollWidth\":590,\"clientWidth\":102},{\"sel\":\"div.ct-title.ct-row-p\",\"text\":\"Your Zoom library is a better content engine than any editor\",\"scrollWidth\":430,\"clientWidth\":102}]",
+    "shot": null,
+    "ts": 1785695365725
+  },
+  {
+    "route": "sends",
+    "kind": "TOUCH-TARGET",
+    "detail": "4 interactive elements under 44x44: [{\"sel\":\"span.wb-gear\",\"w\":17,\"h\":24,\"top\":8,\"left\":357,\"text\":\"⚙︎\"},{\"sel\":\"button.wb-fpill\",\"w\":101,\"h\":32,\"top\":55,\"left\":231,\"text\":\"Range: 7d⌄\"},{\"sel\":\"span.chip.on\",\"w\":52,\"h\":30,\"top\":124,\"left\":16,\"text\":\"Ivan\"},{\"sel\":\"span.chip\",\"w\":53,\"h\":30,\"top\":124,\"left\":76,\"text\":\"Rise\"}]",
+    "shot": null,
+    "ts": 1785695404527
+  },
+  {
+    "route": "sends",
+    "kind": "ROW-DENSITY",
+    "detail": "scroller \"rows ov\": 4/4 rows exceed 72px (max=969); sample heights=[217,262,864,969]",
+    "shot": null,
+    "ts": 1785695404555
+  },
+  {
+    "route": "sends",
+    "kind": "TEXT-SIZE",
+    "detail": "1 distinct leaf elements under 11px: [{\"sel\":\"i\",\"fontSize\":9,\"text\":\"⌄\",\"top\":61}]",
+    "shot": null,
+    "ts": 1785695404563
+  },
+  {
+    "route": "sends",
+    "kind": "CLIPPED-TEXT",
+    "detail": "9 truncated labels: [{\"sel\":\"span.ov-tile-lbl\",\"text\":\"Accept\",\"scrollWidth\":48,\"clientWidth\":41},{\"sel\":\"span.ov-tile-lbl\",\"text\":\"Governor\",\"scrollWidth\":67,\"clientWidth\":41},{\"sel\":\"span.ov-tile-lbl\",\"text\":\"Runway\",\"scrollWidth\":52,\"clientWidth\":41},{\"sel\":\"span.ov-td-nm\",\"text\":\"Warm - Kyle Engagers\",\"scrollWidth\":137,\"clientWidth\":129},{\"sel\":\"span.ov-td-nm\",\"text\":\"Warm - Creators' Lead-Magnet Commenters\",\"scrollWidth\":276,\"clientWidth\":129},{\"sel\":\"span.ov-td-nm\",\"text\":\"Agency-Focused Consultants & Fractionals\",\"scrollWidth\":267,\"clientWidth\":129},{\"sel\":\"span.ov-td-nm\",\"text\":\"Agency Owners & Ops Leaders\",\"scrollWidth\":191,\"clientWidth\":137},{\"sel\":\"span.ov-td-nm\",\"text\":\"Warm - Engagement Harvest\",\"scrollWidth\":179,\"clientWidth\":129},{\"sel\":\"span.ov-td-nm\",\"text\":\"Inbound Request — Ivan\",\"scrollWidth\":149,\"clientWidth\":137}]",
+    "shot": null,
+    "ts": 1785695404568
+  },
+  {
+    "route": "sends",
+    "kind": "INFO",
+    "detail": "no scroll needed or scroller not found (sel=.rows.sc-rows), scrollInfo=null",
+    "shot": null,
+    "ts": 1785695404582
+  },
+  {
+    "route": "ops",
+    "kind": "TOUCH-TARGET",
+    "detail": "1 interactive elements under 44x44: [{\"sel\":\"span.wb-gear\",\"w\":17,\"h\":24,\"top\":8,\"left\":357,\"text\":\"⚙︎\"}]",
+    "shot": null,
+    "ts": 1785695405762
+  },
+  {
+    "route": "ops",
+    "kind": "ROW-DENSITY",
+    "detail": "scroller \"rows ops-rows\": 2/2 rows exceed 72px (max=766); sample heights=[265,766]",
+    "shot": null,
+    "ts": 1785695405786
+  },
+  {
+    "route": "settings",
+    "kind": "TOUCH-TARGET",
+    "detail": "1 interactive elements under 44x44: [{\"sel\":\"span.wb-gear\",\"w\":44,\"h\":24,\"top\":8,\"left\":330,\"text\":\"Done\"}]",
+    "shot": null,
+    "ts": 1785695410120
+  },
+  {
+    "route": "settings",
+    "kind": "ROW-DENSITY",
+    "detail": "scroller \"rows settings\": 1/5 rows exceed 72px (max=259); sample heights=[32,259,32,66,54]",
+    "shot": null,
+    "ts": 1785695410140
+  }
+]

@@ -1,0 +1,92 @@
+{
+  "desktop": {
+    "scrollInfo1": {
+      "found": true,
+      "scrollTop": 900,
+      "scrollHeight": 6300,
+      "clientHeight": 759
+    },
+    "scrollInfo2": {
+      "found": true,
+      "scrollTop": 1800,
+      "scrollHeight": 6300,
+      "clientHeight": 759
+    },
+    "hoverProbe": {
+      "found": true,
+      "rowClass": "rows ct-rows",
+      "rowRect": {
+        "x": 200,
+        "y": 141,
+        "w": 619,
+        "h": 759
+      },
+      "passRect": {
+        "x": 256,
+        "y": -952,
+        "w": 74,
+        "h": 18
+      },
+      "chipText": "PASS 79",
+      "chipColor": "rgb(243, 246, 245)",
+      "chipBg": "rgb(25, 29, 27)",
+      "chipBorder": "rgb(243, 246, 245)",
+      "cornerFound": true,
+      "cornerColor": "rgb(243, 246, 245)",
+      "cornerBg": "rgb(16, 163, 127)",
+      "cornerBorder": "rgb(243, 246, 245)",
+      "cornerClass": "wb-legend-d",
+      "hoverShot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-blind/rf2-desktop-1440x900-4-hover-pass-row.png"
+    },
+    "shots": [
+      "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-blind/rf2-desktop-1440x900-1-top.png",
+      "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-blind/rf2-desktop-1440x900-2-scroll1vh.png",
+      "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-blind/rf2-desktop-1440x900-3-scroll2vh.png"
+    ]
+  },
+  "mobile": {
+    "scrollInfo1": {
+      "found": true,
+      "scrollTop": 844,
+      "scrollHeight": 7402,
+      "clientHeight": 607
+    },
+    "scrollInfo2": {
+      "found": true,
+      "scrollTop": 1688,
+      "scrollHeight": 7402,
+      "clientHeight": 607
+    },
+    "hoverProbe": {
+      "found": true,
+      "rowClass": "rows ct-rows",
+      "rowRect": {
+        "x": 0,
+        "y": 155,
+        "w": 390,
+        "h": 607
+      },
+      "passRect": {
+        "x": 56,
+        "y": -773,
+        "w": 74,
+        "h": 18
+      },
+      "chipText": "PASS 79",
+      "chipColor": "rgb(243, 246, 245)",
+      "chipBg": "rgb(25, 29, 27)",
+      "chipBorder": "rgb(243, 246, 245)",
+      "cornerFound": true,
+      "cornerColor": "rgb(243, 246, 245)",
+      "cornerBg": "rgb(16, 163, 127)",
+      "cornerBorder": "rgb(243, 246, 245)",
+      "cornerClass": "wb-legend-d",
+      "hoverShot": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-blind/rf2-mobile-390x844-4-hover-pass-row.png"
+    },
+    "shots": [
+      "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-blind/rf2-mobile-390x844-1-top.png",
+      "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-blind/rf2-mobile-390x844-2-scroll1vh.png",
+      "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-faithful-revamp-2026-08-02-out/phase6-blind/rf2-mobile-390x844-3-scroll2vh.png"
+    ]
+  }
+}

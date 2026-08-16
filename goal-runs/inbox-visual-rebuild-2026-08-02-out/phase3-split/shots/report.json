@@ -1,0 +1,2297 @@
+[
+  {
+    "shot": "content",
+    "tag": "mobile",
+    "url": "http://localhost:5433/#exp/v2c/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-split/shots/content-mobile.png",
+    "innerTextLen": 26121,
+    "skeletons": 0,
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "regionOverflow": [
+      "ct-title",
+      "ct-title",
+      "ct-title",
+      "ct-title",
+      "ct-title"
+    ],
+    "typeCensus": {
+      "distinct": 7,
+      "sizes": [
+        30,
+        20,
+        15,
+        13,
+        12,
+        11,
+        9
+      ],
+      "fractional": []
+    },
+    "weightCensus": {
+      "heavyCount": 0,
+      "heavy": []
+    },
+    "tabular": {
+      "violations": 0,
+      "sample": []
+    },
+    "accentCensus": {
+      "count": 1,
+      "sample": [
+        "ic bubble"
+      ],
+      "asText": []
+    },
+    "figureCensus": {
+      "count": 1,
+      "figures": [
+        "wb-pipe-big :: 18"
+      ]
+    },
+    "rogueHue": {
+      "count": 0,
+      "sample": []
+    },
+    "pillLicence": {
+      "violations": 0,
+      "sample": []
+    },
+    "rail": {
+      "content": {
+        "n": 18,
+        "variance": 0
+      },
+      "inbox": null,
+      "log": null,
+      "today": null
+    },
+    "trail": {
+      "content": {
+        "n": 18,
+        "variance": 0
+      },
+      "inbox": null
+    },
+    "density": {
+      "content": {
+        "n": 18,
+        "min": 43,
+        "max": 44
+      },
+      "inbox": null,
+      "log": null
+    },
+    "bridge": "#090B0A",
+    "blueToken": "#AEB2B0",
+    "cat1": "#10A37F",
+    "cat2": "#DBDFDD",
+    "errors": [],
+    "missed": []
+  },
+  {
+    "shot": "content",
+    "tag": "desktop",
+    "url": "http://localhost:5433/#exp/v2c/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-split/shots/content-desktop.png",
+    "innerTextLen": 26500,
+    "skeletons": 0,
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "regionOverflow": [
+      "ct-title",
+      "ct-title",
+      "ct-title",
+      "ct-title",
+      "ct-title"
+    ],
+    "typeCensus": {
+      "distinct": 7,
+      "sizes": [
+        30,
+        20,
+        15,
+        13,
+        12,
+        11,
+        9
+      ],
+      "fractional": []
+    },
+    "weightCensus": {
+      "heavyCount": 0,
+      "heavy": []
+    },
+    "tabular": {
+      "violations": 0,
+      "sample": []
+    },
+    "accentCensus": {
+      "count": 6,
+      "sample": [
+        "wb-rj on wb-rj-lane",
+        "wb-rj-ic",
+        "wb-rj wb-rj-peer on",
+        "wb-rj-ic",
+        "wb-peer-dot on",
+        "wb-live"
+      ],
+      "asText": [
+        "wb-rj-ic :: ▤",
+        "wb-rj-ic :: ✳"
+      ]
+    },
+    "figureCensus": {
+      "count": 1,
+      "figures": [
+        "wb-pipe-big :: 18"
+      ]
+    },
+    "rogueHue": {
+      "count": 0,
+      "sample": []
+    },
+    "pillLicence": {
+      "violations": 0,
+      "sample": []
+    },
+    "rail": {
+      "content": {
+        "n": 18,
+        "variance": 0
+      },
+      "inbox": null,
+      "log": null,
+      "today": null
+    },
+    "trail": {
+      "content": {
+        "n": 18,
+        "variance": 0
+      },
+      "inbox": null
+    },
+    "density": {
+      "content": {
+        "n": 18,
+        "min": 41,
+        "max": 42
+      },
+      "inbox": null,
+      "log": null
+    },
+    "bridge": "#090B0A",
+    "blueToken": "#AEB2B0",
+    "cat1": "#10A37F",
+    "cat2": "#DBDFDD",
+    "errors": [],
+    "missed": []
+  },
+  {
+    "shot": "content-mattan",
+    "tag": "mobile",
+    "url": "http://localhost:5433/#exp/v2c/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-split/shots/content-mattan-mobile.png",
+    "innerTextLen": 8874,
+    "skeletons": 0,
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "regionOverflow": [
+      "ct-title",
+      "ct-mtx",
+      "ct-title",
+      "ct-title",
+      "ct-title"
+    ],
+    "typeCensus": {
+      "distinct": 7,
+      "sizes": [
+        30,
+        20,
+        15,
+        13,
+        12,
+        11,
+        9
+      ],
+      "fractional": []
+    },
+    "weightCensus": {
+      "heavyCount": 0,
+      "heavy": []
+    },
+    "tabular": {
+      "violations": 0,
+      "sample": []
+    },
+    "accentCensus": {
+      "count": 1,
+      "sample": [
+        "ic bubble"
+      ],
+      "asText": []
+    },
+    "figureCensus": {
+      "count": 1,
+      "figures": [
+        "wb-pipe-big :: 20"
+      ]
+    },
+    "rogueHue": {
+      "count": 0,
+      "sample": []
+    },
+    "pillLicence": {
+      "violations": 0,
+      "sample": []
+    },
+    "rail": {
+      "content": {
+        "n": 70,
+        "variance": 0
+      },
+      "inbox": null,
+      "log": null,
+      "today": null
+    },
+    "trail": {
+      "content": {
+        "n": 70,
+        "variance": 0
+      },
+      "inbox": null
+    },
+    "density": {
+      "content": {
+        "n": 70,
+        "min": 43,
+        "max": 44
+      },
+      "inbox": null,
+      "log": null
+    },
+    "bridge": "#090B0A",
+    "blueToken": "#AEB2B0",
+    "cat1": "#10A37F",
+    "cat2": "#DBDFDD",
+    "errors": [],
+    "missed": []
+  },
+  {
+    "shot": "content-mattan",
+    "tag": "desktop",
+    "url": "http://localhost:5433/#exp/v2c/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-split/shots/content-mattan-desktop.png",
+    "innerTextLen": 9253,
+    "skeletons": 0,
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "regionOverflow": [
+      "ct-mtx",
+      "ct-title",
+      "ct-mtx",
+      "ct-title",
+      "ct-mtx"
+    ],
+    "typeCensus": {
+      "distinct": 7,
+      "sizes": [
+        30,
+        20,
+        15,
+        13,
+        12,
+        11,
+        9
+      ],
+      "fractional": []
+    },
+    "weightCensus": {
+      "heavyCount": 0,
+      "heavy": []
+    },
+    "tabular": {
+      "violations": 0,
+      "sample": []
+    },
+    "accentCensus": {
+      "count": 6,
+      "sample": [
+        "wb-rj on wb-rj-lane",
+        "wb-rj-ic",
+        "wb-rj wb-rj-peer on",
+        "wb-rj-ic",
+        "wb-peer-dot on",
+        "wb-live"
+      ],
+      "asText": [
+        "wb-rj-ic :: ▤",
+        "wb-rj-ic :: ✳"
+      ]
+    },
+    "figureCensus": {
+      "count": 1,
+      "figures": [
+        "wb-pipe-big :: 20"
+      ]
+    },
+    "rogueHue": {
+      "count": 0,
+      "sample": []
+    },
+    "pillLicence": {
+      "violations": 0,
+      "sample": []
+    },
+    "rail": {
+      "content": {
+        "n": 70,
+        "variance": 0
+      },
+      "inbox": null,
+      "log": null,
+      "today": null
+    },
+    "trail": {
+      "content": {
+        "n": 70,
+        "variance": 0
+      },
+      "inbox": null
+    },
+    "density": {
+      "content": {
+        "n": 70,
+        "min": 41,
+        "max": 42
+      },
+      "inbox": null,
+      "log": null
+    },
+    "bridge": "#090B0A",
+    "blueToken": "#AEB2B0",
+    "cat1": "#10A37F",
+    "cat2": "#DBDFDD",
+    "errors": [],
+    "missed": []
+  },
+  {
+    "shot": "today",
+    "tag": "mobile",
+    "url": "http://localhost:5433/#exp/v2c/today",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-split/shots/today-mobile.png",
+    "innerTextLen": 3031,
+    "skeletons": 0,
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "regionOverflow": [
+      "td-snip",
+      "td-snip",
+      "td-snip",
+      "td-qs",
+      "td-qs"
+    ],
+    "typeCensus": {
+      "distinct": 7,
+      "sizes": [
+        34,
+        30,
+        20,
+        15,
+        13,
+        12,
+        11
+      ],
+      "fractional": []
+    },
+    "weightCensus": {
+      "heavyCount": 1,
+      "heavy": [
+        {
+          "cls": "H2",
+          "px": 34,
+          "w": "700",
+          "text": "Today"
+        }
+      ]
+    },
+    "tabular": {
+      "violations": 0,
+      "sample": []
+    },
+    "accentCensus": {
+      "count": 10,
+      "sample": [
+        "td-stack-s td-cat-1",
+        "td-lg-d td-cat-1",
+        "td-qn",
+        "td-qn",
+        "td-qn",
+        "td-zmark done",
+        "td-bar-f",
+        "td-bar-f"
+      ],
+      "asText": [
+        "ic bubble :: ☼"
+      ]
+    },
+    "figureCensus": {
+      "count": 1,
+      "figures": [
+        "td-big :: 14"
+      ]
+    },
+    "rogueHue": {
+      "count": 0,
+      "sample": []
+    },
+    "pillLicence": {
+      "violations": 0,
+      "sample": []
+    },
+    "rail": {
+      "content": null,
+      "inbox": null,
+      "log": null,
+      "today": {
+        "n": 3,
+        "variance": 0
+      }
+    },
+    "trail": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "log": null
+    },
+    "bridge": "#090B0A",
+    "blueToken": "#AEB2B0",
+    "cat1": "#10A37F",
+    "cat2": "#DBDFDD",
+    "errors": [],
+    "missed": []
+  },
+  {
+    "shot": "today",
+    "tag": "desktop",
+    "url": "http://localhost:5433/#exp/v2c/today",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-split/shots/today-desktop.png",
+    "innerTextLen": 3395,
+    "skeletons": 0,
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "regionOverflow": [
+      "td-snip",
+      "td-snip",
+      "td-snip",
+      "td-qs",
+      "td-qs"
+    ],
+    "typeCensus": {
+      "distinct": 7,
+      "sizes": [
+        56,
+        30,
+        20,
+        15,
+        13,
+        12,
+        11
+      ],
+      "fractional": []
+    },
+    "weightCensus": {
+      "heavyCount": 1,
+      "heavy": [
+        {
+          "cls": "H2",
+          "px": 56,
+          "w": "700",
+          "text": "Today"
+        }
+      ]
+    },
+    "tabular": {
+      "violations": 0,
+      "sample": []
+    },
+    "accentCensus": {
+      "count": 15,
+      "sample": [
+        "wb-rj on",
+        "wb-rj-ic",
+        "wb-rj wb-rj-peer on",
+        "wb-rj-ic",
+        "wb-peer-dot on",
+        "td-stack-s td-cat-1",
+        "td-lg-d td-cat-1",
+        "td-qn"
+      ],
+      "asText": [
+        "wb-rj-ic :: ☼",
+        "wb-rj-ic :: ✳"
+      ]
+    },
+    "figureCensus": {
+      "count": 1,
+      "figures": [
+        "td-big :: 14"
+      ]
+    },
+    "rogueHue": {
+      "count": 0,
+      "sample": []
+    },
+    "pillLicence": {
+      "violations": 0,
+      "sample": []
+    },
+    "rail": {
+      "content": null,
+      "inbox": null,
+      "log": null,
+      "today": {
+        "n": 3,
+        "variance": 0
+      }
+    },
+    "trail": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "log": null
+    },
+    "bridge": "#090B0A",
+    "blueToken": "#AEB2B0",
+    "cat1": "#10A37F",
+    "cat2": "#DBDFDD",
+    "errors": [],
+    "missed": []
+  },
+  {
+    "shot": "sends",
+    "tag": "mobile",
+    "url": "http://localhost:5433/#exp/v2c/sends",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-split/shots/sends-mobile.png",
+    "innerTextLen": 1630,
+    "skeletons": 0,
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "regionOverflow": [
+      "ov-tile-lbl",
+      "ov-td-nm",
+      "ov-td-nm",
+      "ov-td-nm",
+      "ov-td-nm"
+    ],
+    "typeCensus": {
+      "distinct": 7,
+      "sizes": [
+        34,
+        20,
+        15,
+        13,
+        12,
+        11,
+        9
+      ],
+      "fractional": []
+    },
+    "weightCensus": {
+      "heavyCount": 1,
+      "heavy": [
+        {
+          "cls": "H2",
+          "px": 34,
+          "w": "700",
+          "text": "Sends"
+        }
+      ]
+    },
+    "tabular": {
+      "violations": 0,
+      "sample": []
+    },
+    "accentCensus": {
+      "count": 23,
+      "sample": [
+        "wb-foot-d",
+        "sc-dot ov-cat-1",
+        "sc-bar ",
+        "sc-bar ",
+        "sc-bar ",
+        "sc-bar ",
+        "sc-bar ",
+        "sc-bar "
+      ],
+      "asText": [
+        "ic bubble :: ↑"
+      ]
+    },
+    "figureCensus": {
+      "count": 1,
+      "figures": [
+        "ov-tile-big :: 29%"
+      ]
+    },
+    "rogueHue": {
+      "count": 0,
+      "sample": []
+    },
+    "pillLicence": {
+      "violations": 0,
+      "sample": []
+    },
+    "rail": {
+      "content": null,
+      "inbox": null,
+      "log": null,
+      "today": null
+    },
+    "trail": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "log": null
+    },
+    "bridge": "#090B0A",
+    "blueToken": "#AEB2B0",
+    "cat1": "#10A37F",
+    "cat2": "#DBDFDD",
+    "errors": [],
+    "missed": []
+  },
+  {
+    "shot": "sends",
+    "tag": "desktop",
+    "url": "http://localhost:5433/#exp/v2c/sends",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-split/shots/sends-desktop.png",
+    "innerTextLen": 1986,
+    "skeletons": 0,
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "regionOverflow": [],
+    "typeCensus": {
+      "distinct": 7,
+      "sizes": [
+        56,
+        20,
+        15,
+        13,
+        12,
+        11,
+        9
+      ],
+      "fractional": []
+    },
+    "weightCensus": {
+      "heavyCount": 1,
+      "heavy": [
+        {
+          "cls": "H2",
+          "px": 56,
+          "w": "700",
+          "text": "Sends"
+        }
+      ]
+    },
+    "tabular": {
+      "violations": 0,
+      "sample": []
+    },
+    "accentCensus": {
+      "count": 28,
+      "sample": [
+        "wb-rj on",
+        "wb-rj-ic",
+        "wb-rj wb-rj-peer on",
+        "wb-rj-ic",
+        "wb-peer-dot on",
+        "wb-foot-d",
+        "sc-dot ov-cat-1",
+        "sc-bar "
+      ],
+      "asText": [
+        "wb-rj-ic :: ↑",
+        "wb-rj-ic :: ✳"
+      ]
+    },
+    "figureCensus": {
+      "count": 1,
+      "figures": [
+        "ov-tile-big :: 29%"
+      ]
+    },
+    "rogueHue": {
+      "count": 0,
+      "sample": []
+    },
+    "pillLicence": {
+      "violations": 0,
+      "sample": []
+    },
+    "rail": {
+      "content": null,
+      "inbox": null,
+      "log": null,
+      "today": null
+    },
+    "trail": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "log": null
+    },
+    "bridge": "#090B0A",
+    "blueToken": "#AEB2B0",
+    "cat1": "#10A37F",
+    "cat2": "#DBDFDD",
+    "errors": [],
+    "missed": []
+  },
+  {
+    "shot": "sends-lanes",
+    "tag": "desktop",
+    "url": "http://localhost:5433/#exp/v2c/sends",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-split/shots/sends-lanes-desktop.png",
+    "innerTextLen": 649,
+    "skeletons": 0,
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "regionOverflow": [],
+    "typeCensus": {
+      "distinct": 6,
+      "sizes": [
+        56,
+        20,
+        15,
+        13,
+        12,
+        11
+      ],
+      "fractional": []
+    },
+    "weightCensus": {
+      "heavyCount": 1,
+      "heavy": [
+        {
+          "cls": "H2",
+          "px": 56,
+          "w": "700",
+          "text": "Sends"
+        }
+      ]
+    },
+    "tabular": {
+      "violations": 0,
+      "sample": []
+    },
+    "accentCensus": {
+      "count": 21,
+      "sample": [
+        "wb-rj on",
+        "wb-rj-ic",
+        "wb-rj wb-rj-peer on",
+        "wb-rj-ic",
+        "wb-peer-dot on",
+        "sc-dot",
+        "sc-dot",
+        "sc-bar "
+      ],
+      "asText": [
+        "wb-rj-ic :: ↑",
+        "wb-rj-ic :: ✳"
+      ]
+    },
+    "figureCensus": {
+      "count": 0,
+      "figures": []
+    },
+    "rogueHue": {
+      "count": 0,
+      "sample": []
+    },
+    "pillLicence": {
+      "violations": 0,
+      "sample": []
+    },
+    "rail": {
+      "content": null,
+      "inbox": null,
+      "log": null,
+      "today": null
+    },
+    "trail": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "log": null
+    },
+    "bridge": "#090B0A",
+    "blueToken": "#AEB2B0",
+    "cat1": "#10A37F",
+    "cat2": "#DBDFDD",
+    "errors": [],
+    "missed": []
+  },
+  {
+    "shot": "sends-log",
+    "tag": "mobile",
+    "url": "http://localhost:5433/#exp/v2c/sends",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-split/shots/sends-log-mobile.png",
+    "innerTextLen": 44535,
+    "skeletons": 0,
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "regionOverflow": [
+      "log-snip",
+      "log-snip",
+      "log-snip",
+      "log-snip",
+      "log-snip"
+    ],
+    "typeCensus": {
+      "distinct": 7,
+      "sizes": [
+        34,
+        16,
+        15,
+        13,
+        12,
+        11,
+        9
+      ],
+      "fractional": []
+    },
+    "weightCensus": {
+      "heavyCount": 1,
+      "heavy": [
+        {
+          "cls": "H2",
+          "px": 34,
+          "w": "700",
+          "text": "Sends"
+        }
+      ]
+    },
+    "tabular": {
+      "violations": 0,
+      "sample": []
+    },
+    "accentCensus": {
+      "count": 1,
+      "sample": [
+        "ic bubble"
+      ],
+      "asText": [
+        "ic bubble :: ↑"
+      ]
+    },
+    "figureCensus": {
+      "count": 0,
+      "figures": []
+    },
+    "rogueHue": {
+      "count": 0,
+      "sample": []
+    },
+    "pillLicence": {
+      "violations": 0,
+      "sample": []
+    },
+    "rail": {
+      "content": null,
+      "inbox": null,
+      "log": {
+        "n": 120,
+        "variance": 0
+      },
+      "today": null
+    },
+    "trail": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "log": {
+        "n": 120,
+        "min": 45,
+        "max": 45
+      }
+    },
+    "bridge": "#090B0A",
+    "blueToken": "#AEB2B0",
+    "cat1": "#10A37F",
+    "cat2": "#DBDFDD",
+    "errors": [],
+    "missed": []
+  },
+  {
+    "shot": "sends-log",
+    "tag": "desktop",
+    "url": "http://localhost:5433/#exp/v2c/sends",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-split/shots/sends-log-desktop.png",
+    "innerTextLen": 44891,
+    "skeletons": 0,
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "regionOverflow": [
+      "log-snip",
+      "log-snip",
+      "log-snip",
+      "log-snip",
+      "log-snip"
+    ],
+    "typeCensus": {
+      "distinct": 7,
+      "sizes": [
+        56,
+        16,
+        15,
+        13,
+        12,
+        11,
+        9
+      ],
+      "fractional": []
+    },
+    "weightCensus": {
+      "heavyCount": 1,
+      "heavy": [
+        {
+          "cls": "H2",
+          "px": 56,
+          "w": "700",
+          "text": "Sends"
+        }
+      ]
+    },
+    "tabular": {
+      "violations": 0,
+      "sample": []
+    },
+    "accentCensus": {
+      "count": 6,
+      "sample": [
+        "wb-rj on",
+        "wb-rj-ic",
+        "wb-rj wb-rj-peer on",
+        "wb-rj-ic",
+        "wb-peer-dot on",
+        "wb-live"
+      ],
+      "asText": [
+        "wb-rj-ic :: ↑",
+        "wb-rj-ic :: ✳"
+      ]
+    },
+    "figureCensus": {
+      "count": 0,
+      "figures": []
+    },
+    "rogueHue": {
+      "count": 0,
+      "sample": []
+    },
+    "pillLicence": {
+      "violations": 0,
+      "sample": []
+    },
+    "rail": {
+      "content": null,
+      "inbox": null,
+      "log": {
+        "n": 120,
+        "variance": 0
+      },
+      "today": null
+    },
+    "trail": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "log": {
+        "n": 120,
+        "min": 45,
+        "max": 45
+      }
+    },
+    "bridge": "#090B0A",
+    "blueToken": "#AEB2B0",
+    "cat1": "#10A37F",
+    "cat2": "#DBDFDD",
+    "errors": [],
+    "missed": []
+  },
+  {
+    "shot": "inbox",
+    "tag": "mobile",
+    "url": "http://localhost:5433/#exp/v2c/inbox",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-split/shots/inbox-mobile.png",
+    "innerTextLen": 4388,
+    "skeletons": 0,
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "regionOverflow": [
+      "snip",
+      "snip",
+      "snip",
+      "snip",
+      "snip"
+    ],
+    "typeCensus": {
+      "distinct": 5,
+      "sizes": [
+        20,
+        15,
+        13,
+        12,
+        11
+      ],
+      "fractional": []
+    },
+    "weightCensus": {
+      "heavyCount": 0,
+      "heavy": []
+    },
+    "tabular": {
+      "violations": 0,
+      "sample": []
+    },
+    "accentCensus": {
+      "count": 4,
+      "sample": [
+        "wb-stack-seg",
+        "wb-ihead-d",
+        "wb-ok-dot",
+        "ic bubble"
+      ],
+      "asText": []
+    },
+    "figureCensus": {
+      "count": 0,
+      "figures": []
+    },
+    "rogueHue": {
+      "count": 0,
+      "sample": []
+    },
+    "pillLicence": {
+      "violations": 0,
+      "sample": []
+    },
+    "rail": {
+      "content": null,
+      "inbox": {
+        "n": 13,
+        "variance": 0
+      },
+      "log": null,
+      "today": null
+    },
+    "trail": {
+      "content": null,
+      "inbox": {
+        "n": 13,
+        "variance": 0
+      }
+    },
+    "density": {
+      "content": null,
+      "inbox": {
+        "n": 13,
+        "min": 45,
+        "max": 45
+      },
+      "log": null
+    },
+    "bridge": "#090B0A",
+    "blueToken": "#AEB2B0",
+    "cat1": "#10A37F",
+    "cat2": "#DBDFDD",
+    "errors": [],
+    "missed": []
+  },
+  {
+    "shot": "inbox",
+    "tag": "desktop",
+    "url": "http://localhost:5433/#exp/v2c/inbox",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-split/shots/inbox-desktop.png",
+    "innerTextLen": 5562,
+    "skeletons": 0,
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "regionOverflow": [
+      "snip",
+      "snip",
+      "snip",
+      "snip",
+      "snip"
+    ],
+    "typeCensus": {
+      "distinct": 5,
+      "sizes": [
+        20,
+        15,
+        13,
+        12,
+        11
+      ],
+      "fractional": []
+    },
+    "weightCensus": {
+      "heavyCount": 0,
+      "heavy": []
+    },
+    "tabular": {
+      "violations": 0,
+      "sample": []
+    },
+    "accentCensus": {
+      "count": 9,
+      "sample": [
+        "wb-rj on",
+        "wb-rj-ic",
+        "wb-rj wb-rj-peer on",
+        "wb-rj-ic",
+        "wb-peer-dot on",
+        "wb-stack-seg",
+        "wb-ihead-d",
+        "wb-ok-dot"
+      ],
+      "asText": [
+        "wb-rj-ic :: ◉",
+        "wb-rj-ic :: ✳"
+      ]
+    },
+    "figureCensus": {
+      "count": 0,
+      "figures": []
+    },
+    "rogueHue": {
+      "count": 0,
+      "sample": []
+    },
+    "pillLicence": {
+      "violations": 0,
+      "sample": []
+    },
+    "rail": {
+      "content": null,
+      "inbox": {
+        "n": 16,
+        "variance": 0
+      },
+      "log": null,
+      "today": null
+    },
+    "trail": {
+      "content": null,
+      "inbox": {
+        "n": 16,
+        "variance": 0
+      }
+    },
+    "density": {
+      "content": null,
+      "inbox": {
+        "n": 16,
+        "min": 45,
+        "max": 45
+      },
+      "log": null
+    },
+    "bridge": "#090B0A",
+    "blueToken": "#AEB2B0",
+    "cat1": "#10A37F",
+    "cat2": "#DBDFDD",
+    "errors": [],
+    "missed": []
+  },
+  {
+    "shot": "ops",
+    "tag": "mobile",
+    "url": "http://localhost:5433/#exp/v2c/ops",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-split/shots/ops-mobile.png",
+    "innerTextLen": 294,
+    "skeletons": 0,
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "regionOverflow": [],
+    "typeCensus": {
+      "distinct": 6,
+      "sizes": [
+        34,
+        30,
+        20,
+        15,
+        12,
+        11
+      ],
+      "fractional": []
+    },
+    "weightCensus": {
+      "heavyCount": 1,
+      "heavy": [
+        {
+          "cls": "H2",
+          "px": 34,
+          "w": "700",
+          "text": "Ops"
+        }
+      ]
+    },
+    "tabular": {
+      "violations": 0,
+      "sample": []
+    },
+    "accentCensus": {
+      "count": 4,
+      "sample": [
+        "wb-stack-seg",
+        "wb-ofresh-d",
+        "btn p",
+        "ic bubble"
+      ],
+      "asText": []
+    },
+    "figureCensus": {
+      "count": 1,
+      "figures": [
+        "wb-otile-n :: 1"
+      ]
+    },
+    "rogueHue": {
+      "count": 0,
+      "sample": []
+    },
+    "pillLicence": {
+      "violations": 0,
+      "sample": []
+    },
+    "rail": {
+      "content": null,
+      "inbox": null,
+      "log": null,
+      "today": null
+    },
+    "trail": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "log": null
+    },
+    "bridge": "#090B0A",
+    "blueToken": "#AEB2B0",
+    "cat1": "#10A37F",
+    "cat2": "#DBDFDD",
+    "errors": [],
+    "missed": []
+  },
+  {
+    "shot": "ops",
+    "tag": "desktop",
+    "url": "http://localhost:5433/#exp/v2c/ops",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-split/shots/ops-desktop.png",
+    "innerTextLen": 675,
+    "skeletons": 0,
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "regionOverflow": [],
+    "typeCensus": {
+      "distinct": 7,
+      "sizes": [
+        56,
+        30,
+        20,
+        15,
+        13,
+        12,
+        11
+      ],
+      "fractional": []
+    },
+    "weightCensus": {
+      "heavyCount": 1,
+      "heavy": [
+        {
+          "cls": "H2",
+          "px": 56,
+          "w": "700",
+          "text": "Ops"
+        }
+      ]
+    },
+    "tabular": {
+      "violations": 0,
+      "sample": []
+    },
+    "accentCensus": {
+      "count": 9,
+      "sample": [
+        "wb-rj on",
+        "wb-rj-ic",
+        "wb-rj wb-rj-peer on",
+        "wb-rj-ic",
+        "wb-peer-dot on",
+        "wb-stack-seg",
+        "wb-ofresh-d",
+        "btn p"
+      ],
+      "asText": [
+        "wb-rj-ic :: ◈",
+        "wb-rj-ic :: ✳"
+      ]
+    },
+    "figureCensus": {
+      "count": 1,
+      "figures": [
+        "wb-otile-n :: 1"
+      ]
+    },
+    "rogueHue": {
+      "count": 0,
+      "sample": []
+    },
+    "pillLicence": {
+      "violations": 0,
+      "sample": []
+    },
+    "rail": {
+      "content": null,
+      "inbox": null,
+      "log": null,
+      "today": null
+    },
+    "trail": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "log": null
+    },
+    "bridge": "#090B0A",
+    "blueToken": "#AEB2B0",
+    "cat1": "#10A37F",
+    "cat2": "#DBDFDD",
+    "errors": [],
+    "missed": []
+  },
+  {
+    "shot": "drafts",
+    "tag": "mobile",
+    "url": "http://localhost:5433/#exp/v2c/drafts",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-split/shots/drafts-mobile.png",
+    "innerTextLen": 318,
+    "skeletons": 0,
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "regionOverflow": [
+      "log-snip"
+    ],
+    "typeCensus": {
+      "distinct": 6,
+      "sizes": [
+        20,
+        15,
+        13,
+        12,
+        11,
+        9
+      ],
+      "fractional": []
+    },
+    "weightCensus": {
+      "heavyCount": 0,
+      "heavy": []
+    },
+    "tabular": {
+      "violations": 0,
+      "sample": []
+    },
+    "accentCensus": {
+      "count": 1,
+      "sample": [
+        "ic bubble"
+      ],
+      "asText": []
+    },
+    "figureCensus": {
+      "count": 0,
+      "figures": []
+    },
+    "rogueHue": {
+      "count": 0,
+      "sample": []
+    },
+    "pillLicence": {
+      "violations": 0,
+      "sample": []
+    },
+    "rail": {
+      "content": null,
+      "inbox": null,
+      "log": {
+        "n": 1,
+        "variance": 0
+      },
+      "today": null
+    },
+    "trail": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "log": {
+        "n": 1,
+        "min": 45,
+        "max": 45
+      }
+    },
+    "bridge": "#090B0A",
+    "blueToken": "#AEB2B0",
+    "cat1": "#10A37F",
+    "cat2": "#DBDFDD",
+    "errors": [],
+    "missed": []
+  },
+  {
+    "shot": "drafts",
+    "tag": "desktop",
+    "url": "http://localhost:5433/#exp/v2c/drafts",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-split/shots/drafts-desktop.png",
+    "innerTextLen": 683,
+    "skeletons": 0,
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "regionOverflow": [
+      "log-snip"
+    ],
+    "typeCensus": {
+      "distinct": 6,
+      "sizes": [
+        20,
+        15,
+        13,
+        12,
+        11,
+        9
+      ],
+      "fractional": []
+    },
+    "weightCensus": {
+      "heavyCount": 0,
+      "heavy": []
+    },
+    "tabular": {
+      "violations": 0,
+      "sample": []
+    },
+    "accentCensus": {
+      "count": 6,
+      "sample": [
+        "wb-rj on wb-rj-lane",
+        "wb-rj-ic",
+        "wb-rj wb-rj-peer on",
+        "wb-rj-ic",
+        "wb-peer-dot on",
+        "wb-live"
+      ],
+      "asText": [
+        "wb-rj-ic :: ✦",
+        "wb-rj-ic :: ✳"
+      ]
+    },
+    "figureCensus": {
+      "count": 0,
+      "figures": []
+    },
+    "rogueHue": {
+      "count": 0,
+      "sample": []
+    },
+    "pillLicence": {
+      "violations": 0,
+      "sample": []
+    },
+    "rail": {
+      "content": null,
+      "inbox": null,
+      "log": {
+        "n": 1,
+        "variance": 0
+      },
+      "today": null
+    },
+    "trail": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "log": {
+        "n": 1,
+        "min": 45,
+        "max": 45
+      }
+    },
+    "bridge": "#090B0A",
+    "blueToken": "#AEB2B0",
+    "cat1": "#10A37F",
+    "cat2": "#DBDFDD",
+    "errors": [],
+    "missed": []
+  },
+  {
+    "shot": "settings",
+    "tag": "mobile",
+    "url": "http://localhost:5433/#exp/v2c/settings",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-split/shots/settings-mobile.png",
+    "innerTextLen": 448,
+    "skeletons": 0,
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "regionOverflow": [],
+    "typeCensus": {
+      "distinct": 5,
+      "sizes": [
+        20,
+        15,
+        13,
+        12,
+        11
+      ],
+      "fractional": []
+    },
+    "weightCensus": {
+      "heavyCount": 0,
+      "heavy": []
+    },
+    "tabular": {
+      "violations": 0,
+      "sample": []
+    },
+    "accentCensus": {
+      "count": 1,
+      "sample": [
+        "sw on "
+      ],
+      "asText": []
+    },
+    "figureCensus": {
+      "count": 0,
+      "figures": []
+    },
+    "rogueHue": {
+      "count": 0,
+      "sample": []
+    },
+    "pillLicence": {
+      "violations": 0,
+      "sample": []
+    },
+    "rail": {
+      "content": null,
+      "inbox": null,
+      "log": null,
+      "today": null
+    },
+    "trail": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "log": null
+    },
+    "bridge": "#090B0A",
+    "blueToken": "#AEB2B0",
+    "cat1": "#10A37F",
+    "cat2": "#DBDFDD",
+    "errors": [],
+    "missed": []
+  },
+  {
+    "shot": "settings",
+    "tag": "desktop",
+    "url": "http://localhost:5433/#exp/v2c/settings",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-split/shots/settings-desktop.png",
+    "innerTextLen": 804,
+    "skeletons": 0,
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "regionOverflow": [],
+    "typeCensus": {
+      "distinct": 5,
+      "sizes": [
+        20,
+        15,
+        13,
+        12,
+        11
+      ],
+      "fractional": []
+    },
+    "weightCensus": {
+      "heavyCount": 0,
+      "heavy": []
+    },
+    "tabular": {
+      "violations": 0,
+      "sample": []
+    },
+    "accentCensus": {
+      "count": 7,
+      "sample": [
+        "wb-rj wb-rj-peer on",
+        "wb-rj-ic",
+        "wb-peer-dot on",
+        "wb-rj on",
+        "wb-rj-ic",
+        "sw on ",
+        "wb-live"
+      ],
+      "asText": [
+        "wb-rj-ic :: ✳",
+        "wb-rj-ic :: ⚙︎"
+      ]
+    },
+    "figureCensus": {
+      "count": 0,
+      "figures": []
+    },
+    "rogueHue": {
+      "count": 0,
+      "sample": []
+    },
+    "pillLicence": {
+      "violations": 0,
+      "sample": []
+    },
+    "rail": {
+      "content": null,
+      "inbox": null,
+      "log": null,
+      "today": null
+    },
+    "trail": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "log": null
+    },
+    "bridge": "#090B0A",
+    "blueToken": "#AEB2B0",
+    "cat1": "#10A37F",
+    "cat2": "#DBDFDD",
+    "errors": [],
+    "missed": []
+  },
+  {
+    "shot": "thread",
+    "tag": "desktop",
+    "url": "http://localhost:5433/#exp/v2c/inbox",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-split/shots/thread-desktop.png",
+    "innerTextLen": 6540,
+    "skeletons": 0,
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "regionOverflow": [
+      "snip",
+      "snip",
+      "snip",
+      "snip",
+      "snip"
+    ],
+    "typeCensus": {
+      "distinct": 5,
+      "sizes": [
+        20,
+        15,
+        13,
+        12,
+        11
+      ],
+      "fractional": []
+    },
+    "weightCensus": {
+      "heavyCount": 0,
+      "heavy": []
+    },
+    "tabular": {
+      "violations": 0,
+      "sample": []
+    },
+    "accentCensus": {
+      "count": 18,
+      "sample": [
+        "wb-rj on",
+        "wb-rj-ic",
+        "wb-rj wb-rj-peer on",
+        "wb-rj-ic",
+        "wb-peer-dot on",
+        "wb-stack-seg",
+        "wb-ihead-d",
+        "wb-ok-dot"
+      ],
+      "asText": [
+        "wb-rj-ic :: ◉",
+        "wb-rj-ic :: ✳"
+      ]
+    },
+    "figureCensus": {
+      "count": 0,
+      "figures": []
+    },
+    "rogueHue": {
+      "count": 0,
+      "sample": []
+    },
+    "pillLicence": {
+      "violations": 0,
+      "sample": []
+    },
+    "rail": {
+      "content": null,
+      "inbox": {
+        "n": 16,
+        "variance": 0
+      },
+      "log": null,
+      "today": null
+    },
+    "trail": {
+      "content": null,
+      "inbox": {
+        "n": 16,
+        "variance": 0
+      }
+    },
+    "density": {
+      "content": null,
+      "inbox": {
+        "n": 16,
+        "min": 45,
+        "max": 45
+      },
+      "log": null
+    },
+    "bridge": "#090B0A",
+    "blueToken": "#AEB2B0",
+    "cat1": "#10A37F",
+    "cat2": "#DBDFDD",
+    "errors": [],
+    "missed": []
+  },
+  {
+    "shot": "draft-pane",
+    "tag": "desktop",
+    "url": "http://localhost:5433/#exp/v2c/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-split/shots/draft-pane-desktop.png",
+    "innerTextLen": 43604,
+    "skeletons": 0,
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "regionOverflow": [
+      "ct-title",
+      "ct-title",
+      "ct-title",
+      "ct-title",
+      "ct-title"
+    ],
+    "typeCensus": {
+      "distinct": 7,
+      "sizes": [
+        30,
+        20,
+        15,
+        13,
+        12,
+        11,
+        9
+      ],
+      "fractional": []
+    },
+    "weightCensus": {
+      "heavyCount": 0,
+      "heavy": []
+    },
+    "tabular": {
+      "violations": 0,
+      "sample": []
+    },
+    "accentCensus": {
+      "count": 10,
+      "sample": [
+        "wb-rj on wb-rj-lane",
+        "wb-rj-ic",
+        "wb-rj wb-rj-peer on",
+        "wb-rj-ic",
+        "wb-peer-dot on",
+        "ct-row ct-tap on",
+        "btn p",
+        "wb-peer wb-peer-draft on"
+      ],
+      "asText": [
+        "wb-rj-ic :: ▤",
+        "wb-rj-ic :: ✳"
+      ]
+    },
+    "figureCensus": {
+      "count": 1,
+      "figures": [
+        "wb-pipe-big :: 18"
+      ]
+    },
+    "rogueHue": {
+      "count": 0,
+      "sample": []
+    },
+    "pillLicence": {
+      "violations": 0,
+      "sample": []
+    },
+    "rail": {
+      "content": {
+        "n": 18,
+        "variance": 0
+      },
+      "inbox": null,
+      "log": null,
+      "today": null
+    },
+    "trail": {
+      "content": {
+        "n": 18,
+        "variance": 0
+      },
+      "inbox": null
+    },
+    "density": {
+      "content": {
+        "n": 18,
+        "min": 41,
+        "max": 42
+      },
+      "inbox": null,
+      "log": null
+    },
+    "bridge": "#090B0A",
+    "blueToken": "#AEB2B0",
+    "cat1": "#10A37F",
+    "cat2": "#DBDFDD",
+    "errors": [],
+    "missed": []
+  },
+  {
+    "shot": "cat-mono-sends",
+    "tag": "desktop",
+    "url": "http://localhost:5433/#exp/v2c/sends",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-split/shots/cat-mono-sends-desktop.png",
+    "innerTextLen": 1986,
+    "skeletons": 0,
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "regionOverflow": [],
+    "typeCensus": {
+      "distinct": 7,
+      "sizes": [
+        56,
+        20,
+        15,
+        13,
+        12,
+        11,
+        9
+      ],
+      "fractional": []
+    },
+    "weightCensus": {
+      "heavyCount": 1,
+      "heavy": [
+        {
+          "cls": "H2",
+          "px": 56,
+          "w": "700",
+          "text": "Sends"
+        }
+      ]
+    },
+    "tabular": {
+      "violations": 0,
+      "sample": []
+    },
+    "accentCensus": {
+      "count": 28,
+      "sample": [
+        "wb-rj on",
+        "wb-rj-ic",
+        "wb-rj wb-rj-peer on",
+        "wb-rj-ic",
+        "wb-peer-dot on",
+        "wb-foot-d",
+        "sc-dot ov-cat-1",
+        "sc-bar "
+      ],
+      "asText": [
+        "wb-rj-ic :: ↑",
+        "wb-rj-ic :: ✳"
+      ]
+    },
+    "figureCensus": {
+      "count": 1,
+      "figures": [
+        "ov-tile-big :: 29%"
+      ]
+    },
+    "rogueHue": {
+      "count": 0,
+      "sample": []
+    },
+    "pillLicence": {
+      "violations": 0,
+      "sample": []
+    },
+    "rail": {
+      "content": null,
+      "inbox": null,
+      "log": null,
+      "today": null
+    },
+    "trail": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "log": null
+    },
+    "bridge": "#090B0A",
+    "blueToken": "#AEB2B0",
+    "cat1": "#10A37F",
+    "cat2": "#DBDFDD",
+    "errors": [],
+    "missed": []
+  },
+  {
+    "shot": "cat-triad-sends",
+    "tag": "desktop",
+    "url": "http://localhost:5433/#exp/v2c/sends",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-split/shots/cat-triad-sends-desktop.png",
+    "innerTextLen": 1986,
+    "skeletons": 0,
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "regionOverflow": [],
+    "typeCensus": {
+      "distinct": 7,
+      "sizes": [
+        56,
+        20,
+        15,
+        13,
+        12,
+        11,
+        9
+      ],
+      "fractional": []
+    },
+    "weightCensus": {
+      "heavyCount": 1,
+      "heavy": [
+        {
+          "cls": "H2",
+          "px": 56,
+          "w": "700",
+          "text": "Sends"
+        }
+      ]
+    },
+    "tabular": {
+      "violations": 0,
+      "sample": []
+    },
+    "accentCensus": {
+      "count": 28,
+      "sample": [
+        "wb-rj on",
+        "wb-rj-ic",
+        "wb-rj wb-rj-peer on",
+        "wb-rj-ic",
+        "wb-peer-dot on",
+        "wb-foot-d",
+        "sc-dot ov-cat-1",
+        "sc-bar "
+      ],
+      "asText": [
+        "wb-rj-ic :: ↑",
+        "wb-rj-ic :: ✳"
+      ]
+    },
+    "figureCensus": {
+      "count": 1,
+      "figures": [
+        "ov-tile-big :: 29%"
+      ]
+    },
+    "rogueHue": {
+      "count": 0,
+      "sample": []
+    },
+    "pillLicence": {
+      "violations": 0,
+      "sample": []
+    },
+    "rail": {
+      "content": null,
+      "inbox": null,
+      "log": null,
+      "today": null
+    },
+    "trail": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "log": null
+    },
+    "bridge": "#090B0A",
+    "blueToken": "#AEB2B0",
+    "cat1": "#10A37F",
+    "cat2": "#3A93D0",
+    "errors": [],
+    "missed": []
+  },
+  {
+    "shot": "light-content",
+    "tag": "desktop",
+    "url": "http://localhost:5433/#exp/v2c/content",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-split/shots/light-content-desktop.png",
+    "innerTextLen": 26500,
+    "skeletons": 0,
+    "docOverflow": false,
+    "scrollWidth": 1440,
+    "regionOverflow": [
+      "ct-title",
+      "ct-title",
+      "ct-title",
+      "ct-title",
+      "ct-title"
+    ],
+    "typeCensus": {
+      "distinct": 7,
+      "sizes": [
+        30,
+        20,
+        15,
+        13,
+        12,
+        11,
+        9
+      ],
+      "fractional": []
+    },
+    "weightCensus": {
+      "heavyCount": 0,
+      "heavy": []
+    },
+    "tabular": {
+      "violations": 0,
+      "sample": []
+    },
+    "accentCensus": {
+      "count": 6,
+      "sample": [
+        "wb-rj on wb-rj-lane",
+        "wb-rj-ic",
+        "wb-rj wb-rj-peer on",
+        "wb-rj-ic",
+        "wb-peer-dot on",
+        "wb-live"
+      ],
+      "asText": [
+        "wb-rj-ic :: ▤",
+        "wb-rj-ic :: ✳"
+      ]
+    },
+    "figureCensus": {
+      "count": 1,
+      "figures": [
+        "wb-pipe-big :: 18"
+      ]
+    },
+    "rogueHue": {
+      "count": 0,
+      "sample": []
+    },
+    "pillLicence": {
+      "violations": 0,
+      "sample": []
+    },
+    "rail": {
+      "content": {
+        "n": 18,
+        "variance": 0
+      },
+      "inbox": null,
+      "log": null,
+      "today": null
+    },
+    "trail": {
+      "content": {
+        "n": 18,
+        "variance": 0
+      },
+      "inbox": null
+    },
+    "density": {
+      "content": {
+        "n": 18,
+        "min": 41,
+        "max": 42
+      },
+      "inbox": null,
+      "log": null
+    },
+    "bridge": "#FBFCFB",
+    "blueToken": "#4A504D",
+    "cat1": "#0B7A5F",
+    "cat2": "#5C625F",
+    "errors": [],
+    "missed": []
+  },
+  {
+    "shot": "light-today",
+    "tag": "mobile",
+    "url": "http://localhost:5433/#exp/v2c/today",
+    "file": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/inbox-visual-rebuild-2026-08-02-out/phase3-split/shots/light-today-mobile.png",
+    "innerTextLen": 3031,
+    "skeletons": 0,
+    "docOverflow": false,
+    "scrollWidth": 390,
+    "regionOverflow": [
+      "td-snip",
+      "td-snip",
+      "td-snip",
+      "td-qs",
+      "td-qs"
+    ],
+    "typeCensus": {
+      "distinct": 7,
+      "sizes": [
+        34,
+        30,
+        20,
+        15,
+        13,
+        12,
+        11
+      ],
+      "fractional": []
+    },
+    "weightCensus": {
+      "heavyCount": 1,
+      "heavy": [
+        {
+          "cls": "H2",
+          "px": 34,
+          "w": "700",
+          "text": "Today"
+        }
+      ]
+    },
+    "tabular": {
+      "violations": 0,
+      "sample": []
+    },
+    "accentCensus": {
+      "count": 8,
+      "sample": [
+        "td-qn",
+        "td-qn",
+        "td-qn",
+        "td-zmark done",
+        "td-bar-f",
+        "td-bar-f",
+        "td-bar-f",
+        "ic bubble"
+      ],
+      "asText": [
+        "ic bubble :: ☼"
+      ]
+    },
+    "figureCensus": {
+      "count": 1,
+      "figures": [
+        "td-big :: 14"
+      ]
+    },
+    "rogueHue": {
+      "count": 0,
+      "sample": []
+    },
+    "pillLicence": {
+      "violations": 0,
+      "sample": []
+    },
+    "rail": {
+      "content": null,
+      "inbox": null,
+      "log": null,
+      "today": {
+        "n": 3,
+        "variance": 0
+      }
+    },
+    "trail": {
+      "content": null,
+      "inbox": null
+    },
+    "density": {
+      "content": null,
+      "inbox": null,
+      "log": null
+    },
+    "bridge": "#FBFCFB",
+    "blueToken": "#4A504D",
+    "cat1": "#0B7A5F",
+    "cat2": "#5C625F",
+    "errors": [],
+    "missed": []
+  }
+]
