@@ -190,15 +190,19 @@ describe('the live loop is NOT governed by this reducer', () => {
   // realtime swap, and one that no rendering test would catch because the UI
   // would look completely healthy while the model could no longer be
   // interrupted.
-  it('useRealtime never imports voiceReduce', async () => {
-    const fs = await import('node:fs')
-    const src = fs.readFileSync(new URL('./useRealtime.ts', import.meta.url), 'utf8')
-    expect(src).not.toMatch(/voiceReduce/)
+  // Read through Vite rather than node:fs — this repo builds with `tsc -b` and
+  // ships no @types/node, so a bare `node:fs` import passes vitest and then
+  // fails the deploy build.
+  const SRC = Object.values(
+    import.meta.glob('./useRealtime.ts', { query: '?raw', import: 'default', eager: true }),
+  )[0] as string
+
+  it('useRealtime never imports voiceReduce', () => {
+    expect(SRC).not.toMatch(/voiceReduce/)
   })
 
-  it('and it keeps the mic hot while SPEAKING, which this reducer forbids', async () => {
-    const fs = await import('node:fs')
-    const src = fs.readFileSync(new URL('./useRealtime.ts', import.meta.url), 'utf8')
+  it('and it keeps the mic hot while SPEAKING, which this reducer forbids', () => {
+    const src = SRC
     // speech_started -> LISTENING is the barge-in transition. It exists here and
     // is unreachable in the reducer.
     expect(src).toMatch(/speech_started/)
