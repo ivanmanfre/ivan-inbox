@@ -39,6 +39,8 @@ const DISABLED = Deno.env.get('INBOX_RT_DISABLED') === '1'
 // the CLIENT choose the model, that is a spend decision.
 const MODEL = Deno.env.get('INBOX_RT_MODEL') ?? 'gpt-realtime-2.1-mini'
 const VOICE = Deno.env.get('INBOX_RT_VOICE') ?? 'marin'
+// 'low' | 'minimal' | 'off' (off = omit the field entirely)
+const REASONING = Deno.env.get('INBOX_RT_REASONING') ?? 'low'
 
 // Scoped, not '*'. Mirrors inbox-rt-token's list (GitHub Pages + the vite ports).
 const ALLOWED_ORIGINS = [
@@ -139,10 +141,11 @@ Deno.serve(async (req) => {
     model: MODEL,
     tools: TOOLS,
     tool_choice: 'auto',
-    // Reasoning on speech-to-speech: OpenAI's own guidance is to start at low
-    // effort for production voice agents and only raise it if the task needs it.
-    // Latency is the whole point of this lane, so low it is.
-    reasoning: { effort: 'low' },
+    // Reasoning on speech-to-speech. OpenAI's guidance is to start at low
+    // effort for voice agents, but reasoning happens BEFORE first audio, so it
+    // is the prime suspect for the 1.37s measured utterance-end -> first-audio.
+    // Set INBOX_RT_REASONING=off to omit the field entirely and A/B it.
+    ...(REASONING === 'off' ? {} : { reasoning: { effort: REASONING } }),
     audio: {
       output: { voice: VOICE },
       // Transcribe the user's own audio too: the chat pane shows the words as
