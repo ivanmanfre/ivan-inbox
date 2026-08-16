@@ -120,6 +120,17 @@ const INSTRUCTIONS = [
   'call escalate_to_workbench with a clear one-line task. Say a SHORT holding line',
   'first like "checking" or "on it" — then keep listening while it runs.',
   '',
+  // Measured 2026-08-16: the same spoken question ("how many content drafts are
+  // pending") came back 8, then 0, on two consecutive runs — not a hallucination,
+  // the workbench read the database both times, but "pending" maps to several
+  // statuses across several tables and each run picked a different one. A typed
+  // question gets re-read before it is sent; a spoken one does not, so the
+  // ambiguity has to be handled HERE.
+  'When he asks for a count or a figure, spoken questions are vaguer than typed',
+  'ones: pass his exact words through in the task and tell the workbench to state',
+  'WHICH table and field it used. When the summary comes back, say what was',
+  'counted, not just the number — "8 of your own, by review status" beats "8".',
+  '',
   'Answer directly ONLY for: conversational back-and-forth, restating or clarifying',
   'what he just said, and helping him phrase the task he wants to dispatch.',
 ].join('\n')

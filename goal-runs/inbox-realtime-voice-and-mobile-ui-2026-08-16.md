@@ -284,12 +284,36 @@ looking healthy.
 
 - **iPhone installed-PWA screen-lock survival.** Human-blocked. `rt-probe.html`
   logs `visibilitychange` with the pc and mic state; run it installed.
-- **🔴 The escalated work cannot touch the database, and it is not a voice bug.**
-  `inbox-claude` never sends `permission_mode`, so the container runs at
-  `main.py:86`'s default `acceptEdits`, where every Bash call needs an approval
-  nobody is there to give. Every escalation ends "approve the next Bash call".
-  One line fixes it (`permission_mode: 'bypassPermissions'` in `upstreamBody`)
-  and it is deliberately NOT taken here: this file's own header says the box
-  holds every client's credentials on one filesystem and that pinning the
-  workspace does not sandbox a Bash turn, so that flip lets a spoken sentence run
-  unattended bash against all of them. Ivan's call.
+### ✅ CLOSED same day — the escalated work can now read the database
+
+`inbox-claude` never sent `permission_mode`, so the container fell through to
+`main.py:86`'s default `acceptEdits`, where every Bash call waits for an approval
+nobody on this path can give. The file's header had claimed bypassPermissions for
+months; it was never true. **Ivan authorised the grant explicitly after the risk
+was put to him**, and it is now sent from `upstreamBody`.
+
+🔴 What the grant costs, on the record: a turn dispatched from here runs
+unattended Bash on a filesystem holding every client's credentials, and pinning
+the workspace does not sandbox it. The verified bearer, the single-operator
+allowlist and the scoped origins are now the ONLY controls on that surface.
+Deleting the line takes the grant back with no upstream deploy.
+
+Before: every escalation ended "approve the next Bash call", 128s per turn.
+After: real figures, 53s per turn.
+
+### ⚠ A spoken question is vaguer than a typed one — and it shows
+
+Two consecutive runs of the SAME spoken question ("how many content drafts are
+pending") returned 8 and then 0. Neither was a hallucination: the workbench read
+the database both times, and the one figure present in both — 5 scheduled posts —
+reproduced exactly. "Pending" simply maps to several statuses across several
+tables, and each run picked a different one. A typed question gets re-read before
+Enter; a spoken one does not.
+
+Handled in the realtime instructions: pass his exact words through in the task,
+have the workbench name the table and field it used, and say what was counted
+rather than only the number.
+
+### Still open
+
+- **iPhone installed-PWA screen-lock survival.** Human-blocked, as above.
