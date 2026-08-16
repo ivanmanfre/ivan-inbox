@@ -76,12 +76,30 @@ document.getElementById('env').innerHTML = Object.entries(env)
   .join('') + `<div><b>ua</b><span style="font-size:10px;text-align:right">${navigator.userAgent.slice(0, 60)}</span></div>`
 
 function token() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+  // supabase-js stores the session as PLAIN JSON in older versions and as
+  // `base64-<b64 of the JSON>` in newer ones. Reading only the first shape
+  // makes a present session look absent (it did, on the first e2e run).
+  // Fall back to scanning every key so a storageKey change cannot silently
+  // break this probe either.
+  const parse = (raw) => {
     if (!raw) return null
-    const j = JSON.parse(raw)
-    return j?.access_token || j?.currentSession?.access_token || null
-  } catch { return null }
+    try {
+      const body = raw.startsWith('base64-')
+        ? decodeURIComponent(escape(atob(raw.slice(7))))
+        : raw
+      const j = JSON.parse(body)
+      return j?.access_token || j?.currentSession?.access_token || null
+    } catch { return null }
+  }
+  const direct = parse(localStorage.getItem(STORAGE_KEY))
+  if (direct) return direct
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i)
+    if (!/^sb-.*-auth-token$/.test(k || '')) continue
+    const t = parse(localStorage.getItem(k))
+    if (t) return t
+  }
+  return null
 }
 
 let pc = null, dc = null, mic = null, remoteAudio = null, wake = null
