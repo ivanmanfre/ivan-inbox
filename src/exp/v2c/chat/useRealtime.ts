@@ -34,6 +34,46 @@ import { IDLE, type VoiceState } from './voice'
 const RT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/inbox-rt-session`
 const CALLS_URL = 'https://api.openai.com/v1/realtime/calls'
 
+// --- the pre-session mic buffer -------------------------------------------
+//
+// useLive had one, and it was load-bearing: connecting takes ~1.5-3s (mic grant
+// → mint → SDP → ICE), and a WebRTC track carries NOTHING until ICE is up, so
+// every word said inside that window was simply gone. You tap Live, start
+// talking, and the model answers the back half of your sentence.
+//
+// Measured on the wire 2026-08-16 before writing this: `input_audio_buffer.append`
+// IS accepted over the `oai-events` data channel, not only over the WebSocket
+// transport — appended 5s of 24k mono PCM16, got `input_audio_buffer.committed`
+// and a verbatim transcript back. So the fix is to capture PCM from the moment
+// the mic is granted and replay it into the same input buffer the live track
+// feeds, letting the model's own VAD endpoint the merged stream.
+const RT_RATE = 24_000            // the format the API wants: 24k mono pcm16
+const PRE_MAX_S = 20              // hard cap — a flush is billed as input audio
+const PRE_SPEECH_PEAK = 0.035     // whole buffer under this = room tone, don't pay for it
+const PRE_LEAD_S = 0.25           // keep this much run-up before the first loud frame
+const PRE_CHUNK = 24_000          // base64 chars per data-channel message
+
+/** Float frames → base64 PCM16, chunked so a long buffer cannot blow the stack. */
+function encodePcm16(frames: Float32Array[]): string {
+  let n = 0
+  for (const f of frames) n += f.length
+  const pcm = new Uint8Array(n * 2)
+  const view = new DataView(pcm.buffer)
+  let o = 0
+  for (const f of frames) {
+    for (let i = 0; i < f.length; i++) {
+      const s = Math.max(-1, Math.min(1, f[i]))
+      view.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7fff, true)
+      o += 2
+    }
+  }
+  let bin = ''
+  for (let i = 0; i < pcm.length; i += 0x8000) {
+    bin += String.fromCharCode(...pcm.subarray(i, i + 0x8000))
+  }
+  return btoa(bin)
+}
+
 export type LiveExchange = { heard: string; reply: string }
 
 type RtEvent = { type?: string; [k: string]: unknown }
@@ -72,6 +112,14 @@ export function useRealtime({ onEscalate }: {
   const audioEl = useRef<HTMLAudioElement | null>(null)
   const ctx = useRef<AudioContext | null>(null)
   const raf = useRef(0)
+  // Everything heard between the mic grant and the data channel opening.
+  const pre = useRef<Float32Array[]>([])
+  const preTap = useRef<ScriptProcessorNode | null>(null)
+  // The gate on the OUTBOUND audio: gain 0 until the pre-session buffer has
+  // been queued, then 1. A gain rather than track.enabled — see the note in
+  // open() for the 0.5s that costs.
+  const outGate = useRef<GainNode | null>(null)
+  const outTrack = useRef<MediaStreamTrack | null>(null)
   // Latest exchange halves, accumulated across deltas before they pair up.
   const heard = useRef('')
   const reply = useRef('')
@@ -88,16 +136,117 @@ export function useRealtime({ onEscalate }: {
     if (ch && ch.readyState === 'open') ch.send(JSON.stringify(msg))
   }, [])
 
+  // Stop taping the mic into the pre-session buffer. Idempotent: called both on
+  // a successful flush and on close, and the second call must be harmless.
+  const stopTap = useCallback(() => {
+    try { preTap.current?.disconnect() } catch { /* already gone */ }
+    if (preTap.current) preTap.current.onaudioprocess = null
+    preTap.current = null
+  }, [])
+
+  /**
+   * Replay everything said while connecting into the session's input buffer,
+   * then let the live mic through.
+   *
+   * 🔴 ORDER IS THE WHOLE PROBLEM, TWICE OVER.
+   *
+   * (1) Appends land at the END of the input buffer, so if the live track is
+   *     already flowing the model hears [live tail][replayed opening][live rest].
+   *     Measured 2026-08-16: a clean "Check my database and tell me how many
+   *     content drafts are pending right now" came back as "Can't check my
+   *     database and tell me how graphs are pending right now".
+   * (2) `send` only QUEUES on the data channel. Opening the mic the instant the
+   *     last append is queued still races ~100KB of SCTP against RTP, and the
+   *     seam eats the middle of the sentence. So the gate waits on
+   *     `bufferedAmount` reaching zero, re-appending anything the tap caught in
+   *     the meantime, and only then opens.
+   *
+   * Deliberately does NOT commit: the mic continues straight through the seam,
+   * so the model's own VAD decides where the turn ends. Committing here would
+   * cut the sentence in half at exactly the join this exists to hide.
+   */
+  const flushPre = useCallback(async () => {
+    // Whatever happens below, the mic must end up live.
+    const openMic = () => {
+      stopTap(); pre.current = []
+      const g = outGate.current
+      if (!g) return
+      // A 20ms ramp rather than a step: a hard jump to 1 puts a click in the
+      // first frame the model hears.
+      const t0 = g.context.currentTime
+      g.gain.setValueAtTime(0, t0)
+      g.gain.linearRampToValueAtTime(1, t0 + 0.02)
+    }
+
+    const append = (frames: Float32Array[]) => {
+      const b64 = encodePcm16(frames)
+      for (let i = 0; i < b64.length; i += PRE_CHUNK) {
+        send({ type: 'input_audio_buffer.append', audio: b64.slice(i, i + PRE_CHUNK) })
+      }
+    }
+
+    /** Resolve once the channel has actually put everything on the wire. */
+    const drain = () => new Promise<void>(resolve => {
+      const started = performance.now()
+      const poll = () => {
+        const ch = dc.current
+        // The 1s ceiling is a guard, not a timeout we expect to hit: a stuck
+        // channel must not leave the microphone muted forever.
+        if (!ch || ch.bufferedAmount === 0 || performance.now() - started > 1000) return resolve()
+        setTimeout(poll, 8)
+      }
+      poll()
+    })
+
+    const frames = pre.current
+    pre.current = []
+    if (!frames.length) { openMic(); return }
+
+    // Was anything actually said? A silent flush is billed as input audio for
+    // nothing, and it happens on every single session start.
+    let firstLoud = -1
+    for (let i = 0; i < frames.length && firstLoud < 0; i++) {
+      const f = frames[i]
+      for (let j = 0; j < f.length; j++) {
+        if (Math.abs(f[j]) > PRE_SPEECH_PEAK) { firstLoud = i; break }
+      }
+    }
+    if (firstLoud < 0) { openMic(); return }
+
+    // Drop the room tone before the first word, keeping a short run-up so the
+    // model still hears the attack of the first consonant. Everything after it
+    // is kept: the tail is the bridge to the live mic.
+    const lead = Math.ceil((PRE_LEAD_S * RT_RATE) / frames[0].length)
+    append(frames.slice(Math.max(0, firstLoud - lead)))
+    await drain()
+
+    // Bridge passes: while the first flush was going out the tap kept running,
+    // and those frames are exactly the words that used to fall in the gap.
+    for (let pass = 0; pass < 4; pass++) {
+      const more = pre.current
+      pre.current = []
+      if (!more.length) break
+      append(more)
+      await drain()
+    }
+    openMic()
+  }, [send, stopTap])
+
   const close = useCallback(() => {
     cancelAnimationFrame(raf.current)
+    stopTap(); pre.current = []
     try { dc.current?.close() } catch { /* already gone */ }
     try { pc.current?.close() } catch { /* already gone */ }
     try { mic.current?.getTracks().forEach(t => t.stop()) } catch { /* already gone */ }
+    // The clone is not in mic.current's stream, so it needs stopping by hand —
+    // miss this and the browser keeps the recording indicator lit.
+    try { outTrack.current?.stop() } catch { /* already gone */ }
+    outTrack.current = null
     try { void ctx.current?.close() } catch { /* already gone */ }
     dc.current = null; pc.current = null; mic.current = null; ctx.current = null
     heard.current = ''; reply.current = ''
     setState(IDLE); setLevel(0); setInterim('')
-  }, [])
+  }, [stopTap])
 
   const onEvent = useCallback((ev: RtEvent) => {
     const t = ev.type ?? ''
@@ -182,17 +331,71 @@ export function useRealtime({ onEscalate }: {
       })
       mic.current = stream
 
+      // 1b. Audio graph, BEFORE the network legs — this is the whole point of
+      //     the pre-session buffer. It runs at 24k so the tap needs no
+      //     resampling of its own, and it drives the level meter from the mic
+      //     grant onward, so ARMING can honestly show that it already hears him.
+      const AC = window.AudioContext
+        ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+      const ac = new AC({ sampleRate: RT_RATE })
+      ctx.current = ac
+      const src = ac.createMediaStreamSource(stream)
+      const analyser = ac.createAnalyser()
+      analyser.fftSize = 512
+      src.connect(analyser)
+
+      const tap = ac.createScriptProcessor(4096, 1, 1)
+      // Chrome will not run a ScriptProcessor that reaches no destination, and
+      // routing it straight to the speakers would play his own mic back at him.
+      // A zero gain satisfies the graph without making a sound.
+      const mute = ac.createGain()
+      mute.gain.value = 0
+      const capFrames = Math.ceil((PRE_MAX_S * RT_RATE) / 4096)
+      tap.onaudioprocess = (e) => {
+        if (pre.current.length >= capFrames) return
+        pre.current.push(new Float32Array(e.inputBuffer.getChannelData(0)))
+      }
+      src.connect(tap); tap.connect(mute); mute.connect(ac.destination)
+      preTap.current = tap
+
+      // The OUTBOUND track is a Web Audio destination, not the mic track, and
+      // its gate is a GAIN rather than `track.enabled`.
+      //
+      // 🔴 Why: measured 2026-08-16. Gating with `enabled` costs ~0.5s of speech
+      // every time it flips back on — the encoder has been sending silence, and
+      // it does not resume carrying voice instantly. The transcript lost the
+      // middle of the sentence ("how many content drafts" → "how many") even
+      // though the tap itself only lagged 140ms. A gain node keeps the encoder
+      // warm on real (silent) frames the whole time, so opening the seam is a
+      // sample-accurate ramp instead of a stream restart.
+      const outGain = ac.createGain()
+      outGain.gain.value = 0
+      const dest = ac.createMediaStreamDestination()
+      src.connect(outGain); outGain.connect(dest)
+      outGate.current = outGain
+
+      const buf = new Uint8Array(analyser.frequencyBinCount)
+      const tick = () => {
+        analyser.getByteTimeDomainData(buf)
+        let peak = 0
+        for (let i = 0; i < buf.length; i++) peak = Math.max(peak, Math.abs(buf[i] - 128) / 128)
+        setLevel(peak)
+        setState(prev => (prev.s === 'LISTENING' ? { s: 'LISTENING', level: peak } : prev))
+        raf.current = requestAnimationFrame(tick)
+      }
+      raf.current = requestAnimationFrame(tick)
+
       // 2. Ephemeral secret. The broker pins the model, so the client cannot
       //    make a spend decision.
       const { data: sess } = await supabase.auth.getSession()
       const jwt = sess.session?.access_token
-      if (!jwt) { setState({ s: 'ERROR', reason: 'no-key-broker', retryable: true }); return }
+      if (!jwt) { stopTap(); setState({ s: 'ERROR', reason: 'no-key-broker', retryable: true }); return }
       const r = await fetch(RT_URL, {
         method: 'POST',
         headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ instructions: INSTRUCTIONS }),
       })
-      if (!r.ok) { setState({ s: 'ERROR', reason: 'no-key-broker', retryable: true }); return }
+      if (!r.ok) { stopTap(); setState({ s: 'ERROR', reason: 'no-key-broker', retryable: true }); return }
       const { value, model } = await r.json() as { value: string; model: string }
 
       // 3. WebRTC
@@ -202,7 +405,9 @@ export function useRealtime({ onEscalate }: {
       el.autoplay = true
       audioEl.current = el
       conn.ontrack = (e) => { el.srcObject = e.streams[0] }
-      conn.addTrack(stream.getAudioTracks()[0], stream)
+      const out = dest.stream.getAudioTracks()[0]
+      outTrack.current = out
+      conn.addTrack(out, dest.stream)
 
       const chan = conn.createDataChannel('oai-events')
       dc.current = chan
@@ -214,6 +419,10 @@ export function useRealtime({ onEscalate }: {
         // time, by inbox-rt-session. Sending a partial session object replaces
         // the config and silently drops the instructions — measured 2026-08-16:
         // session.updated acked, then the model stopped escalating entirely.
+        //
+        // The one thing that DOES go out first is whatever he already said
+        // while this was connecting.
+        void flushPre()
         setState({ s: 'LISTENING', level: 0 })
       }
 
@@ -224,31 +433,14 @@ export function useRealtime({ onEscalate }: {
         headers: { Authorization: `Bearer ${value}`, 'Content-Type': 'application/sdp' },
         body: offer.sdp ?? '',
       })
-      if (!sdpRes.ok) { setState({ s: 'ERROR', reason: 'stt-network', retryable: true }); return }
+      if (!sdpRes.ok) { stopTap(); setState({ s: 'ERROR', reason: 'stt-network', retryable: true }); return }
       await conn.setRemoteDescription({ type: 'answer', sdp: await sdpRes.text() })
-
-      // 4. Mic level for the meter — the visual answer to "is it hearing me".
-      const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-      const ac = new AC()
-      ctx.current = ac
-      const analyser = ac.createAnalyser()
-      analyser.fftSize = 512
-      ac.createMediaStreamSource(stream).connect(analyser)
-      const buf = new Uint8Array(analyser.frequencyBinCount)
-      const tick = () => {
-        analyser.getByteTimeDomainData(buf)
-        let peak = 0
-        for (let i = 0; i < buf.length; i++) peak = Math.max(peak, Math.abs(buf[i] - 128) / 128)
-        setLevel(peak)
-        setState(prev => (prev.s === 'LISTENING' ? { s: 'LISTENING', level: peak } : prev))
-        raf.current = requestAnimationFrame(tick)
-      }
-      raf.current = requestAnimationFrame(tick)
     } catch (e) {
       const denied = e instanceof Error && /NotAllowed|Permission/i.test(e.name + e.message)
+      stopTap()
       setState({ s: 'ERROR', reason: denied ? 'mic-denied' : 'stt-network', retryable: !denied })
     }
-  }, [supported, onEvent, send])
+  }, [supported, onEvent, flushPre, stopTap])
 
   // skip = cut the assistant off. Same affordance the sheet already offers,
   // now also reachable by simply talking over it.
