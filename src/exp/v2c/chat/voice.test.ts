@@ -46,6 +46,17 @@ describe('the happy path', () => {
 describe('SPEAKING structurally forbids the microphone', () => {
   // Audit (b): the reference prevents echo-into-the-mic with an abort plus a
   // generation counter. Here it is unreachable by construction.
+  //
+  // 🔴 SCOPE OF THIS INVARIANT, since 2026-08-16 there are TWO voice paths.
+  // This reducer governs DICTATION and the old hands-free loop (useVoice), and
+  // for those it is still exactly right: nothing may arm the mic while the
+  // browser is speaking, or the recogniser transcribes the reply.
+  //
+  // The LIVE CONVERSATION loop (useRealtime) deliberately does the OPPOSITE —
+  // barge-in means the mic stays hot while the assistant talks, and what used
+  // to be carried by this state gate is carried by echoCancellation. The two
+  // contracts coexist because the live loop does not go through this reducer at
+  // all, which is what the test below pins.
   it('has no event that arms the mic from SPEAKING', () => {
     const attempts: VoiceEvent[] = [
       { e: 'arm' }, { e: 'granted' }, { e: 'level', level: 0.9 },
@@ -168,5 +179,29 @@ describe('speakableText — what a reply sounds like', () => {
     const out = speakableText(long, 100)
     expect(out.length).toBeLessThanOrEqual(102)
     expect(out.endsWith('.') || out.endsWith('…')).toBe(true)
+  })
+})
+
+
+describe('the live loop is NOT governed by this reducer', () => {
+  // The realtime hook drives VoiceState directly, on purpose: routing it
+  // through voiceReduce would re-impose "SPEAKING never arms the mic" and
+  // silently delete barge-in — the single highest-risk regression in the
+  // realtime swap, and one that no rendering test would catch because the UI
+  // would look completely healthy while the model could no longer be
+  // interrupted.
+  it('useRealtime never imports voiceReduce', async () => {
+    const fs = await import('node:fs')
+    const src = fs.readFileSync(new URL('./useRealtime.ts', import.meta.url), 'utf8')
+    expect(src).not.toMatch(/voiceReduce/)
+  })
+
+  it('and it keeps the mic hot while SPEAKING, which this reducer forbids', async () => {
+    const fs = await import('node:fs')
+    const src = fs.readFileSync(new URL('./useRealtime.ts', import.meta.url), 'utf8')
+    // speech_started -> LISTENING is the barge-in transition. It exists here and
+    // is unreachable in the reducer.
+    expect(src).toMatch(/speech_started/)
+    expect(voiceReduce({ s: 'SPEAKING' }, { e: 'granted' }, once).s).toBe('SPEAKING')
   })
 })

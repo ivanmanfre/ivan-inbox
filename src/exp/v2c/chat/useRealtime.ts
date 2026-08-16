@@ -76,6 +76,33 @@ function encodePcm16(frames: Float32Array[]): string {
 
 export type LiveExchange = { heard: string; reply: string }
 
+// --- what this conversation is costing ------------------------------------
+//
+// Phase 6 of the scope, and it is not decoration: this lane bills PER MINUTE OF
+// AUDIO against a live budget, and it shipped while the Apify $199 cap fight was
+// open. A voice session with no meter is a spend you find out about on the
+// invoice.
+//
+// Rates are gpt-realtime-2.1-mini as published 2026-08-16, USD per 1M tokens.
+// 🔴 ONE PLACE. If the broker's INBOX_RT_MODEL changes, these change with it —
+// the full model is ~3x on the audio lines and the readout would silently
+// under-report by that factor.
+const RATES = { inText: 0.60, inAudio: 10.00, outText: 2.40, outAudio: 20.00 }
+
+export type LiveUsage = { inText: number; inAudio: number; outText: number; outAudio: number }
+
+const NO_USAGE: LiveUsage = { inText: 0, inAudio: 0, outText: 0, outAudio: 0 }
+
+/**
+ * USD for a usage tally. Deliberately an UPPER BOUND: cached input tokens bill
+ * at a discount and this does not apply it, so the number on screen can be a
+ * little high but never reassuringly low.
+ */
+export function usageCost(u: LiveUsage): number {
+  return (u.inText * RATES.inText + u.inAudio * RATES.inAudio
+    + u.outText * RATES.outText + u.outAudio * RATES.outAudio) / 1_000_000
+}
+
 type RtEvent = { type?: string; [k: string]: unknown }
 
 const INSTRUCTIONS = [
@@ -105,6 +132,7 @@ export function useRealtime({ onEscalate }: {
   const [interim, setInterim] = useState('')
   const [last, setLast] = useState<LiveExchange | null>(null)
   const [turns, setTurns] = useState(0)
+  const [usage, setUsage] = useState<LiveUsage>(NO_USAGE)
 
   const pc = useRef<RTCPeerConnection | null>(null)
   const dc = useRef<RTCDataChannel | null>(null)
@@ -123,6 +151,12 @@ export function useRealtime({ onEscalate }: {
   // Latest exchange halves, accumulated across deltas before they pair up.
   const heard = useRef('')
   const reply = useRef('')
+  // Set when a turn was paired with NO transcript yet, so a late one can be
+  // back-filled into it instead of leaking into the next turn.
+  const heardPending = useRef(false)
+  // Set when he cut the assistant off, cleared when a new response starts. Stops
+  // the tail of a cancelled response from dragging the dock back into SPEAKING.
+  const barged = useRef(false)
   // onEscalate identity changes every render in ChatPane; keep it in a ref so
   // the data-channel handler never goes stale without re-subscribing.
   const escalate = useRef(onEscalate)
@@ -246,6 +280,8 @@ export function useRealtime({ onEscalate }: {
     dc.current = null; pc.current = null; mic.current = null; ctx.current = null
     heard.current = ''; reply.current = ''
     setState(IDLE); setLevel(0); setInterim('')
+    // Usage is NOT reset here: what the last session cost stays readable after
+    // it ends, which is the only moment anyone actually looks at it.
   }, [stopTap])
 
   const onEvent = useCallback((ev: RtEvent) => {
@@ -256,10 +292,11 @@ export function useRealtime({ onEscalate }: {
       // Hot mic during SPEAKING is deliberate: this IS the barge-in path.
       // Do NOT clear reply here: barge-in fires this WHILE a response is still
       // streaming, which wiped the text before response.done could read it.
+      barged.current = true
       setState({ s: 'LISTENING', level: 0 })
     }
     // A new response is the only correct place to reset the reply buffer.
-    if (/response\.created/.test(t)) reply.current = ''
+    if (/response\.created/.test(t)) { reply.current = ''; barged.current = false }
 
     // --- what he said ---
     if (/input_audio_transcription\.delta/.test(t)) {
@@ -268,16 +305,36 @@ export function useRealtime({ onEscalate }: {
     }
     if (/input_audio_transcription\.completed/.test(t)) {
       const txt = typeof ev.transcript === 'string' ? ev.transcript : ''
-      if (txt) { heard.current = txt; setInterim('') }
+      if (txt) {
+        setInterim('')
+        // Transcription is async and routinely lands AFTER response.done, which
+        // then paired an exchange with an empty `heard` — measured 2026-08-16,
+        // the dock showed the reply with no question above it. Back-fill that
+        // turn rather than letting the words leak into the next one.
+        if (heardPending.current) {
+          heardPending.current = false
+          setLast(prev => (prev ? { ...prev, heard: txt } : prev))
+        } else {
+          heard.current = txt
+        }
+      }
     }
 
     // --- what it said ---
-    if (/output_audio\.delta|response\.audio\.delta/.test(t)) {
-      setState({ s: 'SPEAKING' })
-    }
+    //
+    // 🔴 THERE ARE NO AUDIO DELTAS ON THIS TRANSPORT. Over WebRTC the assistant's
+    // audio arrives on the RTP track and only TRANSCRIPT deltas come down the
+    // data channel — so keying SPEAKING off `output_audio.delta` (the WebSocket
+    // event) meant the state never fired at all. Caught by the per-state
+    // screenshot pass 2026-08-16: the dock never showed "Speaking", so the
+    // tap-to-skip affordance was unreachable by touch. Transcript deltas are
+    // emitted in step with the audio, so they are the honest signal here.
     if (/output_audio_transcript\.delta|response\.audio_transcript\.delta/.test(t)) {
       const d = typeof ev.delta === 'string' ? ev.delta : ''
-      if (d) reply.current += d
+      if (d) {
+        reply.current += d
+        if (!barged.current) setState(prev => (prev.s === 'SPEAKING' ? prev : { s: 'SPEAKING' }))
+      }
     }
 
     // --- the tool: real work leaves this session ---
@@ -305,9 +362,28 @@ export function useRealtime({ onEscalate }: {
     }
 
     if (/response\.done/.test(t)) {
+      // The API reports usage per response; the session total is the sum. Read
+      // defensively — a missing field must cost 0, never NaN, or the readout
+      // turns into "$NaN" the first time the shape changes.
+      const resp = ev.response as { usage?: Record<string, unknown> } | undefined
+      const u = resp?.usage
+      if (u) {
+        const det = (k: string, f: string) => {
+          const d = u[k] as Record<string, unknown> | undefined
+          const v = d?.[f]
+          return typeof v === 'number' ? v : 0
+        }
+        setUsage(prev => ({
+          inText: prev.inText + det('input_token_details', 'text_tokens'),
+          inAudio: prev.inAudio + det('input_token_details', 'audio_tokens'),
+          outText: prev.outText + det('output_token_details', 'text_tokens'),
+          outAudio: prev.outAudio + det('output_token_details', 'audio_tokens'),
+        }))
+      }
       if (heard.current || reply.current) {
         setLast({ heard: heard.current, reply: reply.current.trim() })
         setTurns(n => n + 1)
+        heardPending.current = !heard.current
         heard.current = ''
       }
       setState({ s: 'LISTENING', level: 0 })
@@ -472,5 +548,9 @@ export function useRealtime({ onEscalate }: {
 
   useEffect(() => close, [close])
 
-  return { state, level, interim, last, turns, supported, open, close, skip, resume, pause, feedResult }
+  return {
+    state, level, interim, last, turns, supported,
+    usage, cost: usageCost(usage),
+    open, close, skip, resume, pause, feedResult,
+  }
 }

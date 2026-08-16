@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChatStreaming, ChatTurn } from './ChatMessage'
 import { HandsFreeSheet, VoiceControl, VoiceStrip } from './VoiceControl'
-import { LiveSheet } from './LiveSheet'
+import { VoiceDock } from './VoiceDock'
 import { CONTAINER_COMMANDS, CONTAINER_SKILLS } from './chat/containerPalette'
 import { useStt } from './chat/useStt'
 import { useRtStt } from './chat/useRtStt'
@@ -368,7 +368,10 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
   useEffect(() => {
     const el = scroller.current
     if (el) el.scrollTop = el.scrollHeight
-  }, [chat.turns.length, chat.streamText])
+    // The dock's tape grows and shrinks under the transcript, which changes the
+    // scroller's height without changing its content — without these deps the
+    // newest turn ends up hidden BEHIND the dock the moment a reply lands.
+  }, [chat.turns.length, chat.streamText, liveOpen, live.last, live.interim])
 
   const empty = chat.turns.length === 0 && chat.status === 'idle'
   const lastErr = chat.turns.length > 0 && chat.turns[chat.turns.length - 1].error !== null
@@ -546,6 +549,25 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
         </div>
       )}
 
+      {/* The live dock. In the COLUMN, not over it: the transcript above keeps
+          streaming while the conversation runs, which is the whole difference
+          from the sheet this replaced. */}
+      {liveOpen && (
+        <VoiceDock
+          state={live.state}
+          level={live.level}
+          interim={live.interim}
+          last={live.last}
+          turns={live.turns}
+          cost={live.cost}
+          busyWork={chat.busy}
+          onEnd={() => { setLiveOpen(false); live.close() }}
+          onSkip={live.skip}
+          onPause={live.pause}
+          onResume={live.resume}
+        />
+      )}
+
       <div className="wb-composer">
         {voiceOn && voice.supported && (
           <VoiceControl
@@ -592,8 +614,11 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
           <button
             type="button"
             className={`clive${liveOpen ? ' on' : ''}`}
-            onClick={() => { setLiveOpen(true); live.open() }}
-            aria-label="Start a live conversation"
+            onClick={() => {
+              if (liveOpen) { setLiveOpen(false); live.close(); return }
+              setLiveOpen(true); live.open()
+            }}
+            aria-label={liveOpen ? 'End the live conversation' : 'Start a live conversation'}
             title="Live conversation"
           >Live</button>
         )}
@@ -655,20 +680,6 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
           onClose={() => { setSheet(false); setHandsFree(false); voice.cancel() }}
           onArm={voice.arm}
           onSkip={voice.skip}
-        />
-      )}
-
-      {liveOpen && (
-        <LiveSheet
-          state={live.state}
-          level={live.level}
-          interim={live.interim}
-          last={live.last}
-          turns={live.turns}
-          busyWork={chat.busy}
-          onClose={() => { setLiveOpen(false); live.close() }}
-          onSkip={live.skip}
-          onResume={live.resume}
         />
       )}
     </>
