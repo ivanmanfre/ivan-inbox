@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<title>RT probe</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; padding: 16px calc(16px + env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+    background: #0b0b0c; color: #e8e8ea;
+    font: 14px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  h1 { font-size: 15px; margin: 0 0 4px; letter-spacing: .02em; }
+  .sub { color: #8b8b92; font-size: 12px; margin: 0 0 14px; }
+  .env { border: 1px solid #26262b; border-radius: 10px; padding: 10px 12px; margin: 0 0 12px; }
+  .env div { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; }
+  .env b { font-weight: 600; color: #a9a9b2; }
+  .ok { color: #48c78e; } .bad { color: #f2607d; } .warn { color: #f5c451; }
+  button {
+    width: 100%; min-height: 52px; margin: 0 0 10px; border-radius: 12px; cursor: pointer;
+    border: 1px solid #33333a; background: #1a1a1e; color: #e8e8ea;
+    font: 600 15px/1 ui-monospace, Menlo, monospace; -webkit-user-select: none; user-select: none;
+  }
+  button.go { background: #10a37f; border-color: #10a37f; color: #04160f; }
+  button:disabled { opacity: .45; }
+  #log { white-space: pre-wrap; word-break: break-word; font-size: 12px; line-height: 1.5;
+    border: 1px solid #26262b; border-radius: 10px; padding: 10px 12px; min-height: 160px; }
+  .row { display: flex; gap: 8px; }
+  .row button { flex: 1; }
+</style>
+</head>
+<body>
+<h1>Realtime probe — Phase 0</h1>
+<p class="sub">Answers one question: does a live speech-to-speech session survive on this device, installed. Every number below is measured here, not assumed.</p>
+
+<div class="env" id="env"></div>
+
+<button class="go" id="run">Start session (tap to allow mic)</button>
+<div class="row">
+  <button id="barge" disabled>Make it talk (then interrupt it)</button>
+  <button id="stop" disabled>Stop</button>
+</div>
+
+<div id="log">idle.</div>
+
+<script>
+const PROJECT = 'bjbvqvzbzczjbatgmccb'
+const FN = `https://${PROJECT}.supabase.co/functions/v1/inbox-rt-session`
+const STORAGE_KEY = `sb-${PROJECT}-auth-token`
+
+const logEl = document.getElementById('log')
+let lines = []
+function log(s, cls) {
+  const t = String(performance.now() | 0).padStart(6, ' ')
+  lines.push(cls ? `${t}  <span class="${cls}">${s}</span>` : `${t}  ${s}`)
+  logEl.innerHTML = lines.join('\n')
+  logEl.scrollTop = logEl.scrollHeight
+}
+
+// ---- environment census. The point of a probe is that it can FAIL, so report
+// what is actually true rather than what we hope is true.
+const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true
+const env = {
+  'installed (standalone)': standalone,
+  'secure context': window.isSecureContext,
+  'mediaDevices': !!navigator.mediaDevices?.getUserMedia,
+  'RTCPeerConnection': typeof RTCPeerConnection === 'function',
+  'AudioContext': typeof (window.AudioContext || window.webkitAudioContext) === 'function',
+  'wake lock': !!navigator.wakeLock,
+}
+document.getElementById('env').innerHTML = Object.entries(env)
+  .map(([k, v]) => `<div><b>${k}</b><span class="${v ? 'ok' : 'bad'}">${v ? 'yes' : 'NO'}</span></div>`)
+  .join('') + `<div><b>ua</b><span style="font-size:10px;text-align:right">${navigator.userAgent.slice(0, 60)}</span></div>`
+
+function token() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return null
+    const j = JSON.parse(raw)
+    return j?.access_token || j?.currentSession?.access_token || null
+  } catch { return null }
+}
+
+let pc = null, dc = null, mic = null, remoteAudio = null, wake = null
+const marks = {}
+let firstAudioSeen = false
+let speakingSince = 0
+const eventTypes = new Set()
+
+async function run() {
+  document.getElementById('run').disabled = true
+  lines = []; firstAudioSeen = false; marks.t0 = performance.now()
+  log('probe start')
+
+  const jwt = token()
+  if (!jwt) { log('NO SESSION in localStorage — open the app and sign in first, then reload this page.', 'bad'); document.getElementById('run').disabled = false; return }
+  log('session token found')
+
+  // 1. mic FIRST, synchronously off the tap, or iOS drops the gesture.
+  try {
+    mic = await navigator.mediaDevices.getUserMedia({
+      // Echo cancellation is load-bearing here: with barge-in the mic stays hot
+      // while the model speaks, so without this it hears itself.
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    })
+    marks.mic = performance.now()
+    log(`mic granted (+${(marks.mic - marks.t0) | 0}ms) track=${mic.getAudioTracks()[0]?.label || '?'}`, 'ok')
+  } catch (e) {
+    log(`MIC DENIED/FAILED: ${e.name} ${e.message}`, 'bad'); document.getElementById('run').disabled = false; return
+  }
+
+  // 2. mint an ephemeral secret through our broker
+  let secret, model
+  try {
+    const r = await fetch(FN, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${jwt}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ instructions: 'You are a terse voice probe. Answer in one short sentence unless asked to speak at length.' }),
+    })
+    const j = await r.json().catch(() => ({}))
+    if (!r.ok) { log(`MINT FAILED ${r.status}: ${j.error || ''} ${j.detail || ''}`, 'bad'); return }
+    secret = j.value; model = j.model
+    marks.mint = performance.now()
+    log(`secret minted (+${(marks.mint - marks.mic) | 0}ms) model=${model}`, 'ok')
+  } catch (e) { log(`MINT ERROR: ${e.message}`, 'bad'); return }
+
+  // 3. WebRTC
+  pc = new RTCPeerConnection()
+  remoteAudio = new Audio(); remoteAudio.autoplay = true
+  pc.ontrack = (e) => {
+    remoteAudio.srcObject = e.streams[0]
+    log('remote audio track attached', 'ok')
+  }
+  pc.onconnectionstatechange = () => log(`pc: ${pc.connectionState}`, pc.connectionState === 'failed' ? 'bad' : '')
+  pc.addTrack(mic.getAudioTracks()[0], mic)
+
+  dc = pc.createDataChannel('oai-events')
+  dc.onopen = () => { marks.dc = performance.now(); log(`data channel open (+${(marks.dc - marks.mint) | 0}ms)`, 'ok'); document.getElementById('barge').disabled = false }
+  dc.onmessage = (e) => onEvent(JSON.parse(e.data))
+
+  const offer = await pc.createOffer()
+  await pc.setLocalDescription(offer)
+  try {
+    const r = await fetch(`https://api.openai.com/v1/realtime/calls?model=${encodeURIComponent(model)}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${secret}`, 'Content-Type': 'application/sdp' },
+      body: offer.sdp,
+    })
+    if (!r.ok) { log(`SDP EXCHANGE FAILED ${r.status}: ${(await r.text()).slice(0, 200)}`, 'bad'); return }
+    await pc.setRemoteDescription({ type: 'answer', sdp: await r.text() })
+    marks.sdp = performance.now()
+    log(`connected (+${(marks.sdp - marks.mint) | 0}ms). total to live: ${(marks.sdp - marks.t0) | 0}ms`, 'ok')
+    log('— now TALK. Watch for speech_started / first audio timings below —')
+  } catch (e) { log(`SDP ERROR: ${e.message}`, 'bad') }
+
+  document.getElementById('stop').disabled = false
+  try { if (navigator.wakeLock) { wake = await navigator.wakeLock.request('screen'); log('wake lock held') } } catch {}
+}
+
+// Log the EVENT TYPES that actually arrive rather than assuming GA names.
+function onEvent(ev) {
+  const t = ev.type || '?'
+  if (!eventTypes.has(t)) { eventTypes.add(t) }
+
+  if (/speech_started/.test(t)) {
+    log(`YOU started speaking${speakingSince ? ' (BARGE-IN while assistant talking)' : ''}`, 'warn')
+    if (speakingSince) marks.bargeStart = performance.now()
+  }
+  if (/speech_stopped/.test(t)) { marks.eou = performance.now(); log('you stopped (endpointed by the model)') }
+
+  if (/audio.*delta/.test(t)) {
+    if (!firstAudioSeen) {
+      firstAudioSeen = true; speakingSince = performance.now()
+      const base = marks.eou || marks.askedAt
+      if (base) log(`FIRST AUDIO +${(performance.now() - base) | 0}ms  <-- the number that matters`, 'ok')
+      else log('first audio')
+    }
+  }
+  if (/output_audio.*done|response\.done/.test(t)) {
+    if (speakingSince) {
+      if (marks.bargeStart) {
+        log(`assistant stopped ${(performance.now() - marks.bargeStart) | 0}ms after you cut in  <-- barge-in latency`, 'ok')
+        marks.bargeStart = 0
+      }
+      speakingSince = 0; firstAudioSeen = false
+    }
+  }
+  if (/transcript.*done|input_audio_transcription.completed/.test(t)) {
+    const txt = ev.transcript || ev.delta || ''
+    if (txt) log(`heard: "${txt}"`)
+  }
+  if (t === 'error' || /\.failed$/.test(t)) log(`EVENT ERROR: ${JSON.stringify(ev).slice(0, 240)}`, 'bad')
+}
+
+document.getElementById('barge').onclick = () => {
+  if (!dc || dc.readyState !== 'open') return
+  marks.askedAt = performance.now(); marks.eou = 0
+  dc.send(JSON.stringify({
+    type: 'response.create',
+    response: { instructions: 'Count slowly from one to thirty, one number per second. Do not stop until told.' },
+  }))
+  log('asked it to talk at length — now INTERRUPT it by speaking', 'warn')
+}
+
+document.getElementById('stop').onclick = () => {
+  try { dc?.close(); pc?.close(); mic?.getTracks().forEach(t => t.stop()); wake?.release() } catch {}
+  log(`stopped. event types seen: ${[...eventTypes].join(', ') || 'none'}`)
+  document.getElementById('run').disabled = false
+  document.getElementById('barge').disabled = true
+  document.getElementById('stop').disabled = true
+}
+
+// The backgrounding question B3 hangs on: does the session survive a lock?
+document.addEventListener('visibilitychange', () => {
+  log(`visibility: ${document.visibilityState} | pc=${pc?.connectionState || '-'} | mic=${mic?.getAudioTracks()[0]?.readyState || '-'}`,
+      document.visibilityState === 'visible' ? '' : 'warn')
+})
+
+document.getElementById('run').onclick = run
+</script>
+</body>
+</html>
