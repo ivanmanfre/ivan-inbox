@@ -198,7 +198,12 @@ export function ThreadScreen({ thread, onBack, refresh }: {
                   joined by "\n---\n", but LinkedIn delivers one bubble per segment. Render
                   it the way the recipient actually saw it; otherwise the separator shows up
                   as a literal "---" line in the thread (Chas Waters, 2026-08-05). */}
-              {(m.message_text ?? '').split('\n---\n').map((part, i) => (
+              {/* Split + trim MUST mirror the dispatcher (Outreach - Send Messages):
+                  it splits on a delimiter-only LINE and trims each bubble, so a
+                  draft written as "\n\n---\n\n" still sends clean. Splitting on
+                  the literal '\n---\n' left the extra newline on the next bubble
+                  and rendered a phantom blank line above it (Sharon, 2026-08-17). */}
+              {(m.message_text ?? '').split(/^[ \t]*-{3,}[ \t\r]*$/m).map(p => p.trim()).filter(Boolean).map((part, i) => (
                 <div key={i} className={`b out${m.ai_model === 'manual_mirror' ? ' manual' : ''}`}>
                   <Linkified text={part} />
                 </div>
