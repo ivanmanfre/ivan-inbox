@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 
-export type OpsKind = 'escalation' | 'update' | 'newsjack' | 'weekly_report' | 'comment_reply' | 'comment_outbound' | 'booking'
+export type OpsKind = 'escalation' | 'update' | 'newsjack' | 'weekly_report' | 'comment_reply' | 'comment_outbound' | 'booking' | 'precall_email'
 
 // The row shape varies by kind (escalation carries a prospect, update carries
 // receipts, newsjack carries the idea it will generate from), so context stays a
@@ -57,6 +57,16 @@ export type OpsContext = {
   hubspot_url?: string
   matched_prospect?: boolean
   stamped?: boolean
+  // precall_email — 24h reminder drafted by the Precall Reminder → Ops Inbox
+  // workflow off calendar_events. Approve here, the same workflow's sender lane
+  // emails it from im@ivanmanfredi.com within ~5 minutes and stamps sent_at.
+  google_event_id?: string
+  invitee_email?: string
+  invitee_name?: string
+  first_name?: string
+  subject?: string
+  call_time?: string
+  meeting_url?: string
   // comment_outbound (a draft comment on someone ELSE's post)
   feed_id?: string
   target_name?: string
