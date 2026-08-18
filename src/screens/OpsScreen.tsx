@@ -32,11 +32,11 @@ function timeAgo(iso: string): string {
 // 'OUTBOUND' said what the ENGINE calls the lane, not what the card is. Ivan
 // reads these as comments, so they say Comments; `comment_reply` becomes REPLY
 // in the same pass so the two comment kinds cannot be told apart by an S.
-const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK', weekly_report: 'WEEKLY', comment_reply: 'REPLY', comment_outbound: 'COMMENTS', booking: 'BOOKED' }
+const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK', weekly_report: 'WEEKLY', comment_reply: 'REPLY', comment_outbound: 'COMMENTS', booking: 'BOOKED', precall_email: 'PRE-CALL' }
 // Escalations run warm/red (something needs attention); updates stay neutral/blue (fyi);
 // newsjack runs amber because it is the only kind with a clock on it. Booking takes the
 // Rise accent gold: it is the only card that reports money arriving rather than work owed.
-const KIND_COLOR: Record<OpsKind, string> = { escalation: '#FF453A', update: '#0A84FF', newsjack: '#FF9F0A', weekly_report: '#30D158', comment_reply: '#BF5AF2', comment_outbound: '#64D2FF', booking: '#FFD60A' }
+const KIND_COLOR: Record<OpsKind, string> = { escalation: '#FF453A', update: '#0A84FF', newsjack: '#FF9F0A', weekly_report: '#30D158', comment_reply: '#BF5AF2', comment_outbound: '#64D2FF', booking: '#FFD60A', precall_email: '#5E5CE6' }
 
 // Slack channel ids are unreadable on a card. escalation/update/booking all print a
 // destination, so name the ones we own and fall back to the raw id for anything else.
@@ -82,6 +82,16 @@ function ContextLine({ draft }: { draft: OpsDraft }) {
         {ctx.report_url && (
           <a className="ops-link" href={ctx.report_url} target="_blank" rel="noreferrer">read the page</a>
         )}
+      </div>
+    )
+  }
+  // A pre-call reminder is read the same way: who it emails and when the call is.
+  if (draft.kind === 'precall_email') {
+    const when = ctx.call_time ? new Date(ctx.call_time).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : null
+    return (
+      <div className="ops-ctx">
+        <span>{[ctx.invitee_name, ctx.invitee_email].filter(Boolean).join(' · ')}</span>
+        {when && <span>call {when}</span>}
       </div>
     )
   }
@@ -281,6 +291,22 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
         }
         refresh()
       } catch (e) { setError(errText(e)) }
+      finally { setBusy(false) }
+      return
+    }
+    // Pre-call reminder: approve stamps approved_at and the Precall Reminder
+    // workflow's sender lane emails it from im@ivanmanfredi.com within ~5 minutes,
+    // stamping sent_at (which moves the card Working → Sent).
+    if (draft.kind === 'precall_email') {
+      const ok = await confirm({
+        title: `Email this reminder to ${draft.context?.invitee_email ?? 'the invitee'}?`,
+        message: 'Sends by email from im@ivanmanfredi.com within about 5 minutes. Edits you made above go out as written.',
+        confirmText: 'Approve & send',
+      })
+      if (!ok) return
+      setBusy(true); setError('')
+      try { await approveOpsDraft(draft.id, body); refresh() }
+      catch (e) { setError(errText(e)) }
       finally { setBusy(false) }
       return
     }
