@@ -25,21 +25,36 @@ function fmtCount(n: number | null): string {
 
 // Age matters more than score on this desk — an answer to a nine-day-old take
 // arrives late however well it graded.
-function ageLine(iso: string | null, now: number): string | null {
+//
+// 🔴 The VERB is load-bearing. Only the Ivan lane stores the tweet's own
+// timestamp; RISE rows carry the row's created_at and nothing else. Labelling
+// that "posted 2h ago" would state a fact about the tweet that the row does not
+// know — a week-old take would read as fresh. When the source time is unknown
+// the card says when WE found it, and says so in those words.
+function ageLine(iso: string | null, now: number, verb: 'posted' | 'harvested'): string | null {
   if (!iso) return null
   const t = Date.parse(iso)
   if (Number.isNaN(t)) return null
   const hours = Math.floor((now - t) / 3600000)
-  if (hours < 1) return 'posted just now'
-  if (hours < 24) return `posted ${hours}h ago`
+  if (hours < 1) return `${verb} just now`
+  if (hours < 24) return `${verb} ${hours}h ago`
   const days = Math.round(hours / 24)
-  return `posted ${days}d ago`
+  return `${verb} ${days}d ago`
 }
 
 function slotLabel(iso: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
   return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+}
+
+// What Approve does, in the lane's own terms. Two different terminal states
+// share one button, so the button says which one it is BEFORE the click rather
+// than reporting it after.
+function approveLabel(row: ReactionRow, nextSlot: string): string {
+  return row.lane === 'risedtc'
+    ? 'Approve → Mattan\u2019s board'
+    : `Approve → ${slotLabel(nextSlot)}`
 }
 
 function ReactionCard({ row, body, busy, nextSlot, onBody, onKill, onApprove }: {
@@ -53,20 +68,41 @@ function ReactionCard({ row, body, busy, nextSlot, onBody, onKill, onApprove }: 
 }) {
   const ev = row.evidence
   const url = ev?.thread_url ?? row.source_ref
-  const age = ageLine(ev?.created_at ?? row.ingested_at, Date.now())
+  const age = ev?.created_at
+    ? ageLine(ev.created_at, Date.now(), 'posted')
+    : ageLine(row.ingested_at, Date.now(), 'harvested')
   const ready = canApprove(body)
 
   return (
     <div className="rx-card">
       <div className="rx-head">
+        {/* The lane is the first thing on the card, not a footnote: the same
+            take can be answerable on one lane and off-lane on the other, and
+            the two Approves do completely different things. */}
+        <span className={`rx-lane rx-lane-${row.lane}`}>
+          {row.lane === 'risedtc' ? 'RISE' : 'Ivan'}
+        </span>
         <span className="rx-who">{ev?.who ?? (ev?.author ? '@' + ev.author : 'unknown')}</span>
         {ev?.tier_weight && <span className="rx-tier">{ev.tier_weight}</span>}
         {age && <span className="rx-age">{age}</span>}
       </div>
 
       {/* The take, verbatim. Never summarised: what he is answering IS these
-          words, and a paraphrase would quietly change the target. */}
-      {ev?.excerpt && <blockquote className="rx-take">{ev.excerpt}</blockquote>}
+          words, and a paraphrase would quietly change the target.
+
+          The RISE lane does not store the tweet's own text — its grader keeps
+          the ANGLE it proposed instead. That is shown, labelled as the angle,
+          because presenting a graded line as if it were the source's words is
+          the same misattribution in a smaller font. The screenshot below
+          carries the real wording either way. */}
+      {ev?.excerpt
+        ? <blockquote className="rx-take">{ev.excerpt}</blockquote>
+        : row.raw_topic && (
+          <div className="rx-angle">
+            <span className="rx-angle-l">Angle</span>
+            {row.raw_topic}
+          </div>
+        )}
 
       {/* The controversy evidence, as the numbers that selected it. Quotes lead
           because quote-count is the signal that people are ARGUING rather than
@@ -103,9 +139,13 @@ function ReactionCard({ row, body, busy, nextSlot, onBody, onKill, onApprove }: 
           onClick={onApprove}
           disabled={busy || !ready}
           // The refusal says which rule refused, rather than a dead button.
-          title={ready ? `Schedules for ${slotLabel(nextSlot)}` : 'Write the reaction first'}
+          title={ready
+            ? (row.lane === 'risedtc'
+              ? 'Puts it on Mattan\u2019s board for his call — it does not schedule or publish'
+              : `Schedules for ${slotLabel(nextSlot)}`)
+            : 'Write the reaction first'}
         >
-          {busy ? 'Scheduling…' : `Approve → ${slotLabel(nextSlot)}`}
+          {busy ? 'Working…' : approveLabel(row, nextSlot)}
         </button>
       </div>
     </div>
@@ -127,15 +167,17 @@ export function ReactionDesk({ enabled = true }: { enabled?: boolean }) {
         {rx.rows.length > 0 && <span className="rx-desk-n">{rx.rows.length}</span>}
       </div>
       <div className="rx-desk-s">
-        Takes people are already arguing about. Approving schedules the post on
-        Ivan's lane for the earliest free day — it does not publish it.
+        Takes people are already arguing about. On Ivan&rsquo;s lane approving
+        dates the post for the earliest free day; on RISE it goes to
+        Mattan&rsquo;s board for his call. Neither publishes anything.
       </div>
       {rx.error && <div className="rx-err">The reaction desk did not load: {rx.error}</div>}
       {rx.actionError && <div className="rx-err">{rx.actionError}</div>}
       {rx.done && (
         <div className="rx-ok">
-          Scheduled for {slotLabel(rx.done.scheduledAt)}. It is a draft on the calendar, not a
-          publish — edit it in Content like any other post.
+          {rx.done.lane === 'risedtc'
+            ? 'On Mattan\u2019s board, waiting on him. Nothing is dated and nothing is armed.'
+            : `Scheduled for ${slotLabel(rx.done.scheduledAt)}. It is a draft on the calendar, not a publish — edit it in Content like any other post.`}
         </div>
       )}
       {rx.rows.map(r => (
@@ -146,7 +188,7 @@ export function ReactionDesk({ enabled = true }: { enabled?: boolean }) {
           busy={rx.busy === r.id}
           nextSlot={rx.nextSlot}
           onBody={v => rx.setBody(r.id, v)}
-          onKill={() => rx.kill(r.id)}
+          onKill={() => rx.kill(r)}
           onApprove={() => rx.approve(r)}
         />
       ))}

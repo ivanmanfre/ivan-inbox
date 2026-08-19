@@ -4020,3 +4020,23 @@
   font:inherit; font-size:14px; line-height:1.55; resize:vertical;
 }
 .wb.wb.wb .rx-actions{ display:flex; gap:var(--sp-2); margin-top:10px; justify-content:flex-end }
+/* The lane chip. RISE is tinted because the two Approves are not the same
+   action — one dates a post on Ivan's calendar, the other hands a draft to a
+   client. A monochrome chip would make them look interchangeable. */
+.wb.wb.wb .rx-lane{
+  font-size:var(--fs-eyebrow, 11px); letter-spacing:.06em; text-transform:uppercase;
+  font-weight:700; padding:2px 6px; border-radius:4px;
+  background:var(--surface1); color:var(--text3);
+  box-shadow:inset 0 0 0 1px var(--hairline);
+}
+.wb.wb.wb .rx-lane-risedtc{ color:var(--sev-attention); }
+/* The graded angle, deliberately NOT drawn as a quotation: the quote styling is
+   reserved for the source's own words, and this is ours. */
+.wb.wb.wb .rx-angle{
+  margin-top:8px; font-size:14px; line-height:1.5; color:var(--text2);
+}
+.wb.wb.wb .rx-angle-l{
+  display:inline-block; margin-right:8px;
+  font-size:var(--fs-eyebrow, 11px); letter-spacing:.06em; text-transform:uppercase;
+  color:var(--text3); font-weight:600;
+}
