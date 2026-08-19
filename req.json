@@ -1,0 +1,1 @@
+{"query": "select meeting_id, verdict, slug, booker_name from booking_attributions where verdict <> 'unattributed';"}
