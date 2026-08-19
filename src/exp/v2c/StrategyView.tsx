@@ -1,9 +1,9 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { PullIndicator } from '../../components/PullIndicator'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { useStrategy } from '../../hooks/useStrategy'
 import {
-  addSection, blankCount, moveSection, removeSection, sectionIsBlank, updateSection,
+  addSection, blankCount, lineShape, moveSection, removeSection, sectionIsBlank, updateSection,
 } from '../../lib/strategy'
 import { CONTENT_LANES, LANE_LABEL, type ContentLane } from '../../lib/content'
 import { Failed, relAge } from './Surface'
@@ -35,6 +35,53 @@ function useAutoGrow(ref: React.RefObject<HTMLTextAreaElement | null>, value: st
   }, [ref, value])
 }
 
+// Ivan, 2026-08-19: "make it a bit more digestible... you know what we're doing
+// for each line, not this whole text. Format it much better."
+//
+// A strategy is read far more often than it is typed, so the resting state is
+// TYPESET, not a textarea. One click swaps in the editor. Three line shapes
+// carry all the hierarchy, and each is inferable from the text itself — no
+// markup for Ivan to remember and no second format to keep in sync:
+//
+//   RUN OF CAPS — rest    a group heading ("BUYERS — 1 post of 5")
+//   Label — value         the label is the thing being decided
+//   - item                a list item
+//
+// The caps test is on the segment BEFORE the dash, so "TRUST + REACH — 4 of 5.
+// Pains his feed has barely touched:" still reads as a heading even though its
+// tail is a sentence. Classification lives in lib/strategy (pure, unit-tested);
+// this only decides what each shape looks like.
+function BodyLine({ line }: { line: string }) {
+  const shape = lineShape(line)
+  switch (shape.kind) {
+    case 'gap':
+      return <div className="wb-strat-gap" />
+    case 'item':
+      return (
+        <div className="wb-strat-li">
+          <span className="wb-strat-bullet">·</span>
+          <span>{shape.text}</span>
+        </div>
+      )
+    case 'head':
+      return (
+        <div className="wb-strat-head">
+          <span className="wb-strat-kicker">{shape.label}</span>
+          {shape.rest && <span className="wb-strat-headrest">{shape.rest}</span>}
+        </div>
+      )
+    case 'kv':
+      return (
+        <div className="wb-strat-kv">
+          <span className="wb-strat-k">{shape.label}</span>
+          <span>{shape.rest}</span>
+        </div>
+      )
+    default:
+      return <div className="wb-strat-p">{shape.text}</div>
+  }
+}
+
 function SectionCard({ s, first, last, onPatch, onMove, onRemove, onAddAfter }: {
   s: { key: string; title: string; body: string }
   first: boolean
@@ -45,8 +92,19 @@ function SectionCard({ s, first, last, onPatch, onMove, onRemove, onAddAfter }: 
   onAddAfter: () => void
 }) {
   const bodyRef = useRef<HTMLTextAreaElement>(null)
-  useAutoGrow(bodyRef, s.body)
+  const [editing, setEditing] = useState(false)
+  useAutoGrow(bodyRef, editing ? s.body : '')
   const blank = sectionIsBlank(s)
+
+  // Focus lands at the END, not at character 0: clicking a section to append a
+  // line and landing at the top is the wrong guess almost every time.
+  useEffect(() => {
+    if (!editing) return
+    const el = bodyRef.current
+    if (!el) return
+    el.focus()
+    el.setSelectionRange(el.value.length, el.value.length)
+  }, [editing])
 
   return (
     <div className={`ct-card wb-strat-card${blank ? ' blank' : ''}`}>
@@ -76,14 +134,29 @@ function SectionCard({ s, first, last, onPatch, onMove, onRemove, onAddAfter }: 
           >×</button>
         </div>
       </div>
-      <textarea
-        ref={bodyRef}
-        className="wb-strat-b"
-        value={s.body}
-        rows={2}
-        placeholder="What is actually true here. Plain sentences."
-        onChange={e => onPatch({ body: e.target.value })}
-      />
+      {editing ? (
+        <textarea
+          ref={bodyRef}
+          className="wb-strat-b"
+          value={s.body}
+          rows={2}
+          placeholder="One line per decision. CAPS heads a group, Label — value, - for a list."
+          onChange={e => onPatch({ body: e.target.value })}
+          onBlur={() => setEditing(false)}
+        />
+      ) : (
+        <div
+          className="wb-strat-read"
+          role="button"
+          tabIndex={0}
+          onClick={() => setEditing(true)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setEditing(true) } }}
+        >
+          {s.body.trim()
+            ? s.body.split('\n').map((line, i) => <BodyLine key={i} line={line} />)
+            : <div className="wb-strat-empty">Click to write this one.</div>}
+        </div>
+      )}
     </div>
   )
 }
