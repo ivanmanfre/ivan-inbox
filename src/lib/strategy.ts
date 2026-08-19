@@ -123,6 +123,55 @@ export function updateSection(
   return sections.map(s => (s.key === key ? { ...s, ...patch } : s))
 }
 
+// ---------- line shapes (the typeset render) ----------
+//
+// Ivan, 2026-08-19: "you know what we're doing for each line, not this whole
+// text. Format it much better." The hierarchy is INFERRED from the text so
+// there is no markup to remember and no second format to keep in sync:
+//
+//   RUN OF CAPS — rest    'head'  a group heading
+//   Label — value         'kv'    the label is the thing being decided
+//   - item                'item'  a list item
+//   anything else         'text'
+//
+// Pure and exported so the classification is testable in node; the component
+// only decides what each shape looks like.
+export const LABEL_SEP = ' — '
+
+export type LineShape =
+  | { kind: 'gap' }
+  | { kind: 'head'; label: string; rest: string }
+  | { kind: 'kv'; label: string; rest: string }
+  | { kind: 'item'; text: string }
+  | { kind: 'text'; text: string }
+
+// Uppercase-only letters, but digits, spaces and separators pass, so
+// "1 · THE INSTRUMENTED LANE" and "TRUST + REACH" both qualify. Two letters
+// minimum, or a lone "A" would head its own line.
+export function isCaps(s: string): boolean {
+  const letters = s.replace(/[^A-Za-z]/g, '')
+  return letters.length >= 2 && letters === letters.toUpperCase()
+}
+
+export function lineShape(line: string): LineShape {
+  if (!line.trim()) return { kind: 'gap' }
+
+  // Checked BEFORE the separator, so "- Which ad made the sale — 61 calls"
+  // stays one bullet instead of splitting into a label and a value.
+  const item = /^[-*]\s+(.*)$/.exec(line)
+  if (item) return { kind: 'item', text: item[1] }
+
+  const i = line.indexOf(LABEL_SEP)
+  if (i > 0) {
+    const label = line.slice(0, i)
+    const rest = line.slice(i + LABEL_SEP.length)
+    return { kind: isCaps(label) ? 'head' : 'kv', label, rest }
+  }
+
+  if (isCaps(line)) return { kind: 'head', label: line, rest: '' }
+  return { kind: 'text', text: line }
+}
+
 export function moveSection(
   sections: StrategySection[], key: string, dir: -1 | 1,
 ): StrategySection[] {

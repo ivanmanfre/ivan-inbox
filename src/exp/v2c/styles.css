@@ -1511,9 +1511,29 @@
 .wb-strat-ctl button:disabled{opacity:.25;cursor:default;background:transparent}
 .wb-strat-ctl button.x:hover{background:rgba(255,69,58,.16);color:#FF453A}
 .wb-strat-b{display:block;width:100%;margin-top:6px;background:transparent;border:0;padding:0;
-  resize:none;overflow:hidden;color:var(--text2);font-family:inherit;font-size:14px;line-height:1.5}
-.wb-strat-b:focus{outline:none;color:var(--text)}
+  resize:none;overflow:hidden;color:var(--text);font-family:inherit;font-size:14px;line-height:1.55}
+.wb-strat-b:focus{outline:none}
 .wb-strat-b::placeholder{color:var(--text3)}
+/* The RESTING state — typeset, because a strategy is read far more than typed.
+   Three line shapes carry the hierarchy and each is inferred from the text, so
+   there is no markup to remember and no second format to keep in sync. */
+.wb-strat-read{margin-top:6px;font-size:14px;line-height:1.55;cursor:text}
+.wb-strat-read:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:var(--r-sm)}
+.wb-strat-gap{height:11px}
+/* Group heading. Small, spaced and BRIGHT against a dimmer body — the eye needs
+   one fixed place to land when scanning for "what are we doing here". */
+.wb-strat-head{margin:2px 0 3px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.wb-strat-kicker{flex:none;font-size:10.5px;font-weight:800;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--accent)}
+.wb-strat-headrest{color:var(--text2);font-size:13px}
+/* Label — value. The label is the thing being decided, so it carries the weight
+   and the value stays quiet. */
+.wb-strat-kv{display:flex;gap:8px;align-items:baseline;color:var(--text2)}
+.wb-strat-k{flex:none;font-weight:700;color:var(--text)}
+.wb-strat-li{display:flex;gap:8px;align-items:baseline;color:var(--text2);padding-left:2px}
+.wb-strat-bullet{flex:none;color:var(--text3);font-weight:800}
+.wb-strat-p{color:var(--text2)}
+.wb-strat-empty{color:var(--text3)}
 .wb-strat-add{margin:14px 16px 0}
 .wb-strat-add .btn{cursor:pointer;padding:9px 0;font-size:13.5px}
 .wb-strat-age{flex:none;font-size:11.5px;font-weight:600;color:var(--text3)}
