@@ -300,6 +300,16 @@ input.cfield::placeholder{color:var(--text3)}
 .alsoemail{margin-top:10px;background:rgba(10,132,255,.12);border:1px solid rgba(10,132,255,.35);color:#64B5FF;font-size:12.5px;font-weight:600;line-height:1.35;padding:8px 11px;border-radius:10px}
 .emailpreview{margin-top:8px;background:rgba(0,0,0,.3);border:1px solid rgba(10,132,255,.2);border-radius:8px;padding:8px 10px;color:#C7D5E4;font-size:12.5px;font-weight:400;line-height:1.45;white-space:pre-wrap;word-break:break-word;max-height:15vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .emailtoggle{display:inline-block;margin-left:6px;color:var(--accent);cursor:pointer;font-weight:700}
+/* ---- answerability gate: the draft answered something RISE FACTS doesn't cover.
+   Red, because this is the one warning where approving can put an unverified
+   commitment on a client's seat. Warning only: Approve & send stays enabled. ---- */
+.gapwarn{margin-top:10px;background:rgba(255,69,58,.12);border:1px solid rgba(255,69,58,.4);border-radius:10px;padding:9px 11px}
+.gw-h{color:#FF6961;font-size:12.5px;font-weight:700;line-height:1.35}
+.gw-q{margin-top:6px;color:#E8D5D3;font-size:12.5px;font-weight:400;line-height:1.45}
+.gw-a{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:9px}
+.gw-btn{display:inline-block;background:rgba(255,69,58,.9);color:#fff;font-size:12.5px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer}
+.gw-link{color:var(--accent);font-size:12px;font-weight:600;text-decoration:underline}
+.gw-note{color:#9AA3AE;font-size:11.5px;font-weight:400}
 .stalebar{display:flex;align-items:center;gap:10px;margin:12px 16px 0;background:rgba(255,159,10,.1);border:1px solid rgba(255,159,10,.3);border-radius:14px;padding:10px 12px;font-size:13px;font-weight:600;color:#FF9F0A}
 .stalebar span{flex:1}
 .stalebtn{flex:none;background:#FF9F0A;color:#000;font-size:13px;font-weight:700;padding:7px 13px;border-radius:99px;border:none;cursor:pointer;font-family:inherit}

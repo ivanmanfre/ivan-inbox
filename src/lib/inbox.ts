@@ -20,6 +20,12 @@ export type InboxMessage = {
   // The exact email body the dispatcher will send (composed + stored by the
   // drafter). Shown verbatim under the badge so approval sees the real send.
   email_mirror_text?: string | null;
+  // Answerability gate (Ivan 2026-08-19). Set by the RISE reply drafter when the
+  // prospect asked something rise-company-facts does not cover, so the reply's
+  // substance is UNVERIFIED (George Gazzard/SOLSKIN asked how the creative gets
+  // produced; the drafter invented "real shoots for model and skin content").
+  // ADVISORY: the draft is still editable and approvable exactly as before.
+  context_gap?: DraftContextGap | null;
 }
 
 export type Thread = {
@@ -409,6 +415,52 @@ export async function fetchManualReplyIds(): Promise<Set<string>> {
 // (authed role already reads outreach_prospects the same way). Tiny by
 // construction: only unsent, unapproved, unblocked drafts with a stamp.
 export type DraftEmailStamp = { recipient_email: string; email_mirror_text: string | null }
+
+// Answerability gate: the drafter answered something rise-company-facts does not cover.
+// Same probe shape as the email stamps below (the view doesn't expose context_gap either),
+// and the same degrade rule: a failed read only loses the warning, never the inbox.
+// chat_url comes from outreach_prospects.linkedin_url — unipile_chat_id is a Unipile id and
+// does NOT resolve to a linkedin.com thread URL, so the profile is the only real link we hold.
+export type DraftContextGap = { question: string | null; why: string | null; chat_url: string | null }
+
+export async function fetchDraftContextGaps(): Promise<Map<string, DraftContextGap>> {
+  const { data, error } = await supabase.from('outreach_messages')
+    .select('id,prospect_id,context_gap')
+    .eq('direction', 'outbound')
+    .is('sent_at', null).is('approved_at', null)
+    .not('context_gap', 'is', null)
+    .limit(500)
+  if (error) throw error
+  const rows = (data ?? []) as { id: string; prospect_id: string; context_gap: { question?: string; why?: string } | null }[]
+  const m = new Map<string, DraftContextGap>()
+  if (!rows.length) return m
+  const urls = new Map<string, string | null>()
+  const { data: props } = await supabase.from('outreach_prospects')
+    .select('id,linkedin_url')
+    .in('id', Array.from(new Set(rows.map(r => r.prospect_id))))
+  for (const p of (props ?? []) as { id: string; linkedin_url: string | null }[]) urls.set(p.id, p.linkedin_url)
+  for (const r of rows) {
+    if (!r.context_gap) continue
+    m.set(r.id, {
+      question: r.context_gap.question ?? null,
+      why: r.context_gap.why ?? null,
+      chat_url: urls.get(r.prospect_id) ?? null,
+    })
+  }
+  return m
+}
+
+/** Optional: queue the "what do I tell them" question for Mattan in the Ops inbox, carrying the
+ *  conversation link. Never sends anything itself, and never blocks approving the draft. */
+export async function escalateDraftToClient(messageId: string): Promise<string> {
+  const { data, error } = await supabase.rpc('operator_escalate_rise_draft', {
+    p_gate: 'clientops', p_message_id: messageId,
+  })
+  if (error) throw error
+  const r = (data ?? {}) as { ok?: boolean; note?: string; error?: string }
+  if (!r.ok) throw new Error(r.error || 'could not queue that')
+  return r.note || 'Queued for Mattan.'
+}
 
 export async function fetchDraftEmailStamps(): Promise<Map<string, DraftEmailStamp>> {
   const { data, error } = await supabase.from('outreach_messages')
