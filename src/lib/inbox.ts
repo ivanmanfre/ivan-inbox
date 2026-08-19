@@ -116,6 +116,38 @@ export function threadKind(t: Thread): 'email' | 'inmail' | 'linkedin' {
   return 'linkedin'
 }
 
+// Which channel ONE message actually rode. The thread header answers this for a
+// single-channel thread, but a RISE lead now gets a LinkedIn DM *and* an email
+// mirror in the same stream, and the reply underneath is answering one of the two
+// (Ivan, 2026-08-19: "hard to see which one is email which one dm... its a bit
+// confuse if their last msg is responding to our email or to the dm"). Live check
+// on George Gazzard: his question landed 20 minutes after our email as
+// channel='linkedin' — a DM, not an email reply. Nothing in the thread said so.
+export type MsgChannel = 'email' | 'inmail' | 'dm' | 'invite'
+
+export function messageChannel(m: InboxMessage): MsgChannel {
+  if (m.channel === 'email') return 'email'
+  if (m.message_type === 'connection_note') return 'invite'
+  if (m.message_type === 'inmail' || m.channel === 'linkedin_inmail') return 'inmail'
+  return 'dm'
+}
+
+// An invite and a DM both arrive in the same LinkedIn chat, so a thread carrying
+// both is NOT mixed — there is nothing to disambiguate. Only a real second surface
+// (email, or an InMail that opened a separate LinkedIn conversation) is.
+export const CHANNEL_FAMILY: Record<MsgChannel, 'email' | 'inmail' | 'linkedin'> = {
+  email: 'email', inmail: 'inmail', dm: 'linkedin', invite: 'linkedin',
+}
+
+export function channelFamilies(ms: InboxMessage[]): ('email' | 'inmail' | 'linkedin')[] {
+  const seen = new Set(ms.map(m => CHANNEL_FAMILY[messageChannel(m)]))
+  return (['linkedin', 'inmail', 'email'] as const).filter(f => seen.has(f))
+}
+
+export function isMixedChannel(ms: InboxMessage[]): boolean {
+  return channelFamilies(ms).length > 1
+}
+
 // A thread is a CONVERSATION only if the other person exists in it (or the
 // system says they do): real inbound, a pending draft to approve, or the reply
 // detector's needs_manual_reply flag. Everything else is a send echo — we
