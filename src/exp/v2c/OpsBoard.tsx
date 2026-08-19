@@ -8,6 +8,7 @@ import { useCommentQueue } from '../../hooks/useCommentQueue'
 import { useAgentDigest, usePipelineHealth } from '../../hooks/useContent'
 import { pipelineHealthTotal, STUCK_GENERATING_MINUTES, type PipelineHealth } from '../../lib/content'
 import { SummariesSection } from './ContentSections'
+import { ReactionDesk } from './ReactionDesk'
 import { CalmEmpty, Failed } from './Surface'
 
 // Ops, designed for the canvas it actually gets.
@@ -200,6 +201,11 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh, onOpenErro
             </div>
           )}
         </div>
+        {/* The reaction desk sits ABOVE the pipeline notes and below the queue:
+            it is a decision like the cards above it, not a status line like the
+            notes below. It renders nothing at all when no reaction is waiting
+            (Ivan, 2026-08-19 — reactions live in ops, not the content pipeline). */}
+        <ReactionDesk />
         <PipelineNotes
           health={health.rows} olderUnsent={digest.olderUnsent} onOpenErrors={onOpenErrors}
         />
