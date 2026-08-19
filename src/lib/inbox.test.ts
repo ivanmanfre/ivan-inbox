@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { isDraft, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, type InboxMessage, type Status } from './inbox'
+import { isDraft, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, messageChannel, isMixedChannel, channelFamilies, type InboxMessage, type Status } from './inbox'
 
 // inbox.ts:191 gates needsAnswer on a 14-day wall-clock staleness window
 // (STALE_DAYS), measured against Date.now() by default -- and most callers
@@ -401,5 +401,45 @@ describe('lead magnet deliveries', () => {
     expect(filterByStatus([t], 'all').map(x => x.prospect_id)).toEqual(['lm'])
     expect(filterByStatus([t], 'needs')).toEqual([])
     expect(inboxWaitingCount([t])).toBe(0)
+  })
+})
+
+// Per-message channel (2026-08-19). The George Gazzard thread is the live shape:
+// a connection note, their DM, our DM, our email mirror, then their next DM —
+// which is a LinkedIn reply landing 20 minutes AFTER the email, not an answer to it.
+describe('messageChannel + isMixedChannel', () => {
+  const invite: InboxMessage = { ...base, id: 'c1', message_type: 'connection_note', channel: 'linkedin' }
+  const dmIn: InboxMessage = { ...base, id: 'd1', direction: 'inbound', message_type: 'dm', channel: 'linkedin' }
+  const dmOut: InboxMessage = { ...base, id: 'd2', message_type: 'dm', channel: 'linkedin' }
+  const email: InboxMessage = { ...base, id: 'e1', message_type: 'email', channel: 'email', ai_model: 'rise_email_mirror_v1' }
+  const inmail: InboxMessage = { ...base, id: 'i1', message_type: 'inmail', channel: 'linkedin_inmail' }
+
+  it('reads the channel off the row, not off the thread', () => {
+    expect(messageChannel(invite)).toBe('invite')
+    expect(messageChannel(dmIn)).toBe('dm')
+    expect(messageChannel(email)).toBe('email')
+    expect(messageChannel(inmail)).toBe('inmail')
+    // message_type left null by a mirror still resolves by channel
+    expect(messageChannel({ ...email, message_type: null })).toBe('email')
+    expect(messageChannel({ ...inmail, message_type: null })).toBe('inmail')
+  })
+
+  it('an invite plus DMs is ONE surface, so not mixed', () => {
+    expect(isMixedChannel([invite, dmIn, dmOut])).toBe(false)
+    expect(channelFamilies([invite, dmIn, dmOut])).toEqual(['linkedin'])
+  })
+
+  it('the email mirror makes the thread mixed', () => {
+    expect(isMixedChannel([invite, dmIn, dmOut, email, dmIn])).toBe(true)
+    expect(channelFamilies([invite, dmOut, email])).toEqual(['linkedin', 'email'])
+  })
+
+  it('InMail counts as its own surface', () => {
+    expect(isMixedChannel([inmail, dmIn])).toBe(true)
+    expect(channelFamilies([inmail, dmIn, email])).toEqual(['linkedin', 'inmail', 'email'])
+  })
+
+  it('an empty thread is not mixed', () => {
+    expect(isMixedChannel([])).toBe(false)
   })
 })

@@ -4040,3 +4040,57 @@
   font-size:var(--fs-eyebrow, 11px); letter-spacing:.06em; text-transform:uppercase;
   color:var(--text3); font-weight:600;
 }
+
+/* ==========================================================================
+   CHANNEL MARKS IN THE THREAD (2026-08-19, Ivan: "hard to see which one is
+   email which one dm ... its a bit confuse if their last msg is responding to
+   our email or to the dm"). Same three paints as the list chips above
+   (§ CHANNEL MARKS): InMail orange fill, DM lime outline, email white fill —
+   so a channel reads identically whether it is on a row or on a bubble.
+   ========================================================================== */
+.wb.wb.wb .chanchip{
+  font-size:var(--fs-eyebrow, 11px); line-height:14px; letter-spacing:.06em;
+  font-weight:700; padding:1px 5px; border-radius:var(--r-chip); flex:none;
+  background:transparent; box-shadow:none;
+}
+.wb.wb.wb .chanchip.chan-inmail{
+  background:rgba(255,155,34,.18); color:#FF9B22; box-shadow:inset 0 0 0 1px rgba(255,155,34,.5);
+}
+/* Lime cannot carry an 11px label on white (1.4:1), so the ink rides --accent-ui
+   and the light theme swaps it for #5A8A00 — style-delta §2, same as every other
+   lime glyph in this file. */
+.wb.wb.wb .chanchip.chan-dm{
+  background:transparent; color:var(--accent-ui, var(--accent));
+  box-shadow:inset 0 0 0 1px rgba(184,255,102,.55);
+}
+:root[data-theme='light'] .wb.wb.wb .chanchip.chan-dm{ box-shadow:inset 0 0 0 1px rgba(90,138,0,.5) }
+.wb.wb.wb .chanchip.chan-email{
+  background:rgba(255,255,255,.10); color:#F2F2EF; box-shadow:inset 0 0 0 1px rgba(255,255,255,.34);
+}
+:root[data-theme='light'] .wb.wb.wb .chanchip.chan-email{
+  background:var(--surface2); color:var(--text); box-shadow:inset 0 0 0 1px var(--hairline-strong);
+}
+
+/* An email is a LETTER, not a chat pill: wider, squared to the card radius,
+   hairlined, and it gives up the accent fill so the eye stops on it. The side it
+   sits on still says who wrote it; the rail keeps ours from reading as theirs. */
+.wb.wb.wb .b.chan-b-email{
+  max-width:92%; border-radius:var(--r-card);
+  background:var(--surface1); box-shadow:inset 0 0 0 1px var(--hairline-strong);
+}
+.wb.wb.wb .b.in.chan-b-email{ border-bottom-left-radius:var(--r-card) }
+.wb.wb.wb .b.out.chan-b-email{
+  color:var(--text); border-bottom-right-radius:var(--r-card);
+  border-right:3px solid var(--accent);
+}
+:root[data-theme='light'] .wb.wb.wb .b.out.chan-b-email{ color:var(--text) }
+.wb.wb.wb .b.out.chan-b-email .msg-link{ color:var(--text); text-decoration-color:var(--text3) }
+/* The label row carries a chip now, so it lays out as a row rather than a bare
+   line of text. One line by contract, still (see styles.css .blbl). */
+.wb.wb.wb .blbl{ display:flex; align-items:center; gap:5px }
+/* The address line on an email bubble sits at the meta tier, hairline-ruled off
+   the body it introduces. */
+.wb.wb.wb .b-emailmeta{
+  font-size:var(--fs-meta, 13px); color:var(--text3);
+  margin:-2px 0 8px; padding-bottom:6px; border-bottom:1px solid var(--hairline);
+}
