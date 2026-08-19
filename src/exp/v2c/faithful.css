@@ -3913,3 +3913,35 @@
   box-shadow:inset 0 0 0 1px var(--hairline);
 }
 .wb.wb.wb .ops-pipe-b:hover{ color:var(--text) }
+
+/* ========================================================================== */
+/* 13 · THE STRATEGY TAB — a document, not a row list                          */
+/* ========================================================================== */
+/* Strategy borrows `.ct-card` for its plate, which means it inherited §7.1's
+   anchor-column grid: header and body were auto-placed into columns 1 and 2 of
+   the SAME grid row, so the header measured 28px wide (the anchor track) and
+   the textarea sat ON TOP of it — every section's edit controls overlapping the
+   text they act on, and the body unclickable at 390px. Caught by clicking the
+   first textarea in a Playwright pass, not by looking at it: at low contrast
+   the overlap reads as a slightly tight card.
+   Same opt-out `.ct-idea` takes (§12), same reason — this card has its own
+   anatomy. The rail contract does not apply: a document has no anchor mark. */
+.wb.wb.wb .ct-card.wb-strat-card{
+  display:block;
+  padding:12px var(--gut);
+  /* §7.3 de-borders every .ct-card and would erase the unwritten-section
+     outline with it, which is the one piece of state this surface draws. */
+  background:transparent;
+}
+.wb.wb.wb .ct-card.wb-strat-card.blank{
+  box-shadow:inset 0 0 0 1px var(--hairline);
+  border-radius:var(--r-md);
+}
+/* §7.3's `.ct-card + .ct-card` hairline is right for rows and wrong here: a
+   ruled line between every paragraph of a document is a table, and the blank
+   cards already carry their own outline. */
+.wb.wb.wb .ct-card.wb-strat-card + .ct-card.wb-strat-card{ border-top:none }
+.wb.wb.wb .wb-strat-note{ padding:0 var(--gut); margin:12px 0 0; font-size:var(--fs-eyebrow, 11px) }
+.wb.wb.wb .wb-strat-add{ margin:14px 0 0; padding:0 var(--gut) }
+.wb.wb.wb .wb-strat-save{ padding-left:var(--gut); padding-right:var(--gut);
+  box-shadow:0 -1px 0 var(--hairline) }

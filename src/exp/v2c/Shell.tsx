@@ -39,6 +39,7 @@ import { MobileTabs, Rail, WorkSegment } from './Rail'
 import { ContentList, type OpenDraft } from './ContentList'
 import { MagnetsList } from './MagnetsList'
 import { StylesList } from './StylesList'
+import { StrategyView } from './StrategyView'
 import type { OpenMagnet } from './ContentSections'
 import { DraftWindow, type QueueItem } from './DraftPane'
 import { MagnetWindow } from './MagnetWindow'
@@ -409,6 +410,13 @@ export default function Shell() {
           2026-08-04: "STYLES SHOULD BE A TAB"). Same shared lane state. */}
       {job === 'styles' && (
         <StylesList lane={lane} setLane={setLane} />
+      )}
+      {/* Strategy joined the work group on 2026-08-19 for the same reason
+          Styles did: it is per-lane, so it rides the shared lane state rather
+          than asking Ivan which client he means a second time. It is the one
+          work surface that WRITES what it shows. */}
+      {job === 'strategy' && (
+        <StrategyView lane={lane} setLane={setLane} />
       )}
       {job === 'sends' && <SendsScreen client={sendsClient} setClient={setSendsClient} />}
       {job === 'ops' && opsSurface}
