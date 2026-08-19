@@ -4,7 +4,7 @@ import { ContextSheet } from '../components/ContextSheet'
 import { Linkified } from '../components/Linkified'
 import { useConfirm } from '../components/ConfirmSheet'
 import {
-  approveDraft, channelFamilies, composeReply, discardDraft, isDraft, isMixedChannel,
+  approveDraft, channelFamilies, composeReply, discardDraft, escalateDraftToClient, isDraft, isMixedChannel,
   markThreadRead, messageChannel, threadChatId,
   type InboxMessage, type MsgChannel, type Thread, eventTime } from '../lib/inbox'
 
@@ -80,6 +80,9 @@ export function ThreadScreen({ thread, onBack, refresh }: {
   // overflow:hidden shell, so anything that grows it can push Approve/Discard off-screen
   // with no way to scroll to them (broke live 2026-08-07, first email-preview version).
   const [showEmail, setShowEmail] = useState(false)
+  // Answerability gate: optional escalation. Never gates Approve & send.
+  const [askNote, setAskNote] = useState('')
+  const [asking, setAsking] = useState(false)
   const [draftErr, setDraftErr] = useState('')
   const [reply, setReply] = useState('')
   const [composeErr, setComposeErr] = useState('')
@@ -275,6 +278,36 @@ export function ThreadScreen({ thread, onBack, refresh }: {
             onChange={e => setEdited(e.target.value)}
             disabled={busy}
           />
+          {draft.context_gap && (
+            <div className="gapwarn" style={{ margin: '0 14px 10px' }}>
+              <div className="gw-h">
+                This answers something our RISE notes do not cover
+                {draft.context_gap.why ? `: ${draft.context_gap.why}` : '.'}
+              </div>
+              {draft.context_gap.question && (
+                <div className="gw-q">For Mattan: {draft.context_gap.question}</div>
+              )}
+              <div className="gw-a">
+                <span
+                  className="gw-btn"
+                  onClick={asking || askNote ? undefined : () => {
+                    setAsking(true); setAskNote('')
+                    escalateDraftToClient(draft.id)
+                      .then(n => setAskNote(n))
+                      .catch(e => setAskNote(e?.message || 'Could not queue that.'))
+                      .finally(() => setAsking(false))
+                  }}
+                >{askNote ? 'Asked ✓' : asking ? 'Queueing…' : 'Ask Mattan'}</span>
+                {draft.context_gap.chat_url && (
+                  <a className="gw-link" href={draft.context_gap.chat_url} target="_blank" rel="noreferrer">
+                    open the conversation
+                  </a>
+                )}
+                <span className="gw-note">Optional. You can send this draft as it is.</span>
+              </div>
+              {askNote && <div className="gw-note" style={{ marginTop: 6 }}>{askNote}</div>}
+            </div>
+          )}
           {draft.recipient_email && (
             <div className="alsoemail" style={{ margin: '0 14px 10px' }}>
               <div>
