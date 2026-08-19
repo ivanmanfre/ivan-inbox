@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
-  approveReaction, canApprove, fetchOccupiedDays, fetchReactionDesk, killReaction,
-  nextFreeSlot, type ReactionRow,
+  approveReaction, approveRiseReaction, canApprove, fetchOccupiedDays, fetchReactionDesk,
+  killReaction, nextFreeSlot, type ReactionRow,
 } from '../lib/reactions'
 
 // The reaction desk's state.
@@ -37,7 +37,11 @@ export function useReactions(enabled: boolean) {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
-  const [done, setDone] = useState<{ id: string; scheduledAt: string } | null>(null)
+  // What the last approval actually did — the two lanes end in different places
+  // and the confirmation has to say which, or "approved" reads as "published".
+  const [done, setDone] = useState<
+    { id: string; lane: 'ivan'; scheduledAt: string } | { id: string; lane: 'risedtc' } | null
+  >(null)
 
   const refresh = useCallback(() => {
     if (!enabled) return
@@ -58,11 +62,12 @@ export function useReactions(enabled: boolean) {
     setBodies(b => ({ ...b, [id]: body }))
   }, [])
 
-  const kill = useCallback(async (id: string) => {
+  const kill = useCallback(async (row: ReactionRow) => {
+    const id = row.id
     setBusy(id)
     setActionError(null)
     try {
-      await killReaction(id)
+      await killReaction(row)
       // Drop it locally rather than refetching: the row is gone by definition,
       // and a refetch here would throw away the other bodies in flight.
       setRows(rs => rs.filter(r => r.id !== id))
@@ -79,13 +84,21 @@ export function useReactions(enabled: boolean) {
     setBusy(row.id)
     setActionError(null)
     try {
+      if (row.lane === 'risedtc') {
+        // Mattan's lane ends at HIS board, not on a calendar. Nothing is dated
+        // and nothing is armed — Ivan is not the publisher here.
+        await approveRiseReaction(row, body)
+        setRows(rs => rs.filter(r => r.id !== row.id))
+        setDone({ id: row.id, lane: 'risedtc' })
+        return
+      }
       // The slot is computed at approve time, not at render time: two approvals
       // in one sitting must not both claim the same day.
       const at = nextFreeSlot(occupied, new Date())
       const res = await approveReaction(row, body, at)
       setOccupied(o => [...o, res.scheduledAt.slice(0, 10)])
       setRows(rs => rs.filter(r => r.id !== row.id))
-      setDone({ id: row.id, scheduledAt: res.scheduledAt })
+      setDone({ id: row.id, lane: 'ivan', scheduledAt: res.scheduledAt })
     } catch (e: unknown) {
       setActionError(errText(e, 'approve failed'))
     } finally {

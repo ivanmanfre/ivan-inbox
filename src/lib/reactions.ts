@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { setScheduleDateAt } from './content'
+import { setBoardVisible, setScheduleDateAt } from './content'
 
 // THE REACTION DESK (Ivan, 2026-08-19: reactions belong "in ops as well instead
 // of content pipeline… only if i approve it goes to ballot on mattan case —
@@ -44,7 +44,15 @@ export type ReactionEvidence = {
   tier_weight: string | null
 }
 
+// Which lane a card belongs to, and therefore what Approve MEANS.
+//   'ivan'    → a dated review draft on his own calendar (he is the publisher)
+//   'risedtc' → a draft put on Mattan's board for HIS call (Ivan is not)
+// Ivan, 2026-08-19: "rise half i want them first in ops -> i approve/edit ->
+// go to ballot". Two different terminal states, one desk.
+export type ReactionLane = 'ivan' | 'risedtc'
+
 export type ReactionRow = {
+  lane: ReactionLane
   id: string
   raw_topic: string | null
   source_ref: string | null
@@ -108,7 +116,43 @@ function toShotUrl(raw: unknown): string | null {
   return e ? str(e.shot_url) : null
 }
 
-export async function fetchReactionDesk(): Promise<ReactionRow[]> {
+// RISE's reactions live in a DIFFERENT TABLE with a different shape: the
+// X Viral-Trend Ingestor (n8n xBV2Cq3UWBY5v5nQ) grades them in-flight and writes
+// client_ideas rows whose source metadata sits under `score_breakdown`, not
+// `evidence`. Same desk, two readers — never one query pretending the tables
+// agree.
+const RISE_COLS =
+  'id,title,hook,source_ref,source_label,icp_score,score_breakdown,taxonomy,created_at'
+
+// score_breakdown carries the harvest facts the Ivan lane keeps in evidence[0].
+// Mapped rather than aliased, so a rename on either side fails here loudly
+// instead of rendering a card full of dashes.
+function riseEvidence(raw: unknown): ReactionEvidence | null {
+  if (!raw || typeof raw !== 'object') return null
+  const b = raw as Record<string, unknown>
+  const eng = (b.source_engagement && typeof b.source_engagement === 'object'
+    ? b.source_engagement
+    : {}) as Record<string, unknown>
+  const who = str(b.source_author)
+  return {
+    author: who ? who.replace(/^@/, '') : null,
+    who,
+    // The RISE lane stores the graded hook, not the source tweet's own words.
+    // Whatever it holds is shown verbatim; the card's caller decides the label.
+    excerpt: null,
+    thread_url: null,
+    created_at: null,
+    likes: num(eng.likes),
+    views: num(eng.views),
+    quotes: num(eng.quotes),
+    comments: num(eng.replies),
+    retweets: null,
+    controversy_ratio: num(b.controversy_ratio),
+    tier_weight: str(b.source_tier),
+  }
+}
+
+async function fetchIvanReactions(): Promise<ReactionRow[]> {
   const { data, error } = await supabase.from('lm_idea_candidates')
     .select(COLS)
     .eq('status', REACTION_STATUS)
@@ -121,6 +165,7 @@ export async function fetchReactionDesk(): Promise<ReactionRow[]> {
   return (data ?? []).map(r => {
     const row = r as unknown as Record<string, unknown>
     return {
+      lane: 'ivan' as const,
       id: String(row.id),
       raw_topic: str(row.raw_topic),
       source_ref: str(row.source_ref),
@@ -134,20 +179,69 @@ export async function fetchReactionDesk(): Promise<ReactionRow[]> {
   })
 }
 
+async function fetchRiseReactions(): Promise<ReactionRow[]> {
+  const { data, error } = await supabase.from('client_ideas')
+    .select(RISE_COLS)
+    .eq('client_id', 'risedtc')
+    .eq('status', REACTION_STATUS)
+    .order('created_at', { ascending: false })
+    .limit(50)
+  if (error) throw error
+  return (data ?? []).map(r => {
+    const row = r as unknown as Record<string, unknown>
+    const tax = (row.taxonomy && typeof row.taxonomy === 'object'
+      ? row.taxonomy
+      : {}) as Record<string, unknown>
+    return {
+      lane: 'risedtc' as const,
+      id: String(row.id),
+      // The graded hook is what Mattan's lane actually holds; the title is the
+      // filed version of it. Hook first, because it is the sentence.
+      raw_topic: str(row.hook) ?? str(row.title),
+      source_ref: str(row.source_ref),
+      composite_score: num(row.icp_score),
+      icp_fit_score: null,
+      why_score: str((row.score_breakdown as Record<string, unknown> | null)?.why),
+      ingested_at: str(row.created_at),
+      evidence: riseEvidence(row.score_breakdown),
+      shot_url: str(tax.shot_url),
+    }
+  })
+}
+
+// Both lanes, one list, freshest first. A failure in EITHER lane fails the whole
+// read on purpose: half a desk that looks complete is the worse outcome, and the
+// error text names which table refused.
+export async function fetchReactionDesk(): Promise<ReactionRow[]> {
+  const [ivan, rise] = await Promise.all([fetchIvanReactions(), fetchRiseReactions()])
+  return [...ivan, ...rise].sort((a, b) => (b.ingested_at ?? '').localeCompare(a.ingested_at ?? ''))
+}
+
 // ---------- the two decisions ----------
 
 // Kill is a real write, not a session-local hide: the same row would come back
 // on the next read otherwise, and the desk would never empty. It lands in the
 // same 'archived' bucket every other rejected candidate uses so the scorer's
 // rejection history stays one list.
-export async function killReaction(id: string, reason?: string): Promise<void> {
+export async function killReaction(row: ReactionRow, reason?: string): Promise<void> {
   const note = reason?.trim()
+  if (row.lane === 'risedtc') {
+    // client_ideas has no archived_reason column; the lane's own dead-row value
+    // is 'archived' and the note goes where the rest of that row's provenance
+    // already lives.
+    const { error } = await supabase.from('client_ideas')
+      .update({ status: 'archived' })
+      .eq('id', row.id)
+      .eq('status', REACTION_STATUS)
+    if (error) throw error
+    return
+  }
   const { error } = await supabase.from('lm_idea_candidates')
     .update({
       status: 'archived',
       archived_reason: `killed_at_desk${note ? ':' + note : ''}`,
     })
-    .eq('id', id)
+    .eq('id', row.id)
     .eq('status', REACTION_STATUS)
   if (error) throw error
 }
@@ -212,6 +306,70 @@ export type ApproveResult = { draftId: string; scheduledAt: string }
 // whose post_body is '' and quietly schedule it.
 export function canApprove(body: string): boolean {
   return body.trim().length > 0
+}
+
+// RISE's terminal state is NOT a schedule — Ivan does not publish on Mattan's
+// behalf. Approving puts the post on Mattan's board for his call, which is what
+// "goes to ballot" means on that lane.
+//
+// 🔴 THE CLIENT BOARD IS A CACHED BLOB. `get_client_board` returns
+// `client_boards.board` verbatim, so a green PATCH on carousel_drafts proves
+// NOTHING about what Mattan sees. `operator_set_board_visible` is the call that
+// both flips the flag AND fires the board queue sync, and its result must be
+// asserted rather than assumed.
+export async function approveRiseReaction(
+  row: ReactionRow,
+  body: string,
+): Promise<{ draftId: string }> {
+  if (!canApprove(body)) throw new Error('approve: the reaction has no body yet')
+  const ev = row.evidence
+  const handle = ev?.who || (ev?.author ? '@' + ev.author : 'X')
+
+  const { data, error } = await supabase.from('carousel_drafts')
+    .insert({
+      title: `Reaction — ${handle}`,
+      type: 'single_image',
+      topic: row.raw_topic ?? `Reaction to ${handle}`,
+      post_body: body.trim(),
+      image_urls: row.shot_url ? [row.shot_url] : [],
+      // review is a precondition of operator_set_board_visible, not a
+      // formality: the RPC refuses 'not_in_review'.
+      status: 'review',
+      client_id: 'risedtc',
+      // FALSE at birth, then flipped by the RPC. Inserting it true would show
+      // the post on the board without ever firing the queue sync that rebuilds
+      // the blob the board actually reads.
+      board_visible: false,
+      source_ref: row.source_ref,
+      source_label: `Reaction to ${handle} on X`,
+      client_idea_id: row.id,
+      taxonomy: {
+        human_edited: true,
+        human_edited_at: new Date().toISOString(),
+        // 🔴 NEVER a `register` key on a RISE row: the client-facing Weekly Plan
+        // Note selects on taxonomy->>register, and one here would leak this
+        // into a note Mattan reads before he has approved anything.
+        reaction: {
+          idea_id: row.id,
+          source_url: row.source_ref,
+          author: ev?.author ?? null,
+          shot_url: row.shot_url,
+        },
+      },
+    })
+    .select('id')
+    .single()
+  if (error) throw error
+  const draftId = String((data as { id: string }).id)
+
+  await setBoardVisible(draftId, true)
+
+  const { error: closeErr } = await supabase.from('client_ideas')
+    .update({ status: 'live', approved_at: new Date().toISOString() })
+    .eq('id', row.id)
+  if (closeErr) throw closeErr
+
+  return { draftId }
 }
 
 export async function approveReaction(
