@@ -107,9 +107,30 @@ body{
    carrying a bare `r` was laid out in that grid's 28px anchor column — which is
    why "Sent · DM · typed on LinkedIn" rendered as a vertical stack overlapping
    the label under it (Ivan, 2026-08-04). One-line by contract. */
-.blbl{font-size:11px;color:var(--text3);margin:0 6px;white-space:nowrap}
+.blbl{font-size:11px;color:var(--text3);margin:0 6px;white-space:nowrap;display:flex;align-items:center;gap:5px}
 .blbl-r{align-self:flex-end}
 .blbl-l{align-self:flex-start}
+
+/* CHANNEL MARKS IN THE THREAD (2026-08-19, Ivan: "hard to see which one is email
+   which one dm... its a bit confuse if their last msg is responding to our email
+   or to the dm"). The channel used to live inside the grey label as a word, which
+   is unreadable at a glance and existed on outbound only — so an inbound reply
+   sitting under an email bubble said nothing about which surface it arrived on.
+   Now every bubble carries a coloured mark, and an EMAIL bubble is a letter-shaped
+   card instead of a chat pill, so the two read apart from across the room. */
+.chanchip{font-size:9.5px;font-weight:800;letter-spacing:.04em;border-radius:5px;padding:1px 5px;line-height:14px;flex:none}
+.chanchip.chan-dm{color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.chanchip.chan-inmail{color:#FF9F0A;box-shadow:inset 0 0 0 1px rgba(255,159,10,.55)}
+.chanchip.chan-email{color:var(--blue);background:rgba(10,132,255,.14);box-shadow:inset 0 0 0 1px rgba(10,132,255,.5)}
+/* An email is a letter, not a chat bubble: wider, squared, hairlined, and it drops
+   the accent fill so the eye stops on it. Side still says who sent it, and the
+   accent rail on the send side keeps ours from reading as theirs. */
+.b.chan-b-email{max-width:92%;border-radius:12px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--sep)}
+.b.in.chan-b-email{border-bottom-left-radius:12px;border-left:3px solid var(--blue)}
+.b.out.chan-b-email{color:var(--text);border-bottom-right-radius:12px;border-right:3px solid var(--accent)}
+:root[data-theme='light'] .b.out.chan-b-email{color:var(--text)}
+.b.out.chan-b-email .msg-link{color:var(--blue);text-decoration-color:rgba(10,132,255,.7)}
+.b-emailmeta{font-size:11.5px;color:var(--text3);margin:-2px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--sep)}
 
 .draftcard{margin:8px 14px 10px;background:var(--surface);border-radius:20px;overflow:hidden;border:1px solid rgba(16,163,127,.4);box-shadow:0 8px 30px rgba(0,0,0,.5)}
 .dc-h{display:flex;align-items:center;gap:8px;padding:11px 14px 0}
