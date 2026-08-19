@@ -14,6 +14,11 @@ describe('parseWbHash', () => {
     expect(parseWbHash('#exp/v2/content')).toEqual({ job: 'content', focus: null })
     expect(parseWbHash('#exp/v2/magnets')).toEqual({ job: 'magnets', focus: null })
     expect(parseWbHash('#exp/v2/ops')).toEqual({ job: 'ops', focus: null })
+    // Strategy joined the work group 2026-08-19. A job is only addressable
+    // because JOBS lists it — the tab would render and still 404 on reload if
+    // this half were missed.
+    expect(parseWbHash('#exp/v2/strategy')).toEqual({ job: 'strategy', focus: null })
+    expect(wbHash('strategy', null)).toBe('#exp/v2/strategy')
   })
 
   it('reads a focused chat peer', () => {

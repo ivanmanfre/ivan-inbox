@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { JOBS, JOB_ICON, JOB_LABEL, WORK_JOBS, isWorkJob, type Job } from './layout'
 import { relAge } from './Surface'
 
@@ -18,13 +19,26 @@ import { relAge } from './Surface'
 // freed a mobile slot, so DMs left the group and became a destination on both
 // canvases. What remains grouped is what the label always described — the two
 // CONTENT lanes, posts and lead magnets.
-export const WORK_LANE_LABEL: Record<string, string> = { content: 'Content', magnets: 'Magnets', styles: 'Styles' }
+export const WORK_LANE_LABEL: Record<string, string> = {
+  content: 'Content', magnets: 'Magnets', styles: 'Styles', strategy: 'Strategy',
+}
 
 export function WorkSegment({ job, counts, onJob }: {
   job: Job
   counts: Counts
   onJob: (j: Job) => void
 }) {
+  // The strip scrolls (see styles.css) rather than shrinking, because the four
+  // members already overflow 390px and a fifth would overflow any padding we
+  // could claw back. Scrolling only works if the ACTIVE pill is the one you can
+  // see: Strategy joining the group put it last, i.e. clipped off the right edge
+  // exactly when it was selected. Measured at 390 before this ran.
+  const segRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = segRef.current?.querySelector('.wb-ws.on')
+    el?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [job])
+
   if (!isWorkJob(job)) return null
   return (
     <div className="wb-workhead">
@@ -34,7 +48,7 @@ export function WorkSegment({ job, counts, onJob }: {
           neither (no role, no tab stop — a probe looking for a button or a role
           could not even find it). The look is unchanged; the button chrome is
           stripped and the 28px box gets its hit extension in faithful.css. */}
-      <div className="wb-workseg">
+      <div className="wb-workseg" ref={segRef}>
         {WORK_JOBS.map(j => (
           <button
             key={j} type="button" className={`wb-ws${job === j ? ' on' : ''}`}

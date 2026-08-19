@@ -108,7 +108,16 @@
   border-bottom:.5px solid var(--sep)}
 .wb-workhead-l{flex:none;font-size:10.5px;font-weight:800;letter-spacing:.06em;
   text-transform:uppercase;color:var(--text3)}
-.wb-workseg{flex:1;display:flex;gap:6px;min-width:0}
+/* Scrolls instead of squeezing. Four members overflow 390px (Strategy joined
+   2026-08-19 and rendered clipped as "Strateg"); shrinking the pills to fit
+   would only defer that to the fifth. `flex:none` on the pills keeps their
+   labels intact — the default would compress them all to fit and produce four
+   truncated words instead of one honest scroll. WorkSegment scrolls the active
+   pill into view so the clipped one is never the one you are on. */
+.wb-workseg{flex:1;display:flex;gap:6px;min-width:0;overflow-x:auto;scrollbar-width:none;
+  -webkit-overflow-scrolling:touch}
+.wb-workseg::-webkit-scrollbar{display:none}
+.wb-workseg > .wb-ws{flex:none}
 .wb-ws{display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;padding:4px 10px;
   border-radius:99px;background:var(--surface);color:var(--text2);cursor:pointer;white-space:nowrap}
 .wb-ws.on{background:var(--surface3);color:var(--text)}
@@ -1471,3 +1480,49 @@
    state line, not a warning: it is only alarming if the number is. */
 .vd-cost{font-size:10.5px;font-weight:700;letter-spacing:.03em;color:var(--text3);
   padding:1px 6px;border-radius:99px;background:var(--surface2)}
+
+/* ============================== strategy tab ==============================
+   The one WRITING surface in the work group (2026-08-19). Everything else in
+   .ct-rows renders rows the pipeline produced; this renders a document Ivan
+   types. So it borrows .ct-card's plate and nothing else — no thumb grid, no
+   chip row, no action bar — and its inputs are chromeless on purpose: a boxed
+   textarea per section turns a strategy into a form, and a form is the thing
+   he already avoids filling in. */
+.wb-strat-note{margin:12px 16px 0;font-size:12px;line-height:1.45;color:var(--text3)}
+.wb-strat-card{padding:12px 14px}
+/* A section with nothing written is the state the tab exists to expose, so it
+   is drawn as absence (dashed, dimmed) rather than as a card that happens to
+   be short. */
+.wb-strat-card.blank{background:transparent;box-shadow:inset 0 0 0 1px var(--surface2)}
+.wb-strat-h{display:flex;align-items:center;gap:8px}
+.wb-strat-t{flex:1;min-width:0;background:transparent;border:0;padding:0;color:var(--text);
+  font-size:15.5px;font-weight:700;letter-spacing:-.01em;font-family:inherit}
+.wb-strat-t:focus{outline:none}
+.wb-strat-t::placeholder{color:var(--text3)}
+.wb-strat-blank{flex:none;font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--text3);padding:2px 7px;border-radius:var(--r-chip);background:var(--surface2)}
+/* The per-section controls sit at low contrast until the card is touched: four
+   glyphs at full weight on every card would out-shout the text they act on. */
+.wb-strat-ctl{flex:none;display:flex;gap:2px;opacity:.35;transition:opacity .12s}
+.wb-strat-card:hover .wb-strat-ctl,.wb-strat-card:focus-within .wb-strat-ctl{opacity:1}
+.wb-strat-ctl button{background:transparent;border:0;cursor:pointer;color:var(--text2);
+  font-size:13px;line-height:1;padding:5px 6px;border-radius:var(--r-sm);font-family:inherit}
+.wb-strat-ctl button:hover{background:var(--surface2);color:var(--text)}
+.wb-strat-ctl button:disabled{opacity:.25;cursor:default;background:transparent}
+.wb-strat-ctl button.x:hover{background:rgba(255,69,58,.16);color:#FF453A}
+.wb-strat-b{display:block;width:100%;margin-top:6px;background:transparent;border:0;padding:0;
+  resize:none;overflow:hidden;color:var(--text2);font-family:inherit;font-size:14px;line-height:1.5}
+.wb-strat-b:focus{outline:none;color:var(--text)}
+.wb-strat-b::placeholder{color:var(--text3)}
+.wb-strat-add{margin:14px 16px 0}
+.wb-strat-add .btn{cursor:pointer;padding:9px 0;font-size:13.5px}
+.wb-strat-age{flex:none;font-size:11.5px;font-weight:600;color:var(--text3)}
+/* Docked, not inline: on a long strategy the Save button would otherwise sit
+   below the fold of the section being edited. It only mounts while dirty. */
+.wb-strat-save{position:sticky;bottom:0;z-index:5;display:flex;align-items:center;gap:10px;
+  padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+  background:var(--surface);box-shadow:0 -1px 0 var(--surface2)}
+.wb-strat-savemsg{flex:1;min-width:0;font-size:12px;font-weight:600;color:var(--text3);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wb-strat-save .btn{flex:none;cursor:pointer;padding:9px 18px;font-size:14px}
+.wb-strat-save .btn:disabled{opacity:.5;cursor:default}
