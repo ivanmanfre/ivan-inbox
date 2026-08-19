@@ -4,8 +4,9 @@ import { ContextSheet } from '../components/ContextSheet'
 import { Linkified } from '../components/Linkified'
 import { useConfirm } from '../components/ConfirmSheet'
 import {
-  approveDraft, composeReply, discardDraft, isDraft, markThreadRead, threadChatId, threadKind,
-  type InboxMessage, type Thread, eventTime } from '../lib/inbox'
+  approveDraft, channelFamilies, composeReply, discardDraft, isDraft, isMixedChannel,
+  markThreadRead, messageChannel, threadChatId,
+  type InboxMessage, type MsgChannel, type Thread, eventTime } from '../lib/inbox'
 
 function clientName(id: string): string {
   if (id === 'risedtc') return 'Rise'
@@ -25,24 +26,45 @@ function dayLabel(iso: string): string {
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()
 }
 
-// Micro-label shown above an outbound bubble. Truthful about queue/send state
-// AND about what kind of message it was (invite vs DM vs InMail vs email).
+// Micro-label shown above an outbound bubble. Truthful about queue/send state.
+// The channel it rode is carried by the chip beside it, not by this text.
 function outLabel(m: InboxMessage, stage: string): { text: string; failed: boolean } {
   if (m.send_blocked_at && m.send_blocked_reason !== 'discarded_in_inbox') {
     return { text: `Send failed: ${m.send_blocked_reason}`, failed: true }
   }
   if (m.approved_at && !m.sent_at) return { text: 'Queued', failed: false }
-  if (m.message_type === 'connection_note') {
-    return stage === 'connection_sent'
-      ? { text: 'Connection invite · not accepted yet', failed: false }
-      : { text: 'Sent · connection invite', failed: false }
-  }
   // manual_mirror = the human typed it in the LinkedIn app; the sync mirrored it in.
   const manual = m.ai_model === 'manual_mirror' ? ' · typed on LinkedIn' : ''
-  if (m.message_type === 'inmail' || m.channel === 'linkedin_inmail') return { text: `Sent · InMail${manual}`, failed: false }
-  if (m.channel === 'email') return { text: `Sent · email${manual}`, failed: false }
-  if (m.message_type === 'dm' || m.message_type === 'manual_reply') return { text: `Sent · DM${manual}`, failed: false }
+  if (m.message_type === 'connection_note') {
+    return stage === 'connection_sent'
+      ? { text: 'Not accepted yet', failed: false }
+      : { text: `Sent${manual}`, failed: false }
+  }
   return { text: `Sent${manual}`, failed: false }
+}
+
+const CHAN_TEXT: Record<MsgChannel, string> = {
+  email: 'EMAIL', inmail: 'INMAIL', dm: 'DM', invite: 'INVITE',
+}
+// invite rides the DM paint: it is the same LinkedIn surface, and giving it a
+// fourth colour would spend the channel palette on a distinction nobody scans by.
+const CHAN_CLASS: Record<MsgChannel, string> = {
+  email: 'chan-email', inmail: 'chan-inmail', dm: 'chan-dm', invite: 'chan-dm',
+}
+
+function ChanChip({ chan }: { chan: MsgChannel }) {
+  return <span className={`chanchip ${CHAN_CLASS[chan]}`}>{CHAN_TEXT[chan]}</span>
+}
+
+// Header line: what surfaces this conversation is actually running on. threadKind
+// collapses to 'email' the moment ONE email exists, which read as "Email" on a
+// thread that is 6 LinkedIn messages and 1 email (George Gazzard, 2026-08-19).
+function channelSummary(ms: InboxMessage[]): string {
+  const name = { linkedin: 'LinkedIn', inmail: 'InMail', email: 'Email' }
+  const fams = channelFamilies(ms)
+  if (fams.length === 0) return 'LinkedIn'
+  if (fams.length === 1) return name[fams[0]]
+  return fams.map(f => (f === 'email' ? 'email' : name[f])).join(' + ')
 }
 
 function errText(e: unknown): string {
@@ -142,6 +164,9 @@ export function ThreadScreen({ thread, onBack, refresh }: {
   const bubbles = thread.messages.filter(
     m => m.send_blocked_reason !== 'discarded_in_inbox' && !isDraft(m),
   )
+  // Judged on what is actually ON SCREEN — a pending email draft sitting in the
+  // card below has not happened yet and must not relabel the conversation.
+  const mixed = isMixedChannel(bubbles)
 
   const emailDisabled = thread.channel === 'email'
   const engagedDisabled = thread.stage === 'engaged'
@@ -161,7 +186,7 @@ export function ThreadScreen({ thread, onBack, refresh }: {
           <div className="n">{thread.prospect_name} <span className="ctx-i">ⓘ</span></div>
           <div className="m">
             {thread.prospect_company ? <>{thread.prospect_company} · </> : null}
-            <b>{clientName(thread.client_id)}</b> · {threadKind(thread) === 'inmail' ? 'InMail' : threadKind(thread) === 'email' ? 'Email' : 'LinkedIn'} · {stageLabel(thread.stage)}
+            <b>{clientName(thread.client_id)}</b> · {channelSummary(bubbles)} · {stageLabel(thread.stage)}
           </div>
         </div>
         <Avatar name={thread.prospect_name} channel={thread.channel} size={36} />
@@ -176,11 +201,22 @@ export function ThreadScreen({ thread, onBack, refresh }: {
           const label = dayLabel(eventTime(m))
           const showDay = label !== lastDay
           lastDay = label
+          const chan = messageChannel(m)
           if (m.direction === 'inbound') {
             return (
               <div key={m.id} style={{ display: 'contents' }}>
                 {showDay && <div className="day">{label}</div>}
-                <div className="b in"><Linkified text={m.message_text} /></div>
+                {/* Only on a mixed thread. On a pure-LinkedIn one there is nothing
+                    to disambiguate and a label over every inbound bubble is noise. */}
+                {mixed && (
+                  <div className="blbl blbl-l"><ChanChip chan={chan} />Their reply</div>
+                )}
+                <div className={`b in chan-b-${chan}`}>
+                  {chan === 'email' && m.prospect_email && (
+                    <div className="b-emailmeta">From {m.prospect_email}</div>
+                  )}
+                  <Linkified text={m.message_text} />
+                </div>
               </div>
             )
           }
@@ -188,7 +224,9 @@ export function ThreadScreen({ thread, onBack, refresh }: {
           return (
             <div key={m.id} style={{ display: 'contents' }}>
               {showDay && <div className="day">{label}</div>}
-              <div className="blbl blbl-r" style={lbl.failed ? { color: '#FF453A' } : undefined}>{lbl.text}</div>
+              <div className="blbl blbl-r" style={lbl.failed ? { color: '#FF453A' } : undefined}>
+                <ChanChip chan={chan} />{lbl.text}
+              </div>
               {/* A reply Ivan or Mattan typed in the LinkedIn app carries a
                   different weight from one the engine sent, so it is MARKED and
                   not merely footnoted (2026-08-03: "manual replies from linkedin
@@ -204,7 +242,13 @@ export function ThreadScreen({ thread, onBack, refresh }: {
                   the literal '\n---\n' left the extra newline on the next bubble
                   and rendered a phantom blank line above it (Sharon, 2026-08-17). */}
               {(m.message_text ?? '').split(/^[ \t]*-{3,}[ \t\r]*$/m).map(p => p.trim()).filter(Boolean).map((part, i) => (
-                <div key={i} className={`b out${m.ai_model === 'manual_mirror' ? ' manual' : ''}`}>
+                <div key={i} className={`b out chan-b-${chan}${m.ai_model === 'manual_mirror' ? ' manual' : ''}`}>
+                  {/* An email carries its recipient on its face. The DM above it went to
+                      a LinkedIn chat, this one went to an address, and that is the whole
+                      difference the operator is trying to see. */}
+                  {chan === 'email' && i === 0 && m.prospect_email && (
+                    <div className="b-emailmeta">To {m.prospect_email}</div>
+                  )}
                   <Linkified text={part} />
                 </div>
               ))}
