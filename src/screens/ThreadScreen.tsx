@@ -299,6 +299,10 @@ export function ThreadScreen({ thread, onBack, refresh }: {
                     : 'AI draft · waiting on you'}
             </div>
           </div>
+          {/* Everything between the header and the action bar scrolls INSIDE the
+              card. The card itself is capped at half the pane so the conversation
+              it is answering stays on screen (styles.css `.draftcard`). */}
+          <div className="dc-scroll">
           {thread.draftSnoozedUntil !== null && (
             <div className="pushbar" style={{ margin: '8px 14px 0' }}>
               <span>
@@ -411,6 +415,7 @@ export function ThreadScreen({ thread, onBack, refresh }: {
               )}
             </div>
           )}
+          </div>
           {/* Three decisions, and Later sits between the two terminal ones on
               purpose: it is the middle answer, not a secondary discard. It keeps
               the neutral weight — the loud button on this bar is the one that
