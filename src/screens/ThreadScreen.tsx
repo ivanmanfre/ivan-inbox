@@ -3,8 +3,10 @@ import { Avatar } from '../components/Avatar'
 import { ContextSheet } from '../components/ContextSheet'
 import { Linkified } from '../components/Linkified'
 import { useConfirm } from '../components/ConfirmSheet'
+import { formatReturn, returnsIn, usePushLater } from '../components/PushLaterSheet'
 import {
-  approveDraft, channelFamilies, composeReply, discardDraft, escalateDraftToClient, isDraft, isMixedChannel,
+  approveDraft, channelFamilies, composeReply, discardDraft, escalateDraftToClient, isDraft, isFollowUp, isMixedChannel,
+  saveDraftText, snoozeDraft, unsnoozeDraft,
   markThreadRead, messageChannel, threadChatId,
   type InboxMessage, type MsgChannel, type Thread, eventTime } from '../lib/inbox'
 
@@ -91,6 +93,7 @@ export function ThreadScreen({ thread, onBack, refresh }: {
   const msgsRef = useRef<HTMLDivElement>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
   const confirm = useConfirm()
+  const pushLater = usePushLater()
 
   // Re-seed the editor when the draft row changes (e.g. after a refresh).
   useEffect(() => { setEdited(draft?.message_text ?? '') }, [draft?.id])
@@ -140,6 +143,31 @@ export function ThreadScreen({ thread, onBack, refresh }: {
     if (!ok) return
     setBusy(true); setDraftErr('')
     try { await discardDraft(draft.id); refresh() }
+    catch (e) { setDraftErr(errText(e)) }
+    finally { setBusy(false) }
+  }
+
+  // "Later" — the decision that was missing between the two terminal ones
+  // (Ivan, 2026-08-20). Any edit he has already made in the box is saved with
+  // the push: he often fixes the copy first and only then decides the timing is
+  // wrong, and losing that work would teach him to discard instead.
+  async function onPushLater() {
+    if (!draft) return
+    const until = await pushLater(thread.prospect_name)
+    if (!until) return
+    setBusy(true); setDraftErr('')
+    try {
+      if (edited !== draft.message_text) await saveDraftText(draft.id, edited)
+      await snoozeDraft(draft.id, until)
+      refresh()
+    } catch (e) { setDraftErr(errText(e)) }
+    finally { setBusy(false) }
+  }
+
+  async function onBringBack() {
+    if (!draft) return
+    setBusy(true); setDraftErr('')
+    try { await unsnoozeDraft(draft.id); refresh() }
     catch (e) { setDraftErr(errText(e)) }
     finally { setBusy(false) }
   }
@@ -264,8 +292,22 @@ export function ThreadScreen({ thread, onBack, refresh }: {
         <div className="draftcard">
           <div className="dc-h">
             <div className="spark">✦</div>
-            <div className="t">{thread.draftStale ? 'AI draft · you already replied' : 'AI draft · waiting on you'}</div>
+            <div className="t">
+              {thread.draftSnoozedUntil !== null ? `Pushed to ${formatReturn(thread.draftSnoozedUntil)}`
+                : thread.draftStale ? 'AI draft · you already replied'
+                  : isFollowUp(draft) ? 'AI follow-up · waiting on you'
+                    : 'AI draft · waiting on you'}
+            </div>
           </div>
+          {thread.draftSnoozedUntil !== null && (
+            <div className="pushbar" style={{ margin: '8px 14px 0' }}>
+              <span>
+                Out of your queue until then, {returnsIn(thread.draftSnoozedUntil)}. It comes
+                back sooner if {thread.prospect_name.split(' ')[0]} writes.
+              </span>
+              <button className="pushbtn" disabled={busy} onClick={onBringBack}>Bring back now</button>
+            </div>
+          )}
           {thread.draftStale && (
             <div className="stale" style={{ margin: '8px 14px 0' }}>
               Your own reply went out after their last message — this draft is probably not needed.
@@ -323,8 +365,15 @@ export function ThreadScreen({ thread, onBack, refresh }: {
               )}
             </div>
           )}
-          <div className="dc-a">
+          {/* Three decisions, and Later sits between the two terminal ones on
+              purpose: it is the middle answer, not a secondary discard. It keeps
+              the neutral weight — the loud button on this bar is the one that
+              puts a message in front of a person. */}
+          <div className={`dc-a${thread.draftSnoozedUntil === null ? ' three' : ''}`}>
             <div className="btn s" onClick={busy ? undefined : onDiscard}>Discard</div>
+            {thread.draftSnoozedUntil === null && (
+              <div className="btn s" onClick={busy ? undefined : onPushLater}>Later</div>
+            )}
             <div className="btn p" onClick={busy ? undefined : onApprove}>Approve &amp; send</div>
           </div>
           {draftErr && <div className="err" style={{ padding: '0 14px 14px' }}>{draftErr}</div>}

@@ -26,6 +26,13 @@ export type InboxMessage = {
   // produced; the drafter invented "real shoots for model and skin content").
   // ADVISORY: the draft is still editable and approvable exactly as before.
   context_gap?: DraftContextGap | null;
+  // "Push this to later" (Ivan, 2026-08-20 — "some people just say I am
+  // travelling"). Set from the draft card; db/037. A pushed draft stays PENDING
+  // (approved_at NULL), so the dispatcher still cannot send it — see the
+  // migration header. Columns live in inbox_messages_v, so unlike the two
+  // probe-annotated fields above these arrive with every row.
+  snoozed_until: string | null;
+  snoozed_at: string | null;
 }
 
 export type Thread = {
@@ -37,6 +44,11 @@ export type Thread = {
   // Antoine, Rudra). True when a real outbound send is newer than the last
   // inbound, so the pending draft is answering an already-handled message.
   draftStale: boolean;
+  // When the pending draft was pushed to, or null when nothing is pushed and
+  // when a push has expired or been voided by a reply. THE one place the app
+  // asks "is this draft parked": buckets, badge, needsAnswer and every card
+  // read this, so they cannot disagree about whether a draft is waiting.
+  draftSnoozedUntil: string | null;
   // outreach_prospects.needs_manual_reply — the reply detector's own "a human
   // has to answer this one" flag. It is NOT derivable from the messages: on
   // 2026-08-03, 43 of the 45 flagged prospects had ZERO inbound rows in
@@ -50,6 +62,44 @@ export type Filter = 'all' | 'ivan' | 'risedtc' | 'arch' | 'email'
 
 export function isDraft(m: InboxMessage): boolean {
   return m.direction === 'outbound' && !m.sent_at && !m.approved_at && !m.send_blocked_at
+}
+
+// A NUDGE, not a reply: written because the person went quiet, by the bump
+// lanes (`Outreach - Stalled Conversation Bump`, the not-closed follow-up
+// drafter) rather than in answer to something they said.
+//
+// 🔴 WHY THIS EXISTS (Ivan, 2026-08-20: "if its follow up it shouldnt have
+// warning"). draftStale asks "did our own send land after their last message" —
+// and for a follow-up that is not a defect, it is THE PRECONDITION. The lane
+// only drafts when we spoke last and they never answered, so EVERY follow-up
+// draft scored stale, wore "you already replied — probably not needed", sank to
+// the bottom of the list, and 🔴🔴 was swept by the StaleBar's bulk "Discard
+// stale". On the bump lane that bulk discard is unrecoverable: it is
+// one-bump-per-prospect-EVER and the prospect is already in the ever-skip set.
+//
+// Matched on the drafter's own tag rather than the copy, and deliberately a
+// touch broad: a false positive costs one advisory warning, a false negative
+// costs a prospect. Reply drafters (rise_reply_draft_v1, warm_reply_auto_v1)
+// carry none of these tokens and are unaffected.
+const FOLLOW_UP_MODEL = /stall_bump|_bump_|bump_v|_followup|follow_up/i
+
+export function isFollowUp(m: InboxMessage): boolean {
+  return FOLLOW_UP_MODEL.test(m.ai_model ?? '')
+}
+
+// Is this draft parked right now? Two conditions, and the second is the reason
+// snoozed_at is stored at all:
+//   1. the target time has not arrived, and
+//   2. nothing inbound has landed since the push was set.
+// (2) is what makes a push safe to give a prospect who said "I'm travelling":
+// the moment they actually write back the park is void, the draft returns and
+// the thread goes back to owing an answer. No cron, no wake-up job — the
+// condition is evaluated on every read.
+export function snoozeActive(m: InboxMessage, lastInbound: string | null, now: number = Date.now()): boolean {
+  if (!m.snoozed_until) return false
+  if (Date.parse(m.snoozed_until) <= now) return false
+  if (m.snoozed_at !== null && lastInbound !== null && lastInbound > m.snoozed_at) return false
+  return true
 }
 
 // A historical insert-loop left hundreds of phantom rows: the same message to
@@ -77,7 +127,11 @@ export function dedupeMessages(rows: InboxMessage[]): InboxMessage[] {
 // which is what we want for a pending draft.
 export const eventTime = (m: InboxMessage): string => m.sent_at ?? m.created_at
 
-export function groupThreads(rows: InboxMessage[], manualReplyIds: ReadonlySet<string> = new Set()): Thread[] {
+export function groupThreads(
+  rows: InboxMessage[],
+  manualReplyIds: ReadonlySet<string> = new Set(),
+  now: number = Date.now(),
+): Thread[] {
   const map = new Map<string, InboxMessage[]>()
   for (const m of rows) {
     if (!map.has(m.prospect_id)) map.set(m.prospect_id, [])
@@ -96,17 +150,31 @@ export function groupThreads(rows: InboxMessage[], manualReplyIds: ReadonlySet<s
     // Must use the same clock as lastSent below (sent_at). Comparing an inbound created_at
     // against an outbound sent_at is two different clocks, and a backfilled reply then made
     // a live draft look stale.
+    // Computed BEFORE the snooze test, which needs it: a reply arriving after
+    // the push voids the push.
     const lastInbound = messages.filter(m => m.direction === 'inbound').map(eventTime).sort().at(-1) ?? null
     const lastSent = messages
       .filter(m => m.direction === 'outbound' && m.sent_at)
       .map(m => m.sent_at!).sort().at(-1) ?? null
+    // A pushed draft is NOT hidden — it stays on its thread with the date it
+    // comes back on. What it loses is the claim on Ivan's attention: the flag
+    // below is what drops it out of the badge, out of "Needs you" and out of
+    // the Draft-ready list until its time arrives.
+    const snoozedUntil = draft !== null && snoozeActive(draft, lastInbound, now)
+      ? draft.snoozed_until
+      : null
     threads.push({
       prospect_id: last.prospect_id, prospect_name: last.prospect_name,
       prospect_company: last.prospect_company, client_id: last.client_id,
       channel: last.channel, stage: last.prospect_stage, last,
       unread: messages.filter(m => m.direction === 'inbound' && !m.read_at).length,
       draft,
-      draftStale: draft !== null && lastInbound !== null && lastSent !== null && lastSent > lastInbound,
+      // isFollowUp: a nudge is DEFINED by "we spoke last and they went quiet",
+      // which is what this test measures — so without the exemption every
+      // follow-up draft ever written scores stale. See isFollowUp.
+      draftStale: draft !== null && !isFollowUp(draft)
+        && lastInbound !== null && lastSent !== null && lastSent > lastInbound,
+      draftSnoozedUntil: snoozedUntil,
       needsManualReply: manualReplyIds.has(last.prospect_id),
       messages,
     })
@@ -258,6 +326,13 @@ function isRealReply(m: InboxMessage): boolean {
 
 export function needsAnswer(t: Thread, now: number = Date.now()): boolean {
   if (CLOSED_STAGES.has(t.stage)) return false
+  // PUSHING A DRAFT IS AN ANSWER TO "does this need a reply TODAY" — the same
+  // move as the discard rule below, with a return date on it. Ivan read the
+  // thread, the person said they were travelling, and he said "not yet". A
+  // thread that kept ringing the badge after that would be the app arguing with
+  // him. It rings again the moment the push expires, and instantly if they
+  // write back (which voids draftSnoozedUntil in groupThreads).
+  if (t.draftSnoozedUntil !== null) return false
   const lastInbound = t.messages.filter(m => m.direction === 'inbound' && isRealReply(m))
     .map(eventTime).sort().at(-1) ?? null
   if (lastInbound === null) return false
@@ -295,7 +370,10 @@ export type ThreadBucket = keyof InboxBreakdown
 // was the failure mode the old raw-unread badge had.
 export function threadBucket(t: Thread): ThreadBucket {
   if (needsAnswer(t)) return 'answer'
-  if (t.draft !== null) return 'approve'
+  // A pushed draft is not work waiting on him, so it does not count as one.
+  // It stays reachable in 'all' / 'Waiting on them' wearing its return date —
+  // parked, never disappeared.
+  if (t.draft !== null && t.draftSnoozedUntil === null) return 'approve'
   // 'flagged' is a MARKER now, never a bucket of its own. Live proof it had to
   // stop counting: Nour Siakir Oglou's thread ends with Ivan's own "either way
   // not my lane, all the best" and still rendered as NEEDS REPLY, because a
@@ -501,6 +579,62 @@ export async function approveDraft(id: string, editedText: string, chatId?: stri
   const { error } = await supabase.from('outreach_messages')
     .update(patch)
     .eq('id', id).is('sent_at', null).is('send_blocked_reason', null)
+  if (error) throw error
+}
+
+// The presets on the card. Ivan named "one more week" and "a custom time"; the
+// rest bracket the two reasons a DM gets pushed — "back next week" and "not this
+// quarter" — without turning a two-tap decision into a menu.
+export const SNOOZE_PRESETS: { key: string; label: string; days: number }[] = [
+  { key: '3d', label: '3 days', days: 3 },
+  { key: '1w', label: '1 week', days: 7 },
+  { key: '2w', label: '2 weeks', days: 14 },
+  { key: '1mo', label: '1 month', days: 30 },
+]
+
+// A preset lands at 08:00 LOCAL on the target day, not at the same clock time
+// as the tap. Pushing "1 week" at 23:40 would otherwise bring the draft back at
+// 23:40 — technically a week, practically a day late, since he would next see
+// it the following morning anyway. An exact time is what the custom picker is for.
+export const SNOOZE_HOUR = 8
+
+export function snoozeTarget(days: number, from: Date = new Date()): string {
+  const d = new Date(from)
+  d.setDate(d.getDate() + days)
+  d.setHours(SNOOZE_HOUR, 0, 0, 0)
+  // Guard the same-day edge: pushing "3 days" at 04:00 must not resolve to a
+  // moment already inside the window it is trying to skip.
+  if (d.getTime() <= from.getTime()) d.setDate(d.getDate() + 1)
+  return d.toISOString()
+}
+
+// Persist an edit WITHOUT approving. Until pushing existed, the only way to
+// save edited copy was to approve it, which also sent it — fine when the two
+// decisions always happened together, wrong now that a draft can be edited
+// today and sent in a fortnight.
+export async function saveDraftText(id: string, text: string): Promise<void> {
+  const { error } = await supabase.from('outreach_messages')
+    .update({ message_text: text })
+    .eq('id', id).is('sent_at', null).is('approved_at', null).is('send_blocked_reason', null)
+  if (error) throw error
+}
+
+// Push a pending draft to later. Same staleness guard as approveDraft: a row
+// that has already gone out, been approved or been discarded is not pushable,
+// and a stale view asking to push one is a zero-row no-op rather than a write
+// that resurrects it.
+export async function snoozeDraft(id: string, until: string): Promise<void> {
+  const { error } = await supabase.from('outreach_messages')
+    .update({ snoozed_until: until, snoozed_at: new Date().toISOString() })
+    .eq('id', id).is('sent_at', null).is('approved_at', null).is('send_blocked_reason', null)
+  if (error) throw error
+}
+
+/** Bring a pushed draft back now. */
+export async function unsnoozeDraft(id: string): Promise<void> {
+  const { error } = await supabase.from('outreach_messages')
+    .update({ snoozed_until: null, snoozed_at: null })
+    .eq('id', id).is('sent_at', null).is('approved_at', null).is('send_blocked_reason', null)
   if (error) throw error
 }
 

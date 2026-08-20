@@ -4,7 +4,8 @@ import { Linkified } from '../components/Linkified'
 import { useConfirm } from '../components/ConfirmSheet'
 import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
-import { approveDraft, discardDraft, threadChatId, type Thread } from '../lib/inbox'
+import { returnsIn, usePushLater } from '../components/PushLaterSheet'
+import { approveDraft, discardDraft, isFollowUp, snoozeDraft, threadChatId, type Thread } from '../lib/inbox'
 import { useOps } from '../hooks/useOps'
 import { pendingDmLaneOps, type OpsDraft, type OpsKind } from '../lib/ops'
 import { checkedPhrase } from '../lib/today'
@@ -116,6 +117,7 @@ export function DraftCard({ thread, onOpenThread, refresh }: {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const confirm = useConfirm()
+  const pushLater = usePushLater()
   const start = useRef({ x: 0, y: 0 })
   const axis = useRef<'none' | 'x' | 'y'>('none')
   const dxRef = useRef(0)
@@ -178,6 +180,26 @@ export function DraftCard({ thread, onOpenThread, refresh }: {
     }
   }
 
+  // "Later" on the list card. No swipe gesture is bound to it on purpose: a
+  // swipe is a one-motion commit, and this decision needs a date before it means
+  // anything. Left/right keep meaning discard/approve exactly as the hint says.
+  async function handlePushLater() {
+    if (busy) return
+    const until = await pushLater(thread.prospect_name)
+    springBack()
+    if (!until) return
+    setBusy(true)
+    setError(null)
+    try {
+      await snoozeDraft(draft.id, until)
+      refresh()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not push this draft')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function handleDiscard() {
     if (busy) return
     const ok = await confirm({
@@ -214,7 +236,7 @@ export function DraftCard({ thread, onOpenThread, refresh }: {
         <div>
           <div className="nm">{thread.prospect_name}</div>
           <div className="sub">
-            {clientTitle(thread.client_id)} · {channelLabel(thread.channel)} · {thread.stage} {timeAgo(draft.created_at)}
+            {clientTitle(thread.client_id)} · {channelLabel(thread.channel)} · {isFollowUp(draft) ? 'follow-up' : thread.stage} {timeAgo(draft.created_at)}
           </div>
         </div>
         <div className="tm">{timeAgo(draft.created_at)}</div>
@@ -235,8 +257,9 @@ export function DraftCard({ thread, onOpenThread, refresh }: {
         <span className="editcue">Tap to edit</span>
       </div>
       {error && <div className="err">{error}</div>}
-      <div className="ac">
+      <div className="ac three">
         <div className="btn s" onClick={() => onOpenThread(thread.prospect_id)}>Edit</div>
+        <div className="btn s" onClick={handlePushLater}>Later</div>
         <div className="btn p" onClick={handleApprove}>{busy ? 'Sending…' : 'Approve & send'}</div>
       </div>
     </div>
@@ -278,6 +301,25 @@ export function StaleBar({ stale, refresh }: { stale: Thread[]; refresh: () => v
   )
 }
 
+// What he pushed away, and when it comes back. Without this the parked drafts
+// are only findable by scrolling "All" and spotting a muted pill — which is how
+// a "later" quietly becomes a "never". One line, no bulk action: bringing a
+// draft back is a per-thread decision, unlike discarding stale ones.
+export function PushedBar({ pushed, onOpen }: { pushed: Thread[]; onOpen: (id: string) => void }) {
+  if (pushed.length === 0) return null
+  const next = [...pushed].sort((a, b) =>
+    (a.draftSnoozedUntil ?? '').localeCompare(b.draftSnoozedUntil ?? ''))[0]
+  return (
+    <div className="pushbar" style={{ margin: '12px 16px 0' }}>
+      <span>
+        {pushed.length} draft{pushed.length === 1 ? '' : 's'} pushed to later · next
+        is {next.prospect_name.split(' ')[0]}, {returnsIn(next.draftSnoozedUntil!)}
+      </span>
+      <button className="pushbtn" onClick={() => onOpen(next.prospect_id)}>Open</button>
+    </div>
+  )
+}
+
 export function DraftsScreen({ threads, onOpenThread, refresh, onOpenOps, verifiedAt }: {
   threads: Thread[]; onOpenThread: (id: string) => void; refresh: () => void
   onOpenOps: () => void
@@ -289,7 +331,9 @@ export function DraftsScreen({ threads, onOpenThread, refresh, onOpenOps, verifi
   const [seg, setSeg] = useState<Seg>('all')
   const rowsRef = useRef<HTMLDivElement>(null)
   const ptr = usePullToRefresh(rowsRef, () => { refresh(); refreshOps() })
-  const draftThreads = threads.filter(t => t.draft !== null)
+  // A pushed draft is not in this queue until its date comes round — same rule
+  // the badge and the DMs surface use, read off the one flag groupThreads sets.
+  const draftThreads = threads.filter(t => t.draft !== null && t.draftSnoozedUntil === null)
   // Everything waiting on Ivan lives in one count, so the tab badge and this
   // screen cannot disagree about how much is pending. Comment drafts are NOT in
   // it (ask 12): they are Ops cards, approved on the Ops tab, and listing them
@@ -329,6 +373,11 @@ export function DraftsScreen({ threads, onOpenThread, refresh, onOpenOps, verifi
       <div className="rows" ref={rowsRef}>
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
         <StaleBar stale={staleShown} refresh={refresh} />
+        <PushedBar
+          pushed={(seg === 'all' ? threads : threads.filter(t => t.client_id === seg))
+            .filter(t => t.draftSnoozedUntil !== null)}
+          onOpen={onOpenThread}
+        />
         <OpsPending drafts={opsIn(seg)} onOpenOps={onOpenOps} />
         {shown.length === 0 ? (
           opsIn(seg).length === 0
