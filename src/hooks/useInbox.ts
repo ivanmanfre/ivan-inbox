@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { fetchDraftContextGaps, fetchDraftEmailStamps, fetchManualReplyIds, fetchMessages, groupThreads, type DraftContextGap, type DraftEmailStamp, type Thread } from '../lib/inbox'
+import { fetchDraftContextGaps, fetchDraftEmailStamps, fetchDraftEvidence, fetchManualReplyIds, fetchMessages, groupThreads, type DraftContextGap, type DraftEmailStamp, type DraftEvidence, type Thread } from '../lib/inbox'
 import { playChime } from '../lib/chime'
 
 // A burst of dispatcher writes (one row every ~2 min per active lane, plus
@@ -43,12 +43,16 @@ export function useInbox() {
       // Same degrade rule again: losing this only loses the "unverified answer"
       // warning, never the inbox.
       fetchDraftContextGaps().catch(() => new Map<string, DraftContextGap>()),
-    ]).then(([rows, manualReplyIds, emailStamps, contextGaps]) => {
+      // Same degrade rule once more: losing this only loses the Evidence collapsible.
+      fetchDraftEvidence().catch(() => new Map<string, DraftEvidence>()),
+    ]).then(([rows, manualReplyIds, emailStamps, contextGaps, evidence]) => {
       for (const m of rows) {
         const em = emailStamps.get(m.id)
         if (em) { m.recipient_email = em.recipient_email; m.email_mirror_text = em.email_mirror_text }
         const cg = contextGaps.get(m.id)
         if (cg) m.context_gap = cg
+        const ev = evidence.get(m.id)
+        if (ev) m.draft_evidence = ev
       }
       const latest = rows
         .filter(m => m.direction === 'inbound')

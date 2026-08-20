@@ -350,6 +350,52 @@ export function ThreadScreen({ thread, onBack, refresh }: {
               {askNote && <div className="gw-note" style={{ marginTop: 6 }}>{askNote}</div>}
             </div>
           )}
+          {draft.draft_evidence && (
+            <details className="dev" style={{ margin: '0 14px 10px' }}>
+              <summary className="dev-s">Where this came from</summary>
+              <div className="dev-b">
+                {draft.draft_evidence.learned && draft.draft_evidence.learned.length > 0 && (
+                  <div className="dev-g">
+                    <span className="dev-k">Learned from Mattan</span>
+                    {draft.draft_evidence.learned.map(f => (
+                      <div key={f.id} className="dev-r">
+                        <span className="dev-f">{f.fact}</span>
+                        <span className="dev-o">his own DM{f.from ? ` to ${f.from}` : ''}, {(f.at || '').slice(0, 10)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {draft.draft_evidence.facts && (
+                  <div className="dev-g">
+                    <span className="dev-k">RISE notes</span>
+                    <div className="dev-r">
+                      <span className="dev-f">{draft.draft_evidence.facts.slug}</span>
+                      <span className="dev-o">v{draft.draft_evidence.facts.version ?? '?'}</span>
+                    </div>
+                  </div>
+                )}
+                {(draft.draft_evidence.store_fact || draft.draft_evidence.anchor || draft.draft_evidence.scan_finding) && (
+                  <div className="dev-g">
+                    <span className="dev-k">Grounding</span>
+                    {draft.draft_evidence.store_fact && <div className="dev-r"><span className="dev-f">{draft.draft_evidence.store_fact}</span><span className="dev-o">their store</span></div>}
+                    {draft.draft_evidence.anchor && <div className="dev-r"><span className="dev-f">{draft.draft_evidence.anchor}</span><span className="dev-o">anchor client</span></div>}
+                    {draft.draft_evidence.scan_finding && <div className="dev-r"><span className="dev-f">{draft.draft_evidence.scan_finding}</span><span className="dev-o">their scan</span></div>}
+                  </div>
+                )}
+                {draft.draft_evidence.exemplars && draft.draft_evidence.exemplars.length > 0 && (
+                  <div className="dev-g">
+                    <span className="dev-k">Voice copied from</span>
+                    {draft.draft_evidence.exemplars.slice(0, 3).map((x, i) => (
+                      <div key={i} className="dev-r">
+                        <span className="dev-f">{x.reply}</span>
+                        <span className="dev-o">to {x.prospect || 'a lead'}, {(x.at || '').slice(0, 10)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </details>
+          )}
           {draft.recipient_email && (
             <div className="alsoemail" style={{ margin: '0 14px 10px' }}>
               <div>

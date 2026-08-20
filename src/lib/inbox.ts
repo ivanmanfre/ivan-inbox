@@ -26,6 +26,10 @@ export type InboxMessage = {
   // produced; the drafter invented "real shoots for model and skin content").
   // ADVISORY: the draft is still editable and approvable exactly as before.
   context_gap?: DraftContextGap | null;
+  // What the drafter was actually GIVEN when it wrote this (Ivan 2026-08-20: "see the draft on the
+  // dm with a small context collapsed thing"). A logged input list, never the model's account of
+  // what it used — asked that, a model confabulates. Probed like context_gap: not in the view.
+  draft_evidence?: DraftEvidence | null;
   // "Push this to later" (Ivan, 2026-08-20 — "some people just say I am
   // travelling"). Set from the draft card; db/037. A pushed draft stays PENDING
   // (approved_at NULL), so the dispatcher still cannot send it — see the
@@ -500,6 +504,35 @@ export type DraftEmailStamp = { recipient_email: string; email_mirror_text: stri
 // chat_url comes from outreach_prospects.linkedin_url — unipile_chat_id is a Unipile id and
 // does NOT resolve to a linkedin.com thread URL, so the profile is the only real link we hold.
 export type DraftContextGap = { question: string | null; why: string | null; chat_url: string | null }
+
+export type DraftEvidenceFact = { id: string; fact: string; topic: string; at: string; from: string | null }
+export type DraftEvidenceExemplar = { they: string | null; reply: string | null; at: string | null; prospect: string | null }
+export type DraftEvidence = {
+  facts?: { slug: string; version: number | null; updated_at?: string | null } | null
+  learned?: DraftEvidenceFact[] | null
+  exemplars?: DraftEvidenceExemplar[] | null
+  store_fact?: string | null
+  anchor?: string | null
+  scan_finding?: string | null
+  operator_note?: string | null
+}
+
+/** Same probe + same degrade rule as the gaps above: losing this only loses the Evidence
+ *  collapsible, never the inbox. */
+export async function fetchDraftEvidence(): Promise<Map<string, DraftEvidence>> {
+  const { data, error } = await supabase.from('outreach_messages')
+    .select('id,draft_evidence')
+    .eq('direction', 'outbound')
+    .is('sent_at', null).is('approved_at', null)
+    .not('draft_evidence', 'is', null)
+    .limit(500)
+  if (error) throw error
+  const m = new Map<string, DraftEvidence>()
+  for (const r of (data ?? []) as { id: string; draft_evidence: DraftEvidence | null }[]) {
+    if (r.draft_evidence) m.set(r.id, r.draft_evidence)
+  }
+  return m
+}
 
 export async function fetchDraftContextGaps(): Promise<Map<string, DraftContextGap>> {
   const { data, error } = await supabase.from('outreach_messages')

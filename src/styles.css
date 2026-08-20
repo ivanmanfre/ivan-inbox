@@ -918,3 +918,19 @@ textarea.ops-body{display:block;width:100%;background:var(--surface2);border:non
 .dmh-r .time{font-size:12px;opacity:.45;white-space:nowrap}
 /* A hand-typed reply reads as its own object in the thread. */
 .b.out.manual{border:1px solid rgba(255,214,10,.4)}
+
+/* Evidence on a DM draft (Ivan 2026-08-20: "see the draft on the dm with a small context
+   collapsed thing"). Collapsed by default so the card stays quiet; it is a logged list of what
+   the drafter was GIVEN, never the model's account of what it used. Uses the :root tokens --
+   this app is DARK-first with a light override, so hardcoded light-theme colours are invisible. */
+.dev{margin-top:10px;border-top:1px solid var(--sep);padding-top:8px}
+.dev-s{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);cursor:pointer;list-style:none}
+.dev-s::-webkit-details-marker{display:none}
+.dev-s::before{content:'\25B8\00a0'}
+.dev[open] .dev-s::before{content:'\25BE\00a0'}
+.dev-b{display:flex;flex-direction:column;gap:9px;padding:8px 0 2px}
+.dev-g{display:flex;flex-direction:column;gap:3px}
+.dev-k{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text3)}
+.dev-r{display:flex;flex-direction:column;gap:1px;border-left:2px solid var(--sep);padding-left:8px}
+.dev-f{font-size:12.5px;line-height:1.45;color:var(--text)}
+.dev-o{font-size:10.5px;color:var(--text2)}
