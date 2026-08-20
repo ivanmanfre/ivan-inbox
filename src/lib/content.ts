@@ -348,12 +348,23 @@ export type ScheduledQueueRow = {
 // carousel_drafts.status (phase1b §2).
 export const QUEUE_STATUSES = ['pending', 'queued_v2', 'posting', 'posted', 'failed', 'cancelled'] as const
 
+// What the STRIP reads. `cancelled` is the vocabulary's tombstone, not a queue
+// state: deleteDraft flips the twin queue row to cancelled +
+// `draft_deleted_by_operator` (content.ts:923) rather than deleting it, so every
+// draft Ivan has ever removed left a row behind. Live probe 2026-08-20: 39 of
+// the 184 rows were cancelled — 15 operator deletions, 8 killed/superseded by
+// old goal-runs, 15 with no reason at all — and the strip that says "what
+// actually went out" was 21% posts that never went out. DELETE MEANS DELETE:
+// the tombstone stays in the table (the calendar's own rule needs the date it
+// was going to take, calendarItems.ts:192) and off the surface.
+export const QUEUE_LIVE_STATUSES = QUEUE_STATUSES.filter(s => s !== 'cancelled')
+
 // Takes no lane argument and needs none: scheduled_posts has no client_id column
 // at all (42703), so it is Ivan's BY CONSTRUCTION, not by filter (IA §2.3 / R4).
 export async function fetchScheduledQueue(): Promise<ScheduledQueueRow[]> {
   const { data, error } = await supabase.from('scheduled_posts')
     .select('id, clickup_task_id, post_text, scheduled_at, posted_at, status, platform, is_repost, error_message, created_at, post_kind, unipile_share_url, post_format')
-    .in('status', QUEUE_STATUSES as unknown as string[])
+    .in('status', QUEUE_LIVE_STATUSES as unknown as string[])
     .order('scheduled_at', { ascending: false })
     .limit(500)
   if (error) throw error
@@ -406,8 +417,14 @@ export async function fetchPipelineHealth(now: number = Date.now()): Promise<Pip
     // it can never claim a stall the rows do not have.
     supabase.from('carousel_drafts').select('id', head)
       .is('client_id', null).eq('status', 'generating').lt('updated_at', genCutoff),
+    // 🔴 QUEUE_LIVE_STATUSES, not QUEUE_STATUSES. A cancelled row's
+    // error_message is its REASON FOR BEING CANCELLED, not a publish failure —
+    // `draft_deleted_by_operator`, `killed_by_ivan_2026-07-31`. Probe
+    // 2026-08-20: all 24 rows carrying an error_message were cancelled, so this
+    // alarm read "24 publish failures in the queue" and every one of them was a
+    // post Ivan had deliberately killed. Zero real publish failures exist today.
     supabase.from('scheduled_posts').select('id', head)
-      .in('status', QUEUE_STATUSES as unknown as string[])
+      .in('status', QUEUE_LIVE_STATUSES as unknown as string[])
       .not('error_message', 'is', null).neq('error_message', ''),
   ])
   const first = [err, due, gen, pub].find(r => r.error)
