@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { isDraft, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, messageChannel, isMixedChannel, channelFamilies, type InboxMessage, type Status } from './inbox'
+import { isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, messageChannel, isMixedChannel, channelFamilies, type InboxMessage, type Status } from './inbox'
 
 // inbox.ts:191 gates needsAnswer on a 14-day wall-clock staleness window
 // (STALE_DAYS), measured against Date.now() by default -- and most callers
@@ -29,6 +29,7 @@ const base: InboxMessage = {
   prospect_name: 'A', prospect_company: null,
   prospect_headline: null, prospect_stage: 'replied', prospect_email: null,
   profile_photo_url: null, campaign_name: 'c', client_id: 'ivan',
+  snoozed_until: null, snoozed_at: null,
 }
 
 describe('isDraft', () => {
@@ -441,5 +442,125 @@ describe('messageChannel + isMixedChannel', () => {
 
   it('an empty thread is not mixed', () => {
     expect(isMixedChannel([])).toBe(false)
+  })
+})
+
+// ---- follow-up drafts are not stale drafts (Ivan, 2026-08-20) ----------------
+// The live shape on the day: Marilou Hamer, Alec Lorenzo and Sharon Beckman all
+// carried a `rise_stall_bump_time_ask_v1` draft, all three wore "you already
+// replied", and all three were one bulk tap away from an unrecoverable discard.
+describe('isFollowUp / draftStale', () => {
+  const inbound: InboxMessage = {
+    ...base, id: 'i', direction: 'inbound', message_text: 'sounds good',
+    sent_at: '2026-07-20T09:00:00Z', created_at: '2026-07-20T09:00:00Z',
+  }
+  const ourReply: InboxMessage = {
+    ...base, id: 's', sent_at: '2026-07-20T10:00:00Z',
+    approved_at: '2026-07-20T10:00:00Z', created_at: '2026-07-20T10:00:00Z',
+  }
+  const pending = (ai_model: string | null): InboxMessage => ({
+    ...base, id: 'd', ai_model, created_at: '2026-07-22T10:00:00Z',
+  })
+
+  it('tags every bump/follow-up drafter, and no reply drafter', () => {
+    for (const m of ['stall_bump_v1', 'rise_stall_bump_time_ask_v1', 'rise_stall_bump_ctx_v1',
+      'content_system_bump_v1', 'content_system_followup_v1', 'template/agency_followup_v1',
+      'inmail_followup_connect_v1']) {
+      expect(isFollowUp({ ...base, ai_model: m })).toBe(true)
+    }
+    for (const m of ['rise_reply_draft_v1', 'warm_reply_auto_v1', 'manual_mirror', null]) {
+      expect(isFollowUp({ ...base, ai_model: m })).toBe(false)
+    }
+  })
+
+  it('a REPLY draft written after our own send is still stale', () => {
+    const t = groupThreads([inbound, ourReply, pending('rise_reply_draft_v1')])[0]
+    expect(t.draftStale).toBe(true)
+  })
+
+  it('a FOLLOW-UP draft in the identical thread shape is NOT stale', () => {
+    const t = groupThreads([inbound, ourReply, pending('rise_stall_bump_time_ask_v1')])[0]
+    expect(t.draft?.id).toBe('d')
+    expect(t.draftStale).toBe(false)
+  })
+})
+
+// ---- push to later (db/037) --------------------------------------------------
+describe('snooze', () => {
+  const inbound = (at: string): InboxMessage => ({
+    ...base, id: `i${at}`, direction: 'inbound', message_text: 'im travelling, back soon',
+    sent_at: at, created_at: at,
+  })
+  const pushed = (until: string, at: string): InboxMessage => ({
+    ...base, id: 'd', created_at: '2026-07-22T10:00:00Z', snoozed_until: until, snoozed_at: at,
+  })
+  const PUSHED_AT = '2026-07-22T12:00:00Z'
+  const RETURNS = '2026-07-29T08:00:00Z'
+  const NOW = FROZEN_NOW.getTime()
+
+  it('a live push parks the draft: out of the badge, off Needs you, still on its thread', () => {
+    const t = groupThreads([inbound('2026-07-21T09:00:00Z'), pushed(RETURNS, PUSHED_AT)], new Set(), NOW)[0]
+    expect(t.draft?.id).toBe('d')            // never hidden
+    expect(t.draftSnoozedUntil).toBe(RETURNS)
+    expect(threadBucket(t)).toBe('waiting')  // not 'approve', not 'answer'
+    expect(needsAnswer(t)).toBe(false)
+    expect(inboxWaitingCount([t])).toBe(0)
+    expect(filterByStatus([t], 'needs' as Status)).toHaveLength(0)
+    expect(filterByStatus([t], 'all' as Status)).toHaveLength(0)
+    // reachable: it is a conversation, it just isn't work
+    expect(filterByStatus([t], 'waiting' as Status)).toHaveLength(1)
+  })
+
+  it('an expired push is no push at all — the draft is back in the queue', () => {
+    const t = groupThreads([inbound('2026-07-21T09:00:00Z'), pushed('2026-07-22T08:00:00Z', PUSHED_AT)], new Set(), NOW)[0]
+    expect(t.draftSnoozedUntil).toBeNull()
+    // 'answer', not 'approve': this thread also has an unanswered inbound, and
+    // answer outranks approve. Either way it is back in the count, which is
+    // what the expiry has to guarantee.
+    expect(threadBucket(t)).toBe('answer')
+    expect(inboxWaitingCount([t])).toBe(1)
+  })
+
+  it('a thread with no inbound at all comes back as a draft to approve', () => {
+    const sent: InboxMessage = { ...base, id: 's', sent_at: '2026-07-20T10:00:00Z', approved_at: '2026-07-20T10:00:00Z' }
+    const live = groupThreads([sent, pushed(RETURNS, PUSHED_AT)], new Set(), NOW)[0]
+    expect(threadBucket(live)).toBe('waiting')
+    const expired = groupThreads([sent, pushed('2026-07-22T08:00:00Z', PUSHED_AT)], new Set(), NOW)[0]
+    expect(threadBucket(expired)).toBe('approve')
+    expect(inboxWaitingCount([expired])).toBe(1)
+  })
+
+  it('THEY WRITE BACK: an inbound after the push voids it immediately', () => {
+    const rows = [inbound('2026-07-21T09:00:00Z'), pushed(RETURNS, PUSHED_AT), inbound('2026-07-22T15:00:00Z')]
+    const t = groupThreads(rows, new Set(), NOW)[0]
+    expect(t.draftSnoozedUntil).toBeNull()
+    // and the thread owes an answer again, because their message is last
+    expect(needsAnswer(t, NOW)).toBe(true)
+    expect(threadBucket(t)).toBe('answer')
+  })
+
+  it('an inbound BEFORE the push does not void it', () => {
+    const rows = [inbound('2026-07-22T11:00:00Z'), pushed(RETURNS, PUSHED_AT)]
+    expect(groupThreads(rows, new Set(), NOW)[0].draftSnoozedUntil).toBe(RETURNS)
+  })
+
+  it('snoozeActive: needs a target, and honours both conditions', () => {
+    expect(snoozeActive({ ...base, snoozed_until: null, snoozed_at: null }, null, NOW)).toBe(false)
+    expect(snoozeActive(pushed(RETURNS, PUSHED_AT), null, NOW)).toBe(true)
+    expect(snoozeActive(pushed(RETURNS, PUSHED_AT), '2026-07-22T15:00:00Z', NOW)).toBe(false)
+    expect(snoozeActive(pushed('2026-07-22T08:00:00Z', PUSHED_AT), null, NOW)).toBe(false)
+  })
+
+  it('presets land at 08:00 local on the target day, never inside the window they skip', () => {
+    // 04:00 local + "3 days" must not resolve to a moment before +3 days
+    const from = new Date(2026, 6, 22, 4, 0, 0)
+    for (const p of SNOOZE_PRESETS) {
+      const d = new Date(snoozeTarget(p.days, from))
+      expect(d.getHours()).toBe(SNOOZE_HOUR)
+      expect(d.getTime()).toBeGreaterThan(from.getTime() + (p.days - 1) * 86_400_000)
+    }
+    // late-night push still lands on the morning, not at 23:40 a week on
+    const late = new Date(2026, 6, 22, 23, 40, 0)
+    expect(new Date(snoozeTarget(7, late)).getHours()).toBe(SNOOZE_HOUR)
   })
 })

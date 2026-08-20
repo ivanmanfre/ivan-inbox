@@ -75,7 +75,10 @@ function Shell() {
   // Comment kinds are excluded (ask 12) because DraftsScreen no longer lists
   // them — a badge that counts rows the screen behind it refuses to show is the
   // phantom-badge defect. Comment cards live (and are approved) on the Ops tab.
-  const draftCount = threads.filter(t => t.draft).length + pendingDmLaneOps(opsDrafts).length
+  // A draft Ivan pushed to later is not waiting on him, so it does not ring the
+  // badge until its date comes round (db/037). Same flag every other surface reads.
+  const draftCount = threads.filter(t => t.draft && t.draftSnoozedUntil === null).length
+    + pendingDmLaneOps(opsDrafts).length
 
   // Hash mini-router. Shell only ever mounts once App has resolved a session
   // (getSession() settled and session is truthy), so writeback below is

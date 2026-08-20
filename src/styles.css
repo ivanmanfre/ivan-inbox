@@ -315,6 +315,32 @@ input.cfield::placeholder{color:var(--text3)}
 .stalebtn{flex:none;background:#FF9F0A;color:#000;font-size:13px;font-weight:700;padding:7px 13px;border-radius:99px;border:none;cursor:pointer;font-family:inherit}
 .stalebtn:disabled{opacity:.55}
 
+/* ---- push to later (db/037) — a draft that is parked, not pending.
+   Deliberately BLUE-GREY and quiet, never the orange of `.stale` or the red of
+   `.gapwarn`: those two say something is wrong, this says a decision was taken
+   and is holding. A parked draft that looked like a warning would pull him back
+   into work he has already scheduled away. ---- */
+.pushbar{display:flex;align-items:center;gap:10px;background:rgba(120,140,170,.12);border:1px solid rgba(120,140,170,.3);border-radius:12px;padding:9px 11px;font-size:12.5px;font-weight:600;line-height:1.35;color:var(--text2)}
+.pushbar span{flex:1}
+.pushbtn{flex:none;background:var(--surface3);color:var(--text);font-size:12.5px;font-weight:700;padding:7px 12px;border-radius:99px;border:none;cursor:pointer;font-family:inherit}
+.pushbtn:disabled{opacity:.55}
+/* The list-row pill. Same slot as DRAFT, opposite message — muted, because a
+   pushed draft is the one draft that is NOT asking for attention. */
+.dpill.pushed{background:var(--surface3);color:var(--text2);letter-spacing:.02em;text-transform:none;font-weight:700}
+/* Three decisions on one bar: Approve & send keeps the width its label needs. */
+.dc-a.three .btn,.qc .ac.three .btn{font-size:14px;letter-spacing:-.01em;padding:11px 2px}
+.dc-a.three .btn.p,.qc .ac.three .btn.p{flex:1.5}
+/* ---- the push sheet ---- */
+.push-presets{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.push-preset{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--surface2);color:var(--text);border:none;border-radius:15px;padding:13px 6px;font-family:inherit;cursor:pointer}
+.push-preset:active{transform:scale(.97);filter:brightness(1.1)}
+.pp-l{font-size:16px;font-weight:700}
+.pp-s{font-size:11.5px;font-weight:500;color:var(--text3)}
+.push-custom{display:flex;gap:8px;margin-bottom:8px}
+.push-custom input{flex:1;min-width:0;background:var(--surface2);border:none;border-radius:15px;padding:13px 14px;font-size:15px;font-family:inherit;color:var(--text)}
+.push-go{flex:none;background:var(--surface3);color:var(--text);border:none;border-radius:15px;padding:13px 20px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer}
+.push-go:disabled{opacity:.5}
+
 /* ---- linkified urls in message/draft text ---- */
 .msg-link{color:var(--blue);text-decoration:underline;text-underline-offset:2px;word-break:break-all}
 .b.out .msg-link{color:#fff;text-decoration-color:rgba(255,255,255,.7)}

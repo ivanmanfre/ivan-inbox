@@ -1,4 +1,4 @@
-import { DraftCard, StaleBar } from '../../screens/DraftsScreen'
+import { DraftCard, PushedBar, StaleBar } from '../../screens/DraftsScreen'
 import { InboxScreen } from '../../screens/InboxScreen'
 import { DmHistory } from './DmHistory'
 import { STATUS_LABEL, filterThreads, type Filter, type Status, type Thread } from '../../lib/inbox'
@@ -46,6 +46,9 @@ export function DmsSurface({
   // phantom badge.
   const laned = filterThreads(threads, filter)
   const staleDrafts = laned.filter(t => t.draft !== null && t.draftStale)
+  // Lane-scoped for the same reason the stale bar is: a count from a lane he is
+  // not looking at is the tenancy version of a phantom badge.
+  const pushedDrafts = laned.filter(t => t.draftSnoozedUntil !== null)
 
   return (
     <InboxScreen
@@ -61,7 +64,10 @@ export function DmsSurface({
       onOpenDrafts={() => {}}
       windowed
       verifiedAt={loadedAt}
-      before={<StaleBar stale={staleDrafts} refresh={refresh} />}
+      before={<>
+        <StaleBar stale={staleDrafts} refresh={refresh} />
+        <PushedBar pushed={pushedDrafts} onOpen={onOpenThread} />
+      </>}
       // A draft is not a 73px row you read — it is a message you send or throw
       // away, so in that status the row IS the card, with the swipe gestures and
       // the confirm intact.

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Avatar } from '../components/Avatar'
 import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
+import { returnsIn } from '../components/PushLaterSheet'
 import { filterByStatus, filterThreads, inboxWaitingCount, isLeadMagnet, searchThreads, threadKind, type Filter, type Status, type Thread, eventTime } from '../lib/inbox'
 import { checkedPhrase } from '../lib/today'
 
@@ -152,7 +153,7 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
     ? searchThreads(laned, query)
     : (status ? filterByStatus(laned, status) : laned)
   const win = useRowWindow(rowsRef, shown.length, windowed && !renderRow)
-  const draftTotal = threads.filter(t => t.draft).length
+  const draftTotal = threads.filter(t => t.draft && t.draftSnoozedUntil === null).length
   // Same derivation as the tab badge (lib/inbox.ts) — the chip suffix and the
   // bubble must never say two different numbers for the same list.
   const waitingTotal = inboxWaitingCount(threads)
@@ -242,7 +243,12 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
                 <div className="right">
                   <span className="time">{timeAgo(eventTime(t.last))}</span>
                   {t.unread > 0 && <span className="udot" />}
-                  {t.draft != null && <span className="dpill">DRAFT</span>}
+                  {/* A pushed draft says WHEN, not DRAFT — the row is the only
+                      place a parked draft is visible from the list, so it has to
+                      carry its return date rather than look like queued work. */}
+                  {t.draft != null && (t.draftSnoozedUntil !== null
+                    ? <span className="dpill pushed">{returnsIn(t.draftSnoozedUntil)}</span>
+                    : <span className="dpill">DRAFT</span>)}
                   {/* The NEEDS REPLY pill went with the flag's demotion: it sat
                       on threads that end with Ivan's own reply (Nour Siakir
                       Oglou), which is the opposite of what it claimed. */}
