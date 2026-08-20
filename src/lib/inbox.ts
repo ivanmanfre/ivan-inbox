@@ -64,8 +64,21 @@ export type Thread = {
 
 export type Filter = 'all' | 'ivan' | 'risedtc' | 'arch' | 'email'
 
+// A draft the dispatcher HELD at the send moment because the thread changed
+// after approval (Mattan typed on LinkedIn mid-queue, or a fresh inbound
+// landed). Unlike every other block reason this one is recoverable by design:
+// the copy usually still fits, so the row comes back as a pending draft and
+// approve is one tap after re-reading the thread. Discards keep their own
+// reason ('discarded_in_inbox') and stay permanent — U1 is untouched.
+export const RACE_HOLD_PREFIX = 'post_approval_race:'
+
+export function isRaceHold(reason: string | null): boolean {
+  return reason !== null && reason.startsWith(RACE_HOLD_PREFIX)
+}
+
 export function isDraft(m: InboxMessage): boolean {
-  return m.direction === 'outbound' && !m.sent_at && !m.approved_at && !m.send_blocked_at
+  return m.direction === 'outbound' && !m.sent_at && !m.approved_at &&
+    (!m.send_blocked_at || isRaceHold(m.send_blocked_reason))
 }
 
 // A NUDGE, not a reply: written because the person went quiet, by the bump
@@ -604,14 +617,21 @@ export function threadChatId(t: Thread): string | null {
 // draft list makes the replay reachable, so discard is now permanent AT THE
 // WRITE, not by UI convention: a stale approve becomes a zero-row no-op instead
 // of a message going out.
+// A race-held row (send_blocked_reason 'post_approval_race:*') is the one
+// blocked state approve accepts: the dispatcher bounced it because the thread
+// moved after approval, and re-approving after reading the thread is the whole
+// recovery path. Approving clears the block so the row leaves the ops failed
+// list and a later bounce starts clean.
 export async function approveDraft(id: string, editedText: string, chatId?: string | null): Promise<void> {
   const patch: Record<string, unknown> = {
     message_text: editedText, approved_at: new Date().toISOString(),
+    send_blocked_reason: null, send_blocked_at: null,
   }
   if (chatId) patch.unipile_chat_id = chatId
   const { error } = await supabase.from('outreach_messages')
     .update(patch)
-    .eq('id', id).is('sent_at', null).is('send_blocked_reason', null)
+    .eq('id', id).is('sent_at', null)
+    .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*`)
   if (error) throw error
 }
 
@@ -648,7 +668,8 @@ export function snoozeTarget(days: number, from: Date = new Date()): string {
 export async function saveDraftText(id: string, text: string): Promise<void> {
   const { error } = await supabase.from('outreach_messages')
     .update({ message_text: text })
-    .eq('id', id).is('sent_at', null).is('approved_at', null).is('send_blocked_reason', null)
+    .eq('id', id).is('sent_at', null).is('approved_at', null)
+    .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*`)
   if (error) throw error
 }
 
@@ -659,7 +680,8 @@ export async function saveDraftText(id: string, text: string): Promise<void> {
 export async function snoozeDraft(id: string, until: string): Promise<void> {
   const { error } = await supabase.from('outreach_messages')
     .update({ snoozed_until: until, snoozed_at: new Date().toISOString() })
-    .eq('id', id).is('sent_at', null).is('approved_at', null).is('send_blocked_reason', null)
+    .eq('id', id).is('sent_at', null).is('approved_at', null)
+    .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*`)
   if (error) throw error
 }
 
@@ -667,7 +689,8 @@ export async function snoozeDraft(id: string, until: string): Promise<void> {
 export async function unsnoozeDraft(id: string): Promise<void> {
   const { error } = await supabase.from('outreach_messages')
     .update({ snoozed_until: null, snoozed_at: null })
-    .eq('id', id).is('sent_at', null).is('approved_at', null).is('send_blocked_reason', null)
+    .eq('id', id).is('sent_at', null).is('approved_at', null)
+    .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*`)
   if (error) throw error
 }
 

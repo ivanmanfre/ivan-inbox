@@ -42,6 +42,12 @@ describe('isDraft', () => {
     expect(isDraft({ ...base, send_blocked_at: '2026-07-22T11:00:00Z' })).toBe(false)
     expect(isDraft({ ...base, direction: 'inbound' })).toBe(false)
   })
+  it('a dispatcher race-hold stays a pending draft; a discard does not', () => {
+    expect(isDraft({ ...base, send_blocked_at: '2026-07-22T11:00:00Z', send_blocked_reason: 'post_approval_race:outbound' })).toBe(true)
+    expect(isDraft({ ...base, send_blocked_at: '2026-07-22T11:00:00Z', send_blocked_reason: 'post_approval_race:inbound' })).toBe(true)
+    expect(isDraft({ ...base, send_blocked_at: '2026-07-22T11:00:00Z', send_blocked_reason: 'discarded_in_inbox' })).toBe(false)
+    expect(isDraft({ ...base, send_blocked_at: '2026-07-22T11:00:00Z', send_blocked_reason: 'manual_reply_raced' })).toBe(false)
+  })
 })
 
 describe('eventTime', () => {
