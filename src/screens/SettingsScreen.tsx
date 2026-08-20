@@ -145,6 +145,12 @@ export function SettingsScreen() {
             <div className="gt danger">Sign out</div>
           </div>
         </div>
+
+        {/* Which build this tab is actually running. A stale service worker looks
+            exactly like a fix that did not work, and that cost an hour on 2026-08-20. */}
+        <div className="gs" style={{ padding: '10px 22px 24px', opacity: 0.6 }}>
+          Build {__BUILD__}
+        </div>
       </div>
     </>
   )
