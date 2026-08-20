@@ -132,20 +132,38 @@ body{
 .b.out.chan-b-email .msg-link{color:var(--blue);text-decoration-color:rgba(10,132,255,.7)}
 .b-emailmeta{font-size:11.5px;color:var(--text3);margin:-2px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--sep)}
 
-.draftcard{margin:8px 14px 10px;background:var(--surface);border-radius:20px;overflow:hidden;border:1px solid rgba(16,163,127,.4);box-shadow:0 8px 30px rgba(0,0,0,.5)}
-.dc-h{display:flex;align-items:center;gap:8px;padding:11px 14px 0}
+/* The card is CAPPED at half the pane (Ivan, 2026-08-20: "can't even see what
+   it says here because ai draft occupies the whole chat"). A long draft plus a
+   gap warning plus the evidence block measured ~70% of the thread pane, and
+   .msgs — flex-basis 0 — surrendered every pixel of it, leaving one clipped
+   bubble of the conversation the draft is answering. The header and the action
+   bar stay pinned outside the scroll region: the 2026-08-07 break was Approve
+   and Discard scrolling out of reach, and this must not reintroduce it. */
+.draftcard{margin:8px 14px 10px;background:var(--surface);border-radius:20px;overflow:hidden;border:1px solid rgba(16,163,127,.4);box-shadow:0 8px 30px rgba(0,0,0,.5);
+  display:flex;flex-direction:column;min-height:0;max-height:50%}
+/* No fade-out mask on this edge: the block most often sitting at the cut is the
+   gap warning, which paints its OWN background over anything the scroller draws
+   behind it. The action bar below carries the separation instead. */
+.dc-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.dc-h{display:flex;align-items:center;gap:8px;padding:11px 14px 0;flex:none}
 .spark{width:22px;height:22px;border-radius:99px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px}
 .dc-h .t{font-size:13px;font-weight:700;color:var(--accent)}
 .dc-h .e{margin-left:auto;font-size:13px;color:var(--text2)}
 .dc-b{padding:8px 14px 12px;font-size:15.5px;line-height:1.45}
-.dc-a{display:flex;gap:10px;padding:0 14px 14px}
+/* Hairline because the bar is now PINNED over a scrolling body: without it the
+   draft (or the gap warning) is cut mid-sentence at the button edge and reads as
+   a rendering fault instead of "there is more above". */
+.dc-a{display:flex;gap:10px;padding:11px 14px 14px;flex:none;border-top:1px solid var(--surface2);background:var(--surface)}
 .btn{flex:1;text-align:center;padding:12px 0;border-radius:14px;font-size:15.5px;font-weight:700}
 .btn.p{background:var(--accent);color:#fff}
 .btn.s{background:var(--surface2);color:var(--text)}
 .composer{display:flex;gap:10px;align-items:center;padding:6px 14px 12px}
 .cfield{flex:1;background:var(--surface);border:1px solid var(--surface3);border-radius:22px;padding:11px 16px;font-size:15.5px;color:var(--text3)}
 .csend{width:38px;height:38px;border-radius:99px;background:var(--surface2);display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:16px;flex:none;cursor:pointer}
-textarea.dc-b{display:block;width:100%;background:transparent;border:none;color:var(--text);font-family:inherit;font-size:16px;line-height:1.5;resize:none;outline:none;min-height:120px;max-height:44vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+/* No max-height here any more: .dc-scroll owns the overflow, and a scrollbar
+   inside a scrollbar is worse than a tall box inside one. The auto-grow effect
+   in ThreadScreen still sizes it to the draft. */
+textarea.dc-b{display:block;width:100%;background:transparent;border:none;color:var(--text);font-family:inherit;font-size:16px;line-height:1.5;resize:none;outline:none;min-height:120px;overflow-y:hidden}
 input.cfield{color:var(--text);outline:none;font-family:inherit}
 input.cfield::placeholder{color:var(--text3)}
 .draftcard .btn,.csend{cursor:pointer}
