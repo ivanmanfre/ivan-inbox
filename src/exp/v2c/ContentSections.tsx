@@ -8,7 +8,7 @@ import {
 } from '../../lib/content'
 import {
   cleanStyleTitle, groupByLmStage, isStuckGeneratingLm, isStuckResource,
-  LM_PIPELINE_STAGES, LM_STAGE_LABEL, LM_STAGE_SHORT, normalizeLmStatus, previewKeyFor, previewsByStyle,
+  LM_PIPELINE_STAGES, LM_STAGE_LABEL, normalizeLmStatus, previewKeyFor, previewsByStyle,
   stageOfLm,
   type LmStage, type Resource, type StylePrompt,
 } from '../../lib/styles'
@@ -23,7 +23,7 @@ import type { AgentSummary } from '../../lib/agent'
 import { FilteredEmpty, Figure, KeyRows } from './ContentBits'
 import { FilterRow } from './FilterRow'
 import { absTime, relOrAhead, relTime } from './fmt'
-import { CalmEmpty, CapsuleChart, Failed, SectionHead } from './Surface'
+import { CalmEmpty, Failed, SectionHead, StageTabs } from './Surface'
 
 // The row sets that live INSIDE a lane — never as a third destination.
 //
@@ -451,12 +451,12 @@ export function QueueStrip({ rows, loading, error, loadedAt, refresh }: {
     <>
       {/* 🔴 A mirror of the n8n bridge's output, never a control: flipping a
           draft to 'scheduled' is what makes yzXqLDIpuNzuhUQq publish it, so
-          nothing in this section writes that status. */}
-      <div className="ct-subtle">
-        What actually went out. <code>scheduled_posts</code> keeps its own status
-        vocabulary — unrelated to a draft's status — and this strip mirrors the
-        publish bridge rather than controlling it.
-      </div>
+          nothing in this section writes that status. That rule is a fact about
+          the CODE and it stays here, where a future editor reads it.
+          THE ON-SCREEN PARAGRAPH IS GONE (2026-08-20, Ivan: "delete this we
+          dont need this extra text bothering"). It explained the table's
+          provenance to a reader who has read it a hundred times, above the rows
+          it was explaining, every single visit. The rows say what they are. */}
       <FilterRow
         prominent={queueProminent} demoted={queueDemoted}
         state={filters} setState={setFilters}
@@ -540,27 +540,31 @@ function LmRow({ r, onOpen, queue }: { r: Resource; onOpen?: OpenMagnet; queue: 
 
 // A lead-magnet stage section. Deliberately the same shape as ContentList's
 // StageSection — the lanes differ in what they hold, not in how a stage renders.
-function LmStageSection({ s, n, rows, isOpen, toggle, onOpen }: {
-  s: LmStage; n?: string; rows: Resource[]; isOpen: boolean; toggle: () => void
-  onOpen?: OpenMagnet
+// One LM stage's rows. No header and no chevron: the tab above it is both
+// (2026-08-20, Ivan: "u can delete all of this and make horizontal the
+// stages"). An empty stage says so rather than rendering nothing — on a tabbed
+// surface, "nothing here" and "I clicked the wrong thing" look identical on a
+// blank screen.
+function LmStageTable({ s, rows, onOpen }: {
+  s: LmStage; rows: Resource[]; onOpen?: OpenMagnet
 }) {
-  if (rows.length === 0) return null
   return (
     <div id={`wb-s-lm-${s}`}>
-      <SectionHead
-        n={n} title={LM_STAGE_LABEL[s]} count={rows.length}
-        sev={s === 'review' ? 'attention' : null}
-        open={isOpen} onToggle={toggle}
-      />
-      {isOpen && rows.map(r => <LmRow key={r.id} r={r} onOpen={onOpen} queue={rows} />)}
+      {rows.length === 0
+        ? <CalmEmpty line={`Nothing at ${LM_STAGE_LABEL[s].toLowerCase()}.`} loadedAt={null} />
+        : rows.map(r => <LmRow key={r.id} r={r} onOpen={onOpen} queue={rows} />)}
     </div>
   )
 }
 
-// Ask 4 again: everything in flight is open, everything terminal is closed.
-// published (40 rows) and archived (34) are two thirds of this table and would
-// bury the handful actually moving.
-const LM_DEFAULT_OPEN: LmStage[] = ['idea', 'generating', 'generating_assets', 'review', 'approved']
+// The tab order IS the lifecycle, idea first. The old sections had the same
+// rule for a measured reason: the first pass appended idea AFTER published,
+// which put the largest stage in the lane underneath the terminal ones and read
+// as a bug. The three off-pipeline stages ride at the end and only when they
+// have rows.
+const LM_TAB_ORDER: LmStage[] = [...LM_PIPELINE_STAGES, 'error', 'archived', 'other']
+const LM_TAB_ALWAYS: LmStage[] = [...LM_PIPELINE_STAGES]
+const LM_TAB_KEY = (lane: ContentLane) => `wb-lm-tab-${lane}`
 
 // ---------------------------------------------------------------------------
 // THE LEAD-MAGNET LANE (phase 6 ask 2)
@@ -602,7 +606,17 @@ export function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loa
   const filters = sect.filters
   const setFilters = (f: FilterState) => setSect(p => ({ ...p, filters: f }))
   const setQ = (q: string) => setSect(p => ({ ...p, q }))
-  const [open, setOpen] = useState<LmStage[]>(LM_DEFAULT_OPEN)
+  // One tab, persisted per lane — the same shape the post lane's bar uses.
+  const [tab, setTabState] = useState<LmStage>(() => {
+    try {
+      const v = localStorage.getItem(LM_TAB_KEY(lane))
+      return (LM_TAB_ORDER as string[]).includes(v ?? '') ? (v as LmStage) : 'review'
+    } catch { return 'review' }
+  })
+  const setTab = (t: LmStage) => {
+    setTabState(t)
+    try { localStorage.setItem(LM_TAB_KEY(lane), t) } catch { /* private mode */ }
+  }
   const facets = buildFacets(rows, RESOURCE_SPECS)
   const { prominent, demoted } = splitFacets(facets, RESOURCE_PROMINENT)
   const shown = applySearch(applyFilters(rows, RESOURCE_SPECS, filters), sect.q, r => [r.topic])
@@ -620,48 +634,24 @@ export function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loa
   // where it is a property of that row rather than a claim on Ivan's day.
   // THE TEST an alert has to pass: it names something actionable TODAY.
 
-  // Every stage spends a slot, including the ones that have never had a row —
-  // a chart that drops empty stages would draw a pipeline that does not exist.
+  // THE PIPELINE CARD IS GONE (2026-08-20, Ivan: "u can delete all of this and
+  // make horizontal the stages"). It drew a capsule per stage, a big
+  // waiting-on-you numeral, a legend about folded legacy values and a lane
+  // total — four chrome objects above the rows, all of them answering "how many
+  // are at each stage", which is the ONE question the tab bar answers by
+  // existing. `jump` went with it: a tab does not scroll, it selects.
   //
-  // PUBLISHED IS NOT ONE OF THEM (2026-08-03, Ivan: "delete published we dont
-  // need to see that on that pipeline stuff"). It is an archive total, not a
-  // stage he acts on, and as the only stage that accumulates forever it set the
-  // peak and squashed every in-flight stage into its floor. The total is still
-  // stated in the card footer, as a line rather than a mark.
-  const parts = LM_PIPELINE_STAGES.filter(s => s !== 'published').map(s => ({
-    key: s, label: LM_STAGE_LABEL[s], short: LM_STAGE_SHORT[s], n: groupByLmStage(rows)[s].length,
-  }))
-  // `published` is already gone from `parts` (above), so only the idea stage is
-  // excluded here — "still moving" means in flight, and an idea has not started.
-  const inFlight = parts
-    .filter(p => p.key !== 'idea')
-    .reduce((a, p) => a + p.n, 0)
-
-  const jump = (key: string) => {
-    const s = key as LmStage
-    setOpen(cur => (cur.includes(s) ? cur : [...cur, s]))
-    requestAnimationFrame(() => {
-      document.getElementById(`wb-s-lm-${s}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
-  }
+  // What the legend said is not lost, it is just no longer said four times: the
+  // per-row title on a folded stage still reads "Idea — folded from the
+  // database value 'pending'" (LmRow), which is where a reader meets the fold.
 
   return (
     <div id="wb-lm-lane" className="ct-lane-b">
-      {/* The separator Ivan asked for. It is a lane boundary, not another
-          section header, so it says what the lane IS and what table it reads. */}
-      <div className="ct-lane-h">
-        <span className="ct-lane-k">Lane</span>
-        <span className="ct-lane-t">Lead magnets</span>
-        <span className="ct-lane-rule" />
-        <span className="ct-lane-c">{rows.length}</span>
-      </div>
-      <div className="ct-subtle">
-        <code>lm_drafts_v2</code>, {LANE_POSSESSIVE[lane]} rows — a separate
-        pipeline from the posts above, with one in-flight stage posts don’t
-        have (<b>Generating resources</b> is the asset/page/cover build, a
-        different run from the body generation).
-      </div>
-
+      {/* THE LANE HEADER AND ITS BLURB ARE GONE (2026-08-20). Magnets is its
+          own job in the rail — it has been since 08-03 — so a header naming the
+          lane sat under a nav item naming the same lane, over a paragraph
+          explaining which table it reads to the one person who built it. The
+          tab bar carries the counts the header carried. */}
       {error ? (
         <Failed what="Lead magnets" message={error} onRetry={refresh} loadedAt={null} />
       ) : loading && rows.length === 0 ? (
@@ -682,40 +672,6 @@ export function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loa
             </div>
           )}
 
-          <div className="wb-chartcard">
-            <div className="wb-cardh">
-              <span className="wb-cardh-t wb-eyebrow">Lead-magnet pipeline</span>
-              <span className="wb-cardh-x">···</span>
-            </div>
-            <CapsuleChart parts={parts} onJump={jump} />
-            <div className="wb-pipe-n">
-              <span className="wb-pipe-big">{stages.review.length}</span>
-              <span className="wb-pipe-lbl">
-                waiting on you<br />of {inFlight} still moving
-              </span>
-            </div>
-            <div className="wb-cardf">
-              {/* 🔴 The fold, stated where the numbers are drawn. Without this
-                  line a reader has no way to know that "Idea 37" is 37 rows the
-                  database still calls `pending`. */}
-              <span className="wb-legend">
-                <span className="wb-legend-l">
-                  Legacy values folded to canonical (<code>pending</code>→idea,{' '}
-                  <code>complete</code>→published, <code>lm_review</code>→review)
-                </span>
-              </span>
-              <span className="wb-total">Total: <b>{rows.length}</b> in this lane</span>
-            </div>
-          </div>
-
-          {/* 🔴 Read-only on purpose: whether the publish watcher treats
-              status='approved' as a trigger is unverifiable from either repo, so
-              no affordance here may turn out to publish a page. */}
-          <div className="ct-subtle">
-            Read-only. An approve here might be a publish — the watcher that owns
-            this table is not readable from this app.
-          </div>
-
           <FilterRow
             prominent={prominent} demoted={demoted}
             state={filters} setState={setFilters} q={sect.q} setQ={setQ}
@@ -732,33 +688,25 @@ export function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loa
             />
           )}
 
+          <StageTabs
+            active={tab} onSelect={k => setTab(k as LmStage)}
+            tabs={LM_TAB_ORDER
+              .map(st => ({
+                key: st,
+                label: LM_STAGE_LABEL[st],
+                // Counts over the FILTERED rows: the tab promises the number
+                // you land on, so a filter that empties a stage empties its tab.
+                n: stages[st].length,
+                mark: st === 'review',
+              }))
+              .filter(t => LM_TAB_ALWAYS.includes(t.key) || t.n > 0)}
+          />
+
           {shown.length === 0
             ? <FilteredEmpty noun="lead magnets" onClear={() => setSect(cur => ({ ...cur, filters: {}, q: '' }))} />
             : (
               <>
-                {/* 🔴 In LIFECYCLE ORDER, idea first. The first pass rendered
-                    idea AFTER published because it was appended outside the map,
-                    which put "Idea 37" — the largest section in the lane —
-                    underneath the terminal ones and read as a bug. The stage
-                    ORDER is LM_PIPELINE_STAGES and there is no second ordering
-                    constant to keep in sync, exactly as PIPELINE_STAGES works
-                    for posts. */}
-                {LM_PIPELINE_STAGES.map((s, i) => (
-                  <LmStageSection
-                    key={s} s={s} n={String(i + 1).padStart(2, '0')} rows={stages[s]}
-                    isOpen={open.includes(s)} onOpen={onOpen}
-                    toggle={() => setOpen(cur =>
-                      cur.includes(s) ? cur.filter(x => x !== s) : [...cur, s])}
-                  />
-                ))}
-                {(['error', 'archived', 'other'] as LmStage[]).map(s => (
-                  <LmStageSection
-                    key={s} s={s} rows={stages[s]}
-                    isOpen={open.includes(s)} onOpen={onOpen}
-                    toggle={() => setOpen(cur =>
-                      cur.includes(s) ? cur.filter(x => x !== s) : [...cur, s])}
-                  />
-                ))}
+                <LmStageTable s={tab} rows={stages[tab]} onOpen={onOpen} />
               </>
             )}
         </>
