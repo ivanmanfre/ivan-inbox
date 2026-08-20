@@ -4094,3 +4094,45 @@
   font-size:var(--fs-meta, 13px); color:var(--text3);
   margin:-2px 0 8px; padding-bottom:6px; border-bottom:1px solid var(--hairline);
 }
+
+/* -------------------------------------------------------------------------- */
+/* THE STAGE TABS (2026-08-20) — one stage on screen, the counts on the bar     */
+/* -------------------------------------------------------------------------- */
+/* Ivan: "i dont like the pile format on the stages... make it more clickup
+   table were i can switch between them". The bar replaces nine stacked
+   collapsible section heads, so it inherits their geometry rather than
+   inventing one: sticky under the command strip at --ct-cmdh (the same
+   measurement .wb-sech-strip uses, so the two can never disagree about where
+   the chrome ends), CANVAS background (§3f — a sticky band over 285 scrolling
+   rows is never surface1), and the same hairline rules above and below.
+
+   It SCROLLS horizontally rather than wrapping. Ten tabs wrapped to two rows
+   is the pile again, one level up, and it would move the table's top edge
+   every time a stage emptied. */
+.wb.wb.wb .ct-tabs{
+  position:sticky; top:var(--ct-cmdh, 0px); z-index:7;
+  display:flex; align-items:stretch; gap:2px;
+  padding:6px var(--gut);
+  background:var(--canvas);
+  border-bottom:1px solid var(--hairline);
+  overflow-x:auto; overflow-y:hidden;
+  overscroll-behavior-x:contain; scrollbar-width:none;
+}
+.wb.wb.wb .ct-tabs::-webkit-scrollbar{ display:none }
+.wb.wb.wb .ct-tab{
+  flex:none; height:32px; padding:0 10px;
+  display:inline-flex; align-items:center; gap:6px;
+  background:none; border:none; border-radius:var(--r-ctl);
+  color:var(--text3); font-size:var(--fs-meta); font-weight:500;
+  white-space:nowrap; cursor:pointer;
+}
+.wb.wb.wb .ct-tab:hover:not(.on){ color:var(--text2); background:var(--surface1) }
+.wb.wb.wb .ct-tab.on{ background:var(--surface3); color:var(--text) }
+/* The count is the reason the bar exists — it is what the nine section heads
+   each held one of. Data face, so a two-digit count and a three-digit one line
+   up down the bar instead of shuffling the labels sideways. */
+.wb.wb.wb .ct-tab-n{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:var(--fs-meta); letter-spacing:-.01em; color:var(--text3);
+}
+.wb.wb.wb .ct-tab.on .ct-tab-n{ color:var(--text2) }
