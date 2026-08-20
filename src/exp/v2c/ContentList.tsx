@@ -18,7 +18,7 @@ import {
 } from '../../lib/contentFilters'
 import { useSectionState } from '../../hooks/useSectionState'
 import {
-  draftFacetsActive, ideasIsOpen, toggleIdeasOpen, stagesWriteBase, STAGES_TOUCHED,
+  draftFacetsActive, stagesWriteBase, STAGES_TOUCHED,
 } from './contentIdeas'
 import { useConfirm } from '../../components/ConfirmSheet'
 import { ReviewActions } from './ReviewActions'
@@ -520,23 +520,142 @@ function StageSection({ s, n, rows, lane, group, refresh, onOpen, openId, isOpen
   )
 }
 
-// 2026-08-04, Ivan, reversing 08-03's default-collapsed rule: "LOOK HOW
-// ANNOYING IS NOW TO OPEN EVERYTHING COMPARED TO PREVIOUS DASHBOARD WHERE...
-// THINGS ARE DIRECTLY OPEN". The working stages open themselves; only the two
-// archives (published 109, archived 84) and the odd tails stay behind a click,
-// because those are the sections whose row count buries the work.
-const DEFAULT_OPEN: ContentStage[] = ['review', 'generating', 'approved', 'scheduled', 'error']
+// ---------------------------------------------------------------------------
+// THE TABS — one stage on screen at a time (2026-08-20)
+// ---------------------------------------------------------------------------
+//
+// Ivan, verbatim: "i dont like the pile format on the stages can we make this
+// more column based like ideas, review, scheduled, published, errors instead of
+// horizontal pillars, make it more clickup table were i can switch between
+// them".
+//
+// The pile is what the stacked sections are: nine collapsible headers down one
+// scroller, so reaching Errors (54 rows) or Published (109) meant scrolling
+// past every stage above it and the answer to "how much is at this stage" was
+// a number you had to scroll to find. The tab bar states all of them at once —
+// the counts are the bar — and the table below it is ONE stage, full height,
+// starting at the top of the screen.
+//
+// What this deliberately keeps from the piles:
+//   · the column head and the row anatomy are untouched (§7.1 anchor rail);
+//   · the SUB-LINES survive per tab — the 48h error scope, the approved-with-no-
+//     date count, the past-due explanation. Those are the sentences that make a
+//     count mean something, and a tab bar that dropped them would be prettier
+//     and less honest;
+//   · the publish queue still rides under Scheduled, because it answers the
+//     question that stage asks.
+// What it drops: the per-section collapse state. A tab IS the open/closed
+// answer, so there is nothing left for a chevron to say.
+type ContentTab = ContentStage | 'ideas'
 
-// TRIAGE ORDER, not lifecycle order. The stage that needs Ivan goes first; the
-// rest keep the pipeline's own sequence behind it. Lifecycle order put Review
-// third, under two collapsed-or-not sections and ~450px of chrome, which is the
-// "i have to scroll super vertical and long" he reported. The numbering follows
-// the render, so the section labelled 02 is always the top one.
-const TRIAGE_ORDER: ContentStage[] = [
-  'review', 'generating', 'approved', 'scheduled', 'published',
+// Render order of the bar. Ivan named five ("ideas, review, scheduled,
+// published, errors"); the four he did not name are stages this lane really
+// holds and cannot be reached any other way, so they ride at the end rather
+// than being deleted with the piles. `stuck`/`archived`/`other` only appear
+// when they have rows — an always-on tab reading 0 spends a slot on a stage
+// that does not exist today.
+const TAB_ORDER: ContentTab[] = [
+  'ideas', 'review', 'generating', 'approved', 'scheduled', 'published',
+  'error', 'stuck', 'archived', 'other',
 ]
+const TAB_ALWAYS: ContentTab[] = ['ideas', 'review', 'generating', 'approved', 'scheduled', 'published', 'error']
+const TAB_KEY = 'wb-content-tab'
 
-// A stage the operator has never touched follows the rule above. The moment he
+function readTab(): ContentTab {
+  try {
+    const v = localStorage.getItem(TAB_KEY)
+    return (TAB_ORDER as string[]).includes(v ?? '') ? (v as ContentTab) : 'review'
+  } catch { return 'review' }
+}
+
+// The bar. Counts are over the FILTERED rows — the tab has to promise the
+// number you land on, so a filter that empties a stage empties its tab too
+// rather than advertising rows the click cannot produce.
+function StageTabs({ tab, setTab, counts }: {
+  tab: ContentTab
+  setTab: (t: ContentTab) => void
+  counts: Record<ContentTab, number>
+}) {
+  const shown = TAB_ORDER.filter(t => TAB_ALWAYS.includes(t) || counts[t] > 0)
+  return (
+    <div className="ct-tabs" role="tablist">
+      {shown.map(t => (
+        <button
+          type="button" key={t} role="tab"
+          className={`ct-tab${tab === t ? ' on' : ''}`}
+          aria-selected={tab === t}
+          onClick={() => setTab(t)}
+        >
+          <span className="ct-tab-t">{t === 'ideas' ? 'Ideas' : STAGE_LABEL[t]}</span>
+          <span className="ct-tab-n">{counts[t]}</span>
+          {/* Same rule the section head kept: review is the only stage that
+              carries a mark, and only the neutral one. A backlog is not a
+              warning — it is the work. */}
+          {t === 'review' && counts[t] > 0 && <span className="wb-sech-dot attention" />}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// One stage's rows as a table. No header and no chevron: the tab above it is
+// both. An empty stage says so in a sentence rather than rendering nothing,
+// because in tab mode "nothing there" and "I clicked the wrong thing" look
+// identical on a blank screen.
+function StageTable({ s, rows, lane, refresh, onOpen, openId, sub, empty }: {
+  s: ContentStage
+  rows: ContentDraft[]
+  lane: ContentLane
+  refresh: () => void
+  onOpen: OpenDraft
+  openId: string | null
+  sub?: string | null
+  empty?: string
+}) {
+  return (
+    <div id={`wb-s-${s}`}>
+      {sub && <div className="ct-subline">{sub}</div>}
+      {rows.length === 0
+        ? <CalmEmpty line={empty ?? `Nothing at ${STAGE_LABEL[s].toLowerCase()}.`} loadedAt={null} />
+        : (
+          <>
+            <div className="ct-cols-head" aria-hidden>
+              <span /><span>Title</span><span>Pillar</span><span>Funnel</span>
+              <span>Source</span><span /><span />
+            </div>
+            {rows.map(d => (
+              <Card
+                key={d.id} d={d} lane={lane} refresh={refresh} onOpen={onOpen}
+                active={openId === d.id} queue={rows}
+                // The decision surface, and only it — see Card's `glance` note.
+                glance={s === 'review'}
+              />
+            ))}
+          </>
+        )}
+    </div>
+  )
+}
+
+// WHAT WENT WITH THE PILES (2026-08-20), and why the reasoning stays:
+//
+//   · DEFAULT_OPEN — "LOOK HOW ANNOYING IS NOW TO OPEN EVERYTHING" (Ivan,
+//     2026-08-04) reversed the default-collapsed rule so the working stages
+//     opened themselves. The tabs keep the intent and cost nothing to hold it:
+//     the stage you land on is always open, because it is the only one drawn.
+//   · TRIAGE_ORDER — triage order, not lifecycle order: the stage that needs
+//     Ivan went first because lifecycle order buried Review under ~450px of
+//     chrome ("i have to scroll super vertical and long"). The tab bar keeps
+//     the rule where it still bites — `readTab` defaults to REVIEW — while the
+//     bar itself reads left-to-right in pipeline order, which is the order a
+//     row actually travels and the only one a reader can predict.
+//
+// Both constants are gone rather than kept unused: a stage list nothing renders
+// is a second source of truth waiting to disagree with TAB_ORDER.
+
+// The client lane still collapses (it groups by board state, not by stage, so
+// its sections are not tabs). A stage the operator has never touched opens by
+// its lane's own default. The moment he
 // opens or closes ANY section his answer wins and survives the reload — which
 // needs a way to tell "he closed everything" from "he has not decided yet",
 // because both are an empty list. TOUCHED is that marker: it rides in the same
@@ -569,7 +688,7 @@ function useOpenStages(
 // LANE A — Ivan
 // ---------------------------------------------------------------------------
 
-function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters, q, setQ, matched, view, setView, open, setOpen, lane, setLane }: {
+function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters, q, setQ, matched, view, setView, lane, setLane }: {
   drafts: ContentDraft[]
   stages: ContentStages
   lane: ContentLane
@@ -584,18 +703,22 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
   matched: number | null
   view: ContentView
   setView: (v: ContentView) => void
-  open: string[]
-  setOpen: (fn: (cur: string[]) => string[]) => void
 }) {
-  const stageOpen = useOpenStages(open, setOpen, DEFAULT_OPEN)
+  // ONE TAB, persisted. Same one-key localStorage shape the Flow/Calendar
+  // switch and the rail's collapse use — this is a view preference, not lane
+  // state, so it does not ride in the per-lane section entry the filters use.
+  const [tab, setTabState] = useState<ContentTab>(readTab)
+  const setTab = (t: ContentTab) => {
+    setTabState(t)
+    try { localStorage.setItem(TAB_KEY, t) } catch { /* private mode */ }
+  }
   // Determinism under a filter (phase1-review residual): picking Stage:
-  // Published used to render a different card count before vs after a reload,
-  // because the persisted filter landed on a section whose open/closed state
-  // was whatever the last session left. The rule is now stated: an ACTIVE
-  // stage filter forces that stage's section open.
+  // Published used to render a different card count before vs after a reload.
+  // The tabs inherit the rule unchanged — an ACTIVE stage filter selects its
+  // tab, so the filter and the table can never be describing two stages.
   const filterStage = filters.stage as ContentStage | undefined
   useEffect(() => {
-    if (filterStage) stageOpen.ensure(filterStage)
+    if (filterStage) setTab(filterStage)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterStage])
   const ideas = useIdeaCandidates(true)
@@ -609,23 +732,14 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
   // now (usePipelineHealth), which is also where the digest read that fed the
   // third one went. Nothing derives them twice.
 
-  const jump = (s: ContentStage) => {
-    stageOpen.ensure(s)
-    requestAnimationFrame(() => {
-      document.getElementById(`wb-s-${s}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
-  }
+  // A stage mark on the strip SELECTS its tab. It used to open a section and
+  // scroll to it; with one stage on screen the scroll has nothing left to do,
+  // and the top of the list is where the table already starts.
+  const jump = (s: ContentStage) => setTab(s)
 
-  // The other end of Ops' jump. The section is opened here and the scroll is
-  // given a frame's grace: the view may be flipping from calendar to flow in
-  // the same tick, and `wb-s-error` does not exist until that render lands.
+  // The other end of Ops' jump ("Open them in Content").
   useEffect(() => {
-    const on = () => {
-      stageOpen.ensure('error')
-      setTimeout(() => {
-        document.getElementById('wb-s-error')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }, 80)
-    }
+    const on = () => setTab('error')
     window.addEventListener('wb-open-content-errors', on)
     return () => window.removeEventListener('wb-open-content-errors', on)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -646,11 +760,17 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
       <CommandStrip
         lane={lane} setLane={setLane} view={view} setView={setView}
         stats={
-          // In calendar view a stage mark still counts the lane, and clicking it
-          // still means "take me to those rows" — so it switches the view back
-          // and jumps. A control that goes dead in one of two views is a control
-          // the reader has to learn twice.
-          <PipelineStats stages={stages} onJump={s => { setView('flow'); jump(s) }} />
+          // CALENDAR ONLY, since 2026-08-20. The marks and the tab bar print the
+          // same four numbers one row apart — measured on the first tabbed
+          // render: "Gen 0 · Review 1 · Appr 0 · Sched 2" sat directly above
+          // "Generating 0 · Needs review 1 · Approved 0 · Scheduled 2". That is
+          // the D6 doubling, and the tabs win it: they carry every stage rather
+          // than four, and the click SELECTS rather than scrolls.
+          // The calendar has no tab bar, so there the marks keep their job —
+          // count the lane, and take you back to the rows.
+          view === 'calendar'
+            ? <PipelineStats stages={stages} onJump={s => { setView('flow'); jump(s) }} />
+            : undefined
         }
         filter={
           // idleCount={false}: an unfiltered total on Ivan's lane was the figure
@@ -678,90 +798,95 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
         />
       ) : (
       <>
+      <StageTabs
+        tab={tab} setTab={setTab}
+        counts={{
+          // The ideas bank is a truncated slice of lm_idea_candidates, so its
+          // tab prints the SERVER count (ideas.counts.post) — the same figure
+          // the old band printed, for the same reason: a truncated number
+          // beside nine complete ones reads as a stage that is smaller than it
+          // is. Every other tab counts the rows the click will produce.
+          ideas: ideas.counts.post ?? ideas.split.post.length,
+          review: shownStages.review.length,
+          generating: shownStages.generating.length,
+          approved: shownStages.approved.length,
+          scheduled: shownStages.scheduled.length,
+          published: shownStages.published.length,
+          error: shownStages.error.length,
+          stuck: shownStages.stuck.length,
+          archived: shownStages.archived.length,
+          other: shownStages.other.length,
+        }}
+      />
+
       {/* ask 3 — the POST side of the content_type partition only. Rows with no
           content_type ride here too, labelled, rather than vanishing from both
-          lanes. ask 4 — open by default, sticky header, and the open flag is
-          persisted alongside the stage sections' (contentIdeas.ts). While a draft
-          facet is on the band keeps its header and its count and drops its
-          rows, so the drafts the filter DID find are the next thing on screen. */}
-      <IdeasSection
-        ideas={ideas.split.post} kind="post" n="01" count={ideas.counts.post}
-        unclassified={ideas.split.other}
-        loading={ideas.loading}
-        error={ideas.error} loadedAt={ideas.loadedAt} refresh={ideas.refresh}
-        hiddenByFilter={ideasHidden}
-        isOpen={ideasIsOpen(open)} onToggle={() => setOpen(toggleIdeasOpen)}
-      />
-
-      {/* The escape and the band above it are driven by the SAME predicate: when
-          nothing matched, the ideas band is already down to its header, so "No
-          drafts match this filter" is the first thing under the filter row
-          instead of the 75th. Clearing here restores both — one control, both
-          row sets. */}
-      {shown.length === 0 && drafts.length > 0
-        ? <FilteredEmpty noun="drafts" onClear={() => { setFilters({}); setQ('') }} />
-        : TRIAGE_ORDER.map((s, i) => (
-          <div key={s}>
-            <StageSection
-              s={s} n={String(i + 2).padStart(2, '0')} rows={shownStages[s]} lane="ivan"
-              refresh={refresh} onOpen={onOpen} openId={openId}
-              isOpen={stageOpen.isOpen(s)} toggle={() => stageOpen.toggle(s)}
-              sub={s === 'approved' && countUndated(shownStages.approved) > 0
-                ? `${countUndated(shownStages.approved)} approved without a date — on no other surface`
-                : null}
-            />
-            {/* The publish queue rides INSIDE the Scheduled section: it answers
-                the one question the drafts table cannot — did the thing that was
-                scheduled actually go out. */}
-            {s === 'scheduled' && stageOpen.isOpen('scheduled') && (
-              <QueueStrip
-                rows={queue.rows} loading={queue.loading} error={queue.error}
-                loadedAt={queue.loadedAt} refresh={queue.refresh}
-              />
-            )}
-          </div>
-        ))}
-
-      {/* 🔴 EVERY ERRORED ROW, not the old ones only.
-          This section used to render `shownStages.error.filter(d => !isRecentError(d))`,
-          because the last 48 hours belonged to the alarm band. The band is gone
-          (2026-08-07), so that filter would have quietly deleted the newest
-          errors — the ones most likely to still be fixable — from the surface
-          entirely. The window is not lost: it is stated in the sub-line, which
-          is where a time scope belongs once it is no longer a siren. */}
-      <StageSection
-        s="error" rows={shownStages.error} lane="ivan"
-        refresh={refresh} onOpen={onOpen} openId={openId}
-        isOpen={stageOpen.isOpen('error')} toggle={() => stageOpen.toggle('error')}
-        sub={(() => {
-          const recent = shownStages.error.filter(d => isRecentError(d)).length
-          return recent > 0
-            ? `${recent} of these errored inside the last ${ERROR_ALARM_HOURS} hours.`
-            : `Nothing has errored in the last ${ERROR_ALARM_HOURS} hours.`
-        })()}
-      />
-      {/* PAST DUE — a stage this lane rendered NOWHERE. `stuck` is a scheduled
-          row whose time came and went with no `source_post_id`: it silently
-          never went out. It was only ever visible inside the alarm band, so it
-          gets its own section rather than disappearing with it. */}
-      <StageSection
-        s="stuck" rows={shownStages.stuck} lane="ivan"
-        refresh={refresh} onOpen={onOpen} openId={openId}
-        isOpen={stageOpen.isOpen('stuck')} toggle={() => stageOpen.toggle('stuck')}
-        sub="Their time passed and no published post came back — they never went out."
-      />
-      {(['archived', 'other'] as const).map(s => (
-        <StageSection
-          key={s} s={s} rows={shownStages[s]} lane="ivan" refresh={refresh}
-          onOpen={onOpen} openId={openId}
-          isOpen={stageOpen.isOpen(s)} toggle={() => stageOpen.toggle(s)}
+          lanes. It is its own TAB now rather than a band above the stages, and
+          it renders open: the tab is the toggle. While a draft facet is on it
+          still keeps its header and its count and drops its rows. */}
+      {tab === 'ideas' ? (
+        <IdeasSection
+          ideas={ideas.split.post} kind="post" count={ideas.counts.post}
+          unclassified={ideas.split.other}
+          loading={ideas.loading}
+          error={ideas.error} loadedAt={ideas.loadedAt} refresh={ideas.refresh}
+          hiddenByFilter={ideasHidden}
+          // No isOpen/onToggle: the band keeps its OWN open flag, which
+          // defaults open. Wiring a noop toggle here would draw a chevron that
+          // does nothing — the one thing worse than a control you have to
+          // learn is a control that lies.
         />
-      ))}
-
-      {/* Magnets left this scroll on 08-03; Styles followed on 08-04 (its own
-          job now) and the daily summaries moved to Ops. The Content scroll
-          ends at the pillar mix. */}
-      <PillarMix rows={drafts} />
+      ) : shown.length === 0 && drafts.length > 0 ? (
+        /* The filter matched nothing ANYWHERE — said once, above the tabs'
+           worth of empty tables, with the one control that undoes it. A
+           per-tab "nothing at this stage" would be true and useless here: the
+           stage is not the reason. */
+        <FilteredEmpty noun="drafts" onClear={() => { setFilters({}); setQ('') }} />
+      ) : (
+        <>
+          <StageTable
+            s={tab} rows={shownStages[tab]} lane="ivan"
+            refresh={refresh} onOpen={onOpen} openId={openId}
+            sub={
+              tab === 'approved' && countUndated(shownStages.approved) > 0
+                ? `${countUndated(shownStages.approved)} approved without a date — on no other surface`
+                // 🔴 EVERY ERRORED ROW, not the old ones only. This table used
+                // to exclude the last 48 hours because that window belonged to
+                // an alarm band; the band went in 2026-08-07 and the window
+                // survives as this sentence, which is where a time scope
+                // belongs once it is no longer a siren.
+                : tab === 'error'
+                  ? (() => {
+                    const recent = shownStages.error.filter(d => isRecentError(d)).length
+                    return recent > 0
+                      ? `${recent} of these errored inside the last ${ERROR_ALARM_HOURS} hours.`
+                      : `Nothing has errored in the last ${ERROR_ALARM_HOURS} hours.`
+                  })()
+                  // PAST DUE — a scheduled row whose time came and went with no
+                  // `source_post_id`. It was only ever visible inside the alarm
+                  // band, so it keeps its own tab and its own sentence.
+                  : tab === 'stuck'
+                    ? 'Their time passed and no published post came back — they never went out.'
+                    : null
+            }
+            empty={tab === 'review' ? 'Nothing is waiting on you.' : undefined}
+          />
+          {/* The publish queue rides INSIDE the Scheduled tab: it answers the
+              one question the drafts table cannot — did the thing that was
+              scheduled actually go out. */}
+          {tab === 'scheduled' && (
+            <QueueStrip
+              rows={queue.rows} loading={queue.loading} error={queue.error}
+              loadedAt={queue.loadedAt} refresh={queue.refresh}
+            />
+          )}
+          {/* Magnets left this scroll on 08-03; Styles followed on 08-04 (its
+              own job now) and the daily summaries moved to Ops. The pillar mix
+              is a fact about the WHOLE lane, not about one stage, so it rides
+              under the archive tab rather than under every table. */}
+          {tab === 'published' && <PillarMix rows={drafts} />}
+        </>
+      )}
       </>
       )}
     </>
@@ -1017,7 +1142,6 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
             lane={lane} setLane={switchLane}
             filters={sect.filters} setFilters={setFilters} q={sect.q} setQ={setQ}
             matched={matched} view={view} setView={setView}
-            open={sect.open} setOpen={setOpenSections}
           />
         ) : (
           <MattanLane
