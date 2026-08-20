@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 
-export type OpsKind = 'escalation' | 'update' | 'newsjack' | 'weekly_report' | 'comment_reply' | 'comment_outbound' | 'booking' | 'precall_email'
+export type OpsKind = 'escalation' | 'update' | 'newsjack' | 'weekly_report' | 'comment_reply' | 'comment_outbound' | 'booking' | 'precall_email' | 'manual_invite'
 
 // The row shape varies by kind (escalation carries a prospect, update carries
 // receipts, newsjack carries the idea it will generate from), so context stays a
@@ -57,6 +57,13 @@ export type OpsContext = {
   hubspot_url?: string
   matched_prospect?: boolean
   stamped?: boolean
+  // manual_invite — Mattan hand-sent a calendar invite to a matched prospect
+  // (BIDIRECTIONAL_SYNC in HubSpot, invisible to the attribution tracker by
+  // design). The card is a to-do: stamp the attribution by hand, mark handled.
+  prospect_id?: string
+  meeting_title?: string
+  matched_via?: string
+  matched_value?: string
   // precall_email — 24h reminder drafted by the Precall Reminder → Ops Inbox
   // workflow off calendar_events. Approve here, the same workflow's sender lane
   // emails it from im@ivanmanfredi.com within ~5 minutes and stamps sent_at.

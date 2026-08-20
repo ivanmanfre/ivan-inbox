@@ -32,11 +32,11 @@ function timeAgo(iso: string): string {
 // 'OUTBOUND' said what the ENGINE calls the lane, not what the card is. Ivan
 // reads these as comments, so they say Comments; `comment_reply` becomes REPLY
 // in the same pass so the two comment kinds cannot be told apart by an S.
-const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK', weekly_report: 'WEEKLY', comment_reply: 'REPLY', comment_outbound: 'COMMENTS', booking: 'BOOKED', precall_email: 'PRE-CALL' }
+const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK', weekly_report: 'WEEKLY', comment_reply: 'REPLY', comment_outbound: 'COMMENTS', booking: 'BOOKED', precall_email: 'PRE-CALL', manual_invite: 'INVITE' }
 // Escalations run warm/red (something needs attention); updates stay neutral/blue (fyi);
 // newsjack runs amber because it is the only kind with a clock on it. Booking takes the
 // Rise accent gold: it is the only card that reports money arriving rather than work owed.
-const KIND_COLOR: Record<OpsKind, string> = { escalation: '#FF453A', update: '#0A84FF', newsjack: '#FF9F0A', weekly_report: '#30D158', comment_reply: '#BF5AF2', comment_outbound: '#64D2FF', booking: '#FFD60A', precall_email: '#5E5CE6' }
+const KIND_COLOR: Record<OpsKind, string> = { escalation: '#FF453A', update: '#0A84FF', newsjack: '#FF9F0A', weekly_report: '#30D158', comment_reply: '#BF5AF2', comment_outbound: '#64D2FF', booking: '#FFD60A', precall_email: '#5E5CE6', manual_invite: '#66D4CF' }
 
 // Slack channel ids are unreadable on a card. escalation/update/booking all print a
 // destination, so name the ones we own and fall back to the raw id for anything else.
@@ -113,6 +113,19 @@ function ContextLine({ draft }: { draft: OpsDraft }) {
         {ctx.hubspot_url && (
           <a className="ops-link" href={ctx.hubspot_url} target="_blank" rel="noreferrer">HubSpot</a>
         )}
+      </div>
+    )
+  }
+  // A manual-invite card is a to-do, not a draft: Mattan hand-sent a calendar
+  // invite to a matched prospect, which can never auto-attribute (calendar invites
+  // bypass the booking page). The evidence line is what goes into the verdict row.
+  if (draft.kind === 'manual_invite') {
+    return (
+      <div className="ops-ctx">
+        <span>{[ctx.prospect_name, ctx.company].filter(Boolean).join(' · ')}</span>
+        {ctx.when_str && <span>call {ctx.when_str}</span>}
+        {ctx.matched_via && <span>{ctx.matched_via}: {ctx.matched_value}</span>}
+        {ctx.meeting_title && <span>&ldquo;{ctx.meeting_title}&rdquo;</span>}
       </div>
     )
   }
@@ -306,6 +319,22 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
       if (!ok) return
       setBusy(true); setError('')
       try { await approveOpsDraft(draft.id, body); refresh() }
+      catch (e) { setError(errText(e)) }
+      finally { setBusy(false) }
+      return
+    }
+    // A manual-invite card dispatches nothing: the work (stamping the attribution
+    // row + call_booked_at) happens outside this app, so approve is the "I did it"
+    // acknowledgement and double-stamps like weekly_report.
+    if (draft.kind === 'manual_invite') {
+      const ok = await confirm({
+        title: 'Mark this attribution handled?',
+        message: 'Nothing is sent. Close this once the booking is stamped in booking_attributions + call_booked_at.',
+        confirmText: 'Mark handled',
+      })
+      if (!ok) return
+      setBusy(true); setError('')
+      try { await approveWeeklyReport(draft.id, body); refresh() }
       catch (e) { setError(errText(e)) }
       finally { setBusy(false) }
       return
