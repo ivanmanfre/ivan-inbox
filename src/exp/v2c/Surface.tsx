@@ -144,6 +144,54 @@ const AXIS_ABBR: Record<string, string> = {
 }
 const axisAbbr = (s: string) => AXIS_ABBR[s.toLowerCase()] ?? s.slice(0, 3).toUpperCase()
 
+// THE STAGE TAB BAR (2026-08-20) — the pile, laid on its side.
+//
+// Ivan: "i dont like the pile format on the stages... make it more clickup
+// table were i can switch between them", then "make sure everyone has it like
+// that". So it lives HERE rather than beside one lane's render: three surfaces
+// draw it now (Ivan's posts, the client lanes, the lead magnets) and a fourth
+// will, and a tab bar that drifted per lane is the tag-wall argument one level
+// up.
+//
+// It is deliberately dumb. The caller owns what a tab MEANS — a stage on the
+// post pipeline, a group-plus-stage on a client lane, an LM stage — and hands
+// over a label, a count and a key. This file owns only the geometry: a sticky,
+// horizontally-scrolling row of pills that never wraps, because ten tabs on two
+// rows is the pile again and it would move the table's top edge every time a
+// stage emptied.
+export type StageTab = {
+  key: string
+  label: string
+  n: number
+  // The neutral "this is waiting on you" dot. Only the decision stage takes it
+  // — a backlog is not a warning, it is the work (the rule the section heads
+  // kept before these replaced them).
+  mark?: boolean
+}
+
+export function StageTabs({ tabs, active, onSelect }: {
+  tabs: StageTab[]
+  active: string
+  onSelect: (key: string) => void
+}) {
+  return (
+    <div className="ct-tabs" role="tablist">
+      {tabs.map(t => (
+        <button
+          type="button" key={t.key} role="tab"
+          className={`ct-tab${active === t.key ? ' on' : ''}`}
+          aria-selected={active === t.key}
+          onClick={() => onSelect(t.key)}
+        >
+          <span className="ct-tab-t">{t.label}</span>
+          <span className="ct-tab-n">{t.n}</span>
+          {t.mark && t.n > 0 && <span className="wb-sech-dot attention" />}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export function CapsuleChart({ parts, onJump }: {
   parts: { key: string; label: string; short?: string; n: number }[]
   onJump?: (key: string) => void

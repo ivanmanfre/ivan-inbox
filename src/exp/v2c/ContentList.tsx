@@ -17,16 +17,14 @@ import {
   type FilterState,
 } from '../../lib/contentFilters'
 import { useSectionState } from '../../hooks/useSectionState'
-import {
-  draftFacetsActive, stagesWriteBase, STAGES_TOUCHED,
-} from './contentIdeas'
+import { draftFacetsActive } from './contentIdeas'
 import { useConfirm } from '../../components/ConfirmSheet'
 import { ReviewActions } from './ReviewActions'
 import { FilteredEmpty } from './ContentBits'
 import { FilterRow } from './FilterRow'
 import { IdeasSection, PillarMix, QueueStrip } from './ContentSections'
 import { postTime, relTime, sourceLabel, tagLabel, typeLabel } from './fmt'
-import { CalmEmpty, Failed, SectionHead, StatChip } from './Surface'
+import { CalmEmpty, Failed, StageTabs, StatChip, type StageTab } from './Surface'
 import { hasMock } from './mock'
 import { ContentCalendar } from './ContentCalendar'
 
@@ -464,62 +462,11 @@ function PipelineStats({ stages, onJump }: {
 //     pre-window alert backlog) — those moved to Ops, where the quiet count
 //     belongs, and Ops can jump straight back to the Errors section here.
 //
-// A stage section with its rows. Shared by both lanes — the lanes differ in how
-// they NEST these, not in how a stage renders.
-function StageSection({ s, n, rows, lane, group, refresh, onOpen, openId, isOpen, toggle, sub }: {
-  s: ContentStage
-  n?: string
-  rows: ContentDraft[]
-  lane: ContentLane
-  // Which of the client lane's two categories this section is nested in. Absent
-  // on the Ivan lane, which has no such split. It changes the LABEL, because on
-  // the client lane one status means two different things — see clientStageLabel.
-  group?: BoardGroup
-  refresh: () => void
-  onOpen: OpenDraft
-  openId: string | null
-  isOpen: boolean
-  toggle: () => void
-  sub?: string | null
-}) {
-  if (rows.length === 0) return null
-  return (
-    <div id={group ? `wb-s-${group}-${s}` : `wb-s-${s}`}>
-      <SectionHead
-        n={n}
-        title={group ? clientStageLabel(s, group) : STAGE_LABEL[s]}
-        count={rows.length}
-        // A backlog is not a warning. Only review carries a mark, and only the
-        // neutral "pending" one — and on the client lane only in the category
-        // that is actually waiting on Ivan. A mark on the rows Mattan is sitting
-        // on would point at work that is not his to do or Ivan's to chase.
-        sev={s === 'review' && (lane === 'ivan' || group === 'internal') ? 'attention' : null}
-        open={isOpen}
-        onToggle={toggle}
-      />
-      {isOpen && (
-        <>
-          {sub && <div className="ct-subline">{sub}</div>}
-          {/* Column labels once per section, on the same grid as the rows, so
-              the eye reads a TABLE (dashboard-v2's anatomy). Desktop only. */}
-          <div className="ct-cols-head" aria-hidden>
-            <span /><span>Title</span><span>Pillar</span><span>Funnel</span>
-            <span>Source</span><span /><span />
-          </div>
-          {rows.map(d => (
-            <Card
-              key={d.id} d={d} lane={lane} refresh={refresh} onOpen={onOpen}
-              active={openId === d.id} queue={rows}
-              // The decision surface, and only it — see Card's `glance` note.
-              glance={s === 'review'}
-            />
-          ))}
-        </>
-      )}
-    </div>
-  )
-}
-
+// StageSection is GONE (2026-08-20). Both lanes render StageTable under a tab
+// now, so the collapsible header it drew — number, title, count, severity dot,
+// chevron — has no surface left. Everything it carried survives: the count and
+// the dot moved onto the tab, the title IS the tab, and the sub-line moved into
+// the table. The one thing deliberately not rebuilt is the chevron.
 // ---------------------------------------------------------------------------
 // THE TABS — one stage on screen at a time (2026-08-20)
 // ---------------------------------------------------------------------------
@@ -559,43 +506,41 @@ const TAB_ORDER: ContentTab[] = [
   'error', 'stuck', 'archived', 'other',
 ]
 const TAB_ALWAYS: ContentTab[] = ['ideas', 'review', 'generating', 'approved', 'scheduled', 'published', 'error']
-const TAB_KEY = 'wb-content-tab'
 
-function readTab(): ContentTab {
+// ONE KEY PER LANE. Ivan's lane and the client lanes do not even share a tab
+// VOCABULARY — his are stages, theirs are group-plus-stage — so a single key
+// would restore a tab that does not exist on the lane being opened. `readTab`
+// validates against the lane's own list and falls back rather than trusting
+// what it read.
+function tabStoreKey(lane: ContentLane): string { return `wb-content-tab-${lane}` }
+
+function readTab(lane: ContentLane, valid: readonly string[], fallback: string): string {
   try {
-    const v = localStorage.getItem(TAB_KEY)
-    return (TAB_ORDER as string[]).includes(v ?? '') ? (v as ContentTab) : 'review'
-  } catch { return 'review' }
+    const v = localStorage.getItem(tabStoreKey(lane))
+    return v && valid.includes(v) ? v : fallback
+  } catch { return fallback }
 }
 
-// The bar. Counts are over the FILTERED rows — the tab has to promise the
-// number you land on, so a filter that empties a stage empties its tab too
-// rather than advertising rows the click cannot produce.
-function StageTabs({ tab, setTab, counts }: {
-  tab: ContentTab
-  setTab: (t: ContentTab) => void
-  counts: Record<ContentTab, number>
-}) {
-  const shown = TAB_ORDER.filter(t => TAB_ALWAYS.includes(t) || counts[t] > 0)
-  return (
-    <div className="ct-tabs" role="tablist">
-      {shown.map(t => (
-        <button
-          type="button" key={t} role="tab"
-          className={`ct-tab${tab === t ? ' on' : ''}`}
-          aria-selected={tab === t}
-          onClick={() => setTab(t)}
-        >
-          <span className="ct-tab-t">{t === 'ideas' ? 'Ideas' : STAGE_LABEL[t]}</span>
-          <span className="ct-tab-n">{counts[t]}</span>
-          {/* Same rule the section head kept: review is the only stage that
-              carries a mark, and only the neutral one. A backlog is not a
-              warning — it is the work. */}
-          {t === 'review' && counts[t] > 0 && <span className="wb-sech-dot attention" />}
-        </button>
-      ))}
-    </div>
-  )
+// The tab, persisted. Returned as [value, set] so both lanes state the rule
+// once: writing the answer to storage is part of selecting a tab, never a
+// separate effect that can be forgotten on one of the two call sites.
+function useStageTab(lane: ContentLane, valid: readonly string[], fallback: string) {
+  const [tab, setTabState] = useState<string>(() => readTab(lane, valid, fallback))
+  const setTab = (t: string) => {
+    setTabState(t)
+    try { localStorage.setItem(tabStoreKey(lane), t) } catch { /* private mode */ }
+  }
+  // The lane switch changes the vocabulary underfoot. Re-read for the new lane
+  // rather than carrying the old lane's answer into a bar that has no such tab
+  // — which renders every tab unselected and a table nobody asked for.
+  const laneRef = useRef(lane)
+  useEffect(() => {
+    if (laneRef.current === lane) return
+    laneRef.current = lane
+    setTabState(readTab(lane, valid, fallback))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lane])
+  return [laneRef.current === lane ? tab : readTab(lane, valid, fallback), setTab] as const
 }
 
 // One stage's rows as a table. No header and no chevron: the tab above it is
@@ -653,36 +598,10 @@ function StageTable({ s, rows, lane, refresh, onOpen, openId, sub, empty }: {
 // Both constants are gone rather than kept unused: a stage list nothing renders
 // is a second source of truth waiting to disagree with TAB_ORDER.
 
-// The client lane still collapses (it groups by board state, not by stage, so
-// its sections are not tabs). A stage the operator has never touched opens by
-// its lane's own default. The moment he
-// opens or closes ANY section his answer wins and survives the reload — which
-// needs a way to tell "he closed everything" from "he has not decided yet",
-// because both are an empty list. TOUCHED is that marker: it rides in the same
-// array, takes the same identifier shape the store already validates, and
-// cannot collide with a stage id (the stages are named in ContentStage).
-//
-// The sentinel and the rebuild it drives live in contentIdeas.ts, with the
-// ideas band's two keys: the array has TWO writers and neither rebuild is
-// correct read on its own (contentIdeas.ts, "ONE ARRAY, TWO WRITERS").
-const TOUCHED = STAGES_TOUCHED
-
-function useOpenStages(
-  persisted: string[],
-  setPersisted: (fn: (cur: string[]) => string[]) => void,
-  initial: string[],
-) {
-  const decided = persisted.includes(TOUCHED)
-  const open = decided ? persisted : initial
-  const write = (next: (cur: string[]) => string[]) =>
-    setPersisted(cur => [...next(stagesWriteBase(cur, initial)), TOUCHED])
-  return {
-    isOpen: (s: string) => open.includes(s),
-    toggle: (s: string) =>
-      write(cur => (cur.includes(s) ? cur.filter(x => x !== s) : [...cur, s])),
-    ensure: (s: string) => write(cur => (cur.includes(s) ? cur : [...cur, s])),
-  }
-}
+// The per-section collapse store went with the sections. Its sentinel (a
+// TOUCHED marker that told "he closed everything" apart from "he has not
+// decided yet") lives on in contentIdeas.ts for the ideas band, which is the
+// other writer of that array.
 
 // ---------------------------------------------------------------------------
 // LANE A — Ivan
@@ -704,14 +623,10 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
   view: ContentView
   setView: (v: ContentView) => void
 }) {
-  // ONE TAB, persisted. Same one-key localStorage shape the Flow/Calendar
-  // switch and the rail's collapse use — this is a view preference, not lane
-  // state, so it does not ride in the per-lane section entry the filters use.
-  const [tab, setTabState] = useState<ContentTab>(readTab)
-  const setTab = (t: ContentTab) => {
-    setTabState(t)
-    try { localStorage.setItem(TAB_KEY, t) } catch { /* private mode */ }
-  }
+  // ONE TAB, persisted per lane. A view preference, so it keeps its own
+  // localStorage key rather than riding in the section entry the filters use.
+  const [tabRaw, setTab] = useStageTab('ivan', TAB_ORDER, 'review')
+  const tab = tabRaw as ContentTab
   // Determinism under a filter (phase1-review residual): picking Stage:
   // Published used to render a different card count before vs after a reload.
   // The tabs inherit the rule unchanged — an ACTIVE stage filter selects its
@@ -799,24 +714,22 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
       ) : (
       <>
       <StageTabs
-        tab={tab} setTab={setTab}
-        counts={{
-          // The ideas bank is a truncated slice of lm_idea_candidates, so its
-          // tab prints the SERVER count (ideas.counts.post) — the same figure
-          // the old band printed, for the same reason: a truncated number
-          // beside nine complete ones reads as a stage that is smaller than it
-          // is. Every other tab counts the rows the click will produce.
-          ideas: ideas.counts.post ?? ideas.split.post.length,
-          review: shownStages.review.length,
-          generating: shownStages.generating.length,
-          approved: shownStages.approved.length,
-          scheduled: shownStages.scheduled.length,
-          published: shownStages.published.length,
-          error: shownStages.error.length,
-          stuck: shownStages.stuck.length,
-          archived: shownStages.archived.length,
-          other: shownStages.other.length,
-        }}
+        active={tab} onSelect={k => setTab(k)}
+        tabs={TAB_ORDER
+          .map(t => ({
+            key: t,
+            label: t === 'ideas' ? 'Ideas' : STAGE_LABEL[t],
+            // The ideas bank is a truncated slice of lm_idea_candidates, so its
+            // tab prints the SERVER count — the same figure the old band
+            // printed, for the same reason: a truncated number beside nine
+            // complete ones reads as a stage smaller than it is. Every other
+            // tab counts the rows the click will produce.
+            n: t === 'ideas'
+              ? (ideas.counts.post ?? ideas.split.post.length)
+              : shownStages[t].length,
+            mark: t === 'review',
+          }))
+          .filter(t => TAB_ALWAYS.includes(t.key as ContentTab) || t.n > 0)}
       />
 
       {/* ask 3 — the POST side of the content_type partition only. Rows with no
@@ -897,18 +810,38 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
 // LANE B — Mattan Danino
 // ---------------------------------------------------------------------------
 
-// ONE LEVEL of sections, not two.
+// ONE LEVEL, and since 2026-08-20 one TAB BAR — Ivan: "make sure everyone has
+// it like that".
 //
 // Ivan, 2026-08-04: "for mattan idk why there are 2 categories, not on his
 // board and waiting on u... bc those are the same". The old render nested a
 // "Waiting on you" stage section inside a "Not on his board" group header —
-// two headers stacked over the same rows. The group level is gone: the lane
-// renders flat stage sections, ours first (the work), then his board's, and
-// clientStageLabel already carries the where ("On buffer · RISE DTC board", "Mattan
-// approved") so nothing is lost with the header.
+// two headers stacked over the same rows. The group level went then, and
+// clientStageLabel carries the where instead ("On buffer · client board",
+// "Client approved"), which is exactly what makes a FLAT tab bar possible here:
+// every tab's label already says both whose turn it is and where the row sits.
+//
+// 🔴 A CLIENT TAB IS GROUP-PLUS-STAGE, not a stage. `review` means two
+// different things on this lane — ours means "Ivan has not decided whether the
+// client should see it", his means "the client has it and has not answered" —
+// so one Review tab holding both would be the collision the group labels exist
+// to prevent. The key is `${group}_${stage}`, the same composite the collapse
+// state used, and it stays inside sectionState's KEY_RE (/^[a-z][a-z0-9_]*$/).
 const BOARD_ORDER: BoardGroup[] = ['internal', 'board']
 
-function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, setQ, matched, view, setView, open, setOpen, lane, setLane, onBoard }: {
+// Every stage a client row can hold, in pipeline order, minus `ideas` (that
+// bank is Ivan's — lm_idea_candidates carries no tenancy column at all).
+const CLIENT_STAGES: ContentStage[] = [
+  'review', 'generating', 'approved', 'scheduled', 'published',
+  'error', 'stuck', 'archived', 'other',
+]
+const CLIENT_TAB_KEYS: string[] = BOARD_ORDER.flatMap(g => CLIENT_STAGES.map(s => `${g}_${s}`))
+// The one tab that shows at zero. It is the decision the lane exists to ask
+// for, and a bar that hid it on a quiet day would answer "is anything waiting
+// on me" by omission.
+const CLIENT_TAB_ALWAYS = 'internal_review'
+
+function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, setQ, matched, view, setView, lane, setLane, onBoard }: {
   drafts: ContentDraft[]
   lane: ContentLane
   setLane: (l: ContentLane) => void
@@ -926,30 +859,15 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
   matched: number | null
   view: ContentView
   setView: (v: ContentView) => void
-  open: string[]
-  setOpen: (fn: (cur: string[]) => string[]) => void
 }) {
-  // Same density rule as the Ivan lane, and the same persistence: only the stage
-  // that needs a decision opens itself. On this lane `review` means "available
-  // to be promoted to the board", which is still the one Ivan acts on.
-  // 🔴 The composite key, and it MUST match projectOpen's KEY_RE
-  // (/^[a-z][a-z0-9_]*$/ — sectionState.ts:65): a `group:stage` key would be
-  // silently dropped on write and every section would reopen on reload.
-  const stageOpen = useOpenStages(open, setOpen, [
-    'internal_review', 'internal_generating', 'internal_approved', 'internal_scheduled',
-    'board_review', 'board_approved', 'board_scheduled',
-  ])
-  // Same determinism rule as the Ivan lane: an active stage filter opens its section.
-  // Same determinism rule as the Ivan lane, applied to BOTH categories: a
-  // stage filter that opened only one of them would render a different row
-  // count before and after a reload, which is the bug this rule exists for.
+  // The lane opens on the decision it is asking for. Per-lane key, so RISE and
+  // ARCH keep their own answer.
+  const [tab, setTab] = useStageTab(lane, CLIENT_TAB_KEYS, CLIENT_TAB_ALWAYS)
+  // Same determinism rule as the Ivan lane: an active stage filter selects its
+  // tab, so the filter and the table can never describe two different stages.
+  // OURS first — a stage filter on this lane is Ivan asking about work he still
+  // holds; if that half is empty the effect below falls through to the client's.
   const filterStage = filters.stage as ContentStage | undefined
-  useEffect(() => {
-    if (!filterStage) return
-    stageOpen.ensure(`internal_${filterStage}`)
-    stageOpen.ensure(`board_${filterStage}`)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterStage])
   const specs = draftSpecs(lane)
   const facets = buildFacets(drafts, specs)
   // The same five prominent axes as Ivan's lane, deliberately WITHOUT `board`:
@@ -963,6 +881,43 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
   // pass for it: it already renders EVERY stage — `error` and `stuck` included —
   // inside both board categories, so the band was the only surface on which
   // those rows appeared twice.
+
+  // The two halves, split ONCE. boardGroupOf, never an inline
+  // `board_visible === true`: the grouping and the count that heads the lane
+  // have to agree about NULL, and they only can if they ask the same function.
+  const byGroup: Record<BoardGroup, ContentStages> = {
+    internal: groupByStage(shown.filter(d => boardGroupOf(d) === 'internal')),
+    board: groupByStage(shown.filter(d => boardGroupOf(d) === 'board')),
+  }
+  const tabs: StageTab[] = BOARD_ORDER.flatMap(g => CLIENT_STAGES.map(st => ({
+    key: `${g}_${st}`,
+    label: clientStageLabel(st, g),
+    n: byGroup[g][st].length,
+    // OUR review is the only tab that carries the waiting-on-you dot. A mark on
+    // the rows the client is sitting on would point at work that is not his to
+    // do or Ivan's to chase.
+    mark: g === 'internal' && st === 'review',
+  }))).filter(t => t.key === CLIENT_TAB_ALWAYS || t.n > 0)
+
+  // An active stage filter selects a tab that exists. Ours first, then the
+  // client's — a stage filter here is Ivan asking about work he still holds.
+  useEffect(() => {
+    if (!filterStage) return
+    const wanted = [`internal_${filterStage}`, `board_${filterStage}`]
+      .find(k => tabs.some(t => t.key === k))
+    if (wanted) setTab(wanted)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterStage])
+
+  // The tab a reload restored can be a stage that has since emptied, and the
+  // bar drops empty tabs — so the selection is resolved against what is on the
+  // bar RIGHT NOW rather than trusted. Falling back to the first tab keeps the
+  // table and the highlighted pill describing the same rows.
+  const active = tabs.some(t => t.key === tab) ? tab : (tabs[0]?.key ?? CLIENT_TAB_ALWAYS)
+  const [activeGroup, activeStage] = (() => {
+    const i = active.indexOf('_')
+    return [active.slice(0, i) as BoardGroup, active.slice(i + 1) as ContentStage]
+  })()
 
   return (
     <>
@@ -991,31 +946,27 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
 
       {view === 'calendar' ? (
         <ContentCalendar rows={shown} onOpen={onOpen} refresh={refresh} />
-      ) : shown.length === 0 && drafts.length > 0
-        ? <FilteredEmpty noun="drafts" onClear={() => { setFilters({}); setQ('') }} />
-        : BOARD_ORDER.map(g => {
-          // boardGroupOf, never an inline `board_visible === true`: the grouping
-          // and the count that heads the lane have to agree about NULL, and they
-          // only can if they ask the same function.
-          const rows = shown.filter(d => boardGroupOf(d) === g)
-          if (rows.length === 0) return null
-          const stages = groupByStage(rows)
-          return ([...PIPELINE_STAGES, 'error', 'stuck', 'archived', 'other'] as ContentStage[])
-            .filter(s => s !== 'ideas')
-            .map(s => (
-              <StageSection
-                key={`${g}_${s}`} s={s} rows={stages[s]} lane="risedtc" group={g}
-                refresh={refresh}
-                onOpen={onOpen} openId={openId}
-                // 🔴 Keyed by GROUP as well as stage. Both halves of the lane
-                // hold a `review` section and they are different questions, so
-                // collapsing one must not collapse the other — which a
-                // stage-only key did.
-                isOpen={stageOpen.isOpen(`${g}_${s}`)}
-                toggle={() => stageOpen.toggle(`${g}_${s}`)}
+      ) : (
+        <>
+          <StageTabs tabs={tabs} active={active} onSelect={setTab} />
+          {shown.length === 0 && drafts.length > 0
+            ? <FilteredEmpty noun="drafts" onClear={() => { setFilters({}); setQ('') }} />
+            : (
+              <StageTable
+                s={activeStage} rows={byGroup[activeGroup][activeStage]}
+                // 🔴 `lane`, not a hardcoded 'risedtc'. This component draws
+                // every client lane (ARCH included), and the row uses it to
+                // decide whether to print source_label and whether the review
+                // controls are legal.
+                lane={lane}
+                refresh={refresh} onOpen={onOpen} openId={openId}
+                empty={active === CLIENT_TAB_ALWAYS
+                  ? 'Nothing is waiting on you.'
+                  : `Nothing at ${clientStageLabel(activeStage, activeGroup).toLowerCase()}.`}
               />
-            ))
-        })}
+            )}
+        </>
+      )}
 
       {/* The lead-magnet lane left this scroll for the Magnets job; Styles is
           its own job now (08-04). No pillar TARGET on this lane either: the
@@ -1069,11 +1020,9 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
   }
   const setFilters = (f: FilterState) => setSect(p => ({ ...p, filters: f }))
   const setQ = (q: string) => setSect(p => ({ ...p, q }))
-  // Collapse state rides in the SAME per-lane section entry as the filters, so
-  // "what I had open on Ivan's lane" cannot leak onto Mattan's — the same
-  // keying argument the filters were given.
-  const setOpenSections = (fn: (cur: string[]) => string[]) =>
-    setSect(p => ({ ...p, open: fn(p.open) }))
+  // `sect.open` is still WRITTEN by the ideas band through its own helpers; no
+  // content section reads it any more (the tabs replaced the collapse store),
+  // so nothing here projects it down a lane.
   const switchLane = (l: ContentLane) => setLane(l)
 
   // Ops' "Open them in Content" (OpsBoard, PipelineNotes). The errored rows are
@@ -1149,7 +1098,6 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
             lane={lane} setLane={switchLane} onBoard={onBoard}
             filters={sect.filters} setFilters={setFilters} q={sect.q} setQ={setQ}
             matched={matched} view={view} setView={setView}
-            open={sect.open} setOpen={setOpenSections}
           />
         )}
         <div style={{ height: 24 }} />
