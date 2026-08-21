@@ -47,7 +47,8 @@ export function RowSelect({ id, kind, label, caps, taxonomy, lane }: {
   // The registry answers "what is this row"; the DOM answers "what order are
   // the rows in". Registration is keyed by id and cleaned up on unmount, so a
   // filter change cannot leave a phantom row behind for a bulk action to hit.
-  useEffect(() => registerRow(rowRef.current), [id, kind, label, caps.join(','), lane])
+  const capKey = caps.join(',')
+  useEffect(() => registerRow(rowRef.current), [id, kind, label, capKey, lane])
 
   // The parent carries the attributes: `data-wbrow` is what the keyboard layer
   // walks, and the other two are what section C paints.

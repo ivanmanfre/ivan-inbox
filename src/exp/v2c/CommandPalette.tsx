@@ -67,10 +67,11 @@ export function CommandPalette({ cmds, onClose }: {
   // The cursor starts on the first command that can actually run. Landing it on
   // a dimmed row would make the first Enter a no-op, which reads as a broken
   // palette rather than as a refusal.
-  useEffect(() => {
-    const first = shown.findIndex(c => c.ready)
-    setCursor(first < 0 ? 0 : first)
-  }, [q, shown.length])
+  const firstReady = useMemo(() => {
+    const i = shown.findIndex(c => c.ready)
+    return i < 0 ? 0 : i
+  }, [shown])
+  useEffect(() => { setCursor(firstReady) }, [firstReady])
 
   useEffect(() => { field.current?.focus() }, [])
 
