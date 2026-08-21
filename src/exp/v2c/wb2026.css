@@ -476,6 +476,18 @@
   .wb.wb.wb .wb-solo .rows > .r:nth-of-type(2n){ box-shadow:inset 1px 0 0 var(--sep) }
 }
 
+/* NO MEASURE IN THIS APP GETS WIDER BECAUSE OF THIS PASS. The snippet is one
+   ellipsized line, so the reading-measure argument does not fully bite on it,
+   but the harness counts every text element over 70ch and the type pass owns
+   that gate. 88ch is exactly what `.snip` measured at 1440 BEFORE the pane cap
+   came off (87ch), so a wider row still buys more of the conversation and no
+   line is longer than one that already shipped. Without it the uncapped row
+   took the snippet to 126ch at 1440 and 121ch at 2560.
+   OUTSIDE the container query on purpose: the cap came off at every width, so
+   the guard has to be at every width too, not only where the second column
+   turns on. */
+.wb.wb.wb .wb-solo .rows > .r .snip{ max-width:88ch }
+
 /* D2 · THE CONTENT TABLE ASKS THE PANE, NOT THE WINDOW.
    faithful.css:2483 and :2531 already worked out the right three forms and the
    right two thresholds for this table, measured against the fixed tracks
