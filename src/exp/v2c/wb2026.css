@@ -20,6 +20,18 @@
 /* A · LABELS — human words for database values (pass 2)                       */
 /* ========================================================================== */
 
+/* THE ERRORS TAB'S REASON LINE (ContentList.tsx Card, phase2). Same one-line
+   ellipsis treatment .ct-src already carries in faithful.css — meta size,
+   text2 rather than text3 because this is the fact the row is IN THE TAB for
+   ("why did this fail"), one step louder than the source legibility line it
+   sits below. Full text lives in the element's title attribute; this box
+   only ever shows one line, no matter how long taxonomy.error_message runs. */
+.wb.wb.wb .ct-reason{
+  margin-top:2px;
+  font-size:var(--fs-meta); color:var(--text2);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+
 /* ========================================================================== */
 /* B · TODAY — the briefing (pass 3)                                           */
 /* ========================================================================== */
