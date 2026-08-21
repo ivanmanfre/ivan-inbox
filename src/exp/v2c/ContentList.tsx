@@ -23,6 +23,8 @@ import { useConfirm } from '../../components/ConfirmSheet'
 import { ReviewActions } from './ReviewActions'
 import { FilteredEmpty } from './ContentBits'
 import { FilterRow } from './FilterRow'
+import { RowSelect } from './RowSelect'
+import type { RowCap } from './commandStore'
 import { IdeasSection, PillarMix, QueueStrip } from './ContentSections'
 import { postTime, relTime, sourceLabel, tagLabel, typeLabel } from './fmt'
 import { CalmEmpty, Failed, StageTabs, StatChip, type StageTab } from './Surface'
@@ -173,11 +175,28 @@ function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
   // labelled qa_verdict as a fallback, and an honest sentence rather than a
   // dash when the row carries neither.
   const reason = stage === 'error' ? draftFailureReason(d) : null
+  // WHAT A BULK ACTION MAY DO TO THIS ROW. Declared here because this is the
+  // only place that knows the row's status, its lane and whether it sits on a
+  // client board; the bulk bar never infers a capability. Both rules are the
+  // ones the single-row controls already obey, read from the same functions:
+  // reviewActionable gates Approve and Skip, and the ✕ (RowDelete) refuses a
+  // promoted client draft because deleting it leaves a ghost on the client's
+  // board.
+  const caps: RowCap[] = [
+    ...(reviewActionable(d.status, lane) ? (['approve', 'skip'] as RowCap[]) : []),
+    ...(lane === 'ivan' || boardGroupOf(d) !== 'board' ? (['delete'] as RowCap[]) : []),
+  ]
   return (
     <div
       className={`ct-card ct-tap${active ? ' wb-card-on' : ''}${stalled ? ' ct-stalled' : ''}`}
       onClick={() => onOpen(d.id, title, queue)}
     >
+      {/* The row's registration with the command layer. It writes data-wbrow on
+          this div, which is what j/k walks and what x selects. */}
+      <RowSelect
+        id={d.id} kind="draft" label={title} caps={caps}
+        taxonomy={d.taxonomy} lane={lane}
+      />
       {/* anchor slot — exactly ONE mark, at a fixed width, carrying the QA verdict */}
       <div className="ct-anchor" data-st={stage} data-qa={qaState}>
         {thumb
@@ -1049,6 +1068,14 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
     return () => window.removeEventListener('wb-open-content-errors', on)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // A bulk action finished. The bar has no reference to this list and does not
+  // need one: it says the rows changed, and whatever is mounted refetches.
+  useEffect(() => {
+    const on = () => refresh()
+    window.addEventListener('wb-rows-changed', on)
+    return () => window.removeEventListener('wb-rows-changed', on)
+  }, [refresh])
 
   const err = error ?? (hasMock('fetch-error') ? 'PostgREST returned 500 for carousel_drafts' : null)
   const firstLoad = loading && drafts.length === 0

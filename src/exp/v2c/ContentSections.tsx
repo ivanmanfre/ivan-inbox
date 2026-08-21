@@ -22,6 +22,7 @@ import { withoutDecided } from './contentIdeas'
 import type { AgentSummary } from '../../lib/agent'
 import { FilteredEmpty, Figure, KeyRows } from './ContentBits'
 import { FilterRow } from './FilterRow'
+import { RowSelect } from './RowSelect'
 import { absTime, relOrAhead, relTime, sourceLabel } from './fmt'
 import { CalmEmpty, Failed, SectionHead, StageTabs } from './Surface'
 import { label } from '../../lib/labels'
@@ -495,6 +496,11 @@ function LmRow({ r, onOpen, queue }: { r: Resource; onOpen?: OpenMagnet; queue: 
       className={`ct-card ct-res-row${stuck || stalled ? ' bad' : ''}${onOpen ? ' ct-tap' : ''}`}
       onClick={onOpen ? () => onOpen(r.id, r.topic ?? 'Untitled', queue) : undefined}
     >
+      {/* The row's registration with the command layer: j/k walks it, x selects
+          it, and the mark writes data-wbrow onto this div. A lead magnet has no
+          bulk write of its own, so it declares no capabilities and the bulk bar
+          says so in words rather than offering a button that would refuse. */}
+      <RowSelect id={r.id} kind="magnet" label={r.topic ?? 'Untitled'} caps={[]} />
       <div className="ct-anchor" data-st={stage}>
         {r.cover_url
           ? <img className="ct-thumb" src={r.cover_url} alt="" />

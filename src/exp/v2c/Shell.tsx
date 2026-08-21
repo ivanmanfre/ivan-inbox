@@ -37,6 +37,7 @@ function toQueueItem(d: ContentDraft): QueueItem {
 }
 import { MobileTabs, Rail, WorkSegment } from './Rail'
 import { ContentList, type OpenDraft } from './ContentList'
+import { CommandLayer } from './CommandLayer'
 import { MagnetsList } from './MagnetsList'
 import { StylesList } from './StylesList'
 import { StrategyView } from './StrategyView'
@@ -388,6 +389,10 @@ export default function Shell() {
   const workSurface = (
     <>
       <SeatHealthBanner />
+      {/* The command layer: ⌘K, j/k/Enter/x, / and ?, plus the bulk bar. It
+          takes no props (it reads the hash and the rendered list), and it rides
+          in the work surface so both canvases mount it exactly once. */}
+      <CommandLayer />
       {/* One model, both canvases: the lane switch for Work lives HERE now, not in
           the mobile ribbon, so desktop and phone teach the same thing (MF3). */}
       <WorkSegment job={job} counts={counts} onJob={goJob} />
