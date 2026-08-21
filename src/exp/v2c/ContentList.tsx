@@ -191,14 +191,16 @@ function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
       className={`ct-card ct-tap${active ? ' wb-card-on' : ''}${stalled ? ' ct-stalled' : ''}`}
       onClick={() => onOpen(d.id, title, queue)}
     >
-      {/* The row's registration with the command layer. It writes data-wbrow on
-          this div, which is what j/k walks and what x selects. */}
-      <RowSelect
-        id={d.id} kind="draft" label={title} caps={caps}
-        taxonomy={d.taxonomy} lane={lane}
-      />
       {/* anchor slot — exactly ONE mark, at a fixed width, carrying the QA verdict */}
       <div className="ct-anchor" data-st={stage} data-qa={qaState}>
+        {/* The row's registration with the command layer: it writes data-wbrow
+            on the card, which is what j/k walks and what x selects. It rides
+            INSIDE the anchor because the card is a fixed seven-column grid and
+            a direct child would take the anchor's own column. */}
+        <RowSelect
+          id={d.id} kind="draft" label={title} caps={caps}
+          taxonomy={d.taxonomy} lane={lane}
+        />
         {thumb
           ? <img className="ct-thumb" src={thumb} alt="" />
           : <div className="ct-thumb ct-thumb-empty" aria-hidden />}

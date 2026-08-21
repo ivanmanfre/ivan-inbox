@@ -177,7 +177,7 @@
 
 /* ---- C1 · THE ROW SELECTION MARK ----------------------------------------- */
 /* Not on all 300 rows at once. It is painted on hover, on the keyboard-focused
-   row, and on any row that is selected — so a mouse operator finds it where the
+   row, and on any row that is selected, so a mouse operator finds it where the
    pointer is and a keyboard-only operator always sees the row he is on plus
    every row he has picked. A permanent column of 300 checkboxes would compete
    with the work for the whole width of the anchor rail. */
@@ -194,6 +194,19 @@
    chips already use. */
 .wb.wb.wb .wb-selmark::after{ content:''; position:absolute; inset:-13px }
 .wb.wb.wb .wb-selmark-b{ font-size:11px; font-weight:800; line-height:1 }
+
+/* 🔴 IT ADDS NO BOX TO THE ROW. `.ct-card` is a seven-column grid with a fixed
+   template (faithful.css:2488), so a mark in the normal flow took the anchor's
+   own column and shifted every other cell one place right. Measured on the
+   Errors tab, the title wrapped and the review buttons jumped a row. Inside the
+   anchor (already position:relative) it is absolutely placed over the corner
+   and the row anatomy is untouched. Declared AFTER the base rule on purpose:
+   the two selectors carry the same specificity, so source order is what makes
+   `absolute` win over `relative`. The inbox row is a flex line, so there the
+   mark stays in the flow. */
+.wb.wb.wb .ct-anchor > .wb-selmark{
+  position:absolute; top:-5px; left:-5px; z-index:2; margin:0;
+}
 
 .wb.wb.wb .ct-card:hover .wb-selmark,
 .wb.wb.wb .r:hover .wb-selmark,

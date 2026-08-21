@@ -279,7 +279,7 @@ export function matchWbCommands(text: string, cmds: WbCommand[]): WbCommand[] {
 
 /**
  * The shortcut sheet's rows: the same commands, keeping only the ones a key
- * runs, de-duplicated by key plus title. One list, two renderings — there is no
+ * runs, de-duplicated by key plus title. One list, two renderings, and there is no
  * second table of keys anywhere in this app to drift from this one.
  */
 export function keyRows(cmds: WbCommand[]): WbCommand[] {

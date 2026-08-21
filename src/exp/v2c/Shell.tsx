@@ -497,6 +497,11 @@ export default function Shell() {
       const p = plan.peers[0]
       return (
         <div className={`app wb wb-take wb-take-${p.kind}`}>
+          {/* This branch does not render the work surface, so the layer mounted
+              in it is gone. Measured at 390: a thread opened with Enter had no
+              key that closed it. The list keys are inert here (no rows), but
+              ⌘K and Escape are the way back out. */}
+          <CommandLayer />
           {renderPeer(p)}
           {itemWindow}
         </div>

@@ -50,14 +50,21 @@ export function RowSelect({ id, kind, label, caps, taxonomy, lane }: {
   const capKey = caps.join(',')
   useEffect(() => registerRow(rowRef.current), [id, kind, label, capKey, lane])
 
-  // The parent carries the attributes: `data-wbrow` is what the keyboard layer
+  // The ROW carries the attributes: `data-wbrow` is what the keyboard layer
   // walks, and the other two are what section C paints.
+  //
+  // 🔴 `closest`, not `parentElement`. `.ct-card` is a seven-column grid with a
+  // fixed template (faithful.css:2488), so a mark rendered as its first child
+  // took the anchor's column and pushed every other cell one place right. The
+  // mark now lives INSIDE the anchor, absolutely positioned over its corner,
+  // and finds the row it belongs to by walking up. Measured on the Errors tab:
+  // the row anatomy is untouched.
   useEffect(() => {
-    const parent = ref.current?.parentElement
-    if (!parent) return
-    parent.setAttribute('data-wbrow', id)
-    parent.setAttribute('data-wbsel', on ? '1' : '0')
-    parent.setAttribute('data-wbfocus', focused ? '1' : '0')
+    const host = ref.current?.closest('.ct-card, .r') ?? ref.current?.parentElement
+    if (!host) return
+    host.setAttribute('data-wbrow', id)
+    host.setAttribute('data-wbsel', on ? '1' : '0')
+    host.setAttribute('data-wbfocus', focused ? '1' : '0')
   }, [id, on, focused])
 
   return (
