@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, messageChannel, isMixedChannel, channelFamilies, type InboxMessage, type Status } from './inbox'
+import { isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, type InboxMessage, type Status, type DraftGuard } from './inbox'
 
 // inbox.ts:191 gates needsAnswer on a 14-day wall-clock staleness window
 // (STALE_DAYS), measured against Date.now() by default -- and most callers
@@ -568,5 +568,203 @@ describe('snooze', () => {
     // late-night push still lands on the morning, not at 23:40 a week on
     const late = new Date(2026, 6, 22, 23, 40, 0)
     expect(new Date(snoozeTarget(7, late)).getHours()).toBe(SNOOZE_HOUR)
+  })
+})
+
+// ---- discard and restore (phase 4a) -----------------------------------------
+// The data layer behind the restore control. Every case here is about ONE
+// question: can a row this app un-discards reach a real person without a fresh,
+// explicit human approve. The answer has to stay no.
+describe('isDiscarded + canRestore', () => {
+  const at = (s: string) => `2026-07-22T${s}:00Z`
+  // their question, unanswered
+  const theirs: InboxMessage = {
+    ...base, id: 'in', direction: 'inbound', message_text: 'can you send pricing?',
+    sent_at: at('09:00'), created_at: at('09:00'),
+  }
+  // the drafted reply, discarded at 10:00
+  const disc = (over: Partial<InboxMessage> = {}): InboxMessage => ({
+    ...base, id: 'disc', message_text: 'happy to walk you through it',
+    created_at: at('09:30'), send_blocked_at: at('10:00'),
+    send_blocked_reason: DISCARD_REASON, ...over,
+  })
+  const thread = (rows: InboxMessage[]) => groupThreads(rows)[0]
+
+  it('reads a discard off the row, and nothing else', () => {
+    expect(isDiscarded(disc())).toBe(true)
+    expect(isDiscarded({ ...disc(), direction: 'inbound' })).toBe(false)
+    expect(isDiscarded({ ...disc(), sent_at: at('10:30') })).toBe(false)
+    expect(isDiscarded({ ...disc(), approved_at: at('09:45') })).toBe(false)
+    expect(isDiscarded({ ...base, send_blocked_reason: DISCARD_REASON, send_blocked_at: null })).toBe(false)
+  })
+
+  it('a plain discard that is the newest outbound event can come back', () => {
+    const d = disc()
+    expect(canRestore(thread([theirs, d]), d)).toBe(true)
+  })
+
+  // 🔴 THE composeReply CASE. Ivan hand-types his own reply, the app inserts it
+  // approved (approved_at set, sent_at null) and THEN discards the draft, so the
+  // human answer is a few hundred ms OLDER than the discard. Restoring here and
+  // approving would send a SECOND reply to a real person.
+  it('is refused while a hand-typed reply is still queued, even though it is older', () => {
+    const manual: InboxMessage = {
+      ...base, id: 'manual', message_type: 'manual_reply', message_text: 'sure, sending now',
+      created_at: at('09:59'), approved_at: at('09:59'), sent_at: null,
+    }
+    const d = disc()
+    const t = thread([theirs, manual, d])
+    expect(eventTime(manual) < d.send_blocked_at!).toBe(true) // older, and still refused
+    expect(canRestore(t, d)).toBe(false)
+  })
+
+  it('is refused once that reply has actually gone out', () => {
+    const manual: InboxMessage = {
+      ...base, id: 'manual', message_type: 'manual_reply',
+      created_at: at('09:59'), approved_at: at('09:59'), sent_at: at('10:01'),
+    }
+    const d = disc()
+    expect(canRestore(thread([theirs, manual, d]), d)).toBe(false)
+  })
+
+  it('is refused when any send is newer than the discard', () => {
+    const later: InboxMessage = { ...base, id: 'sent', sent_at: at('11:00'), created_at: at('11:00') }
+    const d = disc()
+    expect(canRestore(thread([theirs, d, later]), d)).toBe(false)
+    // ...and an older send does not block it
+    const older: InboxMessage = { ...base, id: 'old', sent_at: at('08:00'), created_at: at('08:00') }
+    expect(canRestore(thread([older, theirs, d]), d)).toBe(true)
+  })
+
+  it('is refused when a fresh pending draft was written after the discard', () => {
+    const fresh: InboxMessage = { ...base, id: 'fresh', created_at: at('10:30') }
+    const d = disc()
+    expect(canRestore(thread([theirs, d, fresh]), d)).toBe(false)
+  })
+
+  it('an inbound reply after the discard does NOT block it', () => {
+    // They wrote again. The thread owes an answer, and the drafted one is the
+    // obvious candidate. Only OUR side speaking after the ruling blocks it.
+    const again: InboxMessage = {
+      ...base, id: 'in2', direction: 'inbound', sent_at: at('12:00'), created_at: at('12:00'),
+    }
+    const d = disc()
+    expect(canRestore(thread([theirs, d, again]), d)).toBe(true)
+  })
+
+  // Every other block reason is somebody else's state, and clearing it would be
+  // a live defect: a verified send failure may already have landed on the
+  // platform, a geo gate is still queued upstream, a race hold is ALREADY a
+  // pending draft with nothing to undo.
+  it('refuses every block reason that is not our own discard', () => {
+    for (const reason of ['send_failed_verified:unipile_422', 'geo_gate_v2:country_missing',
+      `${RACE_HOLD_PREFIX}outbound`, `${RACE_HOLD_PREFIX}inbound`, 'manual_reply_raced', null]) {
+      const row = disc({ send_blocked_reason: reason })
+      expect(isDiscarded(row)).toBe(false)
+      expect(canRestore(thread([theirs, row]), row)).toBe(false)
+    }
+  })
+
+  it('refuses an approved row and a sent row outright', () => {
+    const approved = disc({ approved_at: at('09:45') })
+    expect(canRestore(thread([theirs, approved]), approved)).toBe(false)
+    const sent = disc({ sent_at: at('10:30') })
+    expect(canRestore(thread([theirs, sent]), sent)).toBe(false)
+  })
+
+  it('an unparseable timestamp holds the restore rather than allowing it', () => {
+    const d = disc({ send_blocked_at: 'not a date' })
+    expect(canRestore(thread([theirs, d]), d)).toBe(false)
+    const good = disc()
+    const junk: InboxMessage = { ...base, id: 'junk', sent_at: 'x', created_at: 'x' }
+    expect(canRestore(thread([theirs, good, junk]), good)).toBe(false)
+  })
+
+  // The round trip: what restoreDraft writes is exactly the two nulls, and a row
+  // in that state is a pending draft again by isDraft's own definition.
+  it('clearing the discard block makes the row a pending draft again', () => {
+    const d = disc()
+    expect(isDraft(d)).toBe(false)
+    const restored = { ...d, send_blocked_reason: null, send_blocked_at: null }
+    expect(isDraft(restored)).toBe(true)
+    expect(thread([theirs, restored]).draft?.id).toBe('disc')
+    // and the thread owes an answer again, which is the ruling restore reverses
+    expect(needsAnswer(thread([theirs, d]))).toBe(false)
+    expect(needsAnswer(thread([theirs, restored]))).toBe(true)
+  })
+})
+
+// The guards are declared as data and applied by applyDraftGuard, so these
+// assert the filters the REAL write sends, not a copy of them.
+describe('discard + restore guards', () => {
+  type Call = [string, string, string | null]
+  type FakeQuery = {
+    eq(column: string, value: string): FakeQuery
+    is(column: string, value: null): FakeQuery
+  }
+  const recorder = () => {
+    const calls: Call[] = []
+    const q: FakeQuery = {
+      eq(column, value) { calls.push(['eq', column, value]); return q },
+      is(column, value) { calls.push(['is', column, value]); return q },
+    }
+    return { q, calls }
+  }
+
+  it('restore matches one row: this id, unsent, unapproved, discarded by us', () => {
+    const { q, calls } = recorder()
+    applyDraftGuard(q, 'msg-1', RESTORE_GUARD)
+    expect(calls).toEqual([
+      ['eq', 'id', 'msg-1'],
+      ['is', 'sent_at', null],
+      ['is', 'approved_at', null],
+      ['eq', 'send_blocked_reason', 'discarded_in_inbox'],
+    ])
+    // NEVER `send_blocked_at is not null`: that guard would also match
+    // send_failed_verified:* and geo_gate_v2:* rows.
+    expect(RESTORE_GUARD.some(g => g.column === 'send_blocked_at')).toBe(false)
+  })
+
+  it('discard now carries the approved_at guard that closed the fail-open', () => {
+    const { q, calls } = recorder()
+    applyDraftGuard(q, 'msg-2', DISCARD_GUARD)
+    expect(calls).toEqual([
+      ['eq', 'id', 'msg-2'],
+      ['is', 'sent_at', null],
+      ['is', 'approved_at', null],
+    ])
+  })
+
+  // What the guard MEANS, not just its shape. A race-held row keeps
+  // approved_at NULL (the dispatcher's bounce writes approved_at=null), which is
+  // why the simple guard does not break the race-hold discard path.
+  it('admits every row the callers actually pass, and refuses an approved one', () => {
+    const passes = (m: InboxMessage, guard: readonly DraftGuard[]) => guard.every(g =>
+      g.op === 'is'
+        ? (m as unknown as Record<string, unknown>)[g.column] === null
+        : (m as unknown as Record<string, unknown>)[g.column] === g.value)
+    const pending: InboxMessage = { ...base, id: 'p' }
+    const raceHeld: InboxMessage = {
+      ...base, id: 'r', send_blocked_at: '2026-07-22T11:00:00Z',
+      send_blocked_reason: `${RACE_HOLD_PREFIX}outbound`,
+    }
+    const approved: InboxMessage = { ...base, id: 'a', approved_at: '2026-07-22T11:00:00Z' }
+    const sent: InboxMessage = { ...base, id: 's', sent_at: '2026-07-22T11:00:00Z' }
+    // every discardDraft caller passes thread.draft, which is isDraft by
+    // construction, so both of these are the live shapes
+    expect(isDraft(pending) && isDraft(raceHeld)).toBe(true)
+    expect(passes(pending, DISCARD_GUARD)).toBe(true)
+    expect(passes(raceHeld, DISCARD_GUARD)).toBe(true)
+    // the fail-open that is now closed: an approved row is a queued send
+    expect(passes(approved, DISCARD_GUARD)).toBe(false)
+    expect(passes(sent, DISCARD_GUARD)).toBe(false)
+    // restore only ever matches a row we discarded
+    const discarded: InboxMessage = {
+      ...base, id: 'd', send_blocked_at: '2026-07-22T11:00:00Z', send_blocked_reason: DISCARD_REASON,
+    }
+    expect(passes(discarded, RESTORE_GUARD)).toBe(true)
+    expect(passes(raceHeld, RESTORE_GUARD)).toBe(false)
+    expect(passes({ ...discarded, approved_at: '2026-07-22T11:30:00Z' }, RESTORE_GUARD)).toBe(false)
+    expect(passes({ ...discarded, sent_at: '2026-07-22T11:30:00Z' }, RESTORE_GUARD)).toBe(false)
   })
 })

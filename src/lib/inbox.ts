@@ -72,6 +72,13 @@ export type Filter = 'all' | 'ivan' | 'risedtc' | 'arch' | 'email'
 // reason ('discarded_in_inbox') and stay permanent — U1 is untouched.
 export const RACE_HOLD_PREFIX = 'post_approval_race:'
 
+// The reason discardDraft writes, and the ONLY block reason restoreDraft will
+// undo. Every other value in that column means something restore must not
+// touch: `send_failed_verified:*` rows may already have landed on the platform,
+// `geo_gate_v2:*` rows are still queued upstream, and a `post_approval_race:*`
+// row is already a pending draft with no block to clear.
+export const DISCARD_REASON = 'discarded_in_inbox'
+
 export function isRaceHold(reason: string | null): boolean {
   return reason !== null && reason.startsWith(RACE_HOLD_PREFIX)
 }
@@ -361,7 +368,7 @@ export function needsAnswer(t: Thread, now: number = Date.now()): boolean {
   // manually by mattan as you can see". A human already ruled on this thread;
   // re-listing it is the app overruling him.
   const discarded = t.messages
-    .filter(m => m.direction === 'outbound' && !m.sent_at && m.send_blocked_reason === 'discarded_in_inbox')
+    .filter(m => m.direction === 'outbound' && !m.sent_at && m.send_blocked_reason === DISCARD_REASON)
     .map(eventTime).sort().at(-1) ?? null
   if (discarded !== null && discarded > lastInbound) return false
   const lastSent = t.messages
@@ -694,11 +701,140 @@ export async function unsnoozeDraft(id: string): Promise<void> {
   if (error) throw error
 }
 
-export async function discardDraft(id: string): Promise<void> {
-  const { error } = await supabase.from('outreach_messages')
-    .update({ send_blocked_reason: 'discarded_in_inbox', send_blocked_at: new Date().toISOString() })
-    .eq('id', id).is('sent_at', null)
+// ---- discard and restore: the guards, declared once ------------------------
+//
+// These two writes sit on the send path, so their filters are declared as DATA
+// and applied by applyDraftGuard below. The write and its test then read the
+// same guard instead of two copies that can drift, which is the only way a
+// guard-shape test proves anything about the real query.
+//
+// 'is' means IS NULL. 'eq' is an exact string match.
+export type DraftGuard = { op: 'is'; column: string } | { op: 'eq'; column: string; value: string }
+
+// Discard. `sent_at IS NULL` was always here; `approved_at IS NULL` is the fix
+// for a live fail-open. The dispatcher's pickup predicate is `approved_at IS
+// NOT NULL AND sent_at IS NULL` with NO filter on the block columns
+// (docs/send-path-verification.md, "Poll + Send"), so discarding an APPROVED
+// row used to write two columns the dispatcher never reads: the row vanished
+// from the inbox and the message still went out. A guarded discard now affects
+// zero rows and reports false, so the caller can say the send is already gone
+// rather than pretend it was stopped.
+//
+// This does NOT block the race-hold discard the plan worried about. A
+// dispatcher bounce writes `sent_at=null, approved_at=null,
+// send_blocked_reason='post_approval_race:*'` (memory
+// dispatcher-post-approval-race-guard-2026-08-20; the same shape as the
+// preSendGate block quoted in docs/send-path-verification.md), which is why
+// isDraft above can return true for a race-held row at all: it requires
+// `!m.approved_at`. A race-held row therefore passes `approved_at IS NULL` and
+// stays discardable.
+export const DISCARD_GUARD: readonly DraftGuard[] = [
+  { op: 'is', column: 'sent_at' },
+  { op: 'is', column: 'approved_at' },
+]
+
+// Restore. Deliberately narrower than "has a block": `send_blocked_at IS NOT
+// NULL` would also match `send_failed_verified:*` rows (which may have landed
+// on the platform) and `geo_gate_v2:*` rows (still queued upstream), and
+// clearing either would be a live defect. Only a row this app discarded, still
+// unsent and still unapproved, comes back.
+export const RESTORE_GUARD: readonly DraftGuard[] = [
+  { op: 'is', column: 'sent_at' },
+  { op: 'is', column: 'approved_at' },
+  { op: 'eq', column: 'send_blocked_reason', value: DISCARD_REASON },
+]
+
+type GuardedQuery<Q> = {
+  eq(column: string, value: string): Q
+  is(column: string, value: null): Q
+}
+
+export function applyDraftGuard<Q extends GuardedQuery<Q>>(
+  q: Q, id: string, guard: readonly DraftGuard[],
+): Q {
+  let out = q.eq('id', id)
+  for (const g of guard) out = g.op === 'is' ? out.is(g.column, null) : out.eq(g.column, g.value)
+  return out
+}
+
+// Both writes below return whether a row was ACTUALLY affected. PostgREST
+// reports no error for a zero-row update, so without this a stale view asking
+// to discard an already-approved row would look identical to a successful
+// discard. A silent no-op on the send path is its own bug.
+export async function discardDraft(id: string): Promise<boolean> {
+  const { data, error } = await applyDraftGuard(
+    supabase.from('outreach_messages')
+      .update({ send_blocked_reason: DISCARD_REASON, send_blocked_at: new Date().toISOString() }),
+    id, DISCARD_GUARD,
+  ).select('id')
   if (error) throw error
+  return (data ?? []).length > 0
+}
+
+// Undo a discard. The write clears the two block columns and NOTHING else, so
+// the row lands back in exactly the state isDraft describes (outbound, unsent,
+// unapproved, unblocked) and re-enters the pending queue as a draft.
+//
+// It never writes approved_at, and it only matches rows where approved_at is
+// already NULL, so a restored row cannot be picked up by the dispatcher: its
+// predicate needs `approved_at IS NOT NULL`. Sending still takes a separate,
+// explicit approve. Full trace:
+// goal-runs/workbench-2026-plan-2026-08-21/phase4a-restore.md
+export async function restoreDraft(id: string): Promise<boolean> {
+  const { data, error } = await applyDraftGuard(
+    supabase.from('outreach_messages')
+      .update({ send_blocked_reason: null, send_blocked_at: null }),
+    id, RESTORE_GUARD,
+  ).select('id')
+  if (error) throw error
+  return (data ?? []).length > 0
+}
+
+// A row THIS app discarded, as opposed to any other reason the send path
+// blocked it. The state test restoreDraft's guard makes in SQL.
+export function isDiscarded(m: InboxMessage): boolean {
+  return m.direction === 'outbound' && !m.sent_at && !m.approved_at
+    && m.send_blocked_reason === DISCARD_REASON && m.send_blocked_at !== null
+}
+
+// May this discard be offered back? Only when it is still the newest outbound
+// event on its thread.
+//
+// 🔴 WHY THE FRESHNESS TEST IS LOAD-BEARING: composeReply discards the pending
+// AI draft the moment Ivan hand-types his own reply. That discarded draft
+// answers a message a human has ALREADY answered, so restoring and approving it
+// would send a second reply to a real person. Any outbound row newer than the
+// discard means someone spoke after the ruling, whether that row was sent, is
+// still pending or is approved and waiting in the queue.
+//
+// Restoring also reverses the ruling encoded in needsAnswer above (a discard
+// newer than the last inbound suppresses the thread, because a human already
+// decided this one needed no reply). The thread re-enters the answer bucket.
+// That is correct and it is exactly why restore has to be an explicit act.
+//
+// 🔴 SECOND HAZARD, not in the plan: composeReply INSERTS the hand-typed reply
+// (approved_at stamped, sent_at null) and only THEN discards the draft, so for
+// the couple of minutes before the dispatcher picks it up the human answer is
+// OLDER than the discard and the time test above would wave the restore
+// through. An approved unsent outbound row IS the dispatcher's queue
+// (docs/send-path-verification.md), so any row in that state on this thread
+// holds the restore regardless of ordering.
+//
+// Timestamps are parsed rather than string-compared: send_blocked_at is written
+// by this app as an ISO Z string while sent_at comes back from PostgREST with a
+// +00:00 offset, and those two spellings only sort correctly by luck. Anything
+// unparseable holds the restore rather than allowing it.
+export function canRestore(t: Thread, m: InboxMessage): boolean {
+  const at = m.send_blocked_at
+  if (at === null || !isDiscarded(m)) return false
+  const blockedAt = Date.parse(at)
+  if (Number.isNaN(blockedAt)) return false
+  if (t.messages.some(o => o.direction === 'outbound' && !o.sent_at && o.approved_at !== null)) return false
+  return !t.messages.some(o => {
+    if (o.id === m.id || o.direction !== 'outbound') return false
+    const when = Date.parse(eventTime(o))
+    return Number.isNaN(when) || when > blockedAt
+  })
 }
 
 export async function composeReply(t: Thread, text: string): Promise<void> {
