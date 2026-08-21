@@ -10,6 +10,7 @@ import {
   markThreadRead, messageChannel, threadChatId,
   type InboxMessage, type MsgChannel, type Thread, eventTime } from '../lib/inbox'
 import { label } from '../lib/labels'
+import { RestoreStrip } from '../exp/v2c/RestoreStrip'
 
 function clientName(id: string): string {
   if (id === 'risedtc') return 'Rise'
@@ -138,8 +139,20 @@ export function ThreadScreen({ thread, onBack, refresh }: {
     })
     if (!ok) return
     setBusy(true); setDraftErr('')
-    try { await discardDraft(draft.id); refresh() }
-    catch (e) { setDraftErr(errText(e)) }
+    try {
+      // 🔴 A FALSE IS NOT A DISCARD. Phase 4a added `approved_at IS NULL` to the
+      // guard, which closed a fail-open: discarding an already-approved row wrote
+      // two columns the dispatcher does not read, the row left the inbox, and the
+      // message still went out on the next two-minute tick. The write now refuses
+      // that row and returns false, and this is where the operator is told so
+      // rather than being shown a discard that did not happen.
+      const stopped = await discardDraft(draft.id)
+      if (!stopped) {
+        setDraftErr('This one was already approved and is in the send queue, so the '
+          + 'discard did not stop it. Nothing was changed.')
+      }
+      refresh()
+    } catch (e) { setDraftErr(errText(e)) }
     finally { setBusy(false) }
   }
 
@@ -283,6 +296,12 @@ export function ThreadScreen({ thread, onBack, refresh }: {
           )
         })}
       </div>
+
+      {/* A draft that was thrown away had no surface anywhere: isDraft excludes
+          blocked rows, the bubble filter above drops this reason by name, and
+          the failed-send log excludes it too. The strip is the only place it is
+          readable, and the only place a restore is offered. */}
+      <RestoreStrip thread={thread} refresh={refresh} />
 
       {draft && (
         <div className="draftcard">
