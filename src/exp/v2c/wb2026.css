@@ -722,3 +722,49 @@
      and pinning the parent's flex (tried, three ways) moves nothing. Recorded
      so the next pass does not spend the same half hour on it. */
 }
+
+/* D8 · THE CONTEXT SHEET SITS BESIDE THE THREAD, NOT OVER IT.
+   ContextSheet.tsx is the best information design in this app: who they are,
+   the ICP score with its reasoning, DMs sent against replies, whether a scan
+   exists, and the operator note the drafters read on their next pass. It is
+   everything you need to decide a reply. And it opened as a bottom sheet with
+   a 50% black scrim over the conversation it is about, so reading it meant
+   not being able to read the thread.
+
+   It is MOVED, never rewritten: not one line of that component changes. On a
+   canvas with room, its scrim stops dimming and its card docks to the right of
+   the thread, in width the pane was already wasting — `.wb-peer .msgs` is
+   capped at 760px (v2c/styles.css:29) inside a peer that is 1,000px and more
+   at these widths.
+
+   1600px, because the dock has to be affordable: rail 200 + list 400 leaves
+   the peer 1,000px, and 436px of dock still leaves the thread 564px, which is
+   inside the measure `.msgs` was capped to anyway. Below that the sheet keeps
+   the behaviour it has, unchanged.
+
+   🔴 THE SCRIM STAYS OVER THE WHOLE PEER, transparent and full-bleed, and that
+   is deliberate: the component's ONLY dismiss affordance is a click on the
+   scrim (ContextSheet.tsx:71 — there is no ✕ and no Escape handler). Shrinking
+   the scrim to the dock would take dismissal away from a sheet that has no
+   other way out. So the thread is fully READABLE while the sheet is open,
+   which is the complaint, and a click anywhere on it closes the sheet, which
+   is the contract it already had. */
+@media (min-width:1600px){
+  .wb.wb.wb .wb-peer-thread:has(> .sheet-scrim){ position:relative; padding-right:436px }
+  .wb.wb.wb .wb-peer-thread > .sheet-scrim{
+    position:absolute; inset:0; z-index:20;
+    background:none; display:block; animation:none;
+  }
+  .wb.wb.wb .wb-peer-thread > .sheet-scrim > .sheet{
+    position:absolute; top:0; right:0; bottom:0;
+    width:436px; max-width:436px; margin:0;
+    padding:var(--sp-3); box-sizing:border-box;
+    display:flex; flex-direction:column; animation:none;
+  }
+  /* The card was capped at 78vh for a sheet that rose from the bottom edge
+     (src/styles.css:398). Docked, it owns the column and scrolls inside it. */
+  .wb.wb.wb .wb-peer-thread > .sheet-scrim .ctx-card{
+    flex:1; min-height:0; max-height:none; overflow-y:auto;
+    border:1px solid var(--surface3);
+  }
+}
