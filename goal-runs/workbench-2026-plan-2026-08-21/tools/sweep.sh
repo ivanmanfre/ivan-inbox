@@ -54,15 +54,23 @@ echo "=== 8. full sweep, light, 1440 ==="
 node "$RUN/tools/measure.mjs" --out "$OUT/light" --theme light --viewports 1440 --shots 2>&1 | tail -4
 
 echo
-echo "=== 9. #exp/stock control, after ==="
-node "$RUN/tools/stock-shot.mjs" --base http://localhost:4173/ --out "$OUT/stock-after"
-echo "--- stock before vs after (sha256 of decoded PNG) ---"
+echo "=== 9. #exp/stock control ==="
+# Captured in the SAME WINDOW as main, with a same-build control alongside.
+# Comparing against a capture taken hours earlier is confounded: stock renders
+# live data and relative times, so a stale baseline reports a difference that is
+# only the clock. The control answers "did anything move while we measured".
+lsof -ti :4180 >/dev/null 2>&1 || echo "  (no main preview on 4180: run one from a clean worktree to compare)"
+node "$RUN/tools/stock-shot.mjs" --base http://localhost:4180/ --out "$OUT/stock-main-t0" >/dev/null 2>&1
+node "$RUN/tools/stock-shot.mjs" --base http://localhost:4173/ --out "$OUT/stock-branch" >/dev/null 2>&1
+node "$RUN/tools/stock-shot.mjs" --base http://localhost:4180/ --out "$OUT/stock-main-t2" >/dev/null 2>&1
+echo "  vw   | main vs branch | main vs main (drift control)"
 for vw in 390 1024 1440; do
-  A=$(shasum -a 256 "$RUN/stock-before/stock-$vw.png" 2>/dev/null | cut -d' ' -f1)
-  B=$(shasum -a 256 "$OUT/stock-after/stock-$vw.png" 2>/dev/null | cut -d' ' -f1)
-  SA=$(stat -f%z "$RUN/stock-before/stock-$vw.png" 2>/dev/null)
-  SB=$(stat -f%z "$OUT/stock-after/stock-$vw.png" 2>/dev/null)
-  if [ "$A" = "$B" ]; then echo "  $vw: IDENTICAL"; else echo "  $vw: DIFFERS (before ${SA}b, after ${SB}b) - open both and look before concluding"; fi
+  A=$(shasum -a 256 "$OUT/stock-main-t0/stock-$vw.png" 2>/dev/null | cut -d' ' -f1)
+  B=$(shasum -a 256 "$OUT/stock-branch/stock-$vw.png" 2>/dev/null | cut -d' ' -f1)
+  C=$(shasum -a 256 "$OUT/stock-main-t2/stock-$vw.png" 2>/dev/null | cut -d' ' -f1)
+  AB=$([ -n "$A" ] && [ "$A" = "$B" ] && echo IDENTICAL || echo DIFFERS)
+  AC=$([ -n "$A" ] && [ "$A" = "$C" ] && echo IDENTICAL || echo DIFFERS)
+  echo "  $vw | $AB | $AC"
 done
 
 echo
