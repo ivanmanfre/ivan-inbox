@@ -626,3 +626,43 @@
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   line-height:1.3; color:var(--text4); margin-top:0;
 }
+
+/* D6 · THE TAKEOVER'S SURPLUS GOES TO THE INSPECTOR.
+   🔴 THE 640px ARTIFACT MEASURE DOES NOT MOVE, and this is a correctness rule
+   rather than a taste one: `.dw-main-in` is 640px because that is what
+   LinkedIn gives a post, and the ONE job of that column is to show what the
+   post will look like there. A wider ribbon would make the preview lie.
+
+   Measured at 2560 (one-row queue, so `.dw-norail`): the grid ran
+   2040px + 520px, with the artifact riding a 640px ribbon inside the 2,040px
+   track — about 1,400px of that column carrying nothing — while the evidence
+   rail, which holds the QA rubric, the generation register and the source
+   quote, sat at 520px.
+
+   One correction to the brief, from measurement: the inspector is NOT 360px at
+   this width. v2c/styles.css:1029 already widens it to minmax(420px,520px)
+   above 1700px, and it computed 520px. So the bands below start from 520 and
+   go up rather than starting from a number that no longer exists.
+
+   Two more steps, both spending width the artifact must not have. */
+@media (min-width:1900px){
+  .wb.wb.wb .dw-cols{ grid-template-columns:300px minmax(640px,1fr) minmax(560px,760px) }
+  .wb.wb.wb .dw-cols.dw-norail{ grid-template-columns:minmax(640px,1fr) minmax(560px,760px) }
+}
+@media (min-width:2400px){
+  .wb.wb.wb .dw-cols{ grid-template-columns:320px minmax(640px,1fr) minmax(700px,920px) }
+  .wb.wb.wb .dw-cols.dw-norail{ grid-template-columns:minmax(640px,1fr) minmax(700px,920px) }
+}
+/* Width given to a rail is only a gain if the rail's text still has a measure.
+   Everything in the inspector that is a SENTENCE keeps one; the rubric bars,
+   the key/value rows and the counts are columns and take the full width, which
+   is the whole reason the rail wanted room. 68ch for the same rounding reason
+   section B gives. */
+.wb.wb.wb .dw-insp .qa-p,
+.wb.wb.wb .dw-insp .qa-clash,
+.wb.wb.wb .dw-insp .ct-subtle,
+.wb.wb.wb .dw-insp .ct-quote .dd-body,
+.wb.wb.wb .dw-insp .dd-pre,
+.wb.wb.wb .dw-insp .dd-v,
+.wb.wb.wb .dw-insp .ct-err,
+.wb.wb.wb .dw-insp .ct-warnbox{ max-width:68ch }
