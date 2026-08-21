@@ -414,6 +414,35 @@
 }
 
 /* ========================================================================== */
+/* E · THE MESSAGE LINE IS NOT METADATA                                        */
+/* ========================================================================== */
+
+/* Ivan, after the 2026 pass shipped: "still looks the same".
+   He was right, and the census explains why. The ramp classified `.r .snip`
+   and `.td-snip` as meta ("timestamps, counts, secondary row text"), so the
+   two lines he actually READS on the two lanes he lives in went 13px to 13px.
+   Names moved 14 to 16, prose surfaces moved, and the sentence under each name
+   did not.
+
+   A timestamp is metadata. A count is metadata. The message someone sent is
+   the content of that row: it is the thing the row exists to show, and on the
+   DMs lane it is the only prose on screen. So these two leave the meta tier
+   and take the body tier, while `.time`, `.ct-tm`, `.td-tm` and `.td-org`
+   stay where they belong.
+
+   Cost, measured rather than assumed: rows grow and fewer fit per screen. The
+   DMs lane renders the actionable bucket (single digits), not a 300-row
+   archive, so the trade is a screen that reads against a scroll nobody makes.
+   `.ct-topic` and `.log-snip` are NOT promoted: those lanes really do run
+   hundreds of rows deep, and their prose lives in the pane, not the row. */
+.wb.wb.wb .r .snip,
+.wb.wb.wb .td-snip{
+  font-size:var(--fs-body);
+  line-height:var(--lh-body);
+  color:var(--text2);   /* was text3: at reading size, the dimmest tier reads as disabled */
+}
+
+/* ========================================================================== */
 /* D · LAYOUT — canvas fill, container queries, panes, mobile chrome (pass 5)  */
 /* ========================================================================== */
 
