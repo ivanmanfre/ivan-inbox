@@ -1,0 +1,33 @@
+/* ============================================================================
+   wb2026.css — the 2026 readability/command/layout pass.
+
+   WHY A FOURTH SHEET. faithful.css owns the type ramp and the skin; touching it
+   from four workstreams at once is how a cascade gets shuffled. This file is
+   imported LAST (Shell.tsx), so it is the final word inside .wb, and each pass
+   below owns one section and edits nothing outside it.
+
+   THE ONE RULE. faithful.css flattens every descendant (`.wb.wb, .wb.wb *`) and
+   re-asserts its tiers at `.wb.wb.wb`. A selector written here with a single
+   class LOSES to that flattener and renders at body size, silently. So every
+   rule in this file carries `.wb.wb.wb`, and nothing here is believed until a
+   getComputedStyle read on the real element agrees with it.
+
+   Sizes are TOKENS (var(--fs-body) and friends), never literals: the ramp is set
+   once in faithful.css and this sheet must never fork it.
+   ============================================================================ */
+
+/* ========================================================================== */
+/* A · LABELS — human words for database values (pass 2)                       */
+/* ========================================================================== */
+
+/* ========================================================================== */
+/* B · TODAY — the briefing (pass 3)                                           */
+/* ========================================================================== */
+
+/* ========================================================================== */
+/* C · COMMAND LAYER — palette, selection, bulk bar, restore (pass 4)          */
+/* ========================================================================== */
+
+/* ========================================================================== */
+/* D · LAYOUT — canvas fill, container queries, panes, mobile chrome (pass 5)  */
+/* ========================================================================== */

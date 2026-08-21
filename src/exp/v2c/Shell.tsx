@@ -61,6 +61,9 @@ import './styles.css'
 // stylesheet (spine §1.3) so it is the last word inside .wb and has no reach at
 // all outside it. :root in src/styles.css is never touched.
 import './faithful.css'
+// The 2026 pass. Last import, so it is the final word inside .wb; it carries no
+// tokens of its own and forks no tier — see its header.
+import './wb2026.css'
 
 // ============================================================================
 // Candidate v2c — WORKBENCH
