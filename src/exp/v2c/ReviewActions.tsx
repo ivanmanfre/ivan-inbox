@@ -35,12 +35,17 @@ function playBeat(from: HTMLElement | null, then: () => void): void {
 // gates). No schedule/publish affordance exists here on purpose. The "may this
 // row be actioned at all" rule itself lives in lib/content.ts (reviewActionable)
 // where it is unit-tested.
-export function ReviewActions({ id, onDone, compact }: {
+export function ReviewActions({ id, onDone, compact, demoteApprove }: {
   id: string
   onDone: () => void
   // The detail screen's copy of these buttons sits at the end of a long scroll
   // and gets the roomier register; the card's stays tight.
   compact?: boolean
+  // phase2: Approve on a row that already failed is not the recommended
+  // action. It stays available (Skip is not the only way out, and a false
+  // error does happen) but it stops wearing the primary weight that tells the
+  // eye "do this one". Same secondary treatment Skip already uses.
+  demoteApprove?: boolean
 }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -80,7 +85,7 @@ export function ReviewActions({ id, onDone, compact }: {
           also fire that. */}
       <div ref={rootRef} className={`ct-ac${compact ? '' : ' ct-ac-wide'}`} onClick={e => e.stopPropagation()}>
         <button type="button" className="btn s" disabled={busy} onClick={() => run('skip')}>Skip</button>
-        <button type="button" className="btn p" disabled={busy} onClick={() => run('approve')}>
+        <button type="button" className={`btn ${demoteApprove ? 's' : 'p'}`} disabled={busy} onClick={() => run('approve')}>
           {busy ? 'Working…' : 'Approve'}
         </button>
       </div>

@@ -20,7 +20,7 @@ function opsSeg(clientId: string): Seg | string {
 const OPS_LABEL: Record<OpsKind, string> = {
   escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK',
   weekly_report: 'WEEKLY', comment_reply: 'COMMENT', comment_outbound: 'OUTBOUND',
-  booking: 'BOOKED', precall_email: 'PRE-CALL',
+  booking: 'BOOKED', precall_email: 'PRE-CALL', manual_invite: 'INVITE',
 }
 
 // One tappable line each: enough to know what is waiting, not a second Ops tab.
@@ -212,7 +212,15 @@ export function DraftCard({ thread, onOpenThread, refresh }: {
     setBusy(true)
     setError(null)
     try {
-      await discardDraft(draft.id)
+      // A zero-row update is not an error and it is not a discard. See the same
+      // guard on ThreadScreen's onDiscard: an already-approved row is refused,
+      // and saying nothing here would claim a send was stopped when it was not.
+      const stopped = await discardDraft(draft.id)
+      if (!stopped) {
+        setError('This one was already approved and is in the send queue, so the '
+          + 'discard did not stop it. Nothing was changed.')
+        springBack()
+      }
       refresh()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not discard draft')

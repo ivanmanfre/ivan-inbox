@@ -1,3 +1,5 @@
+import { label } from '../../lib/labels'
+
 // Shared formatting for the Content tab. Extracted in round 2 because the
 // queue card and the draft detail screen now render the same timestamps and
 // the same type chip — two copies of relTime() is how two surfaces start
@@ -62,12 +64,11 @@ export function absTime(iso: string): string {
   })
 }
 
-const TYPE_LABEL: Record<string, string> = { text: 'Text', single_image: 'Image', carousel: 'Carousel' }
-
-export function typeLabel(t: string | null): string {
-  if (!t) return 'Text'
-  return TYPE_LABEL[t] ?? t
-}
+// Moved to src/lib/labels.ts so the facet builder can read the same map (a
+// filter option and the row chip beside it must not invent two names for one
+// format). Re-exported under its own name, so every call site here is unchanged
+// and an unknown format now degrades through label() instead of rendering raw.
+export { typeLabel } from '../../lib/labels'
 
 // taxonomy.source slugs → a reading label, the same vocabulary dashboard-v2
 // uses on its ideas table (ideaProjection.ts SOURCE_LABEL). An unknown slug
@@ -88,7 +89,10 @@ const SOURCE_LABEL: Record<string, string> = {
 }
 
 export function sourceLabel(s: string): string {
-  return SOURCE_LABEL[s] ?? s
+  // phase2: an unmapped slug used to reach the screen raw (youtube_watch).
+  // The curated names above stay first; anything this map has not seen falls
+  // through to the shared degrade path instead of rendering as itself.
+  return SOURCE_LABEL[s] ?? label(s)
 }
 
 // A raw taxonomy slug ('case_study', 'reach') as a reading label ('Case Study',

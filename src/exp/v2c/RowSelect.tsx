@@ -1,0 +1,94 @@
+import { useEffect, useRef, useSyncExternalStore } from 'react'
+import {
+  isLayerMounted, registerRow, rowState, subscribe, toggleRow,
+  type RowCap, type RowKind, type SelectedRow,
+} from './commandStore'
+
+// THE SELECTION MARK, and the row's registration with the keyboard layer.
+//
+// Phase 0 measured this and the plan was wrong about it: a DOM probe for
+// `input[type=checkbox]`, `[role=checkbox]` and `[class*=check]` returns ZERO
+// elements on every list at every viewport. There was no checkbox to wire, so
+// this is the control being introduced.
+//
+// ONE LINE PER HOST. The mark writes `data-wbrow`, `data-wbsel` and
+// `data-wbfocus` onto its own parent element, so a list gets keyboard navigation
+// and selection by rendering `<RowSelect …/>` inside its row and changing
+// nothing else. Three list surfaces are owned by three files; a props-threaded
+// selection would have meant editing every component between the shell and the
+// row.
+//
+// IT IS NOT ALWAYS PAINTED. A checkbox on all 300 rows is 300 controls competing
+// with the work; the mark is drawn on hover, on the keyboard-focused row, and on
+// any row that is selected (section C of wb2026.css). A keyboard-only operator
+// therefore always sees the row he is on and every row he has picked, and a
+// mouse operator sees a mark wherever the pointer is.
+
+export function RowSelect({ id, kind, label, caps, taxonomy, lane }: {
+  id: string
+  kind: RowKind
+  label: string
+  // What a bulk action may do to THIS row. The row is the only place that knows
+  // its status, its lane and whether it is on a client board, so the capability
+  // is written here and never inferred by the bar.
+  caps: RowCap[]
+  taxonomy?: unknown
+  lane?: string
+}) {
+  const ref = useRef<HTMLButtonElement>(null)
+  const state = useSyncExternalStore(subscribe, () => rowState(id))
+  // No keyboard layer, no mark. #exp/stock renders this same row and mounts no
+  // CommandLayer, and the escape hatch has to stay exactly as it was.
+  const layer = useSyncExternalStore(subscribe, isLayerMounted)
+  const on = (state & 1) !== 0
+  const focused = (state & 2) !== 0
+
+  const row: SelectedRow = { id, kind, label, caps, taxonomy, lane }
+  const rowRef = useRef(row)
+  rowRef.current = row
+
+  // The registry answers "what is this row"; the DOM answers "what order are
+  // the rows in". Registration is keyed by id and cleaned up on unmount, so a
+  // filter change cannot leave a phantom row behind for a bulk action to hit.
+  const capKey = caps.join(',')
+  useEffect(() => {
+    if (!layer) return
+    return registerRow(rowRef.current)
+  }, [id, kind, label, capKey, lane, layer])
+
+  // The ROW carries the attributes: `data-wbrow` is what the keyboard layer
+  // walks, and the other two are what section C paints.
+  //
+  // 🔴 `closest`, not `parentElement`. `.ct-card` is a seven-column grid with a
+  // fixed template (faithful.css:2488), so a mark rendered as its first child
+  // took the anchor's column and pushed every other cell one place right. The
+  // mark now lives INSIDE the anchor, absolutely positioned over its corner,
+  // and finds the row it belongs to by walking up. Measured on the Errors tab:
+  // the row anatomy is untouched.
+  useEffect(() => {
+    if (!layer) return
+    const host = ref.current?.closest('.ct-card, .r') ?? ref.current?.parentElement
+    if (!host) return
+    host.setAttribute('data-wbrow', id)
+    host.setAttribute('data-wbsel', on ? '1' : '0')
+    host.setAttribute('data-wbfocus', focused ? '1' : '0')
+  }, [id, on, focused, layer])
+
+  if (!layer) return null
+
+  return (
+    <button
+      ref={ref}
+      type="button"
+      className="wb-selmark"
+      role="checkbox"
+      aria-checked={on}
+      aria-label={on ? `Deselect ${label}` : `Select ${label}`}
+      title={on ? 'Selected. Click or press x to deselect.' : 'Select this row (x)'}
+      // A tap on the row opens it; the mark must not also fire that.
+      onClick={e => { e.stopPropagation(); toggleRow(rowRef.current) }}
+    >
+      <span className="wb-selmark-b" aria-hidden>{on ? '✓' : ''}</span>
+    </button>
+  )
+}

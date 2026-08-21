@@ -1,0 +1,800 @@
+/* ============================================================================
+   wb2026.css — the 2026 readability/command/layout pass.
+
+   WHY A FOURTH SHEET. faithful.css owns the type ramp and the skin; touching it
+   from four workstreams at once is how a cascade gets shuffled. This file is
+   imported LAST (Shell.tsx), so it is the final word inside .wb, and each pass
+   below owns one section and edits nothing outside it.
+
+   THE ONE RULE. faithful.css flattens every descendant (`.wb.wb, .wb.wb *`) and
+   re-asserts its tiers at `.wb.wb.wb`. A selector written here with a single
+   class LOSES to that flattener and renders at body size, silently. So every
+   rule in this file carries `.wb.wb.wb`, and nothing here is believed until a
+   getComputedStyle read on the real element agrees with it.
+
+   Sizes are TOKENS (var(--fs-body) and friends), never literals: the ramp is set
+   once in faithful.css and this sheet must never fork it.
+   ============================================================================ */
+
+/* ========================================================================== */
+/* A · LABELS — human words for database values (pass 2)                       */
+/* ========================================================================== */
+
+/* THE ERRORS TAB'S REASON LINE (ContentList.tsx Card, phase2). Same one-line
+   ellipsis treatment .ct-src already carries in faithful.css, meta size,
+   text2 rather than text3 because this is the fact the row is IN THE TAB for
+   ("why did this fail"), one step louder than the source legibility line it
+   sits below. Full text lives in the element's title attribute; this box
+   only ever shows one line, no matter how long taxonomy.error_message runs. */
+.wb.wb.wb .ct-reason{
+  margin-top:2px;
+  font-size:var(--fs-meta); color:var(--text2);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+
+/* ========================================================================== */
+/* B · TODAY — the briefing (pass 3)                                           */
+/* ========================================================================== */
+
+/* Every .sa-* selector below carries .wb.wb.wb per the ONE RULE at the top of
+   this file. Measured before touching anything: NONE of the alert strip's own
+   classes (.sa-sev, .sa-title, .sa-n, .sa-x, .sa-body, .sa-act, .sa-bar,
+   .sa-sum) were reasserted anywhere under .wb — every one of them was landing
+   on the flattener's body tier (14px/400/normal), so the severity label, the
+   badge count and the title all rendered at the SAME size. That is machine
+   output with a border-radius, not a briefing, and it is squarely inside the
+   alert-row scope this pass owns, so it is fixed here rather than left for a
+   fourth pass to rediscover. Sizes below restate what src/styles.css already
+   declares for the stock (#exp/stock) surface — one visual language, two
+   selector scopes, never a fork of the numbers themselves. */
+.wb.wb.wb .sa-bar{
+  display:flex; align-items:center; gap:var(--sp-2); width:100%;
+  background:var(--surface1); border:1px solid var(--surface3); border-radius:var(--r-md);
+  padding:var(--sp-2) var(--sp-3); cursor:pointer; text-align:left;
+  min-height:44px;   /* D7: the strip's own toggle is a primary target */
+}
+.wb.wb.wb .sa-n{
+  flex:none; min-width:20px; height:20px; padding:0 6px; border-radius:var(--r-pill);
+  background:var(--sev-urgent); color:#fff; font-size:11.5px; font-weight:800;
+  display:flex; align-items:center; justify-content:center; letter-spacing:0;
+}
+.wb.wb.wb .sa-sum{
+  flex:1; min-width:0; font-size:var(--fs-meta); font-weight:700; color:var(--text2);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:0;
+}
+.wb.wb.wb .sa-chev{ flex:none; font-size:15px; color:var(--text3); line-height:1 }
+
+.wb.wb.wb .sa-row{ border:1px solid; border-radius:var(--r-md); padding:var(--sp-3) }
+.wb.wb.wb .sa-row + .sa-row{ margin-top:var(--sp-2) }
+.wb.wb.wb .sa-head{ display:flex; align-items:flex-start; gap:var(--sp-2) }
+.wb.wb.wb .sa-headmid{ flex:1; min-width:0; display:flex; flex-direction:column; gap:3px }
+
+/* D6: the drawn severity mark. A dot (the same one Surface.tsx already draws
+   for section-head severity — reused, not forked) plus the text label that
+   was always here: color is never the only signal. */
+.wb.wb.wb .sa-sevmark{ display:flex; align-items:center; gap:6px; line-height:1 }
+.wb.wb.wb .sa-sev{
+  font-size:10.5px; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
+}
+.wb.wb.wb .sa-title{
+  font-size:var(--fs-body); font-weight:700; color:var(--text); line-height:1.35; letter-spacing:0;
+}
+
+/* D3: the figure this row leads with — one place the number is a number, not
+   a word buried mid-sentence. Reuses the app's one figure tier (--fs-figure)
+   rather than inventing a size. */
+.wb.wb.wb .sa-figure{
+  flex:none; font-size:var(--fs-figure); font-weight:600; line-height:1;
+  letter-spacing:-.02em; color:var(--text); padding-top:2px;
+}
+
+/* 68ch, not 70: the CSS `ch` unit and the measurement harness's glyph-true
+   canvas measureText('0') round slightly differently near the boundary (a
+   70ch declaration measured back at 71ch on this font) — two ch of margin
+   keeps every row inside the cap under either method, never right on top of
+   it. */
+.wb.wb.wb .sa-body{
+  margin-top:var(--sp-1); font-size:var(--fs-meta); color:var(--text2); line-height:1.45; max-width:68ch;
+}
+/* The connect URL is ~700 chars of query string. Without the wrap rule it
+   forces the whole strip wider than the 390 canvas and Today scrolls sideways. */
+.wb.wb.wb .sa-act{
+  position:relative; display:inline-block; margin-top:var(--sp-2); font-size:var(--fs-meta); font-weight:700;
+  color:var(--accent-ui, var(--accent)); text-decoration:none; max-width:100%; overflow-wrap:anywhere;
+}
+/* Same inset-overlay hit box as .sa-x: the link text stays its own size, the
+   tap area clears 44px top-to-bottom (the glyph line is ~20px, so a 12px
+   inset gets there without the row eating extra vertical space). */
+.wb.wb.wb .sa-act::after{ content:''; position:absolute; inset:-12px 0 }
+
+/* D7 — dismiss targets to 44px. The VISIBLE glyph stays a small ✕; the HIT
+   area grows via an inset ::after overlay, the exact pattern the ihead chips
+   already use (v2c/styles.css:434, "a 36px chip has a 44px hit box"). Keeping
+   the mark small is what stops a row of dismiss buttons from reading as a
+   toolbar. */
+.wb.wb.wb .sa-x{
+  position:relative; flex:none; width:20px; height:20px; font-size:12px;
+  color:var(--text3); background:none; border:0; cursor:pointer; padding:0;
+  display:flex; align-items:center; justify-content:center; line-height:1;
+  border-radius:var(--r-pill);
+  transition:background-color var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease);
+}
+.wb.wb.wb .sa-x::after{ content:''; position:absolute; inset:-12px }
+.wb.wb.wb .sa-x:hover{ background:var(--surface2); color:var(--text2) }
+.wb.wb.wb .sa-x:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
+
+/* D4 — raw telemetry, parked behind a native <details>. Nothing here is
+   deleted: the full multi-line body a scan warning or an outreach stat dump
+   carries past its first line is one tap away, never gone. */
+.wb.wb.wb .sa-raw{ margin-top:var(--sp-2) }
+.wb.wb.wb .sa-raw > summary{
+  font-size:var(--fs-eyebrow); font-weight:600; color:var(--text3); cursor:pointer;
+  list-style:none; display:inline-flex; align-items:center; gap:4px; letter-spacing:0;
+  min-height:24px;
+}
+.wb.wb.wb .sa-raw > summary::-webkit-details-marker{ display:none }
+.wb.wb.wb .sa-raw > summary::before{ content:'›'; display:inline-block; transition:transform var(--dur-hover) var(--ease) }
+.wb.wb.wb .sa-raw[open] > summary::before{ transform:rotate(90deg) }
+.wb.wb.wb .sa-raw-pre{
+  margin:var(--sp-1) 0 0; padding:var(--sp-2) var(--sp-3); background:var(--surface2);
+  border-radius:var(--r-ctl); font-size:var(--fs-eyebrow); color:var(--text3); line-height:1.5;
+  white-space:pre-wrap; overflow-wrap:anywhere; font-family:inherit; max-width:68ch;
+}
+
+/* D2/D4 — a group's own disclosure: the count is the row, every member (and
+   its own action + raw body) lives one tap away. Critical groups are the only
+   ones that default open, matching the strip's own "critical opens on sight"
+   rule one level down. */
+.wb.wb.wb .sa-groupd{ margin-top:var(--sp-2) }
+.wb.wb.wb .sa-groupd > summary{
+  font-size:var(--fs-meta); font-weight:600; color:var(--text2); cursor:pointer;
+  list-style:none; display:flex; align-items:center; gap:6px; letter-spacing:0; min-height:32px;
+}
+.wb.wb.wb .sa-groupd > summary::-webkit-details-marker{ display:none }
+.wb.wb.wb .sa-groupd > summary::before{ content:'›'; transition:transform var(--dur-hover) var(--ease) }
+.wb.wb.wb .sa-groupd[open] > summary::before{ transform:rotate(90deg) }
+
+.wb.wb.wb .sa-member{
+  margin-top:var(--sp-2); padding:var(--sp-2) var(--sp-3); background:var(--surface1);
+  border-radius:var(--r-ctl); border:1px solid var(--surface3);
+}
+.wb.wb.wb .sa-member-head{ display:flex; align-items:flex-start; gap:var(--sp-2) }
+.wb.wb.wb .sa-member-t{
+  flex:1; min-width:0; font-size:var(--fs-meta); font-weight:600; color:var(--text); line-height:1.4;
+}
+.wb.wb.wb .sa-member-b{ margin-top:2px; font-size:var(--fs-eyebrow); color:var(--text3); line-height:1.4; max-width:68ch }
+
+/* ========================================================================== */
+/* C · COMMAND LAYER — palette, selection, bulk bar, restore (pass 4)          */
+/* ========================================================================== */
+
+/* Every selector below carries .wb.wb.wb per the ONE RULE at the top of this
+   file: faithful.css flattens `.wb.wb *` to body size, so a single-class rule
+   here would render at 14/20/400 no matter what it declares. Sizes are tokens.
+   z-index: the takeover window is 50 and the confirm sheets are 60, so the
+   palette and the shortcut sheet sit at 70 (they can be opened over a window)
+   and the bulk bar sits at 40, under both. */
+
+/* ---- C1 · THE ROW SELECTION MARK ----------------------------------------- */
+/* Not on all 300 rows at once. It is painted on hover, on the keyboard-focused
+   row, and on any row that is selected, so a mouse operator finds it where the
+   pointer is and a keyboard-only operator always sees the row he is on plus
+   every row he has picked. A permanent column of 300 checkboxes would compete
+   with the work for the whole width of the anchor rail. */
+.wb.wb.wb .wb-selmark{
+  position:relative; flex:none; width:18px; height:18px; margin-right:2px;
+  border:1.5px solid var(--surface3); border-radius:4px; background:var(--surface1);
+  padding:0; cursor:pointer; opacity:0; pointer-events:auto;
+  display:flex; align-items:center; justify-content:center;
+  color:var(--text3); font-size:11px; line-height:1;
+  transition:opacity var(--dur-hover) var(--ease), border-color var(--dur-hover) var(--ease);
+}
+/* The visible box stays 18px so the row keeps its density band; the HIT area
+   clears 44px through an inset overlay, the same pattern .sa-x and the ihead
+   chips already use. */
+.wb.wb.wb .wb-selmark::after{ content:''; position:absolute; inset:-13px }
+.wb.wb.wb .wb-selmark-b{ font-size:11px; font-weight:800; line-height:1 }
+
+/* 🔴 IT ADDS NO BOX TO THE ROW. `.ct-card` is a seven-column grid with a fixed
+   template (faithful.css:2488), so a mark in the normal flow took the anchor's
+   own column and shifted every other cell one place right. Measured on the
+   Errors tab, the title wrapped and the review buttons jumped a row. Inside the
+   anchor (already position:relative) it is absolutely placed over the corner
+   and the row anatomy is untouched. Declared AFTER the base rule on purpose:
+   the two selectors carry the same specificity, so source order is what makes
+   `absolute` win over `relative`. The inbox row is a flex line, so there the
+   mark stays in the flow. */
+.wb.wb.wb .ct-anchor > .wb-selmark{
+  position:absolute; top:-5px; left:-5px; z-index:2; margin:0;
+}
+
+.wb.wb.wb .ct-card:hover .wb-selmark,
+.wb.wb.wb .r:hover .wb-selmark,
+.wb.wb.wb [data-wbfocus='1'] .wb-selmark,
+.wb.wb.wb [data-wbsel='1'] .wb-selmark,
+.wb.wb.wb .wb-selmark:focus-visible{ opacity:1 }
+.wb.wb.wb [data-wbsel='1'] .wb-selmark{
+  background:var(--accent-ui, var(--accent)); border-color:var(--accent-ui, var(--accent)); color:#fff;
+}
+.wb.wb.wb .wb-selmark:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
+
+/* The focused row and the selected row, drawn differently on purpose: focus is
+   where the keyboard is, selection is what an action would hit. */
+.wb.wb.wb [data-wbrow][data-wbfocus='1']{
+  box-shadow:inset 2px 0 0 0 var(--accent-ui, var(--accent));
+  background:var(--surface1);
+}
+.wb.wb.wb [data-wbrow][data-wbsel='1']{ background:var(--surface2) }
+
+/* ---- C2 · THE ⌘K PALETTE -------------------------------------------------- */
+.wb.wb.wb .wb-cmdk-scrim{
+  position:fixed; inset:0; z-index:70; background:rgba(0,0,0,.45);
+  display:flex; align-items:flex-start; justify-content:center; padding:10vh 16px 16px;
+}
+.wb.wb.wb .wb-cmdk{
+  width:100%; max-width:640px; max-height:70vh; display:flex; flex-direction:column;
+  background:var(--surface1); border:1px solid var(--surface3); border-radius:var(--r-md);
+  box-shadow:0 24px 64px rgba(0,0,0,.45); overflow:hidden;
+}
+.wb.wb.wb .wb-cmdk-q{
+  flex:none; width:100%; min-height:48px; padding:var(--sp-3);
+  background:transparent; border:0; border-bottom:1px solid var(--surface3);
+  color:var(--text); font-size:var(--fs-body); font-family:inherit; outline:none;
+}
+.wb.wb.wb .wb-cmdk-list{ flex:1; min-height:0; overflow-y:auto; padding:var(--sp-2) 0 }
+.wb.wb.wb .wb-cmdk-grph{
+  padding:var(--sp-2) var(--sp-3) 4px; font-size:var(--fs-eyebrow); font-weight:700;
+  letter-spacing:.08em; text-transform:uppercase; color:var(--text3);
+}
+.wb.wb.wb .wb-cmdk-row{
+  display:flex; align-items:center; gap:var(--sp-2); width:100%; min-height:36px;
+  padding:6px var(--sp-3); background:none; border:0; cursor:pointer; text-align:left;
+  color:var(--text); font-family:inherit;
+}
+.wb.wb.wb .wb-cmdk-row.on{ background:var(--surface2) }
+/* 🔴 DIMMED, NEVER DROPPED. An unavailable command keeps its row and prints the
+   reason in the hint slot. See the comment above matchCommands in ChatPane.tsx
+   for the measured incident this rule comes from. */
+.wb.wb.wb .wb-cmdk-row.off{ cursor:default; opacity:.5 }
+.wb.wb.wb .wb-cmdk-t{
+  flex:none; max-width:44%; font-size:var(--fs-meta); font-weight:600; color:var(--text);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:0;
+}
+.wb.wb.wb .wb-cmdk-h{
+  flex:1; min-width:0; font-size:var(--fs-eyebrow); color:var(--text3);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:0;
+}
+/* THE PRINTED SHORTCUT. Every row spends this slot: a row that no key runs
+   prints "no key" rather than leaving it blank, because a column that is empty
+   on half the rows teaches the reader to stop looking at it. */
+.wb.wb.wb .wb-cmdk-k{
+  flex:none; min-width:44px; text-align:center; padding:2px 6px;
+  background:var(--surface2); border:1px solid var(--surface3); border-radius:var(--r-ctl);
+  font-size:var(--fs-eyebrow); font-weight:700; color:var(--text2); letter-spacing:0;
+}
+.wb.wb.wb .wb-cmdk-none{
+  padding:var(--sp-3); font-size:var(--fs-meta); color:var(--text2); line-height:1.45; max-width:68ch;
+}
+.wb.wb.wb .wb-cmdk-foot{
+  flex:none; display:flex; gap:var(--sp-3); padding:var(--sp-2) var(--sp-3);
+  border-top:1px solid var(--surface3); font-size:var(--fs-eyebrow); color:var(--text3); letter-spacing:0;
+}
+
+/* ---- C3 · THE ? SHORTCUT SHEET ------------------------------------------- */
+.wb.wb.wb .wb-keys-scrim{
+  position:fixed; inset:0; z-index:70; background:rgba(0,0,0,.45);
+  display:flex; align-items:center; justify-content:center; padding:16px;
+}
+.wb.wb.wb .wb-keys{
+  width:100%; max-width:520px; max-height:80vh; display:flex; flex-direction:column;
+  background:var(--surface1); border:1px solid var(--surface3); border-radius:var(--r-md);
+  box-shadow:0 24px 64px rgba(0,0,0,.45); overflow:hidden; outline:none;
+}
+.wb.wb.wb .wb-keys-h{
+  flex:none; display:flex; align-items:center; gap:var(--sp-2);
+  padding:var(--sp-3); border-bottom:1px solid var(--surface3);
+}
+.wb.wb.wb .wb-keys-ttl{ flex:1; font-size:var(--fs-body); font-weight:700; color:var(--text); letter-spacing:0 }
+.wb.wb.wb .wb-keys-x{
+  position:relative; flex:none; width:20px; height:20px; padding:0; border:0; background:none;
+  color:var(--text3); font-size:12px; cursor:pointer; line-height:1;
+}
+.wb.wb.wb .wb-keys-x::after{ content:''; position:absolute; inset:-12px }
+.wb.wb.wb .wb-keys-body{ flex:1; min-height:0; overflow-y:auto; padding:var(--sp-2) var(--sp-3) var(--sp-3) }
+.wb.wb.wb .wb-keys-grp{ margin-top:var(--sp-3) }
+.wb.wb.wb .wb-keys-grph{
+  font-size:var(--fs-eyebrow); font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--text3); margin-bottom:4px;
+}
+.wb.wb.wb .wb-keys-row{ display:flex; align-items:center; gap:var(--sp-2); min-height:28px }
+.wb.wb.wb .wb-keys-k{
+  flex:none; min-width:52px; text-align:center; padding:2px 6px;
+  background:var(--surface2); border:1px solid var(--surface3); border-radius:var(--r-ctl);
+  font-size:var(--fs-eyebrow); font-weight:700; color:var(--text2); letter-spacing:0;
+}
+.wb.wb.wb .wb-keys-t{ flex:1; min-width:0; font-size:var(--fs-meta); color:var(--text); letter-spacing:0 }
+.wb.wb.wb .wb-keys-note{
+  margin-top:var(--sp-3); padding-top:var(--sp-2); border-top:1px solid var(--surface3);
+  font-size:var(--fs-eyebrow); color:var(--text3); line-height:1.5; max-width:68ch;
+}
+
+/* ---- C4 · THE BULK BAR --------------------------------------------------- */
+/* Docked to the bottom of the working region, above the mobile tab bar. It only
+   exists while a selection does, so it never spends height on an idle screen. */
+.wb.wb.wb .wb-bulk{
+  position:fixed; left:50%; transform:translateX(-50%); bottom:20px; z-index:40;
+  display:flex; align-items:center; gap:var(--sp-3); flex-wrap:wrap;
+  max-width:min(920px, calc(100vw - 32px));
+  padding:var(--sp-2) var(--sp-3);
+  background:var(--surface1); border:1px solid var(--surface3); border-radius:var(--r-md);
+  box-shadow:0 12px 32px rgba(0,0,0,.4);
+}
+.wb.wb.wb .wb-bulk-n{
+  flex:none; font-size:var(--fs-meta); font-weight:700; color:var(--text); letter-spacing:0;
+}
+.wb.wb.wb .wb-bulk-note{
+  flex:1; min-width:180px; font-size:var(--fs-eyebrow); color:var(--text3);
+  line-height:1.45; max-width:68ch; letter-spacing:0;
+}
+.wb.wb.wb .wb-bulk-err{
+  flex:1; min-width:180px; font-size:var(--fs-eyebrow); color:var(--sev-urgent);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:0;
+}
+.wb.wb.wb .wb-bulk-acts{ display:flex; gap:var(--sp-2); flex-wrap:wrap }
+.wb.wb.wb .wb-bulk-tail{ display:flex; gap:var(--sp-2); margin-left:auto }
+.wb.wb.wb .wb-bulk-b{
+  min-height:32px; padding:0 var(--sp-3); border-radius:var(--r-ctl);
+  border:1px solid var(--surface3); background:var(--surface2); color:var(--text);
+  font-size:var(--fs-meta); font-weight:600; font-family:inherit; cursor:pointer; letter-spacing:0;
+}
+.wb.wb.wb .wb-bulk-b.s{ background:transparent; color:var(--text2) }
+.wb.wb.wb .wb-bulk-b.danger{ color:var(--sev-urgent) }
+.wb.wb.wb .wb-bulk-b:disabled{ opacity:.45; cursor:not-allowed }
+.wb.wb.wb .wb-bulk-b:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
+
+/* The phone: the tab bar owns the bottom 56px, and the bar is full width there
+   because a centered pill inside 390px is a two-line wrap. */
+@media (max-width:767px){
+  .wb.wb.wb .wb-bulk{
+    left:8px; right:8px; bottom:70px; transform:none; max-width:none;
+    gap:var(--sp-2); padding:var(--sp-2);
+  }
+  /* At 390 the auto margin pushed Clear onto a third line of its own, so the
+     bar was 90px of a 812px screen. It rides with the actions instead. */
+  .wb.wb.wb .wb-bulk-tail{ margin-left:0 }
+  .wb.wb.wb .wb-bulk-n{ width:100% }
+  .wb.wb.wb .wb-cmdk-scrim{ padding:6vh 8px 8px }
+  .wb.wb.wb .wb-cmdk-t{ max-width:60% }
+  /* The hint is the first thing to go at 390: the title and the printed key are
+     what the row is for. */
+  .wb.wb.wb .wb-cmdk-h{ display:none }
+}
+
+/* ---- C5 · THE DISCARDED DRAFT, AND THE RESTORE --------------------------- */
+/* Quiet on purpose. This is a row that was RULED ON: it sits between the
+   conversation and the draft card looking like neither, so it can never be
+   mistaken for a message that was sent or for a draft waiting on a decision.
+   Dashed, no fill, text3. */
+.wb.wb.wb .wb-disc{
+  margin:var(--sp-2) var(--sp-3);
+  padding:var(--sp-2) var(--sp-3);
+  border:1px dashed var(--surface3); border-radius:var(--r-md); background:transparent;
+}
+.wb.wb.wb .wb-disc-h{ display:flex; align-items:center; gap:var(--sp-2); flex-wrap:wrap }
+.wb.wb.wb .wb-disc-t{
+  flex:1; min-width:0; font-size:var(--fs-eyebrow); font-weight:700; color:var(--text3);
+  letter-spacing:.06em; text-transform:uppercase;
+}
+.wb.wb.wb .wb-disc-x,
+.wb.wb.wb .wb-disc-b{
+  flex:none; min-height:32px; padding:0 var(--sp-3); border-radius:var(--r-ctl);
+  border:1px solid var(--surface3); background:var(--surface2); color:var(--text2);
+  font-size:var(--fs-meta); font-weight:600; font-family:inherit; cursor:pointer; letter-spacing:0;
+}
+/* The restore is the one control here that writes, so it is the one that takes
+   the weight. It is still not a primary button: bringing a draft back is a step
+   toward a decision, not the decision. */
+.wb.wb.wb .wb-disc-b{ color:var(--text); border-color:var(--text3) }
+.wb.wb.wb .wb-disc-b:disabled{ opacity:.5; cursor:not-allowed }
+.wb.wb.wb .wb-disc-x:focus-visible,
+.wb.wb.wb .wb-disc-b:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
+.wb.wb.wb .wb-disc-body{
+  margin-top:var(--sp-2); padding:var(--sp-2) var(--sp-3); background:var(--surface2);
+  border-radius:var(--r-ctl); font-size:var(--fs-meta); color:var(--text2);
+  line-height:1.5; white-space:pre-wrap; max-width:68ch;
+}
+/* The sentence that says what the button does, or why there is no button. */
+.wb.wb.wb .wb-disc-s{
+  margin-top:var(--sp-2); font-size:var(--fs-eyebrow); color:var(--text3);
+  line-height:1.5; max-width:68ch; letter-spacing:0;
+}
+.wb.wb.wb .wb-disc-note{
+  margin-top:var(--sp-2); font-size:var(--fs-eyebrow); color:var(--sev-urgent);
+  line-height:1.5; max-width:68ch; letter-spacing:0;
+}
+
+/* ========================================================================== */
+/* D · LAYOUT — canvas fill, container queries, panes, mobile chrome (pass 5)  */
+/* ========================================================================== */
+
+/* D0 · THE WORKING REGION BECOMES A QUERY CONTAINER, and the one guard that
+   makes it safe.
+   The whole reason this pass exists: every width rule in the app keys off the
+   VIEWPORT, while the surface it governs is a PANE whose width has almost
+   nothing to do with the viewport. `.wb-work.list` is 400px whenever a peer
+   docks, at 1024 and at 2560 alike, so a table switched on by
+   `@media (min-width:1000px)` renders inside 384px. Measured, chat peer docked:
+   1024 → title track 0px and 93px of row overflow; 1440 → title track 0px and
+   161px; 2560 → title 383px against 842px of title. A container query asks the
+   only question that matters ("how wide is this pane"), which is why it is
+   worth the ~40 lines.
+
+   🔴 THE GUARD, AND IT IS NOT OPTIONAL. `container-type: inline-size` implies
+   `contain: layout`, and a `contain: layout` box becomes the containing block
+   for every `position: fixed` descendant. The mobile filter sheet's scrim
+   (`.ct-fsheet-scrim`, faithful.css:1330, `position:fixed; inset:0`) is a
+   descendant of `.wb-work`, so an unguarded declaration would shrink it to the
+   pane and stop it covering the tab bar: a clip traded for a broken overlay.
+   The declaration therefore lives INSIDE `@media (min-width:1000px)`, and the
+   sheet only ever renders below 768px (FilterRow.tsx:30, `useSheetMode`), so
+   the two can never meet. Verified by screenshot at 390 (phase5-scrim-390.jpg),
+   not by reasoning.
+   The other two fixed scrims are clear by structure, checked and not assumed:
+   `.wb-tkscrim` (the takeover) renders OUTSIDE `.wb-plate` in Shell.tsx, and
+   `.sheet-scrim` is mounted either at the ConfirmSheet provider (root) or
+   inside `.wb-peer`, never inside `.wb-work`. */
+@media (min-width:1000px){
+  .wb.wb.wb .wb-work{ container-type:inline-size; container-name:work }
+}
+
+/* D1 · THE 860px PANE CAP, REPLACED BY A SECOND COLUMN OF ROWS.
+   v2c/styles.css:31 used to cap the whole solo pane at 860px and centre it. At
+   2560 that left 1,444px of a 2,304px plate empty and the DMs lane at 8.2%
+   glyph fill. The cap is gone from the source (see the note left in its place);
+   the surplus is spent here.
+
+   A row is not a paragraph: `.r`'s snippet is ONE ellipsized line, so a wider
+   row shows MORE of the conversation rather than a harder-to-read one. The
+   measure that genuinely needed capping is prose, and the type pass already
+   caps that. So at a pane of 1,560px or more the conversation rows go two-up
+   and the pane carries twice the rows in the same screen.
+
+   1560px is the threshold because two columns have to be worth having: at
+   1,560px each column is ~768px, which is still a comfortable row. Below it
+   nothing changes. Only `.r` splits: every banner, section head, the stale
+   bar and DM HISTORY keep the full width, because a full-width thing chopped
+   in half is a new defect, not a fix. */
+@container work (min-width:1560px){
+  .wb.wb.wb .wb-solo .rows{
+    display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
+    column-gap:var(--sp-5); align-content:start;
+  }
+  .wb.wb.wb .wb-solo .rows > *{ grid-column:1 / -1 }
+  .wb.wb.wb .wb-solo .rows > .r{ grid-column:auto }
+  /* The two columns need a seam or they read as one ragged list. The hairline
+     is drawn on the SECOND column's rows so it never paints outside the grid. */
+  .wb.wb.wb .wb-solo .rows > .r:nth-of-type(2n){ box-shadow:inset 1px 0 0 var(--sep) }
+}
+
+/* NO MEASURE IN THIS APP GETS WIDER BECAUSE OF THIS PASS. The snippet is one
+   ellipsized line, so the reading-measure argument does not fully bite on it,
+   but the harness counts every text element over 70ch and the type pass owns
+   that gate. 88ch is exactly what `.snip` measured at 1440 BEFORE the pane cap
+   came off (87ch), so a wider row still buys more of the conversation and no
+   line is longer than one that already shipped. Without it the uncapped row
+   took the snippet to 126ch at 1440 and 121ch at 2560.
+   OUTSIDE the container query on purpose: the cap came off at every width, so
+   the guard has to be at every width too, not only where the second column
+   turns on. */
+.wb.wb.wb .wb-solo .rows > .r .snip{ max-width:88ch }
+
+/* D2 · THE CONTENT TABLE ASKS THE PANE, NOT THE WINDOW.
+   faithful.css:2483 and :2531 already worked out the right three forms and the
+   right two thresholds for this table, measured against the fixed tracks
+   (96+84+168+156+132 = 636px, plus a 28px anchor, six 12px gaps and 32px of
+   gutter = 768px, so the title track only clears ~280px at about 1,300px).
+   Nothing about that arithmetic is wrong. What is wrong is the thing it was
+   keyed to: a `@media` query reads the WINDOW, and this table lives in a pane
+   that is 400px wide whenever a peer docks, at any window size at all.
+
+   Measured with the Claude peer docked, before this block:
+     1024 → pane 384px, title track 0px, 93px of row overflow
+     1440 → pane 592px, title track 0px, 161px of row overflow
+     2560 → pane 1,152px, title 383px against 842px of title
+   A 0px title column is not a dense table. The three forms below are
+   faithful's own, re-keyed to the container so each one turns on when the
+   PANE can hold it. The numbers are not forked, only the question is.
+
+   Ordering note: this sheet loads after faithful.css at equal specificity, so
+   a matching container rule wins over the media rule underneath it. Below
+   1000px of WINDOW no container is declared at all (D0), the queries never
+   match, and the phone row is left exactly as faithful wrote it. */
+
+/* Pane too narrow for a table: back to the four-track phone row, which is what
+   faithful.css:595 declares and what a 400px list column has always needed.
+   Everything the columns held is still on the row (`.ct-colv` values live in
+   the draft window's taxonomy panel) and the head has nothing to label. */
+@container work (max-width:999.98px){
+  .wb.wb.wb .ct-card{
+    grid-template-columns:var(--anchor-w) minmax(0,1fr) auto var(--tail-w);
+  }
+  .wb.wb.wb .ct-card .ct-ac{ grid-column:3; grid-row:1; justify-content:flex-start }
+  .wb.wb.wb .ct-card .ct-tail{ grid-column:4 }
+  .wb.wb.wb .ct-colv{ display:none }
+  .wb.wb.wb .ct-cols-head{ display:none }
+}
+
+/* Shed, never crush (faithful's rule, its numbers): funnel and source fold
+   away so the title never drops under ~284px. */
+@container work (min-width:1000px) and (max-width:1299.98px){
+  .wb.wb.wb .ct-card,
+  .wb.wb.wb .ct-cols-head{
+    grid-template-columns:var(--anchor-w) minmax(0,1fr) 96px 156px 132px;
+  }
+  .wb.wb.wb .ct-cols-head{ display:grid }
+  .wb.wb.wb .ct-colv{ display:block }
+  .wb.wb.wb .ct-card .ct-ac{ grid-column:4; grid-row:1; justify-content:flex-end }
+  .wb.wb.wb .ct-card .ct-tail{ grid-column:5 }
+  .wb.wb.wb .ct-colv + .ct-colv{ display:none }
+  .wb.wb.wb .ct-cols-head > span:nth-child(4),
+  .wb.wb.wb .ct-cols-head > span:nth-child(5){ display:none }
+}
+
+/* The full seven-column form, on a pane that fits it. */
+@container work (min-width:1300px){
+  .wb.wb.wb .ct-card,
+  .wb.wb.wb .ct-cols-head{
+    grid-template-columns:var(--anchor-w) minmax(0,1fr) 96px 84px 168px 156px 132px;
+  }
+  .wb.wb.wb .ct-cols-head{ display:grid }
+  .wb.wb.wb .ct-colv, .wb.wb.wb .ct-colv + .ct-colv{ display:block }
+  .wb.wb.wb .ct-cols-head > span:nth-child(4),
+  .wb.wb.wb .ct-cols-head > span:nth-child(5){ display:block }
+  .wb.wb.wb .ct-card .ct-ac{ grid-column:6; grid-row:1; justify-content:flex-end }
+  .wb.wb.wb .ct-card .ct-tail{ grid-column:7 }
+}
+
+/* The two sub-lists that reuse `.ct-card` with their own internal grid
+   (`.ct-idea`, faithful.css:1753) opt out of every form above: they are
+   `display:block` cards, and a grid-template-columns declaration on a block
+   box is inert, but the `.ct-ac` / `.ct-tail` placements are not. Restated
+   here so a container band cannot reach into them. */
+.wb.wb.wb .ct-card.ct-idea .ct-ac,
+.wb.wb.wb .ct-card.ct-idea .ct-tail{ grid-column:auto }
+
+/* D3 · TABULAR NUMERALS, SCOPED OFF RUNNING PROSE.
+   faithful.css:113 declares `font-variant-numeric: tabular-nums` once on `.wb`
+   and calls it "declared once, never unset". Half right: tabular figures are
+   what puts a column of counts on one right edge, and every tile, table cell,
+   count, timestamp and `.num` below keeps them. What they were never for is
+   PROSE. A tabular figure is drawn on a fixed advance, so "€70k/mo" and "2026"
+   inside a sentence carry a visible pad on both sides of every digit and the
+   word they sit in comes apart. That inherited into DM bubbles, into the
+   LinkedIn artifact (the one surface whose job is to show what LinkedIn will
+   render, and LinkedIn renders proportional figures), into alert bodies and
+   into the strategy document.
+
+   So: off for text that is READ as sentences, untouched everywhere numbers are
+   SCANNED as a column. faithful.css:123's rule on input/textarea/select/button
+   stays exactly as it is, because a form control does not inherit
+   the property at all, and an operator reading a figure back inside an
+   editable field is the case it was written for. The two textareas below are
+   named individually rather than by widening that rule. */
+.wb.wb.wb .b,                                    /* thread bubbles */
+.wb.wb.wb .r .snip,                              /* the conversation snippet */
+.wb.wb.wb .dmh-r .snip,
+.wb.wb.wb .li-body, .wb.wb.wb .li-ta,            /* the LinkedIn artifact */
+.wb.wb.wb .li-hl, .wb.wb.wb .li-when,
+.wb.wb.wb .dd-body, .wb.wb.wb .dd-pre,           /* the draft window's post */
+.wb.wb.wb .dd-point,
+.wb.wb.wb .wb-bubble, .wb.wb.wb .wb-body, .wb.wb.wb .wb-p,   /* chat prose */
+.wb.wb.wb .sa-body, .wb.wb.wb .sa-member-b,      /* the briefing's bodies */
+.wb.wb.wb .sa-raw-pre,
+.wb.wb.wb .ct-ex, .wb.wb.wb .ct-why,             /* row excerpt, idea rationale */
+.wb.wb.wb .ct-reason, .wb.wb.wb .ct-style-b,
+.wb.wb.wb .qa-p,                                 /* the QA verdict, in words */
+.wb.wb.wb .wb-strat-read, .wb.wb.wb .wb-strat-p, /* the strategy document */
+.wb.wb.wb .wb-strat-note, .wb.wb.wb .wb-strat-b,
+.wb.wb.wb .ctx-txt{                              /* the context sheet's prose */
+  font-variant-numeric:normal;
+}
+/* The exceptions INSIDE the prose blocks above: a figure that is still part of
+   a column, or a code span, keeps its tabular advance. */
+.wb.wb.wb .num, .wb.wb.wb .wb-ic, .wb.wb.wb .wb-code,
+.wb.wb.wb .wb-code code, .wb.wb.wb .wb-tool-in{
+  font-variant-numeric:tabular-nums;
+}
+
+/* D4 · THE DM HISTORY FOOTER (DmHistory.tsx, PAGE = 20).
+   A full-width row rather than a link, so the end of the list has an edge: the
+   count of what is still folded is the fact, the verb is the affordance. 44px
+   of target, because this is the one control the section has. */
+.wb.wb.wb .dmh-more{
+  display:flex; align-items:center; gap:var(--sp-3); width:100%;
+  min-height:44px; padding:var(--sp-2) var(--gut);
+  background:none; border:0; border-top:1px solid var(--hairline);
+  font-family:inherit; text-align:left; cursor:pointer;
+  transition:background-color var(--dur-hover) var(--ease);
+}
+.wb.wb.wb .dmh-more:hover{ background:var(--surface1) }
+.wb.wb.wb .dmh-more:focus-visible{ outline:2px solid var(--accent); outline-offset:-2px }
+.wb.wb.wb .dmh-more-l{ font-size:var(--fs-meta); font-weight:700; color:var(--text2) }
+.wb.wb.wb .dmh-more-n{ margin-left:auto; font-size:var(--fs-meta); color:var(--text3) }
+
+/* D5 · THE LEAD-MAGNET QUEUE RAIL, WITH ITS HIERARCHY THE RIGHT WAY UP.
+   Measured at 1440, 11 rows: titles held 118 to 166px on ONE line and
+   ellipsized after about 14 characters, while `Guide · 3d ago` wrapped to
+   three and four lines, and the rows ran 44, 56, 75, 93 and 112px tall. The
+   identifying text was starved and the secondary text was fed.
+
+   The cause is not a style choice, it is a markup difference: DraftPane's rail
+   wraps its two lines in `.dw-qrow-b` (v2c/styles.css:1069, `flex:1`), and
+   MagnetWindow's QueueRail puts the title and the meta straight into the flex
+   row as siblings. Two flex items with no basis then split the rail between
+   them, and the shorter string won. `:has()` names that difference rather than
+   a window, so this cannot reach into the draft rail beside it and cannot
+   silently stop applying if a third window reuses the markup.
+
+   Two lines of title, one quiet meta line, one height for every row. The row
+   is a place to GO, and you pick it by its name. */
+.wb.wb.wb .dw-queue .dw-qrow:not(:has(.dw-qrow-b)){
+  display:grid; grid-template-rows:auto auto; align-content:center;
+  row-gap:2px; height:76px; box-sizing:border-box; overflow:hidden;
+}
+.wb.wb.wb .dw-queue .dw-qrow:not(:has(.dw-qrow-b)) .dw-qrow-t{
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  white-space:normal; overflow:hidden;
+  line-height:1.35; min-height:calc(2 * 1.35em);
+  color:var(--text2);
+}
+.wb.wb.wb .dw-queue .dw-qrow:not(:has(.dw-qrow-b)).on .dw-qrow-t{
+  color:var(--text); font-weight:700;
+}
+/* The meta earns exactly one line and never competes: it is what you confirm a
+   row with after the title told you which one it is. */
+.wb.wb.wb .dw-queue .dw-qrow:not(:has(.dw-qrow-b)) .dw-qrow-m{
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  line-height:1.3; color:var(--text4); margin-top:0;
+}
+
+/* D6 · THE TAKEOVER'S SURPLUS GOES TO THE INSPECTOR.
+   🔴 THE 640px ARTIFACT MEASURE DOES NOT MOVE, and this is a correctness rule
+   rather than a taste one: `.dw-main-in` is 640px because that is what
+   LinkedIn gives a post, and the ONE job of that column is to show what the
+   post will look like there. A wider ribbon would make the preview lie.
+
+   Measured at 2560 (one-row queue, so `.dw-norail`): the grid ran
+   2040px + 520px, with the artifact riding a 640px ribbon inside the 2,040px
+   track, about 1,400px of that column carrying nothing, while the evidence
+   rail, which holds the QA rubric, the generation register and the source
+   quote, sat at 520px.
+
+   One correction to the brief, from measurement: the inspector is NOT 360px at
+   this width. v2c/styles.css:1029 already widens it to minmax(420px,520px)
+   above 1700px, and it computed 520px. So the bands below start from 520 and
+   go up rather than starting from a number that no longer exists.
+
+   Two more steps, both spending width the artifact must not have. */
+@media (min-width:1900px){
+  .wb.wb.wb .dw-cols{ grid-template-columns:300px minmax(640px,1fr) minmax(560px,760px) }
+  .wb.wb.wb .dw-cols.dw-norail{ grid-template-columns:minmax(640px,1fr) minmax(560px,760px) }
+}
+@media (min-width:2400px){
+  .wb.wb.wb .dw-cols{ grid-template-columns:320px minmax(640px,1fr) minmax(700px,920px) }
+  .wb.wb.wb .dw-cols.dw-norail{ grid-template-columns:minmax(640px,1fr) minmax(700px,920px) }
+}
+/* Width given to a rail is only a gain if the rail's text still has a measure.
+   Everything in the inspector that is a SENTENCE keeps one; the rubric bars,
+   the key/value rows and the counts are columns and take the full width, which
+   is the whole reason the rail wanted room. 68ch for the same rounding reason
+   section B gives. */
+.wb.wb.wb .dw-insp .qa-p,
+.wb.wb.wb .dw-insp .qa-clash,
+.wb.wb.wb .dw-insp .ct-subtle,
+.wb.wb.wb .dw-insp .ct-quote .dd-body,
+.wb.wb.wb .dw-insp .dd-pre,
+.wb.wb.wb .dw-insp .dd-v,
+.wb.wb.wb .dw-insp .ct-err,
+.wb.wb.wb .dw-insp .ct-warnbox{ max-width:68ch }
+
+/* D7 · MOBILE CHROME: THE FRAME ROW FOLDS INTO THE WORK ROW.
+   Measured at 390 on Content, first draft row at y=254 of 812, so 31% of the
+   phone was chrome before a row of work. Four bands:
+     1  .wb-ribbon   8..52   how fresh the data is, and the way to Settings
+     2  .wb-workhead 52..105 the word CONTENT, then the four work pills
+     3  .ct-cmd-top  120..158 client lane, pipeline marks, the alarm
+     4  .ct-cmd-f    166..200 search and filters
+
+   Bands 1 and 2 fold into one. The ribbon carries two controls and spends a
+   whole 44px band on them, so it becomes the right-hand end of the work row:
+   NOTHING IS DELETED, the sync chip and the gear are the same two controls in
+   the same order, and the row reserves the width they need so no pill can pass
+   underneath them. The word CONTENT goes, and faithful.css:2866 already ruled
+   why: `.ct-cmd-j` prints the job name on the phone 60px lower, and printing
+   one word twice in two bands is what D6 killed on the pointer canvas.
+
+   🔴 BANDS 3 AND 4 STAY TWO, ON PURPOSE, AND THIS IS A DISAGREEMENT WITH THE
+   BRIEF. faithful.css:2901 is a measured ruling: the alarm was in the scroller
+   and rendered at left:499 on a 390px canvas, reachable only by a swipe nobody
+   knows about, and a search field sharing that line shrinks to about 90px,
+   which is a field nobody types in. Merging them back is re-opening a defect
+   that was closed with numbers. So this lands 4 bands to 3, and the third is
+   the strip's own two-line budget, which is one band of the four.
+
+   The overlay is scoped with :has() to a plate that actually HAS a work head.
+   WorkSegment returns null for every non-work job (Rail.tsx:42), and on DMs or
+   Ops the ribbon would otherwise land on top of that screen's own title. */
+@media (max-width:767px){
+  .wb.wb.wb .wb-plate:has(.wb-workhead){ position:relative }
+  .wb.wb.wb .wb-plate:has(.wb-workhead) > .wb-ribbon{
+    position:absolute; top:0; right:0; z-index:14;
+    width:auto; min-height:0; padding:14px 14px 0; gap:10px;
+  }
+  /* `flex:1` on an empty span inside an auto-width box contributes nothing;
+     it is left alone so the Settings job still prints its name here. */
+  .wb.wb.wb .wb-plate:has(.wb-workhead) .wb-workhead{
+    padding:8px 16px 6px;
+    padding-right:144px;      /* the reserved lane for the two folded controls */
+  }
+  .wb.wb.wb .wb-plate:has(.wb-workhead) .wb-workhead-l{ display:none }
+  /* The pill row already scrolled before this pass; what it never had was an edge
+     that says so, and against a reserved lane a pill cut at the boundary reads
+     as a pill hidden UNDER the sync chip. Same announced fade `.ct-cmd-scroll`
+     uses 60px lower, so the two scrollers on this screen behave alike. */
+  .wb.wb.wb .wb-plate:has(.wb-workhead) .wb-workseg{
+    mask-image:linear-gradient(to right,#000 calc(100% - 20px),transparent);
+  }
+  /* NOT FIXED HERE, AND CHECKED RATHER THAN LEFT: the Filters pill reports a
+     74px box against a 78px scrollWidth at this canvas. It is not a clip. The
+     button already computes `flex:0 0 auto` with `min-width:max-content`, its
+     max-content resolves to 74, and the 4px is the `⌄` glyph's advance
+     overhanging its own content box. The pill renders whole in the screenshot
+     and pinning the parent's flex (tried, three ways) moves nothing. Recorded
+     so the next pass does not spend the same half hour on it. */
+}
+
+/* D8 · THE CONTEXT SHEET SITS BESIDE THE THREAD, NOT OVER IT.
+   ContextSheet.tsx is the best information design in this app: who they are,
+   the ICP score with its reasoning, DMs sent against replies, whether a scan
+   exists, and the operator note the drafters read on their next pass. It is
+   everything you need to decide a reply. And it opened as a bottom sheet with
+   a 50% black scrim over the conversation it is about, so reading it meant
+   not being able to read the thread.
+
+   It is MOVED, never rewritten: not one line of that component changes. On a
+   canvas with room, its scrim stops dimming and its card docks to the right of
+   the thread, in width the pane was already wasting: `.wb-peer .msgs` is
+   capped at 760px (v2c/styles.css:29) inside a peer that is 1,000px and more
+   at these widths.
+
+   1600px, because the dock has to be affordable: rail 200 + list 400 leaves
+   the peer 1,000px, and 436px of dock still leaves the thread 564px, which is
+   inside the measure `.msgs` was capped to anyway. Below that the sheet keeps
+   the behaviour it has, unchanged.
+
+   🔴 THE SCRIM STAYS OVER THE WHOLE PEER, transparent and full-bleed, and that
+   is deliberate: the component's ONLY dismiss affordance is a click on the
+   scrim (ContextSheet.tsx:71: there is no close button and no Escape handler). Shrinking
+   the scrim to the dock would take dismissal away from a sheet that has no
+   other way out. So the thread is fully READABLE while the sheet is open,
+   which is the complaint, and a click anywhere on it closes the sheet, which
+   is the contract it already had. */
+@media (min-width:1600px){
+  .wb.wb.wb .wb-peer-thread:has(> .sheet-scrim){ position:relative; padding-right:436px }
+  .wb.wb.wb .wb-peer-thread > .sheet-scrim{
+    position:absolute; inset:0; z-index:20;
+    background:none; display:block; animation:none;
+  }
+  .wb.wb.wb .wb-peer-thread > .sheet-scrim > .sheet{
+    position:absolute; top:0; right:0; bottom:0;
+    width:436px; max-width:436px; margin:0;
+    padding:var(--sp-3); box-sizing:border-box;
+    display:flex; flex-direction:column; animation:none;
+  }
+  /* The card was capped at 78vh for a sheet that rose from the bottom edge
+     (src/styles.css:398). Docked, it owns the column and scrolls inside it. */
+  .wb.wb.wb .wb-peer-thread > .sheet-scrim .ctx-card{
+    flex:1; min-height:0; max-height:none; overflow-y:auto;
+    border:1px solid var(--surface3);
+  }
+}

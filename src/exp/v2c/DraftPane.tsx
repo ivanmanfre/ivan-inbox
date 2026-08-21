@@ -13,6 +13,7 @@ import {
   type Still, type StillFolder,
 } from '../../lib/content'
 import { appendAgentNote, clearHumanEdit, planRegen, regenerateDraft, scheduleDraft } from '../../lib/studioActions'
+import { label } from '../../lib/labels'
 import { Block, KeyRows, Rows, Val } from './ContentBits'
 import { AgentRegister, Fold, QaRegister } from './Register'
 import { HtmlPreview, Takeover } from './Takeover'
@@ -1227,7 +1228,9 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
               of "get this out of my queue", and the queue rail walks past a row
               without judging it. */}
           {actionable && (
-            <button type="button" className="dw-key p" disabled={acting || editing}
+            // phase2: same demotion as the card's ReviewActions. A row that
+            // already failed does not get to keep Approve at primary weight.
+            <button type="button" className={`dw-key${d.status === 'error' ? '' : ' p'}`} disabled={acting || editing}
               onClick={() => decide('approve')}>
               Approve
             </button>
@@ -1304,7 +1307,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
       : []),
     ...((source.length > 0 || detail || points.length > 0 || d.description)
       ? [{
-        k: 'src', label: 'Source', tail: detail?.kind ?? undefined,
+        k: 'src', label: 'Source', tail: detail?.kind ? label(detail.kind) : undefined,
         body: (
           <>
             <Rows items={source} />
@@ -1312,7 +1315,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
               <>
                 {(detail.kind || detail.label) && (
                   <div className="ct-meta ct-src-m">
-                    {detail.kind && <span className="ct-chip">{detail.kind}</span>}
+                    {detail.kind && <span className="ct-chip">{label(detail.kind)}</span>}
                     {detail.label && <span className="ct-src-l">{detail.label}</span>}
                   </div>
                 )}

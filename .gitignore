@@ -26,3 +26,6 @@ dist-ssr
 
 # Supabase CLI temp
 supabase/.temp
+
+# per-pass preview builds (2026 workbench run)
+dist-p*

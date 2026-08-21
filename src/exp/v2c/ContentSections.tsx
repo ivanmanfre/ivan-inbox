@@ -22,8 +22,10 @@ import { withoutDecided } from './contentIdeas'
 import type { AgentSummary } from '../../lib/agent'
 import { FilteredEmpty, Figure, KeyRows } from './ContentBits'
 import { FilterRow } from './FilterRow'
-import { absTime, relOrAhead, relTime } from './fmt'
+import { RowSelect } from './RowSelect'
+import { absTime, relOrAhead, relTime, sourceLabel } from './fmt'
 import { CalmEmpty, Failed, SectionHead, StageTabs } from './Surface'
+import { label } from '../../lib/labels'
 
 // The row sets that live INSIDE a lane — never as a third destination.
 //
@@ -143,7 +145,7 @@ function IdeaCard({ i, onDeleted, onDecided }: {
               the expanded body below, which is one click away. The timestamp
               stays as the trailing value. */}
           <div className="ct-meta">
-            {i.source && <span className="ct-chip">{i.source}</span>}
+            {i.source && <span className="ct-chip">{sourceLabel(i.source)}</span>}
           </div>
         </div>
         {/* The timestamp rides in `.ct-tail`, OUTSIDE the meta flex, exactly as
@@ -165,7 +167,7 @@ function IdeaCard({ i, onDeleted, onDecided }: {
           {/* The three marks the diet took off the closed row. Nothing was
               deleted; it moved one click down. */}
           <div className="ct-meta ct-meta-wrap">
-            {i.content_type && <span className="ct-chip">{i.content_type}</span>}
+            {i.content_type && <span className="ct-chip">{label(i.content_type)}</span>}
             {i.ivan_engaged === true && <span className="ct-lane">engaged</span>}
             {i.raw_topic && i.raw_topic !== i.normalized_topic && (
               <span className="ct-topic">{i.raw_topic}</span>
@@ -495,6 +497,12 @@ function LmRow({ r, onOpen, queue }: { r: Resource; onOpen?: OpenMagnet; queue: 
       onClick={onOpen ? () => onOpen(r.id, r.topic ?? 'Untitled', queue) : undefined}
     >
       <div className="ct-anchor" data-st={stage}>
+        {/* The row's registration with the command layer: j/k walks it and x
+            selects it. Inside the anchor, for the grid reason in RowSelect. A
+            lead magnet has no bulk write of its own, so it declares no
+            capabilities and the bar says so in words rather than offering a
+            button that would refuse. */}
+        <RowSelect id={r.id} kind="magnet" label={r.topic ?? 'Untitled'} caps={[]} />
         {r.cover_url
           ? <img className="ct-thumb" src={r.cover_url} alt="" />
           : <div className="ct-thumb ct-thumb-empty" aria-hidden />}

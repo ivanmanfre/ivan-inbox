@@ -6,6 +6,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { KeyRows, Rows, Val } from './ContentBits'
 import { absTime } from './fmt'
 import { parseRubric, verdictsDisagree } from './rubric'
+import { label } from '../../lib/labels'
 
 // The two registers.
 //
@@ -200,7 +201,7 @@ function QaFeedback({ feedback, verdict }: { feedback: string; verdict: string |
 export function QaRegister({ qa }: { qa: QaSummary }) {
   const provenance: [string, React.ReactNode][] = []
   if (qa.iteration !== null) provenance.push(['Iteration', qa.iteration])
-  if (qa.originalVerdict) provenance.push(['Original verdict', qa.originalVerdict])
+  if (qa.originalVerdict) provenance.push(['Original verdict', label(qa.originalVerdict)])
   if (qa.parseSuccess !== null) provenance.push(['Parsed cleanly', qa.parseSuccess ? 'yes' : 'no'])
   if (qa.autoPromoted !== null) provenance.push(['Auto-promoted', qa.autoPromoted ? 'yes' : 'no'])
   if (qa.publishedVersion !== null) provenance.push(['Published version', <Val v={qa.publishedVersion} key="pv" />])
@@ -221,7 +222,7 @@ export function QaRegister({ qa }: { qa: QaSummary }) {
           {qa.verdict && (
             // Strictly: only a literal PASS is a pass. REWRITE_OK, FAIL and a
             // missing verdict all read amber.
-            <span className={`ct-chip ${qa.pass ? 'ct-chip-ok' : 'ct-chip-warn'}`}>{qa.verdict}</span>
+            <span className={`ct-chip ${qa.pass ? 'ct-chip-ok' : 'ct-chip-warn'}`}>{label(qa.verdict)}</span>
           )}
           <div className="wb-qa-g">
             <span className="wb-qa-fill" style={{
@@ -292,7 +293,7 @@ export function QaRegister({ qa }: { qa: QaSummary }) {
                 <div className="dd-log" key={i}>
                   <div className="dd-log-h">
                     <span className="dd-log-agent">Attempt {h.iteration ?? i + 1}</span>
-                    {h.verdict && <span className={chipClass(h.verdict.toUpperCase())}>{h.verdict}</span>}
+                    {h.verdict && <span className={chipClass(h.verdict.toUpperCase())}>{label(h.verdict)}</span>}
                     {h.score !== null && <span className="ct-chip">{h.score}</span>}
                     {h.issues !== null && <span className="ct-chip">{h.issues} issues</span>}
                     {h.rewriteApplied === true && <span className="ct-chip ct-chip-warn">rewrite applied</span>}
