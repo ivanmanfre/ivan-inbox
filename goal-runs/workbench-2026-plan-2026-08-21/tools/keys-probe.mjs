@@ -85,8 +85,14 @@ const paletteRows = () => page.evaluate(() => {
   }
 })
 
+// 🔴 RELOAD, not a hash change. Two of these lanes differ from the last only in
+// the fragment, and a fragment-only goto does not reload the document, so at
+// 390 the full-screen peer opened by the previous lane's Enter test was still
+// covering the work surface and every later lane measured zero rows. That was a
+// false failure hiding a real one: Escape had no way to close a mobile peer.
 const goto = async lane => {
   await page.goto(`http://localhost:${PORT}/#exp/v2/${lane}`, { waitUntil: 'networkidle' })
+  await page.reload({ waitUntil: 'networkidle' })
   await page.waitForTimeout(1800)
 }
 
@@ -213,8 +219,15 @@ for (const lane of ['dms', 'content', 'magnets']) {
   s = await snap()
   const opened = s.takeover || (await page.evaluate(() => !!document.querySelector('.wb-peer, .wb-take')))
   check(`${lane}: Enter opens the focused row`, opened, { takeover: s.takeover })
+
+  // Escape has to walk back out of what Enter opened, or a keyboard operator is
+  // stuck on the phone, where the peer is the whole screen.
   await page.keyboard.press('Escape')
-  await page.waitForTimeout(400)
+  await page.waitForTimeout(300)
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(500)
+  const stillOpen = await page.evaluate(() => !!document.querySelector('.wb-tkscrim, .wb-take, .wb-peer'))
+  check(`${lane}: Escape walks back out of the opened row`, !stillOpen, { open: stillOpen })
 }
 
 // ---- the acceptance case: the Errors tab in one pass -----------------------
@@ -227,6 +240,22 @@ try {
 
 let s = await snap()
 check('errors tab: rows are on screen', s.rows > 0, { rows: s.rows })
+
+// The row anatomy, measured BEFORE anything is selected. The card is a fixed
+// seven-column grid, so a mark in the normal flow would move every cell one
+// column right; this is the number that proves it does not.
+const anatomy = () => page.evaluate(() => {
+  const card = document.querySelector('.wb-work .ct-card')
+  const title = card?.querySelector('.ct-title')
+  const mark = card?.querySelector('.wb-selmark')
+  return {
+    titleX: title ? Math.round(title.getBoundingClientRect().x) : null,
+    cardH: card ? Math.round(card.getBoundingClientRect().height) : null,
+    markPos: mark ? getComputedStyle(mark).position : null,
+  }
+})
+const before = await anatomy()
+
 await page.keyboard.press('j')
 await page.keyboard.press('x')
 s = await snap()
@@ -241,6 +270,12 @@ check('errors tab: select-all takes every row on the tab in one pass',
   { selected: s.selCount, rows: rowsOnTab, bar: s.bulk })
 check('errors tab: the bar offers the actions valid for the selection', s.bulkActs.length > 0, { actions: s.bulkActs })
 console.log('   bulk actions:', JSON.stringify(s.bulkActs))
+
+const after = await anatomy()
+check('selecting every row does not move the row anatomy',
+  after.titleX === before.titleX && after.cardH === before.cardH,
+  { before, after })
+check('the mark is taken out of the grid flow', after.markPos === 'absolute', { position: after.markPos })
 
 if (shots) await page.screenshot({ path: `${shots}/bulkbar-errors-${vw}.png` })
 

@@ -496,12 +496,13 @@ function LmRow({ r, onOpen, queue }: { r: Resource; onOpen?: OpenMagnet; queue: 
       className={`ct-card ct-res-row${stuck || stalled ? ' bad' : ''}${onOpen ? ' ct-tap' : ''}`}
       onClick={onOpen ? () => onOpen(r.id, r.topic ?? 'Untitled', queue) : undefined}
     >
-      {/* The row's registration with the command layer: j/k walks it, x selects
-          it, and the mark writes data-wbrow onto this div. A lead magnet has no
-          bulk write of its own, so it declares no capabilities and the bulk bar
-          says so in words rather than offering a button that would refuse. */}
-      <RowSelect id={r.id} kind="magnet" label={r.topic ?? 'Untitled'} caps={[]} />
       <div className="ct-anchor" data-st={stage}>
+        {/* The row's registration with the command layer: j/k walks it and x
+            selects it. Inside the anchor, for the grid reason in RowSelect. A
+            lead magnet has no bulk write of its own, so it declares no
+            capabilities and the bar says so in words rather than offering a
+            button that would refuse. */}
+        <RowSelect id={r.id} kind="magnet" label={r.topic ?? 'Untitled'} caps={[]} />
         {r.cover_url
           ? <img className="ct-thumb" src={r.cover_url} alt="" />
           : <div className="ct-thumb ct-thumb-empty" aria-hidden />}

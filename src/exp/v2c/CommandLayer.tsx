@@ -187,7 +187,23 @@ export function CommandLayer() {
     if (palette) { setPalette(false); return }
     if (sheet) { setSheet(false); return }
     if (getSelected().length > 0) { clearSelection(); return }
-    setFocus(null)
+    if (getFocusId() !== null) { setFocus(null); return }
+    // The last layer: a row that was opened. Measured at 390 with this probe:
+    // a thread opened with Enter becomes a full-screen peer (layout.ts, work
+    // 'hidden'), and NOTHING closed it from the keyboard: Takeover owns Escape
+    // for the draft and magnet windows, but a peer is not a Takeover, so the
+    // only way back was the back chevron. Escape presses the peer's own close
+    // control rather than reaching into the shell's state, so there is one
+    // close path and this cannot drift from the button.
+    if (document.querySelector('.wb-tkscrim')) return
+    // Three close controls, because the peers were built at three times: the
+    // phone's chat peer draws `.wb-back`, the phone's thread peer draws the
+    // inbox's older `.back`, and a desktop peer draws `.wb-pane-x`. The probe
+    // caught the middle one: it was the only lane where Escape did nothing.
+    const back = document.querySelector<HTMLElement>(
+      '.wb-take .wb-back, .wb-take .back, .wb-peer .wb-pane-x',
+    )
+    if (back) back.click()
   }, [palette, sheet])
 
   // Built only while a surface is printing it. Both renderings read this one
@@ -266,7 +282,6 @@ export function CommandLayer() {
           break
         }
         case 'Escape': {
-          if (getSelected().length === 0 && getFocusId() === null) return
           e.preventDefault()
           closeTop()
           break
