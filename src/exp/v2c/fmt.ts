@@ -64,12 +64,11 @@ export function absTime(iso: string): string {
   })
 }
 
-const TYPE_LABEL: Record<string, string> = { text: 'Text', single_image: 'Image', carousel: 'Carousel' }
-
-export function typeLabel(t: string | null): string {
-  if (!t) return 'Text'
-  return TYPE_LABEL[t] ?? t
-}
+// Moved to src/lib/labels.ts so the facet builder can read the same map (a
+// filter option and the row chip beside it must not invent two names for one
+// format). Re-exported under its own name, so every call site here is unchanged
+// and an unknown format now degrades through label() instead of rendering raw.
+export { typeLabel } from '../../lib/labels'
 
 // taxonomy.source slugs → a reading label, the same vocabulary dashboard-v2
 // uses on its ideas table (ideaProjection.ts SOURCE_LABEL). An unknown slug

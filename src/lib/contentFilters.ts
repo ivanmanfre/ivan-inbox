@@ -3,6 +3,7 @@ import {
   type ContentDraft, type ContentLane, type IdeaCandidate, type ScheduledQueueRow,
 } from './content'
 import { normalizeStyleKey, previewKey, type Resource, type StylePrompt } from './styles'
+import { label as labelOf, typeLabel } from './labels'
 
 // Facets, derived from the rows in front of you.
 //
@@ -159,9 +160,16 @@ export function applySearch<T>(rows: T[], q: string, textOf: (row: T) => (string
 
 // ---------- shared value helpers ----------
 
+// The VALUE is the database's and is what the filter matches on. The LABEL is
+// what a person reads, and defaults to the shared label map rather than to the
+// raw value: six specs below (pillar, hook, source, funnel, arm, qa_verdict)
+// passed no label, which is how the filter sheet stayed the last surface in the
+// app printing 'youtube_watch' and 'QA_BLOCKED' after every lane had been
+// cleaned. Fixing it at the helper covers all six and every spec added later.
+// A caller that knows better still passes its own label and wins.
 const tag = (v: string | null | undefined, label?: string): Tagged | null => {
   const s = (v ?? '').trim()
-  return s ? { value: s, label: label ?? s } : null
+  return s ? { value: s, label: label ?? labelOf(s) } : null
 }
 
 const yesNo = (v: boolean, yes: string, no: string): Tagged =>
@@ -195,7 +203,10 @@ export function draftHasImage(d: ContentDraft): boolean {
 export function draftSpecs(lane: ContentLane): FacetSpec<ContentDraft>[] {
   const specs: FacetSpec<ContentDraft>[] = [
     { key: 'stage', label: 'Stage', of: d => ({ value: stageOf(d), label: STAGE_LABEL[stageOf(d)] }) },
-    { key: 'kind', label: 'Kind', of: d => tag(d.type ?? 'text') },
+    // Every other spec here carries a label map; this one did not, so the KIND
+    // group in the filter sheet was the last place a raw column value reached
+    // the screen ("single_image" under a row chip that reads "IMAGE").
+    { key: 'kind', label: 'Kind', of: d => tag(d.type ?? 'text', typeLabel(d.type ?? 'text')) },
   ]
   if (lane !== 'ivan') {
     // Strict === true: NULL is not visible. Absence of the promotion flag is not

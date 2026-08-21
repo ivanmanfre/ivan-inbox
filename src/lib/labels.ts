@@ -61,6 +61,22 @@ export function label(value: string | null | undefined, _kind?: LabelKind): stri
   return sentenceCase(trimmed)
 }
 
+// The post-format vocabulary, kept DELIBERATELY out of KNOWN above. Two
+// reasons. It is a closed set with its own established words (a single_image
+// post is an "Image" everywhere in this app, not a "Single image"), and KNOWN
+// feeds the inline replacer below, where a 'text' entry would rewrite the word
+// "text" inside any sentence that happens to contain it.
+//
+// It lives here rather than in v2c/fmt.ts so the facet builder in src/lib can
+// read it without a layer inversion; fmt.ts re-exports it, so every existing
+// call site keeps working and there is exactly one map.
+const TYPE_LABEL: Record<string, string> = { text: 'Text', single_image: 'Image', carousel: 'Carousel' }
+
+export function typeLabel(t: string | null | undefined): string {
+  if (!t) return 'Text'
+  return TYPE_LABEL[t] ?? label(t)
+}
+
 // A regex alternation of the known raw tokens, longest first so
 // 'gold_icp_v2_seatless' never partially matches a shorter neighbour that
 // does not exist yet. Built once, module scope.
