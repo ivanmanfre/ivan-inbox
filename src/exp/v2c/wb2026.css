@@ -357,7 +357,12 @@
 @media (max-width:767px){
   .wb.wb.wb .wb-bulk{
     left:8px; right:8px; bottom:70px; transform:none; max-width:none;
+    gap:var(--sp-2); padding:var(--sp-2);
   }
+  /* At 390 the auto margin pushed Clear onto a third line of its own, so the
+     bar was 90px of a 812px screen. It rides with the actions instead. */
+  .wb.wb.wb .wb-bulk-tail{ margin-left:0 }
+  .wb.wb.wb .wb-bulk-n{ width:100% }
   .wb.wb.wb .wb-cmdk-scrim{ padding:6vh 8px 8px }
   .wb.wb.wb .wb-cmdk-t{ max-width:60% }
   /* The hint is the first thing to go at 390: the title and the printed key are
