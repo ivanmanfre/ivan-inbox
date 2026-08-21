@@ -155,7 +155,7 @@
 /* ============================ three states ============================ */
 
 .wb-failed{margin:14px 16px 0;background:rgba(255,69,58,.1);border:1px solid rgba(255,69,58,.32);
-  border-radius:var(--r-md);padding:13px 15px}
+  border-radius:var(--r-md);padding:12px 16px}
 .wb-failed-h{display:flex;align-items:center;gap:9px}
 .wb-failed-dot{flex:none;width:9px;height:9px;border-radius:99px;background:#FF453A}
 .wb-failed-t{flex:1;font-size:14.5px;font-weight:700;color:#FF453A;letter-spacing:-.01em}
@@ -306,12 +306,12 @@
 .wb-mh{font-size:15px;font-weight:800;letter-spacing:-.01em;margin:14px 0 7px}
 .wb-mh.h1{font-size:17px}
 .wb-ul{list-style:none;margin:0 0 10px;padding:0}
-.wb-ul li{display:flex;gap:9px;padding:3px 0;font-size:14.5px;line-height:1.45}
+.wb-ul li{display:flex;gap:9px;padding:3px 0;font-size:var(--fs-body);line-height:var(--lh-read)}
 .wb-li-m{flex:none;color:var(--text3);font-weight:700;min-width:14px}
 /* Inline code and code blocks in the SYSTEM stack with tabular numerals. The
    phase 1 spec proposed a scoped monospace exception; the contract locks "no
    monospace anywhere" and the contract wins. */
-.wb-ic{background:var(--surface2);border-radius:5px;padding:1px 5px;font-family:inherit;
+.wb-ic{background:var(--surface2);border-radius:var(--r-chip);padding:1px 5px;font-family:inherit;
   font-size:.93em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .wb-code{position:relative;background:var(--surface);border:1px solid var(--surface3);
   border-radius:var(--r-sm);padding:12px 13px;margin:0 0 11px;overflow-x:auto;
@@ -326,7 +326,7 @@
 .wb-code.open{border-color:rgba(184,255,102,.4)}
 .wb-code-l{position:absolute;top:0;right:0;font-size:9px;font-weight:800;letter-spacing:.07em;
   text-transform:uppercase;color:var(--text3);background:var(--surface2);
-  border-radius:0 var(--r-sm) 0 6px;padding:2px 7px}
+  border-radius:0 var(--r-sm) 0 var(--r-chip);padding:2px 7px}
 .wb-stopped{font-size:12.5px;font-weight:600;color:var(--text3);margin-top:8px}
 .wb-turn-err{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;
   background:rgba(255,69,58,.1);border:1px solid rgba(255,69,58,.3);border-radius:var(--r-sm)}
@@ -562,7 +562,7 @@
 
 /* --- prose the surface uses to say what it is looking at --- */
 .ct-subtle{margin:8px 16px 0;font-size:11.5px;line-height:1.45;font-weight:500;color:var(--text3)}
-.ct-subtle code{font-size:11px;background:var(--surface2);border-radius:5px;padding:1px 4px}
+.ct-subtle code{font-size:var(--fs-eyebrow);background:var(--surface2);border-radius:var(--r-chip);padding:1px 4px}
 .ct-subtle.ct-warn{color:#FF9F0A}
 .ct-ref{font-size:11.5px;font-weight:500;color:var(--text3);line-height:1.4;margin-top:4px;
   overflow-wrap:anywhere}
@@ -649,7 +649,7 @@
 .ct-warnbox{margin:10px 16px 0;padding:11px 13px;border-radius:var(--r-md);
   background:rgba(255,159,10,.1);border:1px solid rgba(255,159,10,.3);
   font-size:12.5px;line-height:1.45;color:#FF9F0A;font-weight:600}
-.ct-warnbox code{background:rgba(255,159,10,.14);border-radius:5px;padding:1px 4px}
+.ct-warnbox code{background:rgba(255,159,10,.14);border-radius:var(--r-chip);padding:1px 4px}
 .ct-src-m{margin:10px 16px 0}
 .ct-src-l{font-size:13px;font-weight:600;color:var(--text2);overflow-wrap:anywhere}
 .ct-quote{margin:8px 16px 0;padding:12px 14px;background:var(--surface);border-radius:var(--r-md);
@@ -679,7 +679,7 @@
 .dd-agrp-t{margin-left:auto;font-size:11px;font-weight:700;color:var(--text3);
   letter-spacing:.02em;white-space:nowrap}
 /* the passes, indented under their agent so the nesting is legible */
-.dd-agrp-b{padding-left:25px;border-left:1px solid var(--sep);margin:0 0 8px 8px}
+.dd-agrp-b{padding-left:24px;border-left:1px solid var(--sep);margin:0 0 8px 8px}
 
 .dd-logc{border-bottom:.5px solid var(--sep)}
 .dd-logc:last-child{border-bottom:none}
@@ -922,7 +922,7 @@
 .vd-hint{font-size:12px;line-height:1.35;color:var(--text3)}
 .vd-hint.err{color:#FF453A}
 
-.vd-end{flex:none;min-height:44px;padding:0 15px;border-radius:var(--r-sm);
+.vd-end{flex:none;min-height:44px;padding:0 16px;border-radius:var(--r-sm);
   border:1px solid var(--surface3);background:var(--surface2);color:var(--text2);
   font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer;
   -webkit-tap-highlight-color:transparent}
@@ -1080,11 +1080,11 @@
 
 /* ---- the main column ---- */
 .wb.wb.wb .dw-cap{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:14px 16px 10px}
-.wb.wb.wb .dw-cap-t{flex:1;min-width:160px;font-size:17px;font-weight:700;line-height:1.25;
+.wb.wb.wb .dw-cap-t{flex:1;min-width:160px;font-size:var(--fs-title);font-weight:700;line-height:1.25;
   letter-spacing:-.01em;color:var(--text)}
-.wb.wb.wb .dw-pos{flex:none;font-size:11px;font-weight:700;color:var(--text3);
+.wb.wb.wb .dw-pos{flex:none;font-size:var(--fs-eyebrow);font-weight:700;color:var(--text3);
   font-variant-numeric:tabular-nums}
-.wb.wb.wb .dw-sub{padding:0 16px 6px;font-size:12px;line-height:1.4;color:var(--text3)}
+.wb.wb.wb .dw-sub{padding:0 16px 6px;font-size:var(--fs-meta);line-height:var(--lh-meta);color:var(--text3)}
 
 /* ---- the action bar: sticky, so the decision never scrolls away ---- */
 .wb.wb.wb .dw-acts{position:sticky;bottom:0;z-index:2;display:flex;flex-wrap:wrap;
@@ -1092,7 +1092,7 @@
   margin-top:10px;background:var(--bg);border-top:.5px solid var(--sep)}
 .wb.wb.wb .dw-key{display:inline-flex;align-items:center;gap:6px;min-height:44px;
   padding:0 13px;border-radius:var(--r-ctl);cursor:pointer;font-family:inherit;
-  font-size:13px;font-weight:600;color:var(--text);
+  font-size:var(--fs-meta);font-weight:600;color:var(--text);
   background:var(--surface2);border:1px solid var(--surface3)}
 .wb.wb.wb .dw-key:hover{background:var(--surface3)}
 .wb.wb.wb .dw-key:active{transform:scale(.98)}
@@ -1102,8 +1102,8 @@
 .wb.wb.wb .dw-key.d{color:#FF453A;border-color:rgba(255,69,58,.4);background:rgba(255,69,58,.08)}
 .wb.wb.wb .dw-key.d:hover{background:rgba(255,69,58,.16)}
 .wb.wb.wb .dw-key kbd{display:inline-flex;align-items:center;justify-content:center;
-  min-width:18px;height:18px;padding:0 3px;border-radius:4px;font-family:inherit;
-  font-size:11px;font-weight:800;line-height:1;
+  min-width:18px;height:18px;padding:0 3px;border-radius:var(--r-chip);font-family:inherit;
+  font-size:var(--fs-eyebrow);font-weight:800;line-height:1;
   border:1px solid currentColor;opacity:.5}
 /* A row of the bar's own, claimed by wrapping rather than by nesting: the
    Regenerate / Delete confirms and their notes are children of `.dw-acts`
@@ -1112,25 +1112,25 @@
    keeps every such row BELOW the whole button set — a confirm rendered in DOM
    order would otherwise land mid-bar and split its own siblings across it. */
 .wb.wb.wb .dw-actrow{order:1;flex:1 0 100%;min-width:0;margin:0}
-.wb.wb.wb .dw-hint{margin-left:auto;font-size:11px;color:var(--text3);display:flex;
+.wb.wb.wb .dw-hint{margin-left:auto;font-size:var(--fs-meta);color:var(--text3);display:flex;
   align-items:center;gap:5px;flex-wrap:wrap}
 .wb.wb.wb .dw-hint kbd{display:inline-flex;align-items:center;justify-content:center;
-  min-width:16px;height:16px;padding:0 3px;border-radius:4px;font-size:11px;
+  min-width:16px;height:16px;padding:0 3px;border-radius:var(--r-chip);font-size:var(--fs-eyebrow);
   font-weight:800;border:1px solid var(--surface3);color:var(--text3)}
 
 /* ---- the inspect column: collapsible sections ---- */
 .wb.wb.wb .dw-insp-h{display:flex;align-items:center;gap:8px;padding:14px 14px 6px;
-  font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  font-size:var(--fs-eyebrow);font-weight:800;letter-spacing:.05em;text-transform:uppercase;
   color:var(--text3)}
 .wb.wb.wb .dw-sec{border-bottom:.5px solid var(--sep)}
 .wb.wb.wb .dw-sec-b{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;
   padding:8px 14px;background:none;border:0;cursor:pointer;font-family:inherit;
   text-align:left;color:var(--text2)}
 .wb.wb.wb .dw-sec-b:hover{background:var(--surface2)}
-.wb.wb.wb .dw-sec-n{flex:1;min-width:0;font-size:12px;font-weight:700;letter-spacing:.03em;
+.wb.wb.wb .dw-sec-n{flex:1;min-width:0;font-size:var(--fs-eyebrow);font-weight:700;letter-spacing:.03em;
   text-transform:uppercase}
-.wb.wb.wb .dw-sec-t{flex:none;font-size:11px;font-weight:600;color:var(--text3)}
-.wb.wb.wb .dw-sec-c{flex:none;font-size:11px;color:var(--text3);transition:transform var(--dur-fast,.14s) ease}
+.wb.wb.wb .dw-sec-t{flex:none;font-size:var(--fs-meta);font-weight:600;color:var(--text3)}
+.wb.wb.wb .dw-sec-c{flex:none;font-size:var(--fs-eyebrow);color:var(--text3);transition:transform var(--dur-fast,.14s) ease}
 .wb.wb.wb .dw-sec.on .dw-sec-c{transform:rotate(90deg)}
 .wb.wb.wb .dw-sec-body{padding-bottom:12px}
 /* Inside the rail the shared blocks lose the 16-22px page gutters: the rail is
@@ -1147,14 +1147,14 @@
 .wb.wb.wb .dw-note textarea{display:block;width:100%;box-sizing:border-box;resize:vertical;
   min-height:56px;background:var(--surface2);color:var(--text);
   border:1px solid var(--surface3);border-radius:var(--r-sm);padding:9px 10px;
-  font-family:inherit;font-size:13px;line-height:1.45}
+  font-family:inherit;font-size:var(--fs-body);line-height:var(--lh-read)}
 .wb.wb.wb .dw-note textarea:focus{outline:none;border-color:rgba(184,255,102,.5)}
 
 /* ---- the schedule control ---- */
 .wb.wb.wb .dw-sched{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .wb.wb.wb .dw-sched input{min-height:44px;box-sizing:border-box;background:var(--surface2);
   color:var(--text);border:1px solid var(--surface3);border-radius:var(--r-ctl);
-  padding:0 10px;font-family:inherit;font-size:13px;color-scheme:dark}
+  padding:0 10px;font-family:inherit;font-size:var(--fs-meta);color-scheme:dark}
 :root[data-theme='light'] .wb.wb.wb .dw-sched input{color-scheme:light}
 
 /* ---- WHY THERE IS NO BUTTON (client lane) ----
@@ -1168,11 +1168,11 @@
 /* ---- the save-conflict box: both texts, no winner picked ---- */
 .wb.wb.wb .dw-conf{margin:10px 16px 0;padding:12px 14px;border-radius:var(--r-md);
   background:rgba(255,159,10,.1);border:1px solid rgba(255,159,10,.34)}
-.wb.wb.wb .dw-conf-h{font-size:13px;font-weight:700;line-height:1.4;color:var(--text)}
-.wb.wb.wb .dw-conf-s{margin-top:5px;font-size:12px;line-height:1.45;color:var(--text2)}
+.wb.wb.wb .dw-conf-h{font-size:var(--fs-body);font-weight:700;line-height:var(--lh-read);color:var(--text)}
+.wb.wb.wb .dw-conf-s{margin-top:5px;font-size:var(--fs-meta);line-height:var(--lh-meta);color:var(--text2)}
 .wb.wb.wb .dw-conf-t{margin-top:9px;max-height:190px;overflow-y:auto;padding:9px 10px;
-  border-radius:var(--r-sm);background:var(--surface2);font-size:12.5px;
-  line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--text2)}
+  border-radius:var(--r-sm);background:var(--surface2);font-size:var(--fs-meta);
+  line-height:var(--lh-read);white-space:pre-wrap;overflow-wrap:anywhere;color:var(--text2)}
 
 /* ===========================================================================
    The LinkedIn artifact — a SANCTIONED platform depiction, so it keeps
@@ -1303,8 +1303,8 @@
      gives up the width is padding, the gap and the chip, which buys the row
      back: measured 194px/3 → 133px/2 at 390. */
   .wb.wb.wb .dw-acts{gap:5px;padding-left:10px;padding-right:10px}
-  .wb.wb.wb .dw-key{padding:0 8px;font-size:12.5px;gap:4px}
-  .wb.wb.wb .dw-key kbd{min-width:15px;height:16px;font-size:11px;padding:0 2px}
+  .wb.wb.wb .dw-key{padding:0 8px;font-size:var(--fs-meta);gap:4px}
+  .wb.wb.wb .dw-key kbd{min-width:15px;height:16px;font-size:var(--fs-eyebrow);padding:0 2px}
 }
 
 /* ==========================================================================
@@ -1372,7 +1372,7 @@
 /* The disagreement between the stored verdict and the one inside the body.
    Amber, never red: it is a fact about the gate, not a failure of the draft. */
 .qa-clash{display:block;margin:0 0 10px;padding:9px 12px;
-  border-radius:12px;background:rgba(255,159,10,.10);border:1px solid rgba(255,159,10,.30);
+  border-radius:var(--r-ctl);background:rgba(255,159,10,.10);border:1px solid rgba(255,159,10,.30);
   font-size:12.5px;line-height:1.45;color:var(--text2)}
 .qa-clash b{font-weight:700;color:var(--text)}
 .qa-raw > summary{cursor:pointer;padding:8px 2px;min-height:32px;display:flex;align-items:center;
@@ -1437,16 +1437,16 @@
   background:var(--bg);padding-bottom:8px}
 .wb.wb.wb .dw-insp-j{display:flex;gap:2px;flex-wrap:wrap}
 .wb.wb.wb .dw-jump{min-height:24px;padding:0 8px;border:0;border-radius:var(--r-ctl);
-  background:var(--surface2);color:var(--text3);font-family:inherit;font-size:11px;
+  background:var(--surface2);color:var(--text3);font-family:inherit;font-size:var(--fs-eyebrow);
   font-weight:700;letter-spacing:.03em;text-transform:uppercase;cursor:pointer}
 .wb.wb.wb .dw-jump:hover{background:var(--surface3);color:var(--text)}
 .wb.wb.wb .dw-jump.on{background:var(--surface3);color:var(--text)}
 /* Each section carries its own header — a label and its headline fact — so the
    score, the agent count and the source kind read at a glance while scrolling. */
 .wb.wb.wb .dw-sec-h{display:flex;align-items:baseline;gap:8px;padding:12px 14px 4px}
-.wb.wb.wb .dw-sec-h .dw-sec-n{flex:1;min-width:0;font-size:11px;font-weight:800;
+.wb.wb.wb .dw-sec-h .dw-sec-n{flex:1;min-width:0;font-size:var(--fs-eyebrow);font-weight:800;
   letter-spacing:.05em;text-transform:uppercase;color:var(--text3)}
-.wb.wb.wb .dw-sec-h .dw-sec-t{flex:none;font-size:11px;font-weight:600;color:var(--text4)}
+.wb.wb.wb .dw-sec-h .dw-sec-t{flex:none;font-size:var(--fs-meta);font-weight:600;color:var(--text4)}
 
 /* ---- 3 · the swap-image picker ----
    It unfolds full-width inside the sticky bar, on the same `order:1` row the
@@ -1458,7 +1458,7 @@
 .wb.wb.wb .dw-swap-f.on{background:var(--accent);color:var(--ink)}
 .wb.wb.wb .dw-swap-sp{flex:1}
 .wb.wb.wb .dw-swap-clr{min-height:28px;padding:0 10px;border:0;border-radius:var(--r-ctl);
-  background:rgba(255,69,58,.10);color:#FF453A;font-family:inherit;font-size:12px;
+  background:rgba(255,69,58,.10);color:#FF453A;font-family:inherit;font-size:var(--fs-meta);
   font-weight:600;cursor:pointer}
 .wb.wb.wb .dw-swap-clr:hover{background:rgba(255,69,58,.18)}
 /* A grid, not a filmstrip: 49 stills in one horizontal scroller is a haystack.
@@ -1473,8 +1473,8 @@
 .wb.wb.wb .dw-swap-t.on{box-shadow:inset 0 0 0 2px var(--accent)}
 .wb.wb.wb .dw-swap-t:disabled{cursor:default}
 .wb.wb.wb .dw-swap-b{position:absolute;inset:0;display:flex;align-items:center;
-  justify-content:center;background:rgba(0,0,0,.6);color:#fff;font-size:11px;font-weight:700}
-.wb.wb.wb .dw-swap-n{margin-top:8px;font-size:12px}
+  justify-content:center;background:rgba(0,0,0,.6);color:#fff;font-size:var(--fs-eyebrow);font-weight:700}
+.wb.wb.wb .dw-swap-n{margin-top:8px;font-size:var(--fs-meta)}
 
 /* The spend readout (phase 6). Same register as the turn count — a fact on the
    state line, not a warning: it is only alarming if the number is. */
@@ -1488,7 +1488,7 @@
    chip row, no action bar — and its inputs are chromeless on purpose: a boxed
    textarea per section turns a strategy into a form, and a form is the thing
    he already avoids filling in. */
-.wb-strat-note{margin:12px 16px 0;font-size:12px;line-height:1.45;color:var(--text3)}
+.wb-strat-note{margin:12px 16px 0;font-size:var(--fs-meta);line-height:var(--lh-meta);color:var(--text3)}
 .wb-strat-card{padding:12px 14px}
 /* A section with nothing written is the state the tab exists to expose, so it
    is drawn as absence (dashed, dimmed) rather than as a card that happens to
@@ -1511,13 +1511,13 @@
 .wb-strat-ctl button:disabled{opacity:.25;cursor:default;background:transparent}
 .wb-strat-ctl button.x:hover{background:rgba(255,69,58,.16);color:#FF453A}
 .wb-strat-b{display:block;width:100%;margin-top:6px;background:transparent;border:0;padding:0;
-  resize:none;overflow:hidden;color:var(--text);font-family:inherit;font-size:14px;line-height:1.55}
+  resize:none;overflow:hidden;color:var(--text);font-family:inherit;font-size:var(--fs-body);line-height:var(--lh-read)}
 .wb-strat-b:focus{outline:none}
 .wb-strat-b::placeholder{color:var(--text3)}
 /* The RESTING state — typeset, because a strategy is read far more than typed.
    Three line shapes carry the hierarchy and each is inferred from the text, so
    there is no markup to remember and no second format to keep in sync. */
-.wb-strat-read{margin-top:6px;font-size:14px;line-height:1.55;cursor:text}
+.wb-strat-read{margin-top:6px;font-size:var(--fs-body);line-height:var(--lh-read);cursor:text}
 .wb-strat-read:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:var(--r-sm)}
 .wb-strat-gap{height:11px}
 /* Group heading. Small, spaced and BRIGHT against a dimmer body — the eye needs
