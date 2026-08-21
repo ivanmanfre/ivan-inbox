@@ -171,3 +171,62 @@
 /* ========================================================================== */
 /* D · LAYOUT — canvas fill, container queries, panes, mobile chrome (pass 5)  */
 /* ========================================================================== */
+
+/* D0 · THE WORKING REGION BECOMES A QUERY CONTAINER — and the one guard that
+   makes it safe.
+   The whole reason this pass exists: every width rule in the app keys off the
+   VIEWPORT, while the surface it governs is a PANE whose width has almost
+   nothing to do with the viewport. `.wb-work.list` is 400px whenever a peer
+   docks, at 1024 and at 2560 alike, so a table switched on by
+   `@media (min-width:1000px)` renders inside 384px. Measured, chat peer docked:
+   1024 → title track 0px and 93px of row overflow; 1440 → title track 0px and
+   161px; 2560 → title 383px against 842px of title. A container query asks the
+   only question that matters ("how wide is this pane"), which is why it is
+   worth the ~40 lines.
+
+   🔴 THE GUARD, AND IT IS NOT OPTIONAL. `container-type: inline-size` implies
+   `contain: layout`, and a `contain: layout` box becomes the containing block
+   for every `position: fixed` descendant. The mobile filter sheet's scrim
+   (`.ct-fsheet-scrim`, faithful.css:1330 — `position:fixed; inset:0`) is a
+   descendant of `.wb-work`, so an unguarded declaration would shrink it to the
+   pane and stop it covering the tab bar: a clip traded for a broken overlay.
+   The declaration therefore lives INSIDE `@media (min-width:1000px)`, and the
+   sheet only ever renders below 768px (FilterRow.tsx:30, `useSheetMode`), so
+   the two can never meet. Verified by screenshot at 390 (phase5-scrim-390.jpg),
+   not by reasoning.
+   The other two fixed scrims are clear by structure, checked and not assumed:
+   `.wb-tkscrim` (the takeover) renders OUTSIDE `.wb-plate` in Shell.tsx, and
+   `.sheet-scrim` is mounted either at the ConfirmSheet provider (root) or
+   inside `.wb-peer`, never inside `.wb-work`. */
+@media (min-width:1000px){
+  .wb.wb.wb .wb-work{ container-type:inline-size; container-name:work }
+}
+
+/* D1 · THE 860px PANE CAP, REPLACED BY A SECOND COLUMN OF ROWS.
+   v2c/styles.css:31 used to cap the whole solo pane at 860px and centre it. At
+   2560 that left 1,444px of a 2,304px plate empty and the DMs lane at 8.2%
+   glyph fill. The cap is gone from the source (see the note left in its place);
+   the surplus is spent here.
+
+   A row is not a paragraph: `.r`'s snippet is ONE ellipsized line, so a wider
+   row shows MORE of the conversation rather than a harder-to-read one. The
+   measure that genuinely needed capping is prose, and the type pass already
+   caps that. So at a pane of 1,560px or more the conversation rows go two-up
+   and the pane carries twice the rows in the same screen.
+
+   1560px is the threshold because two columns have to be worth having: at
+   1,560px each column is ~768px, which is still a comfortable row. Below it
+   nothing changes. Only `.r` splits — every banner, section head, the stale
+   bar and DM HISTORY keep the full width, because a full-width thing chopped
+   in half is a new defect, not a fix. */
+@container work (min-width:1560px){
+  .wb.wb.wb .wb-solo .rows{
+    display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
+    column-gap:var(--sp-5); align-content:start;
+  }
+  .wb.wb.wb .wb-solo .rows > *{ grid-column:1 / -1 }
+  .wb.wb.wb .wb-solo .rows > .r{ grid-column:auto }
+  /* The two columns need a seam or they read as one ragged list. The hairline
+     is drawn on the SECOND column's rows so it never paints outside the grid. */
+  .wb.wb.wb .wb-solo .rows > .r:nth-of-type(2n){ box-shadow:inset 1px 0 0 var(--sep) }
+}
