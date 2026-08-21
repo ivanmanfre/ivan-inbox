@@ -40,6 +40,17 @@ const listeners = new Set<Listener>()
 let selected: SelectedRow[] = []
 let focusId: string | null = null
 let scope = ''
+// Is a keyboard layer mounted and listening?
+//
+// 🔴 WHY THIS EXISTS. `RowSelect` is rendered from `InboxScreen.tsx`, and that
+// file is shared: the workbench renders it, and so does the PRE-REVAMP shell at
+// #exp/stock, which mounts no CommandLayer. The stock verification caught the
+// consequence in pixels: every inbox row in the escape hatch grew a selection
+// mark, the names shifted right and one wrapped to a second line, all for a
+// control that shell has no keys to drive. A mark with no layer behind it is
+// chrome that does nothing, in the one surface whose whole job is to be the
+// unchanged fallback. So the layer announces itself and the mark asks.
+let layerMounted = false
 
 function emit(): void {
   for (const l of listeners) l()
@@ -51,6 +62,14 @@ export function subscribe(l: Listener): () => void {
 }
 
 // ---- reads -----------------------------------------------------------------
+
+export function isLayerMounted(): boolean { return layerMounted }
+
+export function setLayerMounted(v: boolean): void {
+  if (layerMounted === v) return
+  layerMounted = v
+  emit()
+}
 
 export function getSelected(): SelectedRow[] { return selected }
 export function getFocusId(): string | null { return focusId }

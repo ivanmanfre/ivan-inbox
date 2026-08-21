@@ -1,6 +1,6 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react'
 import {
-  registerRow, rowState, subscribe, toggleRow,
+  isLayerMounted, registerRow, rowState, subscribe, toggleRow,
   type RowCap, type RowKind, type SelectedRow,
 } from './commandStore'
 
@@ -37,6 +37,9 @@ export function RowSelect({ id, kind, label, caps, taxonomy, lane }: {
 }) {
   const ref = useRef<HTMLButtonElement>(null)
   const state = useSyncExternalStore(subscribe, () => rowState(id))
+  // No keyboard layer, no mark. #exp/stock renders this same row and mounts no
+  // CommandLayer, and the escape hatch has to stay exactly as it was.
+  const layer = useSyncExternalStore(subscribe, isLayerMounted)
   const on = (state & 1) !== 0
   const focused = (state & 2) !== 0
 
@@ -48,7 +51,10 @@ export function RowSelect({ id, kind, label, caps, taxonomy, lane }: {
   // the rows in". Registration is keyed by id and cleaned up on unmount, so a
   // filter change cannot leave a phantom row behind for a bulk action to hit.
   const capKey = caps.join(',')
-  useEffect(() => registerRow(rowRef.current), [id, kind, label, capKey, lane])
+  useEffect(() => {
+    if (!layer) return
+    return registerRow(rowRef.current)
+  }, [id, kind, label, capKey, lane, layer])
 
   // The ROW carries the attributes: `data-wbrow` is what the keyboard layer
   // walks, and the other two are what section C paints.
@@ -60,12 +66,15 @@ export function RowSelect({ id, kind, label, caps, taxonomy, lane }: {
   // and finds the row it belongs to by walking up. Measured on the Errors tab:
   // the row anatomy is untouched.
   useEffect(() => {
+    if (!layer) return
     const host = ref.current?.closest('.ct-card, .r') ?? ref.current?.parentElement
     if (!host) return
     host.setAttribute('data-wbrow', id)
     host.setAttribute('data-wbsel', on ? '1' : '0')
     host.setAttribute('data-wbfocus', focused ? '1' : '0')
-  }, [id, on, focused])
+  }, [id, on, focused, layer])
+
+  if (!layer) return null
 
   return (
     <button
