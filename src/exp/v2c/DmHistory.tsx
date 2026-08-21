@@ -42,7 +42,7 @@ function manualCount(t: Thread): number {
 // on every reload. That is a receipt turned into a wall.
 //
 // The size comes from what the surface is FOR. Ivan's ask was "so i know this
-// is working" — it is scanned, newest first, to confirm the engine still gets
+// is working": it is scanned, newest first, to confirm the engine still gets
 // replies. Twenty rows is about the last month of them on current volume, it is
 // one screen and a bit at 390 rather than seventeen, and it holds the expanded
 // body under the 10,000-character gate with room to spare. Nothing is hidden
