@@ -531,3 +531,19 @@
 .wb.wb.wb .wb-code code, .wb.wb.wb .wb-tool-in{
   font-variant-numeric:tabular-nums;
 }
+
+/* D4 · THE DM HISTORY FOOTER (DmHistory.tsx, PAGE = 20).
+   A full-width row rather than a link, so the end of the list has an edge: the
+   count of what is still folded is the fact, the verb is the affordance. 44px
+   of target, because this is the one control the section has. */
+.wb.wb.wb .dmh-more{
+  display:flex; align-items:center; gap:var(--sp-3); width:100%;
+  min-height:44px; padding:var(--sp-2) var(--gut);
+  background:none; border:0; border-top:1px solid var(--hairline);
+  font-family:inherit; text-align:left; cursor:pointer;
+  transition:background-color var(--dur-hover) var(--ease);
+}
+.wb.wb.wb .dmh-more:hover{ background:var(--surface1) }
+.wb.wb.wb .dmh-more:focus-visible{ outline:2px solid var(--accent); outline-offset:-2px }
+.wb.wb.wb .dmh-more-l{ font-size:var(--fs-meta); font-weight:700; color:var(--text2) }
+.wb.wb.wb .dmh-more-n{ margin-left:auto; font-size:var(--fs-meta); color:var(--text3) }

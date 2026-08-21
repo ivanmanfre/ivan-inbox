@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useSectionState } from '../../hooks/useSectionState'
 import { Avatar } from '../../components/Avatar'
 import { eventTime, isLeadMagnet, threadKind, type Thread } from '../../lib/inbox'
@@ -33,12 +34,33 @@ function manualCount(t: Thread): number {
   return t.messages.filter(m => m.direction === 'outbound' && m.ai_model === 'manual_mirror').length
 }
 
+// THE WINDOW, and why it is 20.
+//
+// One click used to inline all 213 conversations: body text went 2,499 to
+// 59,452 characters, controls 12 to 225, none of it virtualised, and because
+// the open flag is persisted (`useSectionState`) the surface came back that way
+// on every reload. That is a receipt turned into a wall.
+//
+// The size comes from what the surface is FOR. Ivan's ask was "so i know this
+// is working" — it is scanned, newest first, to confirm the engine still gets
+// replies. Twenty rows is about the last month of them on current volume, it is
+// one screen and a bit at 390 rather than seventeen, and it holds the expanded
+// body under the 10,000-character gate with room to spare. Nothing is hidden
+// from view without saying so: the head keeps the full total, and the footer
+// states exactly how many are still folded and adds them a page at a time.
+const PAGE = 20
+
 export function DmHistory({ threads, onOpen }: {
   threads: Thread[]
   onOpen: (id: string) => void
 }) {
   const [sect, setSect] = useSectionState('dms.history')
   const open = sect.open.includes('history')
+  // The WINDOW is deliberately NOT persisted, unlike the open flag beside it: a
+  // reload is the one moment where "show me everything" is certainly stale, and
+  // a remembered 200-row window would put the wall straight back.
+  const [shown, setShown] = useState(PAGE)
+  useEffect(() => { if (!open) setShown(PAGE) }, [open])
   // 2026-08-15 (Ivan): lead-magnet deliveries belong here too. They carry no inbound
   // row — the person commented the keyword on a POST rather than writing back — so the
   // raw "had any response" rule hid every one of them. Commenting to ask for something
@@ -74,7 +96,7 @@ export function DmHistory({ threads, onOpen }: {
 
       {open && (
         <div className="dmh-rows">
-          {answered.map(t => {
+          {answered.slice(0, shown).map(t => {
             const kind = threadKind(t)
             const manual = manualCount(t)
             const last = t.last
@@ -104,6 +126,22 @@ export function DmHistory({ threads, onOpen }: {
               </button>
             )
           })}
+          {/* What is still folded, counted, with the way to get it. A "show
+              more" that does not say how much more is behind it is a guess. */}
+          {answered.length > shown && (
+            <button
+              type="button"
+              className="dmh-more"
+              onClick={() => setShown(n => n + PAGE)}
+            >
+              <span className="dmh-more-l">
+                Show {Math.min(PAGE, answered.length - shown)} more
+              </span>
+              <span className="dmh-more-n">
+                {answered.length - shown} older still folded
+              </span>
+            </button>
+          )}
         </div>
       )}
     </div>
