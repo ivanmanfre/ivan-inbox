@@ -21,7 +21,7 @@
 /* ========================================================================== */
 
 /* THE ERRORS TAB'S REASON LINE (ContentList.tsx Card, phase2). Same one-line
-   ellipsis treatment .ct-src already carries in faithful.css — meta size,
+   ellipsis treatment .ct-src already carries in faithful.css, meta size,
    text2 rather than text3 because this is the fact the row is IN THE TAB for
    ("why did this fail"), one step louder than the source legibility line it
    sits below. Full text lives in the element's title attribute; this box

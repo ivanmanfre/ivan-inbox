@@ -1228,7 +1228,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
               of "get this out of my queue", and the queue rail walks past a row
               without judging it. */}
           {actionable && (
-            // phase2: same demotion as the card's ReviewActions — a row that
+            // phase2: same demotion as the card's ReviewActions. A row that
             // already failed does not get to keep Approve at primary weight.
             <button type="button" className={`dw-key${d.status === 'error' ? '' : ' p'}`} disabled={acting || editing}
               onClick={() => decide('approve')}>

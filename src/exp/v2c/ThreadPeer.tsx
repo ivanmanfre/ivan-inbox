@@ -27,7 +27,7 @@ function Ladder({ stage }: { stage: string }) {
     )
   }
   if (step === null) {
-    // A stage this file has not seen. Say so rather than draw a guess — and
+    // A stage this file has not seen. Say so rather than draw a guess, and
     // say it in words, not the raw column (phase2).
     return <div className="wb-ladder"><span className="wb-lad-l unknown">{stage ? label(stage) : 'no stage'}</span></div>
   }

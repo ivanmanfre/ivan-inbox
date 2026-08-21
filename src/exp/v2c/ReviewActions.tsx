@@ -42,7 +42,7 @@ export function ReviewActions({ id, onDone, compact, demoteApprove }: {
   // and gets the roomier register; the card's stays tight.
   compact?: boolean
   // phase2: Approve on a row that already failed is not the recommended
-  // action — it stays available (Skip is not the only way out, and a false
+  // action. It stays available (Skip is not the only way out, and a false
   // error does happen) but it stops wearing the primary weight that tells the
   // eye "do this one". Same secondary treatment Skip already uses.
   demoteApprove?: boolean

@@ -167,8 +167,8 @@ function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
   const funnel = d.funnel_stage?.trim() || null
   const excerpt = glance ? draftExcerpt(d.post_body) : null
   // ERRORS TAB, THE REASON COLUMN (phase2). The QA chip above is a verdict
-  // CODE (QA_BLOCKED, LINT_FAIL) at best and a bare dash at worst — neither
-  // answers "why did this fail" on its own. This line does, on every errored
+  // CODE (QA_BLOCKED, LINT_FAIL) at best and a bare dash at worst, and
+  // neither answers "why did this fail" on its own. This line does, on every errored
   // row: taxonomy.error_message first (the pipeline's own account), the
   // labelled qa_verdict as a fallback, and an honest sentence rather than a
   // dash when the row carries neither.
@@ -246,7 +246,7 @@ function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
           <div className="ct-src" title={d.source_label}>{d.source_label}</div>
         )}
         {/* THE REASON, ON EVERY ONE OF THE 46 ROWS (phase2). One line, meta
-            tier, truncated with the full text in the title — the same
+            tier, truncated with the full text in the title, the same
             treatment .ct-src already uses for a value that can run to a
             whole sentence. */}
         {reason && <div className="ct-reason" title={reason}>{reason}</div>}

@@ -1,5 +1,5 @@
 // The one shared label map. A raw database value (an enum, a status code, a
-// pipeline slug) should never reach JSX untouched — this file is the single
+// pipeline slug) should never reach JSX untouched. This file is the single
 // place that turns one into words a human reads, so a new caller fixes the
 // CLASS of leak rather than adding an eighth hand-rolled instance.
 //
@@ -7,7 +7,7 @@
 //   label(value)       - the whole field IS the value ('dm_sent', 'QA_BLOCKED').
 //   inlineLabel(text)   - the value is EMBEDDED inside a free-text sentence a
 //                         human or a scorer already wrote (icp_reasoning), so
-//                         only the known raw tokens inside it are swapped —
+//                         only the known raw tokens inside it are swapped;
 //                         the surrounding prose is never touched.
 //
 // Pure and dependency-free on purpose: nothing here reaches Supabase, reads
@@ -33,7 +33,7 @@ const KNOWN: Record<string, string> = {
 }
 
 // A value already written for a human: it carries a space and no underscore
-// ('Not accepted yet', 'Sent'). Passed through untouched — running it through
+// ('Not accepted yet', 'Sent'). Passed through untouched: running it through
 // the fallback below would just lower-case and re-capitalise words that are
 // already correct.
 function isAlreadyHuman(value: string): boolean {
@@ -70,7 +70,7 @@ const INLINE_RE = new RegExp(`\\b(${KNOWN_KEYS.join('|')})\\b`, 'gi')
 // Swaps ONLY the known raw tokens found inside a larger, already-human
 // sentence (icp_reasoning: "RISE warm engager (gold_icp_v2_seatless 66/78):
 // ..."). Everything else in the string is the scorer's own prose and stays
-// exactly as written — running the whole sentence through label()'s fallback
+// exactly as written: running the whole sentence through label()'s fallback
 // would lower-case and re-join words that were never a database value.
 export function inlineLabel(text: string | null | undefined): string {
   if (text === null || text === undefined) return ''
