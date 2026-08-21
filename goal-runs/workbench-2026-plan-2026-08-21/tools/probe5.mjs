@@ -20,6 +20,7 @@ const lane = arg('lane', 'content')
 const mode = arg('mode', 'fill')
 const peer = arg('peer', '')          // 'chat' docks the Claude peer via the hash
 const shot = arg('shot', '')
+const openSel = arg('open', '.ct-card.ct-tap')
 const session = readFileSync('/Users/ivanmanfredi/Desktop/ivan-inbox/.session.json', 'utf8')
 const blocked = []
 
@@ -150,7 +151,7 @@ if (mode === 'fill') {
   }))
   out = { before, after }
 } else if (mode === 'takeover') {
-  await click('.ct-card.ct-tap', 2200)
+  await click(openSel, 2200)
   out = await page.evaluate(() => {
     const g = document.querySelector('.dw-cols')
     const li = document.querySelector('.li-card')
@@ -173,7 +174,7 @@ if (mode === 'fill') {
     }
   })
 } else if (mode === 'rail') {
-  await click('.ct-card.ct-tap', 2200)
+  await click(openSel, 2200)
   out = await page.evaluate(() => {
     const rows = [...document.querySelectorAll('.dw-qrow')]
     const heights = rows.map(r => Math.round(r.getBoundingClientRect().height))
