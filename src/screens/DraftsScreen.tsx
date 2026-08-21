@@ -20,7 +20,7 @@ function opsSeg(clientId: string): Seg | string {
 const OPS_LABEL: Record<OpsKind, string> = {
   escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK',
   weekly_report: 'WEEKLY', comment_reply: 'COMMENT', comment_outbound: 'OUTBOUND',
-  booking: 'BOOKED', precall_email: 'PRE-CALL',
+  booking: 'BOOKED', precall_email: 'PRE-CALL', manual_invite: 'INVITE',
 }
 
 // One tappable line each: enough to know what is waiting, not a second Ops tab.
