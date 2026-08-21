@@ -5,8 +5,8 @@ import { buildCommands } from './commandSource'
 import { CommandPalette, ShortcutSheet } from './CommandPalette'
 import { BulkBar, capCountOf, useBulkRun } from './BulkBar'
 import {
-  clearSelection, getFocusId, getSelected, lookupRow, selectRows, setFocus, setScope,
-  subscribe, toggleRow, type RowCap, type SelectedRow,
+  clearSelection, getFocusId, getSelected, lookupRow, selectRows, setFocus, setLayerMounted,
+  setScope, subscribe, toggleRow, type RowCap, type SelectedRow,
 } from './commandStore'
 
 // THE COMMAND LAYER. One keydown listener, one palette, one shortcut sheet, one
@@ -96,6 +96,15 @@ export function CommandLayer() {
 
   const selected = useSyncExternalStore(subscribe, getSelected)
   const focusId = useSyncExternalStore(subscribe, getFocusId)
+
+  // Tell the rows there are keys behind them. RowSelect is rendered from
+  // InboxScreen, which the pre-revamp #exp/stock shell also renders without ever
+  // mounting this layer, so without this the escape hatch grows a selection mark
+  // it cannot drive. Announced on mount, withdrawn on unmount.
+  useEffect(() => {
+    setLayerMounted(true)
+    return () => setLayerMounted(false)
+  }, [])
 
   // Scope watch. Cheap poll rather than a subtree MutationObserver over a list
   // that can hold 300 rows: this asks four questions of four elements.
