@@ -666,3 +666,59 @@
 .wb.wb.wb .dw-insp .dd-v,
 .wb.wb.wb .dw-insp .ct-err,
 .wb.wb.wb .dw-insp .ct-warnbox{ max-width:68ch }
+
+/* D7 · MOBILE CHROME: THE FRAME ROW FOLDS INTO THE WORK ROW.
+   Measured at 390 on Content, first draft row at y=254 of 812, so 31% of the
+   phone was chrome before a row of work. Four bands:
+     1  .wb-ribbon   8..52   how fresh the data is, and the way to Settings
+     2  .wb-workhead 52..105 the word CONTENT, then the four work pills
+     3  .ct-cmd-top  120..158 client lane, pipeline marks, the alarm
+     4  .ct-cmd-f    166..200 search and filters
+
+   Bands 1 and 2 fold into one. The ribbon carries two controls and spends a
+   whole 44px band on them, so it becomes the right-hand end of the work row:
+   NOTHING IS DELETED, the sync chip and the gear are the same two controls in
+   the same order, and the row reserves the width they need so no pill can pass
+   underneath them. The word CONTENT goes, and faithful.css:2866 already ruled
+   why: `.ct-cmd-j` prints the job name on the phone 60px lower, and printing
+   one word twice in two bands is what D6 killed on the pointer canvas.
+
+   🔴 BANDS 3 AND 4 STAY TWO, ON PURPOSE, AND THIS IS A DISAGREEMENT WITH THE
+   BRIEF. faithful.css:2901 is a measured ruling: the alarm was in the scroller
+   and rendered at left:499 on a 390px canvas, reachable only by a swipe nobody
+   knows about, and a search field sharing that line shrinks to about 90px,
+   which is a field nobody types in. Merging them back is re-opening a defect
+   that was closed with numbers. So this lands 4 bands to 3, and the third is
+   the strip's own two-line budget, which is one band of the four.
+
+   The overlay is scoped with :has() to a plate that actually HAS a work head.
+   WorkSegment returns null for every non-work job (Rail.tsx:42), and on DMs or
+   Ops the ribbon would otherwise land on top of that screen's own title. */
+@media (max-width:767px){
+  .wb.wb.wb .wb-plate:has(.wb-workhead){ position:relative }
+  .wb.wb.wb .wb-plate:has(.wb-workhead) > .wb-ribbon{
+    position:absolute; top:0; right:0; z-index:14;
+    width:auto; min-height:0; padding:14px 14px 0; gap:10px;
+  }
+  /* `flex:1` on an empty span inside an auto-width box contributes nothing;
+     it is left alone so the Settings job still prints its name here. */
+  .wb.wb.wb .wb-plate:has(.wb-workhead) .wb-workhead{
+    padding:8px 16px 6px;
+    padding-right:144px;      /* the reserved lane for the two folded controls */
+  }
+  .wb.wb.wb .wb-plate:has(.wb-workhead) .wb-workhead-l{ display:none }
+  /* The pill row already scrolled before this pass; what it never had was an edge
+     that says so, and against a reserved lane a pill cut at the boundary reads
+     as a pill hidden UNDER the sync chip. Same announced fade `.ct-cmd-scroll`
+     uses 60px lower, so the two scrollers on this screen behave alike. */
+  .wb.wb.wb .wb-plate:has(.wb-workhead) .wb-workseg{
+    mask-image:linear-gradient(to right,#000 calc(100% - 20px),transparent);
+  }
+  /* NOT FIXED HERE, AND CHECKED RATHER THAN LEFT: the Filters pill reports a
+     74px box against a 78px scrollWidth at this canvas. It is not a clip. The
+     button already computes `flex:0 0 auto` with `min-width:max-content`, its
+     max-content resolves to 74, and the 4px is the `⌄` glyph's advance
+     overhanging its own content box — the pill renders whole in the screenshot
+     and pinning the parent's flex (tried, three ways) moves nothing. Recorded
+     so the next pass does not spend the same half hour on it. */
+}
