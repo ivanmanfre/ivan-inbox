@@ -352,6 +352,49 @@
   .wb.wb.wb .wb-cmdk-h{ display:none }
 }
 
+/* ---- C5 · THE DISCARDED DRAFT, AND THE RESTORE --------------------------- */
+/* Quiet on purpose. This is a row that was RULED ON: it sits between the
+   conversation and the draft card looking like neither, so it can never be
+   mistaken for a message that was sent or for a draft waiting on a decision.
+   Dashed, no fill, text3. */
+.wb.wb.wb .wb-disc{
+  margin:var(--sp-2) var(--sp-3);
+  padding:var(--sp-2) var(--sp-3);
+  border:1px dashed var(--surface3); border-radius:var(--r-md); background:transparent;
+}
+.wb.wb.wb .wb-disc-h{ display:flex; align-items:center; gap:var(--sp-2); flex-wrap:wrap }
+.wb.wb.wb .wb-disc-t{
+  flex:1; min-width:0; font-size:var(--fs-eyebrow); font-weight:700; color:var(--text3);
+  letter-spacing:.06em; text-transform:uppercase;
+}
+.wb.wb.wb .wb-disc-x,
+.wb.wb.wb .wb-disc-b{
+  flex:none; min-height:32px; padding:0 var(--sp-3); border-radius:var(--r-ctl);
+  border:1px solid var(--surface3); background:var(--surface2); color:var(--text2);
+  font-size:var(--fs-meta); font-weight:600; font-family:inherit; cursor:pointer; letter-spacing:0;
+}
+/* The restore is the one control here that writes, so it is the one that takes
+   the weight. It is still not a primary button: bringing a draft back is a step
+   toward a decision, not the decision. */
+.wb.wb.wb .wb-disc-b{ color:var(--text); border-color:var(--text3) }
+.wb.wb.wb .wb-disc-b:disabled{ opacity:.5; cursor:not-allowed }
+.wb.wb.wb .wb-disc-x:focus-visible,
+.wb.wb.wb .wb-disc-b:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
+.wb.wb.wb .wb-disc-body{
+  margin-top:var(--sp-2); padding:var(--sp-2) var(--sp-3); background:var(--surface2);
+  border-radius:var(--r-ctl); font-size:var(--fs-meta); color:var(--text2);
+  line-height:1.5; white-space:pre-wrap; max-width:68ch;
+}
+/* The sentence that says what the button does, or why there is no button. */
+.wb.wb.wb .wb-disc-s{
+  margin-top:var(--sp-2); font-size:var(--fs-eyebrow); color:var(--text3);
+  line-height:1.5; max-width:68ch; letter-spacing:0;
+}
+.wb.wb.wb .wb-disc-note{
+  margin-top:var(--sp-2); font-size:var(--fs-eyebrow); color:var(--sev-urgent);
+  line-height:1.5; max-width:68ch; letter-spacing:0;
+}
+
 /* ========================================================================== */
 /* D · LAYOUT — canvas fill, container queries, panes, mobile chrome (pass 5)  */
 /* ========================================================================== */
@@ -547,3 +590,39 @@
 .wb.wb.wb .dmh-more:focus-visible{ outline:2px solid var(--accent); outline-offset:-2px }
 .wb.wb.wb .dmh-more-l{ font-size:var(--fs-meta); font-weight:700; color:var(--text2) }
 .wb.wb.wb .dmh-more-n{ margin-left:auto; font-size:var(--fs-meta); color:var(--text3) }
+
+/* D5 · THE LEAD-MAGNET QUEUE RAIL, WITH ITS HIERARCHY THE RIGHT WAY UP.
+   Measured at 1440, 11 rows: titles held 118 to 166px on ONE line and
+   ellipsized after about 14 characters, while `Guide · 3d ago` wrapped to
+   three and four lines, and the rows ran 44, 56, 75, 93 and 112px tall. The
+   identifying text was starved and the secondary text was fed.
+
+   The cause is not a style choice, it is a markup difference: DraftPane's rail
+   wraps its two lines in `.dw-qrow-b` (v2c/styles.css:1069, `flex:1`), and
+   MagnetWindow's QueueRail puts the title and the meta straight into the flex
+   row as siblings. Two flex items with no basis then split the rail between
+   them, and the shorter string won. `:has()` names that difference rather than
+   a window, so this cannot reach into the draft rail beside it and cannot
+   silently stop applying if a third window reuses the markup.
+
+   Two lines of title, one quiet meta line, one height for every row. The row
+   is a place to GO, and you pick it by its name. */
+.wb.wb.wb .dw-queue .dw-qrow:not(:has(.dw-qrow-b)){
+  display:grid; grid-template-rows:auto auto; align-content:center;
+  row-gap:2px; height:76px; box-sizing:border-box; overflow:hidden;
+}
+.wb.wb.wb .dw-queue .dw-qrow:not(:has(.dw-qrow-b)) .dw-qrow-t{
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  white-space:normal; overflow:hidden;
+  line-height:1.35; min-height:calc(2 * 1.35em);
+  color:var(--text2);
+}
+.wb.wb.wb .dw-queue .dw-qrow:not(:has(.dw-qrow-b)).on .dw-qrow-t{
+  color:var(--text); font-weight:700;
+}
+/* The meta earns exactly one line and never competes: it is what you confirm a
+   row with after the title told you which one it is. */
+.wb.wb.wb .dw-queue .dw-qrow:not(:has(.dw-qrow-b)) .dw-qrow-m{
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  line-height:1.3; color:var(--text4); margin-top:0;
+}
