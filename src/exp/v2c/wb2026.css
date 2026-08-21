@@ -417,7 +417,7 @@
 /* D · LAYOUT — canvas fill, container queries, panes, mobile chrome (pass 5)  */
 /* ========================================================================== */
 
-/* D0 · THE WORKING REGION BECOMES A QUERY CONTAINER — and the one guard that
+/* D0 · THE WORKING REGION BECOMES A QUERY CONTAINER, and the one guard that
    makes it safe.
    The whole reason this pass exists: every width rule in the app keys off the
    VIEWPORT, while the surface it governs is a PANE whose width has almost
@@ -432,7 +432,7 @@
    🔴 THE GUARD, AND IT IS NOT OPTIONAL. `container-type: inline-size` implies
    `contain: layout`, and a `contain: layout` box becomes the containing block
    for every `position: fixed` descendant. The mobile filter sheet's scrim
-   (`.ct-fsheet-scrim`, faithful.css:1330 — `position:fixed; inset:0`) is a
+   (`.ct-fsheet-scrim`, faithful.css:1330, `position:fixed; inset:0`) is a
    descendant of `.wb-work`, so an unguarded declaration would shrink it to the
    pane and stop it covering the tab bar: a clip traded for a broken overlay.
    The declaration therefore lives INSIDE `@media (min-width:1000px)`, and the
@@ -461,7 +461,7 @@
 
    1560px is the threshold because two columns have to be worth having: at
    1,560px each column is ~768px, which is still a comfortable row. Below it
-   nothing changes. Only `.r` splits — every banner, section head, the stale
+   nothing changes. Only `.r` splits: every banner, section head, the stale
    bar and DM HISTORY keep the full width, because a full-width thing chopped
    in half is a new defect, not a fix. */
 @container work (min-width:1560px){
@@ -576,7 +576,7 @@
 
    So: off for text that is READ as sentences, untouched everywhere numbers are
    SCANNED as a column. faithful.css:123's rule on input/textarea/select/button
-   stays exactly as it is — it exists because a form control does not inherit
+   stays exactly as it is, because a form control does not inherit
    the property at all, and an operator reading a figure back inside an
    editable field is the case it was written for. The two textareas below are
    named individually rather than by widening that rule. */
@@ -665,7 +665,7 @@
 
    Measured at 2560 (one-row queue, so `.dw-norail`): the grid ran
    2040px + 520px, with the artifact riding a 640px ribbon inside the 2,040px
-   track — about 1,400px of that column carrying nothing — while the evidence
+   track, about 1,400px of that column carrying nothing, while the evidence
    rail, which holds the QA rubric, the generation register and the source
    quote, sat at 520px.
 
@@ -748,7 +748,7 @@
      74px box against a 78px scrollWidth at this canvas. It is not a clip. The
      button already computes `flex:0 0 auto` with `min-width:max-content`, its
      max-content resolves to 74, and the 4px is the `⌄` glyph's advance
-     overhanging its own content box — the pill renders whole in the screenshot
+     overhanging its own content box. The pill renders whole in the screenshot
      and pinning the parent's flex (tried, three ways) moves nothing. Recorded
      so the next pass does not spend the same half hour on it. */
 }
@@ -763,7 +763,7 @@
 
    It is MOVED, never rewritten: not one line of that component changes. On a
    canvas with room, its scrim stops dimming and its card docks to the right of
-   the thread, in width the pane was already wasting — `.wb-peer .msgs` is
+   the thread, in width the pane was already wasting: `.wb-peer .msgs` is
    capped at 760px (v2c/styles.css:29) inside a peer that is 1,000px and more
    at these widths.
 
@@ -774,7 +774,7 @@
 
    🔴 THE SCRIM STAYS OVER THE WHOLE PEER, transparent and full-bleed, and that
    is deliberate: the component's ONLY dismiss affordance is a click on the
-   scrim (ContextSheet.tsx:71 — there is no ✕ and no Escape handler). Shrinking
+   scrim (ContextSheet.tsx:71: there is no close button and no Escape handler). Shrinking
    the scrim to the dock would take dismissal away from a sheet that has no
    other way out. So the thread is fully READABLE while the sheet is open,
    which is the complaint, and a click anywhere on it closes the sheet, which

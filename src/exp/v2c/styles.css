@@ -32,7 +32,7 @@
    one of those blocks at 860px and centre it, which is where the pane's black
    right half came from: at 2560 the DMs rows drew inside 860px and 1,444px of a
    2,304px plate carried nothing (measured, phase5-before: 8.2% glyph fill).
-   The cap was right about ONE thing — a 2,300px line of prose is unreadable —
+   The cap was right about ONE thing (a 2,300px line of prose is unreadable) and
    and wrong about where to put it. A measure belongs on the TEXT, not on the
    pane, so it moved: wb2026.css section D caps the prose blocks at their own
    measure and spends the surplus on a SECOND COLUMN OF ROWS instead of on two
