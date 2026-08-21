@@ -1,3 +1,5 @@
+import { label } from '../../lib/labels'
+
 // Shared formatting for the Content tab. Extracted in round 2 because the
 // queue card and the draft detail screen now render the same timestamps and
 // the same type chip — two copies of relTime() is how two surfaces start
@@ -88,7 +90,10 @@ const SOURCE_LABEL: Record<string, string> = {
 }
 
 export function sourceLabel(s: string): string {
-  return SOURCE_LABEL[s] ?? s
+  // phase2: an unmapped slug used to reach the screen raw (youtube_watch).
+  // The curated names above stay first; anything this map has not seen falls
+  // through to the shared degrade path instead of rendering as itself.
+  return SOURCE_LABEL[s] ?? label(s)
 }
 
 // A raw taxonomy slug ('case_study', 'reach') as a reading label ('Case Study',

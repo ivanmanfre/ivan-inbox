@@ -1,6 +1,7 @@
 import { Avatar } from '../../components/Avatar'
 import { ThreadScreen } from '../../screens/ThreadScreen'
 import type { Thread } from '../../lib/inbox'
+import { label } from '../../lib/labels'
 import { STAGE_LADDER, stageIsOff, stageStep } from './stage'
 
 // A conversation, as a pane peer.
@@ -26,8 +27,9 @@ function Ladder({ stage }: { stage: string }) {
     )
   }
   if (step === null) {
-    // A stage this file has not seen. Say so rather than draw a guess.
-    return <div className="wb-ladder"><span className="wb-lad-l unknown">{stage || 'no stage'}</span></div>
+    // A stage this file has not seen. Say so rather than draw a guess — and
+    // say it in words, not the raw column (phase2).
+    return <div className="wb-ladder"><span className="wb-lad-l unknown">{stage ? label(stage) : 'no stage'}</span></div>
   }
   return (
     <div className="wb-ladder" title={`stage: ${stage}`}>

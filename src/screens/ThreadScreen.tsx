@@ -9,17 +9,13 @@ import {
   saveDraftText, snoozeDraft, unsnoozeDraft,
   markThreadRead, messageChannel, threadChatId,
   type InboxMessage, type MsgChannel, type Thread, eventTime } from '../lib/inbox'
+import { label } from '../lib/labels'
 
 function clientName(id: string): string {
   if (id === 'risedtc') return 'Rise'
   if (id === 'arch') return 'Arch'
   if (id === 'ivan') return 'Ivan'
   return id.charAt(0).toUpperCase() + id.slice(1)
-}
-
-function stageLabel(s: string): string {
-  if (!s) return ''
-  return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
 function dayLabel(iso: string): string {
@@ -32,7 +28,7 @@ function dayLabel(iso: string): string {
 // The channel it rode is carried by the chip beside it, not by this text.
 function outLabel(m: InboxMessage, stage: string): { text: string; failed: boolean } {
   if (m.send_blocked_at && m.send_blocked_reason !== 'discarded_in_inbox') {
-    return { text: `Send failed: ${m.send_blocked_reason}`, failed: true }
+    return { text: `Send failed: ${label(m.send_blocked_reason)}`, failed: true }
   }
   if (m.approved_at && !m.sent_at) return { text: 'Queued', failed: false }
   // manual_mirror = the human typed it in the LinkedIn app; the sync mirrored it in.
@@ -217,7 +213,7 @@ export function ThreadScreen({ thread, onBack, refresh }: {
           <div className="n">{thread.prospect_name} <span className="ctx-i">ⓘ</span></div>
           <div className="m">
             {thread.prospect_company ? <>{thread.prospect_company} · </> : null}
-            <b>{clientName(thread.client_id)}</b> · {channelSummary(bubbles)} · {stageLabel(thread.stage)}
+            <b>{clientName(thread.client_id)}</b> · {channelSummary(bubbles)} · {label(thread.stage)}
           </div>
         </div>
         <Avatar name={thread.prospect_name} channel={thread.channel} size={36} />

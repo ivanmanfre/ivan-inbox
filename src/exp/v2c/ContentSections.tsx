@@ -22,8 +22,9 @@ import { withoutDecided } from './contentIdeas'
 import type { AgentSummary } from '../../lib/agent'
 import { FilteredEmpty, Figure, KeyRows } from './ContentBits'
 import { FilterRow } from './FilterRow'
-import { absTime, relOrAhead, relTime } from './fmt'
+import { absTime, relOrAhead, relTime, sourceLabel } from './fmt'
 import { CalmEmpty, Failed, SectionHead, StageTabs } from './Surface'
+import { label } from '../../lib/labels'
 
 // The row sets that live INSIDE a lane — never as a third destination.
 //
@@ -143,7 +144,7 @@ function IdeaCard({ i, onDeleted, onDecided }: {
               the expanded body below, which is one click away. The timestamp
               stays as the trailing value. */}
           <div className="ct-meta">
-            {i.source && <span className="ct-chip">{i.source}</span>}
+            {i.source && <span className="ct-chip">{sourceLabel(i.source)}</span>}
           </div>
         </div>
         {/* The timestamp rides in `.ct-tail`, OUTSIDE the meta flex, exactly as
@@ -165,7 +166,7 @@ function IdeaCard({ i, onDeleted, onDecided }: {
           {/* The three marks the diet took off the closed row. Nothing was
               deleted; it moved one click down. */}
           <div className="ct-meta ct-meta-wrap">
-            {i.content_type && <span className="ct-chip">{i.content_type}</span>}
+            {i.content_type && <span className="ct-chip">{label(i.content_type)}</span>}
             {i.ivan_engaged === true && <span className="ct-lane">engaged</span>}
             {i.raw_topic && i.raw_topic !== i.normalized_topic && (
               <span className="ct-topic">{i.raw_topic}</span>
