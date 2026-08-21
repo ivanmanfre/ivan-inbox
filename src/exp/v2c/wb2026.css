@@ -36,6 +36,134 @@
 /* B · TODAY — the briefing (pass 3)                                           */
 /* ========================================================================== */
 
+/* Every .sa-* selector below carries .wb.wb.wb per the ONE RULE at the top of
+   this file. Measured before touching anything: NONE of the alert strip's own
+   classes (.sa-sev, .sa-title, .sa-n, .sa-x, .sa-body, .sa-act, .sa-bar,
+   .sa-sum) were reasserted anywhere under .wb — every one of them was landing
+   on the flattener's body tier (14px/400/normal), so the severity label, the
+   badge count and the title all rendered at the SAME size. That is machine
+   output with a border-radius, not a briefing, and it is squarely inside the
+   alert-row scope this pass owns, so it is fixed here rather than left for a
+   fourth pass to rediscover. Sizes below restate what src/styles.css already
+   declares for the stock (#exp/stock) surface — one visual language, two
+   selector scopes, never a fork of the numbers themselves. */
+.wb.wb.wb .sa-bar{
+  display:flex; align-items:center; gap:var(--sp-2); width:100%;
+  background:var(--surface1); border:1px solid var(--surface3); border-radius:var(--r-md);
+  padding:var(--sp-2) var(--sp-3); cursor:pointer; text-align:left;
+  min-height:44px;   /* D7: the strip's own toggle is a primary target */
+}
+.wb.wb.wb .sa-n{
+  flex:none; min-width:20px; height:20px; padding:0 6px; border-radius:var(--r-pill);
+  background:var(--sev-urgent); color:#fff; font-size:11.5px; font-weight:800;
+  display:flex; align-items:center; justify-content:center; letter-spacing:0;
+}
+.wb.wb.wb .sa-sum{
+  flex:1; min-width:0; font-size:var(--fs-meta); font-weight:700; color:var(--text2);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:0;
+}
+.wb.wb.wb .sa-chev{ flex:none; font-size:15px; color:var(--text3); line-height:1 }
+
+.wb.wb.wb .sa-row{ border:1px solid; border-radius:var(--r-md); padding:var(--sp-3) }
+.wb.wb.wb .sa-row + .sa-row{ margin-top:var(--sp-2) }
+.wb.wb.wb .sa-head{ display:flex; align-items:flex-start; gap:var(--sp-2) }
+.wb.wb.wb .sa-headmid{ flex:1; min-width:0; display:flex; flex-direction:column; gap:3px }
+
+/* D6: the drawn severity mark. A dot (the same one Surface.tsx already draws
+   for section-head severity — reused, not forked) plus the text label that
+   was always here: color is never the only signal. */
+.wb.wb.wb .sa-sevmark{ display:flex; align-items:center; gap:6px; line-height:1 }
+.wb.wb.wb .sa-sev{
+  font-size:10.5px; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
+}
+.wb.wb.wb .sa-title{
+  font-size:var(--fs-body); font-weight:700; color:var(--text); line-height:1.35; letter-spacing:0;
+}
+
+/* D3: the figure this row leads with — one place the number is a number, not
+   a word buried mid-sentence. Reuses the app's one figure tier (--fs-figure)
+   rather than inventing a size. */
+.wb.wb.wb .sa-figure{
+  flex:none; font-size:var(--fs-figure); font-weight:600; line-height:1;
+  letter-spacing:-.02em; color:var(--text); padding-top:2px;
+}
+
+/* 68ch, not 70: the CSS `ch` unit and the measurement harness's glyph-true
+   canvas measureText('0') round slightly differently near the boundary (a
+   70ch declaration measured back at 71ch on this font) — two ch of margin
+   keeps every row inside the cap under either method, never right on top of
+   it. */
+.wb.wb.wb .sa-body{
+  margin-top:var(--sp-1); font-size:var(--fs-meta); color:var(--text2); line-height:1.45; max-width:68ch;
+}
+/* The connect URL is ~700 chars of query string. Without the wrap rule it
+   forces the whole strip wider than the 390 canvas and Today scrolls sideways. */
+.wb.wb.wb .sa-act{
+  position:relative; display:inline-block; margin-top:var(--sp-2); font-size:var(--fs-meta); font-weight:700;
+  color:var(--accent-ui, var(--accent)); text-decoration:none; max-width:100%; overflow-wrap:anywhere;
+}
+/* Same inset-overlay hit box as .sa-x: the link text stays its own size, the
+   tap area clears 44px top-to-bottom (the glyph line is ~20px, so a 12px
+   inset gets there without the row eating extra vertical space). */
+.wb.wb.wb .sa-act::after{ content:''; position:absolute; inset:-12px 0 }
+
+/* D7 — dismiss targets to 44px. The VISIBLE glyph stays a small ✕; the HIT
+   area grows via an inset ::after overlay, the exact pattern the ihead chips
+   already use (v2c/styles.css:434, "a 36px chip has a 44px hit box"). Keeping
+   the mark small is what stops a row of dismiss buttons from reading as a
+   toolbar. */
+.wb.wb.wb .sa-x{
+  position:relative; flex:none; width:20px; height:20px; font-size:12px;
+  color:var(--text3); background:none; border:0; cursor:pointer; padding:0;
+  display:flex; align-items:center; justify-content:center; line-height:1;
+  border-radius:var(--r-pill);
+  transition:background-color var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease);
+}
+.wb.wb.wb .sa-x::after{ content:''; position:absolute; inset:-12px }
+.wb.wb.wb .sa-x:hover{ background:var(--surface2); color:var(--text2) }
+.wb.wb.wb .sa-x:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
+
+/* D4 — raw telemetry, parked behind a native <details>. Nothing here is
+   deleted: the full multi-line body a scan warning or an outreach stat dump
+   carries past its first line is one tap away, never gone. */
+.wb.wb.wb .sa-raw{ margin-top:var(--sp-2) }
+.wb.wb.wb .sa-raw > summary{
+  font-size:var(--fs-eyebrow); font-weight:600; color:var(--text3); cursor:pointer;
+  list-style:none; display:inline-flex; align-items:center; gap:4px; letter-spacing:0;
+  min-height:24px;
+}
+.wb.wb.wb .sa-raw > summary::-webkit-details-marker{ display:none }
+.wb.wb.wb .sa-raw > summary::before{ content:'›'; display:inline-block; transition:transform var(--dur-hover) var(--ease) }
+.wb.wb.wb .sa-raw[open] > summary::before{ transform:rotate(90deg) }
+.wb.wb.wb .sa-raw-pre{
+  margin:var(--sp-1) 0 0; padding:var(--sp-2) var(--sp-3); background:var(--surface2);
+  border-radius:var(--r-ctl); font-size:var(--fs-eyebrow); color:var(--text3); line-height:1.5;
+  white-space:pre-wrap; overflow-wrap:anywhere; font-family:inherit; max-width:68ch;
+}
+
+/* D2/D4 — a group's own disclosure: the count is the row, every member (and
+   its own action + raw body) lives one tap away. Critical groups are the only
+   ones that default open, matching the strip's own "critical opens on sight"
+   rule one level down. */
+.wb.wb.wb .sa-groupd{ margin-top:var(--sp-2) }
+.wb.wb.wb .sa-groupd > summary{
+  font-size:var(--fs-meta); font-weight:600; color:var(--text2); cursor:pointer;
+  list-style:none; display:flex; align-items:center; gap:6px; letter-spacing:0; min-height:32px;
+}
+.wb.wb.wb .sa-groupd > summary::-webkit-details-marker{ display:none }
+.wb.wb.wb .sa-groupd > summary::before{ content:'›'; transition:transform var(--dur-hover) var(--ease) }
+.wb.wb.wb .sa-groupd[open] > summary::before{ transform:rotate(90deg) }
+
+.wb.wb.wb .sa-member{
+  margin-top:var(--sp-2); padding:var(--sp-2) var(--sp-3); background:var(--surface1);
+  border-radius:var(--r-ctl); border:1px solid var(--surface3);
+}
+.wb.wb.wb .sa-member-head{ display:flex; align-items:flex-start; gap:var(--sp-2) }
+.wb.wb.wb .sa-member-t{
+  flex:1; min-width:0; font-size:var(--fs-meta); font-weight:600; color:var(--text); line-height:1.4;
+}
+.wb.wb.wb .sa-member-b{ margin-top:2px; font-size:var(--fs-eyebrow); color:var(--text3); line-height:1.4; max-width:68ch }
+
 /* ========================================================================== */
 /* C · COMMAND LAYER — palette, selection, bulk bar, restore (pass 4)          */
 /* ========================================================================== */
