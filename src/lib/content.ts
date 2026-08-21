@@ -2201,11 +2201,11 @@ export function taxonomyValue(t: unknown, key: string): string | null {
   return str((parsed as Record<string, unknown>)[key])
 }
 
-// The Errors tab's answer to "why did this fail" — phase2. Measured live
+// The Errors tab's answer to "why did this fail", phase2. Measured live
 // against the 46-row Errors tab (2026-08-21): 31 rows carry taxonomy's own
 // error_message (the same fact DraftPane's detail screen already prints next
 // to the error chip), 30 carry a qa_verdict, 15 carry both, and 0 carry
-// neither — but a future row carrying neither must still say something
+// neither. A future row carrying neither must still say something
 // honest rather than render a dash, so the third branch stays live even
 // though nothing today exercises it.
 export function draftFailureReason(d: Pick<ContentDraft, 'taxonomy' | 'qa_verdict' | 'qa_score'>): string {
