@@ -66,19 +66,26 @@
   /* --- 2 · type scale: seven tokens, no eighth --- */
   --fs-display:34px;            /* stepped by media query below, never clamped */
   --fs-figure:30px;
-  --fs-page:20px;
+  --fs-page:22px;
   /* Bumped one step 2026-08-04 (Ivan: "make the sizing of the text a bit
      larger. It's too annoying like that"). The flatten rule reads --fs-body,
-     so this raises the whole sheet together. */
-  --fs-title:16px;
-  --fs-body:14px;
-  --fs-meta:12.5px;
-  --fs-eyebrow:11px;
+     so this raises the whole sheet together.
+     RAMP 2026-08-21 (phase 1): body 14 -> 16, meta 12.5 -> 13, eyebrow 11 -> 12,
+     title 16 -> 17, page 20 -> 22. figure/display/glyph unchanged. The tiers
+     below carry RELATIVE leading now, so a size move takes its leading with it
+     instead of leaving a 16px word on a 20px line. */
+  --fs-title:17px;
+  --fs-body:16px;
+  --fs-meta:13px;
+  --fs-eyebrow:12px;
   --fs-glyph:20px;              /* the ONE glyph-only size (rail + tab icons) */
   --fw-display:700;             /* 2.4 — the single ≥700 exception, ≥28px only */
 
   /* --- 6 · radius family (style-delta §2: one step rounder, per reference) --- */
-  --r-chip:8px; --r-ctl:12px; --r-card:20px; --r-hero:28px; --r-pill:999px;
+  /* --r-hero was 28px. Collapsed to 20px 2026-08-21 (phase 1) so the hero cards
+     join --r-card and the rendered radius set is {8,12,20} plus the 40px plate
+     and the pills, instead of ten values. --plate-r is untouched. */
+  --r-chip:8px; --r-ctl:12px; --r-card:20px; --r-hero:20px; --r-pill:999px;
   /* v2c's local radii (styles.css:11-16) are treatment surface per §1.6 and are
      remapped onto the family rather than left to drift alongside it. */
   --r-sm:var(--r-ctl); --r-md:var(--r-card); --r-lg:var(--r-hero);
@@ -175,7 +182,10 @@
   font-size:var(--fs-body);
   font-weight:400;
   letter-spacing:0;
-  line-height:20px;
+  /* RELATIVE, not 20px: an unassigned element has to land on the body tier's own
+     leading whatever --fs-body is. Pinned px was how a 16px word ended up on a
+     20px line (1.25) the moment the token moved. */
+  line-height:1.6;
 }
 .wb.wb *{ font-family:inherit }
 
@@ -214,7 +224,7 @@
   font-size:var(--fs-page);
   font-weight:600;
   letter-spacing:-.02em;
-  line-height:24px;
+  line-height:1.25;
 }
 
 /* --- title: section + card titles, and a working row's primary text --- */
@@ -229,7 +239,7 @@
   font-size:var(--fs-title);
   font-weight:500;
   letter-spacing:-.01em;
-  line-height:24px;
+  line-height:1.35;
 }
 
 /* --- body: the workhorse. Row primary text sits here at weight 500 (7.7). --- */
@@ -244,7 +254,7 @@
 .wb.wb.wb .ops-nm{
   font-size:var(--fs-body);
   font-weight:500;
-  line-height:20px;
+  line-height:1.6;
 }
 .wb.wb.wb .wb-body,
 .wb.wb.wb .wb-p,
@@ -254,7 +264,7 @@
 .wb.wb.wb .msgs .b{
   font-size:var(--fs-body);
   font-weight:400;
-  line-height:20px;
+  line-height:1.6;
 }
 
 /* --- meta: timestamps, counts, secondary row text --- */
@@ -281,7 +291,7 @@
 .wb.wb.wb .wb-meta{
   font-size:var(--fs-meta);
   font-weight:400;
-  line-height:16px;
+  line-height:1.45;
 }
 
 /* --- eyebrow: uppercase column heads, section labels, legends, chips --- */
@@ -310,8 +320,10 @@
 .wb.wb.wb .wb-total{
   font-size:var(--fs-eyebrow);
   font-weight:600;
-  letter-spacing:.04em;
-  line-height:16px;
+  /* .08em: a label at 12px needs more air between letters than at 11px, and the
+     eyebrow is the one tier where tracking does work. */
+  letter-spacing:.08em;
+  line-height:1;
   text-transform:uppercase;
 }
 /* A legend label and a Total footer are eyebrow-sized but read as words, not
@@ -334,7 +346,7 @@
 .wb.wb.wb .ov-fchev,
 .wb.wb.wb .ov-fdot,
 .wb.wb.wb .td-sdot,
-.wb.wb.wb .back{ font-size:var(--fs-title); line-height:20px }
+.wb.wb.wb .back{ font-size:var(--fs-title); line-height:1.35 }
 
 /* 2.7 — monospace stays reserved for ids, shortcuts and code. */
 .wb.wb.wb .wb-code, .wb.wb.wb .wb-code code,
@@ -342,7 +354,7 @@
 .wb.wb.wb code, .wb.wb.wb .dd-pre{
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
   font-size:var(--fs-meta);
-  line-height:16px;
+  line-height:1.45;
 }
 
 /* 2.4 — the weight ceiling, enforced. Nothing between 9px and 17px is heavier
@@ -912,7 +924,7 @@
    place this build overrules the reference's equal-weight card grid. */
 .wb.wb.wb .ov-kpi-big, .wb.wb.wb .ov-fn, .wb.wb.wb .wb-otile-n,
 .wb.wb.wb .ov-hero .ov-tile:not(:first-child) .ov-tile-big{
-  font-size:var(--fs-page); font-weight:600; letter-spacing:-.02em; line-height:24px;
+  font-size:var(--fs-page); font-weight:600; letter-spacing:-.02em; line-height:1.25;
 }
 @media (min-width:1000px){
   .wb.wb.wb .ov-tile-big{ font-size:var(--fs-figure) }   /* never the 38px step */
@@ -1535,7 +1547,7 @@
 /* 8.1 — the alert count is a warning, not the surface's hero. Content's ONE
    --fs-figure numeral is the review count inside the pipeline chart card. */
 .wb.wb.wb .ct-alert-n{
-  color:var(--sev-urgent); font-size:var(--fs-page); font-weight:600; line-height:24px;
+  color:var(--sev-urgent); font-size:var(--fs-page); font-weight:600; line-height:1.25;
 }
 .wb.wb.wb .ct-alert-x{
   display:grid;
@@ -1567,7 +1579,7 @@
 .wb.wb.wb .wb-pipe-n{
   display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 10px; margin-top:16px;
 }
-.wb.wb.wb .wb-pipe-lbl{ color:var(--text3); font-size:var(--fs-meta); line-height:16px }
+.wb.wb.wb .wb-pipe-lbl{ color:var(--text3); font-size:var(--fs-meta); line-height:var(--lh-meta) }
 .wb.wb.wb .wb-pipe-warn{ margin-left:auto; color:var(--sev-attention);
   font-size:var(--fs-meta); font-weight:500 }
 
@@ -1657,7 +1669,7 @@
   display:block; text-align:center; overflow:hidden; text-overflow:ellipsis;
   border-radius:var(--r-chip);
   font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.04em;
-  line-height:16px; white-space:nowrap;
+  line-height:1; white-space:nowrap;
   /* 9.1 + 5.4 — the kind is a WORD, and the word is already in the chip. Colour
      added nothing there and cost eight hues, two of them severity. Neutral
      hairline-boxed, exactly like every other categorical chip in this build. */
@@ -1678,16 +1690,16 @@
   background:var(--surface2); color:var(--text2);
   box-shadow:inset 0 0 0 1px var(--hairline);
   font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.04em;
-  line-height:16px; text-transform:uppercase;
+  line-height:1; text-transform:uppercase;
 }
 .wb.wb.wb .log-snip{
   margin-top:1px; color:var(--text3);
-  font-size:var(--fs-meta); line-height:16px;
+  font-size:var(--fs-meta); line-height:var(--lh-meta);
 }
 /* 7.7 — the trailing value, right-aligned and tabular, on one shared edge. */
 .wb.wb.wb .log-tm{
   grid-column:3; margin:0; justify-self:end; text-align:right;
-  color:var(--text3); font-size:var(--fs-meta); line-height:16px;
+  color:var(--text3); font-size:var(--fs-meta); line-height:var(--lh-meta);
 }
 /* 7.5 — the day divider takes the section-header face: flush left with the
    anchor rail, ruled, eyebrow-cased. It was centred 700-weight, which is the
@@ -2059,7 +2071,7 @@
   content:''; width:6px; height:6px; border-radius:999px; background:var(--accent);
   position:absolute; top:5px; right:5px; animation:wb-mic-live 1.2s var(--ease) infinite;
 }
-.wb.wb.wb .cmic-live{ font-size:11px; font-variant-numeric:tabular-nums; color:var(--text) }
+.wb.wb.wb .cmic-live{ font-size:var(--fs-meta); font-variant-numeric:tabular-nums; color:var(--text) }
 @keyframes wb-mic-live{ 0%,100%{opacity:1} 50%{opacity:.3} }
 @media (prefers-reduced-motion: reduce){ .wb.wb.wb .cmic-recording::before{ animation:none } }
 
@@ -3100,8 +3112,11 @@
   /* Leading. `--lh-read` is the ≥1.45 the brief asks for on anything that can
      wrap to a second line; `--lh-row` is the tighter single-line row metric the
      dense lists still need. */
-  --lh-read:1.5;
-  --lh-meta:18px;               /* 13px meta on one line, up from 16 */
+  /* Both RELATIVE as of the phase 1 ramp, so a token move carries its leading.
+     --lh-read is the reading leading on 16px body (25.6px); --lh-meta is the
+     tighter metric the dense single-line rows keep (13px -> 18.85px). */
+  --lh-read:1.6;
+  --lh-meta:1.45;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -3118,7 +3133,7 @@
 .wb.wb.wb .dd-point, .wb.wb.wb .dd-pre, .wb.wb.wb .qa-p,
 .wb.wb.wb .ct-why, .wb.wb.wb .ct-q-t, .wb.wb.wb .ct-style-b,
 .wb.wb.wb .ct-src-l, .wb.wb.wb .ct-quote .dd-body,
-.wb.wb.wb .gs, .wb.wb.wb .gt, .wb.wb.wb .ld-b,
+.wb.wb.wb .gt, .wb.wb.wb .ld-b,
 .wb.wb.wb .ops-ctx, .wb.wb.wb .ops-state, .wb.wb.wb .ops-queue,
 .wb.wb.wb textarea.ops-body, .wb.wb.wb textarea.dc-b, .wb.wb.wb .dc-b,
 .wb.wb.wb .td-dm-b, .wb.wb.wb .td-post-x, .wb.wb.wb .td-card-s,
@@ -3129,24 +3144,48 @@
 .wb.wb.wb .wb-failed-m, .wb.wb.wb .wb-starter, .wb.wb.wb .empty{
   line-height:var(--lh-read);
 }
-/* The meta tier: single-line row furniture at 18px, wrapping captions at 1.5.
-   Two rules, because a row that grows 4px for a line it never wraps to is the
-   density tax this pass is not allowed to charge. */
+/* ONE leading for the whole meta tier, 2026-08-21 (phase 1). It used to be two
+   (18px rows, 1.5 captions), which on the new 13px token rendered as 13/18 and
+   13/20.8 side by side: one tier, two metrics, and the census counted both. The
+   row metric wins for both, because --lh-meta is relative now and 1.45 already
+   clears the readability bar the caption rule was reaching for. */
 .wb.wb.wb .ct-tm, .wb.wb.wb .ct-topic, .wb.wb.wb .r .snip, .wb.wb.wb .r .time,
 .wb.wb.wb .td-snip, .wb.wb.wb .td-org, .wb.wb.wb .td-tm,
 .wb.wb.wb .log-snip, .wb.wb.wb .log-tm, .wb.wb.wb .ov-td-sub,
 .wb.wb.wb .wb-pane-s, .wb.wb.wb .dw-qrow-m{
   line-height:var(--lh-meta);
 }
-.wb.wb.wb .ct-ex, .wb.wb.wb .ct-subtle, .wb.wb.wb .ct-subline, .wb.wb.wb .ct-ref,
+/* The leaves listed here take --fs-meta somewhere in this sheet, so the meta
+   metric is the right one for them. The ones that were removed in the phase 1
+   pass (.ct-ref, .td-ts, .td-qmeta, .td-li-note, .ops-reason, .ov-rc-gov,
+   .wb-sync-t) have NO size tier at all and therefore render at the body token:
+   a meta leading on body-size text was rendering 16/23.2, a metric belonging to
+   neither tier. They ride the flatten pass's reading leading instead. */
+.wb.wb.wb .ct-ex, .wb.wb.wb .ct-subtle, .wb.wb.wb .ct-subline,
 .wb.wb.wb .ov-cap, .wb.wb.wb .ov-note, .wb.wb.wb .ov-fcap, .wb.wb.wb .ov-tile-sub,
-.wb.wb.wb .td-ts, .wb.wb.wb .td-foot, .wb.wb.wb .td-empty, .wb.wb.wb .td-qmeta,
-.wb.wb.wb .td-dm-meta, .wb.wb.wb .td-li-note, .wb.wb.wb .wb-empty-s,
+.wb.wb.wb .td-foot, .wb.wb.wb .td-empty,
+.wb.wb.wb .td-dm-meta, .wb.wb.wb .wb-empty-s,
 .wb.wb.wb .wb-failed-f, .wb.wb.wb .wb-rail-hint, .wb.wb.wb .log-note,
 .wb.wb.wb .log-denom, .wb.wb.wb .dw-sub, .wb.wb.wb .wb-modelnote,
-.wb.wb.wb .ct-fnote, .wb.wb.wb .ops-err, .wb.wb.wb .ops-reason,
-.wb.wb.wb .empty-f, .wb.wb.wb .ov-rc-gov, .wb.wb.wb .td-split{
-  line-height:var(--lh-read);
+.wb.wb.wb .ct-fnote, .wb.wb.wb .ops-err,
+.wb.wb.wb .empty-f, .wb.wb.wb .td-split,
+/* --- phase 1: the meta leaves that had no leading of their own and were
+       landing on the flatten pass's reading metric --- */
+.wb.wb.wb .gs, .wb.wb.wb .ov-h-sub, .wb.wb.wb .ct-src, .wb.wb.wb .td-lg,
+.wb.wb.wb .cal-rr-n, .wb.wb.wb .cal-move-t, .wb.wb.wb .cal-rail-e,
+.wb.wb.wb .chip, .wb.wb.wb .seg .sg, .wb.wb.wb .wb-ws,
+.wb.wb.wb .wb-fpill, .wb.wb.wb .ct-cmd-lane, .wb.wb.wb .ct-f,
+.wb.wb.wb .cap, .wb.wb.wb .wb-stat-n, .wb.wb.wb .dw-key,
+.wb.wb.wb .sc-sub, .wb.wb.wb .ops-tm{
+  line-height:var(--lh-meta);
+}
+/* Same fix one tier down: an eyebrow label with no leading of its own was
+   sitting on a 19.2px line, which on a 12px uppercase label is a gap, not
+   leading. */
+.wb.wb.wb .tb .l, .wb.wb.wb .td-ct-c, .wb.wb.wb .td-tl,
+.wb.wb.wb .wb-rail-grp-l, .wb.wb.wb .ops-pipe-t, .wb.wb.wb .wb-stat-l,
+.wb.wb.wb .ct-fgl, .wb.wb.wb .rx-tier, .wb.wb.wb .rx-lane{
+  line-height:1;
 }
 /* Tracking is for LABELS. Anything above that reads as a sentence gets none —
    the flatten already zeroes it, this catches the leaves that re-added it. */
@@ -3164,12 +3203,43 @@
    the BLOCK still travels with the column, the TEXT wraps where an eye can
    find the next line. (§ the same move faithful already makes for `.ct-subtle`
    at :2092 — this generalises it to every prose leaf that was missed.) */
+/* 78ch -> 70ch, 2026-08-21 (phase 1). 78 was still 8 characters past the band
+   an eye tracks without losing the line, and the leaves below were never in the
+   list at all: Strategy's paragraphs measured 329ch, the Ops pipeline line
+   277ch and the Sends note 276ch on a 2560 plate.
+   The cap is on the TEXT block, never the pane, so the card still travels with
+   the column. Bubbles, table cells, code blocks and chart axes are deliberately
+   NOT here. */
+/* 68ch, not 70: the CSS `ch` unit resolves against the TABULAR zero this sheet
+   turns on app-wide, which is ~2.9% wider than the proportional zero a reader
+   actually meets. 68 CSS-ch measures 70 glyph-true characters, which is the
+   number the cap is about. */
 .wb.wb.wb .ct-style-b, .wb.wb.wb .ct-why, .wb.wb.wb .ct-res-t,
 .wb.wb.wb .ct-q-t, .wb.wb.wb .ct-src-l, .wb.wb.wb .ct-ref,
 .wb.wb.wb .dd-body, .wb.wb.wb .dd-point, .wb.wb.wb .qa-p,
 .wb.wb.wb .ops-state, .wb.wb.wb .ops-queue, .wb.wb.wb .sa-body,
-.wb.wb.wb .td-card-s, .wb.wb.wb .wb-empty-s, .wb.wb.wb .ov-fcap{
-  max-width:78ch;
+.wb.wb.wb .td-card-s, .wb.wb.wb .ov-fcap,
+/* --- added in the phase 1 measure pass --- */
+.wb.wb.wb .sa-title, .wb.wb.wb .ct-ex, .wb.wb.wb .ct-subtle,
+.wb.wb.wb .ct-fnote, .wb.wb.wb .ct-err, .wb.wb.wb .ct-warnbox,
+.wb.wb.wb .ops-pipe-l, .wb.wb.wb .ops-reason, .wb.wb.wb .ops-err,
+.wb.wb.wb .ops-ctx, .wb.wb.wb .ov-note, .wb.wb.wb .ov-cap,
+.wb.wb.wb .ov-tile-sub, .wb.wb.wb .ov-td-sub, .wb.wb.wb .ov-rc-gov,
+.wb.wb.wb .gs, .wb.wb.wb .gt,
+.wb.wb.wb .dd-v, .wb.wb.wb .dd-vv, .wb.wb.wb .dd-vli, .wb.wb.wb .dd-pre,
+.wb.wb.wb .dw-sub, .wb.wb.wb .qa-clash, .wb.wb.wb .wb-modelnote,
+.wb.wb.wb .wb-failed-m, .wb.wb.wb .wb-failed-f, .wb.wb.wb .wb-starter,
+.wb.wb.wb .wb-chat-empty-t, .wb.wb.wb .wb-chat-empty-s,
+.wb.wb.wb .td-dm-b, .wb.wb.wb .td-post-x, .wb.wb.wb .td-li-note,
+.wb.wb.wb .rx-desk-s, .wb.wb.wb .rx-take, .wb.wb.wb .rx-angle,
+.wb.wb.wb .cal-note, .wb.wb.wb .cal-move-s,
+.wb.wb.wb .wb-strat-note, .wb.wb.wb .wb-strat-read, .wb.wb.wb .wb-strat-b{
+  max-width:68ch;
+}
+/* The empty state is a centred block, so its two lines keep their centring and
+   only stop running the full plate. */
+.wb.wb.wb .wb-empty-l, .wb.wb.wb .wb-empty-s{
+  max-width:68ch; margin-left:auto; margin-right:auto;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -3275,7 +3345,7 @@
   font-size:var(--fs-title);
   font-weight:600;
   letter-spacing:-.01em;
-  line-height:24px;
+  line-height:1.35;
   text-transform:none;
   color:var(--text);
 }
@@ -3287,7 +3357,7 @@
    in one window. */
 .wb.wb.wb .res-hdr, .wb.wb.wb .dw-insp-h, .wb.wb.wb .dw-queue-h{
   font-size:var(--fs-meta); font-weight:600; letter-spacing:.05em;
-  line-height:18px; text-transform:uppercase; color:var(--text3);
+  line-height:var(--lh-meta); text-transform:uppercase; color:var(--text3);
 }
 /* The ordinal and the count are VALUES, so they take the data face — one
    register for numbers, app-wide, which is what makes a count scannable beside
@@ -3304,13 +3374,13 @@
   font-size:var(--fs-meta);
   font-weight:500;
   letter-spacing:0;
-  line-height:18px;
+  line-height:var(--lh-meta);
   text-transform:none;
   font-variant-numeric:tabular-nums;
 }
 .wb.wb.wb .td-zc{
   font-size:var(--fs-meta); font-weight:400; letter-spacing:0;
-  line-height:18px; text-transform:none; font-variant-numeric:tabular-nums;
+  line-height:var(--lh-meta); text-transform:none; font-variant-numeric:tabular-nums;
 }
 .wb.wb.wb .wb-sech-n, .wb.wb.wb .td-zn{ color:var(--text4) }
 .wb.wb.wb .wb-sech-c, .wb.wb.wb .td-zc{ color:var(--text3) }
@@ -3414,7 +3484,7 @@
 }
 .wb.wb.wb .ct-card{ padding:9px var(--gut) }
 .wb.wb.wb .ct-card:not(.ct-idea) > .ct-mid{ gap:var(--sp-1) }
-.wb.wb.wb .ct-title{ line-height:22px }
+.wb.wb.wb .ct-title{ line-height:1.35 }
 .wb.wb.wb .ct-ex{ margin-top:var(--sp-1) }
 /* The primary line reads first, the meta reads second, and until now they were
    the same ink at two sizes. The topic drops a tier; the title keeps --text. */
@@ -3447,7 +3517,7 @@
   .wb.wb.wb .td-zones{ column-gap:var(--sp-5); row-gap:0 }
 }
 .wb.wb.wb .td-nm{ font-size:var(--fs-body); font-weight:500 }
-.wb.wb.wb .td-qt{ font-size:var(--fs-title); font-weight:500; line-height:22px }
+.wb.wb.wb .td-qt{ font-size:var(--fs-title); font-weight:500; line-height:1.35 }
 .wb.wb.wb .td-qs, .wb.wb.wb .td-qmeta{ margin-top:var(--sp-1) }
 .wb.wb.wb .td-tl{ font-size:var(--fs-eyebrow); letter-spacing:.05em; color:var(--text3) }
 .wb.wb.wb .td-ts{ margin-top:var(--sp-2); color:var(--text3) }
@@ -3498,7 +3568,7 @@
    description takes the body tier at --text2 and the 78ch measure above. */
 .wb.wb.wb .ct-style, .wb.wb.wb .ct-res{ padding:11px var(--gut) }
 .wb.wb.wb .ct-style-t, .wb.wb.wb .ct-res-t{
-  font-size:var(--fs-title); font-weight:500; letter-spacing:-.01em; line-height:22px;
+  font-size:var(--fs-title); font-weight:500; letter-spacing:-.01em; line-height:1.35;
 }
 .wb.wb.wb .ct-style-b{ margin-top:var(--sp-1); color:var(--text2) }
 .wb.wb.wb .ct-style-i{ margin-top:var(--sp-3) }
@@ -3550,14 +3620,14 @@
    keycap hints in the draft window's action bar. A <kbd> is read as a mark, but
    9.5px is below the floor on any reading. */
 .wb.wb.wb kbd, .wb.wb.wb .dw-key kbd, .wb.wb.wb .dw-hint kbd{
-  font-size:var(--fs-eyebrow); line-height:14px;
+  font-size:var(--fs-eyebrow); line-height:1;
 }
 
 /* The draft window's own reading column. The artifact is capped at LinkedIn's
    640px measure by contract; the two rails around it were not, and the evidence
    rail's prose ran the rail's full width at a 1.45 leading it never declared. */
-.wb.wb.wb .dw-qrow-t{ font-size:var(--fs-meta); line-height:18px }
-.wb.wb.wb .dw-cap-t{ font-size:var(--fs-page); font-weight:600; line-height:26px }
+.wb.wb.wb .dw-qrow-t{ font-size:var(--fs-meta); line-height:var(--lh-meta) }
+.wb.wb.wb .dw-cap-t{ font-size:var(--fs-page); font-weight:600; line-height:1.25 }
 .wb.wb.wb .dw-sec-n{ font-size:var(--fs-meta); font-weight:600; letter-spacing:.05em }
 .wb.wb.wb .qa-dim-k{ font-size:var(--fs-eyebrow); color:var(--text3) }
 .wb.wb.wb .qa-dim-n{ font-size:var(--fs-meta) }
@@ -3616,14 +3686,14 @@
 }
 .wb.wb.wb .cal-today{
   height:34px; padding:0 var(--sp-3); flex:none;
-  background:var(--surface2); color:var(--text2); font-size:13px;
+  background:var(--surface2); color:var(--text2); font-size:var(--fs-meta);
   box-shadow:inset 0 0 0 1px var(--hairline);
 }
 .wb.wb.wb .cal-today:hover{ color:var(--text) }
 /* ONE WORD PER NUMBER — the strip's rule, kept where the strip stopped. */
 .wb.wb.wb .cal-count{
   margin-left:auto; display:flex; align-items:baseline; gap:5px;
-  font-size:13px; color:var(--text3);
+  font-size:var(--fs-meta); color:var(--text3);
 }
 .wb.wb.wb .cal-count b{
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
@@ -3664,7 +3734,7 @@
 .wb.wb.wb .cal-dn{ display:flex; align-items:baseline; gap:6px; min-height:16px }
 .wb.wb.wb .cal-dn-n{
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-  font-size:13px; color:var(--text4); font-variant-numeric:tabular-nums;
+  font-size:var(--fs-meta); color:var(--text4); font-variant-numeric:tabular-nums;
 }
 .wb.wb.wb .cal-day-now .cal-dn-n{ color:var(--text) }
 .wb.wb.wb .cal-dn-w{ display:none }
@@ -3728,7 +3798,7 @@
   flex:1 1 auto; min-width:0; width:100%;
   display:flex; flex-direction:column; align-items:flex-start; gap:1px;
   padding:5px 8px; text-align:left; background:none; color:var(--text2);
-  font-size:13px; line-height:1.3;
+  font-size:var(--fs-meta); line-height:var(--lh-meta);
   /* the .wb button remap (§ control radius) rounds every button; on a chip that
      draws a seam down the middle of one plate */
   border-radius:0;
@@ -3771,7 +3841,7 @@
   position:absolute; top:2px; right:2px; z-index:1;
   width:24px; min-height:22px; padding:0;
   background:var(--surface3); color:var(--text3);
-  font-size:12px; border-radius:var(--r-ctl);
+  font-size:var(--fs-eyebrow); border-radius:var(--r-ctl);
   opacity:0; pointer-events:none;
 }
 .wb.wb.wb .cal-chip:hover .cal-chip-mv,
@@ -3796,7 +3866,7 @@
 
 /* ---- the rail ----------------------------------------------------------- */
 .wb.wb.wb .cal-rail{ margin-top:var(--sp-4) }
-.wb.wb.wb .cal-rail-e{ padding:6px 0; font-size:13px; color:var(--text3) }
+.wb.wb.wb .cal-rail-e{ padding:6px 0; font-size:var(--fs-meta); color:var(--text3) }
 .wb.wb.wb .cal-rr{
   display:flex; align-items:center; gap:var(--sp-2);
   min-height:40px; padding:4px 0;
@@ -3807,13 +3877,13 @@
   background:none; text-align:left; min-height:32px; justify-content:center;
 }
 .wb.wb.wb .cal-rr-n{
-  font-size:13px; color:var(--text2);
+  font-size:var(--fs-meta); color:var(--text2);
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 .wb.wb.wb .cal-rr-t:hover .cal-rr-n{ color:var(--text) }
 .wb.wb.wb .cal-rr-m{ font-size:var(--fs-meta); color:var(--text4) }
 .wb.wb.wb .cal-mv{
-  flex:none; min-height:32px; padding:0 var(--sp-3); font-size:13px;
+  flex:none; min-height:32px; padding:0 var(--sp-3); font-size:var(--fs-meta);
   background:var(--surface2); color:var(--text2);
   box-shadow:inset 0 0 0 1px var(--hairline);
 }
@@ -3821,7 +3891,7 @@
 .wb.wb.wb .cal-note{
   margin-top:var(--sp-3); padding:10px 12px; border-radius:var(--r-ctl);
   background:var(--surface1); box-shadow:inset 0 0 0 1px var(--hairline);
-  font-size:13px; line-height:1.5; color:var(--text3);
+  font-size:var(--fs-meta); line-height:var(--lh-meta); color:var(--text3);
 }
 .wb.wb.wb .cal-note code{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--text2) }
 
@@ -3835,19 +3905,19 @@
   border-radius:var(--r-ctl); background:var(--surface1);
   box-shadow:inset 0 0 0 1px var(--hairline-strong), 0 -8px 24px rgba(0,0,0,.35);
 }
-.wb.wb.wb .cal-move-t{ font-size:13px; color:var(--text3); margin-bottom:8px }
+.wb.wb.wb .cal-move-t{ font-size:var(--fs-meta); color:var(--text3); margin-bottom:8px }
 .wb.wb.wb .cal-move-t b{ color:var(--text); font-weight:600 }
 .wb.wb.wb .cal-move-r{ display:flex; align-items:center; gap:var(--sp-2); flex-wrap:wrap }
 .wb.wb.wb .cal-move-d{
-  min-height:34px; padding:0 10px; font-size:13px;
+  min-height:34px; padding:0 var(--sp-2); font-size:var(--fs-meta);
   background:var(--surface2); color:var(--text);
   box-shadow:inset 0 0 0 1px var(--hairline);
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
 }
-.wb.wb.wb .cal-move .btn{ min-height:34px; padding:0 var(--sp-3); font-size:13px }
+.wb.wb.wb .cal-move .btn{ min-height:34px; padding:0 var(--sp-3); font-size:var(--fs-meta) }
 .wb.wb.wb .cal-move .btn.s{ background:var(--surface2); color:var(--text2) }
-.wb.wb.wb .cal-move-s{ margin-top:8px; font-size:13px; line-height:1.45; color:var(--text3) }
-.wb.wb.wb .cal-err, .wb.wb.wb .cal-done{ margin:var(--sp-3) var(--gut) 0; font-size:13px }
+.wb.wb.wb .cal-move-s{ margin-top:8px; font-size:var(--fs-meta); line-height:var(--lh-meta); color:var(--text3) }
+.wb.wb.wb .cal-err, .wb.wb.wb .cal-done{ margin:var(--sp-3) var(--gut) 0; font-size:var(--fs-meta) }
 .wb.wb.wb .cal-done{ color:var(--sev-clear) }
 
 /* ---- 1000px+: the rail moves beside the grid ---------------------------- */
@@ -3906,9 +3976,9 @@
   font-size:var(--fs-meta); color:var(--sev-attention);
   font-variant-numeric:tabular-nums;
 }
-.wb.wb.wb .ops-pipe-l{ font-size:13px; line-height:1.5; color:var(--text2); padding:2px 0 }
+.wb.wb.wb .ops-pipe-l{ font-size:var(--fs-body); line-height:var(--lh-read); color:var(--text2); padding:2px 0 }
 .wb.wb.wb .ops-pipe-b{
-  margin-top:8px; min-height:34px; padding:0 var(--sp-3); font-size:13px;
+  margin-top:8px; min-height:34px; padding:0 var(--sp-3); font-size:var(--fs-meta);
   background:var(--surface2); color:var(--text2);
   box-shadow:inset 0 0 0 1px var(--hairline);
 }
@@ -3941,7 +4011,8 @@
    ruled line between every paragraph of a document is a table, and the blank
    cards already carry their own outline. */
 .wb.wb.wb .ct-card.wb-strat-card + .ct-card.wb-strat-card{ border-top:none }
-.wb.wb.wb .wb-strat-note{ padding:0 var(--gut); margin:12px 0 0; font-size:var(--fs-eyebrow, 11px) }
+.wb.wb.wb .wb-strat-note{ padding:0 var(--gut); margin:12px 0 0;
+  font-size:var(--fs-meta); line-height:var(--lh-meta) }
 .wb.wb.wb .wb-strat-add{ margin:14px 0 0; padding:0 var(--gut) }
 .wb.wb.wb .wb-strat-save{ padding-left:var(--gut); padding-right:var(--gut);
   box-shadow:0 -1px 0 var(--hairline) }
@@ -3969,9 +4040,9 @@
   font-size:var(--fs-meta); color:var(--sev-attention);
   font-variant-numeric:tabular-nums;
 }
-.wb.wb.wb .rx-desk-s{ font-size:13px; line-height:1.5; color:var(--text2); margin-bottom:10px }
-.wb.wb.wb .rx-err{ font-size:13px; line-height:1.5; color:var(--sev-alarm, #c4553d); padding:4px 0 }
-.wb.wb.wb .rx-ok{ font-size:13px; line-height:1.5; color:var(--text2); padding:4px 0 }
+.wb.wb.wb .rx-desk-s{ font-size:var(--fs-body); line-height:var(--lh-read); color:var(--text2); margin-bottom:10px }
+.wb.wb.wb .rx-err{ font-size:var(--fs-body); line-height:var(--lh-read); color:var(--sev-alarm, #c4553d); padding:4px 0 }
+.wb.wb.wb .rx-ok{ font-size:var(--fs-body); line-height:var(--lh-read); color:var(--text2); padding:4px 0 }
 
 .wb.wb.wb .rx-card{
   display:block;                       /* the §7.1 opt-out, stated not assumed */
@@ -3980,7 +4051,7 @@
   box-shadow:inset 0 0 0 1px var(--hairline);
 }
 .wb.wb.wb .rx-head{ display:flex; align-items:baseline; gap:var(--sp-2); flex-wrap:wrap }
-.wb.wb.wb .rx-who{ font-weight:600; font-size:14px; color:var(--text) }
+.wb.wb.wb .rx-who{ font-weight:600; font-size:var(--fs-body); color:var(--text) }
 .wb.wb.wb .rx-tier{
   font-size:var(--fs-eyebrow, 11px); letter-spacing:.05em; text-transform:uppercase;
   color:var(--text3);
@@ -3992,7 +4063,7 @@
 .wb.wb.wb .rx-take{
   margin:8px 0 0; padding:0 0 0 10px;
   border-left:2px solid var(--hairline);
-  font-size:14px; line-height:1.5; color:var(--text2);
+  font-size:var(--fs-body); line-height:var(--lh-read); color:var(--text2);
   white-space:pre-wrap;
 }
 .wb.wb.wb .rx-stats{
@@ -4017,7 +4088,7 @@
   display:block; width:100%; box-sizing:border-box; margin-top:10px; padding:10px;
   border-radius:var(--r-ctl); background:var(--surface1); color:var(--text);
   border:none; box-shadow:inset 0 0 0 1px var(--hairline);
-  font:inherit; font-size:14px; line-height:1.55; resize:vertical;
+  font:inherit; font-size:var(--fs-body); line-height:var(--lh-read); resize:vertical;
 }
 .wb.wb.wb .rx-actions{ display:flex; gap:var(--sp-2); margin-top:10px; justify-content:flex-end }
 /* The lane chip. RISE is tinted because the two Approves are not the same
@@ -4025,7 +4096,7 @@
    client. A monochrome chip would make them look interchangeable. */
 .wb.wb.wb .rx-lane{
   font-size:var(--fs-eyebrow, 11px); letter-spacing:.06em; text-transform:uppercase;
-  font-weight:700; padding:2px 6px; border-radius:4px;
+  font-weight:700; padding:2px 6px; border-radius:var(--r-chip);
   background:var(--surface1); color:var(--text3);
   box-shadow:inset 0 0 0 1px var(--hairline);
 }
@@ -4033,7 +4104,7 @@
 /* The graded angle, deliberately NOT drawn as a quotation: the quote styling is
    reserved for the source's own words, and this is ours. */
 .wb.wb.wb .rx-angle{
-  margin-top:8px; font-size:14px; line-height:1.5; color:var(--text2);
+  margin-top:8px; font-size:var(--fs-body); line-height:var(--lh-read); color:var(--text2);
 }
 .wb.wb.wb .rx-angle-l{
   display:inline-block; margin-right:8px;
@@ -4049,7 +4120,7 @@
    so a channel reads identically whether it is on a row or on a bubble.
    ========================================================================== */
 .wb.wb.wb .chanchip{
-  font-size:var(--fs-eyebrow, 11px); line-height:14px; letter-spacing:.06em;
+  font-size:var(--fs-eyebrow, 12px); line-height:1; letter-spacing:.06em;
   font-weight:700; padding:1px 5px; border-radius:var(--r-chip); flex:none;
   background:transparent; box-shadow:none;
 }
