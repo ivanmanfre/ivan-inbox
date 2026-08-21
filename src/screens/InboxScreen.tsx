@@ -5,6 +5,7 @@ import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { returnsIn } from '../components/PushLaterSheet'
 import { filterByStatus, filterThreads, inboxWaitingCount, isLeadMagnet, searchThreads, threadKind, type Filter, type Status, type Thread, eventTime } from '../lib/inbox'
 import { checkedPhrase } from '../lib/today'
+import { RowSelect } from '../exp/v2c/RowSelect'
 
 function timeAgo(iso: string): string {
   const then = new Date(iso).getTime()
@@ -228,6 +229,12 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
                 className={`r ${t.unread > 0 ? 'unread' : ''} ${activeThread === t.prospect_id ? 'active' : ''}`}
                 onClick={() => onOpenThread(t.prospect_id)}
               >
+                {/* The command layer's row registration: j/k walks these rows
+                    and x selects them. A conversation carries NO bulk
+                    capability — an answer is written one at a time, and the
+                    bulk bar says that in words rather than offering a button
+                    that would refuse. */}
+                <RowSelect id={t.prospect_id} kind="thread" label={t.prospect_name} caps={[]} />
                 <Avatar name={t.prospect_name} client_id={t.client_id} channel={t.channel} />
                 <div className="mid">
                   <div className="top">

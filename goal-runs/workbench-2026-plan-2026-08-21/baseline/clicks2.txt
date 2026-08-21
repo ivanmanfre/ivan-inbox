@@ -1,0 +1,193 @@
+STAGE TAB A11Y: [
+ {
+  "tag": "BUTTON",
+  "cls": "ct-tab",
+  "role": "tab",
+  "tabindex": null,
+  "txt": "Ideas82",
+  "focusable": true,
+  "cursor": "pointer",
+  "h": 32
+ },
+ {
+  "tag": "SPAN",
+  "cls": "ct-tab-t",
+  "role": null,
+  "tabindex": null,
+  "txt": "Ideas",
+  "focusable": false,
+  "cursor": "pointer",
+  "h": 20
+ },
+ {
+  "tag": "SPAN",
+  "cls": "ct-tab-t",
+  "role": null,
+  "tabindex": null,
+  "txt": "Needs review",
+  "focusable": false,
+  "cursor": "pointer",
+  "h": 20
+ },
+ {
+  "tag": "BUTTON",
+  "cls": "ct-tab",
+  "role": "tab",
+  "tabindex": null,
+  "txt": "Generating0",
+  "focusable": true,
+  "cursor": "pointer",
+  "h": 32
+ },
+ {
+  "tag": "SPAN",
+  "cls": "ct-tab-t",
+  "role": null,
+  "tabindex": null,
+  "txt": "Generating",
+  "focusable": false,
+  "cursor": "pointer",
+  "h": 20
+ },
+ {
+  "tag": "BUTTON",
+  "cls": "ct-tab",
+  "role": "tab",
+  "tabindex": null,
+  "txt": "Approved0",
+  "focusable": true,
+  "cursor": "pointer",
+  "h": 32
+ },
+ {
+  "tag": "SPAN",
+  "cls": "ct-tab-t",
+  "role": null,
+  "tabindex": null,
+  "txt": "Approved",
+  "focusable": false,
+  "cursor": "pointer",
+  "h": 20
+ },
+ {
+  "tag": "BUTTON",
+  "cls": "ct-tab",
+  "role": "tab",
+  "tabindex": null,
+  "txt": "Scheduled1",
+  "focusable": true,
+  "cursor": "pointer",
+  "h": 32
+ },
+ {
+  "tag": "SPAN",
+  "cls": "ct-tab-t",
+  "role": null,
+  "tabindex": null,
+  "txt": "Scheduled",
+  "focusable": false,
+  "cursor": "pointer",
+  "h": 20
+ },
+ {
+  "tag": "BUTTON",
+  "cls": "ct-tab",
+  "role": "tab",
+  "tabindex": null,
+  "txt": "Published113",
+  "focusable": true,
+  "cursor": "pointer",
+  "h": 32
+ },
+ {
+  "tag": "SPAN",
+  "cls": "ct-tab-t",
+  "role": null,
+  "tabindex": null,
+  "txt": "Published",
+  "focusable": false,
+  "cursor": "pointer",
+  "h": 20
+ },
+ {
+  "tag": "BUTTON",
+  "cls": "ct-tab",
+  "role": "tab",
+  "tabindex": null,
+  "txt": "Errors46",
+  "focusable": true,
+  "cursor": "pointer",
+  "h": 32
+ },
+ {
+  "tag": "SPAN",
+  "cls": "ct-tab-t",
+  "role": null,
+  "tabindex": null,
+  "txt": "Errors",
+  "focusable": false,
+  "cursor": "pointer",
+  "h": 20
+ },
+ {
+  "tag": "BUTTON",
+  "cls": "ct-tab",
+  "role": "tab",
+  "tabindex": null,
+  "txt": "Archived88",
+  "focusable": true,
+  "cursor": "pointer",
+  "h": 32
+ },
+ {
+  "tag": "SPAN",
+  "cls": "ct-tab-t",
+  "role": null,
+  "tabindex": null,
+  "txt": "Archived",
+  "focusable": false,
+  "cursor": "pointer",
+  "h": 20
+ },
+ {
+  "tag": "BUTTON",
+  "cls": "ct-tab",
+  "role": "tab",
+  "tabindex": null,
+  "txt": "Other3",
+  "focusable": true,
+  "cursor": "pointer",
+  "h": 32
+ },
+ {
+  "tag": "SPAN",
+  "cls": "ct-tab-t",
+  "role": null,
+  "tabindex": null,
+  "txt": "Other",
+  "focusable": false,
+  "cursor": "pointer",
+  "h": 20
+ }
+]
+FOCUSABLE: {"focusableTotal":24,"firstTen":["Collapse the rail","Content1","Magnets","Styles","Strategy","Ivan","Mattan Danino","Davorin Smit","Flow","Calendar"]}
+### H1-ideas
+   H1-ideas -> {"rows":82,"chars":9654}
+### H2-errors
+   H2-errors -> {"rows":46,"chars":7489}
+### H3-published
+   H3-published -> {"rows":113,"chars":21049}
+### H4-archived
+   H4-archived -> {"rows":88,"chars":12622}
+### H5-thread
+### H6-context-sheet
+### H7-range-menu
+### H8-ops-scrolled
+### H9-strategy-edit
+### H10-m-content
+### H11-m-draft-window
+### H12-m-lanes
+### H13-m-magnet-window
+### H14-slash
+
+==== BLOCKED WRITES (0) ====

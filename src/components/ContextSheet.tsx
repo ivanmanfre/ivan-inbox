@@ -4,6 +4,7 @@ import {
   type ProspectContext, type ScanInfo,
 } from '../lib/context'
 import type { Thread } from '../lib/inbox'
+import { inlineLabel, label } from '../lib/labels'
 
 function ago(iso: string | null): string {
   if (!iso) return '—'
@@ -58,7 +59,7 @@ export function ContextSheet({ thread, onClose }: { thread: Thread; onClose: () 
 
   const rows: Array<[string, string]> = ctx ? [
     ['Lane', thread.last.campaign_name || '—'],
-    ['Stage', thread.stage || '—'],
+    ['Stage', thread.stage ? label(thread.stage) : '—'],
     ['DMs sent', String(ctx.dm_count ?? 0)],
     ['Replies', `${ctx.reply_count ?? 0}${ctx.last_reply_at ? ` · last ${ago(ctx.last_reply_at)}` : ''}`],
     ['Connected', ctx.connected_at ? ago(ctx.connected_at) : ctx.connection_sent_at ? `invited ${ago(ctx.connection_sent_at)}` : '—'],
@@ -98,7 +99,7 @@ export function ContextSheet({ thread, onClose }: { thread: Thread; onClose: () 
             {ctx.icp_reasoning && (
               <div className="ctx-block">
                 <div className="ctx-lbl">Why this score</div>
-                <div className="ctx-txt">{ctx.icp_reasoning}</div>
+                <div className="ctx-txt">{inlineLabel(ctx.icp_reasoning)}</div>
               </div>
             )}
 

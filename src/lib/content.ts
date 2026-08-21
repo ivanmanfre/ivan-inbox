@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { label } from './labels'
 
 // Content domain: Ivan's own posts/carousels AND Mattan Danino's board, both out
 // of the same carousel_drafts table. There is no per-client table fork — the
@@ -2198,6 +2199,23 @@ export function taxonomyValue(t: unknown, key: string): string | null {
   const parsed = parseMaybeJson(t)
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
   return str((parsed as Record<string, unknown>)[key])
+}
+
+// The Errors tab's answer to "why did this fail", phase2. Measured live
+// against the 46-row Errors tab (2026-08-21): 31 rows carry taxonomy's own
+// error_message (the same fact DraftPane's detail screen already prints next
+// to the error chip), 30 carry a qa_verdict, 15 carry both, and 0 carry
+// neither. A future row carrying neither must still say something
+// honest rather than render a dash, so the third branch stays live even
+// though nothing today exercises it.
+export function draftFailureReason(d: Pick<ContentDraft, 'taxonomy' | 'qa_verdict' | 'qa_score'>): string {
+  const msg = taxonomyValue(d.taxonomy, 'error_message')
+  if (msg) return msg
+  if (d.qa_verdict) {
+    const verdict = label(d.qa_verdict)
+    return d.qa_score ? `${verdict} (score ${d.qa_score})` : verdict
+  }
+  return 'No reason recorded'
 }
 
 // key_points is an array of strings on the rows that have it, and (like every

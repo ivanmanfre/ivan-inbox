@@ -37,6 +37,7 @@ function toQueueItem(d: ContentDraft): QueueItem {
 }
 import { MobileTabs, Rail, WorkSegment } from './Rail'
 import { ContentList, type OpenDraft } from './ContentList'
+import { CommandLayer } from './CommandLayer'
 import { MagnetsList } from './MagnetsList'
 import { StylesList } from './StylesList'
 import { StrategyView } from './StrategyView'
@@ -61,6 +62,9 @@ import './styles.css'
 // stylesheet (spine §1.3) so it is the last word inside .wb and has no reach at
 // all outside it. :root in src/styles.css is never touched.
 import './faithful.css'
+// The 2026 pass. Last import, so it is the final word inside .wb; it carries no
+// tokens of its own and forks no tier — see its header.
+import './wb2026.css'
 
 // ============================================================================
 // Candidate v2c — WORKBENCH
@@ -385,6 +389,10 @@ export default function Shell() {
   const workSurface = (
     <>
       <SeatHealthBanner />
+      {/* The command layer: ⌘K, j/k/Enter/x, / and ?, plus the bulk bar. It
+          takes no props (it reads the hash and the rendered list), and it rides
+          in the work surface so both canvases mount it exactly once. */}
+      <CommandLayer />
       {/* One model, both canvases: the lane switch for Work lives HERE now, not in
           the mobile ribbon, so desktop and phone teach the same thing (MF3). */}
       <WorkSegment job={job} counts={counts} onJob={goJob} />
@@ -489,6 +497,11 @@ export default function Shell() {
       const p = plan.peers[0]
       return (
         <div className={`app wb wb-take wb-take-${p.kind}`}>
+          {/* This branch does not render the work surface, so the layer mounted
+              in it is gone. Measured at 390: a thread opened with Enter had no
+              key that closed it. The list keys are inert here (no rows), but
+              ⌘K and Escape are the way back out. */}
+          <CommandLayer />
           {renderPeer(p)}
           {itemWindow}
         </div>

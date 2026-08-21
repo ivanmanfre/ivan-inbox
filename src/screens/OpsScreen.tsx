@@ -10,6 +10,7 @@ import {
   type OpsDraft, type OpsKind, type GateVerdict, type FeedState,
 } from '../lib/ops'
 import { checkedPhrase } from '../lib/today'
+import { label } from '../lib/labels'
 
 function slotText(iso?: string): string {
   if (!iso) return ''
@@ -533,7 +534,7 @@ function ReadOnlyRow({ draft, reason, working }: { draft: OpsDraft; reason?: str
         </div>
         <div className="log-snip">{draft.body}</div>
         {working && <div className="ops-ctx">{draft.kind === 'newsjack' ? 'Writing the post…' : 'Posting…'}</div>}
-        {reason && <div className="ops-reason">Blocked: {reason}</div>}
+        {reason && <div className="ops-reason">Blocked: {label(reason)}</div>}
       </div>
       <span className="log-tm">{timeAgo(draft.sent_at ?? draft.created_at)}</span>
     </div>
