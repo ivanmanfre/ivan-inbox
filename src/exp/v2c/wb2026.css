@@ -488,3 +488,46 @@
    here so a container band cannot reach into them. */
 .wb.wb.wb .ct-card.ct-idea .ct-ac,
 .wb.wb.wb .ct-card.ct-idea .ct-tail{ grid-column:auto }
+
+/* D3 · TABULAR NUMERALS, SCOPED OFF RUNNING PROSE.
+   faithful.css:113 declares `font-variant-numeric: tabular-nums` once on `.wb`
+   and calls it "declared once, never unset". Half right: tabular figures are
+   what puts a column of counts on one right edge, and every tile, table cell,
+   count, timestamp and `.num` below keeps them. What they were never for is
+   PROSE. A tabular figure is drawn on a fixed advance, so "€70k/mo" and "2026"
+   inside a sentence carry a visible pad on both sides of every digit and the
+   word they sit in comes apart. That inherited into DM bubbles, into the
+   LinkedIn artifact (the one surface whose job is to show what LinkedIn will
+   render, and LinkedIn renders proportional figures), into alert bodies and
+   into the strategy document.
+
+   So: off for text that is READ as sentences, untouched everywhere numbers are
+   SCANNED as a column. faithful.css:123's rule on input/textarea/select/button
+   stays exactly as it is — it exists because a form control does not inherit
+   the property at all, and an operator reading a figure back inside an
+   editable field is the case it was written for. The two textareas below are
+   named individually rather than by widening that rule. */
+.wb.wb.wb .b,                                    /* thread bubbles */
+.wb.wb.wb .r .snip,                              /* the conversation snippet */
+.wb.wb.wb .dmh-r .snip,
+.wb.wb.wb .li-body, .wb.wb.wb .li-ta,            /* the LinkedIn artifact */
+.wb.wb.wb .li-hl, .wb.wb.wb .li-when,
+.wb.wb.wb .dd-body, .wb.wb.wb .dd-pre,           /* the draft window's post */
+.wb.wb.wb .dd-point,
+.wb.wb.wb .wb-bubble, .wb.wb.wb .wb-body, .wb.wb.wb .wb-p,   /* chat prose */
+.wb.wb.wb .sa-body, .wb.wb.wb .sa-member-b,      /* the briefing's bodies */
+.wb.wb.wb .sa-raw-pre,
+.wb.wb.wb .ct-ex, .wb.wb.wb .ct-why,             /* row excerpt, idea rationale */
+.wb.wb.wb .ct-reason, .wb.wb.wb .ct-style-b,
+.wb.wb.wb .qa-p,                                 /* the QA verdict, in words */
+.wb.wb.wb .wb-strat-read, .wb.wb.wb .wb-strat-p, /* the strategy document */
+.wb.wb.wb .wb-strat-note, .wb.wb.wb .wb-strat-b,
+.wb.wb.wb .ctx-txt{                              /* the context sheet's prose */
+  font-variant-numeric:normal;
+}
+/* The exceptions INSIDE the prose blocks above: a figure that is still part of
+   a column, or a code span, keeps its tabular advance. */
+.wb.wb.wb .num, .wb.wb.wb .wb-ic, .wb.wb.wb .wb-code,
+.wb.wb.wb .wb-code code, .wb.wb.wb .wb-tool-in{
+  font-variant-numeric:tabular-nums;
+}
