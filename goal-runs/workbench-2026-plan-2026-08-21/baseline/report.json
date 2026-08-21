@@ -1,0 +1,4760 @@
+[
+ {
+  "vp": "d1440",
+  "job": "today",
+  "vw": 1440,
+  "docOverflowX": false,
+  "type": [
+   {
+    "k": "-apple-system|400|normal|14|21",
+    "chars": 3523
+   },
+   {
+    "k": "-apple-system|400|normal|14|20",
+    "chars": 1917
+   },
+   {
+    "k": "-apple-system|400|normal|13|18",
+    "chars": 974
+   },
+   {
+    "k": "-apple-system|500|normal|14|20",
+    "chars": 405
+   },
+   {
+    "k": "-apple-system|600|normal|11|16",
+    "chars": 117
+   },
+   {
+    "k": "-apple-system|400|normal|13|20",
+    "chars": 78
+   },
+   {
+    "k": "-apple-system|400|normal|11|20",
+    "chars": 72
+   },
+   {
+    "k": "-apple-system|500|normal|16|22",
+    "chars": 48
+   },
+   {
+    "k": "-apple-system|400|normal|13|19.5",
+    "chars": 45
+   },
+   {
+    "k": "-apple-system|600|normal|16|24",
+    "chars": 44
+   },
+   {
+    "k": "-apple-system|600|normal|14|20",
+    "chars": 39
+   },
+   {
+    "k": "-apple-system|600|normal|11|20",
+    "chars": 25
+   },
+   {
+    "k": "-apple-system|400|normal|11|11",
+    "chars": 16
+   },
+   {
+    "k": "-apple-system|400|normal|20|20",
+    "chars": 11
+   },
+   {
+    "k": "-apple-system|600|normal|20|24",
+    "chars": 9
+   },
+   {
+    "k": "ui-monospace|500|normal|13|18",
+    "chars": 8
+   },
+   {
+    "k": "-apple-system|600|normal|16|32",
+    "chars": 5
+   },
+   {
+    "k": "-apple-system|600|normal|30|32",
+    "chars": 2
+   },
+   {
+    "k": "-apple-system|400|normal|14|14",
+    "chars": 1
+   },
+   {
+    "k": "-apple-system|400|normal|16|20",
+    "chars": 1
+   }
+  ],
+  "typeDistinct": 20,
+  "tinyCount": 0,
+  "tiny": [],
+  "lineOver75ch": 14,
+  "lineOver90ch": 14,
+  "lineSample": [
+   {
+    "w": 688,
+    "size": 14,
+    "ch": 98
+   },
+   {
+    "w": 688,
+    "size": 14,
+    "ch": 98
+   },
+   {
+    "w": 688,
+    "size": 14,
+    "ch": 98
+   },
+   {
+    "w": 688,
+    "size": 14,
+    "ch": 98
+   },
+   {
+    "w": 688,
+    "size": 14,
+    "ch": 98
+   }
+  ],
+  "bg": [
+   {
+    "c": "rgb(12, 12, 11)",
+    "area": 4255426
+   },
+   {
+    "c": "rgba(255, 159, 10, 0.1)",
+    "area": 2426112
+   },
+   {
+    "c": "rgb(31, 31, 31)",
+    "area": 1429787
+   },
+   {
+    "c": "rgb(197, 225, 165)",
+    "area": 1296000
+   },
+   {
+    "c": "rgb(42, 42, 41)",
+    "area": 486332
+   },
+   {
+    "c": "rgba(255, 69, 58, 0.1)",
+    "area": 152064
+   },
+   {
+    "c": "rgb(48, 48, 48)",
+    "area": 66862
+   },
+   {
+    "c": "rgb(53, 53, 51)",
+    "area": 23600
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "area": 9042
+   },
+   {
+    "c": "rgba(184, 255, 102, 0.14)",
+    "area": 7056
+   },
+   {
+    "c": "rgb(255, 69, 58)",
+    "area": 4025
+   },
+   {
+    "c": "rgb(112, 112, 112)",
+    "area": 3920
+   }
+  ],
+  "fg": [
+   {
+    "c": "rgb(199, 199, 199)",
+    "chars": 4237
+   },
+   {
+    "c": "rgb(148, 148, 148)",
+    "chars": 1755
+   },
+   {
+    "c": "rgb(255, 255, 255)",
+    "chars": 1159
+   },
+   {
+    "c": "rgb(255, 159, 10)",
+    "chars": 136
+   },
+   {
+    "c": "rgb(126, 126, 126)",
+    "chars": 18
+   },
+   {
+    "c": "rgb(255, 69, 58)",
+    "chars": 11
+   },
+   {
+    "c": "rgb(23, 23, 23)",
+    "chars": 9
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "chars": 7
+   },
+   {
+    "c": "rgb(16, 163, 127)",
+    "chars": 6
+   },
+   {
+    "c": "rgb(255, 155, 34)",
+    "chars": 2
+   }
+  ],
+  "pads": [
+   {
+    "pad": "0/0",
+    "n": 225
+   },
+   {
+    "pad": "10/12",
+    "n": 26
+   },
+   {
+    "pad": "10/14",
+    "n": 11
+   },
+   {
+    "pad": "10/16",
+    "n": 9
+   },
+   {
+    "pad": "4/16",
+    "n": 4
+   },
+   {
+    "pad": "13/18",
+    "n": 4
+   },
+   {
+    "pad": "0/8",
+    "n": 4
+   },
+   {
+    "pad": "0/16",
+    "n": 3
+   },
+   {
+    "pad": "13/13",
+    "n": 3
+   },
+   {
+    "pad": "11/14",
+    "n": 2
+   }
+  ],
+  "padDistinct": 24,
+  "radii": [
+   {
+    "r": 14,
+    "n": 22
+   },
+   {
+    "r": 999,
+    "n": 11
+   },
+   {
+    "r": 16,
+    "n": 6
+   },
+   {
+    "r": 28,
+    "n": 5
+   },
+   {
+    "r": 13,
+    "n": 4
+   },
+   {
+    "r": 40,
+    "n": 1
+   },
+   {
+    "r": 12,
+    "n": 1
+   }
+  ],
+  "ctrlCount": 39,
+  "ctrlsUnder32": 37,
+  "ctrlsUnder24": [
+   {
+    "tag": "BUTTON",
+    "cls": "sa-x",
+    "w": 15,
+    "h": 20,
+    "label": "✕"
+   },
+   {
+    "tag": "BUTTON",
+    "cls": "sa-x",
+    "w": 15,
+    "h": 20,
+    "label": "✕"
+   },
+   {
+    "tag": "BUTTON",
+    "cls": "sa-x",
+    "w": 15,
+    "h": 20,
+    "label": "✕"
+   },
+   {
+    "tag": "A",
+    "cls": "sa-act",
+    "w": 106,
+    "h": 20,
+    "label": "open the scan ↗"
+   },
+   {
+    "tag": "BUTTON",
+    "cls": "sa-x",
+    "w": 15,
+    "h": 20,
+    "label": "✕"
+   },
+   {
+    "tag": "A",
+    "cls": "sa-act",
+    "w": 106,
+    "h": 20,
+    "label": "open the scan ↗"
+   },
+   {
+    "tag": "BUTTON",
+    "cls": "sa-x",
+    "w": 15,
+    "h": 20,
+    "label": "✕"
+   },
+   {
+    "tag": "A",
+    "cls": "sa-act",
+    "w": 106,
+    "h": 20,
+    "label": "open the scan ↗"
+   }
+  ],
+  "overflowCount": 0,
+  "overflowers": [],
+  "rowCount": 37,
+  "rowMedian": 117,
+  "rowMin": 52,
+  "rowMax": 2398,
+  "scrollers": [
+   {
+    "cls": "rows td-rows",
+    "client": 781,
+    "scroll": 4228
+   }
+  ],
+  "bodyChars": 7647,
+  "firstScreenText": "IM\nWorkbench\n«\n☼\nToday\n◉\nDMs\n9\nCONTENT\n▤\nContent\n1\n▦\nMagnets\n▧\nStyles\n◎\nStrategy\n↑\nSends\n◈\nOps\n✳\nClaude\nDock it beside your work\n⚙︎\nSettings\njust now\n↻\nTODAY\nFriday, August 21\n↻\n20\n1 critical · 19 warnings\n⌄\nCRITICAL\n🔴 Outreach output collapse\n✕\nCRITICAL MATTAN: 1 sent today, ~50.3 expected 15h into the window (baseline 53.7/day) WARN IVAN: 23.5/day vs 45.8 baseline = 51% MATTAN today 1 (exp ~50.3) · 2d 60/day · baseline 53.7/day (112%) IVAN today 0 (exp ~0) · 2d 23.5/day · baseline 45.8/day (51%) inventory (context): rise_engager 3 · rise_cold dormant · rise_orbit 0 · rise_engager_ads_first ",
+  "errs": []
+ },
+ {
+  "vp": "d1440",
+  "job": "dms",
+  "vw": 1440,
+  "docOverflowX": false,
+  "type": [
+   {
+    "k": "-apple-system|400|normal|13|18",
+    "chars": 1000
+   },
+   {
+    "k": "-apple-system|400|normal|14|20",
+    "chars": 173
+   },
+   {
+    "k": "-apple-system|500|normal|14|20",
+    "chars": 173
+   },
+   {
+    "k": "-apple-system|600|normal|11|16",
+    "chars": 58
+   },
+   {
+    "k": "-apple-system|600|normal|11|20",
+    "chars": 27
+   },
+   {
+    "k": "-apple-system|400|normal|13|19.5",
+    "chars": 24
+   },
+   {
+    "k": "-apple-system|500|normal|13|20",
+    "chars": 20
+   },
+   {
+    "k": "-apple-system|400|normal|11|11",
+    "chars": 18
+   },
+   {
+    "k": "-apple-system|400|normal|20|20",
+    "chars": 11
+   },
+   {
+    "k": "-apple-system|600|normal|20|24",
+    "chars": 9
+   },
+   {
+    "k": "-apple-system|600|normal|16|32",
+    "chars": 3
+   },
+   {
+    "k": "-apple-system|400|normal|14|14",
+    "chars": 1
+   },
+   {
+    "k": "-apple-system|400|normal|16|20",
+    "chars": 1
+   }
+  ],
+  "typeDistinct": 13,
+  "tinyCount": 0,
+  "tiny": [],
+  "lineOver75ch": 7,
+  "lineOver90ch": 7,
+  "lineSample": [
+   {
+    "w": 702,
+    "size": 13,
+    "ch": 108
+   },
+   {
+    "w": 702,
+    "size": 13,
+    "ch": 108
+   },
+   {
+    "w": 702,
+    "size": 13,
+    "ch": 108
+   },
+   {
+    "w": 702,
+    "size": 13,
+    "ch": 108
+   },
+   {
+    "w": 702,
+    "size": 13,
+    "ch": 108
+   }
+  ],
+  "bg": [
+   {
+    "c": "rgb(12, 12, 11)",
+    "area": 4184128
+   },
+   {
+    "c": "rgb(197, 225, 165)",
+    "area": 1296000
+   },
+   {
+    "c": "rgba(255, 159, 10, 0.1)",
+    "area": 48160
+   },
+   {
+    "c": "rgba(120, 140, 170, 0.12)",
+    "area": 46440
+   },
+   {
+    "c": "rgb(31, 31, 31)",
+    "area": 20856
+   },
+   {
+    "c": "rgb(42, 42, 41)",
+    "area": 18124
+   },
+   {
+    "c": "rgb(53, 53, 51)",
+    "area": 4242
+   },
+   {
+    "c": "rgb(255, 159, 10)",
+    "area": 3735
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "area": 2401
+   },
+   {
+    "c": "rgb(255, 255, 255)",
+    "area": 2376
+   },
+   {
+    "c": "rgb(112, 112, 112)",
+    "area": 1568
+   },
+   {
+    "c": "rgb(255, 155, 34)",
+    "area": 1568
+   }
+  ],
+  "fg": [
+   {
+    "c": "rgb(148, 148, 148)",
+    "chars": 1058
+   },
+   {
+    "c": "rgb(255, 255, 255)",
+    "chars": 198
+   },
+   {
+    "c": "rgb(199, 199, 199)",
+    "chars": 172
+   },
+   {
+    "c": "rgb(255, 159, 10)",
+    "chars": 31
+   },
+   {
+    "c": "rgb(0, 0, 0)",
+    "chars": 18
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "chars": 17
+   },
+   {
+    "c": "rgb(23, 23, 23)",
+    "chars": 16
+   },
+   {
+    "c": "rgb(255, 155, 34)",
+    "chars": 6
+   }
+  ],
+  "pads": [
+   {
+    "pad": "0/0",
+    "n": 55
+   },
+   {
+    "pad": "10/14",
+    "n": 10
+   },
+   {
+    "pad": "10/16",
+    "n": 10
+   },
+   {
+    "pad": "0/16",
+    "n": 5
+   },
+   {
+    "pad": "20/20",
+    "n": 1
+   },
+   {
+    "pad": "20/14",
+    "n": 1
+   },
+   {
+    "pad": "2/8",
+    "n": 1
+   },
+   {
+    "pad": "0/10",
+    "n": 1
+   },
+   {
+    "pad": "0/2",
+    "n": 1
+   },
+   {
+    "pad": "6/12",
+    "n": 1
+   }
+  ],
+  "padDistinct": 19,
+  "radii": [
+   {
+    "r": 999,
+    "n": 16
+   },
+   {
+    "r": 12,
+    "n": 6
+   },
+   {
+    "r": 40,
+    "n": 1
+   },
+   {
+    "r": 14,
+    "n": 1
+   },
+   {
+    "r": 8,
+    "n": 1
+   }
+  ],
+  "ctrlCount": 10,
+  "ctrlsUnder32": 0,
+  "ctrlsUnder24": [],
+  "overflowCount": 0,
+  "overflowers": [],
+  "rowCount": 14,
+  "rowMedian": 64,
+  "rowMin": 32,
+  "rowMax": 797,
+  "scrollers": [],
+  "bodyChars": 1631,
+  "firstScreenText": "IM\nWorkbench\n«\n☼\nToday\n◉\nDMs\n9\nCONTENT\n▤\nContent\n1\n▦\nMagnets\n▧\nStyles\n◎\nStrategy\n↑\nSends\n◈\nOps\n✳\nClaude\nDock it beside your work\n⚙︎\nSettings\njust now\n↻\nDMS\n🔍\nAll\n·9\nIvan\nRise\nArch\nEmail\n1 draft where you already replied\nDiscard stale\n2 drafts pushed to later · next is Lindsay, in 3 days\nOpen\nRG\nin\nRama Ginde\nRISE\nDM\nYou: Great to be connected, Rama. Is Satya Blends your brand? --- Would love to do a free growth scan on your store -- paid, creative, and profit side. May I send it?\nnow\nDRAFT\nEM\nin\nElijah Davis, MBA\nRISE\nDM\nAccording to his website, 30k members on their slack channel. That's a d",
+  "errs": []
+ },
+ {
+  "vp": "d1440",
+  "job": "content",
+  "vw": 1440,
+  "docOverflowX": false,
+  "type": [
+   {
+    "k": "-apple-system|400|normal|13|19.5",
+    "chars": 204
+   },
+   {
+    "k": "-apple-system|500|normal|14|22",
+    "chars": 116
+   },
+   {
+    "k": "-apple-system|400|normal|14|20",
+    "chars": 105
+   },
+   {
+    "k": "-apple-system|500|normal|13|20",
+    "chars": 69
+   },
+   {
+    "k": "-apple-system|500|normal|14|20",
+    "chars": 58
+   },
+   {
+    "k": "-apple-system|400|normal|13|20",
+    "chars": 29
+   },
+   {
+    "k": "-apple-system|600|normal|11|20",
+    "chars": 20
+   },
+   {
+    "k": "-apple-system|600|normal|11|16",
+    "chars": 18
+   },
+   {
+    "k": "ui-monospace|400|normal|13|20",
+    "chars": 14
+   },
+   {
+    "k": "-apple-system|400|normal|20|20",
+    "chars": 11
+   },
+   {
+    "k": "-apple-system|600|normal|20|24",
+    "chars": 9
+   },
+   {
+    "k": "-apple-system|400|normal|13|18",
+    "chars": 7
+   },
+   {
+    "k": "-apple-system|600|normal|11|11",
+    "chars": 6
+   },
+   {
+    "k": "-apple-system|400|normal|14|14",
+    "chars": 1
+   },
+   {
+    "k": "-apple-system|400|normal|16|20",
+    "chars": 1
+   },
+   {
+    "k": "-apple-system|600|normal|14|20",
+    "chars": 1
+   },
+   {
+    "k": "-apple-system|400|normal|11|20",
+    "chars": 1
+   }
+  ],
+  "typeDistinct": 17,
+  "tinyCount": 0,
+  "tiny": [],
+  "lineOver75ch": 0,
+  "lineOver90ch": 0,
+  "lineSample": [
+   {
+    "w": 416,
+    "size": 13,
+    "ch": 64
+   },
+   {
+    "w": 416,
+    "size": 14,
+    "ch": 59
+   }
+  ],
+  "bg": [
+   {
+    "c": "rgb(12, 12, 11)",
+    "area": 4419744
+   },
+   {
+    "c": "rgb(197, 225, 165)",
+    "area": 1296000
+   },
+   {
+    "c": "rgb(42, 42, 41)",
+    "area": 32845
+   },
+   {
+    "c": "rgb(53, 53, 51)",
+    "area": 10298
+   },
+   {
+    "c": "rgb(31, 31, 31)",
+    "area": 7434
+   },
+   {
+    "c": "rgb(255, 255, 255)",
+    "area": 808
+   },
+   {
+    "c": "rgb(16, 163, 127)",
+    "area": 100
+   },
+   {
+    "c": "rgb(255, 159, 10)",
+    "area": 64
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "area": 49
+   }
+  ],
+  "fg": [
+   {
+    "c": "rgb(148, 148, 148)",
+    "chars": 341
+   },
+   {
+    "c": "rgb(255, 255, 255)",
+    "chars": 166
+   },
+   {
+    "c": "rgb(199, 199, 199)",
+    "chars": 101
+   },
+   {
+    "c": "rgb(126, 126, 126)",
+    "chars": 23
+   },
+   {
+    "c": "rgb(23, 23, 23)",
+    "chars": 2
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "chars": 1
+   }
+  ],
+  "pads": [
+   {
+    "pad": "0/0",
+    "n": 48
+   },
+   {
+    "pad": "0/10",
+    "n": 12
+   },
+   {
+    "pad": "10/14",
+    "n": 10
+   },
+   {
+    "pad": "0/12",
+    "n": 5
+   },
+   {
+    "pad": "6/16",
+    "n": 2
+   },
+   {
+    "pad": "2/2",
+    "n": 2
+   },
+   {
+    "pad": "4/10",
+    "n": 2
+   },
+   {
+    "pad": "20/20",
+    "n": 1
+   },
+   {
+    "pad": "20/14",
+    "n": 1
+   },
+   {
+    "pad": "2/8",
+    "n": 1
+   }
+  ],
+  "padDistinct": 17,
+  "radii": [
+   {
+    "r": 999,
+    "n": 19
+   },
+   {
+    "r": 12,
+    "n": 14
+   },
+   {
+    "r": 40,
+    "n": 1
+   }
+  ],
+  "ctrlCount": 20,
+  "ctrlsUnder32": 0,
+  "ctrlsUnder24": [],
+  "overflowCount": 0,
+  "overflowers": [],
+  "rowCount": 7,
+  "rowMedian": 97,
+  "rowMin": 22,
+  "rowMax": 854,
+  "scrollers": [],
+  "bodyChars": 703,
+  "firstScreenText": "IM\nWorkbench\n«\n☼\nToday\n◉\nDMs\n9\nCONTENT\n▤\nContent\n1\n▦\nMagnets\n▧\nStyles\n◎\nStrategy\n↑\nSends\n◈\nOps\n✳\nClaude\nDock it beside your work\n⚙︎\nSettings\njust now\n↻\nIvan\nMattan Danino\nDavorin Smit\nFlow\nCalendar\n⌕\nFilters\n⌄\nIdeas\n82\nNeeds review\n1\nGenerating\n0\nApproved\n0\nScheduled\n1\nPublished\n113\nErrors\n46\nArchived\n88\nOther\n3\nTITLE\nPILLAR\nFUNNEL\nSOURCE\nBuilt a €70k/mo agency on zero paid ads. Why the instinct to start running ads for scale is almost always backwards.\nPASS 87\nTEXT\n\"I built my agency pretty much on organic and without running a single ad. And now I realized that if we want to get to the next ",
+  "errs": []
+ },
+ {
+  "vp": "d1440",
+  "job": "magnets",
+  "vw": 1440,
+  "docOverflowX": false,
+  "type": [
+   {
+    "k": "-apple-system|500|normal|14|22",
+    "chars": 1285
+   },
+   {
+    "k": "-apple-system|600|normal|11|16",
+    "chars": 157
+   },
+   {
+    "k": "-apple-system|400|normal|14|21",
+    "chars": 154
+   },
+   {
+    "k": "-apple-system|400|normal|13|18",
+    "chars": 110
+   },
+   {
+    "k": "-apple-system|400|normal|14|20",
+    "chars": 105
+   },
+   {
+    "k": "-apple-system|400|normal|13|19.5",
+    "chars": 92
+   },
+   {
+    "k": "-apple-system|500|normal|14|20",
+    "chars": 64
+   },
+   {
+    "k": "-apple-system|500|normal|13|20",
+    "chars": 57
+   },
+   {
+    "k": "-apple-system|400|normal|13|20",
+    "chars": 34
+   },
+   {
+    "k": "-apple-system|600|normal|11|20",
+    "chars": 24
+   },
+   {
+    "k": "-apple-system|600|normal|16|24",
+    "chars": 17
+   },
+   {
+    "k": "ui-monospace|400|normal|13|20",
+    "chars": 14
+   },
+   {
+    "k": "-apple-system|600|normal|16|32",
+    "chars": 12
+   },
+   {
+    "k": "-apple-system|400|normal|20|20",
+    "chars": 11
+   },
+   {
+    "k": "-apple-system|600|normal|20|24",
+    "chars": 10
+   },
+   {
+    "k": "ui-monospace|400|normal|13|16",
+    "chars": 9
+   },
+   {
+    "k": "-apple-system|400|normal|11|20",
+    "chars": 4
+   },
+   {
+    "k": "-apple-system|400|normal|16|20",
+    "chars": 2
+   },
+   {
+    "k": "-apple-system|400|normal|14|14",
+    "chars": 1
+   },
+   {
+    "k": "-apple-system|600|normal|14|20",
+    "chars": 1
+   },
+   {
+    "k": "ui-monospace|500|normal|13|18",
+    "chars": 1
+   }
+  ],
+  "typeDistinct": 21,
+  "tinyCount": 0,
+  "tiny": [],
+  "lineOver75ch": 5,
+  "lineOver90ch": 5,
+  "lineSample": [
+   {
+    "w": 1058,
+    "size": 14,
+    "ch": 151
+   },
+   {
+    "w": 1058,
+    "size": 14,
+    "ch": 151
+   },
+   {
+    "w": 1050,
+    "size": 14,
+    "ch": 150
+   },
+   {
+    "w": 1050,
+    "size": 14,
+    "ch": 150
+   },
+   {
+    "w": 1050,
+    "size": 14,
+    "ch": 150
+   }
+  ],
+  "bg": [
+   {
+    "c": "rgb(12, 12, 11)",
+    "area": 4308614
+   },
+   {
+    "c": "rgb(197, 225, 165)",
+    "area": 1296000
+   },
+   {
+    "c": "rgb(42, 42, 41)",
+    "area": 79977
+   },
+   {
+    "c": "rgba(255, 69, 58, 0.08)",
+    "area": 57600
+   },
+   {
+    "c": "rgb(31, 31, 31)",
+    "area": 7080
+   },
+   {
+    "c": "rgb(53, 53, 51)",
+    "area": 6702
+   },
+   {
+    "c": "rgb(255, 159, 10)",
+    "area": 1164
+   },
+   {
+    "c": "rgb(255, 255, 255)",
+    "area": 808
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "area": 49
+   }
+  ],
+  "fg": [
+   {
+    "c": "rgb(255, 255, 255)",
+    "chars": 1367
+   },
+   {
+    "c": "rgb(148, 148, 148)",
+    "chars": 531
+   },
+   {
+    "c": "rgb(199, 199, 199)",
+    "chars": 217
+   },
+   {
+    "c": "rgb(255, 69, 58)",
+    "chars": 10
+   },
+   {
+    "c": "rgb(23, 23, 23)",
+    "chars": 2
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "chars": 1
+   }
+  ],
+  "pads": [
+   {
+    "pad": "0/0",
+    "n": 107
+   },
+   {
+    "pad": "9/16",
+    "n": 16
+   },
+   {
+    "pad": "0/10",
+    "n": 11
+   },
+   {
+    "pad": "10/14",
+    "n": 10
+   },
+   {
+    "pad": "0/11",
+    "n": 4
+   },
+   {
+    "pad": "0/16",
+    "n": 3
+   },
+   {
+    "pad": "20/20",
+    "n": 1
+   },
+   {
+    "pad": "20/14",
+    "n": 1
+   },
+   {
+    "pad": "2/8",
+    "n": 1
+   },
+   {
+    "pad": "0/2",
+    "n": 1
+   }
+  ],
+  "padDistinct": 20,
+  "radii": [
+   {
+    "r": 999,
+    "n": 18
+   },
+   {
+    "r": 12,
+    "n": 12
+   },
+   {
+    "r": 8,
+    "n": 5
+   },
+   {
+    "r": 40,
+    "n": 1
+   },
+   {
+    "r": 20,
+    "n": 1
+   }
+  ],
+  "ctrlCount": 19,
+  "ctrlsUnder32": 0,
+  "ctrlsUnder24": [],
+  "overflowCount": 0,
+  "overflowers": [],
+  "rowCount": 36,
+  "rowMedian": 60,
+  "rowMin": 22,
+  "rowMax": 1382,
+  "scrollers": [
+   {
+    "cls": "rows ct-rows",
+    "client": 797,
+    "scroll": 1450
+   }
+  ],
+  "bodyChars": 2265,
+  "firstScreenText": "IM\nWorkbench\n«\n☼\nToday\n◉\nDMs\n9\nCONTENT\n▤\nContent\n1\n▦\nMagnets\n▧\nStyles\n◎\nStrategy\n↑\nSends\n◈\nOps\n✳\nClaude\nDock it beside your work\n⚙︎\nSettings\njust now\n↻\nLEAD MAGNETS\nIvan\nMattan Danino\nDavorin Smit\n1\n1 errored\n⌕\nStatus:\nAny\n⌄\nFormat:\nAny\n⌄\nFilters\n⌄\n194 lead magnets\nLead-magnet ideas\n5\n⌄\n5 lead-magnet rows at reviewing · open one to approve or reject it\nIdea filters\n⌄\n61.9\nThe AI-Native Agency Pipeline Playbook: rebuild content, inbound, and follow-up so the founder is not the bottleneck\nCOMPETITOR\n8d ago\n57\n30 days, one LinkedIn engine: reach, saves, named leads, and buyer-fit share from a liv",
+  "errs": []
+ },
+ {
+  "vp": "d1440",
+  "job": "styles",
+  "vw": 1440,
+  "docOverflowX": false,
+  "type": [
+   {
+    "k": "-apple-system|400|normal|14|21",
+    "chars": 3546
+   },
+   {
+    "k": "-apple-system|500|normal|16|22",
+    "chars": 222
+   },
+   {
+    "k": "-apple-system|600|normal|11|16",
+    "chars": 136
+   },
+   {
+    "k": "-apple-system|400|normal|13|18.9",
+    "chars": 131
+   },
+   {
+    "k": "-apple-system|400|normal|13|18",
+    "chars": 119
+   },
+   {
+    "k": "-apple-system|500|normal|14|20",
+    "chars": 58
+   },
+   {
+    "k": "-apple-system|500|normal|13|20",
+    "chars": 57
+   },
+   {
+    "k": "-apple-system|400|normal|13|19.5",
+    "chars": 32
+   },
+   {
+    "k": "ui-monospace|400|normal|13|16",
+    "chars": 15
+   },
+   {
+    "k": "-apple-system|400|normal|20|20",
+    "chars": 11
+   },
+   {
+    "k": "-apple-system|400|normal|14|20",
+    "chars": 10
+   },
+   {
+    "k": "-apple-system|600|normal|20|24",
+    "chars": 9
+   },
+   {
+    "k": "-apple-system|600|normal|11|20",
+    "chars": 9
+   },
+   {
+    "k": "-apple-system|400|normal|13|20",
+    "chars": 7
+   },
+   {
+    "k": "-apple-system|600|normal|16|32",
+    "chars": 6
+   },
+   {
+    "k": "-apple-system|400|normal|14|14",
+    "chars": 1
+   },
+   {
+    "k": "-apple-system|400|normal|16|20",
+    "chars": 1
+   },
+   {
+    "k": "-apple-system|600|normal|14|20",
+    "chars": 1
+   },
+   {
+    "k": "-apple-system|400|normal|11|20",
+    "chars": 1
+   }
+  ],
+  "typeDistinct": 19,
+  "tinyCount": 0,
+  "tiny": [],
+  "lineOver75ch": 18,
+  "lineOver90ch": 18,
+  "lineSample": [
+   {
+    "w": 688,
+    "size": 14,
+    "ch": 98
+   },
+   {
+    "w": 688,
+    "size": 14,
+    "ch": 98
+   },
+   {
+    "w": 688,
+    "size": 14,
+    "ch": 98
+   },
+   {
+    "w": 688,
+    "size": 14,
+    "ch": 98
+   },
+   {
+    "w": 688,
+    "size": 14,
+    "ch": 98
+   }
+  ],
+  "bg": [
+   {
+    "c": "rgb(12, 12, 11)",
+    "area": 4184128
+   },
+   {
+    "c": "rgb(197, 225, 165)",
+    "area": 1296000
+   },
+   {
+    "c": "rgb(42, 42, 41)",
+    "area": 157640
+   },
+   {
+    "c": "rgb(31, 31, 31)",
+    "area": 7080
+   },
+   {
+    "c": "rgb(53, 53, 51)",
+    "area": 2134
+   },
+   {
+    "c": "rgb(255, 255, 255)",
+    "area": 808
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "area": 49
+   }
+  ],
+  "fg": [
+   {
+    "c": "rgb(199, 199, 199)",
+    "chars": 3255
+   },
+   {
+    "c": "rgb(148, 148, 148)",
+    "chars": 831
+   },
+   {
+    "c": "rgb(255, 255, 255)",
+    "chars": 247
+   },
+   {
+    "c": "rgb(23, 23, 23)",
+    "chars": 2
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "chars": 1
+   }
+  ],
+  "pads": [
+   {
+    "pad": "0/0",
+    "n": 119
+   },
+   {
+    "pad": "11/16",
+    "n": 17
+   },
+   {
+    "pad": "10/14",
+    "n": 10
+   },
+   {
+    "pad": "0/16",
+    "n": 3
+   },
+   {
+    "pad": "20/20",
+    "n": 1
+   },
+   {
+    "pad": "20/14",
+    "n": 1
+   },
+   {
+    "pad": "2/8",
+    "n": 1
+   },
+   {
+    "pad": "0/10",
+    "n": 1
+   },
+   {
+    "pad": "0/2",
+    "n": 1
+   },
+   {
+    "pad": "6/12",
+    "n": 1
+   }
+  ],
+  "padDistinct": 14,
+  "radii": [
+   {
+    "r": 12,
+    "n": 20
+   },
+   {
+    "r": 999,
+    "n": 15
+   },
+   {
+    "r": 40,
+    "n": 1
+   }
+  ],
+  "ctrlCount": 5,
+  "ctrlsUnder32": 0,
+  "ctrlsUnder24": [],
+  "overflowCount": 0,
+  "overflowers": [],
+  "rowCount": 22,
+  "rowMedian": 118,
+  "rowMin": 24,
+  "rowMax": 797,
+  "scrollers": [
+   {
+    "cls": "rows ct-rows",
+    "client": 797,
+    "scroll": 2597
+   }
+  ],
+  "bodyChars": 4471,
+  "firstScreenText": "IM\nWorkbench\n«\n☼\nToday\n◉\nDMs\n9\nCONTENT\n▤\nContent\n1\n▦\nMagnets\n▧\nStyles\n◎\nStrategy\n↑\nSends\n◈\nOps\n✳\nClaude\nDock it beside your work\n⚙︎\nSettings\njust now\n↻\nSTYLES\nIvan\nMattan Danino\nDavorin Smit\nEnumerated live from content_prompts. Examples come from Ivan’s published rows, so an empty preview is a designed state — a wrong one would be a lie.\nFilters\n⌄\n17 styles\nIMAGE\nBefore/After\n41d ago\nVisualize a transformation from a current state to a post-intervention state. The contrast carries the story but stays inside the Black Box regulatory grammar, no neon, no stock-c…\n4 published posts\nIMAGE\nConcept",
+  "errs": []
+ },
+ {
+  "vp": "d1440",
+  "job": "strategy",
+  "vw": 1440,
+  "docOverflowX": false,
+  "type": [
+   {
+    "k": "-apple-system|400|normal|14|20",
+    "chars": 3914
+   },
+   {
+    "k": "-apple-system|400|normal|11|20",
+    "chars": 119
+   },
+   {
+    "k": "-apple-system|500|normal|14|20",
+    "chars": 58
+   },
+   {
+    "k": "-apple-system|500|normal|13|20",
+    "chars": 57
+   },
+   {
+    "k": "-apple-system|400|normal|13|19.5",
+    "chars": 24
+   },
+   {
+    "k": "-apple-system|400|normal|20|20",
+    "chars": 11
+   },
+   {
+    "k": "-apple-system|600|normal|20|24",
+    "chars": 9
+   },
+   {
+    "k": "-apple-system|600|normal|11|20",
+    "chars": 9
+   },
+   {
+    "k": "-apple-system|600|normal|16|32",
+    "chars": 8
+   },
+   {
+    "k": "-apple-system|600|normal|11|16",
+    "chars": 7
+   },
+   {
+    "k": "-apple-system|400|normal|14|14",
+    "chars": 1
+   },
+   {
+    "k": "-apple-system|400|normal|16|20",
+    "chars": 1
+   },
+   {
+    "k": "-apple-system|600|normal|14|20",
+    "chars": 1
+   }
+  ],
+  "typeDistinct": 13,
+  "tinyCount": 0,
+  "tiny": [],
+  "lineOver75ch": 23,
+  "lineOver90ch": 21,
+  "lineSample": [
+   {
+    "w": 1184,
+    "size": 11,
+    "ch": 215
+   },
+   {
+    "w": 1152,
+    "size": 14,
+    "ch": 165
+   },
+   {
+    "w": 1152,
+    "size": 14,
+    "ch": 165
+   },
+   {
+    "w": 1152,
+    "size": 14,
+    "ch": 165
+   },
+   {
+    "w": 1152,
+    "size": 14,
+    "ch": 165
+   }
+  ],
+  "bg": [
+   {
+    "c": "rgb(12, 12, 11)",
+    "area": 4184128
+   },
+   {
+    "c": "rgb(197, 225, 165)",
+    "area": 1296000
+   },
+   {
+    "c": "rgb(42, 42, 41)",
+    "area": 15008
+   },
+   {
+    "c": "rgb(31, 31, 31)",
+    "area": 7080
+   },
+   {
+    "c": "rgb(53, 53, 51)",
+    "area": 2134
+   },
+   {
+    "c": "rgb(255, 255, 255)",
+    "area": 808
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "area": 49
+   }
+  ],
+  "fg": [
+   {
+    "c": "rgb(199, 199, 199)",
+    "chars": 3724
+   },
+   {
+    "c": "rgb(148, 148, 148)",
+    "chars": 212
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "chars": 139
+   },
+   {
+    "c": "rgb(255, 255, 255)",
+    "chars": 106
+   },
+   {
+    "c": "rgb(23, 23, 23)",
+    "chars": 2
+   }
+  ],
+  "pads": [
+   {
+    "pad": "0/0",
+    "n": 124
+   },
+   {
+    "pad": "10/14",
+    "n": 10
+   },
+   {
+    "pad": "0/2",
+    "n": 9
+   },
+   {
+    "pad": "12/16",
+    "n": 8
+   },
+   {
+    "pad": "0/16",
+    "n": 5
+   },
+   {
+    "pad": "20/20",
+    "n": 1
+   },
+   {
+    "pad": "20/14",
+    "n": 1
+   },
+   {
+    "pad": "2/8",
+    "n": 1
+   },
+   {
+    "pad": "0/10",
+    "n": 1
+   },
+   {
+    "pad": "6/12",
+    "n": 1
+   }
+  ],
+  "padDistinct": 15,
+  "radii": [
+   {
+    "r": 999,
+    "n": 14
+   },
+   {
+    "r": 12,
+    "n": 9
+   },
+   {
+    "r": 40,
+    "n": 1
+   },
+   {
+    "r": 20,
+    "n": 1
+   },
+   {
+    "r": 8,
+    "n": 1
+   }
+  ],
+  "ctrlCount": 53,
+  "ctrlsUnder32": 40,
+  "ctrlsUnder24": [
+   {
+    "tag": "INPUT",
+    "cls": "wb-strat-t",
+    "w": 1051,
+    "h": 20,
+    "label": ""
+   },
+   {
+    "tag": "INPUT",
+    "cls": "wb-strat-t",
+    "w": 1051,
+    "h": 20,
+    "label": ""
+   },
+   {
+    "tag": "INPUT",
+    "cls": "wb-strat-t",
+    "w": 1051,
+    "h": 20,
+    "label": ""
+   },
+   {
+    "tag": "INPUT",
+    "cls": "wb-strat-t",
+    "w": 1051,
+    "h": 20,
+    "label": ""
+   },
+   {
+    "tag": "INPUT",
+    "cls": "wb-strat-t",
+    "w": 947,
+    "h": 20,
+    "label": ""
+   },
+   {
+    "tag": "INPUT",
+    "cls": "wb-strat-t",
+    "w": 1051,
+    "h": 20,
+    "label": ""
+   },
+   {
+    "tag": "INPUT",
+    "cls": "wb-strat-t",
+    "w": 1051,
+    "h": 20,
+    "label": ""
+   },
+   {
+    "tag": "INPUT",
+    "cls": "wb-strat-t",
+    "w": 1051,
+    "h": 20,
+    "label": ""
+   }
+  ],
+  "overflowCount": 0,
+  "overflowers": [],
+  "rowCount": 13,
+  "rowMedian": 140,
+  "rowMin": 20,
+  "rowMax": 797,
+  "scrollers": [
+   {
+    "cls": "rows ct-rows wb-strat",
+    "client": 797,
+    "scroll": 1848
+   }
+  ],
+  "bodyChars": 4318,
+  "firstScreenText": "IM\nWorkbench\n«\n☼\nToday\n◉\nDMs\n9\nCONTENT\n▤\nContent\n1\n▦\nMagnets\n▧\nStyles\n◎\nStrategy\n↑\nSends\n◈\nOps\n✳\nClaude\nDock it beside your work\n⚙︎\nSettings\njust now\n↻\nSTRATEGY\nsaved 1d ago\nIvan\nMattan Danino\nDavorin Smit\n1 of 8 sections still unwritten. Only you can see this. It is never read by the generator and never shown to the client.\n↑\n↓\n+\n×\nThe lane is NARROW\ncontent, LinkedIn as a content surface, getting leads out of content.\nThe gate runs FIRST, before register, voice or format:\n\"Is this about content, LinkedIn, or leads from content, and does the buyer care?\"\nNo = dead, however well it is written.",
+  "errs": []
+ },
+ {
+  "vp": "d1440",
+  "job": "sends",
+  "vw": 1440,
+  "docOverflowX": false,
+  "type": [
+   {
+    "k": "-apple-system|400|normal|13|19.5",
+    "chars": 514
+   },
+   {
+    "k": "-apple-system|500|normal|14|20",
+    "chars": 311
+   },
+   {
+    "k": "-apple-system|600|normal|11|16",
+    "chars": 200
+   },
+   {
+    "k": "-apple-system|400|normal|13|20",
+    "chars": 174
+   },
+   {
+    "k": "-apple-system|600|normal|14|20",
+    "chars": 71
+   },
+   {
+    "k": "-apple-system|600|normal|16|24",
+    "chars": 69
+   },
+   {
+    "k": "-apple-system|600|normal|20|24",
+    "chars": 32
+   },
+   {
+    "k": "-apple-system|500|normal|13|20",
+    "chars": 28
+   },
+   {
+    "k": "-apple-system|400|normal|13|18",
+    "chars": 25
+   },
+   {
+    "k": "-apple-system|400|normal|14|20",
+    "chars": 23
+   },
+   {
+    "k": "-apple-system|400|normal|13|16",
+    "chars": 20
+   },
+   {
+    "k": "-apple-system|400|normal|14|21",
+    "chars": 19
+   },
+   {
+    "k": "-apple-system|400|normal|20|20",
+    "chars": 11
+   },
+   {
+    "k": "-apple-system|600|normal|11|20",
+    "chars": 9
+   },
+   {
+    "k": "-apple-system|500|normal|16|20",
+    "chars": 7
+   },
+   {
+    "k": "-apple-system|600|normal|16|32",
+    "chars": 5
+   },
+   {
+    "k": "-apple-system|400|normal|16|20",
+    "chars": 4
+   },
+   {
+    "k": "-apple-system|500|normal|16|24",
+    "chars": 4
+   },
+   {
+    "k": "-apple-system|600|normal|30|32",
+    "chars": 2
+   },
+   {
+    "k": "-apple-system|400|normal|14|14",
+    "chars": 1
+   },
+   {
+    "k": "-apple-system|400|normal|11|20",
+    "chars": 1
+   }
+  ],
+  "typeDistinct": 21,
+  "tinyCount": 0,
+  "tiny": [],
+  "lineOver75ch": 3,
+  "lineOver90ch": 3,
+  "lineSample": [
+   {
+    "w": 1120,
+    "size": 13,
+    "ch": 172
+   },
+   {
+    "w": 639,
+    "size": 13,
+    "ch": 98
+   },
+   {
+    "w": 639,
+    "size": 13,
+    "ch": 98
+   }
+  ],
+  "bg": [
+   {
+    "c": "rgb(12, 12, 11)",
+    "area": 4134400
+   },
+   {
+    "c": "rgb(197, 225, 165)",
+    "area": 1296000
+   },
+   {
+    "c": "rgb(31, 31, 31)",
+    "area": 1081472
+   },
+   {
+    "c": "rgb(53, 53, 51)",
+    "area": 47222
+   },
+   {
+    "c": "rgb(42, 42, 41)",
+    "area": 46719
+   },
+   {
+    "c": "rgb(16, 163, 127)",
+    "area": 5817
+   },
+   {
+    "c": "rgb(255, 255, 255)",
+    "area": 5624
+   },
+   {
+    "c": "rgb(255, 69, 58)",
+    "area": 4557
+   },
+   {
+    "c": "rgb(255, 159, 10)",
+    "area": 570
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "area": 525
+   },
+   {
+    "c": "rgb(255, 155, 34)",
+    "area": 476
+   },
+   {
+    "c": "rgb(112, 112, 112)",
+    "area": 185
+   }
+  ],
+  "fg": [
+   {
+    "c": "rgb(148, 148, 148)",
+    "chars": 788
+   },
+   {
+    "c": "rgb(255, 255, 255)",
+    "chars": 443
+   },
+   {
+    "c": "rgb(199, 199, 199)",
+    "chars": 140
+   },
+   {
+    "c": "rgb(255, 159, 10)",
+    "chars": 139
+   },
+   {
+    "c": "rgb(255, 155, 34)",
+    "chars": 7
+   },
+   {
+    "c": "rgb(16, 163, 127)",
+    "chars": 6
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "chars": 5
+   },
+   {
+    "c": "rgb(23, 23, 23)",
+    "chars": 2
+   }
+  ],
+  "pads": [
+   {
+    "pad": "0/0",
+    "n": 115
+   },
+   {
+    "pad": "24/24",
+    "n": 14
+   },
+   {
+    "pad": "0/16",
+    "n": 11
+   },
+   {
+    "pad": "4/0",
+    "n": 11
+   },
+   {
+    "pad": "10/14",
+    "n": 10
+   },
+   {
+    "pad": "3/8",
+    "n": 8
+   },
+   {
+    "pad": "10/24",
+    "n": 7
+   },
+   {
+    "pad": "7/0",
+    "n": 3
+   },
+   {
+    "pad": "12/0",
+    "n": 3
+   },
+   {
+    "pad": "2/6",
+    "n": 2
+   }
+  ],
+  "padDistinct": 20,
+  "radii": [
+   {
+    "r": 999,
+    "n": 18
+   },
+   {
+    "r": 28,
+    "n": 15
+   },
+   {
+    "r": 8,
+    "n": 10
+   },
+   {
+    "r": 40,
+    "n": 1
+   },
+   {
+    "r": 10,
+    "n": 1
+   }
+  ],
+  "ctrlCount": 8,
+  "ctrlsUnder32": 0,
+  "ctrlsUnder24": [],
+  "overflowCount": 0,
+  "overflowers": [],
+  "rowCount": 9,
+  "rowMedian": 196,
+  "rowMin": 20,
+  "rowMax": 928,
+  "scrollers": [
+   {
+    "cls": "rows ov",
+    "client": 754,
+    "scroll": 1869
+   }
+  ],
+  "bodyChars": 1775,
+  "firstScreenText": "IM\nWorkbench\n«\n☼\nToday\n◉\nDMs\n9\nCONTENT\n▤\nContent\n1\n▦\nMagnets\n▧\nStyles\n◎\nStrategy\n↑\nSends\n◈\nOps\n✳\nClaude\nDock it beside your work\n⚙︎\nSettings\njust now\n↻\nSENDS\nRange:\n7d\n⌄\n↻\nPipeline health\nIvan\nRise\nArch\nOverview\nLanes\nLog\nDecision\nwhere do I stand right now\nACCEPT\n25%\n28/113 · 7d ▼1 · 30d\nGOVERNOR\n111/280\nNORMAL · 18 left today\nRUNWAY\n0d\n4 sendable\nREFILL\n1.22x\n138 in / 113 out · 7d\nFunnel\nlast 7d\n113\nSENT\n25%\n→\n28\nACCEPTED\n·\n14\nCONVOS\n·\n0\nCALLS\nEra totals · convos 80 · calls 1 · convos = replied at least once, optouts excluded.\n30d · accepted 137/520 · scan opens 7d 18 / 30d 265 · 67 prospect",
+  "errs": []
+ },
+ {
+  "vp": "d1440",
+  "job": "ops",
+  "vw": 1440,
+  "docOverflowX": false,
+  "type": [
+   {
+    "k": "-apple-system|400|normal|14|21",
+    "chars": 4380
+   },
+   {
+    "k": "-apple-system|400|normal|13|18",
+    "chars": 1495
+   },
+   {
+    "k": "-apple-system|400|normal|13|19.5",
+    "chars": 337
+   },
+   {
+    "k": "-apple-system|400|normal|14|20",
+    "chars": 274
+   },
+   {
+    "k": "-apple-system|500|normal|14|20",
+    "chars": 166
+   },
+   {
+    "k": "-apple-system|600|normal|11|16",
+    "chars": 90
+   },
+   {
+    "k": "-apple-system|500|normal|16|24",
+    "chars": 62
+   },
+   {
+    "k": "-apple-system|400|normal|13|20",
+    "chars": 34
+   },
+   {
+    "k": "-apple-system|600|normal|16|24",
+    "chars": 30
+   },
+   {
+    "k": "-apple-system|600|normal|11|20",
+    "chars": 25
+   },
+   {
+    "k": "-apple-system|400|normal|20|20",
+    "chars": 11
+   },
+   {
+    "k": "-apple-system|600|normal|20|24",
+    "chars": 9
+   },
+   {
+    "k": "-apple-system|600|normal|16|32",
+    "chars": 3
+   },
+   {
+    "k": "-apple-system|400|normal|16|20",
+    "chars": 2
+   },
+   {
+    "k": "ui-monospace|400|normal|13|20",
+    "chars": 2
+   },
+   {
+    "k": "-apple-system|400|normal|14|14",
+    "chars": 1
+   },
+   {
+    "k": "ui-monospace|500|normal|13|18",
+    "chars": 1
+   }
+  ],
+  "typeDistinct": 17,
+  "tinyCount": 0,
+  "tiny": [],
+  "lineOver75ch": 25,
+  "lineOver90ch": 16,
+  "lineSample": [
+   {
+    "w": 1124,
+    "size": 13,
+    "ch": 173
+   },
+   {
+    "w": 944,
+    "size": 14,
+    "ch": 135
+   },
+   {
+    "w": 944,
+    "size": 14,
+    "ch": 135
+   },
+   {
+    "w": 944,
+    "size": 14,
+    "ch": 135
+   },
+   {
+    "w": 944,
+    "size": 14,
+    "ch": 135
+   }
+  ],
+  "bg": [
+   {
+    "c": "rgb(31, 31, 31)",
+    "area": 4628876
+   },
+   {
+    "c": "rgb(12, 12, 11)",
+    "area": 4313928
+   },
+   {
+    "c": "rgb(197, 225, 165)",
+    "area": 1296000
+   },
+   {
+    "c": "rgb(42, 42, 41)",
+    "area": 38766
+   },
+   {
+    "c": "rgb(255, 255, 255)",
+    "area": 808
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "area": 85
+   },
+   {
+    "c": "rgb(53, 53, 51)",
+    "area": 64
+   }
+  ],
+  "fg": [
+   {
+    "c": "rgb(255, 255, 255)",
+    "chars": 4224
+   },
+   {
+    "c": "rgb(148, 148, 148)",
+    "chars": 1959
+   },
+   {
+    "c": "rgb(199, 199, 199)",
+    "chars": 407
+   },
+   {
+    "c": "rgb(255, 159, 10)",
+    "chars": 327
+   },
+   {
+    "c": "rgb(23, 23, 23)",
+    "chars": 2
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "chars": 1
+   }
+  ],
+  "pads": [
+   {
+    "pad": "0/0",
+    "n": 177
+   },
+   {
+    "pad": "2/0",
+    "n": 19
+   },
+   {
+    "pad": "10/16",
+    "n": 18
+   },
+   {
+    "pad": "2/14",
+    "n": 14
+   },
+   {
+    "pad": "10/0",
+    "n": 11
+   },
+   {
+    "pad": "10/14",
+    "n": 10
+   },
+   {
+    "pad": "12/0",
+    "n": 7
+   },
+   {
+    "pad": "4/16",
+    "n": 3
+   },
+   {
+    "pad": "20/20",
+    "n": 1
+   },
+   {
+    "pad": "20/14",
+    "n": 1
+   }
+  ],
+  "padDistinct": 21,
+  "radii": [
+   {
+    "r": 8,
+    "n": 18
+   },
+   {
+    "r": 20,
+    "n": 14
+   },
+   {
+    "r": 999,
+    "n": 11
+   },
+   {
+    "r": 12,
+    "n": 3
+   },
+   {
+    "r": 40,
+    "n": 1
+   }
+  ],
+  "ctrlCount": 3,
+  "ctrlsUnder32": 0,
+  "ctrlsUnder24": [],
+  "overflowCount": 0,
+  "overflowers": [],
+  "rowCount": 16,
+  "rowMedian": 139,
+  "rowMin": 32,
+  "rowMax": 2618,
+  "scrollers": [
+   {
+    "cls": "rows ops-rows",
+    "client": 798,
+    "scroll": 4379
+   }
+  ],
+  "bodyChars": 7134,
+  "firstScreenText": "IM\nWorkbench\n«\n☼\nToday\n◉\nDMs\n9\nCONTENT\n▤\nContent\n1\n▦\nMagnets\n▧\nStyles\n◎\nStrategy\n↑\nSends\n◈\nOps\n✳\nClaude\nDock it beside your work\n⚙︎\nSettings\njust now\n↻\nOPS\nNothing waiting on you — and this is a live read, not a stall.\nComment replies, newsjacks, weekly reports and escalations all clear.\nChecked 11s ago\nAlready handled\nDone · 10\n⌄\nREPLY\nRise\nThanks! :)\nyday\nREPLY\nRise\nYes indeed!\n2d\nBOOKED\n#C0BJ72F58BY\nNew call booked with Deekshita Bisht (ArthCrafted), from the LinkedIn lane. Friday, August 21 at 11:00 AM PT · 2:00 PM ET. Pre-call brief here: https://resources.risedtc.com/brief/?id=1151041032",
+  "errs": []
+ },
+ {
+  "vp": "d1440",
+  "job": "settings",
+  "vw": 1440,
+  "docOverflowX": false,
+  "type": [
+   {
+    "k": "-apple-system|400|normal|13|19.5",
+    "chars": 307
+   },
+   {
+    "k": "-apple-system|500|normal|14|20",
+    "chars": 58
+   },
+   {
+    "k": "-apple-system|500|normal|14|21",
+    "chars": 46
+   },
+   {
+    "k": "-apple-system|600|normal|16|24",
+    "chars": 23
+   },
+   {
+    "k": "-apple-system|400|normal|14|20",
+    "chars": 12
+   },
+   {
+    "k": "-apple-system|400|normal|20|20",
+    "chars": 11
+   },
+   {
+    "k": "-apple-system|600|normal|20|24",
+    "chars": 9
+   },
+   {
+    "k": "-apple-system|600|normal|11|20",
+    "chars": 9
+   },
+   {
+    "k": "-apple-system|500|normal|13|20",
+    "chars": 9
+   },
+   {
+    "k": "-apple-system|600|normal|16|32",
+    "chars": 8
+   },
+   {
+    "k": "-apple-system|400|normal|14|14",
+    "chars": 1
+   },
+   {
+    "k": "-apple-system|400|normal|16|20",
+    "chars": 1
+   }
+  ],
+  "typeDistinct": 12,
+  "tinyCount": 0,
+  "tiny": [],
+  "lineOver75ch": 2,
+  "lineOver90ch": 0,
+  "lineSample": [
+   {
+    "w": 586,
+    "size": 13,
+    "ch": 90
+   },
+   {
+    "w": 586,
+    "size": 13,
+    "ch": 90
+   }
+  ],
+  "bg": [
+   {
+    "c": "rgb(12, 12, 11)",
+    "area": 4234912
+   },
+   {
+    "c": "rgb(197, 225, 165)",
+    "area": 1296000
+   },
+   {
+    "c": "rgb(31, 31, 31)",
+    "area": 213360
+   },
+   {
+    "c": "rgb(42, 42, 41)",
+    "area": 3336
+   },
+   {
+    "c": "rgb(53, 53, 51)",
+    "area": 2432
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "area": 1630
+   },
+   {
+    "c": "rgb(255, 255, 255)",
+    "area": 1537
+   }
+  ],
+  "fg": [
+   {
+    "c": "rgb(148, 148, 148)",
+    "chars": 327
+   },
+   {
+    "c": "rgb(255, 255, 255)",
+    "chars": 90
+   },
+   {
+    "c": "rgb(199, 199, 199)",
+    "chars": 63
+   },
+   {
+    "c": "rgb(255, 69, 58)",
+    "chars": 8
+   },
+   {
+    "c": "rgb(23, 23, 23)",
+    "chars": 2
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "chars": 2
+   }
+  ],
+  "pads": [
+   {
+    "pad": "0/0",
+    "n": 33
+   },
+   {
+    "pad": "10/14",
+    "n": 10
+   },
+   {
+    "pad": "12/16",
+    "n": 5
+   },
+   {
+    "pad": "4/16",
+    "n": 2
+   },
+   {
+    "pad": "6/0",
+    "n": 2
+   },
+   {
+    "pad": "20/20",
+    "n": 1
+   },
+   {
+    "pad": "20/14",
+    "n": 1
+   },
+   {
+    "pad": "2/8",
+    "n": 1
+   },
+   {
+    "pad": "0/10",
+    "n": 1
+   },
+   {
+    "pad": "0/2",
+    "n": 1
+   }
+  ],
+  "padDistinct": 16,
+  "radii": [
+   {
+    "r": 999,
+    "n": 13
+   },
+   {
+    "r": 20,
+    "n": 3
+   },
+   {
+    "r": 40,
+    "n": 1
+   },
+   {
+    "r": 12,
+    "n": 1
+   },
+   {
+    "r": 10,
+    "n": 1
+   }
+  ],
+  "ctrlCount": 2,
+  "ctrlsUnder32": 1,
+  "ctrlsUnder24": [],
+  "overflowCount": 0,
+  "overflowers": [],
+  "rowCount": 13,
+  "rowMedian": 68,
+  "rowMin": 32,
+  "rowMax": 798,
+  "scrollers": [],
+  "bodyChars": 534,
+  "firstScreenText": "IM\nWorkbench\n«\n☼\nToday\n◉\nDMs\n9\nCONTENT\n▤\nContent\n1\n▦\nMagnets\n▧\nStyles\n◎\nStrategy\n↑\nSends\n◈\nOps\n✳\nClaude\nDock it beside your work\n⚙︎\nSettings\njust now\n↻\nSETTINGS\nNotifications\nPush notifications\nNotifications are blocked for this site — allow them in browser settings, then toggle on.\nNew-reply sound\nChime when a reply lands while the app is open.\nDesktop sound for pushes comes from the system: macOS Settings → Notifications → your browser → turn on \"Play sound for notifications\".\nAppearance\nTheme\nDark\nLight\nSign out\nBuild 6db1ae7",
+  "errs": []
+ },
+ {
+  "vp": "m390",
+  "job": "today",
+  "vw": 390,
+  "docOverflowX": false,
+  "type": [
+   {
+    "k": "-apple-system|400|normal|14|21",
+    "chars": 3523
+   },
+   {
+    "k": "-apple-system|400|normal|14|20",
+    "chars": 1917
+   },
+   {
+    "k": "-apple-system|400|normal|13|18",
+    "chars": 974
+   },
+   {
+    "k": "-apple-system|500|normal|14|20",
+    "chars": 347
+   },
+   {
+    "k": "-apple-system|600|normal|11|16",
+    "chars": 117
+   },
+   {
+    "k": "-apple-system|400|normal|13|20",
+    "chars": 78
+   },
+   {
+    "k": "-apple-system|400|normal|11|20",
+    "chars": 72
+   },
+   {
+    "k": "-apple-system|500|normal|16|22",
+    "chars": 48
+   },
+   {
+    "k": "-apple-system|600|normal|11|20",
+    "chars": 45
+   },
+   {
+    "k": "-apple-system|600|normal|16|24",
+    "chars": 44
+   },
+   {
+    "k": "-apple-system|600|normal|14|20",
+    "chars": 39
+   },
+   {
+    "k": "-apple-system|400|normal|13|19.5",
+    "chars": 21
+   },
+   {
+    "k": "-apple-system|400|normal|11|11",
+    "chars": 16
+   },
+   {
+    "k": "ui-monospace|500|normal|13|18",
+    "chars": 8
+   },
+   {
+    "k": "-apple-system|400|normal|20|20",
+    "chars": 6
+   },
+   {
+    "k": "-apple-system|600|normal|16|32",
+    "chars": 5
+   },
+   {
+    "k": "-apple-system|400|normal|16|20",
+    "chars": 2
+   },
+   {
+    "k": "-apple-system|600|normal|30|32",
+    "chars": 2
+   }
+  ],
+  "typeDistinct": 18,
+  "tinyCount": 0,
+  "tiny": [],
+  "lineOver75ch": 0,
+  "lineOver90ch": 0,
+  "lineSample": [
+   {
+    "w": 316,
+    "size": 14,
+    "ch": 45
+   },
+   {
+    "w": 316,
+    "size": 14,
+    "ch": 45
+   },
+   {
+    "w": 316,
+    "size": 14,
+    "ch": 45
+   },
+   {
+    "w": 316,
+    "size": 14,
+    "ch": 45
+   },
+   {
+    "w": 316,
+    "size": 14,
+    "ch": 45
+   }
+  ],
+  "bg": [
+   {
+    "c": "rgba(255, 159, 10, 0.1)",
+    "area": 899802
+   },
+   {
+    "c": "rgb(12, 12, 11)",
+    "area": 895730
+   },
+   {
+    "c": "rgb(31, 31, 31)",
+    "area": 412334
+   },
+   {
+    "c": "rgb(197, 225, 165)",
+    "area": 329160
+   },
+   {
+    "c": "rgba(255, 69, 58, 0.1)",
+    "area": 81054
+   },
+   {
+    "c": "rgb(48, 48, 48)",
+    "area": 44118
+   },
+   {
+    "c": "rgb(53, 53, 51)",
+    "area": 15894
+   },
+   {
+    "c": "rgb(42, 42, 41)",
+    "area": 12306
+   },
+   {
+    "c": "rgba(184, 255, 102, 0.14)",
+    "area": 7056
+   },
+   {
+    "c": "rgb(112, 112, 112)",
+    "area": 3920
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "area": 3864
+   },
+   {
+    "c": "rgb(255, 69, 58)",
+    "area": 1109
+   }
+  ],
+  "fg": [
+   {
+    "c": "rgb(199, 199, 199)",
+    "chars": 4172
+   },
+   {
+    "c": "rgb(148, 148, 148)",
+    "chars": 1753
+   },
+   {
+    "c": "rgb(255, 255, 255)",
+    "chars": 1147
+   },
+   {
+    "c": "rgb(255, 159, 10)",
+    "chars": 136
+   },
+   {
+    "c": "rgb(126, 126, 126)",
+    "chars": 18
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "chars": 12
+   },
+   {
+    "c": "rgb(255, 69, 58)",
+    "chars": 11
+   },
+   {
+    "c": "rgb(23, 23, 23)",
+    "chars": 7
+   },
+   {
+    "c": "rgb(16, 163, 127)",
+    "chars": 6
+   },
+   {
+    "c": "rgb(255, 155, 34)",
+    "chars": 2
+   }
+  ],
+  "pads": [
+   {
+    "pad": "0/0",
+    "n": 225
+   },
+   {
+    "pad": "10/12",
+    "n": 26
+   },
+   {
+    "pad": "10/16",
+    "n": 9
+   },
+   {
+    "pad": "4/16",
+    "n": 4
+   },
+   {
+    "pad": "13/22",
+    "n": 4
+   },
+   {
+    "pad": "0/8",
+    "n": 4
+   },
+   {
+    "pad": "0/16",
+    "n": 3
+   },
+   {
+    "pad": "13/13",
+    "n": 3
+   },
+   {
+    "pad": "11/14",
+    "n": 2
+   },
+   {
+    "pad": "8/8",
+    "n": 1
+   }
+  ],
+  "padDistinct": 18,
+  "radii": [
+   {
+    "r": 14,
+    "n": 22
+   },
+   {
+    "r": 16,
+    "n": 6
+   },
+   {
+    "r": 28,
+    "n": 5
+   },
+   {
+    "r": 13,
+    "n": 4
+   },
+   {
+    "r": 24,
+    "n": 1
+   },
+   {
+    "r": 12,
+    "n": 1
+   }
+  ],
+  "ctrlCount": 38,
+  "ctrlsUnder32": 37,
+  "ctrlsUnder24": [
+   {
+    "tag": "BUTTON",
+    "cls": "sa-x",
+    "w": 15,
+    "h": 20,
+    "label": "✕"
+   },
+   {
+    "tag": "BUTTON",
+    "cls": "sa-x",
+    "w": 15,
+    "h": 20,
+    "label": "✕"
+   },
+   {
+    "tag": "BUTTON",
+    "cls": "sa-x",
+    "w": 15,
+    "h": 20,
+    "label": "✕"
+   },
+   {
+    "tag": "A",
+    "cls": "sa-act",
+    "w": 106,
+    "h": 20,
+    "label": "open the scan ↗"
+   },
+   {
+    "tag": "BUTTON",
+    "cls": "sa-x",
+    "w": 15,
+    "h": 20,
+    "label": "✕"
+   },
+   {
+    "tag": "A",
+    "cls": "sa-act",
+    "w": 106,
+    "h": 20,
+    "label": "open the scan ↗"
+   },
+   {
+    "tag": "BUTTON",
+    "cls": "sa-x",
+    "w": 15,
+    "h": 20,
+    "label": "✕"
+   },
+   {
+    "tag": "A",
+    "cls": "sa-act",
+    "w": 106,
+    "h": 20,
+    "label": "open the scan ↗"
+   }
+  ],
+  "overflowCount": 0,
+  "overflowers": [],
+  "rowCount": 37,
+  "rowMedian": 138,
+  "rowMin": 52,
+  "rowMax": 3028,
+  "scrollers": [
+   {
+    "cls": "rows td-rows",
+    "client": 623,
+    "scroll": 5628
+   }
+  ],
+  "bodyChars": 7558,
+  "firstScreenText": "just now\n⚙︎\nTODAY\nFriday, August 21\n↻\n20\n1 critical · 19 warnings\n⌄\nCRITICAL\n🔴 Outreach output collapse\n✕\nCRITICAL MATTAN: 1 sent today, ~50.3 expected 15h into the window (baseline 53.7/day) WARN IVAN: 23.5/day vs 45.8 baseline = 51% MATTAN today 1 (exp ~50.3) · 2d 60/day · baseline 53.7/day (112%) IVAN today 0 (exp ~0) · 2d 23.5/day · baseline 45.8/day (51%) inventory (context): rise_engager 3 · rise_cold dormant · rise_orbit 0 · rise_engager_ads_first 0\nWARNING\n⚠ Outreach output down\n✕\nWARN IVAN: 23.5/day vs 45.8 baseline = 51% MATTAN today 5 (exp ~0) · 2d 60/day · baseline 53.7/day (112%)",
+  "errs": []
+ },
+ {
+  "vp": "m390",
+  "job": "dms",
+  "vw": 390,
+  "docOverflowX": false,
+  "type": [
+   {
+    "k": "-apple-system|400|normal|13|18",
+    "chars": 999
+   },
+   {
+    "k": "-apple-system|400|normal|14|20",
+    "chars": 173
+   },
+   {
+    "k": "-apple-system|500|normal|14|20",
+    "chars": 115
+   },
+   {
+    "k": "-apple-system|600|normal|11|16",
+    "chars": 58
+   },
+   {
+    "k": "-apple-system|600|normal|11|20",
+    "chars": 47
+   },
+   {
+    "k": "-apple-system|500|normal|13|20",
+    "chars": 20
+   },
+   {
+    "k": "-apple-system|400|normal|11|11",
+    "chars": 18
+   },
+   {
+    "k": "-apple-system|400|normal|20|20",
+    "chars": 6
+   },
+   {
+    "k": "-apple-system|600|normal|16|32",
+    "chars": 3
+   },
+   {
+    "k": "-apple-system|400|normal|16|20",
+    "chars": 2
+   }
+  ],
+  "typeDistinct": 10,
+  "tinyCount": 0,
+  "tiny": [],
+  "lineOver75ch": 0,
+  "lineOver90ch": 0,
+  "lineSample": [
+   {
+    "w": 216,
+    "size": 13,
+    "ch": 33
+   },
+   {
+    "w": 216,
+    "size": 13,
+    "ch": 33
+   },
+   {
+    "w": 216,
+    "size": 13,
+    "ch": 33
+   },
+   {
+    "w": 216,
+    "size": 13,
+    "ch": 33
+   },
+   {
+    "w": 216,
+    "size": 13,
+    "ch": 33
+   }
+  ],
+  "bg": [
+   {
+    "c": "rgb(12, 12, 11)",
+    "area": 824670
+   },
+   {
+    "c": "rgb(197, 225, 165)",
+    "area": 329160
+   },
+   {
+    "c": "rgba(255, 159, 10, 0.1)",
+    "area": 21204
+   },
+   {
+    "c": "rgba(120, 140, 170, 0.12)",
+    "area": 20520
+   },
+   {
+    "c": "rgb(42, 42, 41)",
+    "area": 17156
+   },
+   {
+    "c": "rgb(31, 31, 31)",
+    "area": 8357
+   },
+   {
+    "c": "rgb(53, 53, 51)",
+    "area": 5000
+   },
+   {
+    "c": "rgb(255, 159, 10)",
+    "area": 3735
+   },
+   {
+    "c": "rgb(255, 255, 255)",
+    "area": 2724
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "area": 2401
+   },
+   {
+    "c": "rgb(112, 112, 112)",
+    "area": 1568
+   },
+   {
+    "c": "rgb(255, 155, 34)",
+    "area": 1568
+   }
+  ],
+  "fg": [
+   {
+    "c": "rgb(148, 148, 148)",
+    "chars": 1057
+   },
+   {
+    "c": "rgb(255, 255, 255)",
+    "chars": 188
+   },
+   {
+    "c": "rgb(199, 199, 199)",
+    "chars": 105
+   },
+   {
+    "c": "rgb(255, 159, 10)",
+    "chars": 31
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "chars": 20
+   },
+   {
+    "c": "rgb(0, 0, 0)",
+    "chars": 18
+   },
+   {
+    "c": "rgb(23, 23, 23)",
+    "chars": 16
+   },
+   {
+    "c": "rgb(255, 155, 34)",
+    "chars": 6
+   }
+  ],
+  "pads": [
+   {
+    "pad": "0/0",
+    "n": 54
+   },
+   {
+    "pad": "10/16",
+    "n": 10
+   },
+   {
+    "pad": "0/16",
+    "n": 5
+   },
+   {
+    "pad": "8/8",
+    "n": 1
+   },
+   {
+    "pad": "8/16",
+    "n": 1
+   },
+   {
+    "pad": "0/12",
+    "n": 1
+   },
+   {
+    "pad": "10/12",
+    "n": 1
+   },
+   {
+    "pad": "7/13",
+    "n": 1
+   },
+   {
+    "pad": "9/11",
+    "n": 1
+   },
+   {
+    "pad": "7/12",
+    "n": 1
+   }
+  ],
+  "padDistinct": 13,
+  "radii": [
+   {
+    "r": 12,
+    "n": 6
+   },
+   {
+    "r": 999,
+    "n": 5
+   },
+   {
+    "r": 24,
+    "n": 1
+   },
+   {
+    "r": 14,
+    "n": 1
+   },
+   {
+    "r": 8,
+    "n": 1
+   }
+  ],
+  "ctrlCount": 9,
+  "ctrlsUnder32": 0,
+  "ctrlsUnder24": [],
+  "overflowCount": 0,
+  "overflowers": [],
+  "rowCount": 14,
+  "rowMedian": 64,
+  "rowMin": 34,
+  "rowMax": 593,
+  "scrollers": [
+   {
+    "cls": "rows",
+    "client": 593,
+    "scroll": 831
+   }
+  ],
+  "bodyChars": 1544,
+  "firstScreenText": "just now\n⚙︎\nDMS\nIM\n🔍\nAll\n·9\nIvan\nRise\nArch\nEmail\n1 draft where you already replied\nDiscard stale\n2 drafts pushed to later · next is Lindsay, in 3 days\nOpen\nRG\nin\nRama Ginde\nRISE\nDM\nYou: Great to be connected, Rama. Is Satya Blends your brand? --- Would love to do a free growth scan on your store -- paid, creative, and profit side. May I send it?\n2m\nDRAFT\nEM\nin\nElijah Davis, MBA\nRISE\nDM\nAccording to his website, 30k members on their slack channel. That's a diamond mine for what you guys are looking for. https://startupcpg.com/\n21h\nRK\nin\nRob Kaminski\nIVAN\nDM\nWhen you say \"inboudn engine\", what ",
+  "errs": []
+ },
+ {
+  "vp": "m390",
+  "job": "content",
+  "vw": 390,
+  "docOverflowX": false,
+  "type": [
+   {
+    "k": "-apple-system|400|normal|13|19.5",
+    "chars": 180
+   },
+   {
+    "k": "-apple-system|400|normal|14|20",
+    "chars": 126
+   },
+   {
+    "k": "-apple-system|500|normal|14|22",
+    "chars": 116
+   },
+   {
+    "k": "-apple-system|500|normal|13|20",
+    "chars": 69
+   },
+   {
+    "k": "-apple-system|600|normal|11|20",
+    "chars": 40
+   },
+   {
+    "k": "-apple-system|600|normal|11|16",
+    "chars": 18
+   },
+   {
+    "k": "ui-monospace|400|normal|13|20",
+    "chars": 14
+   },
+   {
+    "k": "-apple-system|400|normal|13|20",
+    "chars": 8
+   },
+   {
+    "k": "-apple-system|400|normal|13|18",
+    "chars": 7
+   },
+   {
+    "k": "-apple-system|600|normal|11|11",
+    "chars": 6
+   },
+   {
+    "k": "-apple-system|400|normal|20|20",
+    "chars": 6
+   },
+   {
+    "k": "-apple-system|400|normal|16|20",
+    "chars": 2
+   },
+   {
+    "k": "-apple-system|600|normal|14|20",
+    "chars": 1
+   },
+   {
+    "k": "-apple-system|400|normal|11|20",
+    "chars": 1
+   }
+  ],
+  "typeDistinct": 14,
+  "tinyCount": 0,
+  "tiny": [],
+  "lineOver75ch": 0,
+  "lineOver90ch": 0,
+  "lineSample": [
+   {
+    "w": 216,
+    "size": 13,
+    "ch": 33
+   },
+   {
+    "w": 216,
+    "size": 14,
+    "ch": 31
+   }
+  ],
+  "bg": [
+   {
+    "c": "rgb(12, 12, 11)",
+    "area": 896478
+   },
+   {
+    "c": "rgb(197, 225, 165)",
+    "area": 329160
+   },
+   {
+    "c": "rgb(42, 42, 41)",
+    "area": 39235
+   },
+   {
+    "c": "rgb(53, 53, 51)",
+    "area": 13893
+   },
+   {
+    "c": "rgb(16, 163, 127)",
+    "area": 100
+   },
+   {
+    "c": "rgb(255, 159, 10)",
+    "area": 64
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "area": 49
+   }
+  ],
+  "fg": [
+   {
+    "c": "rgb(148, 148, 148)",
+    "chars": 365
+   },
+   {
+    "c": "rgb(255, 255, 255)",
+    "chars": 160
+   },
+   {
+    "c": "rgb(199, 199, 199)",
+    "chars": 17
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "chars": 8
+   }
+  ],
+  "pads": [
+   {
+    "pad": "0/0",
+    "n": 39
+   },
+   {
+    "pad": "0/10",
+    "n": 11
+   },
+   {
+    "pad": "0/12",
+    "n": 9
+   },
+   {
+    "pad": "8/16",
+    "n": 2
+   },
+   {
+    "pad": "2/2",
+    "n": 2
+   },
+   {
+    "pad": "4/10",
+    "n": 2
+   },
+   {
+    "pad": "8/8",
+    "n": 1
+   },
+   {
+    "pad": "10/16",
+    "n": 1
+   },
+   {
+    "pad": "0/11",
+    "n": 1
+   },
+   {
+    "pad": "6/16",
+    "n": 1
+   }
+  ],
+  "padDistinct": 12,
+  "radii": [
+   {
+    "r": 12,
+    "n": 14
+   },
+   {
+    "r": 999,
+    "n": 12
+   },
+   {
+    "r": 24,
+    "n": 1
+   }
+  ],
+  "ctrlCount": 23,
+  "ctrlsUnder32": 0,
+  "ctrlsUnder24": [],
+  "overflowCount": 0,
+  "overflowers": [],
+  "rowCount": 7,
+  "rowMedian": 97,
+  "rowMin": 24,
+  "rowMax": 643,
+  "scrollers": [],
+  "bodyChars": 605,
+  "firstScreenText": "just now\n⚙︎\nCONTENT\nContent\n1\nMagnets\nStyles\nStrategy\nIvan\nMattan Danino\nDavorin Smit\nFlow\nCalendar\n⌕\nFilters\n⌄\nIdeas\n82\nNeeds review\n1\nGenerating\n0\nApproved\n0\nScheduled\n1\nPublished\n113\nErrors\n46\nArchived\n88\nOther\n3\nBuilt a €70k/mo agency on zero paid ads. Why the instinct to start running ads for scale is almost always backwards.\nPASS 87\nTEXT\n\"I built my agency pretty much on organic and without running a single ad. And now I realized that if we want to get to the next level, I need to run ads.\" · €70k/mo Meta ads agen…\nSKIP\nAPPROVE\n16h ago\nDELETE\n☼\nToday\n◉\n9\nDMs\n▤\n1\nContent\n↑\nSends\n◈\nOps\n✳\nC",
+  "errs": []
+ },
+ {
+  "vp": "m390",
+  "job": "magnets",
+  "vw": 390,
+  "docOverflowX": false,
+  "type": [
+   {
+    "k": "-apple-system|500|normal|14|22",
+    "chars": 1285
+   },
+   {
+    "k": "-apple-system|600|normal|11|16",
+    "chars": 157
+   },
+   {
+    "k": "-apple-system|400|normal|14|21",
+    "chars": 154
+   },
+   {
+    "k": "-apple-system|400|normal|13|18",
+    "chars": 110
+   },
+   {
+    "k": "-apple-system|400|normal|14|20",
+    "chars": 105
+   },
+   {
+    "k": "-apple-system|400|normal|13|19.5",
+    "chars": 68
+   },
+   {
+    "k": "-apple-system|500|normal|13|20",
+    "chars": 57
+   },
+   {
+    "k": "-apple-system|600|normal|11|20",
+    "chars": 44
+   },
+   {
+    "k": "-apple-system|400|normal|13|20",
+    "chars": 34
+   },
+   {
+    "k": "-apple-system|600|normal|16|24",
+    "chars": 17
+   },
+   {
+    "k": "ui-monospace|400|normal|13|20",
+    "chars": 14
+   },
+   {
+    "k": "-apple-system|600|normal|16|32",
+    "chars": 12
+   },
+   {
+    "k": "ui-monospace|400|normal|13|16",
+    "chars": 9
+   },
+   {
+    "k": "-apple-system|500|normal|14|20",
+    "chars": 6
+   },
+   {
+    "k": "-apple-system|400|normal|20|20",
+    "chars": 6
+   },
+   {
+    "k": "-apple-system|400|normal|11|20",
+    "chars": 4
+   },
+   {
+    "k": "-apple-system|400|normal|16|20",
+    "chars": 3
+   },
+   {
+    "k": "-apple-system|600|normal|14|20",
+    "chars": 1
+   },
+   {
+    "k": "-apple-system|600|normal|20|24",
+    "chars": 1
+   },
+   {
+    "k": "ui-monospace|500|normal|13|18",
+    "chars": 1
+   }
+  ],
+  "typeDistinct": 20,
+  "tinyCount": 0,
+  "tiny": [],
+  "lineOver75ch": 0,
+  "lineOver90ch": 0,
+  "lineSample": [
+   {
+    "w": 248,
+    "size": 14,
+    "ch": 35
+   },
+   {
+    "w": 248,
+    "size": 14,
+    "ch": 35
+   },
+   {
+    "w": 240,
+    "size": 14,
+    "ch": 34
+   },
+   {
+    "w": 240,
+    "size": 14,
+    "ch": 34
+   },
+   {
+    "w": 240,
+    "size": 14,
+    "ch": 34
+   }
+  ],
+  "bg": [
+   {
+    "c": "rgb(12, 12, 11)",
+    "area": 853008
+   },
+   {
+    "c": "rgb(197, 225, 165)",
+    "area": 329160
+   },
+   {
+    "c": "rgb(42, 42, 41)",
+    "area": 92212
+   },
+   {
+    "c": "rgba(255, 69, 58, 0.08)",
+    "area": 17100
+   },
+   {
+    "c": "rgb(53, 53, 51)",
+    "area": 9942
+   },
+   {
+    "c": "rgb(255, 159, 10)",
+    "area": 1164
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "area": 49
+   }
+  ],
+  "fg": [
+   {
+    "c": "rgb(255, 255, 255)",
+    "chars": 1361
+   },
+   {
+    "c": "rgb(148, 148, 148)",
+    "chars": 555
+   },
+   {
+    "c": "rgb(199, 199, 199)",
+    "chars": 154
+   },
+   {
+    "c": "rgb(255, 69, 58)",
+    "chars": 10
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "chars": 8
+   }
+  ],
+  "pads": [
+   {
+    "pad": "0/0",
+    "n": 107
+   },
+   {
+    "pad": "9/16",
+    "n": 16
+   },
+   {
+    "pad": "0/10",
+    "n": 10
+   },
+   {
+    "pad": "0/12",
+    "n": 4
+   },
+   {
+    "pad": "0/11",
+    "n": 4
+   },
+   {
+    "pad": "0/16",
+    "n": 3
+   },
+   {
+    "pad": "8/16",
+    "n": 2
+   },
+   {
+    "pad": "10/16",
+    "n": 2
+   },
+   {
+    "pad": "8/8",
+    "n": 1
+   },
+   {
+    "pad": "12/14",
+    "n": 1
+   }
+  ],
+  "padDistinct": 16,
+  "radii": [
+   {
+    "r": 12,
+    "n": 12
+   },
+   {
+    "r": 999,
+    "n": 11
+   },
+   {
+    "r": 8,
+    "n": 5
+   },
+   {
+    "r": 24,
+    "n": 1
+   },
+   {
+    "r": 20,
+    "n": 1
+   }
+  ],
+  "ctrlCount": 22,
+  "ctrlsUnder32": 0,
+  "ctrlsUnder24": [],
+  "overflowCount": 0,
+  "overflowers": [],
+  "rowCount": 36,
+  "rowMedian": 72,
+  "rowMin": 22,
+  "rowMax": 1763,
+  "scrollers": [
+   {
+    "cls": "rows ct-rows",
+    "client": 546,
+    "scroll": 1831
+   }
+  ],
+  "bodyChars": 2218,
+  "firstScreenText": "just now\n⚙︎\nCONTENT\nContent\n1\nMagnets\nStyles\nStrategy\nLEAD MAGNETS\nIvan\nMattan Danino\nDavorin Smit\n1\n1 errored\n⌕\nStatus:\nAny\n⌄\nFormat:\nAny\n⌄\nFilters\n⌄\n194 lead magnets\nLead-magnet ideas\n5\n⌄\n5 lead-magnet rows at reviewing · open one to approve or reject it\nIdea filters\n⌄\n61.9\nThe AI-Native Agency Pipeline Playbook: rebuild content, inbound, and follow-up so the founder is not the bottleneck\nCOMPETITOR\n8d ago\n57\n30 days, one LinkedIn engine: reach, saves, named leads, and buyer-fit share from a live inbound system\nMANUAL\n35d ago\n56\nTurn your client call archive into 6 months of LinkedIn content",
+  "errs": []
+ },
+ {
+  "vp": "m390",
+  "job": "styles",
+  "vw": 390,
+  "docOverflowX": false,
+  "type": [
+   {
+    "k": "-apple-system|400|normal|14|21",
+    "chars": 3546
+   },
+   {
+    "k": "-apple-system|500|normal|16|22",
+    "chars": 222
+   },
+   {
+    "k": "-apple-system|600|normal|11|16",
+    "chars": 136
+   },
+   {
+    "k": "-apple-system|400|normal|13|18.9",
+    "chars": 131
+   },
+   {
+    "k": "-apple-system|400|normal|13|18",
+    "chars": 119
+   },
+   {
+    "k": "-apple-system|500|normal|13|20",
+    "chars": 57
+   },
+   {
+    "k": "-apple-system|600|normal|11|20",
+    "chars": 29
+   },
+   {
+    "k": "ui-monospace|400|normal|13|16",
+    "chars": 15
+   },
+   {
+    "k": "-apple-system|400|normal|14|20",
+    "chars": 10
+   },
+   {
+    "k": "-apple-system|400|normal|13|19.5",
+    "chars": 8
+   },
+   {
+    "k": "-apple-system|400|normal|13|20",
+    "chars": 7
+   },
+   {
+    "k": "-apple-system|600|normal|16|32",
+    "chars": 6
+   },
+   {
+    "k": "-apple-system|400|normal|20|20",
+    "chars": 6
+   },
+   {
+    "k": "-apple-system|400|normal|16|20",
+    "chars": 2
+   },
+   {
+    "k": "-apple-system|600|normal|14|20",
+    "chars": 1
+   },
+   {
+    "k": "-apple-system|400|normal|11|20",
+    "chars": 1
+   }
+  ],
+  "typeDistinct": 16,
+  "tinyCount": 0,
+  "tiny": [],
+  "lineOver75ch": 0,
+  "lineOver90ch": 0,
+  "lineSample": [
+   {
+    "w": 342,
+    "size": 13,
+    "ch": 53
+   },
+   {
+    "w": 282,
+    "size": 14,
+    "ch": 40
+   },
+   {
+    "w": 282,
+    "size": 14,
+    "ch": 40
+   },
+   {
+    "w": 282,
+    "size": 14,
+    "ch": 40
+   },
+   {
+    "w": 282,
+    "size": 14,
+    "ch": 40
+   }
+  ],
+  "bg": [
+   {
+    "c": "rgb(12, 12, 11)",
+    "area": 807092
+   },
+   {
+    "c": "rgb(197, 225, 165)",
+    "area": 329160
+   },
+   {
+    "c": "rgb(42, 42, 41)",
+    "area": 164752
+   },
+   {
+    "c": "rgb(53, 53, 51)",
+    "area": 4884
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "area": 49
+   }
+  ],
+  "fg": [
+   {
+    "c": "rgb(199, 199, 199)",
+    "chars": 3191
+   },
+   {
+    "c": "rgb(148, 148, 148)",
+    "chars": 856
+   },
+   {
+    "c": "rgb(255, 255, 255)",
+    "chars": 241
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "chars": 8
+   }
+  ],
+  "pads": [
+   {
+    "pad": "0/0",
+    "n": 119
+   },
+   {
+    "pad": "11/16",
+    "n": 17
+   },
+   {
+    "pad": "0/12",
+    "n": 4
+   },
+   {
+    "pad": "0/16",
+    "n": 3
+   },
+   {
+    "pad": "10/16",
+    "n": 2
+   },
+   {
+    "pad": "8/8",
+    "n": 1
+   },
+   {
+    "pad": "8/16",
+    "n": 1
+   },
+   {
+    "pad": "0/11",
+    "n": 1
+   },
+   {
+    "pad": "10/10",
+    "n": 1
+   }
+  ],
+  "padDistinct": 9,
+  "radii": [
+   {
+    "r": 12,
+    "n": 20
+   },
+   {
+    "r": 999,
+    "n": 8
+   },
+   {
+    "r": 24,
+    "n": 1
+   }
+  ],
+  "ctrlCount": 8,
+  "ctrlsUnder32": 0,
+  "ctrlsUnder24": [],
+  "overflowCount": 0,
+  "overflowers": [],
+  "rowCount": 22,
+  "rowMedian": 181,
+  "rowMin": 24,
+  "rowMax": 546,
+  "scrollers": [
+   {
+    "cls": "rows ct-rows",
+    "client": 546,
+    "scroll": 3691
+   }
+  ],
+  "bodyChars": 4424,
+  "firstScreenText": "just now\n⚙︎\nCONTENT\nContent\n1\nMagnets\nStyles\nStrategy\nSTYLES\nIvan\nMattan Danino\nDavorin Smit\nEnumerated live from content_prompts. Examples come from Ivan’s published rows, so an empty preview is a designed state — a wrong one would be a lie.\nFilters\n⌄\n17 styles\nIMAGE\nBefore/After\n41d ago\nVisualize a transformation from a current state to a post-intervention state. The contrast carries the story but stays inside the Black Box regulatory grammar, no neon, no stock-c…\n4 published posts\nIMAGE\nConcept Visual\n35d ago\nVersion 3.0 - 2026-07-10 Black Box rewrite; 2026-07-16 de-pharma pass Reskins the ",
+  "errs": []
+ },
+ {
+  "vp": "m390",
+  "job": "strategy",
+  "vw": 390,
+  "docOverflowX": false,
+  "type": [
+   {
+    "k": "-apple-system|400|normal|14|20",
+    "chars": 3914
+   },
+   {
+    "k": "-apple-system|400|normal|11|20",
+    "chars": 119
+   },
+   {
+    "k": "-apple-system|500|normal|13|20",
+    "chars": 57
+   },
+   {
+    "k": "-apple-system|600|normal|11|20",
+    "chars": 29
+   },
+   {
+    "k": "-apple-system|600|normal|16|32",
+    "chars": 8
+   },
+   {
+    "k": "-apple-system|600|normal|11|16",
+    "chars": 7
+   },
+   {
+    "k": "-apple-system|400|normal|20|20",
+    "chars": 6
+   },
+   {
+    "k": "-apple-system|400|normal|16|20",
+    "chars": 2
+   },
+   {
+    "k": "-apple-system|600|normal|14|20",
+    "chars": 1
+   }
+  ],
+  "typeDistinct": 9,
+  "tinyCount": 0,
+  "tiny": [],
+  "lineOver75ch": 0,
+  "lineOver90ch": 0,
+  "lineSample": [
+   {
+    "w": 374,
+    "size": 11,
+    "ch": 68
+   },
+   {
+    "w": 342,
+    "size": 14,
+    "ch": 49
+   },
+   {
+    "w": 342,
+    "size": 14,
+    "ch": 49
+   },
+   {
+    "w": 342,
+    "size": 14,
+    "ch": 49
+   },
+   {
+    "w": 342,
+    "size": 14,
+    "ch": 49
+   }
+  ],
+  "bg": [
+   {
+    "c": "rgb(12, 12, 11)",
+    "area": 807092
+   },
+   {
+    "c": "rgb(197, 225, 165)",
+    "area": 329160
+   },
+   {
+    "c": "rgb(42, 42, 41)",
+    "area": 21351
+   },
+   {
+    "c": "rgb(53, 53, 51)",
+    "area": 5358
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "area": 49
+   }
+  ],
+  "fg": [
+   {
+    "c": "rgb(199, 199, 199)",
+    "chars": 3662
+   },
+   {
+    "c": "rgb(148, 148, 148)",
+    "chars": 235
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "chars": 146
+   },
+   {
+    "c": "rgb(255, 255, 255)",
+    "chars": 100
+   }
+  ],
+  "pads": [
+   {
+    "pad": "0/0",
+    "n": 124
+   },
+   {
+    "pad": "12/16",
+    "n": 8
+   },
+   {
+    "pad": "0/2",
+    "n": 8
+   },
+   {
+    "pad": "0/16",
+    "n": 5
+   },
+   {
+    "pad": "0/12",
+    "n": 4
+   },
+   {
+    "pad": "10/16",
+    "n": 2
+   },
+   {
+    "pad": "8/8",
+    "n": 1
+   },
+   {
+    "pad": "8/16",
+    "n": 1
+   },
+   {
+    "pad": "2/7",
+    "n": 1
+   },
+   {
+    "pad": "9/0",
+    "n": 1
+   }
+  ],
+  "padDistinct": 11,
+  "radii": [
+   {
+    "r": 12,
+    "n": 9
+   },
+   {
+    "r": 999,
+    "n": 7
+   },
+   {
+    "r": 24,
+    "n": 1
+   },
+   {
+    "r": 20,
+    "n": 1
+   },
+   {
+    "r": 8,
+    "n": 1
+   }
+  ],
+  "ctrlCount": 56,
+  "ctrlsUnder32": 40,
+  "ctrlsUnder24": [
+   {
+    "tag": "INPUT",
+    "cls": "wb-strat-t",
+    "w": 241,
+    "h": 20,
+    "label": ""
+   },
+   {
+    "tag": "INPUT",
+    "cls": "wb-strat-t",
+    "w": 241,
+    "h": 20,
+    "label": ""
+   },
+   {
+    "tag": "INPUT",
+    "cls": "wb-strat-t",
+    "w": 241,
+    "h": 20,
+    "label": ""
+   },
+   {
+    "tag": "INPUT",
+    "cls": "wb-strat-t",
+    "w": 241,
+    "h": 20,
+    "label": ""
+   },
+   {
+    "tag": "INPUT",
+    "cls": "wb-strat-t",
+    "w": 137,
+    "h": 20,
+    "label": ""
+   },
+   {
+    "tag": "INPUT",
+    "cls": "wb-strat-t",
+    "w": 241,
+    "h": 20,
+    "label": ""
+   },
+   {
+    "tag": "INPUT",
+    "cls": "wb-strat-t",
+    "w": 241,
+    "h": 20,
+    "label": ""
+   },
+   {
+    "tag": "INPUT",
+    "cls": "wb-strat-t",
+    "w": 241,
+    "h": 20,
+    "label": ""
+   }
+  ],
+  "overflowCount": 0,
+  "overflowers": [],
+  "rowCount": 13,
+  "rowMedian": 194,
+  "rowMin": 32,
+  "rowMax": 826,
+  "scrollers": [
+   {
+    "cls": "rows ct-rows wb-strat",
+    "client": 546,
+    "scroll": 2952
+   }
+  ],
+  "bodyChars": 4271,
+  "firstScreenText": "just now\n⚙︎\nCONTENT\nContent\n1\nMagnets\nStyles\nStrategy\nSTRATEGY\nsaved 1d ago\nIvan\nMattan Danino\nDavorin Smit\n1 of 8 sections still unwritten. Only you can see this. It is never read by the generator and never shown to the client.\n↑\n↓\n+\n×\nThe lane is NARROW\ncontent, LinkedIn as a content surface, getting leads out of content.\nThe gate runs FIRST, before register, voice or format:\n\"Is this about content, LinkedIn, or leads from content, and does the buyer care?\"\nNo = dead, however well it is written.\nOFF-LANE\nkills a draft. Broken 4 times:\n·\nOutreach plumbing — seat caps, message limits, characte",
+  "errs": []
+ },
+ {
+  "vp": "m390",
+  "job": "sends",
+  "vw": 390,
+  "docOverflowX": false,
+  "type": [
+   {
+    "k": "-apple-system|400|normal|13|19.5",
+    "chars": 490
+   },
+   {
+    "k": "-apple-system|500|normal|14|20",
+    "chars": 253
+   },
+   {
+    "k": "-apple-system|400|normal|13|20",
+    "chars": 174
+   },
+   {
+    "k": "-apple-system|600|normal|11|16",
+    "chars": 174
+   },
+   {
+    "k": "-apple-system|600|normal|14|20",
+    "chars": 71
+   },
+   {
+    "k": "-apple-system|600|normal|16|24",
+    "chars": 69
+   },
+   {
+    "k": "-apple-system|600|normal|11|20",
+    "chars": 29
+   },
+   {
+    "k": "-apple-system|500|normal|13|20",
+    "chars": 28
+   },
+   {
+    "k": "-apple-system|600|normal|11|13.8",
+    "chars": 26
+   },
+   {
+    "k": "-apple-system|400|normal|13|18",
+    "chars": 25
+   },
+   {
+    "k": "-apple-system|400|normal|14|20",
+    "chars": 23
+   },
+   {
+    "k": "-apple-system|600|normal|20|24",
+    "chars": 23
+   },
+   {
+    "k": "-apple-system|400|normal|13|16",
+    "chars": 20
+   },
+   {
+    "k": "-apple-system|400|normal|14|21",
+    "chars": 19
+   },
+   {
+    "k": "-apple-system|500|normal|16|20",
+    "chars": 7
+   },
+   {
+    "k": "-apple-system|400|normal|20|20",
+    "chars": 6
+   },
+   {
+    "k": "-apple-system|400|normal|16|20",
+    "chars": 5
+   },
+   {
+    "k": "-apple-system|600|normal|16|32",
+    "chars": 5
+   },
+   {
+    "k": "-apple-system|500|normal|16|24",
+    "chars": 4
+   },
+   {
+    "k": "-apple-system|600|normal|30|32",
+    "chars": 2
+   },
+   {
+    "k": "-apple-system|400|normal|11|20",
+    "chars": 1
+   }
+  ],
+  "typeDistinct": 21,
+  "tinyCount": 0,
+  "tiny": [],
+  "lineOver75ch": 0,
+  "lineOver90ch": 0,
+  "lineSample": [
+   {
+    "w": 310,
+    "size": 13,
+    "ch": 48
+   },
+   {
+    "w": 310,
+    "size": 13,
+    "ch": 48
+   },
+   {
+    "w": 310,
+    "size": 13,
+    "ch": 48
+   }
+  ],
+  "bg": [
+   {
+    "c": "rgb(12, 12, 11)",
+    "area": 809710
+   },
+   {
+    "c": "rgb(31, 31, 31)",
+    "area": 690669
+   },
+   {
+    "c": "rgb(197, 225, 165)",
+    "area": 329160
+   },
+   {
+    "c": "rgb(42, 42, 41)",
+    "area": 28471
+   },
+   {
+    "c": "rgb(53, 53, 51)",
+    "area": 26334
+   },
+   {
+    "c": "rgb(16, 163, 127)",
+    "area": 4447
+   },
+   {
+    "c": "rgb(255, 69, 58)",
+    "area": 2765
+   },
+   {
+    "c": "rgb(255, 255, 255)",
+    "area": 2010
+   },
+   {
+    "c": "rgb(255, 159, 10)",
+    "area": 399
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "area": 349
+   },
+   {
+    "c": "rgb(255, 155, 34)",
+    "area": 300
+   },
+   {
+    "c": "rgb(112, 112, 112)",
+    "area": 185
+   }
+  ],
+  "fg": [
+   {
+    "c": "rgb(148, 148, 148)",
+    "chars": 786
+   },
+   {
+    "c": "rgb(255, 255, 255)",
+    "chars": 431
+   },
+   {
+    "c": "rgb(255, 159, 10)",
+    "chars": 139
+   },
+   {
+    "c": "rgb(199, 199, 199)",
+    "chars": 75
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "chars": 10
+   },
+   {
+    "c": "rgb(255, 155, 34)",
+    "chars": 7
+   },
+   {
+    "c": "rgb(16, 163, 127)",
+    "chars": 6
+   }
+  ],
+  "pads": [
+   {
+    "pad": "0/0",
+    "n": 119
+   },
+   {
+    "pad": "0/16",
+    "n": 11
+   },
+   {
+    "pad": "4/0",
+    "n": 11
+   },
+   {
+    "pad": "24/24",
+    "n": 10
+   },
+   {
+    "pad": "3/8",
+    "n": 8
+   },
+   {
+    "pad": "10/24",
+    "n": 7
+   },
+   {
+    "pad": "14/14",
+    "n": 4
+   },
+   {
+    "pad": "7/0",
+    "n": 3
+   },
+   {
+    "pad": "12/0",
+    "n": 3
+   },
+   {
+    "pad": "8/16",
+    "n": 2
+   }
+  ],
+  "padDistinct": 15,
+  "radii": [
+   {
+    "r": 28,
+    "n": 15
+   },
+   {
+    "r": 8,
+    "n": 10
+   },
+   {
+    "r": 999,
+    "n": 7
+   },
+   {
+    "r": 24,
+    "n": 1
+   },
+   {
+    "r": 10,
+    "n": 1
+   }
+  ],
+  "ctrlCount": 7,
+  "ctrlsUnder32": 0,
+  "ctrlsUnder24": [],
+  "overflowCount": 0,
+  "overflowers": [],
+  "rowCount": 9,
+  "rowMedian": 317,
+  "rowMin": 20,
+  "rowMax": 1419,
+  "scrollers": [
+   {
+    "cls": "rows ov",
+    "client": 552,
+    "scroll": 3067
+   }
+  ],
+  "bodyChars": 1686,
+  "firstScreenText": "just now\n⚙︎\nSENDS\nRange:\n7d\n⌄\n↻\nPipeline health\nIvan\nRise\nArch\nOverview\nLanes\nLog\nDecision\nwhere do I stand right now\nACCEPT\n25%\n28/113 · 7d ▼1 · 30d\nGOVERNOR\n111/280\nNORMAL · 18 left today\nRUNWAY\n0d\n4 sendable\nREFILL\n1.22x\n138 in / 113 out · 7d\nFunnel\nlast 7d\n113\nSENT\n25%\n→\n28\nACCEPTED\n·\n14\nCONVOS\n·\n0\nCALLS\nEra totals · convos 80 · calls 1 · convos = replied at least once, optouts excluded.\n30d · accepted 137/520 · scan opens 7d 18 / 30d 265 · 67 prospects · last 9h ago\nIvan scope counts the warm-lane era only (since 07-11); Rise counts full history. Recent sends are still maturing — accept r",
+  "errs": []
+ },
+ {
+  "vp": "m390",
+  "job": "ops",
+  "vw": 390,
+  "docOverflowX": false,
+  "type": [
+   {
+    "k": "-apple-system|400|normal|14|21",
+    "chars": 4380
+   },
+   {
+    "k": "-apple-system|400|normal|13|18",
+    "chars": 1495
+   },
+   {
+    "k": "-apple-system|400|normal|13|19.5",
+    "chars": 313
+   },
+   {
+    "k": "-apple-system|400|normal|14|20",
+    "chars": 274
+   },
+   {
+    "k": "-apple-system|500|normal|14|20",
+    "chars": 108
+   },
+   {
+    "k": "-apple-system|600|normal|11|16",
+    "chars": 90
+   },
+   {
+    "k": "-apple-system|500|normal|16|24",
+    "chars": 62
+   },
+   {
+    "k": "-apple-system|600|normal|11|20",
+    "chars": 45
+   },
+   {
+    "k": "-apple-system|400|normal|13|20",
+    "chars": 34
+   },
+   {
+    "k": "-apple-system|600|normal|16|24",
+    "chars": 30
+   },
+   {
+    "k": "-apple-system|400|normal|20|20",
+    "chars": 6
+   },
+   {
+    "k": "-apple-system|400|normal|16|20",
+    "chars": 3
+   },
+   {
+    "k": "-apple-system|600|normal|16|32",
+    "chars": 3
+   },
+   {
+    "k": "ui-monospace|400|normal|13|20",
+    "chars": 2
+   },
+   {
+    "k": "ui-monospace|500|normal|13|18",
+    "chars": 1
+   }
+  ],
+  "typeDistinct": 15,
+  "tinyCount": 0,
+  "tiny": [],
+  "lineOver75ch": 0,
+  "lineOver90ch": 0,
+  "lineSample": [
+   {
+    "w": 342,
+    "size": 13,
+    "ch": 53
+   },
+   {
+    "w": 342,
+    "size": 13,
+    "ch": 53
+   },
+   {
+    "w": 314,
+    "size": 13,
+    "ch": 48
+   },
+   {
+    "w": 314,
+    "size": 14,
+    "ch": 45
+   },
+   {
+    "w": 314,
+    "size": 14,
+    "ch": 45
+   }
+  ],
+  "bg": [
+   {
+    "c": "rgb(31, 31, 31)",
+    "area": 2266776
+   },
+   {
+    "c": "rgb(12, 12, 11)",
+    "area": 897864
+   },
+   {
+    "c": "rgb(197, 225, 165)",
+    "area": 329160
+   },
+   {
+    "c": "rgb(42, 42, 41)",
+    "area": 34398
+   },
+   {
+    "c": "rgb(255, 255, 255)",
+    "area": 1156
+   },
+   {
+    "c": "rgb(53, 53, 51)",
+    "area": 822
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "area": 85
+   }
+  ],
+  "fg": [
+   {
+    "c": "rgb(255, 255, 255)",
+    "chars": 4214
+   },
+   {
+    "c": "rgb(148, 148, 148)",
+    "chars": 1959
+   },
+   {
+    "c": "rgb(199, 199, 199)",
+    "chars": 340
+   },
+   {
+    "c": "rgb(255, 159, 10)",
+    "chars": 327
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "chars": 4
+   },
+   {
+    "c": "rgb(23, 23, 23)",
+    "chars": 2
+   }
+  ],
+  "pads": [
+   {
+    "pad": "0/0",
+    "n": 178
+   },
+   {
+    "pad": "2/0",
+    "n": 19
+   },
+   {
+    "pad": "10/16",
+    "n": 18
+   },
+   {
+    "pad": "2/14",
+    "n": 14
+   },
+   {
+    "pad": "10/0",
+    "n": 11
+   },
+   {
+    "pad": "12/0",
+    "n": 7
+   },
+   {
+    "pad": "4/16",
+    "n": 3
+   },
+   {
+    "pad": "8/8",
+    "n": 1
+   },
+   {
+    "pad": "8/16",
+    "n": 1
+   },
+   {
+    "pad": "40/16",
+    "n": 1
+   }
+  ],
+  "padDistinct": 15,
+  "radii": [
+   {
+    "r": 8,
+    "n": 18
+   },
+   {
+    "r": 20,
+    "n": 14
+   },
+   {
+    "r": 12,
+    "n": 3
+   },
+   {
+    "r": 24,
+    "n": 1
+   }
+  ],
+  "ctrlCount": 2,
+  "ctrlsUnder32": 0,
+  "ctrlsUnder24": [],
+  "overflowCount": 0,
+  "overflowers": [],
+  "rowCount": 16,
+  "rowMedian": 233,
+  "rowMin": 34,
+  "rowMax": 4443,
+  "scrollers": [
+   {
+    "cls": "rows ops-rows",
+    "client": 640,
+    "scroll": 6434
+   }
+  ],
+  "bodyChars": 7048,
+  "firstScreenText": "just now\n⚙︎\nOPS\nIM\nNothing waiting on you — and this is a live read, not a stall.\nComment replies, newsjacks, weekly reports and escalations all clear.\nChecked 10s ago\nAlready handled\nDone · 10\n⌄\nREPLY\nRise\nThanks! :)\nyday\nREPLY\nRise\nYes indeed!\n2d\nBOOKED\n#C0BJ72F58BY\nNew call booked with Deekshita Bisht (ArthCrafted), from the LinkedIn lane. Friday, August 21 at 11:00 AM PT · 2:00 PM ET. Pre-call brief here: https://resources.risedtc.com/brief/?id=115104103253&k=YUKtpznXrmDCgwJoHDVSkneTKOCAN8aj\n2d\nREPLY\nRise\nVery interesting. Data problem more than an org problem tho\n2d\nBOOKED\n#C0BJ72F58BY\nNe",
+  "errs": []
+ },
+ {
+  "vp": "m390",
+  "job": "settings",
+  "vw": 390,
+  "docOverflowX": false,
+  "type": [
+   {
+    "k": "-apple-system|400|normal|13|19.5",
+    "chars": 283
+   },
+   {
+    "k": "-apple-system|500|normal|14|21",
+    "chars": 46
+   },
+   {
+    "k": "-apple-system|600|normal|11|20",
+    "chars": 29
+   },
+   {
+    "k": "-apple-system|600|normal|16|24",
+    "chars": 23
+   },
+   {
+    "k": "-apple-system|400|normal|14|20",
+    "chars": 12
+   },
+   {
+    "k": "-apple-system|500|normal|13|20",
+    "chars": 9
+   },
+   {
+    "k": "-apple-system|600|normal|11|16",
+    "chars": 8
+   },
+   {
+    "k": "-apple-system|600|normal|16|32",
+    "chars": 8
+   },
+   {
+    "k": "-apple-system|400|normal|20|20",
+    "chars": 6
+   },
+   {
+    "k": "-apple-system|400|normal|16|20",
+    "chars": 4
+   }
+  ],
+  "typeDistinct": 10,
+  "tinyCount": 0,
+  "tiny": [],
+  "lineOver75ch": 0,
+  "lineOver90ch": 0,
+  "lineSample": [
+   {
+    "w": 308,
+    "size": 13,
+    "ch": 47
+   },
+   {
+    "w": 308,
+    "size": 13,
+    "ch": 47
+   }
+  ],
+  "bg": [
+   {
+    "c": "rgb(12, 12, 11)",
+    "area": 872168
+   },
+   {
+    "c": "rgb(197, 225, 165)",
+    "area": 329160
+   },
+   {
+    "c": "rgb(31, 31, 31)",
+    "area": 133551
+   },
+   {
+    "c": "rgb(53, 53, 51)",
+    "area": 3190
+   },
+   {
+    "c": "rgb(42, 42, 41)",
+    "area": 2368
+   },
+   {
+    "c": "rgb(255, 255, 255)",
+    "area": 1885
+   },
+   {
+    "c": "rgb(184, 255, 102)",
+    "area": 1630
+   }
+  ],
+  "fg": [
+   {
+    "c": "rgb(148, 148, 148)",
+    "chars": 339
+   },
+   {
+    "c": "rgb(255, 255, 255)",
+    "chars": 75
+   },
+   {
+    "c": "rgb(255, 69, 58)",
+    "chars": 8
+   },
+   {
+    "c": "rgb(199, 199, 199)",
+    "chars": 4
+   },
+   {
+    "c": "rgb(23, 23, 23)",
+    "chars": 2
+   }
+  ],
+  "pads": [
+   {
+    "pad": "0/0",
+    "n": 34
+   },
+   {
+    "pad": "12/16",
+    "n": 5
+   },
+   {
+    "pad": "4/16",
+    "n": 2
+   },
+   {
+    "pad": "6/0",
+    "n": 2
+   },
+   {
+    "pad": "8/8",
+    "n": 1
+   },
+   {
+    "pad": "8/16",
+    "n": 1
+   },
+   {
+    "pad": "10/16",
+    "n": 1
+   },
+   {
+    "pad": "2/0",
+    "n": 1
+   },
+   {
+    "pad": "10/22",
+    "n": 1
+   },
+   {
+    "pad": "10/10",
+    "n": 1
+   }
+  ],
+  "padDistinct": 10,
+  "radii": [
+   {
+    "r": 20,
+    "n": 3
+   },
+   {
+    "r": 999,
+    "n": 2
+   },
+   {
+    "r": 24,
+    "n": 1
+   },
+   {
+    "r": 12,
+    "n": 1
+   },
+   {
+    "r": 10,
+    "n": 1
+   }
+  ],
+  "ctrlCount": 1,
+  "ctrlsUnder32": 1,
+  "ctrlsUnder24": [],
+  "overflowCount": 0,
+  "overflowers": [],
+  "rowCount": 13,
+  "rowMedian": 68,
+  "rowMin": 34,
+  "rowMax": 640,
+  "scrollers": [],
+  "bodyChars": 459,
+  "firstScreenText": "SETTINGS\njust now\nDone\nSETTINGS\nIM\nNotifications\nPush notifications\nNotifications are blocked for this site — allow them in browser settings, then toggle on.\nNew-reply sound\nChime when a reply lands while the app is open.\nDesktop sound for pushes comes from the system: macOS Settings → Notifications → your browser → turn on \"Play sound for notifications\".\nAppearance\nTheme\nDark\nLight\nSign out\nBuild 6db1ae7\n☼\nToday\n◉\n9\nDMs\n▤\n1\nContent\n↑\nSends\n◈\nOps\n✳\nClaude",
+  "errs": []
+ },
+ {
+  "vp": "t1024",
+  "job": "today",
+  "vw": 1024,
+  "docOverflowX": false,
+  "bodyChars": 7647,
+  "errs": []
+ },
+ {
+  "vp": "t1024",
+  "job": "dms",
+  "vw": 1024,
+  "docOverflowX": false,
+  "bodyChars": 1381,
+  "errs": []
+ },
+ {
+  "vp": "t1024",
+  "job": "content",
+  "vw": 1024,
+  "docOverflowX": false,
+  "bodyChars": 672,
+  "errs": []
+ },
+ {
+  "vp": "t1024",
+  "job": "magnets",
+  "vw": 1024,
+  "docOverflowX": false,
+  "bodyChars": 2265,
+  "errs": []
+ },
+ {
+  "vp": "t1024",
+  "job": "styles",
+  "vw": 1024,
+  "docOverflowX": false,
+  "bodyChars": 4471,
+  "errs": []
+ },
+ {
+  "vp": "t1024",
+  "job": "strategy",
+  "vw": 1024,
+  "docOverflowX": false,
+  "bodyChars": 4318,
+  "errs": []
+ },
+ {
+  "vp": "t1024",
+  "job": "sends",
+  "vw": 1024,
+  "docOverflowX": false,
+  "bodyChars": 1775,
+  "errs": []
+ },
+ {
+  "vp": "t1024",
+  "job": "ops",
+  "vw": 1024,
+  "docOverflowX": false,
+  "bodyChars": 7134,
+  "errs": []
+ },
+ {
+  "vp": "t1024",
+  "job": "settings",
+  "vw": 1024,
+  "docOverflowX": false,
+  "bodyChars": 534,
+  "errs": []
+ },
+ {
+  "vp": "w2560",
+  "job": "today",
+  "vw": 2560,
+  "docOverflowX": false,
+  "bodyChars": 7647,
+  "errs": []
+ },
+ {
+  "vp": "w2560",
+  "job": "dms",
+  "vw": 2560,
+  "docOverflowX": false,
+  "bodyChars": 1381,
+  "errs": []
+ },
+ {
+  "vp": "w2560",
+  "job": "content",
+  "vw": 2560,
+  "docOverflowX": false,
+  "bodyChars": 703,
+  "errs": []
+ },
+ {
+  "vp": "w2560",
+  "job": "magnets",
+  "vw": 2560,
+  "docOverflowX": false,
+  "bodyChars": 2265,
+  "errs": []
+ },
+ {
+  "vp": "w2560",
+  "job": "styles",
+  "vw": 2560,
+  "docOverflowX": false,
+  "bodyChars": 4471,
+  "errs": []
+ },
+ {
+  "vp": "w2560",
+  "job": "strategy",
+  "vw": 2560,
+  "docOverflowX": false,
+  "bodyChars": 4318,
+  "errs": []
+ },
+ {
+  "vp": "w2560",
+  "job": "sends",
+  "vw": 2560,
+  "docOverflowX": false,
+  "bodyChars": 1775,
+  "errs": []
+ },
+ {
+  "vp": "w2560",
+  "job": "ops",
+  "vw": 2560,
+  "docOverflowX": false,
+  "bodyChars": 7134,
+  "errs": []
+ },
+ {
+  "vp": "w2560",
+  "job": "settings",
+  "vw": 2560,
+  "docOverflowX": false,
+  "bodyChars": 534,
+  "errs": []
+ }
+]

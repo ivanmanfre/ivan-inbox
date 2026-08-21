@@ -1,0 +1,130 @@
+
+### A1-thread-open
+{"typeN":17,"top":["14/21/400=951","13/18/400=829","14/20/400=224","14/20/500=163","11/16/600=52","11/20/600=27"],"tinyN":0,"tiny":[],"longN":0,"maxCh":0,"overN":0,"over":[],"ctrlN":12,"u32":1,"u24":[{"h":17,"w":152,"l":"https://startupcpg"}],"panes":[{"c":"","w":1440},{"c":"app dt wb wb-wide","w":1440},{"c":"wb-plate","w":1400},{"c":"wb-rail","w":216},{"c":"wb-rail-jobs","w":188},{"c":"wb-regions peers-1","w":1184},{"c":"wb-work list","w":592},{"c":"rows","w":591}],"chars":2499,"head":"IM | Workbench | « | ☼ | Today | ◉ | DMs | 8 | CONTENT | ▤ | Content | 1 | ▦ | Magnets | ▧ | Styles | ◎ | Strategy | ↑ | Sends | ◈ | Ops | ✳ | Claude | Dock it beside your work | ⚙︎ | Settings | 7s ago | ↻ | DMS | 🔍 | All | ·8 | Ivan | Rise | Arch | Email | 2 drafts pushed to later · next is Lindsay, in 3 days | Open | EM | in | Elijah Dav"}
+
+### A2-context-sheet
+  FAILED: Error: no thread header
+
+### A3-dm-history
+{"typeN":17,"top":["14/20/400=54985","14/21/400=951","13/18/400=829","11/20/600=453","11/11/400=422","14/20/500=163"],"tinyN":0,"tiny":[],"longN":0,"maxCh":0,"overN":0,"over":[],"ctrlN":225,"u32":1,"u24":[{"h":17,"w":152,"l":"https://startupcpg"}],"panes":[{"c":"","w":1440},{"c":"app dt wb wb-wide","w":1440},{"c":"wb-plate","w":1400},{"c":"wb-rail","w":216},{"c":"wb-rail-jobs","w":188},{"c":"wb-regions peers-1","w":1184},{"c":"wb-work list","w":592},{"c":"rows","w":591}],"chars":59452,"head":"IM | Workbench | « | ☼ | Today | ◉ | DMs | 8 | CONTENT | ▤ | Content | 1 | ▦ | Magnets | ▧ | Styles | ◎ | Strategy | ↑ | Sends | ◈ | Ops | ✳ | Claude | Dock it beside your work | ⚙︎ | Settings | 7s ago | ↻ | DMS | 🔍 | All | ·8 | Ivan | Rise | Arch | Email | 2 drafts pushed to later · next is Lindsay, in 3 days | Open | EM | in | Elijah Dav"}
+
+### A4-pushed-later
+{"typeN":17,"top":["14/20/400=55100","13/18/400=829","14/21/400=622","11/20/600=453","11/11/400=422","14/20/500=163"],"tinyN":0,"tiny":[],"longN":0,"maxCh":0,"overN":0,"over":[],"ctrlN":226,"u32":0,"u24":[],"panes":[{"c":"","w":1440},{"c":"app dt wb wb-wide","w":1440},{"c":"wb-plate","w":1400},{"c":"wb-rail","w":216},{"c":"wb-rail-jobs","w":188},{"c":"wb-regions peers-1","w":1184},{"c":"wb-work list","w":592},{"c":"rows","w":591}],"chars":59118,"head":"IM | Workbench | « | ☼ | Today | ◉ | DMs | 8 | CONTENT | ▤ | Content | 1 | ▦ | Magnets | ▧ | Styles | ◎ | Strategy | ↑ | Sends | ◈ | Ops | ✳ | Claude | Dock it beside your work | ⚙︎ | Settings | 25s ago | ↻ | DMS | 🔍 | All | ·8 | Ivan | Rise | Arch | Email | 2 drafts pushed to later · next is Lindsay, in 3 days | Open | EM | in | Elijah Da"}
+
+### A5-search
+{"typeN":17,"top":["14/20/400=55110","13/18/400=2065","14/21/400=622","11/20/600=471","11/11/400=440","14/20/500=274"],"tinyN":0,"tiny":[],"longN":0,"maxCh":0,"overN":0,"over":[],"ctrlN":226,"u32":0,"u24":[],"panes":[{"c":"","w":1440},{"c":"app dt wb wb-wide","w":1440},{"c":"wb-plate","w":1400},{"c":"wb-rail","w":216},{"c":"wb-rail-jobs","w":188},{"c":"wb-regions peers-1","w":1184},{"c":"wb-work list","w":592},{"c":"rows","w":591}],"chars":60628,"head":"IM | Workbench | « | ☼ | Today | ◉ | DMs | 8 | CONTENT | ▤ | Content | 1 | ▦ | Magnets | ▧ | Styles | ◎ | Strategy | ↑ | Sends | ◈ | Ops | ✳ | Claude | Dock it beside your work | ⚙︎ | Settings | 25s ago | ↻ | DMS | 🔍 | ✕ | All | ·8 | Ivan | Rise | Arch | Email | 2 drafts pushed to later · next is Lindsay, in 3 days | Open | RG | in | Rama Gi"}
+
+### A6-filter-rise
+{"typeN":17,"top":["14/20/400=11887","13/18/400=1528","14/21/400=622","14/20/500=268","11/20/600=177","11/11/400=168"],"tinyN":0,"tiny":[],"longN":0,"maxCh":0,"overN":0,"over":[],"ctrlN":78,"u32":0,"u24":[],"panes":[{"c":"","w":1440},{"c":"app dt wb wb-wide","w":1440},{"c":"wb-plate","w":1400},{"c":"wb-rail","w":216},{"c":"wb-rail-jobs","w":188},{"c":"wb-regions peers-1","w":1184},{"c":"wb-work list","w":592},{"c":"rows","w":591}],"chars":15389,"head":"IM | Workbench | « | ☼ | Today | ◉ | DMs | 8 | CONTENT | ▤ | Content | 1 | ▦ | Magnets | ▧ | Styles | ◎ | Strategy | ↑ | Sends | ◈ | Ops | ✳ | Claude | Dock it beside your work | ⚙︎ | Settings | 42s ago | ↻ | DMS | 🔍 | ✕ | All | ·8 | Ivan | Rise | Arch | Email | RG | in | Rama Ginde | RISE | DM | You: Great to be connected, Rama. Is Satya Blen"}
+
+### A7-filter-email
+{"typeN":17,"top":["14/20/400=16564","13/18/400=992","14/21/400=622","14/20/500=67","11/20/600=63","11/11/400=30"],"tinyN":0,"tiny":[],"longN":0,"maxCh":0,"overN":0,"over":[],"ctrlN":36,"u32":0,"u24":[],"panes":[{"c":"","w":1440},{"c":"app dt wb wb-wide","w":1440},{"c":"wb-plate","w":1400},{"c":"wb-rail","w":216},{"c":"wb-rail-jobs","w":188},{"c":"wb-regions peers-1","w":1184},{"c":"wb-work list","w":592},{"c":"rows","w":591}],"chars":18592,"head":"IM | Workbench | « | ☼ | Today | ◉ | DMs | 8 | CONTENT | ▤ | Content | 1 | ▦ | Magnets | ▧ | Styles | ◎ | Strategy | ↑ | Sends | ◈ | Ops | ✳ | Claude | Dock it beside your work | ⚙︎ | Settings | 44s ago | ↻ | DMS | 🔍 | ✕ | All | ·8 | Ivan | Rise | Arch | Email | MC | ✉ | Matt Cope | IVAN | EMAIL | Subject: your scan, built off your LinkedIn He"}
+
+### B1-ideas
+  FAILED: TimeoutError: locator.click: Timeout 5000ms exceeded.
+Call log:
+  - waiting for getByRole('button', { name: /^Ideas/ }).first()
+
+
+### B2-errors
+  FAILED: TimeoutError: locator.click: Timeout 5000ms exceeded.
+Call log:
+  - waiting for getByRole('button', { name: /^Errors/ }).first()
+
+
+### B3-published
+  FAILED: TimeoutError: locator.click: Timeout 5000ms exceeded.
+Call log:
+  - waiting for getByRole('button', { name: /^Published/ }).first(
+
+### B4-archived
+  FAILED: TimeoutError: locator.click: Timeout 5000ms exceeded.
+Call log:
+  - waiting for getByRole('button', { name: /^Archived/ }).first()
+
+### B5-calendar
+{"typeN":20,"top":["14/20/400=1153","13/20/400=186","13/20/500=69","14/20/500=58","11/20/600=48","13/19.5/400=24"],"tinyN":0,"tiny":[],"longN":0,"maxCh":0,"overN":0,"over":[],"ctrlN":23,"u32":1,"u24":[],"panes":[{"c":"","w":1440},{"c":"app dt wb wb-wide","w":1440},{"c":"wb-plate","w":1400},{"c":"wb-rail","w":216},{"c":"wb-rail-jobs","w":188},{"c":"wb-regions peers-0","w":1184},{"c":"wb-work wide wb-solo","w":1184},{"c":"rows ct-rows","w":1184}],"chars":1282,"head":"IM | Workbench | « | ☼ | Today | ◉ | DMs | 8 | CONTENT | ▤ | Content | 1 | ▦ | Magnets | ▧ | Styles | ◎ | Strategy | ↑ | Sends | ◈ | Ops | ✳ | Claude | Dock it beside your work | ⚙︎ | Settings | just now | ↻ | Ivan | Mattan Danino | Davorin Smit | Flow | Calendar | Gen | 0 | Review | 1 | Appr | 0 | Sched | 1 | ⌕ | Filters | ⌄ | ‹ | August 2026 | › | Toda"}
+
+### B6-mattan-lane
+{"typeN":20,"top":["14/20/400=1657","13/20/400=261","13/20/500=69","14/20/500=58","11/20/600=30","13/19.5/400=24"],"tinyN":0,"tiny":[],"longN":0,"maxCh":0,"overN":0,"over":[],"ctrlN":46,"u32":8,"u24":[],"panes":[{"c":"","w":1440},{"c":"app dt wb wb-wide","w":1440},{"c":"wb-plate","w":1400},{"c":"wb-rail","w":216},{"c":"wb-rail-jobs","w":188},{"c":"wb-regions peers-0","w":1184},{"c":"wb-work wide wb-solo","w":1184},{"c":"rows ct-rows","w":1184}],"chars":1899,"head":"IM | Workbench | « | ☼ | Today | ◉ | DMs | 8 | CONTENT | ▤ | Content | 1 | ▦ | Magnets | ▧ | Styles | ◎ | Strategy | ↑ | Sends | ◈ | Ops | ✳ | Claude | Dock it beside your work | ⚙︎ | Settings | 37s ago | ↻ | Ivan | Mattan Danino | Davorin Smit | Flow | Calendar | 49 | /150 on his board | ⌕ | Filters | ⌄ | ‹ | August 2026 | › | Today | 27 | dated"}
+
+### B7-davorin-lane
+{"typeN":19,"top":["14/20/400=533","13/20/400=131","13/20/500=69","14/20/500=58","11/20/600=30","13/19.5/400=24"],"tinyN":0,"tiny":[],"longN":0,"maxCh":0,"overN":0,"over":[],"ctrlN":12,"u32":0,"u24":[],"panes":[{"c":"","w":1440},{"c":"app dt wb wb-wide","w":1440},{"c":"wb-plate","w":1400},{"c":"wb-rail","w":216},{"c":"wb-rail-jobs","w":188},{"c":"wb-regions peers-0","w":1184},{"c":"wb-work wide wb-solo","w":1184},{"c":"rows ct-rows","w":1184}],"chars":538,"head":"IM | Workbench | « | ☼ | Today | ◉ | DMs | 8 | CONTENT | ▤ | Content | 1 | ▦ | Magnets | ▧ | Styles | ◎ | Strategy | ↑ | Sends | ◈ | Ops | ✳ | Claude | Dock it beside your work | ⚙︎ | Settings | 39s ago | ↻ | Ivan | Mattan Danino | Davorin Smit | Flow | Calendar | 8 | /59 on his board | ⌕ | Filters | ⌄ | ‹ | August 2026 | › | Today | 1 | dated th"}
+
+### B8-filters-open
+{"typeN":19,"top":["14/20/400=759","13/20/400=131","13/20/500=69","14/20/500=58","11/16/600=44","11/20/600=30"],"tinyN":0,"tiny":[],"longN":0,"maxCh":0,"overN":0,"over":[],"ctrlN":35,"u32":0,"u24":[],"panes":[{"c":"","w":1440},{"c":"app dt wb wb-wide","w":1440},{"c":"wb-plate","w":1400},{"c":"wb-rail","w":216},{"c":"wb-rail-jobs","w":188},{"c":"wb-regions peers-0","w":1184},{"c":"wb-work wide wb-solo","w":1184},{"c":"rows ct-rows","w":1184}],"chars":854,"head":"IM | Workbench | « | ☼ | Today | ◉ | DMs | 8 | CONTENT | ▤ | Content | 1 | ▦ | Magnets | ▧ | Styles | ◎ | Strategy | ↑ | Sends | ◈ | Ops | ✳ | Claude | Dock it beside your work | ⚙︎ | Settings | 39s ago | ↻ | Ivan | Mattan Danino | Davorin Smit | Flow | Calendar | 8 | /59 on his board | ⌕ | Filters | ⌄ | STAGE | Any stage | Needs review | 39 | "}
+
+### C0-open-draft
+{"typeN":28,"top":["13/19.5/400=21084","14/21/400=17668","14/20/400=4994","13.5/21.3/400=780","11/20/400=202","14/22/500=116"],"tinyN":2,"tiny":[{"cls":"li-r","size":10},{"cls":"li-r","size":10}],"longN":1,"maxCh":87,"overN":0,"over":[],"ctrlN":36,"u32":5,"u24":[],"panes":[{"c":"","w":1440},{"c":"app dt wb wb-wide","w":1440},{"c":"wb-plate","w":1400},{"c":"wb-rail","w":216},{"c":"wb-rail-jobs","w":188},{"c":"wb-regions peers-0","w":1184},{"c":"wb-work wide wb-solo","w":1184},{"c":"rows ct-rows","w":1184}],"chars":4044,"head":"IM | Workbench | « | ☼ | Today | ◉ | DMs | 8 | CONTENT | ▤ | Content | 1 | ▦ | Magnets | ▧ | Styles | ◎ | Strategy | ↑ | Sends | ◈ | Ops | ✳ | Claude | Dock it beside your work | ⚙︎ | Settings | 8s ago | ↻ | Ivan | Mattan Danino | Davorin Smit | Flow | Calendar | ⌕ | Filters | ⌄ | Ideas | 82 | Needs review | 1 | Generating | 0 | Approved | 0 | Sche"}
+
+### C-tab-Artifact
+  FAILED: TimeoutError: locator.click: Timeout 4000ms exceeded.
+Call log:
+  - waiting for getByRole('button', { name: /^Artifact$/i }).first
+
+### C-tab-Fields
+{"typeN":28,"top":["13/19.5/400=21084","14/21/400=17668","14/20/400=4994","13.5/21.3/400=780","11/20/400=202","14/22/500=116"],"tinyN":2,"tiny":[{"cls":"li-r","size":10},{"cls":"li-r","size":10}],"longN":1,"maxCh":87,"overN":0,"over":[],"ctrlN":36,"u32":5,"u24":[],"panes":[{"c":"","w":1440},{"c":"app dt wb wb-wide","w":1440},{"c":"wb-plate","w":1400},{"c":"wb-rail","w":216},{"c":"wb-rail-jobs","w":188},{"c":"wb-regions peers-0","w":1184},{"c":"wb-work wide wb-solo","w":1184},{"c":"rows ct-rows","w":1184}],"chars":4044,"head":"IM | Workbench | « | ☼ | Today | ◉ | DMs | 8 | CONTENT | ▤ | Content | 1 | ▦ | Magnets | ▧ | Styles | ◎ | Strategy | ↑ | Sends | ◈ | Ops | ✳ | Claude | Dock it beside your work | ⚙︎ | Settings | 8s ago | ↻ | Ivan | Mattan Danino | Davorin Smit | Flow | Calendar | ⌕ | Filters | ⌄ | Ideas | 82 | Needs review | 1 | Generating | 0 | Approved | 0 | Sche"}
+
+### C-tab-Source
+{"typeN":28,"top":["13/19.5/400=21084","14/21/400=17668","14/20/400=4994","13.5/21.3/400=780","11/20/400=202","14/22/500=116"],"tinyN":2,"tiny":[{"cls":"li-r","size":10},{"cls":"li-r","size":10}],"longN":1,"maxCh":87,"overN":0,"over":[],"ctrlN":36,"u32":5,"u24":[],"panes":[{"c":"","w":1440},{"c":"app dt wb wb-wide","w":1440},{"c":"wb-plate","w":1400},{"c":"wb-rail","w":216},{"c":"wb-rail-jobs","w":188},{"c":"wb-regions peers-0","w":1184},{"c":"wb-work wide wb-solo","w":1184},{"c":"rows ct-rows","w":1184}],"chars":4044,"head":"IM | Workbench | « | ☼ | Today | ◉ | DMs | 8 | CONTENT | ▤ | Content | 1 | ▦ | Magnets | ▧ | Styles | ◎ | Strategy | ↑ | Sends | ◈ | Ops | ✳ | Claude | Dock it beside your work | ⚙︎ | Settings | 8s ago | ↻ | Ivan | Mattan Danino | Davorin Smit | Flow | Calendar | ⌕ | Filters | ⌄ | Ideas | 82 | Needs review | 1 | Generating | 0 | Approved | 0 | Sche"}
+
+### C-tab-Log
+{"typeN":28,"top":["13/19.5/400=21084","14/21/400=17668","14/20/400=4994","13.5/21.3/400=780","11/20/400=202","14/22/500=116"],"tinyN":2,"tiny":[{"cls":"li-r","size":10},{"cls":"li-r","size":10}],"longN":1,"maxCh":87,"overN":0,"over":[],"ctrlN":36,"u32":5,"u24":[],"panes":[{"c":"","w":1440},{"c":"app dt wb wb-wide","w":1440},{"c":"wb-plate","w":1400},{"c":"wb-rail","w":216},{"c":"wb-rail-jobs","w":188},{"c":"wb-regions peers-0","w":1184},{"c":"wb-work wide wb-solo","w":1184},{"c":"rows ct-rows","w":1184}],"chars":4044,"head":"IM | Workbench | « | ☼ | Today | ◉ | DMs | 8 | CONTENT | ▤ | Content | 1 | ▦ | Magnets | ▧ | Styles | ◎ | Strategy | ↑ | Sends | ◈ | Ops | ✳ | Claude | Dock it beside your work | ⚙︎ | Settings | 8s ago | ↻ | Ivan | Mattan Danino | Davorin Smit | Flow | Calendar | ⌕ | Filters | ⌄ | Ideas | 82 | Needs review | 1 | Generating | 0 | Approved | 0 | Sche"}
+
+### C-tab-QA
+{"typeN":28,"top":["13/19.5/400=21084","14/21/400=17668","14/20/400=4994","13.5/21.3/400=780","11/20/400=202","14/22/500=116"],"tinyN":2,"tiny":[{"cls":"li-r","size":10},{"cls":"li-r","size":10}],"longN":1,"maxCh":87,"overN":0,"over":[],"ctrlN":36,"u32":5,"u24":[],"panes":[{"c":"","w":1440},{"c":"app dt wb wb-wide","w":1440},{"c":"wb-plate","w":1400},{"c":"wb-rail","w":216},{"c":"wb-rail-jobs","w":188},{"c":"wb-regions peers-0","w":1184},{"c":"wb-work wide wb-solo","w":1184},{"c":"rows ct-rows","w":1184}],"chars":4044,"head":"IM | Workbench | « | ☼ | Today | ◉ | DMs | 8 | CONTENT | ▤ | Content | 1 | ▦ | Magnets | ▧ | Styles | ◎ | Strategy | ↑ | Sends | ◈ | Ops | ✳ | Claude | Dock it beside your work | ⚙︎ | Settings | 8s ago | ↻ | Ivan | Mattan Danino | Davorin Smit | Flow | Calendar | ⌕ | Filters | ⌄ | Ideas | 82 | Needs review | 1 | Generating | 0 | Approved | 0 | Sche"}
+
+### D1-magnet-window
+{"typeN":32,"top":["13.5/21.3/400=1370","14/22/500=1285","13/18/400=1041","13/19.5/400=292","11/16/600=182","14/21/400=167"],"tinyN":2,"tiny":[{"cls":"li-r","size":10},{"cls":"li-r","size":10}],"longN":5,"maxCh":151,"overN":0,"over":[],"ctrlN":39,"u32":0,"u24":[],"panes":[{"c":"","w":1440},{"c":"app dt wb wb-wide","w":1440},{"c":"wb-plate","w":1400},{"c":"wb-rail","w":216},{"c":"wb-rail-jobs","w":188},{"c":"wb-regions peers-0","w":1184},{"c":"wb-work wide wb-solo","w":1184},{"c":"rows ct-rows","w":1184}],"chars":5343,"head":"IM | Workbench | « | ☼ | Today | ◉ | DMs | 8 | CONTENT | ▤ | Content | 1 | ▦ | Magnets | ▧ | Styles | ◎ | Strategy | ↑ | Sends | ◈ | Ops | ✳ | Claude | Dock it beside your work | ⚙︎ | Settings | 10s ago | ↻ | LEAD MAGNETS | Ivan | Mattan Danino | Davorin Smit | 1 | 1 errored | ⌕ | Status: | Any | ⌄ | Format: | Any | ⌄ | Filters | ⌄ | 194 lead mag"}
+
+### D2-magnet-published
+  FAILED: TimeoutError: locator.click: Timeout 5000ms exceeded.
+Call log:
+  - waiting for getByRole('button', { name: /^Published/ }).first(
+
+### E1-lanes
+{"typeN":11,"top":["14/20/400=170","14/20/500=58","13/20/500=28","13/19.5/400=24","13/20/400=15","20/20/400=11"],"tinyN":0,"tiny":[],"longN":0,"maxCh":0,"overN":0,"over":[],"ctrlN":7,"u32":0,"u24":[],"panes":[{"c":"","w":1440},{"c":"app dt wb wb-wide","w":1440},{"c":"wb-plate","w":1400},{"c":"wb-rail","w":216},{"c":"wb-rail-jobs","w":188},{"c":"wb-regions peers-0","w":1184},{"c":"wb-work wide","w":1184},{"c":"rows sc-rows","w":1184}],"chars":402,"head":"IM | Workbench | « | ☼ | Today | ◉ | DMs | 8 | CONTENT | ▤ | Content | 1 | ▦ | Magnets | ▧ | Styles | ◎ | Strategy | ↑ | Sends | ◈ | Ops | ✳ | Claude | Dock it beside your work | ⚙︎ | Settings | just now | ↻ | SENDS | ↻ | Pipeline health | Ivan | Rise | Arch | Overview | Lanes | Log | Connections | Sent 55m ago | 2 blocked | 114 | in 7d | 24h: "}
+
+### E2-lane-drill
+{"typeN":16,"top":["13/19.5/400=204","14/22/500=116","14/20/400=104","13/20/500=69","14/20/500=58","13/20/400=43"],"tinyN":0,"tiny":[],"longN":0,"maxCh":0,"overN":0,"over":[],"ctrlN":20,"u32":0,"u24":[],"panes":[{"c":"","w":1440},{"c":"app dt wb wb-wide","w":1440},{"c":"wb-plate","w":1400},{"c":"wb-rail","w":216},{"c":"wb-rail-jobs","w":188},{"c":"wb-regions peers-0","w":1184},{"c":"wb-work wide wb-solo","w":1184},{"c":"rows ct-rows","w":1184}],"chars":702,"head":"IM | Workbench | « | ☼ | Today | ◉ | DMs | 8 | CONTENT | ▤ | Content | 1 | ▦ | Magnets | ▧ | Styles | ◎ | Strategy | ↑ | Sends | ◈ | Ops | ✳ | Claude | Dock it beside your work | ⚙︎ | Settings | 10s ago | ↻ | Ivan | Mattan Danino | Davorin Smit | Flow | Calendar | ⌕ | Filters | ⌄ | Ideas | 82 | Needs review | 1 | Generating | 0 | Approved | 0 | Sch"}
+
+### E3-log
+{"typeN":15,"top":["13/18/400=35923","14/20/500=1668","11/16/600=1020","14/21/400=140","11/20/600=58","14/20/400=40"],"tinyN":0,"tiny":[],"longN":119,"maxCh":160,"overN":0,"over":[],"ctrlN":7,"u32":0,"u24":[],"panes":[{"c":"","w":1440},{"c":"app dt wb wb-wide","w":1440},{"c":"wb-plate","w":1400},{"c":"wb-rail","w":216},{"c":"wb-rail-jobs","w":188},{"c":"wb-regions peers-0","w":1184},{"c":"wb-work wide","w":1184},{"c":"rows sc-rows","w":1184}],"chars":39430,"head":"IM | Workbench | « | ☼ | Today | ◉ | DMs | 8 | CONTENT | ▤ | Content | 1 | ▦ | Magnets | ▧ | Styles | ◎ | Strategy | ↑ | Sends | ◈ | Ops | ✳ | Claude | Dock it beside your work | ⚙︎ | Settings | 12s ago | ↻ | SENDS | ↻ | Pipeline health | Ivan | Rise | Arch | Overview | Lanes | Log | Newest | 120 | of 2,288 sent | · | 0 | of 219 blocked | CONN = "}
+
+### E4-range-menu
+  FAILED: TimeoutError: locator.click: Timeout 5000ms exceeded.
+Call log:
+  - waiting for getByRole('button', { name: /Range/ }).first()
+
+
+### F1-ops-done-expand
+{"typeN":16,"top":["14/21/400=4380","13/18/400=632","13/19.5/400=337","14/20/400=274","14/20/500=102","16/24/500=62"],"tinyN":0,"tiny":[],"longN":20,"maxCh":173,"overN":0,"over":[],"ctrlN":3,"u32":0,"u24":[],"panes":[{"c":"","w":1440},{"c":"app dt wb wb-wide","w":1440},{"c":"wb-plate","w":1400},{"c":"wb-rail","w":216},{"c":"wb-rail-jobs","w":188},{"c":"wb-regions peers-0","w":1184},{"c":"wb-work wide","w":1184},{"c":"rows ops-rows","w":1184}],"chars":6114,"head":"IM | Workbench | « | ☼ | Today | ◉ | DMs | 8 | CONTENT | ▤ | Content | 1 | ▦ | Magnets | ▧ | Styles | ◎ | Strategy | ↑ | Sends | ◈ | Ops | ✳ | Claude | Dock it beside your work | ⚙︎ | Settings | just now | ↻ | OPS | Nothing waiting on you — and this is a live read, not a stall. | Comment replies, newsjacks, weekly report"}
+
+### F2-strategy-edit
+  FAILED: TimeoutError: locator.click: Timeout 5000ms exceeded.
+Call log:
+  - waiting for locator('.wb-strat-b, [class*=strat] p, .wb-strat-
+
+### F3-slash-palette
+{"typeN":17,"top":["14/20/400=6252","14/20/500=1586","13/18/400=846","14/21/400=103","11/16/600=52","13/20/400=37"],"tinyN":0,"tiny":[],"longN":0,"maxCh":0,"overN":0,"over":[],"ctrlN":105,"u32":1,"u24":[],"panes":[{"c":"","w":1440},{"c":"app dt wb wb-wide","w":1440},{"c":"wb-plate","w":1400},{"c":"wb-rail","w":216},{"c":"wb-rail-jobs","w":188},{"c":"wb-regions peers-1","w":1184},{"c":"wb-work list","w":592},{"c":"rows","w":591}],"chars":9323,"head":"IM | Workbench | « | ☼ | Today | ◉ | DMs | 8 | CONTENT | ▤ | Content | 1 | ▦ | Magnets | ▧ | Styles | ◎ | Strategy | ↑ | Sends | ◈ | Ops | ✳ | Claude | Docked beside your work | ⚙︎ | Settings | just now | ↻ | DMS | 🔍 | All | ·8 | Ivan | Rise | Arch | Email | 2 drafts pushed to later · next is Lindsay, in 3 days | Open | EM | in | Elijah Da"}
+
+### F4-model-picker
+{"typeN":17,"top":["14/20/400=6352","14/20/500=1586","13/18/400=846","14/21/400=213","11/16/600=52","13/20/400=37"],"tinyN":0,"tiny":[],"longN":0,"maxCh":0,"overN":0,"over":[],"ctrlN":109,"u32":1,"u24":[],"panes":[{"c":"","w":1440},{"c":"app dt wb wb-wide","w":1440},{"c":"wb-plate","w":1400},{"c":"wb-rail","w":216},{"c":"wb-rail-jobs","w":188},{"c":"wb-regions peers-1","w":1184},{"c":"wb-work list","w":592},{"c":"rows","w":591}],"chars":9543,"head":"IM | Workbench | « | ☼ | Today | ◉ | DMs | 8 | CONTENT | ▤ | Content | 1 | ▦ | Magnets | ▧ | Styles | ◎ | Strategy | ↑ | Sends | ◈ | Ops | ✳ | Claude | Docked beside your work | ⚙︎ | Settings | just now | ↻ | DMS | 🔍 | All | ·8 | Ivan | Rise | Arch | Email | 2 drafts pushed to later · next is Lindsay, in 3 days | Open | EM | in | Elijah Da"}
+
+### G1-m-thread
+{"typeN":9,"top":["14/21/400=951","14/20/400=102","20/24/600=17","11/14/700=8","11/11/400=4","14/20/600=4"],"tinyN":0,"tiny":[],"longN":0,"maxCh":0,"overN":0,"over":[],"ctrlN":3,"u32":1,"u24":[{"h":17,"w":152,"l":"https://startupcpg"}],"panes":[{"c":"","w":390},{"c":"app wb wb-take wb-take-thr","w":390},{"c":"msgs","w":390},{"c":"b in chan-b-dm","w":279}],"chars":1119,"head":"EM | in | Messaged | Ask Claude | ‹ | Elijah Davis, MBA ⓘ | Platinum915 · Rise · LinkedIn · Dm_sent | EM | in | TUE, AUG 18 | INVITE | Sent | Hey Elijah, saw you around Daniel Scharff's posts. We grow DTC brands at RISE and only get paid on the growth we create, would love to connect"}
+
+### G2-m-draft-window
+  FAILED: TimeoutError: locator.click: Timeout 6000ms exceeded.
+Call log:
+  - waiting for locator('.ct-card').first()
+
+
+### G3-m-lanes
+  FAILED: TimeoutError: locator.click: Timeout 5000ms exceeded.
+Call log:
+  - waiting for getByRole('button', { name: /^Lanes$/ }).first()
+
+
+
+======== BLOCKED WRITES (0) ========
