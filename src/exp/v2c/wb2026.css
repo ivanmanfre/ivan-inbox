@@ -168,6 +168,190 @@
 /* C · COMMAND LAYER — palette, selection, bulk bar, restore (pass 4)          */
 /* ========================================================================== */
 
+/* Every selector below carries .wb.wb.wb per the ONE RULE at the top of this
+   file: faithful.css flattens `.wb.wb *` to body size, so a single-class rule
+   here would render at 14/20/400 no matter what it declares. Sizes are tokens.
+   z-index: the takeover window is 50 and the confirm sheets are 60, so the
+   palette and the shortcut sheet sit at 70 (they can be opened over a window)
+   and the bulk bar sits at 40, under both. */
+
+/* ---- C1 · THE ROW SELECTION MARK ----------------------------------------- */
+/* Not on all 300 rows at once. It is painted on hover, on the keyboard-focused
+   row, and on any row that is selected — so a mouse operator finds it where the
+   pointer is and a keyboard-only operator always sees the row he is on plus
+   every row he has picked. A permanent column of 300 checkboxes would compete
+   with the work for the whole width of the anchor rail. */
+.wb.wb.wb .wb-selmark{
+  position:relative; flex:none; width:18px; height:18px; margin-right:2px;
+  border:1.5px solid var(--surface3); border-radius:4px; background:var(--surface1);
+  padding:0; cursor:pointer; opacity:0; pointer-events:auto;
+  display:flex; align-items:center; justify-content:center;
+  color:var(--text3); font-size:11px; line-height:1;
+  transition:opacity var(--dur-hover) var(--ease), border-color var(--dur-hover) var(--ease);
+}
+/* The visible box stays 18px so the row keeps its density band; the HIT area
+   clears 44px through an inset overlay, the same pattern .sa-x and the ihead
+   chips already use. */
+.wb.wb.wb .wb-selmark::after{ content:''; position:absolute; inset:-13px }
+.wb.wb.wb .wb-selmark-b{ font-size:11px; font-weight:800; line-height:1 }
+
+.wb.wb.wb .ct-card:hover .wb-selmark,
+.wb.wb.wb .r:hover .wb-selmark,
+.wb.wb.wb [data-wbfocus='1'] .wb-selmark,
+.wb.wb.wb [data-wbsel='1'] .wb-selmark,
+.wb.wb.wb .wb-selmark:focus-visible{ opacity:1 }
+.wb.wb.wb [data-wbsel='1'] .wb-selmark{
+  background:var(--accent-ui, var(--accent)); border-color:var(--accent-ui, var(--accent)); color:#fff;
+}
+.wb.wb.wb .wb-selmark:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
+
+/* The focused row and the selected row, drawn differently on purpose: focus is
+   where the keyboard is, selection is what an action would hit. */
+.wb.wb.wb [data-wbrow][data-wbfocus='1']{
+  box-shadow:inset 2px 0 0 0 var(--accent-ui, var(--accent));
+  background:var(--surface1);
+}
+.wb.wb.wb [data-wbrow][data-wbsel='1']{ background:var(--surface2) }
+
+/* ---- C2 · THE ⌘K PALETTE -------------------------------------------------- */
+.wb.wb.wb .wb-cmdk-scrim{
+  position:fixed; inset:0; z-index:70; background:rgba(0,0,0,.45);
+  display:flex; align-items:flex-start; justify-content:center; padding:10vh 16px 16px;
+}
+.wb.wb.wb .wb-cmdk{
+  width:100%; max-width:640px; max-height:70vh; display:flex; flex-direction:column;
+  background:var(--surface1); border:1px solid var(--surface3); border-radius:var(--r-md);
+  box-shadow:0 24px 64px rgba(0,0,0,.45); overflow:hidden;
+}
+.wb.wb.wb .wb-cmdk-q{
+  flex:none; width:100%; min-height:48px; padding:var(--sp-3);
+  background:transparent; border:0; border-bottom:1px solid var(--surface3);
+  color:var(--text); font-size:var(--fs-body); font-family:inherit; outline:none;
+}
+.wb.wb.wb .wb-cmdk-list{ flex:1; min-height:0; overflow-y:auto; padding:var(--sp-2) 0 }
+.wb.wb.wb .wb-cmdk-grph{
+  padding:var(--sp-2) var(--sp-3) 4px; font-size:var(--fs-eyebrow); font-weight:700;
+  letter-spacing:.08em; text-transform:uppercase; color:var(--text3);
+}
+.wb.wb.wb .wb-cmdk-row{
+  display:flex; align-items:center; gap:var(--sp-2); width:100%; min-height:36px;
+  padding:6px var(--sp-3); background:none; border:0; cursor:pointer; text-align:left;
+  color:var(--text); font-family:inherit;
+}
+.wb.wb.wb .wb-cmdk-row.on{ background:var(--surface2) }
+/* 🔴 DIMMED, NEVER DROPPED. An unavailable command keeps its row and prints the
+   reason in the hint slot. See the comment above matchCommands in ChatPane.tsx
+   for the measured incident this rule comes from. */
+.wb.wb.wb .wb-cmdk-row.off{ cursor:default; opacity:.5 }
+.wb.wb.wb .wb-cmdk-t{
+  flex:none; max-width:44%; font-size:var(--fs-meta); font-weight:600; color:var(--text);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:0;
+}
+.wb.wb.wb .wb-cmdk-h{
+  flex:1; min-width:0; font-size:var(--fs-eyebrow); color:var(--text3);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:0;
+}
+/* THE PRINTED SHORTCUT. Every row spends this slot: a row that no key runs
+   prints "no key" rather than leaving it blank, because a column that is empty
+   on half the rows teaches the reader to stop looking at it. */
+.wb.wb.wb .wb-cmdk-k{
+  flex:none; min-width:44px; text-align:center; padding:2px 6px;
+  background:var(--surface2); border:1px solid var(--surface3); border-radius:var(--r-ctl);
+  font-size:var(--fs-eyebrow); font-weight:700; color:var(--text2); letter-spacing:0;
+}
+.wb.wb.wb .wb-cmdk-none{
+  padding:var(--sp-3); font-size:var(--fs-meta); color:var(--text2); line-height:1.45; max-width:68ch;
+}
+.wb.wb.wb .wb-cmdk-foot{
+  flex:none; display:flex; gap:var(--sp-3); padding:var(--sp-2) var(--sp-3);
+  border-top:1px solid var(--surface3); font-size:var(--fs-eyebrow); color:var(--text3); letter-spacing:0;
+}
+
+/* ---- C3 · THE ? SHORTCUT SHEET ------------------------------------------- */
+.wb.wb.wb .wb-keys-scrim{
+  position:fixed; inset:0; z-index:70; background:rgba(0,0,0,.45);
+  display:flex; align-items:center; justify-content:center; padding:16px;
+}
+.wb.wb.wb .wb-keys{
+  width:100%; max-width:520px; max-height:80vh; display:flex; flex-direction:column;
+  background:var(--surface1); border:1px solid var(--surface3); border-radius:var(--r-md);
+  box-shadow:0 24px 64px rgba(0,0,0,.45); overflow:hidden; outline:none;
+}
+.wb.wb.wb .wb-keys-h{
+  flex:none; display:flex; align-items:center; gap:var(--sp-2);
+  padding:var(--sp-3); border-bottom:1px solid var(--surface3);
+}
+.wb.wb.wb .wb-keys-ttl{ flex:1; font-size:var(--fs-body); font-weight:700; color:var(--text); letter-spacing:0 }
+.wb.wb.wb .wb-keys-x{
+  position:relative; flex:none; width:20px; height:20px; padding:0; border:0; background:none;
+  color:var(--text3); font-size:12px; cursor:pointer; line-height:1;
+}
+.wb.wb.wb .wb-keys-x::after{ content:''; position:absolute; inset:-12px }
+.wb.wb.wb .wb-keys-body{ flex:1; min-height:0; overflow-y:auto; padding:var(--sp-2) var(--sp-3) var(--sp-3) }
+.wb.wb.wb .wb-keys-grp{ margin-top:var(--sp-3) }
+.wb.wb.wb .wb-keys-grph{
+  font-size:var(--fs-eyebrow); font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--text3); margin-bottom:4px;
+}
+.wb.wb.wb .wb-keys-row{ display:flex; align-items:center; gap:var(--sp-2); min-height:28px }
+.wb.wb.wb .wb-keys-k{
+  flex:none; min-width:52px; text-align:center; padding:2px 6px;
+  background:var(--surface2); border:1px solid var(--surface3); border-radius:var(--r-ctl);
+  font-size:var(--fs-eyebrow); font-weight:700; color:var(--text2); letter-spacing:0;
+}
+.wb.wb.wb .wb-keys-t{ flex:1; min-width:0; font-size:var(--fs-meta); color:var(--text); letter-spacing:0 }
+.wb.wb.wb .wb-keys-note{
+  margin-top:var(--sp-3); padding-top:var(--sp-2); border-top:1px solid var(--surface3);
+  font-size:var(--fs-eyebrow); color:var(--text3); line-height:1.5; max-width:68ch;
+}
+
+/* ---- C4 · THE BULK BAR --------------------------------------------------- */
+/* Docked to the bottom of the working region, above the mobile tab bar. It only
+   exists while a selection does, so it never spends height on an idle screen. */
+.wb.wb.wb .wb-bulk{
+  position:fixed; left:50%; transform:translateX(-50%); bottom:20px; z-index:40;
+  display:flex; align-items:center; gap:var(--sp-3); flex-wrap:wrap;
+  max-width:min(920px, calc(100vw - 32px));
+  padding:var(--sp-2) var(--sp-3);
+  background:var(--surface1); border:1px solid var(--surface3); border-radius:var(--r-md);
+  box-shadow:0 12px 32px rgba(0,0,0,.4);
+}
+.wb.wb.wb .wb-bulk-n{
+  flex:none; font-size:var(--fs-meta); font-weight:700; color:var(--text); letter-spacing:0;
+}
+.wb.wb.wb .wb-bulk-note{
+  flex:1; min-width:180px; font-size:var(--fs-eyebrow); color:var(--text3);
+  line-height:1.45; max-width:68ch; letter-spacing:0;
+}
+.wb.wb.wb .wb-bulk-err{
+  flex:1; min-width:180px; font-size:var(--fs-eyebrow); color:var(--sev-urgent);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:0;
+}
+.wb.wb.wb .wb-bulk-acts{ display:flex; gap:var(--sp-2); flex-wrap:wrap }
+.wb.wb.wb .wb-bulk-tail{ display:flex; gap:var(--sp-2); margin-left:auto }
+.wb.wb.wb .wb-bulk-b{
+  min-height:32px; padding:0 var(--sp-3); border-radius:var(--r-ctl);
+  border:1px solid var(--surface3); background:var(--surface2); color:var(--text);
+  font-size:var(--fs-meta); font-weight:600; font-family:inherit; cursor:pointer; letter-spacing:0;
+}
+.wb.wb.wb .wb-bulk-b.s{ background:transparent; color:var(--text2) }
+.wb.wb.wb .wb-bulk-b.danger{ color:var(--sev-urgent) }
+.wb.wb.wb .wb-bulk-b:disabled{ opacity:.45; cursor:not-allowed }
+.wb.wb.wb .wb-bulk-b:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
+
+/* The phone: the tab bar owns the bottom 56px, and the bar is full width there
+   because a centered pill inside 390px is a two-line wrap. */
+@media (max-width:767px){
+  .wb.wb.wb .wb-bulk{
+    left:8px; right:8px; bottom:70px; transform:none; max-width:none;
+  }
+  .wb.wb.wb .wb-cmdk-scrim{ padding:6vh 8px 8px }
+  .wb.wb.wb .wb-cmdk-t{ max-width:60% }
+  /* The hint is the first thing to go at 390: the title and the printed key are
+     what the row is for. */
+  .wb.wb.wb .wb-cmdk-h{ display:none }
+}
+
 /* ========================================================================== */
 /* D · LAYOUT — canvas fill, container queries, panes, mobile chrome (pass 5)  */
 /* ========================================================================== */
@@ -230,3 +414,77 @@
      is drawn on the SECOND column's rows so it never paints outside the grid. */
   .wb.wb.wb .wb-solo .rows > .r:nth-of-type(2n){ box-shadow:inset 1px 0 0 var(--sep) }
 }
+
+/* D2 · THE CONTENT TABLE ASKS THE PANE, NOT THE WINDOW.
+   faithful.css:2483 and :2531 already worked out the right three forms and the
+   right two thresholds for this table, measured against the fixed tracks
+   (96+84+168+156+132 = 636px, plus a 28px anchor, six 12px gaps and 32px of
+   gutter = 768px, so the title track only clears ~280px at about 1,300px).
+   Nothing about that arithmetic is wrong. What is wrong is the thing it was
+   keyed to: a `@media` query reads the WINDOW, and this table lives in a pane
+   that is 400px wide whenever a peer docks, at any window size at all.
+
+   Measured with the Claude peer docked, before this block:
+     1024 → pane 384px, title track 0px, 93px of row overflow
+     1440 → pane 592px, title track 0px, 161px of row overflow
+     2560 → pane 1,152px, title 383px against 842px of title
+   A 0px title column is not a dense table. The three forms below are
+   faithful's own, re-keyed to the container so each one turns on when the
+   PANE can hold it. The numbers are not forked, only the question is.
+
+   Ordering note: this sheet loads after faithful.css at equal specificity, so
+   a matching container rule wins over the media rule underneath it. Below
+   1000px of WINDOW no container is declared at all (D0), the queries never
+   match, and the phone row is left exactly as faithful wrote it. */
+
+/* Pane too narrow for a table: back to the four-track phone row, which is what
+   faithful.css:595 declares and what a 400px list column has always needed.
+   Everything the columns held is still on the row (`.ct-colv` values live in
+   the draft window's taxonomy panel) and the head has nothing to label. */
+@container work (max-width:999.98px){
+  .wb.wb.wb .ct-card{
+    grid-template-columns:var(--anchor-w) minmax(0,1fr) auto var(--tail-w);
+  }
+  .wb.wb.wb .ct-card .ct-ac{ grid-column:3; grid-row:1; justify-content:flex-start }
+  .wb.wb.wb .ct-card .ct-tail{ grid-column:4 }
+  .wb.wb.wb .ct-colv{ display:none }
+  .wb.wb.wb .ct-cols-head{ display:none }
+}
+
+/* Shed, never crush (faithful's rule, its numbers): funnel and source fold
+   away so the title never drops under ~284px. */
+@container work (min-width:1000px) and (max-width:1299.98px){
+  .wb.wb.wb .ct-card,
+  .wb.wb.wb .ct-cols-head{
+    grid-template-columns:var(--anchor-w) minmax(0,1fr) 96px 156px 132px;
+  }
+  .wb.wb.wb .ct-cols-head{ display:grid }
+  .wb.wb.wb .ct-colv{ display:block }
+  .wb.wb.wb .ct-card .ct-ac{ grid-column:4; grid-row:1; justify-content:flex-end }
+  .wb.wb.wb .ct-card .ct-tail{ grid-column:5 }
+  .wb.wb.wb .ct-colv + .ct-colv{ display:none }
+  .wb.wb.wb .ct-cols-head > span:nth-child(4),
+  .wb.wb.wb .ct-cols-head > span:nth-child(5){ display:none }
+}
+
+/* The full seven-column form, on a pane that fits it. */
+@container work (min-width:1300px){
+  .wb.wb.wb .ct-card,
+  .wb.wb.wb .ct-cols-head{
+    grid-template-columns:var(--anchor-w) minmax(0,1fr) 96px 84px 168px 156px 132px;
+  }
+  .wb.wb.wb .ct-cols-head{ display:grid }
+  .wb.wb.wb .ct-colv, .wb.wb.wb .ct-colv + .ct-colv{ display:block }
+  .wb.wb.wb .ct-cols-head > span:nth-child(4),
+  .wb.wb.wb .ct-cols-head > span:nth-child(5){ display:block }
+  .wb.wb.wb .ct-card .ct-ac{ grid-column:6; grid-row:1; justify-content:flex-end }
+  .wb.wb.wb .ct-card .ct-tail{ grid-column:7 }
+}
+
+/* The two sub-lists that reuse `.ct-card` with their own internal grid
+   (`.ct-idea`, faithful.css:1753) opt out of every form above: they are
+   `display:block` cards, and a grid-template-columns declaration on a block
+   box is inert, but the `.ct-ac` / `.ct-tail` placements are not. Restated
+   here so a container band cannot reach into them. */
+.wb.wb.wb .ct-card.ct-idea .ct-ac,
+.wb.wb.wb .ct-card.ct-idea .ct-tail{ grid-column:auto }
