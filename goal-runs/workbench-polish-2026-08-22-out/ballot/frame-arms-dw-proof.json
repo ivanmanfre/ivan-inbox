@@ -1,0 +1,241 @@
+{
+  "base": "http://localhost:4188/",
+  "at": "2026-08-22T12:06:37.518Z",
+  "arms": {
+    "a": {
+      "1440x900": {
+        "draftWindow": {
+          "attr": null,
+          "plateGap": "20px",
+          "plateR": "40px",
+          "ground": "#c5e1a5",
+          "dwOpen": true,
+          "takeoverBox": {
+            "cls": "wb-tkscrim",
+            "x": 0,
+            "y": 0,
+            "w": 1440,
+            "h": 900,
+            "vw": 1440,
+            "vh": 900
+          }
+        },
+        "calendar": {
+          "attr": null,
+          "plateGap": "20px",
+          "plateR": "40px",
+          "ground": "#c5e1a5",
+          "dwOpen": false,
+          "takeoverBox": null
+        },
+        "files": {
+          "dw": {
+            "path": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/workbench-polish-2026-08-22-out/ballot/frame-a-draft-window-1440x900-dark.jpg",
+            "exists": true,
+            "bytes": 128989
+          },
+          "cal": {
+            "path": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/workbench-polish-2026-08-22-out/ballot/frame-a-calendar-1440x900-dark.jpg",
+            "exists": true,
+            "bytes": 89770
+          }
+        }
+      },
+      "2560x1440": {
+        "draftWindow": {
+          "attr": null,
+          "plateGap": "20px",
+          "plateR": "40px",
+          "ground": "#c5e1a5",
+          "dwOpen": true,
+          "takeoverBox": {
+            "cls": "wb-tkscrim",
+            "x": 0,
+            "y": 0,
+            "w": 2560,
+            "h": 1440,
+            "vw": 2560,
+            "vh": 1440
+          }
+        },
+        "calendar": {
+          "attr": null,
+          "plateGap": "20px",
+          "plateR": "40px",
+          "ground": "#c5e1a5",
+          "dwOpen": false,
+          "takeoverBox": null
+        },
+        "files": {
+          "dw": {
+            "path": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/workbench-polish-2026-08-22-out/ballot/frame-a-draft-window-2560x1440-dark.jpg",
+            "exists": true,
+            "bytes": 216268
+          },
+          "cal": {
+            "path": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/workbench-polish-2026-08-22-out/ballot/frame-a-calendar-2560x1440-dark.jpg",
+            "exists": true,
+            "bytes": 141114
+          }
+        }
+      }
+    },
+    "b": {
+      "1440x900": {
+        "draftWindow": {
+          "attr": "b",
+          "plateGap": "10px",
+          "plateR": "22px",
+          "ground": "#c5e1a5",
+          "dwOpen": true,
+          "takeoverBox": {
+            "cls": "wb-tkscrim",
+            "x": 0,
+            "y": 0,
+            "w": 1440,
+            "h": 900,
+            "vw": 1440,
+            "vh": 900
+          }
+        },
+        "calendar": {
+          "attr": "b",
+          "plateGap": "10px",
+          "plateR": "22px",
+          "ground": "#c5e1a5",
+          "dwOpen": false,
+          "takeoverBox": null
+        },
+        "files": {
+          "dw": {
+            "path": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/workbench-polish-2026-08-22-out/ballot/frame-b-draft-window-1440x900-dark.jpg",
+            "exists": true,
+            "bytes": 128989
+          },
+          "cal": {
+            "path": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/workbench-polish-2026-08-22-out/ballot/frame-b-calendar-1440x900-dark.jpg",
+            "exists": true,
+            "bytes": 91260
+          }
+        }
+      },
+      "2560x1440": {
+        "draftWindow": {
+          "attr": "b",
+          "plateGap": "10px",
+          "plateR": "22px",
+          "ground": "#c5e1a5",
+          "dwOpen": true,
+          "takeoverBox": {
+            "cls": "wb-tkscrim",
+            "x": 0,
+            "y": 0,
+            "w": 2560,
+            "h": 1440,
+            "vw": 2560,
+            "vh": 1440
+          }
+        },
+        "calendar": {
+          "attr": "b",
+          "plateGap": "10px",
+          "plateR": "22px",
+          "ground": "#c5e1a5",
+          "dwOpen": false,
+          "takeoverBox": null
+        },
+        "files": {
+          "dw": {
+            "path": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/workbench-polish-2026-08-22-out/ballot/frame-b-draft-window-2560x1440-dark.jpg",
+            "exists": true,
+            "bytes": 216268
+          },
+          "cal": {
+            "path": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/workbench-polish-2026-08-22-out/ballot/frame-b-calendar-2560x1440-dark.jpg",
+            "exists": true,
+            "bytes": 141366
+          }
+        }
+      }
+    },
+    "c": {
+      "1440x900": {
+        "draftWindow": {
+          "attr": "c",
+          "plateGap": "3px",
+          "plateR": "0px",
+          "ground": "#c5e1a5",
+          "dwOpen": true,
+          "takeoverBox": {
+            "cls": "wb-tkscrim",
+            "x": 0,
+            "y": 0,
+            "w": 1440,
+            "h": 900,
+            "vw": 1440,
+            "vh": 900
+          }
+        },
+        "calendar": {
+          "attr": "c",
+          "plateGap": "3px",
+          "plateR": "0px",
+          "ground": "#c5e1a5",
+          "dwOpen": false,
+          "takeoverBox": null
+        },
+        "files": {
+          "dw": {
+            "path": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/workbench-polish-2026-08-22-out/ballot/frame-c-draft-window-1440x900-dark.jpg",
+            "exists": true,
+            "bytes": 128989
+          },
+          "cal": {
+            "path": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/workbench-polish-2026-08-22-out/ballot/frame-c-calendar-1440x900-dark.jpg",
+            "exists": true,
+            "bytes": 90406
+          }
+        }
+      },
+      "2560x1440": {
+        "draftWindow": {
+          "attr": "c",
+          "plateGap": "3px",
+          "plateR": "0px",
+          "ground": "#c5e1a5",
+          "dwOpen": true,
+          "takeoverBox": {
+            "cls": "wb-tkscrim",
+            "x": 0,
+            "y": 0,
+            "w": 2560,
+            "h": 1440,
+            "vw": 2560,
+            "vh": 1440
+          }
+        },
+        "calendar": {
+          "attr": "c",
+          "plateGap": "3px",
+          "plateR": "0px",
+          "ground": "#c5e1a5",
+          "dwOpen": false,
+          "takeoverBox": null
+        },
+        "files": {
+          "dw": {
+            "path": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/workbench-polish-2026-08-22-out/ballot/frame-c-draft-window-2560x1440-dark.jpg",
+            "exists": true,
+            "bytes": 216268
+          },
+          "cal": {
+            "path": "/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/workbench-polish-2026-08-22-out/ballot/frame-c-calendar-2560x1440-dark.jpg",
+            "exists": true,
+            "bytes": 141257
+          }
+        }
+      }
+    }
+  },
+  "interceptedWrites": 0
+}
