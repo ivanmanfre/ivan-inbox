@@ -30,6 +30,17 @@ const KNOWN: Record<string, string> = {
   qa_blocked: 'Blocked by QA',
   lint_fail: 'Failed the language check',
   gold_icp_v2_seatless: 'Gold ICP (v2)',
+  // The QA gate's own verdict word. sentenceCase() alone would read "Needs
+  // regenerate" — grammatically off in a way the other five verdicts are not.
+  needs_regenerate: 'Needs regeneration',
+  // scheduled_posts' own status vocabulary (content.ts QUEUE_STATUSES). The
+  // '_v2' is a migration artefact, not a fact worth printing at a reader.
+  queued_v2: 'Queued',
+  // agent_log.source: the automation platform's own name, not a word an
+  // operator reading a log entry needs — it only ever distinguishes a live
+  // pipeline step from a clickup_backfill reconstruction (isBackfillEntry).
+  n8n: 'Automated',
+  linkedin: 'LinkedIn',
 }
 
 // A value already written for a human: it carries a space and no underscore
