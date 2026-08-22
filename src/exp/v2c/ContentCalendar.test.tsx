@@ -139,28 +139,132 @@ describe('what the surface no longer says', () => {
   })
 })
 
-describe('Ready, no date', () => {
-  it('is the same rail on either lane — approved and undated, whoever owns it', () => {
+describe('No date yet', () => {
+  it('is the same rail on either lane — datable and undated, whoever owns it', () => {
     const rows = [
-      d({ id: 'a', title: 'Mine, no date', status: 'approved', scheduled_at: null }),
-      d({ id: 'b', title: 'His, no date', status: 'approved', scheduled_at: null, client_id: 'risedtc' }),
+      d({ id: 'a', title: 'Mine, no date', status: 'review', scheduled_at: null }),
+      d({ id: 'b', title: 'His, no date', status: 'review', scheduled_at: null, client_id: 'risedtc' }),
     ]
     const out = html(rows)
     expect(out).toContain('Mine, no date')
     expect(out).toContain('His, no date')
   })
 
-  it('🔴 says WHY an approved row has no button rather than just omitting it', () => {
-    // db/032 takes `review`/`scheduled` only, so `approved` answers bad_status.
-    const out = html([d({ status: 'approved', scheduled_at: null })])
-    expect(out).not.toContain('class="cal-mv"')   // no button
-    expect(out).toContain('bad_status')           // but the reason is on screen
+  it('🔴 THE 89 UNDATED REVIEW DRAFTS REACH IT — the defect this rail shipped with', () => {
+    // It filtered on `approved`, a status the date RPC refuses and the live
+    // census puts at 0 rows on both lanes, so it rendered its empty line
+    // forever while the rows the RPC accepts sat on another tab.
+    const out = html([d({ id: 'r', title: 'Undated review row', status: 'review', scheduled_at: null })])
+    expect(out).toContain('Undated review row')
+    expect(out).not.toContain('Nothing is waiting for a date.')
+  })
+
+  it('🔴 EVERY rail row is handed a working control — the rail predicate IS canMoveDate', () => {
+    const out = html([d({ title: 'Datable', status: 'review', scheduled_at: null })])
+    expect(out).toContain('class="cal-mv"')
+    // and the note that used to explain the button-less rows is gone with them
+    expect(out).not.toContain('bad_status')
+  })
+
+  it('an approved row is NOT in the rail — the date RPC answers bad_status on it', () => {
+    const out = html([d({ title: 'Approved and undated', status: 'approved', scheduled_at: null })])
+    expect(out).toContain('Nothing is waiting for a date.')
+    expect(out).not.toContain('Approved and undated')
+  })
+
+  it('a rail row drags onto a day, which is the cheap half of dating it', () => {
+    const out = html([d({ title: 'Drag me', status: 'review', scheduled_at: null })])
+    expect(out).toMatch(/class="cal-rr" draggable="true"/)
+  })
+
+  it('OLDEST FIRST, with how long each has waited on its face', () => {
+    const rows = [
+      d({ id: 'new', title: 'Fresh one', status: 'review', scheduled_at: null, created_at: inDays(-1) }),
+      d({ id: 'old', title: 'Ancient one', status: 'review', scheduled_at: null, created_at: inDays(-35) }),
+    ]
+    const out = html(rows)
+    expect(out.indexOf('Ancient one')).toBeLessThan(out.indexOf('Fresh one'))
+    expect(out).toContain('>35d<')
   })
 
   it('and says nothing at all when the rail is empty', () => {
     const out = html([d()])
-    expect(out).toContain('Nothing approved is sitting without a date.')
+    expect(out).toContain('Nothing is waiting for a date.')
     expect(out).not.toContain('bad_status')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 2026-08-22 — ARMED vs PLANNED, and the arm step that used to cost a takeover.
+//
+// A `review` row with a `scheduled_at` does not publish. Six live risedtc rows
+// are exactly that (Aug 24-31) and every one of them drew a chip identical to
+// the two armed ones (Sep 1, Sep 7). The rail now offers 89 more rows to date,
+// so the chip has to say which of the two a date made it.
+// ---------------------------------------------------------------------------
+
+describe('planned versus armed, on the chip and in the count', () => {
+  it('🔴 a dated REVIEW chip says Planned, in a word, not only in a colour', () => {
+    const out = html([d({ title: 'Dated but dead', status: 'review' })])
+    expect(out).toContain('data-arm="planned"')
+    expect(out).toContain('>Planned<')
+  })
+
+  it('a scheduled chip says Armed', () => {
+    const out = html([d({ title: 'Really going out', status: 'scheduled' })])
+    expect(out).toContain('data-arm="armed"')
+    expect(out).toContain('>Armed<')
+  })
+
+  it('🔴 THE MONTH COUNT SPLITS THEM — one figure counted a plan as coverage', () => {
+    const rows = [
+      d({ id: 'p1', status: 'review', scheduled_at: inDays(1) }),
+      d({ id: 'p2', status: 'review', scheduled_at: inDays(2) }),
+      d({ id: 'a1', status: 'scheduled', scheduled_at: inDays(3) }),
+    ]
+    const out = html(rows)
+    expect(out).not.toContain('dated this month')
+    expect(out).toMatch(/<b>1<\/b><span>armed<\/span>/)
+    expect(out).toMatch(/<b>2<\/b><span>planned<\/span>/)
+  })
+
+  it('both figures are drawn at zero — a hidden 0 armed is the same lie', () => {
+    const out = html([d({ status: 'review', scheduled_at: inDays(1) })])
+    expect(out).toMatch(/<b>0<\/b><span>armed<\/span>/)
+  })
+})
+
+describe('the arm step — 2 interactions instead of 5 and a takeover', () => {
+  it('a planned chip on Ivan’s lane carries Arm it', () => {
+    const out = html([d({ title: 'Mine, planned', status: 'review', client_id: null })])
+    expect(out).toContain('class="cal-chip-armb"')
+    expect(out).toContain('Arm it')
+  })
+
+  it('🔴 a CLIENT chip never does — its arming RPC also sets board_visible=true', () => {
+    const out = html([d({ title: 'His, planned', status: 'review', client_id: 'risedtc' })])
+    expect(out).toContain('data-arm="planned"')      // still named
+    expect(out).not.toContain('class="cal-chip-armb"')  // never armed from here
+  })
+
+  it('an already-armed chip carries none, and neither does a published one', () => {
+    expect(html([d({ status: 'scheduled' })])).not.toContain('cal-chip-armb')
+    expect(html([d({ status: 'published', source_post_id: 'urn:li:activity:1' })]))
+      .not.toContain('cal-chip-armb')
+  })
+
+  it('a queue chip carries none — there is no draft row for the write to take', () => {
+    expect(html([], [q()])).not.toContain('cal-chip-armb')
+  })
+
+  it('the control names the day AND the time it would fire, before it is pressed', () => {
+    const at = inDays(1)
+    const out = html([d({ title: 'Mine, planned', status: 'review', scheduled_at: at })])
+    const stamp = new Date(at).toLocaleString(undefined, {
+      weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    })
+    expect(out).toContain(`Arm Mine, planned for ${stamp}`)
   })
 })
 
