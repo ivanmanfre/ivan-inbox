@@ -49,7 +49,7 @@ LADDER (painted, computed):
   --e3  rgb(234, 234, 228)   L 0.8194
   --e4  rgb(255, 255, 255)   L 1
 STEPS: e0->e1 1.14:1 (dL -0.1143)  |  e1->e2 1.25:1 (dL 0.212)  |  e2->e3 1.21:1 (dL -0.1806)  |  e3->e4 1.21:1 (dL 0.1806)
-ALIASES: --canvas=rgb(247, 247, 245)  --surface1=rgb(255, 255, 255)  --surface2=rgb(239, 239, 237)  --surface3=rgb(227, 227, 224)  --hairline=rgba(0, 0, 0, 0.09)  --hairline-strong=rgba(0, 0, 0, 0.18)
+ALIASES: --canvas=rgb(244, 244, 240)  --surface1=rgb(255, 255, 255)  --surface2=rgb(234, 234, 228)  --surface3=rgb(227, 227, 224)  --hairline=rgba(0, 0, 0, 0.09)  --hairline-strong=rgba(0, 0, 0, 0.18)
 INVERSION SIGNS (must match across themes where the relationship is intended):
   canvas_vs_surface1 (ground vs card): child LIGHTER
   surface1_vs_surface2 (card vs raised tint): child DARKER
@@ -107,7 +107,7 @@ LIVE CALENDAR (dark): {
   "border-top-style": "outset"
  },
  "div.wb-sech": {
-  "background-color": "rgb(247, 247, 245)",
+  "background-color": "rgb(244, 244, 240)",
   "border-top-width": "1px",
   "border-bottom-width": "1px"
  }

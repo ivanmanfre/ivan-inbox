@@ -480,16 +480,16 @@
   },
   "aliases": {
    "--canvas": {
-    "value": "rgb(247, 247, 245)",
-    "L": 0.9289
+    "value": "rgb(244, 244, 240)",
+    "L": 0.9023
    },
    "--surface1": {
     "value": "rgb(255, 255, 255)",
     "L": 1
    },
    "--surface2": {
-    "value": "rgb(239, 239, 237)",
-    "L": 0.862
+    "value": "rgb(234, 234, 228)",
+    "L": 0.8194
    },
    "--surface3": {
     "value": "rgb(227, 227, 224)",
@@ -938,7 +938,7 @@
    "border-top-style": "outset"
   },
   "div.wb-sech": {
-   "background-color": "rgb(247, 247, 245)",
+   "background-color": "rgb(244, 244, 240)",
    "border-top-width": "1px",
    "border-bottom-width": "1px"
   }
