@@ -3361,7 +3361,7 @@
   line-height:var(--lh-meta); text-transform:uppercase; color:var(--text3);
 }
 /* The draft window's evidence-rail header used to share this exact all-caps
-   meta tier with its two siblings above (SHOUTED "BACKEND DEPTH" — the
+   meta tier with its two siblings above (SHOUTED "BACKEND DEPTH", the
    owner's own named complaint: "this looks like an internal tool ui"). Same
    size and weight as the rail tier it still belongs to, but no uppercase and
    no tracking, because those two are what made a plain-English header

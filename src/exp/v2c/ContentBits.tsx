@@ -10,8 +10,8 @@ import { type ReactNode } from 'react'
 // database never agreed to.
 
 // Shared with KeyRows below: an agent-written object key ('QA_FEEDBACK',
-// 'hook_type') humanised to its shape only — underscores to spaces, sentence
-// case — never a fixed vocabulary, because the roster of keys an agent writes
+// 'hook_type') humanised to its shape only (underscores to spaces, sentence
+// case), never a fixed vocabulary, because the roster of keys an agent writes
 // into a jsonb payload is the data's, not this file's, to name.
 function humanizeKey(k: string): string {
   const spaced = k.replace(/_/g, ' ')
@@ -76,7 +76,7 @@ export function Rows({ items }: { items: [string, ReactNode][] }) {
 }
 
 // Every remaining key of an agent-written object, rendered rather than dropped.
-// The roster is the data's — an unnamed key appears the day it appears, so
+// The roster is the data's: an unnamed key appears the day it appears, so
 // this only humanises the SHAPE of the key (underscores, sentence case), it
 // never invents a fixed vocabulary for keys `labels.ts` has never seen.
 export function KeyRows({ items }: { items: [string, unknown][] }) {

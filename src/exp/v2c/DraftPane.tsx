@@ -184,7 +184,7 @@ function InspRail({ tabs, tab, pick }: {
           thing you wanted. The tab state is kept and now scrolls to a section
           instead of hiding the other three. */}
       <div className="dw-insp-h">
-        {/* Was "Backend depth" — the owner's own named complaint ("this looks
+        {/* Was "Backend depth", the owner's own named complaint ("this looks
             like an internal tool ui"), because the four tabs underneath it
             are the QA verdict, the source, the generation log and the raw
             fields, i.e. what a reader checks to decide the draft's fate, not
@@ -993,11 +993,11 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
   if (d.source_label) source.push(['Label', d.source_label])
   if (d.source_ref) source.push(['Ref', d.source_ref])
   // client_idea_id and source_candidate_id used to render here as bare UUIDs
-  // under "Idea"/"Candidate" — internal foreign keys with no page in this app
+  // under "Idea"/"Candidate": internal foreign keys with no page in this app
   // that opens from one, so the id itself answered no question a reader could
   // act on. Deleted rather than laundered into a fake label (phase2-labels).
   if (d.source_post_id) {
-    // The live LinkedIn post this draft was spun from (content.ts:42) — a
+    // The live LinkedIn post this draft was spun from (content.ts:42), a
     // real fact, so it earns a link rather than a raw urn:li:activity print.
     // The urn stays reachable on hover/copy for the rare support case that
     // needs the literal id.
