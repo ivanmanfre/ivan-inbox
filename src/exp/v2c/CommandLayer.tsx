@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { parseWbHash, wbHash } from './route'
 import type { Job } from './layout'
 import { buildCommands } from './commandSource'
-import { CommandPalette, ShortcutSheet } from './CommandPalette'
+import { CommandPalette, ShortcutSheet, type FindState } from './CommandPalette'
+import { CROSS_MIN, crossSearch, type CrossHit, type CrossResults } from '../../lib/crossSearch'
+import type { ContentLane } from '../../lib/content'
 import { BulkBar, capCountOf, useBulkRun } from './BulkBar'
 import {
   clearSelection, getFocusId, getSelected, lookupRow, selectRows, setFocus, setLayerMounted,
@@ -82,6 +84,22 @@ function searchField(): HTMLInputElement | null {
 
 // The signature a selection is allowed to survive. Job, lane, tab and the search
 // text: change any one of them and the rows underneath are different rows.
+// The lane the search runs in. Shell publishes it on the work region
+// (`data-wblane`) precisely so this propless layer does not have to guess: a
+// search that inferred its own tenancy is the one defect this feature cannot
+// have. Anything unrecognised falls back to Ivan's own lane rather than to a
+// filterless query.
+function readLane(): ContentLane {
+  const v = document.querySelector('.wb-work')?.getAttribute('data-wblane')
+  return v === 'risedtc' || v === 'arch' ? v : 'ivan'
+}
+
+const EMPTY_FIND: CrossResults = {
+  hits: [], counts: { dm: 0, draft: 0, magnet: 0 }, lane: 'ivan', failed: [],
+}
+
+const FIND_DEBOUNCE_MS = 250
+
 function readScope(): string {
   const job = parseWbHash(location.hash).job
   const lane = document.querySelector('.wb-work .ct-cmd-lane.on')?.textContent ?? ''
@@ -93,6 +111,53 @@ export function CommandLayer() {
   const [palette, setPalette] = useState(false)
   const [sheet, setSheet] = useState(false)
   const bulk = useBulkRun()
+
+  // ---- cross-object search (AI pass item 3) -------------------------------
+  //
+  // Debounced, lane-scoped, read only, and it OPENS things. Nothing in this
+  // path writes: a picked row dispatches 'wb-open' and Shell navigates to it,
+  // which is the same thing a click on the row would have done.
+  const [findQ, setFindQ] = useState('')
+  const [findLane, setFindLane] = useState<ContentLane>('ivan')
+  const [findRes, setFindRes] = useState<CrossResults>(EMPTY_FIND)
+  const [findBusy, setFindBusy] = useState(false)
+  // Only the newest query is allowed to write a result. Without this a slow
+  // three-letter search landing after a fast five-letter one would repaint the
+  // list with answers to a question he has already finished asking.
+  const findSeq = useRef(0)
+
+  useEffect(() => {
+    const q = findQ.trim()
+    if (q.length < CROSS_MIN) { setFindRes(EMPTY_FIND); setFindBusy(false); return }
+    setFindBusy(true)
+    const mine = ++findSeq.current
+    const t = window.setTimeout(() => {
+      void crossSearch(q, findLane).then(r => {
+        if (findSeq.current !== mine) return
+        setFindRes(r)
+        setFindBusy(false)
+      }).catch(() => {
+        if (findSeq.current !== mine) return
+        setFindRes({ ...EMPTY_FIND, lane: findLane, failed: ['anything'] })
+        setFindBusy(false)
+      })
+    }, FIND_DEBOUNCE_MS)
+    return () => window.clearTimeout(t)
+  }, [findQ, findLane])
+
+  const openHit = useCallback((h: CrossHit) => {
+    window.dispatchEvent(new CustomEvent('wb-open', {
+      detail: { kind: h.surface === 'dm' ? 'thread' : h.surface, id: h.id, lane: h.lane, row: h.row },
+    }))
+  }, [])
+
+  const find: FindState = {
+    ...findRes,
+    lane: findLane,
+    q: findQ,
+    busy: findBusy,
+    setLane: setFindLane,
+  }
 
   const selected = useSyncExternalStore(subscribe, getSelected)
   const focusId = useSyncExternalStore(subscribe, getFocusId)
@@ -267,6 +332,11 @@ export function CommandLayer() {
       if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
         e.preventDefault()
         setScope(readScope())
+        // The search opens on the lane he is looking at, and the palette says
+        // which lane that is rather than leaving him to infer it.
+        setFindLane(readLane())
+        setFindQ('')
+        setFindRes(EMPTY_FIND)
         setPalette(true)
         return
       }
@@ -313,7 +383,15 @@ export function CommandLayer() {
         onClear={clearSelection}
         rowCount={rowCount}
       />
-      {palette && <CommandPalette cmds={cmds} onClose={() => setPalette(false)} />}
+      {palette && (
+        <CommandPalette
+          cmds={cmds}
+          find={find}
+          onQuery={setFindQ}
+          onPick={openHit}
+          onClose={() => setPalette(false)}
+        />
+      )}
       {sheet && <ShortcutSheet cmds={cmds} onClose={() => setSheet(false)} />}
     </>
   )
