@@ -11,6 +11,7 @@ import {
   stampHumanEdit, stampOperatorDelete, operatorDeleted, selfContainedHtml,
   errorAt, isRecentError, ERROR_ALARM_HOURS,
   listStills,
+  draftFailure, draftFailureReason, draftFinished,
 } from './content'
 
 const base: ContentDraft = {
@@ -804,5 +805,140 @@ describe('listStills', () => {
   it('throws on a refusal instead of reporting an empty library', async () => {
     vi.stubGlobal('fetch', () => Promise.resolve(new Response('{}', { status: 403 })))
     await expect(listStills('library')).rejects.toThrow(/403/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// WHY DID THIS FAIL: the terminal log entry wins over the stale stamp
+// ---------------------------------------------------------------------------
+//
+// Every fixture below is a VERBATIM live body, id in the comment, captured from
+// the 55 `status='error'` rows on 2026-08-22. The end-to-end run over all 55 is
+// goal-runs/workbench-polish-2026-08-22-out/evidence/p4b-tools/reasons.test.ts;
+// these are the shapes that decide the branches.
+
+// The defect this whole change exists for: the stamp says the sentinel stopped
+// it, and the log says the pipeline kept going and passed.
+const STALE_STAMP = { error_message: 'Generation stuck — no completion within 22 minutes. Likely a silent workflow chain break.' }
+
+describe('draftFailure', () => {
+  it('prefers the terminal log entry over a stale taxonomy.error_message', () => {
+    // row 2694b514: sentinel fired at 22 minutes, then lint passed three more times
+    const f = draftFailure({
+      taxonomy: STALE_STAMP, qa_verdict: null, qa_score: null,
+      log_agent: 'Lint Gate', log_body: 'VERDICT: PASS (first draft clean)', log_ts: null,
+    })
+    expect(f.kind).toBe('completed')
+    expect(f.reason).not.toMatch(/Generation stuck/)
+    expect(f.reason).toMatch(/filed as an error anyway/)
+  })
+
+  it('keeps the stall claim when the sentinel really is the terminal event', () => {
+    // row a4848868
+    const f = draftFailure({
+      taxonomy: STALE_STAMP, qa_verdict: null, qa_score: null,
+      log_agent: 'Stuck Sentinel',
+      log_body: 'Generation stuck — no completion within 141 minutes. Likely a silent workflow chain break.',
+      log_ts: null,
+    })
+    expect(f.kind).toBe('stalled')
+    expect(f.detail).toBe('141 minutes')
+  })
+
+  it('names the QA score against its own denominator, never an assumed one', () => {
+    // row cd394bcc, scored out of 120, and one retry died on lint instead
+    const f = draftFailure({
+      taxonomy: STALE_STAMP, qa_verdict: 'rewrite_ok', qa_score: '62',
+      log_agent: 'QA Give-Up', log_ts: null,
+      log_body: "VERDICT: QA_BLOCKED\nFailed QA and could not be regenerated within budget (2 attempt(s)). "
+        + "Final verdict REWRITE_OK (74/120). Routed to status 'error' — non-publishable.\n\nATTEMPT HISTORY:\n"
+        + '[\n {\n  "attempt": 1,\n  "outcome": "lint_fail"\n },\n {\n  "attempt": 2,\n  "outcome": "generation_failed"\n }\n]',
+    })
+    expect(f.kind).toBe('qa')
+    expect(f.detail).toBe('74/120')
+    expect(f.reason).toContain('74 of 120')
+    expect(f.reason).toContain('1 of the retries failed lint')
+  })
+
+  it('separates "the model never came back" from "QA did not like it"', () => {
+    // row f9c6bf9f, one attempt, and it produced nothing to judge
+    const f = draftFailure({
+      taxonomy: STALE_STAMP, qa_verdict: null, qa_score: null,
+      log_agent: 'QA Give-Up', log_ts: null,
+      log_body: "VERDICT: QA_BLOCKED\nFailed QA and could not be regenerated within budget (1 attempt(s)). "
+        + "Final verdict NEEDS_REGENERATE (0/?). Routed to status 'error' — non-publishable.\n\nATTEMPT HISTORY:\n"
+        + '[\n {\n  "attempt": 1,\n  "outcome": "generation_failed"\n }\n]',
+    })
+    expect(f.kind).toBe('generation_failed')
+    expect(f.reason).toMatch(/never returned/)
+    // (0/?) must never render as a score: a denominator of "?" is not a floor.
+    expect(f.reason).not.toContain('0 of')
+  })
+
+  it('names the lint rule that fired', () => {
+    // row e7740bb1
+    const f = draftFailure({
+      taxonomy: null, qa_verdict: null, qa_score: null,
+      log_agent: 'Lint Gate', log_ts: null,
+      log_body: "VERDICT: GIVE_UP (generated post)\nFailed the deterministic lint gate after 1 regeneration "
+        + "attempt(s) — routed to status 'error' (non-publishable).\n\nLINT FEEDBACK:\n"
+        + 'nobody_reveal_family: MERGED v28 from part_nobody plus nobody_flags_reveal. (found: "Nobody flags")',
+    })
+    expect(f.kind).toBe('lint')
+    expect(f.detail).toBe('nobody_reveal_family')
+    expect(f.reason).toContain('nobody_reveal_family')
+  })
+
+  it('reads the rule out of an Iterations block on a PASS-after-rewrite row', () => {
+    // row a1730aca, passed, and the card should say what it had to fix
+    const f = draftFailure({
+      taxonomy: null, qa_verdict: null, qa_score: null,
+      log_agent: 'Lint Gate', log_ts: null,
+      log_body: 'VERDICT: PASS after 1 regeneration attempt(s)\n\nIterations:\n'
+        + '  #1: contrast_closer: post ends on a corrective-contrast reframe',
+    })
+    expect(f.kind).toBe('completed')
+    expect(f.detail).toBe('contrast_closer')
+  })
+
+  it('will not read a saved model refusal out as if it were content', () => {
+    // row 60e3c008, a 200-with-a-refusal that wrote itself into the draft
+    const f = draftFailure({
+      taxonomy: null, qa_verdict: 'needs_regenerate', qa_score: '0',
+      log_agent: 'Hook Agent', log_ts: null,
+      log_body: '{"hooks":[{"hook_text":"You\'ve hit your weekly limit · resets Aug 21, 9am (UTC)",'
+        + '"_parse_failed":true}],"_parse_failed":true}',
+    })
+    expect(f.kind).toBe('refusal')
+    expect(f.reason).not.toContain('weekly limit')
+  })
+
+  it('falls back to the old order only when there is no log at all', () => {
+    expect(draftFailure({
+      taxonomy: STALE_STAMP, qa_verdict: null, qa_score: null,
+      log_agent: null, log_body: null, log_ts: null,
+    })).toMatchObject({ kind: 'unknown', reason: STALE_STAMP.error_message })
+
+    expect(draftFailure({
+      taxonomy: null, qa_verdict: 'qa_blocked', qa_score: '62',
+      log_agent: null, log_body: null, log_ts: null,
+    }).reason).toBe('Blocked by QA (score 62)')
+
+    expect(draftFailure({
+      taxonomy: null, qa_verdict: null, qa_score: null,
+      log_agent: null, log_body: null, log_ts: null,
+    }).reason).toBe('No reason recorded')
+  })
+
+  it('draftFinished is true only for a terminal PASS', () => {
+    const pass = { log_agent: 'Lint Gate', log_body: 'VERDICT: PASS (first draft clean)', log_ts: null, taxonomy: null, qa_verdict: null, qa_score: null }
+    expect(draftFinished(pass)).toBe(true)
+    expect(draftFinished({ ...pass, log_agent: 'Stuck Sentinel', log_body: 'Generation stuck — no completion within 21 minutes.' })).toBe(false)
+    expect(draftFinished({ ...pass, log_agent: null, log_body: null })).toBe(false)
+  })
+
+  it('draftFailureReason is still the one-line form the card calls', () => {
+    const d = { taxonomy: STALE_STAMP, qa_verdict: null, qa_score: null, log_agent: 'Lint Gate', log_body: 'VERDICT: PASS (first draft clean)', log_ts: null }
+    expect(draftFailureReason(d)).toBe(draftFailure(d).reason)
   })
 })
