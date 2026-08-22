@@ -44,15 +44,31 @@ const VERB: Record<RowCap, string> = {
   approve: 'Approve', skip: 'Skip', promote: 'Put on board', delete: 'Delete',
 }
 
-// 🔴 RENDER ORDER, AND WHY DELETE IS NOT LAST.
+// 🔴 WHY PROMOTE IS NOT IN THE BUTTON GROUP, MEASURED.
 //
 // Before p4b a client review selection offered exactly ONE button, Delete, so
-// the leftmost slot of this bar IS the muscle memory for a destructive action on
-// those rows. Promote is therefore appended AFTER delete rather than slotted
-// into the position the verb order would suggest. The rule this encodes: adding
-// a capability never moves a button that already exists. Check it by selecting
-// the same rows before and after; every previously-rendered button keeps its x.
-const CAP_ORDER: RowCap[] = ['approve', 'skip', 'delete', 'promote']
+// that position IS the learned target for a destructive action on those rows.
+// The first attempt here appended promote after delete inside `.wb-bulk-acts`,
+// on the reasoning that appending never moves what is already there. That
+// reasoning is wrong on this bar and the browser said so: `.wb-bulk` is
+// `left:50%; transform:translateX(-50%)`, so it is CENTERED and its width is its
+// content's width. Adding one button widened the bar by 126.8px and slid Delete
+// 63.4px LEFT, and the point a hand had learned as Delete landed inside the new
+// client-facing button. Promoting 54 drafts to a paying client's live board
+// while reaching for Delete is the exact accident this bar exists to prevent.
+//
+// So promote takes a ROW OF ITS OWN, above the actions. The bar's width is the
+// width of its widest row, and the action row is much wider than one button, so
+// the bar does not widen and Delete's x does not move at all. Delete moves UP by
+// the height of the new row, into empty space, and the coordinate it vacated is
+// bar background. Re-measured after the change, in probe-ui.mjs `deleteHitbox`.
+//
+// It also happens to be the honest layout: the one action on this bar that a
+// paying client feels should not be a fourth verb in a row of verbs.
+const CAP_ORDER: RowCap[] = ['approve', 'skip', 'promote', 'delete']
+// The ones that render as buttons in the action group. Promote is deliberately
+// absent; it is rendered separately, above.
+const CAP_BUTTONS: RowCap[] = ['approve', 'skip', 'delete']
 
 export function capCountOf(rows: SelectedRow[]): Record<RowCap, number> {
   return {
@@ -215,6 +231,31 @@ export function BulkBar({ rows, state, onRun, onDismiss, onSelectAll, onClear, r
     <div className="wb-bulk" role="region" aria-label="Selected rows">
       <span className="wb-bulk-n">{n} {noun} selected</span>
 
+      {/* THE CLIENT-FACING ROW. First child and `flex-basis:100%`, so it claims
+          the top line of the bar and the action row below it keeps the exact x
+          it had before this capability existed. */}
+      {caps.promote > 0 && (
+        <div className="wb-bulk-client">
+          {/* 🔴 THE ROW HOLDS THE BUTTON AND NOTHING ELSE, and that is a width
+              constraint rather than a style choice. The bar sizes to its widest
+              ROW, so a sentence here would widen the bar and move Delete again,
+              which is the whole defect this layout exists to avoid. The client's
+              name rides in the title and in the confirm; the partial-selection
+              refusal is the bar's existing sentence, below. */}
+          <button
+            type="button"
+            className="wb-bulk-b client"
+            disabled={caps.promote !== n || state.busy}
+            title={caps.promote === n
+              ? `Put all ${n} on ${promoteAudience(rows)}’s board. He sees them.`
+              : `${caps.promote} of the ${n} selected rows can take this. A bulk action runs on every selected row or none.`}
+            onClick={() => onRun('promote')}
+          >
+            {VERB.promote} {caps.promote === n ? n : `${caps.promote}/${n}`}
+          </button>
+        </div>
+      )}
+
       {noWrites ? (
         <span className="wb-bulk-note">
           {kinds.has('thread')
@@ -223,7 +264,7 @@ export function BulkBar({ rows, state, onRun, onDismiss, onSelectAll, onClear, r
         </span>
       ) : (
         <div className="wb-bulk-acts">
-          {CAP_ORDER.map(cap => {
+          {CAP_BUTTONS.map(cap => {
             const have = caps[cap]
             if (have === 0) return null
             const all = have === n
