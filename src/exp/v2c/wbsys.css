@@ -711,3 +711,36 @@
   font-variant-numeric:tabular-nums;
 }
 .wb.wb.wb .ct-cmd-lane.on .ct-cmd-lane-n{ color:var(--text2) }
+
+/* ---- 8.4 AUTOMATION HEALTH ------------------------------------------------
+   A count and a list, read only. Severity may take --sev-*; the accent may not,
+   because there is nothing here to click that acts. The rail row reuses .wb-rj
+   so it inherits the row geometry exactly and does not become a second kind of
+   rail entry. */
+.wb.wb.wb .wb-rj-health{ cursor:pointer }
+.wb.wb.wb .wb-rj-health .wb-rj-ic{ color:var(--sev-attention) }
+
+/* The Ops list. Two lines per row: the automation's name, then the dated
+   consequence under it, which is condition 2 of the ruling this block is built
+   around (see OpsBoard's AutomationHealth note). */
+.wb.wb.wb .wb-auto-l{ display:flex; flex-direction:column; gap:2px }
+.wb.wb.wb .wb-auto-n{
+  font-size:var(--fs-meta); font-weight:600; letter-spacing:0; line-height:1.4;
+  color:var(--text2);
+}
+.wb.wb.wb .wb-auto-w{
+  font-size:var(--fs-eyebrow); font-weight:400; letter-spacing:0; line-height:1.4;
+  color:var(--text3);
+}
+
+/* The phone's frame. The ribbon slot is uppercase and tracked (styles.css:103),
+   so the numeral resets both or it renders as a differently-spaced digit from
+   every other count in the app. */
+.wb.wb.wb .wb-rib-health{
+  flex:none; display:inline-flex; align-items:center; gap:5px; cursor:pointer;
+}
+.wb.wb.wb .wb-rib-health-n{
+  font-size:12px; font-weight:700; letter-spacing:0; line-height:1.2;
+  color:var(--sev-attention);
+  text-transform:none; font-variant-numeric:tabular-nums;
+}

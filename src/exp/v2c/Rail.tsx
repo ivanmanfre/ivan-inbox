@@ -123,9 +123,16 @@ export function Rollup({ counts, compact }: { counts: Counts; compact?: boolean 
   )
 }
 
-export function Rail({ job, counts, countNote, sev, chatOn, chatLive, onJob, onChat, loadedAt, stale, onRefresh, collapsed, onToggle }: {
+export function Rail({ job, counts, countNote, health, sev, chatOn, chatLive, onJob, onChat, loadedAt, stale, onRefresh, collapsed, onToggle }: {
   job: Job
   counts: Counts
+  // The automation alarm. Kept OUT of `counts` on purpose: everything in that
+  // map is work Ivan can do, and this is not — nothing on this rail lets him
+  // restart a workflow, and nothing should (the old dashboard's Pause/Resume
+  // calls a live n8n toggle and n8n is out of scope here). It is a separate
+  // signal in a separate place, so the roll-up above stays exactly what it
+  // claims to be.
+  health?: { n: number; note: string }
   // What each count SUMS, in one sentence, on the row's own title. A number
   // whose predicate is unstated is a number a reader has to trust; the audit's
   // finding was that the old sidebar's counts worked because they were there,
@@ -226,6 +233,24 @@ export function Rail({ job, counts, countNote, sev, chatOn, chatLive, onJob, onC
       </div>
 
       <div className="wb-rail-foot">
+        {/* AUTOMATION HEALTH, in the frame rather than in the roll-up.
+            It sits beside the sync dot because it answers the same class of
+            question — is the machine still running — and it is deliberately NOT
+            a summand of "waiting on you": a red workflow is not a queue Ivan can
+            work through, it is a thing that has stopped. Renders nothing when
+            nothing is wrong. The click goes to Ops, where the list lives. */}
+        {health && health.n > 0 && (
+          <div
+            className="wb-rj wb-rj-health"
+            onClick={() => onJob('ops')}
+            title={health.note}
+          >
+            <span className="wb-rj-ic">⚠</span>
+            <span className="wb-rj-l">Workflows</span>
+            <span className="wb-rj-n attention">{health.n}</span>
+            <span className="wb-rj-pip attention" aria-hidden />
+          </div>
+        )}
         {JOBS.filter(j => j === 'settings').map(row)}
         <div className="wb-rail-sync" onClick={onRefresh}>
           {/* `.bad`, never `.stale`: `.stale` is a SHARED class (styles.css:266, the

@@ -220,6 +220,17 @@ export default function Shell() {
       + (glance.contentReviewOther > 0 ? ` · other lanes ${glance.contentReviewOther}` : ''),
     magnets: 'lead magnets at review, every lane',
   }
+  // The automation alarm, shaped once here so the rail, the ribbon and the Ops
+  // list can never state three different totals.
+  const health = {
+    n: glance.alerts.length,
+    note: glance.alerts.length === 0
+      ? ''
+      : `${glance.alerts.length} automation${glance.alerts.length === 1 ? '' : 's'} `
+        + 'errored or ran past schedule in the last 14 days. '
+        + `${glance.olderErrored + glance.olderStalled} older ones are not counted. `
+        + 'Read only: open Ops for the list.',
+  }
   const sev = {
     // Only a real problem takes a severity tier. A backlog of approvals is work,
     // not a warning — the audit's point 8.
@@ -406,6 +417,7 @@ export default function Shell() {
       // The reach the Content strip's alarm band used to be (2026-08-07). Ops
       // counts the pipeline's broken rows; the rows themselves live on Content,
       // so the jump crosses jobs here — the one place that owns both.
+      glance={glance}
       onOpenErrors={() => {
         goJob('content')
         setLane('ivan')
@@ -555,6 +567,17 @@ export default function Shell() {
             <span className="wb-rib-j">
               {job === 'settings' ? 'Settings' : <Rollup counts={counts} />}
             </span>
+            {/* Same alarm, same rule, the phone's only frame. It renders
+                nothing when nothing is wrong, and tapping it goes to Ops. */}
+            {health.n > 0 && (
+              <span
+                className="wb-rib-health" title={health.note}
+                onClick={() => goJob('ops')}
+              >
+                <span className="wb-sech-dot attention" />
+                <span className="wb-rib-health-n">{health.n}</span>
+              </span>
+            )}
             <span className={`wb-rib-sync${inboxError ? ' bad' : ''}`} onClick={inbox.refresh}>
               <span className={`wb-sync-dot${inboxError ? ' bad' : ''}`} />
               {inboxError ? 'not syncing' : relAge(inbox.loadedAt)}
@@ -581,6 +604,7 @@ export default function Shell() {
           job={job}
           counts={counts}
           countNote={countNote}
+          health={health}
           sev={sev}
           chatOn={hasChat(peers)}
           chatLive={chat.busy}
