@@ -809,3 +809,43 @@
   margin:0;
   z-index:2;
 }
+
+/* ---- DM row: .dpill and .pushbtn, the SAME flattener trap this file's own
+   header warns about (line 9) ------------------------------------------------
+   Found re-measuring after merging wb/polish (Today-as-work-queue, "the DM row
+   shows its draft"), which added a `.pushbtn` "Discard" button to `.right`
+   alongside the existing `.dpill` DRAFT/pushed pill. Neither class has a
+   `.wb.wb.wb`-specificity type rule anywhere in faithful.css or wb2026.css, so
+   both render at the flattener's default: 16px / 400 / 1.6 (25.6px) instead of
+   their real src/styles.css sizes (`.dpill` 10px/800, `.pushbtn` 12.5px/700).
+   Measured, live, compact mode, first DM row: `.right` (time + dpill +
+   pushbtn, gap 4px) came out at 96px tall against `.mid`'s 46px, so `.right`
+   -- not the row text this section's tokens target -- was silently setting
+   the floor under every drafted row's height, in BOTH densities, and eating
+   the leading/padding savings above before they could show up in the total.
+   Restated here at the correct size, matching the values these two classes
+   already carry in src/styles.css (the stock sheet these ARE the stock
+   classes for; not touching that file, only giving `.wb` its own equal-or-
+   higher-specificity copy of the same numbers). Not density-gated: this is
+   the trap the file's own header names, not a leading/padding opinion. */
+.wb.wb.wb .dpill, .wb.wb.wb .dpill *{
+  font-size:10px; font-weight:800; letter-spacing:.06em; line-height:1.4;
+}
+.wb.wb.wb .dpill{ padding:2px 6px }
+.wb.wb.wb .dpill.pushed{ letter-spacing:.02em; font-weight:700 }
+.wb.wb.wb .pushbtn, .wb.wb.wb .pushbtn *{
+  font-size:12.5px; font-weight:700; letter-spacing:0; line-height:1.2;
+}
+.wb.wb.wb .pushbtn{ padding:7px 12px; position:relative }
+/* At its restored size (padding 7px + 15px line-height = 29px) this real,
+   clickable Discard control sits 3px under the 32px pointer hit-target floor
+   this phase holds every control to. Rather than grow the visible pill (which
+   would re-open the row height this fix exists to close), the same invisible
+   hit-area extension `.wb-selmark::after` and `.wbb::after` already use in
+   this file clears the floor without moving a visible pixel. */
+.wb.wb.wb .pushbtn::after{
+  content:''; position:absolute; inset:-2px 0;
+}
+@media (pointer:coarse){
+  .wb.wb.wb .pushbtn::after{ inset:-8px 0 }
+}
