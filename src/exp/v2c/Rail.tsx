@@ -191,10 +191,6 @@ export function Rail({ job, counts, countNote, health, sev, chatOn, chatLive, on
       <div className="wb-rail-top">
         {!collapsed && <span className="avatar-me">IM</span>}
         {!collapsed && <span className="wb-rail-ttl">Workbench</span>}
-        {/* The roll-up sits in the frame, above the rows it sums, which is
-            where the old dashboard puts its own (`PENDING <n>`, top bar). On
-            the collapsed rail it keeps the numeral and drops the words. */}
-        {collapsed && <Rollup counts={counts} compact />}
         {onToggle && (
           <button
             type="button" className="wb-rail-minbtn"
@@ -203,6 +199,14 @@ export function Rail({ job, counts, countNote, health, sev, chatOn, chatLive, on
             onClick={onToggle}
           >{collapsed ? '»' : '«'}</button>
         )}
+        {/* The roll-up sits in the frame, above the rows it sums, which is
+            where the old dashboard puts its own (`PENDING <n>`, top bar). On
+            the collapsed rail it keeps the numeral, drops the words, and goes
+            BELOW the toggle: side by side, 44px of usable width could not hold
+            both and the toggle was the one pushed out of the rail entirely
+            (measured at x=73 in a 64px rail, i.e. under the working column and
+            unclickable). The stack is set in wbsys.css §8.2. */}
+        {collapsed && <Rollup counts={counts} compact />}
       </div>
 
       {!collapsed && (
