@@ -99,7 +99,7 @@ function clientLabel(id: string): string {
   return id.toUpperCase()
 }
 
-export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt, title = 'Inbox', status, before, after, rowsFor, renderRow, emptyLine }: {
+export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt, title = 'Inbox', status, before, after, rowsFor, renderRow, rowNote, rowChip, emptyLine }: {
   threads: Thread[]
   filter: Filter
   setFilter: (f: Filter) => void
@@ -138,6 +138,16 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
   // that DraftsScreen used to own. Windowing is off when it is supplied — the
   // window maps a scroll offset onto a FIXED row height, and a card is not one.
   renderRow?: (t: Thread) => ReactNode
+  // Two opt-in slots on the 73px conversation row, both absent from
+  // `#exp/stock` because the pre-revamp shell passes neither.
+  //
+  // They exist as a PAIR, and as a pair rather than one bigger prop, because
+  // the row's height is load-bearing: `useRowWindow` maps a scroll offset onto
+  // a fixed ROW_H, so nothing may be ADDED to the row's vertical box. `rowNote`
+  // therefore REPLACES the message preview on the line it already occupies,
+  // and `rowChip` sits in the right-hand column beside the time and the pills.
+  rowNote?: (t: Thread) => string | null
+  rowChip?: (t: Thread) => ReactNode
   emptyLine?: string
 }) {
   const rowsRef = useRef<HTMLDivElement>(null)
@@ -223,6 +233,7 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
             let snip = t.last.message_text
             if (isDraftLast) snip = `✦ Draft: ${t.last.message_text}`
             else if (t.last.direction === 'outbound' && t.last.sent_at) snip = `You: ${t.last.message_text}`
+            const note = rowNote?.(t) ?? null
             return (
               <div
                 key={t.prospect_id}
@@ -245,9 +256,15 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
                     {threadKind(t) === 'linkedin' && <span className="client kind-dm">DM</span>}
                     {isLeadMagnet(t) && <span className="client kind-lm">LEAD MAGNET</span>}
                   </div>
-                  <div className="snip">{snip}</div>
+                  {/* The pre-read, when one has been asked for, stands IN
+                      PLACE of the preview rather than under it: the row height
+                      is what the list's windowing measures against. */}
+                  <div className={`snip${note ? ' snip-note' : ''}`} title={note ?? undefined}>
+                    {note ?? snip}
+                  </div>
                 </div>
                 <div className="right">
+                  {rowChip?.(t)}
                   <span className="time">{timeAgo(eventTime(t.last))}</span>
                   {t.unread > 0 && <span className="udot" />}
                   {/* A pushed draft says WHEN, not DRAFT — the row is the only
