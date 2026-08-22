@@ -201,6 +201,10 @@ async function search(page, term) {
         badge: t(r.querySelector('.wb-find-badge')),
       })),
       none: [...document.querySelectorAll('.wb-cmdk-none')].map(t),
+      // The other-lane hint. Counts only, and this read is the assertion that
+      // it is counts only: no titles, no snippets, no ids.
+      elsewhere: t(document.querySelector('.wb-find-else')),
+      elsewhereRows: document.querySelectorAll('.wb-find-else .wb-cmdk-t').length,
     }
   })
 }

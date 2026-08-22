@@ -100,7 +100,9 @@
     "badge": "Lead magnet"
    }
   ],
-  "none": []
+  "none": [],
+  "elsewhere": "Also written elsewhere:Mattan Danino has 25",
+  "elsewhereRows": 0
  },
  "searchMattan": {
   "head": "Anything you have written, inIvanMattan DaninoDavorin Smit",

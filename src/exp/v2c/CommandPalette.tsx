@@ -2,7 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   GROUP_ORDER, keyRows, matchWbCommands, type WbCommand, type WbGroup,
 } from './commandSource'
-import { CROSS_MIN, SURFACE_LABEL, laneName, type CrossHit, type CrossResults } from '../../lib/crossSearch'
+import {
+  CROSS_MIN, SURFACE_LABEL, laneName,
+  type CrossHit, type CrossResults, type LaneCount,
+} from '../../lib/crossSearch'
 import type { ContentLane } from '../../lib/content'
 import { CONTENT_LANES } from '../../lib/content'
 
@@ -119,6 +122,21 @@ function FindRows({ find, cursorAt, base, onHover, onPick }: {
           </button>
         )
       })}
+      {/* The dead end, ended, without putting one lane's rows under another
+          lane's name: a number and a way to go and look. */}
+      {find.elsewhere.length > 0 && (
+        <div className="wb-find-else">
+          <span>Also written elsewhere:</span>
+          {find.elsewhere.map(c => (
+            <button
+              type="button"
+              key={c.lane}
+              className="wb-find-lane"
+              onMouseDown={e => { e.preventDefault(); find.setLane(c.lane) }}
+            >{laneName(c.lane)} has {c.n}</button>
+          ))}
+        </div>
+      )}
       {find.failed.length > 0 && (
         <div className="wb-cmdk-none">
           Could not reach {find.failed.join(' or ')} just now.
@@ -131,6 +149,8 @@ function FindRows({ find, cursorAt, base, onHover, onPick }: {
 export type FindState = CrossResults & {
   q: string
   busy: boolean
+  /** Other lanes, as a COUNT only. Never a row. See lib/crossSearch.ts. */
+  elsewhere: LaneCount[]
   setLane: (l: ContentLane) => void
 }
 

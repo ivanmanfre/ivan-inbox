@@ -242,6 +242,43 @@ export async function crossSearch(query: string, lane: ContentLane): Promise<Cro
   }
 }
 
+// ---------------------------------------------------------------------------
+// The one extra thing, and the evidence for it
+// ---------------------------------------------------------------------------
+//
+// A lane-scoped search answers "where is that draft about margins" only if he
+// already knows the lane. Measured for the term `margin` (GET probe, evidence/
+// ai-tools/tenancy-probe.md): Ivan's lane holds 5 drafts, Mattan's holds 25.
+// A search on Ivan's lane that says "5" and stops is technically correct and
+// practically a dead end, because the 25 are invisible and unhinted.
+//
+// So the OTHER lanes return a COUNT and nothing else. No title, no snippet, no
+// id, no body: a number and a lane name, which is a fact about how much work
+// exists and not a row belonging to somebody else. Clicking it switches the
+// search into that lane, where the rows are then his to read under that lane's
+// own name. That keeps the rule intact (no client's row ever renders under
+// another client's lane) while ending the dead end.
+//
+// It costs two HEAD requests per search: `count=exact` with `head: true`
+// returns the number in a header and no rows at all.
+export type LaneCount = { lane: ContentLane; n: number }
+
+export async function crossSearchOtherLanes(
+  query: string, lane: ContentLane, lanes: readonly ContentLane[],
+): Promise<LaneCount[]> {
+  const term = safeTerm(query)
+  if (term.length < CROSS_MIN) return []
+  const others = lanes.filter(l => l !== lane)
+  const counts = await Promise.all(others.map(async (l): Promise<LaneCount> => {
+    const lf = laneFilter(l)
+    let q = supabase.from('carousel_drafts').select('id', { count: 'exact', head: true })
+    q = lf.op === 'is' ? q.is(lf.column, null) : q.eq(lf.column, lf.value)
+    const { count, error } = await q.or(orIlike(['title', 'topic', 'post_body'], term))
+    return { lane: l, n: error ? 0 : (count ?? 0) }
+  }))
+  return counts.filter(c => c.n > 0)
+}
+
 /** What a hit's badge prints. Never the table name, never the column name. */
 export const SURFACE_LABEL: Record<CrossSurface, string> = {
   dm: 'Conversation',

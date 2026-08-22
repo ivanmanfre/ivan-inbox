@@ -3,8 +3,11 @@ import { parseWbHash, wbHash } from './route'
 import type { Job } from './layout'
 import { buildCommands } from './commandSource'
 import { CommandPalette, ShortcutSheet, type FindState } from './CommandPalette'
-import { CROSS_MIN, crossSearch, type CrossHit, type CrossResults } from '../../lib/crossSearch'
-import type { ContentLane } from '../../lib/content'
+import {
+  CROSS_MIN, crossSearch, crossSearchOtherLanes,
+  type CrossHit, type CrossResults, type LaneCount,
+} from '../../lib/crossSearch'
+import { CONTENT_LANES, type ContentLane } from '../../lib/content'
 import { BulkBar, capCountOf, useBulkRun } from './BulkBar'
 import {
   clearSelection, getFocusId, getSelected, lookupRow, selectRows, setFocus, setLayerMounted,
@@ -121,6 +124,9 @@ export function CommandLayer() {
   const [findLane, setFindLane] = useState<ContentLane>('ivan')
   const [findRes, setFindRes] = useState<CrossResults>(EMPTY_FIND)
   const [findBusy, setFindBusy] = useState(false)
+  // Counts only, from the lanes he is NOT searching. See crossSearch.ts for
+  // why this is a number and never a row.
+  const [findElsewhere, setFindElsewhere] = useState<LaneCount[]>([])
   // Only the newest query is allowed to write a result. Without this a slow
   // three-letter search landing after a fast five-letter one would repaint the
   // list with answers to a question he has already finished asking.
@@ -128,10 +134,15 @@ export function CommandLayer() {
 
   useEffect(() => {
     const q = findQ.trim()
-    if (q.length < CROSS_MIN) { setFindRes(EMPTY_FIND); setFindBusy(false); return }
+    if (q.length < CROSS_MIN) {
+      setFindRes(EMPTY_FIND); setFindElsewhere([]); setFindBusy(false); return
+    }
     setFindBusy(true)
     const mine = ++findSeq.current
     const t = window.setTimeout(() => {
+      void crossSearchOtherLanes(q, findLane, CONTENT_LANES).then(c => {
+        if (findSeq.current === mine) setFindElsewhere(c)
+      }).catch(() => { /* a missing hint is not an error worth printing */ })
       void crossSearch(q, findLane).then(r => {
         if (findSeq.current !== mine) return
         setFindRes(r)
@@ -156,6 +167,7 @@ export function CommandLayer() {
     lane: findLane,
     q: findQ,
     busy: findBusy,
+    elsewhere: findElsewhere,
     setLane: setFindLane,
   }
 
@@ -337,6 +349,7 @@ export function CommandLayer() {
         setFindLane(readLane())
         setFindQ('')
         setFindRes(EMPTY_FIND)
+        setFindElsewhere([])
         setPalette(true)
         return
       }
