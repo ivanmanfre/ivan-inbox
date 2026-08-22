@@ -61,10 +61,12 @@
 /* The artifact sits in a WELL inside the stage, one level down, so the white
    LinkedIn card has something to be on rather than floating on the plate.
    Rule 1 of the ladder, spent downward: --e2 stage, --e1 well, and the white
-   card is the object. */
+   card is the object.
+   GRAFT 4 amends this: the bar is no longer the stage's welded footer, so the
+   well closes its own bottom corners. See §11. */
 .wb.wb.wb .dwa-stage-art{
   background:var(--e1);
-  border-radius:var(--r-card) var(--r-card) 0 0;
+  border-radius:var(--r-card);
   padding:16px 0;
 }
 /* The shared blocks lose the page gutters they were written for: inside a 640
@@ -112,11 +114,12 @@
   position:sticky; bottom:0; z-index:2;
   display:flex; flex-direction:column; align-items:stretch;
   gap:8px;
-  margin-top:0;
-  padding:12px 14px calc(12px + env(safe-area-inset-bottom));
+  margin:10px 16px 0;
+  padding:10px 12px calc(10px + env(safe-area-inset-bottom));
   background:var(--e2);
-  border-top:1px solid var(--hairline);
-  border-radius:0 0 var(--r-card) var(--r-card);
+  border-top:0;
+  border-radius:var(--r-card);
+  box-shadow:var(--sh-card);
 }
 .wb.wb.wb .dwa-acts-decide,
 .wb.wb.wb .dwa-acts-remake{
@@ -748,16 +751,20 @@
      already on `.dw-main` as the bar's MEASURED height. */
   .wb.wb.wb .wb-tk-body.dw-body:has(.dwa-stage){ padding-bottom:0 }
   .wb.wb.wb .dwa-stage{ margin-left:12px; margin-right:12px }
+  /* GRAFT 4. This used to bleed to the window's edges and go square, because a
+     rounded footer floating over the content it is pinned above reads as a
+     detached toolbar. That reasoning was right about a FOOTER and wrong about a
+     DOCK: the bar is a contained object now, so it keeps its shape and its
+     shadow here too, and the shadow is what gives it the edge it was borrowing
+     from the full bleed. */
   .wb.wb.wb .dw-acts{
-    margin-left:-12px; margin-right:-12px;
-    border-radius:0;
-    background:var(--e2);
-    padding-left:14px; padding-right:14px;
+    margin-left:12px; margin-right:12px; margin-bottom:12px;
+    padding-left:12px; padding-right:12px;
   }
 }
 @media (max-width:420px){
   .wb.wb.wb .dwa-stage{ margin-left:8px; margin-right:8px }
-  .wb.wb.wb .dw-acts{ margin-left:-8px; margin-right:-8px; gap:7px }
+  .wb.wb.wb .dw-acts{ margin-left:8px; margin-right:8px; margin-bottom:8px; gap:7px }
   .wb.wb.wb .dw-acts .wbb{ padding:0 12px }
   /* Measured at 390: the remake tier ran 369px against a 362px content width,
      so Delete wrapped to a line of its own - which is the shape of the defect
@@ -782,7 +789,6 @@
    loses to it silently, rendering at body size while reading correctly in the
    diff.
    ========================================================================== */
-
 
 /* ---- GRAFT 1 · the four recovery acts go behind one disclosure ------------
 
@@ -825,7 +831,6 @@
   .wb.wb.wb .dwa-more-c{ transition:none }
 }
 
-
 /* ---- GRAFT 2 · the stage's metadata is text, not pills -------------------
 
    Before: `Text`, `Needs review`, `edited 18h ago` as three bordered chips with
@@ -863,7 +868,6 @@
   margin-right:10px;
   color:var(--text4);
 }
-
 
 /* ---- GRAFT 3 · the wide viewport gets a rule -----------------------------
 
@@ -904,3 +908,12 @@
   .wb.wb.wb .dw-main-in{ max-width:640px; margin:0 auto }
 }
 
+/* ---- GRAFT 4 · the dock's shape and its edge -----------------------------
+
+   The shape and the elevation are in §1 and §2 where the rules they amend live.
+   What belongs here is the offset: at a wide viewport the dock lifts clear of
+   the well's floor, so it reads as an object resting IN the stage rather than a
+   strip fused to the bottom of the window. */
+@media (min-width:1180px){
+  .wb.wb.wb .dw-acts{ bottom:14px; margin-bottom:14px }
+}
