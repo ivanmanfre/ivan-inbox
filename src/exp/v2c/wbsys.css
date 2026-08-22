@@ -147,3 +147,34 @@
    --e0 through --canvas. Restated so the ladder owns it explicitly rather than
    by inheritance through a bridge token. */
 .wb.wb.wb .wb-plate{ background:var(--e0) }
+
+/* ========================================================================== */
+/* 2 · THE RADIUS SCALE                                                        */
+/* ========================================================================== */
+
+/* Four values. The audit measured 6, 8, 10, 12, 16, 20, 40 and 999 live in the
+   running build, frequently on elements doing the same job.
+
+     --r-xs    6px    chips, tags, tiny controls, progress tracks
+     --r-ctl   10px   buttons, inputs, tabs, day cells
+     --r-card  14px   cards, panes, popovers, sheets
+     --r-pill  999px  only where a pill is the deliberate form
+
+   The retarget is done by REDEFINING the legacy names rather than rewriting the
+   ~200 declarations that read them. Custom properties resolve at use time, so
+   faithful.css:91's `--r-sm:var(--r-ctl); --r-md:var(--r-card);
+   --r-lg:var(--r-hero)` chain re-resolves onto the new scale on its own:
+   r-sm 12 -> 10, r-md 20 -> 14, r-lg 20 -> 14. The chip's 12px becomes 6px,
+   which alone stops it reading as a lozenge.
+
+   --plate-r is NOT touched. It is a ballot arm (phase1-system §6). */
+.wb{
+  --r-xs:6px;
+  --r-ctl:10px;
+  --r-card:14px;
+  --r-pill:999px;
+
+  /* legacy names, retargeted onto the four */
+  --r-chip:var(--r-xs);   /* was 8px */
+  --r-hero:var(--r-card); /* was 20px, collapses onto the card */
+}
