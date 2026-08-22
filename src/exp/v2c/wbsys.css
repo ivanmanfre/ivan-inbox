@@ -693,7 +693,12 @@
   color:var(--text3);
   text-transform:none;
 }
-/* Collapsed rail: the numeral only, centred under the avatar row. */
+/* Collapsed rail: the numeral only, STACKED under the toggle. The rail is 64px
+   with 10px of padding either side, so the top row has 44px of usable width and
+   cannot hold a 32px button beside a three-digit numeral: laid out in a row the
+   button landed at x=73 in a 64px rail, outside it and under the working
+   column, where nothing could click it. */
+.wb.wb.wb .wb-rail.min .wb-rail-top{ flex-direction:column; gap:8px; padding-bottom:12px }
 .wb.wb.wb .wb-rail.min .wb-rollup{ margin:0 auto }
 .wb.wb.wb .wb-rail.min .wb-rollup-n{ font-size:13px }
 
@@ -743,4 +748,27 @@
   font-size:12px; font-weight:700; letter-spacing:0; line-height:1.2;
   color:var(--sev-attention);
   text-transform:none; font-variant-numeric:tabular-nums;
+}
+
+/* THE RESERVED LANE, WIDENED BY WHAT WAS ACTUALLY ADDED TO IT.
+   wb2026.css D7 folds the mobile ribbon into the work row as an absolute
+   overlay and reserves 144px of right padding on the pill strip so no pill can
+   pass under it. ONE thing joined that overlay, the automation mark, and 144px
+   no longer covered it: measured at 390 the overlay's own box grew and its left
+   edge landed at x=161 against a pill strip whose visible right edge was 206,
+   so 45px of Magnets rendered under it. The value below is that overlay's
+   RENDERED width plus the gap, re-measured after the change, not an estimate.
+   The roll-up was tried here too and taken back out; see Shell's ribbon note.
+
+   The arithmetic, so the next reader can redo it: at 390 the overlay measures
+   14 + 29 (the mark) + 10 + 73 (the sync chip) + 10 + 32 (the gear) + 10 + 14
+   = 192px, and 200 leaves 8px of clearance. The sync chip's text is the one
+   part that can grow (`not syncing` is the longest state it prints); it eats
+   that clearance rather than a pill, and the pill strip scrolls the ACTIVE
+   pill into view on every job change (Rail.tsx WorkSegment) so the one that
+   matters is never the one behind the overlay.
+   🔴 Noted rather than silently fixed: at 144 this lane was ALREADY 9px short
+   of the overlay it reserves for, before this pass added anything. */
+@media (max-width:767px){
+  .wb.wb.wb .wb-plate:has(.wb-workhead) .wb-workhead{ padding-right:200px }
 }

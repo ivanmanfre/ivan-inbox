@@ -35,7 +35,7 @@ function toQueueItem(d: ContentDraft): QueueItem {
     scheduled_at: d.scheduled_at,
   }
 }
-import { MobileTabs, Rail, Rollup, WorkSegment } from './Rail'
+import { MobileTabs, Rail, WorkSegment } from './Rail'
 import { ContentList, type OpenDraft } from './ContentList'
 import { CommandLayer } from './CommandLayer'
 import { MagnetsList } from './MagnetsList'
@@ -564,9 +564,21 @@ export default function Shell() {
                 was empty on every job but Settings. Same primitive, same rule:
                 it is the bottom bar's own counts added up, and every summand is
                 a tab you can see. */}
-            <span className="wb-rib-j">
-              {job === 'settings' ? 'Settings' : <Rollup counts={counts} />}
-            </span>
+            {/* 🔴 NO ROLL-UP ON THE PHONE, and the reason is measured rather
+                than aesthetic. On a work job this whole ribbon becomes an
+                ABSOLUTE overlay at the top right of the plate and the work
+                pills reserve a fixed lane under it (wb2026.css D7, a band that
+                was folded from four to three after a fight recorded in that
+                note). Adding the roll-up took the overlay from 144px to 221px
+                at 390, which printed it on top of the Magnets pill and would
+                have cost another 56px of the only strip that reaches Styles
+                and Strategy. And unlike the desktop rail, the phone already
+                carries every one of the roll-up's summands as its own numeral,
+                permanently, on every screen: the bottom bar IS the rail's
+                counts. So the total stays on the canvas that has room for it.
+                The automation mark below is the opposite case and it stays: it
+                exists nowhere else on this viewport. */}
+            <span className="wb-rib-j">{job === 'settings' ? 'Settings' : ''}</span>
             {/* Same alarm, same rule, the phone's only frame. It renders
                 nothing when nothing is wrong, and tapping it goes to Ops. */}
             {health.n > 0 && (
