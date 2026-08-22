@@ -654,10 +654,13 @@
   border-bottom:1px solid var(--hairline);
 }
 .wb.wb.wb .wb-see-top{ display:flex; align-items:center; gap:8px }
+.wb.wb.wb .wb-see-top{ flex-wrap:wrap }
+/* The sentence WRAPS rather than ellipsising. It is the privacy statement, and
+   "Claude can see 2 things, names and sta…" is the one line on this pane that
+   must never be cut off mid-word. */
 .wb.wb.wb .wb-see-l{
-  flex:1 1 auto; min-width:0;
-  font-size:12px; line-height:1.3; color:var(--text3);
-  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  flex:1 1 160px; min-width:0;
+  font-size:12px; line-height:1.35; color:var(--text3);
 }
 .wb.wb.wb .wb-see-t{
   flex:0 0 auto;
@@ -771,6 +774,10 @@
 
 .wb.wb.wb .wb-find-h{
   display:flex; align-items:center; justify-content:space-between; gap:10px;
+  /* The other group headers are one-word categories, so the palette shouts
+     them. This one is a sentence with a lane picker in it, and a shouted
+     sentence reads as an error message. */
+  text-transform:none; letter-spacing:0;
 }
 .wb.wb.wb .wb-find-lanes{ display:inline-flex; gap:4px }
 .wb.wb.wb .wb-find-lane{
