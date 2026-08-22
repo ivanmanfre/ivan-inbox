@@ -727,3 +727,34 @@
   font-size:12px; line-height:1.45;
   white-space:pre-wrap; word-break:break-word;
 }
+
+/* ==========================================================================
+   8. THE THREAD PRE-READ
+   ==========================================================================
+   Item 2 of the AI pass. The control is a chip in the row's right-hand column;
+   the answer replaces the message preview on the line it already occupies, so
+   the 73px row height the list windows against never moves.
+
+   Three .wb classes, as everywhere. `.snip` itself is declared in
+   src/styles.css, which is shared with #exp/stock and is not touched: the
+   modifier below only ever exists on a row that was given a note, and only the
+   workbench passes one. */
+
+.wb.wb.wb .wb-pre{
+  flex:0 0 auto;
+  height:18px; padding:0 7px;
+  border:none; border-radius:var(--r-xs);
+  background:var(--e3); color:var(--text3);
+  font-size:11px; line-height:1; font-weight:450;
+  cursor:pointer;
+  transition:background-color 120ms ease, color 120ms ease;
+}
+.wb.wb.wb .wb-pre:hover{ background:rgba(197,225,165,.14); color:var(--text1) }
+
+/* The generated line is marked as generated. It is a different KIND of
+   sentence from the message preview it stands in for, and a reader who cannot
+   tell them apart will eventually quote one to a prospect as the other. */
+.wb.wb.wb .snip-note{ color:var(--text2); font-style:italic }
+.wb.wb.wb .snip-note::before{
+  content:'✳ '; font-style:normal; color:var(--accent);
+}
