@@ -772,3 +772,189 @@
 @media (max-width:767px){
   .wb.wb.wb .wb-plate:has(.wb-workhead) .wb-workhead{ padding-right:200px }
 }
+
+/* ==========================================================================
+   9. THE CLAUDE PANE'S CONTEXT STRIP
+   ==========================================================================
+   Item 1 of the AI pass: the pane stopped being a general chat and now knows
+   what is on screen. The strip is the honesty half of that. It names every
+   subject that will travel, lets any one of them be removed, and prints the
+   exact block behind "Show me".
+
+   Every selector below carries THREE .wb classes. faithful.css:181 is
+   `.wb.wb, .wb.wb *{ font-size: ... }`, so a two-class selector loses the
+   font-size silently and renders at body size while looking right in review.
+   Each value here was read back from getComputedStyle, not eyeballed. */
+
+.wb.wb.wb .wb-see{
+  display:flex; flex-direction:column; gap:6px;
+  padding:8px 12px 10px;
+  background:var(--e2);
+  border-bottom:1px solid var(--hairline);
+}
+.wb.wb.wb .wb-see-top{ display:flex; align-items:center; gap:8px }
+.wb.wb.wb .wb-see-top{ flex-wrap:wrap }
+/* The sentence WRAPS rather than ellipsising. It is the privacy statement, and
+   "Claude can see 2 things, names and sta…" is the one line on this pane that
+   must never be cut off mid-word. */
+.wb.wb.wb .wb-see-l{
+  flex:1 1 160px; min-width:0;
+  font-size:12px; line-height:1.35; color:var(--text3);
+}
+.wb.wb.wb .wb-see-t{
+  flex:0 0 auto;
+  height:22px; padding:0 8px;
+  border:none; border-radius:var(--r-xs);
+  background:transparent; color:var(--text2);
+  font-size:12px; line-height:1; font-weight:450;
+  cursor:pointer;
+  transition:background-color 120ms ease, color 120ms ease;
+}
+.wb.wb.wb .wb-see-t:hover{ background:var(--e3); color:var(--text1) }
+
+.wb.wb.wb .wb-see-chips{ display:flex; flex-wrap:wrap; gap:6px }
+
+/* A chip is an object ON the strip, so it takes one lightness step up from it.
+   Same rule as every other raised element in section 1. */
+.wb.wb.wb .wb-see-c{
+  display:inline-flex; align-items:center; gap:6px;
+  max-width:100%;
+  height:24px; padding:0 4px 0 8px;
+  border-radius:var(--r-xs);
+  background:var(--e3);
+  font-size:12px; line-height:1;
+}
+.wb.wb.wb .wb-see-c.off{ background:transparent; box-shadow:inset 0 0 0 1px var(--hairline) }
+.wb.wb.wb .wb-see-cn{
+  min-width:0; max-width:180px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  color:var(--text1); font-size:12px; line-height:1;
+}
+.wb.wb.wb .wb-see-c.off .wb-see-cn{ color:var(--text3); text-decoration:line-through }
+
+/* The depth switch. It is a WORD and not an icon on purpose: "names only" and
+   "full text" are the whole privacy contract, and an icon would need a legend
+   nobody reads. */
+.wb.wb.wb .wb-see-cd{
+  flex:0 0 auto;
+  height:18px; padding:0 6px;
+  border:none; border-radius:var(--r-xs);
+  background:var(--e1); color:var(--text3);
+  font-size:11px; line-height:1; font-weight:450;
+  cursor:pointer;
+  transition:background-color 120ms ease, color 120ms ease;
+}
+.wb.wb.wb .wb-see-cd.on{ background:rgba(197,225,165,.14); color:var(--text1) }
+
+.wb.wb.wb .wb-see-cx{
+  flex:0 0 auto;
+  width:18px; height:18px; padding:0;
+  display:inline-flex; align-items:center; justify-content:center;
+  border:none; border-radius:var(--r-xs);
+  background:transparent; color:var(--text3);
+  font-size:11px; line-height:1;
+  cursor:pointer;
+  transition:background-color 120ms ease, color 120ms ease;
+}
+.wb.wb.wb .wb-see-cx:hover{ background:var(--e1); color:var(--text1) }
+
+/* The exact text that travels. A recessed well, because it is a read surface
+   and not an object: --e1 under the --e2 strip. */
+.wb.wb.wb .wb-see-peek{
+  max-height:180px; overflow:auto;
+  padding:8px 10px;
+  border-radius:var(--r-ctl);
+  background:var(--e1);
+  color:var(--text2);
+  font-size:12px; line-height:1.45;
+  white-space:pre-wrap; word-break:break-word;
+}
+
+/* ==========================================================================
+   10. THE THREAD PRE-READ
+   ==========================================================================
+   Item 2 of the AI pass. The control is a chip in the row's right-hand column;
+   the answer replaces the message preview on the line it already occupies, so
+   the row height the list windows against never moves.
+
+   The "73px" this comment carried on its own branch was ROW_H, the constant in
+   InboxScreen, not the rendered box: measured live at 1440 the workbench DM row
+   is 107px comfortable. Re-measured after the density merge and recorded in
+   §12, because a number in a comment that nobody re-measures is how the next
+   reader ships a broken window.
+
+   `.snip` carries `white-space:nowrap; overflow:hidden; text-overflow:ellipsis`
+   (src/styles.css:75), so the pre-read is one line no matter how long it is;
+   `.snip-note` adds colour, italics and a marker glyph and NO box. That is why
+   the note may share the preview's element instead of needing its own.
+
+   Three .wb classes, as everywhere. `.snip` itself is declared in
+   src/styles.css, which is shared with #exp/stock and is not touched: the
+   modifier below only ever exists on a row that was given a note, and only the
+   workbench passes one. */
+
+.wb.wb.wb .wb-pre{
+  flex:0 0 auto;
+  height:18px; padding:0 7px;
+  border:none; border-radius:var(--r-xs);
+  background:var(--e3); color:var(--text3);
+  font-size:11px; line-height:1; font-weight:450;
+  cursor:pointer;
+  transition:background-color 120ms ease, color 120ms ease;
+}
+.wb.wb.wb .wb-pre:hover{ background:rgba(197,225,165,.14); color:var(--text1) }
+
+/* The generated line is marked as generated. It is a different KIND of
+   sentence from the message preview it stands in for, and a reader who cannot
+   tell them apart will eventually quote one to a prospect as the other. */
+.wb.wb.wb .snip-note{ color:var(--text2); font-style:italic }
+.wb.wb.wb .snip-note::before{
+  content:'✳ '; font-style:normal; color:var(--accent);
+}
+
+/* ==========================================================================
+   11. CROSS-OBJECT SEARCH, INSIDE THE PALETTE
+   ==========================================================================
+   Item 3 of the AI pass, and the one that is not an AI feature at all. It
+   reuses the palette's own row geometry so a database row and a command read
+   as the same kind of object, and adds exactly two things: the lane it is
+   searching, and a badge saying which surface each result came from.
+
+   Three .wb classes throughout. */
+
+.wb.wb.wb .wb-find-h{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  /* The other group headers are one-word categories, so the palette shouts
+     them. This one is a sentence with a lane picker in it, and a shouted
+     sentence reads as an error message. */
+  text-transform:none; letter-spacing:0;
+}
+.wb.wb.wb .wb-find-lanes{ display:inline-flex; gap:4px }
+.wb.wb.wb .wb-find-lane{
+  height:20px; padding:0 8px;
+  border:none; border-radius:var(--r-xs);
+  background:transparent; color:var(--text3);
+  font-size:11px; line-height:1; font-weight:450;
+  text-transform:none; letter-spacing:0;
+  cursor:pointer;
+  transition:background-color 120ms ease, color 120ms ease;
+}
+.wb.wb.wb .wb-find-lane:hover{ background:var(--e3); color:var(--text1) }
+.wb.wb.wb .wb-find-lane.on{ background:rgba(197,225,165,.14); color:var(--text1) }
+
+/* The badge is where a command row prints its shortcut, so the column keeps a
+   single meaning: what this row is, or how to run it. */
+.wb.wb.wb .wb-find-badge{
+  color:var(--text3);
+  font-size:11px; line-height:1;
+  white-space:nowrap;
+}
+
+/* The other-lane counts. Deliberately styled as a FOOTNOTE and not as rows:
+   the whole point is that these are numbers, not somebody else's drafts. */
+.wb.wb.wb .wb-find-else{
+  display:flex; flex-wrap:wrap; align-items:center; gap:6px;
+  padding:6px 14px 8px;
+  color:var(--text3);
+  font-size:12px; line-height:1.3;
+}
