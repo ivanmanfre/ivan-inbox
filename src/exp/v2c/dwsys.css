@@ -104,7 +104,10 @@
    every viewport and wraps differently as labels change. The bar is therefore
    authored as two deliberate tiers: decide, then remake. Delete rides at the
    far end of the remake tier, which is the point of the room diagonally
-   opposite Approve - reachable without being where the thumb lands. */
+   opposite Approve - reachable without being where the thumb lands.
+   GRAFT 1 amends the second tier: it is behind a disclosure now, not resting.
+   GRAFT 4 amends the bar's own shape: it is a dock, not a welded footer. Both
+   are in §11, which is the last word on this rule. */
 .wb.wb.wb .dw-acts{
   position:sticky; bottom:0; z-index:2;
   display:flex; flex-direction:column; align-items:stretch;
@@ -763,3 +766,62 @@
   .wb.wb.wb .dwa-acts-remake{ gap:4px }
   .wb.wb.wb .dwa-acts-remake .wbb{ padding:0 8px }
 }
+
+/* ==========================================================================
+   11 · THE FOUR GRAFTS, AWARDED OUT OF THE LOSING CANDIDATE
+   ==========================================================================
+
+   `goal-runs/workbench-polish-2026-08-22-out/evidence/dw-tournament.md` §Graft
+   list. This candidate won the tournament; four things out of the state that
+   lost are better than what is above and travel here. Nothing from that state's
+   INSPECTOR travels: its nine all-caps rubric rows at full size are precisely
+   what it lost on, and re-importing them would undo §4 and §7.
+
+   Every selector below carries three `.wb`. `faithful.css:181` is
+   `.wb.wb.wb, .wb.wb.wb *{ font-size: ... }` at 0-2-0 and a two-class selector
+   loses to it silently, rendering at body size while reading correctly in the
+   diff.
+   ========================================================================== */
+
+
+/* ---- GRAFT 1 · the four recovery acts go behind one disclosure ------------
+
+   Before: Regenerate, Swap image, Back to idea and Delete draft rendered at
+   rest, in a permanent second tier, at every viewport. Seven controls on a
+   screen whose job is one decision, and at 390 the destructive one landed in
+   the bottom-right thumb zone.
+
+   After: the resting bar is Approve / Edit / Schedule / `Fix or remove ›`, and
+   the four are one click away in a shelf at full bar measure. `.dwa-acts-remake`
+   keeps every rule §2 gave it - the 32px quiet tier, the 6px gap, Delete at the
+   far end on `margin-left:auto` in its quiet error-text weight, NOT the losing
+   candidate's full-red button at sibling size. What is added here is the
+   divider and the reveal, because a tier that appears has to announce that it
+   appeared. */
+.wb.wb.wb .dwa-more{ margin-left:auto }
+.wb.wb.wb .dwa-more,
+.wb.wb.wb .dwa-more *{
+  font-size:12px; font-weight:500; letter-spacing:0; line-height:1;
+}
+.wb.wb.wb .dwa-more{ height:32px; min-height:32px; padding:0 11px; gap:5px }
+.wb.wb.wb .dwa-more-c{
+  display:inline-block;
+  font-size:13px; font-weight:500; line-height:1; letter-spacing:0;
+  transition:transform var(--wbs-dur-ctl) var(--wbs-ease-ctl);
+}
+.wb.wb.wb .dwa-more[aria-expanded='true'] .dwa-more-c{ transform:rotate(90deg) }
+/* The shelf is the remake tier, revealed. A hairline separates it from the
+   decide tier because the two now mean different things at different times -
+   which is a job spacing alone cannot do once one of them is conditional
+   (ladder rule 3 is about SURFACES, and these are rows in one surface). */
+.wb.wb.wb .dw-acts .dwa-acts-remake{
+  padding-top:9px;
+  border-top:1px solid var(--hairline);
+  transform-origin:top;
+  animation:dwa-reveal var(--wbs-dur-overlay) var(--spring) both;
+}
+@media (prefers-reduced-motion: reduce){
+  .wb.wb.wb .dw-acts .dwa-acts-remake{ animation:none }
+  .wb.wb.wb .dwa-more-c{ transition:none }
+}
+

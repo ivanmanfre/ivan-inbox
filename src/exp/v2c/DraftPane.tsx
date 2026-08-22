@@ -997,6 +997,10 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
   }, [confirm, d.id, nextId, onClose, onPick, promoting, refresh])
 
   const [more, setMore] = useState(false)
+  // GRAFT 1 (dw-tournament.md, graft list item 1). The four recovery acts used
+  // to be a permanently rendered tier. They are one disclosure away now. See
+  // the bar's own comment for why.
+  const [shelf, setShelf] = useState(false)
 
   // ---- keyboard -----------------------------------------------------------
   //
@@ -1378,14 +1382,44 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
                 {more ? 'Hide schedule' : 'Schedule'}
               </button>
             )}
+            {/* 🔴 GRAFT 1, awarded out of the losing candidate by the judge
+                panel (dw-tournament.md, graft list item 1, "the single best
+                idea produced by this run").
+
+                Regenerate, Swap image, Back to idea and Delete draft were four
+                permanently rendered tertiary controls. None of them is the job:
+                each is what you reach for when the draft is WRONG, and one of
+                them is destructive. At 390 they landed in the bottom-right
+                thumb zone on the same visual row, four inches from Approve, on
+                a surface used fifty times a week.
+
+                So the resting bar is Approve / Edit / Schedule / one word, and
+                the four live behind this. Nothing is removed: every one of them
+                is still here, still takes the same write, still carries the
+                same confirm, and the shelf renders at full bar measure so the
+                still-library picker and the confirms are as wide as they need.
+
+                Geist's rule for a destructive label is verb plus noun, and the
+                same rule is applied to the disclosure: it names what is behind
+                it rather than saying "More". */}
+            {lane === 'ivan' && (
+              <button type="button" className="wbb wbb-quiet dwa-more" disabled={editing}
+                aria-expanded={shelf} onClick={() => setShelf(s => !s)}>
+                Fix or remove
+                <span className="dwa-more-c" aria-hidden>›</span>
+              </button>
+            )}
           </div>
           {/* The regeneration/media/removal acts. They refuse while the editor
               is open for the same reason the decisions do: each of them
               discards unsaved words without asking.
               Delete rides at the far end of this tier - the corner of the bar
               diagonally opposite Approve, so it is reachable without being
-              where the thumb lands. */}
-          {lane === 'ivan' && (
+              where the thumb lands. It keeps THIS branch's quiet error-text
+              weight rather than the losing candidate's full-red button at
+              sibling size, which was the one change the panel asked for on the
+              way in. */}
+          {shelf && lane === 'ivan' && (
             <div className="dwa-acts-remake">
               <RegenDraft d={d} onDone={refresh} disabled={editing} />
               <SwapImage d={d} onDone={refresh} disabled={editing} />
