@@ -471,8 +471,11 @@ COMPUTED   button (no class) and button.x on Strategy
            in the entire app
 ```
 
-Two more verified the same way: `.wb-ask` (`styles.css:148`, authored 13px) and
-`.wb-retry` (`styles.css:164`, authored 12.5px) both compute at **16px**.
+Two more verified the same way: `.wb-ask` (`styles.css:149`, authored
+`font-size:12.5px; font-weight:700`) and `.wb-retry` (`styles.css:164`, authored
+`font-size:12.5px`) both compute at **16px / weight 400**. `.wb-ask` loses its
+bold as well as its size, because the flattener sets `font-weight:400` in the
+same rule.
 
 Static census across all three sheets, with import order factored in
 (`audit-tools/out-flattener-victims.md`):
