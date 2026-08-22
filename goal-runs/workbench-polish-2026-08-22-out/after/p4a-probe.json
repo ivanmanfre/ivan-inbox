@@ -1,0 +1,250 @@
+{
+  "report": {
+    "1440-ivan": {
+      "month": "August 2026",
+      "counts": [
+        "1armed",
+        "0planned",
+        "12posted",
+        "6queue only"
+      ],
+      "railTitle": "No date yet",
+      "railCount": "2",
+      "railRows": 2,
+      "railDraggable": 2,
+      "railMoveBtns": 2,
+      "railAges": [
+        "1d",
+        "today"
+      ],
+      "railScrollH": 119,
+      "railContentH": 119,
+      "bodyH": 772,
+      "gridH": 772,
+      "docScrollW": 1440,
+      "docClientW": 1440,
+      "chips": 13,
+      "armed": 1,
+      "planned": 0,
+      "out": 12,
+      "armWords": [
+        "Armed"
+      ],
+      "armBtns": 0,
+      "chipMinW": 108,
+      "headClipped": 0
+    },
+    "2560-ivan": {
+      "month": "August 2026",
+      "counts": [
+        "1armed",
+        "0planned",
+        "12posted",
+        "6queue only"
+      ],
+      "railTitle": "No date yet",
+      "railCount": "2",
+      "railRows": 2,
+      "railDraggable": 2,
+      "railMoveBtns": 2,
+      "railAges": [
+        "1d",
+        "today"
+      ],
+      "railScrollH": 119,
+      "railContentH": 119,
+      "bodyH": 752,
+      "gridH": 752,
+      "docScrollW": 2560,
+      "docClientW": 2560,
+      "chips": 13,
+      "armed": 1,
+      "planned": 0,
+      "out": 12,
+      "armWords": [
+        "Armed"
+      ],
+      "armBtns": 0,
+      "chipMinW": 268,
+      "headClipped": 0
+    },
+    "390-ivan": {
+      "month": "August 2026",
+      "counts": [
+        "1armed",
+        "0planned",
+        "12posted",
+        "6queue only"
+      ],
+      "railTitle": "No date yet",
+      "railCount": "2",
+      "railRows": 2,
+      "railDraggable": 2,
+      "railMoveBtns": 2,
+      "railAges": [
+        "1d",
+        "today"
+      ],
+      "railScrollH": 119,
+      "railContentH": 119,
+      "bodyH": 1794,
+      "gridH": 1574,
+      "docScrollW": 390,
+      "docClientW": 390,
+      "chips": 13,
+      "armed": 1,
+      "planned": 0,
+      "out": 12,
+      "armWords": [
+        "Armed"
+      ],
+      "armBtns": 0,
+      "chipMinW": 342,
+      "headClipped": 0
+    },
+    "1440-rise-aug": {
+      "month": "August 2026",
+      "counts": [
+        "1armed",
+        "6planned",
+        "20posted"
+      ],
+      "railTitle": "No date yet",
+      "railCount": "48",
+      "railRows": 48,
+      "railDraggable": 48,
+      "railMoveBtns": 48,
+      "railAges": [
+        "35d",
+        "35d",
+        "32d",
+        "29d"
+      ],
+      "railScrollH": 558,
+      "railContentH": 2853,
+      "bodyH": 830,
+      "gridH": 830,
+      "docScrollW": 1440,
+      "docClientW": 1440,
+      "chips": 27,
+      "armed": 1,
+      "planned": 6,
+      "out": 20,
+      "armWords": [
+        "Planned",
+        "Armed"
+      ],
+      "armBtns": 0,
+      "chipMinW": 108,
+      "headClipped": 0
+    },
+    "1440-rise-sep": {
+      "month": "September 2026",
+      "counts": [
+        "2armed",
+        "1planned"
+      ],
+      "railTitle": "No date yet",
+      "railCount": "48",
+      "railRows": 48,
+      "railDraggable": 48,
+      "railMoveBtns": 48,
+      "railAges": [
+        "35d",
+        "35d",
+        "32d",
+        "29d"
+      ],
+      "railScrollH": 558,
+      "railContentH": 2853,
+      "bodyH": 659,
+      "gridH": 643,
+      "docScrollW": 1440,
+      "docClientW": 1440,
+      "chips": 3,
+      "armed": 2,
+      "planned": 1,
+      "out": 0,
+      "armWords": [
+        "Planned",
+        "Armed"
+      ],
+      "armBtns": 0,
+      "chipMinW": 108,
+      "headClipped": 0
+    },
+    "2560-rise-aug": {
+      "month": "August 2026",
+      "counts": [
+        "1armed",
+        "6planned",
+        "20posted"
+      ],
+      "railTitle": "No date yet",
+      "railCount": "48",
+      "railRows": 48,
+      "railDraggable": 48,
+      "railMoveBtns": 48,
+      "railAges": [
+        "35d",
+        "35d",
+        "32d",
+        "29d"
+      ],
+      "railScrollH": 760,
+      "railContentH": 2853,
+      "bodyH": 861,
+      "gridH": 792,
+      "docScrollW": 2560,
+      "docClientW": 2560,
+      "chips": 27,
+      "armed": 1,
+      "planned": 6,
+      "out": 20,
+      "armWords": [
+        "Planned",
+        "Armed"
+      ],
+      "armBtns": 0,
+      "chipMinW": 268,
+      "headClipped": 0
+    },
+    "390-rise-aug": {
+      "month": "August 2026",
+      "counts": [
+        "1armed",
+        "6planned",
+        "20posted"
+      ],
+      "railTitle": "No date yet",
+      "railCount": "48",
+      "railRows": 48,
+      "railDraggable": 48,
+      "railMoveBtns": 48,
+      "railAges": [
+        "35d",
+        "35d",
+        "32d",
+        "29d"
+      ],
+      "railScrollH": 523,
+      "railContentH": 2853,
+      "bodyH": 3902,
+      "gridH": 3278,
+      "docScrollW": 390,
+      "docClientW": 390,
+      "chips": 27,
+      "armed": 1,
+      "planned": 6,
+      "out": 20,
+      "armWords": [
+        "Planned",
+        "Armed"
+      ],
+      "armBtns": 0,
+      "chipMinW": 342,
+      "headClipped": 0
+    }
+  },
+  "attempted": []
+}

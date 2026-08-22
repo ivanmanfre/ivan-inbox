@@ -37,7 +37,7 @@ Five levels. Dark theme values first, light theme mirrored.
 Three rules, and they are the whole model:
 
 1. **One step, never zero.** A child that must read as an object on its parent moves exactly one level up. Same level is banned wherever a relationship is intended. Two levels means it floats, and it had better actually float.
-2. **Shadow is only for overlap.** `--e4` is the only level that may carry a shadow, and only because it covers content it does not belong to. A chip, a card, a button and a pane never get one. This is Geist's rule and it is the one that keeps the pistachio frame clean; a drop shadow bleeding onto `#C5E1A5` is exactly the 2013 artefact.
+2. **Shadow may never be the primary depth cue, and it is capped at 12% alpha.** *(Revised after Ivan named Wispr Flow as a reference and its tokens were measured: it puts `0 2px 8px rgba(0,0,0,.08)` under a resting card. The original rule here banned shadow on anything that does not overlap, which was too absolute.)* The lightness step always does the work. A soft shadow may sit on top of it: `--sh-card: 0 2px 8px rgba(0,0,0,.08)`, `--sh-drag: 0 2px 8px rgba(0,0,0,.12)`, `--sh-over: 0 10px 24px rgba(0,0,0,.12)` for `--e4`. What stays banned is a hard bevel doing the job a colour step should do, which is the actual complaint. Nothing on this app exceeds 12% alpha, because a heavier shadow bleeding onto `#C5E1A5` is exactly the 2013 artefact.
 3. **Hairlines divide, they do not elevate.** `--hairline` drops from the current solid `rgb(48,48,48)` to `rgba(255,255,255,.07)` and is used for rules *inside* one surface. A border is no longer allowed to be the only thing separating two surfaces. Where a border currently does that job, the lightness step replaces it and the border is deleted rather than kept alongside.
 
 `--surface1/2/3` stay defined, aliased onto `--e2/e3/e4`, so 7,674 lines of existing CSS inherit the ladder instead of being rewritten. The work is then to find every place a parent and child resolve to the same level and move the child up. `out-surface-pairs.json` is that worklist, and its re-run is the proof.
@@ -136,9 +136,22 @@ Arms, rendered on his real calendar and his real draft window:
 
 The app has almost none, which is not automatically wrong, but state changes currently happen by teleport.
 
-- Controls: 120ms `ease-out` on `background-color` and `color`. Nothing else.
-- Overlays (palette, popover, menu, sheet): 160ms `cubic-bezier(.2,.8,.2,1)` on `transform` and `opacity` only.
+**Revised after measuring Wispr Flow**, the app Ivan named as the thing that feels smooth. Its smoothness is one specific mechanism: a real spring expressed as a CSS `linear()` easing, referenced in over 300 places in its hub bundle. It costs nothing, needs no library, and does not touch the three-dependency limit. Full extraction in `evidence/wispr-calibration.md`.
+
+```css
+--spring: linear(
+  0, 0.005, 0.019 1.8%, 0.079 3.9%, 0.476 13.5%, 0.663 19.1%, 0.738 22%,
+  0.8 25.1%, 0.852 28.4%, 0.894 32%, 0.928 36%, 0.953 40.5%, 0.972 45.6%,
+  0.985 51.6%, 0.997 67.3%, 1
+);
+```
+
+The rule Wispr follows, and we adopt: **colour changes get a plain short ease; anything that MOVES gets the spring.** It does not animate everything, it animates motion.
+
+- Controls: 120ms `ease` on `background-color` and `color`. Nothing else. (Wispr's own equivalents run 100 to 150ms.)
+- Overlays that move (palette, popover, menu, sheet): 260ms `var(--spring)` on `transform` and `opacity`.
 - A row committing an action: a 200ms tint fade so the eye can follow what it just did.
+- Drag gets a distinct shadow (`--sh-drag`), not only an opacity drop. Our calendar currently signals a live drag with `opacity: .4` and nothing else.
 - Never animate a layout property. `width`, `height`, `top` and `transition: all` are banned; they force reflow every frame and the perf census names offenders by selector.
 - `@media (prefers-reduced-motion: reduce)` collapses all of it to 0ms.
 

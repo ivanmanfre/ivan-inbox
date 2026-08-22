@@ -4,6 +4,7 @@ import { PullIndicator } from '../components/PullIndicator'
 import { SystemAlertStrip } from '../components/SystemAlertStrip'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useToday, type TodayHealth } from '../hooks/useToday'
+import { label } from '../lib/labels'
 import { acceptRate, laneLabel, type GovernorRow } from '../lib/kpis'
 import type { Thread } from '../lib/inbox'
 import type { OpsDraft } from '../lib/ops'
@@ -35,7 +36,7 @@ const KIND: Record<string, { label: string; cls: string }> = {
 }
 
 function kindOf(k: string) {
-  return KIND[k] ?? { label: k.replace(/_/g, ' '), cls: 'reply' }
+  return KIND[k] ?? { label: label(k), cls: 'reply' }
 }
 
 function ZoneHead({ n, title, right, state }: {
