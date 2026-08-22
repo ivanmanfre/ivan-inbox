@@ -958,3 +958,242 @@
   color:var(--text3);
   font-size:12px; line-height:1.3;
 }
+
+/* ========================================================================== */
+/* 12 · DENSITY MODE — a switchable mode, not a retune                         */
+/* ========================================================================== */
+
+/* Answers Ivan's "smaller sizes = more readable" with the measured half he was
+   missing: goal-runs/workbench-polish-2026-08-22-out/evidence/density-analysis.md
+   found the 16px vs 15px size delta between this app and the old dashboard is
+   ~6%, but the LEADING delta (25.6px vs 19.8-20.25px) is 27-29%, roughly 4-to-1
+   the bigger lever. wispr-calibration.md corroborates independently: Wispr's
+   own dense body-sm token is 15/20 (1.33), landing right where the old
+   dashboard's row text does, well under this app's 1.6.
+
+   So: the 16px size is NOT cut, anywhere, in either mode. What moves is
+   line-height and padding on SCANNING surfaces only (DM rows, settings rows,
+   style cards). Reading surfaces (post body, message bubbles, the draft
+   window's prose) are not touched by this section at all — none of their
+   selectors appear below.
+
+   COMFORTABLE is the unset state and its token values below are the CURRENT
+   shipped numbers, verbatim, so picking comfortable is a no-op against
+   whatever the app already does. Only :root[data-density='compact'] changes
+   anything. Default stays comfortable until Ivan picks on the ballot; the
+   Settings toggle (SettingsScreen.tsx) writes the attribute the same way
+   inbox-theme already does (main.tsx boot check, localStorage key
+   'inbox-density'), so this file only ever has to read the attribute, never
+   decide it. */
+.wb{
+  /* DM row (.r): comfortable value is the app's own flatten default, 1.6
+     relative, i.e. 25.6px on the 16px body token (measured live,
+     density-analysis.md §7). Compact targets the brief's 1.3-1.4 band. */
+  --d-row-lh:1.6;
+  /* faithful.css:596 gives `.ct-card, .r, .td-r{ padding:10px var(--gut) }`.
+     Only .r's vertical padding is retargeted below; .ct-card and .td-r are
+     UNTOUCHED, because Content's row height was verified in evidence as
+     already near target (16/21.6, 1.35) and the brief says not to make that
+     surface worse. */
+  --d-row-pad-v:10px;
+  /* .r .mid's gap between the name/client top line and the snippet
+     (faithful.css:634, currently 5px, the "density FLOOR" fix from the prior
+     pass). Comfortable keeps that floor; compact tightens it slightly. */
+  --d-row-gap:5px;
+  /* The DM snippet has no measure cap on ITS OWN (wb2026.css:438 promotes it
+     to body size with no max-width). `ch` here is the browser's OWN measured
+     advance width for the '0' glyph in the actual rendered font — not a
+     hand-computed guess — which is exactly the correction
+     density-analysis.md §6 demanded after finding the 0.5em assumption
+     understates real glyph width by 1.22-1.26x on this font stack.
+     Comfortable stays uncapped here, matching current behaviour exactly. */
+  --d-snip-cap:none;
+  /* CORRECTION, found verifying computed style rather than trusting the plan:
+     `.wb-solo` is NOT a rare wide 2-column mode — it is live on the ordinary
+     DMs list at 1440 with no thread open (`.wb-work.wb-solo`, confirmed via
+     getComputedStyle, no thread selected is the default state a list opens
+     into). wb2026.css:518 already caps `.wb-solo .rows > .r .snip` at 88ch,
+     at 7 selector classes to this file's 5, so it already wins the cascade
+     over --d-snip-cap above in exactly the state most DM rows render in.
+     That 88ch rule is a separate, already-shipped fix and stays exactly as
+     it is in comfortable (88ch here too, not "none" — overriding it to none
+     would UNCAP a surface that already shipped capped, which is not this
+     phase's call to make). Compact tightens it further, matching the
+     brief's spirit on the surface where it actually renders. */
+  --d-snip-cap-solo:88ch;
+
+  /* Settings row (.grow): comfortable values are faithful.css:3602's current
+     `padding:var(--sp-3) var(--sp-4); min-height:52px` restated as literals so
+     compact can retarget only the vertical dimension. */
+  --d-set-pad-v:12px;
+  /* 44px, not lower, in EITHER mode: the row holds a real switch/segment
+     control in most groups, and 44px is the touch hit-target floor a control
+     living inside this row may not be pushed under. Comfortable's 52px already
+     clears it with room; compact goes to the floor itself, not past it. */
+  --d-set-minh:52px;
+
+  /* Styles card (.ct-style): comfortable values restate faithful.css:3580's
+     current `padding:11px var(--gut)`, :3585's `.ct-style-i{margin-top:12px}`
+     (var(--sp-3)), the body-tier 1.6 leading .ct-style-b inherits from the
+     promoted-to-body-tier group, and styles.css:634's current 78px thumb. This
+     is the worst-measured surface in the app (3 of 17 cards visible at 1440,
+     1 of 17 at 390) and the only one of the four in scope where a non-type,
+     non-padding lever (thumb size) also moves in compact mode. */
+  --d-style-pad-v:11px;
+  --d-style-b-lh:1.6;
+  --d-style-gap:12px;
+  --d-style-img:78px;
+}
+:root[data-density='compact'] .wb{
+  --d-row-lh:1.35;      /* 16 x 1.35 = 21.6px, inside the brief's 21-22.5px band */
+  --d-row-pad-v:7px;     /* inside the brief's 6-8px band */
+  --d-row-gap:3px;
+  --d-snip-cap:56ch;     /* real glyph advance x 56, verified against computed style */
+  --d-snip-cap-solo:52ch; /* tighter than the shipped 88ch, the surface it actually renders on */
+
+  --d-set-pad-v:8px;
+  --d-set-minh:44px;     /* the touch floor itself, never under it */
+
+  --d-style-pad-v:7px;
+  --d-style-b-lh:1.35;
+  --d-style-gap:8px;
+  --d-style-img:56px;
+}
+
+/* ---- DM rows -------------------------------------------------------------
+   Longhand top/bottom only: the shorthand at faithful.css:596 still owns
+   left/right (var(--gut)), and a longhand here at equal specificity wins the
+   cascade tie on source order (this file imports last) without touching
+   horizontal rhythm. */
+.wb.wb.wb .r{
+  padding-top:var(--d-row-pad-v);
+  padding-bottom:var(--d-row-pad-v);
+}
+.wb.wb.wb .r .mid{ gap:var(--d-row-gap) }
+/* .r .name carries an explicit 1.6 in faithful.css's body-tier group
+   (line ~257); .r .snip is promoted to body size by wb2026.css:438 with a
+   line-height that resolves through an undefined --lh-body custom property
+   (invalid at computed-value time, so it falls back to the INHERITED 1.6 from
+   the flatten rule rather than to anything either sheet actually wrote). Both
+   are restated explicitly here so density is deterministic instead of riding
+   that fallback. */
+.wb.wb.wb .r .name{ line-height:var(--d-row-lh) }
+.wb.wb.wb .r .snip{
+  line-height:var(--d-row-lh);
+  max-width:var(--d-snip-cap);
+}
+/* The wb-solo-scoped cap, matched at the SAME 7-class specificity
+   wb2026.css:518 uses so this file (imported last) wins the tie instead of
+   silently losing to it — verified live: without this second selector the
+   line above computed max-width:886.875px (the shipped 88ch) in BOTH
+   densities, because .wb-solo is the state an ordinary DMs list with no
+   thread open renders in at desktop widths, not a rare wide view. */
+.wb.wb.wb .wb-solo .rows > .r .snip{
+  line-height:var(--d-row-lh);
+  max-width:var(--d-snip-cap-solo);
+}
+
+/* ---- Settings rows --------------------------------------------------------
+   Same longhand-over-shorthand move against faithful.css:3602. */
+.wb.wb.wb .grow{
+  padding-top:var(--d-set-pad-v);
+  padding-bottom:var(--d-set-pad-v);
+  min-height:var(--d-set-minh);
+}
+.wb.wb.wb .gt{ line-height:var(--d-row-lh) }
+
+/* ---- Styles cards ---------------------------------------------------------
+   Three levers: padding, description leading, and (compact only) the thumb
+   strip's size and top margin — the only surface in this section where a
+   dimension besides type/padding moves, because the image strip is measured
+   as the single largest contributor to this card's height. */
+.wb.wb.wb .ct-style{
+  padding-top:var(--d-style-pad-v);
+  padding-bottom:var(--d-style-pad-v);
+}
+.wb.wb.wb .ct-style-b{ line-height:var(--d-style-b-lh) }
+.wb.wb.wb .ct-style-i{ margin-top:var(--d-style-gap) }
+.wb.wb.wb .ct-style-i img{
+  width:var(--d-style-img);
+  height:var(--d-style-img);
+}
+
+/* ---- DM row: the selection mark's own dead row -----------------------------
+   FOUND WHILE VERIFYING THE HEADLINE NUMBER, not part of the density tokens
+   above and NOT gated by data-density — this is a defect, live in comfortable
+   mode today, not a leading/padding opinion.
+
+   wb2026.css:184 sizes `.wb-selmark` for a FLEX row ("the inbox row is a flex
+   line, so there the mark stays in the flow", wb2026.css:205) and pulls it out
+   of flow with `position:absolute` ONLY inside `.ct-anchor` (wb2026.css:207),
+   because `.ct-card` is a grid and a mark in normal flow there shifted every
+   column. `.r` became a grid TOO, in the later "7.1 ANCHOR-COLUMN CONTRACT"
+   pass (faithful.css:593), and nothing carried the same out-of-flow rule over
+   to it: `.wb-selmark` is `.r`'s first DOM child with no explicit grid-column,
+   `.av` explicitly claims column 1, so auto-placement gives the mark its OWN
+   implicit row rather than sharing the avatar's. Measured, live, on the first
+   DM row at 1440: `grid-template-rows: 18px 56.1875px` plus a 12px row-gap
+   (the same `gap:12px` shorthand that sets --anchor-gap as column-gap also
+   sets row-gap, unintentionally) — 18 + 12 = 30px of dead space, on EVERY row,
+   BEFORE any density token above is applied. That is 28% of the 106.2px
+   comfortable row's content box, more than the leading and padding tokens in
+   this file save combined, and it is why the compact DMs row only dropped to
+   96.4px rather than the ~60px the leading/padding math alone predicts.
+
+   The fix mirrors `.ct-anchor > .wb-selmark` exactly: pull the mark out of
+   grid flow so it can no longer claim a row. `.r` has no `position` set today
+   (unlike `.ct-anchor`, which the wb2026.css comment notes "already
+   position:relative"), so that is added here too. The offset lands the mark
+   over the avatar's top-left corner the same way ct-anchor's `-5px/-5px`
+   does, computed instead of hardcoded because the avatar's vertical centre
+   moves with row height, which the density tokens above deliberately change:
+   `--anchor-w` is the avatar's own edge (28px), so half of it above the row's
+   50% line reaches the avatar's top edge, and the same 5px overlap follows. */
+.wb.wb.wb .r{ position:relative }
+.wb.wb.wb .r > .wb-selmark{
+  position:absolute;
+  top:calc(50% - (var(--anchor-w) / 2) - 5px);
+  left:calc(var(--gut) - 5px);
+  margin:0;
+  z-index:2;
+}
+
+/* ---- DM row: .dpill and .pushbtn, the SAME flattener trap this file's own
+   header warns about (line 9) ------------------------------------------------
+   Found re-measuring after merging wb/polish (Today-as-work-queue, "the DM row
+   shows its draft"), which added a `.pushbtn` "Discard" button to `.right`
+   alongside the existing `.dpill` DRAFT/pushed pill. Neither class has a
+   `.wb.wb.wb`-specificity type rule anywhere in faithful.css or wb2026.css, so
+   both render at the flattener's default: 16px / 400 / 1.6 (25.6px) instead of
+   their real src/styles.css sizes (`.dpill` 10px/800, `.pushbtn` 12.5px/700).
+   Measured, live, compact mode, first DM row: `.right` (time + dpill +
+   pushbtn, gap 4px) came out at 96px tall against `.mid`'s 46px, so `.right`
+   -- not the row text this section's tokens target -- was silently setting
+   the floor under every drafted row's height, in BOTH densities, and eating
+   the leading/padding savings above before they could show up in the total.
+   Restated here at the correct size, matching the values these two classes
+   already carry in src/styles.css (the stock sheet these ARE the stock
+   classes for; not touching that file, only giving `.wb` its own equal-or-
+   higher-specificity copy of the same numbers). Not density-gated: this is
+   the trap the file's own header names, not a leading/padding opinion. */
+.wb.wb.wb .dpill, .wb.wb.wb .dpill *{
+  font-size:10px; font-weight:800; letter-spacing:.06em; line-height:1.4;
+}
+.wb.wb.wb .dpill{ padding:2px 6px }
+.wb.wb.wb .dpill.pushed{ letter-spacing:.02em; font-weight:700 }
+.wb.wb.wb .pushbtn, .wb.wb.wb .pushbtn *{
+  font-size:12.5px; font-weight:700; letter-spacing:0; line-height:1.2;
+}
+.wb.wb.wb .pushbtn{ padding:7px 12px; position:relative }
+/* At its restored size (padding 7px + 15px line-height = 29px) this real,
+   clickable Discard control sits 3px under the 32px pointer hit-target floor
+   this phase holds every control to. Rather than grow the visible pill (which
+   would re-open the row height this fix exists to close), the same invisible
+   hit-area extension `.wb-selmark::after` and `.wbb::after` already use in
+   this file clears the floor without moving a visible pixel. */
+.wb.wb.wb .pushbtn::after{
+  content:''; position:absolute; inset:-2px 0;
+}
+@media (pointer:coarse){
+  .wb.wb.wb .pushbtn::after{ inset:-8px 0 }
+}
