@@ -431,3 +431,121 @@
     scroll-behavior:auto !important;
   }
 }
+
+/* ========================================================================== */
+/* 6 · THE COLLISION WORKLIST                                                  */
+/* ========================================================================== */
+
+/* Worklist source: evidence/audit-tools/out-surface-pairs.json, regenerated on
+   this branch before any of the above landed. 26 distinct child-on-parent
+   shapes, 73 live instances, every one painted the identical colour as its
+   nearest painted ancestor. Each is judged below and the judgement is in the
+   report: fixed, or not-a-bug with the reason. */
+
+/* ---- 6.1 THE CALENDAR. The headline defect. ------------------------------
+   Measured before: div.cal-chip on div.cal-day, both rgb(31,31,31), no border,
+   no shadow, r 12px, 108x87. A rounded rectangle inside a rounded rectangle of
+   identical colour, so the eye reads the inner edge as a bevel. That is the
+   "ugly 3d", and it is a MISSING LIGHTNESS STEP, not a shadow to remove: the
+   run before this one deleted the chip's fill and its ring precisely because
+   they looked raised, which removed the last cue and made it worse.
+
+   The chip climbs one level and the empty cell recedes one, so the ladder is
+   spent in both directions rather than the chip climbing forever. The 3px
+   status rail is untouched: it encodes stage, and stage is not elevation. */
+.wb.wb.wb .cal-chip{
+  background:var(--e3);
+  border-radius:var(--r-xs);
+}
+.wb.wb.wb .cal-chip:hover{ background:var(--e4) }
+.wb.wb.wb .cal-chip-queue:hover{ background:var(--e3) }
+/* An EMPTY cell has nothing to hold up, so it recedes to the well and drops the
+   ring it was using to exist. A cell WITH content stays at --e2. */
+.wb.wb.wb .cal-day-empty{
+  background:var(--e1);
+  box-shadow:none;
+}
+/* Audit A5, found in passing and load-bearing the moment the chip lightens:
+   button.cal-chip-t computes `border: 2px outset rgb(0,0,0)` on all four sides.
+   That is the user-agent default button border. No rule in any sheet sets it,
+   and it was invisible only because black `outset` on #1F1F1F is nearly the
+   same colour. On --e3 it would appear as a 2px bevel, which is the exact
+   artefact this section removes. */
+.wb.wb.wb .cal-chip-t,
+.wb.wb.wb .cal-chip-mv{ border:0 }
+
+/* ---- 6.2 OPS: a card inside a card, identical, separated by NOTHING -------
+   Measured before: div.dd-card (1092x193) inside div.dd-card (1152x362), both
+   rgb(31,31,31), border none, shadow none. The inner card is the log entry
+   inside the run card. One step up, and one radius step down, because a nested
+   object is a smaller object. */
+.wb.wb.wb .dd-card .dd-card{
+  background:var(--e3);
+  border-radius:var(--r-ctl);
+}
+
+/* ---- 6.3 STICKY CHROME: the step goes to the band, not to the list --------
+   Every sticky band in the app is `background:var(--canvas)` plus a hairline:
+   .ct-cmd (faithful.css:2656), .ct-tabs (4184), .wb-sech-strip (2212),
+   .wb-sech / .td-zh / .grouphdr / .ops-sechdr (655-668), .wb-pane-h (1433).
+   They are the same colour as the list they occlude, and the only thing holding
+   them apart is a 1px line. That is border-only depth and it is what rule 3
+   forbids.
+
+   Chrome bands take --e2, one legible step above the --e0 list (1.15:1 in dark,
+   the same step a card already gets), and the borders are DELETED rather than
+   kept alongside the step. A pill riding inside a band goes to --e3. */
+.wb.wb.wb .ct-cmd,
+.wb.wb.wb .ct-tabs,
+.wb.wb.wb .wb-sech-strip,
+.wb.wb.wb .ops-sechdr,
+.wb.wb.wb .td-zh,
+.wb.wb.wb .grouphdr,
+.wb.wb.wb .wb-pane-h{
+  background:var(--e2);
+  border-top:0;
+  border-bottom:0;
+}
+/* styles.css:136 and faithful.css:1514 both re-declare .wb-pane-h's background
+   at `:root[data-theme='light'] ...`, which outranks a bare .wb.wb.wb selector.
+   Restated at matching specificity or the pane header keeps the old value in
+   light and the fix ships half-applied. */
+:root[data-theme='light'] .wb.wb.wb .wb-pane-h{ background:var(--e2) }
+/* The section head rides inside the strip, so it takes the next step up and
+   loses the two rules that were doing the work. */
+.wb.wb.wb .wb-sech,
+.wb.wb.wb .wb-sech-strip > .wb-sech,
+.wb.wb.wb button.wb-sech{
+  background:var(--e3);
+  border-top:0;
+  border-bottom:0;
+  border-radius:var(--r-ctl);
+}
+/* faithful.css:2293 draws a 1px rule on the top of every scroll container. With
+   the chrome above it now painted, that rule separates two surfaces that are
+   already separated, which is the "kept alongside" case rule 3 rejects. */
+.wb.wb.wb .rows{ border-top:0 }
+
+/* ---- 6.4 THE THUMBNAIL WELL ---------------------------------------------
+   Measured before: img.ct-thumb on div.ct-anchor, both rgb(42,42,41). The
+   thumb's background is what shows while the image loads, so it is a well and
+   belongs at --e1, not at the same level as the anchor holding it. */
+.wb.wb.wb .ct-thumb{ background:var(--e1) }
+
+/* ---- 6.5 RULE 2, ENFORCED ON THE ONE ELEMENT THAT BREAKS IT --------------
+   faithful.css:386 gives .wb-plate `box-shadow:0 24px 60px -20px rgba(0,0,0,.5)`
+   and the plate sits directly on --ground #C5E1A5. A drop shadow bleeding onto
+   the pistachio is named in phase1-system §1 as exactly the 2013 artefact the
+   ladder replaces, and the plate overlaps no content it does not own, so under
+   rule 2 it may not carry one. The frame's GEOMETRY (--plate-r, --plate-gap) is
+   a ballot arm and is not touched here; only the shadow goes. */
+.wb.wb.wb .wb-plate{ box-shadow:none }
+
+/* Found by re-running the worklist AFTER 6.3, not before: .td-zh is grouped
+   with .wb-sech in faithful.css:655 but, unlike the others, it sits INSIDE a
+   painted section.td-zone rather than on the bare list. At --e2 it landed on an
+   --e2 parent and created a new same-colour pair where none existed before, so
+   inside a zone it takes the next step up, exactly as .wb-sech does inside the
+   strip. This is the case for re-running the audit rather than trusting the
+   worklist you started from. */
+.wb.wb.wb .td-zone .td-zh{ background:var(--e3) }
