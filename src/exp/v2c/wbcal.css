@@ -659,3 +659,63 @@
   .wb.wb.wb .cal-chip{ min-height:var(--cal-chip-h); height:var(--cal-chip-h) }
   .wb.wb.wb .cal-chip-row{ min-height:var(--cal-chip-h); height:var(--cal-chip-h) }
 }
+
+
+/* ==========================================================================
+   7b · AMENDMENT: the empty cell stopped receding
+   ========================================================================== */
+
+/* The panel again, on the same pair:
+
+     "In X the empty cells ... are filled tiles with the same value as the
+      cells that contain work. Every container in the grid sits up at the same
+      elevation, so nothing is figure. Y darkens the empty cells toward the
+      page and lets the occupied cells carry the weight, so the four weeks with
+      content read before the two without."
+
+   Measured on the judged build, dark:
+
+     occupied cell  rgb(28,28,28)   --e2
+     empty cell     rgb(20,20,20)   --e1
+     apart          8 points
+
+   Pre-run, the empty cell was `background:transparent` over the plate at
+   rgb(12,12,11) against an occupied rgb(31,31,31): 19 points. §1 moved the
+   empty cell up to --e1 because the ladder names --e1 as "an empty calendar
+   cell", and in DARK the bottom two rungs are 8 points apart, so obeying the
+   ladder literally cost more than half the separation.
+
+   🔴 AND THE OBVIOUS FIX IS WRONG IN THE OTHER THEME. Sending the empty cell to
+   --e0 in both themes reads correctly in dark and backwards in light, because
+   the light ladder is not the dark one inverted:
+
+     dark    --e0 12   --e1 20   --e2 28    -> --e0 is 16 from --e2, --e1 is 8
+     light   --e0 244  --e1 230  --e2 255   -> --e0 is 11 from --e2, --e1 is 25
+
+   In light, --e1 is already the furthest rung from the resting surface and the
+   panel's complaint does not apply: light measured 25 points on the same build
+   dark measured 8. So the rule is stated once, per theme, as "the empty cell
+   takes whichever rung sits furthest below the cell that has work in it",
+   which is --e0 in dark and --e1 in light. That is the ladder's INTENT (an
+   empty cell is the most recessed thing in the grid) rather than its literal
+   token name, and the two disagree only because the light ramp is not
+   monotonic.
+
+   The hairline ring comes back with it, which is what pre-run had. Without a
+   fill AND without a ring an empty cell stops existing, and a month is a grid
+   before it is a heat map: the ring is the geometry, the fill is the figure. */
+
+.wb{ --cal-empty:var(--e0) }
+:root[data-theme='light'] .wb{ --cal-empty:var(--e1) }
+
+.wb.wb.wb .cal-day-empty{
+  background:var(--cal-empty);
+  box-shadow:inset 0 0 0 1px var(--hairline);
+}
+/* On the agenda there is no tile to recede: an empty day is removed from the
+   list entirely by faithful.css:4074, so the fill would paint nothing and the
+   ring would draw a box round a heading. §2's mobile block already switched
+   both off and this restores that, after the rule above re-enabled them. */
+@media (max-width:767px){
+  .wb.wb.wb .cal-day-empty{ background:none; box-shadow:none }
+}
