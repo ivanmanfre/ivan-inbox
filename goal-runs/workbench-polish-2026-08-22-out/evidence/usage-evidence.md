@@ -506,7 +506,7 @@ a prospect without an explicit human action behind a confirm.
 |---|---|---|---|---|---|
 | 1 | **Tell the truth on errored rows** — reorder `draftFailureReason` | **38 of 55 rows** stop printing a wrong or absent reason, with **zero new data fetched** | 1 | 1 | **19** |
 | 2 | **The client lanes get `skip` as a row and bulk capability** | client-lane kills go **4N → N+2** interactions; on the current 93-row pile that is **372 → 95** | 2 | 2 | **69/pt** |
-| 3 | **A cross-lane triage queue built from the data already mounted** | **391 of the 407 waiting rows** currently have no aging surface anywhere | 2 | 4 | high |
+| 3 | **A cross-lane triage queue built from the data already mounted** | **449 of the 552 rows waiting on a human decision** have no aging surface anywhere | 2 | 4 | high |
 | 4 | **Index `post_body` in content search; widen `⌘K` past the DOM window** | T5 goes from **6+ interactions and 2 refetches to 2**; `⌘K` goes from ~12-25 reachable threads to 139 | 1 | 2 | high |
 | 5 | **Draft card inline in the `needs` list for rows that carry a draft** | **~203 interactions/month** (1 per approve/discard event), ~100 fewer peer opens | 3 | 2 | med |
 | 6 | **Arming a post promoted out of a disclosure; calendar distinguishes armed from dated** | 1 interaction per arming, and **4 review rows currently read as calendar coverage they are not** | 3 | 3 | med |
@@ -578,19 +578,26 @@ And it is fed by the `get-morning-brief` edge function (`today.ts:10`), whose pa
 and outreach health. It contains **nothing about content drafts in review, client ideas, or errors**.
 Cross-checking against 2.3:
 
-| queue | rows waiting | on Today? |
-|---|---|---|
-| client ideas staged | 176 | **no** |
-| content drafts in review | 95 | **no** |
-| lm idea candidates reviewing | 95 | **no** |
-| ops drafts unactioned | 62 | yes, as a count |
-| content drafts in error | 55 | **no** |
-| threads with an unanswered inbound | 58 | partly, as `urgencies`, capped at 30 rows (`today.ts:477` `MAX_ROWS`) |
-| DM drafts pending | 8 | yes |
+| queue | rows waiting | reachable from Today? | rows Today can see |
+|---|---|---|---|
+| client ideas staged | 176 | **no** | 0 |
+| content drafts in review | 95 | **no** | 0 |
+| lm idea candidates reviewing | 95 | **no** | 0 |
+| ops drafts unactioned | 62 | yes, as a count with a chevron | 62 |
+| content drafts in error | 55 | **no** | 0 |
+| threads with an unanswered inbound | 58 | partly, as `urgencies`, **capped at 30 rows** (`today.ts:477` `MAX_ROWS`) | 30 |
+| DM drafts pending | 8 | yes, as a count | 8 |
+| comment feed pending | 3 | yes, as `feed_drafts` | 3 |
+| **total** | **552** | | **103** |
 
-**391 of the 407 waiting rows are not on the surface that claims to say what needs him.** That is
-the finding behind "he got readability instead of usefulness": every one of those rows is reachable,
-none of them is ranked, and the surface that ranks is fed by a payload that does not know they exist.
+**449 of the 552 rows waiting on a human decision are absent from the surface that claims to say
+what needs him**, and the 103 that are present are present as counts, not as actionable rows.
+Conservatively, treating the 95 `lm_idea_candidates` at `reviewing` as dead rows (project memory
+records that status as a dead row), the figure is **354 of 457**.
+
+That is the finding behind "he got readability instead of usefulness": every one of those rows is
+reachable by hand, none of them is ranked, and the surface that ranks is fed by a payload that does
+not know they exist.
 
 **The constraint that decides it:** the queue must be built from `useInbox` / `useContent` /
 `useOps`, already mounted once in `Shell.tsx:173-176`, and **not** from `get-morning-brief`. Content
