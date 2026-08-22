@@ -1,0 +1,169 @@
+{
+  "base": "http://localhost:4319/",
+  "takenAt": "2026-08-22T12:42:52.050Z",
+  "attemptedWrites": 0,
+  "attemptedWriteLog": [],
+  "rpcPostsAllowedThrough": 20,
+  "shots": [
+    {
+      "file": "calls-today-1440x900-dark.jpg",
+      "label": "Today, the Calls area (next call plus the archive)",
+      "viewport": "1440x900",
+      "theme": "dark",
+      "reached": "reached, 6 rows",
+      "consoleErrors": []
+    },
+    {
+      "file": "calls-today-1440x900-light.jpg",
+      "label": "Today, the Calls area (next call plus the archive)",
+      "viewport": "1440x900",
+      "theme": "light",
+      "reached": "reached, 6 rows",
+      "consoleErrors": []
+    },
+    {
+      "file": "calls-today-390x844-dark.jpg",
+      "label": "Today, the Calls area (next call plus the archive)",
+      "viewport": "390x844",
+      "theme": "dark",
+      "reached": "reached, 6 rows",
+      "consoleErrors": []
+    },
+    {
+      "file": "calls-today-390x844-light.jpg",
+      "label": "Today, the Calls area (next call plus the archive)",
+      "viewport": "390x844",
+      "theme": "light",
+      "reached": "reached, 6 rows",
+      "consoleErrors": []
+    },
+    {
+      "file": "calls-empty-1440x900-dark.jpg",
+      "label": "Today, the next-call empty state above the archive",
+      "viewport": "1440x900",
+      "theme": "dark",
+      "reached": "reached: No calls booked in the next seven days",
+      "consoleErrors": []
+    },
+    {
+      "file": "calls-empty-1440x900-light.jpg",
+      "label": "Today, the next-call empty state above the archive",
+      "viewport": "1440x900",
+      "theme": "light",
+      "reached": "reached: No calls booked in the next seven days",
+      "consoleErrors": []
+    },
+    {
+      "file": "calls-empty-390x844-dark.jpg",
+      "label": "Today, the next-call empty state above the archive",
+      "viewport": "390x844",
+      "theme": "dark",
+      "reached": "reached: No calls booked in the next seven days",
+      "consoleErrors": []
+    },
+    {
+      "file": "calls-empty-390x844-light.jpg",
+      "label": "Today, the next-call empty state above the archive",
+      "viewport": "390x844",
+      "theme": "light",
+      "reached": "reached: No calls booked in the next seven days",
+      "consoleErrors": []
+    },
+    {
+      "file": "calls-reader-actions-1440x900-dark.jpg",
+      "label": "The reader open on a call carrying action items",
+      "viewport": "1440x900",
+      "theme": "dark",
+      "reached": "reached, chip \"3 yours\", 6 promises rendered",
+      "consoleErrors": []
+    },
+    {
+      "file": "calls-reader-actions-1440x900-light.jpg",
+      "label": "The reader open on a call carrying action items",
+      "viewport": "1440x900",
+      "theme": "light",
+      "reached": "reached, chip \"3 yours\", 6 promises rendered",
+      "consoleErrors": []
+    },
+    {
+      "file": "calls-reader-actions-390x844-dark.jpg",
+      "label": "The reader open on a call carrying action items",
+      "viewport": "390x844",
+      "theme": "dark",
+      "reached": "reached, chip \"3 yours\", 6 promises rendered",
+      "consoleErrors": []
+    },
+    {
+      "file": "calls-reader-actions-390x844-light.jpg",
+      "label": "The reader open on a call carrying action items",
+      "viewport": "390x844",
+      "theme": "light",
+      "reached": "reached, chip \"3 yours\", 6 promises rendered",
+      "consoleErrors": []
+    },
+    {
+      "file": "calls-reader-body-1440x900-dark.jpg",
+      "label": "The reader with the raw transcript unfolded",
+      "viewport": "1440x900",
+      "theme": "dark",
+      "reached": "reached, 30022 characters of dialogue",
+      "consoleErrors": []
+    },
+    {
+      "file": "calls-reader-body-1440x900-light.jpg",
+      "label": "The reader with the raw transcript unfolded",
+      "viewport": "1440x900",
+      "theme": "light",
+      "reached": "reached, 30022 characters of dialogue",
+      "consoleErrors": []
+    },
+    {
+      "file": "calls-reader-body-390x844-dark.jpg",
+      "label": "The reader with the raw transcript unfolded",
+      "viewport": "390x844",
+      "theme": "dark",
+      "reached": "reached, 30022 characters of dialogue",
+      "consoleErrors": []
+    },
+    {
+      "file": "calls-reader-body-390x844-light.jpg",
+      "label": "The reader with the raw transcript unfolded",
+      "viewport": "390x844",
+      "theme": "light",
+      "reached": "reached, 30022 characters of dialogue",
+      "consoleErrors": []
+    },
+    {
+      "file": "calls-reader-all-1440x900-dark.jpg",
+      "label": "The reader opened from the All segment, a call with nothing extracted",
+      "viewport": "1440x900",
+      "theme": "dark",
+      "reached": "reached, honest-empty block present: true",
+      "consoleErrors": []
+    },
+    {
+      "file": "calls-reader-all-1440x900-light.jpg",
+      "label": "The reader opened from the All segment, a call with nothing extracted",
+      "viewport": "1440x900",
+      "theme": "light",
+      "reached": "reached, honest-empty block present: true",
+      "consoleErrors": []
+    },
+    {
+      "file": "calls-reader-all-390x844-dark.jpg",
+      "label": "The reader opened from the All segment, a call with nothing extracted",
+      "viewport": "390x844",
+      "theme": "dark",
+      "reached": "reached, honest-empty block present: true",
+      "consoleErrors": []
+    },
+    {
+      "file": "calls-reader-all-390x844-light.jpg",
+      "label": "The reader opened from the All segment, a call with nothing extracted",
+      "viewport": "390x844",
+      "theme": "light",
+      "reached": "reached, honest-empty block present: true",
+      "consoleErrors": []
+    }
+  ]
+}

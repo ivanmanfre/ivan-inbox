@@ -23,7 +23,7 @@ import {
   MEETING_TYPE_LABEL, type CalendarEvent,
 } from '../lib/nextCall'
 import {
-  LEAD_LABEL, SEGMENT_LABEL, actionItems, callStats, fetchCalls, leadLine,
+  LEAD_LABEL, SEGMENT_LABEL, actionItems, callStats, callTitle, fetchCalls, leadLine,
   owedByMe, people, segmentCalls,
   type CallRow, type CallSegment, type CallStats,
 } from '../lib/transcripts'
@@ -510,7 +510,7 @@ function CallRowLine({ row, onOpen }: { row: CallRow; onOpen: () => void }) {
     <div className="td-qrow tap" onClick={onOpen}>
       <div className="td-qmid">
         <div className="td-qt">
-          <span className="td-nm">{row.title || 'Untitled call'}</span>
+          <span className="td-nm">{callTitle(row.title)}</span>
           {n > 0 && (
             <span className="td-qage">
               {mine > 0 ? `${mine} yours` : `${n} open`}
