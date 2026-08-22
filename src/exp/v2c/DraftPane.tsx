@@ -180,7 +180,7 @@ function InspRail({ tabs, tab, pick }: {
   // The four jumps were bold uppercase pills with the active one carrying a
   // fill, so a switch was a teleport: one pill went grey, another lit. They are
   // a segmented control now, and the active segment is a single indicator that
-  // TRAVELS — the only mechanism Wispr Flow's smoothness actually turned out to
+  // TRAVELS - the only mechanism Wispr Flow's smoothness actually turned out to
   // be (evidence/wispr-calibration.md §1), applied to the only element here
   // that changes position.
   //
@@ -735,7 +735,7 @@ function NoteComposer({ id, onDone }: { id: string; onDone: () => void }) {
         onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send() } }}
       />
       <div className="ct-ac">
-        {/* 🔴 DEFECT 4. This measured 331x50 as a full-width lime slab — 4.6x
+        {/* 🔴 DEFECT 4. This measured 331x50 as a full-width lime slab - 4.6x
             the area of Approve, spent on one of the least important acts on the
             screen (census B4). faithful.css:519 gave `.btn.p` the accent fill
             and it is the single highest-leverage lime line in the app. Adding
@@ -1038,7 +1038,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
   // thing the Source panel showed. A row key is a LOOKUP: you arrive at it with
   // a question, never by reading past it.
   //
-  // Nothing is truncated and nothing is dropped — the value is verbatim in the
+  // Nothing is truncated and nothing is dropped - the value is verbatim in the
   // DOM, at the quiet tier, one disclosure away. That is the same density
   // decision the QA rubric takes: show the facts that matter at rest, defer the
   // rest, rather than shrinking everything to fit (Linear, reference-study §4
@@ -1172,7 +1172,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
             are ONE object: a resting card holding the post in a well, with the
             decision row as its own footer. Before this, the action bar spanned
             the 640px measure with the column running 848px at 1440 and ~1320px
-            at 2560, so everything under the buttons read as an unfinished page —
+            at 2560, so everything under the buttons read as an unfinished page -
             650px of dead field at 2560x1440. The row now sits against the thing
             it acts on (reference-study §2 move 4) and the surplus below is
             ground rather than a column that ran out.
@@ -1295,8 +1295,8 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
             only a guard for people who use keys. */}
         <div className="dw-acts" ref={actsRef}>
           {/* TWO TIERS, AND THE SPLIT IS THE FIX (defect 3).
-              Census C3 measured all seven of these already identical — 44px,
-              `0 13px`, r12, 13px/600 — varying only in fill. The geometry was
+              Census C3 measured all seven of these already identical - 44px,
+              `0 13px`, r12, 13px/600 - varying only in fill. The geometry was
               never the defect; five of the seven being the same grey rectangle
               was. So the geometry stays constant (Linear's rule: padding and
               radius identical across tiers, only fill and border change) and
@@ -1308,7 +1308,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
               differently as the labels changed. Two authored tiers is the same
               two lines with a reason. */}
           <div className="dwa-acts-decide">
-            {/* Skip is GONE (2026-08-09). It archived the row — a destructive
+            {/* Skip is GONE (2026-08-09). It archived the row - a destructive
                 act wearing a neutral word, sitting second in the bar next to
                 Approve. Delete, at the far end of the second tier and behind a
                 confirm, is the honest version of "get this out of my queue". */}
@@ -1321,7 +1321,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
               </button>
             )}
             {/* 🔴 The client-facing decision. It wears the same primary weight
-                as Ivan's Approve because it is the same gesture in his hands —
+                as Ivan's Approve because it is the same gesture in his hands -
                 but never the same WORD, because this one is seen by a paying
                 client and "Approve" would not say so. */}
             {promotable && (
@@ -1352,7 +1352,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
           {/* The regeneration/media/removal acts. They refuse while the editor
               is open for the same reason the decisions do: each of them
               discards unsaved words without asking.
-              Delete rides at the far end of this tier — the corner of the bar
+              Delete rides at the far end of this tier - the corner of the bar
               diagonally opposite Approve, so it is reachable without being
               where the thumb lands. */}
           {lane === 'ivan' && (
@@ -1373,7 +1373,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
               unfolds INSIDE the bar like every other disclosure in this window.
               It used to render at the foot of the scrolling column, so the
               panel opened below the fold while its own trigger stayed pinned on
-              screen — the exact defect D13 moved Regenerate and Delete out of.
+              screen - the exact defect D13 moved Regenerate and Delete out of.
               The confirm sheet and its wording are untouched. */}
           {more && lane === 'ivan' && (
             <div className="dw-actrow">

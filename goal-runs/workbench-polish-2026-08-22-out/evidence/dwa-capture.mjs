@@ -1,4 +1,4 @@
-// dwa capture — surface 03 only, framed to match before/03-draft-window-*.
+// dwa capture - surface 03 only, framed to match before/03-draft-window-*.
 // Same instrument as evidence/capture.mjs (same viewports, same act, same
 // crops, same jpeg quality), pointed at this branch's build.
 //
@@ -62,9 +62,22 @@ for (const vp of VIEWPORTS) {
         for (const c of CROPS) {
           const loc = page.locator(c.selector).first()
           if (!await loc.count()) continue
+          // At 390 the window is one scroller and the inspector sits below the
+          // fold, so its box is outside a viewport screenshot and the clip
+          // fails. Scroll to it first, then clamp the clip to what is on screen.
+          await loc.scrollIntoViewIfNeeded().catch(() => {})
+          await page.waitForTimeout(300)
           const box = await loc.boundingBox().catch(() => null)
           if (!box) continue
-          await page.screenshot({ path: join(OUT_DIR, `${PREFIX}-${c.name}-${tag}.jpg`), quality: 82, type: 'jpeg', clip: box })
+          const top = Math.max(0, box.y)
+          const clip = {
+            x: Math.max(0, box.x),
+            y: top,
+            width: Math.min(box.width, vp.w - Math.max(0, box.x)),
+            height: Math.min(box.height, vp.h - top),
+          }
+          if (clip.width < 2 || clip.height < 2) continue
+          await page.screenshot({ path: join(OUT_DIR, `${PREFIX}-${c.name}-${tag}.jpg`), quality: 82, type: 'jpeg', clip })
         }
       }
       errors += consoleErrors.length

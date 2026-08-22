@@ -1,0 +1,1401 @@
+{
+ "artifact": {
+  "dwMainIn": 640,
+  "dwMainInMaxWidth": "640px",
+  "liCard": 520,
+  "dwMain": 848,
+  "actsWidth": 640,
+  "actsLeft": 336,
+  "innLeft": 336
+ },
+ "accentCount": 13,
+ "accent": [
+  {
+   "sel": "button.dw-key.p",
+   "hits": [
+    "fill",
+    "edge"
+   ],
+   "w": 80.95,
+   "h": 44,
+   "text": "Approve"
+  },
+  {
+   "sel": "span.wb-qa-fill",
+   "hits": [
+    "fill"
+   ],
+   "w": 211.31,
+   "h": 8,
+   "text": ""
+  },
+  {
+   "sel": "i",
+   "hits": [
+    "fill"
+   ],
+   "w": 82.22,
+   "h": 6,
+   "text": ""
+  },
+  {
+   "sel": "i",
+   "hits": [
+    "fill"
+   ],
+   "w": 82.22,
+   "h": 6,
+   "text": ""
+  },
+  {
+   "sel": "i",
+   "hits": [
+    "fill"
+   ],
+   "w": 92.5,
+   "h": 6,
+   "text": ""
+  },
+  {
+   "sel": "i",
+   "hits": [
+    "fill"
+   ],
+   "w": 71.94,
+   "h": 6,
+   "text": ""
+  },
+  {
+   "sel": "i",
+   "hits": [
+    "fill"
+   ],
+   "w": 71.94,
+   "h": 6,
+   "text": ""
+  },
+  {
+   "sel": "i",
+   "hits": [
+    "fill"
+   ],
+   "w": 71.94,
+   "h": 6,
+   "text": ""
+  },
+  {
+   "sel": "i",
+   "hits": [
+    "fill"
+   ],
+   "w": 94.67,
+   "h": 6,
+   "text": ""
+  },
+  {
+   "sel": "i",
+   "hits": [
+    "fill"
+   ],
+   "w": 82.22,
+   "h": 6,
+   "text": ""
+  },
+  {
+   "sel": "button.btn.p",
+   "hits": [
+    "fill"
+   ],
+   "w": 331,
+   "h": 49.59,
+   "text": "Post note"
+  },
+  {
+   "sel": "button.dw-qrow.on",
+   "hits": [
+    "edge"
+   ],
+   "w": 231,
+   "h": 74.53,
+   "text": "1Two months of build, then 30k a month t"
+  },
+  {
+   "sel": "span.dw-qrow-i",
+   "hits": [
+    "text",
+    "edge"
+   ],
+   "w": 16,
+   "h": 18,
+   "text": "1"
+  }
+ ],
+ "keys": [
+  {
+   "label": "Approve",
+   "cls": "dw-key p",
+   "h": 44,
+   "w": 80.95,
+   "pad": "0px 13px 0px 13px",
+   "radius": "10px",
+   "font": "13px/600",
+   "fill": "rgb(184, 255, 102)",
+   "color": "rgb(23, 23, 23)",
+   "border": "1px rgb(184, 255, 102)",
+   "shadow": "none"
+  },
+  {
+   "label": "Edit",
+   "cls": "dw-key",
+   "h": 44,
+   "w": 52.69,
+   "pad": "0px 13px 0px 13px",
+   "radius": "10px",
+   "font": "13px/600",
+   "fill": "rgb(39, 39, 39)",
+   "color": "rgb(255, 255, 255)",
+   "border": "1px rgb(53, 53, 51)",
+   "shadow": "none"
+  },
+  {
+   "label": "Schedule",
+   "cls": "dw-key",
+   "h": 44,
+   "w": 86.84,
+   "pad": "0px 13px 0px 13px",
+   "radius": "10px",
+   "font": "13px/600",
+   "fill": "rgb(39, 39, 39)",
+   "color": "rgb(255, 255, 255)",
+   "border": "1px rgb(53, 53, 51)",
+   "shadow": "none"
+  },
+  {
+   "label": "Regenerate",
+   "cls": "dw-key",
+   "h": 44,
+   "w": 100.73,
+   "pad": "0px 13px 0px 13px",
+   "radius": "10px",
+   "font": "13px/600",
+   "fill": "rgb(39, 39, 39)",
+   "color": "rgb(255, 255, 255)",
+   "border": "1px rgb(53, 53, 51)",
+   "shadow": "none"
+  },
+  {
+   "label": "Swap image",
+   "cls": "dw-key",
+   "h": 44,
+   "w": 104.41,
+   "pad": "0px 13px 0px 13px",
+   "radius": "10px",
+   "font": "13px/600",
+   "fill": "rgb(39, 39, 39)",
+   "color": "rgb(255, 255, 255)",
+   "border": "1px rgb(53, 53, 51)",
+   "shadow": "none"
+  },
+  {
+   "label": "Back to idea",
+   "cls": "dw-key",
+   "h": 44,
+   "w": 105.5,
+   "pad": "0px 13px 0px 13px",
+   "radius": "10px",
+   "font": "13px/600",
+   "fill": "rgb(39, 39, 39)",
+   "color": "rgb(255, 255, 255)",
+   "border": "1px rgb(53, 53, 51)",
+   "shadow": "none"
+  },
+  {
+   "label": "Delete",
+   "cls": "dw-key d",
+   "h": 44,
+   "w": 68.95,
+   "pad": "0px 13px 0px 13px",
+   "radius": "10px",
+   "font": "13px/600",
+   "fill": "rgba(255, 69, 58, 0.08)",
+   "color": "rgb(255, 69, 58)",
+   "border": "1px rgba(255, 69, 58, 0.4)",
+   "shadow": "none"
+  }
+ ],
+ "kvRows": [
+  {
+   "h": 1709.81,
+   "k": "claim check",
+   "kType": "16px/400/uppercase/normal",
+   "vType": "16px/400",
+   "border": "0px"
+  },
+  {
+   "h": 72.19,
+   "k": "Parsed cleanly",
+   "kType": "16px/400/uppercase/normal",
+   "vType": "16px/400",
+   "border": "0px"
+  },
+  {
+   "h": 72.19,
+   "k": "Auto-promoted",
+   "kType": "16px/400/uppercase/normal",
+   "vType": "16px/400",
+   "border": "0px"
+  },
+  {
+   "h": 71.19,
+   "k": "Published version",
+   "kType": "16px/400/uppercase/normal",
+   "vType": "16px/400",
+   "border": "0px"
+  },
+  {
+   "h": 46.59,
+   "k": "Source",
+   "kType": "16px/400/uppercase/normal",
+   "vType": "16px/400",
+   "border": "0px"
+  },
+  {
+   "h": 71.19,
+   "k": "Candidate",
+   "kType": "16px/400/uppercase/normal",
+   "vType": "16px/400",
+   "border": "0px"
+  },
+  {
+   "h": 72.19,
+   "k": "Created",
+   "kType": "16px/400/uppercase/normal",
+   "vType": "16px/400",
+   "border": "0px"
+  },
+  {
+   "h": 71.19,
+   "k": "Updated",
+   "kType": "16px/400/uppercase/normal",
+   "vType": "16px/400",
+   "border": "0px"
+  },
+  {
+   "h": 46.59,
+   "k": "Pillar",
+   "kType": "16px/400/uppercase/normal",
+   "vType": "16px/400",
+   "border": "0px"
+  },
+  {
+   "h": 46.59,
+   "k": "Hook",
+   "kType": "16px/400/uppercase/normal",
+   "vType": "16px/400",
+   "border": "0px"
+  },
+  {
+   "h": 152.97,
+   "k": "Structure",
+   "kType": "16px/400/uppercase/normal",
+   "vType": "16px/400",
+   "border": "0px"
+  },
+  {
+   "h": 46.59,
+   "k": "Image style",
+   "kType": "16px/400/uppercase/normal",
+   "vType": "16px/400",
+   "border": "0px"
+  },
+  {
+   "h": 72.19,
+   "k": "Experiment arm",
+   "kType": "16px/400/uppercase/normal",
+   "vType": "16px/400",
+   "border": "0px"
+  },
+  {
+   "h": 71.19,
+   "k": "Funnel stage",
+   "kType": "16px/400/uppercase/normal",
+   "vType": "16px/400",
+   "border": "0px"
+  },
+  {
+   "h": 72.19,
+   "k": "auto promoted",
+   "kType": "16px/400/uppercase/normal",
+   "vType": "16px/400",
+   "border": "0px"
+  },
+  {
+   "h": 46.59,
+   "k": "closer type",
+   "kType": "16px/400/uppercase/normal",
+   "vType": "16px/400",
+   "border": "0px"
+  },
+  {
+   "h": 72.19,
+   "k": "generating started at",
+   "kType": "16px/400/uppercase/normal",
+   "vType": "16px/400",
+   "border": "0px"
+  },
+  {
+   "h": 46.59,
+   "k": "opener type",
+   "kType": "16px/400/uppercase/normal",
+   "vType": "16px/400",
+   "border": "0px"
+  },
+  {
+   "h": 251.34,
+   "k": "post angle",
+   "kType": "16px/400/uppercase/normal",
+   "vType": "16px/400",
+   "border": "0px"
+  },
+  {
+   "h": 72.19,
+   "k": "source candidate id",
+   "kType": "16px/400/uppercase/normal",
+   "vType": "16px/400",
+   "border": "0px"
+  },
+  {
+   "h": 45.59,
+   "k": "value tier",
+   "kType": "16px/400/uppercase/normal",
+   "vType": "16px/400",
+   "border": "0px"
+  }
+ ],
+ "kvRowStats": {
+  "n": 21,
+  "min": 45.59,
+  "median": 71.19,
+  "max": 1709.81,
+  "under40": 0
+ },
+ "wbkv": [],
+ "named": {
+  "inspHeader": {
+   "fontSize": "13px",
+   "fontWeight": "600",
+   "lineHeight": "18.85px",
+   "letterSpacing": "0.65px",
+   "textTransform": "uppercase",
+   "color": "rgb(148, 148, 148)",
+   "backgroundColor": "rgb(12, 12, 11)",
+   "borderRadius": "0px"
+  },
+  "secName": {
+   "fontSize": "12px",
+   "fontWeight": "800",
+   "lineHeight": "19.2px",
+   "letterSpacing": "0.6px",
+   "textTransform": "uppercase",
+   "color": "rgb(148, 148, 148)",
+   "backgroundColor": "rgba(0, 0, 0, 0)",
+   "borderRadius": "0px"
+  },
+  "capTitle": {
+   "fontSize": "22px",
+   "fontWeight": "600",
+   "lineHeight": "27.5px",
+   "letterSpacing": "-0.22px",
+   "textTransform": "none",
+   "color": "rgb(255, 255, 255)",
+   "backgroundColor": "rgba(0, 0, 0, 0)",
+   "borderRadius": "0px"
+  },
+  "qaScore": {
+   "fontSize": "27px",
+   "fontWeight": "400",
+   "lineHeight": "43.2px",
+   "letterSpacing": "normal",
+   "textTransform": "none",
+   "color": "rgb(255, 255, 255)",
+   "backgroundColor": "rgba(0, 0, 0, 0)",
+   "borderRadius": "0px"
+  },
+  "qaDimKey": {
+   "fontSize": "12px",
+   "fontWeight": "400",
+   "lineHeight": "19.2px",
+   "letterSpacing": "normal",
+   "textTransform": "none",
+   "color": "rgb(148, 148, 148)",
+   "backgroundColor": "rgba(0, 0, 0, 0)",
+   "borderRadius": "0px"
+  },
+  "qaDimNum": {
+   "fontSize": "13px",
+   "fontWeight": "400",
+   "lineHeight": "20.8px",
+   "letterSpacing": "normal",
+   "textTransform": "none",
+   "color": "rgb(199, 199, 199)",
+   "backgroundColor": "rgba(0, 0, 0, 0)",
+   "borderRadius": "0px"
+  },
+  "ddK": {
+   "fontSize": "16px",
+   "fontWeight": "400",
+   "lineHeight": "25.6px",
+   "letterSpacing": "normal",
+   "textTransform": "uppercase",
+   "color": "rgb(148, 148, 148)",
+   "backgroundColor": "rgba(0, 0, 0, 0)",
+   "borderRadius": "0px"
+  },
+  "ddV": {
+   "fontSize": "16px",
+   "fontWeight": "400",
+   "lineHeight": "25.6px",
+   "letterSpacing": "normal",
+   "textTransform": "none",
+   "color": "rgb(255, 255, 255)",
+   "backgroundColor": "rgba(0, 0, 0, 0)",
+   "borderRadius": "0px"
+  },
+  "wbkvK": null,
+  "wbkvV": null,
+  "wbbPrimary": null,
+  "wbbSecondary": null,
+  "wbbQuiet": null,
+  "wbbDanger": null,
+  "jumpTab": {
+   "fontSize": "12px",
+   "fontWeight": "700",
+   "lineHeight": "19.2px",
+   "letterSpacing": "0.36px",
+   "textTransform": "uppercase",
+   "color": "rgb(255, 255, 255)",
+   "backgroundColor": "rgb(53, 53, 51)",
+   "borderRadius": "10px"
+  }
+ },
+ "urnPresent": false,
+ "urnText": [],
+ "capsCount": 228,
+ "caps": [
+  {
+   "sel": "span.ct-chip",
+   "text": "Text"
+  },
+  {
+   "sel": "span.ct-chip",
+   "text": "Needs review"
+  },
+  {
+   "sel": "span.ct-chip",
+   "text": "edited 17h ago"
+  },
+  {
+   "sel": "span",
+   "text": "Backend depth"
+  },
+  {
+   "sel": "button.dw-jump.on",
+   "text": "QA"
+  },
+  {
+   "sel": "button.dw-jump",
+   "text": "Source"
+  },
+  {
+   "sel": "button.dw-jump",
+   "text": "Log"
+  },
+  {
+   "sel": "button.dw-jump",
+   "text": "Fields"
+  },
+  {
+   "sel": "span.dw-sec-n",
+   "text": "QA"
+  },
+  {
+   "sel": "span.ct-chip.ct-chip-ok",
+   "text": "Pass"
+  },
+  {
+   "sel": "span",
+   "text": "Summary"
+  },
+  {
+   "sel": "summary",
+   "text": "Spice check"
+  },
+  {
+   "sel": "summary",
+   "text": "Raw judge output · 2,389 chara"
+  },
+  {
+   "sel": "span.qa-fold-c",
+   "text": "›"
+  },
+  {
+   "sel": "span.qa-fold-k",
+   "text": "The applied rewrite"
+  },
+  {
+   "sel": "span.qa-fold-c",
+   "text": "›"
+  },
+  {
+   "sel": "span.qa-fold-k",
+   "text": "Gate detail"
+  },
+  {
+   "sel": "div.dd-k",
+   "text": "claim check"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "claims"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "claim"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "claim_type"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "source_status"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "source_span_or_null"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "claim"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "claim_type"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "source_status"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "claim"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "claim_type"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "source_status"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "source_span_or_null"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "claim"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "claim_type"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "source_status"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "source_span_or_null"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "overall"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "checked_at"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "flagged_claims"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "claim"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "claim_type"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "source_status"
+  },
+  {
+   "sel": "span.qa-fold-c",
+   "text": "›"
+  },
+  {
+   "sel": "span.qa-fold-k",
+   "text": "Verdict provenance"
+  },
+  {
+   "sel": "div.dd-k",
+   "text": "Parsed cleanly"
+  },
+  {
+   "sel": "div.dd-k",
+   "text": "Auto-promoted"
+  },
+  {
+   "sel": "div.dd-k",
+   "text": "Published version"
+  },
+  {
+   "sel": "span.dw-sec-n",
+   "text": "Source"
+  },
+  {
+   "sel": "div.dd-k",
+   "text": "Source"
+  },
+  {
+   "sel": "div.dd-k",
+   "text": "Candidate"
+  },
+  {
+   "sel": "span.dw-sec-n",
+   "text": "Log"
+  },
+  {
+   "sel": "span.dd-log-src",
+   "text": "n8n"
+  },
+  {
+   "sel": "span.dd-log-src",
+   "text": "n8n"
+  },
+  {
+   "sel": "span.ct-chip.ct-chip-ok",
+   "text": "PASS"
+  },
+  {
+   "sel": "span.ct-chip.ct-chip-ok",
+   "text": "PASS"
+  },
+  {
+   "sel": "span.dd-log-src",
+   "text": "n8n"
+  },
+  {
+   "sel": "span.dd-log-src",
+   "text": "n8n"
+  },
+  {
+   "sel": "summary",
+   "text": "payload"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "action"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "score"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "verdict"
+  },
+  {
+   "sel": "span.dd-log-src",
+   "text": "n8n"
+  },
+  {
+   "sel": "summary",
+   "text": "payload"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "action"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "overall"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "flagged"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "claim"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "claim_type"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "source_status"
+  },
+  {
+   "sel": "span.ct-chip.ct-chip-ok",
+   "text": "PASS"
+  },
+  {
+   "sel": "span.ct-chip.ct-chip-ok",
+   "text": "PASS"
+  },
+  {
+   "sel": "span.dd-log-src",
+   "text": "n8n"
+  },
+  {
+   "sel": "span.ct-chip.ct-chip-warn",
+   "text": "REWRITE_OK"
+  },
+  {
+   "sel": "span.ct-chip",
+   "text": "70/90"
+  },
+  {
+   "sel": "span.ct-chip.ct-chip-warn",
+   "text": "REWRITE_OK"
+  },
+  {
+   "sel": "span.ct-chip",
+   "text": "70/90"
+  },
+  {
+   "sel": "span.dd-log-src",
+   "text": "n8n"
+  },
+  {
+   "sel": "summary",
+   "text": "payload"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "qa_feedback"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "qa_passed"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "qa_rewrite"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "qa_recommendation"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "qa_total"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "qa_total_pct"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "qa_total_max"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "qa_rewrite_total"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "qa_recommendation_raw"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "qa_total_raw"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "qa_auto_promoted"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "qa_published_version"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "qa_story_shape"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "moral_wrap"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "closer_aphorism"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "entry_point"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "entry_first_event_sentence"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "qa_story_shape_notes"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "qa_scores"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "VOICE"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "SUBSTANCE"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "SPECIFICITY"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "DISTINCT"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "OPINION"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "ECONOMY"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "HOOK"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "VERIFIED"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "AI_TELLS"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "qa_fact_check"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "claims_checked"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "overall"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "qa_raw"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "scores"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "VOICE"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "SUBSTANCE"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "SPECIFICITY"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "DISTINCT"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "OPINION"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "ECONOMY"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "HOOK"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "VERIFIED"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "AI_TELLS"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "total"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "recommendation"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "verdict_summary"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "issues"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "banned_patterns_found"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "spice_check"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "spice_delivered"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "note"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "past_post_comparison"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "most_similar_post_index"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "similarity_reason"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "opener_type"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "closer_type"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "contrast_count"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "pivot_count"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "fact_check"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "claims_checked"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "overall"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "rewrite"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "rewrite_scores"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "VOICE"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "SUBSTANCE"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "SPECIFICITY"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "DISTINCT"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "OPINION"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "ECONOMY"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "HOOK"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "VERIFIED"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "AI_TELLS"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "rewrite_total"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "ai_tells_found"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "human_markers_found"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "marker"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "match"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "story_shape"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "moral_wrap"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "closer_aphorism"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "entry_point"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "entry_first_event_sentence"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "parse_success"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "banned_patterns_found"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "qa_gate_blocked"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "final_post"
+  },
+  {
+   "sel": "span.dd-log-src",
+   "text": "n8n"
+  },
+  {
+   "sel": "summary",
+   "text": "payload"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "generated_post"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "word_count"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "structure_used"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "opener_type"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "closer_type"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "engagement_driver"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "hook_type"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "spice_level"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "notes"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "pillar"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "value_tier"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "self_audit_ai"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "self_audit_facts"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "pillar_body"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "precondition_target_body"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "target_persona_body"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "value_tier_body"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "hook_type_body"
+  },
+  {
+   "sel": "span.dd-log-src",
+   "text": "n8n"
+  },
+  {
+   "sel": "summary",
+   "text": "payload"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "hooks"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "hook_text"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "hook_type"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "rationale"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "hook_text"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "hook_type"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "rationale"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "hook_text"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "hook_type"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "rationale"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "hook_text"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "hook_type"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "rationale"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "hook_text"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "hook_type"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "rationale"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "hooks_text"
+  },
+  {
+   "sel": "span.dd-vk",
+   "text": "hooks_count"
+  },
+  {
+   "sel": "span.ct-chip.ct-chip-ok",
+   "text": "PASS"
+  },
+  {
+   "sel": "span.ct-chip.ct-chip-ok",
+   "text": "PASS"
+  },
+  {
+   "sel": "span.dd-log-src",
+   "text": "n8n"
+  },
+  {
+   "sel": "span.dw-sec-n",
+   "text": "Fields"
+  },
+  {
+   "sel": "div.res-hdr",
+   "text": "Dates"
+  },
+  {
+   "sel": "div.dd-k",
+   "text": "Created"
+  },
+  {
+   "sel": "div.dd-k",
+   "text": "Updated"
+  },
+  {
+   "sel": "div.res-hdr",
+   "text": "Taxonomy"
+  },
+  {
+   "sel": "div.dd-k",
+   "text": "Pillar"
+  },
+  {
+   "sel": "div.dd-k",
+   "text": "Hook"
+  },
+  {
+   "sel": "div.dd-k",
+   "text": "Structure"
+  },
+  {
+   "sel": "div.dd-k",
+   "text": "Image style"
+  },
+  {
+   "sel": "div.dd-k",
+   "text": "Experiment arm"
+  },
+  {
+   "sel": "div.dd-k",
+   "text": "Funnel stage"
+  },
+  {
+   "sel": "span.qa-fold-c",
+   "text": "›"
+  },
+  {
+   "sel": "span.qa-fold-k",
+   "text": "Taxonomy · other keys"
+  },
+  {
+   "sel": "div.dd-k",
+   "text": "auto promoted"
+  },
+  {
+   "sel": "div.dd-k",
+   "text": "closer type"
+  },
+  {
+   "sel": "div.dd-k",
+   "text": "generating started at"
+  },
+  {
+   "sel": "div.dd-k",
+   "text": "opener type"
+  },
+  {
+   "sel": "div.dd-k",
+   "text": "post angle"
+  },
+  {
+   "sel": "div.dd-k",
+   "text": "source candidate id"
+  },
+  {
+   "sel": "div.dd-k",
+   "text": "value tier"
+  },
+  {
+   "sel": "span.qa-fold-c",
+   "text": "›"
+  },
+  {
+   "sel": "span.qa-fold-k",
+   "text": "IG caption"
+  },
+  {
+   "sel": "span",
+   "text": "In this queue"
+  },
+  {
+   "sel": "b",
+   "text": "1/2"
+  }
+ ],
+ "consoleErrors": [],
+ "attemptedWrites": 0,
+ "writeLog": []
+}

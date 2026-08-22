@@ -1,4 +1,4 @@
-// dwa probe — measures the draft window: artifact width, accent census,
+// dwa probe - measures the draft window: artifact width, accent census,
 // computed type on every value this branch authors, action row geometry,
 // inspector row heights.
 //
