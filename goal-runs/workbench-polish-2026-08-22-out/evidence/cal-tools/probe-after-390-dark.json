@@ -1,0 +1,49 @@
+{
+ "chip": {
+  "size": "342x40",
+  "background": "rgb(39, 39, 39)",
+  "borderLeft": "3px rgba(235, 235, 245, 0.45)",
+  "borderTop": "0px rgb(255, 255, 255)",
+  "borderRight": "0px",
+  "borderRadius": "6px",
+  "boxShadow": "rgba(0, 0, 0, 0.08) 0px 2px 8px 0px",
+  "parentBg": "rgba(0, 0, 0, 0)"
+ },
+ "cell": "342x93",
+ "ownCell": "342x93",
+ "chipShareOfCell": "43% of cell height",
+ "chipShareOfOwnCell": "43% of cell height",
+ "lightnessStep": {
+  "chip": 0.0203,
+  "cell": 0,
+  "delta": 0.0203,
+  "same": false
+ },
+ "chipHeights": {
+  "min": 40,
+  "max": 40,
+  "n": 13
+ },
+ "plateGap": "8px",
+ "plateRadius": "24px",
+ "frameLoss": {
+  "left": 8,
+  "right": 8,
+  "top": 8,
+  "bottom": 8
+ },
+ "windowW": 390,
+ "frameCostPct": "4.1% of width",
+ "cellsWithOverflow": 0,
+ "daysWithChips": 13,
+ "daysWithTwoPlus": 0,
+ "moreButtons": 0,
+ "railWidth": 342,
+ "nativeTitleOnChip": false,
+ "attemptedWrites": 0,
+ "attemptedWriteDetail": [],
+ "unauthorized": [],
+ "viewport": "390x844",
+ "theme": "dark",
+ "frame": "default"
+}
