@@ -70,18 +70,21 @@ const CAP_VERB: Record<RowCap, string> = {
   approve: 'Approve',
   skip: 'Skip',
   delete: 'Delete',
+  discard: 'Discard',
 }
 
 const CAP_PAST: Record<RowCap, string> = {
   approve: 'approved',
   skip: 'skipped',
   delete: 'deleted',
+  discard: 'discarded',
 }
 
 const CAP_HINT: Record<RowCap, string> = {
   approve: 'Marks every selected draft approved. Nothing publishes.',
   skip: 'Marks every selected draft disqualified. They drop out of the queue.',
   delete: 'Removes every selected draft. There is no undo for this one.',
+  discard: 'Marks every selected DM draft discarded. Nothing sends — this is the one bulk action a conversation row carries.',
 }
 
 // The noun a count is stated in. A bar that says "12 selected" makes the
@@ -203,7 +206,7 @@ export function buildCommands(c: CommandCtx): WbCommand[] {
   // The bulk actions. Listed at every moment, including with an empty selection,
   // so the palette tells the operator what this surface can do before he has
   // picked anything. Each one states its own refusal.
-  for (const cap of ['approve', 'skip', 'delete'] as RowCap[]) {
+  for (const cap of ['approve', 'skip', 'delete', 'discard'] as RowCap[]) {
     const have = c.capCount[cap]
     const ready = n > 0 && have === n
     out.push({

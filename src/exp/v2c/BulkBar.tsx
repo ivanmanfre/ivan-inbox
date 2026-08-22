@@ -3,6 +3,7 @@ import { useConfirm } from '../../components/ConfirmSheet'
 import {
   approveDraft, deleteClientDraft, deleteDraft, skipDraft,
 } from '../../lib/content'
+import { discardDraft } from '../../lib/inbox'
 import { selectionNoun } from './commandSource'
 import { clearSelection, type RowCap, type SelectedRow } from './commandStore'
 
@@ -39,13 +40,14 @@ export type BulkState = {
 
 const IDLE: BulkState = { busy: false, done: 0, total: 0, errors: [], note: null }
 
-const VERB: Record<RowCap, string> = { approve: 'Approve', skip: 'Skip', delete: 'Delete' }
+const VERB: Record<RowCap, string> = { approve: 'Approve', skip: 'Skip', delete: 'Delete', discard: 'Discard' }
 
 export function capCountOf(rows: SelectedRow[]): Record<RowCap, number> {
   return {
     approve: rows.filter(r => r.caps.includes('approve')).length,
     skip: rows.filter(r => r.caps.includes('skip')).length,
     delete: rows.filter(r => r.caps.includes('delete')).length,
+    discard: rows.filter(r => r.caps.includes('discard')).length,
   }
 }
 
@@ -79,12 +81,19 @@ export function useBulkRun(): {
           confirmText: `Skip ${n}`,
           danger: true,
         }
-        : {
-          title: `Delete ${n} ${noun}?`,
-          message: `This removes them for good and nothing here can undo it. Any row the database refuses to delete is archived instead, and the bar says how many.`,
-          confirmText: `Delete ${n}`,
-          danger: true,
-        })
+        : cap === 'discard'
+          ? {
+            title: `Discard ${n} draft${n === 1 ? '' : 's'}?`,
+            message: `None of these send anything — that is why this is the one bulk action a conversation row carries. A discarded draft can still be brought back, but only by opening its thread.`,
+            confirmText: `Discard ${n}`,
+            danger: true,
+          }
+          : {
+            title: `Delete ${n} ${noun}?`,
+            message: `This removes them for good and nothing here can undo it. Any row the database refuses to delete is archived instead, and the bar says how many.`,
+            confirmText: `Delete ${n}`,
+            danger: true,
+          })
     if (!ok) return
 
     setState({ busy: true, done: 0, total: n, errors: [], note: null })
@@ -95,7 +104,10 @@ export function useBulkRun(): {
       try {
         if (cap === 'approve') await approveDraft(r.id)
         else if (cap === 'skip') await skipDraft(r.id)
-        else {
+        else if (cap === 'discard') {
+          const stopped = await discardDraft(r.id)
+          if (!stopped) errors.push(`${r.label}: already approved or sent, nothing to discard`)
+        } else {
           const how = r.lane && r.lane !== 'ivan'
             ? await deleteClientDraft(r.id, r.taxonomy)
             : await deleteDraft(r.id, r.taxonomy)
@@ -159,7 +171,7 @@ export function BulkBar({ rows, state, onRun, onDismiss, onSelectAll, onClear, r
   const caps = capCountOf(rows)
   const noun = selectionNoun(rows)
   const kinds = new Set(rows.map(r => r.kind))
-  const noWrites = caps.approve === 0 && caps.skip === 0 && caps.delete === 0
+  const noWrites = caps.approve === 0 && caps.skip === 0 && caps.delete === 0 && caps.discard === 0
 
   return (
     <div className="wb-bulk" role="region" aria-label="Selected rows">
@@ -173,7 +185,7 @@ export function BulkBar({ rows, state, onRun, onDismiss, onSelectAll, onClear, r
         </span>
       ) : (
         <div className="wb-bulk-acts">
-          {(['approve', 'skip', 'delete'] as RowCap[]).map(cap => {
+          {(['approve', 'skip', 'delete', 'discard'] as RowCap[]).map(cap => {
             const have = caps[cap]
             if (have === 0) return null
             const all = have === n
@@ -181,7 +193,7 @@ export function BulkBar({ rows, state, onRun, onDismiss, onSelectAll, onClear, r
               <button
                 type="button"
                 key={cap}
-                className={`wb-bulk-b${cap === 'delete' ? ' danger' : ''}`}
+                className={`wb-bulk-b${cap === 'delete' || cap === 'discard' ? ' danger' : ''}`}
                 disabled={!all || state.busy}
                 title={all
                   ? `${VERB[cap]} all ${n}`
@@ -196,7 +208,7 @@ export function BulkBar({ rows, state, onRun, onDismiss, onSelectAll, onClear, r
       )}
 
       {/* Rule 2, said out loud rather than left to a disabled button. */}
-      {!noWrites && (['approve', 'skip', 'delete'] as RowCap[]).some(c => caps[c] > 0 && caps[c] < n) && (
+      {!noWrites && (['approve', 'skip', 'delete', 'discard'] as RowCap[]).some(c => caps[c] > 0 && caps[c] < n) && (
         <span className="wb-bulk-note">
           Some of these rows cannot take every action. A bulk action runs on all
           {' '}{n} or none, so narrow the selection first.
