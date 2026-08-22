@@ -9,6 +9,13 @@ if (localStorage.getItem('inbox-theme') === 'light') {
   document.documentElement.dataset.theme = 'light'
 }
 
+// Density mode (polish/dens): comfortable is the default and the absence of
+// the attribute IS comfortable, so only 'compact' is ever written. Same
+// persistence pattern as inbox-theme above, one key, read once at boot.
+if (localStorage.getItem('inbox-density') === 'compact') {
+  document.documentElement.dataset.density = 'compact'
+}
+
 // A new worker skips waiting and claims this page immediately (src/sw.ts) -- but a
 // CLAIMED page is still running the bundle it loaded with. Nothing re-fetches
 // index.html, so the assets in memory stay whatever they were when the tab opened.
