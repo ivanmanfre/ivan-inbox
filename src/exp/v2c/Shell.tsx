@@ -69,6 +69,9 @@ import './wb2026.css'
 // .wbkv metadata, motion). Imported LAST so it overrides rather than deletes;
 // see its header for the three-.wb rule it obeys on every component selector.
 import './wbsys.css'
+// Phase 3, THE CALENDAR. After wbsys so the calendar's own overrides are the
+// last word on .cal, and only on .cal — this sheet reaches nothing else.
+import './wbcal.css'
 
 // ============================================================================
 // Candidate v2c — WORKBENCH

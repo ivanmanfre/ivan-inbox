@@ -1,0 +1,93 @@
+/* ============================================================================
+   wbcal.css. THE CALENDAR, phase 3 of workbench-polish-2026-08-22.
+
+   Ivan, twice, looking at the month grid:
+     "look at the calendar pills they look like ugly 3d"
+     "there is a green background that is taking some space from us"
+
+   Imported LAST in Shell.tsx, after wbsys.css, so it overrides rather than
+   edits. Nothing is deleted from faithful.css in this phase: overriding is
+   reversible and deleting 4,210 lines of context is not (phase1-system §8).
+
+   EVERY SELECTOR CARRIES THREE `.wb` CLASSES. faithful.css:181 is
+   `.wb.wb, .wb.wb *{ font-size:var(--fs-body) … }`, which is specificity
+   (0,2,0) against every descendant of the sheet. A two-class selector loses to
+   it silently, renders at body size, and looks correct in review. The audit
+   found 216 already-dead declaration sites on this branch, 128 of them
+   font-size. Every value in this file was computed-style-checked in the
+   browser, not read off the source.
+
+   ONE MORE STANDING RULE, from the file this replaces: `.cal` is the SAME DOM
+   on mobile. Below 767px CSS turns the grid into an agenda list. Nothing here
+   reads a viewport in JS, and nothing added here does either.
+   ========================================================================== */
+
+
+/* ==========================================================================
+   1 · THE CHIP AND ITS CELL: a lightness step, and the step is the fix
+   ========================================================================== */
+
+/* THE MEASUREMENT THAT DEFINES THE DEFECT, from the run's own probe:
+
+     div.cal-chip on div.cal-day :: rgb(31,31,31) on rgb(31,31,31)
+       border = none   shadow = none   radius = 12px   size = 108x87
+
+   The chip and the cell were the SAME COLOUR, both at 12px radius, the chip
+   inset a few pixels. With no lightness cue at all, the eye has nothing left
+   to read that inner edge as except a bevel. That is the "ugly 3d".
+
+   🔴 IT IS A MISSING LIGHTNESS STEP, NOT A SHADOW TO REMOVE. The run before
+   this one stripped the chip's fill AND its ring precisely because they looked
+   raised, which deleted the last cue and made it worse. Do not repeat that.
+
+   Phase 1 (wbsys.css §6.1) already put the chip on --e3 and the empty cell on
+   --e1, which is why the probe on this branch reads dL 0.0087 rather than 0.
+   This section finishes the job:
+
+     - a cell WITH content rests at --e2 and says so explicitly, rather than
+       inheriting it through the --surface1 alias where a later edit to the
+       alias would silently flatten the pair again;
+     - the chip sits one step up at --e3, radius --r-xs;
+     - --sh-card sits ON TOP of the step, never instead of it, at 8% alpha.
+       Capped at 12% because the plate sits on --ground #C5E1A5 and anything
+       heavier bleeds onto the pistachio, which is the 2013 artefact itself.
+
+   The 3px stage rail stays. It is the only thing encoding status, but after
+   this section it is no longer the ONLY cue that the chip is an object. */
+
+.wb.wb.wb .cal-day{
+  background:var(--e2);
+  border-radius:var(--r-ctl);
+  box-shadow:inset 0 0 0 1px var(--hairline);
+}
+/* An EMPTY cell has nothing to hold up, so it recedes to the well and drops the
+   ring it was using to exist. Restated here (not only in wbsys §6.1) because
+   this file also raises the cell's min-height below, and the two rules have to
+   be read together. */
+.wb.wb.wb .cal-day-empty{
+  background:var(--e1);
+  box-shadow:none;
+}
+.wb.wb.wb .cal-day-out{ opacity:.42 }
+.wb.wb.wb .cal-day-now{ box-shadow:inset 0 0 0 1px var(--hairline-strong) }
+
+.wb.wb.wb .cal-chip{
+  background:var(--e3);
+  border-radius:var(--r-xs);
+  box-shadow:var(--sh-card);
+}
+/* Hover climbs one more step. It is the only place on this surface the ladder
+   is spent twice, and hover is exactly the state that earns it. */
+.wb.wb.wb .cal-chip:hover{ background:var(--e4) }
+/* A queue chip cannot be opened, so its hover says nothing is going to happen:
+   it holds its resting step instead of climbing. */
+.wb.wb.wb .cal-chip-queue:hover{ background:var(--e3) }
+
+/* AUDIT A5, and it is load-bearing the moment the chip lightens: button
+   .cal-chip-t computes `border: 2px outset rgb(0,0,0)` on all four sides. That
+   is the user-agent default button border. No rule in any sheet sets it, and
+   it was invisible only because black `outset` on #1F1F1F is nearly the same
+   colour. On --e3 it appears as a 2px bevel, which is the exact artefact this
+   file exists to remove. */
+.wb.wb.wb .cal-chip-t,
+.wb.wb.wb .cal-chip-mv{ border:0 }
