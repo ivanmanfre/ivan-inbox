@@ -65,6 +65,10 @@ import './faithful.css'
 // The 2026 pass. Last import, so it is the final word inside .wb; it carries no
 // tokens of its own and forks no tier — see its header.
 import './wb2026.css'
+// Phase 1 system primitives (elevation ladder, radius scale, .wbb controls,
+// .wbkv metadata, motion). Imported LAST so it overrides rather than deletes;
+// see its header for the three-.wb rule it obeys on every component selector.
+import './wbsys.css'
 
 // ============================================================================
 // Candidate v2c — WORKBENCH

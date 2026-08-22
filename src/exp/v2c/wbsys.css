@@ -1,0 +1,149 @@
+/* ============================================================================
+   wbsys.css — SYSTEM PRIMITIVES. Phase 1 of workbench-polish-2026-08-22.
+
+   WHY A FIFTH SHEET. Nothing is deleted from faithful.css in this phase; this
+   file OVERRIDES. Overriding is reversible in one import line, deleting 4,210
+   lines of context is not. Imported LAST in Shell.tsx, after wb2026.css, so it
+   is the final word inside .wb and has no reach at all outside it.
+
+   THE TRAP, VERIFIED BEFORE A LINE WAS WRITTEN.
+   faithful.css:181 is `.wb.wb, .wb.wb *{ font-size:var(--fs-body);
+   font-weight:400; letter-spacing:0; line-height:1.6 }` (specificity 0-2-0),
+   and faithful.css:190 is `.wb.wb *{ font-family:inherit }`. faithful.css:123
+   is the first `.wb.wb.wb` re-assertion. A selector written here with one or
+   two .wb classes LOSES to that flattener and renders at 16px / weight 400,
+   silently: it does not error and it does not look broken in review, only in
+   computed style. So EVERY component selector in this file carries three .wb
+   classes, and because the flattener hits `*`, every type declaration restates
+   font-size, font-weight, letter-spacing and line-height on the leaf that
+   actually carries the words rather than inheriting them from a parent.
+
+   Token blocks are the exception and are deliberately at `.wb` (0-1-0): they
+   must TIE faithful.css:33 and win on source order, so that everything reading
+   var(--surface1) picks up the ladder without being rewritten.
+   ============================================================================ */
+
+/* ========================================================================== */
+/* 1 · THE ELEVATION LADDER                                                    */
+/* ========================================================================== */
+
+/* Five levels, one step per relationship. The three rules, from phase1-system §1:
+     1. One step, never zero. A child that must read as an object on its parent
+        moves exactly one level up. Same level is banned where a relationship is
+        intended. Two levels means it floats and it had better actually float.
+     2. Shadow is only for overlap. --e4 is the only level that may carry one.
+     3. Hairlines divide, they do not elevate. A border is no longer allowed to
+        be the only thing separating two surfaces.
+
+   DARK is the spec's table verbatim. Measured relative luminance and the step
+   contrast ratio to the level below:
+     --e0 #0C0C0B  L 0.0037   -
+     --e1 #141414  L 0.0065   1.053
+     --e2 #1C1C1C  L 0.0116   1.088
+     --e3 #272727  L 0.0212   1.155
+     --e4 #323232  L 0.0331   1.166
+   For scale: the app's existing surface1 -> surface2 step (#1F1F1F -> #2A2A29)
+   measures 1.148, so the e2 -> e3 step a chip now takes is slightly LARGER than
+   a step the app already ships and reads fine. */
+.wb{
+  --e0:#0C0C0B;
+  --e1:#141414;
+  --e2:#1C1C1C;
+  --e3:#272727;
+  --e4:#323232;
+
+  /* Rule 3. The current --hairline #303030 measures L 0.0296, which is BRIGHTER
+     than --surface2 (L 0.0231) and sits between two of the three surfaces it is
+     meant to separate. That is the mechanical reason the app reads as
+     drawn-with-lines. It drops to a low-alpha white so it divides inside one
+     surface without out-shouting the surfaces themselves. */
+  --hairline:rgba(255,255,255,.07);
+  --hairline-strong:rgba(255,255,255,.14);
+
+  /* The ONE shadow in the system, and it exists only because an overlay covers
+     content it does not belong to (Geist's materials rule). */
+  --e4-shadow:0 12px 32px rgba(0,0,0,.44), 0 2px 8px rgba(0,0,0,.32);
+  /* Raised-without-a-shadow: a single 1px interior top inset, never a stack. */
+  --e-inset:inset 0 1px 0 rgba(255,255,255,.10);
+
+  /* --- THE ALIASES. 7,674 lines of existing CSS read these names; aliasing is
+         how they inherit the ladder instead of being rewritten. --- */
+  --canvas:var(--e0);
+  --surface1:var(--e2);
+  --surface2:var(--e3);
+  /* --surface3 IS DELIBERATELY NOT ALIASED ONTO --e4. See the correction note
+     at the foot of this section. */
+}
+
+/* LIGHT. The spec's light column is corrected here, and the correction is
+   forced by two measurements, both in evidence/phase1-build.md:
+
+   (a) The spec gives light --e2 and --e3 both as #FFFFFF, separated by a
+       hairline. That is border-only depth, which is the exact defect this phase
+       exists to remove: a chip on a card would be pure white on pure white. So
+       the light ladder runs elevation as a TINT away from the white card, which
+       is the direction the app's own light theme already runs
+       (surface1 #FFFFFF -> surface2 #EFEFED -> surface3 #E3E3E0) and therefore
+       inverts nothing.
+
+   (b) The ground has to clear the raised tint. With the spec's --e0 #F7F7F4 and
+       a raised tint near #EFEFEB, a sticky section header on the plate would
+       differ from the plate by dL 0.002 and be invisible. --e0 is moved to
+       #F4F4F0 and the raised tint to #EAEAE4 so every adjacent pair clears
+       dL 0.08.
+
+     --e0 #F4F4F0  L 0.8927   plate / ground
+     --e1 #E6E6E0  L 0.7752   recessed: wells, tracks, an empty calendar cell
+     --e2 #FFFFFF  L 1.0000   resting: panes, cards, a cell with content
+     --e3 #EAEAE4  L 0.8060   raised: a chip on a cell, a secondary button
+     --e4 #FFFFFF  L 1.0000   floating overlays ONLY, and they carry the shadow
+
+   Direction check against what ships today, which is the regression the brief
+   warns about: canvas < surface1 today (ground darker than card) and e0 < e2
+   after; surface1 > surface2 today (card lighter than the raised tint) and
+   e2 > e3 after. Neither relationship flips. */
+:root[data-theme='light'] .wb{
+  --e0:#F4F4F0;
+  --e1:#E6E6E0;
+  --e2:#FFFFFF;
+  --e3:#EAEAE4;
+  --e4:#FFFFFF;
+  --hairline:rgba(0,0,0,.09);
+  --hairline-strong:rgba(0,0,0,.18);
+  --e4-shadow:0 12px 32px rgba(0,0,0,.14), 0 2px 8px rgba(0,0,0,.10);
+  --e-inset:inset 0 1px 0 rgba(255,255,255,.55);
+  /* The aliases are RESTATED here and not inherited. faithful.css:161 declares
+     the light palette at `:root[data-theme='light'] .wb` (specificity 0-2-1),
+     which beats a bare `.wb` (0-1-0) no matter how late the sheet is imported.
+     The first cut of this file aliased at `.wb` only and the computed read came
+     back --canvas rgb(247,247,245) and --surface2 rgb(239,239,237), i.e. the
+     OLD light values, with the ladder live in dark and dead in light. Exactly
+     the silent half-application the phase is supposed to catch. */
+  --canvas:var(--e0);
+  --surface1:var(--e2);
+  --surface2:var(--e3);
+}
+
+/* --- CORRECTION TO THE SPEC, WITH THE MEASUREMENT THAT FORCED IT -----------
+   The brief says to alias --surface1/2/3 onto --e2/3/4. --surface1 and
+   --surface2 are aliased above. --surface3 IS NOT, and must not be.
+
+   Static count over the three sheets: --surface3 has 83 readers, of which 35
+   are `border`, `box-shadow` or `outline` declarations and 48 are backgrounds.
+   It is not an elevation level in this codebase, it is the app's edge-and-track
+   colour: `border:1px solid var(--surface3)` appears 16 times in wb2026.css
+   alone, and it paints every progress track, meter bar and status dot in
+   styles.css.
+
+   In the LIGHT theme --e4 is #FFFFFF. Aliasing --surface3 onto it would set 35
+   border and shadow declarations to white, most of them drawn on a white --e2
+   card, and every one of those edges would disappear. That is precisely the
+   "got lighter when it should have got darker" regression the brief names. So
+   --surface3 keeps the values faithful.css already gives it (#353533 dark,
+   #E3E3E0 light), which in dark sit within dL 0.002 of --e4 anyway.
+   --------------------------------------------------------------------------- */
+
+/* The plate itself is the ground, and after the alias it already resolves to
+   --e0 through --canvas. Restated so the ladder owns it explicitly rather than
+   by inheritance through a bridge token. */
+.wb.wb.wb .wb-plate{ background:var(--e0) }
