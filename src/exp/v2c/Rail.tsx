@@ -79,9 +79,15 @@ export function WorkSegment({ job, counts, onJob }: {
 
 type Counts = Partial<Record<Job, number>>
 
-export function Rail({ job, counts, sev, chatOn, chatLive, onJob, onChat, loadedAt, stale, onRefresh, collapsed, onToggle }: {
+export function Rail({ job, counts, countNote, sev, chatOn, chatLive, onJob, onChat, loadedAt, stale, onRefresh, collapsed, onToggle }: {
   job: Job
   counts: Counts
+  // What each count SUMS, in one sentence, on the row's own title. A number
+  // whose predicate is unstated is a number a reader has to trust; the audit's
+  // finding was that the old sidebar's counts worked because they were there,
+  // not because they were explained, and 17 of its 21 rows were blank anyway.
+  // Stating the rule costs nothing and makes a wrong count findable.
+  countNote?: Partial<Record<Job, string>>
   // A count that is a PROBLEM rather than a workload (errored content, a stuck
   // schedule) takes the amber tier; a plain backlog never does. The audit's
   // point 8: amber must mean warning, not "not done yet".
@@ -101,15 +107,24 @@ export function Rail({ job, counts, sev, chatOn, chatLive, onJob, onChat, loaded
   const row = (j: Job) => {
     const n = counts[j] ?? 0
     const s = sev[j]
+    const label = isWorkJob(j) ? WORK_LANE_LABEL[j] : JOB_LABEL[j]
     return (
       <div
         key={j}
         className={`wb-rj${job === j ? ' on' : ''}${isWorkJob(j) ? ' wb-rj-lane' : ''}`}
         onClick={() => onJob(j)}
+        title={n > 0 && countNote?.[j] ? `${label}: ${countNote[j]}` : undefined}
       >
         <span className="wb-rj-ic">{JOB_ICON[j]}</span>
-        <span className="wb-rj-l">{isWorkJob(j) ? WORK_LANE_LABEL[j] : JOB_LABEL[j]}</span>
+        <span className="wb-rj-l">{label}</span>
         {n > 0 && <span className={`wb-rj-n${s ? ` ${s}` : ''}`}>{n}</span>}
+        {/* The collapsed rail hides every numeral (faithful.css:2553-2557), so
+            collapsing it used to cost Ivan the whole count column — the one
+            thing the rail is for. The pip is the count's PRESENCE, drawn only
+            in that state. It says a row is holding something; it deliberately
+            does not say how much, because a 2-digit numeral does not fit a
+            64px rail and a truncated one would be a wrong number. */}
+        {n > 0 && <span className={`wb-rj-pip${s ? ` ${s}` : ''}`} aria-hidden />}
       </div>
     )
   }

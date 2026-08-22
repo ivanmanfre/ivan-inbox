@@ -633,3 +633,38 @@
    strip. This is the case for re-running the audit rather than trusting the
    worklist you started from. */
 .wb.wb.wb .td-zone .td-zh{ background:var(--e3) }
+
+/* ========================================================================== */
+/* 8 · THE GLANCE LAYER                                                        */
+/* ========================================================================== */
+/*
+   The dashboard port audit's §6, built. The old sidebar keeps every count in
+   peripheral vision by rendering all 21 destinations at once with a tabular
+   count slot each, and puts a PENDING roll-up above them. The mechanism is
+   right; its coverage is thin (4 of 21 rows ever get a badge). This section is
+   that mechanism with real coverage.
+
+   THE ACCENT IS A BUDGET, and a count is not an action, so nothing here is
+   lime. Neutral counts take the text ramp; only severity may take --sev-*.
+
+   Every selector carries THREE .wb classes. faithful.css:181 is
+   `.wb.wb, .wb.wb *{ font-size:… }` and it hits `*`, so a two-class selector
+   loses silently and every type rule below restates size, weight, tracking and
+   leading on the leaf that carries the words.
+*/
+
+/* ---- 8.1 THE COLLAPSED RAIL'S PIP ---------------------------------------
+   faithful.css:2553-2557 hides .wb-rj-n in the collapsed rail, so collapsing
+   the rail used to delete the entire count column. The pip restores PRESENCE
+   in that one state: it says a row is holding something. It never states a
+   magnitude, because a two-digit numeral does not fit a 64px rail and a
+   clipped one would be a wrong number. */
+.wb.wb.wb .wb-rj-pip{ display:none }
+.wb.wb.wb .wb-rail.min .wb-rj{ position:relative }
+.wb.wb.wb .wb-rail.min .wb-rj-pip{
+  display:block; position:absolute; top:7px; right:11px;
+  width:6px; height:6px; border-radius:var(--r-pill);
+  background:var(--text3);
+}
+.wb.wb.wb .wb-rail.min .wb-rj-pip.attention{ background:var(--sev-attention) }
+.wb.wb.wb .wb-rail.min .wb-rj-pip.urgent{ background:var(--sev-urgent) }
