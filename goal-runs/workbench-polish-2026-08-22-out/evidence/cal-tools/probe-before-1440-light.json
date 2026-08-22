@@ -1,0 +1,49 @@
+{
+ "chip": {
+  "size": "108x83",
+  "background": "rgb(234, 234, 228)",
+  "borderLeft": "3px rgba(235, 235, 245, 0.45)",
+  "borderTop": "0px rgb(19, 19, 19)",
+  "borderRight": "0px",
+  "borderRadius": "6px",
+  "boxShadow": "none",
+  "parentBg": "rgb(255, 255, 255)"
+ },
+ "cell": "120x120",
+ "ownCell": "120x120",
+ "chipShareOfCell": "69% of cell height",
+ "chipShareOfOwnCell": "69% of cell height",
+ "lightnessStep": {
+  "chip": 0.8194,
+  "cell": 1,
+  "delta": 0.1806,
+  "same": false
+ },
+ "chipHeights": {
+  "min": 83,
+  "max": 83,
+  "n": 13
+ },
+ "plateGap": "20px",
+ "plateRadius": "40px",
+ "frameLoss": {
+  "left": 20,
+  "right": 20,
+  "top": 20,
+  "bottom": 20
+ },
+ "windowW": 1440,
+ "frameCostPct": "2.8% of width",
+ "cellsWithOverflow": 0,
+ "daysWithChips": 13,
+ "daysWithTwoPlus": 0,
+ "moreButtons": 0,
+ "railWidth": 264,
+ "nativeTitleOnChip": true,
+ "attemptedWrites": 0,
+ "attemptedWriteDetail": [],
+ "unauthorized": [],
+ "viewport": "1440x900",
+ "theme": "light",
+ "frame": "default"
+}
