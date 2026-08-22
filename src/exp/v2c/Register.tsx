@@ -128,6 +128,30 @@ export function dimName(key: string): string {
   return label(key).replace(/\bAi\b/g, 'AI')
 }
 
+// 🔴 THE BADGE STOPPED SHOUTING AND THE PROSE DID NOT.
+//
+// `dimName` de-shouts the dimension BADGE. The judge's own summary paragraph
+// quotes the same tokens inside sentences ("AI_TELLS at 8", "raised
+// FIRST_PERSON_PRESENCE"), and those stayed in SCREAMING_SNAKE, which is a raw
+// enum rendered as READ TEXT next to a badge that no longer matches it. Caught
+// by evidence/audit-tools/no-internals.mjs, which allowlists a rubric key only
+// when it can read that key off a rendered `.qa-dim-k` badge - so sentence-
+// casing the badge silently un-allowlisted the prose.
+//
+// The vocabulary is the ROW'S OWN declared dimension keys and nothing else. A
+// SCREAMING_SNAKE token the judge did not declare as a dimension is left exactly
+// as written, because it is then a verdict or a gate code and this function has
+// no standing to rewrite it.
+export function deShout(prose: string, dims: { key: string }[]): string {
+  if (!dims.length) return prose
+  let out = prose
+  for (const d of dims) {
+    if (!/_/.test(d.key)) continue
+    out = out.split(d.key).join(dimName(d.key))
+  }
+  return out
+}
+
 const DIM_THRESHOLD = 70
 
 function dimPct(d: { score: number; max: number }): number {
@@ -225,7 +249,7 @@ function QaFeedback({ feedback, verdict }: { feedback: string; verdict: string |
           {r.summary && (
             <div className="qa-p">
               <span>Summary</span>
-              <Clamp lines={10} chars={r.summary.length}>{r.summary}</Clamp>
+              <Clamp lines={10} chars={r.summary.length}>{deShout(r.summary, r.dims)}</Clamp>
             </div>
           )}
           {/* Spice is the gate reporting on a REQUEST ("requested 2, delivered
