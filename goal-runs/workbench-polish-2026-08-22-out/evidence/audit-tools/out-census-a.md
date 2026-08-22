@@ -82,29 +82,29 @@ Distinct `child||parent` shapes: **25**. Live instances across the 10 surfaces: 
 
 | child selector | on parent selector | shared bg (L) | what separates them | box? | seen on |
 |---|---|---|---|---|---|
-| `div.cal-chip.cal-chip-lock.cal-chip-queue` | `div.cal-day` | `rgb(31, 31, 31)` (0.0137) | border 3px rgb(255, 255, 255) | r12 p0 | content-calendar, draft-open |
-| `div.cal-chip.cal-chip-lock` | `div.cal-day` | `rgb(31, 31, 31)` (0.0137) | border 3px rgb(255, 255, 255) | r12 p0 | content-calendar, draft-open |
+| `div.cal-chip.cal-chip-lock.cal-chip-queue` | `div.cal-day` | `rgb(31, 31, 31)` (0.0137) | left 3px dashed rgba(235, 235, 245, 0.45) + _(parent shadow: rgb(48, 48, 48) 0px 0px 0px 1px inset)_ | r12 p0 | content-calendar, draft-open |
+| `div.cal-chip.cal-chip-lock` | `div.cal-day` | `rgb(31, 31, 31)` (0.0137) | left 3px solid rgba(235, 235, 245, 0.45) + _(parent shadow: rgb(48, 48, 48) 0px 0px 0px 1px inset)_ | r12 p0 | content-calendar, draft-open |
 | `div.dd-card` | `div.dd-card` | `rgb(31, 31, 31)` (0.0137) | **NOTHING** | r20 p14 | ops |
-| `div.cal-chip.cal-chip-lock` | `div.cal-day.cal-day-out` | `rgb(31, 31, 31)` (0.0137) | border 3px rgb(255, 255, 255) | r12 p0 | content-calendar, draft-open |
-| `div.rows.ct-rows` | `div.wb-work.wide.wb-solo` | `rgb(12, 12, 11)` (0.0037) | border 1px rgb(48, 48, 48) | r0 p32 | content-list, content-calendar |
-| `div.cal-chip` | `div.cal-day` | `rgb(31, 31, 31)` (0.0137) | border 3px rgb(255, 255, 255) | r12 p0 | content-calendar, draft-open |
+| `div.cal-chip.cal-chip-lock` | `div.cal-day.cal-day-out` | `rgb(31, 31, 31)` (0.0137) | left 3px solid rgba(235, 235, 245, 0.45) + _(parent shadow: rgb(48, 48, 48) 0px 0px 0px 1px inset)_ | r12 p0 | content-calendar, draft-open |
+| `div.rows.ct-rows` | `div.wb-work.wide.wb-solo` | `rgb(12, 12, 11)` (0.0037) | top 1px solid rgb(48, 48, 48) | r0 p32 | content-list, content-calendar |
+| `div.cal-chip` | `div.cal-day` | `rgb(31, 31, 31)` (0.0137) | left 3px solid rgba(16, 163, 127, 0.75) + _(parent shadow: rgb(48, 48, 48) 0px 0px 0px 1px inset)_ | r12 p0 | content-calendar, draft-open |
 | `div.wb-sech-strip` | `div.rows.ct-rows` | `rgb(12, 12, 11)` (0.0037) | **NOTHING** | r0 p6 | content-calendar, draft-open |
-| `div.wb-sech` | `div.wb-sech-strip` | `rgb(12, 12, 11)` (0.0037) | border 1px rgb(48, 48, 48) | r0 p16 | content-calendar, draft-open |
-| `div.ops-sechdr` | `div.rows.ops-rows` | `rgb(12, 12, 11)` (0.0037) | border 1px rgb(48, 48, 48) | r0 p16 | ops |
-| `div.wb-pane-h.slim` | `div.wb-peer.wb-peer-thread.on` | `rgb(12, 12, 11)` (0.0037) | border 1px rgb(255, 255, 255) | r0 p16 | thread-open, draft-open |
+| `div.wb-sech` | `div.wb-sech-strip` | `rgb(12, 12, 11)` (0.0037) | top 1px solid rgb(48, 48, 48) / bottom 1px solid rgb(48, 48, 48) | r0 p16 | content-calendar, draft-open |
+| `div.ops-sechdr` | `div.rows.ops-rows` | `rgb(12, 12, 11)` (0.0037) | top 1px solid rgb(48, 48, 48) / bottom 1px solid rgb(48, 48, 48) | r0 p16 | ops |
+| `div.wb-pane-h.slim` | `div.wb-peer.wb-peer-thread.on` | `rgb(12, 12, 11)` (0.0037) | bottom 1px solid rgb(48, 48, 48) + _(parent shadow: rgba(184, 255, 102, 0.55) 1px 0px 0px 0p)_ | r0 p16 | thread-open, draft-open |
 | `div.rows.td-rows` | `div.wb-work.wide` | `rgb(12, 12, 11)` (0.0037) | **NOTHING** | r0 p32 | today |
 | `div.rows` | `div.wb-work.wide.wb-solo` | `rgb(12, 12, 11)` (0.0037) | **NOTHING** | r0 p32 | dms-list |
-| `div.ct-tabs` | `div.rows.ct-rows` | `rgb(12, 12, 11)` (0.0037) | border 1px rgb(255, 255, 255) | r0 p16 | content-list |
+| `div.ct-tabs` | `div.rows.ct-rows` | `rgb(12, 12, 11)` (0.0037) | bottom 1px solid rgb(48, 48, 48) | r0 p16 | content-list |
 | `div.rows.ops-rows` | `div.wb-work.wide` | `rgb(12, 12, 11)` (0.0037) | **NOTHING** | r0 p32 | ops |
 | `div.wb-sech-strip` | `div.rows.ops-rows` | `rgb(12, 12, 11)` (0.0037) | **NOTHING** | r0 p6 | ops |
-| `button.wb-sech.tap` | `div.wb-sech-strip` | `rgb(12, 12, 11)` (0.0037) | border 1px rgb(48, 48, 48) | r12 p16 | ops |
-| `div.rows.ov` | `div.wb-work.wide` | `rgb(12, 12, 11)` (0.0037) | border 1px rgb(48, 48, 48) | r0 p32 | sends |
+| `button.wb-sech.tap` | `div.wb-sech-strip` | `rgb(12, 12, 11)` (0.0037) | top 1px solid rgb(48, 48, 48) / bottom 1px solid rgb(48, 48, 48) | r12 p16 | ops |
+| `div.rows.ov` | `div.wb-work.wide` | `rgb(12, 12, 11)` (0.0037) | top 1px solid rgb(48, 48, 48) | r0 p32 | sends |
 | `div.rows.ct-rows.wb-strat` | `div.wb-work.wide` | `rgb(12, 12, 11)` (0.0037) | **NOTHING** | r0 p32 | strategy |
 | `div.rows.settings` | `div.wb-work.wide` | `rgb(12, 12, 11)` (0.0037) | **NOTHING** | r0 p32 | settings |
 | `div.rows` | `div.wb-work.list` | `rgb(12, 12, 11)` (0.0037) | **NOTHING** | r0 p32 | thread-open |
-| `div.rows.ct-rows` | `div.wb-work.list` | `rgb(12, 12, 11)` (0.0037) | border 1px rgb(48, 48, 48) | r0 p32 | draft-open |
-| `div.rows.wb-tk-body.dw-body` | `section.wb-tk` | `rgb(12, 12, 11)` (0.0037) | border 1px rgb(48, 48, 48) | r0 p32 | draft-open |
-| `div.dw-acts` | `div.rows.wb-tk-body.dw-body` | `rgb(12, 12, 11)` (0.0037) | border 1px rgb(48, 48, 48) | r0 p16 | draft-open |
+| `div.rows.ct-rows` | `div.wb-work.list` | `rgb(12, 12, 11)` (0.0037) | top 1px solid rgb(48, 48, 48) | r0 p32 | draft-open |
+| `div.rows.wb-tk-body.dw-body` | `section.wb-tk` | `rgb(12, 12, 11)` (0.0037) | top 1px solid rgb(48, 48, 48) | r0 p32 | draft-open |
+| `div.dw-acts` | `div.rows.wb-tk-body.dw-body` | `rgb(12, 12, 11)` (0.0037) | top 1px solid rgb(48, 48, 48) | r0 p16 | draft-open |
 | `div.dw-insp-h` | `div.rows.wb-tk-body.dw-body` | `rgb(12, 12, 11)` (0.0037) | **NOTHING** | r0 p14 | draft-open |
 | `div.dw-queue-h` | `div.rows.wb-tk-body.dw-body` | `rgb(12, 12, 11)` (0.0037) | **NOTHING** | r0 p14 | draft-open |
 
@@ -114,23 +114,23 @@ Distinct shapes: **20** of 121 no-paint shapes. Live instances: **128**.
 
 | child selector | on parent selector | inherited bg (L) | separator | radius | seen on |
 |---|---|---|---|---|---|
-| `div.cal-day.cal-day-empty` | `div.rows.ct-rows` | `rgb(12, 12, 11)` (0.0037) | shadow rgb(48, 48, 48) 0px 0px 0px 1px inset | 12px | content-calendar, draft-open |
-| `div.cal-day.cal-day-empty.cal-day-out` | `div.rows.ct-rows` | `rgb(12, 12, 11)` (0.0037) | shadow rgb(48, 48, 48) 0px 0px 0px 1px inset | 12px | content-calendar, draft-open |
-| `button.cal-chip-t` | `div.cal-chip.cal-chip-lock` | `rgb(31, 31, 31)` (0.0137) | border 2px rgb(0, 0, 0) | 0px | content-calendar, draft-open |
-| `button.wb-rail-minbtn` | `div.wb-plate` | `rgb(12, 12, 11)` (0.0037) | border 1px rgb(48, 48, 48) | 12px | today, dms-list, content-list, content-calendar, ops, sends, strategy, settings, thread-open, draft-open |
-| `div.wb-rail-sync` | `div.wb-plate` | `rgb(12, 12, 11)` (0.0037) | **NOTHING** | 999px | today, dms-list, content-list, content-calendar, ops, sends, strategy, settings, thread-open, draft-open |
+| `div.cal-day.cal-day-empty` | `div.rows.ct-rows` | `rgb(12, 12, 11)` (0.0037) | own shadow: rgb(48, 48, 48) 0px 0px 0px 1px inset | 12px | content-calendar, draft-open |
+| `div.cal-day.cal-day-empty.cal-day-out` | `div.rows.ct-rows` | `rgb(12, 12, 11)` (0.0037) | own shadow: rgb(48, 48, 48) 0px 0px 0px 1px inset | 12px | content-calendar, draft-open |
+| `button.cal-chip-t` | `div.cal-chip.cal-chip-lock` | `rgb(31, 31, 31)` (0.0137) | top 2px outset rgb(0, 0, 0) / right 2px outset rgb(0, 0, 0) / bottom 2px outset rgb(0, 0, 0) / left 2px outset rgb(0, 0, 0) | 0px | content-calendar, draft-open |
+| `button.wb-rail-minbtn` | `div.wb-plate` | `rgb(12, 12, 11)` (0.0037) | top 1px solid rgb(48, 48, 48) / right 1px solid rgb(48, 48, 48) / bottom 1px solid rgb(48, 48, 48) / left 1px solid rgb(48, 48, 48) + _(parent shadow: rgba(0, 0, 0, 0.5) 0px 24px 60px -20px)_ | 12px | today, dms-list, content-list, content-calendar, ops, sends, strategy, settings, thread-open, draft-open |
+| `div.wb-rail-sync` | `div.wb-plate` | `rgb(12, 12, 11)` (0.0037) | **NOTHING** + _(parent shadow: rgba(0, 0, 0, 0.5) 0px 24px 60px -20px)_ | 999px | today, dms-list, content-list, content-calendar, ops, sends, strategy, settings, thread-open, draft-open |
 | `button.ct-tab` | `div.ct-tabs` | `rgb(12, 12, 11)` (0.0037) | **NOTHING** | 12px | content-list |
-| `div.wb-rail-grp` | `div.wb-plate` | `rgb(12, 12, 11)` (0.0037) | border 1px rgb(255, 255, 255) | 0px | today, dms-list, ops, sends, settings, thread-open |
-| `button.dw-qrow` | `div.rows.wb-tk-body.dw-body` | `rgb(12, 12, 11)` (0.0037) | border 1px rgb(255, 255, 255) | 12px | draft-open |
-| `div.wb-rail-grp.on` | `div.wb-plate` | `rgb(12, 12, 11)` (0.0037) | border 1px rgb(255, 255, 255) | 0px | content-list, content-calendar, strategy, draft-open |
-| `section.dw-sec` | `div.rows.wb-tk-body.dw-body` | `rgb(12, 12, 11)` (0.0037) | border 1px rgb(255, 255, 255) | 0px | draft-open |
-| `div.cal-day.cal-day-empty.cal-day-now` | `div.rows.ct-rows` | `rgb(12, 12, 11)` (0.0037) | shadow rgb(76, 76, 76) 0px 0px 0px 1px inset | 12px | content-calendar, draft-open |
-| `button.cal-chip-t` | `div.cal-chip` | `rgb(31, 31, 31)` (0.0137) | border 2px rgb(0, 0, 0) | 0px | content-calendar, draft-open |
-| `div.wb-cardf` | `div.rows.ov` | `rgb(12, 12, 11)` (0.0037) | border 1px rgb(48, 48, 48) | 0px | sends |
-| `div.wb-cardf` | `div.ov-pipe` | `rgb(31, 31, 31)` (0.0137) | border 1px rgb(48, 48, 48) | 0px | sends |
-| `div.wb-cardf` | `div.ov-tbl` | `rgb(31, 31, 31)` (0.0137) | border 1px rgb(48, 48, 48) | 0px | sends |
-| `div.nav.wb-head` | `div.wb-work.wide` | `rgb(12, 12, 11)` (0.0037) | border 1px rgb(255, 255, 255) | 0px | strategy |
-| `div.ct-card.wb-strat-card.blank` | `div.rows.ct-rows.wb-strat` | `rgb(12, 12, 11)` (0.0037) | shadow rgb(48, 48, 48) 0px 0px 0px 1px inset | 20px | strategy |
-| `span.ct-chip.ct-chip-when` | `div.rows.wb-tk-body.dw-body` | `rgb(12, 12, 11)` (0.0037) | shadow rgb(48, 48, 48) 0px 0px 0px 1px inset | 8px | draft-open |
-| `aside.dw-insp` | `div.rows.wb-tk-body.dw-body` | `rgb(12, 12, 11)` (0.0037) | border 1px rgb(255, 255, 255) | 0px | draft-open |
-| `aside.dw-queue` | `div.rows.wb-tk-body.dw-body` | `rgb(12, 12, 11)` (0.0037) | border 1px rgb(255, 255, 255) | 0px | draft-open |
+| `div.wb-rail-grp` | `div.wb-plate` | `rgb(12, 12, 11)` (0.0037) | left 1px solid rgb(48, 48, 48) + _(parent shadow: rgba(0, 0, 0, 0.5) 0px 24px 60px -20px)_ | 0px | today, dms-list, ops, sends, settings, thread-open |
+| `button.dw-qrow` | `div.rows.wb-tk-body.dw-body` | `rgb(12, 12, 11)` (0.0037) | bottom 1px solid rgba(0, 0, 0, 0) | 12px | draft-open |
+| `div.wb-rail-grp.on` | `div.wb-plate` | `rgb(12, 12, 11)` (0.0037) | left 1px solid rgb(184, 255, 102) + _(parent shadow: rgba(0, 0, 0, 0.5) 0px 24px 60px -20px)_ | 0px | content-list, content-calendar, strategy, draft-open |
+| `section.dw-sec` | `div.rows.wb-tk-body.dw-body` | `rgb(12, 12, 11)` (0.0037) | bottom 1px solid rgb(48, 48, 48) | 0px | draft-open |
+| `div.cal-day.cal-day-empty.cal-day-now` | `div.rows.ct-rows` | `rgb(12, 12, 11)` (0.0037) | own shadow: rgb(76, 76, 76) 0px 0px 0px 1px inset | 12px | content-calendar, draft-open |
+| `button.cal-chip-t` | `div.cal-chip` | `rgb(31, 31, 31)` (0.0137) | top 2px outset rgb(0, 0, 0) / right 2px outset rgb(0, 0, 0) / bottom 2px outset rgb(0, 0, 0) / left 2px outset rgb(0, 0, 0) | 0px | content-calendar, draft-open |
+| `div.wb-cardf` | `div.rows.ov` | `rgb(12, 12, 11)` (0.0037) | top 1px solid rgb(48, 48, 48) | 0px | sends |
+| `div.wb-cardf` | `div.ov-pipe` | `rgb(31, 31, 31)` (0.0137) | top 1px solid rgb(48, 48, 48) | 0px | sends |
+| `div.wb-cardf` | `div.ov-tbl` | `rgb(31, 31, 31)` (0.0137) | top 1px solid rgb(48, 48, 48) | 0px | sends |
+| `div.nav.wb-head` | `div.wb-work.wide` | `rgb(12, 12, 11)` (0.0037) | bottom 1px solid rgb(48, 48, 48) | 0px | strategy |
+| `div.ct-card.wb-strat-card.blank` | `div.rows.ct-rows.wb-strat` | `rgb(12, 12, 11)` (0.0037) | own shadow: rgb(48, 48, 48) 0px 0px 0px 1px inset | 20px | strategy |
+| `span.ct-chip.ct-chip-when` | `div.rows.wb-tk-body.dw-body` | `rgb(12, 12, 11)` (0.0037) | own shadow: rgb(48, 48, 48) 0px 0px 0px 1px inset | 8px | draft-open |
+| `aside.dw-insp` | `div.rows.wb-tk-body.dw-body` | `rgb(12, 12, 11)` (0.0037) | left 1px solid rgb(48, 48, 48) | 0px | draft-open |
+| `aside.dw-queue` | `div.rows.wb-tk-body.dw-body` | `rgb(12, 12, 11)` (0.0037) | right 1px solid rgb(48, 48, 48) | 0px | draft-open |

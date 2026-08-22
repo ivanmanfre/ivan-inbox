@@ -48,9 +48,10 @@ for (const [name, s] of Object.entries(S)) {
 }
 const sepOf = r => {
   const bits = []
-  if (r.borderW > 0) bits.push(`border ${r.borderW}px ${r.borderColor}`)
-  if (r.shadow) bits.push(`shadow ${r.shadow.slice(0, 46)}`)
+  if (r.borders?.length) bits.push(r.borders.join(' / '))
+  if (r.shadow) bits.push(`own shadow: ${r.shadow.slice(0, 46)}`)
   if (!bits.length) bits.push('**NOTHING**')
+  if (r.parentShadow) bits.push(`_(parent shadow: ${r.parentShadow.slice(0, 40)})_`)
   return bits.join(' + ')
 }
 p('\n## A3 · NESTED PAIRS WITH IDENTICAL COMPUTED BACKGROUND-COLOR\n')
