@@ -668,3 +668,31 @@
 }
 .wb.wb.wb .wb-rail.min .wb-rj-pip.attention{ background:var(--sev-attention) }
 .wb.wb.wb .wb-rail.min .wb-rj-pip.urgent{ background:var(--sev-urgent) }
+
+/* ---- 8.2 THE GLOBAL ROLL-UP ----------------------------------------------
+   One figure for "how much is waiting on me across everything", in the frame,
+   above the rows it sums. Neutral, never accent: it is a report, not an action,
+   and the accent budget belongs to the thing you click.
+
+   Every type property is restated on the leaf. .wb-rib-j (styles.css:103) sets
+   uppercase and .04em tracking on the mobile ribbon slot this lands inside, so
+   the label would otherwise render as WAITING ON YOU in a shell that is
+   sentence case everywhere else. */
+.wb.wb.wb .wb-rail-roll{ padding:0 12px 12px; margin-top:-8px }
+.wb.wb.wb .wb-rollup{
+  display:inline-flex; align-items:baseline; gap:6px;
+  text-transform:none;
+}
+.wb.wb.wb .wb-rollup-n{
+  font-size:15px; font-weight:700; letter-spacing:-.01em; line-height:1.2;
+  color:var(--text);
+  font-variant-numeric:tabular-nums;
+}
+.wb.wb.wb .wb-rollup-l{
+  font-size:12px; font-weight:500; letter-spacing:0; line-height:1.2;
+  color:var(--text3);
+  text-transform:none;
+}
+/* Collapsed rail: the numeral only, centred under the avatar row. */
+.wb.wb.wb .wb-rail.min .wb-rollup{ margin:0 auto }
+.wb.wb.wb .wb-rail.min .wb-rollup-n{ font-size:13px }

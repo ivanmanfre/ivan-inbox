@@ -79,6 +79,50 @@ export function WorkSegment({ job, counts, onJob }: {
 
 type Counts = Partial<Record<Job, number>>
 
+// THE GLOBAL ROLL-UP, and the one rule that keeps it honest.
+//
+// The old dashboard prints `PENDING <n>` in its top bar (Shell.tsx:213-219),
+// where n is the sum of every nav badge. The inbox had no such figure anywhere.
+// The danger with a single global number is that a reader assumes it covers
+// everything, and this one does not: it does not know about the 176 client
+// ideas at `staged`, the 95 lm idea candidates at `reviewing`, the comment
+// feed, the send queue, or the automation alarm.
+//
+// So the rule is: THE ROLL-UP IS THE RAIL'S OWN COUNTS, ADDED UP. Nothing else
+// may enter it. That makes it self-auditing — every summand is a row on the
+// same rail with its own numeral, so the reader can check the arithmetic
+// without leaving the screen, and a number that appears in the total but
+// nowhere below it is impossible by construction.
+export function rollup(counts: Counts): { n: number; note: string } {
+  const parts = JOBS
+    .map(j => ({ j, n: counts[j] ?? 0 }))
+    .filter(p => p.n > 0)
+  const n = parts.reduce((s, p) => s + p.n, 0)
+  const names = parts
+    .map(p => `${isWorkJob(p.j) ? WORK_LANE_LABEL[p.j] : JOB_LABEL[p.j]} ${p.n}`)
+    .join(' + ')
+  return {
+    n,
+    note: n === 0
+      ? 'Nothing waiting on the rail.'
+      : `${names}. This is the rail's counts added up and nothing else: it does not cover ideas, sends, or automation health.`,
+  }
+}
+
+// A count of zero is not rendered. Silence is information, and a permanently
+// blank slot is the defect the port audit found on 17 of the old sidebar's 21
+// rows.
+export function Rollup({ counts, compact }: { counts: Counts; compact?: boolean }) {
+  const { n, note } = rollup(counts)
+  if (n === 0) return null
+  return (
+    <span className="wb-rollup" title={note}>
+      <b className="wb-rollup-n">{n}</b>
+      {!compact && <span className="wb-rollup-l">waiting on you</span>}
+    </span>
+  )
+}
+
 export function Rail({ job, counts, countNote, sev, chatOn, chatLive, onJob, onChat, loadedAt, stale, onRefresh, collapsed, onToggle }: {
   job: Job
   counts: Counts
@@ -140,6 +184,10 @@ export function Rail({ job, counts, countNote, sev, chatOn, chatLive, onJob, onC
       <div className="wb-rail-top">
         {!collapsed && <span className="avatar-me">IM</span>}
         {!collapsed && <span className="wb-rail-ttl">Workbench</span>}
+        {/* The roll-up sits in the frame, above the rows it sums, which is
+            where the old dashboard puts its own (`PENDING <n>`, top bar). On
+            the collapsed rail it keeps the numeral and drops the words. */}
+        {collapsed && <Rollup counts={counts} compact />}
         {onToggle && (
           <button
             type="button" className="wb-rail-minbtn"
@@ -149,6 +197,10 @@ export function Rail({ job, counts, countNote, sev, chatOn, chatLive, onJob, onC
           >{collapsed ? '»' : '«'}</button>
         )}
       </div>
+
+      {!collapsed && (
+        <div className="wb-rail-roll"><Rollup counts={counts} /></div>
+      )}
 
       <div className="wb-rail-jobs">
         {before.map(row)}
