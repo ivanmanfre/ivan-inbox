@@ -32,6 +32,39 @@
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 
+/* p4b: the reason and the one act available on it share a line. `min-width:0`
+   on both the row and the sentence is what keeps the ellipsis working inside a
+   flex parent — without it the text box refuses to shrink and pushes Retry off
+   the card instead of truncating. */
+.wb.wb.wb .ct-reason-row{
+  display:flex; flex-wrap:wrap; align-items:center; gap:var(--sp-2); min-width:0;
+}
+.wb.wb.wb .ct-reason-row > .ct-reason{ flex:1 1 auto; min-width:0; margin-top:0 }
+.wb.wb.wb .ct-reason-row .ct-retry{
+  flex:none; padding:2px 8px;
+  font-size:var(--fs-eyebrow); font-weight:600;
+  letter-spacing:.04em; text-transform:uppercase; border-radius:var(--r-ctl);
+  background:var(--surface2); color:var(--text2);
+}
+.wb.wb.wb .ct-reason-row .ct-retry:disabled{ opacity:.4; cursor:default }
+/* Any message from a fired retry takes the whole width under both, rather than
+   competing with the sentence for the same line. */
+.wb.wb.wb .ct-reason-row .ct-retry-msg{ flex-basis:100%; margin:2px 0 0; font-size:var(--fs-meta) }
+
+/* THE ONE DISTINCTION THE ERRORS TAB NEVER DREW. 13 of the 55 live error rows
+   end on a gate that PASSED and 6 stalled for real, and until p4b both printed
+   the same sentence in the same colour. Severity here is the DERIVED kind, so
+   it can never disagree with the words beside it:
+     stalled / generation_failed / refusal  the run did not deliver, amber
+     completed                              the run finished, and this row is
+                                            mis-filed, so it is not a warning
+   Everything else keeps text2, which is the honest neutral: QA scoring a draft
+   under the floor is an opinion about the copy, not an incident. */
+.wb.wb.wb .ct-reason[data-kind='stalled'],
+.wb.wb.wb .ct-reason[data-kind='generation_failed'],
+.wb.wb.wb .ct-reason[data-kind='refusal']{ color:var(--sev-attention) }
+.wb.wb.wb .ct-reason[data-kind='completed']{ color:var(--sev-clear) }
+
 /* ========================================================================== */
 /* B · TODAY — the briefing (pass 3)                                           */
 /* ========================================================================== */

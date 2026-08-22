@@ -8,7 +8,7 @@ import {
   CONTENT_LANES, ERROR_ALARM_HOURS, LANE_LABEL, LANE_POSSESSIVE, PIPELINE_STAGES,
   STAGE_LABEL, STAGE_SHORT, boardGroupOf, clientStageLabel,
   countBoardVisible, countUndated, deleteClientDraft, deleteDraft, draftExcerpt,
-  draftFailureReason, elapsedMinutes, generatingSince, groupByStage, isRecentError, isStuckGenerating,
+  draftFailure, elapsedMinutes, generatingSince, groupByStage, isRecentError, isStuckGenerating,
   reviewActionable, stageOf, taxonomyValue,
   type BoardGroup, type ContentDraft, type ContentLane, type ContentStage, type ContentStages,
 } from '../../lib/content'
@@ -21,6 +21,7 @@ import { useSectionState } from '../../hooks/useSectionState'
 import { draftFacetsActive } from './contentIdeas'
 import { useConfirm } from '../../components/ConfirmSheet'
 import { ReviewActions } from './ReviewActions'
+import { RetryDraft } from './RetryDraft'
 import { FilteredEmpty } from './ContentBits'
 import { FilterRow } from './FilterRow'
 import { RowSelect } from './RowSelect'
@@ -168,13 +169,15 @@ function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
   const pillar = taxonomyValue(d.taxonomy, 'pillar')
   const funnel = d.funnel_stage?.trim() || null
   const excerpt = glance ? draftExcerpt(d.post_body) : null
-  // ERRORS TAB, THE REASON COLUMN (phase2). The QA chip above is a verdict
-  // CODE (QA_BLOCKED, LINT_FAIL) at best and a bare dash at worst, and
-  // neither answers "why did this fail" on its own. This line does, on every errored
-  // row: taxonomy.error_message first (the pipeline's own account), the
-  // labelled qa_verdict as a fallback, and an honest sentence rather than a
-  // dash when the row carries neither.
-  const reason = stage === 'error' ? draftFailureReason(d) : null
+  // ERRORS TAB, THE REASON COLUMN (phase2, corrected p4b). The QA chip above is
+  // a verdict CODE (QA_BLOCKED, LINT_FAIL) at best and a bare dash at worst, and
+  // neither answers "why did this fail" on its own. This line does, on every
+  // errored row, and it now reads the TERMINAL agent_log entry rather than the
+  // stamp: measured over all 55 live error rows, the old order printed a
+  // watchdog stall the log denies on 28 of them and echoed the QA chip's own
+  // verdict back at the reader on 21 more. `kind` is what separates the 13 rows
+  // whose pipeline demonstrably finished from the 6 that genuinely stalled.
+  const failure = stage === 'error' ? draftFailure(d) : null
   // WHAT A BULK ACTION MAY DO TO THIS ROW. Declared here because this is the
   // only place that knows the row's status, its lane and whether it sits on a
   // client board; the bulk bar never infers a capability. Both rules are the
@@ -266,11 +269,23 @@ function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
         {lane !== 'ivan' && d.source_label && (
           <div className="ct-src" title={d.source_label}>{d.source_label}</div>
         )}
-        {/* THE REASON, ON EVERY ONE OF THE 46 ROWS (phase2). One line, meta
-            tier, truncated with the full text in the title, the same
-            treatment .ct-src already uses for a value that can run to a
-            whole sentence. */}
-        {reason && <div className="ct-reason" title={reason}>{reason}</div>}
+        {/* THE REASON, ON EVERY ERRORED ROW (phase2). One line, meta tier,
+            truncated with the full text in the title, the same treatment
+            .ct-src already uses for a value that can run to a whole sentence.
+
+            p4b: it shares its line with Retry, because the sentence and the one
+            thing to do about it are the same thought. `data-kind` is the machine
+            reading of the same fact the sentence carries in words, so the
+            severity colour and any later filter agree with the text by
+            construction rather than by a second opinion. */}
+        {failure && (
+          <div className="ct-reason-row">
+            <div className="ct-reason" data-kind={failure.kind} title={failure.reason}>
+              {failure.reason}
+            </div>
+            <RetryDraft d={d} lane={lane} onDone={refresh} />
+          </div>
+        )}
       </div>
       {/* The three facts as COLUMNS, one fixed x each, '—' when absent so the
           column stays a column. Desktop only — below 1000px there is no width
