@@ -943,8 +943,12 @@ export function TodayScreen({
         {/* Above the masthead and above every zone, because an expiring OAuth
             grant outranks the day's queue: the queue waits, a lapsed grant
             cannot be recovered without the client clicking a new link. Renders
-            nothing at all when nothing is open. */}
-        <SystemAlertStrip />
+            nothing at all when nothing is open.
+            `autoOpen` rides the SAME `threads === undefined` discriminator every
+            other workbench-only prop on this screen already uses, so #exp/stock
+            keeps the strip it has always had and only the workbench gets the
+            narrowed auto-open. */}
+        <SystemAlertStrip autoOpen={threads === undefined ? 'all' : 'critical'} />
         <Masthead c={counts} plate={t.brief ? plate : null} syncedAt={syncedAt} stale={stale} />
 
         {t.authError && (
