@@ -1033,18 +1033,31 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
   dateRow('Scheduled', d.scheduled_at, true)
   dateRow('Published', d.published_at)
 
+  // 🔴 DEFECT 1. `urn:li:activity:7496174424996585473` printed under "Spun from
+  // post", at the same size and weight as the words beside it, as the first
+  // thing the Source panel showed. A row key is a LOOKUP: you arrive at it with
+  // a question, never by reading past it.
+  //
+  // Nothing is truncated and nothing is dropped — the value is verbatim in the
+  // DOM, at the quiet tier, one disclosure away. That is the same density
+  // decision the QA rubric takes: show the facts that matter at rest, defer the
+  // rest, rather than shrinking everything to fit (Linear, reference-study §4
+  // move 2). What is left at rest is the two facts a human reads: where the
+  // draft came from and what it was called.
   const source: [string, ReactNode][] = []
+  const sourceIds: [string, ReactNode][] = []
+  const idRow = (k: string, v: string | null | undefined) => {
+    if (v) sourceIds.push([k, <span className="dwa-id" key={k}>{v}</span>])
+  }
   if (tax.source) source.push(['Source', tax.source])
   if (d.source_label) source.push(['Label', d.source_label])
-  if (d.source_ref) source.push(['Ref', d.source_ref])
-  if (d.client_idea_id) source.push(['Idea', d.client_idea_id])
-  if (taxonomyValue(d.taxonomy, 'source_candidate_id')) {
-    source.push(['Candidate', taxonomyValue(d.taxonomy, 'source_candidate_id')])
-  }
-  if (d.source_post_id) source.push(['Spun from post', d.source_post_id])
   if (taxonomyValue(d.taxonomy, 'auto_promoted')) {
     source.push(['Auto-promoted', taxonomyValue(d.taxonomy, 'auto_promoted')])
   }
+  idRow('Ref', d.source_ref)
+  idRow('Idea', d.client_idea_id)
+  idRow('Candidate', taxonomyValue(d.taxonomy, 'source_candidate_id'))
+  idRow('Spun from post', d.source_post_id)
 
   const taxRows: [string, ReactNode][] = []
   if (tax.pillar) taxRows.push(['Pillar', tax.pillar])
@@ -1387,12 +1400,19 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
         body: <HtmlPreview html={authored} title="Post as it will appear" />,
       }]
       : []),
-    ...((source.length > 0 || detail || points.length > 0 || d.description)
+    ...((source.length > 0 || sourceIds.length > 0 || detail || points.length > 0 || d.description)
       ? [{
         k: 'src', label: 'Source', tail: detail?.kind ? label(detail.kind) : undefined,
         body: (
           <>
             <Rows items={source} />
+            {/* The row keys, verbatim, one disclosure away. See the build note
+                where `sourceIds` is assembled. */}
+            {sourceIds.length > 0 && (
+              <Fold label="Identifiers" tail={`${sourceIds.length} ${sourceIds.length === 1 ? 'key' : 'keys'}`}>
+                <Rows items={sourceIds} />
+              </Fold>
+            )}
             {detail && (
               <>
                 {(detail.kind || detail.label) && (
@@ -1425,7 +1445,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
                 <div className="dd-card"><div className="dd-body dd-pre">{d.description}</div></div>
               </Block>
             )}
-            {source.length === 0 && !detail && points.length === 0 && !d.description && (
+            {source.length === 0 && sourceIds.length === 0 && !detail && points.length === 0 && !d.description && (
               <div className="ct-subtle">Pre-pipeline draft — no linked idea.</div>
             )}
           </>
