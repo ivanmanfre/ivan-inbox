@@ -416,3 +416,136 @@
   color:var(--text2);
   max-width:34ch;
 }
+
+
+/* ==========================================================================
+   5 · THE FRAME: three arms, switchable at runtime, and A stays the default
+   ========================================================================== */
+
+/* Ivan: "there is a green background that is taking some space from us."
+   Measured at 1440: --plate-gap 20px on both sides, 40px of width, 2.8%.
+
+   🔴 THE HONEST FINDING, and it has to be in the ballot rather than buried.
+   On this screen the frame is not the main thief. The "Ready, no date" rail is
+   264px, seven times what the frame costs. It is what Ivan can SEE taking
+   space; the rail is what is actually taking it.
+
+   🔴 AND THE RAIL IS NOT MINE TO RECLAIM ANY MORE. When this section was
+   planned the rail held one sentence. The polish/p4a merge fixed the filter
+   that made it always empty, and it now holds 89 rows across the lanes (ivan
+   2, risedtc 48, arch 39) with its own capped scroll region. A column holding
+   48 undated posts has earned its 264px. So the rail is left exactly where it
+   is, and what changes here is only the thing Ivan actually pointed at.
+
+   THE ARMS, because this is a taste call and it is his:
+
+     A  as shipped        gap 20, radius 40
+     B  tightened         gap 10, radius 22
+     C  work area flush   gap 3, radius 0, the pistachio kept as an edge
+
+   Arm C is written as a 3px gap rather than a literal 0 because 0 would delete
+   the pistachio from the screen, and the brief keeps it as a 3px edge. Same
+   pixels either way, and the token stays a token.
+
+   🔴 --ground: #C5E1A5 DOES NOT CHANGE IN ANY ARM. Locked fork 2 permits the
+   geometry to move and not the colour, and no arm proposes otherwise. Nothing
+   below names a colour at all.
+
+   A IS THE DEFAULT BY OMISSION. `[data-frame='a']` carries no declarations, so
+   switching back to it restores faithful.css:45 and, at ≤767px,
+   faithful.css:157's own 24/8 override. An arm that restated A's numbers would
+   have broken the mobile override the moment the ballot switched away and
+   back. */
+
+:root[data-frame='a'] .wb{ /* as shipped. Deliberately empty. */ }
+
+:root[data-frame='b'] .wb{
+  --plate-gap:10px;
+  --plate-r:22px;
+}
+
+:root[data-frame='c'] .wb{
+  --plate-gap:3px;
+  --plate-r:0px;
+}
+
+/* ==========================================================================
+   6 · MOTION. The spring on anything that moves, a plain ease on colour
+   ========================================================================== */
+
+/* The rule is Wispr Flow's, measured out of its shipped bundle: colour changes
+   get a plain 100-150ms ease and anything that MOVES gets the spring. It does
+   not animate everything, it animates motion. `--spring` is wbsys.css §7's
+   sampled `linear()` curve with a cubic-bezier fallback.
+
+   Never a layout property. width, height, top and `transition:all` are banned
+   here: they force a reflow every frame. Everything below moves by transform
+   or changes by colour, and nothing else. */
+
+.wb.wb.wb .cal-chip,
+.wb.wb.wb .cal-more,
+.wb.wb.wb .cal-day{
+  transition:background-color var(--wbs-dur-ctl) var(--wbs-ease-ctl),
+             color var(--wbs-dur-ctl) var(--wbs-ease-ctl),
+             box-shadow var(--wbs-dur-ctl) var(--wbs-ease-ctl);
+}
+
+/* THE MONTH CHANGE. It used to teleport. `.cal-grid` is keyed on the month in
+   ContentCalendar.tsx, so React replaces the node and this animation runs from
+   scratch on every step, in the direction of travel. Transform and opacity
+   only, so it composites and never reflows. */
+@keyframes cal-month-in{
+  from{ opacity:0; transform:translateX(var(--cal-month-from,10px)) }
+  to{ opacity:1; transform:none }
+}
+.wb.wb.wb .cal-grid{
+  animation:cal-month-in var(--wbs-dur-overlay) var(--spring) both;
+}
+.wb.wb.wb .cal-grid[data-dir='-1']{ --cal-month-from:-10px }
+
+/* THE DRAG. It signalled a live drag with `opacity:.4` and nothing else, which
+   is the one state on this surface where Wispr ships a DISTINCT shadow
+   (`$shadow-drag`, 0 2px 8px at 12%, its own token separate from the resting
+   card's 8%). So the dragged chip lifts as well as fades: it is the heaviest
+   shadow this surface draws, and 12% is the cap. */
+.wb.wb.wb .cal-chip-drag{
+  opacity:.55;
+  box-shadow:var(--sh-drag);
+  transform:scale(1.02);
+  transition:transform var(--wbs-dur-ctl) var(--spring),
+             opacity var(--wbs-dur-ctl) var(--wbs-ease-ctl),
+             box-shadow var(--wbs-dur-ctl) var(--wbs-ease-ctl);
+}
+
+/* THE DROP TARGET, and the landing. The cell already holds chips, so a fill
+   would restate them as selected: it is a ring plus a faint tint, and the tint
+   fades rather than snapping. */
+.wb.wb.wb .cal-day-over{
+  box-shadow:inset 0 0 0 1px var(--accent);
+  background:var(--accent-soft,rgba(16,163,127,.10));
+}
+
+/* THE PANEL. It MOVES, so it springs. Measured at opacity 0 first
+   (CalPopover.tsx sets data-in on the next frame) so the spring runs from the
+   anchored position rather than from the origin. */
+.wb.wb.wb .cal-pop{
+  transition:opacity var(--wbs-dur-overlay) var(--wbs-ease-ctl),
+             transform var(--wbs-dur-overlay) var(--spring);
+  transform-origin:top left;
+}
+.wb.wb.wb .cal-pop[data-in='0']{ opacity:0; transform:translateY(-4px) scale(.985) }
+.wb.wb.wb .cal-pop[data-side='above'][data-in='0']{ transform:translateY(4px) scale(.985) }
+.wb.wb.wb .cal-pop[data-in='1']{ opacity:1; transform:none }
+
+/* AND THE COLLAPSE. Not "shorter", zero: a vestibular trigger is not fixed by
+   a faster version of the same movement. */
+@media (prefers-reduced-motion:reduce){
+  .wb.wb.wb .cal-chip,
+  .wb.wb.wb .cal-more,
+  .wb.wb.wb .cal-day,
+  .wb.wb.wb .cal-chip-drag,
+  .wb.wb.wb .cal-pop{ transition-duration:0ms }
+  .wb.wb.wb .cal-chip-drag{ transform:none }
+  .wb.wb.wb .cal-grid{ animation:none }
+  .wb.wb.wb .cal-pop[data-in='0']{ transform:none }
+}

@@ -96,6 +96,12 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
     const n = new Date()
     return { year: n.getFullYear(), month: n.getMonth() }
   })
+  // WHICH WAY THE MONTH JUST MOVED. It is a render key AND a direction: React
+  // replaces the grid node when the key changes, so the entry animation runs
+  // from scratch on every step, and `data-dir` tells it which side to come in
+  // from. Back a month should not slide in the same direction as forward.
+  const [step, setStep] = useState<{ key: string; dir: 1 | -1 }>(
+    () => ({ key: 'first', dir: 1 }))
   const [moving, setMoving] = useState<Moving | null>(null)
   const [drag, setDrag] = useState<Dragging | null>(null)
   const [over, setOver] = useState<string | null>(null)
@@ -255,12 +261,12 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
         <div className="cal-nav">
           <button
             type="button" className="cal-navb" aria-label="Previous month"
-            onClick={() => setAnchor(a => shiftMonth(a.year, a.month, -1))}
+            onClick={() => { setStep(s2 => ({ key: `${s2.key}<`, dir: -1 })); setAnchor(a => shiftMonth(a.year, a.month, -1)) }}
           >‹</button>
           <span className="cal-month">{monthLabel(anchor.year, anchor.month)}</span>
           <button
             type="button" className="cal-navb" aria-label="Next month"
-            onClick={() => setAnchor(a => shiftMonth(a.year, a.month, 1))}
+            onClick={() => { setStep(s2 => ({ key: `${s2.key}>`, dir: 1 })); setAnchor(a => shiftMonth(a.year, a.month, 1)) }}
           >›</button>
           <button
             type="button" className="cal-today"
@@ -294,7 +300,7 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
       </div>
 
       <div className="cal-body">
-        <div className="cal-grid">
+        <div className="cal-grid" key={step.key} data-dir={step.dir}>
           <div className="cal-head" aria-hidden>
             {WEEKDAYS.map(w => <span key={w}>{w}</span>)}
           </div>
