@@ -1,0 +1,50 @@
+[
+ {
+  "view": "1440x900 dark",
+  "before": {
+   "file": "/tmp/gl/stock-before-1440-dark.png",
+   "sha": "09d1a130cb9f5dd48d8c8a91189df159fc342e020d72c6aee0d1056898ab5907",
+   "writes": 0,
+   "errors": []
+  },
+  "after": {
+   "file": "/tmp/gl/stock-after-1440-dark.png",
+   "sha": "09d1a130cb9f5dd48d8c8a91189df159fc342e020d72c6aee0d1056898ab5907",
+   "writes": 0,
+   "errors": []
+  },
+  "identical": true
+ },
+ {
+  "view": "1440x900 light",
+  "before": {
+   "file": "/tmp/gl/stock-before-1440-light.png",
+   "sha": "965944781f2ec5a7884b415bdc07d127d7d6153c546beda4ff37b46691af553e",
+   "writes": 0,
+   "errors": []
+  },
+  "after": {
+   "file": "/tmp/gl/stock-after-1440-light.png",
+   "sha": "965944781f2ec5a7884b415bdc07d127d7d6153c546beda4ff37b46691af553e",
+   "writes": 0,
+   "errors": []
+  },
+  "identical": true
+ },
+ {
+  "view": "390x844 dark",
+  "before": {
+   "file": "/tmp/gl/stock-before-390-dark.png",
+   "sha": "9110dce7beb9fc0b339e4432dc88b3be8a0d67d1de44013c49393e56d243c914",
+   "writes": 0,
+   "errors": []
+  },
+  "after": {
+   "file": "/tmp/gl/stock-after-390-dark.png",
+   "sha": "9110dce7beb9fc0b339e4432dc88b3be8a0d67d1de44013c49393e56d243c914",
+   "writes": 0,
+   "errors": []
+  },
+  "identical": true
+ }
+]
