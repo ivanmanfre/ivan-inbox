@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { label } from '../../lib/labels'
 
 // The three states, as three components, so no surface can accidentally render
 // two of them the same way.
@@ -313,7 +314,10 @@ export function StackBar({ parts }: { parts: { key: string; n: number; color: st
           key={p.key}
           className="wb-stack-seg"
           style={{ width: `${(p.n / total) * 100}%`, background: p.color }}
-          title={`${p.key}: ${p.n}`}
+          // p.key is caller-supplied and can be a raw lane/stage key (e.g.
+          // 'risedtc'); the primitive guards it itself rather than trusting
+          // every future caller to pass an already-labelled string.
+          title={`${label(p.key)}: ${p.n}`}
         />
       ))}
     </div>
