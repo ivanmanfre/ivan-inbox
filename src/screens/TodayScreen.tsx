@@ -22,6 +22,11 @@ import {
   describeWhen, fetchUpcomingEvents, isStartingSoon, resolveMeetingType,
   MEETING_TYPE_LABEL, type CalendarEvent,
 } from '../lib/nextCall'
+import {
+  LEAD_LABEL, SEGMENT_LABEL, actionItems, callStats, fetchCalls, leadLine,
+  owedByMe, people, segmentCalls,
+  type CallRow, type CallSegment, type CallStats,
+} from '../lib/transcripts'
 
 // Today = three staged zones (urgent → approve → today's content) plus a
 // campaign-health strip. Deliberately absent: any n8n / workflow-error / system
@@ -365,7 +370,9 @@ function ZoneQueue({ items, onOpenThread, onOpenOps, onOpenContent }: {
 // numbers unconditionally, because they render in #exp/stock too and a
 // renumber would be a pixel change to a shell this run must leave untouched.
 // A/B are this run's own new zones and sit outside that sequence on purpose.
-function ZoneNextCall({ events, loading }: { events: CalendarEvent[]; loading: boolean }) {
+function ZoneNextCall({ events, loading, archive }: {
+  events: CalendarEvent[]; loading: boolean; archive: CallStats | null
+}) {
   const next = events[0] ?? null
   const rest = Math.max(0, events.length - 1)
 
@@ -382,14 +389,27 @@ function ZoneNextCall({ events, loading }: { events: CalendarEvent[]; loading: b
     return (
       <section className="td-zone" id="td-z-call">
         <ZoneHead n="B" title="Next call" right="none this week" state="done" />
-        {/* Exact wording measured live on the old dashboard (calls-settled.png).
-            The empty case is the common case (his calendar is often clear
-            for 7 days) and it earns the same care as the populated one: no
-            hopeful "checking…" placeholder once the read has actually come
-            back with zero rows. */}
+        {/* The empty case is the COMMON case here: his calendar was clear for
+            seven days on the day this was measured, and it is clear most
+            weeks. So it does not get a placeholder, it gets the true second
+            half of the answer. There are no calls ahead and there is a large
+            archive behind, and the archive is now one tap away directly
+            underneath, which is the only reason this state is worth reading
+            at all. The count is stated only once it has actually been read;
+            an unverified zero would be a lie on a screen whose whole job is
+            not telling one. */}
         <div className="td-card">
-          <div className="td-card-t">No calls on the calendar this week</div>
-          <div className="td-card-s">Upcoming calls surface here as they land in calendar_events.</div>
+          <div className="td-card-t">No calls booked in the next seven days</div>
+          <div className="td-card-s">
+            {archive === null
+              ? 'A booking shows up here the moment it lands.'
+              : archive.withActions > 0
+                ? `A booking shows up here the moment it lands. ${archive.total} earlier calls are `
+                  + `on record below, and ${archive.withActions} of them still carry something `
+                  + 'that was agreed.'
+                : `A booking shows up here the moment it lands. ${archive.total} earlier calls are `
+                  + 'on record below.'}
+          </div>
         </div>
       </section>
     )
@@ -445,6 +465,149 @@ function ZoneNextCall({ events, loading }: { events: CalendarEvent[]; loading: b
           <span className="lbl">THIS WEEK</span>
           <span className="txt">{rest} more call{rest === 1 ? '' : 's'}</span>
         </div>
+      )}
+    </section>
+  )
+}
+
+// ---- zone 01: the calls on record ----
+//
+// Dashboard port #2 (dashboard-port-audit.md), the door half. 96 calls are
+// transcribed and none of them was reachable from this app. The audit's own
+// cheapest home for the list of calls that are NOT the next one is "a section
+// inside the Calls area on Today", and this is it: it sits directly under the
+// next-call card, which is what makes that card's empty state useful instead
+// of merely honest.
+//
+// THE ORDER IS THE FEATURE. 96 rows sorted by date buries the 12 that still
+// carry unfinished business, and those 12 are the only rows with anything left
+// to do in them. So the default segment is the one that holds them, and the
+// ranking inside every segment puts them first (lib/transcripts.ts, rankCalls).
+//
+// No new CSS on this screen: the rows are the `.td-qrow` / `.td-qmid` /
+// `.td-qt` / `.td-qs` / `.td-qmeta` / `.td-chev` primitive the work queue above
+// already uses, the count chip is the neutral `.td-qage` rather than the
+// accent-painted `.td-qn` (an accent-weighted count here would spend a budget
+// this screen has no primary action to spend), and the segment control is three
+// `.wbb` controls.
+const CALL_PAGE = 6
+
+function CallRowLine({ row, onOpen }: { row: CallRow; onOpen: () => void }) {
+  const n = actionItems(row).length
+  const mine = owedByMe(row)
+  const lead = leadLine(row)
+  const who = people(row.participants)
+  const when = new Date(row.date)
+  const day = Number.isNaN(when.getTime())
+    ? 'date not recorded'
+    : when.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const meta = [
+    day,
+    row.duration_minutes ? `${row.duration_minutes}m` : null,
+    who.length > 0 ? who.slice(0, 3).join(', ') : null,
+  ].filter(Boolean).join(' · ')
+  return (
+    <div className="td-qrow tap" onClick={onOpen}>
+      <div className="td-qmid">
+        <div className="td-qt">
+          <span className="td-nm">{row.title || 'Untitled call'}</span>
+          {n > 0 && (
+            <span className="td-qage">
+              {mine > 0 ? `${mine} yours` : `${n} open`}
+            </span>
+          )}
+        </div>
+        {lead && <div className="td-qs">{LEAD_LABEL[lead.kind]}: {lead.text}</div>}
+        <div className="td-qmeta">{meta}</div>
+      </div>
+      <span className="td-chev">›</span>
+    </div>
+  )
+}
+
+function ZoneCallLog({ rows, loading, onOpen }: {
+  rows: CallRow[]
+  loading: boolean
+  onOpen: (id: string, queue: CallRow[]) => void
+}) {
+  const stats = callStats(rows)
+  // The default lands on unfinished business when there is any, and degrades
+  // to the recent week when there is not. It is never "all" on arrival: a list
+  // of 96 sorted by date is exactly the state this section exists to replace.
+  const [seg, setSeg] = useState<CallSegment | null>(null)
+  const [full, setFull] = useState(false)
+  const active: CallSegment = seg ?? (stats.withActions > 0 ? 'open' : 'recent')
+  const queue = segmentCalls(rows, active)
+  const shown = full ? queue : queue.slice(0, CALL_PAGE)
+  const hidden = queue.length - shown.length
+
+  if (loading && rows.length === 0) {
+    return (
+      <section className="td-zone" id="td-z-calls">
+        <ZoneHead n="B" title="Calls on record" right="" state="pending" />
+        <div className="td-empty">Reading the call archive…</div>
+      </section>
+    )
+  }
+
+  if (rows.length === 0) {
+    return (
+      <section className="td-zone" id="td-z-calls">
+        <ZoneHead n="B" title="Calls on record" right="none yet" state="done" />
+        <div className="td-empty">
+          No calls have been transcribed yet. One appears here after the first recording is
+          written up.
+        </div>
+      </section>
+    )
+  }
+
+  const counts: Record<CallSegment, number> = {
+    open: stats.withActions,
+    recent: stats.week,
+    all: stats.total,
+  }
+
+  return (
+    <section className="td-zone" id="td-z-calls">
+      <ZoneHead
+        n="B"
+        title="Calls on record"
+        right={`${stats.total} kept · ${stats.meanMinutes}m average`}
+        state={stats.withActions > 0 ? 'pending' : 'done'}
+      />
+      <div className="cw-segs">
+        {(['open', 'recent', 'all'] as CallSegment[]).map(s => (
+          <button
+            key={s}
+            type="button"
+            className={`wbb wbb-sm ${s === active ? 'wbb-secondary' : 'wbb-quiet'}`}
+            aria-pressed={s === active}
+            onClick={() => { setSeg(s); setFull(false) }}
+          >
+            {SEGMENT_LABEL[s]} {counts[s]}
+          </button>
+        ))}
+      </div>
+      {queue.length === 0 ? (
+        <div className="td-empty">
+          {active === 'open'
+            ? 'Nothing was left open on any call. Every action item on record has an owner and a call behind it.'
+            : 'No calls in the last seven days.'}
+        </div>
+      ) : (
+        <>
+          {shown.map(r => (
+            <CallRowLine key={r.id} row={r} onOpen={() => onOpen(r.id, queue)} />
+          ))}
+          {hidden > 0 && (
+            <div className="td-more" onClick={() => setFull(true)}>
+              <span className="n">{hidden}</span>
+              <span>more in this list</span>
+              <span className="tail">show them</span>
+            </div>
+          )}
+        </>
       )}
     </section>
   )
@@ -832,7 +995,7 @@ function Counter({ n, cap, warn, bad, warnZero }: {
 // ---- screen ----
 
 export function TodayScreen({
-  onOpenDrafts, onOpenOps, threads, opsDrafts, onOpenThread, onOpenContent,
+  onOpenDrafts, onOpenOps, threads, opsDrafts, onOpenThread, onOpenContent, onOpenCall,
 }: {
   // A host that has its own navigation passes it in; the default app falls back to
   // its own hash routes (src/lib/route.ts). Either way a hand-off row has a way in
@@ -851,6 +1014,11 @@ export function TodayScreen({
   opsDrafts?: OpsDraft[]
   onOpenThread?: (id: string) => void
   onOpenContent?: (lane: string) => void
+  // The call reader (port #2). Optional and absent in #exp/stock exactly like
+  // the four props above: without a host that can mount the takeover window
+  // the section has nowhere to open, so it does not render at all rather than
+  // render rows that do nothing when tapped.
+  onOpenCall?: (id: string, queue: CallRow[]) => void
 } = {}) {
   const t = useToday()
   const rowsRef = useRef<HTMLDivElement>(null)
@@ -899,6 +1067,23 @@ export function TodayScreen({
       .then(rows => { if (alive) setEvents(rows) })
       .catch(() => { /* additive, the rest of Today still renders */ })
       .finally(() => { if (alive) setEventsLoading(false) })
+    return () => { alive = false }
+  }, [threads !== undefined])
+
+  // The call archive (dashboard port #2). Same opt-in gate as the two reads
+  // above, so #exp/stock never fires it. The query deliberately leaves the
+  // transcript bodies behind: measured on the live table, selecting them turns
+  // a 118KB read into a 16MB one, and the body is fetched per row only when
+  // the reader's fold is opened.
+  const [calls, setCalls] = useState<CallRow[]>([])
+  const [callsLoading, setCallsLoading] = useState(true)
+  useEffect(() => {
+    if (threads === undefined) return
+    let alive = true
+    fetchCalls()
+      .then(rows => { if (alive) setCalls(rows) })
+      .catch(() => { /* additive, the rest of Today still renders */ })
+      .finally(() => { if (alive) setCallsLoading(false) })
     return () => { alive = false }
   }, [threads !== undefined])
 
@@ -977,7 +1162,16 @@ export function TodayScreen({
               onOpenContent={onOpenContent ?? (() => {})}
             />
           )}
-          {threads !== undefined && <ZoneNextCall events={events} loading={eventsLoading} />}
+          {threads !== undefined && (
+            <ZoneNextCall
+              events={events}
+              loading={eventsLoading}
+              archive={callsLoading ? null : callStats(calls)}
+            />
+          )}
+          {threads !== undefined && onOpenCall && (
+            <ZoneCallLog rows={calls} loading={callsLoading} onOpen={onOpenCall} />
+          )}
           <ZoneNew
             plate={plate}
             brief={t.brief}

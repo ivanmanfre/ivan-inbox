@@ -1,0 +1,192 @@
+/* ==========================================================================
+   THE CALL READER (port #2, dashboard-port-audit.md)
+
+   Scope: `.cw` (the reader's body) and `.cw-segs` (the segment control the
+   Calls area on Today uses). This sheet reaches nothing else. The three-column
+   frame, the queue rail, the disclosure and the metadata grid are all borrowed
+   whole from what already exists: `.dw-cols` / `.dw-queue` / `.dw-main` /
+   `.dw-insp` (styles.css:994-1140), `.dw-sec` (styles.css:1125), `.wbkv`
+   (wbsys.css:403) and `.wbb` (wbsys.css:288). Nothing here is a parallel
+   primitive. What is defined below is only the shapes the call material needs
+   and nothing in the app already has: a promise, a bullet from an agent-written
+   list, and a block of dialogue.
+
+   🔴 EVERY selector carries THREE `.wb` classes. `faithful.css:181` declares
+   `.wb.wb, .wb.wb *` and sets font-size on every descendant, so a two-class
+   selector loses on specificity and renders at body size while looking correct
+   in review. Where a rule sets type it is declared on the element AND on its
+   descendants, because that flattener reaches `*`.
+
+   Elevation follows the phase-1 ladder: the reader's ground is the takeover's
+   own surface, a block of dialogue is RECESSED (--e1, it is a well you read
+   into), and a promise is RAISED one step (--e3 on --e2) because it is an
+   object on the page rather than a paragraph of it. No shadow does depth work
+   anywhere in this file.
+   ========================================================================== */
+
+/* --- the reading column ------------------------------------------------- */
+
+.wb.wb.wb .cw-main{ padding:18px 16px 40px }
+
+.wb.wb.wb .cw-ttl,
+.wb.wb.wb .cw-ttl *{
+  font-size:21px; font-weight:650; line-height:1.25; letter-spacing:-.01em;
+}
+.wb.wb.wb .cw-ttl{ margin:0; color:var(--text) }
+
+.wb.wb.wb .cw-sub,
+.wb.wb.wb .cw-sub *{ font-size:13px; font-weight:400; line-height:1.45; letter-spacing:0 }
+.wb.wb.wb .cw-sub{ margin-top:6px; color:var(--text3) }
+
+.wb.wb.wb .cw-block{ margin-top:26px }
+
+/* The heading over each extracted group. Sentence case, no letter-spacing, no
+   box: §5's rule that the value is the thing and the label gets out of its
+   way. Deliberately NOT the eyebrow treatment `.dw-sec-n` uses, because these
+   are headings inside prose rather than the lids of collapsed drawers. */
+.wb.wb.wb .cw-grp,
+.wb.wb.wb .cw-grp *{ font-size:13px; font-weight:400; line-height:1.45; letter-spacing:0 }
+.wb.wb.wb .cw-grp{
+  color:var(--text3);
+  margin:0 0 8px;
+  text-transform:none;
+}
+.wb.wb.wb .cw-block + .cw-block .cw-grp{ margin-top:0 }
+
+/* --- a promise ---------------------------------------------------------- */
+
+/* One step up off the reading surface, and that step is the only depth cue.
+   These are the twelve rows' reason to exist, so they read as objects. */
+.wb.wb.wb .cw-ai{
+  background:var(--e3);
+  border-radius:var(--r-card);
+  padding:12px 14px;
+}
+.wb.wb.wb .cw-ai + .cw-ai{ margin-top:8px }
+.wb.wb.wb .cw-grp + .cw-ai{ margin-top:0 }
+
+.wb.wb.wb .cw-ai-t,
+.wb.wb.wb .cw-ai-t *{ font-size:14px; font-weight:450; line-height:1.5; letter-spacing:0 }
+.wb.wb.wb .cw-ai-t{ color:var(--text); overflow-wrap:anywhere }
+
+.wb.wb.wb .cw-ai-m{
+  display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 10px;
+  margin-top:7px;
+}
+.wb.wb.wb .cw-ai-m,
+.wb.wb.wb .cw-ai-m *{ font-size:12px; font-weight:400; line-height:1.4; letter-spacing:0 }
+.wb.wb.wb .cw-ai-m{ color:var(--text3) }
+
+/* The owner, when it is not Ivan. It carries no accent and no severity colour:
+   whose turn it is, is a fact, not an alarm, and the accent budget on this
+   screen is spent on nothing at all (there is no primary action here to spend
+   it on). */
+.wb.wb.wb .cw-own{
+  flex:none;
+  padding:1px 7px;
+  border-radius:var(--r-xs);
+  background:var(--e1);
+  color:var(--text2);
+}
+.wb.wb.wb .cw-due{ flex:none; color:var(--text2) }
+.wb.wb.wb .cw-why{ flex:1 1 260px; min-width:0; color:var(--text3) }
+
+/* --- a bullet from an agent-written list -------------------------------- */
+
+/* Objections, pain, stack, triggers and extracted topics all arrive as arrays
+   of sentences. One shape for all five, with a hairline between rows rather
+   than a bullet glyph: a rule divides, it does not elevate (§1 rule 3). */
+.wb.wb.wb .cw-li,
+.wb.wb.wb .cw-li *{ font-size:14px; font-weight:400; line-height:1.5; letter-spacing:0 }
+.wb.wb.wb .cw-li{
+  display:flex; align-items:baseline; gap:10px;
+  color:var(--text);
+  padding:9px 0;
+  overflow-wrap:anywhere;
+}
+.wb.wb.wb .cw-li + .cw-li{ border-top:1px solid var(--hairline) }
+
+.wb.wb.wb .cw-fmt,
+.wb.wb.wb .cw-fmt *{ font-size:12px; font-weight:400; line-height:1.4; letter-spacing:0 }
+.wb.wb.wb .cw-fmt{
+  flex:none; margin-left:auto;
+  padding:1px 7px; border-radius:var(--r-xs);
+  background:var(--e1); color:var(--text2);
+}
+
+/* --- a paragraph the extractor wrote ------------------------------------ */
+
+.wb.wb.wb .cw-text,
+.wb.wb.wb .cw-text *{ font-size:14px; font-weight:400; line-height:1.55; letter-spacing:0 }
+.wb.wb.wb .cw-text{
+  color:var(--text);
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+}
+
+.wb.wb.wb .cw-note,
+.wb.wb.wb .cw-note *{ font-size:12px; font-weight:400; line-height:1.5; letter-spacing:0 }
+.wb.wb.wb .cw-note{ color:var(--text3); margin-top:8px }
+
+.wb.wb.wb .cw-empty,
+.wb.wb.wb .cw-empty *{ font-size:14px; font-weight:450; line-height:1.5; letter-spacing:0 }
+.wb.wb.wb .cw-empty{ color:var(--text2) }
+
+/* --- the dialogue ------------------------------------------------------- */
+
+/* Recessed, because a 39-minute transcript is a well you read into rather than
+   a card sitting on the page. `pre` inherits nothing by default, so the family
+   is restated. */
+.wb.wb.wb .cw-fold{ margin-top:30px; border-top:1px solid var(--hairline) }
+.wb.wb.wb .cw-fold .dw-sec{ border-bottom:0 }
+
+.wb.wb.wb .cw-pre,
+.wb.wb.wb .cw-pre *{ font-size:13px; font-weight:400; line-height:1.6; letter-spacing:0 }
+.wb.wb.wb .cw-pre{
+  margin:8px 0 0;
+  padding:14px;
+  background:var(--e1);
+  border-radius:var(--r-card);
+  color:var(--text2);
+  font-family:inherit;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  max-height:60vh;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+}
+.wb.wb.wb .cw-pre + .cw-grp{ margin-top:18px }
+
+/* --- the inspector ------------------------------------------------------ */
+
+.wb.wb.wb .cw-insp-pad{ padding:4px 14px 14px }
+.wb.wb.wb .cw-insp-pad .cw-block{ margin-top:18px }
+
+.wb.wb.wb .cw-insp-foot,
+.wb.wb.wb .cw-insp-foot *{ font-size:12px; font-weight:400; line-height:1.5; letter-spacing:0 }
+.wb.wb.wb .cw-insp-foot{
+  padding:14px;
+  color:var(--text3);
+  border-top:1px solid var(--hairline);
+}
+
+/* The fold's own body already pads itself on the reading column; inside the
+   narrow inspector it needs the column's gutter instead. */
+.wb.wb.wb .cw .dw-insp .dw-sec-body{ padding:0 14px 14px }
+.wb.wb.wb .cw .dw-insp .dw-sec-body .cw-note{ margin-top:0 }
+
+/* --- the segment control on Today --------------------------------------- */
+
+/* Three `.wbb` controls in a row. No new button primitive: the active segment
+   is `.wbb-secondary` and the rest are `.wbb-quiet`, which is exactly the
+   distinction those two variants exist for. */
+.wb.wb.wb .cw-segs{
+  display:flex; flex-wrap:wrap; gap:6px;
+  margin:10px 16px 0;
+}
+
+@media (max-width:520px){
+  .wb.wb.wb .cw-main{ padding:16px 14px 32px }
+  .wb.wb.wb .cw-ttl, .wb.wb.wb .cw-ttl *{ font-size:19px }
+  .wb.wb.wb .cw-pre{ max-height:none }
+}
