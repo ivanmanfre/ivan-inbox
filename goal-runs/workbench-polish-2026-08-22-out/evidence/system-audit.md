@@ -340,3 +340,155 @@ it is the single highest-leverage line in this census.
 
 **Target for a later phase: 1 accent-weighted primary per screen. Before-count
 107 across 10 surfaces; the gate is 10 plus the licensed live/now dots.**
+
+---
+
+## C · CONTROL CENSUS
+
+Tools: `audit-tools/analyze-c.mjs` (live, all 10 surfaces),
+`audit-tools/draft-only.mjs` (the draft action row),
+`audit-tools/flattener-victims.mjs` (static specificity analysis).
+
+### C0 · headline
+
+| measure | count |
+|---|---|
+| real controls measured (`button`, `a[href]`, `input`, `textarea`, `select`, `role=button`) | **211** |
+| pointer-cursor text spans, excluded as they are text INSIDE a control | 91 |
+| **DISTINCT visual treatments** | **45** |
+| treatments that sit inside a near-duplicate cluster (same job, different numbers) | **20**, in 7 clusters |
+| hit targets under 32px | **56 instances / 9 distinct selectors** |
+| distinct computed heights across all controls | **17** |
+| distinct control radii | 5 (`0px`, `8px`, `12px`, `20px`, `999px`) |
+| distinct control font sizes | 4 (`12px`, `13px`, `16px`, `17px`) |
+| distinct control font weights | 4 (`400`, `500`, `600`, `700`) |
+| distinct control fills | 8 |
+
+**45 distinct visual treatments for 211 controls is one new look per 4.7
+buttons.** The phase-1 spec asks for 4 variants at 3 sizes, i.e. 12. Full table
+in `audit-tools/out-census-c.md`.
+
+### C1 · the biggest treatments
+
+| n | example selector | h | pad T R B L | radius | font | fill | edge |
+|---|---|---|---|---|---|---|---|
+| 32 | `button` (no class), `button.x` | 35.6 | 5 6 5 6 | 12px | **16px/400** | transparent | none |
+| 26 | `button.sa-x`, `button.sa-x.sa-member-x` | 20 | 0 0 0 0 | 999px | 12px/400 | transparent | none |
+| 14 | `a.sa-act` | 20.8 | 0 0 0 0 | 0px | 13px/700 | transparent | none (lime text) |
+| 14 | `button.cal-chip-t` | 87 | 5 8 5 8 | 0px | 13px/400 | transparent | **2px outset rgb(0,0,0)** |
+| 12 | `button.chip` | 36 | 0 16 0 16 | 999px | 13px/500 | `rgb(42,42,41)` | none |
+| 10 | `button.wb-rail-minbtn` | 32 | 0 0 0 0 | 12px | 16px/400 | transparent | 1px solid `rgb(48,48,48)` |
+| 9 | `button.ct-cmd-lane` | 34 | 0 12 0 12 | 999px | 13px/500 | transparent | none |
+| 8 | `button.ct-tab` | 32 | 0 10 0 10 | 12px | 13px/500 | transparent | none |
+| 8 | `button.wb-stat.*` | 34 | 0 8 0 10 | 8px | 16px/400 | `rgb(42,42,41)` | none |
+| 6 | `button.dw-qrow` | 62.4 | 8 14 8 14 | 12px | 16px/400 | transparent | none |
+| 4 | `button.cal-navb` | 34 | 0 0 0 0 | 12px | 17px/400 | `rgb(42,42,41)` | **2px outset rgb(0,0,0)** |
+| 4 | `button.dw-key` | 44 | 0 13 0 13 | 12px | 13px/600 | `rgb(42,42,41)` | 1px solid `rgb(53,53,51)` |
+
+### C2 · the near-duplicate clusters
+
+Seven clusters where controls share fill, radius and type but disagree on the
+box. This is what "assembled rather than designed" looks like in numbers.
+
+| cluster (fill / radius / size) | exact treatments in it | the values that differ |
+|---|---|---|
+| transparent / 12px / 16px | 5 | heights 25.6, 35.6, 36, 53.6, 62.4; pad T/R 0/0, 5/6, 8/14, 14/16 |
+| `rgb(53,53,51)` / 999px / 13px | 3 | heights 32, 34, 36; pad T/R 0/12, 0/16, 7/0 |
+| `rgb(42,42,41)` / 999px / 13px | 3 | heights 32, 36; pad T/R 0/16, 7/0 |
+| `rgb(42,42,41)` / 12px / 16px | 3 | heights 43.6, 44, 81.3; pad T/R 0/0, 8/14, 9/0 |
+| `rgb(42,42,41)` / 999px / 13px | 2 | heights 34, 36; pad T/R 0/11, 0/16 |
+| `rgb(184,255,102)` / 12px / 16px | 2 | heights 31, 49.6; pad T/R 0/0, 12/0 |
+| transparent / 0px / 16px | 2 | heights 18, 25.6 |
+
+### C3 · the draft window's action row, exact computed values
+
+Measured on a clean draft window (`out-draft-only.json`). The brief named five
+buttons; **the row actually renders seven** in this state (an eighth, "More",
+appears when `aria-expanded` opens, and "Approve" is replaced by "Retry" when
+`status === 'error'`, so the count is state-dependent).
+
+| label | class | h | min-height | padding | radius | font | fill | border |
+|---|---|---|---|---|---|---|---|---|
+| Approve | `button.dw-key.p` | 44 | 44px | `0 13px` | 12px | 13px/600 | `rgb(184,255,102)` | 1px solid `rgb(184,255,102)` |
+| Edit | `button.dw-key` | 44 | 44px | `0 13px` | 12px | 13px/600 | `rgb(42,42,41)` | 1px solid `rgb(53,53,51)` |
+| Schedule | `button.dw-key` | 44 | 44px | `0 13px` | 12px | 13px/600 | `rgb(42,42,41)` | 1px solid `rgb(53,53,51)` |
+| Regenerate | `button.dw-key` | 44 | 44px | `0 13px` | 12px | 13px/600 | `rgb(42,42,41)` | 1px solid `rgb(53,53,51)` |
+| Swap image | `button.dw-key` | 44 | 44px | `0 13px` | 12px | 13px/600 | `rgb(42,42,41)` | 1px solid `rgb(53,53,51)` |
+| Back to idea | `button.dw-key` | 44 | 44px | `0 13px` | 12px | 13px/600 | `rgb(42,42,41)` | 1px solid `rgb(53,53,51)` |
+| Delete | `button.dw-key.d` | 44 | 44px | `0 13px` | 12px | 13px/600 | `rgba(255,69,58,.08)` | 1px solid `rgba(255,69,58,.4)` |
+
+**The good news the census turns up:** this row is already the most disciplined
+control family in the app. Geometry is identical across all seven (44px tall,
+`0 13px`, 12px radius, 13px/600) and only the fill and edge vary. That is exactly
+the constancy the phase-1 spec asks for. The defect is not the geometry, it is
+the **weighting**: five of seven are the same grey rectangle, so "Edit",
+"Regenerate" and "Back to idea" carry the same visual weight as "Schedule". The
+system already has the right skeleton; it needs a `quiet` tier so the five
+collapse into two.
+
+### C4 · hit targets under 32px
+
+56 instances across 9 distinct selectors. Every one is a real control.
+
+| selector | min h | min w | instances | screens |
+|---|---|---|---|---|
+| `a.msg-link` | **18** | 170.7 | 2 | thread-open, draft-open |
+| `button.sa-x` | **20** | 20 | 10 | today |
+| `button.sa-x.sa-member-x` | **20** | 20 | 16 | today |
+| `a.sa-act` | **20.8** | 104 | 14 | today |
+| `button.dw-jump.on` | **24** | 34.6 | 1 | draft-open |
+| `button.dw-jump` | **24** | 42.5 | 3 | draft-open |
+| `input.wb-strat-t` | **25.6** | 931.3 | 8 | strategy |
+| `a.dd-link` | **25.6** | 331 | 1 | draft-open |
+| `button.sw.on` | **31** | 51 | 1 | settings |
+
+The two worst are `button.sa-x` and `button.sa-x.sa-member-x` at **20 x 20**,
+26 instances on Today. Those are dismiss buttons, i.e. destructive, at 39% of
+the 32px minimum area.
+
+### C5 · THE FLATTENER IS ALREADY BITING IN PRODUCTION
+
+The brief asked me to account for the trap. It is not hypothetical: it is
+currently eating authored type on 128 selectors.
+
+The proof, one control family, measured end to end:
+
+```
+AUTHORED   styles.css:1508
+           .wb-strat-ctl button{ ... font-size:13px; line-height:1; padding:5px 6px;
+                                 border-radius:var(--r-sm); ... }
+           specificity 0-1-1
+
+BEATEN BY  faithful.css:181
+           .wb.wb, .wb.wb *{ font-size:var(--fs-body); font-weight:400;
+                             letter-spacing:0; line-height:1.6 }
+           specificity 0-2-0, and faithful.css is imported AFTER styles.css
+
+COMPUTED   button (no class) and button.x on Strategy
+           font-size 16px, font-weight 400        <- authored 13px is DEAD
+           padding 5px 6px, border-radius 12px    <- these SURVIVE (not flattened)
+           32 instances, and they are the single most common control treatment
+           in the entire app
+```
+
+Two more verified the same way: `.wb-ask` (`styles.css:148`, authored 13px) and
+`.wb-retry` (`styles.css:164`, authored 12.5px) both compute at **16px**.
+
+Static census across all three sheets, with import order factored in
+(`audit-tools/out-flattener-victims.md`):
+
+| measure | count |
+|---|---|
+| declaration sites killed by the flattener | **216** |
+| by sheet | `styles.css` 214, `faithful.css` 2, `wb2026.css` 0 |
+| by property | font-size 204, font-weight 143, letter-spacing 65, line-height 61 |
+| of the font-size deaths, **never re-asserted anywhere at `.wb.wb.wb`** | **128** |
+
+`wb2026.css` has zero victims because every rule in it already carries three
+`.wb` classes and it is imported last. That is the pattern to copy.
+
+**128 selectors are silently rendering type the author did not choose.** This is
+not a styling opinion, it is a correctness bug, and it is the mechanical reason
+the app has 17 distinct control heights: when the type inside a control is 16px
+instead of the authored 12.5-13px, the control grows, and the next author
+compensates with padding rather than finding the dead declaration.
