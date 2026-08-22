@@ -71,6 +71,7 @@ const CAP_VERB: Record<RowCap, string> = {
   skip: 'Skip',
   promote: 'Put on the client’s board',
   delete: 'Delete',
+  discard: 'Discard',
 }
 
 const CAP_PAST: Record<RowCap, string> = {
@@ -78,6 +79,7 @@ const CAP_PAST: Record<RowCap, string> = {
   skip: 'skipped',
   promote: 'put on a client’s board',
   delete: 'deleted',
+  discard: 'discarded',
 }
 
 const CAP_HINT: Record<RowCap, string> = {
@@ -88,6 +90,7 @@ const CAP_HINT: Record<RowCap, string> = {
   // the reader is not learning it from the sheet.
   promote: 'Puts every selected draft on the client’s live board, where he can read it. Nothing publishes.',
   delete: 'Removes every selected draft. There is no undo for this one.',
+  discard: 'Marks every selected DM draft discarded. Nothing sends, which is why a conversation row carries this one action.',
 }
 
 // The noun a count is stated in. A bar that says "12 selected" makes the
@@ -209,7 +212,7 @@ export function buildCommands(c: CommandCtx): WbCommand[] {
   // The bulk actions. Listed at every moment, including with an empty selection,
   // so the palette tells the operator what this surface can do before he has
   // picked anything. Each one states its own refusal.
-  for (const cap of ['approve', 'skip', 'promote', 'delete'] as RowCap[]) {
+  for (const cap of ['approve', 'skip', 'promote', 'delete', 'discard'] as RowCap[]) {
     const have = c.capCount[cap]
     const ready = n > 0 && have === n
     out.push({

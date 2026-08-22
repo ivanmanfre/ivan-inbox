@@ -4,6 +4,7 @@ import {
   LANE_LABEL, approveDraft, deleteClientDraft, deleteDraft, setBoardVisible, skipDraft,
   type ContentLane,
 } from '../../lib/content'
+import { discardDraft } from '../../lib/inbox'
 import { selectionNoun } from './commandSource'
 import { clearSelection, type RowCap, type SelectedRow } from './commandStore'
 
@@ -41,7 +42,7 @@ export type BulkState = {
 const IDLE: BulkState = { busy: false, done: 0, total: 0, errors: [], note: null }
 
 const VERB: Record<RowCap, string> = {
-  approve: 'Approve', skip: 'Skip', promote: 'Put on board', delete: 'Delete',
+  approve: 'Approve', skip: 'Skip', promote: 'Put on board', delete: 'Delete', discard: 'Discard',
 }
 
 // 🔴 WHY PROMOTE IS NOT IN THE BUTTON GROUP, MEASURED.
@@ -65,10 +66,20 @@ const VERB: Record<RowCap, string> = {
 //
 // It also happens to be the honest layout: the one action on this bar that a
 // paying client feels should not be a fourth verb in a row of verbs.
-const CAP_ORDER: RowCap[] = ['approve', 'skip', 'promote', 'delete']
+// Exported for capCoverage.test.tsx, which holds this list to the RowCap union:
+// a cap that never reaches this array is a cap the bar cannot count, refuse or
+// print, and nothing in the compiler notices a short array literal.
+export const CAP_ORDER: RowCap[] = ['approve', 'skip', 'promote', 'discard', 'delete']
 // The ones that render as buttons in the action group. Promote is deliberately
 // absent; it is rendered separately, above.
-const CAP_BUTTONS: RowCap[] = ['approve', 'skip', 'delete']
+//
+// Discard sits before delete and never beside promote: the two branches that
+// merged here added their capability independently, and the measured hazard
+// above is about a client-facing button appearing where a hand has learned a
+// destructive one. Discard is neither client-facing nor destructive (a
+// discarded draft can be brought back), and a conversation row never carries
+// promote, so the two never render in the same group on the same selection.
+export const CAP_BUTTONS: RowCap[] = ['approve', 'skip', 'discard', 'delete']
 
 export function capCountOf(rows: SelectedRow[]): Record<RowCap, number> {
   return {
@@ -76,6 +87,7 @@ export function capCountOf(rows: SelectedRow[]): Record<RowCap, number> {
     skip: rows.filter(r => r.caps.includes('skip')).length,
     promote: rows.filter(r => r.caps.includes('promote')).length,
     delete: rows.filter(r => r.caps.includes('delete')).length,
+    discard: rows.filter(r => r.caps.includes('discard')).length,
   }
 }
 
@@ -134,12 +146,19 @@ export function useBulkRun(): {
               + `visibility and never touches the publisher. Taking one back off is one click per post.`,
             confirmText: `Put ${n} on his board`,
           }
-          : {
-          title: `Delete ${n} ${noun}?`,
-          message: `This removes them for good and nothing here can undo it. Any row the database refuses to delete is archived instead, and the bar says how many.`,
-          confirmText: `Delete ${n}`,
-          danger: true,
-        })
+          : cap === 'discard'
+            ? {
+              title: `Discard ${n} draft${n === 1 ? '' : 's'}?`,
+              message: `None of these send anything, which is why this is the one bulk action a conversation row carries. A discarded draft can still be brought back, but only by opening its thread.`,
+              confirmText: `Discard ${n}`,
+              danger: true,
+            }
+            : {
+              title: `Delete ${n} ${noun}?`,
+              message: `This removes them for good and nothing here can undo it. Any row the database refuses to delete is archived instead, and the bar says how many.`,
+              confirmText: `Delete ${n}`,
+              danger: true,
+            })
     if (!ok) return
 
     setState({ busy: true, done: 0, total: n, errors: [], note: null })
@@ -155,11 +174,23 @@ export function useBulkRun(): {
         // client board's sync webhook inline, so N calls are N syncs, which is
         // the behaviour the board already depends on.
         else if (cap === 'promote') await setBoardVisible(r.id, true)
-        else {
+        else if (cap === 'discard') {
+          const stopped = await discardDraft(r.id)
+          if (!stopped) errors.push(`${r.label}: already approved or sent, nothing to discard`)
+        } else if (cap === 'delete') {
           const how = r.lane && r.lane !== 'ivan'
             ? await deleteClientDraft(r.id, r.taxonomy)
             : await deleteDraft(r.id, r.taxonomy)
           if (how === 'disqualified') archived += 1
+        } else {
+          // 🔴 DELETE IS NAMED, NOT LEFT AS THE FALL-THROUGH. This chain used to
+          // end in a bare `else` that ran the delete, so a capability added to
+          // RowCap and not taught here would have DELETED every selected row
+          // while the operator read a confirm for something else. The compiler
+          // sees nothing wrong with a short if/else chain. This branch is
+          // unreachable today (`cap` narrows to never) and it stays as the
+          // stop: an unknown cap writes nothing and reports itself per row.
+          errors.push(`${r.label}: this bar has no write for "${String(cap)}"`)
         }
       } catch (e) {
         errors.push(`${r.label}: ${e instanceof Error ? e.message : String(e)}`)
@@ -225,6 +256,9 @@ export function BulkBar({ rows, state, onRun, onDismiss, onSelectAll, onClear, r
   const caps = capCountOf(rows)
   const noun = selectionNoun(rows)
   const kinds = new Set(rows.map(r => r.kind))
+  // Read off CAP_ORDER rather than a hand-written list of caps, so a capability
+  // added later cannot be left out of this check and silently print the refusal
+  // over a bar that does have a button to offer.
   const noWrites = CAP_ORDER.every(c => caps[c] === 0)
 
   return (
@@ -272,7 +306,12 @@ export function BulkBar({ rows, state, onRun, onDismiss, onSelectAll, onClear, r
               <button
                 type="button"
                 key={cap}
-                className={`wb-bulk-b${cap === 'delete' ? ' danger' : ''}${cap === 'promote' ? ' client' : ''}`}
+                // Delete and discard both carry a danger confirm, so both read
+                // as destructive here. Promote never reaches this map at all,
+                // because CAP_BUTTONS leaves it out and it draws its own
+                // `client` styling on its own row above, for the measured
+                // reason recorded there.
+                className={`wb-bulk-b${cap === 'delete' || cap === 'discard' ? ' danger' : ''}`}
                 disabled={!all || state.busy}
                 title={all
                   ? `${VERB[cap]} all ${n}`
