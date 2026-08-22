@@ -7,6 +7,7 @@ import {
   type ContentLane,
 } from '../../lib/content'
 import { LM_STAGE_LABEL, stageOfLm, type ResourceDetail } from '../../lib/styles'
+import { label } from '../../lib/labels'
 import { Block, Rows, Val } from './ContentBits'
 import { AgentRegister, QaRegister } from './Register'
 import { HtmlPreview, Takeover } from './Takeover'
@@ -373,7 +374,7 @@ function Body({ d, lane, queue, refresh, onPick }: {
           {/* The raw DB value rides along when the fold changed it, so the
               legacy-vocabulary fold stays auditable from the window. */}
           {d.status && LM_STAGE_LABEL[stage].toLowerCase() !== d.status.toLowerCase() && (
-            <span className="ct-ref">status: {d.status}</span>
+            <span className="ct-ref">{label(d.status)}</span>
           )}
         </div>
 
