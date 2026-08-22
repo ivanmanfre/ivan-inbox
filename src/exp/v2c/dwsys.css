@@ -269,6 +269,30 @@
 }
 .wb.wb.wb .dw-sec-h .dw-sec-t{ color:var(--text3); font-variant-numeric:tabular-nums }
 
+/* ---- NOTHING IN THIS WINDOW SHOUTS ---------------------------------------
+   Measured inside `.dw` before this rule: 228 elements computing
+   text-transform:uppercase, of which 40 survived the header work above. They
+   are chips, fold labels, disclosure summaries and a log's source column —
+   every one of them a quiet fact wearing a headline's register, and each one
+   already sentence case in the DATA ("Needs review", "Gate detail", "n8n"), so
+   the caps were purely a CSS decision. Scoped to `.dw`: the same classes are
+   live on nine other surfaces this run does not own. */
+.wb.wb.wb .dw .ct-chip,
+.wb.wb.wb .dw .qa-fold-k,
+.wb.wb.wb .dw .qa-fold-c,
+.wb.wb.wb .dw .qa-fold-t,
+.wb.wb.wb .dw .dd-log-src,
+.wb.wb.wb .dw .dd-log-raw > summary,
+.wb.wb.wb .dw .dw-swap-f,
+.wb.wb.wb .dw .qa-more,
+.wb.wb.wb .dw .res-hdr,
+.wb.wb.wb .dw .res-hdr-t{ text-transform:none; letter-spacing:0 }
+.wb.wb.wb .dw .ct-chip,
+.wb.wb.wb .dw .ct-chip *{
+  font-size:12px; font-weight:400; letter-spacing:0; line-height:1.45;
+}
+.wb.wb.wb .dw .ct-chip{ border-radius:var(--r-xs) }
+
 /* ==========================================================================
    4 · LABEL AND VALUE: THE BOX IS DELETED
    ========================================================================== */
@@ -295,7 +319,11 @@
 }
 .wb.wb.wb .dw-insp .dd-row{
   display:grid;
-  grid-template-columns:minmax(84px,26%) 1fr;
+  /* `.wbkv`'s own 26% is right for a 340px rail and wrong for a 920px one:
+     wb2026.css:713 widens this column to 920px above 2400, where 26% put 239px
+     of nothing between "Candidate" and its value. The label column is capped at
+     the width a label actually needs. */
+  grid-template-columns:minmax(84px,min(26%,168px)) 1fr;
   column-gap:16px;
   align-items:baseline;
   padding:5px 0;
@@ -458,10 +486,36 @@
 .wb.wb.wb .dw-insp .qa-clash *{
   font-size:13px; font-weight:400; letter-spacing:0; line-height:1.5;
 }
+/* A rail rather than a slab. The disagreement is a real warning and keeps its
+   hue, but a filled amber block was the loudest object in a panel of quiet
+   facts — louder than the score it is warning about. */
 .wb.wb.wb .dw-insp .qa-clash{
-  border-radius:var(--r-ctl);
+  border-radius:0;
   border:0;
-  background:rgba(255,159,10,.10);
+  border-left:2px solid var(--sev-attention);
+  background:transparent;
+  color:var(--text2);
+  padding:2px 0 2px 12px;
+  margin:12px 14px 0;
+}
+
+/* THE FOLD HEADER MUST KEEP ITS LABEL. Measured after the type work above:
+   `.qa-fold-t` is `margin-left:auto` and the applied-rewrite tail is 46
+   characters, so on a 340px rail the flex line squeezed `.qa-fold-k` to zero
+   and the row rendered as its own tail with no label.
+   Ellipsising the tail was the second attempt and it clipped a fact rather
+   than a decoration, so the line WRAPS instead: the tail drops to its own
+   right-aligned line when it does not fit, and nothing is cut. */
+.wb.wb.wb .dw-insp .qa-fold > summary{
+  gap:8px 10px; padding-right:2px; flex-wrap:wrap; align-items:baseline;
+}
+.wb.wb.wb .dw-insp .qa-fold-c{ align-self:center }
+.wb.wb.wb .dw-insp .qa-fold-k{
+  flex:1 1 auto; min-width:0;
+  overflow:visible; white-space:normal; text-overflow:clip;
+}
+.wb.wb.wb .dw-insp .qa-fold-t{
+  flex:0 1 auto; min-width:0; white-space:normal; text-align:right;
 }
 
 /* The folds. Same control, quieter register, and the caret is the second thing
@@ -610,6 +664,14 @@
    the content it is pinned above reads as a detached toolbar. It goes square
    and takes the plate's colour, which is what a pinned bar is. */
 @media (max-width:1179px){
+  /* faithful.css:567 gives every `.rows` scroller 32px of bottom padding, which
+     is a LIST rule that leaks onto the takeover's body. Measured at 390: the
+     pinned bar landed at y=812 in an 844 viewport with the post still visible
+     under it — a bar that is pinned to nothing. `.dwa-stage` exists only in
+     this window, so the fix cannot reach the magnet window, which shares the
+     same `.rows wb-tk-body dw-body` scroller. The clearance the column needs is
+     already on `.dw-main` as the bar's MEASURED height. */
+  .wb.wb.wb .wb-tk-body.dw-body:has(.dwa-stage){ padding-bottom:0 }
   .wb.wb.wb .dwa-stage{ margin-left:12px; margin-right:12px }
   .wb.wb.wb .dw-acts{
     margin-left:-12px; margin-right:-12px;
