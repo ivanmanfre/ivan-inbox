@@ -1,0 +1,50 @@
+[
+  {
+    "label": "ws-idt-title (Posts row title)",
+    "weight": 500,
+    "size": "15px",
+    "zeroWidthPx": 9.25,
+    "avgLowerWidthPx": 8.03,
+    "halfEmAssumptionPx": 7.5
+  },
+  {
+    "label": "ec-item-title (Styles row title)",
+    "weight": 500,
+    "size": "15px",
+    "zeroWidthPx": 9.25,
+    "avgLowerWidthPx": 8.03,
+    "halfEmAssumptionPx": 7.5
+  },
+  {
+    "label": "ors-name (Outreach row name)",
+    "weight": 700,
+    "size": "15px",
+    "zeroWidthPx": 9.48,
+    "avgLowerWidthPx": 8.46,
+    "halfEmAssumptionPx": 7.5
+  },
+  {
+    "label": "ors-snippet (Outreach row body)",
+    "weight": 400,
+    "size": "13px",
+    "zeroWidthPx": 7.95,
+    "avgLowerWidthPx": 6.82,
+    "halfEmAssumptionPx": 6.5
+  },
+  {
+    "label": "ec-dek (page deck / body copy)",
+    "weight": 400,
+    "size": "16px",
+    "zeroWidthPx": 9.78,
+    "avgLowerWidthPx": 8.4,
+    "halfEmAssumptionPx": 8
+  },
+  {
+    "label": "ws-idt-why (idea rationale)",
+    "weight": 400,
+    "size": "12.5px",
+    "zeroWidthPx": 7.64,
+    "avgLowerWidthPx": 6.56,
+    "halfEmAssumptionPx": 6.25
+  }
+]

@@ -37,7 +37,7 @@ const MEASURE_FN = ({ recordSel, scrollSelList, contentRootSel }) => {
 
   // 1. Type census: walk all text nodes, bucket by (family, size, weight, lh).
   const buckets = new Map()
-  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+  const walker = document.createTreeWalker(contentRoot, NodeFilter.SHOW_TEXT, {
     acceptNode(n) {
       if (!n.textContent || !n.textContent.trim()) return NodeFilter.FILTER_REJECT
       const p = n.parentElement
@@ -187,7 +187,13 @@ async function measureScreen({ name, url, clicks = [], recordSel, scrollSelList 
     const shotPath = `${OUT}/${name.replace(/\s+/g, '-')}-${vp.width}x${vp.height}.jpg`
     await page.screenshot({ path: shotPath, quality: 85, type: 'jpeg' }).catch(() => {})
 
-    const measured = await page.evaluate(MEASURE_FN, { recordSel, scrollSelList })
+    const chromeInfo = await page.evaluate(() => {
+      const rail = document.querySelector('.wb-rail')
+      const rr = rail ? rail.getBoundingClientRect() : null
+      return { railWidthPx: rr ? Math.round(rr.width) : 0, railVisible: !!(rr && rr.width > 0) }
+    })
+    const measured = await page.evaluate(MEASURE_FN, { recordSel, scrollSelList, contentRootSel: '.wb-work' })
+    measured.chromeInfo = chromeInfo
     results[`${vp.width}x${vp.height}`] = measured
     await ctx.close()
   }
@@ -198,7 +204,7 @@ const screens = [
   { name: 'NEW-content-ideas', url: 'http://localhost:4173/#exp/v2/content', clicks: ['Ideas'], recordSel: '.ct-card.ct-tap', scrollSelList: ['.ct-rows', '.rows'] },
   { name: 'NEW-dms', url: 'http://localhost:4173/#exp/v2/dms', clicks: [], recordSel: '.r', scrollSelList: ['.rows'] },
   { name: 'NEW-content-calendar', url: 'http://localhost:4173/#exp/v2/content', clicks: ['Calendar'], recordSel: '.cal-chip', scrollSelList: [] },
-  { name: 'NEW-settings', url: 'http://localhost:4173/#exp/v2/settings', clicks: [], recordSel: '.group', scrollSelList: [] },
+  { name: 'NEW-settings', url: 'http://localhost:4173/#exp/v2/settings', clicks: [], recordSel: '.grow', scrollSelList: [] },
   { name: 'NEW-styles', url: 'http://localhost:4173/#exp/v2/styles', clicks: [], recordSel: '.ct-style', scrollSelList: [] },
 ]
 
