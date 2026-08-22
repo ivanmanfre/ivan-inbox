@@ -25,7 +25,7 @@ export type RowKind = 'draft' | 'magnet' | 'thread'
 //
 // 'discard' is thread-only, and only when the row carries a pending DM draft.
 // It sends nothing, unlike every other cap here, which is why it is the one
-// bulk action a conversation row is allowed at all — see BulkBar.tsx's "one at
+// bulk action a conversation row is allowed at all, see BulkBar.tsx's "one at
 // a time" refusal, which still applies to everything a conversation cannot
 // undo.
 export type RowCap = 'approve' | 'skip' | 'delete' | 'discard'

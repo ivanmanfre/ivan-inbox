@@ -433,9 +433,21 @@ export default function Shell() {
       {job === 'sends' && <SendsScreen client={sendsClient} setClient={setSendsClient} />}
       {job === 'ops' && opsSurface}
       {/* Today aggregates, so its hand-off rows navigate INSIDE the workbench
-          rather than through the default app's hash routes. */}
+          rather than through the default app's hash routes. The work-queue
+          props (threads/opsDrafts/onOpenThread/onOpenContent) reuse the SAME
+          `inbox`/`ops` mounts every other job already reads (zero new
+          fetch) and the SAME `openThread`/lane state Content itself uses, so
+          a queue row opens the exact thread or the exact lane rather than
+          just the job. */}
       {job === 'today' && (
-        <TodayScreen onOpenDrafts={() => goJob('dms')} onOpenOps={() => goJob('ops')} />
+        <TodayScreen
+          onOpenDrafts={() => goJob('dms')}
+          onOpenOps={() => goJob('ops')}
+          threads={inbox.threads}
+          opsDrafts={ops.drafts}
+          onOpenThread={openThread}
+          onOpenContent={l => { setLane(l as ContentLane); goJob('content') }}
+        />
       )}
       {job === 'settings' && <SettingsScreen />}
     </>

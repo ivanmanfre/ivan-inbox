@@ -84,7 +84,7 @@ const CAP_HINT: Record<RowCap, string> = {
   approve: 'Marks every selected draft approved. Nothing publishes.',
   skip: 'Marks every selected draft disqualified. They drop out of the queue.',
   delete: 'Removes every selected draft. There is no undo for this one.',
-  discard: 'Marks every selected DM draft discarded. Nothing sends — this is the one bulk action a conversation row carries.',
+  discard: 'Marks every selected DM draft discarded. Nothing sends, which is why a conversation row carries this one action.',
 }
 
 // The noun a count is stated in. A bar that says "12 selected" makes the
