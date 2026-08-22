@@ -488,3 +488,203 @@ That is the mechanism behind the 3-armed-posts-in-14-days number in 2.8.
 | T6 retry an errored draft | 55 rows waiting | **3-4** | **yes** | **no** |
 | T7 arm a post to a date | 3 armed in 14 days | **5** | **yes** | **no** |
 
+
+---
+
+## STEP 4 — the ranking
+
+**Scoring.** *Work removed* is stated in a unit measured in Step 2 or 3: interactions per month,
+rows that stop piling up, or rows that stop lying. *Effort* and *risk* are 1-5. The score is
+work removed divided by (risk + effort), and the ordering is by that score with ties broken by
+whether the item removes work or only removes confusion.
+
+Constraints every item below respects: no new runtime dependency (the app has 3 and keeps 3),
+no new spending, no n8n change, no applied migration, no bare-key action shortcut, and no write to
+a prospect without an explicit human action behind a confirm.
+
+| # | improvement | work removed (measured) | risk | effort | score |
+|---|---|---|---|---|---|
+| 1 | **Tell the truth on errored rows** — reorder `draftFailureReason` | **38 of 55 rows** stop printing a wrong or absent reason, with **zero new data fetched** | 1 | 1 | **19** |
+| 2 | **The client lanes get `skip` as a row and bulk capability** | client-lane kills go **4N → N+2** interactions; on the current 93-row pile that is **372 → 95** | 2 | 2 | **69/pt** |
+| 3 | **A cross-lane triage queue built from the data already mounted** | **391 of the 407 waiting rows** currently have no aging surface anywhere | 2 | 4 | high |
+| 4 | **Index `post_body` in content search; widen `⌘K` past the DOM window** | T5 goes from **6+ interactions and 2 refetches to 2**; `⌘K` goes from ~12-25 reachable threads to 139 | 1 | 2 | high |
+| 5 | **Draft card inline in the `needs` list for rows that carry a draft** | **~203 interactions/month** (1 per approve/discard event), ~100 fewer peer opens | 3 | 2 | med |
+| 6 | **Arming a post promoted out of a disclosure; calendar distinguishes armed from dated** | 1 interaction per arming, and **4 review rows currently read as calendar coverage they are not** | 3 | 3 | med |
+
+---
+
+### 1. Tell the truth on errored rows
+
+`draftFailureReason` (`content.ts:2211`) returns `taxonomy.error_message` first, then the QA verdict,
+then "No reason recorded". Measured against the rows:
+
+- **All 21** rows that fall through to "No reason recorded" **already carry a `qa.verdict`** in
+  `COLS` (`content.ts:87-91` selects `qa->>verdict` and `qa->>score`). The fallback is wrong on
+  21 of 21, and the data to fix it is already in the row object on screen.
+- Of the 34 rows printing `Generation stuck — no completion within N minutes`, **28 had a terminal
+  event that was not the sentinel** and **17 carry a `qa.verdict`** that is already selected.
+- Verdicts present on errored rows: `QA_BLOCKED 30, LINT_FAIL 7, NEEDS_REGENERATE 1, none 17`.
+
+**The change:** prefer the structured verdict when the row has one, keep the sentinel sentence as a
+secondary line rather than the headline, and never print a stall duration the log contradicts.
+**38 of 55 rows** become correct with no fetch change and no migration. The remaining 17 need the
+last `agent_log` entry, which `fetchDraftDetail`'s `select('*')` already pulls — so the detail pane
+can carry them without touching the list query.
+
+**The constraint that decides it:** `agent_log` must NOT be added to the list `COLS`. It is an
+append-only array of multi-hundred-character bodies on 465 rows; adding it to a 1000-row list fetch
+is a real payload cost for a line of text.
+
+**What would make it wrong:** if `qa.verdict` were itself unreliable. It partly is —
+`rubric.ts:22-26` documents a live row carrying `verdict:'PASS'` whose own prose opens
+`VERDICT: REWRITE_OK`. So the display must show the disagreement rather than pick a winner, which is
+the rule `rubric.ts` already established. If that rule is dropped, this item becomes a new class of
+lie rather than a fix.
+
+### 2. The client lanes get `skip` as a row and bulk capability
+
+`reviewActionable(status, lane)` is `(review|error) && lane === 'ivan'` (`content.ts:1435`). On a
+client lane it is always false, so `ContentList.tsx:186` computes caps as:
+
+- **68 of the 93 client review rows: `['delete']` and nothing else.**
+- **25 of them (already on a client board): `[]` — a selection of those offers no action at all.**
+
+The single destructive verb is the only one that scales, and the two he actually uses do not. He
+archives client drafts often: **73 client rows are at `archived`** (risedtc 61, arch 12) against 24
+published. Skip/archive is an internal status write that never reaches a client, so it is safe to
+give a bulk path under the existing `BulkBar` rules (one confirm naming the count and the
+consequence, `BulkBar.tsx:66-90`).
+
+**Promote stays per-row.** `setBoardVisible(id, true)` is the one action in the app that puts
+something in front of a paying client (`DraftPane.tsx:900-918` says so in its own confirm copy). It
+must keep an explicit human action and a confirm per row. **Do not bulk it**, and do not put it on
+the card either: the card renders at most a one-line excerpt (`ContentList.tsx:171`, `glance` only),
+so promoting from the list would mean sending a client copy nobody read.
+
+**What would make it wrong:** if a client-lane `skip` is not actually reversible. It writes
+`status='disqualified'` (`content.ts:632`), and the confirm already says "drops out of the queue for
+good". If that is true, then bulk skip is 93 irreversible writes behind one confirm, and the item
+should be narrowed to a per-row Skip button on the card (still 4N → 2N) rather than a bulk path.
+
+### 3. A cross-lane triage queue built from the data already mounted
+
+Today already exists and is already the "what needs you" surface — but it is a **pointer board**:
+`HandOff` (`TodayScreen.tsx:193-231`) renders a count, an age and a chevron that navigates to
+another job. Its `onOpen` handlers are `onOpenDrafts` and `onOpenOps`. **No row on Today carries
+an action.**
+
+And it is fed by the `get-morning-brief` edge function (`today.ts:10`), whose payload
+(`today.ts:97-115`) contains urgencies, comment/dm/feed drafts, today's scheduled posts, a calendar
+and outreach health. It contains **nothing about content drafts in review, client ideas, or errors**.
+Cross-checking against 2.3:
+
+| queue | rows waiting | on Today? |
+|---|---|---|
+| client ideas staged | 176 | **no** |
+| content drafts in review | 95 | **no** |
+| lm idea candidates reviewing | 95 | **no** |
+| ops drafts unactioned | 62 | yes, as a count |
+| content drafts in error | 55 | **no** |
+| threads with an unanswered inbound | 58 | partly, as `urgencies`, capped at 30 rows (`today.ts:477` `MAX_ROWS`) |
+| DM drafts pending | 8 | yes |
+
+**391 of the 407 waiting rows are not on the surface that claims to say what needs him.** That is
+the finding behind "he got readability instead of usefulness": every one of those rows is reachable,
+none of them is ranked, and the surface that ranks is fed by a payload that does not know they exist.
+
+**The constraint that decides it:** the queue must be built from `useInbox` / `useContent` /
+`useOps`, already mounted once in `Shell.tsx:173-176`, and **not** from `get-morning-brief`. Content
+is fetched lane-scoped (`content.ts:299-302`), so a cross-lane queue means three fetches (ivan,
+risedtc, arch) of at most 1000 rows each, or one lane-less fetch. No new dependency either way.
+
+**What would make it wrong:** if Ivan does not want a second aggregating job in the rail. Then the
+same evidence says to put these rows into Today and give Today's rows their action, rather than
+build a tenth job. Either shape satisfies the finding; a new tab is not the finding.
+
+### 4. Cross-object search
+
+Three unlinked search boxes plus a palette that can only see the DOM (evidence in T5).
+
+Two slices, very different in cost:
+
+- **The one-liner:** `ContentList.tsx:912` passes `d => [d.title, d.topic]` to `applySearch`.
+  `post_body` **is already selected** in `COLS` (`content.ts:88`), so adding it to that array is a
+  one-line change that makes the body searchable with no fetch change at all.
+- **The medium one:** `CommandLayer.tsx:66` builds the palette's row list from
+  `document.querySelectorAll('.wb-work [data-wbrow]')`. Because the DMs list is windowed
+  (`InboxScreen.tsx:151`, `ROW_H = 73`, `OVERSCAN = 6`), roughly **12-25 of the ~139 threads exist in
+  the DOM** at a 900px viewport. Feeding the palette from the list's data rather than its DOM makes
+  every loaded row reachable by name.
+
+Full cross-object search (DMs + drafts + magnets on one key) needs all three datasets in one place;
+only `useInbox` is currently hoisted to `Shell`. That is the real work, and it is worth doing after
+the two slices above prove the shape.
+
+**What would make it wrong:** if searching 465 bodies on every keystroke is slow. It is a client-side
+substring scan over data already in memory, so it is not — but if the lane ever loads its full 1000-row
+cap with long bodies, it needs a debounce, not a redesign.
+
+### 5. The draft card, inline in the `needs` list
+
+`DmsSurface.tsx:79` already renders a complete approve/discard/later card for any thread with a
+draft. It fires only when `status === 'approve'`, and `Shell.tsx:146` is
+`const [status] = useState<Status>('needs')` with **no setter anywhere in the codebase**. So the
+card, its `Later` control and its swipe gestures are unreachable, and every one of the **203 measured
+approve+discard events** paid an extra interaction to enter the thread first.
+
+**Do not reinstate a bucket switcher.** The head that switched between buckets was removed at Ivan's
+explicit request on 2026-08-04 (`Shell.tsx:144-146`, `DmsSurface.tsx:20-27`). The change is per-row,
+not per-list: render the card for `t.draft != null` inside the existing `needs` list.
+
+**Ship it without the swipe binding.** `DraftsScreen.tsx:155-161` maps swipe-right to
+`handleApprove`, which sends a message to a real prospect. A one-motion commit on a list he scrolls
+past every morning is the wrong gesture for the only irreversible action in the app; the confirm
+stays either way, but the buttons are enough.
+
+**What would make it wrong:** if the reason he opens the thread is that he needs the conversation to
+decide. The measurement cannot separate "opened to approve" from "opened to read" — 215 thread opens
+against 203 approve/discard events is consistent with either. If he reads the thread before every
+decision, this saves nothing and should be dropped. **This is the one item on the list whose premise
+is not directly measured**, and it is ranked 5th for that reason.
+
+### 6. Arming, and a calendar that distinguishes armed from dated
+
+Arming costs 5 interactions and a takeover (T7), and `Schedule` is a **disclosure toggle**
+(`DraftPane.tsx:1261-1263` `setMore`) rather than a command — one interaction spent opening a panel.
+Meanwhile the forward 14 days hold **3 armed items** against 89 dated-less review drafts (2.8).
+
+`ContentCalendar` already exists and already moves dates by drag (`ContentCalendar.tsx:119`
+`setScheduleDateAt`, the date-only gated RPC from `db/032`). What it does not do is distinguish
+`status='review' with a scheduled_at` from `status='scheduled'`. **Four review drafts carry forward
+dates** (08-25, 08-26, 08-27, 08-28, 08-31) and read as coverage on a calendar that plots
+`scheduled_at` without reading `status`. They will not publish.
+
+**The constraint that decides it:** arming is `operator_schedule_draft` and it publishes
+(`DraftPane.tsx:395-397` says so in its own confirm). It keeps its confirm, it stays per-row, and it
+never goes on a bulk path or a drag gesture. Promoting the button out of the disclosure and drawing
+the armed/not-armed distinction on the calendar are both inside those limits.
+
+**What would make it wrong:** if the empty forward calendar is deliberate — memory records a 3-5 day
+buffer policy and "add it to buffer means queue undated, never infer a date". If Ivan wants posts
+undated until he picks the day himself, then the calendar fix stands (the four false-coverage rows
+are still a lie) and the arming-cost fix does not matter.
+
+---
+
+### Rejected, with the reason
+
+| rejected | why, from the measurements |
+|---|---|
+| **Undo, anywhere** | **Zero measured demand.** 109 DM rows sit in the exact shape `restoreDraft` targets and **not one discard has ever been reversed** (`s4_fixdata.py`). 0 rows carry `taxonomy.deleted_by_operator`. Only 3 of 460 distinct titles repeat. Send-undo is separately dead: the dispatcher claims on `approved_at IS NOT NULL AND sent_at IS NULL` with no re-check, so a client-side undo of an approval fails open. Building undo here would be inventing a need. |
+| **Inline edit instead of a takeover for content** | Ivan asked for the window in his own words, quoted at `Takeover.tsx:5-12`. Click-to-edit **already exists inside it** (`LinkedInPost.tsx:203-208`). Replacing the takeover would undo a direct instruction to solve a problem the takeover already solves. |
+| **Bulk regenerate on errored drafts** | `regenerateDraft` writes `status='generating'` then fires an n8n webhook per row (`studioActions.ts:106-122`). 48 rows at once is 48 pipeline runs and 48 model bills, against a constraint of no new spending. And **38 of the 55 errored rows already hold a `post_body`** — they need their verdict read, not another run. The log shows the pipeline re-running itself for a median of 76 further minutes after the sentinel fires; more runs is the last thing this class needs. |
+| **"Apply the same edit to many rows" tooling** | Measured and absent: **460 distinct titles across 465 rows**, 7 reused topics, 1.1% duplicate rows. There is no repeated-edit pattern to remove. |
+| **A stale-draft sweeper surface** | The 81 `stale_draft_expired_10d` rows share **one** `send_blocked_at` instant on 2026-07-23 and were **all created in April 2026**. One historical cleanup, not an ongoing loss. |
+| **Bulk promote to a client board** | It is the one write that reaches a paying client, and the card renders at most a one-line excerpt. A bulk promote is client-facing copy shipped unread. |
+| **A "stuck generation" or "past-due schedule" alarm** | Both are already zero: 0 rows match `isStuckScheduled` (`content.ts:186`), 0 `scheduled_posts` are past due and unposted, 0 incomplete scans. The publish path is healthy. |
+
+### The one-sentence version
+
+**Every queue in this app that rots is a queue that needs a human decision, the surface that claims
+to rank those decisions cannot see 391 of the 407 rows waiting in them, and the 55 rows he asked
+about are printing the wrong reason on 28 of them from data the row already carries.**

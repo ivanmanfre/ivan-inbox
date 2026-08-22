@@ -1,0 +1,269 @@
+{
+ "scoped": true,
+ "accents": [
+  {
+   "sel": "button.dw-key.p",
+   "hits": [
+    "bg-fill",
+    "border"
+   ],
+   "text": "Approve",
+   "w": 81,
+   "h": 44,
+   "area": 3562
+  },
+  {
+   "sel": "span.wb-qa-fill",
+   "hits": [
+    "bg-fill"
+   ],
+   "text": "",
+   "w": 224,
+   "h": 8,
+   "area": 1794
+  },
+  {
+   "sel": "i",
+   "hits": [
+    "bg-fill"
+   ],
+   "text": "",
+   "w": 82,
+   "h": 6,
+   "area": 493
+  },
+  {
+   "sel": "i",
+   "hits": [
+    "bg-fill"
+   ],
+   "text": "",
+   "w": 93,
+   "h": 6,
+   "area": 555
+  },
+  {
+   "sel": "i",
+   "hits": [
+    "bg-fill"
+   ],
+   "text": "",
+   "w": 93,
+   "h": 6,
+   "area": 555
+  },
+  {
+   "sel": "i",
+   "hits": [
+    "bg-fill"
+   ],
+   "text": "",
+   "w": 93,
+   "h": 6,
+   "area": 555
+  },
+  {
+   "sel": "i",
+   "hits": [
+    "bg-fill"
+   ],
+   "text": "",
+   "w": 82,
+   "h": 6,
+   "area": 493
+  },
+  {
+   "sel": "i",
+   "hits": [
+    "bg-fill"
+   ],
+   "text": "",
+   "w": 93,
+   "h": 6,
+   "area": 555
+  },
+  {
+   "sel": "i",
+   "hits": [
+    "bg-fill"
+   ],
+   "text": "",
+   "w": 95,
+   "h": 6,
+   "area": 568
+  },
+  {
+   "sel": "i",
+   "hits": [
+    "bg-fill"
+   ],
+   "text": "",
+   "w": 82,
+   "h": 6,
+   "area": 493
+  },
+  {
+   "sel": "button.btn.p",
+   "hits": [
+    "bg-fill"
+   ],
+   "text": "Post note",
+   "w": 331,
+   "h": 50,
+   "area": 16416
+  },
+  {
+   "sel": "button.dw-qrow.on",
+   "hits": [
+    "shadow"
+   ],
+   "text": "2Built a €70k/mo agency on zer",
+   "w": 231,
+   "h": 75,
+   "area": 17217
+  },
+  {
+   "sel": "span.dw-qrow-i",
+   "hits": [
+    "text",
+    "border"
+   ],
+   "text": "2",
+   "w": 16,
+   "h": 18,
+   "area": 288
+  }
+ ],
+ "acts": [
+  {
+   "label": "Approve",
+   "cls": "button.dw-key.p",
+   "h": 44,
+   "w": 81,
+   "minH": "44px",
+   "pad": "0px 13px 0px 13px",
+   "radius": "12px",
+   "fs": "13px",
+   "fw": "600",
+   "ls": "normal",
+   "tt": "none",
+   "bg": "rgb(184, 255, 102)",
+   "color": "rgb(23, 23, 23)",
+   "border": "1px solid rgb(184, 255, 102)",
+   "disabled": false
+  },
+  {
+   "label": "Edit",
+   "cls": "button.dw-key",
+   "h": 44,
+   "w": 52.7,
+   "minH": "44px",
+   "pad": "0px 13px 0px 13px",
+   "radius": "12px",
+   "fs": "13px",
+   "fw": "600",
+   "ls": "normal",
+   "tt": "none",
+   "bg": "rgb(42, 42, 41)",
+   "color": "rgb(255, 255, 255)",
+   "border": "1px solid rgb(53, 53, 51)",
+   "disabled": false
+  },
+  {
+   "label": "Schedule",
+   "cls": "button.dw-key",
+   "h": 44,
+   "w": 86.8,
+   "minH": "44px",
+   "pad": "0px 13px 0px 13px",
+   "radius": "12px",
+   "fs": "13px",
+   "fw": "600",
+   "ls": "normal",
+   "tt": "none",
+   "bg": "rgb(42, 42, 41)",
+   "color": "rgb(255, 255, 255)",
+   "border": "1px solid rgb(53, 53, 51)",
+   "disabled": false
+  },
+  {
+   "label": "Regenerate",
+   "cls": "button.dw-key",
+   "h": 44,
+   "w": 100.7,
+   "minH": "44px",
+   "pad": "0px 13px 0px 13px",
+   "radius": "12px",
+   "fs": "13px",
+   "fw": "600",
+   "ls": "normal",
+   "tt": "none",
+   "bg": "rgb(42, 42, 41)",
+   "color": "rgb(255, 255, 255)",
+   "border": "1px solid rgb(53, 53, 51)",
+   "disabled": false
+  },
+  {
+   "label": "Swap image",
+   "cls": "button.dw-key",
+   "h": 44,
+   "w": 104.4,
+   "minH": "44px",
+   "pad": "0px 13px 0px 13px",
+   "radius": "12px",
+   "fs": "13px",
+   "fw": "600",
+   "ls": "normal",
+   "tt": "none",
+   "bg": "rgb(42, 42, 41)",
+   "color": "rgb(255, 255, 255)",
+   "border": "1px solid rgb(53, 53, 51)",
+   "disabled": false
+  },
+  {
+   "label": "Back to idea",
+   "cls": "button.dw-key",
+   "h": 44,
+   "w": 105.5,
+   "minH": "44px",
+   "pad": "0px 13px 0px 13px",
+   "radius": "12px",
+   "fs": "13px",
+   "fw": "600",
+   "ls": "normal",
+   "tt": "none",
+   "bg": "rgb(42, 42, 41)",
+   "color": "rgb(255, 255, 255)",
+   "border": "1px solid rgb(53, 53, 51)",
+   "disabled": false
+  },
+  {
+   "label": "Delete",
+   "cls": "button.dw-key.d",
+   "h": 44,
+   "w": 69,
+   "minH": "44px",
+   "pad": "0px 13px 0px 13px",
+   "radius": "12px",
+   "fs": "13px",
+   "fw": "600",
+   "ls": "normal",
+   "tt": "none",
+   "bg": "rgba(255, 69, 58, 0.08)",
+   "color": "rgb(255, 69, 58)",
+   "border": "1px solid rgba(255, 69, 58, 0.4)",
+   "disabled": false
+  }
+ ],
+ "postNote": [
+  {
+   "w": 331,
+   "h": 50,
+   "bg": "rgb(184, 255, 102)",
+   "color": "rgb(23, 23, 23)",
+   "cls": "button.btn.p",
+   "parentW": 331
+  }
+ ],
+ "n": 1192
+}
