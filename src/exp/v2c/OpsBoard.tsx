@@ -97,7 +97,7 @@ function PipelineNotes({ health, olderUnsent, onOpenErrors }: {
 // conditions that strip obeys and states them here so the next reader can check
 // they still hold:
 //   1. it renders NOTHING when there is nothing;
-//   2. every row names a dated consequence — what stopped, and when;
+//   2. every row names a dated consequence, which is what stopped and when;
 //   3. it is windowed, so the number can reach zero. Unwindowed it would read
 //      17 forever, seven of those last having run 72 to 167 days ago and three
 //      of them called "TEMP" or "delete me".
@@ -158,7 +158,7 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh, onOpenErro
   // Ops does not own the Content job, so the jump is handed in by the Shell.
   onOpenErrors?: () => void
   // The shell's cross-job read. Handed in rather than mounted here so the rail
-  // row and this list are the SAME numbers from the same fetch — two mounts of
+  // row and this list are the SAME numbers from the same fetch. Two mounts of
   // the same query would eventually disagree by one poll interval and there
   // would be no way to tell which was right.
   glance?: Pick<GlanceCounts, 'alerts' | 'olderErrored' | 'olderStalled'>

@@ -89,7 +89,7 @@ type Counts = Partial<Record<Job, number>>
 // feed, the send queue, or the automation alarm.
 //
 // So the rule is: THE ROLL-UP IS THE RAIL'S OWN COUNTS, ADDED UP. Nothing else
-// may enter it. That makes it self-auditing — every summand is a row on the
+// may enter it. That makes it self-auditing: every summand is a row on the
 // same rail with its own numeral, so the reader can check the arithmetic
 // without leaving the screen, and a number that appears in the total but
 // nowhere below it is impossible by construction.
@@ -127,7 +127,7 @@ export function Rail({ job, counts, countNote, health, sev, chatOn, chatLive, on
   job: Job
   counts: Counts
   // The automation alarm. Kept OUT of `counts` on purpose: everything in that
-  // map is work Ivan can do, and this is not — nothing on this rail lets him
+  // map is work Ivan can do, and this is not. Nothing on this rail lets him
   // restart a workflow, and nothing should (the old dashboard's Pause/Resume
   // calls a live n8n toggle and n8n is out of scope here). It is a separate
   // signal in a separate place, so the roll-up above stays exactly what it
@@ -170,7 +170,7 @@ export function Rail({ job, counts, countNote, health, sev, chatOn, chatLive, on
         <span className="wb-rj-l">{label}</span>
         {n > 0 && <span className={`wb-rj-n${s ? ` ${s}` : ''}`}>{n}</span>}
         {/* The collapsed rail hides every numeral (faithful.css:2553-2557), so
-            collapsing it used to cost Ivan the whole count column — the one
+            collapsing it used to cost Ivan the whole count column, the one
             thing the rail is for. The pip is the count's PRESENCE, drawn only
             in that state. It says a row is holding something; it deliberately
             does not say how much, because a 2-digit numeral does not fit a
@@ -239,8 +239,9 @@ export function Rail({ job, counts, countNote, health, sev, chatOn, chatLive, on
       <div className="wb-rail-foot">
         {/* AUTOMATION HEALTH, in the frame rather than in the roll-up.
             It sits beside the sync dot because it answers the same class of
-            question — is the machine still running — and it is deliberately NOT
-            a summand of "waiting on you": a red workflow is not a queue Ivan can
+            question, which is whether the machine is still running, and it is
+            deliberately NOT a summand of "waiting on you": a red workflow is
+            not a queue Ivan can
             work through, it is a thing that has stopped. Renders nothing when
             nothing is wrong. The click goes to Ops, where the list lives. */}
         {health && health.n > 0 && (
