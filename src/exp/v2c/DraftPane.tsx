@@ -18,7 +18,7 @@ import { Block, KeyRows, Rows, Val } from './ContentBits'
 import { AgentRegister, Fold, QaRegister } from './Register'
 import { HtmlPreview, Takeover } from './Takeover'
 import { LinkedInPost } from './LinkedInPost'
-import { absTime, postTime, relOrAhead, relTime, typeLabel } from './fmt'
+import { absTime, linkedInPostUrl, postTime, relOrAhead, relTime, typeLabel } from './fmt'
 import { Failed } from './Surface'
 
 // THE DRAFT TAKEOVER WINDOW, rebuilt to the dashboard-v2 standard.
@@ -184,7 +184,12 @@ function InspRail({ tabs, tab, pick }: {
           thing you wanted. The tab state is kept and now scrolls to a section
           instead of hiding the other three. */}
       <div className="dw-insp-h">
-        <span>Backend depth</span>
+        {/* Was "Backend depth" — the owner's own named complaint ("this looks
+            like an internal tool ui"), because the four tabs underneath it
+            are the QA verdict, the source, the generation log and the raw
+            fields, i.e. what a reader checks to decide the draft's fate, not
+            a claim about the app's architecture. */}
+        <span>What decides it</span>
         <span className="dw-insp-j">
           {tabs.map(t => (
             <button key={t.k} type="button"
@@ -987,11 +992,22 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
   if (tax.source) source.push(['Source', tax.source])
   if (d.source_label) source.push(['Label', d.source_label])
   if (d.source_ref) source.push(['Ref', d.source_ref])
-  if (d.client_idea_id) source.push(['Idea', d.client_idea_id])
-  if (taxonomyValue(d.taxonomy, 'source_candidate_id')) {
-    source.push(['Candidate', taxonomyValue(d.taxonomy, 'source_candidate_id')])
+  // client_idea_id and source_candidate_id used to render here as bare UUIDs
+  // under "Idea"/"Candidate" — internal foreign keys with no page in this app
+  // that opens from one, so the id itself answered no question a reader could
+  // act on. Deleted rather than laundered into a fake label (phase2-labels).
+  if (d.source_post_id) {
+    // The live LinkedIn post this draft was spun from (content.ts:42) — a
+    // real fact, so it earns a link rather than a raw urn:li:activity print.
+    // The urn stays reachable on hover/copy for the rare support case that
+    // needs the literal id.
+    const url = linkedInPostUrl(d.source_post_id)
+    source.push(['Spun from post', url
+      ? <a className="dd-link" href={url} target="_blank" rel="noreferrer" title={d.source_post_id}>
+        View the live post ↗
+      </a>
+      : <span title={d.source_post_id}>Live post (link unavailable)</span>])
   }
-  if (d.source_post_id) source.push(['Spun from post', d.source_post_id])
   if (taxonomyValue(d.taxonomy, 'auto_promoted')) {
     source.push(['Auto-promoted', taxonomyValue(d.taxonomy, 'auto_promoted')])
   }
@@ -1064,7 +1080,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
               whole window is about, so it gets its own mark, ahead of the age,
               and the age keeps its own chip rather than being replaced by it. */}
           {d.scheduled_at && (
-            <span className="ct-chip ct-chip-when" title={`scheduled_at ${d.scheduled_at}`}>
+            <span className="ct-chip ct-chip-when" title={`Scheduled for ${absTime(d.scheduled_at)}`}>
               {/* "Posts" only while the time is still ahead. A scheduled row
                   whose slot has passed has either published or missed, and this
                   chip knows neither — so it states the time and how long ago it
@@ -1073,7 +1089,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
               {postTime(d.scheduled_at)} · {relOrAhead(d.scheduled_at)}
             </span>
           )}
-          <span className="ct-chip" title={`updated_at ${d.updated_at}`}>
+          <span className="ct-chip" title={`Last edited ${absTime(d.updated_at)}`}>
             edited {relTime(d.updated_at)}
           </span>
           {lane !== 'ivan' && (
