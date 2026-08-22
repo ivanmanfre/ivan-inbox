@@ -3,6 +3,7 @@ import {
   ARMING_LABEL, buildCalendarItems, buildCalendarRail, dayKey, dayKeyOf, groupByDay,
   monthLabel, monthWeeks, publishAtForDay, shiftMonth, type CalendarItem,
 } from '../../lib/calendarItems'
+import { armingCountWord } from '../../lib/labels'
 import {
   ClientRpcError, setScheduleDateAt, STAGE_LABEL, type ContentDraft,
   type ScheduledQueueRow,
@@ -44,11 +45,13 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
  * How many chips a month cell paints before the rest collapse into "+N".
  *
  * It is a NUMBER OF ROWS, not a height budget, and the chip's own height is
- * fixed against it (`--cal-chip-h` in wbcal.css). The arithmetic: 12px of
- * padding, a 16px day-number row, then rows of 32px chips and an 18px "+N"
- * with 3px gaps. One chip costs 63px, two cost 98, two and a "+N" cost 119.
- * The cell floor is 86px, so a sparse month is tight and a busy day grows into
- * the room it needs, which is how a grid row is supposed to behave.
+ * fixed against it (`--cal-chip-h` in wbcal.css). The arithmetic, restated
+ * after the 2026-08-22 amendment gave the chip its second line back: 12px of
+ * padding, a 16px day-number row, then rows of 48px chips and an 18px "+N" with
+ * 3px gaps. One chip costs 79px, two cost 130, two and a "+N" cost 151. The
+ * cell floor is 108px and stretches with the viewport, so a sparse month is
+ * roomy and a busy day grows into what it needs, which is how a grid row is
+ * supposed to behave.
  *
  * The "+N" row counts as one of the three, which is FullCalendar's
  * `dayMaxEventRows` semantics exactly: two posts render as two chips, three
@@ -165,9 +168,14 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
   const monthArmed = monthItems.filter(i => i.arming === 'armed').length
   const monthPlanned = monthItems.filter(i => i.arming === 'planned').length
   const monthOut = monthItems.filter(i => i.arming === 'out').length
-  // Named separately because they behave differently — no open, no move — and a
-  // reader who cannot see WHY a chip is inert reads it as a broken chip.
-  const monthQueueOnly = monthItems.filter(i => i.source === 'queue').length
+  // 🔴 THE QUEUE-ONLY COUNT IS GONE FROM THE BAR, 2026-08-22, and it is a
+  // deletion rather than a move. It was never a total: a queue row is armed by
+  // definition, so those posts were already inside the two figures above and
+  // this fourth number double-counted them for a reader who could not tell. Its
+  // real job was explaining why some chips cannot be opened or moved, and that
+  // belongs on the chip, which says it in its popover and in its accessible
+  // name (chipDescription's `origin` clause), where it is attached to the thing
+  // it is about instead of floating above 35 day numerals.
 
   const startMove = (id: string, title: string, at: string | null) => {
     setErr(null); setDone(null)
@@ -273,28 +281,50 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
             onClick={() => { const n = new Date(); setAnchor({ year: n.getFullYear(), month: n.getMonth() }) }}
           >Today</button>
         </div>
-        {/* ONE WORD PER NUMBER, the strip's own rule — this is the month, not
-            the lane and not the pipeline. Armed and planned are ALWAYS both
-            drawn, including at zero: a month reading `0 armed` beside `6
-            planned` is the whole point, and hiding the zero would leave the
-            same six rows reading as coverage. Posted and queue-only appear only
-            when there is one, because those two are not the distinction this
-            bar exists to make. */}
-        <span className="cal-count" title="Armed = a publisher holds it: the draft is at Scheduled, or the chip is a publish-queue row.">
-          <b>{monthArmed}</b><span>armed</span>
+        {/* TWO NUMBERS AT REST, AND BOTH OF THEM IN WORDS A READER ALREADY HAS.
+            2026-08-22, after a blind panel judged this bar against the one it
+            replaced:
+
+              "`1 armed` ... `Armed` is the operator's word for a state machine
+               he wrote. No product ships a top-line metric its user would have
+               to be told the meaning of."
+              "Four numbers, two of them in private vocabulary ... above a grid
+               that is already numeral-dense (35 day numbers)."
+
+            🔴 THE WORDS COME FROM src/lib/labels.ts AND ARE NOT WRITTEN HERE.
+            `armed` was never a database value, which is why it never passed
+            through label(): it is a word this app coined for a derived state.
+            A coined word is a raw value with extra steps, so it went into the
+            same map rather than a second vocabulary next to the state machine.
+
+            WHAT SURVIVED THE CUT FROM FOUR TO TWO, and why:
+
+              scheduled  what is still going out. Always drawn, including at
+                         zero, because a month with nothing armed is exactly the
+                         thing this figure exists to say out loud.
+              posted     what already went out. Always drawn, same reason.
+              planned    ONLY when there is one. It is not a third metric, it is
+                         a DISCREPANCY (a row carrying a date that nothing will
+                         publish), so it earns a slot only when it exists and it
+                         is marked as attention rather than counted as coverage.
+                         The distinction phase 3 fought for is kept; what moved
+                         is that a zero no longer takes a permanent slot.
+              queue only WITHDRAWN from the bar. Those rows are already inside
+                         the two figures above (a queue row is armed by
+                         definition), so the count was never a total — it was an
+                         explanation of why six chips are inert, and that
+                         explanation belongs on the chip, which carries it in
+                         its popover and in its accessible name. */}
+        <span className="cal-count" title="A publisher holds it: the draft is at Scheduled, or the chip is a row in the publish queue.">
+          <b>{monthArmed}</b><span>{armingCountWord('armed')}</span>
         </span>
-        <span className="cal-count cal-count-n" title="Planned = it carries a date and nothing publishes it. The bridge reads status='scheduled'; a row at Needs review will not go out on the day it is drawn on.">
-          <b>{monthPlanned}</b><span>planned</span>
-        </span>
-        {monthOut > 0 && (
-          <span className="cal-count cal-count-n"><b>{monthOut}</b><span>posted</span></span>
-        )}
-        {monthQueueOnly > 0 && (
+        <span className="cal-count cal-count-n"><b>{monthOut}</b><span>{armingCountWord('out')}</span></span>
+        {monthPlanned > 0 && (
           <span
-            className="cal-count cal-count-q"
-            title="Posts that live in the publish queue (scheduled_posts) with no draft row behind them. They are drawn here so the calendar matches what actually goes out, but they cannot be opened or moved from this surface."
+            className="cal-count cal-count-n cal-count-warn"
+            title="These carry a date and nothing is set to publish them. A post still waiting on a review will not go out on the day it is drawn on."
           >
-            <b>{monthQueueOnly}</b><span>queue only</span>
+            <b>{monthPlanned}</b><span>{armingCountWord('planned')}</span>
           </span>
         )}
       </div>
@@ -552,10 +582,14 @@ export function chipDescription(it: CalendarItem): string {
   const outOfSync = it.plannedAt
     ? ` · ⚠ the publish queue fires this at ${hhmm(it.at)}; the draft still says ${hhmm(it.plannedAt)}`
     : ''
+  // 🔴 PLAIN WORDS HERE TOO, 2026-08-22. The bar stopped saying "armed" and a
+  // description that still said it would have moved the leak rather than fixed
+  // it: this sentence is the chip's accessible name, so it is the one a screen
+  // reader hears and the only place a keyboard user meets the distinction.
   const armTip = it.arming === 'planned'
-    ? ' · Planned: it carries a date and nothing publishes it. The bridge reads status=\'scheduled\'.'
+    ? ' · Dated, but nothing is set to publish it yet.'
     : it.arming === 'armed'
-      ? ' · Armed: a publisher holds this one.'
+      ? ' · Set to publish: a publisher holds this one.'
       : ''
   return posted
     ? `Posted ${hhmm(posted)}${drifted ? ` (was set for ${hhmm(it.at)})` : ''} · ${it.title}, ${STAGE_LABEL[it.stage]}${origin}`

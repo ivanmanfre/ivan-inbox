@@ -1,4 +1,5 @@
 import { stageOf, type ContentDraft, type ContentStage, type ScheduledQueueRow } from './content'
+import { armingLabel } from './labels'
 
 // THE CALENDAR, derived — never a second copy of the rows.
 //
@@ -201,11 +202,21 @@ export function armingOf(stage: ContentStage, source: CalendarSource): CalendarA
   return stage === 'scheduled' || stage === 'stuck' ? 'armed' : 'planned'
 }
 
-/** One word per state, and the same words the chip and the month count use. */
+/**
+ * One word per state, and the same words the chip and the month count use.
+ *
+ * 🔴 THE WORDS THEMSELVES MOVED TO src/lib/labels.ts, 2026-08-22, after a blind
+ * panel named `Armed` as the calendar's strongest tell that it is an internal
+ * tool. `armed` is a word this app COINED for a derived state, so it never
+ * passed through label() and never got caught; a coined word is a raw value
+ * with extra steps and it belongs in the one map. This stays as the typed view
+ * of it, so every existing call site keeps working and there is exactly one
+ * vocabulary rather than a second one hardcoded next to the state machine.
+ */
 export const ARMING_LABEL: Record<CalendarArming, string> = {
-  armed: 'Armed',
-  planned: 'Planned',
-  out: 'Posted',
+  armed: armingLabel('armed'),
+  planned: armingLabel('planned'),
+  out: armingLabel('out'),
 }
 
 /**

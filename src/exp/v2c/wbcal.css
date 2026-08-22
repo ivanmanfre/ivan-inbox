@@ -719,3 +719,23 @@
 @media (max-width:767px){
   .wb.wb.wb .cal-day-empty{ background:none; box-shadow:none }
 }
+
+
+/* ==========================================================================
+   7c · AMENDMENT: `armed` was operator vocabulary printed at the user
+   ========================================================================== */
+
+/* The bar read `1 armed  0 planned  12 posted  6 queue only`. The panel:
+
+     "`Armed` is the operator's word for a state machine he wrote. No product
+      ships a top-line metric its user would have to be told the meaning of."
+     "Four numbers, two of them in private vocabulary."
+
+   The words moved to src/lib/labels.ts and the bar went from four figures to
+   two. What is left here is the one thing that is presentation: the planned
+   figure is a DISCREPANCY, not a third metric, so on the rare month that has
+   one it is marked as attention rather than counted alongside the coverage.
+   Colour is the second cue and never the only one — the phrase itself
+   ("dated but not scheduled") says it in words first. */
+.wb.wb.wb .cal-count-warn{ color:var(--sev-attention) }
+.wb.wb.wb .cal-count-warn b{ color:var(--sev-attention) }

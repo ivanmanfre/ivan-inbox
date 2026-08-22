@@ -4,6 +4,7 @@ import {
   dayKey, dayKeyOf, groupByDay, itemDayISO, monthLabel, monthWeeks, publishAtForDay,
   queueDriftByBody, queueOnlyItems, queueStage, queueTitle, shiftMonth,
 } from './calendarItems'
+import { armingLabel } from './labels'
 import type { ContentDraft, ScheduledQueueRow } from './content'
 
 // Ported in shape from the old dashboard's calendarItems.test.ts: one test per
@@ -216,9 +217,23 @@ describe('armingOf: a date is not a publisher', () => {
     expect(buildCalendarItems([], [q()], Date.parse('2026-08-09T00:00:00Z'))[0].arming).toBe('armed')
   })
   it('every state has a word, so the chip never encodes this in colour alone', () => {
-    expect(ARMING_LABEL.armed).toBe('Armed')
-    expect(ARMING_LABEL.planned).toBe('Planned')
-    expect(ARMING_LABEL.out).toBe('Posted')
+    expect(ARMING_LABEL.armed).toBeTruthy()
+    expect(ARMING_LABEL.planned).toBeTruthy()
+    expect(ARMING_LABEL.out).toBeTruthy()
+  })
+
+  // 2026-08-22, after a blind panel named `Armed` as this screen's strongest
+  // tell that it is an internal tool. The words are now src/lib/labels.ts's,
+  // and this asserts the PROPERTY that matters rather than three string
+  // literals: no state may be described to a reader in a word the app coined.
+  it('🔴 no arming state is described in the app\'s own coined vocabulary', () => {
+    const coined = ['armed', 'planned', 'out', 'arming']
+    for (const word of Object.values(ARMING_LABEL)) {
+      expect(coined).not.toContain(word.toLowerCase())
+    }
+    expect(ARMING_LABEL.armed).toBe(armingLabel('armed'))
+    expect(ARMING_LABEL.planned).toBe(armingLabel('planned'))
+    expect(ARMING_LABEL.out).toBe(armingLabel('out'))
   })
 })
 
