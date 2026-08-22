@@ -196,3 +196,135 @@
    - `.li-card` 10px / `.li-btn` 8px (styles.css:1197,1266) are the LinkedIn
      preview, which deliberately imitates an external surface down to #0a66c2
      and #fff. It is not this app's chrome and must not join this app's scale. */
+
+/* ========================================================================== */
+/* 7 · MOTION TOKENS (declared here because §3 reads them)                     */
+/* ========================================================================== */
+
+/* Three durations, two easings, and a hard list of properties that may move.
+   Never `all`, never a layout property: width/height/top force a reflow every
+   frame. The tokens are namespaced --wbs-* so they cannot collide with
+   faithful.css:99's --dur-hover / --dur-state / --dur-beat, which stay live for
+   everything already reading them. */
+.wb{
+  --wbs-dur-ctl:120ms;       /* a control changing fill or label colour */
+  --wbs-dur-overlay:160ms;   /* palette, popover, menu, sheet */
+  --wbs-dur-commit:200ms;    /* a row acknowledging the action it just took */
+  --wbs-ease-ctl:ease-out;
+  --wbs-ease-overlay:cubic-bezier(.2,.8,.2,1);
+}
+
+/* ========================================================================== */
+/* 3 · THE CONTROL: one component, four variants, fixed geometry               */
+/* ========================================================================== */
+
+/* Geist ships Default / Secondary / Tertiary / Error at three sizes and Linear's
+   extracted values keep padding and radius IDENTICAL across tiers, varying only
+   fill and border. That constancy is what makes a row of buttons read as one
+   family instead of eight unrelated rectangles, so it is adopted exactly: every
+   variant below shares height, padding, radius, type and gap, and differs only
+   in background-color, color and box-shadow.
+
+   The flattener hits `*`, so the type is declared on .wbb AND on its
+   descendants; a <span> inside a button would otherwise render at 16px. */
+.wb.wb.wb .wbb,
+.wb.wb.wb .wbb *{
+  font-size:13px;
+  font-weight:500;
+  line-height:1;
+  letter-spacing:0;
+}
+.wb.wb.wb .wbb{
+  position:relative;
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  height:32px; min-height:32px; padding:0 14px;
+  border:0; border-radius:var(--r-ctl);
+  background:transparent; color:var(--text);
+  font-family:inherit;
+  cursor:pointer;
+  white-space:nowrap;
+  -webkit-tap-highlight-color:transparent;
+  /* §7: only background-color and color. Never `all`. */
+  transition:background-color var(--wbs-dur-ctl) var(--wbs-ease-ctl),
+             color var(--wbs-dur-ctl) var(--wbs-ease-ctl);
+}
+/* Minimum hit target: 32px on pointer, 44px on touch. The SMALL variant is 26px
+   tall by design, so the target is expanded with a transparent pseudo-element
+   rather than by growing the box, which is the move .wb-selmark already uses
+   (wb2026.css:195). */
+.wb.wb.wb .wbb::after{
+  content:''; position:absolute; left:0; right:0;
+  top:50%; transform:translateY(-50%);
+  height:32px; min-height:100%;
+}
+@media (pointer:coarse){
+  .wb.wb.wb .wbb::after{ height:44px }
+}
+
+.wb.wb.wb .wbb-sm{ height:26px; min-height:26px; padding:0 10px }
+.wb.wb.wb .wbb-sm, .wb.wb.wb .wbb-sm *{ font-size:12px }
+.wb.wb.wb .wbb-lg{ height:38px; min-height:38px; padding:0 18px }
+.wb.wb.wb .wbb-lg, .wb.wb.wb .wbb-lg *{ font-size:14px }
+
+/* --- primary: the one action the screen exists for, exactly one per screen ---
+   Label colour is --ink, NOT --e0, and that is a correction to the spec forced
+   by measurement: --e0 in the light theme is #F4F4F0, which on the lime fill
+   measures 1.08:1 and is unreadable. --ink #171717 is the codebase's existing
+   contract for "the label on a filled accent mark" and measures 14.97:1 in both
+   themes, because the accent is the same hex in both.
+   The one raised-without-a-shadow cue: a single 1px interior top inset, never a
+   stack, never an outer shadow (Geist's rule, and a drop shadow bleeding onto
+   the pistachio frame is the 2013 artefact this phase exists to remove). */
+.wb.wb.wb .wbb-primary{
+  background:var(--accent); color:var(--ink);
+  box-shadow:var(--e-inset);
+}
+.wb.wb.wb .wbb-primary:hover{ background:#C6FF80 }
+.wb.wb.wb .wbb-primary:active{ background:#A9F050; box-shadow:none }
+
+/* --- secondary: real actions that are not the point of the screen --- */
+.wb.wb.wb .wbb-secondary{ background:var(--e3); color:var(--text) }
+.wb.wb.wb .wbb-secondary:hover{ background:var(--e4) }
+.wb.wb.wb .wbb-secondary:active{ background:var(--e2) }
+
+/* --- quiet: low stakes and reversible --- */
+.wb.wb.wb .wbb-quiet{ background:transparent; color:var(--text2) }
+.wb.wb.wb .wbb-quiet:hover{ background:var(--e3); color:var(--text) }
+.wb.wb.wb .wbb-quiet:active{ background:var(--e2) }
+
+/* --- danger: destructive, set apart in the row rather than shouting in place.
+       --sev-danger is a light-theme correction: --sev-urgent #FF453A measures
+       3.41:1 on white and fails AA for a 13px label, so light gets #C4271C
+       (5.75:1 on --e2, 4.76:1 on --e3). Dark keeps #FF453A at 5.00:1. --- */
+.wb{ --sev-danger:var(--sev-urgent); --sev-danger-tint:rgba(255,69,58,.12) }
+:root[data-theme='light'] .wb{ --sev-danger:#C4271C; --sev-danger-tint:rgba(196,39,28,.12) }
+.wb.wb.wb .wbb-danger{ background:transparent; color:var(--sev-danger) }
+.wb.wb.wb .wbb-danger:hover{ background:var(--sev-danger-tint); color:var(--sev-danger) }
+.wb.wb.wb .wbb-danger:active{ background:var(--sev-danger-tint) }
+
+/* --- focus. The global ring (faithful.css:413) also sets
+       `border-radius:var(--r-chip)` on whatever it lands on, which would snap a
+       focused control from 10px to 6px, so the radius is restated here.
+       The colour is --accent-ui, which resolves to the accent in dark and to
+       #5A8A00 in light. Measured: lime #B8FF66 on the light --e2 #FFFFFF is
+       1.40:1 and fails the 3:1 floor for a non-text indicator; #5A8A00 is
+       4.14:1. faithful.css:411's "clears at 4.85:1 worst case" was measured on
+       the dark ladder only. --- */
+.wb.wb.wb .wbb:focus-visible{
+  outline:2px solid var(--accent-ui, var(--accent));
+  outline-offset:2px;
+  border-radius:var(--r-ctl);
+}
+
+/* --- disabled, all four variants --- */
+.wb.wb.wb .wbb:disabled,
+.wb.wb.wb .wbb[aria-disabled='true']{
+  cursor:not-allowed;
+  background:var(--e2); color:var(--text4);
+  box-shadow:none;
+  opacity:.6;
+}
+.wb.wb.wb .wbb-quiet:disabled,
+.wb.wb.wb .wbb-danger:disabled,
+.wb.wb.wb .wbb-quiet[aria-disabled='true'],
+.wb.wb.wb .wbb-danger[aria-disabled='true']{ background:transparent }
