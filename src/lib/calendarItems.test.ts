@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
-  buildCalendarItems, buildCalendarRail, canMoveDate, dayKey, dayKeyOf,
-  groupByDay, itemDayISO, monthLabel, monthWeeks, publishAtForDay, queueDriftByBody,
-  queueOnlyItems, queueStage, queueTitle, shiftMonth,
+  ARMING_LABEL, armingOf, buildCalendarItems, buildCalendarRail, canArm, canMoveDate,
+  dayKey, dayKeyOf, groupByDay, itemDayISO, monthLabel, monthWeeks, publishAtForDay,
+  queueDriftByBody, queueOnlyItems, queueStage, queueTitle, shiftMonth,
 } from './calendarItems'
 import type { ContentDraft, ScheduledQueueRow } from './content'
 
@@ -119,19 +119,126 @@ describe('canMoveDate — operator_set_schedule_date’s status line, and nothin
   })
 })
 
-describe('buildCalendarRail — Ready, no date', () => {
-  it('is exactly the approved-and-undated set the Approved sub-line counts', () => {
+describe('buildCalendarRail — No date yet', () => {
+  // 🔴 THE DEFECT THIS BLOCK REPLACES. The rail used to filter on
+  // `status === 'approved'`, a status canMoveDate refuses and the live census
+  // records as ZERO rows on both lanes, so it could never hold anything — while
+  // 89 undated `review` rows, which is exactly what the date RPC accepts, were
+  // excluded from the only surface built to date them. Live 2026-08-22 the new
+  // predicate surfaces ivan 2, risedtc 48, arch 39.
+  it('🔴 is the set the date write ACCEPTS and that has no date, not a status with zero rows', () => {
     const rows = [
-      d({ id: 'a', status: 'approved', scheduled_at: null }),
-      d({ id: 'b', status: 'approved', scheduled_at: '2026-08-12T10:00:00Z' }),
-      d({ id: 'c', status: 'review', scheduled_at: null }),
+      d({ id: 'rev', status: 'review', scheduled_at: null }),
+      d({ id: 'sch', status: 'scheduled', scheduled_at: null }),
+      d({ id: 'dated', status: 'review', scheduled_at: '2026-08-12T10:00:00Z' }),
+      d({ id: 'appr', status: 'approved', scheduled_at: null }),
+      d({ id: 'err', status: 'error', scheduled_at: null }),
+      d({ id: 'pub', status: 'published', scheduled_at: null }),
     ]
-    expect(buildCalendarRail(rows).map(r => r.id)).toEqual(['a'])
+    expect(buildCalendarRail(rows).map(r => r.id).sort()).toEqual(['rev', 'sch'])
   })
-  it('carries the same movability answer as a chip — approved is refused on BOTH lanes', () => {
-    const row = d({ status: 'approved', scheduled_at: null })
-    expect(buildCalendarRail([row])[0].movable).toBe(false)
-    expect(buildCalendarRail([{ ...row, client_id: null }])[0].movable).toBe(false)
+
+  it('the predicate is canMoveDate itself, so the rail and the move control cannot drift', () => {
+    for (const s of ['review', 'scheduled', 'approved', 'error', 'published', 'disqualified', 'idea']) {
+      const row = d({ status: s, scheduled_at: null })
+      expect(buildCalendarRail([row]).length).toBe(canMoveDate(row) ? 1 : 0)
+    }
+  })
+
+  // The invariant the surface leans on: every rail row is handed a working
+  // control, because one function answers both questions. Asserted over the
+  // whole status vocabulary rather than over one fixture.
+  it('EVERY rail row is movable, by construction — no row can appear without a control', () => {
+    const rows = ['review', 'scheduled', 'approved', 'error', 'published', 'generating', 'skipped']
+      .flatMap(s => [
+        d({ id: `${s}-i`, status: s, scheduled_at: null, client_id: null }),
+        d({ id: `${s}-c`, status: s, scheduled_at: null, client_id: 'risedtc' }),
+      ])
+    const rail = buildCalendarRail(rows)
+    expect(rail.length).toBeGreaterThan(0)
+    expect(rail.every(r => r.movable)).toBe(true)
+  })
+
+  it('🔴 BOTH LANES — the date RPC has no client_id branch, so neither does the rail', () => {
+    const rows = [
+      d({ id: 'ivan', client_id: null, status: 'review', scheduled_at: null }),
+      d({ id: 'client', client_id: 'risedtc', status: 'review', scheduled_at: null }),
+    ]
+    expect(buildCalendarRail(rows).map(r => r.id).sort()).toEqual(['client', 'ivan'])
+  })
+
+  it('OLDEST FIRST — a 35-day row is never buried under this morning’s batch', () => {
+    const rows = [
+      d({ id: 'new', status: 'review', scheduled_at: null, created_at: '2026-08-21T09:00:00Z' }),
+      d({ id: 'old', status: 'review', scheduled_at: null, created_at: '2026-07-17T09:00:00Z' }),
+      d({ id: 'mid', status: 'review', scheduled_at: null, created_at: '2026-08-01T09:00:00Z' }),
+    ]
+    expect(buildCalendarRail(rows).map(r => r.id)).toEqual(['old', 'mid', 'new'])
+  })
+
+  it('carries created_at, because the only fact that ranks a backlog is how long it waited', () => {
+    const row = d({ status: 'review', scheduled_at: null, created_at: '2026-07-17T09:00:00Z' })
+    expect(buildCalendarRail([row])[0].createdAt).toBe('2026-07-17T09:00:00Z')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// ARMED vs PLANNED (2026-08-22)
+//
+// A `review` row with a `scheduled_at` does not publish. Six live risedtc rows
+// are in exactly that shape (Aug 24-31) against two armed ones (Sep 1, Sep 7),
+// and before `arming` every one of the eight drew an identical chip.
+// ---------------------------------------------------------------------------
+
+describe('armingOf — a date is not a publisher', () => {
+  it('🔴 a DATED REVIEW row is PLANNED, never armed — nothing reads status=review', () => {
+    expect(armingOf('review', 'draft')).toBe('planned')
+    expect(buildCalendarItems([d({ status: 'review' })], [], NOW)[0].arming).toBe('planned')
+  })
+  it('status=scheduled is ARMED — that is the Bridge’s own predicate', () => {
+    expect(buildCalendarItems([d({ status: 'scheduled' })], [], NOW)[0].arming).toBe('armed')
+  })
+  it('approved-and-dated is planned too: it is not the status the publisher reads', () => {
+    expect(armingOf('approved', 'draft')).toBe('planned')
+  })
+  it('published is neither — it has already gone', () => {
+    expect(armingOf('published', 'draft')).toBe('out')
+    expect(armingOf('published', 'queue')).toBe('out')
+  })
+  it('🔴 STUCK IS ARMED AND LATE, not planned — something WAS meant to fire it', () => {
+    // isStuckScheduled is status='scheduled' past its time. Calling that
+    // "planned" would say nobody was going to publish it.
+    expect(buildCalendarItems([d({ scheduled_at: '2026-08-01T10:00:00Z' })], [], NOW)[0])
+      .toMatchObject({ stage: 'stuck', arming: 'armed' })
+    expect(armingOf('stuck', 'queue')).toBe('armed')
+  })
+  it('a publish-queue chip is armed by definition — it IS the publisher’s row', () => {
+    expect(buildCalendarItems([], [q()], Date.parse('2026-08-09T00:00:00Z'))[0].arming).toBe('armed')
+  })
+  it('every state has a word, so the chip never encodes this in colour alone', () => {
+    expect(ARMING_LABEL.armed).toBe('Armed')
+    expect(ARMING_LABEL.planned).toBe('Planned')
+    expect(ARMING_LABEL.out).toBe('Posted')
+  })
+})
+
+describe('canArm — which planned rows THIS surface can hand to a publisher', () => {
+  it('a planned row on Ivan’s lane: scheduleDraft is scoped .is(client_id, null)', () => {
+    expect(canArm({ client_id: null }, 'planned')).toBe(true)
+    expect(buildCalendarItems([d({ status: 'review', client_id: null })], [], NOW)[0].armable).toBe(true)
+  })
+  it('🔴 NEVER a client row — its arming RPC also sets board_visible=true', () => {
+    // operator_schedule_draft publishes the post onto a paying client's live
+    // board as a side effect. That decision does not belong on a hover control.
+    expect(canArm({ client_id: 'risedtc' }, 'planned')).toBe(false)
+    expect(buildCalendarItems([d({ status: 'review', client_id: 'risedtc' })], [], NOW)[0].armable).toBe(false)
+  })
+  it('never an already-armed or already-posted row', () => {
+    expect(canArm({ client_id: null }, 'armed')).toBe(false)
+    expect(canArm({ client_id: null }, 'out')).toBe(false)
+  })
+  it('a queue chip is never armable — there is no draft row for the write to take', () => {
+    expect(buildCalendarItems([], [q()], NOW)[0].armable).toBe(false)
   })
 })
 

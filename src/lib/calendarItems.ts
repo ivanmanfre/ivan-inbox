@@ -72,10 +72,26 @@ export type CalendarItem = {
   type: string | null
   /** Whether this row can be re-dated from this surface. See canMoveDate. */
   movable: boolean
+  /** Whether anything will actually publish this. See armingOf. */
+  arming: CalendarArming
+  /** Whether THIS surface holds a write that can arm it. See canArm. */
+  armable: boolean
 }
 
-/** The `Ready, no date` rail: approved, never dated, and on no other calendar. */
-export type CalendarRail = { id: string; title: string; type: string | null; movable: boolean }
+/**
+ * The `No date yet` rail: datable, never dated, and on no other calendar.
+ *
+ * `createdAt` rides along because the rail is a BACKLOG now rather than a
+ * handful of leftovers (89 rows live, oldest 35.6d), and the only fact that
+ * ranks a backlog is how long each row has been waiting.
+ */
+export type CalendarRail = {
+  id: string
+  title: string
+  type: string | null
+  movable: boolean
+  createdAt: string
+}
 
 export function draftTitle(d: ContentDraft): string {
   return d.title?.trim() || d.topic?.trim() || 'Untitled'
@@ -145,6 +161,80 @@ export function itemDayISO(plannedISO: string, actualISO: string | null | undefi
   return Number.isFinite(Date.parse(actualISO)) ? actualISO : plannedISO
 }
 
+/**
+ * ARMED, PLANNED, OR ALREADY OUT — the fact a date on its own does not carry.
+ *
+ * 🔴🔴 A DATE IS NOT A PUBLISHER. The n8n Bridge (yzXqLDIpuNzuhUQq) reads
+ * `status='scheduled'` + `scheduled_at`; a row at `review` carrying a
+ * `scheduled_at` is a plan and NOTHING fires it. Live 2026-08-22: risedtc holds
+ * six such rows (Aug 24, 25, 26, 27, 28, 31) against two armed ones (Sep 1,
+ * Sep 7), and before this function every one of the eight drew the same chip.
+ * Six days of a client's forward month read as covered while nothing was going
+ * to go out on any of them.
+ *
+ * That mattered less when the rail was filtered to a status with zero rows,
+ * because nothing on this surface encouraged dating a review row. The rail now
+ * offers 89 of them, so the distinction has to be on the chip's face before the
+ * rail is allowed to fill it.
+ *
+ * The three answers:
+ *  · `out`     — it has gone (published). The chip already carries a ✓ and its
+ *                real posted time, so this one is not re-stated in a word: at a
+ *                112px cell `08:14 Posted` truncates, and a truncated word reads
+ *                as a bug (the same measurement the ✓ exists because of).
+ *  · `armed`   — a publisher holds it. Either the draft is at `scheduled`
+ *                (the Bridge's own predicate) or the chip IS a publish-queue
+ *                row, which is the queue by definition.
+ *  · `planned` — dated, and nothing reads it. `review` and `approved`.
+ *
+ * `stuck` is ARMED and late, not planned: on the draft side it is
+ * isStuckScheduled, which is `status='scheduled'` past its time, and on the
+ * queue side it is a failed or past-due queue row. In both cases something WAS
+ * meant to fire it. Calling that "planned" would say nobody was going to
+ * publish it, which is the opposite of what went wrong.
+ */
+export type CalendarArming = 'armed' | 'planned' | 'out'
+
+export function armingOf(stage: ContentStage, source: CalendarSource): CalendarArming {
+  if (stage === 'published') return 'out'
+  if (source === 'queue') return 'armed'
+  return stage === 'scheduled' || stage === 'stuck' ? 'armed' : 'planned'
+}
+
+/** One word per state, and the same words the chip and the month count use. */
+export const ARMING_LABEL: Record<CalendarArming, string> = {
+  armed: 'Armed',
+  planned: 'Planned',
+  out: 'Posted',
+}
+
+/**
+ * WHETHER THIS SURFACE CAN ARM THE ROW, and it is deliberately the narrower of
+ * two rules rather than the wider.
+ *
+ * The app holds two arming writes and they are not interchangeable:
+ *  · Ivan's lane — `scheduleDraft` (studioActions.ts), a direct UPDATE scoped
+ *    `.is('client_id', null)` setting status='scheduled' + scheduled_at.
+ *  · a client lane — `operator_schedule_draft`, which ALSO sets
+ *    `board_visible=true`, i.e. it publishes the post onto a paying client's
+ *    live board as a side effect, and refuses Ivan's own rows outright
+ *    (`not_a_client_draft`).
+ *
+ * 🔴 Only the first is offered here. The draft window's own Schedule button is
+ * gated `lane === 'ivan'` (DraftPane.tsx) for exactly that reason, so a client
+ * lane has no arming affordance in this app at all today, and inventing one on
+ * a calendar chip would put client-facing copy on a client's board from a
+ * hover control. That is a decision with an owner, and this is not the surface
+ * that gets to make it.
+ *
+ * So: a PLANNED chip on Ivan's lane, and nothing else. A planned client chip
+ * still says Planned, because the lie is worth naming even where this surface
+ * cannot fix it.
+ */
+export function canArm(d: Pick<ContentDraft, 'client_id'>, arming: CalendarArming): boolean {
+  return arming === 'planned' && d.client_id === null
+}
+
 export function buildCalendarItems(
   rows: ContentDraft[],
   queue: ScheduledQueueRow[] = [],
@@ -164,6 +254,7 @@ export function buildCalendarItems(
     const at = driftById.get(d.id) ?? drift.get(bodyKey(d.post_body)) ?? d.scheduled_at
     const day = dayKeyOf(itemDayISO(at, d.published_at))
     if (!day) continue
+    const arming = armingOf(stage, 'draft')
     out.push({
       id: d.id,
       source: 'draft',
@@ -175,6 +266,8 @@ export function buildCalendarItems(
       stage,
       type: d.type,
       movable: canMoveDate(d),
+      arming,
+      armable: canArm(d, arming),
     })
   }
   for (const it of queueOnlyItems(rows, queue, now)) out.push(it)
@@ -407,21 +500,59 @@ export function queueOnlyItems(
       // uuid; handing it a scheduled_posts id answers `not_found` — a button
       // that always fails is worse than no button.
       movable: false,
+      // A queue row IS the publisher's own row, so it is armed by definition,
+      // and for the same reason there is no draft here for an arming write to
+      // take.
+      arming: armingOf(stage, 'queue'),
+      armable: false,
     })
   }
   return out
 }
 
 /**
- * `Ready, no date` — approved and never dated.
+ * `No date yet` — the rows the date write will take, that have no date.
  *
- * Same predicate the Approved section's sub-line already counts ("N approved
- * without a date — on no other surface"), so the two can never disagree.
+ * 🔴🔴 THIS RAIL WAS FILTERED TO A STATUS WITH ZERO ROWS AND SAID SO IN ITS OWN
+ * DOC COMMENT. It read `d.status === 'approved' && !d.scheduled_at`, while
+ * canMoveDate twenty-five lines below — which is operator_set_schedule_date's
+ * status line, verbatim — refuses `approved` outright, and recorded the census
+ * that proves the rail could never hold anything: "Nothing on either lane sits
+ * at that status today (live census 2026-08-07: 0 rows, both lanes)."
+ *
+ * So the one surface built to give undated posts a date offered the operator a
+ * set the database will not accept, could not be filled by construction, and
+ * rendered "Nothing approved is sitting without a date." forever. Meanwhile the
+ * rows the RPC DOES accept sat on another tab. Live 2026-08-22, per lane:
+ *
+ *   lane      rail before   rail after
+ *   ivan            0            2
+ *   risedtc         0           48
+ *   arch            0           39
+ *
+ * 89 rows, which is the same 89 the usage evidence measured as "content drafts
+ * in review with no scheduled_at".
+ *
+ * 🔴 THE PREDICATE IS DERIVED, NEVER RE-STATED. `canMoveDate` is the only place
+ * the status list is written down, here and on the chip, so the rail and the
+ * move control cannot drift apart again. A row in this rail therefore ALWAYS
+ * has a working `Give it a date` control: the same function answers both
+ * questions, and the test asserts the invariant rather than the instance.
+ *
+ * ORDER: OLDEST FIRST, by created_at. The rail is a backlog (89 rows, median
+ * 7.6d, oldest 35.6d, 56 of 95 over a week) and the oldest row is the one that
+ * has been waiting longest for the decision this rail exists to take. Newest
+ * first would bury a 35-day row under the batch generated this morning, which
+ * is exactly how it got to 35 days.
  */
 export function buildCalendarRail(rows: ContentDraft[]): CalendarRail[] {
   return rows
-    .filter(d => d.status === 'approved' && !d.scheduled_at)
-    .map(d => ({ id: d.id, title: draftTitle(d), type: d.type, movable: canMoveDate(d) }))
+    .filter(d => canMoveDate(d) && !d.scheduled_at)
+    .sort((a, b) => (a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0))
+    .map(d => ({
+      id: d.id, title: draftTitle(d), type: d.type,
+      movable: canMoveDate(d), createdAt: d.created_at,
+    }))
 }
 
 /**
