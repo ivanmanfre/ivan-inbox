@@ -1006,17 +1006,17 @@
  },
  "liveCalendar": {
   "div.cal-day": {
-   "background-color": "rgb(255, 255, 255)",
+   "background-color": "rgb(28, 28, 28)",
    "border-radius": "10px",
-   "box-shadow": "rgba(0, 0, 0, 0.09) 0px 0px 0px 1px inset"
+   "box-shadow": "rgba(255, 255, 255, 0.07) 0px 0px 0px 1px inset"
   },
   "div.cal-day-empty": {
-   "background-color": "rgb(230, 230, 224)",
+   "background-color": "rgb(20, 20, 20)",
    "border-radius": "10px",
    "box-shadow": "none"
   },
   "div.cal-chip": {
-   "background-color": "rgb(234, 234, 228)",
+   "background-color": "rgb(39, 39, 39)",
    "border-radius": "6px",
    "box-shadow": "none",
    "border-left-width": "3px"
@@ -1026,7 +1026,7 @@
    "border-top-style": "none"
   },
   "div.wb-sech": {
-   "background-color": "rgb(234, 234, 228)",
+   "background-color": "rgb(39, 39, 39)",
    "border-top-width": "0px",
    "border-bottom-width": "0px"
   }
