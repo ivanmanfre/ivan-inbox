@@ -162,7 +162,7 @@ export function itemDayISO(plannedISO: string, actualISO: string | null | undefi
 }
 
 /**
- * ARMED, PLANNED, OR ALREADY OUT — the fact a date on its own does not carry.
+ * ARMED, PLANNED, OR ALREADY OUT: the fact a date on its own does not carry.
  *
  * 🔴🔴 A DATE IS NOT A PUBLISHER. The n8n Bridge (yzXqLDIpuNzuhUQq) reads
  * `status='scheduled'` + `scheduled_at`; a row at `review` carrying a
@@ -178,14 +178,14 @@ export function itemDayISO(plannedISO: string, actualISO: string | null | undefi
  * rail is allowed to fill it.
  *
  * The three answers:
- *  · `out`     — it has gone (published). The chip already carries a ✓ and its
- *                real posted time, so this one is not re-stated in a word: at a
- *                112px cell `08:14 Posted` truncates, and a truncated word reads
- *                as a bug (the same measurement the ✓ exists because of).
- *  · `armed`   — a publisher holds it. Either the draft is at `scheduled`
- *                (the Bridge's own predicate) or the chip IS a publish-queue
- *                row, which is the queue by definition.
- *  · `planned` — dated, and nothing reads it. `review` and `approved`.
+ *  · `out` is gone (published). The chip already carries a ✓ and its real
+ *    posted time, so this one is not re-stated in a word: at a 112px cell
+ *    `08:14 Posted` truncates, and a truncated word reads as a bug (the same
+ *    measurement the ✓ exists because of).
+ *  · `armed` means a publisher holds it. Either the draft is at `scheduled`
+ *    (the Bridge's own predicate) or the chip IS a publish-queue row, which is
+ *    the queue by definition.
+ *  · `planned` means dated with nothing reading it. `review` and `approved`.
  *
  * `stuck` is ARMED and late, not planned: on the draft side it is
  * isStuckScheduled, which is `status='scheduled'` past its time, and on the
@@ -213,9 +213,9 @@ export const ARMING_LABEL: Record<CalendarArming, string> = {
  * two rules rather than the wider.
  *
  * The app holds two arming writes and they are not interchangeable:
- *  · Ivan's lane — `scheduleDraft` (studioActions.ts), a direct UPDATE scoped
+ *  · Ivan's lane: `scheduleDraft` (studioActions.ts), a direct UPDATE scoped
  *    `.is('client_id', null)` setting status='scheduled' + scheduled_at.
- *  · a client lane — `operator_schedule_draft`, which ALSO sets
+ *  · a client lane: `operator_schedule_draft`, which ALSO sets
  *    `board_visible=true`, i.e. it publishes the post onto a paying client's
  *    live board as a side effect, and refuses Ivan's own rows outright
  *    (`not_a_client_draft`).
@@ -511,12 +511,12 @@ export function queueOnlyItems(
 }
 
 /**
- * `No date yet` — the rows the date write will take, that have no date.
+ * `No date yet`: the rows the date write will take, that have no date.
  *
  * 🔴🔴 THIS RAIL WAS FILTERED TO A STATUS WITH ZERO ROWS AND SAID SO IN ITS OWN
  * DOC COMMENT. It read `d.status === 'approved' && !d.scheduled_at`, while
- * canMoveDate twenty-five lines below — which is operator_set_schedule_date's
- * status line, verbatim — refuses `approved` outright, and recorded the census
+ * canMoveDate twenty-five lines below: which is operator_set_schedule_date's
+ * status line, verbatim: refuses `approved` outright, and recorded the census
  * that proves the rail could never hold anything: "Nothing on either lane sits
  * at that status today (live census 2026-08-07: 0 rows, both lanes)."
  *

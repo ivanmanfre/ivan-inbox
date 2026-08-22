@@ -1,0 +1,52 @@
+{
+  "out": {
+    "stock": {
+      "afterBytes": 126763,
+      "beforeBytes": 126763,
+      "afterSha": "c3a4144a225bdece",
+      "beforeSha": "c3a4144a225bdece",
+      "identical": true
+    },
+    "arm": {
+      "harnessed": {
+        "id": "a207d36b-efeb-4a17-b8a5-1c8095da6f71",
+        "title": "Two months of build, then 30k a month to 80k a month on lead magnets",
+        "at": "2026-08-25T07:00:00.000Z"
+      },
+      "plannedChips": 1,
+      "armButtons": 1,
+      "armLabel": "Arm Two months of build, then 30k a month to 80k a month on lead magnets for Tue, Aug 25, 2026, 09:00 AM",
+      "counts": [
+        "1armed",
+        "1planned",
+        "12posted",
+        "6queue only"
+      ],
+      "confirmTitle": null,
+      "confirmNamesTime": true,
+      "confirmText": [
+        "armed",
+        "ARMED",
+        "ARM IT",
+        "The publisher reads status='scheduled' and posts it at Tue, Aug 25, 2026, 09:00 AM. This is not an internal mark: it arms the bridge that publishes.",
+        "Arm it"
+      ],
+      "writesTried": [
+        {
+          "kind": "rest",
+          "method": "PATCH",
+          "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?id=eq.a207d36b-efeb-4a17-b8a5-1c8095da6f71&client_id=is.null&select=id",
+          "body": "{\"status\":\"scheduled\",\"scheduled_at\":\"2026-08-25T07:00:00.000Z\"}"
+        }
+      ]
+    }
+  },
+  "attempted": [
+    {
+      "kind": "rest",
+      "method": "PATCH",
+      "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1/carousel_drafts?id=eq.a207d36b-efeb-4a17-b8a5-1c8095da6f71&client_id=is.null&select=id",
+      "body": "{\"status\":\"scheduled\",\"scheduled_at\":\"2026-08-25T07:00:00.000Z\"}"
+    }
+  ]
+}
