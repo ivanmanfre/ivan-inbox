@@ -643,3 +643,141 @@ span.dw-sec-t`) is a fifth variant of the same shape, at 12px/800/UPPER with
 **One `.wbkv` primitive replaces 26 to 45 implementations across 10 of 10
 surfaces, covering 146 to 163 live rows.** It is the single highest-coverage
 primitive in this audit.
+
+---
+
+## E · SPACING + RHYTHM CENSUS
+
+Tool: `audit-tools/analyze-e.mjs`. Padding and gap come from the epoch-1
+(11:04, pre-builder) live measurement, bucketed by ROLE. Radii are read
+**statically from the sheets at commit `0117a78`**, because the builder shipped a
+new radius scale in `wbsys.css` at 11:32 and a live read would no longer be a
+before-count.
+
+### E0 · the declared scale
+
+| token | value | file:line | `var()` reads |
+|---|---|---|---|
+| `--sp-1` | 4px | `faithful.css:3110` | 24 |
+| `--sp-2` | 8px | `faithful.css:3110` | 58 |
+| `--sp-3` | 12px | `faithful.css:3110` | 52 |
+| `--sp-4` | 16px | `faithful.css:3110` | 8 |
+| `--sp-5` | 24px | `faithful.css:3110` | 7 |
+| `--gut` | 16px | `faithful.css:95` | 70 |
+| `--pad-card` | 24px | `faithful.css:96` | 5 |
+| | | **total token reads** | **224** |
+
+The scale is a 4/8 ladder: `{4, 8, 12, 16, 24}`. Its own comment
+(`faithful.css:3107-3109`) says it was declared "so the rules below stop
+inventing 11px / 13px / 14px one-offs".
+
+### E1 · headline
+
+| measure | count |
+|---|---|
+| elements carrying padding or gap | 1,338 |
+| elements carrying padding | 871 |
+| non-zero spacing declarations | 4,748 |
+| **declarations OFF the {4,8,12,16,24} scale** | **2,972 = 62.6%** |
+| distinct off-scale numbers | **18** |
+| distinct padding quadruples | **96** |
+| distinct gap values | **17** (of which 12 are off-scale) |
+| **distinct rendered radii, pre-builder** | **11**, plus three spellings of "pill" |
+
+**The scale is read 224 times and contradicted 2,972 times.** The comment at
+`faithful.css:3107` predicted the exact failure mode and the failure happened
+anyway: the three most common spacing values in the running app are **10px (462
+instances), 14px (302) and 6px (336)**, and not one of them is on the scale.
+
+### E2 · distinct padding values per ROLE
+
+Bucketed so a card's 24px is never compared to a chip's 4px. The brief's own
+standard applies: N numbers doing N jobs is fine, N numbers doing ONE job is not.
+
+| role | elements | distinct padding values | off-scale values in that role |
+|---|---|---|---|
+| **button** | 113 | **15** | 2, 5, 6, 7, 9, 10, 11, 13, 14, 18 |
+| **pane** | 108 | **12** | 2, 3, 6, 9, 10, 13, 14, 20, 32 |
+| **section** | 131 | **11** | 2, 3, 6, 7, 10, 14, 18 |
+| **card** | 165 | **10** | 2, 6, 13, 14, 18, 20 |
+| **chip** | 139 | 8 | 1, 2, 3, 5, 6, 11 |
+| **row** | 101 | 8 | 2, 6, 10, 13, 14 |
+| input | 3 | 4 | 9, 10, 11 |
+| other | 578 | 18 | 1, 2, 6, 7, 9, 10, 11, 14, 20, 22, 28, 30, 40 |
+
+**The clearest single failure is `button`: 15 distinct padding values for one
+job.** Ten of the fifteen are off-scale. This is the same defect census C found
+from the other end (17 distinct control heights, 45 distinct treatments), and it
+has the same root cause: when the flattener silently oversizes the type inside a
+control, the next author reaches for padding to compensate instead of finding the
+dead declaration.
+
+`pane` at 12 and `section` at 11 are the next worst, and those are the surfaces
+the elevation model is about to touch anyway.
+
+### E3 · gap values
+
+17 distinct gaps: `1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16, 18, 20, 24`.
+
+Only `4, 8, 12, 16, 24` are on the scale. **The app uses every integer from 1 to
+13 as a gap**, which is the signature of gaps being nudged by eye rather than
+chosen from a ladder.
+
+### E4 · the most common padding pairs
+
+871 padded elements, **96 distinct padding quadruples**.
+
+| padding (T R B L) | instances | share of padded elements | mostly | on scale? |
+|---|---|---|---|---|
+| `10 14 10 14` | **111** | **12.7%** | rows, cards | **NO** (neither 10 nor 14) |
+| `6 6 6 6` | 84 | 9.6% | the calendar day cell | **NO** |
+| `24 24 24 24` | 13 | 1.5% | hero cards | yes (`--pad-card`) |
+| `2 14 2 14` | 19 | 2.2% | sections | **NO** |
+| `20 14 16 14` | 10 | 1.1% | sections | **NO** |
+
+**The single most common padding pair in the app is `10px 14px`, at 12.7% of
+every padded element, and it is off-scale on both axes.**
+
+Restricted to SECTION-level elements (pane, card, section: 305 elements):
+
+| padding | instances | share of sections |
+|---|---|---|
+| `6 6 6 6` | 84 | **27.5%** |
+| `2 14 2 14` | 19 | 6.2% |
+| `24 24 24 24` | 13 | 4.3% |
+
+The 27.5% is one element repeated: `.cal-day{padding:6px}` (`faithful.css:3725`),
+84 day cells on the calendar. Excluding the two calendar-bearing screens, the
+picture is flatter and worse: 160 section elements, top value `2 14 2 14` at
+8.8%, then `24 24 24 24` at 8.1%. **No section padding value accounts for more
+than 9% of sections.** There is no dominant section rhythm to speak of.
+
+### E5 · radii, and three spellings of "pill"
+
+Static count at commit `0117a78`, before the builder's new scale:
+
+| radius | declarations | sheets |
+|---|---|---|
+| 1px | 1 | faithful.css |
+| 2px | 5 | faithful.css, styles.css |
+| 4px | 2 | styles.css, wb2026.css |
+| **8px** | **30** | faithful.css, styles.css |
+| 10px | 1 | styles.css |
+| **12px** | **57** | all three |
+| **20px** | **36** | all three |
+| 40px | 1 | faithful.css (`--plate-r`) |
+| 99px | 34 | styles.css |
+| 999px | 33 | all three |
+| 9999px | 2 | styles.css |
+
+Two findings.
+
+1. **11 distinct rendered radii** where the phase-1 spec asks for 4. The token
+   family (`--r-chip` 8, `--r-ctl` 12, `--r-card`/`--r-hero` 20, `--r-pill` 999)
+   accounts for the three big buckets, but 1px, 2px, 4px and 10px are hand-typed
+   one-offs that no token explains.
+2. **"Pill" is spelled three different ways**: `99px` (34 declarations, all in
+   `styles.css`), `999px` (33, all three sheets, this is `--r-pill`) and `9999px`
+   (2, `styles.css`). They render identically on most elements and diverge on
+   tall ones, and they guarantee that any future search for the pill radius finds
+   only a third of it.
