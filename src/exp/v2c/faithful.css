@@ -3356,9 +3356,19 @@
    rail tier — meta, 600, label tracking, text3 — so `res-hdr`, the evidence
    rail's own head and the queue rail's head stop being three different labels
    in one window. */
-.wb.wb.wb .res-hdr, .wb.wb.wb .dw-insp-h, .wb.wb.wb .dw-queue-h{
+.wb.wb.wb .res-hdr, .wb.wb.wb .dw-queue-h{
   font-size:var(--fs-meta); font-weight:600; letter-spacing:.05em;
   line-height:var(--lh-meta); text-transform:uppercase; color:var(--text3);
+}
+/* The draft window's evidence-rail header used to share this exact all-caps
+   meta tier with its two siblings above (SHOUTED "BACKEND DEPTH", the
+   owner's own named complaint: "this looks like an internal tool ui"). Same
+   size and weight as the rail tier it still belongs to, but no uppercase and
+   no tracking, because those two are what made a plain-English header
+   ("What decides it") read as a shout instead of a sentence. */
+.wb.wb.wb .dw-insp-h{
+  font-size:var(--fs-meta); font-weight:600;
+  line-height:var(--lh-meta); text-transform:none; color:var(--text3);
 }
 /* The ordinal and the count are VALUES, so they take the data face — one
    register for numbers, app-wide, which is what makes a count scannable beside
@@ -3705,6 +3715,10 @@
    draft behind it. `margin-left:0` cancels the auto that pushes the first one
    right, so the pair stays a pair. */
 .wb.wb.wb .cal-count-q{ margin-left:0; padding-left:var(--sp-3) }
+/* The armed/planned pair, and any figure that follows it, ride together: the
+   `auto` margin belongs to the FIRST count only, so the group stays a group
+   instead of spreading across the bar. Same rule cal-count-q already keeps. */
+.wb.wb.wb .cal-count-n{ margin-left:0; padding-left:var(--sp-3) }
 
 .wb.wb.wb .cal-body{ padding:0 var(--gut) }
 
@@ -3747,13 +3761,20 @@
    the one that carries meaning, so the fill and the ring are gone: the chip is
    a tinted plate that fills in on hover, and the rail stays because it is the
    only thing here encoding status. */
+/* A COLUMN, with the old flex row as its first child. The chip grew a second
+   row (`Arm it`) that only planned rows on Ivan's lane draw, so the plate has
+   to stack; every chip without one renders exactly as it did, because the row
+   wrapper carries the layout the plate used to. */
 .wb.wb.wb .cal-chip{
   position:relative;
-  display:flex; align-items:stretch; min-height:38px;
+  display:flex; flex-direction:column; align-items:stretch; min-height:38px;
   min-width:0; max-width:100%;
   border-radius:var(--r-ctl); overflow:hidden;
   background:var(--surface1);
   border-left:3px solid var(--text4);
+}
+.wb.wb.wb .cal-chip-row{
+  display:flex; align-items:stretch; min-height:38px; width:100%; min-width:0;
 }
 .wb.wb.wb .cal-chip:hover{ background:var(--surface2) }
 /* Drag: grab on the plate, but the two buttons inside keep their own cursors
@@ -3812,8 +3833,15 @@
    2026-08-09. */
 /* min-width:0 + overflow are load-bearing: without them `08:14 posted` sets the
    chip's intrinsic width and the chip grows straight out of its day cell. */
+/* WRAPS RATHER THAN CLIPS, since 2026-08-22. The head carries a second token
+   now (Armed / Planned) and measured at 1440 the day cell is 108px, where
+   `08:00 PLANNED` overflows by a few pixels and clipped to `08:00 PLANNE`. A
+   truncated word reads as a bug, and this word is the one saying whether the
+   post goes out, so it is the last thing on the chip allowed to be half a word.
+   Wrapped, it takes its own line on a narrow canvas and sits inline at 2560
+   where there is room (measured: 0 clipped at 268px, 0 at 342px on mobile). */
 .wb.wb.wb .cal-chip-h{
-  display:flex; align-items:baseline; gap:5px;
+  display:flex; align-items:baseline; gap:5px; flex-wrap:wrap; row-gap:0;
   flex:none; min-width:0; max-width:100%; overflow:hidden; white-space:nowrap;
 }
 .wb.wb.wb .cal-chip-hh{
@@ -3827,6 +3855,30 @@
   flex:none; font-size:var(--fs-meta); line-height:1; color:var(--sev-clear,var(--text3));
 }
 .wb.wb.wb .cal-chip[data-st='published'] .cal-chip-hh{ color:var(--text4) }
+/* ARMED / PLANNED, IN A WORD. Colour is the second cue here, never the only
+   one: the distinction is whether anything will publish the post, and that is
+   not a thing a hue can be trusted to say. `flex:none` + nowrap so it is never
+   the element that truncates: at a 112px cell the clock and this word fit
+   together and the TITLE is the line with room to wrap. */
+.wb.wb.wb .cal-chip-arm{
+  flex:none; white-space:nowrap;
+  font-size:var(--fs-eyebrow); letter-spacing:.04em; text-transform:uppercase;
+  color:var(--text4);
+}
+.wb.wb.wb .cal-chip[data-arm='planned'] .cal-chip-arm{ color:var(--sev-attention) }
+/* THE ARM STEP. A full-width row under the plate, drawn only on a planned row
+   this surface can actually arm, and always followed by a confirm that names
+   the day and the time. */
+.wb.wb.wb .cal-chip-armb{
+  width:100%; min-height:22px; padding:0 8px;
+  text-align:left; border-radius:0;
+  background:var(--surface2); color:var(--text3);
+  font-size:var(--fs-eyebrow); letter-spacing:.04em; text-transform:uppercase;
+  box-shadow:inset 0 1px 0 var(--hairline);
+  cursor:pointer;
+}
+.wb.wb.wb .cal-chip-armb:hover:not(:disabled){ color:var(--text); background:var(--surface3) }
+.wb.wb.wb .cal-chip-armb:disabled{ opacity:.5; cursor:default }
 /* Two lines, then clamp. Wrapping beats ellipsing at 150px: most titles fit. */
 .wb.wb.wb .cal-chip-n{
   display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2;
@@ -3866,12 +3918,35 @@
 }
 
 /* ---- the rail ----------------------------------------------------------- */
-.wb.wb.wb .cal-rail{ margin-top:var(--sp-4) }
+.wb.wb.wb .cal-rail{ margin-top:var(--sp-4); min-width:0 }
 .wb.wb.wb .cal-rail-e{ padding:6px 0; font-size:var(--fs-meta); color:var(--text3) }
+.wb.wb.wb .cal-rail-h{
+  padding:0 0 6px; font-size:var(--fs-meta); line-height:var(--lh-meta); color:var(--text4);
+}
+/* ITS OWN SCROLL REGION, and this is load-bearing now. The rail was written for
+   the handful of rows a zero-row filter could never produce; it holds 48 on
+   risedtc and 39 on arch, and at 40px a row that is a 2,000px column beside a
+   700px grid: the grid would sit in the top fifth of a page that scrolls past
+   it. Capped against the VIEWPORT rather than a pixel count so a 2560 canvas
+   shows more rows than a 1440 one does, which is the point of the canvas. */
+.wb.wb.wb .cal-rail-l{
+  max-height:min(62vh,760px); overflow-y:auto; overscroll-behavior:contain;
+}
 .wb.wb.wb .cal-rr{
+  position:relative;
   display:flex; align-items:center; gap:var(--sp-2);
   min-height:40px; padding:4px 0;
   border-bottom:1px solid var(--hairline);
+}
+/* Drag: a rail row goes onto a day the same way a chip does, which is the step
+   that took the date write down to one gesture and one confirm. */
+.wb.wb.wb .cal-rr[draggable='true']{ cursor:grab }
+.wb.wb.wb .cal-rr[draggable='true']:active{ cursor:grabbing }
+.wb.wb.wb .cal-rr-drag{ opacity:.4 }
+.wb.wb.wb .cal-rr-age{
+  margin-left:var(--sp-2);
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-variant-numeric:tabular-nums; color:var(--text4);
 }
 .wb.wb.wb .cal-rr-t{
   flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:2px;
@@ -3883,12 +3958,28 @@
 }
 .wb.wb.wb .cal-rr-t:hover .cal-rr-n{ color:var(--text) }
 .wb.wb.wb .cal-rr-m{ font-size:var(--fs-meta); color:var(--text4) }
+/* OUT OF FLOW, ON HOVER, and it is the same trade `.cal-chip-mv` already makes
+   one section up. In flow the button took 110px of a 264px rail, which was
+   fine for the zero rows the old filter produced and clips 48 real titles to
+   about fifteen characters. Floated, every row reads its own headline and the
+   control appears where the pointer already is. Below 767px there is no hover
+   and the rail is full width, so it stays put. */
 .wb.wb.wb .cal-mv{
-  flex:none; min-height:32px; padding:0 var(--sp-3); font-size:var(--fs-meta);
-  background:var(--surface2); color:var(--text2);
+  position:absolute; top:50%; right:0; transform:translateY(-50%); z-index:1;
+  flex:none; min-height:28px; padding:0 var(--sp-2); font-size:var(--fs-meta);
+  background:var(--surface3); color:var(--text2);
   box-shadow:inset 0 0 0 1px var(--hairline);
+  opacity:0; pointer-events:none;
 }
+.wb.wb.wb .cal-rr:hover .cal-mv,
+.wb.wb.wb .cal-mv:focus-visible{ opacity:1; pointer-events:auto }
 .wb.wb.wb .cal-mv:hover{ color:var(--text) }
+@media (max-width:767px){
+  .wb.wb.wb .cal-mv{
+    position:static; transform:none; opacity:1; pointer-events:auto;
+    min-height:32px; padding:0 var(--sp-3); background:var(--surface2);
+  }
+}
 .wb.wb.wb .cal-note{
   margin-top:var(--sp-3); padding:10px 12px; border-radius:var(--r-ctl);
   background:var(--surface1); box-shadow:inset 0 0 0 1px var(--hairline);
