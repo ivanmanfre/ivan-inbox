@@ -429,14 +429,35 @@ function Skeleton() {
 // marks, search, Filters. Nothing that was REACHABLE only through the removed
 // band was deleted with it — the errored and past-due rows have their own
 // sections below, and the pipeline notes moved to Ops (OpsBoard, PipelineNotes).
+//
+// 🔴 2026-08-22. THE COUNT THAT BELONGS ABOVE THE TABS IS THE LANE'S, NOT THE
+// STAGE'S. The dashboard port audit asks for "a permanent count strip above the
+// tabs so the hidden tab's number stays visible", copied from the old Posts
+// board (PostWorkSurface.tsx:342-359). Measured on this build at 1440x900
+// before anything was added: all NINE rendered stage tabs and their numerals
+// are already inside the first viewport (Ideas 90 · Needs review 2 · Generating
+// 0 · Approved 0 · Scheduled 1 · Published 113 · Errors 48 · Archived 88 ·
+// Other 3). The tab bar IS that strip, and it has been since 2026-08-20. A
+// second row printing the same nine numbers is the D6 doubling this file
+// already retired once, at Ivan's word.
+//
+// What IS hidden above the tabs is the LANE. `carousel_drafts` at review splits
+// Ivan 2 · Mattan 54 · Davorin 39, and the lane pills printed none of it, so
+// 93 drafts at the decision stage were one unlabelled pill away and invisible.
+// That is the same fold the audit is describing, one level up, and it is the
+// bigger one. The pills report; they were already the control, so this adds no
+// second control and no second row.
 function CommandStrip({
-  lane, setLane, view, setView, laneNote, stats, filter,
+  lane, setLane, view, setView, laneNote, laneCounts, stats, filter,
 }: {
   lane: ContentLane
   setLane: (l: ContentLane) => void
   view?: ContentView
   setView?: (v: ContentView) => void
   laneNote?: React.ReactNode
+  // What each lane holds at REVIEW, from the shell's cross-lane read. Never
+  // from this surface's own rows, which only ever hold the selected lane.
+  laneCounts?: Partial<Record<ContentLane, number>>
   stats?: React.ReactNode
   filter: React.ReactNode
 }) {
@@ -470,14 +491,23 @@ function CommandStrip({
             {/* The lane switch is a VIEW switcher, so it keeps the pill grammar it
                 has always had; it is not a filter and never takes `label: value ⌄`. */}
             <div className="ct-cmd-lanes">
-              {CONTENT_LANES.map(k => (
-                <button
-                  type="button" key={k}
-                  className={`ct-cmd-lane${lane === k ? ' on' : ''}`}
-                  aria-current={lane === k ? 'true' : undefined}
-                  onClick={() => setLane(k)}
-                >{LANE_LABEL[k]}</button>
-              ))}
+              {CONTENT_LANES.map(k => {
+                const n = laneCounts?.[k] ?? 0
+                return (
+                  <button
+                    type="button" key={k}
+                    className={`ct-cmd-lane${lane === k ? ' on' : ''}`}
+                    aria-current={lane === k ? 'true' : undefined}
+                    onClick={() => setLane(k)}
+                    title={n > 0 ? `${LANE_LABEL[k]}: ${n} at review` : undefined}
+                  >
+                    {LANE_LABEL[k]}
+                    {/* A zero is not printed. An empty lane says so by staying
+                        quiet, which is what lets a number mean something. */}
+                    {n > 0 && <b className="ct-cmd-lane-n">{n}</b>}
+                  </button>
+                )
+              })}
             </div>
             {/* The Flow/Calendar switch sits INSIDE the id cluster, beside the
                 lane pills, because it answers the same kind of question: which
@@ -727,7 +757,7 @@ function StageTable({ s, rows, lane, refresh, onOpen, openId, sub, empty }: {
 // LANE A — Ivan
 // ---------------------------------------------------------------------------
 
-function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters, q, setQ, matched, view, setView, lane, setLane }: {
+function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters, q, setQ, matched, view, setView, lane, setLane, laneCounts }: {
   drafts: ContentDraft[]
   stages: ContentStages
   lane: ContentLane
@@ -742,6 +772,7 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
   matched: number | null
   view: ContentView
   setView: (v: ContentView) => void
+  laneCounts?: Partial<Record<ContentLane, number>>
 }) {
   // ONE TAB, persisted per lane. A view preference, so it keeps its own
   // localStorage key rather than riding in the section entry the filters use.
@@ -794,6 +825,7 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
     <>
       <CommandStrip
         lane={lane} setLane={setLane} view={view} setView={setView}
+        laneCounts={laneCounts}
         stats={
           // CALENDAR ONLY, since 2026-08-20. The marks and the tab bar print the
           // same four numbers one row apart — measured on the first tabbed
@@ -961,7 +993,7 @@ const CLIENT_TAB_KEYS: string[] = BOARD_ORDER.flatMap(g => CLIENT_STAGES.map(s =
 // on me" by omission.
 const CLIENT_TAB_ALWAYS = 'internal_review'
 
-function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, setQ, matched, view, setView, lane, setLane, onBoard }: {
+function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, setQ, matched, view, setView, lane, setLane, onBoard, laneCounts }: {
   drafts: ContentDraft[]
   lane: ContentLane
   setLane: (l: ContentLane) => void
@@ -969,6 +1001,7 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
   // switch rather than under a display title: how much of what we hold he can
   // actually see.
   onBoard: number
+  laneCounts?: Partial<Record<ContentLane, number>>
   openId: string | null
   onOpen: OpenDraft
   refresh: () => void
@@ -1043,6 +1076,7 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
     <>
       <CommandStrip
         lane={lane} setLane={setLane} view={view} setView={setView}
+        laneCounts={laneCounts}
         laneNote={drafts.length > 0
           ? (
             <span className="ct-cmd-note" title={`${onBoard} of the ${drafts.length} loaded drafts are visible on ${LANE_POSSESSIVE.risedtc} board`}>
@@ -1097,11 +1131,17 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
 
 // ---------------------------------------------------------------------------
 
-export function ContentList({ lane, setLane, openId, onOpen }: {
+export function ContentList({ lane, setLane, openId, onOpen, laneCounts }: {
   lane: ContentLane
   setLane: (l: ContentLane) => void
   openId: string | null
   onOpen: OpenDraft
+  // The cross-lane review split, read once in the shell (useGlanceCounts) and
+  // handed down. It is deliberately NOT derived here: useContent(lane) holds
+  // one lane at a time by construction (content.ts:103 is a query-layer
+  // filter), so a count computed from these rows could only ever restate the
+  // lane you are already looking at.
+  laneCounts?: Partial<Record<ContentLane, number>>
 }) {
   const { drafts, stages, matched, laneTotal, loading, error, loadedAt, refresh } = useContent(lane)
   const rowsRef = useRef<HTMLDivElement>(null)
@@ -1185,9 +1225,17 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
             Mattan lane with no way back to Ivan is a dead surface — which is
             exactly what deleting the hero would have caused if the strip only
             rendered on the happy path. The strip drops its numbers here (there
-            are none) and keeps its switch. */}
+            are none) and keeps its switch.
+            🔴 The LANE counts are the exception and they ride even here: they
+            come from the shell's own cross-lane read, not from this lane's
+            rows, so a broken or empty Ivan lane still says where the work is.
+            That is the state in which "which lane is holding something" is the
+            only question left. */}
         {(err || firstLoad || nothingMatched) && (
-          <CommandStrip lane={lane} setLane={switchLane} view={view} setView={setView} filter={null} />
+          <CommandStrip
+            lane={lane} setLane={switchLane} view={view} setView={setView}
+            laneCounts={laneCounts} filter={null}
+          />
         )}
         {err ? (
           <Failed
@@ -1219,6 +1267,7 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
             lane={lane} setLane={switchLane}
             filters={sect.filters} setFilters={setFilters} q={sect.q} setQ={setQ}
             matched={matched} view={view} setView={setView}
+            laneCounts={laneCounts}
           />
         ) : (
           <MattanLane
@@ -1226,6 +1275,7 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
             lane={lane} setLane={switchLane} onBoard={onBoard}
             filters={sect.filters} setFilters={setFilters} q={sect.q} setQ={setQ}
             matched={matched} view={view} setView={setView}
+            laneCounts={laneCounts}
           />
         )}
         <div style={{ height: 24 }} />
