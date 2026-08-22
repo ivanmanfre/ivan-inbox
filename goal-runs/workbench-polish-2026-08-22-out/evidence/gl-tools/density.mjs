@@ -2,7 +2,7 @@
 //
 // A "fact" is a leaf element, visible and fully inside the first viewport box,
 // whose own text is a QUANTITY (a bare number, or a number leading a short
-// phrase) — or a STATE DOT (an empty element whose class names a dot). Those
+// phrase), or a STATE DOT (an empty element whose class names a dot). Those
 // are the two things the glance layer trades in. Prose is excluded on purpose:
 // a paragraph is not a fact you can spot without reading it.
 import { open, settle } from './harness.mjs'
