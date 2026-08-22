@@ -825,3 +825,42 @@
   .wb.wb.wb .dwa-more-c{ transition:none }
 }
 
+
+/* ---- GRAFT 2 · the stage's metadata is text, not pills -------------------
+
+   Before: `Text`, `Needs review`, `edited 18h ago` as three bordered chips with
+   their own fill, measured `1px 6px` on `rgb(39,39,39)`. After: one line,
+   `Text · Needs review · edited 18h ago`, at the meta tier with no box.
+
+   This is reference-study §4 Move 1 read literally - "drop the border, quiet
+   inline prefix, the value is the target" - and it was the one place the
+   winning state still violated it. Scoped to `.dw-main-in`, so the same class
+   on nine other surfaces and in the inspector is untouched.
+
+   The SEMANTIC chips keep their colour. `ct-chip-bad` is a failing row saying
+   so, and a warning that stops warning to satisfy a pattern is a worse bug than
+   the pattern. What they lose is the box, not the meaning. */
+.wb.wb.wb .dw-main-in > .ct-meta{ gap:10px }
+.wb.wb.wb .dw-main-in > .ct-meta .ct-chip,
+.wb.wb.wb .dw-main-in > .ct-meta .ct-lane{
+  background:none; border:0; padding:0; border-radius:0;
+}
+.wb.wb.wb .dw-main-in > .ct-meta .ct-chip,
+.wb.wb.wb .dw-main-in > .ct-meta .ct-chip *,
+.wb.wb.wb .dw-main-in > .ct-meta .ct-lane,
+.wb.wb.wb .dw-main-in > .ct-meta .ct-lane *{
+  font-size:12px; font-weight:400; letter-spacing:0; line-height:1.45;
+}
+.wb.wb.wb .dw-main-in > .ct-meta .ct-chip{ color:var(--text3) }
+.wb.wb.wb .dw-main-in > .ct-meta .ct-chip-bad{ color:var(--sev-danger) }
+.wb.wb.wb .dw-main-in > .ct-meta .ct-chip-warn{ color:var(--sev-attention) }
+.wb.wb.wb .dw-main-in > .ct-meta .ct-chip-when{ color:var(--text2) }
+/* The separator is drawn by the row, not typed into the data, so a lane that
+   renders one fewer chip does not leave a leading middot. */
+.wb.wb.wb .dw-main-in > .ct-meta .ct-chip + .ct-chip::before,
+.wb.wb.wb .dw-main-in > .ct-meta .ct-lane + .ct-chip::before{
+  content:'\00B7';
+  margin-right:10px;
+  color:var(--text4);
+}
+
