@@ -8,7 +8,8 @@ import {
   CONTENT_LANES, ERROR_ALARM_HOURS, LANE_LABEL, LANE_POSSESSIVE, PIPELINE_STAGES,
   STAGE_LABEL, STAGE_SHORT, boardGroupOf, clientStageLabel,
   countBoardVisible, countUndated, deleteClientDraft, deleteDraft, draftExcerpt,
-  draftFailure, elapsedMinutes, generatingSince, groupByStage, isRecentError, isStuckGenerating,
+  canPromote, draftFailure, elapsedMinutes, generatingSince, groupByStage, isRecentError,
+  isStuckGenerating, setBoardVisible,
   reviewActionable, stageOf, taxonomyValue,
   type BoardGroup, type ContentDraft, type ContentLane, type ContentStage, type ContentStages,
 } from '../../lib/content'
@@ -129,6 +130,63 @@ function RowDelete({ d, lane, onDone }: { d: ContentDraft; lane: ContentLane; on
   )
 }
 
+// PROMOTE, ON THE ROW (p4b).
+//
+// 93 of the 95 drafts sitting in review are on a client lane, where
+// `reviewActionable` is false by construction, so the row offered nothing and
+// the only way to put one in front of the client was through the takeover:
+// click the row, scroll it, click "Put on Mattan's board", confirm. Four
+// interactions and a full-screen takeover, 93 times.
+//
+// This is the SAME `setBoardVisible` write the takeover makes, with the same
+// consequence stated in the same words, reached from the row. The takeover's
+// own control is untouched.
+//
+// 🔴 It is not a status write and it is not an approve. `approveDraft` is
+// scoped to Ivan's lane, and pointing it at a client row would set
+// status='approved', which is the one value operator_set_board_visible refuses
+// (`not_in_review`), locking the draft off the client's board for good.
+function PromoteRow({ d, lane, onDone }: { d: ContentDraft; lane: ContentLane; onDone: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const confirm = useConfirm()
+  if (!canPromote(d.status, lane)) return null
+  const who = LANE_LABEL[lane]
+  const run = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const ok = await confirm({
+      title: `Put this on ${LANE_POSSESSIVE[lane]} board?`,
+      message:
+        `${who} sees it. This is the one action here that reaches a client, and it fires his board’s own `
+        + `sync, so it lands within moments and not at some later batch. From there the decisions are his: `
+        + `approve, edit, veto, schedule. Nothing publishes: this writes board visibility and never touches `
+        + `the publisher.`,
+      confirmText: 'Put it on his board',
+    })
+    if (!ok) return
+    setBusy(true); setErr('')
+    try {
+      await setBoardVisible(d.id, true)
+      onDone()
+    } catch (er) {
+      // ClientRpcError carries the database's own refusal code, so the row says
+      // WHICH rule refused rather than "something went wrong".
+      setErr(er instanceof Error ? er.message : 'Could not put it on the board')
+      setBusy(false)
+    }
+  }
+  return (
+    <>
+      {err && <div className="ops-err">{err}</div>}
+      <div className="ct-ac" onClick={e => e.stopPropagation()}>
+        <button type="button" className="btn p ct-promote" disabled={busy} onClick={run}>
+          {busy ? 'Putting it up…' : 'To board'}
+        </button>
+      </div>
+    </>
+  )
+}
+
 function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
   d: ContentDraft; lane: ContentLane; refresh: () => void
   onOpen: OpenDraft; active: boolean
@@ -187,6 +245,13 @@ function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
   // board.
   const caps: RowCap[] = [
     ...(reviewActionable(d.status, lane) ? (['approve', 'skip'] as RowCap[]) : []),
+    // p4b. The measured defect: for a client review row this list evaluated to
+    // ['delete'] and nothing else, so selecting all 54 of Mattan's review rows
+    // offered exactly one bulk button and it was the destructive one. `canPromote`
+    // is the RPC's OWN predicate (lane is not Ivan's, status is 'review'), read
+    // from the same function the takeover's button reads, so the row and the bar
+    // and the database cannot disagree about who may be promoted.
+    ...(canPromote(d.status, lane) && boardGroupOf(d) !== 'board' ? (['promote'] as RowCap[]) : []),
     ...(lane === 'ivan' || boardGroupOf(d) !== 'board' ? (['delete'] as RowCap[]) : []),
   ]
   return (
@@ -301,6 +366,10 @@ function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
       {reviewActionable(d.status, lane) && (
         <ReviewActions id={d.id} onDone={refresh} compact demoteApprove={stage === 'error'} />
       )}
+      {/* The client lane's equivalent, in the same slot. The two are mutually
+          exclusive by lane, so `.ct-ac` is still rendered at most once and the
+          card's seven-column grid is untouched. */}
+      {boardGroupOf(d) !== 'board' && <PromoteRow d={d} lane={lane} onDone={refresh} />}
       <div className="ct-tail">
         <span className="ct-tm">{relTime(d.updated_at)}</span>
         <RowDelete d={d} lane={lane} onDone={refresh} />
