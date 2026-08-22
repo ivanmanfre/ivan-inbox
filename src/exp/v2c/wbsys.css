@@ -1061,6 +1061,37 @@
 }
 
 /* ---- DM rows -------------------------------------------------------------
+   MERGE NOTE, MEASURED AFTER JOINING §10's PRE-READ TO THIS SECTION'S TOKENS.
+   The two were built on different bases and neither saw the other. §10 puts a
+   generated line where the message preview goes; this section tightens that
+   same line and caps its measure in `ch`. They meet on ONE element: the note is
+   `.snip.snip-note`, not a second node, so every selector below reaches it with
+   no extra rule. Read back live at 1440, both densities, interceptor on:
+
+     comfortable   row 77.19px   snip max-width 886.88px (88ch)   line-height 25.6px
+     compact       row 61.19px   snip max-width 524.06px (52ch)   line-height 21.6px
+
+   and with a note swapped in, the row measured 93.84 -> 93.84 comfortable and
+   87.84 -> 87.84 compact. It replaces. It does not stack. `.snip` is
+   `white-space:nowrap; overflow:hidden; text-overflow:ellipsis`
+   (src/styles.css:75), which is WHY a generated sentence of any length costs
+   zero height. §10's `sum up` chip is likewise free: it lands in `.right`,
+   which on an undrafted row measures 40.84px against `.mid`'s 56.19px, so it
+   never reaches the height the row is already committed to. Hiding the chip
+   outright returns the identical three heights.
+
+   THE UNEVEN ROW IS OLDER THAN BOTH BRANCHES, AND BOTH BRANCHES SHRANK IT.
+   `.right` is a COLUMN (styles.css:78), so a drafted row stacks time, DRAFT and
+   Discard and outgrows `.mid`. Reconstructed on this build by reverting only
+   the two defect fixes below, the pre-merge heights were 107.19px undrafted and
+   146.03px drafted, a 39px spread. They are now 77.19 and 93.84, a 17px spread.
+   So the merge did not introduce the variance, it halved it, and ROW_H=73 in
+   InboxScreen is a CLOSER fit than it was: comfortable is 4px off where it used
+   to be 34px off. Compact sits 12px under ROW_H, still inside the error the
+   list has windowed against for nine merges, and OVERSCAN=6 covers it. Left
+   alone deliberately: squaring `.right` would mean redesigning a column neither
+   branch touched, and ROW_H is shared with #exp/stock, which has no density.
+
    Longhand top/bottom only: the shorthand at faithful.css:596 still owns
    left/right (var(--gut)), and a longhand here at equal specificity wins the
    cascade tie on source order (this file imports last) without touching
