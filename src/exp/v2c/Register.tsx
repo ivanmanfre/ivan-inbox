@@ -139,13 +139,13 @@ function DimBar({ d }: { d: { key: string; score: number; max: number; note: str
   const low = pct < DIM_THRESHOLD
   return (
     <div className={`qa-dim${low ? ' qa-dim-low' : ''}`}
-      title={d.note ? `${d.key} ${d.score}/${d.max} — ${d.note}` : `${d.key} ${d.score}/${d.max}`}>
+      title={d.note ? `${d.key} ${d.score}/${d.max} - ${d.note}` : `${d.key} ${d.score}/${d.max}`}>
       <span className="qa-dim-k">{dimName(d.key)}</span>
       <span className="qa-dim-g" aria-hidden>
         {/* The threshold is the judge's own pass mark for a dimension, and it
             is drawn rather than stated: at or above 70% of ITS OWN max the fill
             is the clear mark, below it the fill takes attention. No average is
-            ever computed across dimensions — they do not share a denominator.
+            ever computed across dimensions - they do not share a denominator.
             🔴 NEITHER FILL IS THE ACCENT any more. A score is a measurement,
             not a call to action (phase1-system §4), and eight lime bars beside
             one orange one is how the single failing dimension stayed hidden. */}
@@ -162,7 +162,7 @@ function DimBar({ d }: { d: { key: string; score: number; max: number; note: str
 // live proof row exactly one of the nine is under the mark. Linear's density
 // decision, which is a decision and not a compression: show the two or three
 // facts that matter at rest and defer the remainder, rather than shrinking
-// everything to fit (reference-study §4 move 2). Nothing is dropped — the
+// everything to fit (reference-study §4 move 2). Nothing is dropped - the
 // summary states how many are behind it, and the count is the fact.
 //
 // The degenerate cases both go the safe way: if NOTHING failed there is nothing
