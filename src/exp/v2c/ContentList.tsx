@@ -346,7 +346,7 @@ function Skeleton() {
 // band was deleted with it — the errored and past-due rows have their own
 // sections below, and the pipeline notes moved to Ops (OpsBoard, PipelineNotes).
 //
-// 🔴 2026-08-22 — THE COUNT THAT BELONGS ABOVE THE TABS IS THE LANE'S, NOT THE
+// 🔴 2026-08-22. THE COUNT THAT BELONGS ABOVE THE TABS IS THE LANE'S, NOT THE
 // STAGE'S. The dashboard port audit asks for "a permanent count strip above the
 // tabs so the hidden tab's number stays visible", copied from the old Posts
 // board (PostWorkSurface.tsx:342-359). Measured on this build at 1440x900
@@ -371,7 +371,7 @@ function CommandStrip({
   view?: ContentView
   setView?: (v: ContentView) => void
   laneNote?: React.ReactNode
-  // What each lane holds at REVIEW, from the shell's cross-lane read — never
+  // What each lane holds at REVIEW, from the shell's cross-lane read. Never
   // from this surface's own rows, which only ever hold the selected lane.
   laneCounts?: Partial<Record<ContentLane, number>>
   stats?: React.ReactNode
