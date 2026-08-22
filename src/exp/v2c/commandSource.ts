@@ -69,18 +69,24 @@ export type CommandCtx = {
 const CAP_VERB: Record<RowCap, string> = {
   approve: 'Approve',
   skip: 'Skip',
+  promote: 'Put on the client’s board',
   delete: 'Delete',
 }
 
 const CAP_PAST: Record<RowCap, string> = {
   approve: 'approved',
   skip: 'skipped',
+  promote: 'put on a client’s board',
   delete: 'deleted',
 }
 
 const CAP_HINT: Record<RowCap, string> = {
   approve: 'Marks every selected draft approved. Nothing publishes.',
   skip: 'Marks every selected draft disqualified. They drop out of the queue.',
+  // The palette reaches the same confirm the bar does, which is where the
+  // client and the count get named. The hint says the consequence up front so
+  // the reader is not learning it from the sheet.
+  promote: 'Puts every selected draft on the client’s live board, where he can read it. Nothing publishes.',
   delete: 'Removes every selected draft. There is no undo for this one.',
 }
 
@@ -203,7 +209,7 @@ export function buildCommands(c: CommandCtx): WbCommand[] {
   // The bulk actions. Listed at every moment, including with an empty selection,
   // so the palette tells the operator what this surface can do before he has
   // picked anything. Each one states its own refusal.
-  for (const cap of ['approve', 'skip', 'delete'] as RowCap[]) {
+  for (const cap of ['approve', 'skip', 'promote', 'delete'] as RowCap[]) {
     const have = c.capCount[cap]
     const ready = n > 0 && have === n
     out.push({
