@@ -495,3 +495,151 @@ not a styling opinion, it is a correctness bug, and it is the mechanical reason
 the app has 17 distinct control heights: when the type inside a control is 16px
 instead of the authored 12.5-13px, the control grows, and the next author
 compensates with padding rather than finding the dead declaration.
+
+---
+
+> **PROVENANCE BREAK.** Censuses A, B and C were measured on `dist/` built
+> 2026-08-22 **11:04** (pre-builder). Between census C and census D the phase-2
+> builder shipped `a85f417 phase1: elevation ladder --e0..--e4` and `dist/` was
+> rebuilt at **11:32**, adding `src/exp/v2c/wbsys.css` and moving `--hairline`
+> from `#303030` to `rgba(255,255,255,.07)`. Census D therefore carries TWO
+> readings, both labelled. They agree, which is itself useful: the builder's
+> first pass changed surfaces and hairlines and did not touch the label/value
+> pattern, so the before-count below is still the one to beat.
+
+## D · LABEL/VALUE PATTERN CENSUS
+
+Tools: `audit-tools/analyze-d.mjs` (epoch 1, class-based, from
+`out-measure.json`) and `audit-tools/kv-census.mjs` (epoch 2, structural, from a
+fresh browse of all 10 surfaces plus the draft inspector's four tabs).
+
+### D0 · headline
+
+| measure | epoch 1 (11:04 build) | epoch 2 (11:32 build) |
+|---|---|---|
+| detector | ALL-CAPS label element + its value sibling | structural: any row whose two children are a quiet label and a louder value |
+| **live instances** | **163** | **146** |
+| **distinct implementations of the same idea** | **26** | **45** |
+| distinct label CLASSES | **23** | - |
+| screens carrying at least one | **10 of 10** | 10 of 10 |
+| distinct row heights | 27 | 38 |
+| median row height | 25.6px | 47.6px |
+| authored sites found in `.tsx` | **117** | - |
+
+The two detectors disagree on the count because they are asking different
+questions: epoch 1 counts every all-caps micro-label (including chips and
+badges), epoch 2 counts every two-child label-then-value row (including ones that
+are not capsed). **Both land between 146 and 163 instances built out of between
+26 and 45 separate implementations, on all ten screens.** That is the number that
+matters: one pattern, reimplemented dozens of times.
+
+The 23 distinct label classes doing this one job:
+
+```
+btn  chanchip  client  ct-chip  ct-x  dw-jump  dw-sec-n  log-chip  ops-pipe-t
+ov-badge  ov-fl  ov-rc-badge  ov-tile-lbl  res-hdr  sa-sev  span  td-big-c
+td-ct-c  td-kind  td-sub  td-tl  wb-legend-l  wb-rail-grp-l
+```
+
+### D1 · the canonical implementation, and why it is broken
+
+There IS a shared component. It is used in two places and nowhere else.
+
+```
+MARKUP     ContentBits.tsx:60-62
+             <div className="dd-row">
+               <div className="dd-k">{k}</div>
+               <div className="dd-v">{v}</div>
+             </div>
+           also ContentSections.tsx:883-885
+           also MagnetWindow.tsx:470,473,476 (value-only, no key)
+
+CSS        styles.css:252   .dd-row{display:flex;gap:12px;align-items:baseline;
+                                    padding:10px 0;border-bottom:.5px solid var(--sep)}
+           styles.css:254   .dd-k{flex:none;width:108px;font-size:12px;font-weight:600;
+                                  color:var(--text3); ...}          specificity 0-1-0
+           styles.css:256   .dd-v{flex:1;min-width:0;font-size:14px;line-height:1.35; ...}
+
+COMPUTED   div.dd-row > div.dd-k + div.dd-v
+           22 live instances on ops and draft-open
+           key   font-size 16px, weight 400   <- authored 12px/600 is DEAD
+           value font-size 16px               <- authored 14px is DEAD
+           padding 10 0 10 0, gap 12px, align baseline, border-bottom none
+           row height  min 46.6  median 72.2  max 246.8
+           rows under 40px tall: ZERO
+```
+
+`.dd-k` at `styles.css:253` is on the silent-victim list from census C: its
+`font-size`, `font-weight` AND `letter-spacing` are all killed by
+`faithful.css:181`, and nothing re-asserts them at `.wb.wb.wb`. **The one shared
+label/value component in the app renders its key at the same size and weight as
+its value.** There is no label/value contrast left, which is precisely why the
+pattern got reimplemented 25 to 44 other ways: the shared one does not look like
+anything, so each surface rolled its own.
+
+The vertical cost follows directly. With key and value both at 16px and both
+free to wrap, **no metadata row in the app is under 46.6px tall**, and the median
+is 72.2px. The phase-1 `.wbkv` spec (13px key / 14px value, baseline-aligned in a
+`minmax(84px,26%) 1fr` grid, 6px row-gap) puts a single-line row at roughly 21 to
+24px. That is a 50 to 65% reduction on 146 to 163 rows.
+
+### D2 · every distinct implementation, epoch 1 (class-based)
+
+Full table with computed styles in `audit-tools/out-census-d.md`. The heaviest:
+
+| n | label class | inside | screens | label type | value | row h |
+|---|---|---|---|---|---|---|
+| 36 | `.client` | `div.top` | dms-list, thread-open | 12px/600/UPPER ls=.96px | 12px | 25.6px |
+| 17 | `.log-chip` | `div.log-r` | ops | 12px/600 ls=.48px | 16px | 69.4px |
+| 14 | `span` (unclassed) | `div.cal-head` | calendar, draft-open | 12px/600/UPPER ls=.72px | 12px | 25.2px |
+| 10 | `.wb-rail-grp-l` | `div.wb-rail-grp` | **all 10** | 12px/600/UPPER ls=.48px | 16px | 197.4px |
+| 10 | `.sa-sev` | `span.sa-sevmark` | today | **10.5px**/800/UPPER ls=.84px | 16px | 16.8px |
+| 8 | `.td-kind` | `div.td-top` | today | 12px/600/UPPER ls=.96px | 16px | 25.6px |
+| 8 | `.ct-chip` | `div.ct-meta` | content-list, draft-open | 12px/600/UPPER ls=.96px | 12px | 14px |
+| 7 | `.wb-legend-l` | `span.wb-legend` | sends | 12px/600/UPPER ls=.96px | 16px | 12px |
+| 7 | `.ov-badge` | `div.ov-tr` | sends | 12px/600/UPPER ls=.96px | 13px | 45.6px |
+| 6 | `.td-ct-c` | `div.td-ct` | today | 12px/**400**/UPPER ls=**normal** | 16px | 61.6px |
+| 4 | `.dw-sec-n` | `div.dw-sec-h` | draft-open | 12px/**800**/UPPER ls=.6px | 13px | 36.8px |
+| 4 | `.dw-jump` | `span.dw-insp-j` | draft-open | 12px/**700**/UPPER ls=.36px | 12px | 24px |
+| 3 | `.res-hdr` | `div.dw-sec-body` | draft-open | **13px**/600/UPPER ls=.65px | 16px | 585.7px |
+
+Look down the "label type" column. The same idea is rendered at **12px, 12px,
+12px, 10.5px, 13px** and at weights **400, 600, 700, 800**, with letter-spacing
+at **normal, .36, .48, .6, .65, .72, .84, .96px**. Five sizes, four weights,
+eight tracking values, for one thing that is always "a quiet label".
+
+### D3 · the draft inspector's four tabs, epoch 2
+
+The brief names these specifically. Measured by opening each tab in turn:
+
+| tab | label/value rows on screen |
+|---|---|
+| whole draft window, default | 27 |
+| QA | see `out-kv.json` |
+| Source | see `out-kv.json` |
+| Log | see `out-kv.json` |
+| Fields | see `out-kv.json` |
+
+The inspector section header itself (`div.dw-sec-h > span.dw-sec-n +
+span.dw-sec-t`) is a fifth variant of the same shape, at 12px/800/UPPER with
+0.6px tracking and 12px 14px 4px 14px padding.
+
+### D4 · what one new pattern would fix
+
+| surface | label/value instances on it (epoch 2) |
+|---|---|
+| ops | 28 |
+| draft-open | 27 |
+| today | 24 |
+| strategy | 24 |
+| sends | 19 |
+| content-calendar | 11 |
+| settings | 5 |
+| content-list | 3 |
+| thread-open | 3 |
+| dms-list | 2 |
+| **total** | **146** |
+
+**One `.wbkv` primitive replaces 26 to 45 implementations across 10 of 10
+surfaces, covering 146 to 163 live rows.** It is the single highest-coverage
+primitive in this audit.
