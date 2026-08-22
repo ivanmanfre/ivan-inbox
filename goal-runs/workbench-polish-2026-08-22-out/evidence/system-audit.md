@@ -781,3 +781,124 @@ Two findings.
    (2, `styles.css`). They render identically on most elements and diverge on
    tall ones, and they guarantee that any future search for the pill radius finds
    only a third of it.
+
+---
+
+# THE MISSING LAYER
+
+The app has tokens and no system. Concretely: it has a four-step surface ladder
+compressed into 3.5% of the luminance range, a separator line brighter than two
+of the three surfaces it separates, 45 button treatments, 26 to 45
+implementations of one metadata row, and a flattener quietly overwriting authored
+type on 128 selectors. Every one of those is a symptom of the same absence:
+**there is no vocabulary for "this thing sits on that thing".**
+
+That is why depth is communicated by borders. It is not a stylistic preference,
+it is the only tool left once every surface is the same colour as its neighbour.
+
+Five primitives, ordered by surfaces fixed per unit of work. All of them ship as
+`.wb.wb.wb .<name>` in a sheet imported after `wb2026.css`, per section 0.
+
+### 1. An elevation ladder with real lightness steps. Fixes 10 of 10 surfaces.
+
+| what it fixes | count |
+|---|---|
+| nested pairs painted the identical colour | **25 shapes / 58 instances** |
+| of those, separated by literally nothing | 11 shapes |
+| child boxes with no fill at all, held together by a 1px line | 20 shapes / **142 instances** |
+| surfaces affected | **10 of 10** |
+
+Five levels, one step per relationship, shadow reserved for genuine overlap. The
+critical detail the current tokens get wrong is not the number of steps, it is
+their **size**: `--surface1` to `--surface2` is 0.0100 in relative luminance,
+which is below the threshold at which the eye reads a step. Whatever the new
+values are, the deltas have to be large enough to do the job the borders are
+currently doing, and `--hairline` has to drop below `--surface2` so the line
+stops being louder than the surface.
+
+This single primitive is what removes the "ugly 3d" on the calendar chip. A
+`.cal-chip` one level above its `.cal-day` needs no border, no ring and no
+shadow, and its 3px status rail goes back to meaning only status.
+
+### 2. Repair the flattener victims. Fixes 128 selectors and unblocks 1, 3 and 4.
+
+| what it fixes | count |
+|---|---|
+| declaration sites killed by `faithful.css:181` | **216** |
+| font-size deaths never re-asserted at `.wb.wb.wb` | **128** |
+| controls rendering at 16px that were authored 12.5-13px | verified on 3, incl. the 32-instance most-common treatment |
+| the one shared label/value component (`.dd-k`) | broken: key and value both render 16px/400 |
+
+This is not a design primitive and it is listed second only because it is not
+glamorous. It is the prerequisite for the other four being measurable. As long
+as 128 selectors render type the author did not choose, every control geometry
+number is downstream of a bug, and any "after" measurement will be measuring the
+repair rather than the design.
+
+It also explains two numbers that otherwise look like carelessness: 17 distinct
+control heights and 15 distinct button paddings. Authors were compensating with
+padding for type they could not make smaller.
+
+### 3. One control component, four variants, three sizes. Fixes 10 of 10 surfaces.
+
+| what it fixes | count |
+|---|---|
+| distinct visual treatments collapsing into 12 | **45 -> 12** |
+| controls covered | **211** |
+| treatments sitting in a near-duplicate cluster | 20, in 7 clusters |
+| distinct control heights | 17 |
+| distinct button padding values | 15 |
+| hit targets under 32px | **56 instances / 9 selectors** |
+| surfaces affected | **10 of 10** |
+
+The draft window's action row already proves the model works in this codebase:
+seven buttons, identical geometry, varying only fill and edge. Generalise that
+row's discipline and add the missing `quiet` tier so its five identical greys
+become two weights instead of one.
+
+### 4. One metadata row primitive. Fixes 10 of 10 surfaces, the widest coverage of any single item.
+
+| what it fixes | count |
+|---|---|
+| implementations of one idea | **26 to 45 -> 1** |
+| live label/value rows | **146 to 163** |
+| distinct label classes doing this job | **23** |
+| label sizes / weights / tracking values in use | 5 / 4 / 8 |
+| vertical space per row today | min 46.6px, median 72.2px, **zero rows under 40px** |
+| surfaces affected | **10 of 10** |
+
+Highest coverage per line of CSS in the whole audit. There is already a shared
+component (`.dd-row` / `.dd-k` / `.dd-v`, `ContentBits.tsx:60-62`); it is used
+twice and it is broken by primitive 2. Fix it, give it a grid instead of a flex
+row so keys align down a column, and delete the box.
+
+### 5. An accent budget. Fixes 10 of 10 surfaces.
+
+| what it fixes | count |
+|---|---|
+| accent-weighted elements across the 10 surfaces | **107** (111 including a co-mounted peer) |
+| distinct lime-wearing selectors | 29 |
+| of those, not defensible under the rule | **19 selectors / 83 instances** |
+| worst screen | Today at **27**, then thread-open at 24 |
+| the draft window (clean) | **13**, target 1 plus the freshness dot |
+| single highest-leverage line | `faithful.css:519`, which paints both the full-width "Post note" button and every outbound DM bubble |
+| surfaces affected | **10 of 10** |
+
+Withdraw lime from data marks (bars, meters, percentages, legend swatches),
+from categories (channel chips, avatar hashes), from labels, and from secondary
+actions. Keep it on the one primary action, the live/now dots, and the focus
+ring.
+
+---
+
+## What the numbers say in one line each
+
+- **107** accent-weighted elements across 10 surfaces, of which **83** are not defensible, and **1** rule paints the two biggest.
+- **45** distinct button treatments for **211** controls, plus **56** hit targets under 32px.
+- **25** nested pairs painted the identical colour, **11** of them separated by nothing at all, and **142** more boxes held together by a 1px line.
+- **146 to 163** label/value rows built out of **26 to 45** implementations of the same idea, none of them under 40px tall.
+- **128** selectors are silently rendering type their author did not choose, and that one bug is upstream of the control-geometry drift, the spacing drift and the broken metadata row.
+
+The smallest set that fixes the most surfaces is **elevation + the flattener
+repair**, in that order: the first gives the app a way to say "on top of", and
+the second makes every measurement after it mean something.
