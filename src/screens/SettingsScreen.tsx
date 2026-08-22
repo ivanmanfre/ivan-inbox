@@ -4,9 +4,14 @@ import { disablePush, enablePush, getPushState, type PushState } from '../lib/pu
 import { chimeEnabled, playChime, setChimeEnabled } from '../lib/chime'
 
 type Theme = 'dark' | 'light'
+type Density = 'comfortable' | 'compact'
 
 function currentTheme(): Theme {
   return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark'
+}
+
+function currentDensity(): Density {
+  return document.documentElement.dataset.density === 'compact' ? 'compact' : 'comfortable'
 }
 
 function isIOS(): boolean {
@@ -39,6 +44,7 @@ export function SettingsScreen() {
   const [pushErr, setPushErr] = useState('')
   const [chime, setChime] = useState(chimeEnabled())
   const [theme, setTheme] = useState<Theme>(currentTheme)
+  const [density, setDensity] = useState<Density>(currentDensity)
 
   useEffect(() => { getPushState().then(setPush) }, [])
 
@@ -78,6 +84,17 @@ export function SettingsScreen() {
     document.documentElement.dataset.theme = next
     localStorage.setItem('inbox-theme', next)
     setTheme(next)
+  }
+
+  // Comfortable is the un-set state (see main.tsx boot check), so it is
+  // written as an explicit attribute value here rather than removed — a
+  // removed attribute and an explicit 'comfortable' read identically to every
+  // [data-density='compact'] selector, and writing it explicitly keeps the
+  // three states (unset / comfortable / compact) collapsed to two on purpose.
+  function setDensityAndPersist(next: Density) {
+    document.documentElement.dataset.density = next
+    localStorage.setItem('inbox-density', next)
+    setDensity(next)
   }
 
   const pushHint =
@@ -136,6 +153,16 @@ export function SettingsScreen() {
             <div className="seg theme">
               <div className={'sg' + (theme === 'dark' ? ' on' : '')} onClick={() => setThemeAndPersist('dark')}>Dark</div>
               <div className={'sg' + (theme === 'light' ? ' on' : '')} onClick={() => setThemeAndPersist('light')}>Light</div>
+            </div>
+          </div>
+          <div className="grow">
+            <div className="gtxt">
+              <div className="gt">Density</div>
+              <div className="gs">Compact tightens list rows, settings and styles. Comfortable is unchanged.</div>
+            </div>
+            <div className="seg theme">
+              <div className={'sg' + (density === 'comfortable' ? ' on' : '')} onClick={() => setDensityAndPersist('comfortable')}>Comfortable</div>
+              <div className={'sg' + (density === 'compact' ? ' on' : '')} onClick={() => setDensityAndPersist('compact')}>Compact</div>
             </div>
           </div>
         </div>
