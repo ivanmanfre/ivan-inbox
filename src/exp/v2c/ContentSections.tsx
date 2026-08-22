@@ -377,7 +377,7 @@ export function IdeasSection({
               rather than pretending to be the strip's. */}
           <div className="ct-bandline">
             <div className="ct-subtle ct-bandline-t">
-              {kindRows.length} {kind === 'post' ? 'post' : 'lead-magnet'} rows at <code>reviewing</code>
+              {kindRows.length} {kind === 'post' ? 'post' : 'lead-magnet'} rows waiting for review
               {count !== null && count > kindRows.length ? ` of ${count} in the database` : ''}
               {otherRows.length > 0
                 ? ` · plus ${otherRows.length} with no content_type, shown here rather than dropped`
