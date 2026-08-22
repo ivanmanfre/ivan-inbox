@@ -1,0 +1,17 @@
+{
+  "noise": {
+    "w": 1440,
+    "h": 900,
+    "diffPixels": 0,
+    "pct": 0,
+    "box": null
+  },
+  "across": {
+    "w": 1440,
+    "h": 900,
+    "diffPixels": 0,
+    "pct": 0,
+    "box": null
+  },
+  "attempted": []
+}

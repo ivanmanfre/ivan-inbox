@@ -304,6 +304,9 @@ for (const [name, hash, click] of [
   ['settings', '#exp/v2/settings', null],
 ]) {
   await page.goto(BASE + hash, { waitUntil: 'networkidle' })
+  // The two theme runs above persist the theme, so DARK is re-asserted here or
+  // everything below this line is silently measured in light.
+  await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'))
   await page.waitForTimeout(1600)
   if (click) { try { await page.getByText(click, { exact: true }).first().click({ timeout: 5000 }); await page.waitForTimeout(1600) } catch { } }
   const h = await page.evaluate(CENSUS)
@@ -317,6 +320,7 @@ out.radiusCensus = radiusCensus
 
 // real-UI spot checks, dark: the four named collisions, measured on shipped markup
 await page.goto(BASE + '#exp/v2/content', { waitUntil: 'networkidle' })
+await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'))
 await page.waitForTimeout(1500)
 try { await page.getByText('Calendar', { exact: true }).first().click({ timeout: 5000 }) } catch { }
 await page.waitForTimeout(2000)
