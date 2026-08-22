@@ -784,11 +784,18 @@ export function StyleRoster({ roster, laneRows, lane, loading, error, refresh, b
         // were each wrong the day after they were written.
         <Failed what="The style roster" message={error} onRetry={refresh} loadedAt={null} />
       ) : loading && roster.length === 0 ? (
-        <div className="ct-subtle">Reading content_prompts…</div>
+        <div className="ct-subtle">Reading the style roster…</div>
       ) : (
         <>
+          {/* Named the table here until 2026-08-22. `content_prompts` is where
+              the roster lives, not a fact a reader of this screen has any use
+              for, and a live scan of the rendered text found it as the last raw
+              table name printed at the user anywhere in the workbench. The
+              sentence keeps the claim it was making (this list is read fresh,
+              nothing here is a hardcoded catalogue) and drops the storage
+              detail. */}
           <div className="ct-subtle">
-            Enumerated live from <code>content_prompts</code>. Examples come from{' '}
+            Read fresh every time, never a fixed list. Examples come from{' '}
             {LANE_POSSESSIVE[lane]} published rows, so an empty preview is a
             designed state — a wrong one would be a lie.
           </div>
