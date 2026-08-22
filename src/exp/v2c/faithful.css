@@ -3356,9 +3356,19 @@
    rail tier — meta, 600, label tracking, text3 — so `res-hdr`, the evidence
    rail's own head and the queue rail's head stop being three different labels
    in one window. */
-.wb.wb.wb .res-hdr, .wb.wb.wb .dw-insp-h, .wb.wb.wb .dw-queue-h{
+.wb.wb.wb .res-hdr, .wb.wb.wb .dw-queue-h{
   font-size:var(--fs-meta); font-weight:600; letter-spacing:.05em;
   line-height:var(--lh-meta); text-transform:uppercase; color:var(--text3);
+}
+/* The draft window's evidence-rail header used to share this exact all-caps
+   meta tier with its two siblings above (SHOUTED "BACKEND DEPTH", the
+   owner's own named complaint: "this looks like an internal tool ui"). Same
+   size and weight as the rail tier it still belongs to, but no uppercase and
+   no tracking, because those two are what made a plain-English header
+   ("What decides it") read as a shout instead of a sentence. */
+.wb.wb.wb .dw-insp-h{
+  font-size:var(--fs-meta); font-weight:600;
+  line-height:var(--lh-meta); text-transform:none; color:var(--text3);
 }
 /* The ordinal and the count are VALUES, so they take the data face — one
    register for numbers, app-wide, which is what makes a count scannable beside
