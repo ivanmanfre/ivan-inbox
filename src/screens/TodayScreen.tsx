@@ -844,7 +844,7 @@ export function TodayScreen({
   // workbench Shell passes its own already-mounted `inbox.threads` /
   // `ops.drafts` (zero new fetch) plus real navigation. #exp/stock's call
   // site (App.tsx) passes none of them, so `threads === undefined` there and
-  // the whole zone below renders nothing — the escape hatch stays exactly
+  // the whole zone below renders nothing, and the escape hatch stays exactly
   // what it always was, same as every other opt-in prop this screen already
   // carries (see the D21 note below for the precedent).
   threads?: Thread[]
