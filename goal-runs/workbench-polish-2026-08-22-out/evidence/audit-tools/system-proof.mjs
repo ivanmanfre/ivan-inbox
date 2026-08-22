@@ -48,6 +48,7 @@ const PROBE = `
   </div>
   <div class="wbsys-e0"></div><div class="wbsys-e1"></div><div class="wbsys-e2"></div>
   <div class="wbsys-e3"></div><div class="wbsys-e4"></div>
+  <div class="wbs-overlay wbs-probe-overlay" data-wbs-in="1">overlay</div>
 </div>`
 
 const READ = () => {
@@ -163,7 +164,20 @@ const READ = () => {
       '--wbs-dur-overlay': tok('--wbs-dur-overlay'),
       '--wbs-dur-commit': tok('--wbs-dur-commit'),
       '--wbs-ease-ctl': tok('--wbs-ease-ctl'),
-      '--wbs-ease-overlay': tok('--wbs-ease-overlay'),
+      '--wbs-ease-overlay': tok('--wbs-ease-overlay').slice(0, 40) + '...',
+    },
+    'spring': {
+      'linear() supported': CSS.supports('transition-timing-function', 'linear(0, 1)'),
+      'resolved --spring starts with': tok('--spring').trim().slice(0, 24),
+      'overlay computed': cs('.wbs-probe-overlay',
+        'transition-property', 'transition-duration', 'transition-timing-function', 'box-shadow'),
+    },
+    'shadows': {
+      '--sh-card': tok('--sh-card'),
+      '--sh-drag': tok('--sh-drag'),
+      '--sh-over': tok('--sh-over'),
+      '--e4-shadow': tok('--e4-shadow'),
+      'plate': cs('.wb-plate', 'box-shadow'),
     },
   }
 

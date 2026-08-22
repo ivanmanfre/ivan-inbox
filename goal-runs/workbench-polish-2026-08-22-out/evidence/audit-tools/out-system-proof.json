@@ -341,10 +341,29 @@
    },
    "tokens": {
     "--wbs-dur-ctl": ".12s",
-    "--wbs-dur-overlay": ".16s",
+    "--wbs-dur-overlay": ".26s",
     "--wbs-dur-commit": ".2s",
     "--wbs-ease-ctl": "ease-out",
-    "--wbs-ease-overlay": "cubic-bezier(.2,.8,.2,1)"
+    "--wbs-ease-overlay": "linear(0, .005, .019 1.8%, .079 3.9%, .4..."
+   },
+   "spring": {
+    "linear() supported": true,
+    "resolved --spring starts with": "linear(0, .005, .019 1.8",
+    "overlay computed": {
+     "transition-property": "opacity, transform",
+     "transition-duration": "0.26s, 0.26s",
+     "transition-timing-function": "linear(0 0%, 0.005 0.9%, 0.019 1.8%, 0.079 3.9%, 0.476 13.5%, 0.663 19.1%, 0.738 22%, 0.8 25.1%, 0.852 28.4%, 0.894 32%, 0.928 36%, 0.953 40.5%, 0.972 45.6%, 0.985 51.6%, 0.997 67.3%, 1 100%), linear(0 0%, 0.005 0.9%, 0.019 1.8%, 0.079 3.9%, 0.476 13.5%, 0.663 19.1%, 0.738 22%, 0.8 25.1%, 0.852 28.4%, 0.894 32%, 0.928 36%, 0.953 40.5%, 0.972 45.6%, 0.985 51.6%, 0.997 67.3%, 1 100%)",
+     "box-shadow": "rgba(0, 0, 0, 0.12) 0px 10px 24px 0px"
+    }
+   },
+   "shadows": {
+    "--sh-card": "0 2px 8px #00000014",
+    "--sh-drag": "0 2px 8px #0000001f",
+    "--sh-over": "0 10px 24px #0000001f",
+    "--e4-shadow": "0 10px 24px #0000001f",
+    "plate": {
+     "box-shadow": "rgba(0, 0, 0, 0.12) 0px 10px 24px 0px"
+    }
    }
   },
   "contrast": [
@@ -797,10 +816,29 @@
    },
    "tokens": {
     "--wbs-dur-ctl": ".12s",
-    "--wbs-dur-overlay": ".16s",
+    "--wbs-dur-overlay": ".26s",
     "--wbs-dur-commit": ".2s",
     "--wbs-ease-ctl": "ease-out",
-    "--wbs-ease-overlay": "cubic-bezier(.2,.8,.2,1)"
+    "--wbs-ease-overlay": "linear(0, .005, .019 1.8%, .079 3.9%, .4..."
+   },
+   "spring": {
+    "linear() supported": true,
+    "resolved --spring starts with": "linear(0, .005, .019 1.8",
+    "overlay computed": {
+     "transition-property": "opacity, transform",
+     "transition-duration": "0.26s, 0.26s",
+     "transition-timing-function": "linear(0 0%, 0.005 0.9%, 0.019 1.8%, 0.079 3.9%, 0.476 13.5%, 0.663 19.1%, 0.738 22%, 0.8 25.1%, 0.852 28.4%, 0.894 32%, 0.928 36%, 0.953 40.5%, 0.972 45.6%, 0.985 51.6%, 0.997 67.3%, 1 100%), linear(0 0%, 0.005 0.9%, 0.019 1.8%, 0.079 3.9%, 0.476 13.5%, 0.663 19.1%, 0.738 22%, 0.8 25.1%, 0.852 28.4%, 0.894 32%, 0.928 36%, 0.953 40.5%, 0.972 45.6%, 0.985 51.6%, 0.997 67.3%, 1 100%)",
+     "box-shadow": "rgba(0, 0, 0, 0.12) 0px 10px 24px 0px"
+    }
+   },
+   "shadows": {
+    "--sh-card": "0 2px 8px #00000014",
+    "--sh-drag": "0 2px 8px #0000001f",
+    "--sh-over": "0 10px 24px #0000001f",
+    "--e4-shadow": "0 10px 24px #0000001f",
+    "plate": {
+     "box-shadow": "rgba(0, 0, 0, 0.12) 0px 10px 24px 0px"
+    }
    }
   },
   "contrast": [
@@ -933,7 +971,7 @@
    ]
   },
   "10px": {
-   "n": 123,
+   "n": 118,
    "eg": [
     "button.wb-rail-minbtn",
     "div.ct-fsearch",
@@ -942,7 +980,7 @@
    ]
   },
   "6px": {
-   "n": 49,
+   "n": 62,
    "eg": [
     "div.ct-anchor",
     "img.ct-thumb",
@@ -957,7 +995,7 @@
    ]
   },
   "14px": {
-   "n": 38,
+   "n": 31,
    "eg": [
     "div.dd-card",
     "button.sa-bar",
@@ -973,24 +1011,24 @@
    "box-shadow": "rgba(0, 0, 0, 0.09) 0px 0px 0px 1px inset"
   },
   "div.cal-day-empty": {
-   "background-color": "rgba(0, 0, 0, 0)",
+   "background-color": "rgb(230, 230, 224)",
    "border-radius": "10px",
-   "box-shadow": "rgba(0, 0, 0, 0.09) 0px 0px 0px 1px inset"
+   "box-shadow": "none"
   },
   "div.cal-chip": {
-   "background-color": "rgb(255, 255, 255)",
-   "border-radius": "10px",
+   "background-color": "rgb(234, 234, 228)",
+   "border-radius": "6px",
    "box-shadow": "none",
    "border-left-width": "3px"
   },
   "button.cal-chip-t": {
-   "border-top-width": "2px",
-   "border-top-style": "outset"
+   "border-top-width": "0px",
+   "border-top-style": "none"
   },
   "div.wb-sech": {
-   "background-color": "rgb(244, 244, 240)",
-   "border-top-width": "1px",
-   "border-bottom-width": "1px"
+   "background-color": "rgb(234, 234, 228)",
+   "border-top-width": "0px",
+   "border-bottom-width": "0px"
   }
  }
 }

@@ -22,7 +22,7 @@ CONTROLS:
   .wbb-lg  h=38  pad=0px/18px  r=10px  fs=14px/14px  fw=500  bg=rgb(39, 39, 39)  fg=rgb(255, 255, 255)  shadow=none
   .wbb-disabled  h=32px  pad=0px/14px  r=10px  fs=13px/13px  fw=500  bg=rgb(28, 28, 28)  fg=rgb(126, 126, 126)  shadow=none
 KV: {"wbkv":{"display":"grid","grid-template-columns":"227.75px 632.25px","column-gap":"16px","row-gap":"6px","align-items":"baseline"},"wbkv-k":{"font-size":"13px","font-weight":"400","color":"rgb(148, 148, 148)","text-transform":"none","letter-spacing":"normal","border-top-width":"0px","background-color":"rgba(0, 0, 0, 0)","line-height":"18.85px"},"wbkv-v":{"font-size":"14px","font-weight":"450","color":"rgb(255, 255, 255)","font-variant-numeric":"tabular-nums","border-top-width":"0px","background-color":"rgba(0, 0, 0, 0)","line-height":"20.3px"}}
-MOTION: {"wbb transition":{"transition-property":"background-color, color","transition-duration":"0.12s, 0.12s","transition-timing-function":"ease-out, ease-out"},"tokens":{"--wbs-dur-ctl":".12s","--wbs-dur-overlay":".16s","--wbs-dur-commit":".2s","--wbs-ease-ctl":"ease-out","--wbs-ease-overlay":"cubic-bezier(.2,.8,.2,1)"}}
+MOTION: {"wbb transition":{"transition-property":"background-color, color","transition-duration":"0.12s, 0.12s","transition-timing-function":"ease-out, ease-out"},"tokens":{"--wbs-dur-ctl":".12s","--wbs-dur-overlay":".26s","--wbs-dur-commit":".2s","--wbs-ease-ctl":"ease-out","--wbs-ease-overlay":"linear(0, .005, .019 1.8%, .079 3.9%, .4..."},"spring":{"linear() supported":true,"resolved --spring starts with":"linear(0, .005, .019 1.8","overlay computed":{"transition-property":"opacity, transform","transition-duration":"0.26s, 0.26s","transition-timing-function":"linear(0 0%, 0.005 0.9%, 0.019 1.8%, 0.079 3.9%, 0.476 13.5%, 0.663 19.1%, 0.738 22%, 0.8 25.1%, 0.852 28.4%, 0.894 32%, 0.928 36%, 0.953 40.5%, 0.972 45.6%, 0.985 51.6%, 0.997 67.3%, 1 100%), linear(0 0%, 0.005 0.9%, 0.019 1.8%, 0.079 3.9%, 0.476 13.5%, 0.663 19.1%, 0.738 22%, 0.8 25.1%, 0.852 28.4%, 0.894 32%, 0.928 36%, 0.953 40.5%, 0.972 45.6%, 0.985 51.6%, 0.997 67.3%, 1 100%)","box-shadow":"rgba(0, 0, 0, 0.12) 0px 10px 24px 0px"}},"shadows":{"--sh-card":"0 2px 8px #00000014","--sh-drag":"0 2px 8px #0000001f","--sh-over":"0 10px 24px #0000001f","--e4-shadow":"0 10px 24px #0000001f","plate":{"box-shadow":"rgba(0, 0, 0, 0.12) 0px 10px 24px 0px"}}}
 CONTRAST:
   PASS  18.42:1 (min 4.5)  --text on --e1  fg=rgb(255, 255, 255) bg=rgb(20, 20, 20)
   PASS  17.05:1 (min 4.5)  --text on --e2  fg=rgb(255, 255, 255) bg=rgb(28, 28, 28)
@@ -64,7 +64,7 @@ CONTROLS:
   .wbb-lg  h=38  pad=0px/18px  r=10px  fs=14px/14px  fw=500  bg=rgb(234, 234, 228)  fg=rgb(19, 19, 19)  shadow=none
   .wbb-disabled  h=32px  pad=0px/14px  r=10px  fs=13px/13px  fw=500  bg=rgb(255, 255, 255)  fg=rgb(110, 110, 110)  shadow=none
 KV: {"wbkv":{"display":"grid","grid-template-columns":"227.75px 632.25px","column-gap":"16px","row-gap":"6px","align-items":"baseline"},"wbkv-k":{"font-size":"13px","font-weight":"400","color":"rgb(92, 92, 90)","text-transform":"none","letter-spacing":"normal","border-top-width":"0px","background-color":"rgba(0, 0, 0, 0)","line-height":"18.85px"},"wbkv-v":{"font-size":"14px","font-weight":"450","color":"rgb(19, 19, 19)","font-variant-numeric":"tabular-nums","border-top-width":"0px","background-color":"rgba(0, 0, 0, 0)","line-height":"20.3px"}}
-MOTION: {"wbb transition":{"transition-property":"background-color, color","transition-duration":"0.12s, 0.12s","transition-timing-function":"ease-out, ease-out"},"tokens":{"--wbs-dur-ctl":".12s","--wbs-dur-overlay":".16s","--wbs-dur-commit":".2s","--wbs-ease-ctl":"ease-out","--wbs-ease-overlay":"cubic-bezier(.2,.8,.2,1)"}}
+MOTION: {"wbb transition":{"transition-property":"background-color, color","transition-duration":"0.12s, 0.12s","transition-timing-function":"ease-out, ease-out"},"tokens":{"--wbs-dur-ctl":".12s","--wbs-dur-overlay":".26s","--wbs-dur-commit":".2s","--wbs-ease-ctl":"ease-out","--wbs-ease-overlay":"linear(0, .005, .019 1.8%, .079 3.9%, .4..."},"spring":{"linear() supported":true,"resolved --spring starts with":"linear(0, .005, .019 1.8","overlay computed":{"transition-property":"opacity, transform","transition-duration":"0.26s, 0.26s","transition-timing-function":"linear(0 0%, 0.005 0.9%, 0.019 1.8%, 0.079 3.9%, 0.476 13.5%, 0.663 19.1%, 0.738 22%, 0.8 25.1%, 0.852 28.4%, 0.894 32%, 0.928 36%, 0.953 40.5%, 0.972 45.6%, 0.985 51.6%, 0.997 67.3%, 1 100%), linear(0 0%, 0.005 0.9%, 0.019 1.8%, 0.079 3.9%, 0.476 13.5%, 0.663 19.1%, 0.738 22%, 0.8 25.1%, 0.852 28.4%, 0.894 32%, 0.928 36%, 0.953 40.5%, 0.972 45.6%, 0.985 51.6%, 0.997 67.3%, 1 100%)","box-shadow":"rgba(0, 0, 0, 0.12) 0px 10px 24px 0px"}},"shadows":{"--sh-card":"0 2px 8px #00000014","--sh-drag":"0 2px 8px #0000001f","--sh-over":"0 10px 24px #0000001f","--e4-shadow":"0 10px 24px #0000001f","plate":{"box-shadow":"rgba(0, 0, 0, 0.12) 0px 10px 24px 0px"}}}
 CONTRAST:
   PASS  14.83:1 (min 4.5)  --text on --e1  fg=rgb(19, 19, 19) bg=rgb(230, 230, 224)
   PASS  18.58:1 (min 4.5)  --text on --e2  fg=rgb(19, 19, 19) bg=rgb(255, 255, 255)
@@ -85,9 +85,9 @@ CONTRAST:
 
 LIVE RADIUS CENSUS (6 surfaces, distinct computed values):
   4px      x11    button.wb-selmark
-  6px      x49    div.ct-anchor, img.ct-thumb, span.ct-chip.ct-st.ct-chip-ok, button.wb-stat.wb-stat-0
-  10px     x123   button.wb-rail-minbtn, div.ct-fsearch, input.ct-fsearch-in, div.search
-  14px     x38    div.dd-card, button.sa-bar, div.sa-row, div.td-mast
+  6px      x62    div.ct-anchor, img.ct-thumb, span.ct-chip.ct-st.ct-chip-ok, button.wb-stat.wb-stat-0
+  10px     x118   button.wb-rail-minbtn, div.ct-fsearch, input.ct-fsearch-in, div.search
+  14px     x31    div.dd-card, button.sa-bar, div.sa-row, div.td-mast
   40px     x6     div.wb-plate
   999px    x193   span.avatar-me, div.wb-rj, span.wb-rj-n, div.wb-rj.on
 
@@ -100,23 +100,23 @@ LIVE CALENDAR (dark): {
   "box-shadow": "rgba(0, 0, 0, 0.09) 0px 0px 0px 1px inset"
  },
  "div.cal-day-empty": {
-  "background-color": "rgba(0, 0, 0, 0)",
+  "background-color": "rgb(230, 230, 224)",
   "border-radius": "10px",
-  "box-shadow": "rgba(0, 0, 0, 0.09) 0px 0px 0px 1px inset"
+  "box-shadow": "none"
  },
  "div.cal-chip": {
-  "background-color": "rgb(255, 255, 255)",
-  "border-radius": "10px",
+  "background-color": "rgb(234, 234, 228)",
+  "border-radius": "6px",
   "box-shadow": "none",
   "border-left-width": "3px"
  },
  "button.cal-chip-t": {
-  "border-top-width": "2px",
-  "border-top-style": "outset"
+  "border-top-width": "0px",
+  "border-top-style": "none"
  },
  "div.wb-sech": {
-  "background-color": "rgb(244, 244, 240)",
-  "border-top-width": "1px",
-  "border-bottom-width": "1px"
+  "background-color": "rgb(234, 234, 228)",
+  "border-top-width": "0px",
+  "border-bottom-width": "0px"
  }
 }
