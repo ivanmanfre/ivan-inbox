@@ -9,6 +9,15 @@ import { type ReactNode } from 'react'
 // which renders a shape structurally instead of trusting a type annotation the
 // database never agreed to.
 
+// Shared with KeyRows below: an agent-written object key ('QA_FEEDBACK',
+// 'hook_type') humanised to its shape only — underscores to spaces, sentence
+// case — never a fixed vocabulary, because the roster of keys an agent writes
+// into a jsonb payload is the data's, not this file's, to name.
+function humanizeKey(k: string): string {
+  const spaced = k.replace(/_/g, ' ')
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1)
+}
+
 export function Val({ v }: { v: unknown }): ReactNode {
   if (v === null || v === undefined) return null
   if (typeof v === 'string') return v
@@ -30,7 +39,7 @@ export function Val({ v }: { v: unknown }): ReactNode {
       <div className="dd-vobj">
         {entries.map(([k, x]) => (
           <div className="dd-vrow" key={k}>
-            <span className="dd-vk">{k}</span>
+            <span className="dd-vk">{humanizeKey(k)}</span>
             <span className="dd-vv"><Val v={x} /></span>
           </div>
         ))}
@@ -70,11 +79,6 @@ export function Rows({ items }: { items: [string, ReactNode][] }) {
 // The roster is the data's — an unnamed key appears the day it appears, so
 // this only humanises the SHAPE of the key (underscores, sentence case), it
 // never invents a fixed vocabulary for keys `labels.ts` has never seen.
-function humanizeKey(k: string): string {
-  const spaced = k.replace(/_/g, ' ')
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1)
-}
-
 export function KeyRows({ items }: { items: [string, unknown][] }) {
   if (items.length === 0) return null
   return <Rows items={items.map(([k, v]) => [humanizeKey(k), <Val v={v} key={k} />])} />
