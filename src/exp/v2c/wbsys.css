@@ -633,3 +633,142 @@
    strip. This is the case for re-running the audit rather than trusting the
    worklist you started from. */
 .wb.wb.wb .td-zone .td-zh{ background:var(--e3) }
+
+/* ========================================================================== */
+/* 8 · THE GLANCE LAYER                                                        */
+/* ========================================================================== */
+/*
+   The dashboard port audit's §6, built. The old sidebar keeps every count in
+   peripheral vision by rendering all 21 destinations at once with a tabular
+   count slot each, and puts a PENDING roll-up above them. The mechanism is
+   right; its coverage is thin (4 of 21 rows ever get a badge). This section is
+   that mechanism with real coverage.
+
+   THE ACCENT IS A BUDGET, and a count is not an action, so nothing here is
+   lime. Neutral counts take the text ramp; only severity may take --sev-*.
+
+   Every selector carries THREE .wb classes. faithful.css:181 is
+   `.wb.wb, .wb.wb *{ font-size:… }` and it hits `*`, so a two-class selector
+   loses silently and every type rule below restates size, weight, tracking and
+   leading on the leaf that carries the words.
+*/
+
+/* ---- 8.1 THE COLLAPSED RAIL'S PIP ---------------------------------------
+   faithful.css:2553-2557 hides .wb-rj-n in the collapsed rail, so collapsing
+   the rail used to delete the entire count column. The pip restores PRESENCE
+   in that one state: it says a row is holding something. It never states a
+   magnitude, because a two-digit numeral does not fit a 64px rail and a
+   clipped one would be a wrong number. */
+.wb.wb.wb .wb-rj-pip{ display:none }
+.wb.wb.wb .wb-rail.min .wb-rj{ position:relative }
+.wb.wb.wb .wb-rail.min .wb-rj-pip{
+  display:block; position:absolute; top:7px; right:11px;
+  width:6px; height:6px; border-radius:var(--r-pill);
+  background:var(--text3);
+}
+.wb.wb.wb .wb-rail.min .wb-rj-pip.attention{ background:var(--sev-attention) }
+.wb.wb.wb .wb-rail.min .wb-rj-pip.urgent{ background:var(--sev-urgent) }
+
+/* ---- 8.2 THE GLOBAL ROLL-UP ----------------------------------------------
+   One figure for "how much is waiting on me across everything", in the frame,
+   above the rows it sums. Neutral, never accent: it is a report, not an action,
+   and the accent budget belongs to the thing you click.
+
+   Every type property is restated on the leaf. .wb-rib-j (styles.css:103) sets
+   uppercase and .04em tracking on the mobile ribbon slot this lands inside, so
+   the label would otherwise render as WAITING ON YOU in a shell that is
+   sentence case everywhere else. */
+.wb.wb.wb .wb-rail-roll{ padding:0 12px 12px; margin-top:-8px }
+.wb.wb.wb .wb-rollup{
+  display:inline-flex; align-items:baseline; gap:6px;
+  text-transform:none;
+}
+.wb.wb.wb .wb-rollup-n{
+  font-size:15px; font-weight:700; letter-spacing:-.01em; line-height:1.2;
+  color:var(--text);
+  font-variant-numeric:tabular-nums;
+}
+.wb.wb.wb .wb-rollup-l{
+  font-size:12px; font-weight:500; letter-spacing:0; line-height:1.2;
+  color:var(--text3);
+  text-transform:none;
+}
+/* Collapsed rail: the numeral only, STACKED under the toggle. The rail is 64px
+   with 10px of padding either side, so the top row has 44px of usable width and
+   cannot hold a 32px button beside a three-digit numeral: laid out in a row the
+   button landed at x=73 in a 64px rail, outside it and under the working
+   column, where nothing could click it. */
+.wb.wb.wb .wb-rail.min .wb-rail-top{ flex-direction:column; gap:8px; padding-bottom:12px }
+.wb.wb.wb .wb-rail.min .wb-rollup{ margin:0 auto }
+.wb.wb.wb .wb-rail.min .wb-rollup-n{ font-size:13px }
+
+/* ---- 8.3 THE LANE COUNT, ABOVE THE TABS ----------------------------------
+   Same grammar as the stage tab count one row below it (faithful.css:4206):
+   data face, meta size, --text3 resting and --text2 on the selected pill. Two
+   count vocabularies in two adjacent rows would read as two different kinds of
+   number, and they are the same kind. The pill's own gap is 0, so the numeral
+   takes its own left margin rather than moving the label. */
+.wb.wb.wb .ct-cmd-lane-n{
+  margin-left:6px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:var(--fs-meta); font-weight:500; letter-spacing:-.01em;
+  line-height:1; color:var(--text3);
+  font-variant-numeric:tabular-nums;
+}
+.wb.wb.wb .ct-cmd-lane.on .ct-cmd-lane-n{ color:var(--text2) }
+
+/* ---- 8.4 AUTOMATION HEALTH ------------------------------------------------
+   A count and a list, read only. Severity may take --sev-*; the accent may not,
+   because there is nothing here to click that acts. The rail row reuses .wb-rj
+   so it inherits the row geometry exactly and does not become a second kind of
+   rail entry. */
+.wb.wb.wb .wb-rj-health{ cursor:pointer }
+.wb.wb.wb .wb-rj-health .wb-rj-ic{ color:var(--sev-attention) }
+
+/* The Ops list. Two lines per row: the automation's name, then the dated
+   consequence under it, which is condition 2 of the ruling this block is built
+   around (see OpsBoard's AutomationHealth note). */
+.wb.wb.wb .wb-auto-l{ display:flex; flex-direction:column; gap:2px }
+.wb.wb.wb .wb-auto-n{
+  font-size:var(--fs-meta); font-weight:600; letter-spacing:0; line-height:1.4;
+  color:var(--text2);
+}
+.wb.wb.wb .wb-auto-w{
+  font-size:var(--fs-eyebrow); font-weight:400; letter-spacing:0; line-height:1.4;
+  color:var(--text3);
+}
+
+/* The phone's frame. The ribbon slot is uppercase and tracked (styles.css:103),
+   so the numeral resets both or it renders as a differently-spaced digit from
+   every other count in the app. */
+.wb.wb.wb .wb-rib-health{
+  flex:none; display:inline-flex; align-items:center; gap:5px; cursor:pointer;
+}
+.wb.wb.wb .wb-rib-health-n{
+  font-size:12px; font-weight:700; letter-spacing:0; line-height:1.2;
+  color:var(--sev-attention);
+  text-transform:none; font-variant-numeric:tabular-nums;
+}
+
+/* THE RESERVED LANE, WIDENED BY WHAT WAS ACTUALLY ADDED TO IT.
+   wb2026.css D7 folds the mobile ribbon into the work row as an absolute
+   overlay and reserves 144px of right padding on the pill strip so no pill can
+   pass under it. ONE thing joined that overlay, the automation mark, and 144px
+   no longer covered it: measured at 390 the overlay's own box grew and its left
+   edge landed at x=161 against a pill strip whose visible right edge was 206,
+   so 45px of Magnets rendered under it. The value below is that overlay's
+   RENDERED width plus the gap, re-measured after the change, not an estimate.
+   The roll-up was tried here too and taken back out; see Shell's ribbon note.
+
+   The arithmetic, so the next reader can redo it: at 390 the overlay measures
+   14 + 29 (the mark) + 10 + 73 (the sync chip) + 10 + 32 (the gear) + 10 + 14
+   = 192px, and 200 leaves 8px of clearance. The sync chip's text is the one
+   part that can grow (`not syncing` is the longest state it prints); it eats
+   that clearance rather than a pill, and the pill strip scrolls the ACTIVE
+   pill into view on every job change (Rail.tsx WorkSegment) so the one that
+   matters is never the one behind the overlay.
+   🔴 Noted rather than silently fixed: at 144 this lane was ALREADY 9px short
+   of the overlay it reserves for, before this pass added anything. */
+@media (max-width:767px){
+  .wb.wb.wb .wb-plate:has(.wb-workhead) .wb-workhead{ padding-right:200px }
+}
