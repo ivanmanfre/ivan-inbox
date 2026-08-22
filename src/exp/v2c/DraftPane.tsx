@@ -735,7 +735,13 @@ function NoteComposer({ id, onDone }: { id: string; onDone: () => void }) {
         onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send() } }}
       />
       <div className="ct-ac">
-        <button type="button" className="btn p" disabled={busy || !text.trim()} onClick={send}>
+        {/* 🔴 DEFECT 4. This measured 331x50 as a full-width lime slab — 4.6x
+            the area of Approve, spent on one of the least important acts on the
+            screen (census B4). faithful.css:519 gave `.btn.p` the accent fill
+            and it is the single highest-leverage lime line in the app. Adding
+            a note is a secondary control that submits a textarea, so it takes
+            the secondary weight and the width of its own label. */}
+        <button type="button" className="wbb wbb-secondary" disabled={busy || !text.trim()} onClick={send}>
           {busy ? 'Posting…' : 'Post note'}
         </button>
       </div>
