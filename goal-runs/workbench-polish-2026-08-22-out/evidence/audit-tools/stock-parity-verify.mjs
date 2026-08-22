@@ -27,7 +27,11 @@ const OUT = '/tmp/stock-parity'
 mkdirSync(OUT, { recursive: true })
 
 const PRE = 'http://localhost:4174/'
-const CUR = 'http://localhost:4176/' // my own isolated build (875098f); :4173 is rebuilt by other agents mid-run
+// My own isolated build, served out of /private/tmp/wb-hd/dist. :4173 and :4176
+// are rebuilt by other agents mid-run, and 127.0.0.1 rather than `localhost`
+// because the static server binds v4 only while `localhost` resolves to ::1
+// first on this machine.
+const CUR = 'http://127.0.0.1:4191/'
 
 const READ_RPC = ['inbox_governor', 'pipeline_health', 'dashboard_counts', 'content_counts', 'seat_health', 'usage_', 'kpi', 'get_', 'list_', 'read_', 'fetch_', 'count_', 'search_', 'stats']
 const log = { mutations: [], readRpc: [], unauthorized: [] }
@@ -127,7 +131,7 @@ for (const t of TABS) {
 const out = {
   method: 'same window, three captures per tab: cur, pre, cur. control = cur vs cur (noise floor). gate = pre vs cur.',
   preBuild: '18c773a via /tmp/wb-prerun on :4174',
-  curBuild: '875098f on :4176 (own isolated build)',
+  curBuild: 'e748f44 + the SettingsScreen shell scoping, on :4191 (own isolated build)',
   results,
   genuineMutationAttempts: log.mutations.length,
   mutations: [...new Set(log.mutations)],

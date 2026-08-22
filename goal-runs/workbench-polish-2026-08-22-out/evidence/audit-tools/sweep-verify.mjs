@@ -56,6 +56,9 @@ const SURFACES = [
   { id: 'draft-window', hash: '#exp/v2/content', act: async p => { await p.locator('[data-wbrow]').first().click({ timeout: 5000 }).catch(() => {}); await p.waitForTimeout(1600) } },
   { id: 'thread-peer', hash: '#exp/v2/dms', act: async p => { await p.locator('[data-wbrow]').first().click({ timeout: 5000 }).catch(() => {}); await p.waitForTimeout(1600) } },
   { id: 'command-palette', hash: '#exp/v2/content', act: async p => { await p.keyboard.press('Meta+k').catch(() => {}); await p.waitForTimeout(700) } },
+  // added after 0758dbc: the call transcript reader, a takeover opened from the
+  // Calls area on Today (`#td-z-calls .td-qrow.tap` -> CallWindow.tsx).
+  { id: 'call-window', hash: '#exp/v2/today', act: async p => { await p.locator('#td-z-calls .td-qrow.tap').first().click({ timeout: 6000 }).catch(() => {}); await p.waitForTimeout(1800) } },
   { id: 'stock', hash: '#exp/stock' },
 ]
 
@@ -151,10 +154,16 @@ for (const [w, h] of VIEWPORTS) {
     for (const s of SURFACES) {
       const key = `${s.id}-${w}x${h}-${theme}`
       const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1 })
+      // HARNESS BUG, FIXED. This used to also poke
+      // `document.documentElement.setAttribute('data-theme', ...)` here, but
+      // addInitScript runs BEFORE the document exists, so documentElement was
+      // null and every single context threw a TypeError that then showed up in
+      // the app's console-error count. 120 of the first run's 163 "console
+      // errors" were this script, not the app. The attribute was never needed:
+      // main.tsx:8-10 reads localStorage['inbox-theme'] at boot and sets it.
       await ctx.addInitScript(([ses, th]) => {
         localStorage.setItem('sb-bjbvqvzbzczjbatgmccb-auth-token', ses)
-        if (th === 'light') { localStorage.setItem('inbox-theme', 'light'); document.documentElement.setAttribute('data-theme', 'light') }
-        else { localStorage.setItem('inbox-theme', 'dark'); document.documentElement.removeAttribute('data-theme') }
+        localStorage.setItem('inbox-theme', th)
       }, [session, theme])
       const route = async r => {
         const q = r.request(), m = q.method(), url = q.url(), isRpc = url.includes('/rpc/')
@@ -221,6 +230,6 @@ const totals = {
   readRpcDistinct: [...new Set(log.readRpc)],
   unauthorized401: log.unauthorized.length,
 }
-writeFileSync('/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/workbench-polish-2026-08-22-out/evidence/audit-tools/out-sweep-verify.json', JSON.stringify({ totals, surfaces: out }, null, 1))
+writeFileSync('/Users/ivanmanfredi/Desktop/ivan-inbox/goal-runs/workbench-polish-2026-08-22-out/evidence/audit-tools/out-sweep-verify2.json', JSON.stringify({ totals, surfaces: out }, null, 1))
 console.log(JSON.stringify(totals, null, 1))
 await browser.close()

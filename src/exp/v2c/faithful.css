@@ -104,6 +104,17 @@
   --cat-1:#B8FF66; --cat-2:#E3E3E3; --cat-3:#A3A3A3; --cat-4:#707070;
   --cat-1-ink:var(--ink); --cat-2-ink:var(--ink); --cat-3-ink:var(--ink);
   --cat-4-ink:#FFFFFF;          /* 9.5 — MONO cat-4 is the one white label */
+  /* --- avatar identity tints (F11, re-derived 2026-08-22). ------------------
+     An avatar is not a category mark and is not one of §4's three lime roles,
+     so it does not read the --cat family and it never takes a saturated fill.
+     Each bucket is a low-alpha tint over --e3, which is §4's own device for
+     expressing a state without spending the fill. The alpha varies with the hue
+     so the two NEUTRAL buckets separate on lightness and do not collapse into
+     each other; hue does the rest. Dark values here, light inverted below. */
+  --av-1:rgba(184,255,102,.14);
+  --av-2:rgba(255,155,34,.16);
+  --av-3:rgba(255,255,255,.18);
+  --av-4:rgba(255,255,255,.06);
   /* Beyond four series, differentiation is PATTERN not colour (9.2). */
   --pat-1:none;
   --pat-2:repeating-linear-gradient(45deg,rgba(12,12,11,.34) 0 3px,transparent 3px 7px);
@@ -172,6 +183,14 @@
   --accent-ui:#5A8A00;
   /* --ink is NOT overridden: the accent is the same hex in both themes, so the
      label on a filled accent mark stays ink. */
+  /* The avatar tints INVERT with the ladder. A white tint over light --e3
+     (#EAEAE4) lifts the mark towards the row it sits on and erases it, so the
+     two neutral buckets tint with ink instead, and the lime bucket takes
+     --accent-ui's darker lime for the same reason glyphs do. */
+  --av-1:rgba(90,138,0,.18);
+  --av-2:rgba(196,105,0,.18);
+  --av-3:rgba(19,19,19,.16);
+  --av-4:rgba(19,19,19,.06);
 }
 
 /* ========================================================================== */
@@ -610,7 +629,9 @@
   width:var(--anchor-w); height:var(--anchor-w);
   flex:none;
 }
-.wb.wb.wb .av{ font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:0; color:var(--ink) }
+/* Ink is --text, not --ink: see the F11 block below, where the fill under it
+   stopped being a filled accent mark. */
+.wb.wb.wb .av{ font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:0; color:var(--text) }
 /* the badge carries a word ('in'), so an 8px size would be an EIGHTH text tier
    in the census rather than a permitted glyph — it takes the eyebrow tier. */
 .wb.wb.wb .av .badge{ width:15px;height:15px;bottom:-3px;right:-3px;border-width:2px;
@@ -2274,16 +2295,34 @@
 
 /* ---- F11 (P2) — avatar identity ramp was the old app's palette. ------------
    Six teal/blue/purple/pink gradients on every row of the busiest surface —
-   the last place blue/purple survived the reskin. Re-derived from the
-   reference family: lime+ink / orange+ink / white+ink / neutral+white
-   (contrast 14.97 / 8.51 / 17.93 / 4.95 — delta-spec appendix). Overridden
-   HERE because Avatar.tsx and the .av.g* gradients are SHARED with the stock
-   shell (src/styles.css:61-66 stay untouched); the hash keeps its job, the
-   six buckets fold onto the four reference fills. */
-.wb.wb.wb .av.g1, .wb.wb.wb .av.g5{ background:var(--cat-1); color:var(--ink) }
-.wb.wb.wb .av.g2, .wb.wb.wb .av.g6{ background:var(--cat-2); color:var(--ink) }
-.wb.wb.wb .av.g3{ background:var(--cat-3); color:var(--ink) }
-.wb.wb.wb .av.g4{ background:var(--cat-4); color:#FFFFFF }
+   the last place blue/purple survived the reskin. Overridden HERE because
+   Avatar.tsx and the .av.g* gradients are SHARED with the stock shell
+   (src/styles.css:61-66 stay untouched); the hash keeps its job, the six
+   buckets fold onto four.
+
+   RE-DERIVED 2026-08-22. The first pass folded them onto the four reference
+   FILLS, which put --cat-1 on prospect avatars — and --cat-1 is #B8FF66, the
+   accent itself. §4 allows lime in exactly three roles: the single primary
+   action on the screen, the live/now state, and the focus ring. An avatar is
+   none of the three, and on the DMs lane it does not appear once, it appears
+   once per thread. The boot-default surface was painting more accent marks
+   than every other screen in the app put together, and no census had ever been
+   run off it.
+   What changes is the WEIGHT, not the ramp: a hash still has to be readable as
+   identity. Each bucket becomes a raised neutral (--e3) carrying a low-alpha
+   tint (--av-1..4), which is §4's own answer for expressing something without
+   spending the fill. Ink moves from --ink to --text: --ink is the label on a
+   FILLED accent mark, and there is no longer a fill under it. The tint rides
+   background-image over a background-color so the two layers compose without
+   needing color-mix. */
+.wb.wb.wb .av{
+  background-color:var(--e3); background-image:none; color:var(--text);
+  box-shadow:inset 0 0 0 1px var(--hairline);
+}
+.wb.wb.wb .av.g1, .wb.wb.wb .av.g5{ background-image:linear-gradient(var(--av-1),var(--av-1)) }
+.wb.wb.wb .av.g2, .wb.wb.wb .av.g6{ background-image:linear-gradient(var(--av-2),var(--av-2)) }
+.wb.wb.wb .av.g3{ background-image:linear-gradient(var(--av-3),var(--av-3)) }
+.wb.wb.wb .av.g4{ background-image:linear-gradient(var(--av-4),var(--av-4)) }
 
 /* ---- F10 (P2) — raw scroll-clip edges. -------------------------------------
    Scrolled rows reappeared half-cut with nothing closing the boundary: under

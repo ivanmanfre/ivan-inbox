@@ -1,8 +1,17 @@
 import { useCallback, useEffect, useId, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { CONTENT_LANES, draftLane, type ContentLane } from '../../lib/content'
+import { type ContentLane } from '../../lib/content'
+import {
+  isClamped, mergeAlerts, splitReviewByLane,
+  type AutomationAlert,
+} from '../../lib/glance'
 
 // THE GLANCE LAYER'S NUMBERS.
+//
+// The DERIVATIONS moved to `src/lib/glance.ts` on 2026-08-22 and are unit-tested
+// there (`src/lib/glance.test.ts`). What stays here is the fetching, the poll and
+// the realtime subscription. Nothing in this file turns a row into a number any
+// more, which is the only way the rail's arithmetic could be reached by a test.
 //
 // Why this file exists: the rail carried counts for three jobs out of nine, and
 // the one it carried for Content was scoped to Ivan's lane. Measured against
@@ -50,24 +59,9 @@ const ALERT_WINDOW_DAYS = 14
 // figure. What is rendered is `last_execution_status` plus the AGE of that
 // execution, both of which are checkable on the row.
 
-export type AutomationAlert = {
-  // Normalised name. `dashboard_workflow_stats.workflow_name` and
-  // `scheduled_ops_status.label` are the SAME string for the n8n-sourced jobs
-  // that appear in both views, so this is the dedupe key: probed 2026-08-22 the
-  // two windowed sets are 10 and 15 with an exact-name overlap of 6, and a
-  // naive sum would claim 25 automations are broken when 19 are.
-  key: string
-  name: string
-  // `errored` = its last n8n execution failed. `stalled` = a scheduled job that
-  // was running inside the window and is now past its interval. `both` = the
-  // two views agree about the same automation.
-  kind: 'errored' | 'stalled' | 'both'
-  source: string | null
-  category: string | null
-  lastAt: string | null
-  detail: string | null
-  acknowledged: boolean
-}
+// Re-exported so every existing consumer (OpsBoard.tsx, Shell.tsx) keeps its
+// import path while the shape itself lives with the function that builds it.
+export type { AutomationAlert }
 
 export type GlanceCounts = {
   // carousel_drafts at `review`, EVERY lane. The rail row's number.
@@ -108,8 +102,6 @@ const EMPTY: GlanceCounts = {
   loadedAt: null,
 }
 
-const norm = (s: string | null | undefined) => (s ?? '').trim().toLowerCase()
-
 // The two health views are synced by cron and carry no realtime channel, so
 // they are polled. 120s is the interval the old dashboard's own nav badges use
 // (components/dashboard-v2/useNavBadges.ts), ported rather than invented.
@@ -144,60 +136,15 @@ export function useGlanceCounts(): GlanceCounts {
     if (err) { setState(s => ({ ...s, error: err.message })); return }
 
     const draftRows = (drafts.data ?? []) as { client_id: string | null }[]
-    const byLane: Record<ContentLane, number> = { ivan: 0, risedtc: 0, arch: 0 }
-    let other = 0
-    for (const r of draftRows) {
-      const l = draftLane(r)
-      if ((CONTENT_LANES as readonly string[]).includes(l)) byLane[l as ContentLane] += 1
-      else other += 1
-    }
+    const { byLane, other } = splitReviewByLane(draftRows)
 
-    // Windowed, then merged. `both` is not a third severity, it is the note
-    // that the two sources are describing one automation.
-    const merged = new Map<string, AutomationAlert>()
-    let olderErrored = 0
-    for (const r of (wf.data ?? []) as Record<string, string | boolean | null>[]) {
-      const at = r.last_execution_at as string | null
-      if (!at || at < cut) { olderErrored += 1; continue }
-      const name = String(r.workflow_name ?? '')
-      merged.set(norm(name), {
-        key: norm(name),
-        name,
-        kind: 'errored',
-        source: 'n8n',
-        category: null,
-        lastAt: at,
-        detail: (r.last_error_message as string | null) || null,
-        acknowledged: r.error_acknowledged === true,
-      })
-    }
-    let olderStalled = 0
-    for (const r of (jobs.data ?? []) as Record<string, string | null>[]) {
-      const at = r.last_run_at
-      if (!at || at < cut) { olderStalled += 1; continue }
-      const name = String(r.label ?? '')
-      const k = norm(name)
-      const hit = merged.get(k)
-      if (hit) {
-        merged.set(k, { ...hit, kind: 'both', category: r.category ?? hit.category })
-        continue
-      }
-      merged.set(k, {
-        key: k,
-        name,
-        kind: 'stalled',
-        source: r.source,
-        category: r.category,
-        lastAt: at,
-        detail: r.last_error_message || null,
-        acknowledged: false,
-      })
-    }
+    const { alerts, olderErrored, olderStalled } = mergeAlerts(
+      wf.data ?? [], jobs.data ?? [], cut,
+    )
 
-    const alerts = [...merged.values()].sort((a, b) => (b.lastAt ?? '').localeCompare(a.lastAt ?? ''))
     const clamped =
-      (drafts.count ?? 0) > draftRows.length ||
-      (magnets.count ?? 0) > (magnets.data ?? []).length
+      isClamped(drafts.count, draftRows.length) ||
+      isClamped(magnets.count, (magnets.data ?? []).length)
 
     setState({
       contentReview: drafts.count ?? draftRows.length,

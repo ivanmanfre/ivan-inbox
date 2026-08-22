@@ -590,7 +590,10 @@ export default function Shell() {
           onOpenCall={openCallRow}
         />
       )}
-      {job === 'settings' && <SettingsScreen />}
+      {/* `shell` is what earns the Density and Frame controls. SettingsScreen is
+          shared with #exp/stock (App.tsx:148) and both arms only reach `.wb`, so
+          without this the escape hatch renders two controls that do nothing. */}
+      {job === 'settings' && <SettingsScreen shell="workbench" />}
     </>
   )
 

@@ -271,6 +271,12 @@ function catalog() {
   }, { settle: 1600 }))
   out.push(S('content:filter-disclosure', '§2', '.wb-fmenu', async page => {
     await hardLoad(page, '#exp/v2/content')
+    // FilterRow carries its OWN mobile breakpoint (767px, inventory §2/§9),
+    // independent of the shell's canvas model, and below it the pills sit
+    // behind a Filters button. Two steps, and the first one is allowed to be
+    // absent because at 1440 there is no button to press.
+    await clickText(page, '.ct-cmd-f button, button', /^filters/i)
+    await page.waitForTimeout(700)
     return clickFirst(page, '.ct-fpill, .wb-fpill')
   }, { settle: 900, minText: 150 }))
   out.push(S('content:lane-mattan', '§2', '.ct-rows, .wb-empty', async page => {
@@ -289,8 +295,15 @@ function catalog() {
   }, { when: 'a reaction is pending in the desk queue' }))
 
   // §3 - the two takeover windows and everything inside them.
+  // The lane pill is PERSISTED, and `content:lane-mattan` above flips it, so
+  // every later content surface booted on a lane whose tab set is composite
+  // group x stage and has no tab called "Published". That is exactly the class
+  // of silent miss this rewrite exists to catch: the old script would have
+  // scanned nothing here and still printed PASS.
   const openDraftWindow = async page => {
     await hardLoad(page, '#exp/v2/content')
+    await clickText(page, '.ct-cmd-lane', /^ivan/i)
+    await page.waitForTimeout(1200)
     if (!await clickText(page, '[role=tab]', /^Published/)) return false
     await page.waitForTimeout(1500)
     return clickFirst(page, '.ct-card.ct-tap')
@@ -314,6 +327,8 @@ function catalog() {
   }, { when: 'the open window has a queue of two or more rows', settle: 700, minText: 400 }))
   out.push(S('draft-window:swap-image', '§7', '.dw-swap', async page => {
     await hardLoad(page, '#exp/v2/content')
+    await clickText(page, '.ct-cmd-lane', /^ivan/i)
+    await page.waitForTimeout(1200)
     if (!await clickText(page, '[role=tab]', /^Needs review/)) return false
     await page.waitForTimeout(1500)
     if (!await clickFirst(page, '.ct-card.ct-tap')) return false
@@ -324,6 +339,8 @@ function catalog() {
   }, { when: 'a review-stage draft exists on the lane', settle: 900, minText: 400 }))
   out.push(S('confirm-sheet', '§7', '.sheet-card', async page => {
     await hardLoad(page, '#exp/v2/content')
+    await clickText(page, '.ct-cmd-lane', /^ivan/i)
+    await page.waitForTimeout(1200)
     if (!await clickText(page, '[role=tab]', /^Needs review/)) return false
     await page.waitForTimeout(1500)
     if (!await clickFirst(page, '.ct-card.ct-tap')) return false
@@ -340,7 +357,7 @@ function catalog() {
   }, { settle: 2000, minText: 300 }))
 
   // §4 - the context peers.
-  out.push(S('thread-peer', '§4', '.wb-peer-thread, .wb-peer', async page => {
+  out.push(S('thread-peer', '§4', '.wb-peer-thread, .wb-peer, .msgs', async page => {
     await hardLoad(page, '#exp/v2/dms')
     return clickFirst(page, '[data-wbrow]')
   }, { settle: 1800, minText: 200 }))
@@ -427,8 +444,17 @@ function catalog() {
 
 // ---- go ------------------------------------------------------------------
 
+// `--only=id,id` runs a subset through the identical harness. The reported
+// `intended` follows the subset, so the walked/intended pair stays honest.
+const ONLY = (process.argv.find(a => a.startsWith('--only=')) || '').slice(7)
+  .split(',').map(s => s.trim()).filter(Boolean)
+
 const browser = await chromium.launch()
-const CATALOG = catalog()
+const CATALOG = ONLY.length ? catalog().filter(s => ONLY.includes(s.id)) : catalog()
+if (ONLY.length && CATALOG.length !== ONLY.length) {
+  console.error(`--only named ${ONLY.length} surfaces, matched ${CATALOG.length}. Check the ids.`)
+  process.exit(2)
+}
 const intendedPerPass = CATALOG.length
 
 for (const vp of VIEWPORTS) {
