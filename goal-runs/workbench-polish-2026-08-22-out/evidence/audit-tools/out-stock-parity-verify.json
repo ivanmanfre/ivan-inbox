@@ -1,7 +1,7 @@
 {
  "method": "same window, three captures per tab: cur, pre, cur. control = cur vs cur (noise floor). gate = pre vs cur.",
  "preBuild": "18c773a via /tmp/wb-prerun on :4174",
- "curBuild": "875098f on :4176 (own isolated build)",
+ "curBuild": "e748f44 + the SettingsScreen shell scoping, on :4191 (own isolated build)",
  "results": {
   "today": {
    "landedOn": {
@@ -94,9 +94,9 @@
     "pct": 0
    },
    "gate_pre_vs_cur": {
-    "differing": 43072,
+    "differing": 430,
     "total": 1296000,
-    "pct": 3.32
+    "pct": 0.03
    }
   }
  },

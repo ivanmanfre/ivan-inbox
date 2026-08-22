@@ -1,6 +1,6 @@
 {
-  "capturedAt": "2026-08-22T09:13:13.097Z",
-  "base": "http://localhost:4173/",
+  "capturedAt": "2026-08-22T13:10:18.573Z",
+  "base": "http://127.0.0.1:4191/",
   "interceptedWrites": 0,
   "shots": [
     "01-content-list-1440x900-dark.jpg",
@@ -18,7 +18,6 @@
     "03-draft-window-1440x900-light.jpg",
     "03-draft-window-390x844-dark.jpg",
     "03-draft-window-actions-390x844-dark.jpg",
-    "03-draft-window-inspector-390x844-dark.jpg",
     "03-draft-window-390x844-light.jpg",
     "03-draft-window-2560x1440-dark.jpg",
     "03-draft-window-2560x1440-light.jpg",
@@ -107,13 +106,13 @@
         {
           "tag": "div",
           "cls": "wb-workseg",
-          "scrollWidth": 325,
-          "clientWidth": 214
+          "scrollWidth": 361,
+          "clientWidth": 158
         },
         {
           "tag": "div",
           "cls": "ct-cmd-scroll",
-          "scrollWidth": 429,
+          "scrollWidth": 485,
           "clientWidth": 342
         },
         {
@@ -173,8 +172,99 @@
       "consoleErrorCount": 0,
       "consoleErrors": [],
       "pageHeight": 900,
-      "overflowCount": 0,
-      "overflow": []
+      "overflowCount": 15,
+      "overflow": [
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 253,
+          "clientWidth": 91
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 197,
+          "clientWidth": 91
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 425,
+          "clientWidth": 91
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 444,
+          "clientWidth": 91
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 411,
+          "clientWidth": 91
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 398,
+          "clientWidth": 91
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 451,
+          "clientWidth": 91
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 448,
+          "clientWidth": 91
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 384,
+          "clientWidth": 91
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 243,
+          "clientWidth": 91
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 244,
+          "clientWidth": 91
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 207,
+          "clientWidth": 91
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 246,
+          "clientWidth": 91
+        },
+        {
+          "tag": "span",
+          "cls": "cal-rr-n",
+          "scrollWidth": 704,
+          "clientWidth": 260
+        },
+        {
+          "tag": "span",
+          "cls": "cal-rr-n",
+          "scrollWidth": 436,
+          "clientWidth": 260
+        }
+      ]
     },
     "02-content-calendar-1440x900-light": {
       "label": "Content lane, Calendar tab",
@@ -183,8 +273,99 @@
       "consoleErrorCount": 0,
       "consoleErrors": [],
       "pageHeight": 900,
-      "overflowCount": 0,
-      "overflow": []
+      "overflowCount": 15,
+      "overflow": [
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 253,
+          "clientWidth": 91
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 197,
+          "clientWidth": 91
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 425,
+          "clientWidth": 91
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 444,
+          "clientWidth": 91
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 411,
+          "clientWidth": 91
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 398,
+          "clientWidth": 91
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 451,
+          "clientWidth": 91
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 448,
+          "clientWidth": 91
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 384,
+          "clientWidth": 91
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 243,
+          "clientWidth": 91
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 244,
+          "clientWidth": 91
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 207,
+          "clientWidth": 91
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 246,
+          "clientWidth": 91
+        },
+        {
+          "tag": "span",
+          "cls": "cal-rr-n",
+          "scrollWidth": 704,
+          "clientWidth": 260
+        },
+        {
+          "tag": "span",
+          "cls": "cal-rr-n",
+          "scrollWidth": 436,
+          "clientWidth": 260
+        }
+      ]
     },
     "02-content-calendar-390x844-dark": {
       "label": "Content lane, Calendar tab",
@@ -193,7 +374,7 @@
       "consoleErrorCount": 0,
       "consoleErrors": [],
       "pageHeight": 844,
-      "overflowCount": 8,
+      "overflowCount": 17,
       "overflow": [
         {
           "tag": "span",
@@ -210,13 +391,13 @@
         {
           "tag": "div",
           "cls": "wb-workseg",
-          "scrollWidth": 325,
-          "clientWidth": 214
+          "scrollWidth": 361,
+          "clientWidth": 158
         },
         {
           "tag": "div",
           "cls": "ct-cmd-scroll",
-          "scrollWidth": 717,
+          "scrollWidth": 774,
           "clientWidth": 342
         },
         {
@@ -230,6 +411,60 @@
           "cls": "wb-fpill ct-fpill",
           "scrollWidth": 78,
           "clientWidth": 74
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 425,
+          "clientWidth": 325
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 444,
+          "clientWidth": 325
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 411,
+          "clientWidth": 325
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 398,
+          "clientWidth": 325
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 451,
+          "clientWidth": 325
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 448,
+          "clientWidth": 325
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 384,
+          "clientWidth": 325
+        },
+        {
+          "tag": "span",
+          "cls": "cal-rr-n",
+          "scrollWidth": 704,
+          "clientWidth": 223
+        },
+        {
+          "tag": "span",
+          "cls": "cal-rr-n",
+          "scrollWidth": 436,
+          "clientWidth": 223
         },
         {
           "tag": "div",
@@ -252,7 +487,7 @@
       "consoleErrorCount": 0,
       "consoleErrors": [],
       "pageHeight": 844,
-      "overflowCount": 8,
+      "overflowCount": 17,
       "overflow": [
         {
           "tag": "span",
@@ -269,13 +504,13 @@
         {
           "tag": "div",
           "cls": "wb-workseg",
-          "scrollWidth": 325,
-          "clientWidth": 214
+          "scrollWidth": 361,
+          "clientWidth": 158
         },
         {
           "tag": "div",
           "cls": "ct-cmd-scroll",
-          "scrollWidth": 717,
+          "scrollWidth": 774,
           "clientWidth": 342
         },
         {
@@ -289,6 +524,60 @@
           "cls": "wb-fpill ct-fpill",
           "scrollWidth": 78,
           "clientWidth": 74
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 425,
+          "clientWidth": 325
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 444,
+          "clientWidth": 325
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 411,
+          "clientWidth": 325
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 398,
+          "clientWidth": 325
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 451,
+          "clientWidth": 325
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 448,
+          "clientWidth": 325
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 384,
+          "clientWidth": 325
+        },
+        {
+          "tag": "span",
+          "cls": "cal-rr-n",
+          "scrollWidth": 704,
+          "clientWidth": 223
+        },
+        {
+          "tag": "span",
+          "cls": "cal-rr-n",
+          "scrollWidth": 436,
+          "clientWidth": 223
         },
         {
           "tag": "div",
@@ -311,8 +600,63 @@
       "consoleErrorCount": 0,
       "consoleErrors": [],
       "pageHeight": 1440,
-      "overflowCount": 0,
-      "overflow": []
+      "overflowCount": 9,
+      "overflow": [
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 425,
+          "clientWidth": 251
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 444,
+          "clientWidth": 251
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 411,
+          "clientWidth": 251
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 398,
+          "clientWidth": 251
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 451,
+          "clientWidth": 251
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 448,
+          "clientWidth": 251
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 384,
+          "clientWidth": 251
+        },
+        {
+          "tag": "span",
+          "cls": "cal-rr-n",
+          "scrollWidth": 704,
+          "clientWidth": 260
+        },
+        {
+          "tag": "span",
+          "cls": "cal-rr-n",
+          "scrollWidth": 436,
+          "clientWidth": 260
+        }
+      ]
     },
     "02-content-calendar-2560x1440-light": {
       "label": "Content lane, Calendar tab",
@@ -321,8 +665,63 @@
       "consoleErrorCount": 0,
       "consoleErrors": [],
       "pageHeight": 1440,
-      "overflowCount": 0,
-      "overflow": []
+      "overflowCount": 9,
+      "overflow": [
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 425,
+          "clientWidth": 251
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 444,
+          "clientWidth": 251
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 411,
+          "clientWidth": 251
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 398,
+          "clientWidth": 251
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 451,
+          "clientWidth": 251
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 448,
+          "clientWidth": 251
+        },
+        {
+          "tag": "span",
+          "cls": "cal-chip-n",
+          "scrollWidth": 384,
+          "clientWidth": 251
+        },
+        {
+          "tag": "span",
+          "cls": "cal-rr-n",
+          "scrollWidth": 704,
+          "clientWidth": 260
+        },
+        {
+          "tag": "span",
+          "cls": "cal-rr-n",
+          "scrollWidth": 436,
+          "clientWidth": 260
+        }
+      ]
     },
     "03-draft-window-1440x900-dark": {
       "label": "A draft opened in the draft window / takeover",
@@ -331,7 +730,7 @@
       "consoleErrorCount": 0,
       "consoleErrors": [],
       "pageHeight": 900,
-      "overflowCount": 13,
+      "overflowCount": 14,
       "overflow": [
         {
           "tag": "div",
@@ -365,51 +764,57 @@
         },
         {
           "tag": "span",
-          "cls": "qa-fold-k",
-          "scrollWidth": 170,
-          "clientWidth": 7
-        },
-        {
-          "tag": "span",
           "cls": "dd-logc-p",
           "scrollWidth": 371,
-          "clientWidth": 270
+          "clientWidth": 299
         },
         {
           "tag": "span",
           "cls": "dd-logc-p",
           "scrollWidth": 710,
-          "clientWidth": 270
+          "clientWidth": 299
         },
         {
           "tag": "span",
           "cls": "dd-logc-p",
           "scrollWidth": 330,
-          "clientWidth": 270
+          "clientWidth": 299
         },
         {
           "tag": "span",
           "cls": "dd-logc-p",
           "scrollWidth": 1125,
-          "clientWidth": 270
+          "clientWidth": 299
+        },
+        {
+          "tag": "span",
+          "cls": "dd-vk",
+          "scrollWidth": 95,
+          "clientWidth": 90
+        },
+        {
+          "tag": "span",
+          "cls": "dd-vk",
+          "scrollWidth": 95,
+          "clientWidth": 90
         },
         {
           "tag": "span",
           "cls": "dd-logc-p",
           "scrollWidth": 441,
-          "clientWidth": 270
+          "clientWidth": 299
         },
         {
           "tag": "span",
           "cls": "dd-logc-p",
           "scrollWidth": 492,
-          "clientWidth": 270
+          "clientWidth": 299
         },
         {
           "tag": "span",
           "cls": "dw-qrow-t",
           "scrollWidth": 704,
-          "clientWidth": 178
+          "clientWidth": 167
         }
       ]
     },
@@ -420,7 +825,7 @@
       "consoleErrorCount": 0,
       "consoleErrors": [],
       "pageHeight": 900,
-      "overflowCount": 13,
+      "overflowCount": 14,
       "overflow": [
         {
           "tag": "div",
@@ -454,51 +859,57 @@
         },
         {
           "tag": "span",
-          "cls": "qa-fold-k",
-          "scrollWidth": 170,
-          "clientWidth": 7
-        },
-        {
-          "tag": "span",
           "cls": "dd-logc-p",
           "scrollWidth": 371,
-          "clientWidth": 270
+          "clientWidth": 299
         },
         {
           "tag": "span",
           "cls": "dd-logc-p",
           "scrollWidth": 710,
-          "clientWidth": 270
+          "clientWidth": 299
         },
         {
           "tag": "span",
           "cls": "dd-logc-p",
           "scrollWidth": 330,
-          "clientWidth": 270
+          "clientWidth": 299
         },
         {
           "tag": "span",
           "cls": "dd-logc-p",
           "scrollWidth": 1125,
-          "clientWidth": 270
+          "clientWidth": 299
+        },
+        {
+          "tag": "span",
+          "cls": "dd-vk",
+          "scrollWidth": 95,
+          "clientWidth": 90
+        },
+        {
+          "tag": "span",
+          "cls": "dd-vk",
+          "scrollWidth": 95,
+          "clientWidth": 90
         },
         {
           "tag": "span",
           "cls": "dd-logc-p",
           "scrollWidth": 441,
-          "clientWidth": 270
+          "clientWidth": 299
         },
         {
           "tag": "span",
           "cls": "dd-logc-p",
           "scrollWidth": 492,
-          "clientWidth": 270
+          "clientWidth": 299
         },
         {
           "tag": "span",
           "cls": "dw-qrow-t",
           "scrollWidth": 704,
-          "clientWidth": 178
+          "clientWidth": 167
         }
       ]
     },
@@ -506,133 +917,7 @@
       "label": "A draft opened in the draft window / takeover",
       "viewport": "390x844",
       "theme": "dark",
-      "consoleErrorCount": 0,
-      "consoleErrors": [],
-      "pageHeight": 844,
-      "overflowCount": 20,
-      "overflow": [
-        {
-          "tag": "span",
-          "cls": "wb-rib-sync",
-          "scrollWidth": 85,
-          "clientWidth": 73
-        },
-        {
-          "tag": "span",
-          "cls": "wb-gear",
-          "scrollWidth": 38,
-          "clientWidth": 32
-        },
-        {
-          "tag": "div",
-          "cls": "wb-workseg",
-          "scrollWidth": 325,
-          "clientWidth": 214
-        },
-        {
-          "tag": "div",
-          "cls": "ct-cmd-scroll",
-          "scrollWidth": 429,
-          "clientWidth": 342
-        },
-        {
-          "tag": "div",
-          "cls": "ct-fpills",
-          "scrollWidth": 78,
-          "clientWidth": 74
-        },
-        {
-          "tag": "button",
-          "cls": "wb-fpill ct-fpill",
-          "scrollWidth": 78,
-          "clientWidth": 74
-        },
-        {
-          "tag": "div",
-          "cls": "ct-anchor",
-          "scrollWidth": 31,
-          "clientWidth": 28
-        },
-        {
-          "tag": "button",
-          "cls": "wb-selmark",
-          "scrollWidth": 29,
-          "clientWidth": 16
-        },
-        {
-          "tag": "div",
-          "cls": "ct-anchor",
-          "scrollWidth": 31,
-          "clientWidth": 28
-        },
-        {
-          "tag": "button",
-          "cls": "wb-selmark",
-          "scrollWidth": 29,
-          "clientWidth": 16
-        },
-        {
-          "tag": "div",
-          "cls": "ic bubble",
-          "scrollWidth": 30,
-          "clientWidth": 18
-        },
-        {
-          "tag": "div",
-          "cls": "ic bubble",
-          "scrollWidth": 29,
-          "clientWidth": 17
-        },
-        {
-          "tag": "span",
-          "cls": "qa-fold-k",
-          "scrollWidth": 170,
-          "clientWidth": 38
-        },
-        {
-          "tag": "span",
-          "cls": "dd-logc-p",
-          "scrollWidth": 371,
-          "clientWidth": 301
-        },
-        {
-          "tag": "span",
-          "cls": "dd-logc-p",
-          "scrollWidth": 710,
-          "clientWidth": 301
-        },
-        {
-          "tag": "span",
-          "cls": "dd-logc-p",
-          "scrollWidth": 330,
-          "clientWidth": 301
-        },
-        {
-          "tag": "span",
-          "cls": "dd-logc-p",
-          "scrollWidth": 1125,
-          "clientWidth": 301
-        },
-        {
-          "tag": "span",
-          "cls": "dd-logc-p",
-          "scrollWidth": 441,
-          "clientWidth": 301
-        },
-        {
-          "tag": "span",
-          "cls": "dd-logc-p",
-          "scrollWidth": 492,
-          "clientWidth": 301
-        },
-        {
-          "tag": "span",
-          "cls": "dw-qrow-t",
-          "scrollWidth": 704,
-          "clientWidth": 337
-        }
-      ],
-      "note": "Retried standalone after the batch run flaked on this one shot (font-load race); same overflow signature as the light-theme sibling at the same viewport, so the retried capture is representative."
+      "error": "page.screenshot: Clipped area is either empty or outside the resulting image\nCall log:\n  - taking page screenshot\n  - waiting for fonts to load...\n  - fonts loaded\n"
     },
     "03-draft-window-390x844-light": {
       "label": "A draft opened in the draft window / takeover",
@@ -641,7 +926,7 @@
       "consoleErrorCount": 0,
       "consoleErrors": [],
       "pageHeight": 844,
-      "overflowCount": 20,
+      "overflowCount": 18,
       "overflow": [
         {
           "tag": "span",
@@ -658,13 +943,13 @@
         {
           "tag": "div",
           "cls": "wb-workseg",
-          "scrollWidth": 325,
-          "clientWidth": 214
+          "scrollWidth": 361,
+          "clientWidth": 158
         },
         {
           "tag": "div",
           "cls": "ct-cmd-scroll",
-          "scrollWidth": 429,
+          "scrollWidth": 485,
           "clientWidth": 342
         },
         {
@@ -717,51 +1002,39 @@
         },
         {
           "tag": "span",
-          "cls": "qa-fold-k",
-          "scrollWidth": 170,
-          "clientWidth": 38
-        },
-        {
-          "tag": "span",
           "cls": "dd-logc-p",
           "scrollWidth": 371,
-          "clientWidth": 301
+          "clientWidth": 329
         },
         {
           "tag": "span",
           "cls": "dd-logc-p",
           "scrollWidth": 710,
-          "clientWidth": 301
-        },
-        {
-          "tag": "span",
-          "cls": "dd-logc-p",
-          "scrollWidth": 330,
-          "clientWidth": 301
+          "clientWidth": 329
         },
         {
           "tag": "span",
           "cls": "dd-logc-p",
           "scrollWidth": 1125,
-          "clientWidth": 301
+          "clientWidth": 329
         },
         {
           "tag": "span",
           "cls": "dd-logc-p",
           "scrollWidth": 441,
-          "clientWidth": 301
+          "clientWidth": 329
         },
         {
           "tag": "span",
           "cls": "dd-logc-p",
           "scrollWidth": 492,
-          "clientWidth": 301
+          "clientWidth": 329
         },
         {
           "tag": "span",
           "cls": "dw-qrow-t",
           "scrollWidth": 704,
-          "clientWidth": 337
+          "clientWidth": 325
         }
       ]
     },
@@ -772,7 +1045,7 @@
       "consoleErrorCount": 0,
       "consoleErrors": [],
       "pageHeight": 1440,
-      "overflowCount": 6,
+      "overflowCount": 5,
       "overflow": [
         {
           "tag": "div",
@@ -800,15 +1073,9 @@
         },
         {
           "tag": "span",
-          "cls": "dd-logc-p",
-          "scrollWidth": 1125,
-          "clientWidth": 830
-        },
-        {
-          "tag": "span",
           "cls": "dw-qrow-t",
           "scrollWidth": 704,
-          "clientWidth": 266
+          "clientWidth": 255
         }
       ]
     },
@@ -819,7 +1086,7 @@
       "consoleErrorCount": 0,
       "consoleErrors": [],
       "pageHeight": 1440,
-      "overflowCount": 6,
+      "overflowCount": 5,
       "overflow": [
         {
           "tag": "div",
@@ -847,15 +1114,9 @@
         },
         {
           "tag": "span",
-          "cls": "dd-logc-p",
-          "scrollWidth": 1125,
-          "clientWidth": 830
-        },
-        {
-          "tag": "span",
           "cls": "dw-qrow-t",
           "scrollWidth": 704,
-          "clientWidth": 266
+          "clientWidth": 255
         }
       ]
     },
@@ -893,8 +1154,8 @@
         {
           "tag": "div",
           "cls": "wb-workseg",
-          "scrollWidth": 325,
-          "clientWidth": 214
+          "scrollWidth": 361,
+          "clientWidth": 158
         },
         {
           "tag": "div",
@@ -956,8 +1217,8 @@
         {
           "tag": "div",
           "cls": "wb-workseg",
-          "scrollWidth": 325,
-          "clientWidth": 214
+          "scrollWidth": 361,
+          "clientWidth": 158
         },
         {
           "tag": "button",
@@ -1140,8 +1401,20 @@
       "consoleErrorCount": 0,
       "consoleErrors": [],
       "pageHeight": 900,
-      "overflowCount": 22,
+      "overflowCount": 24,
       "overflow": [
+        {
+          "tag": "button",
+          "cls": "wb-selmark",
+          "scrollWidth": 29,
+          "clientWidth": 16
+        },
+        {
+          "tag": "div",
+          "cls": "av g3",
+          "scrollWidth": 31,
+          "clientWidth": 28
+        },
         {
           "tag": "button",
           "cls": "wb-selmark",
@@ -1283,8 +1556,20 @@
       "consoleErrorCount": 0,
       "consoleErrors": [],
       "pageHeight": 900,
-      "overflowCount": 22,
+      "overflowCount": 24,
       "overflow": [
+        {
+          "tag": "button",
+          "cls": "wb-selmark",
+          "scrollWidth": 29,
+          "clientWidth": 16
+        },
+        {
+          "tag": "div",
+          "cls": "av g3",
+          "scrollWidth": 31,
+          "clientWidth": 28
+        },
         {
           "tag": "button",
           "cls": "wb-selmark",
@@ -1426,7 +1711,7 @@
       "consoleErrorCount": 0,
       "consoleErrors": [],
       "pageHeight": 844,
-      "overflowCount": 34,
+      "overflowCount": 37,
       "overflow": [
         {
           "tag": "span",
@@ -1439,6 +1724,24 @@
           "cls": "wb-gear",
           "scrollWidth": 38,
           "clientWidth": 32
+        },
+        {
+          "tag": "button",
+          "cls": "wb-selmark",
+          "scrollWidth": 29,
+          "clientWidth": 16
+        },
+        {
+          "tag": "div",
+          "cls": "av g3",
+          "scrollWidth": 31,
+          "clientWidth": 28
+        },
+        {
+          "tag": "div",
+          "cls": "snip",
+          "scrollWidth": 616,
+          "clientWidth": 216
         },
         {
           "tag": "button",
@@ -1641,7 +1944,7 @@
       "consoleErrorCount": 0,
       "consoleErrors": [],
       "pageHeight": 844,
-      "overflowCount": 34,
+      "overflowCount": 37,
       "overflow": [
         {
           "tag": "span",
@@ -1654,6 +1957,24 @@
           "cls": "wb-gear",
           "scrollWidth": 38,
           "clientWidth": 32
+        },
+        {
+          "tag": "button",
+          "cls": "wb-selmark",
+          "scrollWidth": 29,
+          "clientWidth": 16
+        },
+        {
+          "tag": "div",
+          "cls": "av g3",
+          "scrollWidth": 31,
+          "clientWidth": 28
+        },
+        {
+          "tag": "div",
+          "cls": "snip",
+          "scrollWidth": 616,
+          "clientWidth": 216
         },
         {
           "tag": "button",
@@ -1856,8 +2177,26 @@
       "consoleErrorCount": 0,
       "consoleErrors": [],
       "pageHeight": 900,
-      "overflowCount": 27,
+      "overflowCount": 30,
       "overflow": [
+        {
+          "tag": "button",
+          "cls": "wb-selmark",
+          "scrollWidth": 29,
+          "clientWidth": 16
+        },
+        {
+          "tag": "div",
+          "cls": "av g3",
+          "scrollWidth": 31,
+          "clientWidth": 28
+        },
+        {
+          "tag": "div",
+          "cls": "snip",
+          "scrollWidth": 616,
+          "clientWidth": 433
+        },
         {
           "tag": "button",
           "cls": "wb-selmark",
@@ -2010,13 +2349,13 @@
         },
         {
           "tag": "div",
-          "cls": "av g6",
+          "cls": "av g3",
           "scrollWidth": 33,
           "clientWidth": 30
         },
         {
           "tag": "div",
-          "cls": "av g6",
+          "cls": "av g3",
           "scrollWidth": 39,
           "clientWidth": 36
         }
@@ -2033,7 +2372,7 @@
       "overflow": [
         {
           "tag": "div",
-          "cls": "av g6",
+          "cls": "av g3",
           "scrollWidth": 33,
           "clientWidth": 30
         },
@@ -2041,11 +2380,11 @@
           "tag": "span",
           "cls": "wb-lad-l",
           "scrollWidth": 75,
-          "clientWidth": 38
+          "clientWidth": 50
         },
         {
           "tag": "div",
-          "cls": "av g6",
+          "cls": "av g3",
           "scrollWidth": 39,
           "clientWidth": 36
         }
@@ -2230,8 +2569,8 @@
         {
           "tag": "div",
           "cls": "wb-workseg",
-          "scrollWidth": 325,
-          "clientWidth": 214
+          "scrollWidth": 361,
+          "clientWidth": 158
         },
         {
           "tag": "button",
@@ -2434,8 +2773,20 @@
       "consoleErrorCount": 0,
       "consoleErrors": [],
       "pageHeight": 900,
-      "overflowCount": 22,
+      "overflowCount": 24,
       "overflow": [
+        {
+          "tag": "button",
+          "cls": "wb-selmark",
+          "scrollWidth": 29,
+          "clientWidth": 16
+        },
+        {
+          "tag": "div",
+          "cls": "av g3",
+          "scrollWidth": 31,
+          "clientWidth": 28
+        },
         {
           "tag": "button",
           "cls": "wb-selmark",
@@ -2577,7 +2928,7 @@
       "consoleErrorCount": 0,
       "consoleErrors": [],
       "pageHeight": 844,
-      "overflowCount": 34,
+      "overflowCount": 38,
       "overflow": [
         {
           "tag": "span",
@@ -2590,6 +2941,30 @@
           "cls": "wb-gear",
           "scrollWidth": 38,
           "clientWidth": 32
+        },
+        {
+          "tag": "span",
+          "cls": "wb-cmdk-t",
+          "scrollWidth": 269,
+          "clientWidth": 209
+        },
+        {
+          "tag": "button",
+          "cls": "wb-selmark",
+          "scrollWidth": 29,
+          "clientWidth": 16
+        },
+        {
+          "tag": "div",
+          "cls": "av g3",
+          "scrollWidth": 31,
+          "clientWidth": 28
+        },
+        {
+          "tag": "div",
+          "cls": "snip",
+          "scrollWidth": 616,
+          "clientWidth": 216
         },
         {
           "tag": "button",
@@ -2792,8 +3167,26 @@
       "consoleErrorCount": 0,
       "consoleErrors": [],
       "pageHeight": 900,
-      "overflowCount": 26,
+      "overflowCount": 29,
       "overflow": [
+        {
+          "tag": "button",
+          "cls": "wb-selmark",
+          "scrollWidth": 29,
+          "clientWidth": 16
+        },
+        {
+          "tag": "div",
+          "cls": "av g3",
+          "scrollWidth": 31,
+          "clientWidth": 28
+        },
+        {
+          "tag": "div",
+          "cls": "snip",
+          "scrollWidth": 616,
+          "clientWidth": 433
+        },
         {
           "tag": "button",
           "cls": "wb-selmark",
@@ -2956,8 +3349,19 @@
       "label": "The Claude chat pane open",
       "viewport": "390x844",
       "theme": "dark",
-      "consoleErrorCount": 0,
-      "consoleErrors": [],
+      "consoleErrorCount": 10,
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_NETWORK_CHANGED",
+        "Failed to load resource: net::ERR_NETWORK_CHANGED",
+        "Failed to load resource: net::ERR_NETWORK_CHANGED",
+        "Failed to load resource: net::ERR_NETWORK_CHANGED",
+        "Failed to load resource: net::ERR_NETWORK_CHANGED",
+        "Failed to load resource: net::ERR_NETWORK_CHANGED",
+        "Failed to load resource: net::ERR_NETWORK_CHANGED",
+        "Failed to load resource: net::ERR_NETWORK_CHANGED",
+        "Failed to load resource: net::ERR_NETWORK_CHANGED",
+        "Failed to load resource: net::ERR_NETWORK_CHANGED"
+      ],
       "pageHeight": 844,
       "overflowCount": 1,
       "overflow": [
