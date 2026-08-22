@@ -69,6 +69,9 @@ import './wb2026.css'
 // .wbkv metadata, motion). Imported LAST so it overrides rather than deletes;
 // see its header for the three-.wb rule it obeys on every component selector.
 import './wbsys.css'
+// The draft window, built on those primitives. Imported after them because it
+// composes them; it reaches nothing outside `.dw`. See its header.
+import './dwsys.css'
 
 // ============================================================================
 // Candidate v2c — WORKBENCH
