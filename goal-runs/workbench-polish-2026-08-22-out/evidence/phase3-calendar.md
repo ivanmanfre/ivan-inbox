@@ -438,7 +438,7 @@ than on it. Measured after: last week bottom **869**, plate bottom **880**, at
 ⚠ **What this cost, stated rather than buried.** At exactly 900px tall the
 content pane now has 49px of scroll range where it had none. All of it is the
 pane's own 32px bottom padding sitting under a grid that ends at 873 inside a
-pane that ends at 880. **No calendar content is below the fold** — the sixth
+pane that ends at 880. **No calendar content is below the fold**: the sixth
 week is fully drawn at rest, which `cal-tools/` and the crop both show. A
 scroll-free month AND a two-line chip do not both fit in 900px: the gate needs a
 cell of at least 104 for a 47px chip, and six of those plus the chrome is 32px
@@ -562,7 +562,7 @@ the ear rather than fixing it.
   amendment's four files reverted, so the diff isolates this work and not the
   other agents' concurrent commits. Five tabs: **0 differing pixels**, control
   0. Settings: 351 differing pixels in a 52x11 box at (142,544), reproduced, then
-  read out of the DOM — it is the string `Build f2432b5` against `Build dev`, the
+  read out of the DOM. It is the string `Build f2432b5` against `Build dev`, the
   build stamp of a `/tmp` tree with no git context. Not a rendering difference.
   `cal-tools/amend-stock-parity.json`, `cal-tools/amend-stock-parity-settings.json`.
 - **No new runtime dependency.** Three, and still three.

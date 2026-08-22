@@ -1,6 +1,6 @@
 {
  "method": "same window, three captures per tab: cur, pre, cur. control = cur vs cur (noise floor). gate = pre vs cur.",
- "preBuild": "HEAD f2432b5 with the amendment's FOUR files reverted to 0e9f923, on :4194 — so the diff isolates THIS amendment and not the other agents' commits",
+ "preBuild": "HEAD f2432b5 with the amendment's FOUR files reverted to 0e9f923, on :4194, so the diff isolates THIS amendment and not the other agents' commits",
  "curBuild": "HEAD f2432b5, on :4191",
  "results": {
   "settings": {

@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-08-22T13:10:18.573Z",
+  "capturedAt": "2026-08-22T15:18:01.747Z",
   "base": "http://127.0.0.1:4191/",
   "interceptedWrites": 0,
   "shots": [
@@ -13,8 +13,6 @@
     "02-content-calendar-2560x1440-dark.jpg",
     "02-content-calendar-2560x1440-light.jpg",
     "03-draft-window-1440x900-dark.jpg",
-    "03-draft-window-actions-1440x900-dark.jpg",
-    "03-draft-window-inspector-1440x900-dark.jpg",
     "03-draft-window-1440x900-light.jpg",
     "03-draft-window-390x844-dark.jpg",
     "03-draft-window-actions-390x844-dark.jpg",
@@ -24,10 +22,7 @@
     "04-content-strategy-1440x900-dark.jpg",
     "04-content-strategy-390x844-dark.jpg",
     "05-content-styles-1440x900-dark.jpg",
-    "05-content-styles-390x844-dark.jpg",
-    "06-ops-lane-1440x900-dark.jpg",
     "06-ops-lane-390x844-dark.jpg",
-    "07-dms-list-1440x900-dark.jpg",
     "07-dms-list-1440x900-light.jpg",
     "07-dms-list-390x844-dark.jpg",
     "07-dms-list-390x844-light.jpg",
@@ -172,86 +167,8 @@
       "consoleErrorCount": 0,
       "consoleErrors": [],
       "pageHeight": 900,
-      "overflowCount": 15,
+      "overflowCount": 2,
       "overflow": [
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 253,
-          "clientWidth": 91
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 197,
-          "clientWidth": 91
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 425,
-          "clientWidth": 91
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 444,
-          "clientWidth": 91
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 411,
-          "clientWidth": 91
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 398,
-          "clientWidth": 91
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 451,
-          "clientWidth": 91
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 448,
-          "clientWidth": 91
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 384,
-          "clientWidth": 91
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 243,
-          "clientWidth": 91
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 244,
-          "clientWidth": 91
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 207,
-          "clientWidth": 91
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 246,
-          "clientWidth": 91
-        },
         {
           "tag": "span",
           "cls": "cal-rr-n",
@@ -273,86 +190,8 @@
       "consoleErrorCount": 0,
       "consoleErrors": [],
       "pageHeight": 900,
-      "overflowCount": 15,
+      "overflowCount": 2,
       "overflow": [
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 253,
-          "clientWidth": 91
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 197,
-          "clientWidth": 91
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 425,
-          "clientWidth": 91
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 444,
-          "clientWidth": 91
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 411,
-          "clientWidth": 91
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 398,
-          "clientWidth": 91
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 451,
-          "clientWidth": 91
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 448,
-          "clientWidth": 91
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 384,
-          "clientWidth": 91
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 243,
-          "clientWidth": 91
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 244,
-          "clientWidth": 91
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 207,
-          "clientWidth": 91
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 246,
-          "clientWidth": 91
-        },
         {
           "tag": "span",
           "cls": "cal-rr-n",
@@ -374,7 +213,7 @@
       "consoleErrorCount": 0,
       "consoleErrors": [],
       "pageHeight": 844,
-      "overflowCount": 17,
+      "overflowCount": 10,
       "overflow": [
         {
           "tag": "span",
@@ -411,48 +250,6 @@
           "cls": "wb-fpill ct-fpill",
           "scrollWidth": 78,
           "clientWidth": 74
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 425,
-          "clientWidth": 325
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 444,
-          "clientWidth": 325
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 411,
-          "clientWidth": 325
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 398,
-          "clientWidth": 325
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 451,
-          "clientWidth": 325
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 448,
-          "clientWidth": 325
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 384,
-          "clientWidth": 325
         },
         {
           "tag": "span",
@@ -487,7 +284,7 @@
       "consoleErrorCount": 0,
       "consoleErrors": [],
       "pageHeight": 844,
-      "overflowCount": 17,
+      "overflowCount": 10,
       "overflow": [
         {
           "tag": "span",
@@ -527,48 +324,6 @@
         },
         {
           "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 425,
-          "clientWidth": 325
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 444,
-          "clientWidth": 325
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 411,
-          "clientWidth": 325
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 398,
-          "clientWidth": 325
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 451,
-          "clientWidth": 325
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 448,
-          "clientWidth": 325
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 384,
-          "clientWidth": 325
-        },
-        {
-          "tag": "span",
           "cls": "cal-rr-n",
           "scrollWidth": 704,
           "clientWidth": 223
@@ -600,50 +355,8 @@
       "consoleErrorCount": 0,
       "consoleErrors": [],
       "pageHeight": 1440,
-      "overflowCount": 9,
+      "overflowCount": 2,
       "overflow": [
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 425,
-          "clientWidth": 251
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 444,
-          "clientWidth": 251
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 411,
-          "clientWidth": 251
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 398,
-          "clientWidth": 251
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 451,
-          "clientWidth": 251
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 448,
-          "clientWidth": 251
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 384,
-          "clientWidth": 251
-        },
         {
           "tag": "span",
           "cls": "cal-rr-n",
@@ -665,50 +378,8 @@
       "consoleErrorCount": 0,
       "consoleErrors": [],
       "pageHeight": 1440,
-      "overflowCount": 9,
+      "overflowCount": 2,
       "overflow": [
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 425,
-          "clientWidth": 251
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 444,
-          "clientWidth": 251
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 411,
-          "clientWidth": 251
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 398,
-          "clientWidth": 251
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 451,
-          "clientWidth": 251
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 448,
-          "clientWidth": 251
-        },
-        {
-          "tag": "span",
-          "cls": "cal-chip-n",
-          "scrollWidth": 384,
-          "clientWidth": 251
-        },
         {
           "tag": "span",
           "cls": "cal-rr-n",
@@ -730,7 +401,7 @@
       "consoleErrorCount": 0,
       "consoleErrors": [],
       "pageHeight": 900,
-      "overflowCount": 14,
+      "overflowCount": 5,
       "overflow": [
         {
           "tag": "div",
@@ -761,60 +432,6 @@
           "cls": "ct-title ct-row-p",
           "scrollWidth": 842,
           "clientWidth": 692
-        },
-        {
-          "tag": "span",
-          "cls": "dd-logc-p",
-          "scrollWidth": 371,
-          "clientWidth": 299
-        },
-        {
-          "tag": "span",
-          "cls": "dd-logc-p",
-          "scrollWidth": 710,
-          "clientWidth": 299
-        },
-        {
-          "tag": "span",
-          "cls": "dd-logc-p",
-          "scrollWidth": 330,
-          "clientWidth": 299
-        },
-        {
-          "tag": "span",
-          "cls": "dd-logc-p",
-          "scrollWidth": 1125,
-          "clientWidth": 299
-        },
-        {
-          "tag": "span",
-          "cls": "dd-vk",
-          "scrollWidth": 95,
-          "clientWidth": 90
-        },
-        {
-          "tag": "span",
-          "cls": "dd-vk",
-          "scrollWidth": 95,
-          "clientWidth": 90
-        },
-        {
-          "tag": "span",
-          "cls": "dd-logc-p",
-          "scrollWidth": 441,
-          "clientWidth": 299
-        },
-        {
-          "tag": "span",
-          "cls": "dd-logc-p",
-          "scrollWidth": 492,
-          "clientWidth": 299
-        },
-        {
-          "tag": "span",
-          "cls": "dw-qrow-t",
-          "scrollWidth": 704,
-          "clientWidth": 167
         }
       ]
     },
@@ -1197,357 +814,41 @@
       "label": "Content lane, Styles tab",
       "viewport": "390x844",
       "theme": "dark",
-      "consoleErrorCount": 0,
-      "consoleErrors": [],
-      "pageHeight": 844,
-      "overflowCount": 9,
-      "overflow": [
-        {
-          "tag": "span",
-          "cls": "wb-rib-sync",
-          "scrollWidth": 85,
-          "clientWidth": 73
-        },
-        {
-          "tag": "span",
-          "cls": "wb-gear",
-          "scrollWidth": 38,
-          "clientWidth": 32
-        },
-        {
-          "tag": "div",
-          "cls": "wb-workseg",
-          "scrollWidth": 361,
-          "clientWidth": 158
-        },
-        {
-          "tag": "button",
-          "cls": "wb-fpill ct-fpill",
-          "scrollWidth": 78,
-          "clientWidth": 74
-        },
-        {
-          "tag": "div",
-          "cls": "ct-style-i",
-          "scrollWidth": 508,
-          "clientWidth": 282
-        },
-        {
-          "tag": "div",
-          "cls": "ct-meta",
-          "scrollWidth": 287,
-          "clientWidth": 282
-        },
-        {
-          "tag": "div",
-          "cls": "ct-style-i",
-          "scrollWidth": 508,
-          "clientWidth": 282
-        },
-        {
-          "tag": "div",
-          "cls": "ic bubble",
-          "scrollWidth": 30,
-          "clientWidth": 18
-        },
-        {
-          "tag": "div",
-          "cls": "ic bubble",
-          "scrollWidth": 29,
-          "clientWidth": 17
-        }
-      ]
+      "error": "page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"http://127.0.0.1:4191/#exp/v2/styles\", waiting until \"networkidle\"\n"
     },
     "06-ops-lane-1440x900-dark": {
       "label": "Ops lane (default view)",
       "viewport": "1440x900",
       "theme": "dark",
-      "consoleErrorCount": 0,
-      "consoleErrors": [],
-      "pageHeight": 900,
-      "overflowCount": 6,
-      "overflow": [
-        {
-          "tag": "div",
-          "cls": "log-snip",
-          "scrollWidth": 1484,
-          "clientWidth": 558
-        },
-        {
-          "tag": "div",
-          "cls": "log-snip",
-          "scrollWidth": 1425,
-          "clientWidth": 558
-        },
-        {
-          "tag": "div",
-          "cls": "log-snip",
-          "scrollWidth": 1474,
-          "clientWidth": 558
-        },
-        {
-          "tag": "div",
-          "cls": "log-snip",
-          "scrollWidth": 1761,
-          "clientWidth": 558
-        },
-        {
-          "tag": "div",
-          "cls": "log-snip",
-          "scrollWidth": 797,
-          "clientWidth": 558
-        },
-        {
-          "tag": "div",
-          "cls": "log-snip",
-          "scrollWidth": 818,
-          "clientWidth": 558
-        }
-      ]
+      "error": "page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"http://127.0.0.1:4191/#exp/v2/ops\", waiting until \"networkidle\"\n"
     },
     "06-ops-lane-390x844-dark": {
       "label": "Ops lane (default view)",
       "viewport": "390x844",
       "theme": "dark",
-      "consoleErrorCount": 0,
-      "consoleErrors": [],
+      "consoleErrorCount": 11,
+      "consoleErrors": [
+        "WebSocket connection to 'wss://bjbvqvzbzczjbatgmccb.supabase.co/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqYnZxdnpiemN6amJhdGdtY2NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMDUwODAsImV4cCI6MjA4Mzg4MTA4MH0.yqghcn-Rw5dIFadLhvUASIeUARPvu_CyPOGayI8KyTI&vsn=2.0.0' failed: Connection closed before receiving a handshake response",
+        "Failed to load resource: net::ERR_CONNECTION_CLOSED",
+        "Failed to load resource: net::ERR_CONNECTION_CLOSED",
+        "Failed to load resource: net::ERR_CONNECTION_CLOSED",
+        "Failed to load resource: net::ERR_CONNECTION_CLOSED",
+        "Failed to load resource: net::ERR_CONNECTION_CLOSED",
+        "Failed to load resource: net::ERR_CONNECTION_CLOSED",
+        "Failed to load resource: net::ERR_CONNECTION_CLOSED",
+        "Failed to load resource: net::ERR_CONNECTION_CLOSED",
+        "Failed to load resource: net::ERR_CONNECTION_CLOSED",
+        "Failed to load resource: net::ERR_CONNECTION_CLOSED"
+      ],
       "pageHeight": 844,
-      "overflowCount": 13,
-      "overflow": [
-        {
-          "tag": "span",
-          "cls": "wb-rib-sync",
-          "scrollWidth": 85,
-          "clientWidth": 73
-        },
-        {
-          "tag": "span",
-          "cls": "wb-gear",
-          "scrollWidth": 38,
-          "clientWidth": 32
-        },
-        {
-          "tag": "div",
-          "cls": "log-snip",
-          "scrollWidth": 1484,
-          "clientWidth": 228
-        },
-        {
-          "tag": "div",
-          "cls": "log-snip",
-          "scrollWidth": 368,
-          "clientWidth": 228
-        },
-        {
-          "tag": "div",
-          "cls": "log-snip",
-          "scrollWidth": 1425,
-          "clientWidth": 220
-        },
-        {
-          "tag": "div",
-          "cls": "log-snip",
-          "scrollWidth": 1474,
-          "clientWidth": 220
-        },
-        {
-          "tag": "div",
-          "cls": "log-snip",
-          "scrollWidth": 257,
-          "clientWidth": 220
-        },
-        {
-          "tag": "div",
-          "cls": "log-snip",
-          "scrollWidth": 481,
-          "clientWidth": 220
-        },
-        {
-          "tag": "div",
-          "cls": "log-snip",
-          "scrollWidth": 1761,
-          "clientWidth": 220
-        },
-        {
-          "tag": "div",
-          "cls": "log-snip",
-          "scrollWidth": 797,
-          "clientWidth": 220
-        },
-        {
-          "tag": "div",
-          "cls": "log-snip",
-          "scrollWidth": 818,
-          "clientWidth": 220
-        },
-        {
-          "tag": "div",
-          "cls": "ic bubble",
-          "scrollWidth": 30,
-          "clientWidth": 18
-        },
-        {
-          "tag": "div",
-          "cls": "ic bubble",
-          "scrollWidth": 29,
-          "clientWidth": 17
-        }
-      ]
+      "overflowCount": 0,
+      "overflow": []
     },
     "07-dms-list-1440x900-dark": {
       "label": "DMs lane, list",
       "viewport": "1440x900",
       "theme": "dark",
-      "consoleErrorCount": 0,
-      "consoleErrors": [],
-      "pageHeight": 900,
-      "overflowCount": 24,
-      "overflow": [
-        {
-          "tag": "button",
-          "cls": "wb-selmark",
-          "scrollWidth": 29,
-          "clientWidth": 16
-        },
-        {
-          "tag": "div",
-          "cls": "av g3",
-          "scrollWidth": 31,
-          "clientWidth": 28
-        },
-        {
-          "tag": "button",
-          "cls": "wb-selmark",
-          "scrollWidth": 29,
-          "clientWidth": 16
-        },
-        {
-          "tag": "div",
-          "cls": "av g6",
-          "scrollWidth": 31,
-          "clientWidth": 28
-        },
-        {
-          "tag": "div",
-          "cls": "snip",
-          "scrollWidth": 953,
-          "clientWidth": 887
-        },
-        {
-          "tag": "button",
-          "cls": "wb-selmark",
-          "scrollWidth": 29,
-          "clientWidth": 16
-        },
-        {
-          "tag": "div",
-          "cls": "av g5",
-          "scrollWidth": 31,
-          "clientWidth": 28
-        },
-        {
-          "tag": "div",
-          "cls": "snip",
-          "scrollWidth": 1041,
-          "clientWidth": 887
-        },
-        {
-          "tag": "button",
-          "cls": "wb-selmark",
-          "scrollWidth": 29,
-          "clientWidth": 16
-        },
-        {
-          "tag": "div",
-          "cls": "av g3",
-          "scrollWidth": 31,
-          "clientWidth": 28
-        },
-        {
-          "tag": "button",
-          "cls": "wb-selmark",
-          "scrollWidth": 29,
-          "clientWidth": 16
-        },
-        {
-          "tag": "div",
-          "cls": "av g4",
-          "scrollWidth": 31,
-          "clientWidth": 28
-        },
-        {
-          "tag": "div",
-          "cls": "snip",
-          "scrollWidth": 1101,
-          "clientWidth": 887
-        },
-        {
-          "tag": "button",
-          "cls": "wb-selmark",
-          "scrollWidth": 29,
-          "clientWidth": 16
-        },
-        {
-          "tag": "div",
-          "cls": "av g6",
-          "scrollWidth": 31,
-          "clientWidth": 28
-        },
-        {
-          "tag": "button",
-          "cls": "wb-selmark",
-          "scrollWidth": 29,
-          "clientWidth": 16
-        },
-        {
-          "tag": "div",
-          "cls": "av g5",
-          "scrollWidth": 31,
-          "clientWidth": 28
-        },
-        {
-          "tag": "button",
-          "cls": "wb-selmark",
-          "scrollWidth": 29,
-          "clientWidth": 16
-        },
-        {
-          "tag": "div",
-          "cls": "av g4",
-          "scrollWidth": 31,
-          "clientWidth": 28
-        },
-        {
-          "tag": "button",
-          "cls": "wb-selmark",
-          "scrollWidth": 29,
-          "clientWidth": 16
-        },
-        {
-          "tag": "div",
-          "cls": "av g6",
-          "scrollWidth": 31,
-          "clientWidth": 28
-        },
-        {
-          "tag": "div",
-          "cls": "snip",
-          "scrollWidth": 1265,
-          "clientWidth": 887
-        },
-        {
-          "tag": "button",
-          "cls": "wb-selmark",
-          "scrollWidth": 29,
-          "clientWidth": 16
-        },
-        {
-          "tag": "div",
-          "cls": "av g1",
-          "scrollWidth": 31,
-          "clientWidth": 28
-        }
-      ]
+      "error": "page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"http://127.0.0.1:4191/#exp/v2/dms\", waiting until \"networkidle\"\n"
     },
     "07-dms-list-1440x900-light": {
       "label": "DMs lane, list",
@@ -3349,19 +2650,8 @@
       "label": "The Claude chat pane open",
       "viewport": "390x844",
       "theme": "dark",
-      "consoleErrorCount": 10,
-      "consoleErrors": [
-        "Failed to load resource: net::ERR_NETWORK_CHANGED",
-        "Failed to load resource: net::ERR_NETWORK_CHANGED",
-        "Failed to load resource: net::ERR_NETWORK_CHANGED",
-        "Failed to load resource: net::ERR_NETWORK_CHANGED",
-        "Failed to load resource: net::ERR_NETWORK_CHANGED",
-        "Failed to load resource: net::ERR_NETWORK_CHANGED",
-        "Failed to load resource: net::ERR_NETWORK_CHANGED",
-        "Failed to load resource: net::ERR_NETWORK_CHANGED",
-        "Failed to load resource: net::ERR_NETWORK_CHANGED",
-        "Failed to load resource: net::ERR_NETWORK_CHANGED"
-      ],
+      "consoleErrorCount": 0,
+      "consoleErrors": [],
       "pageHeight": 844,
       "overflowCount": 1,
       "overflow": [

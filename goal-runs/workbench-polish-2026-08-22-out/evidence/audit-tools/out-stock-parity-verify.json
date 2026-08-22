@@ -94,7 +94,7 @@
     "pct": 0
    },
    "gate_pre_vs_cur": {
-    "differing": 430,
+    "differing": 410,
     "total": 1296000,
     "pct": 0.03
    }

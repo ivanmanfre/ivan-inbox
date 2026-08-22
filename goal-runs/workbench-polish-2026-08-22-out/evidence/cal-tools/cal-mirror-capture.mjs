@@ -1,4 +1,4 @@
-// Phase 0 baseline capture — the ten worst workbench surfaces, authed, real
+// Phase 0 baseline capture, the ten worst workbench surfaces, authed, real
 // data, BEFORE any polish work lands. Re-run verbatim (same SURFACES array,
 // same viewport math) against the same build for the "after" set so the two
 // runs are the same instrument pointed at two different builds.
@@ -7,14 +7,14 @@
 // localStorage key sb-bjbvqvzbzczjbatgmccb-auth-token, exactly like
 // goal-runs/workbench-2026-plan-2026-08-21/tools/chip-probe.mjs (lines 13-19).
 // Safety: EVERY context installs the write interceptor below BEFORE any
-// navigation — it fulfils PATCH/PUT/DELETE and non-/rpc/ POST against
+// navigation, it fulfils PATCH/PUT/DELETE and non-/rpc/ POST against
 // **/rest/v1/** with {status:200, body:'[]'} instead of letting them reach
 // Supabase, because opening a thread stamps read_at on a live row. Every
 // intercepted call is counted and the total is printed at the end.
 //
 // Usage: node capture.mjs [baseUrl] [outDir]
 //   baseUrl defaults to http://localhost:4173/
-//   outDir  defaults to ../before (relative to this file) — pass ../after
+//   outDir  defaults to ../before (relative to this file), pass ../after
 //           for the after-run.
 
 import { chromium } from '/Users/ivanmanfredi/Desktop/ivan-inbox/node_modules/playwright/index.mjs'
@@ -34,26 +34,26 @@ mkdirSync(OUT_DIR, { recursive: true })
 const session = readFileSync('/Users/ivanmanfredi/Desktop/ivan-inbox/.session.json', 'utf8')
 
 // ---------------------------------------------------------------------------
-// The surface list — a DATA ARRAY so the after-run is the identical script
+// The surface list, a DATA ARRAY so the after-run is the identical script
 // pointed at a different build. Each entry:
-//   id        — used in the output filename, NN-<id>
-//   label     — human label for baseline.md
-//   hash      — the fresh-load URL (route.ts: #exp/v2/<job>[/chat])
-//   act(page) — optional extra steps AFTER the base hash load (click a tab,
+//   id       , used in the output filename, NN-<id>
+//   label    , human label for baseline.md
+//   hash     , the fresh-load URL (route.ts: #exp/v2/<job>[/chat])
+//   act(page), optional extra steps AFTER the base hash load (click a tab,
 //               open a row, open a peer). Runs once per viewport/theme combo,
 //               because the takeover/peer state is not part of the hash for
 //               a draft/thread (route.ts: "a thread/draft peer key is a
 //               database id, and a URL that pretends to restore one would
-//               404 into an empty pane" — so we click to it every time).
-//   viewports — extra viewports beyond the default two, per the brief
+//               404 into an empty pane", so we click to it every time).
+//   viewports, extra viewports beyond the default two, per the brief
 //               (2560x1440 for surfaces 2 and 3 only)
-//   themes    — 'dark' always; 'light' added only where the brief says
+//   themes   , 'dark' always; 'light' added only where the brief says
 //               (2, 3, 7) to keep runtime down, as permitted by the brief.
-//   fullPage  — true for list surfaces, false (viewport-only) for
+//   fullPage , true for list surfaces, false (viewport-only) for
 //               takeovers/overlays
-//   crops     — optional extra named crops: {name, selector} pairs,
+//   crops    , optional extra named crops: {name, selector} pairs,
 //               captured once at 1440x900 and 390x844, dark only
-//   hoverTooltip — optional extra shot: hover a selector, screenshot at
+//   hoverTooltip, optional extra shot: hover a selector, screenshot at
 //               1440x900 dark only (surface 2's named defect)
 // ---------------------------------------------------------------------------
 
@@ -80,7 +80,7 @@ export const SURFACES = [
 ]
 
 // ---------------------------------------------------------------------------
-// Write interceptor — installed BEFORE every navigation, per page context.
+// Write interceptor, installed BEFORE every navigation, per page context.
 // Copied verbatim in spirit from chip-probe.mjs lines 13-19.
 // ---------------------------------------------------------------------------
 let interceptedWrites = 0
@@ -191,7 +191,7 @@ async function main() {
             overflow: m.overflow,
           }
 
-          // crops — only at the default two viewports, dark theme, as scoped
+          // crops, only at the default two viewports, dark theme, as scoped
           if (surf.crops && theme === 'dark' && (vp.w === 1440 || vp.w === 390)) {
             for (const crop of surf.crops) {
               const cropName = `${surf.id}-${crop.name}-${vpTag}-${theme}.jpg`
@@ -200,7 +200,7 @@ async function main() {
             }
           }
 
-          // hover-tooltip extra shot — once, at its specified viewport/theme
+          // hover-tooltip extra shot, once, at its specified viewport/theme
           if (surf.hoverTooltip && vp.w === surf.hoverTooltip.viewport.w && theme === surf.hoverTooltip.theme) {
             const el = page.locator(surf.hoverTooltip.selector).first()
             if (await el.count()) {
