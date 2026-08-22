@@ -44,7 +44,7 @@ function ctx(over: Partial<CommandCtx> = {}): CommandCtx {
     rows: [],
     focusId: null,
     selected: [],
-    capCount: { approve: 0, skip: 0, delete: 0 },
+    capCount: { approve: 0, skip: 0, promote: 0, delete: 0 },
     hasSearch: true,
     go: noop, move: noop, openFocused: noop, toggleFocused: noop, selectAll: noop,
     clearSelection: noop, focusSearch: noop, openSheet: noop, openPalette: noop,
@@ -60,7 +60,7 @@ describe('the command vocabulary never shrinks', () => {
     const empty = buildCommands(ctx())
     const full = buildCommands(ctx({
       selected: [row(), row({ id: 'r2' })],
-      capCount: { approve: 2, skip: 2, delete: 2 },
+      capCount: { approve: 2, skip: 2, promote: 0, delete: 2 },
     }))
     expect(empty.map(c => c.id)).toEqual(full.map(c => c.id))
   })
@@ -82,7 +82,7 @@ describe('the command vocabulary never shrinks', () => {
   it('refuses a bulk action that only some of the selection can take, and says the number', () => {
     const cmds = buildCommands(ctx({
       selected: [row(), row({ id: 'r2', caps: ['delete'] })],
-      capCount: { approve: 1, skip: 1, delete: 2 },
+      capCount: { approve: 1, skip: 1, promote: 0, delete: 2 },
     }))
     const skip = cmds.find(c => c.id === 'act.skip')
     expect(skip?.ready).toBe(false)

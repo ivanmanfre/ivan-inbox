@@ -383,6 +383,24 @@
 .wb.wb.wb .wb-bulk-b.s{ background:transparent; color:var(--text2) }
 .wb.wb.wb .wb-bulk-b.danger{ color:var(--sev-urgent) }
 .wb.wb.wb .wb-bulk-b:disabled{ opacity:.45; cursor:not-allowed }
+
+/* `To board` on a client review row. It inherits the .ct-ac .btn treatment from
+   faithful.css (the row's trailing slot is 156px at 1440 and this is its only
+   occupant), so nothing here restates a size. It is marked instead of resized:
+   this is the one control in the list that a paying client feels. */
+.wb.wb.wb .ct-card .ct-ac .btn.ct-promote{
+  background:var(--accent-soft); color:var(--accent-ui);
+  border:1px solid var(--accent-soft);
+}
+
+/* p4b. Same mark on the bulk bar's own button, so the client-facing act reads the
+   same in both places. It sits AFTER Delete on purpose (see CAP_ORDER in
+   BulkBar.tsx): adding a capability must never move a button that already
+   exists, and Delete was the only button a client review selection had. */
+.wb.wb.wb .wb-bulk-b.client{
+  background:var(--accent-soft); color:var(--accent-ui);
+  border-color:var(--accent-soft);
+}
 .wb.wb.wb .wb-bulk-b:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
 
 /* The phone: the tab bar owns the bottom 56px, and the bar is full width there
