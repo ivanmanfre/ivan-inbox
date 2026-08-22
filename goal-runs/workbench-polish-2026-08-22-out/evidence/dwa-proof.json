@@ -1,0 +1,213 @@
+{
+ "type": [
+  {
+   "name": "dw-insp-h (panel header)",
+   "sel": ".dw-insp-h",
+   "fontSize": "13px",
+   "fontWeight": "500",
+   "lineHeight": "18.85px",
+   "letterSpacing": "normal",
+   "textTransform": "none"
+  },
+  {
+   "name": "dw-queue-h (rail header)",
+   "sel": ".dw-queue-h",
+   "fontSize": "13px",
+   "fontWeight": "500",
+   "textTransform": "none",
+   "letterSpacing": "normal"
+  },
+  {
+   "name": "dw-jump (tab)",
+   "sel": ".dw-insp-j .dw-jump",
+   "fontSize": "12px",
+   "fontWeight": "500",
+   "textTransform": "none",
+   "letterSpacing": "normal"
+  },
+  {
+   "name": "dw-sec-n (section head)",
+   "sel": ".dw-sec-h .dw-sec-n",
+   "fontSize": "13px",
+   "fontWeight": "600",
+   "textTransform": "none",
+   "letterSpacing": "normal"
+  },
+  {
+   "name": "dw-sec-t (section tail)",
+   "sel": ".dw-sec-h .dw-sec-t",
+   "fontSize": "13px",
+   "fontWeight": "400"
+  },
+  {
+   "name": "dd-k (metadata label)",
+   "sel": ".dw-insp .dd-k",
+   "fontSize": "13px",
+   "fontWeight": "400",
+   "lineHeight": "18.85px",
+   "textTransform": "none",
+   "letterSpacing": "normal"
+  },
+  {
+   "name": "dd-v (metadata value)",
+   "sel": ".dw-insp .dd-v",
+   "fontSize": "14px",
+   "fontWeight": "450",
+   "lineHeight": "20.3px"
+  },
+  {
+   "name": "dwa-id (a row key)",
+   "sel": ".dw-insp .dwa-id",
+   "fontSize": "12px",
+   "fontWeight": "400",
+   "color": "rgb(148, 148, 148)"
+  },
+  {
+   "name": "qa-dim-k (dimension)",
+   "sel": ".qa-dim-k",
+   "fontSize": "12px",
+   "fontWeight": "400",
+   "textTransform": "none"
+  },
+  {
+   "name": "qa-dim-n (score)",
+   "sel": ".qa-dim-n",
+   "fontSize": "12px",
+   "fontWeight": "500"
+  },
+  {
+   "name": "wb-qa-n (the score)",
+   "sel": ".dw-insp .wb-qa-n",
+   "fontSize": "30px",
+   "fontWeight": "600",
+   "lineHeight": "30px"
+  },
+  {
+   "name": "qa-p (judge prose)",
+   "sel": ".dw-insp .qa-p",
+   "fontSize": "13px",
+   "lineHeight": "19.5px"
+  },
+  {
+   "name": "dwa-dims-rest summary",
+   "sel": ".dwa-dims-rest > summary",
+   "fontSize": "12px",
+   "fontWeight": "400"
+  },
+  {
+   "name": "wbb-primary (Approve)",
+   "sel": ".dw-acts .wbb-primary",
+   "fontSize": "13px",
+   "fontWeight": "500",
+   "lineHeight": "13px",
+   "height": "38px",
+   "paddingLeft": "15px",
+   "borderRadius": "10px",
+   "backgroundColor": "rgb(184, 255, 102)",
+   "color": "rgb(23, 23, 23)"
+  },
+  {
+   "name": "wbb-secondary (Edit)",
+   "sel": ".dw-acts .wbb-secondary",
+   "fontSize": "13px",
+   "fontWeight": "500",
+   "height": "38px",
+   "paddingLeft": "15px",
+   "borderRadius": "10px",
+   "backgroundColor": "rgb(39, 39, 39)"
+  },
+  {
+   "name": "wbb-quiet (Regenerate)",
+   "sel": ".dwa-acts-remake .wbb-quiet",
+   "fontSize": "12px",
+   "fontWeight": "500",
+   "height": "32px",
+   "paddingLeft": "11px",
+   "borderRadius": "10px",
+   "backgroundColor": "rgba(0, 0, 0, 0)",
+   "color": "rgb(199, 199, 199)"
+  },
+  {
+   "name": "wbb-danger (Delete draft)",
+   "sel": ".dw-acts .wbb-danger",
+   "fontSize": "12px",
+   "fontWeight": "500",
+   "height": "32px",
+   "paddingLeft": "11px",
+   "borderRadius": "10px",
+   "backgroundColor": "rgba(0, 0, 0, 0)",
+   "color": "rgb(255, 69, 58)"
+  },
+  {
+   "name": "ct-chip (meta chip)",
+   "sel": ".dw .ct-chip",
+   "fontSize": "12px",
+   "fontWeight": "400",
+   "textTransform": "none"
+  },
+  {
+   "name": "dw-cap-t (title)",
+   "sel": ".dw-cap-t",
+   "fontSize": "20px",
+   "fontWeight": "600",
+   "lineHeight": "26px"
+  },
+  {
+   "name": "dw-qrow-t (queue title)",
+   "sel": ".dw-qrow-t",
+   "fontSize": "13px",
+   "fontWeight": "500"
+  },
+  {
+   "name": "qa-fold summary",
+   "sel": ".dw-insp .qa-fold > summary",
+   "fontSize": "13px",
+   "fontWeight": "400",
+   "textTransform": "none",
+   "paddingRight": "14px"
+  }
+ ],
+ "accent": [
+  {
+   "sel": "button.wbb.wbb-primary",
+   "marks": [
+    "fill"
+   ],
+   "text": "Approve"
+  }
+ ],
+ "accentCount": 1,
+ "tints": [
+  {
+   "sel": "button.dw-qrow.on",
+   "text": "1Two months of build, then 30k a"
+  }
+ ],
+ "artifact": {
+  "dwMainIn": 640,
+  "dwMainInMaxWidth": "640px",
+  "liCard": 520,
+  "dwMain": 848,
+  "acts": 608
+ },
+ "motion": {
+  "tabIndicator": "transform 0.26s linear(0 0%, 0.005 0.9%, 0.019 1.8%, 0.079 3.9%, 0.476 13.5%, 0.663 19.1%, 0.738 22%, 0.8 25.1%, 0.852 28.4%, 0.894 32%, 0.928 36%, 0.953 40.5%, 0.972 45.6%, 0.985 51.6%, 0.997 67.3%, 1 100%)",
+  "dwAnimation": "0.26s linear(0 0%, 0.005 0.9%, 0.019 1.8%, 0.079 3.9%, 0.476 13.5%, 0.663 19.1%, 0.738 22%, 0.8 25.1%, 0.852 28.4%, 0.894 32%, 0.928 36%, 0.953 40.5%, 0.972 45.6%, 0.985 51.6%, 0.997 67.3%, 1 100%) both dwa-in",
+  "caret": "transform 0.26s linear(0 0%, 0.005 0.9%, 0.019 1.8%, 0.079 3.9%, 0.476 13.5%, 0.663 19.1%, 0.738 22%, 0.8 25.1%, 0.852 28.4%, 0.894 32%, 0.928 36%, 0.953 40.5%, 0.972 45.6%, 0.985 51.6%, 0.997 67.3%, 1 100%)",
+  "wbb": "background-color 0.12s ease-out, color 0.12s ease-out"
+ },
+ "caps": 0,
+ "reducedMotion": {
+  "tabIndicatorDuration": "0s",
+  "dwAnimationDuration": "0s",
+  "dwAnimationName": "none",
+  "dwOpacity": "1",
+  "wbbDuration": "0s"
+ },
+ "stock": {
+  "wbNodes": 0,
+  "dwNodes": 0,
+  "dwsysRules": 0
+ },
+ "attemptedWrites": 0
+}

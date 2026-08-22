@@ -72,6 +72,10 @@ import './wbsys.css'
 // Phase 3, THE CALENDAR. After wbsys so the calendar's own overrides are the
 // last word on .cal, and only on .cal — this sheet reaches nothing else.
 import './wbcal.css'
+// The draft window, built on those primitives. Imported after them because it
+// composes them; it reaches nothing outside `.dw`. See its header. Its scope and
+// wbcal's do not intersect, so the order of these last two is not load-bearing.
+import './dwsys.css'
 
 // ============================================================================
 // Candidate v2c — WORKBENCH

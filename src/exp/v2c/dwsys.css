@@ -1,0 +1,765 @@
+/* ============================================================================
+   dwsys.css - THE DRAFT WINDOW, built on the phase-1 primitives.
+   Candidate A of workbench-polish-2026-08-22. Ivan: "this section looks like an
+   internal tool ui not polished at all", inside "this still looks like a 2013
+   design".
+
+   THE BET THIS FILE MAKES. Ivan also said "it doesn't need to change a lot", so
+   the three regions do not move: queue rail left, artifact centre, inspector
+   right. Everything here is elevation, hierarchy, rhythm, control weight,
+   metadata pattern, type role and where the accent is spent. Nothing is
+   rearranged that was not measured as broken.
+
+   A SIXTH SHEET, NOT AN EDIT. styles.css:1090-1160 keeps its rules and
+   MagnetWindow keeps reading them (`.dw-key` is live there). This file
+   overrides only inside `.dw`, so the magnet window, the ops board and
+   #exp/stock are untouched. Reversible in one import line.
+
+   THE FLATTENER, VERIFIED ON THIS BRANCH BEFORE A LINE WAS WRITTEN.
+   faithful.css:181 is `.wb.wb, .wb.wb *{ font-size:var(--fs-body);
+   font-weight:400; letter-spacing:0; line-height:1.6 }` (specificity 0-2-0) and
+   faithful.css:190 is `.wb.wb *{ font-family:inherit }`. A selector with fewer
+   than three .wb classes loses to that and renders at 16px / weight 400 in
+   silence. Measured proof it is live on this branch: `.dw-insp .dd-k` authored
+   12px/600 at styles.css:254 computes 16px/400. So EVERY selector below carries
+   three .wb classes, and because the flattener reaches `*`, every type
+   declaration restates size, weight, tracking and leading on the leaf that
+   carries the words as well as on its descendants.
+
+   TYPE, calibrated against Wispr Flow (evidence/wispr-calibration.md), the app
+   Ivan named as "very clear to read": its working body is 15px on a 20px line,
+   its label tier is 12px, and leading is the lever rather than size. The rail
+   tiers below sit at 13/19 for a label and 14/20 for a value, which is that
+   shape at this app's sizes.
+   ============================================================================ */
+
+/* ==========================================================================
+   1 · THE COLUMN, AND WHERE THE ACTION ROW LIVES
+   ========================================================================== */
+
+/* DEFECT 6. Measured before at 1440: `.dw-main` 848px wide holding a 640px
+   measure, and at 2560 the same column runs ~1320px. The artifact and the
+   action bar both stop at 640, so everything below the buttons is a dead field
+   the eye reads as an unfinished page - 650px of it at 2560x1440.
+
+   Reference move 8 (reference-study.md §2 move 4, Linear + Geist): the control
+   row sits against the thing it acts on. So the artifact and the decision row
+   become ONE object - a resting card at --e2 with the row as its own footer -
+   and the space below it stops being an empty column and becomes ground.
+
+   THE MEASURE DOES NOT MOVE. `.dw-main-in` stays at 640px (styles.css:1022) and
+   `.li-card` stays at 520px (styles.css:1205). Widening either would make the
+   preview lie about what LinkedIn will show. The surplus goes to the structure
+   around the artifact, never into it. */
+.wb.wb.wb .dwa-stage{
+  position:relative;
+  margin:6px 16px 0;
+  background:var(--e2);
+  border-radius:var(--r-card);
+  box-shadow:var(--sh-card);
+}
+/* The artifact sits in a WELL inside the stage, one level down, so the white
+   LinkedIn card has something to be on rather than floating on the plate.
+   Rule 1 of the ladder, spent downward: --e2 stage, --e1 well, and the white
+   card is the object. */
+.wb.wb.wb .dwa-stage-art{
+  background:var(--e1);
+  border-radius:var(--r-card) var(--r-card) 0 0;
+  padding:16px 0;
+}
+/* The shared blocks lose the page gutters they were written for: inside a 640
+   stage a 16px margin each side is already the stage's own inset. */
+.wb.wb.wb .dwa-stage .li-card{ margin:0 auto }
+.wb.wb.wb .dwa-stage-art > .dw-slides,
+.wb.wb.wb .dwa-stage-art > .dw-conf,
+.wb.wb.wb .dwa-stage-art > .ops-err,
+.wb.wb.wb .dwa-stage-art > .wb-delzone{ margin-left:16px; margin-right:16px }
+
+/* ==========================================================================
+   2 · THE ACTION ROW: SEVEN BUTTONS OF ONE WEIGHT BECOME A HIERARCHY
+   ========================================================================== */
+
+/* DEFECT 3, and the audit already told us which half of it is broken (census
+   C3): the seven are ALREADY geometrically uniform - 44px, `0 13px`, r12,
+   13px/600, varying only fill. Geometry is not the defect. Five of the seven
+   are the same grey rectangle, so "Back to idea" carries the weight of
+   "Schedule". The whole defect is WEIGHTING.
+
+   Geist ships Default/Secondary/Tertiary/Error and Linear keeps padding and
+   radius identical across tiers, varying only fill and border. `.wbb` in
+   wbsys.css §3 is that component, already on this branch, so nothing new is
+   invented here: the buttons stop wearing `.dw-key` and start wearing `.wbb`
+   plus one of its four variants.
+
+     Approve       .wbb-primary    the one action the screen exists for
+     Edit          .wbb-secondary  real, not the point of the screen
+     Schedule      .wbb-secondary  real, and it arms a publisher
+     Regenerate    .wbb-quiet      remake, reversible
+     Swap image    .wbb-quiet      remake, reversible
+     Back to idea  .wbb-quiet      remake, reversible
+     Delete        .wbb-danger     destructive, and SET APART
+
+   TWO TIERS, NOT TWO WRAPPED LINES. Seven labels at 13px with 14px of padding
+   measure ~615px of text against a 640px measure, so a single row wraps at
+   every viewport and wraps differently as labels change. The bar is therefore
+   authored as two deliberate tiers: decide, then remake. Delete rides at the
+   far end of the remake tier, which is the point of the room diagonally
+   opposite Approve - reachable without being where the thumb lands. */
+.wb.wb.wb .dw-acts{
+  position:sticky; bottom:0; z-index:2;
+  display:flex; flex-direction:column; align-items:stretch;
+  gap:8px;
+  margin-top:0;
+  padding:12px 14px calc(12px + env(safe-area-inset-bottom));
+  background:var(--e2);
+  border-top:1px solid var(--hairline);
+  border-radius:0 0 var(--r-card) var(--r-card);
+}
+.wb.wb.wb .dwa-acts-decide,
+.wb.wb.wb .dwa-acts-remake{
+  display:flex; flex-wrap:wrap; align-items:center; gap:8px;
+  min-width:0;
+}
+/* The remake tier is quieter as a ROW, not only as buttons: it sits one step
+   back in colour and is separated by nothing but rhythm. A second hairline here
+   would be a line doing a job the spacing already does (ladder rule 3). */
+.wb.wb.wb .dwa-acts-remake{ gap:6px }
+/* Delete goes to the far end of its own tier. `margin-left:auto` and not a
+   spacer element, so a lane that renders no Delete does not leave a gap where
+   one used to be. */
+.wb.wb.wb .dwa-acts-remake > .wbb-danger,
+.wb.wb.wb .dwa-acts-remake > .dwa-del{ margin-left:auto }
+
+/* A confirm claims a row of its own inside whichever tier raised it. It was
+   `flex:1 0 100%` against the old wrapping bar; the tiers are flex-wrap rows,
+   so the same declaration still gives it a full line, and `order:1` still keeps
+   it below the buttons it is asking about. A row that is a DIRECT child of the
+   bar sits in a COLUMN flex, where `flex-basis:100%` would be a height, so it
+   takes width instead. */
+.wb.wb.wb .dw-acts .dw-actrow{ order:1; flex:1 0 100%; min-width:0; margin:0 }
+.wb.wb.wb .dw-acts > .dw-actrow{ flex:none; width:100% }
+
+/* THE CONFIRMS, WHICH ARE PART OF THE BAR AND NOT A SECOND DESIGN.
+   `.wb-delconfirm` (styles.css:779) is a red-tinted box with a red 1px edge
+   holding a red 13px/600 question and two full-width `.btn`s, and it renders
+   its prose at 16px because the flattener eats the authored size. The
+   destructive act keeps its colour where it belongs - on the rail and on the
+   button that performs it - and stops colouring the question, the box and the
+   border as well. Same three rules the ladder uses everywhere else. */
+.wb.wb.wb .dw-acts .wb-delconfirm{
+  padding:11px 12px;
+  border:0;
+  border-left:2px solid var(--sev-danger);
+  border-radius:0 var(--r-ctl) var(--r-ctl) 0;
+  background:var(--e1);
+}
+.wb.wb.wb .dw-acts .wb-delq,
+.wb.wb.wb .dw-acts .wb-delq *{
+  font-size:13px; font-weight:400; letter-spacing:0; line-height:1.5;
+}
+.wb.wb.wb .dw-acts .wb-delq{ color:var(--text) }
+.wb.wb.wb .dw-acts .wb-delconfirm .ct-subtle,
+.wb.wb.wb .dw-acts .wb-delconfirm .ct-subtle *{
+  font-size:13px; font-weight:400; letter-spacing:0; line-height:1.5;
+}
+.wb.wb.wb .dw-acts .ct-ac{ margin-top:10px; gap:8px; justify-content:flex-end }
+.wb.wb.wb .dw-acts .ct-ac .btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  flex:none; height:32px; min-height:32px; padding:0 14px;
+  border:0; border-radius:var(--r-ctl);
+  background:var(--e3); color:var(--text);
+  transition:background-color var(--wbs-dur-ctl) var(--wbs-ease-ctl);
+}
+.wb.wb.wb .dw-acts .ct-ac .btn,
+.wb.wb.wb .dw-acts .ct-ac .btn *{
+  font-size:13px; font-weight:500; letter-spacing:0; line-height:1;
+  text-transform:none;
+}
+.wb.wb.wb .dw-acts .ct-ac .btn.s{ background:transparent; color:var(--text2) }
+.wb.wb.wb .dw-acts .ct-ac .btn.s:hover{ background:var(--e3); color:var(--text) }
+.wb.wb.wb .dw-acts .ct-ac .btn.wb-btn-danger{ background:var(--sev-danger); color:#FFFFFF }
+.wb.wb.wb .dw-acts .ct-ac .btn:disabled{ opacity:.6; cursor:not-allowed }
+
+/* THE SCHEDULE PANEL UNFOLDS IN THE BAR, like every other disclosure this
+   window has. It used to render at the FOOT of the scrolling column, so the one
+   affordance here that arms a publisher opened below the fold while its trigger
+   stayed pinned on screen - the same defect D13 moved Regenerate and Delete out
+   of. */
+.wb.wb.wb .dw-acts .wb-delzone{ margin:0 }
+.wb.wb.wb .dw-acts .dw-sched{ gap:8px }
+.wb.wb.wb .dw-acts .dw-sched input{
+  height:32px; min-height:32px;
+  background:var(--e1); border:1px solid var(--hairline);
+  border-radius:var(--r-ctl); padding:0 10px; color:var(--text);
+}
+.wb.wb.wb .dw-acts .dw-sched input,
+.wb.wb.wb .dw-acts .dw-sched input *{
+  font-size:13px; font-weight:400; letter-spacing:0; line-height:1;
+}
+.wb.wb.wb .dw-acts .ct-subtle,
+.wb.wb.wb .dw-acts .ct-subtle *{
+  font-size:13px; font-weight:400; letter-spacing:0; line-height:1.5;
+}
+.wb.wb.wb .dw-acts .ct-subtle{ color:var(--text3) }
+.wb.wb.wb .dw-acts .dw-hint{
+  margin-left:0;
+  font-size:13px; font-weight:400; letter-spacing:0; line-height:1.45;
+  color:var(--text3);
+}
+
+/* THE PRIMARY IS THE ONLY THING IN THE BAR THAT IS FILLED, and it is the one
+   place lime is spent on this screen. `.wbb-lg` for the whole row: one size
+   across every tier, which is the constancy that makes seven buttons read as
+   one family. 38px is also above the 32px pointer floor without returning to
+   the 44px slabs. */
+.wb.wb.wb .dw-acts .wbb{ height:38px; min-height:38px; padding:0 15px }
+.wb.wb.wb .dw-acts .wbb, .wb.wb.wb .dw-acts .wbb *{
+  font-size:13px; font-weight:500; line-height:1; letter-spacing:0;
+}
+/* The remake tier's controls are the SAME box with a lighter fill, per the
+   Linear rule. Only the label tier drops, because these are the three labels
+   the eye should pass over on the way to Approve. */
+.wb.wb.wb .dwa-acts-remake .wbb{ height:32px; min-height:32px; padding:0 11px }
+.wb.wb.wb .dwa-acts-remake .wbb, .wb.wb.wb .dwa-acts-remake .wbb *{
+  font-size:12px; font-weight:500; line-height:1; letter-spacing:0;
+}
+
+/* Raised-without-a-shadow, Raycast's move as adopted in phase1 §1: the primary
+   carries a single 1px interior top inset and no outer shadow, because a drop
+   shadow bleeding onto the pistachio frame is the 2013 artefact this run
+   exists to remove. --e-inset is already on the primary from wbsys §3; the
+   press state is restated here so the row has a physical answer to a click. */
+.wb.wb.wb .dw-acts .wbb-primary:active{ box-shadow:none }
+/* faithful.css:413's global ring re-radiuses whatever it lands on. Restated so
+   a focused control keeps the row's radius instead of snapping to 6px. */
+.wb.wb.wb .dw-acts .wbb:focus-visible{
+  outline:2px solid var(--accent-ui, var(--accent));
+  outline-offset:2px; border-radius:var(--r-ctl);
+}
+
+/* ==========================================================================
+   3 · THE INSPECTOR HEADER AND ITS TABS
+   ========================================================================== */
+
+/* DEFECT 2. The panel header read BACKEND DEPTH: shouted, and system
+   vocabulary for a panel that holds a score, a source and a log. It is now
+   sentence case at the rail's label tier, and the uppercase comes off both this
+   header and the queue rail's (faithful.css:3359 sets it on
+   `.res-hdr, .dw-insp-h, .dw-queue-h` together, so leaving one shouting would
+   have been two registers for one job). */
+.wb.wb.wb .dw-insp-h,
+.wb.wb.wb .dw-queue-h,
+.wb.wb.wb .dw-insp .res-hdr{
+  text-transform:none; letter-spacing:0;
+  font-size:13px; font-weight:500; line-height:1.45;
+  color:var(--text3);
+}
+.wb.wb.wb .dw-insp-h{
+  gap:10px; padding:14px 14px 10px;
+  background:var(--e0);
+  border-bottom:1px solid var(--hairline);
+}
+.wb.wb.wb .dw-queue-h{ padding:14px 14px 10px; background:var(--e0) }
+.wb.wb.wb .dw-queue-h b,
+.wb.wb.wb .dw-queue-h b *{
+  font-size:13px; font-weight:500; letter-spacing:0; line-height:1.45;
+}
+.wb.wb.wb .dw-queue-h b{ color:var(--text3); font-variant-numeric:tabular-nums }
+
+/* The four jumps were bold uppercase pills, one of them filled. They become a
+   segmented control in a recessed well: neutral labels, the active one carried
+   by a moving indicator rather than by a fill. The indicator is the one thing
+   on this screen that MOVES, so it gets the spring (phase1 §7). */
+.wb.wb.wb .dw-insp-j{
+  position:relative;
+  display:flex; gap:0; flex-wrap:nowrap;
+  padding:3px;
+  background:var(--e1);
+  border-radius:var(--r-ctl);
+}
+.wb.wb.wb .dwa-tabind{
+  position:absolute; left:0; top:3px; bottom:3px;
+  width:1px;
+  border-radius:calc(var(--r-ctl) - 3px);
+  background:var(--e3);
+  transform-origin:left center;
+  transform:translateX(var(--dwa-tx,0px)) scaleX(var(--dwa-tw,0));
+  transition:transform var(--wbs-dur-overlay) var(--spring);
+  pointer-events:none;
+}
+/* No indicator until it has been measured: a 1px sliver parked at x=0 on the
+   first paint is a mark that means nothing. */
+.wb.wb.wb .dwa-tabind[data-ready='0']{ opacity:0 }
+.wb.wb.wb .dw-insp-j .dw-jump{
+  position:relative; z-index:1;
+  display:inline-flex; align-items:center; justify-content:center;
+  min-height:26px; padding:0 11px;
+  border:0; background:transparent; cursor:pointer;
+  border-radius:calc(var(--r-ctl) - 3px);
+  color:var(--text3);
+  transition:color var(--wbs-dur-ctl) var(--wbs-ease-ctl);
+}
+.wb.wb.wb .dw-insp-j .dw-jump,
+.wb.wb.wb .dw-insp-j .dw-jump *{
+  font-size:12px; font-weight:500; letter-spacing:0; line-height:1;
+  text-transform:none;
+}
+.wb.wb.wb .dw-insp-j .dw-jump:hover{ color:var(--text2) }
+.wb.wb.wb .dw-insp-j .dw-jump.on{ color:var(--text); background:transparent }
+/* 26px is under the 32px pointer floor, so the target is extended with a
+   transparent pseudo-element rather than by growing the box - the same move
+   `.wbb::after` makes in wbsys §3. */
+.wb.wb.wb .dw-insp-j .dw-jump::after{
+  content:''; position:absolute; left:0; right:0; top:50%;
+  transform:translateY(-50%); height:32px;
+}
+@media (pointer:coarse){
+  .wb.wb.wb .dw-insp-j .dw-jump::after{ height:44px }
+}
+
+/* The section head. It was 12px/800 uppercase with 0.6px of tracking - the
+   loudest label in a panel of quiet facts. One tier, sentence case, and the
+   headline fact beside it reads as the value it is. */
+.wb.wb.wb .dw-sec{ border-bottom:1px solid var(--hairline) }
+.wb.wb.wb .dw-sec:last-child{ border-bottom:0 }
+.wb.wb.wb .dw-sec-h{ align-items:baseline; gap:10px; padding:16px 14px 6px }
+.wb.wb.wb .dw-sec-h .dw-sec-n,
+.wb.wb.wb .dw-sec-h .dw-sec-n *{
+  font-size:13px; font-weight:600; letter-spacing:0; line-height:1.45;
+  text-transform:none;
+}
+.wb.wb.wb .dw-sec-h .dw-sec-n{ color:var(--text) }
+.wb.wb.wb .dw-sec-h .dw-sec-t,
+.wb.wb.wb .dw-sec-h .dw-sec-t *{
+  font-size:13px; font-weight:400; letter-spacing:0; line-height:1.45;
+}
+.wb.wb.wb .dw-sec-h .dw-sec-t{ color:var(--text3); font-variant-numeric:tabular-nums }
+
+/* ---- NOTHING IN THIS WINDOW SHOUTS ---------------------------------------
+   Measured inside `.dw` before this rule: 228 elements computing
+   text-transform:uppercase, of which 40 survived the header work above. They
+   are chips, fold labels, disclosure summaries and a log's source column -
+   every one of them a quiet fact wearing a headline's register, and each one
+   already sentence case in the DATA ("Needs review", "Gate detail", "n8n"), so
+   the caps were purely a CSS decision. Scoped to `.dw`: the same classes are
+   live on nine other surfaces this run does not own. */
+.wb.wb.wb .dw .ct-chip,
+.wb.wb.wb .dw .qa-fold-k,
+.wb.wb.wb .dw .qa-fold-c,
+.wb.wb.wb .dw .qa-fold-t,
+.wb.wb.wb .dw .dd-log-src,
+.wb.wb.wb .dw .dd-log-raw > summary,
+.wb.wb.wb .dw .dw-swap-f,
+.wb.wb.wb .dw .qa-more,
+.wb.wb.wb .dw .res-hdr,
+.wb.wb.wb .dw .res-hdr-t{ text-transform:none; letter-spacing:0 }
+.wb.wb.wb .dw .ct-chip,
+.wb.wb.wb .dw .ct-chip *{
+  font-size:12px; font-weight:400; letter-spacing:0; line-height:1.45;
+}
+.wb.wb.wb .dw .ct-chip{ border-radius:var(--r-xs) }
+
+/* ==========================================================================
+   4 · LABEL AND VALUE: THE BOX IS DELETED
+   ========================================================================== */
+
+/* DEFECT 5. Measured on this branch, in this window: 21 `.dd-row` metadata
+   rows, min height 45.6px, median 71.2px, ZERO under 40px, every key rendering
+   ALL-CAPS at 16px/400 because styles.css:254's authored 12px/600 is dead
+   against the flattener. The label/value contrast is gone, which is why the
+   pattern was reimplemented 26 to 45 other ways app-wide (census D).
+
+   The rows are not rebuilt in markup - `Rows`/`KeyRows` (ContentBits.tsx) are
+   shared with Ops and the magnet window, and rewriting them would change three
+   surfaces to fix one. Instead the SHAPE of `.dd-card > .dd-row > .dd-k/.dd-v`
+   is retargeted onto `.wbkv`'s geometry, scoped inside `.dw-insp`. Same markup,
+   same data, one designed pattern: no border, no fill, no box, sentence case,
+   baseline-aligned two-column grid, a rule between rows only where the list is
+   long enough to want one. */
+.wb.wb.wb .dw-insp .dd-card{
+  margin:2px 14px 0;
+  background:transparent;
+  border-radius:0;
+  padding:0;
+  box-shadow:none;
+}
+.wb.wb.wb .dw-insp .dd-row{
+  display:grid;
+  /* `.wbkv`'s own 26% is right for a 340px rail and wrong for a 920px one:
+     wb2026.css:713 widens this column to 920px above 2400, where 26% put 239px
+     of nothing between "Candidate" and its value. The label column is capped at
+     the width a label actually needs. */
+  grid-template-columns:minmax(84px,min(26%,168px)) 1fr;
+  column-gap:16px;
+  align-items:baseline;
+  padding:5px 0;
+  border-bottom:0;
+  background:transparent;
+}
+.wb.wb.wb .dw-insp .dd-row + .dd-row{ border-top:1px solid var(--hairline) }
+.wb.wb.wb .dw-insp .dd-k,
+.wb.wb.wb .dw-insp .dd-k *{
+  font-size:13px; font-weight:400; letter-spacing:0; line-height:1.45;
+  text-transform:none;
+}
+.wb.wb.wb .dw-insp .dd-k{
+  width:auto; min-width:0; color:var(--text3);
+  background:transparent; border:0; padding:0;
+  overflow-wrap:anywhere;
+}
+.wb.wb.wb .dw-insp .dd-v,
+.wb.wb.wb .dw-insp .dd-v *{
+  font-size:14px; font-weight:450; letter-spacing:0; line-height:1.45;
+}
+.wb.wb.wb .dw-insp .dd-v{
+  min-width:0; color:var(--text);
+  background:transparent; border:0; padding:0;
+  font-variant-numeric:tabular-nums;
+  overflow-wrap:anywhere;
+}
+/* The absolute timestamp beside a relative one is the quieter half of one
+   fact, not a second fact. */
+.wb.wb.wb .dw-insp .dd-abs,
+.wb.wb.wb .dw-insp .dd-abs *{ font-size:12px; font-weight:400; line-height:1.45 }
+.wb.wb.wb .dw-insp .dd-abs{ color:var(--text4); margin-left:8px }
+
+/* An opaque identifier is a LOOKUP, never a fact you read. It keeps its value
+   verbatim - nothing is truncated and nothing is hidden from the DOM - and
+   takes the data face at the quiet tier so a 40-character urn stops being the
+   loudest string in the panel. DraftPane defers the whole group behind a
+   disclosure; this is how it reads once opened. */
+.wb.wb.wb .dw-insp .dwa-id,
+.wb.wb.wb .dw-insp .dwa-id *{
+  font-size:12px; font-weight:400; letter-spacing:0; line-height:1.45;
+}
+.wb.wb.wb .dw-insp .dwa-id{
+  display:block; color:var(--text3);
+  font-variant-numeric:tabular-nums; overflow-wrap:anywhere;
+}
+
+/* The nested value renderers (`Val`) are the same pattern one level in. */
+.wb.wb.wb .dw-insp .dd-vrow{
+  display:grid; grid-template-columns:minmax(72px,30%) 1fr;
+  column-gap:12px; align-items:baseline; padding:3px 0;
+}
+.wb.wb.wb .dw-insp .dd-vk,
+.wb.wb.wb .dw-insp .dd-vk *{
+  font-size:12px; font-weight:400; letter-spacing:0; line-height:1.45;
+  text-transform:none;
+}
+.wb.wb.wb .dw-insp .dd-vk{ color:var(--text3) }
+.wb.wb.wb .dw-insp .dd-vv,
+.wb.wb.wb .dw-insp .dd-vv *{ font-size:13px; font-weight:400; line-height:1.45 }
+
+/* Prose blocks inside the rail keep their card, because a paragraph on the bare
+   plate has no edge to run to - but the card takes the ladder's step rather
+   than the flat `--surface` it was written against. */
+.wb.wb.wb .dw-insp .qa-prose,
+.wb.wb.wb .dw-insp .ct-quote,
+.wb.wb.wb .dw-insp .dd-card.qa-rubric,
+.wb.wb.wb .dw-insp .dd-log-raw .dd-card{
+  background:var(--e2);
+  border-radius:var(--r-card);
+  padding:12px 13px;
+}
+.wb.wb.wb .dw-insp .dd-card.qa-rubric{ padding:11px 13px }
+
+/* ==========================================================================
+   5 · THE QA SCORECARD
+   ========================================================================== */
+
+/* DEFECT 7, half of it. The score panel was a 34px numeral, a verdict chip and
+   a full-width lime meter, then nine near-identical bars of which eight were
+   lime. A SCORE IS A MEASUREMENT, NOT A CALL TO ACTION (phase1 §4), so every
+   one of those ten marks comes off the accent and onto the semantic ramp the
+   app already ships: --sev-clear at or above the mark, --sev-attention below
+   it. The one dimension that failed becomes the only coloured thing in the
+   block, which is the whole point of drawing it. */
+.wb.wb.wb .dw-insp .wb-qa{
+  align-items:center; gap:14px;
+  margin:12px 14px 0; padding:14px;
+  background:var(--e2);
+  border-radius:var(--r-card);
+}
+.wb.wb.wb .dw-insp .wb-qa-n,
+.wb.wb.wb .dw-insp .wb-qa-n *{
+  font-size:30px; font-weight:600; letter-spacing:-.02em; line-height:1;
+}
+.wb.wb.wb .dw-insp .wb-qa-n{ color:var(--text); font-variant-numeric:tabular-nums }
+.wb.wb.wb .dw-insp .wb-qa-g{ height:6px; background:var(--e1) }
+
+.wb.wb.wb .qa-rubric{ gap:7px }
+.wb.wb.wb .qa-dim{ grid-template-columns:minmax(0,92px) minmax(40px,1fr) auto; gap:10px }
+.wb.wb.wb .qa-dim-k,
+.wb.wb.wb .qa-dim-k *{
+  font-size:12px; font-weight:400; letter-spacing:0; line-height:1.45;
+  text-transform:none;
+}
+.wb.wb.wb .qa-dim-k{ color:var(--text3) }
+.wb.wb.wb .qa-dim-g{ height:5px; background:var(--e1) }
+.wb.wb.wb .qa-dim-g > i{ background:var(--sev-clear) }
+.wb.wb.wb .qa-dim-g > i.low{ background:var(--sev-attention) }
+.wb.wb.wb .qa-dim-n,
+.wb.wb.wb .qa-dim-n *{ font-size:12px; font-weight:500; letter-spacing:0; line-height:1.45 }
+.wb.wb.wb .qa-dim-n{ color:var(--text2); font-variant-numeric:tabular-nums }
+/* A dimension that failed is named as well as coloured: the label stops being
+   quiet, because it is the one row in the block you came to find. */
+.wb.wb.wb .qa-dim-low .qa-dim-k{ color:var(--text) }
+
+/* The rest of the rubric, deferred. Linear's board-card decision, applied
+   literally (reference-study §4 move 2): show the two or three facts that
+   matter at rest and defer the remainder, rather than shrinking everything to
+   fit. Eight passing dimensions are a fact you check, not a fact you read. */
+.wb.wb.wb .dwa-dims-rest{ margin-top:2px }
+.wb.wb.wb .dwa-dims-rest > summary{
+  display:flex; align-items:center; gap:8px;
+  min-height:28px; cursor:pointer; list-style:none;
+  color:var(--text3);
+  transition:color var(--wbs-dur-ctl) var(--wbs-ease-ctl);
+}
+.wb.wb.wb .dwa-dims-rest > summary,
+.wb.wb.wb .dwa-dims-rest > summary *{
+  font-size:12px; font-weight:400; letter-spacing:0; line-height:1.45;
+}
+.wb.wb.wb .dwa-dims-rest > summary::-webkit-details-marker{ display:none }
+.wb.wb.wb .dwa-dims-rest > summary::marker{ content:'' }
+.wb.wb.wb .dwa-dims-rest > summary:hover{ color:var(--text2) }
+.wb.wb.wb .dwa-dims-rest .dwa-caret{
+  flex:none; color:var(--text4);
+  transition:transform var(--wbs-dur-overlay) var(--spring);
+}
+.wb.wb.wb .dwa-dims-rest[open] .dwa-caret{ transform:rotate(90deg) }
+.wb.wb.wb .dwa-dims-rest-b{ display:flex; flex-direction:column; gap:7px; padding-top:8px }
+
+/* The judge's prose. 13px on a 1.5 line rather than 16 on a 1.6 - the density
+   answer from the Wispr measurement is leading, not size, and the rail is where
+   the reading actually happens. */
+.wb.wb.wb .dw-insp .qa-p,
+.wb.wb.wb .dw-insp .qa-p *{
+  font-size:13px; font-weight:400; letter-spacing:0; line-height:1.5;
+}
+.wb.wb.wb .dw-insp .qa-p{ color:var(--text2) }
+.wb.wb.wb .dw-insp .qa-p > span,
+.wb.wb.wb .dw-insp .qa-p > span *{
+  font-size:12px; font-weight:500; letter-spacing:0; line-height:1.45;
+  text-transform:none;
+}
+.wb.wb.wb .dw-insp .qa-p > span{ color:var(--text3); margin-bottom:2px }
+
+/* The stored-versus-body disagreement is the one warning in the panel, so it
+   keeps its colour and loses its box weight. */
+.wb.wb.wb .dw-insp .qa-clash,
+.wb.wb.wb .dw-insp .qa-clash *{
+  font-size:13px; font-weight:400; letter-spacing:0; line-height:1.5;
+}
+/* A rail rather than a slab. The disagreement is a real warning and keeps its
+   hue, but a filled amber block was the loudest object in a panel of quiet
+   facts - louder than the score it is warning about. */
+.wb.wb.wb .dw-insp .qa-clash{
+  border-radius:0;
+  border:0;
+  border-left:2px solid var(--sev-attention);
+  background:transparent;
+  color:var(--text2);
+  padding:2px 0 2px 12px;
+  margin:12px 14px 0;
+}
+
+/* THE FOLD HEADER MUST KEEP ITS LABEL. Measured after the type work above:
+   `.qa-fold-t` is `margin-left:auto` and the applied-rewrite tail is 46
+   characters, so on a 340px rail the flex line squeezed `.qa-fold-k` to zero
+   and the row rendered as its own tail with no label.
+   Ellipsising the tail was the second attempt and it clipped a fact rather
+   than a decoration, so the line WRAPS instead: the tail drops to its own
+   right-aligned line when it does not fit, and nothing is cut. */
+.wb.wb.wb .dw-insp .qa-fold > summary{
+  gap:8px 10px; flex-wrap:wrap; align-items:baseline;
+  padding:8px 14px;
+}
+.wb.wb.wb .dw-insp .qa-fold-c{ align-self:center }
+.wb.wb.wb .dw-insp .qa-fold-k{
+  flex:1 1 auto; min-width:0;
+  overflow:visible; white-space:normal; text-overflow:clip;
+}
+.wb.wb.wb .dw-insp .qa-fold-t{
+  flex:0 1 auto; min-width:0; white-space:normal; text-align:right;
+}
+
+/* The folds. Same control, quieter register, and the caret is the second thing
+   on this screen that moves. */
+.wb.wb.wb .dw-insp .qa-fold{ border-top:1px solid var(--hairline) }
+.wb.wb.wb .dw-insp .qa-fold > summary,
+.wb.wb.wb .dw-insp .qa-fold > summary *{
+  font-size:13px; font-weight:400; letter-spacing:0; line-height:1.45;
+}
+/* The summary carries no text node of its own, so the caps census scores 0
+   either way; it is set here anyway, because a rule that is only correct
+   because of where the words happen to sit is not correct. */
+.wb.wb.wb .dw-insp .qa-fold > summary{ color:var(--text3); text-transform:none; letter-spacing:0 }
+.wb.wb.wb .dw-insp .qa-fold-t,
+.wb.wb.wb .dw-insp .qa-fold-t *{ font-size:12px; font-weight:400; line-height:1.45 }
+.wb.wb.wb .dw-insp .qa-fold-t{ color:var(--text4) }
+.wb.wb.wb .dw-insp .qa-fold-c{
+  transition:transform var(--wbs-dur-overlay) var(--spring);
+}
+.wb.wb.wb .dw-insp .qa-raw > summary,
+.wb.wb.wb .dw-insp .qa-raw > summary *{ font-size:12px; font-weight:400; line-height:1.45 }
+/* One left edge for every disclosure in the panel: the raw-output summary
+   carries no caret and was landing 14px left of the folds under it. */
+.wb.wb.wb .dw-insp .qa-raw > summary{ color:var(--text4); padding:8px 14px }
+
+/* ==========================================================================
+   6 · THE NOTE COMPOSER
+   ========================================================================== */
+
+/* DEFECT 4. "Post note" measured 331x50 as a full-width lime slab - 4.6x the
+   area of Approve, spent on one of the least important acts on the screen. It
+   is a secondary control that submits a textarea, so it takes `.wbb-secondary`
+   and the width of its own label. The screen's primary is Approve, and there is
+   exactly one. */
+.wb.wb.wb .dw-note{ margin:12px 14px 0; gap:8px }
+.wb.wb.wb .dw-note textarea{
+  background:var(--e1);
+  border:1px solid var(--hairline);
+  border-radius:var(--r-ctl);
+  padding:10px 11px;
+}
+.wb.wb.wb .dw-note textarea,
+.wb.wb.wb .dw-note textarea::placeholder{
+  font-size:14px; font-weight:400; letter-spacing:0; line-height:1.5;
+}
+.wb.wb.wb .dw-note textarea:focus{
+  outline:none; border-color:var(--hairline-strong);
+}
+.wb.wb.wb .dw-note .ct-ac{ display:flex; justify-content:flex-end }
+
+/* ==========================================================================
+   7 · THE QUEUE RAIL
+   ========================================================================== */
+
+/* Selected is a TINT behind neutral text, never a fill and never a lime rail
+   (phase1 §4: the fill is spent on the one primary action per screen). This is
+   two of the thirteen accent-weighted marks the window carried. */
+/* 🔴 The inset is the RAIL's padding, not the row's margin. A `<button>` at
+   `width:auto` shrink-to-fits even when it is `display:flex`, so the first cut
+   (`margin:0 8px; width:auto`) measured row 2 at 753px inside a 232px rail -
+   its title ran straight off the column with no ellipsis, and only the
+   selected row looked right because it wraps to two lines. */
+.wb.wb.wb .dw-queue{ padding:0 8px 10px }
+.wb.wb.wb .dw-qrow{
+  background-image:none;
+  border-bottom:0;
+  border-radius:var(--r-ctl);
+  padding:9px 12px;
+  min-height:40px;
+  margin:0;
+  width:100%;
+  transition:background-color var(--wbs-dur-ctl) var(--wbs-ease-ctl);
+}
+.wb.wb.wb .dw-qrow + .dw-qrow{ margin-top:2px }
+.wb.wb.wb .dw-qrow:hover{ background-color:var(--e2) }
+.wb.wb.wb .dw-qrow.on{ background-color:var(--accent-soft); box-shadow:none }
+.wb.wb.wb .dw-qrow.on .dw-qrow-i{ color:var(--text2) }
+.wb.wb.wb .dw-qrow-t,
+.wb.wb.wb .dw-qrow-t *{ font-size:13px; font-weight:400; letter-spacing:0; line-height:1.45 }
+.wb.wb.wb .dw-qrow.on .dw-qrow-t{ font-weight:500 }
+.wb.wb.wb .dw-qrow-m,
+.wb.wb.wb .dw-qrow-m *{ font-size:12px; font-weight:400; letter-spacing:0; line-height:1.45 }
+/* The rail head is sticky and now paints the plate, so it needs the rail's own
+   gutter back or the label sits 8px right of every row's text. */
+.wb.wb.wb .dw-queue-h{ margin:0 -8px }
+
+/* ==========================================================================
+   8 · THE COLUMN CHROME
+   ========================================================================== */
+
+/* Rule 3 of the ladder: a border may not be the only thing separating two
+   surfaces. The three columns were held apart by half-pixel rules on the same
+   colour; they take the lightness step instead and the rules are deleted rather
+   than kept alongside. */
+@media (min-width:1180px){
+  .wb.wb.wb .dw-queue{ border-right:0; background:var(--e0) }
+  .wb.wb.wb .dw-insp{ border-left:0; background:var(--e0) }
+  .wb.wb.wb .dw-main{ background:var(--e1) }
+}
+.wb.wb.wb .dw-cap{ padding:16px 16px 8px }
+.wb.wb.wb .dw-cap-t,
+.wb.wb.wb .dw-cap-t *{
+  font-size:20px; font-weight:600; letter-spacing:-.01em; line-height:1.3;
+}
+.wb.wb.wb .dw-pos,
+.wb.wb.wb .dw-pos *{ font-size:12px; font-weight:400; letter-spacing:0; line-height:1.45 }
+.wb.wb.wb .dw-pos{ color:var(--text3); font-variant-numeric:tabular-nums }
+
+/* ==========================================================================
+   9 · MOTION
+   ========================================================================== */
+
+/* The rule from the Wispr extraction: colour gets a plain short ease, anything
+   that MOVES gets the spring. Three things move in this window - the tab
+   indicator (§3), a disclosure caret (§5), and the window arriving - and each
+   animates transform and opacity only. No layout property is ever animated;
+   width, height and `transition:all` force a reflow every frame.
+
+   `.wb-tk` already animates itself; this is the CONTENT arriving inside it, so
+   the two do not fight. */
+@keyframes dwa-in{
+  from{ opacity:0; transform:translateY(6px) }
+  to{ opacity:1; transform:none }
+}
+.wb.wb.wb .dw{ animation:dwa-in var(--wbs-dur-overlay) var(--spring) both }
+@keyframes dwa-reveal{
+  from{ opacity:0; transform:translateY(-4px) }
+  to{ opacity:1; transform:none }
+}
+.wb.wb.wb .dw-insp .qa-fold[open] > .qa-fold-b,
+.wb.wb.wb .dwa-dims-rest[open] > .dwa-dims-rest-b{
+  animation:dwa-reveal var(--wbs-dur-overlay) var(--spring) both;
+}
+/* wbsys §7b already collapses every transition and animation inside the plate
+   under a reduced-motion request. The entrance is restated here because an
+   animation with `both` holds its FROM state at 0ms duration, which would leave
+   the window invisible rather than still. */
+@media (prefers-reduced-motion: reduce){
+  .wb.wb.wb .dw,
+  .wb.wb.wb .dw-insp .qa-fold[open] > .qa-fold-b,
+  .wb.wb.wb .dwa-dims-rest[open] > .dwa-dims-rest-b{ animation:none }
+  .wb.wb.wb .dwa-tabind{ transition:none }
+}
+
+/* ==========================================================================
+   10 · THE PHONE
+   ========================================================================== */
+
+/* Below 1180 the window is one scroller and the bar is pinned to the bottom of
+   it, so the stage cannot own the bar's radius - a rounded footer floating over
+   the content it is pinned above reads as a detached toolbar. It goes square
+   and takes the plate's colour, which is what a pinned bar is. */
+@media (max-width:1179px){
+  /* faithful.css:567 gives every `.rows` scroller 32px of bottom padding, which
+     is a LIST rule that leaks onto the takeover's body. Measured at 390: the
+     pinned bar landed at y=812 in an 844 viewport with the post still visible
+     under it - a bar that is pinned to nothing. `.dwa-stage` exists only in
+     this window, so the fix cannot reach the magnet window, which shares the
+     same `.rows wb-tk-body dw-body` scroller. The clearance the column needs is
+     already on `.dw-main` as the bar's MEASURED height. */
+  .wb.wb.wb .wb-tk-body.dw-body:has(.dwa-stage){ padding-bottom:0 }
+  .wb.wb.wb .dwa-stage{ margin-left:12px; margin-right:12px }
+  .wb.wb.wb .dw-acts{
+    margin-left:-12px; margin-right:-12px;
+    border-radius:0;
+    background:var(--e2);
+    padding-left:14px; padding-right:14px;
+  }
+}
+@media (max-width:420px){
+  .wb.wb.wb .dwa-stage{ margin-left:8px; margin-right:8px }
+  .wb.wb.wb .dw-acts{ margin-left:-8px; margin-right:-8px; gap:7px }
+  .wb.wb.wb .dw-acts .wbb{ padding:0 12px }
+  /* Measured at 390: the remake tier ran 369px against a 362px content width,
+     so Delete wrapped to a line of its own - which is the shape of the defect
+     this run is closing, at a smaller size. Seven pixels, bought back from the
+     padding and the gap rather than from the label. */
+  .wb.wb.wb .dwa-acts-remake{ gap:4px }
+  .wb.wb.wb .dwa-acts-remake .wbb{ padding:0 8px }
+}
