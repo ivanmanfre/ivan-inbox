@@ -643,7 +643,7 @@
    because the whole thing is a plate floating on the pistachio ground. Measured
    against 100vh - 206 the sixth week ran to y 891 against a plate bottom of
    880, the pane scrolled 71px, and the last row of the month was cut by the
-   frame — which is the EXACT defect the panel marked against the state it
+   frame, which is the EXACT defect the panel marked against the state it
    preferred ("Y's last row is guillotined by the window edge ... on a month
    view a real defect, not a nitpick"). Importing it while fixing the thing it
    lost on would have been a poor trade.
@@ -781,7 +781,7 @@
    two. What is left here is the one thing that is presentation: the planned
    figure is a DISCREPANCY, not a third metric, so on the rare month that has
    one it is marked as attention rather than counted alongside the coverage.
-   Colour is the second cue and never the only one — the phrase itself
+   Colour is the second cue and never the only one; the phrase itself
    ("dated but not scheduled") says it in words first. */
 .wb.wb.wb .cal-count-warn{ color:var(--sev-attention) }
 .wb.wb.wb .cal-count-warn b{ color:var(--sev-attention) }

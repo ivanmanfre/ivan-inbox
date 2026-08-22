@@ -47,8 +47,8 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
  * It is a NUMBER OF ROWS, not a height budget, and the chip's own height is
  * fixed against it (`--cal-chip-h` in wbcal.css). The arithmetic, restated
  * after the 2026-08-22 amendment gave the chip its second line back: 12px of
- * padding, a 16px day-number row, then rows of 48px chips and an 18px "+N" with
- * 3px gaps. One chip costs 79px, two cost 130, two and a "+N" cost 151. The
+ * padding, a 16px day-number row, then rows of 47px chips and an 18px "+N" with
+ * 3px gaps. One chip costs 78px, two cost 128, two and a "+N" cost 149. The
  * cell floor is 108px and stretches with the viewport, so a sparse month is
  * roomy and a busy day grows into what it needs, which is how a grid row is
  * supposed to behave.
@@ -311,7 +311,7 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
                          is that a zero no longer takes a permanent slot.
               queue only WITHDRAWN from the bar. Those rows are already inside
                          the two figures above (a queue row is armed by
-                         definition), so the count was never a total — it was an
+                         definition), so the count was never a total, it was an
                          explanation of why six chips are inert, and that
                          explanation belongs on the chip, which carries it in
                          its popover and in its accessible name. */}
