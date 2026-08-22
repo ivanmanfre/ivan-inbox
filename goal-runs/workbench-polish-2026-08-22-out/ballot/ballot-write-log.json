@@ -1,0 +1,221 @@
+{
+ "build": "875098f on :4176",
+ "genuineMutationAttempts": 0,
+ "mutations": [],
+ "rpcPostsToKnownReadFunctions": 1,
+ "readRpcDistinct": [
+  "inbox_governor"
+ ],
+ "unauthorized401": 0,
+ "consoleErrors": [],
+ "densityProofByComputedValue": {
+  "dms-1440-comfortable": {
+   "attr": "comfortable",
+   "rowHeights": [
+    49,
+    94,
+    95,
+    77,
+    77,
+    77
+   ],
+   "medianRow": 77,
+   "rowPad": "10px"
+  },
+  "dms-390-comfortable": {
+   "attr": "comfortable",
+   "rowHeights": [
+    71,
+    94,
+    95,
+    77,
+    77,
+    77
+   ],
+   "medianRow": 77,
+   "rowPad": "10px"
+  },
+  "content-1440-comfortable": {
+   "attr": "comfortable",
+   "rowHeights": [
+    96,
+    44,
+    247,
+    105,
+    106,
+    24
+   ],
+   "medianRow": 105,
+   "rowPad": "9px"
+  },
+  "content-390-comfortable": {
+   "attr": "comfortable",
+   "rowHeights": [
+    96,
+    44,
+    335,
+    167,
+    168,
+    24
+   ],
+   "medianRow": 167,
+   "rowPad": "9px"
+  },
+  "styles-1440-comfortable": {
+   "attr": "comfortable",
+   "rowHeights": [
+    39,
+    32,
+    222,
+    223,
+    248,
+    133
+   ],
+   "medianRow": 133,
+   "rowPad": null
+  },
+  "styles-390-comfortable": {
+   "attr": "comfortable",
+   "rowHeights": [
+    58,
+    36,
+    324,
+    300,
+    325,
+    210
+   ],
+   "medianRow": 235,
+   "rowPad": null
+  },
+  "settings-1440-comfortable": {
+   "attr": "comfortable",
+   "rowHeights": [
+    40,
+    215,
+    40,
+    162,
+    54,
+    53
+   ],
+   "medianRow": 54,
+   "rowPad": null
+  },
+  "settings-390-comfortable": {
+   "attr": "comfortable",
+   "rowHeights": [
+    40,
+    271,
+    40,
+    219,
+    54,
+    53
+   ],
+   "medianRow": 54,
+   "rowPad": null
+  },
+  "dms-1440-compact": {
+   "attr": "compact",
+   "rowHeights": [
+    49,
+    88,
+    89,
+    61,
+    61,
+    61
+   ],
+   "medianRow": 61,
+   "rowPad": "7px"
+  },
+  "dms-390-compact": {
+   "attr": "compact",
+   "rowHeights": [
+    71,
+    88,
+    89,
+    61,
+    61,
+    61
+   ],
+   "medianRow": 61,
+   "rowPad": "7px"
+  },
+  "content-1440-compact": {
+   "attr": "compact",
+   "rowHeights": [
+    96,
+    44,
+    247,
+    105,
+    106,
+    24
+   ],
+   "medianRow": 105,
+   "rowPad": "9px"
+  },
+  "content-390-compact": {
+   "attr": "compact",
+   "rowHeights": [
+    96,
+    44,
+    335,
+    167,
+    168,
+    24
+   ],
+   "medianRow": 167,
+   "rowPad": "9px"
+  },
+  "styles-1440-compact": {
+   "attr": "compact",
+   "rowHeights": [
+    39,
+    32,
+    180,
+    181,
+    202,
+    117
+   ],
+   "medianRow": 117,
+   "rowPad": null
+  },
+  "styles-390-compact": {
+   "attr": "compact",
+   "rowHeights": [
+    58,
+    36,
+    266,
+    246,
+    267,
+    182
+   ],
+   "medianRow": 203,
+   "rowPad": null
+  },
+  "settings-1440-compact": {
+   "attr": "compact",
+   "rowHeights": [
+    40,
+    183,
+    40,
+    142,
+    46,
+    53
+   ],
+   "medianRow": 53,
+   "rowPad": null
+  },
+  "settings-390-compact": {
+   "attr": "compact",
+   "rowHeights": [
+    40,
+    239,
+    40,
+    199,
+    46,
+    53
+   ],
+   "medianRow": 53,
+   "rowPad": null
+  }
+ }
+}

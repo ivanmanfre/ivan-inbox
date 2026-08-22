@@ -1,0 +1,2880 @@
+{
+ "totals": {
+  "surfacesMeasured": 120,
+  "consoleErrorsTotal": 163,
+  "overflowNaiveTotal": 5073,
+  "overflowRealTotal": 112,
+  "pagesThatScrollSideways": 0,
+  "genuineMutationAttempts": 0,
+  "mutations": [],
+  "rpcPostsToKnownReadFunctions": 16,
+  "readRpcDistinct": [
+   "inbox_governor"
+  ],
+  "unauthorized401": 0
+ },
+ "surfaces": {
+  "today-390x844-dark": {
+   "surface": "today",
+   "viewport": "390x844",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 72,
+   "overflowReal": 4,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-rib-sync",
+     "scrollWidth": 85,
+     "clientWidth": 73,
+     "over": 12
+    },
+    {
+     "tag": "span",
+     "cls": "wb-gear",
+     "scrollWidth": 38,
+     "clientWidth": 32,
+     "over": 6
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 30,
+     "clientWidth": 18,
+     "over": 12
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 8382,
+   "saturatedPct": 2.55
+  },
+  "dms-390x844-dark": {
+   "surface": "dms",
+   "viewport": "390x844",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 37,
+   "overflowReal": 4,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-rib-sync",
+     "scrollWidth": 85,
+     "clientWidth": 73,
+     "over": 12
+    },
+    {
+     "tag": "span",
+     "cls": "wb-gear",
+     "scrollWidth": 38,
+     "clientWidth": 32,
+     "over": 6
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 30,
+     "clientWidth": 18,
+     "over": 12
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 7343,
+   "saturatedPct": 2.23
+  },
+  "content-list-390x844-dark": {
+   "surface": "content-list",
+   "viewport": "390x844",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 14,
+   "overflowReal": 4,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-rib-sync",
+     "scrollWidth": 85,
+     "clientWidth": 73,
+     "over": 12
+    },
+    {
+     "tag": "span",
+     "cls": "wb-gear",
+     "scrollWidth": 38,
+     "clientWidth": 32,
+     "over": 6
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 30,
+     "clientWidth": 18,
+     "over": 12
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 4367,
+   "saturatedPct": 1.33
+  },
+  "content-calendar-390x844-dark": {
+   "surface": "content-calendar",
+   "viewport": "390x844",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 18,
+   "overflowReal": 4,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-rib-sync",
+     "scrollWidth": 85,
+     "clientWidth": 73,
+     "over": 12
+    },
+    {
+     "tag": "span",
+     "cls": "wb-gear",
+     "scrollWidth": 38,
+     "clientWidth": 32,
+     "over": 6
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 30,
+     "clientWidth": 18,
+     "over": 12
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 4027,
+   "saturatedPct": 1.22
+  },
+  "magnets-390x844-dark": {
+   "surface": "magnets",
+   "viewport": "390x844",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 39,
+   "overflowReal": 4,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-rib-sync",
+     "scrollWidth": 85,
+     "clientWidth": 73,
+     "over": 12
+    },
+    {
+     "tag": "span",
+     "cls": "wb-gear",
+     "scrollWidth": 38,
+     "clientWidth": 32,
+     "over": 6
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 30,
+     "clientWidth": 18,
+     "over": 12
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 4303,
+   "saturatedPct": 1.31
+  },
+  "styles-390x844-dark": {
+   "surface": "styles",
+   "viewport": "390x844",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 10,
+   "overflowReal": 4,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-rib-sync",
+     "scrollWidth": 85,
+     "clientWidth": 73,
+     "over": 12
+    },
+    {
+     "tag": "span",
+     "cls": "wb-gear",
+     "scrollWidth": 38,
+     "clientWidth": 32,
+     "over": 6
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 30,
+     "clientWidth": 18,
+     "over": 12
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 4636,
+   "saturatedPct": 1.41
+  },
+  "strategy-390x844-dark": {
+   "surface": "strategy",
+   "viewport": "390x844",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 7,
+   "overflowReal": 4,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-rib-sync",
+     "scrollWidth": 85,
+     "clientWidth": 73,
+     "over": 12
+    },
+    {
+     "tag": "span",
+     "cls": "wb-gear",
+     "scrollWidth": 38,
+     "clientWidth": 32,
+     "over": 6
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 30,
+     "clientWidth": 18,
+     "over": 12
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 4159,
+   "saturatedPct": 1.26
+  },
+  "sends-390x844-dark": {
+   "surface": "sends",
+   "viewport": "390x844",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 14,
+   "overflowReal": 6,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-rib-sync",
+     "scrollWidth": 85,
+     "clientWidth": 73,
+     "over": 12
+    },
+    {
+     "tag": "span",
+     "cls": "wb-gear",
+     "scrollWidth": 38,
+     "clientWidth": 32,
+     "over": 6
+    },
+    {
+     "tag": "div",
+     "cls": "wb-fpop",
+     "scrollWidth": 117,
+     "clientWidth": 113,
+     "over": 4
+    },
+    {
+     "tag": "button",
+     "cls": "wb-fpill",
+     "scrollWidth": 117,
+     "clientWidth": 113,
+     "over": 4
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 30,
+     "clientWidth": 18,
+     "over": 12
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 6321,
+   "saturatedPct": 1.92
+  },
+  "ops-390x844-dark": {
+   "surface": "ops",
+   "viewport": "390x844",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 13,
+   "overflowReal": 4,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-rib-sync",
+     "scrollWidth": 85,
+     "clientWidth": 73,
+     "over": 12
+    },
+    {
+     "tag": "span",
+     "cls": "wb-gear",
+     "scrollWidth": 38,
+     "clientWidth": 32,
+     "over": 6
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 30,
+     "clientWidth": 18,
+     "over": 12
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 4180,
+   "saturatedPct": 1.27
+  },
+  "settings-390x844-dark": {
+   "surface": "settings",
+   "viewport": "390x844",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 4,
+   "overflowReal": 4,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-rib-sync",
+     "scrollWidth": 85,
+     "clientWidth": 73,
+     "over": 12
+    },
+    {
+     "tag": "span",
+     "cls": "wb-gear",
+     "scrollWidth": 46,
+     "clientWidth": 40,
+     "over": 6
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 30,
+     "clientWidth": 18,
+     "over": 12
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 5178,
+   "saturatedPct": 1.57
+  },
+  "chat-390x844-dark": {
+   "surface": "chat",
+   "viewport": "390x844",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 1,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 612,
+   "saturatedPct": 0.19
+  },
+  "draft-window-390x844-dark": {
+   "surface": "draft-window",
+   "viewport": "390x844",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 20,
+   "overflowReal": 4,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-rib-sync",
+     "scrollWidth": 85,
+     "clientWidth": 73,
+     "over": 12
+    },
+    {
+     "tag": "span",
+     "cls": "wb-gear",
+     "scrollWidth": 38,
+     "clientWidth": 32,
+     "over": 6
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 30,
+     "clientWidth": 18,
+     "over": 12
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 2723,
+   "saturatedPct": 0.83
+  },
+  "thread-peer-390x844-dark": {
+   "surface": "thread-peer",
+   "viewport": "390x844",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 3,
+   "overflowReal": 1,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-lad-l",
+     "scrollWidth": 75,
+     "clientWidth": 50,
+     "over": 25
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 68275,
+   "saturatedPct": 20.74
+  },
+  "command-palette-390x844-dark": {
+   "surface": "command-palette",
+   "viewport": "390x844",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 17,
+   "overflowReal": 4,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-rib-sync",
+     "scrollWidth": 85,
+     "clientWidth": 73,
+     "over": 12
+    },
+    {
+     "tag": "span",
+     "cls": "wb-gear",
+     "scrollWidth": 38,
+     "clientWidth": 32,
+     "over": 6
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 30,
+     "clientWidth": 18,
+     "over": 12
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 75,
+   "saturatedPct": 0.02
+  },
+  "stock-390x844-dark": {
+   "surface": "stock",
+   "viewport": "390x844",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 403,
+   "overflowReal": 1,
+   "overflowRealDetail": [
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 14638,
+   "saturatedPct": 4.45
+  },
+  "today-390x844-light": {
+   "surface": "today",
+   "viewport": "390x844",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 72,
+   "overflowReal": 4,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-rib-sync",
+     "scrollWidth": 85,
+     "clientWidth": 73,
+     "over": 12
+    },
+    {
+     "tag": "span",
+     "cls": "wb-gear",
+     "scrollWidth": 38,
+     "clientWidth": 32,
+     "over": 6
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 30,
+     "clientWidth": 18,
+     "over": 12
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 8597,
+   "saturatedPct": 2.61
+  },
+  "dms-390x844-light": {
+   "surface": "dms",
+   "viewport": "390x844",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 37,
+   "overflowReal": 4,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-rib-sync",
+     "scrollWidth": 85,
+     "clientWidth": 73,
+     "over": 12
+    },
+    {
+     "tag": "span",
+     "cls": "wb-gear",
+     "scrollWidth": 38,
+     "clientWidth": 32,
+     "over": 6
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 30,
+     "clientWidth": 18,
+     "over": 12
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 8165,
+   "saturatedPct": 2.48
+  },
+  "content-list-390x844-light": {
+   "surface": "content-list",
+   "viewport": "390x844",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 14,
+   "overflowReal": 4,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-rib-sync",
+     "scrollWidth": 85,
+     "clientWidth": 73,
+     "over": 12
+    },
+    {
+     "tag": "span",
+     "cls": "wb-gear",
+     "scrollWidth": 38,
+     "clientWidth": 32,
+     "over": 6
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 30,
+     "clientWidth": 18,
+     "over": 12
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 4142,
+   "saturatedPct": 1.26
+  },
+  "content-calendar-390x844-light": {
+   "surface": "content-calendar",
+   "viewport": "390x844",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 18,
+   "overflowReal": 4,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-rib-sync",
+     "scrollWidth": 85,
+     "clientWidth": 73,
+     "over": 12
+    },
+    {
+     "tag": "span",
+     "cls": "wb-gear",
+     "scrollWidth": 38,
+     "clientWidth": 32,
+     "over": 6
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 30,
+     "clientWidth": 18,
+     "over": 12
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 4045,
+   "saturatedPct": 1.23
+  },
+  "magnets-390x844-light": {
+   "surface": "magnets",
+   "viewport": "390x844",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 39,
+   "overflowReal": 4,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-rib-sync",
+     "scrollWidth": 85,
+     "clientWidth": 73,
+     "over": 12
+    },
+    {
+     "tag": "span",
+     "cls": "wb-gear",
+     "scrollWidth": 38,
+     "clientWidth": 32,
+     "over": 6
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 30,
+     "clientWidth": 18,
+     "over": 12
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 4749,
+   "saturatedPct": 1.44
+  },
+  "styles-390x844-light": {
+   "surface": "styles",
+   "viewport": "390x844",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 10,
+   "overflowReal": 4,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-rib-sync",
+     "scrollWidth": 85,
+     "clientWidth": 73,
+     "over": 12
+    },
+    {
+     "tag": "span",
+     "cls": "wb-gear",
+     "scrollWidth": 38,
+     "clientWidth": 32,
+     "over": 6
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 30,
+     "clientWidth": 18,
+     "over": 12
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 4669,
+   "saturatedPct": 1.42
+  },
+  "strategy-390x844-light": {
+   "surface": "strategy",
+   "viewport": "390x844",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 7,
+   "overflowReal": 4,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-rib-sync",
+     "scrollWidth": 85,
+     "clientWidth": 73,
+     "over": 12
+    },
+    {
+     "tag": "span",
+     "cls": "wb-gear",
+     "scrollWidth": 38,
+     "clientWidth": 32,
+     "over": 6
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 30,
+     "clientWidth": 18,
+     "over": 12
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 4328,
+   "saturatedPct": 1.31
+  },
+  "sends-390x844-light": {
+   "surface": "sends",
+   "viewport": "390x844",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 14,
+   "overflowReal": 6,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-rib-sync",
+     "scrollWidth": 85,
+     "clientWidth": 73,
+     "over": 12
+    },
+    {
+     "tag": "span",
+     "cls": "wb-gear",
+     "scrollWidth": 38,
+     "clientWidth": 32,
+     "over": 6
+    },
+    {
+     "tag": "div",
+     "cls": "wb-fpop",
+     "scrollWidth": 117,
+     "clientWidth": 113,
+     "over": 4
+    },
+    {
+     "tag": "button",
+     "cls": "wb-fpill",
+     "scrollWidth": 117,
+     "clientWidth": 113,
+     "over": 4
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 30,
+     "clientWidth": 18,
+     "over": 12
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 5595,
+   "saturatedPct": 1.7
+  },
+  "ops-390x844-light": {
+   "surface": "ops",
+   "viewport": "390x844",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 13,
+   "overflowReal": 4,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-rib-sync",
+     "scrollWidth": 85,
+     "clientWidth": 73,
+     "over": 12
+    },
+    {
+     "tag": "span",
+     "cls": "wb-gear",
+     "scrollWidth": 38,
+     "clientWidth": 32,
+     "over": 6
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 30,
+     "clientWidth": 18,
+     "over": 12
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 4275,
+   "saturatedPct": 1.3
+  },
+  "settings-390x844-light": {
+   "surface": "settings",
+   "viewport": "390x844",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 4,
+   "overflowReal": 4,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-rib-sync",
+     "scrollWidth": 85,
+     "clientWidth": 73,
+     "over": 12
+    },
+    {
+     "tag": "span",
+     "cls": "wb-gear",
+     "scrollWidth": 46,
+     "clientWidth": 40,
+     "over": 6
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 30,
+     "clientWidth": 18,
+     "over": 12
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 5251,
+   "saturatedPct": 1.6
+  },
+  "chat-390x844-light": {
+   "surface": "chat",
+   "viewport": "390x844",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 1,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 620,
+   "saturatedPct": 0.19
+  },
+  "draft-window-390x844-light": {
+   "surface": "draft-window",
+   "viewport": "390x844",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 20,
+   "overflowReal": 4,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-rib-sync",
+     "scrollWidth": 85,
+     "clientWidth": 73,
+     "over": 12
+    },
+    {
+     "tag": "span",
+     "cls": "wb-gear",
+     "scrollWidth": 38,
+     "clientWidth": 32,
+     "over": 6
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 30,
+     "clientWidth": 18,
+     "over": 12
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 2665,
+   "saturatedPct": 0.81
+  },
+  "thread-peer-390x844-light": {
+   "surface": "thread-peer",
+   "viewport": "390x844",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 3,
+   "overflowReal": 1,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-lad-l",
+     "scrollWidth": 75,
+     "clientWidth": 50,
+     "over": 25
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 68327,
+   "saturatedPct": 20.76
+  },
+  "command-palette-390x844-light": {
+   "surface": "command-palette",
+   "viewport": "390x844",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 17,
+   "overflowReal": 4,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-rib-sync",
+     "scrollWidth": 85,
+     "clientWidth": 73,
+     "over": 12
+    },
+    {
+     "tag": "span",
+     "cls": "wb-gear",
+     "scrollWidth": 38,
+     "clientWidth": 32,
+     "over": 6
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 30,
+     "clientWidth": 18,
+     "over": 12
+    },
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 97,
+   "saturatedPct": 0.03
+  },
+  "stock-390x844-light": {
+   "surface": "stock",
+   "viewport": "390x844",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 403,
+   "overflowReal": 1,
+   "overflowRealDetail": [
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 14905,
+   "saturatedPct": 4.53
+  },
+  "today-1024x768-dark": {
+   "surface": "today",
+   "viewport": "1024x768",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 74,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 48945,
+   "saturatedPct": 6.22
+  },
+  "dms-1024x768-dark": {
+   "surface": "dms",
+   "viewport": "1024x768",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 27,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 42309,
+   "saturatedPct": 5.38
+  },
+  "content-list-1024x768-dark": {
+   "surface": "content-list",
+   "viewport": "1024x768",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 7,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 38783,
+   "saturatedPct": 4.93
+  },
+  "content-calendar-1024x768-dark": {
+   "surface": "content-calendar",
+   "viewport": "1024x768",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 29,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 38912,
+   "saturatedPct": 4.95
+  },
+  "magnets-1024x768-dark": {
+   "surface": "magnets",
+   "viewport": "1024x768",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 31,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 38854,
+   "saturatedPct": 4.94
+  },
+  "styles-1024x768-dark": {
+   "surface": "styles",
+   "viewport": "1024x768",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 0,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 48770,
+   "saturatedPct": 6.2
+  },
+  "strategy-1024x768-dark": {
+   "surface": "strategy",
+   "viewport": "1024x768",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 0,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 38739,
+   "saturatedPct": 4.93
+  },
+  "sends-1024x768-dark": {
+   "surface": "sends",
+   "viewport": "1024x768",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 10,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 42801,
+   "saturatedPct": 5.44
+  },
+  "ops-1024x768-dark": {
+   "surface": "ops",
+   "viewport": "1024x768",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 6,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 38279,
+   "saturatedPct": 4.87
+  },
+  "settings-1024x768-dark": {
+   "surface": "settings",
+   "viewport": "1024x768",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 0,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 39383,
+   "saturatedPct": 5.01
+  },
+  "chat-1024x768-dark": {
+   "surface": "chat",
+   "viewport": "1024x768",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 33,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 42887,
+   "saturatedPct": 5.45
+  },
+  "draft-window-1024x768-dark": {
+   "surface": "draft-window",
+   "viewport": "1024x768",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 8,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 3553,
+   "saturatedPct": 0.45
+  },
+  "thread-peer-1024x768-dark": {
+   "surface": "thread-peer",
+   "viewport": "1024x768",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 35,
+   "overflowReal": 1,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-lad-l",
+     "scrollWidth": 75,
+     "clientWidth": 12,
+     "over": 63
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 92290,
+   "saturatedPct": 11.74
+  },
+  "command-palette-1024x768-dark": {
+   "surface": "command-palette",
+   "viewport": "1024x768",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 9,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 53,
+   "saturatedPct": 0.01
+  },
+  "stock-1024x768-dark": {
+   "surface": "stock",
+   "viewport": "1024x768",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 401,
+   "overflowReal": 1,
+   "overflowRealDetail": [
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 14718,
+   "saturatedPct": 1.87
+  },
+  "today-1024x768-light": {
+   "surface": "today",
+   "viewport": "1024x768",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 74,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 49241,
+   "saturatedPct": 6.26
+  },
+  "dms-1024x768-light": {
+   "surface": "dms",
+   "viewport": "1024x768",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 27,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 43245,
+   "saturatedPct": 5.5
+  },
+  "content-list-1024x768-light": {
+   "surface": "content-list",
+   "viewport": "1024x768",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 7,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 38600,
+   "saturatedPct": 4.91
+  },
+  "content-calendar-1024x768-light": {
+   "surface": "content-calendar",
+   "viewport": "1024x768",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 29,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 38843,
+   "saturatedPct": 4.94
+  },
+  "magnets-1024x768-light": {
+   "surface": "magnets",
+   "viewport": "1024x768",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 31,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 40120,
+   "saturatedPct": 5.1
+  },
+  "styles-1024x768-light": {
+   "surface": "styles",
+   "viewport": "1024x768",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 0,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 48900,
+   "saturatedPct": 6.22
+  },
+  "strategy-1024x768-light": {
+   "surface": "strategy",
+   "viewport": "1024x768",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 0,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 38998,
+   "saturatedPct": 4.96
+  },
+  "sends-1024x768-light": {
+   "surface": "sends",
+   "viewport": "1024x768",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 10,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 40036,
+   "saturatedPct": 5.09
+  },
+  "ops-1024x768-light": {
+   "surface": "ops",
+   "viewport": "1024x768",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 6,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 38347,
+   "saturatedPct": 4.88
+  },
+  "settings-1024x768-light": {
+   "surface": "settings",
+   "viewport": "1024x768",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 0,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 39440,
+   "saturatedPct": 5.02
+  },
+  "chat-1024x768-light": {
+   "surface": "chat",
+   "viewport": "1024x768",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 33,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 44473,
+   "saturatedPct": 5.66
+  },
+  "draft-window-1024x768-light": {
+   "surface": "draft-window",
+   "viewport": "1024x768",
+   "theme": "light",
+   "consoleErrorCount": 44,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')",
+    "Failed to load resource: net::ERR_NETWORK_CHANGED",
+    "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+   ],
+   "overflowNaive": 33,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 38361,
+   "saturatedPct": 4.88
+  },
+  "thread-peer-1024x768-light": {
+   "surface": "thread-peer",
+   "viewport": "1024x768",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 35,
+   "overflowReal": 1,
+   "overflowRealDetail": [
+    {
+     "tag": "span",
+     "cls": "wb-lad-l",
+     "scrollWidth": 75,
+     "clientWidth": 12,
+     "over": 63
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 93859,
+   "saturatedPct": 11.93
+  },
+  "command-palette-1024x768-light": {
+   "surface": "command-palette",
+   "viewport": "1024x768",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 9,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 109,
+   "saturatedPct": 0.01
+  },
+  "stock-1024x768-light": {
+   "surface": "stock",
+   "viewport": "1024x768",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 401,
+   "overflowReal": 1,
+   "overflowRealDetail": [
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 14976,
+   "saturatedPct": 1.9
+  },
+  "today-1440x900-dark": {
+   "surface": "today",
+   "viewport": "1440x900",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 55,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 67249,
+   "saturatedPct": 5.19
+  },
+  "dms-1440x900-dark": {
+   "surface": "dms",
+   "viewport": "1440x900",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 24,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 53897,
+   "saturatedPct": 4.16
+  },
+  "content-list-1440x900-dark": {
+   "surface": "content-list",
+   "viewport": "1440x900",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 5,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 49778,
+   "saturatedPct": 3.84
+  },
+  "content-calendar-1440x900-dark": {
+   "surface": "content-calendar",
+   "viewport": "1440x900",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 15,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 49960,
+   "saturatedPct": 3.85
+  },
+  "magnets-1440x900-dark": {
+   "surface": "magnets",
+   "viewport": "1440x900",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 24,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 49922,
+   "saturatedPct": 3.85
+  },
+  "styles-1440x900-dark": {
+   "surface": "styles",
+   "viewport": "1440x900",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 0,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 61988,
+   "saturatedPct": 4.78
+  },
+  "strategy-1440x900-dark": {
+   "surface": "strategy",
+   "viewport": "1440x900",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 0,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 50620,
+   "saturatedPct": 3.91
+  },
+  "sends-1440x900-dark": {
+   "surface": "sends",
+   "viewport": "1440x900",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 0,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 56472,
+   "saturatedPct": 4.36
+  },
+  "ops-1440x900-dark": {
+   "surface": "ops",
+   "viewport": "1440x900",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 6,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 49276,
+   "saturatedPct": 3.8
+  },
+  "settings-1440x900-dark": {
+   "surface": "settings",
+   "viewport": "1440x900",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 0,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 50380,
+   "saturatedPct": 3.89
+  },
+  "chat-1440x900-dark": {
+   "surface": "chat",
+   "viewport": "1440x900",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 29,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 54752,
+   "saturatedPct": 4.22
+  },
+  "draft-window-1440x900-dark": {
+   "surface": "draft-window",
+   "viewport": "1440x900",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 14,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 5601,
+   "saturatedPct": 0.43
+  },
+  "thread-peer-1440x900-dark": {
+   "surface": "thread-peer",
+   "viewport": "1440x900",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 30,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 138412,
+   "saturatedPct": 10.68
+  },
+  "command-palette-1440x900-dark": {
+   "surface": "command-palette",
+   "viewport": "1440x900",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 7,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 58,
+   "saturatedPct": 0
+  },
+  "stock-1440x900-dark": {
+   "surface": "stock",
+   "viewport": "1440x900",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 401,
+   "overflowReal": 1,
+   "overflowRealDetail": [
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 17889,
+   "saturatedPct": 1.38
+  },
+  "today-1440x900-light": {
+   "surface": "today",
+   "viewport": "1440x900",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 55,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 67754,
+   "saturatedPct": 5.23
+  },
+  "dms-1440x900-light": {
+   "surface": "dms",
+   "viewport": "1440x900",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 24,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 54958,
+   "saturatedPct": 4.24
+  },
+  "content-list-1440x900-light": {
+   "surface": "content-list",
+   "viewport": "1440x900",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 5,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 49604,
+   "saturatedPct": 3.83
+  },
+  "content-calendar-1440x900-light": {
+   "surface": "content-calendar",
+   "viewport": "1440x900",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 15,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 49860,
+   "saturatedPct": 3.85
+  },
+  "magnets-1440x900-light": {
+   "surface": "magnets",
+   "viewport": "1440x900",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 24,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 52028,
+   "saturatedPct": 4.01
+  },
+  "styles-1440x900-light": {
+   "surface": "styles",
+   "viewport": "1440x900",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 0,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 62134,
+   "saturatedPct": 4.79
+  },
+  "strategy-1440x900-light": {
+   "surface": "strategy",
+   "viewport": "1440x900",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 0,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 51441,
+   "saturatedPct": 3.97
+  },
+  "sends-1440x900-light": {
+   "surface": "sends",
+   "viewport": "1440x900",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 0,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 53732,
+   "saturatedPct": 4.15
+  },
+  "ops-1440x900-light": {
+   "surface": "ops",
+   "viewport": "1440x900",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 6,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 49352,
+   "saturatedPct": 3.81
+  },
+  "settings-1440x900-light": {
+   "surface": "settings",
+   "viewport": "1440x900",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 0,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 50445,
+   "saturatedPct": 3.89
+  },
+  "chat-1440x900-light": {
+   "surface": "chat",
+   "viewport": "1440x900",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 29,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 56599,
+   "saturatedPct": 4.37
+  },
+  "draft-window-1440x900-light": {
+   "surface": "draft-window",
+   "viewport": "1440x900",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 14,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 5332,
+   "saturatedPct": 0.41
+  },
+  "thread-peer-1440x900-light": {
+   "surface": "thread-peer",
+   "viewport": "1440x900",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 30,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 140230,
+   "saturatedPct": 10.82
+  },
+  "command-palette-1440x900-light": {
+   "surface": "command-palette",
+   "viewport": "1440x900",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 7,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 110,
+   "saturatedPct": 0.01
+  },
+  "stock-1440x900-light": {
+   "surface": "stock",
+   "viewport": "1440x900",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 401,
+   "overflowReal": 1,
+   "overflowRealDetail": [
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 18206,
+   "saturatedPct": 1.4
+  },
+  "today-2560x1440-dark": {
+   "surface": "today",
+   "viewport": "2560x1440",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 45,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 117090,
+   "saturatedPct": 3.18
+  },
+  "dms-2560x1440-dark": {
+   "surface": "dms",
+   "viewport": "2560x1440",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 24,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 87589,
+   "saturatedPct": 2.38
+  },
+  "content-list-2560x1440-dark": {
+   "surface": "content-list",
+   "viewport": "2560x1440",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 4,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 82988,
+   "saturatedPct": 2.25
+  },
+  "content-calendar-2560x1440-dark": {
+   "surface": "content-calendar",
+   "viewport": "2560x1440",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 10,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 83170,
+   "saturatedPct": 2.26
+  },
+  "magnets-2560x1440-dark": {
+   "surface": "magnets",
+   "viewport": "2560x1440",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 22,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 83364,
+   "saturatedPct": 2.26
+  },
+  "styles-2560x1440-dark": {
+   "surface": "styles",
+   "viewport": "2560x1440",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 0,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 95309,
+   "saturatedPct": 2.59
+  },
+  "strategy-2560x1440-dark": {
+   "surface": "strategy",
+   "viewport": "2560x1440",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 0,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 85587,
+   "saturatedPct": 2.32
+  },
+  "sends-2560x1440-dark": {
+   "surface": "sends",
+   "viewport": "2560x1440",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 0,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 115046,
+   "saturatedPct": 3.12
+  },
+  "ops-2560x1440-dark": {
+   "surface": "ops",
+   "viewport": "2560x1440",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 6,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 87509,
+   "saturatedPct": 2.37
+  },
+  "settings-2560x1440-dark": {
+   "surface": "settings",
+   "viewport": "2560x1440",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 0,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 83590,
+   "saturatedPct": 2.27
+  },
+  "chat-2560x1440-dark": {
+   "surface": "chat",
+   "viewport": "2560x1440",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 24,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 88627,
+   "saturatedPct": 2.4
+  },
+  "draft-window-2560x1440-dark": {
+   "surface": "draft-window",
+   "viewport": "2560x1440",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 5,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 13352,
+   "saturatedPct": 0.36
+  },
+  "thread-peer-2560x1440-dark": {
+   "surface": "thread-peer",
+   "viewport": "2560x1440",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 25,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 338526,
+   "saturatedPct": 9.18
+  },
+  "command-palette-2560x1440-dark": {
+   "surface": "command-palette",
+   "viewport": "2560x1440",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 6,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 112,
+   "saturatedPct": 0
+  },
+  "stock-2560x1440-dark": {
+   "surface": "stock",
+   "viewport": "2560x1440",
+   "theme": "dark",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'removeAttribute')"
+   ],
+   "overflowNaive": 401,
+   "overflowReal": 1,
+   "overflowRealDetail": [
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 29923,
+   "saturatedPct": 0.81
+  },
+  "today-2560x1440-light": {
+   "surface": "today",
+   "viewport": "2560x1440",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 45,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 117931,
+   "saturatedPct": 3.2
+  },
+  "dms-2560x1440-light": {
+   "surface": "dms",
+   "viewport": "2560x1440",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 24,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 88795,
+   "saturatedPct": 2.41
+  },
+  "content-list-2560x1440-light": {
+   "surface": "content-list",
+   "viewport": "2560x1440",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 4,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 82814,
+   "saturatedPct": 2.25
+  },
+  "content-calendar-2560x1440-light": {
+   "surface": "content-calendar",
+   "viewport": "2560x1440",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 10,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 83069,
+   "saturatedPct": 2.25
+  },
+  "magnets-2560x1440-light": {
+   "surface": "magnets",
+   "viewport": "2560x1440",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 22,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 87718,
+   "saturatedPct": 2.38
+  },
+  "styles-2560x1440-light": {
+   "surface": "styles",
+   "viewport": "2560x1440",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 0,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 95467,
+   "saturatedPct": 2.59
+  },
+  "strategy-2560x1440-light": {
+   "surface": "strategy",
+   "viewport": "2560x1440",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 0,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 87386,
+   "saturatedPct": 2.37
+  },
+  "sends-2560x1440-light": {
+   "surface": "sends",
+   "viewport": "2560x1440",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 0,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 112271,
+   "saturatedPct": 3.05
+  },
+  "ops-2560x1440-light": {
+   "surface": "ops",
+   "viewport": "2560x1440",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 6,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 89003,
+   "saturatedPct": 2.41
+  },
+  "settings-2560x1440-light": {
+   "surface": "settings",
+   "viewport": "2560x1440",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 0,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 83654,
+   "saturatedPct": 2.27
+  },
+  "chat-2560x1440-light": {
+   "surface": "chat",
+   "viewport": "2560x1440",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 24,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 91160,
+   "saturatedPct": 2.47
+  },
+  "draft-window-2560x1440-light": {
+   "surface": "draft-window",
+   "viewport": "2560x1440",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 5,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 12888,
+   "saturatedPct": 0.35
+  },
+  "thread-peer-2560x1440-light": {
+   "surface": "thread-peer",
+   "viewport": "2560x1440",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 25,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 341098,
+   "saturatedPct": 9.25
+  },
+  "command-palette-2560x1440-light": {
+   "surface": "command-palette",
+   "viewport": "2560x1440",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 6,
+   "overflowReal": 0,
+   "overflowRealDetail": [],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 161,
+   "saturatedPct": 0
+  },
+  "stock-2560x1440-light": {
+   "surface": "stock",
+   "viewport": "2560x1440",
+   "theme": "light",
+   "consoleErrorCount": 1,
+   "consoleErrors": [
+    "PAGEERROR TypeError: Cannot read properties of null (reading 'setAttribute')"
+   ],
+   "overflowNaive": 401,
+   "overflowReal": 1,
+   "overflowRealDetail": [
+    {
+     "tag": "div",
+     "cls": "ic.bubble",
+     "scrollWidth": 29,
+     "clientWidth": 17,
+     "over": 12
+    }
+   ],
+   "pageScrollsSideways": 0,
+   "accentTokenElements": 0,
+   "accentTokenSample": [],
+   "saturatedPixels": 30556,
+   "saturatedPct": 0.83
+  }
+ }
+}

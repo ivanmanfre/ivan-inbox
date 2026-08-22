@@ -31,6 +31,9 @@ const WRITE_RPC = ['operator_', 'dashboard_action', 'n8nclaw_', 'append_agent_lo
 const attempted = []
 const unauthorized = []
 
+// Phase 6 widened this to the full verification matrix: all four sweep
+// viewports in BOTH themes, plus the short canvas that is the only one which
+// exercises the flip. The original five are unchanged and still first.
 const VIEWPORTS = [
   { w: 1440, h: 900, theme: 'dark' },
   { w: 1440, h: 900, theme: 'light' },
@@ -40,6 +43,11 @@ const VIEWPORTS = [
   // always wins and the FLIP never runs in a browser. A 520px viewport forces
   // it, which is the branch that decides whether the bottom edge works.
   { w: 1280, h: 520, theme: 'dark' },
+  // added for phase 6: the rest of the matrix
+  { w: 2560, h: 1440, theme: 'light' },
+  { w: 390, h: 844, theme: 'light' },
+  { w: 1024, h: 768, theme: 'dark' },
+  { w: 1024, h: 768, theme: 'light' },
 ]
 
 async function install(page) {

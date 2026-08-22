@@ -1,0 +1,193 @@
+{
+ "gateA_calendarChipShareOfCell": {
+  "1440x900-dark": {
+   "chips": 13,
+   "maxChipPctOfCell": 37.2,
+   "medianPct": 37.2,
+   "overCount": 0,
+   "chipH": 32,
+   "cellH": 86,
+   "plateGap": "20px",
+   "plateRadius": "40px"
+  },
+  "1440x900-light": {
+   "chips": 13,
+   "maxChipPctOfCell": 37.2,
+   "medianPct": 37.2,
+   "overCount": 0,
+   "chipH": 32,
+   "cellH": 86,
+   "plateGap": "20px",
+   "plateRadius": "40px"
+  },
+  "390x844-dark": {
+   "chips": 13,
+   "maxChipPctOfCell": 43.1,
+   "medianPct": 43.1,
+   "overCount": 0,
+   "chipH": 40,
+   "cellH": 93,
+   "plateGap": "8px",
+   "plateRadius": "24px"
+  },
+  "390x844-light": {
+   "chips": 13,
+   "maxChipPctOfCell": 43.1,
+   "medianPct": 43.1,
+   "overCount": 0,
+   "chipH": 40,
+   "cellH": 93,
+   "plateGap": "8px",
+   "plateRadius": "24px"
+  }
+ },
+ "gateB_tooltipAnchoring": {
+  "390x844-dark": {
+   "cells": 13,
+   "probes": [
+    {
+     "cell": "26Sun,",
+     "popover": null
+    },
+    {
+     "cell": "24Mon,",
+     "popover": null
+    }
+   ]
+  },
+  "390x844-light": {
+   "cells": 13,
+   "probes": [
+    {
+     "cell": "26Sun,",
+     "popover": null
+    },
+    {
+     "cell": "24Mon,",
+     "popover": null
+    }
+   ]
+  },
+  "1024x768-dark": {
+   "cells": 13,
+   "probes": [
+    {
+     "cell": "26Sun,",
+     "popover": null
+    },
+    {
+     "cell": "24Mon,",
+     "popover": null
+    }
+   ]
+  },
+  "1024x768-light": {
+   "cells": 13,
+   "probes": [
+    {
+     "cell": "26Sun,",
+     "popover": null
+    },
+    {
+     "cell": "24Mon,",
+     "popover": null
+    }
+   ]
+  },
+  "1440x900-dark": {
+   "cells": 13,
+   "probes": [
+    {
+     "cell": "26Sun,",
+     "popover": null
+    },
+    {
+     "cell": "24Mon,",
+     "popover": null
+    }
+   ]
+  },
+  "1440x900-light": {
+   "cells": 13,
+   "probes": [
+    {
+     "cell": "26Sun,",
+     "popover": null
+    },
+    {
+     "cell": "24Mon,",
+     "popover": null
+    }
+   ]
+  },
+  "2560x1440-dark": {
+   "cells": 13,
+   "probes": [
+    {
+     "cell": "26Sun,",
+     "popover": null
+    },
+    {
+     "cell": "24Mon,",
+     "popover": null
+    }
+   ]
+  },
+  "2560x1440-light": {
+   "cells": 13,
+   "probes": [
+    {
+     "cell": "26Sun,",
+     "popover": null
+    },
+    {
+     "cell": "24Mon,",
+     "popover": null
+    }
+   ]
+  }
+ },
+ "gateC_liCardMeasure": {
+  "current": {
+   "1440x900": {
+    "found": true,
+    "computedWidth": 520,
+    "boxWidth": 520,
+    "authoredWidth": "520px",
+    "maxWidth": "520px",
+    "columnWidth": 640
+   },
+   "2560x1440": {
+    "found": true,
+    "computedWidth": 520,
+    "boxWidth": 520,
+    "authoredWidth": "520px",
+    "maxWidth": "520px",
+    "columnWidth": 640
+   }
+  },
+  "preRun_18c773a": {
+   "1440x900": {
+    "found": true,
+    "computedWidth": 520,
+    "boxWidth": 520,
+    "authoredWidth": "520px",
+    "maxWidth": "520px",
+    "columnWidth": 640
+   },
+   "2560x1440": {
+    "found": true,
+    "computedWidth": 520,
+    "boxWidth": 520,
+    "authoredWidth": "520px",
+    "maxWidth": "520px",
+    "columnWidth": 640
+   }
+  }
+ },
+ "genuineMutationAttempts": 0,
+ "mutations": [],
+ "rpcPostsToKnownReadFunctions": 0,
+ "readRpcDistinct": [],
+ "unauthorized401": 0
+}
