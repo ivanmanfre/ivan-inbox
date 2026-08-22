@@ -76,9 +76,16 @@ export const CAP_ORDER: RowCap[] = ['approve', 'skip', 'promote', 'discard', 'de
 // Discard sits before delete and never beside promote: the two branches that
 // merged here added their capability independently, and the measured hazard
 // above is about a client-facing button appearing where a hand has learned a
-// destructive one. Discard is neither client-facing nor destructive (a
-// discarded draft can be brought back), and a conversation row never carries
-// promote, so the two never render in the same group on the same selection.
+// destructive one. A conversation row never carries promote and a draft row
+// never carries discard, so those two never render in the same group on the
+// same selection (pinned in capCoverage.test.tsx).
+//
+// Discard KEEPS its danger styling, and an earlier version of this comment was
+// wrong to call it non-destructive. It is reversible in principle, but only by
+// opening the thread it belonged to, which is exactly the trip the bulk path
+// exists to avoid: at bulk scale, undoing it costs more than doing it did. It
+// reads the same as skip, which is reversible on the same terms and is styled
+// the same way.
 export const CAP_BUTTONS: RowCap[] = ['approve', 'skip', 'discard', 'delete']
 
 export function capCountOf(rows: SelectedRow[]): Record<RowCap, number> {
