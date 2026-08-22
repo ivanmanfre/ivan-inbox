@@ -76,11 +76,6 @@ async function openCalendar(page) {
   await page.waitForTimeout(800)
 }
 
-async function openDraft(page) {
-  await page.locator('.ct-card').first().click().catch(() => {})
-  await page.waitForTimeout(1100)
-}
-
 async function main() {
   const browser = await chromium.launch()
   const out = { base: BASE, at: new Date().toISOString(), arms: {}, settings: null, stock: null }
@@ -97,27 +92,14 @@ async function main() {
       path: join(BALLOT, `frame-${arm}-calendar-1440x900-dark.jpg`),
       quality: 82, type: 'jpeg', fullPage: true,
     })
-    // draft window, same arm, same session
-    await page.goto(BASE + '#exp/v2/content', { waitUntil: 'networkidle', timeout: 30000 })
-    await page.waitForTimeout(1000)
-    await openDraft(page)
-    const dwTokens = await readTokens(page)
-    out.arms[arm].draftWindow = {
-      attr: dwTokens.attr,
-      plateGap: dwTokens.plateGap,
-      plateR: dwTokens.plateR,
-      // does the plate frame reach the takeover at all?
-      takeover: await page.evaluate(() => {
-        const t = document.querySelector('.dw, .tk, [class*=takeover], .dw-wrap')
-        if (!t) return null
-        const r = t.getBoundingClientRect()
-        return { cls: t.className, x: r.x, y: r.y, w: r.width, h: r.height, vw: innerWidth, vh: innerHeight }
-      }),
-    }
-    await page.screenshot({
-      path: join(BALLOT, `frame-${arm}-draft-window-1440x900-dark.jpg`),
-      quality: 82, type: 'jpeg', fullPage: false,
-    })
+    // 🔴 THE DRAFT WINDOW PASS THAT USED TO LIVE HERE WAS WRONG AND IS GONE.
+    // It did a second page.goto() to the same hash, which is not a navigation
+    // in a hash-routed app: the Calendar tab stayed selected, the .ct-card
+    // click hit nothing, and it wrote a SECOND COPY OF THE CALENDAR under a
+    // draft-window filename. Two arms then looked byte-identical for a reason
+    // that had nothing to do with the arms. frame-arms-dw.mjs owns that
+    // capture now, opens the draft window first off a fresh load, and asserts
+    // dwOpen in its recorded proof. Re-running this file must not clobber it.
     await ctx.close()
     console.log(`arm ${arm}:`, JSON.stringify(out.arms[arm]))
   }
