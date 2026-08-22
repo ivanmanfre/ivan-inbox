@@ -549,3 +549,113 @@
   .wb.wb.wb .cal-grid{ animation:none }
   .wb.wb.wb .cal-pop[data-in='0']{ transform:none }
 }
+
+
+/* ==========================================================================
+   7 · AMENDMENT, after the blind panel: the chip lost its second line
+   ========================================================================== */
+
+/* An independent blind panel judged eleven screens with no knowledge of which
+   state was older. The draft window won decisively. THE CALENDAR LOST, and the
+   single reason was legibility:
+
+     "Fourteen entries, fourteen ellipses, not one of them readable ... On a
+      calendar, whose only job is scanning, that is the load-bearing difference."
+
+   Measured on the build it judged: 13 of 13 chip titles ellipsed at 1440x900,
+   7 of 13 at 390x844. §2 bought the 45% gate by cutting the title from a
+   two-line clamp to one line, and the line it spent was the only thing on the
+   chip that says WHICH POST THIS IS.
+
+   🔴 THE TRADE WAS THE WRONG WAY ROUND, AND IT DID NOT HAVE TO BE MADE. §2
+   read the gate as "the chip must get shorter". The gate is a RATIO, so the
+   cell was the other lever, and the room for it was already on screen and
+   unused. Measured at 1440x900 on the judged build:
+
+     grid bottom          y = 741.2
+     viewport             900
+     unused below grid    158.8px
+     weeks                6, every one at the 86px floor
+
+   Nothing between the grid and the bottom of the window is anything. `.cal`
+   declares `padding:0 0 var(--sp-6)` and --sp-6 IS NOT DEFINED (the scale in
+   faithful.css:3149 stops at --sp-5), so that shorthand is invalid and dropped
+   and the calendar's bottom padding is zero. The grid simply ends where its
+   content ends, because `.cal-body` at >=1000px is a grid with
+   `align-items:start` and nothing in the column asks to fill the height.
+
+   So the room is reclaimed by the CELL FLOOR, and the floor is allowed to
+   stretch into whatever the viewport actually has:
+
+     chip   12 (clock line) + 30 (two 15px title lines) + 5 (padding) = 47 -> 48
+     floor  48 / 0.45 = 106.7 minimum -> 108
+     at 1440x900 the stretch resolves to ~112, which is 43%
+
+   Both numbers are re-measured in the browser after this change rather than
+   trusted; the table is in evidence/phase3-calendar.md. */
+
+.wb{
+  --cal-chip-h:48px;
+  /* The floor, and it is still the EMPTY case: §3's reasoning stands, only its
+     arithmetic moves, because one chip is now 48px rather than 32px.
+       1 chip   12 + 16 + 3 + 48 = 79, floor 108 with air
+       2 chips  + 3 + 48         = 130
+       2 + "+N" + 3 + 18         = 151
+     A .cal-day is a flex column in a grid row that sizes to its tallest cell,
+     so a busy day still grows and takes its week with it. */
+  --cal-cell-h:108px;
+}
+
+/* THE STRETCH. --cal-chrome-h is the MEASURED distance from the top of the
+   viewport to the top of the first week row (176 to the grid, 25.2 for the
+   weekday head), rounded up to leave a few pixels rather than land exactly on
+   the edge and provoke a scrollbar. `max()` means it is a floor and never a
+   ceiling: on a short window the cells sit at 108 and the page scrolls, which
+   is the honest outcome of a two-line chip and six rows, and on a tall one
+   they grow and the ratio only improves.
+
+   🔴 THE CONSTANT IS A MEASUREMENT, SO IT CAN GO STALE. If the app chrome above
+   the calendar ever grows, this over-estimates the room and the grid runs a few
+   pixels past the fold. It degrades by scrolling, never by clipping, which is
+   why a measured constant is acceptable here and would not be if the failure
+   mode were the other one. Scoped to >=768px: below that the grid is an agenda
+   list and there are no week rows to stretch. */
+@media (min-width:768px){
+  .wb.wb.wb .cal-day{
+    min-height:max(var(--cal-cell-h), calc((100vh - var(--cal-chrome-h)) / 6 - var(--sp-1)));
+  }
+}
+.wb{ --cal-chrome-h:206px }
+
+/* THE SECOND LINE, RESTORED. Back to the two-line clamp faithful.css:3922
+   shipped, which is what the panel was comparing against, on a chip that is now
+   tall enough to hold it without the title setting the height of the grid.
+   `overflow-wrap:anywhere` comes back with it: a single unbroken 30-character
+   word has to break rather than push the ellipsis off the chip. */
+.wb.wb.wb .cal-chip-n{
+  display:-webkit-box; -webkit-box-orient:vertical;
+  -webkit-line-clamp:2; line-clamp:2;
+  white-space:normal; overflow:hidden; text-overflow:clip;
+  overflow-wrap:anywhere;
+  width:100%;
+  font-size:var(--fs-meta); line-height:15px;
+}
+/* The face gains 16px, so the two lines get to start under the clock rather
+   than be centred against it as a single line was. */
+.wb.wb.wb .cal-chip-t{
+  padding:2px 7px 3px;
+  gap:1px;
+  justify-content:flex-start;
+}
+
+/* ---- <=767px: the agenda row gets the second line too -------------------- */
+/* 7 of 13 titles ellipsed at 342px wide, so a wider chip did not save the
+   single line, it only ellipsed the longer half of the month. The row grows to
+   the same 48px face, and the day group's padding grows with it so the RATIO
+   holds on the agenda as well: a 48px chip in a 14px-padded row measures 47.6%
+   of its cell and fails the gate it passes on the grid. */
+@media (max-width:767px){
+  .wb.wb.wb .cal-day{ padding:19px 0 }
+  .wb.wb.wb .cal-chip{ min-height:var(--cal-chip-h); height:var(--cal-chip-h) }
+  .wb.wb.wb .cal-chip-row{ min-height:var(--cal-chip-h); height:var(--cal-chip-h) }
+}
