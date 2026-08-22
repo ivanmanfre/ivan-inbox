@@ -307,30 +307,30 @@
   },
   "kv": {
    "wbkv": {
-    "display": "block",
-    "grid-template-columns": "none",
-    "column-gap": "normal",
-    "row-gap": "normal",
-    "align-items": "normal"
+    "display": "grid",
+    "grid-template-columns": "227.75px 632.25px",
+    "column-gap": "16px",
+    "row-gap": "6px",
+    "align-items": "baseline"
    },
    "wbkv-k": {
-    "font-size": "16px",
+    "font-size": "13px",
     "font-weight": "400",
-    "color": "rgb(255, 255, 255)",
+    "color": "rgb(148, 148, 148)",
     "text-transform": "none",
     "letter-spacing": "normal",
     "border-top-width": "0px",
     "background-color": "rgba(0, 0, 0, 0)",
-    "line-height": "25.6px"
+    "line-height": "18.85px"
    },
    "wbkv-v": {
-    "font-size": "16px",
-    "font-weight": "400",
+    "font-size": "14px",
+    "font-weight": "450",
     "color": "rgb(255, 255, 255)",
     "font-variant-numeric": "tabular-nums",
     "border-top-width": "0px",
     "background-color": "rgba(0, 0, 0, 0)",
-    "line-height": "25.6px"
+    "line-height": "20.3px"
    }
   },
   "motion": {
@@ -441,9 +441,9 @@
    ],
    [
     ".wbkv-k on --e2",
-    "rgb(255, 255, 255)",
+    "rgb(148, 148, 148)",
     "rgb(28, 28, 28)",
-    17.05,
+    5.62,
     4.5
    ],
    [
@@ -763,30 +763,30 @@
   },
   "kv": {
    "wbkv": {
-    "display": "block",
-    "grid-template-columns": "none",
-    "column-gap": "normal",
-    "row-gap": "normal",
-    "align-items": "normal"
+    "display": "grid",
+    "grid-template-columns": "227.75px 632.25px",
+    "column-gap": "16px",
+    "row-gap": "6px",
+    "align-items": "baseline"
    },
    "wbkv-k": {
-    "font-size": "16px",
+    "font-size": "13px",
     "font-weight": "400",
-    "color": "rgb(19, 19, 19)",
+    "color": "rgb(92, 92, 90)",
     "text-transform": "none",
     "letter-spacing": "normal",
     "border-top-width": "0px",
     "background-color": "rgba(0, 0, 0, 0)",
-    "line-height": "25.6px"
+    "line-height": "18.85px"
    },
    "wbkv-v": {
-    "font-size": "16px",
-    "font-weight": "400",
+    "font-size": "14px",
+    "font-weight": "450",
     "color": "rgb(19, 19, 19)",
     "font-variant-numeric": "tabular-nums",
     "border-top-width": "0px",
     "background-color": "rgba(0, 0, 0, 0)",
-    "line-height": "25.6px"
+    "line-height": "20.3px"
    }
   },
   "motion": {
@@ -897,9 +897,9 @@
    ],
    [
     ".wbkv-k on --e2",
-    "rgb(19, 19, 19)",
+    "rgb(92, 92, 90)",
     "rgb(255, 255, 255)",
-    18.58,
+    6.7,
     4.5
    ],
    [

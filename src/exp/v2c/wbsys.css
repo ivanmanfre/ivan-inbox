@@ -328,3 +328,106 @@
 .wb.wb.wb .wbb-danger:disabled,
 .wb.wb.wb .wbb-quiet[aria-disabled='true'],
 .wb.wb.wb .wbb-danger[aria-disabled='true']{ background:transparent }
+
+/* ========================================================================== */
+/* 5 · LABEL AND VALUE: the box is deleted                                     */
+/* ========================================================================== */
+
+/* The pattern being replaced is an ALL-CAPS label above or beside a value,
+   inside a bordered box, stacked, repeated across the draft inspector's four
+   tabs and again in Ops and Settings. Linear's own model is the opposite: the
+   property value IS the control and there is no bordered container anywhere in
+   the interaction. So: no border, no fill, no box, sentence-case labels, and a
+   baseline-aligned two-column grid.
+
+   The flattener reaches `*`, so both the key and the value restate all four
+   type properties on themselves AND on their descendants. */
+.wb.wb.wb .wbkv{
+  display:grid;
+  grid-template-columns:minmax(84px,26%) 1fr;
+  column-gap:16px;
+  row-gap:6px;
+  align-items:baseline;
+  background:transparent;
+  border:0;
+  padding:0;
+}
+.wb.wb.wb .wbkv-k,
+.wb.wb.wb .wbkv-k *{
+  font-size:13px; font-weight:400; letter-spacing:0; line-height:1.45;
+  text-transform:none;
+}
+.wb.wb.wb .wbkv-k{
+  color:var(--text3);
+  background:transparent; border:0; padding:0;
+  min-width:0;
+}
+.wb.wb.wb .wbkv-v,
+.wb.wb.wb .wbkv-v *{
+  font-size:14px; font-weight:450; letter-spacing:0; line-height:1.45;
+}
+.wb.wb.wb .wbkv-v{
+  color:var(--text);
+  background:transparent; border:0; padding:0;
+  min-width:0;
+  font-variant-numeric:tabular-nums;
+  overflow-wrap:anywhere;
+}
+/* A rule between rows ONLY past four rows: a short property list does not need
+   ruling and a long one does. Child 9 is the first cell of row 5, so :has()
+   detects "more than four rows" and the rule is then drawn above every row from
+   the second onward. */
+.wb.wb.wb .wbkv:has(> :nth-child(9)) > *:nth-child(n+3){
+  border-top:1px solid var(--hairline);
+  padding-top:6px;
+}
+
+/* ========================================================================== */
+/* 7b · MOTION: the three transitions, and the collapse                        */
+/* ========================================================================== */
+
+/* Controls are handled in §3. These are the other two cases, plus the ban.
+
+   Only background-color, color, transform and opacity may transition. width,
+   height, top and `transition: all` are banned: they force a reflow every
+   frame. Nothing here animates a layout property. */
+
+/* Overlays: palette, popover, menu, sheet. transform and opacity only. */
+.wb.wb.wb .wbs-overlay{
+  background:var(--e4);
+  border-radius:var(--r-card);
+  box-shadow:var(--e4-shadow);
+  transition:opacity var(--wbs-dur-overlay) var(--wbs-ease-overlay),
+             transform var(--wbs-dur-overlay) var(--wbs-ease-overlay);
+}
+.wb.wb.wb .wbs-overlay[data-wbs-in='0']{ opacity:0; transform:translateY(-4px) scale(.985) }
+.wb.wb.wb .wbs-overlay[data-wbs-in='1']{ opacity:1; transform:none }
+
+/* A row committing an action: a tint fade so the eye can follow what it just
+   did. background-color only, and it uses the accent as a TINT rather than a
+   fill, which is the accent budget's third permitted role (the live state). */
+.wb.wb.wb .wbs-commit{
+  transition:background-color var(--wbs-dur-commit) var(--wbs-ease-ctl);
+}
+.wb.wb.wb .wbs-commit[data-wbs-committed='1']{ background-color:var(--accent-soft) }
+
+/* Selected and active states are a lime TINT behind neutral text, never a lime
+   fill: the fill is spent on the one primary action per screen. */
+.wb.wb.wb .wbs-selected{
+  background:var(--accent-soft);
+  color:var(--text);
+}
+
+/* THE COLLAPSE. Everything above, plus anything else inside the plate, goes to
+   zero. `!important` is deliberate and is the one use of it in this file: a
+   reduced-motion request outranks any authored duration, including the ones in
+   faithful.css and styles.css that this sheet does not own. */
+@media (prefers-reduced-motion: reduce){
+  .wb.wb.wb, .wb.wb.wb *,
+  .wb.wb.wb *::before, .wb.wb.wb *::after{
+    transition-duration:0ms !important;
+    animation-duration:0ms !important;
+    animation-iteration-count:1 !important;
+    scroll-behavior:auto !important;
+  }
+}
