@@ -61,7 +61,10 @@ describe('a client review row is no longer delete-only', () => {
 describe('the bulk bar counts and names the audience', () => {
   it('counts promote alongside the caps it already counted', () => {
     const counts = capCountOf([row(), row({ id: 'd2' }), row({ id: 'd3', caps: ['delete'] })])
-    expect(counts).toEqual({ approve: 0, skip: 0, promote: 2, delete: 3 })
+    // Every cap, including the ones this selection cannot take. `toEqual` is an
+    // exhaustive assertion and the compiler does not police it, so the merge
+    // that added 'discard' had to be carried into this literal by hand.
+    expect(counts).toEqual({ approve: 0, skip: 0, promote: 2, delete: 3, discard: 0 })
   })
 
   it('names the client, never the database value', () => {

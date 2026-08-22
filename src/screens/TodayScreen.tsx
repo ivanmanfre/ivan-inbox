@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Avatar } from '../components/Avatar'
 import { PullIndicator } from '../components/PullIndicator'
 import { SystemAlertStrip } from '../components/SystemAlertStrip'
@@ -6,12 +6,22 @@ import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useToday, type TodayHealth } from '../hooks/useToday'
 import { label } from '../lib/labels'
 import { acceptRate, laneLabel, type GovernorRow } from '../lib/kpis'
+import type { Thread } from '../lib/inbox'
+import type { OpsDraft } from '../lib/ops'
 import {
   ago, ageTag, cleanSnippet, clockTime, countsFromBrief, dayTime,
   longDate, nextUp, todayLoad, todayPlate,
   type Brief, type BriefCounts, type CommentDraft, type DmDraft, type FeedDraft,
   type ScheduledPost, type TodayPlate, type Urgency,
 } from '../lib/today'
+import {
+  buildOpsItems, buildReplyItems, fetchContentErrorPile, fetchContentReviewPile,
+  fetchStagedIdeaPile, pileItems, rankQueue, type QueueItem,
+} from '../lib/workQueue'
+import {
+  describeWhen, fetchUpcomingEvents, isStartingSoon, resolveMeetingType,
+  MEETING_TYPE_LABEL, type CalendarEvent,
+} from '../lib/nextCall'
 
 // Today = three staged zones (urgent → approve → today's content) plus a
 // campaign-health strip. Deliberately absent: any n8n / workflow-error / system
@@ -228,6 +238,216 @@ function HandOff({ n, title, sub, meta, owner, href, onOpen, age }: {
     return <a className="td-qrow tap" href={href} target="_blank" rel="noreferrer">{body}</a>
   }
   return <div className="td-qrow">{body}</div>
+}
+
+// ---- zone 00: the work queue ----
+//
+// Measured: 552 rows across content drafts, client ideas, ops drafts and DMs
+// are waiting on a human decision, and 449 of them cannot appear on Today at
+// all. The edge function behind every zone above carries no content drafts,
+// no ideas and no ops rows, and lane scoping means no other screen has ever
+// shown two lanes' backlogs at once. This zone is the answer: one ranked list
+// that crosses every lane, built from data the app already fetches at the
+// Shell level (`threads`, `opsDrafts`, zero new cost) plus two small
+// read-only aggregate queries for the two piles nothing else surfaces
+// (content review/error, staged client ideas, see lib/workQueue.ts).
+//
+// RANKING RULE (defended in full in lib/workQueue.ts): severity tier first,
+// oldest-first inside a tier. A person waiting always outranks a draft
+// waiting, and a reply nobody has even opened (tier 0) always outranks one
+// that was at least read (tier 1). 36 of the 58 unanswered threads were
+// never opened in this app at all, which is the sharpest neglect in the
+// whole set, sharper than any age number on its own.
+//
+// THE ACTION IS THE CLICK. A reply row opens the exact thread (openId is the
+// prospect_id), the same navigation Item 5 already treats as the real
+// action surface for a DM, since sending still has to happen after a human
+// reads the thread. An ops row opens the Ops job (no per-row focus exists
+// from outside it, and OpsBoard belongs to another item in this run). A
+// content/idea pile row opens Content PRE-FILTERED TO ITS LANE. Shell owns
+// the lane state Content reads, so this hands off at the lane boundary
+// without touching ContentList.tsx, content.ts or BulkBar.tsx, none of which
+// are this item's files to change.
+function QueueReplyRow({ item, onOpen }: { item: QueueItem; onOpen: () => void }) {
+  return (
+    <div className="td-r tap" onClick={onOpen}>
+      <Avatar name={item.title} channel="linkedin" />
+      <div className="td-mid">
+        <div className="td-top">
+          <span className="td-nm">{item.title}</span>
+          {/* The one thing on this screen that has to be impossible to miss:
+              a real person wrote in and this app has never once been opened
+              to their message. Styled off the same SEV.stale red every other
+              severity marker on this screen already uses, no new color
+              vocabulary, just the loudest existing one. */}
+          {item.tier === 0 && (
+            <span className="td-kind" style={{ color: SEV.stale, fontWeight: 800 }}>
+              ● never opened
+            </span>
+          )}
+          {item.lane !== 'ivan' && (
+            <span className="td-kind">{item.lane === 'risedtc' ? 'RISE' : 'ARCH'}</span>
+          )}
+        </div>
+        {item.sub && <div className="td-snip">{item.sub}</div>}
+      </div>
+      <div className="td-right"><span className="td-tm">{ago(item.waitingSince)}</span></div>
+    </div>
+  )
+}
+
+function QueuePileRow({ item, onOpen }: { item: QueueItem; onOpen: () => void }) {
+  const owner = item.kind === 'ops'
+    ? 'approved (or discarded) in Ops'
+    : item.kind === 'ideas'
+      ? 'reviewed in Content, Ideas tab'
+      : 'promoted or skipped in Content'
+  return (
+    <HandOff
+      n={item.n ?? 1}
+      title={item.title}
+      sub={item.sub}
+      owner={owner}
+      age={`${Math.round(item.ageDays)}d`}
+      onOpen={onOpen}
+    />
+  )
+}
+
+function ZoneQueue({ items, onOpenThread, onOpenOps, onOpenContent }: {
+  items: QueueItem[]
+  onOpenThread: (id: string) => void
+  onOpenOps: () => void
+  onOpenContent: (lane: string) => void
+}) {
+  const neverOpened = items.filter(i => i.tier === 0).length
+  return (
+    <section className="td-zone" id="td-z0">
+      <ZoneHead
+        n="A"
+        title="Work queue"
+        right={items.length === 0 ? 'clear' : `${items.length} across every lane`}
+        state={items.length === 0 ? 'done' : 'hot'}
+      />
+      {neverOpened > 0 && (
+        <div className="td-empty" style={{ color: SEV.stale, fontWeight: 700 }}>
+          {neverOpened} {neverOpened === 1 ? 'person' : 'people'} wrote and {neverOpened === 1 ? 'was' : 'were'} never opened here.
+        </div>
+      )}
+      {items.length === 0 ? (
+        <div className="td-empty">Nothing crossing every lane is waiting on you right now.</div>
+      ) : (
+        items.map(item => item.kind === 'reply'
+          ? <QueueReplyRow key={item.id} item={item} onOpen={() => onOpenThread(item.openId!)} />
+          : (
+            <QueuePileRow
+              key={item.id}
+              item={item}
+              onOpen={item.kind === 'ops' ? onOpenOps : () => onOpenContent(item.openId!)}
+            />
+          ))
+      )}
+    </section>
+  )
+}
+
+// ---- zone 01: next call ----
+//
+// Dashboard port #1 (dashboard-port-audit.md): this inbox has never once
+// read `calendar_events`, so it cannot answer "do I have a call today", the
+// exact question the URL Ivan sent (`?section=today&sub=meetings`) was
+// pointing at. Ported from personal-site (read-only reference), with its two
+// known bugs deliberately not carried across, see lib/nextCall.ts for both.
+//
+// Reuses the SAME `.td-next`/`.lbl`/`.txt` primitive Zone 03 "Schedule"
+// already uses for its NEXT/QUEUE lines below, so this needs no new CSS.
+// Numbered B, not 05: the four original zones (01-04) keep their original
+// numbers unconditionally, because they render in #exp/stock too and a
+// renumber would be a pixel change to a shell this run must leave untouched.
+// A/B are this run's own new zones and sit outside that sequence on purpose.
+function ZoneNextCall({ events, loading }: { events: CalendarEvent[]; loading: boolean }) {
+  const next = events[0] ?? null
+  const rest = Math.max(0, events.length - 1)
+
+  if (loading) {
+    return (
+      <section className="td-zone" id="td-z-call">
+        <ZoneHead n="B" title="Next call" right="" state="pending" />
+        <div className="td-empty">Loading the calendar…</div>
+      </section>
+    )
+  }
+
+  if (!next) {
+    return (
+      <section className="td-zone" id="td-z-call">
+        <ZoneHead n="B" title="Next call" right="none this week" state="done" />
+        {/* Exact wording measured live on the old dashboard (calls-settled.png).
+            The empty case is the common case (his calendar is often clear
+            for 7 days) and it earns the same care as the populated one: no
+            hopeful "checking…" placeholder once the read has actually come
+            back with zero rows. */}
+        <div className="td-card">
+          <div className="td-card-t">No calls on the calendar this week</div>
+          <div className="td-card-s">Upcoming calls surface here as they land in calendar_events.</div>
+        </div>
+      </section>
+    )
+  }
+
+  const w = describeWhen(next)
+  const soon = isStartingSoon(w)
+  const type = resolveMeetingType(next)
+
+  return (
+    <section className="td-zone" id="td-z-call">
+      <ZoneHead n="B" title="Next call" right={`${w.day} ${w.time}`} state={soon ? 'hot' : 'pending'} />
+      <div className="td-next">
+        <span className="lbl">{w.day.toUpperCase()}</span>
+        <span className="txt">
+          <b>{w.time}{w.endTime ? ` to ${w.endTime}` : ''}</b> {next.title}
+          {soon && (
+            <span className="td-kind" style={{ marginLeft: 8, color: SEV.slowing, fontWeight: 800 }}>
+              starting soon
+            </span>
+          )}
+        </span>
+      </div>
+      {next.attendees.length > 0 && (
+        <div className="td-next">
+          <span className="lbl">WITH</span>
+          <span className="txt">{next.attendees.join(', ')}</span>
+        </div>
+      )}
+      {type && (
+        <div className="td-next">
+          <span className="lbl">TYPE</span>
+          <span className="txt">{MEETING_TYPE_LABEL[type]}</span>
+        </div>
+      )}
+      {/* Free value the old dashboard's own UI never read (dashboard-port-audit.md
+          §2): Calendly stamps `source` on every booking and nothing renders it.
+          One field, already selected, cheap enough to include, so it is. */}
+      {next.source && (
+        <div className="td-next">
+          <span className="lbl">SOURCE</span>
+          <span className="txt">via {next.source}</span>
+        </div>
+      )}
+      {next.meeting_url && (
+        <div className="td-next">
+          <span className="lbl">JOIN</span>
+          <span className="txt"><a href={next.meeting_url} target="_blank" rel="noreferrer">{next.meeting_url}</a></span>
+        </div>
+      )}
+      {rest > 0 && (
+        <div className="td-next">
+          <span className="lbl">THIS WEEK</span>
+          <span className="txt">{rest} more call{rest === 1 ? '' : 's'}</span>
+        </div>
+      )}
+    </section>
+  )
 }
 
 function dmPreview(d: DmDraft | undefined): string | null {
@@ -611,12 +831,26 @@ function Counter({ n, cap, warn, bad, warnZero }: {
 
 // ---- screen ----
 
-export function TodayScreen({ onOpenDrafts, onOpenOps }: {
+export function TodayScreen({
+  onOpenDrafts, onOpenOps, threads, opsDrafts, onOpenThread, onOpenContent,
+}: {
   // A host that has its own navigation passes it in; the default app falls back to
   // its own hash routes (src/lib/route.ts). Either way a hand-off row has a way in
   // — a count with nowhere to go is worse than no count.
   onOpenDrafts?: () => void
   onOpenOps?: () => void
+  // ---- the work queue (item 4, workbench-polish-2026-08-22) ----
+  // All four are optional and all four arrive together or not at all: the
+  // workbench Shell passes its own already-mounted `inbox.threads` /
+  // `ops.drafts` (zero new fetch) plus real navigation. #exp/stock's call
+  // site (App.tsx) passes none of them, so `threads === undefined` there and
+  // the whole zone below renders nothing, and the escape hatch stays exactly
+  // what it always was, same as every other opt-in prop this screen already
+  // carries (see the D21 note below for the precedent).
+  threads?: Thread[]
+  opsDrafts?: OpsDraft[]
+  onOpenThread?: (id: string) => void
+  onOpenContent?: (lane: string) => void
 } = {}) {
   const t = useToday()
   const rowsRef = useRef<HTMLDivElement>(null)
@@ -625,6 +859,48 @@ export function TodayScreen({ onOpenDrafts, onOpenOps }: {
   // both of these with in-app navigation.
   const openDrafts = onOpenDrafts ?? (() => { location.hash = '#drafts' })
   const openOps = onOpenOps ?? (() => { location.hash = '#ops' })
+
+  // The two piles this screen has never carried: content review/error and
+  // staged client ideas. Fetched only when the work queue is actually active
+  // (threads !== undefined), so #exp/stock, which never passes threads,
+  // never fires these reads. Read-only, see lib/workQueue.ts for the query
+  // shape and the 1000-row clamp math.
+  const [reviewPile, setReviewPile] = useState<Awaited<ReturnType<typeof fetchContentReviewPile>>>([])
+  const [errorPile, setErrorPile] = useState<Awaited<ReturnType<typeof fetchContentErrorPile>>>([])
+  const [ideaPile, setIdeaPile] = useState<Awaited<ReturnType<typeof fetchStagedIdeaPile>>>([])
+  useEffect(() => {
+    if (threads === undefined) return
+    let alive = true
+    Promise.all([fetchContentReviewPile(), fetchContentErrorPile(), fetchStagedIdeaPile()])
+      .then(([review, error, ideas]) => {
+        if (!alive) return
+        setReviewPile(review); setErrorPile(error); setIdeaPile(ideas)
+      })
+      .catch(() => { /* additive, the DM/ops half of the queue still renders */ })
+    return () => { alive = false }
+  }, [threads !== undefined])
+
+  const queue = threads === undefined ? null : rankQueue([
+    ...buildReplyItems(threads, Date.now()),
+    ...buildOpsItems(opsDrafts ?? [], Date.now()),
+    ...pileItems(reviewPile, 'contentReview', Date.now()),
+    ...pileItems(errorPile, 'contentError', Date.now()),
+    ...pileItems(ideaPile, 'ideas', Date.now()),
+  ])
+
+  // Next call (dashboard port #1). Same gate as the work queue above: opt-in
+  // on `threads !== undefined`, so #exp/stock never fires this read either.
+  const [events, setEvents] = useState<CalendarEvent[]>([])
+  const [eventsLoading, setEventsLoading] = useState(true)
+  useEffect(() => {
+    if (threads === undefined) return
+    let alive = true
+    fetchUpcomingEvents()
+      .then(rows => { if (alive) setEvents(rows) })
+      .catch(() => { /* additive, the rest of Today still renders */ })
+      .finally(() => { if (alive) setEventsLoading(false) })
+    return () => { alive = false }
+  }, [threads !== undefined])
 
   // D21 mitigation (not the full fix): this screen used to run an Ivan/Rise/All
   // lane chip over these rows, but get-morning-brief's payload carries neither
@@ -689,6 +965,15 @@ export function TodayScreen({ onOpenDrafts, onOpenOps }: {
         )}
 
         <div className="td-zones">
+          {queue !== null && (
+            <ZoneQueue
+              items={queue}
+              onOpenThread={onOpenThread ?? (() => {})}
+              onOpenOps={openOps}
+              onOpenContent={onOpenContent ?? (() => {})}
+            />
+          )}
+          {threads !== undefined && <ZoneNextCall events={events} loading={eventsLoading} />}
           <ZoneNew
             plate={plate}
             brief={t.brief}
