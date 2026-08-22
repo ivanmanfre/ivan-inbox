@@ -133,8 +133,74 @@
 /* A confirm claims a row of its own inside whichever tier raised it. It was
    `flex:1 0 100%` against the old wrapping bar; the tiers are flex-wrap rows,
    so the same declaration still gives it a full line, and `order:1` still keeps
-   it below the buttons it is asking about. */
+   it below the buttons it is asking about. A row that is a DIRECT child of the
+   bar sits in a COLUMN flex, where `flex-basis:100%` would be a height, so it
+   takes width instead. */
 .wb.wb.wb .dw-acts .dw-actrow{ order:1; flex:1 0 100%; min-width:0; margin:0 }
+.wb.wb.wb .dw-acts > .dw-actrow{ flex:none; width:100% }
+
+/* THE CONFIRMS, WHICH ARE PART OF THE BAR AND NOT A SECOND DESIGN.
+   `.wb-delconfirm` (styles.css:779) is a red-tinted box with a red 1px edge
+   holding a red 13px/600 question and two full-width `.btn`s, and it renders
+   its prose at 16px because the flattener eats the authored size. The
+   destructive act keeps its colour where it belongs — on the rail and on the
+   button that performs it — and stops colouring the question, the box and the
+   border as well. Same three rules the ladder uses everywhere else. */
+.wb.wb.wb .dw-acts .wb-delconfirm{
+  padding:11px 12px;
+  border:0;
+  border-left:2px solid var(--sev-danger);
+  border-radius:0 var(--r-ctl) var(--r-ctl) 0;
+  background:var(--e1);
+}
+.wb.wb.wb .dw-acts .wb-delq,
+.wb.wb.wb .dw-acts .wb-delq *{
+  font-size:13px; font-weight:400; letter-spacing:0; line-height:1.5;
+}
+.wb.wb.wb .dw-acts .wb-delq{ color:var(--text) }
+.wb.wb.wb .dw-acts .wb-delconfirm .ct-subtle,
+.wb.wb.wb .dw-acts .wb-delconfirm .ct-subtle *{
+  font-size:13px; font-weight:400; letter-spacing:0; line-height:1.5;
+}
+.wb.wb.wb .dw-acts .ct-ac{ margin-top:10px; gap:8px; justify-content:flex-end }
+.wb.wb.wb .dw-acts .ct-ac .btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  flex:none; height:32px; min-height:32px; padding:0 14px;
+  border:0; border-radius:var(--r-ctl);
+  background:var(--e3); color:var(--text);
+  transition:background-color var(--wbs-dur-ctl) var(--wbs-ease-ctl);
+}
+.wb.wb.wb .dw-acts .ct-ac .btn,
+.wb.wb.wb .dw-acts .ct-ac .btn *{
+  font-size:13px; font-weight:500; letter-spacing:0; line-height:1;
+  text-transform:none;
+}
+.wb.wb.wb .dw-acts .ct-ac .btn.s{ background:transparent; color:var(--text2) }
+.wb.wb.wb .dw-acts .ct-ac .btn.s:hover{ background:var(--e3); color:var(--text) }
+.wb.wb.wb .dw-acts .ct-ac .btn.wb-btn-danger{ background:var(--sev-danger); color:#FFFFFF }
+.wb.wb.wb .dw-acts .ct-ac .btn:disabled{ opacity:.6; cursor:not-allowed }
+
+/* THE SCHEDULE PANEL UNFOLDS IN THE BAR, like every other disclosure this
+   window has. It used to render at the FOOT of the scrolling column, so the one
+   affordance here that arms a publisher opened below the fold while its trigger
+   stayed pinned on screen — the same defect D13 moved Regenerate and Delete out
+   of. */
+.wb.wb.wb .dw-acts .wb-delzone{ margin:0 }
+.wb.wb.wb .dw-acts .dw-sched{ gap:8px }
+.wb.wb.wb .dw-acts .dw-sched input{
+  height:32px; min-height:32px;
+  background:var(--e1); border:1px solid var(--hairline);
+  border-radius:var(--r-ctl); padding:0 10px; color:var(--text);
+}
+.wb.wb.wb .dw-acts .dw-sched input,
+.wb.wb.wb .dw-acts .dw-sched input *{
+  font-size:13px; font-weight:400; letter-spacing:0; line-height:1;
+}
+.wb.wb.wb .dw-acts .ct-subtle,
+.wb.wb.wb .dw-acts .ct-subtle *{
+  font-size:13px; font-weight:400; letter-spacing:0; line-height:1.5;
+}
+.wb.wb.wb .dw-acts .ct-subtle{ color:var(--text3) }
 .wb.wb.wb .dw-acts .dw-hint{
   margin-left:0;
   font-size:13px; font-weight:400; letter-spacing:0; line-height:1.45;
@@ -507,7 +573,8 @@
    than a decoration, so the line WRAPS instead: the tail drops to its own
    right-aligned line when it does not fit, and nothing is cut. */
 .wb.wb.wb .dw-insp .qa-fold > summary{
-  gap:8px 10px; padding-right:2px; flex-wrap:wrap; align-items:baseline;
+  gap:8px 10px; flex-wrap:wrap; align-items:baseline;
+  padding:8px 14px;
 }
 .wb.wb.wb .dw-insp .qa-fold-c{ align-self:center }
 .wb.wb.wb .dw-insp .qa-fold-k{
@@ -525,7 +592,10 @@
 .wb.wb.wb .dw-insp .qa-fold > summary *{
   font-size:13px; font-weight:400; letter-spacing:0; line-height:1.45;
 }
-.wb.wb.wb .dw-insp .qa-fold > summary{ color:var(--text3) }
+/* The summary carries no text node of its own, so the caps census scores 0
+   either way; it is set here anyway, because a rule that is only correct
+   because of where the words happen to sit is not correct. */
+.wb.wb.wb .dw-insp .qa-fold > summary{ color:var(--text3); text-transform:none; letter-spacing:0 }
 .wb.wb.wb .dw-insp .qa-fold-t,
 .wb.wb.wb .dw-insp .qa-fold-t *{ font-size:12px; font-weight:400; line-height:1.45 }
 .wb.wb.wb .dw-insp .qa-fold-t{ color:var(--text4) }
@@ -534,7 +604,9 @@
 }
 .wb.wb.wb .dw-insp .qa-raw > summary,
 .wb.wb.wb .dw-insp .qa-raw > summary *{ font-size:12px; font-weight:400; line-height:1.45 }
-.wb.wb.wb .dw-insp .qa-raw > summary{ color:var(--text4) }
+/* One left edge for every disclosure in the panel: the raw-output summary
+   carries no caret and was landing 14px left of the folds under it. */
+.wb.wb.wb .dw-insp .qa-raw > summary{ color:var(--text4); padding:8px 14px }
 
 /* ==========================================================================
    6 · THE NOTE COMPOSER
@@ -684,5 +756,10 @@
   .wb.wb.wb .dwa-stage{ margin-left:8px; margin-right:8px }
   .wb.wb.wb .dw-acts{ margin-left:-8px; margin-right:-8px; gap:7px }
   .wb.wb.wb .dw-acts .wbb{ padding:0 12px }
-  .wb.wb.wb .dwa-acts-remake .wbb{ padding:0 9px }
+  /* Measured at 390: the remake tier ran 369px against a 362px content width,
+     so Delete wrapped to a line of its own — which is the shape of the defect
+     this run is closing, at a smaller size. Seven pixels, bought back from the
+     padding and the gap rather than from the label. */
+  .wb.wb.wb .dwa-acts-remake{ gap:4px }
+  .wb.wb.wb .dwa-acts-remake .wbb{ padding:0 8px }
 }

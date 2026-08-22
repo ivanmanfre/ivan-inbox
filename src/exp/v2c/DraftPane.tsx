@@ -1258,11 +1258,6 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
             measured 1,133px below the fold at both viewports — so they moved
             into the sticky bar below. Only Schedule stays behind `o`: it is the
             one affordance here that ARMS A PUBLISHER. */}
-        {more && lane === 'ivan' && (
-          <div style={{ marginBottom: 4 }}>
-            <ScheduleDraft d={d} onDone={refresh} />
-          </div>
-        )}
         {lane !== 'ivan' && (
           <div style={{ marginBottom: 4 }}>
             <DeleteClientDraft
@@ -1372,6 +1367,17 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
                 disabled={editing}
                 onDone={() => { refresh(); if (nextId) onPick(nextId); else onClose() }}
               />
+            </div>
+          )}
+          {/* 🔴 THE ONE AFFORDANCE HERE THAT ARMS A PUBLISHER, and it now
+              unfolds INSIDE the bar like every other disclosure in this window.
+              It used to render at the foot of the scrolling column, so the
+              panel opened below the fold while its own trigger stayed pinned on
+              screen — the exact defect D13 moved Regenerate and Delete out of.
+              The confirm sheet and its wording are untouched. */}
+          {more && lane === 'ivan' && (
+            <div className="dw-actrow">
+              <ScheduleDraft d={d} onDone={refresh} />
             </div>
           )}
           {editing && <span className="dw-hint">Save or cancel the edit first</span>}
