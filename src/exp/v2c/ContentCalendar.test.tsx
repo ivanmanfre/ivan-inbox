@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { ContentCalendar } from './ContentCalendar'
+import { ContentCalendar, VISIBLE_CHIPS, chipDescription } from './ContentCalendar'
+import { buildCalendarItems } from '../../lib/calendarItems'
+import { place } from './CalPopover'
 import type { ContentDraft, ScheduledQueueRow } from '../../lib/content'
 
 // WHICH CONTROLS GET DRAWN — asserted on the markup, not on a prop.
@@ -35,6 +37,9 @@ const q = (over: Partial<ScheduledQueueRow> = {}): ScheduledQueueRow => ({
   created_at: inDays(-3), post_kind: 'reach', unipile_share_url: null, post_format: 'text',
   ...over,
 })
+
+// The sentence one chip carries, built the same way the chip builds it.
+const describe1 = (over: Partial<ContentDraft> = {}) => chipDescription(buildCalendarItems([d(over)])[0])
 
 const html = (rows: ContentDraft[], queue: ScheduledQueueRow[] = []) => renderToStaticMarkup(
   <ContentCalendar rows={rows} queue={queue} onOpen={() => {}} refresh={() => {}} />,
@@ -86,15 +91,21 @@ describe('the time of posting', () => {
     expect(out).toContain('<span class="cal-chip-hh">09:30</span>')
     expect(out).not.toContain('<span class="cal-chip-hh">08:30</span>')
     expect(out).toContain('cal-chip-out')          // the published tick
-    expect(out).toContain('title="Posted 09:30')   // spelled out where it has room
+    // Spelled out where it has room. That used to be a `title` attribute and is
+    // a popover now, which renderToStaticMarkup cannot open because it fires no
+    // events, so the sentence is asserted at its source instead of through the
+    // markup. Same claim, one indirection fewer.
+    expect(describe1({
+      title: 'Went out', status: 'published', source_post_id: 'urn:li:activity:1',
+      scheduled_at: inDays(-1, 8), published_at: inDays(-1, 9),
+    })).toContain('Posted 09:30')
   })
 
-  it('and says so in the tooltip when the two disagree', () => {
-    const out = html([d({
+  it('and says so in the popover when the two disagree', () => {
+    expect(describe1({
       title: 'Late', status: 'published', source_post_id: 'urn:li:activity:1',
       scheduled_at: inDays(-1, 8), published_at: inDays(-1, 9),
-    })])
-    expect(out).toContain('was set for 08:30')
+    })).toContain('was set for 08:30')
   })
 
   it('falls back to the slot on a published row with no published_at (legacy rows)', () => {
@@ -302,5 +313,92 @@ describe('the publish queue as a second source', () => {
   it('the bar names the queue-only count separately, and only when there is one', () => {
     expect(html([], [q()])).toContain('queue only')
     expect(html([d()])).not.toContain('queue only')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 2026-08-22, phase 3. The chip stopped being 70% of its cell, and the tooltip
+// stopped being a native `title`.
+//
+// Ivan, looking at the month: "look at the calendar pills they look like ugly
+// 3d" and "there is a green background that is taking some space from us".
+// ---------------------------------------------------------------------------
+describe('the cap, and the overflow that carries what it hides', () => {
+  const onDay = (n: number, ids: string[]) => ids.map((id, i) =>
+    d({ id, title: `Post ${id}`, scheduled_at: inDays(n, 8 + i) }))
+
+  it('a TWO-POST DAY renders both chips, which is the case the old chip could not show', () => {
+    const out = html(onDay(2, ['a', 'b']))
+    expect(out).toContain('Post a')
+    expect(out).toContain('Post b')
+    // Two is the cap, so nothing collapses and no "+N" is drawn at all.
+    expect(out).not.toContain('cal-more')
+  })
+
+  it('a THREE-POST DAY still renders every chip in the DOM, and adds a +1', () => {
+    const out = html(onDay(2, ['a', 'b', 'c']))
+    // 🔴 ALL THREE ARE PRESENT. The cap is CSS (`wbcal.css §2` hides the third
+    // above 767px), never a JS slice, because the same DOM is an agenda list on
+    // mobile where there is no height to run out of and every chip must draw.
+    // A JS slice would have deleted the third post from the phone as well.
+    expect(out).toContain('Post a')
+    expect(out).toContain('Post b')
+    expect(out).toContain('Post c')
+    expect(out).toContain('+1 more')
+  })
+
+  it('the +N counts what the cap hides, not what the day holds', () => {
+    expect(html(onDay(2, ['a', 'b', 'c', 'd', 'e']))).toContain(`+${5 - VISIBLE_CHIPS} more`)
+  })
+
+  it('🔴 NO CHIP CARRIES A NATIVE title ATTRIBUTE any more', () => {
+    // The whole defect in one assertion. A native title cannot be styled, waits
+    // about a second, is unreachable by keyboard, and lands where the browser
+    // likes. Every one of those is why it was replaced.
+    const out = html([d({ title: 'Anything' }), ...onDay(3, ['x', 'y', 'z'])])
+    expect(out).not.toContain('title="10:30')
+    expect(out).not.toContain('title="Posted')
+  })
+})
+
+describe('the popover lands beside its cell, never on it', () => {
+  const cell = { left: 100, right: 220, top: 300, bottom: 420 }
+  const chip = { left: 106, right: 214, top: 320, bottom: 352 }
+  const size = { w: 240, h: 90 }
+
+  it('sits BELOW the cell when there is room, and clears it entirely', () => {
+    const p = place(chip, cell, size, { w: 1440, h: 900 })
+    expect(p.side).toBe('below')
+    expect(p.top).toBeGreaterThanOrEqual(cell.bottom)
+  })
+
+  it('FLIPS above when the bottom edge would clip it', () => {
+    const low = { ...cell, top: 700, bottom: 820 }
+    const p = place({ ...chip, top: 720, bottom: 752 }, low, size, { w: 1440, h: 900 })
+    expect(p.side).toBe('above')
+    expect(p.top + size.h).toBeLessThanOrEqual(low.top)
+  })
+
+  it('CLAMPS at the right edge, which is where a Saturday cell lives', () => {
+    const sat = { left: 1300, right: 1420, top: 300, bottom: 420 }
+    const p = place({ ...sat, top: 320, bottom: 352 }, sat, size, { w: 1440, h: 900 })
+    expect(p.left + size.w).toBeLessThanOrEqual(1440)
+    expect(p.left).toBeGreaterThanOrEqual(0)
+  })
+
+  it('CLAMPS at the left edge too, which is a Sunday cell at 390', () => {
+    const sun = { left: 4, right: 120, top: 300, bottom: 420 }
+    const p = place({ ...sun, top: 320, bottom: 352 }, sun, { w: 360, h: 90 }, { w: 390, h: 844 })
+    expect(p.left).toBeGreaterThanOrEqual(0)
+    expect(p.left + 360).toBeLessThanOrEqual(390)
+  })
+
+  it('stays ON SCREEN when neither side fits, rather than being pushed off the bottom', () => {
+    // A tall panel on a short viewport: the flip buys nothing, so it is clamped
+    // into view. A description you cannot read is worse than one sitting closer
+    // to its cell than the gutter would like.
+    const p = place(chip, cell, { w: 240, h: 800 }, { w: 1440, h: 500 })
+    expect(p.top).toBeGreaterThanOrEqual(0)
+    expect(p.top).toBeLessThan(500)
   })
 })

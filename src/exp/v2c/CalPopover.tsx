@@ -131,6 +131,20 @@ export function CalPopover({ id, role, label, anchorEl, avoidEl, onDismiss, chil
   }, [role])
 
   if (!anchorEl) return null
+  // 🔴 THE PORTAL TARGET IS `.wb`, NOT document.body, and the first cut of this
+  // file got it wrong in a way that looked fine in the DOM and measured 1440x18
+  // parked off the bottom of the viewport.
+  //
+  // Two things live on `.wb` and neither reaches outside it. The TOKENS
+  // (--e4, --hairline, --sh-over, --spring) are declared on `.wb`, so a panel
+  // in document.body resolves every one of them to nothing. And every selector
+  // in this app's sheets is written `.wb.wb.wb .thing`, per faithful.css:181,
+  // so a panel outside `.wb` matches no rule at all: no position:fixed, no
+  // max-width, no padding. It rendered as a full-width unstyled strip.
+  //
+  // `closest` rather than a document query, so the panel lands in the SAME `.wb`
+  // as the chip that opened it on a page that ever holds two.
+  const host = anchorEl.closest('.wb') ?? document.body
   return createPortal(
     <>
       {/* LIGHT DISMISS, dialog only. Transparent, full-viewport, and BEHIND the
@@ -155,6 +169,6 @@ export function CalPopover({ id, role, label, anchorEl, avoidEl, onDismiss, chil
       {children}
     </div>
     </>,
-    document.body,
+    host,
   )
 }
