@@ -199,16 +199,41 @@ describe('mergeAlerts', () => {
     expect(alerts.map(a => a.name)).toEqual(['Newer', 'Older'])
   })
 
-  it('no rows is no alerts and two zeros, not an alarm', () => {
-    expect(mergeAlerts([], [], CUT)).toEqual({ alerts: [], olderErrored: 0, olderStalled: 0 })
+  it('no rows is no alerts and three zeros, not an alarm', () => {
+    expect(mergeAlerts([], [], CUT))
+      .toEqual({ alerts: [], olderErrored: 0, olderStalled: 0, acknowledged: 0 })
   })
 
-  it('carries the acknowledged flag through rather than dropping the row', () => {
-    const { alerts } = mergeAlerts(
-      [{ ...wfRow('Ack me', '2026-08-21T00:00:00Z'), error_acknowledged: true }],
+  // CHANGED 2026-08-22. This test used to assert the opposite, that an
+  // acknowledged row was carried through with its flag set. It shipped that way
+  // and Ivan's verdict on the rail was "u ported some irrelevant workflows
+  // orange alert". An acknowledgement is him having said "I know"; an alarm
+  // that keeps counting what you already answered is how you teach someone to
+  // stop reading it. The row is now excluded from the alarm and reported in its
+  // own number so the tooltip can still say what was left out.
+  it('an acknowledged error is not an alarm, and is counted separately', () => {
+    const { alerts, acknowledged } = mergeAlerts(
+      [
+        { ...wfRow('Ack me', '2026-08-21T00:00:00Z'), error_acknowledged: true },
+        wfRow('Still broken', '2026-08-21T00:00:00Z'),
+      ],
       [], CUT,
     )
-    expect(alerts[0].acknowledged).toBe(true)
+    expect(alerts.map(a => a.name)).toEqual(['Still broken'])
+    expect(acknowledged).toBe(1)
+  })
+
+  // The two exclusions must never describe the same row twice: the window is
+  // applied first, so an old AND acknowledged error is one older, not one of
+  // each.
+  it('an old acknowledged error counts once, as older', () => {
+    const { alerts, olderErrored, acknowledged } = mergeAlerts(
+      [{ ...wfRow('Old and ack', '2026-01-01T00:00:00Z'), error_acknowledged: true }],
+      [], CUT,
+    )
+    expect(alerts).toEqual([])
+    expect(olderErrored).toBe(1)
+    expect(acknowledged).toBe(0)
   })
 })
 

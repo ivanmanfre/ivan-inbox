@@ -75,6 +75,12 @@ export type MergedAlerts = {
   // What the window left out, stated rather than hidden.
   olderErrored: number
   olderStalled: number
+  // Errors Ivan has already acknowledged in the dashboard. Excluded from the
+  // alarm and reported separately: an acknowledgement is him saying "I know",
+  // and an alarm that keeps counting what you have already answered trains you
+  // to stop reading it. The flag was already being read into `acknowledged` on
+  // every alert and then never acted on, which is the whole bug.
+  acknowledged: number
 }
 
 export const norm = (s: string | null | undefined) => (s ?? '').trim().toLowerCase()
@@ -90,9 +96,13 @@ export function mergeAlerts(
 ): MergedAlerts {
   const merged = new Map<string, AutomationAlert>()
   let olderErrored = 0
+  let acknowledged = 0
   for (const r of wf) {
     const at = r.last_execution_at ?? null
     if (!at || at < cut) { olderErrored += 1; continue }
+    // Acknowledged is checked AFTER the window, so the two numbers never
+    // double-count the same row.
+    if (r.error_acknowledged === true) { acknowledged += 1; continue }
     const name = String(r.workflow_name ?? '')
     merged.set(norm(name), {
       key: norm(name),
@@ -102,7 +112,10 @@ export function mergeAlerts(
       category: null,
       lastAt: at,
       detail: r.last_error_message || null,
-      acknowledged: r.error_acknowledged === true,
+      // Always false now: an acknowledged row was skipped six lines up and
+      // cannot reach this point. The field stays on the type because the Ops
+      // list still shows acknowledged errors, it just does not alarm on them.
+      acknowledged: false,
     })
   }
   let olderStalled = 0
@@ -128,7 +141,7 @@ export function mergeAlerts(
     })
   }
   const alerts = [...merged.values()].sort((a, b) => (b.lastAt ?? '').localeCompare(a.lastAt ?? ''))
-  return { alerts, olderErrored, olderStalled }
+  return { alerts, olderErrored, olderStalled, acknowledged }
 }
 
 // TRUE when a count read came back clamped, i.e. the number on screen is a floor

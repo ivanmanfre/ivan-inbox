@@ -252,12 +252,16 @@ export default function Shell() {
   // list can never state three different totals.
   const health = {
     n: glance.alerts.length,
+    // The window moved 14 days to 7 and acknowledged errors dropped out, so the
+    // sentence states both exclusions with their real counts rather than a
+    // hardcoded "14" that the constant can drift away from silently.
     note: glance.alerts.length === 0
       ? ''
       : `${glance.alerts.length} automation${glance.alerts.length === 1 ? '' : 's'} `
-        + 'errored or ran past schedule in the last 14 days. '
-        + `${glance.olderErrored + glance.olderStalled} older ones are not counted. `
-        + 'Read only: open Ops for the list.',
+        + 'errored or ran past schedule in the last 7 days. '
+        + `${glance.olderErrored + glance.olderStalled} that have not run in a week are not counted`
+        + (glance.acknowledged > 0 ? `, and ${glance.acknowledged} you already acknowledged` : '')
+        + '. Read only: open Ops for the list.',
   }
   const sev = {
     // Only a real problem takes a severity tier. A backlog of approvals is work,
