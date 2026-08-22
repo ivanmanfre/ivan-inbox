@@ -44,11 +44,11 @@ Score is work removed over risk plus effort. Work removed is in interactions mea
 |---|---|---|---|---|
 | 1 | Calendar rail shows what the date RPC actually accepts | 89 invisible drafts become draggable. Arming path drops from 5 interactions plus a takeover to one drag plus one confirm | Very low. One filter, and it moves toward the database's own rule | **BUILD** |
 | 2 | Error cards state the real cause and offer retry in place | 28 wrong reasons corrected, 44 recoverable bodies surfaced. Retry drops from 3-4 interactions and a takeover to 1 plus a confirm | Low. Read-side derivation, no schema change | **BUILD** |
-| 3 | Client review rows get the promote capability, singly and in bulk | Clearing the pile drops from 372 interactions and 93 takeovers to about 95 | Low-medium. Existing RPC, batched. Confirm names the client and the count | **BUILD** |
+| 3 | Client review rows get promote AND skip capabilities, singly and in bulk | Clearing the pile drops from 372 interactions and 93 takeovers to about 95, in either direction | Low-medium. Existing RPCs, batched. Confirm names the client and the count | **BUILD** |
 | 4 | Today becomes a work queue ranked by who has waited longest | 58 waiting threads and 62 rotting ops drafts get a surface. 36 never-opened replies stop being invisible | Medium effort, low risk. Read-only ranking over data already fetched | **BUILD** |
 | 5 | The DM row shows its draft, and discards from the row | Saves 1 interaction on 102 discards, 2 on the 46 that happen in runs | Low. Discard is reversible and sends nothing | **BUILD** |
 | 6 | Search that crosses objects, on one key | 6-plus interactions and 2 refetches drop to 1 | Medium. Server-side ilike over existing tables, no new dependency | **BUILD** |
-| 7 | Undo extended to the content actions that are safe | Removes the fear tax on bulk promote and on date moves | Low, and strictly bounded, see below | **BUILD** |
+| 7 | Undo extended to the content actions that are safe | Withdrawn on evidence: 109 rows sit in the restorable shape today and zero discards have ever been reversed. The existing restore path is unused, so extending it is building for a behaviour that does not occur | **REJECTED** |
 
 ### What is explicitly not built, and why
 
@@ -66,5 +66,6 @@ Score is work removed over risk plus effort. Work removed is in interactions mea
 - **Item 1 must not let a planned date read as an armed one.** A `review` row with a `scheduled_at` is planned, not armed, and Phase 3 owns making that legible on the chip. If Phase 3 has not landed that encoding, item 1 ships behind it, not before it.
 - **Item 4 touches `TodayScreen` and `InboxScreen`, which render in `#exp/stock` too.** Eleven components are shared between the two shells. Every change there is scoped under `.wb` or gated on a prop, and the escape hatch is proven pixel-identical afterwards with the same-window method.
 - **Item 6 adds queries, not dependencies.** PostgREST `ilike` over tables already reachable. The 1000-row select clamp applies, `not.eq` drops NULLs, and an `in()` filter dies near 16KB of URL.
-- **Item 7's undo is bounded to discard, board promote and date moves.** Each already has an inverse in the data layer. Nothing that sends gets an undo.
+- **Item 7 was cut by its own evidence.** The plan wanted undo on the safe content actions. The measurement killed it: 109 rows sit in the restorable shape right now and not one discard has ever been reversed. The restore path shipped by the previous run is already there and already unused. Building more of it would be building for a behaviour that has never occurred once in the data. If Ivan says he wants it anyway, that is a taste call and it goes on the watch-first list, not into this phase.
+- **Item 4's real size.** 552 rows are waiting on a human decision across content, ideas, ops and DMs. 449 of them cannot appear on Today at all: `TodayScreen.tsx:193` is a pointer board whose `HandOff` navigates and never acts, and the edge function feeding it carries no content drafts, no ideas and no errors in its payload. The triage queue is built from the hooks already mounted at `Shell.tsx:173`, so the data is in the client already.
 - No new runtime dependency. The app has three and keeps three. No n8n. No migration applied; a migration file may ship unapplied.

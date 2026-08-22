@@ -31,7 +31,11 @@
      1. One step, never zero. A child that must read as an object on its parent
         moves exactly one level up. Same level is banned where a relationship is
         intended. Two levels means it floats and it had better actually float.
-     2. Shadow is only for overlap. --e4 is the only level that may carry one.
+     2. Shadow may never be the PRIMARY depth cue, and it is capped at 12%
+        alpha. The lightness step always does the work; a soft shadow may sit
+        on top of it. (Revised mid-run from "shadow is for overlap only", which
+        was too absolute: Wispr Flow, the app Ivan named, puts 0 2px 8px at 8%
+        under a resting card. See §7's shadow block.)
      3. Hairlines divide, they do not elevate. A border is no longer allowed to
         be the only thing separating two surfaces.
 
@@ -60,9 +64,10 @@
   --hairline:rgba(255,255,255,.07);
   --hairline-strong:rgba(255,255,255,.14);
 
-  /* The ONE shadow in the system, and it exists only because an overlay covers
-     content it does not belong to (Geist's materials rule). */
-  --e4-shadow:0 12px 32px rgba(0,0,0,.44), 0 2px 8px rgba(0,0,0,.32);
+  /* The overlay shadow. Defined as an alias so there is exactly one place in
+     the app where an overlay's depth is set, and so the 12% alpha cap declared
+     in §7's shadow block is the only value anything can pick up. */
+  --e4-shadow:var(--sh-over);
   /* Raised-without-a-shadow: a single 1px interior top inset, never a stack. */
   --e-inset:inset 0 1px 0 rgba(255,255,255,.10);
 
@@ -110,7 +115,6 @@
   --e4:#FFFFFF;
   --hairline:rgba(0,0,0,.09);
   --hairline-strong:rgba(0,0,0,.18);
-  --e4-shadow:0 12px 32px rgba(0,0,0,.14), 0 2px 8px rgba(0,0,0,.10);
   --e-inset:inset 0 1px 0 rgba(255,255,255,.55);
   /* The aliases are RESTATED here and not inherited. faithful.css:161 declares
      the light palette at `:root[data-theme='light'] .wb` (specificity 0-2-1),
@@ -143,7 +147,489 @@
    #E3E3E0 light), which in dark sit within dL 0.002 of --e4 anyway.
    --------------------------------------------------------------------------- */
 
+/* KEEP THE BALLOT ARM CHEAP. Wispr's dark theme uses a warm off-white ink
+   #deddd7 on a LIFTED #1a1a1a ground rather than near-white on near-black, and
+   the orchestrator holds that as a ballot arm. Nothing in this file hardcodes a
+   ground or an ink: every surface reads --e0..--e4 and every label reads
+   --text/--text2/--text3, so testing that arm later is a five-line override of
+   this one token block and nothing else has to move. */
+
 /* The plate itself is the ground, and after the alias it already resolves to
    --e0 through --canvas. Restated so the ladder owns it explicitly rather than
    by inheritance through a bridge token. */
 .wb.wb.wb .wb-plate{ background:var(--e0) }
+
+/* ========================================================================== */
+/* 2 · THE RADIUS SCALE                                                        */
+/* ========================================================================== */
+
+/* Four values. The audit measured 6, 8, 10, 12, 16, 20, 40 and 999 live in the
+   running build, frequently on elements doing the same job.
+
+     --r-xs    6px    chips, tags, tiny controls, progress tracks
+     --r-ctl   10px   buttons, inputs, tabs, day cells
+     --r-card  14px   cards, panes, popovers, sheets
+     --r-pill  999px  only where a pill is the deliberate form
+
+   The retarget is done by REDEFINING the legacy names rather than rewriting the
+   ~200 declarations that read them. Custom properties resolve at use time, so
+   faithful.css:91's `--r-sm:var(--r-ctl); --r-md:var(--r-card);
+   --r-lg:var(--r-hero)` chain re-resolves onto the new scale on its own:
+   r-sm 12 -> 10, r-md 20 -> 14, r-lg 20 -> 14. The chip's 12px becomes 6px,
+   which alone stops it reading as a lozenge.
+
+   --plate-r is NOT touched. It is a ballot arm (phase1-system §6). */
+.wb{
+  --r-xs:6px;
+  --r-ctl:10px;
+  --r-card:14px;
+  --r-pill:999px;
+
+  /* legacy names, retargeted onto the four */
+  --r-chip:var(--r-xs);   /* was 8px */
+  --r-hero:var(--r-card); /* was 20px, collapses onto the card */
+}
+
+/* Four literals survive the token retarget because they are written as `px` in
+   `src/styles.css`, which is the STOCK shell's sheet and may not be touched.
+   They are pulled onto the scale from here instead, scoped under .wb so the
+   override cannot reach #exp/stock. Measured before: td-card / td-tile /
+   td-lanes at 16px x5, pushbar at 12px x1. */
+.wb.wb.wb .td-card,
+.wb.wb.wb .td-tile,
+.wb.wb.wb .td-lanes{ border-radius:var(--r-card) }
+.wb.wb.wb .pushbar{ border-radius:var(--r-ctl) }
+
+/* JUDGED NOT-A-BUG, and both stay off the scale on purpose:
+   - `.wb-selmark` (wb2026.css:186) is a 4px, 14px-square selection checkbox.
+     At --r-xs 6px a 14px square reads as a circle, and a circle is a RADIO.
+     That is a semantics regression traded for scale purity, so it is declined.
+   - `.li-card` 10px / `.li-btn` 8px (styles.css:1197,1266) are the LinkedIn
+     preview, which deliberately imitates an external surface down to #0a66c2
+     and #fff. It is not this app's chrome and must not join this app's scale. */
+
+/* ========================================================================== */
+/* 7 · MOTION TOKENS (declared here because §3 reads them)                     */
+/* ========================================================================== */
+
+/* Three durations, two easings, and a hard list of properties that may move.
+   Never `all`, never a layout property: width/height/top force a reflow every
+   frame. The tokens are namespaced --wbs-* so they cannot collide with
+   faithful.css:99's --dur-hover / --dur-state / --dur-beat, which stay live for
+   everything already reading them.
+
+   THE RULE, from the Wispr Flow extraction (evidence/wispr-calibration.md):
+   colour changes get a plain short ease, and anything that MOVES gets the
+   spring. Wispr does not animate everything, it animates motion, and that is
+   the whole of what "smooth" turned out to be. Do not spring a background
+   colour: a front-loaded spring on a fill reads as a flicker, not as weight. */
+.wb{
+  --wbs-dur-ctl:120ms;       /* a control changing fill or label colour */
+  --wbs-dur-overlay:260ms;   /* palette, popover, menu, sheet — these MOVE */
+  --wbs-dur-commit:200ms;    /* a row acknowledging the action it just took */
+  --wbs-ease-ctl:ease-out;
+
+  /* FALLBACK FIRST. `linear()` is Chrome 113+, Safari 17.2+, Firefox 112+, and
+     an older engine treats the whole declaration as invalid and drops the
+     transition to `ease`, losing the duration with it. So --spring is declared
+     as a cubic-bezier approximation here and upgraded to the sampled curve
+     inside @supports below, which is the only construction where both engines
+     get a deliberate value rather than one getting a browser default. */
+  --spring:cubic-bezier(.16,1,.3,1);
+  --wbs-ease-overlay:var(--spring);
+}
+/* The measured Wispr curve, verbatim from its shipped bundle
+   (`--spring-easing`, referenced 300+ times). A real sampled spring: 48% of the
+   distance is covered in the first 13.5% of the duration, then it settles with
+   no overshoot. A cubic-bezier cannot make this shape. Pure CSS, no library, so
+   the three-dependency limit is untouched. */
+@supports (transition-timing-function:linear(0,1)){
+  .wb{
+    --spring:linear(
+      0, 0.005, 0.019 1.8%, 0.079 3.9%, 0.476 13.5%, 0.663 19.1%, 0.738 22%,
+      0.8 25.1%, 0.852 28.4%, 0.894 32%, 0.928 36%, 0.953 40.5%, 0.972 45.6%,
+      0.985 51.6%, 0.997 67.3%, 1
+    );
+  }
+}
+
+/* ---- SHADOW, and the rule as revised ------------------------------------
+   The first cut of this file carried the original rule, "shadow is for overlap
+   only, a resting card never gets one". That was too absolute: Wispr, which
+   Ivan named, puts 0 2px 8px rgba(0,0,0,.08) under a resting card. The rule
+   now reads:
+
+     A shadow may never be the PRIMARY depth cue. The lightness step always
+     does the work. A soft shadow may sit on top of it, capped at 12% alpha.
+
+   The cap is the part that matters here: the plate sits on --ground #C5E1A5,
+   and anything heavier than 12% bleeds onto the pistachio, which is the 2013
+   artefact this phase exists to remove. What stays banned is a hard bevel, or
+   a border, doing the job a colour step should do. */
+.wb{
+  --sh-card:0 2px 8px rgba(0,0,0,.08);   /* a resting card, ON TOP of its step */
+  --sh-drag:0 2px 8px rgba(0,0,0,.12);   /* the thing currently under the cursor */
+  --sh-over:0 10px 24px rgba(0,0,0,.12); /* --e4 only: it covers what it does not own */
+}
+
+/* ========================================================================== */
+/* 3 · THE CONTROL: one component, four variants, fixed geometry               */
+/* ========================================================================== */
+
+/* Geist ships Default / Secondary / Tertiary / Error at three sizes and Linear's
+   extracted values keep padding and radius IDENTICAL across tiers, varying only
+   fill and border. That constancy is what makes a row of buttons read as one
+   family instead of eight unrelated rectangles, so it is adopted exactly: every
+   variant below shares height, padding, radius, type and gap, and differs only
+   in background-color, color and box-shadow.
+
+   The flattener hits `*`, so the type is declared on .wbb AND on its
+   descendants; a <span> inside a button would otherwise render at 16px. */
+.wb.wb.wb .wbb,
+.wb.wb.wb .wbb *{
+  font-size:13px;
+  font-weight:500;
+  line-height:1;
+  letter-spacing:0;
+}
+.wb.wb.wb .wbb{
+  position:relative;
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  height:32px; min-height:32px; padding:0 14px;
+  border:0; border-radius:var(--r-ctl);
+  background:transparent; color:var(--text);
+  font-family:inherit;
+  cursor:pointer;
+  white-space:nowrap;
+  -webkit-tap-highlight-color:transparent;
+  /* §7: only background-color and color. Never `all`. */
+  transition:background-color var(--wbs-dur-ctl) var(--wbs-ease-ctl),
+             color var(--wbs-dur-ctl) var(--wbs-ease-ctl);
+}
+/* Minimum hit target: 32px on pointer, 44px on touch. The SMALL variant is 26px
+   tall by design, so the target is expanded with a transparent pseudo-element
+   rather than by growing the box, which is the move .wb-selmark already uses
+   (wb2026.css:195). */
+.wb.wb.wb .wbb::after{
+  content:''; position:absolute; left:0; right:0;
+  top:50%; transform:translateY(-50%);
+  height:32px; min-height:100%;
+}
+@media (pointer:coarse){
+  .wb.wb.wb .wbb::after{ height:44px }
+}
+
+.wb.wb.wb .wbb-sm{ height:26px; min-height:26px; padding:0 10px }
+.wb.wb.wb .wbb-sm, .wb.wb.wb .wbb-sm *{ font-size:12px }
+.wb.wb.wb .wbb-lg{ height:38px; min-height:38px; padding:0 18px }
+.wb.wb.wb .wbb-lg, .wb.wb.wb .wbb-lg *{ font-size:14px }
+
+/* --- primary: the one action the screen exists for, exactly one per screen ---
+   Label colour is --ink, NOT --e0, and that is a correction to the spec forced
+   by measurement: --e0 in the light theme is #F4F4F0, which on the lime fill
+   measures 1.08:1 and is unreadable. --ink #171717 is the codebase's existing
+   contract for "the label on a filled accent mark" and measures 14.97:1 in both
+   themes, because the accent is the same hex in both.
+   The one raised-without-a-shadow cue: a single 1px interior top inset, never a
+   stack, never an outer shadow (Geist's rule, and a drop shadow bleeding onto
+   the pistachio frame is the 2013 artefact this phase exists to remove). */
+.wb.wb.wb .wbb-primary{
+  background:var(--accent); color:var(--ink);
+  box-shadow:var(--e-inset);
+}
+.wb.wb.wb .wbb-primary:hover{ background:#C6FF80 }
+.wb.wb.wb .wbb-primary:active{ background:#A9F050; box-shadow:none }
+
+/* --- secondary: real actions that are not the point of the screen --- */
+.wb.wb.wb .wbb-secondary{ background:var(--e3); color:var(--text) }
+.wb.wb.wb .wbb-secondary:hover{ background:var(--e4) }
+.wb.wb.wb .wbb-secondary:active{ background:var(--e2) }
+
+/* --- quiet: low stakes and reversible --- */
+.wb.wb.wb .wbb-quiet{ background:transparent; color:var(--text2) }
+.wb.wb.wb .wbb-quiet:hover{ background:var(--e3); color:var(--text) }
+.wb.wb.wb .wbb-quiet:active{ background:var(--e2) }
+
+/* --- danger: destructive, set apart in the row rather than shouting in place.
+       --sev-danger is a light-theme correction: --sev-urgent #FF453A measures
+       3.41:1 on white and fails AA for a 13px label, so light gets #C4271C
+       (5.75:1 on --e2, 4.76:1 on --e3). Dark keeps #FF453A at 5.00:1. --- */
+.wb{ --sev-danger:var(--sev-urgent); --sev-danger-tint:rgba(255,69,58,.12) }
+:root[data-theme='light'] .wb{ --sev-danger:#C4271C; --sev-danger-tint:rgba(196,39,28,.12) }
+.wb.wb.wb .wbb-danger{ background:transparent; color:var(--sev-danger) }
+.wb.wb.wb .wbb-danger:hover{ background:var(--sev-danger-tint); color:var(--sev-danger) }
+.wb.wb.wb .wbb-danger:active{ background:var(--sev-danger-tint) }
+
+/* --- focus. The global ring (faithful.css:413) also sets
+       `border-radius:var(--r-chip)` on whatever it lands on, which would snap a
+       focused control from 10px to 6px, so the radius is restated here.
+       The colour is --accent-ui, which resolves to the accent in dark and to
+       #5A8A00 in light. Measured: lime #B8FF66 on the light --e2 #FFFFFF is
+       1.40:1 and fails the 3:1 floor for a non-text indicator; #5A8A00 is
+       4.14:1. faithful.css:411's "clears at 4.85:1 worst case" was measured on
+       the dark ladder only. --- */
+.wb.wb.wb .wbb:focus-visible{
+  outline:2px solid var(--accent-ui, var(--accent));
+  outline-offset:2px;
+  border-radius:var(--r-ctl);
+}
+
+/* --- disabled, all four variants --- */
+.wb.wb.wb .wbb:disabled,
+.wb.wb.wb .wbb[aria-disabled='true']{
+  cursor:not-allowed;
+  background:var(--e2); color:var(--text4);
+  box-shadow:none;
+  opacity:.6;
+}
+.wb.wb.wb .wbb-quiet:disabled,
+.wb.wb.wb .wbb-danger:disabled,
+.wb.wb.wb .wbb-quiet[aria-disabled='true'],
+.wb.wb.wb .wbb-danger[aria-disabled='true']{ background:transparent }
+
+/* ========================================================================== */
+/* 5 · LABEL AND VALUE: the box is deleted                                     */
+/* ========================================================================== */
+
+/* The pattern being replaced is an ALL-CAPS label above or beside a value,
+   inside a bordered box, stacked, repeated across the draft inspector's four
+   tabs and again in Ops and Settings. Linear's own model is the opposite: the
+   property value IS the control and there is no bordered container anywhere in
+   the interaction. So: no border, no fill, no box, sentence-case labels, and a
+   baseline-aligned two-column grid.
+
+   The flattener reaches `*`, so both the key and the value restate all four
+   type properties on themselves AND on their descendants. */
+.wb.wb.wb .wbkv{
+  display:grid;
+  grid-template-columns:minmax(84px,26%) 1fr;
+  column-gap:16px;
+  row-gap:6px;
+  align-items:baseline;
+  background:transparent;
+  border:0;
+  padding:0;
+}
+.wb.wb.wb .wbkv-k,
+.wb.wb.wb .wbkv-k *{
+  font-size:13px; font-weight:400; letter-spacing:0; line-height:1.45;
+  text-transform:none;
+}
+.wb.wb.wb .wbkv-k{
+  color:var(--text3);
+  background:transparent; border:0; padding:0;
+  min-width:0;
+}
+.wb.wb.wb .wbkv-v,
+.wb.wb.wb .wbkv-v *{
+  font-size:14px; font-weight:450; letter-spacing:0; line-height:1.45;
+}
+.wb.wb.wb .wbkv-v{
+  color:var(--text);
+  background:transparent; border:0; padding:0;
+  min-width:0;
+  font-variant-numeric:tabular-nums;
+  overflow-wrap:anywhere;
+}
+/* A rule between rows ONLY past four rows: a short property list does not need
+   ruling and a long one does. Child 9 is the first cell of row 5, so :has()
+   detects "more than four rows" and the rule is then drawn above every row from
+   the second onward. */
+.wb.wb.wb .wbkv:has(> :nth-child(9)) > *:nth-child(n+3){
+  border-top:1px solid var(--hairline);
+  padding-top:6px;
+}
+
+/* ========================================================================== */
+/* 7b · MOTION: the three transitions, and the collapse                        */
+/* ========================================================================== */
+
+/* Controls are handled in §3. These are the other two cases, plus the ban.
+
+   Only background-color, color, transform and opacity may transition. width,
+   height, top and `transition: all` are banned: they force a reflow every
+   frame. Nothing here animates a layout property. */
+
+/* Overlays: palette, popover, menu, sheet. transform and opacity only. */
+.wb.wb.wb .wbs-overlay{
+  background:var(--e4);
+  border-radius:var(--r-card);
+  box-shadow:var(--e4-shadow);
+  transition:opacity var(--wbs-dur-overlay) var(--wbs-ease-overlay),
+             transform var(--wbs-dur-overlay) var(--wbs-ease-overlay);
+}
+.wb.wb.wb .wbs-overlay[data-wbs-in='0']{ opacity:0; transform:translateY(-4px) scale(.985) }
+.wb.wb.wb .wbs-overlay[data-wbs-in='1']{ opacity:1; transform:none }
+
+/* A row committing an action: a tint fade so the eye can follow what it just
+   did. background-color only, and it uses the accent as a TINT rather than a
+   fill, which is the accent budget's third permitted role (the live state). */
+.wb.wb.wb .wbs-commit{
+  transition:background-color var(--wbs-dur-commit) var(--wbs-ease-ctl);
+}
+.wb.wb.wb .wbs-commit[data-wbs-committed='1']{ background-color:var(--accent-soft) }
+
+/* Selected and active states are a lime TINT behind neutral text, never a lime
+   fill: the fill is spent on the one primary action per screen. */
+.wb.wb.wb .wbs-selected{
+  background:var(--accent-soft);
+  color:var(--text);
+}
+
+/* THE COLLAPSE. Everything above, plus anything else inside the plate, goes to
+   zero. `!important` is deliberate and is the one use of it in this file: a
+   reduced-motion request outranks any authored duration, including the ones in
+   faithful.css and styles.css that this sheet does not own. */
+@media (prefers-reduced-motion: reduce){
+  .wb.wb.wb, .wb.wb.wb *,
+  .wb.wb.wb *::before, .wb.wb.wb *::after{
+    transition-duration:0ms !important;
+    animation-duration:0ms !important;
+    animation-iteration-count:1 !important;
+    scroll-behavior:auto !important;
+  }
+}
+
+/* ========================================================================== */
+/* 6 · THE COLLISION WORKLIST                                                  */
+/* ========================================================================== */
+
+/* Worklist source: evidence/audit-tools/out-surface-pairs.json, regenerated on
+   this branch before any of the above landed. 26 distinct child-on-parent
+   shapes, 73 live instances, every one painted the identical colour as its
+   nearest painted ancestor. Each is judged below and the judgement is in the
+   report: fixed, or not-a-bug with the reason. */
+
+/* ---- 6.1 THE CALENDAR. The headline defect. ------------------------------
+   Measured before: div.cal-chip on div.cal-day, both rgb(31,31,31), no border,
+   no shadow, r 12px, 108x87. A rounded rectangle inside a rounded rectangle of
+   identical colour, so the eye reads the inner edge as a bevel. That is the
+   "ugly 3d", and it is a MISSING LIGHTNESS STEP, not a shadow to remove: the
+   run before this one deleted the chip's fill and its ring precisely because
+   they looked raised, which removed the last cue and made it worse.
+
+   The chip climbs one level and the empty cell recedes one, so the ladder is
+   spent in both directions rather than the chip climbing forever. The 3px
+   status rail is untouched: it encodes stage, and stage is not elevation. */
+.wb.wb.wb .cal-chip{
+  background:var(--e3);
+  border-radius:var(--r-xs);
+}
+.wb.wb.wb .cal-chip:hover{ background:var(--e4) }
+.wb.wb.wb .cal-chip-queue:hover{ background:var(--e3) }
+/* An EMPTY cell has nothing to hold up, so it recedes to the well and drops the
+   ring it was using to exist. A cell WITH content stays at --e2. */
+.wb.wb.wb .cal-day-empty{
+  background:var(--e1);
+  box-shadow:none;
+}
+/* Audit A5, found in passing and load-bearing the moment the chip lightens:
+   button.cal-chip-t computes `border: 2px outset rgb(0,0,0)` on all four sides.
+   That is the user-agent default button border. No rule in any sheet sets it,
+   and it was invisible only because black `outset` on #1F1F1F is nearly the
+   same colour. On --e3 it would appear as a 2px bevel, which is the exact
+   artefact this section removes. */
+.wb.wb.wb .cal-chip-t,
+.wb.wb.wb .cal-chip-mv{ border:0 }
+
+/* ---- 6.2 OPS: a card inside a card, identical, separated by NOTHING -------
+   Measured before: div.dd-card (1092x193) inside div.dd-card (1152x362), both
+   rgb(31,31,31), border none, shadow none. The inner card is the log entry
+   inside the run card. One step up, and one radius step down, because a nested
+   object is a smaller object. */
+.wb.wb.wb .dd-card .dd-card{
+  background:var(--e3);
+  border-radius:var(--r-ctl);
+}
+
+/* ---- 6.3 STICKY CHROME: the step goes to the band, not to the list --------
+   Every sticky band in the app is `background:var(--canvas)` plus a hairline:
+   .ct-cmd (faithful.css:2656), .ct-tabs (4184), .wb-sech-strip (2212),
+   .wb-sech / .td-zh / .grouphdr / .ops-sechdr (655-668), .wb-pane-h (1433).
+   They are the same colour as the list they occlude, and the only thing holding
+   them apart is a 1px line. That is border-only depth and it is what rule 3
+   forbids.
+
+   Chrome bands take --e2, one legible step above the --e0 list (1.15:1 in dark,
+   the same step a card already gets), and the borders are DELETED rather than
+   kept alongside the step. A pill riding inside a band goes to --e3. */
+.wb.wb.wb .ct-cmd,
+.wb.wb.wb .ct-tabs,
+.wb.wb.wb .wb-sech-strip,
+.wb.wb.wb .ops-sechdr,
+.wb.wb.wb .td-zh,
+.wb.wb.wb .grouphdr,
+.wb.wb.wb .wb-pane-h{
+  background:var(--e2);
+  border-top:0;
+  border-bottom:0;
+}
+/* styles.css:136 and faithful.css:1514 both re-declare .wb-pane-h's background
+   at `:root[data-theme='light'] ...`, which outranks a bare .wb.wb.wb selector.
+   Restated at matching specificity or the pane header keeps the old value in
+   light and the fix ships half-applied. */
+:root[data-theme='light'] .wb.wb.wb .wb-pane-h{ background:var(--e2) }
+/* The section head rides inside the strip, so it takes the next step up and
+   loses the two rules that were doing the work. */
+.wb.wb.wb .wb-sech,
+.wb.wb.wb .wb-sech-strip > .wb-sech,
+.wb.wb.wb button.wb-sech{
+  background:var(--e3);
+  border-top:0;
+  border-bottom:0;
+  border-radius:var(--r-ctl);
+}
+/* faithful.css:2293 draws a 1px rule on the top of every scroll container. With
+   the chrome above it now painted, that rule separates two surfaces that are
+   already separated, which is the "kept alongside" case rule 3 rejects. */
+.wb.wb.wb .rows{ border-top:0 }
+
+/* ---- 6.4 THE THUMBNAIL WELL ---------------------------------------------
+   Measured before: img.ct-thumb on div.ct-anchor, both rgb(42,42,41). The
+   thumb's background is what shows while the image loads, so it is a well and
+   belongs at --e1, not at the same level as the anchor holding it. */
+.wb.wb.wb .ct-thumb{ background:var(--e1) }
+
+/* ---- 6.5 THE PLATE SHADOW, CAPPED RATHER THAN DELETED --------------------
+   faithful.css:386 gives .wb-plate `box-shadow:0 24px 60px -20px rgba(0,0,0,.5)`
+   and the plate sits directly on --ground #C5E1A5. Fifty percent alpha is four
+   times the cap, and that is what bleeds onto the pistachio.
+
+   Under the ORIGINAL rule 2 this shadow was deleted outright, because the plate
+   overlaps no content it does not own. Under the REVISED rule it is allowed to
+   exist at 12%, sitting on top of a lightness step that is already enormous
+   (--e0 #0C0C0B against --ground #C5E1A5), so it is capped instead of removed.
+   The frame's GEOMETRY (--plate-r, --plate-gap) is a ballot arm and is not
+   touched here; only the alpha moves. */
+.wb.wb.wb .wb-plate{ box-shadow:var(--sh-over) }
+
+/* ---- 6.6 RESTING CARDS TAKE THE SOFT SHADOW ------------------------------
+   ON TOP of the step they already have, never instead of it. Deliberately NOT
+   applied to .cal-day: forty-two shadowed cells in a grid is texture, not
+   depth, and the cell's step plus its hairline already carry it. */
+.wb.wb.wb .dd-card,
+.wb.wb.wb .td-card,
+.wb.wb.wb .td-tile,
+.wb.wb.wb .td-lanes,
+.wb.wb.wb .td-mast{ box-shadow:var(--sh-card) }
+/* The nested card keeps its own step and gets no second shadow: two stacked
+   shadows is the stack rule 2 bans. */
+.wb.wb.wb .dd-card .dd-card{ box-shadow:none }
+
+/* ---- 6.7 DRAG ------------------------------------------------------------
+   faithful.css:3766 signals a live calendar drag with `opacity:.4` and nothing
+   else, so the thing under the cursor gets quieter rather than picked up.
+   Wispr ships a distinct heavier shadow for exactly this state. The opacity
+   drop stays (the browser's own drag ghost is what moves), the shadow is added
+   so the origin still reads as lifted. */
+.wb.wb.wb .cal-chip-drag{ box-shadow:var(--sh-drag) }
+.wb.wb.wb .cal-chip[draggable='true']:active{ box-shadow:var(--sh-drag) }
+
+/* Found by re-running the worklist AFTER 6.3, not before: .td-zh is grouped
+   with .wb-sech in faithful.css:655 but, unlike the others, it sits INSIDE a
+   painted section.td-zone rather than on the bare list. At --e2 it landed on an
+   --e2 parent and created a new same-colour pair where none existed before, so
+   inside a zone it takes the next step up, exactly as .wb-sech does inside the
+   strip. This is the case for re-running the audit rather than trusting the
+   worklist you started from. */
+.wb.wb.wb .td-zone .td-zh{ background:var(--e3) }

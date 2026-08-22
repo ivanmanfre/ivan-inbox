@@ -157,8 +157,8 @@ function QaFeedback({ feedback, verdict }: { feedback: string; verdict: string |
         // opens with, one line apart. Two prints of one verdict inside a block
         // whose entire subject is that a verdict was printed twice.
         <div className="qa-clash">
-          Judge body says <b>{r.verdict}</b>{r.total ? ` (${r.total.score}/${r.total.max})` : ''};
-          {' '}the row stores <b>{verdict}</b>. Neither is derived from the other.
+          Judge body says <b>{label(r.verdict)}</b>{r.total ? ` (${r.total.score}/${r.total.max})` : ''};
+          {' '}the row stores <b>{label(verdict)}</b>. Neither is derived from the other.
         </div>
       )}
       <div className="dd-card qa-rubric">
@@ -437,7 +437,7 @@ function AgentGroupRow({ g, log }: { g: AgentGroup; log: AgentLogEntry[] }) {
         <span className="dd-agrp-g" aria-hidden>{glyphFor(g.agent)}</span>
         <span className="dd-log-agent">{g.agent ?? 'Unattributed'}</span>
         {n > 1 && <span className="dd-agrp-n">×{n}</span>}
-        {g.status && <span className={chipClass(g.status)}>{g.status}</span>}
+        {g.status && <span className={chipClass(g.status)}>{label(g.status)}</span>}
         {run && <span className="ct-chip">{run}</span>}
         <span className="dd-agrp-t">{span}</span>
       </summary>
@@ -460,13 +460,13 @@ function LogEntryRow({ e, prev }: { e: AgentLogEntry; prev: AgentLogEntry | null
     <details className="dd-logc">
       <summary className="dd-logc-s">
         <span className="dd-logc-h">
-          {p.status && <span className={chipClass(p.status)}>{p.status}</span>}
+          {p.status && <span className={chipClass(p.status)}>{label(p.status)}</span>}
           {p.score !== null && (
             <span className="ct-chip">{p.score}{p.scoreMax ? `/${p.scoreMax}` : ''}</span>
           )}
           {p.issues !== null && <span className="ct-chip">{p.issues} issues</span>}
           {isBackfillEntry(e) && <span className="ct-chip ct-chip-warn">backfill</span>}
-          {e.source && !isBackfillEntry(e) && <span className="dd-log-src">{e.source}</span>}
+          {e.source && !isBackfillEntry(e) && <span className="dd-log-src">{label(e.source)}</span>}
           <span className="dd-logc-t">
             {e.ts ? absTime(e.ts) : 'no timestamp'}
             {since && <span className="dd-log-gap">{since}</span>}

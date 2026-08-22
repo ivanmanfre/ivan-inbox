@@ -10,6 +10,10 @@ describe('label', () => {
     expect(label('QA_BLOCKED')).toBe('Blocked by QA')
     expect(label('LINT_FAIL')).toBe('Failed the language check')
     expect(label('gold_icp_v2_seatless')).toBe('Gold ICP (v2)')
+    expect(label('needs_regenerate')).toBe('Needs regeneration')
+    expect(label('queued_v2')).toBe('Queued')
+    expect(label('n8n')).toBe('Automated')
+    expect(label('linkedin')).toBe('LinkedIn')
   })
 
   it('is case-insensitive, so dm_sent and Dm_sent hit the same entry', () => {

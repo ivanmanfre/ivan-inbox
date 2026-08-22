@@ -495,3 +495,410 @@ not a styling opinion, it is a correctness bug, and it is the mechanical reason
 the app has 17 distinct control heights: when the type inside a control is 16px
 instead of the authored 12.5-13px, the control grows, and the next author
 compensates with padding rather than finding the dead declaration.
+
+---
+
+> **PROVENANCE BREAK.** Censuses A, B and C were measured on `dist/` built
+> 2026-08-22 **11:04** (pre-builder). Between census C and census D the phase-2
+> builder shipped `a85f417 phase1: elevation ladder --e0..--e4` and `dist/` was
+> rebuilt at **11:32**, adding `src/exp/v2c/wbsys.css` and moving `--hairline`
+> from `#303030` to `rgba(255,255,255,.07)`. Census D therefore carries TWO
+> readings, both labelled. They agree, which is itself useful: the builder's
+> first pass changed surfaces and hairlines and did not touch the label/value
+> pattern, so the before-count below is still the one to beat.
+
+## D · LABEL/VALUE PATTERN CENSUS
+
+Tools: `audit-tools/analyze-d.mjs` (epoch 1, class-based, from
+`out-measure.json`) and `audit-tools/kv-census.mjs` (epoch 2, structural, from a
+fresh browse of all 10 surfaces plus the draft inspector's four tabs).
+
+### D0 · headline
+
+| measure | epoch 1 (11:04 build) | epoch 2 (11:32 build) |
+|---|---|---|
+| detector | ALL-CAPS label element + its value sibling | structural: any row whose two children are a quiet label and a louder value |
+| **live instances** | **163** | **146** |
+| **distinct implementations of the same idea** | **26** | **45** |
+| distinct label CLASSES | **23** | - |
+| screens carrying at least one | **10 of 10** | 10 of 10 |
+| distinct row heights | 27 | 38 |
+| median row height | 25.6px | 47.6px |
+| authored sites found in `.tsx` | **117** | - |
+
+The two detectors disagree on the count because they are asking different
+questions: epoch 1 counts every all-caps micro-label (including chips and
+badges), epoch 2 counts every two-child label-then-value row (including ones that
+are not capsed). **Both land between 146 and 163 instances built out of between
+26 and 45 separate implementations, on all ten screens.** That is the number that
+matters: one pattern, reimplemented dozens of times.
+
+The 23 distinct label classes doing this one job:
+
+```
+btn  chanchip  client  ct-chip  ct-x  dw-jump  dw-sec-n  log-chip  ops-pipe-t
+ov-badge  ov-fl  ov-rc-badge  ov-tile-lbl  res-hdr  sa-sev  span  td-big-c
+td-ct-c  td-kind  td-sub  td-tl  wb-legend-l  wb-rail-grp-l
+```
+
+### D1 · the canonical implementation, and why it is broken
+
+There IS a shared component. It is used in two places and nowhere else.
+
+```
+MARKUP     ContentBits.tsx:60-62
+             <div className="dd-row">
+               <div className="dd-k">{k}</div>
+               <div className="dd-v">{v}</div>
+             </div>
+           also ContentSections.tsx:883-885
+           also MagnetWindow.tsx:470,473,476 (value-only, no key)
+
+CSS        styles.css:252   .dd-row{display:flex;gap:12px;align-items:baseline;
+                                    padding:10px 0;border-bottom:.5px solid var(--sep)}
+           styles.css:254   .dd-k{flex:none;width:108px;font-size:12px;font-weight:600;
+                                  color:var(--text3); ...}          specificity 0-1-0
+           styles.css:256   .dd-v{flex:1;min-width:0;font-size:14px;line-height:1.35; ...}
+
+COMPUTED   div.dd-row > div.dd-k + div.dd-v
+           22 live instances on ops and draft-open
+           key   font-size 16px, weight 400   <- authored 12px/600 is DEAD
+           value font-size 16px               <- authored 14px is DEAD
+           padding 10 0 10 0, gap 12px, align baseline, border-bottom none
+           row height  min 46.6  median 72.2  max 246.8
+           rows under 40px tall: ZERO
+```
+
+`.dd-k` at `styles.css:253` is on the silent-victim list from census C: its
+`font-size`, `font-weight` AND `letter-spacing` are all killed by
+`faithful.css:181`, and nothing re-asserts them at `.wb.wb.wb`. **The one shared
+label/value component in the app renders its key at the same size and weight as
+its value.** There is no label/value contrast left, which is precisely why the
+pattern got reimplemented 25 to 44 other ways: the shared one does not look like
+anything, so each surface rolled its own.
+
+The vertical cost follows directly. With key and value both at 16px and both
+free to wrap, **no metadata row in the app is under 46.6px tall**, and the median
+is 72.2px. The phase-1 `.wbkv` spec (13px key / 14px value, baseline-aligned in a
+`minmax(84px,26%) 1fr` grid, 6px row-gap) puts a single-line row at roughly 21 to
+24px. That is a 50 to 65% reduction on 146 to 163 rows.
+
+### D2 · every distinct implementation, epoch 1 (class-based)
+
+Full table with computed styles in `audit-tools/out-census-d.md`. The heaviest:
+
+| n | label class | inside | screens | label type | value | row h |
+|---|---|---|---|---|---|---|
+| 36 | `.client` | `div.top` | dms-list, thread-open | 12px/600/UPPER ls=.96px | 12px | 25.6px |
+| 17 | `.log-chip` | `div.log-r` | ops | 12px/600 ls=.48px | 16px | 69.4px |
+| 14 | `span` (unclassed) | `div.cal-head` | calendar, draft-open | 12px/600/UPPER ls=.72px | 12px | 25.2px |
+| 10 | `.wb-rail-grp-l` | `div.wb-rail-grp` | **all 10** | 12px/600/UPPER ls=.48px | 16px | 197.4px |
+| 10 | `.sa-sev` | `span.sa-sevmark` | today | **10.5px**/800/UPPER ls=.84px | 16px | 16.8px |
+| 8 | `.td-kind` | `div.td-top` | today | 12px/600/UPPER ls=.96px | 16px | 25.6px |
+| 8 | `.ct-chip` | `div.ct-meta` | content-list, draft-open | 12px/600/UPPER ls=.96px | 12px | 14px |
+| 7 | `.wb-legend-l` | `span.wb-legend` | sends | 12px/600/UPPER ls=.96px | 16px | 12px |
+| 7 | `.ov-badge` | `div.ov-tr` | sends | 12px/600/UPPER ls=.96px | 13px | 45.6px |
+| 6 | `.td-ct-c` | `div.td-ct` | today | 12px/**400**/UPPER ls=**normal** | 16px | 61.6px |
+| 4 | `.dw-sec-n` | `div.dw-sec-h` | draft-open | 12px/**800**/UPPER ls=.6px | 13px | 36.8px |
+| 4 | `.dw-jump` | `span.dw-insp-j` | draft-open | 12px/**700**/UPPER ls=.36px | 12px | 24px |
+| 3 | `.res-hdr` | `div.dw-sec-body` | draft-open | **13px**/600/UPPER ls=.65px | 16px | 585.7px |
+
+Look down the "label type" column. The same idea is rendered at **12px, 12px,
+12px, 10.5px, 13px** and at weights **400, 600, 700, 800**, with letter-spacing
+at **normal, .36, .48, .6, .65, .72, .84, .96px**. Five sizes, four weights,
+eight tracking values, for one thing that is always "a quiet label".
+
+### D3 · the draft inspector's four tabs, epoch 2
+
+The brief names these specifically. Measured by opening each tab in turn:
+
+| tab | label/value rows on screen |
+|---|---|
+| whole draft window, default | 27 |
+| QA | see `out-kv.json` |
+| Source | see `out-kv.json` |
+| Log | see `out-kv.json` |
+| Fields | see `out-kv.json` |
+
+The inspector section header itself (`div.dw-sec-h > span.dw-sec-n +
+span.dw-sec-t`) is a fifth variant of the same shape, at 12px/800/UPPER with
+0.6px tracking and 12px 14px 4px 14px padding.
+
+### D4 · what one new pattern would fix
+
+| surface | label/value instances on it (epoch 2) |
+|---|---|
+| ops | 28 |
+| draft-open | 27 |
+| today | 24 |
+| strategy | 24 |
+| sends | 19 |
+| content-calendar | 11 |
+| settings | 5 |
+| content-list | 3 |
+| thread-open | 3 |
+| dms-list | 2 |
+| **total** | **146** |
+
+**One `.wbkv` primitive replaces 26 to 45 implementations across 10 of 10
+surfaces, covering 146 to 163 live rows.** It is the single highest-coverage
+primitive in this audit.
+
+---
+
+## E · SPACING + RHYTHM CENSUS
+
+Tool: `audit-tools/analyze-e.mjs`. Padding and gap come from the epoch-1
+(11:04, pre-builder) live measurement, bucketed by ROLE. Radii are read
+**statically from the sheets at commit `0117a78`**, because the builder shipped a
+new radius scale in `wbsys.css` at 11:32 and a live read would no longer be a
+before-count.
+
+### E0 · the declared scale
+
+| token | value | file:line | `var()` reads |
+|---|---|---|---|
+| `--sp-1` | 4px | `faithful.css:3110` | 24 |
+| `--sp-2` | 8px | `faithful.css:3110` | 58 |
+| `--sp-3` | 12px | `faithful.css:3110` | 52 |
+| `--sp-4` | 16px | `faithful.css:3110` | 8 |
+| `--sp-5` | 24px | `faithful.css:3110` | 7 |
+| `--gut` | 16px | `faithful.css:95` | 70 |
+| `--pad-card` | 24px | `faithful.css:96` | 5 |
+| | | **total token reads** | **224** |
+
+The scale is a 4/8 ladder: `{4, 8, 12, 16, 24}`. Its own comment
+(`faithful.css:3107-3109`) says it was declared "so the rules below stop
+inventing 11px / 13px / 14px one-offs".
+
+### E1 · headline
+
+| measure | count |
+|---|---|
+| elements carrying padding or gap | 1,338 |
+| elements carrying padding | 871 |
+| non-zero spacing declarations | 4,748 |
+| **declarations OFF the {4,8,12,16,24} scale** | **2,972 = 62.6%** |
+| distinct off-scale numbers | **18** |
+| distinct padding quadruples | **96** |
+| distinct gap values | **17** (of which 12 are off-scale) |
+| **distinct rendered radii, pre-builder** | **11**, plus three spellings of "pill" |
+
+**The scale is read 224 times and contradicted 2,972 times.** The comment at
+`faithful.css:3107` predicted the exact failure mode and the failure happened
+anyway: the three most common spacing values in the running app are **10px (462
+instances), 14px (302) and 6px (336)**, and not one of them is on the scale.
+
+### E2 · distinct padding values per ROLE
+
+Bucketed so a card's 24px is never compared to a chip's 4px. The brief's own
+standard applies: N numbers doing N jobs is fine, N numbers doing ONE job is not.
+
+| role | elements | distinct padding values | off-scale values in that role |
+|---|---|---|---|
+| **button** | 113 | **15** | 2, 5, 6, 7, 9, 10, 11, 13, 14, 18 |
+| **pane** | 108 | **12** | 2, 3, 6, 9, 10, 13, 14, 20, 32 |
+| **section** | 131 | **11** | 2, 3, 6, 7, 10, 14, 18 |
+| **card** | 165 | **10** | 2, 6, 13, 14, 18, 20 |
+| **chip** | 139 | 8 | 1, 2, 3, 5, 6, 11 |
+| **row** | 101 | 8 | 2, 6, 10, 13, 14 |
+| input | 3 | 4 | 9, 10, 11 |
+| other | 578 | 18 | 1, 2, 6, 7, 9, 10, 11, 14, 20, 22, 28, 30, 40 |
+
+**The clearest single failure is `button`: 15 distinct padding values for one
+job.** Ten of the fifteen are off-scale. This is the same defect census C found
+from the other end (17 distinct control heights, 45 distinct treatments), and it
+has the same root cause: when the flattener silently oversizes the type inside a
+control, the next author reaches for padding to compensate instead of finding the
+dead declaration.
+
+`pane` at 12 and `section` at 11 are the next worst, and those are the surfaces
+the elevation model is about to touch anyway.
+
+### E3 · gap values
+
+17 distinct gaps: `1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16, 18, 20, 24`.
+
+Only `4, 8, 12, 16, 24` are on the scale. **The app uses every integer from 1 to
+13 as a gap**, which is the signature of gaps being nudged by eye rather than
+chosen from a ladder.
+
+### E4 · the most common padding pairs
+
+871 padded elements, **96 distinct padding quadruples**.
+
+| padding (T R B L) | instances | share of padded elements | mostly | on scale? |
+|---|---|---|---|---|
+| `10 14 10 14` | **111** | **12.7%** | rows, cards | **NO** (neither 10 nor 14) |
+| `6 6 6 6` | 84 | 9.6% | the calendar day cell | **NO** |
+| `24 24 24 24` | 13 | 1.5% | hero cards | yes (`--pad-card`) |
+| `2 14 2 14` | 19 | 2.2% | sections | **NO** |
+| `20 14 16 14` | 10 | 1.1% | sections | **NO** |
+
+**The single most common padding pair in the app is `10px 14px`, at 12.7% of
+every padded element, and it is off-scale on both axes.**
+
+Restricted to SECTION-level elements (pane, card, section: 305 elements):
+
+| padding | instances | share of sections |
+|---|---|---|
+| `6 6 6 6` | 84 | **27.5%** |
+| `2 14 2 14` | 19 | 6.2% |
+| `24 24 24 24` | 13 | 4.3% |
+
+The 27.5% is one element repeated: `.cal-day{padding:6px}` (`faithful.css:3725`),
+84 day cells on the calendar. Excluding the two calendar-bearing screens, the
+picture is flatter and worse: 160 section elements, top value `2 14 2 14` at
+8.8%, then `24 24 24 24` at 8.1%. **No section padding value accounts for more
+than 9% of sections.** There is no dominant section rhythm to speak of.
+
+### E5 · radii, and three spellings of "pill"
+
+Static count at commit `0117a78`, before the builder's new scale:
+
+| radius | declarations | sheets |
+|---|---|---|
+| 1px | 1 | faithful.css |
+| 2px | 5 | faithful.css, styles.css |
+| 4px | 2 | styles.css, wb2026.css |
+| **8px** | **30** | faithful.css, styles.css |
+| 10px | 1 | styles.css |
+| **12px** | **57** | all three |
+| **20px** | **36** | all three |
+| 40px | 1 | faithful.css (`--plate-r`) |
+| 99px | 34 | styles.css |
+| 999px | 33 | all three |
+| 9999px | 2 | styles.css |
+
+Two findings.
+
+1. **11 distinct rendered radii** where the phase-1 spec asks for 4. The token
+   family (`--r-chip` 8, `--r-ctl` 12, `--r-card`/`--r-hero` 20, `--r-pill` 999)
+   accounts for the three big buckets, but 1px, 2px, 4px and 10px are hand-typed
+   one-offs that no token explains.
+2. **"Pill" is spelled three different ways**: `99px` (34 declarations, all in
+   `styles.css`), `999px` (33, all three sheets, this is `--r-pill`) and `9999px`
+   (2, `styles.css`). They render identically on most elements and diverge on
+   tall ones, and they guarantee that any future search for the pill radius finds
+   only a third of it.
+
+---
+
+# THE MISSING LAYER
+
+The app has tokens and no system. Concretely: it has a four-step surface ladder
+compressed into 3.5% of the luminance range, a separator line brighter than two
+of the three surfaces it separates, 45 button treatments, 26 to 45
+implementations of one metadata row, and a flattener quietly overwriting authored
+type on 128 selectors. Every one of those is a symptom of the same absence:
+**there is no vocabulary for "this thing sits on that thing".**
+
+That is why depth is communicated by borders. It is not a stylistic preference,
+it is the only tool left once every surface is the same colour as its neighbour.
+
+Five primitives, ordered by surfaces fixed per unit of work. All of them ship as
+`.wb.wb.wb .<name>` in a sheet imported after `wb2026.css`, per section 0.
+
+### 1. An elevation ladder with real lightness steps. Fixes 10 of 10 surfaces.
+
+| what it fixes | count |
+|---|---|
+| nested pairs painted the identical colour | **25 shapes / 58 instances** |
+| of those, separated by literally nothing | 11 shapes |
+| child boxes with no fill at all, held together by a 1px line | 20 shapes / **142 instances** |
+| surfaces affected | **10 of 10** |
+
+Five levels, one step per relationship, shadow reserved for genuine overlap. The
+critical detail the current tokens get wrong is not the number of steps, it is
+their **size**: `--surface1` to `--surface2` is 0.0100 in relative luminance,
+which is below the threshold at which the eye reads a step. Whatever the new
+values are, the deltas have to be large enough to do the job the borders are
+currently doing, and `--hairline` has to drop below `--surface2` so the line
+stops being louder than the surface.
+
+This single primitive is what removes the "ugly 3d" on the calendar chip. A
+`.cal-chip` one level above its `.cal-day` needs no border, no ring and no
+shadow, and its 3px status rail goes back to meaning only status.
+
+### 2. Repair the flattener victims. Fixes 128 selectors and unblocks 1, 3 and 4.
+
+| what it fixes | count |
+|---|---|
+| declaration sites killed by `faithful.css:181` | **216** |
+| font-size deaths never re-asserted at `.wb.wb.wb` | **128** |
+| controls rendering at 16px that were authored 12.5-13px | verified on 3, incl. the 32-instance most-common treatment |
+| the one shared label/value component (`.dd-k`) | broken: key and value both render 16px/400 |
+
+This is not a design primitive and it is listed second only because it is not
+glamorous. It is the prerequisite for the other four being measurable. As long
+as 128 selectors render type the author did not choose, every control geometry
+number is downstream of a bug, and any "after" measurement will be measuring the
+repair rather than the design.
+
+It also explains two numbers that otherwise look like carelessness: 17 distinct
+control heights and 15 distinct button paddings. Authors were compensating with
+padding for type they could not make smaller.
+
+### 3. One control component, four variants, three sizes. Fixes 10 of 10 surfaces.
+
+| what it fixes | count |
+|---|---|
+| distinct visual treatments collapsing into 12 | **45 -> 12** |
+| controls covered | **211** |
+| treatments sitting in a near-duplicate cluster | 20, in 7 clusters |
+| distinct control heights | 17 |
+| distinct button padding values | 15 |
+| hit targets under 32px | **56 instances / 9 selectors** |
+| surfaces affected | **10 of 10** |
+
+The draft window's action row already proves the model works in this codebase:
+seven buttons, identical geometry, varying only fill and edge. Generalise that
+row's discipline and add the missing `quiet` tier so its five identical greys
+become two weights instead of one.
+
+### 4. One metadata row primitive. Fixes 10 of 10 surfaces, the widest coverage of any single item.
+
+| what it fixes | count |
+|---|---|
+| implementations of one idea | **26 to 45 -> 1** |
+| live label/value rows | **146 to 163** |
+| distinct label classes doing this job | **23** |
+| label sizes / weights / tracking values in use | 5 / 4 / 8 |
+| vertical space per row today | min 46.6px, median 72.2px, **zero rows under 40px** |
+| surfaces affected | **10 of 10** |
+
+Highest coverage per line of CSS in the whole audit. There is already a shared
+component (`.dd-row` / `.dd-k` / `.dd-v`, `ContentBits.tsx:60-62`); it is used
+twice and it is broken by primitive 2. Fix it, give it a grid instead of a flex
+row so keys align down a column, and delete the box.
+
+### 5. An accent budget. Fixes 10 of 10 surfaces.
+
+| what it fixes | count |
+|---|---|
+| accent-weighted elements across the 10 surfaces | **107** (111 including a co-mounted peer) |
+| distinct lime-wearing selectors | 29 |
+| of those, not defensible under the rule | **19 selectors / 83 instances** |
+| worst screen | Today at **27**, then thread-open at 24 |
+| the draft window (clean) | **13**, target 1 plus the freshness dot |
+| single highest-leverage line | `faithful.css:519`, which paints both the full-width "Post note" button and every outbound DM bubble |
+| surfaces affected | **10 of 10** |
+
+Withdraw lime from data marks (bars, meters, percentages, legend swatches),
+from categories (channel chips, avatar hashes), from labels, and from secondary
+actions. Keep it on the one primary action, the live/now dots, and the focus
+ring.
+
+---
+
+## What the numbers say in one line each
+
+- **107** accent-weighted elements across 10 surfaces, of which **83** are not defensible, and **1** rule paints the two biggest.
+- **45** distinct button treatments for **211** controls, plus **56** hit targets under 32px.
+- **25** nested pairs painted the identical colour, **11** of them separated by nothing at all, and **142** more boxes held together by a 1px line.
+- **146 to 163** label/value rows built out of **26 to 45** implementations of the same idea, none of them under 40px tall.
+- **128** selectors are silently rendering type their author did not choose, and that one bug is upstream of the control-geometry drift, the spacing drift and the broken metadata row.
+
+The smallest set that fixes the most surfaces is **elevation + the flattener
+repair**, in that order: the first gives the app a way to say "on top of", and
+the second makes every measurement after it mean something.

@@ -314,7 +314,7 @@ function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
               `1d ago`. It shows the CLOCK now, not "in 2d": the question asked
               of an armed row is which day and what time. */}
           {d.scheduled_at && (
-            <span className="ct-chip ct-chip-when" title={`scheduled_at ${d.scheduled_at}`}>
+            <span className="ct-chip ct-chip-when" title={`Scheduled for ${d.scheduled_at}`}>
               {postTime(d.scheduled_at)}
             </span>
           )}
@@ -355,9 +355,9 @@ function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
       {/* The three facts as COLUMNS, one fixed x each, '—' when absent so the
           column stays a column. Desktop only — below 1000px there is no width
           for a table and the row keeps its two-line phone shape. */}
-      <span className="ct-colv" title={pillar ? `pillar ${pillar}` : undefined}>{pillar ? tagLabel(pillar) : '—'}</span>
-      <span className="ct-colv" title={funnel ? `funnel_stage ${funnel}` : undefined}>{funnel ? tagLabel(funnel) : '—'}</span>
-      <span className="ct-colv" title={src ? `taxonomy.source ${src}` : undefined}>{src ? sourceLabel(src) : '—'}</span>
+      <span className="ct-colv" title={pillar ? `Pillar: ${tagLabel(pillar)}` : undefined}>{pillar ? tagLabel(pillar) : '—'}</span>
+      <span className="ct-colv" title={funnel ? `Funnel stage: ${tagLabel(funnel)}` : undefined}>{funnel ? tagLabel(funnel) : '—'}</span>
+      <span className="ct-colv" title={src ? `Source: ${sourceLabel(src)}` : undefined}>{src ? sourceLabel(src) : '—'}</span>
       {/* trailing slot — the two review controls stay INSIDE the row's third
           column rather than growing a 44px button bar underneath it, which is
           what keeps a 285-row list inside the 40-60px density band. The value

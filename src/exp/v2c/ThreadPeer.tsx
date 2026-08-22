@@ -20,7 +20,7 @@ function Ladder({ stage }: { stage: string }) {
   const off = stageIsOff(stage)
   if (off) {
     return (
-      <div className="wb-ladder off" title={`stage: ${stage}`}>
+      <div className="wb-ladder off" title={`Stage: ${label(stage)}`}>
         <span className="wb-lad-dot off" />
         <span className="wb-lad-l">Archived</span>
       </div>
@@ -32,7 +32,7 @@ function Ladder({ stage }: { stage: string }) {
     return <div className="wb-ladder"><span className="wb-lad-l unknown">{stage ? label(stage) : 'no stage'}</span></div>
   }
   return (
-    <div className="wb-ladder" title={`stage: ${stage}`}>
+    <div className="wb-ladder" title={`Stage: ${label(stage)}`}>
       {STAGE_LADDER.map((label, i) => (
         <span className="wb-lad-s" key={label}>
           {i > 0 && <span className={`wb-lad-bar${i <= step ? ' on' : ''}`} />}
