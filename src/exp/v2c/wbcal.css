@@ -1,0 +1,551 @@
+/* ============================================================================
+   wbcal.css. THE CALENDAR, phase 3 of workbench-polish-2026-08-22.
+
+   Ivan, twice, looking at the month grid:
+     "look at the calendar pills they look like ugly 3d"
+     "there is a green background that is taking some space from us"
+
+   Imported LAST in Shell.tsx, after wbsys.css, so it overrides rather than
+   edits. Nothing is deleted from faithful.css in this phase: overriding is
+   reversible and deleting 4,210 lines of context is not (phase1-system §8).
+
+   EVERY SELECTOR CARRIES THREE `.wb` CLASSES. faithful.css:181 is
+   `.wb.wb, .wb.wb *{ font-size:var(--fs-body) … }`, which is specificity
+   (0,2,0) against every descendant of the sheet. A two-class selector loses to
+   it silently, renders at body size, and looks correct in review. The audit
+   found 216 already-dead declaration sites on this branch, 128 of them
+   font-size. Every value in this file was computed-style-checked in the
+   browser, not read off the source.
+
+   ONE MORE STANDING RULE, from the file this replaces: `.cal` is the SAME DOM
+   on mobile. Below 767px CSS turns the grid into an agenda list. Nothing here
+   reads a viewport in JS, and nothing added here does either.
+   ========================================================================== */
+
+
+/* ==========================================================================
+   1 · THE CHIP AND ITS CELL: a lightness step, and the step is the fix
+   ========================================================================== */
+
+/* THE MEASUREMENT THAT DEFINES THE DEFECT, from the run's own probe:
+
+     div.cal-chip on div.cal-day :: rgb(31,31,31) on rgb(31,31,31)
+       border = none   shadow = none   radius = 12px   size = 108x87
+
+   The chip and the cell were the SAME COLOUR, both at 12px radius, the chip
+   inset a few pixels. With no lightness cue at all, the eye has nothing left
+   to read that inner edge as except a bevel. That is the "ugly 3d".
+
+   🔴 IT IS A MISSING LIGHTNESS STEP, NOT A SHADOW TO REMOVE. The run before
+   this one stripped the chip's fill AND its ring precisely because they looked
+   raised, which deleted the last cue and made it worse. Do not repeat that.
+
+   Phase 1 (wbsys.css §6.1) already put the chip on --e3 and the empty cell on
+   --e1, which is why the probe on this branch reads dL 0.0087 rather than 0.
+   This section finishes the job:
+
+     - a cell WITH content rests at --e2 and says so explicitly, rather than
+       inheriting it through the --surface1 alias where a later edit to the
+       alias would silently flatten the pair again;
+     - the chip sits one step up at --e3, radius --r-xs;
+     - --sh-card sits ON TOP of the step, never instead of it, at 8% alpha.
+       Capped at 12% because the plate sits on --ground #C5E1A5 and anything
+       heavier bleeds onto the pistachio, which is the 2013 artefact itself.
+
+   The 3px stage rail stays. It is the only thing encoding status, but after
+   this section it is no longer the ONLY cue that the chip is an object. */
+
+.wb.wb.wb .cal-day{
+  background:var(--e2);
+  border-radius:var(--r-ctl);
+  box-shadow:inset 0 0 0 1px var(--hairline);
+}
+/* An EMPTY cell has nothing to hold up, so it recedes to the well and drops the
+   ring it was using to exist. Restated here (not only in wbsys §6.1) because
+   this file also raises the cell's min-height below, and the two rules have to
+   be read together. */
+.wb.wb.wb .cal-day-empty{
+  background:var(--e1);
+  box-shadow:none;
+}
+.wb.wb.wb .cal-day-out{ opacity:.42 }
+.wb.wb.wb .cal-day-now{ box-shadow:inset 0 0 0 1px var(--hairline-strong) }
+
+.wb.wb.wb .cal-chip{
+  background:var(--e3);
+  border-radius:var(--r-xs);
+  box-shadow:var(--sh-card);
+}
+/* Hover climbs one more step. It is the only place on this surface the ladder
+   is spent twice, and hover is exactly the state that earns it. */
+.wb.wb.wb .cal-chip:hover{ background:var(--e4) }
+/* A queue chip cannot be opened, so its hover says nothing is going to happen:
+   it holds its resting step instead of climbing. */
+.wb.wb.wb .cal-chip-queue:hover{ background:var(--e3) }
+
+/* AUDIT A5, and it is load-bearing the moment the chip lightens: button
+   .cal-chip-t computes `border: 2px outset rgb(0,0,0)` on all four sides. That
+   is the user-agent default button border. No rule in any sheet sets it, and
+   it was invisible only because black `outset` on #1F1F1F is nearly the same
+   colour. On --e3 it appears as a 2px bevel, which is the exact artefact this
+   file exists to remove. */
+.wb.wb.wb .cal-chip-t,
+.wb.wb.wb .cal-chip-mv{ border:0 }
+
+
+/* ==========================================================================
+   2 · THE CHIP IS TOO TALL. Fix the height, cap the rows, design the overflow
+   ========================================================================== */
+
+/* MEASURED BEFORE: an 87px chip in a 124px cell. 70%. On this branch after
+   phase 1 it reads 83px in 120px, 69%. Either way a day with two posts cannot
+   show both, on the surface whose entire job is to say what is going out when.
+
+   THE GATE: at most 45% of cell height, at 1440 and at 390.
+
+   THE MECHANIC, and it is the industry one rather than an invention.
+   FullCalendar's `dayMaxEvents` / `dayMaxEventRows` cap the number of event
+   ROWS a cell paints and put the rest behind a "+more" that opens a popover;
+   Notion Calendar ships merge behaviour for the same reason and files bugs
+   against it when it breaks. Chip height is never the variable that flexes.
+   Row count is.
+
+   THE ARITHMETIC, at --cal-cell-h 122px:
+
+     padding            6 + 6   = 12
+     day-number row             = 16
+     gap under it               =  3
+     chip                       = 32
+     gap                        =  3
+     chip                       = 32
+     gap                        =  3
+     "+N more"                  = 18
+                                 ----
+                                  119   with 3px of slack in a 122px cell
+
+   Two posts render as two chips. Three render as two chips and a "+1", the
+   "+N" row counting as the third row, which is `dayMaxEventRows` semantics
+   exactly. The cell is 122px against the 120px it already measured, so three
+   rows of information cost 2px more than one row used to.
+
+   🔴 THE CAP IS CSS, NOT JS. Below 767px the same DOM is an agenda list with
+   no height to run out of, so the cap is switched off there and every chip is
+   drawn. React renders every chip and the count on the "+N"; CSS decides how
+   many are painted. Nothing reads a viewport in JS, which is the rule. */
+
+.wb{
+  --cal-chip-h:32px;
+  --cal-more-h:18px;
+  --cal-cell-h:122px;
+  --cal-row-gap:3px;
+}
+
+.wb.wb.wb .cal-day{
+  min-height:var(--cal-cell-h);
+  gap:var(--cal-row-gap);
+}
+
+/* FIXED, not min. `min-height` is what let the chip grow to 83px in the first
+   place: a two-line clamp on a variable-length title has no ceiling, so the
+   tallest title in the month set the height of every row in the grid. */
+.wb.wb.wb .cal-chip{
+  min-height:var(--cal-chip-h);
+  height:var(--cal-chip-h);
+  flex:none;
+}
+/* THE MERGE SEAM WITH polish/p4a, declared rather than discovered later. That
+   branch wraps the chip's face in `.cal-chip-row` and hangs a second row under
+   it (`Arm it`, drawn only on a planned row this surface can arm). When the
+   two land together the FACE keeps the fixed height and the chip is allowed to
+   grow by exactly that one row, which is a deliberate exception and not the
+   old unbounded growth. Both rules are inert until that branch merges. */
+.wb.wb.wb .cal-chip-row{
+  min-height:var(--cal-chip-h);
+  height:var(--cal-chip-h);
+  flex:none;
+}
+.wb.wb.wb .cal-chip:has(.cal-chip-armb){ height:auto }
+
+/* THE FACE, refitted to 32px. The clock keeps its own line, which is the whole
+   reason the two-line chip was built: on one line `17:00` ate a third of a
+   108px chip and the title ellipsed to about two characters. What changes is
+   that the title is now ONE line rather than a two-line clamp, and the line it
+   loses is the thing that bought the other two rows in the cell. The full
+   title is a hover or a focus away in the popover (§4), which the old two-line
+   clamp also needed for anything longer than about twenty characters. */
+.wb.wb.wb .cal-chip-t{
+  padding:2px 7px 3px;
+  gap:0;
+  height:100%;
+  justify-content:center;
+}
+.wb.wb.wb .cal-chip-h{
+  font-size:var(--fs-eyebrow);
+  line-height:12px;
+  height:12px;
+  gap:4px;
+}
+.wb.wb.wb .cal-chip-hh,
+.wb.wb.wb .cal-chip-out,
+.wb.wb.wb .cal-chip-q,
+.wb.wb.wb .cal-chip-drift{ font-size:var(--fs-eyebrow); line-height:12px }
+/* ONE LINE, ellipsed. `-webkit-line-clamp` is unset rather than set to 1: at 1
+   it still reserves a block box and leaves the ellipsis in a different place
+   than `text-overflow` puts it, which reads as two different chips. */
+.wb.wb.wb .cal-chip-n{
+  display:block; -webkit-line-clamp:unset; line-clamp:unset;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  overflow-wrap:normal;
+  width:100%;
+  font-size:var(--fs-meta); line-height:15px;
+}
+/* The corner ⇄ shrinks with the chip it floats on. */
+.wb.wb.wb .cal-chip-mv{
+  top:1px; right:1px; width:20px; min-height:18px;
+  border-radius:var(--r-xs);
+}
+.wb.wb.wb .cal-chip:hover .cal-chip-h{ padding-right:22px }
+
+/* ---- the cap, and the "+N" that carries what it hides -------------------- */
+
+/* Children of a cell are [.cal-dn, chip, chip, chip, …, .cal-more], so chip k
+   is :nth-child(k+1) and the third chip is :nth-child(4). Written against
+   VISIBLE_CHIPS in ContentCalendar.tsx, which is exported for exactly this
+   reason: two places hold this number and neither may move alone. */
+.wb.wb.wb .cal-more{
+  display:none;
+  flex:none; width:100%; min-height:var(--cal-more-h); height:var(--cal-more-h);
+  padding:0 7px; text-align:left; justify-content:flex-start;
+  background:none; border:0; border-radius:var(--r-xs);
+  font-size:var(--fs-eyebrow); line-height:var(--cal-more-h);
+  color:var(--text3); cursor:pointer;
+}
+.wb.wb.wb .cal-more:hover{ background:var(--e3); color:var(--text) }
+@media (min-width:768px){
+  .wb.wb.wb .cal-day > .cal-chip:nth-child(n+4){ display:none }
+  .wb.wb.wb .cal-day > .cal-more{ display:block }
+}
+
+/* ---- the panel ----------------------------------------------------------- */
+
+/* --e4, the floating step, and the only level on this surface that carries
+   --sh-over: it covers content it does not own, which is the one thing phase 1
+   says a shadow is actually for. */
+.wb.wb.wb .cal-pop-scrim{
+  position:fixed; inset:0; z-index:60; background:none;
+}
+.wb.wb.wb .cal-pop{
+  position:fixed; z-index:61;
+  min-width:200px; max-width:min(360px,calc(100vw - 16px));
+  padding:8px; border-radius:var(--r-card);
+  background:var(--e4); color:var(--text2);
+  box-shadow:var(--sh-over), inset 0 0 0 1px var(--hairline);
+}
+.wb.wb.wb .cal-pop-h{
+  padding:2px 6px 6px;
+  font-size:var(--fs-eyebrow); letter-spacing:.06em; text-transform:uppercase;
+  color:var(--text4); font-weight:600;
+}
+.wb.wb.wb .cal-pop-l{ display:flex; flex-direction:column; gap:2px; max-height:50vh; overflow-y:auto }
+.wb.wb.wb .cal-pop-r{
+  display:grid; grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:baseline; gap:8px;
+  width:100%; min-height:28px; padding:4px 6px;
+  text-align:left; background:none; border:0; border-radius:var(--r-xs);
+  border-left:3px solid var(--text4);
+  cursor:pointer;
+}
+.wb.wb.wb .cal-pop-r:hover:not(:disabled){ background:var(--e3) }
+.wb.wb.wb .cal-pop-r:disabled{ cursor:default }
+.wb.wb.wb .cal-pop-c{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:var(--fs-eyebrow); color:var(--text3); font-variant-numeric:tabular-nums;
+}
+.wb.wb.wb .cal-pop-n{
+  font-size:var(--fs-meta); color:var(--text);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.wb.wb.wb .cal-pop-s{ font-size:var(--fs-eyebrow); color:var(--text4); white-space:nowrap }
+
+/* ---- ≤767px: the cap is off and the agenda draws everything -------------- */
+@media (max-width:767px){
+  /* THE AGENDA TREATMENT IS RESTORED HERE ON PURPOSE. §1 gives every cell a
+     fill, a radius and a ring, and those rules are outside a media query, so
+     they would otherwise win over faithful.css's ≤767px block by source order
+     and turn a plain divided list into a stack of cards. In the agenda the
+     cell is not an object, it is a heading with rows under it: the divider
+     does the separating and the CHIP is the only thing that is a surface.
+     Which keeps the §1 step intact, chip --e3 on the pane's --e2. */
+  .wb.wb.wb .cal-day{
+    min-height:0; padding:14px 0;
+    background:none; border-radius:0; box-shadow:none;
+    border-bottom:1px solid var(--hairline);
+  }
+  .wb.wb.wb .cal-day-empty{ background:none }
+  .wb.wb.wb .cal-day-now{ box-shadow:none }
+  /* Full-bleed, so the title has real room and the row can afford to be
+     taller than it is in a 108px grid cell. Still fixed, still not a clamp. */
+  .wb.wb.wb .cal-chip{ min-height:40px; height:40px }
+  .wb.wb.wb .cal-chip-row{ min-height:40px; height:40px }
+  .wb.wb.wb .cal-chip-mv{ width:40px; min-height:0 }
+  .wb.wb.wb .cal-chip-h{ padding-right:0 }
+  .wb.wb.wb .cal-chip:hover .cal-chip-h{ padding-right:0 }
+}
+
+
+/* ==========================================================================
+   3 · THE STAGE VOCABULARY: shape first, colour second, the word where it fits
+   ========================================================================== */
+
+/* WHAT HAS TO SURVIVE AT 32px. Five stages (review, approved, scheduled,
+   published, stuck), plus a queue-only variant drawn with a dashed rail, plus
+   a drift warning. Then polish/p4a landed a SIXTH axis on the same object:
+   `data-arm` (armed / planned / out), because a `review` row with a date does
+   not publish and was reading as coverage it is not.
+
+   That is a lot of meaning for a small thing, and the merged build shows what
+   it costs. `10:00 ARMED` on the 24th collides with the corner control and
+   clips, because the word takes roughly 45px of a 93px content width and the
+   TITLE is what tells you which post it is.
+
+   🔴 THE CALL, MADE DELIBERATELY: at grid size the arming word becomes a
+   GLYPH, and the word is restored in three places where it has room.
+
+     - The glyph carries the distinction by SHAPE, not by hue: filled means
+       something holds this post, hollow means it has a date and nothing
+       behind it. Colour is the second cue and never the only one, which is
+       both the accessibility rule and the reason a rail hue alone was never
+       enough.
+     - The word survives in the popover (§4), in the chip's accessible name,
+       and in the month count in the bar, which already reads
+       "1 armed  0 planned  12 posted".
+     - Below 767px the chip is 342px wide and the word costs nothing, so the
+       word STAYS there. That is a CSS decision on the same DOM, not a
+       viewport read in JS.
+
+   Google Calendar's Material 3 pass is the same move: an icon inside a chip of
+   fixed size, rather than extra chrome or extra height, and category moved out
+   of size and into colour-plus-icon. Amie is the counter-example that does not
+   transfer: it separates a day's events by rotating through a 15-step hue
+   system, and this app is locked to one accent, so shape has to do the work
+   hue does there.
+
+   WHY A PSEUDO-ELEMENT AND NOT A SPAN. `polish/p4a` owns the chip's JSX and is
+   still moving. A `::before` on .cal-chip-h keyed off the attributes that
+   branch already sets means the two merge without touching the same lines. It
+   is decorative by construction, which is correct here: it is a REDUNDANT
+   encoding of something the accessible name already says in words. */
+
+.wb.wb.wb .cal-chip-h::before{
+  content:'\25CF';               /* filled: armed, something will publish it */
+  flex:none;
+  font-size:9px; line-height:12px;
+  color:var(--text4);
+}
+.wb.wb.wb .cal-chip[data-arm='planned'] .cal-chip-h::before{
+  content:'\25CB';               /* hollow: a date, and nothing behind it */
+  color:var(--sev-attention);
+}
+/* ARMED AND LATE is not planned, and p4a is right that calling it planned
+   would say nobody was going to publish it. It is the filled mark with the
+   severity it has earned, in a third shape so it is not read as either. */
+.wb.wb.wb .cal-chip[data-st='stuck'] .cal-chip-h::before{
+  content:'\25B2';
+  color:var(--sev-urgent,var(--sev-attention));
+}
+/* PUBLISHED already draws a ✓ in .cal-chip-out, and two marks on a 93px line
+   is one mark too many. The tick IS the glyph for this state. */
+.wb.wb.wb .cal-chip[data-st='published'] .cal-chip-h::before{ content:none }
+.wb.wb.wb .cal-chip[data-arm='out'] .cal-chip-h::before{ content:none }
+
+/* The stage rail keeps its hue and keeps its dashes. It is not the only cue
+   any more (the fill step is §1, the glyph is here), which is the whole point:
+   nothing on this chip is encoded by hue alone. */
+.wb.wb.wb .cal-chip[data-arm='planned']{ border-left-style:dotted }
+
+/* THE WORD, WITHDRAWN AT GRID SIZE ONLY. Not deleted: it is in the popover, in
+   the aria-label, and in the count in the bar. */
+@media (min-width:768px){
+  .wb.wb.wb .cal-chip-arm{ display:none }
+}
+@media (max-width:767px){
+  /* 342px of chip. The word costs nothing here, so it stays, and the glyph
+     sits in front of it saying the same thing twice on purpose. */
+  .wb.wb.wb .cal-chip-arm{ font-size:var(--fs-eyebrow); line-height:12px }
+}
+
+/* ---- the cell floor follows the chip ------------------------------------- */
+
+/* A CONSEQUENCE OF §2 THAT WOULD OTHERWISE BE A REGRESSION. The cell floor was
+   set at 122px so two chips and a "+N" always fit. On a sparse month that
+   leaves a 32px chip in a 122px cell and the grid reads emptier than the one
+   Ivan complained about, which is the wrong trade for a man whose actual words
+   were that something was taking space from him.
+
+   The floor is the EMPTY case, not the full one. A .cal-day is a flex column
+   inside a grid row that sizes to its tallest cell, so a day with more in it
+   grows and takes its week with it. So the floor drops to what one chip needs
+   and the busy cases grow into the room:
+
+     1 chip   12 + 16 + 3 + 32                     =  63, floor 86 with air
+     2 chips  + 3 + 32                             =  98
+     2 + "+N" + 3 + 18                             = 119
+
+   Six rows at the old floor cost 732px of month. At 86 a sparse month costs
+   516 and a busy one still gets its 119px cells where it needs them. */
+.wb{ --cal-cell-h:86px }
+
+
+/* ==========================================================================
+   4 · THE POPOVER. Its own type, and it must never cover its cell
+   ========================================================================== */
+
+/* The panel geometry is in CalPopover.tsx, which is where the arithmetic
+   belongs. What is here is what it looks like, plus the one rule that is not
+   cosmetic: the tooltip variant carries prose, so it gets prose leading rather
+   than the 12px chip type it was launched from.
+
+   15px on a 20px line, from the Wispr Flow extraction: the literal size that
+   appears most in the bundle of the app Ivan named as the thing that is "very
+   clear to read". Its dense body is 15/20, ratio 1.33. Ours defaults to 16 on
+   1.6, which is 25.6px a line, a 22% higher vertical cost for a 6% larger
+   glyph. Leading is the lever. */
+.wb.wb.wb .cal-pop-t{
+  padding:4px 6px;
+  font-size:15px; line-height:20px;
+  color:var(--text2);
+  max-width:34ch;
+}
+
+
+/* ==========================================================================
+   5 · THE FRAME: three arms, switchable at runtime, and A stays the default
+   ========================================================================== */
+
+/* Ivan: "there is a green background that is taking some space from us."
+   Measured at 1440: --plate-gap 20px on both sides, 40px of width, 2.8%.
+
+   🔴 THE HONEST FINDING, and it has to be in the ballot rather than buried.
+   On this screen the frame is not the main thief. The "Ready, no date" rail is
+   264px, seven times what the frame costs. It is what Ivan can SEE taking
+   space; the rail is what is actually taking it.
+
+   🔴 AND THE RAIL IS NOT MINE TO RECLAIM ANY MORE. When this section was
+   planned the rail held one sentence. The polish/p4a merge fixed the filter
+   that made it always empty, and it now holds 89 rows across the lanes (ivan
+   2, risedtc 48, arch 39) with its own capped scroll region. A column holding
+   48 undated posts has earned its 264px. So the rail is left exactly where it
+   is, and what changes here is only the thing Ivan actually pointed at.
+
+   THE ARMS, because this is a taste call and it is his:
+
+     A  as shipped        gap 20, radius 40
+     B  tightened         gap 10, radius 22
+     C  work area flush   gap 3, radius 0, the pistachio kept as an edge
+
+   Arm C is written as a 3px gap rather than a literal 0 because 0 would delete
+   the pistachio from the screen, and the brief keeps it as a 3px edge. Same
+   pixels either way, and the token stays a token.
+
+   🔴 --ground: #C5E1A5 DOES NOT CHANGE IN ANY ARM. Locked fork 2 permits the
+   geometry to move and not the colour, and no arm proposes otherwise. Nothing
+   below names a colour at all.
+
+   A IS THE DEFAULT BY OMISSION. `[data-frame='a']` carries no declarations, so
+   switching back to it restores faithful.css:45 and, at ≤767px,
+   faithful.css:157's own 24/8 override. An arm that restated A's numbers would
+   have broken the mobile override the moment the ballot switched away and
+   back. */
+
+:root[data-frame='a'] .wb{ /* as shipped. Deliberately empty. */ }
+
+:root[data-frame='b'] .wb{
+  --plate-gap:10px;
+  --plate-r:22px;
+}
+
+:root[data-frame='c'] .wb{
+  --plate-gap:3px;
+  --plate-r:0px;
+}
+
+/* ==========================================================================
+   6 · MOTION. The spring on anything that moves, a plain ease on colour
+   ========================================================================== */
+
+/* The rule is Wispr Flow's, measured out of its shipped bundle: colour changes
+   get a plain 100-150ms ease and anything that MOVES gets the spring. It does
+   not animate everything, it animates motion. `--spring` is wbsys.css §7's
+   sampled `linear()` curve with a cubic-bezier fallback.
+
+   Never a layout property. width, height, top and `transition:all` are banned
+   here: they force a reflow every frame. Everything below moves by transform
+   or changes by colour, and nothing else. */
+
+.wb.wb.wb .cal-chip,
+.wb.wb.wb .cal-more,
+.wb.wb.wb .cal-day{
+  transition:background-color var(--wbs-dur-ctl) var(--wbs-ease-ctl),
+             color var(--wbs-dur-ctl) var(--wbs-ease-ctl),
+             box-shadow var(--wbs-dur-ctl) var(--wbs-ease-ctl);
+}
+
+/* THE MONTH CHANGE. It used to teleport. `.cal-grid` is keyed on the month in
+   ContentCalendar.tsx, so React replaces the node and this animation runs from
+   scratch on every step, in the direction of travel. Transform and opacity
+   only, so it composites and never reflows. */
+@keyframes cal-month-in{
+  from{ opacity:0; transform:translateX(var(--cal-month-from,10px)) }
+  to{ opacity:1; transform:none }
+}
+.wb.wb.wb .cal-grid{
+  animation:cal-month-in var(--wbs-dur-overlay) var(--spring) both;
+}
+.wb.wb.wb .cal-grid[data-dir='-1']{ --cal-month-from:-10px }
+
+/* THE DRAG. It signalled a live drag with `opacity:.4` and nothing else, which
+   is the one state on this surface where Wispr ships a DISTINCT shadow
+   (`$shadow-drag`, 0 2px 8px at 12%, its own token separate from the resting
+   card's 8%). So the dragged chip lifts as well as fades: it is the heaviest
+   shadow this surface draws, and 12% is the cap. */
+.wb.wb.wb .cal-chip-drag{
+  opacity:.55;
+  box-shadow:var(--sh-drag);
+  transform:scale(1.02);
+  transition:transform var(--wbs-dur-ctl) var(--spring),
+             opacity var(--wbs-dur-ctl) var(--wbs-ease-ctl),
+             box-shadow var(--wbs-dur-ctl) var(--wbs-ease-ctl);
+}
+
+/* THE DROP TARGET, and the landing. The cell already holds chips, so a fill
+   would restate them as selected: it is a ring plus a faint tint, and the tint
+   fades rather than snapping. */
+.wb.wb.wb .cal-day-over{
+  box-shadow:inset 0 0 0 1px var(--accent);
+  background:var(--accent-soft,rgba(16,163,127,.10));
+}
+
+/* THE PANEL. It MOVES, so it springs. Measured at opacity 0 first
+   (CalPopover.tsx sets data-in on the next frame) so the spring runs from the
+   anchored position rather than from the origin. */
+.wb.wb.wb .cal-pop{
+  transition:opacity var(--wbs-dur-overlay) var(--wbs-ease-ctl),
+             transform var(--wbs-dur-overlay) var(--spring);
+  transform-origin:top left;
+}
+.wb.wb.wb .cal-pop[data-in='0']{ opacity:0; transform:translateY(-4px) scale(.985) }
+.wb.wb.wb .cal-pop[data-side='above'][data-in='0']{ transform:translateY(4px) scale(.985) }
+.wb.wb.wb .cal-pop[data-in='1']{ opacity:1; transform:none }
+
+/* AND THE COLLAPSE. Not "shorter", zero: a vestibular trigger is not fixed by
+   a faster version of the same movement. */
+@media (prefers-reduced-motion:reduce){
+  .wb.wb.wb .cal-chip,
+  .wb.wb.wb .cal-more,
+  .wb.wb.wb .cal-day,
+  .wb.wb.wb .cal-chip-drag,
+  .wb.wb.wb .cal-pop{ transition-duration:0ms }
+  .wb.wb.wb .cal-chip-drag{ transform:none }
+  .wb.wb.wb .cal-grid{ animation:none }
+  .wb.wb.wb .cal-pop[data-in='0']{ transform:none }
+}
