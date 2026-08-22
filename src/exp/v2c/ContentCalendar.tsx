@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react'
 import {
-  buildCalendarItems, buildCalendarRail, dayKey, dayKeyOf, groupByDay, monthLabel, monthWeeks,
-  publishAtForDay, shiftMonth, type CalendarItem,
+  ARMING_LABEL, buildCalendarItems, buildCalendarRail, dayKey, dayKeyOf, groupByDay,
+  monthLabel, monthWeeks, publishAtForDay, shiftMonth, type CalendarItem,
 } from '../../lib/calendarItems'
 import {
   ClientRpcError, setScheduleDateAt, STAGE_LABEL, type ContentDraft,
   type ScheduledQueueRow,
 } from '../../lib/content'
+import { scheduleDraft } from '../../lib/studioActions'
 import { useConfirm } from '../../components/ConfirmSheet'
 import { SectionHead } from './Surface'
 import { typeLabel } from './fmt'
@@ -39,8 +40,16 @@ import type { OpenDraft } from './ContentList'
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 type Moving = { id: string; title: string; at: string | null; day: string }
-/** A chip mid-drag. `day` is where it started, so a drop on its own day is a no-op. */
-type Dragging = { id: string; title: string; at: string; day: string }
+/**
+ * A chip mid-drag. `day` is where it started, so a drop on its own day is a
+ * no-op.
+ *
+ * A RAIL ROW DRAGS TOO, and it is the cheaper half of the fix: a rail row has
+ * no date and therefore no day it came from, so `day` is `''`, which no day key
+ * ever equals and every drop is therefore a real move. `at` is null for the
+ * same reason, and publishAtForDay already defaults an undated row to 09:00.
+ */
+type Dragging = { id: string; title: string; at: string | null; day: string }
 
 // No `lane` prop any more, and its absence is the change: every rule this
 // surface had that forked on the lane belonged to the arming RPC, and the
@@ -92,7 +101,13 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
   }, [items, inMonth, rows])
 
   const monthItems = useMemo(() => items.filter(i => inMonth.has(i.day)), [items, inMonth])
-  const monthCount = monthItems.length
+  // 🔴 THE MONTH COUNT USED TO BE ONE NUMBER, `N dated this month`, and that
+  // number is the lie in figure form: it counts a review row carrying a date
+  // alongside a row a publisher actually holds. Split in words, because six of
+  // the eight dated client rows live are planned and none of them go out.
+  const monthArmed = monthItems.filter(i => i.arming === 'armed').length
+  const monthPlanned = monthItems.filter(i => i.arming === 'planned').length
+  const monthOut = monthItems.filter(i => i.arming === 'out').length
   // Named separately because they behave differently — no open, no move — and a
   // reader who cannot see WHY a chip is inert reads it as a broken chip.
   const monthQueueOnly = monthItems.filter(i => i.source === 'queue').length
@@ -134,6 +149,42 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
     if (await move(moving.id, moving.at, moving.day)) setMoving(null)
   }
 
+  // ARMING, on the chip, and it is the ONE write on this surface with a public
+  // consequence. Measured before this: draft to armed post cost 5 interactions
+  // and a full-screen takeover, because Schedule sits behind a `setMore`
+  // disclosure in the draft window (DraftPane.tsx). It now costs 2 from a chip
+  // that already carries a date, which is the whole step the drag was missing.
+  //
+  // 🔴 IT KEEPS ITS CONFIRM, ALWAYS, and the confirm names the day AND the time
+  // it will fire. There is no bulk path, no drag gesture, and no quiet version:
+  // this is the write that puts a post in front of the public, and the cost
+  // that was worth removing was the takeover, never the deliberation.
+  //
+  // 🔴 It writes status='scheduled' + scheduled_at, which is NOT what the date
+  // move writes. The move's own confirm still says "Status and board visibility
+  // stay as they are" and that sentence stays exactly true, because these are
+  // two different writes with two different confirms.
+  const arm = async (it: CalendarItem) => {
+    setErr(null); setDone(null)
+    const ok = await confirm({
+      title: 'Put this post on LinkedIn?',
+      message: `The publisher reads status='scheduled' and posts it at ${absStamp(it.at)}. `
+        + 'This is not an internal mark: it arms the bridge that publishes.',
+      confirmText: 'Arm it',
+    })
+    if (!ok) return
+    setBusy(true)
+    try {
+      await scheduleDraft(it.id, it.at)
+      setDone(`Armed for ${absStamp(it.at)}.`)
+      refresh()
+    } catch (e) {
+      setErr(e instanceof ClientRpcError || e instanceof Error ? e.message : 'Arming failed.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   // DROP. Guarded three ways before it can write: something must be in flight,
   // the target day must differ from where the chip started, and the row must
   // still be movable (only movable chips are given draggable in the first
@@ -166,10 +217,21 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
           >Today</button>
         </div>
         {/* ONE WORD PER NUMBER, the strip's own rule — this is the month, not
-            the lane and not the pipeline. The second figure appears only when
-            there is one: on a month whose posts all have drafts behind them,
-            the distinction is noise. */}
-        <span className="cal-count"><b>{monthCount}</b><span>dated this month</span></span>
+            the lane and not the pipeline. Armed and planned are ALWAYS both
+            drawn, including at zero: a month reading `0 armed` beside `6
+            planned` is the whole point, and hiding the zero would leave the
+            same six rows reading as coverage. Posted and queue-only appear only
+            when there is one, because those two are not the distinction this
+            bar exists to make. */}
+        <span className="cal-count" title="Armed = a publisher holds it: the draft is at Scheduled, or the chip is a publish-queue row.">
+          <b>{monthArmed}</b><span>armed</span>
+        </span>
+        <span className="cal-count cal-count-n" title="Planned = it carries a date and nothing publishes it. The bridge reads status='scheduled'; a row at Needs review will not go out on the day it is drawn on.">
+          <b>{monthPlanned}</b><span>planned</span>
+        </span>
+        {monthOut > 0 && (
+          <span className="cal-count cal-count-n"><b>{monthOut}</b><span>posted</span></span>
+        )}
         {monthQueueOnly > 0 && (
           <span
             className="cal-count cal-count-q"
@@ -210,8 +272,10 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
                       <Chip
                         key={it.id} it={it}
                         dragging={drag?.id === it.id}
+                        busy={busy}
                         onOpen={() => onOpen(it.id, it.title, walk)}
                         onMove={() => startMove(it.id, it.title, it.at)}
+                        onArm={() => { void arm(it) }}
                         onDragStart={() => setDrag({ id: it.id, title: it.title, at: it.at, day: k })}
                         onDragEnd={() => { setDrag(null); setOver(null) }}
                       />
@@ -223,38 +287,63 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
           ))}
         </div>
 
+        {/* THE RAIL, and it holds up to 54 rows on a client lane now instead of
+            the zero it was filtered to. Three things make that scannable rather
+            than a wall: it is ordered oldest first (buildCalendarRail), every
+            row prints how long it has been waiting, and the list is its own
+            scroll region so it can never push the grid off the screen.
+
+            🔴 EVERY ROW HERE HAS A WORKING CONTROL, by construction: the rail's
+            own predicate IS canMoveDate, which is the same function that
+            decides whether the button is drawn. The old `cal-note` explaining
+            the rows that had no button is gone with the status they described,
+            because that set is now provably empty (calendarItems.test.ts). The
+            `r.movable` guard stays as the cheap belt on the braces. */}
         <div className="cal-rail">
-          <SectionHead title="Ready, no date" count={rail.length} />
+          <SectionHead title="No date yet" count={rail.length} />
           {rail.length === 0 ? (
-            <div className="cal-rail-e">Nothing approved is sitting without a date.</div>
+            <div className="cal-rail-e">Nothing is waiting for a date.</div>
           ) : (
-            rail.map(r => (
-              <div className="cal-rr" key={r.id}>
-                <button
-                  type="button" className="cal-rr-t"
-                  onClick={() => onOpen(r.id, r.title, rows.filter(x => rail.some(y => y.id === x.id)))}
+            <>
+            {/* Under the head, not inside it: the head is a content-hugging
+                pill and a sentence in its tail squeezes the title and shoves
+                the count to the far edge. */}
+            <div className="cal-rail-h">Oldest first. Drag one onto a day.</div>
+            <div className="cal-rail-l">
+              {rail.map(r => (
+                <div
+                  className={`cal-rr${drag?.id === r.id ? ' cal-rr-drag' : ''}`} key={r.id}
+                  draggable={r.movable}
+                  onDragStart={r.movable ? (e => {
+                    e.dataTransfer.effectAllowed = 'move'
+                    e.dataTransfer.setData('text/plain', r.id)
+                    // day '' is not a day key, so drop() treats every cell as a
+                    // real target rather than as the day it came from.
+                    setDrag({ id: r.id, title: r.title, at: null, day: '' })
+                  }) : undefined}
+                  onDragEnd={r.movable ? (() => { setDrag(null); setOver(null) }) : undefined}
                 >
-                  <span className="cal-rr-n">{r.title}</span>
-                  <span className="cal-rr-m">{typeLabel(r.type)}</span>
-                </button>
-                {r.movable && (
                   <button
-                    type="button" className="cal-mv" onClick={() => startMove(r.id, r.title, null)}
-                  >Give it a date</button>
-                )}
-              </div>
-            ))
-          )}
-          {rail.some(r => !r.movable) && (
-            // The honest version of a missing button, kept for the one row the
-            // new RPC still refuses. `status not in ('review','scheduled')` is
-            // its whole guard, so an approved-but-undated row cannot be given a
-            // date here — and it says which rule, rather than just omitting the
-            // control and letting the omission look like an oversight.
-            <div className="cal-note">
-              Some of these have no <b>Give it a date</b> button: the date RPC takes a draft at
-              Needs review or Scheduled only (<code>bad_status</code>), and these are approved.
+                    type="button" className="cal-rr-t"
+                    onClick={() => onOpen(r.id, r.title, rows.filter(x => rail.some(y => y.id === x.id)))}
+                  >
+                    <span className="cal-rr-n">{r.title}</span>
+                    <span className="cal-rr-m">
+                      {typeLabel(r.type)}
+                      <span className="cal-rr-age" title={`Created ${absDay(r.createdAt)}`}>
+                        {waitedFor(r.createdAt)}
+                      </span>
+                    </span>
+                  </button>
+                  {r.movable && (
+                    <button
+                      type="button" className="cal-mv" onClick={() => startMove(r.id, r.title, null)}
+                    >Give it a date</button>
+                  )}
+                </div>
+              ))}
             </div>
+            </>
           )}
         </div>
       </div>
@@ -306,11 +395,13 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
  * explanation reads as a bug and this one is the opposite: it is the post the
  * calendar used to hide.
  */
-function Chip({ it, dragging, onOpen, onMove, onDragStart, onDragEnd }: {
+function Chip({ it, dragging, busy, onOpen, onMove, onArm, onDragStart, onDragEnd }: {
   it: CalendarItem
   dragging: boolean
+  busy: boolean
   onOpen: () => void
   onMove: () => void
+  onArm: () => void
   onDragStart: () => void
   onDragEnd: () => void
 }) {
@@ -331,9 +422,21 @@ function Chip({ it, dragging, onOpen, onMove, onDragStart, onDragEnd }: {
   const outOfSync = it.plannedAt
     ? ` · ⚠ the publish queue fires this at ${hhmm(it.at)}; the draft still says ${hhmm(it.plannedAt)}`
     : ''
+  // ARMED OR PLANNED, IN A WORD, on the chip's own face. A date alone says
+  // nothing about whether anything will publish this, and six live client rows
+  // are dated review rows that will not. `published` is left to the ✓ and the
+  // tooltip on purpose: at a 112px cell `08:14 Posted` truncates, which is the
+  // same measurement the ✓ exists because of, and a chip that already carries
+  // a tick and a real posted time is not the one that reads ambiguously.
+  const armWord = it.arming === 'out' ? null : ARMING_LABEL[it.arming]
+  const armTip = it.arming === 'planned'
+    ? ' · Planned: it carries a date and nothing publishes it. The bridge reads status=\'scheduled\'.'
+    : it.arming === 'armed'
+      ? ' · Armed: a publisher holds this one.'
+      : ''
   const tip = posted
     ? `Posted ${hhmm(posted)}${drifted ? ` (was set for ${hhmm(it.at)})` : ''} · ${it.title} — ${STAGE_LABEL[it.stage]}${origin}`
-    : `${hhmm(it.at)} · ${it.title} — ${STAGE_LABEL[it.stage]}${it.movable ? ' · drag to another day' : ''}${origin}${outOfSync}`
+    : `${hhmm(it.at)} · ${it.title} — ${STAGE_LABEL[it.stage]}${armTip}${it.movable ? ' · drag to another day' : ''}${origin}${outOfSync}`
   const face = (
     <>
       {/* The tick, not the word "posted": measured at a 112px cell, `08:14
@@ -342,6 +445,7 @@ function Chip({ it, dragging, onOpen, onMove, onDragStart, onDragEnd }: {
       <span className="cal-chip-h">
         {posted && <span className="cal-chip-out" aria-hidden>✓</span>}
         <span className="cal-chip-hh">{clock}</span>
+        {armWord && <span className="cal-chip-arm">{armWord}</span>}
         {fromQueue && <span className="cal-chip-q" aria-hidden>⇢</span>}
         {it.plannedAt && <span className="cal-chip-drift" aria-hidden>⚠</span>}
       </span>
@@ -353,18 +457,41 @@ function Chip({ it, dragging, onOpen, onMove, onDragStart, onDragEnd }: {
       className={`cal-chip${it.movable ? '' : ' cal-chip-lock'}${dragging ? ' cal-chip-drag' : ''}${fromQueue ? ' cal-chip-queue' : ''}`}
       data-st={it.stage}
       data-src={it.source}
+      // 🔴 SEPARATE FROM data-st, and it has to be: `review` is one status and
+      // two meanings on this grid (undated it is a queue row, dated it is a
+      // false promise), so the fact a restyle needs to reach is the arming
+      // state, not the stage. Phase 3 owns how these look; this attribute and
+      // the word above are the semantics, and neither has to be undone to
+      // restyle them.
+      data-arm={it.arming}
       draggable={it.movable}
       onDragStart={it.movable ? (e => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', it.id); onDragStart() }) : undefined}
       onDragEnd={it.movable ? onDragEnd : undefined}
     >
-      {fromQueue ? (
-        <span className="cal-chip-t cal-chip-t-static" title={tip}>{face}</span>
-      ) : (
-        <button type="button" className="cal-chip-t" onClick={onOpen} title={tip}>{face}</button>
-      )}
-      {it.movable && (
-        <button type="button" className="cal-chip-mv" onClick={onMove} title="Move to another day" aria-label={`Move ${it.title} to another day`}>
-          ⇄
+      <div className="cal-chip-row">
+        {fromQueue ? (
+          <span className="cal-chip-t cal-chip-t-static" title={tip}>{face}</span>
+        ) : (
+          <button type="button" className="cal-chip-t" onClick={onOpen} title={tip}>{face}</button>
+        )}
+        {it.movable && (
+          <button type="button" className="cal-chip-mv" onClick={onMove} title="Move to another day" aria-label={`Move ${it.title} to another day`}>
+            ⇄
+          </button>
+        )}
+      </div>
+      {/* THE ARM STEP, and it exists only on the rows that need it: a planned
+          chip on Ivan's lane. It is a full-width row under the chip rather than
+          a second corner icon because the corner already holds ⇄ and a 112px
+          cell cannot carry two of them without clipping the clock. It confirms
+          every time, and the confirm names the day and the time. */}
+      {it.armable && (
+        <button
+          type="button" className="cal-chip-armb" disabled={busy} onClick={onArm}
+          title={`Hand this to the publisher for ${absStamp(it.at)}. It confirms first.`}
+          aria-label={`Arm ${it.title} for ${absStamp(it.at)}`}
+        >
+          Arm it
         </button>
       )}
     </div>
@@ -385,4 +512,36 @@ function hhmm(iso: string): string {
 function longDay(k: string): string {
   const [y, m, d] = k.split('-').map(Number)
   return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+}
+
+/**
+ * HOW LONG THIS ROW HAS BEEN WAITING, in the shortest honest form.
+ *
+ * The rail is a backlog now, and a backlog with no age on it sorts silently:
+ * the reason the oldest row is 35 days old is that nothing on any surface ever
+ * said it was. Same unit the ops rows already use, so a day is a day here and
+ * there.
+ */
+export function waitedFor(iso: string, now: number = Date.now()): string {
+  const t = Date.parse(iso)
+  if (!Number.isFinite(t)) return ''
+  const days = Math.floor((now - t) / 86_400_000)
+  if (days < 1) return 'today'
+  return `${days}d`
+}
+
+function absDay(iso: string): string {
+  const t = Date.parse(iso)
+  if (!Number.isFinite(t)) return 'an unreadable date'
+  return new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+/** The full stamp an arming confirm has to name: the day AND the time it fires. */
+function absStamp(iso: string): string {
+  const t = Date.parse(iso)
+  if (!Number.isFinite(t)) return iso
+  return new Date(t).toLocaleString(undefined, {
+    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
 }

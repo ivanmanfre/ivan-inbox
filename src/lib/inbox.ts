@@ -348,19 +348,25 @@ function isRealReply(m: InboxMessage): boolean {
     && !DECLINE.test(text) && !SIGNOFF.test(text)
 }
 
-export function needsAnswer(t: Thread, now: number = Date.now()): boolean {
-  if (CLOSED_STAGES.has(t.stage)) return false
+// The core "does this thread owe a reply" test, with no staleness cutoff.
+// Extracted so needsAnswer (the badge/list predicate, which DOES cut off at
+// STALE_DAYS so the badge does not ring forever on something that will never
+// be answered) and unansweredWaitSince (Today's work queue, which wants
+// exactly the old ones the badge hides) share one definition of "waiting" and
+// cannot drift apart. Returns the inbound message's own timestamp, the
+// moment the wait began, or null when the thread does not owe a reply at all.
+function unansweredSince(t: Thread): string | null {
+  if (CLOSED_STAGES.has(t.stage)) return null
   // PUSHING A DRAFT IS AN ANSWER TO "does this need a reply TODAY" — the same
   // move as the discard rule below, with a return date on it. Ivan read the
   // thread, the person said they were travelling, and he said "not yet". A
   // thread that kept ringing the badge after that would be the app arguing with
   // him. It rings again the moment the push expires, and instantly if they
   // write back (which voids draftSnoozedUntil in groupThreads).
-  if (t.draftSnoozedUntil !== null) return false
+  if (t.draftSnoozedUntil !== null) return null
   const lastInbound = t.messages.filter(m => m.direction === 'inbound' && isRealReply(m))
     .map(eventTime).sort().at(-1) ?? null
-  if (lastInbound === null) return false
-  if (now - Date.parse(lastInbound) > STALE_DAYS * 86_400_000) return false
+  if (lastInbound === null) return null
   // DISCARDING A DRAFT IS AN ANSWER TO THE QUESTION "does this need a reply".
   // Gabriel Amarazeanu (2026-08-03): Mattan replied on LinkedIn by hand and
   // binned the drafted reply, so the thread's newest outbound row is a discard
@@ -370,11 +376,26 @@ export function needsAnswer(t: Thread, now: number = Date.now()): boolean {
   const discarded = t.messages
     .filter(m => m.direction === 'outbound' && !m.sent_at && m.send_blocked_reason === DISCARD_REASON)
     .map(eventTime).sort().at(-1) ?? null
-  if (discarded !== null && discarded > lastInbound) return false
+  if (discarded !== null && discarded > lastInbound) return null
   const lastSent = t.messages
     .filter(m => m.direction === 'outbound' && m.sent_at)
     .map(m => m.sent_at!).sort().at(-1) ?? null
-  return lastSent === null || lastSent <= lastInbound
+  return (lastSent === null || lastSent <= lastInbound) ? lastInbound : null
+}
+
+export function needsAnswer(t: Thread, now: number = Date.now()): boolean {
+  const since = unansweredSince(t)
+  return since !== null && now - Date.parse(since) <= STALE_DAYS * 86_400_000
+}
+
+// Same "does this owe a reply" test as needsAnswer, but with no STALE_DAYS
+// cutoff. Today's work queue (workQueue.ts) wants exactly the threads
+// needsAnswer stops counting past 14 days, because those are the oldest and
+// most neglected ones in the whole app (median 22.9 days, oldest 133.6 days,
+// measured usage-evidence.md 2.7). Returns when the wait started, or null
+// when the thread does not owe a reply.
+export function unansweredWaitSince(t: Thread): string | null {
+  return unansweredSince(t)
 }
 
 // What is genuinely waiting on Ivan, as non-overlapping buckets (each thread
