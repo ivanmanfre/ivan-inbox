@@ -696,3 +696,18 @@
 /* Collapsed rail: the numeral only, centred under the avatar row. */
 .wb.wb.wb .wb-rail.min .wb-rollup{ margin:0 auto }
 .wb.wb.wb .wb-rail.min .wb-rollup-n{ font-size:13px }
+
+/* ---- 8.3 THE LANE COUNT, ABOVE THE TABS ----------------------------------
+   Same grammar as the stage tab count one row below it (faithful.css:4206):
+   data face, meta size, --text3 resting and --text2 on the selected pill. Two
+   count vocabularies in two adjacent rows would read as two different kinds of
+   number, and they are the same kind. The pill's own gap is 0, so the numeral
+   takes its own left margin rather than moving the label. */
+.wb.wb.wb .ct-cmd-lane-n{
+  margin-left:6px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:var(--fs-meta); font-weight:500; letter-spacing:-.01em;
+  line-height:1; color:var(--text3);
+  font-variant-numeric:tabular-nums;
+}
+.wb.wb.wb .ct-cmd-lane.on .ct-cmd-lane-n{ color:var(--text2) }
