@@ -31,7 +31,11 @@
      1. One step, never zero. A child that must read as an object on its parent
         moves exactly one level up. Same level is banned where a relationship is
         intended. Two levels means it floats and it had better actually float.
-     2. Shadow is only for overlap. --e4 is the only level that may carry one.
+     2. Shadow may never be the PRIMARY depth cue, and it is capped at 12%
+        alpha. The lightness step always does the work; a soft shadow may sit
+        on top of it. (Revised mid-run from "shadow is for overlap only", which
+        was too absolute: Wispr Flow, the app Ivan named, puts 0 2px 8px at 8%
+        under a resting card. See §7's shadow block.)
      3. Hairlines divide, they do not elevate. A border is no longer allowed to
         be the only thing separating two surfaces.
 
@@ -60,9 +64,10 @@
   --hairline:rgba(255,255,255,.07);
   --hairline-strong:rgba(255,255,255,.14);
 
-  /* The ONE shadow in the system, and it exists only because an overlay covers
-     content it does not belong to (Geist's materials rule). */
-  --e4-shadow:0 12px 32px rgba(0,0,0,.44), 0 2px 8px rgba(0,0,0,.32);
+  /* The overlay shadow. Defined as an alias so there is exactly one place in
+     the app where an overlay's depth is set, and so the 12% alpha cap declared
+     in §7's shadow block is the only value anything can pick up. */
+  --e4-shadow:var(--sh-over);
   /* Raised-without-a-shadow: a single 1px interior top inset, never a stack. */
   --e-inset:inset 0 1px 0 rgba(255,255,255,.10);
 
@@ -110,7 +115,6 @@
   --e4:#FFFFFF;
   --hairline:rgba(0,0,0,.09);
   --hairline-strong:rgba(0,0,0,.18);
-  --e4-shadow:0 12px 32px rgba(0,0,0,.14), 0 2px 8px rgba(0,0,0,.10);
   --e-inset:inset 0 1px 0 rgba(255,255,255,.55);
   /* The aliases are RESTATED here and not inherited. faithful.css:161 declares
      the light palette at `:root[data-theme='light'] .wb` (specificity 0-2-1),
@@ -142,6 +146,13 @@
    --surface3 keeps the values faithful.css already gives it (#353533 dark,
    #E3E3E0 light), which in dark sit within dL 0.002 of --e4 anyway.
    --------------------------------------------------------------------------- */
+
+/* KEEP THE BALLOT ARM CHEAP. Wispr's dark theme uses a warm off-white ink
+   #deddd7 on a LIFTED #1a1a1a ground rather than near-white on near-black, and
+   the orchestrator holds that as a ballot arm. Nothing in this file hardcodes a
+   ground or an ink: every surface reads --e0..--e4 and every label reads
+   --text/--text2/--text3, so testing that arm later is a five-line override of
+   this one token block and nothing else has to move. */
 
 /* The plate itself is the ground, and after the alias it already resolves to
    --e0 through --canvas. Restated so the ladder owns it explicitly rather than
@@ -205,13 +216,60 @@
    Never `all`, never a layout property: width/height/top force a reflow every
    frame. The tokens are namespaced --wbs-* so they cannot collide with
    faithful.css:99's --dur-hover / --dur-state / --dur-beat, which stay live for
-   everything already reading them. */
+   everything already reading them.
+
+   THE RULE, from the Wispr Flow extraction (evidence/wispr-calibration.md):
+   colour changes get a plain short ease, and anything that MOVES gets the
+   spring. Wispr does not animate everything, it animates motion, and that is
+   the whole of what "smooth" turned out to be. Do not spring a background
+   colour: a front-loaded spring on a fill reads as a flicker, not as weight. */
 .wb{
   --wbs-dur-ctl:120ms;       /* a control changing fill or label colour */
-  --wbs-dur-overlay:160ms;   /* palette, popover, menu, sheet */
+  --wbs-dur-overlay:260ms;   /* palette, popover, menu, sheet — these MOVE */
   --wbs-dur-commit:200ms;    /* a row acknowledging the action it just took */
   --wbs-ease-ctl:ease-out;
-  --wbs-ease-overlay:cubic-bezier(.2,.8,.2,1);
+
+  /* FALLBACK FIRST. `linear()` is Chrome 113+, Safari 17.2+, Firefox 112+, and
+     an older engine treats the whole declaration as invalid and drops the
+     transition to `ease`, losing the duration with it. So --spring is declared
+     as a cubic-bezier approximation here and upgraded to the sampled curve
+     inside @supports below, which is the only construction where both engines
+     get a deliberate value rather than one getting a browser default. */
+  --spring:cubic-bezier(.16,1,.3,1);
+  --wbs-ease-overlay:var(--spring);
+}
+/* The measured Wispr curve, verbatim from its shipped bundle
+   (`--spring-easing`, referenced 300+ times). A real sampled spring: 48% of the
+   distance is covered in the first 13.5% of the duration, then it settles with
+   no overshoot. A cubic-bezier cannot make this shape. Pure CSS, no library, so
+   the three-dependency limit is untouched. */
+@supports (transition-timing-function:linear(0,1)){
+  .wb{
+    --spring:linear(
+      0, 0.005, 0.019 1.8%, 0.079 3.9%, 0.476 13.5%, 0.663 19.1%, 0.738 22%,
+      0.8 25.1%, 0.852 28.4%, 0.894 32%, 0.928 36%, 0.953 40.5%, 0.972 45.6%,
+      0.985 51.6%, 0.997 67.3%, 1
+    );
+  }
+}
+
+/* ---- SHADOW, and the rule as revised ------------------------------------
+   The first cut of this file carried the original rule, "shadow is for overlap
+   only, a resting card never gets one". That was too absolute: Wispr, which
+   Ivan named, puts 0 2px 8px rgba(0,0,0,.08) under a resting card. The rule
+   now reads:
+
+     A shadow may never be the PRIMARY depth cue. The lightness step always
+     does the work. A soft shadow may sit on top of it, capped at 12% alpha.
+
+   The cap is the part that matters here: the plate sits on --ground #C5E1A5,
+   and anything heavier than 12% bleeds onto the pistachio, which is the 2013
+   artefact this phase exists to remove. What stays banned is a hard bevel, or
+   a border, doing the job a colour step should do. */
+.wb{
+  --sh-card:0 2px 8px rgba(0,0,0,.08);   /* a resting card, ON TOP of its step */
+  --sh-drag:0 2px 8px rgba(0,0,0,.12);   /* the thing currently under the cursor */
+  --sh-over:0 10px 24px rgba(0,0,0,.12); /* --e4 only: it covers what it does not own */
 }
 
 /* ========================================================================== */
@@ -532,14 +590,40 @@
    belongs at --e1, not at the same level as the anchor holding it. */
 .wb.wb.wb .ct-thumb{ background:var(--e1) }
 
-/* ---- 6.5 RULE 2, ENFORCED ON THE ONE ELEMENT THAT BREAKS IT --------------
+/* ---- 6.5 THE PLATE SHADOW, CAPPED RATHER THAN DELETED --------------------
    faithful.css:386 gives .wb-plate `box-shadow:0 24px 60px -20px rgba(0,0,0,.5)`
-   and the plate sits directly on --ground #C5E1A5. A drop shadow bleeding onto
-   the pistachio is named in phase1-system §1 as exactly the 2013 artefact the
-   ladder replaces, and the plate overlaps no content it does not own, so under
-   rule 2 it may not carry one. The frame's GEOMETRY (--plate-r, --plate-gap) is
-   a ballot arm and is not touched here; only the shadow goes. */
-.wb.wb.wb .wb-plate{ box-shadow:none }
+   and the plate sits directly on --ground #C5E1A5. Fifty percent alpha is four
+   times the cap, and that is what bleeds onto the pistachio.
+
+   Under the ORIGINAL rule 2 this shadow was deleted outright, because the plate
+   overlaps no content it does not own. Under the REVISED rule it is allowed to
+   exist at 12%, sitting on top of a lightness step that is already enormous
+   (--e0 #0C0C0B against --ground #C5E1A5), so it is capped instead of removed.
+   The frame's GEOMETRY (--plate-r, --plate-gap) is a ballot arm and is not
+   touched here; only the alpha moves. */
+.wb.wb.wb .wb-plate{ box-shadow:var(--sh-over) }
+
+/* ---- 6.6 RESTING CARDS TAKE THE SOFT SHADOW ------------------------------
+   ON TOP of the step they already have, never instead of it. Deliberately NOT
+   applied to .cal-day: forty-two shadowed cells in a grid is texture, not
+   depth, and the cell's step plus its hairline already carry it. */
+.wb.wb.wb .dd-card,
+.wb.wb.wb .td-card,
+.wb.wb.wb .td-tile,
+.wb.wb.wb .td-lanes,
+.wb.wb.wb .td-mast{ box-shadow:var(--sh-card) }
+/* The nested card keeps its own step and gets no second shadow: two stacked
+   shadows is the stack rule 2 bans. */
+.wb.wb.wb .dd-card .dd-card{ box-shadow:none }
+
+/* ---- 6.7 DRAG ------------------------------------------------------------
+   faithful.css:3766 signals a live calendar drag with `opacity:.4` and nothing
+   else, so the thing under the cursor gets quieter rather than picked up.
+   Wispr ships a distinct heavier shadow for exactly this state. The opacity
+   drop stays (the browser's own drag ghost is what moves), the shadow is added
+   so the origin still reads as lifted. */
+.wb.wb.wb .cal-chip-drag{ box-shadow:var(--sh-drag) }
+.wb.wb.wb .cal-chip[draggable='true']:active{ box-shadow:var(--sh-drag) }
 
 /* Found by re-running the worklist AFTER 6.3, not before: .td-zh is grouped
    with .wb-sech in faithful.css:655 but, unlike the others, it sits INSIDE a
