@@ -561,10 +561,13 @@ export function ChatPane({ chat, job, about, aboutContext, subjects = [], onClos
         </div>
       )}
 
-      {/* The context card. On desktop it labels a pane the operator can also see;
-          on mobile it is the ONLY surviving half of the pair, so it is tappable
-          and flips back to the item. */}
-      {about && (
+      {/* The context card, now MOBILE ONLY. On desktop the strip below says the
+          same thing and more (it also says what travels and lets him remove
+          it), so keeping both meant naming the same person twice in two
+          registers, one of them shouted. On mobile the card survives because it
+          is not a label there: it is the only half of the pair still on screen,
+          and tapping it flips back to the conversation. */}
+      {about && mobile && (
         <div
           className={`wb-about-card${onOpenAbout ? ' tap' : ''}`}
           onClick={onOpenAbout ?? undefined}

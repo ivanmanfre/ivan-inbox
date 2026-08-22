@@ -80,7 +80,7 @@ function FindRows({ find, cursorAt, base, onHover, onPick }: {
   return (
     <div className="wb-cmdk-grp">
       <div className="wb-cmdk-grph wb-find-h">
-        <span>In {laneName(find.lane)}</span>
+        <span>Anything you have written, in</span>
         <span className="wb-find-lanes">
           {CONTENT_LANES.map(l => (
             <button
