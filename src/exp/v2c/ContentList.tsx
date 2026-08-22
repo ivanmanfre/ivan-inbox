@@ -702,7 +702,12 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
   // that already reflects the choice you have not made yet is a moving target.
   const facets = buildFacets(drafts, specs)
   const { prominent, demoted } = splitFacets(facets, DRAFT_PROMINENT)
-  const shown = applySearch(applyFilters(drafts, specs, filters), q, d => [d.title, d.topic])
+  // post_body is ALREADY selected (content.ts COLS) and was already in memory;
+  // leaving it out of the search meant "where is that draft about margins"
+  // found 1 of the 5 drafts that say margin on Ivan's lane (GET probe
+  // 2026-08-22, evidence/ai-tools/tenancy-probe.md §3). It is a substring scan
+  // over rows that are already here, so it costs no fetch and no round trip.
+  const shown = applySearch(applyFilters(drafts, specs, filters), q, d => [d.title, d.topic, d.post_body])
   const shownStages = groupByStage(shown)
   const ideasHidden = draftFacetsActive(filters, q)
 
@@ -911,7 +916,12 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
   // board pill would be a second control for a distinction the page structure
   // already draws — it stays available in the disclosure.
   const { prominent, demoted } = splitFacets(facets, DRAFT_PROMINENT)
-  const shown = applySearch(applyFilters(drafts, specs, filters), q, d => [d.title, d.topic])
+  // post_body is ALREADY selected (content.ts COLS) and was already in memory;
+  // leaving it out of the search meant "where is that draft about margins"
+  // found 1 of the 5 drafts that say margin on Ivan's lane (GET probe
+  // 2026-08-22, evidence/ai-tools/tenancy-probe.md §3). It is a substring scan
+  // over rows that are already here, so it costs no fetch and no round trip.
+  const shown = applySearch(applyFilters(drafts, specs, filters), q, d => [d.title, d.topic, d.post_body])
 
   // No alarm band here either (2026-08-07). This lane never needed a rehoming
   // pass for it: it already renders EVERY stage — `error` and `stuck` included —
