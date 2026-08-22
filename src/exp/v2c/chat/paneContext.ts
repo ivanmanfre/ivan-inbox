@@ -20,7 +20,21 @@
 // no request, so attaching context can never cost a round trip and can never
 // cost a model call.
 
+import { label } from '../../../lib/labels'
+
+// One more rule, added after the label purge landed on wb/polish: the block is
+// PRINTED to Ivan behind the "show me what travels" toggle, so it is rendered
+// UI and obeys the same law the rest of the app now obeys. No raw column
+// names, no SCREAMING_SNAKE verdict codes, no bare row ids. States go through
+// lib/labels, lanes arrive already named by the caller, and an id is carried in
+// the short form the cards already print.
+
 export type SeeKind = 'lane' | 'thread' | 'draft' | 'selection'
+
+/** The short id every card in this app prints, and the only form that travels. */
+export function shortId(id: string): string {
+  return id.length > 8 ? id.slice(0, 8) : id
+}
 
 /** One thing on screen the pane may carry. */
 export type Subject = {
@@ -136,7 +150,6 @@ export type ThreadLike = {
   prospect_id: string
   prospect_name: string
   prospect_company?: string | null
-  client_id: string
   stage?: string
   channel?: string
   messages: { direction?: string | null; created_at?: string | null; message_text?: string | null }[]
@@ -146,7 +159,7 @@ export type ThreadLike = {
 const THREAD_MSGS = 12
 const MSG_CHARS = 700
 
-export function threadSubject(t: ThreadLike, now = Date.now()): Subject {
+export function threadSubject(t: ThreadLike, laneLabel: string, now = Date.now()): Subject {
   const inbound = [...t.messages].reverse().find(m => m.direction === 'inbound')
   const last = t.messages[t.messages.length - 1]
   const waiting = inbound && last && last.direction === 'inbound' && inbound.created_at
@@ -155,7 +168,7 @@ export function threadSubject(t: ThreadLike, now = Date.now()): Subject {
   const bits = [
     `Open conversation with ${t.prospect_name}`,
     t.prospect_company ? `at ${t.prospect_company}` : null,
-    `(lane ${t.client_id}, prospect id ${t.prospect_id}${t.channel ? `, ${t.channel}` : ''}${t.stage ? `, stage ${t.stage}` : ''}).`,
+    `(${laneLabel}, ${shortId(t.prospect_id)}${t.channel ? `, ${label(t.channel)}` : ''}${t.stage ? `, ${label(t.stage)}` : ''}).`,
     `${t.messages.length} messages.`,
     waiting !== null ? `They replied last and have been waiting ${waiting} days.` : 'He replied last.',
     t.hasPendingDraft ? 'A reply draft is waiting for his approval.' : null,
@@ -180,7 +193,6 @@ export type DraftLike = {
   title?: string | null
   topic?: string | null
   status?: string | null
-  client_id?: string | null
   type?: string | null
   scheduled_at?: string | null
   updated_at?: string | null
@@ -191,14 +203,13 @@ export type DraftLike = {
 
 const BODY_CHARS = 4000
 
-export function draftSubject(d: DraftLike, now = Date.now()): Subject {
-  const lane = d.client_id ?? 'ivan'
+export function draftSubject(d: DraftLike, laneLabel: string, now = Date.now()): Subject {
   const bits = [
     `Open draft "${clip(d.title || d.topic || 'untitled', 120)}"`,
-    `(id ${d.id}, lane ${lane}${d.type ? `, ${d.type}` : ''}, status ${d.status ?? 'unknown'}).`,
+    `(${shortId(d.id)}, ${laneLabel}${d.type ? `, ${label(d.type)}` : ''}, ${d.status ? label(d.status) : 'state unknown'}).`,
     d.updated_at ? `Last changed ${daysSince(d.updated_at, now)} days ago.` : null,
     d.scheduled_at ? `Carries a date of ${d.scheduled_at.slice(0, 10)}.` : 'Has no date.',
-    d.qa_verdict ? `The quality check said ${d.qa_verdict}${d.qa_score != null ? ` at ${d.qa_score}` : ''}.` : null,
+    d.qa_verdict ? `The quality check said ${label(d.qa_verdict)}${d.qa_score != null ? ` at ${d.qa_score}` : ''}.` : null,
     d.post_body ? null : 'The row holds no text at all.',
   ].filter(Boolean)
   return {
@@ -211,7 +222,14 @@ export function draftSubject(d: DraftLike, now = Date.now()): Subject {
   }
 }
 
+/** `lane` arrives already NAMED (LANE_LABEL), never as the database value. */
 export type SelectedLike = { id: string; kind: string; label: string; lane?: string }
+
+const KIND_NOUN: Record<string, [string, string]> = {
+  draft: ['draft', 'drafts'],
+  magnet: ['lead magnet', 'lead magnets'],
+  thread: ['conversation', 'conversations'],
+}
 
 const SEL_NAMED = 25
 
@@ -224,9 +242,12 @@ export function selectionSubject(rows: SelectedLike[]): Subject | null {
   if (rows.length === 0) return null
   const kinds = new Map<string, number>()
   for (const r of rows) kinds.set(r.kind, (kinds.get(r.kind) ?? 0) + 1)
-  const shape = [...kinds.entries()].map(([k, n]) => `${n} ${k}${n === 1 ? '' : 's'}`).join(' and ')
+  const shape = [...kinds.entries()].map(([k, n]) => {
+    const nouns = KIND_NOUN[k] ?? [k, `${k}s`]
+    return `${n} ${n === 1 ? nouns[0] : nouns[1]}`
+  }).join(' and ')
   const named = rows.slice(0, SEL_NAMED)
-  const list = named.map(r => `${r.label} (${r.id}${r.lane ? `, lane ${r.lane}` : ''})`).join('; ')
+  const list = named.map(r => `${r.label} (${shortId(r.id)}${r.lane ? `, ${r.lane}` : ''})`).join('; ')
   const more = rows.length > named.length ? ` and ${rows.length - named.length} more` : ''
   return {
     key: 'selection',

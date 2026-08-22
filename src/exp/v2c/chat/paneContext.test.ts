@@ -10,7 +10,6 @@ const THREAD = {
   prospect_id: 'p1',
   prospect_name: 'Bill Laurienti',
   prospect_company: 'Northstar',
-  client_id: 'ivan',
   channel: 'linkedin',
   stage: 'replied',
   messages: [
@@ -24,7 +23,6 @@ const DRAFT = {
   id: '2694b514',
   title: 'The margin question nobody asks',
   status: 'error',
-  client_id: null,
   type: 'post',
   updated_at: '2026-08-16T12:00:00Z',
   scheduled_at: null,
@@ -35,7 +33,7 @@ const DRAFT = {
 
 describe('the shallow form never carries a body', () => {
   it('a thread summary names the person and counts the messages, and quotes neither', () => {
-    const s = threadSubject(THREAD, NOW)
+    const s = threadSubject(THREAD, 'Ivan', NOW)
     expect(s.label).toBe('Bill Laurienti')
     expect(s.summary).toContain('Bill Laurienti')
     expect(s.summary).toContain('2 messages')
@@ -45,20 +43,25 @@ describe('the shallow form never carries a body', () => {
   })
 
   it('a draft summary carries the state and the verdict, not the post', () => {
-    const s = draftSubject(DRAFT, NOW)
-    expect(s.summary).toContain('status error')
-    expect(s.summary).toContain('QA_BLOCKED')
+    const s = draftSubject(DRAFT, 'Ivan', NOW)
+    expect(s.summary).toContain('Error')
+    // The label purge's law reaches the block too: the pane PRINTS this text
+    // behind the "show me" toggle, so a raw verdict code here would be the
+    // same defect the purge closed everywhere else.
+    expect(s.summary).not.toContain('QA_BLOCKED')
+    expect(s.summary).toContain('Blocked by QA')
     expect(s.summary).toContain('Has no date')
     expect(leakedBodies(s, [DRAFT.post_body])).toEqual([])
   })
 
   it('a selection carries ids and labels and has no deep form at all', () => {
     const s = selectionSubject([
-      { id: 'a', kind: 'draft', label: 'One', lane: 'risedtc' },
-      { id: 'b', kind: 'draft', label: 'Two', lane: 'risedtc' },
+      { id: 'a', kind: 'draft', label: 'One', lane: 'Mattan Danino' },
+      { id: 'b', kind: 'draft', label: 'Two', lane: 'Mattan Danino' },
     ])!
     expect(s.label).toBe('2 picked')
     expect(s.summary).toContain('2 drafts selected')
+    expect(s.summary).toContain('Mattan Danino')
     expect(s.summary).toContain('no text')
     expect(s.full).toBeUndefined()
   })
@@ -70,9 +73,9 @@ describe('the shallow form never carries a body', () => {
 
 describe('the block that travels', () => {
   const subjects = [
-    laneSubject('DMs', "Ivan's lane"),
-    threadSubject(THREAD, NOW),
-    draftSubject(DRAFT, NOW),
+    laneSubject('DMs', 'Ivan’s lane'),
+    threadSubject(THREAD, 'Ivan', NOW),
+    draftSubject(DRAFT, 'Ivan', NOW),
   ]
 
   it('is undefined when nothing is attached, so an off pane sends no context at all', () => {
@@ -108,7 +111,7 @@ describe('the block that travels', () => {
 })
 
 describe('the strip says what is true', () => {
-  const subjects = [laneSubject('Content', "Mattan's lane"), draftSubject(DRAFT, NOW)]
+  const subjects = [laneSubject('Content', 'Mattan’s lane'), draftSubject(DRAFT, 'Ivan', NOW)]
 
   it('names the count and the depth', () => {
     expect(seeLine(subjects, EMPTY_SEE)).toBe('Claude can see 2 things, names and states only')

@@ -8,7 +8,7 @@ import { useInbox } from '../../hooks/useInbox'
 import { useOps } from '../../hooks/useOps'
 import { pendingOps } from '../../lib/ops'
 import { inboxWaitingCount, type Filter, type Status } from '../../lib/inbox'
-import type { ContentDraft, ContentLane } from '../../lib/content'
+import { LANE_LABEL, type ContentDraft, type ContentLane } from '../../lib/content'
 import type { Resource } from '../../lib/styles'
 
 // The list row -> queue row projection. Only what the window's rail draws: no
@@ -47,6 +47,7 @@ import { MagnetWindow } from './MagnetWindow'
 import { ThreadPeer } from './ThreadPeer'
 import { DmsSurface } from './DmsSurface'
 import { ChatPane } from './ChatPane'
+import { draftSubject, laneSubject, threadSubject, type Subject } from './chat/paneContext'
 import { OpsBoard } from './OpsBoard'
 import { Failed, relAge } from './Surface'
 import { useChat } from './useChat'
@@ -54,7 +55,7 @@ import { useContentBadge } from './useContentBadge'
 import { hasMock } from './mock'
 import { parseWbHash, wbHash } from './route'
 import {
-  addPeer, contextPeer, dropPeer, hasChat, jobHasList, peerKey,
+  JOB_LABEL, addPeer, contextPeer, dropPeer, hasChat, jobHasList, peerKey,
   planWorkbench, type Canvas, type Job, type Peer,
 } from './layout'
 import './styles.css'
@@ -213,6 +214,40 @@ export default function Shell() {
   // draft-flavoured context label went with the draft peer.
   const aboutLabel = ctx ? ctxThread?.prospect_name ?? ctx.label ?? 'this thread' : null
   const aboutContext = aboutLabel
+
+  // ---- what the Claude pane is allowed to see (chat/paneContext.ts) ----
+  //
+  // Built HERE because this is the only place that holds all three answers at
+  // once: which screen and lane he is on, which conversation is docked beside
+  // the pane, and which row the reading window has open. Every one of these is
+  // data already fetched for the screen, so attaching context opens no request.
+  //
+  // The OPEN DRAFT is attached shallow only. Shell holds the queue row (title,
+  // state, dates), not the post itself, which lives in the window's own detail
+  // fetch. So the draft chip offers no "full text" switch, and the pane says
+  // the text was not attached rather than implying it was.
+  const openQueueRow = openItem?.queue.find(q => q.id === openItem.id) ?? null
+  const seeSubjects = useMemo<Subject[]>(() => {
+    const laneName = job === 'dms'
+      ? (filter === 'all' ? 'all lanes' : LANE_LABEL[filter as ContentLane] ?? filter)
+      : LANE_LABEL[lane] ?? lane
+    const out: Subject[] = [laneSubject(JOB_LABEL[job], laneName)]
+    if (ctxThread) {
+      out.push(threadSubject({
+        prospect_id: ctxThread.prospect_id,
+        prospect_name: ctxThread.prospect_name,
+        prospect_company: ctxThread.prospect_company,
+        channel: ctxThread.channel,
+        stage: ctxThread.stage,
+        messages: ctxThread.messages,
+        hasPendingDraft: ctxThread.draft != null && ctxThread.draftSnoozedUntil === null,
+      }, LANE_LABEL[ctxThread.client_id as ContentLane] ?? ctxThread.client_id))
+    }
+    if (openQueueRow) {
+      out.push(draftSubject(openQueueRow, LANE_LABEL[lane] ?? lane))
+    }
+    return out
+  }, [job, lane, filter, ctxThread, openQueueRow])
 
   // ---- Fork 2 is DECIDED: Ivan voted TRIAD (2026-08-02, "color i want tried"). ----
   // Triad is the boot default — absence of any signal means triad. Mono stays
@@ -451,6 +486,7 @@ export default function Shell() {
           job={job}
           about={aboutLabel}
           aboutContext={aboutContext}
+          subjects={seeSubjects}
           onClose={() => closePeer('chat')}
           // Mobile only: no third region, so the pair degrades to a tappable
           // context card that flips focus back to the item.
