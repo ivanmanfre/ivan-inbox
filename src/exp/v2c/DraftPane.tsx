@@ -1321,8 +1321,22 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
           </div>
         )}
         </div>
+        </div>
 
-        {/* While the editor is open every one of these would leave the row —
+        {/* 🔴 GRAFT 4 (dw-tournament.md, graft list item 4). The bar used to be
+            the stage card's own welded footer. It is a DOCK now: a separate
+            resting object at the artifact's measure, on the well's ground, with
+            the rounded contained shape the losing candidate got right and the
+            shadow NEITHER candidate had.
+
+            The shadow is the point. In light mode `--e2` is #FFFFFF, so a bar
+            welded to a white artifact card had no boundary of any kind: two
+            elevated materials nested with nothing between them. It takes
+            `--sh-card` (0 2px 8px at 8% alpha), which wispr-calibration.md §3
+            licenses at up to 12% for exactly this case, ON TOP of the lightness
+            step against the `--e1` well rather than instead of it.
+
+            While the editor is open every one of these would leave the row:
             approving, skipping or walking to the next draft all discard unsaved
             words with no prompt. The keyboard already refuses (the `editing`
             bail in the handler); the buttons have to refuse too, or the guard is
@@ -1445,7 +1459,6 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
             </div>
           )}
           {editing && <span className="dw-hint">Save or cancel the edit first</span>}
-        </div>
         </div>
       </div>
     </div>
