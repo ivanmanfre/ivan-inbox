@@ -7,9 +7,10 @@
 // are a local fixture, not Ivan's calendar.
 //
 // HOW. The GET on `carousel_drafts` is intercepted, the real response body is
-// fetched, and `scheduled_at` on a handful of rows is rewritten so two of them
-// land on one day and four on another. Nothing is written anywhere: this is a
-// READ rewritten in flight, in one browser, for one screenshot.
+// fetched, and five synthetic rows are APPENDED to it: two on one day, three on
+// another. Every one of them is titled "Fixture:" on its face. Nothing is
+// written anywhere: this is a READ rewritten in flight, in one browser, for one
+// screenshot.
 //
 // The write interceptor is installed BEFORE any navigation, as always, and it
 // covers POST /rest/v1/rpc/ as well, which the standard pattern lets through.
@@ -35,13 +36,16 @@ let unauthorized = []
 const now = new Date()
 const Y = now.getFullYear(), M = now.getMonth()
 const iso = (d, h, mi) => new Date(Y, M, d, h, mi).toISOString()
-// A day with EXACTLY TWO, and a day with FOUR so the cap and the "+2" both draw.
+// A day with EXACTLY TWO, so both chips must render, and a day with THREE, so
+// the cap bites and the "+1" has to carry the third.
 const TWO_DAY = 6
 const MANY_DAY = 19
 const PLAN = [
-  { d: TWO_DAY, h: 9, m: 0 }, { d: TWO_DAY, h: 17, m: 30 },
-  { d: MANY_DAY, h: 8, m: 0 }, { d: MANY_DAY, h: 11, m: 15 },
-  { d: MANY_DAY, h: 14, m: 0 }, { d: MANY_DAY, h: 18, m: 45 },
+  { d: TWO_DAY, h: 9, m: 0, t: 'Fixture: the morning post' },
+  { d: TWO_DAY, h: 17, m: 30, t: 'Fixture: the second one, same day' },
+  { d: MANY_DAY, h: 8, m: 0, t: 'Fixture: first of three' },
+  { d: MANY_DAY, h: 11, m: 15, t: 'Fixture: second of three' },
+  { d: MANY_DAY, h: 14, m: 0, t: 'Fixture: the one behind the plus one' },
 ]
 
 export async function fixturePage(browser, { width, height, theme = 'dark', frame = '' }) {
@@ -71,26 +75,40 @@ export async function fixturePage(browser, { width, height, theme = 'dark', fram
       let body
       try { body = await res.json() } catch { return r.fulfill({ response: res }) }
       if (Array.isArray(body)) {
-        // Only rows the calendar was ALREADY DRAWING are moved. Picking any
-        // dated row would have picked one from another month, or one the lane
-        // filters drop before it reaches the grid, and the fixture would have
-        // looked like it silently failed. These are this month's own posts,
-        // relocated onto two days.
+        // 🔴 THE FIXTURE APPENDS ROWS, IT NO LONGER RELOCATES THEM, and the
+        // two failed attempts before this one are the reason.
         //
-        // 🔴 PARSED, NOT PREFIX-MATCHED. The first cut of this filter tested
-        // `scheduled_at.startsWith('2026-08')` and found 5 rows on a month the
-        // grid was drawing 13 of. `scheduled_at` comes back as UTC, so a post
-        // at 00:30 local on the 1st is stored as the previous month, and a
-        // string compare drops it. The grid buckets by LOCAL day (dayKeyOf),
-        // so the fixture has to as well or it disagrees with the thing it is
-        // supposed to be measuring.
-        const here = body.filter(x => {
-          const t = x && x.scheduled_at ? Date.parse(x.scheduled_at) : NaN
-          if (!Number.isFinite(t)) return false
-          const d = new Date(t)
-          return d.getFullYear() === Y && d.getMonth() === M
+        // Attempt 1 rewrote `scheduled_at` on rows matched by
+        // `startsWith('2026-08')`. That found 5 rows on a month the grid was
+        // drawing 13 of, because `scheduled_at` comes back as UTC and the grid
+        // buckets by LOCAL day.
+        //
+        // Attempt 2 parsed the dates properly and moved `published_at` too,
+        // because calendarItems.ts:143 places a published chip by the day it
+        // actually went out. That produced one three-post day and no two-post
+        // day, because which rows SURVIVE into the grid depends on stage, on
+        // the queue dedup, and on the lane filters, none of which the response
+        // body can be read for.
+        //
+        // Relocating real rows means the fixture cannot know what it produced
+        // until it looks. Appending rows means it does. Five synthetic drafts
+        // are added, shaped exactly like a real one and marked in their titles
+        // as fixture rows, so the screenshot cannot be mistaken for Ivan's
+        // month: two on one day and three on another, giving the two cases
+        // this phase has to show and nothing else.
+        const shape = body.find(x => x && x.scheduled_at) ?? {}
+        PLAN.forEach((p, i) => {
+          body.push({
+            ...shape,
+            id: `fixture-${i}`,
+            title: p.t,
+            topic: null,
+            status: 'scheduled',
+            scheduled_at: iso(p.d, p.h, p.m),
+            published_at: null,
+            source_post_id: null,
+          })
         })
-        PLAN.forEach((p, i) => { if (here[i]) here[i].scheduled_at = iso(p.d, p.h, p.m) })
       }
       return r.fulfill({
         status: res.status(),
