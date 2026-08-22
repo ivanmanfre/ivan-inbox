@@ -112,9 +112,86 @@ function Row({ g, onDismiss }: { g: AlertGroup; onDismiss: (ids: string[]) => vo
   )
 }
 
-export function SystemAlertStrip() {
+// How much this strip opens by itself, and whether the reader's collapse is
+// allowed to win. Two behaviours travel under one prop because they are one
+// decision: a strip that force-opens every group on any critical CANNOT also
+// honour a collapse, which is exactly the defect below.
+//
+//   'all'      the pre-existing behaviour, kept verbatim for #exp/stock: one
+//              critical opens every group, and the bar cannot close them.
+//   'critical' the workbench: only the CRITICAL groups open on sight, warnings
+//              wait behind the summary line, and a collapse sticks until a
+//              critical the reader has not already seen arrives.
+export type AlertAutoOpen = 'all' | 'critical'
+
+// What the READER last asked of the strip, and what they had already seen when
+// they asked it. `choice` is null until they touch the bar at all; `acked`
+// holds the keys of the critical groups that were on screen at the moment they
+// collapsed.
+//
+// This is a STATE MACHINE and it is written as one, because the defect it
+// replaces was the same machine written as `open || anyCritical`: one boolean
+// expression that has no way to represent "the reader closed this", so the
+// control did nothing for as long as any critical existed. Kept pure and
+// exported so the transitions can be driven by a test instead of a browser.
+export type AlertStripState = {
+  choice: 'all' | 'collapsed' | null
+  acked: string[]
+  // 'all' mode's original flag, untouched, so #exp/stock keeps the exact
+  // behaviour it shipped with.
+  open: boolean
+}
+
+export const INITIAL_STRIP_STATE: AlertStripState = { choice: null, acked: [], open: false }
+
+// A group's key is its FAILURE SHAPE (severity + source + digit-stripped
+// body), so "a critical the reader has not seen" means a critical whose shape
+// is new. A second store failing the same check the reader already collapsed
+// is the same alert, not a new one, and must not re-open the strip over them.
+function criticalKeysOf(groups: AlertGroup[]): string[] {
+  return groups.filter(g => g.severity === 'critical').map(g => g.key)
+}
+
+// Which groups render, and whether that is all of them.
+//
+// 'all' is the pre-existing branch, unchanged: one critical opens everything.
+// 'critical' opens ONLY the critical groups on sight. The warnings behind
+// them wait at the summary line. The safety property is intact (a critical
+// still opens without a click); what is gone is the blast radius, which on
+// 2026-08-22 was 1485px of alerts on a work area 780px tall.
+export function alertStripView(
+  groups: AlertGroup[], autoOpen: AlertAutoOpen, s: AlertStripState,
+): { visible: AlertGroup[]; allShown: boolean } {
+  const criticalKeys = criticalKeysOf(groups)
+  const visible = autoOpen === 'all'
+    ? ((s.open || criticalKeys.length > 0) ? groups : [])
+    // The reader's own choice is read FIRST, which is the whole fix: a
+    // collapse is state, not a term in an expression something else can
+    // override.
+    : s.choice === 'all' ? groups
+    : criticalKeys.some(k => !s.acked.includes(k)) ? groups.filter(g => g.severity === 'critical')
+    : []
+  // The chevron answers "is there more than this", not "is anything showing".
+  // in 'critical' mode some groups render while the warnings stay behind the
+  // bar, and that state has to read as more-to-come, not as fully open.
+  return { visible, allShown: visible.length > 0 && visible.length === groups.length }
+}
+
+// One press of the bar.
+export function toggleAlertStrip(
+  groups: AlertGroup[], autoOpen: AlertAutoOpen, s: AlertStripState,
+): AlertStripState {
+  const { allShown } = alertStripView(groups, autoOpen, s)
+  if (autoOpen === 'all') return { ...s, open: !(s.open || criticalKeysOf(groups).length > 0) }
+  // Acking the criticals currently on screen is what lets a collapse stick
+  // without deafening the reader to the next NEW one.
+  if (allShown) return { ...s, choice: 'collapsed', acked: criticalKeysOf(groups) }
+  return { ...s, choice: 'all' }
+}
+
+export function SystemAlertStrip({ autoOpen = 'all' }: { autoOpen?: AlertAutoOpen } = {}) {
   const [rows, setRows] = useState<SystemAlert[]>([])
-  const [open, setOpen] = useState(false)
+  const [strip, setStrip] = useState<AlertStripState>(INITIAL_STRIP_STATE)
 
   const load = useCallback(() => {
     fetchSystemAlerts()
@@ -148,18 +225,24 @@ export function SystemAlertStrip() {
   }, [load])
 
   if (groups.length === 0) return null
+
   // Anything critical opens on sight. A silent grant expiry is not a thing to
-  // make someone click for.
-  const isOpen = open || groups.some(g => g.severity === 'critical')
+  // make someone click for, and that intent is intact. What changed is the
+  // blast radius: opening the critical groups no longer opens the nineteen
+  // warnings behind them.
+  const { visible, allShown } = alertStripView(groups, autoOpen, strip)
 
   return (
     <div className="sa">
-      <button type="button" className="sa-bar" onClick={() => setOpen(!isOpen)}>
+      <button
+        type="button" className="sa-bar"
+        onClick={() => setStrip(cur => toggleAlertStrip(groups, autoOpen, cur))}
+      >
         <span className="sa-n">{groups.length}</span>
         <span className="sa-sum">{alertSummary(members)}</span>
-        <span className="sa-chev">{isOpen ? '⌄' : '›'}</span>
+        <span className="sa-chev">{allShown ? '⌄' : '›'}</span>
       </button>
-      {isOpen && groups.map(g => <Row key={g.key} g={g} onDismiss={dismiss} />)}
+      {visible.map(g => <Row key={g.key} g={g} onDismiss={dismiss} />)}
     </div>
   )
 }
