@@ -291,3 +291,106 @@
   .wb.wb.wb .cal-chip-h{ padding-right:0 }
   .wb.wb.wb .cal-chip:hover .cal-chip-h{ padding-right:0 }
 }
+
+
+/* ==========================================================================
+   3 · THE STAGE VOCABULARY: shape first, colour second, the word where it fits
+   ========================================================================== */
+
+/* WHAT HAS TO SURVIVE AT 32px. Five stages (review, approved, scheduled,
+   published, stuck), plus a queue-only variant drawn with a dashed rail, plus
+   a drift warning. Then polish/p4a landed a SIXTH axis on the same object:
+   `data-arm` (armed / planned / out), because a `review` row with a date does
+   not publish and was reading as coverage it is not.
+
+   That is a lot of meaning for a small thing, and the merged build shows what
+   it costs. `10:00 ARMED` on the 24th collides with the corner control and
+   clips, because the word takes roughly 45px of a 93px content width and the
+   TITLE is what tells you which post it is.
+
+   🔴 THE CALL, MADE DELIBERATELY: at grid size the arming word becomes a
+   GLYPH, and the word is restored in three places where it has room.
+
+     - The glyph carries the distinction by SHAPE, not by hue: filled means
+       something holds this post, hollow means it has a date and nothing
+       behind it. Colour is the second cue and never the only one, which is
+       both the accessibility rule and the reason a rail hue alone was never
+       enough.
+     - The word survives in the popover (§4), in the chip's accessible name,
+       and in the month count in the bar, which already reads
+       "1 armed  0 planned  12 posted".
+     - Below 767px the chip is 342px wide and the word costs nothing, so the
+       word STAYS there. That is a CSS decision on the same DOM, not a
+       viewport read in JS.
+
+   Google Calendar's Material 3 pass is the same move: an icon inside a chip of
+   fixed size, rather than extra chrome or extra height, and category moved out
+   of size and into colour-plus-icon. Amie is the counter-example that does not
+   transfer: it separates a day's events by rotating through a 15-step hue
+   system, and this app is locked to one accent, so shape has to do the work
+   hue does there.
+
+   WHY A PSEUDO-ELEMENT AND NOT A SPAN. `polish/p4a` owns the chip's JSX and is
+   still moving. A `::before` on .cal-chip-h keyed off the attributes that
+   branch already sets means the two merge without touching the same lines. It
+   is decorative by construction, which is correct here: it is a REDUNDANT
+   encoding of something the accessible name already says in words. */
+
+.wb.wb.wb .cal-chip-h::before{
+  content:'\25CF';               /* filled: armed, something will publish it */
+  flex:none;
+  font-size:9px; line-height:12px;
+  color:var(--text4);
+}
+.wb.wb.wb .cal-chip[data-arm='planned'] .cal-chip-h::before{
+  content:'\25CB';               /* hollow: a date, and nothing behind it */
+  color:var(--sev-attention);
+}
+/* ARMED AND LATE is not planned, and p4a is right that calling it planned
+   would say nobody was going to publish it. It is the filled mark with the
+   severity it has earned, in a third shape so it is not read as either. */
+.wb.wb.wb .cal-chip[data-st='stuck'] .cal-chip-h::before{
+  content:'\25B2';
+  color:var(--sev-urgent,var(--sev-attention));
+}
+/* PUBLISHED already draws a ✓ in .cal-chip-out, and two marks on a 93px line
+   is one mark too many. The tick IS the glyph for this state. */
+.wb.wb.wb .cal-chip[data-st='published'] .cal-chip-h::before{ content:none }
+.wb.wb.wb .cal-chip[data-arm='out'] .cal-chip-h::before{ content:none }
+
+/* The stage rail keeps its hue and keeps its dashes. It is not the only cue
+   any more (the fill step is §1, the glyph is here), which is the whole point:
+   nothing on this chip is encoded by hue alone. */
+.wb.wb.wb .cal-chip[data-arm='planned']{ border-left-style:dotted }
+
+/* THE WORD, WITHDRAWN AT GRID SIZE ONLY. Not deleted: it is in the popover, in
+   the aria-label, and in the count in the bar. */
+@media (min-width:768px){
+  .wb.wb.wb .cal-chip-arm{ display:none }
+}
+@media (max-width:767px){
+  /* 342px of chip. The word costs nothing here, so it stays, and the glyph
+     sits in front of it saying the same thing twice on purpose. */
+  .wb.wb.wb .cal-chip-arm{ font-size:var(--fs-eyebrow); line-height:12px }
+}
+
+/* ---- the cell floor follows the chip ------------------------------------- */
+
+/* A CONSEQUENCE OF §2 THAT WOULD OTHERWISE BE A REGRESSION. The cell floor was
+   set at 122px so two chips and a "+N" always fit. On a sparse month that
+   leaves a 32px chip in a 122px cell and the grid reads emptier than the one
+   Ivan complained about, which is the wrong trade for a man whose actual words
+   were that something was taking space from him.
+
+   The floor is the EMPTY case, not the full one. A .cal-day is a flex column
+   inside a grid row that sizes to its tallest cell, so a day with more in it
+   grows and takes its week with it. So the floor drops to what one chip needs
+   and the busy cases grow into the room:
+
+     1 chip   12 + 16 + 3 + 32                     =  63, floor 86 with air
+     2 chips  + 3 + 32                             =  98
+     2 + "+N" + 3 + 18                             = 119
+
+   Six rows at the old floor cost 732px of month. At 86 a sparse month costs
+   516 and a busy one still gets its 119px cells where it needs them. */
+.wb{ --cal-cell-h:86px }
