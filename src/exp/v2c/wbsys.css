@@ -758,3 +758,37 @@
 .wb.wb.wb .snip-note::before{
   content:'✳ '; font-style:normal; color:var(--accent);
 }
+
+/* ==========================================================================
+   9. CROSS-OBJECT SEARCH, INSIDE THE PALETTE
+   ==========================================================================
+   Item 3 of the AI pass, and the one that is not an AI feature at all. It
+   reuses the palette's own row geometry so a database row and a command read
+   as the same kind of object, and adds exactly two things: the lane it is
+   searching, and a badge saying which surface each result came from.
+
+   Three .wb classes throughout. */
+
+.wb.wb.wb .wb-find-h{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+}
+.wb.wb.wb .wb-find-lanes{ display:inline-flex; gap:4px }
+.wb.wb.wb .wb-find-lane{
+  height:20px; padding:0 8px;
+  border:none; border-radius:var(--r-xs);
+  background:transparent; color:var(--text3);
+  font-size:11px; line-height:1; font-weight:450;
+  text-transform:none; letter-spacing:0;
+  cursor:pointer;
+  transition:background-color 120ms ease, color 120ms ease;
+}
+.wb.wb.wb .wb-find-lane:hover{ background:var(--e3); color:var(--text1) }
+.wb.wb.wb .wb-find-lane.on{ background:rgba(197,225,165,.14); color:var(--text1) }
+
+/* The badge is where a command row prints its shortcut, so the column keeps a
+   single meaning: what this row is, or how to run it. */
+.wb.wb.wb .wb-find-badge{
+  color:var(--text3);
+  font-size:11px; line-height:1;
+  white-space:nowrap;
+}
