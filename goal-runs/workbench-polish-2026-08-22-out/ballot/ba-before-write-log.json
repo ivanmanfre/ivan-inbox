@@ -1,0 +1,9 @@
+{
+ "genuineMutationAttempts": 0,
+ "mutations": [],
+ "rpcPostsToKnownReadFunctions": 1,
+ "readRpcDistinct": [
+  "inbox_governor"
+ ],
+ "unauthorized401": 0
+}

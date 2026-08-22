@@ -1,0 +1,194 @@
+{
+ "rendered": {
+  "rollup": 117,
+  "rollupNote": "DMs 10 + Content 95 + Magnets 12. This is the rail's counts added up and nothing else: it does not cover ideas, sends, or automation health.",
+  "rail": {
+   "Today": 0,
+   "DMs": 10,
+   "Content": 95,
+   "Magnets": 12,
+   "Styles": 0,
+   "Strategy": 0,
+   "Sends": 0,
+   "Ops": 0,
+   "Claude": 0,
+   "Workflows": 19,
+   "Settings": 0
+  },
+  "lanes": {
+   "Ivan": 2,
+   "Mattan Danino": 54,
+   "Davorin Smit": 39,
+   "Flow": 0,
+   "Calendar": 0
+  },
+  "tabs": {
+   "Ideas": 90,
+   "Needs review": 2,
+   "Generating": 0,
+   "Approved": 0,
+   "Scheduled": 1,
+   "Published": 113,
+   "Errors": 48,
+   "Archived": 88,
+   "Other": 3
+  },
+  "contentNote": "Content: drafts at review, every lane. Ivan 2 · Mattan Danino 54 · Davorin Smit 39"
+ },
+ "style": {
+  ".wb-rollup-n": {
+   "fontSize": "15px",
+   "fontWeight": "700",
+   "color": "rgb(255, 255, 255)",
+   "letterSpacing": "-0.15px"
+  },
+  ".wb-rollup-l": {
+   "fontSize": "12px",
+   "fontWeight": "500",
+   "color": "rgb(148, 148, 148)",
+   "textTransform": "none"
+  },
+  ".ct-cmd-lane-n": {
+   "fontSize": "13px",
+   "fontWeight": "500",
+   "color": "rgb(199, 199, 199)",
+   "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace"
+  },
+  ".wb-rj-health .wb-rj-ic": {
+   "color": "rgb(255, 159, 10)"
+  },
+  ".wb-rj-health .wb-rj-n": {
+   "color": "rgb(255, 159, 10)",
+   "backgroundColor": "rgba(255, 159, 10, 0.18)"
+  }
+ },
+ "collapsed": {
+  "visiblePips": 4,
+  "visibleNumerals": 0,
+  "pipBox": {
+   "w": "6px",
+   "h": "6px",
+   "bg": "rgb(148, 148, 148)"
+  },
+  "rollupVisible": true,
+  "rollupText": "117"
+ },
+ "ops": {
+  "heads": [
+   "Content pipeline",
+   "Automations"
+  ],
+  "found": true,
+  "n": 19,
+  "rows": [
+   {
+    "name": "GITHUB BACKUPS",
+    "why": "last run errored 6h ago"
+   },
+   {
+    "name": "Carousel Generation",
+    "why": "last run errored 2d ago"
+   },
+   {
+    "name": "LM Curator - Competitor Gate Watcher",
+    "why": "past its schedule, last ran 2d ago"
+   },
+   {
+    "name": "LM Curator - Slack Ingestor",
+    "why": "errored and past its schedule, last ran 4d ago"
+   },
+   {
+    "name": "Signal Clusters — Weekly",
+    "why": "errored and past its schedule, last ran 5d ago"
+   },
+   {
+    "name": "Competitor Alert Monitor",
+    "why": "past its schedule, last ran 7d ago"
+   },
+   {
+    "name": "n8nClaw - Reminder Scheduler",
+    "why": "errored and past its schedule, last ran 8d ago"
+   },
+   {
+    "name": "Ops Drafts → Slack",
+    "why": "errored and past its schedule, last ran 8d ago"
+   },
+   {
+    "name": "Slack Channel Notifier",
+    "why": "errored and past its schedule, last ran 8d ago"
+   },
+   {
+    "name": "Post Generation",
+    "why": "last run errored 8d ago"
+   },
+   {
+    "name": "CLIENT Rise DTC - Post Generation API-FALLBACK",
+    "why": "last run errored 9d ago"
+   },
+   {
+    "name": "Outreach - Seat Health Guard",
+    "why": "past its schedule, last ran 9d ago"
+   },
+   {
+    "name": "Lead Pipeline",
+    "why": "errored and past its schedule, last ran 9d ago"
+   },
+   {
+    "name": "Outreach - RISE LinkedIn Booking → WhatsApp Alert",
+    "why": "past its schedule, last ran 9d ago"
+   },
+   {
+    "name": "Outreach - IVAN Open-Profile Message Sender",
+    "why": "past its schedule, last ran 10d ago"
+   },
+   {
+    "name": "Rise DTC — Client Slack Channel",
+    "why": "past its schedule, last ran 10d ago"
+   },
+   {
+    "name": "Scheduled Checks — WhatsApp Reminder",
+    "why": "past its schedule, last ran 10d ago"
+   },
+   {
+    "name": "Outreach - DM Sequence",
+    "why": "past its schedule, last ran 10d ago"
+   },
+   {
+    "name": "Skill Prune Pass",
+    "why": "past its schedule, last ran 12d ago"
+   }
+  ],
+  "tail": "37 more last ran over two weeks ago and are not counted above.",
+  "style": {
+   ".wb-auto-n": {
+    "fontSize": "13px",
+    "fontWeight": "600",
+    "color": "rgb(199, 199, 199)"
+   },
+   ".wb-auto-w": {
+    "fontSize": "12px",
+    "fontWeight": "400",
+    "color": "rgb(148, 148, 148)"
+   }
+  }
+ },
+ "mobile": {
+  "rollup": null,
+  "rollupTransform": null,
+  "health": "19",
+  "healthStyle": {
+   "fontSize": "12px",
+   "color": "rgb(255, 159, 10)",
+   "textTransform": "none"
+  },
+  "workSegment": {
+   "Content": 95,
+   "Magnets": 12,
+   "Styles": 0,
+   "Strategy": 0
+  }
+ },
+ "writes": 0,
+ "writeList": [],
+ "errors": []
+}

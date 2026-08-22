@@ -8,7 +8,8 @@ import {
   CONTENT_LANES, ERROR_ALARM_HOURS, LANE_LABEL, LANE_POSSESSIVE, PIPELINE_STAGES,
   STAGE_LABEL, STAGE_SHORT, boardGroupOf, clientStageLabel,
   countBoardVisible, countUndated, deleteClientDraft, deleteDraft, draftExcerpt,
-  draftFailureReason, elapsedMinutes, generatingSince, groupByStage, isRecentError, isStuckGenerating,
+  canPromote, draftFailure, elapsedMinutes, generatingSince, groupByStage, isRecentError,
+  isStuckGenerating, setBoardVisible,
   reviewActionable, stageOf, taxonomyValue,
   type BoardGroup, type ContentDraft, type ContentLane, type ContentStage, type ContentStages,
 } from '../../lib/content'
@@ -21,6 +22,7 @@ import { useSectionState } from '../../hooks/useSectionState'
 import { draftFacetsActive } from './contentIdeas'
 import { useConfirm } from '../../components/ConfirmSheet'
 import { ReviewActions } from './ReviewActions'
+import { RetryDraft } from './RetryDraft'
 import { FilteredEmpty } from './ContentBits'
 import { FilterRow } from './FilterRow'
 import { RowSelect } from './RowSelect'
@@ -128,6 +130,63 @@ function RowDelete({ d, lane, onDone }: { d: ContentDraft; lane: ContentLane; on
   )
 }
 
+// PROMOTE, ON THE ROW (p4b).
+//
+// 93 of the 95 drafts sitting in review are on a client lane, where
+// `reviewActionable` is false by construction, so the row offered nothing and
+// the only way to put one in front of the client was through the takeover:
+// click the row, scroll it, click "Put on Mattan's board", confirm. Four
+// interactions and a full-screen takeover, 93 times.
+//
+// This is the SAME `setBoardVisible` write the takeover makes, with the same
+// consequence stated in the same words, reached from the row. The takeover's
+// own control is untouched.
+//
+// 🔴 It is not a status write and it is not an approve. `approveDraft` is
+// scoped to Ivan's lane, and pointing it at a client row would set
+// status='approved', which is the one value operator_set_board_visible refuses
+// (`not_in_review`), locking the draft off the client's board for good.
+function PromoteRow({ d, lane, onDone }: { d: ContentDraft; lane: ContentLane; onDone: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const confirm = useConfirm()
+  if (!canPromote(d.status, lane)) return null
+  const who = LANE_LABEL[lane]
+  const run = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const ok = await confirm({
+      title: `Put this on ${LANE_POSSESSIVE[lane]} board?`,
+      message:
+        `${who} sees it. This is the one action here that reaches a client, and it fires his board’s own `
+        + `sync, so it lands within moments and not at some later batch. From there the decisions are his: `
+        + `approve, edit, veto, schedule. Nothing publishes: this writes board visibility and never touches `
+        + `the publisher.`,
+      confirmText: 'Put it on his board',
+    })
+    if (!ok) return
+    setBusy(true); setErr('')
+    try {
+      await setBoardVisible(d.id, true)
+      onDone()
+    } catch (er) {
+      // ClientRpcError carries the database's own refusal code, so the row says
+      // WHICH rule refused rather than "something went wrong".
+      setErr(er instanceof Error ? er.message : 'Could not put it on the board')
+      setBusy(false)
+    }
+  }
+  return (
+    <>
+      {err && <div className="ops-err">{err}</div>}
+      <div className="ct-ac" onClick={e => e.stopPropagation()}>
+        <button type="button" className="btn p ct-promote" disabled={busy} onClick={run}>
+          {busy ? 'Putting it up…' : 'To board'}
+        </button>
+      </div>
+    </>
+  )
+}
+
 function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
   d: ContentDraft; lane: ContentLane; refresh: () => void
   onOpen: OpenDraft; active: boolean
@@ -168,13 +227,15 @@ function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
   const pillar = taxonomyValue(d.taxonomy, 'pillar')
   const funnel = d.funnel_stage?.trim() || null
   const excerpt = glance ? draftExcerpt(d.post_body) : null
-  // ERRORS TAB, THE REASON COLUMN (phase2). The QA chip above is a verdict
-  // CODE (QA_BLOCKED, LINT_FAIL) at best and a bare dash at worst, and
-  // neither answers "why did this fail" on its own. This line does, on every errored
-  // row: taxonomy.error_message first (the pipeline's own account), the
-  // labelled qa_verdict as a fallback, and an honest sentence rather than a
-  // dash when the row carries neither.
-  const reason = stage === 'error' ? draftFailureReason(d) : null
+  // ERRORS TAB, THE REASON COLUMN (phase2, corrected p4b). The QA chip above is
+  // a verdict CODE (QA_BLOCKED, LINT_FAIL) at best and a bare dash at worst, and
+  // neither answers "why did this fail" on its own. This line does, on every
+  // errored row, and it now reads the TERMINAL agent_log entry rather than the
+  // stamp: measured over all 55 live error rows, the old order printed a
+  // watchdog stall the log denies on 28 of them and echoed the QA chip's own
+  // verdict back at the reader on 21 more. `kind` is what separates the 13 rows
+  // whose pipeline demonstrably finished from the 6 that genuinely stalled.
+  const failure = stage === 'error' ? draftFailure(d) : null
   // WHAT A BULK ACTION MAY DO TO THIS ROW. Declared here because this is the
   // only place that knows the row's status, its lane and whether it sits on a
   // client board; the bulk bar never infers a capability. Both rules are the
@@ -184,6 +245,13 @@ function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
   // board.
   const caps: RowCap[] = [
     ...(reviewActionable(d.status, lane) ? (['approve', 'skip'] as RowCap[]) : []),
+    // p4b. The measured defect: for a client review row this list evaluated to
+    // ['delete'] and nothing else, so selecting all 54 of Mattan's review rows
+    // offered exactly one bulk button and it was the destructive one. `canPromote`
+    // is the RPC's OWN predicate (lane is not Ivan's, status is 'review'), read
+    // from the same function the takeover's button reads, so the row and the bar
+    // and the database cannot disagree about who may be promoted.
+    ...(canPromote(d.status, lane) && boardGroupOf(d) !== 'board' ? (['promote'] as RowCap[]) : []),
     ...(lane === 'ivan' || boardGroupOf(d) !== 'board' ? (['delete'] as RowCap[]) : []),
   ]
   return (
@@ -246,7 +314,7 @@ function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
               `1d ago`. It shows the CLOCK now, not "in 2d": the question asked
               of an armed row is which day and what time. */}
           {d.scheduled_at && (
-            <span className="ct-chip ct-chip-when" title={`scheduled_at ${d.scheduled_at}`}>
+            <span className="ct-chip ct-chip-when" title={`Scheduled for ${d.scheduled_at}`}>
               {postTime(d.scheduled_at)}
             </span>
           )}
@@ -266,18 +334,30 @@ function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
         {lane !== 'ivan' && d.source_label && (
           <div className="ct-src" title={d.source_label}>{d.source_label}</div>
         )}
-        {/* THE REASON, ON EVERY ONE OF THE 46 ROWS (phase2). One line, meta
-            tier, truncated with the full text in the title, the same
-            treatment .ct-src already uses for a value that can run to a
-            whole sentence. */}
-        {reason && <div className="ct-reason" title={reason}>{reason}</div>}
+        {/* THE REASON, ON EVERY ERRORED ROW (phase2). One line, meta tier,
+            truncated with the full text in the title, the same treatment
+            .ct-src already uses for a value that can run to a whole sentence.
+
+            p4b: it shares its line with Retry, because the sentence and the one
+            thing to do about it are the same thought. `data-kind` is the machine
+            reading of the same fact the sentence carries in words, so the
+            severity colour and any later filter agree with the text by
+            construction rather than by a second opinion. */}
+        {failure && (
+          <div className="ct-reason-row">
+            <div className="ct-reason" data-kind={failure.kind} title={failure.reason}>
+              {failure.reason}
+            </div>
+            <RetryDraft d={d} lane={lane} onDone={refresh} />
+          </div>
+        )}
       </div>
       {/* The three facts as COLUMNS, one fixed x each, '—' when absent so the
           column stays a column. Desktop only — below 1000px there is no width
           for a table and the row keeps its two-line phone shape. */}
-      <span className="ct-colv" title={pillar ? `pillar ${pillar}` : undefined}>{pillar ? tagLabel(pillar) : '—'}</span>
-      <span className="ct-colv" title={funnel ? `funnel_stage ${funnel}` : undefined}>{funnel ? tagLabel(funnel) : '—'}</span>
-      <span className="ct-colv" title={src ? `taxonomy.source ${src}` : undefined}>{src ? sourceLabel(src) : '—'}</span>
+      <span className="ct-colv" title={pillar ? `Pillar: ${tagLabel(pillar)}` : undefined}>{pillar ? tagLabel(pillar) : '—'}</span>
+      <span className="ct-colv" title={funnel ? `Funnel stage: ${tagLabel(funnel)}` : undefined}>{funnel ? tagLabel(funnel) : '—'}</span>
+      <span className="ct-colv" title={src ? `Source: ${sourceLabel(src)}` : undefined}>{src ? sourceLabel(src) : '—'}</span>
       {/* trailing slot — the two review controls stay INSIDE the row's third
           column rather than growing a 44px button bar underneath it, which is
           what keeps a 285-row list inside the 40-60px density band. The value
@@ -286,6 +366,10 @@ function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
       {reviewActionable(d.status, lane) && (
         <ReviewActions id={d.id} onDone={refresh} compact demoteApprove={stage === 'error'} />
       )}
+      {/* The client lane's equivalent, in the same slot. The two are mutually
+          exclusive by lane, so `.ct-ac` is still rendered at most once and the
+          card's seven-column grid is untouched. */}
+      {boardGroupOf(d) !== 'board' && <PromoteRow d={d} lane={lane} onDone={refresh} />}
       <div className="ct-tail">
         <span className="ct-tm">{relTime(d.updated_at)}</span>
         <RowDelete d={d} lane={lane} onDone={refresh} />
@@ -345,14 +429,35 @@ function Skeleton() {
 // marks, search, Filters. Nothing that was REACHABLE only through the removed
 // band was deleted with it — the errored and past-due rows have their own
 // sections below, and the pipeline notes moved to Ops (OpsBoard, PipelineNotes).
+//
+// 🔴 2026-08-22. THE COUNT THAT BELONGS ABOVE THE TABS IS THE LANE'S, NOT THE
+// STAGE'S. The dashboard port audit asks for "a permanent count strip above the
+// tabs so the hidden tab's number stays visible", copied from the old Posts
+// board (PostWorkSurface.tsx:342-359). Measured on this build at 1440x900
+// before anything was added: all NINE rendered stage tabs and their numerals
+// are already inside the first viewport (Ideas 90 · Needs review 2 · Generating
+// 0 · Approved 0 · Scheduled 1 · Published 113 · Errors 48 · Archived 88 ·
+// Other 3). The tab bar IS that strip, and it has been since 2026-08-20. A
+// second row printing the same nine numbers is the D6 doubling this file
+// already retired once, at Ivan's word.
+//
+// What IS hidden above the tabs is the LANE. `carousel_drafts` at review splits
+// Ivan 2 · Mattan 54 · Davorin 39, and the lane pills printed none of it, so
+// 93 drafts at the decision stage were one unlabelled pill away and invisible.
+// That is the same fold the audit is describing, one level up, and it is the
+// bigger one. The pills report; they were already the control, so this adds no
+// second control and no second row.
 function CommandStrip({
-  lane, setLane, view, setView, laneNote, stats, filter,
+  lane, setLane, view, setView, laneNote, laneCounts, stats, filter,
 }: {
   lane: ContentLane
   setLane: (l: ContentLane) => void
   view?: ContentView
   setView?: (v: ContentView) => void
   laneNote?: React.ReactNode
+  // What each lane holds at REVIEW, from the shell's cross-lane read. Never
+  // from this surface's own rows, which only ever hold the selected lane.
+  laneCounts?: Partial<Record<ContentLane, number>>
   stats?: React.ReactNode
   filter: React.ReactNode
 }) {
@@ -386,14 +491,23 @@ function CommandStrip({
             {/* The lane switch is a VIEW switcher, so it keeps the pill grammar it
                 has always had; it is not a filter and never takes `label: value ⌄`. */}
             <div className="ct-cmd-lanes">
-              {CONTENT_LANES.map(k => (
-                <button
-                  type="button" key={k}
-                  className={`ct-cmd-lane${lane === k ? ' on' : ''}`}
-                  aria-current={lane === k ? 'true' : undefined}
-                  onClick={() => setLane(k)}
-                >{LANE_LABEL[k]}</button>
-              ))}
+              {CONTENT_LANES.map(k => {
+                const n = laneCounts?.[k] ?? 0
+                return (
+                  <button
+                    type="button" key={k}
+                    className={`ct-cmd-lane${lane === k ? ' on' : ''}`}
+                    aria-current={lane === k ? 'true' : undefined}
+                    onClick={() => setLane(k)}
+                    title={n > 0 ? `${LANE_LABEL[k]}: ${n} at review` : undefined}
+                  >
+                    {LANE_LABEL[k]}
+                    {/* A zero is not printed. An empty lane says so by staying
+                        quiet, which is what lets a number mean something. */}
+                    {n > 0 && <b className="ct-cmd-lane-n">{n}</b>}
+                  </button>
+                )
+              })}
             </div>
             {/* The Flow/Calendar switch sits INSIDE the id cluster, beside the
                 lane pills, because it answers the same kind of question: which
@@ -643,7 +757,7 @@ function StageTable({ s, rows, lane, refresh, onOpen, openId, sub, empty }: {
 // LANE A — Ivan
 // ---------------------------------------------------------------------------
 
-function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters, q, setQ, matched, view, setView, lane, setLane }: {
+function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters, q, setQ, matched, view, setView, lane, setLane, laneCounts }: {
   drafts: ContentDraft[]
   stages: ContentStages
   lane: ContentLane
@@ -658,6 +772,7 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
   matched: number | null
   view: ContentView
   setView: (v: ContentView) => void
+  laneCounts?: Partial<Record<ContentLane, number>>
 }) {
   // ONE TAB, persisted per lane. A view preference, so it keeps its own
   // localStorage key rather than riding in the section entry the filters use.
@@ -702,7 +817,12 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
   // that already reflects the choice you have not made yet is a moving target.
   const facets = buildFacets(drafts, specs)
   const { prominent, demoted } = splitFacets(facets, DRAFT_PROMINENT)
-  const shown = applySearch(applyFilters(drafts, specs, filters), q, d => [d.title, d.topic])
+  // post_body is ALREADY selected (content.ts COLS) and was already in memory;
+  // leaving it out of the search meant "where is that draft about margins"
+  // found 1 of the 5 drafts that say margin on Ivan's lane (GET probe
+  // 2026-08-22, evidence/ai-tools/tenancy-probe.md §3). It is a substring scan
+  // over rows that are already here, so it costs no fetch and no round trip.
+  const shown = applySearch(applyFilters(drafts, specs, filters), q, d => [d.title, d.topic, d.post_body])
   const shownStages = groupByStage(shown)
   const ideasHidden = draftFacetsActive(filters, q)
 
@@ -710,6 +830,7 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
     <>
       <CommandStrip
         lane={lane} setLane={setLane} view={view} setView={setView}
+        laneCounts={laneCounts}
         stats={
           // CALENDAR ONLY, since 2026-08-20. The marks and the tab bar print the
           // same four numbers one row apart — measured on the first tabbed
@@ -877,7 +998,7 @@ const CLIENT_TAB_KEYS: string[] = BOARD_ORDER.flatMap(g => CLIENT_STAGES.map(s =
 // on me" by omission.
 const CLIENT_TAB_ALWAYS = 'internal_review'
 
-function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, setQ, matched, view, setView, lane, setLane, onBoard }: {
+function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, setQ, matched, view, setView, lane, setLane, onBoard, laneCounts }: {
   drafts: ContentDraft[]
   lane: ContentLane
   setLane: (l: ContentLane) => void
@@ -885,6 +1006,7 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
   // switch rather than under a display title: how much of what we hold he can
   // actually see.
   onBoard: number
+  laneCounts?: Partial<Record<ContentLane, number>>
   openId: string | null
   onOpen: OpenDraft
   refresh: () => void
@@ -911,7 +1033,12 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
   // board pill would be a second control for a distinction the page structure
   // already draws — it stays available in the disclosure.
   const { prominent, demoted } = splitFacets(facets, DRAFT_PROMINENT)
-  const shown = applySearch(applyFilters(drafts, specs, filters), q, d => [d.title, d.topic])
+  // post_body is ALREADY selected (content.ts COLS) and was already in memory;
+  // leaving it out of the search meant "where is that draft about margins"
+  // found 1 of the 5 drafts that say margin on Ivan's lane (GET probe
+  // 2026-08-22, evidence/ai-tools/tenancy-probe.md §3). It is a substring scan
+  // over rows that are already here, so it costs no fetch and no round trip.
+  const shown = applySearch(applyFilters(drafts, specs, filters), q, d => [d.title, d.topic, d.post_body])
 
   // No alarm band here either (2026-08-07). This lane never needed a rehoming
   // pass for it: it already renders EVERY stage — `error` and `stuck` included —
@@ -959,6 +1086,7 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
     <>
       <CommandStrip
         lane={lane} setLane={setLane} view={view} setView={setView}
+        laneCounts={laneCounts}
         laneNote={drafts.length > 0
           ? (
             <span className="ct-cmd-note" title={`${onBoard} of the ${drafts.length} loaded drafts are visible on ${LANE_POSSESSIVE.risedtc} board`}>
@@ -1013,11 +1141,17 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
 
 // ---------------------------------------------------------------------------
 
-export function ContentList({ lane, setLane, openId, onOpen }: {
+export function ContentList({ lane, setLane, openId, onOpen, laneCounts }: {
   lane: ContentLane
   setLane: (l: ContentLane) => void
   openId: string | null
   onOpen: OpenDraft
+  // The cross-lane review split, read once in the shell (useGlanceCounts) and
+  // handed down. It is deliberately NOT derived here: useContent(lane) holds
+  // one lane at a time by construction (content.ts:103 is a query-layer
+  // filter), so a count computed from these rows could only ever restate the
+  // lane you are already looking at.
+  laneCounts?: Partial<Record<ContentLane, number>>
 }) {
   const { drafts, stages, matched, laneTotal, loading, error, loadedAt, refresh } = useContent(lane)
   const rowsRef = useRef<HTMLDivElement>(null)
@@ -1101,9 +1235,17 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
             Mattan lane with no way back to Ivan is a dead surface — which is
             exactly what deleting the hero would have caused if the strip only
             rendered on the happy path. The strip drops its numbers here (there
-            are none) and keeps its switch. */}
+            are none) and keeps its switch.
+            🔴 The LANE counts are the exception and they ride even here: they
+            come from the shell's own cross-lane read, not from this lane's
+            rows, so a broken or empty Ivan lane still says where the work is.
+            That is the state in which "which lane is holding something" is the
+            only question left. */}
         {(err || firstLoad || nothingMatched) && (
-          <CommandStrip lane={lane} setLane={switchLane} view={view} setView={setView} filter={null} />
+          <CommandStrip
+            lane={lane} setLane={switchLane} view={view} setView={setView}
+            laneCounts={laneCounts} filter={null}
+          />
         )}
         {err ? (
           <Failed
@@ -1135,6 +1277,7 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
             lane={lane} setLane={switchLane}
             filters={sect.filters} setFilters={setFilters} q={sect.q} setQ={setQ}
             matched={matched} view={view} setView={setView}
+            laneCounts={laneCounts}
           />
         ) : (
           <MattanLane
@@ -1142,6 +1285,7 @@ export function ContentList({ lane, setLane, openId, onOpen }: {
             lane={lane} setLane={switchLane} onBoard={onBoard}
             filters={sect.filters} setFilters={setFilters} q={sect.q} setQ={setQ}
             matched={matched} view={view} setView={setView}
+            laneCounts={laneCounts}
           />
         )}
         <div style={{ height: 24 }} />

@@ -1,0 +1,254 @@
+{
+ "label": "before",
+ "base": "http://127.0.0.1:4193/",
+ "at": "2026-08-22T14:59:23.289Z",
+ "cases": {
+  "1440x900-dark": {
+   "chips": 13,
+   "titles": 13,
+   "ellipsedTitles": 13,
+   "ellipsedList": [
+    "Sunday: next week is already in th",
+    "The format that reaches furthest",
+    "You can rewrite your whole positio",
+    "A doc with 50+ DM scripts went aro"
+   ],
+   "titleLines": 1,
+   "visibleChars": {
+    "medianShown": 15,
+    "totalShown": 189,
+    "totalChars": 703,
+    "fullyVisible": 0
+   },
+   "chipH": 32,
+   "chipW": 108,
+   "cellH": 86,
+   "ratioPct": 37,
+   "titleLineHeight": "15px",
+   "titleFontSize": "13px",
+   "titleClamp": "none",
+   "titleClientH": 15,
+   "emptyCellBgOwn": "rgb(20, 20, 20)",
+   "emptyCellBgPainted": "rgb(20, 20, 20)",
+   "occupiedCellBgOwn": "rgb(28, 28, 28)",
+   "occupiedCellBgPainted": "rgb(28, 28, 28)",
+   "figureGroundStep": 0.0046,
+   "figureGroundPoints": 8,
+   "headerCounts": [
+    "1armed",
+    "0planned",
+    "12posted",
+    "6queue only"
+   ],
+   "headerText": "‹August 2026›Today1armed0planned12posted6queue only",
+   "gridBottom": 741.2,
+   "gridTop": 176,
+   "gridH": 565.2,
+   "bodyH": 565.2,
+   "bodyBottom": 741.2,
+   "viewportH": 900,
+   "roomBelowGrid": 158.8,
+   "weekHeights": [
+    86,
+    86,
+    86,
+    86,
+    86,
+    86
+   ],
+   "weeks": 6,
+   "lastWeekFullyVisible": true,
+   "anyCellScrolls": 0,
+   "cellTokens": {
+    "cellH": "86px",
+    "chipH": "32px"
+   }
+  },
+  "1440x900-light": {
+   "chips": 13,
+   "titles": 13,
+   "ellipsedTitles": 13,
+   "ellipsedList": [
+    "Sunday: next week is already in th",
+    "The format that reaches furthest",
+    "You can rewrite your whole positio",
+    "A doc with 50+ DM scripts went aro"
+   ],
+   "titleLines": 1,
+   "visibleChars": {
+    "medianShown": 15,
+    "totalShown": 189,
+    "totalChars": 703,
+    "fullyVisible": 0
+   },
+   "chipH": 32,
+   "chipW": 108,
+   "cellH": 86,
+   "ratioPct": 37,
+   "titleLineHeight": "15px",
+   "titleFontSize": "13px",
+   "titleClamp": "none",
+   "titleClientH": 15,
+   "emptyCellBgOwn": "rgb(230, 230, 224)",
+   "emptyCellBgPainted": "rgb(230, 230, 224)",
+   "occupiedCellBgOwn": "rgb(255, 255, 255)",
+   "occupiedCellBgPainted": "rgb(255, 255, 255)",
+   "figureGroundStep": 0.212,
+   "figureGroundPoints": 25,
+   "headerCounts": [
+    "1armed",
+    "0planned",
+    "12posted",
+    "6queue only"
+   ],
+   "headerText": "‹August 2026›Today1armed0planned12posted6queue only",
+   "gridBottom": 741.2,
+   "gridTop": 176,
+   "gridH": 565.2,
+   "bodyH": 565.2,
+   "bodyBottom": 741.2,
+   "viewportH": 900,
+   "roomBelowGrid": 158.8,
+   "weekHeights": [
+    86,
+    86,
+    86,
+    86,
+    86,
+    86
+   ],
+   "weeks": 6,
+   "lastWeekFullyVisible": true,
+   "anyCellScrolls": 0,
+   "cellTokens": {
+    "cellH": "86px",
+    "chipH": "32px"
+   }
+  },
+  "390x844-dark": {
+   "chips": 13,
+   "titles": 13,
+   "ellipsedTitles": 7,
+   "ellipsedList": [
+    "You can rewrite your whole positio",
+    "A doc with 50+ DM scripts went aro",
+    "I went down a founder's follower l",
+    "I built a complete LinkedIn inboun"
+   ],
+   "titleLines": 1,
+   "visibleChars": {
+    "medianShown": 50,
+    "totalShown": 593,
+    "totalChars": 703,
+    "fullyVisible": 6
+   },
+   "chipH": 40,
+   "chipW": 342,
+   "cellH": 92.8,
+   "ratioPct": 43,
+   "titleLineHeight": "15px",
+   "titleFontSize": "13px",
+   "titleClamp": "none",
+   "titleClientH": 15,
+   "emptyCellBgOwn": "rgba(0, 0, 0, 0)",
+   "emptyCellBgPainted": "rgb(12, 12, 11)",
+   "occupiedCellBgOwn": "rgba(0, 0, 0, 0)",
+   "occupiedCellBgPainted": "rgb(12, 12, 11)",
+   "figureGroundStep": 0,
+   "figureGroundPoints": 0,
+   "headerCounts": [
+    "1armed",
+    "0planned",
+    "12posted",
+    "6queue only"
+   ],
+   "headerText": "‹August 2026›Today1armed0planned12posted6queue only",
+   "gridBottom": 1492.5,
+   "gridTop": 286.2,
+   "gridH": 1206.4,
+   "bodyH": 1426.1,
+   "bodyBottom": 1712.3,
+   "viewportH": 844,
+   "roomBelowGrid": -648.5,
+   "weekHeights": [
+    185.6,
+    0,
+    556.8,
+    371.2,
+    92.8,
+    0
+   ],
+   "weeks": 6,
+   "lastWeekFullyVisible": false,
+   "anyCellScrolls": 0,
+   "cellTokens": {
+    "cellH": "86px",
+    "chipH": "32px"
+   }
+  },
+  "390x844-light": {
+   "chips": 13,
+   "titles": 13,
+   "ellipsedTitles": 7,
+   "ellipsedList": [
+    "You can rewrite your whole positio",
+    "A doc with 50+ DM scripts went aro",
+    "I went down a founder's follower l",
+    "I built a complete LinkedIn inboun"
+   ],
+   "titleLines": 1,
+   "visibleChars": {
+    "medianShown": 50,
+    "totalShown": 593,
+    "totalChars": 703,
+    "fullyVisible": 6
+   },
+   "chipH": 40,
+   "chipW": 342,
+   "cellH": 92.8,
+   "ratioPct": 43,
+   "titleLineHeight": "15px",
+   "titleFontSize": "13px",
+   "titleClamp": "none",
+   "titleClientH": 15,
+   "emptyCellBgOwn": "rgba(0, 0, 0, 0)",
+   "emptyCellBgPainted": "rgb(244, 244, 240)",
+   "occupiedCellBgOwn": "rgba(0, 0, 0, 0)",
+   "occupiedCellBgPainted": "rgb(244, 244, 240)",
+   "figureGroundStep": 0,
+   "figureGroundPoints": 0,
+   "headerCounts": [
+    "1armed",
+    "0planned",
+    "12posted",
+    "6queue only"
+   ],
+   "headerText": "‹August 2026›Today1armed0planned12posted6queue only",
+   "gridBottom": 1492.5,
+   "gridTop": 286.2,
+   "gridH": 1206.4,
+   "bodyH": 1426.1,
+   "bodyBottom": 1712.3,
+   "viewportH": 844,
+   "roomBelowGrid": -648.5,
+   "weekHeights": [
+    185.6,
+    0,
+    556.8,
+    371.2,
+    92.8,
+    0
+   ],
+   "weeks": 6,
+   "lastWeekFullyVisible": false,
+   "anyCellScrolls": 0,
+   "cellTokens": {
+    "cellH": "86px",
+    "chipH": "32px"
+   }
+  }
+ },
+ "attemptedWrites": 0,
+ "attemptedDetail": [],
+ "unauthorized": []
+}

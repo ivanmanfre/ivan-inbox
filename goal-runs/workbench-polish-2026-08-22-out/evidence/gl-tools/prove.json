@@ -1,0 +1,91 @@
+{
+ "now": "2026-08-22T10:49:41.074564+00:00",
+ "window_cut": "2026-08-08T10:49:38.019780+00:00",
+ "checks": [
+  {
+   "name": "rail Content",
+   "rendered": 95,
+   "independent": 95,
+   "agree": true,
+   "predicate": "carousel_drafts status=eq.review, NO lane filter"
+  },
+  {
+   "name": "lane pill Ivan",
+   "rendered": 2,
+   "independent": 2,
+   "agree": true,
+   "predicate": "carousel_drafts status=eq.review AND client_id=is.null"
+  },
+  {
+   "name": "lane pill Mattan Danino",
+   "rendered": 54,
+   "independent": 54,
+   "agree": true,
+   "predicate": "carousel_drafts status=eq.review AND client_id=eq.risedtc"
+  },
+  {
+   "name": "lane pill Davorin Smit",
+   "rendered": 39,
+   "independent": 39,
+   "agree": true,
+   "predicate": "carousel_drafts status=eq.review AND client_id=eq.arch"
+  },
+  {
+   "name": "lane pills sum to the rail row",
+   "rendered": 95,
+   "independent": 95,
+   "agree": true,
+   "predicate": "internal consistency, not a database read"
+  },
+  {
+   "name": "rail Magnets",
+   "rendered": 12,
+   "independent": 12,
+   "agree": true,
+   "predicate": "lm_drafts_v2 status in (review, lm_review), NO lane filter"
+  },
+  {
+   "name": "roll-up = sum of rail counts",
+   "rendered": 117,
+   "independent": 117,
+   "agree": true,
+   "predicate": "the rail rows on screen, added up. Workflows is excluded by design."
+  },
+  {
+   "name": "rail Workflows",
+   "rendered": 19,
+   "independent": 19,
+   "agree": true,
+   "predicate": "union, deduped on trimmed lowercase name, of: dashboard_workflow_stats(last_execution_status=error, is_active, last_execution_at within 14d) and scheduled_ops_status(enabled, status in OVERDUE/ERRORING, last_run_at within 14d)"
+  },
+  {
+   "name": "Ops list length",
+   "rendered": 19,
+   "independent": 19,
+   "agree": true,
+   "predicate": "same set, rendered as rows"
+  },
+  {
+   "name": "the two health views really do overlap",
+   "rendered": 6,
+   "independent": 6,
+   "agree": true,
+   "predicate": "the 6 n8n-sourced jobs both views describe. A naive sum would claim 25 broken automations instead of 19."
+  },
+  {
+   "name": "\"N more\" outside the window",
+   "rendered": 37,
+   "independent": 37,
+   "agree": true,
+   "predicate": "rows in both views that are red or overdue but last ran over 14 days ago"
+  },
+  {
+   "name": "Needs review tab is lane-scoped",
+   "rendered": 2,
+   "independent": 2,
+   "agree": true,
+   "predicate": "the tab counts the selected lane; the rail row counts every lane. Both are on screen at once and the lane pills show the arithmetic."
+  }
+ ],
+ "disagreements": 0
+}

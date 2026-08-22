@@ -1,0 +1,68 @@
+[
+ {
+  "surface": "content-list",
+  "id": "01",
+  "X": "before",
+  "Y": "after"
+ },
+ {
+  "surface": "content-calendar",
+  "id": "02",
+  "X": "after",
+  "Y": "before"
+ },
+ {
+  "surface": "draft-window",
+  "id": "03",
+  "X": "before",
+  "Y": "after"
+ },
+ {
+  "surface": "content-strategy",
+  "id": "04",
+  "X": "after",
+  "Y": "before"
+ },
+ {
+  "surface": "content-styles",
+  "id": "05",
+  "X": "before",
+  "Y": "after"
+ },
+ {
+  "surface": "ops-lane",
+  "id": "06",
+  "X": "after",
+  "Y": "before"
+ },
+ {
+  "surface": "dms-list",
+  "id": "07",
+  "X": "before",
+  "Y": "after"
+ },
+ {
+  "surface": "dms-thread",
+  "id": "08",
+  "X": "after",
+  "Y": "before"
+ },
+ {
+  "surface": "magnets-lane",
+  "id": "09",
+  "X": "before",
+  "Y": "after"
+ },
+ {
+  "surface": "command-palette",
+  "id": "10a",
+  "X": "after",
+  "Y": "before"
+ },
+ {
+  "surface": "claude-chat",
+  "id": "10b",
+  "X": "before",
+  "Y": "after"
+ }
+]

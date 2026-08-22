@@ -1,0 +1,236 @@
+{
+ "label": "after",
+ "base": "http://127.0.0.1:4191/",
+ "at": "2026-08-22T15:23:58.265Z",
+ "cases": {
+  "1440x900-dark": {
+   "chips": 13,
+   "titles": 13,
+   "ellipsedTitles": 13,
+   "ellipsedList": [
+    "Sunday: next week is already in th",
+    "The format that reaches furthest",
+    "You can rewrite your whole positio",
+    "A doc with 50+ DM scripts went aro"
+   ],
+   "titleLines": 2,
+   "visibleChars": {
+    "medianShown": 26,
+    "totalShown": 339,
+    "totalChars": 703,
+    "fullyVisible": 0
+   },
+   "chipH": 47,
+   "chipW": 108,
+   "cellH": 108,
+   "ratioPct": 44,
+   "titleLineHeight": "15px",
+   "titleFontSize": "13px",
+   "titleClamp": "2",
+   "titleClientH": 30,
+   "emptyCellBgOwn": "rgb(12, 12, 11)",
+   "emptyCellBgPainted": "rgb(12, 12, 11)",
+   "occupiedCellBgOwn": "rgb(28, 28, 28)",
+   "occupiedCellBgPainted": "rgb(28, 28, 28)",
+   "figureGroundStep": 0.008,
+   "figureGroundPoints": 16,
+   "headerCounts": [
+    "1scheduled",
+    "12posted"
+   ],
+   "headerText": "‹August 2026›Today1scheduled12posted",
+   "gridBottom": 873.2,
+   "gridTop": 176,
+   "gridH": 697.2,
+   "bodyH": 697.2,
+   "bodyBottom": 873.2,
+   "viewportH": 900,
+   "roomBelowGrid": 26.8,
+   "weekHeights": [
+    108,
+    108,
+    108,
+    108,
+    108,
+    108
+   ],
+   "weeks": 6,
+   "lastWeekFullyVisible": true,
+   "anyCellScrolls": 0,
+   "cellTokens": {
+    "cellH": "108px",
+    "chipH": "47px"
+   }
+  },
+  "1440x900-light": {
+   "chips": 13,
+   "titles": 13,
+   "ellipsedTitles": 13,
+   "ellipsedList": [
+    "Sunday: next week is already in th",
+    "The format that reaches furthest",
+    "You can rewrite your whole positio",
+    "A doc with 50+ DM scripts went aro"
+   ],
+   "titleLines": 2,
+   "visibleChars": {
+    "medianShown": 26,
+    "totalShown": 339,
+    "totalChars": 703,
+    "fullyVisible": 0
+   },
+   "chipH": 47,
+   "chipW": 108,
+   "cellH": 108,
+   "ratioPct": 44,
+   "titleLineHeight": "15px",
+   "titleFontSize": "13px",
+   "titleClamp": "2",
+   "titleClientH": 30,
+   "emptyCellBgOwn": "rgb(230, 230, 224)",
+   "emptyCellBgPainted": "rgb(230, 230, 224)",
+   "occupiedCellBgOwn": "rgb(255, 255, 255)",
+   "occupiedCellBgPainted": "rgb(255, 255, 255)",
+   "figureGroundStep": 0.212,
+   "figureGroundPoints": 25,
+   "headerCounts": [
+    "1scheduled",
+    "12posted"
+   ],
+   "headerText": "‹August 2026›Today1scheduled12posted",
+   "gridBottom": 873.2,
+   "gridTop": 176,
+   "gridH": 697.2,
+   "bodyH": 697.2,
+   "bodyBottom": 873.2,
+   "viewportH": 900,
+   "roomBelowGrid": 26.8,
+   "weekHeights": [
+    108,
+    108,
+    108,
+    108,
+    108,
+    108
+   ],
+   "weeks": 6,
+   "lastWeekFullyVisible": true,
+   "anyCellScrolls": 0,
+   "cellTokens": {
+    "cellH": "108px",
+    "chipH": "47px"
+   }
+  },
+  "390x844-dark": {
+   "chips": 13,
+   "titles": 13,
+   "ellipsedTitles": 0,
+   "ellipsedList": [],
+   "titleLines": 1,
+   "visibleChars": {
+    "medianShown": 63,
+    "totalShown": 703,
+    "totalChars": 703,
+    "fullyVisible": 13
+   },
+   "chipH": 47,
+   "chipW": 342,
+   "cellH": 109.8,
+   "ratioPct": 43,
+   "titleLineHeight": "15px",
+   "titleFontSize": "13px",
+   "titleClamp": "2",
+   "titleClientH": 15,
+   "emptyCellBgOwn": "rgba(0, 0, 0, 0)",
+   "emptyCellBgPainted": "rgb(12, 12, 11)",
+   "occupiedCellBgOwn": "rgba(0, 0, 0, 0)",
+   "occupiedCellBgPainted": "rgb(12, 12, 11)",
+   "figureGroundStep": 0,
+   "figureGroundPoints": 0,
+   "headerCounts": [
+    "1scheduled",
+    "12posted"
+   ],
+   "headerText": "‹August 2026›Today1scheduled12posted",
+   "gridBottom": 1676,
+   "gridTop": 248.6,
+   "gridH": 1427.4,
+   "bodyH": 1647.1,
+   "bodyBottom": 1895.7,
+   "viewportH": 844,
+   "roomBelowGrid": -832,
+   "weekHeights": [
+    219.6,
+    0,
+    658.8,
+    439.2,
+    109.8,
+    0
+   ],
+   "weeks": 6,
+   "lastWeekFullyVisible": false,
+   "anyCellScrolls": 0,
+   "cellTokens": {
+    "cellH": "108px",
+    "chipH": "47px"
+   }
+  },
+  "390x844-light": {
+   "chips": 13,
+   "titles": 13,
+   "ellipsedTitles": 0,
+   "ellipsedList": [],
+   "titleLines": 1,
+   "visibleChars": {
+    "medianShown": 63,
+    "totalShown": 703,
+    "totalChars": 703,
+    "fullyVisible": 13
+   },
+   "chipH": 47,
+   "chipW": 342,
+   "cellH": 109.8,
+   "ratioPct": 43,
+   "titleLineHeight": "15px",
+   "titleFontSize": "13px",
+   "titleClamp": "2",
+   "titleClientH": 15,
+   "emptyCellBgOwn": "rgba(0, 0, 0, 0)",
+   "emptyCellBgPainted": "rgb(244, 244, 240)",
+   "occupiedCellBgOwn": "rgba(0, 0, 0, 0)",
+   "occupiedCellBgPainted": "rgb(244, 244, 240)",
+   "figureGroundStep": 0,
+   "figureGroundPoints": 0,
+   "headerCounts": [
+    "1scheduled",
+    "12posted"
+   ],
+   "headerText": "‹August 2026›Today1scheduled12posted",
+   "gridBottom": 1676,
+   "gridTop": 248.6,
+   "gridH": 1427.4,
+   "bodyH": 1647.1,
+   "bodyBottom": 1895.7,
+   "viewportH": 844,
+   "roomBelowGrid": -832,
+   "weekHeights": [
+    219.6,
+    0,
+    658.8,
+    439.2,
+    109.8,
+    0
+   ],
+   "weeks": 6,
+   "lastWeekFullyVisible": false,
+   "anyCellScrolls": 0,
+   "cellTokens": {
+    "cellH": "108px",
+    "chipH": "47px"
+   }
+  }
+ },
+ "attemptedWrites": 0,
+ "attemptedDetail": [],
+ "unauthorized": []
+}

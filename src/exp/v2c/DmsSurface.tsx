@@ -2,6 +2,8 @@ import { DraftCard, PushedBar, StaleBar } from '../../screens/DraftsScreen'
 import { InboxScreen } from '../../screens/InboxScreen'
 import { DmHistory } from './DmHistory'
 import { STATUS_LABEL, filterThreads, type Filter, type Status, type Thread } from '../../lib/inbox'
+import { preReadWorthwhile, waitingDays } from './chat/preread'
+import { usePreRead } from './chat/usePreRead'
 
 // DMs — the one surface a person waiting on Ivan can appear on.
 //
@@ -50,6 +52,18 @@ export function DmsSurface({
   // not looking at is the tenancy version of a phantom badge.
   const pushedDrafts = laned.filter(t => t.draftSnoozedUntil !== null)
 
+  // THE PRE-READ (item 2 of the AI pass). Measured need: 58 threads waiting,
+  // median 22.9 days, 36 of them never opened here at all. The list gives him a
+  // name and the first words of the newest message, which is not enough to pick
+  // which one to open.
+  //
+  // 🔴 ON DEMAND MEANS ON DEMAND. `pre.run` is reachable from exactly one
+  // place, the click handler below. There is no effect in this file, no
+  // prefetch and no scroll trigger, because a 58-row list that summarises
+  // itself as it scrolls is a spending bug. The hook refuses a second call
+  // while one is running and stops after a session cap.
+  const pre = usePreRead()
+
   return (
     <InboxScreen
       title="DMs"
@@ -75,6 +89,33 @@ export function DmsSurface({
       // pending the surface would otherwise be an empty screen that proves
       // nothing; the history is the receipt that the engine holds conversations.
       after={<DmHistory threads={filterThreads(threads, filter)} onOpen={onOpenThread} />}
+      // The generated line stands in place of the message preview (the row's
+      // height is what the list windows against), and the control is a chip in
+      // the right-hand column. Both are absent on any row where Ivan is not the
+      // one being waited on.
+      rowNote={t => {
+        const st = pre.get(t.prospect_id)
+        if (st.s === 'done') return st.line
+        if (st.s === 'running') return 'Reading it…'
+        if (st.s === 'error') return st.why
+        return null
+      }}
+      rowChip={t => {
+        if (!preReadWorthwhile(t)) return null
+        const st = pre.get(t.prospect_id)
+        if (st.s === 'done' || st.s === 'running') return null
+        const days = waitingDays(t)
+        return (
+          <button
+            type="button"
+            className="wb-pre"
+            title={days === null
+              ? 'Sum up what this one is about, without opening it'
+              : `Waiting ${days} days. Sum it up without opening it.`}
+            onClick={e => { e.stopPropagation(); pre.run(t) }}
+          >{st.s === 'error' ? 'again' : 'sum up'}</button>
+        )
+      }}
       renderRow={status === 'approve'
         ? t => <DraftCard key={t.prospect_id} thread={t} onOpenThread={onOpenThread} refresh={refresh} />
         : undefined}

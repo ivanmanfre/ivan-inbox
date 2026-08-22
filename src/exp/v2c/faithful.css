@@ -104,6 +104,17 @@
   --cat-1:#B8FF66; --cat-2:#E3E3E3; --cat-3:#A3A3A3; --cat-4:#707070;
   --cat-1-ink:var(--ink); --cat-2-ink:var(--ink); --cat-3-ink:var(--ink);
   --cat-4-ink:#FFFFFF;          /* 9.5 — MONO cat-4 is the one white label */
+  /* --- avatar identity tints (F11, re-derived 2026-08-22). ------------------
+     An avatar is not a category mark and is not one of §4's three lime roles,
+     so it does not read the --cat family and it never takes a saturated fill.
+     Each bucket is a low-alpha tint over --e3, which is §4's own device for
+     expressing a state without spending the fill. The alpha varies with the hue
+     so the two NEUTRAL buckets separate on lightness and do not collapse into
+     each other; hue does the rest. Dark values here, light inverted below. */
+  --av-1:rgba(184,255,102,.14);
+  --av-2:rgba(255,155,34,.16);
+  --av-3:rgba(255,255,255,.18);
+  --av-4:rgba(255,255,255,.06);
   /* Beyond four series, differentiation is PATTERN not colour (9.2). */
   --pat-1:none;
   --pat-2:repeating-linear-gradient(45deg,rgba(12,12,11,.34) 0 3px,transparent 3px 7px);
@@ -172,6 +183,14 @@
   --accent-ui:#5A8A00;
   /* --ink is NOT overridden: the accent is the same hex in both themes, so the
      label on a filled accent mark stays ink. */
+  /* The avatar tints INVERT with the ladder. A white tint over light --e3
+     (#EAEAE4) lifts the mark towards the row it sits on and erases it, so the
+     two neutral buckets tint with ink instead, and the lime bucket takes
+     --accent-ui's darker lime for the same reason glyphs do. */
+  --av-1:rgba(90,138,0,.18);
+  --av-2:rgba(196,105,0,.18);
+  --av-3:rgba(19,19,19,.16);
+  --av-4:rgba(19,19,19,.06);
 }
 
 /* ========================================================================== */
@@ -610,7 +629,9 @@
   width:var(--anchor-w); height:var(--anchor-w);
   flex:none;
 }
-.wb.wb.wb .av{ font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:0; color:var(--ink) }
+/* Ink is --text, not --ink: see the F11 block below, where the fill under it
+   stopped being a filled accent mark. */
+.wb.wb.wb .av{ font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:0; color:var(--text) }
 /* the badge carries a word ('in'), so an 8px size would be an EIGHTH text tier
    in the census rather than a permitted glyph — it takes the eyebrow tier. */
 .wb.wb.wb .av .badge{ width:15px;height:15px;bottom:-3px;right:-3px;border-width:2px;
@@ -2274,16 +2295,34 @@
 
 /* ---- F11 (P2) — avatar identity ramp was the old app's palette. ------------
    Six teal/blue/purple/pink gradients on every row of the busiest surface —
-   the last place blue/purple survived the reskin. Re-derived from the
-   reference family: lime+ink / orange+ink / white+ink / neutral+white
-   (contrast 14.97 / 8.51 / 17.93 / 4.95 — delta-spec appendix). Overridden
-   HERE because Avatar.tsx and the .av.g* gradients are SHARED with the stock
-   shell (src/styles.css:61-66 stay untouched); the hash keeps its job, the
-   six buckets fold onto the four reference fills. */
-.wb.wb.wb .av.g1, .wb.wb.wb .av.g5{ background:var(--cat-1); color:var(--ink) }
-.wb.wb.wb .av.g2, .wb.wb.wb .av.g6{ background:var(--cat-2); color:var(--ink) }
-.wb.wb.wb .av.g3{ background:var(--cat-3); color:var(--ink) }
-.wb.wb.wb .av.g4{ background:var(--cat-4); color:#FFFFFF }
+   the last place blue/purple survived the reskin. Overridden HERE because
+   Avatar.tsx and the .av.g* gradients are SHARED with the stock shell
+   (src/styles.css:61-66 stay untouched); the hash keeps its job, the six
+   buckets fold onto four.
+
+   RE-DERIVED 2026-08-22. The first pass folded them onto the four reference
+   FILLS, which put --cat-1 on prospect avatars — and --cat-1 is #B8FF66, the
+   accent itself. §4 allows lime in exactly three roles: the single primary
+   action on the screen, the live/now state, and the focus ring. An avatar is
+   none of the three, and on the DMs lane it does not appear once, it appears
+   once per thread. The boot-default surface was painting more accent marks
+   than every other screen in the app put together, and no census had ever been
+   run off it.
+   What changes is the WEIGHT, not the ramp: a hash still has to be readable as
+   identity. Each bucket becomes a raised neutral (--e3) carrying a low-alpha
+   tint (--av-1..4), which is §4's own answer for expressing something without
+   spending the fill. Ink moves from --ink to --text: --ink is the label on a
+   FILLED accent mark, and there is no longer a fill under it. The tint rides
+   background-image over a background-color so the two layers compose without
+   needing color-mix. */
+.wb.wb.wb .av{
+  background-color:var(--e3); background-image:none; color:var(--text);
+  box-shadow:inset 0 0 0 1px var(--hairline);
+}
+.wb.wb.wb .av.g1, .wb.wb.wb .av.g5{ background-image:linear-gradient(var(--av-1),var(--av-1)) }
+.wb.wb.wb .av.g2, .wb.wb.wb .av.g6{ background-image:linear-gradient(var(--av-2),var(--av-2)) }
+.wb.wb.wb .av.g3{ background-image:linear-gradient(var(--av-3),var(--av-3)) }
+.wb.wb.wb .av.g4{ background-image:linear-gradient(var(--av-4),var(--av-4)) }
 
 /* ---- F10 (P2) — raw scroll-clip edges. -------------------------------------
    Scrolled rows reappeared half-cut with nothing closing the boundary: under
@@ -3356,9 +3395,19 @@
    rail tier — meta, 600, label tracking, text3 — so `res-hdr`, the evidence
    rail's own head and the queue rail's head stop being three different labels
    in one window. */
-.wb.wb.wb .res-hdr, .wb.wb.wb .dw-insp-h, .wb.wb.wb .dw-queue-h{
+.wb.wb.wb .res-hdr, .wb.wb.wb .dw-queue-h{
   font-size:var(--fs-meta); font-weight:600; letter-spacing:.05em;
   line-height:var(--lh-meta); text-transform:uppercase; color:var(--text3);
+}
+/* The draft window's evidence-rail header used to share this exact all-caps
+   meta tier with its two siblings above (SHOUTED "BACKEND DEPTH", the
+   owner's own named complaint: "this looks like an internal tool ui"). Same
+   size and weight as the rail tier it still belongs to, but no uppercase and
+   no tracking, because those two are what made a plain-English header
+   ("What decides it") read as a shout instead of a sentence. */
+.wb.wb.wb .dw-insp-h{
+  font-size:var(--fs-meta); font-weight:600;
+  line-height:var(--lh-meta); text-transform:none; color:var(--text3);
 }
 /* The ordinal and the count are VALUES, so they take the data face — one
    register for numbers, app-wide, which is what makes a count scannable beside
@@ -3705,6 +3754,10 @@
    draft behind it. `margin-left:0` cancels the auto that pushes the first one
    right, so the pair stays a pair. */
 .wb.wb.wb .cal-count-q{ margin-left:0; padding-left:var(--sp-3) }
+/* The armed/planned pair, and any figure that follows it, ride together: the
+   `auto` margin belongs to the FIRST count only, so the group stays a group
+   instead of spreading across the bar. Same rule cal-count-q already keeps. */
+.wb.wb.wb .cal-count-n{ margin-left:0; padding-left:var(--sp-3) }
 
 .wb.wb.wb .cal-body{ padding:0 var(--gut) }
 
@@ -3747,13 +3800,20 @@
    the one that carries meaning, so the fill and the ring are gone: the chip is
    a tinted plate that fills in on hover, and the rail stays because it is the
    only thing here encoding status. */
+/* A COLUMN, with the old flex row as its first child. The chip grew a second
+   row (`Arm it`) that only planned rows on Ivan's lane draw, so the plate has
+   to stack; every chip without one renders exactly as it did, because the row
+   wrapper carries the layout the plate used to. */
 .wb.wb.wb .cal-chip{
   position:relative;
-  display:flex; align-items:stretch; min-height:38px;
+  display:flex; flex-direction:column; align-items:stretch; min-height:38px;
   min-width:0; max-width:100%;
   border-radius:var(--r-ctl); overflow:hidden;
   background:var(--surface1);
   border-left:3px solid var(--text4);
+}
+.wb.wb.wb .cal-chip-row{
+  display:flex; align-items:stretch; min-height:38px; width:100%; min-width:0;
 }
 .wb.wb.wb .cal-chip:hover{ background:var(--surface2) }
 /* Drag: grab on the plate, but the two buttons inside keep their own cursors
@@ -3812,8 +3872,15 @@
    2026-08-09. */
 /* min-width:0 + overflow are load-bearing: without them `08:14 posted` sets the
    chip's intrinsic width and the chip grows straight out of its day cell. */
+/* WRAPS RATHER THAN CLIPS, since 2026-08-22. The head carries a second token
+   now (Armed / Planned) and measured at 1440 the day cell is 108px, where
+   `08:00 PLANNED` overflows by a few pixels and clipped to `08:00 PLANNE`. A
+   truncated word reads as a bug, and this word is the one saying whether the
+   post goes out, so it is the last thing on the chip allowed to be half a word.
+   Wrapped, it takes its own line on a narrow canvas and sits inline at 2560
+   where there is room (measured: 0 clipped at 268px, 0 at 342px on mobile). */
 .wb.wb.wb .cal-chip-h{
-  display:flex; align-items:baseline; gap:5px;
+  display:flex; align-items:baseline; gap:5px; flex-wrap:wrap; row-gap:0;
   flex:none; min-width:0; max-width:100%; overflow:hidden; white-space:nowrap;
 }
 .wb.wb.wb .cal-chip-hh{
@@ -3827,6 +3894,30 @@
   flex:none; font-size:var(--fs-meta); line-height:1; color:var(--sev-clear,var(--text3));
 }
 .wb.wb.wb .cal-chip[data-st='published'] .cal-chip-hh{ color:var(--text4) }
+/* ARMED / PLANNED, IN A WORD. Colour is the second cue here, never the only
+   one: the distinction is whether anything will publish the post, and that is
+   not a thing a hue can be trusted to say. `flex:none` + nowrap so it is never
+   the element that truncates: at a 112px cell the clock and this word fit
+   together and the TITLE is the line with room to wrap. */
+.wb.wb.wb .cal-chip-arm{
+  flex:none; white-space:nowrap;
+  font-size:var(--fs-eyebrow); letter-spacing:.04em; text-transform:uppercase;
+  color:var(--text4);
+}
+.wb.wb.wb .cal-chip[data-arm='planned'] .cal-chip-arm{ color:var(--sev-attention) }
+/* THE ARM STEP. A full-width row under the plate, drawn only on a planned row
+   this surface can actually arm, and always followed by a confirm that names
+   the day and the time. */
+.wb.wb.wb .cal-chip-armb{
+  width:100%; min-height:22px; padding:0 8px;
+  text-align:left; border-radius:0;
+  background:var(--surface2); color:var(--text3);
+  font-size:var(--fs-eyebrow); letter-spacing:.04em; text-transform:uppercase;
+  box-shadow:inset 0 1px 0 var(--hairline);
+  cursor:pointer;
+}
+.wb.wb.wb .cal-chip-armb:hover:not(:disabled){ color:var(--text); background:var(--surface3) }
+.wb.wb.wb .cal-chip-armb:disabled{ opacity:.5; cursor:default }
 /* Two lines, then clamp. Wrapping beats ellipsing at 150px: most titles fit. */
 .wb.wb.wb .cal-chip-n{
   display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2;
@@ -3866,12 +3957,35 @@
 }
 
 /* ---- the rail ----------------------------------------------------------- */
-.wb.wb.wb .cal-rail{ margin-top:var(--sp-4) }
+.wb.wb.wb .cal-rail{ margin-top:var(--sp-4); min-width:0 }
 .wb.wb.wb .cal-rail-e{ padding:6px 0; font-size:var(--fs-meta); color:var(--text3) }
+.wb.wb.wb .cal-rail-h{
+  padding:0 0 6px; font-size:var(--fs-meta); line-height:var(--lh-meta); color:var(--text4);
+}
+/* ITS OWN SCROLL REGION, and this is load-bearing now. The rail was written for
+   the handful of rows a zero-row filter could never produce; it holds 48 on
+   risedtc and 39 on arch, and at 40px a row that is a 2,000px column beside a
+   700px grid: the grid would sit in the top fifth of a page that scrolls past
+   it. Capped against the VIEWPORT rather than a pixel count so a 2560 canvas
+   shows more rows than a 1440 one does, which is the point of the canvas. */
+.wb.wb.wb .cal-rail-l{
+  max-height:min(62vh,760px); overflow-y:auto; overscroll-behavior:contain;
+}
 .wb.wb.wb .cal-rr{
+  position:relative;
   display:flex; align-items:center; gap:var(--sp-2);
   min-height:40px; padding:4px 0;
   border-bottom:1px solid var(--hairline);
+}
+/* Drag: a rail row goes onto a day the same way a chip does, which is the step
+   that took the date write down to one gesture and one confirm. */
+.wb.wb.wb .cal-rr[draggable='true']{ cursor:grab }
+.wb.wb.wb .cal-rr[draggable='true']:active{ cursor:grabbing }
+.wb.wb.wb .cal-rr-drag{ opacity:.4 }
+.wb.wb.wb .cal-rr-age{
+  margin-left:var(--sp-2);
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-variant-numeric:tabular-nums; color:var(--text4);
 }
 .wb.wb.wb .cal-rr-t{
   flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:2px;
@@ -3883,12 +3997,28 @@
 }
 .wb.wb.wb .cal-rr-t:hover .cal-rr-n{ color:var(--text) }
 .wb.wb.wb .cal-rr-m{ font-size:var(--fs-meta); color:var(--text4) }
+/* OUT OF FLOW, ON HOVER, and it is the same trade `.cal-chip-mv` already makes
+   one section up. In flow the button took 110px of a 264px rail, which was
+   fine for the zero rows the old filter produced and clips 48 real titles to
+   about fifteen characters. Floated, every row reads its own headline and the
+   control appears where the pointer already is. Below 767px there is no hover
+   and the rail is full width, so it stays put. */
 .wb.wb.wb .cal-mv{
-  flex:none; min-height:32px; padding:0 var(--sp-3); font-size:var(--fs-meta);
-  background:var(--surface2); color:var(--text2);
+  position:absolute; top:50%; right:0; transform:translateY(-50%); z-index:1;
+  flex:none; min-height:28px; padding:0 var(--sp-2); font-size:var(--fs-meta);
+  background:var(--surface3); color:var(--text2);
   box-shadow:inset 0 0 0 1px var(--hairline);
+  opacity:0; pointer-events:none;
 }
+.wb.wb.wb .cal-rr:hover .cal-mv,
+.wb.wb.wb .cal-mv:focus-visible{ opacity:1; pointer-events:auto }
 .wb.wb.wb .cal-mv:hover{ color:var(--text) }
+@media (max-width:767px){
+  .wb.wb.wb .cal-mv{
+    position:static; transform:none; opacity:1; pointer-events:auto;
+    min-height:32px; padding:0 var(--sp-3); background:var(--surface2);
+  }
+}
 .wb.wb.wb .cal-note{
   margin-top:var(--sp-3); padding:10px 12px; border-radius:var(--r-ctl);
   background:var(--surface1); box-shadow:inset 0 0 0 1px var(--hairline);

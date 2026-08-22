@@ -32,6 +32,39 @@
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 
+/* p4b: the reason and the one act available on it share a line. `min-width:0`
+   on both the row and the sentence is what keeps the ellipsis working inside a
+   flex parent — without it the text box refuses to shrink and pushes Retry off
+   the card instead of truncating. */
+.wb.wb.wb .ct-reason-row{
+  display:flex; flex-wrap:wrap; align-items:center; gap:var(--sp-2); min-width:0;
+}
+.wb.wb.wb .ct-reason-row > .ct-reason{ flex:1 1 auto; min-width:0; margin-top:0 }
+.wb.wb.wb .ct-reason-row .ct-retry{
+  flex:none; padding:2px 8px;
+  font-size:var(--fs-eyebrow); font-weight:600;
+  letter-spacing:.04em; text-transform:uppercase; border-radius:var(--r-ctl);
+  background:var(--surface2); color:var(--text2);
+}
+.wb.wb.wb .ct-reason-row .ct-retry:disabled{ opacity:.4; cursor:default }
+/* Any message from a fired retry takes the whole width under both, rather than
+   competing with the sentence for the same line. */
+.wb.wb.wb .ct-reason-row .ct-retry-msg{ flex-basis:100%; margin:2px 0 0; font-size:var(--fs-meta) }
+
+/* THE ONE DISTINCTION THE ERRORS TAB NEVER DREW. 13 of the 55 live error rows
+   end on a gate that PASSED and 6 stalled for real, and until p4b both printed
+   the same sentence in the same colour. Severity here is the DERIVED kind, so
+   it can never disagree with the words beside it:
+     stalled / generation_failed / refusal  the run did not deliver, amber
+     completed                              the run finished, and this row is
+                                            mis-filed, so it is not a warning
+   Everything else keeps text2, which is the honest neutral: QA scoring a draft
+   under the floor is an opinion about the copy, not an incident. */
+.wb.wb.wb .ct-reason[data-kind='stalled'],
+.wb.wb.wb .ct-reason[data-kind='generation_failed'],
+.wb.wb.wb .ct-reason[data-kind='refusal']{ color:var(--sev-attention) }
+.wb.wb.wb .ct-reason[data-kind='completed']{ color:var(--sev-clear) }
+
 /* ========================================================================== */
 /* B · TODAY — the briefing (pass 3)                                           */
 /* ========================================================================== */
@@ -350,6 +383,45 @@
 .wb.wb.wb .wb-bulk-b.s{ background:transparent; color:var(--text2) }
 .wb.wb.wb .wb-bulk-b.danger{ color:var(--sev-urgent) }
 .wb.wb.wb .wb-bulk-b:disabled{ opacity:.45; cursor:not-allowed }
+
+/* `To board` on a client review row. It inherits the .ct-ac .btn treatment from
+   faithful.css (the row's trailing slot is 156px at 1440 and this is its only
+   occupant), so nothing here restates a size. It is marked instead of resized:
+   this is the one control in the list that a paying client feels. */
+.wb.wb.wb .ct-card .ct-ac .btn.ct-promote{
+  background:var(--accent-soft); color:var(--accent-ui);
+  border:1px solid var(--accent-soft);
+}
+
+/* p4b. THE CLIENT-FACING ROW, and the reason it is a row.
+   `.wb-bulk` is centered on the viewport (`left:50%` + translateX), so its
+   content moves whenever its width changes. Putting promote in the action group
+   widened the bar by 126.8px and slid Delete 63.4px left, straight out from
+   under the point a hand had learned. `flex-basis:100%` puts promote on its own
+   line: the bar's width is its widest ROW, the action row is wider than one
+   button, so the bar does not grow sideways and Delete does not move at all.
+   Order -1 keeps this line above the actions, so Delete moves UP into empty
+   space rather than the new button dropping into the space Delete vacated. */
+.wb.wb.wb .wb-bulk-client{
+  /* `width:0` is what stops this line from widening the bar. A wrapped flex
+     container still computes its max-content width as if every item sat on ONE
+     line, so `flex-basis:100%` alone left the button contributing its 119px and
+     Delete moved 66px. A DEFINITE width contributes zero; `min-width:100%` then
+     fills the line back out. Measured both ways in probe-ui.mjs. */
+  order:-1; width:0; min-width:100%;
+  /* And the COLUMN GAP still counted, for the same single-line reason: 12px of
+     gap moved Delete a further 5.8px. Negating it leaves the bar exactly the
+     width it was before this row existed. */
+  margin-right:calc(var(--sp-3) * -1);
+  display:flex; align-items:center;
+  padding-bottom:var(--sp-2); border-bottom:1px solid var(--surface3);
+}
+/* Same mark the row control carries, so the client-facing act reads the same
+   wherever it appears. */
+.wb.wb.wb .wb-bulk-b.client{
+  background:var(--accent-soft); color:var(--accent-ui);
+  border-color:var(--accent-soft);
+}
 .wb.wb.wb .wb-bulk-b:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
 
 /* The phone: the tab bar owns the bottom 56px, and the bar is full width there

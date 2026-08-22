@@ -1,0 +1,173 @@
+{
+  "label": "before",
+  "base": "http://localhost:4271/",
+  "at": "2026-08-22T11:46:23.001Z",
+  "v2today": {
+    "strip": {
+      "top": 110,
+      "bottom": 1595,
+      "h": 1485,
+      "w": 1152
+    },
+    "stripRowCount": 10,
+    "stripRowSeverities": [
+      "Critical",
+      "Warning",
+      "Warning",
+      "Warning",
+      "Warning",
+      "Warning",
+      "Warning",
+      "Warning",
+      "Warning",
+      "Warning"
+    ],
+    "summaryText": "2 critical · 19 warnings",
+    "chev": "⌄",
+    "workArea": {
+      "top": 100,
+      "bottom": 880,
+      "h": 780,
+      "w": 1184
+    },
+    "workAreaScrollH": 5985,
+    "zoneQueue": {
+      "top": 1796,
+      "bottom": 4124,
+      "h": 2328,
+      "w": 586
+    },
+    "firstQueueItem": {
+      "top": 1836,
+      "bottom": 1883,
+      "h": 47,
+      "w": 586
+    },
+    "firstQueueItemText": "8 people wrote and were never opened here.",
+    "stripShareOfWorkArea": 190.3
+  },
+  "afterBarClick": {
+    "strip": {
+      "top": 110,
+      "bottom": 1595,
+      "h": 1485,
+      "w": 1152
+    },
+    "stripRowCount": 10,
+    "stripRowSeverities": [
+      "Critical",
+      "Warning",
+      "Warning",
+      "Warning",
+      "Warning",
+      "Warning",
+      "Warning",
+      "Warning",
+      "Warning",
+      "Warning"
+    ],
+    "summaryText": "2 critical · 19 warnings",
+    "chev": "⌄",
+    "workArea": {
+      "top": 100,
+      "bottom": 880,
+      "h": 780,
+      "w": 1184
+    },
+    "workAreaScrollH": 5985,
+    "zoneQueue": {
+      "top": 1796,
+      "bottom": 4124,
+      "h": 2328,
+      "w": 586
+    },
+    "firstQueueItem": {
+      "top": 1836,
+      "bottom": 1883,
+      "h": 47,
+      "w": 586
+    },
+    "firstQueueItemText": "8 people wrote and were never opened here.",
+    "stripShareOfWorkArea": 190.3
+  },
+  "afterSecondBarClick": {
+    "strip": {
+      "top": 110,
+      "bottom": 1595,
+      "h": 1485,
+      "w": 1152
+    },
+    "stripRowCount": 10,
+    "stripRowSeverities": [
+      "Critical",
+      "Warning",
+      "Warning",
+      "Warning",
+      "Warning",
+      "Warning",
+      "Warning",
+      "Warning",
+      "Warning",
+      "Warning"
+    ],
+    "summaryText": "2 critical · 19 warnings",
+    "chev": "⌄",
+    "workArea": {
+      "top": 100,
+      "bottom": 880,
+      "h": 780,
+      "w": 1184
+    },
+    "workAreaScrollH": 5985,
+    "zoneQueue": {
+      "top": 1796,
+      "bottom": 4124,
+      "h": 2328,
+      "w": 586
+    },
+    "firstQueueItem": {
+      "top": 1836,
+      "bottom": 1883,
+      "h": 47,
+      "w": 586
+    },
+    "firstQueueItemText": "8 people wrote and were never opened here.",
+    "stripShareOfWorkArea": 190.3
+  },
+  "stock": {
+    "strip": {
+      "top": 96,
+      "bottom": 1017,
+      "h": 921,
+      "w": 1322
+    },
+    "stripRowCount": 10,
+    "stripRowSeverities": [
+      "Critical",
+      "Warning",
+      "Warning",
+      "Warning",
+      "Warning",
+      "Warning",
+      "Warning",
+      "Warning",
+      "Warning",
+      "Warning"
+    ],
+    "summaryText": "2 critical · 19 warnings",
+    "chev": "⌄",
+    "workArea": {
+      "top": 86,
+      "bottom": 900,
+      "h": 814,
+      "w": 1354
+    },
+    "workAreaScrollH": 1574,
+    "zoneQueue": null,
+    "firstQueueItem": null,
+    "firstQueueItemText": null,
+    "stripShareOfWorkArea": 113.2
+  },
+  "writeAttempts": 0,
+  "writeAttemptDetail": []
+}

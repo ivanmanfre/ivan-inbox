@@ -1,0 +1,107 @@
+{
+ "method": "same window, three captures per tab: cur, pre, cur. control = cur vs cur (noise floor). gate = pre vs cur.",
+ "preBuild": "HEAD f2432b5 with the amendment's FOUR files reverted to 0e9f923, on :4194, so the diff isolates THIS amendment and not the other agents' commits",
+ "curBuild": "HEAD f2432b5, on :4191",
+ "results": {
+  "today": {
+   "landedOn": {
+    "cur": "Today",
+    "pre": "Today"
+   },
+   "control_cur_vs_cur": {
+    "differing": 0,
+    "total": 1296000,
+    "pct": 0
+   },
+   "gate_pre_vs_cur": {
+    "differing": 0,
+    "total": 1296000,
+    "pct": 0
+   }
+  },
+  "inbox": {
+   "landedOn": {
+    "cur": "Inbox",
+    "pre": "Inbox"
+   },
+   "control_cur_vs_cur": {
+    "differing": 0,
+    "total": 1296000,
+    "pct": 0
+   },
+   "gate_pre_vs_cur": {
+    "differing": 0,
+    "total": 1296000,
+    "pct": 0
+   }
+  },
+  "drafts": {
+   "landedOn": {
+    "cur": "Drafts",
+    "pre": "Drafts"
+   },
+   "control_cur_vs_cur": {
+    "differing": 0,
+    "total": 1296000,
+    "pct": 0
+   },
+   "gate_pre_vs_cur": {
+    "differing": 0,
+    "total": 1296000,
+    "pct": 0
+   }
+  },
+  "ops": {
+   "landedOn": {
+    "cur": "Ops",
+    "pre": "Ops"
+   },
+   "control_cur_vs_cur": {
+    "differing": 0,
+    "total": 1296000,
+    "pct": 0
+   },
+   "gate_pre_vs_cur": {
+    "differing": 0,
+    "total": 1296000,
+    "pct": 0
+   }
+  },
+  "sends": {
+   "landedOn": {
+    "cur": "Sends",
+    "pre": "Sends"
+   },
+   "control_cur_vs_cur": {
+    "differing": 0,
+    "total": 1296000,
+    "pct": 0
+   },
+   "gate_pre_vs_cur": {
+    "differing": 0,
+    "total": 1296000,
+    "pct": 0
+   }
+  },
+  "settings": {
+   "landedOn": {
+    "cur": "Settings",
+    "pre": "Settings"
+   },
+   "control_cur_vs_cur": {
+    "differing": 0,
+    "total": 1296000,
+    "pct": 0
+   },
+   "gate_pre_vs_cur": {
+    "differing": 351,
+    "total": 1296000,
+    "pct": 0.03
+   }
+  }
+ },
+ "genuineMutationAttempts": 0,
+ "mutations": [],
+ "rpcPostsToKnownReadFunctions": 6,
+ "unauthorized401": 0
+}

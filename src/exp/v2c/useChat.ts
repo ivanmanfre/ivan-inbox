@@ -33,9 +33,15 @@ const CONTEXT_CHARS = 1200
  * never drift here is what leaves the browser: no working directory, no client id,
  * no workspace — a transcript and a sentence naming what is on screen.
  */
-export function buildContext(turns: Turn[], about?: string): string | undefined {
+export function buildContext(turns: Turn[], about?: string, see?: string): string | undefined {
   const lines: string[] = []
-  if (about) lines.push(`The operator is looking at: ${about}`)
+  // `see` is the ATTACHED-CONTEXT block (chat/paneContext.ts): the chips Ivan
+  // has left switched on, rendered verbatim so that what the pane prints and
+  // what the pane sends are the same string. It supersedes the one-line `about`
+  // label, which said only which pane was open; sending both would state the
+  // same fact twice in two registers.
+  if (see) lines.push(see)
+  else if (about) lines.push(`The operator is looking at: ${about}`)
   const tail = turns.slice(-CONTEXT_TURNS)
   for (const t of tail) {
     const who = t.role === 'user' ? 'Ivan' : 'You'
@@ -65,7 +71,7 @@ export function useChat() {
   const [wanted, setWanted] = useState<string | null>(null)
   const [slow, setSlow] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
-  const lastSent = useRef<{ prompt: string; about?: string } | null>(null)
+  const lastSent = useRef<{ prompt: string; about?: string; see?: string } | null>(null)
   const alive = useRef(true)
   // `send` is memoised on sessionId, so it cannot close over the current turns.
   // A ref keeps the context block reading the live transcript instead of the one
@@ -82,16 +88,16 @@ export function useChat() {
     return () => { alive.current = false; abortRef.current?.abort() }
   }, [])
 
-  const send = useCallback(async (prompt: string, about?: string) => {
+  const send = useCallback(async (prompt: string, about?: string, see?: string) => {
     const text = prompt.trim()
     if (!text || abortRef.current) return
-    lastSent.current = { prompt: text, about }
+    lastSent.current = { prompt: text, about, see }
     const ctrl = new AbortController()
     abortRef.current = ctrl
     // The transcript replayed as prose IS the continuity — the upstream never
     // resumes a session — and the label of whatever pane Ivan is looking at rides
     // with it as a sentence, never as a structured scoping field.
-    const context = buildContext(turnsRef.current, about)
+    const context = buildContext(turnsRef.current, about, see)
     setTurns(t => [...t, { id: nextId(), role: 'user', text, tools: [], error: null, about }])
     setStreamText('')
     setStreamTools([])
@@ -189,7 +195,10 @@ export function useChat() {
       if (out.length && out[out.length - 1].role === 'user') out.pop()
       return out
     })
-    void send(last.prompt, last.about)
+    // A retry re-sends the context the ORIGINAL turn carried, not whatever is
+    // attached now. Re-asking the same question against a different screen
+    // would be a different question wearing the first one's words.
+    void send(last.prompt, last.about, last.see)
   }, [send])
 
   // The clean reset /clear needs: abort anything in flight, empty the

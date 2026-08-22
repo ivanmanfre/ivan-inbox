@@ -1,0 +1,1349 @@
+{
+ "results": [
+  {
+   "viewport": "1440x900",
+   "theme": "dark",
+   "edge": "first",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 261,
+     "t": 295,
+     "r": 598,
+     "b": 359,
+     "w": 337,
+     "h": 64
+    },
+    "cell": {
+     "l": 252,
+     "t": 201,
+     "r": 372,
+     "b": 287
+    },
+    "chip": {
+     "l": 261,
+     "t": 231
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+    "vw": 1440,
+    "vh": 900,
+    "text": "Posted 17:00 · Sunday: next week is already in the queue, Published"
+   }
+  },
+  {
+   "viewport": "1440x900",
+   "theme": "dark",
+   "edge": "rightmost",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 1005,
+     "t": 475,
+     "r": 1342,
+     "b": 559,
+     "w": 337,
+     "h": 84
+    },
+    "cell": {
+     "l": 996,
+     "t": 381,
+     "r": 1116,
+     "b": 467
+    },
+    "chip": {
+     "l": 1005,
+     "t": 411
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-92cb1d32-bf73-4ef0-b7a7-b4cac99f0c90",
+    "vw": 1440,
+    "vh": 900,
+    "text": "Posted 16:30 · Someone dropped his whole Claude skill in the comments and 40 people t, Pub"
+   }
+  },
+  {
+   "viewport": "1440x900",
+   "theme": "dark",
+   "edge": "leftmost",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 261,
+     "t": 295,
+     "r": 598,
+     "b": 359,
+     "w": 337,
+     "h": 64
+    },
+    "cell": {
+     "l": 252,
+     "t": 201,
+     "r": 372,
+     "b": 287
+    },
+    "chip": {
+     "l": 261,
+     "t": 231
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+    "vw": 1440,
+    "vh": 900,
+    "text": "Posted 17:00 · Sunday: next week is already in the queue, Published"
+   }
+  },
+  {
+   "viewport": "1440x900",
+   "theme": "dark",
+   "edge": "bottommost",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 385,
+     "t": 655,
+     "r": 722,
+     "b": 739,
+     "w": 337,
+     "h": 84
+    },
+    "cell": {
+     "l": 376,
+     "t": 561,
+     "r": 496,
+     "b": 647
+    },
+    "chip": {
+     "l": 385,
+     "t": 591
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-a6c64d99-30b9-4441-b4bc-14e9f13f8f03",
+    "vw": 1440,
+    "vh": 900,
+    "text": "10:00 · 10 to 15 calls a month is already enough, Scheduled · Armed: a publisher holds thi"
+   }
+  },
+  {
+   "viewport": "1440x900",
+   "theme": "dark",
+   "edge": "keyboard",
+   "openedOnFocus": true,
+   "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+   "closedByEscape": true,
+   "ok": true
+  },
+  {
+   "viewport": "1440x900",
+   "theme": "light",
+   "edge": "first",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 261,
+     "t": 295,
+     "r": 598,
+     "b": 359,
+     "w": 337,
+     "h": 64
+    },
+    "cell": {
+     "l": 252,
+     "t": 201,
+     "r": 372,
+     "b": 287
+    },
+    "chip": {
+     "l": 261,
+     "t": 231
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+    "vw": 1440,
+    "vh": 900,
+    "text": "Posted 17:00 · Sunday: next week is already in the queue, Published"
+   }
+  },
+  {
+   "viewport": "1440x900",
+   "theme": "light",
+   "edge": "rightmost",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 1005,
+     "t": 475,
+     "r": 1342,
+     "b": 559,
+     "w": 337,
+     "h": 84
+    },
+    "cell": {
+     "l": 996,
+     "t": 381,
+     "r": 1116,
+     "b": 467
+    },
+    "chip": {
+     "l": 1005,
+     "t": 411
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-92cb1d32-bf73-4ef0-b7a7-b4cac99f0c90",
+    "vw": 1440,
+    "vh": 900,
+    "text": "Posted 16:30 · Someone dropped his whole Claude skill in the comments and 40 people t, Pub"
+   }
+  },
+  {
+   "viewport": "1440x900",
+   "theme": "light",
+   "edge": "leftmost",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 261,
+     "t": 295,
+     "r": 598,
+     "b": 359,
+     "w": 337,
+     "h": 64
+    },
+    "cell": {
+     "l": 252,
+     "t": 201,
+     "r": 372,
+     "b": 287
+    },
+    "chip": {
+     "l": 261,
+     "t": 231
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+    "vw": 1440,
+    "vh": 900,
+    "text": "Posted 17:00 · Sunday: next week is already in the queue, Published"
+   }
+  },
+  {
+   "viewport": "1440x900",
+   "theme": "light",
+   "edge": "bottommost",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 385,
+     "t": 655,
+     "r": 722,
+     "b": 739,
+     "w": 337,
+     "h": 84
+    },
+    "cell": {
+     "l": 376,
+     "t": 561,
+     "r": 496,
+     "b": 647
+    },
+    "chip": {
+     "l": 385,
+     "t": 591
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-a6c64d99-30b9-4441-b4bc-14e9f13f8f03",
+    "vw": 1440,
+    "vh": 900,
+    "text": "10:00 · 10 to 15 calls a month is already enough, Scheduled · Armed: a publisher holds thi"
+   }
+  },
+  {
+   "viewport": "1440x900",
+   "theme": "light",
+   "edge": "keyboard",
+   "openedOnFocus": true,
+   "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+   "closedByEscape": true,
+   "ok": true
+  },
+  {
+   "viewport": "2560x1440",
+   "theme": "dark",
+   "edge": "first",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 261,
+     "t": 261,
+     "r": 598,
+     "b": 325,
+     "w": 337,
+     "h": 64
+    },
+    "cell": {
+     "l": 252,
+     "t": 167,
+     "r": 532,
+     "b": 253
+    },
+    "chip": {
+     "l": 261,
+     "t": 197
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+    "vw": 2560,
+    "vh": 1440,
+    "text": "Posted 17:00 · Sunday: next week is already in the queue, Published"
+   }
+  },
+  {
+   "viewport": "2560x1440",
+   "theme": "dark",
+   "edge": "rightmost",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 1965,
+     "t": 441,
+     "r": 2302,
+     "b": 525,
+     "w": 337,
+     "h": 84
+    },
+    "cell": {
+     "l": 1956,
+     "t": 347,
+     "r": 2236,
+     "b": 433
+    },
+    "chip": {
+     "l": 1965,
+     "t": 377
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-92cb1d32-bf73-4ef0-b7a7-b4cac99f0c90",
+    "vw": 2560,
+    "vh": 1440,
+    "text": "Posted 16:30 · Someone dropped his whole Claude skill in the comments and 40 people t, Pub"
+   }
+  },
+  {
+   "viewport": "2560x1440",
+   "theme": "dark",
+   "edge": "leftmost",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 261,
+     "t": 261,
+     "r": 598,
+     "b": 325,
+     "w": 337,
+     "h": 64
+    },
+    "cell": {
+     "l": 252,
+     "t": 167,
+     "r": 532,
+     "b": 253
+    },
+    "chip": {
+     "l": 261,
+     "t": 197
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+    "vw": 2560,
+    "vh": 1440,
+    "text": "Posted 17:00 · Sunday: next week is already in the queue, Published"
+   }
+  },
+  {
+   "viewport": "2560x1440",
+   "theme": "dark",
+   "edge": "bottommost",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 545,
+     "t": 621,
+     "r": 882,
+     "b": 705,
+     "w": 337,
+     "h": 84
+    },
+    "cell": {
+     "l": 536,
+     "t": 527,
+     "r": 816,
+     "b": 613
+    },
+    "chip": {
+     "l": 545,
+     "t": 557
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-a6c64d99-30b9-4441-b4bc-14e9f13f8f03",
+    "vw": 2560,
+    "vh": 1440,
+    "text": "10:00 · 10 to 15 calls a month is already enough, Scheduled · Armed: a publisher holds thi"
+   }
+  },
+  {
+   "viewport": "2560x1440",
+   "theme": "dark",
+   "edge": "keyboard",
+   "openedOnFocus": true,
+   "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+   "closedByEscape": true,
+   "ok": true
+  },
+  {
+   "viewport": "390x844",
+   "theme": "dark",
+   "edge": "first",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 27,
+     "t": 387,
+     "r": 364,
+     "b": 451,
+     "w": 337,
+     "h": 64
+    },
+    "cell": {
+     "l": 24,
+     "t": 286,
+     "r": 366,
+     "b": 379
+    },
+    "chip": {
+     "l": 27,
+     "t": 324
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+    "vw": 390,
+    "vh": 844,
+    "text": "Posted 17:00 · Sunday: next week is already in the queue, Published"
+   }
+  },
+  {
+   "viewport": "390x844",
+   "theme": "dark",
+   "edge": "rightmost",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 27,
+     "t": 387,
+     "r": 364,
+     "b": 451,
+     "w": 337,
+     "h": 64
+    },
+    "cell": {
+     "l": 24,
+     "t": 286,
+     "r": 366,
+     "b": 379
+    },
+    "chip": {
+     "l": 27,
+     "t": 324
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+    "vw": 390,
+    "vh": 844,
+    "text": "Posted 17:00 · Sunday: next week is already in the queue, Published"
+   }
+  },
+  {
+   "viewport": "390x844",
+   "theme": "dark",
+   "edge": "leftmost",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 27,
+     "t": 387,
+     "r": 364,
+     "b": 451,
+     "w": 337,
+     "h": 64
+    },
+    "cell": {
+     "l": 24,
+     "t": 286,
+     "r": 366,
+     "b": 379
+    },
+    "chip": {
+     "l": 27,
+     "t": 324
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+    "vw": 390,
+    "vh": 844,
+    "text": "Posted 17:00 · Sunday: next week is already in the queue, Published"
+   }
+  },
+  {
+   "viewport": "390x844",
+   "theme": "dark",
+   "edge": "bottommost",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 27,
+     "t": 491,
+     "r": 364,
+     "b": 575,
+     "w": 337,
+     "h": 84
+    },
+    "cell": {
+     "l": 24,
+     "t": 390,
+     "r": 366,
+     "b": 483
+    },
+    "chip": {
+     "l": 27,
+     "t": 428
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-a6c64d99-30b9-4441-b4bc-14e9f13f8f03",
+    "vw": 390,
+    "vh": 844,
+    "text": "10:00 · 10 to 15 calls a month is already enough, Scheduled · Armed: a publisher holds thi"
+   }
+  },
+  {
+   "viewport": "390x844",
+   "theme": "dark",
+   "edge": "keyboard",
+   "openedOnFocus": true,
+   "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+   "closedByEscape": true,
+   "ok": true
+  },
+  {
+   "viewport": "1280x520",
+   "theme": "dark",
+   "edge": "first",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 261,
+     "t": 295,
+     "r": 598,
+     "b": 359,
+     "w": 337,
+     "h": 64
+    },
+    "cell": {
+     "l": 252,
+     "t": 201,
+     "r": 349,
+     "b": 287
+    },
+    "chip": {
+     "l": 261,
+     "t": 231
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+    "vw": 1280,
+    "vh": 520,
+    "text": "Posted 17:00 · Sunday: next week is already in the queue, Published"
+   }
+  },
+  {
+   "viewport": "1280x520",
+   "theme": "dark",
+   "edge": "rightmost",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 868,
+     "t": 290,
+     "r": 1205,
+     "b": 374,
+     "w": 337,
+     "h": 84
+    },
+    "cell": {
+     "l": 859,
+     "t": 381,
+     "r": 956,
+     "b": 467
+    },
+    "chip": {
+     "l": 868,
+     "t": 411
+    },
+    "side": "above",
+    "role": "tooltip",
+    "describedBy": "cal-tip-92cb1d32-bf73-4ef0-b7a7-b4cac99f0c90",
+    "vw": 1280,
+    "vh": 520,
+    "text": "Posted 16:30 · Someone dropped his whole Claude skill in the comments and 40 people t, Pub"
+   }
+  },
+  {
+   "viewport": "1280x520",
+   "theme": "dark",
+   "edge": "leftmost",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 261,
+     "t": 295,
+     "r": 598,
+     "b": 359,
+     "w": 337,
+     "h": 64
+    },
+    "cell": {
+     "l": 252,
+     "t": 201,
+     "r": 349,
+     "b": 287
+    },
+    "chip": {
+     "l": 261,
+     "t": 231
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+    "vw": 1280,
+    "vh": 520,
+    "text": "Posted 17:00 · Sunday: next week is already in the queue, Published"
+   }
+  },
+  {
+   "viewport": "1280x520",
+   "theme": "dark",
+   "edge": "bottommost",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 362,
+     "t": 358,
+     "r": 699,
+     "b": 442,
+     "w": 337,
+     "h": 84
+    },
+    "cell": {
+     "l": 353,
+     "t": 264,
+     "r": 450,
+     "b": 350
+    },
+    "chip": {
+     "l": 362,
+     "t": 294
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-a6c64d99-30b9-4441-b4bc-14e9f13f8f03",
+    "vw": 1280,
+    "vh": 520,
+    "text": "10:00 · 10 to 15 calls a month is already enough, Scheduled · Armed: a publisher holds thi"
+   }
+  },
+  {
+   "viewport": "1280x520",
+   "theme": "dark",
+   "edge": "keyboard",
+   "openedOnFocus": true,
+   "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+   "closedByEscape": true,
+   "ok": true
+  },
+  {
+   "viewport": "2560x1440",
+   "theme": "light",
+   "edge": "first",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 261,
+     "t": 261,
+     "r": 598,
+     "b": 325,
+     "w": 337,
+     "h": 64
+    },
+    "cell": {
+     "l": 252,
+     "t": 167,
+     "r": 532,
+     "b": 253
+    },
+    "chip": {
+     "l": 261,
+     "t": 197
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+    "vw": 2560,
+    "vh": 1440,
+    "text": "Posted 17:00 · Sunday: next week is already in the queue, Published"
+   }
+  },
+  {
+   "viewport": "2560x1440",
+   "theme": "light",
+   "edge": "rightmost",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 1965,
+     "t": 441,
+     "r": 2302,
+     "b": 525,
+     "w": 337,
+     "h": 84
+    },
+    "cell": {
+     "l": 1956,
+     "t": 347,
+     "r": 2236,
+     "b": 433
+    },
+    "chip": {
+     "l": 1965,
+     "t": 377
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-92cb1d32-bf73-4ef0-b7a7-b4cac99f0c90",
+    "vw": 2560,
+    "vh": 1440,
+    "text": "Posted 16:30 · Someone dropped his whole Claude skill in the comments and 40 people t, Pub"
+   }
+  },
+  {
+   "viewport": "2560x1440",
+   "theme": "light",
+   "edge": "leftmost",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 261,
+     "t": 261,
+     "r": 598,
+     "b": 325,
+     "w": 337,
+     "h": 64
+    },
+    "cell": {
+     "l": 252,
+     "t": 167,
+     "r": 532,
+     "b": 253
+    },
+    "chip": {
+     "l": 261,
+     "t": 197
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+    "vw": 2560,
+    "vh": 1440,
+    "text": "Posted 17:00 · Sunday: next week is already in the queue, Published"
+   }
+  },
+  {
+   "viewport": "2560x1440",
+   "theme": "light",
+   "edge": "bottommost",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 545,
+     "t": 621,
+     "r": 882,
+     "b": 705,
+     "w": 337,
+     "h": 84
+    },
+    "cell": {
+     "l": 536,
+     "t": 527,
+     "r": 816,
+     "b": 613
+    },
+    "chip": {
+     "l": 545,
+     "t": 557
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-a6c64d99-30b9-4441-b4bc-14e9f13f8f03",
+    "vw": 2560,
+    "vh": 1440,
+    "text": "10:00 · 10 to 15 calls a month is already enough, Scheduled · Armed: a publisher holds thi"
+   }
+  },
+  {
+   "viewport": "2560x1440",
+   "theme": "light",
+   "edge": "keyboard",
+   "openedOnFocus": true,
+   "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+   "closedByEscape": true,
+   "ok": true
+  },
+  {
+   "viewport": "390x844",
+   "theme": "light",
+   "edge": "first",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 27,
+     "t": 387,
+     "r": 364,
+     "b": 451,
+     "w": 337,
+     "h": 64
+    },
+    "cell": {
+     "l": 24,
+     "t": 286,
+     "r": 366,
+     "b": 379
+    },
+    "chip": {
+     "l": 27,
+     "t": 324
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+    "vw": 390,
+    "vh": 844,
+    "text": "Posted 17:00 · Sunday: next week is already in the queue, Published"
+   }
+  },
+  {
+   "viewport": "390x844",
+   "theme": "light",
+   "edge": "rightmost",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 27,
+     "t": 387,
+     "r": 364,
+     "b": 451,
+     "w": 337,
+     "h": 64
+    },
+    "cell": {
+     "l": 24,
+     "t": 286,
+     "r": 366,
+     "b": 379
+    },
+    "chip": {
+     "l": 27,
+     "t": 324
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+    "vw": 390,
+    "vh": 844,
+    "text": "Posted 17:00 · Sunday: next week is already in the queue, Published"
+   }
+  },
+  {
+   "viewport": "390x844",
+   "theme": "light",
+   "edge": "leftmost",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 27,
+     "t": 387,
+     "r": 364,
+     "b": 451,
+     "w": 337,
+     "h": 64
+    },
+    "cell": {
+     "l": 24,
+     "t": 286,
+     "r": 366,
+     "b": 379
+    },
+    "chip": {
+     "l": 27,
+     "t": 324
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+    "vw": 390,
+    "vh": 844,
+    "text": "Posted 17:00 · Sunday: next week is already in the queue, Published"
+   }
+  },
+  {
+   "viewport": "390x844",
+   "theme": "light",
+   "edge": "bottommost",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 27,
+     "t": 491,
+     "r": 364,
+     "b": 575,
+     "w": 337,
+     "h": 84
+    },
+    "cell": {
+     "l": 24,
+     "t": 390,
+     "r": 366,
+     "b": 483
+    },
+    "chip": {
+     "l": 27,
+     "t": 428
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-a6c64d99-30b9-4441-b4bc-14e9f13f8f03",
+    "vw": 390,
+    "vh": 844,
+    "text": "10:00 · 10 to 15 calls a month is already enough, Scheduled · Armed: a publisher holds thi"
+   }
+  },
+  {
+   "viewport": "390x844",
+   "theme": "light",
+   "edge": "keyboard",
+   "openedOnFocus": true,
+   "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+   "closedByEscape": true,
+   "ok": true
+  },
+  {
+   "viewport": "1024x768",
+   "theme": "dark",
+   "edge": "first",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 261,
+     "t": 295,
+     "r": 598,
+     "b": 359,
+     "w": 337,
+     "h": 64
+    },
+    "cell": {
+     "l": 252,
+     "t": 201,
+     "r": 313,
+     "b": 287
+    },
+    "chip": {
+     "l": 261,
+     "t": 231
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+    "vw": 1024,
+    "vh": 768,
+    "text": "Posted 17:00 · Sunday: next week is already in the queue, Published"
+   }
+  },
+  {
+   "viewport": "1024x768",
+   "theme": "dark",
+   "edge": "rightmost",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 648,
+     "t": 475,
+     "r": 986,
+     "b": 559,
+     "w": 337,
+     "h": 84
+    },
+    "cell": {
+     "l": 639,
+     "t": 381,
+     "r": 700,
+     "b": 467
+    },
+    "chip": {
+     "l": 648,
+     "t": 411
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-92cb1d32-bf73-4ef0-b7a7-b4cac99f0c90",
+    "vw": 1024,
+    "vh": 768,
+    "text": "Posted 16:30 · Someone dropped his whole Claude skill in the comments and 40 people t, Pub"
+   }
+  },
+  {
+   "viewport": "1024x768",
+   "theme": "dark",
+   "edge": "leftmost",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 261,
+     "t": 295,
+     "r": 598,
+     "b": 359,
+     "w": 337,
+     "h": 64
+    },
+    "cell": {
+     "l": 252,
+     "t": 201,
+     "r": 313,
+     "b": 287
+    },
+    "chip": {
+     "l": 261,
+     "t": 231
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+    "vw": 1024,
+    "vh": 768,
+    "text": "Posted 17:00 · Sunday: next week is already in the queue, Published"
+   }
+  },
+  {
+   "viewport": "1024x768",
+   "theme": "dark",
+   "edge": "bottommost",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 326,
+     "t": 655,
+     "r": 663,
+     "b": 739,
+     "w": 337,
+     "h": 84
+    },
+    "cell": {
+     "l": 317,
+     "t": 561,
+     "r": 377,
+     "b": 647
+    },
+    "chip": {
+     "l": 326,
+     "t": 591
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-a6c64d99-30b9-4441-b4bc-14e9f13f8f03",
+    "vw": 1024,
+    "vh": 768,
+    "text": "10:00 · 10 to 15 calls a month is already enough, Scheduled · Armed: a publisher holds thi"
+   }
+  },
+  {
+   "viewport": "1024x768",
+   "theme": "dark",
+   "edge": "keyboard",
+   "openedOnFocus": true,
+   "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+   "closedByEscape": true,
+   "ok": true
+  },
+  {
+   "viewport": "1024x768",
+   "theme": "light",
+   "edge": "first",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 261,
+     "t": 295,
+     "r": 598,
+     "b": 359,
+     "w": 337,
+     "h": 64
+    },
+    "cell": {
+     "l": 252,
+     "t": 201,
+     "r": 313,
+     "b": 287
+    },
+    "chip": {
+     "l": 261,
+     "t": 231
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+    "vw": 1024,
+    "vh": 768,
+    "text": "Posted 17:00 · Sunday: next week is already in the queue, Published"
+   }
+  },
+  {
+   "viewport": "1024x768",
+   "theme": "light",
+   "edge": "rightmost",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 648,
+     "t": 475,
+     "r": 986,
+     "b": 559,
+     "w": 337,
+     "h": 84
+    },
+    "cell": {
+     "l": 639,
+     "t": 381,
+     "r": 700,
+     "b": 467
+    },
+    "chip": {
+     "l": 648,
+     "t": 411
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-92cb1d32-bf73-4ef0-b7a7-b4cac99f0c90",
+    "vw": 1024,
+    "vh": 768,
+    "text": "Posted 16:30 · Someone dropped his whole Claude skill in the comments and 40 people t, Pub"
+   }
+  },
+  {
+   "viewport": "1024x768",
+   "theme": "light",
+   "edge": "leftmost",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 261,
+     "t": 295,
+     "r": 598,
+     "b": 359,
+     "w": 337,
+     "h": 64
+    },
+    "cell": {
+     "l": 252,
+     "t": 201,
+     "r": 313,
+     "b": 287
+    },
+    "chip": {
+     "l": 261,
+     "t": 231
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+    "vw": 1024,
+    "vh": 768,
+    "text": "Posted 17:00 · Sunday: next week is already in the queue, Published"
+   }
+  },
+  {
+   "viewport": "1024x768",
+   "theme": "light",
+   "edge": "bottommost",
+   "ok": true,
+   "inView": true,
+   "overlapsCell": false,
+   "anchored": true,
+   "measured": {
+    "pop": {
+     "l": 326,
+     "t": 655,
+     "r": 663,
+     "b": 739,
+     "w": 337,
+     "h": 84
+    },
+    "cell": {
+     "l": 317,
+     "t": 561,
+     "r": 377,
+     "b": 647
+    },
+    "chip": {
+     "l": 326,
+     "t": 591
+    },
+    "side": "below",
+    "role": "tooltip",
+    "describedBy": "cal-tip-a6c64d99-30b9-4441-b4bc-14e9f13f8f03",
+    "vw": 1024,
+    "vh": 768,
+    "text": "10:00 · 10 to 15 calls a month is already enough, Scheduled · Armed: a publisher holds thi"
+   }
+  },
+  {
+   "viewport": "1024x768",
+   "theme": "light",
+   "edge": "keyboard",
+   "openedOnFocus": true,
+   "describedBy": "cal-tip-2f23999f-0adb-4d85-9ecf-7589f8b15f98",
+   "closedByEscape": true,
+   "ok": true
+  }
+ ],
+ "allPass": true,
+ "attemptedWrites": 0,
+ "attemptedWriteDetail": [],
+ "unauthorized": []
+}

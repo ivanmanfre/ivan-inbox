@@ -1,0 +1,7 @@
+{
+ "dragging": true,
+ "opacity": "0.55",
+ "boxShadow": "rgba(0, 0, 0, 0.12) 0px 2px 8px 0px",
+ "transform": "matrix(1.02, 0, 0, 1.02, 0, 0)",
+ "dropTargetLit": true
+}

@@ -1,0 +1,43 @@
+{
+  "shots": [
+    "cal-1440x900-dark.jpg",
+    "cal-1440x900-light.jpg",
+    "cal-2560x1440-dark.jpg",
+    "cal-2560x1440-light.jpg",
+    "cal-390x844-dark.jpg",
+    "cal-390x844-light.jpg",
+    {
+      "frame": "a",
+      "gap": "20px",
+      "radius": "40px",
+      "ground": "#c5e1a5",
+      "lostPx": 40,
+      "lostPct": 2.8
+    },
+    "cal-frame-a-1440x900-dark.jpg",
+    {
+      "frame": "b",
+      "gap": "10px",
+      "radius": "22px",
+      "ground": "#c5e1a5",
+      "lostPx": 20,
+      "lostPct": 1.4
+    },
+    "cal-frame-b-1440x900-dark.jpg",
+    {
+      "frame": "c",
+      "gap": "3px",
+      "radius": "0px",
+      "ground": "#c5e1a5",
+      "lostPx": 6,
+      "lostPct": 0.4
+    },
+    "cal-frame-c-1440x900-dark.jpg",
+    "cal-two-post-day-1440x900-dark-fixture.jpg",
+    "cal-overflow-panel-1440x900-dark-fixture.jpg",
+    "cal-chip-mid-drag-1440x900-dark.jpg"
+  ],
+  "attemptedWrites": 0,
+  "attemptedWriteDetail": [],
+  "unauthorized": []
+}

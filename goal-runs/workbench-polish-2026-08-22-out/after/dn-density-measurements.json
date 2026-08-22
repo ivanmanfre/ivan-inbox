@@ -1,0 +1,3818 @@
+{
+  "content-ideas__comfortable__dark": {
+    "1440x900": {
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "recordSelector": ".ct-card.ct-tap",
+      "recordCountTotal": 90,
+      "recordCountVisibleNoScroll": 11,
+      "wordsVisibleNoScroll": 204,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "500",
+          "lineHeight": "21.6px",
+          "chars": 8023,
+          "nodeCount": 90
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "12px",
+          "chars": 853,
+          "nodeCount": 90
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 662,
+          "nodeCount": 96
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "19.2px",
+          "chars": 349,
+          "nodeCount": 90
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 72,
+          "nodeCount": 9
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 41,
+          "nodeCount": 5
+        },
+        {
+          "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "20.8px",
+          "chars": 14,
+          "nodeCount": 9
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "22.95px",
+          "chars": 5,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "400",
+          "lineHeight": "19.2px",
+          "chars": 2,
+          "nodeCount": 2
+        },
+        {
+          "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 2,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "20.8px",
+          "chars": 1,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "400",
+          "lineHeight": "22.95px",
+          "chars": 1,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 55.6,
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "16px|21.6px",
+        "recordFullClass": "ct-card ct-idea ct-tap"
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 264,
+        "chromeBelowViewportPx": 14,
+        "chromeSharePct": 30.9
+      },
+      "lineLenChars": {
+        "fontSpec": "500 16px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 10.05,
+        "avgLowerWidthPx": 8.39,
+        "containerWidthPx": 1184,
+        "charsPerLine_zeroMethod": 118,
+        "charsPerLine_avgLowerMethod": 141
+      },
+      "snipCheck": null,
+      "chromeInfo": {
+        "railWidthPx": 216,
+        "railVisible": true,
+        "rootDensity": "unset",
+        "rootTheme": "unset"
+      }
+    },
+    "390x844": {
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "recordSelector": ".ct-card.ct-tap",
+      "recordCountTotal": 90,
+      "recordCountVisibleNoScroll": 6,
+      "wordsVisibleNoScroll": 101,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "500",
+          "lineHeight": "21.6px",
+          "chars": 8023,
+          "nodeCount": 90
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "12px",
+          "chars": 853,
+          "nodeCount": 90
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 662,
+          "nodeCount": 96
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "19.2px",
+          "chars": 349,
+          "nodeCount": 90
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 72,
+          "nodeCount": 9
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 69,
+          "nodeCount": 9
+        },
+        {
+          "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "20.8px",
+          "chars": 14,
+          "nodeCount": 9
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "22.95px",
+          "chars": 5,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "400",
+          "lineHeight": "19.2px",
+          "chars": 2,
+          "nodeCount": 2
+        },
+        {
+          "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 2,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "600",
+          "lineHeight": "25.6px",
+          "chars": 1,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "20.8px",
+          "chars": 1,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "400",
+          "lineHeight": "22.95px",
+          "chars": 1,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 77.2,
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "16px|21.6px",
+        "recordFullClass": "ct-card ct-idea ct-tap"
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 305,
+        "chromeBelowViewportPx": 71,
+        "chromeSharePct": 44.5
+      },
+      "lineLenChars": {
+        "fontSpec": "500 16px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 10.05,
+        "avgLowerWidthPx": 8.39,
+        "containerWidthPx": 374,
+        "charsPerLine_zeroMethod": 37,
+        "charsPerLine_avgLowerMethod": 45
+      },
+      "snipCheck": null,
+      "chromeInfo": {
+        "railWidthPx": 0,
+        "railVisible": false,
+        "rootDensity": "unset",
+        "rootTheme": "unset"
+      }
+    }
+  },
+  "content-ideas__comfortable__light": {
+    "1440x900": {
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "recordSelector": ".ct-card.ct-tap",
+      "recordCountTotal": 90,
+      "recordCountVisibleNoScroll": 11,
+      "wordsVisibleNoScroll": 204,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "500",
+          "lineHeight": "21.6px",
+          "chars": 8023,
+          "nodeCount": 90
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "12px",
+          "chars": 853,
+          "nodeCount": 90
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 662,
+          "nodeCount": 96
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "19.2px",
+          "chars": 349,
+          "nodeCount": 90
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 72,
+          "nodeCount": 9
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 41,
+          "nodeCount": 5
+        },
+        {
+          "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "20.8px",
+          "chars": 14,
+          "nodeCount": 9
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "22.95px",
+          "chars": 5,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "400",
+          "lineHeight": "19.2px",
+          "chars": 2,
+          "nodeCount": 2
+        },
+        {
+          "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 2,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "20.8px",
+          "chars": 1,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "400",
+          "lineHeight": "22.95px",
+          "chars": 1,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 55.6,
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "16px|21.6px",
+        "recordFullClass": "ct-card ct-idea ct-tap"
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 264,
+        "chromeBelowViewportPx": 14,
+        "chromeSharePct": 30.9
+      },
+      "lineLenChars": {
+        "fontSpec": "500 16px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 10.05,
+        "avgLowerWidthPx": 8.39,
+        "containerWidthPx": 1184,
+        "charsPerLine_zeroMethod": 118,
+        "charsPerLine_avgLowerMethod": 141
+      },
+      "snipCheck": null,
+      "chromeInfo": {
+        "railWidthPx": 216,
+        "railVisible": true,
+        "rootDensity": "unset",
+        "rootTheme": "light"
+      }
+    },
+    "390x844": {
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "recordSelector": ".ct-card.ct-tap",
+      "recordCountTotal": 90,
+      "recordCountVisibleNoScroll": 6,
+      "wordsVisibleNoScroll": 101,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "500",
+          "lineHeight": "21.6px",
+          "chars": 8023,
+          "nodeCount": 90
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "12px",
+          "chars": 853,
+          "nodeCount": 90
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 662,
+          "nodeCount": 96
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "19.2px",
+          "chars": 349,
+          "nodeCount": 90
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 72,
+          "nodeCount": 9
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 69,
+          "nodeCount": 9
+        },
+        {
+          "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "20.8px",
+          "chars": 14,
+          "nodeCount": 9
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "22.95px",
+          "chars": 5,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "400",
+          "lineHeight": "19.2px",
+          "chars": 2,
+          "nodeCount": 2
+        },
+        {
+          "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 2,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "600",
+          "lineHeight": "25.6px",
+          "chars": 1,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "20.8px",
+          "chars": 1,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "400",
+          "lineHeight": "22.95px",
+          "chars": 1,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 77.2,
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "16px|21.6px",
+        "recordFullClass": "ct-card ct-idea ct-tap"
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 305,
+        "chromeBelowViewportPx": 71,
+        "chromeSharePct": 44.5
+      },
+      "lineLenChars": {
+        "fontSpec": "500 16px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 10.05,
+        "avgLowerWidthPx": 8.39,
+        "containerWidthPx": 374,
+        "charsPerLine_zeroMethod": 37,
+        "charsPerLine_avgLowerMethod": 45
+      },
+      "snipCheck": null,
+      "chromeInfo": {
+        "railWidthPx": 0,
+        "railVisible": false,
+        "rootDensity": "unset",
+        "rootTheme": "light"
+      }
+    }
+  },
+  "content-ideas__compact__dark": {
+    "1440x900": {
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "recordSelector": ".ct-card.ct-tap",
+      "recordCountTotal": 90,
+      "recordCountVisibleNoScroll": 11,
+      "wordsVisibleNoScroll": 204,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "500",
+          "lineHeight": "21.6px",
+          "chars": 8023,
+          "nodeCount": 90
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "12px",
+          "chars": 853,
+          "nodeCount": 90
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 662,
+          "nodeCount": 96
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "19.2px",
+          "chars": 349,
+          "nodeCount": 90
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 72,
+          "nodeCount": 9
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 41,
+          "nodeCount": 5
+        },
+        {
+          "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "20.8px",
+          "chars": 14,
+          "nodeCount": 9
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "22.95px",
+          "chars": 5,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "400",
+          "lineHeight": "19.2px",
+          "chars": 2,
+          "nodeCount": 2
+        },
+        {
+          "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 2,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "20.8px",
+          "chars": 1,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "400",
+          "lineHeight": "22.95px",
+          "chars": 1,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 55.6,
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "16px|21.6px",
+        "recordFullClass": "ct-card ct-idea ct-tap"
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 264,
+        "chromeBelowViewportPx": 14,
+        "chromeSharePct": 30.9
+      },
+      "lineLenChars": {
+        "fontSpec": "500 16px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 10.05,
+        "avgLowerWidthPx": 8.39,
+        "containerWidthPx": 1184,
+        "charsPerLine_zeroMethod": 118,
+        "charsPerLine_avgLowerMethod": 141
+      },
+      "snipCheck": null,
+      "chromeInfo": {
+        "railWidthPx": 216,
+        "railVisible": true,
+        "rootDensity": "compact",
+        "rootTheme": "unset"
+      }
+    },
+    "390x844": {
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "recordSelector": ".ct-card.ct-tap",
+      "recordCountTotal": 90,
+      "recordCountVisibleNoScroll": 6,
+      "wordsVisibleNoScroll": 101,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "500",
+          "lineHeight": "21.6px",
+          "chars": 8023,
+          "nodeCount": 90
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "12px",
+          "chars": 853,
+          "nodeCount": 90
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 662,
+          "nodeCount": 96
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "19.2px",
+          "chars": 349,
+          "nodeCount": 90
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 72,
+          "nodeCount": 9
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 69,
+          "nodeCount": 9
+        },
+        {
+          "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "20.8px",
+          "chars": 14,
+          "nodeCount": 9
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "22.95px",
+          "chars": 5,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "400",
+          "lineHeight": "19.2px",
+          "chars": 2,
+          "nodeCount": 2
+        },
+        {
+          "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 2,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "600",
+          "lineHeight": "25.6px",
+          "chars": 1,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "20.8px",
+          "chars": 1,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "400",
+          "lineHeight": "22.95px",
+          "chars": 1,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 77.2,
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "16px|21.6px",
+        "recordFullClass": "ct-card ct-idea ct-tap"
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 305,
+        "chromeBelowViewportPx": 71,
+        "chromeSharePct": 44.5
+      },
+      "lineLenChars": {
+        "fontSpec": "500 16px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 10.05,
+        "avgLowerWidthPx": 8.39,
+        "containerWidthPx": 374,
+        "charsPerLine_zeroMethod": 37,
+        "charsPerLine_avgLowerMethod": 45
+      },
+      "snipCheck": null,
+      "chromeInfo": {
+        "railWidthPx": 0,
+        "railVisible": false,
+        "rootDensity": "compact",
+        "rootTheme": "unset"
+      }
+    }
+  },
+  "content-ideas__compact__light": {
+    "1440x900": {
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "recordSelector": ".ct-card.ct-tap",
+      "recordCountTotal": 90,
+      "recordCountVisibleNoScroll": 11,
+      "wordsVisibleNoScroll": 204,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "500",
+          "lineHeight": "21.6px",
+          "chars": 8023,
+          "nodeCount": 90
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "12px",
+          "chars": 853,
+          "nodeCount": 90
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 662,
+          "nodeCount": 96
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "19.2px",
+          "chars": 349,
+          "nodeCount": 90
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 72,
+          "nodeCount": 9
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 41,
+          "nodeCount": 5
+        },
+        {
+          "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "20.8px",
+          "chars": 14,
+          "nodeCount": 9
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "22.95px",
+          "chars": 5,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "400",
+          "lineHeight": "19.2px",
+          "chars": 2,
+          "nodeCount": 2
+        },
+        {
+          "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 2,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "20.8px",
+          "chars": 1,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "400",
+          "lineHeight": "22.95px",
+          "chars": 1,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 55.6,
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "16px|21.6px",
+        "recordFullClass": "ct-card ct-idea ct-tap"
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 264,
+        "chromeBelowViewportPx": 14,
+        "chromeSharePct": 30.9
+      },
+      "lineLenChars": {
+        "fontSpec": "500 16px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 10.05,
+        "avgLowerWidthPx": 8.39,
+        "containerWidthPx": 1184,
+        "charsPerLine_zeroMethod": 118,
+        "charsPerLine_avgLowerMethod": 141
+      },
+      "snipCheck": null,
+      "chromeInfo": {
+        "railWidthPx": 216,
+        "railVisible": true,
+        "rootDensity": "compact",
+        "rootTheme": "light"
+      }
+    },
+    "390x844": {
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "recordSelector": ".ct-card.ct-tap",
+      "recordCountTotal": 90,
+      "recordCountVisibleNoScroll": 6,
+      "wordsVisibleNoScroll": 101,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "500",
+          "lineHeight": "21.6px",
+          "chars": 8023,
+          "nodeCount": 90
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "12px",
+          "chars": 853,
+          "nodeCount": 90
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 662,
+          "nodeCount": 96
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "19.2px",
+          "chars": 349,
+          "nodeCount": 90
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 72,
+          "nodeCount": 9
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 69,
+          "nodeCount": 9
+        },
+        {
+          "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "20.8px",
+          "chars": 14,
+          "nodeCount": 9
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "22.95px",
+          "chars": 5,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "400",
+          "lineHeight": "19.2px",
+          "chars": 2,
+          "nodeCount": 2
+        },
+        {
+          "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 2,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "600",
+          "lineHeight": "25.6px",
+          "chars": 1,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "20.8px",
+          "chars": 1,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "400",
+          "lineHeight": "22.95px",
+          "chars": 1,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 77.2,
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "16px|21.6px",
+        "recordFullClass": "ct-card ct-idea ct-tap"
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 305,
+        "chromeBelowViewportPx": 71,
+        "chromeSharePct": 44.5
+      },
+      "lineLenChars": {
+        "fontSpec": "500 16px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 10.05,
+        "avgLowerWidthPx": 8.39,
+        "containerWidthPx": 374,
+        "charsPerLine_zeroMethod": 37,
+        "charsPerLine_avgLowerMethod": 45
+      },
+      "snipCheck": null,
+      "chromeInfo": {
+        "railWidthPx": 0,
+        "railVisible": false,
+        "rootDensity": "compact",
+        "rootTheme": "light"
+      }
+    }
+  },
+  "dms__comfortable__dark": {
+    "1440x900": {
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "recordSelector": ".r",
+      "recordCountTotal": 10,
+      "recordCountVisibleNoScroll": 9,
+      "wordsVisibleNoScroll": 185,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 1131,
+          "nodeCount": 27
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "500",
+          "lineHeight": "25.6px",
+          "chars": 133,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "12px",
+          "chars": 64,
+          "nodeCount": 20
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 23,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 20,
+          "nodeCount": 5
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "19.2px",
+          "chars": 20,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "400",
+          "lineHeight": "12px",
+          "chars": 20,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12.5px",
+          "fontWeight": "700",
+          "lineHeight": "15px",
+          "chars": 18,
+          "nodeCount": 3
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "10px",
+          "fontWeight": "800",
+          "lineHeight": "14px",
+          "chars": 10,
+          "nodeCount": 2
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "32px",
+          "chars": 3,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 93.8,
+        "paddingTop": 10,
+        "paddingBottom": 10,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "16px|25.6px",
+        "recordFullClass": "r  "
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 144,
+        "chromeBelowViewportPx": 27,
+        "chromeSharePct": 19
+      },
+      "lineLenChars": {
+        "fontSpec": "400 16px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 9.77,
+        "avgLowerWidthPx": 8.16,
+        "containerWidthPx": 1152,
+        "charsPerLine_zeroMethod": 118,
+        "charsPerLine_avgLowerMethod": 141
+      },
+      "snipCheck": {
+        "maxWidth": "886.875px",
+        "computedWidthPx": 887,
+        "lineHeight": "25.6px",
+        "fontSize": "16px"
+      },
+      "chromeInfo": {
+        "railWidthPx": 216,
+        "railVisible": true,
+        "rootDensity": "unset",
+        "rootTheme": "unset"
+      }
+    },
+    "390x844": {
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "recordSelector": ".r",
+      "recordCountTotal": 10,
+      "recordCountVisibleNoScroll": 7,
+      "wordsVisibleNoScroll": 132,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 1133,
+          "nodeCount": 28
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "500",
+          "lineHeight": "25.6px",
+          "chars": 133,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "12px",
+          "chars": 64,
+          "nodeCount": 20
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 23,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 20,
+          "nodeCount": 5
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "19.2px",
+          "chars": 20,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "400",
+          "lineHeight": "12px",
+          "chars": 20,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12.5px",
+          "fontWeight": "700",
+          "lineHeight": "15px",
+          "chars": 18,
+          "nodeCount": 3
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "10px",
+          "fontWeight": "800",
+          "lineHeight": "14px",
+          "chars": 10,
+          "nodeCount": 2
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "32px",
+          "chars": 3,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 93.8,
+        "paddingTop": 10,
+        "paddingBottom": 10,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "16px|25.6px",
+        "recordFullClass": "r  "
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 244,
+        "chromeBelowViewportPx": 25,
+        "chromeSharePct": 31.9
+      },
+      "lineLenChars": {
+        "fontSpec": "400 16px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 9.77,
+        "avgLowerWidthPx": 8.16,
+        "containerWidthPx": 342,
+        "charsPerLine_zeroMethod": 35,
+        "charsPerLine_avgLowerMethod": 42
+      },
+      "snipCheck": {
+        "maxWidth": "none",
+        "computedWidthPx": 216,
+        "lineHeight": "25.6px",
+        "fontSize": "16px"
+      },
+      "chromeInfo": {
+        "railWidthPx": 0,
+        "railVisible": false,
+        "rootDensity": "unset",
+        "rootTheme": "unset"
+      }
+    }
+  },
+  "dms__comfortable__light": {
+    "1440x900": {
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "recordSelector": ".r",
+      "recordCountTotal": 10,
+      "recordCountVisibleNoScroll": 9,
+      "wordsVisibleNoScroll": 185,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 1131,
+          "nodeCount": 27
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "500",
+          "lineHeight": "25.6px",
+          "chars": 133,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "12px",
+          "chars": 64,
+          "nodeCount": 20
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 23,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 20,
+          "nodeCount": 5
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "19.2px",
+          "chars": 20,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "400",
+          "lineHeight": "12px",
+          "chars": 20,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12.5px",
+          "fontWeight": "700",
+          "lineHeight": "15px",
+          "chars": 18,
+          "nodeCount": 3
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "10px",
+          "fontWeight": "800",
+          "lineHeight": "14px",
+          "chars": 10,
+          "nodeCount": 2
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "32px",
+          "chars": 3,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 93.8,
+        "paddingTop": 10,
+        "paddingBottom": 10,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "16px|25.6px",
+        "recordFullClass": "r  "
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 144,
+        "chromeBelowViewportPx": 27,
+        "chromeSharePct": 19
+      },
+      "lineLenChars": {
+        "fontSpec": "400 16px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 9.77,
+        "avgLowerWidthPx": 8.16,
+        "containerWidthPx": 1152,
+        "charsPerLine_zeroMethod": 118,
+        "charsPerLine_avgLowerMethod": 141
+      },
+      "snipCheck": {
+        "maxWidth": "886.875px",
+        "computedWidthPx": 887,
+        "lineHeight": "25.6px",
+        "fontSize": "16px"
+      },
+      "chromeInfo": {
+        "railWidthPx": 216,
+        "railVisible": true,
+        "rootDensity": "unset",
+        "rootTheme": "light"
+      }
+    },
+    "390x844": {
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "recordSelector": ".r",
+      "recordCountTotal": 10,
+      "recordCountVisibleNoScroll": 7,
+      "wordsVisibleNoScroll": 132,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 1133,
+          "nodeCount": 28
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "500",
+          "lineHeight": "25.6px",
+          "chars": 133,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "12px",
+          "chars": 64,
+          "nodeCount": 20
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 23,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 20,
+          "nodeCount": 5
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "19.2px",
+          "chars": 20,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "400",
+          "lineHeight": "12px",
+          "chars": 20,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12.5px",
+          "fontWeight": "700",
+          "lineHeight": "15px",
+          "chars": 18,
+          "nodeCount": 3
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "10px",
+          "fontWeight": "800",
+          "lineHeight": "14px",
+          "chars": 10,
+          "nodeCount": 2
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "32px",
+          "chars": 3,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 93.8,
+        "paddingTop": 10,
+        "paddingBottom": 10,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "16px|25.6px",
+        "recordFullClass": "r  "
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 244,
+        "chromeBelowViewportPx": 25,
+        "chromeSharePct": 31.9
+      },
+      "lineLenChars": {
+        "fontSpec": "400 16px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 9.77,
+        "avgLowerWidthPx": 8.16,
+        "containerWidthPx": 342,
+        "charsPerLine_zeroMethod": 35,
+        "charsPerLine_avgLowerMethod": 42
+      },
+      "snipCheck": {
+        "maxWidth": "none",
+        "computedWidthPx": 216,
+        "lineHeight": "25.6px",
+        "fontSize": "16px"
+      },
+      "chromeInfo": {
+        "railWidthPx": 0,
+        "railVisible": false,
+        "rootDensity": "unset",
+        "rootTheme": "light"
+      }
+    }
+  },
+  "dms__compact__dark": {
+    "1440x900": {
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "recordSelector": ".r",
+      "recordCountTotal": 10,
+      "recordCountVisibleNoScroll": 10,
+      "wordsVisibleNoScroll": 198,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "21.6px",
+          "chars": 1022,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "500",
+          "lineHeight": "21.6px",
+          "chars": 133,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 109,
+          "nodeCount": 17
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "12px",
+          "chars": 64,
+          "nodeCount": 20
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 23,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 20,
+          "nodeCount": 5
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "19.2px",
+          "chars": 20,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "400",
+          "lineHeight": "12px",
+          "chars": 20,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12.5px",
+          "fontWeight": "700",
+          "lineHeight": "15px",
+          "chars": 18,
+          "nodeCount": 3
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "10px",
+          "fontWeight": "800",
+          "lineHeight": "14px",
+          "chars": 10,
+          "nodeCount": 2
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "32px",
+          "chars": 3,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 87.8,
+        "paddingTop": 7,
+        "paddingBottom": 7,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "16px|21.6px",
+        "recordFullClass": "r  "
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 144,
+        "chromeBelowViewportPx": 90,
+        "chromeSharePct": 26
+      },
+      "lineLenChars": {
+        "fontSpec": "400 16px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 9.77,
+        "avgLowerWidthPx": 8.16,
+        "containerWidthPx": 1152,
+        "charsPerLine_zeroMethod": 118,
+        "charsPerLine_avgLowerMethod": 141
+      },
+      "snipCheck": {
+        "maxWidth": "524.062px",
+        "computedWidthPx": 524,
+        "lineHeight": "21.6px",
+        "fontSize": "16px"
+      },
+      "chromeInfo": {
+        "railWidthPx": 216,
+        "railVisible": true,
+        "rootDensity": "compact",
+        "rootTheme": "unset"
+      }
+    },
+    "390x844": {
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "recordSelector": ".r",
+      "recordCountTotal": 10,
+      "recordCountVisibleNoScroll": 8,
+      "wordsVisibleNoScroll": 150,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "21.6px",
+          "chars": 1022,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "500",
+          "lineHeight": "21.6px",
+          "chars": 133,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 111,
+          "nodeCount": 18
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "12px",
+          "chars": 64,
+          "nodeCount": 20
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 23,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 20,
+          "nodeCount": 5
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "19.2px",
+          "chars": 20,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "400",
+          "lineHeight": "12px",
+          "chars": 20,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12.5px",
+          "fontWeight": "700",
+          "lineHeight": "15px",
+          "chars": 18,
+          "nodeCount": 3
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "10px",
+          "fontWeight": "800",
+          "lineHeight": "14px",
+          "chars": 10,
+          "nodeCount": 2
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "32px",
+          "chars": 3,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 87.8,
+        "paddingTop": 7,
+        "paddingBottom": 7,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "16px|21.6px",
+        "recordFullClass": "r  "
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 244,
+        "chromeBelowViewportPx": 56,
+        "chromeSharePct": 35.6
+      },
+      "lineLenChars": {
+        "fontSpec": "400 16px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 9.77,
+        "avgLowerWidthPx": 8.16,
+        "containerWidthPx": 342,
+        "charsPerLine_zeroMethod": 35,
+        "charsPerLine_avgLowerMethod": 42
+      },
+      "snipCheck": {
+        "maxWidth": "564.375px",
+        "computedWidthPx": 216,
+        "lineHeight": "21.6px",
+        "fontSize": "16px"
+      },
+      "chromeInfo": {
+        "railWidthPx": 0,
+        "railVisible": false,
+        "rootDensity": "compact",
+        "rootTheme": "unset"
+      }
+    }
+  },
+  "dms__compact__light": {
+    "1440x900": {
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "recordSelector": ".r",
+      "recordCountTotal": 10,
+      "recordCountVisibleNoScroll": 10,
+      "wordsVisibleNoScroll": 198,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "21.6px",
+          "chars": 1022,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "500",
+          "lineHeight": "21.6px",
+          "chars": 133,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 109,
+          "nodeCount": 17
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "12px",
+          "chars": 64,
+          "nodeCount": 20
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 23,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 20,
+          "nodeCount": 5
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "19.2px",
+          "chars": 20,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "400",
+          "lineHeight": "12px",
+          "chars": 20,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12.5px",
+          "fontWeight": "700",
+          "lineHeight": "15px",
+          "chars": 18,
+          "nodeCount": 3
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "10px",
+          "fontWeight": "800",
+          "lineHeight": "14px",
+          "chars": 10,
+          "nodeCount": 2
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "32px",
+          "chars": 3,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 87.8,
+        "paddingTop": 7,
+        "paddingBottom": 7,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "16px|21.6px",
+        "recordFullClass": "r  "
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 144,
+        "chromeBelowViewportPx": 90,
+        "chromeSharePct": 26
+      },
+      "lineLenChars": {
+        "fontSpec": "400 16px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 9.77,
+        "avgLowerWidthPx": 8.16,
+        "containerWidthPx": 1152,
+        "charsPerLine_zeroMethod": 118,
+        "charsPerLine_avgLowerMethod": 141
+      },
+      "snipCheck": {
+        "maxWidth": "524.062px",
+        "computedWidthPx": 524,
+        "lineHeight": "21.6px",
+        "fontSize": "16px"
+      },
+      "chromeInfo": {
+        "railWidthPx": 216,
+        "railVisible": true,
+        "rootDensity": "compact",
+        "rootTheme": "light"
+      }
+    },
+    "390x844": {
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "recordSelector": ".r",
+      "recordCountTotal": 10,
+      "recordCountVisibleNoScroll": 8,
+      "wordsVisibleNoScroll": 150,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "21.6px",
+          "chars": 1022,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "500",
+          "lineHeight": "21.6px",
+          "chars": 133,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 111,
+          "nodeCount": 18
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "12px",
+          "chars": 64,
+          "nodeCount": 20
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 23,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 20,
+          "nodeCount": 5
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "19.2px",
+          "chars": 20,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "400",
+          "lineHeight": "12px",
+          "chars": 20,
+          "nodeCount": 10
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12.5px",
+          "fontWeight": "700",
+          "lineHeight": "15px",
+          "chars": 18,
+          "nodeCount": 3
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "10px",
+          "fontWeight": "800",
+          "lineHeight": "14px",
+          "chars": 10,
+          "nodeCount": 2
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "32px",
+          "chars": 3,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 87.8,
+        "paddingTop": 7,
+        "paddingBottom": 7,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "16px|21.6px",
+        "recordFullClass": "r  "
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 244,
+        "chromeBelowViewportPx": 56,
+        "chromeSharePct": 35.6
+      },
+      "lineLenChars": {
+        "fontSpec": "400 16px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 9.77,
+        "avgLowerWidthPx": 8.16,
+        "containerWidthPx": 342,
+        "charsPerLine_zeroMethod": 35,
+        "charsPerLine_avgLowerMethod": 42
+      },
+      "snipCheck": {
+        "maxWidth": "564.375px",
+        "computedWidthPx": 216,
+        "lineHeight": "21.6px",
+        "fontSize": "16px"
+      },
+      "chromeInfo": {
+        "railWidthPx": 0,
+        "railVisible": false,
+        "rootDensity": "compact",
+        "rootTheme": "light"
+      }
+    }
+  },
+  "settings__comfortable__dark": {
+    "1440x900": {
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "recordSelector": ".grow",
+      "recordCountTotal": 6,
+      "recordCountVisibleNoScroll": 6,
+      "wordsVisibleNoScroll": 62,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 357,
+          "nodeCount": 6
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "500",
+          "lineHeight": "25.6px",
+          "chars": 53,
+          "nodeCount": 5
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 27,
+          "nodeCount": 4
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "22.95px",
+          "chars": 23,
+          "nodeCount": 2
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "32px",
+          "chars": 8,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 72.4,
+        "paddingTop": 12,
+        "paddingBottom": 12,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "13px|18.85px",
+        "recordFullClass": "grow"
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 137,
+        "chromeBelowViewportPx": 270,
+        "chromeSharePct": 45.2
+      },
+      "lineLenChars": {
+        "fontSpec": "400 13px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 8.11,
+        "avgLowerWidthPx": 6.8,
+        "containerWidthPx": 586,
+        "charsPerLine_zeroMethod": 72,
+        "charsPerLine_avgLowerMethod": 86
+      },
+      "snipCheck": null,
+      "chromeInfo": {
+        "railWidthPx": 216,
+        "railVisible": true,
+        "rootDensity": "unset",
+        "rootTheme": "unset"
+      }
+    },
+    "390x844": {
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "recordSelector": ".grow",
+      "recordCountTotal": 6,
+      "recordCountVisibleNoScroll": 6,
+      "wordsVisibleNoScroll": 62,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 357,
+          "nodeCount": 6
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "500",
+          "lineHeight": "25.6px",
+          "chars": 53,
+          "nodeCount": 5
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 27,
+          "nodeCount": 4
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "22.95px",
+          "chars": 23,
+          "nodeCount": 2
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "32px",
+          "chars": 8,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 2,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 91.3,
+        "paddingTop": 12,
+        "paddingBottom": 12,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "13px|18.85px",
+        "recordFullClass": "grow"
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 169,
+        "chromeBelowViewportPx": 69,
+        "chromeSharePct": 28.2
+      },
+      "lineLenChars": {
+        "fontSpec": "400 13px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 8.11,
+        "avgLowerWidthPx": 6.8,
+        "containerWidthPx": 308,
+        "charsPerLine_zeroMethod": 38,
+        "charsPerLine_avgLowerMethod": 45
+      },
+      "snipCheck": null,
+      "chromeInfo": {
+        "railWidthPx": 0,
+        "railVisible": false,
+        "rootDensity": "unset",
+        "rootTheme": "unset"
+      }
+    }
+  },
+  "settings__comfortable__light": {
+    "1440x900": {
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "recordSelector": ".grow",
+      "recordCountTotal": 6,
+      "recordCountVisibleNoScroll": 6,
+      "wordsVisibleNoScroll": 62,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 357,
+          "nodeCount": 6
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "500",
+          "lineHeight": "25.6px",
+          "chars": 53,
+          "nodeCount": 5
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 27,
+          "nodeCount": 4
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "22.95px",
+          "chars": 23,
+          "nodeCount": 2
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "32px",
+          "chars": 8,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 72.4,
+        "paddingTop": 12,
+        "paddingBottom": 12,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "13px|18.85px",
+        "recordFullClass": "grow"
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 137,
+        "chromeBelowViewportPx": 270,
+        "chromeSharePct": 45.2
+      },
+      "lineLenChars": {
+        "fontSpec": "400 13px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 8.11,
+        "avgLowerWidthPx": 6.8,
+        "containerWidthPx": 586,
+        "charsPerLine_zeroMethod": 72,
+        "charsPerLine_avgLowerMethod": 86
+      },
+      "snipCheck": null,
+      "chromeInfo": {
+        "railWidthPx": 216,
+        "railVisible": true,
+        "rootDensity": "unset",
+        "rootTheme": "light"
+      }
+    },
+    "390x844": {
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "recordSelector": ".grow",
+      "recordCountTotal": 6,
+      "recordCountVisibleNoScroll": 6,
+      "wordsVisibleNoScroll": 62,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 357,
+          "nodeCount": 6
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "500",
+          "lineHeight": "25.6px",
+          "chars": 53,
+          "nodeCount": 5
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 27,
+          "nodeCount": 4
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "22.95px",
+          "chars": 23,
+          "nodeCount": 2
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "32px",
+          "chars": 8,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 2,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 91.3,
+        "paddingTop": 12,
+        "paddingBottom": 12,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "13px|18.85px",
+        "recordFullClass": "grow"
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 169,
+        "chromeBelowViewportPx": 69,
+        "chromeSharePct": 28.2
+      },
+      "lineLenChars": {
+        "fontSpec": "400 13px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 8.11,
+        "avgLowerWidthPx": 6.8,
+        "containerWidthPx": 308,
+        "charsPerLine_zeroMethod": 38,
+        "charsPerLine_avgLowerMethod": 45
+      },
+      "snipCheck": null,
+      "chromeInfo": {
+        "railWidthPx": 0,
+        "railVisible": false,
+        "rootDensity": "unset",
+        "rootTheme": "light"
+      }
+    }
+  },
+  "settings__compact__dark": {
+    "1440x900": {
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "recordSelector": ".grow",
+      "recordCountTotal": 6,
+      "recordCountVisibleNoScroll": 6,
+      "wordsVisibleNoScroll": 62,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 357,
+          "nodeCount": 6
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "500",
+          "lineHeight": "21.6px",
+          "chars": 53,
+          "nodeCount": 5
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 27,
+          "nodeCount": 4
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "22.95px",
+          "chars": 23,
+          "nodeCount": 2
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "32px",
+          "chars": 8,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 60.4,
+        "paddingTop": 8,
+        "paddingBottom": 8,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "13px|18.85px",
+        "recordFullClass": "grow"
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 137,
+        "chromeBelowViewportPx": 330,
+        "chromeSharePct": 51.9
+      },
+      "lineLenChars": {
+        "fontSpec": "400 13px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 8.11,
+        "avgLowerWidthPx": 6.8,
+        "containerWidthPx": 586,
+        "charsPerLine_zeroMethod": 72,
+        "charsPerLine_avgLowerMethod": 86
+      },
+      "snipCheck": null,
+      "chromeInfo": {
+        "railWidthPx": 216,
+        "railVisible": true,
+        "rootDensity": "compact",
+        "rootTheme": "unset"
+      }
+    },
+    "390x844": {
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "recordSelector": ".grow",
+      "recordCountTotal": 6,
+      "recordCountVisibleNoScroll": 6,
+      "wordsVisibleNoScroll": 62,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 357,
+          "nodeCount": 6
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "500",
+          "lineHeight": "21.6px",
+          "chars": 53,
+          "nodeCount": 5
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 27,
+          "nodeCount": 4
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "22.95px",
+          "chars": 23,
+          "nodeCount": 2
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "32px",
+          "chars": 8,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 2,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 79.3,
+        "paddingTop": 8,
+        "paddingBottom": 8,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "13px|18.85px",
+        "recordFullClass": "grow"
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 169,
+        "chromeBelowViewportPx": 129,
+        "chromeSharePct": 35.3
+      },
+      "lineLenChars": {
+        "fontSpec": "400 13px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 8.11,
+        "avgLowerWidthPx": 6.8,
+        "containerWidthPx": 308,
+        "charsPerLine_zeroMethod": 38,
+        "charsPerLine_avgLowerMethod": 45
+      },
+      "snipCheck": null,
+      "chromeInfo": {
+        "railWidthPx": 0,
+        "railVisible": false,
+        "rootDensity": "compact",
+        "rootTheme": "unset"
+      }
+    }
+  },
+  "settings__compact__light": {
+    "1440x900": {
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "recordSelector": ".grow",
+      "recordCountTotal": 6,
+      "recordCountVisibleNoScroll": 6,
+      "wordsVisibleNoScroll": 62,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 357,
+          "nodeCount": 6
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "500",
+          "lineHeight": "21.6px",
+          "chars": 53,
+          "nodeCount": 5
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 27,
+          "nodeCount": 4
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "22.95px",
+          "chars": 23,
+          "nodeCount": 2
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "32px",
+          "chars": 8,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 60.4,
+        "paddingTop": 8,
+        "paddingBottom": 8,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "13px|18.85px",
+        "recordFullClass": "grow"
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 137,
+        "chromeBelowViewportPx": 330,
+        "chromeSharePct": 51.9
+      },
+      "lineLenChars": {
+        "fontSpec": "400 13px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 8.11,
+        "avgLowerWidthPx": 6.8,
+        "containerWidthPx": 586,
+        "charsPerLine_zeroMethod": 72,
+        "charsPerLine_avgLowerMethod": 86
+      },
+      "snipCheck": null,
+      "chromeInfo": {
+        "railWidthPx": 216,
+        "railVisible": true,
+        "rootDensity": "compact",
+        "rootTheme": "light"
+      }
+    },
+    "390x844": {
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "recordSelector": ".grow",
+      "recordCountTotal": 6,
+      "recordCountVisibleNoScroll": 6,
+      "wordsVisibleNoScroll": 62,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 357,
+          "nodeCount": 6
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "500",
+          "lineHeight": "21.6px",
+          "chars": 53,
+          "nodeCount": 5
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 27,
+          "nodeCount": 4
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "22.95px",
+          "chars": 23,
+          "nodeCount": 2
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "32px",
+          "chars": 8,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 2,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 79.3,
+        "paddingTop": 8,
+        "paddingBottom": 8,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "13px|18.85px",
+        "recordFullClass": "grow"
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 169,
+        "chromeBelowViewportPx": 129,
+        "chromeSharePct": 35.3
+      },
+      "lineLenChars": {
+        "fontSpec": "400 13px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 8.11,
+        "avgLowerWidthPx": 6.8,
+        "containerWidthPx": 308,
+        "charsPerLine_zeroMethod": 38,
+        "charsPerLine_avgLowerMethod": 45
+      },
+      "snipCheck": null,
+      "chromeInfo": {
+        "railWidthPx": 0,
+        "railVisible": false,
+        "rootDensity": "compact",
+        "rootTheme": "light"
+      }
+    }
+  },
+  "styles__comfortable__dark": {
+    "1440x900": {
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "recordSelector": ".ct-style",
+      "recordCountTotal": 17,
+      "recordCountVisibleNoScroll": 3,
+      "wordsVisibleNoScroll": 91,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 3546,
+          "nodeCount": 48
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 265,
+          "nodeCount": 24
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "500",
+          "lineHeight": "22.95px",
+          "chars": 222,
+          "nodeCount": 17
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "12px",
+          "chars": 129,
+          "nodeCount": 17
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 29,
+          "nodeCount": 3
+        },
+        {
+          "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 15,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "32px",
+          "chars": 6,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "400",
+          "lineHeight": "19.2px",
+          "chars": 1,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 221.7,
+        "paddingTop": 11,
+        "paddingBottom": 11,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "16px|25.6px",
+        "recordFullClass": "ct-style"
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 170,
+        "chromeBelowViewportPx": 38,
+        "chromeSharePct": 23
+      },
+      "lineLenChars": {
+        "fontSpec": "400 16px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 9.77,
+        "avgLowerWidthPx": 8.16,
+        "containerWidthPx": 1152,
+        "charsPerLine_zeroMethod": 118,
+        "charsPerLine_avgLowerMethod": 141
+      },
+      "snipCheck": null,
+      "chromeInfo": {
+        "railWidthPx": 216,
+        "railVisible": true,
+        "rootDensity": "unset",
+        "rootTheme": "unset"
+      }
+    },
+    "390x844": {
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "recordSelector": ".ct-style",
+      "recordCountTotal": 17,
+      "recordCountVisibleNoScroll": 1,
+      "wordsVisibleNoScroll": 31,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 3546,
+          "nodeCount": 48
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 265,
+          "nodeCount": 24
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "500",
+          "lineHeight": "22.95px",
+          "chars": 222,
+          "nodeCount": 17
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "12px",
+          "chars": 129,
+          "nodeCount": 17
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 57,
+          "nodeCount": 7
+        },
+        {
+          "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 15,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "32px",
+          "chars": 6,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "600",
+          "lineHeight": "25.6px",
+          "chars": 1,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "400",
+          "lineHeight": "19.2px",
+          "chars": 1,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 324.1,
+        "paddingTop": 11,
+        "paddingBottom": 11,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "16px|25.6px",
+        "recordFullClass": "ct-style"
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 268,
+        "chromeBelowViewportPx": 252,
+        "chromeSharePct": 61.6
+      },
+      "lineLenChars": {
+        "fontSpec": "400 16px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 9.77,
+        "avgLowerWidthPx": 8.16,
+        "containerWidthPx": 342,
+        "charsPerLine_zeroMethod": 35,
+        "charsPerLine_avgLowerMethod": 42
+      },
+      "snipCheck": null,
+      "chromeInfo": {
+        "railWidthPx": 0,
+        "railVisible": false,
+        "rootDensity": "unset",
+        "rootTheme": "unset"
+      }
+    }
+  },
+  "styles__comfortable__light": {
+    "1440x900": {
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "recordSelector": ".ct-style",
+      "recordCountTotal": 17,
+      "recordCountVisibleNoScroll": 3,
+      "wordsVisibleNoScroll": 91,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 3546,
+          "nodeCount": 48
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 265,
+          "nodeCount": 24
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "500",
+          "lineHeight": "22.95px",
+          "chars": 222,
+          "nodeCount": 17
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "12px",
+          "chars": 129,
+          "nodeCount": 17
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 29,
+          "nodeCount": 3
+        },
+        {
+          "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 15,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "32px",
+          "chars": 6,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "400",
+          "lineHeight": "19.2px",
+          "chars": 1,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 221.7,
+        "paddingTop": 11,
+        "paddingBottom": 11,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "16px|25.6px",
+        "recordFullClass": "ct-style"
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 170,
+        "chromeBelowViewportPx": 38,
+        "chromeSharePct": 23
+      },
+      "lineLenChars": {
+        "fontSpec": "400 16px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 9.77,
+        "avgLowerWidthPx": 8.16,
+        "containerWidthPx": 1152,
+        "charsPerLine_zeroMethod": 118,
+        "charsPerLine_avgLowerMethod": 141
+      },
+      "snipCheck": null,
+      "chromeInfo": {
+        "railWidthPx": 216,
+        "railVisible": true,
+        "rootDensity": "unset",
+        "rootTheme": "light"
+      }
+    },
+    "390x844": {
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "recordSelector": ".ct-style",
+      "recordCountTotal": 17,
+      "recordCountVisibleNoScroll": 1,
+      "wordsVisibleNoScroll": 31,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 3546,
+          "nodeCount": 48
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 265,
+          "nodeCount": 24
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "500",
+          "lineHeight": "22.95px",
+          "chars": 222,
+          "nodeCount": 17
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "12px",
+          "chars": 129,
+          "nodeCount": 17
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 57,
+          "nodeCount": 7
+        },
+        {
+          "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 15,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "32px",
+          "chars": 6,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "600",
+          "lineHeight": "25.6px",
+          "chars": 1,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "400",
+          "lineHeight": "19.2px",
+          "chars": 1,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 324.1,
+        "paddingTop": 11,
+        "paddingBottom": 11,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "16px|25.6px",
+        "recordFullClass": "ct-style"
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 268,
+        "chromeBelowViewportPx": 252,
+        "chromeSharePct": 61.6
+      },
+      "lineLenChars": {
+        "fontSpec": "400 16px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 9.77,
+        "avgLowerWidthPx": 8.16,
+        "containerWidthPx": 342,
+        "charsPerLine_zeroMethod": 35,
+        "charsPerLine_avgLowerMethod": 42
+      },
+      "snipCheck": null,
+      "chromeInfo": {
+        "railWidthPx": 0,
+        "railVisible": false,
+        "rootDensity": "unset",
+        "rootTheme": "light"
+      }
+    }
+  },
+  "styles__compact__dark": {
+    "1440x900": {
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "recordSelector": ".ct-style",
+      "recordCountTotal": 17,
+      "recordCountVisibleNoScroll": 4,
+      "wordsVisibleNoScroll": 126,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "21.6px",
+          "chars": 3060,
+          "nodeCount": 17
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 486,
+          "nodeCount": 31
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 265,
+          "nodeCount": 24
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "500",
+          "lineHeight": "22.95px",
+          "chars": 222,
+          "nodeCount": 17
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "12px",
+          "chars": 129,
+          "nodeCount": 17
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 29,
+          "nodeCount": 3
+        },
+        {
+          "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 15,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "32px",
+          "chars": 6,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "400",
+          "lineHeight": "19.2px",
+          "chars": 1,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 179.7,
+        "paddingTop": 7,
+        "paddingBottom": 7,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "16px|21.6px",
+        "recordFullClass": "ct-style"
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 170,
+        "chromeBelowViewportPx": 51,
+        "chromeSharePct": 24.5
+      },
+      "lineLenChars": {
+        "fontSpec": "400 16px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 9.77,
+        "avgLowerWidthPx": 8.16,
+        "containerWidthPx": 1152,
+        "charsPerLine_zeroMethod": 118,
+        "charsPerLine_avgLowerMethod": 141
+      },
+      "snipCheck": null,
+      "chromeInfo": {
+        "railWidthPx": 216,
+        "railVisible": true,
+        "rootDensity": "compact",
+        "rootTheme": "unset"
+      }
+    },
+    "390x844": {
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "recordSelector": ".ct-style",
+      "recordCountTotal": 17,
+      "recordCountVisibleNoScroll": 2,
+      "wordsVisibleNoScroll": 60,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "21.6px",
+          "chars": 3060,
+          "nodeCount": 17
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 486,
+          "nodeCount": 31
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 265,
+          "nodeCount": 24
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "500",
+          "lineHeight": "22.95px",
+          "chars": 222,
+          "nodeCount": 17
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "12px",
+          "chars": 129,
+          "nodeCount": 17
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 57,
+          "nodeCount": 7
+        },
+        {
+          "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 15,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "32px",
+          "chars": 6,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "600",
+          "lineHeight": "25.6px",
+          "chars": 1,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "400",
+          "lineHeight": "19.2px",
+          "chars": 1,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 266.1,
+        "paddingTop": 7,
+        "paddingBottom": 7,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "16px|21.6px",
+        "recordFullClass": "ct-style"
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 268,
+        "chromeBelowViewportPx": 65,
+        "chromeSharePct": 39.4
+      },
+      "lineLenChars": {
+        "fontSpec": "400 16px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 9.77,
+        "avgLowerWidthPx": 8.16,
+        "containerWidthPx": 342,
+        "charsPerLine_zeroMethod": 35,
+        "charsPerLine_avgLowerMethod": 42
+      },
+      "snipCheck": null,
+      "chromeInfo": {
+        "railWidthPx": 0,
+        "railVisible": false,
+        "rootDensity": "compact",
+        "rootTheme": "unset"
+      }
+    }
+  },
+  "styles__compact__light": {
+    "1440x900": {
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "recordSelector": ".ct-style",
+      "recordCountTotal": 17,
+      "recordCountVisibleNoScroll": 4,
+      "wordsVisibleNoScroll": 126,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "21.6px",
+          "chars": 3060,
+          "nodeCount": 17
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 486,
+          "nodeCount": 31
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 265,
+          "nodeCount": 24
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "500",
+          "lineHeight": "22.95px",
+          "chars": 222,
+          "nodeCount": 17
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "12px",
+          "chars": 129,
+          "nodeCount": 17
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 29,
+          "nodeCount": 3
+        },
+        {
+          "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 15,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "32px",
+          "chars": 6,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "400",
+          "lineHeight": "19.2px",
+          "chars": 1,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 179.7,
+        "paddingTop": 7,
+        "paddingBottom": 7,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "16px|21.6px",
+        "recordFullClass": "ct-style"
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 170,
+        "chromeBelowViewportPx": 51,
+        "chromeSharePct": 24.5
+      },
+      "lineLenChars": {
+        "fontSpec": "400 16px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 9.77,
+        "avgLowerWidthPx": 8.16,
+        "containerWidthPx": 1152,
+        "charsPerLine_zeroMethod": 118,
+        "charsPerLine_avgLowerMethod": 141
+      },
+      "snipCheck": null,
+      "chromeInfo": {
+        "railWidthPx": 216,
+        "railVisible": true,
+        "rootDensity": "compact",
+        "rootTheme": "light"
+      }
+    },
+    "390x844": {
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "recordSelector": ".ct-style",
+      "recordCountTotal": 17,
+      "recordCountVisibleNoScroll": 2,
+      "wordsVisibleNoScroll": 60,
+      "typeCensus": [
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "21.6px",
+          "chars": 3060,
+          "nodeCount": 17
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "lineHeight": "25.6px",
+          "chars": 486,
+          "nodeCount": 31
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 265,
+          "nodeCount": 24
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "500",
+          "lineHeight": "22.95px",
+          "chars": 222,
+          "nodeCount": 17
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "600",
+          "lineHeight": "12px",
+          "chars": 129,
+          "nodeCount": 17
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "13px",
+          "fontWeight": "500",
+          "lineHeight": "18.85px",
+          "chars": 57,
+          "nodeCount": 7
+        },
+        {
+          "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace",
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "lineHeight": "18.85px",
+          "chars": 15,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "17px",
+          "fontWeight": "600",
+          "lineHeight": "32px",
+          "chars": 6,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "600",
+          "lineHeight": "25.6px",
+          "chars": 1,
+          "nodeCount": 1
+        },
+        {
+          "fontFamily": "-apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+          "fontSize": "12px",
+          "fontWeight": "400",
+          "lineHeight": "19.2px",
+          "chars": 1,
+          "nodeCount": 1
+        }
+      ],
+      "rowDecomp": {
+        "totalHeight": 266.1,
+        "paddingTop": 7,
+        "paddingBottom": 7,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "gapToNextRecord": 0,
+        "dominantTextFontSizeLineHeight": "16px|21.6px",
+        "recordFullClass": "ct-style"
+      },
+      "chromeShare": {
+        "chromeAboveContentPx": 268,
+        "chromeBelowViewportPx": 65,
+        "chromeSharePct": 39.4
+      },
+      "lineLenChars": {
+        "fontSpec": "400 16px -apple-system, \"system-ui\", \"SF Pro Text\", \"Segoe UI\", Roboto, sans-serif",
+        "zeroWidthPx": 9.77,
+        "avgLowerWidthPx": 8.16,
+        "containerWidthPx": 342,
+        "charsPerLine_zeroMethod": 35,
+        "charsPerLine_avgLowerMethod": 42
+      },
+      "snipCheck": null,
+      "chromeInfo": {
+        "railWidthPx": 0,
+        "railVisible": false,
+        "rootDensity": "compact",
+        "rootTheme": "light"
+      }
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "base": "http://localhost:4188/",
+  "at": "2026-08-22T12:22:16.254Z",
+  "arms": {
+    "a": {
+      "attr": null,
+      "plateGap": "20px",
+      "plateR": "40px",
+      "ground": "#c5e1a5",
+      "viewportWidth": 1440,
+      "workAreaWidth": 1400,
+      "plateRadius": "40px",
+      "pistachioWidthPx": 40,
+      "pistachioPct": 2.78
+    },
+    "b": {
+      "attr": "b",
+      "plateGap": "10px",
+      "plateR": "22px",
+      "ground": "#c5e1a5",
+      "viewportWidth": 1440,
+      "workAreaWidth": 1420,
+      "plateRadius": "22px",
+      "pistachioWidthPx": 20,
+      "pistachioPct": 1.39
+    },
+    "c": {
+      "attr": "c",
+      "plateGap": "3px",
+      "plateR": "0px",
+      "ground": "#c5e1a5",
+      "viewportWidth": 1440,
+      "workAreaWidth": 1434,
+      "plateRadius": "0px",
+      "pistachioWidthPx": 6,
+      "pistachioPct": 0.42
+    }
+  },
+  "interceptedWrites": 0
+}

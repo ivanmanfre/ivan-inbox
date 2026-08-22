@@ -1,0 +1,149 @@
+{
+  "ivan_errors_1440": {
+    "n": 48,
+    "kinds": {
+      "qa": 22,
+      "stalled": 6,
+      "completed": 10,
+      "lint": 3,
+      "generation_failed": 6,
+      "other": 1
+    },
+    "stillStuck": 0,
+    "sample": [
+      {
+        "kind": "qa",
+        "text": "QA scored it 63 of 130, under the floor. Final verdict Rewrite ok, and the retry budget is spent."
+      },
+      {
+        "kind": "stalled",
+        "text": "Generation stalled. The watchdog fired after 46 minutes and nothing has run since."
+      },
+      {
+        "kind": "qa",
+        "text": "QA scored it 72 of 130, under the floor. Final verdict Needs regeneration, and the retry budget is spent."
+      },
+      {
+        "kind": "stalled",
+        "text": "Generation stalled. The watchdog fired after 141 minutes and nothing has run since."
+      },
+      {
+        "kind": "completed",
+        "text": "Lint Gate passed this. It finished, and it is filed as an error anyway."
+      },
+      {
+        "kind": "stalled",
+        "text": "Generation stalled. The watchdog fired after 21 minutes and nothing has run since."
+      }
+    ],
+    "fs": "13px",
+    "bodyFs": "16px",
+    "retryButtons": 48,
+    "retryFs": "12px",
+    "reasonHeights": [
+      21
+    ],
+    "overflowX": false
+  },
+  "retry_confirm_1440": "Run the pipeline again for this text post? This spends a real generation on one draft and replaces its copy. The row leaves this list for Generating and comes back in minutes. Run it again Cancel",
+  "client_rows_1440": {
+    "promoteButtons": 29,
+    "promoteFs": "12px",
+    "promoteLabel": "To board",
+    "rows": 29,
+    "overflowX": false
+  },
+  "promote_confirm_1440": "Put this on Mattan’s board? Mattan Danino sees it. This is the one action here that reaches a client, and it fires his board’s own sync, so it lands within moments and not at some later batch. From there the decisions are his: approve, edit, veto, schedule. Nothing publishes: this writes board visibility and never touches the publisher. Put it on his board Cancel",
+  "bulk": {
+    "present": true,
+    "count": "5 drafts selected",
+    "buttons": [
+      {
+        "text": "Delete 5",
+        "x": 650,
+        "cls": "wb-bulk-b danger"
+      }
+    ],
+    "clientRow": {
+      "text": "Put on board 5",
+      "x": 528,
+      "y": 786,
+      "disabled": false
+    },
+    "note": null
+  },
+  "deleteHitbox": {
+    "deleteBefore": {
+      "left": 649.8,
+      "right": 728.6
+    },
+    "deleteAfter": {
+      "left": 649.8,
+      "right": 728.6
+    },
+    "shift": 0,
+    "oldClickPoint": 689.2,
+    "oldPointStillHitsDelete": true,
+    "oldPointLandsOnPromote": false,
+    "promoteHiddenWidth": 0
+  },
+  "bulk_confirm": "Put 5 drafts on Mattan Danino’s board? Mattan Danino sees all 5 of them. Each one fires his board’s own sync, so they land within moments and not at some later batch. Nothing publishes: this writes board visibility and never touches the publisher. Taking one back off is one click per post. Put 5 on his board Cancel",
+  "ivan_errors_390": {
+    "n": 48,
+    "kinds": {
+      "qa": 22,
+      "stalled": 6,
+      "completed": 10,
+      "lint": 3,
+      "generation_failed": 6,
+      "other": 1
+    },
+    "stillStuck": 0,
+    "sample": [
+      {
+        "kind": "qa",
+        "text": "QA scored it 63 of 130, under the floor. Final verdict Rewrite ok, and the retry budget is spent."
+      },
+      {
+        "kind": "stalled",
+        "text": "Generation stalled. The watchdog fired after 46 minutes and nothing has run since."
+      },
+      {
+        "kind": "qa",
+        "text": "QA scored it 72 of 130, under the floor. Final verdict Needs regeneration, and the retry budget is spent."
+      },
+      {
+        "kind": "stalled",
+        "text": "Generation stalled. The watchdog fired after 141 minutes and nothing has run since."
+      },
+      {
+        "kind": "completed",
+        "text": "Lint Gate passed this. It finished, and it is filed as an error anyway."
+      },
+      {
+        "kind": "stalled",
+        "text": "Generation stalled. The watchdog fired after 21 minutes and nothing has run since."
+      }
+    ],
+    "fs": "13px",
+    "bodyFs": "16px",
+    "retryButtons": 48,
+    "retryFs": "12px",
+    "reasonHeights": [
+      21
+    ],
+    "overflowX": false
+  },
+  "retry_confirm_390": "Run the pipeline again for this text post? This spends a real generation on one draft and replaces its copy. The row leaves this list for Generating and comes back in minutes. Run it again Cancel",
+  "client_rows_390": {
+    "promoteButtons": 29,
+    "promoteFs": "12px",
+    "promoteLabel": "To board",
+    "rows": 29,
+    "overflowX": false
+  },
+  "promote_confirm_390": "Put this on Mattan’s board? Mattan Danino sees it. This is the one action here that reaches a client, and it fires his board’s own sync, so it lands within moments and not at some later batch. From there the decisions are his: approve, edit, veto, schedule. Nothing publishes: this writes board visibility and never touches the publisher. Put it on his board Cancel",
+  "ATTEMPTED_WRITES": 0,
+  "attempted_detail": [],
+  "blocked_webhooks": []
+}

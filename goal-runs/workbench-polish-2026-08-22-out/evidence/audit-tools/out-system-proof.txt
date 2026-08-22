@@ -1,0 +1,122 @@
+
+===== DARK =====
+LADDER (painted, computed):
+  --e0  rgb(12, 12, 11)      L 0.0037
+  --e1  rgb(20, 20, 20)      L 0.007
+  --e2  rgb(28, 28, 28)      L 0.0116
+  --e3  rgb(39, 39, 39)      L 0.0203
+  --e4  rgb(50, 50, 50)      L 0.0319
+STEPS: e0->e1 1.06:1 (dL 0.0033)  |  e1->e2 1.08:1 (dL 0.0046)  |  e2->e3 1.14:1 (dL 0.0087)  |  e3->e4 1.17:1 (dL 0.0116)
+ALIASES: --canvas=rgb(12, 12, 11)  --surface1=rgb(28, 28, 28)  --surface2=rgb(39, 39, 39)  --surface3=rgb(53, 53, 51)  --hairline=rgba(255, 255, 255, 0.07)  --hairline-strong=rgba(255, 255, 255, 0.14)
+INVERSION SIGNS (must match across themes where the relationship is intended):
+  canvas_vs_surface1 (ground vs card): child LIGHTER
+  surface1_vs_surface2 (card vs raised tint): child LIGHTER
+  surface2_vs_surface3 (raised tint vs edge): child LIGHTER
+RADII: --r-xs=6px  --r-ctl=10px  --r-card=14px  --r-pill=999px  --r-chip=6px  --r-hero=14px  --r-sm=10px  --r-md=14px  --r-lg=14px  --plate-r=40px
+CONTROLS:
+  .wbb-primary  h=32  pad=0px/14px  r=10px  fs=13px/13px  fw=500  bg=rgb(184, 255, 102)  fg=rgb(23, 23, 23)  shadow=rgba(255, 255, 255, 0.1) 0px 1px 0px 0px inset
+  .wbb-secondary  h=32  pad=0px/14px  r=10px  fs=13px/13px  fw=500  bg=rgb(39, 39, 39)  fg=rgb(255, 255, 255)  shadow=none
+  .wbb-quiet  h=32  pad=0px/14px  r=10px  fs=13px/13px  fw=500  bg=rgba(0, 0, 0, 0)  fg=rgb(199, 199, 199)  shadow=none
+  .wbb-danger  h=32  pad=0px/14px  r=10px  fs=13px/13px  fw=500  bg=rgba(0, 0, 0, 0)  fg=rgb(255, 69, 58)  shadow=none
+  .wbb-sm  h=26  pad=0px/10px  r=10px  fs=12px/12px  fw=500  bg=rgb(39, 39, 39)  fg=rgb(255, 255, 255)  shadow=none
+  .wbb-lg  h=38  pad=0px/18px  r=10px  fs=14px/14px  fw=500  bg=rgb(39, 39, 39)  fg=rgb(255, 255, 255)  shadow=none
+  .wbb-disabled  h=32px  pad=0px/14px  r=10px  fs=13px/13px  fw=500  bg=rgb(28, 28, 28)  fg=rgb(126, 126, 126)  shadow=none
+KV: {"wbkv":{"display":"grid","grid-template-columns":"227.75px 632.25px","column-gap":"16px","row-gap":"6px","align-items":"baseline"},"wbkv-k":{"font-size":"13px","font-weight":"400","color":"rgb(148, 148, 148)","text-transform":"none","letter-spacing":"normal","border-top-width":"0px","background-color":"rgba(0, 0, 0, 0)","line-height":"18.85px"},"wbkv-v":{"font-size":"14px","font-weight":"450","color":"rgb(255, 255, 255)","font-variant-numeric":"tabular-nums","border-top-width":"0px","background-color":"rgba(0, 0, 0, 0)","line-height":"20.3px"}}
+MOTION: {"wbb transition":{"transition-property":"background-color, color","transition-duration":"0.12s, 0.12s","transition-timing-function":"ease-out, ease-out"},"tokens":{"--wbs-dur-ctl":".12s","--wbs-dur-overlay":".26s","--wbs-dur-commit":".2s","--wbs-ease-ctl":"ease-out","--wbs-ease-overlay":"linear(0, .005, .019 1.8%, .079 3.9%, .4..."},"spring":{"linear() supported":true,"resolved --spring starts with":"linear(0, .005, .019 1.8","overlay computed":{"transition-property":"opacity, transform","transition-duration":"0.26s, 0.26s","transition-timing-function":"linear(0 0%, 0.005 0.9%, 0.019 1.8%, 0.079 3.9%, 0.476 13.5%, 0.663 19.1%, 0.738 22%, 0.8 25.1%, 0.852 28.4%, 0.894 32%, 0.928 36%, 0.953 40.5%, 0.972 45.6%, 0.985 51.6%, 0.997 67.3%, 1 100%), linear(0 0%, 0.005 0.9%, 0.019 1.8%, 0.079 3.9%, 0.476 13.5%, 0.663 19.1%, 0.738 22%, 0.8 25.1%, 0.852 28.4%, 0.894 32%, 0.928 36%, 0.953 40.5%, 0.972 45.6%, 0.985 51.6%, 0.997 67.3%, 1 100%)","box-shadow":"rgba(0, 0, 0, 0.12) 0px 10px 24px 0px"}},"shadows":{"--sh-card":"0 2px 8px #00000014","--sh-drag":"0 2px 8px #0000001f","--sh-over":"0 10px 24px #0000001f","--e4-shadow":"0 10px 24px #0000001f","plate":{"box-shadow":"rgba(0, 0, 0, 0.12) 0px 10px 24px 0px"}}}
+CONTRAST:
+  PASS  18.42:1 (min 4.5)  --text on --e1  fg=rgb(255, 255, 255) bg=rgb(20, 20, 20)
+  PASS  17.05:1 (min 4.5)  --text on --e2  fg=rgb(255, 255, 255) bg=rgb(28, 28, 28)
+  PASS  14.94:1 (min 4.5)  --text on --e3  fg=rgb(255, 255, 255) bg=rgb(39, 39, 39)
+  PASS  12.82:1 (min 4.5)  --text on --e4  fg=rgb(255, 255, 255) bg=rgb(50, 50, 50)
+  PASS  10.08:1 (min 4.5)  --text2 on --e2  fg=rgb(199, 199, 199) bg=rgb(28, 28, 28)
+  PASS  8.83:1 (min 4.5)  --text2 on --e3  fg=rgb(199, 199, 199) bg=rgb(39, 39, 39)
+  PASS  6.07:1 (min 4.5)  --text3 on --e1  fg=rgb(148, 148, 148) bg=rgb(20, 20, 20)
+  PASS  5.62:1 (min 4.5)  --text3 on --e2  fg=rgb(148, 148, 148) bg=rgb(28, 28, 28)
+  PASS  4.92:1 (min 4.5)  --text3 on --e3  fg=rgb(148, 148, 148) bg=rgb(39, 39, 39)
+  PASS  14.96:1 (min 4.5)  .wbb-primary label on fill  fg=rgb(23, 23, 23) bg=rgb(184, 255, 102)
+  PASS  14.94:1 (min 4.5)  .wbb-secondary label on fill  fg=rgb(255, 255, 255) bg=rgb(39, 39, 39)
+  PASS  10.08:1 (min 4.5)  .wbb-quiet label on --e2  fg=rgb(199, 199, 199) bg=rgb(28, 28, 28)
+  PASS  5.00:1 (min 4.5)  .wbb-danger label on --e2  fg=rgb(255, 69, 58) bg=rgb(28, 28, 28)
+  PASS  5.62:1 (min 4.5)  .wbkv-k on --e2  fg=rgb(148, 148, 148) bg=rgb(28, 28, 28)
+  PASS  17.05:1 (min 4.5)  .wbkv-v on --e2  fg=rgb(255, 255, 255) bg=rgb(28, 28, 28)
+  WORST CASE dark: 4.92:1
+
+===== LIGHT =====
+LADDER (painted, computed):
+  --e0  rgb(244, 244, 240)   L 0.9023
+  --e1  rgb(230, 230, 224)   L 0.788
+  --e2  rgb(255, 255, 255)   L 1
+  --e3  rgb(234, 234, 228)   L 0.8194
+  --e4  rgb(255, 255, 255)   L 1
+STEPS: e0->e1 1.14:1 (dL -0.1143)  |  e1->e2 1.25:1 (dL 0.212)  |  e2->e3 1.21:1 (dL -0.1806)  |  e3->e4 1.21:1 (dL 0.1806)
+ALIASES: --canvas=rgb(244, 244, 240)  --surface1=rgb(255, 255, 255)  --surface2=rgb(234, 234, 228)  --surface3=rgb(227, 227, 224)  --hairline=rgba(0, 0, 0, 0.09)  --hairline-strong=rgba(0, 0, 0, 0.18)
+INVERSION SIGNS (must match across themes where the relationship is intended):
+  canvas_vs_surface1 (ground vs card): child LIGHTER
+  surface1_vs_surface2 (card vs raised tint): child DARKER
+  surface2_vs_surface3 (raised tint vs edge): child DARKER
+RADII: --r-xs=6px  --r-ctl=10px  --r-card=14px  --r-pill=999px  --r-chip=6px  --r-hero=14px  --r-sm=10px  --r-md=14px  --r-lg=14px  --plate-r=40px
+CONTROLS:
+  .wbb-primary  h=32  pad=0px/14px  r=10px  fs=13px/13px  fw=500  bg=rgb(184, 255, 102)  fg=rgb(23, 23, 23)  shadow=rgba(255, 255, 255, 0.55) 0px 1px 0px 0px inset
+  .wbb-secondary  h=32  pad=0px/14px  r=10px  fs=13px/13px  fw=500  bg=rgb(234, 234, 228)  fg=rgb(19, 19, 19)  shadow=none
+  .wbb-quiet  h=32  pad=0px/14px  r=10px  fs=13px/13px  fw=500  bg=rgba(0, 0, 0, 0)  fg=rgb(61, 61, 59)  shadow=none
+  .wbb-danger  h=32  pad=0px/14px  r=10px  fs=13px/13px  fw=500  bg=rgba(0, 0, 0, 0)  fg=rgb(196, 39, 28)  shadow=none
+  .wbb-sm  h=26  pad=0px/10px  r=10px  fs=12px/12px  fw=500  bg=rgb(234, 234, 228)  fg=rgb(19, 19, 19)  shadow=none
+  .wbb-lg  h=38  pad=0px/18px  r=10px  fs=14px/14px  fw=500  bg=rgb(234, 234, 228)  fg=rgb(19, 19, 19)  shadow=none
+  .wbb-disabled  h=32px  pad=0px/14px  r=10px  fs=13px/13px  fw=500  bg=rgb(255, 255, 255)  fg=rgb(110, 110, 110)  shadow=none
+KV: {"wbkv":{"display":"grid","grid-template-columns":"227.75px 632.25px","column-gap":"16px","row-gap":"6px","align-items":"baseline"},"wbkv-k":{"font-size":"13px","font-weight":"400","color":"rgb(92, 92, 90)","text-transform":"none","letter-spacing":"normal","border-top-width":"0px","background-color":"rgba(0, 0, 0, 0)","line-height":"18.85px"},"wbkv-v":{"font-size":"14px","font-weight":"450","color":"rgb(19, 19, 19)","font-variant-numeric":"tabular-nums","border-top-width":"0px","background-color":"rgba(0, 0, 0, 0)","line-height":"20.3px"}}
+MOTION: {"wbb transition":{"transition-property":"background-color, color","transition-duration":"0.12s, 0.12s","transition-timing-function":"ease-out, ease-out"},"tokens":{"--wbs-dur-ctl":".12s","--wbs-dur-overlay":".26s","--wbs-dur-commit":".2s","--wbs-ease-ctl":"ease-out","--wbs-ease-overlay":"linear(0, .005, .019 1.8%, .079 3.9%, .4..."},"spring":{"linear() supported":true,"resolved --spring starts with":"linear(0, .005, .019 1.8","overlay computed":{"transition-property":"opacity, transform","transition-duration":"0.26s, 0.26s","transition-timing-function":"linear(0 0%, 0.005 0.9%, 0.019 1.8%, 0.079 3.9%, 0.476 13.5%, 0.663 19.1%, 0.738 22%, 0.8 25.1%, 0.852 28.4%, 0.894 32%, 0.928 36%, 0.953 40.5%, 0.972 45.6%, 0.985 51.6%, 0.997 67.3%, 1 100%), linear(0 0%, 0.005 0.9%, 0.019 1.8%, 0.079 3.9%, 0.476 13.5%, 0.663 19.1%, 0.738 22%, 0.8 25.1%, 0.852 28.4%, 0.894 32%, 0.928 36%, 0.953 40.5%, 0.972 45.6%, 0.985 51.6%, 0.997 67.3%, 1 100%)","box-shadow":"rgba(0, 0, 0, 0.12) 0px 10px 24px 0px"}},"shadows":{"--sh-card":"0 2px 8px #00000014","--sh-drag":"0 2px 8px #0000001f","--sh-over":"0 10px 24px #0000001f","--e4-shadow":"0 10px 24px #0000001f","plate":{"box-shadow":"rgba(0, 0, 0, 0.12) 0px 10px 24px 0px"}}}
+CONTRAST:
+  PASS  14.83:1 (min 4.5)  --text on --e1  fg=rgb(19, 19, 19) bg=rgb(230, 230, 224)
+  PASS  18.58:1 (min 4.5)  --text on --e2  fg=rgb(19, 19, 19) bg=rgb(255, 255, 255)
+  PASS  15.39:1 (min 4.5)  --text on --e3  fg=rgb(19, 19, 19) bg=rgb(234, 234, 228)
+  PASS  18.58:1 (min 4.5)  --text on --e4  fg=rgb(19, 19, 19) bg=rgb(255, 255, 255)
+  PASS  10.88:1 (min 4.5)  --text2 on --e2  fg=rgb(61, 61, 59) bg=rgb(255, 255, 255)
+  PASS  9.01:1 (min 4.5)  --text2 on --e3  fg=rgb(61, 61, 59) bg=rgb(234, 234, 228)
+  PASS  5.35:1 (min 4.5)  --text3 on --e1  fg=rgb(92, 92, 90) bg=rgb(230, 230, 224)
+  PASS  6.70:1 (min 4.5)  --text3 on --e2  fg=rgb(92, 92, 90) bg=rgb(255, 255, 255)
+  PASS  5.55:1 (min 4.5)  --text3 on --e3  fg=rgb(92, 92, 90) bg=rgb(234, 234, 228)
+  PASS  14.96:1 (min 4.5)  .wbb-primary label on fill  fg=rgb(23, 23, 23) bg=rgb(184, 255, 102)
+  PASS  15.39:1 (min 4.5)  .wbb-secondary label on fill  fg=rgb(19, 19, 19) bg=rgb(234, 234, 228)
+  PASS  10.88:1 (min 4.5)  .wbb-quiet label on --e2  fg=rgb(61, 61, 59) bg=rgb(255, 255, 255)
+  PASS  5.75:1 (min 4.5)  .wbb-danger label on --e2  fg=rgb(196, 39, 28) bg=rgb(255, 255, 255)
+  PASS  6.70:1 (min 4.5)  .wbkv-k on --e2  fg=rgb(92, 92, 90) bg=rgb(255, 255, 255)
+  PASS  18.58:1 (min 4.5)  .wbkv-v on --e2  fg=rgb(19, 19, 19) bg=rgb(255, 255, 255)
+  WORST CASE light: 5.35:1
+
+LIVE RADIUS CENSUS (6 surfaces, distinct computed values):
+  4px      x11    button.wb-selmark
+  6px      x62    div.ct-anchor, img.ct-thumb, span.ct-chip.ct-st.ct-chip-ok, button.wb-stat.wb-stat-0
+  10px     x118   button.wb-rail-minbtn, div.ct-fsearch, input.ct-fsearch-in, div.search
+  14px     x31    div.dd-card, button.sa-bar, div.sa-row, div.td-mast
+  40px     x6     div.wb-plate
+  999px    x193   span.avatar-me, div.wb-rj, span.wb-rj-n, div.wb-rj.on
+
+REDUCED MOTION: {"transition-duration":"0s","animation-duration":"0s","matchesReduce":true}
+
+LIVE CALENDAR (dark): {
+ "div.cal-day": {
+  "background-color": "rgb(28, 28, 28)",
+  "border-radius": "10px",
+  "box-shadow": "rgba(255, 255, 255, 0.07) 0px 0px 0px 1px inset"
+ },
+ "div.cal-day-empty": {
+  "background-color": "rgb(20, 20, 20)",
+  "border-radius": "10px",
+  "box-shadow": "none"
+ },
+ "div.cal-chip": {
+  "background-color": "rgb(39, 39, 39)",
+  "border-radius": "6px",
+  "box-shadow": "none",
+  "border-left-width": "3px"
+ },
+ "button.cal-chip-t": {
+  "border-top-width": "0px",
+  "border-top-style": "none"
+ },
+ "div.wb-sech": {
+  "background-color": "rgb(39, 39, 39)",
+  "border-top-width": "0px",
+  "border-bottom-width": "0px"
+ }
+}

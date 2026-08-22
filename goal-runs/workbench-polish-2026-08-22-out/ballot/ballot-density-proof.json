@@ -1,0 +1,95 @@
+{
+  "base": "http://localhost:4188/",
+  "at": "2026-08-22T12:22:42.518Z",
+  "rows": {
+    "dms__comfortable": {
+      "density": null,
+      "rowHeight": 93.8,
+      "rowPaddingTop": "10px",
+      "rowLineHeight": "25.6px",
+      "rowFontSize": "16px",
+      "innerFontSize": "11px",
+      "innerLineHeight": "11px",
+      "total": 10,
+      "visibleNoScroll": 9
+    },
+    "content__comfortable": {
+      "density": null,
+      "rowHeight": 105.3,
+      "rowPaddingTop": "9px",
+      "rowLineHeight": "25.6px",
+      "rowFontSize": "16px",
+      "innerFontSize": "16px",
+      "innerLineHeight": "25.6px",
+      "total": 2,
+      "visibleNoScroll": 2
+    },
+    "styles__comfortable": {
+      "density": null,
+      "rowHeight": 38.7,
+      "rowPaddingTop": "0px",
+      "rowLineHeight": "18.85px",
+      "rowFontSize": "13px",
+      "innerFontSize": "13px",
+      "innerLineHeight": "18.85px",
+      "total": 20,
+      "visibleNoScroll": 5
+    },
+    "settings__comfortable": {
+      "density": null,
+      "rowHeight": 72.4,
+      "rowPaddingTop": "12px",
+      "rowLineHeight": "25.6px",
+      "rowFontSize": "16px",
+      "innerFontSize": "16px",
+      "innerLineHeight": "25.6px",
+      "total": 7,
+      "visibleNoScroll": 7
+    },
+    "dms__compact": {
+      "density": "compact",
+      "rowHeight": 87.8,
+      "rowPaddingTop": "7px",
+      "rowLineHeight": "25.6px",
+      "rowFontSize": "16px",
+      "innerFontSize": "11px",
+      "innerLineHeight": "11px",
+      "total": 10,
+      "visibleNoScroll": 10
+    },
+    "content__compact": {
+      "density": "compact",
+      "rowHeight": 105.3,
+      "rowPaddingTop": "9px",
+      "rowLineHeight": "25.6px",
+      "rowFontSize": "16px",
+      "innerFontSize": "16px",
+      "innerLineHeight": "25.6px",
+      "total": 2,
+      "visibleNoScroll": 2
+    },
+    "styles__compact": {
+      "density": "compact",
+      "rowHeight": 38.7,
+      "rowPaddingTop": "0px",
+      "rowLineHeight": "18.85px",
+      "rowFontSize": "13px",
+      "innerFontSize": "13px",
+      "innerLineHeight": "18.85px",
+      "total": 20,
+      "visibleNoScroll": 6
+    },
+    "settings__compact": {
+      "density": "compact",
+      "rowHeight": 60.4,
+      "rowPaddingTop": "8px",
+      "rowLineHeight": "25.6px",
+      "rowFontSize": "16px",
+      "innerFontSize": "16px",
+      "innerLineHeight": "25.6px",
+      "total": 7,
+      "visibleNoScroll": 7
+    }
+  },
+  "interceptedWrites": 0
+}
