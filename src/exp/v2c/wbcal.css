@@ -91,3 +91,203 @@
    file exists to remove. */
 .wb.wb.wb .cal-chip-t,
 .wb.wb.wb .cal-chip-mv{ border:0 }
+
+
+/* ==========================================================================
+   2 · THE CHIP IS TOO TALL. Fix the height, cap the rows, design the overflow
+   ========================================================================== */
+
+/* MEASURED BEFORE: an 87px chip in a 124px cell. 70%. On this branch after
+   phase 1 it reads 83px in 120px, 69%. Either way a day with two posts cannot
+   show both, on the surface whose entire job is to say what is going out when.
+
+   THE GATE: at most 45% of cell height, at 1440 and at 390.
+
+   THE MECHANIC, and it is the industry one rather than an invention.
+   FullCalendar's `dayMaxEvents` / `dayMaxEventRows` cap the number of event
+   ROWS a cell paints and put the rest behind a "+more" that opens a popover;
+   Notion Calendar ships merge behaviour for the same reason and files bugs
+   against it when it breaks. Chip height is never the variable that flexes.
+   Row count is.
+
+   THE ARITHMETIC, at --cal-cell-h 122px:
+
+     padding            6 + 6   = 12
+     day-number row             = 16
+     gap under it               =  3
+     chip                       = 32
+     gap                        =  3
+     chip                       = 32
+     gap                        =  3
+     "+N more"                  = 18
+                                 ----
+                                  119   with 3px of slack in a 122px cell
+
+   Two posts render as two chips. Three render as two chips and a "+1", the
+   "+N" row counting as the third row, which is `dayMaxEventRows` semantics
+   exactly. The cell is 122px against the 120px it already measured, so three
+   rows of information cost 2px more than one row used to.
+
+   🔴 THE CAP IS CSS, NOT JS. Below 767px the same DOM is an agenda list with
+   no height to run out of, so the cap is switched off there and every chip is
+   drawn. React renders every chip and the count on the "+N"; CSS decides how
+   many are painted. Nothing reads a viewport in JS, which is the rule. */
+
+.wb{
+  --cal-chip-h:32px;
+  --cal-more-h:18px;
+  --cal-cell-h:122px;
+  --cal-row-gap:3px;
+}
+
+.wb.wb.wb .cal-day{
+  min-height:var(--cal-cell-h);
+  gap:var(--cal-row-gap);
+}
+
+/* FIXED, not min. `min-height` is what let the chip grow to 83px in the first
+   place: a two-line clamp on a variable-length title has no ceiling, so the
+   tallest title in the month set the height of every row in the grid. */
+.wb.wb.wb .cal-chip{
+  min-height:var(--cal-chip-h);
+  height:var(--cal-chip-h);
+  flex:none;
+}
+/* THE MERGE SEAM WITH polish/p4a, declared rather than discovered later. That
+   branch wraps the chip's face in `.cal-chip-row` and hangs a second row under
+   it (`Arm it`, drawn only on a planned row this surface can arm). When the
+   two land together the FACE keeps the fixed height and the chip is allowed to
+   grow by exactly that one row, which is a deliberate exception and not the
+   old unbounded growth. Both rules are inert until that branch merges. */
+.wb.wb.wb .cal-chip-row{
+  min-height:var(--cal-chip-h);
+  height:var(--cal-chip-h);
+  flex:none;
+}
+.wb.wb.wb .cal-chip:has(.cal-chip-armb){ height:auto }
+
+/* THE FACE, refitted to 32px. The clock keeps its own line, which is the whole
+   reason the two-line chip was built: on one line `17:00` ate a third of a
+   108px chip and the title ellipsed to about two characters. What changes is
+   that the title is now ONE line rather than a two-line clamp, and the line it
+   loses is the thing that bought the other two rows in the cell. The full
+   title is a hover or a focus away in the popover (§4), which the old two-line
+   clamp also needed for anything longer than about twenty characters. */
+.wb.wb.wb .cal-chip-t{
+  padding:2px 7px 3px;
+  gap:0;
+  height:100%;
+  justify-content:center;
+}
+.wb.wb.wb .cal-chip-h{
+  font-size:var(--fs-eyebrow);
+  line-height:12px;
+  height:12px;
+  gap:4px;
+}
+.wb.wb.wb .cal-chip-hh,
+.wb.wb.wb .cal-chip-out,
+.wb.wb.wb .cal-chip-q,
+.wb.wb.wb .cal-chip-drift{ font-size:var(--fs-eyebrow); line-height:12px }
+/* ONE LINE, ellipsed. `-webkit-line-clamp` is unset rather than set to 1: at 1
+   it still reserves a block box and leaves the ellipsis in a different place
+   than `text-overflow` puts it, which reads as two different chips. */
+.wb.wb.wb .cal-chip-n{
+  display:block; -webkit-line-clamp:unset; line-clamp:unset;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  overflow-wrap:normal;
+  width:100%;
+  font-size:var(--fs-meta); line-height:15px;
+}
+/* The corner ⇄ shrinks with the chip it floats on. */
+.wb.wb.wb .cal-chip-mv{
+  top:1px; right:1px; width:20px; min-height:18px;
+  border-radius:var(--r-xs);
+}
+.wb.wb.wb .cal-chip:hover .cal-chip-h{ padding-right:22px }
+
+/* ---- the cap, and the "+N" that carries what it hides -------------------- */
+
+/* Children of a cell are [.cal-dn, chip, chip, chip, …, .cal-more], so chip k
+   is :nth-child(k+1) and the third chip is :nth-child(4). Written against
+   VISIBLE_CHIPS in ContentCalendar.tsx, which is exported for exactly this
+   reason: two places hold this number and neither may move alone. */
+.wb.wb.wb .cal-more{
+  display:none;
+  flex:none; width:100%; min-height:var(--cal-more-h); height:var(--cal-more-h);
+  padding:0 7px; text-align:left; justify-content:flex-start;
+  background:none; border:0; border-radius:var(--r-xs);
+  font-size:var(--fs-eyebrow); line-height:var(--cal-more-h);
+  color:var(--text3); cursor:pointer;
+}
+.wb.wb.wb .cal-more:hover{ background:var(--e3); color:var(--text) }
+@media (min-width:768px){
+  .wb.wb.wb .cal-day > .cal-chip:nth-child(n+4){ display:none }
+  .wb.wb.wb .cal-day > .cal-more{ display:block }
+}
+
+/* ---- the panel ----------------------------------------------------------- */
+
+/* --e4, the floating step, and the only level on this surface that carries
+   --sh-over: it covers content it does not own, which is the one thing phase 1
+   says a shadow is actually for. */
+.wb.wb.wb .cal-pop-scrim{
+  position:fixed; inset:0; z-index:60; background:none;
+}
+.wb.wb.wb .cal-pop{
+  position:fixed; z-index:61;
+  min-width:200px; max-width:min(360px,calc(100vw - 16px));
+  padding:8px; border-radius:var(--r-card);
+  background:var(--e4); color:var(--text2);
+  box-shadow:var(--sh-over), inset 0 0 0 1px var(--hairline);
+}
+.wb.wb.wb .cal-pop-h{
+  padding:2px 6px 6px;
+  font-size:var(--fs-eyebrow); letter-spacing:.06em; text-transform:uppercase;
+  color:var(--text4); font-weight:600;
+}
+.wb.wb.wb .cal-pop-l{ display:flex; flex-direction:column; gap:2px; max-height:50vh; overflow-y:auto }
+.wb.wb.wb .cal-pop-r{
+  display:grid; grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:baseline; gap:8px;
+  width:100%; min-height:28px; padding:4px 6px;
+  text-align:left; background:none; border:0; border-radius:var(--r-xs);
+  border-left:3px solid var(--text4);
+  cursor:pointer;
+}
+.wb.wb.wb .cal-pop-r:hover:not(:disabled){ background:var(--e3) }
+.wb.wb.wb .cal-pop-r:disabled{ cursor:default }
+.wb.wb.wb .cal-pop-c{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:var(--fs-eyebrow); color:var(--text3); font-variant-numeric:tabular-nums;
+}
+.wb.wb.wb .cal-pop-n{
+  font-size:var(--fs-meta); color:var(--text);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.wb.wb.wb .cal-pop-s{ font-size:var(--fs-eyebrow); color:var(--text4); white-space:nowrap }
+
+/* ---- ≤767px: the cap is off and the agenda draws everything -------------- */
+@media (max-width:767px){
+  /* THE AGENDA TREATMENT IS RESTORED HERE ON PURPOSE. §1 gives every cell a
+     fill, a radius and a ring, and those rules are outside a media query, so
+     they would otherwise win over faithful.css's ≤767px block by source order
+     and turn a plain divided list into a stack of cards. In the agenda the
+     cell is not an object, it is a heading with rows under it: the divider
+     does the separating and the CHIP is the only thing that is a surface.
+     Which keeps the §1 step intact, chip --e3 on the pane's --e2. */
+  .wb.wb.wb .cal-day{
+    min-height:0; padding:14px 0;
+    background:none; border-radius:0; box-shadow:none;
+    border-bottom:1px solid var(--hairline);
+  }
+  .wb.wb.wb .cal-day-empty{ background:none }
+  .wb.wb.wb .cal-day-now{ box-shadow:none }
+  /* Full-bleed, so the title has real room and the row can afford to be
+     taller than it is in a 108px grid cell. Still fixed, still not a clamp. */
+  .wb.wb.wb .cal-chip{ min-height:40px; height:40px }
+  .wb.wb.wb .cal-chip-row{ min-height:40px; height:40px }
+  .wb.wb.wb .cal-chip-mv{ width:40px; min-height:0 }
+  .wb.wb.wb .cal-chip-h{ padding-right:0 }
+  .wb.wb.wb .cal-chip:hover .cal-chip-h{ padding-right:0 }
+}
