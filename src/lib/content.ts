@@ -81,13 +81,40 @@ export type ContentDraft = {
   // TABLE SHEDS COLUMNS"). Optional on the TYPE so every existing fixture
   // keeps compiling — the column is selected below, so live rows carry it.
   source_label?: string | null
+  // THE TERMINAL agent_log ENTRY, projected as three scalars.
+  //
+  // 🔴 Why these are on the LIST row. The reason an errored card prints used to
+  // come from `taxonomy.error_message`, which the Stuck Sentinel stamps and then
+  // nothing ever revises. Measured over all 55 live `status='error'` rows on
+  // 2026-08-22: 34 of them say "Generation stuck, no completion within N
+  // minutes" and only 6 of those had the sentinel as their LAST log event. On
+  // the other 28 the pipeline kept working after the sentinel fired, median 76
+  // further minutes, and 13 rows end on `Lint Gate: VERDICT: PASS` while sitting
+  // at `error`. The stamped message is stale by construction; the last log entry
+  // is not.
+  //
+  // 🔴 And why they are PROJECTIONS and not the array. Measured against live
+  // PostgREST, all 465 rows, 2026-08-22:
+  //     current COLS ................  974 KB
+  //     + these three scalars .......  +315 KB
+  //     `agent_log` whole ........... 5923 KB   (6x the entire payload)
+  // The header on fetchDraftDetail already says the list fetch must stay slim,
+  // and it stays slim: `agent_log->-1->>key` is a negative-index jsonb path
+  // PostgREST resolves server-side, so the array never crosses the wire.
+  // The last element IS the terminal event: checked on all 55 error rows, zero
+  // where the final element was not also the maximum `ts`.
+  // Optional on the TYPE so every existing fixture keeps compiling.
+  log_agent?: string | null
+  log_body?: string | null
+  log_ts?: string | null
 }
 
 const COLS =
   'id, client_id, status, type, title, topic, post_body, scheduled_at, published_at, ' +
   'source_post_id, image_urls, taxonomy, updated_at, created_at, board_visible, ' +
   'funnel_stage, qa_verdict:qa->>verdict, qa_score:qa->>score, ' +
-  'qa_regen:qa->>qa_regen_attempts, qa_backfilled:qa->>backfilled, source_label'
+  'qa_regen:qa->>qa_regen_attempts, qa_backfilled:qa->>backfilled, source_label, ' +
+  'log_agent:agent_log->-1->>agent, log_body:agent_log->-1->>body, log_ts:agent_log->-1->>ts'
 
 // ---------- lane scoping ----------
 
@@ -2201,21 +2228,219 @@ export function taxonomyValue(t: unknown, key: string): string | null {
   return str((parsed as Record<string, unknown>)[key])
 }
 
-// The Errors tab's answer to "why did this fail", phase2. Measured live
-// against the 46-row Errors tab (2026-08-21): 31 rows carry taxonomy's own
-// error_message (the same fact DraftPane's detail screen already prints next
-// to the error chip), 30 carry a qa_verdict, 15 carry both, and 0 carry
-// neither. A future row carrying neither must still say something
-// honest rather than render a dash, so the third branch stays live even
-// though nothing today exercises it.
-export function draftFailureReason(d: Pick<ContentDraft, 'taxonomy' | 'qa_verdict' | 'qa_score'>): string {
+// ---------------------------------------------------------------------------
+// WHY DID THIS FAIL: read off the terminal log event, not off the stamp
+// ---------------------------------------------------------------------------
+//
+// 🔴 THE ORDER IS THE WHOLE FIX. The previous body preferred
+// `taxonomy.error_message` and fell back to the QA verdict. That order is what
+// made the Errors tab lie, because `error_message` is stamped once by whichever
+// agent routed the row and is never revised, while the pipeline goes on running.
+// Measured over all 55 live error rows (2026-08-22, every row read):
+//
+//   · 34 print "Generation stuck, no completion within N minutes";
+//     only 6 had the Stuck Sentinel as their terminal event.
+//   · 28 kept logging work AFTER the sentinel fired, median 76 further minutes,
+//     max 16 days, including repeated `Lint Gate: VERDICT: PASS`.
+//   · 21 print "No reason recorded" while carrying a QA verdict already on screen.
+//   · the largest claimed stall is 20,205 minutes, which is 14 days.
+//
+// The terminal `agent_log` entry cannot be stale: it is by definition the last
+// thing that happened. So it goes first, and the stamp becomes the fallback for
+// a row that has no log at all.
+//
+// 🔴 IT DOES NOT INVENT A STATUS. Nothing here writes, and nothing here decides
+// a row is fine. `kind:'completed'` says only "the last thing the pipeline did
+// was pass", which is a fact about the log, not a verdict about the draft.
+
+export type DraftFailureKind =
+  /** Terminal event is a PASS. The pipeline finished; the row is mis-filed. */
+  | 'completed'
+  /** The watchdog fired and nothing ran after it. A real stall. */
+  | 'stalled'
+  /** QA scored under the floor and the regeneration budget ran out. */
+  | 'qa'
+  /** A named lint rule fired and could not be written out. */
+  | 'lint'
+  /** The model never came back, on every attempt. */
+  | 'generation_failed'
+  /** The model answered, and the answer was a refusal that got saved as content. */
+  | 'refusal'
+  /** A terminal event this does not have a specific reading for. */
+  | 'other'
+  /** No terminal log entry at all, so the fallbacks are all there is. */
+  | 'unknown'
+
+export type DraftFailure = {
+  kind: DraftFailureKind
+  /** The one line the card prints. */
+  reason: string
+  /** The named failing thing, when the log carries a name. Null when it does not. */
+  detail: string | null
+  /** The agent that ran last, verbatim. */
+  agent: string | null
+}
+
+type FailureInput = Pick<
+  ContentDraft, 'taxonomy' | 'qa_verdict' | 'qa_score' | 'log_agent' | 'log_body' | 'log_ts'
+>
+
+function firstLine(s: string): string {
+  return s.split('\n').map(x => x.trim()).find(Boolean) ?? ''
+}
+
+// `Final verdict REWRITE_OK (63/130)`: the score and its own denominator. The
+// max is never assumed: live rows carry /90, /120 and /130, and a row scored
+// out of 90 read as "out of 130" would look worse than it is.
+const FINAL_VERDICT = /Final verdict\s+([A-Z_]+)\s*\((\d+)\s*\/\s*(\d+|\?)\)/
+// `Attempt 1/2: still failing — NEEDS_REGENERATE (71/90).`
+const ATTEMPT_SCORE = /([A-Z_]{4,})\s*\((\d+)\s*\/\s*(\d+)\)/
+// The outcome strings inside the ATTEMPT HISTORY json, in order.
+const OUTCOMES = /"outcome"\s*:\s*"([a-z_]+)"/g
+// The rule name that opens a LINT FEEDBACK block: `elliptical_contrast: …`.
+const LINT_RULE = /^([a-z][a-z0-9_]{2,})\s*:/
+// `no completion within 46 minutes`
+const STALL_MINUTES = /within\s+(\d[\d,]*)\s+minutes?/i
+
+function readOutcomes(body: string): string[] {
+  const out: string[] = []
+  for (const m of body.matchAll(OUTCOMES)) out.push(m[1])
+  return out
+}
+
+// The rule name is on the first non-empty line UNDER `LINT FEEDBACK:`. Live
+// shape (row e7740bb1): the block opens `nobody_reveal_family: MERGED v28 …`.
+function readLintRule(body: string): string | null {
+  const at = body.indexOf('LINT FEEDBACK')
+  const tail = at >= 0 ? body.slice(at + 'LINT FEEDBACK'.length) : body
+  for (const raw of tail.split('\n')) {
+    const line = raw.trim()
+    if (!line || line === ':') continue
+    const m = LINT_RULE.exec(line.replace(/^:\s*/, ''))
+    if (m) return m[1]
+    break
+  }
+  // `VERDICT: PASS after 1 regeneration attempt(s)` carries its rules under an
+  // `Iterations:` heading instead, as `  #1: contrast_closer: post ends on …`.
+  const it = /#\d+\s*:\s*([a-z][a-z0-9_]{2,})\s*:/.exec(body)
+  return it ? it[1] : null
+}
+
+// A refusal the pipeline saved as if it were content. One live row (60e3c008)
+// holds the model's own weekly-limit sentence inside a `_parse_failed` hook
+// payload, which is why the card must not read that sentence out as a hook.
+function looksLikeRefusal(body: string): boolean {
+  return /"_parse_failed"\s*:\s*true/.test(body) || /"parse_failure"/.test(body)
+}
+
+export function draftFailure(d: FailureInput): DraftFailure {
+  const agent = (d.log_agent ?? '').trim() || null
+  const body = (d.log_body ?? '').trim()
+
+  if (agent && body) {
+    const head = firstLine(body)
+
+    if (looksLikeRefusal(body)) {
+      return {
+        kind: 'refusal', agent,
+        detail: agent,
+        reason: `${agent} saved a model refusal instead of content. Nothing was written that is worth reviewing.`,
+      }
+    }
+
+    if (agent === 'Stuck Sentinel') {
+      const m = STALL_MINUTES.exec(body)
+      return {
+        kind: 'stalled', agent, detail: m ? `${m[1]} minutes` : null,
+        reason: m
+          ? `Generation stalled. The watchdog fired after ${m[1]} minutes and nothing has run since.`
+          : 'Generation stalled. The watchdog fired and nothing has run since.',
+      }
+    }
+
+    // A PASS is a PASS whichever gate printed it, and it is the single most
+    // over-reported case here: 13 of 55 rows end on one.
+    if (/^VERDICT:\s*PASS\b/i.test(head)) {
+      const rule = readLintRule(body)
+      return {
+        kind: 'completed', agent, detail: rule,
+        reason: rule
+          ? `${agent} passed this after fixing ${rule}. It finished, and it is filed as an error anyway.`
+          : `${agent} passed this. It finished, and it is filed as an error anyway.`,
+      }
+    }
+
+    if (agent === 'Lint Gate') {
+      const rule = readLintRule(body)
+      return {
+        kind: 'lint', agent, detail: rule,
+        reason: rule
+          ? `Lint gate refused it on ${rule}, and the rewrite did not clear it.`
+          : 'Lint gate refused it and the rewrite did not clear it.',
+      }
+    }
+
+    if (agent === 'QA Give-Up' || agent === 'QA Regen Loop') {
+      const outcomes = readOutcomes(body)
+      // Every attempt came back empty: this is not a QA opinion about the copy,
+      // it is the model never answering, and the two want different actions.
+      if (outcomes.length > 0 && outcomes.every(o => o === 'generation_failed')) {
+        return {
+          kind: 'generation_failed', agent, detail: `${outcomes.length} attempt(s)`,
+          reason: `Generation never returned. ${outcomes.length} attempt(s), none of which produced a draft.`,
+        }
+      }
+      const fv = FINAL_VERDICT.exec(body) ?? ATTEMPT_SCORE.exec(body)
+      const lintFails = outcomes.filter(o => o === 'lint_fail').length
+      if (fv && fv[3] !== '?') {
+        const verdict = label(fv[1])
+        const tail = lintFails > 0
+          ? ` ${lintFails} of the retries failed lint instead of scoring.`
+          : ''
+        return {
+          kind: 'qa', agent, detail: `${fv[2]}/${fv[3]}`,
+          reason: `QA scored it ${fv[2]} of ${fv[3]}, under the floor. Final verdict ${verdict}, regeneration budget spent.${tail}`,
+        }
+      }
+      return {
+        kind: 'qa', agent, detail: null,
+        reason: `QA blocked it and the regeneration budget ran out${outcomes.length ? ` after ${outcomes.length} attempt(s)` : ''}.`,
+      }
+    }
+
+    // Named honestly rather than smoothed: an unrecognised terminal event is
+    // still a fact, and the agent's own name is what makes it searchable.
+    return {
+      kind: 'other', agent, detail: null,
+      reason: `${agent} was the last step to run. ${head.slice(0, 160)}`.trim(),
+    }
+  }
+
+  // ---- no terminal log entry. The old order, kept as the fallback it always
+  // should have been.
   const msg = taxonomyValue(d.taxonomy, 'error_message')
-  if (msg) return msg
+  if (msg) return { kind: 'unknown', agent, detail: null, reason: msg }
   if (d.qa_verdict) {
     const verdict = label(d.qa_verdict)
-    return d.qa_score ? `${verdict} (score ${d.qa_score})` : verdict
+    return {
+      kind: 'qa', agent, detail: d.qa_score ?? null,
+      reason: d.qa_score ? `${verdict} (score ${d.qa_score})` : verdict,
+    }
   }
-  return 'No reason recorded'
+  return { kind: 'unknown', agent, detail: null, reason: 'No reason recorded' }
+}
+
+// The one-line form the card has always called. Kept as its own export so the
+// existing call site does not have to know about the shape above.
+export function draftFailureReason(d: FailureInput): string {
+  return draftFailure(d).reason
+}
+
+// A row whose pipeline demonstrably finished is a different object from one that
+// stalled, and the two want different hands. Regenerating a row that already
+// passed lint spends a model bill to redo work that is sitting right there.
+export function draftFinished(d: FailureInput): boolean {
+  return draftFailure(d).kind === 'completed'
 }
 
 // key_points is an array of strings on the rows that have it, and (like every
