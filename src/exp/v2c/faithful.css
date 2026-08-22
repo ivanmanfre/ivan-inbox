@@ -3916,7 +3916,7 @@
 /* ITS OWN SCROLL REGION, and this is load-bearing now. The rail was written for
    the handful of rows a zero-row filter could never produce; it holds 48 on
    risedtc and 39 on arch, and at 40px a row that is a 2,000px column beside a
-   700px grid — the grid would sit in the top fifth of a page that scrolls past
+   700px grid: the grid would sit in the top fifth of a page that scrolls past
    it. Capped against the VIEWPORT rather than a pixel count so a 2560 canvas
    shows more rows than a 1440 one does, which is the point of the canvas. */
 .wb.wb.wb .cal-rail-l{
