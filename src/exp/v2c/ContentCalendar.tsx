@@ -300,15 +300,15 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
             because that set is now provably empty (calendarItems.test.ts). The
             `r.movable` guard stays as the cheap belt on the braces. */}
         <div className="cal-rail">
-          <SectionHead
-            title="No date yet" count={rail.length}
-            tail={rail.length > 0
-              ? <span className="cal-rail-h">Oldest first. Drag one onto a day, or give it a date.</span>
-              : undefined}
-          />
+          <SectionHead title="No date yet" count={rail.length} />
           {rail.length === 0 ? (
             <div className="cal-rail-e">Nothing is waiting for a date.</div>
           ) : (
+            <>
+            {/* Under the head, not inside it: the head is a content-hugging
+                pill and a sentence in its tail squeezes the title and shoves
+                the count to the far edge. */}
+            <div className="cal-rail-h">Oldest first. Drag one onto a day.</div>
             <div className="cal-rail-l">
               {rail.map(r => (
                 <div
@@ -343,6 +343,7 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
                 </div>
               ))}
             </div>
+            </>
           )}
         </div>
       </div>
