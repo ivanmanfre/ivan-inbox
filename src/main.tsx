@@ -16,6 +16,20 @@ if (localStorage.getItem('inbox-density') === 'compact') {
   document.documentElement.dataset.density = 'compact'
 }
 
+// Frame geometry (polish/frame): the pistachio border around the work area,
+// the thing Ivan complained about ("there is a green background that is taking
+// some space from us"). Three arms live in src/exp/v2c/wbcal.css §5 as token
+// sets behind :root[data-frame='b'|'c']; arm A is the shipped geometry and
+// carries no declarations, so the ABSENCE of the attribute is arm A and only
+// 'b' and 'c' are ever written. Same persistence pattern as inbox-theme and
+// inbox-density above: one key, read once at boot.
+//
+// A STAYS THE DEFAULT. This is his taste call, made on the ballot, not ours.
+const frame = localStorage.getItem('inbox-frame')
+if (frame === 'b' || frame === 'c') {
+  document.documentElement.dataset.frame = frame
+}
+
 // A new worker skips waiting and claims this page immediately (src/sw.ts) -- but a
 // CLAIMED page is still running the bundle it loaded with. Nothing re-fetches
 // index.html, so the assets in memory stay whatever they were when the tab opened.

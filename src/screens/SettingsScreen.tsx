@@ -5,6 +5,7 @@ import { chimeEnabled, playChime, setChimeEnabled } from '../lib/chime'
 
 type Theme = 'dark' | 'light'
 type Density = 'comfortable' | 'compact'
+type Frame = 'a' | 'b' | 'c'
 
 function currentTheme(): Theme {
   return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark'
@@ -12,6 +13,11 @@ function currentTheme(): Theme {
 
 function currentDensity(): Density {
   return document.documentElement.dataset.density === 'compact' ? 'compact' : 'comfortable'
+}
+
+function currentFrame(): Frame {
+  const f = document.documentElement.dataset.frame
+  return f === 'b' || f === 'c' ? f : 'a'
 }
 
 function isIOS(): boolean {
@@ -45,6 +51,7 @@ export function SettingsScreen() {
   const [chime, setChime] = useState(chimeEnabled())
   const [theme, setTheme] = useState<Theme>(currentTheme)
   const [density, setDensity] = useState<Density>(currentDensity)
+  const [frame, setFrame] = useState<Frame>(currentFrame)
 
   useEffect(() => { getPushState().then(setPush) }, [])
 
@@ -95,6 +102,19 @@ export function SettingsScreen() {
     document.documentElement.dataset.density = next
     localStorage.setItem('inbox-density', next)
     setDensity(next)
+  }
+
+  // Frame geometry. Arm A is the shipped state and carries no CSS
+  // declarations (wbcal.css §5), so picking it REMOVES the attribute rather
+  // than writing 'a' — writing it would be harmless today but would leave a
+  // dead selector to keep in step, and removing it also restores
+  // faithful.css:157's own 24/8 override below 767px. The arms only reach
+  // `.wb`, so this control changes nothing in the stock shell.
+  function setFrameAndPersist(next: Frame) {
+    if (next === 'a') delete document.documentElement.dataset.frame
+    else document.documentElement.dataset.frame = next
+    localStorage.setItem('inbox-frame', next)
+    setFrame(next)
   }
 
   const pushHint =
@@ -163,6 +183,17 @@ export function SettingsScreen() {
             <div className="seg theme">
               <div className={'sg' + (density === 'comfortable' ? ' on' : '')} onClick={() => setDensityAndPersist('comfortable')}>Comfortable</div>
               <div className={'sg' + (density === 'compact' ? ' on' : '')} onClick={() => setDensityAndPersist('compact')}>Compact</div>
+            </div>
+          </div>
+          <div className="grow">
+            <div className="gtxt">
+              <div className="gt">Frame</div>
+              <div className="gs">How much green border wraps the work area. Wide is the current one.</div>
+            </div>
+            <div className="seg theme">
+              <div className={'sg' + (frame === 'a' ? ' on' : '')} onClick={() => setFrameAndPersist('a')}>Wide</div>
+              <div className={'sg' + (frame === 'b' ? ' on' : '')} onClick={() => setFrameAndPersist('b')}>Tight</div>
+              <div className={'sg' + (frame === 'c' ? ' on' : '')} onClick={() => setFrameAndPersist('c')}>Flush</div>
             </div>
           </div>
         </div>
