@@ -149,7 +149,7 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
   // `status` being passed at all, the same opt-in signal the draft banner
   // above already uses. #exp/stock's call site never passes `status`
   // (App.tsx:130-138), so this stays undefined there and the row renders
-  // exactly as it always has — no new markup, no new class, nothing to
+  // exactly as it always has: no new markup, no new class, nothing to
   // scope under `.wb`.
   const draftRowActions = status !== undefined
   async function onRowDiscard(e: React.MouseEvent, t: Thread) {
@@ -243,13 +243,13 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
             const isDraftLast = t.draft != null && t.last.id === t.draft.id
             // Discard costs 3 interactions per draft today (open the thread,
             // find the card, discard) because the list shows a DRAFT pill and
-            // nothing else — the draft text itself only lives inside the
+            // nothing else: the draft text itself only lives inside the
             // thread. 45% of discards happen in runs of 2-6 rows, the
             // signature of clearing a list by hand, so the row now carries
-            // the draft's own text whenever one is pending (not only when it
-            // happens to be the newest event in the thread — draftRowActions
+            // the draft's own text whenever one is pending, not only when it
+            // happens to be the newest event in the thread. draftRowActions
             // is the workbench-only gate; stock keeps the old isDraftLast-only
-            // behaviour untouched).
+            // behaviour untouched.
             const pendingDraft = draftRowActions && t.draft != null && t.draftSnoozedUntil === null
               ? t.draft : null
             let snip = t.last.message_text
@@ -299,7 +299,7 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
                   {t.draft != null && (t.draftSnoozedUntil !== null
                     ? <span className="dpill pushed">{returnsIn(t.draftSnoozedUntil)}</span>
                     : <span className="dpill">DRAFT</span>)}
-                  {/* Approve is deliberately NOT here — approving a DM sends
+                  {/* Approve is deliberately NOT here. Approving a DM sends
                       it to a real person, and the trip into the thread is
                       what puts the draft in front of him before it goes.
                       Discard sends nothing, so it is safe to run from the

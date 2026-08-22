@@ -84,7 +84,7 @@ export function useBulkRun(): {
         : cap === 'discard'
           ? {
             title: `Discard ${n} draft${n === 1 ? '' : 's'}?`,
-            message: `None of these send anything — that is why this is the one bulk action a conversation row carries. A discarded draft can still be brought back, but only by opening its thread.`,
+            message: `None of these send anything, which is why this is the one bulk action a conversation row carries. A discarded draft can still be brought back, but only by opening its thread.`,
             confirmText: `Discard ${n}`,
             danger: true,
           }
