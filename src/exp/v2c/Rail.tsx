@@ -79,9 +79,66 @@ export function WorkSegment({ job, counts, onJob }: {
 
 type Counts = Partial<Record<Job, number>>
 
-export function Rail({ job, counts, sev, chatOn, chatLive, onJob, onChat, loadedAt, stale, onRefresh, collapsed, onToggle }: {
+// THE GLOBAL ROLL-UP, and the one rule that keeps it honest.
+//
+// The old dashboard prints `PENDING <n>` in its top bar (Shell.tsx:213-219),
+// where n is the sum of every nav badge. The inbox had no such figure anywhere.
+// The danger with a single global number is that a reader assumes it covers
+// everything, and this one does not: it does not know about the 176 client
+// ideas at `staged`, the 95 lm idea candidates at `reviewing`, the comment
+// feed, the send queue, or the automation alarm.
+//
+// So the rule is: THE ROLL-UP IS THE RAIL'S OWN COUNTS, ADDED UP. Nothing else
+// may enter it. That makes it self-auditing: every summand is a row on the
+// same rail with its own numeral, so the reader can check the arithmetic
+// without leaving the screen, and a number that appears in the total but
+// nowhere below it is impossible by construction.
+export function rollup(counts: Counts): { n: number; note: string } {
+  const parts = JOBS
+    .map(j => ({ j, n: counts[j] ?? 0 }))
+    .filter(p => p.n > 0)
+  const n = parts.reduce((s, p) => s + p.n, 0)
+  const names = parts
+    .map(p => `${isWorkJob(p.j) ? WORK_LANE_LABEL[p.j] : JOB_LABEL[p.j]} ${p.n}`)
+    .join(' + ')
+  return {
+    n,
+    note: n === 0
+      ? 'Nothing waiting on the rail.'
+      : `${names}. This is the rail's counts added up and nothing else: it does not cover ideas, sends, or automation health.`,
+  }
+}
+
+// A count of zero is not rendered. Silence is information, and a permanently
+// blank slot is the defect the port audit found on 17 of the old sidebar's 21
+// rows.
+export function Rollup({ counts, compact }: { counts: Counts; compact?: boolean }) {
+  const { n, note } = rollup(counts)
+  if (n === 0) return null
+  return (
+    <span className="wb-rollup" title={note}>
+      <b className="wb-rollup-n">{n}</b>
+      {!compact && <span className="wb-rollup-l">waiting on you</span>}
+    </span>
+  )
+}
+
+export function Rail({ job, counts, countNote, health, sev, chatOn, chatLive, onJob, onChat, loadedAt, stale, onRefresh, collapsed, onToggle }: {
   job: Job
   counts: Counts
+  // The automation alarm. Kept OUT of `counts` on purpose: everything in that
+  // map is work Ivan can do, and this is not. Nothing on this rail lets him
+  // restart a workflow, and nothing should (the old dashboard's Pause/Resume
+  // calls a live n8n toggle and n8n is out of scope here). It is a separate
+  // signal in a separate place, so the roll-up above stays exactly what it
+  // claims to be.
+  health?: { n: number; note: string }
+  // What each count SUMS, in one sentence, on the row's own title. A number
+  // whose predicate is unstated is a number a reader has to trust; the audit's
+  // finding was that the old sidebar's counts worked because they were there,
+  // not because they were explained, and 17 of its 21 rows were blank anyway.
+  // Stating the rule costs nothing and makes a wrong count findable.
+  countNote?: Partial<Record<Job, string>>
   // A count that is a PROBLEM rather than a workload (errored content, a stuck
   // schedule) takes the amber tier; a plain backlog never does. The audit's
   // point 8: amber must mean warning, not "not done yet".
@@ -101,15 +158,24 @@ export function Rail({ job, counts, sev, chatOn, chatLive, onJob, onChat, loaded
   const row = (j: Job) => {
     const n = counts[j] ?? 0
     const s = sev[j]
+    const label = isWorkJob(j) ? WORK_LANE_LABEL[j] : JOB_LABEL[j]
     return (
       <div
         key={j}
         className={`wb-rj${job === j ? ' on' : ''}${isWorkJob(j) ? ' wb-rj-lane' : ''}`}
         onClick={() => onJob(j)}
+        title={n > 0 && countNote?.[j] ? `${label}: ${countNote[j]}` : undefined}
       >
         <span className="wb-rj-ic">{JOB_ICON[j]}</span>
-        <span className="wb-rj-l">{isWorkJob(j) ? WORK_LANE_LABEL[j] : JOB_LABEL[j]}</span>
+        <span className="wb-rj-l">{label}</span>
         {n > 0 && <span className={`wb-rj-n${s ? ` ${s}` : ''}`}>{n}</span>}
+        {/* The collapsed rail hides every numeral (faithful.css:2553-2557), so
+            collapsing it used to cost Ivan the whole count column, the one
+            thing the rail is for. The pip is the count's PRESENCE, drawn only
+            in that state. It says a row is holding something; it deliberately
+            does not say how much, because a 2-digit numeral does not fit a
+            64px rail and a truncated one would be a wrong number. */}
+        {n > 0 && <span className={`wb-rj-pip${s ? ` ${s}` : ''}`} aria-hidden />}
       </div>
     )
   }
@@ -133,7 +199,19 @@ export function Rail({ job, counts, sev, chatOn, chatLive, onJob, onChat, loaded
             onClick={onToggle}
           >{collapsed ? '»' : '«'}</button>
         )}
+        {/* The roll-up sits in the frame, above the rows it sums, which is
+            where the old dashboard puts its own (`PENDING <n>`, top bar). On
+            the collapsed rail it keeps the numeral, drops the words, and goes
+            BELOW the toggle: side by side, 44px of usable width could not hold
+            both and the toggle was the one pushed out of the rail entirely
+            (measured at x=73 in a 64px rail, i.e. under the working column and
+            unclickable). The stack is set in wbsys.css §8.2. */}
+        {collapsed && <Rollup counts={counts} compact />}
       </div>
+
+      {!collapsed && (
+        <div className="wb-rail-roll"><Rollup counts={counts} /></div>
+      )}
 
       <div className="wb-rail-jobs">
         {before.map(row)}
@@ -159,6 +237,25 @@ export function Rail({ job, counts, sev, chatOn, chatLive, onJob, onChat, loaded
       </div>
 
       <div className="wb-rail-foot">
+        {/* AUTOMATION HEALTH, in the frame rather than in the roll-up.
+            It sits beside the sync dot because it answers the same class of
+            question, which is whether the machine is still running, and it is
+            deliberately NOT a summand of "waiting on you": a red workflow is
+            not a queue Ivan can
+            work through, it is a thing that has stopped. Renders nothing when
+            nothing is wrong. The click goes to Ops, where the list lives. */}
+        {health && health.n > 0 && (
+          <div
+            className="wb-rj wb-rj-health"
+            onClick={() => onJob('ops')}
+            title={health.note}
+          >
+            <span className="wb-rj-ic">⚠</span>
+            <span className="wb-rj-l">Workflows</span>
+            <span className="wb-rj-n attention">{health.n}</span>
+            <span className="wb-rj-pip attention" aria-hidden />
+          </div>
+        )}
         {JOBS.filter(j => j === 'settings').map(row)}
         <div className="wb-rail-sync" onClick={onRefresh}>
           {/* `.bad`, never `.stale`: `.stale` is a SHARED class (styles.css:266, the

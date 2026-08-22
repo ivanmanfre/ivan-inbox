@@ -8,7 +8,7 @@ import { useInbox } from '../../hooks/useInbox'
 import { useOps } from '../../hooks/useOps'
 import { pendingOps } from '../../lib/ops'
 import { inboxWaitingCount, type Filter, type Status } from '../../lib/inbox'
-import type { ContentDraft, ContentLane } from '../../lib/content'
+import { CONTENT_LANES, LANE_LABEL, type ContentDraft, type ContentLane } from '../../lib/content'
 import type { Resource } from '../../lib/styles'
 
 // The list row -> queue row projection. Only what the window's rail draws: no
@@ -44,17 +44,20 @@ import { StrategyView } from './StrategyView'
 import type { OpenMagnet } from './ContentSections'
 import { DraftWindow, type QueueItem } from './DraftPane'
 import { MagnetWindow } from './MagnetWindow'
+import { CallWindow } from './CallWindow'
+import type { CallRow } from '../../lib/transcripts'
 import { ThreadPeer } from './ThreadPeer'
 import { DmsSurface } from './DmsSurface'
 import { ChatPane } from './ChatPane'
+import { draftSubject, laneSubject, threadSubject, type Subject } from './chat/paneContext'
 import { OpsBoard } from './OpsBoard'
 import { Failed, relAge } from './Surface'
 import { useChat } from './useChat'
-import { useContentBadge } from './useContentBadge'
+import { useGlanceCounts } from './useGlanceCounts'
 import { hasMock } from './mock'
 import { parseWbHash, wbHash } from './route'
 import {
-  addPeer, contextPeer, dropPeer, hasChat, jobHasList, peerKey,
+  JOB_LABEL, addPeer, contextPeer, dropPeer, hasChat, jobHasList, peerKey,
   planWorkbench, type Canvas, type Job, type Peer,
 } from './layout'
 import './styles.css'
@@ -65,6 +68,22 @@ import './faithful.css'
 // The 2026 pass. Last import, so it is the final word inside .wb; it carries no
 // tokens of its own and forks no tier — see its header.
 import './wb2026.css'
+// Phase 1 system primitives (elevation ladder, radius scale, .wbb controls,
+// .wbkv metadata, motion). Imported LAST so it overrides rather than deletes;
+// see its header for the three-.wb rule it obeys on every component selector.
+import './wbsys.css'
+// Phase 3, THE CALENDAR. After wbsys so the calendar's own overrides are the
+// last word on .cal, and only on .cal — this sheet reaches nothing else.
+import './wbcal.css'
+// The draft window, built on those primitives. Imported after them because it
+// composes them; it reaches nothing outside `.dw`. See its header. Its scope and
+// wbcal's do not intersect, so the order of these last two is not load-bearing.
+import './dwsys.css'
+// The call reader (port #2). Last, and it reaches only `.cw` and `.cw-segs`;
+// it defines no token and forks no tier. It borrows the three-column frame,
+// the queue rail, the disclosure, `.wbkv` and `.wbb` rather than restating
+// them, so its scope does not intersect dwsys's or wbcal's.
+import './wbcall.css'
 
 // ============================================================================
 // Candidate v2c — WORKBENCH
@@ -158,6 +177,19 @@ export default function Shell() {
   const [openItem, setOpenItem] = useState<
     { kind: 'draft' | 'magnet'; id: string; queue: QueueItem[] } | null
   >(null)
+  // The call reader (dashboard port #2). Its own state rather than a third arm
+  // of `openItem`, because a call queue is a list of transcript ROWS and not of
+  // `QueueItem`: the reader draws its rail out of the same objects the Today
+  // list already fetched, so opening a call costs no request at all and the
+  // only read it can ever fire is the body, on demand, inside the fold.
+  //
+  // 🔴 IT IS NOT A PEER, and that is a departure from the audit's own
+  // recommendation. The reasoning is written out in full at the top of
+  // CallWindow.tsx; the short version is that this repo already deleted the
+  // `draft` peer for being an unreadable 420px column, a 39-minute transcript
+  // is longer than any draft, and a takeover costs neither a peer slot nor a
+  // rail job.
+  const [openCall, setOpenCall] = useState<{ id: string; queue: CallRow[] } | null>(null)
 
   // ---- data, mounted ONCE, here ----
   //
@@ -171,7 +203,7 @@ export default function Shell() {
   const inbox = useInbox()
   const ops = useOps()
   const chat = useChat()
-  const badge = useContentBadge()
+  const glance = useGlanceCounts()
 
   const forceFail = hasMock('fetch-error')
   const inboxError = inbox.error ?? (forceFail ? 'PostgREST returned 500 for inbox_messages_v' : null)
@@ -187,7 +219,45 @@ export default function Shell() {
     // and the InboxHead breakdown (lib/inbox.ts, inboxBreakdown).
     dms: inboxWaitingCount(inbox.threads),
     ops: opsPend.length,
-    content: badge.count,
+    // EVERY LANE, not just Ivan's. The rail row names a JOB, and the job holds
+    // all three lanes; scoping the number to whichever lane happened to be
+    // selected made the rail read 2 while 93 client drafts sat at the same
+    // decision stage (measured 2026-08-22). The lane pills inside Content carry
+    // the split, so the 95 is never a number whose parts are unreachable.
+    content: glance.contentReview,
+    // Magnets had no badge at all, on the stated ground that its lane is
+    // read-only here. That reasoning covered CLIENT rows; it never covered
+    // Ivan's own, and 10 of his lead magnets sit at review. The count is what
+    // the surface shows at its decision stage, both lanes, same as Content.
+    magnets: glance.magnetsReview,
+    // Styles is a shared registry and Strategy is a document. Neither has a
+    // queue, so neither gets a number: a count of zero is not rendered, and a
+    // permanently blank count slot is the exact defect the port audit found on
+    // 17 of the old sidebar's 21 rows.
+  }
+  // Every count's predicate, in one sentence, carried onto the row it belongs
+  // to. Derived from the same object the numerals come from, so a note can
+  // never drift away from the number it describes.
+  const laneSplit = CONTENT_LANES
+    .map(l => `${LANE_LABEL[l]} ${glance.contentReviewByLane[l]}`)
+    .join(' · ')
+  const countNote = {
+    dms: 'threads with an unanswered reply, a draft to approve, or flagged for a manual reply',
+    ops: 'ops drafts you have not approved or skipped',
+    content: `drafts at review, every lane. ${laneSplit}`
+      + (glance.contentReviewOther > 0 ? ` · other lanes ${glance.contentReviewOther}` : ''),
+    magnets: 'lead magnets at review, every lane',
+  }
+  // The automation alarm, shaped once here so the rail, the ribbon and the Ops
+  // list can never state three different totals.
+  const health = {
+    n: glance.alerts.length,
+    note: glance.alerts.length === 0
+      ? ''
+      : `${glance.alerts.length} automation${glance.alerts.length === 1 ? '' : 's'} `
+        + 'errored or ran past schedule in the last 14 days. '
+        + `${glance.olderErrored + glance.olderStalled} older ones are not counted. `
+        + 'Read only: open Ops for the list.',
   }
   const sev = {
     // Only a real problem takes a severity tier. A backlog of approvals is work,
@@ -209,6 +279,40 @@ export default function Shell() {
   // draft-flavoured context label went with the draft peer.
   const aboutLabel = ctx ? ctxThread?.prospect_name ?? ctx.label ?? 'this thread' : null
   const aboutContext = aboutLabel
+
+  // ---- what the Claude pane is allowed to see (chat/paneContext.ts) ----
+  //
+  // Built HERE because this is the only place that holds all three answers at
+  // once: which screen and lane he is on, which conversation is docked beside
+  // the pane, and which row the reading window has open. Every one of these is
+  // data already fetched for the screen, so attaching context opens no request.
+  //
+  // The OPEN DRAFT is attached shallow only. Shell holds the queue row (title,
+  // state, dates), not the post itself, which lives in the window's own detail
+  // fetch. So the draft chip offers no "full text" switch, and the pane says
+  // the text was not attached rather than implying it was.
+  const openQueueRow = openItem?.queue.find(q => q.id === openItem.id) ?? null
+  const seeSubjects = useMemo<Subject[]>(() => {
+    const laneName = job === 'dms'
+      ? (filter === 'all' ? 'all lanes' : LANE_LABEL[filter as ContentLane] ?? filter)
+      : LANE_LABEL[lane] ?? lane
+    const out: Subject[] = [laneSubject(JOB_LABEL[job], laneName)]
+    if (ctxThread) {
+      out.push(threadSubject({
+        prospect_id: ctxThread.prospect_id,
+        prospect_name: ctxThread.prospect_name,
+        prospect_company: ctxThread.prospect_company,
+        channel: ctxThread.channel,
+        stage: ctxThread.stage,
+        messages: ctxThread.messages,
+        hasPendingDraft: ctxThread.draft != null && ctxThread.draftSnoozedUntil === null,
+      }, LANE_LABEL[ctxThread.client_id as ContentLane] ?? ctxThread.client_id))
+    }
+    if (openQueueRow) {
+      out.push(draftSubject(openQueueRow, LANE_LABEL[lane] ?? lane))
+    }
+    return out
+  }, [job, lane, filter, ctxThread, openQueueRow])
 
   // ---- Fork 2 is DECIDED: Ivan voted TRIAD (2026-08-02, "color i want tried"). ----
   // Triad is the boot default — absence of any signal means triad. Mono stays
@@ -286,6 +390,37 @@ export default function Shell() {
   }, [focus])
 
   const openThread = useCallback((id: string) => openPeer({ kind: 'thread', id }), [openPeer])
+
+  // ---- opening a row the cross-object search found (AI pass item 3) ----
+  //
+  // The palette is mounted by CommandLayer with no props, on purpose, and a
+  // search result lives in three different jobs on two different lanes. A
+  // window event is the existing pattern in this file (⌘D already travels as
+  // 'wb-voice-toggle'), and it keeps the layer propless.
+  //
+  // A hit ARRIVES WITH ITS LANE, so opening one switches the lane before it
+  // opens the row: showing a client's draft while the rail still says another
+  // lane is exactly the tenancy confusion the search is scoped to avoid.
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const d = (e as CustomEvent).detail as {
+        kind: 'thread' | 'draft' | 'magnet'
+        id: string
+        lane?: ContentLane
+        row?: QueueItem
+      }
+      if (!d?.id) return
+      if (d.kind === 'thread') { setJob('dms'); openThread(d.id); return }
+      if (d.lane) setLane(d.lane)
+      setJob(d.kind === 'draft' ? 'content' : 'magnets')
+      // A one-row queue, not an empty one: the window walks its queue with j/k
+      // and prints "n of m", and an empty queue would leave both with nothing
+      // to read. One row is the honest count for a row opened out of search.
+      setOpenItem({ kind: d.kind, id: d.id, queue: d.row ? [d.row] : [] })
+    }
+    window.addEventListener('wb-open', onOpen)
+    return () => window.removeEventListener('wb-open', onOpen)
+  }, [openThread])
   // Ask 2 — a draft is a READING surface, so it opens the takeover window, not
   // a peer. Same for a lead-magnet row.
   const openDraft = useCallback<OpenDraft>((id, _label, queue) => {
@@ -295,6 +430,13 @@ export default function Shell() {
     setOpenItem({ kind: 'magnet', id, queue: queue.map(toLmQueueItem) })
   }, [])
   const closeItem = useCallback(() => setOpenItem(null), [])
+  const openCallRow = useCallback((id: string, queue: CallRow[]) => {
+    setOpenCall({ id, queue })
+  }, [])
+  const closeCall = useCallback(() => setOpenCall(null), [])
+  const pickCall = useCallback((id: string) => {
+    setOpenCall(cur => (cur ? { ...cur, id } : cur))
+  }, [])
   // Move WITHIN the open queue. The queue object is carried across untouched.
   const pickItem = useCallback((id: string) => {
     setOpenItem(cur => (cur ? { ...cur, id } : cur))
@@ -316,7 +458,7 @@ export default function Shell() {
               collapsed={railMin} onToggle={toggleRail} />
           )}
           <div className="wb-regions">
-            <div className="wb-work wide">
+            <div className="wb-work wide" data-wblane={lane}>
               <div className="nav"><div className="row-top"><h2>DMs</h2></div></div>
               <InboxSkeleton />
             </div>
@@ -375,6 +517,7 @@ export default function Shell() {
       // The reach the Content strip's alarm band used to be (2026-08-07). Ops
       // counts the pipeline's broken rows; the rows themselves live on Content,
       // so the jump crosses jobs here — the one place that owns both.
+      glance={glance}
       onOpenErrors={() => {
         goJob('content')
         setLane('ivan')
@@ -404,13 +547,14 @@ export default function Shell() {
           setLane={setLane}
           openId={openItem?.kind === 'draft' ? openItem.id : null}
           onOpen={openDraft}
+          laneCounts={glance.contentReviewByLane}
         />
       )}
       {/* Magnets shares the SAME lane state as Content — switching lane in one
-          tab is reflected in the other. No badge on this job on purpose:
-          useContentBadge counts carousel_drafts rows at review (posts waiting
-          on Ivan); the LM lane is read-only here, so a count would advertise
-          an action this surface does not offer. */}
+          tab is reflected in the other. It carries a badge now (see `counts`):
+          the old "no badge, the LM lane is read-only here" note was written
+          about CLIENT rows and read as though it covered Ivan's own, which it
+          never did. */}
       {job === 'magnets' && (
         <MagnetsList lane={lane} setLane={setLane} onOpen={openMagnet} />
       )}
@@ -429,11 +573,27 @@ export default function Shell() {
       {job === 'sends' && <SendsScreen client={sendsClient} setClient={setSendsClient} />}
       {job === 'ops' && opsSurface}
       {/* Today aggregates, so its hand-off rows navigate INSIDE the workbench
-          rather than through the default app's hash routes. */}
+          rather than through the default app's hash routes. The work-queue
+          props (threads/opsDrafts/onOpenThread/onOpenContent) reuse the SAME
+          `inbox`/`ops` mounts every other job already reads (zero new
+          fetch) and the SAME `openThread`/lane state Content itself uses, so
+          a queue row opens the exact thread or the exact lane rather than
+          just the job. */}
       {job === 'today' && (
-        <TodayScreen onOpenDrafts={() => goJob('dms')} onOpenOps={() => goJob('ops')} />
+        <TodayScreen
+          onOpenDrafts={() => goJob('dms')}
+          onOpenOps={() => goJob('ops')}
+          threads={inbox.threads}
+          opsDrafts={ops.drafts}
+          onOpenThread={openThread}
+          onOpenContent={l => { setLane(l as ContentLane); goJob('content') }}
+          onOpenCall={openCallRow}
+        />
       )}
-      {job === 'settings' && <SettingsScreen />}
+      {/* `shell` is what earns the Density and Frame controls. SettingsScreen is
+          shared with #exp/stock (App.tsx:148) and both arms only reach `.wb`, so
+          without this the escape hatch renders two controls that do nothing. */}
+      {job === 'settings' && <SettingsScreen shell="workbench" />}
     </>
   )
 
@@ -447,6 +607,7 @@ export default function Shell() {
           job={job}
           about={aboutLabel}
           aboutContext={aboutContext}
+          subjects={seeSubjects}
           onClose={() => closePeer('chat')}
           // Mobile only: no third region, so the pair degrades to a tappable
           // context card that flips focus back to the item.
@@ -491,6 +652,22 @@ export default function Shell() {
         />
   )
 
+  // Both reading windows in one expression, because each of the three canvas
+  // branches below has to mount them OUTSIDE `.wb-plate`: the plate is
+  // `overflow:hidden; position:relative` (faithful.css:382), so a fixed overlay
+  // rendered inside it would be clipped to the plate's rounded box.
+  const windows = (
+    <>
+      {itemWindow}
+      {openCall && (
+        <CallWindow
+          id={openCall.id} queue={openCall.queue}
+          onClose={closeCall} onPick={pickCall} mobile={mobile}
+        />
+      )}
+    </>
+  )
+
   // ---- mobile: one region at a time ----
   if (mobile) {
     if (plan.work === 'hidden' && plan.peers[0]) {
@@ -503,7 +680,7 @@ export default function Shell() {
               ⌘K and Escape are the way back out. */}
           <CommandLayer />
           {renderPeer(p)}
-          {itemWindow}
+          {windows}
         </div>
       )
     }
@@ -516,7 +693,36 @@ export default function Shell() {
             {/* The lane switch moved into the working surface (WorkSegment) so both
                 viewports carry the identical control. The ribbon keeps what belongs
                 to the FRAME: how fresh the data is, and the way out to Settings. */}
+            {/* The phone has no rail, so the roll-up rides the ribbon slot that
+                was empty on every job but Settings. Same primitive, same rule:
+                it is the bottom bar's own counts added up, and every summand is
+                a tab you can see. */}
+            {/* 🔴 NO ROLL-UP ON THE PHONE, and the reason is measured rather
+                than aesthetic. On a work job this whole ribbon becomes an
+                ABSOLUTE overlay at the top right of the plate and the work
+                pills reserve a fixed lane under it (wb2026.css D7, a band that
+                was folded from four to three after a fight recorded in that
+                note). Adding the roll-up took the overlay from 144px to 221px
+                at 390, which printed it on top of the Magnets pill and would
+                have cost another 56px of the only strip that reaches Styles
+                and Strategy. And unlike the desktop rail, the phone already
+                carries every one of the roll-up's summands as its own numeral,
+                permanently, on every screen: the bottom bar IS the rail's
+                counts. So the total stays on the canvas that has room for it.
+                The automation mark below is the opposite case and it stays: it
+                exists nowhere else on this viewport. */}
             <span className="wb-rib-j">{job === 'settings' ? 'Settings' : ''}</span>
+            {/* Same alarm, same rule, the phone's only frame. It renders
+                nothing when nothing is wrong, and tapping it goes to Ops. */}
+            {health.n > 0 && (
+              <span
+                className="wb-rib-health" title={health.note}
+                onClick={() => goJob('ops')}
+              >
+                <span className="wb-sech-dot attention" />
+                <span className="wb-rib-health-n">{health.n}</span>
+              </span>
+            )}
             <span className={`wb-rib-sync${inboxError ? ' bad' : ''}`} onClick={inbox.refresh}>
               <span className={`wb-sync-dot${inboxError ? ' bad' : ''}`} />
               {inboxError ? 'not syncing' : relAge(inbox.loadedAt)}
@@ -525,10 +731,10 @@ export default function Shell() {
               ? <span className="wb-gear" onClick={() => goJob(prevJob)}>Done</span>
               : <span className="wb-gear" onClick={() => goJob('settings')}>⚙︎</span>}
           </div>
-          <div className={`wb-work wide${plan.narrow ? ' wb-narrow' : ''}`}>{workSurface}</div>
+          <div className={`wb-work wide${plan.narrow ? ' wb-narrow' : ''}`} data-wblane={lane}>{workSurface}</div>
           <MobileTabs job={job} counts={counts} sev={sev} chatLive={chat.busy} onJob={goJob} onChat={toggleChat} />
         </div>
-        {itemWindow}
+        {windows}
       </div>
     )
   }
@@ -542,6 +748,8 @@ export default function Shell() {
         <Rail
           job={job}
           counts={counts}
+          countNote={countNote}
+          health={health}
           sev={sev}
           chatOn={hasChat(peers)}
           chatLive={chat.busy}
@@ -554,7 +762,14 @@ export default function Shell() {
           onToggle={toggleRail}
         />
         <div className={`wb-regions peers-${plan.peers.length}`}>
-          <div className={`wb-work ${plan.work}${plan.narrow ? ' wb-narrow' : ''}${solo ? ' wb-solo' : ''}`}>
+          <div
+            className={`wb-work ${plan.work}${plan.narrow ? ' wb-narrow' : ''}${solo ? ' wb-solo' : ''}`}
+            /* The lane, published for CommandLayer's cross-object search. That
+               layer is mounted propless and reads the live DOM by design, and
+               a search that guessed its own tenancy would be the one bug this
+               feature must not have. */
+            data-wblane={lane}
+          >
             {workSurface}
           </div>
           {plan.peers.map(p => (
@@ -567,7 +782,7 @@ export default function Shell() {
           ))}
         </div>
       </div>
-      {itemWindow}
+      {windows}
     </div>
   )
 }

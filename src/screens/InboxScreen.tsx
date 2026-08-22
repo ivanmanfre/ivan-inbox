@@ -3,7 +3,8 @@ import { Avatar } from '../components/Avatar'
 import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { returnsIn } from '../components/PushLaterSheet'
-import { filterByStatus, filterThreads, inboxWaitingCount, isLeadMagnet, searchThreads, threadKind, type Filter, type Status, type Thread, eventTime } from '../lib/inbox'
+import { useConfirm } from '../components/ConfirmSheet'
+import { discardDraft, filterByStatus, filterThreads, inboxWaitingCount, isLeadMagnet, searchThreads, threadKind, type Filter, type Status, type Thread, eventTime } from '../lib/inbox'
 import { checkedPhrase } from '../lib/today'
 import { RowSelect } from '../exp/v2c/RowSelect'
 
@@ -99,7 +100,7 @@ function clientLabel(id: string): string {
   return id.toUpperCase()
 }
 
-export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt, title = 'Inbox', status, before, after, rowsFor, renderRow, emptyLine }: {
+export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt, title = 'Inbox', status, before, after, rowsFor, renderRow, rowNote, rowChip, emptyLine }: {
   threads: Thread[]
   filter: Filter
   setFilter: (f: Filter) => void
@@ -138,11 +139,41 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
   // that DraftsScreen used to own. Windowing is off when it is supplied — the
   // window maps a scroll offset onto a FIXED row height, and a card is not one.
   renderRow?: (t: Thread) => ReactNode
+  // Two opt-in slots on the 73px conversation row, both absent from
+  // `#exp/stock` because the pre-revamp shell passes neither.
+  //
+  // They exist as a PAIR, and as a pair rather than one bigger prop, because
+  // the row's height is load-bearing: `useRowWindow` maps a scroll offset onto
+  // a fixed ROW_H, so nothing may be ADDED to the row's vertical box. `rowNote`
+  // therefore REPLACES the message preview on the line it already occupies,
+  // and `rowChip` sits in the right-hand column beside the time and the pills.
+  rowNote?: (t: Thread) => string | null
+  rowChip?: (t: Thread) => ReactNode
   emptyLine?: string
 }) {
   const rowsRef = useRef<HTMLDivElement>(null)
   const ptr = usePullToRefresh(rowsRef, () => refresh())
   const [query, setQuery] = useState('')
+  const confirm = useConfirm()
+  // Row-level draft actions (preview text + inline discard) are gated on
+  // `status` being passed at all, the same opt-in signal the draft banner
+  // above already uses. #exp/stock's call site never passes `status`
+  // (App.tsx:130-138), so this stays undefined there and the row renders
+  // exactly as it always has: no new markup, no new class, nothing to
+  // scope under `.wb`.
+  const draftRowActions = status !== undefined
+  async function onRowDiscard(e: React.MouseEvent, t: Thread) {
+    e.stopPropagation()
+    if (!t.draft) return
+    const ok = await confirm({
+      title: 'Discard this draft?',
+      message: 'It will not be sent.',
+      confirmText: 'Discard',
+      danger: true,
+    })
+    if (!ok) return
+    try { await discardDraft(t.draft.id) } finally { refresh() }
+  }
   const laned = filterThreads(threads, filter)
   // A SEARCH reaches the whole lane; the LIST does not. Ivan, 2026-08-03: "dms
   // section doesnt need to show sent stuff only receiveds pending response" —
@@ -220,9 +251,22 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
           {shown.slice(win.start, win.end).map(t => {
             if (renderRow) return renderRow(t)
             const isDraftLast = t.draft != null && t.last.id === t.draft.id
+            // Discard costs 3 interactions per draft today (open the thread,
+            // find the card, discard) because the list shows a DRAFT pill and
+            // nothing else: the draft text itself only lives inside the
+            // thread. 45% of discards happen in runs of 2-6 rows, the
+            // signature of clearing a list by hand, so the row now carries
+            // the draft's own text whenever one is pending, not only when it
+            // happens to be the newest event in the thread. draftRowActions
+            // is the workbench-only gate; stock keeps the old isDraftLast-only
+            // behaviour untouched.
+            const pendingDraft = draftRowActions && t.draft != null && t.draftSnoozedUntil === null
+              ? t.draft : null
             let snip = t.last.message_text
-            if (isDraftLast) snip = `✦ Draft: ${t.last.message_text}`
+            if (pendingDraft) snip = pendingDraft.message_text
+            else if (isDraftLast) snip = `✦ Draft: ${t.last.message_text}`
             else if (t.last.direction === 'outbound' && t.last.sent_at) snip = `You: ${t.last.message_text}`
+            const note = rowNote?.(t) ?? null
             return (
               <div
                 key={t.prospect_id}
@@ -233,8 +277,18 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
                     and x selects them. A conversation carries NO bulk
                     capability — an answer is written one at a time, and the
                     bulk bar says that in words rather than offering a button
-                    that would refuse. */}
-                <RowSelect id={t.prospect_id} kind="thread" label={t.prospect_name} caps={[]} />
+                    that would refuse. A row with a pending draft is the one
+                    exception: discarding sends nothing, so it is the one
+                    thing this row may still do in bulk (Shell.tsx's caller
+                    passes the draft's own id, not the thread's, so a bulk run
+                    discards the right row). */}
+                <RowSelect
+                  id={pendingDraft ? pendingDraft.id : t.prospect_id}
+                  kind="thread"
+                  label={t.prospect_name}
+                  caps={pendingDraft ? ['discard'] : []}
+                  lane={t.client_id}
+                />
                 <Avatar name={t.prospect_name} client_id={t.client_id} channel={t.channel} />
                 <div className="mid">
                   <div className="top">
@@ -245,9 +299,19 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
                     {threadKind(t) === 'linkedin' && <span className="client kind-dm">DM</span>}
                     {isLeadMagnet(t) && <span className="client kind-lm">LEAD MAGNET</span>}
                   </div>
-                  <div className="snip">{snip}</div>
+                  {/* The pre-read, when one has been asked for, stands IN
+                      PLACE of the preview rather than under it: the row height
+                      is what the list's windowing measures against. ONE .snip
+                      element in every case, so the density tokens and the `ch`
+                      measure cap keyed on `.r .snip` reach the pre-read too.
+                      The pending-draft prefix is the no-note branch: a row that
+                      was summed up shows the summary, not `✦ Draft:` twice. */}
+                  <div className={`snip${note ? ' snip-note' : ''}`} title={note ?? undefined}>
+                    {note ?? (pendingDraft ? `✦ Draft: ${snip}` : snip)}
+                  </div>
                 </div>
                 <div className="right">
+                  {rowChip?.(t)}
                   <span className="time">{timeAgo(eventTime(t.last))}</span>
                   {t.unread > 0 && <span className="udot" />}
                   {/* A pushed draft says WHEN, not DRAFT — the row is the only
@@ -256,6 +320,20 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
                   {t.draft != null && (t.draftSnoozedUntil !== null
                     ? <span className="dpill pushed">{returnsIn(t.draftSnoozedUntil)}</span>
                     : <span className="dpill">DRAFT</span>)}
+                  {/* Approve is deliberately NOT here. Approving a DM sends
+                      it to a real person, and the trip into the thread is
+                      what puts the draft in front of him before it goes.
+                      Discard sends nothing, so it is safe to run from the
+                      list the same way the stale-draft bar already does. */}
+                  {pendingDraft && (
+                    <button
+                      type="button"
+                      className="pushbtn"
+                      onClick={e => onRowDiscard(e, t)}
+                    >
+                      Discard
+                    </button>
+                  )}
                   {/* The NEEDS REPLY pill went with the flag's demotion: it sat
                       on threads that end with Ivan's own reply (Nour Siakir
                       Oglou), which is the opposite of what it claimed. */}

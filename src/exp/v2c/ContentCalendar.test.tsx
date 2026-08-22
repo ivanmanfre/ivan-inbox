@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { ContentCalendar } from './ContentCalendar'
+import { ContentCalendar, VISIBLE_CHIPS, chipDescription } from './ContentCalendar'
+import { buildCalendarItems } from '../../lib/calendarItems'
+import { armingCountWord, armingLabel } from '../../lib/labels'
+import { place } from './CalPopover'
 import type { ContentDraft, ScheduledQueueRow } from '../../lib/content'
 
 // WHICH CONTROLS GET DRAWN — asserted on the markup, not on a prop.
@@ -35,6 +38,9 @@ const q = (over: Partial<ScheduledQueueRow> = {}): ScheduledQueueRow => ({
   created_at: inDays(-3), post_kind: 'reach', unipile_share_url: null, post_format: 'text',
   ...over,
 })
+
+// The sentence one chip carries, built the same way the chip builds it.
+const describe1 = (over: Partial<ContentDraft> = {}) => chipDescription(buildCalendarItems([d(over)])[0])
 
 const html = (rows: ContentDraft[], queue: ScheduledQueueRow[] = []) => renderToStaticMarkup(
   <ContentCalendar rows={rows} queue={queue} onOpen={() => {}} refresh={() => {}} />,
@@ -86,15 +92,21 @@ describe('the time of posting', () => {
     expect(out).toContain('<span class="cal-chip-hh">09:30</span>')
     expect(out).not.toContain('<span class="cal-chip-hh">08:30</span>')
     expect(out).toContain('cal-chip-out')          // the published tick
-    expect(out).toContain('title="Posted 09:30')   // spelled out where it has room
+    // Spelled out where it has room. That used to be a `title` attribute and is
+    // a popover now, which renderToStaticMarkup cannot open because it fires no
+    // events, so the sentence is asserted at its source instead of through the
+    // markup. Same claim, one indirection fewer.
+    expect(describe1({
+      title: 'Went out', status: 'published', source_post_id: 'urn:li:activity:1',
+      scheduled_at: inDays(-1, 8), published_at: inDays(-1, 9),
+    })).toContain('Posted 09:30')
   })
 
-  it('and says so in the tooltip when the two disagree', () => {
-    const out = html([d({
+  it('and says so in the popover when the two disagree', () => {
+    expect(describe1({
       title: 'Late', status: 'published', source_post_id: 'urn:li:activity:1',
       scheduled_at: inDays(-1, 8), published_at: inDays(-1, 9),
-    })])
-    expect(out).toContain('was set for 08:30')
+    })).toContain('was set for 08:30')
   })
 
   it('falls back to the slot on a published row with no published_at (legacy rows)', () => {
@@ -139,28 +151,165 @@ describe('what the surface no longer says', () => {
   })
 })
 
-describe('Ready, no date', () => {
-  it('is the same rail on either lane — approved and undated, whoever owns it', () => {
+describe('No date yet', () => {
+  it('is the same rail on either lane: datable and undated, whoever owns it', () => {
     const rows = [
-      d({ id: 'a', title: 'Mine, no date', status: 'approved', scheduled_at: null }),
-      d({ id: 'b', title: 'His, no date', status: 'approved', scheduled_at: null, client_id: 'risedtc' }),
+      d({ id: 'a', title: 'Mine, no date', status: 'review', scheduled_at: null }),
+      d({ id: 'b', title: 'His, no date', status: 'review', scheduled_at: null, client_id: 'risedtc' }),
     ]
     const out = html(rows)
     expect(out).toContain('Mine, no date')
     expect(out).toContain('His, no date')
   })
 
-  it('🔴 says WHY an approved row has no button rather than just omitting it', () => {
-    // db/032 takes `review`/`scheduled` only, so `approved` answers bad_status.
-    const out = html([d({ status: 'approved', scheduled_at: null })])
-    expect(out).not.toContain('class="cal-mv"')   // no button
-    expect(out).toContain('bad_status')           // but the reason is on screen
+  it('🔴 THE 89 UNDATED REVIEW DRAFTS REACH IT: the defect this rail shipped with', () => {
+    // It filtered on `approved`, a status the date RPC refuses and the live
+    // census puts at 0 rows on both lanes, so it rendered its empty line
+    // forever while the rows the RPC accepts sat on another tab.
+    const out = html([d({ id: 'r', title: 'Undated review row', status: 'review', scheduled_at: null })])
+    expect(out).toContain('Undated review row')
+    expect(out).not.toContain('Nothing is waiting for a date.')
+  })
+
+  it('🔴 EVERY rail row is handed a working control: the rail predicate IS canMoveDate', () => {
+    const out = html([d({ title: 'Datable', status: 'review', scheduled_at: null })])
+    expect(out).toContain('class="cal-mv"')
+    // and the note that used to explain the button-less rows is gone with them
+    expect(out).not.toContain('bad_status')
+  })
+
+  it('an approved row is NOT in the rail: the date RPC answers bad_status on it', () => {
+    const out = html([d({ title: 'Approved and undated', status: 'approved', scheduled_at: null })])
+    expect(out).toContain('Nothing is waiting for a date.')
+    expect(out).not.toContain('Approved and undated')
+  })
+
+  it('a rail row drags onto a day, which is the cheap half of dating it', () => {
+    const out = html([d({ title: 'Drag me', status: 'review', scheduled_at: null })])
+    expect(out).toMatch(/class="cal-rr" draggable="true"/)
+  })
+
+  it('OLDEST FIRST, with how long each has waited on its face', () => {
+    const rows = [
+      d({ id: 'new', title: 'Fresh one', status: 'review', scheduled_at: null, created_at: inDays(-1) }),
+      d({ id: 'old', title: 'Ancient one', status: 'review', scheduled_at: null, created_at: inDays(-35) }),
+    ]
+    const out = html(rows)
+    expect(out.indexOf('Ancient one')).toBeLessThan(out.indexOf('Fresh one'))
+    expect(out).toContain('>35d<')
   })
 
   it('and says nothing at all when the rail is empty', () => {
     const out = html([d()])
-    expect(out).toContain('Nothing approved is sitting without a date.')
+    expect(out).toContain('Nothing is waiting for a date.')
     expect(out).not.toContain('bad_status')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 2026-08-22: ARMED vs PLANNED, and the arm step that used to cost a takeover.
+//
+// A `review` row with a `scheduled_at` does not publish. Six live risedtc rows
+// are exactly that (Aug 24-31) and every one of them drew a chip identical to
+// the two armed ones (Sep 1, Sep 7). The rail now offers 89 more rows to date,
+// so the chip has to say which of the two a date made it.
+// ---------------------------------------------------------------------------
+
+describe('planned versus armed, on the chip and in the count', () => {
+  // 🔴 THE WORDS CHANGED 2026-08-22 AND THE DISTINCTION DID NOT. A blind panel
+  // named `armed` as this screen's strongest tell that it is an internal tool
+  // ("no product ships a top-line metric its user would have to be told the
+  // meaning of"), so the vocabulary moved to src/lib/labels.ts and these assert
+  // against THAT map rather than against literals, which is what stops a second
+  // vocabulary being hardcoded here the next time the words move.
+  it('🔴 a dated REVIEW chip says so in a word, not only in a colour', () => {
+    const out = html([d({ title: 'Dated but dead', status: 'review' })])
+    expect(out).toContain('data-arm="planned"')
+    expect(out).toContain(`>${armingLabel('planned')}<`)
+    expect(out).not.toContain('>Planned<')
+  })
+
+  it('a scheduled chip says so too, and never in the coined word', () => {
+    const out = html([d({ title: 'Really going out', status: 'scheduled' })])
+    expect(out).toContain('data-arm="armed"')
+    expect(out).toContain(`>${armingLabel('armed')}<`)
+    expect(out).not.toContain('>Armed<')
+  })
+
+  it('🔴 THE MONTH COUNT SPLITS THEM: one figure counted a plan as coverage', () => {
+    const rows = [
+      d({ id: 'p1', status: 'review', scheduled_at: inDays(1) }),
+      d({ id: 'p2', status: 'review', scheduled_at: inDays(2) }),
+      d({ id: 'a1', status: 'scheduled', scheduled_at: inDays(3) }),
+    ]
+    const out = html(rows)
+    expect(out).not.toContain('dated this month')
+    expect(out).toContain(`<b>1</b><span>${armingCountWord('armed')}</span>`)
+    expect(out).toContain(`<b>2</b><span>${armingCountWord('planned')}</span>`)
+  })
+
+  it('🔴 the bar never prints the operator\'s own word at the reader', () => {
+    const out = html([
+      d({ id: 'p1', status: 'review', scheduled_at: inDays(1) }),
+      d({ id: 'a1', status: 'scheduled', scheduled_at: inDays(3) }),
+    ])
+    const bar = out.slice(out.indexOf('cal-bar'), out.indexOf('cal-body'))
+    for (const coined of ['armed', 'planned', 'queue only']) {
+      expect(bar).not.toContain(`>${coined}<`)
+    }
+  })
+
+  it('the two coverage figures are drawn at zero: a hidden 0 is the same lie', () => {
+    const out = html([d({ status: 'review', scheduled_at: inDays(1) })])
+    expect(out).toContain(`<b>0</b><span>${armingCountWord('armed')}</span>`)
+    expect(out).toContain(`<b>0</b><span>${armingCountWord('out')}</span>`)
+  })
+
+  // 🔴 THE THIRD FIGURE IS A DISCREPANCY, NOT A METRIC, so it is drawn only
+  // when there is one. That is the opposite rule from the two above and it is
+  // deliberate: a permanent `0 dated but not scheduled` above a grid already
+  // carrying 35 day numerals is a slot spent saying nothing is wrong.
+  it('the planned figure appears only when there is one, and is marked as attention', () => {
+    const none = html([d({ status: 'scheduled', scheduled_at: inDays(1) })])
+    expect(none).not.toContain(armingCountWord('planned'))
+    expect(none).not.toContain('cal-count-warn')
+    const some = html([d({ status: 'review', scheduled_at: inDays(1) })])
+    expect(some).toContain('cal-count-warn')
+    expect(some).toContain(`<b>1</b><span>${armingCountWord('planned')}</span>`)
+  })
+})
+
+describe('the arm step: 2 interactions instead of 5 and a takeover', () => {
+  it('a planned chip on Ivan’s lane carries Arm it', () => {
+    const out = html([d({ title: 'Mine, planned', status: 'review', client_id: null })])
+    expect(out).toContain('class="cal-chip-armb"')
+    expect(out).toContain('Arm it')
+  })
+
+  it('🔴 a CLIENT chip never does: its arming RPC also sets board_visible=true', () => {
+    const out = html([d({ title: 'His, planned', status: 'review', client_id: 'risedtc' })])
+    expect(out).toContain('data-arm="planned"')      // still named
+    expect(out).not.toContain('class="cal-chip-armb"')  // never armed from here
+  })
+
+  it('an already-armed chip carries none, and neither does a published one', () => {
+    expect(html([d({ status: 'scheduled' })])).not.toContain('cal-chip-armb')
+    expect(html([d({ status: 'published', source_post_id: 'urn:li:activity:1' })]))
+      .not.toContain('cal-chip-armb')
+  })
+
+  it('a queue chip carries none: there is no draft row for the write to take', () => {
+    expect(html([], [q()])).not.toContain('cal-chip-armb')
+  })
+
+  it('the control names the day AND the time it would fire, before it is pressed', () => {
+    const at = inDays(1)
+    const out = html([d({ title: 'Mine, planned', status: 'review', scheduled_at: at })])
+    const stamp = new Date(at).toLocaleString(undefined, {
+      weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    })
+    expect(out).toContain(`Arm Mine, planned for ${stamp}`)
   })
 })
 
@@ -195,8 +344,105 @@ describe('the publish queue as a second source', () => {
     expect(out).not.toContain('cal-chip-queue')
   })
 
-  it('the bar names the queue-only count separately, and only when there is one', () => {
-    expect(html([], [q()])).toContain('queue only')
-    expect(html([d()])).not.toContain('queue only')
+  // 🔴 REVERSED 2026-08-22. The bar no longer carries this count at all, and the
+  // deletion is the assertion: a queue row is armed BY DEFINITION, so those
+  // posts were already inside the coverage figure and a fourth number
+  // double-counted them for a reader who could not tell. The count's real job
+  // was explaining why some chips cannot be opened or moved, and that has to
+  // survive ON THE CHIP, which is the half of this the panel's complaint does
+  // not license dropping.
+  it('the bar does NOT carry a queue-only count, and the chip still says why it is inert', () => {
+    const out = html([], [q()])
+    const bar = out.slice(out.indexOf('cal-bar'), out.indexOf('cal-body'))
+    expect(bar).not.toContain('queue only')
+    expect(out).toContain('publish queue')
+    expect(out).toContain('cal-chip-queue')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 2026-08-22, phase 3. The chip stopped being 70% of its cell, and the tooltip
+// stopped being a native `title`.
+//
+// Ivan, looking at the month: "look at the calendar pills they look like ugly
+// 3d" and "there is a green background that is taking some space from us".
+// ---------------------------------------------------------------------------
+describe('the cap, and the overflow that carries what it hides', () => {
+  const onDay = (n: number, ids: string[]) => ids.map((id, i) =>
+    d({ id, title: `Post ${id}`, scheduled_at: inDays(n, 8 + i) }))
+
+  it('a TWO-POST DAY renders both chips, which is the case the old chip could not show', () => {
+    const out = html(onDay(2, ['a', 'b']))
+    expect(out).toContain('Post a')
+    expect(out).toContain('Post b')
+    // Two is the cap, so nothing collapses and no "+N" is drawn at all.
+    expect(out).not.toContain('cal-more')
+  })
+
+  it('a THREE-POST DAY still renders every chip in the DOM, and adds a +1', () => {
+    const out = html(onDay(2, ['a', 'b', 'c']))
+    // 🔴 ALL THREE ARE PRESENT. The cap is CSS (`wbcal.css §2` hides the third
+    // above 767px), never a JS slice, because the same DOM is an agenda list on
+    // mobile where there is no height to run out of and every chip must draw.
+    // A JS slice would have deleted the third post from the phone as well.
+    expect(out).toContain('Post a')
+    expect(out).toContain('Post b')
+    expect(out).toContain('Post c')
+    expect(out).toContain('+1 more')
+  })
+
+  it('the +N counts what the cap hides, not what the day holds', () => {
+    expect(html(onDay(2, ['a', 'b', 'c', 'd', 'e']))).toContain(`+${5 - VISIBLE_CHIPS} more`)
+  })
+
+  it('🔴 NO CHIP CARRIES A NATIVE title ATTRIBUTE any more', () => {
+    // The whole defect in one assertion. A native title cannot be styled, waits
+    // about a second, is unreachable by keyboard, and lands where the browser
+    // likes. Every one of those is why it was replaced.
+    const out = html([d({ title: 'Anything' }), ...onDay(3, ['x', 'y', 'z'])])
+    expect(out).not.toContain('title="10:30')
+    expect(out).not.toContain('title="Posted')
+  })
+})
+
+describe('the popover lands beside its cell, never on it', () => {
+  const cell = { left: 100, right: 220, top: 300, bottom: 420 }
+  const chip = { left: 106, right: 214, top: 320, bottom: 352 }
+  const size = { w: 240, h: 90 }
+
+  it('sits BELOW the cell when there is room, and clears it entirely', () => {
+    const p = place(chip, cell, size, { w: 1440, h: 900 })
+    expect(p.side).toBe('below')
+    expect(p.top).toBeGreaterThanOrEqual(cell.bottom)
+  })
+
+  it('FLIPS above when the bottom edge would clip it', () => {
+    const low = { ...cell, top: 700, bottom: 820 }
+    const p = place({ ...chip, top: 720, bottom: 752 }, low, size, { w: 1440, h: 900 })
+    expect(p.side).toBe('above')
+    expect(p.top + size.h).toBeLessThanOrEqual(low.top)
+  })
+
+  it('CLAMPS at the right edge, which is where a Saturday cell lives', () => {
+    const sat = { left: 1300, right: 1420, top: 300, bottom: 420 }
+    const p = place({ ...sat, top: 320, bottom: 352 }, sat, size, { w: 1440, h: 900 })
+    expect(p.left + size.w).toBeLessThanOrEqual(1440)
+    expect(p.left).toBeGreaterThanOrEqual(0)
+  })
+
+  it('CLAMPS at the left edge too, which is a Sunday cell at 390', () => {
+    const sun = { left: 4, right: 120, top: 300, bottom: 420 }
+    const p = place({ ...sun, top: 320, bottom: 352 }, sun, { w: 360, h: 90 }, { w: 390, h: 844 })
+    expect(p.left).toBeGreaterThanOrEqual(0)
+    expect(p.left + 360).toBeLessThanOrEqual(390)
+  })
+
+  it('stays ON SCREEN when neither side fits, rather than being pushed off the bottom', () => {
+    // A tall panel on a short viewport: the flip buys nothing, so it is clamped
+    // into view. A description you cannot read is worse than one sitting closer
+    // to its cell than the gutter would like.
+    const p = place(chip, cell, { w: 240, h: 800 }, { w: 1440, h: 500 })
+    expect(p.top).toBeGreaterThanOrEqual(0)
+    expect(p.top).toBeLessThan(500)
   })
 })

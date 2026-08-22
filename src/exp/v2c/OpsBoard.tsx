@@ -10,6 +10,8 @@ import { pipelineHealthTotal, STUCK_GENERATING_MINUTES, type PipelineHealth } fr
 import { SummariesSection } from './ContentSections'
 import { ReactionDesk } from './ReactionDesk'
 import { CalmEmpty, Failed } from './Surface'
+import { relTime } from './fmt'
+import type { AutomationAlert, GlanceCounts } from './useGlanceCounts'
 
 // Ops, designed for the canvas it actually gets.
 //
@@ -81,7 +83,73 @@ function PipelineNotes({ health, olderUnsent, onOpenErrors }: {
   )
 }
 
-export function OpsBoard({ drafts, loading, error, loadedAt, refresh, onOpenErrors }: {
+// AUTOMATION HEALTH, and the ruling it had to be built around.
+//
+// The inbox reads `dashboard_workflow_stats` NOWHERE, so a broken pipeline is
+// invisible here until content stops arriving. On the day this was written that
+// was not hypothetical: "Carousel Generation" last errored 2 days ago, "Post
+// Generation" 8 days ago, and "Outreach - DM Sequence" is a 30-minute job that
+// last ran 10 days ago.
+//
+// 🔴 BUT TodayScreen.tsx:16 records that Ivan CUT an n8n / workflow-error zone,
+// and SystemAlertStrip.tsx:8 states what the ruling was aimed at: "a permanent
+// shelf of n8n workflow errors nobody acts on". So this obeys the same three
+// conditions that strip obeys and states them here so the next reader can check
+// they still hold:
+//   1. it renders NOTHING when there is nothing;
+//   2. every row names a dated consequence, which is what stopped and when;
+//   3. it is windowed, so the number can reach zero. Unwindowed it would read
+//      17 forever, seven of those last having run 72 to 167 days ago and three
+//      of them called "TEMP" or "delete me".
+//
+// READ ONLY. The old dashboard pairs this data with Pause/Resume controls that
+// call a live n8n toggle edge function. None of that is ported. A count, a
+// list, and the route back to Ops is the whole surface.
+function AutomationHealth({ alerts, olderErrored, olderStalled }: {
+  alerts: AutomationAlert[]
+  olderErrored: number
+  olderStalled: number
+}) {
+  if (alerts.length === 0) return null
+  const older = olderErrored + olderStalled
+  return (
+    <div className="ops-pipe">
+      <div className="ops-pipe-h">
+        <span className="ops-pipe-t">Automations</span>
+        <span className="ops-pipe-n">{alerts.length}</span>
+      </div>
+      {alerts.map(a => {
+        // A row with no timestamp says so. It cannot reach this list without
+        // one (the window filter drops a null), but the type allows it and a
+        // silent "" would read as a sentence that lost its end.
+        const when = a.lastAt ? relTime(a.lastAt) : 'at an unrecorded time'
+        return (
+          <div className="ops-pipe-l wb-auto-l" key={a.key}>
+            <span className="wb-auto-n">{a.name}</span>
+            <span className="wb-auto-w">
+              {a.kind === 'stalled'
+                ? `past its schedule, last ran ${when}`
+                : a.kind === 'both'
+                  ? `errored and past its schedule, last ran ${when}`
+                  : `last run errored ${when}`}
+              {a.acknowledged ? ' · marked read on the old dashboard' : ''}
+            </span>
+          </div>
+        )
+      })}
+      {older > 0 && (
+        // Stated rather than hidden. These are outside the 14-day window on
+        // purpose; leaving them out of the count without saying so would be the
+        // same silence this block exists to remove.
+        <div className="ops-pipe-l">
+          {older} more last ran over two weeks ago and are not counted above.
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function OpsBoard({ drafts, loading, error, loadedAt, refresh, onOpenErrors, glance }: {
   drafts: OpsDraft[]
   loading: boolean
   error: string | null
@@ -89,6 +157,11 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh, onOpenErro
   refresh: () => void
   // Ops does not own the Content job, so the jump is handed in by the Shell.
   onOpenErrors?: () => void
+  // The shell's cross-job read. Handed in rather than mounted here so the rail
+  // row and this list are the SAME numbers from the same fetch. Two mounts of
+  // the same query would eventually disagree by one poll interval and there
+  // would be no way to tell which was right.
+  glance?: Pick<GlanceCounts, 'alerts' | 'olderErrored' | 'olderStalled'>
 }) {
   const rowsRef = useRef<HTMLDivElement>(null)
   const ptr = usePullToRefresh(rowsRef, refresh)
@@ -209,6 +282,13 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh, onOpenErro
         <PipelineNotes
           health={health.rows} olderUnsent={digest.olderUnsent} onOpenErrors={onOpenErrors}
         />
+        {glance && (
+          <AutomationHealth
+            alerts={glance.alerts}
+            olderErrored={glance.olderErrored}
+            olderStalled={glance.olderStalled}
+          />
+        )}
         <SummariesSection rows={digest.rows} defaultOpen />
       </div>
     </>

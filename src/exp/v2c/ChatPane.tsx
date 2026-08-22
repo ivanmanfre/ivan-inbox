@@ -1,5 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { ChatStreaming, ChatTurn } from './ChatMessage'
+import { getSelected, subscribe as subscribeRows } from './commandStore'
+import {
+  EMPTY_SEE, attached, buildSeeBlock, isDeep, isOff, offAll, onAll, seeLine, selectionSubject,
+  toggleDeep, toggleOff, type SeeState, type Subject,
+} from './chat/paneContext'
 import { HandsFreeSheet, VoiceControl, VoiceStrip } from './VoiceControl'
 import { VoiceDock } from './VoiceDock'
 import { CONTAINER_COMMANDS, CONTAINER_SKILLS } from './chat/containerPalette'
@@ -9,6 +14,7 @@ import { useRealtime as useLive } from './chat/useRealtime'
 import { useVoice } from './useVoice'
 import { transportIsMock } from './chat/transport'
 import { CLAUDE_MODELS } from '../../lib/claude'
+import { LANE_LABEL, type ContentLane } from '../../lib/content'
 import type { ChatHandle } from './useChat'
 import type { Job } from './layout'
 import { JOB_LABEL } from './layout'
@@ -193,6 +199,79 @@ function short(label: string, max = 34): string {
   return `${label.slice(0, max - 1).replace(/[\s,.;:]+$/, '')}…`
 }
 
+// ---------------------------------------------------------------------------
+// The context strip (this run's item 1)
+// ---------------------------------------------------------------------------
+//
+// One chip per thing the pane can currently see. Nothing travels unannounced,
+// every chip removes with one click, and the "Show" toggle prints the EXACT
+// string that rides with the next message rather than a description of it.
+//
+// The default is shallow. Prospect message bodies are real content about real
+// people, so a chip carries names, counts, states and dates until Ivan opens
+// that one chip to full text, at which point the chip says so and so does the
+// strip's header sentence.
+function SeeStrip({ subjects, see, setSee }: {
+  subjects: Subject[]
+  see: SeeState
+  setSee: (fn: (s: SeeState) => SeeState) => void
+}) {
+  const [peek, setPeek] = useState(false)
+  const on = attached(subjects, see)
+  const block = buildSeeBlock(subjects, see)
+  if (subjects.length === 0) return null
+  return (
+    <div className="wb-see">
+      <div className="wb-see-top">
+        <span className="wb-see-l">{seeLine(subjects, see)}</span>
+        <button
+          type="button"
+          className="wb-see-t"
+          onClick={() => setSee(s => (on.length === 0 ? onAll(s, subjects) : offAll(s, subjects)))}
+        >{on.length === 0 ? 'Attach again' : 'Detach all'}</button>
+        <button
+          type="button"
+          className="wb-see-t"
+          aria-expanded={peek}
+          onClick={() => setPeek(v => !v)}
+        >{peek ? 'Hide' : 'Show me'}</button>
+      </div>
+      <div className="wb-see-chips">
+        {subjects.map(x => {
+          const off = isOff(see, x.key)
+          const deep = isDeep(see, x.key)
+          return (
+            <span key={x.key} className={`wb-see-c${off ? ' off' : ''}`}>
+              <span className="wb-see-cn">{x.label}</span>
+              {!off && x.full && (
+                <button
+                  type="button"
+                  className={`wb-see-cd${deep ? ' on' : ''}`}
+                  onClick={() => setSee(s => toggleDeep(s, x.key))}
+                  title={deep
+                    ? 'The words themselves are being sent. Click to go back to names only.'
+                    : 'Only names and states are being sent. Click to include the words.'}
+                >{deep ? 'full text' : 'names only'}</button>
+              )}
+              <button
+                type="button"
+                className="wb-see-cx"
+                onClick={() => setSee(s => toggleOff(s, x.key))}
+                aria-label={off ? `Attach ${x.label}` : `Remove ${x.label}`}
+              >{off ? '+' : '✕'}</button>
+            </span>
+          )
+        })}
+      </div>
+      {peek && (
+        <div className="wb-see-peek">
+          {block ?? 'Nothing about your screen travels with your next message.'}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Starters, aimed at whatever is in the other pane. Three, never a wall. They do
 // not repeat the subject's name — the context card above already says it.
 function starters(job: Job, about: string | null): string[] {
@@ -227,9 +306,14 @@ function starters(job: Job, about: string | null): string[] {
   }
 }
 
-export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout, mobile }: {
+export function ChatPane({ chat, job, about, aboutContext, subjects = [], onClose, onOpenAbout, mobile }: {
   chat: ChatHandle
   job: Job
+  // What is on screen right now, built by Shell from data it already holds
+  // (chat/paneContext.ts). The SELECTION is not in here: it changes on every
+  // `x` keypress and is read straight off the command store below, so picking
+  // rows does not re-render the shell.
+  subjects?: Subject[]
   // The context peer's human name, if one is open. This is what makes chat a
   // PEER rather than a tab: the conversation knows what it is next to.
   about: string | null
@@ -245,6 +329,29 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
   mobile: boolean
 }) {
   const [text, setText] = useState('')
+  // Which chips he has switched off, and which he has opened up. Held here and
+  // not persisted: "off" is a per-conversation decision, and a stale off-list
+  // keyed on row ids that have since scrolled away would quietly detach things
+  // he never chose to detach.
+  const [see, setSee] = useState<SeeState>(EMPTY_SEE)
+  const picked = useSyncExternalStore(subscribeRows, getSelected)
+  const allSubjects = useMemo(() => {
+    const sel = selectionSubject(picked.map(r => ({
+      id: r.id,
+      kind: r.kind,
+      label: r.label,
+      // The store keeps the database value; a lane reaches a reader by its
+      // name, here as everywhere else since the label purge.
+      lane: r.lane ? LANE_LABEL[r.lane as ContentLane] ?? r.lane : undefined,
+    })))
+    return sel ? [...subjects, sel] : subjects
+  }, [subjects, picked])
+  const seeBlock = buildSeeBlock(allSubjects, see)
+  // The live loop's escalation callback is memoised on `chat`, so it cannot
+  // close over the current attachment. A ref keeps it reading what is attached
+  // NOW, the same shape useChat uses for its own transcript.
+  const seeRef = useRef<string | undefined>(undefined)
+  seeRef.current = seeBlock
   const [handsFree, setHandsFree] = useState(false)
   const [sheet, setSheet] = useState(false)
   const [turnDone, setTurnDone] = useState(false)
@@ -285,7 +392,7 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
   const live = useLive({
     onEscalate: useCallback((task: string) => {
       escalated.current = true
-      void chat.send(task, aboutContext ?? about ?? undefined)
+      void chat.send(task, aboutContext ?? about ?? undefined, seeRef.current)
     }, [chat, about, aboutContext]),
   })
   // When the escalated pipeline turn completes, feed its result back to the
@@ -330,8 +437,8 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
   const send = useCallback((prompt: string) => {
     if (!prompt.trim() || chat.busy) return
     setText('')
-    void chat.send(prompt, aboutContext ?? about ?? undefined)
-  }, [chat, about, aboutContext])
+    void chat.send(prompt, aboutContext ?? about ?? undefined, seeBlock)
+  }, [chat, about, aboutContext, seeBlock])
 
   // A command NEVER reaches send(): it runs locally and clears the composer.
   const runCommand = useCallback((c: Command) => {
@@ -350,8 +457,8 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
 
   const onTranscript = useCallback((t: string) => {
     setTurnDone(false)
-    void chat.send(t, aboutContext ?? about ?? undefined).then(() => setTurnDone(true))
-  }, [chat, about, aboutContext])
+    void chat.send(t, aboutContext ?? about ?? undefined, seeBlock).then(() => setTurnDone(true))
+  }, [chat, about, aboutContext, seeBlock])
 
   // What gets read back: the newest assistant turn. Read at the moment SPEAKING is
   // entered, never captured earlier, so a turn that landed while the mic was still
@@ -454,10 +561,13 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
         </div>
       )}
 
-      {/* The context card. On desktop it labels a pane the operator can also see;
-          on mobile it is the ONLY surviving half of the pair, so it is tappable
-          and flips back to the item. */}
-      {about && (
+      {/* The context card, now MOBILE ONLY. On desktop the strip below says the
+          same thing and more (it also says what travels and lets him remove
+          it), so keeping both meant naming the same person twice in two
+          registers, one of them shouted. On mobile the card survives because it
+          is not a label there: it is the only half of the pair still on screen,
+          and tapping it flips back to the conversation. */}
+      {about && mobile && (
         <div
           className={`wb-about-card${onOpenAbout ? ' tap' : ''}`}
           onClick={onOpenAbout ?? undefined}
@@ -467,6 +577,8 @@ export function ChatPane({ chat, job, about, aboutContext, onClose, onOpenAbout,
           {onOpenAbout && <span className="wb-about-go">›</span>}
         </div>
       )}
+
+      <SeeStrip subjects={allSubjects} see={see} setSee={setSee} />
 
       <div className="wb-msgs" ref={scroller}>
         {empty ? (

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { useDraftDetail } from '../../hooks/useContent'
 import { useSectionState } from '../../hooks/useSectionState'
 import { useConfirm } from '../../components/ConfirmSheet'
@@ -18,7 +18,7 @@ import { Block, KeyRows, Rows, Val } from './ContentBits'
 import { AgentRegister, Fold, QaRegister } from './Register'
 import { HtmlPreview, Takeover } from './Takeover'
 import { LinkedInPost } from './LinkedInPost'
-import { absTime, postTime, relOrAhead, relTime, typeLabel } from './fmt'
+import { absTime, linkedInPostUrl, postTime, relOrAhead, relTime, typeLabel } from './fmt'
 import { Failed } from './Surface'
 
 // THE DRAFT TAKEOVER WINDOW, rebuilt to the dashboard-v2 standard.
@@ -174,6 +174,39 @@ function InspRail({ tabs, tab, pick }: {
   // shared across every draft the window opens). Fall back to the first, never
   // to an empty panel.
   const active = tabs.find(t => t.k === tab) ?? tabs[0]
+
+  // THE ONE THING IN THIS RAIL THAT MOVES.
+  //
+  // The four jumps were bold uppercase pills with the active one carrying a
+  // fill, so a switch was a teleport: one pill went grey, another lit. They are
+  // a segmented control now, and the active segment is a single indicator that
+  // TRAVELS - the only mechanism Wispr Flow's smoothness actually turned out to
+  // be (evidence/wispr-calibration.md §1), applied to the only element here
+  // that changes position.
+  //
+  // 🔴 TRANSFORM ONLY. `left` and `width` are layout properties and force a
+  // reflow every frame, so the indicator is a 1px box that is TRANSLATED and
+  // SCALED: `translateX(x) scaleX(w)` off a left transform-origin. Nothing in
+  // this file animates a layout property.
+  const stripRef = useRef<HTMLSpanElement>(null)
+  const [ind, setInd] = useState<{ x: number; w: number } | null>(null)
+  useLayoutEffect(() => {
+    const strip = stripRef.current
+    if (!strip) return
+    const measure = () => {
+      const on = strip.querySelector('.dw-jump.on') as HTMLElement | null
+      if (!on) { setInd(null); return }
+      setInd({ x: on.offsetLeft, w: on.offsetWidth })
+    }
+    measure()
+    // The strip wraps at 390 and the labels are data-length, so a resize moves
+    // the target. Guarded because jsdom has no ResizeObserver.
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(measure)
+    ro.observe(strip)
+    return () => ro.disconnect()
+  }, [active?.k, tabs.length])
+
   return (
     <aside className="dw-insp">
       {/* NO TABS (2026-08-09, Ivan: "the right side is also pretty disgusting
@@ -182,13 +215,33 @@ function InspRail({ tabs, tab, pick }: {
           headline fact on its own header — so QA, Source, Log and Fields are
           read by SCROLLING, not by remembering which of four buttons holds the
           thing you wanted. The tab state is kept and now scrolls to a section
-          instead of hiding the other three. */}
+          instead of hiding the other three.
+          🔴 "BACKEND DEPTH" IS GONE. It shouted, and it was system vocabulary
+          for a panel holding a score, a source and a log. */}
       <div className="dw-insp-h">
-        <span>Backend depth</span>
-        <span className="dw-insp-j">
+        {/* Was "Backend depth", the owner's own named complaint ("this looks
+            like an internal tool ui"), because the four tabs underneath it
+            are the QA verdict, the source, the generation log and the raw
+            fields, i.e. what a reader checks to decide the draft's fate, not
+            a claim about the app's architecture.
+            MERGE RULING (2026-08-22): the candidate that won the draft-window
+            tournament renamed this to "Details". "What decides it" stays. It
+            is specific and it has a voice; "Details" is the generic label that
+            reads as internal-tool by default. What the candidate DID own here
+            is the register - sentence case, no uppercase, no tracking - and
+            that part is kept, in dwsys.css. */}
+        <span>What decides it</span>
+        <span className="dw-insp-j" ref={stripRef}>
+          <span
+            className="dwa-tabind"
+            data-ready={ind ? '1' : '0'}
+            aria-hidden
+            style={ind ? { ['--dwa-tx' as string]: `${ind.x}px`, ['--dwa-tw' as string]: ind.w } : undefined}
+          />
           {tabs.map(t => (
             <button key={t.k} type="button"
               className={`dw-jump${active?.k === t.k ? ' on' : ''}`}
+              aria-current={active?.k === t.k ? 'true' : undefined}
               onClick={() => {
                 pick(t.k)
                 document.getElementById(`dw-sec-${t.k}`)?.scrollIntoView({ block: 'start' })
@@ -276,7 +329,7 @@ function RegenDraft({ d, onDone, disabled }: {
           is where the copy/image fork is actually decided ("Copy only" /
           "Copy + new image") — and the two words it costs are a whole wrapped
           row of a 390px bar. */}
-      <button type="button" className="dw-key" disabled={disabled} aria-expanded={asking}
+      <button type="button" className="wbb wbb-quiet" disabled={disabled} aria-expanded={asking}
         onClick={() => setAsking(a => !a)}>
         {first ? 'Generate' : 'Regenerate'}
       </button>
@@ -356,7 +409,7 @@ function RestartDraft({ d, onDone, disabled }: {
     <>
       {note && <div className="dw-actrow ct-subtle">{note}</div>}
       {err && <div className="dw-actrow ops-err">{err}</div>}
-      <button type="button" className="dw-key" disabled={busy || disabled} onClick={run}>
+      <button type="button" className="wbb wbb-quiet" disabled={busy || disabled} onClick={run}>
         {busy ? 'Sending back…' : 'Back to idea'}
       </button>
     </>
@@ -419,7 +472,7 @@ function ScheduleDraft({ d, onDone }: { d: ContentDraftDetail; onDone: () => voi
           aria-label="Publish at"
           onChange={e => setWhen(e.target.value)}
         />
-        <button type="button" className="dw-key" disabled={busy} onClick={run}>
+        <button type="button" className="wbb wbb-secondary" disabled={busy} onClick={run}>
           {busy ? 'Arming…' : already ? 'Reschedule' : 'Schedule'}
         </button>
       </div>
@@ -480,7 +533,7 @@ function SwapImage({ d, onDone, disabled }: {
 
   return (
     <>
-      <button type="button" className="dw-key" disabled={disabled} aria-expanded={open}
+      <button type="button" className="wbb wbb-quiet" disabled={disabled} aria-expanded={open}
         onClick={() => setOpen(o => !o)}>
         {current ? 'Swap image' : 'Add image'}
       </button>
@@ -570,9 +623,11 @@ function DeleteDraft({ d, onDone, disabled }: {
   return (
     <>
       {err && <div className="dw-actrow ops-err">{err}</div>}
-      <button type="button" className="dw-key d" disabled={disabled} aria-expanded={confirming}
+      {/* Verb plus noun, Geist's labelling rule for a destructive control: a
+          bare "Delete" beside six other verbs does not say what it removes. */}
+      <button type="button" className="wbb wbb-danger dwa-del" disabled={disabled} aria-expanded={confirming}
         onClick={() => setConfirming(c => !c)}>
-        Delete
+        Delete draft
       </button>
       {confirming && (
         <div className="dw-actrow wb-delconfirm">
@@ -691,7 +746,13 @@ function NoteComposer({ id, onDone }: { id: string; onDone: () => void }) {
         onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send() } }}
       />
       <div className="ct-ac">
-        <button type="button" className="btn p" disabled={busy || !text.trim()} onClick={send}>
+        {/* 🔴 DEFECT 4. This measured 331x50 as a full-width lime slab - 4.6x
+            the area of Approve, spent on one of the least important acts on the
+            screen (census B4). faithful.css:519 gave `.btn.p` the accent fill
+            and it is the single highest-leverage lime line in the app. Adding
+            a note is a secondary control that submits a textarea, so it takes
+            the secondary weight and the width of its own label. */}
+        <button type="button" className="wbb wbb-secondary" disabled={busy || !text.trim()} onClick={send}>
           {busy ? 'Posting…' : 'Post note'}
         </button>
       </div>
@@ -936,6 +997,10 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
   }, [confirm, d.id, nextId, onClose, onPick, promoting, refresh])
 
   const [more, setMore] = useState(false)
+  // GRAFT 1 (dw-tournament.md, graft list item 1). The four recovery acts used
+  // to be a permanently rendered tier. They are one disclosure away now. See
+  // the bar's own comment for why.
+  const [shelf, setShelf] = useState(false)
 
   // ---- keyboard -----------------------------------------------------------
   //
@@ -983,18 +1048,50 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
   dateRow('Scheduled', d.scheduled_at, true)
   dateRow('Published', d.published_at)
 
+  // 🔴 DEFECT 1. `urn:li:activity:7496174424996585473` printed under "Spun from
+  // post", at the same size and weight as the words beside it, as the first
+  // thing the Source panel showed. A row key is a LOOKUP: you arrive at it with
+  // a question, never by reading past it.
+  //
+  // Nothing is truncated and nothing is dropped - the value is verbatim in the
+  // DOM, at the quiet tier, one disclosure away. That is the same density
+  // decision the QA rubric takes: show the facts that matter at rest, defer the
+  // rest, rather than shrinking everything to fit (Linear, reference-study §4
+  // move 2). What is left at rest is the two facts a human reads: where the
+  // draft came from and what it was called.
   const source: [string, ReactNode][] = []
+  const sourceIds: [string, ReactNode][] = []
+  const idRow = (k: string, v: string | null | undefined) => {
+    if (v) sourceIds.push([k, <span className="dwa-id" key={k}>{v}</span>])
+  }
   if (tax.source) source.push(['Source', tax.source])
   if (d.source_label) source.push(['Label', d.source_label])
-  if (d.source_ref) source.push(['Ref', d.source_ref])
-  if (d.client_idea_id) source.push(['Idea', d.client_idea_id])
-  if (taxonomyValue(d.taxonomy, 'source_candidate_id')) {
-    source.push(['Candidate', taxonomyValue(d.taxonomy, 'source_candidate_id')])
+  // client_idea_id and source_candidate_id used to render here as bare UUIDs
+  // under "Idea"/"Candidate": internal foreign keys with no page in this app
+  // that opens from one, so the id itself answered no question a reader could
+  // act on. Deleted rather than laundered into a fake label (phase2-labels).
+  // MERGE RULING (2026-08-22): the tournament winner deferred both behind the
+  // `Identifiers` fold instead of deleting them. Deferring is the right shape
+  // for a lookup key that still answers something; it is the wrong shape for a
+  // key that answers nothing, because a fold is still a promise that opening it
+  // pays. They stay deleted. The fold keeps the one identifier that survived
+  // the purge.
+  if (d.source_post_id) {
+    // The live LinkedIn post this draft was spun from (content.ts:42), a
+    // real fact, so it earns a link rather than a raw urn:li:activity print.
+    // The urn stays reachable on hover/copy for the rare support case that
+    // needs the literal id.
+    const url = linkedInPostUrl(d.source_post_id)
+    source.push(['Spun from post', url
+      ? <a className="dd-link" href={url} target="_blank" rel="noreferrer" title={d.source_post_id}>
+        View the live post ↗
+      </a>
+      : <span title={d.source_post_id}>Live post (link unavailable)</span>])
   }
-  if (d.source_post_id) source.push(['Spun from post', d.source_post_id])
   if (taxonomyValue(d.taxonomy, 'auto_promoted')) {
     source.push(['Auto-promoted', taxonomyValue(d.taxonomy, 'auto_promoted')])
   }
+  idRow('Ref', d.source_ref)
 
   const taxRows: [string, ReactNode][] = []
   if (tax.pillar) taxRows.push(['Pillar', tax.pillar])
@@ -1064,7 +1161,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
               whole window is about, so it gets its own mark, ahead of the age,
               and the age keeps its own chip rather than being replaced by it. */}
           {d.scheduled_at && (
-            <span className="ct-chip ct-chip-when" title={`scheduled_at ${d.scheduled_at}`}>
+            <span className="ct-chip ct-chip-when" title={`Scheduled for ${absTime(d.scheduled_at)}`}>
               {/* "Posts" only while the time is still ahead. A scheduled row
                   whose slot has passed has either published or missed, and this
                   chip knows neither — so it states the time and how long ago it
@@ -1073,7 +1170,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
               {postTime(d.scheduled_at)} · {relOrAhead(d.scheduled_at)}
             </span>
           )}
-          <span className="ct-chip" title={`updated_at ${d.updated_at}`}>
+          <span className="ct-chip" title={`Last edited ${absTime(d.updated_at)}`}>
             edited {relTime(d.updated_at)}
           </span>
           {lane !== 'ivan' && (
@@ -1105,6 +1202,19 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
           </div>
         )}
 
+        {/* THE STAGE (defect 6). The artifact and the row that decides its fate
+            are ONE object: a resting card holding the post in a well, with the
+            decision row as its own footer. Before this, the action bar spanned
+            the 640px measure with the column running 848px at 1440 and ~1320px
+            at 2560, so everything under the buttons read as an unfinished page -
+            650px of dead field at 2560x1440. The row now sits against the thing
+            it acts on (reference-study §2 move 4) and the surplus below is
+            ground rather than a column that ran out.
+            🔴 The MEASURE does not move. `.dw-main-in` stays 640 and `.li-card`
+            stays 520; widening either would make the preview lie about what
+            LinkedIn will show. */}
+        <div className="dwa-stage">
+        <div className="dwa-stage-art">
         <LinkedInPost
           lane={lane}
           text={shown}
@@ -1182,11 +1292,6 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
             measured 1,133px below the fold at both viewports — so they moved
             into the sticky bar below. Only Schedule stays behind `o`: it is the
             one affordance here that ARMS A PUBLISHER. */}
-        {more && lane === 'ivan' && (
-          <div style={{ marginBottom: 4 }}>
-            <ScheduleDraft d={d} onDone={refresh} />
-          </div>
-        )}
         {lane !== 'ivan' && (
           <div style={{ marginBottom: 4 }}>
             <DeleteClientDraft
@@ -1215,59 +1320,121 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
             {STAGE_LABEL[stage].toLowerCase()} the words are settled — edit it on his board instead.
           </div>
         )}
+        </div>
+        </div>
 
-        {/* While the editor is open every one of these would leave the row —
+        {/* 🔴 GRAFT 4 (dw-tournament.md, graft list item 4). The bar used to be
+            the stage card's own welded footer. It is a DOCK now: a separate
+            resting object at the artifact's measure, on the well's ground, with
+            the rounded contained shape the losing candidate got right and the
+            shadow NEITHER candidate had.
+
+            The shadow is the point. In light mode `--e2` is #FFFFFF, so a bar
+            welded to a white artifact card had no boundary of any kind: two
+            elevated materials nested with nothing between them. It takes
+            `--sh-card` (0 2px 8px at 8% alpha), which wispr-calibration.md §3
+            licenses at up to 12% for exactly this case, ON TOP of the lightness
+            step against the `--e1` well rather than instead of it.
+
+            While the editor is open every one of these would leave the row:
             approving, skipping or walking to the next draft all discard unsaved
             words with no prompt. The keyboard already refuses (the `editing`
             bail in the handler); the buttons have to refuse too, or the guard is
             only a guard for people who use keys. */}
         <div className="dw-acts" ref={actsRef}>
-          {/* Skip is GONE (2026-08-09). It archived the row — a destructive act
-              wearing a neutral word, sitting second in the bar next to Approve.
-              Delete, at the far end and behind a confirm, is the honest version
-              of "get this out of my queue", and the queue rail walks past a row
-              without judging it. */}
-          {actionable && (
-            // phase2: same demotion as the card's ReviewActions. A row that
-            // already failed does not get to keep Approve at primary weight.
-            <button type="button" className={`dw-key${d.status === 'error' ? '' : ' p'}`} disabled={acting || editing}
-              onClick={() => decide('approve')}>
-              Approve
-            </button>
-          )}
-          {/* 🔴 The client-facing decision. It wears the same `a` key and the
-              same primary weight as Ivan's Approve because it is the same
-              gesture in his hands — but never the same WORD, because this one
-              is seen by a paying client and "Approve" would not say so. */}
-          {promotable && (
-            <button type="button" className="dw-key p" disabled={promoting || editing}
-              onClick={() => promote(true)}>
-              {promoting ? 'Putting it up…' : 'Put on Mattan’s board'}
-            </button>
-          )}
-          {unpromotable && (
-            <button type="button" className="dw-key" disabled={promoting || editing}
-              onClick={() => promote(false)}>
-              {promoting ? 'Taking it off…' : 'Take off his board'}
-            </button>
-          )}
-          {editable && !editing && (
-            <button type="button" className="dw-key" onClick={startEdit}>Edit</button>
-          )}
-          {/* `Next` is GONE too: the queue rail on the left is the queue, every
-              row of it is one click, and a button that only ever means "the one
-              below this one" was a worse version of the list. */}
-          {lane === 'ivan' && (
-            <button type="button" className="dw-key" disabled={editing} aria-expanded={more}
-              onClick={() => setMore(m => !m)}>
-              {more ? 'Hide schedule' : 'Schedule'}
-            </button>
-          )}
+          {/* TWO TIERS, AND THE SPLIT IS THE FIX (defect 3).
+              Census C3 measured all seven of these already identical - 44px,
+              `0 13px`, r12, 13px/600 - varying only in fill. The geometry was
+              never the defect; five of the seven being the same grey rectangle
+              was. So the geometry stays constant (Linear's rule: padding and
+              radius identical across tiers, only fill and border change) and
+              the WEIGHT is what now varies, across two rows that each mean
+              something: DECIDE, then REMAKE.
+
+              Seven labels at 13px measure ~615px of text against a 640px
+              measure, so a single row wrapped at every viewport and wrapped
+              differently as the labels changed. Two authored tiers is the same
+              two lines with a reason. */}
+          <div className="dwa-acts-decide">
+            {/* Skip is GONE (2026-08-09). It archived the row - a destructive
+                act wearing a neutral word, sitting second in the bar next to
+                Approve. Delete, at the far end of the second tier and behind a
+                confirm, is the honest version of "get this out of my queue". */}
+            {actionable && (
+              // phase2: same demotion as the card's ReviewActions. A row that
+              // already failed does not get to keep Approve at primary weight.
+              <button type="button" className={`wbb ${d.status === 'error' ? 'wbb-secondary' : 'wbb-primary'}`}
+                disabled={acting || editing} onClick={() => decide('approve')}>
+                Approve
+              </button>
+            )}
+            {/* 🔴 The client-facing decision. It wears the same primary weight
+                as Ivan's Approve because it is the same gesture in his hands -
+                but never the same WORD, because this one is seen by a paying
+                client and "Approve" would not say so. */}
+            {promotable && (
+              <button type="button" className="wbb wbb-primary" disabled={promoting || editing}
+                onClick={() => promote(true)}>
+                {promoting ? 'Putting it up…' : 'Put on Mattan’s board'}
+              </button>
+            )}
+            {unpromotable && (
+              <button type="button" className="wbb wbb-secondary" disabled={promoting || editing}
+                onClick={() => promote(false)}>
+                {promoting ? 'Taking it off…' : 'Take off his board'}
+              </button>
+            )}
+            {editable && !editing && (
+              <button type="button" className="wbb wbb-secondary" onClick={startEdit}>Edit</button>
+            )}
+            {/* `Next` is GONE too: the queue rail on the left is the queue, every
+                row of it is one click, and a button that only ever means "the one
+                below this one" was a worse version of the list. */}
+            {lane === 'ivan' && (
+              <button type="button" className="wbb wbb-secondary" disabled={editing} aria-expanded={more}
+                onClick={() => setMore(m => !m)}>
+                {more ? 'Hide schedule' : 'Schedule'}
+              </button>
+            )}
+            {/* 🔴 GRAFT 1, awarded out of the losing candidate by the judge
+                panel (dw-tournament.md, graft list item 1, "the single best
+                idea produced by this run").
+
+                Regenerate, Swap image, Back to idea and Delete draft were four
+                permanently rendered tertiary controls. None of them is the job:
+                each is what you reach for when the draft is WRONG, and one of
+                them is destructive. At 390 they landed in the bottom-right
+                thumb zone on the same visual row, four inches from Approve, on
+                a surface used fifty times a week.
+
+                So the resting bar is Approve / Edit / Schedule / one word, and
+                the four live behind this. Nothing is removed: every one of them
+                is still here, still takes the same write, still carries the
+                same confirm, and the shelf renders at full bar measure so the
+                still-library picker and the confirms are as wide as they need.
+
+                Geist's rule for a destructive label is verb plus noun, and the
+                same rule is applied to the disclosure: it names what is behind
+                it rather than saying "More". */}
+            {lane === 'ivan' && (
+              <button type="button" className="wbb wbb-quiet dwa-more" disabled={editing}
+                aria-expanded={shelf} onClick={() => setShelf(s => !s)}>
+                Fix or remove
+                <span className="dwa-more-c" aria-hidden>›</span>
+              </button>
+            )}
+          </div>
           {/* The regeneration/media/removal acts. They refuse while the editor
               is open for the same reason the decisions do: each of them
-              discards unsaved words without asking. */}
-          {lane === 'ivan' && (
-            <>
+              discards unsaved words without asking.
+              Delete rides at the far end of this tier - the corner of the bar
+              diagonally opposite Approve, so it is reachable without being
+              where the thumb lands. It keeps THIS branch's quiet error-text
+              weight rather than the losing candidate's full-red button at
+              sibling size, which was the one change the panel asked for on the
+              way in. */}
+          {shelf && lane === 'ivan' && (
+            <div className="dwa-acts-remake">
               <RegenDraft d={d} onDone={refresh} disabled={editing} />
               <SwapImage d={d} onDone={refresh} disabled={editing} />
               {canRestartToIdea(d.status, lane) && (
@@ -1278,7 +1445,18 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
                 disabled={editing}
                 onDone={() => { refresh(); if (nextId) onPick(nextId); else onClose() }}
               />
-            </>
+            </div>
+          )}
+          {/* 🔴 THE ONE AFFORDANCE HERE THAT ARMS A PUBLISHER, and it now
+              unfolds INSIDE the bar like every other disclosure in this window.
+              It used to render at the foot of the scrolling column, so the
+              panel opened below the fold while its own trigger stayed pinned on
+              screen - the exact defect D13 moved Regenerate and Delete out of.
+              The confirm sheet and its wording are untouched. */}
+          {more && lane === 'ivan' && (
+            <div className="dw-actrow">
+              <ScheduleDraft d={d} onDone={refresh} />
+            </div>
           )}
           {editing && <span className="dw-hint">Save or cancel the edit first</span>}
         </div>
@@ -1305,12 +1483,19 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
         body: <HtmlPreview html={authored} title="Post as it will appear" />,
       }]
       : []),
-    ...((source.length > 0 || detail || points.length > 0 || d.description)
+    ...((source.length > 0 || sourceIds.length > 0 || detail || points.length > 0 || d.description)
       ? [{
         k: 'src', label: 'Source', tail: detail?.kind ? label(detail.kind) : undefined,
         body: (
           <>
             <Rows items={source} />
+            {/* The row keys, verbatim, one disclosure away. See the build note
+                where `sourceIds` is assembled. */}
+            {sourceIds.length > 0 && (
+              <Fold label="Identifiers" tail={`${sourceIds.length} ${sourceIds.length === 1 ? 'key' : 'keys'}`}>
+                <Rows items={sourceIds} />
+              </Fold>
+            )}
             {detail && (
               <>
                 {(detail.kind || detail.label) && (
@@ -1343,7 +1528,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
                 <div className="dd-card"><div className="dd-body dd-pre">{d.description}</div></div>
               </Block>
             )}
-            {source.length === 0 && !detail && points.length === 0 && !d.description && (
+            {source.length === 0 && sourceIds.length === 0 && !detail && points.length === 0 && !d.description && (
               <div className="ct-subtle">Pre-pipeline draft — no linked idea.</div>
             )}
           </>

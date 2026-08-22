@@ -120,19 +120,98 @@ function Clamp({ lines, children, chars }: { lines: number; children: ReactNode;
   )
 }
 
+// The judge writes its dimension names in SCREAMING_SNAKE ('AI_TELLS'), and a
+// panel of nine of them was nine shouted words. `label()` sentence-cases any
+// unknown token; the one thing it cannot know is that "Ai" is an initialism, so
+// that is restored here and nowhere else.
+export function dimName(key: string): string {
+  return label(key).replace(/\bAi\b/g, 'AI')
+}
+
+// 🔴 THE BADGE STOPPED SHOUTING AND THE PROSE DID NOT.
+//
+// `dimName` de-shouts the dimension BADGE. The judge's own summary paragraph
+// quotes the same tokens inside sentences ("AI_TELLS at 8", "raised
+// FIRST_PERSON_PRESENCE"), and those stayed in SCREAMING_SNAKE, which is a raw
+// enum rendered as READ TEXT next to a badge that no longer matches it. Caught
+// by evidence/audit-tools/no-internals.mjs, which allowlists a rubric key only
+// when it can read that key off a rendered `.qa-dim-k` badge - so sentence-
+// casing the badge silently un-allowlisted the prose.
+//
+// The vocabulary is the ROW'S OWN declared dimension keys and nothing else. A
+// SCREAMING_SNAKE token the judge did not declare as a dimension is left exactly
+// as written, because it is then a verdict or a gate code and this function has
+// no standing to rewrite it.
+export function deShout(prose: string, dims: { key: string }[]): string {
+  if (!dims.length) return prose
+  let out = prose
+  for (const d of dims) {
+    if (!/_/.test(d.key)) continue
+    out = out.split(d.key).join(dimName(d.key))
+  }
+  return out
+}
+
+const DIM_THRESHOLD = 70
+
+function dimPct(d: { score: number; max: number }): number {
+  return Math.max(0, Math.min(100, (d.score / d.max) * 100))
+}
+
 function DimBar({ d }: { d: { key: string; score: number; max: number; note: string | null } }) {
-  const pct = Math.max(0, Math.min(100, (d.score / d.max) * 100))
+  const pct = dimPct(d)
+  const low = pct < DIM_THRESHOLD
   return (
-    <div className="qa-dim" title={d.note ? `${d.key} ${d.score}/${d.max} — ${d.note}` : `${d.key} ${d.score}/${d.max}`}>
-      <span className="qa-dim-k">{d.key}</span>
+    <div className={`qa-dim${low ? ' qa-dim-low' : ''}`}
+      title={d.note ? `${d.key} ${d.score}/${d.max} - ${d.note}` : `${d.key} ${d.score}/${d.max}`}>
+      <span className="qa-dim-k">{dimName(d.key)}</span>
       <span className="qa-dim-g" aria-hidden>
         {/* The threshold is the judge's own pass mark for a dimension, and it
             is drawn rather than stated: at or above 70% of ITS OWN max the fill
-            is neutral, below it the fill takes attention. No average is ever
-            computed across dimensions — they do not share a denominator. */}
-        <i className={pct >= 70 ? '' : 'low'} style={{ width: `${pct}%` }} />
+            is the clear mark, below it the fill takes attention. No average is
+            ever computed across dimensions - they do not share a denominator.
+            🔴 NEITHER FILL IS THE ACCENT any more. A score is a measurement,
+            not a call to action (phase1-system §4), and eight lime bars beside
+            one orange one is how the single failing dimension stayed hidden. */}
+        <i className={low ? 'low' : ''} style={{ width: `${pct}%` }} />
       </span>
       <span className="qa-dim-n">{d.score}<i>/{d.max}</i></span>
+    </div>
+  )
+}
+
+// THE RUBRIC AT REST IS THE DIMENSIONS THAT FAILED.
+//
+// Nine near-identical bars is a block you scan rather than read, and on the
+// live proof row exactly one of the nine is under the mark. Linear's density
+// decision, which is a decision and not a compression: show the two or three
+// facts that matter at rest and defer the remainder, rather than shrinking
+// everything to fit (reference-study §4 move 2). Nothing is dropped - the
+// summary states how many are behind it, and the count is the fact.
+//
+// The degenerate cases both go the safe way: if NOTHING failed there is nothing
+// to lead with, so the full list stays open and the panel reads exactly as it
+// did; if MOST failed the fold would hide the finding, so it opens by default.
+function Rubric({ dims }: { dims: { key: string; score: number; max: number; note: string | null }[] }) {
+  const low = dims.filter(d => dimPct(d) < DIM_THRESHOLD)
+  const rest = dims.filter(d => dimPct(d) >= DIM_THRESHOLD)
+  if (low.length === 0 || low.length > rest.length) {
+    return <div className="dd-card qa-rubric">{dims.map(d => <DimBar key={d.key} d={d} />)}</div>
+  }
+  return (
+    <div className="dd-card qa-rubric">
+      {low.map(d => <DimBar key={d.key} d={d} />)}
+      <details className="dwa-dims-rest">
+        <summary>
+          <span className="dwa-caret" aria-hidden>›</span>
+          <span>
+            {rest.length} dimension{rest.length === 1 ? '' : 's'} at or above the mark
+          </span>
+        </summary>
+        <div className="dwa-dims-rest-b">
+          {rest.map(d => <DimBar key={d.key} d={d} />)}
+        </div>
+      </details>
     </div>
   )
 }
@@ -157,13 +236,11 @@ function QaFeedback({ feedback, verdict }: { feedback: string; verdict: string |
         // opens with, one line apart. Two prints of one verdict inside a block
         // whose entire subject is that a verdict was printed twice.
         <div className="qa-clash">
-          Judge body says <b>{r.verdict}</b>{r.total ? ` (${r.total.score}/${r.total.max})` : ''};
-          {' '}the row stores <b>{verdict}</b>. Neither is derived from the other.
+          Judge body says <b>{label(r.verdict)}</b>{r.total ? ` (${r.total.score}/${r.total.max})` : ''};
+          {' '}the row stores <b>{label(verdict)}</b>. Neither is derived from the other.
         </div>
       )}
-      <div className="dd-card qa-rubric">
-        {r.dims.map(d => <DimBar key={d.key} d={d} />)}
-      </div>
+      <Rubric dims={r.dims} />
       {(r.summary || r.spice) && (
         <div className="dd-card qa-prose">
           {/* The judge's own summary is the one piece of prose that IS the
@@ -172,7 +249,7 @@ function QaFeedback({ feedback, verdict }: { feedback: string; verdict: string |
           {r.summary && (
             <div className="qa-p">
               <span>Summary</span>
-              <Clamp lines={10} chars={r.summary.length}>{r.summary}</Clamp>
+              <Clamp lines={10} chars={r.summary.length}>{deShout(r.summary, r.dims)}</Clamp>
             </div>
           )}
           {/* Spice is the gate reporting on a REQUEST ("requested 2, delivered
@@ -225,9 +302,14 @@ export function QaRegister({ qa }: { qa: QaSummary }) {
             <span className={`ct-chip ${qa.pass ? 'ct-chip-ok' : 'ct-chip-warn'}`}>{label(qa.verdict)}</span>
           )}
           <div className="wb-qa-g">
+            {/* 🔴 NOT THE ACCENT. The meter was the second-largest lime mark in
+                the window and it measures a score. Lime is the screen's ONE
+                primary action; a verdict reads on the semantic ramp the app
+                already ships, which also makes a failing score legible as a
+                failing score rather than as a shorter green bar. */}
             <span className="wb-qa-fill" style={{
               width: `${Math.max(0, Math.min(100, qa.score ?? 0))}%`,
-              background: qa.pass ? 'var(--accent)' : '#FF9F0A',
+              background: qa.pass ? 'var(--sev-clear)' : 'var(--sev-attention)',
             }} />
           </div>
         </div>
@@ -437,7 +519,7 @@ function AgentGroupRow({ g, log }: { g: AgentGroup; log: AgentLogEntry[] }) {
         <span className="dd-agrp-g" aria-hidden>{glyphFor(g.agent)}</span>
         <span className="dd-log-agent">{g.agent ?? 'Unattributed'}</span>
         {n > 1 && <span className="dd-agrp-n">×{n}</span>}
-        {g.status && <span className={chipClass(g.status)}>{g.status}</span>}
+        {g.status && <span className={chipClass(g.status)}>{label(g.status)}</span>}
         {run && <span className="ct-chip">{run}</span>}
         <span className="dd-agrp-t">{span}</span>
       </summary>
@@ -460,13 +542,13 @@ function LogEntryRow({ e, prev }: { e: AgentLogEntry; prev: AgentLogEntry | null
     <details className="dd-logc">
       <summary className="dd-logc-s">
         <span className="dd-logc-h">
-          {p.status && <span className={chipClass(p.status)}>{p.status}</span>}
+          {p.status && <span className={chipClass(p.status)}>{label(p.status)}</span>}
           {p.score !== null && (
             <span className="ct-chip">{p.score}{p.scoreMax ? `/${p.scoreMax}` : ''}</span>
           )}
           {p.issues !== null && <span className="ct-chip">{p.issues} issues</span>}
           {isBackfillEntry(e) && <span className="ct-chip ct-chip-warn">backfill</span>}
-          {e.source && !isBackfillEntry(e) && <span className="dd-log-src">{e.source}</span>}
+          {e.source && !isBackfillEntry(e) && <span className="dd-log-src">{label(e.source)}</span>}
           <span className="dd-logc-t">
             {e.ts ? absTime(e.ts) : 'no timestamp'}
             {since && <span className="dd-log-gap">{since}</span>}

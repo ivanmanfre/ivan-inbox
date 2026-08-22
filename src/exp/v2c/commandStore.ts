@@ -22,7 +22,20 @@ export type RowKind = 'draft' | 'magnet' | 'thread'
 // What a bulk action is allowed to do to this row. Written by the row itself,
 // because the row is the only place that knows its status, its lane and whether
 // it sits on a client board. The bulk bar never infers a capability.
-export type RowCap = 'approve' | 'skip' | 'delete'
+//
+// 🔴 'promote' is CLIENT-FACING and 'retry' is deliberately absent. A promote
+// puts a draft on a paying client's live board, so it is here (it scales, and
+// its confirm names the client and the count); a retry spends a real model bill
+// per row, so it is NOT a capability at all and the bulk bar has no way to
+// reach it. That absence is the enforcement.
+//
+// 'discard' is thread-only, and only when the row carries a pending DM draft.
+// It sends nothing, unlike every other cap here, which is why it is the one
+// bulk action a conversation row is allowed at all, see BulkBar.tsx's "one at
+// a time" refusal, which still applies to everything a conversation cannot
+// undo. Approve is NOT here for a conversation and never will be: a bulk
+// approve is a bulk send to real people.
+export type RowCap = 'approve' | 'skip' | 'promote' | 'delete' | 'discard'
 
 export type SelectedRow = {
   id: string

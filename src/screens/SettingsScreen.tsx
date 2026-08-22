@@ -4,9 +4,27 @@ import { disablePush, enablePush, getPushState, type PushState } from '../lib/pu
 import { chimeEnabled, playChime, setChimeEnabled } from '../lib/chime'
 
 type Theme = 'dark' | 'light'
+type Density = 'comfortable' | 'compact'
+type Frame = 'a' | 'b' | 'c'
+
+// Which shell mounted this screen. `SettingsScreen` is SHARED (inventory.md §1):
+// `App.tsx:148` renders it for `#exp/stock` and `Shell.tsx:593` renders the same
+// component for the workbench, so anything added here lands in the escape hatch
+// too unless it is scoped. Stock is the default because stock is what must not
+// move; the workbench is the caller that has to ask.
+export type SettingsShell = 'stock' | 'workbench'
 
 function currentTheme(): Theme {
   return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark'
+}
+
+function currentDensity(): Density {
+  return document.documentElement.dataset.density === 'compact' ? 'compact' : 'comfortable'
+}
+
+function currentFrame(): Frame {
+  const f = document.documentElement.dataset.frame
+  return f === 'b' || f === 'c' ? f : 'a'
 }
 
 function isIOS(): boolean {
@@ -33,7 +51,69 @@ function Switch({ on, busy, onToggle }: { on: boolean; busy?: boolean; onToggle:
   )
 }
 
-export function SettingsScreen() {
+// Density and Frame both retarget tokens that only ever reach `.wb`
+// (wbsys.css:1047, wbcal.css:454-470). In `#exp/stock` there is no `.wb`, so
+// both controls were inert there: two rows of chrome that changed nothing and
+// pushed Sign out 102px down the escape hatch. They live in their OWN component
+// so that stock does not merely hide them — it never runs their state, their
+// boot reads or their writers at all. Hooks cannot be called conditionally, so
+// gating the JSX alone would have left two live `useState` calls in a shell that
+// has nothing to do with either attribute.
+function WorkbenchAppearance() {
+  const [density, setDensity] = useState<Density>(currentDensity)
+  const [frame, setFrame] = useState<Frame>(currentFrame)
+
+  // Comfortable is the un-set state (see main.tsx boot check), so it is
+  // written as an explicit attribute value here rather than removed — a
+  // removed attribute and an explicit 'comfortable' read identically to every
+  // [data-density='compact'] selector, and writing it explicitly keeps the
+  // three states (unset / comfortable / compact) collapsed to two on purpose.
+  function setDensityAndPersist(next: Density) {
+    document.documentElement.dataset.density = next
+    localStorage.setItem('inbox-density', next)
+    setDensity(next)
+  }
+
+  // Frame geometry. Arm A is the shipped state and carries no CSS
+  // declarations (wbcal.css §5), so picking it REMOVES the attribute rather
+  // than writing 'a' — writing it would be harmless today but would leave a
+  // dead selector to keep in step, and removing it also restores
+  // faithful.css:157's own 24/8 override below 767px.
+  function setFrameAndPersist(next: Frame) {
+    if (next === 'a') delete document.documentElement.dataset.frame
+    else document.documentElement.dataset.frame = next
+    localStorage.setItem('inbox-frame', next)
+    setFrame(next)
+  }
+
+  return (
+    <>
+      <div className="grow">
+        <div className="gtxt">
+          <div className="gt">Density</div>
+          <div className="gs">Compact tightens list rows, settings and styles. Comfortable is unchanged.</div>
+        </div>
+        <div className="seg theme">
+          <div className={'sg' + (density === 'comfortable' ? ' on' : '')} onClick={() => setDensityAndPersist('comfortable')}>Comfortable</div>
+          <div className={'sg' + (density === 'compact' ? ' on' : '')} onClick={() => setDensityAndPersist('compact')}>Compact</div>
+        </div>
+      </div>
+      <div className="grow">
+        <div className="gtxt">
+          <div className="gt">Frame</div>
+          <div className="gs">How much green border wraps the work area. Wide is the current one.</div>
+        </div>
+        <div className="seg theme">
+          <div className={'sg' + (frame === 'a' ? ' on' : '')} onClick={() => setFrameAndPersist('a')}>Wide</div>
+          <div className={'sg' + (frame === 'b' ? ' on' : '')} onClick={() => setFrameAndPersist('b')}>Tight</div>
+          <div className={'sg' + (frame === 'c' ? ' on' : '')} onClick={() => setFrameAndPersist('c')}>Flush</div>
+        </div>
+      </div>
+    </>
+  )
+}
+
+export function SettingsScreen({ shell = 'stock' }: { shell?: SettingsShell } = {}) {
   const [push, setPush] = useState<PushState>('off')
   const [pushBusy, setPushBusy] = useState(false)
   const [pushErr, setPushErr] = useState('')
@@ -138,6 +218,9 @@ export function SettingsScreen() {
               <div className={'sg' + (theme === 'light' ? ' on' : '')} onClick={() => setThemeAndPersist('light')}>Light</div>
             </div>
           </div>
+          {/* Workbench only. Theme above stays shared: it predates this run, it
+              writes `inbox-theme`, and BOTH shells read that attribute. */}
+          {shell === 'workbench' && <WorkbenchAppearance />}
         </div>
 
         <div className="group">
