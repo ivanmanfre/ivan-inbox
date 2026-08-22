@@ -110,9 +110,91 @@ It is not how I want an agent getting into anything, including something its own
 
 ---
 
+# Addendum, after the session died and resumed
+
+Everything above was written before the session hosting this run was killed. On resume the tree had uncommitted source changes from an agent that stopped mid-edit, and two gates were still open. This section is what changed, and one row of the table at the top of this report is now wrong.
+
+## The blind panel was run on all eleven surfaces, and the run lost it
+
+The report above says the panel judged the draft window only, so the 2013 verdict was "asserted rather than judged" elsewhere. It has now been judged. Three independent judges, before against after, assignment alternating per surface so neither state is consistently X, key held outside the panel. Full decode in `evidence/blind-panel-verdict.md`.
+
+**After wins 2. Before wins 4. Five ties.** The DoD item fails.
+
+It wins decisively on the draft window, the surface Ivan photographed, and it wins there without the judge knowing which was which. It loses on the calendar, the DMs list, the command palette and the Claude pane, and it ties on five where the ladder and the control variants were applied underneath and changed nothing a judge could see. The skeptic seat on four of those: *"No change in typography, type scale, divider or card language, or accent palette. One look, arranged twice."*
+
+Three of the four losses are **features scored as clutter**: the per-row "sum up" chip, the AI context strip, the palette's precondition text. The same judge argued against itself, and the sentence is the run's central tension stated by someone with no stake in it: *"If the brief were 'which is better to work in' rather than 'which looks designed', Y wins."* The repair for those is to demote the new controls to hover and focus, not to remove them. **Not done.**
+
+The fourth loss was the run's own fault and had no feature defending it.
+
+## The calendar: lost, repaired, re-judged, now wins
+
+The 45% chip gate had been bought by cutting the title to one line. Measured: 13 of 13 titles ellipsed, median 15 characters shown of a 63-character title. The judge: *"Fourteen entries, fourteen ellipses, not one of them readable. On a calendar, whose only job is scanning, that is the load-bearing difference."*
+
+| 1440x900 | after the run | after the repair |
+|---|---|---|
+| Characters shown per title, median | 15 | **26** |
+| Characters shown, total | 189 of 703 | **339 of 703** |
+| Chip / cell / ratio | 32 / 86 / 37% | **47 / 108 / 44%** |
+| Empty vs occupied cell separation | 8 points | **16 points**, empty now at the plate |
+| Header | `1 armed  0 planned  12 posted  6 queue only` | **`1 scheduled  12 posted`** |
+
+At 390 the ellipsed count goes 7 of 13 to **0 of 13**. The 45% gate still passes at every cell, the two-post day still paints both, the three-post day still collapses to `+1 more`, and the vertical room came from 159px below the grid that nothing was using.
+
+`armed` is worth its own line. It is operator vocabulary for a state machine, printed as a top-line metric, and **the run's own no-internals scanner cannot see it**: that tool hunts raw urns, uuids and SCREAMING_SNAKE, and `armed` is an ordinary English word. A gate that only knows the shapes of jargon will pass jargon spelled in plain words.
+
+Re-judged blind against the pre-run calendar, flipped assignment: **the repaired state wins clear**, where it had lost slight.
+
+## The 1996 bevel was in five places, and the first pass found one
+
+The report above names, as a thing found in passing, that `button.cal-chip-t` computed `border: 2px outset rgb(0,0,0)`, the user-agent default. The blind judge, told nothing, wrote that the winner still held *"two contradictory chip languages in one viewport"*: a flat chip in the grid and, six inches right, a rail row *"bevelled with a highlight edge"*.
+
+It was reading the same defect. A sweep for any computed border-style of outset, inset, ridge or groove (`evidence/audit-tools/bevel-scan.mjs`, every workbench surface) found **four more visible offenders, every one on the calendar**: the month arrows, the Today button, the rail row, and "Give it a date". None is styled by any rule in any sheet. They were bare buttons inheriting the browser bevel, invisible while everything was `#1F1F1F` and legible the moment the elevation ladder lightened what sits under them.
+
+**His complaint was literally true in CSS, in five places, on the exact surface he pointed at.** The sweep now reports 0 across every surface, and the tool is checked in so it stays 0.
+
+## The escape hatch was broken and is now fixed
+
+Gate 8 above reports `#exp/stock` FAIL on Settings, 43,072 differing pixels, and hands the cause over as "a product decision". It was not one. `SettingsScreen` is shared, and the compact-density merge added Density and Frame controls to it, so the escape hatch gained two rows of chrome that **retarget tokens only reaching `.wb` and therefore did nothing there at all**, while pushing Sign out 102px down.
+
+The dead agent had already written the fix and never committed it: both controls move into their own component behind a `shell` prop, so stock does not merely hide them, it never runs their state or their writers. Committed, and re-measured:
+
+| Stock tab | Noise floor | Gate, pre vs cur |
+|---|---|---|
+| Today, Inbox, Drafts, Ops, Sends | 0 | **0** |
+| Settings | 0 | **410 (0.03%)** |
+
+The 410 sit in a single 11px text row at y 544 to 554, x 142 to 193, which is the `Build <sha>` stamp: it differs between any two builds by definition, and it is 102px above where it measured before, exactly the height of the two removed rows. **Everything that is not the build stamp is zero.**
+
+## The internals scan, honestly
+
+The hardened `no-internals.mjs` **defaults to port 4187 and nothing was serving it**, so it hung on a dead-port navigation with `waitUntil: networkidle` and printed nothing for 99 minutes. That is why gate 1 above carries a "re-run after that lands" caveat that was never discharged.
+
+Replaced with a smaller working scanner (`evidence/audit-tools/internals-scan-working.mjs`). Its first run reported clean and **was wrong**: five surfaces returned 153 characters, which is the boot screen, and my blank-check threshold was 80. Exactly the trap the hardened tool was written to catch, fallen into by its replacement. With a real settle and a 400-character render assertion, all 18 surface/theme combos render, and the result is:
+
+- **First honest run: 1 real leak.** `content_prompts`, a database table name, printed at the user on the Styles surface in both themes. Fixed.
+- **Final run: 0 hits, 0 attempted writes.**
+
+Its limits, stated because they matter: 9 lane surfaces, 1440 only, both themes. It does **not** walk sub-tabs, takeovers or peers. `armed` lived on a sub-tab and was found by a human-style judge, not by this. The gate is narrower than the DoD sentence claims.
+
+## Final gate state
+
+Build clean. **1127 passing**, one failure, and it is the known pre-existing one: `passing no queue is the old behaviour exactly` fails identically on the pre-run commit `18c773a`, verified by checking that commit out and running it. Bevels 0. Internals 0. Stock parity 0 outside the build stamp. Attempted writes 0 across every instrument in this addendum.
+
+## What is still open, and it is more than the report above implies
+
+- **Five surfaces where the design system is invisible.** Retokenising is not designing. Content list, strategy, styles, DMs thread and ops were never redesigned.
+- **The three feature-versus-polish losses.** Demote the per-row controls to hover and focus. This is a known fix that was not applied.
+- **Seven of ten dashboard ports**, unchanged from above.
+- **128 silent font-size victims**, unchanged from above.
+- The panel's two remaining calendar notes: the filter chips carry **two different selection mechanics** side by side (`Review 2` an amber outline, `Sched 1` a teal underline), and the today ring on day 22 is weaker than the one it replaced.
+
+---
+
 ## The ballot
 
 `BALLOT.html`, self-contained, opens from disk, no network requests. Four decisions rendered on his real screens with his real data: frame geometry, density, and before/after on the draft window and the calendar.
+
+⚠ The ballot was built before the addendum work. Its calendar arm shows the state that **lost** its blind comparison, not the repaired one. Judge the frame and density arms from it; judge the calendar from `after/mirror/02-content-calendar-*.jpg`.
 
 ## Merging
 
