@@ -211,7 +211,7 @@ All at `goal-runs/workbench-polish-2026-08-22-out/after/`, authed, real rows, no
 | `p4a-390-rise-aug.jpg` | 390, agenda list, counts wrapped, no horizontal overflow |
 | `p4a-1440-ivan.jpg` `p4a-2560-ivan.jpg` `p4a-390-ivan.jpg` | Ivan's lane at all three widths, rail at 2 |
 | `p4a-arm-harness.jpg` `p4a-arm-confirm.jpg` | the `Arm it` control and its confirm (render harness, §3) |
-| `p4a-stock-before.png` `p4a-stock-after.png` | `#exp/stock`, both builds, byte-identical |
+| `p4a-stock-before.png` `p4a-stock-after.png` `p4a-stock-after2.png` | `#exp/stock`, both builds, 0 differing pixels |
 
 Probe measurements at all three widths, both lanes (`after/p4a-probe.json`):
 
@@ -230,11 +230,17 @@ this word is the one saying whether the post goes out.
 
 Not argued, compared. The commit before this branch (`a85f417`) was built into `/tmp/p4a-base` via
 `git archive` (no branch switch, no worktree added) and served on 4182 beside this build on 4181.
-Same viewport, same session, same moment:
+
+**The first attempt at this was wrong and is worth recording.** A byte compare of the two PNGs said
+`identical: true` on one run and `false` on the next, with all four byte counts different: the stock
+shell paints live rows and a relative clock, so two captures four seconds apart are not the same
+image, and a drifting baseline reads as a diff. `p4a-stock-diff.mjs` establishes the noise floor
+first: three captures, interleaved after / before / after, the same build compared against itself
+before the two builds are compared against each other, diffed per pixel in a canvas.
 
 ```
-before  126763 bytes  sha256:c3a4144a225bdece
-after   126763 bytes  sha256:c3a4144a225bdece   identical: true
+NOISE FLOOR   after vs after   1440x900   0 differing pixels
+ACROSS        after vs before  1440x900   0 differing pixels
 ```
 
 Expected, and the mechanism is worth writing down: `src/styles.css` is untouched; `faithful.css` is
@@ -262,6 +268,7 @@ the later route first). It records the payload and answers `{ok:false, error:'bl
 rather than letting it land.
 
 - `p4a-probe.mjs`, 7 passes, 3 widths, 2 lanes, 2 months: **0 write attempts of any kind.**
+- `p4a-stock-diff.mjs`, 3 passes of `#exp/stock`: **0 write attempts of any kind.**
 - `p4a-stock-and-arm.mjs`: **1 intercepted write attempt**, the deliberate `Arm it` click-through in
   §3, asserted on its payload and fulfilled at the route. It never left the browser.
 

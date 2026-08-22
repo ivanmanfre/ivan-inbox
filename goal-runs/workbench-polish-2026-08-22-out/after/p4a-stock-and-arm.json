@@ -1,11 +1,11 @@
 {
   "out": {
     "stock": {
-      "afterBytes": 126763,
-      "beforeBytes": 126763,
-      "afterSha": "c3a4144a225bdece",
-      "beforeSha": "c3a4144a225bdece",
-      "identical": true
+      "afterBytes": 126700,
+      "beforeBytes": 126632,
+      "afterSha": "ce9e4a9d24cd2f00",
+      "beforeSha": "1ddcd27bbb4c0861",
+      "identical": false
     },
     "arm": {
       "harnessed": {
