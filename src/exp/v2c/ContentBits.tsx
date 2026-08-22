@@ -67,9 +67,17 @@ export function Rows({ items }: { items: [string, ReactNode][] }) {
 }
 
 // Every remaining key of an agent-written object, rendered rather than dropped.
+// The roster is the data's — an unnamed key appears the day it appears, so
+// this only humanises the SHAPE of the key (underscores, sentence case), it
+// never invents a fixed vocabulary for keys `labels.ts` has never seen.
+function humanizeKey(k: string): string {
+  const spaced = k.replace(/_/g, ' ')
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1)
+}
+
 export function KeyRows({ items }: { items: [string, unknown][] }) {
   if (items.length === 0) return null
-  return <Rows items={items.map(([k, v]) => [k.replace(/_/g, ' '), <Val v={v} key={k} />])} />
+  return <Rows items={items.map(([k, v]) => [humanizeKey(k), <Val v={v} key={k} />])} />
 }
 
 // THE FILTER BAR IS GONE (D9, 2026-08-07). It rendered every facet and every
