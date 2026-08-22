@@ -413,10 +413,10 @@ function QueueRow({ r }: { r: ScheduledQueueRow }) {
       <div className="ct-q-t">{text.slice(0, 120)}</div>
       <div className="ct-meta">
         <span className={`ct-chip${r.status === 'posted' ? ' ct-chip-ok' : queueFailed(r) ? ' ct-chip-bad' : ''}`}>
-          {r.status}
+          {label(r.status)}
         </span>
-        {r.post_kind && <span className="ct-chip">{r.post_kind}</span>}
-        {r.platform && <span className="ct-chip">{r.platform}</span>}
+        {r.post_kind && <span className="ct-chip">{label(r.post_kind)}</span>}
+        {r.platform && <span className="ct-chip">{label(r.platform)}</span>}
         {r.is_repost === true && <span className="ct-chip">repost</span>}
         {r.unipile_share_url && (
           <a className="ct-ref-l" href={r.unipile_share_url} target="_blank" rel="noreferrer">live ↗</a>
