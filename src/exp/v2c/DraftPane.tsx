@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { useDraftDetail } from '../../hooks/useContent'
 import { useSectionState } from '../../hooks/useSectionState'
 import { useConfirm } from '../../components/ConfirmSheet'
@@ -174,6 +174,39 @@ function InspRail({ tabs, tab, pick }: {
   // shared across every draft the window opens). Fall back to the first, never
   // to an empty panel.
   const active = tabs.find(t => t.k === tab) ?? tabs[0]
+
+  // THE ONE THING IN THIS RAIL THAT MOVES.
+  //
+  // The four jumps were bold uppercase pills with the active one carrying a
+  // fill, so a switch was a teleport: one pill went grey, another lit. They are
+  // a segmented control now, and the active segment is a single indicator that
+  // TRAVELS — the only mechanism Wispr Flow's smoothness actually turned out to
+  // be (evidence/wispr-calibration.md §1), applied to the only element here
+  // that changes position.
+  //
+  // 🔴 TRANSFORM ONLY. `left` and `width` are layout properties and force a
+  // reflow every frame, so the indicator is a 1px box that is TRANSLATED and
+  // SCALED: `translateX(x) scaleX(w)` off a left transform-origin. Nothing in
+  // this file animates a layout property.
+  const stripRef = useRef<HTMLSpanElement>(null)
+  const [ind, setInd] = useState<{ x: number; w: number } | null>(null)
+  useLayoutEffect(() => {
+    const strip = stripRef.current
+    if (!strip) return
+    const measure = () => {
+      const on = strip.querySelector('.dw-jump.on') as HTMLElement | null
+      if (!on) { setInd(null); return }
+      setInd({ x: on.offsetLeft, w: on.offsetWidth })
+    }
+    measure()
+    // The strip wraps at 390 and the labels are data-length, so a resize moves
+    // the target. Guarded because jsdom has no ResizeObserver.
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(measure)
+    ro.observe(strip)
+    return () => ro.disconnect()
+  }, [active?.k, tabs.length])
+
   return (
     <aside className="dw-insp">
       {/* NO TABS (2026-08-09, Ivan: "the right side is also pretty disgusting
@@ -182,13 +215,22 @@ function InspRail({ tabs, tab, pick }: {
           headline fact on its own header — so QA, Source, Log and Fields are
           read by SCROLLING, not by remembering which of four buttons holds the
           thing you wanted. The tab state is kept and now scrolls to a section
-          instead of hiding the other three. */}
+          instead of hiding the other three.
+          🔴 "BACKEND DEPTH" IS GONE. It shouted, and it was system vocabulary
+          for a panel holding a score, a source and a log. */}
       <div className="dw-insp-h">
-        <span>Backend depth</span>
-        <span className="dw-insp-j">
+        <span>Details</span>
+        <span className="dw-insp-j" ref={stripRef}>
+          <span
+            className="dwa-tabind"
+            data-ready={ind ? '1' : '0'}
+            aria-hidden
+            style={ind ? { ['--dwa-tx' as string]: `${ind.x}px`, ['--dwa-tw' as string]: ind.w } : undefined}
+          />
           {tabs.map(t => (
             <button key={t.k} type="button"
               className={`dw-jump${active?.k === t.k ? ' on' : ''}`}
+              aria-current={active?.k === t.k ? 'true' : undefined}
               onClick={() => {
                 pick(t.k)
                 document.getElementById(`dw-sec-${t.k}`)?.scrollIntoView({ block: 'start' })
@@ -276,7 +318,7 @@ function RegenDraft({ d, onDone, disabled }: {
           is where the copy/image fork is actually decided ("Copy only" /
           "Copy + new image") — and the two words it costs are a whole wrapped
           row of a 390px bar. */}
-      <button type="button" className="dw-key" disabled={disabled} aria-expanded={asking}
+      <button type="button" className="wbb wbb-quiet" disabled={disabled} aria-expanded={asking}
         onClick={() => setAsking(a => !a)}>
         {first ? 'Generate' : 'Regenerate'}
       </button>
@@ -356,7 +398,7 @@ function RestartDraft({ d, onDone, disabled }: {
     <>
       {note && <div className="dw-actrow ct-subtle">{note}</div>}
       {err && <div className="dw-actrow ops-err">{err}</div>}
-      <button type="button" className="dw-key" disabled={busy || disabled} onClick={run}>
+      <button type="button" className="wbb wbb-quiet" disabled={busy || disabled} onClick={run}>
         {busy ? 'Sending back…' : 'Back to idea'}
       </button>
     </>
@@ -419,7 +461,7 @@ function ScheduleDraft({ d, onDone }: { d: ContentDraftDetail; onDone: () => voi
           aria-label="Publish at"
           onChange={e => setWhen(e.target.value)}
         />
-        <button type="button" className="dw-key" disabled={busy} onClick={run}>
+        <button type="button" className="wbb wbb-secondary" disabled={busy} onClick={run}>
           {busy ? 'Arming…' : already ? 'Reschedule' : 'Schedule'}
         </button>
       </div>
@@ -480,7 +522,7 @@ function SwapImage({ d, onDone, disabled }: {
 
   return (
     <>
-      <button type="button" className="dw-key" disabled={disabled} aria-expanded={open}
+      <button type="button" className="wbb wbb-quiet" disabled={disabled} aria-expanded={open}
         onClick={() => setOpen(o => !o)}>
         {current ? 'Swap image' : 'Add image'}
       </button>
@@ -570,9 +612,11 @@ function DeleteDraft({ d, onDone, disabled }: {
   return (
     <>
       {err && <div className="dw-actrow ops-err">{err}</div>}
-      <button type="button" className="dw-key d" disabled={disabled} aria-expanded={confirming}
+      {/* Verb plus noun, Geist's labelling rule for a destructive control: a
+          bare "Delete" beside six other verbs does not say what it removes. */}
+      <button type="button" className="wbb wbb-danger dwa-del" disabled={disabled} aria-expanded={confirming}
         onClick={() => setConfirming(c => !c)}>
-        Delete
+        Delete draft
       </button>
       {confirming && (
         <div className="dw-actrow wb-delconfirm">
@@ -1105,6 +1149,19 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
           </div>
         )}
 
+        {/* THE STAGE (defect 6). The artifact and the row that decides its fate
+            are ONE object: a resting card holding the post in a well, with the
+            decision row as its own footer. Before this, the action bar spanned
+            the 640px measure with the column running 848px at 1440 and ~1320px
+            at 2560, so everything under the buttons read as an unfinished page —
+            650px of dead field at 2560x1440. The row now sits against the thing
+            it acts on (reference-study §2 move 4) and the surplus below is
+            ground rather than a column that ran out.
+            🔴 The MEASURE does not move. `.dw-main-in` stays 640 and `.li-card`
+            stays 520; widening either would make the preview lie about what
+            LinkedIn will show. */}
+        <div className="dwa-stage">
+        <div className="dwa-stage-art">
         <LinkedInPost
           lane={lane}
           text={shown}
@@ -1215,6 +1272,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
             {STAGE_LABEL[stage].toLowerCase()} the words are settled — edit it on his board instead.
           </div>
         )}
+        </div>
 
         {/* While the editor is open every one of these would leave the row —
             approving, skipping or walking to the next draft all discard unsaved
@@ -1222,52 +1280,69 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
             bail in the handler); the buttons have to refuse too, or the guard is
             only a guard for people who use keys. */}
         <div className="dw-acts" ref={actsRef}>
-          {/* Skip is GONE (2026-08-09). It archived the row — a destructive act
-              wearing a neutral word, sitting second in the bar next to Approve.
-              Delete, at the far end and behind a confirm, is the honest version
-              of "get this out of my queue", and the queue rail walks past a row
-              without judging it. */}
-          {actionable && (
-            // phase2: same demotion as the card's ReviewActions. A row that
-            // already failed does not get to keep Approve at primary weight.
-            <button type="button" className={`dw-key${d.status === 'error' ? '' : ' p'}`} disabled={acting || editing}
-              onClick={() => decide('approve')}>
-              Approve
-            </button>
-          )}
-          {/* 🔴 The client-facing decision. It wears the same `a` key and the
-              same primary weight as Ivan's Approve because it is the same
-              gesture in his hands — but never the same WORD, because this one
-              is seen by a paying client and "Approve" would not say so. */}
-          {promotable && (
-            <button type="button" className="dw-key p" disabled={promoting || editing}
-              onClick={() => promote(true)}>
-              {promoting ? 'Putting it up…' : 'Put on Mattan’s board'}
-            </button>
-          )}
-          {unpromotable && (
-            <button type="button" className="dw-key" disabled={promoting || editing}
-              onClick={() => promote(false)}>
-              {promoting ? 'Taking it off…' : 'Take off his board'}
-            </button>
-          )}
-          {editable && !editing && (
-            <button type="button" className="dw-key" onClick={startEdit}>Edit</button>
-          )}
-          {/* `Next` is GONE too: the queue rail on the left is the queue, every
-              row of it is one click, and a button that only ever means "the one
-              below this one" was a worse version of the list. */}
-          {lane === 'ivan' && (
-            <button type="button" className="dw-key" disabled={editing} aria-expanded={more}
-              onClick={() => setMore(m => !m)}>
-              {more ? 'Hide schedule' : 'Schedule'}
-            </button>
-          )}
+          {/* TWO TIERS, AND THE SPLIT IS THE FIX (defect 3).
+              Census C3 measured all seven of these already identical — 44px,
+              `0 13px`, r12, 13px/600 — varying only in fill. The geometry was
+              never the defect; five of the seven being the same grey rectangle
+              was. So the geometry stays constant (Linear's rule: padding and
+              radius identical across tiers, only fill and border change) and
+              the WEIGHT is what now varies, across two rows that each mean
+              something: DECIDE, then REMAKE.
+
+              Seven labels at 13px measure ~615px of text against a 640px
+              measure, so a single row wrapped at every viewport and wrapped
+              differently as the labels changed. Two authored tiers is the same
+              two lines with a reason. */}
+          <div className="dwa-acts-decide">
+            {/* Skip is GONE (2026-08-09). It archived the row — a destructive
+                act wearing a neutral word, sitting second in the bar next to
+                Approve. Delete, at the far end of the second tier and behind a
+                confirm, is the honest version of "get this out of my queue". */}
+            {actionable && (
+              // phase2: same demotion as the card's ReviewActions. A row that
+              // already failed does not get to keep Approve at primary weight.
+              <button type="button" className={`wbb ${d.status === 'error' ? 'wbb-secondary' : 'wbb-primary'}`}
+                disabled={acting || editing} onClick={() => decide('approve')}>
+                Approve
+              </button>
+            )}
+            {/* 🔴 The client-facing decision. It wears the same primary weight
+                as Ivan's Approve because it is the same gesture in his hands —
+                but never the same WORD, because this one is seen by a paying
+                client and "Approve" would not say so. */}
+            {promotable && (
+              <button type="button" className="wbb wbb-primary" disabled={promoting || editing}
+                onClick={() => promote(true)}>
+                {promoting ? 'Putting it up…' : 'Put on Mattan’s board'}
+              </button>
+            )}
+            {unpromotable && (
+              <button type="button" className="wbb wbb-secondary" disabled={promoting || editing}
+                onClick={() => promote(false)}>
+                {promoting ? 'Taking it off…' : 'Take off his board'}
+              </button>
+            )}
+            {editable && !editing && (
+              <button type="button" className="wbb wbb-secondary" onClick={startEdit}>Edit</button>
+            )}
+            {/* `Next` is GONE too: the queue rail on the left is the queue, every
+                row of it is one click, and a button that only ever means "the one
+                below this one" was a worse version of the list. */}
+            {lane === 'ivan' && (
+              <button type="button" className="wbb wbb-secondary" disabled={editing} aria-expanded={more}
+                onClick={() => setMore(m => !m)}>
+                {more ? 'Hide schedule' : 'Schedule'}
+              </button>
+            )}
+          </div>
           {/* The regeneration/media/removal acts. They refuse while the editor
               is open for the same reason the decisions do: each of them
-              discards unsaved words without asking. */}
+              discards unsaved words without asking.
+              Delete rides at the far end of this tier — the corner of the bar
+              diagonally opposite Approve, so it is reachable without being
+              where the thumb lands. */}
           {lane === 'ivan' && (
-            <>
+            <div className="dwa-acts-remake">
               <RegenDraft d={d} onDone={refresh} disabled={editing} />
               <SwapImage d={d} onDone={refresh} disabled={editing} />
               {canRestartToIdea(d.status, lane) && (
@@ -1278,9 +1353,10 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
                 disabled={editing}
                 onDone={() => { refresh(); if (nextId) onPick(nextId); else onClose() }}
               />
-            </>
+            </div>
           )}
           {editing && <span className="dw-hint">Save or cancel the edit first</span>}
+        </div>
         </div>
       </div>
     </div>
