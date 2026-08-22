@@ -394,3 +394,25 @@
    Six rows at the old floor cost 732px of month. At 86 a sparse month costs
    516 and a busy one still gets its 119px cells where it needs them. */
 .wb{ --cal-cell-h:86px }
+
+
+/* ==========================================================================
+   4 · THE POPOVER. Its own type, and it must never cover its cell
+   ========================================================================== */
+
+/* The panel geometry is in CalPopover.tsx, which is where the arithmetic
+   belongs. What is here is what it looks like, plus the one rule that is not
+   cosmetic: the tooltip variant carries prose, so it gets prose leading rather
+   than the 12px chip type it was launched from.
+
+   15px on a 20px line, from the Wispr Flow extraction: the literal size that
+   appears most in the bundle of the app Ivan named as the thing that is "very
+   clear to read". Its dense body is 15/20, ratio 1.33. Ours defaults to 16 on
+   1.6, which is 25.6px a line, a 22% higher vertical cost for a 6% larger
+   glyph. Leading is the lever. */
+.wb.wb.wb .cal-pop-t{
+  padding:4px 6px;
+  font-size:15px; line-height:20px;
+  color:var(--text2);
+  max-width:34ch;
+}

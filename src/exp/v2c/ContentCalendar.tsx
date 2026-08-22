@@ -44,11 +44,13 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
  * How many chips a month cell paints before the rest collapse into "+N".
  *
  * It is a NUMBER OF ROWS, not a height budget, and the chip's own height is
- * fixed against it (`--cal-chip-h` in wbcal.css). The arithmetic, at the 122px
- * cell that file sets: 12px of padding, a 16px day-number row, a 3px gap, then
- * two 32px chips and an 18px "+N" row with 3px gaps between them comes to
- * 119px. Three rows is what the cell holds at the height it already had, and
- * the "+N" row counts as one of them, which is FullCalendar's
+ * fixed against it (`--cal-chip-h` in wbcal.css). The arithmetic: 12px of
+ * padding, a 16px day-number row, then rows of 32px chips and an 18px "+N"
+ * with 3px gaps. One chip costs 63px, two cost 98, two and a "+N" cost 119.
+ * The cell floor is 86px, so a sparse month is tight and a busy day grows into
+ * the room it needs, which is how a grid row is supposed to behave.
+ *
+ * The "+N" row counts as one of the three, which is FullCalendar's
  * `dayMaxEventRows` semantics exactly: two posts render as two chips, three
  * render as two chips and a "+1".
  *
@@ -101,6 +103,11 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
   const [err, setErr] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
   const confirm = useConfirm()
+  // THE CHIP DESCRIPTION. One popover for the whole grid, not one per chip:
+  // there is only ever one pointer and one focus ring, so 13 mounted portals
+  // would be 12 of them describing nothing.
+  const [tip, setTip] = useState<{ el: HTMLElement; id: string; text: string } | null>(null)
+  const tipTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // THE OVERFLOW POPOVER. `el` is the "+N" button, which is both the anchor and
   // the thing focus goes back to when the panel closes. `day` is the key, so
   // the panel reads the SAME `byDay` map the grid drew from and cannot show a
@@ -112,6 +119,20 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
     // Focus goes back to the control that opened the panel, or a keyboard
     // operator is dropped at the top of the document.
     queueMicrotask(() => moreRef.current?.focus())
+  }, [])
+
+  // 120ms, and the number is doing a job. Sweeping a pointer across a week of
+  // chips fires mouseenter six or seven times; without the delay the panel
+  // flashes once per cell. A native title waits about a second, which is the
+  // other failure and the one Ivan actually hit. Focus is not delayed: a
+  // keyboard operator arriving on a chip has already committed to it.
+  const onTip = useCallback((el: HTMLElement, id: string, text: string) => {
+    if (tipTimer.current) clearTimeout(tipTimer.current)
+    tipTimer.current = setTimeout(() => setTip({ el, id, text }), 120)
+  }, [])
+  const offTip = useCallback(() => {
+    if (tipTimer.current) clearTimeout(tipTimer.current)
+    setTip(null)
   }, [])
 
   const items = useMemo(() => buildCalendarItems(rows, queue), [rows, queue])
@@ -301,6 +322,8 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
                     {day.map(it => (
                       <Chip
                         key={it.id} it={it}
+                        tipOpen={tip?.id === `cal-tip-${it.id}`}
+                        onTip={onTip} offTip={offTip}
                         dragging={drag?.id === it.id}
                         busy={busy}
                         onOpen={() => onOpen(it.id, it.title, walk)}
@@ -434,6 +457,20 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
       {!moving && err && <div className="ops-err cal-err">{err}</div>}
       {done && <div className="cal-done">{done}</div>}
 
+      {/* THE CHIP DESCRIPTION. Suppressed while a drag is in flight: a panel
+          following the pointer during a drop is a panel in the way of the
+          thing being aimed at. */}
+      {tip && !drag && (
+        <CalPopover
+          id={tip.id} role="tooltip"
+          anchorEl={tip.el}
+          avoidEl={tip.el.closest('.cal-day') as HTMLElement | null}
+          onDismiss={offTip}
+        >
+          <div className="cal-pop-t">{tip.text}</div>
+        </CalPopover>
+      )}
+
       {/* THE DAY PANEL. It is anchored to the "+N" button and told not to cover
           the CELL, so it lands beside the day it lists rather than on top of
           it. It lists the whole day, not just the hidden tail: a panel that
@@ -489,10 +526,44 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
  * explanation reads as a bug and this one is the opposite: it is the post the
  * calendar used to hide.
  */
-function Chip({ it, dragging, busy, onOpen, onMove, onArm, onDragStart, onDragEnd }: {
+/**
+ * THE SENTENCE A CHIP CARRIES, lifted out of the component.
+ *
+ * It used to be a `title` attribute, so a test could read it off the static
+ * markup. It is a popover now, which only exists once a pointer or a focus ring
+ * has arrived, and `renderToStaticMarkup` fires neither. Rather than weaken the
+ * assertions to "the chip rendered", the sentence is a pure function of the
+ * item and the tests assert on it directly, which is what they were actually
+ * about: the published chip says the time it really went out and names the slot
+ * it was queued for when the two disagree.
+ */
+export function chipDescription(it: CalendarItem): string {
+  const posted = it.stage === 'published' ? it.postedAt : null
+  const drifted = !!posted && hhmm(posted) !== hhmm(it.at)
+  const origin = it.source === 'queue'
+    ? ' · from the publish queue (scheduled_posts), no draft row, so it cannot be opened or moved here'
+    : ''
+  const outOfSync = it.plannedAt
+    ? ` · ⚠ the publish queue fires this at ${hhmm(it.at)}; the draft still says ${hhmm(it.plannedAt)}`
+    : ''
+  const armTip = it.arming === 'planned'
+    ? ' · Planned: it carries a date and nothing publishes it. The bridge reads status=\'scheduled\'.'
+    : it.arming === 'armed'
+      ? ' · Armed: a publisher holds this one.'
+      : ''
+  return posted
+    ? `Posted ${hhmm(posted)}${drifted ? ` (was set for ${hhmm(it.at)})` : ''} · ${it.title}, ${STAGE_LABEL[it.stage]}${origin}`
+    : `${hhmm(it.at)} · ${it.title}, ${STAGE_LABEL[it.stage]}${armTip}${it.movable ? ' · drag to another day' : ''}${origin}${outOfSync}`
+}
+
+function Chip({ it, dragging, busy, tipOpen, onTip, offTip, onOpen, onMove, onArm, onDragStart, onDragEnd }: {
   it: CalendarItem
   dragging: boolean
   busy: boolean
+  /** True while THIS chip is the one the popover is describing. */
+  tipOpen: boolean
+  onTip: (el: HTMLElement, id: string, text: string) => void
+  offTip: () => void
   onOpen: () => void
   onMove: () => void
   onArm: () => void
@@ -501,36 +572,35 @@ function Chip({ it, dragging, busy, onOpen, onMove, onArm, onDragStart, onDragEn
 }) {
   const fromQueue = it.source === 'queue'
   // What the clock says. `postedAt` wins when it exists, because on a published
-  // row the question is never "when was it meant to go" — it is "when did it go".
+  // row the question is never "when was it meant to go", it is "when did it go".
   const posted = it.stage === 'published' ? it.postedAt : null
   const clock = hhmm(posted ?? it.at)
-  // Set for 08:00, out at 08:14 — the gap is worth seeing, so it is in the
-  // tooltip rather than silently rounded away.
-  const drifted = !!posted && hhmm(posted) !== hhmm(it.at)
-  const origin = fromQueue
-    ? ' · from the publish queue (scheduled_posts) — no draft row, so it cannot be opened or moved here'
-    : ''
-  // The two tables holding different times for the same post is a fact worth
-  // saying out loud, not a tie to break silently. The chip sits on the
-  // publisher's time (that is when it goes out) and names the draft's.
-  const outOfSync = it.plannedAt
-    ? ` · ⚠ the publish queue fires this at ${hhmm(it.at)}; the draft still says ${hhmm(it.plannedAt)}`
-    : ''
-  // ARMED OR PLANNED, IN A WORD, on the chip's own face. A date alone says
-  // nothing about whether anything will publish this, and six live client rows
-  // are dated review rows that will not. `published` is left to the ✓ and the
-  // tooltip on purpose: at a 112px cell `08:14 Posted` truncates, which is the
-  // same measurement the ✓ exists because of, and a chip that already carries
-  // a tick and a real posted time is not the one that reads ambiguously.
+  // ARMED OR PLANNED, IN A WORD. Kept in the markup and withdrawn by CSS at
+  // grid size only (wbcal.css §3): at 93px of content width the word costs half
+  // the room the TITLE needs, and the title is what says which post this is.
+  // Below 767px the chip is 342px wide and the word stays. The sentence in the
+  // popover carries it on every canvas, which is why withdrawing it here loses
+  // nothing a keyboard or a screen reader could have reached.
   const armWord = it.arming === 'out' ? null : ARMING_LABEL[it.arming]
-  const armTip = it.arming === 'planned'
-    ? ' · Planned: it carries a date and nothing publishes it. The bridge reads status=\'scheduled\'.'
-    : it.arming === 'armed'
-      ? ' · Armed: a publisher holds this one.'
-      : ''
-  const tip = posted
-    ? `Posted ${hhmm(posted)}${drifted ? ` (was set for ${hhmm(it.at)})` : ''} · ${it.title} — ${STAGE_LABEL[it.stage]}${origin}`
-    : `${hhmm(it.at)} · ${it.title} — ${STAGE_LABEL[it.stage]}${armTip}${it.movable ? ' · drag to another day' : ''}${origin}${outOfSync}`
+  const tip = chipDescription(it)
+  const tipId = `cal-tip-${it.id}`
+  // ONE SPREAD, ON WHATEVER THE FACE TURNS OUT TO BE. A queue chip's face is a
+  // span and a draft chip's is a button, and both need the same four handlers
+  // plus the same describedby, so the wiring is written once rather than
+  // duplicated into two branches that can drift apart.
+  //
+  // `tabIndex` is on the span deliberately: a queue chip has nothing to click,
+  // so it is not a button, but it DOES carry the one sentence explaining why it
+  // is inert, and a description a keyboard cannot reach is the defect this
+  // section exists to remove.
+  const tipProps = {
+    'aria-describedby': tipOpen ? tipId : undefined,
+    ...(fromQueue ? { tabIndex: 0 } : null),
+    onMouseEnter: (e: { currentTarget: HTMLElement }) => onTip(e.currentTarget, tipId, tip),
+    onMouseLeave: offTip,
+    onFocus: (e: { currentTarget: HTMLElement }) => onTip(e.currentTarget, tipId, tip),
+    onBlur: offTip,
+  }
   const face = (
     <>
       {/* The tick, not the word "posted": measured at a 112px cell, `08:14
@@ -563,10 +633,23 @@ function Chip({ it, dragging, busy, onOpen, onMove, onArm, onDragStart, onDragEn
       onDragEnd={it.movable ? onDragEnd : undefined}
     >
       <div className="cal-chip-row">
+        {/* 🔴 NO `title` ATTRIBUTE ANYWHERE ON THIS CHIP, and its absence is the
+            fix. A native title cannot be styled, waits about a second, is
+            unreachable by keyboard, and the browser puts it where the browser
+            likes, which is what Ivan saw. `tipProps` opens a real popover on
+            hover AND on focus, anchored to this chip's own rect, positioned so
+            it never covers the cell it describes, dismissible with Escape, and
+            wired with aria-describedby rather than a tooltip nobody but a
+            mouse can reach.
+
+            The DESCRIPTION is where the arming word went (§3): the chip's face
+            no longer spells out Armed or Planned at grid size, so the sentence
+            here has to, and a keyboard operator gets it because focus opens
+            the same panel a hover does. */}
         {fromQueue ? (
-          <span className="cal-chip-t cal-chip-t-static" title={tip}>{face}</span>
+          <span className="cal-chip-t cal-chip-t-static" {...tipProps}>{face}</span>
         ) : (
-          <button type="button" className="cal-chip-t" onClick={onOpen} title={tip}>{face}</button>
+          <button type="button" className="cal-chip-t" onClick={onOpen} {...tipProps}>{face}</button>
         )}
         {it.movable && (
           <button type="button" className="cal-chip-mv" onClick={onMove} title="Move to another day" aria-label={`Move ${it.title} to another day`}>
