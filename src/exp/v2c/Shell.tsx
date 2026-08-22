@@ -35,7 +35,7 @@ function toQueueItem(d: ContentDraft): QueueItem {
     scheduled_at: d.scheduled_at,
   }
 }
-import { MobileTabs, Rail, WorkSegment } from './Rail'
+import { MobileTabs, Rail, Rollup, WorkSegment } from './Rail'
 import { ContentList, type OpenDraft } from './ContentList'
 import { CommandLayer } from './CommandLayer'
 import { MagnetsList } from './MagnetsList'
@@ -547,7 +547,13 @@ export default function Shell() {
             {/* The lane switch moved into the working surface (WorkSegment) so both
                 viewports carry the identical control. The ribbon keeps what belongs
                 to the FRAME: how fresh the data is, and the way out to Settings. */}
-            <span className="wb-rib-j">{job === 'settings' ? 'Settings' : ''}</span>
+            {/* The phone has no rail, so the roll-up rides the ribbon slot that
+                was empty on every job but Settings. Same primitive, same rule:
+                it is the bottom bar's own counts added up, and every summand is
+                a tab you can see. */}
+            <span className="wb-rib-j">
+              {job === 'settings' ? 'Settings' : <Rollup counts={counts} />}
+            </span>
             <span className={`wb-rib-sync${inboxError ? ' bad' : ''}`} onClick={inbox.refresh}>
               <span className={`wb-sync-dot${inboxError ? ' bad' : ''}`} />
               {inboxError ? 'not syncing' : relAge(inbox.loadedAt)}
