@@ -864,3 +864,43 @@
   color:var(--text4);
 }
 
+
+/* ---- GRAFT 3 · the wide viewport gets a rule -----------------------------
+
+   The award reads "centre the column at 2560". Measured on this branch first,
+   because the premise did not survive the measurement: `.dw-main-in` is
+   `max-width:640px; margin:0 auto` (styles.css:1022) and computes
+   `margin:0px 340px` inside a 1320px track at 2560. The column is not pinned
+   left. It is centred, and has been.
+
+   What IS real, and is the thing the panel measured rather than the thing it
+   named, is the dead canvas: 680px of bare ground beside a 640px measure,
+   because the stage track is `1fr` and therefore eats every pixel the window
+   gains. wb2026.css §D6 already ruled on where that width belongs - "THE
+   TAKEOVER'S SURPLUS GOES TO THE INSPECTOR" - and then left the stage on `1fr`,
+   which is the one line that stops the rule from being true.
+
+   So the stage stops being `1fr` and takes a cap. The measure still does not
+   move: `.dw-main-in` is 640 and `.li-card` is 520 at every width, because a
+   wider ribbon would make the preview lie about what LinkedIn shows. What
+   changes is how much bare ground is drawn beside them.
+
+   The vertical is deliberately NOT centred. The losing candidate centred the
+   block in both axes and pushed the heading a long way down the viewport; the
+   panel's award excludes that half by name. */
+@media (min-width:1900px){
+  .wb.wb.wb .dw-cols{ grid-template-columns:300px minmax(640px,900px) minmax(560px,1fr) }
+  .wb.wb.wb .dw-cols.dw-norail{ grid-template-columns:minmax(640px,900px) minmax(560px,1fr) }
+}
+@media (min-width:2400px){
+  .wb.wb.wb .dw-cols{ grid-template-columns:320px minmax(640px,1000px) minmax(700px,1fr) }
+  .wb.wb.wb .dw-cols.dw-norail{ grid-template-columns:minmax(640px,1000px) minmax(700px,1fr) }
+}
+/* Restated rather than inherited. The centring is now load-bearing on a rule
+   this run owns, so a later sheet that reaches `.dw-main-in` cannot take it
+   away without saying so. `0 auto`, never `auto`: the second form centres the
+   block vertically too. */
+@media (min-width:1180px){
+  .wb.wb.wb .dw-main-in{ max-width:640px; margin:0 auto }
+}
+
