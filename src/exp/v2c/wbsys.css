@@ -799,3 +799,12 @@
   font-size:11px; line-height:1;
   white-space:nowrap;
 }
+
+/* The other-lane counts. Deliberately styled as a FOOTNOTE and not as rows:
+   the whole point is that these are numbers, not somebody else's drafts. */
+.wb.wb.wb .wb-find-else{
+  display:flex; flex-wrap:wrap; align-items:center; gap:6px;
+  padding:6px 14px 8px;
+  color:var(--text3);
+  font-size:12px; line-height:1.3;
+}
