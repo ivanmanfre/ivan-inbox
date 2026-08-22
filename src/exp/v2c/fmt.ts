@@ -107,8 +107,8 @@ export function tagLabel(s: string): string {
 }
 
 // source_post_id is a raw `urn:li:activity:...`, stamped by the publisher once
-// the post is really live (content.ts:42). It is a real, useful fact — the
-// live LinkedIn post this draft was spun from — so it earns a link, not a
+// the post is really live (content.ts:42). It is a real, useful fact (the
+// live LinkedIn post this draft was spun from), so it earns a link, not a
 // print. LinkedIn's own share URL is built from the numeric id inside the urn;
 // an id-less or malformed urn (never observed live, but the column is a bare
 // string with no format check) returns null so the caller can fall back.
