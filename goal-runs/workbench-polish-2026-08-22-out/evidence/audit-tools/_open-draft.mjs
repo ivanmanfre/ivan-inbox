@@ -30,9 +30,11 @@ export async function goto(page, hash, wait = 2200) {
 // The Content surface remembers List/Calendar in storage; force List, then open
 // the first draft. Returns true when `.dw` actually mounted.
 export async function openDraft(page) {
-  await goto(page, '#exp/v2/content')
-  try { await page.getByText('List', { exact: true }).first().click({ timeout: 4000 }); await page.waitForTimeout(1500) } catch {}
-  const cands = ['.ct-rows .r', '.ct-rows [role=button]', '.ct-rows button.r', '.ct-row', '.ct-title']
+  await goto(page, '#exp/v2/content', 4000)
+  // The Content list row is `.ct-card.ct-tap`, NOT `.r` (that is the DMs row).
+  // If the surface is in Calendar view there are no ct-cards, so fall back to a
+  // calendar chip, which opens the same draft window.
+  const cands = ['.ct-card.ct-tap', '.ct-card', '.cal-chip', '.ct-rows [role=button]']
   for (const c of cands) {
     const n = await page.locator(c).count()
     if (!n) continue

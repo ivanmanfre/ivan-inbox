@@ -73,7 +73,14 @@ const PROBE = () => {
       kind: isSame ? 'SAME' : 'NOPAINT',
       child: sel(el), parent: sel(anc),
       color: isSame ? own : ancC, lum: lum(isSame ? own : ancC),
-      borderW: bw, borderColor: bw ? cs.borderTopColor : null, radius: rad, pad: padMax,
+      borderW: bw, radius: rad, pad: padMax,
+      // per SIDE. Math.max of four widths plus borderTopColor reports a white
+      // top border on a chip whose only border is a 3px LEFT rail.
+      borders: ['Top', 'Right', 'Bottom', 'Left']
+        .map(k => px(cs['border' + k + 'Width']) > 0
+          ? `${k.toLowerCase()} ${cs['border' + k + 'Width']} ${cs['border' + k + 'Style']} ${cs['border' + k + 'Color']}` : null)
+        .filter(Boolean),
+      parentShadow: anc ? (getComputedStyle(anc).boxShadow === 'none' ? null : getComputedStyle(anc).boxShadow) : null,
       shadow: cs.boxShadow === 'none' ? null : cs.boxShadow,
       isBox: bw > 0 || rad > 0 || padMax > 0,
       w: Math.round(r.width), h: Math.round(r.height),
@@ -194,8 +201,10 @@ const SCREENS = [
   ['sends', p => goto(p, '#exp/v2/sends', 3000)],
   ['strategy', p => goto(p, '#exp/v2/strategy', 3000)],
   ['settings', p => goto(p, '#exp/v2/settings', 2500)],
-  ['draft-open', async p => { const ok = await openDraft(p); if (!ok) throw new Error('draft did not open') }],
-  ['thread-open', async p => { const ok = await openThread(p); if (!ok) throw new Error('thread did not open') }],
+  // thread-open BEFORE draft-open: an open content peer survives the hash
+  // change and eats the first click on the DMs list.
+  ['thread-open', async p => { for (let i = 0; i < 3; i++) { if (await openThread(p)) return } throw new Error('thread did not open') }],
+  ['draft-open', async p => { for (let i = 0; i < 3; i++) { if (await openDraft(p)) return } throw new Error('draft did not open') }],
 ]
 
 for (const [name, nav] of SCREENS) {
