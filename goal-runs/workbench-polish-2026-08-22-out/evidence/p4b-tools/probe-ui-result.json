@@ -13,7 +13,7 @@
     "sample": [
       {
         "kind": "qa",
-        "text": "QA scored it 63 of 130, under the floor. Final verdict Rewrite ok, regeneration budget spent."
+        "text": "QA scored it 63 of 130, under the floor. Final verdict Rewrite ok, and the retry budget is spent."
       },
       {
         "kind": "stalled",
@@ -21,7 +21,7 @@
       },
       {
         "kind": "qa",
-        "text": "QA scored it 72 of 130, under the floor. Final verdict Needs regenerate, regeneration budget spent."
+        "text": "QA scored it 72 of 130, under the floor. Final verdict Needs regeneration, and the retry budget is spent."
       },
       {
         "kind": "stalled",
@@ -102,7 +102,7 @@
     "sample": [
       {
         "kind": "qa",
-        "text": "QA scored it 63 of 130, under the floor. Final verdict Rewrite ok, regeneration budget spent."
+        "text": "QA scored it 63 of 130, under the floor. Final verdict Rewrite ok, and the retry budget is spent."
       },
       {
         "kind": "stalled",
@@ -110,7 +110,7 @@
       },
       {
         "kind": "qa",
-        "text": "QA scored it 72 of 130, under the floor. Final verdict Needs regenerate, regeneration budget spent."
+        "text": "QA scored it 72 of 130, under the floor. Final verdict Needs regeneration, and the retry budget is spent."
       },
       {
         "kind": "stalled",

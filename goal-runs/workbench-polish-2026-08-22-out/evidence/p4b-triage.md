@@ -45,12 +45,12 @@ is not there.
 
 | before | after |
 |---|---|
-| `Generation stuck — no completion within 25 minutes. Likely a silent workflow chain break.` | `QA scored it 63 of 130, under the floor. Final verdict Rewrite ok, regeneration budget spent.` |
+| `Generation stuck — no completion within 25 minutes. Likely a silent workflow chain break.` | `QA scored it 63 of 130, under the floor. Final verdict Rewrite ok, and the retry budget is spent.` |
 | `Generation stuck — no completion within 22 minutes. …` | `Lint Gate passed this. It finished, and it is filed as an error anyway.` |
 | `Generation stuck — no completion within 25 minutes. …` | `Lint gate refused it on nobody_reveal_family, and the rewrite did not clear it.` |
 | `Generation stuck — no completion within 23 minutes. …` | `Generation never returned. 1 attempt(s), none of which produced a draft.` |
 | `Generation stuck — no completion within 141 minutes. …` | `Generation stalled. The watchdog fired after 141 minutes and nothing has run since.` |
-| `Needs regenerate (score 0)` | `Hook Agent saved a model refusal instead of content. Nothing was written that is worth reviewing.` |
+| `Needs regeneration (score 0)` | `Hook Agent saved a model refusal instead of content. Nothing was written that is worth reviewing.` |
 | `Failed the language check` | `Lint Gate passed this after fixing contrast_closer. It finished, and it is filed as an error anyway.` |
 
 The 20,205-minute stall claim disappears without being special-cased. It was never a duration; it
@@ -315,9 +315,10 @@ comment, and `RowSelect` returns null when the command layer is not mounted.
 | | |
 |---|---|
 | `npm run build` (`tsc -b && vite build`) | clean |
-| `npm test` | see the re-verification note below |
+| `npm test` | **953 passing**, 1 failing |
+| baseline after merging `wb/polish` | 934 passing |
+| tests this branch adds | **19** (10 `draftFailure` in `content.test.ts`, 9 in `bulkPromote.test.ts`) |
 | known pre-existing failure | `calendarItems.test.ts > passing no queue is the old behaviour exactly` |
-| new tests | 10 in `content.test.ts` (`draftFailure`), 9 in `bulkPromote.test.ts` |
 
 The baseline was established on a clean checkout first, so the one failure is demonstrably not
 mine. It needed `.env.local` copied into the worktree: without it 20 test files fail at import with
@@ -327,6 +328,35 @@ Every fixture in the new `draftFailure` tests is a verbatim live body with its r
 comment. The end-to-end run over all 55 rows is deliberately kept OUT of `npm test` (its own config,
 per the convention in `vitest.config.ts`), because it reads a snapshot and must never be able to
 fail a deploy gate for being offline.
+
+## 7. Re-verified after `wb/polish` advanced
+
+The base branch moved twice while this was in flight: the label purge (`b11f543`) and the
+scheduling merge (`3b98100`). `wb/polish` was merged in at `606242c`. The scheduling work touched
+`calendarItems.ts` and `ContentCalendar.tsx`, neither of which this branch reads. The label purge
+touched `labels.ts`, `fmt.ts` and `faithful.css`, and the error cards **do** render through
+`label()`, so everything above was re-run rather than assumed.
+
+**One real regression found and fixed.** The purge maps `needs_regenerate` to "Needs regeneration",
+which is the right label. It made the commonest of these sentences read *"Final verdict Needs
+regeneration, regeneration budget spent"*. The label is right and the stutter was mine, so the
+sentence moved: it now ends *"and the retry budget is spent"*. The other branch of the same
+function moved with it, so the two cannot drift.
+
+Re-run on the merged build, all of it:
+
+| | |
+|---|---|
+| 55-row reason proof | unchanged: 55 changed, 28 stale stalls corrected, 21 chip echoes named, **49 wrong to right** |
+| `npm run build` | clean |
+| `npm test` | 953 passing, the same single `calendarItems.test.ts` failure |
+| authed UI, 1440 and 390 | 48 error cards, 0 claiming a stall, 48 Retry, 29 client rows with `To board` |
+| Delete hitbox | 649.8 to 728.6 before and after, shift **0** |
+| **attempted writes** | **0** |
+| `#exp/stock` | 0 `.wb` elements, 0 p4b classes, 0 `[data-kind]`, at both viewports |
+
+Screenshots in `after/` were retaken against the merged build, so every one of them shows the
+purged labels.
 
 ## Files
 

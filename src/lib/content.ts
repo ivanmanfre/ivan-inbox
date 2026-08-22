@@ -2397,14 +2397,19 @@ export function draftFailure(d: FailureInput): DraftFailure {
         const tail = lintFails > 0
           ? ` ${lintFails} of the retries failed lint instead of scoring.`
           : ''
+        // "regeneration budget spent" until the label purge landed
+        // `needs_regenerate` -> "Needs regeneration", which made the commonest
+        // of these read "Final verdict Needs regeneration, regeneration budget
+        // spent". The label is right and the stutter is mine, so the sentence
+        // moves rather than the label.
         return {
           kind: 'qa', agent, detail: `${fv[2]}/${fv[3]}`,
-          reason: `QA scored it ${fv[2]} of ${fv[3]}, under the floor. Final verdict ${verdict}, regeneration budget spent.${tail}`,
+          reason: `QA scored it ${fv[2]} of ${fv[3]}, under the floor. Final verdict ${verdict}, and the retry budget is spent.${tail}`,
         }
       }
       return {
         kind: 'qa', agent, detail: null,
-        reason: `QA blocked it and the regeneration budget ran out${outcomes.length ? ` after ${outcomes.length} attempt(s)` : ''}.`,
+        reason: `QA blocked it and the retry budget ran out${outcomes.length ? ` after ${outcomes.length} attempt(s)` : ''}.`,
       }
     }
 
