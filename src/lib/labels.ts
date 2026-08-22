@@ -104,3 +104,60 @@ export function inlineLabel(text: string | null | undefined): string {
   if (!text) return text
   return text.replace(INLINE_RE, m => KNOWN[m.toLowerCase()] ?? m)
 }
+
+// ---------------------------------------------------------------------------
+// THE ARMING VOCABULARY, and it is here rather than beside its state machine
+// because it is the exact class of leak this file exists to stop.
+//
+// A blind design panel judged the month calendar against its own predecessor
+// and named this as the screen's strongest tell that it is an internal tool:
+//
+//   "`Armed` is the operator's word for a state machine he wrote. No product
+//    ships a top-line metric its user would have to be told the meaning of."
+//
+// `armed` is not a database value, which is why it never came through label()
+// and never got caught: it is a word the app INVENTED for a derived state
+// (armingOf() in calendarItems.ts, from a draft's status plus its source). A
+// coined word is a raw value with extra steps, and it belongs to the same map.
+//
+// The plain words, and what each one is actually claiming:
+//
+//   armed    a publisher holds it. The draft is at Scheduled, or the chip IS a
+//            publish-queue row. It goes out. -> "Scheduled", which is the word
+//            the app's own Schedule button and its status already use, so the
+//            reader is not asked to learn a second one.
+//   planned  it carries a date and NOTHING publishes it. The distinction is
+//            real and worth keeping (a review row with a date reads as coverage
+//            it is not), so the plain form states the absence rather than
+//            inventing a noun for it. -> "Not scheduled".
+//   out      it went out. -> "Posted", which was already plain.
+//
+// Two forms, because the bar and the chip are different registers: the chip
+// face carries a standalone word (sentence case), the bar carries a word after
+// a numeral (lower case, and it may be a phrase).
+const ARMING: Record<string, string> = {
+  armed: 'Scheduled',
+  planned: 'Not scheduled',
+  out: 'Posted',
+}
+
+const ARMING_COUNT: Record<string, string> = {
+  armed: 'scheduled',
+  posted: 'posted',
+  out: 'posted',
+  // Said as the discrepancy it is, because that is the only reason this figure
+  // is worth a slot in a bar above a grid already carrying 35 day numerals.
+  planned: 'dated but not scheduled',
+}
+
+/** The standalone word for a derived arming state. Falls back to sentenceCase. */
+export function armingLabel(value: string | null | undefined): string {
+  if (!value) return ''
+  return ARMING[value.toLowerCase()] ?? label(value)
+}
+
+/** The word that follows a numeral in a count. Lower case, may be a phrase. */
+export function armingCountWord(value: string | null | undefined): string {
+  if (!value) return ''
+  return ARMING_COUNT[value.toLowerCase()] ?? label(value).toLowerCase()
+}

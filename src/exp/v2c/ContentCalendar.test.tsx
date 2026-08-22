@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { ContentCalendar, VISIBLE_CHIPS, chipDescription } from './ContentCalendar'
 import { buildCalendarItems } from '../../lib/calendarItems'
+import { armingCountWord, armingLabel } from '../../lib/labels'
 import { place } from './CalPopover'
 import type { ContentDraft, ScheduledQueueRow } from '../../lib/content'
 
@@ -215,16 +216,24 @@ describe('No date yet', () => {
 // ---------------------------------------------------------------------------
 
 describe('planned versus armed, on the chip and in the count', () => {
-  it('🔴 a dated REVIEW chip says Planned, in a word, not only in a colour', () => {
+  // 🔴 THE WORDS CHANGED 2026-08-22 AND THE DISTINCTION DID NOT. A blind panel
+  // named `armed` as this screen's strongest tell that it is an internal tool
+  // ("no product ships a top-line metric its user would have to be told the
+  // meaning of"), so the vocabulary moved to src/lib/labels.ts and these assert
+  // against THAT map rather than against literals, which is what stops a second
+  // vocabulary being hardcoded here the next time the words move.
+  it('🔴 a dated REVIEW chip says so in a word, not only in a colour', () => {
     const out = html([d({ title: 'Dated but dead', status: 'review' })])
     expect(out).toContain('data-arm="planned"')
-    expect(out).toContain('>Planned<')
+    expect(out).toContain(`>${armingLabel('planned')}<`)
+    expect(out).not.toContain('>Planned<')
   })
 
-  it('a scheduled chip says Armed', () => {
+  it('a scheduled chip says so too, and never in the coined word', () => {
     const out = html([d({ title: 'Really going out', status: 'scheduled' })])
     expect(out).toContain('data-arm="armed"')
-    expect(out).toContain('>Armed<')
+    expect(out).toContain(`>${armingLabel('armed')}<`)
+    expect(out).not.toContain('>Armed<')
   })
 
   it('🔴 THE MONTH COUNT SPLITS THEM: one figure counted a plan as coverage', () => {
@@ -235,13 +244,38 @@ describe('planned versus armed, on the chip and in the count', () => {
     ]
     const out = html(rows)
     expect(out).not.toContain('dated this month')
-    expect(out).toMatch(/<b>1<\/b><span>armed<\/span>/)
-    expect(out).toMatch(/<b>2<\/b><span>planned<\/span>/)
+    expect(out).toContain(`<b>1</b><span>${armingCountWord('armed')}</span>`)
+    expect(out).toContain(`<b>2</b><span>${armingCountWord('planned')}</span>`)
   })
 
-  it('both figures are drawn at zero: a hidden 0 armed is the same lie', () => {
+  it('🔴 the bar never prints the operator\'s own word at the reader', () => {
+    const out = html([
+      d({ id: 'p1', status: 'review', scheduled_at: inDays(1) }),
+      d({ id: 'a1', status: 'scheduled', scheduled_at: inDays(3) }),
+    ])
+    const bar = out.slice(out.indexOf('cal-bar'), out.indexOf('cal-body'))
+    for (const coined of ['armed', 'planned', 'queue only']) {
+      expect(bar).not.toContain(`>${coined}<`)
+    }
+  })
+
+  it('the two coverage figures are drawn at zero: a hidden 0 is the same lie', () => {
     const out = html([d({ status: 'review', scheduled_at: inDays(1) })])
-    expect(out).toMatch(/<b>0<\/b><span>armed<\/span>/)
+    expect(out).toContain(`<b>0</b><span>${armingCountWord('armed')}</span>`)
+    expect(out).toContain(`<b>0</b><span>${armingCountWord('out')}</span>`)
+  })
+
+  // 🔴 THE THIRD FIGURE IS A DISCREPANCY, NOT A METRIC, so it is drawn only
+  // when there is one. That is the opposite rule from the two above and it is
+  // deliberate: a permanent `0 dated but not scheduled` above a grid already
+  // carrying 35 day numerals is a slot spent saying nothing is wrong.
+  it('the planned figure appears only when there is one, and is marked as attention', () => {
+    const none = html([d({ status: 'scheduled', scheduled_at: inDays(1) })])
+    expect(none).not.toContain(armingCountWord('planned'))
+    expect(none).not.toContain('cal-count-warn')
+    const some = html([d({ status: 'review', scheduled_at: inDays(1) })])
+    expect(some).toContain('cal-count-warn')
+    expect(some).toContain(`<b>1</b><span>${armingCountWord('planned')}</span>`)
   })
 })
 
@@ -310,9 +344,19 @@ describe('the publish queue as a second source', () => {
     expect(out).not.toContain('cal-chip-queue')
   })
 
-  it('the bar names the queue-only count separately, and only when there is one', () => {
-    expect(html([], [q()])).toContain('queue only')
-    expect(html([d()])).not.toContain('queue only')
+  // 🔴 REVERSED 2026-08-22. The bar no longer carries this count at all, and the
+  // deletion is the assertion: a queue row is armed BY DEFINITION, so those
+  // posts were already inside the coverage figure and a fourth number
+  // double-counted them for a reader who could not tell. The count's real job
+  // was explaining why some chips cannot be opened or moved, and that has to
+  // survive ON THE CHIP, which is the half of this the panel's complaint does
+  // not license dropping.
+  it('the bar does NOT carry a queue-only count, and the chip still says why it is inert', () => {
+    const out = html([], [q()])
+    const bar = out.slice(out.indexOf('cal-bar'), out.indexOf('cal-body'))
+    expect(bar).not.toContain('queue only')
+    expect(out).toContain('publish queue')
+    expect(out).toContain('cal-chip-queue')
   })
 })
 

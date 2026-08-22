@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { inlineLabel, label } from './labels'
+import { armingCountWord, armingLabel, inlineLabel, label } from './labels'
 
 describe('label', () => {
   it('maps every known value to real words', () => {
@@ -78,5 +78,60 @@ describe('inlineLabel', () => {
 
   it('returns empty string unchanged for an empty string', () => {
     expect(inlineLabel('')).toBe('')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 2026-08-22. The arming vocabulary, moved here after a blind design panel
+// judged the month calendar and named its top-line metric as the screen's
+// strongest tell that it is an internal tool:
+//
+//   "`Armed` is the operator's word for a state machine he wrote. No product
+//    ships a top-line metric its user would have to be told the meaning of."
+//
+// `armed` is not a database value, which is why it never passed through label()
+// and never got caught: it is a word the app COINED for a derived state. These
+// assert the property rather than the prose, so the words can be tuned without
+// the guard rotting into a copy of them.
+// ---------------------------------------------------------------------------
+
+describe('armingLabel / armingCountWord', () => {
+  it('never returns one of the coined words to a reader', () => {
+    const coined = ['armed', 'planned', 'out', 'arming', 'queue only']
+    for (const v of ['armed', 'planned', 'out']) {
+      expect(coined).not.toContain(armingLabel(v).toLowerCase())
+      expect(coined).not.toContain(armingCountWord(v))
+    }
+  })
+
+  it('the count form is lower case, because a numeral comes before it', () => {
+    for (const v of ['armed', 'planned', 'out']) {
+      expect(armingCountWord(v)).toBe(armingCountWord(v).toLowerCase())
+    }
+  })
+
+  it('the chip form is sentence case, because it stands alone on a face', () => {
+    for (const v of ['armed', 'planned', 'out']) {
+      const w = armingLabel(v)
+      expect(w[0]).toBe(w[0].toUpperCase())
+    }
+  })
+
+  it('armed and planned stay DISTINGUISHABLE: the split is the whole point', () => {
+    expect(armingLabel('armed')).not.toBe(armingLabel('planned'))
+    expect(armingCountWord('armed')).not.toBe(armingCountWord('planned'))
+  })
+
+  it('falls back through label() for a state neither map has seen', () => {
+    expect(armingLabel('some_new_state')).toBe('Some new state')
+    expect(armingCountWord('some_new_state')).toBe('some new state')
+  })
+
+  it('returns empty string for null, undefined and empty, never throws', () => {
+    for (const f of [armingLabel, armingCountWord]) {
+      expect(f(null)).toBe('')
+      expect(f(undefined)).toBe('')
+      expect(f('')).toBe('')
+    }
   })
 })
