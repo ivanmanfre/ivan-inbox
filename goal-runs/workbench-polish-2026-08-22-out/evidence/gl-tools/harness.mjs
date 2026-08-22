@@ -12,7 +12,7 @@ export async function open({ width = 1440, height = 900, theme = 'dark' } = {}) 
   const browser = await chromium.launch()
   const ctx = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1 })
   const writes = []
-  // chip-probe.mjs:13-19 — the interceptor, before any navigation.
+  // chip-probe.mjs:13-19, the interceptor, before any navigation.
   await ctx.route('**/rest/v1/**', r => {
     const m = r.request().method()
     if (m !== 'GET' && m !== 'HEAD' && m !== 'OPTIONS') {
