@@ -1,0 +1,238 @@
+{
+ "strip": {
+  "present": true,
+  "line": "Claude can see 2 things, names and states only",
+  "chips": [
+   "DMs, all lanes",
+   "Milan Savov"
+  ],
+  "depthSwitches": [
+   "names only"
+  ],
+  "stripFont": "12px",
+  "chipFont": "12px",
+  "chipBg": "rgb(39, 39, 39)",
+  "stripBg": "rgb(28, 28, 28)"
+ },
+ "peekShallow": "What Ivan has attached from his screen. He picked these and can remove any of them, so treat this as the current view and not as the whole database. - He is on the DMs screen, in all lanes. - Open conversation with Milan Savov at SmartClick (Ivan, 1b6a0f70, LinkedIn, DM sent). 5 messages. He replied last. A reply draft is waiting for his approval. (the texts themselves were not attached)",
+ "peekDeep": "What Ivan has attached from his screen. He picked these and can remove any of them, so treat this as the current view and not as the whole database. - He is on the DMs screen, in all lanes. - Open conversation with Milan Savov at SmartClick (Ivan, 1b6a0f70, LinkedIn, DM sent). 5 messages. He replied last. A reply draft is waiting for his approval. 2026-08-16 Ivan: Hey Milan, saw you around Kyle Hunt's content so figured we run in the same world. I run the inbound engine Kyle uses to book calls - all done for him. Thought you'd be worth a hello. 2026-08-19 Ivan: Hi Milan, I run Kyle's inbound for him, and the audience and list it built are his. Took him from $30k to $80k a month. --- A few agency owners in his orbit are on the same thing now. I'll put a free sample together off your own positioning so you can see it before we ever talk. --- Want me to send one over? Iván 2026-08-19 Milan Savov: Of course 2026-08-19 Ivan: Got it here: https://inboundonsteroids.com/scan/milan-savov-1c/ Have a look, and if it sounds like we could give you a hand I'll demo how it works live :) --- https://calendly.com/im-ivanmanfredi/30min 2026-08-22 Ivan: Hey Milan, did any of those times work? If not I can send a few more options.",
+ "lineDeep": "Claude can see 2 things, 1 with the full text",
+ "peekOff": {
+  "line": "Claude cannot see your screen",
+  "peek": "Nothing about your screen travels with your next message."
+ },
+ "pre": {
+  "chips": 8,
+  "rows": 10,
+  "rowH": 106,
+  "after": {
+   "note": "Wants pricing for the done-for-you lane · not stated · Ivan owes them a number",
+   "rowH": 107,
+   "noteFont": "16px",
+   "plainSnipFont": "16px",
+   "chipsLeft": 7
+  },
+  "rowBefore": 107
+ },
+ "paidBeforeClick": 0,
+ "paidAfterClick": 1,
+ "searchIvan": {
+  "head": "Anything you have written, inIvanMattan DaninoDavorin Smit",
+  "rows": [
+   {
+    "title": "Bob Marris",
+    "badge": "Conversation"
+   },
+   {
+    "title": "Richard Fowler",
+    "badge": "Conversation"
+   },
+   {
+    "title": "Paul Musgrave",
+    "badge": "Conversation"
+   },
+   {
+    "title": "Maria Barrera",
+    "badge": "Conversation"
+   },
+   {
+    "title": "Jordan Wilkinson",
+    "badge": "Conversation"
+   },
+   {
+    "title": "Sue Tietz",
+    "badge": "Conversation"
+   },
+   {
+    "title": "AI isn't democratizing the service market — it's repricing it, and the clock is running for $1-10M firms that haven't automated delivery yet",
+    "badge": "Draft"
+   },
+   {
+    "title": "What traditional agencies actually need to survive the AI shift (it's not more tools)",
+    "badge": "Draft"
+   },
+   {
+    "title": "AI Agents Are Now Replacing Entire Workflow Teams in Professional Services—Here's What That Means for Your Margins",
+    "badge": "Draft"
+   },
+   {
+    "title": "The client churn math most agency owners avoid running until it's too late",
+    "badge": "Draft"
+   },
+   {
+    "title": "Document Automation Just Hit 60% Time Savings at Mid-Market Agencies—Here's What Changed in April 2026",
+    "badge": "Draft"
+   },
+   {
+    "title": "AI Governance Readiness Scorecard for Professional Services",
+    "badge": "Lead magnet"
+   },
+   {
+    "title": "The Agency Efficiency Score — How Much Profit Are You Leaving on the Table?",
+    "badge": "Lead magnet"
+   },
+   {
+    "title": "Agency AI Agent ROI Calculator: $50K Investment vs Billable Hours",
+    "badge": "Lead magnet"
+   },
+   {
+    "title": "AI Agent Readiness Audit: Is Your Firm Ready for Workflow Automation?",
+    "badge": "Lead magnet"
+   }
+  ],
+  "none": [],
+  "elsewhere": "Also written elsewhere:Mattan Danino has 25",
+  "elsewhereRows": 0
+ },
+ "searchMattan": {
+  "head": "Anything you have written, inIvanMattan DaninoDavorin Smit",
+  "rows": [
+   {
+    "title": "Peter M.",
+    "badge": "Conversation"
+   },
+   {
+    "title": "The direct response doom loop (text)",
+    "badge": "Draft"
+   },
+   {
+    "title": "The beauty brand that grew everything except profit",
+    "badge": "Draft"
+   },
+   {
+    "title": "The Profit Gap: 50% growth, $6,000 kept",
+    "badge": "Draft"
+   },
+   {
+    "title": "[RISE DTC] The honest version of how we scaled Tenth Street Hats",
+    "badge": "Draft"
+   },
+   {
+    "title": "ROAS is theater (and I still quote it on calls)",
+    "badge": "Draft"
+   },
+   {
+    "title": "Low Margin CPG Can't Play the Discount Game",
+    "badge": "Draft"
+   },
+   {
+    "title": "8 launches, one margin, two columns",
+    "badge": "Draft"
+   },
+   {
+    "title": "ROAS is theater (and I still quote it on calls)",
+    "badge": "Draft"
+   },
+   {
+    "title": "[RISE DTC] Creative fatigue: reading the decay before the dashboard shows it",
+    "badge": "Draft"
+   },
+   {
+    "title": "Case Study: Josie Maran",
+    "badge": "Draft"
+   },
+   {
+    "title": "[RISE DTC] The best thing we ever did was get a whole lot pickier",
+    "badge": "Draft"
+   },
+   {
+    "title": "[RISE DTC] Execution stopped being what an agency sells",
+    "badge": "Draft"
+   },
+   {
+    "title": "[RISE DTC] Why Retention Compounds Faster Than Acquisition",
+    "badge": "Draft"
+   },
+   {
+    "title": "[RISE DTC] The qualification bar: why we turn away most brands that apply",
+    "badge": "Draft"
+   },
+   {
+    "title": "Video: Why we never take dropshipping brands",
+    "badge": "Draft"
+   },
+   {
+    "title": "Don't let Meta pick your winning ads",
+    "badge": "Draft"
+   },
+   {
+    "title": "Why Retention Compounds Faster Than Acquisition",
+    "badge": "Draft"
+   },
+   {
+    "title": "[RISE DTC] Discount addiction: what a standing 10% off does to margin",
+    "badge": "Draft"
+   },
+   {
+    "title": "Case Study: LEUCHTTURM",
+    "badge": "Draft"
+   },
+   {
+    "title": "[RISE DTC] Building a Growth Team from a Single Spreadsheet",
+    "badge": "Draft"
+   },
+   {
+    "title": "Why We Don't Work With Dropshipping Brands",
+    "badge": "Draft"
+   },
+   {
+    "title": "[RISE DTC] The margin check I run before touching a budget",
+    "badge": "Draft"
+   },
+   {
+    "title": "Run this margin math before you hire any agency",
+    "badge": "Draft"
+   },
+   {
+    "title": "[RISE DTC] The Ad Account Report Card launch post",
+    "badge": "Draft"
+   },
+   {
+    "title": "[RISE DTC] Why we turn down brands that do not clear 65% margins",
+    "badge": "Draft"
+   }
+  ]
+ },
+ "searchQueries": [
+  "inbox_messages_v?select=prospect_id,prospect_name,prospect_company,client_id,message_text,direction,created_at&client_id=eq.ivan&or=(prospect_name.ilike.*margin*,prospect_company.ilike.*margin*,message_text.ilike.*margin*)&order=created_at.desc&limit=200",
+  "carousel_drafts?select=id,title,topic,post_body,status,type,updated_at&client_id=is.null&or=(title.ilike.*margin*,topic.ilike.*margin*,post_body.ilike.*margin*)&order=updated_at.desc&limit=40",
+  "lm_drafts_v2?select=id,topic,description,post_body,status,updated_at&client_id=is.null&or=(topic.ilike.*margin*,description.ilike.*margin*,post_body.ilike.*margin*)&order=updated_at.desc&limit=40",
+  "inbox_messages_v?select=prospect_id,prospect_name,prospect_company,client_id,message_text,direction,created_at&client_id=eq.risedtc&or=(prospect_name.ilike.*margin*,prospect_company.ilike.*margin*,message_text.ilike.*margin*)&order=created_at.desc&limit=200",
+  "carousel_drafts?select=id,title,topic,post_body,status,type,updated_at&client_id=eq.risedtc&or=(title.ilike.*margin*,topic.ilike.*margin*,post_body.ilike.*margin*)&order=updated_at.desc&limit=40",
+  "lm_drafts_v2?select=id,topic,description,post_body,status,updated_at&client_id=eq.risedtc&or=(topic.ilike.*margin*,description.ilike.*margin*,post_body.ilike.*margin*)&order=updated_at.desc&limit=40"
+ ],
+ "mobileStrip": {
+  "present": true,
+  "line": "Claude can see 1 thing, names and states only",
+  "overflow": false
+ },
+ "attemptedWrites": [],
+ "paidCalls": [
+  {
+   "url": "https://bjbvqvzbzczjbatgmccb.supabase.co/functions/v1/inbox-fast",
+   "body": "{\"messages\":[{\"role\":\"user\",\"content\":\"Read the conversation below and write ONE line for Ivan, who has not opened it yet.\\n\\nExactly three parts, separated by \\\" · \\\", in this order:\\nwhat they want · what is blocking · what was promised\\n\\nRules:\\n- Write \\\"not stated\\\" for any part the conversation does not actually say. Never guess, never infer a motive.\\n- Under 140 characters in total.\\n- No greeting, no preamble, no markdown, no quotes around it, no closing remark.\\n- Do not escalate and do not offer to do anything. One line, nothing else.\\n\\nConversation with Elijah Davis, MBA at Plati"
+  }
+ ],
+ "attemptedWriteCount": 0,
+ "paidCallCount": 1
+}

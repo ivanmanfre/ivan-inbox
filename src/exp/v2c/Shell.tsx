@@ -47,6 +47,7 @@ import { MagnetWindow } from './MagnetWindow'
 import { ThreadPeer } from './ThreadPeer'
 import { DmsSurface } from './DmsSurface'
 import { ChatPane } from './ChatPane'
+import { draftSubject, laneSubject, threadSubject, type Subject } from './chat/paneContext'
 import { OpsBoard } from './OpsBoard'
 import { Failed, relAge } from './Surface'
 import { useChat } from './useChat'
@@ -54,7 +55,7 @@ import { useGlanceCounts } from './useGlanceCounts'
 import { hasMock } from './mock'
 import { parseWbHash, wbHash } from './route'
 import {
-  addPeer, contextPeer, dropPeer, hasChat, jobHasList, peerKey,
+  JOB_LABEL, addPeer, contextPeer, dropPeer, hasChat, jobHasList, peerKey,
   planWorkbench, type Canvas, type Job, type Peer,
 } from './layout'
 import './styles.css'
@@ -259,6 +260,40 @@ export default function Shell() {
   const aboutLabel = ctx ? ctxThread?.prospect_name ?? ctx.label ?? 'this thread' : null
   const aboutContext = aboutLabel
 
+  // ---- what the Claude pane is allowed to see (chat/paneContext.ts) ----
+  //
+  // Built HERE because this is the only place that holds all three answers at
+  // once: which screen and lane he is on, which conversation is docked beside
+  // the pane, and which row the reading window has open. Every one of these is
+  // data already fetched for the screen, so attaching context opens no request.
+  //
+  // The OPEN DRAFT is attached shallow only. Shell holds the queue row (title,
+  // state, dates), not the post itself, which lives in the window's own detail
+  // fetch. So the draft chip offers no "full text" switch, and the pane says
+  // the text was not attached rather than implying it was.
+  const openQueueRow = openItem?.queue.find(q => q.id === openItem.id) ?? null
+  const seeSubjects = useMemo<Subject[]>(() => {
+    const laneName = job === 'dms'
+      ? (filter === 'all' ? 'all lanes' : LANE_LABEL[filter as ContentLane] ?? filter)
+      : LANE_LABEL[lane] ?? lane
+    const out: Subject[] = [laneSubject(JOB_LABEL[job], laneName)]
+    if (ctxThread) {
+      out.push(threadSubject({
+        prospect_id: ctxThread.prospect_id,
+        prospect_name: ctxThread.prospect_name,
+        prospect_company: ctxThread.prospect_company,
+        channel: ctxThread.channel,
+        stage: ctxThread.stage,
+        messages: ctxThread.messages,
+        hasPendingDraft: ctxThread.draft != null && ctxThread.draftSnoozedUntil === null,
+      }, LANE_LABEL[ctxThread.client_id as ContentLane] ?? ctxThread.client_id))
+    }
+    if (openQueueRow) {
+      out.push(draftSubject(openQueueRow, LANE_LABEL[lane] ?? lane))
+    }
+    return out
+  }, [job, lane, filter, ctxThread, openQueueRow])
+
   // ---- Fork 2 is DECIDED: Ivan voted TRIAD (2026-08-02, "color i want tried"). ----
   // Triad is the boot default — absence of any signal means triad. Mono stays
   // built and reachable (`?cat=mono`, or localStorage 'wb-cat'='mono'),
@@ -335,6 +370,37 @@ export default function Shell() {
   }, [focus])
 
   const openThread = useCallback((id: string) => openPeer({ kind: 'thread', id }), [openPeer])
+
+  // ---- opening a row the cross-object search found (AI pass item 3) ----
+  //
+  // The palette is mounted by CommandLayer with no props, on purpose, and a
+  // search result lives in three different jobs on two different lanes. A
+  // window event is the existing pattern in this file (⌘D already travels as
+  // 'wb-voice-toggle'), and it keeps the layer propless.
+  //
+  // A hit ARRIVES WITH ITS LANE, so opening one switches the lane before it
+  // opens the row: showing a client's draft while the rail still says another
+  // lane is exactly the tenancy confusion the search is scoped to avoid.
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const d = (e as CustomEvent).detail as {
+        kind: 'thread' | 'draft' | 'magnet'
+        id: string
+        lane?: ContentLane
+        row?: QueueItem
+      }
+      if (!d?.id) return
+      if (d.kind === 'thread') { setJob('dms'); openThread(d.id); return }
+      if (d.lane) setLane(d.lane)
+      setJob(d.kind === 'draft' ? 'content' : 'magnets')
+      // A one-row queue, not an empty one: the window walks its queue with j/k
+      // and prints "n of m", and an empty queue would leave both with nothing
+      // to read. One row is the honest count for a row opened out of search.
+      setOpenItem({ kind: d.kind, id: d.id, queue: d.row ? [d.row] : [] })
+    }
+    window.addEventListener('wb-open', onOpen)
+    return () => window.removeEventListener('wb-open', onOpen)
+  }, [openThread])
   // Ask 2 — a draft is a READING surface, so it opens the takeover window, not
   // a peer. Same for a lead-magnet row.
   const openDraft = useCallback<OpenDraft>((id, _label, queue) => {
@@ -365,7 +431,7 @@ export default function Shell() {
               collapsed={railMin} onToggle={toggleRail} />
           )}
           <div className="wb-regions">
-            <div className="wb-work wide">
+            <div className="wb-work wide" data-wblane={lane}>
               <div className="nav"><div className="row-top"><h2>DMs</h2></div></div>
               <InboxSkeleton />
             </div>
@@ -510,6 +576,7 @@ export default function Shell() {
           job={job}
           about={aboutLabel}
           aboutContext={aboutContext}
+          subjects={seeSubjects}
           onClose={() => closePeer('chat')}
           // Mobile only: no third region, so the pair degrades to a tappable
           // context card that flips focus back to the item.
@@ -617,7 +684,7 @@ export default function Shell() {
               ? <span className="wb-gear" onClick={() => goJob(prevJob)}>Done</span>
               : <span className="wb-gear" onClick={() => goJob('settings')}>⚙︎</span>}
           </div>
-          <div className={`wb-work wide${plan.narrow ? ' wb-narrow' : ''}`}>{workSurface}</div>
+          <div className={`wb-work wide${plan.narrow ? ' wb-narrow' : ''}`} data-wblane={lane}>{workSurface}</div>
           <MobileTabs job={job} counts={counts} sev={sev} chatLive={chat.busy} onJob={goJob} onChat={toggleChat} />
         </div>
         {itemWindow}
@@ -648,7 +715,14 @@ export default function Shell() {
           onToggle={toggleRail}
         />
         <div className={`wb-regions peers-${plan.peers.length}`}>
-          <div className={`wb-work ${plan.work}${plan.narrow ? ' wb-narrow' : ''}${solo ? ' wb-solo' : ''}`}>
+          <div
+            className={`wb-work ${plan.work}${plan.narrow ? ' wb-narrow' : ''}${solo ? ' wb-solo' : ''}`}
+            /* The lane, published for CommandLayer's cross-object search. That
+               layer is mounted propless and reads the live DOM by design, and
+               a search that guessed its own tenancy would be the one bug this
+               feature must not have. */
+            data-wblane={lane}
+          >
             {workSurface}
           </div>
           {plan.peers.map(p => (
