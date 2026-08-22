@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  actionItems, callStats, callTopics, hasOpenBusiness, leadLine, owedByMe,
+  actionItems, callStats, callTitle, callTopics, hasOpenBusiness, leadLine, owedByMe,
   ownerIsMine, parseAgentItem, people, rankCalls, segmentCalls, splitBody,
   type CallRow,
 } from './transcripts'
@@ -235,5 +235,21 @@ describe('leadLine', () => {
   it('skips a blank objection entry instead of leading with an empty string', () => {
     expect(leadLine(row({ summary: 'we talked', brief: { objections: ['  ', ''] } })))
       .toEqual({ kind: 'summary', text: 'we talked' })
+  })
+})
+
+describe('callTitle', () => {
+  it('strips the trailing separator a recorder left behind', () => {
+    expect(callTitle('Shantanu Verma and Ivan Manfredi /')).toBe('Shantanu Verma and Ivan Manfredi')
+  })
+  it('names a row whose title is nothing but that separator, which renders blank otherwise', () => {
+    expect(callTitle(' / ')).toBe('Untitled call')
+  })
+  it('names a blank and a null title', () => {
+    expect(callTitle('')).toBe('Untitled call')
+    expect(callTitle(null)).toBe('Untitled call')
+  })
+  it('leaves a real title alone, including an internal slash', () => {
+    expect(callTitle('RISE DTC // Mace & Mattan')).toBe('RISE DTC // Mace & Mattan')
   })
 })

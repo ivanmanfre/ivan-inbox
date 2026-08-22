@@ -3,7 +3,7 @@ import { Takeover } from './Takeover'
 import { Failed } from './Surface'
 import { label } from '../../lib/labels'
 import {
-  actionItems, callTopics, fetchCallBody, hasOpenBusiness, people, splitBody,
+  actionItems, callTitle, callTopics, fetchCallBody, hasOpenBusiness, people, splitBody,
   type ActionItem, type CallRow,
 } from '../../lib/transcripts'
 
@@ -171,7 +171,7 @@ function CallQueue({ queue, id, onPick }: {
         return (
           <button type="button" key={q.id} className={`dw-qrow${q.id === id ? ' on' : ''}`}
             onClick={() => onPick(q.id)}>
-            <div className="dw-qrow-t">{q.title || 'Untitled call'}</div>
+            <div className="dw-qrow-t">{callTitle(q.title)}</div>
             <div className="dw-qrow-m">
               {callWhen(q.date)}
               {n > 0 && ` · ${n} action${n === 1 ? '' : 's'}`}
@@ -254,7 +254,7 @@ function CallBody({ row, queue, onPick }: {
   const main = (
     <div className="dw-main">
       <div className="dw-main-in cw-main">
-        <h3 className="cw-ttl">{row.title || 'Untitled call'}</h3>
+        <h3 className="cw-ttl">{callTitle(row.title)}</h3>
         <div className="cw-sub">
           {callWhen(row.date)}
           {row.duration_minutes ? ` · ${row.duration_minutes} minutes` : ''}

@@ -200,6 +200,19 @@ export function callTopics(row: Pick<CallRow, 'topics'>): CallTopic[] {
   return out
 }
 
+/**
+ * The row's own name for itself, made printable. Titles arrive from four
+ * different recorders and some of them carry a trailing separator the recorder
+ * left behind ("Shantanu Verma and Ivan Manfredi /"), and a few are blank or
+ * are nothing but that separator. The source strips the trailing slash and
+ * then prints whatever is left, which renders a row with no visible name at
+ * all. Measured on the live table: one row does exactly that.
+ */
+export function callTitle(title: string | null | undefined): string {
+  const s = (title ?? '').replace(/\s*[/|-]\s*$/, '').trim()
+  return s === '' ? 'Untitled call' : s
+}
+
 // ---------------------------------------------------------------------------
 // Who was on the call
 // ---------------------------------------------------------------------------
