@@ -1,0 +1,250 @@
+{
+  "capturedAt": "2026-08-22T15:31:03.049Z",
+  "base": "http://127.0.0.1:4191/",
+  "interceptedWrites": 0,
+  "shots": [
+    "02-content-calendar-1440x900-dark.jpg",
+    "02-content-calendar-hover-1440x900-dark.jpg",
+    "02-content-calendar-1440x900-light.jpg",
+    "02-content-calendar-390x844-dark.jpg",
+    "02-content-calendar-390x844-light.jpg",
+    "02-content-calendar-2560x1440-dark.jpg",
+    "02-content-calendar-2560x1440-light.jpg"
+  ],
+  "metrics": {
+    "02-content-calendar-1440x900-dark": {
+      "label": "Content lane, Calendar tab",
+      "viewport": "1440x900",
+      "theme": "dark",
+      "consoleErrorCount": 0,
+      "consoleErrors": [],
+      "pageHeight": 900,
+      "overflowCount": 2,
+      "overflow": [
+        {
+          "tag": "span",
+          "cls": "cal-rr-n",
+          "scrollWidth": 704,
+          "clientWidth": 260
+        },
+        {
+          "tag": "span",
+          "cls": "cal-rr-n",
+          "scrollWidth": 436,
+          "clientWidth": 260
+        }
+      ]
+    },
+    "02-content-calendar-1440x900-light": {
+      "label": "Content lane, Calendar tab",
+      "viewport": "1440x900",
+      "theme": "light",
+      "consoleErrorCount": 0,
+      "consoleErrors": [],
+      "pageHeight": 900,
+      "overflowCount": 2,
+      "overflow": [
+        {
+          "tag": "span",
+          "cls": "cal-rr-n",
+          "scrollWidth": 704,
+          "clientWidth": 260
+        },
+        {
+          "tag": "span",
+          "cls": "cal-rr-n",
+          "scrollWidth": 436,
+          "clientWidth": 260
+        }
+      ]
+    },
+    "02-content-calendar-390x844-dark": {
+      "label": "Content lane, Calendar tab",
+      "viewport": "390x844",
+      "theme": "dark",
+      "consoleErrorCount": 0,
+      "consoleErrors": [],
+      "pageHeight": 844,
+      "overflowCount": 10,
+      "overflow": [
+        {
+          "tag": "span",
+          "cls": "wb-rib-sync",
+          "scrollWidth": 85,
+          "clientWidth": 73
+        },
+        {
+          "tag": "span",
+          "cls": "wb-gear",
+          "scrollWidth": 38,
+          "clientWidth": 32
+        },
+        {
+          "tag": "div",
+          "cls": "wb-workseg",
+          "scrollWidth": 361,
+          "clientWidth": 158
+        },
+        {
+          "tag": "div",
+          "cls": "ct-cmd-scroll",
+          "scrollWidth": 774,
+          "clientWidth": 342
+        },
+        {
+          "tag": "div",
+          "cls": "ct-fpills",
+          "scrollWidth": 78,
+          "clientWidth": 74
+        },
+        {
+          "tag": "button",
+          "cls": "wb-fpill ct-fpill",
+          "scrollWidth": 78,
+          "clientWidth": 74
+        },
+        {
+          "tag": "span",
+          "cls": "cal-rr-n",
+          "scrollWidth": 704,
+          "clientWidth": 223
+        },
+        {
+          "tag": "span",
+          "cls": "cal-rr-n",
+          "scrollWidth": 436,
+          "clientWidth": 223
+        },
+        {
+          "tag": "div",
+          "cls": "ic bubble",
+          "scrollWidth": 30,
+          "clientWidth": 18
+        },
+        {
+          "tag": "div",
+          "cls": "ic bubble",
+          "scrollWidth": 29,
+          "clientWidth": 17
+        }
+      ]
+    },
+    "02-content-calendar-390x844-light": {
+      "label": "Content lane, Calendar tab",
+      "viewport": "390x844",
+      "theme": "light",
+      "consoleErrorCount": 0,
+      "consoleErrors": [],
+      "pageHeight": 844,
+      "overflowCount": 10,
+      "overflow": [
+        {
+          "tag": "span",
+          "cls": "wb-rib-sync",
+          "scrollWidth": 85,
+          "clientWidth": 73
+        },
+        {
+          "tag": "span",
+          "cls": "wb-gear",
+          "scrollWidth": 38,
+          "clientWidth": 32
+        },
+        {
+          "tag": "div",
+          "cls": "wb-workseg",
+          "scrollWidth": 361,
+          "clientWidth": 158
+        },
+        {
+          "tag": "div",
+          "cls": "ct-cmd-scroll",
+          "scrollWidth": 774,
+          "clientWidth": 342
+        },
+        {
+          "tag": "div",
+          "cls": "ct-fpills",
+          "scrollWidth": 78,
+          "clientWidth": 74
+        },
+        {
+          "tag": "button",
+          "cls": "wb-fpill ct-fpill",
+          "scrollWidth": 78,
+          "clientWidth": 74
+        },
+        {
+          "tag": "span",
+          "cls": "cal-rr-n",
+          "scrollWidth": 704,
+          "clientWidth": 223
+        },
+        {
+          "tag": "span",
+          "cls": "cal-rr-n",
+          "scrollWidth": 436,
+          "clientWidth": 223
+        },
+        {
+          "tag": "div",
+          "cls": "ic bubble",
+          "scrollWidth": 30,
+          "clientWidth": 18
+        },
+        {
+          "tag": "div",
+          "cls": "ic bubble",
+          "scrollWidth": 29,
+          "clientWidth": 17
+        }
+      ]
+    },
+    "02-content-calendar-2560x1440-dark": {
+      "label": "Content lane, Calendar tab",
+      "viewport": "2560x1440",
+      "theme": "dark",
+      "consoleErrorCount": 0,
+      "consoleErrors": [],
+      "pageHeight": 1440,
+      "overflowCount": 2,
+      "overflow": [
+        {
+          "tag": "span",
+          "cls": "cal-rr-n",
+          "scrollWidth": 704,
+          "clientWidth": 260
+        },
+        {
+          "tag": "span",
+          "cls": "cal-rr-n",
+          "scrollWidth": 436,
+          "clientWidth": 260
+        }
+      ]
+    },
+    "02-content-calendar-2560x1440-light": {
+      "label": "Content lane, Calendar tab",
+      "viewport": "2560x1440",
+      "theme": "light",
+      "consoleErrorCount": 0,
+      "consoleErrors": [],
+      "pageHeight": 1440,
+      "overflowCount": 2,
+      "overflow": [
+        {
+          "tag": "span",
+          "cls": "cal-rr-n",
+          "scrollWidth": 704,
+          "clientWidth": 260
+        },
+        {
+          "tag": "span",
+          "cls": "cal-rr-n",
+          "scrollWidth": 436,
+          "clientWidth": 260
+        }
+      ]
+    }
+  }
+}

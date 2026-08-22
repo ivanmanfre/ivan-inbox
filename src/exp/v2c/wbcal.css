@@ -92,6 +92,32 @@
 .wb.wb.wb .cal-chip-t,
 .wb.wb.wb .cal-chip-mv{ border:0 }
 
+/* AUDIT A5b — THE SAME BEVEL, FOUR MORE TIMES, ALL ON THIS SURFACE.
+   The rule above was written as if `.cal-chip-t` were the only offender. It was
+   not. A blind judge, comparing the repaired calendar against the old one and
+   told nothing about either, wrote that the winner still carried "two
+   contradictory chip languages in one viewport": a flat chip in the grid and,
+   six inches right, a rail row "bevelled with a highlight edge". It was reading
+   this exact defect.
+   Swept for it afterwards (evidence/audit-tools/bevel-scan.mjs walks every
+   workbench surface and reports any element whose computed border-style is
+   outset, inset, ridge or groove). Four visible offenders remained, and every
+   single one is on the calendar, which is the surface Ivan pointed at and
+   called "ugly 3d":
+     button.cal-navb   34x34   the month arrows
+     button.cal-today  64x34   the Today button
+     button.cal-rr-t  264x50   a rail row, the one the judge saw
+     button.cal-mv     99x28   "Give it a date"
+   None of them is styled by any rule in any sheet; they are bare <button>
+   elements inheriting the user-agent bevel, invisible while everything was
+   #1F1F1F and legible the moment the elevation ladder lightened what sits
+   underneath them. His complaint was literally true in CSS, in five places, and
+   the first pass found one. */
+.wb.wb.wb .cal-navb,
+.wb.wb.wb .cal-today,
+.wb.wb.wb .cal-rr-t,
+.wb.wb.wb .cal-mv{ border:0 }
+
 
 /* ==========================================================================
    2 · THE CHIP IS TOO TALL. Fix the height, cap the rows, design the overflow
@@ -587,32 +613,48 @@
    So the room is reclaimed by the CELL FLOOR, and the floor is allowed to
    stretch into whatever the viewport actually has:
 
-     chip   12 (clock line) + 30 (two 15px title lines) + 5 (padding) = 47 -> 48
-     floor  48 / 0.45 = 106.7 minimum -> 108
-     at 1440x900 the stretch resolves to ~112, which is 43%
+     chip   12 (clock line) + 30 (two 15px title lines) + 5 (padding) = 47
+     floor  47 / 0.45 = 104.4 minimum -> 108
+     at 1440x900 the floor is what binds and 47/108 is 43.5%
 
    Both numbers are re-measured in the browser after this change rather than
    trusted; the table is in evidence/phase3-calendar.md. */
 
 .wb{
-  --cal-chip-h:48px;
+  --cal-chip-h:47px;
   /* The floor, and it is still the EMPTY case: §3's reasoning stands, only its
      arithmetic moves, because one chip is now 48px rather than 32px.
-       1 chip   12 + 16 + 3 + 48 = 79, floor 108 with air
-       2 chips  + 3 + 48         = 130
-       2 + "+N" + 3 + 18         = 151
+       1 chip   12 + 16 + 3 + 47 = 78, floor 108 with air
+       2 chips  + 3 + 47         = 128
+       2 + "+N" + 3 + 18         = 149
      A .cal-day is a flex column in a grid row that sizes to its tallest cell,
      so a busy day still grows and takes its week with it. */
   --cal-cell-h:108px;
 }
 
-/* THE STRETCH. --cal-chrome-h is the MEASURED distance from the top of the
-   viewport to the top of the first week row (176 to the grid, 25.2 for the
-   weekday head), rounded up to leave a few pixels rather than land exactly on
-   the edge and provoke a scrollbar. `max()` means it is a floor and never a
-   ceiling: on a short window the cells sit at 108 and the page scrolls, which
-   is the honest outcome of a two-line chip and six rows, and on a tall one
-   they grow and the ratio only improves.
+/* THE STRETCH. --cal-chrome-h is everything the six week rows do NOT get, and
+   the first cut of it was 29px short in a way that only a screenshot caught:
+
+     first week row top            y = 201   (176 to the grid + 25 of weekday head)
+     THE FLOOR IS THE PLATE, NOT THE WINDOW  y = vh - 20
+                                             (--plate-gap, faithful.css:400)
+
+   🔴 THE APP DOES NOT END AT THE BOTTOM OF THE VIEWPORT. It ends 20px above it,
+   because the whole thing is a plate floating on the pistachio ground. Measured
+   against 100vh - 206 the sixth week ran to y 891 against a plate bottom of
+   880, the pane scrolled 71px, and the last row of the month was cut by the
+   frame — which is the EXACT defect the panel marked against the state it
+   preferred ("Y's last row is guillotined by the window edge ... on a month
+   view a real defect, not a nitpick"). Importing it while fixing the thing it
+   lost on would have been a poor trade.
+
+     201 (top) + 20 (plate) + 14 (slack, so the row lands inside the corner
+                                  radius rather than exactly on it) = 235
+
+   `max()` means it is a floor and never a ceiling: on a short window the cells
+   sit at 108 and the pane scrolls, which is the honest outcome of a two-line
+   chip and six rows, and on a tall one they grow and the ratio only improves
+   (2560x1440 measures ~197 and 24%).
 
    🔴 THE CONSTANT IS A MEASUREMENT, SO IT CAN GO STALE. If the app chrome above
    the calendar ever grows, this over-estimates the room and the grid runs a few
@@ -625,7 +667,7 @@
     min-height:max(var(--cal-cell-h), calc((100vh - var(--cal-chrome-h)) / 6 - var(--sp-1)));
   }
 }
-.wb{ --cal-chrome-h:206px }
+.wb{ --cal-chrome-h:235px }
 
 /* THE SECOND LINE, RESTORED. Back to the two-line clamp faithful.css:3922
    shipped, which is what the panel was comparing against, on a chip that is now
@@ -644,16 +686,20 @@
    than be centred against it as a single line was. */
 .wb.wb.wb .cal-chip-t{
   padding:2px 7px 3px;
-  gap:1px;
+  /* NO GAP, and the pixel it saves is the one that matters. 12 + 30 + 5 fills
+     the 47px face exactly, and 47/108 is 43.5% against a gate at 45%; a 1px gap
+     made it 48 and 44.4%, which passes on a good day and fails the first time a
+     line-height token moves by a pixel. */
+  gap:0;
   justify-content:flex-start;
 }
 
 /* ---- <=767px: the agenda row gets the second line too -------------------- */
 /* 7 of 13 titles ellipsed at 342px wide, so a wider chip did not save the
    single line, it only ellipsed the longer half of the month. The row grows to
-   the same 48px face, and the day group's padding grows with it so the RATIO
-   holds on the agenda as well: a 48px chip in a 14px-padded row measures 47.6%
-   of its cell and fails the gate it passes on the grid. */
+   the same 47px face, and the day group's padding grows with it so the RATIO
+   holds on the agenda as well: that chip in a 14px-padded row measures 47% of
+   its cell and fails the gate it passes on the grid. */
 @media (max-width:767px){
   .wb.wb.wb .cal-day{ padding:19px 0 }
   .wb.wb.wb .cal-chip{ min-height:var(--cal-chip-h); height:var(--cal-chip-h) }

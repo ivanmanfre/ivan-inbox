@@ -1,0 +1,71 @@
+{
+ "dark": {
+  "bodyFontSize": "16px",
+  "calDay": {
+   "minHeight": "111.667px",
+   "backgroundColor": "rgb(28, 28, 28)",
+   "borderRadius": "10px"
+  },
+  "calDayEmpty": {
+   "backgroundColor": "rgb(12, 12, 11)",
+   "boxShadow": "rgba(255, 255, 255, 0.07) 0px 0px 0px 1px inset"
+  },
+  "calChip": {
+   "height": "48px",
+   "backgroundColor": "rgb(39, 39, 39)"
+  },
+  "calChipT": {
+   "padding": "2px 7px 3px",
+   "rowGap": "1px",
+   "justifyContent": "flex-start",
+   "fontSize": "13px"
+  },
+  "calChipN": {
+   "fontSize": "13px",
+   "lineHeight": "15px",
+   "display": "flow-root",
+   "webkitLineClamp": "2",
+   "overflowWrap": "anywhere",
+   "whiteSpace": "normal"
+  },
+  "calCountWarnColor": "rgb(255, 159, 10)",
+  "calCountWarnBColor": "rgb(255, 159, 10)",
+  "sevAttention": "#ff9f0a",
+  "atBodySize": []
+ },
+ "light": {
+  "bodyFontSize": "16px",
+  "calDay": {
+   "minHeight": "111.667px",
+   "backgroundColor": "rgb(255, 255, 255)",
+   "borderRadius": "10px"
+  },
+  "calDayEmpty": {
+   "backgroundColor": "rgb(230, 230, 224)",
+   "boxShadow": "rgba(0, 0, 0, 0.09) 0px 0px 0px 1px inset"
+  },
+  "calChip": {
+   "height": "48px",
+   "backgroundColor": "rgb(234, 234, 228)"
+  },
+  "calChipT": {
+   "padding": "2px 7px 3px",
+   "rowGap": "1px",
+   "justifyContent": "flex-start",
+   "fontSize": "13px"
+  },
+  "calChipN": {
+   "fontSize": "13px",
+   "lineHeight": "15px",
+   "display": "flow-root",
+   "webkitLineClamp": "2",
+   "overflowWrap": "anywhere",
+   "whiteSpace": "normal"
+  },
+  "calCountWarnColor": "rgb(255, 159, 10)",
+  "calCountWarnBColor": "rgb(255, 159, 10)",
+  "sevAttention": "#ff9f0a",
+  "atBodySize": []
+ },
+ "attemptedWrites": 0
+}

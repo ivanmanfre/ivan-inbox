@@ -91,12 +91,20 @@ const MEASURE = () => {
         c.style.width = box.width + 'px'
         c.style.display = 'block'; c.style.webkitLineClamp = 'unset'; c.style.overflow = 'visible'
         document.body.appendChild(c)
-        const cap = t.clientHeight + 1
+        // 🔴 BOTH AXES, and the first cut of this got it wrong in a way that
+        // read as a pass. The one-line chip is `white-space:nowrap`, so its
+        // clone never overflows VERTICALLY at any length, and a height-only
+        // test reported all 703 characters as visible on the exact build whose
+        // 13 titles all ended in an ellipsis. The single line overflows
+        // sideways; the two-line clamp overflows downward.
+        const capH = t.clientHeight + 1
+        const capW = box.width + 1
+        const fits = () => c.scrollHeight <= capH && c.scrollWidth <= capW
         let lo = 0, hi = full.length
         while (lo < hi) {
           const mid = Math.ceil((lo + hi) / 2)
           c.textContent = full.slice(0, mid)
-          if (c.scrollHeight <= cap) lo = mid; else hi = mid - 1
+          if (fits()) lo = mid; else hi = mid - 1
         }
         c.remove()
         return { fits: lo, total: full.length }
