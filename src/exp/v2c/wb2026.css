@@ -393,10 +393,31 @@
   border:1px solid var(--accent-soft);
 }
 
-/* p4b. Same mark on the bulk bar's own button, so the client-facing act reads the
-   same in both places. It sits AFTER Delete on purpose (see CAP_ORDER in
-   BulkBar.tsx): adding a capability must never move a button that already
-   exists, and Delete was the only button a client review selection had. */
+/* p4b. THE CLIENT-FACING ROW, and the reason it is a row.
+   `.wb-bulk` is centered on the viewport (`left:50%` + translateX), so its
+   content moves whenever its width changes. Putting promote in the action group
+   widened the bar by 126.8px and slid Delete 63.4px left, straight out from
+   under the point a hand had learned. `flex-basis:100%` puts promote on its own
+   line: the bar's width is its widest ROW, the action row is wider than one
+   button, so the bar does not grow sideways and Delete does not move at all.
+   Order -1 keeps this line above the actions, so Delete moves UP into empty
+   space rather than the new button dropping into the space Delete vacated. */
+.wb.wb.wb .wb-bulk-client{
+  /* `width:0` is what stops this line from widening the bar. A wrapped flex
+     container still computes its max-content width as if every item sat on ONE
+     line, so `flex-basis:100%` alone left the button contributing its 119px and
+     Delete moved 66px. A DEFINITE width contributes zero; `min-width:100%` then
+     fills the line back out. Measured both ways in probe-ui.mjs. */
+  order:-1; width:0; min-width:100%;
+  /* And the COLUMN GAP still counted, for the same single-line reason: 12px of
+     gap moved Delete a further 5.8px. Negating it leaves the bar exactly the
+     width it was before this row existed. */
+  margin-right:calc(var(--sp-3) * -1);
+  display:flex; align-items:center;
+  padding-bottom:var(--sp-2); border-bottom:1px solid var(--surface3);
+}
+/* Same mark the row control carries, so the client-facing act reads the same
+   wherever it appears. */
 .wb.wb.wb .wb-bulk-b.client{
   background:var(--accent-soft); color:var(--accent-ui);
   border-color:var(--accent-soft);
