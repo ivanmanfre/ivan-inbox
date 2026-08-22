@@ -44,6 +44,8 @@ import { StrategyView } from './StrategyView'
 import type { OpenMagnet } from './ContentSections'
 import { DraftWindow, type QueueItem } from './DraftPane'
 import { MagnetWindow } from './MagnetWindow'
+import { CallWindow } from './CallWindow'
+import type { CallRow } from '../../lib/transcripts'
 import { ThreadPeer } from './ThreadPeer'
 import { DmsSurface } from './DmsSurface'
 import { ChatPane } from './ChatPane'
@@ -77,6 +79,11 @@ import './wbcal.css'
 // composes them; it reaches nothing outside `.dw`. See its header. Its scope and
 // wbcal's do not intersect, so the order of these last two is not load-bearing.
 import './dwsys.css'
+// The call reader (port #2). Last, and it reaches only `.cw` and `.cw-segs`;
+// it defines no token and forks no tier. It borrows the three-column frame,
+// the queue rail, the disclosure, `.wbkv` and `.wbb` rather than restating
+// them, so its scope does not intersect dwsys's or wbcal's.
+import './wbcall.css'
 
 // ============================================================================
 // Candidate v2c — WORKBENCH
@@ -170,6 +177,19 @@ export default function Shell() {
   const [openItem, setOpenItem] = useState<
     { kind: 'draft' | 'magnet'; id: string; queue: QueueItem[] } | null
   >(null)
+  // The call reader (dashboard port #2). Its own state rather than a third arm
+  // of `openItem`, because a call queue is a list of transcript ROWS and not of
+  // `QueueItem`: the reader draws its rail out of the same objects the Today
+  // list already fetched, so opening a call costs no request at all and the
+  // only read it can ever fire is the body, on demand, inside the fold.
+  //
+  // 🔴 IT IS NOT A PEER, and that is a departure from the audit's own
+  // recommendation. The reasoning is written out in full at the top of
+  // CallWindow.tsx; the short version is that this repo already deleted the
+  // `draft` peer for being an unreadable 420px column, a 39-minute transcript
+  // is longer than any draft, and a takeover costs neither a peer slot nor a
+  // rail job.
+  const [openCall, setOpenCall] = useState<{ id: string; queue: CallRow[] } | null>(null)
 
   // ---- data, mounted ONCE, here ----
   //
@@ -410,6 +430,13 @@ export default function Shell() {
     setOpenItem({ kind: 'magnet', id, queue: queue.map(toLmQueueItem) })
   }, [])
   const closeItem = useCallback(() => setOpenItem(null), [])
+  const openCallRow = useCallback((id: string, queue: CallRow[]) => {
+    setOpenCall({ id, queue })
+  }, [])
+  const closeCall = useCallback(() => setOpenCall(null), [])
+  const pickCall = useCallback((id: string) => {
+    setOpenCall(cur => (cur ? { ...cur, id } : cur))
+  }, [])
   // Move WITHIN the open queue. The queue object is carried across untouched.
   const pickItem = useCallback((id: string) => {
     setOpenItem(cur => (cur ? { ...cur, id } : cur))
@@ -560,6 +587,7 @@ export default function Shell() {
           opsDrafts={ops.drafts}
           onOpenThread={openThread}
           onOpenContent={l => { setLane(l as ContentLane); goJob('content') }}
+          onOpenCall={openCallRow}
         />
       )}
       {job === 'settings' && <SettingsScreen />}
@@ -621,6 +649,22 @@ export default function Shell() {
         />
   )
 
+  // Both reading windows in one expression, because each of the three canvas
+  // branches below has to mount them OUTSIDE `.wb-plate`: the plate is
+  // `overflow:hidden; position:relative` (faithful.css:382), so a fixed overlay
+  // rendered inside it would be clipped to the plate's rounded box.
+  const windows = (
+    <>
+      {itemWindow}
+      {openCall && (
+        <CallWindow
+          id={openCall.id} queue={openCall.queue}
+          onClose={closeCall} onPick={pickCall} mobile={mobile}
+        />
+      )}
+    </>
+  )
+
   // ---- mobile: one region at a time ----
   if (mobile) {
     if (plan.work === 'hidden' && plan.peers[0]) {
@@ -633,7 +677,7 @@ export default function Shell() {
               ⌘K and Escape are the way back out. */}
           <CommandLayer />
           {renderPeer(p)}
-          {itemWindow}
+          {windows}
         </div>
       )
     }
@@ -687,7 +731,7 @@ export default function Shell() {
           <div className={`wb-work wide${plan.narrow ? ' wb-narrow' : ''}`} data-wblane={lane}>{workSurface}</div>
           <MobileTabs job={job} counts={counts} sev={sev} chatLive={chat.busy} onJob={goJob} onChat={toggleChat} />
         </div>
-        {itemWindow}
+        {windows}
       </div>
     )
   }
@@ -735,7 +779,7 @@ export default function Shell() {
           ))}
         </div>
       </div>
-      {itemWindow}
+      {windows}
     </div>
   )
 }
