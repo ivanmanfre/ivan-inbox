@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import {
   buildCalendarItems, buildCalendarRail, dayKey, dayKeyOf, groupByDay, monthLabel, monthWeeks,
   publishAtForDay, shiftMonth, type CalendarItem,
@@ -8,6 +8,7 @@ import {
   type ScheduledQueueRow,
 } from '../../lib/content'
 import { useConfirm } from '../../components/ConfirmSheet'
+import { CalPopover } from './CalPopover'
 import { SectionHead } from './Surface'
 import { typeLabel } from './fmt'
 import type { OpenDraft } from './ContentList'
@@ -37,6 +38,23 @@ import type { OpenDraft } from './ContentList'
 // label moves inline. Nothing here reads a viewport — the workbench's rule.
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+/**
+ * How many chips a month cell paints before the rest collapse into "+N".
+ *
+ * It is a NUMBER OF ROWS, not a height budget, and the chip's own height is
+ * fixed against it (`--cal-chip-h` in wbcal.css). The arithmetic, at the 122px
+ * cell that file sets: 12px of padding, a 16px day-number row, a 3px gap, then
+ * two 32px chips and an 18px "+N" row with 3px gaps between them comes to
+ * 119px. Three rows is what the cell holds at the height it already had, and
+ * the "+N" row counts as one of them, which is FullCalendar's
+ * `dayMaxEventRows` semantics exactly: two posts render as two chips, three
+ * render as two chips and a "+1".
+ *
+ * It is exported so `wbcal.css §2` and this file cannot drift apart silently:
+ * the nth-child rule there is written against this number.
+ */
+export const VISIBLE_CHIPS = 2
 
 type Moving = { id: string; title: string; at: string | null; day: string }
 /** A chip mid-drag. `day` is where it started, so a drop on its own day is a no-op. */
@@ -74,6 +92,18 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
   const [err, setErr] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
   const confirm = useConfirm()
+  // THE OVERFLOW POPOVER. `el` is the "+N" button, which is both the anchor and
+  // the thing focus goes back to when the panel closes. `day` is the key, so
+  // the panel reads the SAME `byDay` map the grid drew from and cannot show a
+  // different set of posts than the cell it came out of.
+  const [more, setMore] = useState<{ day: string; el: HTMLElement } | null>(null)
+  const moreRef = useRef<HTMLElement | null>(null)
+  const closeMore = useCallback(() => {
+    setMore(m => { moreRef.current = m?.el ?? null; return null })
+    // Focus goes back to the control that opened the panel, or a keyboard
+    // operator is dropped at the top of the document.
+    queueMicrotask(() => moreRef.current?.focus())
+  }, [])
 
   const items = useMemo(() => buildCalendarItems(rows, queue), [rows, queue])
   const rail = useMemo(() => buildCalendarRail(rows), [rows])
@@ -216,6 +246,39 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
                         onDragEnd={() => { setDrag(null); setOver(null) }}
                       />
                     ))}
+                    {/* THE OVERFLOW. Every chip is in the DOM above; the GRID
+                        caps how many are painted and this is the rest of them.
+                        Two things about that split are deliberate:
+
+                        1. The cap is CSS (`wbcal.css §2`), not JS, because
+                           below 767px the same DOM is an agenda list with no
+                           height to run out of, and there the cap is switched
+                           off and every chip is drawn. Nothing here reads a
+                           viewport, which is the workbench's rule.
+                        2. Chip height is never what flexes. FullCalendar
+                           formalises the mechanic as `dayMaxEvents`: cap the
+                           ROWS a cell will paint, and the remainder goes into a
+                           "+N" that opens a popover. Notion Calendar ships the
+                           same merge behaviour. Growing the chip instead is how
+                           an 87px chip ended up in a 124px cell.
+
+                        Rendered whenever a day holds more than the cap, and
+                        hidden by CSS on the canvases where the cap is off, so
+                        the count is always the truth about the day rather than
+                        the truth about a viewport. */}
+                    {day.length > VISIBLE_CHIPS && (
+                      <button
+                        type="button" className="cal-more"
+                        aria-expanded={more?.day === k}
+                        aria-haspopup="dialog"
+                        onClick={e => {
+                          const el = e.currentTarget
+                          setMore(m => (m?.day === k ? null : { day: k, el }))
+                        }}
+                      >
+                        +{day.length - VISIBLE_CHIPS} more
+                      </button>
+                    )}
                   </div>
                 )
               })}
@@ -281,6 +344,37 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
       )}
       {!moving && err && <div className="ops-err cal-err">{err}</div>}
       {done && <div className="cal-done">{done}</div>}
+
+      {/* THE DAY PANEL. It is anchored to the "+N" button and told not to cover
+          the CELL, so it lands beside the day it lists rather than on top of
+          it. It lists the whole day, not just the hidden tail: a panel that
+          shows posts three to five and leaves one and two behind the panel is
+          a panel you have to close to finish reading. */}
+      {more && (
+        <CalPopover
+          id="cal-day-panel" role="dialog"
+          label={`Everything on ${longDay(more.day)}`}
+          anchorEl={more.el}
+          avoidEl={more.el.closest('.cal-day') as HTMLElement | null}
+          onDismiss={closeMore}
+        >
+          <div className="cal-pop-h">{longDay(more.day)}</div>
+          <div className="cal-pop-l">
+            {(byDay.get(more.day) ?? []).map(it => (
+              <button
+                key={it.id} type="button" className="cal-pop-r"
+                data-st={it.stage} data-src={it.source}
+                disabled={it.source === 'queue'}
+                onClick={() => { closeMore(); onOpen(it.id, it.title, walk) }}
+              >
+                <span className="cal-pop-c">{hhmm(it.stage === 'published' ? (it.postedAt ?? it.at) : it.at)}</span>
+                <span className="cal-pop-n">{it.title}</span>
+                <span className="cal-pop-s">{STAGE_LABEL[it.stage]}</span>
+              </button>
+            ))}
+          </div>
+        </CalPopover>
+      )}
     </div>
   )
 }
