@@ -435,6 +435,7 @@ export default function Shell() {
           setLane={setLane}
           openId={openItem?.kind === 'draft' ? openItem.id : null}
           onOpen={openDraft}
+          laneCounts={glance.contentReviewByLane}
         />
       )}
       {/* Magnets shares the SAME lane state as Content — switching lane in one
