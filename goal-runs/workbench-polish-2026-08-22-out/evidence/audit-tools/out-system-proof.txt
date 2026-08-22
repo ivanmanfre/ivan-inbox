@@ -12,15 +12,15 @@ INVERSION SIGNS (must match across themes where the relationship is intended):
   canvas_vs_surface1 (ground vs card): child LIGHTER
   surface1_vs_surface2 (card vs raised tint): child LIGHTER
   surface2_vs_surface3 (raised tint vs edge): child LIGHTER
-RADII: --r-xs=  --r-ctl=12px  --r-card=20px  --r-pill=999px  --r-chip=8px  --r-hero=20px  --r-sm=12px  --r-md=20px  --r-lg=20px  --plate-r=40px
+RADII: --r-xs=6px  --r-ctl=10px  --r-card=14px  --r-pill=999px  --r-chip=6px  --r-hero=14px  --r-sm=10px  --r-md=14px  --r-lg=14px  --plate-r=40px
 CONTROLS:
-  .wbb-primary  h=30  pad=0px/0px  r=12px  fs=16px/25.6px  fw=400  bg=rgb(239, 239, 239)  fg=rgb(0, 0, 0)  shadow=none
-  .wbb-secondary  h=30  pad=0px/0px  r=12px  fs=16px/25.6px  fw=400  bg=rgb(239, 239, 239)  fg=rgb(0, 0, 0)  shadow=none
-  .wbb-quiet  h=30  pad=0px/0px  r=12px  fs=16px/25.6px  fw=400  bg=rgb(239, 239, 239)  fg=rgb(0, 0, 0)  shadow=none
-  .wbb-danger  h=30  pad=0px/0px  r=12px  fs=16px/25.6px  fw=400  bg=rgb(239, 239, 239)  fg=rgb(0, 0, 0)  shadow=none
-  .wbb-sm  h=30  pad=0px/0px  r=12px  fs=16px/25.6px  fw=400  bg=rgb(239, 239, 239)  fg=rgb(0, 0, 0)  shadow=none
-  .wbb-lg  h=30  pad=0px/0px  r=12px  fs=16px/25.6px  fw=400  bg=rgb(239, 239, 239)  fg=rgb(0, 0, 0)  shadow=none
-  .wbb-disabled  h=29.5938px  pad=0px/0px  r=12px  fs=16px/25.6px  fw=400  bg=rgba(239, 239, 239, 0.3)  fg=rgba(16, 16, 16, 0.3)  shadow=none
+  .wbb-primary  h=30  pad=0px/0px  r=10px  fs=16px/25.6px  fw=400  bg=rgb(239, 239, 239)  fg=rgb(0, 0, 0)  shadow=none
+  .wbb-secondary  h=30  pad=0px/0px  r=10px  fs=16px/25.6px  fw=400  bg=rgb(239, 239, 239)  fg=rgb(0, 0, 0)  shadow=none
+  .wbb-quiet  h=30  pad=0px/0px  r=10px  fs=16px/25.6px  fw=400  bg=rgb(239, 239, 239)  fg=rgb(0, 0, 0)  shadow=none
+  .wbb-danger  h=30  pad=0px/0px  r=10px  fs=16px/25.6px  fw=400  bg=rgb(239, 239, 239)  fg=rgb(0, 0, 0)  shadow=none
+  .wbb-sm  h=30  pad=0px/0px  r=10px  fs=16px/25.6px  fw=400  bg=rgb(239, 239, 239)  fg=rgb(0, 0, 0)  shadow=none
+  .wbb-lg  h=30  pad=0px/0px  r=10px  fs=16px/25.6px  fw=400  bg=rgb(239, 239, 239)  fg=rgb(0, 0, 0)  shadow=none
+  .wbb-disabled  h=29.5938px  pad=0px/0px  r=10px  fs=16px/25.6px  fw=400  bg=rgba(239, 239, 239, 0.3)  fg=rgba(16, 16, 16, 0.3)  shadow=none
 KV: {"wbkv":{"display":"block","grid-template-columns":"none","column-gap":"normal","row-gap":"normal","align-items":"normal"},"wbkv-k":{"font-size":"16px","font-weight":"400","color":"rgb(255, 255, 255)","text-transform":"none","letter-spacing":"normal","border-top-width":"0px","background-color":"rgba(0, 0, 0, 0)","line-height":"25.6px"},"wbkv-v":{"font-size":"16px","font-weight":"400","color":"rgb(255, 255, 255)","font-variant-numeric":"tabular-nums","border-top-width":"0px","background-color":"rgba(0, 0, 0, 0)","line-height":"25.6px"}}
 MOTION: {"wbb transition":{"transition-property":"none","transition-duration":"0s","transition-timing-function":"ease"},"tokens":{"--wbs-dur-ctl":"","--wbs-dur-overlay":"","--wbs-dur-commit":"","--wbs-ease-ctl":"","--wbs-ease-overlay":""}}
 CONTRAST:
@@ -54,15 +54,15 @@ INVERSION SIGNS (must match across themes where the relationship is intended):
   canvas_vs_surface1 (ground vs card): child LIGHTER
   surface1_vs_surface2 (card vs raised tint): child DARKER
   surface2_vs_surface3 (raised tint vs edge): child DARKER
-RADII: --r-xs=  --r-ctl=12px  --r-card=20px  --r-pill=999px  --r-chip=8px  --r-hero=20px  --r-sm=12px  --r-md=20px  --r-lg=20px  --plate-r=40px
+RADII: --r-xs=6px  --r-ctl=10px  --r-card=14px  --r-pill=999px  --r-chip=6px  --r-hero=14px  --r-sm=10px  --r-md=14px  --r-lg=14px  --plate-r=40px
 CONTROLS:
-  .wbb-primary  h=30  pad=0px/0px  r=12px  fs=16px/25.6px  fw=400  bg=rgb(239, 239, 239)  fg=rgb(0, 0, 0)  shadow=none
-  .wbb-secondary  h=30  pad=0px/0px  r=12px  fs=16px/25.6px  fw=400  bg=rgb(239, 239, 239)  fg=rgb(0, 0, 0)  shadow=none
-  .wbb-quiet  h=30  pad=0px/0px  r=12px  fs=16px/25.6px  fw=400  bg=rgb(239, 239, 239)  fg=rgb(0, 0, 0)  shadow=none
-  .wbb-danger  h=30  pad=0px/0px  r=12px  fs=16px/25.6px  fw=400  bg=rgb(239, 239, 239)  fg=rgb(0, 0, 0)  shadow=none
-  .wbb-sm  h=30  pad=0px/0px  r=12px  fs=16px/25.6px  fw=400  bg=rgb(239, 239, 239)  fg=rgb(0, 0, 0)  shadow=none
-  .wbb-lg  h=30  pad=0px/0px  r=12px  fs=16px/25.6px  fw=400  bg=rgb(239, 239, 239)  fg=rgb(0, 0, 0)  shadow=none
-  .wbb-disabled  h=29.5938px  pad=0px/0px  r=12px  fs=16px/25.6px  fw=400  bg=rgba(239, 239, 239, 0.3)  fg=rgba(16, 16, 16, 0.3)  shadow=none
+  .wbb-primary  h=30  pad=0px/0px  r=10px  fs=16px/25.6px  fw=400  bg=rgb(239, 239, 239)  fg=rgb(0, 0, 0)  shadow=none
+  .wbb-secondary  h=30  pad=0px/0px  r=10px  fs=16px/25.6px  fw=400  bg=rgb(239, 239, 239)  fg=rgb(0, 0, 0)  shadow=none
+  .wbb-quiet  h=30  pad=0px/0px  r=10px  fs=16px/25.6px  fw=400  bg=rgb(239, 239, 239)  fg=rgb(0, 0, 0)  shadow=none
+  .wbb-danger  h=30  pad=0px/0px  r=10px  fs=16px/25.6px  fw=400  bg=rgb(239, 239, 239)  fg=rgb(0, 0, 0)  shadow=none
+  .wbb-sm  h=30  pad=0px/0px  r=10px  fs=16px/25.6px  fw=400  bg=rgb(239, 239, 239)  fg=rgb(0, 0, 0)  shadow=none
+  .wbb-lg  h=30  pad=0px/0px  r=10px  fs=16px/25.6px  fw=400  bg=rgb(239, 239, 239)  fg=rgb(0, 0, 0)  shadow=none
+  .wbb-disabled  h=29.5938px  pad=0px/0px  r=10px  fs=16px/25.6px  fw=400  bg=rgba(239, 239, 239, 0.3)  fg=rgba(16, 16, 16, 0.3)  shadow=none
 KV: {"wbkv":{"display":"block","grid-template-columns":"none","column-gap":"normal","row-gap":"normal","align-items":"normal"},"wbkv-k":{"font-size":"16px","font-weight":"400","color":"rgb(19, 19, 19)","text-transform":"none","letter-spacing":"normal","border-top-width":"0px","background-color":"rgba(0, 0, 0, 0)","line-height":"25.6px"},"wbkv-v":{"font-size":"16px","font-weight":"400","color":"rgb(19, 19, 19)","font-variant-numeric":"tabular-nums","border-top-width":"0px","background-color":"rgba(0, 0, 0, 0)","line-height":"25.6px"}}
 MOTION: {"wbb transition":{"transition-property":"none","transition-duration":"0s","transition-timing-function":"ease"},"tokens":{"--wbs-dur-ctl":"","--wbs-dur-overlay":"","--wbs-dur-commit":"","--wbs-ease-ctl":"","--wbs-ease-overlay":""}}
 CONTRAST:
@@ -83,22 +83,30 @@ CONTRAST:
   PASS  18.58:1 (min 4.5)  .wbkv-v on --e2  fg=rgb(19, 19, 19) bg=rgb(255, 255, 255)
   WORST CASE light: 5.35:1
 
+LIVE RADIUS CENSUS (6 surfaces, distinct computed values):
+  4px      x11    button.wb-selmark
+  6px      x49    div.ct-anchor, img.ct-thumb, span.ct-chip.ct-st.ct-chip-ok, button.wb-stat.wb-stat-0
+  10px     x123   button.wb-rail-minbtn, div.ct-fsearch, input.ct-fsearch-in, div.search
+  14px     x38    div.dd-card, button.sa-bar, div.sa-row, div.td-mast
+  40px     x6     div.wb-plate
+  999px    x193   span.avatar-me, div.wb-rj, span.wb-rj-n, div.wb-rj.on
+
 REDUCED MOTION: {"transition-duration":"0s","animation-duration":"0s","matchesReduce":true}
 
 LIVE CALENDAR (dark): {
  "div.cal-day": {
   "background-color": "rgb(255, 255, 255)",
-  "border-radius": "12px",
+  "border-radius": "10px",
   "box-shadow": "rgba(0, 0, 0, 0.09) 0px 0px 0px 1px inset"
  },
  "div.cal-day-empty": {
   "background-color": "rgba(0, 0, 0, 0)",
-  "border-radius": "12px",
+  "border-radius": "10px",
   "box-shadow": "rgba(0, 0, 0, 0.09) 0px 0px 0px 1px inset"
  },
  "div.cal-chip": {
   "background-color": "rgb(255, 255, 255)",
-  "border-radius": "12px",
+  "border-radius": "10px",
   "box-shadow": "none",
   "border-left-width": "3px"
  },

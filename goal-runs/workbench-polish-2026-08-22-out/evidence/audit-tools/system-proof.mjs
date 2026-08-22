@@ -258,6 +258,49 @@ out.reducedMotion = await pRM.evaluate(() => {
   }
 })
 
+// live radius census across six surfaces: every distinct non-zero computed
+// border-radius actually painted, with an example selector per value.
+const CENSUS = () => {
+  const sel = el => {
+    const t = el.tagName.toLowerCase()
+    const c = (typeof el.className === 'string' ? el.className : '').split(/\s+/).filter(Boolean).slice(0, 3).join('.')
+    return c ? `${t}.${c}` : t
+  }
+  const hist = {}
+  for (const el of document.querySelectorAll('.wb *')) {
+    const r = el.getBoundingClientRect()
+    if (r.width < 6 || r.height < 6) continue
+    const cs = getComputedStyle(el)
+    if (cs.visibility === 'hidden' || cs.display === 'none') continue
+    const v = cs.borderTopLeftRadius
+    if (!v || v === '0px') continue
+    hist[v] = hist[v] || { n: 0, eg: [] }
+    hist[v].n++
+    if (hist[v].eg.length < 3 && !hist[v].eg.includes(sel(el))) hist[v].eg.push(sel(el))
+  }
+  return hist
+}
+const radiusCensus = {}
+for (const [name, hash, click] of [
+  ['content-list', '#exp/v2/content', null],
+  ['content-calendar', '#exp/v2/content', 'Calendar'],
+  ['dms-list', '#exp/v2/dms', null],
+  ['ops', '#exp/v2/ops', null],
+  ['today', '#exp/v2/today', null],
+  ['settings', '#exp/v2/settings', null],
+]) {
+  await page.goto(BASE + hash, { waitUntil: 'networkidle' })
+  await page.waitForTimeout(1600)
+  if (click) { try { await page.getByText(click, { exact: true }).first().click({ timeout: 5000 }); await page.waitForTimeout(1600) } catch { } }
+  const h = await page.evaluate(CENSUS)
+  for (const [v, d] of Object.entries(h)) {
+    radiusCensus[v] = radiusCensus[v] || { n: 0, eg: [] }
+    radiusCensus[v].n += d.n
+    for (const e of d.eg) if (radiusCensus[v].eg.length < 4 && !radiusCensus[v].eg.includes(e)) radiusCensus[v].eg.push(e)
+  }
+}
+out.radiusCensus = radiusCensus
+
 // real-UI spot checks, dark: the four named collisions, measured on shipped markup
 await page.goto(BASE + '#exp/v2/content', { waitUntil: 'networkidle' })
 await page.waitForTimeout(1500)
@@ -309,6 +352,10 @@ for (const theme of ['dark', 'light']) {
     p(`  ${ok}  ${r.toFixed(2)}:1 (min ${min})  ${label}  fg=${fg} bg=${bg}`)
   }
   p(`  WORST CASE ${theme}: ${worst.toFixed(2)}:1`)
+}
+p('\nLIVE RADIUS CENSUS (6 surfaces, distinct computed values):')
+for (const [v, d] of Object.entries(out.radiusCensus).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]))) {
+  p(`  ${v.padEnd(8)} x${String(d.n).padEnd(5)} ${d.eg.join(', ')}`)
 }
 p('\nREDUCED MOTION: ' + JSON.stringify(out.reducedMotion))
 p('\nLIVE CALENDAR (dark): ' + JSON.stringify(out.liveCalendar, null, 1))
