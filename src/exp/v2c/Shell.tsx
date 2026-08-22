@@ -8,7 +8,7 @@ import { useInbox } from '../../hooks/useInbox'
 import { useOps } from '../../hooks/useOps'
 import { pendingOps } from '../../lib/ops'
 import { inboxWaitingCount, type Filter, type Status } from '../../lib/inbox'
-import type { ContentDraft, ContentLane } from '../../lib/content'
+import { CONTENT_LANES, LANE_LABEL, type ContentDraft, type ContentLane } from '../../lib/content'
 import type { Resource } from '../../lib/styles'
 
 // The list row -> queue row projection. Only what the window's rail draws: no
@@ -50,7 +50,7 @@ import { ChatPane } from './ChatPane'
 import { OpsBoard } from './OpsBoard'
 import { Failed, relAge } from './Surface'
 import { useChat } from './useChat'
-import { useContentBadge } from './useContentBadge'
+import { useGlanceCounts } from './useGlanceCounts'
 import { hasMock } from './mock'
 import { parseWbHash, wbHash } from './route'
 import {
@@ -175,7 +175,7 @@ export default function Shell() {
   const inbox = useInbox()
   const ops = useOps()
   const chat = useChat()
-  const badge = useContentBadge()
+  const glance = useGlanceCounts()
 
   const forceFail = hasMock('fetch-error')
   const inboxError = inbox.error ?? (forceFail ? 'PostgREST returned 500 for inbox_messages_v' : null)
@@ -191,7 +191,34 @@ export default function Shell() {
     // and the InboxHead breakdown (lib/inbox.ts, inboxBreakdown).
     dms: inboxWaitingCount(inbox.threads),
     ops: opsPend.length,
-    content: badge.count,
+    // EVERY LANE, not just Ivan's. The rail row names a JOB, and the job holds
+    // all three lanes; scoping the number to whichever lane happened to be
+    // selected made the rail read 2 while 93 client drafts sat at the same
+    // decision stage (measured 2026-08-22). The lane pills inside Content carry
+    // the split, so the 95 is never a number whose parts are unreachable.
+    content: glance.contentReview,
+    // Magnets had no badge at all, on the stated ground that its lane is
+    // read-only here. That reasoning covered CLIENT rows; it never covered
+    // Ivan's own, and 10 of his lead magnets sit at review. The count is what
+    // the surface shows at its decision stage, both lanes, same as Content.
+    magnets: glance.magnetsReview,
+    // Styles is a shared registry and Strategy is a document. Neither has a
+    // queue, so neither gets a number: a count of zero is not rendered, and a
+    // permanently blank count slot is the exact defect the port audit found on
+    // 17 of the old sidebar's 21 rows.
+  }
+  // Every count's predicate, in one sentence, carried onto the row it belongs
+  // to. Derived from the same object the numerals come from, so a note can
+  // never drift away from the number it describes.
+  const laneSplit = CONTENT_LANES
+    .map(l => `${LANE_LABEL[l]} ${glance.contentReviewByLane[l]}`)
+    .join(' · ')
+  const countNote = {
+    dms: 'threads with an unanswered reply, a draft to approve, or flagged for a manual reply',
+    ops: 'ops drafts you have not approved or skipped',
+    content: `drafts at review, every lane. ${laneSplit}`
+      + (glance.contentReviewOther > 0 ? ` · other lanes ${glance.contentReviewOther}` : ''),
+    magnets: 'lead magnets at review, every lane',
   }
   const sev = {
     // Only a real problem takes a severity tier. A backlog of approvals is work,
@@ -411,10 +438,10 @@ export default function Shell() {
         />
       )}
       {/* Magnets shares the SAME lane state as Content — switching lane in one
-          tab is reflected in the other. No badge on this job on purpose:
-          useContentBadge counts carousel_drafts rows at review (posts waiting
-          on Ivan); the LM lane is read-only here, so a count would advertise
-          an action this surface does not offer. */}
+          tab is reflected in the other. It carries a badge now (see `counts`):
+          the old "no badge, the LM lane is read-only here" note was written
+          about CLIENT rows and read as though it covered Ivan's own, which it
+          never did. */}
       {job === 'magnets' && (
         <MagnetsList lane={lane} setLane={setLane} onOpen={openMagnet} />
       )}
@@ -546,6 +573,7 @@ export default function Shell() {
         <Rail
           job={job}
           counts={counts}
+          countNote={countNote}
           sev={sev}
           chatOn={hasChat(peers)}
           chatLive={chat.busy}
