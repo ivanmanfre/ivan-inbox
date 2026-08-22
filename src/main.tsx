@@ -24,11 +24,22 @@ if (localStorage.getItem('inbox-density') === 'compact') {
 // 'b' and 'c' are ever written. Same persistence pattern as inbox-theme and
 // inbox-density above: one key, read once at boot.
 //
-// A STAYS THE DEFAULT. This is his taste call, made on the ballot, not ours.
+// B IS THE DEFAULT AS OF 2026-08-22, and the reason is that Ivan made the call
+// and handed the pick back: "you choose".
+//
+// Judged off the rendered arms, not the description. A is 20px of pistachio on
+// every side with a 40px corner radius, which reads as a mat the app is resting
+// on, and that 40px radius on a full-window plate is the single most dated
+// geometry left in the app. C cuts the frame to a hairline and the pistachio
+// stops reading as a deliberate frame at all, which loses the identity that
+// locked fork 1 says stays. B is 10px and 22px: the green is unmistakably still
+// the frame, and it stops being furniture.
+//
+// He can still overrule it in Settings, and picking A is a real write now
+// rather than the absence of one, so the three states stay distinguishable.
 const frame = localStorage.getItem('inbox-frame')
-if (frame === 'b' || frame === 'c') {
-  document.documentElement.dataset.frame = frame
-}
+document.documentElement.dataset.frame =
+  frame === 'a' || frame === 'b' || frame === 'c' ? frame : 'b'
 
 // A new worker skips waiting and claims this page immediately (src/sw.ts) -- but a
 // CLAIMED page is still running the bundle it loaded with. Nothing re-fetches

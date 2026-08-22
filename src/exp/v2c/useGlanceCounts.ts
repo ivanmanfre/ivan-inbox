@@ -44,11 +44,23 @@ import {
 // "TEMP - Add Diagram Columns (delete me)", "TEMP - Create Table v2" and
 // "Test Cookie Download". Those are corpses, not alarms.
 //
-// The window is 14 days. The answer is INSENSITIVE to the exact value: the
-// observed ages jump from 9 days straight to 72, so anything between 10 and 71
-// selects the same rows. 14 is inside that gap and is not a derived constant
-// pretending to be precise.
-const ALERT_WINDOW_DAYS = 14
+// The window was 14 days, on the reasoning that the observed ages jumped from 9
+// straight to 72 so any value in that gap picked the same rows.
+//
+// 🔴 THAT REASONING WAS MEASURED ONCE AND THE GAP CLOSED THE NEXT DAY. Shipped
+// it, and Ivan's verdict on the result was "u ported some irrelevant workflows
+// orange alert". Re-probed after he said it: the 14-day set holds
+// "TEMP task-4 manual run — [Source] Competitor -> Idea" and
+// "TEMP task-3 backfill — [Source] Competitors Scraping", both one-shot manual
+// runs from 11 days ago. A constant chosen to sit in a gap is only as good as
+// the gap, and a gap in one day's data is not a property of the system.
+//
+// 7 days, and the rule behind it is durable rather than fitted: an automation
+// that has not run in a week is not currently failing, it has stopped, and a
+// thing that has stopped is an Ops question, not an alarm on the rail he lives
+// on. Everything older is still counted and still stated, in words, in the
+// tooltip.
+const ALERT_WINDOW_DAYS = 7
 
 // 🔴 error_count_24h IS STALE AND IS NOT READ HERE. Rows whose last execution
 // was 115 to 167 days ago still report error_count_24h of 2 and 13, with
@@ -80,6 +92,9 @@ export type GlanceCounts = {
   // What the window left out, stated rather than hidden.
   olderErrored: number
   olderStalled: number
+  // Errored inside the window but already acknowledged, so excluded from the
+  // alarm and named in its tooltip instead.
+  acknowledged: number
   // TRUE when a count read came back clamped, i.e. the number on screen is a
   // floor rather than the answer. PostgREST clamps a select at 1,000 rows here
   // whatever `limit` says, so the count header and the row length are compared
@@ -97,6 +112,7 @@ const EMPTY: GlanceCounts = {
   alerts: [],
   olderErrored: 0,
   olderStalled: 0,
+  acknowledged: 0,
   clamped: false,
   error: null,
   loadedAt: null,
@@ -138,7 +154,7 @@ export function useGlanceCounts(): GlanceCounts {
     const draftRows = (drafts.data ?? []) as { client_id: string | null }[]
     const { byLane, other } = splitReviewByLane(draftRows)
 
-    const { alerts, olderErrored, olderStalled } = mergeAlerts(
+    const { alerts, olderErrored, olderStalled, acknowledged } = mergeAlerts(
       wf.data ?? [], jobs.data ?? [], cut,
     )
 
@@ -154,6 +170,7 @@ export function useGlanceCounts(): GlanceCounts {
       alerts,
       olderErrored,
       olderStalled,
+      acknowledged,
       clamped,
       error: null,
       loadedAt: new Date().toISOString(),

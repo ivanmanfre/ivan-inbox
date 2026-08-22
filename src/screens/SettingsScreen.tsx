@@ -22,9 +22,12 @@ function currentDensity(): Density {
   return document.documentElement.dataset.density === 'compact' ? 'compact' : 'comfortable'
 }
 
+// Mirrors the boot read in main.tsx: B is the default since 2026-08-22, so an
+// absent attribute is B and only an explicit 'a' is arm A. These two functions
+// have to agree or the segmented control lights the wrong cell on first paint.
 function currentFrame(): Frame {
   const f = document.documentElement.dataset.frame
-  return f === 'b' || f === 'c' ? f : 'a'
+  return f === 'a' || f === 'c' ? f : 'b'
 }
 
 function isIOS(): boolean {
@@ -74,14 +77,14 @@ function WorkbenchAppearance() {
     setDensity(next)
   }
 
-  // Frame geometry. Arm A is the shipped state and carries no CSS
-  // declarations (wbcal.css §5), so picking it REMOVES the attribute rather
-  // than writing 'a' — writing it would be harmless today but would leave a
-  // dead selector to keep in step, and removing it also restores
-  // faithful.css:157's own 24/8 override below 767px.
+  // Frame geometry. Arm A used to be the default and was expressed by REMOVING
+  // the attribute. Since B became the default (2026-08-22, main.tsx) the
+  // attribute is always written: an absent one now means B, so deleting it to
+  // mean A would silently select the wrong arm.
+  // `[data-frame='a']` is an empty rule in wbcal.css §5, so writing it restores
+  // faithful.css:45 exactly, which is what A is.
   function setFrameAndPersist(next: Frame) {
-    if (next === 'a') delete document.documentElement.dataset.frame
-    else document.documentElement.dataset.frame = next
+    document.documentElement.dataset.frame = next
     localStorage.setItem('inbox-frame', next)
     setFrame(next)
   }
@@ -101,7 +104,7 @@ function WorkbenchAppearance() {
       <div className="grow">
         <div className="gtxt">
           <div className="gt">Frame</div>
-          <div className="gs">How much green border wraps the work area. Wide is the current one.</div>
+          <div className="gs">How much green border wraps the work area. Tight is the current one.</div>
         </div>
         <div className="seg theme">
           <div className={'sg' + (frame === 'a' ? ' on' : '')} onClick={() => setFrameAndPersist('a')}>Wide</div>

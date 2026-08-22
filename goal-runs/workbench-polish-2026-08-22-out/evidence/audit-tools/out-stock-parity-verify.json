@@ -73,9 +73,9 @@
     "pre": "Sends"
    },
    "control_cur_vs_cur": {
-    "differing": 0,
+    "differing": 5844,
     "total": 1296000,
-    "pct": 0
+    "pct": 0.45
    },
    "gate_pre_vs_cur": {
     "differing": 0,
@@ -94,7 +94,7 @@
     "pct": 0
    },
    "gate_pre_vs_cur": {
-    "differing": 410,
+    "differing": 385,
     "total": 1296000,
     "pct": 0.03
    }

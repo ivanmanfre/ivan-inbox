@@ -109,19 +109,11 @@ export function rollup(counts: Counts): { n: number; note: string } {
   }
 }
 
-// A count of zero is not rendered. Silence is information, and a permanently
-// blank slot is the defect the port audit found on 17 of the old sidebar's 21
-// rows.
-export function Rollup({ counts, compact }: { counts: Counts; compact?: boolean }) {
-  const { n, note } = rollup(counts)
-  if (n === 0) return null
-  return (
-    <span className="wb-rollup" title={note}>
-      <b className="wb-rollup-n">{n}</b>
-      {!compact && <span className="wb-rollup-l">waiting on you</span>}
-    </span>
-  )
-}
+// The `Rollup` component that rendered this on the rail was removed 2026-08-22,
+// see the note at its old mount point. `rollup()` itself stays: it is a pure
+// function with tests, and the arithmetic is still the right arithmetic if a
+// total is ever wanted somewhere it reads as a total rather than as a personal
+// queue. Nothing calls it today, and that is deliberate rather than an oversight.
 
 export function Rail({ job, counts, countNote, health, sev, chatOn, chatLive, onJob, onChat, loadedAt, stale, onRefresh, collapsed, onToggle }: {
   job: Job
@@ -190,7 +182,10 @@ export function Rail({ job, counts, countNote, health, sev, chatOn, chatLive, on
     <nav className={`wb-rail${collapsed ? ' min' : ''}`}>
       <div className="wb-rail-top">
         {!collapsed && <span className="avatar-me">IM</span>}
-        {!collapsed && <span className="wb-rail-ttl">Workbench</span>}
+        {/* The word "Workbench" sat here until 2026-08-22. Ivan: "why does it
+            says workbench delete that". He is the only person who will ever
+            open this app, on a tab he keeps open for days. A product name is
+            for someone deciding whether to use the thing, and he decided. */}
         {onToggle && (
           <button
             type="button" className="wb-rail-minbtn"
@@ -199,19 +194,22 @@ export function Rail({ job, counts, countNote, health, sev, chatOn, chatLive, on
             onClick={onToggle}
           >{collapsed ? '»' : '«'}</button>
         )}
-        {/* The roll-up sits in the frame, above the rows it sums, which is
-            where the old dashboard puts its own (`PENDING <n>`, top bar). On
-            the collapsed rail it keeps the numeral, drops the words, and goes
-            BELOW the toggle: side by side, 44px of usable width could not hold
-            both and the toggle was the one pushed out of the rail entirely
-            (measured at x=73 in a 64px rail, i.e. under the working column and
-            unclickable). The stack is set in wbsys.css §8.2. */}
-        {collapsed && <Rollup counts={counts} compact />}
       </div>
 
-      {!collapsed && (
-        <div className="wb-rail-roll"><Rollup counts={counts} /></div>
-      )}
+      {/* THE "117 WAITING ON YOU" ROLL-UP IS GONE. Ivan, on first sight of it:
+          "118 waiting on you wtf is that".
+
+          It was arithmetically honest and that was the whole problem. It summed
+          the rail's own rows, so it read 118 by adding 95 content drafts (2 his,
+          54 Mattan's, 39 Davorin's) to 10 DM threads to 12 magnets. Three
+          clients, three kinds of object, one numeral, presented as a personal
+          queue. Nothing is waiting on him 118 times, and a number that large
+          above a rail whose rows read 95 / 10 / 12 teaches him to distrust all
+          four.
+
+          The per-row counts stay. They are the part that was actually missing
+          (the Content badge read 2 while 93 client drafts sat at the same
+          decision stage) and each one names a real, workable list. */}
 
       <div className="wb-rail-jobs">
         {before.map(row)}
