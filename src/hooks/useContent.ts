@@ -8,6 +8,7 @@ import {
   type ScheduledQueueRow,
 } from '../lib/content'
 import { fetchAlerts, fetchDailySummaries, type AgentSummary } from '../lib/agent'
+import { fetchClientIdeas, type ClientIdea } from '../lib/clientIdeas'
 import {
   fetchResourceDetail, fetchResources, fetchStyleRoster,
   type Resource, type ResourceDetail, type StylePrompt,
@@ -244,6 +245,20 @@ export function useIdeaCandidates(enabled: boolean) {
       : Promise.resolve([])),
     [], [enabled])
   return { ...aux, count, counts, split: splitIdeas(aux.rows) }
+}
+
+// THE CLIENT LANES' IDEA BANK. A different table from the one above
+// (`client_ideas`, not `lm_idea_candidates`) reached through the gated RPC —
+// the reasoning, and the probe that found 183 staged rows with no surface, is
+// in lib/clientIdeas.ts.
+//
+// 🔴 Never mounted on Ivan's lane: fetchClientIdeas throws there rather than
+// returning a calm empty list, so `enabled` is the caller's lane test and not a
+// convenience flag.
+export function useClientIdeas(lane: ContentLane, enabled: boolean) {
+  return useAux<ClientIdea[]>(
+    () => (enabled && lane !== 'ivan' ? fetchClientIdeas(lane) : Promise.resolve([])),
+    [], [lane, enabled])
 }
 
 // R6 — resources, now lane-scoped (the read change IA §7 names).
