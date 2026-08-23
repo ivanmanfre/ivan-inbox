@@ -944,7 +944,7 @@
    the spring, so there is one popover in this app and not two that drift. What
    is here is only what a pre-read is: a head that says who and how long, then
    the three parts on three lines instead of one string full of middots. */
-.wb.wb.wb .wb-prb{ display:flex; flex-direction:column; gap:8px; max-width:40ch }
+.wb.wb.wb .wb-prb{ display:flex; flex-direction:column; gap:8px }
 .wb.wb.wb .wb-prb-h{
   display:flex; align-items:baseline; justify-content:space-between; gap:10px;
   padding:2px 6px 6px;
@@ -962,14 +962,23 @@
   margin-bottom:2px;
 }
 /* 15 on a 20px line, the same prose leading the calendar tooltip landed on:
-   this carries sentences, not the 12px chip type it was launched from. */
-.wb.wb.wb .wb-prb-v{ font-size:15px; line-height:20px; color:var(--text2) }
+   this carries sentences, not the 12px chip type it was launched from.
+
+   280px, and the number is measured rather than chosen. `place()` aligns the
+   panel to the anchor and only clamps at the edge, and at 390 the note starts
+   at x=66 while the plate ends at 380 — so anything wider than 314 gets clamped
+   and lands ON THE PISTACHIO GROUND outside the app. 280 of prose plus 12 of
+   row padding plus 16 of panel padding is 308, and the clamp is never reached.
+   `ch` was the first attempt and it is the wrong unit twice: this typeface's
+   zero is ~9.4px at 15px, and on the panel it resolves against the inherited
+   16px instead. Both measured, neither eyed. */
+.wb.wb.wb .wb-prb-v{ font-size:15px; line-height:20px; color:var(--text2); max-width:280px }
 /* A GAP IS NOT A FINDING. The prompt tells the model to write "not stated" for
    anything the conversation does not say, so it arrives as often as content
    does; painting it in the same weight is how an absence gets read as a fact. */
 .wb.wb.wb .wb-prb-q{ color:var(--text4); font-style:italic }
 /* Whatever came back, when it did not come back in three. */
-.wb.wb.wb .wb-prb-one{ padding:0 6px; font-size:15px; line-height:20px; color:var(--text2) }
+.wb.wb.wb .wb-prb-one{ padding:0 6px; font-size:15px; line-height:20px; color:var(--text2); max-width:280px }
 
 /* ==========================================================================
    11. CROSS-OBJECT SEARCH, INSIDE THE PALETTE
