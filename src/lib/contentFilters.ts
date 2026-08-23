@@ -1,5 +1,5 @@
 import {
-  LANE_POSSESSIVE, STAGE_LABEL, stageOf, taxonomyFields,
+  LANE_POSSESSIVE, STAGE_LABEL, stageOfLane, taxonomyFields,
   type ContentDraft, type ContentLane, type IdeaCandidate, type ScheduledQueueRow,
 } from './content'
 import { normalizeStyleKey, previewKey, type Resource, type StylePrompt } from './styles'
@@ -202,7 +202,18 @@ export function draftHasImage(d: ContentDraft): boolean {
 
 export function draftSpecs(lane: ContentLane): FacetSpec<ContentDraft>[] {
   const specs: FacetSpec<ContentDraft>[] = [
-    { key: 'stage', label: 'Stage', of: d => ({ value: stageOf(d), label: STAGE_LABEL[stageOf(d)] }) },
+    // 🔴 stageOfLane, never stageOf: on a client lane a dated board row is
+    // SCHEDULED (content.ts, clientScheduleArmed). A facet that answered from
+    // the raw status would offer a Scheduled pill that selects a different set
+    // of rows than the Scheduled tab shows.
+    {
+      key: 'stage',
+      label: 'Stage',
+      of: d => {
+        const s = stageOfLane(d, lane)
+        return { value: s, label: STAGE_LABEL[s] }
+      },
+    },
     // Every other spec here carries a label map; this one did not, so the KIND
     // group in the filter sheet was the last place a raw column value reached
     // the screen ("single_image" under a row chip that reads "IMAGE").
