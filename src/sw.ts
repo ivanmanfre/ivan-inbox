@@ -29,3 +29,34 @@ self.addEventListener('notificationclick', (e) => {
   e.notification.close()
   e.waitUntil(self.clients.openWindow(e.notification.data?.url ?? './'))
 })
+
+// THE BROWSER TELLING US THE SUBSCRIPTION DIED. There was no handler for this
+// until 2026-08-23, which is half of why Ivan's phone went quiet for a month
+// while the server logged "sent" 80 times in five days: the push service rotated
+// or expired his endpoint, fired this event, nothing listened, and the database
+// kept the dead token forever.
+//
+// The page-side repair is `reconcilePush()` in src/lib/push.ts and it is the
+// one that does the real work, because it can reach Supabase with Ivan's
+// session. This handler is the belt to that braces: it re-subscribes
+// immediately so the device is never without a subscription between the
+// expiry and his next launch of the app, and the next `reconcilePush()` writes
+// the new endpoint.
+//
+// It cannot write to the database itself. The worker has no auth session, and
+// an anon insert would be refused by RLS. Re-subscribing here and letting the
+// page reconcile is the honest split.
+self.addEventListener('pushsubscriptionchange', (e) => {
+  const ev = e as ExtendableEvent & { oldSubscription?: PushSubscription | null }
+  ev.waitUntil((async () => {
+    try {
+      const old = ev.oldSubscription ?? await self.registration.pushManager.getSubscription()
+      const key = old?.options?.applicationServerKey
+      if (!key) return
+      await self.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key })
+    } catch {
+      // Nothing useful to do from here. The next reconcilePush() on launch
+      // subscribes from scratch, which is the path that has a session.
+    }
+  })())
+})

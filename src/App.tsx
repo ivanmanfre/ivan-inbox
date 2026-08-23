@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
+import { reconcilePush } from './lib/push'
 import { parseHash } from './lib/route'
 import { LoginScreen } from './screens/LoginScreen'
 import { InboxScreen } from './screens/InboxScreen'
@@ -50,6 +51,20 @@ export default function App() {
       document.removeEventListener('visibilitychange', onVisible)
     }
   }, [])
+
+  // REPAIR THE PUSH SUBSCRIPTION ONCE WE HAVE A SESSION. See the long note on
+  // reconcilePush(): the server sent 80 pushes in five days and logged "sent"
+  // for every one while Ivan's phone stayed silent, because the endpoint in the
+  // database had drifted from the one the device actually answers to and
+  // nothing ever re-checked. This is the re-check.
+  //
+  // Gated on `session` because the upsert goes through RLS and needs his JWT;
+  // running it on mount would race the session restore and fail silently, which
+  // is the same class of bug as the one it exists to fix.
+  useEffect(() => {
+    if (!session) return
+    void reconcilePush()
+  }, [session])
   if (!ready) return null
   if (!session) return <LoginScreen />
   // Deploy decision 2026-08-02 ("apply, not additive"): the workbench — the
