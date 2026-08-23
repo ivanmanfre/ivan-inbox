@@ -519,12 +519,13 @@ export function SendsScreen({ client, setClient }: {
                   <span className="sc-name">{lane.label}</span>
                 </div>
                 <div className="sc-blurb">{lane.blurb}</div>
-                <div className={`sc-status s-${lane.status}`}>{inboundStatusText(lane)}</div>
-                {/* The count that matters is what it STOPPED, so it is stated even when
-                    zero. A silent filter reporting nothing is the state this whole surface
-                    exists to make impossible. */}
-                <div className="sc-split">
-                  <b>{lane.passed}</b> through · <b>{lane.dropped}</b> stopped
+                {/* Status and the pass/stop split share ONE row: the inbound cards carried
+                    two more lines than the outbound ones and were 122px against 87px. The
+                    count that matters is what it STOPPED, so it is stated even at zero. A
+                    silent filter reporting nothing is what this surface exists to prevent. */}
+                <div className={`sc-status s-${lane.status}`}>
+                  {inboundStatusText(lane)}
+                  <span className="sc-split"> · <b>{lane.passed}</b> through · <b>{lane.dropped}</b> stopped</span>
                 </div>
                 <Spark values={lane.daily} />
               </div>

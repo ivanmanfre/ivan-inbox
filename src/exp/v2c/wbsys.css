@@ -1296,3 +1296,30 @@
 @media (pointer:coarse){
   .wb.wb.wb .pushbtn::after{ inset:-8px 0 }
 }
+
+/* ============================================================================
+   LANE CARDS — the density pass (Ivan, 2026-08-23: "each dashboard is very big
+   and occupies excess of screen without needing so"). Measured before: 5 cards
+   = 998px inside a 900px viewport, so the list could not be read without
+   scrolling, and every text row measured 26px tall regardless of its font size.
+
+   🔴 THE TRAP THIS FILE'S HEADER WARNS ABOUT, HIT LIVE. The type edits made in
+   src/styles.css (.sc-name 17→15px, .sc-status 13.5→12px, .sc line-height 1.25)
+   changed NOTHING: at 0-1-0 they lose to faithful.css:181 `.wb.wb *`, which
+   flattens font-size, font-weight, letter-spacing and line-height across the
+   whole workbench. Only the padding, gap and spark-height edits landed, because
+   the flattener does not set those four properties. So the type has to be
+   restated here, on the leaf, at three .wb classes. Nothing below is a new
+   design decision; it is the same pass, written where it can win.
+   ============================================================================ */
+.wb.wb.wb .sc-name{ font-size:15px; font-weight:700; line-height:1.25; letter-spacing:-.01em }
+.wb.wb.wb .sc-status{ font-size:12px; font-weight:600; line-height:1.25 }
+.wb.wb.wb .sc-blurb{ font-size:11.5px; font-weight:400; line-height:1.3 }
+.wb.wb.wb .sc-split{ font-size:11.5px; font-weight:600; line-height:1.25 }
+.wb.wb.wb .sc-blocked{ font-size:11.5px; font-weight:600; line-height:1.25 }
+.wb.wb.wb .sc-big{ font-size:21px; font-weight:800; line-height:1; letter-spacing:-.02em }
+.wb.wb.wb .sc-cap{ font-size:11px; font-weight:400; line-height:1.15 }
+.wb.wb.wb .sc-24{ font-size:11.5px; font-weight:600; line-height:1.15 }
+.wb.wb.wb .sc-chev{ font-size:17px; line-height:1 }
+.wb.wb.wb .sc-group-t{ font-size:11px; font-weight:800; line-height:1.2; letter-spacing:.08em }
+.wb.wb.wb .sc-group-c{ font-size:11px; font-weight:400; line-height:1.2 }

@@ -35,7 +35,11 @@ export type Lane = {
   status: 'live' | 'slowing' | 'stale'
 }
 
-const LANE_ORDER: LaneKey[] = ['connection_note', 'dm', 'inmail', 'email']
+// `email` is gone from the order, not from the type: Smartlead was cancelled 2026-08-13 and
+// cold email is dead, so the lane rendered a permanent 1-in-7d ghost row (Ivan, 2026-08-23:
+// "u can delete email from there we dont use email"). The LaneKey union and the views keep
+// the value, so the historical rows are still queryable and nothing had to be migrated.
+const LANE_ORDER: LaneKey[] = ['connection_note', 'dm', 'inmail']
 const LANE_LABEL: Record<LaneKey, string> = {
   connection_note: 'Connections',
   dm: 'DMs',

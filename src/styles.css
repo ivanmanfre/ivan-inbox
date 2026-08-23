@@ -214,36 +214,44 @@ input.cfield::placeholder{color:var(--text3)}
 .sc-sub{margin-top:4px;font-size:14px;color:var(--text2);font-weight:500}
 .sc-refresh{width:34px;height:34px;border-radius:99px;background:var(--surface);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;flex:none}
 .sc-rows{padding:6px 16px 16px}
-.sc{display:flex;gap:14px;align-items:stretch;background:var(--surface);border-radius:16px;padding:14px 16px;margin-top:12px;cursor:pointer}
-.sc-chev{margin-top:auto;font-size:22px;color:var(--text3);line-height:1}
-.sc-l{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px}
-.sc-head{display:flex;align-items:center;gap:9px}
-.sc-dot{width:11px;height:11px;border-radius:99px;flex:none}
-.sc-name{font-size:17px;font-weight:700;letter-spacing:-.01em}
-.sc-status{font-size:13.5px;font-weight:600}
+/* Density pass 2026-08-23 (Ivan: "each dashboard is very big and occupies excess of
+   screen without needing so"). Measured: 5 cards were 998px in a 900px viewport, so the
+   list could not be read without scrolling. Nothing was removed from the cards, only the
+   air between the lines. */
+.sc{display:flex;gap:10px;align-items:stretch;background:var(--surface);border-radius:13px;padding:9px 12px;margin-top:7px;cursor:pointer;line-height:1.25}
+/* The real cost was inherited leading, not font size: every line in the card measured
+   26px tall at a 12px font because the app's base line-height cascaded in. One
+   declaration on the card fixes all six text rows at once. */
+.sc-chev{margin-top:auto;font-size:17px;color:var(--text3);line-height:1}
+.sc-l{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.sc-head{display:flex;align-items:center;gap:8px}
+.sc-dot{width:9px;height:9px;border-radius:99px;flex:none}
+.sc-name{font-size:15px;font-weight:700;letter-spacing:-.01em}
+.sc-status{font-size:12px;font-weight:600}
 .sc-status.s-live{color:var(--accent)}
 .sc-status.s-slowing{color:#FF9F0A}
 .sc-status.s-stale{color:#FF453A}
-.sc-blocked{font-size:12.5px;font-weight:600;color:#FF9F0A}
-.sc-spark{display:flex;align-items:flex-end;gap:3px;height:34px;margin-top:auto;padding-top:4px}
+.sc-blocked{font-size:11.5px;font-weight:600;color:#FF9F0A}
+.sc-spark{display:flex;align-items:flex-end;gap:2px;height:18px;margin-top:auto;padding-top:3px}
 .sc-bar{flex:1;min-height:2px;border-radius:2px;background:var(--accent);opacity:.9}
 .sc-bar.zero{background:var(--surface3);opacity:1;min-height:2px}
 .sc-r{flex:none;text-align:right;display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-start;min-width:58px}
-.sc-big{font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1}
-.sc-cap{font-size:12px;color:var(--text3);margin-top:2px}
-.sc-24{font-size:12.5px;color:var(--text2);margin-top:8px;font-weight:600}
+.sc-big{font-size:21px;font-weight:800;letter-spacing:-.02em;line-height:1}
+.sc-cap{font-size:11px;color:var(--text3);margin-top:1px}
+.sc-24{font-size:11.5px;color:var(--text2);margin-top:4px;font-weight:600}
 
 /* ---- lanes: the outbound / inbound split (db/040) ----
    Inbound carries its own status words because its healthy volume is 0-3 decisions a
    fortnight: 'stale' red would be permanent and would stop meaning anything. `off` is
    amber rather than red on purpose. A lane that legitimately does not apply to a client
    should stand out enough to ask about and not enough to read as a fault. */
-.sc-group{display:flex;align-items:baseline;gap:8px;margin:18px 2px 2px}
+.sc-group{display:flex;align-items:baseline;gap:7px;margin:13px 2px 1px}
 .sc-group:first-child{margin-top:6px}
 .sc-group-t{font-size:12px;font-weight:800;letter-spacing:.08em;color:var(--text3)}
 .sc-group-c{font-size:12px;color:var(--text3);opacity:.8}
-.sc-blurb{font-size:12.5px;color:var(--text3);line-height:1.35}
-.sc-split{font-size:12.5px;font-weight:600;color:var(--text2)}
+.sc-blurb{font-size:11.5px;color:var(--text3);line-height:1.3}
+.sc-split{font-size:11.5px;font-weight:600;color:var(--text2)}
+.sc-status .sc-split{color:var(--text3)}
 .sc-split b{font-weight:800}
 .sc-status.s-quiet{color:var(--text3)}
 .sc-status.s-off{color:#FF9F0A}

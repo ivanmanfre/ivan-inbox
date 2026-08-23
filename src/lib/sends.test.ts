@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildLanes, laneStatus, sendKind, type SendRow, type DailyRow } from './sends'
+import { buildLanes, laneStatus, sendKind, type SendRow, type DailyRow, type LaneKey } from './sends'
 
 const row = (over: Partial<SendRow>): SendRow => ({
   client_id: 'ivan', message_type: 'dm', channel: 'linkedin',
@@ -35,10 +35,21 @@ describe('buildLanes rollup', () => {
     expect(ivan.sent_24h).toBe(7)
   })
 
-  it('always returns four lanes in canonical order with labels', () => {
+  it('always returns the three live lanes in canonical order with labels', () => {
     const lanes = buildLanes([], [], 'all')
-    expect(lanes.map(l => l.key)).toEqual(['connection_note', 'dm', 'inmail', 'email'])
-    expect(lanes.map(l => l.label)).toEqual(['Connections', 'DMs', 'InMails', 'Emails'])
+    expect(lanes.map(l => l.key)).toEqual(['connection_note', 'dm', 'inmail'])
+    expect(lanes.map(l => l.label)).toEqual(['Connections', 'DMs', 'InMails'])
+  })
+
+  // Smartlead was cancelled 2026-08-13 and cold email is dead, so the email lane rendered a
+  // permanent near-zero ghost row (Ivan, 2026-08-23: "u can delete email from there we dont
+  // use email"). It left the ORDER only: LaneKey and both views still carry the value, so
+  // the history stays queryable and no data had to be migrated to hide a dead lane.
+  it('does not render an email lane, and has not dropped the type', () => {
+    const lanes = buildLanes([], [], 'all')
+    expect(lanes.some(l => l.key === 'email')).toBe(false)
+    const key: LaneKey = 'email'
+    expect(key).toBe('email')
   })
 
   it('shares a 14-day x-axis and fills missing days with 0', () => {
