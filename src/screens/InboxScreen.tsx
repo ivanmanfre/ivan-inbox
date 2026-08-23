@@ -100,7 +100,7 @@ function clientLabel(id: string): string {
   return id.toUpperCase()
 }
 
-export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt, title = 'Inbox', status, before, after, rowsFor, renderRow, rowNote, rowChip, emptyLine }: {
+export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt, title = 'Inbox', status, before, after, rowsFor, renderRow, rowNote, rowChip, renderNote, emptyLine }: {
   threads: Thread[]
   filter: Filter
   setFilter: (f: Filter) => void
@@ -149,6 +149,17 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
   // and `rowChip` sits in the right-hand column beside the time and the pills.
   rowNote?: (t: Thread) => string | null
   rowChip?: (t: Thread) => ReactNode
+  // The note, drawn by the HOST instead of as plain text — the DMs surface uses
+  // it to make the pre-read hoverable, since 140 characters do not fit on one
+  // nowrap row and Ivan could not read what he had paid for.
+  //
+  // INERT WHEN ABSENT, twice over: the branch below needs BOTH a note and this
+  // prop, and `#exp/stock` passes neither (App.tsx never supplies `rowNote`, so
+  // `note` is null on every stock row). Stock's markup is byte-identical. The
+  // contract on whoever supplies it is the same one `rowNote` carries: render
+  // ONE `.snip` element and do not grow the row, because `useRowWindow` maps a
+  // scroll offset onto a fixed ROW_H.
+  renderNote?: (t: Thread, note: string) => ReactNode
   emptyLine?: string
 }) {
   const rowsRef = useRef<HTMLDivElement>(null)
@@ -306,9 +317,13 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
                       measure cap keyed on `.r .snip` reach the pre-read too.
                       The pending-draft prefix is the no-note branch: a row that
                       was summed up shows the summary, not `✦ Draft:` twice. */}
-                  <div className={`snip${note ? ' snip-note' : ''}`} title={note ?? undefined}>
-                    {note ?? (pendingDraft ? `✦ Draft: ${snip}` : snip)}
-                  </div>
+                  {note && renderNote
+                    ? renderNote(t, note)
+                    : (
+                      <div className={`snip${note ? ' snip-note' : ''}`} title={note ?? undefined}>
+                        {note ?? (pendingDraft ? `✦ Draft: ${snip}` : snip)}
+                      </div>
+                    )}
                 </div>
                 <div className="right">
                   {rowChip?.(t)}

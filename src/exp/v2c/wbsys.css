@@ -912,6 +912,65 @@
   content:'✳ '; font-style:normal; color:var(--accent);
 }
 
+/* ---- 10b. THE NOTE OPENS ------------------------------------------------- */
+/* Ivan, 2026-08-22: "I cannot see what is summing up. Maybe add a bubble, like
+   a hover thing."
+
+   The line is up to 140 characters and `.snip` is one nowrap row, so it always
+   ended in an ellipsis. NOTHING BELOW ADDS HEIGHT: a dotted underline paints
+   inside the line box, where a border-bottom would have grown `.mid` and
+   desynchronised every scroll offset in the windowed list. Measured, not eyed —
+   see the computed-style probe in the run's evidence.
+
+   Three .wb classes on every selector: `.wb.wb *` sets font-size on every
+   descendant (faithful.css:181), so a two-class rule loses silently and renders
+   at body size. */
+.wb.wb.wb .wb-prn{
+  cursor:help;
+  text-decoration:underline;
+  text-decoration-style:dotted;
+  text-decoration-color:var(--hairline-strong);
+  text-underline-offset:3px;
+  transition:text-decoration-color 120ms ease, color 120ms ease;
+}
+.wb.wb.wb .wb-prn:hover{ color:var(--text); text-decoration-color:var(--accent) }
+.wb.wb.wb .wb-prn:focus-visible{
+  color:var(--text); text-decoration-color:var(--accent);
+  outline:2px solid var(--accent-ui,var(--accent)); outline-offset:2px;
+  border-radius:var(--r-xs);
+}
+
+/* THE BUBBLE. It rides `.cal-pop` (wbcal.css §4) for the plate, the shadow and
+   the spring, so there is one popover in this app and not two that drift. What
+   is here is only what a pre-read is: a head that says who and how long, then
+   the three parts on three lines instead of one string full of middots. */
+.wb.wb.wb .wb-prb{ display:flex; flex-direction:column; gap:8px; max-width:40ch }
+.wb.wb.wb .wb-prb-h{
+  display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+  padding:2px 6px 6px;
+  border-bottom:1px solid var(--hairline);
+}
+.wb.wb.wb .wb-prb-who{ font-size:var(--fs-meta); font-weight:600; color:var(--text) }
+.wb.wb.wb .wb-prb-w{
+  font-size:var(--fs-eyebrow); color:var(--text4); white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+.wb.wb.wb .wb-prb-p{ padding:0 6px }
+.wb.wb.wb .wb-prb-k{
+  font-size:var(--fs-eyebrow); letter-spacing:.06em; text-transform:uppercase;
+  color:var(--text4); font-weight:600;
+  margin-bottom:2px;
+}
+/* 15 on a 20px line, the same prose leading the calendar tooltip landed on:
+   this carries sentences, not the 12px chip type it was launched from. */
+.wb.wb.wb .wb-prb-v{ font-size:15px; line-height:20px; color:var(--text2) }
+/* A GAP IS NOT A FINDING. The prompt tells the model to write "not stated" for
+   anything the conversation does not say, so it arrives as often as content
+   does; painting it in the same weight is how an absence gets read as a fact. */
+.wb.wb.wb .wb-prb-q{ color:var(--text4); font-style:italic }
+/* Whatever came back, when it did not come back in three. */
+.wb.wb.wb .wb-prb-one{ padding:0 6px; font-size:15px; line-height:20px; color:var(--text2) }
+
 /* ==========================================================================
    11. CROSS-OBJECT SEARCH, INSIDE THE PALETTE
    ==========================================================================

@@ -1,6 +1,7 @@
 import { DraftCard, PushedBar, StaleBar } from '../../screens/DraftsScreen'
 import { InboxScreen } from '../../screens/InboxScreen'
 import { DmHistory } from './DmHistory'
+import { PreReadNote } from './PreReadNote'
 import { STATUS_LABEL, filterThreads, type Filter, type Status, type Thread } from '../../lib/inbox'
 import { preReadWorthwhile, waitingDays } from './chat/preread'
 import { usePreRead } from './chat/usePreRead'
@@ -99,6 +100,18 @@ export function DmsSurface({
         if (st.s === 'running') return 'Reading it…'
         if (st.s === 'error') return st.why
         return null
+      }}
+      // AND THE WHOLE OF IT, on hover, on focus and on tap. Ivan, 2026-08-22:
+      // "I cannot see what is summing up. Maybe add a bubble, like a hover
+      // thing." The row keeps its one line — its height is what the list
+      // windows against — and PreReadNote anchors the full three parts to THIS
+      // row. It renders text already fetched; there is no second call.
+      renderNote={(t, note) => {
+        // A line still arriving is not a line to expand: "Reading it…" fits.
+        if (pre.get(t.prospect_id).s === 'running') {
+          return <div className="snip snip-note">{note}</div>
+        }
+        return <PreReadNote line={note} name={t.prospect_name} days={waitingDays(t)} />
       }}
       rowChip={t => {
         if (!preReadWorthwhile(t)) return null
