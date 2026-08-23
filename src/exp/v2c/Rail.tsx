@@ -286,7 +286,7 @@ const MOBILE: { job: Job; icon: string; label: string }[] = [
   { job: 'today', icon: JOB_ICON.today, label: 'Today' },
   { job: 'dms', icon: JOB_ICON.dms, label: 'DMs' },
   { job: 'content', icon: JOB_ICON.content, label: 'Content' },
-  { job: 'sends', icon: JOB_ICON.sends, label: 'Sends' },
+  { job: 'sends', icon: JOB_ICON.sends, label: JOB_LABEL.sends },
   { job: 'ops', icon: JOB_ICON.ops, label: 'Ops' },
 ]
 

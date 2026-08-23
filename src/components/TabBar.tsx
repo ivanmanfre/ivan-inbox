@@ -17,9 +17,12 @@ export function TabBar({ active, draftCount, onNav }: {
         <div className="ic bubble">✦{draftCount > 0 && <span className="cnt">{draftCount}</span>}</div>
         <div className="l">Drafts</div>
       </div>
+      {/* The route key stays 'sends' so every existing deep link keeps working; only the
+          label moved (2026-08-23), because the screen now carries the inbound automations
+          too and "Sends" named half of it. */}
       <div className={`tb ${active === 'sends' ? 'on' : ''}`} onClick={() => onNav('sends')}>
-        <div className="ic">↑</div>
-        <div className="l">Sends</div>
+        <div className="ic">⇅</div>
+        <div className="l">Lanes</div>
       </div>
       <div className={`tb ${active === 'ops' ? 'on' : ''}`} onClick={() => onNav('ops')}>
         <div className="ic">◈</div>

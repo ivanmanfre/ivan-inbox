@@ -233,6 +233,27 @@ input.cfield::placeholder{color:var(--text3)}
 .sc-cap{font-size:12px;color:var(--text3);margin-top:2px}
 .sc-24{font-size:12.5px;color:var(--text2);margin-top:8px;font-weight:600}
 
+/* ---- lanes: the outbound / inbound split (db/040) ----
+   Inbound carries its own status words because its healthy volume is 0-3 decisions a
+   fortnight: 'stale' red would be permanent and would stop meaning anything. `off` is
+   amber rather than red on purpose. A lane that legitimately does not apply to a client
+   should stand out enough to ask about and not enough to read as a fault. */
+.sc-group{display:flex;align-items:baseline;gap:8px;margin:18px 2px 2px}
+.sc-group:first-child{margin-top:6px}
+.sc-group-t{font-size:12px;font-weight:800;letter-spacing:.08em;color:var(--text3)}
+.sc-group-c{font-size:12px;color:var(--text3);opacity:.8}
+.sc-blurb{font-size:12.5px;color:var(--text3);line-height:1.35}
+.sc-split{font-size:12.5px;font-weight:600;color:var(--text2)}
+.sc-split b{font-weight:800}
+.sc-status.s-quiet{color:var(--text3)}
+.sc-status.s-off{color:#FF9F0A}
+.ld-v{font-size:10.5px;font-weight:800;letter-spacing:.06em;padding:2px 7px;border-radius:6px;flex:none}
+.ld-v.passed{background:rgba(16,163,127,.16);color:#10A37F}
+.ld-v.dropped{background:rgba(255,159,10,.16);color:#FF9F0A}
+.ld-why{font-size:13px;line-height:1.4;color:var(--text2);margin-top:6px}
+.ld-meta{font-size:12px;color:var(--text3);margin-top:4px}
+.ld-q{font-size:13.5px;line-height:1.45;color:var(--text2);margin-top:8px;padding-left:10px;border-left:2px solid var(--surface3);white-space:pre-wrap;word-break:break-word}
+
 /* ---- interactivity: tap feedback ---- */
 .r,.chip,.sg,.tb,.btn,.gbtn,.csend,.sc,.draftbanner,.qc .bd,.sheet-btn,.sc-refresh,.back,.grow.tap{
   -webkit-tap-highlight-color:transparent;

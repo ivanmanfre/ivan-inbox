@@ -4,6 +4,10 @@ import {
   sendKind,
   type Lane, type LaneKey, type RecentSend, type SendLogItem, type SendLogTotals,
 } from '../lib/sends'
+import {
+  buildInboundLanes, fetchInbound, fetchInboundDaily, fetchInboundDecisions,
+  type InboundDecision, type InboundLane, type InboundLaneKey, type InboundStatus,
+} from '../lib/inbound'
 import { SendsSkeleton } from '../components/Skeleton'
 import { Linkified } from '../components/Linkified'
 import { PullIndicator } from '../components/PullIndicator'
@@ -31,6 +35,13 @@ const DOT: Record<Lane['status'], string> = {
   stale: '#FF453A',
 }
 
+// Separate from DOT above, matching the separate status vocabulary in lib/inbound.
+const IN_DOT: Record<InboundStatus, string> = {
+  live: '#10A37F',
+  quiet: '#8E8E93',
+  off: '#FF9F0A',
+}
+
 function daysBetween(iso: string): number {
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000)
 }
@@ -51,6 +62,18 @@ function statusText(lane: Lane): string {
   if (lane.status === 'live') return `Sent ${ago(lane.last_sent)}`
   if (lane.status === 'slowing') return `Slowing, last ${ago(lane.last_sent)}`
   return `No sends in ${daysBetween(lane.last_sent)} days`
+}
+
+// 🔴 `off` says NO DECISIONS RECORDED, never "never armed", and the difference is not
+// pedantry. Live on 2026-08-23 the cold-DM filter is armed and running on Rise's seat and
+// still reads `off`, because since the retune every inbound chat matched a known prospect
+// and the filter had nobody to judge. Until a per-client lane manifest exists there is
+// nothing in the data that can tell "nobody set this up" apart from "nothing came in", so
+// the card states what it can prove and the drill-in names both possibilities.
+function inboundStatusText(lane: InboundLane): string {
+  if (lane.status === 'off') return 'No decisions recorded yet'
+  if (lane.status === 'live') return `Last decision ${ago(lane.last_at!)}`
+  return `Quiet for ${daysBetween(lane.last_at!)} days`
 }
 
 const TYPE_LABEL: Record<string, string> = {
@@ -227,15 +250,88 @@ function LaneDetail({ lane, client, onBack }: {
   )
 }
 
+// Drill-in for an inbound lane: every decision the automation made on its own, newest
+// first, with the reason it gave. Read-only for now — the override that re-admits a
+// dropped person is the next slice, and shipping the record first is what tells us
+// whether the record gets read.
+function InboundDetail({ lane, client, onBack }: {
+  lane: InboundLane; client: Client; onBack: () => void
+}) {
+  const [rows, setRows] = useState<InboundDecision[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let live = true
+    setLoading(true); setError(null)
+    fetchInboundDecisions(lane.key, client)
+      .then(r => { if (live) setRows(r) })
+      .catch(e => { if (live) setError(e instanceof Error ? e.message : 'Failed to load') })
+      .finally(() => { if (live) setLoading(false) })
+    return () => { live = false }
+  }, [lane.key, client])
+
+  return (
+    <>
+      <div className="t-nav">
+        <span className="back" onClick={onBack}>‹</span>
+        <div className="who">
+          <div className="n">{lane.label}</div>
+          <div className="m">
+            <b>{lane.passed}</b> through · <b>{lane.dropped}</b> stopped here
+          </div>
+        </div>
+        <span className="sc-dot" style={{ background: IN_DOT[lane.status], width: 12, height: 12 }} />
+      </div>
+      <div className="rows sc-rows">
+        <div className="log-note">{lane.blurb}. Nothing here was seen by a human first.</div>
+        {loading ? (
+          <div className="empty">Loading…</div>
+        ) : error ? (
+          <div className="empty">{error}</div>
+        ) : rows.length === 0 ? (
+          <div className="empty">
+            {lane.status === 'off'
+              ? 'Nothing recorded for this client. Either nothing has come in, or the lane was never armed here — the data cannot tell those apart yet.'
+              : 'No decisions in this lane yet, a verified zero rather than a failed load.'}
+          </div>
+        ) : (
+          rows.map(d => (
+            <div key={d.id} className="ld">
+              <div className="ld-h">
+                <span className={`ld-v ${d.outcome}`}>{d.outcome === 'passed' ? 'THROUGH' : 'STOPPED'}</span>
+                <span className="ld-nm">{d.who}</span>
+                <span className="ld-tm">{ago(d.decided_at)}</span>
+              </div>
+              {d.detail && <div className="ld-meta">{d.detail}</div>}
+              {d.reason && <div className="ld-why">{d.reason}</div>}
+              {d.quote && <div className="ld-q"><Linkified text={d.quote} /></div>}
+              <div className="ld-meta">
+                {d.score !== null && <>Score {d.score} · </>}
+                {d.judged_blind && <>⚠ judged without a profile · </>}
+                {d.surfaced && <>re-admitted by hand · </>}
+                {d.link ? <a href={d.link} target="_blank" rel="noreferrer">Open profile</a> : 'no profile link'}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </>
+  )
+}
+
 export function SendsScreen({ client, setClient }: {
   client: Client
   setClient: (c: Client) => void
 }) {
   const [rows, setRows] = useState<Awaited<ReturnType<typeof fetchSends>>>([])
   const [daily, setDaily] = useState<Awaited<ReturnType<typeof fetchSendsDaily>>>([])
+  const [inRows, setInRows] = useState<Awaited<ReturnType<typeof fetchInbound>>>([])
+  const [inDaily, setInDaily] = useState<Awaited<ReturnType<typeof fetchInboundDaily>>>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [openLane, setOpenLane] = useState<LaneKey | null>(null)
+  const [openInbound, setOpenInbound] = useState<InboundLaneKey | null>(null)
   const [view, setView] = useState<'overview' | 'lanes' | 'log'>('overview')
   const [timeframe, setTimeframe] = useState<Timeframe>('7d')
   // The Range pill's dropdown (ask 8b). Open/closed only — the VALUE lives in
@@ -257,23 +353,39 @@ export function SendsScreen({ client, setClient }: {
     } finally {
       setLoading(false)
     }
+    // Deliberately NOT in the Promise.all above and deliberately not throwing. The inbound
+    // views are new (db/040); if they fail to read, the outbound lanes that have worked
+    // for weeks must still render. An empty Inbound group is a smaller lie than a blank
+    // screen, and buildInboundLanes turns [] into two honest `off` rows.
+    try {
+      const [ir, id] = await Promise.all([fetchInbound(), fetchInboundDaily()])
+      setInRows(ir)
+      setInDaily(id)
+    } catch { /* leaves the inbound group reading `off` */ }
   }, [])
 
   useEffect(() => { load() }, [load])
   const ptr = usePullToRefresh(rowsRef, load)
 
   const lanes = buildLanes(rows, daily, client)
+  const inbound = buildInboundLanes(inRows, inDaily, client)
   const detailLane = openLane ? lanes.find(l => l.key === openLane) ?? null : null
+  const detailInbound = openInbound ? inbound.find(l => l.key === openInbound) ?? null : null
 
   if (detailLane) {
     return <LaneDetail lane={detailLane} client={client} onBack={() => setOpenLane(null)} />
+  }
+  if (detailInbound) {
+    return <InboundDetail lane={detailInbound} client={client} onBack={() => setOpenInbound(null)} />
   }
 
   return (
     <>
       <div className="nav">
         <div className="row-top">
-          <h2>Sends</h2>
+          {/* Renamed from "Sends" 2026-08-23: the screen carries inbound automations now,
+              and a tab called Sends would hide exactly the half Ivan could not see. */}
+          <h2>Lanes</h2>
           {/* GRAFT (phase 6 ask 8b, from candidate `split`): the range control
               was a SECOND full-width segmented row stacked under the view
               switcher — two identical-looking 44px bars, one of which is a view
@@ -310,7 +422,7 @@ export function SendsScreen({ client, setClient }: {
             <div className="sc-refresh" onClick={load} title="Refresh">↻</div>
           </div>
         </div>
-        <div className="sc-sub">Pipeline health</div>
+        <div className="sc-sub">Outreach and inbound, per client</div>
         <div className="chips">
           {CHIPS.map(c => (
             <button
@@ -369,6 +481,10 @@ export function SendsScreen({ client, setClient }: {
       ) : (
         <div className="rows sc-rows" ref={rowsRef}>
           <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
+          <div className="sc-group">
+            <span className="sc-group-t">OUTREACH</span>
+            <span className="sc-group-c">what we sent</span>
+          </div>
           {lanes.map(lane => (
             <div key={lane.key} className="sc" onClick={() => setOpenLane(lane.key)}>
               <div className="sc-l">
@@ -386,6 +502,38 @@ export function SendsScreen({ client, setClient }: {
                 <div className="sc-big">{lane.sent_7d}</div>
                 <div className="sc-cap">in 7d</div>
                 <div className="sc-24">24h: {lane.sent_24h}</div>
+                <div className="sc-chev">›</div>
+              </div>
+            </div>
+          ))}
+
+          <div className="sc-group">
+            <span className="sc-group-t">INBOUND</span>
+            <span className="sc-group-c">decided without you</span>
+          </div>
+          {inbound.map(lane => (
+            <div key={lane.key} className="sc" onClick={() => setOpenInbound(lane.key)}>
+              <div className="sc-l">
+                <div className="sc-head">
+                  <span className="sc-dot" style={{ background: IN_DOT[lane.status] }} />
+                  <span className="sc-name">{lane.label}</span>
+                </div>
+                <div className="sc-blurb">{lane.blurb}</div>
+                <div className={`sc-status s-${lane.status}`}>{inboundStatusText(lane)}</div>
+                {/* The count that matters is what it STOPPED, so it is stated even when
+                    zero. A silent filter reporting nothing is the state this whole surface
+                    exists to make impossible. */}
+                <div className="sc-split">
+                  <b>{lane.passed}</b> through · <b>{lane.dropped}</b> stopped
+                </div>
+                <Spark values={lane.daily} />
+              </div>
+              <div className="sc-r">
+                {/* 30d, not 7d: a healthy inbound lane decides 0-3 things a fortnight, so a
+                    7-day headline would read 0 on a working lane most weeks. */}
+                <div className="sc-big">{lane.d30}</div>
+                <div className="sc-cap">in 30d</div>
+                <div className="sc-24">7d: {lane.d7}</div>
                 <div className="sc-chev">›</div>
               </div>
             </div>

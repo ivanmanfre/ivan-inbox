@@ -49,18 +49,23 @@ export function peerKey(p: Peer): PeerKey {
 // deliberately NOT a job (see dockChat below).
 export const JOBS: Job[] = ['today', 'dms', 'content', 'magnets', 'styles', 'strategy', 'sends', 'ops', 'settings']
 
+// `sends` reads "Lanes" from 2026-08-23: the surface carries the INBOUND automations too
+// now (auto-accepted connection requests, the cold-DM filter — db/040), and a label that
+// said Sends named only the half Ivan could already see. The job KEY stays 'sends' so
+// every stored hash, deep link and test keeps resolving.
 export const JOB_LABEL: Record<Job, string> = {
   today: 'Today', dms: 'DMs', content: 'Content',
   magnets: 'Magnets', styles: 'Styles', strategy: 'Strategy',
-  sends: 'Sends', ops: 'Ops', settings: 'Settings',
+  sends: 'Lanes', ops: 'Ops', settings: 'Settings',
 }
 
 // Unicode glyphs only, matching TabBar.tsx:9-30 — no icon set, no SVG sprite.
 // DMs inherits the Inbox glyph, not the old drafts sparkle: it is a
 // conversation list now, and the glyph is the honest one.
+// `sends` is ⇅ rather than ↑ from 2026-08-23: the surface reads both directions now.
 export const JOB_ICON: Record<Job, string> = {
   today: '☼', dms: '◉', content: '▤', magnets: '▦', styles: '▧', strategy: '◎',
-  sends: '↑', ops: '◈', settings: '⚙︎',
+  sends: '⇅', ops: '◈', settings: '⚙︎',
 }
 
 // Jobs whose working surface is a LIST that can hand a row to a context peer.
