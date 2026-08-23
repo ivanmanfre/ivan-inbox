@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import {
   bucketDrafts, isStuckScheduled, laneFilter, draftLane,
   SKIP_STATUS, type ContentDraft,
-  groupByStage, stageOf, countUndated, countBoardVisible,
+  groupByStage, groupByLaneStage, stageOf, stageOfLane, countUndated, countBoardVisible,
   PIPELINE_STAGES, ALERT_STAGES, STAGE_LABEL,
   normalizeAgentLog, normalizeQa, taxonomyFields, normalizeKeyPoints,
   normalizeImageUrls, reviewActionable,
@@ -174,7 +174,12 @@ describe('groupByStage', () => {
       row({ id: 'err', status: 'error' }),
       row({ id: 'dq', status: 'disqualified' }),
       row({ id: 'sk', status: 'skipped' }),
+      // The client lanes' own word for the same thing. It used to fall through
+      // to `other`, which put 61 archived Rise rows under a label that means
+      // "a status this app has never met".
+      row({ id: 'arch', status: 'archived' }),
       row({ id: 'draft', status: 'draft' }),
+      row({ id: 'planned', status: 'planned' }),
       row({ id: 'alien', status: 'awaiting_alien_review' }),
     ]
     const s = groupByStage(rows, now)
@@ -187,9 +192,9 @@ describe('groupByStage', () => {
     expect(s.stuck.map(r => r.id)).toEqual(['stuck'])
     expect(s.published.map(r => r.id)).toEqual(['pub'])
     expect(s.error.map(r => r.id)).toEqual(['err'])
-    expect(s.archived.map(r => r.id)).toEqual(['dq', 'sk'])
+    expect(s.archived.map(r => r.id)).toEqual(['dq', 'sk', 'arch'])
     // The catch-all is rendered at the bottom of the queue, never dropped.
-    expect(s.other.map(r => r.id)).toEqual(['draft', 'alien'])
+    expect(s.other.map(r => r.id)).toEqual(['draft', 'planned', 'alien'])
     const total = Object.values(s).reduce((n, arr) => n + arr.length, 0)
     expect(total).toBe(rows.length)
   })
@@ -238,6 +243,71 @@ describe('groupByStage', () => {
       row({ id: 'null', board_visible: null }),
       row({ id: 'absent' }),
     ])).toBe(1)
+  })
+})
+
+describe('stageOfLane — the client lane reads the DATE, not the status', () => {
+  // Ivan, 2026-08-23: "the scheduled category is unnacurate... see the rise dtc
+  // panel which we have more content scheduled for next week."
+  //
+  // The publisher is the authority these tests are written against — `CLIENT
+  // Rise DTC - Buffer Publisher` (n8n WpC67D1eHMAWiZy4) selects
+  // `board_visible=eq.true & published_at=is.null & scheduled_at=lte.<now> &
+  // status=in.(scheduled,review)`. Every case below is one clause of that
+  // predicate.
+  const dated = (o: Partial<ContentDraft> = {}): ContentDraft => row({
+    status: 'review', board_visible: true, scheduled_at: '2026-08-04T09:00:00Z',
+    client_id: 'risedtc', ...o,
+  })
+
+  it('files a dated board row at review as SCHEDULED on a client lane', () => {
+    // The six rows that were reading as "On buffer" while their publish times
+    // were already set.
+    expect(stageOfLane(dated(), 'risedtc', now)).toBe('scheduled')
+    expect(stageOf(dated(), now)).toBe('review')
+  })
+
+  it('leaves Ivan’s lane alone — there the status flip is what arms it', () => {
+    expect(stageOfLane(dated({ client_id: null }), 'ivan', now)).toBe('review')
+  })
+
+  it('refuses a dated draft we have NOT promoted', () => {
+    // The publisher requires board_visible; an internal dated row is not
+    // scheduled to do anything, so it stays at its status.
+    expect(stageOfLane(dated({ board_visible: false }), 'risedtc', now)).toBe('review')
+    expect(stageOfLane(dated({ board_visible: null }), 'risedtc', now)).toBe('review')
+  })
+
+  it('refuses a status the picker does not accept', () => {
+    // A leftover date on an archived or errored row is not a schedule.
+    expect(stageOfLane(dated({ status: 'skipped' }), 'risedtc', now)).toBe('archived')
+    expect(stageOfLane(dated({ status: 'error' }), 'risedtc', now)).toBe('error')
+    expect(stageOfLane(dated({ status: 'published' }), 'risedtc', now)).toBe('published')
+  })
+
+  it('reads a past-due dated board row as stuck, never as done', () => {
+    // Same reading isStuckScheduled makes on Ivan's lane: its time came and
+    // went and the publisher wrote nothing back.
+    expect(stageOfLane(dated({ scheduled_at: '2026-07-29T09:00:00Z' }), 'risedtc', now)).toBe('stuck')
+    expect(stageOfLane(dated({
+      scheduled_at: '2026-07-29T09:00:00Z', source_post_id: 'urn:li:activity:9',
+    }), 'risedtc', now)).toBe('review')
+  })
+
+  it('groups a lane through its own rule and drops nothing', () => {
+    const rows = [
+      dated({ id: 'sched' }),
+      dated({ id: 'stuck', scheduled_at: '2026-07-29T09:00:00Z' }),
+      dated({ id: 'armed', status: 'scheduled' }),
+      dated({ id: 'internal', board_visible: false }),
+      row({ id: 'undated', status: 'review', board_visible: true, client_id: 'risedtc' }),
+    ]
+    const s = groupByLaneStage(rows, 'risedtc', now)
+    expect(s.scheduled.map(r => r.id)).toEqual(['sched', 'armed'])
+    expect(s.stuck.map(r => r.id)).toEqual(['stuck'])
+    expect(s.review.map(r => r.id)).toEqual(['internal', 'undated'])
+    const total = Object.values(s).reduce((n, arr) => n + arr.length, 0)
+    expect(total).toBe(rows.length)
   })
 })
 

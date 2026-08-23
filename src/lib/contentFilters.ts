@@ -1,5 +1,5 @@
 import {
-  LANE_POSSESSIVE, STAGE_LABEL, stageOf, taxonomyFields,
+  LANE_POSSESSIVE, STAGE_LABEL, stageOfLane, taxonomyFields,
   type ContentDraft, type ContentLane, type IdeaCandidate, type ScheduledQueueRow,
 } from './content'
 import { normalizeStyleKey, previewKey, type Resource, type StylePrompt } from './styles'
@@ -202,7 +202,23 @@ export function draftHasImage(d: ContentDraft): boolean {
 
 export function draftSpecs(lane: ContentLane): FacetSpec<ContentDraft>[] {
   const specs: FacetSpec<ContentDraft>[] = [
-    { key: 'stage', label: 'Stage', of: d => ({ value: stageOf(d), label: STAGE_LABEL[stageOf(d)] }) },
+    // 🔴 stageOfLane, never stageOf: on a client lane a dated board row is
+    // SCHEDULED (content.ts, clientScheduleArmed). A facet that answered from
+    // the raw status would offer a Scheduled pill that selects a different set
+    // of rows than the Scheduled tab shows.
+    //
+    // 🔴 `archived` yields NULL, so it is not offered as a value. Content has
+    // no archived category since 2026-08-23 (ContentList.tsx, TAB_ORDER), and
+    // an active Stage filter SELECTS its tab — a pill for a tab that no longer
+    // exists would light nothing and show a table nobody can name.
+    {
+      key: 'stage',
+      label: 'Stage',
+      of: d => {
+        const s = stageOfLane(d, lane)
+        return s === 'archived' ? null : { value: s, label: STAGE_LABEL[s] }
+      },
+    },
     // Every other spec here carries a label map; this one did not, so the KIND
     // group in the filter sheet was the last place a raw column value reached
     // the screen ("single_image" under a row chip that reads "IMAGE").

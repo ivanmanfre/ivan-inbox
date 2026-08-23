@@ -1593,11 +1593,70 @@ export function stageOf(r: ContentDraft, now: number = Date.now()): ContentStage
     case 'published': return 'published'
     case 'error': return 'error'
     case 'disqualified':
-    case 'skipped': return 'archived'
-    // 'draft' and anything the n8n vocabulary grows after this file was
-    // written. Rendered at the bottom, never dropped (blank-board #3).
+    case 'skipped':
+    // 🔴 THE LITERAL 'archived' WAS FALLING THROUGH TO 'other' (found
+    // 2026-08-23, while taking the Archived tab off the bar at Ivan's word).
+    // The client lanes write that exact value and the Ivan lane writes
+    // 'disqualified' — status census the same day: risedtc 61 · arch 12 · ivan
+    // 3. So Mattan's "Other" tab was 62 rows, 61 of them archived, filed under
+    // a label that means "a status this app has never met". They are archived,
+    // they say so, and now the fold says so too — which is also what keeps them
+    // OUT of Content, since no lane renders the archived stage any more.
+    case 'archived': return 'archived'
+    // 'draft', 'planned', and anything the n8n vocabulary grows after this file
+    // was written. Rendered at the bottom, never dropped (blank-board #3).
     default: return 'other'
   }
+}
+
+// 🔴 ON A CLIENT LANE THE DATE IS THE SCHEDULE, NOT THE STATUS.
+//
+// Ivan, 2026-08-23: "the scheduled category is unnacurate... see the rise dtc
+// panel which we have more content scheduled for next week." He is reading a
+// real disagreement between two surfaces, not a preference. Measured on the
+// live risedtc lane that day: EIGHT board rows carried a future scheduled_at,
+// and this bar filed two of them under Scheduled — because stageOf() keys on
+// status and six of the eight still say 'review'.
+//
+// The PUBLISHER settles which surface is right. `CLIENT Rise DTC - Buffer
+// Publisher` (n8n WpC67D1eHMAWiZy4, node "Select Due Post") picks:
+//
+//     client_id=eq.risedtc & board_visible=eq.true & published_at=is.null
+//     & scheduled_at=lte.<now> & status=in.(scheduled,review)
+//
+// and its own comment reads "carousel_drafts.scheduled_at is the ONLY date
+// authority (board buffer note)". `risedtc_publisher_armed` is 'true', so that
+// workflow is live. A dated board row sitting at 'review' therefore GOES OUT on
+// its date, and calling it "on buffer" understated next week by six posts.
+// The client board already reads it this way (ClientBoardPage.tsx isScheduled:
+// a date on either field IS a schedule).
+//
+// Two scopes, both load-bearing:
+//   · BOARD ROWS ONLY — the publisher requires board_visible, so a dated draft
+//     we have not promoted is not scheduled to do anything and stays where its
+//     status puts it;
+//   · 'review'/'scheduled' ONLY — the same two the picker accepts. A dated
+//     archived or errored row is not a schedule, it is a leftover date.
+//
+// Ivan's lane is untouched: `scheduled_posts` is its publish queue and the
+// status flip is what arms it (QueueStrip's note).
+export function clientScheduleArmed(r: ContentDraft): boolean {
+  return boardGroupOf(r) === 'board'
+    && !r.published_at
+    && !!r.scheduled_at
+    && (r.status === 'review' || r.status === 'scheduled')
+}
+
+export function stageOfLane(
+  r: ContentDraft, lane: ContentLane, now: number = Date.now(),
+): ContentStage {
+  if (lane === 'ivan' || !clientScheduleArmed(r)) return stageOf(r, now)
+  // Past its time with nothing published back = it never went out, the same
+  // reading isStuckScheduled makes on Ivan's lane. `source_post_id` is the
+  // publisher's own writeback, so its absence past the hour is the signal.
+  if (r.source_post_id) return stageOf(r, now)
+  const t = Date.parse(r.scheduled_at as string)
+  return Number.isFinite(t) && t < now ? 'stuck' : 'scheduled'
 }
 
 export type ContentStages = Record<ContentStage, ContentDraft[]>
@@ -1612,6 +1671,17 @@ function emptyStages(): ContentStages {
 export function groupByStage(rows: ContentDraft[], now: number = Date.now()): ContentStages {
   const out = emptyStages()
   for (const r of rows) out[stageOf(r, now)].push(r)
+  return out
+}
+
+// The same grouping, read through the lane's own definition of scheduled. One
+// function, so the tab bar, the tab's rows and the Stage filter can never
+// disagree about which stage a dated board row is in.
+export function groupByLaneStage(
+  rows: ContentDraft[], lane: ContentLane, now: number = Date.now(),
+): ContentStages {
+  const out = emptyStages()
+  for (const r of rows) out[stageOfLane(r, lane, now)].push(r)
   return out
 }
 

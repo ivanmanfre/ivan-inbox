@@ -2,13 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { PullIndicator } from '../../components/PullIndicator'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import {
-  useContent, useIdeaCandidates, useScheduledQueue,
+  useClientIdeas, useContent, useIdeaCandidates, useScheduledQueue,
 } from '../../hooks/useContent'
 import {
   CONTENT_LANES, ERROR_ALARM_HOURS, LANE_LABEL, LANE_POSSESSIVE, PIPELINE_STAGES,
   STAGE_LABEL, STAGE_SHORT, boardGroupOf, clientStageLabel,
   countBoardVisible, countUndated, deleteClientDraft, deleteDraft, draftExcerpt,
-  canPromote, draftFailure, elapsedMinutes, generatingSince, groupByStage, isRecentError,
+  canPromote, draftFailure, elapsedMinutes, generatingSince, groupByLaneStage, groupByStage,
+  isRecentError,
   isStuckGenerating, setBoardVisible,
   reviewActionable, stageOf, taxonomyValue,
   type BoardGroup, type ContentDraft, type ContentLane, type ContentStage, type ContentStages,
@@ -27,7 +28,7 @@ import { FilteredEmpty } from './ContentBits'
 import { FilterRow } from './FilterRow'
 import { RowSelect } from './RowSelect'
 import type { RowCap } from './commandStore'
-import { IdeasSection, PillarMix, QueueStrip } from './ContentSections'
+import { ClientIdeasSection, IdeasSection, PillarMix, QueueStrip } from './ContentSections'
 import { postTime, relTime, sourceLabel, tagLabel, typeLabel } from './fmt'
 import { CalmEmpty, Failed, StageTabs, StatChip, type StageTab } from './Surface'
 import { hasMock } from './mock'
@@ -651,9 +652,17 @@ type ContentTab = ContentStage | 'ideas'
 // than being deleted with the piles. `stuck`/`archived`/`other` only appear
 // when they have rows — an always-on tab reading 0 spends a slot on a stage
 // that does not exist today.
+//
+// 🔴 `archived` came OFF this bar on 2026-08-23 (Ivan: "also we dont need
+// archived section") — 88 rows on his lane, the second-largest stage, and one
+// he has never acted on from here. The rows still exist and `stageOf` still
+// files them; Content simply has no archived category any more. The Stage
+// filter cannot offer one either: its facet is derived from the same
+// stageOfLane call, and `filterStage` is checked against the bar before it
+// selects a tab.
 const TAB_ORDER: ContentTab[] = [
   'ideas', 'review', 'generating', 'approved', 'scheduled', 'published',
-  'error', 'stuck', 'archived', 'other',
+  'error', 'stuck', 'other',
 ]
 const TAB_ALWAYS: ContentTab[] = ['ideas', 'review', 'generating', 'approved', 'scheduled', 'published', 'error']
 
@@ -986,13 +995,27 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
 // state used, and it stays inside sectionState's KEY_RE (/^[a-z][a-z0-9_]*$/).
 const BOARD_ORDER: BoardGroup[] = ['internal', 'board']
 
-// Every stage a client row can hold, in pipeline order, minus `ideas` (that
-// bank is Ivan's — lm_idea_candidates carries no tenancy column at all).
+// Every stage a client row can hold, in pipeline order.
+//
+// `ideas` is not here because a client idea is not a `carousel_drafts` row at
+// all — it lives in `client_ideas` and rides its own tab, keyed 'ideas', beside
+// this composite set (CLIENT_IDEAS_TAB below).
+//
+// 🔴 `archived` is GONE (2026-08-23, Ivan: "also we dont need archived
+// section"). 61 archived rows on the risedtc lane and 88 on Ivan's — two thirds
+// of a lane that is never acted on, taking a slot on a bar whose whole job is
+// to say where the work is. The rows are untouched in the database and
+// `stageOf` still returns 'archived' for them; nothing in Content renders that
+// stage any more, on either lane.
 const CLIENT_STAGES: ContentStage[] = [
   'review', 'generating', 'approved', 'scheduled', 'published',
-  'error', 'stuck', 'archived', 'other',
+  'error', 'stuck', 'other',
 ]
-const CLIENT_TAB_KEYS: string[] = BOARD_ORDER.flatMap(g => CLIENT_STAGES.map(s => `${g}_${s}`))
+const CLIENT_IDEAS_TAB = 'ideas'
+const CLIENT_TAB_KEYS: string[] = [
+  CLIENT_IDEAS_TAB,
+  ...BOARD_ORDER.flatMap(g => CLIENT_STAGES.map(s => `${g}_${s}`)),
+]
 // The one tab that shows at zero. It is the decision the lane exists to ask
 // for, and a bar that hid it on a quiet day would answer "is anything waiting
 // on me" by omission.
@@ -1021,6 +1044,10 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
   // The lane opens on the decision it is asking for. Per-lane key, so RISE and
   // ARCH keep their own answer.
   const [tab, setTab] = useStageTab(lane, CLIENT_TAB_KEYS, CLIENT_TAB_ALWAYS)
+  // The lane's idea bank. Read on mount rather than on tab-select: the count is
+  // ON the bar, and a tab that has to be clicked before it can say how many
+  // rows it holds is not a count, it is a promise.
+  const ideas = useClientIdeas(lane, true)
   // Same determinism rule as the Ivan lane: an active stage filter selects its
   // tab, so the filter and the table can never describe two different stages.
   // OURS first — a stage filter on this lane is Ivan asking about work he still
@@ -1048,11 +1075,17 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
   // The two halves, split ONCE. boardGroupOf, never an inline
   // `board_visible === true`: the grouping and the count that heads the lane
   // have to agree about NULL, and they only can if they ask the same function.
+  //
+  // 🔴 groupByLaneStage, not groupByStage. On this lane the DATE is the
+  // schedule (content.ts, clientScheduleArmed): the publisher takes a dated
+  // board row at `review` as well as one at `scheduled`, so six of the eight
+  // dated risedtc rows were sitting under "On buffer" while their publish times
+  // were already set. That is the disagreement with his own panel Ivan named.
   const byGroup: Record<BoardGroup, ContentStages> = {
-    internal: groupByStage(shown.filter(d => boardGroupOf(d) === 'internal')),
-    board: groupByStage(shown.filter(d => boardGroupOf(d) === 'board')),
+    internal: groupByLaneStage(shown.filter(d => boardGroupOf(d) === 'internal'), lane),
+    board: groupByLaneStage(shown.filter(d => boardGroupOf(d) === 'board'), lane),
   }
-  const tabs: StageTab[] = BOARD_ORDER.flatMap(g => CLIENT_STAGES.map(st => ({
+  const stageTabs: StageTab[] = BOARD_ORDER.flatMap(g => CLIENT_STAGES.map(st => ({
     key: `${g}_${st}`,
     label: clientStageLabel(st, g),
     n: byGroup[g][st].length,
@@ -1061,6 +1094,13 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
     // do or Ivan's to chase.
     mark: g === 'internal' && st === 'review',
   }))).filter(t => t.key === CLIENT_TAB_ALWAYS || t.n > 0)
+  // Ideas FIRST, the same position the bank takes on Ivan's bar, and always on
+  // — a staged-ideas count that goes quiet at zero is the one number that says
+  // the call miner has stopped feeding this lane.
+  const tabs: StageTab[] = [
+    { key: CLIENT_IDEAS_TAB, label: 'Ideas', n: ideas.rows.length, mark: false },
+    ...stageTabs,
+  ]
 
   // An active stage filter selects a tab that exists. Ours first, then the
   // client's — a stage filter here is Ivan asking about work he still holds.
@@ -1077,9 +1117,14 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
   // bar RIGHT NOW rather than trusted. Falling back to the first tab keeps the
   // table and the highlighted pill describing the same rows.
   const active = tabs.some(t => t.key === tab) ? tab : (tabs[0]?.key ?? CLIENT_TAB_ALWAYS)
+  const onIdeas = active === CLIENT_IDEAS_TAB
+  // The ideas tab has no group and no stage, so the split is only asked for
+  // when there is one to make. Falling back to the always-on tab keeps the
+  // destructure total without inventing a stage for a non-draft row set.
   const [activeGroup, activeStage] = (() => {
-    const i = active.indexOf('_')
-    return [active.slice(0, i) as BoardGroup, active.slice(i + 1) as ContentStage]
+    const key = onIdeas ? CLIENT_TAB_ALWAYS : active
+    const i = key.indexOf('_')
+    return [key.slice(0, i) as BoardGroup, key.slice(i + 1) as ContentStage]
   })()
 
   return (
@@ -1113,7 +1158,26 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
       ) : (
         <>
           <StageTabs tabs={tabs} active={active} onSelect={setTab} />
-          {shown.length === 0 && drafts.length > 0
+          {onIdeas ? (
+            // 🔴 The draft facets and the search box do NOT narrow these rows —
+            // they are `client_ideas`, a different table — so the band says so
+            // rather than rendering a filtered-looking list that ignored the
+            // filter. Same rule the Ivan lane's bank states (hiddenByFilter).
+            draftFacetsActive(filters, q) ? (
+              <div className="ct-subtle">
+                Hidden while a draft filter is on. These {ideas.rows.length} rows are{' '}
+                <code>client_ideas</code> — a different table from the drafts the facets
+                and the search box run over, so no filter here can narrow them. Clear the
+                filter to read them.
+              </div>
+            ) : (
+              <ClientIdeasSection
+                ideas={ideas.rows} lane={lane}
+                loading={ideas.loading} error={ideas.error}
+                loadedAt={ideas.loadedAt} refresh={ideas.refresh}
+              />
+            )
+          ) : shown.length === 0 && drafts.length > 0
             ? <FilteredEmpty noun="drafts" onClear={() => { setFilters({}); setQ('') }} />
             : (
               <StageTable

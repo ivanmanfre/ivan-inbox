@@ -1,11 +1,15 @@
 import { useState } from 'react'
 import {
   decideIdea, deleteIdea, elapsedMinutes, ideaDecidable, IDEA_NOT_OURS,
-  LANE_POSSESSIVE, STUCK_GENERATING_MINUTES,
+  LANE_LABEL, LANE_POSSESSIVE, STUCK_GENERATING_MINUTES,
   taxonomyFields, queueFailed,
   type ContentDraft, type ContentLane, type IdeaCandidate, type IdeaDecision,
   type ScheduledQueueRow,
 } from '../../lib/content'
+import {
+  decideClientIdea, ideaWhy,
+  type ClientIdea, type ClientIdeaDecision,
+} from '../../lib/clientIdeas'
 import {
   cleanStyleTitle, groupByLmStage, isStuckGeneratingLm, isStuckResource,
   LM_PIPELINE_STAGES, LM_STAGE_LABEL, normalizeLmStatus, previewKeyFor, previewsByStyle,
@@ -399,6 +403,149 @@ export function IdeasSection({
         </>
       )}
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Ideas, CLIENT LANE — client_ideas at status='staged', per client_id
+// ---------------------------------------------------------------------------
+//
+// The other half of the bank. Same shell as the card above on purpose: an idea
+// is an idea whichever lane it belongs to, and the two differ in what they hold
+// (an ICP score and a pillar rather than five scorer sub-scores), not in how a
+// row is read. What is deliberately NOT copied over:
+//
+//   · no DELETE. `operator_approve_idea` writes status and nothing else, there
+//     is no client-idea delete RPC, and a direct table delete would be the one
+//     act nothing undoes reached by a path no other surface uses;
+//   · no note field. Ivan's reject note lands in `archived_reason`;
+//     `client_ideas` has no such column (reactions.ts already had to state
+//     this), so a note box here would collect text and drop it.
+function ClientIdeaCard({ i, lane, onDecided }: {
+  i: ClientIdea
+  lane: ContentLane
+  onDecided: (id: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [deciding, setDeciding] = useState<ClientIdeaDecision | null>(null)
+  const [err, setErr] = useState('')
+  const title = i.title || i.hook || 'Untitled idea'
+  const why = ideaWhy(i.score_breakdown)
+  const sourceUrl = i.source_ref && /^https?:/.test(i.source_ref) ? i.source_ref : null
+  const run = async (decision: ClientIdeaDecision) => {
+    setDeciding(decision)
+    setErr('')
+    try {
+      await decideClientIdea(i.id, decision)
+      onDecided(i.id)
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : `Could not ${decision === 'approved' ? 'approve' : 'reject'}`)
+      setDeciding(null)
+    }
+  }
+  return (
+    <div className="ct-card ct-idea ct-tap" onClick={() => setOpen(o => !o)}>
+      <div className="ct-idea-h">
+        {/* The client-ICP score IS this row's anchor mark, on the same rail the
+            composite score takes on Ivan's. Same width, same column. */}
+        <div className="ct-idea-n">{i.icp_score !== null ? i.icp_score : '—'}</div>
+        <div className="ct-mid">
+          <div className="ct-title ct-row-p">{title}</div>
+          {/* ONE chip closed, and it is the SOURCE — "From your sales calls" is
+              the fact that separates one of these rows from the next. The
+              pillar and the format are constant enough within a batch to carry
+              nothing here; both are one click down. */}
+          <div className="ct-meta">
+            {i.source_label && <span className="ct-chip">{i.source_label}</span>}
+          </div>
+        </div>
+        {i.created_at && (
+          <div className="ct-tail"><span className="ct-tm">{relTime(i.created_at)}</span></div>
+        )}
+      </div>
+      {open && (
+        <div className="ct-idea-b">
+          {/* The hook is the SENTENCE the writer would open with, and the title
+              is the filed version of it. Shown only when they differ, so a row
+              whose title IS the hook does not print it twice. */}
+          {i.hook && i.hook !== title && <div className="dd-body ct-why">{i.hook}</div>}
+          <div className="ct-meta ct-meta-wrap">
+            {i.pillar && <span className="ct-chip">{label(i.pillar)}</span>}
+            {i.format && <span className="ct-chip">{label(i.format)}</span>}
+          </div>
+          {why && <div className="dd-body ct-why">{why}</div>}
+          {sourceUrl && (
+            <div className="ct-links">
+              <a className="dd-link" href={sourceUrl} target="_blank" rel="noreferrer">Source ↗</a>
+            </div>
+          )}
+          <div className="wb-delzone wb-delzone-idea" onClick={e => e.stopPropagation()}>
+            {err && <div className="ops-err">{err}</div>}
+            <div className="ct-idea-decide">
+              <div className="ct-ac ct-ac-wide">
+                <button
+                  type="button" className="btn s" disabled={!!deciding}
+                  onClick={() => run('rejected')}
+                >
+                  {deciding === 'rejected' ? 'Rejecting…' : 'Reject'}
+                </button>
+                <button
+                  type="button" className="btn p" disabled={!!deciding}
+                  onClick={() => run('approved')}
+                >
+                  {deciding === 'approved' ? 'Approving…' : 'Approve'}
+                </button>
+              </div>
+              {/* Both consequences named, and the boundary with them: nothing
+                  here reaches the client. Approving stages the idea for the
+                  generation run, and what that run writes lands at Needs
+                  review on OUR side of this lane — going on his board is still
+                  the separate, explicit promote. */}
+              <div className="ct-ref">
+                Approve hands it to the generation run and the draft comes back at
+                Needs review, still internal · Reject files it and the curator
+                stops offering it. Neither one reaches {LANE_LABEL[lane]}.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function ClientIdeasSection({ ideas, lane, loading, error, loadedAt, refresh }: {
+  ideas: ClientIdea[]
+  lane: ContentLane
+  loading: boolean
+  error: string | null
+  loadedAt: string | null
+  refresh: () => void
+}) {
+  // Decided in this session leaves the list on the click, for the reason
+  // contentIdeas.ts states about the other bank: the RPC has already moved the
+  // row out of `staged`, so the refetch behind it cannot bring it back, and
+  // waiting for that round trip is a second of a row that is no longer there.
+  const [decided, setDecided] = useState<ReadonlySet<string>>(() => new Set())
+  const markDecided = (id: string) => {
+    setDecided(cur => new Set(cur).add(id))
+    refresh()
+  }
+  const rows = ideas.filter(i => !decided.has(i.id))
+  if (error) return <Failed what="The idea bank" message={error} onRetry={refresh} loadedAt={null} />
+  if (loading && rows.length === 0) return <div className="ct-subtle">Reading the idea bank…</div>
+  if (rows.length === 0) {
+    return <CalmEmpty line={`Nothing staged for ${LANE_POSSESSIVE[lane]} lane.`} loadedAt={loadedAt} />
+  }
+  return (
+    <>
+      <div className="ct-subline">
+        {rows.length} staged, highest client-ICP first — open one to approve or reject it.
+      </div>
+      {rows.map(i => (
+        <ClientIdeaCard key={i.id} i={i} lane={lane} onDecided={markDecided} />
+      ))}
+    </>
   )
 }
 
