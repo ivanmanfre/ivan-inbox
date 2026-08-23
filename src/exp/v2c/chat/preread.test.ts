@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  PREREAD_MAX, buildPreReadMessages, parsePreRead, preReadWorthwhile, waitingDays,
+  PREREAD_MAX, buildPreReadMessages, parsePreRead, preReadWorthwhile, splitPreRead, waitingDays,
 } from './preread'
 
 const NOW = Date.parse('2026-08-22T12:00:00Z')
@@ -83,5 +83,39 @@ describe('the reply, made safe to print', () => {
   it('an empty answer stays empty, so the caller can say so instead of printing a blank', () => {
     expect(parsePreRead('   \n  ')).toBe('')
     expect(parsePreRead('<<ESCALATE: nothing>>')).toBe('')
+  })
+})
+
+describe('the line, taken apart for the bubble', () => {
+  it('splits the three parts the prompt asked for and labels them', () => {
+    const parts = splitPreRead('Wants pricing for the DM lane · waiting on a number · a call this week')
+    expect(parts).toEqual([
+      { label: 'What they want', text: 'Wants pricing for the DM lane', stated: true },
+      { label: 'What is blocking', text: 'waiting on a number', stated: true },
+      { label: 'What was promised', text: 'a call this week', stated: true },
+    ])
+  })
+
+  it('marks "not stated" as unstated rather than as content', () => {
+    const parts = splitPreRead('Wants pricing · not stated · Not Stated.')
+    expect(parts?.map(p => p.stated)).toEqual([true, false, false])
+    expect(parts?.[1].text).toBe('not stated')
+  })
+
+  it('treats a blank part as unstated, and never invents one', () => {
+    const parts = splitPreRead('Wants pricing ·   · a call')
+    expect(parts?.[1]).toEqual({ label: 'What is blocking', text: 'not stated', stated: false })
+    expect(parts).toHaveLength(3)
+  })
+
+  it('tolerates a missing space around the separator', () => {
+    expect(splitPreRead('a·b·c')?.map(p => p.text)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('returns null when it did not come back in three, so the caller prints the whole line', () => {
+    expect(splitPreRead('Wants pricing · not stated')).toBeNull()
+    expect(splitPreRead('He asked what it costs and never heard back')).toBeNull()
+    expect(splitPreRead('one · two · three · four')).toBeNull()
+    expect(splitPreRead('   ')).toBeNull()
   })
 })

@@ -80,6 +80,58 @@ export function parsePreRead(raw: string): string {
   return one.length > PREREAD_MAX ? `${one.slice(0, PREREAD_MAX - 1)}…` : one
 }
 
+// ---------------------------------------------------------------------------
+// THE LINE, TAKEN APART. Ivan, 2026-08-22: "when you add this sum up … I cannot
+// see what is summing up."
+//
+// He was right and the cause is arithmetic, not the model. `ASK` above buys a
+// line of up to 140 characters and `.snip` is one nowrap row inside a list, so
+// what reaches him is the first few words and an ellipsis. The content was
+// always there; it never fit.
+//
+// So the row keeps its one line (its height is what the windowed list measures
+// against) and the WHOLE line is readable in a bubble, split back into the
+// three parts the prompt asked for. Nothing here fetches anything: this is the
+// text that was already paid for, rearranged.
+// ---------------------------------------------------------------------------
+
+/** The separator `ASK` names. Split tolerantly: a model that drops a space
+ *  around the middot has still answered in three parts. */
+const PART_SEP = /\s*·\s*/
+
+export const PREREAD_LABELS = ['What they want', 'What is blocking', 'What was promised'] as const
+
+export type PreReadPart = {
+  label: string
+  text: string
+  /** False when the conversation did not say. The prompt asks for the literal
+   *  words "not stated", and a blank part means the same thing. Rendered quiet
+   *  rather than as content, because "not stated" is the absence of a finding
+   *  and printing it in the same weight as a finding is how a gap reads as a
+   *  fact. */
+  stated: boolean
+}
+
+/**
+ * The one line, back in three labelled parts, or NULL when it did not come
+ * back in three.
+ *
+ * Null is a real answer and the caller must print the raw line when it gets
+ * one. A model that returned two parts, or a sentence with no middot in it,
+ * still said something; dropping it to keep the layout tidy would lose the
+ * only thing the call bought. Pure, so the shapes are tested without a browser.
+ */
+export function splitPreRead(line: string): PreReadPart[] | null {
+  const raw = line.trim()
+  if (!raw) return null
+  const parts = raw.split(PART_SEP).map(s => s.trim())
+  if (parts.length !== PREREAD_LABELS.length) return null
+  return parts.map((text, i) => {
+    const stated = text !== '' && !/^not\s+stated\b[.·]?$/i.test(text)
+    return { label: PREREAD_LABELS[i], text: stated ? text : 'not stated', stated }
+  })
+}
+
 /**
  * Whether a thread is worth a pre-read at all. Only the ones the measurement
  * is about: their message is the newest, so the ball is with Ivan. A thread he
