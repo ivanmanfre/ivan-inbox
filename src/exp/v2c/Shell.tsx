@@ -248,20 +248,43 @@ export default function Shell() {
       + (glance.contentReviewOther > 0 ? ` · other lanes ${glance.contentReviewOther}` : ''),
     magnets: 'lead magnets at review, every lane',
   }
+  // Corroborated failures: both health views agree. See the note on `n` below.
+  const urgentAlerts = glance.alerts.filter(a => a.kind === 'both')
   // The automation alarm, shaped once here so the rail, the ribbon and the Ops
   // list can never state three different totals.
   const health = {
-    n: glance.alerts.length,
-    // The window moved 14 days to 7 and acknowledged errors dropped out, so the
-    // sentence states both exclusions with their real counts rather than a
-    // hardcoded "14" that the constant can drift away from silently.
-    note: glance.alerts.length === 0
+    // 🔴 THE RAIL ALARM FIRES ON CORROBORATION, NOT ON EXISTENCE. Ivan,
+    // 2026-08-23: "I want to see that warning in workflows, really. Unless it's
+    // very urgent, it's very annoying because it's always there."
+    //
+    // "Always there" is the whole complaint, and it is the same failure
+    // TodayScreen.tsx:16 already records him cutting once: "a permanent shelf of
+    // n8n workflow errors nobody acts on". Tightening the window from 14 days to
+    // 7 took it from 20 to 6, which is more accurate and still permanent. An
+    // alarm that is on every day is not an alarm.
+    //
+    // So the bar is no longer "did something error". It is "do the two
+    // independent health views AGREE this automation is broken": `both` means
+    // `dashboard_workflow_stats` saw its last execution fail AND
+    // `scheduled_ops_status` sees it overdue or erroring right now. One run that
+    // failed and then recovered is history; a job that failed and has since
+    // stopped running is the thing worth interrupting him for.
+    //
+    // Deliberately NOT a list of important workflow names. A name list rots, and
+    // this stack has been bitten by exactly that before. Corroboration is a
+    // property of the data and keeps working when the workflows are renamed.
+    //
+    // Nothing is hidden: everything below the bar stays in Ops, and the tooltip
+    // says how much is down there.
+    n: urgentAlerts.length,
+    note: urgentAlerts.length === 0
       ? ''
-      : `${glance.alerts.length} automation${glance.alerts.length === 1 ? '' : 's'} `
-        + 'errored or ran past schedule in the last 7 days. '
-        + `${glance.olderErrored + glance.olderStalled} that have not run in a week are not counted`
-        + (glance.acknowledged > 0 ? `, and ${glance.acknowledged} you already acknowledged` : '')
-        + '. Read only: open Ops for the list.',
+      : `${urgentAlerts.length} automation${urgentAlerts.length === 1 ? '' : 's'} `
+        + `failed and ${urgentAlerts.length === 1 ? 'has' : 'have'} stopped running. `
+        + `${glance.alerts.length - urgentAlerts.length} more errored in the last 7 days without stopping`
+        + (glance.acknowledged > 0 ? `, ${glance.acknowledged} you already acknowledged` : '')
+        + `, and ${glance.olderErrored + glance.olderStalled} have not run in a week. `
+        + 'Read only: open Ops for the list.',
   }
   const sev = {
     // Only a real problem takes a severity tier. A backlog of approvals is work,
