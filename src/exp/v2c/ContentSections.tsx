@@ -7,7 +7,7 @@ import {
   type ScheduledQueueRow,
 } from '../../lib/content'
 import {
-  decideClientIdea, ideaWhy,
+  decideClientIdea, ideaWhy, quoteLabel, sourceHues,
   type ClientIdea, type ClientIdeaDecision,
 } from '../../lib/clientIdeas'
 import {
@@ -17,8 +17,9 @@ import {
   type LmStage, type Resource, type StylePrompt,
 } from '../../lib/styles'
 import {
-  applyFilters, applySearch, buildFacets, IDEA_PROMINENT, IDEA_SPECS, QUEUE_PROMINENT,
-  QUEUE_SPECS, RESOURCE_SPECS, RESOURCE_PROMINENT, STYLE_PROMINENT, splitFacets, styleSpecs,
+  applyFilters, applySearch, buildFacets, CLIENT_IDEA_SPECS, IDEA_PROMINENT, IDEA_SPECS,
+  QUEUE_PROMINENT, QUEUE_SPECS, RESOURCE_SPECS, RESOURCE_PROMINENT, STYLE_PROMINENT,
+  splitFacets, styleSpecs,
   type FilterState,
 } from '../../lib/contentFilters'
 import { useSectionState } from '../../hooks/useSectionState'
@@ -421,9 +422,12 @@ export function IdeasSection({
 //   · no note field. Ivan's reject note lands in `archived_reason`;
 //     `client_ideas` has no such column (reactions.ts already had to state
 //     this), so a note box here would collect text and drop it.
-function ClientIdeaCard({ i, lane, onDecided }: {
+function ClientIdeaCard({ i, lane, hue, onDecided }: {
   i: ClientIdea
   lane: ContentLane
+  // Dealt by the section from the whole set on screen, never computed per row —
+  // the separation guarantee is a property of the SET (sourceHues).
+  hue: number | null
   onDecided: (id: string) => void
 }) {
   const [open, setOpen] = useState(false)
@@ -431,6 +435,7 @@ function ClientIdeaCard({ i, lane, onDecided }: {
   const [err, setErr] = useState('')
   const title = i.title || i.hook || 'Untitled idea'
   const why = ideaWhy(i.score_breakdown)
+  const quote = quoteLabel(i)
   const sourceUrl = i.source_ref && /^https?:/.test(i.source_ref) ? i.source_ref : null
   const run = async (decision: ClientIdeaDecision) => {
     setDeciding(decision)
@@ -455,8 +460,21 @@ function ClientIdeaCard({ i, lane, onDecided }: {
               the fact that separates one of these rows from the next. The
               pillar and the format are constant enough within a batch to carry
               nothing here; both are one click down. */}
+          {/* Ivan, 2026-08-23: "make sales calls a bit smaller so it doesn't
+              compete against the other text, and make every source a different
+              colour". It sits a tier below the title now (.ct-srcchip), and the
+              colour is DERIVED from the label rather than mapped: 16 distinct
+              source labels are live across the two client lanes today and the
+              ingestors mint new ones without asking (sourceHue). */}
           <div className="ct-meta">
-            {i.source_label && <span className="ct-chip">{i.source_label}</span>}
+            {i.source_label && (
+              <span
+                className="ct-chip ct-srcchip"
+                style={hue !== null ? ({ '--src-h': hue } as React.CSSProperties) : undefined}
+              >
+                {i.source_label}
+              </span>
+            )}
           </div>
         </div>
         {i.created_at && (
@@ -472,8 +490,44 @@ function ClientIdeaCard({ i, lane, onDecided }: {
           <div className="ct-meta ct-meta-wrap">
             {i.pillar && <span className="ct-chip">{label(i.pillar)}</span>}
             {i.format && <span className="ct-chip">{label(i.format)}</span>}
+            {/* The funnel stage is decided HERE, not after generation: the
+                kickoff copies this exact value onto the draft and stamps
+                funnel_source='declared' (n8n FsuRkf1owG1QpcyD). Printing it on
+                the approve card is what makes that decision visible at the
+                moment it is being made. A row with none says so — 8 of the 155
+                staged rows carry no stage, and those are the ones that reach
+                the board untagged. */}
+            <span className="ct-chip" title="Funnel stage, carried onto the draft as declared">
+              {i.funnel_stage ? label(i.funnel_stage) : 'no funnel stage'}
+            </span>
           </div>
-          {why && <div className="dd-body ct-why">{why}</div>}
+          {/* 🔴 THE LINE FROM THE CALL, named as one.
+              Ivan, 2026-08-23: "Can we see the actual quote? I see these sales
+              call ideas, and I don't see the quote."
+              It was on the card already and it was mislabelled — rendered as
+              plain body text beside the hook, which reads as more machine
+              prose. `score_breakdown.why` holds `evidence_quote`, and the
+              extractor canon defines that as "copied VERBATIM,
+              character-for-character, from a SINGLE transcript line". So it is
+              drawn as a quote, with the attribution the ingestor's own voice tag
+              supports and no more than that: `unclear` prints its doubt rather
+              than borrowing a name (clientIdeas.ts, VOICE_ATTRIB). Rows from any
+              other source keep the plain treatment — their `why` really is a
+              rationale, and calling it a quote is the one claim this card must
+              never get wrong. */}
+          {why && (quote ? (
+            <blockquote
+              className="ct-quote"
+              style={hue !== null
+                ? { borderLeftColor: `hsl(${hue} 52% 52% / .55)` }
+                : undefined}
+            >
+              <div className="ct-quote-t">{why}</div>
+              <div className="ct-quote-a">{quote}</div>
+            </blockquote>
+          ) : (
+            <div className="dd-body ct-why">{why}</div>
+          ))}
           {sourceUrl && (
             <div className="ct-links">
               <a className="dd-link" href={sourceUrl} target="_blank" rel="noreferrer">Source ↗</a>
@@ -527,11 +581,28 @@ export function ClientIdeasSection({ ideas, lane, loading, error, loadedAt, refr
   // row out of `staged`, so the refetch behind it cannot bring it back, and
   // waiting for that round trip is a second of a row that is no longer there.
   const [decided, setDecided] = useState<ReadonlySet<string>>(() => new Set())
+  const [filters, setFilters] = useState<FilterState>({})
   const markDecided = (id: string) => {
     setDecided(cur => new Set(cur).add(id))
     refresh()
   }
   const rows = ideas.filter(i => !decided.has(i.id))
+  // THE SUBFILTER, Ivan 2026-08-23: "i would like to have a subcategory or
+  // subfilter below the menu where it says Ideas, Waiting on you, Errors, like
+  // small things I can filter by source."
+  //
+  // Built through the app's own facet mechanism rather than a bespoke pill
+  // strip, so it obeys the one rule every other filter here obeys: a facet is
+  // DERIVED from the rows currently loaded, never from a hardcoded list. 106 of
+  // Mattan's staged rows are sales calls and the other 49 are spread over eight
+  // more sources — a bar built off a fixed list would have been wrong the next
+  // time an ingestor names a new subreddit.
+  // 🔴 Dealt from the UNFILTERED rows. Dealing from `shown` would repaint every
+  // card the moment a filter narrowed the set, so the colour would be a fact
+  // about the current filter rather than about the source.
+  const hues = sourceHues(rows.map(i => i.source_label))
+  const { prominent, demoted } = splitFacets(buildFacets(rows, CLIENT_IDEA_SPECS), ['source'])
+  const shown = applyFilters(rows, CLIENT_IDEA_SPECS, filters)
   if (error) return <Failed what="The idea bank" message={error} onRetry={refresh} loadedAt={null} />
   if (loading && rows.length === 0) return <div className="ct-subtle">Reading the idea bank…</div>
   if (rows.length === 0) {
@@ -539,12 +610,25 @@ export function ClientIdeasSection({ ideas, lane, loading, error, loadedAt, refr
   }
   return (
     <>
-      <div className="ct-subline">
-        {rows.length} staged, highest client-ICP first — open one to approve or reject it.
+      <div className="ct-bandline">
+        <div className="ct-subtle ct-bandline-t">
+          {rows.length} staged, highest client-ICP first — open one to approve or reject it.
+        </div>
+        <FilterRow
+          prominent={prominent} demoted={demoted}
+          state={filters} setState={setFilters}
+          shown={shown.length} loaded={rows.length} total={null} noun="ideas"
+          inline idleCount={false} label="Idea filters"
+        />
       </div>
-      {rows.map(i => (
-        <ClientIdeaCard key={i.id} i={i} lane={lane} onDecided={markDecided} />
-      ))}
+      {shown.length === 0
+        ? <FilteredEmpty noun="ideas" onClear={() => setFilters({})} />
+        : shown.map(i => (
+          <ClientIdeaCard
+            key={i.id} i={i} lane={lane} onDecided={markDecided}
+            hue={i.source_label ? hues.get(i.source_label) ?? null : null}
+          />
+        ))}
     </>
   )
 }

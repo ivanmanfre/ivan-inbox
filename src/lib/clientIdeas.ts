@@ -40,6 +40,13 @@ export type ClientIdea = {
   status: string | null
   created_at: string | null
   icp_score: number | null
+  // The funnel stage DECLARED at staging, and the same value the generation
+  // kickoff copies onto the draft with funnel_source='declared' (n8n
+  // FsuRkf1owG1QpcyD). So it is the tag the post ships with, decided here —
+  // which is why the card prints it beside the decision rather than leaving it
+  // to be guessed after generation. Added to the RPC by db/042.
+  funnel_stage: string | null
+  funnel_source: string | null
   // The scorer's own reasoning object. Shape varies by the workflow that wrote
   // the row (the Fathom call miner and the X trend ingestor both write here),
   // so it is carried whole and read defensively at the card.
@@ -70,6 +77,8 @@ function toIdea(raw: unknown): ClientIdea | null {
     status: str(r.status),
     created_at: str(r.created_at),
     icp_score: num(r.icp_score),
+    funnel_stage: str(r.funnel_stage),
+    funnel_source: str(r.funnel_source),
     score_breakdown: r.score_breakdown && typeof r.score_breakdown === 'object'
       ? (r.score_breakdown as Record<string, unknown>)
       : null,
@@ -136,9 +145,25 @@ const CLIENT_IDEA_MESSAGES: Record<string, string> = {
   bad_decision: 'The database only accepts approve or reject on an idea.',
 }
 
-// The scorer's sentence, wherever this row's writer put it. Both live writers
-// use a different key, so both are read; an unknown shape yields null rather
-// than a stringified object.
+// 🔴 `score_breakdown.why` IS THE VERBATIM LINE FROM THE CALL, not a rationale.
+//
+// The ingestor writes `why: t.evidence_quote` (n8n ED3KvNsjKwANZsuf, "Fathom
+// Call Ingestor"), and the extractor prompt that produced it — canon,
+// `content_prompts/rise-dtc-call-extractor` — defines the field as:
+//
+//   "evidence_quote (copied VERBATIM, character-for-character, from a SINGLE
+//    transcript line that supports the topic; no ellipsis, no edits, no
+//    merging lines)"
+//
+// with a hard filter that "a quote that does not support the title disqualifies
+// the candidate" and, on the reach track, "verbatim, contiguous, first-person".
+// So this is the sentence somebody actually said, and rendering it under a
+// heading that says "why it scored" describes it as the machine's opinion. It
+// is evidence. 171 of the 183 staged rows carry one.
+//
+// The other writers on this table (the X trend ingestor) put a real rationale
+// under the same key, which is why the label travels with the SOURCE and not
+// with the field — see quoteLabel below.
 export function ideaWhy(b: Record<string, unknown> | null): string | null {
   if (!b) return null
   for (const k of ['why', 'reason', 'rationale', 'note']) {
@@ -146,4 +171,58 @@ export function ideaWhy(b: Record<string, unknown> | null): string | null {
     if (typeof v === 'string' && v.trim()) return v
   }
   return null
+}
+
+// WHOSE line it is, when the extractor could tell. `voice` is the ingestor's
+// own selection filter (buyer > neutral > unclear > seller), tagged "from the
+// SPEAKER OF THE evidence_quote, attributed by CONTENT and never by the speaker
+// label". `unclear` is the honest state — it is what the diarization guard
+// forces when the transcript collapsed and a quote cannot be attributed — so it
+// is printed as a doubt rather than smoothed into a name.
+const VOICE_ATTRIB: Record<string, string> = {
+  buyer: 'the founder, on the call',
+  neutral: 'on the call',
+  seller: 'Mattan, on the call',
+  unclear: 'on the call — speaker not attributable',
+}
+
+export function quoteLabel(i: ClientIdea): string | null {
+  // Only a call row's `why` is a transcript line. Everything else on this table
+  // writes a rationale under the same key, and calling that a quote would be
+  // the one claim this card must never get wrong.
+  if (!/call/i.test(i.source_label ?? '')) return null
+  const voice = String(i.score_breakdown?.voice ?? '').toLowerCase()
+  return VOICE_ATTRIB[voice] ?? 'on the call'
+}
+
+// A COLOUR PER SOURCE, and the ask is DISTINCTNESS: Ivan, 2026-08-23, "make
+// every source a different colour". 16 distinct source_labels are live across
+// the two client lanes today ("From your sales calls" 106, "From competitor
+// feeds" 24, five different subreddit threads, "Winner repurpose", …) and the
+// ingestors mint new ones without asking, so a hardcoded palette would be wrong
+// the next time somebody names a subreddit — the same reasoning the style
+// roster carries about hardcoded catalogues.
+//
+// 🔴 THE FIRST BUILD HASHED THE LABEL TO A HUE AND ITS OWN TEST KILLED IT.
+// FNV-1a mod 360 is stable and perfectly uniform, and uniform is exactly the
+// problem: on the nine sources live on Mattan's bank, two of them landed 3
+// APART, which is the same colour to an eye. Hashing gives stability and cannot
+// give separation, and separation is what was actually asked for.
+//
+// So the hues are dealt from the SET that is on screen: sort the labels (a
+// deterministic order, never the order the rows happened to arrive in), then
+// space them evenly around the wheel. n sources get 360/n between them, which
+// is the widest any n colours can be. The trade-off, stated rather than hidden:
+// a label's hue can shift when a NEW source appears in the bank, because the
+// deal changes. That is the price of the guarantee, and it is the right way
+// round — a colour that means "not the one next to it" beats a colour that
+// means "always this exact hue" on a list whose whole job is to be scanned.
+export function sourceHues(labels: readonly (string | null)[]): Map<string, number> {
+  const uniq = [...new Set(labels.filter((l): l is string => !!l))].sort()
+  const out = new Map<string, number>()
+  // The offset keeps "From your sales calls" — first alphabetically among the
+  // live labels and 106 of Mattan's 155 rows — off pure red, which every other
+  // mark on this surface reserves for a failure.
+  uniq.forEach((l, i) => out.set(l, Math.round((i * 360) / uniq.length + 20) % 360))
+  return out
 }

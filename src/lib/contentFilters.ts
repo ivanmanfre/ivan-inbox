@@ -3,6 +3,7 @@ import {
   type ContentDraft, type ContentLane, type IdeaCandidate, type ScheduledQueueRow,
 } from './content'
 import { normalizeStyleKey, previewKey, type Resource, type StylePrompt } from './styles'
+import type { ClientIdea } from './clientIdeas'
 import { label as labelOf, typeLabel } from './labels'
 
 // Facets, derived from the rows in front of you.
@@ -292,6 +293,24 @@ export const IDEA_SPECS: FacetSpec<IdeaCandidate>[] = [
     label: 'Engaged',
     of: i => (i.ivan_engaged === true ? { value: 'yes', label: 'Ivan engaged' } : null),
   },
+]
+
+// ---------- the client lanes' idea bank (client_ideas) ----------
+//
+// A DIFFERENT TABLE from the specs above, so a different spec list: these rows
+// carry a client-ICP score and a declared funnel stage, and none of them carry
+// a composite, a content_type or an `ivan_engaged` flag. Source leads because
+// it is the axis Ivan asked to filter on — 106 of Mattan's 155 staged rows are
+// sales calls and the rest are spread across eight more ingestors, so it is
+// also the only facet on this table that actually splits the pile.
+export const CLIENT_IDEA_SPECS: FacetSpec<ClientIdea>[] = [
+  { key: 'source', label: 'Source', of: i => tag(i.source_label) },
+  { key: 'pillar', label: 'Pillar', of: i => tag(i.pillar) },
+  // The funnel stage the ingestor DECLARED at staging. It is the same value the
+  // kickoff copies onto the draft (n8n FsuRkf1owG1QpcyD), so filtering here is
+  // filtering on the tag the post will actually ship with.
+  { key: 'funnel', label: 'Funnel', of: i => tag(i.funnel_stage) },
+  { key: 'icp', label: 'Client ICP', of: i => scoreBand(i.icp_score) },
 ]
 
 // ---------- publish queue ----------

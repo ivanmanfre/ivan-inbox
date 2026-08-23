@@ -1546,3 +1546,34 @@
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .wb-strat-save .btn{flex:none;cursor:pointer;padding:9px 18px;font-size:14px}
 .wb-strat-save .btn:disabled{opacity:.5;cursor:default}
+
+/* ── the client lanes' idea bank ─────────────────────────────────────────────
+   Ivan, 2026-08-23: "make sales calls a bit smaller so it doesn't compete
+   against the other text, and make every source a different colour."
+
+   The source chip was drawn at the same 10px/800 as every other chip, which on
+   a row whose only closed-state mark IS the source put "FROM YOUR SALES CALLS"
+   at the same visual weight as the title above it, 106 times in a row. It reads
+   one tier down now: 9px, weight 700, and the uppercase is dropped so the
+   letterforms stop shouting.
+
+   The COLOUR is per-source and derived, not mapped — `--src-h` is a hue the
+   card computes from the label itself (clientIdeas.ts, sourceHue), so a source
+   nobody has named yet still gets its own colour instead of falling back to
+   grey. Saturation and lightness are fixed here so every source lands at the
+   same weight and no hue can shout louder than another. */
+.ct-srcchip{
+  font-size:9px; font-weight:700; letter-spacing:.02em; text-transform:none;
+  padding:2px 7px;
+  color:hsl(var(--src-h) 62% 72%);
+  background:hsl(var(--src-h) 52% 52% / .16);
+}
+
+/* THE LINE FROM THE CALL. A rule on the leading edge in the source's own hue,
+   so the quote and the chip that says where it came from are visibly the same
+   fact. Italic is deliberately NOT used: these are transcript lines with their
+   own punctuation and typos, and italicising them reads as styling somebody's
+   speech. */
+.ct-quote{margin:10px 0 0; padding:2px 0 2px 11px; border-left:2px solid var(--sep)}
+.ct-quote-t{font-size:13px; line-height:1.45; color:var(--text)}
+.ct-quote-a{margin-top:5px; font-size:11px; color:var(--text3)}
