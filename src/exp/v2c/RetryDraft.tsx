@@ -1,7 +1,11 @@
 import { useState } from 'react'
 import { useConfirm } from '../../components/ConfirmSheet'
-import { type ContentDraft, type ContentLane, draftFailure } from '../../lib/content'
-import { isHumanEdited, planRegen, regenerateDraft } from '../../lib/studioActions'
+import {
+  draftFailure, LANE_POSSESSIVE, type ContentDraft, type ContentLane,
+} from '../../lib/content'
+import {
+  canRetryLane, isHumanEdited, planRegen, regenerateClientDraft, regenerateDraft,
+} from '../../lib/studioActions'
 
 // RETRY, ON THE ROW.
 //
@@ -30,9 +34,19 @@ import { isHumanEdited, planRegen, regenerateDraft } from '../../lib/studioActio
 //     documented escape hatch stays where it already is, in the takeover, as
 //     its own deliberate act.
 //
-// Ivan lane only, exactly as `RegenDraft` is: `regenerateDraft` fires post-gen
-// with `author: 'Ivan'`, so pointing it at a client row would run the wrong
-// pipeline over a client's draft.
+// 🔴 EVERY LANE THAT HAS A LIVE GENERATOR, since 2026-08-24. Ivan: "in the
+// errors section there is no regen option, so I can only delete it. It's kind
+// of weird."
+//
+// It was Ivan-only because `regenerateDraft` fires post-gen with
+// `author: 'Ivan'` and pointing that at a client row would write Ivan's voice
+// onto Mattan's post. That reasoning holds and the conclusion did not: the
+// client lane has its OWN generator taking the same call
+// (`regenerateClientDraft`, studioActions.ts), so the fix is to fire the right
+// one rather than to refuse. `canRetryLane` is the gate, and a lane whose
+// generator is inactive — ARCH's is born-dead — still gets no button, because a
+// retry that flips a row to `generating` with nothing listening is a silent
+// stall and worse than no button at all.
 export function RetryDraft({ d, lane, onDone }: {
   d: ContentDraft
   lane: ContentLane
@@ -43,7 +57,7 @@ export function RetryDraft({ d, lane, onDone }: {
   const [note, setNote] = useState('')
   const confirm = useConfirm()
 
-  if (lane !== 'ivan') return null
+  if (!canRetryLane(lane)) return null
 
   const guarded = isHumanEdited(d)
   const plan = planRegen(d)
@@ -69,6 +83,7 @@ export function RetryDraft({ d, lane, onDone }: {
       title: `Run the pipeline again for this ${kind}?`,
       message:
         `This spends a real generation on one draft and replaces its copy. `
+        + `${lane === 'ivan' ? '' : `It runs ${LANE_POSSESSIVE[lane]} generator, in his voice, and the draft stays internal. `}`
         + `${plan.keepsPinnedImage ? 'Your pinned image is kept. ' : ''}`
         + `The row leaves this list for Generating and comes back in minutes. `
         + `${failure.kind === 'completed'
@@ -80,7 +95,9 @@ export function RetryDraft({ d, lane, onDone }: {
 
     setBusy(true); setErr(''); setNote('')
     try {
-      const p = await regenerateDraft(d, false)
+      const p = lane === 'ivan'
+        ? await regenerateDraft(d, false)
+        : await regenerateClientDraft(d, lane)
       setNote(`Firing ${p.postFormat} (copy only). It sits in Generating until it lands.`)
       onDone()
     } catch (e) {

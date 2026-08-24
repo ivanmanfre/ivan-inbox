@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isHumanEdited, planRegen, regenWouldReplaceImage } from './studioActions'
+import { canRetryLane, isHumanEdited, planRegen, regenWouldReplaceImage } from './studioActions'
 import type { ContentDraft } from './content'
 
 const base: ContentDraft = {
@@ -52,5 +52,27 @@ describe('planRegen — the format is read off the row, never assumed', () => {
   it('reports when db/025 will refuse the overwrite instead of firing blind', () => {
     expect(planRegen({ ...base, taxonomy: { human_edited: 'true' } }).blockedByGuard).toBe(true)
     expect(planRegen(base).blockedByGuard).toBe(false)
+  })
+})
+
+describe('canRetryLane — a retry button only where a generator is listening', () => {
+  // Ivan, 2026-08-24: "in the errors section there is no regen option, so I can
+  // only delete it." The lane gate was `lane !== 'ivan'`, which refused the
+  // client lanes outright rather than firing their own generator.
+  it('allows Ivan and the lane whose generator is active', () => {
+    expect(canRetryLane('ivan')).toBe(true)
+    // CLIENT Rise DTC - Post Generation MAX (5WjbV0eks4d9Wyh5) is active and
+    // reads body.draft_id straight into task_id, so it rewrites the row it is
+    // given rather than creating one.
+    expect(canRetryLane('risedtc')).toBe(true)
+  })
+
+  it('refuses a lane whose generator is born-dead', () => {
+    // 🔴 CLIENT ARCH. Influencer Agency - Post Generation exists on the same
+    // shape and is INACTIVE. A Retry there would flip the row to `generating`
+    // with nothing listening — a silent stall, worse than no button. The lane's
+    // absence from CLIENT_GEN is the enforcement; there is no disabled state to
+    // forget to render.
+    expect(canRetryLane('arch')).toBe(false)
   })
 })

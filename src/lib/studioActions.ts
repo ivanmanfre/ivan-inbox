@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { ContentDraft } from './content'
+import type { ContentDraft, ContentLane } from './content'
 
 // The old dashboard's ACTIONS, brought to the inbox's reading window.
 //
@@ -118,6 +118,95 @@ export async function regenerateDraft(d: ContentDraft, withImage = false): Promi
     source: 'Inbox',
     post_format: plan.postFormat,
     include_image: plan.includeImage,
+  })
+  return plan
+}
+
+// ---------------------------------------------------------------------------
+// THE SAME RETRY, ON A CLIENT LANE
+// ---------------------------------------------------------------------------
+//
+// Ivan, 2026-08-24: "in the errors section there is no regen option, right, so
+// I can only delete it. It's kind of weird."
+//
+// He is right, and the reason it was Ivan-only was right when it was written
+// and is no longer the whole picture. `regenerateDraft` fires `post-gen-v2`
+// with `author: 'Ivan'`, and pointing THAT at a client row would run Ivan's
+// voice over Mattan's post — so RetryDraft refused the lane outright rather
+// than fire the wrong pipeline.
+//
+// What that missed is that the client lane HAS its own generator, and it takes
+// the same shape. `CLIENT Rise DTC - Post Generation MAX` (n8n 5WjbV0eks4d9Wyh5,
+// webhook `rise-dtc-post-gen-v2-max`) reads `body.draft_id` straight into
+// `task_id` and rewrites THAT row — it never creates one. The kickoff
+// (FsuRkf1owG1QpcyD) calls it with a draft it just made; a retry calls it with a
+// draft that already exists. Identical call, different row age.
+//
+// 🔴 PER LANE, AND ONLY WHERE THE GENERATOR IS ALIVE. `CLIENT ARCH. Influencer
+// Agency - Post Generation` exists on the same shape and is INACTIVE
+// ("born-dead", active=false). Offering Retry there would flip a row to
+// `generating` and nothing would ever come back — a silent stall, which is
+// strictly worse than no button. A lane absent from this map gets no Retry, and
+// that absence is the enforcement.
+type ClientGen = {
+  webhook: string
+  author: string
+  brand: { wordmark_html: string; domain: string }
+}
+
+const CLIENT_GEN: Partial<Record<ContentLane, ClientGen>> = {
+  risedtc: {
+    webhook: import.meta.env.VITE_RISE_POSTGEN_WEBHOOK
+      ?? 'https://n8n.ivanmanfredi.com/webhook/rise-dtc-post-gen-v2-max',
+    // Verbatim from the kickoff's own payload. The generator reads `author`
+    // into the briefing, so a near-miss here is a post in nobody's voice.
+    author: 'Mattan Danino (Rise DTC)',
+    brand: { wordmark_html: 'RISE DTC', domain: 'risedtc.com' },
+  },
+}
+
+export function canRetryLane(lane: ContentLane): boolean {
+  return lane === 'ivan' || CLIENT_GEN[lane] !== undefined
+}
+
+// Same two steps the Ivan path takes — flip to generating with the stamp the
+// stuck-detector reads, then fire — with the client payload the kickoff sends.
+// `register` / `story_ref` / `consent_tier` are carried off the row rather than
+// defaulted: they are the consent overlay, and a retry that dropped them would
+// quietly re-generate a personal-register post as a tactical one.
+export async function regenerateClientDraft(
+  d: ContentDraft, lane: ContentLane,
+): Promise<RegenPlan> {
+  const gen = CLIENT_GEN[lane]
+  if (!gen) throw new Error(`No live generator for the ${lane} lane`)
+  const plan = planRegen(d, false)
+  const tax = taxObj(d.taxonomy)
+  const { error } = await supabase.from('carousel_drafts')
+    .update({
+      status: 'generating',
+      taxonomy: { ...tax, generating_started_at: new Date().toISOString() },
+    })
+    .eq('id', d.id)
+  if (error) throw error
+  const str = (v: unknown): string | null => (typeof v === 'string' && v ? v : null)
+  await fire(gen.webhook, {
+    draft_id: d.id,
+    title: d.title ?? '',
+    topic: d.topic ?? d.title ?? '',
+    author: gen.author,
+    source: `client-${lane}`,
+    post_format: plan.postFormat,
+    post_format_details: '',
+    // Always 'No'. Same rule as the Ivan card: post-gen only writes image_urls
+    // when this is 'Yes', so asking for an image is what DESTROYS a hand-pinned
+    // photo. A new image stays a takeover decision.
+    include_image: 'No',
+    editorial_notes: str(tax.pillar) ? `pillar: ${String(tax.pillar)}` : '',
+    register: str(tax.register),
+    story_ref: str(tax.story_ref),
+    consent_tier: null,
+    client_id: lane,
+    brand: gen.brand,
   })
   return plan
 }
