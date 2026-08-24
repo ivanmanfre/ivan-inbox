@@ -558,8 +558,15 @@ export type DraftEmailStamp = { recipient_email: string; email_mirror_text: stri
 // Answerability gate: the drafter answered something rise-company-facts does not cover.
 // Same probe shape as the email stamps below (the view doesn't expose context_gap either),
 // and the same degrade rule: a failed read only loses the warning, never the inbox.
-// chat_url comes from outreach_prospects.linkedin_url — unipile_chat_id is a Unipile id and
-// does NOT resolve to a linkedin.com thread URL, so the profile is the only real link we hold.
+// chat_url comes from outreach_prospects.linkedin_url — the PROFILE, which is a weaker link
+// than this escalation deserves.
+//
+// 🔴 THE CLAIM THAT USED TO SIT HERE ("no linkedin.com thread URL is derivable, so the
+// profile is the only real link we hold") WAS WRONG, and cost a whole shipped pass on
+// 2026-08-24 because it was read as a constraint instead of checked. unipile_chat_id is
+// indeed a Unipile id, but the chat object BEHIND it carries `provider_id`, LinkedIn's own
+// conversation id. db/045 mirrors that map into `unipile_chats`; CopyChatLink builds the
+// real thread URL from it. This escalation should move onto the same link — it has not yet.
 export type DraftContextGap = { question: string | null; why: string | null; chat_url: string | null }
 
 export type DraftEvidenceFact = { id: string; fact: string; topic: string; at: string; from: string | null }
