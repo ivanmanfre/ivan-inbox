@@ -202,6 +202,21 @@ export async function regenerateClientDraft(
     // photo. A new image stays a takeover decision.
     include_image: 'No',
     editorial_notes: str(tax.pillar) ? `pillar: ${String(tax.pillar)}` : '',
+    // 🔴🔴 keep_gate: THE DRAFT MUST NOT PROMOTE ITSELF.
+    //
+    // `CLIENT Rise DTC - Post Generation MAX`, node "Update Task Status", ends
+    // every run with:
+    //
+    //     keep_gate ? { status:'review' } : { status:'review', board_visible:true }
+    //
+    // so a generation that does not ask for the gate puts its own output on the
+    // CLIENT'S BOARD the moment it finishes. Retrying an errored internal draft
+    // from the Errors tab would therefore hand Mattan a post nobody had read —
+    // the exact thing the promote button exists to be a decision about. This
+    // flag was missing from the first cut of this function (shipped 2026-08-24,
+    // ~1h before Ivan asked why an approved idea reached his board unreviewed)
+    // and every retry it fired would have promoted on landing.
+    keep_gate: true,
     register: str(tax.register),
     story_ref: str(tax.story_ref),
     consent_tier: null,
