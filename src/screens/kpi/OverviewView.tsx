@@ -4,10 +4,10 @@ import {
   type Lane, type DailyRow, type CampaignSend,
 } from '../../lib/sends'
 import {
-  fetchAccept, fetchPipeline, fetchGovernor, fetchScanOpens, fetchOutcomes, fetchRangeKpis,
+  fetchAccept, fetchReply, fetchPipeline, fetchGovernor, fetchScanOpens, fetchOutcomes, fetchRangeKpis,
   fetchReplacement, replacementRate, daysToEmpty,
   acceptRate, runwayDays, laneLabel, governorEnforcementGap,
-  type AcceptRow, type PipelineRow, type GovernorRow, type ScanOpenRow, type OutcomeRow, type RangeKpiRow,
+  type AcceptRow, type ReplyRow, type PipelineRow, type GovernorRow, type ScanOpenRow, type OutcomeRow, type RangeKpiRow,
   type ReplacementRow,
 } from '../../lib/kpis'
 
@@ -521,6 +521,7 @@ type PersonSummary = {
   gov: GovernorRow | null
   sendable: number; runway: number
   vol24: number
+  reply: ReplyRow | null
 }
 
 function personSummary(data: OverviewData, id: string): PersonSummary {
@@ -531,7 +532,8 @@ function personSummary(data: OverviewData, id: string): PersonSummary {
   const dailyRate = Math.max(avg7, gov ? gov.daily_used : 0)
   const runway = runwayDays(sendable, dailyRate)
   const vol24 = data.rows.filter(r => r.client_id === id).reduce((s, r) => s + r.sent_24h, 0)
-  return { id, gov, sendable, runway, vol24 }
+  const reply = data.reply.find(r => r.client_id === id) ?? null
+  return { id, gov, sendable, runway, vol24, reply }
 }
 
 function SeatCard({ p, selected, neutral, onSelect }: {
@@ -541,6 +543,10 @@ function SeatCard({ p, selected, neutral, onSelect }: {
   const m = g ? MODE[g.mode] : null
   const runwayLbl = p.runway >= 999 ? '∞' : `${p.runway}d`
   const cohort = g == null || g.accept_rate == null ? '—' : `${g.accept_rate}%`
+  // Reply rate of people who accepted AND got DM1 — the only denominator where a
+  // reply was ever possible. 30d, because the 7d cohort is still being answered.
+  const replyStr = p.reply == null || p.reply.rate_30d == null ? '—' : `${p.reply.rate_30d}%`
+  const replySub = p.reply == null ? '' : `${p.reply.replied_30d}/${p.reply.dmd_30d}`
   return (
     <div
       className={`ov-rc ${selected && !neutral ? 'on' : ''} ${onSelect ? 'tap' : ''}`}
@@ -562,6 +568,7 @@ function SeatCard({ p, selected, neutral, onSelect }: {
       )}
       <div className="ov-rc-stats">
         <div className="ov-rc-stat"><span>Cohort accept</span><b>{cohort}</b></div>
+        <div className="ov-rc-stat"><span>Reply 30d</span><b>{replyStr}</b><i>{replySub}</i></div>
         <div className="ov-rc-stat"><span>Pipeline</span><b>{p.sendable}</b><i>{runwayLbl}</i></div>
         <div className="ov-rc-stat"><span>24h vol</span><b>{p.vol24}</b></div>
       </div>
@@ -736,6 +743,7 @@ type OverviewData = {
   outcomes: OutcomeRow[]
   campaigns: CampaignSend[]
   replacement: ReplacementRow[]
+  reply: ReplyRow[]
 }
 
 export function OverviewView({ client, timeframe, setClient, range = null }: {
@@ -752,10 +760,10 @@ export function OverviewView({ client, timeframe, setClient, range = null }: {
     Promise.all([
       fetchSends(), fetchSendsDaily(), fetchAccept(), fetchPipeline(),
       fetchGovernor(), fetchScanOpens(), fetchOutcomes(), fetchCampaignSends(client),
-      fetchReplacement(),
+      fetchReplacement(), fetchReply(),
     ])
-      .then(([rows, daily, accept, pipeline, governor, scans, outcomes, campaigns, replacement]) => {
-        if (live) setData({ rows, daily, accept, pipeline, governor, scans, outcomes, campaigns, replacement })
+      .then(([rows, daily, accept, pipeline, governor, scans, outcomes, campaigns, replacement, reply]) => {
+        if (live) setData({ rows, daily, accept, pipeline, governor, scans, outcomes, campaigns, replacement, reply })
       })
       .catch(e => { if (live) setError(e instanceof Error ? e.message : 'Failed to load') })
       .finally(() => { if (live) setLoading(false) })

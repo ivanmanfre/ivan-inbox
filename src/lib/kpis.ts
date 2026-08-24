@@ -60,6 +60,24 @@ export async function fetchReplacement(): Promise<ReplacementRow[]> {
   return (data ?? []) as ReplacementRow[]
 }
 
+// Reply rate per client (db/042_reply_rate.sql). COHORT basis: of the people
+// DM'd inside the window, how many have replied by now. rate_7d therefore reads
+// LOW by construction — a DM sent yesterday has not had time to earn an answer —
+// which is why the UI labels the 30d figure and not the 7d one.
+export type ReplyRow = {
+  client_id: string
+  dmd_7d: number; replied_7d: number; rate_7d: number | null
+  dmd_30d: number; replied_30d: number; rate_30d: number | null
+  dmd_total: number; replied_total: number; rate_total: number | null
+}
+// Soft-fails to [] when the view is not applied yet, same pre-apply discipline as
+// fetchReplacement: one missing relation must not blank the whole Overview.
+export async function fetchReply(): Promise<ReplyRow[]> {
+  const { data, error } = await supabase.from('inbox_reply_v').select('*')
+  if (error) return []
+  return (data ?? []) as ReplyRow[]
+}
+
 export type RangeKpiRow = {
   client_id: string; sent: number; accepted: number; convos: number; calls: number
 }
