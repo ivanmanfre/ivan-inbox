@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { fetchFilterSpec, type FilterRule, type FilterSpec } from '../../lib/strategy'
 import { PullIndicator } from '../../components/PullIndicator'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { useStrategy } from '../../hooks/useStrategy'
@@ -161,6 +162,72 @@ function SectionCard({ s, first, last, onPatch, onMove, onRemove, onAddAfter }: 
   )
 }
 
+
+// ---- Live ICP filter spec ---------------------------------------------------
+// READ-ONLY, and published by the harvest engine itself (db/043). Ivan asked for
+// the filters to be visible here and to move whenever they move; the only way to
+// guarantee that is to render what the engine wrote on its last run rather than
+// a copy maintained by hand. `captured_at` is shown for exactly that reason: a
+// spec with no timestamp cannot be trusted to be current.
+//
+// Every gate is printed verbatim, regexes included. They look dense because they
+// ARE dense, and a prettified paraphrase would be the same drift problem wearing
+// a nicer font.
+function FilterSpecBlock() {
+  const [rows, setRows] = useState<FilterSpec[] | null>(null)
+  useEffect(() => { void fetchFilterSpec().then(setRows) }, [])
+  if (rows === null) return null
+  if (!rows.length) {
+    return (
+      <div className="wb-strat-note">
+        No filter spec published yet. The harvest engine writes one on each run,
+        so this fills in within a couple of hours of the next one.
+      </div>
+    )
+  }
+  return (
+    <>
+      {rows.map(r => {
+        const groups: string[] = []
+        for (const x of r.spec) if (!groups.includes(x.group)) groups.push(x.group)
+        return (
+          <div className="wb-fs" key={r.client_id + r.run_tag}>
+            <div className="wb-fs-h">
+              <span className="wb-fs-t">Live outreach filters</span>
+              <span className="wb-strat-age">{r.client_id} · read {relAge(r.captured_at)}</span>
+            </div>
+            <div className="wb-fs-sub">
+              Published by the engine on its last run, not written here. Change a gate in the
+              harvester and this line changes with it.
+            </div>
+            {groups.map(g => (
+              <div className="wb-fs-g" key={g}>
+                <div className="wb-fs-gt">{g}</div>
+                {r.spec.filter((x: FilterRule) => x.group === g).map((x, i) => (
+                  <div className="wb-fs-r" key={i}>
+                    <div className="wb-fs-l">{x.label}</div>
+                    <div className="wb-fs-v">{x.value ?? '—'}</div>
+                    {x.note ? <div className="wb-fs-n">{x.note}</div> : null}
+                    {/* The raw pattern is reference, not reading. It stays collapsed
+                        so the block scans as a table; a 300-char character class
+                        printed inline turns the whole surface into a wall. */}
+                    {x.rule && x.rule !== x.value ? (
+                      <details className="wb-fs-d">
+                        <summary>pattern</summary>
+                        <code className="wb-fs-c">{x.rule}</code>
+                      </details>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )
+      })}
+    </>
+  )
+}
+
 export function StrategyView({ lane, setLane }: {
   lane: ContentLane
   setLane: (l: ContentLane) => void
@@ -245,6 +312,7 @@ export function StrategyView({ lane, setLane }: {
             </div>
           </>
         )}
+        <FilterSpecBlock />
         <div style={{ height: 96 }} />
       </div>
       {/* The save bar exists only when there is something to save — a permanently

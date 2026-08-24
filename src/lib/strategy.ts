@@ -183,3 +183,23 @@ export function moveSection(
   out.splice(j, 0, row)
   return out
 }
+
+// ---- Live ICP filter spec (db/043_filter_spec.sql) --------------------------
+// PUBLISHED BY THE ENGINE, never authored here. Every gate lives in n8n jsCode;
+// a hand-kept copy in the app would be a second source of truth and would drift
+// the first time someone edits a regex. The harvest node writes what it actually
+// ran with on every run, so this surface cannot be newer or older than the engine.
+//
+// The row shape is intentionally loose. Adding a gate in n8n must not require an
+// app change or a migration, so the UI groups and prints whatever arrives.
+export type FilterRule = { group: string; label: string; value?: string; rule?: string; note?: string }
+export type FilterSpec = { client_id: string; run_tag: string; captured_at: string; spec: FilterRule[] }
+
+// Soft-fails to [] like fetchReplacement: one missing relation must not take the
+// Strategy tab down with it.
+export async function fetchFilterSpec(): Promise<FilterSpec[]> {
+  const { data, error } = await supabase
+    .from('inbox_filter_spec_v').select('*').order('captured_at', { ascending: false })
+  if (error) return []
+  return (data ?? []) as FilterSpec[]
+}

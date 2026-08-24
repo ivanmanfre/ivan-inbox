@@ -4363,3 +4363,53 @@
   font-size:var(--fs-meta); letter-spacing:-.01em; color:var(--text3);
 }
 .wb.wb.wb .ct-tab.on .ct-tab-n{ color:var(--text2) }
+
+/* ========================================================================== */
+/* 15 · THE LIVE FILTER SPEC — what the outreach engine is actually gating on  */
+/* ========================================================================== */
+/* Three `.wb` classes on EVERY selector. §0's `.wb.wb, .wb.wb *` flattener eats
+   any font-size declared at lower specificity, silently, and the row renders at
+   body size with no error anywhere. That trap already has 128 victims in this
+   file; this block is not going to be 129.
+   Read-only surface, so it sits on a plate rather than a card: nothing here is
+   editable and it must not look like the strategy sections above it, which are. */
+.wb.wb.wb .wb-fs{ margin:22px var(--gut) 0; padding:14px 16px 4px;
+  background:var(--surface1); border:1px solid var(--hairline); border-radius:var(--r-card) }
+.wb.wb.wb .wb-fs-h{ display:flex; align-items:baseline; justify-content:space-between; gap:10px }
+.wb.wb.wb .wb-fs-t{ font-size:15px; font-weight:700; letter-spacing:-.01em; color:var(--text) }
+.wb.wb.wb .wb-fs-sub{ margin:5px 0 0; font-size:var(--fs-meta); line-height:var(--lh-meta); color:var(--text3) }
+.wb.wb.wb .wb-fs-g{ margin:16px 0 0 }
+.wb.wb.wb .wb-fs-gt{ font-size:11px; font-weight:700; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--text3) }
+/* 11px is the floor Ivan's revealed-preference register sets for uppercase
+   labels. Below that they stop being readable on a phone. */
+.wb.wb.wb .wb-fs-r{ margin:10px 0 0; padding:0 0 10px; border-bottom:1px solid var(--hairline) }
+.wb.wb.wb .wb-fs-g .wb-fs-r:last-child{ border-bottom:none }
+.wb.wb.wb .wb-fs-l{ font-size:13.5px; font-weight:600; color:var(--text2) }
+/* The rules are regexes. They must wrap and scroll rather than push the page
+   sideways, which is why this is `anywhere` and not `break-word`: a 300-char
+   character class has no spaces to break on. */
+.wb.wb.wb .wb-fs-c{ display:block; margin:4px 0 0; font-size:12px; line-height:1.5;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--text);
+  overflow-wrap:anywhere; word-break:break-word }
+.wb.wb.wb .wb-fs-n{ margin:4px 0 0; font-size:12.5px; line-height:1.55; color:var(--text3) }
+
+/* The rule VALUE is the thing to read at a glance; the raw regex is reference and
+   hides behind a toggle. Ivan 2026-08-24: "clear and easy to see", not readable
+   text. So each row is label / value, and the pattern only appears on request. */
+.wb.wb.wb .wb-fs-r{ display:grid; grid-template-columns:1fr auto; column-gap:12px; align-items:baseline }
+.wb.wb.wb .wb-fs-l{ grid-column:1 }
+.wb.wb.wb .wb-fs-v{ grid-column:2; justify-self:end; text-align:right;
+  font-size:12.5px; font-weight:600; color:var(--text) }
+.wb.wb.wb .wb-fs-n{ grid-column:1 / -1 }
+.wb.wb.wb .wb-fs-d{ grid-column:1 / -1; margin:6px 0 0 }
+.wb.wb.wb .wb-fs-d summary{ font-size:11.5px; font-weight:600; color:var(--text3);
+  cursor:pointer; list-style:none }
+.wb.wb.wb .wb-fs-d summary::-webkit-details-marker{ display:none }
+.wb.wb.wb .wb-fs-d[open] summary{ margin:0 0 5px }
+
+/* Seat card -> the live filter spec. Sits under the gauge, above the stats, so
+   it reads as a footnote to the numbers rather than competing with them. */
+.wb.wb.wb .ov-rc-filters{ display:inline-block; margin:8px 0 0; font-size:11.5px;
+  font-weight:600; color:var(--text3); text-decoration:none }
+.wb.wb.wb .ov-rc-filters:hover{ color:var(--text) }

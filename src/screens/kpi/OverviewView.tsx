@@ -3,6 +3,7 @@ import {
   buildLanes, fetchSends, fetchSendsDaily, fetchCampaignSends,
   type Lane, type DailyRow, type CampaignSend,
 } from '../../lib/sends'
+import { getExpVariant } from '../../exp'
 import {
   fetchAccept, fetchReply, fetchPipeline, fetchGovernor, fetchScanOpens, fetchOutcomes, fetchRangeKpis,
   fetchReplacement, replacementRate, daysToEmpty,
@@ -565,6 +566,23 @@ function SeatCard({ p, selected, neutral, onSelect }: {
         </>
       ) : (
         <div className="ov-rc-gov ov-rc-dim">no governor</div>
+      )}
+      {/* Ivan 2026-08-24: from the seat's numbers straight to the rules that
+          produced them. The filters are what make these figures what they are,
+          and having to go hunting for them is how a spec stops being read.
+          stopPropagation because the whole card is a seat selector.
+
+          WORKBENCH ONLY. SendsScreen (and this card with it) is SHARED with
+          #exp/stock, which has no Strategy tab and none of the .wb styling, so
+          in the escape hatch this would be an unstyled link to a dead route.
+          Stock must not move. */}
+      {getExpVariant() !== 'stock' && (
+        <a
+          className="ov-rc-filters" href="#exp/v2c/strategy"
+          onClick={e => e.stopPropagation()}
+        >
+          What we filter on →
+        </a>
       )}
       <div className="ov-rc-stats">
         <div className="ov-rc-stat"><span>Cohort accept</span><b>{cohort}</b></div>
