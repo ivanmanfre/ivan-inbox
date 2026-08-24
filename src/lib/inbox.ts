@@ -12,9 +12,13 @@ export type InboxMessage = {
   ai_model: string | null;
   prospect_name: string; prospect_company: string | null; prospect_headline: string | null;
   prospect_stage: string; prospect_email: string | null; profile_photo_url: string | null;
-  // outreach_prospects.linkedin_url, denormalised into inbox_messages_v by db/044 so the
-  // conversation carries the link Ivan hands to Mattan. Every prospect row has one.
+  // outreach_prospects.linkedin_url, denormalised into inbox_messages_v by db/044.
+  // The FALLBACK link, for the invite-only rows that have no LinkedIn chat yet.
   prospect_linkedin_url: string | null;
+  // LinkedIn's own conversation id, resolved by db/044 from `unipile_chats` (which mirrors
+  // the `provider_id` on the Unipile chat object). The last segment of a real messaging
+  // thread URL — see CopyChatLink. Null on threads that are still invite-only.
+  chat_provider_id: string | null;
   campaign_name: string; client_id: string;
   // Not in inbox_messages_v — annotated onto pending drafts by useInbox from the
   // fetchDraftEmailStamps() probe. When set on a draft, approving it makes the
@@ -46,8 +50,9 @@ export type Thread = {
   prospect_id: string; prospect_name: string; prospect_company: string | null;
   client_id: string; channel: InboxMessage['channel']; stage: string;
   // Where this conversation lives on LinkedIn, for handing it to whoever has to act on it
-  // by hand. See CopyChatLink for why it is the profile URL and not a thread URL.
+  // by hand: the chat itself when one exists, the profile as the fallback. See CopyChatLink.
   linkedin_url: string | null;
+  chat_provider_id: string | null;
   last: InboxMessage; unread: number; draft: InboxMessage | null; messages: InboxMessage[];
   // The drafter sometimes writes a reply after Ivan already answered the
   // prospect himself (5 live cases on 2026-07-22: George, Jeremy, Jonathan,
@@ -199,6 +204,9 @@ export function groupThreads(
       channel: last.channel, stage: last.prospect_stage, last,
       // Every row of a thread carries the same prospect's url; the newest is as good as any.
       linkedin_url: last.prospect_linkedin_url,
+      // The chat id, though, is only on the rows that RODE that chat — the newest message
+      // can be a pending draft, which has none. Take the first row that has one.
+      chat_provider_id: messages.map(m => m.chat_provider_id).find(Boolean) ?? null,
       unread: messages.filter(m => m.direction === 'inbound' && !m.read_at).length,
       draft,
       // isFollowUp: a nudge is DEFINED by "we spoke last and they went quiet",

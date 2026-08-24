@@ -143,7 +143,14 @@ export function DmsSurface({
       // It wears `.client`, the badge class the pills beside it already use, so it takes
       // the row's existing type tier and box by construction rather than adding an N+1
       // text size to the census. `.rowlink` only removes the underline an anchor gets.
-      rowTag={t => <CopyChatLink url={t.linkedin_url} name={t.prospect_name} className="client rowlink" />}
+      rowTag={t => (
+        <CopyChatLink
+          chatProviderId={t.chat_provider_id}
+          url={t.linkedin_url}
+          name={t.prospect_name}
+          className="client rowlink"
+        />
+      )}
       renderRow={status === 'approve'
         ? t => <DraftCard key={t.prospect_id} thread={t} onOpenThread={onOpenThread} refresh={refresh} />
         : undefined}

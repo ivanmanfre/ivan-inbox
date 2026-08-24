@@ -85,6 +85,10 @@ body{
 .r .rowlink{flex:none;background:transparent;box-shadow:inset 0 0 0 1px var(--sep);
   color:var(--text3);text-decoration:none;cursor:pointer}
 .r .rowlink:hover{color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+/* No chat exists on LinkedIn yet, so this copies the profile instead. It says so in
+   words ("copy profile"); the dashed edge is what makes the two tellable apart at a
+   glance down a list, without reading either one. */
+.r .rowlink.fallback,.copylink.fallback{box-shadow:none;outline:1px dashed var(--sep);outline-offset:-1px}
 /* On a phone the NAME wins. Every pill on the badge line is flex:none, so the name is
    the only thing that can absorb the shrink: measured at 390, adding this one crushed
    "Elijah Davis, MBA" to "E…" on every row and one row lost its name outright. The link

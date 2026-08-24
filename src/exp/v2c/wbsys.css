@@ -1341,3 +1341,6 @@
 }
 .wb.wb.wb .r .rowlink:hover,
 .wb.wb.wb .t-nav .copylink:hover{ color:var(--text1); box-shadow:inset 0 0 0 1px var(--hairline-strong) }
+/* The profile fallback, told apart by its edge rather than by reading the label. */
+.wb.wb.wb .r .rowlink.fallback,
+.wb.wb.wb .t-nav .copylink.fallback{ box-shadow:none; outline:1px dashed var(--hairline); outline-offset:-1px }
