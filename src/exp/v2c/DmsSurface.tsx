@@ -1,3 +1,4 @@
+import { CopyChatLink } from '../../components/CopyChatLink'
 import { DraftCard, PushedBar, StaleBar } from '../../screens/DraftsScreen'
 import { InboxScreen } from '../../screens/InboxScreen'
 import { DmHistory } from './DmHistory'
@@ -129,6 +130,20 @@ export function DmsSurface({
           >{st.s === 'error' ? 'again' : 'sum up'}</button>
         )
       }}
+      // Ivan, 2026-08-24: "so I can copy and send to Mattan when the chat requires him
+      // to do something manual". On EVERY row, because which conversation is going to
+      // need a hand by is not something the row can know in advance.
+      //
+      // It rides the BADGE LINE and not the tail beside "sum up". `--tail-w` is a fixed
+      // 62px track — the thing that keeps every trailing value in the list on one right
+      // edge (faithful.css §7.7) — and two chips overflow it: measured at 1280, the
+      // second one clipped mid-word. The badge line already carries pills of this
+      // height, so nothing is added to the row's vertical box.
+      //
+      // It wears `.client`, the badge class the pills beside it already use, so it takes
+      // the row's existing type tier and box by construction rather than adding an N+1
+      // text size to the census. `.rowlink` only removes the underline an anchor gets.
+      rowTag={t => <CopyChatLink url={t.linkedin_url} name={t.prospect_name} className="client rowlink" />}
       renderRow={status === 'approve'
         ? t => <DraftCard key={t.prospect_id} thread={t} onOpenThread={onOpenThread} refresh={refresh} />
         : undefined}

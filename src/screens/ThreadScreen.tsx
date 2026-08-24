@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Avatar } from '../components/Avatar'
 import { ContextSheet } from '../components/ContextSheet'
+import { CopyChatLink } from '../components/CopyChatLink'
 import { Linkified } from '../components/Linkified'
 import { useConfirm } from '../components/ConfirmSheet'
 import { formatReturn, returnsIn, usePushLater } from '../components/PushLaterSheet'
@@ -229,6 +230,9 @@ export function ThreadScreen({ thread, onBack, refresh }: {
             <b>{clientName(thread.client_id)}</b> · {channelSummary(bubbles)} · {label(thread.stage)}
           </div>
         </div>
+        {/* The hand-off. The decision that a conversation needs Mattan is made HERE,
+            reading it, so the link is one tap from the message that prompted it. */}
+        <CopyChatLink url={thread.linkedin_url} name={thread.prospect_name} />
         <Avatar name={thread.prospect_name} channel={thread.channel} size={36} />
       </div>
       {showCtx && <ContextSheet thread={thread} onClose={() => setShowCtx(false)} />}

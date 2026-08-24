@@ -15,6 +15,7 @@ const msg = (over: Partial<InboxMessage> = {}): InboxMessage => ({
   prospect_name: 'A Prospect', prospect_company: null,
   prospect_headline: null, prospect_stage: 'replied', prospect_email: null,
   profile_photo_url: null, campaign_name: 'c', client_id: 'ivan',
+  prospect_linkedin_url: 'https://www.linkedin.com/in/a-prospect',
   snoozed_until: null, snoozed_at: null, ...over,
 })
 

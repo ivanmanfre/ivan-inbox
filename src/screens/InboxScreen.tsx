@@ -100,7 +100,7 @@ function clientLabel(id: string): string {
   return id.toUpperCase()
 }
 
-export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt, title = 'Inbox', status, before, after, rowsFor, renderRow, rowNote, rowChip, renderNote, emptyLine }: {
+export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt, title = 'Inbox', status, before, after, rowsFor, renderRow, rowNote, rowChip, rowTag, renderNote, emptyLine }: {
   threads: Thread[]
   filter: Filter
   setFilter: (f: Filter) => void
@@ -149,6 +149,12 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
   // and `rowChip` sits in the right-hand column beside the time and the pills.
   rowNote?: (t: Thread) => string | null
   rowChip?: (t: Thread) => ReactNode
+  // A third slot on the same terms, on the BADGE line beside the lane and channel
+  // pills. The tail `rowChip` lands in is a fixed 62px track (`--tail-w`, the one
+  // right edge every trailing value in the app shares), so a second thing wanting to
+  // live there has to live somewhere else instead. Whatever a host draws here must be
+  // pill-height and must not wrap.
+  rowTag?: (t: Thread) => ReactNode
   // The note, drawn by the HOST instead of as plain text — the DMs surface uses
   // it to make the pre-read hoverable, since 140 characters do not fit on one
   // nowrap row and Ivan could not read what he had paid for.
@@ -309,6 +315,7 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
                     {threadKind(t) === 'email' && <span className="client kind-email">EMAIL</span>}
                     {threadKind(t) === 'linkedin' && <span className="client kind-dm">DM</span>}
                     {isLeadMagnet(t) && <span className="client kind-lm">LEAD MAGNET</span>}
+                    {rowTag?.(t)}
                   </div>
                   {/* The pre-read, when one has been asked for, stands IN
                       PLACE of the preview rather than under it: the row height
