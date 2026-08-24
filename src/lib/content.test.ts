@@ -3,6 +3,7 @@ import {
   bucketDrafts, isStuckScheduled, laneFilter, draftLane,
   SKIP_STATUS, type ContentDraft,
   groupByStage, groupByLaneStage, stageOf, stageOfLane, countUndated, countBoardVisible,
+  isStuckGenerating,
   PIPELINE_STAGES, ALERT_STAGES, STAGE_LABEL,
   normalizeAgentLog, normalizeQa, taxonomyFields, normalizeKeyPoints,
   normalizeImageUrls, reviewActionable,
@@ -110,6 +111,20 @@ describe('bucketDrafts', () => {
   })
 })
 
+describe('isStuckGenerating — a run nobody picked up', () => {
+  const old = '2026-07-31T10:00:00Z'   // 2h before `now`
+  it('flags a planned row that post-gen never took', () => {
+    // The kickoff inserts at 'planned' and fires; if that call failed, the row
+    // sits there forever and no surface ever said so.
+    expect(isStuckGenerating(row({ status: 'planned', updated_at: old }), now)).toBe(true)
+    expect(isStuckGenerating(row({ status: 'generating', updated_at: old }), now)).toBe(true)
+  })
+  it('leaves a fresh run and any settled row alone', () => {
+    expect(isStuckGenerating(row({ status: 'planned', updated_at: '2026-07-31T11:58:00Z' }), now)).toBe(false)
+    expect(isStuckGenerating(row({ status: 'review', updated_at: old }), now)).toBe(false)
+  })
+})
+
 describe('isStuckScheduled', () => {
   it('counts a scheduled row with no time at all as stuck', () => {
     // The dashboard's stuck filter requires a truthy scheduledAt
@@ -184,7 +199,11 @@ describe('groupByStage', () => {
     ]
     const s = groupByStage(rows, now)
     expect(s.ideas.map(r => r.id)).toEqual(['idea'])
-    expect(s.generating.map(r => r.id)).toEqual(['gen'])
+    // 'planned' is the generation kickoff's pre-fire state (n8n
+    // FsuRkf1owG1QpcyD inserts the draft, THEN calls post-gen), so it is in
+    // flight, not unrecognised. It used to land in `other`, which is where a
+    // just-approved post went to hide.
+    expect(s.generating.map(r => r.id)).toEqual(['gen', 'planned'])
     expect(s.review.map(r => r.id)).toEqual(['rev'])
     // Both approved rows, dated or not — a date does not move the stage.
     expect(s.approved.map(r => r.id)).toEqual(['appr', 'appr-dated'])
@@ -194,7 +213,7 @@ describe('groupByStage', () => {
     expect(s.error.map(r => r.id)).toEqual(['err'])
     expect(s.archived.map(r => r.id)).toEqual(['dq', 'sk', 'arch'])
     // The catch-all is rendered at the bottom of the queue, never dropped.
-    expect(s.other.map(r => r.id)).toEqual(['draft', 'planned', 'alien'])
+    expect(s.other.map(r => r.id)).toEqual(['draft', 'alien'])
     const total = Object.values(s).reduce((n, arr) => n + arr.length, 0)
     expect(total).toBe(rows.length)
   })

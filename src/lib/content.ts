@@ -251,7 +251,10 @@ export function generatingSince(r: ContentDraft): string | null {
 // at that status is false: a stalled run is a fact about an in-flight row, and
 // asking it of a published row would answer a question nobody asked.
 export function isStuckGenerating(r: ContentDraft, now: number = Date.now()): boolean {
-  if (r.status !== 'generating') return false
+  // 'planned' counts: it is the kickoff's pre-fire state (stageOf), so a row
+  // that sits there past the threshold is a generation that was never picked
+  // up. Excluding it is what let those rows go stale in silence.
+  if (r.status !== 'generating' && r.status !== 'planned') return false
   const m = elapsedMinutes(generatingSince(r), now)
   return m !== null && m >= STUCK_GENERATING_MINUTES
 }
@@ -1586,6 +1589,25 @@ export function boardGroupOf(r: Pick<ContentDraft, 'board_visible'>): BoardGroup
 export function stageOf(r: ContentDraft, now: number = Date.now()): ContentStage {
   switch (r.status) {
     case 'idea': return 'ideas'
+    // 🔴 'planned' IS IN FLIGHT, and it was landing in `other`.
+    //
+    // Ivan, 2026-08-24: "it's annoying that I don't see the generating status. I
+    // don't know where the posts go when they are in the generating process."
+    //
+    // Here is where they went. The generation kickoff (n8n FsuRkf1owG1QpcyD)
+    // inserts the draft with `status: 'planned'` and THEN fires post-gen, so
+    // between the approve and the generator's first write the row says
+    // 'planned' — a value this function had never met, which sent it to the
+    // catch-all `other` tab. `other` renders last and only when it is non-empty,
+    // so a post he had just approved appeared at the bottom of the lane under a
+    // label meaning "a status this app does not recognise", if it appeared at
+    // all.
+    //
+    // It is the same state as `generating` from the operator's side: a draft
+    // that has been handed to the pipeline and has not come back. It is filed as
+    // that, which also puts it under the stuck detector below — a 'planned' row
+    // post-gen never picked up is a dead run, and it used to sit silent forever.
+    case 'planned':
     case 'generating': return 'generating'
     case 'review': return 'review'
     case 'approved': return 'approved'

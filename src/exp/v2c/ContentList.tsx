@@ -9,7 +9,7 @@ import {
   STAGE_LABEL, STAGE_SHORT, boardGroupOf, clientStageLabel,
   countBoardVisible, countUndated, deleteClientDraft, deleteDraft, draftExcerpt,
   canPromote, draftFailure, elapsedMinutes, generatingSince, groupByLaneStage, groupByStage,
-  isRecentError,
+  isRecentError, stageOfLane,
   isStuckGenerating, setBoardVisible,
   reviewActionable, stageOf, taxonomyValue,
   type BoardGroup, type ContentDraft, type ContentLane, type ContentStage, type ContentStages,
@@ -29,7 +29,7 @@ import { FilteredEmpty } from './ContentBits'
 import { FilterRow } from './FilterRow'
 import { RowSelect } from './RowSelect'
 import type { RowCap } from './commandStore'
-import { ClientIdeasSection, IdeasSection, PillarMix, QueueStrip } from './ContentSections'
+import { ClientIdeasSection, IdeasSection, InFlight, PillarMix, QueueStrip } from './ContentSections'
 import { sourceHues } from '../../lib/clientIdeas'
 import { postTime, relTime, sourceLabel, tagLabel, typeLabel } from './fmt'
 import { CalmEmpty, Failed, StageTabs, StatChip, type StageTab } from './Surface'
@@ -991,6 +991,14 @@ function IvanLane({ drafts, stages, openId, onOpen, refresh, filters, setFilters
       )}
       </>
       )}
+      {/* 🔴 `stages`, not `shownStages`: the count is built from every loaded
+          row, so a filter can narrow the list without hiding work that is in
+          flight. Same rule the alert strip obeys. */}
+      <InFlight
+        n={stages.generating.length}
+        stalled={stages.generating.filter(d => isStuckGenerating(d)).length}
+        onOpen={() => { setView('flow'); setTab('generating') }}
+      />
     </>
   )
 }
@@ -1088,6 +1096,9 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
   // a deal that moved with the filter would make the colour a fact about the
   // filter. Same function the Ideas tab uses, so the two surfaces agree.
   const hues = sourceHues(drafts.map(d => d.source_label ?? null))
+  // Unfiltered, both board groups. `stageOfLane` rather than a status test, so
+  // the kickoff's 'planned' rows are counted as what they are (content.ts).
+  const inFlight = drafts.filter(d => stageOfLane(d, lane) === 'generating')
   // post_body is ALREADY selected (content.ts COLS) and was already in memory;
   // leaving it out of the search meant "where is that draft about margins"
   // found 1 of the 5 drafts that say margin on Ivan's lane (GET probe
@@ -1223,6 +1234,18 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
             )}
         </>
       )}
+
+      {/* Same mark as Ivan's lane, and the count is the LANE's — both board
+          groups, unfiltered. Which group an in-flight draft is in is not a
+          question anyone asks while it is running; how many are running is. */}
+      <InFlight
+        n={inFlight.length}
+        stalled={inFlight.filter(d => isStuckGenerating(d)).length}
+        onOpen={() => {
+          setView('flow')
+          setTab(`${boardGroupOf(inFlight[0]) === 'board' ? 'board' : 'internal'}_generating`)
+        }}
+      />
 
       {/* The lead-magnet lane left this scroll for the Magnets job; Styles is
           its own job now (08-04). No pillar TARGET on this lane either: the

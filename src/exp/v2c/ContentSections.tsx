@@ -634,6 +634,53 @@ export function ClientIdeasSection({ ideas, lane, loading, error, loadedAt, refr
 }
 
 // ---------------------------------------------------------------------------
+// IN FLIGHT — the floating count, on every tab
+// ---------------------------------------------------------------------------
+//
+// Ivan, 2026-08-24: "it's annoying that I don't see the generating status. I
+// don't know where the posts go when they are in the generating process. They
+// should either show a pending icon on the bottom right, like an extra thing
+// that it's floating there, or have a generating section on the menu... the
+// other one is only visible when something's in there."
+//
+// Both, because they answer different halves of it. The TAB is where the rows
+// live and it already exists; what it cannot do is tell him anything while he
+// is looking at Ideas, which is the tab he is standing on at the exact moment
+// he approves something and it vanishes. This is that: one mark, fixed to the
+// corner, present on every tab, and gone the instant nothing is running.
+//
+// 🔴 BUILT FROM THE UNFILTERED ROWS, the same rule the alert strip obeys: a
+// filter may narrow the list, it may never hide work that is in flight. And it
+// renders NOTHING at zero — a permanent "0 generating" is the shelf this
+// surface has twice deleted.
+export function InFlight({ n, stalled, onOpen }: {
+  n: number
+  // How many of them have been running past the stall threshold. The pill is
+  // calm while a run is normal and says so when one is not, rather than being a
+  // second alarm that has to be read to be dismissed.
+  stalled: number
+  onOpen: () => void
+}) {
+  if (n <= 0) return null
+  return (
+    <button
+      type="button"
+      className={`wb-inflight${stalled > 0 ? ' bad' : ''}`}
+      onClick={onOpen}
+      title={stalled > 0
+        ? `${stalled} of them have been running past ${STUCK_GENERATING_MINUTES}m — open Generating`
+        : 'Open Generating'}
+    >
+      <span className="wb-inflight-dot" aria-hidden />
+      <span className="wb-inflight-n">{n}</span>
+      <span className="wb-inflight-t">
+        {stalled > 0 ? `generating · ${stalled} stalled` : `generating`}
+      </span>
+    </button>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // The publish queue — scheduled_posts, its OWN status vocabulary
 // ---------------------------------------------------------------------------
 
