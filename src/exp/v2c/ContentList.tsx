@@ -16,7 +16,8 @@ import {
 } from '../../lib/content'
 import { label } from '../../lib/labels'
 import {
-  applyFilters, applySearch, buildFacets, draftScore, draftSpecs, DRAFT_PROMINENT, splitFacets,
+  applyFilters, applySearch, buildFacets, draftProminent, draftScore, draftSpecs,
+  DRAFT_PROMINENT, splitFacets,
   type FilterState,
 } from '../../lib/contentFilters'
 import { useSectionState } from '../../hooks/useSectionState'
@@ -29,6 +30,7 @@ import { FilterRow } from './FilterRow'
 import { RowSelect } from './RowSelect'
 import type { RowCap } from './commandStore'
 import { ClientIdeasSection, IdeasSection, PillarMix, QueueStrip } from './ContentSections'
+import { sourceHues } from '../../lib/clientIdeas'
 import { postTime, relTime, sourceLabel, tagLabel, typeLabel } from './fmt'
 import { CalmEmpty, Failed, StageTabs, StatChip, type StageTab } from './Surface'
 import { hasMock } from './mock'
@@ -188,9 +190,13 @@ function PromoteRow({ d, lane, onDone }: { d: ContentDraft; lane: ContentLane; o
   )
 }
 
-function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
+function Card({ d, lane, refresh, onOpen, active, queue, glance, srcHue }: {
   d: ContentDraft; lane: ContentLane; refresh: () => void
   onOpen: OpenDraft; active: boolean
+  // The source's colour, dealt across the whole lane by the caller so the same
+  // source is the same colour on every row (sourceHues). Client lanes only —
+  // it is the .ct-src line's own mark and Ivan's lane does not draw that line.
+  srcHue?: number | null
   // The rows of the SECTION this card sits in, in render order. That order is
   // what j/k walks and what the window's rail draws, so the queue is the list
   // Ivan can actually see — filters, search and collapse state included — and
@@ -332,8 +338,20 @@ function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
             .ct-mid instead, so it is never gated by that breakpoint and reads
             at every width. Quiet on purpose (text3, one line, ellipsis) — this
             is an operator surface, not a redesign. */}
+        {/* Ivan, 2026-08-24: "I also wanna see the source... at least on the
+            waiting on you section". The LINE was already here; what was missing
+            was any way to act on it (the Source facet read taxonomy.source,
+            which is 'client-risedtc' on 20 of his 29 review rows — see
+            draftSpecs). It is now a facet AND carries the source's own colour,
+            the same hue the Ideas tab deals it, so a 29-row list clusters by
+            eye before any filter is touched. */}
         {lane !== 'ivan' && d.source_label && (
-          <div className="ct-src" title={d.source_label}>{d.source_label}</div>
+          <div
+            className="ct-src ct-src-dot" title={d.source_label}
+            style={typeof srcHue === 'number'
+              ? ({ '--src-h': srcHue } as React.CSSProperties)
+              : undefined}
+          >{d.source_label}</div>
         )}
         {/* THE REASON, ON EVERY ERRORED ROW (phase2). One line, meta tier,
             truncated with the full text in the title, the same treatment
@@ -706,7 +724,7 @@ function useStageTab(lane: ContentLane, valid: readonly string[], fallback: stri
 // both. An empty stage says so in a sentence rather than rendering nothing,
 // because in tab mode "nothing there" and "I clicked the wrong thing" look
 // identical on a blank screen.
-function StageTable({ s, rows, lane, refresh, onOpen, openId, sub, empty }: {
+function StageTable({ s, rows, lane, refresh, onOpen, openId, sub, empty, hues }: {
   s: ContentStage
   rows: ContentDraft[]
   lane: ContentLane
@@ -715,6 +733,10 @@ function StageTable({ s, rows, lane, refresh, onOpen, openId, sub, empty }: {
   openId: string | null
   sub?: string | null
   empty?: string
+  // Dealt once per LANE, never per stage: the same source has to be the same
+  // colour on the Waiting-on-you tab and on the Scheduled tab, and a per-stage
+  // deal would repaint it on every click.
+  hues?: Map<string, number>
 }) {
   return (
     <div id={`wb-s-${s}`}>
@@ -731,6 +753,7 @@ function StageTable({ s, rows, lane, refresh, onOpen, openId, sub, empty }: {
               <Card
                 key={d.id} d={d} lane={lane} refresh={refresh} onOpen={onOpen}
                 active={openId === d.id} queue={rows}
+                srcHue={d.source_label ? hues?.get(d.source_label) ?? null : null}
                 // The decision surface, and only it — see Card's `glance` note.
                 glance={s === 'review'}
               />
@@ -1059,7 +1082,12 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
   // this lane is already GROUPED by board visibility (BOARD_ORDER below), so a
   // board pill would be a second control for a distinction the page structure
   // already draws — it stays available in the disclosure.
-  const { prominent, demoted } = splitFacets(facets, DRAFT_PROMINENT)
+  const { prominent, demoted } = splitFacets(facets, draftProminent(lane))
+  // 🔴 Dealt from EVERY loaded row in the lane, not from the filtered set and
+  // not per stage — the same source must be the same colour on every tab, and
+  // a deal that moved with the filter would make the colour a fact about the
+  // filter. Same function the Ideas tab uses, so the two surfaces agree.
+  const hues = sourceHues(drafts.map(d => d.source_label ?? null))
   // post_body is ALREADY selected (content.ts COLS) and was already in memory;
   // leaving it out of the search meant "where is that draft about margins"
   // found 1 of the 5 drafts that say margin on Ivan's lane (GET probe
@@ -1186,7 +1214,7 @@ function MattanLane({ drafts, openId, onOpen, refresh, filters, setFilters, q, s
                 // every client lane (ARCH included), and the row uses it to
                 // decide whether to print source_label and whether the review
                 // controls are legal.
-                lane={lane}
+                lane={lane} hues={hues}
                 refresh={refresh} onOpen={onOpen} openId={openId}
                 empty={active === CLIENT_TAB_ALWAYS
                   ? 'Nothing is waiting on you.'

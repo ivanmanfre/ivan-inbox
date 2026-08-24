@@ -1196,9 +1196,32 @@ function Body({ d, lane, queue, refresh, onClose, onPick }: {
           // 🔴 operator_schedule_draft refuses a draft with no media and returns
           // 'awaiting_media'. A regeneration CLEARS image_urls, so the photo has
           // to be re-pinned first.
-          <div className="ct-warnbox">
-            No image. A regen clears <code>image_urls</code>; the photo has to be
-            re-pinned before this can be scheduled (<code>awaiting_media</code>).
+          //
+          // 🔴🔴 IT WAS READING AS A REFUSAL OF THE CLICK. Ivan, 2026-08-24:
+          // "I'm clicking put on Mattan's board, and it just says that fucking
+          // error." The promote had SUCCEEDED — checked in the database while he
+          // was saying it: "The beauty brand that grew everything except profit"
+          // went board_visible=true at 08:56:55, the minute he clicked.
+          //
+          // Three things made a working button look broken, and all three are
+          // this box: it is styled as a warning, it sits directly above the
+          // action row, and it SURVIVES the promote — a promoted client draft
+          // stays at `review` (that is what "On buffer" means), so the box that
+          // was on screen before the click is still there after it, unchanged.
+          // A red block that does not move is indistinguishable from a red block
+          // that just appeared.
+          //
+          // It is a note, not an alarm, and it now says WHICH step it bites at
+          // and which it does not. `operator_set_board_visible` has no media
+          // rule at all — its only refusals are bad_gate / draft_not_found /
+          // not_in_review — so promoting an image-less draft is legal and always
+          // was. Live count the same morning: 10 of the 54 Rise review drafts
+          // carry no image, 2 of them already on his board.
+          <div className="ct-notebox">
+            No image yet. This does not stop it going on the board — it stops the
+            SCHEDULE later, where <code>operator_schedule_draft</code> answers{' '}
+            <code>awaiting_media</code>. A regen clears <code>image_urls</code>,
+            so the photo has to be re-pinned before a date will take.
           </div>
         )}
 

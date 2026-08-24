@@ -650,6 +650,17 @@
   background:rgba(255,159,10,.1);border:1px solid rgba(255,159,10,.3);
   font-size:12.5px;line-height:1.45;color:#FF9F0A;font-weight:600}
 .ct-warnbox code{background:rgba(255,159,10,.14);border-radius:var(--r-chip);padding:1px 4px}
+
+/* A NOTE, not an alarm. Same box, meta tier, no amber.
+   Ivan clicked "Put on Mattan's board", the promote succeeded, and the amber
+   warnbox above the button did not move — so a working button read as an
+   error (DraftPane.tsx, the image_urls note). Severity is reserved for a thing
+   that is currently wrong; "no image yet" on a draft nobody has dated is a
+   fact about later. */
+.ct-notebox{margin:10px 16px 0;padding:11px 13px;border-radius:var(--r-md);
+  background:var(--surface2);color:var(--text2);font-size:12px;line-height:1.5}
+.ct-notebox code{background:var(--surface3, rgba(235,235,245,.10));
+  border-radius:var(--r-chip);padding:1px 4px}
 .ct-src-m{margin:10px 16px 0}
 .ct-src-l{font-size:13px;font-weight:600;color:var(--text2);overflow-wrap:anywhere}
 .ct-quote{margin:8px 16px 0;padding:12px 14px;background:var(--surface);border-radius:var(--r-md);
@@ -1137,7 +1148,7 @@
    340px and a 22px gutter each side spends 13% of it on nothing. */
 .wb.wb.wb .dw-insp .res-hdr{padding:14px 14px 4px}
 .dw-insp .dd-card,.dw-insp .wb-qa,.dw-insp .ct-quote,.dw-insp .ct-subtle,
-.wb.wb.wb .dw-insp .dd-link, .wb.wb.wb .dw-insp .ct-err, .wb.wb.wb .dw-insp .ct-ref-p, .wb.wb.wb .dw-insp .ct-warnbox{
+.wb.wb.wb .dw-insp .dd-link, .wb.wb.wb .dw-insp .ct-err, .wb.wb.wb .dw-insp .ct-ref-p, .wb.wb.wb .dw-insp .ct-warnbox, .wb.wb.wb .dw-insp .ct-notebox{
   margin-left:14px;margin-right:14px}
 .wb.wb.wb .dw-insp .wb-qa{padding:12px 13px}
 .wb.wb.wb .dw-insp .wb-qa-n{font-size:27px}

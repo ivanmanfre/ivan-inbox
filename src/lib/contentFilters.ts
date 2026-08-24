@@ -123,6 +123,16 @@ export function splitFacets(facets: Facet[], keys: string[]): FacetSplit {
 // triage question, and rides behind the disclosure.
 export const DRAFT_PROMINENT: string[] = ['stage', 'kind', 'pillar', 'source', 'qa_verdict']
 
+// The same five axes on a client lane, with the source that carries information
+// in the slot the one that does not used to hold. `source` (the pipeline tag)
+// keeps its pill in the disclosure — demoted is still fully filterable.
+export const CLIENT_DRAFT_PROMINENT: string[] =
+  ['stage', 'kind', 'pillar', 'source_label', 'qa_verdict']
+
+export function draftProminent(lane: ContentLane): string[] {
+  return lane === 'ivan' ? DRAFT_PROMINENT : CLIENT_DRAFT_PROMINENT
+}
+
 // The lead-magnet lane's own four facets. Status and Format are the two that
 // change what you are looking at; the two URL-presence facets are audit
 // questions ("did the page ever ship") and are demoted.
@@ -234,6 +244,30 @@ export function draftSpecs(lane: ContentLane): FacetSpec<ContentDraft>[] {
       label: 'Board',
       of: d => yesNo(d.board_visible === true, `On ${LANE_POSSESSIVE[lane]} board`, 'Internal'),
     })
+    // 🔴 SOURCE ON A CLIENT LANE IS `source_label`, NOT `taxonomy.source`.
+    //
+    // Ivan, 2026-08-24: "I also wanna see the source... at least on the waiting
+    // on you section as well, for mattan, and I'm not seeing that right now."
+    //
+    // He was looking at a Source pill that exists. Measured on his 29 Waiting-on-
+    // you rows the same day, `taxonomy.source` holds:
+    //
+    //     client-risedtc  20   ·   (none)  9
+    //
+    // One value, and it names the PIPELINE that made the row — "this is a RISE
+    // row", on a lane where every row is a RISE row. Filtering by it does
+    // nothing, which is why he read the control as missing rather than broken.
+    //
+    // `source_label` on those same 29 rows holds seven values: "From RISE DTC's
+    // portfolio" 11, "Personal post (reviewed 08-07)" 4, "Topic slate from IG
+    // top-performer mining" 3, "From X ecom threads" 2, and four more. That is
+    // where the idea came from, it is already PRINTED on the row (.ct-src,
+    // added phase7) and it was on no facet at all.
+    //
+    // Both stay. The one that answers the question takes the name and the
+    // prominent slot; the pipeline tag keeps its own name and its own pill, so
+    // nothing that could be filtered before stops being filterable.
+    specs.push({ key: 'source_label', label: 'Source', of: d => tag(d.source_label) })
   }
   specs.push(
     { key: 'pillar', label: 'Pillar', of: d => tag(taxonomyFields(d.taxonomy).pillar) },
@@ -259,7 +293,14 @@ export function draftSpecs(lane: ContentLane): FacetSpec<ContentDraft>[] {
       },
     },
     { key: 'hook', label: 'Hook', of: d => tag(taxonomyFields(d.taxonomy).hook_type) },
-    { key: 'source', label: 'Source', of: d => tag(taxonomyFields(d.taxonomy).source) },
+    // On Ivan's lane this IS the source (his rows carry reddit_se / calls /
+    // claude_sessions here). On a client lane it is the pipeline tag, and it is
+    // named as one — see the source_label spec above.
+    {
+      key: 'source',
+      label: lane === 'ivan' ? 'Source' : 'Pipeline',
+      of: d => tag(taxonomyFields(d.taxonomy).source),
+    },
     { key: 'funnel', label: 'Funnel', of: d => tag(d.funnel_stage) },
     { key: 'arm', label: 'Experiment', of: d => tag(taxonomyFields(d.taxonomy).arm) },
     { key: 'qa_verdict', label: 'QA verdict', of: d => tag(d.qa_verdict) },

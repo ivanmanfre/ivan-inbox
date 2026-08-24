@@ -500,7 +500,7 @@
 .wb.wb.wb .ct-score, .wb.wb.wb .wb-cost{ border-radius:var(--r-chip) }
 .wb.wb.wb .ct-card, .wb.wb.wb .dd-card, .wb.wb.wb .group, .wb.wb.wb .draftcard,
 .wb.wb.wb .wb-failed, .wb.wb.wb .ct-alert, .wb.wb.wb .b, .wb.wb.wb .wb-bubble,
-.wb.wb.wb .td-banner, .wb.wb.wb .ct-warnbox{ border-radius:var(--r-card) }
+.wb.wb.wb .td-banner, .wb.wb.wb .ct-warnbox, .wb.wb.wb .ct-notebox{ border-radius:var(--r-card) }
 /* 6.2 — nested radius = outer − padding, never larger inside smaller. */
 .wb.wb.wb .b.in{ border-bottom-left-radius:var(--r-chip) }
 .wb.wb.wb .b.out{ border-bottom-right-radius:var(--r-chip) }
@@ -891,6 +891,31 @@
   margin-top:2px;
   font-size:var(--fs-meta); color:var(--text3);
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+/* THE SOURCE'S OWN COLOUR, as a dot on that line.
+   Ivan, 2026-08-24: "I also wanna see the source... at least on the waiting on
+   you section as well, for mattan." The line above has existed since phase7;
+   what it never had was a MARK, so 29 rows of grey meta-tier text carried a
+   fact nobody scans. The dot is the same hue the Ideas tab deals that source
+   (clientIdeas.ts, sourceHues), so the two surfaces read as one system and the
+   list clusters by eye before any filter is touched.
+
+   🔴 INLINE-BLOCK, NEVER FLEX. The first build made .ct-src a flex row, which
+   is two bugs at once: the rule above ellipsises a value that can be a whole
+   sentence, and a flex parent takes text-overflow away from it, so Ivan's kill
+   notes would grow the row instead of truncating. An inline-block ::before is
+   the first thing on the line and leaves that contract untouched. It also has
+   to be written at THIS specificity — .wb.wb.wb beats a single class, so the
+   same rule in styles.css never applied at all. */
+.wb.wb.wb .ct-src-dot::before{
+  content:''; display:inline-block; vertical-align:middle;
+  width:5px; height:5px; border-radius:50%; margin-right:6px;
+  /* No --src-h on the row falls back to the meta tier rather than to hue 0,
+     which is red and is reserved on this surface for a failure. */
+  background:var(--text3);
+}
+.wb.wb.wb .ct-src-dot[style*="--src-h"]::before{
+  background:hsl(var(--src-h) 55% 60%);
 }
 /* The armed date, in the meta row's third slot. Outlined, never filled: it is a
    FACT about the row, not a verdict on it, and a filled chip here would read as
@@ -3179,7 +3204,7 @@
 .wb.wb.wb .sa-body, .wb.wb.wb .sa-title,
 .wb.wb.wb .wb-edit-ta, .wb.wb.wb .dw-note textarea, .wb.wb.wb .dw-conf-t,
 .wb.wb.wb .wb-modelwarn span, .wb.wb.wb .wb-chat-empty-t,
-.wb.wb.wb .ct-err, .wb.wb.wb .ct-warnbox, .wb.wb.wb .qa-clash,
+.wb.wb.wb .ct-err, .wb.wb.wb .ct-warnbox, .wb.wb.wb .ct-notebox, .wb.wb.wb .qa-clash,
 .wb.wb.wb .wb-failed-m, .wb.wb.wb .wb-starter, .wb.wb.wb .empty{
   line-height:var(--lh-read);
 }
