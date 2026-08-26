@@ -369,6 +369,11 @@ input.cfield::placeholder{color:var(--text3)}
 .alsoemail{margin-top:10px;background:rgba(10,132,255,.12);border:1px solid rgba(10,132,255,.35);color:#64B5FF;font-size:12.5px;font-weight:600;line-height:1.35;padding:8px 11px;border-radius:10px}
 .emailpreview{margin-top:8px;background:rgba(0,0,0,.3);border:1px solid rgba(10,132,255,.2);border-radius:8px;padding:8px 10px;color:#C7D5E4;font-size:12.5px;font-weight:400;line-height:1.45;white-space:pre-wrap;word-break:break-word;max-height:15vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .emailtoggle{display:inline-block;margin-left:6px;color:var(--accent);cursor:pointer;font-weight:700}
+/* The email body is editable in the thread (2026-08-26). Fixed height, no resize:
+   the composer sits below an overflow:hidden pane, so a box that grows with its
+   content pushes Approve off-screen — the same break the collapsed-by-default
+   preview was introduced to fix. */
+.emailedit{display:block;width:100%;height:15vh;resize:none;font:inherit;font-size:12.5px;box-sizing:border-box;-webkit-appearance:none}
 /* ---- answerability gate: the draft answered something RISE FACTS doesn't cover.
    Red, because this is the one warning where approving can put an unverified
    commitment on a client's seat. Warning only: Approve & send stays enabled. ---- */

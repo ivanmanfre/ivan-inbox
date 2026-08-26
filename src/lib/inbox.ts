@@ -724,6 +724,19 @@ export async function saveDraftText(id: string, text: string): Promise<void> {
   if (error) throw error
 }
 
+// The email leg was render-only until now (Ivan, 2026-08-26): the DM could be
+// fixed in the box while the email that ships alongside it could not, so a bad
+// line in the inbox copy could only be fixed by rewriting the row by hand. Same
+// guards as saveDraftText — an approved or sent row is not editable, and a stale
+// view asking to edit one is a zero-row no-op.
+export async function saveDraftEmail(id: string, text: string): Promise<void> {
+  const { error } = await supabase.from('outreach_messages')
+    .update({ email_mirror_text: text })
+    .eq('id', id).is('sent_at', null).is('approved_at', null)
+    .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*`)
+  if (error) throw error
+}
+
 // Push a pending draft to later. Same staleness guard as approveDraft: a row
 // that has already gone out, been approved or been discarded is not pushable,
 // and a stale view asking to push one is a zero-row no-op rather than a write

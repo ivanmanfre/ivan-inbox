@@ -7,7 +7,7 @@ import { useConfirm } from '../components/ConfirmSheet'
 import { formatReturn, returnsIn, usePushLater } from '../components/PushLaterSheet'
 import {
   approveDraft, channelFamilies, composeReply, discardDraft, escalateDraftToClient, isDraft, isFollowUp, isMixedChannel,
-  saveDraftText, snoozeDraft, unsnoozeDraft,
+  saveDraftEmail, saveDraftText, snoozeDraft, unsnoozeDraft,
   markThreadRead, messageChannel, threadChatId,
   type InboxMessage, type MsgChannel, type Thread, eventTime } from '../lib/inbox'
 import { label } from '../lib/labels'
@@ -80,6 +80,7 @@ export function ThreadScreen({ thread, onBack, refresh }: {
   // overflow:hidden shell, so anything that grows it can push Approve/Discard off-screen
   // with no way to scroll to them (broke live 2026-08-07, first email-preview version).
   const [showEmail, setShowEmail] = useState(false)
+  const [editedEmail, setEditedEmail] = useState(draft?.email_mirror_text ?? '')
   // Answerability gate: optional escalation. Never gates Approve & send.
   const [askNote, setAskNote] = useState('')
   const [asking, setAsking] = useState(false)
@@ -95,6 +96,7 @@ export function ThreadScreen({ thread, onBack, refresh }: {
 
   // Re-seed the editor when the draft row changes (e.g. after a refresh).
   useEffect(() => { setEdited(draft?.message_text ?? '') }, [draft?.id])
+  useEffect(() => { setEditedEmail(draft?.email_mirror_text ?? '') }, [draft?.id])
 
   // Grow the edit box to fit the draft (capped by max-height in CSS) so long
   // drafts are readable and editable without a tiny scroll window.
@@ -125,7 +127,15 @@ export function ThreadScreen({ thread, onBack, refresh }: {
     })
     if (!ok) return
     setBusy(true); setDraftErr('')
-    try { await approveDraft(draft.id, edited, threadChatId(thread)); refresh() }
+    try {
+      // Email first, deliberately: approveDraft stamps approved_at, and the email
+      // save guards on that being null. Saving after would silently no-op and send
+      // the pre-edit copy to their inbox.
+      if (draft.email_mirror_text != null && editedEmail !== draft.email_mirror_text) {
+        await saveDraftEmail(draft.id, editedEmail)
+      }
+      await approveDraft(draft.id, edited, threadChatId(thread)); refresh()
+    }
     catch (e) { setDraftErr(errText(e)) }
     finally { setBusy(false) }
   }
@@ -168,6 +178,9 @@ export function ThreadScreen({ thread, onBack, refresh }: {
     setBusy(true); setDraftErr('')
     try {
       if (edited !== draft.message_text) await saveDraftText(draft.id, edited)
+      if (draft.email_mirror_text != null && editedEmail !== draft.email_mirror_text) {
+        await saveDraftEmail(draft.id, editedEmail)
+      }
       await snoozeDraft(draft.id, until)
       refresh()
     } catch (e) { setDraftErr(errText(e)) }
@@ -434,7 +447,12 @@ export function ThreadScreen({ thread, onBack, refresh }: {
                 )}
               </div>
               {showEmail && draft.email_mirror_text && (
-                <div className="emailpreview"><Linkified text={draft.email_mirror_text} /></div>
+                <textarea
+                  className="emailpreview emailedit"
+                  value={editedEmail}
+                  onChange={e => setEditedEmail(e.target.value)}
+                  disabled={busy}
+                />
               )}
             </div>
           )}
