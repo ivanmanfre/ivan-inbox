@@ -83,6 +83,13 @@ export type Filter = 'all' | 'ivan' | 'risedtc' | 'arch' | 'email'
 // reason ('discarded_in_inbox') and stay permanent — U1 is untouched.
 export const RACE_HOLD_PREFIX = 'post_approval_race:'
 
+// A lint hold ('lint_*', e.g. lint_unbacked_commitment) is the dispatcher's
+// deterministic screen bouncing a row at the send moment — the DM claimed an
+// email was coming with nothing stamped to back it (06-PLAN item 3, 2026-08-26).
+// Recoverable by design, same as a race hold: fix the line (or attach the
+// email) and approve is one tap.
+export const LINT_HOLD_PREFIX = 'lint_'
+
 // The reason discardDraft writes, and the ONLY block reason restoreDraft will
 // undo. Every other value in that column means something restore must not
 // touch: `send_failed_verified:*` rows may already have landed on the platform,
@@ -94,9 +101,15 @@ export function isRaceHold(reason: string | null): boolean {
   return reason !== null && reason.startsWith(RACE_HOLD_PREFIX)
 }
 
+// Race holds and lint holds share the recovery path: the row comes back as a
+// pending draft and approving clears the block.
+export function isRecoverableHold(reason: string | null): boolean {
+  return isRaceHold(reason) || (reason !== null && reason.startsWith(LINT_HOLD_PREFIX))
+}
+
 export function isDraft(m: InboxMessage): boolean {
   return m.direction === 'outbound' && !m.sent_at && !m.approved_at &&
-    (!m.send_blocked_at || isRaceHold(m.send_blocked_reason))
+    (!m.send_blocked_at || isRecoverableHold(m.send_blocked_reason))
 }
 
 // A NUDGE, not a reply: written because the person went quiet, by the bump
@@ -682,7 +695,7 @@ export async function approveDraft(id: string, editedText: string, chatId?: stri
   const { error } = await supabase.from('outreach_messages')
     .update(patch)
     .eq('id', id).is('sent_at', null)
-    .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*`)
+    .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*,send_blocked_reason.like.${LINT_HOLD_PREFIX}*`)
   if (error) throw error
 }
 
@@ -720,7 +733,7 @@ export async function saveDraftText(id: string, text: string): Promise<void> {
   const { error } = await supabase.from('outreach_messages')
     .update({ message_text: text })
     .eq('id', id).is('sent_at', null).is('approved_at', null)
-    .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*`)
+    .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*,send_blocked_reason.like.${LINT_HOLD_PREFIX}*`)
   if (error) throw error
 }
 
@@ -733,7 +746,7 @@ export async function saveDraftEmail(id: string, text: string): Promise<void> {
   const { error } = await supabase.from('outreach_messages')
     .update({ email_mirror_text: text })
     .eq('id', id).is('sent_at', null).is('approved_at', null)
-    .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*`)
+    .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*,send_blocked_reason.like.${LINT_HOLD_PREFIX}*`)
   if (error) throw error
 }
 
@@ -745,7 +758,7 @@ export async function snoozeDraft(id: string, until: string): Promise<void> {
   const { error } = await supabase.from('outreach_messages')
     .update({ snoozed_until: until, snoozed_at: new Date().toISOString() })
     .eq('id', id).is('sent_at', null).is('approved_at', null)
-    .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*`)
+    .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*,send_blocked_reason.like.${LINT_HOLD_PREFIX}*`)
   if (error) throw error
 }
 
@@ -754,7 +767,7 @@ export async function unsnoozeDraft(id: string): Promise<void> {
   const { error } = await supabase.from('outreach_messages')
     .update({ snoozed_until: null, snoozed_at: null })
     .eq('id', id).is('sent_at', null).is('approved_at', null)
-    .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*`)
+    .or(`send_blocked_reason.is.null,send_blocked_reason.like.${RACE_HOLD_PREFIX}*,send_blocked_reason.like.${LINT_HOLD_PREFIX}*`)
   if (error) throw error
 }
 

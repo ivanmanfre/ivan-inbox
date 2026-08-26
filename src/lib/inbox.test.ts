@@ -49,6 +49,12 @@ describe('isDraft', () => {
     expect(isDraft({ ...base, send_blocked_at: '2026-07-22T11:00:00Z', send_blocked_reason: 'discarded_in_inbox' })).toBe(false)
     expect(isDraft({ ...base, send_blocked_at: '2026-07-22T11:00:00Z', send_blocked_reason: 'manual_reply_raced' })).toBe(false)
   })
+  // A lint hold is the dispatcher's deterministic screen (06-PLAN item 3): the
+  // row bounced because its copy promised an email nothing was stamped to send.
+  // Same recovery contract as a race hold — fix the line, approve is one tap.
+  it('a dispatcher lint-hold stays a pending draft', () => {
+    expect(isDraft({ ...base, send_blocked_at: '2026-08-26T11:00:00Z', send_blocked_reason: 'lint_unbacked_commitment' })).toBe(true)
+  })
 })
 
 describe('eventTime', () => {
