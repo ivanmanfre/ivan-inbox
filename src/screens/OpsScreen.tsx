@@ -5,7 +5,7 @@ import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useOps } from '../hooks/useOps'
 import {
-  approveOpsDraft, approveWeeklyReport, blockedOps, canGenerateDraft, claimingOps, discardOpsDraft, engineLabel, expiresIn, generateCommentDraft, markCommentHandled, outboundApproveUrl, outboundSkipUrl, pendingOps, postCommentReply, seatLabel, sentOps,
+  approveOpsDraft, approveWeeklyReport, blockedOps, canGenerateDraft, canTagCommenter, claimingOps, discardOpsDraft, engineLabel, expiresIn, generateCommentDraft, likeComment, markCommentHandled, outboundApproveUrl, outboundSkipUrl, pendingOps, postCommentReply, seatLabel, sentOps,
   dispatchCommentGate, cardStateOf,
   type OpsDraft, type OpsKind, type GateVerdict, type FeedState,
 } from '../lib/ops'
@@ -190,6 +190,14 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
   const [body, setBody] = useState(draft.body)
   const [busy, setBusy] = useState(false)
   const [drafting, setDrafting] = useState(false)
+  // Tagging is the native-LinkedIn default (Ivan, 08-27): a reply @-mentions the
+  // commenter so they get the notification. The chip below the editor turns it
+  // off for one reply; the mention itself is welded on server-side.
+  const [tag, setTag] = useState(true)
+  const [liking, setLiking] = useState(false)
+  // context.liked is the durable answer (stamped by the edge fn); likedNow just
+  // paints the button before the next refresh lands.
+  const [likedNow, setLikedNow] = useState(false)
   // Why the engine refused to write one. Named gate violations, not a spinner
   // that stops: a refusal Ivan cannot see reads as a broken button.
   const [refusal, setRefusal] = useState<string[]>([])
@@ -215,6 +223,9 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
   // idea it was.
   const canDraft = canGenerateDraft(draft)
   const onDemand = isComment && draft.context?.drafted_on_demand === true
+  const canTag = canTagCommenter(draft)
+  const commenterName = isComment ? String(draft.context?.author_name ?? '') : ''
+  const liked = likedNow || draft.context?.liked === true
   const isOutbound = draft.kind === 'comment_outbound'
   // ivan lane cards carry the n8n gate link; risedtc cards are copy-and-hand-post.
   const approveUrl = outboundApproveUrl(draft)
@@ -291,7 +302,7 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
         title: isEscalatedComment ? 'Mark this handled?' : `Post this reply as ${where}?`,
         message: isEscalatedComment
           ? 'Nothing is posted. The card clears and you stop being reminded about this comment.'
-          : 'Goes live on LinkedIn under their comment, from the client seat. Checks first that they have not already been answered.',
+          : `Goes live on LinkedIn under their comment, from the client seat.${tag && canTag && commenterName ? ` Tags ${commenterName} so they get the notification, like a native reply.` : ''} Checks first that they have not already been answered.`,
         confirmText: isEscalatedComment ? 'Mark handled' : 'Approve & post',
       })
       if (!ok) return
@@ -300,7 +311,7 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
         if (isEscalatedComment) {
           await markCommentHandled(draft.id)
         } else {
-          const out = await postCommentReply(draft.id, body)
+          const out = await postCommentReply(draft.id, body, tag)
           if (!out.posted) setError('Mattan already replied to this one, so nothing was posted. Card cleared.')
         }
         refresh()
@@ -376,6 +387,17 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
     try { await approveOpsDraft(draft.id, body); refresh() }
     catch (e) { setError(errText(e)) }
     finally { setBusy(false) }
+  }
+
+  // One tap, one like, from the client seat. No confirm sheet: a like is the
+  // smallest public act this app performs, it cannot double (LinkedIn treats a
+  // repeat as a no-op), and the edge fn stamps context.liked so the state holds.
+  async function onLike() {
+    if (liking || liked) return
+    setLiking(true); setError('')
+    try { await likeComment(draft.id); setLikedNow(true); refresh() }
+    catch (e) { setError(errText(e)) }
+    finally { setLiking(false) }
   }
 
   // No confirm sheet: nothing leaves the building, it fills the textarea above.
@@ -454,6 +476,43 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
             : onDemand
               ? 'Drafted on request, so this category never passed the auto gate. Read every word before you post it.'
               : 'Edit it first. Approve posts it live under their comment.'}
+        </div>
+      )}
+      {/* Comment tools (Ivan, 08-27): emoji into the draft, like their comment,
+          and the tag chip. The mention itself is added server-side so the draft
+          stays clean text here. */}
+      {isComment && draft.context?.comment_id && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, margin: '2px 0 4px' }}>
+          {['🙂', '😂', '🙌', '🔥', '💪', '👍', '❤️'].map(e => (
+            <span
+              key={e}
+              style={{ cursor: 'pointer', fontSize: 17, lineHeight: '24px', opacity: busy || drafting ? 0.4 : 1 }}
+              onClick={busy || drafting ? undefined : () => setBody(b => b && !b.endsWith(' ') ? `${b} ${e}` : `${b}${e}`)}
+            >{e}</span>
+          ))}
+          <span
+            onClick={liking || liked ? undefined : onLike}
+            style={{
+              cursor: liked ? 'default' : 'pointer', fontSize: 12, padding: '3px 9px',
+              borderRadius: 20, border: '1px solid #0A84FF55',
+              color: liked ? '#30D158' : '#0A84FF', marginLeft: 'auto', whiteSpace: 'nowrap',
+            }}
+          >
+            {liked ? '👍 Liked' : liking ? 'Liking…' : '👍 Like their comment'}
+          </span>
+          {canTag && !isEscalatedComment && (
+            <span
+              onClick={busy ? undefined : () => setTag(t => !t)}
+              style={{
+                cursor: 'pointer', fontSize: 12, padding: '3px 9px',
+                borderRadius: 20, whiteSpace: 'nowrap',
+                border: `1px solid ${tag ? '#BF5AF255' : '#8E8E9355'}`,
+                color: tag ? '#BF5AF2' : '#8E8E93',
+              }}
+            >
+              {tag ? `@ tags ${commenterName}` : 'no tag'}
+            </span>
+          )}
         </div>
       )}
       {isOutbound && (

@@ -241,9 +241,7 @@ export function outboundSkipUrl(d: OpsDraft): string | null {
 // the whole act: it re-reads the thread first and refuses if the client already
 // answered, so pressing approve twice cannot double post. Everything is stamped
 // server-side, which is why nothing here writes to the table.
-export async function postCommentReply(
-  id: string, editedBody: string,
-): Promise<{ posted: boolean; reason?: string }> {
+async function callCommentReplyFn(payload: Record<string, unknown>) {
   const { data: sess } = await supabase.auth.getSession()
   const token = sess.session?.access_token
   if (!token) throw new Error('not signed in')
@@ -256,12 +254,36 @@ export async function postCommentReply(
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ ops_draft_id: id, body: editedBody }),
+      body: JSON.stringify(payload),
     },
   )
   const out = await res.json().catch(() => ({}))
   if (!res.ok || out?.ok === false) throw new Error(out?.error ?? `post failed (${res.status})`)
-  return { posted: out.posted === true, reason: out.reason }
+  return out
+}
+
+export async function postCommentReply(
+  id: string, editedBody: string, tagCommenter = true,
+): Promise<{ posted: boolean; reason?: string; tagged?: boolean }> {
+  const out = await callCommentReplyFn({
+    ops_draft_id: id, body: editedBody, tag_commenter: tagCommenter,
+  })
+  return { posted: out.posted === true, reason: out.reason, tagged: out.tagged === true }
+}
+
+// Likes THEIR comment from the client seat. Works on a card in any state -
+// liking is independent of replying, and a repeat like is a LinkedIn no-op.
+// The function stamps context.liked so the button survives refreshes.
+export async function likeComment(id: string): Promise<void> {
+  await callCommentReplyFn({ ops_draft_id: id, action: 'react' })
+}
+
+// The tag needs the commenter's provider id, captured at pull time. Old rows
+// (or degraded pulls) may not have it - the card hides the toggle then.
+export function canTagCommenter(d: OpsDraft): boolean {
+  return d.kind === 'comment_reply'
+    && Boolean(d.context?.comment_id)
+    && Boolean(d.context?.author_name)
 }
 
 // A comment card with an empty body is one the pipeline refused to draft: either
