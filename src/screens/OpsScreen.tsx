@@ -225,6 +225,10 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
   const onDemand = isComment && draft.context?.drafted_on_demand === true
   const canTag = canTagCommenter(draft)
   const commenterName = isComment ? String(draft.context?.author_name ?? '') : ''
+  // "Marian A." pattern: a privacy-abbreviated surname means the profile is
+  // out-of-network for the seat, and LinkedIn refuses to resolve those into a
+  // mention - the tag posts as plain text (proven 08-28). Warn before, verify after.
+  const tagMayFail = /\s[A-Za-z]\.$/.test(commenterName.trim())
   const liked = likedNow || draft.context?.liked === true
   const isOutbound = draft.kind === 'comment_outbound'
   // ivan lane cards carry the n8n gate link; risedtc cards are copy-and-hand-post.
@@ -313,6 +317,9 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
         } else {
           const out = await postCommentReply(draft.id, body, tag)
           if (!out.posted) setError('Mattan already replied to this one, so nothing was posted. Card cleared.')
+          else if (out.tagged && out.tagVerified === false) {
+            setError('Posted fine — but the tag rendered as plain text: LinkedIn would not resolve this profile for a mention (usually an out-of-network commenter with a hidden surname).')
+          }
         }
         refresh()
       } catch (e) { setError(errText(e)) }
@@ -510,7 +517,7 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
                 color: tag ? '#BF5AF2' : '#8E8E93',
               }}
             >
-              {tag ? `@ tags ${commenterName}` : 'no tag'}
+              {tag ? (tagMayFail ? `@ tags ${commenterName} (may not stick - hidden surname)` : `@ tags ${commenterName}`) : 'no tag'}
             </span>
           )}
         </div>

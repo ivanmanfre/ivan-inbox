@@ -264,11 +264,18 @@ async function callCommentReplyFn(payload: Record<string, unknown>) {
 
 export async function postCommentReply(
   id: string, editedBody: string, tagCommenter = true,
-): Promise<{ posted: boolean; reason?: string; tagged?: boolean }> {
+): Promise<{ posted: boolean; reason?: string; tagged?: boolean; tagVerified?: boolean | null }> {
   const out = await callCommentReplyFn({
     ops_draft_id: id, body: editedBody, tag_commenter: tagCommenter,
   })
-  return { posted: out.posted === true, reason: out.reason, tagged: out.tagged === true }
+  return {
+    posted: out.posted === true,
+    reason: out.reason,
+    tagged: out.tagged === true,
+    // true = mention entity confirmed on LinkedIn; false = posted as plain text
+    // (out-of-network profiles resolve to nothing); null/undefined = unverified.
+    tagVerified: typeof out.tag_verified === 'boolean' ? out.tag_verified : null,
+  }
 }
 
 // Likes THEIR comment from the client seat. Works on a card in any state -
