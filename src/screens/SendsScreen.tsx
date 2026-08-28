@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  buildLanes, fetchLaneRecent, fetchSendLog, fetchSendLogTotals, fetchSends, fetchSendsDaily,
+  buildLanes, fetchLaneRecent, fetchLeadTags, fetchSendLog, fetchSendLogTotals, fetchSends, fetchSendsDaily,
   sendKind,
-  type Lane, type LaneKey, type RecentSend, type SendLogItem, type SendLogTotals,
+  type Lane, type LaneKey, type LeadTags, type RecentSend, type SendLogItem, type SendLogTotals,
 } from '../lib/sends'
 import {
   buildInboundLanes, fetchInbound, fetchInboundDaily, fetchInboundDecisions,
@@ -99,10 +99,30 @@ function logDay(iso: string): string {
 }
 
 // Chronological feed of every outbound action (sends + verified failures).
+// Lead-tag chip labels: the lead-page vocabulary, compressed for a phone row.
+function tagChips(t: LeadTags | undefined): string[] {
+  if (!t) return []
+  const chips: string[] = []
+  if (t.lane) chips.push(t.lane.replace(/_/g, ' ').toUpperCase())
+  if (t.eu_logic === true) chips.push('EU LOGIC')
+  if (t.eu_logic === false) chips.push('US-BOUND')
+  if (t.source_kind === 'profile_view_warm') chips.push('PROFILE VIEW')
+  else if (t.source_kind === 'client_sourced_sponsor') chips.push('FROM DAVORIN')
+  else if (t.source_kind === 'youtube_sponsor_mining') chips.push('YT SPONSOR')
+  else if (t.source_kind) chips.push(t.source_kind.replace(/_/g, ' ').toUpperCase())
+  if (t.network_distance === 'DISTANCE_1' || t.network_distance === 'FIRST_DEGREE') chips.push('ALREADY CONNECTED')
+  if (t.country) chips.push(t.country.toUpperCase())
+  return chips
+}
+
 function LogView({ client }: { client: Client }) {
   const [items, setItems] = useState<SendLogItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // Tap a row to see the FULL sent message + the lead's tags. Tags fail soft:
+  // a failed tag fetch must never take the log down (same rule as the totals).
+  const [tags, setTags] = useState<Map<string, LeadTags>>(new Map())
+  const [openId, setOpenId] = useState<string | null>(null)
   // The denominator, from a count=exact HEAD probe — never rows.length of a
   // truncated fetch. This log is a WINDOW on 1,700+ sends and 200+ blocks; a
   // count taken off the window would understate failures by ~76%.
@@ -112,7 +132,13 @@ function LogView({ client }: { client: Client }) {
     let live = true
     setLoading(true); setError(null)
     fetchSendLog(client)
-      .then(r => { if (live) setItems(r) })
+      .then(r => {
+        if (!live) return
+        setItems(r)
+        fetchLeadTags(r.map(i => i.prospect_id))
+          .then(t => { if (live) setTags(t) })
+          .catch(() => { if (live) setTags(new Map()) })
+      })
       .catch(e => { if (live) setError(e instanceof Error ? e.message : 'Failed to load') })
       .finally(() => { if (live) setLoading(false) })
     // A failed probe must never take the log down with it: no denominator is a
@@ -148,7 +174,10 @@ function LogView({ client }: { client: Client }) {
         return (
           <div key={m.id} style={{ display: 'contents' }}>
             {showDay && <div className="log-day">{day}</div>}
-            <div className="log-r">
+            <div
+              className={`log-r${openId === m.id ? ' log-open' : ''}`}
+              onClick={() => setOpenId(v => (v === m.id ? null : m.id))}
+            >
               {/* data-failed is a hook, not a colour. The kind palette here is
                   eight inline hexes, two of which ARE the severity tokens; a
                   treatment that wants to retone it needs one selector that can
@@ -171,9 +200,22 @@ function LogView({ client }: { client: Client }) {
                     {m.client_id === 'risedtc' ? 'RISE' : m.client_id.toUpperCase()}
                   </span>
                 </div>
-                <div className="log-snip">
-                  {m.kind === 'failed' ? (m.reason ?? 'send failed') : m.message_text}
-                </div>
+                {openId === m.id ? (
+                  <>
+                    {tagChips(tags.get(m.prospect_id)).length > 0 && (
+                      <div className="log-tags">
+                        {tagChips(tags.get(m.prospect_id)).map(c => <span key={c} className="log-tag">{c}</span>)}
+                      </div>
+                    )}
+                    <div className="log-full">
+                      {m.kind === 'failed' ? (m.reason ?? 'send failed') : (m.message_text || '(no text stored)')}
+                    </div>
+                  </>
+                ) : (
+                  <div className="log-snip">
+                    {m.kind === 'failed' ? (m.reason ?? 'send failed') : m.message_text}
+                  </div>
+                )}
               </div>
               <span className="log-tm">{ago(m.event_at)}</span>
             </div>

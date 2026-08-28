@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildLanes, laneStatus, sendKind, type SendRow, type DailyRow, type LaneKey } from './sends'
+import { buildLanes, buildLeadTags, laneStatus, sendKind, type SendRow, type DailyRow, type LaneKey } from './sends'
 
 const row = (over: Partial<SendRow>): SendRow => ({
   client_id: 'ivan', message_type: 'dm', channel: 'linkedin',
@@ -173,5 +173,33 @@ describe('sendKind', () => {
   it('open-profile detection (message_type=dm) is unaffected by the connection-note text sniffing', () => {
     expect(sendKind({ message_type: 'dm', ai_model: 'template/rise_openprofile_v1', message_text: 'hey there' }))
       .toBe('open_profile')
+  })
+})
+
+describe('buildLeadTags field mapping', () => {
+  it('maps the lead-page vocabulary and keys by prospect id', () => {
+    const m = buildLeadTags([{
+      id: 'p1', country: 'Türkiye',
+      enrichment_data: { lane: 'warm_games', eu_logic: true, source_kind: 'profile_view_warm', network_distance: 'DISTANCE_1' },
+    }])
+    expect(m.get('p1')).toEqual({
+      lane: 'warm_games', eu_logic: true, source_kind: 'profile_view_warm',
+      network_distance: 'DISTANCE_1', country: 'Türkiye',
+    })
+  })
+
+  it('absent enrichment stays null-safe: a bare row yields all-null tags, never a throw', () => {
+    const m = buildLeadTags([{ id: 'p2', country: null, enrichment_data: null }])
+    expect(m.get('p2')).toEqual({ lane: null, eu_logic: null, source_kind: null, network_distance: null, country: null })
+  })
+
+  it('eu_logic false survives as false (US-bound), not null - three-state field', () => {
+    const m = buildLeadTags([{ id: 'p3', country: null, enrichment_data: { eu_logic: false } }])
+    expect(m.get('p3')!.eu_logic).toBe(false)
+  })
+
+  it('non-string junk in enrichment fields maps to null instead of leaking objects into chips', () => {
+    const m = buildLeadTags([{ id: 'p4', country: null, enrichment_data: { lane: { nested: true }, source_kind: 7 } }])
+    expect(m.get('p4')).toEqual({ lane: null, eu_logic: null, source_kind: null, network_distance: null, country: null })
   })
 })

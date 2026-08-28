@@ -373,3 +373,44 @@ export function buildLanes(
     }
   })
 }
+
+// ---- Lead tags for the log's expanded row --------------------------------------
+// The same enrichment vocabulary the lead pages print (lane chips, sponsor EU
+// routing, provenance, connection state), keyed by prospect id. The log shows a
+// send with no idea WHO the lead is; these chips close that gap (Ivan 2026-08-28).
+export type LeadTags = {
+  lane: string | null
+  eu_logic: boolean | null
+  source_kind: string | null
+  network_distance: string | null
+  country: string | null
+}
+
+type TagRow = { id: string; country: string | null; enrichment_data: Record<string, unknown> | null }
+
+// Pure so the field mapping sits under the same test suite as buildSendLog.
+export function buildLeadTags(rows: TagRow[]): Map<string, LeadTags> {
+  const map = new Map<string, LeadTags>()
+  for (const r of rows) {
+    const ed = (r.enrichment_data ?? {}) as Record<string, unknown>
+    map.set(r.id, {
+      lane: typeof ed.lane === 'string' && ed.lane ? ed.lane : null,
+      eu_logic: typeof ed.eu_logic === 'boolean' ? ed.eu_logic : null,
+      source_kind: typeof ed.source_kind === 'string' && ed.source_kind ? ed.source_kind : null,
+      network_distance: typeof ed.network_distance === 'string' && ed.network_distance ? ed.network_distance : null,
+      country: r.country ?? null,
+    })
+  }
+  return map
+}
+
+export async function fetchLeadTags(prospectIds: string[]): Promise<Map<string, LeadTags>> {
+  // in() lists die around 16KB of URL; 120 log rows of uuids is ~4.5KB, safe,
+  // but dedupe anyway - repeat sends to one prospect are common.
+  const ids = [...new Set(prospectIds.filter(Boolean))]
+  if (ids.length === 0) return new Map()
+  const { data, error } = await supabase.from('outreach_prospects')
+    .select('id, country, enrichment_data').in('id', ids)
+  if (error) throw error
+  return buildLeadTags((data ?? []) as TagRow[])
+}
