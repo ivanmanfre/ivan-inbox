@@ -302,7 +302,7 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
         title: isEscalatedComment ? 'Mark this handled?' : `Post this reply as ${where}?`,
         message: isEscalatedComment
           ? 'Nothing is posted. The card clears and you stop being reminded about this comment.'
-          : `Goes live on LinkedIn under their comment, from the client seat.${tag && canTag && commenterName ? ` Tags ${commenterName} so they get the notification, like a native reply.` : ''} Checks first that they have not already been answered.`,
+          : `Goes live on LinkedIn under their comment, from the client seat.${tag && canTag && commenterName ? ` Tags ${commenterName} so they get the notification, like a native reply.` : ''}${liked ? '' : ' Their comment gets a like too.'} Checks first that they have not already been answered.`,
         confirmText: isEscalatedComment ? 'Mark handled' : 'Approve & post',
       })
       if (!ok) return
@@ -483,7 +483,7 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
           stays clean text here. */}
       {isComment && draft.context?.comment_id && (
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, margin: '2px 0 4px' }}>
-          {['🙂', '😂', '🙌', '🔥', '💪', '👍', '❤️'].map(e => (
+          {['🙂', '😄', '😂', '😅', '😉', '😎', '🙌', '👏', '🤝', '🙏', '🔥', '💪', '🚀', '🎯', '💯', '✅', '⚡', '👍', '❤️', '🥂'].map(e => (
             <span
               key={e}
               style={{ cursor: 'pointer', fontSize: 17, lineHeight: '24px', opacity: busy || drafting ? 0.4 : 1 }}
