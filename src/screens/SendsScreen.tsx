@@ -534,6 +534,7 @@ export function SendsScreen({ client, setClient }: {
                   <span className="sc-dot" style={{ background: DOT[lane.status] }} />
                   <span className="sc-name">{lane.label}</span>
                 </div>
+                <div className="sc-blurb">{lane.blurb}</div>
                 <div className={`sc-status s-${lane.status}`}>{statusText(lane)}</div>
                 {lane.blocked > 0 && (
                   <div className="sc-blocked">{lane.blocked} blocked</div>

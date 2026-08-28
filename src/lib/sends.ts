@@ -24,6 +24,7 @@ export type LaneKey = 'connection_note' | 'dm' | 'inmail' | 'email'
 export type Lane = {
   key: LaneKey
   label: string
+  blurb: string
   client_id: string
   sent_24h: number
   sent_7d: number
@@ -45,6 +46,34 @@ const LANE_LABEL: Record<LaneKey, string> = {
   dm: 'DMs',
   inmail: 'InMails',
   email: 'Emails',
+}
+
+// One-line truth per lane, per client (Ivan 2026-08-29: "all lanes explained on
+// leads and outreach"). Client-specific line when one client is selected, the
+// 'all' line otherwise. Canonical definitions live in memory
+// (arch-lead-logic-contract-2026-08-28); edits here must match there.
+const LANE_BLURB: Record<string, Partial<Record<LaneKey, string>>> = {
+  all: {
+    connection_note: 'LinkedIn invites, per each client\u2019s lanes and note rules.',
+    dm: 'Messages after an accepted invite, per each client\u2019s ladder.',
+    inmail: 'Paid second knock where armed; open-profile sends log as OPEN PROF.',
+    email: 'Cold email is DEAD (Smartlead cancelled 08-13); email-preferred rows wall out of every picker.',
+  },
+  ivan: {
+    connection_note: 'Invites to ICP leads, warm-first picker; geo gate parks NULL-geo rows.',
+    dm: 'DM ladder after accept + profile-view openers; price asks mirror his own sent replies.',
+    inmail: 'Open-profile messages ride this channel; capped per seat per day.',
+  },
+  risedtc: {
+    connection_note: 'Invites to DTC brand owners: warm engagers first, cold only with ad history.',
+    dm: 'Mattan-seat DMs: warm ladder + profile-view openers, seat window 09:00-01:00 UTC.',
+    inmail: 'Not a RISE lane today; anything here is a one-off.',
+  },
+  arch: {
+    connection_note: 'Lanes: game studios, apps, sponsors (EU or US note by eu_logic), engagers. Half blank-arm as the A/B. Born-dead until launch.',
+    dm: 'Davorin-seat ladders: main dm1-3, sponsor sp_eu/sp_us dm1-3. Warm DM copy unratified.',
+    inmail: 'Second knock on invites ignored 7+ days. 3/day, 50/month cap.',
+  },
 }
 
 export async function fetchSends(): Promise<SendRow[]> {
@@ -365,6 +394,7 @@ export function buildLanes(
     return {
       key,
       label: LANE_LABEL[key],
+      blurb: LANE_BLURB[client]?.[key] ?? LANE_BLURB.all[key] ?? '',
       client_id: client,
       sent_24h, sent_7d, sent_30d, sent_total, blocked,
       last_sent,
