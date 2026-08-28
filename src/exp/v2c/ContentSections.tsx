@@ -2,10 +2,11 @@ import { useState } from 'react'
 import {
   decideIdea, deleteIdea, elapsedMinutes, ideaDecidable, IDEA_NOT_OURS,
   LANE_LABEL, LANE_POSSESSIVE, STUCK_GENERATING_MINUTES,
-  taxonomyFields, queueFailed,
+  taxonomyFields, queueFailed, unpublishPost,
   type ContentDraft, type ContentLane, type IdeaCandidate, type IdeaDecision,
   type ScheduledQueueRow,
 } from '../../lib/content'
+import { useConfirm } from '../../components/ConfirmSheet'
 import {
   decideClientIdea, ideaWhy, quoteLabel, sourceHues,
   type ClientIdea, type ClientIdeaDecision,
@@ -684,8 +685,28 @@ export function InFlight({ n, stalled, onOpen }: {
 // The publish queue — scheduled_posts, its OWN status vocabulary
 // ---------------------------------------------------------------------------
 
-function QueueRow({ r }: { r: ScheduledQueueRow }) {
+function QueueRow({ r, refresh }: { r: ScheduledQueueRow; refresh: () => void }) {
   const text = (r.post_text ?? '').trim().split('\n')[0] || 'No post text'
+  const confirm = useConfirm()
+  const [pulling, setPulling] = useState(false)
+  const [pullErr, setPullErr] = useState('')
+  // The "never a control" rule above QueueStrip guards the PUBLISH direction
+  // (writing 'scheduled' is what fires the n8n bridge). Unpublish goes the
+  // other way and cannot trigger a send; the edge fn also refuses anything
+  // that is not already 'posted'. Ivan asked for this on 08-28, inbox only.
+  async function onUnpublish() {
+    const ok = await confirm({
+      title: 'Take this post off LinkedIn?',
+      message: 'Deletes it from your feed for everyone, likes and comments included. The row moves to cancelled here. This cannot be undone.',
+      confirmText: 'Unpublish',
+      danger: true,
+    })
+    if (!ok) return
+    setPulling(true); setPullErr('')
+    try { await unpublishPost(r.id); refresh() }
+    catch (e) { setPullErr(e instanceof Error ? e.message : String(e)) }
+    finally { setPulling(false) }
+  }
   return (
     <div className={`ct-q${queueFailed(r) ? ' bad' : ''}`}>
       <div className="ct-q-t">{text.slice(0, 120)}</div>
@@ -699,6 +720,15 @@ function QueueRow({ r }: { r: ScheduledQueueRow }) {
         {r.unipile_share_url && (
           <a className="ct-ref-l" href={r.unipile_share_url} target="_blank" rel="noreferrer">live ↗</a>
         )}
+        {r.status === 'posted' && r.unipile_share_url && (
+          <span
+            className="ct-ref-l"
+            style={{ cursor: pulling ? 'default' : 'pointer', color: '#FF453A' }}
+            onClick={pulling ? undefined : onUnpublish}
+          >
+            {pulling ? 'Removing…' : 'unpublish'}
+          </span>
+        )}
       </div>
       {/* Outside the meta flex and its 14px chip fade — same move as the idea
           row above, and for the same reason: this timestamp is the value, not
@@ -709,6 +739,7 @@ function QueueRow({ r }: { r: ScheduledQueueRow }) {
           : r.scheduled_at && <span className="ct-tm">{relOrAhead(r.scheduled_at)}</span>}
       </div>
       {r.error_message && <div className="ct-q-e">{r.error_message}</div>}
+      {pullErr && <div className="ct-q-e">{pullErr}</div>}
     </div>
   )
 }
@@ -745,7 +776,7 @@ export function QueueStrip({ rows, loading, error, loadedAt, refresh }: {
       />
       {shown.length === 0
         ? <FilteredEmpty noun="queue rows" onClear={() => setFilters({})} />
-        : <div className="dd-card">{shown.slice(0, 60).map(r => <QueueRow key={r.id} r={r} />)}</div>}
+        : <div className="dd-card">{shown.slice(0, 60).map(r => <QueueRow key={r.id} r={r} refresh={refresh} />)}</div>}
       {shown.length > 60 && (
         <div className="ct-subtle">Showing the 60 most recent of {shown.length} matching rows.</div>
       )}

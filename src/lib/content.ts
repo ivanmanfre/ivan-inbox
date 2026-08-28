@@ -402,6 +402,31 @@ export async function fetchScheduledQueue(): Promise<ScheduledQueueRow[]> {
   return (data ?? []) as unknown as ScheduledQueueRow[]
 }
 
+// Removes a published post from LinkedIn (Ivan, 08-28 — inbox only, never the
+// client panel). The edge fn resolves the real share urn (share id ≠ activity
+// id), deletes via the raw voyager route, and REFUSES to report success unless
+// a re-read proves the post is gone — a wrong-urn delete is a silent no-op.
+// On success the row flips to 'cancelled', which drops it from the queue strip.
+export async function unpublishPost(id: string): Promise<void> {
+  const { data: sess } = await supabase.auth.getSession()
+  const token = sess.session?.access_token
+  if (!token) throw new Error('not signed in')
+  const res = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/linkedin-unpublish`,
+    {
+      method: 'POST',
+      headers: {
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ scheduled_post_id: id }),
+    },
+  )
+  const out = await res.json().catch(() => ({}))
+  if (!res.ok || out?.ok === false) throw new Error(out?.error ?? `unpublish failed (${res.status})`)
+}
+
 // A queue row that carries an error_message is the ONLY place a publish failure
 // is written down (9 rows live). It lifts into the lane's alert strip beside the
 // draft errors — a failed publish and a failed generation are the same class of
