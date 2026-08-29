@@ -229,6 +229,9 @@ input.cfield::placeholder{color:var(--text3)}
 .gbtn:disabled{opacity:.55}
 .gstate.on{flex:none;font-size:14.5px;font-weight:600;color:var(--accent)}
 .grow.tap{cursor:pointer;justify-content:center}
+a.grow.boardlink{color:inherit;text-decoration:none;cursor:pointer}
+a.grow.boardlink:active{background:var(--surface2)}
+a.grow.boardlink.off{opacity:.5;pointer-events:none}
 .seg.theme{margin:0;width:154px;flex:none;background:var(--surface2)}
 .seg.theme .sg{padding:6px 0}
 

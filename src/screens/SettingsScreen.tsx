@@ -116,6 +116,63 @@ function WorkbenchAppearance() {
   )
 }
 
+// Direct doors into each client's content board plus Ivan's own content
+// section. The board tokens are NOT committed — this repo is public, so they
+// are read at runtime from client_boards (RLS: authenticated-only, and the
+// only account is Ivan's — LoginScreen signs in with shouldCreateUser:false).
+function BoardLinks() {
+  const [boards, setBoards] = useState<{ slug: string; client_id: string; token: string }[]>([])
+  useEffect(() => {
+    supabase
+      .from('client_boards')
+      .select('slug, client_id, token')
+      .not('client_id', 'is', null)
+      .then(({ data }) => setBoards(data ?? []))
+  }, [])
+
+  const clients = [
+    { id: 'risedtc', label: 'Mattan — RISE DTC' },
+    { id: 'arch', label: 'Davorin — ARCH' },
+  ]
+  return (
+    <>
+      <div className="grouphdr">Content boards</div>
+      <div className="group">
+        {clients.map(({ id, label }) => {
+          const b = boards.find(x => x.client_id === id)
+          return (
+            <a
+              key={id}
+              className={'grow boardlink' + (b ? '' : ' off')}
+              href={b ? `https://ivanmanfredi.com/client/${b.slug}?k=${b.token}` : undefined}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <div className="gtxt">
+                <div className="gt">{label}</div>
+                <div className="gs">{b ? 'Client board — queue, drafts, schedule.' : 'Loading…'}</div>
+              </div>
+              <div className="gs">↗</div>
+            </a>
+          )
+        })}
+        <a
+          className="grow boardlink"
+          href="https://ivanmanfredi.com/dashboard-v2?section=content"
+          target="_blank"
+          rel="noreferrer"
+        >
+          <div className="gtxt">
+            <div className="gt">Ivan — my content</div>
+            <div className="gs">Dashboard content section.</div>
+          </div>
+          <div className="gs">↗</div>
+        </a>
+      </div>
+    </>
+  )
+}
+
 export function SettingsScreen({ shell = 'stock' }: { shell?: SettingsShell } = {}) {
   const [push, setPush] = useState<PushState>('off')
   const [pushBusy, setPushBusy] = useState(false)
@@ -225,6 +282,8 @@ export function SettingsScreen({ shell = 'stock' }: { shell?: SettingsShell } = 
               writes `inbox-theme`, and BOTH shells read that attribute. */}
           {shell === 'workbench' && <WorkbenchAppearance />}
         </div>
+
+        <BoardLinks />
 
         <div className="group">
           <div className="grow tap" onClick={() => supabase.auth.signOut()}>
