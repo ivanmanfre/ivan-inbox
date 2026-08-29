@@ -479,7 +479,9 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
       {isComment && (
         <div className="ops-ctx">
           {isEscalatedComment
-            ? 'No draft on purpose: this one wants Mattan in his own words. Draft it if you want a starting point.'
+            ? (draft.client_id === 'arch'
+              ? 'No draft on purpose: this one wants Davorin in his own words. No ARCH drafter exists yet, so write it by hand in his register.'
+              : 'No draft on purpose: this one wants Mattan in his own words. Draft it if you want a starting point.')
             : onDemand
               ? 'Drafted on request, so this category never passed the auto gate. Read every word before you post it.'
               : 'Edit it first. Approve posts it live under their comment.'}
