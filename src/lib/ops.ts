@@ -1,6 +1,11 @@
 import { supabase } from './supabase'
 
-export type OpsKind = 'escalation' | 'update' | 'newsjack' | 'weekly_report' | 'comment_reply' | 'comment_outbound' | 'booking' | 'precall_email' | 'manual_invite'
+// `task` is the one kind with no engine behind it at all: it is Ivan's own to-do,
+// dictated to the WhatsApp assistant or written down by a Claude session. Done
+// double-stamps (nothing is sent), Remove discards. It is deliberately absent from
+// the Slack dispatcher's pick list (kind IN escalation/update/booking), so a task
+// can never reach a channel — least of all the client-facing one `update` writes to.
+export type OpsKind = 'escalation' | 'update' | 'newsjack' | 'weekly_report' | 'comment_reply' | 'comment_outbound' | 'booking' | 'precall_email' | 'manual_invite' | 'task'
 
 // The row shape varies by kind (escalation carries a prospect, update carries
 // receipts, newsjack carries the idea it will generate from), so context stays a

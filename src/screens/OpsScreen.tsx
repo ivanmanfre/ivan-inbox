@@ -33,11 +33,13 @@ function timeAgo(iso: string): string {
 // 'OUTBOUND' said what the ENGINE calls the lane, not what the card is. Ivan
 // reads these as comments, so they say Comments; `comment_reply` becomes REPLY
 // in the same pass so the two comment kinds cannot be told apart by an S.
-const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK', weekly_report: 'WEEKLY', comment_reply: 'REPLY', comment_outbound: 'COMMENTS', booking: 'BOOKED', precall_email: 'PRE-CALL', manual_invite: 'INVITE' }
+const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK', weekly_report: 'WEEKLY', comment_reply: 'REPLY', comment_outbound: 'COMMENTS', booking: 'BOOKED', precall_email: 'PRE-CALL', manual_invite: 'INVITE', task: 'TASK' }
 // Escalations run warm/red (something needs attention); updates stay neutral/blue (fyi);
 // newsjack runs amber because it is the only kind with a clock on it. Booking takes the
 // Rise accent gold: it is the only card that reports money arriving rather than work owed.
-const KIND_COLOR: Record<OpsKind, string> = { escalation: '#FF453A', update: '#0A84FF', newsjack: '#FF9F0A', weekly_report: '#30D158', comment_reply: '#BF5AF2', comment_outbound: '#64D2FF', booking: '#FFD60A', precall_email: '#5E5CE6', manual_invite: '#66D4CF' }
+// A task runs neutral grey: it is the only card that asks for nothing to be sent,
+// so it should not compete for attention with the kinds that publish.
+const KIND_COLOR: Record<OpsKind, string> = { escalation: '#FF453A', update: '#0A84FF', newsjack: '#FF9F0A', weekly_report: '#30D158', comment_reply: '#BF5AF2', comment_outbound: '#64D2FF', booking: '#FFD60A', precall_email: '#5E5CE6', manual_invite: '#66D4CF', task: '#8E8E93' }
 
 // Slack channel ids are unreadable on a card. escalation/update/booking all print a
 // destination, so name the ones we own and fall back to the raw id for anything else.
@@ -214,6 +216,9 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
 
   const isNewsjack = draft.kind === 'newsjack'
   const isWeekly = draft.kind === 'weekly_report'
+  // Ivan's own to-do — dictated to the WhatsApp assistant or written down by a
+  // Claude session. Nothing behind it: Done marks it handled, Remove drops it.
+  const isTask = draft.kind === 'task'
   const isComment = draft.kind === 'comment_reply'
   // An escalate card carries no draft on purpose: the point is that Mattan
   // answers it himself, so there is nothing to copy.
@@ -238,11 +243,15 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
   // it is instead of printing a database absence.
   // A comment card names the SEAT it posts from (Ivan / Mattan Danino); every
   // other kind keeps the engine register ("your feed" / "Rise").
-  const where = isComment || isOutbound
-    ? seatLabel(draft.client_id)
-    : isNewsjack || isWeekly || !draft.slack_channel
-      ? engineLabel(draft.client_id)
-      : channelLabel(draft.slack_channel)
+  // A task has no engine and no channel: it is Ivan's, so it says so rather than
+  // borrowing the publishing register ("your feed") a null channel falls back to.
+  const where = isTask
+    ? 'your list'
+    : isComment || isOutbound
+      ? seatLabel(draft.client_id)
+      : isNewsjack || isWeekly || !draft.slack_channel
+        ? engineLabel(draft.client_id)
+        : channelLabel(draft.slack_channel)
   const left = isNewsjack ? expiresIn(draft.context?.expires_at) : null
 
   async function onApprove() {
@@ -342,6 +351,23 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
       finally { setBusy(false) }
       return
     }
+    // A task dispatches nothing at all — no Slack, no email, no LinkedIn. Done is
+    // the "I did it" stamp and double-stamps like weekly_report, so the card leaves
+    // the queue instead of stranding in Working waiting on a writer that does not
+    // exist. Any edit made above is saved with it, so the record reads true.
+    if (isTask) {
+      const ok = await confirm({
+        title: 'Mark this done?',
+        message: 'Nothing is sent. The task clears off the board.',
+        confirmText: 'Done',
+      })
+      if (!ok) return
+      setBusy(true); setError('')
+      try { await approveWeeklyReport(draft.id, body); refresh() }
+      catch (e) { setError(errText(e)) }
+      finally { setBusy(false) }
+      return
+    }
     // A manual-invite card dispatches nothing: the work (stamping the attribution
     // row + call_booked_at) happens outside this app, so approve is the "I did it"
     // acknowledgement and double-stamps like weekly_report.
@@ -427,8 +453,10 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
 
   async function onDiscard() {
     const ok = await confirm({
-      title: 'Discard this one?',
-      message: isNewsjack
+      title: isTask ? 'Remove this task?' : 'Discard this one?',
+      message: isTask
+        ? 'It comes off the board for good. Nothing else happens.'
+        : isNewsjack
         ? "It won't be written or scheduled."
         : isWeekly
           ? "The page stays live at its link. You just won't be reminded about this week again."
@@ -437,7 +465,7 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
             : isOutbound
               ? 'Nothing gets posted. The draft is dropped for good.'
               : `It won't be posted to ${draft.slack_channel}.`,
-      confirmText: 'Discard',
+      confirmText: isTask ? 'Remove' : 'Discard',
       danger: true,
     })
     if (!ok) return
@@ -476,6 +504,7 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
       />
       {isNewsjack && <div className="ops-ctx">Angle the post gets written from, edit before approving.</div>}
       {isWeekly && <div className="ops-ctx">Read the page first. Edit this message, then copy it and send it yourself.</div>}
+      {isTask && <div className="ops-ctx">Your task. Edit it here if you want. Done marks it handled, Remove takes it off the board — neither sends anything.</div>}
       {isComment && (
         <div className="ops-ctx">
           {isEscalatedComment
@@ -560,7 +589,7 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
       )}
       {error && <div className="ops-err">{error}</div>}
       <div className={canDraft ? 'ops-ac three' : 'ops-ac'}>
-        <div className="btn s" onClick={busy || drafting ? undefined : onDiscard}>Discard</div>
+        <div className="btn s" onClick={busy || drafting ? undefined : onDiscard}>{isTask ? 'Remove' : 'Discard'}</div>
         {canDraft && (
           <div className="btn s" onClick={busy || drafting ? undefined : onGenerate}>
             {drafting ? 'Writing…' : 'Draft it'}
@@ -568,8 +597,8 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
         )}
         <div className="btn p" onClick={busy || drafting ? undefined : onApprove}>
           {busy
-            ? (isNewsjack ? 'Writing…' : isEscalatedComment ? 'Closing…' : isComment ? 'Posting…' : isOutbound ? (approveUrl ? 'Opening…' : 'Copying…') : isWeekly ? 'Copying…' : 'Sending…')
-            : (isNewsjack ? 'Approve & draft' : isEscalatedComment ? 'Mark handled' : isComment ? 'Approve & post' : isOutbound ? (approveUrl ? 'Approve & queue' : 'Approve & copy') : isWeekly ? 'Approve & copy' : 'Approve & send')}
+            ? (isTask ? 'Closing…' : isNewsjack ? 'Writing…' : isEscalatedComment ? 'Closing…' : isComment ? 'Posting…' : isOutbound ? (approveUrl ? 'Opening…' : 'Copying…') : isWeekly ? 'Copying…' : 'Sending…')
+            : (isTask ? 'Done' : isNewsjack ? 'Approve & draft' : isEscalatedComment ? 'Mark handled' : isComment ? 'Approve & post' : isOutbound ? (approveUrl ? 'Approve & queue' : 'Approve & copy') : isWeekly ? 'Approve & copy' : 'Approve & send')}
         </div>
       </div>
     </div>
