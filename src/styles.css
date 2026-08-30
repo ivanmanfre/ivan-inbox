@@ -897,6 +897,69 @@ textarea.ops-body{display:block;width:100%;background:var(--surface2);border:non
 .app.dt .ops-sechdr,
 .app.dt .ops-rows .log-r{max-width:720px;margin-left:auto;margin-right:auto}
 
+/* ---- Ops · THE TASK LIST (UX v2, 2026-08-30) -----------------------------
+   2026-08-29, Ivan, on the task card: "u made it a shitty text dude make it a
+   more crm thing with thick or something". A task wearing `.ops-card` got a
+   137px textarea, a hint line and two full-width buttons — the anatomy of a
+   DRAFT, for a thing that is never sent. This is the list anatomy instead: one
+   inset group (same --surface, same 20px radius as the card it replaces, so it
+   is the same family), one row per task, and the only round thing on the
+   surface is the tick.
+   No new tokens, no new colours: every value below is --text/--text2/--text3/
+   --sep/--surface/--accent, so the dark theme holds by construction and the
+   light theme follows for free. */
+.task-sec{margin:14px 16px 0;background:var(--surface);border-radius:20px;padding:2px 0;overflow:hidden}
+.task-sec.flush{margin-left:0;margin-right:0}
+.task-hdr{font-size:12.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.03em;padding:12px 16px 4px}
+.task-r{display:flex;align-items:flex-start;gap:10px;padding:11px 12px 12px 8px}
+.task-r + .task-r{border-top:.5px solid var(--sep)}
+/* 36px of TARGET around a 22px drawn circle. The circle is the affordance; the
+   box is the thumb. */
+.task-tick{position:relative;flex:none;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.task-tick::before{content:'';position:absolute;width:22px;height:22px;border-radius:99px;border:1.6px solid var(--text3);
+  transition:background-color 160ms ease,border-color 160ms ease,transform 120ms ease}
+.task-tick svg{position:relative;width:13px;height:13px;color:#fff;opacity:0;transform:scale(.55);
+  transition:opacity 140ms ease,transform 160ms cubic-bezier(.2,1.4,.4,1)}
+.task-tick:hover::before{border-color:var(--accent)}
+.task-tick:active::before{transform:scale(.86)}
+.task-tick.on::before{background:var(--accent);border-color:var(--accent)}
+.task-tick.on svg{opacity:1;transform:scale(1)}
+.task-mid{flex:1;min-width:0}
+.task-t{font-size:15.5px;font-weight:600;letter-spacing:-.01em;line-height:1.35;color:var(--text)}
+/* Clamped to two lines, tap to open. The detail of a task is context you want
+   when you want it, not a paragraph you scroll past every day. */
+.task-d{font-size:13px;line-height:1.45;color:var(--text2);margin-top:3px;white-space:pre-wrap;cursor:pointer;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.task-d.open{display:block;overflow:visible}
+.task-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:7px}
+.task-chip{font-size:11px;font-weight:600;letter-spacing:.01em;padding:2px 7px;border-radius:6px;background:var(--surface2);color:var(--text2)}
+/* The age is the quietest thing on the row: no plate, no weight. */
+.task-chip.q{background:none;padding:2px 0;color:var(--text3);font-weight:500}
+.task-chip.due.over{background:rgba(255,69,58,.14);color:#FF453A}
+.task-chip.due.now{background:var(--accent-soft);color:var(--accent)}
+.task-chip.due.soon{background:rgba(255,159,10,.14);color:#FF9F0A}
+.task-x{flex:none;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:99px;
+  color:var(--text3);font-size:12px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.task-x:hover{background:var(--surface2);color:var(--text2)}
+.task-tm{flex:none;align-self:center;font-size:12.5px;color:var(--text3)}
+/* THE TICK'S RECEIPT. Struck through and leaving — the row plays this where it
+   stands and the queue is re-read after it, so completing reads as an act
+   rather than as the row disappearing. `.static` is the Done-today strip, which
+   is struck through but stays put. */
+.task-r.done .task-t,.task-r.done .task-d{text-decoration:line-through;color:var(--text3)}
+.task-r.done:not(.static){animation:task-leave 420ms ease forwards;pointer-events:none}
+.task-r.static{opacity:.6}
+@keyframes task-leave{0%{opacity:1;transform:none}40%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-6px)}}
+@media (prefers-reduced-motion:reduce){
+  .task-r.done:not(.static){animation:none;opacity:.45}
+  .task-tick::before,.task-tick svg{transition:none}
+}
+.task-donehdr{display:flex;align-items:center;gap:8px;padding:11px 16px;font-size:12.5px;font-weight:600;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.03em;cursor:pointer;border-top:.5px solid var(--sep)}
+.task-donehdr .chev{margin-left:auto;font-size:14px}
+/* Same reading measure the Ops cards take on a monitor. */
+.app.dt .task-sec{max-width:720px;margin-left:auto;margin-right:auto}
+
 /* The honest-empty footer. An empty list carrying a freshness stamp is a
    CONFIRMED zero; an empty list carrying nothing is an unverified one, and until
    this run they looked identical on Inbox, Drafts and Ops (U2/U3). */

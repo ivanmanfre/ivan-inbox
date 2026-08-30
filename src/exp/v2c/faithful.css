@@ -3632,6 +3632,36 @@
 .wb.wb.wb .ops-nm{ font-size:var(--fs-body) }
 .wb.wb.wb .ops-sechdr:hover{ color:var(--text) }
 .wb.wb.wb .ops-sechdr{ transition:color var(--dur-hover) var(--ease) }
+/* THE TASK LIST (2026-08-30). §2's flatten (`.wb.wb *`) pins font-size, weight,
+   tracking and leading on EVERY element, so a new component that only styles
+   itself in the base sheet renders here as undifferentiated body text. These
+   are the tier assignments, nothing else: the title takes the same body/500
+   metric every working row on this shell uses (§2 "Row primary text sits here
+   at weight 500"), the detail and the chips take meta, the two section headers
+   take eyebrow. Colour and geometry stay in the base sheet. */
+.wb.wb.wb .task-sec{ padding:var(--sp-1) 0 }
+.wb.wb.wb .task-hdr, .wb.wb.wb .task-donehdr{
+  font-size:var(--fs-eyebrow); font-weight:600; letter-spacing:.05em;
+  color:var(--text3); line-height:1;
+}
+.wb.wb.wb .task-hdr{ padding:14px var(--gut) 6px }
+.wb.wb.wb .task-donehdr{ padding:13px var(--gut) }
+.wb.wb.wb .task-r{ padding:var(--sp-3) 18px var(--sp-3) var(--sp-2) }
+/* 1.4, not the tier's 1.6: a task title WRAPS (measured on the phone — four of
+   the five live rows ran to two lines), and 1.6 on a wrapped row title opens a
+   gap inside a single thought. Same metric the card titles take at :3652. */
+.wb.wb.wb .task-t{ font-size:var(--fs-body); font-weight:500; letter-spacing:-.01em; line-height:1.4 }
+.wb.wb.wb .task-d{ font-size:var(--fs-meta); line-height:var(--lh-read); color:var(--text3); max-width:68ch }
+.wb.wb.wb .task-chip{ font-size:var(--fs-eyebrow); font-weight:600; color:var(--text3) }
+.wb.wb.wb .task-chip.q{ font-weight:400 }
+.wb.wb.wb .task-tm{ font-size:var(--fs-meta); color:var(--text3); line-height:var(--lh-meta) }
+/* A row that can be ticked should answer "is this a control" before the click —
+   the same move .td-qrow/.ct-style already make on this canvas. */
+.wb.wb.wb .task-r:hover{ background:var(--surface2) }
+.wb.wb.wb .task-r, .wb.wb.wb .task-x{ transition:background-color var(--dur-hover) var(--ease) }
+.wb.wb.wb .task-r.static:hover{ background:none }
+.wb.wb.wb .task-donehdr:hover{ color:var(--text) }
+
 .wb.wb.wb .wb-otile-l{ font-size:var(--fs-eyebrow); letter-spacing:.05em; color:var(--text3) }
 .wb.wb.wb .wb-otile-s{ font-size:var(--fs-meta); color:var(--text3); margin-top:var(--sp-1) }
 .wb.wb.wb .wb-ofresh{ font-size:var(--fs-meta) }

@@ -87,6 +87,13 @@ export type OpsContext = {
   hook?: string
   approve_url?: string
   skip_url?: string
+  // task — the ONE field the task row adds. 'YYYY-MM-DD', local-day semantics.
+  // Written by the WhatsApp route (which resolves "due: monday" itself) or by a
+  // Claude session. Absent = no due date, which is the normal case.
+  due_at?: string
+  // Where the row came from, so the row can carry a source chip without
+  // guessing: 'whatsapp' | 'claude'.
+  source?: string
   [key: string]: unknown
 }
 
@@ -159,6 +166,143 @@ export function isCommentKind(kind: OpsKind): boolean {
 
 export function pendingDmLaneOps(rows: OpsDraft[], now = Date.now()): OpsDraft[] {
   return pendingOps(rows, now).filter(d => !isCommentKind(d.kind))
+}
+
+// ---------------------------------------------------------------------------
+// TASKS (UX v2, 2026-08-30)
+// ---------------------------------------------------------------------------
+//
+// 2026-08-29, Ivan, on the task card shipped the day before: "u made it a
+// shitty text dude make it a more crm thing with thick or something... better
+// functioning". A task is not a draft — there is nothing to edit before it is
+// sent, because nothing is ever sent. It is a LIST ITEM: one line you read, a
+// circle you tick, and it is gone.
+//
+// So a task row is derived, not stored: `body` keeps its one-column shape
+// (first line = the title, the rest = the detail), and the only NEW field is
+// `context.due_at`. That is deliberately the jsonb bag and not a new column —
+// `context` is already free-form on this table, the board reads all 300 rows
+// and sorts in memory, and nothing server-side ever filters on a due date, so
+// a column would buy a migration and no query.
+
+export function isTaskKind(kind: OpsKind): boolean {
+  return kind === 'task'
+}
+
+// The first non-empty line. A title is what he scans, so it is capped at a
+// readable length rather than allowed to become the whole paragraph: a body
+// dictated as one long sentence still gets a title and a detail line.
+export const TASK_TITLE_MAX = 90
+
+export function taskTitle(body: string): string {
+  const first = (body ?? '').split('\n').map(s => s.trim()).find(Boolean) ?? ''
+  if (first.length <= TASK_TITLE_MAX) return first
+  // Cut on the last word boundary inside the cap, never mid-word.
+  const cut = first.slice(0, TASK_TITLE_MAX)
+  const sp = cut.lastIndexOf(' ')
+  return (sp > 40 ? cut.slice(0, sp) : cut).replace(/[\s,;:.-]+$/, '') + '…'
+}
+
+// Everything the title did not take. When the title was truncated the detail
+// line has to start from the REMAINDER of that first line, or the words between
+// the cap and the newline vanish from the card entirely.
+export function taskDetails(body: string): string {
+  const lines = (body ?? '').split('\n')
+  const i = lines.findIndex(l => l.trim().length > 0)
+  if (i === -1) return ''
+  const first = lines[i].trim()
+  const rest = lines.slice(i + 1).join('\n').trim()
+  if (first.length <= TASK_TITLE_MAX) return rest
+  const head = taskTitle(body).replace(/…$/, '')
+  const tail = first.slice(head.length).trim()
+  return [tail, rest].filter(Boolean).join('\n')
+}
+
+// `context.due_at` is a DATE, written 'YYYY-MM-DD'. Date-only on purpose: every
+// producer of a task (WhatsApp dictation, a Claude session) means "that day",
+// and a timestamp would render a 00:00 UTC due date as the day before for half
+// the world. A full ISO timestamp is accepted and truncated, so a producer that
+// writes one is not silently dropped.
+export function taskDue(d: OpsDraft): string | null {
+  const raw = d.context?.due_at ?? d.context?.due
+  if (typeof raw !== 'string') return null
+  const m = raw.trim().match(/^(\d{4}-\d{2}-\d{2})/)
+  return m ? m[1] : null
+}
+
+// Local-day arithmetic, not UTC: "due today" has to mean the day Ivan is
+// looking at the screen on.
+export function localDay(now: number | Date = Date.now()): string {
+  const t = new Date(now)
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${t.getFullYear()}-${p(t.getMonth() + 1)}-${p(t.getDate())}`
+}
+
+function daysBetween(from: string, to: string): number {
+  const a = Date.parse(`${from}T00:00:00Z`)
+  const b = Date.parse(`${to}T00:00:00Z`)
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return NaN
+  return Math.round((b - a) / 86400_000)
+}
+
+export type DueLabel = { text: string; tone: 'over' | 'now' | 'soon' | 'later' }
+
+// What the chip says. Overdue and today are the only two tones that get to be
+// loud — a task due next week is information, not an alarm.
+export function dueLabel(due: string, now: number | Date = Date.now()): DueLabel | null {
+  const today = localDay(now)
+  const n = daysBetween(today, due)
+  if (!Number.isFinite(n)) return null
+  if (n < -1) return { text: `${-n} days late`, tone: 'over' }
+  if (n === -1) return { text: 'yesterday', tone: 'over' }
+  if (n === 0) return { text: 'today', tone: 'now' }
+  if (n === 1) return { text: 'tomorrow', tone: 'soon' }
+  if (n <= 6) {
+    const wd = new Date(`${due}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })
+    return { text: wd, tone: 'soon' }
+  }
+  const md = new Date(`${due}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+  return { text: md, tone: 'later' }
+}
+
+// Where the task came from, and NOTHING when we do not know. A source chip that
+// guesses "Claude" for every unstamped row would be a claim, not a label.
+export function taskSource(d: OpsDraft): string | null {
+  const s = d.context?.source
+  if (s === 'whatsapp') return 'WA'
+  if (s === 'claude' || s === 'claude_session') return 'Claude'
+  return null
+}
+
+// The task list's own queue. Sorted the way a list is read: overdue and dated
+// first (soonest at the top), undated after them, newest of those first.
+export function pendingTasks(rows: OpsDraft[], now = Date.now()): OpsDraft[] {
+  return pendingOps(rows, now)
+    .filter(d => isTaskKind(d.kind))
+    .sort((a, b) => {
+      const da = taskDue(a), db = taskDue(b)
+      if (da && db) return da.localeCompare(db) || b.created_at.localeCompare(a.created_at)
+      if (da) return -1
+      if (db) return 1
+      return b.created_at.localeCompare(a.created_at)
+    })
+}
+
+// Ticked today, most recent first — the strip that gives the tick a receipt.
+// Scoped to TODAY on purpose: a permanent done-pile is a second list to read.
+export function doneTodayTasks(rows: OpsDraft[], now = Date.now()): OpsDraft[] {
+  const today = localDay(now)
+  return rows
+    .filter(d => isTaskKind(d.kind) && d.sent_at !== null && localDay(new Date(d.sent_at!)) === today)
+    .sort((a, b) => b.sent_at!.localeCompare(a.sent_at!))
+}
+
+// Done, from the list. Same writer as the card's Done button: the double-stamp
+// is load-bearing (approved_at alone strands the row in `claiming` forever,
+// waiting on a dispatcher that does not exist for this kind), and the body is
+// re-sent unchanged because a list row has no editor.
+export async function completeTask(d: OpsDraft): Promise<void> {
+  return approveWeeklyReport(d.id, d.body)
 }
 
 // Approved but not yet done. Slack rows sit here for ~2 minutes; a newsjack sits here

@@ -1,9 +1,9 @@
 import { useRef } from 'react'
-import { OpsGroups, PendingCard } from '../../screens/OpsScreen'
+import { OpsGroups, PendingCard, TaskList } from '../../screens/OpsScreen'
 import { OpsSkeleton } from '../../components/Skeleton'
 import { PullIndicator } from '../../components/PullIndicator'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
-import { blockedOps, claimingOps, outboundFeedId, pendingOps, sentOps, type OpsDraft } from '../../lib/ops'
+import { blockedOps, claimingOps, doneTodayTasks, isTaskKind, outboundFeedId, pendingOps, sentOps, type OpsDraft } from '../../lib/ops'
 import { useCommentQueue } from '../../hooks/useCommentQueue'
 import { useAgentDigest, usePipelineHealth } from '../../hooks/useContent'
 import { pipelineHealthTotal, STUCK_GENERATING_MINUTES, type PipelineHealth } from '../../lib/content'
@@ -166,10 +166,18 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh, onOpenErro
   const rowsRef = useRef<HTMLDivElement>(null)
   const ptr = usePullToRefresh(rowsRef, refresh)
   const pending = pendingOps(drafts)
+  // Tasks are a LIST, not cards (2026-08-30, Ivan: "make it a more crm thing
+  // with thick"). They come out of the card column and render above it through
+  // the one component that owns what a task is.
+  const cards = pending.filter(d => !isTaskKind(d.kind))
+  const hasTasks = pending.length !== cards.length || doneTodayTasks(drafts).length > 0
   // The comment lane's queue lives here, not on the card: one line, one retry
   // timer, one read of comment_feed for every outbound card on screen.
   const queue = useCommentQueue(pending, refresh)
-  const history = claimingOps(drafts).length + sentOps(drafts).length + blockedOps(drafts).length
+  // `history` decides the two-column split, so it counts what OpsGroups will
+  // actually render — and OpsGroups no longer renders tasks.
+  const opsRows = drafts.filter(d => !isTaskKind(d.kind))
+  const history = claimingOps(opsRows).length + sentOps(opsRows).length + blockedOps(opsRows).length
   // Daily summaries live HERE now, not at the bottom of the Content scroll
   // (Ivan, 2026-08-04: "DAILY SUMMARIES INSIDE OPS AS A SUB TAB MAYBE").
   const digest = useAgentDigest(true)
@@ -236,7 +244,8 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh, onOpenErro
             convention and has no hole in it. */}
         <div className={`wb-ocols${history === 0 || pending.length === 0 ? ' one' : ''}`}>
           <div className="wb-ocol wb-ocol-q">
-            {pending.length === 0 ? (
+            <TaskList drafts={drafts} refresh={refresh} flush />
+            {pending.length === 0 && !hasTasks ? (
               <CalmEmpty
                 // The panel's best line, and it earns its place here more than
                 // anywhere: this is the surface where "empty" and "broken" looked
@@ -257,7 +266,7 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh, onOpenErro
                     : `${queue.waiting.length} comment${queue.waiting.length === 1 ? '' : 's'} queued here — the poster takes one at a time, so this retries the next as its window opens. Leave the tab open.`}
                 </div>
               )}
-              {pending.map(d => (
+              {cards.map(d => (
                 <PendingCard
                   key={d.id} draft={d} refresh={refresh}
                   feed={queue.feed.get(outboundFeedId(d) ?? '')}

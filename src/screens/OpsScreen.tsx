@@ -7,6 +7,7 @@ import { useOps } from '../hooks/useOps'
 import {
   approveOpsDraft, approveWeeklyReport, blockedOps, canGenerateDraft, canTagCommenter, claimingOps, discardOpsDraft, engineLabel, expiresIn, generateCommentDraft, likeComment, markCommentHandled, outboundApproveUrl, outboundSkipUrl, pendingOps, postCommentReply, seatLabel, sentOps,
   dispatchCommentGate, cardStateOf,
+  completeTask, doneTodayTasks, dueLabel, isTaskKind, pendingTasks, taskDetails, taskDue, taskSource, taskTitle,
   type OpsDraft, type OpsKind, type GateVerdict, type FeedState,
 } from '../lib/ops'
 import { checkedPhrase } from '../lib/today'
@@ -174,6 +175,185 @@ function ContextLine({ draft }: { draft: OpsDraft }) {
   )
 }
 
+// ---------------------------------------------------------------------------
+// THE TASK LIST (UX v2, 2026-08-30)
+// ---------------------------------------------------------------------------
+//
+// 2026-08-29, Ivan, on the task card shipped the day before: "u made it a shitty
+// text dude make it a more crm thing with thick or something... better
+// functioning". "thick" is tick. He is right about the diagnosis: a task was
+// riding PendingCard, which is a DRAFT card — a 137px-tall textarea, a hint
+// line, and two full-width buttons, all of which exist because a draft is
+// something you read and edit before it is SENT. A task is never sent. Wearing
+// that card, one line of to-do rendered as a wall of chrome.
+//
+// So tasks leave the card and become a LIST: one row each, a circle on the
+// left, the title in one line, the rest quiet underneath.
+//
+// The two interactions are deliberately asymmetric, which is the app's existing
+// rule and not a new one (see onLike: "a like is the smallest public act this
+// app performs" — no sheet; see onDiscard — sheet, danger):
+//   TICK is SAFE and INSTANT. Nothing is sent, nothing is public, and the row
+//   is still readable in "Done today" underneath. A confirm sheet on it would
+//   cost two taps to do the one thing this list exists for.
+//   REMOVE is DESTRUCTIVE and keeps its sheet. A removed task is invisible on
+//   every group of the board, so the sheet is the only thing between a
+//   mis-tap and a task he never sees again.
+
+const TICK_LEAVE_MS = 420
+
+function Tick({ on, onClick, label }: { on: boolean; onClick?: () => void; label?: string }) {
+  return (
+    <div
+      className={`task-tick${on ? ' on' : ''}`}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      aria-label={label}
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5.5 12.5 10 17l8.5-9.5" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </div>
+  )
+}
+
+function TaskRow({ draft, refresh, onLeaving }: {
+  draft: OpsDraft
+  refresh: () => void
+  onLeaving: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  // Painted the moment he taps, before the write returns. It is reverted if the
+  // write fails, so an optimistic tick can never leave a task looking handled
+  // when the row was not stamped.
+  const [ticked, setTicked] = useState(false)
+  const [error, setError] = useState('')
+  const confirm = useConfirm()
+
+  const title = taskTitle(draft.body)
+  const details = taskDetails(draft.body)
+  const due = taskDue(draft)
+  const dl = due ? dueLabel(due) : null
+  const src = taskSource(draft)
+
+  async function onTick() {
+    if (busy || ticked) return
+    setBusy(true); setError(''); setTicked(true)
+    try {
+      await completeTask(draft)
+      // The row plays its strike-through and fade where it stands, THEN the
+      // queue is re-read. Refreshing immediately would yank it mid-animation
+      // and the tick would read as the row simply vanishing.
+      onLeaving()
+    } catch (e) {
+      setTicked(false)
+      setError(errText(e))
+    } finally { setBusy(false) }
+  }
+
+  async function onRemove() {
+    const ok = await confirm({
+      title: 'Remove this task?',
+      message: 'It comes off the board for good. Nothing else happens.',
+      confirmText: 'Remove',
+      danger: true,
+    })
+    if (!ok) return
+    setBusy(true); setError('')
+    try { await discardOpsDraft(draft.id); refresh() }
+    catch (e) { setError(errText(e)) }
+    finally { setBusy(false) }
+  }
+
+  return (
+    <div className={`task-r${ticked ? ' done' : ''}`} data-ops-id={draft.id}>
+      <Tick on={ticked} onClick={onTick} label={`Mark done: ${title}`} />
+      <div className="task-mid">
+        <div
+          className="task-t"
+          onClick={details ? () => setOpen(o => !o) : undefined}
+        >
+          {title}
+        </div>
+        {details && (
+          <div
+            className={`task-d${open ? ' open' : ''}`}
+            onClick={() => setOpen(o => !o)}
+          >
+            {details}
+          </div>
+        )}
+        <div className="task-meta">
+          {dl && <span className={`task-chip due ${dl.tone}`}>due {dl.text}</span>}
+          {src && <span className="task-chip">{src}</span>}
+          <span className="task-chip q">{timeAgo(draft.created_at)}</span>
+        </div>
+        {error && <div className="ops-err">{error}</div>}
+      </div>
+      <div
+        className="task-x"
+        onClick={busy ? undefined : onRemove}
+        role="button"
+        aria-label={`Remove: ${title}`}
+      >
+        ✕
+      </div>
+    </div>
+  )
+}
+
+// Exported for the same reason PendingCard is: the workbench owns the FRAME,
+// this owns what a task IS. `flush` turns off the inline gutters for a host
+// that already has its own.
+export function TaskList({ drafts, refresh, flush = false }: {
+  drafts: OpsDraft[]
+  refresh: () => void
+  flush?: boolean
+}) {
+  // Ids that have been ticked and are playing out. They are held here rather
+  // than in the row so the delayed refresh survives the row unmounting.
+  const [doneOpen, setDoneOpen] = useState(false)
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([])
+  useEffect(() => () => { timers.current.forEach(clearTimeout) }, [])
+
+  const tasks = pendingTasks(drafts)
+  const doneToday = doneTodayTasks(drafts)
+  if (tasks.length === 0 && doneToday.length === 0) return null
+
+  const leaveThen = () => {
+    timers.current.push(setTimeout(refresh, TICK_LEAVE_MS))
+  }
+
+  return (
+    <div className={`task-sec${flush ? ' flush' : ''}`}>
+      {tasks.length > 0 && (
+        <div className="task-hdr">Your list · {tasks.length}</div>
+      )}
+      {tasks.map(d => (
+        <TaskRow key={d.id} draft={d} refresh={refresh} onLeaving={leaveThen} />
+      ))}
+      {doneToday.length > 0 && (
+        <>
+          <div className="task-donehdr" onClick={() => setDoneOpen(o => !o)}>
+            <span>Done today · {doneToday.length}</span>
+            <span className="chev">{doneOpen ? '⌄' : '›'}</span>
+          </div>
+          {doneOpen && doneToday.map(d => (
+            <div className="task-r done static" key={d.id} data-ops-id={d.id}>
+              <Tick on />
+              <div className="task-mid">
+                <div className="task-t">{taskTitle(d.body)}</div>
+              </div>
+              <span className="task-tm">{timeAgo(d.sent_at!)}</span>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  )
+}
+
 // Exported so a host surface can own the FRAME (header, freshness, columns) and
 // still act on the queue through this one card. Duplicating it would mean two
 // approve paths with two sets of confirm copy for the same publish.
@@ -216,9 +396,10 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
 
   const isNewsjack = draft.kind === 'newsjack'
   const isWeekly = draft.kind === 'weekly_report'
-  // Ivan's own to-do — dictated to the WhatsApp assistant or written down by a
-  // Claude session. Nothing behind it: Done marks it handled, Remove drops it.
-  const isTask = draft.kind === 'task'
+  // NOTE: `kind='task'` never reaches this card. Tasks are rows in TaskList
+  // above — they have no body to edit and nothing to send, and wearing a draft
+  // card is exactly what Ivan rejected on 2026-08-29. Both Ops surfaces route
+  // them, so this card has no task branch left to go stale.
   const isComment = draft.kind === 'comment_reply'
   // An escalate card carries no draft on purpose: the point is that Mattan
   // answers it himself, so there is nothing to copy.
@@ -243,15 +424,11 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
   // it is instead of printing a database absence.
   // A comment card names the SEAT it posts from (Ivan / Mattan Danino); every
   // other kind keeps the engine register ("your feed" / "Rise").
-  // A task has no engine and no channel: it is Ivan's, so it says so rather than
-  // borrowing the publishing register ("your feed") a null channel falls back to.
-  const where = isTask
-    ? 'your list'
-    : isComment || isOutbound
-      ? seatLabel(draft.client_id)
-      : isNewsjack || isWeekly || !draft.slack_channel
-        ? engineLabel(draft.client_id)
-        : channelLabel(draft.slack_channel)
+  const where = isComment || isOutbound
+    ? seatLabel(draft.client_id)
+    : isNewsjack || isWeekly || !draft.slack_channel
+      ? engineLabel(draft.client_id)
+      : channelLabel(draft.slack_channel)
   const left = isNewsjack ? expiresIn(draft.context?.expires_at) : null
 
   async function onApprove() {
@@ -351,23 +528,6 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
       finally { setBusy(false) }
       return
     }
-    // A task dispatches nothing at all — no Slack, no email, no LinkedIn. Done is
-    // the "I did it" stamp and double-stamps like weekly_report, so the card leaves
-    // the queue instead of stranding in Working waiting on a writer that does not
-    // exist. Any edit made above is saved with it, so the record reads true.
-    if (isTask) {
-      const ok = await confirm({
-        title: 'Mark this done?',
-        message: 'Nothing is sent. The task clears off the board.',
-        confirmText: 'Done',
-      })
-      if (!ok) return
-      setBusy(true); setError('')
-      try { await approveWeeklyReport(draft.id, body); refresh() }
-      catch (e) { setError(errText(e)) }
-      finally { setBusy(false) }
-      return
-    }
     // A manual-invite card dispatches nothing: the work (stamping the attribution
     // row + call_booked_at) happens outside this app, so approve is the "I did it"
     // acknowledgement and double-stamps like weekly_report.
@@ -453,10 +613,8 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
 
   async function onDiscard() {
     const ok = await confirm({
-      title: isTask ? 'Remove this task?' : 'Discard this one?',
-      message: isTask
-        ? 'It comes off the board for good. Nothing else happens.'
-        : isNewsjack
+      title: 'Discard this one?',
+      message: isNewsjack
         ? "It won't be written or scheduled."
         : isWeekly
           ? "The page stays live at its link. You just won't be reminded about this week again."
@@ -465,7 +623,7 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
             : isOutbound
               ? 'Nothing gets posted. The draft is dropped for good.'
               : `It won't be posted to ${draft.slack_channel}.`,
-      confirmText: isTask ? 'Remove' : 'Discard',
+      confirmText: 'Discard',
       danger: true,
     })
     if (!ok) return
@@ -504,7 +662,6 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
       />
       {isNewsjack && <div className="ops-ctx">Angle the post gets written from, edit before approving.</div>}
       {isWeekly && <div className="ops-ctx">Read the page first. Edit this message, then copy it and send it yourself.</div>}
-      {isTask && <div className="ops-ctx">Your task. Edit it here if you want. Done marks it handled, Remove takes it off the board — neither sends anything.</div>}
       {isComment && (
         <div className="ops-ctx">
           {isEscalatedComment
@@ -589,7 +746,7 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
       )}
       {error && <div className="ops-err">{error}</div>}
       <div className={canDraft ? 'ops-ac three' : 'ops-ac'}>
-        <div className="btn s" onClick={busy || drafting ? undefined : onDiscard}>{isTask ? 'Remove' : 'Discard'}</div>
+        <div className="btn s" onClick={busy || drafting ? undefined : onDiscard}>Discard</div>
         {canDraft && (
           <div className="btn s" onClick={busy || drafting ? undefined : onGenerate}>
             {drafting ? 'Writing…' : 'Draft it'}
@@ -597,8 +754,8 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
         )}
         <div className="btn p" onClick={busy || drafting ? undefined : onApprove}>
           {busy
-            ? (isTask ? 'Closing…' : isNewsjack ? 'Writing…' : isEscalatedComment ? 'Closing…' : isComment ? 'Posting…' : isOutbound ? (approveUrl ? 'Opening…' : 'Copying…') : isWeekly ? 'Copying…' : 'Sending…')
-            : (isTask ? 'Done' : isNewsjack ? 'Approve & draft' : isEscalatedComment ? 'Mark handled' : isComment ? 'Approve & post' : isOutbound ? (approveUrl ? 'Approve & queue' : 'Approve & copy') : isWeekly ? 'Approve & copy' : 'Approve & send')}
+            ? (isNewsjack ? 'Writing…' : isEscalatedComment ? 'Closing…' : isComment ? 'Posting…' : isOutbound ? (approveUrl ? 'Opening…' : 'Copying…') : isWeekly ? 'Copying…' : 'Sending…')
+            : (isNewsjack ? 'Approve & draft' : isEscalatedComment ? 'Mark handled' : isComment ? 'Approve & post' : isOutbound ? (approveUrl ? 'Approve & queue' : 'Approve & copy') : isWeekly ? 'Approve & copy' : 'Approve & send')}
         </div>
       </div>
     </div>
@@ -668,9 +825,16 @@ export function OpsGroups({ drafts, pad = true, expanded = false }: {
   const [claimingOpen, setClaimingOpen] = useState(true)
   const [sentOpen, setSentOpen] = useState(expanded)
   const [blockedOpen, setBlockedOpen] = useState(expanded)
-  const claiming = claimingOps(drafts)
-  const sent = sentOps(drafts)
-  const blocked = blockedOps(drafts)
+  // Tasks are excluded from all three groups: TaskList owns every state a task
+  // can reach. A task cannot be `claiming` (Done double-stamps) and cannot be
+  // `blocked` (no dispatcher refuses it, and an operator Remove is hidden
+  // everywhere by DISCARDED_REASON), so this only affects Done — where a ticked
+  // task would otherwise render twice, once here and once in "Done today", and
+  // push a real send out of a group capped at ten rows.
+  const rows = drafts.filter(d => !isTaskKind(d.kind))
+  const claiming = claimingOps(rows)
+  const sent = sentOps(rows)
+  const blocked = blockedOps(rows)
   const style = pad ? { padding: '0 16px' } : undefined
   return (
     <>
@@ -703,6 +867,9 @@ export function OpsScreen() {
   const ptr = usePullToRefresh(rowsRef, () => refresh())
 
   const pending = pendingOps(drafts)
+  // Tasks come out of the card queue and into the list above it (TaskList reads
+  // the full `drafts` itself — it also owns the "Done today" strip).
+  const cards = pending.filter(d => !isTaskKind(d.kind))
 
   if (loading && drafts.length === 0) {
     return (
@@ -729,6 +896,7 @@ export function OpsScreen() {
             <button className="stalebtn" onClick={refresh}>Try again</button>
           </div>
         )}
+        <TaskList drafts={drafts} refresh={refresh} />
         {pending.length === 0 && !error ? (
           <div className="empty">
             Nothing waiting on you
@@ -737,8 +905,8 @@ export function OpsScreen() {
               {checkedPhrase(loadedAt)}. This is a live read, not a stall.
             </div>
           </div>
-        ) : pending.length === 0 ? null : (
-          pending.map(d => <PendingCard key={d.id} draft={d} refresh={refresh} />)
+        ) : cards.length === 0 ? null : (
+          cards.map(d => <PendingCard key={d.id} draft={d} refresh={refresh} />)
         )}
         <OpsGroups drafts={drafts} />
       </div>

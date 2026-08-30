@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { outboundApproveUrl, outboundSkipUrl, pendingOps, pendingDmLaneOps, sentOps, blockedOps, canGenerateDraft, claimingOps, engineLabel, expiresIn, DISCARDED_REASON, classifyGateReply, cardStateOf, outboundFeedId, type OpsDraft } from './ops'
+import { outboundApproveUrl, outboundSkipUrl, pendingOps, pendingDmLaneOps, sentOps, blockedOps, canGenerateDraft, claimingOps, engineLabel, expiresIn, DISCARDED_REASON, classifyGateReply, cardStateOf, outboundFeedId, taskTitle, taskDetails, taskDue, taskSource, dueLabel, pendingTasks, doneTodayTasks, isTaskKind, TASK_TITLE_MAX, type OpsDraft } from './ops'
 
 const base: OpsDraft = {
   id: '1', client_id: 'risedtc', kind: 'escalation', slack_channel: '#rise-ops',
@@ -288,5 +288,128 @@ describe('outboundFeedId', () => {
     expect(outboundFeedId({ ...base, kind: 'comment_outbound', context: { feed_id: 'abc' } })).toBe('abc')
     expect(outboundFeedId({ ...base, kind: 'escalation', context: { feed_id: 'abc' } })).toBe(null)
     expect(outboundFeedId({ ...base, kind: 'comment_outbound', context: {} })).toBe(null)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// TASKS (UX v2, 2026-08-30)
+// ---------------------------------------------------------------------------
+const task: OpsDraft = {
+  ...base, id: 't1', client_id: 'ivan', kind: 'task', slack_channel: null as unknown as string,
+  body: 'Call the accountant', context: null,
+}
+
+describe('taskTitle / taskDetails — the row derives both from one body column', () => {
+  it('splits on the first newline', () => {
+    expect(taskTitle('Call the accountant\nabout the Q3 filing')).toBe('Call the accountant')
+    expect(taskDetails('Call the accountant\nabout the Q3 filing')).toBe('about the Q3 filing')
+  })
+  it('a one-line task has a title and no detail', () => {
+    expect(taskTitle('buy socks')).toBe('buy socks')
+    expect(taskDetails('buy socks')).toBe('')
+  })
+  it('skips leading blank lines rather than titling the card with nothing', () => {
+    expect(taskTitle('\n\nreal title\nrest')).toBe('real title')
+    expect(taskDetails('\n\nreal title\nrest')).toBe('rest')
+  })
+  // The dictation case: one long sentence, no newline anywhere. The title has to
+  // stop somewhere, and the words after the cut must survive into the detail —
+  // truncating without a remainder would silently delete half the task.
+  it('caps a long single line on a word boundary and keeps the remainder', () => {
+    const long = 'remember to ask the accountant whether the Q3 filing can be moved to October because the audit lands the same week and nobody has looked at it'
+    const t = taskTitle(long)
+    expect(t.length).toBeLessThanOrEqual(TASK_TITLE_MAX + 1)
+    expect(t.endsWith('…')).toBe(true)
+    expect(t).not.toContain('  ')
+    // Nothing is lost: title (minus the ellipsis) + detail reconstruct the line.
+    expect(`${t.replace(/…$/, '')} ${taskDetails(long)}`).toBe(long)
+  })
+  it('survives an empty body', () => {
+    expect(taskTitle('')).toBe('')
+    expect(taskDetails('')).toBe('')
+  })
+})
+
+describe('taskDue — context.due_at is the one field a task adds', () => {
+  it('reads a plain date', () => {
+    expect(taskDue({ ...task, context: { due_at: '2026-08-31' } })).toBe('2026-08-31')
+  })
+  it('truncates a full ISO timestamp instead of dropping it', () => {
+    expect(taskDue({ ...task, context: { due_at: '2026-08-31T00:00:00Z' } })).toBe('2026-08-31')
+  })
+  it('is null when absent or unparseable', () => {
+    expect(taskDue(task)).toBe(null)
+    expect(taskDue({ ...task, context: {} })).toBe(null)
+    expect(taskDue({ ...task, context: { due_at: 'monday' } })).toBe(null)
+    // A producer that writes a number instead of a date is a wrong producer, and
+    // the row must render without a chip rather than crash on it.
+    expect(taskDue({ ...task, context: { due_at: 42 as unknown as string } })).toBe(null)
+  })
+})
+
+describe('dueLabel — only overdue and today are allowed to be loud', () => {
+  const now = new Date('2026-08-30T15:00:00')
+  it('names the near days in words', () => {
+    expect(dueLabel('2026-08-30', now)).toEqual({ text: 'today', tone: 'now' })
+    expect(dueLabel('2026-08-31', now)).toEqual({ text: 'tomorrow', tone: 'soon' })
+    expect(dueLabel('2026-08-29', now)).toEqual({ text: 'yesterday', tone: 'over' })
+    expect(dueLabel('2026-08-25', now)).toEqual({ text: '5 days late', tone: 'over' })
+  })
+  it('uses a weekday inside the week and a date beyond it', () => {
+    expect(dueLabel('2026-09-02', now)).toEqual({ text: 'Wed', tone: 'soon' })
+    expect(dueLabel('2026-09-20', now)?.tone).toBe('later')
+    expect(dueLabel('2026-09-20', now)?.text).toBe('Sep 20')
+  })
+})
+
+describe('pendingTasks / doneTodayTasks', () => {
+  const now = new Date('2026-08-30T15:00:00').getTime()
+  it('takes only pending task rows, dated first and soonest at the top', () => {
+    const rows: OpsDraft[] = [
+      { ...task, id: 'undated', created_at: '2026-08-20T10:00:00Z' },
+      { ...task, id: 'later', context: { due_at: '2026-09-04' } },
+      { ...task, id: 'soon', context: { due_at: '2026-08-31' } },
+      { ...task, id: 'newer-undated', created_at: '2026-08-28T10:00:00Z' },
+      { ...base, id: 'not-a-task' },
+      { ...task, id: 'done', sent_at: '2026-08-30T09:00:00Z', approved_at: '2026-08-30T09:00:00Z' },
+      { ...task, id: 'removed', send_blocked_reason: DISCARDED_REASON },
+    ]
+    expect(pendingTasks(rows, now).map(r => r.id))
+      .toEqual(['soon', 'later', 'newer-undated', 'undated'])
+  })
+  // The receipt for the tick. Scoped to today so it can never become a second
+  // list to read, and a task ticked yesterday is simply gone.
+  it('shows only tasks ticked today, newest first', () => {
+    const rows: OpsDraft[] = [
+      { ...task, id: 'today-1', sent_at: '2026-08-30T09:00:00Z' },
+      { ...task, id: 'today-2', sent_at: '2026-08-30T11:00:00Z' },
+      { ...task, id: 'yday', sent_at: '2026-08-29T11:00:00Z' },
+      { ...base, id: 'sent-ops-row', sent_at: '2026-08-30T12:00:00Z' },
+    ]
+    expect(doneTodayTasks(rows, now).map(r => r.id)).toEqual(['today-2', 'today-1'])
+  })
+})
+
+// 🔴🔴 THE POLLER-COLLISION INVARIANT, held in code. n8n 4B3D9O9gvAaAWBe2 picks
+// `kind=in.(escalation,update,booking)` and posts `body` verbatim to
+// `slack_channel` — for kind='update' that is the CLIENT-FACING channel. A task
+// must never be a member of that set, and Done must never leave a row in the
+// shape that dispatcher looks for (approved_at set, sent_at null).
+describe('a task can never reach the Slack dispatcher', () => {
+  const DISPATCHED: OpsKindLike[] = ['escalation', 'update', 'booking']
+  type OpsKindLike = OpsDraft['kind']
+  it('task is not in the dispatched kind set', () => {
+    expect(DISPATCHED).not.toContain('task' as OpsKindLike)
+    expect(isTaskKind('task')).toBe(true)
+    expect(isTaskKind('update')).toBe(false)
+  })
+})
+
+describe('taskSource — a chip is a label, never a guess', () => {
+  it('names the two producers and stays silent otherwise', () => {
+    expect(taskSource({ ...task, context: { source: 'whatsapp' } })).toBe('WA')
+    expect(taskSource({ ...task, context: { source: 'claude' } })).toBe('Claude')
+    expect(taskSource({ ...task, context: { source: 'ops_task_insert' } })).toBe(null)
+    expect(taskSource(task)).toBe(null)
   })
 })
