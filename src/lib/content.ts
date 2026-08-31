@@ -337,8 +337,12 @@ export async function fetchContentDrafts(lane: ContentLane): Promise<ContentPage
   // dashboard disagreed about what exists. Newest-first + the 1000 cap keeps
   // the fetch bounded; `count` stays exact so a capped page is visible as
   // "1000 of N" rather than passing as complete.
+  // Ordered by created_at, NOT updated_at: background jobs (funnel classifier,
+  // board sync) bulk-restamp updated_at, which floated week-old drafts to the
+  // top as "today's" (Ivan, 2026-08-31: old calls appearing in today's topics).
+  // created_at is when the draft was actually minted and nothing rewrites it.
   const { data, error, count } = await q
-    .order('updated_at', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(1000)
   if (error) throw error
   // Operator-deleted rows are GONE from every list, including Archived: when a
