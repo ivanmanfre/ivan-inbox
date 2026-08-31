@@ -454,6 +454,16 @@ export function canGenerateDraft(d: OpsDraft): boolean {
     && Boolean(d.context?.comment_id)
 }
 
+// The one decision that separates "post this to LinkedIn" from "close the card
+// and post nothing". It is about the EDITOR, not the stored row: an escalate card
+// arrives empty, but the operator can type a reply into it by hand, and then the
+// card has something to post. Reading the stored body here meant a hand-written
+// reply landed on "Mark handled", which posts nothing AND blanks what was typed
+// (Ivan hit this on the Samuel Adeyinka card, 08-31).
+export function isCloseOnlyComment(d: OpsDraft, editorBody: string): boolean {
+  return d.kind === 'comment_reply' && !d.body.trim() && !editorBody.trim()
+}
+
 export type GeneratedDraft = {
   drafted: boolean
   draft?: string

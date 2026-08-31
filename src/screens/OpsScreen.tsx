@@ -5,7 +5,7 @@ import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useOps } from '../hooks/useOps'
 import {
-  approveOpsDraft, approveWeeklyReport, blockedOps, canGenerateDraft, canTagCommenter, claimingOps, discardOpsDraft, engineLabel, expiresIn, generateCommentDraft, likeComment, markCommentHandled, outboundApproveUrl, outboundSkipUrl, pendingOps, postCommentReply, seatLabel, sentOps,
+  approveOpsDraft, approveWeeklyReport, blockedOps, canGenerateDraft, canTagCommenter, isCloseOnlyComment, claimingOps, discardOpsDraft, engineLabel, expiresIn, generateCommentDraft, likeComment, markCommentHandled, outboundApproveUrl, outboundSkipUrl, pendingOps, postCommentReply, seatLabel, sentOps,
   dispatchCommentGate, cardStateOf,
   completeTask, doneTodayTasks, dueLabel, isTaskKind, pendingTasks, taskDetails, taskDue, taskSource, taskTitle,
   type OpsDraft, type OpsKind, type GateVerdict, type FeedState,
@@ -404,6 +404,10 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
   // An escalate card carries no draft on purpose: the point is that Mattan
   // answers it himself, so there is nothing to copy.
   const isEscalatedComment = isComment && !draft.body.trim()
+  // ...but the editor above is live, and the placeholder invites him to write one.
+  // So what decides "post it" vs "just close it" is whether there is text in the
+  // box RIGHT NOW. See isCloseOnlyComment for what keying it on the stored row cost.
+  const isCloseOnly = isCloseOnlyComment(draft, body)
   // ...but "on purpose" is not the same as "never". The button writes one
   // through the same gates the pipeline uses, and the card keeps saying whose
   // idea it was.
@@ -489,16 +493,16 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
     // comment Mattan already answered clears the card instead of doubling up.
     if (isComment) {
       const ok = await confirm({
-        title: isEscalatedComment ? 'Mark this handled?' : `Post this reply as ${where}?`,
-        message: isEscalatedComment
+        title: isCloseOnly ? 'Mark this handled?' : `Post this reply as ${where}?`,
+        message: isCloseOnly
           ? 'Nothing is posted. The card clears and you stop being reminded about this comment.'
           : `Goes live on LinkedIn under their comment, from the client seat.${tag && canTag && commenterName ? ` Tags ${commenterName} so they get the notification, like a native reply.` : ''}${liked ? '' : ' Their comment gets a like too.'} Checks first that they have not already been answered.`,
-        confirmText: isEscalatedComment ? 'Mark handled' : 'Approve & post',
+        confirmText: isCloseOnly ? 'Mark handled' : 'Approve & post',
       })
       if (!ok) return
       setBusy(true); setError('')
       try {
-        if (isEscalatedComment) {
+        if (isCloseOnly) {
           await markCommentHandled(draft.id)
         } else {
           const out = await postCommentReply(draft.id, body, tag)
@@ -664,11 +668,13 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
       {isWeekly && <div className="ops-ctx">Read the page first. Edit this message, then copy it and send it yourself.</div>}
       {isComment && (
         <div className="ops-ctx">
-          {isEscalatedComment
+          {isCloseOnly
             ? (draft.client_id === 'arch'
-              ? 'No draft on purpose: this one wants Davorin in his own words. No ARCH drafter exists yet, so write it by hand in his register.'
-              : 'No draft on purpose: this one wants Mattan in his own words. Draft it if you want a starting point.')
-            : onDemand
+              ? 'No draft on purpose: this one wants Davorin in his own words. No ARCH drafter exists yet, so write it by hand in his register. Type above and the button posts it.'
+              : 'No draft on purpose: this one wants Mattan in his own words. Type above and the button posts it, or press Draft it for a starting point.')
+            : isEscalatedComment
+              ? 'Your own words. Approve posts this live under their comment.'
+              : onDemand
               ? 'Drafted on request, so this category never passed the auto gate. Read every word before you post it.'
               : 'Edit it first. Approve posts it live under their comment.'}
         </div>
@@ -695,7 +701,7 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
           >
             {liked ? '👍 Liked' : liking ? 'Liking…' : '👍 Like their comment'}
           </span>
-          {canTag && !isEscalatedComment && (
+          {canTag && !isCloseOnly && (
             <span
               onClick={busy ? undefined : () => setTag(t => !t)}
               style={{
@@ -754,8 +760,8 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
         )}
         <div className="btn p" onClick={busy || drafting ? undefined : onApprove}>
           {busy
-            ? (isNewsjack ? 'Writing…' : isEscalatedComment ? 'Closing…' : isComment ? 'Posting…' : isOutbound ? (approveUrl ? 'Opening…' : 'Copying…') : isWeekly ? 'Copying…' : 'Sending…')
-            : (isNewsjack ? 'Approve & draft' : isEscalatedComment ? 'Mark handled' : isComment ? 'Approve & post' : isOutbound ? (approveUrl ? 'Approve & queue' : 'Approve & copy') : isWeekly ? 'Approve & copy' : 'Approve & send')}
+            ? (isNewsjack ? 'Writing…' : isCloseOnly ? 'Closing…' : isComment ? 'Posting…' : isOutbound ? (approveUrl ? 'Opening…' : 'Copying…') : isWeekly ? 'Copying…' : 'Sending…')
+            : (isNewsjack ? 'Approve & draft' : isCloseOnly ? 'Mark handled' : isComment ? 'Approve & post' : isOutbound ? (approveUrl ? 'Approve & queue' : 'Approve & copy') : isWeekly ? 'Approve & copy' : 'Approve & send')}
         </div>
       </div>
     </div>

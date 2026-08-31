@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { outboundApproveUrl, outboundSkipUrl, pendingOps, pendingDmLaneOps, sentOps, blockedOps, canGenerateDraft, claimingOps, engineLabel, expiresIn, DISCARDED_REASON, classifyGateReply, cardStateOf, outboundFeedId, taskTitle, taskDetails, taskDue, taskSource, dueLabel, pendingTasks, doneTodayTasks, isTaskKind, TASK_TITLE_MAX, type OpsDraft } from './ops'
+import { outboundApproveUrl, outboundSkipUrl, pendingOps, pendingDmLaneOps, sentOps, blockedOps, canGenerateDraft, isCloseOnlyComment, claimingOps, engineLabel, expiresIn, DISCARDED_REASON, classifyGateReply, cardStateOf, outboundFeedId, taskTitle, taskDetails, taskDue, taskSource, dueLabel, pendingTasks, doneTodayTasks, isTaskKind, TASK_TITLE_MAX, type OpsDraft } from './ops'
 
 const base: OpsDraft = {
   id: '1', client_id: 'risedtc', kind: 'escalation', slack_channel: '#rise-ops',
@@ -215,6 +215,44 @@ describe('canGenerateDraft', () => {
   it('needs the comment id the engine looks the row up by', () => {
     expect(canGenerateDraft({ ...card, context: { author_name: 'Clive William Kreft' } })).toBe(false)
     expect(canGenerateDraft({ ...card, context: null })).toBe(false)
+  })
+})
+
+describe('isCloseOnlyComment', () => {
+  // Same blank escalate card. The question here is the opposite one: not "can the
+  // engine write this", but "when the primary button is pressed, does anything go
+  // to LinkedIn".
+  const card: OpsDraft = {
+    ...base, id: 'c', kind: 'comment_reply', slack_channel: null as unknown as string,
+    body: '', context: { comment_id: 'c-1', author_name: 'Samuel Adeyinka', action: 'escalate' },
+  }
+
+  it('closes without posting while the editor is empty', () => {
+    expect(isCloseOnlyComment(card, '')).toBe(true)
+    expect(isCloseOnlyComment(card, '   \n ')).toBe(true)
+  })
+
+  // The bug this function exists for (Ivan, 08-31): the card said "Mark handled"
+  // even after he typed a reply into it by hand, and Mark handled writes an empty
+  // body plus a sent stamp. His words would have gone nowhere and been erased.
+  it('posts a reply the operator typed by hand into a blank card', () => {
+    expect(isCloseOnlyComment(card, 'Appreciate it Samuel, sending you a request now.')).toBe(false)
+  })
+
+  // A card the pipeline drafted was never close-only, whatever the editor holds -
+  // clearing the box is an edit in progress, not an instruction to close silently.
+  it('is never close-only once the row carries a draft', () => {
+    const drafted = { ...card, body: 'Agreed -- we screen margin first.' }
+    expect(isCloseOnlyComment(drafted, drafted.body)).toBe(false)
+    expect(isCloseOnlyComment(drafted, '')).toBe(false)
+  })
+
+  // Only the comment lane has a "post nothing" ending. Every other kind's approve
+  // does something with the body.
+  it('is comment-only', () => {
+    for (const kind of ['newsjack', 'weekly_report', 'escalation', 'update'] as const) {
+      expect(isCloseOnlyComment({ ...card, kind }, '')).toBe(false)
+    }
   })
 })
 
