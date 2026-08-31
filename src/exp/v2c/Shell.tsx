@@ -532,8 +532,12 @@ export default function Shell() {
   ) : dmsList
 
   // Ops is no longer a wrapped production screen. OpsBoard owns the frame and
-  // reuses the screen's PendingCard + OpsGroups, so there is exactly one header,
-  // one empty state, one approve path — and one useOps mount, this one.
+  // reuses the screen's PendingCard, so there is exactly one header, one empty
+  // state, one approve path — and one useOps mount, this one.
+  //
+  // `glance` and the Content-errors jump were handed in here until 2026-08-31,
+  // when the pipeline and automation blocks came off Ops (Ivan: it is for
+  // notifications, tasks and approvals). Nothing on the surface reads them now.
   const opsSurface = (
     <OpsBoard
       drafts={ops.drafts}
@@ -541,18 +545,6 @@ export default function Shell() {
       error={opsError}
       loadedAt={ops.loadedAt}
       refresh={ops.refresh}
-      // The reach the Content strip's alarm band used to be (2026-08-07). Ops
-      // counts the pipeline's broken rows; the rows themselves live on Content,
-      // so the jump crosses jobs here — the one place that owns both.
-      glance={glance}
-      onOpenErrors={() => {
-        goJob('content')
-        setLane('ivan')
-        // The Content surface owns the view switch and the section's open flag,
-        // so it is told what to do rather than reached into. It is mounted in
-        // both views, so this lands whichever one Ivan left it in.
-        setTimeout(() => window.dispatchEvent(new CustomEvent('wb-open-content-errors')), 0)
-      }}
     />
   )
 
