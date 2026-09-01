@@ -438,6 +438,10 @@ function DecisionsSection({ tasks }: { tasks: MoneyTaskRow[] }) {
                 <div className="wb-money-taskdue">
                   {t.context?.due_at ? `due ${t.context.due_at}` : 'no due date'}
                 </div>
+                {/* a task title can carry a dollar figure; it is a source row too, so it wears the same tag */}
+                <div className="wb-money-cp">
+                  ops_drafts · {t.id.slice(0, 8)} · observed {t.created_at ? relAge(t.created_at) : 'never'}
+                </div>
               </div>
             ))}
             <div className="wb-money-note">Ticking stays on the Ops job.</div>

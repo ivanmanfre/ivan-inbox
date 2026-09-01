@@ -70,6 +70,7 @@ export type MoneyTaskRow = {
   id: string
   body: string
   context: { due_at?: string; run?: string } | null
+  created_at?: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -551,7 +552,7 @@ export const MONEY_TRUTH_RUN = 'money-truth-2026-09-01'
 export async function fetchOpenMoneyDecisions(): Promise<MoneyTaskRow[]> {
   const { data, error } = await supabase
     .from('ops_drafts')
-    .select('id, body, context')
+    .select('id, body, context, created_at')
     .eq('kind', 'task')
     .is('approved_at', null)
     .is('sent_at', null)
