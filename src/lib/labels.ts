@@ -161,3 +161,18 @@ export function armingCountWord(value: string | null | undefined): string {
   if (!value) return ''
   return ARMING_COUNT[value.toLowerCase()] ?? label(value).toLowerCase()
 }
+
+/**
+ * The seat badge on a conversation row, upper case. ONE definition, because the
+ * two-seat version of this (`client_id === 'risedtc' ? 'RISE' : 'IVAN'`, written
+ * when Ivan and Rise were the only lanes) survived in the DM history rows and
+ * labelled every ARCH conversation as Ivan's — Davorin's own cold DMs read as
+ * Ivan's on the seat Ivan opens first every morning (2026-09-01).
+ *
+ * Falls through to the id upper-cased, so a fourth seat is right on arrival
+ * rather than silently inheriting whichever lane the ternary happened to name.
+ */
+export function clientBadge(id: string): string {
+  if (id === 'risedtc') return 'RISE'
+  return id.toUpperCase()
+}

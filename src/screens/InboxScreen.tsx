@@ -6,6 +6,7 @@ import { returnsIn } from '../components/PushLaterSheet'
 import { useConfirm } from '../components/ConfirmSheet'
 import { discardDraft, filterByStatus, filterThreads, inboxWaitingCount, isLeadMagnet, searchThreads, threadKind, type Filter, type Status, type Thread, eventTime } from '../lib/inbox'
 import { checkedPhrase } from '../lib/today'
+import { clientBadge } from '../lib/labels'
 import { RowSelect } from '../exp/v2c/RowSelect'
 
 function timeAgo(iso: string): string {
@@ -94,11 +95,6 @@ function EmptyVerified({ line, verifiedAt }: { line: string; verifiedAt?: string
   )
 }
 
-function clientLabel(id: string): string {
-  if (id === 'risedtc') return 'RISE'
-  if (id === 'ivan') return 'IVAN'
-  return id.toUpperCase()
-}
 
 export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt, title = 'Inbox', status, before, after, rowsFor, renderRow, rowNote, rowChip, rowTag, renderNote, emptyLine }: {
   threads: Thread[]
@@ -310,7 +306,7 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
                 <div className="mid">
                   <div className="top">
                     <span className="name">{t.prospect_name}</span>
-                    <span className={`client ${t.client_id === 'risedtc' ? 'rise' : ''}`}>{clientLabel(t.client_id)}</span>
+                    <span className={`client ${t.client_id === 'risedtc' ? 'rise' : ''}`}>{clientBadge(t.client_id)}</span>
                     {threadKind(t) === 'inmail' && <span className="client kind-inmail">INMAIL</span>}
                     {threadKind(t) === 'email' && <span className="client kind-email">EMAIL</span>}
                     {threadKind(t) === 'linkedin' && <span className="client kind-dm">DM</span>}

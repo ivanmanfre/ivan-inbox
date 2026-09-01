@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSectionState } from '../../hooks/useSectionState'
 import { Avatar } from '../../components/Avatar'
 import { eventTime, isLeadMagnet, threadKind, type Thread } from '../../lib/inbox'
+import { clientBadge } from '../../lib/labels'
 import { relTime } from './fmt'
 
 // DM HISTORY — the receipt.
@@ -110,7 +111,7 @@ export function DmHistory({ threads, onOpen }: {
                   <div className="top">
                     <span className="name">{t.prospect_name}</span>
                     <span className={`client ${t.client_id === 'risedtc' ? 'rise' : ''}`}>
-                      {t.client_id === 'risedtc' ? 'RISE' : 'IVAN'}
+                      {clientBadge(t.client_id)}
                     </span>
                     <span className={`client ${KIND_CLASS[kind]}`}>{KIND_LABEL[kind]}</span>
                     {/* A hand-typed reply is the one thing in this list no
