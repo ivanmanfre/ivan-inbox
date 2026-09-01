@@ -19,6 +19,12 @@ describe('parseWbHash', () => {
     // this half were missed.
     expect(parseWbHash('#exp/v2/strategy')).toEqual({ job: 'strategy', focus: null })
     expect(wbHash('strategy', null)).toBe('#exp/v2/strategy')
+    // Money joined 2026-09-01 (goal-run money-truth). Same shape as Strategy —
+    // a whole-canvas job, not a list — so it needs the identical fresh-load
+    // coverage: JOBS already lists it, so route.ts needs no edit at all, but
+    // that guarantee is only real if a test pins it.
+    expect(parseWbHash('#exp/v2/money')).toEqual({ job: 'money', focus: null })
+    expect(wbHash('money', null)).toBe('#exp/v2/money')
   })
 
   it('reads a focused chat peer', () => {

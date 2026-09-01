@@ -9,7 +9,7 @@ import {
 
 const NOW = new Date('2026-09-01T12:00:00Z').getTime()
 
-describe('runway — never estimated', () => {
+describe('runway - never estimated', () => {
   it('refuses when cash_on_hand_usd is absent', () => {
     const r = computeRunway({
       cashOnHandUsd: null, cashAsOfDate: '2026-08-30', vendorSpend30dUsd: 1000,

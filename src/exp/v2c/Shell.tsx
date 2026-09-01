@@ -41,6 +41,7 @@ import { CommandLayer } from './CommandLayer'
 import { MagnetsList } from './MagnetsList'
 import { StylesList } from './StylesList'
 import { StrategyView } from './StrategyView'
+import { MoneyView } from './MoneyView'
 import type { OpenMagnet } from './ContentSections'
 import { DraftWindow, type QueueItem } from './DraftPane'
 import { MagnetWindow } from './MagnetWindow'
@@ -590,6 +591,10 @@ export default function Shell() {
         <StrategyView lane={lane} setLane={setLane} />
       )}
       {job === 'sends' && <SendsScreen client={sendsClient} setClient={setSendsClient} />}
+      {/* Money joined 2026-09-01 (goal-run money-truth) — a whole-canvas
+          reading surface like Strategy, so it takes no props from Shell at
+          all: it owns its own fetch, same as Strategy owns client_strategy. */}
+      {job === 'money' && <MoneyView />}
       {job === 'ops' && opsSurface}
       {/* Today aggregates, so its hand-off rows navigate INSIDE the workbench
           rather than through the default app's hash routes. The work-queue

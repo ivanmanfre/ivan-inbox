@@ -317,6 +317,11 @@ export type PeriodAgg = {
   claimedUsd: number
   deltaRatio: string
   observedAt: string | null
+  // engine_counter_day_v carries no observed_at column at all — its only
+  // freshness signal is its own `day`. The most recent contributing day
+  // stands in as that cell's provenance date, honest for a daily bucket and
+  // for a weekly rollup alike.
+  claimedDay: string | null
 }
 
 function aggregate(
@@ -332,19 +337,24 @@ function aggregate(
     if (r.observed_at && (!cur.observedAt || r.observed_at > cur.observedAt)) cur.observedAt = r.observed_at
     byPeriod.set(k, cur)
   }
-  const claimedByPeriod = new Map<string, number>()
+  const claimedByPeriod = new Map<string, { usd: number; day: string | null }>()
   for (const r of engine) {
     const k = keyFn(r.day)
-    claimedByPeriod.set(k, (claimedByPeriod.get(k) ?? 0) + r.apify_usd_claimed)
+    const cur = claimedByPeriod.get(k) ?? { usd: 0, day: null }
+    cur.usd += r.apify_usd_claimed
+    if (!cur.day || r.day > cur.day) cur.day = r.day
+    claimedByPeriod.set(k, cur)
   }
-  return [...byPeriod.keys()]
+  const periods = new Set([...byPeriod.keys(), ...claimedByPeriod.keys()])
+  return [...periods]
     .sort((a, b) => b.localeCompare(a))
     .map(period => {
-      const v = byPeriod.get(period)!
-      const claimed = claimedByPeriod.get(period) ?? 0
+      const v = byPeriod.get(period) ?? { runs: 0, settled: 0, presettle: 0, observedAt: null }
+      const c = claimedByPeriod.get(period) ?? { usd: 0, day: null }
       return {
         period, runs: v.runs, settledUsd: v.settled, presettleUsd: v.presettle,
-        claimedUsd: claimed, deltaRatio: deltaRatio(v.settled, claimed), observedAt: v.observedAt,
+        claimedUsd: c.usd, deltaRatio: deltaRatio(v.settled, c.usd), observedAt: v.observedAt,
+        claimedDay: c.day,
       }
     })
 }

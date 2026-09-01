@@ -4480,3 +4480,94 @@
 @media (prefers-reduced-motion: reduce){
   .wb.wb.wb .wb-inflight-dot{ animation:none }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MONEY — goal-run money-truth-2026-09-01. A whole-canvas reading surface,
+   same class as Strategy: no list, no peer. Every rule below is scoped to
+   `.wb-money-*` only — nothing here reaches any other job's markup, and
+   nothing outside this block touches these classes. Triple `.wb.wb.wb`
+   specificity matches every other component in this file (see the file
+   header's SPECIFICITY NOTE).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.wb.wb.wb .wb-money-tlabel{
+  font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  color:var(--text3); margin:18px var(--gut) 6px; }
+.wb.wb.wb .wb-money-tlabel:first-of-type{ margin-top:10px }
+
+/* Tables scroll inside their own container rather than crushing columns —
+   the mobile requirement (390px must still read) is met by giving the reader
+   a horizontal scroll instead of ellipsized numbers. */
+.wb.wb.wb .wb-money-twrap{ overflow-x:auto; padding:0 var(--gut); margin:0 0 8px;
+  -webkit-overflow-scrolling:touch; }
+.wb.wb.wb .wb-money-table{ width:100%; min-width:560px; border-collapse:collapse; font-size:12.5px; }
+.wb.wb.wb .wb-money-table th{
+  text-align:left; font-size:11px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.03em; color:var(--text3); padding:6px 10px 6px 0;
+  border-bottom:1px solid var(--hairline-strong); white-space:nowrap; }
+.wb.wb.wb .wb-money-table td{
+  padding:8px 10px 8px 0; border-bottom:1px solid var(--hairline);
+  color:var(--text2); vertical-align:top; white-space:nowrap; }
+.wb.wb.wb .wb-money-table tr:last-child td{ border-bottom:none }
+.wb.wb.wb .wb-money-ivanrow td, .wb.wb.wb .wb-money-clientrow td{
+  font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.03em;
+  color:var(--text3); border-bottom:1px solid var(--hairline); padding-top:14px; }
+
+/* THE ONE NUMBER-RENDERING PRIMITIVE. Value on top, provenance underneath —
+   never the reverse, because the value is what Ivan is scanning for and the
+   provenance is what he checks when he doesn't trust it. */
+.wb.wb.wb .wb-money-cell{ display:inline-flex; flex-direction:column; gap:2px; white-space:nowrap }
+.wb.wb.wb .wb-money-cv{ font-weight:700; color:var(--text); font-variant-numeric:tabular-nums }
+.wb.wb.wb .wb-money-cp{ font-size:10px; color:var(--text3); white-space:normal; max-width:260px }
+/* verified=false: the number itself goes muted, and the suffix is the tell —
+   never a silently-trusted figure. */
+.wb.wb.wb .wb-money-cell.unv .wb-money-cv{ color:var(--text3); font-weight:500 }
+.wb.wb.wb .wb-money-unvtag{ color:var(--sev-attention); font-weight:600 }
+/* stale > 7d: the provenance line itself carries the warning colour, since
+   the NUMBER may still be correct — it is the age that is the problem. */
+.wb.wb.wb .wb-money-cell.stale .wb-money-cp{ color:var(--sev-attention) }
+
+.wb.wb.wb .wb-money-nosource{ font-size:12px; font-style:italic; color:var(--text3) }
+
+.wb.wb.wb .wb-money-note{ font-size:12px; color:var(--text3) }
+
+.wb.wb.wb .wb-money-banner{
+  margin:6px var(--gut) 10px; padding:9px 12px; border-radius:var(--r-ctl);
+  background:rgba(255,159,10,.12); color:var(--sev-attention);
+  font-size:12.5px; font-weight:600; }
+
+.wb.wb.wb .wb-money-refusal{
+  margin:6px var(--gut) 16px; padding:12px 14px; border-radius:var(--r-card);
+  background:rgba(255,69,58,.1); box-shadow:inset 0 0 0 1px rgba(255,69,58,.28);
+  color:var(--sev-urgent); font-size:13.5px; font-weight:700; }
+
+/* Section 2 — renewal / churn risk cards. Text rows, not numeric cells: the
+   note is rendered verbatim, so this is prose chrome rather than the <Cell>
+   contract. */
+.wb.wb.wb .wb-money-risklist{ display:flex; flex-direction:column; gap:8px;
+  padding:0 var(--gut); margin:0 0 8px; }
+.wb.wb.wb .wb-money-riskrow{
+  border-radius:var(--r-card); padding:10px 12px;
+  background:var(--surface1); box-shadow:inset 0 0 0 1px var(--hairline); }
+.wb.wb.wb .wb-money-riskrow.risk{ box-shadow:inset 0 0 0 1px rgba(255,69,58,.35) }
+.wb.wb.wb .wb-money-riskhead{ display:flex; align-items:center; justify-content:space-between; margin:0 0 4px }
+.wb.wb.wb .wb-money-riskkind{
+  font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.04em;
+  color:var(--sev-attention); }
+.wb.wb.wb .wb-money-riskkind.risk{ color:var(--sev-urgent) }
+.wb.wb.wb .wb-money-riskclient{ font-size:12px; color:var(--text3) }
+.wb.wb.wb .wb-money-risktext{ font-size:13px; line-height:1.45; color:var(--text); margin:0 0 6px }
+
+/* Section 7 — open money decisions. Read-only cards; ticking lives on Ops. */
+.wb.wb.wb .wb-money-tasks{ display:flex; flex-direction:column; padding:0 var(--gut); margin:0 0 8px }
+.wb.wb.wb .wb-money-task{
+  display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+  padding:9px 0; border-bottom:1px solid var(--hairline); }
+.wb.wb.wb .wb-money-tasktitle{ font-size:13px; color:var(--text) }
+.wb.wb.wb .wb-money-taskdue{ font-size:11.5px; color:var(--text3); white-space:nowrap }
+
+/* 390px — the tables keep their own horizontal scroll (wb-money-twrap); the
+   rest of the surface is already a single column, same as Strategy's. */
+@media (max-width:480px){
+  .wb.wb.wb .wb-money-cp{ max-width:180px }
+}
