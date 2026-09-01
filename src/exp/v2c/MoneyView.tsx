@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  MONEY_TRUTH_RUN, NO_SOURCE_TEXT, RUNWAY_REFUSAL, STRIPE_UNVERIFIED_BANNER, UNVERIFIED_SUFFIX,
+  MONEY_TRUTH_RUN, NO_SOURCE_TEXT, RUNWAY_REFUSAL, STRIPE_UNVERIFIED_BANNER,
+  TOKEN_PRICED_LABEL, UNVERIFIED_SUFFIX,
   aggregateByDay, aggregateByWeek, billingDay, clientLabel, computeRunway,
   fetchActorDay, fetchCashConfig, fetchEngineCounterDay, fetchLaneDay,
   fetchMonthChargesAndInvoices, fetchMrrRows, fetchOpenMoneyDecisions,
-  fetchRenewalRiskRows, fetchStripeKeyExists, fmtUsd, isStale, laneTotals,
-  lastNDays, latestPerClient, provenanceText, riskNoteKind, riskNoteText,
-  taskTitle, topActors, type ActorDayRow, type EngineCounterDayRow,
-  type LaneDayRow, type MoneyLedgerRow, type MoneyTaskRow, type PeriodAgg,
+  fetchRenewalRiskRows, fetchStripeKeyExists, fmtUsd, isStale, isTokenPriced,
+  laneTotals, lastNDays, mrrByClient, noteReason, provenanceText, riskNoteKind,
+  riskNoteText, taskTitle, topActors, type ActorDayRow, type ClientMrrRow,
+  type EngineCounterDayRow, type LaneDayRow, type MoneyLedgerRow,
+  type MoneyTaskRow, type PeriodAgg,
 } from '../../lib/money'
 import { PullIndicator } from '../../components/PullIndicator'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
@@ -95,9 +97,14 @@ function nextChargeIso(day: number, now: number): string {
   return new Date(Date.UTC(y, m + 1, Math.min(day, daysInNextMonth))).toISOString().slice(0, 10)
 }
 
+// A client can carry an amount row AND separate note-only rows (a
+// `resolve live:` placeholder, a bare renewal/risk note) — mrrByClient keeps
+// them apart, so a client with no amount row on file renders NoSource for the
+// number plus the reason text, rather than reading a stranger row as if it
+// were nothing at all.
 function MrrSection({ rows, now }: { rows: MoneyLedgerRow[]; now: number }) {
-  const latest = latestPerClient(rows)
-  const display = latest.length ? latest : [null]
+  const clients = mrrByClient(rows)
+  const display: (ClientMrrRow | null)[] = clients.length ? clients : [null]
   return (
     <>
       <SectionHead n="1" title="MRR and next charges" />
@@ -107,8 +114,8 @@ function MrrSection({ rows, now }: { rows: MoneyLedgerRow[]; now: number }) {
             <tr><th>Client</th><th>MRR</th><th>Next charge</th></tr>
           </thead>
           <tbody>
-            {display.map((r, i) => {
-              if (!r) {
+            {display.map(c => {
+              if (!c) {
                 return (
                   <tr key="empty">
                     <td><NoSource /></td>
@@ -117,15 +124,24 @@ function MrrSection({ rows, now }: { rows: MoneyLedgerRow[]; now: number }) {
                   </tr>
                 )
               }
-              const day = billingDay(r)
-              const src: Source = r
+              const billRow = c.amountRow ?? c.latestRow
+              const day = billingDay(billRow)
               return (
-                <tr key={r.id ?? i}>
-                  <td>{clientLabel(r.client_id)}</td>
-                  <td><DataCell value={fmtUsd(r.amount_usd)} source={src} now={now} verified={r.verified} /></td>
+                <tr key={c.clientId ?? '__ivan__'}>
+                  <td>{clientLabel(c.clientId)}</td>
+                  <td>
+                    {c.amountRow
+                      ? <DataCell value={fmtUsd(c.amountRow.amount_usd)} source={c.amountRow} now={now} verified={c.amountRow.verified} />
+                      : (
+                        <>
+                          <NoSource />
+                          <div className="wb-money-note">reason: {noteReason(c.latestRow.note ?? '')}</div>
+                        </>
+                      )}
+                  </td>
                   <td>
                     {day
-                      ? <DataCell value={nextChargeIso(day, now)} source={src} now={now} verified={r.verified} />
+                      ? <DataCell value={nextChargeIso(day, now)} source={billRow} now={now} verified={billRow.verified} />
                       : <span className="wb-money-note">no billing day on file</span>}
                   </td>
                 </tr>
@@ -264,7 +280,10 @@ function ActorTable({ rows, now }: { rows: ActorDayRow[]; now: number }) {
             const src: Source = { source_kind: 'vs_actor_day_v', source_ref: a.actor, observed_at: a.observedAt }
             return (
               <tr key={a.actor ?? i}>
-                <td>{a.actor}</td>
+                <td>
+                  {a.actor}
+                  {isTokenPriced(a.vendor) && <div className="wb-money-note">{TOKEN_PRICED_LABEL}</div>}
+                </td>
                 <td><DataCell value={String(a.runs)} source={src} now={now} /></td>
                 <td><DataCell value={fmtUsd(a.usd)} source={src} now={now} /></td>
                 <td><DataCell value={fmtUsd(a.usdPerRun)} source={src} now={now} /></td>
@@ -343,9 +362,10 @@ function ChecklistSection({
   mrrRows: MoneyLedgerRow[]
   now: number
 }) {
-  const latestMrr = latestPerClient(mrrRows)
-  const expected = latestMrr
-    .map(r => ({ row: r, day: billingDay(r) }))
+  // Billing day can live on either the amount row or a note-only row for the
+  // same client — same fallback MrrSection uses.
+  const expected = mrrByClient(mrrRows)
+    .map(c => ({ row: c.amountRow ?? c.latestRow, day: billingDay(c.amountRow ?? c.latestRow) }))
     .filter((x): x is { row: MoneyLedgerRow; day: number } => x.day !== null)
   const display = monthRows.length ? monthRows : [null]
   return (
@@ -365,7 +385,12 @@ function ChecklistSection({
                 <tr key={r.id ?? i}>
                   <td>{clientLabel(r.client_id)}</td>
                   <td>{r.kind}</td>
-                  <td><DataCell value={fmtUsd(r.amount_usd)} source={src} now={now} verified={r.verified} /></td>
+                  <td>
+                    <DataCell
+                      value={r.amount_usd !== null ? fmtUsd(r.amount_usd) : null}
+                      source={src} now={now} verified={r.verified}
+                    />
+                  </td>
                   <td>{r.occurred_on}</td>
                 </tr>
               )
@@ -480,9 +505,12 @@ export function MoneyView() {
 
   const laneDay30 = m.laneDay
   const vendorSpend30dUsd = laneDay30.reduce((s, r) => s + r.usd_settled, 0)
-  const verifiedMrrSumUsd = latestPerClient(m.mrrRows)
-    .filter(r => r.verified)
-    .reduce((s, r) => s + r.amount_usd, 0)
+  // Runway only ever sums an amount row that both EXISTS and is verified — a
+  // client whose only mrr rows are note-only (no amountRow) contributes 0,
+  // same as an unverified amount row.
+  const verifiedMrrSumUsd = mrrByClient(m.mrrRows)
+    .filter(c => c.amountRow?.verified)
+    .reduce((s, c) => s + (c.amountRow?.amount_usd ?? 0), 0)
 
   const head = (
     <div className="nav wb-head">
