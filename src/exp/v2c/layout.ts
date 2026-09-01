@@ -22,7 +22,7 @@
 // The removal freed a mobile slot, which is what lets DMs be a destination
 // again instead of half of a "Work" tab. WORK_JOBS is now what it always
 // described — the two CONTENT lanes.
-export type Job = 'today' | 'dms' | 'content' | 'magnets' | 'styles' | 'strategy' | 'sends' | 'ops' | 'settings'
+export type Job = 'today' | 'dms' | 'content' | 'magnets' | 'styles' | 'strategy' | 'sends' | 'money' | 'ops' | 'settings'
 
 // Three canvases, two media queries, one hook (useCanvas). 'wide' is where the
 // workbench can hold the working list AND two context peers at once — 1440px is
@@ -47,16 +47,19 @@ export function peerKey(p: Peer): PeerKey {
 
 // Rail order. Jobs first (they set the working surface), Claude last — it is
 // deliberately NOT a job (see dockChat below).
-export const JOBS: Job[] = ['today', 'dms', 'content', 'magnets', 'styles', 'strategy', 'sends', 'ops', 'settings']
+export const JOBS: Job[] = ['today', 'dms', 'content', 'magnets', 'styles', 'strategy', 'sends', 'money', 'ops', 'settings']
 
 // `sends` reads "Lanes" from 2026-08-23: the surface carries the INBOUND automations too
 // now (auto-accepted connection requests, the cold-DM filter — db/040), and a label that
 // said Sends named only the half Ivan could already see. The job KEY stays 'sends' so
 // every stored hash, deep link and test keeps resolving.
+// `money` joined 2026-09-01 (goal-run money-truth): a whole-canvas provenance
+// surface, same class as `strategy` — read-only reporting, not a queue — so it
+// carries no plural "money items" framing, just the job's own name.
 export const JOB_LABEL: Record<Job, string> = {
   today: 'Today', dms: 'DMs', content: 'Content',
   magnets: 'Magnets', styles: 'Styles', strategy: 'Strategy',
-  sends: 'Lanes', ops: 'Ops', settings: 'Settings',
+  sends: 'Lanes', money: 'Money', ops: 'Ops', settings: 'Settings',
 }
 
 // Unicode glyphs only, matching TabBar.tsx:9-30 — no icon set, no SVG sprite.
@@ -65,7 +68,7 @@ export const JOB_LABEL: Record<Job, string> = {
 // `sends` is ⇅ rather than ↑ from 2026-08-23: the surface reads both directions now.
 export const JOB_ICON: Record<Job, string> = {
   today: '☼', dms: '◉', content: '▤', magnets: '▦', styles: '▧', strategy: '◎',
-  sends: '⇅', ops: '◈', settings: '⚙︎',
+  sends: '⇅', money: '▣', ops: '◈', settings: '⚙︎',
 }
 
 // Jobs whose working surface is a LIST that can hand a row to a context peer.
