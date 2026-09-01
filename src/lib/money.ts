@@ -28,7 +28,10 @@ export type MoneyLedgerRow = {
   id: string
   client_id: string | null
   kind: MoneyKind
-  amount_usd: number
+  // Null on a note-only row (kind='mrr' rows can be pure notes — a
+  // `resolve live:` placeholder, a `renewal:`/`risk:` flag — with no amount
+  // attached at all; see mrrByClient).
+  amount_usd: number | null
   currency: string
   occurred_on: string
   source_kind: string
@@ -202,6 +205,46 @@ export function clientLabel(clientId: string | null): string {
   return LANE_LABEL[clientId as ContentLane] ?? clientId
 }
 
+// A row that is known, at the type level, to carry a real amount — what
+// mrrByClient hands back as `amountRow` so a caller never has to re-check
+// `amount_usd !== null` (and never has to fall back to 0) to use it as a
+// number.
+export type MrrAmountRow = MoneyLedgerRow & { amount_usd: number }
+
+export type ClientMrrRow = {
+  clientId: string | null
+  // The newest kind='mrr' row that actually carries an amount, or null when
+  // every row on file for this client is note-only (a `resolve live:`
+  // placeholder, a bare `renewal:`/`risk:` note). A naive "newest row full
+  // stop" pick would silently read a note-only row's null amount as "the"
+  // MRR row — this is the fix: a client can carry BOTH an amount row and
+  // separate note rows, and the number only ever comes from the amount row.
+  amountRow: MrrAmountRow | null
+  // The newest row of any shape, for the reason text when amountRow is null.
+  latestRow: MoneyLedgerRow
+}
+
+// `rows` must already be newest-occurred_on-first (fetchMrrRows's own order),
+// so "first amount row seen per client" is "newest amount row" with no
+// second sort.
+export function mrrByClient(rows: MoneyLedgerRow[]): ClientMrrRow[] {
+  const byClient = new Map<string, ClientMrrRow>()
+  for (const r of rows) {
+    const key = r.client_id ?? '__ivan__'
+    const cur = byClient.get(key)
+    if (!cur) {
+      byClient.set(key, {
+        clientId: r.client_id,
+        amountRow: r.amount_usd !== null ? (r as MrrAmountRow) : null,
+        latestRow: r,
+      })
+    } else if (cur.amountRow === null && r.amount_usd !== null) {
+      cur.amountRow = r as MrrAmountRow
+    }
+  }
+  return [...byClient.values()]
+}
+
 // `billing_day:<n>` lives in the mrr row's own free-text note field — the
 // only place Section 6's checklist can derive an expected charge day from.
 export function billingDay(row: MoneyLedgerRow): number | null {
@@ -223,14 +266,34 @@ export async function fetchRenewalRiskRows(): Promise<MoneyLedgerRow[]> {
     .filter((r: MoneyLedgerRow) => r.note?.startsWith('renewal:') || r.note?.startsWith('risk:')) as MoneyLedgerRow[]
 }
 
-// The free text AFTER the prefix — rendered verbatim per the data contract.
-export function riskNoteText(note: string): string {
+// The free text after the first colon — rendered verbatim per the data
+// contract. Generic on purpose: Section 1 reuses it for a `resolve live:`
+// reason (an amount-less client's MRR row), not only for Section 2's
+// `renewal:`/`risk:` notes.
+export function noteReason(note: string): string {
   const i = note.indexOf(':')
   return i === -1 ? note : note.slice(i + 1).trim()
 }
 
+export const riskNoteText = noteReason
+
 export function riskNoteKind(note: string): 'renewal' | 'risk' {
   return note.startsWith('renewal:') ? 'renewal' : 'risk'
+}
+
+// ---------------------------------------------------------------------------
+// Token-priced vendor lines (vendor_spend rows sourced from client_api_usage,
+// not an invoice) — 2026-09-02 data note: these live inside vendor_spend now
+// (vendor='anthropic_api', source_kind='client_api_usage_token_priced'), so a
+// dollar figure attributed to this vendor is an ESTIMATE and must say so next
+// to the number rather than reading as invoice-verified spend.
+// ---------------------------------------------------------------------------
+
+export const TOKEN_PRICED_VENDOR = 'anthropic_api'
+export const TOKEN_PRICED_LABEL = 'token-priced estimate, not invoice-verified'
+
+export function isTokenPriced(vendor: string): boolean {
+  return vendor === TOKEN_PRICED_VENDOR
 }
 
 // ---------------------------------------------------------------------------
@@ -389,6 +452,10 @@ export function lastNDays<T extends { day: string }>(rows: T[], n: number, now: 
 
 export type ActorAgg = {
   actor: string
+  // First-seen vendor for this actor — carried through so the caller can flag
+  // a token-priced line (isTokenPriced) without a second query. An actor name
+  // is not expected to change vendor mid-series.
+  vendor: string
   runs: number
   usd: number
   usdPerRun: number
@@ -396,9 +463,9 @@ export type ActorAgg = {
 }
 
 export function topActors(rows: ActorDayRow[], limit = 12): ActorAgg[] {
-  const byActor = new Map<string, { runs: number; usd: number; observedAt: string | null }>()
+  const byActor = new Map<string, { vendor: string; runs: number; usd: number; observedAt: string | null }>()
   for (const r of rows) {
-    const cur = byActor.get(r.actor_or_service) ?? { runs: 0, usd: 0, observedAt: null }
+    const cur = byActor.get(r.actor_or_service) ?? { vendor: r.vendor, runs: 0, usd: 0, observedAt: null }
     cur.runs += r.runs
     cur.usd += r.usd_settled
     if (r.observed_at && (!cur.observedAt || r.observed_at > cur.observedAt)) cur.observedAt = r.observed_at
@@ -406,7 +473,8 @@ export function topActors(rows: ActorDayRow[], limit = 12): ActorAgg[] {
   }
   return [...byActor.entries()]
     .map(([actor, v]) => ({
-      actor, runs: v.runs, usd: v.usd, usdPerRun: v.runs > 0 ? v.usd / v.runs : 0, observedAt: v.observedAt,
+      actor, vendor: v.vendor, runs: v.runs, usd: v.usd,
+      usdPerRun: v.runs > 0 ? v.usd / v.runs : 0, observedAt: v.observedAt,
     }))
     .sort((a, b) => b.usd - a.usd)
     .slice(0, limit)

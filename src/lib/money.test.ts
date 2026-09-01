@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   RUNWAY_REFUSAL, aggregateByDay, aggregateByWeek, billingDay, clientLabel,
-  computeRunway, daysSince, deltaRatio, fmtUsd, isStale, isoWeekKey,
-  laneTotals, lastNDays, latestPerClient, provenanceText, relAge, riskNoteKind,
-  riskNoteText, topActors, type ActorDayRow, type EngineCounterDayRow,
-  type LaneDayRow, type MoneyLedgerRow,
+  computeRunway, daysSince, deltaRatio, fmtUsd, isStale, isTokenPriced, isoWeekKey,
+  laneTotals, lastNDays, latestPerClient, mrrByClient, noteReason, provenanceText,
+  relAge, riskNoteKind, riskNoteText, topActors, type ActorDayRow,
+  type EngineCounterDayRow, type LaneDayRow, type MoneyLedgerRow,
 } from './money'
 
 const NOW = new Date('2026-09-01T12:00:00Z').getTime()
@@ -149,6 +149,50 @@ describe('latestPerClient', () => {
   })
 })
 
+describe('mrrByClient — a client can hold an amount row AND note-only rows', () => {
+  it('picks the amount row even when a newer note-only row exists', () => {
+    const rows = [
+      ledgerRow({ id: 'note', client_id: 'arch', occurred_on: '2026-09-02', amount_usd: null, note: 'risk: went quiet' }),
+      ledgerRow({ id: 'amt', client_id: 'arch', occurred_on: '2026-08-01', amount_usd: 3000, note: 'billing_day:18' }),
+    ]
+    const [c] = mrrByClient(rows)
+    expect(c.amountRow?.id).toBe('amt')
+    expect(c.latestRow.id).toBe('note')
+  })
+
+  it('renders no amount row at all when every row on file is note-only', () => {
+    const rows = [
+      ledgerRow({ id: 'r1', client_id: 'risedtc', amount_usd: null, note: 'resolve live: pending direct confirmation' }),
+    ]
+    const [c] = mrrByClient(rows)
+    expect(c.amountRow).toBeNull()
+    expect(c.latestRow.id).toBe('r1')
+  })
+
+  it('keeps clients separate, including Ivan (null client_id)', () => {
+    const rows = [
+      ledgerRow({ id: 'ivan', client_id: null, amount_usd: 500 }),
+      ledgerRow({ id: 'risedtc', client_id: 'risedtc', amount_usd: 3000 }),
+    ]
+    const out = mrrByClient(rows)
+    expect(out.map(c => c.clientId)).toEqual([null, 'risedtc'])
+  })
+})
+
+describe('noteReason', () => {
+  it('strips the prefix before the first colon, generically', () => {
+    expect(noteReason('resolve live: pending direct confirmation')).toBe('pending direct confirmation')
+    expect(noteReason('renewal: due in 12 days')).toBe('due in 12 days')
+  })
+})
+
+describe('isTokenPriced', () => {
+  it('flags the anthropic_api vendor and nothing else', () => {
+    expect(isTokenPriced('anthropic_api')).toBe(true)
+    expect(isTokenPriced('apify')).toBe(false)
+  })
+})
+
 describe('clientLabel', () => {
   it('maps known lanes and falls back to the raw id', () => {
     expect(clientLabel(null)).toBe('Ivan')
@@ -239,6 +283,15 @@ describe('topActors', () => {
     const out = topActors(rows)
     expect(out[0]).toMatchObject({ actor: 'harvestapi', runs: 15, usd: 40, usdPerRun: 40 / 15 })
     expect(out[1]).toMatchObject({ actor: 'unipile', runs: 20, usd: 5, usdPerRun: 0.25 })
+  })
+
+  it('carries the vendor through so a token-priced line can be flagged', () => {
+    const rows: ActorDayRow[] = [
+      { ...laneRow({ vendor: 'anthropic_api' }), actor_or_service: 'claude-api', usd_settled: 12, runs: 300 },
+    ]
+    const out = topActors(rows)
+    expect(out[0]).toMatchObject({ actor: 'claude-api', vendor: 'anthropic_api' })
+    expect(isTokenPriced(out[0].vendor)).toBe(true)
   })
 })
 
