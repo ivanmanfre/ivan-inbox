@@ -78,6 +78,55 @@ export async function fetchReply(): Promise<ReplyRow[]> {
   return (data ?? []) as ReplyRow[]
 }
 
+// One row per seat per UTC day, last 14 days (db/048_day_ledger.sql). Absent
+// until that file is applied → fetch returns [] and the block does not render.
+export type LedgerRow = {
+  client_id: string; day: string
+  invites: number; accepted: number; dms: number; inmails: number
+  cap_used: number | null; cap_limit: number | null
+}
+export async function fetchDayLedger(): Promise<LedgerRow[]> {
+  const { data, error } = await supabase.from('inbox_day_ledger_v').select('*')
+  if (error) return []
+  return (data ?? []) as LedgerRow[]
+}
+
+export type LedgerDay = {
+  day: string
+  invites: number; accepted: number; dms: number; inmails: number
+  cap_used: number | null; cap_limit: number | null
+  // Slots the seat's counter spent that never became an invite. The counter is
+  // incremented BEFORE the provider call, so a refused send still costs a slot
+  // unless the sender refunds it. 0 when the counter row is absent.
+  burned: number
+}
+
+// The last `days` UTC days ending on `todayIso`, NEWEST FIRST, every day present
+// even when nothing happened — a missing row is a zero, not a gap. 'all' sums
+// the seats; cap columns sum too (each seat's own counter, added up) and stay
+// null when no seat had a counter row that day.
+export function buildLedger(
+  rows: LedgerRow[], client: string, days: number,
+  todayIso: string = new Date().toISOString().slice(0, 10),
+): LedgerDay[] {
+  const t0 = Date.parse(todayIso + 'T00:00:00Z')
+  const out: LedgerDay[] = []
+  for (let i = 0; i < days; i++) {
+    const day = new Date(t0 - i * 864e5).toISOString().slice(0, 10)
+    const rs = rows.filter(r => r.day === day && (client === 'all' || r.client_id === client))
+    let invites = 0, accepted = 0, dms = 0, inmails = 0
+    let cap_used: number | null = null, cap_limit: number | null = null
+    for (const r of rs) {
+      invites += r.invites; accepted += r.accepted; dms += r.dms; inmails += r.inmails
+      if (r.cap_used != null) cap_used = (cap_used ?? 0) + r.cap_used
+      if (r.cap_limit != null) cap_limit = (cap_limit ?? 0) + r.cap_limit
+    }
+    const burned = cap_used == null ? 0 : Math.max(0, cap_used - invites)
+    out.push({ day, invites, accepted, dms, inmails, cap_used, cap_limit, burned })
+  }
+  return out
+}
+
 export type RangeKpiRow = {
   client_id: string; sent: number; accepted: number; convos: number; calls: number
 }

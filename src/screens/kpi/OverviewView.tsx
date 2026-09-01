@@ -6,10 +6,10 @@ import {
 import { getExpVariant } from '../../exp'
 import {
   fetchAccept, fetchReply, fetchPipeline, fetchGovernor, fetchScanOpens, fetchOutcomes, fetchRangeKpis,
-  fetchReplacement, replacementRate, daysToEmpty,
+  fetchReplacement, replacementRate, daysToEmpty, fetchDayLedger, buildLedger,
   acceptRate, runwayDays, laneLabel, governorEnforcementGap,
   type AcceptRow, type ReplyRow, type PipelineRow, type GovernorRow, type ScanOpenRow, type OutcomeRow, type RangeKpiRow,
-  type ReplacementRow,
+  type ReplacementRow, type LedgerRow,
 } from '../../lib/kpis'
 
 type Client = 'all' | 'ivan' | 'risedtc' | 'arch'
@@ -31,6 +31,17 @@ const MODE: Record<GovernorRow['mode'], { label: string; color: string; sev: Sev
   cold_paused: { label: 'COLD-PAUSED', color: '#FF453A', sev: 'red' },
 }
 const MODE_RANK: Record<GovernorRow['mode'], number> = { normal: 0, warm_only: 1, cold_paused: 2 }
+
+// A seat sitting AT its cap is not "NORMAL", whatever its adaptive mode says: the
+// sender is refusing every pick until the window rolls. Badge says so (Ivan
+// 2026-09-01, Arch read "NORMAL · 35/35 · 0 left today").
+const CAP_HIT = { label: 'CAP REACHED', color: '#FF9F0A' }
+function modeBadge(g: GovernorRow | null, used: number, cap: number): { label: string; color: string } {
+  if (cap > 0 && used >= cap) return CAP_HIT
+  return g ? MODE[g.mode] : MODE.normal
+}
+// Arch's governor is a daily ramp (window_label 'day'); "this day" is not English.
+const windowWord = (w: string) => (w === 'day' ? 'today' : `this ${w}`)
 
 // Governor severity is honest: over-cap (used>=cap) or a non-normal mode never
 // reads green. Only a normal-mode governor still under its cap is green.
@@ -166,7 +177,7 @@ function Hero({ accept, governor, pipeline, replacement, client }: {
   const gHeadDay = sum(gRows, 'headroom_day')
   const worst = gRows.reduce<GovernorRow | null>(
     (w, g) => (!w || MODE_RANK[g.mode] > MODE_RANK[w.mode] ? g : w), null)
-  const gMode = worst ? MODE[worst.mode] : MODE.normal
+  const gMode = modeBadge(worst, gUsed, gCap)
   let gSev: Sev = 'neutral'
   if (gRows.length > 0) {
     gSev = gRows.some(g => g.mode === 'cold_paused') ? 'red'
@@ -327,7 +338,7 @@ function Funnel({ accept, scans, outcomes, client }: {
       <div className="ov-funnel">
         <div className="ov-fstep">
           <div className="ov-fn">{sent7}</div>
-          <div className="ov-fl">Sent</div>
+          <div className="ov-fl">Invites</div>
         </div>
         <div className="ov-farrow">
           <span className="ov-fpct">{acceptStep}</span>
@@ -356,6 +367,70 @@ function Funnel({ accept, scans, outcomes, client }: {
         30d · accepted {acc30}/{sent30} · scan opens 7d {opens7} / 30d {opens30} · {distinct} prospects{lastOpen ? ` · last ${ago(lastOpen)}` : ''}
       </div>
       <div className="ov-note">Ivan scope counts the warm-lane era only (since 07-11); Rise counts full history. Recent sends are still maturing — accept rate only rises.</div>
+    </section>
+  )
+}
+
+// ---- Daily ledger: the day-by-day numbers, per seat ----
+// Ivan 2026-09-01: "the daily sends are missing". The Volume cards had a
+// sparkline with no numbers and the Pipeline block had 7d/30d totals; the
+// per-day figures he reads first were nowhere. Two columns sit side by side on
+// purpose: Invites is what LEFT the seat, Cap is the seat's enforcement counter,
+// spent before the provider answers. When Cap runs ahead of Invites, those slots
+// went to refused sends — the Arch seat burned its whole cap 08-27..08-30 and
+// sent nothing, and every tile above read that as a quiet lane.
+function ledgerDayLabel(day: string, todayIso: string): string {
+  if (day === todayIso) return 'Today'
+  const d = new Date(day + 'T00:00:00Z')
+  return d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', timeZone: 'UTC' })
+}
+
+function DayLedger({ rows, client, timeframe }: { rows: LedgerRow[]; client: Client; timeframe: Timeframe }) {
+  // Nothing rendered when the view is not applied: the fetch soft-fails to [].
+  if (rows.length === 0) return null
+  const days = timeframe === '7d' ? 7 : 14
+  const todayIso = new Date().toISOString().slice(0, 10)
+  const led = buildLedger(rows, client, days, todayIso)
+  const tot = led.reduce((a, d) => ({
+    invites: a.invites + d.invites, accepted: a.accepted + d.accepted,
+    dms: a.dms + d.dms, inmails: a.inmails + d.inmails, burned: a.burned + d.burned,
+  }), { invites: 0, accepted: 0, dms: 0, inmails: 0, burned: 0 })
+  const n = (v: number) => <span className={`ov-lg-n${v === 0 ? ' zero' : ''}`}>{v}</span>
+  const pct = (acc: number, inv: number) => (inv > 0 ? ` ${Math.round((acc / inv) * 100)}%` : '')
+  return (
+    <section className="ov-sec">
+      <div className="ov-h">Daily<span className="ov-h-sub">last {days} days · UTC</span></div>
+      <div className="ov-ledger">
+        <div className="ov-lg-r ov-lg-h">
+          <span>Day</span><span>Invites</span><span>Accepted</span><span>DMs</span><span>InMail</span><span>Cap</span>
+        </div>
+        {led.map(d => (
+          <div key={d.day} className={`ov-lg-r${d.day === todayIso ? ' today' : ''}`}>
+            <span className="ov-lg-d">{ledgerDayLabel(d.day, todayIso)}</span>
+            {n(d.invites)}
+            <span className={`ov-lg-n${d.accepted === 0 ? ' zero' : ''}`}>{d.accepted}<i>{pct(d.accepted, d.invites)}</i></span>
+            {n(d.dms)}
+            {n(d.inmails)}
+            <span className={`ov-lg-n ov-lg-cap${d.burned > 0 ? ' burn' : ''}`}>
+              {d.cap_used == null ? '—' : `${d.cap_used}/${d.cap_limit ?? '?'}`}
+              {d.burned > 0 && <i>−{d.burned} burned</i>}
+            </span>
+          </div>
+        ))}
+        <div className="ov-lg-r ov-lg-t">
+          <span className="ov-lg-d">{days}d</span>
+          {n(tot.invites)}
+          <span className="ov-lg-n">{tot.accepted}<i>{pct(tot.accepted, tot.invites)}</i></span>
+          {n(tot.dms)}
+          {n(tot.inmails)}
+          <span className={`ov-lg-n ov-lg-cap${tot.burned > 0 ? ' burn' : ''}`}>
+            {tot.burned > 0 ? <i>−{tot.burned} burned</i> : '—'}
+          </span>
+        </div>
+      </div>
+      <div className="ov-fcap">
+        Invites = notes that left the seat. Cap = the seat's counter, spent before the provider answers; when it runs ahead of Invites those slots went to refused sends. Accepted is of that day's invites and only rises.
+      </div>
     </section>
   )
 }
@@ -392,7 +467,7 @@ function RangeSummary({ range, client }: { range: DateRange; client: Client }) {
       ) : (
         <>
           <div className="ov-funnel">
-            <div className="ov-fstep"><div className="ov-fn">{sent}</div><div className="ov-fl">Sent</div></div>
+            <div className="ov-fstep"><div className="ov-fn">{sent}</div><div className="ov-fl">Invites</div></div>
             <div className="ov-farrow"><span className="ov-fpct">{pct}</span><span className="ov-fchev">→</span></div>
             <div className="ov-fstep"><div className="ov-fn">{accepted}</div><div className="ov-fl">Accepted</div></div>
             <div className="ov-farrow ov-fsep"><span className="ov-fdot">·</span></div>
@@ -458,7 +533,7 @@ function KpiRow({ lanes, daily, client, timeframe, range }: {
 
 // ---- Governor detail (weekly gauge + daily brake + mode + monthly) ----
 function GovGauge({ g }: { g: GovernorRow }) {
-  const m = MODE[g.mode]
+  const m = modeBadge(g, g.used, g.cap)
   const sev = govSev(g)
   // Cohort accept is null while the matured window (sends 3-18d old) is still
   // empty — show "not enough data yet" (+ opens date if known), never a false 0%.
@@ -475,7 +550,7 @@ function GovGauge({ g }: { g: GovernorRow }) {
       </div>
       <Gauge used={g.used} cap={g.cap} color={m.color} />
       <div className="ov-gauge-lbl">
-        <b>{g.used}</b>/{g.cap} <span className="ov-cap">this {g.window_label}</span>
+        <b>{g.used}</b>/{g.cap} <span className="ov-cap">{windowWord(g.window_label)}</span>
         <OverPill used={g.used} cap={g.cap} />
       </div>
       <div className="ov-cap">cap {g.cap} · {cohortStr}</div>
@@ -488,7 +563,11 @@ function GovGauge({ g }: { g: GovernorRow }) {
           <div className="ov-cap"><b>{g.daily_used}</b>/{g.daily_cap} today</div>
         </div>
       )}
-      <div className="ov-cap">{g.headroom_week} left this {g.window_label} · {g.headroom_day} left today</div>
+      <div className="ov-cap">
+        {g.window_label === 'day'
+          ? `${g.headroom_day} left today`
+          : `${g.headroom_week} left this ${g.window_label} · ${g.headroom_day} left today`}
+      </div>
       {g.monthly_cap != null && (
         <div className="ov-cap">{g.monthly_used}/{g.monthly_cap} this month</div>
       )}
@@ -541,7 +620,7 @@ function SeatCard({ p, selected, neutral, onSelect }: {
   p: PersonSummary; selected: boolean; neutral: boolean; onSelect?: () => void
 }) {
   const g = p.gov
-  const m = g ? MODE[g.mode] : null
+  const m = g ? modeBadge(g, g.used, g.cap) : null
   const runwayLbl = p.runway >= 999 ? '∞' : `${p.runway}d`
   const cohort = g == null || g.accept_rate == null ? '—' : `${g.accept_rate}%`
   // Reply rate of people who accepted AND got DM1 — the only denominator where a
@@ -762,6 +841,7 @@ type OverviewData = {
   campaigns: CampaignSend[]
   replacement: ReplacementRow[]
   reply: ReplyRow[]
+  ledger: LedgerRow[]
 }
 
 export function OverviewView({ client, timeframe, setClient, range = null }: {
@@ -778,10 +858,10 @@ export function OverviewView({ client, timeframe, setClient, range = null }: {
     Promise.all([
       fetchSends(), fetchSendsDaily(), fetchAccept(), fetchPipeline(),
       fetchGovernor(), fetchScanOpens(), fetchOutcomes(), fetchCampaignSends(client),
-      fetchReplacement(), fetchReply(),
+      fetchReplacement(), fetchReply(), fetchDayLedger(),
     ])
-      .then(([rows, daily, accept, pipeline, governor, scans, outcomes, campaigns, replacement, reply]) => {
-        if (live) setData({ rows, daily, accept, pipeline, governor, scans, outcomes, campaigns, replacement, reply })
+      .then(([rows, daily, accept, pipeline, governor, scans, outcomes, campaigns, replacement, reply, ledger]) => {
+        if (live) setData({ rows, daily, accept, pipeline, governor, scans, outcomes, campaigns, replacement, reply, ledger })
       })
       .catch(e => { if (live) setError(e instanceof Error ? e.message : 'Failed to load') })
       .finally(() => { if (live) setLoading(false) })
@@ -798,6 +878,7 @@ export function OverviewView({ client, timeframe, setClient, range = null }: {
     <div className="rows ov">
       <Hero accept={data.accept} governor={data.governor} pipeline={data.pipeline} replacement={data.replacement} client={client} />
       {timeframe === 'custom' && range && <RangeSummary range={range} client={client} />}
+      <DayLedger rows={data.ledger} client={client} timeframe={timeframe} />
       <Funnel accept={data.accept} scans={data.scans} outcomes={data.outcomes} client={client} />
       <div className="ov-duo">
         <KpiRow lanes={lanes} daily={data.daily} client={client} timeframe={timeframe} range={range} />

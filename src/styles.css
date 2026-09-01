@@ -520,6 +520,24 @@ a.grow.boardlink.off{opacity:.5;pointer-events:none}
 .ov-tile-sub{white-space:normal}
 
 /* DUO — two sections side-by-side on desktop, stacked on mobile */
+/* ---- Daily ledger: one row per UTC day, the seat's counter beside what landed ---- */
+.ov-ledger{background:var(--surface);border-radius:16px;padding:4px 14px 6px;overflow-x:auto}
+.ov-lg-r{display:grid;grid-template-columns:minmax(58px,1.1fr) repeat(5,minmax(40px,1fr));align-items:baseline;gap:6px;padding:9px 0;border-top:.5px solid var(--sep)}
+.ov-lg-r:first-child{border-top:none}
+.ov-lg-h{padding:8px 0 4px;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text3)}
+.ov-lg-h span{text-align:right}
+.ov-lg-h span:first-child{text-align:left}
+.ov-lg-d{font-size:13px;font-weight:600;color:var(--text2);white-space:nowrap}
+.ov-lg-r.today .ov-lg-d{color:var(--text);font-weight:700}
+.ov-lg-n{font-size:15px;font-weight:800;text-align:right;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums}
+.ov-lg-n.zero{color:var(--text3);font-weight:600}
+.ov-lg-n i{font-style:normal;font-size:11px;font-weight:600;color:var(--text3);margin-left:3px}
+.ov-lg-cap{font-size:13px;font-weight:700;color:var(--text2)}
+.ov-lg-cap.burn{color:#FF9F0A}
+.ov-lg-cap.burn i{display:block;color:#FF453A;margin:0}
+.ov-lg-t{padding-top:9px}
+.ov-lg-t .ov-lg-d{color:var(--text3);text-transform:uppercase;font-size:11px;letter-spacing:.04em}
+
 .ov-duo{display:grid;grid-template-columns:1fr;gap:0;margin-top:0}
 .ov-duo > .ov-sec{margin-top:18px;min-width:0}
 
