@@ -5,7 +5,7 @@ import {
   aggregateByDay, aggregateByWeek, billingDay, clientLabel, computeRunway,
   fetchActorDay, fetchCashConfig, fetchEngineCounterDay, fetchLaneDay,
   fetchMonthChargesAndInvoices, fetchMrrRows, fetchOpenMoneyDecisions,
-  fetchRenewalRiskRows, fetchStripeKeyExists, fmtUsd, isStale, isTokenPriced,
+  fetchRenewalRiskRows, fetchStripeKeyExists, fmtUsd, fmtUsdPerUnit, isStale, isTokenPriced,
   laneTotals, lastNDays, mrrByClient, noteReason, provenanceText, riskNoteKind,
   riskNoteText, taskTitle, topActors, type ActorDayRow, type ClientMrrRow,
   type EngineCounterDayRow, type LaneDayRow, type MoneyLedgerRow,
@@ -286,7 +286,7 @@ function ActorTable({ rows, now }: { rows: ActorDayRow[]; now: number }) {
                 </td>
                 <td><DataCell value={String(a.runs)} source={src} now={now} /></td>
                 <td><DataCell value={fmtUsd(a.usd)} source={src} now={now} /></td>
-                <td><DataCell value={fmtUsd(a.usdPerRun)} source={src} now={now} /></td>
+                <td><DataCell value={fmtUsdPerUnit(a.usdPerRun)} source={src} now={now} /></td>
               </tr>
             )
           })}

@@ -135,6 +135,16 @@ export function fmtUsd(n: number): string {
   return `${sign}$${Math.abs(Math.round(n)).toLocaleString('en-US')}`
 }
 
+// A per-unit figure ($/run) is routinely a fraction of a dollar, and
+// fmtUsd's whole-dollar rounding reads a real $0.23 as "$0" — free, which is
+// not the fact. Cents only kick in below $1; at or above it this is
+// identical to fmtUsd, so the rest of the page keeps one register.
+export function fmtUsdPerUnit(n: number): string {
+  const abs = Math.abs(n)
+  if (abs > 0 && abs < 1) return `${n < 0 ? '-' : ''}$${abs.toFixed(2)}`
+  return fmtUsd(n)
+}
+
 // "29.6x" or the honest refusal when the engines claimed nothing at all — a
 // bare division by zero would print "Infinity×", which reads as a bug and
 // not as the fact it is (nothing to compare settled spend against).

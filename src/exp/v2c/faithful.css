@@ -4529,7 +4529,10 @@
 
 .wb.wb.wb .wb-money-nosource{ font-size:12px; font-style:italic; color:var(--text3) }
 
-.wb.wb.wb .wb-money-note{ font-size:12px; color:var(--text3) }
+/* Free-text (a ledger row's own `note`, or a derived reason) breaks the
+   table's default nowrap — a prose sentence must wrap inside its column
+   rather than stretching the whole table past the viewport. */
+.wb.wb.wb .wb-money-note{ font-size:12px; color:var(--text3); white-space:normal; max-width:420px }
 
 .wb.wb.wb .wb-money-banner{
   margin:6px var(--gut) 10px; padding:9px 12px; border-radius:var(--r-ctl);

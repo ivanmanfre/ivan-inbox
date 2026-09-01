@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   RUNWAY_REFUSAL, aggregateByDay, aggregateByWeek, billingDay, clientLabel,
-  computeRunway, daysSince, deltaRatio, fmtUsd, isStale, isTokenPriced, isoWeekKey,
+  computeRunway, daysSince, deltaRatio, fmtUsd, fmtUsdPerUnit, isStale, isTokenPriced, isoWeekKey,
   laneTotals, lastNDays, latestPerClient, mrrByClient, noteReason, provenanceText,
   relAge, riskNoteKind, riskNoteText, topActors, type ActorDayRow,
   type EngineCounterDayRow, type LaneDayRow, type MoneyLedgerRow,
@@ -125,6 +125,20 @@ describe('fmtUsd', () => {
     expect(fmtUsd(1234.6)).toBe('$1,235')
     expect(fmtUsd(-500)).toBe('-$500')
     expect(fmtUsd(0)).toBe('$0')
+  })
+})
+
+describe('fmtUsdPerUnit', () => {
+  it('shows cents under a dollar rather than rounding a real cost to $0', () => {
+    expect(fmtUsdPerUnit(0.229)).toBe('$0.23')
+    expect(fmtUsdPerUnit(0.004)).toBe('$0.00')
+    expect(fmtUsdPerUnit(-0.5)).toBe('-$0.50')
+  })
+
+  it('matches fmtUsd at or above a dollar, and at exactly zero', () => {
+    expect(fmtUsdPerUnit(1)).toBe('$1')
+    expect(fmtUsdPerUnit(2.6)).toBe('$3')
+    expect(fmtUsdPerUnit(0)).toBe('$0')
   })
 })
 
