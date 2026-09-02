@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  MONEY_TRUTH_RUN, NO_SOURCE_TEXT, RUNWAY_REFUSAL, STRIPE_UNVERIFIED_BANNER,
-  TOKEN_PRICED_LABEL, UNVERIFIED_SUFFIX,
-  aggregateByDay, aggregateByWeek, billingDay, clientLabel, computeRunway,
+  MONEY_TRUTH_RUN, NO_PRESETTLE_TEXT, NO_SOURCE_TEXT, RUNWAY_REFUSAL, STRIPE_UNVERIFIED_BANNER,
+  TOKEN_PRICED_LABEL, UNATTRIBUTED_LANE, UNVERIFIED_SUFFIX,
+  aggregateByDay, aggregateByWeek, billingDay, clientLabel, computeRunway, dayRangeLabel,
   fetchActorDay, fetchCashConfig, fetchEngineCounterDay, fetchLaneDay,
   fetchMonthChargesAndInvoices, fetchMrrRows, fetchOpenMoneyDecisions,
-  fetchRenewalRiskRows, fetchStripeKeyExists, fmtUsd, fmtUsdPerUnit, isStale, isTokenPriced,
-  laneTotals, lastNDays, mrrByClient, noteReason, provenanceText, riskNoteKind,
+  fetchRenewalRiskRows, fetchStripeKeyExists, fmtShareOfTotal, fmtUsd, fmtUsdPerUnit, isStale, isTokenPriced,
+  laneTotals, laneTotalsGrandTotal, lastNDays, mrrByClient, noteReason, provenanceText, riskNoteKind,
   riskNoteText, taskTitle, topActors, type ActorDayRow, type ClientMrrRow,
-  type EngineCounterDayRow, type LaneDayRow, type MoneyLedgerRow,
+  type EngineCounterDayRow, type LaneDayRow, type LaneTotal, type MoneyLedgerRow,
   type MoneyTaskRow, type PeriodAgg,
 } from '../../lib/money'
 import { PullIndicator } from '../../components/PullIndicator'
@@ -173,7 +173,11 @@ function RiskSection({ rows, now }: { rows: MoneyLedgerRow[]; now: number }) {
                   <span className="wb-money-riskclient">{clientLabel(r.client_id)}</span>
                 </div>
                 <div className="wb-money-risktext">{riskNoteText(r.note ?? '')}</div>
-                <div className="wb-money-cp">{provenanceText(r, now)}</div>
+                {/* prose is a claim too: a verified=false row wears the same suffix a numeric cell does */}
+                <div className="wb-money-cp">
+                  {provenanceText(r, now)}
+                  {!r.verified && <span className="wb-money-unvtag"> · {UNVERIFIED_SUFFIX}</span>}
+                </div>
               </div>
             ))}
           </div>
@@ -228,7 +232,7 @@ function PeriodTable({ title, rows, now }: { title: string; rows: PeriodAgg[]; n
         <thead>
           <tr>
             <th>Period</th><th>Runs</th><th>Settled $</th><th>Presettle $</th>
-            <th>Engine-counter $</th><th>Delta ratio</th>
+            <th>RISE billed $</th><th>RISE engines claimed $</th><th>RISE delta</th>
           </tr>
         </thead>
         <tbody>
@@ -237,24 +241,26 @@ function PeriodTable({ title, rows, now }: { title: string; rows: PeriodAgg[]; n
               return (
                 <tr key="empty">
                   <td><NoSource /></td><td><NoSource /></td><td><NoSource /></td>
-                  <td><NoSource /></td><td><NoSource /></td><td><NoSource /></td>
+                  <td><NoSource /></td><td><NoSource /></td><td><NoSource /></td><td><NoSource /></td>
                 </tr>
               )
             }
             const laneSrc: Source = { source_kind: 'vs_lane_day_v', source_ref: p.period, observed_at: p.observedAt }
-            const engineSrc: Source = {
-              source_kind: 'engine_counter_day_v',
-              source_ref: p.period,
-              observed_at: p.claimedDay ? `${p.claimedDay}T00:00:00Z` : null,
-            }
+            const riseSrc: Source = { source_kind: 'vs_lane_day_v', source_ref: `${p.period} lane=risedtc`, observed_at: p.riseObservedAt }
+            const engineSrc: Source = { source_kind: 'engine_counter_day_v', source_ref: `${p.period} rise engines`, observed_at: p.riseClaimedObservedAt }
             return (
               <tr key={p.period ?? i}>
                 <td>{p.period}</td>
                 <td><DataCell value={String(p.runs)} source={laneSrc} now={now} /></td>
-                <td><DataCell value={fmtUsd(p.settledUsd)} source={laneSrc} now={now} /></td>
-                <td><DataCell value={fmtUsd(p.presettleUsd)} source={laneSrc} now={now} /></td>
-                <td><DataCell value={fmtUsd(p.claimedUsd)} source={engineSrc} now={now} /></td>
-                <td><DataCell value={p.deltaRatio} source={engineSrc} now={now} /></td>
+                <td><DataCell value={p.settledUsd === null ? null : fmtUsd(p.settledUsd)} source={laneSrc} now={now} /></td>
+                <td>
+                  {p.presettleUsd === null
+                    ? <span className="wb-money-nosource">{NO_PRESETTLE_TEXT}</span>
+                    : <DataCell value={fmtUsd(p.presettleUsd)} source={laneSrc} now={now} />}
+                </td>
+                <td><DataCell value={p.riseBilledUsd === null ? null : fmtUsdPerUnit(p.riseBilledUsd)} source={riseSrc} now={now} /></td>
+                <td><DataCell value={fmtUsdPerUnit(p.riseClaimedUsd)} source={engineSrc} now={now} /></td>
+                <td><DataCell value={p.riseDeltaRatio} source={engineSrc} now={now} /></td>
               </tr>
             )
           })}
@@ -269,7 +275,7 @@ function ActorTable({ rows, now }: { rows: ActorDayRow[]; now: number }) {
   const display = agg.length ? agg : [null]
   return (
     <div className="wb-money-twrap">
-      <div className="wb-money-tlabel">By actor, last 7 days (top 12)</div>
+      <div className="wb-money-tlabel">By actor, {dayRangeLabel(7, now)} (top 12)</div>
       <table className="wb-money-table">
         <thead><tr><th>Actor</th><th>Runs</th><th>$</th><th>$/run</th></tr></thead>
         <tbody>
@@ -285,8 +291,8 @@ function ActorTable({ rows, now }: { rows: ActorDayRow[]; now: number }) {
                   {isTokenPriced(a.vendor) && <div className="wb-money-note">{TOKEN_PRICED_LABEL}</div>}
                 </td>
                 <td><DataCell value={String(a.runs)} source={src} now={now} /></td>
-                <td><DataCell value={fmtUsd(a.usd)} source={src} now={now} /></td>
-                <td><DataCell value={fmtUsdPerUnit(a.usdPerRun)} source={src} now={now} /></td>
+                <td><DataCell value={a.usd === null ? null : fmtUsd(a.usd)} source={src} now={now} /></td>
+                <td><DataCell value={a.usdPerRun === null ? null : fmtUsdPerUnit(a.usdPerRun)} source={src} now={now} /></td>
               </tr>
             )
           })}
@@ -309,8 +315,12 @@ function VendorSpendSection({
   return (
     <>
       <SectionHead n="4" title="Vendor spend by actor" />
-      <PeriodTable title="Last 7 days" rows={byDay} now={now} />
+      <PeriodTable title={`Per day, ${dayRangeLabel(7, now)}`} rows={byDay} now={now} />
       <PeriodTable title="Last 4 ISO weeks" rows={byWeek} now={now} />
+      <div className="wb-money-note">
+        Ratio covers the RISE lane only: its engines are the ones that self-report a cost. Ivan's 09:00 lane and ARCH report nothing, so no ratio exists for them.
+        Claims are bucketed on the engine's log time (run end), bills on run start; a run crossing midnight lands a day apart.
+      </div>
       <ActorTable rows={lastNDays(actorDay, 7, now)} now={now} />
     </>
   )
@@ -321,31 +331,57 @@ function VendorSpendSection({
 function CostToServeSection({ laneDay, now }: { laneDay: LaneDayRow[]; now: number }) {
   const totals = laneTotals(laneDay)
   const ivan = totals.filter(t => t.lane === 'ivan')
-  const clients = totals.filter(t => t.lane !== 'ivan')
-  const row = (t: { lane: string; usd: number; runs: number; observedAt: string | null } | null, key: string) => {
+  const clients = totals.filter(t => t.lane !== 'ivan' && t.lane !== UNATTRIBUTED_LANE)
+  const unattributed = totals.filter(t => t.lane === UNATTRIBUTED_LANE)
+  const grand = laneTotalsGrandTotal(totals)
+  const grandSrc: Source = {
+    source_kind: 'vs_lane_day_v', source_ref: 'sum of every lane incl. unattributed',
+    observed_at: totals.reduce<string | null>((m, t) => (t.apifyObservedAt && (!m || t.apifyObservedAt > m) ? t.apifyObservedAt : m), null),
+  }
+  const cols = 5
+  const row = (t: LaneTotal | null, key: string, withShare = false) => {
     if (!t) {
-      return <tr key={key}><td><NoSource /></td><td><NoSource /></td><td><NoSource /></td></tr>
+      return <tr key={key}><td><NoSource /></td><td><NoSource /></td><td><NoSource /></td><td><NoSource /></td><td><NoSource /></td></tr>
     }
-    const src: Source = { source_kind: 'vs_lane_day_v', source_ref: t.lane, observed_at: t.observedAt }
+    const apifySrc: Source = { source_kind: 'vs_lane_day_v', source_ref: `${t.lane} vendor=apify`, observed_at: t.apifyObservedAt }
+    const anthSrc: Source = { source_kind: 'vs_lane_day_v', source_ref: `${t.lane} vendor=anthropic_api (client_api_usage, token-priced)`, observed_at: t.anthropicObservedAt }
+    const share = withShare ? fmtShareOfTotal(t.apifyUsd, grand.apifyUsd) : null
     return (
-      <tr key={t.lane}>
+      <tr key={key}>
         <td>{laneDisplay(t.lane)}</td>
-        <td><DataCell value={fmtUsd(t.usd)} source={src} now={now} /></td>
-        <td><DataCell value={String(t.runs)} source={src} now={now} /></td>
+        <td><DataCell value={t.apifyUsd === null ? null : fmtUsd(t.apifyUsd)} source={apifySrc} now={now} /></td>
+        <td><DataCell value={String(t.apifyRuns)} source={apifySrc} now={now} /></td>
+        <td><DataCell value={t.anthropicUsd === null ? null : fmtUsd(t.anthropicUsd)} source={t.anthropicUsd === null ? null : anthSrc} now={now} /></td>
+        <td>{withShare ? <DataCell value={share} source={grandSrc} now={now} /> : null}</td>
       </tr>
     )
   }
   return (
     <>
-      <SectionHead n="5" title="Cost to serve by client (30 days)" />
+      <SectionHead n="5" title={`Cost to serve by client, ${dayRangeLabel(30, now)}`} />
       <div className="wb-money-twrap">
         <table className="wb-money-table">
-          <thead><tr><th>Lane</th><th>$</th><th>Runs</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Lane</th><th>Apify (settled)</th><th>Apify runs</th>
+              <th>Anthropic API ({TOKEN_PRICED_LABEL})</th><th>Share of Apify total</th>
+            </tr>
+          </thead>
           <tbody>
-            <tr className="wb-money-ivanrow"><td colSpan={3}>Ivan (own lane)</td></tr>
+            <tr className="wb-money-ivanrow"><td colSpan={cols}>Ivan (own lane)</td></tr>
             {ivan.length ? ivan.map(t => row(t, t.lane)) : row(null, 'ivan-empty')}
-            <tr className="wb-money-clientrow"><td colSpan={3}>Client lanes</td></tr>
+            <tr className="wb-money-clientrow"><td colSpan={cols}>Client lanes</td></tr>
             {clients.length ? clients.map(t => row(t, t.lane)) : row(null, 'clients-empty')}
+            <tr className="wb-money-clientrow"><td colSpan={cols}>Unattributed (not a client)</td></tr>
+            {unattributed.length ? unattributed.map(t => row(t, t.lane, true)) : row(null, 'unattributed-empty')}
+            <tr className="wb-money-clientrow"><td colSpan={cols}>Total (lanes + unattributed)</td></tr>
+            <tr key="total">
+              <td>Total</td>
+              <td><DataCell value={grand.apifyUsd === null ? null : fmtUsd(grand.apifyUsd)} source={grandSrc} now={now} /></td>
+              <td><DataCell value={String(grand.apifyRuns)} source={grandSrc} now={now} /></td>
+              <td><DataCell value={grand.anthropicUsd === null ? null : fmtUsd(grand.anthropicUsd)} source={grand.anthropicUsd === null ? null : grandSrc} now={now} /></td>
+              <td />
+            </tr>
           </tbody>
         </table>
       </div>
@@ -508,7 +544,8 @@ export function MoneyView() {
   const now = Date.now()
 
   const laneDay30 = m.laneDay
-  const vendorSpend30dUsd = laneDay30.reduce((s, r) => s + r.usd_settled, 0)
+  // apify settled only; an unsettled row (NULL) is skipped, never counted as 0 spend and never as a floor
+  const vendorSpend30dUsd = laneDay30.reduce((s, r) => s + (r.vendor === 'apify' && r.usd_settled !== null ? r.usd_settled : 0), 0)
   // Runway only ever sums an amount row that both EXISTS and is verified — a
   // client whose only mrr rows are note-only (no amountRow) contributes 0,
   // same as an unverified amount row.

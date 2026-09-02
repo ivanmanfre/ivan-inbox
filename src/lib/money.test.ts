@@ -136,10 +136,11 @@ describe('fmtUsdPerUnit', () => {
     expect(fmtUsdPerUnit(-0.5)).toBe('-$0.50')
   })
 
-  it('matches fmtUsd at or above a dollar, and at exactly zero', () => {
-    expect(fmtUsdPerUnit(1)).toBe('$1')
-    expect(fmtUsdPerUnit(2.6)).toBe('$3')
-    expect(fmtUsdPerUnit(0)).toBe('$0')
+  it('keeps two decimals at every magnitude, never rounding a rate to whole dollars', () => {
+    expect(fmtUsdPerUnit(1)).toBe('$1.00')
+    expect(fmtUsdPerUnit(2.6)).toBe('$2.60')
+    expect(fmtUsdPerUnit(1.81)).toBe('$1.81')
+    expect(fmtUsdPerUnit(0)).toBe('$0.00')
   })
 })
 
