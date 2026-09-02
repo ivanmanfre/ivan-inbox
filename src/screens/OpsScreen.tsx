@@ -5,7 +5,7 @@ import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useOps } from '../hooks/useOps'
 import {
-  approveOpsDraft, approveWeeklyReport, blockedOps, canGenerateDraft, canTagCommenter, isCloseOnlyComment, claimingOps, discardOpsDraft, engineLabel, expiresIn, generateCommentDraft, likeComment, markCommentHandled, outboundApproveUrl, outboundSkipUrl, pendingOps, postCommentReply, seatLabel, sentOps,
+  approveOpsDraft, approveWeeklyReport, blockedOps, canGenerateDraft, canTagCommenter, isCloseOnlyComment, claimingOps, discardOpsDraft, DRAFT_CONTINUE_MAX, engineLabel, expiresIn, generateCommentDraft, likeComment, markCommentHandled, outboundApproveUrl, outboundSkipUrl, pendingOps, postCommentReply, seatLabel, sentOps,
   dispatchCommentGate, cardStateOf,
   completeTask, doneTodayTasks, dueLabel, isTaskKind, pendingTasks, taskDetails, taskDue, taskSource, taskTitle,
   type OpsDraft, type OpsKind, type GateVerdict, type FeedState,
@@ -598,13 +598,21 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
   }
 
   // No confirm sheet: nothing leaves the building, it fills the textarea above.
-  // Takes ~10s (three candidates, every gate on all of them), so the button
-  // carries the wait instead of a toast.
+  // Slow (three candidates, every gate on all of them, up to a minute or two per
+  // round), so the button carries the wait instead of a toast. When every candidate
+  // is refused the engine stamps its attempts on the card and answers
+  // `can_continue`; this presses again for Ivan, so one tap runs the whole
+  // reasoning loop and a refusal only reaches him once the rounds are spent.
   async function onGenerate() {
     setDrafting(true); setError(''); setRefusal([])
     try {
-      const out = await generateCommentDraft(draft.id)
+      let out = await generateCommentDraft(draft.id)
+      for (let n = 0; !out.drafted && out.can_continue && n < DRAFT_CONTINUE_MAX; n++) {
+        setRefusal([out.why?.[0] ?? 'Still working…'])
+        out = await generateCommentDraft(draft.id)
+      }
       if (out.drafted && out.draft) {
+        setRefusal([])
         setBody(out.draft)
         refresh()
       } else {
