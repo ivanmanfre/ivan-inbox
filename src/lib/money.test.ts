@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   RUNWAY_REFUSAL, aggregateByDay, aggregateByWeek, billingDay, clientLabel,
-  computeRunway, daysSince, deltaRatio, fmtUsd, fmtUsdPerUnit, isStale, isTokenPriced, isoWeekKey,
-  laneTotals, lastNDays, latestPerClient, mrrByClient, noteReason, provenanceText,
-  relAge, riskNoteKind, riskNoteText, topActors, type ActorDayRow,
+  computeRunway, dayRangeLabel, daysSince, deltaRatio, fmtShareOfTotal, fmtUsd,
+  fmtUsdPerUnit, isStale, isTokenPriced, isoWeekKey, laneTotals, laneTotalsGrandTotal,
+  lastNDays, latestPerClient, mrrByClient, noteReason, provenanceText,
+  relAge, riskNoteKind, riskNoteText, shareOfTotalPct, topActors, type ActorDayRow,
   type EngineCounterDayRow, type LaneDayRow, type MoneyLedgerRow,
 } from './money'
 
@@ -248,29 +249,42 @@ function laneRow(over: Partial<LaneDayRow>): LaneDayRow {
   }
 }
 function engineRow(over: Partial<EngineCounterDayRow>): EngineCounterDayRow {
-  return { day: '2026-09-01', action_type: 'scrape', runs: 10, apify_usd_claimed: 1, ...over }
+  return {
+    day: '2026-09-01', action_type: 'rise_engager_run', runs: 10, apify_usd_claimed: 1,
+    observed_at: '2026-09-01T00:00:00Z', ...over,
+  }
 }
 
 describe('aggregateByDay / aggregateByWeek', () => {
-  it('sums runs and settled/presettle usd per day and computes the delta ratio', () => {
+  it('sums apify-only runs/settled/presettle across every lane, and rates the RISE lane alone', () => {
     const lane = [
-      laneRow({ day: '2026-09-01', usd_settled: 10, usd_presettle: 12, runs: 5 }),
-      laneRow({ day: '2026-09-01', usd_settled: 5, usd_presettle: 6, runs: 3 }),
-      laneRow({ day: '2026-08-31', usd_settled: 20, usd_presettle: 22, runs: 4 }),
+      laneRow({ day: '2026-09-01', lane: 'risedtc', vendor: 'apify', usd_settled: 10, usd_presettle: 12, runs: 5 }),
+      laneRow({ day: '2026-09-01', lane: 'risedtc', vendor: 'apify', usd_settled: 5, usd_presettle: 6, runs: 3 }),
+      laneRow({ day: '2026-09-01', lane: 'ivan', vendor: 'apify', usd_settled: 3, usd_presettle: 4, runs: 2 }),
+      // A token aggregate, not a run — must not leak into runs/settled/presettle at all.
+      laneRow({ day: '2026-09-01', lane: 'risedtc', vendor: 'anthropic_api', usd_settled: null, usd_presettle: 999, runs: 999 }),
+      laneRow({ day: '2026-08-31', lane: 'risedtc', vendor: 'apify', usd_settled: 20, usd_presettle: 22, runs: 4 }),
     ]
-    const engine = [engineRow({ day: '2026-09-01', apify_usd_claimed: 0.5 })]
+    const engine = [
+      engineRow({ day: '2026-09-01', action_type: 'rise_engager_run', apify_usd_claimed: 0.5 }),
+      // Not one of the three RISE action types — must be excluded from riseClaimedUsd.
+      engineRow({ day: '2026-09-01', action_type: 'some_other_engine_run', apify_usd_claimed: 100 }),
+    ]
     const out = aggregateByDay(lane, engine)
-    expect(out[0]).toMatchObject({ period: '2026-09-01', runs: 8, settledUsd: 15, presettleUsd: 18, claimedUsd: 0.5 })
-    expect(out[0].deltaRatio).toBe('30.0×')
-    expect(out[1]).toMatchObject({ period: '2026-08-31', runs: 4, settledUsd: 20, claimedUsd: 0 })
-    expect(out[1].deltaRatio).toBe('∞ (engines claimed $0)')
+    expect(out[0]).toMatchObject({
+      period: '2026-09-01', runs: 10, settledUsd: 18, presettleUsd: 22,
+      riseBilledUsd: 15, riseClaimedUsd: 0.5,
+    })
+    expect(out[0].riseDeltaRatio).toBe('30.0×')
+    expect(out[1]).toMatchObject({ period: '2026-08-31', runs: 4, settledUsd: 20, riseBilledUsd: 20, riseClaimedUsd: 0 })
+    expect(out[1].riseDeltaRatio).toBe('∞ (engines claimed $0)')
   })
 
-  it('rolls up into ISO weeks', () => {
+  it('rolls up into ISO weeks, apify-only', () => {
     const lane = [
-      laneRow({ day: '2026-08-31', usd_settled: 10 }), // W36
-      laneRow({ day: '2026-09-01', usd_settled: 5 }),  // W36
-      laneRow({ day: '2026-08-24', usd_settled: 7 }),  // W35
+      laneRow({ day: '2026-08-31', lane: 'risedtc', vendor: 'apify', usd_settled: 10 }), // W36
+      laneRow({ day: '2026-09-01', lane: 'risedtc', vendor: 'apify', usd_settled: 5 }),  // W36
+      laneRow({ day: '2026-08-24', lane: 'risedtc', vendor: 'apify', usd_settled: 7 }),  // W35
     ]
     const out = aggregateByWeek(lane, [])
     const w36 = out.find(p => p.period === '2026-W36')
@@ -278,12 +292,85 @@ describe('aggregateByDay / aggregateByWeek', () => {
     expect(w36?.settledUsd).toBe(15)
     expect(w35?.settledUsd).toBe(7)
   })
+
+  it('renders presettleUsd as null, never 0, when every contributing row has a null presettle', () => {
+    const lane = [
+      laneRow({ day: '2026-09-01', lane: 'ivan', vendor: 'apify', usd_presettle: null, usd_settled: 5, runs: 1 }),
+    ]
+    const out = aggregateByDay(lane, [])
+    expect(out[0].presettleUsd).toBeNull()
+    expect(out[0].settledUsd).toBe(5)
+  })
+
+  it('reports riseBilledUsd (and riseDeltaRatio) as null, not 0, when RISE has no apify rows that period', () => {
+    const lane = [laneRow({ day: '2026-09-01', lane: 'ivan', vendor: 'apify', usd_settled: 5 })]
+    const engine = [engineRow({ day: '2026-09-01', action_type: 'gold_harvester_run', apify_usd_claimed: 2 })]
+    const out = aggregateByDay(lane, engine)
+    expect(out[0].riseBilledUsd).toBeNull()
+    expect(out[0].riseDeltaRatio).toBeNull()
+    expect(out[0].riseClaimedUsd).toBe(2)
+  })
+
+  it('reads riseClaimedObservedAt from the view\'s own observed_at, not a bucket-date guess', () => {
+    const lane = [laneRow({ day: '2026-09-01', lane: 'risedtc', vendor: 'apify', usd_settled: 5 })]
+    const engine = [engineRow({ day: '2026-09-01', action_type: 'rise_cold_run', apify_usd_claimed: 1, observed_at: '2026-09-02T03:00:00Z' })]
+    const out = aggregateByDay(lane, engine)
+    expect(out[0].riseClaimedObservedAt).toBe('2026-09-02T03:00:00Z')
+  })
 })
 
-describe('lastNDays', () => {
+describe('lastNDays — exact N-day windows (account-wide skeptic W1)', () => {
   it('keeps only rows within the window', () => {
     const rows = [{ day: '2026-09-01' }, { day: '2026-08-20' }]
     expect(lastNDays(rows, 7, NOW)).toEqual([{ day: '2026-09-01' }])
+  })
+
+  it('"last 7 days" covers exactly 7 distinct calendar dates, not 8', () => {
+    // NOW is 2026-09-01T12:00:00Z (mid-day, not midnight — the case that
+    // exposed the bug: truncating `now - 7*DAY_MS` to a date landed on
+    // 2026-08-25, an 8-date span from 08-25 through 09-01 inclusive).
+    const eightDays = [
+      '2026-09-01', '2026-08-31', '2026-08-30', '2026-08-29',
+      '2026-08-28', '2026-08-27', '2026-08-26', '2026-08-25',
+    ].map(day => ({ day }))
+    const out = lastNDays(eightDays, 7, NOW)
+    expect(out.map(r => r.day)).toEqual([
+      '2026-09-01', '2026-08-31', '2026-08-30', '2026-08-29', '2026-08-28', '2026-08-27', '2026-08-26',
+    ])
+    expect(out).toHaveLength(7)
+    expect(out.some(r => r.day === '2026-08-25')).toBe(false)
+  })
+
+  it('"last 30 days" covers exactly 30 distinct calendar dates, not 31', () => {
+    const days = Array.from({ length: 32 }, (_, i) => {
+      const d = new Date(NOW - i * 86_400_000)
+      return { day: d.toISOString().slice(0, 10) }
+    })
+    const out = lastNDays(days, 30, NOW)
+    expect(out).toHaveLength(30)
+  })
+})
+
+describe('dayRangeLabel', () => {
+  it('states the exact span a "last N days" filter covers', () => {
+    expect(dayRangeLabel(7, NOW)).toBe('2026-08-26 → 2026-09-01')
+    expect(dayRangeLabel(1, NOW)).toBe('2026-09-01 → 2026-09-01')
+  })
+})
+
+describe('the per-day table and the by-actor table cover the same days', () => {
+  it('aggregateByDay, fed the same lastNDays(7) filter as the actor table, produces exactly the days lastNDays(actorRows,7) kept', () => {
+    const laneRows = Array.from({ length: 10 }, (_, i) => {
+      const d = new Date(NOW - i * 86_400_000).toISOString().slice(0, 10)
+      return laneRow({ day: d, vendor: 'apify', usd_settled: 1, runs: 1 })
+    })
+    const actorRows: ActorDayRow[] = laneRows.map(r => ({ ...r, actor_or_service: 'some-actor' }))
+    const filteredLane = lastNDays(laneRows, 7, NOW)
+    const filteredActors = lastNDays(actorRows, 7, NOW)
+    const periods = aggregateByDay(filteredLane, []).map(p => p.period).sort()
+    const actorDays = [...new Set(filteredActors.map(r => r.day))].sort()
+    expect(periods).toEqual(actorDays)
+    expect(periods).toHaveLength(7)
   })
 })
 
@@ -307,17 +394,68 @@ describe('topActors', () => {
     expect(out[0]).toMatchObject({ actor: 'claude-api', vendor: 'anthropic_api' })
     expect(isTokenPriced(out[0].vendor)).toBe(true)
   })
+
+  it('falls back to the presettle estimate when usd_settled is null (anthropic_api never settles)', () => {
+    const rows: ActorDayRow[] = [
+      { ...laneRow({ vendor: 'anthropic_api', usd_settled: null, usd_presettle: 3.5 }), actor_or_service: 'claude-api', runs: 100 },
+    ]
+    const out = topActors(rows)
+    expect(out[0]).toMatchObject({ usd: 3.5, usdPerRun: 0.035 })
+  })
+
+  it('renders usd (and usdPerRun) as null, not 0, when nothing usable was ever reported', () => {
+    const rows: ActorDayRow[] = [
+      { ...laneRow({ usd_settled: null, usd_presettle: null }), actor_or_service: 'ghost-actor', runs: 5 },
+    ]
+    const out = topActors(rows)
+    expect(out[0].usd).toBeNull()
+    expect(out[0].usdPerRun).toBeNull()
+  })
 })
 
 describe('laneTotals', () => {
-  it('sums settled usd and runs per lane', () => {
+  it('splits apify (settled) and anthropic (token-priced presettle) into separate columns per lane', () => {
     const rows = [
-      laneRow({ lane: 'ivan', usd_settled: 10, runs: 3 }),
-      laneRow({ lane: 'ivan', usd_settled: 5, runs: 2 }),
-      laneRow({ lane: 'risedtc', usd_settled: 100, runs: 40 }),
+      laneRow({ lane: 'ivan', vendor: 'apify', usd_settled: 10, runs: 3 }),
+      laneRow({ lane: 'ivan', vendor: 'apify', usd_settled: 5, runs: 2 }),
+      laneRow({ lane: 'ivan', vendor: 'anthropic_api', usd_presettle: 1.2, usd_settled: null }),
+      laneRow({ lane: 'risedtc', vendor: 'apify', usd_settled: 100, runs: 40 }),
     ]
     const out = laneTotals(rows)
-    expect(out.find(l => l.lane === 'ivan')).toMatchObject({ usd: 15, runs: 5 })
-    expect(out.find(l => l.lane === 'risedtc')).toMatchObject({ usd: 100, runs: 40 })
+    expect(out.find(l => l.lane === 'ivan')).toMatchObject({ apifyUsd: 15, apifyRuns: 5, anthropicUsd: 1.2 })
+    expect(out.find(l => l.lane === 'risedtc')).toMatchObject({ apifyUsd: 100, apifyRuns: 40, anthropicUsd: null })
+  })
+})
+
+describe('laneTotalsGrandTotal — the row Section 5 checks every bucket against', () => {
+  it('sums apify $, runs, and anthropic $ across every lane, unattributed included', () => {
+    const totals = [
+      { lane: 'ivan', apifyUsd: 100, apifyRuns: 10, apifyObservedAt: null, anthropicUsd: 2, anthropicObservedAt: null },
+      { lane: 'risedtc', apifyUsd: 500, apifyRuns: 40, apifyObservedAt: null, anthropicUsd: null, anthropicObservedAt: null },
+      { lane: 'unattributed', apifyUsd: 183, apifyRuns: 5, apifyObservedAt: null, anthropicUsd: null, anthropicObservedAt: null },
+    ]
+    expect(laneTotalsGrandTotal(totals)).toEqual({ apifyUsd: 783, apifyRuns: 55, anthropicUsd: 2 })
+  })
+
+  it('renders apifyUsd/anthropicUsd as null, not 0, when not one lane has a source', () => {
+    const totals = [
+      { lane: 'ivan', apifyUsd: null, apifyRuns: 0, apifyObservedAt: null, anthropicUsd: null, anthropicObservedAt: null },
+    ]
+    expect(laneTotalsGrandTotal(totals)).toEqual({ apifyUsd: null, apifyRuns: 0, anthropicUsd: null })
+  })
+})
+
+describe('shareOfTotalPct / fmtShareOfTotal', () => {
+  it('computes a share and states the base it was computed from', () => {
+    expect(shareOfTotalPct(73, 783)).toBeCloseTo(9.323, 2)
+    expect(fmtShareOfTotal(73, 783)).toBe('9.3% of $783')
+  })
+
+  it('refuses rather than fabricating a share when the part, the total, or the total itself is missing/zero', () => {
+    expect(shareOfTotalPct(null, 783)).toBeNull()
+    expect(shareOfTotalPct(73, null)).toBeNull()
+    expect(shareOfTotalPct(73, 0)).toBeNull()
+    expect(fmtShareOfTotal(null, 783)).toBeNull()
+    expect(fmtShareOfTotal(73, 0)).toBeNull()
   })
 })
