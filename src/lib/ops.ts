@@ -467,11 +467,23 @@ export function isCloseOnlyComment(d: OpsDraft, editorBody: string): boolean {
 export type GeneratedDraft = {
   drafted: boolean
   draft?: string
-  // Why the engine refused: the named gate violations, or "he already answered".
+  // Why the engine refused, in plain lines, or "he already answered".
   why?: string[]
   reason?: string
   category_auto_eligible?: boolean
+  // The engine keeps its refused candidates on the card and reasons from them on
+  // the next call (rise-comment-draft, 2026-09-02). True = another round is owed.
+  can_continue?: boolean
+  rounds?: number
+  closest?: string | null
 }
+
+// How many continuation calls one press of the button makes on its own. Each call
+// runs as many stages (generate, QA, reason again) as fit its clock — one model
+// call takes ~60s through the proxy today, so a call is usually one or two stages
+// and a full two-round rethink is up to six. The button never gives up before the
+// engine has spent its rounds.
+export const DRAFT_CONTINUE_MAX = 6
 
 // Runs the SAME drafter the pipeline runs (same content_prompts rows, same
 // exemplars, same RAG corpus, same gates), for one card, now. It writes the body
