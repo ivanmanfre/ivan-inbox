@@ -171,11 +171,14 @@ Deno.serve(async (req) => {
       if (typeof groundedOn === 'string' && groundedOn) tPatch.grounded_summary_date = groundedOn
     }
     // The broker expected a resume and the container started fresh under the same
-    // id. The envelope it just skipped never arrived, so the session is new: reset
+    // id. The envelope it just skipped never arrived, so the session is new: clear
     // the clock and count it, which is the signal the broker keys off next turn.
+    // null, not nowIso: a timestamp here tells the broker the container already
+    // holds the envelope, so every later turn skips it too and the thread stays
+    // amnesiac. Clearing it makes the broker re-send the envelope once.
     if (row.resumed === true && p.resumed === false) {
       tPatch.session_reset_count = (thread.session_reset_count ?? 0) + 1
-      tPatch.session_started_at = nowIso
+      tPatch.session_started_at = null
     }
     await db.from('inbox_threads').update(tPatch).eq('id', row.thread_id)
   }
