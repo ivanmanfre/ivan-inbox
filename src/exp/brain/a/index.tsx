@@ -1,9 +1,14 @@
 import type { BrainCandidate } from '../types'
-import { Placeholder } from '../placeholder'
+import { BrainMobile } from './Mobile'
+import { BrainAskPane } from './AskPane'
+import './brain-a.css'
 
-// Candidate a. Replaced wholesale by the Phase 2 builder that OWNS this folder.
+// Candidate a — "Thread first, feed as a dense ledger." Ask is the calm home;
+// the feed is a scannable ledger one tap or one swipe away. See NOTES.md in
+// goal-runs/inbox-brain-app-2026-09-04-out/02-candidates/a/ for the design
+// thesis, the family->card map and the motion list.
 export const candidate: BrainCandidate = {
   id: 'a',
-  Mobile: (p) => <Placeholder id="a" part="Mobile" workSurface={p.workSurface} windows={p.windows} />,
-  AskPane: () => <Placeholder id="a" part="AskPane" />,
+  Mobile: BrainMobile,
+  AskPane: BrainAskPane,
 }

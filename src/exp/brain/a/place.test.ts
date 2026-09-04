@@ -33,7 +33,6 @@ describe('place', () => {
   })
 
   it('never throws when localStorage is unavailable', () => {
-    // @ts-expect-error — simulating a private-mode / quota environment
     delete (globalThis as { localStorage?: unknown }).localStorage
     expect(() => writePlace('ask')).not.toThrow()
     expect(readPlace()).toBeNull()
