@@ -25,7 +25,7 @@ export const FILTERS: { key: FilterKey; label: string }[] = [
 ]
 
 export type StreamEntry =
-  | { kind: 'turn'; key: string; at: string; turn: Turn }
+  | { kind: 'turn'; key: string; at: string; turn: StreamTurn }
   | { kind: 'notification'; key: string; at: string; group: NotificationGroup }
   | { kind: 'quiet'; key: string; at: string; count: number; groups: NotificationGroup[] }
 
@@ -91,6 +91,11 @@ export function mergeStream(
 
   entries.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0))
   return entries
+}
+
+/** How many raw rows are unread, for the Stream tab's own badge. */
+export function unreadCount(notifications: Notification[]): number {
+  return notifications.filter(n => !n.read_at).length
 }
 
 /**
