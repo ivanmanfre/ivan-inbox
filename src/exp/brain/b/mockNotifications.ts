@@ -2,14 +2,13 @@
 // in the same idiom v2c/mock.ts already uses for `wbmock=chat:...` (a query
 // flag, read once, invisible unless someone asks for it by name).
 //
-// Why this exists: the brief's evidence list requires `feed` and
-// `feed-grouped` screenshots that show real card shapes for the 17 families,
-// and the only two permitted live writes this run are a test turn and
-// read_at/dismissed_at — creating live notification rows to pose for a
-// screenshot is not one of them. So the fixture stands in, and it is built
-// from the SAME verbatim bodies in 00-notification-families.md (trimmed),
-// not invented copy — the state-word extractor and the card renderer are
-// being judged on real corpus text either way.
+// Why this exists: an offline surface for developing the feed without touching
+// live rows. It is NOT what the Phase 3 evidence is shot against any more —
+// `03-build/b/scripts/seed-feed.mjs` writes one real row per family through
+// `inbox-notify` and `shots/feed.png` is the live table. The fixture stays
+// because it is the only way to render all seventeen shapes at once with no
+// network, and every body in it is a trimmed verbatim example from
+// 00-notification-families.md, not invented copy.
 
 import type { Notification } from '../../../lib/turns'
 
@@ -137,6 +136,16 @@ export function mockNotificationRows(): Notification[] {
       title: 'Take your TRT', ageMin: 800,
       body: '⏰ Reminder: Take your TRT 💉',
       url: null,
+    }),
+    row({
+      // The family this app writes about itself, and the majority of the live
+      // feed. `title` is the PROMPT, `body` is the ANSWER: that is the way
+      // inbox-turn-run fills the row, and the card reads them in that order.
+      family: 'claude_turn', severity: 'info', tenant: null, count: 2,
+      title: 'What is waiting on me right now?',
+      body: 'Three reply drafts are waiting on you, and one seat needs reconnecting before the RISE lane can send again.',
+      url: './#exp/v2/ask?thread=8f1d1b7c-2f6a-4a1e-9a2b-1c6f3d4e5a6b&turn=1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d',
+      ageMin: 7,
     }),
   ]
 }
