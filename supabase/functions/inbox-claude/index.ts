@@ -311,6 +311,21 @@ Deno.serve(async (req) => {
     if (tErr) return fail(500, 'thread_lookup_failed', origin, tErr.message.slice(0, 200))
     if (!t || t.user_id !== user.id) return fail(404, 'thread_not_found', origin)
     thread = t
+    // ONE TURN AT A TIME PER SESSION. Measured on the container 2026-09-04: two
+    // runs overlapping on one session_id lost the first run's assistant reply from
+    // the transcript entirely. The CLI serialises nothing; this check is what does.
+    // A turn the client already stopped (aborted) or one the sweep gave up on is
+    // not "running" and does not block.
+    const { data: busy } = await db
+      .from('inbox_turns')
+      .select('id, started_at')
+      .eq('thread_id', thread.id)
+      .in('status', ['queued', 'running'])
+      .limit(1)
+    if (busy && busy.length) {
+      return fail(409, 'thread_busy', origin,
+        `turn ${busy[0].id} is still running on this thread; wait for it or start a new thread`)
+    }
   } else {
     const { data: t, error: tErr } = await db
       .from('inbox_threads')
