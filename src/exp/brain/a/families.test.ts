@@ -2,18 +2,20 @@ import { describe, expect, it } from 'vitest'
 import { FAMILIES, FAMILY_KEYS, familyLabel, familyLane, familyLaneLabel } from './families'
 
 // The 17 real families from the 30-day inventory, plus `chat` (not a
-// notification, kept so a stray row never prints its raw key).
+// notification, kept so a stray row never prints its raw key) and
+// `claude_turn` (inbox-turn-run's own "a turn finished while you were away"
+// push, a real row family this app receives but not one of the 17).
 const EXPECTED_KEYS = [
   'reply_draft_pending', 'system_infra_alarm', 'outreach_engine_ops',
   'post_generation_failed', 'content_board_activity', 'health_reminder',
   'content_sourcing_pipeline', 'system_watchdog_digest', 'inbound_reply_notice',
   'reporting_digest', 'scan_quality_alert', 'comment_engagement_notice',
   'booking_notice', 'arch_build_progress', 'seat_health',
-  'draft_generation_error', 'send_failed_alert', 'chat',
+  'draft_generation_error', 'send_failed_alert', 'chat', 'claude_turn',
 ]
 
 describe('FAMILIES', () => {
-  it('covers exactly the 17 families plus chat, no more, no less', () => {
+  it('covers exactly the 17 families plus chat and claude_turn, no more, no less', () => {
     expect(FAMILY_KEYS.sort()).toEqual([...EXPECTED_KEYS].sort())
   })
 
@@ -42,8 +44,12 @@ describe('familyLabel', () => {
     expect(familyLabel('reply_draft_pending')).toBe('Reply waiting on you')
   })
 
-  it('humanises an unknown key rather than printing raw snake_case', () => {
-    expect(familyLabel('some_new_family')).toBe('Some New Family')
+  it('humanises an unknown key as a calm sentence, never shouted title case', () => {
+    expect(familyLabel('some_new_family')).toBe('Some new family')
+  })
+
+  it('claude_turn reads as a human sentence, never the raw token', () => {
+    expect(familyLabel('claude_turn')).toBe('Claude answered')
   })
 })
 
