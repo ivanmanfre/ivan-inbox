@@ -17,7 +17,7 @@ export type BootTarget = { thread?: string; turn?: string; feed?: boolean }
 /**
  * The stream itself: filter chips, the quiet toggle, the interleaved column,
  * and the composer docked underneath it. Shared verbatim between the phone
- * entry and the desktop Ask pane — the thesis's "same column, either place".
+ * entry and the desktop Ask pane, the thesis's "same column, either place".
  */
 export function StreamList({ chat, about, boot, onNavigateJob, onBootConsumed, notif }: {
   chat: ChatHandle
@@ -78,7 +78,7 @@ export function StreamList({ chat, about, boot, onNavigateJob, onBootConsumed, n
   // Mark-read ON VIEW: a card that scrolls past the middle of the column for
   // half a second is read the same way scrolling past it in a paper inbox
   // would be. Chosen over mark-on-tap because the whole point of one stream is
-  // that reading IS the morning pass — a policy that only marked read on tap
+  // that reading IS the morning pass, a policy that only marked read on tap
   // would leave every card he merely scrolled past forever unread.
   useEffect(() => {
     const el = scrollerRef.current
@@ -128,7 +128,7 @@ export function StreamList({ chat, about, boot, onNavigateJob, onBootConsumed, n
   // Which turn is genuinely open right now. `Turn.status` on the client-
   // optimistic entry is set to 'running' the moment send() fires and is never
   // corrected back afterward on the sending tab (only a fresh hydrate rebuilds
-  // it from the row) — so "open" is derived from the array shape and the live
+  // it from the row), so "open" is derived from the array shape and the live
   // flags, never trusted off the stale per-turn status alone.
   const rawLast = turns[turns.length - 1]
   const openTurnId = rawLast && rawLast.role === 'user' && (chat.busy || chat.runningElsewhere)

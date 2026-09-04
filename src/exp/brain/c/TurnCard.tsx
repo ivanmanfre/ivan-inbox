@@ -9,7 +9,7 @@ import type { ChatHandle } from '../../v2c/useChat'
 
 // One bubble in the column, either a user "ask" or Claude's answer. This is the
 // candidate's own wrapper around the shared ChatTurn renderer (imported, not
-// forked) — it adds the brain-visibility footer (sources chip, recall chips)
+// forked), it adds the brain-visibility footer (sources chip, recall chips)
 // and overrides the one case ChatTurn's shared copy table cannot know:
 // `thread_busy`, minted after that table shipped.
 export function TurnCard({ turn, chat, openTurnId, isLastAssistant }: {
@@ -41,7 +41,7 @@ export function TurnCard({ turn, chat, openTurnId, isLastAssistant }: {
   }
 
   // Assistant turn. thread_busy is a code the shared copy table (lib/claude.ts)
-  // predates, so it resolves to "Claude failed for an unrecognised reason." —
+  // predates, so it resolves to "Claude failed for an unrecognised reason." ,
   // wrong: the thread is not broken, it is queued behind another turn. Clone
   // with the right words and retryable:false, which is also what suppresses
   // ChatTurn's own Retry button (it only renders when error.retryable is true).

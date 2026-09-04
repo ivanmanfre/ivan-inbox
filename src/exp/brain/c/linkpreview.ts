@@ -1,4 +1,4 @@
-// linkpreview.ts — pure mapping from an unfurl() result to what a link-preview
+// linkpreview.ts, pure mapping from an unfurl() result to what a link-preview
 // card renders. Kept separate from the component so the per-kind field choices
 // (a YouTube card reads `author` as the channel, an OG card reads `site`) are
 // asserted without mounting anything.
@@ -7,7 +7,7 @@ import type { UnfurlResult } from '../../../lib/unfurl'
 export type LinkCardModel = {
   kind: 'youtube' | 'linkedin' | 'instagram' | 'og' | 'blocked'
   title: string
-  /** Channel, author or site — whichever the source actually has. */
+  /** Channel, author or site, whichever the source actually has. */
   subtitle: string | null
   image: string | null
   ratio: '16:9' | 'square' | null
@@ -15,7 +15,7 @@ export type LinkCardModel = {
 
 /**
  * Instagram's honest-failure card ("Instagram gave nothing back") is its own
- * named state rather than the generic "no preview" line — the spec calls it out
+ * named state rather than the generic "no preview" line, the spec calls it out
  * by name because Instagram is the one source that regularly refuses a
  * logged-out fetch, and saying so is more honest than a blank card.
  */

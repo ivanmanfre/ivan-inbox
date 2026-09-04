@@ -8,7 +8,7 @@ type Attachment = { name: string; kind: 'image' | 'pdf'; url: string }
 
 /**
  * The one composer, docked at the bottom of the stream on the phone and inside
- * the desktop pane — the thesis's "always docked" half. Text, dictation, one
+ * the desktop pane, the thesis's "always docked" half. Text, dictation, one
  * client-side attachment, and the link preview that also freezes into the sent
  * turn once it lands.
  */
@@ -49,7 +49,7 @@ export function Composer({ chat, about, onStop, busy }: {
     if (busy) return
     const body = text.trim()
     if (!body && !attachment) return
-    // The file itself never leaves this phone this run — the send names it in
+    // The file itself never leaves this phone this run, the send names it in
     // plain words instead of pretending a byte moved.
     const withAttachment = attachment
       ? `${body}${body ? '\n\n' : ''}(attached: ${attachment.name}, stays on this phone for now)`

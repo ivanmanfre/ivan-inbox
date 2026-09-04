@@ -28,7 +28,7 @@ function note(over: Partial<Notification>): Notification {
   }
 }
 
-describe('mergeStream — interleave by time', () => {
+describe('mergeStream, interleave by time', () => {
   it('orders turns and notifications oldest first, newest at the bottom', () => {
     const turns = [turn('a', '2026-09-04T10:00:00Z'), turn('c', '2026-09-04T10:10:00Z')]
     const notes = [note({ id: 'n1', last_seen_at: '2026-09-04T10:05:00Z' })]
@@ -47,7 +47,7 @@ describe('mergeStream — interleave by time', () => {
   })
 })
 
-describe('mergeStream — repeat folding', () => {
+describe('mergeStream, repeat folding', () => {
   it('folds repeats of the same family+shape into one notification group card', () => {
     const notes = [
       note({ id: 'n1', title: '3 drafts waiting', last_seen_at: '2026-09-04T10:00:00Z' }),
@@ -63,7 +63,7 @@ describe('mergeStream — repeat folding', () => {
   })
 })
 
-describe('mergeStream — filters', () => {
+describe('mergeStream, filters', () => {
   const turns = [turn('a', '2026-09-04T10:00:00Z')]
   const notes = [
     note({ id: 'needs', family: 'reply_draft_pending', severity: 'attention', last_seen_at: '2026-09-04T10:01:00Z' }),
@@ -99,7 +99,7 @@ describe('mergeStream — filters', () => {
   })
 })
 
-describe('mergeStream — quiet fold', () => {
+describe('mergeStream, quiet fold', () => {
   it('folds only info-severity, quiet-eligible families into one row', () => {
     const notes = [
       note({ id: 'a', family: 'health_reminder', severity: 'info', last_seen_at: '2026-09-04T10:00:00Z' }),

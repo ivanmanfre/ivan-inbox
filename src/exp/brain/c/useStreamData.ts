@@ -1,10 +1,10 @@
-// useStreamData.ts — the non-pure wiring around the pure functions in
+// useStreamData.ts, the non-pure wiring around the pure functions in
 // stream.ts/turnAugment.ts: notification polling (mount, visibilitychange, SW
 // push message), the two permitted writes (read_at / dismissed_at), and the
 // per-turn row lookup that gives turns a real timestamp and error_code.
 //
 // Everything that can be pure already is (stream.ts, turnAugment.ts,
-// families.ts) — this file is only the effects those pure functions need to run
+// families.ts), this file is only the effects those pure functions need to run
 // against real data.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Turn } from '../../v2c/chat/events'
@@ -13,7 +13,14 @@ import {
   dismissGroup, dismissNotification, listNotifications, listTurns, markNotificationsRead,
   type Notification,
 } from '../../../lib/turns'
+import { mockFlag } from '../../v2c/mock'
+import { DEMO_NOTIFICATIONS } from './demoNotifications'
 import { augmentTurns, type AugmentedTurn, type TurnRowMeta } from './turnAugment'
+
+// `?wbmock=notif:demo` — see demoNotifications.ts for why this exists: the
+// live table is real but young, and holds none of the 17 measured families
+// yet. Read once, same idiom as every other wbmock lever in this app.
+const NOTIF_DEMO = mockFlag('notif') === 'demo'
 
 // ---------- persisted, whitelisted enum state (the today.ts idiom) ----------
 
@@ -60,6 +67,12 @@ export function useNotifications() {
   const alive = useRef(true)
 
   const load = useCallback(async () => {
+    if (NOTIF_DEMO) {
+      setRows(DEMO_NOTIFICATIONS)
+      setLoadedAt(new Date().toISOString())
+      setError(null)
+      return
+    }
     try {
       const data = await listNotifications({ limit: 200 })
       if (!alive.current) return
@@ -78,7 +91,7 @@ export function useNotifications() {
     const onVisible = () => { if (document.visibilityState === 'visible') void load() }
     document.addEventListener('visibilitychange', onVisible)
     // The service worker's own push handler posts {type:'push'} back to every
-    // open client so a tab that never left the foreground still refetches —
+    // open client so a tab that never left the foreground still refetches ,
     // D4 chose polling over realtime specifically because push is the wake
     // signal on a phone; this is that wake signal reaching the open tab.
     let onSw: ((e: MessageEvent) => void) | null = null
@@ -95,11 +108,15 @@ export function useNotifications() {
 
   const dismissOne = useCallback(async (id: string) => {
     setRows(rs => rs.filter(r => r.id !== id))
+    // Demo rows are not real ids; a PATCH against them would be a live write
+    // with no row behind it. Local-only, same as every other demo path here.
+    if (NOTIF_DEMO) return
     try { await dismissNotification(id) } catch { void load() }
   }, [load])
 
   const dismissMany = useCallback(async (ids: string[], groupKey: string | null) => {
     setRows(rs => rs.filter(r => !ids.includes(r.id)))
+    if (NOTIF_DEMO) return
     try {
       if (groupKey) await dismissGroup(groupKey)
       else await Promise.all(ids.map(id => dismissNotification(id)))
@@ -111,6 +128,7 @@ export function useNotifications() {
     if (unread.length === 0) return
     const now = new Date().toISOString()
     setRows(rs => rs.map(r => (unread.includes(r.id) && !r.read_at ? { ...r, read_at: now } : r)))
+    if (NOTIF_DEMO) return
     try { await markNotificationsRead(unread) } catch { /* the next load reconciles */ }
   }, [])
 
