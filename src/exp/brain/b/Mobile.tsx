@@ -124,7 +124,8 @@ export function Mobile(p: BrainMobileProps) {
   }
 
   // The live transform for the sheet while a finger is on it. Null hands the
-  // pane back to its class-driven transform, which is what carries the settle.
+  // pane back to its class-driven transform, which now simply arrives: the
+  // ground deletes motion from the pane switch and this file no longer argues.
   const w = dragX === null ? 0 : widthOf()
   const sheetStyle = dragX === null
     ? undefined
