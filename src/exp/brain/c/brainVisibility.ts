@@ -1,4 +1,4 @@
-// brainVisibility.ts — pure copy helpers for item 3 (brain visibility): the
+// brainVisibility.ts, pure copy helpers for item 3 (brain visibility): the
 // sources chip, the grounded-on line and the session-state sentence. Kept as
 // plain string functions so the exact wording is asserted once here rather than
 // duplicated between the phone and the desktop pane.

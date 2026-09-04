@@ -48,7 +48,7 @@ export function Mobile(props: BrainMobileProps) {
   const notif = useNotifications()
 
   // A deep link that names a thread/turn/feed always opens the stream, no
-  // matter where he left off last — that is what "one stream" is for.
+  // matter where he left off last, that is what "one stream" is for.
   const forcedStream = useRef(!!(boot.thread || boot.turn || boot.feed))
   useEffect(() => {
     if (forcedStream.current) { setPlaceRaw('stream'); forcedStream.current = false }
@@ -90,7 +90,6 @@ export function Mobile(props: BrainMobileProps) {
         <div className="brc-ribbon">
           <span className="brc-ribbon-t">{settingsOpen ? 'Settings' : TABS.find(t => t.place === place)?.label}</span>
           <span className="brc-ribbon-fresh">{loadedAt ? relAge(loadedAt) : 'loading'}</span>
-          {health.n > 0 && <span className="brc-health">{health.n} · {health.note}</span>}
           <button type="button" className="brc-refresh" onClick={refresh} aria-label="Refresh">↻</button>
           {settingsOpen ? (
             <button type="button" className="brc-gear" onClick={() => setSettingsOpen(false)}>Done</button>
@@ -98,6 +97,14 @@ export function Mobile(props: BrainMobileProps) {
             <button type="button" className="brc-gear" onClick={() => setSettingsOpen(true)} aria-label="Settings">⚙︎</button>
           )}
         </div>
+        {/* One line, truncated: the Ops tab (badge already shows the count) is
+            where the full alert text lives. The ribbon only says enough to
+            justify tapping there. */}
+        {health.n > 0 && !settingsOpen && (
+          <button type="button" className="brc-health" onClick={() => setPlace('ops')}>
+            <b>{health.n}</b><span>{health.note}</span>
+          </button>
+        )}
 
         {inboxError && !settingsOpen && place !== 'stream' && (
           <Failed what="This lane" message={inboxError} onRetry={refresh} loadedAt={loadedAt} />

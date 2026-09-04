@@ -1,5 +1,5 @@
 /* ============================================================================
-   brain-c.css — candidate C, "One stream".
+   brain-c.css, candidate C, "One stream".
 
    Scope: every rule here targets `.brain-c` or one of its descendants and
    nothing outside it, per the brief's contract (#exp/stock and #exp/v2 must
@@ -10,7 +10,7 @@
    `.wb` to --fs-body/400/1.6 line-height. Anything here that needs a DIFFERENT
    size or weight uses the `.wb.wb.wb .brain-c …` triple-class hook to win;
    everything else (layout, colour, spacing) is plain `.brain-c …` and rides the
-   flattened body tier for free — which is also how the type census stays low:
+   flattened body tier for free, which is also how the type census stays low:
    the phone entry uses exactly five of the seven --fs-* tokens (body, meta,
    eyebrow, title, glyph) and never touches page/figure/display at all.
    ============================================================================ */
@@ -26,12 +26,17 @@
 }
 .wb.wb.wb .brc-ribbon-t{ font-size:var(--fs-title); font-weight:600; color:var(--text) }
 .wb.wb.wb .brc-ribbon-fresh{ font-size:var(--fs-meta); color:var(--text3); font-variant-numeric:tabular-nums }
-.wb.wb.wb .brc-health{
-  font-size:var(--fs-meta); color:var(--sev-urgent); font-weight:600;
-  margin-left:auto; font-variant-numeric:tabular-nums;
-}
 .brc-ribbon-fresh{ margin-left:auto }
-.brc-health + .brc-refresh{ margin-left:0 }
+
+.brc-health{
+  display:flex; align-items:center; gap:6px; width:100%; min-height:32px;
+  padding:6px var(--gut); background:rgba(255,69,58,.10); border:none;
+  border-bottom:1px solid var(--hairline); color:var(--sev-urgent); text-align:left;
+}
+.wb.wb.wb .brc-health b{ font-size:var(--fs-meta); font-variant-numeric:tabular-nums; flex:none }
+.wb.wb.wb .brc-health span{
+  font-size:var(--fs-meta); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0;
+}
 
 .brc-refresh, .brc-gear{
   position:relative; display:flex; align-items:center; justify-content:center;
@@ -251,7 +256,7 @@
 .brc-send.brc-stop{ background:var(--sev-urgent); color:#fff }
 
 /* ---------------------------------------------------------------------- */
-/* Tab bar (inside the plate — faithful.css §3c convention)                */
+/* Tab bar (inside the plate, faithful.css §3c convention)                */
 /* ---------------------------------------------------------------------- */
 
 .brc-tabbar{
@@ -323,7 +328,7 @@
 @keyframes brc-slidein{ from{ transform:translateX(16px); opacity:0 } to{ transform:translateX(0); opacity:1 } }
 
 /* ---------------------------------------------------------------------- */
-/* Motion — none on the 50×/day paths, one beat on state changes only      */
+/* Motion, none on the 50×/day paths, one beat on state changes only      */
 /* ---------------------------------------------------------------------- */
 
 .brain-c *{ transition:none }

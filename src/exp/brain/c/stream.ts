@@ -1,10 +1,10 @@
-// stream.ts — candidate C's thesis in one function: ONE chronological feed
+// stream.ts, candidate C's thesis in one function: ONE chronological feed
 // where his turns to Claude and the notifications that arrived are the same
 // column, newest at the bottom like a chat.
 //
 // mergeStream is pure so the interleave-by-time, the repeat-fold and the
 // quiet-fold can all be asserted without a browser or a network. The caller
-// (StreamList) supplies the turns already carrying a wall-clock time — Turn
+// (StreamList) supplies the turns already carrying a wall-clock time, Turn
 // (chat/events.ts) has no timestamp field of its own, so the component attaches
 // one (see withTurnTimes in useStream.ts) before calling in here. Everything
 // past that point is arithmetic on plain data.
@@ -37,19 +37,19 @@ function tenantMatches(tenant: string | null, want: 'rise' | 'arch'): boolean {
 /**
  * The whole thesis as arithmetic:
  *   1. Fold raw notification rows into groups (repeats collapse to one card
- *      with a count — groupNotifications already does this, keyed on
+ *      with a count, groupNotifications already does this, keyed on
  *      group_key or on family+shape).
  *   2. Apply the filter chip. 'asks' clears every notification and shows only
- *      his turns — a look at just what he asked. 'needs' keeps only groups
+ *      his turns, a look at just what he asked. 'needs' keeps only groups
  *      whose latest row still needs a decision. 'rise'/'arch' keep only groups
  *      tagged for that tenant; turns carry no tenant and are never tenant-
  *      filtered, because a conversation with Claude belongs to neither client.
  *   3. When `quiet` is on, fold every remaining info-severity, quiet-eligible
  *      group into ONE row ("14 quiet updates"). A group that needs a decision
- *      never folds, quiet or not — the toggle hides routine noise, never a
+ *      never folds, quiet or not, the toggle hides routine noise, never a
  *      thing waiting on him.
  *   4. Interleave what is left with the turns by timestamp, oldest first, so
- *      the newest thing — an answer or a notification — sits at the bottom
+ *      the newest thing, an answer or a notification, sits at the bottom
  *      exactly where a chat's newest message sits.
  */
 export function mergeStream(

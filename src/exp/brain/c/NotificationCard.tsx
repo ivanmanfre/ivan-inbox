@@ -3,8 +3,8 @@ import { familyLabel } from './families'
 
 // One system card in the stream: family label, title, one body line, a tap
 // target that opens the lane, a swipe (or the ✕) to dismiss, repeats folded
-// into this one card with a count. Severity is shape first — a left bar whose
-// width and the row's own font-weight carry it — colour only reinforces what
+// into this one card with a count. Severity is shape first, a left bar whose
+// width and the row's own font-weight carry it, colour only reinforces what
 // the shape already said, so the card still reads correctly with colour off.
 export function NotificationCard({ group, onOpen, onDismiss }: {
   group: NotificationGroup

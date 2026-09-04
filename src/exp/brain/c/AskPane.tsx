@@ -7,7 +7,7 @@ import { groupNotifications, notificationDeepLink } from '../../../lib/turns'
 import { parseWbHash } from '../../v2c/route'
 
 /**
- * Desktop docked pane. Same thesis, same StreamList component the phone uses —
+ * Desktop docked pane. Same thesis, same StreamList component the phone uses ,
  * parity of the thread is the point, not a second design. The one desktop-only
  * control is the Feed button: since the stream already carries notifications
  * inline, it opens a focused, notifications-only overlay for a bulk pass

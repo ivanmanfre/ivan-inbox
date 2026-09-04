@@ -1,4 +1,4 @@
-// families.ts — candidate C's ONE map from a raw notification family key to
+// families.ts, candidate C's ONE map from a raw notification family key to
 // everything the stream renders about it: the human label (no raw DB values on
 // screen, no internal names), whether it counts as "needs you", and whether it
 // is eligible to fold into the quiet row when it is carrying routine info.
@@ -45,7 +45,7 @@ export type FamilyMeta = {
   /**
    * True for a family whose everyday instance is routine information rather
    * than a thing waiting on a decision. Only these families are candidates for
-   * the quiet fold, and only their `info`-severity rows ever fold — an
+   * the quiet fold, and only their `info`-severity rows ever fold, an
    * `attention`/`error` row in the same family still needs eyes and is never
    * hidden by the toggle.
    */
@@ -72,7 +72,7 @@ export const FAMILY_META: Record<FamilyKey, FamilyMeta> = {
   send_failed_alert: { label: "A message didn't send", quietEligible: false },
 }
 
-/** The label a card shows. Unknown keys fall back to a plain, honest phrase — never the raw key. */
+/** The label a card shows. Unknown keys fall back to a plain, honest phrase, never the raw key. */
 export function familyLabel(family: string): string {
   return FAMILY_META[family as FamilyKey]?.label ?? 'Update'
 }
@@ -80,7 +80,7 @@ export function familyLabel(family: string): string {
 /**
  * Whether a notification (family + severity, as the view already reports them)
  * reads as something that needs a decision right now. Severity already carries
- * this — `attention`/`error` both mean a human should look — so the check is
+ * this, `attention`/`error` both mean a human should look, so the check is
  * on severity alone; the family only decides whether an `info` row is routine
  * enough to fold (isQuietEligible below).
  */

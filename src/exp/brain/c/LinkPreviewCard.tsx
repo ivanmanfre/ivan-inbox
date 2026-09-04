@@ -3,7 +3,7 @@ import { unfurl } from '../../../lib/unfurl'
 import { mapLinkPreview, type LinkCardModel } from './linkpreview'
 
 // One card, three states: loading (asked the broker, waiting), blocked (the
-// broker answered ok:false — an honest miss, never the raw URL standing in for
+// broker answered ok:false, an honest miss, never the raw URL standing in for
 // a title) and a real card. Used both live in the composer, while a link is
 // being typed, and frozen inside a sent turn.
 export function LinkPreviewCard({ url }: { url: string }) {
