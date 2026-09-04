@@ -31,4 +31,5 @@ supabase/.temp
 dist-p*
 .session-*.json
 dist-brain-*/
+dist-handover/
 dist-stock-branch/
