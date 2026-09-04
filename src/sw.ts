@@ -64,8 +64,12 @@ self.addEventListener('notificationclick', (e) => {
       // focus() first: on iOS a navigate() on an unfocused client can be
       // dropped, and a focused window on the wrong route is still recoverable.
       await open.focus().catch(() => {})
-      await open.navigate(target).catch(() => {})
-      return
+      // matchAll passes includeUncontrolled, so this client may be one this
+      // worker does not control, and navigate() rejects on those. Swallowing the
+      // rejection and returning is a tap that does nothing, which is the whole
+      // complaint. Fall through to openWindow instead.
+      const navigated = await open.navigate(target).then(() => true).catch(() => false)
+      if (navigated) return
     }
     await self.clients.openWindow(target)
   })())
