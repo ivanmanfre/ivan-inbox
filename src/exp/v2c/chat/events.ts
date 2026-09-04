@@ -6,6 +6,13 @@
 
 export type ChatEvent =
   | { type: 'session'; sessionId: string; model: string }
+  // WHICH ROW this stream is writing. db/049 persists a turn the moment the
+  // broker accepts the prompt and finishes it from a webhook, so the stream is
+  // the fast path and the row is the truth — and the hook needs these ids to go
+  // back for the row after a lost connection, a locked phone, a closed tab.
+  // `session` says whether the container resumed this thread's CLI session,
+  // `groundedOn` the daily-summary date the memory envelope was built from.
+  | { type: 'turn'; turnId: string; threadId: string; session: 'new' | 'resumed'; groundedOn: string | null }
   // Between "accepted" and "first token" there is real cold-start latency on the
   // Railway container. A named frame for it beats a spinner that means nothing.
   | { type: 'status'; status: 'queued' | 'started'; note?: string }
@@ -36,6 +43,13 @@ export type ChatRequest = {
   // CLI session server-side, so this replay IS the continuity. The surface says so
   // out loud rather than implying a memory that does not exist.
   context?: string
+  // The thread this turn continues, and the id the CLIENT minted for the turn
+  // itself. Both are opaque row ids and neither scopes anything upstream: the
+  // broker looks the thread up under the caller's own user_id and refuses one
+  // that is not theirs, so this does not reopen the parameter-based
+  // cross-tenant vector rule 1 in transport.ts closes.
+  threadId?: string
+  turnId?: string
   signal?: AbortSignal
 }
 
