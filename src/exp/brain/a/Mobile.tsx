@@ -142,7 +142,7 @@ export function BrainMobile({
               <div className={`ba-primary${place === 'ask' && job !== 'settings' ? ' show' : ''}`}>
                 <AskThread chat={chat} job={job} about={about} aboutContext={aboutContext} subjects={subjects} mobile />
               </div>
-              {(place !== 'ask' || job === 'settings') && (
+              {(place === 'today' || place === 'dms' || place === 'work' || job === 'settings') && (
                 <div className="ba-primary show ba-lane">
                   {place === 'work' && job !== 'settings' && (
                     <WorkTabs job={job} counts={counts} sev={sev} onJob={onJobFromWork} />
