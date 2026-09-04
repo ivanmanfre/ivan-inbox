@@ -79,7 +79,7 @@ export function Mobile(p: BrainMobileProps) {
 
   if (peerView) {
     return (
-      <div className="app wb brain-b" data-place="lane">
+      <div className="app wb wb-take wb-take-thread brain-b" data-place="lane">
         {peerView}
         {windows}
       </div>
@@ -90,42 +90,47 @@ export function Mobile(p: BrainMobileProps) {
 
   return (
     <div className="app wb brain-b" data-place={feedOpen ? 'feed' : place === 'ask' ? 'ask' : 'lane'}>
-      <div className="bb-head">
-        <span className="bb-head-t">{title}</span>
-        {p.health.n > 0 && place !== 'ask' && (
-          <span className="bb-head-s">{p.health.n} automation alert{p.health.n > 1 ? 's' : ''}</span>
-        )}
-        <span className="bb-head-sp" />
-        <button
-          type="button" className="bb-feedbtn" aria-label={`Feed, ${feed.unreadTotal} unread`}
-          onClick={() => setFeedOpen(v => !v)}
-        >
-          ◈
-          {feed.unreadTotal > 0 && <span className="bb-badge">{feed.unreadTotal > 99 ? '99+' : feed.unreadTotal}</span>}
-        </button>
-      </div>
-
-      <div className="bb-pager" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-        <div className="bb-pane bb-place">
-          {place === 'ask'
-            ? <AskThread chat={chat} job={job} about={about} mobile />
-            : workSurface}
+      <div className="wb-plate bb-plate">
+        <div className="bb-head">
+          <span className="bb-head-t">{title}</span>
+          {p.health.n > 0 && place !== 'ask' && (
+            <span className="bb-head-s">{p.health.n} automation alert{p.health.n > 1 ? 's' : ''}</span>
+          )}
+          <span className="bb-head-sp" />
+          <button
+            type="button" className="bb-feedbtn" aria-label={`Feed, ${feed.unreadTotal} unread`}
+            onClick={() => setFeedOpen(v => !v)}
+          >
+            ◈
+            {feed.unreadTotal > 0 && <span className="bb-badge">{feed.unreadTotal > 99 ? '99+' : feed.unreadTotal}</span>}
+          </button>
         </div>
-        <div className={`bb-pane bb-feed${feedOpen ? ' on' : ''}`}>
-          <div className="bb-head">
-            <span className="bb-head-t">Feed</span>
-            <span className="bb-head-s">{feed.unreadTotal} unread</span>
-            <span className="bb-head-sp" />
-            <button type="button" className="bb-feedbtn" aria-label="Close feed" onClick={() => setFeedOpen(false)}>‹</button>
+
+        <div className="bb-pager" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+          {/* `bb-inert` while the feed sheet is open: the sheet is a fully
+              opaque overlay at the same inset, so the place beneath it must
+              stop taking taps rather than merely being hidden behind it. */}
+          <div className={`bb-pane bb-place${feedOpen ? ' bb-inert' : ''}`}>
+            {place === 'ask'
+              ? <AskThread chat={chat} job={job} about={about} mobile />
+              : workSurface}
           </div>
-          <Feed
-            feed={feed} goJob={goJob} openThread={id => { chat.openThread(id); goPlace('ask') }}
-            onNavigated={() => setFeedOpen(false)}
-          />
+          <div className={`bb-pane bb-feed${feedOpen ? ' on' : ''}`}>
+            <div className="bb-head">
+              <span className="bb-head-t">Feed</span>
+              <span className="bb-head-s">{feed.unreadTotal} unread</span>
+              <span className="bb-head-sp" />
+              <button type="button" className="bb-feedbtn" aria-label="Close feed" onClick={() => setFeedOpen(false)}>‹</button>
+            </div>
+            <Feed
+              feed={feed} goJob={goJob} openThread={id => { chat.openThread(id); goPlace('ask') }}
+              onNavigated={() => setFeedOpen(false)}
+            />
+          </div>
         </div>
-      </div>
 
-      <TabBar active={place} counts={foldOnTabs(counts)} sev={foldOnTabs(sev)} onTab={onTab} />
+        <TabBar active={place} counts={foldOnTabs(counts)} sev={foldOnTabs(sev)} onTab={onTab} />
+      </div>
       {windows}
     </div>
   )

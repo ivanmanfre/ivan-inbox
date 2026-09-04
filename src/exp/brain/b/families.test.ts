@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  FAMILY_LABEL, familyLabel, groupStateWord, looksRaw, severityShape, stateWord,
+  FAMILY_LABEL, familyLabel, groupStateWord, looksRaw, sanitizeBody, severityShape, stateWord,
   type FamilyKey,
 } from './families'
 import type { Notification } from '../../../lib/turns'
@@ -204,6 +204,26 @@ describe('stateWord — every family, on its own verbatim bodies', () => {
     const word = stateWord(n('made_up_family', 'anything', { severity: 'urgent' as never }))
     expect(typeof word).toBe('string')
     expect(looksRaw(word)).toBe(false)
+  })
+})
+
+describe('sanitizeBody', () => {
+  it('strips the leading status emoji and the raw arrow-transition token', () => {
+    const body = 'SEAT HEALTH\n🔴 Seat Mattan Danino Sales Navigator: OK → PARENT_CONNECTING'
+    const out = sanitizeBody(body)
+    expect(out).not.toMatch(/PARENT_CONNECTING/)
+    expect(out).not.toMatch(/🔴/)
+    expect(out).toMatch(/disconnected/)
+  })
+  it('never leaves a raw enum token standing anywhere in the line', () => {
+    const body = 'Board note NEEDS_REGENERATE for two drafts, otherwise fine'
+    expect(looksRaw(sanitizeBody(body))).toBe(false)
+  })
+  it('strips emoji that are not a leading status mark', () => {
+    expect(sanitizeBody('⏰ Reminder: Take your TRT 💉')).not.toMatch(/[⏰💉]/u)
+  })
+  it('collapses newlines into a single readable line', () => {
+    expect(sanitizeBody('line one\nline two')).toBe('line one line two')
   })
 })
 
