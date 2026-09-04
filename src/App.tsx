@@ -74,7 +74,9 @@ export default function App() {
   const exp = getExpVariant()
   if (exp === 'stock') return <Shell />
   if (exp) return <ExpGate variant={exp} />
-  return <ExpGate variant="v2" />
+  // Ivan picked finalist B, 2026-09-04 (goal run inbox-brain-app). #exp/v2 and
+  // #exp/brain-a stay reachable by hash.
+  return <ExpGate variant="brain-b" />
 }
 
 function Shell() {

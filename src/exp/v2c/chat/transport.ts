@@ -36,6 +36,16 @@ function sessionId(seed: string): string {
   return hash(seed).toString(16).padStart(8, '0').slice(0, 8)
 }
 
+// The mock has to hand back a WELL-FORMED uuid, not a readable placeholder: the
+// hook validates the thread id before it paints or persists it, so a stub that
+// answered 'mock-thread' would make ?wbmock=chat render the one state it exists
+// to render — a working conversation — as a broken one.
+function mockUuid(seed: string): string {
+  const h = (s: string) => hash(s).toString(16).padStart(8, '0')
+  const a = h(seed), b = h(`${seed}:b`), c = h(`${seed}:c`)
+  return `${a}-${b.slice(0, 4)}-4${b.slice(4, 7)}-8${c.slice(0, 3)}-${a}${c.slice(0, 4)}`
+}
+
 // Which failures a second attempt could plausibly fix. Everything else is a
 // standing condition — a missing key, a refused user, a prompt over the limit —
 // and offering Retry on one of those teaches the operator to distrust the button.
@@ -70,6 +80,13 @@ export function toChatEvent(
       // /chat/stream forwards tool_use and never tool_result, so the input is
       // whatever detail came with it and there is no output to invent.
       return { type: 'tool_use', id: `${seq}:0`, tool: e.name, input: e.detail ? { detail: e.detail } : {} }
+    case 'turn':
+      // Straight through. The hook is the only consumer: it persists the thread
+      // id and, when the stream is lost, goes back for the row by this turn id.
+      return {
+        type: 'turn', turnId: e.turnId, threadId: e.threadId,
+        session: e.session, groundedOn: e.groundedOn,
+      }
     case 'model':
       // The broker's account of what it forwarded. Reuses the `session` frame,
       // which already carries a model field — the sessionId stays the honest
@@ -126,6 +143,8 @@ function httpStream(req: ChatRequest): AsyncGenerator<ChatEvent> {
     await sendToClaude(req.prompt, {
       context: req.context,
       model: (req.model ?? null) as ClaudeModelId | null,
+      threadId: req.threadId,
+      turnId: req.turnId,
       signal: req.signal,
       onEvent: e => {
         if (e.kind === 'tool') seq += 1
@@ -213,6 +232,15 @@ async function* mockStream(req: ChatRequest): AsyncGenerator<ChatEvent> {
     return
   }
 
+  // The broker names the row before the first token; so does the stub, or the
+  // hook would sit in its "no row yet" branch for the whole mock turn.
+  yield {
+    type: 'turn',
+    turnId: req.turnId ?? mockUuid(req.prompt),
+    threadId: req.threadId ?? mockUuid('thread'),
+    session: req.threadId ? 'resumed' : 'new',
+    groundedOn: '2026-09-04',
+  }
   yield { type: 'session', sessionId: sessionId(req.prompt + String(req.sessionId)), model: 'claude-opus-5' }
   await sleep(180)
   yield { type: 'status', status: 'started' }

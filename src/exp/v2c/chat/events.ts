@@ -4,8 +4,17 @@
 // CLI internals (sdkMsg.message.content[n].type) — that translation is the
 // broker's job, and this union is the only shape any component here knows.
 
+import type { TurnSource, TurnStatus } from '../../../lib/turns'
+
 export type ChatEvent =
   | { type: 'session'; sessionId: string; model: string }
+  // WHICH ROW this stream is writing. db/049 persists a turn the moment the
+  // broker accepts the prompt and finishes it from a webhook, so the stream is
+  // the fast path and the row is the truth — and the hook needs these ids to go
+  // back for the row after a lost connection, a locked phone, a closed tab.
+  // `session` says whether the container resumed this thread's CLI session,
+  // `groundedOn` the daily-summary date the memory envelope was built from.
+  | { type: 'turn'; turnId: string; threadId: string; session: 'new' | 'resumed'; groundedOn: string | null }
   // Between "accepted" and "first token" there is real cold-start latency on the
   // Railway container. A named frame for it beats a spinner that means nothing.
   | { type: 'status'; status: 'queued' | 'started'; note?: string }
@@ -36,6 +45,13 @@ export type ChatRequest = {
   // CLI session server-side, so this replay IS the continuity. The surface says so
   // out loud rather than implying a memory that does not exist.
   context?: string
+  // The thread this turn continues, and the id the CLIENT minted for the turn
+  // itself. Both are opaque row ids and neither scopes anything upstream: the
+  // broker looks the thread up under the caller's own user_id and refuses one
+  // that is not theirs, so this does not reopen the parameter-based
+  // cross-tenant vector rule 1 in transport.ts closes.
+  threadId?: string
+  turnId?: string
   signal?: AbortSignal
 }
 
@@ -67,6 +83,14 @@ export type Turn = {
   // which reports none — a missing number beats an invented one.
   costUsd?: number | null
   durationMs?: number | null
+  // ---- db/049. Present once a turn is backed by an inbox_turns row: hydrated
+  // from one on mount, or reconciled onto the streamed turn after it lands.
+  /** The row this turn IS. The handle for going back for it after a lost stream. */
+  turnId?: string
+  /** The row's own status. 'running' with no local stream is the "phone was locked" state. */
+  status?: TurnStatus
+  /** What the broker grounded the answer on: one entry per assembled block. */
+  sources?: TurnSource[]
 }
 
 // The outcome of an assistant turn as one value, so the dot, the label and the

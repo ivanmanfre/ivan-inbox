@@ -1,0 +1,348 @@
+/* ============================================================================
+   brain-c.css, candidate C, "One stream".
+
+   Scope: every rule here targets `.brain-c` or one of its descendants and
+   nothing outside it, per the brief's contract (#exp/stock and #exp/v2 must
+   render byte-identical). Canon tokens only (DECISIONS.md D2): ground/canvas
+   untouched, no serif, no #F7F4EF, no #2A8F65, no italic body.
+
+   Specificity note: `.wb.wb *` (faithful.css §2) flattens every descendant of
+   `.wb` to --fs-body/400/1.6 line-height. Anything here that needs a DIFFERENT
+   size or weight uses the `.wb.wb.wb .brain-c …` triple-class hook to win;
+   everything else (layout, colour, spacing) is plain `.brain-c …` and rides the
+   flattened body tier for free, which is also how the type census stays low:
+   the phone entry uses exactly five of the seven --fs-* tokens (body, meta,
+   eyebrow, title, glyph) and never touches page/figure/display at all.
+   ============================================================================ */
+
+/* ---------------------------------------------------------------------- */
+/* Ribbon                                                                   */
+/* ---------------------------------------------------------------------- */
+
+.brc-ribbon{
+  display:flex; align-items:center; gap:16px;
+  padding:10px var(--gut) 8px; border-bottom:1px solid var(--hairline);
+  flex:none;
+}
+.wb.wb.wb .brc-ribbon-t{ font-size:var(--fs-title); font-weight:600; color:var(--text) }
+.wb.wb.wb .brc-ribbon-fresh{ font-size:var(--fs-meta); color:var(--text3); font-variant-numeric:tabular-nums }
+.brc-ribbon-fresh{ margin-left:auto }
+
+.brc-health{
+  display:flex; align-items:center; gap:6px; width:100%; min-height:48px;
+  padding:6px var(--gut); background:rgba(255,69,58,.10); border:none;
+  border-bottom:1px solid var(--hairline); color:var(--sev-urgent); text-align:left;
+}
+.wb.wb.wb .brc-health b{ font-size:var(--fs-meta); font-variant-numeric:tabular-nums; flex:none }
+.wb.wb.wb .brc-health span{
+  font-size:var(--fs-meta); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0;
+}
+
+.brc-refresh, .brc-gear{
+  position:relative; display:flex; align-items:center; justify-content:center;
+  width:32px; height:32px; border-radius:var(--r-ctl);
+  background:transparent; border:none; color:var(--text2);
+}
+.wb.wb.wb .brc-refresh, .wb.wb.wb .brc-gear{ font-size:var(--fs-glyph) }
+.wb.wb.wb .brc-gear{ font-size:var(--fs-meta) }
+/* 44×44 hit area on a visually smaller control (2.4 §tap-targets). */
+.brc-refresh::after, .brc-gear::after{ content:''; position:absolute; inset:-6px }
+
+/* ---------------------------------------------------------------------- */
+/* Filters + quiet toggle + new-thread                                     */
+/* ---------------------------------------------------------------------- */
+
+.brc-filters{
+  display:flex; align-items:center; gap:14px; padding:8px var(--gut);
+  overflow-x:auto; flex:none; border-bottom:1px solid var(--hairline);
+}
+.brc-chip{
+  position:relative; flex:none; padding:8px 12px; min-height:32px;
+  border-radius:var(--r-pill); border:1px solid var(--hairline);
+  background:var(--surface1); color:var(--text2);
+}
+.wb.wb.wb .brc-chip{ font-size:var(--fs-meta); font-weight:600 }
+.brc-chip::after{ content:''; position:absolute; inset:-6px }
+.brc-chip.on{ background:var(--accent); border-color:var(--accent); color:var(--ink) }
+.brc-quiet-toggle.on{ background:var(--surface3); border-color:var(--hairline-strong); color:var(--text) }
+.brc-newthread{
+  position:relative; margin-left:auto; flex:none; padding:8px 12px; min-height:32px;
+  border-radius:var(--r-pill); border:1px dashed var(--hairline-strong);
+  background:transparent; color:var(--text3);
+}
+.wb.wb.wb .brc-newthread{ font-size:var(--fs-meta); font-weight:600 }
+.brc-newthread::after{ content:''; position:absolute; inset:-6px }
+
+/* ---------------------------------------------------------------------- */
+/* The scroller / stream column                                            */
+/* ---------------------------------------------------------------------- */
+
+.brc-stream{ display:flex; flex-direction:column; min-height:0; flex:1 }
+.brc-scroller{
+  flex:1; min-height:0; overflow-y:auto; overflow-x:hidden;
+  padding:8px var(--gut) 12px; display:flex; flex-direction:column; gap:10px;
+}
+/* Every direct child of the scroller keeps its natural content height; the
+   column overflows into the scrollbar instead of shrinking. Flexbox's default
+   flex-shrink:1 (with an automatic min-size of 0 on any shrinkable child that
+   sets overflow:hidden, which .brc-card does for its severity bar) otherwise
+   crushes the tallest items down to a sliver once the column's total content
+   exceeds the visible viewport, exactly the empty-pill defect a card with real
+   family/title/body text was rendering as. */
+.brc-scroller > *{ flex-shrink:0 }
+.wb.wb.wb .brc-threadmeta{
+  display:flex; flex-direction:column; gap:2px; padding:6px 0 4px;
+  color:var(--text4); font-size:var(--fs-eyebrow);
+}
+.wb.wb.wb .brc-empty{
+  margin:auto; padding:40px 20px; text-align:center; color:var(--text3);
+  font-size:var(--fs-body);
+}
+.wb.wb.wb .brc-freshness{
+  text-align:center; color:var(--text4); font-size:var(--fs-eyebrow);
+  padding-top:4px; font-variant-numeric:tabular-nums;
+}
+
+.brc-entry{ max-width:100%; overflow-wrap:break-word }
+
+/* ---------------------------------------------------------------------- */
+/* Turn entries (asks + answers)                                           */
+/* ---------------------------------------------------------------------- */
+
+.brc-running{
+  display:flex; align-items:center; gap:8px; padding:6px 2px 0;
+  color:var(--text3);
+}
+.wb.wb.wb .brc-running-t{ font-size:var(--fs-eyebrow) }
+.brc-running-dots{ display:inline-flex; gap:3px }
+.brc-running-dots i{
+  width:4px; height:4px; border-radius:50%; background:var(--text3);
+  display:inline-block; opacity:.4;
+}
+@media (prefers-reduced-motion: no-preference){
+  .brc-running-dots i{ animation:brc-pulse 1.2s ease-in-out infinite }
+  .brc-running-dots i:nth-child(2){ animation-delay:.15s }
+  .brc-running-dots i:nth-child(3){ animation-delay:.3s }
+}
+@keyframes brc-pulse{ 0%,80%,100%{ opacity:.3 } 40%{ opacity:1 } }
+
+.brc-brain{ display:flex; flex-wrap:wrap; gap:14px; padding:2px 2px 0 }
+.brc-brain .brc-chip{ min-height:34px; padding:8px 12px }
+.wb.wb.wb .brc-sources-list{
+  display:flex; flex-direction:column; gap:2px; padding:6px 10px;
+  background:var(--surface1); border-radius:var(--r-ctl);
+  font-size:var(--fs-eyebrow); color:var(--text3); width:100%;
+}
+.brc-recall.on, .brc-recall:active{ background:var(--surface3) }
+
+/* ---------------------------------------------------------------------- */
+/* Notification cards                                                      */
+/* ---------------------------------------------------------------------- */
+
+.brc-card{
+  position:relative; display:flex; align-items:stretch;
+  background:var(--surface1); border-radius:var(--r-card); overflow:hidden;
+}
+.brc-card-bar{ width:3px; flex:none; background:transparent }
+/* Severity is SHAPE first (bar width + weight), colour reinforces. */
+.brc-card.sev-attention .brc-card-bar{ width:4px; background:var(--sev-attention) }
+.brc-card.sev-error .brc-card-bar{ width:6px; background:var(--sev-urgent) }
+.brc-card.sev-error .brc-card-title{ font-weight:600 }
+.brc-card-tap{
+  flex:1; min-width:0; text-align:left; background:transparent; border:none;
+  padding:12px 10px; display:flex; flex-direction:column; gap:3px; color:inherit;
+}
+.brc-card-top{ display:flex; align-items:center; gap:6px }
+.brc-unread-mark{
+  width:7px; height:7px; border-radius:50%; border:1.5px solid var(--text3);
+  background:transparent; flex:none;
+}
+.brc-unread-mark.on{ background:var(--accent); border-color:var(--accent) }
+.wb.wb.wb .brc-card-fam{ font-size:var(--fs-eyebrow); color:var(--text3); text-transform:uppercase; letter-spacing:.03em }
+.wb.wb.wb .brc-card-count{
+  font-size:var(--fs-eyebrow); color:var(--text3); font-variant-numeric:tabular-nums;
+  background:var(--surface3); padding:1px 6px; border-radius:var(--r-pill);
+}
+.wb.wb.wb .brc-card-title{ font-size:var(--fs-body); color:var(--text) }
+.wb.wb.wb .brc-card-body{
+  font-size:var(--fs-meta); color:var(--text2);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.brc-card.unread .brc-card-title{ font-weight:600 }
+.brc-card-x{
+  position:relative; flex:none; width:44px; border:none; background:transparent;
+  color:var(--text4); border-left:1px solid var(--hairline);
+}
+.wb.wb.wb .brc-card-x{ font-size:var(--fs-meta) }
+
+.brc-quiet{ display:flex }
+.brc-quiet-tap{
+  flex:1; min-height:40px; text-align:center; background:var(--surface1);
+  border:1px dashed var(--hairline-strong); border-radius:var(--r-ctl);
+  color:var(--text3); padding:8px;
+}
+.wb.wb.wb .brc-quiet-tap{ font-size:var(--fs-meta) }
+
+/* ---------------------------------------------------------------------- */
+/* Link preview card                                                       */
+/* ---------------------------------------------------------------------- */
+
+.brc-link{
+  display:flex; gap:10px; background:var(--surface1); border:1px solid var(--hairline);
+  border-radius:var(--r-ctl); overflow:hidden; margin-top:6px;
+}
+.brc-link-blocked{ padding:10px; color:var(--text3) }
+.wb.wb.wb .brc-link-blocked{ font-size:var(--fs-meta) }
+.brc-link-img{ flex:none; width:88px; background:var(--surface2) }
+.brc-link-img img{ width:100%; height:100%; object-fit:cover; display:block }
+.brc-link-img.r169{ aspect-ratio:16/9; width:120px }
+.brc-link-img.rsq{ aspect-ratio:1/1 }
+.brc-link-b{ flex:1; min-width:0; padding:8px 10px 8px 0; display:flex; flex-direction:column; justify-content:center; gap:2px }
+.wb.wb.wb .brc-link-t{ font-size:var(--fs-meta); font-weight:600; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.wb.wb.wb .brc-link-s{ font-size:var(--fs-eyebrow); color:var(--text3) }
+.brc-link-sk{ width:44px; height:44px; flex:none; background:var(--surface2); border-radius:var(--r-chip) }
+
+/* ---------------------------------------------------------------------- */
+/* Composer (always docked)                                                */
+/* ---------------------------------------------------------------------- */
+
+.brc-composer{
+  flex:none; border-top:1px solid var(--hairline); background:var(--canvas);
+  padding:8px var(--gut) calc(8px + env(safe-area-inset-bottom, 0px));
+}
+.brc-composer-preview{ margin-bottom:6px }
+.brc-attach{
+  display:flex; align-items:center; gap:8px; margin-bottom:6px;
+  padding:6px 8px; background:var(--surface1); border-radius:var(--r-ctl);
+}
+.brc-attach-thumb{ width:32px; height:32px; border-radius:var(--r-chip); object-fit:cover }
+.wb.wb.wb .brc-attach-pdf{
+  width:32px; height:32px; display:flex; align-items:center; justify-content:center;
+  background:var(--surface3); border-radius:var(--r-chip); font-size:var(--fs-eyebrow); color:var(--text2);
+}
+.wb.wb.wb .brc-attach-n{ font-size:var(--fs-meta); color:var(--text); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.wb.wb.wb .brc-attach-note{ font-size:var(--fs-eyebrow); color:var(--text4) }
+.brc-attach-x{ position:relative; width:32px; height:32px; background:transparent; border:none; color:var(--text3) }
+.brc-attach-x::after{ content:''; position:absolute; inset:-6px }
+
+.brc-voice{ display:flex; align-items:center; gap:8px; margin-bottom:6px; color:var(--text2) }
+.wb.wb.wb .brc-voice-t{ font-size:var(--fs-meta); font-variant-numeric:tabular-nums }
+.wb.wb.wb .brc-voice-note{ font-size:var(--fs-eyebrow); color:var(--text4); margin-bottom:4px }
+.brc-voice-bars{ display:inline-flex; align-items:flex-end; gap:2px; height:16px }
+.brc-voice-bars i{ width:3px; background:var(--accent); border-radius:2px; height:30% }
+@media (prefers-reduced-motion: no-preference){
+  .brc-voice-bars i{ animation:brc-bar 900ms ease-in-out infinite }
+  .brc-voice-bars i:nth-child(1){ animation-delay:0ms }
+  .brc-voice-bars i:nth-child(2){ animation-delay:120ms }
+  .brc-voice-bars i:nth-child(3){ animation-delay:240ms }
+  .brc-voice-bars i:nth-child(4){ animation-delay:360ms }
+  .brc-voice-bars i:nth-child(5){ animation-delay:480ms }
+}
+@keyframes brc-bar{ 0%,100%{ height:20% } 50%{ height:100% } }
+
+.brc-row{ display:flex; align-items:center; gap:6px }
+.brc-tool, .brc-mic{
+  position:relative; flex:none; width:40px; height:40px; border-radius:50%;
+  background:var(--surface1); border:none; color:var(--text2);
+  display:flex; align-items:center; justify-content:center;
+}
+.wb.wb.wb .brc-tool, .wb.wb.wb .brc-mic{ font-size:var(--fs-title) }
+.brc-tool::after, .brc-mic::after{ content:''; position:absolute; inset:-2px }
+.brc-mic.on{ background:var(--sev-urgent); color:#fff }
+.brc-field{
+  flex:1; min-width:0; height:44px; padding:0 14px; border-radius:var(--r-pill);
+  background:var(--surface1); border:1px solid var(--hairline); color:var(--text);
+}
+.wb.wb.wb .brc-field{ font-size:var(--fs-body) }
+.brc-send{
+  flex:none; width:44px; height:44px; border-radius:50%; border:none;
+  background:var(--surface2); color:var(--text3);
+  display:flex; align-items:center; justify-content:center;
+}
+.wb.wb.wb .brc-send{ font-size:var(--fs-title) }
+.brc-field:not(:placeholder-shown) + .brc-send, .brc-send:not(:disabled){ background:var(--accent); color:var(--ink) }
+.brc-send.brc-stop{ background:var(--sev-urgent); color:#fff }
+
+/* ---------------------------------------------------------------------- */
+/* Tab bar (inside the plate, faithful.css §3c convention)                */
+/* ---------------------------------------------------------------------- */
+
+.brc-tabbar{
+  flex:none; display:flex; background:var(--canvas); border-top:1px solid var(--hairline);
+  padding:8px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+}
+.brc-tab{
+  position:relative; flex:1; display:flex; flex-direction:column; align-items:center;
+  gap:2px; min-height:44px; background:transparent; border:none; color:var(--text3);
+  padding:4px 2px;
+}
+.brc-tab.on{ color:var(--accent-ui, var(--accent)) }
+.brc-tab-ic{ position:relative; display:inline-flex }
+.wb.wb.wb .brc-tab-ic{ font-size:var(--fs-glyph) }
+.wb.wb.wb .brc-tab-l{ font-size:var(--fs-eyebrow); font-weight:600 }
+.wb.wb.wb .brc-tab-cnt{
+  position:absolute; top:-6px; right:-10px; min-width:15px; height:15px; padding:0 3px;
+  border-radius:var(--r-pill); background:var(--surface3); color:var(--text);
+  font-size:9px; line-height:15px; text-align:center; font-variant-numeric:tabular-nums;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Work sub-segment (Content / Sends), settings, misc lanes                */
+/* ---------------------------------------------------------------------- */
+
+.brc-worksub{ display:flex; gap:6px; padding:8px var(--gut); flex:none; border-bottom:1px solid var(--hairline) }
+.brc-worksub-b{
+  position:relative; flex:1; min-height:36px; border-radius:var(--r-ctl);
+  background:var(--surface1); border:none; color:var(--text2);
+}
+.wb.wb.wb .brc-worksub-b{ font-size:var(--fs-meta); font-weight:600 }
+.brc-worksub-b.on{ background:var(--accent); color:var(--ink) }
+.brc-worksurface{ flex:1; min-height:0; overflow-y:auto }
+
+/* ---------------------------------------------------------------------- */
+/* Desktop Ask pane                                                        */
+/* ---------------------------------------------------------------------- */
+
+.brc-askpane{ display:flex; flex-direction:column; height:100%; min-height:0 }
+.brc-askbody{ position:relative; flex:1; min-height:0; display:flex }
+.brc-askbody > .brc-stream{ flex:1; min-width:0 }
+.brc-feedbtn{
+  position:relative; display:flex; align-items:center; gap:6px; padding:6px 12px;
+  border-radius:var(--r-pill); background:var(--surface2); border:none; color:var(--text2);
+}
+.wb.wb.wb .brc-feedbtn{ font-size:var(--fs-meta); font-weight:600 }
+.brc-feedbtn.on{ background:var(--accent); color:var(--ink) }
+.brc-feedbtn b{
+  background:var(--sev-urgent); color:#fff; border-radius:var(--r-pill);
+  padding:0 6px; font-variant-numeric:tabular-nums;
+}
+.wb.wb.wb .brc-feedbtn b{ font-size:var(--fs-eyebrow) }
+.brc-feedoverlay{
+  position:absolute; inset:0; z-index:5; background:var(--canvas);
+  display:flex; flex-direction:column; border-left:1px solid var(--hairline-strong);
+}
+.brc-feedoverlay-h{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px var(--gut); border-bottom:1px solid var(--hairline);
+}
+.wb.wb.wb .brc-feedoverlay-h span{ font-size:var(--fs-title); font-weight:600 }
+.brc-feedoverlay-h button{ position:relative; background:transparent; border:none; color:var(--text3); width:32px; height:32px }
+.brc-feedoverlay-h button::after{ content:''; position:absolute; inset:-6px }
+.brc-feedoverlay-list{ flex:1; overflow-y:auto; padding:10px var(--gut); display:flex; flex-direction:column; gap:8px }
+
+@media (prefers-reduced-motion: no-preference){
+  .brc-feedoverlay{ animation:brc-slidein var(--dur-state) var(--ease) }
+}
+@keyframes brc-slidein{ from{ transform:translateX(16px); opacity:0 } to{ transform:translateX(0); opacity:1 } }
+
+/* ---------------------------------------------------------------------- */
+/* Motion, none on the 50×/day paths, one beat on state changes only      */
+/* ---------------------------------------------------------------------- */
+
+.brain-c *{ transition:none }
+@media (prefers-reduced-motion: no-preference){
+  .brc-card, .brc-chip, .brc-tab{ transition:background-color var(--dur-hover) var(--ease) }
+}
+@media (prefers-reduced-motion: reduce){
+  .brc-running-dots i, .brc-voice-bars i, .brc-feedoverlay{ animation:none!important }
+}

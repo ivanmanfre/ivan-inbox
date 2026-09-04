@@ -54,6 +54,14 @@ export type ClaudeEvent =
   // header — never echoed back from what the client asked for. Those are different
   // facts and conflating them is how a silent fallback would hide.
   | { kind: 'model'; model: string; contextChars: number | null; shed: string[] }
+  // WHICH ROW this stream belongs to, read off the broker's response headers
+  // before the first token. db/049 writes an inbox_turns row the moment the
+  // broker accepts the prompt, and a completion webhook finishes it whether or
+  // not this tab is still open — so the client needs the ids even if no frame
+  // ever arrives. `session` says whether the container resumed the thread's CLI
+  // session or started it fresh; `groundedOn` is the daily-summary date the
+  // memory envelope was built from, or null when the broker did not say.
+  | { kind: 'turn'; turnId: string; threadId: string; session: 'new' | 'resumed'; groundedOn: string | null }
   | { kind: 'done' }
   | { kind: 'error'; code: ClaudeErrorCode; detail?: string }
 
@@ -87,7 +95,13 @@ export type ClaudeErrorCode =
   | 'model_not_allowed'
   | 'model_not_supported_upstream'
   | 'model_support_unknown'
+  // A turn is still running on this thread. The container serialises nothing, so
+  // the broker refuses a second one rather than lose the first one's reply.
+  | 'thread_busy'
   | 'aborted'
+  // The turn outlived the client's own patience: 15 minutes of polling with the
+  // row still open, which is the same point the server's watchdog writes 'lost'.
+  | 'lost'
   | 'unknown'
 
 export const CLAUDE_ERROR_COPY: Record<ClaudeErrorCode, string> = {
@@ -95,26 +109,28 @@ export const CLAUDE_ERROR_COPY: Record<ClaudeErrorCode, string> = {
   unauthenticated: 'Signed out. Sign in again to use Claude.',
   invalid_token: 'Your session expired. Sign in again.',
   forbidden_user: 'This account is not allowed to reach Claude.',
-  broker_not_configured: 'Claude is not configured yet (broker missing settings).',
+  broker_not_configured: 'Claude is missing a setting, so it is not configured yet.',
   // The expected state until Ivan sets RAILWAY_CLAUDE_API_KEY on the broker.
   // Say exactly that rather than "something went wrong".
-  upstream_not_armed: 'Claude is not armed yet: the container key is not set on the broker.',
+  upstream_not_armed: 'Claude is not armed yet: the key is not set.',
   upstream_timeout: 'Claude took too long and the turn was cut off.',
-  upstream_unreachable: 'Cannot reach the Claude container.',
-  upstream_error: 'The Claude container returned an error.',
+  upstream_unreachable: 'Cannot reach Claude right now.',
+  upstream_error: 'Claude returned an error.',
   prompt_too_long: 'That message is too long to send.',
   empty_prompt: 'Nothing to send.',
   aborted: 'Stopped.',
   relay_broken: 'The connection to Claude dropped mid-answer.',
   context_assembly_failed: 'Claude’s memory context could not be built, so the turn was not sent.',
   context_over_cap: 'Claude’s memory context is over the size cap and the turn was not sent.',
-  model_not_allowed: 'That model is not one the broker will send.',
+  model_not_allowed: 'That model is not one this app will send.',
   // Says what is true and what to do, because this is the state the picker is in
   // today and will stay in until the container change lands.
   model_not_supported_upstream:
-    'The container cannot take a per-turn model yet — it would quietly use its own. Switch back to the container default to send.',
+    'Claude cannot take a per-turn model yet. It would quietly use its own. Switch back to the Claude default to send.',
   model_support_unknown:
-    'The broker cannot confirm the container would honour that model, so it did not send. Switch back to the container default.',
+    'Cannot confirm Claude would honour that model, so it did not send. Switch back to the Claude default.',
+  thread_busy: 'Still working on the last one. Wait for it or start a new thread.',
+  lost: 'Lost track of this one. Send it again.',
   unknown: 'Claude failed for an unrecognised reason.',
 }
 
@@ -131,7 +147,7 @@ function classify(status: number, payload: string): { code: ClaudeErrorCode; det
     'unauthenticated', 'invalid_token', 'forbidden_user', 'broker_not_configured',
     'upstream_timeout', 'upstream_unreachable', 'upstream_error', 'prompt_too_long', 'empty_prompt',
     'context_assembly_failed', 'context_over_cap',
-    'model_not_allowed', 'model_not_supported_upstream', 'model_support_unknown',
+    'model_not_allowed', 'model_not_supported_upstream', 'model_support_unknown', 'thread_busy',
   ]
   if (known.includes(raw as ClaudeErrorCode)) return { code: raw as ClaudeErrorCode, detail }
   if (status === 401) return { code: 'unauthenticated', detail }
@@ -149,6 +165,18 @@ export type SendOptions = {
    * from an honoured one from the outside.
    */
   model?: ModelChoice
+  /**
+   * The thread this turn continues. Omitted on the first turn of a new thread —
+   * the broker mints the thread (and its CLI session id) and names it back in
+   * the response headers. Sent as `thread_id`.
+   */
+  threadId?: string
+  /**
+   * Minted in the BROWSER, before the request, so the pane has a stable id for
+   * the row it is about to create and can go back for it after a lost stream.
+   * Sent as `turn_id`.
+   */
+  turnId?: string
   signal?: AbortSignal
   onEvent: (e: ClaudeEvent) => void
 }
@@ -158,7 +186,7 @@ export type SendOptions = {
  * failures — those arrive as an 'error' event so the UI has exactly one path.
  */
 export async function sendToClaude(prompt: string, opts: SendOptions): Promise<void> {
-  const { onEvent, context, model, signal } = opts
+  const { onEvent, context, model, threadId, turnId, signal } = opts
   const { data } = await supabase.auth.getSession()
   const token = data.session?.access_token
   if (!token) return onEvent({ kind: 'error', code: 'not_signed_in' })
@@ -168,7 +196,13 @@ export async function sendToClaude(prompt: string, opts: SendOptions): Promise<v
     res = await fetch(FN_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ prompt, ...(context ? { context } : {}), ...(model ? { model } : {}) }),
+      body: JSON.stringify({
+        prompt,
+        ...(context ? { context } : {}),
+        ...(model ? { model } : {}),
+        ...(threadId ? { thread_id: threadId } : {}),
+        ...(turnId ? { turn_id: turnId } : {}),
+      }),
       signal,
     })
   } catch (e) {
@@ -183,6 +217,22 @@ export async function sendToClaude(prompt: string, opts: SendOptions): Promise<v
     const payload = await res.text().catch(() => '')
     const { code, detail } = classify(res.status, payload)
     return onEvent({ kind: 'error', code, detail })
+  }
+
+  // The row this stream belongs to, named by the broker before it sends a
+  // token. Both ids or neither: half an identity would let the client persist a
+  // thread it cannot fetch a turn from. Emitted first because everything that
+  // survives this tab closing is keyed on it.
+  const hTurn = res.headers.get('x-broker-turn-id')
+  const hThread = res.headers.get('x-broker-thread-id')
+  if (hTurn && hThread) {
+    onEvent({
+      kind: 'turn',
+      turnId: hTurn,
+      threadId: hThread,
+      session: res.headers.get('x-broker-session') === 'resumed' ? 'resumed' : 'new',
+      groundedOn: res.headers.get('x-broker-grounded-on') || null,
+    })
   }
 
   // Read off the RESPONSE, before the first token. This is the honest answer to
@@ -288,6 +338,14 @@ export function emit(frame: string, onEvent: (e: ClaudeEvent) => void): void {
       name: String(obj.tool_name ?? obj.name ?? 'tool'),
       detail: typeof obj.detail === 'string' ? obj.detail : undefined,
     })
+  }
+  // The detached path's own first frame (01-api.md A): the container says
+  // straight away whether it picked the thread's CLI session back up or started
+  // a fresh one under that id. A live tab can say so before any answer arrives,
+  // which is the difference between "it remembers" and "it does not".
+  if (type === 'broker') {
+    const resumed = obj.resumed === true || obj.resumed === 'true'
+    return onEvent({ kind: 'status', text: resumed ? 'resumed' : 'fresh session' })
   }
   if (type === 'system' || type === 'status') {
     const text = typeof obj.subtype === 'string' ? obj.subtype

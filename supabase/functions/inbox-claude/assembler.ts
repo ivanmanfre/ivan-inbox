@@ -105,7 +105,7 @@ const DESC_CAP_SHED = 80 // PARITY-SPEC §3 load-shed steps 5-6
  * portable form. DRIFT HAZARD: edits to the local file do not propagate.
  * Phase 5 owes a diff of this literal against /Users/ivanmanfredi/.claude/CLAUDE.md.
  */
-const P16_OPERATOR_RULES = `# Global standing rules (all projects, all folders)
+export const P16_OPERATOR_RULES = `# Global standing rules (all projects, all folders)
 
 ## Never ask permission for routine work
 - NEVER ask "should I make this edit?" / "want me to apply this?" / yes-no confirmation questions for file edits, code changes, or any reversible action. Permissions are already set to bypass — just do the work and report what you did.
@@ -134,12 +134,36 @@ export interface BlockReport {
   note?: string
 }
 
+/**
+ * What this assembly stands on, in the words the turn row and the resume logic
+ * need. ADDITIVE: `text`, `blocks`, `shed`, `assembledInMs` and `cacheState` are
+ * untouched, so every existing caller and test reads exactly what it read before.
+ *
+ * `summary_date` is the newest daily-summary day that actually went into the
+ * envelope. A resumed session compares it against the date the thread was last
+ * grounded on; when it has moved, the broker sends only the days in between
+ * instead of the whole envelope again.
+ */
+export interface AssembleGrounding {
+  /** P15 project/MEMORY.md updated_at — the memory index this turn saw. */
+  memory_index_at: string
+  /** Newest B4 day injected, or null when B4 was unavailable or shed away. */
+  summary_date: string | null
+  /** Every B4 day injected, newest first. Shorter than the fetch when the ladder trimmed it. */
+  summary_days: string[]
+  /** B5 client_instances.compiled_at, or null when B5 was unavailable. */
+  compiled_at: string | null
+  /** The same per-block report as `blocks`, carried here so one object is the whole manifest. */
+  blocks: BlockReport[]
+}
+
 export interface AssembleResult {
   text: string
   blocks: BlockReport[]
   shed: string[]
   assembledInMs: number
   cacheState: 'cold' | 'warm' | 'stale'
+  grounding: AssembleGrounding
 }
 
 // ---------------------------------------------------------------------------
@@ -742,6 +766,47 @@ async function fetchB4(c: Ctx): Promise<{ days: string[]; newest: string }> {
   return { days: days, newest: String(r.rows[0]['date'] ?? '?') }
 }
 
+/** The `### YYYY-MM-DD` a rendered B4 day opens with. '' when the shape is not that. */
+export function b4DayDate(day: string): string {
+  const m = /^###\s+(\d{4}-\d{2}-\d{2})/.exec(day.trim())
+  return m ? m[1] : ''
+}
+
+/**
+ * The days a resumed session has not been told about yet.
+ *
+ * A session the container still holds already carries the whole memory envelope
+ * from its first turn, so re-sending it is pure cost. What CAN have moved since
+ * is the daily summary, so that is the only thing worth re-sending — and only the
+ * days newer than the one the thread was last grounded on. Empty string when
+ * nothing moved, which is the common case and means the broker adds nothing.
+ *
+ * Reads B4 itself rather than taking the assembled text apart: one two-row REST
+ * call, and it only runs on the turns where a delta is actually possible.
+ */
+export async function summaryDelta(deps: AssembleDeps, sinceDate: string | null | undefined): Promise<string> {
+  const key = deps.env('SUPABASE_SERVICE_ROLE_KEY')
+  if (!key) throw new Error('SUPABASE_SERVICE_ROLE_KEY not configured on the edge function')
+  const c: Ctx = {
+    base: deps.env('SUPABASE_URL') ?? DEFAULT_SUPABASE_URL,
+    key: key,
+    clickupKey: undefined,
+    now: Date.now(),
+  }
+  const b4 = await fetchB4(c)
+  const since = sinceDate ?? ''
+  const days: string[] = []
+  for (let i = 0; i < b4.days.length; i++) {
+    const d = b4DayDate(b4.days[i])
+    if (d && d > since) days.push(b4.days[i])
+  }
+  if (days.length === 0) return ''
+  const header = since
+    ? `## n8nClaw daily summaries — new since ${since}`
+    : '## n8nClaw daily summaries'
+  return header + '\n' + days.join('\n\n')
+}
+
 /**
  * B9 — compaction proposals. Three SCOPED point-reads; the project one is an F4
  * collision path and MUST carry client_id or it can return ProSWPPP's queue.
@@ -982,12 +1047,25 @@ export async function assembleSystemPrompt(deps: AssembleDeps): Promise<Assemble
     const last = memoGet<StaleEntry>('LAST_GOOD')
     if (last && now - last.at < TTL_STALE_MS) {
       const text = `[STALE: assembled ${last.iso}, live sources unreachable — ${reason(rP15.reason)}]\n${last.text}`
+      const staleBlocks: BlockReport[] = [
+        { id: 'STALE', chars: text.length, ok: false, note: `served from ${last.iso}` },
+      ]
       return {
         text: text,
-        blocks: [{ id: 'STALE', chars: text.length, ok: false, note: `served from ${last.iso}` }],
+        blocks: staleBlocks,
         shed: [],
         assembledInMs: performance.now() - t0,
         cacheState: 'stale',
+        // Nothing live was read, so nothing may be claimed about freshness. A
+        // resumed turn that sees a null summary_date sends no delta, which is the
+        // honest behaviour when the assembler cannot say what day it is on.
+        grounding: {
+          memory_index_at: last.sourcesAsOf,
+          summary_date: null,
+          summary_days: [],
+          compiled_at: null,
+          blocks: staleBlocks,
+        },
       }
     }
     throw new Error(
@@ -1348,11 +1426,26 @@ export async function assembleSystemPrompt(deps: AssembleDeps): Promise<Assemble
 
   memoSet<StaleEntry>('LAST_GOOD', { text: out.text, at: now, iso: isoNow(now), sourcesAsOf })
 
+  // Describes what was INJECTED, not what was fetched: b4Days is post-ladder, so a
+  // turn whose summaries were trimmed reports the day it actually carries.
+  const summaryDays: string[] = []
+  for (let i = 0; i < b4Days.length; i++) {
+    const d = b4DayDate(b4Days[i])
+    if (d) summaryDays.push(d)
+  }
+
   return {
     text: out.text,
     blocks: out.reports,
     shed: shed.map((t) => t.slice(t.indexOf(':') + 1)),
     assembledInMs: performance.now() - t0,
     cacheState: cacheState,
+    grounding: {
+      memory_index_at: p15.updatedAt,
+      summary_date: summaryDays.length > 0 ? summaryDays[0] : null,
+      summary_days: summaryDays,
+      compiled_at: rB5.status === 'fulfilled' ? (rB5.value.compiledAt || null) : null,
+      blocks: out.reports,
+    },
   }
 }

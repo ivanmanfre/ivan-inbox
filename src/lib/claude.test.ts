@@ -171,12 +171,67 @@ describe('model plumbing — never a silent fallback', () => {
     ]
     expect(new Set(copies).size).toBe(3)
     // Two of them tell the operator the action that actually works.
-    expect(CLAUDE_ERROR_COPY.model_not_supported_upstream).toMatch(/container default/i)
-    expect(CLAUDE_ERROR_COPY.model_support_unknown).toMatch(/container default/i)
+    expect(CLAUDE_ERROR_COPY.model_not_supported_upstream).toMatch(/Claude default/i)
+    expect(CLAUDE_ERROR_COPY.model_support_unknown).toMatch(/Claude default/i)
   })
 
   it('names the context-assembly failure as its own state', () => {
     expect(CLAUDE_ERROR_COPY.context_assembly_failed).toMatch(/memory context/i)
     expect(CLAUDE_ERROR_COPY.context_assembly_failed).not.toMatch(/something went wrong/i)
+  })
+})
+
+// db/049: a turn is a ROW that outlives this tab. These pin the two halves of
+// that — what the client sends so the broker can write the row, and what it
+// reads back off the response so it can go and fetch it later.
+describe('thread and turn plumbing', () => {
+  it('sends no thread_id or turn_id when there is no thread yet', async () => {
+    const calls = stubBroker({ 'x-broker-model': 'container-default' })
+    await sendToClaude('hi', { onEvent: () => {} })
+    expect(calls[0]).not.toHaveProperty('thread_id')
+    expect(calls[0]).not.toHaveProperty('turn_id')
+  })
+
+  it('sends the snake_case ids the broker reads', async () => {
+    const calls = stubBroker({ 'x-broker-model': 'container-default' })
+    await sendToClaude('hi', { threadId: 'th-1', turnId: 'tu-1', onEvent: () => {} })
+    expect(calls[0]).toMatchObject({ thread_id: 'th-1', turn_id: 'tu-1' })
+  })
+
+  it('names the row off the response headers, before the first token', async () => {
+    const events = await runWithHeaders({
+      'x-broker-turn-id': 'tu-1', 'x-broker-thread-id': 'th-1',
+      'x-broker-session': 'resumed', 'x-broker-grounded-on': '2026-09-03',
+      'x-broker-model': 'container-default',
+    }, null)
+    expect(events[0]).toEqual({
+      kind: 'turn', turnId: 'tu-1', threadId: 'th-1', session: 'resumed', groundedOn: '2026-09-03',
+    })
+    // The row's identity lands before "what am I talking to": everything that
+    // survives the tab closing is keyed on it.
+    expect(events.findIndex(e => e.kind === 'turn'))
+      .toBeLessThan(events.findIndex(e => e.kind === 'model'))
+  })
+
+  it('treats a missing session header as a fresh session, never a guess at resumed', async () => {
+    const events = await runWithHeaders(
+      { 'x-broker-turn-id': 'tu-2', 'x-broker-thread-id': 'th-2' }, null,
+    )
+    expect(events.find(e => e.kind === 'turn'))
+      .toEqual({ kind: 'turn', turnId: 'tu-2', threadId: 'th-2', session: 'new', groundedOn: null })
+  })
+
+  it('says nothing at all when only half the identity arrived', async () => {
+    // A thread the client cannot fetch a turn from is worse than no thread: it
+    // would be persisted to localStorage and painted on every later launch.
+    const events = await runWithHeaders({ 'x-broker-thread-id': 'th-3' }, null)
+    expect(events.some(e => e.kind === 'turn')).toBe(false)
+  })
+
+  it('reads the container broker frame as the session status it is', () => {
+    expect(collect('data: {"type":"broker","resumed":true,"session_id":"s"}'))
+      .toEqual([{ kind: 'status', text: 'resumed' }])
+    expect(collect('data: {"type":"broker","resumed":false,"session_id":"s"}'))
+      .toEqual([{ kind: 'status', text: 'fresh session' }])
   })
 })

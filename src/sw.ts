@@ -16,18 +16,63 @@ clientsClaim()
 cleanupOutdatedCaches()
 precacheAndRoute(self.__WB_MANIFEST)
 
+// The one feed's producers (inbox-notify, db/049) send a `tag` and a `family`
+// alongside the title and body. Both earn their place:
+//
+//   tag    — the OS COLLAPSES notifications that share one. Five failures of the
+//            same workflow become one line in Notification Centre instead of five,
+//            which is the difference between a feed and a pile. It is the group
+//            key when there is one, so what the app folds and what the phone
+//            folds are the same fold.
+//   family — travels on to the open tabs so the feed can refetch just itself
+//            rather than reloading everything on every push.
 self.addEventListener('push', (e) => {
   const d = e.data?.json() ?? { title: 'Inbox', body: '' }
-  e.waitUntil(self.registration.showNotification(d.title, {
-    body: d.body, icon: './icon-192.png', badge: './icon-192.png', data: { url: d.url ?? './' },
-    // Explicitly non-silent so the OS plays its notification sound (macOS:
-    // Settings → Notifications → browser → "Play sound" must be on).
-    silent: false,
-  }))
+  const url = d.url ?? './'
+  e.waitUntil((async () => {
+    await self.registration.showNotification(d.title, {
+      body: d.body, icon: './icon-192.png', badge: './icon-192.png',
+      data: { url, family: d.family },
+      ...(d.tag ? { tag: d.tag } : {}),
+      // Explicitly non-silent so the OS plays its notification sound (macOS:
+      // Settings → Notifications → browser → "Play sound" must be on).
+      silent: false,
+    })
+    // A tab that is already open must not have to be tapped to learn something
+    // arrived. Without this the badge on the surface Ivan is LOOKING AT only
+    // updates on the next refetch, which is the state that makes an operator
+    // stop trusting a feed.
+    const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    for (const c of clients) c.postMessage({ type: 'push', url, family: d.family })
+  })())
 })
+
+// Tapping a notification must land IN the app, on the thing the notification is
+// about. openWindow() alone opens a SECOND copy of the PWA every time — the
+// phone ends up with a stack of them, none of them the one holding the session.
+// So: reuse an open window if there is one, and navigate it.
 self.addEventListener('notificationclick', (e) => {
   e.notification.close()
-  e.waitUntil(self.clients.openWindow(e.notification.data?.url ?? './'))
+  const raw = e.notification.data?.url ?? './'
+  // Producers write a relative './#exp/...' precisely so it resolves against
+  // wherever the app is served from rather than being pinned to a host.
+  const target = new URL(raw, self.registration.scope).href
+  e.waitUntil((async () => {
+    const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    const open = clients.find(c => c.url.startsWith(self.registration.scope)) ?? clients[0]
+    if (open) {
+      // focus() first: on iOS a navigate() on an unfocused client can be
+      // dropped, and a focused window on the wrong route is still recoverable.
+      await open.focus().catch(() => {})
+      // matchAll passes includeUncontrolled, so this client may be one this
+      // worker does not control, and navigate() rejects on those. Swallowing the
+      // rejection and returning is a tap that does nothing, which is the whole
+      // complaint. Fall through to openWindow instead.
+      const navigated = await open.navigate(target).then(() => true).catch(() => false)
+      if (navigated) return
+    }
+    await self.clients.openWindow(target)
+  })())
 })
 
 // THE BROWSER TELLING US THE SUBSCRIPTION DIED. There was no handler for this

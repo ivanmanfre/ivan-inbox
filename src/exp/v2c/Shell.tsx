@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { SendsScreen } from '../../screens/SendsScreen'
 import { TodayScreen } from '../../screens/TodayScreen'
 import { SettingsScreen } from '../../screens/SettingsScreen'
@@ -41,6 +41,7 @@ import { CommandLayer } from './CommandLayer'
 import { MagnetsList } from './MagnetsList'
 import { StylesList } from './StylesList'
 import { StrategyView } from './StrategyView'
+import { MoneyView } from './MoneyView'
 import type { OpenMagnet } from './ContentSections'
 import { DraftWindow, type QueueItem } from './DraftPane'
 import { MagnetWindow } from './MagnetWindow'
@@ -84,6 +85,7 @@ import './dwsys.css'
 // the queue rail, the disclosure, `.wbkv` and `.wbb` rather than restating
 // them, so its scope does not intersect dwsys's or wbcal's.
 import './wbcall.css'
+import { lazyBrainAsk, lazyBrainMobile, type BrainId } from '../brain'
 
 // ============================================================================
 // Candidate v2c — WORKBENCH
@@ -136,8 +138,13 @@ function useCanvas(): Canvas {
   return canvas
 }
 
-export default function Shell() {
+// `brain`: goal-run inbox-brain-app-2026-09-04. When set, the matching tournament
+// candidate (src/exp/brain/<id>) owns the PHONE chrome and the desktop Ask pane;
+// every lane still renders here. Unset = the workbench exactly as shipped.
+export default function Shell({ brain }: { brain?: BrainId } = {}) {
   const canvas = useCanvas()
+  const BrainMobile = useMemo(() => (brain ? lazyBrainMobile(brain) : null), [brain])
+  const BrainAsk = useMemo(() => (brain ? lazyBrainAsk(brain) : null), [brain])
   const mobile = canvas === 'mobile'
   const boot = useMemo(() => parseWbHash(location.hash), [])
 
@@ -473,7 +480,11 @@ export default function Shell() {
   // Spine §1.7 — the ONE licensed structural edit. At 390 the loading state used
   // to carry no `.wb` class at all, so the iOS :root palette showed through for
   // the first seconds of every cold mobile load.
-  if (inbox.loading && inbox.threads.length === 0 && !inboxError) {
+  // Under a tournament candidate on the phone the candidate paints its own chrome
+  // from the first frame (its work surface is a skeleton until the data lands);
+  // showing the stock tab bar for the first seconds was measured on every cold
+  // load and reads as a different app flashing by.
+  if (inbox.loading && inbox.threads.length === 0 && !inboxError && !(mobile && BrainMobile)) {
     return (
       <div className={mobile ? 'app wb' : 'app dt wb'}>
         {/* style-delta §3a — the ONE licensed DOM change: the app plate the
@@ -590,6 +601,10 @@ export default function Shell() {
         <StrategyView lane={lane} setLane={setLane} />
       )}
       {job === 'sends' && <SendsScreen client={sendsClient} setClient={setSendsClient} />}
+      {/* Money joined 2026-09-01 (goal-run money-truth) — a whole-canvas
+          reading surface like Strategy, so it takes no props from Shell at
+          all: it owns its own fetch, same as Strategy owns client_strategy. */}
+      {job === 'money' && <MoneyView />}
       {job === 'ops' && opsSurface}
       {/* Today aggregates, so its hand-off rows navigate INSIDE the workbench
           rather than through the default app's hash routes. The work-queue
@@ -620,6 +635,17 @@ export default function Shell() {
   const renderPeer = (p: Peer) => {
     const key = peerKey(p)
     if (p.kind === 'chat') {
+      if (BrainAsk) {
+        return (
+          <Suspense fallback={null}>
+            <BrainAsk
+              chat={chat} job={job} about={aboutLabel} aboutContext={aboutContext ?? null}
+              subjects={seeSubjects} onClose={() => closePeer('chat')}
+              onOpenAbout={mobile && ctx ? () => setFocus(peerKey(ctx)) : null} mobile={mobile}
+            />
+          </Suspense>
+        )
+      }
       return (
         <ChatPane
           chat={chat}
@@ -688,6 +714,25 @@ export default function Shell() {
   )
 
   // ---- mobile: one region at a time ----
+  if (mobile && BrainMobile) {
+    // The candidate owns the phone. A DM thread opened as a takeover is handed
+    // over rendered; the chat peer is NOT, because Ask is the candidate's own
+    // first-class place rather than a peer over a lane.
+    const p = plan.work === 'hidden' ? plan.peers[0] : undefined
+    const peerView = p && p.kind !== 'chat' ? renderPeer(p) : null
+    return (
+      <Suspense fallback={null}>
+        <CommandLayer />
+        <BrainMobile
+          chat={chat} job={job} goJob={goJob} counts={counts} sev={sev} health={health}
+          loadedAt={inbox.loadedAt} inboxError={inboxError} refresh={inbox.refresh}
+          workSurface={workSurface} windows={windows} peerView={peerView}
+          about={aboutLabel} aboutContext={aboutContext ?? null} subjects={seeSubjects}
+          boot={boot}
+        />
+      </Suspense>
+    )
+  }
   if (mobile) {
     if (plan.work === 'hidden' && plan.peers[0]) {
       const p = plan.peers[0]

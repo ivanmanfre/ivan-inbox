@@ -29,3 +29,6 @@ supabase/.temp
 
 # per-pass preview builds (2026 workbench run)
 dist-p*
+.session-*.json
+dist-brain-*/
+dist-stock-branch/

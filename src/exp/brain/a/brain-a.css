@@ -1,0 +1,445 @@
+/* ============================================================================
+   brain-a.css - candidate A, goal run inbox-brain-app-2026-09-04.
+   THESIS: "Thread first, feed as a dense ledger." Ask reads like a calm
+   conversation; the feed is a scannable ledger, not a second inbox.
+
+   CANON: every colour and every font size below is one of D2's live tokens
+   (faithful.css :37-79) - no new hue, no new px value. Selectors are scoped
+   `.wb.wb.wb .brain-a …` only where a base rule must be beaten (the flatten
+   idiom, faithful.css:18-24); everywhere else a single `.brain-a` ancestor is
+   enough because nothing outside this file targets these class names.
+   ============================================================================ */
+
+.brain-a { min-height: 0; display: flex; flex-direction: column; flex: 1; }
+
+/* ---------------------------------------------------------------------- */
+/* Type - exactly the live 7-token ramp, never a raw px value.             */
+/* ---------------------------------------------------------------------- */
+.wb.wb.wb .brain-a { font-size: var(--fs-body); font-weight: 400; line-height: 1.5; }
+
+/* ---------------------------------------------------------------------- */
+/* Ribbon (Mobile.tsx)                                                     */
+/* ---------------------------------------------------------------------- */
+/* Every control in this row is a full 44px of target IN ITS OWN BOX. The old
+   version leaned on 8px and 12px pseudo-element overhangs, which reached out
+   of the ribbon and won points that belonged to the Ask header underneath. */
+.ba-rib {
+  display: flex; align-items: center; gap: 6px; padding: 2px var(--gut); flex: none;
+}
+.wb.wb.wb .ba-rib-sync {
+  background: none; border: none; font-size: var(--fs-meta); color: var(--text3);
+  font-variant-numeric: tabular-nums; cursor: pointer; position: relative;
+  min-height: 44px; padding: 0 10px; margin-left: -10px; display: inline-flex; align-items: center;
+}
+.ba-rib-sync::after { content: ''; position: absolute; inset: -2px; }
+.ba-rib-sync.bad { color: var(--sev-urgent); }
+.ba-rib-health {
+  background: none; border: none;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; margin-left: auto;
+  font-size: var(--fs-meta); color: var(--sev-attention); cursor: pointer; position: relative;
+  font-variant-numeric: tabular-nums; min-height: 44px; min-width: 44px; padding: 0 8px;
+}
+.ba-rib-health::after { content: ''; position: absolute; inset: -2px; }
+.ba-rib-dot { width: 6px; height: 6px; border-radius: 999px; background: var(--sev-attention); display: inline-block; }
+.ba-gear {
+  background: none; border: none; color: var(--text3); font-size: var(--fs-meta);
+  padding: 0; margin: 0 -10px 0 0; position: relative; cursor: pointer;
+  min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center;
+}
+/* A 2px cushion, not 8: the ribbon sits 12px above the Ask header, and an 8px
+   overhang with a z-index won the point 22px ABOVE the New thread button's own
+   centre. A cushion that reaches into a neighbour's target is a hit-test bug
+   wearing a hit-test fix. */
+.ba-gear::after { content: ''; position: absolute; inset: -2px; }
+
+/* ---------------------------------------------------------------------- */
+/* Pager (Ask/lane <-> Feed)                                               */
+/* ---------------------------------------------------------------------- */
+.ba-pager { flex: 1; min-height: 0; overflow: hidden; position: relative; }
+.ba-pager-track { display: flex; width: 200%; height: 100%; }
+.ba-page { width: 50%; flex: none; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+.ba-primary { display: none; flex: 1; min-height: 0; flex-direction: column; }
+.ba-primary.show { display: flex; }
+.ba-lane { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+/* No transition on the pager track. The ground declares
+   `.wb.wb.wb *{ transition:none }` (faithful.css:1508) at three classes, which
+   this rule loses to, so the release snap was measured jumping in one frame
+   whatever this file asked for. The declaration is deleted rather than left
+   standing as a claim the surface does not keep. */
+
+/* ---------------------------------------------------------------------- */
+/* TabBar.tsx                                                              */
+/* ---------------------------------------------------------------------- */
+.ba-tabbar {
+  display: flex; flex: none; padding: 8px 6px calc(8px + env(safe-area-inset-bottom, 0px));
+  background: var(--canvas); border-top: 1px solid var(--hairline);
+}
+.ba-tab {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  background: none; border: none; color: var(--text3); padding: 6px 2px;
+  min-height: 44px; justify-content: center; position: relative; cursor: pointer;
+}
+.ba-tab.on { color: var(--accent-ui, var(--accent)); }
+.ba-tab-ic { font-size: var(--fs-page); position: relative; line-height: 1; }
+.wb.wb.wb .ba-tab-l { font-size: var(--fs-meta); font-weight: 600; letter-spacing: .01em; }
+.ba-tab-live {
+  position: absolute; top: -3px; right: -6px; width: 7px; height: 7px;
+  border-radius: 999px; background: var(--accent-ui, var(--accent));
+}
+.wb.wb.wb .ba-tab-cnt {
+  position: absolute; top: -7px; right: -13px; min-width: 16px; text-align: center; line-height: 16px;
+  font-size: var(--fs-meta); font-weight: 600; border-radius: 999px; padding: 0 4px;
+  background: var(--sev-urgent); color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.wb.wb.wb .ba-tab-cnt.neutral { background: var(--surface3); color: var(--text); }
+.wb.wb.wb .ba-tab-cnt.attention { background: var(--sev-attention); color: var(--ink); }
+.wb.wb.wb .ba-tab-cnt.urgent { background: var(--sev-urgent); color: var(--ink); }
+
+/* ---------------------------------------------------------------------- */
+/* WorkTabs.tsx - the content/sends/ops segmented control                  */
+/* ---------------------------------------------------------------------- */
+.ba-worktabs { display: flex; gap: 6px; padding: 10px var(--gut) 6px; flex: none; overflow-x: auto; }
+.wb.wb.wb .ba-wt {
+  background: var(--surface1); border: 1px solid var(--hairline); color: var(--text2);
+  border-radius: var(--r-pill); padding: 8px 14px; font-size: var(--fs-meta); font-weight: 500;
+  min-height: 36px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+}
+.wb.wb.wb .ba-wt.on { background: var(--surface2); color: var(--text); border-color: var(--hairline-strong); }
+.wb.wb.wb .ba-wt b { font-weight: 600; color: var(--text3); font-variant-numeric: tabular-nums; }
+.wb.wb.wb .ba-wt b.urgent { color: var(--sev-urgent); }
+.wb.wb.wb .ba-wt b.attention { color: var(--sev-attention); }
+
+/* ---------------------------------------------------------------------- */
+/* AskThread.tsx                                                           */
+/* ---------------------------------------------------------------------- */
+.ba-ask { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.ba-ask-h { display: flex; align-items: center; gap: 10px; padding: 8px var(--gut) 10px; flex: none; }
+.ba-ask-ic { font-size: var(--fs-title); color: var(--accent-ui, var(--accent)); }
+.wb.wb.wb .ba-ask-n { font-size: var(--fs-title); font-weight: 600; color: var(--text); flex: 1; min-width: 0; }
+.wb.wb.wb .ba-ask-s { font-size: var(--fs-meta); color: var(--text3); padding: 0 var(--gut) 8px; flex: none; }
+.wb.wb.wb .ba-newthread {
+  background: var(--surface2); color: var(--text2); border: none; border-radius: var(--r-pill);
+  position: relative; font-size: var(--fs-meta); font-weight: 600; padding: 6px 14px;
+  min-height: 44px; white-space: nowrap; cursor: pointer; flex: none;
+}
+.ba-newthread::after { content: ''; position: absolute; inset: -3px 0; }
+.wb.wb.wb .ba-grounded-top {
+  padding: 0 var(--gut) 8px; font-size: var(--fs-meta); color: var(--text3); flex: none;
+}
+.ba-about {
+  display: flex; align-items: center; gap: 8px; margin: 0 var(--gut) 8px; padding: 8px 12px;
+  background: var(--surface1); border-radius: var(--r-ctl); flex: none;
+}
+.ba-about.tap { cursor: pointer; }
+.wb.wb.wb .ba-about-l { font-size: var(--fs-meta); color: var(--text3); }
+.wb.wb.wb .ba-about-n { font-size: var(--fs-meta); color: var(--text); font-weight: 500; }
+
+.ba-see {
+  display: flex; align-items: center; gap: 8px; margin: 0 var(--gut) 8px; flex: none;
+}
+.wb.wb.wb .ba-see-l {
+  font-size: var(--fs-meta); color: var(--text3); flex: 1; min-width: 0;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.wb.wb.wb .ba-see-t {
+  background: none; border: 1px solid var(--hairline); color: var(--text2); border-radius: var(--r-pill);
+  font-size: var(--fs-meta); padding: 4px 12px; min-height: 44px; white-space: nowrap; cursor: pointer;
+}
+
+.ba-msgs { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0 var(--gut) 20px; }
+
+.ba-empty { padding: 24px 4px; display: flex; flex-direction: column; gap: 14px; }
+.wb.wb.wb .ba-empty-t { font-size: var(--fs-title); font-weight: 600; color: var(--text); }
+.wb.wb.wb .ba-empty-s { font-size: var(--fs-meta); color: var(--text3); }
+.ba-starters { display: flex; flex-direction: column; gap: 8px; }
+.wb.wb.wb .ba-starter {
+  text-align: left; background: var(--surface1); border: 1px solid var(--hairline); color: var(--text2);
+  border-radius: var(--r-ctl); padding: 12px 14px; font-size: var(--fs-body); font-weight: 400;
+  min-height: 44px; cursor: pointer;
+}
+
+.ba-running {
+  display: flex; align-items: center; gap: 8px; margin: 10px 0; padding: 10px 12px;
+  background: var(--surface1); border-radius: var(--r-ctl);
+}
+.ba-running.elsewhere { border: 1px dashed var(--hairline-strong); }
+.ba-running-dot {
+  width: 7px; height: 7px; border-radius: 999px; background: var(--accent-ui, var(--accent)); flex: none;
+}
+.wb.wb.wb .ba-running > span:not(.ba-running-dot) { font-size: var(--fs-meta); color: var(--text2); flex: 1; }
+.wb.wb.wb .ba-running-stop {
+  position: relative; background: var(--surface3); color: var(--text); border: none;
+  border-radius: var(--r-pill); font-size: var(--fs-meta); font-weight: 600; padding: 0 16px;
+  min-height: 44px; cursor: pointer; flex: none;
+}
+.ba-running-stop::after { content: ''; position: absolute; inset: -3px; }
+.ba-running.elsewhere { flex-wrap: wrap; }
+
+/* Running -> done: the moment an answer's body actually mounts (freshly
+   streamed, or a completed turn painting in from history) is a real state
+   change worth marking once, scoped to THIS candidate's own thread so the
+   shared ChatMessage.tsx stays untouched. */
+@media (prefers-reduced-motion: no-preference) {
+  .brain-a .wb-turn.asst .wb-body { animation: ba-settle var(--dur-state) var(--ease); }
+}
+/* The turn a push named. A hairline lime rule on the left says WHICH answer
+   the notification was about, so the deep link lands on a marked thing rather
+   than somewhere in the middle of a scroll. */
+.ba-boot-turn { border-left: 2px solid var(--accent-ui, var(--accent)); padding-left: 10px; margin-left: -12px; }
+
+@keyframes ba-settle {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ba-answermeta { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 14px; }
+.wb.wb.wb .ba-sources { font-size: var(--fs-meta); color: var(--text3); }
+.wb.wb.wb .ba-sources summary {
+  cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 6px;
+  min-height: 44px; position: relative;
+}
+.wb.wb.wb .ba-sources summary::after { content: ''; position: absolute; inset: -3px 0; }
+.wb.wb.wb .ba-sources summary::-webkit-details-marker { display: none; }
+.wb.wb.wb .ba-sources summary::before { content: '◈'; font-size: var(--fs-meta); }
+.wb.wb.wb .ba-sources-list { padding: 4px 0 0 14px; color: var(--text2); }
+/* A chip is a tap target before it is a label: 44px tall with an 8px row gap,
+   so the outward hit-test from its centre never lands on the chip below. */
+.ba-recall-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.wb.wb.wb .ba-recall-chip {
+  position: relative; background: none; border: 1px solid var(--hairline); color: var(--text2);
+  border-radius: var(--r-pill); font-size: var(--fs-meta); padding: 0 14px; min-height: 44px;
+  display: inline-flex; align-items: center; cursor: pointer;
+}
+.ba-recall-chip::after { content: ''; position: absolute; inset: -3px 0; }
+.wb.wb.wb .ba-recall-chip:active { color: var(--accent-ui, var(--accent)); }
+
+/* ---------------------------------------------------------------------- */
+/* Composer.tsx                                                            */
+/* ---------------------------------------------------------------------- */
+.ba-composer-wrap { flex: none; padding: 6px var(--gut) calc(8px + env(safe-area-inset-bottom, 0px)); }
+.ba-composer { display: flex; align-items: center; gap: 6px; }
+.wb.wb.wb .ba-field {
+  flex: 1; min-width: 0; background: var(--surface1); border: 1px solid var(--hairline); color: var(--text);
+  border-radius: var(--r-pill); padding: 11px 16px; font-size: var(--fs-body); font-weight: 400;
+  min-height: 44px;
+}
+/* 44x44 literal, plus a 3px cushion each way. The cushion is deliberately
+   SMALLER than half the 6px gap between them, so the two pseudo-elements
+   touch rather than overlap - an overlapping cushion means the later control
+   in the DOM wins the point 22px out from its neighbour's centre, which is
+   exactly how Attach failed the outward sweep at 40px wide. */
+.ba-clip, .ba-mic {
+  background: none; border: none; color: var(--text3); font-size: var(--fs-title);
+  width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+  position: relative; cursor: pointer; flex: none;
+}
+.ba-clip::after, .ba-mic::after { content: ''; position: absolute; inset: -3px; }
+.ba-glyph { width: 22px; height: 22px; display: block; }
+.ba-mic.recording { color: var(--sev-urgent); }
+.ba-mic.transcribing { color: var(--text3); opacity: .6; }
+.ba-send {
+  background: var(--surface3); color: var(--text3); border: none; border-radius: 999px;
+  width: 44px; height: 44px; flex: none; font-size: var(--fs-title); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.ba-send:not(:disabled) { background: var(--accent); color: var(--ink); }
+.ba-send.stop { background: var(--sev-urgent); color: var(--ink); }
+
+.ba-attach-row {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 8px; padding: 8px 10px;
+  background: var(--surface1); border-radius: var(--r-ctl);
+}
+.ba-attach-thumb {
+  width: 40px; height: 40px; border-radius: var(--r-chip); background-size: cover; background-position: center; flex: none;
+}
+.ba-attach-pdf {
+  width: 40px; height: 40px; border-radius: var(--r-chip); background: var(--surface3); color: var(--text2);
+  display: flex; align-items: center; justify-content: center; font-size: var(--fs-meta); font-weight: 600; flex: none;
+}
+.ba-attach-info { flex: 1; min-width: 0; }
+.wb.wb.wb .ba-attach-name { font-size: var(--fs-meta); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wb.wb.wb .ba-attach-note { font-size: var(--fs-meta); color: var(--text3); }
+.ba-attach-x {
+  background: none; border: none; color: var(--text3); position: relative; cursor: pointer; flex: none;
+  width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+}
+.ba-attach-x::after { content: ''; position: absolute; inset: -3px; }
+
+/* The voice state has to be SEEN, not inferred from a mic glyph changing
+   colour: a bar meter that moves while the microphone is open, the elapsed
+   clock, and the transcript as it lands. */
+.ba-voicebar {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px; margin-bottom: 8px;
+  background: var(--surface1); border-radius: var(--r-ctl); min-height: 44px;
+}
+.ba-levelmeter { display: flex; align-items: center; gap: 3px; height: 24px; flex: none; }
+.ba-level-bar { width: 4px; min-height: 4px; background: var(--sev-urgent); border-radius: 2px; }
+.wb.wb.wb .ba-voice-t { font-size: var(--fs-meta); color: var(--text2); font-variant-numeric: tabular-nums; flex: none; }
+.wb.wb.wb .ba-voice-live { font-size: var(--fs-meta); color: var(--text3); flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wb.wb.wb .ba-voicenote { font-size: var(--fs-meta); color: var(--text3); padding: 0 2px 6px; }
+
+/* ---------------------------------------------------------------------- */
+/* LinkPreviewCard.tsx                                                     */
+/* ---------------------------------------------------------------------- */
+/* A preview is a CARD, not a strip: the thumbnail carries the 16:9 the source
+   actually has, the title sits under it at body size, and the site or channel
+   under that. Nothing is stretched to fill a box the picture does not have -
+   a card with no image is a two-line card, not an empty rectangle. */
+.ba-link {
+  display: flex; flex-direction: column; gap: 0; margin: 8px 0; overflow: hidden;
+  background: var(--surface1); border: 1px solid var(--hairline); border-radius: var(--r-ctl);
+}
+.ba-link.blocked { border-style: dashed; }
+.ba-link.loading { border-style: dashed; }
+.ba-link-img {
+  width: 100%; aspect-ratio: 16 / 9; background-size: cover; background-position: center;
+  background-color: var(--surface2); flex: none;
+}
+.ba-link-load { width: 100%; aspect-ratio: 16 / 9; background: var(--surface2); flex: none; }
+.ba-link-body { min-width: 0; padding: 10px 12px; }
+.wb.wb.wb .ba-link-title {
+  font-size: var(--fs-body); font-weight: 500; color: var(--text); line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.wb.wb.wb .ba-link-title.muted { color: var(--text3); font-weight: 400; }
+.wb.wb.wb .ba-link-sub {
+  font-size: var(--fs-meta); color: var(--text3); margin-top: 3px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Feed.tsx - the dense ledger                                             */
+/* ---------------------------------------------------------------------- */
+.ba-feed { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.ba-feed-h { display: flex; align-items: baseline; gap: 10px; padding: 12px var(--gut) 6px; flex: none; }
+.wb.wb.wb .ba-feed-t { font-size: var(--fs-title); font-weight: 600; color: var(--text); }
+/* Lime is a MARK here, never the figure itself: a small dot carries the
+   "there is something unread" signal and the count stays as text. */
+.wb.wb.wb .ba-feed-unread {
+  font-size: var(--fs-meta); color: var(--text2); font-variant-numeric: tabular-nums;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.ba-feed-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--accent-ui, var(--accent)); }
+.wb.wb.wb .ba-feed-err { margin: 8px var(--gut); font-size: var(--fs-meta); color: var(--sev-urgent); }
+.ba-feed-empty { padding: 40px var(--gut); }
+.wb.wb.wb .ba-feed-empty { font-size: var(--fs-body); color: var(--text3); }
+.ba-feed-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 12px; }
+
+/* Loading is a designed state: an empty list would say "nothing is waiting",
+   which is a different sentence and not yet a true one. */
+.ba-feed-load, .ba-hydrating, .ba-laneload { padding: 14px var(--gut); }
+.wb.wb.wb .ba-feed-load-t, .wb.wb.wb .ba-hydrating-t, .wb.wb.wb .ba-laneload-t {
+  font-size: var(--fs-meta); color: var(--text3); margin-bottom: 14px;
+}
+.ba-skel-list { display: flex; flex-direction: column; gap: 18px; }
+.ba-skel-row { display: flex; align-items: center; gap: 10px; }
+.ba-skel-mark { width: 12px; height: 12px; border-radius: 3px; background: var(--surface2); flex: none; }
+.ba-skel-line { height: 12px; border-radius: var(--r-chip); background: var(--surface2); flex: 1; }
+.ba-skel-line.short { flex: 0 0 56px; background: var(--surface1); }
+
+/* A full 44px of real target rather than 36px plus a cushion: a sticky row
+   with a z-index and an overhanging pseudo-element wins the point 22px out
+   from the FIRST card's centre, which is a worse trade than eight pixels. */
+.ba-fsec-h {
+  width: 100%; display: flex; align-items: center; gap: 8px; background: var(--canvas);
+  border: none; padding: 10px var(--gut); min-height: 44px; position: sticky; top: 0; z-index: 1;
+  cursor: pointer;
+}
+/* The ONE eyebrow left on this surface: an uppercase, letter-spaced section
+   label. Everything else that used to sit at this size reads at meta. */
+.wb.wb.wb .ba-fsec-l { font-size: var(--fs-eyebrow); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text3); }
+.wb.wb.wb .ba-fsec-n { font-size: var(--fs-meta); color: var(--text3); font-variant-numeric: tabular-nums; }
+.ba-fsec-u { width: 6px; height: 6px; border-radius: 999px; background: var(--sev-attention); }
+.ba-fsec-car { margin-left: auto; color: var(--text3); transform: rotate(90deg); display: inline-block; }
+.ba-fsec-car.open { transform: rotate(-90deg); }
+/* The chevron rotates instantly, for the same reason as the pager track. */
+
+/* One row: anchor mark, two lines of body, one dismiss control. The old
+   two-row trailing column is gone - it wrapped "Clear 7" onto two lines in
+   52px and gave the underlined text button a 26px tall hit area - and so is
+   the clock's own column, which cost the sentence 36px of a 358px row for a
+   fact that reads perfectly well on the meta line. */
+.ba-card {
+  display: flex; align-items: flex-start; gap: 8px; padding: 10px var(--gut);
+  min-height: 60px; border-bottom: 1px solid var(--hairline); position: relative; cursor: pointer;
+}
+.ba-card:active { background: var(--surface1); }
+.ba-mark { width: 12px; height: 12px; flex: none; display: inline-block; margin-top: 5px; }
+.ba-mark.urgent { background: var(--sev-urgent); border-radius: 3px; }
+.ba-mark.attention {
+  border-radius: 3px;
+  background: linear-gradient(135deg, var(--sev-attention) 50%, transparent 50%);
+  border: 1px solid var(--sev-attention);
+}
+.ba-mark.info { border-radius: 999px; border: 2px solid var(--text3); background: transparent; }
+.ba-mark.read { opacity: .45; }
+.ba-mark.unread { opacity: 1; }
+
+.ba-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+/* Two lines, not one clipped one: the sentence the card exists to deliver is
+   the whole point of the row, and 29 characters of it is not the sentence. */
+.wb.wb.wb .ba-card-title {
+  font-size: var(--fs-body); font-weight: 400; color: var(--text2); line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.wb.wb.wb .ba-card-title.unread { font-weight: 600; color: var(--text); }
+/* One meta line carries every small fact about the row: when it last fired,
+   who it is for, where it opens, how many times, and whether the situation
+   moved. The family name is NOT repeated here - the section header said it. */
+.wb.wb.wb .ba-card-meta {
+  font-size: var(--fs-meta); color: var(--text3); font-variant-numeric: tabular-nums;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* z-index 1 so the cushion beats the NEXT card, which is position:relative and
+   later in the document, and would otherwise win the point 22px below centre. */
+.ba-card-x {
+  position: relative; z-index: 1; width: 44px; height: 44px; margin: -4px calc(var(--gut) * -1) -4px 0; background: none; border: none;
+  color: var(--text3); font-size: var(--fs-meta); cursor: pointer; flex: none;
+  display: flex; align-items: center; justify-content: center;
+}
+.ba-card-x::after { content: ''; position: absolute; inset: -3px; }
+
+/* ---------------------------------------------------------------------- */
+/* AskPane.tsx - desktop dock                                              */
+/* ---------------------------------------------------------------------- */
+.ba-deskwrap { position: relative; height: 100%; }
+.ba-pane-x-row { position: absolute; top: 10px; left: 12px; z-index: 2; }
+.wb.wb.wb .ba-pane-x {
+  background: none; border: none; color: var(--text3); cursor: pointer; font-size: var(--fs-meta);
+  min-width: 44px; min-height: 44px; position: relative; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.ba-pane-x::after { content: ''; position: absolute; inset: -2px; }
+.wb.wb.wb .ba-feedbtn {
+  background: var(--surface2); color: var(--text2); border: none; border-radius: var(--r-pill);
+  font-size: var(--fs-meta); font-weight: 600; padding: 0 14px; min-height: 44px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; flex: none;
+}
+.wb.wb.wb .ba-feedbtn.on { background: var(--accent); color: var(--ink); }
+.wb.wb.wb .ba-feedbtn-n { font-variant-numeric: tabular-nums; }
+.ba-feedoverlay {
+  position: absolute; inset: 0; background: var(--canvas); display: flex; flex-direction: column;
+  border-radius: inherit; z-index: 3;
+}
+.ba-feedoverlay-h { display: flex; align-items: center; justify-content: space-between; padding: 12px var(--gut); flex: none; }
+.wb.wb.wb .ba-feedoverlay-h span { font-size: var(--fs-title); font-weight: 600; color: var(--text); }
+.wb.wb.wb .ba-feedoverlay-x { background: none; border: none; color: var(--text3); font-size: var(--fs-meta); cursor: pointer; position: relative; }
+.ba-feedoverlay-x::after { content: ''; position: absolute; inset: -12px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .ba-feedoverlay { animation: ba-slide-in var(--dur-state) var(--ease); }
+}
+@keyframes ba-slide-in {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Overflow discipline - nothing here scrolls sideways. Scoped to this      */
+/* file's OWN containers only: a blanket `.brain-a *` would also reach the  */
+/* embedded workSurface/peerView subtree, which this candidate does not own.*/
+/* ---------------------------------------------------------------------- */
+.brain-a { max-width: 100%; overflow-x: hidden; }
+.ba-plate, .ba-pager, .ba-page, .ba-primary, .ba-ask, .ba-feed { max-width: 100%; }
