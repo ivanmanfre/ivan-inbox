@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type React from 'react'
 import { detectLinks } from '../../../../../lib/unfurl'
 import { useStt } from '../../../../v2c/chat/useStt'
 import { LinkPreview } from './LinkPreview'
@@ -153,9 +154,15 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
 
           {(recording || transcribing) && (
             <div className={`bb-voice${recording ? ' rec' : ''}`} data-voice={stt.state}>
-              <div className="bb-bars" aria-hidden>
+              {/* Motion row 10. Each bar is a fixed 22px box scaled from its
+                  bottom edge, so a level change is a compositor transform and
+                  never a layout pass on fourteen siblings. The scale is a
+                  CUSTOM PROPERTY, and the rule that reads it lives inside the
+                  skin's `prefers-reduced-motion: no-preference` block, so a
+                  phone told to stop moving things gets fourteen still bars. */}
+              <div className="bb-bars bbf-bars" aria-hidden>
                 {levelBars(recording ? stt.elapsedMs : 0).map((v, i) => (
-                  <span key={i} style={{ height: `${Math.round(v * 22)}px` }} />
+                  <span key={i} style={{ '--bbf-lvl': v.toFixed(2) } as React.CSSProperties} />
                 ))}
               </div>
               <span className="bb-voice-t">

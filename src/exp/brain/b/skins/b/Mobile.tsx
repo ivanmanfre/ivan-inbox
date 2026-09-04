@@ -54,12 +54,17 @@ export function Mobile(p: BrainMobileProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Motion row 6. `fading` is set for one beat when the place changes; the
+  // Motion row 5. `fading` is set for one beat when the place CHANGES; the
   // class is what restarts the animation, so nothing here remounts a surface.
+  // The mounted guard is the same one the `job` effect below carries: a fade on
+  // first paint is a splash screen, and this file already refuses that for the
+  // feed rows in writing.
   const [fading, setFading] = useState(false)
+  const placeMounted = useRef(false)
   useEffect(() => {
+    if (!placeMounted.current) { placeMounted.current = true; return }
     setFading(true)
-    const t = window.setTimeout(() => setFading(false), 140)
+    const t = window.setTimeout(() => setFading(false), 200)
     return () => window.clearTimeout(t)
   }, [place])
 

@@ -21,7 +21,7 @@
 // said in.
 
 import type { Notification, NotificationSeverity } from '../../../../../lib/turns'
-import { familyLabel, sanitizeBody, stateWord } from '../../families'
+import { answerHeadline, familyLabel, sanitizeBody, stateWord } from '../../families'
 
 export type CardForm = 'quote' | 'time' | 'strip' | 'page' | 'tile'
 
@@ -86,6 +86,9 @@ export function raised(sev: NotificationSeverity): boolean {
 // then from the title. Neither is ever invented: both return null rather than
 // guess, and the card falls back to the body line when they do.
 // ---------------------------------------------------------------------------
+
+/** Anything a phone would call an emoji. */
+const PICTOGRAPH = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{1F000}-\u{1F2FF}]/u
 
 /** A run of at least two characters inside straight or curly double quotes. */
 const QUOTED = /[""]([^""]{2,})[""]/g
@@ -167,7 +170,16 @@ export function quoteCard(n: { family: string; title: string | null; body: strin
       if (m && m[1] !== quote) { subject = m[1]; break }
     }
   }
-  if (quote) quote = mendDashes(quote).trim()
+  if (quote) quote = mendDashes(deShout(quote)).trim()
+  // A reply that WAS a pictograph. `sanitizeBody` strips every emoji before the
+  // quote is read, so a thumbs-up sent on its own arrived here as an empty
+  // string and the card quoted a person saying nothing. Say what happened
+  // instead: he reacted.
+  if (!quote) {
+    const raw = (n.body ?? '').split('\n').map(l => l.trim()).filter(Boolean)
+    const rawQuoted = longestQuoted(raw.join('\n')) ?? raw[raw.length - 1] ?? ''
+    if (PICTOGRAPH.test(rawQuoted)) quote = 'reacted'
+  }
   if (subject && quote && subject === quote) subject = null
   return { quote: quote || null, subject }
 }
@@ -228,7 +240,7 @@ export function pageCard(n: Pick<Notification, 'family' | 'title' | 'body' | 'se
   const state = isTurn
     ? (n.severity === 'error' ? 'The turn failed' : 'Answered')
     : stateWord(n)
-  const snippet = n.body ? sanitizeBody(n.body).slice(0, 240) : null
+  const snippet = n.body ? clip(deShout(sanitizeBody(n.body)), 240) : null
   // Only a turn stores the prompt in `title`; on every other family the title
   // is a headline for the same text the snippet already carries.
   const asked = isTurn && n.title?.trim() ? n.title.trim() : null
@@ -264,19 +276,90 @@ const AFTER_PREP = /\b(?:for|to|from|with|on)\s+([A-Z][\p{Ll}'’-]+(?:\s+[A-Z][
 /** Words that are the state, not the subject, and that a title trails with. */
 const TAIL = /\s*(?:\b(?:failed|failure|error|errors|halted|blocked|broke|broken|down|ready|is|was|has|have)\b[\s.:,-]*)+$/i
 const HEAD = /^(?:\s*(?:re|new|the)\b[\s:-]*)+/i
+/** A clause word: everything from here on is what HAPPENED, not what it is. */
+const CLAUSE = /\s+\b(?:needs?|requires?|is|was|were|are|has|have|had|that|which|and|but|so|because|after|before|while|when|on|at|with|from|into|over|under)\b.*$/i
+
+/** Stems, so "ideas" and "Idea" count as the same word. */
+function stems(text: string): Set<string> {
+  return new Set(text.toLowerCase().split(/\W+/).filter(w => w.length > 3).map(w => w.slice(0, 4)))
+}
 
 function sharesWords(a: string, b: string): boolean {
-  const wa = new Set(a.toLowerCase().split(/\W+/).filter(w => w.length > 2))
-  return b.toLowerCase().split(/\W+/).some(w => w.length > 2 && wa.has(w))
+  const wa = stems(a)
+  return [...stems(b)].some(w => wa.has(w))
+}
+
+/**
+ * A producer SHOUTS. "Send FAILED (verified not delivered)" and "Idea Supply
+ * LOW" are the same words a person would write, with the caps lock on and a
+ * bracket where a comma belongs. `sanitizeBody` only strips a shouted token
+ * that carries an UNDERSCORE, so every one of these came through untouched.
+ *
+ * This lowercases a shouted run that is not a known initialism, turns a
+ * parenthetical into a clause, and mends a double dash. It never invents a
+ * word and it never drops one.
+ */
+const KEEP_CAPS = new Set([
+  'RISE', 'ARCH', 'DTC', 'DM', 'DMS', 'ICP', 'LM', 'AI', 'API', 'URL', 'PDF', 'UTC', 'PT', 'OK', 'ID', 'CEO',
+])
+
+export function deShout(text: string): string {
+  return text
+    // "(verified not delivered)" reads as an aside; a comma says the same thing
+    // without asking him to parse brackets on a 390px card.
+    .replace(/\s*\(([^)]{3,60})\)/g, (_m, inner: string) => `, ${inner}`)
+    // A run of two or more capitals that is not an initialism we keep.
+    .replace(/\b[A-Z][A-Z0-9]{1,}\b/g, (w: string) => (KEEP_CAPS.has(w) ? w : w.charAt(0) + w.slice(1).toLowerCase()))
+    .replace(/([^\s])\s+(?:--+|—|–)\s+/g, (_m, c: string) => (/[.!?,;:]/.test(c) ? `${c} ` : `${c}. `))
+    .replace(/\s*,\s*,/g, ',')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
+/** Never cut a word in half, and always mark a cut that happened. */
+export function clip(text: string, max: number): string {
+  if (text.length <= max) return text
+  const cut = text.slice(0, max - 1)
+  const sp = cut.lastIndexOf(' ')
+  return `${(sp > max * 0.5 ? cut.slice(0, sp) : cut).replace(/[\s.,;:·-]+$/, '')}…`
 }
 
 type SubjectRow = Pick<Notification, 'family' | 'title' | 'body' | 'severity' | 'count'>
 
+/**
+ * A subject has to be a NAME, not a fragment. "Halted · RISE Warm Engager on
+ * its" and "Answered · What" are the shape this rejects: the clause cut fired
+ * mid-phrase and left a preposition or a single question word standing where a
+ * person or a thing should be.
+ */
+function usableSubject(t: string, state: string): boolean {
+  if (t.length < 3) return false
+  const words = t.split(/\s+/)
+  // A trailing preposition, article or conjunction means the cut landed inside
+  // a phrase rather than at the end of one.
+  if (/^(?:on|in|at|to|of|for|with|and|or|the|a|an|its|his|her|their|by|from)$/i.test(words[words.length - 1])) return false
+  // One short word is a fragment unless it is a proper noun or a domain.
+  if (words.length === 1 && t.length < 6 && !/^[A-Z]/.test(t) && !t.includes('.')) return false
+  // A question word standing alone is the title's first word, not its subject.
+  if (/^(?:what|who|when|where|why|how|which)$/i.test(t)) return false
+  // The subject must not simply be the state word again.
+  if (t.toLowerCase() === state.toLowerCase()) return false
+  return true
+}
+
+/**
+ * Who or what a row is about, in the card's largest type.
+ *
+ * The ladder, in order. Every rung either produces a NAME or hands on; the last
+ * rung is the family's own noun, so a headline is never a bare verb.
+ */
 export function subjectFor(n: SubjectRow): string | null {
-  // 1. the form's OWN resolution first. A quote card knows who spoke because it
-  // reads the line that introduced the quote; a bare preposition does not, and
-  // "1 new comment on Davorin's posts" named the wrong human entirely.
+  const state = stateWord(n)
   const form = formFor(n.family)
+
+  // 1. the form's OWN resolution. A quote card knows who spoke because it reads
+  // the line that introduced the quote; a bare preposition does not, and
+  // "1 new comment on Davorin's posts" named the wrong human entirely.
   if (form === 'quote') {
     const q = quoteCard(n)
     if (q.subject) return q.subject
@@ -290,29 +373,33 @@ export function subjectFor(n: SubjectRow): string | null {
   const person = (n.title ?? '').match(AFTER_PREP)?.[1] ?? (n.body ?? '').match(AFTER_PREP)?.[1] ?? null
   if (person) return person
 
-  // 2. the title, minus the state word it repeats and the tail it trails with.
-  const word = stateWord(n)
-  let t = (n.title ?? '').trim()
-  if (!t) return null
-  const re = new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
-  t = t.replace(re, ' ').replace(TAIL, '').replace(HEAD, '')
-  // The removed word takes its punctuation with it, or the title keeps a
-  // colon that used to belong to a word that is no longer there.
-  t = t.replace(/\s+([:;,.\u00b7-])/g, ' ').replace(/\s{2,}/g, ' ').trim()
-  t = t.replace(/^[\s:.,\u00b7-]+|[\s:.,\u00b7-]+$/g, '')
-  // Cut a trailing clause: the subject is who or what, never what happened to
-  // it a second time. Then cap on a word boundary so a long one ellipsises in
-  // the headline instead of wrapping it onto a line the feed cannot afford.
-  t = t.replace(/\s+\b(?:needs?|requires?|is|was|has|have|that|which|and)\b.*$/i, '').trim()
-  if (t.length > 30) {
-    const cut = t.slice(0, 30)
-    const sp = cut.lastIndexOf(' ')
-    t = (sp > 12 ? cut.slice(0, sp) : cut).trim()
+  // 3. the title, de-shouted, minus the state word it repeats, its tail, and
+  //    any clause that says what happened rather than what it is.
+  let t = deShout((n.title ?? '').trim())
+  if (t) {
+    const re = new RegExp(state.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+    t = t.replace(re, ' ').replace(TAIL, '').replace(HEAD, '')
+    // A leading count belongs to the state word, never to the subject:
+    // "1 today · Rise DTC board: 1 tap" was a count leading a count.
+    t = t.replace(/^\s*\d+\s+/, '')
+    t = t.replace(/\s+([:;,.·-])/g, ' ').replace(/\s{2,}/g, ' ').trim()
+    t = t.replace(/^[\s:.,·-]+|[\s:.,·-]+$/g, '')
+    t = t.replace(CLAUSE, '').trim()
+    // Never a hard cut: clip on a word boundary and mark it.
+    t = clip(t, 30)
+    // A subject that repeats, or contradicts, its own state word says two
+    // things in one line: "New ideas · Idea supply low" is the state saying
+    // there is more and the subject saying there is less.
+    const argues = sharesWords(t, state)
+    if (usableSubject(t, state) && !argues && !(sharesWords(t, familyLabel(n.family)) && t.split(/\s+/).length <= 2)) return t
   }
-  if (t.length < 2 || t.length > 44) return null
-  // A "subject" that is only the family's own name back again says nothing.
-  if (sharesWords(t, familyLabel(n.family)) && t.split(/\s+/).length <= 2) return null
-  return t
+
+  // 4. the family's own noun, so the headline always names the KIND of thing
+  //    when the row will not name the thing itself. A bare verb is not a
+  //    notification, and this is the rung that guarantees there is never one.
+  const label = familyLabel(n.family)
+  if (label && label !== 'Notification' && !sharesWords(label, state)) return label
+  return null
 }
 
 /**
@@ -323,7 +410,7 @@ export function subjectFor(n: SubjectRow): string | null {
  */
 export function detailLine(body: string | null, headline: string, max = 120): string | null {
   if (!body) return null
-  const clean = sanitizeBody(body).trim()
+  const clean = deShout(sanitizeBody(body)).trim()
   if (!clean) return null
   const head = new Set(headline.toLowerCase().split(/\W+/).filter(w => w.length > 3))
   const parts = clean.split(/(?<=[.!?])\s+|\n+/).map(x => x.trim()).filter(Boolean)
@@ -331,8 +418,24 @@ export function detailLine(body: string | null, headline: string, max = 120): st
     const words = part.toLowerCase().split(/\W+/).filter(w => w.length > 3)
     if (!words.length) continue
     const shared = words.filter(w => head.has(w)).length / words.length
-    if (shared < 0.4) return part.slice(0, max)
+    if (shared < 0.4) return clip(part, max)
   }
   // Every sentence restates the headline: the body has nothing more to add.
-  return parts.length > 1 ? parts.slice(1).join(' ').slice(0, max) || null : null
+  const rest = parts.length > 1 ? parts.slice(1).join(' ') : ''
+  return rest ? clip(rest, max) : null
+}
+
+/**
+ * One row's own sentence, for a nested deck row or a folded group's body. The
+ * same treatment as a detail line: de-shouted, dashes mended, cut on a word
+ * boundary with the cut marked. A `claude_turn` reads its ANSWER's first line
+ * through the shared `answerHeadline`, which is what makes a turn readable.
+ */
+export function rowLine(n: Pick<Notification, 'family' | 'title' | 'body' | 'severity' | 'count'>, max = 120): string {
+  if (n.family === 'claude_turn') {
+    const head = answerHeadline(n.body)
+    if (head) return clip(deShout(head), max)
+  }
+  const body = n.body ? deShout(sanitizeBody(n.body)) : ''
+  return body ? clip(body, max) : stateWord(n)
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { notificationDeepLink, type Notification } from '../../../../../lib/turns'
+import { notificationDeepLink, type Notification, type NotificationGroup } from '../../../../../lib/turns'
 import { parseWbHash } from '../../../../v2c/route'
 import type { Job } from '../../../../v2c/layout'
 import type { FeedData } from '../../useFeedData'
@@ -32,23 +32,50 @@ function useArrivals(keys: string[]): Set<string> {
 }
 
 /**
- * A dismissed card leaves before its row does. `feed.dismissOne` drops the row
- * from state the instant it is called, so without this the card would vanish
- * between two frames and the list would jump under his hand; the slot is marked
- * leaving, the out animation runs, and the row is dropped when it ends.
+ * A dismissed card leaves before its row does, and THE WRITE FIRES FIRST.
+ *
+ * Two things were wrong and they pulled against each other. Holding
+ * `feed.dismissOne` behind the 200ms animation meant closing the feed inside
+ * that window dropped the write on the floor. Firing it immediately meant the
+ * row left React state in the same commit, so the slot unmounted and the leave
+ * animation never ran at all (burst capture: zero frames).
+ *
+ * So the dismiss happens the instant he presses it, exactly as plain B does it,
+ * and the row is kept on screen from a SNAPSHOT for 220ms afterwards, spliced
+ * back at the index it left from. The snapshot is inert, so a second press
+ * cannot queue a second write for the same id.
  */
-function useLeaving(): [Set<string>, (key: string, drop: () => void) => void] {
-  const [leaving, setLeaving] = useState<Set<string>>(new Set())
+type Leaving = { g: NotificationGroup; at: number }
+
+function useLeaving(): [Map<string, Leaving>, (g: NotificationGroup, at: number, drop: () => void) => void] {
+  const [leaving, setLeaving] = useState<Map<string, Leaving>>(new Map())
   const timers = useRef<number[]>([])
   useEffect(() => () => { for (const t of timers.current) window.clearTimeout(t) }, [])
-  const leave = (key: string, drop: () => void) => {
-    setLeaving(prev => new Set(prev).add(key))
+  const leave = (g: NotificationGroup, at: number, drop: () => void) => {
+    let already = false
+    setLeaving(prev => {
+      if (prev.has(g.key)) { already = true; return prev }
+      const next = new Map(prev)
+      next.set(g.key, { g, at })
+      return next
+    })
+    if (already) return
+    drop()
     timers.current.push(window.setTimeout(() => {
-      drop()
-      setLeaving(prev => { const next = new Set(prev); next.delete(key); return next })
-    }, 200))
+      setLeaving(prev => { const next = new Map(prev); next.delete(g.key); return next })
+    }, 220))
   }
   return [leaving, leave]
+}
+
+/** The live groups with the leaving snapshots spliced back where they were. */
+function withLeaving(groups: NotificationGroup[], leaving: Map<string, Leaving>): { g: NotificationGroup; going: boolean }[] {
+  const out = groups.map(g => ({ g, going: false }))
+  const gone = [...leaving.values()].filter(l => !groups.some(g => g.key === l.g.key))
+  for (const l of gone.sort((a, b) => a.at - b.at)) {
+    out.splice(Math.min(l.at, out.length), 0, { g: l.g, going: true })
+  }
+  return out
 }
 
 export function Feed({ feed, goJob, openThread, onNavigated }: {
@@ -59,6 +86,7 @@ export function Feed({ feed, goJob, openThread, onNavigated }: {
 }) {
   const fresh = useArrivals(feed.groups.map(g => g.key))
   const [leaving, leave] = useLeaving()
+  const rows = withLeaving(feed.groups, leaving)
 
   const openOne = (n: Notification) => {
     feed.markRead(n)
@@ -73,28 +101,36 @@ export function Feed({ feed, goJob, openThread, onNavigated }: {
       {feed.loaded && feed.groups.length === 0 && (
         <div className="bb-feed-empty" data-feed-empty>
           {feed.error
-            ? 'Could not load the feed. Pull to try again.'
+            ? (
+              <>
+                Could not load the feed.{' '}
+                <button type="button" className="bbf-retry-line" data-tap onClick={() => void feed.refresh()}>
+                  Tap to try again
+                </button>
+              </>
+            )
             : feed.lastEmptySince ? `Nothing new since ${clockTime(feed.lastEmptySince)}.` : 'Nothing here yet.'}
         </div>
       )}
-      {feed.groups.map(g => (
+      {rows.map(({ g, going }, at) => (
         <div
-          className={`bbf-slot${fresh.has(g.key) ? ' bbf-enter' : ''}${leaving.has(g.key) ? ' bbf-out' : ''}`}
+          className={`bbf-slot${fresh.has(g.key) && !going ? ' bbf-enter' : ''}${going ? ' bbf-out' : ''}`}
           key={g.key}
+          aria-hidden={going || undefined}
         >
           {g.items.length > 1
             ? (
               <GroupCard
                 g={g} open={feed.expanded.has(g.key)} onToggle={() => feed.toggle(g.key)}
                 onOpen={openOne}
-                onDismissAll={() => leave(g.key, () => feed.dismissGroupRows(g))}
+                onDismissAll={() => leave(g, at, () => feed.dismissGroupRows(g))}
                 onDismissOne={feed.dismissOne}
               />
             )
             : (
               <NotificationCard
                 n={g.latest} onOpen={openOne}
-                onDismiss={id => leave(g.key, () => feed.dismissOne(id))}
+                onDismiss={id => leave(g, at, () => feed.dismissOne(id))}
               />
             )}
         </div>

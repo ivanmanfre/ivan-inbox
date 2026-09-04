@@ -38,7 +38,6 @@
   --bbb-deck:color-mix(in srgb, var(--surface2) 78%, var(--canvas));    /* a deck's second edge */
   --bbb-page:color-mix(in srgb, var(--surface1) 70%, var(--canvas));    /* the snippet panel */
   --bbb-quote:color-mix(in srgb, var(--text3) 55%, transparent);        /* the quotation rule */
-  --bbb-rail:color-mix(in srgb, var(--accent) 30%, transparent);        /* the rail's low half */
   /* E8, cycle 1: the shadows were four raw `#000`. Derived from `--ink`, the
      ladder's own darkest value, so every literal in this file is now a token
      or a mix of one. The snippet mask reads alpha only and takes `--ink` too. */
@@ -48,8 +47,15 @@
   --bbb-gut:12px;
 }
 
-/* --- the motion floor. Everything is still until a named rule moves it. ---- */
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) *{
+/* --- the motion floor. Everything is still until a named rule moves it.
+       `*` matches ELEMENTS and never pseudo-elements, and the ground puts a
+       1.2s infinite shimmer on `.sk::after` (styles.css:339, faithful.css:2212)
+       for the loading skeletons the lane surfaces this skin frames. That ran
+       inside the skin, unmapped, four times longer than anything else here and
+       as a second continuous motion. The floor names the pseudo-elements. --- */
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) *,
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) *::before,
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) *::after{
   transition:none; animation:none;
 }
 
@@ -81,9 +87,26 @@
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-feedclose{
   background:none; border:1px solid var(--hairline); color:var(--text2);
 }
+/* THE ACCENT BUDGET, enforced. Lime does four jobs on this surface: the
+   operator's own turn, the running rail, the send control and the active
+   place. It was also painting the unread badge, the mark beside "Claude" on
+   every answer, the latency bar on every answer and fourteen voice bars, so
+   six lime objects could sit on one screen and only two of them were about the
+   turn. The inline recall underline keeps lime: it is a control, and it is the
+   only lime inside prose. Every carrier below is re-pointed at the neutral
+   ladder, never at a new hue. */
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-feedbtn .bb-badge{
   font-size:var(--fs-meta); font-weight:600; min-width:18px; height:18px; top:0; right:0;
+  background:var(--surface3); color:var(--text);
 }
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .wb-tmeta-ic{ color:var(--text3); }
+/* The latency fill is an INLINE style in a shared file this skin may not edit
+   (`v2c/ChatMessage.tsx:148` writes `background: var(--accent)` on the element),
+   so nothing but `!important` can reach it. It is the second and last
+   `!important` in this layer and, like the first, it REMOVES something rather
+   than adding it: lime from a bar that means "this answer took 2.5 seconds". */
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .wb-tbar > span{ background:var(--text4) !important; }
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-bars span{ background:var(--text2); }
 
 /* ========================================================================== */
 /* The plane                                                                   */
@@ -123,9 +146,18 @@
 /* A feed row never shrinks to fit: a flex column under overflow will squash
    every card to its padding, which is a card that says nothing at all. */
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-slot{ flex:0 0 auto; }
+/* A row that is on its way out is a picture of a row: the write has already
+   happened, so nothing on it may be pressed again. */
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-slot.bbf-out{ pointer-events:none; }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-feed-empty{
   font-size:var(--fs-body); color:var(--text3); padding:48px 8px; text-align:center;
 }
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-retry-line{
+  position:relative; color:var(--text); font-size:var(--fs-body); font-weight:500;
+  text-decoration:underline; text-decoration-thickness:2px;
+  text-decoration-color:var(--hairline-strong); text-underline-offset:3px;
+}
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-retry-line::after{ content:''; position:absolute; inset:-14px -10px; }
 
 /* --- the swipe row: the affordance is revealed, not implied ---------------- */
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-row{
@@ -353,6 +385,11 @@
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-rowtime{
   flex:0 0 auto; font-size:var(--fs-meta); color:var(--text3); font-variant-numeric:tabular-nums;
 }
+/* A nested row's dismiss sits in the row, not over it: the row is one line and
+   an absolute control would land on the sentence. */
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-x.bbf-x-row{
+  position:relative; top:auto; right:auto; flex:0 0 auto; margin-left:2px;
+}
 
 /* ========================================================================== */
 /* ASK — a conversation, not a log                                             */
@@ -550,6 +587,13 @@
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-attach-note{
   font-size:var(--fs-meta); color:var(--text3);
 }
+/* Motion row 10. A fixed box scaled from its bottom edge; the scale itself is
+   only read inside the no-preference block below, so `reduce` leaves fourteen
+   still bars rather than fourteen animated heights JavaScript cannot gate. */
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-bars{ align-items:flex-end; }
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-bars span{
+  height:22px; transform:scaleY(.14); transform-origin:bottom;
+}
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-voice{
   background:var(--surface2); border:1px solid var(--bbb-edge);
   box-shadow:0 10px 24px -16px var(--bbb-shadow-soft);
@@ -590,6 +634,7 @@
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-link-well{
   position:relative; width:100%; height:108px; background:var(--surface3);
 }
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-link[data-state="loading"] .bbf-link-well{ background:var(--surface3); }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-link-well.sq{ height:132px; }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-link-img.bbf-link-img{
   width:100%; height:100%; border-radius:0; object-fit:cover; display:block; flex:none;
@@ -625,6 +670,12 @@
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b).bb-desktop .bbf-answer .wb-body,
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b).bb-desktop .bbf-answer .wb-body *{ font-size:var(--fs-body); }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b).bb-desktop .bb-session{ margin-bottom:18px; }
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-pane-x{
+  position:relative; display:flex; align-items:center; justify-content:center;
+  width:28px; height:28px; border-radius:var(--r-ctl); background:none; border:0;
+  color:var(--text3); font-size:var(--fs-meta);
+}
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-pane-x::after{ content:''; position:absolute; inset:-8px; }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b).bb-desktop .bbf-composer{ left:16px; right:16px; bottom:0; }
 /* His bubble keeps a reading measure on a wide pane rather than growing to 82%
    of it: a line he typed is not more readable for being 90 characters long. */
@@ -659,7 +710,16 @@
   :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-deck.open .bbf-deck-row:nth-child(3){ animation-delay:60ms; }
   /* 5 · the place changed under the tab bar (the bar itself never moves) */
   :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-plane.bbf-fade{
-    animation:bbf-plane 120ms var(--ease) both;
+    animation:bbf-plane 180ms var(--ease) both;
+  }
+  /* 10 · the microphone is hearing something. Continuous, and MUTUALLY
+     EXCLUSIVE with rule 9: the rail exists only while a turn is in flight and
+     the bars only while the recorder is running, and the composer will not
+     start a recording while a turn is running. Never both, so the surface
+     still carries exactly one continuous motion at a time. */
+  :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-bars span{
+    transition:transform 180ms var(--ease);
+    transform:scaleY(var(--bbf-lvl, .14));
   }
   /* 6 · an answer landed */
   :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-aturn.bb-settle{
@@ -677,16 +737,19 @@
   /* 9 · a turn is RUNNING. The one continuous rule on this surface, and it
          stops the frame the answer lands. */
   :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-rail{
-    animation:bbf-breathe 320ms var(--ease) infinite alternate;
+    /* One full out-and-back inside the 320ms budget, so the number in the
+       table is the period he actually sees. `alternate` made the visible cycle
+       640ms while the gate read 320. */
+    animation:bbf-breathe 320ms linear infinite;
   }
 }
 @keyframes bbf-enter{ from{ opacity:0; transform:translateY(8px) } to{ opacity:1; transform:none } }
 @keyframes bbf-out{ from{ opacity:1; transform:none } to{ opacity:0; transform:translateX(-28px) } }
 @keyframes bbf-fan{ from{ opacity:0; transform:translateY(-6px) } to{ opacity:1; transform:none } }
-@keyframes bbf-plane{ from{ opacity:.4 } to{ opacity:1 } }
+@keyframes bbf-plane{ from{ opacity:.25 } to{ opacity:1 } }
 @keyframes bbf-land{ from{ opacity:0; transform:translateY(6px) } to{ opacity:1; transform:none } }
 @keyframes bbf-tray{ from{ opacity:0; transform:translateY(8px) } to{ opacity:1; transform:none } }
-@keyframes bbf-breathe{ from{ opacity:.35 } to{ opacity:1 } }
+@keyframes bbf-breathe{ 0%{ opacity:.4 } 50%{ opacity:1 } 100%{ opacity:.4 } }
 
 /* ========================================================================== */
 /* REDUCED MOTION — the only `!important` in this layer, and it exists to      */
@@ -702,7 +765,9 @@
 /* skin only.                                                                 */
 /* ========================================================================== */
 @media (prefers-reduced-motion: reduce){
-  :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) *{
+  :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) *,
+  :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) *::before,
+  :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) *::after{
     transition:none !important; animation:none !important;
   }
   :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-pane.bb-feed{

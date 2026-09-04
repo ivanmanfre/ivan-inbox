@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react'
 import type { Notification, NotificationGroup } from '../../../../../lib/turns'
 import {
-  FAMILY_LANE, groupStateWord, sanitizeBody, severityShape, stateWord,
+  FAMILY_LANE, groupStateWord, severityShape, stateWord,
 } from '../../families'
 import { JOB_LABEL } from '../../../../v2c/layout'
-import { dayWord, detailLine, formFor, pageCard, quoteCard, raised, subjectFor } from './forms'
+import { dayWord, detailLine, formFor, pageCard, quoteCard, raised, rowLine, subjectFor } from './forms'
 
 // A card whose SHAPE says what it is before a word is read. See forms.ts for
 // which family takes which form and why, and skin.css for how each one is
@@ -48,7 +48,7 @@ function Headline({ shape, word, subject, big = false }: {
   shape: 'square' | 'bar' | 'dot'; word: string; subject?: string | null; big?: boolean
 }) {
   return (
-    <div className={`bbf-state${big ? ' bbf-state-big' : ''}`}>
+    <div className={`bbf-state bb-card-body${big ? ' bbf-state-big' : ''}`}>
       <Mark shape={shape} />
       <span className="bb-card-word">{word}</span>
       {subject && <><span className="bbf-dot" aria-hidden>·</span><span className="bbf-subj">{subject}</span></>}
@@ -89,6 +89,10 @@ function useSwipe(onDismiss: () => void) {
       if (s.axis === 'y') { start.current = null; setDx(0); setDragging(false); return }
       setDragging(true)
     }
+    // Once the card owns the x axis the pager must not also see it: the pager's
+    // own handler locked x, clamped its travel to zero and dropped the
+    // `bb-inert` guard off the place underneath for the length of the swipe.
+    e.stopPropagation()
     setDx(Math.max(-SWIPE_MAX, Math.min(0, mx)))
   }
   const end = () => {
@@ -124,15 +128,24 @@ export function NotificationCard({ n, onOpen, onDismiss, nested = false }: {
   // mark, the form and the state the parent card has already said, and leads
   // with its own sentence.
   if (nested) {
-    const line = n.body ? sanitizeBody(n.body).slice(0, 120) : stateWord(n)
+    // A deck exists so he can clear the one he has dealt with and leave the
+    // rest. The row keeps its own dismiss and its own swipe; it drops only the
+    // mark and the state the parent card has already said.
     return (
       <div
         className={`bb-card bb-nested bbf-deck-row${unread ? ' unread' : ''}`}
         data-card data-family={n.family}
+        style={swipe.style}
         onClick={() => onOpen(n)}
+        onTouchStart={swipe.onTouchStart} onTouchMove={swipe.onTouchMove}
+        onTouchEnd={swipe.onTouchEnd} onTouchCancel={swipe.onTouchCancel}
       >
-        <span className="bbf-rowline">{line}</span>
+        <span className="bb-card-body bbf-rowline">{rowLine(n)}</span>
         <span className="bbf-rowtime">{time}</span>
+        <button
+          type="button" className="bb-card-dismiss bbf-x bbf-x-row" data-tap aria-label="Dismiss"
+          onClick={e => { e.stopPropagation(); onDismiss(n.id) }}
+        >✕</button>
       </div>
     )
   }
@@ -228,7 +241,7 @@ export function NotificationCard({ n, onOpen, onDismiss, nested = false }: {
         {form === 'strip' && <span className="bbf-edge" aria-hidden />}
         {inner}
         <button
-          type="button" className="bbf-x" data-tap aria-label="Dismiss"
+          type="button" className="bb-card-dismiss bbf-x" data-tap aria-label="Dismiss"
           onClick={e => { e.stopPropagation(); onDismiss(n.id) }}
         >✕</button>
       </div>
@@ -251,7 +264,7 @@ export function GroupCard({ g, open, onToggle, onOpen, onDismissAll, onDismissOn
 }) {
   const shape = severityShape(g.latest.severity)
   const unread = g.unread > 0
-  const latest = g.latest.body ? sanitizeBody(g.latest.body).slice(0, 120) : null
+  const latest = rowLine(g.latest)
   return (
     <div className={`bbf-deck${open ? ' open' : ''}`} data-group data-family={g.family}>
       <div className="bbf-deck-back" aria-hidden />
@@ -260,7 +273,7 @@ export function GroupCard({ g, open, onToggle, onOpen, onDismissAll, onDismissOn
         data-card data-family={g.family} data-shape={shape}
         onClick={onToggle}
       >
-        <Headline shape={shape} word={groupStateWord(g.count, g.family)} big />
+        <Headline shape={shape} word={groupStateWord(g.count, g.family)} subject={subjectFor(g.latest)} big />
         {!open && latest && <span className="bbf-body">{latest}</span>}
         <div className="bbf-foot">
           <TenantChip tenant={g.latest.tenant} />
@@ -272,7 +285,7 @@ export function GroupCard({ g, open, onToggle, onOpen, onDismissAll, onDismissOn
           >{open ? 'Hide these' : 'Show each one'}</button>
         </div>
         <button
-          type="button" className="bbf-x" data-tap aria-label="Dismiss all"
+          type="button" className="bb-card-dismiss bbf-x" data-tap aria-label="Dismiss all"
           onClick={e => { e.stopPropagation(); onDismissAll() }}
         >✕</button>
       </div>

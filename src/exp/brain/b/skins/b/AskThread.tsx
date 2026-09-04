@@ -8,7 +8,7 @@ import type { ChatHandle } from '../../../../v2c/useChat'
 import type { Job } from '../../../../v2c/layout'
 import { extractRecallNouns, buildRecallCommand } from '../../recall'
 import { groundedClause, sourceBasenames, sourcesChipLabel } from '../../brainMeta'
-import { LinkPreview } from '../../LinkPreview'
+import { LinkPreview } from './LinkPreview'
 import { detectLinks } from '../../../../../lib/unfurl'
 import { Composer } from './Composer'
 
@@ -18,6 +18,28 @@ import { Composer } from './Composer'
 // construction — this constant exists only so the composer can also disable
 // SENDING pre-emptively rather than let the operator draw the refusal.
 const THREAD_BUSY_RE = /still working on the last one/i
+
+/**
+ * The transport writes for an engineer: "Broker unreachable (502). Nothing was
+ * sent." and "Stream ended early — the broker dropped the connection." Both put
+ * a name he has never heard of on the glass, and the second puts an em dash
+ * there too. `src/lib/claude.ts` already keeps `CLAUDE_ERROR_COPY` for exactly
+ * this reason; the skin cannot edit the transport, so it maps at the render.
+ * Anything unmapped falls through to the transport's own words rather than to
+ * an invented sentence.
+ */
+const ERROR_COPY: [RegExp, string][] = [
+  [/broker unreachable|could not reach|econnrefused|network error/i, 'Claude could not be reached. Nothing was sent.'],
+  [/stream ended early|dropped the connection|stream (?:closed|aborted)/i, 'The answer stopped early. Send it again.'],
+  [/timed? ?out|timeout/i, 'That took too long and stopped. Send it again.'],
+]
+
+export function errorCopy(message: string): string {
+  for (const [re, plain] of ERROR_COPY) if (re.test(message)) return plain
+  // Never leak a name he has not been introduced to, even from a string this
+  // map has not seen.
+  return message.replace(/\bbrokers?\b/gi, 'Claude').replace(/\s+—\s+/g, '. ')
+}
 
 /**
  * Every plain-text run, split on recall nouns, with the FIRST unclaimed noun in
@@ -159,7 +181,7 @@ function AnswerCard({ turn, onRetry, onRecall, justLanded, focused }: {
       {turn.aborted && <div className="bb-stopped">You stopped this one. Nothing more is coming.</div>}
       {turn.error && (
         <div className="bb-turn-err bbf-err">
-          <span className="bbf-err-t">{turn.error.message}</span>
+          <span className="bbf-err-t">{errorCopy(turn.error.message)}</span>
           {/* thread_busy is not retryable at the transport level already; this
               extra text check is belt-and-braces for a message that reached
               here through any other path. */}

@@ -44,7 +44,12 @@ export function AskPane({ chat, job, about, onClose, mobile }: BrainAskPaneProps
           ◈
           {feed.unreadTotal > 0 && <span className="bb-badge">{feed.unreadTotal > 99 ? '99+' : feed.unreadTotal}</span>}
         </button>
-        {!mobile && <span className="wb-pane-x" onClick={onClose}>✕</span>}
+        {!mobile && (
+          <button
+            type="button" className="wb-pane-x bbf-pane-x" data-tap
+            aria-label="Close the Ask pane" onClick={onClose}
+          >✕</button>
+        )}
       </div>
 
       <AskThread

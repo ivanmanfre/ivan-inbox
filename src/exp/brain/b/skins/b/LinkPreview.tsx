@@ -37,16 +37,20 @@ export function LinkPreview({ url }: { url: string }) {
   // The gate's vocabulary, not this module's internal state names.
   const domState = model.state === 'ready' ? 'card' : model.state === 'failed' ? 'blocked' : 'loading'
   const hasImage = model.state === 'ready' && !!model.image
+  // The well is drawn from the FIRST frame, empty, so the card cannot grow by
+  // its own image height under his thumb in a tray that sits on the send
+  // button. Only a card that came back with nothing to show has no well.
+  const showWell = hasImage || model.state === 'loading'
 
   return (
     <div
       className={`bb-link bbf-link${model.state === 'failed' ? ' failed' : ''}${hasImage ? ' has-img' : ''}`}
       data-link-card data-kind={kind} data-state={domState}
     >
-      {hasImage && (
+      {showWell && (
         <div className={`bbf-link-well${model.aspect === 'square' ? ' sq' : ''}`}>
-          <img className="bb-link-img bbf-link-img" src={model.image ?? undefined} alt="" />
-          {kind === 'youtube' && <span className="bbf-link-play"><PlayMark /></span>}
+          {hasImage && <img className="bb-link-img bbf-link-img" src={model.image ?? undefined} alt="" />}
+          {hasImage && kind === 'youtube' && <span className="bbf-link-play"><PlayMark /></span>}
         </div>
       )}
       <div className="bb-link-body bbf-link-body">
