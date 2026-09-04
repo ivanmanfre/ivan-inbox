@@ -1,1 +1,497 @@
-/* Skin a for finalist B. Scope every rule under .brain-b.skin-a */
+/* ============================================================================
+   skin.css — skin a, "The ledger".  goal-run brain-b-design-elevation-2026-09-04.
+
+   THE FEED IS A LEDGER, NOT A STACK OF BOXES.  Rows are separated by ink-alpha
+   hairlines and nothing else: no per-row slab, no border ring, no rounded card.
+   A fixed 24px left column carries the severity MARK (shape first, colour only
+   repeating what the shape said) so the eye scans one vertical line.  The state
+   word is the one display-sized thing on the surface.  Under it sits exactly one
+   line of evidence in the form the family calls for — a quote, a figure, a line —
+   and then one quiet meta line carrying the producer and the time.
+
+   SCOPE.  Every rule is written under
+       :is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a)
+   which is 0-5-0 on its heaviest branch.  That beats three things at once: the
+   ground's `.wb.wb.wb *{transition:none}` (0-3-0), the flatten hack
+   `.wb.wb *{font-size:var(--fs-body)}` (0-2-0), and plain B's own
+   `:is(.wb.wb.wb .brain-b, .wb.wb.wb.brain-b) X` rules (0-4-0 + 1).  On the
+   phone `.wb` and `.brain-b` are the SAME element and on the desktop pane
+   `.brain-b` sits inside `.wb`, which is why both branches are named.
+
+   MOTION.  This layer FIRST stills everything under its own root and then names
+   what moves, one rule at a time, each inside
+   `@media (prefers-reduced-motion: no-preference)`.  That is deliberate: the
+   ground gives lanes rendered inside this root their own background-colour
+   transitions, and a motion system you cannot enumerate is not a system.  The
+   seven named rules are M1 to M7 in 01-build/a/NOTES.md.
+   ============================================================================ */
+
+/* -------------------------------------------------------------------------- */
+/* 0 · tokens: the one new display size, and every derivation by color-mix()    */
+/* -------------------------------------------------------------------------- */
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a){
+  /* the ONE size added to the ladder (mission §2 allows exactly one) */
+  --bb-a-display:25px;
+  /* ink-alpha hairlines and washes: E2's separation device, all derived from
+     --text so they composite over whatever surface they land on */
+  --bb-a-line:color-mix(in srgb, var(--text) 8%, transparent);
+  --bb-a-line-2:color-mix(in srgb, var(--text) 18%, transparent);
+  --bb-a-field:color-mix(in srgb, var(--text) 6%, transparent);
+  /* the unread wash is OPAQUE (mixed into the canvas, not laid over it) because
+     a swiped row slides across the row beneath it and must not go transparent */
+  --bb-a-unread:color-mix(in srgb, var(--text) 4%, var(--canvas));
+  --bb-a-press:color-mix(in srgb, var(--text) 8%, var(--canvas));
+}
+
+/* -------------------------------------------------------------------------- */
+/* 1 · motion: still everything, then name what moves                          */
+/* -------------------------------------------------------------------------- */
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) *{
+  transition:none;
+  animation:none;
+}
+
+@media (prefers-reduced-motion: no-preference){
+  /* M2 — the feed sheet settles after the finger leaves.  During the drag the
+     component writes `transition:none` inline, so this only ever describes the
+     release. */
+  :is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-pane.bb-feed{
+    transition:transform var(--dur-beat) var(--ease);
+  }
+  /* M1 — the content plane is replaced on a place change */
+  :is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-plane.bb-a-fading{
+    animation:bb-a-plane var(--dur-state) var(--ease);
+  }
+  /* M3 — a dismissed row leaves */
+  :is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-row.bb-a-leaving{
+    animation:bb-a-exit var(--dur-state) var(--ease) forwards;
+  }
+  /* M4 — the rows under it close the gap that just opened */
+  :is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-settling{
+    animation:bb-a-settle var(--dur-beat) var(--ease);
+  }
+  /* M5 — a group folds open and its children arrive */
+  :is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-nested{
+    animation:bb-a-fold var(--dur-state) var(--ease) both;
+  }
+  /* M6 — an answer lands */
+  :is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-land{
+    animation:bb-a-land var(--dur-beat) var(--ease);
+  }
+  /* M7 — a turn is running.  The ONLY continuous rule in the app: one dot on
+     the answer's own baseline, where the next word is going to arrive. */
+  :is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-dot{
+    animation:bb-a-dot 300ms var(--ease) infinite alternate;
+  }
+}
+@keyframes bb-a-plane{ from{ opacity:0 } to{ opacity:1 } }
+@keyframes bb-a-exit{ from{ opacity:1 } to{ opacity:0; transform:translateX(-110%) } }
+@keyframes bb-a-settle{ from{ transform:translateY(var(--bb-a-h, 96px)) } to{ transform:translateY(0) } }
+@keyframes bb-a-fold{ from{ opacity:0; transform:translateY(-4px) } to{ opacity:1; transform:none } }
+@keyframes bb-a-land{ from{ opacity:0; transform:translateY(6px) } to{ opacity:1; transform:none } }
+@keyframes bb-a-dot{ from{ opacity:.25; transform:translateX(0) } to{ opacity:1; transform:translateX(3px) } }
+
+/* -------------------------------------------------------------------------- */
+/* 2 · header — 52px of chrome that does not compete with the content          */
+/* -------------------------------------------------------------------------- */
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-head{
+  height:52px; min-height:52px; padding:0 10px 0 16px; gap:10px;
+  border-bottom:1px solid var(--bb-a-line);
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-head-t{
+  font-size:var(--fs-body); font-weight:600; letter-spacing:-.01em; color:var(--text);
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-head-s{
+  font-size:var(--fs-meta); color:var(--text3);
+}
+/* the alarm count is a control, and it keeps a 44px zone without growing the row */
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-alarm{
+  padding:0; border:0; border-radius:0; background:none; color:var(--text2);
+  font-size:var(--fs-meta); font-weight:400;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-alarm::after{
+  content:''; position:absolute; inset:-14px -8px;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-headbtn{
+  width:44px; height:44px; border:0; background:none; color:var(--text2); border-radius:var(--r-ctl);
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-badge{
+  top:4px; right:2px; background:var(--accent); color:var(--ink);
+  font-size:var(--fs-meta); font-weight:600; min-width:18px; height:18px;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 3 · the pager and the sheet                                                 */
+/* -------------------------------------------------------------------------- */
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-sheet{ background:var(--canvas) }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-led{
+  padding:0; overflow-y:auto; overscroll-behavior-y:contain;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-empty{
+  padding:48px 16px; font-size:var(--fs-body); color:var(--text3); text-align:left;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 4 · the ledger row                                                          */
+/* -------------------------------------------------------------------------- */
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-swipe{
+  position:relative; overflow:hidden;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-reveal{
+  position:absolute; top:0; right:0; bottom:1px; width:96px;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--surface1); color:var(--text2);
+  font-size:var(--fs-meta); font-weight:500;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-row{
+  position:relative; display:grid; grid-template-columns:24px 1fr; column-gap:10px;
+  align-items:start;
+  margin:0; padding:11px 12px 11px 14px;
+  border:0; border-bottom:1px solid var(--bb-a-line); border-radius:0;
+  background:var(--canvas); cursor:pointer;
+}
+/* plain B drew a severity RAIL down the left edge of every card; the mark in the
+   fixed column says the same thing once. */
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-row::before{ content:none }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-row.unread{ background:var(--bb-a-unread) }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-row:active{ background:var(--bb-a-press) }
+
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-mark{
+  grid-column:1; grid-row:1; width:24px; height:28px; margin:0;
+  display:flex; align-items:center; justify-content:center;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-mark i{ display:block }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-mark[data-shape="square"] i{
+  width:11px; height:11px; border-radius:2px; background:var(--sev-attention);
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-mark[data-shape="bar"] i{
+  width:4px; height:18px; border-radius:2px; background:var(--sev-urgent);
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-mark[data-shape="dot"] i{
+  width:10px; height:10px; border-radius:50%; border:1.5px solid var(--text3); background:transparent;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-row.unread .bb-a-mark[data-shape="dot"] i{
+  background:var(--text3);
+}
+
+/* the state line: the display word, and the row's subject on the same baseline.
+   It WRAPS rather than truncating — a lead's name is the one thing on a reply
+   row that has to survive. */
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-state{
+  grid-column:2; display:flex; align-items:baseline; column-gap:8px; row-gap:1px;
+  flex-wrap:wrap; min-width:0; padding-right:22px;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-word{
+  display:block; -webkit-line-clamp:unset; padding-right:0; flex:0 0 auto;
+  font-size:var(--bb-a-display); font-weight:600; line-height:1.12;
+  letter-spacing:-.02em; color:var(--text);
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-row:not(.unread) .bb-a-word{ color:var(--text2) }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-subject{
+  font-size:var(--fs-body); font-weight:500; line-height:1.3; color:var(--text2);
+  min-width:0; overflow-wrap:anywhere;
+}
+
+/* the figure form: a booking is the row that has a NUMBER in it */
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-fig{
+  grid-column:2; display:flex; align-items:baseline; gap:9px; margin-top:4px;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-fig b{
+  font-size:var(--fs-figure); font-weight:600; line-height:1; letter-spacing:-.02em; color:var(--text);
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-fig span{
+  font-size:var(--fs-body); color:var(--text2);
+}
+
+/* the one line of evidence, two lines at most, clamped on a word boundary */
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-detail{
+  grid-column:2; margin-top:5px; padding:0;
+  font-size:var(--fs-body); line-height:1.45; color:var(--text2);
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+}
+/* A LINE is one line: it is a sanitised body, and the row itself is the tap that
+   opens the rest. A QUOTE and an ANSWER get two, because a name or a sentence
+   someone actually wrote must never break mid-word. */
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-line{ -webkit-line-clamp:1 }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-quote{
+  padding-left:10px; border-left:2px solid var(--bb-a-line-2);
+}
+
+/* the quiet meta line: producer, time, and whatever control this form ends in */
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-meta{
+  grid-column:2; display:flex; align-items:center; gap:7px; margin-top:6px;
+  font-size:var(--fs-meta); color:var(--text3); font-variant-numeric:tabular-nums;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-who{ color:var(--text3) }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-lane{
+  position:relative; margin-left:auto; flex:0 0 auto;
+  display:inline-flex; align-items:center; min-height:0; height:26px; padding:0 11px;
+  border:1px solid var(--bb-a-line-2); border-radius:var(--r-ctl); background:none;
+  color:var(--text); font-size:var(--fs-meta); font-weight:500;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-lane::after{ content:''; position:absolute; inset:-8px -6px }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-resume,
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-fold{
+  position:relative; margin-left:auto; flex:0 0 auto;
+  min-height:0; height:auto; padding:0; border:0; background:none;
+  color:var(--text2); font-size:var(--fs-meta); font-weight:500;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-resume::after,
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-fold::after{
+  content:''; position:absolute; inset:-14px -10px;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-x{
+  position:absolute; top:11px; right:8px; width:22px; height:22px;
+  display:flex; align-items:center; justify-content:center;
+  border:0; border-radius:0; background:none; color:var(--text4);
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-x::after{ content:''; position:absolute; inset:-11px }
+
+/* a folded group, open: the children indent under the mark column, drop the
+   mark and the wash, and lead with their own words */
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-group{ margin:0 }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-group > .bb-a-swipe > .bb-a-row{ border-radius:0 }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-nested{
+  grid-template-columns:0 1fr; column-gap:0; padding-left:48px; padding-top:11px; padding-bottom:11px;
+  background:var(--canvas); border-top:0;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-nested .bb-a-detail{ margin-top:0 }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-nested .bb-a-state{ display:none }
+
+/* -------------------------------------------------------------------------- */
+/* 5 · the Ask thread — a document he is writing with Claude                   */
+/* -------------------------------------------------------------------------- */
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-thread{ padding:16px 16px 10px }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-session{
+  padding:0; margin-bottom:18px; background:none; border-radius:0;
+  font-size:var(--fs-meta); color:var(--text3); align-items:baseline;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-newthread{
+  margin-left:auto; padding:0; border:0; background:none; min-height:0;
+  color:var(--text2); font-size:var(--fs-meta); font-weight:500;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-newthread::after{ content:''; position:absolute; inset:-14px -10px }
+
+/* his own words: a quiet right-set line, never the brightest thing on screen */
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-you{ margin:22px 0 14px; display:block }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-you-t{
+  max-width:78%; margin-left:auto; padding:0; border-radius:0;
+  background:none; color:var(--text2); text-align:right;
+  font-size:var(--fs-body); line-height:1.5;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-turn{ margin:0 0 4px }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-prose{ max-width:62ch }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-prose .wb-p{
+  font-size:var(--fs-body); font-weight:400; line-height:1.6; color:var(--text);
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-prose .wb-p + .wb-p{ margin-top:12px }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-prose li{
+  font-size:var(--fs-body); line-height:1.6; color:var(--text);
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-recall{
+  text-decoration-color:var(--text); text-decoration-thickness:1.5px;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-focus{
+  padding-left:10px; margin-left:-2px; box-shadow:inset 2px 0 0 var(--accent-ui);
+}
+
+/* the sources chip and the grounded clause, as ONE footer line */
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-brain{ margin-top:12px; display:block }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-foot{
+  display:block; text-align:left; white-space:normal;
+  padding:0; border:0; background:none; min-height:0;
+  color:var(--text3); font-size:var(--fs-meta); font-weight:400; line-height:1.5;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-foot::after{ content:''; position:absolute; inset:-13px -8px }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-foot-open{
+  display:flex; flex-direction:column; gap:2px;
+  margin-top:8px; padding:10px 12px; border-radius:var(--r-ctl);
+  background:var(--surface1); color:var(--text2);
+  font-size:var(--fs-meta); line-height:1.5; word-break:break-word;
+}
+
+/* the running state: one line of words, and the one moving dot */
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-running{
+  padding:0; margin:10px 0 0; border:0; border-radius:0; background:none;
+  color:var(--text3); font-size:var(--fs-meta); align-items:baseline; gap:8px;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-dot{
+  display:inline-block; width:6px; height:6px; margin-left:6px;
+  border-radius:50%; background:var(--text3); vertical-align:baseline;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-note{
+  padding:0; margin-top:10px; background:none; border-radius:0;
+  color:var(--text3); font-size:var(--fs-meta);
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-err{
+  margin-top:10px; padding:10px 12px; border-radius:var(--r-ctl);
+  background:var(--surface1); border-left:3px solid var(--sev-urgent);
+  color:var(--text); font-size:var(--fs-body);
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-retry{
+  border:1px solid var(--bb-a-line-2); background:none; color:var(--text);
+  font-size:var(--fs-meta); font-weight:500;
+}
+
+/* the empty thread: the same ledger grammar as the feed, so the app has one idea */
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-empty-ask{ padding:8px 0; gap:0 }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-empty-t{
+  font-size:var(--bb-a-display); font-weight:600; line-height:1.15; letter-spacing:-.02em;
+  color:var(--text); max-width:20ch;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-empty-s{
+  margin-top:12px; font-size:var(--fs-body); line-height:1.6; color:var(--text2); max-width:52ch;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-starters{
+  margin-top:24px; gap:0; border-top:1px solid var(--bb-a-line);
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-starter{
+  padding:15px 0; border:0; border-bottom:1px solid var(--bb-a-line); border-radius:0;
+  background:none; color:var(--text); font-size:var(--fs-body); min-height:44px;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 6 · the composer — a bar that grows, and the media it carries               */
+/* -------------------------------------------------------------------------- */
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-composer{
+  gap:10px; padding:10px 12px 12px; background:var(--canvas);
+  border-top:1px solid var(--bb-a-line);
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-field{
+  min-height:44px; max-height:132px; padding:12px 16px;
+  border:0; border-radius:22px; background:var(--bb-a-field); color:var(--text);
+  font-size:var(--fs-body); line-height:1.25;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-ctl{
+  width:44px; height:44px; min-width:44px; min-height:44px; border:0; border-radius:50%;
+  background:var(--bb-a-field); color:var(--text2);
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-ctl.bb-send{ color:var(--text4) }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-ctl.bb-send.ready{ background:var(--accent); color:var(--ink) }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-ctl.bb-stop-c{ color:var(--text) }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-ctl.bb-mic.rec{ background:var(--sev-urgent); color:var(--ink) }
+
+/* media chips carry the file's NAME and its WEIGHT: the weight is the half that
+   decides whether it goes */
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-chips{ gap:8px }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-chip{
+  gap:9px; padding:7px 9px; border:0; border-radius:var(--r-ctl);
+  background:var(--surface2); max-width:100%;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-chip-thumb{
+  width:32px; height:32px; border-radius:6px; object-fit:cover; flex:0 0 auto;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-chip-doc{
+  width:32px; height:32px; border-radius:6px; flex:0 0 auto; background:var(--surface3);
+  display:flex; align-items:center; justify-content:center; color:var(--text2);
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-chip-t{
+  display:flex; flex-direction:column; gap:1px; min-width:0;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-chip-n{
+  font-size:var(--fs-meta); font-weight:500; color:var(--text);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-chip-s{ font-size:var(--fs-meta); color:var(--text3) }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-chip-x{ color:var(--text3) }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-chip-note{
+  font-size:var(--fs-meta); color:var(--text3); align-self:center;
+}
+
+/* the link card: the thumbnail IS the card, cropped, never letterboxed */
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-link{
+  display:block; padding:0; border:0; border-radius:var(--r-card);
+  background:var(--surface2); overflow:hidden; position:relative;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-link-well{
+  position:relative; width:100%; height:108px; background:var(--surface3);
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-link-well.sq{ height:132px }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-link-img{
+  width:100%; height:100%; border-radius:0; object-fit:cover; display:block;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-link-play{
+  position:absolute; left:12px; bottom:10px; width:28px; height:28px; border-radius:50%;
+  background:color-mix(in srgb, var(--ink) 70%, transparent); color:var(--text);
+  display:flex; align-items:center; justify-content:center;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-link-body{
+  display:block; padding:10px 12px 11px; min-width:0;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-link-title{
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  white-space:normal; font-size:var(--fs-body); font-weight:500; line-height:1.3; color:var(--text);
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-link-sub{
+  display:block; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  font-size:var(--fs-meta); color:var(--text3);
+}
+
+/* the voice states */
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-voice{
+  gap:10px; padding:8px 10px; border:0; border-radius:var(--r-ctl); background:var(--surface2);
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-bars span{ background:var(--accent-ui) }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-voice-t{ font-size:var(--fs-meta); color:var(--text2) }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-voice-stop{
+  border:1px solid var(--bb-a-line-2); background:none; color:var(--text);
+  font-size:var(--fs-meta); font-weight:500;
+}
+/* the transcript, under the field it went into: a receipt at meta size, not the
+   same sentence printed twice at prose size */
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-heard{
+  display:flex; align-items:center; gap:8px; padding:0 4px;
+  background:none; border:0; border-radius:0;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-heard-l{
+  flex:0 0 auto; font-size:var(--fs-meta); color:var(--text4);
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-heard-t{
+  min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  font-size:var(--fs-meta); color:var(--text3);
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-heard-x{
+  margin-left:auto; padding:0 4px; min-height:22px; border:0; background:none; color:var(--text4);
+}
+
+/* -------------------------------------------------------------------------- */
+/* 7 · the tab bar — six drawn marks, one lime slot                            */
+/* -------------------------------------------------------------------------- */
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-tabs{
+  height:56px; background:var(--canvas); border-top:1px solid var(--bb-a-line);
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-tab{
+  gap:3px; padding:0 2px; color:var(--text3);
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-tab.on{ color:var(--accent-ui) }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-tab-l{
+  font-size:var(--fs-meta); font-weight:500; letter-spacing:.01em;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-tab-n{
+  top:-6px; right:-9px; min-width:16px; height:16px; background:var(--surface3);
+  color:var(--text2); font-size:var(--fs-meta); font-weight:500;
+}
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-tab-n.urgent{ background:var(--sev-urgent); color:var(--ink) }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-tab-n.attention{ background:var(--sev-attention); color:var(--ink) }
+
+/* -------------------------------------------------------------------------- */
+/* 8 · the desktop pane — parity, and the measure the width buys               */
+/* -------------------------------------------------------------------------- */
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a).bb-desktop{ border-left:1px solid var(--bb-a-line) }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a).bb-desktop .bb-a-thread{ padding:18px 22px 10px }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a).bb-desktop .bb-a-composer{ padding:10px 18px 14px }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a).bb-desktop .bb-a-you-t{ max-width:62% }
+:is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) .bb-a-overlay{ background:var(--canvas) }
+
+/* -------------------------------------------------------------------------- */
+/* 9 · reduced motion — every rule above collapses to nothing, and so do the    */
+/*     ground's own row transitions inside this root.                          */
+/* -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce){
+  :is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a),
+  :is(.wb.wb.wb .brain-b.skin-a, .wb.wb.wb.brain-b.skin-a) *{
+    transition:none !important;
+    animation-name:none !important;
+    animation-duration:0s !important;
+  }
+}

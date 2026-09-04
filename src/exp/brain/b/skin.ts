@@ -18,18 +18,23 @@ export function readSkin(hash: string): Skin | null {
 // This module sits inside the lazily imported candidate chunk. On the phone it
 // evaluates at boot, while the hash still carries `?skin=`. On the desktop the
 // Ask pane mounts after a rail click, and the rail rewrites the hash through
-// wbHash(), which drops the query. So an explicit `?skin=` is stashed per tab
-// the first time it is seen and the stash is preferred over a bare hash.
-const SKIN_KEY = 'brain-b-skin'
+// wbHash(), which drops the query. The navigation timing entry keeps the URL
+// the document was opened with and a same-document hash change never rewrites
+// it, so the skin is read from THAT hash first (builder A's fix, adopted).
+function bootHash(): string {
+  if (typeof location === 'undefined') return ''
+  let url = location.href
+  try {
+    const nav = performance?.getEntriesByType?.('navigation')?.[0] as { name?: string } | undefined
+    if (nav?.name) url = nav.name
+  } catch { /* no navigation timing: the live hash is the best available */ }
+  const at = url.indexOf('#')
+  return at < 0 ? '' : url.slice(at)
+}
+
 function resolveSkin(): Skin {
   if (typeof location === 'undefined') return DEFAULT_SKIN
-  const fromHash = readSkin(location.hash)
-  try {
-    if (fromHash) { sessionStorage.setItem(SKIN_KEY, fromHash); return fromHash }
-    const kept = sessionStorage.getItem(SKIN_KEY)
-    if (kept === 'a' || kept === 'b' || kept === 'plain') return kept
-  } catch { /* storage blocked: the hash is all we have */ }
-  return DEFAULT_SKIN
+  return readSkin(bootHash()) ?? readSkin(location.hash) ?? DEFAULT_SKIN
 }
 
 export const SKIN: Skin = resolveSkin()
