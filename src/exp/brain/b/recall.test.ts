@@ -45,3 +45,16 @@ describe('buildRecallCommand', () => {
     expect(buildRecallCommand('RISE DTC')).toBe('/recall RISE DTC')
   })
 })
+
+describe('extractRecallNouns — short tokens', () => {
+  it('rejects a run containing a two-character token', () => {
+    // Seen live: "Source: project/x.md (2026-07-24). Ran R1 then R2." The regex
+    // reads "Ran R1" as a two-word capitalised name; nothing is remembered
+    // under it.
+    expect(extractRecallNouns('Ran R1 then R2.')).toEqual([])
+  })
+  it('keeps a real name whose words are all three characters or longer', () => {
+    expect(extractRecallNouns('called Kyle Hunt about it')).toContain('Kyle Hunt')
+    expect(extractRecallNouns('the LinkedIn DMs lane')).toContain('LinkedIn DMs')
+  })
+})
