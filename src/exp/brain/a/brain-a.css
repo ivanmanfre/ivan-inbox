@@ -39,23 +39,30 @@
 .ba-rib-dot { width: 6px; height: 6px; border-radius: 999px; background: var(--sev-attention); display: inline-block; }
 .ba-gear {
   background: none; border: none; color: var(--text3); font-size: var(--fs-meta);
-  padding: 12px; margin: -12px 0 -12px 4px; position: relative; cursor: pointer;
+  padding: 12px; margin: -12px 0 -12px 4px; position: relative; cursor: pointer; z-index: 1;
   min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center;
 }
+/* The literal 44x44 box measured right at its own edge in a hit-test sweep -
+   a rounding hair at the boundary, and this row's neighbours sit close enough
+   that the wrong element can win a point exactly on that line. The expanded
+   pseudo-element pads past the boundary rather than relying on the exact box. */
+.ba-gear::after { content: ''; position: absolute; inset: -8px; }
 
 /* ---------------------------------------------------------------------- */
 /* Pager (Ask/lane <-> Feed)                                               */
 /* ---------------------------------------------------------------------- */
 .ba-pager { flex: 1; min-height: 0; overflow: hidden; position: relative; }
 .ba-pager-track { display: flex; width: 200%; height: 100%; }
-.ba-pager-track { transition: transform var(--dur-state) var(--ease); }
 .ba-page { width: 50%; flex: none; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
 .ba-primary { display: none; flex: 1; min-height: 0; flex-direction: column; }
 .ba-primary.show { display: flex; }
 .ba-lane { overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
-@media (prefers-reduced-motion: reduce) {
-  .ba-pager-track { transition: none; }
+/* The Feed swipe: explains a place change, so it earns a transition - but,
+   per the mission's motion spec, only ever inside the no-preference query
+   (no bare transition undone elsewhere for the reduced case). */
+@media (prefers-reduced-motion: no-preference) {
+  .ba-pager-track { transition: transform var(--dur-state) var(--ease); }
 }
 
 /* ---------------------------------------------------------------------- */
@@ -157,6 +164,18 @@
 .wb.wb.wb .ba-running-stop {
   background: var(--surface3); color: var(--text); border: none; border-radius: var(--r-pill);
   font-size: var(--fs-eyebrow); font-weight: 600; padding: 6px 12px; min-height: 32px; cursor: pointer; flex: none;
+}
+
+/* Running -> done: the moment an answer's body actually mounts (freshly
+   streamed, or a completed turn painting in from history) is a real state
+   change worth marking once, scoped to THIS candidate's own thread so the
+   shared ChatMessage.tsx stays untouched. */
+@media (prefers-reduced-motion: no-preference) {
+  .brain-a .wb-turn.asst .wb-body { animation: ba-settle var(--dur-state) var(--ease); }
+}
+@keyframes ba-settle {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .ba-answermeta { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 14px; }
@@ -294,21 +313,34 @@
 .wb.wb.wb .ba-card-title.unread { font-weight: 600; color: var(--text); }
 .wb.wb.wb .ba-card-lane { font-size: var(--fs-eyebrow); color: var(--text4); }
 
-.ba-card-tail { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }
+/* Fixed-width trailing column, normal flow (no absolute positioning): time
+   sits on its own row, the count/action sits on its own row below. Nothing
+   here can overlap the row above it because there is no second layer fighting
+   for the same corner - that was the bug (the X and Clear-all were siblings
+   of this column, pinned to the card's own corners instead of living inside
+   it). */
+.ba-card-tail {
+  display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between;
+  gap: 6px; flex: none; width: 52px; align-self: stretch; padding: 2px 0;
+}
 .wb.wb.wb .ba-card-time { font-size: var(--fs-eyebrow); color: var(--text4); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ba-card-tail-action { display: flex; align-items: center; gap: 6px; }
 .wb.wb.wb .ba-card-pill {
   min-width: 18px; text-align: center; font-size: var(--fs-eyebrow); font-weight: 700; border-radius: 999px;
   padding: 1px 5px; background: var(--surface3); color: var(--text); font-variant-numeric: tabular-nums;
 }
 .ba-card-x {
-  position: absolute; top: 10px; right: 12px; width: 28px; height: 28px; background: none; border: none;
+  position: relative; width: 24px; height: 24px; background: none; border: none;
   color: var(--text4); font-size: var(--fs-eyebrow); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
 }
-.ba-card-x::after { content: ''; position: absolute; inset: -10px; }
+.ba-card-x::after { content: ''; position: absolute; inset: -11px; }
 .wb.wb.wb .ba-card-clear {
-  position: absolute; bottom: 4px; right: var(--gut); background: none; border: none;
-  color: var(--text3); font-size: var(--fs-eyebrow); text-decoration: underline; cursor: pointer; padding: 6px;
+  position: relative; background: none; border: none;
+  color: var(--text3); font-size: var(--fs-eyebrow); text-decoration: underline; cursor: pointer;
+  padding: 4px 0; display: inline-flex; align-items: center;
 }
+.ba-card-clear::after { content: ''; position: absolute; inset: -11px -4px; }
 
 /* ---------------------------------------------------------------------- */
 /* AskPane.tsx - desktop dock                                              */

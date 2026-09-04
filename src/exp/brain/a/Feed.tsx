@@ -28,10 +28,12 @@ function clockTime(iso: string): string {
   return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
-function stateWord(sev: NotificationSeverity): string {
+// null for `info`: the common case is silent, so the eyebrow only ever
+// carries a word when the row is actually asking for something.
+function stateWord(sev: NotificationSeverity): string | null {
   if (sev === 'error') return 'Needs you'
-  if (sev === 'attention') return 'For info'
-  return 'For info'
+  if (sev === 'attention') return 'Attention'
+  return null
 }
 
 // The mark: filled square (urgent) / half-filled square (attention) / hollow
@@ -51,7 +53,12 @@ function FamilySection({ familyKey, groups, open, onToggle, onOpenItem, onDismis
   onDismissGroup: (g: NotificationGroup) => void
 }) {
   const unread = groups.reduce((s, g) => s + g.unread, 0)
-  const lane = familyLaneLabel(familyKey)
+  const laneLabel = familyLaneLabel(familyKey)
+  // claude_turn's own `title` column carries the prompt he sent (inbox-turn-run
+  // fills it that way for its dedupe key), not what he came back to read. The
+  // answer he actually wants is `body` - so this one family swaps which field
+  // is the headline and which is the small line underneath.
+  const isTurn = familyKey === 'claude_turn'
   return (
     <div className="ba-fsec">
       <button type="button" className="ba-fsec-h" onClick={onToggle} aria-expanded={open}>
@@ -60,36 +67,45 @@ function FamilySection({ familyKey, groups, open, onToggle, onOpenItem, onDismis
         {unread > 0 && <span className="ba-fsec-u" />}
         <span className={`ba-fsec-car${open ? ' open' : ''}`}>›</span>
       </button>
-      {open && groups.map(g => (
-        <div
-          key={g.key} className="ba-card" data-card data-family={familyKey}
-          onClick={() => onOpenItem(g.latest)}
-        >
-          <Mark sev={markFor(g.latest.severity)} unread={g.unread > 0} />
-          <div className="ba-card-body">
-            <div className="ba-card-top">
-              <span className="ba-card-fam">{familyLabel(familyKey)}</span>
-              <span className="ba-card-sev">{stateWord(g.latest.severity)}</span>
+      {open && groups.map(g => {
+        const answerLine = g.latest.body ? g.latest.body.split('\n')[0].trim() : ''
+        const headline = isTurn && answerLine ? answerLine : g.latest.title
+        const subline = isTurn ? g.latest.title : laneLabel
+        const sev = stateWord(g.latest.severity)
+        return (
+          <div
+            key={g.key} className="ba-card" data-card data-family={familyKey}
+            onClick={() => onOpenItem(g.latest)}
+          >
+            <Mark sev={markFor(g.latest.severity)} unread={g.unread > 0} />
+            <div className="ba-card-body">
+              <div className="ba-card-top">
+                <span className="ba-card-fam">{familyLabel(familyKey)}</span>
+                {sev && <span className="ba-card-sev">{sev}</span>}
+              </div>
+              <div className={`ba-card-title${g.unread > 0 ? ' unread' : ''}`}>{headline}</div>
+              {subline && <div className="ba-card-lane">{subline}</div>}
             </div>
-            <div className={`ba-card-title${g.unread > 0 ? ' unread' : ''}`}>{g.latest.title}</div>
-            {lane && <div className="ba-card-lane">{lane}</div>}
+            <div className="ba-card-tail">
+              <span className="ba-card-time">{relAge(g.lastSeenAt)}</span>
+              <div className="ba-card-tail-action">
+                {g.count > 1 && <span className="ba-card-pill">{g.count}</span>}
+                {g.items.length > 1 ? (
+                  <button
+                    type="button" className="ba-card-clear"
+                    onClick={e => { e.stopPropagation(); onDismissGroup(g) }}
+                  >Clear {g.items.length}</button>
+                ) : (
+                  <button
+                    type="button" className="ba-card-x" aria-label="Dismiss"
+                    onClick={e => { e.stopPropagation(); onDismiss(g.latest.id) }}
+                  >✕</button>
+                )}
+              </div>
+            </div>
           </div>
-          <div className="ba-card-tail">
-            <span className="ba-card-time">{relAge(g.lastSeenAt)}</span>
-            {g.count > 1 && <span className="ba-card-pill">{g.count}</span>}
-          </div>
-          <button
-            type="button" className="ba-card-x" aria-label="Dismiss"
-            onClick={e => { e.stopPropagation(); onDismiss(g.latest.id) }}
-          >✕</button>
-          {g.items.length > 1 && (
-            <button
-              type="button" className="ba-card-clear"
-              onClick={e => { e.stopPropagation(); onDismissGroup(g) }}
-            >Clear all {g.items.length}</button>
-          )}
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
