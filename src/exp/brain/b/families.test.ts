@@ -237,6 +237,24 @@ describe('sanitizeBody', () => {
     expect(out).not.toMatch(/—/)
     expect(out).toBe('RISE Warm Engager HALTED. Apify MTD $120.57 >= cap $120')
   })
+  it('strips a LOWERCASE field name, and the key it was the value of', () => {
+    // The copy seat's failing case, verbatim off a live body.
+    const out = sanitizeBody('Idea extraction failed (stop=max_tokens)')
+    expect(out).not.toMatch(/max_tokens/)
+    expect(out).toBe('Idea extraction failed')
+  })
+  it('strips a bare snake_case token mid-sentence', () => {
+    expect(sanitizeBody('Refused with thread_busy while the first one ran'))
+      .toBe('Refused with while the first one ran')
+    expect(sanitizeBody('Wrote session_started_at back as null'))
+      .toBe('Wrote back as null')
+  })
+  it('leaves a real path and a url whole', () => {
+    expect(sanitizeBody('Read memory/goal_runs/index.md and stopped'))
+      .toBe('Read memory/goal_runs/index.md and stopped')
+    expect(sanitizeBody('See https://example.test/a_b_c for the run'))
+      .toBe('See https://example.test/a_b_c for the run')
+  })
 })
 
 describe('groupStateWord', () => {

@@ -124,6 +124,14 @@ export function severityShape(sev: NotificationSeverity): MarkShape {
 const RAW_ENUM_RE = /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/
 const RAW_ENUM_RE_G = /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/g
 
+// The lowercase twin. `stop=max_tokens`, `thread_busy`, `session_started_at`:
+// an API field name is exactly as much of an internal name as a screaming enum
+// is, and the uppercase pass above never saw one (201 of 3011 real bodies got
+// through). The lookarounds keep a real path or a url out of it: a token
+// preceded by a slash, a dot, a colon or a word character, or followed by one,
+// belongs to something larger and is left whole.
+const SNAKE_RE_G = /(?<![\w/.:-])[a-z]+(?:_[a-z]+)+(?![\w/.-])/g
+
 /** True for a token that looks like an un-humanised DB/enum value. */
 export function looksRaw(word: string): boolean {
   return RAW_ENUM_RE.test(word)
@@ -152,6 +160,12 @@ export function sanitizeBody(body: string): string {
     .replace(EMOJI_RE, '')
     .replace(/OK\s*(?:→|->)\s*[A-Z][A-Z0-9_]*/g, 'disconnected')
     .replace(RAW_ENUM_RE_G, '')
+    .replace(SNAKE_RE_G, '')
+    // Taking the value out of `(stop=max_tokens)` leaves `(stop=)`, which is
+    // the same internal name with its noun cut off. A parenthetical whose value
+    // has just been removed goes with it.
+    .replace(/[ \t]*\([^()]*=\s*\)/g, '')
+    .replace(/\(\s*\)/g, '')
     .replace(/\s*—\s*/g, '. ')
     .replace(/\s+/g, ' ')
     .replace(/^[^\w"'[]+/, '')
