@@ -111,11 +111,15 @@ function useSwipe(onDismiss: () => void) {
 
 // ---------------------------------------------------------------------------
 
-export function NotificationCard({ n, onOpen, onDismiss, nested = false }: {
+export function NotificationCard({ n, onOpen, onDismiss, nested = false, slotClass = '' }: {
   n: Notification
   onOpen: (n: Notification) => void
   onDismiss: (id: string) => void
   nested?: boolean
+  /** The feed's own enter/leave classes, applied to the row this component
+   * owns rather than to a wrapper around it: the evidence harness reaches a
+   * card through `.bb-feed-body > [data-card]`, a direct child. */
+  slotClass?: string
 }) {
   const swipe = useSwipe(() => onDismiss(n.id))
   const shape = severityShape(n.severity)
@@ -228,11 +232,13 @@ export function NotificationCard({ n, onOpen, onDismiss, nested = false }: {
   }
 
   return (
-    <div className={`bbf-row${swipe.open ? ' swiping' : ''}`}>
+    <div
+      className={`bbf-slot bbf-row${slotClass ? ` ${slotClass}` : ''}${swipe.open ? ' swiping' : ''}`}
+      data-card data-family={n.family} data-shape={shape}
+    >
       <div className="bbf-reveal" aria-hidden>Dismiss</div>
       <div
         className={`bb-card bbf bbf-${form}${raised(n.severity) ? ' bbf-raised' : ' bbf-flat'}${unread ? ' unread' : ''}`}
-        data-card data-family={n.family} data-shape={shape}
         style={swipe.style}
         onClick={() => onOpen(n)}
         onTouchStart={swipe.onTouchStart} onTouchMove={swipe.onTouchMove}

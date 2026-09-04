@@ -176,7 +176,7 @@
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-card.bbf{
   position:relative; display:block; margin:0; gap:0;
   padding:12px 14px 9px; border-radius:var(--r-card);
-  cursor:pointer; overflow:hidden;
+  cursor:pointer;
 }
 /* SEVERITY BY POSITION. Raised and full width = needs you. Flat and inset =
    information. The 8px each side is the whole signal and it survives
@@ -261,11 +261,11 @@
 }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-card.bbf-flat .bb-tenant{ background:var(--surface2); }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-act{
-  position:relative; min-height:30px; padding:0 12px; border-radius:var(--r-ctl);
+  position:relative; min-height:34px; padding:0 13px; border-radius:var(--r-ctl);
   background:var(--surface3); border:1px solid var(--hairline-strong); color:var(--text);
   font-size:var(--fs-meta); font-weight:500; white-space:nowrap;
 }
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-act::after{ content:''; position:absolute; inset:-8px -5px; }
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-act::after{ content:''; position:absolute; inset:-6px -5px; }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-x{
   position:absolute; top:11px; right:11px; width:20px; height:20px; border-radius:50%;
   border:1px solid var(--hairline-strong); background:none; color:var(--text3);
@@ -314,6 +314,7 @@
 }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-edge{
   position:absolute; left:0; top:0; bottom:0; width:5px; background:var(--sev-urgent);
+  border-radius:5px 0 0 5px;
 }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-card.bbf-strip[data-shape="square"] .bbf-edge{ background:var(--sev-attention); }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-card.bbf-strip[data-shape="dot"] .bbf-edge{ background:var(--text4); }
@@ -366,14 +367,17 @@
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-deck-rows{
-  background:var(--surface1); border-radius:0 0 var(--r-card) var(--r-card); overflow:hidden;
+  background:var(--surface1); border-radius:0 0 var(--r-card) var(--r-card);
   margin:0 8px;
+}
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-deck-rows > .bb-card:last-child{
+  border-radius:0 0 var(--r-card) var(--r-card);
 }
 /* A row inside a fanned deck drops the mark and the state the parent already
    said, and leads with its own sentence. */
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-card.bbf-deck-row{
   display:flex; align-items:center; gap:10px; margin:0;
-  padding:13px 14px; border-radius:0; background:none;
+  padding:16px 14px; border-radius:0; background:none;
   border-top:1px solid var(--bbb-edge); cursor:pointer;
 }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-card.bbf-deck-row::before{ content:none; }
@@ -387,9 +391,13 @@
 }
 /* A nested row's dismiss sits in the row, not over it: the row is one line and
    an absolute control would land on the sentence. */
+/* The deck clips its own rows, so a hit zone that reaches past the row is cut
+   off with it. The control is drawn bigger instead of its shadow. */
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-x.bbf-x-row{
   position:relative; top:auto; right:auto; flex:0 0 auto; margin-left:2px;
+  width:30px; height:30px;
 }
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-x.bbf-x-row::after{ inset:-8px; }
 
 /* ========================================================================== */
 /* ASK — a conversation, not a log                                             */

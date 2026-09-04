@@ -113,27 +113,28 @@ export function Feed({ feed, goJob, openThread, onNavigated }: {
         </div>
       )}
       {rows.map(({ g, going }, at) => (
-        <div
-          className={`bbf-slot${fresh.has(g.key) && !going ? ' bbf-enter' : ''}${going ? ' bbf-out' : ''}`}
-          key={g.key}
-          aria-hidden={going || undefined}
-        >
-          {g.items.length > 1
-            ? (
+        g.items.length > 1
+          ? (
+            <div
+              className={`bbf-slot${fresh.has(g.key) && !going ? ' bbf-enter' : ''}${going ? ' bbf-out' : ''}`}
+              key={g.key}
+              aria-hidden={going || undefined}
+            >
               <GroupCard
                 g={g} open={feed.expanded.has(g.key)} onToggle={() => feed.toggle(g.key)}
                 onOpen={openOne}
                 onDismissAll={() => leave(g, at, () => feed.dismissGroupRows(g))}
                 onDismissOne={feed.dismissOne}
               />
-            )
-            : (
-              <NotificationCard
-                n={g.latest} onOpen={openOne}
-                onDismiss={id => leave(g, at, () => feed.dismissOne(id))}
-              />
-            )}
-        </div>
+            </div>
+          )
+          : (
+            <NotificationCard
+              key={g.key} n={g.latest} onOpen={openOne}
+              slotClass={`${fresh.has(g.key) && !going ? 'bbf-enter' : ''}${going ? ' bbf-out' : ''}`.trim()}
+              onDismiss={id => leave(g, at, () => feed.dismissOne(id))}
+            />
+          )
       ))}
     </div>
   )
