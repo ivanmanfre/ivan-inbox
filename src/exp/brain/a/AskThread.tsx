@@ -16,7 +16,7 @@ import { CLAUDE_ERROR_COPY } from '../../../lib/claude'
 import { LinkPreviewCard } from './LinkPreviewCard'
 import { Composer } from './Composer'
 import { extractRecallNouns, recallPrompt } from './recall'
-import { groundedOnLine, sessionStateLine, sourceBasenames, sourcesChipLabel } from './brainMeta'
+import { groundedOnLine, sessionStateLine, sourceBasenames, sourceSummaryClause, sourcesChipLabel } from './brainMeta'
 
 const THREAD_BUSY_COPY = CLAUDE_ERROR_COPY.thread_busy
 
@@ -56,6 +56,11 @@ function SeeChips({ subjects, see, setSee }: {
 
 function AnswerMeta({ turn, onRecall }: { turn: { text: string; sources?: { kind: string; path: string }[] }; onRecall: (noun: string) => void }) {
   const chip = sourcesChipLabel(turn.sources)
+  // Only the files. The assembler's own block ids and its `auto` bookkeeping
+  // row are not names he would recognise, and the memory summary is a DATE,
+  // not a file, so it gets its own clause instead of sitting in the list.
+  const files = sourceBasenames(turn.sources)
+  const summary = sourceSummaryClause(turn.sources)
   const nouns = useMemo(() => extractRecallNouns(turn.text), [turn.text])
   if (!chip && nouns.length === 0) return null
   return (
@@ -63,7 +68,8 @@ function AnswerMeta({ turn, onRecall }: { turn: { text: string; sources?: { kind
       {chip && (
         <details className="ba-sources" data-sources>
           <summary>{chip}</summary>
-          <div className="ba-sources-list">{sourceBasenames(turn.sources).join(' · ')}</div>
+          <div className="ba-sources-list">{files.join(' · ')}</div>
+          {summary && <div className="ba-sources-list">{summary}</div>}
         </details>
       )}
       {nouns.length > 0 && (
