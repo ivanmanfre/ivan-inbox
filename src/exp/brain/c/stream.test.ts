@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { latestActivityAt, mergeStream, type StreamTurn } from './stream'
+import { latestActivityAt, mergeStream, unreadCount, type StreamTurn } from './stream'
 import type { Notification } from '../../../lib/turns'
 import type { Turn } from '../../v2c/chat/events'
 
@@ -130,6 +130,13 @@ describe('mergeStream — quiet fold', () => {
     const out = mergeStream([], notes, { filter: 'all', quiet: false })
     expect(out.filter(e => e.kind === 'notification')).toHaveLength(2)
     expect(out.find(e => e.kind === 'quiet')).toBeUndefined()
+  })
+})
+
+describe('unreadCount', () => {
+  it('counts rows with no read_at', () => {
+    const rows = [note({ id: 'a', read_at: null }), note({ id: 'b', read_at: '2026-09-04T10:00:00Z' })]
+    expect(unreadCount(rows)).toBe(1)
   })
 })
 
