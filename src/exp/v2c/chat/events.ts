@@ -4,6 +4,8 @@
 // CLI internals (sdkMsg.message.content[n].type) — that translation is the
 // broker's job, and this union is the only shape any component here knows.
 
+import type { TurnSource, TurnStatus } from '../../../lib/turns'
+
 export type ChatEvent =
   | { type: 'session'; sessionId: string; model: string }
   // WHICH ROW this stream is writing. db/049 persists a turn the moment the
@@ -81,6 +83,14 @@ export type Turn = {
   // which reports none — a missing number beats an invented one.
   costUsd?: number | null
   durationMs?: number | null
+  // ---- db/049. Present once a turn is backed by an inbox_turns row: hydrated
+  // from one on mount, or reconciled onto the streamed turn after it lands.
+  /** The row this turn IS. The handle for going back for it after a lost stream. */
+  turnId?: string
+  /** The row's own status. 'running' with no local stream is the "phone was locked" state. */
+  status?: TurnStatus
+  /** What the broker grounded the answer on: one entry per assembled block. */
+  sources?: TurnSource[]
 }
 
 // The outcome of an assistant turn as one value, so the dot, the label and the
