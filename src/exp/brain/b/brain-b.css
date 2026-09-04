@@ -1,0 +1,373 @@
+/* ============================================================================
+   brain-b.css — candidate B, goal-run inbox-brain-app-2026-09-04.
+
+   THESIS: "the state word is the hero." A feed card, and every answer's own
+   status line, leads with the short bold word for what changed — HALTED,
+   replied, booked, failed, running again — set with a drawn mark whose SHAPE
+   (not colour) carries severity: filled square = needs you, a solid bar =
+   error, a hollow dot = info. Colour only reinforces the shape.
+
+   SCOPE. Every rule below is scoped under `.brain-b` (this candidate's root
+   class, applied by index.tsx to both Mobile and AskPane). Font-size and
+   weight rules additionally need `.wb.wb.wb .brain-b …` to beat the flatten
+   hack in faithful.css (`.wb.wb *` sets --fs-body on every descendant at
+   specificity 0-2-0); everything else only needs `.brain-b …` because nothing
+   else in the app reaches into this folder's markup.
+
+   CANON. Every colour and radius below is a `--*` token already declared on
+   `.wb` by faithful.css (D2). Nothing here declares a new hue, a new radius,
+   or a font family — no serif, no italic, no warm paper, no #F7F4EF, no
+   #2A8F65 (brand-visual-system.md's retirement notice, absolute).
+
+   TYPE CENSUS. Exactly 7 of the ladder's 8 tokens are used anywhere in this
+   file: --fs-eyebrow(12) --fs-meta(13) --fs-body(16) --fs-title(17)
+   --fs-glyph(20) --fs-page(22) --fs-figure(30). --fs-display(34) is
+   deliberately UNUSED — using all 8 would blow the "<=7 distinct sizes on the
+   phone entry" gate, so one had to go, and the largest number (the hero count
+   on a folded group) is loud enough at --fs-figure. The tab bar's small label
+   uses --fs-eyebrow(12px) rather than an invented 11px value: the brief's own
+   parenthetical suggestion ("drop labels to 11px caps") is one way to solve
+   the width problem, but the HARD constraint is the token ceiling, and 12px
+   already reads as a caption at this weight and letter-spacing.
+   ============================================================================ */
+
+.brain-b{
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  height:100%;
+  min-height:0;
+  background:var(--canvas);
+  color:var(--text);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Header — on every place. Feed button carries the unread count.          */
+/* ---------------------------------------------------------------------- */
+.brain-b .bb-head{
+  display:flex; align-items:center; gap:10px;
+  padding:12px 16px; min-height:44px;
+  border-bottom:1px solid var(--hairline);
+  flex:0 0 auto;
+}
+.wb.wb.wb .brain-b .bb-head-t{ font-size:var(--fs-title); font-weight:600; color:var(--text); }
+.wb.wb.wb .brain-b .bb-head-s{ font-size:var(--fs-meta); color:var(--text3); font-weight:400; }
+.brain-b .bb-head-sp{ flex:1 1 auto; }
+
+.brain-b .bb-feedbtn{
+  position:relative;
+  display:flex; align-items:center; justify-content:center;
+  width:44px; height:44px; border-radius:var(--r-ctl);
+  background:var(--surface1); border:1px solid var(--hairline);
+  color:var(--text2);
+}
+.wb.wb.wb .brain-b .bb-feedbtn{ font-size:var(--fs-glyph); }
+.brain-b .bb-feedbtn .bb-badge{
+  position:absolute; top:2px; right:2px;
+  min-width:16px; height:16px; padding:0 4px; border-radius:var(--r-pill);
+  background:var(--accent); color:var(--ink);
+  display:flex; align-items:center; justify-content:center;
+  font-weight:600;
+}
+.wb.wb.wb .brain-b .bb-feedbtn .bb-badge{ font-size:var(--fs-eyebrow); }
+
+/* ---------------------------------------------------------------------- */
+/* Body — the pager: place surface + feed sheet, side by side, translated. */
+/* ---------------------------------------------------------------------- */
+.brain-b .bb-pager{
+  position:relative;
+  flex:1 1 auto; min-height:0;
+  overflow:hidden;
+}
+.brain-b .bb-pane{
+  position:absolute; inset:0;
+  display:flex; flex-direction:column;
+  min-height:0;
+  transform:translateX(0);
+}
+.brain-b .bb-pane.bb-place{ z-index:1; }
+.brain-b .bb-pane.bb-feed{ z-index:2; transform:translateX(100%); }
+.brain-b .bb-pane.bb-feed.on{ transform:translateX(0); }
+
+@media (prefers-reduced-motion: no-preference){
+  /* D-M5 / brief's motion rule: a transition exists ONLY where it explains a
+     state change. The feed sliding over IS one of the four named exceptions. */
+  .brain-b .bb-pane.bb-feed{ transition:transform var(--dur-beat) var(--ease); }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Tab bar — six slots: Ask, Today, DMs, Content, Lanes, Ops.               */
+/* ---------------------------------------------------------------------- */
+.brain-b .bb-tabs{
+  display:flex; flex:0 0 auto;
+  border-top:1px solid var(--hairline);
+  background:var(--surface1);
+  padding-bottom:env(safe-area-inset-bottom, 0px);
+}
+.brain-b .bb-tab{
+  flex:1 1 0; min-width:0;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:2px; padding:8px 2px 6px;
+  color:var(--text3);
+  position:relative;
+}
+/* Hit-target extension: the visible glyph+label is well under 44px tall, so
+   the tap area is grown with an invisible ::after rather than padding the
+   box (padding would push the five siblings' baselines out of alignment). */
+.brain-b .bb-tab::after{ content:''; position:absolute; inset:-4px -2px; }
+.brain-b .bb-tab.on{ color:var(--accent-ui); }
+.wb.wb.wb .brain-b .bb-tab-ic{ font-size:var(--fs-glyph); line-height:1; }
+.wb.wb.wb .brain-b .bb-tab-l{
+  font-size:var(--fs-eyebrow); font-weight:500; letter-spacing:.04em; text-transform:uppercase;
+}
+.brain-b .bb-tab-ic{ position:relative; display:inline-flex; }
+.brain-b .bb-tab-n{
+  position:absolute; top:-8px; left:100%; margin-left:1px;
+  min-width:16px; height:16px; padding:0 3px; border-radius:var(--r-pill);
+  background:var(--surface3); color:var(--text2);
+  display:flex; align-items:center; justify-content:center; font-weight:500;
+  transform:scale(.75); transform-origin:left top;
+}
+.wb.wb.wb .brain-b .bb-tab-n{ font-size:var(--fs-eyebrow); }
+.brain-b .bb-tab-n.attention{ background:var(--sev-attention); color:var(--ink); }
+.brain-b .bb-tab-n.urgent{ background:var(--sev-urgent); color:#fff; }
+
+/* ---------------------------------------------------------------------- */
+/* Ask place — the thread + composer.                                      */
+/* ---------------------------------------------------------------------- */
+.brain-b .bb-ask{ display:flex; flex-direction:column; min-height:0; height:100%; }
+.brain-b .bb-thread{ flex:1 1 auto; min-height:0; overflow-y:auto; padding:12px 16px 4px; }
+
+.brain-b .bb-session{
+  display:flex; align-items:center; gap:6px;
+  padding:6px 10px; margin-bottom:8px;
+  border-radius:var(--r-ctl); background:var(--surface1);
+  color:var(--text3);
+}
+.wb.wb.wb .brain-b .bb-session{ font-size:var(--fs-meta); }
+
+.brain-b .bb-empty{ display:flex; flex-direction:column; gap:14px; padding:24px 4px; }
+.wb.wb.wb .brain-b .bb-empty-t{ font-size:var(--fs-page); font-weight:600; }
+.wb.wb.wb .brain-b .bb-empty-s{ font-size:var(--fs-body); color:var(--text2); line-height:1.5; }
+.brain-b .bb-starters{ display:flex; flex-direction:column; gap:8px; margin-top:6px; }
+.brain-b .bb-starter{
+  text-align:left; padding:12px 14px; border-radius:var(--r-card);
+  background:var(--surface1); border:1px solid var(--hairline); color:var(--text2);
+  min-height:44px;
+}
+.wb.wb.wb .brain-b .bb-starter{ font-size:var(--fs-body); }
+
+/* -- turns -- */
+.brain-b .bb-uturn{ display:flex; justify-content:flex-end; margin:10px 0; }
+.brain-b .bb-ububble{
+  max-width:86%; padding:10px 14px; border-radius:var(--r-card);
+  background:var(--accent); color:var(--ink); white-space:pre-wrap;
+}
+.wb.wb.wb .brain-b .bb-ububble{ font-size:var(--fs-body); line-height:1.5; }
+
+.brain-b .bb-aturn{ margin:10px 0; }
+.brain-b .bb-aturn.bb-running{ opacity:.9; }
+
+.brain-b .bb-running-banner{
+  display:flex; align-items:center; gap:8px;
+  padding:10px 12px; margin:6px 0; border-radius:var(--r-ctl);
+  background:var(--surface1); border:1px solid var(--hairline); color:var(--text2);
+}
+.wb.wb.wb .brain-b .bb-running-banner{ font-size:var(--fs-meta); }
+.brain-b .bb-dot3{ display:inline-flex; gap:3px; }
+.brain-b .bb-dot3 span{ width:4px; height:4px; border-radius:50%; background:var(--text3); }
+@media (prefers-reduced-motion: no-preference){
+  .brain-b .bb-dot3 span{ animation:bb-pulse 1.1s ease-in-out infinite; }
+  .brain-b .bb-dot3 span:nth-child(2){ animation-delay:.15s; }
+  .brain-b .bb-dot3 span:nth-child(3){ animation-delay:.3s; }
+  @keyframes bb-pulse{ 0%,80%,100%{ opacity:.3; } 40%{ opacity:1; } }
+}
+
+/* the running -> done settle, one of the four named transitions */
+.brain-b .bb-settle{ }
+@media (prefers-reduced-motion: no-preference){
+  .brain-b .bb-settle{ animation:bb-settle var(--dur-state) var(--ease); }
+  @keyframes bb-settle{ from{ opacity:.5; transform:translateY(2px); } to{ opacity:1; transform:none; } }
+}
+
+.brain-b .bb-stop{
+  min-width:44px; min-height:44px; padding:0 12px; border-radius:var(--r-ctl);
+  background:var(--surface2); border:1px solid var(--hairline-strong); color:var(--text);
+}
+.wb.wb.wb .brain-b .bb-stop{ font-size:var(--fs-meta); font-weight:500; }
+
+/* -- brain visibility -- */
+.brain-b .bb-brain{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+.brain-b .bb-chip{
+  display:inline-flex; align-items:center; gap:4px;
+  padding:4px 9px; border-radius:var(--r-pill);
+  background:var(--surface1); border:1px solid var(--hairline); color:var(--text3);
+  min-height:26px;
+}
+.wb.wb.wb .brain-b .bb-chip{ font-size:var(--fs-eyebrow); font-weight:500; }
+.brain-b .bb-chip.tap{ cursor:pointer; }
+.brain-b .bb-sources-list{
+  margin-top:4px; padding:8px 10px; border-radius:var(--r-ctl);
+  background:var(--surface1); color:var(--text2);
+}
+.wb.wb.wb .brain-b .bb-sources-list{ font-size:var(--fs-meta); line-height:1.6; }
+
+.brain-b .bb-recall{
+  text-decoration:underline; text-decoration-color:var(--accent-ui);
+  text-underline-offset:2px; color:inherit; cursor:pointer;
+}
+
+.brain-b .bb-turn-err{
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  padding:10px 12px; margin-top:6px; border-radius:var(--r-ctl);
+  background:var(--surface1); border-left:3px solid var(--sev-urgent); color:var(--text);
+}
+.wb.wb.wb .brain-b .bb-turn-err{ font-size:var(--fs-body); }
+.brain-b .bb-retry{
+  min-height:32px; padding:0 12px; border-radius:var(--r-ctl);
+  background:var(--surface2); color:var(--text); border:1px solid var(--hairline-strong);
+}
+.wb.wb.wb .brain-b .bb-retry{ font-size:var(--fs-meta); }
+
+/* ---------------------------------------------------------------------- */
+/* Composer                                                                 */
+/* ---------------------------------------------------------------------- */
+.brain-b .bb-composer{
+  flex:0 0 auto; display:flex; flex-direction:column; gap:8px;
+  padding:8px 12px; border-top:1px solid var(--hairline); background:var(--surface1);
+}
+.brain-b .bb-composer-row{ display:flex; align-items:flex-end; gap:8px; }
+.brain-b .bb-field{
+  flex:1 1 auto; min-height:44px; max-height:120px; resize:none;
+  border-radius:var(--r-card); background:var(--surface2); border:1px solid var(--hairline);
+  color:var(--text); padding:11px 14px; font-family:inherit;
+}
+.wb.wb.wb .brain-b .bb-field{ font-size:var(--fs-body); line-height:1.4; }
+.brain-b .bb-ctl{
+  min-width:44px; min-height:44px; border-radius:50%;
+  background:var(--surface2); border:1px solid var(--hairline-strong); color:var(--text2);
+  display:flex; align-items:center; justify-content:center;
+}
+.wb.wb.wb .brain-b .bb-ctl{ font-size:var(--fs-glyph); }
+.brain-b .bb-send{ background:var(--surface2); color:var(--text3); }
+.brain-b .bb-send.ready{ background:var(--accent); color:var(--ink); }
+.brain-b .bb-mic.rec{ background:var(--sev-urgent); color:#fff; border-color:transparent; }
+
+.brain-b .bb-attach-row{ display:flex; gap:8px; flex-wrap:wrap; }
+.brain-b .bb-attach{
+  display:flex; align-items:center; gap:6px; padding:6px 10px;
+  border-radius:var(--r-ctl); background:var(--surface2); border:1px solid var(--hairline); color:var(--text2);
+}
+.wb.wb.wb .brain-b .bb-attach{ font-size:var(--fs-meta); }
+.brain-b .bb-attach-thumb{ width:28px; height:28px; border-radius:6px; object-fit:cover; background:var(--surface3); }
+.brain-b .bb-attach-x{ color:var(--text3); padding:2px; min-width:22px; min-height:22px; }
+.brain-b .bb-attach-note{ color:var(--text3); }
+.wb.wb.wb .brain-b .bb-attach-note{ font-size:var(--fs-eyebrow); }
+
+.brain-b .bb-voice{ display:flex; align-items:center; gap:10px; padding:6px 4px; }
+.brain-b .bb-bars{ display:flex; align-items:flex-end; gap:2px; height:20px; }
+.brain-b .bb-bars span{ width:3px; border-radius:2px; background:var(--accent-ui); }
+@media (prefers-reduced-motion: no-preference){
+  .brain-b .bb-bars span{ transition:height var(--dur-hover) linear; }
+}
+.wb.wb.wb .brain-b .bb-voice-t{ font-size:var(--fs-meta); color:var(--text2); }
+
+/* ---------------------------------------------------------------------- */
+/* Link preview card                                                       */
+/* ---------------------------------------------------------------------- */
+.brain-b .bb-link{
+  display:flex; gap:10px; padding:8px; border-radius:var(--r-card);
+  background:var(--surface2); border:1px solid var(--hairline); align-items:center;
+}
+.brain-b .bb-link-img{ width:64px; height:36px; border-radius:8px; background:var(--surface3); flex:0 0 auto; object-fit:cover; }
+.brain-b .bb-link-img.sq{ width:44px; height:44px; }
+.brain-b .bb-link-body{ min-width:0; display:flex; flex-direction:column; gap:2px; }
+.wb.wb.wb .brain-b .bb-link-title{ font-size:var(--fs-meta); font-weight:500; color:var(--text); }
+.wb.wb.wb .brain-b .bb-link-sub{ font-size:var(--fs-eyebrow); color:var(--text3); }
+.brain-b .bb-link-title, .brain-b .bb-link-sub{
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.brain-b .bb-link.failed{ opacity:.8; }
+
+/* ---------------------------------------------------------------------- */
+/* Feed sheet                                                               */
+/* ---------------------------------------------------------------------- */
+.brain-b .bb-feed-body{ flex:1 1 auto; min-height:0; overflow-y:auto; padding:8px 16px 16px; }
+.brain-b .bb-feed-empty{ padding:40px 8px; color:var(--text3); text-align:center; }
+.wb.wb.wb .brain-b .bb-feed-empty{ font-size:var(--fs-body); }
+
+.brain-b .bb-card{
+  position:relative; display:flex; gap:10px; padding:12px 12px 12px 16px; margin:8px 0;
+  border-radius:var(--r-card); background:var(--surface1);
+}
+.brain-b .bb-card::before{
+  content:''; position:absolute; left:0; top:10px; bottom:10px; width:2px; border-radius:2px;
+  background:var(--text4);
+}
+.brain-b .bb-card[data-shape="square"]::before{ width:4px; background:var(--sev-attention); }
+.brain-b .bb-card[data-shape="bar"]::before{ width:3px; background:var(--sev-urgent); }
+.brain-b .bb-card[data-shape="dot"]::before{ width:2px; background:var(--text4); }
+.brain-b .bb-card.unread{ background:var(--surface2); }
+
+.brain-b .bb-mark{
+  flex:0 0 auto; width:22px; height:22px; display:flex; align-items:center; justify-content:center; margin-top:2px;
+}
+.brain-b .bb-mark i{ display:block; }
+.brain-b .bb-mark[data-shape="square"] i{ width:11px; height:11px; background:var(--sev-attention); border-radius:2px; }
+.brain-b .bb-mark[data-shape="bar"] i{ width:4px; height:16px; background:var(--sev-urgent); border-radius:2px; }
+.brain-b .bb-mark[data-shape="dot"] i{ width:9px; height:9px; border:2px solid var(--text3); border-radius:50%; background:transparent; }
+.brain-b .bb-card.unread .bb-mark[data-shape="dot"] i{ background:var(--text3); }
+
+.brain-b .bb-card-body{ min-width:0; flex:1 1 auto; display:flex; flex-direction:column; gap:2px; }
+.wb.wb.wb .brain-b .bb-card-word{ font-size:var(--fs-page); font-weight:600; color:var(--text); line-height:1.2; }
+.wb.wb.wb .brain-b .bb-card-word.unread{ font-weight:600; }
+.wb.wb.wb .brain-b .bb-card-hero{ font-size:var(--fs-figure); font-weight:600; color:var(--text); line-height:1.1; }
+.wb.wb.wb .brain-b .bb-card-who{ font-size:var(--fs-title); font-weight:500; color:var(--text2); }
+.wb.wb.wb .brain-b .bb-card-body-l{ font-size:var(--fs-body); color:var(--text2); line-height:1.4; }
+.brain-b .bb-card-body-l{
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+}
+.brain-b .bb-card-meta{ display:flex; align-items:center; gap:8px; margin-top:2px; }
+.wb.wb.wb .brain-b .bb-card-meta{ font-size:var(--fs-eyebrow); color:var(--text3); }
+.brain-b .bb-tenant{
+  padding:1px 7px; border-radius:var(--r-pill); background:var(--surface2); color:var(--text3);
+  border:1px solid var(--hairline);
+}
+.wb.wb.wb .brain-b .bb-tenant{ font-size:var(--fs-eyebrow); font-weight:500; }
+
+.brain-b .bb-card-actions{ display:flex; gap:8px; margin-top:6px; }
+.brain-b .bb-card-open{
+  min-height:32px; padding:0 12px; border-radius:var(--r-ctl);
+  background:var(--surface2); color:var(--text); border:1px solid var(--hairline-strong);
+}
+.wb.wb.wb .brain-b .bb-card-open{ font-size:var(--fs-meta); font-weight:500; }
+.brain-b .bb-card-dismiss{
+  min-width:44px; min-height:32px; color:var(--text3); border-radius:var(--r-ctl);
+}
+.wb.wb.wb .brain-b .bb-card-dismiss{ font-size:var(--fs-meta); }
+
+@media (prefers-reduced-motion: no-preference){
+  /* a notification group expanding — the third named transition */
+  .brain-b .bb-group-items{ overflow:hidden; transition:max-height var(--dur-state) var(--ease); }
+}
+.brain-b .bb-group-items{ max-height:0; }
+.brain-b .bb-group-items.open{ max-height:2000px; }
+
+/* ---------------------------------------------------------------------- */
+/* Desktop AskPane                                                          */
+/* ---------------------------------------------------------------------- */
+.brain-b.bb-desktop{ border-left:1px solid var(--hairline); }
+.brain-b.bb-desktop .bb-thread{ padding:16px 20px 4px; }
+.brain-b.bb-desktop .bb-composer{ padding:10px 16px; }
+.brain-b.bb-desktop .bb-feedoverlay{
+  position:absolute; inset:0; z-index:5; background:var(--canvas);
+  display:flex; flex-direction:column;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Reduced motion — every animation above collapses to nothing rather than */
+/* merely speeding up.                                                     */
+/* ---------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce){
+  .brain-b *{ animation-duration:1ms !important; animation-iteration-count:1 !important; transition-duration:1ms !important; }
+}
