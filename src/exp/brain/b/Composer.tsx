@@ -22,6 +22,24 @@ function levelBars(elapsedMs: number, n = 14): number[] {
   })
 }
 
+/**
+ * A DRAWN microphone, not the emoji one. The colour emoji was the only
+ * multi-colour object on this composer: it cannot take `--text2` beside the
+ * attach control, it cannot take `--ink` when the button turns urgent while
+ * recording, and it renders as a raster face out of a different app. Same 22px
+ * box, currentColor throughout, so it inherits every state the button has.
+ */
+function MicGlyph() {
+  return (
+    <svg className="bb-glyph" viewBox="0 0 20 20" aria-hidden="true">
+      <rect x="7.4" y="2.6" width="5.2" height="9.2" rx="2.6"
+        fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M4.6 9.6a5.4 5.4 0 0 0 10.8 0M10 15v2.4"
+        fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 export function Composer({ value, onChange, onSend, busy, runningElsewhere, onStop, placeholder }: {
   value: string
   onChange: (v: string) => void
@@ -161,7 +179,7 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
             aria-label={recording ? 'Stop recording' : 'Dictate'}
             disabled={transcribing}
             onClick={stt.toggle}
-          >{transcribing ? '…' : '🎙'}</button>
+          >{transcribing ? '…' : <MicGlyph />}</button>
         )}
         <textarea
           ref={fieldRef}

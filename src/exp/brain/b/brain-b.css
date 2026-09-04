@@ -347,6 +347,9 @@
 .brain-b .bb-send{ background:var(--surface2); color:var(--text3); }
 .brain-b .bb-send.ready{ background:var(--accent); color:var(--ink); }
 .brain-b .bb-mic.rec{ background:var(--sev-urgent); color:var(--ink); border-color:transparent; }
+/* A drawn glyph on the same 22px box the emoji occupied, painted by
+   currentColor so it follows the button through every state. */
+.brain-b .bb-glyph{ width:22px; height:22px; display:block; }
 
 .brain-b .bb-attach-row{ display:flex; gap:8px; flex-wrap:wrap; }
 .brain-b .bb-attach{
