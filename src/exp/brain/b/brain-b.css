@@ -187,15 +187,17 @@
 .brain-b .bb-thread{ flex:1 1 auto; min-height:0; overflow-y:auto; padding:12px 16px 4px; }
 
 .brain-b .bb-session{
-  display:flex; align-items:center; gap:6px;
+  display:flex; align-items:center; gap:8px;
   padding:6px 10px; margin-bottom:8px;
   border-radius:var(--r-ctl); background:var(--surface1);
   color:var(--text3);
 }
 :is(.wb.wb.wb .brain-b, .wb.wb.wb.brain-b) .bb-session{ font-size:var(--fs-meta); }
-/* The sentence gives up its width first; the control never wraps onto a second
-   line inside a 26px strip (it did, in the tournament build's error shot). */
-.brain-b .bb-session-t{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* The grounded date is a fact, so it is never truncated to make room for a
+   control: the sentence keeps every word and wraps inside its own column. The
+   control keeps its width and never breaks across lines (it did, in the
+   tournament build's error shot) and never drops to a row of its own. */
+.brain-b .bb-session-t{ flex:1 1 auto; min-width:0; line-height:1.35; }
 .brain-b .bb-session .bb-chip{ flex:0 0 auto; white-space:nowrap; }
 
 .brain-b .bb-empty{ display:flex; flex-direction:column; gap:14px; padding:24px 4px; }
@@ -254,20 +256,18 @@
   @keyframes bb-settle{ from{ opacity:.5; transform:translateY(2px); } to{ opacity:1; transform:none; } }
 }
 
-.brain-b .bb-stop{
-  min-width:44px; min-height:44px; padding:0 12px; border-radius:var(--r-ctl);
-  background:var(--surface2); border:1px solid var(--hairline-strong); color:var(--text);
-}
-:is(.wb.wb.wb .brain-b, .wb.wb.wb.brain-b) .bb-stop{ font-size:var(--fs-meta); font-weight:500; }
-
 /* -- brain visibility -- */
 .brain-b .bb-brain{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
 .brain-b .bb-chip{
+  position:relative;
   display:inline-flex; align-items:center; gap:4px;
   padding:4px 9px; border-radius:var(--r-pill);
   background:var(--surface1); border:1px solid var(--hairline); color:var(--text3);
-  min-height:26px;
+  min-height:28px;
 }
+/* A 28px pill with a 46px tap area. Drawn small because it sits under an
+   answer and must not compete with it; tapped big because it is a control. */
+.brain-b .bb-chip::after{ content:''; position:absolute; inset:-9px -6px; }
 :is(.wb.wb.wb .brain-b, .wb.wb.wb.brain-b) .bb-chip{ font-size:var(--fs-eyebrow); font-weight:500; }
 .brain-b .bb-chip.tap{ cursor:pointer; }
 .brain-b .bb-sources-list{
@@ -305,9 +305,11 @@
 }
 :is(.wb.wb.wb .brain-b, .wb.wb.wb.brain-b) .bb-turn-err{ font-size:var(--fs-body); }
 .brain-b .bb-retry{
+  position:relative;
   min-height:32px; padding:0 12px; border-radius:var(--r-ctl);
   background:var(--surface2); color:var(--text); border:1px solid var(--hairline-strong);
 }
+.brain-b .bb-retry::after{ content:''; position:absolute; inset:-6px -4px; }
 :is(.wb.wb.wb .brain-b, .wb.wb.wb.brain-b) .bb-retry{ font-size:var(--fs-meta); }
 
 /* ---------------------------------------------------------------------- */
@@ -341,7 +343,8 @@
 }
 :is(.wb.wb.wb .brain-b, .wb.wb.wb.brain-b) .bb-attach{ font-size:var(--fs-meta); }
 .brain-b .bb-attach-thumb{ width:28px; height:28px; border-radius:6px; object-fit:cover; background:var(--surface3); }
-.brain-b .bb-attach-x{ color:var(--text3); padding:2px; min-width:22px; min-height:22px; }
+.brain-b .bb-attach-x{ position:relative; color:var(--text3); padding:2px; min-width:22px; min-height:22px; }
+.brain-b .bb-attach-x::after{ content:''; position:absolute; inset:-11px; }
 .brain-b .bb-attach-note{ color:var(--text3); }
 :is(.wb.wb.wb .brain-b, .wb.wb.wb.brain-b) .bb-attach-note{ font-size:var(--fs-eyebrow); }
 
@@ -426,6 +429,12 @@
    the sentence is clamped so a long first line cannot push the rest of the
    card off the bottom of the sheet. */
 .brain-b .bb-card-sentence{ letter-spacing:0; }
+/* A row inside an expanded group leads with its OWN sentence rather than the
+   state the parent already said, so it is set at body size and a weight step,
+   not at the parent's 22px. */
+:is(.wb.wb.wb .brain-b, .wb.wb.wb.brain-b) .bb-card-line{
+  font-size:var(--fs-body); font-weight:500; line-height:1.4;
+}
 .brain-b .bb-card-word{ display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
 :is(.wb.wb.wb .brain-b, .wb.wb.wb.brain-b) .bb-card-who{ font-size:var(--fs-title); font-weight:500; color:var(--text2); }
 :is(.wb.wb.wb .brain-b, .wb.wb.wb.brain-b) .bb-card-body-l{ font-size:var(--fs-body); color:var(--text2); line-height:1.4; }
@@ -442,9 +451,11 @@
 
 .brain-b .bb-card-actions{ display:flex; gap:8px; margin-top:6px; }
 .brain-b .bb-card-open{
+  position:relative;
   min-height:32px; padding:0 12px; border-radius:var(--r-ctl);
   background:var(--surface2); color:var(--text); border:1px solid var(--hairline-strong);
 }
+.brain-b .bb-card-open::after{ content:''; position:absolute; inset:-6px -4px; }
 :is(.wb.wb.wb .brain-b, .wb.wb.wb.brain-b) .bb-card-open{ font-size:var(--fs-meta); font-weight:500; }
 /* A drawn 20px ring at the card's trailing edge, not a stretched slab: the
    flex row used to hand this button the card's full height (align-items

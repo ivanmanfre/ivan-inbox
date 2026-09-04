@@ -87,6 +87,16 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
     })
   }
 
+  // The field grows with what is in it rather than scrolling a one-line window
+  // under the caret: a pasted link ended up showing its own tail
+  // ("com/watch?v=…") with the front of the sentence out of sight.
+  useEffect(() => {
+    const el = fieldRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`
+  }, [value])
+
   const recording = stt.state === 'recording'
   const transcribing = stt.state === 'transcribing'
 

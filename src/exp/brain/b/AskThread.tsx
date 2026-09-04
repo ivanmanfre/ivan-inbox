@@ -200,25 +200,28 @@ export function AskThread({ chat, job, about, mobile, focusTurn = null, onFocuse
   useEffect(() => {
     const el = scroller.current
     if (!el) return
-    if (focusTurn && landedFocus.current !== focusTurn) {
+    // While a deep link is being honoured the thread does NOT chase its own
+    // bottom: he arrived here to read one specific answer, and a scroll to the
+    // newest turn would take it off the screen a frame later. The mark and the
+    // position hold until he sends something, which is when this thread goes
+    // back to being a conversation.
+    if (focusTurn) {
+      if (landedFocus.current === focusTurn) return
       const target = el.querySelector(`[data-answer][data-turn="${CSS.escape(focusTurn)}"]`)
         ?? el.querySelector(`[data-turn="${CSS.escape(focusTurn)}"]`)
       if (target) {
         landedFocus.current = focusTurn
         target.scrollIntoView({ block: 'center' })
-        onFocused?.()
-        return
       }
-      // Not hydrated yet. Do not chase the bottom in the meantime, or the
-      // surface jumps twice for one tap.
       return
     }
     el.scrollTop = el.scrollHeight
-  }, [chat.turns.length, chat.streamText, focusTurn, onFocused])
+  }, [chat.turns.length, chat.streamText, focusTurn])
 
   const send = (t: string) => {
     if (!t.trim()) return
     setText('')
+    onFocused?.()
     void chat.send(t, about ?? undefined)
   }
   const onRecall = (noun: string) => send(buildRecallCommand(noun))
@@ -236,7 +239,6 @@ export function AskThread({ chat, job, about, mobile, focusTurn = null, onFocuse
       <div className="bb-thread" ref={scroller}>
         <div className="bb-session">
           <span className="bb-session-t">{sessionLine(chat.grounding)}</span>
-          <span className="bb-head-sp" />
           <button type="button" className="bb-chip tap" data-new-thread onClick={() => chat.newThread()}>New thread</button>
         </div>
 
@@ -264,11 +266,14 @@ export function AskThread({ chat, job, about, mobile, focusTurn = null, onFocuse
           ))
         )}
 
+        {/* ONE stop control per state, and it is always the same control in the
+            same place: the composer's trailing button, which is Send when
+            nothing is open and Stop when something is. A second Stop inside
+            this banner was two controls for one state. */}
         {runningElsewhereActive && (
           <div className="bb-running-banner" data-running-elsewhere>
             <span className="bb-dot3"><span /><span /><span /></span>
             <span>Still working on this. It started on another screen and it will land here on its own.</span>
-            <button type="button" className="bb-stop" data-stop onClick={stopRunningElsewhere}>Stop</button>
           </div>
         )}
 
