@@ -54,8 +54,16 @@ describe('turnsFromRows', () => {
   })
 
   it('an unrecognised error code still says something, and does not offer a retry it cannot honour', () => {
-    const out = turnsFromRows([row({ status: 'error', answer: null, error_code: 'lost' })])
+    const out = turnsFromRows([row({ status: 'error', answer: null, error_code: 'no_such_code' })])
     expect(out[1].error?.message).toBe(CLAUDE_ERROR_COPY.unknown)
+  })
+
+  it('a swept row says it was lost rather than falling to the catch-all', () => {
+    // The watchdog writes error_code 'lost' on a turn whose container never
+    // called back, and the client writes the same code at its own poll ceiling.
+    const out = turnsFromRows([row({ status: 'error', answer: null, error_code: 'lost' })])
+    expect(out[1].error?.message).toBe(CLAUDE_ERROR_COPY.lost)
+    expect(out[1].error?.message).not.toBe(CLAUDE_ERROR_COPY.unknown)
   })
 
   it('marks an aborted row aborted rather than failed', () => {

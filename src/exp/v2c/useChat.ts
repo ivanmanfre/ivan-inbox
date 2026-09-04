@@ -252,6 +252,12 @@ export function useChat() {
   const threadRef = useRef<Thread | null>(null)
   const turnIdRef = useRef<string | null>(null)
   const pollRef = useRef<{ id: string; until: number; timer: number } | null>(null)
+  // Hydration generation. A cold boot with a cached id that is not the deep-linked
+  // one runs two hydrations at once, and `alive` cannot tell them apart: last to
+  // resolve wins setTurns and setThreadId, so the link Ivan tapped loses to the
+  // thread he happened to read last. Every hydration takes a number and abandons
+  // itself the moment a newer one starts.
+  const hydrateGen = useRef(0)
   // ⚠ StrictMode-proof shape: dev double-invoke runs mount→cleanup→mount, and a
   // cleanup-only effect leaves `alive` permanently false after the rehearsal
   // unmount — which silently broke EVERY dev-mode turn (the loop bailed after
@@ -286,15 +292,45 @@ export function useChat() {
     void refreshThread()
   }, [refreshThread, stopPoll])
 
+  /**
+   * The ceiling. The server has given up on this row too, so saying nothing would
+   * leave the pane telling Ivan forever that the answer will land here on its
+   * own. Say it is lost, and let him send it again.
+   */
+  const giveUp = useCallback((id: string) => {
+    stopPoll()
+    setRunningElsewhere(false)
+    const lost = {
+      error: { message: CLAUDE_ERROR_COPY.lost, retryable: true },
+      status: 'error' as const,
+    }
+    setTurns(t => {
+      const at = t.findIndex(x => x.role === 'assistant' && x.turnId === id)
+      if (at >= 0) {
+        const out = [...t]
+        out[at] = { ...out[at], ...lost }
+        return out
+      }
+      const bubble: Turn = { id: nextId(), role: 'assistant', text: '', tools: [], turnId: id, ...lost }
+      const ask = t.findIndex(x => x.role === 'user' && x.turnId === id)
+      if (ask >= 0) {
+        const out = [...t]
+        out.splice(ask + 1, 0, bubble)
+        return out
+      }
+      return [...t, bubble]
+    })
+  }, [stopPoll])
+
   const poll = useCallback(async (id: string, until: number) => {
     let row: TurnRow | null = null
     try { row = await getTurn(id) } catch { /* transient: try again on the next tick */ }
     if (!alive.current) return
     if (row && !OPEN(row.status)) return land(row)
-    if (Date.now() >= until) { stopPoll(); return }
+    if (Date.now() >= until) { giveUp(id); return }
     const timer = window.setTimeout(() => void poll(id, until), POLL_MS)
     pollRef.current = { id, until, timer }
-  }, [land, stopPoll])
+  }, [giveUp, land])
 
   const armPoll = useCallback((id: string) => {
     stopPoll()
@@ -316,10 +352,12 @@ export function useChat() {
   }, [armPoll, land])
 
   const hydrate = useCallback(async (id?: string) => {
+    const gen = ++hydrateGen.current
+    const stale = () => !alive.current || gen !== hydrateGen.current
     setTurnsLoading(true)
     try {
       const t = (id ? await getThread(id) : null) ?? await latestThread()
-      if (!alive.current) return
+      if (stale()) return
       if (!t) {
         // The cached id points at nothing any more (a thread deleted, another
         // account). Forget it rather than painting an id with no thread behind it.
@@ -336,7 +374,7 @@ export function useChat() {
       setThread(t)
       writeThreadKey(t.id)
       const rows = await listTurns(t.id)
-      if (!alive.current) return
+      if (stale()) return
       setTurns(turnsFromRows(rows))
       const last = rows[rows.length - 1]
       if (last) setGrounding(groundingOf(last))
@@ -354,21 +392,27 @@ export function useChat() {
       // has and the next send still works — hydration is a convenience, not a
       // precondition for talking.
     } finally {
-      if (alive.current) setTurnsLoading(false)
+      if (!stale()) setTurnsLoading(false)
     }
   }, [armPoll])
 
   useEffect(() => {
     alive.current = true
-    // Paint the cached id immediately, verify it over the network second: the
-    // today.ts pattern, so a cold launch on a train shows the thread it is about
-    // to fill rather than an empty pane that then jumps.
-    const cached = readThreadKey()
-    if (cached) {
-      threadIdRef.current = cached
-      setThreadId(cached)
+    // A deep link may already own this mount. Child effects run before a parent's,
+    // so a shell that read `?thread=` has already called openThread and its
+    // hydration is in flight. Painting the cached id over it is exactly how the
+    // link Ivan tapped loses to the thread he happened to read last.
+    if (!threadIdRef.current) {
+      // Paint the cached id immediately, verify it over the network second: the
+      // today.ts pattern, so a cold launch on a train shows the thread it is about
+      // to fill rather than an empty pane that then jumps.
+      const cached = readThreadKey()
+      if (cached) {
+        threadIdRef.current = cached
+        setThreadId(cached)
+      }
+      void hydrate(cached ?? undefined)
     }
-    void hydrate(cached ?? undefined)
     return () => {
       alive.current = false
       abortRef.current?.abort()

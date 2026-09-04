@@ -99,6 +99,9 @@ export type ClaudeErrorCode =
   // the broker refuses a second one rather than lose the first one's reply.
   | 'thread_busy'
   | 'aborted'
+  // The turn outlived the client's own patience: 15 minutes of polling with the
+  // row still open, which is the same point the server's watchdog writes 'lost'.
+  | 'lost'
   | 'unknown'
 
 export const CLAUDE_ERROR_COPY: Record<ClaudeErrorCode, string> = {
@@ -127,6 +130,7 @@ export const CLAUDE_ERROR_COPY: Record<ClaudeErrorCode, string> = {
   model_support_unknown:
     'Cannot confirm Claude would honour that model, so it did not send. Switch back to the Claude default.',
   thread_busy: 'Still working on the last one. Wait for it or start a new thread.',
+  lost: 'Lost track of this one. Send it again.',
   unknown: 'Claude failed for an unrecognised reason.',
 }
 
