@@ -38,6 +38,26 @@ export class UnfurlError extends Error {
 
 const CACHE = new Map<string, { at: number; value: Unfurl }>()
 
+/**
+ * Titles a login wall serves instead of the page. MEASURED 2026-09-04: a
+ * `linkedin.com/feed/update/urn:li:activity:...` URL answers a plain UA with the
+ * signup page, whose og:title is "Sign Up | LinkedIn". A card reading that is
+ * worse than no card, because it looks like it worked. So a wall is a wall:
+ * ok:false, reason 'blocked'.
+ */
+const WALL_TITLES = [
+  /^sign ?up \| linkedin$/i,
+  /^linkedin login, sign in \| linkedin$/i,
+  /^log ?in \| linkedin$/i,
+  /^login • instagram$/i,
+  /^instagram$/i,
+]
+
+function isWall(title: string | undefined): boolean {
+  if (!title) return false
+  return WALL_TITLES.some((re) => re.test(title.trim()))
+}
+
 /** Only http(s), and never at this container's own neighbours. */
 function assertFetchable(u: URL) {
   if (u.protocol !== 'https:' && u.protocol !== 'http:') {
@@ -170,10 +190,20 @@ export async function unfurl(rawUrl: string): Promise<Unfurl> {
     }
   }
 
-  // A page that gave us nothing to show says so. `reason` names which of the two
-  // happened: the fetch never landed, or it landed on a wall with no tags.
-  out.ok = Boolean(out.title)
-  if (!out.ok) out.reason = fetchFailed ?? 'blocked'
+  // A page that gave us nothing to show says so. `reason` names which of the
+  // three happened: the fetch never landed, it landed on a page with no tags, or
+  // it landed on a login wall whose tags describe the wall and not the post.
+  if (isWall(out.title)) {
+    out.title = undefined
+    out.description = undefined
+    out.image = undefined
+    out.author = undefined
+    out.ok = false
+    out.reason = 'blocked'
+  } else {
+    out.ok = Boolean(out.title)
+    if (!out.ok) out.reason = fetchFailed ?? 'blocked'
+  }
 
   CACHE.set(key, { at: Date.now(), value: out })
   return out
