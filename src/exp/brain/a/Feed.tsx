@@ -12,6 +12,9 @@ import {
 } from '../../../lib/turns'
 import { familyEyebrow, familyLaneLabel, familySectionLabel, groupChange, plainHeadline, shortAge, worstSeverity } from './families'
 
+/** The ONE sentence a failed read prints. Never the thrown message. */
+const FEED_ERROR = 'Could not load the feed. Pull to try again.'
+
 type Severity = 'urgent' | 'attention' | 'info'
 
 function markFor(sev: NotificationSeverity): Severity {
@@ -122,7 +125,11 @@ export function Feed({ active, onNavigate, onUnreadChange }: {
       setError(null)
       setLoadedAt(new Date().toISOString())
     } catch (e) {
-      if (alive.current) setError(e instanceof Error ? e.message : 'Could not load the feed')
+      // A thrown message is the database talking about its own columns. It
+      // goes to the console, where a developer can read it; the screen gets
+      // the one sentence that tells him what to do about it.
+      console.error('[brain-a] feed read failed', e)
+      if (alive.current) setError(FEED_ERROR)
     }
   }, [])
 
