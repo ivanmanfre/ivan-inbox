@@ -178,7 +178,10 @@
    it reports the 12px the box was told, not the pixels that were drawn. The
    badge is sized by its token and kept small by its padding instead. */
 .brain-b .bb-tab-n{
-  position:absolute; top:-7px; left:100%; margin-left:1px;
+  /* Anchored INWARD from the icon's right edge, not hung off it: at full size
+     a two-digit count hung off `left:100%` overran the tab bar's right edge by
+     3px on the last slot, and leaned into the next slot on the others. */
+  position:absolute; top:-7px; right:-10px;
   min-width:15px; height:15px; padding:0 4px; border-radius:var(--r-pill);
   background:var(--surface3); color:var(--text2);
   display:flex; align-items:center; justify-content:center; font-weight:500;
