@@ -59,6 +59,11 @@ function mergeSources(existing: unknown, incoming: unknown, at: string): TurnSou
     for (const raw of incoming) {
       if (typeof raw !== 'string' || !raw.trim()) continue
       const path = raw.trim()
+      // A source is a path or a query name, never prose and never a placeholder.
+      // A shell blob (any inner whitespace or newline) and the literal 'auto' are
+      // what the container sends when it has nothing real to report, and both end
+      // up on Ivan's screen as a file he never read.
+      if (/\s/.test(path) || path === 'auto') continue
       if (seen.has(path)) continue
       seen.add(path)
       out.push({ kind: classifySource(path), path, at })
