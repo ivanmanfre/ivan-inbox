@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   FAMILIES, FAMILY_KEYS, familyEyebrow, familyLabel, familyLane, familyLaneLabel,
-  groupChange, plainHeadline,
+  groupChange, plainHeadline, shortAge,
 } from './families'
 
 // The 17 real families from the 30-day inventory, plus `chat` (not a
@@ -134,5 +134,21 @@ describe('groupChange', () => {
 
   it('a row that deduped in place with no second row is still a repeat', () => {
     expect(groupChange('Take your TRT', null, 6, 1)).toBe('again')
+  })
+})
+
+describe('shortAge', () => {
+  const now = Date.parse('2026-09-04T12:00:00Z')
+  it('reads "now" inside the first minute', () => {
+    expect(shortAge('2026-09-04T11:59:40Z', now)).toBe('now')
+  })
+  it('counts minutes, then hours, then days, then weeks', () => {
+    expect(shortAge('2026-09-04T11:36:00Z', now)).toBe('24m')
+    expect(shortAge('2026-09-04T06:00:00Z', now)).toBe('6h')
+    expect(shortAge('2026-09-02T12:00:00Z', now)).toBe('2d')
+    expect(shortAge('2026-08-14T12:00:00Z', now)).toBe('3w')
+  })
+  it('is empty for a value that is not a time', () => {
+    expect(shortAge('not-a-date', now)).toBe('')
   })
 })

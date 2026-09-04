@@ -10,8 +10,7 @@ import {
   dismissGroup, dismissNotification, groupNotifications, listNotifications,
   markNotificationsRead, type Notification, type NotificationGroup, type NotificationSeverity,
 } from '../../../lib/turns'
-import { familyEyebrow, familyLabel, familyLaneLabel, groupChange, plainHeadline } from './families'
-import { relAge } from '../../v2c/Surface'
+import { familyEyebrow, familyLabel, familyLaneLabel, groupChange, plainHeadline, shortAge } from './families'
 
 type Severity = 'urgent' | 'attention' | 'info'
 
@@ -86,7 +85,7 @@ function FamilySection({ familyKey, groups, open, onToggle, onOpenItem, onDismis
               <div className={`ba-card-title${g.unread > 0 ? ' unread' : ''}`}>{headline}</div>
               {meta.length > 0 && <div className="ba-card-meta">{meta.join(' · ')}</div>}
             </div>
-            <span className="ba-card-time">{relAge(g.lastSeenAt)}</span>
+            <span className="ba-card-time">{shortAge(g.lastSeenAt)}</span>
             <button
               type="button" className="ba-card-x"
               aria-label={g.items.length > 1 ? `Dismiss all ${g.items.length}` : 'Dismiss'}
