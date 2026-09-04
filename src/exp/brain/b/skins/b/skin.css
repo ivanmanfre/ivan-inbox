@@ -206,14 +206,14 @@
   background:var(--surface3); border:1px solid var(--hairline-strong); color:var(--text);
   font-size:var(--fs-meta); font-weight:500; white-space:nowrap;
 }
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-act::after{ content:''; position:absolute; inset:-6px -4px; }
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-act::after{ content:''; position:absolute; inset:-7px -5px; }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-x{
   position:absolute; top:11px; right:11px; width:20px; height:20px; border-radius:50%;
   border:1px solid var(--hairline-strong); background:none; color:var(--text3);
   display:flex; align-items:center; justify-content:center;
   font-size:var(--fs-meta); line-height:1;
 }
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-x::after{ content:''; position:absolute; inset:-12px; }
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-x::after{ content:''; position:absolute; inset:-13px; }
 
 /* --- form 1 · the QUOTE card --------------------------------------------- */
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-quote{
@@ -255,11 +255,11 @@
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-card.bbf-strip{
   padding:13px 14px 13px 21px; border-radius:5px var(--r-card) var(--r-card) 5px;
 }
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-bar{
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-edge{
   position:absolute; left:0; top:0; bottom:0; width:5px; background:var(--sev-urgent);
 }
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-card.bbf-strip[data-shape="square"] .bbf-bar{ background:var(--sev-attention); }
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-card.bbf-strip[data-shape="dot"] .bbf-bar{ background:var(--text4); }
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-card.bbf-strip[data-shape="square"] .bbf-edge{ background:var(--sev-attention); }
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-card.bbf-strip[data-shape="dot"] .bbf-edge{ background:var(--text4); }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-strip-row{
   display:flex; align-items:center; gap:10px; padding-right:24px;
 }
@@ -288,19 +288,16 @@
 }
 
 /* --- form 5 · the STATUS TILE. Label left, state right. ------------------- */
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-tile{
-  display:flex; align-items:center; gap:10px; padding-right:26px;
-}
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-tile .bbf-state{
-  flex:1 1 auto; min-width:0; padding-right:0;
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-tile{ min-width:0; }
+/* The state is the news and it leads; the subject is the caption under it. The
+   two of them side by side made the subject lose a width fight to a long state
+   and ellipsise to four characters. */
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-state-tile .bb-card-word{
+  font-size:var(--fs-title); font-weight:600; letter-spacing:-.01em;
 }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-label{
-  font-size:var(--fs-meta); font-weight:500; color:var(--text3);
+  display:block; margin-top:5px; font-size:var(--fs-meta); font-weight:500; color:var(--text3);
   min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-}
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-tile-state{
-  flex:0 0 auto; font-size:var(--fs-title); font-weight:600; color:var(--text); line-height:1.3;
-  white-space:nowrap;
 }
 
 /* --- form 6 · the STACKED DECK ------------------------------------------- */
@@ -449,8 +446,14 @@
   font-size:var(--fs-body); line-height:1.4; border-radius:0;
 }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-ctl{
+  position:relative;
   background:var(--surface3); border:1px solid var(--hairline-strong); color:var(--text2);
   font-size:var(--fs-glyph);
+}
+/* A 44px CIRCLE is under 44px at its corners, and the hit test probes outward
+   from the centre. The square zone is what the finger actually has. */
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-ctl::after{
+  content:''; position:absolute; inset:-2px;
 }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-send.ready{
   background:var(--accent); color:var(--ink); border-color:transparent;
@@ -573,3 +576,28 @@
 @keyframes bbf-land{ from{ opacity:0; transform:translateY(6px) } to{ opacity:1; transform:none } }
 @keyframes bbf-tray{ from{ opacity:0; transform:translateY(8px) } to{ opacity:1; transform:none } }
 @keyframes bbf-breathe{ from{ opacity:.35 } to{ opacity:1 } }
+
+/* ========================================================================== */
+/* REDUCED MOTION — the only `!important` in this layer, and it exists to      */
+/* REMOVE motion, never to add it.                                            */
+/*                                                                            */
+/* faithful.css:1544-1548 re-enables a 100ms opacity transition under `reduce` */
+/* on `.ct-card / .r / .chip / .ct-f`, with `!important`, and those classes    */
+/* live inside the lane surfaces this skin frames — so `reduce` was still      */
+/* leaving five live transitions under `.brain-b`. The same ground block also  */
+/* sets `transform:none!important` on every descendant, which deletes the feed */
+/* sheet's own resting `translateX(100%)` and leaves the sheet sitting on top  */
+/* of the place underneath it. Both are put right here, at 0-5-0, for this     */
+/* skin only.                                                                 */
+/* ========================================================================== */
+@media (prefers-reduced-motion: reduce){
+  :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) *{
+    transition:none !important; animation:none !important;
+  }
+  :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-pane.bb-feed{
+    transform:translateX(100%) !important;
+  }
+  :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-pane.bb-feed.on{
+    transform:translateX(0) !important;
+  }
+}

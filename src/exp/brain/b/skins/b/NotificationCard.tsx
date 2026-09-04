@@ -206,11 +206,11 @@ export function NotificationCard({ n, onOpen, onDismiss, nested = false }: {
     inner = (
       <>
         <div className="bbf-tile">
-          <span className="bbf-state">
+          <div className="bbf-state bbf-state-tile">
             <Mark shape={shape} />
-            <span className="bbf-label">{label}</span>
-          </span>
-          <span className="bb-card-word bbf-tile-state">{state}</span>
+            <span className="bb-card-word">{state}</span>
+          </div>
+          <span className="bbf-label">{label}</span>
         </div>
         {foot()}
       </>
@@ -228,7 +228,7 @@ export function NotificationCard({ n, onOpen, onDismiss, nested = false }: {
         onTouchStart={swipe.onTouchStart} onTouchMove={swipe.onTouchMove}
         onTouchEnd={swipe.onTouchEnd} onTouchCancel={swipe.onTouchCancel}
       >
-        {form === 'strip' && <span className="bbf-bar" aria-hidden />}
+        {form === 'strip' && <span className="bbf-edge" aria-hidden />}
         {inner}
         <button
           type="button" className="bbf-x" data-tap aria-label="Dismiss"
