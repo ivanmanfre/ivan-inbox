@@ -8,6 +8,7 @@ import type { ChatHandle } from '../../v2c/useChat'
 import type { Job } from '../../v2c/layout'
 import { JOB_LABEL } from '../../v2c/layout'
 import { extractRecallNouns, buildRecallCommand } from './recall'
+import { groundedClause, sourceBasenames, sourcesChipLabel } from './brainMeta'
 import { LinkPreview } from './LinkPreview'
 import { detectLinks } from '../../../lib/unfurl'
 import { Composer } from './Composer'
@@ -18,11 +19,6 @@ import { Composer } from './Composer'
 // construction — this constant exists only so the composer can also disable
 // SENDING pre-emptively rather than let the operator draw the refusal.
 const THREAD_BUSY_RE = /still working on the last one/i
-
-function basename(path: string): string {
-  const parts = path.split('/')
-  return parts[parts.length - 1] || path
-}
 
 /**
  * Every plain-text run, split on recall nouns, with the FIRST unclaimed noun in
@@ -108,17 +104,29 @@ function AnswerBody({ text, onRecall }: { text: string; onRecall: (noun: string)
   )
 }
 
+/**
+ * What the brain read, counted honestly. The count and the list are the memory
+ * files ALONE (brainMeta.ts): the summary is named in its own clause under the
+ * expansion, and the envelope's internal block ids are not a thing a reader has
+ * ever heard of, so they never reach the DOM at all.
+ */
 function SourcesChip({ turn }: { turn: Turn }) {
   const [open, setOpen] = useState(false)
-  const sources = turn.sources ?? []
-  if (sources.length === 0) return null
-  const names = sources.map(s => basename(s.path))
+  const label = sourcesChipLabel(turn.sources)
+  if (!label) return null
+  const names = sourceBasenames(turn.sources)
+  const grounded = groundedClause(turn.sources)
   return (
     <div className="bb-brain">
       <button type="button" className="bb-chip tap" data-sources aria-expanded={open} onClick={() => setOpen(v => !v)}>
-        read {sources.length} {sources.length === 1 ? 'memory file' : 'memory files'} {open ? '⌄' : '›'}
+        {label} {open ? '⌄' : '›'}
       </button>
-      {open && <div className="bb-sources-list">{names.join(' · ')}</div>}
+      {open && (
+        <div className="bb-sources-list">
+          <span>{names.join(' · ')}</span>
+          {grounded && <span className="bb-sources-on">{grounded}</span>}
+        </div>
+      )}
     </div>
   )
 }

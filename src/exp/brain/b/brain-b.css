@@ -273,7 +273,11 @@
 .brain-b .bb-sources-list{
   margin-top:4px; padding:8px 10px; border-radius:var(--r-ctl);
   background:var(--surface1); color:var(--text2);
+  display:flex; flex-direction:column; gap:2px;
 }
+/* The summary the answer was grounded on is its OWN clause, on its own line:
+   it is not one of the memory files, so it is never counted as one. */
+.brain-b .bb-sources-on{ color:var(--text3); }
 :is(.wb.wb.wb .brain-b, .wb.wb.wb.brain-b) .bb-sources-list{ font-size:var(--fs-meta); line-height:1.6; }
 
 /* An inline recall word inside answer prose stays text-sized (inflating it
