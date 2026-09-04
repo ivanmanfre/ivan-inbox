@@ -8,7 +8,7 @@ import { formatReturn, returnsIn, usePushLater } from '../components/PushLaterSh
 import {
   approveDraft, channelFamilies, composeReply, discardDraft, escalateDraftToClient, isDraft, isFollowUp, isMixedChannel,
   saveDraftEmail, saveDraftText, snoozeDraft, unsnoozeDraft,
-  markThreadRead, messageChannel, threadChatId,
+  markThreadRead, messageChannel, threadChatId, NATIVE_EMAIL_SENDER,
   type InboxMessage, type MsgChannel, type Thread, eventTime, emailSenderLabel } from '../lib/inbox'
 import { label } from '../lib/labels'
 import { RestoreStrip } from '../exp/v2c/RestoreStrip'
@@ -18,6 +18,26 @@ function clientName(id: string): string {
   if (id === 'arch') return 'Arch'
   if (id === 'ivan') return 'Ivan'
   return id.charAt(0).toUpperCase() + id.slice(1)
+}
+
+// How a leg is named to Ivan: by the pipe it rides, which is the only thing that
+// distinguishes the two rows he is approving. legPipe is the header form (the
+// address is already on the card); legName carries it for the confirm sheets,
+// where the sheet is the last thing he reads before both messages go out.
+function legPipe(m: InboxMessage): string {
+  const c = messageChannel(m)
+  if (c === 'email') return 'email'
+  if (c === 'inmail') return 'InMail'
+  if (c === 'invite') return 'connection note'
+  return 'DM'
+}
+
+function legName(m: InboxMessage): string {
+  const c = messageChannel(m)
+  if (c === 'email') return m.recipient_email ? `email to ${m.recipient_email}` : 'email'
+  if (c === 'inmail') return 'InMail'
+  if (c === 'invite') return 'connection note'
+  return 'LinkedIn DM'
 }
 
 function dayLabel(iso: string): string {
@@ -81,6 +101,12 @@ export function ThreadScreen({ thread, onBack, refresh }: {
   // with no way to scroll to them (broke live 2026-08-07, first email-preview version).
   const [showEmail, setShowEmail] = useState(false)
   const [editedEmail, setEditedEmail] = useState(draft?.email_mirror_text ?? '')
+  // The other leg (Thread.companionDraft): a second pending row on a different
+  // channel, staged as one intent with this one. Its own box, its own edits, and
+  // it rides EVERY decision below — a DM promising an email must not be sendable
+  // without the email that backs it, and vice versa.
+  const companion = thread.companionDraft
+  const [editedCompanion, setEditedCompanion] = useState(companion?.message_text ?? '')
   // Answerability gate: optional escalation. Never gates Approve & send.
   const [askNote, setAskNote] = useState('')
   const [asking, setAsking] = useState(false)
@@ -97,6 +123,7 @@ export function ThreadScreen({ thread, onBack, refresh }: {
   // Re-seed the editor when the draft row changes (e.g. after a refresh).
   useEffect(() => { setEdited(draft?.message_text ?? '') }, [draft?.id])
   useEffect(() => { setEditedEmail(draft?.email_mirror_text ?? '') }, [draft?.id])
+  useEffect(() => { setEditedCompanion(companion?.message_text ?? '') }, [companion?.id])
 
   // Grow the edit box to fit the draft (capped by max-height in CSS) so long
   // drafts are readable and editable without a tiny scroll window.
@@ -122,8 +149,11 @@ export function ThreadScreen({ thread, onBack, refresh }: {
     if (!draft) return
     const ok = await confirm({
       title: `Send to ${thread.prospect_name}?`,
-      message: 'The sender picks it up within about 2 minutes.',
-      confirmText: 'Approve & send',
+      message: companion
+        ? `Both legs go out: the ${legName(draft)} and the ${legName(companion)}. `
+          + 'The sender picks them up within about 2 minutes.'
+        : 'The sender picks it up within about 2 minutes.',
+      confirmText: companion ? 'Approve & send both' : 'Approve & send',
     })
     if (!ok) return
     setBusy(true); setDraftErr('')
@@ -134,7 +164,23 @@ export function ThreadScreen({ thread, onBack, refresh }: {
       if (draft.email_mirror_text != null && editedEmail !== draft.email_mirror_text) {
         await saveDraftEmail(draft.id, editedEmail)
       }
-      await approveDraft(draft.id, edited, threadChatId(thread)); refresh()
+      await approveDraft(draft.id, edited, threadChatId(thread))
+      // The other leg is a SEPARATE row, so it is a separate approve — and the
+      // first one has already gone. A failure here is reported as the half-send it
+      // is, naming the leg that is still sitting there, rather than as "approve
+      // failed" over a message that is already queued.
+      if (companion) {
+        try {
+          await approveDraft(
+            companion.id, editedCompanion,
+            messageChannel(companion) === 'email' ? null : threadChatId(thread),
+          )
+        } catch (e2) {
+          setDraftErr(`The ${legName(draft)} is queued, but the ${legName(companion)} `
+            + `did not go through: ${errText(e2)} It is still waiting here.`)
+        }
+      }
+      refresh()
     }
     catch (e) { setDraftErr(errText(e)) }
     finally { setBusy(false) }
@@ -143,14 +189,19 @@ export function ThreadScreen({ thread, onBack, refresh }: {
   async function onDiscard() {
     if (!draft) return
     const ok = await confirm({
-      title: 'Discard this draft?',
-      message: 'It will not be sent.',
+      title: companion ? 'Discard both drafts?' : 'Discard this draft?',
+      message: companion
+        ? `Neither the ${legName(draft)} nor the ${legName(companion)} will be sent.`
+        : 'It will not be sent.',
       confirmText: 'Discard',
       danger: true,
     })
     if (!ok) return
     setBusy(true); setDraftErr('')
     try {
+      // Both legs or neither. Discarding only the visible one used to leave the
+      // other queued and invisible — the exact failure this pairing exists to end.
+      if (companion) await discardDraft(companion.id).catch(() => {})
       // 🔴 A FALSE IS NOT A DISCARD. Phase 4a added `approved_at IS NULL` to the
       // guard, which closed a fail-open: discarding an already-approved row wrote
       // two columns the dispatcher does not read, the row left the inbox, and the
@@ -182,6 +233,12 @@ export function ThreadScreen({ thread, onBack, refresh }: {
         await saveDraftEmail(draft.id, editedEmail)
       }
       await snoozeDraft(draft.id, until)
+      // The other leg travels with it — a push that parked only half of a pair
+      // would leave the rest sendable on its own.
+      if (companion) {
+        if (editedCompanion !== companion.message_text) await saveDraftText(companion.id, editedCompanion)
+        await snoozeDraft(companion.id, until)
+      }
       refresh()
     } catch (e) { setDraftErr(errText(e)) }
     finally { setBusy(false) }
@@ -190,7 +247,11 @@ export function ThreadScreen({ thread, onBack, refresh }: {
   async function onBringBack() {
     if (!draft) return
     setBusy(true); setDraftErr('')
-    try { await unsnoozeDraft(draft.id); refresh() }
+    try {
+      await unsnoozeDraft(draft.id)
+      if (companion) await unsnoozeDraft(companion.id)
+      refresh()
+    }
     catch (e) { setDraftErr(errText(e)) }
     finally { setBusy(false) }
   }
@@ -333,6 +394,14 @@ export function ThreadScreen({ thread, onBack, refresh }: {
                 : thread.draftStale ? 'AI draft · you already replied'
                   : isFollowUp(draft) ? 'AI follow-up · waiting on you'
                     : 'AI draft · waiting on you'}
+              {/* The pair is announced HERE, not only at the second box: that box
+                  sits below the fold of a card capped at half the pane, so without
+                  this the other leg is a scroll away from being noticed at all. */}
+              {companion && (
+                <span className="dc-legs">
+                  {' '}· 2 messages: {legPipe(draft)} + {legPipe(companion)}
+                </span>
+              )}
             </div>
           </div>
           {/* Everything between the header and the action bar scrolls INSIDE the
@@ -351,6 +420,14 @@ export function ThreadScreen({ thread, onBack, refresh }: {
           {thread.draftStale && (
             <div className="stale" style={{ margin: '8px 14px 0' }}>
               Your own reply went out after their last message — this draft is probably not needed.
+            </div>
+          )}
+          {/* An email draft carries its recipient on its face, same as a sent email
+              bubble does. Without it the card looks like a DM whose body happens to
+              start with "Subject:". */}
+          {messageChannel(draft) === 'email' && draft.recipient_email && (
+            <div className="dc-to">
+              Email to {draft.recipient_email} (from {NATIVE_EMAIL_SENDER})
             </div>
           )}
           <textarea
@@ -436,7 +513,31 @@ export function ThreadScreen({ thread, onBack, refresh }: {
               </div>
             </details>
           )}
-          {draft.recipient_email && (
+          {/* The other leg, in full, editable. Not a preview: this is a real pending
+              row and the buttons below send it. */}
+          {companion && (
+            <div className="legbox" style={{ margin: '0 14px 10px' }}>
+              <div className="leg-h">
+                {messageChannel(companion) === 'email' ? 'Email' : 'LinkedIn DM'} · also goes out
+                {/* The sender is only named on a native email row: that is the one
+                    whose pipe is the Gmail node. A LinkedIn row stamped with an
+                    address is the Resend mirror, which the badge below names. */}
+                {messageChannel(companion) === 'email' && companion.recipient_email
+                  ? ` to ${companion.recipient_email} (from ${NATIVE_EMAIL_SENDER})`
+                  : ''}
+              </div>
+              <textarea
+                className="emailpreview emailedit"
+                value={editedCompanion}
+                onChange={e => setEditedCompanion(e.target.value)}
+                disabled={busy}
+              />
+            </div>
+          )}
+          {/* Only on a row that is NOT itself the email. On a channel='email' draft
+              the body above IS what gets mailed, and "approving ALSO emails..."
+              read as a second, invisible send (Ivan, 2026-09-04). */}
+          {draft.recipient_email && messageChannel(draft) !== 'email' && (
             <div className="alsoemail" style={{ margin: '0 14px 10px' }}>
               <div>
                 Approving also sends this email to {draft.recipient_email}{emailSenderLabel(thread.client_id)}
@@ -466,7 +567,9 @@ export function ThreadScreen({ thread, onBack, refresh }: {
             {thread.draftSnoozedUntil === null && (
               <div className="btn s" onClick={busy ? undefined : onPushLater}>Later</div>
             )}
-            <div className="btn p" onClick={busy ? undefined : onApprove}>Approve &amp; send</div>
+            <div className="btn p" onClick={busy ? undefined : onApprove}>
+              {companion ? 'Send both' : 'Approve & send'}
+            </div>
           </div>
           {draftErr && <div className="err" style={{ padding: '0 14px 14px' }}>{draftErr}</div>}
         </div>

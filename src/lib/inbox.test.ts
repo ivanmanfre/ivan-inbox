@@ -172,6 +172,46 @@ describe('threadChatId + archived drafts', () => {
     ]
     expect(groupThreads(rows)[0].draft).toBeNull()
   })
+
+  // Nitin Manchanda, 2026-09-03: he asked for the proposal by email, and the two
+  // legs were staged as two rows in the same second — a LinkedIn DM saying it was
+  // coming, and the email itself. Only the email rendered; the DM was invisible
+  // (drafts are cut from the bubble list) and there was no way to send it.
+  it('pairs a second pending draft on a DIFFERENT channel as the other leg', () => {
+    const rows: InboxMessage[] = [
+      { ...base, id: 'sent', sent_at: '2026-07-22T09:00:00Z', created_at: '2026-07-22T09:00:00Z' },
+      { ...base, id: 'dm', message_text: 'Will shoot it over to n@b.com too.', created_at: '2026-07-22T10:00:00Z' },
+      { ...base, id: 'em', channel: 'email', message_text: 'Subject: your scan\n\nHey', created_at: '2026-07-22T10:00:01Z' },
+    ]
+    const t = groupThreads(rows)[0]
+    expect(t.draft?.id).toBe('em')
+    expect(t.companionDraft?.id).toBe('dm')
+  })
+  // A REDRAFT is not a second leg. Two rise_reply rows on the same channel mean
+  // the newer supersedes the older, and offering both would send it twice.
+  it('does not pair a same-channel redraft', () => {
+    const rows: InboxMessage[] = [
+      { ...base, id: 'old', created_at: '2026-07-22T10:00:00Z' },
+      { ...base, id: 'new', created_at: '2026-07-22T11:00:00Z' },
+    ]
+    const t = groupThreads(rows)[0]
+    expect(t.draft?.id).toBe('new')
+    expect(t.companionDraft).toBeNull()
+  })
+  // thread.channel switches the composer off for email threads. A pending email
+  // draft is not something the thread has ridden, and letting it flip the header
+  // killed compose on a live LinkedIn conversation.
+  it('thread.channel reads the last message that actually went out, not a draft', () => {
+    const rows: InboxMessage[] = [
+      { ...base, id: 'sent', sent_at: '2026-07-22T09:00:00Z', created_at: '2026-07-22T09:00:00Z' },
+      { ...base, id: 'em', channel: 'email', created_at: '2026-07-22T10:00:00Z' },
+    ]
+    expect(groupThreads(rows)[0].channel).toBe('linkedin')
+  })
+  it('a thread that is only ever a draft still reports its own channel', () => {
+    const rows: InboxMessage[] = [{ ...base, id: 'em', channel: 'email', created_at: '2026-07-22T10:00:00Z' }]
+    expect(groupThreads(rows)[0].channel).toBe('email')
+  })
 })
 
 describe('searchThreads', () => {
