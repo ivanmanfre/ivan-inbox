@@ -9,7 +9,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ChatStreaming, ChatTurn } from '../../v2c/ChatMessage'
 import { attached, buildSeeBlock, EMPTY_SEE, offAll, onAll, seeLine, type SeeState, type Subject } from '../../v2c/chat/paneContext'
 import type { ChatHandle } from '../../v2c/useChat'
-import { JOB_LABEL, type Job } from '../../v2c/layout'
+import { type Job } from '../../v2c/layout'
 import { abortTurn } from '../../../lib/turns'
 import { detectLinks } from '../../../lib/unfurl'
 import { CLAUDE_ERROR_COPY } from '../../../lib/claude'
@@ -183,7 +183,7 @@ export function AskThread({ chat, job, about, aboutContext, subjects, mobile, on
         {empty ? (
           <div className="ba-empty">
             <div className="ba-empty-t">
-              {about ? <>Ask about <b>{about}</b> without leaving it.</> : <>Ask about the {JOB_LABEL[job]} you're looking at.</>}
+              {about ? <>Ask about <b>{about}</b> without leaving it.</> : <>Ask anything. Claude reads your memory, the calls and every lane before it answers.</>}
             </div>
             {/* The truth the session line already tells: threads resume, so
                 what he sent an hour ago is still in hand. */}

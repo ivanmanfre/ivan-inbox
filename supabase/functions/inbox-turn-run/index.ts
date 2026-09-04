@@ -208,7 +208,7 @@ Deno.serve(async (req) => {
         push: true,
         title: String(row.prompt ?? 'Claude turn').slice(0, 60),
         body: (status === 'error' ? (patch.error_detail as string | null) ?? 'The turn failed.' : answer).slice(0, 140),
-        url: `./#exp/v2/ask?thread=${row.thread_id}&turn=${turnId}`,
+        url: `./#exp/brain-b/ask?thread=${row.thread_id}&turn=${turnId}`,
       })
       pushed = out.pushed
     } catch (e) {

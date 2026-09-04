@@ -6,7 +6,6 @@ import { turnOutcome, type Turn } from '../../v2c/chat/events'
 import { abortTurn } from '../../../lib/turns'
 import type { ChatHandle } from '../../v2c/useChat'
 import type { Job } from '../../v2c/layout'
-import { JOB_LABEL } from '../../v2c/layout'
 import { extractRecallNouns, buildRecallCommand } from './recall'
 import { groundedClause, sourceBasenames, sourcesChipLabel } from './brainMeta'
 import { LinkPreview } from './LinkPreview'
@@ -174,7 +173,7 @@ const STARTERS = [
   'What should I look at first?',
 ]
 
-export function AskThread({ chat, job, about, mobile, focusTurn = null, onFocused }: {
+export function AskThread({ chat, about, mobile, focusTurn = null, onFocused }: {
   chat: ChatHandle
   job: Job
   about: string | null
@@ -253,7 +252,7 @@ export function AskThread({ chat, job, about, mobile, focusTurn = null, onFocuse
         {empty ? (
           <div className="bb-empty">
             <div className="bb-empty-t">
-              {about ? <>Ask about {about}.</> : `Ask about the ${JOB_LABEL[job].toLowerCase()} you're looking at.`}
+              {about ? <>Ask about {about}.</> : 'Ask anything. Claude reads your memory, the calls and every lane before it answers.'}
             </div>
             <div className="bb-empty-s">Claude keeps this thread between turns. The transcript is the continuity.</div>
             <div className="bb-starters">
