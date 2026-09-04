@@ -639,8 +639,13 @@ function SeatCard({ p, selected, neutral, onSelect }: {
       {g ? (
         <>
           <Gauge used={g.used} cap={g.cap} color={m!.color} sm />
+          {/* Ivan 2026-09-04: the three seats do NOT share a window. Ivan and RISE run a
+              weekly governor (x/280); arch runs a daily ramp (x/40). Side by side with no
+              label, arch read like a nearly-empty week when it was a half-spent day. The
+              window is stated instead of normalised: multiplying arch's cap by seven would
+              invent a weekly ceiling nothing actually enforces. */}
           <div className="ov-rc-gov">
-            <b>{g.used}</b>/{g.cap}<OverPill used={g.used} cap={g.cap} />
+            <b>{g.used}</b>/{g.cap} <span className="ov-cap">{windowWord(g.window_label)}</span><OverPill used={g.used} cap={g.cap} />
           </div>
         </>
       ) : (

@@ -625,6 +625,7 @@ a.grow.boardlink.off{opacity:.5;pointer-events:none}
 .ov-rc-badge{margin-left:auto;flex:none;font-size:9px;font-weight:800;letter-spacing:.04em;padding:2px 6px;border-radius:6px;white-space:nowrap}
 .ov-rc-gov{font-size:12.5px;color:var(--text2);margin:6px 0 12px;display:flex;align-items:center;flex-wrap:wrap;row-gap:4px}
 .ov-rc-gov b{font-size:15px;font-weight:800;color:var(--text)}
+.ov-rc-gov .ov-cap{display:inline;margin:0 0 0 5px}
 .ov-rc-gov .ov-over-lbl{margin-left:6px}
 .ov-rc-gov.ov-rc-dim{color:var(--text3)}
 .ov-rc-stats{display:flex;flex-direction:column;gap:8px}
