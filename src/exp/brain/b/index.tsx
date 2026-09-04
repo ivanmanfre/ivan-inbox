@@ -1,4 +1,5 @@
-import { lazy } from 'react'
+import { lazy, Suspense } from 'react'
+import type { BrainAskPaneProps, BrainMobileProps } from '../types'
 import type { BrainCandidate } from '../types'
 import { Mobile as PlainMobile } from './Mobile'
 import { AskPane as PlainAskPane } from './AskPane'
@@ -19,12 +20,17 @@ const SKINS: Record<Exclude<Skin, 'plain'>, () => Promise<SkinModule>> = {
   b: () => import('./skins/b'),
 }
 
+// The registry in ../index.ts already wraps `candidate.Mobile` in React.lazy,
+// and React refuses a lazy that resolves to another lazy (#306). So the skinned
+// surface is a plain function component owning its own Suspense boundary.
 const loadSkin = SKIN === 'plain' ? null : SKINS[SKIN]
-const Mobile = loadSkin
-  ? lazy(() => loadSkin().then(m => ({ default: m.skin.Mobile ?? PlainMobile })))
+const LazyMobile = loadSkin ? lazy(() => loadSkin().then(m => ({ default: m.skin.Mobile ?? PlainMobile }))) : null
+const LazyAskPane = loadSkin ? lazy(() => loadSkin().then(m => ({ default: m.skin.AskPane ?? PlainAskPane }))) : null
+const Mobile = LazyMobile
+  ? (p: BrainMobileProps) => <Suspense fallback={null}><LazyMobile {...p} /></Suspense>
   : PlainMobile
-const AskPane = loadSkin
-  ? lazy(() => loadSkin().then(m => ({ default: m.skin.AskPane ?? PlainAskPane })))
+const AskPane = LazyAskPane
+  ? (p: BrainAskPaneProps) => <Suspense fallback={null}><LazyAskPane {...p} /></Suspense>
   : PlainAskPane
 
 export const candidate: BrainCandidate = {
