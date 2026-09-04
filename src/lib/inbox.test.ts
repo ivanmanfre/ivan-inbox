@@ -184,7 +184,18 @@ describe('threadChatId + archived drafts', () => {
       { ...base, id: 'em', channel: 'email', message_text: 'Subject: your scan\n\nHey', created_at: '2026-07-22T10:00:01Z' },
     ]
     const t = groupThreads(rows)[0]
-    expect(t.draft?.id).toBe('em')
+    // The LinkedIn leg is the main box even though the email row is newer: the
+    // email rides in the blue box under it, the same shape as the RISE mirror.
+    expect(t.draft?.id).toBe('dm')
+    expect(t.companionDraft?.id).toBe('em')
+  })
+  it('a non-email pair keeps newest-first; only the email is demoted', () => {
+    const rows: InboxMessage[] = [
+      { ...base, id: 'dm', created_at: '2026-07-22T10:00:00Z' },
+      { ...base, id: 'note', message_type: 'connection_note', created_at: '2026-07-22T10:00:01Z' },
+    ]
+    const t = groupThreads(rows)[0]
+    expect(t.draft?.id).toBe('note')
     expect(t.companionDraft?.id).toBe('dm')
   })
   // A REDRAFT is not a second leg. Two rise_reply rows on the same channel mean

@@ -69,7 +69,9 @@ export type Thread = {
   // these are two independent rows the dispatcher picks up separately.
   //
   // Paired ONLY on a different channel family, so a supersede is never split into
-  // two cards. Everything older on either channel stays hidden as before.
+  // two cards. Everything older on either channel stays hidden as before. On a
+  // pair, the EMAIL is the one that lands here and the LinkedIn message keeps the
+  // main box — see the ordering note in groupThreads.
   companionDraft: InboxMessage | null;
   // The drafter sometimes writes a reply after Ivan already answered the
   // prospect himself (5 live cases on 2026-07-22: George, Jeremy, Jonathan,
@@ -209,9 +211,26 @@ export function groupThreads(
     const drafts = messages.filter(isDraft)
     // Archived prospects are dead lanes (e.g. ~76 April cold-email drafts from
     // a retired campaign) — their leftover drafts don't belong in the queue.
-    const draft = last.prospect_stage === 'archived'
+    const newestDraft = last.prospect_stage === 'archived'
       ? null
       : drafts.length ? drafts[drafts.length - 1] : null
+    // The other leg, when there is one. See Thread.companionDraft.
+    const otherLeg = newestDraft === null
+      ? null
+      : drafts.filter(d => d.id !== newestDraft.id
+          && messageChannel(d) !== messageChannel(newestDraft)).at(-1) ?? null
+    // 🔴 WHICH LEG IS THE MAIN BOX. On a pair, the LinkedIn message is the primary
+    // and the email rides in the blue box under it (Ivan, 2026-09-04: "the blue
+    // thing should be the email like on mattan's case"). Not a cosmetic
+    // preference: it is the shape of the RISE mirror, where the row IS the DM and
+    // email_mirror_text is the rider, and reading them in that order is how he
+    // checks that the DM's promise and the email actually agree. Ordering by
+    // created_at put Nitin's email on top because it was inserted a beat later.
+    // Only the email is ever demoted; an invite/InMail pair keeps newest-first.
+    const [draft, companionDraft] = otherLeg !== null
+      && newestDraft !== null && messageChannel(newestDraft) === 'email'
+      ? [otherLeg, newestDraft]
+      : [newestDraft, otherLeg]
     // Must use the same clock as lastSent below (sent_at). Comparing an inbound created_at
     // against an outbound sent_at is two different clocks, and a backfilled reply then made
     // a live draft look stale.
@@ -228,10 +247,6 @@ export function groupThreads(
     const snoozedUntil = draft !== null && snoozeActive(draft, lastInbound, now)
       ? draft.snoozed_until
       : null
-    // The other leg, when there is one. See Thread.companionDraft.
-    const companionDraft = draft === null
-      ? null
-      : drafts.filter(d => d.id !== draft.id && messageChannel(d) !== messageChannel(draft)).at(-1) ?? null
     // What this conversation actually RODE, which a pending draft has not done yet.
     // Nitin's thread ended on an unsent email draft, so `last.channel` read 'email'
     // and switched the composer off ("Email compose lands in v1.1") on a live
