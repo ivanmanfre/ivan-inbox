@@ -139,7 +139,12 @@ drop policy if exists inbox_notifications_authed_mark on public.inbox_notificati
 create policy inbox_notifications_authed_mark on public.inbox_notifications
   for update to authenticated using (true) with check (true);
 
-revoke all on public.inbox_threads, public.inbox_turns, public.inbox_notifications from anon;
+-- Supabase's default privileges hand anon AND authenticated the full grant list
+-- on every new table in public. Taking both back first is what makes the four
+-- explicit grants below the real surface: without it `authenticated` could write
+-- any column of a turn it is allowed to abort.
+revoke all on public.inbox_threads, public.inbox_turns, public.inbox_notifications
+  from anon, authenticated;
 grant select on public.inbox_threads to authenticated;
 grant select on public.inbox_turns to authenticated;
 grant update (status) on public.inbox_turns to authenticated;
@@ -174,5 +179,6 @@ create or replace view public.inbox_notifications_v
          count, first_seen_at, last_seen_at, created_at, read_at, dismissed_at, pushed_at
   from public.inbox_notifications;
 
+revoke all on public.inbox_threads_v, public.inbox_turns_v, public.inbox_notifications_v
+  from anon, authenticated;
 grant select on public.inbox_threads_v, public.inbox_turns_v, public.inbox_notifications_v to authenticated;
-revoke all on public.inbox_threads_v, public.inbox_turns_v, public.inbox_notifications_v from anon;
