@@ -20,7 +20,7 @@
 /* ---------------------------------------------------------------------- */
 
 .brc-ribbon{
-  display:flex; align-items:center; gap:10px;
+  display:flex; align-items:center; gap:16px;
   padding:10px var(--gut) 8px; border-bottom:1px solid var(--hairline);
   flex:none;
 }
@@ -29,7 +29,7 @@
 .brc-ribbon-fresh{ margin-left:auto }
 
 .brc-health{
-  display:flex; align-items:center; gap:6px; width:100%; min-height:32px;
+  display:flex; align-items:center; gap:6px; width:100%; min-height:48px;
   padding:6px var(--gut); background:rgba(255,69,58,.10); border:none;
   border-bottom:1px solid var(--hairline); color:var(--sev-urgent); text-align:left;
 }
@@ -53,7 +53,7 @@
 /* ---------------------------------------------------------------------- */
 
 .brc-filters{
-  display:flex; align-items:center; gap:6px; padding:8px var(--gut);
+  display:flex; align-items:center; gap:14px; padding:8px var(--gut);
   overflow-x:auto; flex:none; border-bottom:1px solid var(--hairline);
 }
 .brc-chip{
@@ -82,6 +82,14 @@
   flex:1; min-height:0; overflow-y:auto; overflow-x:hidden;
   padding:8px var(--gut) 12px; display:flex; flex-direction:column; gap:10px;
 }
+/* Every direct child of the scroller keeps its natural content height; the
+   column overflows into the scrollbar instead of shrinking. Flexbox's default
+   flex-shrink:1 (with an automatic min-size of 0 on any shrinkable child that
+   sets overflow:hidden, which .brc-card does for its severity bar) otherwise
+   crushes the tallest items down to a sliver once the column's total content
+   exceeds the visible viewport, exactly the empty-pill defect a card with real
+   family/title/body text was rendering as. */
+.brc-scroller > *{ flex-shrink:0 }
 .wb.wb.wb .brc-threadmeta{
   display:flex; flex-direction:column; gap:2px; padding:6px 0 4px;
   color:var(--text4); font-size:var(--fs-eyebrow);
@@ -118,8 +126,8 @@
 }
 @keyframes brc-pulse{ 0%,80%,100%{ opacity:.3 } 40%{ opacity:1 } }
 
-.brc-brain{ display:flex; flex-wrap:wrap; gap:6px; padding:2px 2px 0 }
-.brc-brain .brc-chip{ min-height:28px; padding:5px 10px }
+.brc-brain{ display:flex; flex-wrap:wrap; gap:14px; padding:2px 2px 0 }
+.brc-brain .brc-chip{ min-height:34px; padding:8px 12px }
 .wb.wb.wb .brc-sources-list{
   display:flex; flex-direction:column; gap:2px; padding:6px 10px;
   background:var(--surface1); border-radius:var(--r-ctl);
