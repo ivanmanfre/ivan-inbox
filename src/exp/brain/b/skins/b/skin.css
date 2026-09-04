@@ -518,6 +518,9 @@
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b).bb-desktop .bbf-thread{ padding:16px 24px 108px; }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b).bb-desktop .bbf-answer .wb-p{ max-width:68ch; }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b).bb-desktop .bbf-composer{ left:16px; right:16px; bottom:12px; }
+/* His bubble keeps a reading measure on a wide pane rather than growing to 82%
+   of it: a line he typed is not more readable for being 90 characters long. */
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b).bb-desktop .bbf-ububble{ max-width:46ch; }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b).bb-desktop .bb-feed-body{ padding:10px 16px 20px; }
 
 /* ========================================================================== */
