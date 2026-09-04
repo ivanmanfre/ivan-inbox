@@ -175,8 +175,10 @@ function AnswerCard({ turn, onRetry, onRecall, justLanded, focused }: {
 
 function sessionLine(grounding: ChatHandle['grounding']): string {
   if (!grounding) return 'New conversation'
-  const on = grounding.groundedOn ? ` · grounded on ${grounding.groundedOn}` : ''
-  return grounding.session === 'resumed' ? `Continuing this thread${on}` : `Fresh session${on}`
+  // Short enough that the whole line, date included, fits beside the New thread
+  // chip at 390 in one line: two seats read "grounded on…" as a clipped control.
+  const on = grounding.groundedOn ? ` · grounded ${grounding.groundedOn}` : ''
+  return grounding.session === 'resumed' ? `Continuing${on}` : `Fresh session${on}`
 }
 
 const STARTERS = [
