@@ -6,6 +6,7 @@ import { TabBar } from './TabBar'
 import { AskThread } from './AskThread'
 import { Feed } from './Feed'
 import { useFeedData } from './useFeedData'
+import { SKIN } from './skin'
 
 // A drag has to travel this share of the pager's width before the release
 // settles into the other state. Below it the sheet springs back, so a stray
@@ -144,7 +145,7 @@ export function Mobile(p: BrainMobileProps) {
 
   if (peerView) {
     return (
-      <div className="app wb wb-take wb-take-thread brain-b" data-place="lane">
+      <div className={`app wb wb-take wb-take-thread brain-b skin-${SKIN}`} data-place="lane">
         {peerView}
         {windows}
       </div>
@@ -154,7 +155,7 @@ export function Mobile(p: BrainMobileProps) {
   const title = feedOpen ? 'Feed' : place === 'ask' ? 'Ask' : JOB_LABEL[job]
 
   return (
-    <div className="app wb brain-b" data-place={feedOpen ? 'feed' : place === 'ask' ? 'ask' : 'lane'}>
+    <div className={`app wb brain-b skin-${SKIN}`} data-place={feedOpen ? 'feed' : place === 'ask' ? 'ask' : 'lane'}>
       <div className="wb-plate bb-plate">
         {/* ONE header. The tournament build drew the place's header and then the
             feed sheet's header inside it, so opening the feed stacked two title

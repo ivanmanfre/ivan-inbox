@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { SKIN } from './skin'
 import type { BrainAskPaneProps } from '../types'
 import { AskThread } from './AskThread'
 import { Feed } from './Feed'
@@ -31,7 +32,7 @@ export function AskPane({ chat, job, about, onClose, mobile }: BrainAskPaneProps
   const [focusTurn, setFocusTurn] = useState<string | null>(null)
 
   return (
-    <div className="brain-b bb-desktop">
+    <div className={`brain-b bb-desktop skin-${SKIN}`}>
       <div className="bb-head wb-pane-h">
         {mobile && <button type="button" className="back wb-back" onClick={onClose} aria-label="Back">‹</button>}
         <span className="bb-head-t">Ask</span>
