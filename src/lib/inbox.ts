@@ -928,3 +928,19 @@ export async function markThreadRead(prospect_id: string): Promise<void> {
     .eq('prospect_id', prospect_id).eq('direction', 'inbound').is('read_at', null)
   if (error) throw error
 }
+
+// The identity a draft's email leg actually goes out as. 2026-09-04: the badge used to
+// read "Approving also emails the scan to X (from itsmattan@risedtc.com)" on EVERY stamped
+// draft — hardcoded RISE wording that was a plain falsehood on an ARCH row, and "the scan"
+// was wrong for any non-scan delivery (the mirror stopped being scan-only on 08-19).
+// Sender resolution now lives in integration_config.outreach_email_identities, which is what
+// `Outreach - Send Messages` > Poll + Send reads. KEEP THIS MAP IN SYNC WITH THAT ROW.
+// An unknown client names no sender rather than guessing one.
+export function emailSenderLabel(clientId: string | null | undefined): string {
+  const senders: Record<string, string> = {
+    risedtc: 'itsmattan@risedtc.com',
+    arch: 'davorin@madebyarch.com',
+  }
+  const from = senders[String(clientId ?? '')]
+  return from ? ` (from ${from})` : ''
+}

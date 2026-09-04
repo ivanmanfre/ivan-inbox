@@ -9,7 +9,7 @@ import {
   approveDraft, channelFamilies, composeReply, discardDraft, escalateDraftToClient, isDraft, isFollowUp, isMixedChannel,
   saveDraftEmail, saveDraftText, snoozeDraft, unsnoozeDraft,
   markThreadRead, messageChannel, threadChatId,
-  type InboxMessage, type MsgChannel, type Thread, eventTime } from '../lib/inbox'
+  type InboxMessage, type MsgChannel, type Thread, eventTime, emailSenderLabel } from '../lib/inbox'
 import { label } from '../lib/labels'
 import { RestoreStrip } from '../exp/v2c/RestoreStrip'
 
@@ -439,7 +439,7 @@ export function ThreadScreen({ thread, onBack, refresh }: {
           {draft.recipient_email && (
             <div className="alsoemail" style={{ margin: '0 14px 10px' }}>
               <div>
-                Approving also emails the scan to {draft.recipient_email}
+                Approving also sends this email to {draft.recipient_email}{emailSenderLabel(thread.client_id)}
                 {draft.email_mirror_text && (
                   <span className="emailtoggle" onClick={() => setShowEmail(v => !v)}>
                     {showEmail ? 'Hide email' : 'Show email'}

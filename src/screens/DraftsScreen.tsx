@@ -5,7 +5,7 @@ import { useConfirm } from '../components/ConfirmSheet'
 import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { returnsIn, usePushLater } from '../components/PushLaterSheet'
-import { approveDraft, discardDraft, isFollowUp, snoozeDraft, threadChatId, type Thread } from '../lib/inbox'
+import { approveDraft, discardDraft, emailSenderLabel, isFollowUp, snoozeDraft, threadChatId, type Thread } from '../lib/inbox'
 import { useOps } from '../hooks/useOps'
 import { pendingDmLaneOps, type OpsDraft, type OpsKind } from '../lib/ops'
 import { checkedPhrase } from '../lib/today'
@@ -255,7 +255,7 @@ export function DraftCard({ thread, onOpenThread, refresh }: {
       )}
       {draft.recipient_email && (
         <div className="alsoemail">
-          <div>Approving also emails the scan to {draft.recipient_email} (from itsmattan@risedtc.com)</div>
+          <div>Approving also sends this email to {draft.recipient_email}{emailSenderLabel(thread.client_id)}</div>
           {draft.email_mirror_text && (
             <div className="emailpreview"><Linkified text={draft.email_mirror_text} /></div>
           )}
