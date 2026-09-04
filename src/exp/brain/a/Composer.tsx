@@ -1,4 +1,4 @@
-// Composer.tsx — the Ask place's own composer. Reuses useStt (server-side
+// Composer.tsx - the Ask place's own composer. Reuses useStt (server-side
 // dictation, the cleared-gate mic) by importing it rather than forking
 // ChatPane's copy. Adds what ChatPane does not carry: a link preview as you
 // type, and a client-side-only attachment chip (image thumbnail or PDF chip;
@@ -11,10 +11,10 @@ import { LinkPreviewCard } from './LinkPreviewCard'
 export type PendingAttachment = { file: File; url: string; kind: 'image' | 'pdf' }
 
 function attachmentNote(a: PendingAttachment): string {
-  return `[Attached: ${a.file.name} — attachment stays on this phone for now]`
+  return `[Attached: ${a.file.name}. Attachment stays on this phone for now.]`
 }
 
-// A handful of bars whose heights pulse deterministically off elapsed time —
+// A handful of bars whose heights pulse deterministically off elapsed time -
 // useStt exposes recording state and an elapsed clock, not a live amplitude
 // stream, so this is an honest "you are being recorded" beat rather than a
 // real waveform. Documented as a scope cut in NOTES.md.

@@ -1,4 +1,4 @@
-// linkPreview.ts — pure mapping from an `unfurl()` result (src/lib/unfurl.ts)
+// linkPreview.ts - pure mapping from an `unfurl()` result (src/lib/unfurl.ts)
 // to what the composer's preview card and the sent-turn card actually render.
 // The network call lives in unfurl.ts; this file only decides which fields to
 // show and how to word a failure, so the mapping is testable without a
@@ -9,7 +9,7 @@ export type LinkCard =
   | { ok: true; kind: 'youtube' | 'linkedin' | 'instagram' | 'og'; title: string; sub: string | null; image: string | null; ratio: '16:9' | null }
   | { ok: false; kind: string; message: string }
 
-// Named, honest failure sentences — never "something went wrong". Instagram
+// Named, honest failure sentences - never "something went wrong". Instagram
 // gets its own line per the mission's explicit case: IG blocks unauthenticated
 // fetches, so an empty result is the TRUE state, not a bug to paper over.
 function failMessage(reason: string, kind?: string): string {
@@ -27,7 +27,7 @@ function failMessage(reason: string, kind?: string): string {
 export function mapLinkPreview(r: UnfurlResult): LinkCard {
   if (!r.ok) return { ok: false, kind: r.kind ?? 'og', message: failMessage(r.reason, r.kind) }
   // A title with nothing else to show is still a preview; the SUB line is
-  // whichever identity the kind actually carries — a channel/author for
+  // whichever identity the kind actually carries - a channel/author for
   // YouTube and LinkedIn, the site for a generic OG card.
   const sub = r.kind === 'youtube' || r.kind === 'linkedin' ? r.author : r.site
   return {

@@ -1,4 +1,4 @@
-// LinkPreviewCard.tsx — the one preview component rendered in two places:
+// LinkPreviewCard.tsx - the one preview component rendered in two places:
 // under the composer while a link is being typed, and inside a sent turn's
 // bubble. Same component, same data, so what you preview is what you sent.
 import { useEffect, useState } from 'react'

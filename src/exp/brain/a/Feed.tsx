@@ -1,10 +1,10 @@
-// Feed.tsx — the thesis's other half: a DENSE ledger, not a second inbox.
+// Feed.tsx - the thesis's other half: a DENSE ledger, not a second inbox.
 // One ~56px row per folded notification, grouped by family under collapsible
 // headers, severity drawn as a shape (never colour alone), built to scan 30
 // items in five seconds.
 //
 // Polls on mount, on visibilitychange, and when the service worker posts a
-// push message — never on an interval while the tab is hidden.
+// push message - never on an interval while the tab is hidden.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   dismissGroup, dismissNotification, groupNotifications, listNotifications,
@@ -21,7 +21,7 @@ function markFor(sev: NotificationSeverity): Severity {
   return 'info'
 }
 
-/** "14:20" — a real clock reading, per the mission's empty-state example. */
+/** "14:20" - a real clock reading, per the mission's empty-state example. */
 function clockTime(iso: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
@@ -35,7 +35,7 @@ function stateWord(sev: NotificationSeverity): string {
 }
 
 // The mark: filled square (urgent) / half-filled square (attention) / hollow
-// ring (info). Unread carries full opacity + weight; read dims both — fill
+// ring (info). Unread carries full opacity + weight; read dims both - fill
 // and weight, never a colour swap, per the mission's severity-is-form rule.
 function Mark({ sev, unread }: { sev: Severity; unread: boolean }) {
   return <span className={`ba-mark ${sev}${unread ? ' unread' : ' read'}`} aria-hidden="true" />
@@ -149,7 +149,7 @@ export function Feed({ active, onNavigate, onUnreadChange }: {
   useEffect(() => { onUnreadChange?.(unreadTotal) }, [unreadTotal, onUnreadChange])
 
   // Every family starts open; a section is only in this set once collapsed
-  // (D-M7's "scan everything" bet — nothing starts hidden).
+  // (D-M7's "scan everything" bet - nothing starts hidden).
   const isOpen = (fam: string) => !openFamilies.has(`closed:${fam}`)
   const onToggle = (fam: string) => setOpenFamilies(s => {
     const key = `closed:${fam}`

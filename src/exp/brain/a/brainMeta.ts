@@ -1,4 +1,4 @@
-// brainMeta.ts — pure text for the brain-visibility row under an answer: the
+// brainMeta.ts - pure text for the brain-visibility row under an answer: the
 // sources chip label, the basenames it expands to, the grounded-on sentence,
 // and the once-per-thread session-state sentence. No component here reads the
 // network; they take what useChat/turns.ts already fetched.
@@ -38,11 +38,11 @@ export function groundedOnLine(date: string | null): string | null {
 /**
  * The once-per-thread sentence: fresh vs continued. `sessionStartedAt` is the
  * THREAD's own flag (null until the container has held a session for it at
- * least once) — this is what decides whether the NEXT turn replays context,
+ * least once) - this is what decides whether the NEXT turn replays context,
  * so it is the honest source for "fresh vs continued", not a per-turn guess.
  */
 export function sessionStateLine(sessionStartedAt: string | null): string {
   return sessionStartedAt
-    ? 'Continuing this conversation — Claude has the thread so far.'
-    : 'A fresh conversation — nothing carries over until the first reply lands.'
+    ? 'Continuing this conversation. Claude has the thread so far.'
+    : 'A fresh conversation. Nothing carries over until the first reply lands.'
 }

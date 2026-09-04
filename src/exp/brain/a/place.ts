@@ -1,4 +1,4 @@
-// place.ts — the localStorage projection for "which place he was in", in the
+// place.ts - the localStorage projection for "which place he was in", in the
 // today.ts idiom (src/lib/today.ts): a WHITELIST, never a copy, so a corrupted
 // or foreign value can never resolve to something the tab bar cannot render.
 // Paint the cached value immediately, on mount, before any network round trip.
@@ -23,7 +23,7 @@ function isWorkJob(v: unknown): v is Job {
   return typeof v === 'string' && (VALID_WORK as readonly string[]).includes(v)
 }
 
-/** null means "nothing cached, or it did not validate" — the caller's default wins. */
+/** null means "nothing cached, or it did not validate" - the caller's default wins. */
 export function readPlace(): Place | null {
   try {
     const v = localStorage.getItem(PLACE_KEY)

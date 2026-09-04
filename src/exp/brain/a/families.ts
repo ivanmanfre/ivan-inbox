@@ -1,4 +1,4 @@
-// families.ts — the ONE map from a notification's `family` column to what a
+// families.ts - the ONE map from a notification's `family` column to what a
 // human reads on the dense feed row: a plain-words label and where "Open in
 // X" takes you. Nothing here reads the raw family key on screen; nothing here
 // invents a destination a family does not have.
@@ -6,7 +6,7 @@
 // Source: goal-runs/inbox-brain-app-2026-09-04-out/00-notification-families.md
 // (the 30-day WhatsApp self-chat inventory). 17 real families, plus `chat`
 // (a live conversation, not a notification, kept here so a stray row never
-// prints a raw key). Severity is NOT re-derived here — the row's own
+// prints a raw key). Severity is NOT re-derived here - the row's own
 // `severity` column (info/attention/error) already carries it; this map only
 // answers "what is this family called" and "where does it go".
 import type { Job } from '../../v2c/layout'
@@ -34,7 +34,7 @@ export type FamilyKey =
 
 export type FamilyMeta = {
   key: FamilyKey
-  /** What the feed prints, in small caps via CSS — never the raw key. */
+  /** What the feed prints, in small caps via CSS - never the raw key. */
   label: string
   /** Where a tap on this family's card lands, or null when there is no in-app screen for it. */
   lane: Job | null
@@ -43,7 +43,7 @@ export type FamilyMeta = {
 // `lane: null` on system_infra_alarm / system_watchdog_digest is deliberate:
 // both name a terminal/automation fix, not a screen this app has. health_reminder
 // is not a work notification at all (families doc §2). `chat` is a live
-// conversation and routes to Ask, which is not a Job — handled by the caller.
+// conversation and routes to Ask, which is not a Job - handled by the caller.
 export const FAMILIES: Record<FamilyKey, FamilyMeta> = {
   reply_draft_pending: { key: 'reply_draft_pending', label: 'Reply waiting on you', lane: 'dms' },
   system_infra_alarm: { key: 'system_infra_alarm', label: 'System error', lane: null },
@@ -72,7 +72,7 @@ function isFamilyKey(k: string): k is FamilyKey {
 }
 
 /** The label a card prints. A family this map has never seen still gets a
- * calm, readable words — never the raw snake_case key on screen. */
+ * calm, readable words - never the raw snake_case key on screen. */
 export function familyLabel(key: string): string {
   if (isFamilyKey(key)) return FAMILIES[key].label
   return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())

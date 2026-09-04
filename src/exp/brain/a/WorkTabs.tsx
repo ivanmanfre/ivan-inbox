@@ -1,7 +1,7 @@
-// WorkTabs.tsx — the segmented control at the top of the Work place, picking
+// WorkTabs.tsx - the segmented control at the top of the Work place, picking
 // between the three jobs this candidate folds under "Work": Content, Lanes
 // (job key `sends`), Ops. This is NOT the same group as v2c's WORK_JOBS
-// (content/magnets/styles/strategy, the two content lanes) — that group's own
+// (content/magnets/styles/strategy, the two content lanes) - that group's own
 // segmented control (Rail.tsx's WorkSegment) still renders INSIDE the Content
 // surface when `job === 'content'`, unmodified. This control only decides
 // which of the three top-level jobs is showing.

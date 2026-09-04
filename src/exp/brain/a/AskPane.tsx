@@ -1,4 +1,4 @@
-// AskPane.tsx — the desktop dock. Same thread, same brain-visibility facts,
+// AskPane.tsx - the desktop dock. Same thread, same brain-visibility facts,
 // same turn states as the phone's Ask place (AskThread is the shared
 // component); this file only adds what is desktop-specific: the pane's own
 // close control and a Feed button that opens the feed as an overlay panel

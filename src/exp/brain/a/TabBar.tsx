@@ -1,4 +1,4 @@
-// TabBar.tsx — REPLACES v2c/Rail.tsx's MobileTabs on this candidate's phone
+// TabBar.tsx - REPLACES v2c/Rail.tsx's MobileTabs on this candidate's phone
 // entry. D3's grouping: Ask · Today · DMs · Work · Feed. Work fans out to
 // Content / Sends / Ops through WorkTabs (rendered above the work surface,
 // not here); Feed carries the unread count the way the old Content slot
@@ -21,7 +21,7 @@ export function TabBar({ place, counts, sev, unread, chatBusy, onPlace }: {
   place: Place
   counts: Counts
   sev: Partial<Record<Job, 'attention' | 'urgent'>>
-  /** Unread notification count — the Feed tab's own badge, never mixed with a job count. */
+  /** Unread notification count - the Feed tab's own badge, never mixed with a job count. */
   unread: number
   /** A turn is streaming right now: Ask gets a live pulse instead of a numeral. */
   chatBusy: boolean
@@ -40,6 +40,7 @@ export function TabBar({ place, counts, sev, unread, chatBusy, onPlace }: {
         return (
           <button
             key={t.place} type="button" role="tab" aria-selected={active}
+            data-tab={t.place}
             className={`ba-tab${active ? ' on' : ''}`}
             onClick={() => onPlace(t.place)}
           >
@@ -54,6 +55,7 @@ export function TabBar({ place, counts, sev, unread, chatBusy, onPlace }: {
       })}
       <button
         type="button" role="tab" aria-selected={place === 'feed'}
+        data-tab="feed"
         className={`ba-tab${place === 'feed' ? ' on' : ''}`}
         onClick={() => onPlace('feed')}
       >
