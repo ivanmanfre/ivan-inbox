@@ -1,7 +1,7 @@
 import type { Notification, NotificationGroup } from '../../../lib/turns'
 import {
-  answerHeadline, cardLines, FAMILY_LANE, familyLabel, groupStateWord, sanitizeBody,
-  severityShape, stateWord,
+  answerHeadline, cardLines, FAMILY_LANE, familyLabel, groupStateWord, heroSaysFailed,
+  sanitizeBody, severityShape, stateWord,
 } from './families'
 import { JOB_LABEL } from '../../v2c/layout'
 
@@ -54,20 +54,31 @@ export function NotificationCard({ n, onOpen, onDismiss, nested = false }: {
   // A nested row's job is to answer "which one of these", not to repeat the
   // state and the family the parent card has already said. So it leads with its
   // own sentence and drops both.
+  const hero = turnLines ? turnLines.hero : stateWord(n)
   const lines = nested
     // A nested `claude_turn` row still leads with the ANSWER, not with the
     // question: "You asked: …" under a group that already said "2 answers"
     // shows him his own words twice and the reply not at all.
     ? { hero: turnLines ? turnLines.hero : (body ?? stateWord(n)), sub: null }
-    : cardLines(turnLines ? turnLines.hero : stateWord(n), familyLabel(n.family))
+    // The family label is a caption, not a contradiction. A turn that came back
+    // "The turn failed." was drawn with "Claude answered" under it: two lines
+    // saying opposite things about the same event. Where the hero already says
+    // it did not work, the label goes away.
+    : heroSaysFailed(hero)
+      ? { hero, sub: null }
+      : cardLines(hero, familyLabel(n.family))
   const second = nested ? null : body
   return (
+    // The WHOLE row takes the tap, mark and severity rail included. With the
+    // handler on the text column, 88px of a 338px card — the drawn mark and the
+    // rail that carry the severity — were dead to the finger.
     <div
       className={`bb-card${unread ? ' unread' : ''}${nested ? ' bb-nested' : ''}`}
       data-card data-family={n.family} data-shape={nested ? undefined : shape}
+      onClick={() => onOpen(n)}
     >
       {!nested && <div className="bb-mark" data-shape={shape}><i /></div>}
-      <div className="bb-card-body" onClick={() => onOpen(n)}>
+      <div className="bb-card-body">
         <span className={`bb-card-word${isTurn || nested ? ' bb-card-sentence' : ''}${nested ? ' bb-card-line' : ''}`}>{lines.hero}</span>
         {lines.sub && <span className="bb-card-who">{lines.sub}</span>}
         {second && <span className="bb-card-body-l">{second}</span>}
@@ -81,7 +92,7 @@ export function NotificationCard({ n, onOpen, onDismiss, nested = false }: {
           </div>
         )}
       </div>
-      <button type="button" className="bb-card-dismiss" aria-label="Dismiss" onClick={() => onDismiss(n.id)}>✕</button>
+      <button type="button" className="bb-card-dismiss" aria-label="Dismiss" onClick={e => { e.stopPropagation(); onDismiss(n.id) }}>✕</button>
     </div>
   )
 }
@@ -112,9 +123,13 @@ export function GroupCard({ g, open, onToggle, onOpen, onDismissAll, onDismissOn
     : g.latest.body ? sanitizeBody(g.latest.body).slice(0, 140) : null
   return (
     <div className={`bb-group${open ? ' open' : ''}`} data-group data-family={g.family}>
-      <div className={`bb-card${unread ? ' unread' : ''}`} data-card data-family={g.family} data-shape={shape}>
+      <div
+        className={`bb-card${unread ? ' unread' : ''}`}
+        data-card data-family={g.family} data-shape={shape}
+        onClick={onToggle}
+      >
         <div className="bb-mark" data-shape={shape}><i /></div>
-        <div className="bb-card-body" onClick={onToggle}>
+        <div className="bb-card-body">
           {/* No family line: the counted noun already names the family in
               words ("3 drafts waiting"), and no body line while the group is
               open, because the first row below it is that same sentence. */}
@@ -131,7 +146,7 @@ export function GroupCard({ g, open, onToggle, onOpen, onDismissAll, onDismissOn
             >{open ? 'Hide these' : 'Show each one'}</button>
           </div>
         </div>
-        <button type="button" className="bb-card-dismiss" aria-label="Dismiss all" onClick={onDismissAll}>✕</button>
+        <button type="button" className="bb-card-dismiss" aria-label="Dismiss all" onClick={e => { e.stopPropagation(); onDismissAll() }}>✕</button>
       </div>
       <div className={`bb-group-items${open ? ' open' : ''}`}>
         {open && g.items.map(item => (

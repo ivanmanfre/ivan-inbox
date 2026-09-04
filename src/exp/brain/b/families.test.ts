@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  answerHeadline, cardLines, FAMILY_LABEL, familyLabel, groupStateWord, looksRaw, sanitizeBody,
+  answerHeadline, cardLines, FAMILY_LABEL, familyLabel, groupStateWord, heroSaysFailed, looksRaw, sanitizeBody,
   severityShape, stateWord, stripMarkdown, type FamilyKey,
 } from './families'
 import type { Notification } from '../../../lib/turns'
@@ -343,5 +343,25 @@ describe('cardLines — the hero and the line under it', () => {
   })
   it('never returns an empty hero', () => {
     expect(cardLines('', 'Booking')).toEqual({ hero: 'Booking', sub: null })
+  })
+})
+
+describe('heroSaysFailed', () => {
+  it('catches the live failed turn the card labelled "Claude answered"', () => {
+    // inbox_notifications?family=eq.claude_turn&severity=eq.attention, verbatim.
+    expect(heroSaysFailed('The turn failed.')).toBe(true)
+    expect(familyLabel('claude_turn')).toBe('Claude answered')
+  })
+  it('catches the other ways a turn reports not working', () => {
+    for (const hero of [
+      'Could not reach Claude', 'The run errored', 'Something broke', 'Timed out waiting',
+      'Claude refused this one', 'You stopped this one', 'Send failed',
+    ]) expect(heroSaysFailed(hero)).toBe(true)
+  })
+  it('leaves a real answer alone, so the family line still captions it', () => {
+    for (const hero of [
+      'Three drafts are waiting on you', 'The lane is running again',
+      'Booked for Tuesday', 'Here is what the scan found',
+    ]) expect(heroSaysFailed(hero)).toBe(false)
   })
 })

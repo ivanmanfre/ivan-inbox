@@ -377,6 +377,18 @@ export function answerHeadline(body: string | null): string | null {
 // ---------------------------------------------------------------------------
 const norm = (v: string): string => v.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim()
 
+/**
+ * True when the hero line already reports that the thing did not work. The
+ * family label under it is then a contradiction, not a caption: a live row
+ * reading "The turn failed." was drawn with "Claude answered" under it, which
+ * is the card telling him two opposite things in two lines.
+ */
+const HERO_FAILED_RE = /\b(fail(?:ed|s|ing|ure)?|errored|broke|broken|crashed|timed out|could ?not|couldn['\u2019]?t|cannot|can['\u2019]?t|refused|stopped|no answer)\b/i
+
+export function heroSaysFailed(hero: string): boolean {
+  return HERO_FAILED_RE.test(hero)
+}
+
 export function cardLines(word: string, label: string): { hero: string; sub: string | null } {
   const w = norm(word)
   const l = norm(label)
