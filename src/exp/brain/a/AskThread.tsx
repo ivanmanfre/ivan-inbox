@@ -185,7 +185,9 @@ export function AskThread({ chat, job, about, aboutContext, subjects, mobile, on
             <div className="ba-empty-t">
               {about ? <>Ask about <b>{about}</b> without leaving it.</> : <>Ask about the {JOB_LABEL[job]} you're looking at.</>}
             </div>
-            <div className="ba-empty-s">Every turn starts a fresh Claude session. The transcript above is the continuity, not the model's memory.</div>
+            {/* The truth the session line already tells: threads resume, so
+                what he sent an hour ago is still in hand. */}
+            <div className="ba-empty-s">Claude keeps this thread between turns.</div>
             <div className="ba-starters">
               {starters(job, about).map(s => (
                 <button key={s} type="button" className="ba-starter" onClick={() => send(s)}>{s}</button>
@@ -228,7 +230,7 @@ export function AskThread({ chat, job, about, aboutContext, subjects, mobile, on
                   <span className="ba-running-dot" />
                   <span>
                     {chat.slow
-                      ? 'Still starting up, the container was cold. This keeps going even if you lock your phone, and you will get a notification when it lands.'
+                      ? 'Still starting up. The first one is the slow one. This keeps going even if you lock your phone, and you will get a notification when it lands.'
                       : 'Working. This keeps going even if you lock your phone, and you will get a notification when it lands.'}
                   </span>
                 </div>
