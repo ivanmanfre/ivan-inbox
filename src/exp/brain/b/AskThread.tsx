@@ -255,7 +255,7 @@ export function AskThread({ chat, job, about, mobile, focusTurn = null, onFocuse
             <div className="bb-empty-t">
               {about ? <>Ask about {about}.</> : `Ask about the ${JOB_LABEL[job].toLowerCase()} you're looking at.`}
             </div>
-            <div className="bb-empty-s">Every turn starts a fresh Claude session. The transcript is the continuity.</div>
+            <div className="bb-empty-s">Claude keeps this thread between turns. The transcript is the continuity.</div>
             <div className="bb-starters">
               {STARTERS.map(s => <button key={s} className="bb-starter" onClick={() => send(s)}>{s}</button>)}
             </div>
@@ -291,7 +291,7 @@ export function AskThread({ chat, job, about, mobile, focusTurn = null, onFocuse
             {chat.streamText && <div className="wb-body"><AnswerBody text={chat.streamText} onRecall={onRecall} /></div>}
             <div className="bb-running-banner">
               <span className="bb-dot3"><span /><span /><span /></span>
-              <span>{chat.slow ? 'Still starting up. The container was cold.' : "Keeps working if you lock the phone. You'll get a notification."}</span>
+              <span>{chat.slow ? 'Still starting up. The first one is the slow one.' : "Keeps working if you lock the phone. You'll get a notification."}</span>
             </div>
           </div>
         )}
