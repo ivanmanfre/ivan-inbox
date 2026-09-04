@@ -1,5 +1,7 @@
 import type { Notification, NotificationGroup } from '../../../lib/turns'
-import { FAMILY_LANE, familyLabel, groupStateWord, sanitizeBody, severityShape, stateWord } from './families'
+import {
+  answerHeadline, FAMILY_LANE, familyLabel, groupStateWord, sanitizeBody, severityShape, stateWord,
+} from './families'
 import { JOB_LABEL } from '../../v2c/layout'
 
 // A tenant chip, drawn ONLY off the row's own `tenant` column — never a guess
@@ -17,25 +19,51 @@ function openLabel(family: string): string | null {
   return lane ? `Open in ${JOB_LABEL[lane]}` : null
 }
 
-export function NotificationCard({ n, onOpen, onDismiss }: {
+const clock = (iso: string): string =>
+  new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+
+/**
+ * The two lines under the hero on a `claude_turn` card, in the order they are
+ * useful: what came back, then what was asked. Every other family reads its
+ * hero out of `stateWord` and its one context line out of `body`; this one
+ * family stores those columns the other way round (families.ts §5).
+ */
+function claudeTurnLines(n: Notification): { hero: string; second: string | null } {
+  const hero = answerHeadline(n.body) ?? stateWord(n)
+  const asked = (n.title ?? '').trim()
+  return { hero, second: asked ? `You asked: ${asked}` : null }
+}
+
+export function NotificationCard({ n, onOpen, onDismiss, nested = false }: {
   n: Notification
   onOpen: (n: Notification) => void
   onDismiss: (id: string) => void
+  /** A row inside an expanded group. The GROUP already drew the severity mark
+   * and the severity rail for this situation; drawing them again on every child
+   * says "three separate alarms" where there is one. A nested row keeps its own
+   * unread weight and its own dismiss, and nothing else. */
+  nested?: boolean
 }) {
   const shape = severityShape(n.severity)
-  const word = stateWord(n)
   const unread = !n.read_at
   const open = openLabel(n.family)
+  const isTurn = n.family === 'claude_turn'
+  const turnLines = isTurn ? claudeTurnLines(n) : null
+  const hero = turnLines ? turnLines.hero : stateWord(n)
+  const second = turnLines ? turnLines.second : (n.body ? sanitizeBody(n.body).slice(0, 140) : null)
   return (
-    <div className={`bb-card${unread ? ' unread' : ''}`} data-card data-family={n.family} data-shape={shape}>
-      <div className="bb-mark" data-shape={shape}><i /></div>
+    <div
+      className={`bb-card${unread ? ' unread' : ''}${nested ? ' bb-nested' : ''}`}
+      data-card data-family={n.family} data-shape={nested ? undefined : shape}
+    >
+      {!nested && <div className="bb-mark" data-shape={shape}><i /></div>}
       <div className="bb-card-body" onClick={() => onOpen(n)}>
-        <span className={`bb-card-word${unread ? ' unread' : ''}`}>{word}</span>
+        <span className={`bb-card-word${isTurn ? ' bb-card-sentence' : ''}`}>{hero}</span>
         <span className="bb-card-who">{familyLabel(n.family)}</span>
-        {n.body && <span className="bb-card-body-l">{sanitizeBody(n.body).slice(0, 140)}</span>}
+        {second && <span className="bb-card-body-l">{second}</span>}
         <div className="bb-card-meta">
           <TenantChip tenant={n.tenant} />
-          <span>{new Date(n.last_seen_at || n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+          <span>{clock(n.last_seen_at || n.created_at)}</span>
         </div>
         {open && (
           <div className="bb-card-actions">
@@ -48,6 +76,16 @@ export function NotificationCard({ n, onOpen, onDismiss }: {
   )
 }
 
+/**
+ * A folded group. REBUILT for Phase 3: the parent is a card of its own, at full
+ * width, and the children stack BELOW it rather than beside it. In the
+ * tournament build `bb-group-items` was a flex sibling inside the parent's own
+ * `display:flex` row, so expanding a group squeezed the parent's text column to
+ * about four characters wide.
+ *
+ * The count is the group's ONE number (families.ts §6). The expand control is a
+ * verb, never a second count.
+ */
 export function GroupCard({ g, open, onToggle, onOpen, onDismissAll, onDismissOne }: {
   g: NotificationGroup
   open: boolean
@@ -58,22 +96,34 @@ export function GroupCard({ g, open, onToggle, onOpen, onDismissAll, onDismissOn
 }) {
   const shape = severityShape(g.latest.severity)
   const unread = g.unread > 0
+  const isTurn = g.family === 'claude_turn'
+  const latestLine = isTurn
+    ? claudeTurnLines(g.latest).hero
+    : g.latest.body ? sanitizeBody(g.latest.body).slice(0, 140) : null
   return (
-    <div className={`bb-card${unread ? ' unread' : ''}`} data-card data-family={g.family} data-shape={shape}>
-      <div className="bb-mark" data-shape={shape}><i /></div>
-      <div className="bb-card-body" onClick={onToggle}>
-        <span className="bb-card-hero">{g.count}</span>
-        <span className="bb-card-who">{familyLabel(g.family)}</span>
-        <span className="bb-card-body-l">{groupStateWord(g.count, g.family)} · latest {new Date(g.lastSeenAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
-        <div className="bb-card-meta">
-          <TenantChip tenant={g.latest.tenant} />
-          <span>{open ? 'hide' : 'show'} {g.items.length}</span>
+    <div className={`bb-group${open ? ' open' : ''}`} data-group data-family={g.family}>
+      <div className={`bb-card${unread ? ' unread' : ''}`} data-card data-family={g.family} data-shape={shape}>
+        <div className="bb-mark" data-shape={shape}><i /></div>
+        <div className="bb-card-body" onClick={onToggle}>
+          <span className="bb-card-word">{groupStateWord(g.count, g.family)}</span>
+          <span className="bb-card-who">{familyLabel(g.family)}</span>
+          {latestLine && <span className="bb-card-body-l">{latestLine}</span>}
+          <div className="bb-card-meta">
+            <TenantChip tenant={g.latest.tenant} />
+            <span>latest {clock(g.lastSeenAt)}</span>
+          </div>
+          <div className="bb-card-actions">
+            <button
+              type="button" className="bb-group-toggle" aria-expanded={open}
+              onClick={e => { e.stopPropagation(); onToggle() }}
+            >{open ? 'Hide these' : 'Show each one'}</button>
+          </div>
         </div>
+        <button type="button" className="bb-card-dismiss" aria-label="Dismiss all" onClick={onDismissAll}>✕</button>
       </div>
-      <button type="button" className="bb-card-dismiss" aria-label="Dismiss all" onClick={onDismissAll}>✕</button>
       <div className={`bb-group-items${open ? ' open' : ''}`}>
         {open && g.items.map(item => (
-          <NotificationCard key={item.id} n={item} onOpen={onOpen} onDismiss={onDismissOne} />
+          <NotificationCard key={item.id} n={item} onOpen={onOpen} onDismiss={onDismissOne} nested />
         ))}
       </div>
     </div>
