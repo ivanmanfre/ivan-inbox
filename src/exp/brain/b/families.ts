@@ -111,10 +111,36 @@ export function severityShape(sev: NotificationSeverity): MarkShape {
 // ---------------------------------------------------------------------------
 
 const RAW_ENUM_RE = /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/
+const RAW_ENUM_RE_G = /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/g
 
 /** True for a token that looks like an un-humanised DB/enum value. */
 export function looksRaw(word: string): boolean {
   return RAW_ENUM_RE.test(word)
+}
+
+// Every emoji, of any kind — a card draws its own severity mark (the shaped
+// bar/square/dot), so a status emoji baked into the raw body (seat_health's
+// own corpus opens with one) would double it, and "no emoji as a status
+// mark" is a hard constraint on everything this candidate prints.
+const EMOJI_RE = /\p{Extended_Pictographic}/gu
+
+/**
+ * The one line of body text a card shows under the state word. Three passes,
+ * each removing a WHOLE unit rather than trusting a length cut to land
+ * cleanly: strip every emoji, replace the "OK -> RAW_TOKEN" transition
+ * notation (seat_health's verbatim corpus) with a plain word, then strip any
+ * other raw enum token that slips through elsewhere in the body. Doing this
+ * before the 140-char slice is what guarantees the slice can never end
+ * mid-arrow — there is no arrow or raw token left standing by the time it runs.
+ */
+export function sanitizeBody(body: string): string {
+  return body
+    .replace(EMOJI_RE, '')
+    .replace(/OK\s*(?:→|->)\s*[A-Z][A-Z0-9_]*/g, 'disconnected')
+    .replace(RAW_ENUM_RE_G, '')
+    .replace(/\s+/g, ' ')
+    .replace(/^[^\w"'[]+/, '')
+    .trim()
 }
 
 function extractOutreach(body: string): string {

@@ -1,5 +1,5 @@
 import type { Notification, NotificationGroup } from '../../../lib/turns'
-import { FAMILY_LANE, familyLabel, groupStateWord, severityShape, stateWord } from './families'
+import { FAMILY_LANE, familyLabel, groupStateWord, sanitizeBody, severityShape, stateWord } from './families'
 import { JOB_LABEL } from '../../v2c/layout'
 
 // A tenant chip, drawn ONLY off the row's own `tenant` column — never a guess
@@ -32,7 +32,7 @@ export function NotificationCard({ n, onOpen, onDismiss }: {
       <div className="bb-card-body" onClick={() => onOpen(n)}>
         <span className={`bb-card-word${unread ? ' unread' : ''}`}>{word}</span>
         <span className="bb-card-who">{familyLabel(n.family)}</span>
-        {n.body && <span className="bb-card-body-l">{n.body.replace(/^[^\w"'[]+/, '').slice(0, 140)}</span>}
+        {n.body && <span className="bb-card-body-l">{sanitizeBody(n.body).slice(0, 140)}</span>}
         <div className="bb-card-meta">
           <TenantChip tenant={n.tenant} />
           <span>{new Date(n.last_seen_at || n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
