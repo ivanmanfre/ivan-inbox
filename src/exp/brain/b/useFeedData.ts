@@ -3,6 +3,14 @@ import {
   dismissGroup, dismissNotification, groupNotifications, listNotifications,
   markNotificationsRead, type Notification, type NotificationGroup,
 } from '../../../lib/turns'
+import { mockFlag } from '../../v2c/mock'
+import { mockNotificationRows } from './mockNotifications'
+
+// `?wbmock=feed:demo` — evidence-only, same idiom as the shared `chat:...`
+// flags. See mockNotifications.ts for why a fixture stands in here: creating
+// live rows to pose for a screenshot is not one of the two writes this run
+// is permitted to make against real data.
+const FEED_MOCK = mockFlag('feed') === 'demo'
 
 // One fetch, shared by the header's unread badge and the feed sheet's body —
 // two renderings of the same data rather than two independent polls that
@@ -14,6 +22,7 @@ export function useFeedData() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   const refresh = useCallback(async () => {
+    if (FEED_MOCK) { setRows(mockNotificationRows()); setLoaded(true); return }
     try {
       const live = await listNotifications()
       setRows(live)
@@ -56,18 +65,19 @@ export function useFeedData() {
   // signal. Opening a card (the deep link) or dismissing it are both
   // unambiguous acts of attention; scrolling past is not.
   const markRead = useCallback((n: Notification) => {
-    void markNotificationsRead([n.id])
+    if (!FEED_MOCK) void markNotificationsRead([n.id])
     setRows(prev => prev.map(r => r.id === n.id ? { ...r, read_at: r.read_at ?? new Date().toISOString() } : r))
   }, [])
 
   const dismissOne = useCallback((id: string) => {
     setRows(prev => prev.filter(r => r.id !== id))
-    void dismissNotification(id)
+    if (!FEED_MOCK) void dismissNotification(id)
   }, [])
 
   const dismissGroupRows = useCallback((g: NotificationGroup) => {
     const ids = new Set(g.items.map(i => i.id))
     setRows(prev => prev.filter(r => !ids.has(r.id)))
+    if (FEED_MOCK) return
     if (g.groupKey) void dismissGroup(g.groupKey)
     else for (const id of ids) void dismissNotification(id)
   }, [])
