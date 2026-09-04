@@ -7,7 +7,7 @@ import type { BrainAskPaneProps, BrainMobileProps } from '../types'
 // `plain` is the B that shipped on 09-04 17:00Z. DEFAULT_SKIN flips to the
 // winner in Phase 3; `?skin=plain` keeps the old surface reachable for a week.
 export type Skin = 'plain' | 'a' | 'b'
-export const DEFAULT_SKIN: Skin = 'plain'
+export const DEFAULT_SKIN: Skin = 'b'
 
 export function readSkin(hash: string): Skin | null {
   const m = hash.match(/\?([^#]*)/)
