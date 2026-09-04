@@ -148,3 +148,13 @@ describe('the brain-candidate prefixes', () => {
     expect(prefixOf('#exp/brain-ax/dms')).toBe('v2')
   })
 })
+
+describe('ask deep link', () => {
+  it('#exp/v2/ask?thread=… focuses chat over the default job and keeps the ids', () => {
+    const r = parseWbHash('#exp/v2/ask?thread=e53d8fb8-382c-43fd-87a9-f0f668f408d4&turn=0b3e74fc-d702-4a3b-9984-7549b1eb0148')
+    expect(r.job).toBe('dms')
+    expect(r.focus).toBe('chat')
+    expect(r.thread).toBe('e53d8fb8-382c-43fd-87a9-f0f668f408d4')
+    expect(r.turn).toBe('0b3e74fc-d702-4a3b-9984-7549b1eb0148')
+  })
+})

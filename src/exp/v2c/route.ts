@@ -84,7 +84,11 @@ export function parseWbHash(hash: string): WbRoute {
     : JOB_ALIAS[seg] ?? DEFAULT_ROUTE.job
   // Only 'chat' is addressable as a focus: a thread/draft peer key is a database
   // id, and a URL that pretends to restore one would 404 into an empty pane.
-  const focus = m[2] === 'chat' || m[1] === 'chat' ? 'chat' : null
+  // 'ask' is what a push notification for a finished turn links to (inbox-turn-run
+  // writes ./#exp/v2/ask?thread=…). It is not a job: it means "the Claude pane over
+  // the default job", so on desktop the pane docks and on the phone the candidate
+  // opens Ask from `thread`/`turn`.
+  const focus = m[2] === 'chat' || m[1] === 'chat' || m[1] === 'ask' ? 'chat' : null
   // '#exp/v2c/chat' means "chat over the default job", not "a job named chat".
   const q = new URLSearchParams(m[3] ?? '')
   const thread = q.get('thread')
