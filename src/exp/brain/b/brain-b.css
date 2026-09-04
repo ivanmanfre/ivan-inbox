@@ -412,8 +412,15 @@
 .brain-b .bb-feed-empty{ padding:40px 8px; color:var(--text3); text-align:center; }
 :is(.wb.wb.wb .brain-b, .wb.wb.wb.brain-b) .bb-feed-empty{ font-size:var(--fs-body); }
 
+/* THE GUTTER IS THE PROSE. At 390 this row is 338px wide and it was spending
+   88 of them on furniture: 16 of left padding, a 22px mark, a 10px gap, and 40
+   of right padding held open for a dismiss control that only ever sits beside
+   the FIRST line. That left the body line 250px, about 31 characters, under the
+   35-character floor a line of prose needs to read as prose. The right padding
+   is now 12 and the clearance moved onto the one line that needs it (see
+   .bb-card-word below), which hands the column back 34px. */
 .brain-b .bb-card{
-  position:relative; display:flex; gap:10px; padding:12px 40px 12px 16px; margin:8px 0;
+  position:relative; display:flex; gap:8px; padding:12px 12px 12px 14px; margin:8px 0;
   border-radius:var(--r-card); background:var(--surface1);
   /* The whole row is the tap, mark and rail included (NotificationCard.tsx). */
   cursor:pointer;
@@ -428,7 +435,7 @@
 .brain-b .bb-card.unread{ background:var(--surface2); }
 
 .brain-b .bb-mark{
-  flex:0 0 auto; width:22px; height:22px; display:flex; align-items:center; justify-content:center; margin-top:2px;
+  flex:0 0 auto; width:20px; height:20px; display:flex; align-items:center; justify-content:center; margin-top:2px;
 }
 .brain-b .bb-mark i{ display:block; }
 .brain-b .bb-mark[data-shape="square"] i{ width:11px; height:11px; background:var(--sev-attention); border-radius:2px; }
@@ -438,6 +445,10 @@
 
 .brain-b .bb-card-body{ min-width:0; flex:1 1 auto; display:flex; flex-direction:column; gap:2px; }
 :is(.wb.wb.wb .brain-b, .wb.wb.wb.brain-b) .bb-card-word{ font-size:var(--fs-page); font-weight:600; color:var(--text); line-height:1.25; letter-spacing:-.01em; }
+/* The dismiss control sits at the card's top right and spans this line alone,
+   so this is the only line that pays for it. Every line under it runs full
+   width. */
+.brain-b .bb-card-word{ padding-right:26px; }
 /* The hero is a WORD on sixteen families and a SENTENCE on one (the answer's
    own first line, families.ts section 5). Same size, same weight, same slot;
    the sentence is clamped so a long first line cannot push the rest of the

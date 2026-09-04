@@ -35,6 +35,16 @@ function claudeTurnLines(n: Notification): { hero: string; second: string | null
   return { hero, second: asked ? `You asked: ${asked}` : null }
 }
 
+/**
+ * Drop a caption that argues with the line above it. Only that: a label that
+ * ALSO reports the failure is an elaboration, not a contradiction.
+ */
+function contradicts(lines: { hero: string; sub: string | null }): { hero: string; sub: string | null } {
+  if (!lines.sub) return lines
+  if (heroSaysFailed(lines.hero) && !heroSaysFailed(lines.sub)) return { hero: lines.hero, sub: null }
+  return lines
+}
+
 export function NotificationCard({ n, onOpen, onDismiss, nested = false }: {
   n: Notification
   onOpen: (n: Notification) => void
@@ -62,11 +72,12 @@ export function NotificationCard({ n, onOpen, onDismiss, nested = false }: {
     ? { hero: turnLines ? turnLines.hero : (body ?? stateWord(n)), sub: null }
     // The family label is a caption, not a contradiction. A turn that came back
     // "The turn failed." was drawn with "Claude answered" under it: two lines
-    // saying opposite things about the same event. Where the hero already says
-    // it did not work, the label goes away.
-    : heroSaysFailed(hero)
-      ? { hero, sub: null }
-      : cardLines(hero, familyLabel(n.family))
+    // saying opposite things about the same event. Where the hero reports a
+    // failure and the label does NOT, the label goes away. Where the label
+    // says it too ("Failed" under "Drafter failed") cardLines has already
+    // collapsed the pair onto the more informative of the two, and that is the
+    // line worth keeping.
+    : contradicts(cardLines(hero, familyLabel(n.family)))
   const second = nested ? null : body
   return (
     // The WHOLE row takes the tap, mark and severity rail included. With the

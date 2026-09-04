@@ -358,6 +358,12 @@ describe('heroSaysFailed', () => {
       'Claude refused this one', 'You stopped this one', 'Send failed',
     ]) expect(heroSaysFailed(hero)).toBe(true)
   })
+  it('is not consulted where the family label elaborates rather than argues', () => {
+    // cardLines already collapses this pair onto the longer, more informative
+    // line, so the failure rule never gets to throw the better one away.
+    expect(cardLines('Failed', 'Drafter failed')).toEqual({ hero: 'Drafter failed', sub: null })
+    expect(cardLines('Send failed', 'Send failed')).toEqual({ hero: 'Send failed', sub: null })
+  })
   it('leaves a real answer alone, so the family line still captions it', () => {
     for (const hero of [
       'Three drafts are waiting on you', 'The lane is running again',
