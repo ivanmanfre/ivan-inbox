@@ -106,26 +106,26 @@ export const CLAUDE_ERROR_COPY: Record<ClaudeErrorCode, string> = {
   unauthenticated: 'Signed out. Sign in again to use Claude.',
   invalid_token: 'Your session expired. Sign in again.',
   forbidden_user: 'This account is not allowed to reach Claude.',
-  broker_not_configured: 'Claude is not configured yet (broker missing settings).',
+  broker_not_configured: 'Claude is missing a setting, so it is not configured yet.',
   // The expected state until Ivan sets RAILWAY_CLAUDE_API_KEY on the broker.
   // Say exactly that rather than "something went wrong".
-  upstream_not_armed: 'Claude is not armed yet: the container key is not set on the broker.',
+  upstream_not_armed: 'Claude is not armed yet: the key is not set.',
   upstream_timeout: 'Claude took too long and the turn was cut off.',
-  upstream_unreachable: 'Cannot reach the Claude container.',
-  upstream_error: 'The Claude container returned an error.',
+  upstream_unreachable: 'Cannot reach Claude right now.',
+  upstream_error: 'Claude returned an error.',
   prompt_too_long: 'That message is too long to send.',
   empty_prompt: 'Nothing to send.',
   aborted: 'Stopped.',
   relay_broken: 'The connection to Claude dropped mid-answer.',
   context_assembly_failed: 'Claude’s memory context could not be built, so the turn was not sent.',
   context_over_cap: 'Claude’s memory context is over the size cap and the turn was not sent.',
-  model_not_allowed: 'That model is not one the broker will send.',
+  model_not_allowed: 'That model is not one this app will send.',
   // Says what is true and what to do, because this is the state the picker is in
   // today and will stay in until the container change lands.
   model_not_supported_upstream:
-    'The container cannot take a per-turn model yet — it would quietly use its own. Switch back to the container default to send.',
+    'Claude cannot take a per-turn model yet. It would quietly use its own. Switch back to the Claude default to send.',
   model_support_unknown:
-    'The broker cannot confirm the container would honour that model, so it did not send. Switch back to the container default.',
+    'Cannot confirm Claude would honour that model, so it did not send. Switch back to the Claude default.',
   thread_busy: 'Still working on the last one. Wait for it or start a new thread.',
   unknown: 'Claude failed for an unrecognised reason.',
 }

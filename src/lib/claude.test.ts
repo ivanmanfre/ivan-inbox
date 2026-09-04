@@ -171,8 +171,8 @@ describe('model plumbing — never a silent fallback', () => {
     ]
     expect(new Set(copies).size).toBe(3)
     // Two of them tell the operator the action that actually works.
-    expect(CLAUDE_ERROR_COPY.model_not_supported_upstream).toMatch(/container default/i)
-    expect(CLAUDE_ERROR_COPY.model_support_unknown).toMatch(/container default/i)
+    expect(CLAUDE_ERROR_COPY.model_not_supported_upstream).toMatch(/Claude default/i)
+    expect(CLAUDE_ERROR_COPY.model_support_unknown).toMatch(/Claude default/i)
   })
 
   it('names the context-assembly failure as its own state', () => {
