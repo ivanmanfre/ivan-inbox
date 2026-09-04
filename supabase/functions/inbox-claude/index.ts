@@ -542,8 +542,10 @@ Deno.serve(async (req) => {
   }
 
   // Relay the SSE stream through untouched. Cancelling the client read aborts
-  // the upstream fetch, which is what makes the UI's stop button real rather
-  // than cosmetic — the upstream kills its process group on disconnect.
+  // the upstream fetch, so this isolate stops relaying. It does NOT stop the
+  // work: the container's detached task owns the process and runs to the end,
+  // as cancel() below says. Stop is a client-side stop plus a written-down
+  // client_gone_at, not a kill.
   const relay = new ReadableStream({
     async start(controller) {
       const reader = upstream.body!.getReader()
