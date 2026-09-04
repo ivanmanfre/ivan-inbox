@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_ROUTE, parseWbHash, wbHash } from './route'
+import { DEFAULT_ROUTE, parseWbHash, prefixOf, wbHash } from './route'
 
 // The winner-apply build moved from #exp/v2c to #exp/v2 and kept v2c readable so
 // tournament-era ballot links do not 404. Both halves of that are asserted here,
@@ -74,5 +74,77 @@ describe('wbHash', () => {
   it('round-trips through parseWbHash', () => {
     expect(parseWbHash(wbHash('ops', null))).toEqual({ job: 'ops', focus: null })
     expect(parseWbHash(wbHash('dms', 'chat'))).toEqual({ job: 'dms', focus: 'chat' })
+  })
+})
+
+// db/049 made three things addressable: a thread, a turn inside it, and the
+// feed. A push notification's url is one of these strings, so what it parses to
+// is what Ivan lands on when he taps it at a traffic light.
+describe('deep links', () => {
+  const TH = '11111111-1111-4111-8111-111111111111'
+  const TU = '22222222-2222-4222-8222-222222222222'
+
+  it('reads a thread and a turn off the query', () => {
+    expect(parseWbHash(`#exp/v2/dms?thread=${TH}&turn=${TU}`))
+      .toEqual({ job: 'dms', focus: null, thread: TH, turn: TU })
+  })
+
+  it('reads them with a focus segment in the way', () => {
+    expect(parseWbHash(`#exp/v2/dms/chat?thread=${TH}`))
+      .toEqual({ job: 'dms', focus: 'chat', thread: TH })
+  })
+
+  it('reads the feed flag', () => {
+    expect(parseWbHash('#exp/v2/ops?feed=1')).toEqual({ job: 'ops', focus: null, feed: true })
+    expect(parseWbHash('#exp/v2/ops?feed=true')).toEqual({ job: 'ops', focus: null, feed: true })
+    // Anything else is not the feed. `feed=0` must not open it.
+    expect(parseWbHash('#exp/v2/ops?feed=0')).toEqual({ job: 'ops', focus: null })
+  })
+
+  it('drops an id that is not one rather than issuing a query for it', () => {
+    expect(parseWbHash('#exp/v2/dms?thread=../../etc&turn=1')).toEqual({ job: 'dms', focus: null })
+  })
+
+  it('leaves an ordinary hash exactly as it parsed before', () => {
+    // The whole contract of this change: the new fields are absent, not
+    // undefined-but-present, so every existing caller is untouched.
+    expect(parseWbHash('#exp/v2/content')).toEqual({ job: 'content', focus: null })
+    expect(Object.keys(parseWbHash('#exp/v2/content'))).toEqual(['job', 'focus'])
+  })
+
+  it('does not mistake a query for a job or a focus', () => {
+    expect(parseWbHash('#exp/v2?feed=1')).toEqual({ job: 'dms', focus: null, feed: true })
+    expect(parseWbHash('#exp/v2/chat?feed=1')).toEqual({ job: 'dms', focus: 'chat', feed: true })
+  })
+})
+
+// The three tournament candidates mount behind their own experiment ids. They
+// share this grammar, and each one has to keep writing its OWN prefix back or it
+// navigates out of itself on the first tab click.
+describe('the brain-candidate prefixes', () => {
+  it('reads the same job / focus / query grammar', () => {
+    expect(parseWbHash('#exp/brain-a/content?feed=1'))
+      .toEqual({ job: 'content', focus: null, feed: true })
+    expect(parseWbHash('#exp/brain-b/dms/chat')).toEqual({ job: 'dms', focus: 'chat' })
+    expect(parseWbHash('#exp/brain-c')).toEqual(DEFAULT_ROUTE)
+    expect(parseWbHash('#exp/brain-c/inbox')).toEqual({ job: 'dms', focus: null })
+  })
+
+  it('writes back the prefix the page was loaded with', () => {
+    expect(wbHash('content', null, 'brain-a')).toBe('#exp/brain-a/content')
+    expect(wbHash('dms', 'chat', 'brain-c')).toBe('#exp/brain-c/dms/chat')
+    // Default stays the shipped surface, so nothing that omits the argument moves.
+    expect(wbHash('content', null)).toBe('#exp/v2/content')
+  })
+
+  it('prefixOf rewrites the read-only v2c shim to v2 and passes a candidate through', () => {
+    expect(prefixOf('#exp/brain-a/content?feed=1')).toBe('brain-a')
+    expect(prefixOf('#exp/brain-b')).toBe('brain-b')
+    expect(prefixOf('#exp/v2c/dms')).toBe('v2')
+    expect(prefixOf('#exp/v2/dms')).toBe('v2')
+    expect(prefixOf('')).toBe('v2')
+    // Not a candidate id, however much it looks like one.
+    expect(prefixOf('#exp/brain-d/dms')).toBe('v2')
+    expect(prefixOf('#exp/brain-ax/dms')).toBe('v2')
   })
 })
