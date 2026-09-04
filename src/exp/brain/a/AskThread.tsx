@@ -79,7 +79,7 @@ function AnswerMeta({ turn, onRecall }: { turn: { text: string; sources?: { kind
   )
 }
 
-export function AskThread({ chat, job, about, aboutContext, subjects, mobile, onOpenAbout, headerExtra }: {
+export function AskThread({ chat, job, about, aboutContext, subjects, mobile, onOpenAbout, headerExtra, bootTurn }: {
   chat: ChatHandle
   job: Job
   about: string | null
@@ -89,24 +89,47 @@ export function AskThread({ chat, job, about, aboutContext, subjects, mobile, on
   onOpenAbout?: (() => void) | null
   /** Desktop-only: the Feed toggle button, rendered into this header. */
   headerExtra?: ReactNode
+  /** The turn a push named (`&turn=` on the deep link). Scrolled to and marked once. */
+  bootTurn?: string | null
 }) {
   const [see, setSee] = useState<SeeState>(EMPTY_SEE)
   const seeBlock = buildSeeBlock(subjects, see)
   const scroller = useRef<HTMLDivElement>(null)
+  const bootScrolled = useRef(false)
 
+  // A push names a THREAD and a TURN. Landing at the bottom of a long thread
+  // when the notification was about the fourth answer up is a miss, so the
+  // named turn wins the first scroll - once, and only if it has actually
+  // hydrated; every later render goes back to following the tail.
   useEffect(() => {
     const el = scroller.current
-    if (el) el.scrollTop = el.scrollHeight
-  }, [chat.turns.length, chat.streamText])
+    if (!el) return
+    if (bootTurn && !bootScrolled.current) {
+      const target = el.querySelector(`[data-turn="${bootTurn.replace(/["\\]/g, '')}"]`)
+      if (target) {
+        bootScrolled.current = true
+        target.scrollIntoView({ block: 'center' })
+        return
+      }
+    }
+    el.scrollTop = el.scrollHeight
+  }, [chat.turns.length, chat.streamText, bootTurn])
 
-  const empty = chat.turns.length === 0 && chat.status === 'idle' && !chat.runningElsewhere
+  const hydrating = chat.turnsLoading && chat.turns.length === 0
+  const empty = !hydrating && chat.turns.length === 0 && chat.status === 'idle' && !chat.runningElsewhere
   const groundedDate = chat.grounding?.groundedOn ?? chat.thread?.grounded_summary_date ?? null
   const groundedLine = groundedOnLine(groundedDate)
-  const sessionLine = sessionStateLine(chat.thread?.session_started_at ?? null)
+  const sessionLine = sessionStateLine(
+    chat.thread?.session_started_at ?? null,
+    chat.grounding?.session ?? null,
+    chat.turns.length > 0,
+  )
 
   const openTurn = [...chat.turns].reverse()
     .find(t => t.role === 'user' && (t.status === 'running' || t.status === 'queued'))
   const currentTurnId = chat.busy ? chat.turns[chat.turns.length - 1]?.turnId : undefined
+
+  const streaming = chat.streamText.length > 0 || chat.streamTools.length > 0
 
   const send = (text: string) => { if (text.trim()) void chat.send(text, aboutContext ?? about ?? undefined, seeBlock) }
   const recall = (noun: string) => { if (!chat.busy) void chat.send(recallPrompt(noun), aboutContext ?? about ?? undefined) }
@@ -124,7 +147,7 @@ export function AskThread({ chat, job, about, aboutContext, subjects, mobile, on
           type="button" data-new-thread className="ba-newthread"
           title="Start a fresh thread" aria-label="Start a fresh thread"
           onClick={() => chat.newThread()}
-        >new</button>
+        >New thread</button>
       </div>
       {groundedLine && <div className="ba-grounded-top">{groundedLine}</div>}
 
@@ -138,6 +161,16 @@ export function AskThread({ chat, job, about, aboutContext, subjects, mobile, on
       <SeeChips subjects={subjects} see={see} setSee={setSee} />
 
       <div className="ba-msgs" ref={scroller}>
+        {hydrating && (
+          <div className="ba-hydrating" data-loading>
+            <div className="ba-hydrating-t">Opening the last conversation.</div>
+            <div className="ba-skel-list">
+              <div className="ba-skel-row"><span className="ba-skel-line" /></div>
+              <div className="ba-skel-row"><span className="ba-skel-line short" /></div>
+              <div className="ba-skel-row"><span className="ba-skel-line" /></div>
+            </div>
+          </div>
+        )}
         {empty ? (
           <div className="ba-empty">
             <div className="ba-empty-t">
@@ -159,7 +192,10 @@ export function AskThread({ chat, job, about, aboutContext, subjects, mobile, on
               return (
                 <div key={t.id}>
                   {t.role === 'assistant' ? (
-                    <div data-answer data-turn={t.turnId ?? t.id}>
+                    <div
+                      data-answer data-turn={t.turnId ?? t.id}
+                      className={bootTurn && t.turnId === bootTurn ? 'ba-boot-turn' : undefined}
+                    >
                       <ChatTurn turn={t} onRetry={last && !isThreadBusy ? chat.retry : undefined} />
                       {!t.error && !t.aborted && <AnswerMeta turn={t} onRecall={recall} />}
                     </div>
@@ -174,12 +210,20 @@ export function AskThread({ chat, job, about, aboutContext, subjects, mobile, on
             })}
             {chat.busy && (
               <div data-answer data-turn={currentTurnId}>
-                <div className="ba-running">
+                {/* ONE running indicator. The shared renderer draws its own
+                    dots whenever it has neither text nor tools yet, so it is
+                    only mounted once the answer has something to show; until
+                    then this banner is the whole state, and the Stop for it
+                    is the composer's, never a second one here. */}
+                <div className="ba-running" data-running>
                   <span className="ba-running-dot" />
-                  <span>Working. This keeps going even if you lock your phone, and you will get a notification when it lands.</span>
-                  <button type="button" data-stop className="ba-running-stop" onClick={chat.abort}>Stop</button>
+                  <span>
+                    {chat.slow
+                      ? 'Still starting up, the container was cold. This keeps going even if you lock your phone, and you will get a notification when it lands.'
+                      : 'Working. This keeps going even if you lock your phone, and you will get a notification when it lands.'}
+                  </span>
                 </div>
-                <ChatStreaming text={chat.streamText} tools={chat.streamTools} slow={chat.slow} />
+                {streaming && <ChatStreaming text={chat.streamText} tools={chat.streamTools} slow={false} />}
               </div>
             )}
             {chat.runningElsewhere && !chat.busy && (
