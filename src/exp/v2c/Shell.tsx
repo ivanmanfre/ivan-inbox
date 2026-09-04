@@ -480,7 +480,11 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
   // Spine §1.7 — the ONE licensed structural edit. At 390 the loading state used
   // to carry no `.wb` class at all, so the iOS :root palette showed through for
   // the first seconds of every cold mobile load.
-  if (inbox.loading && inbox.threads.length === 0 && !inboxError) {
+  // Under a tournament candidate on the phone the candidate paints its own chrome
+  // from the first frame (its work surface is a skeleton until the data lands);
+  // showing the stock tab bar for the first seconds was measured on every cold
+  // load and reads as a different app flashing by.
+  if (inbox.loading && inbox.threads.length === 0 && !inboxError && !(mobile && BrainMobile)) {
     return (
       <div className={mobile ? 'app wb' : 'app dt wb'}>
         {/* style-delta §3a — the ONE licensed DOM change: the app plate the
