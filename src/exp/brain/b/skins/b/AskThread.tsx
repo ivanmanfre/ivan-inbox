@@ -174,11 +174,10 @@ function AnswerCard({ turn, onRetry, onRecall, justLanded, focused }: {
 }
 
 function sessionLine(grounding: ChatHandle['grounding']): string {
+  // The grounding date already sits under every answer as its own chip, so the
+  // shelf says only which session this is and never truncates at 390.
   if (!grounding) return 'New conversation'
-  // Short enough that the whole line, date included, fits beside the New thread
-  // chip at 390 in one line: two seats read "grounded on…" as a clipped control.
-  const on = grounding.groundedOn ? ` · grounded ${grounding.groundedOn}` : ''
-  return grounding.session === 'resumed' ? `Continuing${on}` : `Fresh session${on}`
+  return grounding.session === 'resumed' ? 'Continuing this thread' : 'Fresh session'
 }
 
 const STARTERS = [
