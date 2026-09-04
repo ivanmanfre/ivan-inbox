@@ -70,6 +70,10 @@ export function toChatEvent(
       // /chat/stream forwards tool_use and never tool_result, so the input is
       // whatever detail came with it and there is no output to invent.
       return { type: 'tool_use', id: `${seq}:0`, tool: e.name, input: e.detail ? { detail: e.detail } : {} }
+    case 'turn':
+      // The row ids ride to the hook as their own ChatEvent (see events.ts);
+      // nothing about a turn id belongs in the transcript.
+      return null
     case 'model':
       // The broker's account of what it forwarded. Reuses the `session` frame,
       // which already carries a model field — the sessionId stays the honest
