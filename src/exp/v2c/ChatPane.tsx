@@ -24,7 +24,7 @@ import { JOB_LABEL } from './layout'
 // completes a turn — the upstream takes no per-request model yet — so burying it
 // would be burying the working option.
 const MODEL_OPTIONS: { id: string | null; label: string; note: string }[] = [
-  { id: null, label: 'Container default', note: 'Whatever the box booted with' },
+  { id: null, label: 'Claude default', note: 'Whatever Claude booted with' },
   ...CLAUDE_MODELS.map(m => ({ id: m.id as string, label: m.label, note: m.note })),
 ]
 
@@ -510,13 +510,13 @@ export function ChatPane({ chat, job, about, aboutContext, subjects = [], onClos
             className="wb-pane-s"
             title={chat.sessionId
               ? `session ${chat.sessionId}`
-              : mock ? 'no session yet' : 'Each turn starts a fresh container session — nothing is resumed.'}
+              : mock ? 'no session yet' : 'Claude keeps this thread between turns.'}
           >
             {chat.model
               ? modelLabel(chat.model)
               : chat.wanted
                 ? `${modelLabel(chat.wanted)} · next turn`
-                : 'Container default'}
+                : 'Claude default'}
           </div>
         </div>
         <button
@@ -557,7 +557,7 @@ export function ChatPane({ chat, job, about, aboutContext, subjects = [], onClos
       {modelRefused && (
         <div className="wb-modelwarn">
           <span>{lastTurn.error!.message}</span>
-          <button onClick={() => chat.setWanted(null)}>Use container default</button>
+          <button onClick={() => chat.setWanted(null)}>Use the Claude default</button>
         </div>
       )}
 
@@ -589,8 +589,7 @@ export function ChatPane({ chat, job, about, aboutContext, subjects = [], onClos
                 : <>Ask about the {JOB_LABEL[job].toLowerCase()} you’re looking at.</>}
             </div>
             <div className="wb-chat-empty-s">
-              Every turn starts a fresh Claude session — the transcript above is the
-              continuity, not the model’s memory.
+              Claude keeps this thread between turns.
             </div>
             <div className="wb-starters">
               {starters(job, about).map(s => (
