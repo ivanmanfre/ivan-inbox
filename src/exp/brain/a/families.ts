@@ -31,6 +31,7 @@ export type FamilyKey =
   | 'draft_generation_error'
   | 'send_failed_alert'
   | 'chat'
+  | 'claude_turn'
 
 export type FamilyMeta = {
   key: FamilyKey
@@ -63,6 +64,11 @@ export const FAMILIES: Record<FamilyKey, FamilyMeta> = {
   draft_generation_error: { key: 'draft_generation_error', label: 'Draft failed', lane: 'dms' },
   send_failed_alert: { key: 'send_failed_alert', label: 'Send failed', lane: 'sends' },
   chat: { key: 'chat', label: 'Conversation', lane: null },
+  // A turn finished (or failed) while he was away, pushed by inbox-turn-run.
+  // Its own `url` carries the thread/turn deep link, not a Job, so lane is
+  // null the same way `chat` is - this still routes correctly on tap because
+  // notificationDeepLink reads the row's url, never the lane.
+  claude_turn: { key: 'claude_turn', label: 'Claude answered', lane: null },
 }
 
 export const FAMILY_KEYS = Object.keys(FAMILIES) as FamilyKey[]
@@ -72,10 +78,12 @@ function isFamilyKey(k: string): k is FamilyKey {
 }
 
 /** The label a card prints. A family this map has never seen still gets a
- * calm, readable words - never the raw snake_case key on screen. */
+ * calm, readable sentence - never the raw snake_case key, never shouted
+ * title case, on screen. */
 export function familyLabel(key: string): string {
   if (isFamilyKey(key)) return FAMILIES[key].label
-  return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+  const words = key.replace(/_/g, ' ').trim().toLowerCase()
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : 'Notice'
 }
 
 /** Where a card's "Open in X" points, or null when the family has none. */

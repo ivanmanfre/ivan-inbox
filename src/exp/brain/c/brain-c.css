@@ -82,6 +82,14 @@
   flex:1; min-height:0; overflow-y:auto; overflow-x:hidden;
   padding:8px var(--gut) 12px; display:flex; flex-direction:column; gap:10px;
 }
+/* Every direct child of the scroller keeps its natural content height; the
+   column overflows into the scrollbar instead of shrinking. Flexbox's default
+   flex-shrink:1 (with an automatic min-size of 0 on any shrinkable child that
+   sets overflow:hidden, which .brc-card does for its severity bar) otherwise
+   crushes the tallest items down to a sliver once the column's total content
+   exceeds the visible viewport, exactly the empty-pill defect a card with real
+   family/title/body text was rendering as. */
+.brc-scroller > *{ flex-shrink:0 }
 .wb.wb.wb .brc-threadmeta{
   display:flex; flex-direction:column; gap:2px; padding:6px 0 4px;
   color:var(--text4); font-size:var(--fs-eyebrow);
