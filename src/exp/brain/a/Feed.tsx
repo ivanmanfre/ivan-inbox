@@ -73,7 +73,12 @@ function FamilySection({ familyKey, groups, open, onToggle, onOpenItem, onDismis
         const headline = isTurn && answerLine ? answerLine : promptLine
         const eyebrow = familyEyebrow(familyKey, g.latest.severity)
         const change = groupChange(g.latest.title, g.items[1]?.title, g.count, g.items.length)
+        // The ledger clock leads the meta line instead of holding its own
+        // column: a 26px column plus its gap was 36px of a 358px row taken off
+        // the sentence the card exists to deliver, and every other fact on the
+        // row already reads on this line.
         const meta = [
+          shortAge(g.lastSeenAt),
           eyebrow,
           isTurn ? (answerLine ? promptLine : null) : laneLabel,
           g.count > 1 ? `×${g.count}` : null,
@@ -90,7 +95,6 @@ function FamilySection({ familyKey, groups, open, onToggle, onOpenItem, onDismis
               <div className={`ba-card-title${g.unread > 0 ? ' unread' : ''}`}>{headline}</div>
               {meta.length > 0 && <div className="ba-card-meta">{meta.join(' · ')}</div>}
             </div>
-            <span className="ba-card-time">{shortAge(g.lastSeenAt)}</span>
             <button
               type="button" className="ba-card-x"
               aria-label={g.items.length > 1 ? `Dismiss all ${g.items.length}` : 'Dismiss'}

@@ -356,11 +356,13 @@
 .ba-fsec-car.open { transform: rotate(-90deg); }
 /* The chevron rotates instantly, for the same reason as the pager track. */
 
-/* One row: anchor mark, two lines of body, the time, one dismiss control.
-   The old two-row trailing column is gone - it wrapped "Clear 7" onto two
-   lines in 52px and gave the underlined text button a 26px tall hit area. */
+/* One row: anchor mark, two lines of body, one dismiss control. The old
+   two-row trailing column is gone - it wrapped "Clear 7" onto two lines in
+   52px and gave the underlined text button a 26px tall hit area - and so is
+   the clock's own column, which cost the sentence 36px of a 358px row for a
+   fact that reads perfectly well on the meta line. */
 .ba-card {
-  display: flex; align-items: flex-start; gap: 10px; padding: 10px var(--gut);
+  display: flex; align-items: flex-start; gap: 8px; padding: 10px var(--gut);
   min-height: 60px; border-bottom: 1px solid var(--hairline); position: relative; cursor: pointer;
 }
 .ba-card:active { background: var(--surface1); }
@@ -383,22 +385,17 @@
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .wb.wb.wb .ba-card-title.unread { font-weight: 600; color: var(--text); }
-/* One meta line carries every small fact about the row: who it is for, where
-   it opens, how many times it fired, and whether the situation moved. The
-   family name is NOT repeated here - the section header above already said it. */
+/* One meta line carries every small fact about the row: when it last fired,
+   who it is for, where it opens, how many times, and whether the situation
+   moved. The family name is NOT repeated here - the section header said it. */
 .wb.wb.wb .ba-card-meta {
   font-size: var(--fs-meta); color: var(--text3); font-variant-numeric: tabular-nums;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.wb.wb.wb .ba-card-time {
-  font-size: var(--fs-meta); color: var(--text3); font-variant-numeric: tabular-nums;
-  white-space: nowrap; flex: none; align-self: flex-start; padding-top: 3px;
-  min-width: 26px; text-align: right;
-}
 /* z-index 1 so the cushion beats the NEXT card, which is position:relative and
    later in the document, and would otherwise win the point 22px below centre. */
 .ba-card-x {
-  position: relative; z-index: 1; width: 44px; height: 44px; margin: -4px -10px -4px 0; background: none; border: none;
+  position: relative; z-index: 1; width: 44px; height: 44px; margin: -4px calc(var(--gut) * -1) -4px 0; background: none; border: none;
   color: var(--text3); font-size: var(--fs-meta); cursor: pointer; flex: none;
   display: flex; align-items: center; justify-content: center;
 }
