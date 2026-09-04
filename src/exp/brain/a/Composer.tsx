@@ -30,6 +30,29 @@ function LevelBars({ elapsedMs }: { elapsedMs: number }) {
   )
 }
 
+// Drawn glyphs, not emoji: this surface's whole icon vocabulary is
+// monochrome geometry (the tab bar, the sources mark), and a colour emoji
+// paperclip sitting next to it reads as a different app's control.
+function ClipGlyph() {
+  return (
+    <svg className="ba-glyph" viewBox="0 0 20 20" aria-hidden="true">
+      <path d="M13.5 5.5v7.2a3.5 3.5 0 1 1-7 0V5.8a2.2 2.2 0 1 1 4.4 0v6.9a1 1 0 1 1-2 0V6.3"
+        fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function MicGlyph() {
+  return (
+    <svg className="ba-glyph" viewBox="0 0 20 20" aria-hidden="true">
+      <rect x="7.4" y="2.6" width="5.2" height="9.2" rx="2.6"
+        fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M4.6 9.6a5.4 5.4 0 0 0 10.8 0M10 15v2.4"
+        fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 /** "0:07" - the recording clock, so the elapsed time is a reading not a guess. */
 function clock(ms: number): string {
   const total = Math.floor(ms / 1000)
@@ -128,13 +151,13 @@ export function Composer({ busy, onSend, onAbort, placeholder }: {
         <button
           type="button" className="ba-clip" aria-label="Attach a file"
           onClick={() => fileRef.current?.click()}
-        >📎</button>
+        ><ClipGlyph /></button>
         {stt.supported && (
           <button
             type="button" className={`ba-mic${stt.state !== 'idle' ? ` ${stt.state}` : ''}`}
             onClick={stt.toggle} disabled={stt.state === 'transcribing'}
             aria-label={stt.state === 'recording' ? 'Stop dictating' : 'Dictate'}
-          >{stt.state === 'recording' ? '■' : '🎙'}</button>
+          >{stt.state === 'recording' ? '■' : <MicGlyph />}</button>
         )}
         <input
           data-ask

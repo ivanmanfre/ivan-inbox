@@ -164,7 +164,7 @@ export function BrainMobile({
       <div className="wb-plate ba-plate">
         <div className="ba-rib">
           <span className={`ba-rib-sync${inboxError ? ' bad' : ''}`} onClick={refresh}>
-            {inboxError ? 'not syncing' : relAge(loadedAt)}
+            {inboxError ? 'not syncing' : loadedAt ? relAge(loadedAt) : 'loading'}
           </span>
           {health.n > 0 && (
             <span className="ba-rib-health" title={health.note} onClick={openOps}>

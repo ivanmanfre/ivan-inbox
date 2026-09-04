@@ -85,8 +85,8 @@
   border-radius: 999px; background: var(--accent-ui, var(--accent));
 }
 .wb.wb.wb .ba-tab-cnt {
-  position: absolute; top: -6px; right: -12px; min-width: 15px; text-align: center;
-  font-size: var(--fs-meta); font-weight: 600; border-radius: 999px; padding: 0 5px;
+  position: absolute; top: -7px; right: -13px; min-width: 16px; text-align: center; line-height: 16px;
+  font-size: var(--fs-meta); font-weight: 600; border-radius: 999px; padding: 0 4px;
   background: var(--sev-urgent); color: #fff; font-variant-numeric: tabular-nums;
 }
 .wb.wb.wb .ba-tab-cnt.neutral { background: var(--surface3); color: var(--text); }
@@ -111,11 +111,10 @@
 /* AskThread.tsx                                                           */
 /* ---------------------------------------------------------------------- */
 .ba-ask { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-.ba-ask-h { display: flex; align-items: center; gap: 10px; padding: 10px var(--gut); flex: none; }
+.ba-ask-h { display: flex; align-items: center; gap: 10px; padding: 8px var(--gut) 10px; flex: none; }
 .ba-ask-ic { font-size: var(--fs-title); color: var(--accent-ui, var(--accent)); }
-.ba-ask-title { flex: 1; min-width: 0; }
-.wb.wb.wb .ba-ask-n { font-size: var(--fs-title); font-weight: 600; color: var(--text); }
-.wb.wb.wb .ba-ask-s { font-size: var(--fs-meta); color: var(--text3); }
+.wb.wb.wb .ba-ask-n { font-size: var(--fs-title); font-weight: 600; color: var(--text); flex: 1; min-width: 0; }
+.wb.wb.wb .ba-ask-s { font-size: var(--fs-meta); color: var(--text3); padding: 0 var(--gut) 8px; flex: none; }
 .wb.wb.wb .ba-newthread {
   background: var(--surface2); color: var(--text2); border: none; border-radius: var(--r-pill);
   font-size: var(--fs-meta); font-weight: 600; padding: 6px 14px; min-height: 44px; white-space: nowrap;
@@ -135,7 +134,10 @@
 .ba-see {
   display: flex; align-items: center; gap: 8px; margin: 0 var(--gut) 8px; flex: none;
 }
-.wb.wb.wb .ba-see-l { font-size: var(--fs-meta); color: var(--text3); flex: 1; min-width: 0; }
+.wb.wb.wb .ba-see-l {
+  font-size: var(--fs-meta); color: var(--text3); flex: 1; min-width: 0;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
 .wb.wb.wb .ba-see-t {
   background: none; border: 1px solid var(--hairline); color: var(--text2); border-radius: var(--r-pill);
   font-size: var(--fs-meta); padding: 4px 12px; min-height: 44px; white-space: nowrap; cursor: pointer;
@@ -229,6 +231,7 @@
   position: relative; cursor: pointer; flex: none;
 }
 .ba-clip::after, .ba-mic::after { content: ''; position: absolute; inset: -3px; }
+.ba-glyph { width: 22px; height: 22px; display: block; }
 .ba-mic.recording { color: var(--sev-urgent); }
 .ba-mic.transcribing { color: var(--text3); opacity: .6; }
 .ba-send {
@@ -334,8 +337,14 @@
 
 .ba-fsec-h {
   width: 100%; display: flex; align-items: center; gap: 8px; background: var(--canvas);
-  border: none; padding: 12px var(--gut); min-height: 44px; position: sticky; top: 0; z-index: 1; cursor: pointer;
+  border: none; padding: 8px var(--gut); min-height: 36px; position: sticky; top: 0; z-index: 1;
+  cursor: pointer;
 }
+/* 36px of ink, 44px of target: sections are stacked with a card between them,
+   so the cushion has room to take the row to a full thumb without colliding
+   with the card's own tap area. */
+.ba-fsec-h::after { content: ''; position: absolute; inset: -4px 0; }
+.ba-fsec { position: relative; }
 /* The ONE eyebrow left on this surface: an uppercase, letter-spaced section
    label. Everything else that used to sit at this size reads at meta. */
 .wb.wb.wb .ba-fsec-l { font-size: var(--fs-eyebrow); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text3); }
@@ -351,11 +360,11 @@
    The old two-row trailing column is gone - it wrapped "Clear 7" onto two
    lines in 52px and gave the underlined text button a 26px tall hit area. */
 .ba-card {
-  display: flex; align-items: center; gap: 10px; padding: 10px var(--gut) 10px var(--gut);
-  min-height: 64px; border-bottom: 1px solid var(--hairline); position: relative; cursor: pointer;
+  display: flex; align-items: flex-start; gap: 10px; padding: 10px var(--gut);
+  min-height: 60px; border-bottom: 1px solid var(--hairline); position: relative; cursor: pointer;
 }
 .ba-card:active { background: var(--surface1); }
-.ba-mark { width: 12px; height: 12px; flex: none; display: inline-block; }
+.ba-mark { width: 12px; height: 12px; flex: none; display: inline-block; margin-top: 5px; }
 .ba-mark.urgent { background: var(--sev-urgent); border-radius: 3px; }
 .ba-mark.attention {
   border-radius: 3px;
@@ -366,10 +375,12 @@
 .ba-mark.read { opacity: .45; }
 .ba-mark.unread { opacity: 1; }
 
-.ba-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.ba-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+/* Two lines, not one clipped one: the sentence the card exists to deliver is
+   the whole point of the row, and 29 characters of it is not the sentence. */
 .wb.wb.wb .ba-card-title {
-  font-size: var(--fs-body); font-weight: 400; color: var(--text2);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--fs-body); font-weight: 400; color: var(--text2); line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .wb.wb.wb .ba-card-title.unread { font-weight: 600; color: var(--text); }
 /* One meta line carries every small fact about the row: who it is for, where
@@ -381,10 +392,11 @@
 }
 .wb.wb.wb .ba-card-time {
   font-size: var(--fs-meta); color: var(--text3); font-variant-numeric: tabular-nums;
-  white-space: nowrap; flex: none; align-self: flex-start; padding-top: 2px;
+  white-space: nowrap; flex: none; align-self: flex-start; padding-top: 3px;
+  min-width: 26px; text-align: right;
 }
 .ba-card-x {
-  position: relative; width: 44px; height: 44px; background: none; border: none;
+  position: relative; width: 44px; height: 44px; margin: -4px -10px -4px 0; background: none; border: none;
   color: var(--text3); font-size: var(--fs-meta); cursor: pointer; flex: none;
   display: flex; align-items: center; justify-content: center;
 }

@@ -138,10 +138,7 @@ export function AskThread({ chat, job, about, aboutContext, subjects, mobile, on
     <div className="ba-ask">
       <div className="ba-ask-h">
         <span className="ba-ask-ic">✳</span>
-        <div className="ba-ask-title">
-          <div className="ba-ask-n">Ask</div>
-          <div className="ba-ask-s">{sessionLine}</div>
-        </div>
+        <div className="ba-ask-n">Ask</div>
         {headerExtra}
         <button
           type="button" data-new-thread className="ba-newthread"
@@ -149,7 +146,10 @@ export function AskThread({ chat, job, about, aboutContext, subjects, mobile, on
           onClick={() => chat.newThread()}
         >New thread</button>
       </div>
-      {groundedLine && <div className="ba-grounded-top">{groundedLine}</div>}
+      {/* Both brain facts on ONE full-width line: what the session is doing,
+          and which memory it stands on. Stacked under the header rather than
+          squeezed beside the button, which wrapped it to four lines. */}
+      <div className="ba-ask-s">{groundedLine ? `${sessionLine} ${groundedLine}.` : sessionLine}</div>
 
       {about && mobile && (
         <div className={`ba-about${onOpenAbout ? ' tap' : ''}`} onClick={onOpenAbout ?? undefined}>

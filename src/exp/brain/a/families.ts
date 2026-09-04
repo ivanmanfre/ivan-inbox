@@ -169,3 +169,24 @@ export function groupChange(
   if (previousTitle && titleShape(latestTitle) !== titleShape(previousTitle)) return 'changed'
   return 'again'
 }
+
+
+/**
+ * A ledger clock: "now", "4m", "3h", "2d", "5w". The shared `relAge` says
+ * "4m ago", which costs the row about 35px of the 390 it has - and in a column
+ * where every cell is a time, the word "ago" is said once by the column, not
+ * once per row. Pure, so the reading is testable without a clock.
+ */
+export function shortAge(iso: string, now: number = Date.now()): string {
+  const t = new Date(iso).getTime()
+  if (Number.isNaN(t)) return ''
+  const s = Math.max(0, Math.round((now - t) / 1000))
+  if (s < 45) return 'now'
+  const m = Math.round(s / 60)
+  if (m < 60) return `${m}m`
+  const h = Math.round(m / 60)
+  if (h < 24) return `${h}h`
+  const d = Math.round(h / 24)
+  if (d < 7) return `${d}d`
+  return `${Math.round(d / 7)}w`
+}
