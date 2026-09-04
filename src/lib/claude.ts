@@ -95,6 +95,9 @@ export type ClaudeErrorCode =
   | 'model_not_allowed'
   | 'model_not_supported_upstream'
   | 'model_support_unknown'
+  // A turn is still running on this thread. The container serialises nothing, so
+  // the broker refuses a second one rather than lose the first one's reply.
+  | 'thread_busy'
   | 'aborted'
   | 'unknown'
 
@@ -123,6 +126,7 @@ export const CLAUDE_ERROR_COPY: Record<ClaudeErrorCode, string> = {
     'The container cannot take a per-turn model yet — it would quietly use its own. Switch back to the container default to send.',
   model_support_unknown:
     'The broker cannot confirm the container would honour that model, so it did not send. Switch back to the container default.',
+  thread_busy: 'Still working on the last one. Wait for it or start a new thread.',
   unknown: 'Claude failed for an unrecognised reason.',
 }
 
@@ -139,7 +143,7 @@ function classify(status: number, payload: string): { code: ClaudeErrorCode; det
     'unauthenticated', 'invalid_token', 'forbidden_user', 'broker_not_configured',
     'upstream_timeout', 'upstream_unreachable', 'upstream_error', 'prompt_too_long', 'empty_prompt',
     'context_assembly_failed', 'context_over_cap',
-    'model_not_allowed', 'model_not_supported_upstream', 'model_support_unknown',
+    'model_not_allowed', 'model_not_supported_upstream', 'model_support_unknown', 'thread_busy',
   ]
   if (known.includes(raw as ClaudeErrorCode)) return { code: raw as ClaudeErrorCode, detail }
   if (status === 401) return { code: 'unauthenticated', detail }
