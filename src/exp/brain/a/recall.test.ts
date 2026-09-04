@@ -45,3 +45,25 @@ describe('recallPrompt', () => {
     expect(recallPrompt('Ivan Manfredi')).toBe('/recall Ivan Manfredi')
   })
 })
+
+describe('extractRecallNouns, the things that are not names', () => {
+  it('drops a run of SQL capitals rather than offering "recall NOT NULL AND"', () => {
+    const out = extractRecallNouns('on the approved_at NOT NULL AND sent_at NULL predicate')
+    expect(out).not.toContain('NOT NULL AND')
+    expect(out.some(n => n.includes('NULL'))).toBe(false)
+  })
+
+  it('drops a bare label token like R1 or R2', () => {
+    expect(extractRecallNouns('Ran R1 then R2.')).toEqual([])
+  })
+
+  it('still keeps a real name sitting in the same sentence', () => {
+    const out = extractRecallNouns('LinkedIn DMs ship via the Send Messages dispatcher where sent_at NULL applies')
+    expect(out).toContain('LinkedIn DMs')
+    expect(out).toContain('Send Messages')
+  })
+
+  it('drops a sentence-leading adverb picked up as a first word', () => {
+    expect(extractRecallNouns('Never ClickUp for this.')).toEqual([])
+  })
+})

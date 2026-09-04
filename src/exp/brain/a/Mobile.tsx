@@ -163,13 +163,21 @@ export function BrainMobile({
     <div className="app wb brain-a" data-place={dataPlace}>
       <div className="wb-plate ba-plate">
         <div className="ba-rib">
-          <span className={`ba-rib-sync${inboxError ? ' bad' : ''}`} onClick={refresh}>
+          {/* Both of these DO something on tap, so both are buttons with a
+              real thumb's worth of target, not spans with a click handler. */}
+          <button
+            type="button" className={`ba-rib-sync${inboxError ? ' bad' : ''}`}
+            onClick={refresh} aria-label="Refresh"
+          >
             {inboxError ? 'not syncing' : loadedAt ? relAge(loadedAt) : 'loading'}
-          </span>
+          </button>
           {health.n > 0 && (
-            <span className="ba-rib-health" title={health.note} onClick={openOps}>
+            <button
+              type="button" className="ba-rib-health" title={health.note} onClick={openOps}
+              aria-label={`${health.n} open in Ops`}
+            >
               <span className="ba-rib-dot" />{health.n}
-            </span>
+            </button>
           )}
           <button type="button" className="ba-gear" onClick={toggleSettings}>
             {job === 'settings' ? 'Done' : '⚙︎'}

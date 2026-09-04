@@ -20,33 +20,37 @@
 /* ---------------------------------------------------------------------- */
 /* Ribbon (Mobile.tsx)                                                     */
 /* ---------------------------------------------------------------------- */
+/* Every control in this row is a full 44px of target IN ITS OWN BOX. The old
+   version leaned on 8px and 12px pseudo-element overhangs, which reached out
+   of the ribbon and won points that belonged to the Ask header underneath. */
 .ba-rib {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px var(--gut) 4px; flex: none;
+  display: flex; align-items: center; gap: 6px; padding: 2px var(--gut); flex: none;
 }
 .wb.wb.wb .ba-rib-sync {
-  font-size: var(--fs-meta); color: var(--text3); font-variant-numeric: tabular-nums;
-  cursor: pointer; position: relative;
+  background: none; border: none; font-size: var(--fs-meta); color: var(--text3);
+  font-variant-numeric: tabular-nums; cursor: pointer; position: relative;
+  min-height: 44px; padding: 0 10px; margin-left: -10px; display: inline-flex; align-items: center;
 }
-.ba-rib-sync::after { content: ''; position: absolute; inset: -12px; }
+.ba-rib-sync::after { content: ''; position: absolute; inset: -2px; }
 .ba-rib-sync.bad { color: var(--sev-urgent); }
 .ba-rib-health {
-  display: inline-flex; align-items: center; gap: 5px; margin-left: auto;
+  background: none; border: none;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; margin-left: auto;
   font-size: var(--fs-meta); color: var(--sev-attention); cursor: pointer; position: relative;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums; min-height: 44px; min-width: 44px; padding: 0 8px;
 }
-.ba-rib-health::after { content: ''; position: absolute; inset: -12px; }
+.ba-rib-health::after { content: ''; position: absolute; inset: -2px; }
 .ba-rib-dot { width: 6px; height: 6px; border-radius: 999px; background: var(--sev-attention); display: inline-block; }
 .ba-gear {
   background: none; border: none; color: var(--text3); font-size: var(--fs-meta);
-  padding: 12px; margin: -12px 0 -12px 4px; position: relative; cursor: pointer; z-index: 1;
+  padding: 0; margin: 0 -10px 0 0; position: relative; cursor: pointer;
   min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center;
 }
-/* The literal 44x44 box measured right at its own edge in a hit-test sweep -
-   a rounding hair at the boundary, and this row's neighbours sit close enough
-   that the wrong element can win a point exactly on that line. The expanded
-   pseudo-element pads past the boundary rather than relying on the exact box. */
-.ba-gear::after { content: ''; position: absolute; inset: -8px; }
+/* A 2px cushion, not 8: the ribbon sits 12px above the Ask header, and an 8px
+   overhang with a z-index won the point 22px ABOVE the New thread button's own
+   centre. A cushion that reaches into a neighbour's target is a hit-test bug
+   wearing a hit-test fix. */
+.ba-gear::after { content: ''; position: absolute; inset: -2px; }
 
 /* ---------------------------------------------------------------------- */
 /* Pager (Ask/lane <-> Feed)                                               */
@@ -117,9 +121,10 @@
 .wb.wb.wb .ba-ask-s { font-size: var(--fs-meta); color: var(--text3); padding: 0 var(--gut) 8px; flex: none; }
 .wb.wb.wb .ba-newthread {
   background: var(--surface2); color: var(--text2); border: none; border-radius: var(--r-pill);
-  font-size: var(--fs-meta); font-weight: 600; padding: 6px 14px; min-height: 44px; white-space: nowrap;
-  cursor: pointer; flex: none;
+  position: relative; font-size: var(--fs-meta); font-weight: 600; padding: 6px 14px;
+  min-height: 44px; white-space: nowrap; cursor: pointer; flex: none;
 }
+.ba-newthread::after { content: ''; position: absolute; inset: -3px 0; }
 .wb.wb.wb .ba-grounded-top {
   padding: 0 var(--gut) 8px; font-size: var(--fs-meta); color: var(--text3); flex: none;
 }
@@ -143,7 +148,7 @@
   font-size: var(--fs-meta); padding: 4px 12px; min-height: 44px; white-space: nowrap; cursor: pointer;
 }
 
-.ba-msgs { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0 var(--gut) 12px; }
+.ba-msgs { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0 var(--gut) 20px; }
 
 .ba-empty { padding: 24px 4px; display: flex; flex-direction: column; gap: 14px; }
 .wb.wb.wb .ba-empty-t { font-size: var(--fs-title); font-weight: 600; color: var(--text); }
@@ -335,16 +340,14 @@
 .ba-skel-line { height: 12px; border-radius: var(--r-chip); background: var(--surface2); flex: 1; }
 .ba-skel-line.short { flex: 0 0 56px; background: var(--surface1); }
 
+/* A full 44px of real target rather than 36px plus a cushion: a sticky row
+   with a z-index and an overhanging pseudo-element wins the point 22px out
+   from the FIRST card's centre, which is a worse trade than eight pixels. */
 .ba-fsec-h {
   width: 100%; display: flex; align-items: center; gap: 8px; background: var(--canvas);
-  border: none; padding: 8px var(--gut); min-height: 36px; position: sticky; top: 0; z-index: 1;
+  border: none; padding: 10px var(--gut); min-height: 44px; position: sticky; top: 0; z-index: 1;
   cursor: pointer;
 }
-/* 36px of ink, 44px of target: sections are stacked with a card between them,
-   so the cushion has room to take the row to a full thumb without colliding
-   with the card's own tap area. */
-.ba-fsec-h::after { content: ''; position: absolute; inset: -4px 0; }
-.ba-fsec { position: relative; }
 /* The ONE eyebrow left on this surface: an uppercase, letter-spaced section
    label. Everything else that used to sit at this size reads at meta. */
 .wb.wb.wb .ba-fsec-l { font-size: var(--fs-eyebrow); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text3); }
@@ -395,8 +398,10 @@
   white-space: nowrap; flex: none; align-self: flex-start; padding-top: 3px;
   min-width: 26px; text-align: right;
 }
+/* z-index 1 so the cushion beats the NEXT card, which is position:relative and
+   later in the document, and would otherwise win the point 22px below centre. */
 .ba-card-x {
-  position: relative; width: 44px; height: 44px; margin: -4px -10px -4px 0; background: none; border: none;
+  position: relative; z-index: 1; width: 44px; height: 44px; margin: -4px -10px -4px 0; background: none; border: none;
   color: var(--text3); font-size: var(--fs-meta); cursor: pointer; flex: none;
   display: flex; align-items: center; justify-content: center;
 }
