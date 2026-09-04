@@ -5,7 +5,10 @@
 //
 // Source: goal-runs/inbox-brain-app-2026-09-04-out/00-notification-families.md
 // (17 real families measured from 30 days of the WhatsApp self-chat feed, plus
-// `chat` which is not a notification and is never looked up here).
+// `chat` which is not a notification and is never looked up here), plus
+// `claude_turn`, which the 30-day window predates: inbox-turn-run raises it on
+// every answer that lands after the tab is gone, so it is the LIVE family and
+// leaving it out printed the fallback "Update" over Ivan's own answers.
 //
 // This file is the ONLY place a family key is turned into words. Every card,
 // every filter chip and every quiet-row count reads it from here so a label can
@@ -29,6 +32,7 @@ export type FamilyKey =
   | 'seat_health'
   | 'draft_generation_error'
   | 'send_failed_alert'
+  | 'claude_turn'
 
 export const FAMILY_KEYS: FamilyKey[] = [
   'reply_draft_pending', 'system_infra_alarm', 'outreach_engine_ops',
@@ -36,7 +40,7 @@ export const FAMILY_KEYS: FamilyKey[] = [
   'content_sourcing_pipeline', 'system_watchdog_digest', 'inbound_reply_notice',
   'reporting_digest', 'scan_quality_alert', 'comment_engagement_notice',
   'booking_notice', 'arch_build_progress', 'seat_health',
-  'draft_generation_error', 'send_failed_alert',
+  'draft_generation_error', 'send_failed_alert', 'claude_turn',
 ]
 
 export type FamilyMeta = {
@@ -70,6 +74,9 @@ export const FAMILY_META: Record<FamilyKey, FamilyMeta> = {
   seat_health: { label: 'A seat needs attention', quietEligible: false },
   draft_generation_error: { label: "A reply couldn't be drafted", quietEligible: false },
   send_failed_alert: { label: "A message didn't send", quietEligible: false },
+  // He asked the question himself, so the answer is never routine chatter and
+  // never folds into the quiet row.
+  claude_turn: { label: 'Claude answered', quietEligible: false },
 }
 
 /** The label a card shows. Unknown keys fall back to a plain, honest phrase, never the raw key. */

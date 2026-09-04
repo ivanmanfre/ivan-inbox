@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { FAMILY_KEYS, FAMILY_META, familyLabel, isNeedsMe, isQuietEligible } from './families'
 
 describe('FAMILY_META', () => {
-  it('covers all 17 real families named in 00-notification-families.md', () => {
-    expect(FAMILY_KEYS).toHaveLength(17)
+  it('covers all 17 real families named in 00-notification-families.md, plus claude_turn', () => {
+    expect(FAMILY_KEYS).toHaveLength(18)
+    expect(FAMILY_KEYS).toContain('claude_turn')
     for (const k of FAMILY_KEYS) {
       expect(FAMILY_META[k], k).toBeDefined()
       expect(FAMILY_META[k].label.length).toBeGreaterThan(0)
@@ -23,6 +24,12 @@ describe('familyLabel', () => {
   it('reads the map for a known family', () => {
     expect(familyLabel('reply_draft_pending')).toBe('A reply is waiting on you')
     expect(familyLabel('seat_health')).toBe('A seat needs attention')
+  })
+
+  it('names the live family rather than falling back to Update', () => {
+    // inbox-turn-run raises claude_turn on every answer that lands after the
+    // tab is gone. It is the family this surface sees most.
+    expect(familyLabel('claude_turn')).toBe('Claude answered')
   })
 
   it('falls back to a plain phrase for an unknown family, never the raw key', () => {
