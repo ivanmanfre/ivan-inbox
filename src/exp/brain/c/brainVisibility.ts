@@ -20,9 +20,7 @@ export function sourcesChipLabel(sources: TurnSource[]): string {
 /** The once-per-thread sentence: what session this is, in plain words. */
 export function sessionStateLabel(grounding: Grounding | null): string | null {
   if (!grounding) return null
-  return grounding.session === 'resumed'
-    ? 'Continued session. The container remembers this thread.'
-    : 'Fresh session. Nothing carried over but the transcript above.'
+  return grounding.session === 'resumed' ? 'Continued session' : 'Fresh session'
 }
 
 /** The grounded-on line, when the broker said what date it grounded on. */
