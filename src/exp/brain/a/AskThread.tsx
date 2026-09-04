@@ -1,4 +1,4 @@
-// AskThread.tsx — the conversation itself. Shared by the phone's Ask place
+// AskThread.tsx - the conversation itself. Shared by the phone's Ask place
 // and the desktop AskPane, so the thread and every brain-visibility fact read
 // identically in both places (parity, not a second design).
 //
@@ -143,7 +143,7 @@ export function AskThread({ chat, job, about, aboutContext, subjects, mobile, on
             <div className="ba-empty-t">
               {about ? <>Ask about <b>{about}</b> without leaving it.</> : <>Ask about the {JOB_LABEL[job].toLowerCase()} you're looking at.</>}
             </div>
-            <div className="ba-empty-s">Every turn starts a fresh Claude session — the transcript above is the continuity, not the model's memory.</div>
+            <div className="ba-empty-s">Every turn starts a fresh Claude session. The transcript above is the continuity, not the model's memory.</div>
             <div className="ba-starters">
               {starters(job, about).map(s => (
                 <button key={s} type="button" className="ba-starter" onClick={() => send(s)}>{s}</button>
@@ -176,7 +176,7 @@ export function AskThread({ chat, job, about, aboutContext, subjects, mobile, on
               <div data-answer data-turn={currentTurnId}>
                 <div className="ba-running">
                   <span className="ba-running-dot" />
-                  <span>Working — this keeps going even if you lock your phone. You'll get a notification when it lands.</span>
+                  <span>Working. This keeps going even if you lock your phone, and you will get a notification when it lands.</span>
                   <button type="button" data-stop className="ba-running-stop" onClick={chat.abort}>Stop</button>
                 </div>
                 <ChatStreaming text={chat.streamText} tools={chat.streamTools} slow={chat.slow} />
@@ -185,7 +185,7 @@ export function AskThread({ chat, job, about, aboutContext, subjects, mobile, on
             {chat.runningElsewhere && !chat.busy && (
               <div className="ba-running elsewhere">
                 <span className="ba-running-dot" />
-                <span>Still working — this turn started elsewhere. It will land here on its own.</span>
+                <span>Still working. This turn started elsewhere, and it will land here on its own.</span>
                 {openTurn?.turnId && (
                   <button
                     type="button" data-stop className="ba-running-stop"

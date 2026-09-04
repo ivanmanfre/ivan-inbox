@@ -1,4 +1,4 @@
-// deepLink.ts — where a tap on a feed card actually goes. `notificationDeepLink`
+// deepLink.ts - where a tap on a feed card actually goes. `notificationDeepLink`
 // (lib/turns.ts) already turns a notification's raw url into a safe in-app
 // hash; this file's only job is deciding whether that hash means "open the Ask
 // thread" (the `ask` segment inbox-notify writes, which is not a real Job) or

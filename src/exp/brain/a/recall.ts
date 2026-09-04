@@ -1,24 +1,24 @@
-// recall.ts — pure extraction of "things worth asking the recall skill about"
+// recall.ts - pure extraction of "things worth asking the recall skill about"
 // out of an answer's own text. Brain visibility item 3: a one-tap action that
-// sends `/recall <noun>` as a new turn. The nouns are picked, never invented —
+// sends `/recall <noun>` as a new turn. The nouns are picked, never invented -
 // capitalised multiword names ("Ivan Manfredi", "RISE DTC") and `*.md`
 // mentions, exactly what the families doc and the memory system actually use
 // as handles.
 
 // A `.md` mention: word characters, dots and hyphens, ending `.md`. Deliberately
-// does not require a path — "feedback-thing-2026-09-02.md" is how the memory
+// does not require a path - "feedback-thing-2026-09-02.md" is how the memory
 // system names its own files, with no directory in the sentence.
 const MD_RE = /\b[\w][\w.-]*\.md\b/g
 
 // Two to four capitalised words in a row: "Ivan Manfredi", "RISE DTC",
-// "Kyle Hunt". A single capitalised word is just a sentence start, not a name —
+// "Kyle Hunt". A single capitalised word is just a sentence start, not a name -
 // requiring at least two words is what keeps "The System" out without a
 // dictionary of stopwords.
 const NAME_RE = /\b([A-Z][A-Za-z0-9]*(?:\s+[A-Z][A-Za-z0-9]*){1,3})\b/g
 
 // The residual case a two-word minimum does not catch: a sentence that opens
 // with a capitalised common word followed by another capitalised word, e.g.
-// "The Content board...". Checked against the FIRST word only — a real name
+// "The Content board...". Checked against the FIRST word only - a real name
 // never starts with one of these.
 const LEADING_STOPWORDS = new Set([
   'The', 'This', 'That', 'These', 'Those', 'A', 'An', 'It', 'If', 'When',
@@ -27,7 +27,7 @@ const LEADING_STOPWORDS = new Set([
 
 /**
  * Nouns worth recalling, in first-seen order, deduplicated case-insensitively,
- * capped at `max`. Pure: no network, no invented entity — every result is a
+ * capped at `max`. Pure: no network, no invented entity - every result is a
  * literal substring of `text`.
  */
 export function extractRecallNouns(text: string, max = 5): string[] {

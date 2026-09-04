@@ -26,7 +26,7 @@ describe('FAMILIES', () => {
     }
   })
 
-  it('health_reminder and chat have no lane — neither is a work item', () => {
+  it('health_reminder and chat have no lane - neither is a work item', () => {
     expect(FAMILIES.health_reminder.lane).toBeNull()
     expect(FAMILIES.chat.lane).toBeNull()
   })

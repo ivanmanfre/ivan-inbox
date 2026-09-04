@@ -1,4 +1,4 @@
-// Mobile.tsx — candidate A's phone entry. Thesis: Ask is the home (opens on
+// Mobile.tsx - candidate A's phone entry. Thesis: Ask is the home (opens on
 // the last thread, hydrated), Feed is a dense ledger one tap or one swipe
 // away, Today/DMs/Work stay reachable from the same bar.
 import { useEffect, useRef, useState, type TouchEvent as ReactTouchEvent } from 'react'
@@ -101,7 +101,7 @@ export function BrainMobile({
 
   const dataPlace = place === 'ask' ? 'ask' : place === 'feed' ? 'feed' : 'lane'
 
-  // A DM thread opened as a full-screen takeover replaces the whole phone —
+  // A DM thread opened as a full-screen takeover replaces the whole phone -
   // same rule the base app uses (faithful.css :410's wb-take contract).
   if (peerView) {
     return (
