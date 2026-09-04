@@ -54,6 +54,23 @@ export type Thread = {
   linkedin_url: string | null;
   chat_provider_id: string | null;
   last: InboxMessage; unread: number; draft: InboxMessage | null; messages: InboxMessage[];
+  // A SECOND pending draft on a DIFFERENT channel, staged as one intent with the
+  // first (Ivan, 2026-09-04, Nitin Manchanda: "he asked for an email so we should
+  // have the ability to check the email draft as well as the dm").
+  //
+  // 🔴 WHY THIS EXISTS. `draft` is drafts[last], which is right for a REDRAFT — a
+  // second rise_reply on the same channel supersedes the first, and showing both
+  // would offer to send the same message twice. It is wrong when the two rows are
+  // different LEGS: a LinkedIn DM saying "shooting it to your inbox too" plus the
+  // email that backs it. Nitin had exactly that pair, both pending, both stamped
+  // at 21:13:26 — and the inbox rendered only the email, with the DM invisible
+  // (drafts are excluded from the bubble list) and unsendable. Unlike the RISE
+  // mirror, where one row carries email_mirror_text and the sender does both legs,
+  // these are two independent rows the dispatcher picks up separately.
+  //
+  // Paired ONLY on a different channel family, so a supersede is never split into
+  // two cards. Everything older on either channel stays hidden as before.
+  companionDraft: InboxMessage | null;
   // The drafter sometimes writes a reply after Ivan already answered the
   // prospect himself (5 live cases on 2026-07-22: George, Jeremy, Jonathan,
   // Antoine, Rudra). True when a real outbound send is newer than the last
@@ -211,17 +228,27 @@ export function groupThreads(
     const snoozedUntil = draft !== null && snoozeActive(draft, lastInbound, now)
       ? draft.snoozed_until
       : null
+    // The other leg, when there is one. See Thread.companionDraft.
+    const companionDraft = draft === null
+      ? null
+      : drafts.filter(d => d.id !== draft.id && messageChannel(d) !== messageChannel(draft)).at(-1) ?? null
+    // What this conversation actually RODE, which a pending draft has not done yet.
+    // Nitin's thread ended on an unsent email draft, so `last.channel` read 'email'
+    // and switched the composer off ("Email compose lands in v1.1") on a live
+    // LinkedIn thread. Judged on sent history; a thread that is only ever a draft
+    // (retired April cold-email lane) still falls back to the last row.
+    const lastRode = messages.filter(m => !isDraft(m)).at(-1) ?? last
     threads.push({
       prospect_id: last.prospect_id, prospect_name: last.prospect_name,
       prospect_company: last.prospect_company, client_id: last.client_id,
-      channel: last.channel, stage: last.prospect_stage, last,
+      channel: lastRode.channel, stage: last.prospect_stage, last,
       // Every row of a thread carries the same prospect's url; the newest is as good as any.
       linkedin_url: last.prospect_linkedin_url,
       // The chat id, though, is only on the rows that RODE that chat — the newest message
       // can be a pending draft, which has none. Take the first row that has one.
       chat_provider_id: messages.map(m => m.chat_provider_id).find(Boolean) ?? null,
       unread: messages.filter(m => m.direction === 'inbound' && !m.read_at).length,
-      draft,
+      draft, companionDraft,
       // isFollowUp: a nudge is DEFINED by "we spoke last and they went quiet",
       // which is what this test measures — so without the exemption every
       // follow-up draft ever written scores stale. See isFollowUp.
@@ -928,3 +955,27 @@ export async function markThreadRead(prospect_id: string): Promise<void> {
     .eq('prospect_id', prospect_id).eq('direction', 'inbound').is('read_at', null)
   if (error) throw error
 }
+
+// The identity a draft's email leg actually goes out as. 2026-09-04: the badge used to
+// read "Approving also emails the scan to X (from itsmattan@risedtc.com)" on EVERY stamped
+// draft — hardcoded RISE wording that was a plain falsehood on an ARCH row, and "the scan"
+// was wrong for any non-scan delivery (the mirror stopped being scan-only on 08-19).
+// Sender resolution now lives in integration_config.outreach_email_identities, which is what
+// `Outreach - Send Messages` > Poll + Send reads. KEEP THIS MAP IN SYNC WITH THAT ROW.
+// An unknown client names no sender rather than guessing one.
+export function emailSenderLabel(clientId: string | null | undefined): string {
+  const senders: Record<string, string> = {
+    risedtc: 'itsmattan@risedtc.com',
+    arch: 'davorin@madebyarch.com',
+  }
+  const from = senders[String(clientId ?? '')]
+  return from ? ` (from ${from})` : ''
+}
+
+// A channel='email' ROW is a different pipe from the mirror above. The mirror goes
+// through Resend on the client's sending domain; a native email row is handed to
+// the dispatcher's Gmail node, whose credential is Ivan's own mailbox — so it
+// leaves im@ivanmanfredi.com whatever lane the row belongs to. Named on the card
+// because "which address does this arrive from" is the operator's whole question,
+// and 🔴 because the day a client row rides this path it will go out as Ivan.
+export const NATIVE_EMAIL_SENDER = 'im@ivanmanfredi.com'
