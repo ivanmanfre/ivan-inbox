@@ -13,6 +13,8 @@ export function BrainAskPane({ chat, job, about, aboutContext, subjects, onClose
   const [feedOpen, setFeedOpen] = useState(false)
   const [unread, setUnread] = useState(0)
 
+  // Both pane controls live IN the header row, and the close is last. Floating
+  // it over the top-right corner put it on top of the New thread button at 1440.
   const headerExtra = (
     <button
       type="button" className={`ba-feedbtn${feedOpen ? ' on' : ''}`}
@@ -21,16 +23,20 @@ export function BrainAskPane({ chat, job, about, aboutContext, subjects, onClose
       Feed{unread > 0 && <span className="ba-feedbtn-n">{unread}</span>}
     </button>
   )
+  const headerEnd = !mobile
+    ? <button type="button" className="ba-pane-x" onClick={onClose} aria-label="Close the pane">✕</button>
+    : null
 
   return (
     <div className="brain-a ba-deskwrap">
-      <div className="ba-pane-x-row">
-        {mobile && <button type="button" className="back" onClick={onClose} aria-label="Back">‹</button>}
-        {!mobile && <span className="ba-pane-x" onClick={onClose}>✕</span>}
-      </div>
+      {mobile && (
+        <div className="ba-pane-x-row">
+          <button type="button" className="back" onClick={onClose} aria-label="Back">‹</button>
+        </div>
+      )}
       <AskThread
         chat={chat} job={job} about={about} aboutContext={aboutContext} subjects={subjects}
-        mobile={mobile} onOpenAbout={onOpenAbout} headerExtra={headerExtra}
+        mobile={mobile} onOpenAbout={onOpenAbout} headerExtra={headerExtra} headerEnd={headerEnd}
       />
       {feedOpen && (
         <div className="ba-feedoverlay">

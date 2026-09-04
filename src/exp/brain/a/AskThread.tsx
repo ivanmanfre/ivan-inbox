@@ -79,7 +79,7 @@ function AnswerMeta({ turn, onRecall }: { turn: { text: string; sources?: { kind
   )
 }
 
-export function AskThread({ chat, job, about, aboutContext, subjects, mobile, onOpenAbout, headerExtra, bootTurn }: {
+export function AskThread({ chat, job, about, aboutContext, subjects, mobile, onOpenAbout, headerExtra, headerEnd, bootTurn }: {
   chat: ChatHandle
   job: Job
   about: string | null
@@ -89,6 +89,8 @@ export function AskThread({ chat, job, about, aboutContext, subjects, mobile, on
   onOpenAbout?: (() => void) | null
   /** Desktop-only: the Feed toggle button, rendered into this header. */
   headerExtra?: ReactNode
+  /** Desktop-only: the pane's own close control, which is always last in the row. */
+  headerEnd?: ReactNode
   /** The turn a push named (`&turn=` on the deep link). Scrolled to and marked once. */
   bootTurn?: string | null
 }) {
@@ -145,6 +147,7 @@ export function AskThread({ chat, job, about, aboutContext, subjects, mobile, on
           title="Start a fresh thread" aria-label="Start a fresh thread"
           onClick={() => chat.newThread()}
         >New thread</button>
+        {headerEnd}
       </div>
       {/* Both brain facts on ONE full-width line: what the session is doing,
           and which memory it stands on. Stacked under the header rather than
@@ -174,7 +177,7 @@ export function AskThread({ chat, job, about, aboutContext, subjects, mobile, on
         {empty ? (
           <div className="ba-empty">
             <div className="ba-empty-t">
-              {about ? <>Ask about <b>{about}</b> without leaving it.</> : <>Ask about the {JOB_LABEL[job].toLowerCase()} you're looking at.</>}
+              {about ? <>Ask about <b>{about}</b> without leaving it.</> : <>Ask about the {JOB_LABEL[job]} you're looking at.</>}
             </div>
             <div className="ba-empty-s">Every turn starts a fresh Claude session. The transcript above is the continuity, not the model's memory.</div>
             <div className="ba-starters">
