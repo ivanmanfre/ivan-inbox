@@ -28,6 +28,12 @@ export type FamilyKey =
   | 'reporting_digest' | 'scan_quality_alert' | 'comment_engagement_notice'
   | 'booking_notice' | 'arch_build_progress' | 'seat_health'
   | 'draft_generation_error' | 'send_failed_alert' | 'chat'
+  // Not one of the 17 measured WhatsApp families: `claude_turn` is a row this
+  // app writes about ITSELF. inbox-turn-run raises one whenever a turn finishes
+  // while the phone was away or after 20 s (supabase/functions/inbox-turn-run/
+  // index.ts:196). It is the single highest-volume family on the live feed, so
+  // leaving it out of this map is what made a real feed print "Notification".
+  | 'claude_turn'
 
 // ---------------------------------------------------------------------------
 // 1. The human label. What "family" printed on screen actually says.
@@ -51,6 +57,7 @@ export const FAMILY_LABEL: Record<FamilyKey, string> = {
   draft_generation_error: 'Drafter failed',
   send_failed_alert: 'Send failed',
   chat: 'Conversation',
+  claude_turn: 'Claude answered',
 }
 
 /** Any string, mapped to its human label; an unknown key falls back rather than throwing. */
@@ -83,6 +90,10 @@ export const FAMILY_LANE: Record<FamilyKey, Job | null> = {
   draft_generation_error: 'dms',
   send_failed_alert: 'sends',
   chat: null,
+  // No lane button: the row's own `url` names the exact thread and turn, and
+  // Ask is where it lands. A lane button would be a worse version of the tap
+  // the whole card already is.
+  claude_turn: null,
 }
 
 // ---------------------------------------------------------------------------
@@ -225,6 +236,10 @@ export function stateWord(n: Pick<Notification, 'family' | 'title' | 'body' | 's
     case 'draft_generation_error': word = 'Failed'; break
     case 'send_failed_alert': word = 'Send failed'; break
     case 'chat': word = 'Message'; break
+    // The hero on a claude_turn card is the ANSWER's own first line, which the
+    // card reads off `body` through `answerHeadline` rather than out of this
+    // switch. This branch is the fallback for a row whose body never arrived.
+    case 'claude_turn': word = n.severity === 'error' ? 'The turn failed' : 'Answered'; break
     default: word = FALLBACK_BY_SEVERITY[n.severity] ?? 'Update'
   }
   // The safety net: whatever branch ran, a raw enum token never survives to
@@ -234,8 +249,94 @@ export function stateWord(n: Pick<Notification, 'family' | 'title' | 'body' | 's
   return word
 }
 
-/** The state word for a folded GROUP: the count itself is the hero number. */
+// ---------------------------------------------------------------------------
+// 6. THE FOLDED GROUP'S STATE WORD.
+//
+// ONE number, ONE meaning, everywhere on this surface: the number a card
+// carries is always HOW MANY EVENTS IT STANDS FOR. On a single card that is
+// `row.count` (inbox-notify increments it when the same dedupe key fires again
+// inside 24h) and it reaches the screen through `stateWord`. On a folded group
+// it is the sum of its rows' counts, and it reaches the screen here. The
+// expand control carries no number of its own, because "how many rows the fold
+// holds" is a second meaning for the same glyph and that is exactly the defect
+// the seats named.
+//
+// Each family gets a counted noun rather than its label pasted after a digit:
+// the tournament build printed "3 new reply" off `familyLabel().toLowerCase()`.
+// ---------------------------------------------------------------------------
+const COUNTED_NOUN: Record<FamilyKey, [one: string, many: string]> = {
+  reply_draft_pending: ['draft waiting', 'drafts waiting'],
+  system_infra_alarm: ['thing broke', 'things broke'],
+  outreach_engine_ops: ['engine report', 'engine reports'],
+  post_generation_failed: ['post failed', 'posts failed'],
+  content_board_activity: ['board change', 'board changes'],
+  health_reminder: ['reminder', 'reminders'],
+  content_sourcing_pipeline: ['sourcing run', 'sourcing runs'],
+  system_watchdog_digest: ['system check', 'system checks'],
+  inbound_reply_notice: ['reply', 'replies'],
+  reporting_digest: ['report', 'reports'],
+  scan_quality_alert: ['scan alert', 'scan alerts'],
+  comment_engagement_notice: ['comment', 'comments'],
+  booking_notice: ['booking', 'bookings'],
+  arch_build_progress: ['build update', 'build updates'],
+  seat_health: ['seat change', 'seat changes'],
+  draft_generation_error: ['drafter failure', 'drafter failures'],
+  send_failed_alert: ['send failed', 'sends failed'],
+  chat: ['message', 'messages'],
+  claude_turn: ['answer', 'answers'],
+}
+
+/** The hero line for a folded GROUP: the count and the thing it counts. */
 export function groupStateWord(count: number, family: string): string {
-  const label = familyLabel(family)
-  return `${count} ${label.toLowerCase()}`
+  const noun = COUNTED_NOUN[family as FamilyKey] ?? ['update', 'updates']
+  return `${count} ${count === 1 ? noun[0] : noun[1]}`
+}
+
+// ---------------------------------------------------------------------------
+// 5. THE `claude_turn` CARD.
+//
+// This family stores its two columns the other way round from every other one:
+// `title` carries the PROMPT Ivan typed (inbox-turn-run fills it that way so
+// the dedupe key reads well in a log), and `body` carries the ANSWER. A card
+// that prints `title` as its headline therefore shows him his own question and
+// hides the thing he came back to read. So the headline is the answer's first
+// line and the prompt is the line under it.
+//
+// The answer is markdown. `**bold**`, backticks, `### headings` and list
+// bullets are authoring marks, not words: printed raw they read as noise on a
+// card (the tournament's candidate A shipped `**File:** \`project/ops-board…\``
+// as a headline). Stripped here, in one pure function, rather than in the
+// component.
+// ---------------------------------------------------------------------------
+
+/** Markdown authoring marks removed, the words kept, in place. */
+export function stripMarkdown(line: string): string {
+  return line
+    // a fenced-code marker or a table rule is a whole line of punctuation
+    .replace(/^\s*(?:```+|~~~+|\|?[-:| ]{3,}\|?)\s*$/, '')
+    // leading block marks: heading hashes, quote carets, list bullets, numbers
+    .replace(/^\s*#{1,6}\s+/, '')
+    .replace(/^\s*>+\s*/, '')
+    .replace(/^\s*(?:[-*+]|\d{1,3}[.)])\s+/, '')
+    // inline marks. Links keep their text and lose their target.
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/(\*\*|__)(.*?)\1/g, '$2')
+    .replace(/(?<![\w*])\*(?!\s)([^*]+?)(?<!\s)\*(?![\w*])/g, '$1')
+    .replace(/`+([^`]*)`+/g, '$1')
+    .replace(/^\s+|\s+$/g, '')
+}
+
+/**
+ * The headline for a `claude_turn` card: the answer's first line of real text,
+ * markdown stripped. A body that is only marks (a lone code fence, a table
+ * rule) is skipped rather than printed as an empty headline; an empty body
+ * returns null and the card falls back on the state word.
+ */
+export function answerHeadline(body: string | null): string | null {
+  if (!body) return null
+  for (const raw of body.split('\n')) {
+    const line = stripMarkdown(raw)
+    if (line) return line
+  }
+  return null
 }

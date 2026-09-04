@@ -11,13 +11,17 @@ function clockTime(iso: string): string {
 export function Feed({ feed, goJob, openThread, onNavigated }: {
   feed: FeedData
   goJob: (j: Job) => void
-  openThread: (id: string) => void
+  /** The thread to open, and the turn inside it the row names. `claude_turn`
+   * rows carry both (`./#exp/v2/ask?thread=…&turn=…`), so a tap lands on the
+   * ANSWER the notification was about rather than at the bottom of a thread
+   * that may have moved on since. */
+  openThread: (id: string, turn?: string) => void
   onNavigated: () => void
 }) {
   const openOne = (n: Notification) => {
     feed.markRead(n)
     const route = parseWbHash(notificationDeepLink(n))
-    if (route.thread) openThread(route.thread)
+    if (route.thread) openThread(route.thread, route.turn)
     else goJob(route.job)
     onNavigated()
   }

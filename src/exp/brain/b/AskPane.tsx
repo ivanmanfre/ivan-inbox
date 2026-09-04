@@ -26,6 +26,9 @@ function navigateToJob(job: Job): void {
 export function AskPane({ chat, job, about, onClose, mobile }: BrainAskPaneProps) {
   const feed = useFeedData()
   const [feedOpen, setFeedOpen] = useState(false)
+  // The turn a feed card names, so the docked pane lands on the same answer the
+  // phone would (a `claude_turn` row's url carries `&turn=`).
+  const [focusTurn, setFocusTurn] = useState<string | null>(null)
 
   return (
     <div className="brain-b bb-desktop">
@@ -43,7 +46,10 @@ export function AskPane({ chat, job, about, onClose, mobile }: BrainAskPaneProps
         {!mobile && <span className="wb-pane-x" onClick={onClose}>✕</span>}
       </div>
 
-      <AskThread chat={chat} job={job} about={about} mobile={mobile} />
+      <AskThread
+        chat={chat} job={job} about={about} mobile={mobile}
+        focusTurn={focusTurn} onFocused={() => setFocusTurn(null)}
+      />
 
       {feedOpen && (
         <div className="bb-feedoverlay">
@@ -56,7 +62,7 @@ export function AskPane({ chat, job, about, onClose, mobile }: BrainAskPaneProps
           <Feed
             feed={feed}
             goJob={navigateToJob}
-            openThread={id => { chat.openThread(id); setFeedOpen(false) }}
+            openThread={(id, turn) => { chat.openThread(id); setFocusTurn(turn ?? null); setFeedOpen(false) }}
             onNavigated={() => setFeedOpen(false)}
           />
         </div>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  FAMILY_LABEL, familyLabel, groupStateWord, looksRaw, sanitizeBody, severityShape, stateWord,
-  type FamilyKey,
+  answerHeadline, FAMILY_LABEL, familyLabel, groupStateWord, looksRaw, sanitizeBody,
+  severityShape, stateWord, stripMarkdown, type FamilyKey,
 } from './families'
 import type { Notification } from '../../../lib/turns'
 
@@ -27,10 +27,14 @@ const ALL_FAMILIES: FamilyKey[] = [
   'reporting_digest', 'scan_quality_alert', 'comment_engagement_notice',
   'booking_notice', 'arch_build_progress', 'seat_health',
   'draft_generation_error', 'send_failed_alert', 'chat',
+  // Not one of the 17 measured WhatsApp families: this app writes it about
+  // itself when a turn finishes while the phone is away. It is the single
+  // highest-volume family on the live feed.
+  'claude_turn',
 ]
 
 describe('FAMILY_LABEL', () => {
-  it('covers all 17 keys plus chat', () => {
+  it('covers all 17 keys plus chat and claude_turn', () => {
     expect(Object.keys(FAMILY_LABEL).sort()).toEqual([...ALL_FAMILIES].sort())
   })
   it('never leaks a raw DB value as the label', () => {
@@ -234,8 +238,55 @@ describe('sanitizeBody', () => {
 })
 
 describe('groupStateWord', () => {
-  it('puts the count first, as the hero number', () => {
-    expect(groupStateWord(6, 'reply_draft_pending')).toBe('6 reply waiting on you')
+  it('puts the count first, on a counted noun that agrees with it', () => {
+    expect(groupStateWord(6, 'reply_draft_pending')).toBe('6 drafts waiting')
+    expect(groupStateWord(1, 'reply_draft_pending')).toBe('1 draft waiting')
+    expect(groupStateWord(3, 'inbound_reply_notice')).toBe('3 replies')
+    expect(groupStateWord(2, 'claude_turn')).toBe('2 answers')
+  })
+  it('never pastes a raw family key or a label with a stray article after the digit', () => {
+    for (const f of ALL_FAMILIES) {
+      const out = groupStateWord(4, f)
+      expect(out.startsWith('4 ')).toBe(true)
+      expect(out).not.toMatch(/_/)
+      expect(out).not.toMatch(/\b(?:a|an|on you)\b/)
+    }
+  })
+  it('falls back for a family nobody has named yet', () => {
+    expect(groupStateWord(2, 'some_new_family')).toBe('2 updates')
+  })
+})
+
+describe('claude_turn — the family the live feed is mostly made of', () => {
+  it('has a human label and no lane button', () => {
+    expect(familyLabel('claude_turn')).toBe('Claude answered')
+  })
+
+  it('stripMarkdown keeps the words and drops the authoring marks', () => {
+    expect(stripMarkdown('**File:** `project/ops-board-task-system.md`'))
+      .toBe('File: project/ops-board-task-system.md')
+    expect(stripMarkdown('### What is waiting')).toBe('What is waiting')
+    expect(stripMarkdown('- three drafts are waiting on you')).toBe('three drafts are waiting on you')
+    expect(stripMarkdown('1. three drafts are waiting')).toBe('three drafts are waiting')
+    expect(stripMarkdown('> quoted line')).toBe('quoted line')
+    expect(stripMarkdown('see [the ledger](https://example.com/x) for it'))
+      .toBe('see the ledger for it')
+    expect(stripMarkdown('*emphasis* holds')).toBe('emphasis holds')
+    expect(stripMarkdown('```')).toBe('')
+  })
+
+  it('answerHeadline takes the first line that is actually words', () => {
+    expect(answerHeadline('```\n# Nothing waiting\nsecond line')).toBe('Nothing waiting')
+    expect(answerHeadline('**Three drafts** are waiting on you.\nmore'))
+      .toBe('Three drafts are waiting on you.')
+    expect(answerHeadline('')).toBe(null)
+    expect(answerHeadline(null)).toBe(null)
+    expect(answerHeadline('```\n```')).toBe(null)
+  })
+
+  it('falls back to a state word when the answer never arrived', () => {
+    expect(stateWord(n('claude_turn', '', { severity: 'info' }))).toBe('Answered')
+    expect(stateWord(n('claude_turn', '', { severity: 'error' }))).toBe('The turn failed')
   })
 })
 

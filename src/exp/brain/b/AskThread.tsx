@@ -13,10 +13,10 @@ import { detectLinks } from '../../../lib/unfurl'
 import { Composer } from './Composer'
 
 // The one place a turn error's text is checked against D6's exact copy. The
-// broker (inbox-claude v16) reports `thread_busy` as NOT retryable already
-// (transport.ts's RETRYABLE set omits it), so `turn.error.retryable` is false
-// there by construction — this constant exists only so the composer can also
-// disable SENDING pre-emptively rather than let the operator draw the 409.
+// broker reports `thread_busy` as NOT retryable already (transport.ts's
+// RETRYABLE set omits it), so `turn.error.retryable` is false there by
+// construction — this constant exists only so the composer can also disable
+// SENDING pre-emptively rather than let the operator draw the refusal.
 const THREAD_BUSY_RE = /still working on the last one/i
 
 function basename(path: string): string {
@@ -24,10 +24,23 @@ function basename(path: string): string {
   return parts[parts.length - 1] || path
 }
 
-/** Every plain-text run, further split on recall nouns and underlined. Code,
- * bold/italic spans and existing links pass through untouched — recall reads
- * off the narrative prose, not off something already marked up. */
-function renderInline(nodes: InlineNode[], nouns: string[], onRecall: (noun: string) => void): ReactNode[] {
+/**
+ * Every plain-text run, split on recall nouns, with the FIRST unclaimed noun in
+ * each block turned into a real control. Code, bold spans and existing links
+ * pass through untouched: recall reads off narrative prose, not off something
+ * already marked up.
+ *
+ * One control per block is a deliberate cap. It keeps the prose from becoming a
+ * field of underlines, and it keeps two 44px hit zones from stacking on
+ * consecutive lines, where the lower one would swallow the upper one's bottom
+ * edge (`elementFromPoint` returns whichever positioned overlay painted last).
+ */
+function renderInline(
+  nodes: InlineNode[],
+  nouns: string[],
+  onRecall: (noun: string) => void,
+  claim: { used: boolean },
+): ReactNode[] {
   const out: ReactNode[] = []
   let key = 0
   const sorted = [...nouns].sort((a, b) => b.length - a.length)
@@ -37,18 +50,21 @@ function renderInline(nodes: InlineNode[], nouns: string[], onRecall: (noun: str
   for (const n of nodes) {
     if (n.t === 'code') { out.push(<code className="wb-ic" key={key++}>{n.v}</code>); continue }
     if (n.t === 'strong') { out.push(<b key={key++}>{n.v}</b>); continue }
-    if (n.t === 'em') { out.push(<i key={key++}>{n.v}</i>); continue }
+    // Emphasis without italics: the house canon retired italic body outright,
+    // so the model's `*emphasis*` lands as a weight step instead of a slant.
+    if (n.t === 'em') { out.push(<em className="bb-em" key={key++}>{n.v}</em>); continue }
     if (n.t === 'link') { out.push(<a className="msg-link" href={n.href} target="_blank" rel="noreferrer" key={key++}>{n.v}</a>); continue }
     if (!re) { out.push(<span key={key++}>{n.v}</span>); continue }
     const parts = n.v.split(re)
     for (const part of parts) {
-      if (nouns.includes(part)) {
+      if (!claim.used && nouns.includes(part)) {
+        claim.used = true
         out.push(
-          <span
-            className="bb-recall" data-recall key={key++} role="button" tabIndex={0}
+          <button
+            type="button" className="bb-recall" data-recall data-noun={part} key={key++}
+            aria-label={`Recall what is remembered about ${part}`}
             onClick={() => onRecall(part)}
-            onKeyDown={e => { if (e.key === 'Enter') onRecall(part) }}
-          >{part}</span>,
+          >{part}</button>,
         )
       } else if (part) {
         out.push(<span key={key++}>{part}</span>)
@@ -64,6 +80,7 @@ function AnswerBody({ text, onRecall }: { text: string; onRecall: (noun: string)
   return (
     <>
       {blocks.map((b, i) => {
+        const claim = { used: false }
         if (b.t === 'code') {
           return (
             <pre className={`wb-code${b.open ? ' open' : ''}`} key={i}>
@@ -72,17 +89,20 @@ function AnswerBody({ text, onRecall }: { text: string; onRecall: (noun: string)
             </pre>
           )
         }
-        if (b.t === 'h') return <div className={`wb-mh h${b.level}`} key={i}>{renderInline(b.nodes, nouns, onRecall)}</div>
+        if (b.t === 'h') return <div className={`wb-mh h${b.level}`} key={i}>{renderInline(b.nodes, nouns, onRecall, claim)}</div>
         if (b.t === 'ul') {
           return (
             <ul className={`wb-ul${b.ordered ? ' ord' : ''}`} key={i}>
               {b.items.map((it, j) => (
-                <li key={j}><span className="wb-li-m">{b.ordered ? `${j + 1}.` : '·'}</span><span>{renderInline(it, nouns, onRecall)}</span></li>
+                <li key={j}>
+                  <span className="wb-li-m">{b.ordered ? `${j + 1}.` : '·'}</span>
+                  <span>{renderInline(it, nouns, onRecall, { used: claim.used || j > 0 })}</span>
+                </li>
               ))}
             </ul>
           )
         }
-        return <p className="wb-p" key={i}>{renderInline(b.nodes, nouns, onRecall)}</p>
+        return <p className="wb-p" key={i}>{renderInline(b.nodes, nouns, onRecall, claim)}</p>
       })}
     </>
   )
@@ -103,18 +123,21 @@ function SourcesChip({ turn }: { turn: Turn }) {
   )
 }
 
-function AnswerCard({ turn, onRetry, onRecall, justLanded }: {
-  turn: Turn; onRetry?: () => void; onRecall: (noun: string) => void; justLanded: boolean
+function AnswerCard({ turn, onRetry, onRecall, justLanded, focused }: {
+  turn: Turn; onRetry?: () => void; onRecall: (noun: string) => void; justLanded: boolean; focused: boolean
 }) {
   const outcome = turnOutcome(turn)
   const isBusy = THREAD_BUSY_RE.test(turn.error?.message ?? '')
   return (
-    <div className={`bb-aturn${justLanded ? ' bb-settle' : ''}`} data-answer data-turn={turn.turnId ?? turn.id}>
+    <div
+      className={`bb-aturn${justLanded ? ' bb-settle' : ''}${focused ? ' bb-focus' : ''}`}
+      data-answer data-turn={turn.turnId ?? turn.id}
+    >
       <TurnMeta turn={turn} outcome={outcome} />
       <ToolStrip calls={turn.tools} />
       {turn.text && <div className="wb-body"><AnswerBody text={turn.text} onRecall={onRecall} /></div>}
       {detectLinks(turn.text || '').slice(0, 1).map(l => <LinkPreview key={l.url} url={l.url} />)}
-      {turn.aborted && <div className="wb-stopped">Stopped.</div>}
+      {turn.aborted && <div className="bb-stopped">You stopped this one. Nothing more is coming.</div>}
       {turn.error && (
         <div className="bb-turn-err">
           <span>{turn.error.message}</span>
@@ -143,16 +166,22 @@ const STARTERS = [
   'What should I look at first?',
 ]
 
-export function AskThread({ chat, job, about, mobile }: {
+export function AskThread({ chat, job, about, mobile, focusTurn = null, onFocused }: {
   chat: ChatHandle
   job: Job
   about: string | null
   mobile: boolean
+  /** The turn a push notification named (`boot.turn`, or a feed card's own
+   * `&turn=` link). Scrolled to once, then marked so the thread goes back to
+   * following the bottom. */
+  focusTurn?: string | null
+  onFocused?: () => void
 }) {
   const [text, setText] = useState('')
   const scroller = useRef<HTMLDivElement>(null)
   const prevBusy = useRef(chat.busy)
   const [justLandedId, setJustLandedId] = useState<string | null>(null)
+  const landedFocus = useRef<string | null>(null)
 
   useEffect(() => {
     if (prevBusy.current && !chat.busy) {
@@ -166,10 +195,26 @@ export function AskThread({ chat, job, about, mobile }: {
     prevBusy.current = chat.busy
   }, [chat.busy, chat.turns])
 
+  // The deep-linked turn wins over the usual follow-the-bottom scroll, once,
+  // as soon as the thread it lives in has hydrated.
   useEffect(() => {
     const el = scroller.current
-    if (el) el.scrollTop = el.scrollHeight
-  }, [chat.turns.length, chat.streamText])
+    if (!el) return
+    if (focusTurn && landedFocus.current !== focusTurn) {
+      const target = el.querySelector(`[data-answer][data-turn="${CSS.escape(focusTurn)}"]`)
+        ?? el.querySelector(`[data-turn="${CSS.escape(focusTurn)}"]`)
+      if (target) {
+        landedFocus.current = focusTurn
+        target.scrollIntoView({ block: 'center' })
+        onFocused?.()
+        return
+      }
+      // Not hydrated yet. Do not chase the bottom in the meantime, or the
+      // surface jumps twice for one tap.
+      return
+    }
+    el.scrollTop = el.scrollHeight
+  }, [chat.turns.length, chat.streamText, focusTurn, onFocused])
 
   const send = (t: string) => {
     if (!t.trim()) return
@@ -190,7 +235,7 @@ export function AskThread({ chat, job, about, mobile }: {
     <div className="bb-ask">
       <div className="bb-thread" ref={scroller}>
         <div className="bb-session">
-          <span>{sessionLine(chat.grounding)}</span>
+          <span className="bb-session-t">{sessionLine(chat.grounding)}</span>
           <span className="bb-head-sp" />
           <button type="button" className="bb-chip tap" data-new-thread onClick={() => chat.newThread()}>New thread</button>
         </div>
@@ -207,18 +252,22 @@ export function AskThread({ chat, job, about, mobile }: {
           </div>
         ) : (
           chat.turns.map(t => t.role === 'user' ? (
-            <div className="bb-uturn" key={t.id}>
+            <div className="bb-uturn" key={t.id} data-turn={t.turnId ?? t.id}>
               <div className="bb-ububble">{t.text}</div>
             </div>
           ) : (
-            <AnswerCard key={t.id} turn={t} onRetry={chat.retry} onRecall={onRecall} justLanded={t.id === justLandedId} />
+            <AnswerCard
+              key={t.id} turn={t} onRetry={chat.retry} onRecall={onRecall}
+              justLanded={t.id === justLandedId}
+              focused={!!focusTurn && (t.turnId ?? t.id) === focusTurn}
+            />
           ))
         )}
 
         {runningElsewhereActive && (
-          <div className="bb-running-banner">
+          <div className="bb-running-banner" data-running-elsewhere>
             <span className="bb-dot3"><span /><span /><span /></span>
-            <span>Still working on this. Keeps working if you lock the phone. You'll get a notification.</span>
+            <span>Still working on this. It started on another screen and it will land here on its own.</span>
             <button type="button" className="bb-stop" data-stop onClick={stopRunningElsewhere}>Stop</button>
           </div>
         )}
