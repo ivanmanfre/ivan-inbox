@@ -10,7 +10,7 @@ import {
   dismissGroup, dismissNotification, groupNotifications, listNotifications,
   markNotificationsRead, type Notification, type NotificationGroup, type NotificationSeverity,
 } from '../../../lib/turns'
-import { familyEyebrow, familyLabel, familyLaneLabel, groupChange, plainHeadline, shortAge } from './families'
+import { familyEyebrow, familyLaneLabel, familySectionLabel, groupChange, plainHeadline, shortAge, worstSeverity } from './families'
 
 type Severity = 'urgent' | 'attention' | 'info'
 
@@ -50,7 +50,9 @@ function FamilySection({ familyKey, groups, open, onToggle, onOpenItem, onDismis
   // answer he actually wants is `body` - so this one family swaps which field
   // is the headline and which is the small line underneath.
   const isTurn = familyKey === 'claude_turn'
-  const label = familyLabel(familyKey)
+  // The header reads the rows under it: "Claude answered" over a card that
+  // says the turn failed is the header contradicting the row it heads.
+  const label = familySectionLabel(familyKey, worstSeverity(groups.map(g => g.latest.severity)))
   return (
     <div className="ba-fsec">
       <button type="button" className="ba-fsec-h" onClick={onToggle} aria-expanded={open}>

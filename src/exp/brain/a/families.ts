@@ -73,10 +73,13 @@ export const FAMILIES: Record<FamilyKey, FamilyMeta> = {
   draft_generation_error: { key: 'draft_generation_error', label: 'Draft failed', lane: 'dms', needs: 'you' },
   send_failed_alert: { key: 'send_failed_alert', label: 'Send failed', lane: 'sends', needs: 'you' },
   chat: { key: 'chat', label: 'Conversation', lane: null, needs: 'fyi' },
-  // A turn finished (or failed) while he was away, pushed by inbox-turn-run.
+  // A turn finished OR FAILED while he was away, pushed by inbox-turn-run.
   // Its own `url` carries the thread/turn deep link, not a Job, so lane is
   // null the same way `chat` is - this still routes correctly on tap because
-  // notificationDeepLink reads the row's url, never the lane.
+  // notificationDeepLink reads the row's url, never the lane. This is the one
+  // family whose audience is not fixed: an answer that landed asks for
+  // nothing, a turn that failed asks him to send it again, and the row's own
+  // severity is what separates them (see familySectionLabel/familyEyebrow).
   claude_turn: { key: 'claude_turn', label: 'Claude answered', lane: null, needs: 'fyi' },
 }
 
@@ -115,10 +118,34 @@ export function familyLaneLabel(key: string): string | null {
  */
 export function familyEyebrow(key: string, severity: NotificationSeverity): string | null {
   if (severity === 'info') return null
+  // `claude_turn` reads its audience off the ROW, not off the map: the only
+  // way this family is ever non-info is a turn that did not land, and a turn
+  // that did not land is waiting on him to send it again.
+  if (key === 'claude_turn') return 'Needs you'
   const needs = isFamilyKey(key) ? FAMILIES[key].needs : 'fyi'
   if (needs === 'system') return 'Fix by hand'
   if (needs === 'you') return 'Needs you'
   return 'Worth a look'
+}
+
+/**
+ * The label the SECTION header prints. Same as `familyLabel` everywhere except
+ * `claude_turn`, where "Claude answered" is a claim the rows underneath can
+ * contradict: a section holding "The turn failed." must not be headed by a
+ * sentence saying it answered. When anything in the section is not info, the
+ * header names the place instead of the outcome, and the card's own headline
+ * and eyebrow carry what happened.
+ */
+export function familySectionLabel(key: string, worst: NotificationSeverity): string {
+  if (key === 'claude_turn' && worst !== 'info') return 'Ask thread'
+  return familyLabel(key)
+}
+
+/** The loudest severity in a set of rows: error beats attention beats info. */
+export function worstSeverity(severities: NotificationSeverity[]): NotificationSeverity {
+  if (severities.includes('error')) return 'error'
+  if (severities.includes('attention')) return 'attention'
+  return 'info'
 }
 
 // The producers write WhatsApp bodies: leading status emoji, `**bold**`,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   FAMILIES, FAMILY_KEYS, familyEyebrow, familyLabel, familyLane, familyLaneLabel,
-  groupChange, plainHeadline, shortAge,
+  groupChange, plainHeadline, shortAge, familySectionLabel, worstSeverity,
 } from './families'
 
 // The 17 real families from the 30-day inventory, plus `chat` (not a
@@ -174,5 +174,31 @@ describe('shortAge', () => {
   })
   it('is empty for a value that is not a time', () => {
     expect(shortAge('not-a-date', now)).toBe('')
+  })
+})
+
+// A live row: `inbox_notifications?family=eq.claude_turn&severity=eq.attention`
+// returns {"title":"Walk me through the send path","body":"The turn failed."}.
+// Nothing on that card may read as an answer that landed.
+describe('a turn that did not land', () => {
+  it('asks for him instead of reading as something worth a look', () => {
+    expect(familyEyebrow('claude_turn', 'attention')).toBe('Needs you')
+    expect(familyEyebrow('claude_turn', 'error')).toBe('Needs you')
+  })
+
+  it('stays silent on the turns that did land', () => {
+    expect(familyEyebrow('claude_turn', 'info')).toBeNull()
+  })
+
+  it('does not let the section header claim it answered', () => {
+    expect(familySectionLabel('claude_turn', 'attention')).toBe('Ask thread')
+    expect(familySectionLabel('claude_turn', 'info')).toBe('Claude answered')
+    expect(familySectionLabel('seat_health', 'error')).toBe('Seat health')
+  })
+
+  it('reads the loudest row in the section', () => {
+    expect(worstSeverity(['info', 'attention', 'info'])).toBe('attention')
+    expect(worstSeverity(['attention', 'error'])).toBe('error')
+    expect(worstSeverity(['info'])).toBe('info')
   })
 })
