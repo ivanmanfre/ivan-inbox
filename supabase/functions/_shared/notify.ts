@@ -186,11 +186,20 @@ export async function notify(db: SupabaseClient, raw: unknown): Promise<NotifyRe
     // Same group collapses on the device instead of stacking; a row with no
     // group is its own tag so it can never swallow an unrelated notification.
     tag: n.group_key ?? row.id,
+    // The worker forwards this to every open tab so a feed can refetch just its
+    // own family instead of reloading everything on every push.
+    family: n.family,
   })
 
+  // Nobody subscribed is not a delivery. Stamping pushed_at on a send that
+  // reached zero devices is how a quiet phone reads as a healthy lane.
+  const delivered = out.subs > 0
   await db.from('inbox_notifications')
-    .update({ pushed_at: new Date().toISOString(), push_result: out })
+    .update({
+      ...(delivered ? { pushed_at: new Date().toISOString() } : {}),
+      push_result: out,
+    })
     .eq('id', row.id)
 
-  return { id: row.id, pushed: true, deduped: false, subs: out.subs, results: out.results }
+  return { id: row.id, pushed: delivered, deduped: false, subs: out.subs, results: out.results }
 }

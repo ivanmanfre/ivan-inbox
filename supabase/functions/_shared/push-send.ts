@@ -23,6 +23,8 @@ export interface PushPayload {
   url: string
   /** Collapses same-tag notifications on the device. Absent = every push stands alone. */
   tag?: string
+  /** The feed family, forwarded by the service worker to the open tabs. */
+  family?: string
   data?: Record<string, unknown>
 }
 
