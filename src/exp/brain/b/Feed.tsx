@@ -29,8 +29,10 @@ export function Feed({ feed, goJob, openThread, onNavigated }: {
   return (
     <div className="bb-feed-body" data-feed>
       {feed.loaded && feed.groups.length === 0 && (
-        <div className="bb-feed-empty">
-          {feed.lastEmptySince ? `Nothing new since ${clockTime(feed.lastEmptySince)}.` : 'Nothing here yet.'}
+        <div className="bb-feed-empty" data-feed-empty>
+          {feed.error
+            ? 'Could not load the feed. Pull to try again.'
+            : feed.lastEmptySince ? `Nothing new since ${clockTime(feed.lastEmptySince)}.` : 'Nothing here yet.'}
         </div>
       )}
       {feed.groups.map(g => (

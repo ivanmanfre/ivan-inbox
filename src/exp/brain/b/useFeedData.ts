@@ -19,6 +19,10 @@ export function useFeedData() {
   const [rows, setRows] = useState<Notification[]>([])
   const [lastEmptySince, setLastEmptySince] = useState<string | null>(null)
   const [loaded, setLoaded] = useState(false)
+  // A read that FAILED is not an empty inbox. Without this flag the catch below
+  // set `loaded` on an empty `rows` and the sheet said "Nothing here yet." — a
+  // claim the data does not hold, and the one that makes him miss a lead.
+  const [error, setError] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   const refresh = useCallback(async () => {
@@ -26,6 +30,7 @@ export function useFeedData() {
     try {
       const live = await listNotifications()
       setRows(live)
+      setError(false)
       setLoaded(true)
       if (live.length === 0) {
         try {
@@ -33,7 +38,11 @@ export function useFeedData() {
           setLastEmptySince(last[0]?.last_seen_at ?? last[0]?.created_at ?? null)
         } catch { /* the empty state still renders without a time */ }
       }
-    } catch {
+    } catch (e) {
+      // The detail stays in the console, where it is useful; the surface says
+      // one fixed sentence rather than a column name off a failed read.
+      console.error('[brain-b] feed read failed', e)
+      setError(true)
       setLoaded(true)
     }
   }, [])
@@ -89,7 +98,7 @@ export function useFeedData() {
   }), [])
 
   return {
-    rows, groups, unreadTotal, loaded, lastEmptySince, expanded,
+    rows, groups, unreadTotal, loaded, error, lastEmptySince, expanded,
     refresh, markRead, dismissOne, dismissGroupRows, toggle,
   }
 }
