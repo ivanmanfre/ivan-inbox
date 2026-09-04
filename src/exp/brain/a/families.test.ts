@@ -202,3 +202,15 @@ describe('a turn that did not land', () => {
     expect(worstSeverity(['info'])).toBe('info')
   })
 })
+
+describe('plainHeadline skips lines that say nothing (cycle 2)', () => {
+  it('passes over a bare number and takes the first real sentence', () => {
+    expect(plainHeadline('1\n2\n3\nThe numbers from 1 to 400, one per line.')).toBe('The numbers from 1 to 400, one per line.')
+  })
+  it('passes over a numbered list marker with a word', () => {
+    expect(plainHeadline('1. Dana Rebecca is his\n2. Sense is ours')).toBe('Dana Rebecca is his')
+  })
+  it('still prints a body that is only digits', () => {
+    expect(plainHeadline('42')).toBe('42')
+  })
+})

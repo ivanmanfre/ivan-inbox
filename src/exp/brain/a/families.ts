@@ -165,7 +165,19 @@ const SNAKE = /(?<![\w/.:-])[a-z]+(?:_[a-z]+)+(?![\w/.-])/g
 
 /** The first real line of a body, with the markdown, the status emoji and the machine's own tokens taken off. Pure. */
 export function plainHeadline(raw: string | null | undefined): string {
-  const first = (raw ?? '').split('\n').map(l => l.trim()).find(l => l.length > 0) ?? ''
+  // The first line that still says something once cleaned: an answer that opens
+  // with a numbered list ("1", "2", ...) or a lone status glyph is not a headline
+  // (cycle 2: two feed cards read "1"). Fall back to the first non-empty line so a
+  // body that is only digits still prints rather than vanishing.
+  const lines = (raw ?? '').split('\n').map(l => l.trim()).filter(l => l.length > 0)
+  for (const line of lines.slice(0, 6)) {
+    const c = cleanHeadlineLine(line)
+    if (c.length >= 3 && /[A-Za-z]/.test(c)) return c
+  }
+  return cleanHeadlineLine(lines[0] ?? '')
+}
+
+function cleanHeadlineLine(first: string): string {
   let s = first
   s = s.replace(/^```+[\w-]*\s*/, '')
   s = s.replace(/^#{1,6}\s+/, '')
