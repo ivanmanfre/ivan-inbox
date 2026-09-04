@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { SendsScreen } from '../../screens/SendsScreen'
 import { TodayScreen } from '../../screens/TodayScreen'
 import { SettingsScreen } from '../../screens/SettingsScreen'
@@ -85,6 +85,7 @@ import './dwsys.css'
 // the queue rail, the disclosure, `.wbkv` and `.wbb` rather than restating
 // them, so its scope does not intersect dwsys's or wbcal's.
 import './wbcall.css'
+import { lazyBrainAsk, lazyBrainMobile, type BrainId } from '../brain'
 
 // ============================================================================
 // Candidate v2c — WORKBENCH
@@ -137,8 +138,13 @@ function useCanvas(): Canvas {
   return canvas
 }
 
-export default function Shell() {
+// `brain`: goal-run inbox-brain-app-2026-09-04. When set, the matching tournament
+// candidate (src/exp/brain/<id>) owns the PHONE chrome and the desktop Ask pane;
+// every lane still renders here. Unset = the workbench exactly as shipped.
+export default function Shell({ brain }: { brain?: BrainId } = {}) {
   const canvas = useCanvas()
+  const BrainMobile = useMemo(() => (brain ? lazyBrainMobile(brain) : null), [brain])
+  const BrainAsk = useMemo(() => (brain ? lazyBrainAsk(brain) : null), [brain])
   const mobile = canvas === 'mobile'
   const boot = useMemo(() => parseWbHash(location.hash), [])
 
@@ -625,6 +631,17 @@ export default function Shell() {
   const renderPeer = (p: Peer) => {
     const key = peerKey(p)
     if (p.kind === 'chat') {
+      if (BrainAsk) {
+        return (
+          <Suspense fallback={null}>
+            <BrainAsk
+              chat={chat} job={job} about={aboutLabel} aboutContext={aboutContext ?? null}
+              subjects={seeSubjects} onClose={() => closePeer('chat')}
+              onOpenAbout={mobile && ctx ? () => setFocus(peerKey(ctx)) : null} mobile={mobile}
+            />
+          </Suspense>
+        )
+      }
       return (
         <ChatPane
           chat={chat}
@@ -693,6 +710,25 @@ export default function Shell() {
   )
 
   // ---- mobile: one region at a time ----
+  if (mobile && BrainMobile) {
+    // The candidate owns the phone. A DM thread opened as a takeover is handed
+    // over rendered; the chat peer is NOT, because Ask is the candidate's own
+    // first-class place rather than a peer over a lane.
+    const p = plan.work === 'hidden' ? plan.peers[0] : undefined
+    const peerView = p && p.kind !== 'chat' ? renderPeer(p) : null
+    return (
+      <Suspense fallback={null}>
+        <CommandLayer />
+        <BrainMobile
+          chat={chat} job={job} goJob={goJob} counts={counts} sev={sev} health={health}
+          loadedAt={inbox.loadedAt} inboxError={inboxError} refresh={inbox.refresh}
+          workSurface={workSurface} windows={windows} peerView={peerView}
+          about={aboutLabel} aboutContext={aboutContext ?? null} subjects={seeSubjects}
+          boot={boot}
+        />
+      </Suspense>
+    )
+  }
   if (mobile) {
     if (plan.work === 'hidden' && plan.peers[0]) {
       const p = plan.peers[0]

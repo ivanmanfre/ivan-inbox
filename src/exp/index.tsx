@@ -24,15 +24,17 @@ import { lazy, Suspense } from 'react'
 // 'stock' (added at deploy, 2026-08-02): the workbench is the default app now,
 // so the PRE-revamp shell is the one that needs a flag. App.tsx renders it
 // directly; ExpGate never sees it.
-export type ExpVariant = 'a' | 'b' | 'c' | 'v2' | 'v2c' | 'stock'
+// brain-a|b|c (goal-run inbox-brain-app-2026-09-04): the workbench shell with
+// one of the phone/Ask tournament candidates mounted through src/exp/brain.
+export type ExpVariant = 'a' | 'b' | 'c' | 'v2' | 'v2c' | 'stock' | 'brain-a' | 'brain-b' | 'brain-c'
 
 const KEY = 'exp_variant'
-const VARIANTS: ExpVariant[] = ['a', 'b', 'c', 'v2', 'v2c', 'stock']
+const VARIANTS: ExpVariant[] = ['a', 'b', 'c', 'v2', 'v2c', 'stock', 'brain-a', 'brain-b', 'brain-c']
 
 export function getExpVariant(): ExpVariant | null {
   // v2c before v2 — the alternation is ordered, so the shorter id must not eat
   // the longer one's prefix.
-  const m = location.hash.match(/^#exp\/(v2c|v2|a|b|c|stock|off)\b/)
+  const m = location.hash.match(/^#exp\/(brain-a|brain-b|brain-c|v2c|v2|a|b|c|stock|off)\b/)
   if (m) {
     if (m[1] === 'off') { sessionStorage.removeItem(KEY); return null }
     sessionStorage.setItem(KEY, m[1])
@@ -54,6 +56,9 @@ export function ExpGate({ variant }: { variant: ExpVariant }) {
       {variant === 'b' && <ShellB />}
       {variant === 'c' && <ShellC />}
       {(variant === 'v2' || variant === 'v2c') && <ShellV2 />}
+      {variant === 'brain-a' && <ShellV2 brain="a" />}
+      {variant === 'brain-b' && <ShellV2 brain="b" />}
+      {variant === 'brain-c' && <ShellV2 brain="c" />}
     </Suspense>
   )
 }
