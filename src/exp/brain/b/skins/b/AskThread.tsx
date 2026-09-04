@@ -158,13 +158,13 @@ function AnswerCard({ turn, onRetry, onRecall, justLanded, focused }: {
       {detectLinks(turn.text || '').slice(0, 1).map(l => <LinkPreview key={l.url} url={l.url} />)}
       {turn.aborted && <div className="bb-stopped">You stopped this one. Nothing more is coming.</div>}
       {turn.error && (
-        <div className="bb-turn-err">
-          <span>{turn.error.message}</span>
+        <div className="bb-turn-err bbf-err">
+          <span className="bbf-err-t">{turn.error.message}</span>
           {/* thread_busy is not retryable at the transport level already; this
               extra text check is belt-and-braces for a message that reached
               here through any other path. */}
           {turn.error.retryable && !isBusy && onRetry && (
-            <button className="bb-retry" onClick={onRetry}>Retry</button>
+            <button className="bb-retry bbf-retry" data-tap onClick={onRetry}>Retry</button>
           )}
         </div>
       )}
@@ -256,7 +256,7 @@ export function AskThread({ chat, about, mobile, focusTurn = null, onFocused }: 
   return (
     <div className="bb-ask bbf-ask">
       <div className="bb-thread bbf-thread" ref={scroller}>
-        <div className="bb-session bbf-session">
+        <div className="bb-session bbf-session bbf-shelf">
           <span className="bb-session-t">{sessionLine(chat.grounding)}</span>
           <button type="button" className="bb-chip bbf-chip-m tap" data-new-thread data-tap onClick={() => chat.newThread()}>New thread</button>
         </div>
@@ -266,7 +266,7 @@ export function AskThread({ chat, about, mobile, focusTurn = null, onFocused }: 
             <div className="bb-empty-t bbf-empty-t">
               {about ? <>Ask about {about}.</> : 'Ask anything.'}
             </div>
-            <div className="bb-empty-s">
+            <div className="bb-empty-s bbf-empty-s">
               {about
                 ? 'Claude keeps this thread between turns. The transcript is the continuity.'
                 : 'Claude reads your memory, the calls and every lane before it answers, and keeps this thread between turns.'}

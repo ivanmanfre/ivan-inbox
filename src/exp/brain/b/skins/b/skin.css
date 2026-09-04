@@ -165,7 +165,7 @@
        detail hidden. --- */
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-state{
   display:block; position:relative; padding-left:19px; padding-right:26px;
-  display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
 }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-state .bbf-mark{
   position:absolute; left:0; top:.28em; width:10px; height:14px;
@@ -361,22 +361,43 @@
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-thread{
   padding:12px 12px 104px;
 }
+/* The session row is a SHELF: one surface1 plate, ONE line, the New thread
+   button seated inside it. Unplated, the grounded date wrapped beside the
+   button and every seat called it out. The sentence keeps every word and
+   truncates from the tail rather than ever taking a second line at 390. */
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-session{
-  background:none; padding:0; margin-bottom:14px; font-size:var(--fs-meta); color:var(--text3);
+  display:flex; align-items:center; gap:10px; flex-wrap:nowrap;
+  background:var(--surface1); border:1px solid var(--bbb-edge); border-radius:var(--r-ctl);
+  padding:7px 8px 7px 12px; margin-bottom:16px;
+  font-size:var(--fs-meta); color:var(--text3);
+}
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-session .bb-session-t{
+  flex:1 1 auto; min-width:0; line-height:1.3;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-session .bb-chip{
+  flex:0 0 auto; white-space:nowrap; background:var(--surface2); color:var(--text2);
 }
 
 /* --- the empty state: the ONE display size ------------------------------- */
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-empty{ padding:16px 0 0; gap:0; }
+/* The empty screen states the promise. At the display size the whole sentence
+   runs past four lines at 390, so the promise takes the display and the rest
+   of it is PROSE at 17 in `--text` — white, not a grey caption. It was reading
+   as a stock chat starter with a small title. */
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-empty{ padding:6px 0 0; gap:0; }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-empty-t{
-  font-size:var(--bbb-display); font-weight:600; line-height:1.1; letter-spacing:-.02em;
+  font-size:var(--bbb-display); font-weight:600; line-height:1.15; letter-spacing:-.02em;
+  color:var(--text);
 }
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-empty-s{
-  margin-top:12px; font-size:var(--fs-body); line-height:1.55; color:var(--text2); max-width:34em;
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-empty-s{
+  margin-top:10px; font-size:var(--fs-title); font-weight:400; line-height:1.45;
+  color:var(--text); max-width:32em;
 }
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-starters{ margin-top:20px; gap:8px; }
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-starters{ margin-top:22px; gap:9px; }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-starter{
-  font-size:var(--fs-body); line-height:1.4; padding:13px 14px; min-height:48px;
-  background:var(--surface1); border:1px solid var(--bbb-edge); color:var(--text2);
+  display:flex; align-items:center;
+  font-size:var(--fs-body); line-height:1.35; padding:0 15px; min-height:52px;
+  background:var(--surface2); border:1px solid var(--bbb-edge); color:var(--text);
   border-radius:var(--r-card);
 }
 
@@ -442,16 +463,36 @@
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-runbanner{
   background:none; border:none; padding:10px 0 0; font-size:var(--fs-meta); color:var(--text3);
 }
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-stopped,
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-turn-err{
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-stopped{
   font-size:var(--fs-body); background:var(--surface1); border-radius:var(--r-ctl);
+  padding:12px 14px; color:var(--text2);
+}
+/* A failure is a designed state, not a bordered note: a raised plate, a solid
+   rail, copy you can read without leaning in and a Retry the thumb can find. */
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-turn-err.bbf-err{
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  margin-top:12px; padding:16px; border:0; border-left:4px solid var(--sev-urgent);
+  border-radius:var(--r-chip) var(--r-card) var(--r-card) var(--r-chip);
+  background:var(--surface2);
+  box-shadow:inset 0 1px 0 var(--bbb-edge), 0 6px 16px -10px var(--bbb-shadow);
+}
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-err-t{
+  flex:1 1 12em; min-width:0;
+  font-size:var(--fs-body); line-height:1.45; color:var(--text);
+}
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-retry.bbf-retry{
+  flex:0 0 auto; min-height:44px; padding:0 18px; border-radius:var(--r-ctl);
+  background:var(--surface3); border:1px solid var(--hairline-strong); color:var(--text);
+  font-size:var(--fs-body); font-weight:500;
 }
 
 /* ========================================================================== */
 /* COMPOSER — a floating bar above the tab bar, tray opening upward            */
 /* ========================================================================== */
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-composer{
-  position:absolute; left:12px; right:12px; bottom:8px; z-index:4;
+  /* Seated, not floating: the bar's own bottom edge IS the tab bar's top
+     hairline. An 8px gap under it read as a control that had come loose. */
+  position:absolute; left:12px; right:12px; bottom:0; z-index:4;
   display:flex; flex-direction:column; gap:8px;
   padding:0; border:none; background:none;
 }
@@ -576,9 +617,15 @@
 /* DESKTOP at 1440 — parity, not a second design                              */
 /* ========================================================================== */
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b).bb-desktop{ position:relative; }
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b).bb-desktop .bbf-thread{ padding:16px 24px 108px; }
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b).bb-desktop .bbf-answer .wb-p{ max-width:68ch; }
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b).bb-desktop .bbf-composer{ left:16px; right:16px; bottom:12px; }
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b).bb-desktop .bbf-thread{ padding:20px 24px 116px; }
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b).bb-desktop .bbf-answer .wb-p,
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b).bb-desktop .bbf-answer .wb-body li{ max-width:68ch; font-size:var(--fs-body); }
+/* Nothing in the docked pane's prose runs at meta size: the seats read the
+   third pane as a wall of tiny digits. */
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b).bb-desktop .bbf-answer .wb-body,
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b).bb-desktop .bbf-answer .wb-body *{ font-size:var(--fs-body); }
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b).bb-desktop .bb-session{ margin-bottom:18px; }
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b).bb-desktop .bbf-composer{ left:16px; right:16px; bottom:0; }
 /* His bubble keeps a reading measure on a wide pane rather than growing to 82%
    of it: a line he typed is not more readable for being 90 characters long. */
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b).bb-desktop .bbf-ububble{ max-width:46ch; }
