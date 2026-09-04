@@ -13,6 +13,16 @@ import { answerHeadline, cardLines, familyLabel, heroSaysFailed, sanitizeBody, s
 
 export type FormKind = 'quote' | 'figure' | 'line' | 'answer'
 
+/**
+ * `sanitizeBody` breaks an em dash into a sentence because the copy rule bans it
+ * on screen. The corpus also writes the SAME clause break as a double hyphen
+ * ("Alec -- Want to get some time next week"), which is the same offence in
+ * ASCII and reached the surface intact.
+ */
+export function breakDashes(text: string): string {
+  return text.replace(/\s+--+\s+/g, '. ').replace(/\s+--+/g, '. ').replace(/--+/g, ' ')
+}
+
 export interface RowForm {
   /** The display-size word. Always outside the detail element (E5). */
   word: string
@@ -107,13 +117,13 @@ export function quoteOf(body: string | null): string | null {
   if (!body) return null
   const clean = sanitizeBody(body)
   const spoken = clean.match(/["“]([^"“”]{2,150})["”]/)
-  if (spoken) return `“${spoken[1].trim()}”`
-  const paras = (body.split(/\n{2,}/).map(p => sanitizeBody(p)).filter(Boolean))
+  if (spoken) return `“${breakDashes(spoken[1].trim())}”`
+  const paras = (body.split(/\n{2,}/).map(p => breakDashes(sanitizeBody(p))).filter(Boolean))
   if (paras.length > 1) {
     const last = paras[paras.length - 1]
     if (last && last.length <= 220) return last
   }
-  return clean ? clean.slice(0, 220) : null
+  return clean ? breakDashes(clean).slice(0, 220) : null
 }
 
 /** How many events a booking row stands for, as a figure and its noun. */
@@ -156,7 +166,7 @@ export function rowForm(n: Notification): RowForm {
     const q = quoteOf(n.body)
     if (q) return { word, subject, kind: 'quote', detail: q, figure: null }
   }
-  const line = n.body ? trimEcho(stripShout(sanitizeBody(n.body)), word, subject).slice(0, 220) : null
+  const line = n.body ? trimEcho(stripShout(breakDashes(sanitizeBody(n.body))), word, subject).slice(0, 220) : null
   return { word, subject, kind: 'line', detail: line || null, figure: null }
 }
 
