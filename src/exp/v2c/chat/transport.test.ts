@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { isRetryable, toChatEvent } from './transport'
+import { isRetryable, mockTransport, toChatEvent } from './transport'
+import type { ChatEvent } from './events'
 import { CLAUDE_ERROR_COPY } from '../../../lib/claude'
 
 const T0 = 1_000_000
@@ -54,6 +55,68 @@ describe('toChatEvent — broker event → client event', () => {
 
   it('turns an abort into the aborted frame, never an error box', () => {
     expect(toChatEvent({ kind: 'error', code: 'aborted' }, T0, T0, 0)).toEqual({ type: 'aborted' })
+  })
+
+  // db/049. The stream is the fast path; the ROW is the truth. These ids are how
+  // the hook finds the row again after the connection is lost, so they must pass
+  // through whole rather than being folded into the session frame.
+  it('passes the row identity straight through', () => {
+    expect(toChatEvent(
+      { kind: 'turn', turnId: 'tu-1', threadId: 'th-1', session: 'resumed', groundedOn: '2026-09-03' },
+      T0, T0, 0,
+    )).toEqual({
+      type: 'turn', turnId: 'tu-1', threadId: 'th-1', session: 'resumed', groundedOn: '2026-09-03',
+    })
+  })
+
+  it('keeps a null grounding date null rather than inventing a day', () => {
+    expect(toChatEvent(
+      { kind: 'turn', turnId: 'tu-2', threadId: 'th-2', session: 'new', groundedOn: null },
+      T0, T0, 0,
+    )).toMatchObject({ session: 'new', groundedOn: null })
+  })
+})
+
+describe('the mock transport still renders every state it exists for', () => {
+  // Breaking out of the for-await closes the generator, so these stop at the
+  // frame under test instead of sitting through the stub's full typing delay.
+  const until = async (req: Parameters<typeof mockTransport>[0], stop: (seen: ChatEvent[]) => boolean) => {
+    const out: ChatEvent[] = []
+    for await (const e of mockTransport(req)) {
+      out.push(e)
+      if (stop(out)) break
+    }
+    return out
+  }
+
+  it('names a row before the first token, the way the broker does', async () => {
+    const events = await until(
+      { prompt: 'why is the pill clipped', sessionId: null },
+      seen => seen.some(e => e.type === 'text'),
+    )
+    const turn = events.find(e => e.type === 'turn')
+    // The hook validates the thread id before it paints or persists it, so a
+    // readable placeholder here would render a working conversation as broken.
+    expect(turn && turn.type === 'turn' && turn.threadId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    )
+    expect(events.findIndex(e => e.type === 'turn'))
+      .toBeLessThan(events.findIndex(e => e.type === 'text'))
+  })
+
+  it('echoes the ids the client minted rather than inventing rivals', async () => {
+    const events = await until({
+      prompt: 'again', sessionId: null,
+      threadId: '11111111-1111-4111-8111-111111111111',
+      turnId: '22222222-2222-4222-8222-222222222222',
+    }, seen => seen.some(e => e.type === 'turn'))
+    expect(events[events.length - 1]).toEqual({
+      type: 'turn',
+      turnId: '22222222-2222-4222-8222-222222222222',
+      threadId: '11111111-1111-4111-8111-111111111111',
+      session: 'resumed',
+      groundedOn: '2026-09-04',
+    })
   })
 })
 
