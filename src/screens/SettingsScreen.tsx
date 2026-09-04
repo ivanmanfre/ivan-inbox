@@ -220,12 +220,15 @@ export function SettingsScreen({ shell = 'stock' }: { shell?: SettingsShell } = 
     setTheme(next)
   }
 
+  // iOS FIRST, above 'unsupported'. Safari outside the installed app has no
+  // window.PushManager, so push reads 'unsupported' there and the old ladder told
+  // Ivan his browser cannot do this, on the one device where the fix is two taps.
   const pushHint =
-    push === 'unsupported' ? 'This browser does not support web push.'
-      : push === 'denied' ? 'Notifications are blocked for this site — allow them in browser settings, then toggle on.'
-        : push === 'on' ? 'This device gets a ping when a new reply lands.'
-          : isIOS() && !isStandalone()
-            ? 'Install to Home Screen first (Share → Add to Home Screen), then enable.'
+    isIOS() && !isStandalone()
+      ? 'Add this to your Home Screen first (Share, then Add to Home Screen), then enable.'
+      : push === 'unsupported' ? 'This browser does not support web push.'
+        : push === 'denied' ? 'Notifications are blocked for this site. Allow them in browser settings, then toggle on.'
+          : push === 'on' ? 'This device gets a ping when a new reply lands.'
             : 'Get a ping when a new reply lands. Enable per device.'
 
   return (
