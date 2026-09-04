@@ -218,7 +218,7 @@ export function stateWord(n: Pick<Notification, 'family' | 'title' | 'body' | 's
   const family = n.family as FamilyKey
   let word: string
   switch (family) {
-    case 'reply_draft_pending': word = n.count > 1 ? `${n.count} waiting` : 'Draft waiting'; break
+    case 'reply_draft_pending': word = n.count > 1 ? `${n.count} waiting on you` : 'Waiting on you'; break
     case 'system_infra_alarm': word = 'Broke'; break
     case 'outreach_engine_ops': word = extractOutreach(body); break
     case 'post_generation_failed': word = n.count > 1 ? `${n.count} failed` : 'Failed'; break
@@ -339,4 +339,26 @@ export function answerHeadline(body: string | null): string | null {
     if (line) return line
   }
   return null
+}
+
+// ---------------------------------------------------------------------------
+// 7. THE HERO AND THE LINE UNDER IT.
+//
+// The card leads with the state word and names the family under it. On some
+// families those two are the same sentence: `send_failed_alert` computed
+// "Send failed" under a family label of "Send failed", and the rubric's own
+// known-bad anchor for this surface is a row printing byte-identical
+// duplicates. Where one contains the other, the LONGER of the two wins the
+// hero slot (it is strictly the more informative of the pair: "Post generation
+// failed" beats "Failed") and the second line goes away.
+// ---------------------------------------------------------------------------
+const norm = (v: string): string => v.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim()
+
+export function cardLines(word: string, label: string): { hero: string; sub: string | null } {
+  const w = norm(word)
+  const l = norm(label)
+  if (!w || !l) return { hero: word || label, sub: null }
+  if (l.includes(w)) return { hero: label, sub: null }
+  if (w.includes(l)) return { hero: word, sub: null }
+  return { hero: word, sub: label }
 }

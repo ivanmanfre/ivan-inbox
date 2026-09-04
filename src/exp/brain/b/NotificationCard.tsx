@@ -1,6 +1,7 @@
 import type { Notification, NotificationGroup } from '../../../lib/turns'
 import {
-  answerHeadline, FAMILY_LANE, familyLabel, groupStateWord, sanitizeBody, severityShape, stateWord,
+  answerHeadline, cardLines, FAMILY_LANE, familyLabel, groupStateWord, sanitizeBody,
+  severityShape, stateWord,
 } from './families'
 import { JOB_LABEL } from '../../v2c/layout'
 
@@ -49,8 +50,14 @@ export function NotificationCard({ n, onOpen, onDismiss, nested = false }: {
   const open = openLabel(n.family)
   const isTurn = n.family === 'claude_turn'
   const turnLines = isTurn ? claudeTurnLines(n) : null
-  const hero = turnLines ? turnLines.hero : stateWord(n)
-  const second = turnLines ? turnLines.second : (n.body ? sanitizeBody(n.body).slice(0, 140) : null)
+  const body = turnLines ? turnLines.second : (n.body ? sanitizeBody(n.body).slice(0, 140) : null)
+  // A nested row's job is to answer "which one of these", not to repeat the
+  // state and the family the parent card has already said. So it leads with its
+  // own sentence and drops both.
+  const lines = nested
+    ? { hero: body ?? stateWord(n), sub: null }
+    : cardLines(turnLines ? turnLines.hero : stateWord(n), familyLabel(n.family))
+  const second = nested ? null : body
   return (
     <div
       className={`bb-card${unread ? ' unread' : ''}${nested ? ' bb-nested' : ''}`}
@@ -58,8 +65,8 @@ export function NotificationCard({ n, onOpen, onDismiss, nested = false }: {
     >
       {!nested && <div className="bb-mark" data-shape={shape}><i /></div>}
       <div className="bb-card-body" onClick={() => onOpen(n)}>
-        <span className={`bb-card-word${isTurn ? ' bb-card-sentence' : ''}`}>{hero}</span>
-        <span className="bb-card-who">{familyLabel(n.family)}</span>
+        <span className={`bb-card-word${isTurn || nested ? ' bb-card-sentence' : ''}${nested ? ' bb-card-line' : ''}`}>{lines.hero}</span>
+        {lines.sub && <span className="bb-card-who">{lines.sub}</span>}
         {second && <span className="bb-card-body-l">{second}</span>}
         <div className="bb-card-meta">
           <TenantChip tenant={n.tenant} />
@@ -105,9 +112,11 @@ export function GroupCard({ g, open, onToggle, onOpen, onDismissAll, onDismissOn
       <div className={`bb-card${unread ? ' unread' : ''}`} data-card data-family={g.family} data-shape={shape}>
         <div className="bb-mark" data-shape={shape}><i /></div>
         <div className="bb-card-body" onClick={onToggle}>
+          {/* No family line: the counted noun already names the family in
+              words ("3 drafts waiting"), and no body line while the group is
+              open, because the first row below it is that same sentence. */}
           <span className="bb-card-word">{groupStateWord(g.count, g.family)}</span>
-          <span className="bb-card-who">{familyLabel(g.family)}</span>
-          {latestLine && <span className="bb-card-body-l">{latestLine}</span>}
+          {!open && latestLine && <span className="bb-card-body-l">{latestLine}</span>}
           <div className="bb-card-meta">
             <TenantChip tenant={g.latest.tenant} />
             <span>latest {clock(g.lastSeenAt)}</span>

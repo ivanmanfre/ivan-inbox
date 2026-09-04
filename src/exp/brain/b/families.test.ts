@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  answerHeadline, FAMILY_LABEL, familyLabel, groupStateWord, looksRaw, sanitizeBody,
+  answerHeadline, cardLines, FAMILY_LABEL, familyLabel, groupStateWord, looksRaw, sanitizeBody,
   severityShape, stateWord, stripMarkdown, type FamilyKey,
 } from './families'
 import type { Notification } from '../../../lib/turns'
@@ -63,8 +63,10 @@ describe('looksRaw', () => {
 describe('stateWord — every family, on its own verbatim bodies', () => {
   it('reply_draft_pending', () => {
     const body = "[risedtc seat] Stalled convo bump drafted for Alec Lorenzo (ICP 7, silent 8d, judged interest_then_silence):\n\nAlec -- Want to get some time next week to have a look at this? Cheers"
-    expect(stateWord(n('reply_draft_pending', body))).toBe('Draft waiting')
-    expect(stateWord(n('reply_draft_pending', body, { count: 3 }))).toBe('3 waiting')
+    // 'Waiting on you' is a substring of the family label 'Reply waiting on
+    // you', so `cardLines` collapses the pair to one line on the card.
+    expect(stateWord(n('reply_draft_pending', body))).toBe('Waiting on you')
+    expect(stateWord(n('reply_draft_pending', body, { count: 3 }))).toBe('3 waiting on you')
   })
 
   it('system_infra_alarm', () => {
@@ -295,5 +297,25 @@ describe('severityShape', () => {
     expect(severityShape('error')).toBe('bar')
     expect(severityShape('attention')).toBe('square')
     expect(severityShape('info')).toBe('dot')
+  })
+})
+
+describe('cardLines — the hero and the line under it', () => {
+  it('collapses a byte-identical pair to one line', () => {
+    expect(cardLines('Send failed', 'Send failed')).toEqual({ hero: 'Send failed', sub: null })
+  })
+  it('keeps the longer of a contained pair, because it says more', () => {
+    expect(cardLines('Broke', 'Something broke')).toEqual({ hero: 'Something broke', sub: null })
+    expect(cardLines('Failed', 'Drafter failed')).toEqual({ hero: 'Drafter failed', sub: null })
+    expect(cardLines('Failed', 'Post generation failed')).toEqual({ hero: 'Post generation failed', sub: null })
+    expect(cardLines('Waiting on you', 'Reply waiting on you'))
+      .toEqual({ hero: 'Reply waiting on you', sub: null })
+  })
+  it('keeps both when they are different facts', () => {
+    expect(cardLines('Disconnected', 'Seat health')).toEqual({ hero: 'Disconnected', sub: 'Seat health' })
+    expect(cardLines('Halted', 'Outreach engine')).toEqual({ hero: 'Halted', sub: 'Outreach engine' })
+  })
+  it('never returns an empty hero', () => {
+    expect(cardLines('', 'Booking')).toEqual({ hero: 'Booking', sub: null })
   })
 })

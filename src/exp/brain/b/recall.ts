@@ -41,8 +41,14 @@ export function extractRecallNouns(text: string): string[] {
   }
   for (const m of text.match(MD_RE) ?? []) push(m)
   for (const m of text.match(NAME_RE) ?? []) {
-    const firstWord = m.split(/\s+/)[0]
-    if (LEADING_STOP.has(firstWord)) continue
+    const words = m.split(/\s+/)
+    if (LEADING_STOP.has(words[0])) continue
+    // Every word has to be at least three characters. Two-character tokens are
+    // where the false positives live: a sentence opening with a capitalised
+    // verb followed by a short label reads as a name to the regex ("Ran R1"
+    // was underlined in a live answer during evidence capture) and there is
+    // nothing in memory under it.
+    if (words.some(w => w.length < 3)) continue
     push(m)
   }
   return out
