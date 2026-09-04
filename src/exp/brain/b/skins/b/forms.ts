@@ -243,3 +243,96 @@ export function fileSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
+
+// ---------------------------------------------------------------------------
+// THE SUBJECT — who or what a row is about. Cycle 1.
+//
+// Three seats named the same defect: an error strip that prints "Send failed"
+// and nothing else is a card that has not said the one thing worth reading.
+// Every form now carries `state · subject` on its headline, so a row names its
+// person (a reply, a comment, a booking, a seat) or its thing (a workflow, a
+// lane, a domain) in the card's own largest type.
+//
+// The ladder, in order, and it returns null rather than guessing:
+//   1. a person named after "for / to / from / with", in the title then the body
+//   2. the title with the state word and its connective tail removed
+//   3. nothing
+// ---------------------------------------------------------------------------
+
+const AFTER_PREP = /\b(?:for|to|from|with|on)\s+([A-Z][\p{Ll}'’-]+(?:\s+[A-Z][\p{Ll}'’-]+){0,3})\b/u
+
+/** Words that are the state, not the subject, and that a title trails with. */
+const TAIL = /\s*(?:\b(?:failed|failure|error|errors|halted|blocked|broke|broken|down|ready|is|was|has|have)\b[\s.:,-]*)+$/i
+const HEAD = /^(?:\s*(?:re|new|the)\b[\s:-]*)+/i
+
+function sharesWords(a: string, b: string): boolean {
+  const wa = new Set(a.toLowerCase().split(/\W+/).filter(w => w.length > 2))
+  return b.toLowerCase().split(/\W+/).some(w => w.length > 2 && wa.has(w))
+}
+
+type SubjectRow = Pick<Notification, 'family' | 'title' | 'body' | 'severity' | 'count'>
+
+export function subjectFor(n: SubjectRow): string | null {
+  // 1. the form's OWN resolution first. A quote card knows who spoke because it
+  // reads the line that introduced the quote; a bare preposition does not, and
+  // "1 new comment on Davorin's posts" named the wrong human entirely.
+  const form = formFor(n.family)
+  if (form === 'quote') {
+    const q = quoteCard(n)
+    if (q.subject) return q.subject
+  }
+  if (form === 'time') {
+    const t = timeCard(n)
+    if (t.who) return t.who
+  }
+
+  // 2. a person the row names after a preposition.
+  const person = (n.title ?? '').match(AFTER_PREP)?.[1] ?? (n.body ?? '').match(AFTER_PREP)?.[1] ?? null
+  if (person) return person
+
+  // 2. the title, minus the state word it repeats and the tail it trails with.
+  const word = stateWord(n)
+  let t = (n.title ?? '').trim()
+  if (!t) return null
+  const re = new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+  t = t.replace(re, ' ').replace(TAIL, '').replace(HEAD, '')
+  // The removed word takes its punctuation with it, or the title keeps a
+  // colon that used to belong to a word that is no longer there.
+  t = t.replace(/\s+([:;,.\u00b7-])/g, ' ').replace(/\s{2,}/g, ' ').trim()
+  t = t.replace(/^[\s:.,\u00b7-]+|[\s:.,\u00b7-]+$/g, '')
+  // Cut a trailing clause: the subject is who or what, never what happened to
+  // it a second time. Then cap on a word boundary so a long one ellipsises in
+  // the headline instead of wrapping it onto a line the feed cannot afford.
+  t = t.replace(/\s+\b(?:needs?|requires?|is|was|has|have|that|which|and)\b.*$/i, '').trim()
+  if (t.length > 30) {
+    const cut = t.slice(0, 30)
+    const sp = cut.lastIndexOf(' ')
+    t = (sp > 12 ? cut.slice(0, sp) : cut).trim()
+  }
+  if (t.length < 2 || t.length > 44) return null
+  // A "subject" that is only the family's own name back again says nothing.
+  if (sharesWords(t, familyLabel(n.family)) && t.split(/\s+/).length <= 2) return null
+  return t
+}
+
+/**
+ * The one line under a headline. It must not be the headline again: a strip
+ * that reads "Send failed · Sarah Francis" over "Send FAILED (verified not
+ * delivered) to Sarah Fra…" has spent a line saying nothing. Walk the body's
+ * sentences and take the first that carries something the headline does not.
+ */
+export function detailLine(body: string | null, headline: string, max = 120): string | null {
+  if (!body) return null
+  const clean = sanitizeBody(body).trim()
+  if (!clean) return null
+  const head = new Set(headline.toLowerCase().split(/\W+/).filter(w => w.length > 3))
+  const parts = clean.split(/(?<=[.!?])\s+|\n+/).map(x => x.trim()).filter(Boolean)
+  for (const part of parts) {
+    const words = part.toLowerCase().split(/\W+/).filter(w => w.length > 3)
+    if (!words.length) continue
+    const shared = words.filter(w => head.has(w)).length / words.length
+    if (shared < 0.4) return part.slice(0, max)
+  }
+  // Every sentence restates the headline: the body has nothing more to add.
+  return parts.length > 1 ? parts.slice(1).join(' ').slice(0, max) || null : null
+}

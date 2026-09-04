@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react'
 import type { Notification, NotificationGroup } from '../../../../../lib/turns'
 import {
-  FAMILY_LANE, familyLabel, groupStateWord, sanitizeBody, severityShape, stateWord,
+  FAMILY_LANE, groupStateWord, sanitizeBody, severityShape, stateWord,
 } from '../../families'
 import { JOB_LABEL } from '../../../../v2c/layout'
-import { dayWord, formFor, pageCard, quoteCard, raised, tileCard, timeCard } from './forms'
+import { dayWord, detailLine, formFor, pageCard, quoteCard, raised, subjectFor } from './forms'
 
 // A card whose SHAPE says what it is before a word is read. See forms.ts for
 // which family takes which form and why, and skin.css for how each one is
@@ -35,15 +35,23 @@ function Mark({ shape }: { shape: 'square' | 'bar' | 'dot' }) {
 }
 
 /**
- * The state line every form leads with: the mark, then the short word for what
- * changed. It sits OUTSIDE the card's quote / snippet / body element on
- * purpose — a card has to name its own state with its detail hidden.
+ * The headline every form leads with: the mark, the short word for what
+ * changed, and WHO OR WHAT it happened to, in the card's own largest type.
+ *
+ * Cycle 1. Three seats named the same defect on the same cards: an error strip
+ * that printed "Send failed" and nothing else, a tile that printed "Progress".
+ * A bare verb is not a notification. The subject joins the state word here
+ * rather than sitting on a line of its own, so the card still answers "what
+ * changed, to whom" in one glance and with its detail element hidden.
  */
-function StateLine({ shape, word, big = false }: { shape: 'square' | 'bar' | 'dot'; word: string; big?: boolean }) {
+function Headline({ shape, word, subject, big = false }: {
+  shape: 'square' | 'bar' | 'dot'; word: string; subject?: string | null; big?: boolean
+}) {
   return (
     <div className={`bbf-state${big ? ' bbf-state-big' : ''}`}>
       <Mark shape={shape} />
       <span className="bb-card-word">{word}</span>
+      {subject && <><span className="bbf-dot" aria-hidden>·</span><span className="bbf-subj">{subject}</span></>}
     </div>
   )
 }
@@ -129,11 +137,12 @@ export function NotificationCard({ n, onOpen, onDismiss, nested = false }: {
     )
   }
 
-  const foot = (extra?: React.ReactNode) => (
+  const foot = (opts?: { clock?: boolean }) => (
     <div className="bbf-foot">
       <TenantChip tenant={n.tenant} />
-      <span className="bbf-time">{time}</span>
-      {extra}
+      {/* The time block already prints this clock as its figure; a second copy
+          three lines under it was one of the panel's craft findings. */}
+      {opts?.clock !== false && <span className="bbf-time">{time}</span>}
       <span className="bbf-sp" />
       {lane && (
         <button
@@ -150,68 +159,56 @@ export function NotificationCard({ n, onOpen, onDismiss, nested = false }: {
     </div>
   )
 
+  const subject = subjectFor(n)
+
   let inner: React.ReactNode
   if (form === 'quote') {
-    const { quote, subject } = quoteCard(n)
+    const { quote } = quoteCard(n)
     inner = (
       <>
-        <StateLine shape={shape} word={stateWord(n)} />
+        <Headline shape={shape} word={stateWord(n)} subject={subject} />
         {quote && <blockquote className="bbf-quote">{quote}</blockquote>}
-        {subject && <span className="bbf-who">{subject}</span>}
         {foot()}
       </>
     )
   } else if (form === 'time') {
-    const { who } = timeCard(n)
+    const detail = detailLine(n.body, `${stateWord(n)} ${subject ?? ''}`, 90)
     inner = (
       <>
-        <StateLine shape={shape} word={stateWord(n)} />
+        <Headline shape={shape} word={stateWord(n)} subject={subject} />
         <div className="bbf-time-block">
           <span className="bbf-time-l">
             <span className="bbf-day">{dayWord(n.last_seen_at || n.created_at)}</span>
             <span className="bbf-fig">{time}</span>
           </span>
-          <span className="bbf-time-r">
-            <span className="bbf-who">{who ?? familyLabel(n.family)}</span>
-          </span>
+          {detail && <span className="bbf-time-r">{detail}</span>}
         </div>
-        {foot()}
+        {foot({ clock: false })}
       </>
     )
   } else if (form === 'strip') {
+    const line = detailLine(n.body, `${stateWord(n)} ${subject ?? ''}`)
     inner = (
-      <div className="bbf-strip-row">
-        <span className="bb-card-word bbf-one">{stateWord(n)}</span>
-        <span className="bbf-time">{time}</span>
-        {lane && (
-          <button
-            type="button" className="bbf-act" data-tap
-            onClick={e => { e.stopPropagation(); onOpen(n) }}
-          >{lane}</button>
-        )}
-      </div>
+      <>
+        <Headline shape={shape} word={stateWord(n)} subject={subject} />
+        {line && <span className="bbf-stripline">{line}</span>}
+        {foot()}
+      </>
     )
   } else if (form === 'page') {
     const { state, snippet, asked } = pageCard(n)
     inner = (
       <>
-        <StateLine shape={shape} word={state} />
+        <Headline shape={shape} word={state} subject={subject} />
         {snippet && <div className="bbf-page"><p>{snippet}</p></div>}
         {asked && <span className="bbf-asked">You asked: {asked}</span>}
         {foot()}
       </>
     )
   } else {
-    const { label, state } = tileCard(n)
     inner = (
       <>
-        <div className="bbf-tile">
-          <div className="bbf-state bbf-state-tile">
-            <Mark shape={shape} />
-            <span className="bb-card-word">{state}</span>
-          </div>
-          <span className="bbf-label">{label}</span>
-        </div>
+        <Headline shape={shape} word={stateWord(n)} subject={subject} />
         {foot()}
       </>
     )
@@ -263,7 +260,7 @@ export function GroupCard({ g, open, onToggle, onOpen, onDismissAll, onDismissOn
         data-card data-family={g.family} data-shape={shape}
         onClick={onToggle}
       >
-        <StateLine shape={shape} word={groupStateWord(g.count, g.family)} big />
+        <Headline shape={shape} word={groupStateWord(g.count, g.family)} big />
         {!open && latest && <span className="bbf-body">{latest}</span>}
         <div className="bbf-foot">
           <TenantChip tenant={g.latest.tenant} />

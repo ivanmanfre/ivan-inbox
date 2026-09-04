@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { detectLinks } from '../../../../../lib/unfurl'
 import { useStt } from '../../../../v2c/chat/useStt'
-import { LinkPreview } from '../../LinkPreview'
+import { LinkPreview } from './LinkPreview'
 import { fileSize } from './forms'
 
 type Attachment = { id: string; kind: 'image' | 'pdf'; name: string; size: number; url: string }
@@ -167,11 +167,13 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
             </div>
           )}
           {!recording && !transcribing && heard && (
-            <div className="bb-voice landed" data-voice="landed">
-              <span className="bb-voice-t">Heard: {heard}</span>
-              <span className="bbf-sp" />
+            <div className="bb-voice landed bbf-heard" data-voice="landed">
+              <span className="bb-voice-t bbf-heard-t">
+                <span className="bbf-heard-l">Heard</span>
+                {heard}
+              </span>
               <button
-                type="button" className="bb-voice-stop" data-tap
+                type="button" className="bb-voice-stop bbf-heard-x" data-tap
                 onClick={() => setHeard(null)} aria-label="Dismiss what was heard"
               >✕</button>
             </div>

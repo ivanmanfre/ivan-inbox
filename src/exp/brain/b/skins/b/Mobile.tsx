@@ -165,7 +165,7 @@ export function Mobile(p: BrainMobileProps) {
 
   return (
     <div className={`app wb brain-b skin-${SKIN}`} data-place={feedOpen ? 'feed' : place === 'ask' ? 'ask' : 'lane'}>
-      <div className="wb-plate bb-plate bbf-plate">
+      <div className="wb-plate bb-plate">
         {/* ONE header. The tournament build drew the place's header and then the
             feed sheet's header inside it, so opening the feed stacked two title
             rows and spent about 120px before the first card. The sheet is

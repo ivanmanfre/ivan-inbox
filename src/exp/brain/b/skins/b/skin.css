@@ -39,6 +39,12 @@
   --bbb-page:color-mix(in srgb, var(--surface1) 70%, var(--canvas));    /* the snippet panel */
   --bbb-quote:color-mix(in srgb, var(--text3) 55%, transparent);        /* the quotation rule */
   --bbb-rail:color-mix(in srgb, var(--accent) 30%, transparent);        /* the rail's low half */
+  /* E8, cycle 1: the shadows were four raw `#000`. Derived from `--ink`, the
+     ladder's own darkest value, so every literal in this file is now a token
+     or a mix of one. The snippet mask reads alpha only and takes `--ink` too. */
+  --bbb-shadow:color-mix(in srgb, var(--ink) 62%, transparent);
+  --bbb-shadow-soft:color-mix(in srgb, var(--ink) 40%, transparent);
+  --bbb-scrim:color-mix(in srgb, var(--ink) 72%, transparent);
   --bbb-gut:12px;
 }
 
@@ -111,8 +117,8 @@
 /* FEED — the six forms                                                        */
 /* ========================================================================== */
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-feed-body{
-  padding:10px var(--bbb-gut) 20px;
-  display:flex; flex-direction:column; gap:10px;
+  padding:8px var(--bbb-gut) 28px;
+  display:flex; flex-direction:column; gap:9px;
 }
 /* A feed row never shrinks to fit: a flex column under overflow will squash
    every card to its padding, which is a card that says nothing at all. */
@@ -137,7 +143,7 @@
 /* --- the card, common ----------------------------------------------------- */
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-card.bbf{
   position:relative; display:block; margin:0; gap:0;
-  padding:14px 14px 11px; border-radius:var(--r-card);
+  padding:12px 14px 9px; border-radius:var(--r-card);
   cursor:pointer; overflow:hidden;
 }
 /* SEVERITY BY POSITION. Raised and full width = needs you. Flat and inset =
@@ -145,7 +151,7 @@
    greyscale, which colour alone does not. */
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-card.bbf-raised{
   background:var(--surface2);
-  box-shadow:inset 0 1px 0 var(--bbb-edge), 0 6px 16px -12px rgba(0,0,0,.9);
+  box-shadow:inset 0 1px 0 var(--bbb-edge), 0 6px 16px -10px var(--bbb-shadow);
 }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-card.bbf-flat{
   background:var(--surface1); margin:0 8px;
@@ -158,17 +164,38 @@
        snippet and the body, so a card still names its own state with its
        detail hidden. --- */
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-state{
-  display:flex; align-items:center; gap:8px; padding-right:26px;
+  display:block; position:relative; padding-left:19px; padding-right:26px;
+  display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden;
 }
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-state .bbf-mark{
+  position:absolute; left:0; top:.28em; width:10px; height:14px;
+}
+/* plain B makes `.bb-card-word` a block-level `-webkit-box` with its own clamp
+   and a 26px right padding (brain-b.css:454,466). Inside this headline it is a
+   RUN OF WORDS in a sentence, so it goes back to inline and the clamp moves to
+   the headline that owns it. Left as inherited, the state word took a line of
+   its own and every card on the feed grew by 22px. */
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-state .bb-card-word{
-  font-size:var(--fs-meta); font-weight:600; color:var(--text); letter-spacing:.01em;
-  line-height:1.3; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  display:inline; padding-right:0; overflow:visible;
+  -webkit-line-clamp:none; -webkit-box-orient:horizontal;
+  font-size:var(--fs-title); font-weight:600; color:var(--text);
+  letter-spacing:-.01em; line-height:1.25;
+}
+/* The subject shares the headline's size and gives up the weight: "what
+   changed" and "to whom" are one thought, and the eye should not have to
+   travel to a second line to finish it. */
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-dot{ display:inline; color:var(--text4); font-size:var(--fs-title); padding:0 4px; }
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-subj{
+  display:inline;
+  font-size:var(--fs-title); font-weight:500; color:var(--text2); line-height:1.25;
 }
 /* A deck's count IS its state word, and a count is the whole message, so it is
    the one place besides the booking figure and the Ask title that spends the
    display size. */
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-state-big{ padding-left:22px; -webkit-line-clamp:2; }
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-state-big .bbf-mark{ top:.42em; }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-state-big .bb-card-word{
-  font-size:var(--bbb-display); font-weight:600; letter-spacing:-.02em; line-height:1.05;
+  font-size:var(--bbb-display); font-weight:600; letter-spacing:-.02em; line-height:1.1;
 }
 
 /* --- the severity mark: shape first, colour agreeing ---------------------- */
@@ -188,7 +215,7 @@
 
 /* --- the footer every form ends with -------------------------------------- */
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-foot{
-  display:flex; align-items:center; gap:8px; margin-top:9px;
+  display:flex; align-items:center; gap:8px; margin-top:7px;
   font-size:var(--fs-meta); color:var(--text3);
 }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-sp{ flex:1 1 auto; }
@@ -202,11 +229,11 @@
 }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-card.bbf-flat .bb-tenant{ background:var(--surface2); }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-act{
-  position:relative; min-height:32px; padding:0 12px; border-radius:var(--r-ctl);
+  position:relative; min-height:30px; padding:0 12px; border-radius:var(--r-ctl);
   background:var(--surface3); border:1px solid var(--hairline-strong); color:var(--text);
   font-size:var(--fs-meta); font-weight:500; white-space:nowrap;
 }
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-act::after{ content:''; position:absolute; inset:-7px -5px; }
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-act::after{ content:''; position:absolute; inset:-8px -5px; }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-x{
   position:absolute; top:11px; right:11px; width:20px; height:20px; border-radius:50%;
   border:1px solid var(--hairline-strong); background:none; color:var(--text3);
@@ -218,20 +245,17 @@
 /* --- form 1 · the QUOTE card --------------------------------------------- */
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-quote{
   display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
-  margin:9px 0 0; padding-left:12px; border-left:2px solid var(--bbb-quote);
+  margin:8px 0 0; padding-left:12px; border-left:2px solid var(--bbb-quote);
   font-size:var(--fs-page); font-weight:500; line-height:1.35; letter-spacing:-.01em;
   color:var(--text);
 }
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-who{
-  display:block; margin-top:7px; font-size:var(--fs-title); font-weight:600; color:var(--text2);
-  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-}
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-quote + .bbf-who{ margin-left:14px; }
+/* .bbf-who is gone: the person moved up into the headline, beside the state
+   word, in the card's own largest type (DECISIONS D11, grafted from skin A). */
 
 /* --- form 2 · the TIME BLOCK. Two columns split by a hairline, which nothing
        else in this feed is. --- */
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-time-block{
-  display:flex; align-items:stretch; gap:14px; margin-top:9px;
+  display:flex; align-items:stretch; gap:14px; margin-top:8px;
 }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-time-l{
   flex:0 0 auto; display:flex; flex-direction:column; justify-content:center;
@@ -245,29 +269,29 @@
   font-variant-numeric:tabular-nums; margin-top:2px;
 }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-time-r{
-  min-width:0; flex:1 1 auto; display:flex; flex-direction:column; justify-content:center;
+  min-width:0; flex:1 1 auto; align-self:center;
+  font-size:var(--fs-meta); color:var(--text3); line-height:1.45;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
 }
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-time-r .bbf-who{ margin-top:0; }
 
 /* --- form 3 · the ERROR STRIP. Short, one line, and the only card whose
        leading edge IS a bar: the corners there are squared so the bar reads as
        the card's own edge rather than a lozenge clipped by a 20px radius. --- */
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-card.bbf-strip{
-  padding:13px 14px 13px 21px; border-radius:5px var(--r-card) var(--r-card) 5px;
+  padding:12px 14px 9px 21px; border-radius:5px var(--r-card) var(--r-card) 5px;
 }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-edge{
   position:absolute; left:0; top:0; bottom:0; width:5px; background:var(--sev-urgent);
 }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-card.bbf-strip[data-shape="square"] .bbf-edge{ background:var(--sev-attention); }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-card.bbf-strip[data-shape="dot"] .bbf-edge{ background:var(--text4); }
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-strip-row{
-  display:flex; align-items:center; gap:10px; padding-right:24px;
+/* One line of what actually happened, under the headline. A strip that says
+   only "Send failed" is the defect three seats named; a strip that runs to a
+   paragraph stops being a strip. One line, clamped. */
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-stripline{
+  display:block; margin-top:5px; font-size:var(--fs-meta); color:var(--text3); line-height:1.4;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-one{
-  flex:1 1 auto; min-width:0; font-size:var(--fs-title); font-weight:600; color:var(--text);
-  line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-}
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-card.bbf-strip .bbf-x{ display:none; }
 
 /* --- form 4 · the PAGE SNIPPET. An inset panel whose last line fades, so the
        card looks like a page you can go back into. The FIRST sentence stays at
@@ -276,8 +300,8 @@
   position:relative; margin-top:9px; padding:11px 12px 13px;
   background:var(--bbb-page); border-radius:var(--r-ctl);
   max-height:82px; overflow:hidden;
-  -webkit-mask-image:linear-gradient(180deg, #000 0, #000 62%, transparent 100%);
-  mask-image:linear-gradient(180deg, #000 0, #000 62%, transparent 100%);
+  -webkit-mask-image:linear-gradient(180deg, var(--ink) 0, var(--ink) 62%, transparent 100%);
+  mask-image:linear-gradient(180deg, var(--ink) 0, var(--ink) 62%, transparent 100%);
 }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-page p{
   margin:0; font-size:var(--fs-body); line-height:1.55; color:var(--text2);
@@ -288,17 +312,8 @@
 }
 
 /* --- form 5 · the STATUS TILE. Label left, state right. ------------------- */
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-tile{ min-width:0; }
-/* The state is the news and it leads; the subject is the caption under it. The
-   two of them side by side made the subject lose a width fight to a long state
-   and ellipsise to four characters. */
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-state-tile .bb-card-word{
-  font-size:var(--fs-title); font-weight:600; letter-spacing:-.01em;
-}
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-label{
-  display:block; margin-top:5px; font-size:var(--fs-meta); font-weight:500; color:var(--text3);
-  min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-}
+/* The tile IS its headline: `state · subject`, and a footer. Nothing else. */
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-card.bbf-tile{ padding-bottom:9px; }
 
 /* --- form 6 · the STACKED DECK ------------------------------------------- */
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-deck{ position:relative; margin-bottom:7px; }
@@ -344,7 +359,7 @@
 /* ========================================================================== */
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-ask{ position:relative; }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-thread{
-  padding:12px 16px 104px;
+  padding:12px 12px 104px;
 }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-session{
   background:none; padding:0; margin-bottom:14px; font-size:var(--fs-meta); color:var(--text3);
@@ -365,16 +380,18 @@
   border-radius:var(--r-card);
 }
 
-/* --- his turn: a compact right-set bubble on surface2. It loses the lime fill
-       plain B gave it: a message he typed is not a primary action, and the
-       accent has two jobs on this surface already (the send control and the
-       active place). --- */
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-uturn{ margin:14px 0; }
+/* --- his turn is the LIME PLATE again (DECISIONS D10). Cycle 0 moved it to
+       surface2 on an accent-budget argument and lost the arm's-length read
+       19 to 3: all three seats said the grey bubble "sinks into the ground"
+       and that the lime plate is what makes a thread scannable while it runs.
+       The budget still holds — the plate marks the operator's own turn, one
+       per turn, and the running rail is the only other lime in the thread. --- */
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-uturn{ margin:16px 0; }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-ububble{
-  max-width:82%; padding:10px 14px;
+  max-width:82%; padding:11px 15px;
   border-radius:var(--r-card) var(--r-card) var(--r-chip) var(--r-card);
-  background:var(--surface2); color:var(--text);
-  font-size:var(--fs-body); line-height:1.45;
+  background:var(--accent); color:var(--ink);
+  font-size:var(--fs-body); font-weight:500; line-height:1.45;
 }
 
 /* --- Claude's turn: an OPEN card on the canvas. No bubble, no border, full
@@ -389,9 +406,14 @@
   position:absolute; left:0; top:2px; bottom:2px; width:3px; border-radius:2px;
   background:var(--accent);
 }
+/* The answer is READ. `--text2` on `--canvas` lost readability 19 to 3 against
+   plain's white; body is 16/400 on `--text` now, and the column gives back the
+   padding it was spending so the measure clears 35ch at 390 (E4). */
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-answer .wb-body{ padding:0; margin:0; }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-answer .wb-p,
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-answer .wb-body li{
-  font-size:var(--fs-body); line-height:1.55; color:var(--text2); max-width:36em;
+  font-size:var(--fs-body); font-weight:400; line-height:1.5; color:var(--text);
+  max-width:38em; padding-left:0; padding-right:0;
 }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-answer .wb-mh{
   font-size:var(--fs-title); font-weight:600; color:var(--text);
@@ -439,7 +461,7 @@
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-bar{
   display:flex; align-items:flex-end; gap:8px; padding:8px;
   border-radius:var(--r-card); background:var(--surface2); border:1px solid var(--bbb-edge);
-  box-shadow:0 14px 30px -20px rgba(0,0,0,1);
+  box-shadow:0 14px 30px -18px var(--bbb-shadow);
 }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-field{
   border:none; background:none; padding:12px 6px; min-height:44px;
@@ -464,7 +486,7 @@
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-attach.bbf-chip{
   align-items:center; gap:9px; padding:7px 10px 7px 7px;
   background:var(--surface2); border:1px solid var(--bbb-edge);
-  border-radius:var(--r-ctl); box-shadow:0 10px 24px -18px rgba(0,0,0,1);
+  border-radius:var(--r-ctl); box-shadow:0 10px 24px -16px var(--bbb-shadow-soft);
 }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-thumb{
   width:32px; height:32px; border-radius:var(--r-chip); object-fit:cover; flex:0 0 auto; display:block;
@@ -489,27 +511,66 @@
 }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-voice{
   background:var(--surface2); border:1px solid var(--bbb-edge);
-  box-shadow:0 10px 24px -18px rgba(0,0,0,1);
+  box-shadow:0 10px 24px -16px var(--bbb-shadow-soft);
 }
 :is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-voice-t{ font-size:var(--fs-meta); }
+/* What was heard sits WHOLE above the composer, at reading size, with a real
+   dismiss target beside it. Every seat scored plain higher here for exactly
+   this: a transcript truncated under the field is a transcript he cannot
+   check before he sends it. */
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-voice.bbf-heard{
+  align-items:flex-start; gap:10px; padding:11px 11px 12px 13px;
+}
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-voice-t.bbf-heard-t{
+  flex:1 1 auto; min-width:0;
+  font-size:var(--fs-body); line-height:1.45; color:var(--text);
+  white-space:normal; overflow:visible; text-overflow:clip;
+}
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-heard-l{
+  display:block; margin-bottom:3px;
+  font-size:var(--fs-meta); font-weight:500; color:var(--text3);
+}
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-voice-stop.bbf-heard-x{
+  position:relative; flex:0 0 auto; margin:0; min-width:30px; min-height:30px;
+  border-radius:50%; padding:0;
+}
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-voice-stop.bbf-heard-x::after{ content:''; position:absolute; inset:-8px; }
 
-/* --- the link card: the thumbnail is CROPPED to a fixed 16:9, never
-       letterboxed inside a card that could have cropped it. --- */
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-link{
-  padding:8px; gap:10px; background:var(--surface2); border:1px solid var(--bbb-edge);
-  border-radius:var(--r-card); box-shadow:0 10px 24px -18px rgba(0,0,0,1);
+/* --- the link card, GRAFTED FROM SKIN A (cycle 1, D11). The thumbnail IS the
+       card: full width of the composer plate, cropped 16:9 with
+       `object-fit:cover` so nothing letterboxes, a drawn play mark on the
+       image for a video, and the whole title on up to two lines at prose size
+       with the source under it. A won this state in all six of its pairs. --- */
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-link.bbf-link{
+  display:block; padding:0; gap:0; border:0; overflow:hidden; position:relative;
+  background:var(--surface2); border-radius:var(--r-card);
+  box-shadow:0 10px 24px -16px var(--bbb-shadow-soft);
 }
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-link-img,
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-link-img.sq{
-  width:96px; height:54px; border-radius:var(--r-chip); object-fit:cover; flex:0 0 auto;
-  background:var(--surface3);
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-link-well{
+  position:relative; width:100%; height:108px; background:var(--surface3);
 }
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-link-title{
-  font-size:var(--fs-meta); font-weight:600; color:var(--text);
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-link-well.sq{ height:132px; }
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-link-img.bbf-link-img{
+  width:100%; height:100%; border-radius:0; object-fit:cover; display:block; flex:none;
 }
-:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-link-sub{
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-link-play{
+  position:absolute; left:12px; bottom:10px; width:30px; height:30px; border-radius:50%;
+  background:var(--bbb-scrim); color:var(--text);
+  display:flex; align-items:center; justify-content:center;
+}
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bbf-play-g{ display:block; margin-left:2px; }
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-link-body.bbf-link-body{ display:block; padding:11px 12px 12px; min-width:0; }
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-link-title.bbf-link-title{
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  white-space:normal; text-overflow:clip;
+  font-size:var(--fs-body); font-weight:500; line-height:1.3; color:var(--text);
+}
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-link-sub.bbf-link-sub{
+  display:block; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   font-size:var(--fs-meta); color:var(--text3);
 }
+/* The blocked state keeps its sentence and draws no empty well. */
+:is(.wb.wb.wb .brain-b.skin-b, .wb.wb.wb.brain-b.skin-b) .bb-link.bbf-link.failed .bbf-link-body{ padding:13px 14px; }
 
 /* ========================================================================== */
 /* DESKTOP at 1440 — parity, not a second design                              */
