@@ -42,10 +42,19 @@ describe('groundedOnLine', () => {
 })
 
 describe('sessionStateLine', () => {
-  it('says fresh when the thread has never held a session', () => {
+  it('says fresh when the thread has turns but has never held a session', () => {
     expect(sessionStateLine(null)).toMatch(/fresh/i)
   })
   it('says continuing once the thread has', () => {
     expect(sessionStateLine('2026-09-04T10:00:00Z')).toMatch(/continuing/i)
+  })
+  it('agrees with the last turn saying it resumed, even before the thread flag is written', () => {
+    expect(sessionStateLine(null, 'resumed')).toMatch(/continuing/i)
+  })
+  it('agrees with the thread flag even when the last turn opened a new session', () => {
+    expect(sessionStateLine('2026-09-04T10:00:00Z', 'new')).toMatch(/continuing/i)
+  })
+  it('claims nothing on a thread with no turns yet', () => {
+    expect(sessionStateLine(null, null, false)).toBe('New thread. Nothing carries over yet.')
   })
 })

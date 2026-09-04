@@ -16,12 +16,14 @@ export function LinkPreviewCard({ url }: { url: string }) {
 
   const guessKind = classifyLink(url)
 
+  // While the fetch is out there is no picture and no title to show, so the
+  // loading state is ONE line. Reserving a 16:9 rectangle for a thumbnail that
+  // has not arrived reads as a broken card rather than a pending one.
   if (!result) {
     return (
-      <div className="ba-link" data-link-card data-kind={guessKind} data-state="loading">
-        <div className="ba-link-load" />
+      <div className="ba-link loading" data-link-card data-kind={guessKind} data-state="loading">
         <div className="ba-link-body">
-          <div className="ba-link-title">Loading preview…</div>
+          <div className="ba-link-title muted">Reading the link</div>
           <div className="ba-link-sub">{url}</div>
         </div>
       </div>
@@ -42,9 +44,13 @@ export function LinkPreviewCard({ url }: { url: string }) {
   }
 
   return (
-    <div className={`ba-link${card.ratio === '16:9' ? ' wide' : ''}`} data-link-card data-kind={card.kind} data-state="card">
+    <div className="ba-link" data-link-card data-kind={card.kind} data-state="card">
       {card.image && (
-        <div className="ba-link-img" style={{ backgroundImage: `url(${card.image})` }} />
+        <div
+          className="ba-link-img" data-thumb
+          role="img" aria-label={card.title}
+          style={{ backgroundImage: `url(${card.image})` }}
+        />
       )}
       <div className="ba-link-body">
         <div className="ba-link-title">{card.title}</div>

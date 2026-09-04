@@ -9,9 +9,29 @@ import { AskThread } from './AskThread'
 import { Feed } from './Feed'
 import { TabBar } from './TabBar'
 import { WorkTabs, WORK_PLACE_JOBS } from './WorkTabs'
+import { JOB_LABEL } from '../../v2c/layout'
 import { readPlace, readWorkTab, writePlace, writeWorkTab, type Place } from './place'
 import { resolveNotificationRoute } from './deepLink'
 import type { Notification } from '../../../lib/turns'
+
+/** The lane surface before the first inbox read lands. Static: a skeleton that
+ *  moves is motion on load, which this candidate's motion spec does not allow. */
+function LaneLoading({ job }: { job: Job }) {
+  return (
+    <div className="ba-laneload" data-loading>
+      <div className="ba-laneload-t">Loading {JOB_LABEL[job]}.</div>
+      <div className="ba-skel-list">
+        {[0, 1, 2, 3, 4, 5].map(i => (
+          <div key={i} className="ba-skel-row">
+            <span className="ba-skel-mark" />
+            <span className="ba-skel-line" />
+            <span className="ba-skel-line short" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 export function BrainMobile({
   chat, job, goJob, counts, sev, health, loadedAt, inboxError, refresh,
@@ -25,6 +45,7 @@ export function BrainMobile({
   const touch = useRef<{ x: number; y: number; horiz: boolean | null; base: number }>({ x: 0, y: 0, horiz: null, base: 0 })
   const settingsFrom = useRef<Job>('today')
   const bootHandled = useRef(false)
+  const [bootTurn, setBootTurn] = useState<string | null>(null)
 
   useEffect(() => {
     if (place !== 'feed') lastPrimary.current = place
@@ -44,13 +65,30 @@ export function BrainMobile({
     if (bootHandled.current) return
     bootHandled.current = true
     if (boot.feed) { setPlaceState('feed'); return }
-    if (boot.thread) { chat.openThread(boot.thread); setPlaceState('ask'); return }
+    if (boot.thread) {
+      chat.openThread(boot.thread)
+      // A push names the turn as well as the thread. Carry it into the
+      // conversation so it lands ON the answer it was about, not at the tail.
+      if (boot.turn) setBootTurn(boot.turn)
+      setPlaceState('ask')
+      return
+    }
+    if (boot.turn) setBootTurn(boot.turn)
     const cached = readPlace()
     if (cached) setPlace(cached)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const onJobFromWork = (j: Job) => { writeWorkTab(j); goJob(j) }
+
+  /** The ribbon alarm counts OPS alerts, so it lands on Ops, never on whichever
+   *  work tab happened to be open last. */
+  const openOps = () => {
+    writeWorkTab('ops')
+    goJob('ops')
+    setPlaceState('work')
+    writePlace('work')
+  }
 
   const openNotification = (n: Notification) => {
     const route = resolveNotificationRoute(n)
@@ -100,6 +138,11 @@ export function BrainMobile({
   }
 
   const dataPlace = place === 'ask' ? 'ask' : place === 'feed' ? 'feed' : 'lane'
+  // The Shell hands this candidate the lane surface from the first frame now,
+  // which means an empty one for the first seconds of a cold load. An empty
+  // lane reads as "there is nothing here", which is a different and false
+  // sentence, so the lane says it is still loading until the read lands.
+  const laneLoading = loadedAt === null && !inboxError && job !== 'settings'
 
   // A DM thread opened as a full-screen takeover replaces the whole phone -
   // same rule the base app uses (faithful.css :410's wb-take contract).
@@ -124,7 +167,7 @@ export function BrainMobile({
             {inboxError ? 'not syncing' : relAge(loadedAt)}
           </span>
           {health.n > 0 && (
-            <span className="ba-rib-health" title={health.note} onClick={() => setPlace('work')}>
+            <span className="ba-rib-health" title={health.note} onClick={openOps}>
               <span className="ba-rib-dot" />{health.n}
             </span>
           )}
@@ -140,14 +183,17 @@ export function BrainMobile({
           <div className="ba-pager-track" style={{ transform, transition: drag === null ? undefined : 'none' }}>
             <div className="ba-page">
               <div className={`ba-primary${place === 'ask' && job !== 'settings' ? ' show' : ''}`}>
-                <AskThread chat={chat} job={job} about={about} aboutContext={aboutContext} subjects={subjects} mobile />
+                <AskThread
+                  chat={chat} job={job} about={about} aboutContext={aboutContext}
+                  subjects={subjects} mobile bootTurn={bootTurn}
+                />
               </div>
               {(place === 'today' || place === 'dms' || place === 'work' || job === 'settings') && (
                 <div className="ba-primary show ba-lane">
                   {place === 'work' && job !== 'settings' && (
                     <WorkTabs job={job} counts={counts} sev={sev} onJob={onJobFromWork} />
                   )}
-                  {workSurface}
+                  {laneLoading ? <LaneLoading job={job} /> : workSurface}
                 </div>
               )}
             </div>

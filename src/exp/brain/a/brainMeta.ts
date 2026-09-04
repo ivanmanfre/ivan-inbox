@@ -36,13 +36,25 @@ export function groundedOnLine(date: string | null): string | null {
 }
 
 /**
- * The once-per-thread sentence: fresh vs continued. `sessionStartedAt` is the
- * THREAD's own flag (null until the container has held a session for it at
- * least once) - this is what decides whether the NEXT turn replays context,
- * so it is the honest source for "fresh vs continued", not a per-turn guess.
+ * The once-per-thread sentence: fresh vs continued, and it has to agree with
+ * BOTH facts the app holds.
+ *
+ * `grounding.session` is the LAST turn's own flag: 'resumed' means the
+ * container already had this thread's conversation in hand. `sessionStartedAt`
+ * is the THREAD's flag, written when a turn lands, and it is what decides
+ * whether the NEXT turn replays context. Either one saying "continued" is
+ * enough to say it, because both are read from the row rather than guessed.
+ * With no turns at all there is nothing to continue, and the sentence says so
+ * rather than claiming a state the thread has not reached.
  */
-export function sessionStateLine(sessionStartedAt: string | null): string {
-  return sessionStartedAt
-    ? 'Continuing this conversation. Claude has the thread so far.'
-    : 'A fresh conversation. Nothing carries over until the first reply lands.'
+export function sessionStateLine(
+  sessionStartedAt: string | null,
+  groundingSession?: 'new' | 'resumed' | null,
+  hasTurns = true,
+): string {
+  if (groundingSession === 'resumed' || sessionStartedAt) {
+    return 'Continuing this conversation. Claude has the thread so far.'
+  }
+  if (!hasTurns) return 'New thread. Nothing carries over yet.'
+  return 'A fresh conversation. Nothing carries over until the first reply lands.'
 }

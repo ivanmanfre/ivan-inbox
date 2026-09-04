@@ -1,5 +1,5 @@
 // Feed.tsx - the thesis's other half: a DENSE ledger, not a second inbox.
-// One ~56px row per folded notification, grouped by family under collapsible
+// One row per folded notification, grouped by family under collapsible
 // headers, severity drawn as a shape (never colour alone), built to scan 30
 // items in five seconds.
 //
@@ -10,7 +10,7 @@ import {
   dismissGroup, dismissNotification, groupNotifications, listNotifications,
   markNotificationsRead, type Notification, type NotificationGroup, type NotificationSeverity,
 } from '../../../lib/turns'
-import { familyLabel, familyLaneLabel } from './families'
+import { familyEyebrow, familyLabel, familyLaneLabel, groupChange, plainHeadline } from './families'
 import { relAge } from '../../v2c/Surface'
 
 type Severity = 'urgent' | 'attention' | 'info'
@@ -26,14 +26,6 @@ function clockTime(iso: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
   return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })
-}
-
-// null for `info`: the common case is silent, so the eyebrow only ever
-// carries a word when the row is actually asking for something.
-function stateWord(sev: NotificationSeverity): string | null {
-  if (sev === 'error') return 'Needs you'
-  if (sev === 'attention') return 'Attention'
-  return null
 }
 
 // The mark: filled square (urgent) / half-filled square (attention) / hollow
@@ -59,50 +51,50 @@ function FamilySection({ familyKey, groups, open, onToggle, onOpenItem, onDismis
   // answer he actually wants is `body` - so this one family swaps which field
   // is the headline and which is the small line underneath.
   const isTurn = familyKey === 'claude_turn'
+  const label = familyLabel(familyKey)
   return (
     <div className="ba-fsec">
       <button type="button" className="ba-fsec-h" onClick={onToggle} aria-expanded={open}>
-        <span className="ba-fsec-l">{familyLabel(familyKey)}</span>
+        <span className="ba-fsec-l">{label}</span>
         <span className="ba-fsec-n">{groups.length}</span>
-        {unread > 0 && <span className="ba-fsec-u" />}
-        <span className={`ba-fsec-car${open ? ' open' : ''}`}>›</span>
+        {unread > 0 && <span className="ba-fsec-u" aria-label={`${unread} unread`} />}
+        <span className={`ba-fsec-car${open ? ' open' : ''}`} aria-hidden="true">›</span>
       </button>
       {open && groups.map(g => {
-        const answerLine = g.latest.body ? g.latest.body.split('\n')[0].trim() : ''
-        const headline = isTurn && answerLine ? answerLine : g.latest.title
-        const subline = isTurn ? g.latest.title : laneLabel
-        const sev = stateWord(g.latest.severity)
+        // Every line that reaches the screen is stripped of the producer's
+        // markdown and status emoji first: these bodies were written for a
+        // chat app, and `**File:**` as a headline reads as source code.
+        const answerLine = plainHeadline(g.latest.body)
+        const promptLine = plainHeadline(g.latest.title)
+        const headline = isTurn && answerLine ? answerLine : promptLine
+        const eyebrow = familyEyebrow(familyKey, g.latest.severity)
+        const change = groupChange(g.latest.title, g.items[1]?.title, g.count, g.items.length)
+        const meta = [
+          eyebrow,
+          isTurn ? (answerLine ? promptLine : null) : laneLabel,
+          g.count > 1 ? `×${g.count}` : null,
+          change === 'changed' ? 'changed' : null,
+        ].filter(Boolean) as string[]
         return (
           <div
             key={g.key} className="ba-card" data-card data-family={familyKey}
+            data-change={change}
             onClick={() => onOpenItem(g.latest)}
           >
             <Mark sev={markFor(g.latest.severity)} unread={g.unread > 0} />
             <div className="ba-card-body">
-              <div className="ba-card-top">
-                <span className="ba-card-fam">{familyLabel(familyKey)}</span>
-                {sev && <span className="ba-card-sev">{sev}</span>}
-              </div>
               <div className={`ba-card-title${g.unread > 0 ? ' unread' : ''}`}>{headline}</div>
-              {subline && <div className="ba-card-lane">{subline}</div>}
+              {meta.length > 0 && <div className="ba-card-meta">{meta.join(' · ')}</div>}
             </div>
-            <div className="ba-card-tail">
-              <span className="ba-card-time">{relAge(g.lastSeenAt)}</span>
-              <div className="ba-card-tail-action">
-                {g.count > 1 && <span className="ba-card-pill">{g.count}</span>}
-                {g.items.length > 1 ? (
-                  <button
-                    type="button" className="ba-card-clear"
-                    onClick={e => { e.stopPropagation(); onDismissGroup(g) }}
-                  >Clear {g.items.length}</button>
-                ) : (
-                  <button
-                    type="button" className="ba-card-x" aria-label="Dismiss"
-                    onClick={e => { e.stopPropagation(); onDismiss(g.latest.id) }}
-                  >✕</button>
-                )}
-              </div>
-            </div>
+            <span className="ba-card-time">{relAge(g.lastSeenAt)}</span>
+            <button
+              type="button" className="ba-card-x"
+              aria-label={g.items.length > 1 ? `Dismiss all ${g.items.length}` : 'Dismiss'}
+              onClick={e => {
+                e.stopPropagation()
+                if (g.items.length > 1) onDismissGroup(g); else onDismiss(g.latest.id)
+              }}
+            >✕</button>
           </div>
         )
       })}
@@ -190,16 +182,37 @@ export function Feed({ active, onNavigate, onUnreadChange }: {
     else void Promise.all(g.items.map(i => dismissNotification(i.id)))
   }
 
+  // Before the first read lands there is nothing TRUE to say about what is or
+  // is not new, so the surface says it is still looking rather than printing
+  // an empty state it has not earned.
+  const loading = loadedAt === null && !error
+
   return (
     <div className="ba-feed" data-feed aria-hidden={!active}>
       <div className="ba-feed-h">
         <span className="ba-feed-t">Feed</span>
-        {unreadTotal > 0 && <span className="ba-feed-unread">{unreadTotal} unread</span>}
+        {unreadTotal > 0 && (
+          <span className="ba-feed-unread"><span className="ba-feed-dot" aria-hidden="true" />{unreadTotal} unread</span>
+        )}
       </div>
       {error && <div className="ba-feed-err">{error}</div>}
-      {!error && rows.length === 0 && (
+      {loading && (
+        <div className="ba-feed-load" data-loading>
+          <div className="ba-feed-load-t">Reading what came in.</div>
+          <div className="ba-skel-list">
+            {[0, 1, 2, 3, 4].map(i => (
+              <div key={i} className="ba-skel-row">
+                <span className="ba-skel-mark" />
+                <span className="ba-skel-line" />
+                <span className="ba-skel-line short" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {!error && !loading && loadedAt && rows.length === 0 && (
         <div className="ba-feed-empty">
-          Nothing new{loadedAt ? ` since ${clockTime(loadedAt)}` : ''}.
+          Nothing new since {clockTime(loadedAt)}.
         </div>
       )}
       <div className="ba-feed-list">

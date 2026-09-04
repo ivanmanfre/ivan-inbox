@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { FAMILIES, FAMILY_KEYS, familyLabel, familyLane, familyLaneLabel } from './families'
+import {
+  FAMILIES, FAMILY_KEYS, familyEyebrow, familyLabel, familyLane, familyLaneLabel,
+  groupChange, plainHeadline,
+} from './families'
 
 // The 17 real families from the 30-day inventory, plus `chat` (not a
 // notification, kept so a stray row never prints its raw key) and
@@ -65,5 +68,71 @@ describe('familyLane / familyLaneLabel', () => {
 
   it('an unknown family has no lane', () => {
     expect(familyLane('never_seen_before')).toBeNull()
+  })
+})
+
+describe('familyEyebrow', () => {
+  it('is silent on an info row, whichever family it belongs to', () => {
+    for (const key of FAMILY_KEYS) expect(familyEyebrow(key, 'info')).toBeNull()
+  })
+
+  it('sends a system break to a fix by hand, never to "Needs you"', () => {
+    expect(familyEyebrow('system_infra_alarm', 'error')).toBe('Fix by hand')
+    expect(familyEyebrow('system_watchdog_digest', 'error')).toBe('Fix by hand')
+  })
+
+  it('names the families a person actually has to act on', () => {
+    expect(familyEyebrow('reply_draft_pending', 'attention')).toBe('Needs you')
+    expect(familyEyebrow('inbound_reply_notice', 'attention')).toBe('Needs you')
+    expect(familyEyebrow('seat_health', 'error')).toBe('Needs you')
+  })
+
+  it('an unasked-for family that turned noisy is worth a look, not a demand', () => {
+    expect(familyEyebrow('reporting_digest', 'attention')).toBe('Worth a look')
+    expect(familyEyebrow('never_seen_before', 'error')).toBe('Worth a look')
+  })
+})
+
+describe('plainHeadline', () => {
+  it('takes the markdown off a Claude answer first line', () => {
+    expect(plainHeadline('**File:** `project/ops-board-task.md`\nmore')).toBe('File: project/ops-board-task.md')
+  })
+
+  it('drops a leading status emoji so no emoji is ever a mark on a card', () => {
+    expect(plainHeadline('\u26a0\ufe0f Post Generation FAILED (no draft id recovered)'))
+      .toBe('Post Generation FAILED (no draft id recovered)')
+    expect(plainHeadline('\ud83d\udd34 *Ivan System*')).toBe('Ivan System')
+  })
+
+  it('keeps the words of a markdown link and drops the target', () => {
+    expect(plainHeadline('See [the report](https://example.com/x) now')).toBe('See the report now')
+  })
+
+  it('skips blank leading lines and collapses whitespace', () => {
+    expect(plainHeadline('\n\n   ## Seat   health  \nnext')).toBe('Seat health')
+  })
+
+  it('is empty for nothing at all', () => {
+    expect(plainHeadline(null)).toBe('')
+    expect(plainHeadline('')).toBe('')
+  })
+})
+
+describe('groupChange', () => {
+  it('a single unrepeated row is a first sighting', () => {
+    expect(groupChange('Seat Mattan Danino: OK to CONNECTING', null, 1, 1)).toBe('first')
+  })
+
+  it('the same situation reported again is a repeat, digits and all', () => {
+    expect(groupChange('3 drafts waiting', '5 drafts waiting', 4, 2)).toBe('again')
+  })
+
+  it('a title whose shape moved is a state change', () => {
+    expect(groupChange('Seat Mattan Danino: CONNECTING to OK', 'Seat Mattan Danino: OK to CONNECTING', 2, 2))
+      .toBe('changed')
+  })
+
+  it('a row that deduped in place with no second row is still a repeat', () => {
+    expect(groupChange('Take your TRT', null, 6, 1)).toBe('again')
   })
 })
