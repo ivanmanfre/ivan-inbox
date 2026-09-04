@@ -32,9 +32,25 @@ function bootHash(): string {
   return at < 0 ? '' : url.slice(at)
 }
 
+// An explicit `?skin=` is also stashed in localStorage: the installed phone app
+// has no address bar, the app rewrites its own hash on the first navigation, and
+// a reload then boots from a hash with no skin in it. Without the stash the
+// `?skin=plain` fallback would silently turn back into the default on the next
+// launch (regression seat, 09-04). Opening `?skin=b` once clears it back.
+const SKIN_KEY = 'brain-b-skin'
 function resolveSkin(): Skin {
   if (typeof location === 'undefined') return DEFAULT_SKIN
-  return readSkin(bootHash()) ?? readSkin(location.hash) ?? DEFAULT_SKIN
+  const explicit = readSkin(bootHash()) ?? readSkin(location.hash)
+  try {
+    if (explicit) {
+      if (explicit === DEFAULT_SKIN) localStorage.removeItem(SKIN_KEY)
+      else localStorage.setItem(SKIN_KEY, explicit)
+      return explicit
+    }
+    const kept = localStorage.getItem(SKIN_KEY)
+    if (kept === 'a' || kept === 'b' || kept === 'plain') return kept
+  } catch { /* storage blocked: the hash is all we have */ }
+  return explicit ?? DEFAULT_SKIN
 }
 
 export const SKIN: Skin = resolveSkin()
