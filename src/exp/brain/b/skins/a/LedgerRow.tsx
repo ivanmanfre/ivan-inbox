@@ -115,6 +115,10 @@ export function LedgerRow({ n, onOpen, onDismiss, nested = false }: {
 
   const meta = (
     <div className="bb-a-meta">
+      {/* A nested row hides the state line the parent already said, so its
+          subject (the person who replied) rides here instead of vanishing. */}
+      {nested && form.subject && <span className="bb-a-who">{form.subject}</span>}
+      {nested && form.subject && producer && <span aria-hidden>·</span>}
       {producer && <span className="bb-a-who">{producer}</span>}
       {producer && <span aria-hidden>·</span>}
       <span>{clock(n.last_seen_at || n.created_at)}</span>

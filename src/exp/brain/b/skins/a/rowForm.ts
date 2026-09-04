@@ -59,6 +59,14 @@ export function stripShout(text: string): string {
   return rest.length > 12 ? rest : text
 }
 
+/** True when two labels share a word that carries meaning. */
+export function sharesWord(a: string, b: string): boolean {
+  const tok = (t: string) => new Set(t.toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 3))
+  const bs = tok(b)
+  for (const w of tok(a)) if (bs.has(w)) return true
+  return false
+}
+
 /** The significant words of the head, for deciding whether a sentence repeats it. */
 function headTokens(word: string, subject: string | null): string[] {
   return `${word} ${subject ?? ''}`
@@ -126,6 +134,19 @@ export function quoteOf(body: string | null): string | null {
   return clean ? breakDashes(clean).slice(0, 220) : null
 }
 
+/**
+ * Who said it. The corpus writes a reply as its own bullet, "• Ben Spell (GOOD
+ * RANCHERS): \"Ben reacted\"", and on a reply row the person IS the subject: the
+ * title of the notification names the batch, not the human. Returns null unless
+ * the body actually carries a name in front of a quote.
+ */
+export function speakerOf(body: string | null): string | null {
+  if (!body) return null
+  const m = body.match(/[•*-]\s*([A-Z][\w.'’-]+(?:\s+[A-Z][\w.'’-]+){0,3})\s*(?:\([^)]{1,40}\))?\s*[:—-]\s*\n?\s*["“]/)
+  const name = m?.[1]?.trim()
+  return name && name.length <= 34 ? name : null
+}
+
 /** How many events a booking row stands for, as a figure and its noun. */
 function bookingFigure(n: Notification): { n: string; noun: string } {
   const m = (n.body ?? '').match(/(\d+)\s+bookings?\s+attributed/i)
@@ -164,7 +185,13 @@ export function rowForm(n: Notification): RowForm {
   }
   if (QUOTE_FAMILIES.has(n.family)) {
     const q = quoteOf(n.body)
-    if (q) return { word, subject, kind: 'quote', detail: q, figure: null }
+    if (q) {
+      // On a reply the human who wrote it outranks whatever the batch was
+      // called, and a title that only says "inbound reply" again is not a
+      // subject at all: it is the family's own name in lower case.
+      const named = fromTitle && !sharesWord(fromTitle, familyLabel(n.family)) ? fromTitle : null
+      return { word, subject: speakerOf(n.body) ?? named, kind: 'quote', detail: q, figure: null }
+    }
   }
   const line = n.body ? trimEcho(stripShout(breakDashes(sanitizeBody(n.body))), word, subject).slice(0, 220) : null
   return { word, subject, kind: 'line', detail: line || null, figure: null }
