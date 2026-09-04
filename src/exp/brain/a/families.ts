@@ -127,7 +127,16 @@ export function familyEyebrow(key: string, severity: NotificationSeverity): stri
 // screen goes through here first.
 const LEAD_MARKS = /^(?:[\p{Extended_Pictographic}\u{FE0F}\u{2022}\u{00B7}\s])+/u
 
-/** The first real line of a body, with the markdown and the status emoji taken off. Pure. */
+// Four more passes, measured over the 30-day corpus rather than guessed. A
+// status emoji anywhere in the line doubles the card's own drawn mark, an
+// enum token (HALTED_BY_CAP) and a column name (post_generation_failed) are
+// names the machine gave itself, and the producers use an em dash as a clause
+// break constantly while the copy rule bans it on screen.
+const EMOJI = /\p{Extended_Pictographic}\u{FE0F}?/gu
+const UPPER_ENUM = /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/g
+const SNAKE = /(?<![\w/.:-])[a-z]+(?:_[a-z]+)+(?![\w/.-])/g
+
+/** The first real line of a body, with the markdown, the status emoji and the machine's own tokens taken off. Pure. */
 export function plainHeadline(raw: string | null | undefined): string {
   const first = (raw ?? '').split('\n').map(l => l.trim()).find(l => l.length > 0) ?? ''
   let s = first
@@ -140,10 +149,21 @@ export function plainHeadline(raw: string | null | undefined): string {
   s = s.replace(/`+([^`]*)`+/g, '$1')
   s = s.replace(/(\*\*|__)(.+?)\1/g, '$2')
   s = s.replace(/~~(.+?)~~/g, '$1')
+  // The machine's own tokens go BEFORE the italic passes: `_` is both an
+  // italic marker and the middle of HALTED_BY_CAP, and running italics first
+  // turns that token into HALTEDBYCAP, which no scan for an enum would catch.
+  s = s.replace(EMOJI, '')
+  s = s.replace(UPPER_ENUM, '')
+  s = s.replace(SNAKE, '')
   s = s.replace(/\*([^*\n]+)\*/g, '$1')
   s = s.replace(/_([^_\n]+)_/g, '$1')
   s = s.replace(LEAD_MARKS, '')
-  return s.replace(/\s+/g, ' ').trim()
+  s = s.replace(/\s*—\s*/g, '. ')
+  s = s.replace(/\s+/g, ' ')
+  // Whatever the four passes left standing at the front is punctuation with
+  // nothing in front of it, so a headline never opens on a colon or a dash.
+  s = s.replace(/^[^\w"'[(]+/, '')
+  return s.replace(/\s+([.,;:!?])/g, '$1').trim()
 }
 
 /**

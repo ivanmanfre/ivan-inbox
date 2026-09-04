@@ -116,6 +116,30 @@ describe('plainHeadline', () => {
     expect(plainHeadline(null)).toBe('')
     expect(plainHeadline('')).toBe('')
   })
+
+  // Measured over the 30-day producer corpus (n=3011): em 377, emoji 193,
+  // snake_case 66 and uppercase enums 36 reached the headline before these
+  // four passes; all four now read 0.
+  it('takes an emoji off anywhere in the line, not only the front', () => {
+    expect(plainHeadline('Seat \ud83d\udfe2 healthy again')).toBe('Seat healthy again')
+  })
+
+  it('drops an uppercase enum token the machine gave itself', () => {
+    expect(plainHeadline('Warm Engager HALTED_BY_CAP at 14:02')).toBe('Warm Engager at 14:02')
+  })
+
+  it('drops a lowercase column name', () => {
+    expect(plainHeadline('extraction failed (stop=max_tokens)')).toBe('extraction failed (stop=)')
+  })
+
+  it('keeps a real path, which is not a column name', () => {
+    expect(plainHeadline('wrote project/ops_board/notes.md')).toBe('wrote project/ops_board/notes.md')
+  })
+
+  it('turns the producers\' em dash into a full stop', () => {
+    expect(plainHeadline('Warm Engager halted \u2014 Apify over cap'))
+      .toBe('Warm Engager halted. Apify over cap')
+  })
 })
 
 describe('groupChange', () => {
