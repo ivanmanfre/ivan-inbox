@@ -225,6 +225,12 @@ describe('sanitizeBody', () => {
   it('collapses newlines into a single readable line', () => {
     expect(sanitizeBody('line one\nline two')).toBe('line one line two')
   })
+  it('never leaves an em dash on screen (the source corpus uses it as a clause break)', () => {
+    const body = 'RISE Warm Engager HALTED — Apify MTD $120.57 >= cap $120'
+    const out = sanitizeBody(body)
+    expect(out).not.toMatch(/—/)
+    expect(out).toBe('RISE Warm Engager HALTED. Apify MTD $120.57 >= cap $120')
+  })
 })
 
 describe('groupStateWord', () => {

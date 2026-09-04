@@ -218,7 +218,7 @@ export function AskThread({ chat, job, about, mobile }: {
         {runningElsewhereActive && (
           <div className="bb-running-banner">
             <span className="bb-dot3"><span /><span /><span /></span>
-            <span>Still working on this. Keeps working if you lock the phone — you'll get a notification.</span>
+            <span>Still working on this. Keeps working if you lock the phone. You'll get a notification.</span>
             <button type="button" className="bb-stop" data-stop onClick={stopRunningElsewhere}>Stop</button>
           </div>
         )}
@@ -229,7 +229,7 @@ export function AskThread({ chat, job, about, mobile }: {
             {chat.streamText && <div className="wb-body"><AnswerBody text={chat.streamText} onRecall={onRecall} /></div>}
             <div className="bb-running-banner">
               <span className="bb-dot3"><span /><span /><span /></span>
-              <span>{chat.slow ? 'Still starting up — the container was cold' : "Keeps working if you lock the phone, you'll get a notification."}</span>
+              <span>{chat.slow ? 'Still starting up. The container was cold.' : "Keeps working if you lock the phone. You'll get a notification."}</span>
             </div>
           </div>
         )}

@@ -125,19 +125,23 @@ export function looksRaw(word: string): boolean {
 const EMOJI_RE = /\p{Extended_Pictographic}/gu
 
 /**
- * The one line of body text a card shows under the state word. Three passes,
- * each removing a WHOLE unit rather than trusting a length cut to land
- * cleanly: strip every emoji, replace the "OK -> RAW_TOKEN" transition
- * notation (seat_health's verbatim corpus) with a plain word, then strip any
- * other raw enum token that slips through elsewhere in the body. Doing this
- * before the 140-char slice is what guarantees the slice can never end
- * mid-arrow — there is no arrow or raw token left standing by the time it runs.
+ * The one line of body text a card shows under the state word. Each pass
+ * removes a WHOLE unit rather than trusting a length cut to land cleanly:
+ * strip every emoji, replace the "OK -> RAW_TOKEN" transition notation
+ * (seat_health's verbatim corpus) with a plain word, strip any other raw enum
+ * token that slips through elsewhere in the body, and split an em dash (the
+ * source corpus uses it as a clause break constantly — "RISE Warm Engager
+ * HALTED — Apify MTD $120.57 >= cap $120" — and the copy rule bans it on
+ * screen) into a sentence break instead. Doing all of this before the
+ * 140-char slice is what guarantees the slice can never end mid-arrow: there
+ * is no arrow, raw token, or dash left standing by the time it runs.
  */
 export function sanitizeBody(body: string): string {
   return body
     .replace(EMOJI_RE, '')
     .replace(/OK\s*(?:→|->)\s*[A-Z][A-Z0-9_]*/g, 'disconnected')
     .replace(RAW_ENUM_RE_G, '')
+    .replace(/\s*—\s*/g, '. ')
     .replace(/\s+/g, ' ')
     .replace(/^[^\w"'[]+/, '')
     .trim()
