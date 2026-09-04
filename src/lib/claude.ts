@@ -54,6 +54,14 @@ export type ClaudeEvent =
   // header — never echoed back from what the client asked for. Those are different
   // facts and conflating them is how a silent fallback would hide.
   | { kind: 'model'; model: string; contextChars: number | null; shed: string[] }
+  // WHICH ROW this stream belongs to, read off the broker's response headers
+  // before the first token. db/049 writes an inbox_turns row the moment the
+  // broker accepts the prompt, and a completion webhook finishes it whether or
+  // not this tab is still open — so the client needs the ids even if no frame
+  // ever arrives. `session` says whether the container resumed the thread's CLI
+  // session or started it fresh; `groundedOn` is the daily-summary date the
+  // memory envelope was built from, or null when the broker did not say.
+  | { kind: 'turn'; turnId: string; threadId: string; session: 'new' | 'resumed'; groundedOn: string | null }
   | { kind: 'done' }
   | { kind: 'error'; code: ClaudeErrorCode; detail?: string }
 
@@ -149,6 +157,18 @@ export type SendOptions = {
    * from an honoured one from the outside.
    */
   model?: ModelChoice
+  /**
+   * The thread this turn continues. Omitted on the first turn of a new thread —
+   * the broker mints the thread (and its CLI session id) and names it back in
+   * the response headers. Sent as `thread_id`.
+   */
+  threadId?: string
+  /**
+   * Minted in the BROWSER, before the request, so the pane has a stable id for
+   * the row it is about to create and can go back for it after a lost stream.
+   * Sent as `turn_id`.
+   */
+  turnId?: string
   signal?: AbortSignal
   onEvent: (e: ClaudeEvent) => void
 }
@@ -158,7 +178,7 @@ export type SendOptions = {
  * failures — those arrive as an 'error' event so the UI has exactly one path.
  */
 export async function sendToClaude(prompt: string, opts: SendOptions): Promise<void> {
-  const { onEvent, context, model, signal } = opts
+  const { onEvent, context, model, threadId, turnId, signal } = opts
   const { data } = await supabase.auth.getSession()
   const token = data.session?.access_token
   if (!token) return onEvent({ kind: 'error', code: 'not_signed_in' })
@@ -168,7 +188,13 @@ export async function sendToClaude(prompt: string, opts: SendOptions): Promise<v
     res = await fetch(FN_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ prompt, ...(context ? { context } : {}), ...(model ? { model } : {}) }),
+      body: JSON.stringify({
+        prompt,
+        ...(context ? { context } : {}),
+        ...(model ? { model } : {}),
+        ...(threadId ? { thread_id: threadId } : {}),
+        ...(turnId ? { turn_id: turnId } : {}),
+      }),
       signal,
     })
   } catch (e) {
@@ -183,6 +209,22 @@ export async function sendToClaude(prompt: string, opts: SendOptions): Promise<v
     const payload = await res.text().catch(() => '')
     const { code, detail } = classify(res.status, payload)
     return onEvent({ kind: 'error', code, detail })
+  }
+
+  // The row this stream belongs to, named by the broker before it sends a
+  // token. Both ids or neither: half an identity would let the client persist a
+  // thread it cannot fetch a turn from. Emitted first because everything that
+  // survives this tab closing is keyed on it.
+  const hTurn = res.headers.get('x-broker-turn-id')
+  const hThread = res.headers.get('x-broker-thread-id')
+  if (hTurn && hThread) {
+    onEvent({
+      kind: 'turn',
+      turnId: hTurn,
+      threadId: hThread,
+      session: res.headers.get('x-broker-session') === 'resumed' ? 'resumed' : 'new',
+      groundedOn: res.headers.get('x-broker-grounded-on') || null,
+    })
   }
 
   // Read off the RESPONSE, before the first token. This is the honest answer to
@@ -288,6 +330,14 @@ export function emit(frame: string, onEvent: (e: ClaudeEvent) => void): void {
       name: String(obj.tool_name ?? obj.name ?? 'tool'),
       detail: typeof obj.detail === 'string' ? obj.detail : undefined,
     })
+  }
+  // The detached path's own first frame (01-api.md A): the container says
+  // straight away whether it picked the thread's CLI session back up or started
+  // a fresh one under that id. A live tab can say so before any answer arrives,
+  // which is the difference between "it remembers" and "it does not".
+  if (type === 'broker') {
+    const resumed = obj.resumed === true || obj.resumed === 'true'
+    return onEvent({ kind: 'status', text: resumed ? 'resumed' : 'fresh session' })
   }
   if (type === 'system' || type === 'status') {
     const text = typeof obj.subtype === 'string' ? obj.subtype
