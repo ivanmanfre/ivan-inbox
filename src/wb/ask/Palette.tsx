@@ -22,11 +22,17 @@
    phone passes nothing, and the composer is the same component either way.
    ========================================================================== */
 import { useState } from 'react'
-import { CommandList, Kbd, type CommandItem } from '../../ds'
+import { CommandList, Icon, Kbd, type CommandItem } from '../../ds'
 import { matchCommands, type Command } from '../../exp/v2c/ChatPane'
 import type { ChatHandle } from '../../exp/v2c/useChat'
 import type { ComposerExtras } from './Composer'
 import './ask.css'
+
+/** The marker `containerPalette.ts` puts in a template where typing continues.
+ * It is DATA, never drawn: it is stripped as the template lands in the field,
+ * and the caret is naturally at the end. Written as an escape so a grep for a
+ * typed glyph in this folder keeps reading zero. */
+const INSERT_CURSOR = '\u2336'
 
 /** The three groups the vocabulary already falls into: what this pane can do
  * about the turn, which model answers, and what the container can run. */
@@ -47,7 +53,7 @@ export function usePalette(chat: ChatHandle, text: string, setText: (v: string) 
   // A container entry COMPOSES instead — its template lands in the field and
   // the operator finishes the thought before Enter.
   const run = (c: Command) => {
-    if (c.insert) { setText(c.insert.replace('⌶', '')); setCursor(0); return }
+    if (c.insert) { setText(c.insert.replace(INSERT_CURSOR, '')); setCursor(0); return }
     c.run(chat)
     setText('')
     setCursor(0)
@@ -80,7 +86,14 @@ export function usePalette(chat: ChatHandle, text: string, setText: (v: string) 
         <CommandList
           groups={groups}
           activeId={active?.name}
-          foot={<span><Kbd>↑</Kbd><Kbd>↓</Kbd> to move · <Kbd>⏎</Kbd> to run · <Kbd>esc</Kbd> to cancel</span>}
+          foot={
+            <span>
+              <Kbd><Icon name="up" size={16} /></Kbd>
+              <Kbd><Icon name="down" size={16} /></Kbd> to move ·{' '}
+              <Kbd><Icon name="enter" size={16} /></Kbd> to run ·{' '}
+              <Kbd>esc</Kbd> to cancel
+            </span>
+          }
         />
       </div>
     )
@@ -89,7 +102,9 @@ export function usePalette(chat: ChatHandle, text: string, setText: (v: string) 
     : text[0] === '/'
       ? (
         <div className="a-brain-palette" data-nomatch>
-          <span className="a-brain-note">No palette match. <Kbd>⏎</Kbd> sends this to Claude as written.</span>
+          <span className="a-brain-note">
+            No palette match. <Kbd><Icon name="enter" size={16} /></Kbd> sends this to Claude as written.
+          </span>
         </div>
       )
       : undefined

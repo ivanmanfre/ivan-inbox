@@ -132,12 +132,15 @@
 /* Move 19's affordance. The grip is the drag surface and it says so; it also
    carries a real control, so a reader who never drags can still move the
    sheet. */
+/* 48, not 44. W1 measured it: the tap probe reads a 44px square out from the
+   centre, so a box that is EXACTLY 44 puts its edge points on the boundary and
+   rounding decides them. Four more pixels leave the decision to nobody. */
 .a-brain-grip{
   flex:0 0 auto;
   display:flex;
   align-items:center;
   justify-content:center;
-  block-size:var(--ds-tap);
+  block-size:calc(var(--ds-tap) + var(--ds-s2));
   touch-action:none;
 }
 .a-brain-grip-b{
@@ -145,7 +148,7 @@
   align-items:center;
   justify-content:center;
   inline-size:var(--ds-s11);
-  min-block-size:var(--ds-tap);
+  min-block-size:calc(var(--ds-tap) + var(--ds-s2));
   border:0;
   background:none;
   cursor:grab;
@@ -1037,11 +1040,13 @@
    per card and the one control that is destructive sitting furthest from where
    the ledger says it is. It goes back to the corner. */
 .a-brain-feed [data-contained]{ position:relative }
+/* Clear of the card's own rounded edge for the same reason the grip is 48:
+   a control whose edge points sit ON a boundary is decided by rounding. */
 .a-brain-feed [data-contained] > .a-brain-swipe > .a-row > .a-row-actions,
 .a-brain-feed [data-group] .a-brain-deck-head > .a-row-actions{
   position:absolute;
-  top:var(--ds-s2);
-  inset-inline-end:var(--ds-s2);
+  top:var(--ds-s3);
+  inset-inline-end:var(--ds-s3);
   z-index:2;
 }
 .a-brain-feed [data-contained] .a-row-main{ padding-inline-end:var(--ds-s7) }

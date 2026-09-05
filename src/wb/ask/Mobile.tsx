@@ -77,8 +77,16 @@ type Drag = { x0: number; y0: number; t0: number; dx: number; axis: 'none' | 'x'
 function StatusCapsule({ n, note, onClick }: { n: number; note: string; onClick: () => void }) {
   const [open, setOpen] = useState(false)
   const label = `${n} automation alert${n > 1 ? 's' : ''}`
+  // An EVENT opens it, and an event is the count going UP. It used to open on
+  // every mount, and this control unmounts whenever the feed sheet is open —
+  // so closing the feed threw the alert over the header again, four seconds at
+  // a time, with nothing having happened. A standing alarm is a badge; a new
+  // one is an event.
+  const seen = useRef<number | null>(null)
   useEffect(() => {
-    if (n <= 0) return
+    const before = seen.current
+    seen.current = n
+    if (before === null || n <= before) return
     setOpen(true)
     const t = window.setTimeout(() => setOpen(false), 4000)
     return () => window.clearTimeout(t)

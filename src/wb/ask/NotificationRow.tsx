@@ -19,7 +19,7 @@
 
    Move 8: the swipe path and the dismiss control both survive, a row resolves
    in place before it leaves, and the toast that follows carries a real Undo
-   (`Feed.tsx` → `feed.restore` → `restoreNotifications`).
+   (`Feed.tsx` calls `feed.restore`, which calls `restoreNotifications`).
    ========================================================================== */
 import { useRef } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
