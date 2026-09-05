@@ -195,6 +195,45 @@
   overflow:hidden;
   text-overflow:ellipsis;
 }
+/* --------------------------------------------------------------------------
+   5b · The wide funnel (bklitai's move). Geometry in SVG, type in HTML: the
+   count sits above its segment, the rate rides in a pill inside it, the step
+   name sits under it, and a faint ghost trail behind the fill carries the
+   depth cue. One accent, no axes, no gridlines.
+   -------------------------------------------------------------------------- */
+.a-sends-fx{ display:none; flex-direction:column; gap:var(--ds-s2); min-width:0 }
+.a-sends-fx-row{
+  display:grid;
+  grid-template-columns:repeat(var(--a-sends-fcols),minmax(0,1fr));
+  gap:var(--ds-s2);
+  text-align:center;
+  min-width:0;
+}
+.a-sends-fx-row > *{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.a-sends-fx-band{ position:relative; min-width:0 }
+.a-sends-fx-svg{ display:block; width:100%; height:var(--ds-s11) }
+.a-sends-fx-ghost{ fill:var(--ds-accent); opacity:.18 }
+.a-sends-fx-fill{ fill:var(--ds-accent) }
+.a-sends-fx-div{ stroke:var(--ds-canvas); stroke-width:2 }
+.a-sends-fx-pills{
+  position:absolute;
+  inset:0;
+  align-items:center;
+  pointer-events:none;
+}
+.a-sends-fx-slot{ display:flex; align-items:center; justify-content:center; min-width:0 }
+.a-sends-fx-pill{
+  background:var(--ds-canvas);
+  color:var(--ds-text);
+  border-radius:var(--ds-r-pill);
+  padding:var(--ds-s1) var(--ds-s3);
+  font-variant-numeric:tabular-nums;
+}
+@media (min-width:768px){
+  .a-sends-fx{ display:flex }
+  .a-sends-fx + .a-sends-fn{ display:none }
+}
+
 /* The step between two steps. Only a real subset conversion earns a rate. */
 .a-sends-farrow{
   display:flex;

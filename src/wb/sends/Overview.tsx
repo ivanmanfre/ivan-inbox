@@ -305,44 +305,120 @@ function Hero({ accept, governor, pipeline, replacement, client }: {
   )
 }
 
-// ---- The funnel bars ----
-// One step is a neutral track with a lime layer clipped to its share of the
-// first step; the count pill lives INSIDE the segment, so the figure and the
-// quantity it stands for are the same mark. Only a real subset conversion
-// carries a rate between two steps.
+// ---- The funnel ----
+// Two forms of one figure. Above 768px it is the funnel-chart move (bklitai):
+// a horizontal band of trapezoid segments in the one accent, the count set
+// ABOVE each segment, the rate in a pill INSIDE it, the step name below, thin
+// hairlines between segments and a faint ghost trail behind the fill for depth.
+// The geometry is drawn in SVG and the type stays HTML, so a step name is real
+// text at a real size rather than a glyph the viewBox scaled to 7px.
+//
+// At or below 768px the same steps are the stacked bars they already were: a
+// four-segment horizontal funnel inside 390px would be four slivers.
+//
+// Only a real subset conversion carries a rate, on either form. A step whose
+// relation to the one before it is not a subset gets no percentage — inventing
+// one would be a claim we did not measure.
 type Step = { id: string; n: number; label: string; rate?: string }
+
+const FN_W = 1000
+const FN_H = 120
+
+/** The band itself: one polygon per step, plus its ghost, plus the dividers. */
+function FunnelShape({ steps, top }: { steps: Step[]; top: number }) {
+  const n = steps.length
+  const slot = FN_W / n
+  const mid = FN_H / 2
+  // Half-height of the band at each boundary, floored so a zero step is still a
+  // drawn line rather than a gap the eye reads as missing data.
+  const h = (v: number) => Math.max(1.5, (v / top) * (FN_H / 2 - 6))
+  const seg = (i: number, scale: number) => {
+    const x0 = i * slot
+    const x1 = (i + 1) * slot
+    const l = h(steps[i].n) * scale
+    const r = h(steps[Math.min(i + 1, n - 1)].n) * scale
+    return `${x0},${mid - l} ${x1},${mid - r} ${x1},${mid + r} ${x0},${mid + l}`
+  }
+  return (
+    <svg
+      className="a-sends-fx-svg"
+      viewBox={`0 0 ${FN_W} ${FN_H}`}
+      preserveAspectRatio="none"
+      aria-hidden="true"
+      focusable="false"
+    >
+      {steps.map((s, i) => (
+        <polygon key={`g-${s.id}`} className="a-sends-fx-ghost" points={seg(i, 1.14)} />
+      ))}
+      {steps.map((s, i) => (
+        <polygon key={`f-${s.id}`} className="a-sends-fx-fill" points={seg(i, 1)} />
+      ))}
+      {steps.slice(1).map((s, i) => (
+        <line
+          key={`d-${s.id}`}
+          className="a-sends-fx-div"
+          x1={(i + 1) * slot} x2={(i + 1) * slot} y1={0} y2={FN_H}
+        />
+      ))}
+    </svg>
+  )
+}
 
 function FunnelBars({ steps }: { steps: Step[] }) {
   const top = Math.max(1, ...steps.map(s => s.n))
+  const cols = { '--a-sends-fcols': String(steps.length) } as CSSProperties
   return (
-    <div className="a-sends-fn">
-      {steps.map((s, i) => {
-        const pct = Math.max(0, Math.min(100, (s.n / top) * 100))
-        const inner = (
-          <>
-            <span className="a-sends-fn-n">{s.n}</span>
-            <span className="a-sends-fn-l">{s.label}</span>
-          </>
-        )
-        return (
-          <div key={s.id}>
-            {i > 0 && (
-              <div className="a-sends-farrow">
-                {s.rate ? <>{s.rate}<Icon name="down" size={16} /></> : <Sep />}
-              </div>
-            )}
-            <div className="a-sends-ftrack">
-              <span className="a-sends-flayer">{inner}</span>
-              <span
-                className="a-sends-flayer"
-                data-fill=""
-                style={{ '--a-sends-pct': `${pct}%` } as CSSProperties}
-              >{inner}</span>
-            </div>
+    <>
+      {/* The wide form. */}
+      <div className="a-sends-fx">
+        <div className="a-sends-fx-row" style={cols}>
+          {steps.map(s => <span key={s.id} className="a-sends-fn-n">{s.n}</span>)}
+        </div>
+        <div className="a-sends-fx-band">
+          <FunnelShape steps={steps} top={top} />
+          <div className="a-sends-fx-row a-sends-fx-pills" style={cols}>
+            {steps.map(s => (
+              <span key={s.id} className="a-sends-fx-slot">
+                {s.rate && <span className="a-sends-fx-pill a-mono">{s.rate}</span>}
+              </span>
+            ))}
           </div>
-        )
-      })}
-    </div>
+        </div>
+        <div className="a-sends-fx-row" style={cols}>
+          {steps.map(s => <span key={s.id} className="a-sends-fn-l">{s.label}</span>)}
+        </div>
+      </div>
+
+      {/* The phone form: the bars this screen already carried. */}
+      <div className="a-sends-fn">
+        {steps.map((s, i) => {
+          const pct = Math.max(0, Math.min(100, (s.n / top) * 100))
+          const inner = (
+            <>
+              <span className="a-sends-fn-n">{s.n}</span>
+              <span className="a-sends-fn-l">{s.label}</span>
+            </>
+          )
+          return (
+            <div key={s.id}>
+              {i > 0 && (
+                <div className="a-sends-farrow">
+                  {s.rate ? <>{s.rate}<Icon name="down" size={16} /></> : <Sep />}
+                </div>
+              )}
+              <div className="a-sends-ftrack">
+                <span className="a-sends-flayer">{inner}</span>
+                <span
+                  className="a-sends-flayer"
+                  data-fill=""
+                  style={{ '--a-sends-pct': `${pct}%` } as CSSProperties}
+                >{inner}</span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </>
   )
 }
 
