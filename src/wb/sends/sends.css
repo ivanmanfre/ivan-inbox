@@ -1,0 +1,302 @@
+/* ==========================================================================
+   src/wb/sends/sends.css, S09 Sends overview, Direction A.
+
+   Only what the kit does not already carry. Every colour is a `--ds-*` token,
+   every radius is `--ds-r1|r2|r3|r4|r-pill`, every size is `--ds-fs-*`, every
+   gap is a spacing step. No literal, anywhere.
+
+   The screen's shape: a sticky head, one thin bar of controls, then a scroller
+   of SECTIONS. A section is an eyebrow line over one instrument: a ledger of
+   cells, a funnel of clipped bars, a run of measured rows, or a table.
+   ========================================================================== */
+
+/* The screen sits in a flex column working surface, so it claims the column
+   rather than asking for a percentage of an indefinite height. */
+.a-sends{ flex:1 1 auto; min-height:0 }
+
+/* The bar holds a popover, so it may not clip; on a phone it wraps instead of
+   scrolling, which is also what keeps the page from ever moving sideways. */
+.a-sends .a-bar{ overflow:visible; flex-wrap:wrap; row-gap:var(--ds-s2) }
+
+/* --------------------------------------------------------------------------
+   1 · The range pill and its menu.
+   -------------------------------------------------------------------------- */
+.a-sends-pop{ position:relative; flex:0 0 auto }
+.a-sends-menu{
+  position:absolute;
+  top:100%;
+  inset-inline-end:0;
+  margin-block-start:var(--ds-s2);
+  min-width:var(--ds-s11);
+}
+.a-sends-dates{ display:flex; align-items:center; gap:var(--ds-s3); flex:1 1 auto; min-width:0 }
+.a-sends-dates > *{ flex:1 1 0; min-width:0 }
+.a-sends-dates > .a-sends-arrow{ flex:0 0 auto; color:var(--ds-text-3); display:flex; align-items:center }
+/* The native date picker draws its own glyph, so it is told which ground it is
+   sitting on. Keywords, not colours: the same arm the app already uses. */
+.a-sends-dates .ds-input{ color-scheme:dark }
+:root[data-theme='light'] .a-sends-dates .ds-input{ color-scheme:light }
+
+/* --------------------------------------------------------------------------
+   2 · Section. An eyebrow line and its predicate, over one instrument.
+   -------------------------------------------------------------------------- */
+.a-sends-sec{ display:flex; flex-direction:column; gap:var(--ds-s4); min-width:0 }
+.a-sends-h{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:var(--ds-s3);
+  min-width:0;
+}
+.a-sends-h-s{
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-mono);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-3);
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s2);
+  white-space:nowrap;
+}
+/* The caption under a table: an explainer, never a figure. */
+.a-sends-cap{
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-3);
+}
+.a-sends-empty{
+  padding:var(--ds-card-pad);
+  color:var(--ds-text-4);
+  font-size:var(--ds-fs-body);
+  line-height:var(--ds-lh-body);
+  background:var(--ds-surface-1);
+  border:1px solid var(--ds-line);
+  border-radius:var(--ds-r4);
+}
+.a-sends-load{
+  padding:var(--ds-s9) var(--ds-card-pad);
+  color:var(--ds-text-4);
+  font-size:var(--ds-fs-body);
+}
+
+/* --------------------------------------------------------------------------
+   3 · Ledger cell parts. The label carries the severity mark; the unit rides
+   the figure a size down so the numeral stays the thing being read.
+   -------------------------------------------------------------------------- */
+.a-sends-cl{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:var(--ds-s2);
+  min-width:0;
+}
+.a-sends-u{
+  font-size:var(--ds-fs-title);
+  line-height:var(--ds-lh-title);
+  font-weight:var(--ds-fw-regular);
+  color:var(--ds-text-3);
+  letter-spacing:var(--ds-tr-title);
+}
+/* A delta reads as a direction first: the glyph, then the size, then what it
+   is measured against. */
+.a-sends-delta{
+  display:inline-flex;
+  align-items:center;
+  gap:var(--ds-s1);
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-mono);
+  font-variant-numeric:tabular-nums;
+}
+.a-sends-over{
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-mono);
+  color:var(--ds-sev-attention);
+  margin-inline-start:var(--ds-s2);
+}
+
+/* --------------------------------------------------------------------------
+   4 · The gauge. Never clamped: when the operator raises a cap past its line
+   the solid fill stops at a tick and the remainder becomes an amber overflow,
+   so "past the line" is drawn instead of hidden.
+   -------------------------------------------------------------------------- */
+.a-sends-g{
+  position:relative;
+  display:block;
+  width:100%;
+  height:var(--ds-s3);
+  background:var(--ds-surface-2);
+  border-radius:var(--ds-r1);
+  overflow:hidden;
+}
+.a-sends-g[data-sm]{ height:var(--ds-s2) }
+.a-sends-g-f{
+  position:absolute;
+  inset-block:0;
+  inset-inline-start:0;
+  border-radius:var(--ds-r1);
+  background:var(--ds-hairline-strong);
+}
+.a-sends-g-f[data-tone='accent']{ background:var(--ds-accent) }
+.a-sends-g-f[data-tone='clear']{ background:var(--ds-sev-clear) }
+.a-sends-g-f[data-tone='attention']{ background:var(--ds-sev-attention) }
+.a-sends-g-f[data-tone='urgent']{ background:var(--ds-sev-urgent) }
+.a-sends-g-o{
+  position:absolute;
+  inset-block:0;
+  inset-inline-end:0;
+  background:var(--ds-sev-attention-soft);
+}
+.a-sends-g-t{
+  position:absolute;
+  inset-block:0;
+  width:1px;
+  background:var(--ds-text);
+}
+
+/* --------------------------------------------------------------------------
+   5 · The funnel. The count pill sits INSIDE its segment: one neutral layer
+   and one lime layer carrying the same content, the lime one clipped to the
+   step's share. Whatever the fill covers reads in accent ink, the rest reads
+   in normal ink, and neither layer can ever disagree with the other.
+   -------------------------------------------------------------------------- */
+.a-sends-fn{ display:flex; flex-direction:column; gap:var(--ds-s2) }
+.a-sends-ftrack{
+  position:relative;
+  min-height:var(--ds-control-h);
+  background:var(--ds-surface-2);
+  border-radius:var(--ds-r2);
+  overflow:hidden;
+}
+.a-sends-flayer{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s3);
+  padding-inline:var(--ds-s4);
+  min-width:0;
+  white-space:nowrap;
+}
+.a-sends-flayer[data-fill]{
+  background:var(--ds-accent);
+  color:var(--ds-accent-ink);
+  clip-path:inset(0 calc(100% - var(--a-sends-pct)) 0 0);
+}
+.a-sends-fn-n{
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-title);
+  font-weight:var(--ds-fw-semi);
+  font-variant-numeric:tabular-nums;
+  letter-spacing:var(--ds-tr-title);
+}
+.a-sends-fn-l{
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+/* The step between two steps. Only a real subset conversion earns a rate. */
+.a-sends-farrow{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s2);
+  padding-inline:var(--ds-s4);
+  color:var(--ds-text-3);
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-mono);
+  font-variant-numeric:tabular-nums;
+}
+
+/* --------------------------------------------------------------------------
+   6 · Tables. Numbers right, mono, tabular; the day column mono too. Today is
+   marked by weight and ink, not by a tint; the tint is the operator's turn.
+   -------------------------------------------------------------------------- */
+.a-sends-day{
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-mono);
+  font-variant-numeric:tabular-nums;
+  color:var(--ds-text-2);
+  white-space:nowrap;
+}
+.a-sends-day[data-today]{ color:var(--ds-text); font-weight:var(--ds-fw-semi) }
+.a-sends-day[data-total]{ color:var(--ds-text-3) }
+.a-sends-sub{ color:var(--ds-text-3); font-style:normal; margin-inline-start:var(--ds-s2) }
+.a-sends-burn{ color:var(--ds-sev-attention); font-style:normal; margin-inline-start:var(--ds-s2) }
+.a-sends-nm{
+  display:block;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:var(--ds-text);
+}
+.a-sends-more{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s2);
+  min-height:var(--ds-tap);
+  padding:var(--ds-s2) var(--ds-row-x);
+  background:none;
+  border:0;
+  color:var(--ds-text-3);
+  font:inherit;
+  font-size:var(--ds-fs-meta);
+  text-align:left;
+  cursor:pointer;
+  border-radius:var(--ds-r2);
+  transition:color var(--ds-dur-hover) var(--ds-ease), background-color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-sends-more:hover{ color:var(--ds-text); background:var(--ds-wash) }
+.a-sends-foot{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s3);
+  flex-wrap:wrap;
+  font-size:var(--ds-fs-meta);
+  color:var(--ds-text-3);
+}
+.a-sends-foot .a-sends-tot{ margin-inline-start:auto; font-family:var(--ds-font-mono); font-variant-numeric:tabular-nums }
+.a-sends-foot .a-sends-tot b{ color:var(--ds-text); font-weight:var(--ds-fw-semi) }
+.a-sends-legend{ display:flex; align-items:center; gap:var(--ds-s2) }
+
+/* --------------------------------------------------------------------------
+   7 · Row inserts: the sparkline that rides a lane row, the gauge stack a
+   governor row carries, the seat's key/value block.
+   -------------------------------------------------------------------------- */
+.a-sends-spk{ display:block; width:var(--ds-s11) }
+.a-sends-stack{ display:flex; flex-direction:column; gap:var(--ds-s2); min-width:0; width:100% }
+.a-sends-gline{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s2);
+  flex-wrap:wrap;
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-mono);
+  font-variant-numeric:tabular-nums;
+  color:var(--ds-text-3);
+}
+.a-sends-gline b{ color:var(--ds-text); font-weight:var(--ds-fw-semi) }
+.a-sends-link{
+  align-self:flex-start;
+  display:inline-flex;
+  align-items:center;
+  gap:var(--ds-s2);
+  color:var(--ds-accent-ui);
+  text-decoration:none;
+  font-size:var(--ds-fs-meta);
+  transition:opacity var(--ds-dur-hover) var(--ds-ease);
+}
+.a-sends-link:hover{ opacity:.75 }
+
+/* --------------------------------------------------------------------------
+   8 · Phone. Same parts, two columns of ledger, tables scroll in their own
+   container so the page itself never moves sideways.
+   -------------------------------------------------------------------------- */
+@media (max-width:767px){
+  /* The section takes the gutter, so the group and the ledger inside it give
+     theirs back rather than inheriting it twice. */
+  .a-sends-sec{ padding-inline:var(--ds-gutter) }
+  .a-sends-sec .a-group,
+  .a-sends-sec .a-ledger{ margin-inline:var(--ds-s0) }
+  .a-sends-spk{ width:var(--ds-s10) }
+}

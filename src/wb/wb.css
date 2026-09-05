@@ -1,0 +1,506 @@
+/* ==========================================================================
+   src/wb/wb.css — Direction A, "the instrument".
+
+   Every value here is a token from src/ds/tokens.css. Not one colour literal,
+   not one px font-size, not one px radius: the census gate reads this file.
+
+   The shape of the direction, stated once so eight screens can share it:
+     · a screen is a sticky compact HEAD over a scrolling BODY,
+     · the body is a stack of GROUPS (surface-1, one radius, one hairline edge),
+     · a group is an eyebrow bar over a run of dense hairline-separated ROWS,
+     · meta and every figure are mono with tabular numerals,
+     · a row's actions live in the row and appear on hover or focus,
+     · a KPI is a ledger cell, not a card.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   0 · The root. `.ds-body` rides beside `.a-root` on the same element so the
+   focus ring, the scrollbar and the reduced-motion collapse apply inside the
+   subtree without `body` taking the design system's ground colour (the app
+   paints its own plate under us).
+   -------------------------------------------------------------------------- */
+.a-root{
+  font-family:var(--ds-font);
+  font-size:var(--ds-fs-body);
+  line-height:var(--ds-lh-body);
+  font-weight:var(--ds-fw-regular);
+  font-variant-numeric:tabular-nums;
+  color:var(--ds-text);
+  background:var(--ds-canvas);
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+  height:100%;
+  overflow:hidden;
+}
+
+/* --------------------------------------------------------------------------
+   1 · Head. Compact, sticky, one hairline. The predicate line sits under the
+   title; the tail holds controls at the same optical height.
+   -------------------------------------------------------------------------- */
+.a-head{
+  position:sticky;
+  top:0;
+  z-index:var(--ds-z-header);
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s3);
+  min-height:var(--ds-header-h);
+  padding:var(--ds-s2) var(--ds-gutter);
+  background:var(--ds-canvas);
+  border-bottom:1px solid var(--ds-line);
+  flex:0 0 auto;
+}
+.a-head-t{ display:flex; flex-direction:column; gap:var(--ds-s1); min-width:0; flex:1 1 auto }
+.a-head-title{
+  margin:0;
+  font-size:var(--ds-fs-page);
+  line-height:var(--ds-lh-page);
+  font-weight:var(--ds-fw-semi);
+  letter-spacing:var(--ds-tr-page);
+  color:var(--ds-text);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.a-head-sub{
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-mono);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-3);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.a-head-tail{ display:flex; align-items:center; gap:var(--ds-s2); flex:0 0 auto }
+/* A second, thinner bar under the head: filters, tabs, a range. */
+.a-bar{
+  position:sticky;
+  top:var(--ds-header-h);
+  z-index:var(--ds-z-header);
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s2);
+  padding:var(--ds-s2) var(--ds-gutter);
+  background:var(--ds-canvas);
+  border-bottom:1px solid var(--ds-line);
+  overflow-x:auto;
+  overflow-y:hidden;
+  scrollbar-width:none;
+  flex:0 0 auto;
+}
+.a-bar::-webkit-scrollbar{ display:none }
+/* The bar scrolls sideways, so its children keep their own width instead of
+   being squeezed into an unreadable stack of collapsed chips. */
+.a-bar > *{ flex-shrink:0 }
+.a-bar-spacer{ flex:1 1 auto }
+
+/* --------------------------------------------------------------------------
+   1b · The bare-button reset, owned here instead of borrowed.
+
+   A `<button>` with no class of its own keeps the UA's light chrome, which on
+   the pistachio ground reads as a white tile. The phone chrome sheet
+   (`src/exp/brain/b/brain-b.css`) used to hand this tree that reset for free,
+   and in doing so also stripped the box off every design system control at 390:
+   both Phase 2 builders hit it and both restated the box a step higher to undo
+   it. The chrome reset is scoped now (W1, cascade trap 1) and that
+   workaround is gone; this is the same reset, owned by this tree, skipping
+   anything that paints itself.
+   -------------------------------------------------------------------------- */
+.a-root button:not([class*='ds-']):not([class*='wb-']){
+  appearance:none; -webkit-appearance:none;
+  background:none; border:none; margin:0; padding:0;
+  font:inherit; color:inherit; cursor:pointer;
+}
+
+/* A control never gives up its own width to a neighbour. Inside a bar that
+   scrolls sideways (and inside a head that wraps), a chip, a segmented track and
+   its arms, a button and a badge hold their size and the container scrolls or
+   wraps instead of crushing them into an unreadable run of words. Measured at
+   390: without this the filter chips and the Overview/Lanes/Log arms lost their
+   padding and their fill, and the segmented read as one line of plain text. */
+.a-root .ds-chip,
+.a-root .ds-seg,
+.a-root .ds-seg > *,
+.a-root .ds-btn,
+.a-root .ds-ibtn,
+.a-root .ds-badge,
+.a-root .ds-kbd,
+.a-root .ds-tabs > *{ flex-shrink:0 }
+
+/* --------------------------------------------------------------------------
+   2 · Body and sections.
+   -------------------------------------------------------------------------- */
+.a-body{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  padding:var(--ds-gutter);
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-section-gap);
+  overscroll-behavior-y:contain;
+}
+.a-body[data-flush]{ padding:var(--ds-s0) }
+.a-stack{ display:flex; flex-direction:column; gap:var(--ds-s4); min-width:0 }
+/* A group is `overflow:hidden`, and an overflow that is not visible zeroes a
+   flex item's automatic minimum size. Inside a column scroller that lets the
+   browser squeeze a short group down to its two border lines once the page is
+   taller than the viewport, which is exactly what it did to the masthead. Every
+   direct child of a scroller or a stack therefore holds its own content height;
+   a child that wants to grow still can, by setting flex-grow itself. */
+.a-body > *, .a-stack > *{ flex-shrink:0 }
+.a-stack[data-tight]{ gap:var(--ds-s3) }
+.a-stack[data-wide]{ gap:var(--ds-s7) }
+.a-cols{ display:grid; gap:var(--ds-s4); grid-template-columns:1fr; min-width:0 }
+@media (min-width:1000px){
+  .a-cols[data-cols='2']{ grid-template-columns:1fr 1fr }
+  .a-cols[data-cols='side']{ grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) }
+}
+
+/* --------------------------------------------------------------------------
+   3 · Group. The instrument's one container: a lighter surface, one radius,
+   one hairline. Rows inside it draw their own top hairline, so a boundary is
+   never doubled.
+   -------------------------------------------------------------------------- */
+.a-group{
+  background:var(--ds-surface-1);
+  border:1px solid var(--ds-line);
+  border-radius:var(--ds-r4);
+  overflow:hidden;
+  min-width:0;
+}
+.a-group[data-quiet]{ background:transparent }
+.a-group-h{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s3);
+  padding:var(--ds-s3) var(--ds-row-x);
+  border-bottom:1px solid var(--ds-line);
+  min-width:0;
+}
+.a-group-h[data-sticky]{
+  position:sticky;
+  top:0;
+  z-index:1;
+  background:var(--ds-surface-1);
+}
+.a-eyebrow{
+  font-size:var(--ds-fs-eyebrow);
+  line-height:var(--ds-lh-eyebrow);
+  font-weight:var(--ds-fw-medium);
+  letter-spacing:var(--ds-tr-eyebrow);
+  text-transform:uppercase;
+  color:var(--ds-text-3);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.a-group-h .a-eyebrow{ flex:1 1 auto; min-width:0 }
+.a-group-tail{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s2);
+  flex:0 0 auto;
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-mono);
+  color:var(--ds-text-3);
+}
+.a-group-pad{ padding:var(--ds-card-pad) }
+.a-group-foot{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s2);
+  padding:var(--ds-s3) var(--ds-row-x);
+  border-top:1px solid var(--ds-line);
+}
+
+/* --------------------------------------------------------------------------
+   4 · Row. Dense, hairline-separated, no box of its own. The hover wash is a
+   background step, so the ink-alpha hairline still composites over it.
+   -------------------------------------------------------------------------- */
+.a-rows{ display:flex; flex-direction:column; min-width:0 }
+.a-row{
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:var(--ds-stack);
+  width:100%;
+  padding:var(--ds-row-y) var(--ds-row-x);
+  min-height:var(--ds-tap);
+  background:transparent;
+  border:0;
+  margin:0;
+  text-align:left;
+  color:inherit;
+  font:inherit;
+  min-width:0;
+  transition:background-color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-rows > .a-row + .a-row,
+.a-rows > * + * > .a-row:first-child{ box-shadow:inset 0 1px 0 var(--ds-line) }
+.a-rows > * + .a-row{ box-shadow:inset 0 1px 0 var(--ds-line) }
+.a-row[data-interactive]{ cursor:pointer }
+.a-row[data-interactive]:hover{ background:var(--ds-wash) }
+.a-row[data-focused]{ background:var(--ds-wash-strong) }
+.a-row[data-selected]{ background:var(--ds-accent-soft) }
+.a-row[data-sev='attention']::before,
+.a-row[data-sev='urgent']::before,
+.a-row[data-unread]::before{
+  content:'';
+  position:absolute;
+  inset-block:0;
+  inset-inline-start:0;
+  width:2px;
+  background:var(--ds-accent);
+}
+.a-row[data-sev='attention']::before{ background:var(--ds-sev-attention) }
+.a-row[data-sev='urgent']::before{ background:var(--ds-sev-urgent) }
+.a-row-main{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:var(--ds-s1) }
+.a-row-title{
+  font-size:var(--ds-fs-title);
+  line-height:var(--ds-lh-title);
+  font-weight:var(--ds-fw-medium);
+  letter-spacing:var(--ds-tr-title);
+  color:var(--ds-text);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.a-row-title[data-wrap]{ white-space:normal }
+.a-row-sub{
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-2);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.a-row-sub[data-wrap]{ white-space:normal }
+.a-row-meta{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s2);
+  flex-wrap:wrap;
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-mono);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-3);
+}
+.a-row-tail{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s2);
+  flex:0 0 auto;
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-mono);
+  color:var(--ds-text-3);
+  white-space:nowrap;
+}
+.a-row-lead{ flex:0 0 auto; display:flex; align-items:center }
+/* Inline actions: in the row, revealed by hover or focus, never a second row. */
+.a-row-actions{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s2);
+  flex:0 0 auto;
+  opacity:0;
+  transition:opacity var(--ds-dur-hover) var(--ds-ease);
+}
+.a-row:hover .a-row-actions,
+.a-row:focus-within .a-row-actions,
+.a-row[data-focused] .a-row-actions,
+.a-row-actions:focus-within{ opacity:1 }
+@media (hover:none){ .a-row-actions{ opacity:1 } }
+
+/* --------------------------------------------------------------------------
+   5 · Type helpers. A screen sets a role; it never sets a size.
+   -------------------------------------------------------------------------- */
+.a-mono{ font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono); font-variant-numeric:tabular-nums }
+.a-meta{ font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3) }
+.a-body-t{ font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); color:var(--ds-text-2) }
+.a-title-t{ font-size:var(--ds-fs-title); line-height:var(--ds-lh-title); font-weight:var(--ds-fw-medium); color:var(--ds-text) }
+.a-page-t{ font-size:var(--ds-fs-page); line-height:var(--ds-lh-page); font-weight:var(--ds-fw-semi); letter-spacing:var(--ds-tr-page) }
+.a-figure-t{
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-figure);
+  line-height:var(--ds-lh-figure);
+  font-weight:var(--ds-fw-semi);
+  letter-spacing:var(--ds-tr-figure);
+  font-variant-numeric:tabular-nums;
+  color:var(--ds-text);
+}
+.a-dim{ color:var(--ds-text-3) }
+.a-dim-2{ color:var(--ds-text-4) }
+.a-ink{ color:var(--ds-text) }
+.a-accent{ color:var(--ds-accent-ui) }
+.a-sev-clear{ color:var(--ds-sev-clear) }
+.a-sev-attention{ color:var(--ds-sev-attention) }
+.a-sev-urgent{ color:var(--ds-sev-urgent) }
+.a-up{ color:var(--ds-delta-up) }
+.a-down{ color:var(--ds-delta-down) }
+.a-clamp{ display:-webkit-box; -webkit-line-clamp:2; line-clamp:2; -webkit-box-orient:vertical; overflow:hidden }
+.a-clamp[data-lines='3']{ -webkit-line-clamp:3; line-clamp:3 }
+.a-clamp[data-lines='4']{ -webkit-line-clamp:4; line-clamp:4 }
+.a-nowrap{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.a-pre{ white-space:pre-wrap; overflow-wrap:anywhere }
+
+/* --------------------------------------------------------------------------
+   6 · Ledger. KPI as a run of cells inside one ruled block, not a deck of
+   floating cards: the numbers line up on a shared baseline and a shared right
+   edge, which is the whole point of reading them together.
+   -------------------------------------------------------------------------- */
+.a-ledger{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));
+  background:var(--ds-line);
+  gap:1px;
+  border-radius:var(--ds-r4);
+  overflow:hidden;
+  border:1px solid var(--ds-line);
+}
+.a-cell{
+  background:var(--ds-surface-1);
+  padding:var(--ds-card-pad);
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s2);
+  min-width:0;
+}
+.a-cell-l{
+  font-size:var(--ds-fs-eyebrow);
+  line-height:var(--ds-lh-eyebrow);
+  letter-spacing:var(--ds-tr-eyebrow);
+  text-transform:uppercase;
+  font-weight:var(--ds-fw-medium);
+  color:var(--ds-text-3);
+}
+.a-cell-v{
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-figure);
+  line-height:var(--ds-lh-figure);
+  font-weight:var(--ds-fw-semi);
+  letter-spacing:var(--ds-tr-figure);
+  font-variant-numeric:tabular-nums;
+  color:var(--ds-text);
+}
+.a-cell-n{ font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3) }
+.a-cell[data-interactive]{ cursor:pointer; text-align:left; border:0; font:inherit; transition:background-color var(--ds-dur-hover) var(--ds-ease) }
+.a-cell[data-interactive]:hover{ background:var(--ds-surface-2) }
+.a-cell[data-on]{ background:var(--ds-accent-soft) }
+
+/* A measured bar: the figure drawn, not described. */
+.a-bars{ display:flex; flex-direction:column; gap:var(--ds-s2) }
+.a-barline{ display:grid; grid-template-columns:minmax(0,1fr) auto; gap:var(--ds-s3); align-items:center }
+.a-bartrack{
+  position:relative;
+  height:var(--ds-s3);
+  background:var(--ds-surface-2);
+  border-radius:var(--ds-r1);
+  overflow:hidden;
+}
+.a-barfill{
+  position:absolute;
+  inset-block:0;
+  inset-inline-start:0;
+  background:var(--ds-accent);
+  border-radius:var(--ds-r1);
+}
+.a-barfill[data-tone='attention']{ background:var(--ds-sev-attention) }
+.a-barfill[data-tone='urgent']{ background:var(--ds-sev-urgent) }
+.a-barfill[data-tone='clear']{ background:var(--ds-sev-clear) }
+.a-barfill[data-tone='quiet']{ background:var(--ds-hairline-strong) }
+/* One stacked bar, the shape of a queue drawn in one line. */
+.a-stackbar{ display:flex; height:var(--ds-s3); border-radius:var(--ds-r1); overflow:hidden; background:var(--ds-surface-2) }
+.a-stackseg{ height:100% }
+.a-stackseg[data-tone='urgent']{ background:var(--ds-sev-urgent) }
+.a-stackseg[data-tone='attention']{ background:var(--ds-sev-attention) }
+.a-stackseg[data-tone='accent']{ background:var(--ds-accent) }
+.a-stackseg[data-tone='clear']{ background:var(--ds-sev-clear) }
+.a-stackseg[data-tone='quiet']{ background:var(--ds-hairline-strong) }
+/* A column of sparkline bars, for a per-day read. */
+.a-spark{ display:flex; align-items:flex-end; gap:1px; height:var(--ds-s6) }
+.a-sparkbar{ flex:1 1 0; min-width:1px; background:var(--ds-hairline-strong); border-radius:var(--ds-r1) }
+.a-sparkbar[data-on]{ background:var(--ds-accent) }
+
+/* --------------------------------------------------------------------------
+   7 · Small parts.
+   -------------------------------------------------------------------------- */
+.a-kv{ display:grid; grid-template-columns:auto minmax(0,1fr); gap:var(--ds-s2) var(--ds-s4); align-items:baseline }
+.a-kv dt{ font-size:var(--ds-fs-eyebrow); letter-spacing:var(--ds-tr-eyebrow); text-transform:uppercase; color:var(--ds-text-3); font-weight:var(--ds-fw-medium) }
+.a-kv dd{ margin:0; font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono); color:var(--ds-text-2); min-width:0; overflow-wrap:anywhere }
+.a-dot{ width:var(--ds-s3); height:var(--ds-s3); border-radius:var(--ds-r-pill); background:var(--ds-hairline-strong); flex:0 0 auto; display:inline-block }
+.a-dot[data-tone='accent']{ background:var(--ds-accent) }
+.a-dot[data-tone='clear']{ background:var(--ds-sev-clear) }
+.a-dot[data-tone='attention']{ background:var(--ds-sev-attention) }
+.a-dot[data-tone='urgent']{ background:var(--ds-sev-urgent) }
+.a-dot[data-off]{ opacity:.35 }
+.a-sep{ color:var(--ds-text-4); padding-inline:var(--ds-s1) }
+.a-hr{ height:1px; background:var(--ds-line); border:0; margin:var(--ds-s0) }
+.a-quote{
+  border-inline-start:2px solid var(--ds-line-strong);
+  padding:var(--ds-s2) var(--ds-s4);
+  color:var(--ds-text-2);
+  font-size:var(--ds-fs-body);
+  line-height:var(--ds-lh-body);
+  background:var(--ds-surface-2);
+  border-radius:var(--ds-r2);
+  overflow-wrap:anywhere;
+}
+.a-scroll-x{ overflow-x:auto; overflow-y:hidden; min-width:0 }
+.a-link{
+  color:var(--ds-accent-ui);
+  text-decoration:none;
+  background:none;
+  border:0;
+  padding:0;
+  font:inherit;
+  cursor:pointer;
+  transition:opacity var(--ds-dur-hover) var(--ds-ease);
+}
+.a-link:hover{ opacity:.75 }
+.a-plain{ background:none; border:0; padding:0; margin:0; font:inherit; color:inherit; text-align:inherit; cursor:pointer }
+.a-wrapline{ display:flex; align-items:center; gap:var(--ds-s2); flex-wrap:wrap; min-width:0 }
+.a-grow{ flex:1 1 auto; min-width:0 }
+.a-right{ margin-inline-start:auto }
+
+/* A working wash under a lane that is running right now (03-DIRECTION move 4). */
+@keyframes a-sweep{ from{ transform:translateX(-100%) } to{ transform:translateX(100%) } }
+.a-working{ position:relative; overflow:hidden }
+.a-working::after{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:linear-gradient(90deg,transparent,var(--ds-wash),transparent);
+  animation:a-sweep 1400ms var(--ds-ease) infinite;
+  pointer-events:none;
+}
+@media (prefers-reduced-motion:reduce){
+  .a-root, .a-root *, .a-root *::before, .a-root *::after{
+    transition-duration:0ms !important;
+    animation-duration:0ms !important;
+    animation-iteration-count:1 !important;
+    scroll-behavior:auto !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   8 · Phone. One set of parts, two widths: the group loses its outer radius and
+   goes edge to edge, the ledger becomes two columns, a side column stacks.
+   -------------------------------------------------------------------------- */
+@media (max-width:767px){
+  /* The phone row WRAPS rather than crushing the words it exists to show. The
+     main column keeps at least three fifths of the width; the tail and the
+     row's own actions take the rest and settle onto the line under it when they
+     do not fit. A list whose rows are height-windowed against a constant opts
+     back out in its own sheet (see dms.css). */
+  .a-row{ flex-wrap:wrap; row-gap:var(--ds-s2) }
+  .a-row-main{ flex:1 1 60% }
+  .a-row-tail{ margin-inline-start:auto }
+
+  .a-body{ padding:var(--ds-s3) var(--ds-s0) var(--ds-s9) }
+  .a-group{ border-radius:var(--ds-r4); margin-inline:var(--ds-gutter) }
+  .a-ledger{ grid-template-columns:1fr 1fr; margin-inline:var(--ds-gutter) }
+  .a-head, .a-bar{ padding-inline:var(--ds-gutter) }
+}

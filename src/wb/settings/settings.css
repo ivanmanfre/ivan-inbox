@@ -1,0 +1,40 @@
+/* ==========================================================================
+   src/wb/settings/settings.css — the three things Settings needs that
+   the kit and the design system do not already draw. Token-only.
+   ========================================================================== */
+
+/* A board door: the same row rhythm as a SettingRow, but it is a link, so it
+   carries the external mark and dims when there is no board to open yet. */
+.a-set-link{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s4);
+  padding:var(--ds-row-y) var(--ds-row-x);
+  min-height:var(--ds-tap);
+  color:var(--ds-text-3);
+  text-decoration:none;
+  box-shadow:inset 0 1px 0 var(--ds-line);
+  transition:background-color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-set-link:first-child{ box-shadow:none }
+.a-set-link:hover{ background:var(--ds-wash) }
+.a-set-link[data-off]{ opacity:.5; pointer-events:none }
+.a-set-link-m{ display:flex; flex-direction:column; gap:var(--ds-s1); flex:1 1 auto; min-width:0 }
+
+/* The one row that is a note and not a control. */
+.a-set-note{
+  margin:var(--ds-s0);
+  padding:var(--ds-row-y) var(--ds-row-x);
+  color:var(--ds-text-3);
+  box-shadow:inset 0 1px 0 var(--ds-line);
+}
+
+/* A push failure is a live thing that stopped, which is what earns the tone. */
+.a-set-err{ display:block; margin-block-start:var(--ds-s1); color:var(--ds-sev-attention) }
+
+.a-set-build{
+  margin:var(--ds-s0);
+  padding-inline:var(--ds-gutter);
+  padding-block-end:var(--ds-s7);
+  color:var(--ds-text-4);
+}

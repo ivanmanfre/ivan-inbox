@@ -1540,9 +1540,18 @@
 }
 
 /* 10.6 — reduced motion disables BOTH halves of the beat and every transition
-   except opacity. */
+   except opacity.
+
+   `transform:none!important` was here until 2026-09-05 (W1, cascade trap 2) and
+   it was wrong about POSITION. A reduced-motion request is a request to stop
+   MOVING things, and a closed sheet held off stage by `translateX(100%)` is not
+   moving: zeroing it put an opaque sheet over the working surface on every phone
+   screen and swallowed every tap. Measured, not reasoned — the screenshot gate
+   runs with `reducedMotion: 'reduce'`, so the first pass of Phase 2 shots
+   photographed the feed on every 390 screen. Killing the transition and the
+   animation is the whole of what the request asks for. */
 @media (prefers-reduced-motion: reduce){
-  .wb.wb.wb *{ transition:none!important; animation:none!important; transform:none!important }
+  .wb.wb.wb *{ transition:none!important; animation:none!important }
   .wb.wb.wb .ct-card, .wb.wb.wb .r, .wb.wb.wb .td-r.tap, .wb.wb.wb .ov-tr,
   .wb.wb.wb .ct-f, .wb.wb.wb .chip{ transition:opacity var(--dur-hover) linear!important }
 }

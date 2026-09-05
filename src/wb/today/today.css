@@ -1,0 +1,100 @@
+/* ==========================================================================
+   src/wb/today/today.css — S01 Today + S41 System alert strip.
+
+   Only what the shared kit does not already carry. Every colour is a
+   `--ds-*` token, every radius a `--ds-r*` step, every size a `--ds-fs-*`
+   role, every gap a spacing step. No literal, no px font-size, no px radius.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1 · The masthead. One figure with its predicate under it on the left, the
+   shape of the same three numbers on the right. One block, two reads.
+   -------------------------------------------------------------------------- */
+.a-today-mast{
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  gap:var(--ds-s5);
+  align-items:start;
+  min-width:0;
+}
+@media (min-width:1000px){
+  .a-today-mast{ grid-template-columns:minmax(0,auto) minmax(0,1fr); gap:var(--ds-s8) }
+}
+.a-today-fig{ display:flex; flex-direction:column; gap:var(--ds-s2); min-width:0 }
+.a-today-read{ display:flex; flex-direction:column; gap:var(--ds-s4); min-width:0 }
+
+/* The legend: a mono line of dot + count + label, dimmed where the count is 0. */
+.a-today-legend{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--ds-s2) var(--ds-s5); min-width:0 }
+.a-today-lg{ display:inline-flex; align-items:center; gap:var(--ds-s2) }
+.a-today-lg[data-off]{ opacity:.55 }
+
+/* --------------------------------------------------------------------------
+   2 · Blocks inside a group: a stated line with its second half under it, and
+   the padded well an empty line or a card sits in.
+   -------------------------------------------------------------------------- */
+.a-today-pad{ padding:var(--ds-row-y) var(--ds-row-x); min-width:0 }
+.a-today-block{ display:flex; flex-direction:column; gap:var(--ds-s2); min-width:0 }
+.a-today-blocks{ display:flex; flex-direction:column; gap:var(--ds-s5); min-width:0 }
+.a-today-z{ display:flex; flex-direction:column; min-width:0 }
+
+/* The one line on this screen that has to be impossible to miss: people who
+   wrote in and were never opened here. Severity, because it is a live neglect
+   that is happening right now, not a queue depth. */
+.a-today-alarm{ color:var(--ds-sev-urgent); font-weight:var(--ds-fw-semi) }
+
+/* A group's right-hand count: mono, right aligned, ink when the zone is hot. */
+.a-today-tail{ display:inline-flex; align-items:center; gap:var(--ds-s2); justify-content:flex-end }
+.a-today-tail[data-state='hot']{ color:var(--ds-text) }
+
+/* --------------------------------------------------------------------------
+   3 · Campaign lanes: a name, a plain right-aligned count, a measured bar.
+   -------------------------------------------------------------------------- */
+.a-today-lanes{ display:flex; flex-direction:column; gap:var(--ds-s5); min-width:0 }
+.a-today-lane{ display:flex; flex-direction:column; gap:var(--ds-s2); min-width:0 }
+.a-today-lane-top{ display:flex; align-items:baseline; gap:var(--ds-s3); min-width:0 }
+
+/* --------------------------------------------------------------------------
+   4 · The alert strip. A bar over one banner per open group; nothing is
+   deleted, the rest of a body and a group's members are one tap further away.
+   -------------------------------------------------------------------------- */
+.a-today-alerts{ display:flex; flex-direction:column; gap:var(--ds-s3); min-width:0 }
+.a-today-sev{ display:inline-flex; align-items:center; gap:var(--ds-s2); flex:0 0 auto }
+/* The mark rides inside the row title, which is plain inline text, so it needs
+   its own leading space: without it the name and the alarm read as one word. */
+.a-row-title > .a-today-sev{ margin-inline-start:var(--ds-s2) }
+.a-today-headline{ display:flex; align-items:center; gap:var(--ds-s3); flex-wrap:wrap; min-width:0 }
+.a-today-body{ display:flex; flex-direction:column; gap:var(--ds-s3); min-width:0 }
+
+.a-today-fold{ min-width:0 }
+.a-today-fold > summary{
+  cursor:pointer;
+  list-style:none;
+  display:inline-flex;
+  align-items:center;
+  gap:var(--ds-s2);
+  padding:var(--ds-s2) var(--ds-s0);
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-mono);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-3);
+  transition:color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-today-fold > summary::-webkit-details-marker{ display:none }
+.a-today-fold > summary::marker{ content:'' }
+.a-today-fold > summary:hover{ color:var(--ds-text) }
+.a-today-pre{
+  margin:var(--ds-s0);
+  padding:var(--ds-s3) var(--ds-s4);
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-mono);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-2);
+  background:var(--ds-surface-2);
+  border-radius:var(--ds-r2);
+}
+.a-today-members{ display:flex; flex-direction:column; min-width:0 }
+
+/* A hand-off row that is a real link rather than a click handler. */
+.a-today-linkrow{ text-decoration:none; color:inherit }

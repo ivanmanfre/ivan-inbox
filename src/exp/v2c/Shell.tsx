@@ -1,7 +1,4 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
-import { SendsScreen } from '../../screens/SendsScreen'
-import { TodayScreen } from '../../screens/TodayScreen'
-import { SettingsScreen } from '../../screens/SettingsScreen'
 import { SeatHealthBanner } from '../../components/SeatHealthBanner'
 import { InboxSkeleton } from '../../components/Skeleton'
 import { useInbox } from '../../hooks/useInbox'
@@ -36,7 +33,7 @@ function toQueueItem(d: ContentDraft): QueueItem {
   }
 }
 import { MobileTabs, Rail, WorkSegment } from './Rail'
-import { ContentList, type OpenDraft } from './ContentList'
+import type { OpenDraft } from './ContentList'
 import { CommandLayer } from './CommandLayer'
 import { MagnetsList } from './MagnetsList'
 import { StylesList } from './StylesList'
@@ -47,11 +44,8 @@ import { DraftWindow, type QueueItem } from './DraftPane'
 import { MagnetWindow } from './MagnetWindow'
 import { CallWindow } from './CallWindow'
 import type { CallRow } from '../../lib/transcripts'
-import { ThreadPeer } from './ThreadPeer'
-import { DmsSurface } from './DmsSurface'
 import { ChatPane } from './ChatPane'
 import { draftSubject, laneSubject, threadSubject, type Subject } from './chat/paneContext'
-import { OpsBoard } from './OpsBoard'
 import { Failed, relAge } from './Surface'
 import { useChat } from './useChat'
 import { useGlanceCounts } from './useGlanceCounts'
@@ -86,16 +80,16 @@ import './dwsys.css'
 // them, so its scope does not intersect dwsys's or wbcal's.
 import './wbcall.css'
 import { lazyBrainAsk, lazyBrainMobile, type BrainId } from '../brain'
-// Direction seam (inbox-app-revamp-2026-09-05, Phase 2): with no `?ds=` flag every
-// pick() below is the component named as its fallback, so nothing here changes.
-import { pick } from '../../wb'
-const TodayC = pick('Today', TodayScreen)
-const DmsC = pick('Dms', DmsSurface)
-const ThreadPeerC = pick('ThreadPeer', ThreadPeer)
-const ContentListC = pick('ContentList', ContentList)
-const SendsC = pick('SendsScreen', SendsScreen)
-const OpsBoardC = pick('OpsBoard', OpsBoard)
-const SettingsC = pick('Settings', SettingsScreen)
+// The eight key screens, rebuilt on `src/ds` (goal run inbox-app-revamp-2026-09-05,
+// Phase 3 W1). The `?ds=` seam is gone: these ARE the screens now. The components
+// they replaced stay on disk for `#exp/stock` only.
+import { Today as TodayC } from '../../wb/today'
+import { Dms as DmsC } from '../../wb/dms'
+import { ThreadPeer as ThreadPeerC } from '../../wb/thread'
+import { ContentList as ContentListC } from '../../wb/content'
+import { SendsScreen as SendsC } from '../../wb/sends'
+import { OpsBoard as OpsBoardC } from '../../wb/ops'
+import { Settings as SettingsC } from '../../wb/settings'
 
 // ============================================================================
 // Candidate v2c — WORKBENCH

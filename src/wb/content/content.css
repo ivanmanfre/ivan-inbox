@@ -1,0 +1,484 @@
+/* ==========================================================================
+   src/wb/content/content.css — Direction A, S03 Content flow + S04
+   Content calendar (with S24 the bulk bar and S25 the day panel inside them).
+
+   Token-only: not one colour literal, not one px font-size, not one px radius.
+   Everything the kit already draws (head, bar, group, row, ledger, dot, sep)
+   is used as it is; this sheet only adds what those parts do not cover:
+
+     · the anchor column of a content row (thumb + QA mark + select mark),
+     · the three desktop columns (pillar, funnel, source) that fold below 1000px,
+     · the stage marks on the strip (dot + word + right-aligned count + bar),
+     · the month GRID at >=1000px and the same DOM as a dense AGENDA below it,
+     · the calendar chip, the undated rail, and the floating in-flight mark.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   0 · The screen inside the app's own work column, which is a flex column with
+   a definite height. The kit root asks for 100%; this makes it a flex child
+   as well, so it fills the column rather than collapsing to its content.
+   -------------------------------------------------------------------------- */
+.a-ct{ flex:1 1 auto; min-height:0; position:relative }
+
+/* The scope markers the keyboard layer reads off the DOM (the active lane and
+   the active tab). They are read, never seen: the host is display:none, which
+   no sheet in the app has a rule strong enough to undo. */
+.a-ct-scopehost{ display:none }
+
+/* While this screen is mounted its own bulk bar is the one on screen. */
+[data-a-content-bulk] .wb-bulk{ display:none }
+
+/* --------------------------------------------------------------------------
+   1 · The head cluster: the lane switch, the view switch, the lane note.
+   -------------------------------------------------------------------------- */
+.a-ct-headrow{ display:flex; align-items:center; gap:var(--ds-s3); flex:1 1 auto; min-width:0; flex-wrap:wrap }
+.a-ct-note{
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-mono);
+  color:var(--ds-text-3);
+  white-space:nowrap;
+}
+.a-ct-note b{ color:var(--ds-text); font-weight:var(--ds-fw-medium) }
+
+/* The stage marks: a dot, the word, a right-aligned count, one measured rule
+   under the pair. No card, no fill, no chrome (the kanban read). */
+.a-ct-stats{ display:flex; align-items:stretch; gap:var(--ds-s4); flex-wrap:wrap }
+.a-ct-stat{
+  display:flex; flex-direction:column; gap:var(--ds-s1);
+  background:none; border:0; padding:var(--ds-s0); margin:0; font:inherit;
+  color:inherit; text-align:left; cursor:pointer; min-width:0;
+  transition:opacity var(--ds-dur-hover) var(--ds-ease);
+}
+.a-ct-stat:hover{ opacity:.72 }
+.a-ct-stat-h{ display:flex; align-items:center; gap:var(--ds-s2) }
+.a-ct-stat-l{
+  font-size:var(--ds-fs-eyebrow); line-height:var(--ds-lh-eyebrow);
+  letter-spacing:var(--ds-tr-eyebrow); text-transform:uppercase;
+  font-weight:var(--ds-fw-medium); color:var(--ds-text-3); white-space:nowrap;
+}
+.a-ct-stat-n{
+  font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono);
+  font-variant-numeric:tabular-nums; color:var(--ds-text);
+  margin-inline-start:auto; padding-inline-start:var(--ds-s2);
+}
+.a-ct-stat[data-tone='attention'] .a-ct-stat-n{ color:var(--ds-sev-attention) }
+.a-ct-stat-r{ height:2px; background:var(--ds-surface-2); border-radius:var(--ds-r1); overflow:hidden }
+.a-ct-stat-r > i{ display:block; height:100%; background:var(--ds-hairline-strong) }
+.a-ct-stat[data-tone='attention'] .a-ct-stat-r > i{ background:var(--ds-sev-attention) }
+
+/* --------------------------------------------------------------------------
+   2 · The filter bar. Chips for what is ON, one disclosure for everything
+   else, the count as one mono chunk at the end of the line.
+   -------------------------------------------------------------------------- */
+.a-ct-search{ flex:0 1 22rem; min-width:11rem }
+.a-ct-fnote{
+  font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono);
+  color:var(--ds-text-3); white-space:nowrap;
+}
+.a-ct-fnote b{ color:var(--ds-text) }
+.a-ct-fcap{ color:var(--ds-text-4); padding-inline-start:var(--ds-s2) }
+.a-ct-fpop{ position:relative; display:inline-flex; align-items:center; gap:var(--ds-s1) }
+.ds-popover.a-ct-menu{
+  position:absolute; inset-inline-start:0; top:calc(100% + var(--ds-s2));
+  z-index:var(--ds-z-popover);
+  min-width:14rem; max-width:22rem; max-height:24rem; overflow-y:auto;
+  padding:var(--ds-s2);
+}
+.ds-popover.a-ct-menu:has([data-flip]){ inset-inline-start:auto; inset-inline-end:0 }
+.ds-popover.a-ct-menu:has([data-wide]){ min-width:20rem }
+.a-ct-fgrp + .a-ct-fgrp{ margin-top:var(--ds-s3); padding-top:var(--ds-s3); border-top:1px solid var(--ds-line) }
+.a-ct-fgrp-h{ padding:var(--ds-s2) var(--ds-s3) }
+.a-ct-fgrp-e{ padding:var(--ds-s3); color:var(--ds-text-3); font-size:var(--ds-fs-meta) }
+.a-ct-opt{
+  display:flex; align-items:center; gap:var(--ds-s3); width:100%;
+  min-height:var(--ds-control-h-sm);
+  padding:var(--ds-s2) var(--ds-s3); border:0; border-radius:var(--ds-r2);
+  background:none; color:var(--ds-text-2); font:inherit; text-align:left;
+  cursor:pointer;
+  transition:background-color var(--ds-dur-hover) var(--ds-ease), color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-ct-opt:hover{ background:var(--ds-wash); color:var(--ds-text) }
+.a-ct-opt[data-on]{ color:var(--ds-text) }
+.a-ct-opt[data-on] .a-ct-opt-l{ font-weight:var(--ds-fw-medium) }
+.a-ct-opt-l{ flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.a-ct-opt-t{
+  flex:0 0 auto; font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono);
+  font-variant-numeric:tabular-nums; color:var(--ds-text-3);
+  display:flex; align-items:center; gap:var(--ds-s1);
+}
+
+/* The stage strip: the ds tabs, scrolled sideways, never wrapped. */
+.a-ct-tabsbar{
+  display:flex; align-items:center; gap:var(--ds-s2);
+  padding:var(--ds-s0) var(--ds-gutter);
+  background:var(--ds-canvas);
+  border-bottom:1px solid var(--ds-line);
+  overflow-x:auto; overflow-y:hidden; scrollbar-width:none;
+  flex:0 0 auto;
+}
+.a-ct-tabsbar::-webkit-scrollbar{ display:none }
+.a-ct-tabsbar .ds-tabs{ flex-wrap:nowrap }
+
+/* --------------------------------------------------------------------------
+   3 · The pull indicator, the sub-line, the quiet note.
+   -------------------------------------------------------------------------- */
+.a-ct-ptr{ display:flex; align-items:flex-end; justify-content:center; overflow:hidden; flex:0 0 auto }
+.a-ct-ptr-i{ display:flex; align-items:center; justify-content:center; padding-bottom:var(--ds-s3); color:var(--ds-text-3) }
+@keyframes a-ct-spin{ to{ transform:rotate(360deg) } }
+.a-ct-ptr-i[data-spin] .ds-icon{ animation:a-ct-spin 900ms linear infinite }
+.a-ct-sub{
+  padding:var(--ds-s3) var(--ds-row-x);
+  font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3);
+}
+.a-ct-sub code{ font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono) }
+.a-ct-bandline{
+  display:flex; align-items:center; gap:var(--ds-s3); flex-wrap:wrap;
+  padding:var(--ds-s3) var(--ds-row-x);
+  border-bottom:1px solid var(--ds-line);
+}
+.a-ct-bandline-t{ flex:1 1 14rem; min-width:0; font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3) }
+
+/* --------------------------------------------------------------------------
+   4 · The content row's anchor: one 28px column carrying the thumb, the QA
+   mark on its corner and the select mark, so the stage of every row reads
+   down a single column at 390 and at 1440.
+   -------------------------------------------------------------------------- */
+.a-ct-anchor{ position:relative; width:1.75rem; height:1.75rem; flex:0 0 auto }
+.a-ct-thumb{
+  width:100%; height:100%; object-fit:cover; display:block;
+  border-radius:var(--ds-r2); background:var(--ds-surface-2);
+}
+.a-ct-qa{
+  position:absolute; inset-block-end:0; inset-inline-end:0;
+  width:var(--ds-s3); height:var(--ds-s3); border-radius:var(--ds-r-pill);
+  background:var(--ds-hairline-strong);
+  outline:2px solid var(--ds-surface-1);
+}
+.a-ct-qa[data-qa='pass']{ background:var(--ds-sev-clear) }
+.a-ct-qa[data-qa='fail']{ background:var(--ds-sev-attention) }
+.a-ct-selmark{
+  position:absolute; inset-block-start:0; inset-inline-start:0;
+  width:100%; height:100%; padding:0; margin:0; border:0;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--ds-surface-3); color:var(--ds-text);
+  border-radius:var(--ds-r2); cursor:pointer; opacity:0;
+  transition:opacity var(--ds-dur-hover) var(--ds-ease);
+}
+.a-row:hover .a-ct-selmark,
+.a-row[data-focused] .a-ct-selmark,
+.a-ct-selmark:focus-visible,
+.a-ct-selmark[aria-checked='true']{ opacity:1 }
+.a-ct-selmark[aria-checked='true']{ background:var(--ds-accent); color:var(--ds-accent-ink) }
+@media (hover:none){ .a-ct-selmark{ opacity:1 } }
+
+/* The excerpt, the source line and the failure reason: one line each, quiet,
+   under the meta line rather than beside it. */
+.a-ct-ex{
+  font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-2);
+  display:-webkit-box; -webkit-line-clamp:2; line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+}
+.a-ct-src{
+  font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  display:flex; align-items:center; gap:var(--ds-s2);
+}
+.a-ct-reasonrow{ display:flex; align-items:center; gap:var(--ds-s3); flex-wrap:wrap; min-width:0 }
+.a-ct-reason{
+  flex:1 1 12rem; min-width:0;
+  font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-sev-attention);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.a-ct-reason[data-kind='completed']{ color:var(--ds-text-3) }
+.a-ct-msg{ flex:1 1 100%; font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3) }
+.a-ct-err{ font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-sev-urgent) }
+
+/* The row's own sub-stack: the excerpt, the source line and the failure row,
+   one under the other, tight. */
+.a-ct-subs{ display:flex; flex-direction:column; gap:var(--ds-s1); min-width:0 }
+/* The inline action group, inside the row. A write that came back with a
+   refusal holds the group open: an error revealed only on hover is an error
+   nobody reads. */
+.a-ct-acts{ display:flex; align-items:center; gap:var(--ds-s2); flex-wrap:wrap }
+.a-row-actions:has(.a-ct-err){ opacity:1 }
+
+/* The three facts as COLUMNS, one fixed x each, at desktop width only. Below
+   1000px there is no width for a table and the row keeps its two-line shape. */
+.a-ct-cols{ display:none }
+.a-ct-colhead{ display:none }
+@media (min-width:1000px){
+  .a-ct-cols{
+    display:flex; align-items:center; gap:var(--ds-s4); flex:0 0 auto;
+    font-size:var(--ds-fs-meta); color:var(--ds-text-3);
+  }
+  .a-ct-colv{ width:7rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+  /* The head mirrors the row: an anchor-width spacer, the title column, then
+     the same three fixed columns, so the labels sit over their own values. */
+  .a-ct-colhead{
+    display:flex; align-items:center; gap:var(--ds-s4);
+    padding:var(--ds-s2) var(--ds-row-x);
+    padding-inline-start:calc(var(--ds-row-x) + 1.75rem + var(--ds-stack));
+    border-bottom:1px solid var(--ds-line);
+  }
+  .a-ct-colhead-t{ flex:1 1 auto; min-width:0 }
+  .a-ct-colhead-c{ width:7rem; flex:0 0 auto }
+}
+
+/* The approve beat: the row lifts and fades over one value duration. */
+@keyframes a-ct-beat{ to{ opacity:0; transform:translateY(-6px) } }
+.a-row[data-beat]{ animation:a-ct-beat var(--ds-dur) var(--ds-ease) forwards }
+
+/* --------------------------------------------------------------------------
+   5 · Ideas. The expanded body inherits the collapsed row's tokens.
+   -------------------------------------------------------------------------- */
+.a-ct-score{
+  width:2.5rem; flex:0 0 auto; text-align:right;
+  font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono);
+  font-variant-numeric:tabular-nums; color:var(--ds-text);
+}
+.a-ct-body{
+  display:flex; flex-direction:column; gap:var(--ds-s4);
+  padding:var(--ds-s4) var(--ds-row-x) var(--ds-card-pad);
+  box-shadow:inset 0 1px 0 var(--ds-line);
+}
+.a-ct-scores{ display:flex; flex-wrap:wrap; gap:var(--ds-s4) }
+.a-ct-scores > span{
+  display:flex; align-items:baseline; gap:var(--ds-s2);
+  font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono);
+  font-variant-numeric:tabular-nums; color:var(--ds-text);
+}
+.a-ct-scores i{
+  font-style:normal; font-family:var(--ds-font);
+  font-size:var(--ds-fs-eyebrow); letter-spacing:var(--ds-tr-eyebrow);
+  text-transform:uppercase; color:var(--ds-text-3);
+}
+.a-ct-why{ font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); color:var(--ds-text-2) }
+.a-ct-links{ display:flex; align-items:center; gap:var(--ds-s4); flex-wrap:wrap }
+.a-ct-ref{ font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3) }
+.a-ct-acts{ display:flex; align-items:center; gap:var(--ds-s2); flex-wrap:wrap }
+.a-ct-decide{ display:flex; flex-direction:column; gap:var(--ds-s3) }
+.a-ct-delzone{
+  display:flex; flex-direction:column; gap:var(--ds-s3);
+  padding-top:var(--ds-s4); border-top:1px solid var(--ds-line);
+}
+.a-ct-quote{
+  border-inline-start:2px solid var(--ds-line-strong);
+  padding:var(--ds-s2) var(--ds-s4);
+  background:var(--ds-surface-2); border-radius:var(--ds-r2);
+  display:flex; flex-direction:column; gap:var(--ds-s2);
+}
+.a-ct-quote-t{ font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); color:var(--ds-text-2) }
+.a-ct-quote-a{ font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3) }
+
+/* The pillar mix: a measured bar per pillar, one ruled block. */
+.a-ct-mix{ display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:var(--ds-s3); align-items:center }
+.a-ct-mixbar{ height:var(--ds-s3); background:var(--ds-surface-2); border-radius:var(--ds-r1); overflow:hidden }
+.a-ct-mixbar > i{ display:block; height:100%; background:var(--ds-hairline-strong) }
+
+/* --------------------------------------------------------------------------
+   6 · IN FLIGHT — one mark, fixed to the corner, on every tab.
+   -------------------------------------------------------------------------- */
+.a-ct-inflight{
+  position:absolute; inset-block-end:var(--ds-s6); inset-inline-end:var(--ds-s6);
+  z-index:var(--ds-z-bulk);
+  display:flex; align-items:center; gap:var(--ds-s2);
+  min-height:var(--ds-control-h);
+  padding:var(--ds-s2) var(--ds-s4);
+  border:1px solid var(--ds-line);
+  border-radius:var(--ds-r-pill);
+  background:var(--ds-surface-3); color:var(--ds-text);
+  font:inherit; cursor:pointer;
+  box-shadow:var(--ds-shadow-float);
+  transition:background-color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-ct-inflight:hover{ background:var(--ds-surface-2) }
+.a-ct-inflight-n{ font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono); font-variant-numeric:tabular-nums }
+.a-ct-inflight-t{ font-size:var(--ds-fs-meta); color:var(--ds-text-3) }
+.a-ct-inflight[data-bad] .a-ct-inflight-t{ color:var(--ds-sev-urgent) }
+
+/* --------------------------------------------------------------------------
+   7 · THE CALENDAR. One DOM, two readings: a real month grid with a hairline
+   lattice at >=1000px, a dense agenda everywhere below it.
+   -------------------------------------------------------------------------- */
+.a-ct-cal{ display:flex; flex-direction:column; gap:var(--ds-section-gap); min-width:0 }
+.a-ct-calbar{ display:flex; align-items:center; gap:var(--ds-s3); flex-wrap:wrap }
+.a-ct-month{
+  font-size:var(--ds-fs-title); line-height:var(--ds-lh-title);
+  font-weight:var(--ds-fw-medium); color:var(--ds-text); white-space:nowrap;
+}
+.a-ct-count{ display:flex; align-items:baseline; gap:var(--ds-s2) }
+.a-ct-count b{
+  font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono);
+  font-variant-numeric:tabular-nums; font-weight:var(--ds-fw-medium); color:var(--ds-text);
+}
+.a-ct-count span{ font-size:var(--ds-fs-meta); color:var(--ds-text-3) }
+.a-ct-count[data-tone='attention'] b,
+.a-ct-count[data-tone='attention'] span{ color:var(--ds-sev-attention) }
+
+.a-ct-callayout{ display:grid; grid-template-columns:1fr; gap:var(--ds-section-gap); min-width:0 }
+@media (min-width:1000px){
+  .a-ct-callayout{ grid-template-columns:minmax(0,1fr) 20rem }
+}
+
+/* THE MONTH STEP. React replaces the grid node when the key changes, so this
+   runs from scratch on every step, and the direction says which side it comes
+   in from: back a month must not slide in the same direction as forward. One
+   value duration, opacity and transform only. */
+@keyframes a-ct-month-next{ from{ opacity:0; transform:translateX(var(--ds-s4)) } }
+@keyframes a-ct-month-prev{ from{ opacity:0; transform:translateX(calc(var(--ds-s4) * -1)) } }
+.a-ct-grid[data-dir='1']{ animation:a-ct-month-next var(--ds-dur) var(--ds-ease) }
+.a-ct-grid[data-dir='-1']{ animation:a-ct-month-prev var(--ds-dur) var(--ds-ease) }
+
+/* The lattice. The grid draws every line once; a cell draws none. */
+.a-ct-weekhead{ display:none }
+.a-ct-grid{ display:flex; flex-direction:column; min-width:0 }
+.a-ct-week{ display:flex; flex-direction:column; min-width:0 }
+.a-ct-day{ min-width:0 }
+.a-ct-dn{ display:none }
+.a-ct-chips{ display:flex; flex-direction:column; gap:var(--ds-s2); padding:var(--ds-s2) var(--ds-row-x) var(--ds-s3) }
+.a-ct-more{
+  align-self:flex-start;
+  background:none; border:0; padding:var(--ds-s1) var(--ds-s0); margin:0;
+  font:inherit; font-size:var(--ds-fs-meta); color:var(--ds-accent-ui);
+  cursor:pointer;
+  transition:opacity var(--ds-dur-hover) var(--ds-ease);
+}
+.a-ct-more:hover{ opacity:.75 }
+
+/* AGENDA (the default, and the phone reading): a sticky day header per day
+   with a mono right-aligned count, dense rows under it. A day with nothing
+   on it is not drawn — absence is said by the days that are. */
+.a-ct-day[data-empty]{ display:none }
+.a-ct-day[data-out]{ opacity:.55 }
+
+@media (min-width:1000px){
+  .a-ct-weekhead{
+    display:grid; grid-template-columns:repeat(7,minmax(0,1fr));
+    background:var(--ds-line); gap:1px; border:1px solid var(--ds-line);
+    border-bottom:0; border-start-start-radius:var(--ds-r4); border-start-end-radius:var(--ds-r4);
+    overflow:hidden;
+  }
+  .a-ct-weekhead > span{
+    background:var(--ds-surface-1); padding:var(--ds-s2) var(--ds-s3);
+    font-size:var(--ds-fs-eyebrow); line-height:var(--ds-lh-eyebrow);
+    letter-spacing:var(--ds-tr-eyebrow); text-transform:uppercase;
+    font-weight:var(--ds-fw-medium); color:var(--ds-text-3);
+  }
+  .a-ct-grid{
+    display:flex; flex-direction:column; gap:1px; background:var(--ds-line);
+    border:1px solid var(--ds-line); border-top:0;
+    border-end-start-radius:var(--ds-r4); border-end-end-radius:var(--ds-r4);
+    overflow:hidden;
+  }
+  .a-ct-week{
+    display:grid; grid-template-columns:repeat(7,minmax(0,1fr));
+    gap:1px; background:var(--ds-line);
+  }
+  .a-ct-day{
+    display:flex; flex-direction:column; min-height:7rem;
+    background:var(--ds-surface-1);
+    transition:background-color var(--ds-dur-hover) var(--ds-ease);
+  }
+  .a-ct-day[data-empty]{ display:flex }
+  .a-ct-day[data-out]{ background:var(--ds-canvas); opacity:1 }
+  .a-ct-day[data-out] .a-ct-dn-n{ color:var(--ds-text-4) }
+  .a-ct-day[data-now] .a-ct-dn-n{ color:var(--ds-accent-ui); font-weight:var(--ds-fw-semi) }
+  .a-ct-day[data-over]{ background:var(--ds-accent-soft) }
+  .a-ct-day .ds-dayheader{ display:none }
+  .a-ct-dn{
+    display:flex; align-items:baseline; gap:var(--ds-s2);
+    padding:var(--ds-s3) var(--ds-s3) var(--ds-s0);
+  }
+  .a-ct-dn-n{
+    font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono);
+    font-variant-numeric:tabular-nums; color:var(--ds-text-2);
+  }
+  .a-ct-dn-w{ display:none }
+  .a-ct-chips{ padding:var(--ds-s2) var(--ds-s3) var(--ds-s3) }
+  /* THE CAP. Two chips painted, the rest behind the "+N more" link. It is a
+     number of ROWS, exactly FullCalendar's dayMaxEventRows, and it is CSS so
+     the agenda below this width can paint every chip with no cap at all. */
+  .a-ct-chips > .a-ct-chip:nth-child(n+3){ display:none }
+}
+@media (max-width:999px){
+  .a-ct-more{ display:none }
+}
+
+/* THE CHIP. Two lines: the clock, then the title wrapped to two. */
+.a-ct-chip{
+  display:flex; flex-direction:column; gap:var(--ds-s1);
+  border-inline-start:2px solid var(--ds-hairline-strong);
+  padding-inline-start:var(--ds-s3);
+  min-width:0;
+}
+.a-ct-chip[data-arm='armed']{ border-inline-start-color:var(--ds-accent) }
+.a-ct-chip[data-arm='planned']{ border-inline-start-color:var(--ds-sev-attention) }
+.a-ct-chip[data-drag]{ opacity:.45 }
+.a-ct-chip-row{ display:flex; align-items:flex-start; gap:var(--ds-s2); min-width:0 }
+.a-ct-chip-t{
+  flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:var(--ds-s1);
+  background:none; border:0; padding:var(--ds-s0); margin:0; font:inherit;
+  color:inherit; text-align:left;
+  transition:opacity var(--ds-dur-hover) var(--ds-ease);
+}
+button.a-ct-chip-t{ cursor:pointer }
+button.a-ct-chip-t:hover{ opacity:.75 }
+.a-ct-chip-h{
+  display:flex; align-items:center; gap:var(--ds-s2); flex-wrap:wrap;
+  font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono);
+  font-variant-numeric:tabular-nums; color:var(--ds-text-3);
+}
+.a-ct-chip-out{ color:var(--ds-sev-clear); display:inline-flex }
+.a-ct-chip-drift{ color:var(--ds-sev-attention); display:inline-flex }
+.a-ct-chip-q{ color:var(--ds-text-4); display:inline-flex }
+.a-ct-chip-arm{ font-family:var(--ds-font); font-size:var(--ds-fs-meta); color:var(--ds-text-3) }
+.a-ct-chip-n{
+  font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text);
+  display:-webkit-box; -webkit-line-clamp:2; line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+}
+@media (min-width:1000px){
+  .a-ct-chip-arm{ display:none }
+}
+.a-ct-chip-armb{ align-self:flex-start }
+
+/* The undated rail and the day panel. */
+.a-ct-railrow{ display:block; min-width:0 }
+.a-ct-railrow[data-drag]{ opacity:.45 }
+.a-ct-daylist{ display:flex; flex-direction:column }
+.a-ct-dayrow{
+  display:flex; align-items:baseline; gap:var(--ds-s3); width:100%;
+  min-height:var(--ds-tap);
+  padding:var(--ds-s3) var(--ds-s2); border:0; background:none; margin:0;
+  font:inherit; color:var(--ds-text); text-align:left; cursor:pointer;
+  border-radius:var(--ds-r2);
+  transition:background-color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-ct-dayrow + .a-ct-dayrow{ box-shadow:inset 0 1px 0 var(--ds-line) }
+.a-ct-dayrow:hover:not(:disabled){ background:var(--ds-wash) }
+.a-ct-dayrow:disabled{ cursor:default; color:var(--ds-text-3) }
+.a-ct-dayrow-c{
+  flex:0 0 auto; font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono);
+  font-variant-numeric:tabular-nums; color:var(--ds-text-3);
+}
+.a-ct-dayrow-n{ flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.a-ct-dayrow-s{ flex:0 0 auto; font-size:var(--ds-fs-meta); color:var(--ds-text-3) }
+
+/* The chip description, anchored. Positioned by the caller, drawn by the ds
+   popover, and never allowed to cover the cell it describes. */
+.a-ct-tipwrap{ position:fixed; z-index:var(--ds-z-popover) }
+.ds-popover.a-ct-tip{ position:static; max-width:22rem; padding:var(--ds-s3) var(--ds-s4) }
+.a-ct-tip-t{ font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-2) }
+.a-ct-chip[data-lock] .a-ct-chip-t{ cursor:default }
+
+/* The move panel's own row. */
+.a-ct-moverow{ display:flex; align-items:flex-end; gap:var(--ds-s3); flex-wrap:wrap }
+.a-ct-moverow .ds-field{ flex:0 1 12rem }
+
+/* --------------------------------------------------------------------------
+   8 · Phone. The same parts: the group goes edge to edge (the kit already
+   does that), the columns are already folded, the calendar is the agenda.
+   -------------------------------------------------------------------------- */
+@media (max-width:767px){
+  .a-ct-search{ flex:1 1 100% }
+  .a-ct-inflight{ inset-block-end:var(--ds-s7) }
+  .a-ct-cal{ gap:var(--ds-s7) }
+}

@@ -1069,15 +1069,22 @@ body.ds-body{
    invisible 44px child instead.
    ========================================================================== */
 @media (max-width:767px){
-  .ds-btn, .ds-btn[data-size='sm']{ min-height:var(--ds-tap) }
-  .ds-ibtn, .ds-ibtn[data-size='sm']{ min-width:var(--ds-tap); min-height:var(--ds-tap) }
-  .ds-seg-item{ height:var(--ds-tap) }
-  .ds-chip[data-interactive='true']{ height:var(--ds-tap) }
-  .ds-tabs-item, .ds-popover-item, .ds-cmd-item, .ds-row, .ds-setting{ min-height:var(--ds-tap) }
-  .ds-input, .ds-composer-input, .ds-textarea{ min-height:var(--ds-tap) }
+  /* THE CLASS IS DOUBLED ON PURPOSE. The floor is the one rule in this sheet
+     that a foreign sheet must never win: a descendant reset written as
+     `.someskin button` is (0,2,0) and outranks a single control class, which is
+     how a 44px filter chip went back to 32 twice in Phase 2. Doubling the class
+     puts the floor at (0,2,0) too and, being later in a sheet loaded after the
+     old ones, it wins the tie. No `!important` and no new value. */
+  .ds-btn.ds-btn, .ds-btn.ds-btn[data-size='sm']{ min-height:var(--ds-tap) }
+  .ds-ibtn.ds-ibtn, .ds-ibtn.ds-ibtn[data-size='sm']{ min-width:var(--ds-tap); min-height:var(--ds-tap) }
+  .ds-seg-item.ds-seg-item{ height:var(--ds-tap) }
+  .ds-chip.ds-chip[data-interactive='true']{ height:var(--ds-tap) }
+  .ds-tabs-item.ds-tabs-item, .ds-popover-item.ds-popover-item, .ds-cmd-item.ds-cmd-item,
+  .ds-row.ds-row, .ds-setting.ds-setting{ min-height:var(--ds-tap) }
+  .ds-input.ds-input, .ds-composer-input.ds-composer-input, .ds-textarea.ds-textarea{ min-height:var(--ds-tap) }
 
   /* the switch: a 26px track inside a 44px box */
-  .ds-switch{
+  .ds-switch.ds-switch{
     height:var(--ds-tap);
     padding:9px 0;
     background-clip:content-box;

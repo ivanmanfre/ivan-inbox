@@ -1,0 +1,165 @@
+/* ==========================================================================
+   src/wb/thread/thread.css — what the kit does not already cover for S14.
+
+   Token-only: no colour literal, no px/rem radius, no px/rem font-size. The one
+   bare pixel is a hairline.
+
+   The one idea this sheet exists to hold: THEIR WORDS ARE NOT IN A BOX. A box
+   marks a turn as ours, so only a message we drafted or sent wears one. The
+   other party is plain text on the canvas, which is also the only way a long
+   inbound reply stays readable at 390.
+   ========================================================================== */
+
+.a-thread{ flex:1 1 auto; min-height:0 }
+
+/* The name in the head is a control: it opens the context sheet. */
+.a-thread-who{
+  display:inline-flex;
+  align-items:center;
+  gap:var(--ds-s2);
+  min-width:0;
+  color:var(--ds-text);
+  transition:color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-thread-who:hover{ color:var(--ds-accent-ui) }
+.a-thread-ladder{ display:block; flex:1 1 auto; min-width:0; max-width:44ch }
+
+/* --------------------------------------------------------------------------
+   The conversation.
+   -------------------------------------------------------------------------- */
+.a-thread-msgs{
+  padding:var(--ds-s4) var(--ds-gutter) var(--ds-s6);
+  gap:var(--ds-s5);
+}
+.a-thread-turn{
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s2);
+  min-width:0;
+  max-width:100%;
+}
+.a-thread-turn[data-side='out']{ align-items:flex-end }
+.a-thread-turn > [data-ds='DayHeader']{ align-self:stretch }
+.a-thread-lbl{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s2);
+  flex-wrap:wrap;
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-3);
+}
+.a-thread-lbl[data-right]{ justify-content:flex-end }
+
+/* Theirs: on the canvas, one measure wide, nothing drawn around it. */
+.a-thread-said{
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s2);
+  max-width:64ch;
+  color:var(--ds-text);
+  overflow-wrap:anywhere;
+}
+/* Ours: boxed, because the box is what says whose turn this was. */
+.a-thread-box{
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s2);
+  max-width:56ch;
+  padding:var(--ds-s4);
+  background:var(--ds-surface-2);
+  border:1px solid var(--ds-line);
+  border-radius:var(--ds-r4);
+  color:var(--ds-text);
+  overflow-wrap:anywhere;
+}
+.a-thread-box + .a-thread-box{ margin-top:var(--ds-s2) }
+/* A reply typed by hand in the LinkedIn app is the one thing on this screen no
+   automation did, so it is marked in FORM, not only in the label above it. */
+.a-thread-box[data-manual]{
+  background:var(--ds-accent-soft);
+  border-color:var(--ds-line);
+}
+
+/* --------------------------------------------------------------------------
+   The strip, the card and the composer: three flex-none blocks under the
+   scroller, in the order the decisions are made.
+   -------------------------------------------------------------------------- */
+.a-thread-restore{
+  flex:0 0 auto;
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s3);
+  padding:var(--ds-s0) var(--ds-gutter) var(--ds-s3);
+}
+.a-thread-draft{
+  flex:0 0 auto;
+  min-height:0;
+  display:flex;
+  padding:var(--ds-s0) var(--ds-gutter) var(--ds-s3);
+}
+.a-thread-draft > .a-group{ flex:1 1 auto; min-width:0; max-height:50vh; display:flex; flex-direction:column }
+/* Everything between the header and the action bar scrolls INSIDE the card, so
+   the conversation the draft is answering stays on screen. */
+.a-thread-dscroll{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s3);
+  padding:var(--ds-card-pad);
+}
+.a-thread-acts{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s2);
+  flex:1 1 auto;
+  min-width:0;
+  flex-wrap:wrap;
+}
+.a-thread-editbox{ min-width:0 }
+.a-thread-edit textarea{ max-height:40vh }
+.a-thread-leg textarea{ max-height:24vh }
+
+/* "Where this came from": the logged inputs, folded, in the row register. */
+.a-thread-dev{ min-width:0 }
+.a-thread-devs{
+  cursor:pointer;
+  list-style:none;
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-3);
+  padding-block:var(--ds-s2);
+  transition:color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-thread-devs::-webkit-details-marker{ display:none }
+.a-thread-devs:hover{ color:var(--ds-text) }
+.a-thread-devg{ display:flex; flex-direction:column; gap:var(--ds-s1); min-width:0 }
+.a-thread-devr{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:var(--ds-s3);
+  align-items:baseline;
+  padding-block:var(--ds-s2);
+  box-shadow:inset 0 1px 0 var(--ds-line);
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-2);
+  overflow-wrap:anywhere;
+}
+
+.a-thread-composer{
+  flex:0 0 auto;
+  padding:var(--ds-s0) var(--ds-gutter) var(--ds-s3);
+}
+
+/* --------------------------------------------------------------------------
+   Phone. Same parts: the measures narrow, the ladder keeps its full width, and
+   the card gives the conversation more of the pane back.
+   -------------------------------------------------------------------------- */
+@media (max-width:767px){
+  .a-thread-ladder{ max-width:100% }
+  .a-thread-said, .a-thread-box{ max-width:100% }
+  .a-thread-draft > .a-group{ max-height:56vh }
+}

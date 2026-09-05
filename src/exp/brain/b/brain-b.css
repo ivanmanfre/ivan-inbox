@@ -68,8 +68,15 @@
 /* Button reset. Every control below sets its own background/border where it
    needs one; without this, an unstyled <button> keeps the UA's light chrome
    (a white tile) sitting directly on the pistachio ground whenever a class
-   forgets to paint one — the tab bar and the card-dismiss control both did. */
-.brain-b button{
+   forgets to paint one — the tab bar and the card-dismiss control both did.
+
+   SCOPED, 2026-09-05 (W1, cascade trap 1). One class plus a type is (0,2,0) and
+   a design system control class is (0,1,0), so this rule used to strip the box
+   off every `ds-` button, chip and segmented arm on the phone: both Phase 2
+   builders hit it independently and both had to restate the box a step higher.
+   The reset now skips anything carrying a design system class, so it keeps doing
+   its own job and reaches nothing that paints itself. */
+.brain-b button:not([class*='ds-']){
   appearance:none; -webkit-appearance:none;
   background:none; border:none; margin:0; padding:0;
   font:inherit; color:inherit; cursor:pointer;

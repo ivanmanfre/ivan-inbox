@@ -1,0 +1,245 @@
+/* ==========================================================================
+   src/wb/dms/dms.css — what the kit does not already cover for S02.
+
+   Token-only: no colour literal, no px/rem radius, no px/rem font-size. Every
+   spacing value is a named step or a scale step; the one bare pixel is a
+   hairline. The row's HEIGHT is not here on purpose — it is set from the same
+   JS constant the windowing measures against, so the two cannot drift.
+   ========================================================================== */
+
+/* The screen fills the column it is mounted in. */
+.a-dms{ flex:1 1 auto; min-height:0 }
+.a-dms-body{
+  padding:var(--ds-s3) var(--ds-gutter) var(--ds-s9);
+  gap:var(--ds-s4);
+}
+
+/* --------------------------------------------------------------------------
+   The conversation row.
+
+   The host box carries the fixed height and the hairline; the kit Row inside it
+   carries the paint. The command layer writes its three attributes onto this
+   element (RowSelect targets its own parent), so the selection mark, the
+   keyboard focus and the row are one box.
+   -------------------------------------------------------------------------- */
+.a-dms-rowhost{
+  position:relative;
+  display:flex;
+  min-width:0;
+  overflow:hidden;
+}
+.a-dms-rowhost + .a-dms-rowhost{ box-shadow:inset 0 1px 0 var(--ds-line) }
+/* GRAFT B-1 (DECISIONS D16): the day group header. Its box is a CONSTANT, and
+   the same constant is DAY_H in InboxList.tsx: the window sums item heights, so
+   a header that grew by a pixel would drift every offset under it. It sits on
+   the group's own canvas, which is what tells the eye a new day started. */
+.a-dms-dayhost{
+  display:flex;
+  align-items:center;
+  padding:var(--ds-s0) var(--ds-row-x);
+  background:var(--ds-canvas);
+  box-shadow:inset 0 1px 0 var(--ds-line);
+  overflow:hidden;
+}
+.a-dms-dayhost:first-child{ box-shadow:none }
+.a-dms-dayhost > .ds-dayheader{ flex:1 1 auto; min-width:0; padding:var(--ds-s0) }
+.a-dms-dayhost + .a-dms-rowhost{ box-shadow:none }
+.a-dms-rowhost > .a-row{ flex:1 1 auto; min-width:0 }
+/* The keyboard layer's own two states, painted on the row rather than on the
+   host so they read as the row being walked and picked. */
+.a-dms-rowhost[data-wbfocus='1'] > .a-row{ background:var(--ds-wash-strong) }
+.a-dms-rowhost[data-wbsel='1'] > .a-row{ background:var(--ds-accent-soft) }
+/* The selection mark is drawn on hover, on the keyboard-focused row and on any
+   selected row. Its focus and selected rules already reach this host; the HOVER
+   one is keyed to the old row class, so it is restated here. The class is
+   repeated to out-specify the three-class selectors the old sheets are written
+   with, which is the same device those sheets use. */
+.a-dms-rowhost > .wb-selmark{ align-self:center }
+.a-dms-rowhost.a-dms-rowhost.a-dms-rowhost.a-dms-rowhost:hover .wb-selmark{ opacity:1 }
+
+.a-dms-titleline{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s2);
+  min-width:0;
+  overflow:hidden;
+}
+.a-dms-titleline > :first-child{ min-width:0; flex:0 1 auto }
+/* THE ROW IS A FIXED BOX. A chip at its own control height would push the title
+   line past the height the windowing measures against, so the pills that ride
+   the name take the compact height instead of the control height. */
+.a-dms-titleline [data-ds='Chip']{ height:var(--ds-s6); padding-inline:var(--ds-s2) }
+
+/* --------------------------------------------------------------------------
+   The pre-read: one line in the row, the whole of it in a bubble.
+   -------------------------------------------------------------------------- */
+.a-dms-note,
+.a-dms-note-plain{
+  display:block;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:var(--ds-text-2);
+}
+.a-dms-note{
+  cursor:help;
+  text-decoration:underline;
+  text-decoration-style:dotted;
+  text-underline-offset:2px;
+  text-decoration-color:var(--ds-line-strong);
+  transition:color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-dms-note:hover,
+.a-dms-note:focus-visible{ color:var(--ds-text) }
+
+.a-dms-pop{
+  position:fixed;
+  z-index:var(--ds-z-popover);
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s3);
+  max-width:36ch;
+  padding:var(--ds-s4);
+  background:var(--ds-surface-1);
+  border:1px solid var(--ds-line);
+  border-radius:var(--ds-r3);
+  box-shadow:var(--ds-shadow-float);
+  opacity:0;
+  transition:opacity var(--ds-dur) var(--ds-ease);
+}
+.a-dms-pop[data-in]{ opacity:1 }
+.a-dms-pop-h{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:var(--ds-s3);
+  padding-bottom:var(--ds-s3);
+  border-bottom:1px solid var(--ds-line);
+}
+.a-dms-pop-p{ display:flex; flex-direction:column; gap:var(--ds-s1); min-width:0 }
+
+/* --------------------------------------------------------------------------
+   Pull to refresh. The mark rotates with the finger and spins while the read is
+   in flight: one continuous loop, conditional on a live state.
+   -------------------------------------------------------------------------- */
+.a-dms-ptr{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  flex:0 0 auto;
+  color:var(--ds-text-3);
+}
+.a-dms-ptr-m{ display:inline-flex }
+@keyframes a-dms-spin{ to{ transform:rotate(360deg) } }
+.a-dms-ptr-m[data-spin]{ animation:a-dms-spin 900ms linear infinite }
+
+/* --------------------------------------------------------------------------
+   The hand-off link. An anchor that reads as a quiet control.
+   -------------------------------------------------------------------------- */
+.a-dms-link{
+  display:inline-flex;
+  align-items:center;
+  gap:var(--ds-s2);
+  min-height:var(--ds-control-h-sm);
+  padding-inline:var(--ds-s3);
+  border-radius:var(--ds-r3);
+  background:var(--ds-surface-2);
+  color:var(--ds-text-2);
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  text-decoration:none;
+  white-space:nowrap;
+  transition:background-color var(--ds-dur-hover) var(--ds-ease), color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-dms-link-q{ background:transparent }
+.a-dms-link:hover{ background:var(--ds-surface-3); color:var(--ds-text) }
+.a-dms-link[data-fallback]{ color:var(--ds-text-3) }
+
+/* --------------------------------------------------------------------------
+   The draft card. A Group with a decision bar for a foot, on a swipe track.
+   -------------------------------------------------------------------------- */
+.a-dms-swipe{ min-width:0; touch-action:pan-y }
+.a-dms-cardbody{
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s3);
+  padding:var(--ds-card-pad);
+}
+.a-dms-tap{
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s2);
+  align-items:flex-start;
+  width:100%;
+  padding:var(--ds-s4);
+  background:var(--ds-surface-2);
+  border:0;
+  border-radius:var(--ds-r3);
+  color:var(--ds-text);
+  font:inherit;
+  text-align:left;
+  cursor:pointer;
+  transition:background-color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-dms-tap:hover{ background:var(--ds-surface-3) }
+.a-dms-cue{
+  display:inline-flex;
+  align-items:center;
+  gap:var(--ds-s2);
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-3);
+}
+.a-dms-acts{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s2);
+  flex:1 1 auto;
+  min-width:0;
+  flex-wrap:wrap;
+}
+
+/* --------------------------------------------------------------------------
+   Phone. The same parts: the body loses its side gutter so the group can run
+   edge to edge, and the card's decision bar stacks its primary action last.
+   -------------------------------------------------------------------------- */
+@media (max-width:767px){
+  .a-dms-body{ padding-inline:var(--ds-s0) }
+  .a-dms-pop{ max-width:32ch }
+}
+
+/* --------------------------------------------------------------------------
+   The conversation row keeps `r`, the class a row has carried since the stock
+   inbox, so anything that reaches a thread by that hook still can. `r` is
+   styled in the stock sheet (src/styles.css §.r), which is loaded app-wide, so
+   the three rules that would reach this row are restated here at a specificity
+   the stock sheet cannot beat. Nothing else in that block matches: the row's
+   children carry `a-` classes, not `.name` / `.snip` / `.client`.
+   -------------------------------------------------------------------------- */
+.a-dms .a-dms-rowhost .a-row.r{
+  padding:var(--ds-row-y) var(--ds-row-x);
+  gap:var(--ds-stack);
+  align-items:center;
+}
+.a-dms .a-dms-rowhost .a-row.r + .a-row.r{ border-top:0 }
+.a-dms .a-dms-rowhost .a-row.r:active{ background:var(--ds-wash-strong) }
+
+
+/* --------------------------------------------------------------------------
+   Phone. The conversation row is windowed against ROW_H, so unlike every other
+   row in the direction it cannot wrap onto a second line: it keeps one line and
+   spends the width on the name and the newest message, with the trailing values
+   stacked into one narrow right-hand track. The copy link steps aside here,
+   exactly where the shipped sheet already hid it.
+   -------------------------------------------------------------------------- */
+@media (max-width:767px){
+  /* The name and the newest message take the first line; the trailing values
+     and the row's one action settle on the second, inside the same fixed box
+     (ROW_H_PHONE). The copy link steps aside here, exactly where the shipped
+     sheet already hid it. */
+  .a-dms .a-row{ align-items:flex-start; row-gap:var(--ds-s2) }
+  .a-dms .a-row-lead{ align-self:center }
+  .a-dms .a-dms-tagact{ display:none }
+}
