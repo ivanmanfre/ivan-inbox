@@ -98,3 +98,17 @@
 
 /* A hand-off row that is a real link rather than a click handler. */
 .a-today-linkrow{ text-decoration:none; color:inherit }
+
+/* --------------------------------------------------------------------------
+   5 · The zone head at 390 (D14). Every zone head is an eyebrow plus a mono
+   tail carrying the count AND its predicate ("13 across every lane"), and the
+   shared head lets the eyebrow shrink to an ellipsis before the tail gives up
+   any width. At 390 that put "A WORK QUEUE" under an ellipsis and ran the tail
+   into the plate edge. Here the eyebrow keeps its width and the tail drops to
+   its own line instead, so both are read whole. A number keeps its predicate.
+   -------------------------------------------------------------------------- */
+@media (max-width:767px){
+  .a-today-z .a-group-h{ flex-wrap:wrap; row-gap:var(--ds-s1) }
+  .a-today-z .a-group-h > .a-eyebrow{ flex:1 0 auto; overflow:visible }
+  .a-today-z .a-group-h > .a-group-tail{ margin-inline-start:auto }
+}

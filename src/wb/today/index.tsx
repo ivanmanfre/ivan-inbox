@@ -21,6 +21,7 @@ import { SystemAlertStrip } from './alerts'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { useToday, type TodayHealth } from '../../hooks/useToday'
 import { label } from '../../lib/labels'
+import { LANE_LABEL, type ContentLane } from '../../lib/content'
 import { acceptRate, laneLabel, type GovernorRow } from '../../lib/kpis'
 import type { Thread } from '../../lib/inbox'
 import type { OpsDraft } from '../../lib/ops'
@@ -61,6 +62,12 @@ const KIND: Record<string, { label: string; cls: string }> = {
 
 function kindOf(k: string) {
   return KIND[k] ?? { label: label(k), cls: 'reply' }
+}
+
+/** The lane as a person, first name only: a queue row has no room for two. */
+function laneOwner(lane: string): string {
+  const full = LANE_LABEL[lane as ContentLane]
+  return full ? full.split(' ')[0] : lane
 }
 
 type ZoneState = 'done' | 'pending' | 'hot'
@@ -306,8 +313,13 @@ function QueueReplyRow({ item, onOpen }: { item: QueueItem; onOpen: () => void }
               <span className="a-mono">never opened</span>
             </span>
           )}
+          {/* The lane, said the way the rest of the app says it. This printed
+              the raw internal shorthand (`RISE` / `ARCH`) — an internal name on
+              screen, and the only place in the app that spelled a lane that
+              way. LANE_LABEL is the one map that owns the mapping, so the row
+              reads the person's own name and a rename can never half-land. */}
           {item.lane !== 'ivan' && (
-            <span className="a-mono a-dim"> {item.lane === 'risedtc' ? 'RISE' : 'ARCH'}</span>
+            <span className="a-mono a-dim"> {laneOwner(item.lane)}</span>
           )}
         </>
       }
