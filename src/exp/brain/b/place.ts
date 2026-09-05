@@ -26,12 +26,11 @@ export const TAB_LABEL: Record<Place, string> = {
   ask: 'Ask', today: 'Today', dms: 'DMs', content: 'Content', sends: 'Lanes', ops: 'Ops',
 }
 
-// Unicode glyphs, matching JOB_ICON verbatim for the five lanes so the phone
-// and the desktop rail never disagree about what a job looks like; Ask gets
-// the same mark ChatPane already uses for Claude (✳).
-export const TAB_ICON: Record<Place, string> = {
-  ask: '✳', today: '☼', dms: '◉', content: '▤', sends: '⇅', ops: '◈',
-}
+// The per-tab mark is a lucide icon now and it lives with the bar that draws
+// it (src/wb/ask/Mobile.tsx TAB_ICON, on the same names src/ds/icons.tsx gives
+// the ten jobs), so the phone and the desktop rail still cannot disagree about
+// what a job looks like. The unicode map this file used to carry was read by
+// one dead path (./TabBar.tsx, which W6 deletes) and by nothing live.
 
 /** A Shell `Job` (which can be magnets/styles/strategy/settings/money — jobs
  * with no tab of their own) collapsed onto the tab that represents it. */

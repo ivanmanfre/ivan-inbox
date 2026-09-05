@@ -1,4 +1,5 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { Icon } from '../../ds'
 import { SeatHealthBanner } from '../../wb/chrome/SeatHealthBanner'
 import { InboxSkeleton } from '../../wb/chrome/Skeleton'
 import { useInbox } from '../../hooks/useInbox'
@@ -798,7 +799,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
             </span>
             {job === 'settings'
               ? <span className="wb-gear" onClick={() => goJob(prevJob)}>Done</span>
-              : <span className="wb-gear" onClick={() => goJob('settings')}>⚙︎</span>}
+              : <span className="wb-gear" onClick={() => goJob('settings')} aria-label="Settings"><Icon name="settings" size={20} /></span>}
           </div>
           <div className={`wb-work wide${plan.narrow ? ' wb-narrow' : ''}`} data-wblane={lane}>{workSurface}</div>
           <MobileTabs job={job} counts={counts} sev={sev} chatLive={chat.busy} onJob={goJob} onChat={toggleChat} />

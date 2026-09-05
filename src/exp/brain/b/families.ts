@@ -97,7 +97,7 @@ export const FAMILY_LANE: Record<FamilyKey, Job | null> = {
 }
 
 // ---------------------------------------------------------------------------
-// 3. Severity → drawn mark SHAPE. Colour reinforces; shape carries the
+// 3. Severity as a drawn mark SHAPE. Colour reinforces; shape carries the
 //    meaning, so a reader who cannot see colour still reads severity.
 //    square = needs you · bar = error · dot = info.
 // ---------------------------------------------------------------------------

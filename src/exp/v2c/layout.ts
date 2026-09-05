@@ -62,14 +62,11 @@ export const JOB_LABEL: Record<Job, string> = {
   sends: 'Lanes', money: 'Money', ops: 'Ops', settings: 'Settings',
 }
 
-// Unicode glyphs only, matching TabBar.tsx:9-30 — no icon set, no SVG sprite.
-// DMs inherits the Inbox glyph, not the old drafts sparkle: it is a
-// conversation list now, and the glyph is the honest one.
-// `sends` is ⇅ rather than ↑ from 2026-08-23: the surface reads both directions now.
-export const JOB_ICON: Record<Job, string> = {
-  today: '☼', dms: '◉', content: '▤', magnets: '▦', styles: '▧', strategy: '◎',
-  sends: '⇅', money: '▣', ops: '◈', settings: '⚙︎',
-}
+// The per-job mark lives with the chrome that draws it now: src/wb/chrome/
+// Rail.tsx JOB_MARK, on the lucide names src/ds/icons.tsx gives the ten jobs.
+// The unicode map this file used to carry (☼ ◉ ▤ ▦ ▧ ◎ ⇅ ▣ ◈ ⚙︎) was read by
+// the rail and the phone bar only, and both are on the design system from
+// Phase 3 W1 (goal run inbox-app-revamp-2026-09-05).
 
 // Jobs whose working surface is a LIST that can hand a row to a context peer.
 // Everything else is a whole-canvas reading/monitoring surface. This replaces

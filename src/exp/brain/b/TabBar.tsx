@@ -1,4 +1,11 @@
-import { TABS, TAB_ICON, TAB_LABEL, type Place } from './place'
+import { TABS, TAB_LABEL, type Place } from './place'
+
+// The unicode marks, kept HERE because this bar is the only thing that draws
+// them. It is the `?skin=plain` path (the finalist as it shipped 2026-09-04),
+// which W6 deletes; the live phone bar is src/wb/ask/Mobile.tsx on lucide.
+const TAB_ICON: Record<Place, string> = {
+  ask: '✳', today: '☼', dms: '◉', content: '▤', sends: '⇅', ops: '◈',
+}
 
 export function TabBar({ active, counts, sev, onTab }: {
   active: Place

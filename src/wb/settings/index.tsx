@@ -204,7 +204,7 @@ export function Settings({ shell = 'stock' }: { shell?: SettingsShell } = {}) {
           setPush(await getPushState())
           setPushErr(
             isIOS() && !isStandalone()
-              ? 'On iPhone: install to Home Screen first (Share → Add to Home Screen), then enable here.'
+              ? 'On iPhone: install to Home Screen first (Share, then Add to Home Screen), then enable here.'
               : 'Not enabled. Check the browser allowed notifications for this site.',
           )
         }
@@ -272,8 +272,9 @@ export function Settings({ shell = 'stock' }: { shell?: SettingsShell } = {}) {
             control={<Switch label="New-reply sound" checked={chime} onChange={toggleChime} />}
           />
           <p className="a-set-note a-meta">
-            Desktop sound for pushes comes from the system: macOS Settings → Notifications →
-            your browser → turn on "Play sound for notifications".
+            Desktop sound for pushes comes from the system: macOS Settings, then
+            Notifications, then your browser, then turn on "Play sound for
+            notifications".
           </p>
         </SectionCard>
 

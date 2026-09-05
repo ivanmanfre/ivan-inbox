@@ -16,7 +16,8 @@
    ========================================================================== */
 import { canApprove, type ReactionRow } from '../../lib/reactions'
 import type { useReactions } from '../../hooks/useReactions'
-import { Badge, Banner, Button, Textarea } from '../../ds'
+import type { ReactNode } from 'react'
+import { Badge, Banner, Button, Icon, Textarea } from '../../ds'
 import { Cell, Group, Ledger, Sep } from '../kit'
 import './ops.css'
 
@@ -61,10 +62,9 @@ function slotLabel(iso: string): string {
 // What Approve does, in the lane's own terms. Two different terminal states
 // share one button, so the button says which one it is BEFORE the click rather
 // than reporting it after.
-function approveLabel(row: ReactionRow, nextSlot: string): string {
-  return row.lane === 'risedtc'
-    ? 'Approve → Mattan’s board'
-    : `Approve → ${slotLabel(nextSlot)}`
+function approveLabel(row: ReactionRow, nextSlot: string): ReactNode {
+  const target = row.lane === 'risedtc' ? 'Mattan’s board' : slotLabel(nextSlot)
+  return <>Approve <Icon name="next" size={16} /> {target}</>
 }
 
 function ReactionCard({ row, body, busy, nextSlot, onBody, onKill, onApprove }: {
