@@ -866,7 +866,9 @@ function sum<T>(rows: T[], key: keyof T): number {
 }
 
 function govMode(g: GovernorRow | undefined): { label: string; cls: string } {
-  if (!g) return { label: 'NO DATA', cls: 'a-dim-2' }
+  // E8: 'NO DATA' is a reading a person acts on, not a placeholder, so it takes
+  // meta ink rather than the system's faintest tier (3.23:1 on surface-1).
+  if (!g) return { label: 'NO DATA', cls: 'a-dim' }
   if (g.mode === 'cold_paused') return { label: 'COLD-PAUSED', cls: 'a-sev-urgent' }
   if (g.mode === 'warm_only') return { label: 'WARM-ONLY', cls: 'a-sev-attention' }
   return { label: 'NORMAL', cls: 'a-sev-clear' }

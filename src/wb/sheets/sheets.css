@@ -101,3 +101,49 @@
   color:var(--ds-sev-urgent);
   overflow-wrap:anywhere;
 }
+
+/* --------------------------------------------------------------------------
+   THE SHEET SITS OUTSIDE `.ds-body`, so the design system's reduced-motion
+   collapse never reaches it.
+
+   `ds-body` rides on `.a-root` — the SCREEN frame in `src/wb/kit.tsx`, not the
+   document — and a sheet is mounted above the screen, not inside it. ds.css
+   §18 is written `.ds-body, .ds-body *`, so every control in a sheet keeps its
+   transitions however the reader has set the OS. E8 measured 32 live
+   transitions on S20 at 390 alone: `ds-ibtn`, `a-push-preset`, `ds-input-wrap`
+   and `ds-btn`, all 0.12s.
+
+   The collapse is restated for the sheet's own subtree. It is the same shape as
+   the trap in `dms.css`, from a different cause: there a later sheet out-
+   specified the rule, here the rule's scope simply does not contain the node.
+   -------------------------------------------------------------------------- */
+/* AND IT DOES NOT INHERIT THE INK EITHER, which is the worse half. The sheet
+   is a direct child of <body>: `.ds-t-title` names no colour of its own, so the
+   sheet's heading resolves to the UA's black on a `rgb(31,31,31)` panel —
+   measured `rgb(0,0,0)`, 1.27:1, a heading nobody can read. Every other line in
+   the sheet happens to carry a colour class and so survived; the title is the
+   one that did not. The sheet states the ground and the ink it is drawn on
+   rather than borrowing them from a scope it is not inside. */
+[data-ds='Sheet']{ color:var(--ds-text); background:var(--ds-surface-1) }
+
+@media (prefers-reduced-motion: reduce){
+  [data-ds='Sheet'], [data-ds='Sheet'] *,
+  [data-ds='Sheet'] *::before, [data-ds='Sheet'] *::after{
+    transition-duration:0ms !important;
+    animation-duration:0ms !important;
+    animation-iteration-count:1 !important;
+  }
+}
+
+/* THE RING HAS TO BE ON THE THING THAT IS FOCUSED. `ds.css` paints an Input's
+   focus ring on the WRAP (`.ds-input-wrap:focus-within`) and clears the
+   control's own outline, so a sweep that Tabs into the field and reads the
+   focused element sees no change at all — E8 flags S20's custom-return field at
+   both widths. A keyboard reader who is looking at the field and not at the box
+   around it deserves the same answer. The ring is restated on the control,
+   offset outward so it reads as one ring with the wrap's inset line rather than
+   two. The ds-wide version of this belongs to whoever owns the primitive. */
+.a-push-custom .ds-input:focus-visible{
+  outline:2px solid var(--ds-accent-ring);
+  outline-offset:1px;
+}
