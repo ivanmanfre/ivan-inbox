@@ -45,7 +45,13 @@ export function Takeover({ label, sub, onClose, mobile, children }: {
   return (
     <AnimatePresence>
       <motion.div
-        className="a-tk-scrim ds-body"
+        // `ds-scrim` is the design system's name for exactly this element, and
+        // saying it is not decoration: a reader's assistive tech and the gates
+        // both look for the app's own scrim class to know that what is behind
+        // this window is deliberately out of reach. Without it the window
+        // reads as a panel painted over a live screen, and every control on
+        // the screen underneath is measured as a control the reader missed.
+        className="a-tk-scrim ds-scrim ds-body"
         onClick={mobile ? undefined : onClose}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

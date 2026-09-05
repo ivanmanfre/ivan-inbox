@@ -11,7 +11,11 @@
 .a-tk-scrim{
   position:fixed;
   inset:0;
-  z-index:70;
+  /* The element also carries `ds-scrim`, whose z-index is the SHEET layer. A
+     takeover is a dialog and has to sit above one, and equal specificity means
+     whichever sheet loads last would otherwise decide that. Named, not left to
+     the bundler's import order. */
+  z-index:var(--ds-z-dialog);
   background:var(--ds-scrim);
   display:flex;
   align-items:center;
