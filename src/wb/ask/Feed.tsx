@@ -148,15 +148,30 @@ export function Feed({ feed, goJob, openThread, onNavigated, onScrolled }: {
     onNavigated()
   }
 
-  // Move 8. The write has already fired by the time this runs; the toast is a
-  // receipt, not an offer to take it back. nothing in the feed's data layer
-  // can un-dismiss a row, and an Undo that cannot undo is a lie.
-  const receipt = (id: string) => {
-    setToasts(prev => [...prev, { id, message: 'Dismissed', icon: 'discard' }])
-    window.setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000)
+  // Move 8, completed. The write has already fired by the time this runs, and
+  // the toast now carries the inverse of it: `feed.restore` clears
+  // `dismissed_at` on exactly the rows that just left, by id
+  // (`restoreNotifications`, added for this). So the Undo really undoes, and
+  // the receipt is still a receipt for anyone who ignores it.
+  //
+  // The rows themselves ride in the closure, not just their ids, because the
+  // feed does not refetch to answer an undo — the same rows go straight back
+  // into the list.
+  const drop = (id: string, rowsBack: Notification[], label: string) => {
+    setToasts(prev => [...prev, {
+      id,
+      message: label,
+      icon: 'discard',
+      actionLabel: 'Undo',
+      onAction: () => {
+        feed.restore(rowsBack)
+        setToasts(cur => cur.filter(t => t.id !== id))
+      },
+    }])
+    window.setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 6000)
   }
 
-  const dismissOne = (id: string) => { feed.dismissOne(id); receipt(id) }
+  const dismissOne = (id: string, row: Notification) => { feed.dismissOne(id); drop(id, [row], 'Dismissed') }
 
   return (
     <>
@@ -180,8 +195,13 @@ export function Feed({ feed, goJob, openThread, onNavigated, onScrolled }: {
           </div>
         )}
 
+        {/* Move 3. The band's own head is sticky, and once the ledger under it
+            has moved the whole run of them condenses to one compact bar: the
+            day and its live count on one line at the eyebrow size, so a long
+            scroll spends 28px per day instead of 44. The count is the live
+            one, recomputed per render, not a stamp taken on mount. */}
         {days.map(day => (
-          <div className="a-brain-day" key={day.label}>
+          <div className="a-brain-day" key={day.label} data-condensed={scrolled ? '' : undefined}>
             <DayHeader label={day.label} tail={day.unread > 0 ? `${day.unread} unread` : undefined} sticky />
             <Rows>
               <AnimatePresence initial={false}>
@@ -200,14 +220,17 @@ export function Feed({ feed, goJob, openThread, onNavigated, onScrolled }: {
                         <GroupRow
                           g={g} open={feed.expanded.has(g.key)} onToggle={() => feed.toggle(g.key)}
                           onOpen={openOne}
-                          onDismissAll={() => leave(g, at, () => { feed.dismissGroupRows(g); receipt(g.key) })}
-                          onDismissOne={dismissOne}
+                          onDismissAll={() => leave(g, at, () => {
+                            feed.dismissGroupRows(g)
+                            drop(g.key, g.items, `${g.count} dismissed`)
+                          })}
+                          onDismissOne={(id, row) => dismissOne(id, row)}
                         />
                       )
                       : (
                         <NotificationRow
                           n={g.latest} onOpen={openOne} going={going}
-                          onDismiss={id => leave(g, at, () => dismissOne(id))}
+                          onDismiss={(id, row) => leave(g, at, () => dismissOne(id, row))}
                         />
                       )}
                   </motion.div>

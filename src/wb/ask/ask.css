@@ -113,6 +113,16 @@
   background:var(--ds-canvas);
   padding-inline:var(--ds-gutter);
   z-index:1;
+  transition:min-block-size var(--ds-dur) var(--ds-ease), padding-block var(--ds-dur) var(--ds-ease);
+}
+/* Move 3. Once the ledger under it has moved, the run of day heads condenses:
+   the same day and the same LIVE count on one compact bar at the eyebrow
+   size, so a long scroll spends a third less height per band. */
+.a-brain-day[data-condensed] .ds-dayheader{
+  min-block-size:var(--ds-s7);
+  padding-block:var(--ds-s2);
+  font-size:var(--ds-fs-eyebrow);
+  letter-spacing:var(--ds-tr-eyebrow);
 }
 .a-brain-slot{ position:relative; overflow:hidden }
 /* What the swipe reveals under the row. */
@@ -211,9 +221,39 @@
   color:var(--ds-text-3);
 }
 
-/* The group deck: one collapsed header naming count AND kind, the children
-   revealing under it. No peeked edges: a cluster here is a grouped ledger. */
+/* The group deck (move 6). Collapsed it is a physical pile: the front card
+   sits on up to three peeked edges, each stepped down and narrowed, so the
+   depth of the stack reads as the count before a word does. Fanning removes
+   the edges and the children arrive under the same head. */
 .a-brain-deck{ display:flex; flex-direction:column }
+.a-brain-deck-front{ position:relative; z-index:1 }
+.a-brain-peek{
+  position:absolute;
+  inset-block:0;
+  inset-inline:0;
+  display:block;
+  border:1px solid var(--ds-line-strong);
+  border-radius:var(--ds-r4);
+  background:var(--ds-surface-2);
+  pointer-events:none;
+}
+.a-brain-deck-head{ position:relative; z-index:1; background:var(--ds-surface-1) }
+.a-brain-deck-depth{ display:block; flex:0 0 auto }
+/* Move 7's overlapping run: one severity mark per item in the pile, capped at
+   four, overlapped so a glance reads a stack and not a list. */
+.a-brain-stack{ display:inline-flex; align-items:center }
+.a-brain-stack-i{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  inline-size:var(--ds-s5);
+  block-size:var(--ds-s5);
+  margin-inline-start:calc(var(--ds-s2) * -1);
+  border:1px solid var(--ds-canvas);
+  border-radius:var(--ds-r1);
+  background:var(--ds-surface-3);
+}
+.a-brain-stack-i:first-child{ margin-inline-start:var(--ds-s0) }
 .a-brain-deck-rows{
   display:flex;
   flex-direction:column;

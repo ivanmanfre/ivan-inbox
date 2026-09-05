@@ -10,12 +10,16 @@
    subject stay exactly as the old card said them (`stateWord`, `subjectFor`),
    because a state word standing alone is not a notification.
 
-   Moves 6 and 7: a cluster is a grouped ledger, not a physical deck. The
-   collapsed header names the count AND the kind (`groupStateWord`), and the
-   children reveal under it. The peeked edges are gone; the count is not.
+   Moves 6 and 7: a cluster is a PHYSICAL DECK. Behind the front card sit up to
+   three peeked edges, each one a real row that is really under there, so the
+   count is visible before it is read; the header still names the count AND the
+   kind (`groupStateWord`); an overlapping run of severity marks says what kind
+   of thing each one is; and the fan is a layout spring, the children arriving
+   on the 30ms stagger.
 
-   Move 8: the swipe path and the dismiss control both survive, and a row
-   resolves in place before it leaves.
+   Move 8: the swipe path and the dismiss control both survive, a row resolves
+   in place before it leaves, and the toast that follows carries a real Undo
+   (`Feed.tsx` → `feed.restore` → `restoreNotifications`).
    ========================================================================== */
 import { AnimatePresence, motion } from 'motion/react'
 import { Button, Icon, IconButton, fadeT, list, rise, spring } from '../../ds'
@@ -38,12 +42,13 @@ function sevOf(shape: 'square' | 'bar' | 'dot'): 'attention' | 'urgent' | undefi
 export function NotificationRow({ n, onOpen, onDismiss, nested = false, going = false }: {
   n: Notification
   onOpen: (n: Notification) => void
-  onDismiss: (id: string) => void
+  /** The row travels with its id so the undo can put THIS row back without a refetch. */
+  onDismiss: (id: string, row: Notification) => void
   nested?: boolean
   /** The row is on its way out: it resolves in place before it leaves. */
   going?: boolean
 }) {
-  const swipe = useSwipe(() => onDismiss(n.id))
+  const swipe = useSwipe(() => onDismiss(n.id, n))
   const shape = severityShape(n.severity)
   const form = formFor(n.family)
   const lane = laneLabel(n.family)
@@ -70,7 +75,7 @@ export function NotificationRow({ n, onOpen, onDismiss, nested = false, going = 
           unread={unread}
           onClick={() => onOpen(n)}
           tail={<span className="a-mono">{time}</span>}
-          actions={<IconButton icon="close" label="Dismiss" size="sm" onClick={e => { e.stopPropagation(); onDismiss(n.id) }} />}
+          actions={<IconButton icon="close" label="Dismiss" size="sm" onClick={e => { e.stopPropagation(); onDismiss(n.id, n) }} />}
         />
       </motion.div>
     )
@@ -147,7 +152,7 @@ export function NotificationRow({ n, onOpen, onDismiss, nested = false, going = 
             </>
           }
           tail={going ? <span className="a-brain-going"><Icon name="check" size={16} />Dismiss</span> : action}
-          actions={<IconButton icon="close" label="Dismiss" size="sm" onClick={e => { e.stopPropagation(); onDismiss(n.id) }} />}
+          actions={<IconButton icon="close" label="Dismiss" size="sm" onClick={e => { e.stopPropagation(); onDismiss(n.id, n) }} />}
           sev={sevOf(shape)}
           unread={unread}
           onClick={() => onOpen(n)}
@@ -160,9 +165,38 @@ export function NotificationRow({ n, onOpen, onDismiss, nested = false, going = 
 }
 
 /**
- * A cluster. The header names the count and the kind; tapping it reveals the
- * children under it with the list stagger. Every row inside keeps its own
- * dismiss, and the header keeps the one that clears the lot.
+ * Move 7's overlapping run. One mark per item in the cluster, capped at four,
+ * each carrying THAT item's own severity shape, overlapped so the run reads as
+ * a stack rather than a list. It says what kind of things are under the front
+ * card without opening it, and it survives greyscale because the shape is the
+ * signal (SYSTEM §1).
+ */
+function MarkStack({ items }: { items: Notification[] }) {
+  const shown = items.slice(0, 4)
+  return (
+    <span className="a-brain-stack" aria-hidden="true">
+      {shown.map(i => (
+        <span className="a-brain-stack-i" key={i.id}><Mark shape={severityShape(i.severity)} /></span>
+      ))}
+    </span>
+  )
+}
+
+/**
+ * A cluster, as a physical deck (move 6).
+ *
+ * Collapsed, up to three peeked edges sit behind the front card, each stepped
+ * down and in, so the depth of the pile is the count. Tapping fans it: the
+ * peeks leave, the front card stays where it is (`layout` on the deck, one
+ * spring), and the children arrive under it on the 30ms stagger.
+ *
+ * The number of peeks is `count - 1` capped at three, so a deck of two shows
+ * one edge and a deck of nine shows three. It is a depth cue, not a count —
+ * the count is printed in words on the headline, which is where a number
+ * belongs.
+ *
+ * Every row inside keeps its own dismiss and its own swipe; the header keeps
+ * the one that clears the lot.
  */
 export function GroupRow({ g, open, onToggle, onOpen, onDismissAll, onDismissOne }: {
   g: NotificationGroup
@@ -170,44 +204,74 @@ export function GroupRow({ g, open, onToggle, onOpen, onDismissAll, onDismissOne
   onToggle: () => void
   onOpen: (n: Notification) => void
   onDismissAll: () => void
-  onDismissOne: (id: string) => void
+  onDismissOne: (id: string, row: Notification) => void
 }) {
   const shape = severityShape(g.latest.severity)
   const unread = g.unread > 0
   const latest = rowLine(g.latest)
   const time = clock(g.lastSeenAt)
+  const peeks = Math.min(3, Math.max(0, g.count - 1))
   return (
-    <div className="a-brain-deck" data-contained data-group data-family={g.family}>
-      <Row
-        lead={<Mark shape={shape} />}
-        title={
-          <>
-            <span className="a-brain-state">{groupStateWord(g.count, g.family)}</span>
-            {subjectFor(g.latest) && <><Sep /><span className="a-ink">{subjectFor(g.latest)}</span></>}
-          </>
-        }
-        titleWrap
-        sub={!open && latest ? latest : undefined}
-        subWrap
-        meta={
-          <>
-            <TenantChip tenant={g.latest.tenant} />
-            <span>latest {time}</span>
-          </>
-        }
-        tail={
-          <Button
-            variant="quiet" size="sm" iconEnd={open ? 'discloseUp' : 'disclose'}
-            aria-expanded={open}
-            onClick={e => { e.stopPropagation(); onToggle() }}
-          >{open ? 'Hide these' : 'Show each one'}</Button>
-        }
-        actions={<IconButton icon="close" label="Dismiss all" size="sm" onClick={e => { e.stopPropagation(); onDismissAll() }} />}
-        sev={sevOf(shape)}
-        unread={unread}
-        selected={open}
-        onClick={onToggle}
-      />
+    <motion.div
+      className="a-brain-deck" data-contained data-group data-family={g.family}
+      data-open={open ? '' : undefined}
+      layout transition={spring}
+    >
+      <div className="a-brain-deck-front">
+        {/* The edges behind the front card. They leave the moment it fans, so
+            the pile and the list are never both on screen. */}
+        <AnimatePresence initial={false}>
+          {!open && Array.from({ length: peeks }, (_, i) => (
+            <motion.span
+              className="a-brain-peek" key={i} aria-hidden="true"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 - (i + 1) * 0.22, transition: fadeT }}
+              exit={{ opacity: 0, transition: fadeT }}
+              style={{
+                // Down and in by a fixed step per layer: the same physical
+                // stack the reference draws, in tokens the sheet owns.
+                transform: `translateY(${(i + 1) * 7}px) scaleX(${1 - (i + 1) * 0.045})`,
+                zIndex: -(i + 1),
+              }}
+            />
+          ))}
+        </AnimatePresence>
+        <Row
+          className="a-brain-deck-head"
+          lead={<Mark shape={shape} />}
+          title={
+            <>
+              <span className="a-brain-state">{groupStateWord(g.count, g.family)}</span>
+              {subjectFor(g.latest) && <><Sep /><span className="a-ink">{subjectFor(g.latest)}</span></>}
+            </>
+          }
+          titleWrap
+          sub={!open && latest ? latest : undefined}
+          subWrap
+          meta={
+            <>
+              <TenantChip tenant={g.latest.tenant} />
+              <MarkStack items={g.items} />
+              <span>latest {time}</span>
+            </>
+          }
+          tail={
+            <Button
+              variant="quiet" size="sm" iconEnd={open ? 'discloseUp' : 'disclose'}
+              aria-expanded={open}
+              onClick={e => { e.stopPropagation(); onToggle() }}
+            >{open ? 'Hide these' : 'Show each one'}</Button>
+          }
+          actions={<IconButton icon="close" label="Dismiss all" size="sm" onClick={e => { e.stopPropagation(); onDismissAll() }} />}
+          sev={sevOf(shape)}
+          unread={unread}
+          selected={open}
+          onClick={onToggle}
+        />
+      </div>
+      {/* The pile's own height while it is collapsed, so the card below it does
+          not sit on the bottom edge. */}
+      {!open && peeks > 0 && <span className="a-brain-deck-depth" style={{ height: `${peeks * 7}px` }} aria-hidden="true" />}
       <AnimatePresence initial={false}>
         {open && (
           <motion.div
@@ -226,6 +290,6 @@ export function GroupRow({ g, open, onToggle, onOpen, onDismissAll, onDismissOne
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   )
 }
