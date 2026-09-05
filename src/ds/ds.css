@@ -272,7 +272,19 @@ body.ds-body{
   cursor:pointer;
   transition:color var(--ds-dur-hover) var(--ds-ease);
 }
-.ds-tab[data-active='true']{ flex:1 1 auto; color:var(--ds-accent-ink) }
+/* The pill a reader sees is `.ds-tab-marker`, an absolutely positioned SIBLING
+   of the label, so the label's nearest opaque ancestor stayed the tabbar canvas
+   and the active label measured 1.09 against it — dark ink read against a dark
+   ground it never touches. The button paints the same accent under the marker,
+   held back by the spring's settle so the travelling pill is still the only
+   thing that moves; leaving reverts with no delay, so no pill is left behind. */
+.ds-tab[data-active='true']{
+  flex:1 1 auto;
+  color:var(--ds-accent-ink);
+  background:var(--ds-accent);
+  transition:color var(--ds-dur-hover) var(--ds-ease),
+             background-color 0s var(--ds-dur-slow);
+}
 .ds-tab > *{ position:relative; z-index:1 }
 .ds-tab-marker{
   position:absolute; inset:0;
