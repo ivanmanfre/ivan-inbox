@@ -224,8 +224,12 @@
 }
 /* The visible box stays 18px so the row keeps its density band; the HIT area
    clears 44px through an inset overlay, the same pattern .sa-x and the ihead
-   chips already use. */
-.wb.wb.wb .wb-selmark::after{ content:''; position:absolute; inset:-13px }
+   chips already use.
+   -13px is EXACTLY 44 and exactly 44 is what fails: the probe reads a 44px
+   square out from the centre, so a box that measures 44.0 has its edge points
+   sitting on the boundary and rounding decides them. -16px is 50 and leaves the
+   decision to nobody. Measured under E5 at 390 in the DMs list. */
+.wb.wb.wb .wb-selmark::after{ content:''; position:absolute; inset:-16px }
 .wb.wb.wb .wb-selmark-b{ font-size:11px; font-weight:800; line-height:1 }
 
 /* 🔴 IT ADDS NO BOX TO THE ROW. `.ct-card` is a seven-column grid with a fixed

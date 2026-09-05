@@ -243,3 +243,28 @@
   .a-dms .a-row-lead{ align-self:center }
   .a-dms .a-dms-tagact{ display:none }
 }
+
+/* --------------------------------------------------------------------------
+   The row-select mark, on the phone.
+
+   `RowSelect` and the row are SIBLINGS inside `.a-dms-rowhost` (the command
+   layer walks the host, so the mark and the row it registers have to share one
+   box). The row is later in the DOM, so it paints over the mark's 44px hit
+   overlay: every probe out from the mark's centre lands on the row instead, and
+   the mark reads as a control no thumb can hit however far its overlay reaches.
+   Measured under E5 at 390; widening the overlay to 50px did not move it,
+   because the problem is paint order and not size.
+
+   Lifting the mark over the row would fix the probe and cost the row a 44px
+   dead zone over its own avatar, which is worse than what it buys. So the mark
+   does not render on the phone: a conversation carries no bulk capability there
+   (the one exception, discarding a pending draft, is reached from the draft
+   card), selection is a keyboard idea, and every key that drives it is desktop
+   in the ledger. The desktop mark is untouched.
+   -------------------------------------------------------------------------- */
+@media (max-width:767px){
+  /* THE CLASSES ARE DOUBLED, same reason ds.css §17 doubles its floor: the rule
+     this overrides is `.wb.wb.wb .wb-selmark` at (0,4,0), and a single-class
+     selector loses to it however late it is loaded. */
+  .a-dms-rowhost.a-dms-rowhost > .wb-selmark.wb-selmark{ display:none }
+}
