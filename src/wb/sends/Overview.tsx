@@ -244,12 +244,14 @@ function Hero({ accept, governor, pipeline, replacement, client }: {
           value={aRows.length === 0 ? undefined : <>{r7}<Unit>%</Unit></>}
           note={aRows.length === 0 ? undefined : (
             <>
-              {acc7}/{sent7} <Sep />7d
+              <span className="a-sends-nb">{acc7}/{sent7} <Sep />7d</span>
               {' '}
-              <span className={`a-sends-delta ${trendClass}`}>
-                <Icon name={trendIcon} size={16} />{Math.abs(trend)}
+              <span className="a-sends-nb">
+                <span className={`a-sends-delta ${trendClass}`}>
+                  <Icon name={trendIcon} size={16} />{Math.abs(trend)}
+                </span>
+                {' '}<Sep />30d
               </span>
-              {' '}<Sep />30d
             </>
           )}
         >
@@ -263,7 +265,7 @@ function Hero({ accept, governor, pipeline, replacement, client }: {
           note={gRows.length === 0 ? undefined : (
             <>
               <span className={gMode.tone === 'clear' ? 'a-sev-clear' : gMode.tone === 'urgent' ? 'a-sev-urgent' : 'a-sev-attention'}>{gMode.label}</span>
-              {' · '}{gHeadDay} left today
+              {' · '}<span className="a-sends-nb">{gHeadDay} left today</span>
               <OverPill used={gUsed} cap={gCap} />
             </>
           )}
@@ -289,8 +291,8 @@ function Hero({ accept, governor, pipeline, replacement, client }: {
           value={repRows.length === 0 || rate == null ? undefined : <>{rate.toFixed(2)}<Unit>x</Unit></>}
           note={repRows.length === 0 || rate == null ? undefined : (
             <>
-              {qIn} in / {qOut} out <Sep />7d
-              {empty != null && <span className="a-sev-urgent"> <Sep />empty in {empty}d</span>}
+              <span className="a-sends-nb">{qIn} in / {qOut} out <Sep />7d</span>
+              {empty != null && <span className="a-sev-urgent a-sends-nb"> <Sep />empty in {empty}d</span>}
             </>
           )}
         >
@@ -305,44 +307,120 @@ function Hero({ accept, governor, pipeline, replacement, client }: {
   )
 }
 
-// ---- The funnel bars ----
-// One step is a neutral track with a lime layer clipped to its share of the
-// first step; the count pill lives INSIDE the segment, so the figure and the
-// quantity it stands for are the same mark. Only a real subset conversion
-// carries a rate between two steps.
+// ---- The funnel ----
+// Two forms of one figure. Above 768px it is the funnel-chart move (bklitai):
+// a horizontal band of trapezoid segments in the one accent, the count set
+// ABOVE each segment, the rate in a pill INSIDE it, the step name below, thin
+// hairlines between segments and a faint ghost trail behind the fill for depth.
+// The geometry is drawn in SVG and the type stays HTML, so a step name is real
+// text at a real size rather than a glyph the viewBox scaled to 7px.
+//
+// At or below 768px the same steps are the stacked bars they already were: a
+// four-segment horizontal funnel inside 390px would be four slivers.
+//
+// Only a real subset conversion carries a rate, on either form. A step whose
+// relation to the one before it is not a subset gets no percentage — inventing
+// one would be a claim we did not measure.
 type Step = { id: string; n: number; label: string; rate?: string }
+
+const FN_W = 1000
+const FN_H = 120
+
+/** The band itself: one polygon per step, plus its ghost, plus the dividers. */
+function FunnelShape({ steps, top }: { steps: Step[]; top: number }) {
+  const n = steps.length
+  const slot = FN_W / n
+  const mid = FN_H / 2
+  // Half-height of the band at each boundary, floored so a zero step is still a
+  // drawn line rather than a gap the eye reads as missing data.
+  const h = (v: number) => Math.max(1.5, (v / top) * (FN_H / 2 - 6))
+  const seg = (i: number, scale: number) => {
+    const x0 = i * slot
+    const x1 = (i + 1) * slot
+    const l = h(steps[i].n) * scale
+    const r = h(steps[Math.min(i + 1, n - 1)].n) * scale
+    return `${x0},${mid - l} ${x1},${mid - r} ${x1},${mid + r} ${x0},${mid + l}`
+  }
+  return (
+    <svg
+      className="a-sends-fx-svg"
+      viewBox={`0 0 ${FN_W} ${FN_H}`}
+      preserveAspectRatio="none"
+      aria-hidden="true"
+      focusable="false"
+    >
+      {steps.map((s, i) => (
+        <polygon key={`g-${s.id}`} className="a-sends-fx-ghost" points={seg(i, 1.14)} />
+      ))}
+      {steps.map((s, i) => (
+        <polygon key={`f-${s.id}`} className="a-sends-fx-fill" points={seg(i, 1)} />
+      ))}
+      {steps.slice(1).map((s, i) => (
+        <line
+          key={`d-${s.id}`}
+          className="a-sends-fx-div"
+          x1={(i + 1) * slot} x2={(i + 1) * slot} y1={0} y2={FN_H}
+        />
+      ))}
+    </svg>
+  )
+}
 
 function FunnelBars({ steps }: { steps: Step[] }) {
   const top = Math.max(1, ...steps.map(s => s.n))
+  const cols = { '--a-sends-fcols': String(steps.length) } as CSSProperties
   return (
-    <div className="a-sends-fn">
-      {steps.map((s, i) => {
-        const pct = Math.max(0, Math.min(100, (s.n / top) * 100))
-        const inner = (
-          <>
-            <span className="a-sends-fn-n">{s.n}</span>
-            <span className="a-sends-fn-l">{s.label}</span>
-          </>
-        )
-        return (
-          <div key={s.id}>
-            {i > 0 && (
-              <div className="a-sends-farrow">
-                {s.rate ? <>{s.rate}<Icon name="down" size={16} /></> : <Sep />}
-              </div>
-            )}
-            <div className="a-sends-ftrack">
-              <span className="a-sends-flayer">{inner}</span>
-              <span
-                className="a-sends-flayer"
-                data-fill=""
-                style={{ '--a-sends-pct': `${pct}%` } as CSSProperties}
-              >{inner}</span>
-            </div>
+    <>
+      {/* The wide form. */}
+      <div className="a-sends-fx">
+        <div className="a-sends-fx-row" style={cols}>
+          {steps.map(s => <span key={s.id} className="a-sends-fn-n">{s.n}</span>)}
+        </div>
+        <div className="a-sends-fx-band">
+          <FunnelShape steps={steps} top={top} />
+          <div className="a-sends-fx-row a-sends-fx-pills" style={cols}>
+            {steps.map(s => (
+              <span key={s.id} className="a-sends-fx-slot">
+                {s.rate && <span className="a-sends-fx-pill a-mono">{s.rate}</span>}
+              </span>
+            ))}
           </div>
-        )
-      })}
-    </div>
+        </div>
+        <div className="a-sends-fx-row" style={cols}>
+          {steps.map(s => <span key={s.id} className="a-sends-fn-l">{s.label}</span>)}
+        </div>
+      </div>
+
+      {/* The phone form: the bars this screen already carried. */}
+      <div className="a-sends-fn">
+        {steps.map((s, i) => {
+          const pct = Math.max(0, Math.min(100, (s.n / top) * 100))
+          const inner = (
+            <>
+              <span className="a-sends-fn-n">{s.n}</span>
+              <span className="a-sends-fn-l">{s.label}</span>
+            </>
+          )
+          return (
+            <div key={s.id}>
+              {i > 0 && (
+                <div className="a-sends-farrow">
+                  {s.rate ? <>{s.rate}<Icon name="down" size={16} /></> : <Sep />}
+                </div>
+              )}
+              <div className="a-sends-ftrack">
+                <span className="a-sends-flayer">{inner}</span>
+                <span
+                  className="a-sends-flayer"
+                  data-fill=""
+                  style={{ '--a-sends-pct': `${pct}%` } as CSSProperties}
+                >{inner}</span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </>
   )
 }
 
@@ -408,6 +486,56 @@ function ledgerDayLabel(day: string, todayIso: string): string {
   if (day === todayIso) return 'Today'
   const d = new Date(day + 'T00:00:00Z')
   return d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', timeZone: 'UTC' })
+}
+
+/**
+ * One table, drawn twice and shown once — the move Money already makes with its
+ * seven ledgers, said again here because the two tables on this screen are the
+ * two that could not fit a phone.
+ *
+ * Above 767px it is the design system's `Table`. At or below, the same columns
+ * become a run of records: the first column is the record's name, every other
+ * column is its header and its value on the meta line under it. Nothing is
+ * dropped and nothing scrolls sideways — a six-column day ledger is 519px of
+ * columns inside a 342px plate, so as a table on a phone it could only ever be
+ * read half at a time, and the first thing off the right edge was the seat cap.
+ *
+ * Both forms read the SAME `columns` array, so the two cannot drift apart, and
+ * they are mutually exclusive in CSS, so a screen reader meets exactly one.
+ */
+function TableOrRecords<R>({ label, columns, rows, rowKey }: {
+  label: string
+  columns: Array<TableColumn<R>>
+  rows: R[]
+  rowKey: (r: R) => string
+}) {
+  return (
+    <>
+      <div className="a-sends-wide">
+        <Table label={label} columns={columns} rows={rows} rowKey={rowKey} />
+      </div>
+      <div className="a-sends-narrow">
+        <Rows>
+          {rows.map(r => (
+            <Row
+              key={rowKey(r)}
+              titleWrap
+              title={columns[0].cell(r)}
+              meta={columns.slice(1).map((c, i, all) => (
+                <span className="a-sends-pair" key={c.id}>
+                  <span className="a-sends-pk a-eyebrow">{c.header}</span>
+                  <span className="a-sends-pv">{c.cell(r)}</span>
+                  {/* The middot trails its pair rather than leading the next
+                      one, so a line that wraps starts on a word. */}
+                  {i < all.length - 1 && <Sep />}
+                </span>
+              ))}
+            />
+          ))}
+        </Rows>
+      </div>
+    </>
+  )
 }
 
 type LedgerTableRow = {
@@ -497,14 +625,12 @@ function DayLedger({ rows, client, timeframe }: { rows: LedgerRow[]; client: Cli
 
   return (
     <Section label="Daily" tail={`last ${days} days · UTC`}>
-      <div className="a-scroll-x">
-        <Table
-          label="Sends by day"
-          columns={columns}
-          rows={tableRows}
-          rowKey={r => r.id}
-        />
-      </div>
+      <TableOrRecords
+        label="Sends by day"
+        columns={columns}
+        rows={tableRows}
+        rowKey={r => r.id}
+      />
       <div className="a-sends-cap">
         Invites = notes that left the seat. Cap = the seat's counter, spent before the provider answers; when it runs ahead of Invites those slots went to refused sends. Accepted is of that day's invites and only rises.
       </div>
@@ -863,14 +989,20 @@ function Campaigns({ rows, client }: { rows: CampaignSend[]; client: Client }) {
     {
       id: 'state',
       header: 'State',
+      width: '7rem',
       cell: c => (
         <Badge tone={c.is_active ? 'clear' : 'neutral'} label={c.is_active ? 'ACTIVE' : 'PAUSED'}>
           {c.is_active ? 'ACTIVE' : 'PAUSED'}
         </Badge>
       ),
     },
-    { id: 'sent7', header: '7d', numeric: true, cell: c => (c.sent_7d != null ? c.sent_7d : <span className="a-dim-2">—</span>) },
-    { id: 'sent', header: 'Sent', numeric: true, cell: c => c.sent },
+    // The three trailing columns are as wide as their contents ever get, which
+    // hands the rest of the table to the name — the one column that needs it,
+    // and the one whose ellipsis only works once its width is decided (an auto
+    // table gives a nowrap cell whatever it asks for, which is how a campaign
+    // called after its ICP pushed this table 8px past its own column).
+    { id: 'sent7', header: '7d', numeric: true, width: '5rem', cell: c => (c.sent_7d != null ? c.sent_7d : <span className="a-dim-2">—</span>) },
+    { id: 'sent', header: 'Sent', numeric: true, width: '6rem', cell: c => c.sent },
   ]
 
   return (
@@ -879,14 +1011,12 @@ function Campaigns({ rows, client }: { rows: CampaignSend[]; client: Client }) {
         <div className="a-sends-empty">No campaigns.</div>
       ) : (
         <>
-          <div className="a-scroll-x">
-            <Table
-              label="Campaigns by sends"
-              columns={columns}
-              rows={tableRows}
-              rowKey={c => c.campaign_id}
-            />
-          </div>
+          <TableOrRecords
+            label="Campaigns by sends"
+            columns={columns}
+            rows={tableRows}
+            rowKey={c => c.campaign_id}
+          />
           {hidden.length > 0 && (
             <button type="button" className="a-sends-more" onClick={() => setShowPaused(v => !v)}>
               <Icon name={showPaused ? 'minus' : 'add'} size={16} />

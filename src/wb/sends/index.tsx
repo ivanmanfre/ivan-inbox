@@ -1,18 +1,27 @@
 /* ==========================================================================
-   src/wb/sends/index.tsx — the Sends screen frame, Direction A.
+   src/wb/sends/index.tsx — S08 Lanes, S10 Log, and the frame around S09.
 
-   The override replaces the WHOLE screen, so this file carries all three of its
-   views. Only the OVERVIEW is redesigned (see ./Overview.tsx): the Lanes rows,
-   the Log, and both drill-ins keep the markup and the class names they ship
-   with today, so nothing on S08 or S10 moves. What is rebuilt here is the frame
-   around them — a compact sticky head, one thin bar holding the view switch,
-   the client switch and the range, and the custom-range editor under it.
+   The override replaces the WHOLE screen, so this file carries all three views.
+   W4 finishes what the direction started: the Overview was already an
+   instrument (./Overview.tsx), and now the LANES rows and the LOG are too.
 
-   Every fetch, every piece of state, the timeframe logic, the pull-to-refresh
-   ref and every user-visible string come straight from
-   `src/screens/SendsScreen.tsx`. The only characters that changed are the eight
-   unicode icon glyphs the old markup drew inline; each is now the lucide name
-   the system's glyph map assigns it, inside its original class.
+   S08 — the lane rows were `.sc` boxes carrying two hardcoded status palettes
+   (three hexes for outreach, three more for inbound). They are ds `Card`s now,
+   in a measured grid, and the status is a `Dot` on a severity token plus the
+   sentence it already had, so nothing is legible only to a viewer who sees hue.
+   Both drill-ins keep every string and every fetch and are rebuilt on the
+   table-to-detail move: one head that says what you drilled into, one back
+   control, rows underneath.
+
+   S10 — the interactive-logs-table move (moumensoliman), read for what it
+   actually teaches: a chevron that expands the row in place, a MONO time
+   column, one bold name, one plain description, and status as colour ONLY
+   where the status is a live signal. The eight-hex type palette is gone: a send
+   type is a category, and a category is never a colour (SYSTEM §1). FAILED is
+   the one row state that is a signal, so it is the one row that is toned.
+
+   Every fetch, every derived figure, every threshold and every user-visible
+   string is the one `src/screens/SendsScreen.tsx` already had.
    ========================================================================== */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
@@ -24,12 +33,13 @@ import {
   buildInboundLanes, fetchInbound, fetchInboundDaily, fetchInboundDecisions,
   type InboundDecision, type InboundLane, type InboundLaneKey, type InboundStatus,
 } from '../../lib/inbound'
+import { clientLabel } from '../../lib/money'
 import { SendsSkeleton } from '../chrome/Skeleton'
 import { Linkified } from '../chrome/Linkified'
 import { PullIndicator } from '../chrome/PullIndicator'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
-import { Button, Chip, Icon, IconButton, Input, Popover, PopoverItem, Segmented } from '../../ds'
-import { Bar, Head, Screen } from '../kit'
+import { Badge, Button, Card, Chip, DayHeader, EmptyState, Icon, IconButton, Input, Popover, PopoverItem, Segmented } from '../../ds'
+import { Bar, Body, Dot, Group, Head, Row, Rows, Screen, Sep, Spark, type Tone } from '../kit'
 import { OverviewView } from './Overview'
 import './sends.css'
 
@@ -48,17 +58,21 @@ const CHIPS: { key: Client; label: string }[] = [
   { key: 'arch', label: 'Arch' },
 ]
 
-const DOT: Record<Lane['status'], string> = {
-  live: '#10A37F',
-  slowing: '#FF9F0A',
-  stale: '#FF453A',
+// A lane that stopped sending is a LIVE signal, so it keeps the severity trio.
+// The colours are the system's tokens, read through `Dot`, never a local hex.
+const DOT: Record<Lane['status'], Tone> = {
+  live: 'clear',
+  slowing: 'attention',
+  stale: 'urgent',
 }
 
 // Separate from DOT above, matching the separate status vocabulary in lib/inbound.
-const IN_DOT: Record<InboundStatus, string> = {
-  live: '#10A37F',
-  quiet: '#8E8E93',
-  off: '#FF9F0A',
+// `quiet` is the absence of a signal, so it is the absence of a colour: an
+// inbound lane with nothing to judge is not a fault.
+const IN_DOT: Record<InboundStatus, Tone | undefined> = {
+  live: 'clear',
+  quiet: undefined,
+  off: 'attention',
 }
 
 function daysBetween(iso: string): number {
@@ -99,10 +113,6 @@ const TYPE_LABEL: Record<string, string> = {
   connection_note: 'CONN', dm: 'DM', inmail: 'INMAIL', email: 'EMAIL', manual_reply: 'REPLY',
   open_profile: 'OPEN PROF', connection_note_blank: 'CONN·BLANK', connection_note_bare: 'CONN·BARE',
 }
-const TYPE_COLOR: Record<string, string> = {
-  connection_note: '#0A84FF', dm: '#10A37F', inmail: '#BF5AF2', email: '#FF9F0A', manual_reply: '#10A37F',
-  open_profile: '#FFD60A', connection_note_blank: '#8E8E93', connection_note_bare: '#FF9F0A',
-}
 
 // Open-profile sends land as message_type='dm' with channel='linkedin_inmail', so the raw type
 // cannot tell them apart from a normal DM or from a paid InMail. ai_model is the only honest
@@ -115,6 +125,13 @@ function logDay(iso: string): string {
   const d = new Date(iso)
   if (d.toDateString() === new Date().toDateString()) return 'TODAY'
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()
+}
+
+/** The mono clock column the logs-table move puts first after the chevron. */
+function logTime(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '--:--'
+  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
 // Chronological feed of every outbound action (sends + verified failures).
@@ -132,6 +149,55 @@ function tagChips(t: LeadTags | undefined): string[] {
   if (t.network_distance === 'DISTANCE_1' || t.network_distance === 'FIRST_DEGREE') chips.push('ALREADY CONNECTED')
   if (t.country) chips.push(t.country.toUpperCase())
   return chips
+}
+
+// ---- S10: the log --------------------------------------------------------
+
+function LogRow({ m, tags, open, onToggle }: {
+  m: SendLogItem
+  tags: LeadTags | undefined
+  open: boolean
+  onToggle: () => void
+}) {
+  const failed = m.kind === 'failed'
+  const chips = open ? tagChips(tags) : []
+  const text = failed ? (m.reason ?? 'send failed') : m.message_text
+  return (
+    <div className="a-log-r" data-open={open ? '' : undefined} data-sev={failed ? 'urgent' : undefined}>
+      <button
+        type="button"
+        className="a-log-b"
+        aria-expanded={open}
+        onClick={onToggle}
+      >
+        <span className="a-log-chev" data-on={open ? '' : undefined}>
+          <Icon name="forward" size={16} />
+        </span>
+        {/* The type is a category, so it is a neutral chip. FAILED is a live
+            state, so it is the one that carries a tone. */}
+        <span className="a-log-kind">
+          {failed
+            ? <Chip tone="urgent">FAILED</Chip>
+            : <Chip tone="quiet">{TYPE_LABEL[sendKind(m)] ?? sendKind(m).toUpperCase()}</Chip>}
+        </span>
+        <span className="a-log-tm a-mono">{logTime(m.event_at)}</span>
+        <span className="a-log-nm">{m.prospect_name}</span>
+        <span className={`a-log-d${open ? '' : ' a-nowrap'}`}>{text || '(no text stored)'}</span>
+        <span className="a-log-cl a-meta">{clientLabel(m.client_id)}</span>
+        <span className="a-log-ago a-mono a-dim">{ago(m.event_at)}</span>
+      </button>
+      {open && (
+        <div className="a-log-x">
+          {chips.length > 0 && (
+            <div className="a-log-tags">
+              {chips.map(c => <Chip key={c} tone="quiet">{c}</Chip>)}
+            </div>
+          )}
+          <div className="a-log-full a-pre a-body-t">{text || '(no text stored)'}</div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 function LogView({ client }: { client: Client }) {
@@ -168,95 +234,78 @@ function LogView({ client }: { client: Client }) {
     return () => { live = false }
   }, [client])
 
-  if (loading) return <SendsSkeleton />
-  if (error) return <div className="rows sc-rows"><div className="empty">{error}</div></div>
-  if (items.length === 0) return <div className="rows sc-rows"><div className="empty">No send activity yet — a verified zero, not a failed load.</div></div>
+  if (loading) return <Body><SendsSkeleton /></Body>
+  if (error) return <Body><EmptyState icon="error" title={error} /></Body>
+  if (items.length === 0) {
+    return (
+      <Body>
+        <EmptyState icon="sends" title="No send activity yet — a verified zero, not a failed load." />
+      </Body>
+    )
+  }
 
-  let lastDay = ''
+  const sentShown = items.filter(m => m.kind !== 'failed').length
+  const failedShown = items.filter(m => m.kind === 'failed').length
+
+  // The log is a window, and the head says so on both counts.
+  const days: Array<{ day: string; rows: SendLogItem[] }> = []
+  for (const m of items) {
+    const day = logDay(m.event_at)
+    if (days.length === 0 || days[days.length - 1].day !== day) days.push({ day, rows: [] })
+    days[days.length - 1].rows.push(m)
+  }
+
   return (
-    <div className="rows sc-rows">
-      {/* The log is a window, and it now says so. Both figures are count=exact
-          probes; the two shown counts are of this render. */}
-      <div className="log-denom">
-        <span className="log-denom-l">Newest</span>
-        <b>{items.filter(m => m.kind !== 'failed').length}</b>
-        <span className="log-denom-l">of {totals ? totals.sent.toLocaleString() : '—'} sent</span>
-        <span className="log-denom-s">·</span>
-        <b>{items.filter(m => m.kind === 'failed').length}</b>
-        <span className="log-denom-l">of {totals ? totals.blocked.toLocaleString() : '—'} blocked</span>
-      </div>
-      <div className="log-note">CONN = note attached and accepted by the API · CONN·BLANK = deliberate no-note A/B arm · CONN·BARE = note rejected, sent bare as a fallback.</div>
-      {items.map(m => {
-        const day = logDay(m.event_at)
-        const showDay = day !== lastDay
-        lastDay = day
-        return (
-          <div key={m.id} style={{ display: 'contents' }}>
-            {showDay && <div className="log-day">{day}</div>}
-            <div
-              className={`log-r${openId === m.id ? ' log-open' : ''}`}
-              onClick={() => setOpenId(v => (v === m.id ? null : m.id))}
-            >
-              {/* data-failed is a hook, not a colour. The kind palette here is
-                  eight inline hexes, two of which ARE the severity tokens; a
-                  treatment that wants to retone it needs one selector that can
-                  tell a severity apart from a category. The default app reads
-                  neither the attribute nor any rule keyed on it, so its own
-                  colours are untouched. */}
-              <span
-                className="log-chip"
-                data-failed={m.kind === 'failed' ? '' : undefined}
-                style={m.kind === 'failed'
-                  ? { background: 'rgba(255,69,58,.16)', color: '#FF453A' }
-                  : { background: `${TYPE_COLOR[sendKind(m)] ?? '#10A37F'}22`, color: TYPE_COLOR[sendKind(m)] ?? '#10A37F' }}
-              >
-                {m.kind === 'failed' ? 'FAILED' : (TYPE_LABEL[sendKind(m)] ?? sendKind(m).toUpperCase())}
-              </span>
-              <div className="log-mid">
-                <div className="log-top">
-                  <span className="log-nm">{m.prospect_name}</span>
-                  <span className={`client ${m.client_id === 'risedtc' ? 'rise' : ''}`}>
-                    {m.client_id === 'risedtc' ? 'RISE' : m.client_id.toUpperCase()}
-                  </span>
-                </div>
-                {openId === m.id ? (
-                  <>
-                    {tagChips(tags.get(m.prospect_id)).length > 0 && (
-                      <div className="log-tags">
-                        {tagChips(tags.get(m.prospect_id)).map(c => <span key={c} className="log-tag">{c}</span>)}
-                      </div>
-                    )}
-                    <div className="log-full">
-                      {m.kind === 'failed' ? (m.reason ?? 'send failed') : (m.message_text || '(no text stored)')}
-                    </div>
-                  </>
-                ) : (
-                  <div className="log-snip">
-                    {m.kind === 'failed' ? (m.reason ?? 'send failed') : m.message_text}
-                  </div>
-                )}
+    <Body>
+      <Group
+        className="a-log-g"
+        label="Log"
+        tail={
+          <span className="a-mono">
+            Newest <b>{sentShown}</b> of {totals ? totals.sent.toLocaleString() : '—'} sent
+            <Sep /><b>{failedShown}</b> of {totals ? totals.blocked.toLocaleString() : '—'} blocked
+          </span>
+        }
+      >
+        <div className="a-log-note a-meta">
+          CONN = note attached and accepted by the API · CONN·BLANK = deliberate no-note A/B arm · CONN·BARE = note rejected, sent bare as a fallback.
+        </div>
+        <div className="a-scroll-x">
+          <div className="a-log">
+            {days.map(d => (
+              <div key={d.day}>
+                <DayHeader label={d.day} tail={`${d.rows.length}`} />
+                {d.rows.map(m => (
+                  <LogRow
+                    key={m.id}
+                    m={m}
+                    tags={tags.get(m.prospect_id)}
+                    open={openId === m.id}
+                    onToggle={() => setOpenId(v => (v === m.id ? null : m.id))}
+                  />
+                ))}
               </div>
-              <span className="log-tm">{ago(m.event_at)}</span>
-            </div>
+            ))}
           </div>
-        )
-      })}
-    </div>
+        </div>
+      </Group>
+    </Body>
   )
 }
 
-function Spark({ values }: { values: number[] }) {
-  const max = Math.max(1, ...values)
+// ---- S08: the drill-ins --------------------------------------------------
+
+/** The head both drill-ins share: back, what you drilled into, its state. */
+function DetailHead({ title, sub, tone, onBack }: {
+  title: string; sub: React.ReactNode; tone: Tone | undefined; onBack: () => void
+}) {
   return (
-    <div className="sc-spark">
-      {values.map((v, i) => (
-        <div
-          key={i}
-          className={`sc-bar ${v === 0 ? 'zero' : ''}`}
-          style={{ height: `${Math.round((v / max) * 100)}%` }}
-        />
-      ))}
-    </div>
+    <Head
+      lead={<IconButton icon="back" label="Back" onClick={onBack} />}
+      title={title}
+      sub={sub}
+      tail={<Dot tone={tone} off={!tone} />}
+    />
   )
 }
 
@@ -279,35 +328,37 @@ function LaneDetail({ lane, client, onBack }: {
   }, [lane.key, client])
 
   return (
-    <>
-      <div className="t-nav">
-        <span className="back" onClick={onBack}><Icon name="back" size={20} label="Back" /></span>
-        <div className="who">
-          <div className="n">{lane.label}</div>
-          <div className="m"><b>{lane.sent_7d}</b> in 7d · {statusText(lane)}</div>
-        </div>
-        <span className="sc-dot" style={{ background: DOT[lane.status], width: 12, height: 12 }} />
-      </div>
-      <div className="rows sc-rows">
+    <Screen className="a-sends">
+      <DetailHead
+        title={lane.label}
+        sub={<><b>{lane.sent_7d}</b> in 7d <Sep />{statusText(lane)}</>}
+        tone={DOT[lane.status]}
+        onBack={onBack}
+      />
+      <Body>
         {loading ? (
-          <div className="empty">Loading…</div>
+          <SendsSkeleton />
         ) : error ? (
-          <div className="empty">{error}</div>
+          <EmptyState icon="error" title={error} />
         ) : rows.length === 0 ? (
-          <div className="empty">No sends in this lane yet — a verified zero, not a failed load.</div>
+          <EmptyState icon="sends" title="No sends in this lane yet — a verified zero, not a failed load." />
         ) : (
-          rows.map(m => (
-            <div key={m.id} className="ld">
-              <div className="ld-h">
-                <span className="ld-nm">{m.prospect_name}</span>
-                <span className="ld-tm">{ago(m.sent_at)}</span>
-              </div>
-              <div className="ld-b"><Linkified text={m.message_text} /></div>
-            </div>
-          ))
+          <Group label="Recent sends" tail={`${rows.length}`}>
+            <Rows>
+              {rows.map(m => (
+                <Row
+                  key={m.id}
+                  title={m.prospect_name}
+                  tail={<span className="a-mono a-dim">{ago(m.sent_at)}</span>}
+                >
+                  <span className="a-body-t a-pre a-log-msg"><Linkified text={m.message_text} /></span>
+                </Row>
+              ))}
+            </Rows>
+          </Group>
         )}
-      </div>
-    </>
+      </Body>
+    </Screen>
   )
 }
 
@@ -333,51 +384,104 @@ function InboundDetail({ lane, client, onBack }: {
   }, [lane.key, client])
 
   return (
-    <>
-      <div className="t-nav">
-        <span className="back" onClick={onBack}><Icon name="back" size={20} label="Back" /></span>
-        <div className="who">
-          <div className="n">{lane.label}</div>
-          <div className="m">
-            <b>{lane.passed}</b> through · <b>{lane.dropped}</b> stopped here
-          </div>
-        </div>
-        <span className="sc-dot" style={{ background: IN_DOT[lane.status], width: 12, height: 12 }} />
-      </div>
-      <div className="rows sc-rows">
-        <div className="log-note">{lane.blurb}. Nothing here was seen by a human first.</div>
+    <Screen className="a-sends">
+      <DetailHead
+        title={lane.label}
+        sub={<><b>{lane.passed}</b> through <Sep /><b>{lane.dropped}</b> stopped here</>}
+        tone={IN_DOT[lane.status]}
+        onBack={onBack}
+      />
+      <Body>
+        <div className="a-log-note a-meta">{lane.blurb}. Nothing here was seen by a human first.</div>
         {loading ? (
-          <div className="empty">Loading…</div>
+          <SendsSkeleton />
         ) : error ? (
-          <div className="empty">{error}</div>
+          <EmptyState icon="error" title={error} />
         ) : rows.length === 0 ? (
-          <div className="empty">
-            {lane.status === 'off'
+          <EmptyState
+            icon="sends"
+            title={lane.status === 'off'
               ? 'Nothing recorded for this client. Either nothing has come in, or the lane was never armed here — the data cannot tell those apart yet.'
               : 'No decisions in this lane yet, a verified zero rather than a failed load.'}
-          </div>
+          />
         ) : (
-          rows.map(d => (
-            <div key={d.id} className="ld">
-              <div className="ld-h">
-                <span className={`ld-v ${d.outcome}`}>{d.outcome === 'passed' ? 'THROUGH' : 'STOPPED'}</span>
-                <span className="ld-nm">{d.who}</span>
-                <span className="ld-tm">{ago(d.decided_at)}</span>
-              </div>
-              {d.detail && <div className="ld-meta">{d.detail}</div>}
-              {d.reason && <div className="ld-why">{d.reason}</div>}
-              {d.quote && <div className="ld-q"><Linkified text={d.quote} /></div>}
-              <div className="ld-meta">
-                {d.score !== null && <>Score {d.score} · </>}
-                {d.judged_blind && <><Icon name="alert" size={16} /> judged without a profile · </>}
-                {d.surfaced && <>re-admitted by hand · </>}
-                {d.link ? <a href={d.link} target="_blank" rel="noreferrer">Open profile</a> : 'no profile link'}
-              </div>
-            </div>
-          ))
+          <Group label="Decisions" tail={`${rows.length}`}>
+            <Rows>
+              {rows.map(d => (
+                <Row
+                  key={d.id}
+                  lead={<Chip tone={d.outcome === 'passed' ? 'clear' : 'quiet'}>{d.outcome === 'passed' ? 'THROUGH' : 'STOPPED'}</Chip>}
+                  title={d.who}
+                  tail={<span className="a-mono a-dim">{ago(d.decided_at)}</span>}
+                >
+                  {d.detail && <span className="a-meta">{d.detail}</span>}
+                  {d.reason && <span className="a-body-t">{d.reason}</span>}
+                  {d.quote && <span className="a-quote"><Linkified text={d.quote} /></span>}
+                  <span className="a-wrapline a-meta">
+                    {d.score !== null && <span className="a-mono">Score {d.score}</span>}
+                    {d.judged_blind && (
+                      <span className="a-wrapline a-sev-attention">
+                        <Icon name="alert" size={16} /> judged without a profile
+                      </span>
+                    )}
+                    {d.surfaced && <span>re-admitted by hand</span>}
+                    {d.link
+                      ? <a className="a-link" href={d.link} target="_blank" rel="noreferrer">Open profile</a>
+                      : <span className="a-dim-2">no profile link</span>}
+                  </span>
+                </Row>
+              ))}
+            </Rows>
+          </Group>
         )}
+      </Body>
+    </Screen>
+  )
+}
+
+// ---- S08: the lane cards -------------------------------------------------
+
+/** One lane, as a card: what it is, whether it is running, how much it did. */
+function LaneCard({ tone, name, blurb, status, statusTone, blocked, daily, big, bigCap, small, onOpen }: {
+  tone: Tone | undefined
+  name: string
+  blurb: string
+  status: React.ReactNode
+  statusTone: Tone | undefined
+  blocked?: number
+  daily: number[]
+  big: number
+  bigCap: string
+  small: React.ReactNode
+  onOpen: () => void
+}) {
+  return (
+    <Card
+      className="a-lane"
+      onClick={onOpen}
+      lead={<Dot tone={tone} off={!tone} />}
+      title={name}
+      sub={blurb}
+      tail={<Icon name="forward" size={20} />}
+    >
+      <div className="a-lane-b">
+        <div className="a-lane-l">
+          <div className={`a-lane-st a-meta${statusTone ? ` a-sev-${statusTone}` : ''}`}>{status}</div>
+          <Spark values={daily} highlightLast />
+        </div>
+        <div className="a-lane-r">
+          <div className="a-figure-t">{big}</div>
+          <div className="a-meta a-dim">{bigCap}</div>
+          <div className="a-meta a-mono a-dim">{small}</div>
+        </div>
       </div>
-    </>
+      {blocked !== undefined && blocked > 0 && (
+        <div className="a-lane-blk">
+          <Badge tone="attention" label={`${blocked} blocked`}>{blocked}</Badge>
+          <span className="a-meta">blocked</span>
+        </div>
+      )}
+    </Card>
   )
 }
 
@@ -471,33 +575,39 @@ export function SendsScreen({ client, setClient }: {
           ]}
         />
         <span className="a-bar-spacer" />
-        {CHIPS.map(c => (
-          <Chip key={c.key} selected={client === c.key} onClick={() => setClient(c.key)}>{c.label}</Chip>
-        ))}
-        {view === 'overview' && (
-          <span className="a-sends-pop">
-            <Button
-              variant="quiet"
-              size="sm"
-              iconEnd="disclose"
-              onClick={() => setRange(v => !v)}
-              title="The window every figure below is computed over"
-            >
-              Range: <b>{TIMEFRAMES.find(t => t.key === timeframe)?.label}</b>
-            </Button>
-            <Popover open={range} label="Range" className="a-sends-menu">
-              {TIMEFRAMES.map(t => (
-                <PopoverItem
-                  key={t.key}
-                  onClick={() => { setTimeframe(t.key); setRange(false) }}
-                  tail={timeframe === t.key ? <Icon name="check" size={16} /> : undefined}
-                >
-                  {t.label}
-                </PopoverItem>
-              ))}
-            </Popover>
-          </span>
-        )}
+        {/* The three chips and the pill are ONE control group, so the bar wraps
+            between the view switch and the group rather than through it: at 390
+            the third client used to drop to a line of its own, which reads as a
+            chip that got left behind rather than as a filter. */}
+        <span className="a-sends-filters">
+          {CHIPS.map(c => (
+            <Chip key={c.key} selected={client === c.key} onClick={() => setClient(c.key)}>{c.label}</Chip>
+          ))}
+          {view === 'overview' && (
+            <span className="a-sends-pop">
+              <Button
+                variant="quiet"
+                size="sm"
+                iconEnd="disclose"
+                onClick={() => setRange(v => !v)}
+                title="The window every figure below is computed over"
+              >
+                Range: <b>{TIMEFRAMES.find(t => t.key === timeframe)?.label}</b>
+              </Button>
+              <Popover open={range} label="Range" className="a-sends-menu">
+                {TIMEFRAMES.map(t => (
+                  <PopoverItem
+                    key={t.key}
+                    onClick={() => { setTimeframe(t.key); setRange(false) }}
+                    tail={timeframe === t.key ? <Icon name="check" size={16} /> : undefined}
+                  >
+                    {t.label}
+                  </PopoverItem>
+                ))}
+              </Popover>
+            </span>
+          )}
+        </span>
       </Bar>
 
       {/* The custom date pair stays a value editor, not a second filter chrome,
@@ -528,72 +638,65 @@ export function SendsScreen({ client, setClient }: {
       ) : view === 'log' ? (
         <LogView client={client} />
       ) : loading && rows.length === 0 ? (
-        <SendsSkeleton />
+        <Body><SendsSkeleton /></Body>
       ) : error ? (
-        <div className="rows sc-rows"><div className="empty">{error}</div></div>
+        <Body><EmptyState icon="error" title={error} /></Body>
       ) : (
-        <div className="rows sc-rows" ref={rowsRef}>
+        <Body innerRef={rowsRef}>
           <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
-          <div className="sc-group">
-            <span className="sc-group-t">OUTREACH</span>
-            <span className="sc-group-c">what we sent</span>
-          </div>
-          {lanes.map(lane => (
-            <div key={lane.key} className="sc" onClick={() => setOpenLane(lane.key)}>
-              <div className="sc-l">
-                <div className="sc-head">
-                  <span className="sc-dot" style={{ background: DOT[lane.status] }} />
-                  <span className="sc-name">{lane.label}</span>
-                </div>
-                <div className="sc-blurb">{lane.blurb}</div>
-                <div className={`sc-status s-${lane.status}`}>{statusText(lane)}</div>
-                {lane.blocked > 0 && (
-                  <div className="sc-blocked">{lane.blocked} blocked</div>
-                )}
-                <Spark values={lane.daily} />
-              </div>
-              <div className="sc-r">
-                <div className="sc-big">{lane.sent_7d}</div>
-                <div className="sc-cap">in 7d</div>
-                <div className="sc-24">24h: {lane.sent_24h}</div>
-                <div className="sc-chev"><Icon name="forward" size={20} /></div>
-              </div>
+          <Group label="Outreach" tail="what we sent" quiet>
+            <div className="a-lanes">
+              {lanes.map(lane => (
+                <LaneCard
+                  key={lane.key}
+                  tone={DOT[lane.status]}
+                  name={lane.label}
+                  blurb={lane.blurb}
+                  status={statusText(lane)}
+                  statusTone={DOT[lane.status]}
+                  blocked={lane.blocked}
+                  daily={lane.daily}
+                  big={lane.sent_7d}
+                  bigCap="in 7d"
+                  small={`24h: ${lane.sent_24h}`}
+                  onOpen={() => setOpenLane(lane.key)}
+                />
+              ))}
             </div>
-          ))}
+          </Group>
 
-          <div className="sc-group">
-            <span className="sc-group-t">INBOUND</span>
-            <span className="sc-group-c">decided without you</span>
-          </div>
-          {inbound.map(lane => (
-            <div key={lane.key} className="sc" onClick={() => setOpenInbound(lane.key)}>
-              <div className="sc-l">
-                <div className="sc-head">
-                  <span className="sc-dot" style={{ background: IN_DOT[lane.status] }} />
-                  <span className="sc-name">{lane.label}</span>
-                </div>
-                <div className="sc-blurb">{lane.blurb}</div>
-                {/* Status and the pass/stop split share ONE row: the inbound cards carried
-                    two more lines than the outbound ones and were 122px against 87px. The
-                    count that matters is what it STOPPED, so it is stated even at zero. A
-                    silent filter reporting nothing is what this surface exists to prevent. */}
-                <div className={`sc-status s-${lane.status}`}>
-                  {inboundStatusText(lane)}
-                  <span className="sc-split"> · <b>{lane.passed}</b> through · <b>{lane.dropped}</b> stopped</span>
-                </div>
-                <Spark values={lane.daily} />
-              </div>
-              <div className="sc-r">
-                {/* 30d, not 7d: a healthy inbound lane decides 0-3 things a fortnight, so a
-                    7-day headline would read 0 on a working lane most weeks. */}
-                <div className="sc-big">{lane.d30}</div>
-                <div className="sc-cap">in 30d</div>
-                <div className="sc-24">7d: {lane.d7}</div>
-                <div className="sc-chev"><Icon name="forward" size={20} /></div>
-              </div>
+          <Group label="Inbound" tail="decided without you" quiet>
+            <div className="a-lanes">
+              {inbound.map(lane => (
+                <LaneCard
+                  key={lane.key}
+                  tone={IN_DOT[lane.status]}
+                  name={lane.label}
+                  blurb={lane.blurb}
+                  /* Status and the pass/stop split share ONE line: the count that
+                     matters is what it STOPPED, so it is stated even at zero. A
+                     silent filter reporting nothing is what this surface exists
+                     to prevent. */
+                  status={
+                    <>
+                      {inboundStatusText(lane)}
+                      <Sep /><b>{lane.passed}</b> through <Sep /><b>{lane.dropped}</b> stopped
+                    </>
+                  }
+                  statusTone={IN_DOT[lane.status]}
+                  daily={lane.daily}
+                  /* 30d, not 7d: a healthy inbound lane decides 0-3 things a
+                     fortnight, so a 7-day headline would read 0 on a working
+                     lane most weeks. */
+                  big={lane.d30}
+                  bigCap="in 30d"
+                  small={`7d: ${lane.d7}`}
+                  onOpen={() => setOpenInbound(lane.key)}
+                />
+              ))}
             </div>
-          ))}
-        </div>
+          </Group>
+        </Body>
       )}
     </Screen>
   )

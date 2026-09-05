@@ -39,11 +39,9 @@ import { CommandLayer } from './CommandLayer'
 import { MagnetsList } from '../../wb/content/magnets'
 import { StylesList } from '../../wb/content/styles'
 import { StrategyView } from '../../wb/content/strategy'
-import { MoneyView } from './MoneyView'
 import type { OpenMagnet } from '../../wb/content/magnets'
 import { DraftWindow, type QueueItem } from './DraftPane'
 import { MagnetWindow } from '../../wb/magnet'
-import { CallWindow } from './CallWindow'
 import type { CallRow } from '../../lib/transcripts'
 import { ChatPane } from './ChatPane'
 import { draftSubject, laneSubject, threadSubject, type Subject } from './chat/paneContext'
@@ -91,6 +89,8 @@ import { ThreadPeer as ThreadPeerC } from '../../wb/thread'
 import { ContentList as ContentListC } from '../../wb/content'
 import { SendsScreen as SendsC } from '../../wb/sends'
 import { OpsBoard as OpsBoardC } from '../../wb/ops'
+import { MoneyView as MoneyC } from '../../wb/money'
+import { CallWindow as CallC } from '../../wb/call'
 import { Settings as SettingsC } from '../../wb/settings'
 
 // ============================================================================
@@ -610,7 +610,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
       {/* Money joined 2026-09-01 (goal-run money-truth) — a whole-canvas
           reading surface like Strategy, so it takes no props from Shell at
           all: it owns its own fetch, same as Strategy owns client_strategy. */}
-      {job === 'money' && <MoneyView />}
+      {job === 'money' && <MoneyC />}
       {job === 'ops' && opsSurface}
       {/* Today aggregates, so its hand-off rows navigate INSIDE the workbench
           rather than through the default app's hash routes. The work-queue
@@ -711,7 +711,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
     <>
       {itemWindow}
       {openCall && (
-        <CallWindow
+        <CallC
           id={openCall.id} queue={openCall.queue}
           onClose={closeCall} onPick={pickCall} mobile={mobile}
         />

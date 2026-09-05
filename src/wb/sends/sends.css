@@ -17,6 +17,15 @@
 /* The bar holds a popover, so it may not clip; on a phone it wraps instead of
    scrolling, which is also what keeps the page from ever moving sideways. */
 .a-sends .a-bar{ overflow:visible; flex-wrap:wrap; row-gap:var(--ds-s2) }
+/* The client chips and the range pill wrap as ONE group, never through it. */
+.a-sends-filters{ display:flex; align-items:center; gap:var(--ds-s2); flex:0 0 auto; min-width:0 }
+
+@media (max-width:767px){
+  /* The group takes the second line whole; the spacer that right-set it on the
+     desktop would otherwise hold a line of its own open. */
+  .a-sends .a-bar-spacer{ display:none }
+  .a-sends-filters{ flex:1 1 100% }
+}
 
 /* --------------------------------------------------------------------------
    1 · The range pill and its menu.
@@ -66,7 +75,7 @@
 }
 .a-sends-empty{
   padding:var(--ds-card-pad);
-  color:var(--ds-text-4);
+  color:var(--ds-text-3);
   font-size:var(--ds-fs-body);
   line-height:var(--ds-lh-body);
   background:var(--ds-surface-1);
@@ -75,7 +84,7 @@
 }
 .a-sends-load{
   padding:var(--ds-s9) var(--ds-card-pad);
-  color:var(--ds-text-4);
+  color:var(--ds-text-3);
   font-size:var(--ds-fs-body);
 }
 
@@ -195,6 +204,45 @@
   overflow:hidden;
   text-overflow:ellipsis;
 }
+/* --------------------------------------------------------------------------
+   5b · The wide funnel (bklitai's move). Geometry in SVG, type in HTML: the
+   count sits above its segment, the rate rides in a pill inside it, the step
+   name sits under it, and a faint ghost trail behind the fill carries the
+   depth cue. One accent, no axes, no gridlines.
+   -------------------------------------------------------------------------- */
+.a-sends-fx{ display:none; flex-direction:column; gap:var(--ds-s2); min-width:0 }
+.a-sends-fx-row{
+  display:grid;
+  grid-template-columns:repeat(var(--a-sends-fcols),minmax(0,1fr));
+  gap:var(--ds-s2);
+  text-align:center;
+  min-width:0;
+}
+.a-sends-fx-row > *{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.a-sends-fx-band{ position:relative; min-width:0 }
+.a-sends-fx-svg{ display:block; width:100%; height:var(--ds-s11) }
+.a-sends-fx-ghost{ fill:var(--ds-accent); opacity:.18 }
+.a-sends-fx-fill{ fill:var(--ds-accent) }
+.a-sends-fx-div{ stroke:var(--ds-canvas); stroke-width:2 }
+.a-sends-fx-pills{
+  position:absolute;
+  inset:0;
+  align-items:center;
+  pointer-events:none;
+}
+.a-sends-fx-slot{ display:flex; align-items:center; justify-content:center; min-width:0 }
+.a-sends-fx-pill{
+  background:var(--ds-canvas);
+  color:var(--ds-text);
+  border-radius:var(--ds-r-pill);
+  padding:var(--ds-s1) var(--ds-s3);
+  font-variant-numeric:tabular-nums;
+}
+@media (min-width:768px){
+  .a-sends-fx{ display:flex }
+  .a-sends-fx + .a-sends-fn{ display:none }
+}
+
 /* The step between two steps. Only a real subset conversion earns a rate. */
 .a-sends-farrow{
   display:flex;
@@ -300,3 +348,158 @@
   .a-sends-sec .a-ledger{ margin-inline:var(--ds-s0) }
   .a-sends-spk{ width:var(--ds-s10) }
 }
+
+/* --------------------------------------------------------------------------
+   9 · S08 — the lane cards.
+
+   One lane is a Card, not a box drawn by hand: the head names it and says what
+   it is for, the body pairs its status and its 14-day shape with the figure it
+   produced, and the whole card is the click target the chevron promises. Two
+   columns from 900px, because a lane card is a fixed-height object and a single
+   column of them wastes the wide canvas the way the old rows did.
+   -------------------------------------------------------------------------- */
+.a-lanes{ display:grid; grid-template-columns:1fr; gap:var(--ds-s4); min-width:0 }
+@media (min-width:900px){ .a-lanes{ grid-template-columns:1fr 1fr } }
+
+.a-lane{ min-width:0 }
+.a-lane-b{
+  display:flex;
+  align-items:flex-end;
+  gap:var(--ds-s4);
+  min-width:0;
+  margin-block-start:var(--ds-s4);
+}
+.a-lane-l{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:var(--ds-s3) }
+.a-lane-st{ overflow-wrap:anywhere }
+.a-lane-st b{ color:var(--ds-text); font-weight:var(--ds-fw-semi) }
+.a-lane-l .a-spark{ height:var(--ds-s7) }
+.a-lane-r{
+  flex:0 0 auto;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:var(--ds-s1);
+  text-align:end;
+}
+.a-lane-blk{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s2);
+  margin-block-start:var(--ds-s3);
+  color:var(--ds-text-3);
+}
+
+/* --------------------------------------------------------------------------
+   10 · S10 — the log.
+
+   The logs-table move: a chevron, a category chip, a mono clock, a bold name,
+   a plain description, then the seat and the age right-set. The grid is fixed
+   so the columns line up down the page; under 900px the description drops to
+   its own line rather than squeezing the two columns that carry the identity.
+   -------------------------------------------------------------------------- */
+.a-log{ display:flex; flex-direction:column; min-width:0; min-inline-size:min-content }
+.a-log-note{ padding:var(--ds-s3) var(--ds-row-x) 0 }
+
+.a-log-r{ min-width:0 }
+.a-log-r + .a-log-r{ box-shadow:inset 0 1px 0 var(--ds-line) }
+.a-log-r[data-sev='urgent'] .a-log-b{ box-shadow:inset 2px 0 0 var(--ds-sev-urgent) }
+.a-log-r[data-open] .a-log-b{ background:var(--ds-wash) }
+
+.a-log-b{
+  display:grid;
+  grid-template-columns:auto auto auto minmax(6rem,1fr) minmax(0,3fr) auto auto;
+  align-items:center;
+  gap:var(--ds-s3);
+  width:100%;
+  min-height:var(--ds-tap);
+  padding:var(--ds-row-y) var(--ds-row-x);
+  background:none;
+  border:0;
+  color:inherit;
+  font:inherit;
+  text-align:start;
+  cursor:pointer;
+  transition:background-color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-log-b:hover{ background:var(--ds-wash) }
+.a-log-chev{
+  display:flex;
+  color:var(--ds-text-3);
+  transition:transform var(--ds-dur-hover) var(--ds-ease);
+}
+.a-log-chev[data-on]{ transform:rotate(90deg); color:var(--ds-text-2) }
+.a-log-kind{ display:flex }
+.a-log-tm{ color:var(--ds-text-3); white-space:nowrap }
+.a-log-nm{
+  font-size:var(--ds-fs-body);
+  line-height:var(--ds-lh-body);
+  font-weight:var(--ds-fw-medium);
+  color:var(--ds-text);
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.a-log-d{
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-3);
+  min-width:0;
+}
+.a-log-cl{ white-space:nowrap; color:var(--ds-text-3) }
+.a-log-ago{ white-space:nowrap }
+
+.a-log-x{ padding:var(--ds-s0) var(--ds-row-x) var(--ds-s5); display:flex; flex-direction:column; gap:var(--ds-s3) }
+.a-log-tags{ display:flex; flex-wrap:wrap; gap:var(--ds-s2) }
+.a-log-full{ color:var(--ds-text-2) }
+.a-log-msg{ overflow-wrap:anywhere }
+
+@media (max-width:900px){
+  /* Two rows rather than seven crushed columns: identity on the first line,
+     the words underneath. Nothing leaves; the line breaks instead. */
+  .a-log-b{ grid-template-columns:auto auto auto minmax(0,1fr) auto; row-gap:var(--ds-s2) }
+  .a-log-d{ grid-column:1 / -1 }
+  .a-log-cl{ grid-column:4 }
+  .a-log-ago{ grid-column:5 }
+  .a-log{ min-inline-size:0 }
+}
+
+/* The LOG's denominator is a sentence, not a tail chip: on the phone it takes
+   its own line under the eyebrow rather than running off the plate edge. Scoped
+   to that one group — every other tail on this screen ("what we sent") is two
+   words and belongs on the eyebrow's line. */
+@media (max-width:767px){
+  .a-sends .a-log-g .a-group-h{ flex-wrap:wrap; row-gap:var(--ds-s2) }
+  .a-sends .a-log-g .a-group-tail{ flex:1 1 100%; white-space:normal }
+}
+
+/* --------------------------------------------------------------------------
+   The two wide tables, drawn twice and shown once (`TableOrRecords`). The
+   design system's Table is the desktop form; the phone gets the same columns
+   as records, because 519px of day ledger inside a 342px plate can only be
+   read half at a time and the seat cap is the half that falls off the edge.
+   Mutually exclusive, so a screen reader meets exactly one of them.
+   -------------------------------------------------------------------------- */
+.a-sends-wide{ display:block; min-width:0 }
+.a-sends-narrow{ display:none }
+/* Fixed, so the columns that were given a width keep it and the name column
+   takes what is left — which is what makes its ellipsis possible at all. */
+.a-sends-wide .ds-table{ table-layout:fixed }
+.a-sends-pair{ display:inline-flex; align-items:baseline; gap:var(--ds-s2); min-width:0 }
+/* A header and its figure are ONE thing, and the middot between pairs is the
+   same one every other meta line in this app uses to separate two facts. */
+.a-sends-pair .a-sep{ margin-inline-start:var(--ds-s2) }
+.a-sends-pk{ color:var(--ds-text-3) }
+.a-sends-pv{ color:var(--ds-text-2); font-variant-numeric:tabular-nums }
+
+@media (max-width:767px){
+  .a-sends-wide{ display:none }
+  .a-sends-narrow{ display:block }
+}
+
+/* A figure and the window it was measured over are ONE fact, and so are a
+   trend and the baseline it is a trend against. Left to wrap on their own at
+   390 the tile's note line broke AFTER the middot, so a line opened with the
+   separator belonging to the fact above it ("· 30d", "· 7d" alone). Each fact
+   is a group that breaks between groups, never inside one. */
+.a-sends-nb{ white-space:nowrap }

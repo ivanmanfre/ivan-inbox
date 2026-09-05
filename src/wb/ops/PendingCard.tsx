@@ -528,7 +528,10 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
       )}
       <div className="a-ops-acts">
         <div className="a-ops-act">
-          <Button variant="quiet" disabled={busy || drafting} onClick={onDiscard}>Discard</Button>
+          {/* ai-approval: the decline is OUTLINED danger, not a quiet
+              sibling. It is the one action on the card that cannot be undone
+              from here, and its consequence caption sits under it. */}
+          <Button variant="danger" disabled={busy || drafting} onClick={onDiscard}>Discard</Button>
           <span className="a-ops-cons a-meta">{discardConfirm.message}</span>
         </div>
         {canDraft && (
