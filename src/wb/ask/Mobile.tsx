@@ -84,10 +84,16 @@ function StatusCapsule({ n, note, onClick }: { n: number; note: string; onClick:
     return () => window.clearTimeout(t)
   }, [n])
   return (
-    <motion.div
-      layout transition={springSoft}
-      className="a-brain-cap" data-open={open ? '' : undefined}
-    >
+    /* The island floats: the panel is absolutely placed over the header rather
+       than laid out inside it, and a ghost holds the 44px the closed pill
+       occupies. Growing it IN FLOW squeezed the header's own title down to
+       three characters, which is the one thing the header has to say. */
+    <span className="a-brain-capwrap">
+      <span className="a-brain-cap-ghost" aria-hidden="true" />
+      <motion.div
+        layout transition={springSoft}
+        className="a-brain-cap" data-open={open ? '' : undefined}
+      >
       <button
         type="button" className="a-brain-cap-face"
         aria-label={label} aria-expanded={open}
@@ -111,8 +117,9 @@ function StatusCapsule({ n, note, onClick }: { n: number; note: string; onClick:
             </span>
           </motion.div>
         )}
-      </AnimatePresence>
-    </motion.div>
+        </AnimatePresence>
+      </motion.div>
+    </span>
   )
 }
 

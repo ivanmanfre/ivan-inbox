@@ -134,7 +134,12 @@ export function NotificationRow({ n, onOpen, onDismiss, nested = false, going = 
 
   return (
     <div ref={box} className="a-brain-slot" data-contained data-card data-family={n.family} data-shape={shape}>
-      <div className="a-brain-reveal" aria-hidden>Dismiss</div>
+      {/* What the swipe reveals, and ONLY while a finger is on the row. The
+          B-2 graft made the card's own layer transparent so the container's
+          fill shows through it, which meant this word was legible under every
+          card at rest: a second Dismiss on every row, in the severity colour,
+          for a gesture nobody was making. */}
+      {swipe.open && <div className="a-brain-reveal" aria-hidden>Dismiss</div>}
       <motion.div
         className="a-brain-swipe"
         style={swipe.style}
@@ -223,24 +228,6 @@ export function GroupRow({ g, open, onToggle, onOpen, onDismissAll, onDismissOne
       layout transition={spring}
     >
       <div className="a-brain-deck-front">
-        {/* The edges behind the front card. They leave the moment it fans, so
-            the pile and the list are never both on screen. */}
-        <AnimatePresence initial={false}>
-          {!open && Array.from({ length: peeks }, (_, i) => (
-            <motion.span
-              className="a-brain-peek" key={i} aria-hidden="true"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 - (i + 1) * 0.22, transition: fadeT }}
-              exit={{ opacity: 0, transition: fadeT }}
-              style={{
-                // Down and in by a fixed step per layer: the same physical
-                // stack the reference draws, in tokens the sheet owns.
-                transform: `translateY(${(i + 1) * 7}px) scaleX(${1 - (i + 1) * 0.045})`,
-                zIndex: -(i + 1),
-              }}
-            />
-          ))}
-        </AnimatePresence>
         <Row
           className="a-brain-deck-head"
           lead={<Mark shape={shape} />}
@@ -274,9 +261,32 @@ export function GroupRow({ g, open, onToggle, onOpen, onDismissAll, onDismissOne
           onClick={onToggle}
         />
       </div>
-      {/* The pile's own height while it is collapsed, so the card below it does
-          not sit on the bottom edge. */}
-      {!open && peeks > 0 && <span className="a-brain-deck-depth" style={{ height: `${peeks * 7}px` }} aria-hidden="true" />}
+      {/* The pile. Each layer is the EDGE of a card that is really under there,
+          narrowed by a step and tucked behind the front one, so the depth of
+          the stack is the count before a word is read.
+
+          Edges rather than whole cards on purpose: a full-height copy has to
+          be clipped to the front card's box, and the container that clips it
+          is the same one that draws the card's own border — so the pile either
+          disappeared inside it or escaped it. An edge needs no height to
+          match. */}
+      <AnimatePresence initial={false}>
+        {!open && peeks > 0 && (
+          <motion.span
+            className="a-brain-peeks" aria-hidden="true"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, transition: fadeT }}
+            exit={{ opacity: 0, transition: fadeT }}
+          >
+            {Array.from({ length: peeks }, (_, i) => (
+              <span
+                className="a-brain-peek" key={i}
+                style={{ width: `${100 - (i + 1) * 5}%`, opacity: 1 - i * 0.25 }}
+              />
+            ))}
+          </motion.span>
+        )}
+      </AnimatePresence>
       <AnimatePresence initial={false}>
         {open && (
           <motion.div

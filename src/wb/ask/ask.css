@@ -69,7 +69,13 @@
    figure at idle; it opens into the alert and snaps back. `layout` on the
    motion element animates the width change as a transform, never as a width.
    -------------------------------------------------------------------------- */
+.a-brain-capwrap{ position:relative; display:inline-flex; flex:0 0 auto }
+.a-brain-cap-ghost{ display:block; inline-size:var(--ds-tap); block-size:var(--ds-tap) }
 .a-brain-cap{
+  position:absolute;
+  top:var(--ds-s0);
+  inset-inline-end:var(--ds-s0);
+  z-index:25;
   display:inline-flex;
   flex-direction:column;
   align-items:stretch;
@@ -85,7 +91,9 @@
 .a-brain-cap[data-open]{
   border-radius:var(--ds-r3);
   white-space:normal;
-  max-inline-size:16rem;
+  inline-size:16rem;
+  max-inline-size:calc(100vw - var(--ds-s11));
+  box-shadow:var(--ds-shadow-float);
 }
 .a-brain-cap-face{
   display:inline-flex;
@@ -129,6 +137,7 @@
   display:flex;
   align-items:center;
   justify-content:center;
+  block-size:var(--ds-tap);
   touch-action:none;
 }
 .a-brain-grip-b{
@@ -155,9 +164,13 @@
 .a-brain-feedbtn{ position:relative; display:inline-flex }
 .a-brain-feedbtn-n{
   position:absolute;
-  top:var(--ds-s0);
-  inset-inline-end:var(--ds-s0);
+  /* Clear of the glyph, not on top of it: at two digits the badge covered the
+     bell entirely and the control lost the only thing that said what it was. */
+  top:calc(var(--ds-s1) * -1);
+  inset-inline-end:calc(var(--ds-s2) * -1);
   pointer-events:none;
+  transform:scale(.85);
+  transform-origin:top right;
 }
 
 /* --------------------------------------------------------------------------
@@ -283,19 +296,26 @@
    depth of the stack reads as the count before a word does. Fanning removes
    the edges and the children arrive under the same head. */
 .a-brain-deck{ display:flex; flex-direction:column }
-.a-brain-deck-front{ position:relative; z-index:1 }
-.a-brain-peek{
-  position:absolute;
-  inset-block:0;
-  inset-inline:0;
-  display:block;
-  border:1px solid var(--ds-line-strong);
-  border-radius:var(--ds-r4);
-  background:var(--ds-surface-2);
+.a-brain-deck-front{ position:relative; z-index:1; background:var(--ds-surface-1) }
+.a-brain-peeks{
+  position:relative;
+  z-index:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
   pointer-events:none;
 }
+.a-brain-peek{
+  display:block;
+  block-size:var(--ds-s3);
+  margin-block-start:calc(var(--ds-r1) * -1);
+  border:1px solid var(--ds-line-strong);
+  border-block-start:0;
+  border-end-start-radius:var(--ds-r4);
+  border-end-end-radius:var(--ds-r4);
+  background:var(--ds-surface-2);
+}
 .a-brain-deck-head{ position:relative; z-index:1; background:var(--ds-surface-1) }
-.a-brain-deck-depth{ display:block; flex:0 0 auto }
 /* Move 7's overlapping run: one severity mark per item in the pile, capped at
    four, overlapped so a glance reads a stack and not a list. */
 .a-brain-stack{ display:inline-flex; align-items:center }
@@ -916,7 +936,10 @@
   background:var(--ds-surface-2);
   box-shadow:var(--ds-shadow-float);
 }
-.a-brain-palette .ds-cmd{ max-block-size:22rem }
+.a-brain-palette .ds-cmd{ max-block-size:24rem; display:flex; flex-direction:column }
+/* The list scrolls inside the palette. Without this the vocabulary ran past
+   the bottom of the box and the foot painted over the last two commands. */
+.a-brain-palette .ds-cmd-body{ overflow:auto; min-block-size:0 }
 .a-brain-composer{ position:relative }
 .a-brain-feedsheet{ margin-inline:auto; max-width:var(--ds-peer-w) }
 
@@ -982,3 +1005,43 @@
 /* A card that needs him keeps the severity stripe it already had; the boundary
    is the hairline, and one boundary per edge is the rule. */
 .a-brain-feed [data-contained] .a-brain-reveal{ border-radius:var(--ds-r4) }
+
+/* The deck is the one contained thing that must NOT clip: its pile sticks out
+   below the card on purpose. So the bounded card is the FRONT, and the deck
+   itself only groups. */
+.a-brain-feed [data-group][data-contained]{
+  border:0;
+  border-radius:var(--ds-s0);
+  background:none;
+  overflow:visible;
+}
+.a-brain-feed [data-group] .a-brain-deck-front{
+  border:1px solid var(--ds-line);
+  border-radius:var(--ds-r4);
+  overflow:hidden;
+}
+.a-brain-feed [data-group][data-open] .a-brain-deck-front{
+  border-end-start-radius:var(--ds-s0);
+  border-end-end-radius:var(--ds-s0);
+  border-block-end:0;
+}
+.a-brain-feed [data-group][data-open] .a-brain-deck-rows{
+  border:1px solid var(--ds-line);
+  border-block-start:0;
+  border-end-start-radius:var(--ds-r4);
+  border-end-end-radius:var(--ds-r4);
+}
+
+/* S28-7 puts the dismiss at the card's TOP RIGHT, and the phone row was
+   wrapping it onto a line of its own at the bottom left: forty wasted pixels
+   per card and the one control that is destructive sitting furthest from where
+   the ledger says it is. It goes back to the corner. */
+.a-brain-feed [data-contained]{ position:relative }
+.a-brain-feed [data-contained] > .a-brain-swipe > .a-row > .a-row-actions,
+.a-brain-feed [data-group] .a-brain-deck-head > .a-row-actions{
+  position:absolute;
+  top:var(--ds-s2);
+  inset-inline-end:var(--ds-s2);
+  z-index:2;
+}
+.a-brain-feed [data-contained] .a-row-main{ padding-inline-end:var(--ds-s7) }
