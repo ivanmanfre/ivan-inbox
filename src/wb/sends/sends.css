@@ -461,3 +461,27 @@
   .a-sends .a-group-h{ flex-wrap:wrap; row-gap:var(--ds-s2) }
   .a-sends .a-group-tail{ flex:1 1 100%; white-space:normal }
 }
+
+/* --------------------------------------------------------------------------
+   The two wide tables, drawn twice and shown once (`TableOrRecords`). The
+   design system's Table is the desktop form; the phone gets the same columns
+   as records, because 519px of day ledger inside a 342px plate can only be
+   read half at a time and the seat cap is the half that falls off the edge.
+   Mutually exclusive, so a screen reader meets exactly one of them.
+   -------------------------------------------------------------------------- */
+.a-sends-wide{ display:block; min-width:0 }
+.a-sends-narrow{ display:none }
+/* Fixed, so the columns that were given a width keep it and the name column
+   takes what is left — which is what makes its ellipsis possible at all. */
+.a-sends-wide .ds-table{ table-layout:fixed }
+.a-sends-pair{ display:inline-flex; align-items:baseline; gap:var(--ds-s2); min-width:0 }
+/* A header and its figure are ONE thing, and the middot between pairs is the
+   same one every other meta line in this app uses to separate two facts. */
+.a-sends-pair .a-sep{ margin-inline-start:var(--ds-s2) }
+.a-sends-pk{ color:var(--ds-text-4) }
+.a-sends-pv{ color:var(--ds-text-2); font-variant-numeric:tabular-nums }
+
+@media (max-width:767px){
+  .a-sends-wide{ display:none }
+  .a-sends-narrow{ display:block }
+}

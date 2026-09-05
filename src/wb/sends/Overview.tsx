@@ -486,6 +486,56 @@ function ledgerDayLabel(day: string, todayIso: string): string {
   return d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', timeZone: 'UTC' })
 }
 
+/**
+ * One table, drawn twice and shown once — the move Money already makes with its
+ * seven ledgers, said again here because the two tables on this screen are the
+ * two that could not fit a phone.
+ *
+ * Above 767px it is the design system's `Table`. At or below, the same columns
+ * become a run of records: the first column is the record's name, every other
+ * column is its header and its value on the meta line under it. Nothing is
+ * dropped and nothing scrolls sideways — a six-column day ledger is 519px of
+ * columns inside a 342px plate, so as a table on a phone it could only ever be
+ * read half at a time, and the first thing off the right edge was the seat cap.
+ *
+ * Both forms read the SAME `columns` array, so the two cannot drift apart, and
+ * they are mutually exclusive in CSS, so a screen reader meets exactly one.
+ */
+function TableOrRecords<R>({ label, columns, rows, rowKey }: {
+  label: string
+  columns: Array<TableColumn<R>>
+  rows: R[]
+  rowKey: (r: R) => string
+}) {
+  return (
+    <>
+      <div className="a-sends-wide">
+        <Table label={label} columns={columns} rows={rows} rowKey={rowKey} />
+      </div>
+      <div className="a-sends-narrow">
+        <Rows>
+          {rows.map(r => (
+            <Row
+              key={rowKey(r)}
+              titleWrap
+              title={columns[0].cell(r)}
+              meta={columns.slice(1).map((c, i, all) => (
+                <span className="a-sends-pair" key={c.id}>
+                  <span className="a-sends-pk a-eyebrow">{c.header}</span>
+                  <span className="a-sends-pv">{c.cell(r)}</span>
+                  {/* The middot trails its pair rather than leading the next
+                      one, so a line that wraps starts on a word. */}
+                  {i < all.length - 1 && <Sep />}
+                </span>
+              ))}
+            />
+          ))}
+        </Rows>
+      </div>
+    </>
+  )
+}
+
 type LedgerTableRow = {
   id: string
   label: string
@@ -573,14 +623,12 @@ function DayLedger({ rows, client, timeframe }: { rows: LedgerRow[]; client: Cli
 
   return (
     <Section label="Daily" tail={`last ${days} days · UTC`}>
-      <div className="a-scroll-x">
-        <Table
-          label="Sends by day"
-          columns={columns}
-          rows={tableRows}
-          rowKey={r => r.id}
-        />
-      </div>
+      <TableOrRecords
+        label="Sends by day"
+        columns={columns}
+        rows={tableRows}
+        rowKey={r => r.id}
+      />
       <div className="a-sends-cap">
         Invites = notes that left the seat. Cap = the seat's counter, spent before the provider answers; when it runs ahead of Invites those slots went to refused sends. Accepted is of that day's invites and only rises.
       </div>
@@ -939,14 +987,20 @@ function Campaigns({ rows, client }: { rows: CampaignSend[]; client: Client }) {
     {
       id: 'state',
       header: 'State',
+      width: '7rem',
       cell: c => (
         <Badge tone={c.is_active ? 'clear' : 'neutral'} label={c.is_active ? 'ACTIVE' : 'PAUSED'}>
           {c.is_active ? 'ACTIVE' : 'PAUSED'}
         </Badge>
       ),
     },
-    { id: 'sent7', header: '7d', numeric: true, cell: c => (c.sent_7d != null ? c.sent_7d : <span className="a-dim-2">—</span>) },
-    { id: 'sent', header: 'Sent', numeric: true, cell: c => c.sent },
+    // The three trailing columns are as wide as their contents ever get, which
+    // hands the rest of the table to the name — the one column that needs it,
+    // and the one whose ellipsis only works once its width is decided (an auto
+    // table gives a nowrap cell whatever it asks for, which is how a campaign
+    // called after its ICP pushed this table 8px past its own column).
+    { id: 'sent7', header: '7d', numeric: true, width: '5rem', cell: c => (c.sent_7d != null ? c.sent_7d : <span className="a-dim-2">—</span>) },
+    { id: 'sent', header: 'Sent', numeric: true, width: '6rem', cell: c => c.sent },
   ]
 
   return (
@@ -955,14 +1009,12 @@ function Campaigns({ rows, client }: { rows: CampaignSend[]; client: Client }) {
         <div className="a-sends-empty">No campaigns.</div>
       ) : (
         <>
-          <div className="a-scroll-x">
-            <Table
-              label="Campaigns by sends"
-              columns={columns}
-              rows={tableRows}
-              rowKey={c => c.campaign_id}
-            />
-          </div>
+          <TableOrRecords
+            label="Campaigns by sends"
+            columns={columns}
+            rows={tableRows}
+            rowKey={c => c.campaign_id}
+          />
           {hidden.length > 0 && (
             <button type="button" className="a-sends-more" onClick={() => setShowPaused(v => !v)}>
               <Icon name={showPaused ? 'minus' : 'add'} size={16} />
