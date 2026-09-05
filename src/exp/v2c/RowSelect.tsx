@@ -1,4 +1,6 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react'
+import { Icon } from '../../ds'
+import './rowselect.css'
 import {
   isLayerMounted, registerRow, rowState, subscribe, toggleRow,
   type RowCap, type RowKind, type SelectedRow,
@@ -80,7 +82,8 @@ export function RowSelect({ id, kind, label, caps, taxonomy, lane }: {
     <button
       ref={ref}
       type="button"
-      className="wb-selmark"
+      className="a-selmark"
+      data-on={on ? '' : undefined}
       role="checkbox"
       aria-checked={on}
       aria-label={on ? `Deselect ${label}` : `Select ${label}`}
@@ -88,7 +91,8 @@ export function RowSelect({ id, kind, label, caps, taxonomy, lane }: {
       // A tap on the row opens it; the mark must not also fire that.
       onClick={e => { e.stopPropagation(); toggleRow(rowRef.current) }}
     >
-      <span className="wb-selmark-b" aria-hidden>{on ? '✓' : ''}</span>
+      {/* The tick was a unicode glyph doing an icon's job. */}
+      {on ? <Icon name="check" size={16} /> : null}
     </button>
   )
 }

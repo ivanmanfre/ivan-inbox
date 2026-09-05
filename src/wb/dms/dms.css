@@ -54,8 +54,8 @@
    one is keyed to the old row class, so it is restated here. The class is
    repeated to out-specify the three-class selectors the old sheets are written
    with, which is the same device those sheets use. */
-.a-dms-rowhost > .wb-selmark{ align-self:center }
-.a-dms-rowhost.a-dms-rowhost.a-dms-rowhost.a-dms-rowhost:hover .wb-selmark{ opacity:1 }
+.a-dms-rowhost > .a-selmark{ align-self:center }
+.a-dms-rowhost:hover > .a-selmark{ opacity:1 }
 
 .a-dms-titleline{
   display:flex;
@@ -263,8 +263,5 @@
    in the ledger. The desktop mark is untouched.
    -------------------------------------------------------------------------- */
 @media (max-width:767px){
-  /* THE CLASSES ARE DOUBLED, same reason ds.css §17 doubles its floor: the rule
-     this overrides is `.wb.wb.wb .wb-selmark` at (0,4,0), and a single-class
-     selector loses to it however late it is loaded. */
-  .a-dms-rowhost.a-dms-rowhost > .wb-selmark.wb-selmark{ display:none }
+  .a-dms-rowhost > .a-selmark{ display:none }
 }

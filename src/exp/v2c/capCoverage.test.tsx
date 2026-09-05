@@ -108,7 +108,10 @@ describe('every RowCap reaches every cap-keyed map and list', () => {
       // missing from both CAP_BUTTONS and the client row renders no button at
       // all and the bar prints its "nothing can be changed in bulk" refusal
       // over a selection that can, in fact, be acted on.
-      expect(html, `cap ${cap} draws no button`).toContain('wb-bulk-b')
+      // The bar is the ds BulkBar now, so a button is `data-ds="Button"`
+      // inside its actions slot rather than a `wb-bulk-b`.
+      expect(html, `cap ${cap} draws no button`).toContain('ds-bulkbar-actions')
+      expect(html, `cap ${cap} draws no button`).toContain('data-ds="Button"')
       expect(html, `cap ${cap} has no verb`).not.toContain('undefined')
       expect(html, `cap ${cap} falls into the no-writes refusal`)
         .not.toContain('Nothing on this tab can be changed in bulk')
