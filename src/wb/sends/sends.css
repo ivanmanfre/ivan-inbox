@@ -496,3 +496,10 @@
   .a-sends-wide{ display:none }
   .a-sends-narrow{ display:block }
 }
+
+/* A figure and the window it was measured over are ONE fact, and so are a
+   trend and the baseline it is a trend against. Left to wrap on their own at
+   390 the tile's note line broke AFTER the middot, so a line opened with the
+   separator belonging to the fact above it ("· 30d", "· 7d" alone). Each fact
+   is a group that breaks between groups, never inside one. */
+.a-sends-nb{ white-space:nowrap }

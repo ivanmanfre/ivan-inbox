@@ -132,13 +132,34 @@
   .a-ops-act .ds-btn{ width:100% }
 
   /* The detail line is a CONTROL — it opens the rest of the task — and a
-     one-line clamp of 13px meta is 26px tall, which is not a finger. It keeps
-     the clamp (so a closed row is still one line of ink) and takes the floor as
-     padding, so the words stay where they were and the target grows around
-     them. The title above it already clears 44 on its own. */
+     one-line clamp of 13px meta is 26px tall, which is not a finger. It takes
+     the floor as height so the target grows around the words.
+
+     It cannot keep `-webkit-line-clamp` to do it: a clamped -webkit-box paints
+     the line it cut once the box is taller than the line it kept, so the
+     second line came back sliced through the middle of its own letters. A
+     closed row truncates on ONE line here instead, and the finger's worth of
+     height is centred padding around that line. */
   .a-ops-td{
+    display:block;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    /* A button sizes to its content even as a block, so this one was 4048px
+       wide and the row's own overflow did the cutting — which is why the line
+       ended on a hard edge with no ellipsis, and why a 44px target was also
+       4048px wide. Held to the row, the button overflows ITSELF and truncates
+       the way it says it does. */
+    inline-size:100%;
     min-block-size:var(--ds-tap);
-    padding-block:var(--ds-s4);
+    padding-block:calc((var(--ds-tap) - var(--ds-fs-meta) * var(--ds-lh-meta)) / 2);
     box-sizing:border-box;
+  }
+  /* An opened row is prose, not a control: it must not be clipped or nowrapped
+     by the closed form's rules. */
+  .a-ops-td[data-open]{
+    white-space:pre-wrap;
+    overflow:visible;
+    padding-block:var(--ds-s4);
   }
 }

@@ -244,12 +244,14 @@ function Hero({ accept, governor, pipeline, replacement, client }: {
           value={aRows.length === 0 ? undefined : <>{r7}<Unit>%</Unit></>}
           note={aRows.length === 0 ? undefined : (
             <>
-              {acc7}/{sent7} <Sep />7d
+              <span className="a-sends-nb">{acc7}/{sent7} <Sep />7d</span>
               {' '}
-              <span className={`a-sends-delta ${trendClass}`}>
-                <Icon name={trendIcon} size={16} />{Math.abs(trend)}
+              <span className="a-sends-nb">
+                <span className={`a-sends-delta ${trendClass}`}>
+                  <Icon name={trendIcon} size={16} />{Math.abs(trend)}
+                </span>
+                {' '}<Sep />30d
               </span>
-              {' '}<Sep />30d
             </>
           )}
         >
@@ -263,7 +265,7 @@ function Hero({ accept, governor, pipeline, replacement, client }: {
           note={gRows.length === 0 ? undefined : (
             <>
               <span className={gMode.tone === 'clear' ? 'a-sev-clear' : gMode.tone === 'urgent' ? 'a-sev-urgent' : 'a-sev-attention'}>{gMode.label}</span>
-              {' · '}{gHeadDay} left today
+              {' · '}<span className="a-sends-nb">{gHeadDay} left today</span>
               <OverPill used={gUsed} cap={gCap} />
             </>
           )}
@@ -289,8 +291,8 @@ function Hero({ accept, governor, pipeline, replacement, client }: {
           value={repRows.length === 0 || rate == null ? undefined : <>{rate.toFixed(2)}<Unit>x</Unit></>}
           note={repRows.length === 0 || rate == null ? undefined : (
             <>
-              {qIn} in / {qOut} out <Sep />7d
-              {empty != null && <span className="a-sev-urgent"> <Sep />empty in {empty}d</span>}
+              <span className="a-sends-nb">{qIn} in / {qOut} out <Sep />7d</span>
+              {empty != null && <span className="a-sev-urgent a-sends-nb"> <Sep />empty in {empty}d</span>}
             </>
           )}
         >
