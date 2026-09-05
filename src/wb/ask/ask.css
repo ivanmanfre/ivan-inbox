@@ -590,6 +590,64 @@
   white-space:nowrap;
 }
 
+/* Move 14. The chip says the TYPE first, as a word, then the name, then the
+   size. A type is a label, never a colour. */
+.a-brain-badge{
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-eyebrow);
+  letter-spacing:var(--ds-tr-eyebrow);
+  color:var(--ds-text-4);
+}
+.a-brain-paste{ display:block }
+
+/* Move 15. What landed is a card: the recording on the left, the sentence it
+   became beside it, and one control to drop them both. */
+.a-brain-heard{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s3);
+  padding:var(--ds-s3);
+  border:1px solid var(--ds-line);
+  border-radius:var(--ds-r3);
+  background:var(--ds-surface-2);
+  min-width:0;
+}
+.a-brain-heard-t{
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s1);
+  flex:1 1 auto;
+  min-width:0;
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-2);
+  overflow-wrap:anywhere;
+}
+.a-brain-vnote{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s3);
+  flex:1 1 auto;
+  min-width:0;
+}
+.a-brain-wave{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s1);
+  flex:1 1 auto;
+  min-width:0;
+  block-size:var(--ds-s7);
+}
+.a-brain-wave-b{
+  flex:1 1 0;
+  min-inline-size:var(--ds-s1);
+  border-radius:var(--ds-r1);
+  background:var(--ds-text-4);
+  transition:background-color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-brain-wave-b[data-done]{ background:var(--ds-accent) }
+.a-brain-vnote-d{ flex:0 0 auto; color:var(--ds-text-3) }
+
 .a-brain-link{
   display:flex;
   flex-direction:column;
@@ -599,6 +657,51 @@
   border-radius:var(--ds-r3);
   background:var(--ds-surface-2);
   overflow:hidden;
+}
+/* The three shapes of move 16. */
+/* Nested inset: the card sits INSIDE the message behind its own rule, so the
+   prose reads first and the card reads as something the message contains. */
+.a-brain-link[data-shape='inset']{
+  border-inline-start:2px solid var(--ds-line-strong);
+  border-start-start-radius:var(--ds-r1);
+  border-end-start-radius:var(--ds-r1);
+}
+/* Citation: a drawn domain mark, the domain in mono, the title in bold. */
+.a-brain-link[data-shape='cite']{
+  flex-direction:row;
+  align-items:flex-start;
+  gap:var(--ds-s3);
+  padding:var(--ds-s3) var(--ds-s4);
+}
+.a-brain-link-fav{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  inline-size:var(--ds-s7);
+  block-size:var(--ds-s7);
+  border-radius:var(--ds-r2);
+  background:var(--ds-surface-3);
+  color:var(--ds-accent-ui);
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-mono);
+}
+.a-brain-link-dom{ color:var(--ds-text-3); font-size:var(--ds-fs-eyebrow) }
+/* Blocked: one tinted line the height of a bubble, not an empty well with an
+   apology inside it. */
+.a-brain-link[data-shape='blocked']{
+  flex-direction:row;
+  align-items:center;
+  gap:var(--ds-s3);
+  padding:var(--ds-s3) var(--ds-s4);
+  border-color:var(--ds-line-strong);
+  background:var(--ds-surface-3);
+  color:var(--ds-sev-urgent);
+}
+.a-brain-link[data-shape='blocked'] .a-brain-link-t{
+  flex:1 1 auto;
+  color:var(--ds-text-2);
+  font-weight:var(--ds-fw-regular);
 }
 .a-brain-link-well{
   position:relative;
@@ -617,6 +720,9 @@
   color:var(--ds-text);
 }
 .a-brain-link-body{ display:flex; flex-direction:column; gap:var(--ds-s1); padding:var(--ds-s3) var(--ds-s4); min-width:0 }
+/* The cite shape already pads its own row, so the body inside it does not pad
+   again: one inset per edge, which is the same rule the boundaries follow. */
+.a-brain-link[data-shape='cite'] .a-brain-link-body{ padding:var(--ds-s0); flex:1 1 auto }
 .a-brain-link-t{
   font-size:var(--ds-fs-body);
   line-height:var(--ds-lh-body);
@@ -641,6 +747,7 @@
 .a-brain-feedsheet{ margin-inline:auto; max-width:var(--ds-peer-w) }
 
 @media (max-width:767px){
+  .a-brain-link[data-shape='cite'] .a-brain-link-t{ font-size:var(--ds-fs-meta) }
   .a-brain-thread{ padding-inline:var(--ds-gutter) }
   .a-brain-ubub{ max-width:90% }
 }
