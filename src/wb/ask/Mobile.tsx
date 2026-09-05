@@ -226,7 +226,13 @@ export function Mobile(p: BrainMobileProps) {
   }))
 
   return (
-    <div className="brain-b a-brain-root" data-place={feedOpen ? 'feed' : place === 'ask' ? 'ask' : 'lane'}>
+    /* `wb` rides here for one reason: the surfaces this frame HOSTS are not all
+       rebuilt yet. Magnets, Styles, Strategy, Money and the windows still read
+       nine sheets that scope every rule to `.wb.wb.wb`, and the phone chrome
+       this replaced carried the class, so dropping it left those five surfaces
+       bare at 390 while they still looked right at 1440. It leaves with them,
+       in W6. */
+    <div className="brain-b wb a-brain-root" data-place={feedOpen ? 'feed' : place === 'ask' ? 'ask' : 'lane'}>
       <Shell
         layout="phone"
         tabBar={<TabBar items={tabs} active={place} onSelect={id => onTab(id as Place)} markerId="a-brain-tab" />}
