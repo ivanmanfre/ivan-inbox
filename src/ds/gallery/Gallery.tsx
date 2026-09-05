@@ -34,7 +34,7 @@ export function Gallery() {
     return <div className="gal-plate gal-phone-page"><Specimens /></div>
   }
 
-  const src = `./index.html?view=phone&theme=${theme}`
+  const src = `./index.html?view=phone&theme=${theme}`  // rewritten to a bare query by tools/inline-gallery.mjs for the file:// copy
 
   return (
     <div className="gal">
