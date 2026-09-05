@@ -1,5 +1,0 @@
-# brain-b-revamp-inspo-2026-09-05
-
-Ivan, 2026-09-05, after the design-elevation run shipped: "you clearly fail to perform a comprehensive design inspiration improvement" and, with a 21st.dev key: "get inspo for a revamp design then from those". Deliverable of this run: an inspiration board mined from 21st.dev by tag (previews, usage counts, source), one extracted MOVE per reference mapped to an inbox surface, a revamp thesis, and a phone mock with real motion he can open as an HTML file on his Mac (artifacts do not open for him). Build follows on his go as skin c on the existing toggle. Key lives in the session scratchpad `.21st_key`, never in the repo. Canon: dark instrument, faithful.css ladder, no warm paper / serif; the moves are ported, never the skins.
-
-Surfaces: feed list + cards by family · grouped repeats / stacks · Ask thread (answer, sources, grounded, recall) · running / thinking state · composer + attachments + voice · link preview · tab bar / navigation · feed sheet / drawer · dismiss / swipe · empty state · header / status.
