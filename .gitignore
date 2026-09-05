@@ -37,3 +37,4 @@ dist-stock-branch/
 # purged from git history 2026-09-05 (raw run artefacts, WhatsApp dumps, DM drafts)
 goal-runs/
 *.session.json
+dist-gallery/

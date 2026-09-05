@@ -1,0 +1,292 @@
+/* ==========================================================================
+   src/ds/tokens.css — THE ONLY FILE IN src/ds ALLOWED TO CARRY A COLOUR
+   LITERAL. Every other sheet, and every primitive, reads var(--ds-*).
+
+   Design system for the inbox revamp (goal run inbox-app-revamp-2026-09-05,
+   phase 1). The colour ladder, the ground, the plate radius, the accent, the
+   severities and the seven type values are RE-HOUSED from
+   src/exp/v2c/faithful.css lines 36-70 and 170-190. The hex values are canon
+   and are not changed here; they are given --ds- names so the system can be
+   mounted next to the old sheets without either shadowing the other.
+
+   Scoping: tokens live on :root, so they are readable by the app shell, by a
+   portal (dialog/sheet/toast render into document.body) and by the gallery.
+   The three switches the app already writes at boot (src/main.tsx) are the
+   three switches this file reads:
+     :root[data-theme='light']    — the ladder inverts, accent/severity hold
+     :root[data-density='compact'] — desktop instrument density
+     @media (max-width:767px)      — phone
+   Nothing new is persisted; the design system inherits Settings as it stands.
+   ========================================================================== */
+
+:root{
+
+  /* --- 1 · COLOUR ------------------------------------------------------- */
+
+  /* 1.1 the ground and the plate. The pistachio page the plate rests on
+     survives both themes (faithful.css:174); only the ladder inverts. */
+  --ds-ground:#C5E1A5;
+  --ds-canvas:#0C0C0B;
+
+  /* 1.2 the surface ladder. Depth is LIGHTNESS, never a shadow. surface-1 is
+     the card colour, surface-2 the raised control, surface-3 the pressed or
+     floating layer. */
+  --ds-surface-1:#1F1F1F;
+  --ds-surface-2:#2A2A29;
+  --ds-surface-3:#353533;
+
+  /* 1.3 hairlines. Two forms of the same line:
+       --ds-hairline / --ds-hairline-strong are the canon solids;
+       --ds-line / --ds-line-strong are the ink-alpha form (design-elevation
+       E2) that composites over a hover tint instead of covering it. On the
+       dark ladder rgba(255,255,255,.075) over #1F1F1F resolves to #2F2F2F,
+       within one step of the canon #303030 — the same line, made composable.
+     Primitives use --ds-line. The solids stay for anything that must not
+     composite (a divider over an image well). */
+  --ds-hairline:#303030;
+  --ds-hairline-strong:#4C4C4C;
+  --ds-line:rgba(255,255,255,.075);
+  --ds-line-strong:rgba(255,255,255,.16);
+
+  /* 1.4 ink over the ladder. Four steps, no fifth. */
+  --ds-text:#FFFFFF;
+  --ds-text-2:#C7C7C7;
+  --ds-text-3:#949494;
+  --ds-text-4:#6E6E6E;
+
+  /* 1.5 THE ONE ACCENT. Budget (design-elevation E4, SYSTEM.md §1):
+       primary action fill · active nav · the operator's own turn. Nothing
+       else. --ds-accent is the FILL, --ds-accent-ink the label on it,
+       --ds-accent-ui the glyph/text form (light theme darkens it because
+       lime on white is 1.4:1), --ds-accent-soft the tint for a live or
+       selected state. */
+  --ds-accent:#B8FF66;
+  --ds-accent-ui:#B8FF66;
+  --ds-accent-ink:#171717;
+  --ds-accent-soft:rgba(184,255,102,.14);
+  --ds-accent-line:rgba(184,255,102,.35);
+  --ds-accent-ring:rgba(184,255,102,.55);
+
+  /* 1.6 severity. LIVE SIGNALS ONLY — a stopped workflow, a failed send, an
+     alarm. Never a category, never a backlog count. */
+  --ds-sev-clear:#10A37F;
+  --ds-sev-attention:#FF9F0A;
+  --ds-sev-urgent:#FF453A;
+  --ds-sev-clear-soft:rgba(16,163,127,.14);
+  --ds-sev-attention-soft:rgba(255,159,10,.14);
+  --ds-sev-urgent-soft:rgba(255,69,58,.14);
+
+  /* 1.7 direction, not severity: a stat delta reads up or down. */
+  --ds-delta-up:#B8FF66;
+  --ds-delta-down:#FF9B22;
+
+  /* 1.8 identity tints for an avatar. Not a category mark and not one of the
+     accent's three roles, so it never takes a saturated fill. */
+  --ds-av-1:rgba(184,255,102,.14);
+  --ds-av-2:rgba(255,155,34,.16);
+  --ds-av-3:rgba(255,255,255,.18);
+  --ds-av-4:rgba(255,255,255,.06);
+
+  /* 1.9 interaction washes. One hover device per boundary: rows get a wash,
+     never a border. */
+  --ds-wash:rgba(255,255,255,.04);
+  --ds-wash-strong:rgba(255,255,255,.07);
+  --ds-scrim:rgba(0,0,0,.55);
+
+  /* --- 2 · SPACING — a 4/8 scale, twelve steps, no sixteenth ------------- */
+  --ds-s0:0px;
+  --ds-s1:2px;    /* optical nudge only: a pip inset, a mark offset */
+  --ds-s2:4px;
+  --ds-s3:8px;
+  --ds-s4:12px;
+  --ds-s5:16px;
+  --ds-s6:20px;
+  --ds-s7:24px;
+  --ds-s8:32px;
+  --ds-s9:40px;
+  --ds-s10:48px;
+  --ds-s11:64px;
+
+  /* 2.1 the named steps. These are the ONLY spacing values a primitive is
+     allowed to reach for; they are re-pointed by density and by the phone
+     query below, which is how one component gets three densities. */
+  --ds-row-y:12px;        /* list row padding, vertical */
+  --ds-row-x:16px;        /* list row padding, horizontal */
+  --ds-card-pad:20px;     /* card and section-card padding */
+  --ds-section-gap:24px;  /* gap between two sections on a page */
+  --ds-gutter:16px;       /* page gutter, plate edge to content */
+  --ds-stack:8px;         /* gap inside a row: mark to label to meta */
+  --ds-control-h:36px;    /* button, input, segmented height */
+  --ds-control-h-sm:28px; /* chip-height control */
+  --ds-tap:44px;          /* minimum hit area on the phone */
+
+  /* --- 3 · RADIUS — four steps, a pill, and the plate -------------------- */
+  --ds-r1:4px;    /* a pip, a mark, a bar end */
+  --ds-r2:8px;    /* chip, badge, kbd, small input, skeleton line */
+  --ds-r3:12px;   /* button, input, segmented, popover, toast, tile */
+  --ds-r4:20px;   /* card, section card, sheet, dialog, image well */
+  --ds-r-pill:999px;
+  --ds-r-plate:40px;
+
+  /* --- 4 · ELEVATION ---------------------------------------------------- */
+  /* Depth is the surface ladder plus a hairline. There is exactly ONE shadow
+     token, and it is spent only on the floating layer: sheet, dialog,
+     popover, command palette, toast, bulk bar. Nothing else casts. */
+  --ds-shadow-float:0 12px 40px rgba(0,0,0,.5);
+
+  /* --- 5 · TYPE — eight roles. mono shares meta's size, so a surface never
+         renders more than seven distinct sizes at one width. --------------- */
+  --ds-fs-display:44px;   /* the ONE display size. Stepped by width, never clamped. */
+  --ds-fs-figure:30px;    /* a stat numeral */
+  --ds-fs-page:22px;      /* the page title */
+  --ds-fs-title:16px;     /* a row title, a card title */
+  --ds-fs-body:15px;      /* prose and control labels */
+  --ds-fs-meta:13px;      /* secondary meta, chips, counts */
+  --ds-fs-eyebrow:12px;   /* uppercase label above a group */
+  --ds-fs-mono:13px;      /* time, id, count — tabular */
+
+  --ds-lh-display:1.05;
+  --ds-lh-figure:1.1;
+  --ds-lh-page:1.2;
+  --ds-lh-title:1.3;
+  --ds-lh-body:1.45;
+  --ds-lh-meta:1.35;
+  --ds-lh-eyebrow:1.2;
+
+  --ds-tr-display:-0.022em;
+  --ds-tr-figure:-0.02em;
+  --ds-tr-page:-0.012em;
+  --ds-tr-title:-0.006em;
+  --ds-tr-body:0em;
+  --ds-tr-eyebrow:0.08em;
+
+  --ds-fw-regular:400;
+  --ds-fw-medium:500;
+  --ds-fw-semi:600;
+  --ds-fw-display:700;    /* the single >=700 exception, >=28px only */
+
+  --ds-font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --ds-font-mono:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace;
+
+  /* --- 6 · ICONS -------------------------------------------------------- */
+  --ds-icon-sm:16px;
+  --ds-icon-md:20px;
+  --ds-icon-lg:24px;
+  --ds-icon-stroke:1.75;
+
+  /* --- 7 · MOTION — ONE spring (in motion.ts), ONE duration, ONE easing --- */
+  --ds-ease:cubic-bezier(.25,1,.5,1);
+  --ds-dur:180ms;        /* opacity and colour: the one duration */
+  --ds-dur-hover:120ms;  /* hover and focus only */
+  --ds-dur-slow:320ms;   /* the ceiling; a shimmer sweep, nothing else */
+  --ds-stagger:30ms;
+
+  /* --- 8 · LAYERS ------------------------------------------------------- */
+  --ds-z-rail:10;
+  --ds-z-header:20;
+  --ds-z-tabbar:30;
+  --ds-z-bulk:40;
+  --ds-z-popover:50;
+  --ds-z-sheet:60;
+  --ds-z-dialog:70;
+  --ds-z-toast:80;
+
+  /* --- 9 · SHELL GEOMETRY ------------------------------------------------ */
+  --ds-plate-gap:10px;   /* the pistachio reveal (frame arm b, the shipped default) */
+  --ds-rail-w:224px;
+  --ds-rail-w-collapsed:60px;
+  --ds-peer-w:420px;
+  --ds-tabbar-h:56px;
+  --ds-header-h:52px;
+}
+
+/* ==========================================================================
+   LIGHT THEME. The ladder inverts. The ground, the accent fill and the
+   severities do NOT — dark is the anchor. Re-housed from faithful.css:170-190.
+   ========================================================================== */
+:root[data-theme='light']{
+  --ds-canvas:#F7F7F5;
+  --ds-surface-1:#FFFFFF;
+  --ds-surface-2:#EFEFED;
+  --ds-surface-3:#E3E3E0;
+  --ds-hairline:#DBDBD8;
+  --ds-hairline-strong:#B5B5B2;
+  --ds-line:rgba(19,19,19,.10);
+  --ds-line-strong:rgba(19,19,19,.22);
+  --ds-text:#131313;
+  --ds-text-2:#3D3D3B;
+  --ds-text-3:#5C5C5A;
+  --ds-text-4:#6E6E6E;
+  /* Lime cannot carry a glyph on white (1.4:1). The FILL keeps #B8FF66 with an
+     ink label (14.97:1, theme-proof); the GLYPH form darkens to 4.14:1. */
+  --ds-accent-ui:#5A8A00;
+  --ds-accent-soft:rgba(90,138,0,.14);
+  --ds-accent-line:rgba(90,138,0,.30);
+  --ds-accent-ring:rgba(90,138,0,.55);
+  --ds-av-1:rgba(90,138,0,.18);
+  --ds-av-2:rgba(196,105,0,.18);
+  --ds-av-3:rgba(19,19,19,.16);
+  --ds-av-4:rgba(19,19,19,.06);
+  --ds-wash:rgba(19,19,19,.04);
+  --ds-wash-strong:rgba(19,19,19,.07);
+  --ds-scrim:rgba(0,0,0,.35);
+  --ds-shadow-float:0 12px 40px rgba(0,0,0,.16);
+  --ds-sev-clear-soft:rgba(16,163,127,.16);
+  --ds-sev-attention-soft:rgba(255,159,10,.20);
+  --ds-sev-urgent-soft:rgba(255,69,58,.14);
+  --ds-delta-down:#C46900;
+}
+
+/* ==========================================================================
+   DESKTOP COMPACT. The instrument density: rows tighten, type steps one
+   notch, the display size holds. Written by src/main.tsx from Settings
+   (S13-10), so nothing new is persisted.
+   ========================================================================== */
+:root[data-density='compact']{
+  --ds-row-y:8px;
+  --ds-row-x:12px;
+  --ds-card-pad:16px;
+  --ds-section-gap:20px;
+  --ds-gutter:12px;
+  --ds-control-h:32px;
+  --ds-control-h-sm:26px;
+  --ds-fs-figure:26px;
+  --ds-fs-page:20px;
+  --ds-fs-title:15px;
+  --ds-fs-body:14px;
+  --ds-fs-meta:12px;
+  --ds-fs-eyebrow:11px;
+  --ds-fs-mono:12px;
+  --ds-header-h:46px;
+}
+
+/* ==========================================================================
+   PHONE. Body goes to 16/400 (nothing on a phone is read at 14), rows grow to
+   the 44px tap floor, the plate loses radius it cannot afford at 374px, and
+   the display size steps down.
+   ========================================================================== */
+@media (max-width:767px){
+  :root{
+    --ds-fs-display:34px;
+    --ds-fs-page:22px;
+    --ds-fs-title:17px;
+    --ds-fs-body:16px;
+    --ds-fs-meta:13px;
+    --ds-fs-eyebrow:12px;
+    --ds-fs-mono:13px;
+    --ds-row-y:14px;
+    --ds-row-x:16px;
+    --ds-card-pad:16px;
+    --ds-gutter:16px;
+    --ds-control-h:44px;
+    --ds-control-h-sm:32px;
+    --ds-r-plate:24px;
+    --ds-plate-gap:8px;
+    --ds-header-h:56px;
+  }
+}
+
+/* The one width above which the display size earns its full step. */
+@media (min-width:1200px){
+  :root{ --ds-fs-display:56px }
+}
