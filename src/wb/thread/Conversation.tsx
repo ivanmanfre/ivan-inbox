@@ -21,10 +21,10 @@ import { Banner, Button, Chip, Composer, DayHeader, Icon, IconButton, Stepper, T
 import { Bar, Body, Group, Head, Screen } from '../kit'
 import { ChatLink, Face } from '../dms/parts'
 import { RestoreStrip } from './RestoreStrip'
-import { ContextSheet } from '../../components/ContextSheet'
+import { ContextSheet } from '../sheets/Context'
 import { Linkified } from '../chrome/Linkified'
 import { useConfirm } from '../chrome/ConfirmSheet'
-import { formatReturn, returnsIn, usePushLater } from '../../components/PushLaterSheet'
+import { formatReturn, returnsIn, usePushLater } from '../../lib/pushLater'
 import {
   approveDraft, channelFamilies, composeReply, discardDraft, escalateDraftToClient, isDraft, isFollowUp, isMixedChannel,
   saveDraftEmail, saveDraftText, snoozeDraft, unsnoozeDraft,

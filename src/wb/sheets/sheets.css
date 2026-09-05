@@ -1,0 +1,92 @@
+/* ==========================================================================
+   src/wb/sheets/sheets.css — S20 push-later, S21 prospect context.
+
+   Only what the design system and the shared kit do not already carry. Every
+   colour is a `--ds-*` token, every radius a `--ds-r*` step, every size a
+   `--ds-fs-*` role, every gap a spacing step.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1 · Push later (S20). Divider rhythm from `efferd/drawer`: presets, custom
+   time, decision, each block separated once.
+   -------------------------------------------------------------------------- */
+.a-push{ display:flex; flex-direction:column; gap:var(--ds-s4); min-width:0 }
+.a-push-presets{ display:flex; flex-direction:column; min-width:0 }
+
+/* A preset says its label AND the instant it resolves to, because the whole
+   decision is which date this comes back on. */
+.a-push-preset{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:var(--ds-s4);
+  min-height:var(--ds-tap);
+  padding:var(--ds-row-y) var(--ds-s0);
+  background:transparent;
+  border:0;
+  border-radius:var(--ds-r2);
+  color:var(--ds-text);
+  text-align:start;
+  cursor:pointer;
+  transition:background-color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-push-preset + .a-push-preset{ box-shadow:inset 0 1px 0 var(--ds-line) }
+.a-push-preset:hover{ background:var(--ds-wash) }
+
+.a-push-custom{ display:flex; align-items:flex-end; gap:var(--ds-s3); min-width:0 }
+.a-push-custom > :first-child{ flex:1 1 auto; min-width:0 }
+
+/* --------------------------------------------------------------------------
+   2 · Prospect context (S21). The key is an eyebrow ABOVE its value, so the
+   values share a baseline and the eye reads one column of facts.
+   -------------------------------------------------------------------------- */
+.a-ctx{ display:flex; flex-direction:column; gap:var(--ds-s6); min-width:0 }
+.a-ctx-icp{ display:flex; flex-direction:column; gap:var(--ds-s2); min-width:0 }
+.a-ctx-score{
+  font-size:var(--ds-fs-figure);
+  line-height:var(--ds-lh-figure);
+  font-weight:var(--ds-fw-semi);
+  letter-spacing:var(--ds-tr-figure);
+  color:var(--ds-text);
+}
+.a-ctx-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(9rem, 1fr));
+  gap:var(--ds-s5) var(--ds-s6);
+  min-width:0;
+}
+.a-ctx-f{ display:flex; flex-direction:column; gap:var(--ds-s1); min-width:0 }
+.a-ctx-v{
+  font-size:var(--ds-fs-body);
+  line-height:var(--ds-lh-body);
+  color:var(--ds-text);
+  overflow-wrap:anywhere;
+}
+.a-ctx-block{ display:flex; flex-direction:column; gap:var(--ds-s2); min-width:0 }
+.a-ctx-txt{
+  font-size:var(--ds-fs-body);
+  line-height:var(--ds-lh-body);
+  color:var(--ds-text-2);
+  overflow-wrap:anywhere;
+}
+.a-ctx-links{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--ds-s3) var(--ds-s5) }
+.a-ctx-link{
+  min-height:var(--ds-tap);
+  display:inline-flex;
+  align-items:center;
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-accent-ui);
+  text-decoration:underline;
+  text-underline-offset:.2em;
+}
+.a-ctx-link.a-dim{ color:var(--ds-text-3); text-decoration:none }
+.a-ctx-note{ min-height:5.5rem; resize:vertical }
+.a-ctx-notefoot{ display:flex; align-items:center; gap:var(--ds-s3); min-height:var(--ds-control-h) }
+.a-ctx-bad{ color:var(--ds-sev-urgent) }
+.a-ctx-err{
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-sev-urgent);
+  overflow-wrap:anywhere;
+}
