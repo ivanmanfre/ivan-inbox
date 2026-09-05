@@ -29,6 +29,48 @@ const MAX_RECORD_MS = 90_000
 
 export type SttState = 'idle' | 'recording' | 'transcribing'
 
+/**
+ * The audio that was actually recorded, kept so the surface can show it back.
+ *
+ * 03-DIRECTION move 15 asks for "a compact waveform bubble with play and
+ * duration". Everything in it is REAL: the object URL is the very blob that
+ * was posted, `ms` is the measured length of the recording, and `peaks` are
+ * decoded out of that audio rather than drawn from a clock. A waveform that is
+ * not the sound it sits next to is a picture of a waveform.
+ *
+ * `peaks` arrives after the decode resolves and is null until then, so the
+ * card draws a flat rule for the moment it takes rather than a shape it has
+ * not measured yet.
+ */
+export type SttClip = { url: string; ms: number; peaks: number[] | null }
+
+/** N amplitude peaks out of real decoded audio. Null if the browser cannot
+ * decode this container, which is a fact about the browser, not an error. */
+export async function decodePeaks(blob: Blob, buckets = 28): Promise<number[] | null> {
+  try {
+    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    if (!Ctx) return null
+    const ctx = new Ctx()
+    const audio = await ctx.decodeAudioData(await blob.arrayBuffer())
+    const data = audio.getChannelData(0)
+    const per = Math.max(1, Math.floor(data.length / buckets))
+    const out: number[] = []
+    for (let b = 0; b < buckets; b++) {
+      let peak = 0
+      for (let i = b * per; i < Math.min(data.length, (b + 1) * per); i++) {
+        const v = Math.abs(data[i])
+        if (v > peak) peak = v
+      }
+      out.push(peak)
+    }
+    void ctx.close()
+    const top = Math.max(...out, 0.0001)
+    return out.map(v => v / top)
+  } catch {
+    return null
+  }
+}
+
 export type SttResult =
   | { kind: 'text'; text: string }
   | { kind: 'silence' } // 422 no_speech_detected — "didn't catch that"
@@ -43,6 +85,10 @@ type UseStt = {
   supported: boolean
   /** Toggle: idle→start recording, recording→stop+transcribe. No-op while transcribing. */
   toggle: () => void
+  /** The last recording, playable, with its real length and its real shape. */
+  clip: SttClip | null
+  /** Drop it and revoke the object URL. */
+  clearClip: () => void
 }
 
 function errorCopy(status: number, code: string | undefined): string {
@@ -71,6 +117,7 @@ export function interpretSttResponse(status: number, body: unknown): SttResult {
 
 export function useStt(onText: (text: string) => void): UseStt {
   const [state, setState] = useState<SttState>('idle')
+  const [clip, setClip] = useState<SttClip | null>(null)
   const [elapsedMs, setElapsedMs] = useState(0)
   const [note, setNote] = useState<string | null>(null)
   const rec = useRef<MediaRecorder | null>(null)
@@ -132,6 +179,16 @@ export function useStt(onText: (text: string) => void): UseStt {
         stream.getTracks().forEach(t => t.stop())
         const blob = new Blob(chunks.current, { type: r.mimeType || 'audio/webm' })
         chunks.current = []
+        // Keep the audio, so what he said can be played back beside what was
+        // heard. One clip at a time: the previous URL is revoked as the new
+        // one takes its place.
+        const ms = Date.now() - startedAt.current
+        const url = URL.createObjectURL(blob)
+        setClip(prev => { if (prev) URL.revokeObjectURL(prev.url); return { url, ms, peaks: null } })
+        void decodePeaks(blob).then(peaks => {
+          if (!peaks) return
+          setClip(cur => (cur && cur.url === url ? { ...cur, peaks } : cur))
+        })
         void transcribe(blob)
       }
       r.start()
@@ -157,5 +214,14 @@ export function useStt(onText: (text: string) => void): UseStt {
     }
   }, [])
 
-  return { state, elapsedMs, note, supported, toggle }
+  const clearClip = useCallback(() => {
+    setClip(prev => { if (prev) URL.revokeObjectURL(prev.url); return null })
+  }, [])
+
+  // An object URL outlives its component unless someone says otherwise.
+  const clipRef = useRef<SttClip | null>(null)
+  clipRef.current = clip
+  useEffect(() => () => { if (clipRef.current) URL.revokeObjectURL(clipRef.current.url) }, [])
+
+  return { state, elapsedMs, note, supported, toggle, clip, clearClip }
 }

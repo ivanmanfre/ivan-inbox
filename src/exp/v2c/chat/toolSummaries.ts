@@ -1,15 +1,22 @@
-// One collapsed row per tool call: glyph, tool name, one-line preview of the
+// One collapsed row per tool call: icon, tool name, one-line preview of the
 // argument that identifies it. Ported from the reference's tool-summaries.ts as
 // plain data (a map is not a dependency), with the reference's output panel cut —
 // Railway's stream-json only forwards `tool_use` blocks on the /chat/stream path,
 // never `tool_result`, so there is nothing honest to put in one (spec §2.5).
 
-export type ToolSummary = { icon: string; label: string; preview: string }
+import type { IconName } from '../../../ds'
 
-const ICONS: Record<string, string> = {
-  Read: '▤', Edit: '✎', Write: '✎', MultiEdit: '✎', NotebookEdit: '✎',
-  Bash: '›', Glob: '⌕', Grep: '⌕', WebFetch: '↗', WebSearch: '⌕',
-  Task: '◈', TodoWrite: '☑',
+export type ToolSummary = { label: string; preview: string }
+
+/** The tool a run belongs to, as a NAME in the system's icon set. This module
+ * is pure data, so it carries the name and never the mark: the two strips that
+ * read it (`src/wb/ask/Tools.tsx` and `ChatMessage.tsx`) each draw it with
+ * `ds/Icon`. It used to hold a typed glyph per tool, which put presentation in
+ * a data file and put a glyph in the census. */
+export const TOOL_ICON: Record<string, IconName> = {
+  Read: 'doc', Edit: 'edit', Write: 'edit', MultiEdit: 'edit', NotebookEdit: 'edit',
+  Bash: 'forward', Glob: 'search', Grep: 'search', WebFetch: 'external', WebSearch: 'search',
+  Task: 'layers', TodoWrite: 'tasks',
 }
 
 function str(v: unknown): string {
@@ -31,7 +38,6 @@ function firstLine(s: string, max = 90): string {
 
 export function summarizeTool(tool: string, input: unknown): ToolSummary {
   const o = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>
-  const icon = ICONS[tool] ?? '·'
   const path = str(o.file_path) || str(o.path) || str(o.notebook_path)
   switch (tool) {
     case 'Read':
@@ -39,28 +45,28 @@ export function summarizeTool(tool: string, input: unknown): ToolSummary {
     case 'Edit':
     case 'MultiEdit':
     case 'NotebookEdit':
-      return { icon, label: tool, preview: path ? shortPath(path) : '—' }
+      return { label: tool, preview: path ? shortPath(path) : '—' }
     case 'Bash':
-      return { icon, label: 'Bash', preview: firstLine(str(o.description) || str(o.command)) || '—' }
+      return { label: 'Bash', preview: firstLine(str(o.description) || str(o.command)) || '—' }
     case 'Glob':
-      return { icon, label: 'Glob', preview: str(o.pattern) || '—' }
+      return { label: 'Glob', preview: str(o.pattern) || '—' }
     case 'Grep': {
       const pat = str(o.pattern)
       const where = str(o.glob) || str(o.path)
-      return { icon, label: 'Grep', preview: where ? `${pat} · ${shortPath(where)}` : pat || '—' }
+      return { label: 'Grep', preview: where ? `${pat} · ${shortPath(where)}` : pat || '—' }
     }
     case 'WebFetch':
-      return { icon, label: 'Fetch', preview: str(o.url) || '—' }
+      return { label: 'Fetch', preview: str(o.url) || '—' }
     case 'WebSearch':
-      return { icon, label: 'Search', preview: str(o.query) || '—' }
+      return { label: 'Search', preview: str(o.query) || '—' }
     case 'Task':
-      return { icon, label: 'Agent', preview: firstLine(str(o.description)) || '—' }
+      return { label: 'Agent', preview: firstLine(str(o.description)) || '—' }
     case 'TodoWrite': {
       const todos = Array.isArray(o.todos) ? o.todos.length : 0
-      return { icon, label: 'Todos', preview: todos ? `${todos} item${todos === 1 ? '' : 's'}` : '—' }
+      return { label: 'Todos', preview: todos ? `${todos} item${todos === 1 ? '' : 's'}` : '—' }
     }
     default:
-      return { icon, label: tool, preview: firstLine(JSON.stringify(input ?? null) ?? '') || '—' }
+      return { label: tool, preview: firstLine(JSON.stringify(input ?? null) ?? '') || '—' }
   }
 }
 

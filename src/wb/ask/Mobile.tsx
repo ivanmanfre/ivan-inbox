@@ -17,8 +17,8 @@
    is a horizontal pager and that gesture is the ledger's (S26-6).
    ========================================================================== */
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { motion } from 'motion/react'
-import { Icon, IconButton, Badge, LiveDot, Shell, TabBar, fadeT, springSoft, type IconName, type TabItem } from '../../ds'
+import { AnimatePresence, motion } from 'motion/react'
+import { Button, Icon, IconButton, Badge, LiveDot, Shell, TabBar, fadeT, springSoft, type IconName, type TabItem } from '../../ds'
 import { Head, Screen } from '../kit'
 import type { BrainMobileProps } from '../../exp/brain/types'
 import { JOB_LABEL, type Job } from '../../exp/v2c/layout'
@@ -58,28 +58,76 @@ function foldOnTabs<V>(byJob: Partial<Record<Job, V>>): Partial<Record<Place, V>
 
 type Drag = { x0: number; y0: number; t0: number; dx: number; axis: 'none' | 'x' | 'y' }
 
-/** Move 17. One glyph and a mono figure at rest; an event opens it into the
- * alert and it snaps back. Tapping it goes to the place that holds the alert,
- * which is the one thing this control has always done. */
-function StatusCapsule({ n, onClick }: { n: number; onClick: () => void }) {
+/**
+ * Move 17, the island.
+ *
+ * At rest it is one glyph and a mono figure, the width of a control. When an
+ * alert arrives it MORPHS OPEN into the alert itself — the count as a
+ * sentence, the alert's own line under it, and the one action that answers it
+ * — then snaps back on its own. Tapping it either way goes to the place that
+ * holds the alert, which is the one thing this control has ever done.
+ *
+ * The morph is `layout` on the one soft spring, so the capsule and the panel
+ * are the SAME element growing, never a popover appearing beside a badge.
+ *
+ * `note` is the alert's own headline, which is what the ribbon this replaced
+ * already printed. The capsule says it; it does not invent a second sentence
+ * about it.
+ */
+function StatusCapsule({ n, note, onClick }: { n: number; note: string; onClick: () => void }) {
   const [open, setOpen] = useState(false)
   const label = `${n} automation alert${n > 1 ? 's' : ''}`
+  // An EVENT opens it, and an event is the count going UP. It used to open on
+  // every mount, and this control unmounts whenever the feed sheet is open —
+  // so closing the feed threw the alert over the header again, four seconds at
+  // a time, with nothing having happened. A standing alarm is a badge; a new
+  // one is an event.
+  const seen = useRef<number | null>(null)
   useEffect(() => {
-    if (n <= 0) return
+    const before = seen.current
+    seen.current = n
+    if (before === null || n <= before) return
     setOpen(true)
     const t = window.setTimeout(() => setOpen(false), 4000)
     return () => window.clearTimeout(t)
   }, [n])
   return (
-    <motion.button
-      type="button" layout transition={springSoft}
-      className="a-brain-cap" data-open={open ? '' : undefined}
-      aria-label={label} title={label}
-      onClick={onClick}
-    >
-      <Icon name="alert" size={16} />
-      {open ? <span className="a-brain-cap-t">{label}</span> : <span>{n}</span>}
-    </motion.button>
+    /* The island floats: the panel is absolutely placed over the header rather
+       than laid out inside it, and a ghost holds the 44px the closed pill
+       occupies. Growing it IN FLOW squeezed the header's own title down to
+       three characters, which is the one thing the header has to say. */
+    <span className="a-brain-capwrap">
+      <span className="a-brain-cap-ghost" aria-hidden="true" />
+      <motion.div
+        layout transition={springSoft}
+        className="a-brain-cap" data-open={open ? '' : undefined}
+      >
+      <button
+        type="button" className="a-brain-cap-face"
+        aria-label={label} aria-expanded={open}
+        onClick={() => (open ? onClick() : setOpen(true))}
+      >
+        <Icon name="alert" size={16} />
+        {open ? <span className="a-brain-cap-t">{label}</span> : <span className="a-mono">{n}</span>}
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            className="a-brain-cap-body"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, transition: fadeT }}
+            exit={{ opacity: 0, transition: fadeT }}
+          >
+            {note && <span className="a-brain-cap-note a-clamp">{note}</span>}
+            <span className="a-brain-cap-acts">
+              <Button variant="quiet" size="sm" iconEnd="next" onClick={onClick}>Open</Button>
+              <Button variant="quiet" size="sm" onClick={() => setOpen(false)}>Later</Button>
+            </span>
+          </motion.div>
+        )}
+        </AnimatePresence>
+      </motion.div>
+    </span>
   )
 }
 
@@ -92,6 +140,12 @@ export function Mobile(p: BrainMobileProps) {
   // The turn a push notification named. Held here rather than inside AskThread
   // so a feed tap and a cold boot arrive at the same one place.
   const [focusTurn, setFocusTurn] = useState<string | null>(boot.turn ?? null)
+  // Move 9: the rectangle of the feed card that opened the focused turn. Held
+  // here rather than inside the thread because the card that owns it lives in
+  // the sheet, which is this component's other half. A cold boot has none, so
+  // a deep link from a push notification simply arrives without the morph
+  // rather than growing out of a card that was never on screen.
+  const [morphFrom, setMorphFrom] = useState<DOMRect | null>(null)
   const bootHandled = useRef(false)
   // Move 3: the head condenses once the ledger under it has moved.
   const [condensed, setCondensed] = useState(false)
@@ -127,7 +181,7 @@ export function Mobile(p: BrainMobileProps) {
     if (next !== 'ask') goJob(next)
   }
 
-  const onTab = (t: Place) => { setFeedOpen(false); goPlace(t) }
+  const onTab = (t: Place) => { setFeedOpen(false); setSnap(0); goPlace(t) }
 
   // A Content sub-lane change (WorkSegment, inside workSurface) calls the same
   // `goJob` this component was handed, so `job` can drift to magnets/styles/
@@ -194,11 +248,65 @@ export function Mobile(p: BrainMobileProps) {
   const tracked = dragX === null ? null : Math.min(w, Math.max(0, (feedOpen ? 0 : w) + dragX))
   const openness = tracked === null ? (feedOpen ? 0 : 1) : (w === 0 ? 0 : tracked / w)
   const sheetTo = `${openness * 100}%`
-  const scrimTo = 1 - openness
 
-  const openThreadAt = useCallback((id: string, turn?: string) => {
+  // -------------------------------------------------------------------------
+  // Move 19. THE SNAP POINTS, on the axis that has room for them.
+  //
+  // The gesture that opens and closes this sheet is the horizontal pager, and
+  // that gesture is the ledger's (S26-6): it is not available for a second
+  // meaning. So the snaps live on the vertical axis, which nothing else uses:
+  // once the feed is open, the grip drags it DOWN, and it springs to the
+  // nearest of three — full, half (the place under it visible again), or gone.
+  //
+  // The drag is on the GRIP and never on the list, because a vertical drag
+  // inside a scrolling column is an ambiguity a thumb cannot resolve. The
+  // scrim fades with the distance travelled, so the surface underneath comes
+  // back as the sheet leaves rather than the instant it is let go.
+  // -------------------------------------------------------------------------
+  const SNAPS = [0, 0.45, 1] as const
+  const [snap, setSnap] = useState(0)
+  const vdrag = useRef<{ y0: number; t0: number; from: number } | null>(null)
+  const [vy, setVy] = useState<number | null>(null)
+  const heightOf = () => pager.current?.getBoundingClientRect().height ?? window.innerHeight
+
+  const onGripStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return
+    vdrag.current = { y0: e.touches[0].clientY, t0: Date.now(), from: snap }
+  }
+  const onGripMove = (e: React.TouchEvent) => {
+    const d = vdrag.current
+    if (!d) return
+    e.stopPropagation()
+    const h = heightOf()
+    setVy(Math.min(1, Math.max(0, d.from + (e.touches[0].clientY - d.y0) / Math.max(1, h))))
+  }
+  const endGrip = () => {
+    const d = vdrag.current
+    vdrag.current = null
+    const at = vy
+    setVy(null)
+    if (!d || at === null) return
+    // A flick past the threshold means the direction, not the distance.
+    const speed = (at - d.from) * heightOf() / Math.max(1, Date.now() - d.t0)
+    if (speed > 0.5) { closeSheet(); return }
+    const nearest = SNAPS.reduce((a, b) => (Math.abs(b - at) < Math.abs(a - at) ? b : a), SNAPS[0])
+    if (nearest === 1) { closeSheet(); return }
+    setSnap(nearest)
+  }
+  const closeSheet = () => { setFeedOpen(false); setSnap(0); setVy(null) }
+  // Opening always starts at the top snap: a sheet that remembered it was half
+  // way down would open half way down for a reason nobody could see.
+  useEffect(() => { if (feedOpen) setSnap(0) }, [feedOpen])
+
+  const drop = vy ?? snap
+  const sheetY = feedOpen ? `${drop * 100}%` : '0%'
+  // The scrim answers both axes: how far in the sheet is, and how far down.
+  const scrimTo = (1 - openness) * (1 - drop)
+
+  const openThreadAt = useCallback((id: string, turn?: string, from?: DOMRect | null) => {
     chat.openThread(id)
     setFocusTurn(turn ?? null)
+    setMorphFrom(from ?? null)
     setPlace('ask')
     writePlace('ask')
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -249,10 +357,10 @@ export function Mobile(p: BrainMobileProps) {
               <>
                 {chat.busy && <LiveDot label="Claude is working" />}
                 {!feedOpen && p.health.n > 0 && (
-                  <StatusCapsule n={p.health.n} onClick={() => onTab('ops')} />
+                  <StatusCapsule n={p.health.n} note={p.health.note} onClick={() => onTab('ops')} />
                 )}
                 {feedOpen
-                  ? <IconButton icon="back" label="Close feed" onClick={() => setFeedOpen(false)} />
+                  ? <IconButton icon="back" label="Close feed" onClick={closeSheet} />
                   : (
                     <span className="a-brain-feedbtn" data-feed-open>
                       <IconButton
@@ -290,6 +398,11 @@ export function Mobile(p: BrainMobileProps) {
                     <AskThread
                       chat={chat} job={job} about={about} mobile
                       focusTurn={focusTurn} onFocused={() => setFocusTurn(null)}
+                      morphFrom={morphFrom}
+                      onMorphed={() => setMorphFrom(null)}
+                      // The other half of move 9: a drag down on the answer he
+                      // arrived at goes back to the card he arrived from.
+                      onDragBack={() => { setFocusTurn(null); setFeedOpen(true) }}
                     />
                   )
                   : workSurface}
@@ -304,13 +417,27 @@ export function Mobile(p: BrainMobileProps) {
 
             <motion.div
               className="a-brain-sheet" data-off={feedOpen ? undefined : ''}
-              animate={{ x: sheetTo }}
-              transition={tracked === null ? springSoft : { duration: 0 }}
+              animate={{ x: sheetTo, y: sheetY }}
+              transition={tracked === null && vy === null ? springSoft : { duration: 0 }}
             >
+              {/* The grip is the drag surface AND the thing that says the sheet
+                  can be dragged. It carries a real control too, so a reader who
+                  never drags anything can still put the feed away. */}
+              <div
+                className="a-brain-grip"
+                onTouchStart={onGripStart} onTouchMove={onGripMove}
+                onTouchEnd={endGrip} onTouchCancel={endGrip}
+              >
+                <button
+                  type="button" className="a-brain-grip-b"
+                  aria-label={drop > 0.2 ? 'Put the feed back up' : 'Push the feed down'}
+                  onClick={() => setSnap(drop > 0.2 ? 0 : 0.45)}
+                ><span /></button>
+              </div>
               <Feed
                 feed={feed} goJob={goJob}
                 openThread={openThreadAt}
-                onNavigated={() => setFeedOpen(false)}
+                onNavigated={closeSheet}
                 onScrolled={setCondensed}
               />
             </motion.div>

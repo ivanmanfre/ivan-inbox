@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   dismissGroup, dismissNotification, groupNotifications, listNotifications,
-  markNotificationsRead, type Notification, type NotificationGroup,
+  markNotificationsRead, restoreNotifications, type Notification, type NotificationGroup,
 } from '../../../lib/turns'
 import { mockFlag } from '../../v2c/mock'
 import { mockNotificationRows } from './mockNotifications'
@@ -91,6 +91,31 @@ export function useFeedData() {
     else for (const id of ids) void dismissNotification(id)
   }, [])
 
+  /**
+   * The inverse of the two dismisses, for the toast's Undo (move 8).
+   *
+   * The caller hands back the ROWS it removed, not their ids alone, because the
+   * feed does not refetch to answer an undo: the rows go straight back into the
+   * list in the same commit the press happens in, and the write follows. That
+   * is the same order the dismiss uses, for the same reason — a screen that
+   * closes inside the network window must not lose the act.
+   *
+   * `dismissed_at` is cleared for real, so the row is live again for every
+   * other reader of the feed as well, not merely visible on this device.
+   */
+  const restore = useCallback((back: Notification[]) => {
+    if (!back.length) return
+    setRows(prev => {
+      const have = new Set(prev.map(r => r.id))
+      const add = back.filter(r => !have.has(r.id))
+      if (!add.length) return prev
+      // Newest first is the order `listNotifications` reads in, so a restored
+      // row lands where a refetch would have put it rather than at the end.
+      return [...prev, ...add].sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
+    })
+    if (!FEED_MOCK) void restoreNotifications(back.map(r => r.id))
+  }, [])
+
   const toggle = useCallback((key: string) => setExpanded(prev => {
     const next = new Set(prev)
     if (next.has(key)) next.delete(key); else next.add(key)
@@ -99,7 +124,7 @@ export function useFeedData() {
 
   return {
     rows, groups, unreadTotal, loaded, error, lastEmptySince, expanded,
-    refresh, markRead, dismissOne, dismissGroupRows, toggle,
+    refresh, markRead, dismissOne, dismissGroupRows, restore, toggle,
   }
 }
 

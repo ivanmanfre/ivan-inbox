@@ -69,38 +69,111 @@
    figure at idle; it opens into the alert and snaps back. `layout` on the
    motion element animates the width change as a transform, never as a width.
    -------------------------------------------------------------------------- */
+.a-brain-capwrap{ position:relative; display:inline-flex; flex:0 0 auto }
+.a-brain-cap-ghost{ display:block; inline-size:var(--ds-tap); block-size:var(--ds-tap) }
 .a-brain-cap{
+  position:absolute;
+  top:var(--ds-s0);
+  inset-inline-end:var(--ds-s0);
+  z-index:25;
+  display:inline-flex;
+  flex-direction:column;
+  align-items:stretch;
+  border:1px solid var(--ds-line-strong);
+  border-radius:var(--ds-r-pill);
+  background:var(--ds-surface-2);
+  color:var(--ds-sev-attention);
+  white-space:nowrap;
+  overflow:hidden;
+}
+/* Open, it stops being a pill and becomes the alert: the same element, grown
+   on the one soft spring, never a popover appearing beside a badge. */
+.a-brain-cap[data-open]{
+  border-radius:var(--ds-r3);
+  white-space:normal;
+  inline-size:16rem;
+  max-inline-size:calc(100vw - var(--ds-s11));
+  box-shadow:var(--ds-shadow-float);
+}
+.a-brain-cap-face{
   display:inline-flex;
   align-items:center;
+  justify-content:center;
   gap:var(--ds-s2);
   /* The phone floor, on the one header control that was under it: this is a
      44px box whatever the numeral inside it reads. */
   min-height:var(--ds-tap);
   min-width:var(--ds-tap);
-  justify-content:center;
   padding:var(--ds-s1) var(--ds-s3);
-  border:1px solid var(--ds-line-strong);
-  border-radius:var(--ds-r-pill);
-  background:var(--ds-surface-2);
-  color:var(--ds-sev-attention);
+  border:0;
+  background:none;
+  color:inherit;
   font:inherit;
-  font-family:var(--ds-font-mono);
-  font-size:var(--ds-fs-mono);
-  font-variant-numeric:tabular-nums;
+  font-size:var(--ds-fs-meta);
   cursor:pointer;
-  white-space:nowrap;
   transition:background-color var(--ds-dur-hover) var(--ds-ease), color var(--ds-dur-hover) var(--ds-ease);
 }
-.a-brain-cap:hover{ background:var(--ds-surface-3) }
-.a-brain-cap-t{ color:var(--ds-text-2) }
+.a-brain-cap-face:hover{ background:var(--ds-surface-3) }
+.a-brain-cap-t{ color:var(--ds-text-2); font-size:var(--ds-fs-meta) }
+.a-brain-cap-body{
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s3);
+  padding:var(--ds-s0) var(--ds-s4) var(--ds-s3);
+}
+.a-brain-cap-note{
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-2);
+  white-space:normal;
+}
+.a-brain-cap-acts{ display:flex; gap:var(--ds-s2) }
+
+/* Move 19's affordance. The grip is the drag surface and it says so; it also
+   carries a real control, so a reader who never drags can still move the
+   sheet. */
+/* 48, not 44. W1 measured it: the tap probe reads a 44px square out from the
+   centre, so a box that is EXACTLY 44 puts its edge points on the boundary and
+   rounding decides them. Four more pixels leave the decision to nobody. */
+.a-brain-grip{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  block-size:calc(var(--ds-tap) + var(--ds-s2));
+  touch-action:none;
+}
+.a-brain-grip-b{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  inline-size:var(--ds-s11);
+  min-block-size:calc(var(--ds-tap) + var(--ds-s2));
+  border:0;
+  background:none;
+  cursor:grab;
+}
+.a-brain-grip-b > span{
+  display:block;
+  inline-size:var(--ds-s8);
+  block-size:var(--ds-s1);
+  border-radius:var(--ds-r1);
+  background:var(--ds-hairline-strong);
+  transition:background-color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-brain-grip-b:hover > span{ background:var(--ds-text-3) }
 
 /* The feed button carries its unread count as a pill on the corner. */
 .a-brain-feedbtn{ position:relative; display:inline-flex }
 .a-brain-feedbtn-n{
   position:absolute;
-  top:var(--ds-s0);
-  inset-inline-end:var(--ds-s0);
+  /* Clear of the glyph, not on top of it: at two digits the badge covered the
+     bell entirely and the control lost the only thing that said what it was. */
+  top:calc(var(--ds-s1) * -1);
+  inset-inline-end:calc(var(--ds-s2) * -1);
   pointer-events:none;
+  transform:scale(.85);
+  transform-origin:top right;
 }
 
 /* --------------------------------------------------------------------------
@@ -112,7 +185,22 @@
 .a-brain-day .ds-dayheader{
   background:var(--ds-canvas);
   padding-inline:var(--ds-gutter);
-  z-index:1;
+  /* 5, not 1. A sticky head that a card can climb over is not sticky. During
+     the dismiss settle, motion/react assigns its own `z-index` to the rows it
+     is moving, and at 1 the head lost to them: the undo shot caught a deck
+     sitting on top of "YESTERDAY". 5 clears the row actions (2) and anything
+     the layout animation assigns. */
+  z-index:5;
+  transition:min-block-size var(--ds-dur) var(--ds-ease), padding-block var(--ds-dur) var(--ds-ease);
+}
+/* Move 3. Once the ledger under it has moved, the run of day heads condenses:
+   the same day and the same LIVE count on one compact bar at the eyebrow
+   size, so a long scroll spends a third less height per band. */
+.a-brain-day[data-condensed] .ds-dayheader{
+  min-block-size:var(--ds-s7);
+  padding-block:var(--ds-s2);
+  font-size:var(--ds-fs-eyebrow);
+  letter-spacing:var(--ds-tr-eyebrow);
 }
 .a-brain-slot{ position:relative; overflow:hidden }
 /* What the swipe reveals under the row. */
@@ -211,9 +299,46 @@
   color:var(--ds-text-3);
 }
 
-/* The group deck: one collapsed header naming count AND kind, the children
-   revealing under it. No peeked edges: a cluster here is a grouped ledger. */
+/* The group deck (move 6). Collapsed it is a physical pile: the front card
+   sits on up to three peeked edges, each stepped down and narrowed, so the
+   depth of the stack reads as the count before a word does. Fanning removes
+   the edges and the children arrive under the same head. */
 .a-brain-deck{ display:flex; flex-direction:column }
+.a-brain-deck-front{ position:relative; z-index:1; background:var(--ds-surface-1) }
+.a-brain-peeks{
+  position:relative;
+  z-index:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  pointer-events:none;
+}
+.a-brain-peek{
+  display:block;
+  block-size:var(--ds-s3);
+  margin-block-start:calc(var(--ds-r1) * -1);
+  border:1px solid var(--ds-line-strong);
+  border-block-start:0;
+  border-end-start-radius:var(--ds-r4);
+  border-end-end-radius:var(--ds-r4);
+  background:var(--ds-surface-2);
+}
+.a-brain-deck-head{ position:relative; z-index:1; background:var(--ds-surface-1) }
+/* Move 7's overlapping run: one severity mark per item in the pile, capped at
+   four, overlapped so a glance reads a stack and not a list. */
+.a-brain-stack{ display:inline-flex; align-items:center }
+.a-brain-stack-i{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  inline-size:var(--ds-s5);
+  block-size:var(--ds-s5);
+  margin-inline-start:calc(var(--ds-s2) * -1);
+  border:1px solid var(--ds-canvas);
+  border-radius:var(--ds-r1);
+  background:var(--ds-surface-3);
+}
+.a-brain-stack-i:first-child{ margin-inline-start:var(--ds-s0) }
 .a-brain-deck-rows{
   display:flex;
   flex-direction:column;
@@ -458,6 +583,42 @@
 }
 .a-brain-prose .a-brain-recall:hover{ color:var(--ds-accent-ui) }
 
+/* Move 10. A word fades in ONCE, as it arrives. `forwards` holds the end
+   state so a word that has landed cannot flicker when its block re-renders,
+   and the reduced-motion collapse in §18 of ds.css zeroes the duration. */
+.a-brain-w{
+  display:inline;
+  animation:a-brain-wordin var(--ds-dur) var(--ds-ease) both;
+}
+@keyframes a-brain-wordin{ from{ opacity:0 } to{ opacity:1 } }
+
+/* Move 11. The status line SHIMMERS, and it is the surface's one continuous
+   loop, so the spinner the ds `Working` would otherwise turn is stilled here. */
+.a-brain-status{ display:inline-flex; border-radius:var(--ds-r2) }
+.a-brain-status .ds-working .ds-icon{ animation:none }
+
+/* Move 12. The mark sits on the name it cites, in the prose, not in a list at
+   the foot. It carries the same number the footer's expanded list gives that
+   file, so the two are one thing said twice. */
+.a-brain-src{ color:var(--ds-text) }
+.a-brain-citemark{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-inline-size:var(--ds-s5);
+  block-size:var(--ds-s5);
+  margin-inline-start:var(--ds-s1);
+  padding-inline:var(--ds-s1);
+  border:1px solid var(--ds-accent-line);
+  border-radius:var(--ds-r1);
+  background:var(--ds-accent-soft);
+  color:var(--ds-accent-ui);
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-eyebrow);
+  line-height:1;
+  vertical-align:super;
+}
+
 /* The caret riding the tail of a stream. Not a glyph: an element. */
 .a-brain-caret{
   display:inline-block;
@@ -514,6 +675,64 @@
   white-space:nowrap;
 }
 
+/* Move 14. The chip says the TYPE first, as a word, then the name, then the
+   size. A type is a label, never a colour. */
+.a-brain-badge{
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-eyebrow);
+  letter-spacing:var(--ds-tr-eyebrow);
+  color:var(--ds-text-4);
+}
+.a-brain-paste{ display:block }
+
+/* Move 15. What landed is a card: the recording on the left, the sentence it
+   became beside it, and one control to drop them both. */
+.a-brain-heard{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s3);
+  padding:var(--ds-s3);
+  border:1px solid var(--ds-line);
+  border-radius:var(--ds-r3);
+  background:var(--ds-surface-2);
+  min-width:0;
+}
+.a-brain-heard-t{
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s1);
+  flex:1 1 auto;
+  min-width:0;
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-2);
+  overflow-wrap:anywhere;
+}
+.a-brain-vnote{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s3);
+  flex:1 1 auto;
+  min-width:0;
+}
+.a-brain-wave{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s1);
+  flex:1 1 auto;
+  min-width:0;
+  block-size:var(--ds-s7);
+}
+.a-brain-wave-b{
+  flex:1 1 0;
+  min-inline-size:var(--ds-s1);
+  border-radius:var(--ds-r1);
+  background:var(--ds-text-4);
+  transition:background-color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-brain-wave-b[data-done]{ background:var(--ds-accent) }
+.a-brain-vnote-d{ flex:0 0 auto; color:var(--ds-text-3) }
+
 .a-brain-link{
   display:flex;
   flex-direction:column;
@@ -523,6 +742,51 @@
   border-radius:var(--ds-r3);
   background:var(--ds-surface-2);
   overflow:hidden;
+}
+/* The three shapes of move 16. */
+/* Nested inset: the card sits INSIDE the message behind its own rule, so the
+   prose reads first and the card reads as something the message contains. */
+.a-brain-link[data-shape='inset']{
+  border-inline-start:2px solid var(--ds-line-strong);
+  border-start-start-radius:var(--ds-r1);
+  border-end-start-radius:var(--ds-r1);
+}
+/* Citation: a drawn domain mark, the domain in mono, the title in bold. */
+.a-brain-link[data-shape='cite']{
+  flex-direction:row;
+  align-items:flex-start;
+  gap:var(--ds-s3);
+  padding:var(--ds-s3) var(--ds-s4);
+}
+.a-brain-link-fav{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  inline-size:var(--ds-s7);
+  block-size:var(--ds-s7);
+  border-radius:var(--ds-r2);
+  background:var(--ds-surface-3);
+  color:var(--ds-accent-ui);
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-mono);
+}
+.a-brain-link-dom{ color:var(--ds-text-3); font-size:var(--ds-fs-eyebrow) }
+/* Blocked: one tinted line the height of a bubble, not an empty well with an
+   apology inside it. */
+.a-brain-link[data-shape='blocked']{
+  flex-direction:row;
+  align-items:center;
+  gap:var(--ds-s3);
+  padding:var(--ds-s3) var(--ds-s4);
+  border-color:var(--ds-line-strong);
+  background:var(--ds-surface-3);
+  color:var(--ds-sev-urgent);
+}
+.a-brain-link[data-shape='blocked'] .a-brain-link-t{
+  flex:1 1 auto;
+  color:var(--ds-text-2);
+  font-weight:var(--ds-fw-regular);
 }
 .a-brain-link-well{
   position:relative;
@@ -541,6 +805,9 @@
   color:var(--ds-text);
 }
 .a-brain-link-body{ display:flex; flex-direction:column; gap:var(--ds-s1); padding:var(--ds-s3) var(--ds-s4); min-width:0 }
+/* The cite shape already pads its own row, so the body inside it does not pad
+   again: one inset per edge, which is the same rule the boundaries follow. */
+.a-brain-link[data-shape='cite'] .a-brain-link-body{ padding:var(--ds-s0); flex:1 1 auto }
 .a-brain-link-t{
   font-size:var(--ds-fs-body);
   line-height:var(--ds-lh-body);
@@ -562,9 +829,130 @@
   background:var(--ds-surface-1);
 }
 .a-brain-desktop .a-brain-shelf{ background:var(--ds-surface-1) }
+
+/* The three-state mark in the head: live is the ds `LiveDot` with its ripple,
+   ready and failed are this flat dot. One mark, never two at once. */
+.a-brain-dot{
+  inline-size:var(--ds-s3);
+  block-size:var(--ds-s3);
+  border-radius:var(--ds-r-pill);
+  background:var(--ds-text-4);
+  flex:0 0 auto;
+}
+.a-brain-dot[data-state='error']{ background:var(--ds-sev-urgent) }
+
+/* The model picker and its menu. The menu is anchored to the button, so the
+   pane never has to know where in the window it is docked. */
+.a-brain-modelbtn{ position:relative; display:inline-flex }
+.a-brain-modelmenu{
+  position:absolute;
+  inset-inline-end:0;
+  top:calc(100% + var(--ds-s2));
+  inline-size:18rem;
+}
+.a-brain-modelnote{
+  padding:var(--ds-s3) var(--ds-s4);
+  border-top:1px solid var(--ds-line);
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-3);
+}
+
+/* S15-14, phone only: the other half of the pair, as a door back to it. */
+.a-brain-about{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s3);
+  min-block-size:var(--ds-tap);
+  margin-inline:var(--ds-gutter);
+  padding:var(--ds-s3) var(--ds-s4);
+  border:1px solid var(--ds-line);
+  border-radius:var(--ds-r3);
+  background:var(--ds-surface-2);
+  color:var(--ds-text);
+  font-size:var(--ds-fs-meta);
+  min-width:0;
+  transition:background-color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-brain-about[data-tap]{ cursor:pointer }
+.a-brain-about[data-tap]:hover{ background:var(--ds-surface-3) }
+
+/* S15-15 to S15-20. What travels with the next message, said before it does. */
+.a-brain-see{
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s3);
+  padding:var(--ds-s3) var(--ds-gutter);
+  border-bottom:1px solid var(--ds-line);
+  min-width:0;
+}
+.a-brain-see-top{ display:flex; align-items:center; gap:var(--ds-s2); min-width:0 }
+.a-brain-see-l{
+  flex:1 1 auto;
+  min-width:0;
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-3);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.a-brain-see-chips{ display:flex; flex-wrap:wrap; gap:var(--ds-s2); min-width:0 }
+.a-brain-see-chips [data-off]{ color:var(--ds-text-4) }
+.a-brain-see-d{
+  padding:var(--ds-s0) var(--ds-s2);
+  border:1px solid var(--ds-line-strong);
+  border-radius:var(--ds-r1);
+  background:none;
+  color:var(--ds-text-3);
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-eyebrow);
+  cursor:pointer;
+  transition:background-color var(--ds-dur-hover) var(--ds-ease), color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-brain-see-d[data-on]{ border-color:var(--ds-accent-line); color:var(--ds-accent-ui) }
+.a-brain-see-d:hover{ color:var(--ds-text) }
+.a-brain-see-peek{
+  margin:var(--ds-s0);
+  padding:var(--ds-s4);
+  border-radius:var(--ds-r2);
+  background:var(--ds-surface-2);
+  color:var(--ds-text-2);
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-mono);
+  line-height:var(--ds-lh-meta);
+  max-block-size:14rem;
+  overflow:auto;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+}
+
+/* The palette sits above the composer, in the overlay grammar the model menu
+   already establishes: a `/` list and a picked model are the same kind of
+   object. */
+.a-brain-palette{
+  position:absolute;
+  inset-inline:var(--ds-gutter);
+  bottom:100%;
+  z-index:2;
+  margin-bottom:var(--ds-s2);
+}
+.a-brain-palette[data-nomatch]{
+  padding:var(--ds-s3) var(--ds-s4);
+  border:1px solid var(--ds-line);
+  border-radius:var(--ds-r3);
+  background:var(--ds-surface-2);
+  box-shadow:var(--ds-shadow-float);
+}
+.a-brain-palette .ds-cmd{ max-block-size:24rem; display:flex; flex-direction:column }
+/* The list scrolls inside the palette. Without this the vocabulary ran past
+   the bottom of the box and the foot painted over the last two commands. */
+.a-brain-palette .ds-cmd-body{ overflow:auto; min-block-size:0 }
+.a-brain-composer{ position:relative }
 .a-brain-feedsheet{ margin-inline:auto; max-width:var(--ds-peer-w) }
 
 @media (max-width:767px){
+  .a-brain-link[data-shape='cite'] .a-brain-link-t{ font-size:var(--ds-fs-meta) }
   .a-brain-thread{ padding-inline:var(--ds-gutter) }
   .a-brain-ubub{ max-width:90% }
 }
@@ -625,3 +1013,45 @@
 /* A card that needs him keeps the severity stripe it already had; the boundary
    is the hairline, and one boundary per edge is the rule. */
 .a-brain-feed [data-contained] .a-brain-reveal{ border-radius:var(--ds-r4) }
+
+/* The deck is the one contained thing that must NOT clip: its pile sticks out
+   below the card on purpose. So the bounded card is the FRONT, and the deck
+   itself only groups. */
+.a-brain-feed [data-group][data-contained]{
+  border:0;
+  border-radius:var(--ds-s0);
+  background:none;
+  overflow:visible;
+}
+.a-brain-feed [data-group] .a-brain-deck-front{
+  border:1px solid var(--ds-line);
+  border-radius:var(--ds-r4);
+  overflow:hidden;
+}
+.a-brain-feed [data-group][data-open] .a-brain-deck-front{
+  border-end-start-radius:var(--ds-s0);
+  border-end-end-radius:var(--ds-s0);
+  border-block-end:0;
+}
+.a-brain-feed [data-group][data-open] .a-brain-deck-rows{
+  border:1px solid var(--ds-line);
+  border-block-start:0;
+  border-end-start-radius:var(--ds-r4);
+  border-end-end-radius:var(--ds-r4);
+}
+
+/* S28-7 puts the dismiss at the card's TOP RIGHT, and the phone row was
+   wrapping it onto a line of its own at the bottom left: forty wasted pixels
+   per card and the one control that is destructive sitting furthest from where
+   the ledger says it is. It goes back to the corner. */
+.a-brain-feed [data-contained]{ position:relative }
+/* Clear of the card's own rounded edge for the same reason the grip is 48:
+   a control whose edge points sit ON a boundary is decided by rounding. */
+.a-brain-feed [data-contained] > .a-brain-swipe > .a-row > .a-row-actions,
+.a-brain-feed [data-group] .a-brain-deck-head > .a-row-actions{
+  position:absolute;
+  top:var(--ds-s3);
+  inset-inline-end:var(--ds-s3);
+  z-index:2;
+}
+.a-brain-feed [data-contained] .a-row-main{ padding-inline-end:var(--ds-s7) }

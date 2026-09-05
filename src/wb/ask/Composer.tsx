@@ -12,19 +12,45 @@
    `[attached: name]` line per file.
    ========================================================================== */
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Button, Chip, Composer as DsComposer, LevelMeter, type ComposerMode } from '../../ds'
+import { Button, Chip, Composer as DsComposer, IconButton, LevelMeter, type ComposerMode } from '../../ds'
 import { detectLinks } from '../../lib/unfurl'
 import { useStt } from '../../exp/v2c/chat/useStt'
 import { fileSize } from '../../exp/brain/b/skins/b/forms'
 import { LinkPreview } from './LinkPreview'
+import { VoiceNote } from './VoiceNote'
 import './ask.css'
 
-type Attachment = { id: string; kind: 'image' | 'pdf'; name: string; size: number; url: string }
+/** Three kinds, because move 14 asks the chip to say WHICH: a file he chose, a
+ * document he chose, or something he pasted straight in. */
+type AttachKind = 'image' | 'pdf' | 'pasted'
+type Attachment = { id: string; kind: AttachKind; name: string; size: number; url: string }
+
+const ATTACH_BADGE: Record<AttachKind, string> = { image: 'IMAGE', pdf: 'PDF', pasted: 'PASTED' }
+const ATTACH_ICON: Record<AttachKind, 'image' | 'doc'> = { image: 'image', pdf: 'doc', pasted: 'image' }
 
 /** How tall the field may grow before it starts scrolling under the caret. */
 const FIELD_MAX = 120
 
-export function Composer({ value, onChange, onSend, busy, runningElsewhere, onStop, placeholder }: {
+/**
+ * What a HOST can add to this composer without the composer knowing what it is.
+ *
+ * The docked desktop pane (S15) owns a slash palette; the phone composer (S30)
+ * does not and the ledger says so in writing. So the palette is not built in
+ * here: the pane passes an overlay to draw above the bar, a keydown filter that
+ * gets first refusal on the four palette keys, and a send interceptor so the
+ * send BUTTON obeys the palette too — which is the one path that used to send a
+ * literal "/model haiku" to the model.
+ */
+export type ComposerExtras = {
+  /** Drawn above the bar, in the same overlay grammar the tray uses. */
+  overlay?: React.ReactNode
+  /** Return true to swallow the key: the composer then does nothing with it. */
+  onKeyDown?: (e: React.KeyboardEvent) => boolean
+  /** Return true if the press was handled (a command ran) instead of sending. */
+  interceptSend?: () => boolean
+}
+
+export function Composer({ value, onChange, onSend, busy, runningElsewhere, onStop, placeholder, extras }: {
   value: string
   onChange: (v: string) => void
   onSend: (text: string) => void
@@ -32,6 +58,7 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
   runningElsewhere: boolean
   onStop: () => void
   placeholder: string
+  extras?: ComposerExtras
 }) {
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [heard, setHeard] = useState<string | null>(null)
@@ -53,6 +80,7 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
   const canSend = value.trim().length > 0 && !busy && !runningElsewhere
 
   const doSend = useCallback(() => {
+    if (extras?.interceptSend?.()) return
     if (!canSend) return
     const lines = [value.trim()]
     for (const a of attachments) lines.push(`[attached: ${a.name}]`)
@@ -62,14 +90,14 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
       for (const a of prev) URL.revokeObjectURL(a.url)
       return []
     })
-  }, [canSend, value, attachments, onSend])
+  }, [canSend, value, attachments, onSend, extras])
 
   useEffect(() => () => {
     for (const a of attachments) URL.revokeObjectURL(a.url)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const onFiles = (files: FileList | null) => {
+  const onFiles = (files: FileList | null, pasted = false) => {
     if (!files) return
     const next: Attachment[] = []
     for (const f of Array.from(files)) {
@@ -78,10 +106,30 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
       if (!isPdf && !isImg) continue
       next.push({
         id: `${f.name}:${f.size}:${f.lastModified}`,
-        kind: isPdf ? 'pdf' : 'image', name: f.name, size: f.size, url: URL.createObjectURL(f),
+        kind: pasted && isImg ? 'pasted' : isPdf ? 'pdf' : 'image',
+        // A pasted image arrives from the clipboard with no name of its own;
+        // the chip says what it is rather than printing the browser's
+        // "image.png" as though he had chosen a file called that.
+        name: pasted && isImg && /^image\.\w+$/i.test(f.name) ? 'Pasted image' : f.name,
+        size: f.size,
+        url: URL.createObjectURL(f),
       })
     }
     if (next.length) setAttachments(prev => [...prev, ...next])
+  }
+
+  /** Move 14's third kind. An image on the clipboard becomes an attachment
+   * instead of nothing at all; pasted TEXT is left alone, because a paste into
+   * a text field is already the thing it means. */
+  const onPaste = (e: React.ClipboardEvent) => {
+    const files = e.clipboardData?.files
+    if (!files || files.length === 0) return
+    const images = Array.from(files).filter(f => f.type.startsWith('image/') || f.type === 'application/pdf')
+    if (!images.length) return
+    e.preventDefault()
+    const dt = new DataTransfer()
+    for (const f of images) dt.items.add(f)
+    onFiles(dt.files, true)
   }
 
   const removeAttachment = (id: string) => {
@@ -103,7 +151,7 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
 
   const recording = stt.state === 'recording'
   const transcribing = stt.state === 'transcribing'
-  const trayOpen = !!firstLink || attachments.length > 0 || recording || transcribing || !!heard || !!stt.note
+  const trayOpen = !!firstLink || attachments.length > 0 || recording || transcribing || !!heard || !!stt.clip || !!stt.note
 
   const mode: ComposerMode = busy || runningElsewhere
     ? 'busy'
@@ -119,10 +167,13 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
             {attachments.map(a => (
               <Chip
                 key={a.id}
-                icon={a.kind === 'image' ? 'image' : 'doc'}
+                icon={ATTACH_ICON[a.kind]}
                 onRemove={() => removeAttachment(a.id)}
                 removeLabel={`Remove ${a.name}`}
               >
+                {/* Move 14: the chip says WHAT it is, then what it is called,
+                    then how big it is. The badge is the type, not a colour. */}
+                <span className="a-brain-badge">{ATTACH_BADGE[a.kind]}</span>
                 <span className="a-nowrap">{a.name}</span>
                 <span className="a-mono a-dim">{fileSize(a.size)}</span>
               </Chip>
@@ -141,12 +192,28 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
             )}
           </div>
         )}
-        {!recording && !transcribing && heard && (
-          <div className="a-brain-chips" data-voice="landed">
-            <Chip icon="mic" onRemove={() => setHeard(null)} removeLabel="Dismiss what was heard">
-              <span className="a-dim">Heard</span>
-              <span className="a-nowrap">{heard}</span>
-            </Chip>
+        {/* Move 15's third beat. What landed is a CARD, not a chip: the
+            transcript is a sentence and a chip is a label. Beside it sits the
+            recording itself — playable, its real length, and a waveform
+            decoded out of that very audio. Nothing here is drawn from a clock.
+
+            It is a HEARD note rather than a sent one because this app has no
+            path that sends audio: dictation drafts, the operator sends (the
+            ledger says so in `useStt`'s own header). A bubble claiming a voice
+            note went to Claude would be a claim the transport does not hold. */}
+        {!recording && !transcribing && (heard || stt.clip) && (
+          <div className="a-brain-heard" data-voice="landed">
+            {stt.clip && <VoiceNote clip={stt.clip} />}
+            {heard && (
+              <div className="a-brain-heard-t">
+                <span className="a-dim">Heard</span>
+                <span>{heard}</span>
+              </div>
+            )}
+            <IconButton
+              icon="close" size="sm" label="Dismiss what was heard"
+              onClick={() => { setHeard(null); stt.clearClip() }}
+            />
           </div>
         )}
         {stt.note && <span className="a-brain-note">{stt.note}</span>}
@@ -159,11 +226,18 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
        find it: the deep-link probe, and the seat that focuses it after a
        dictation. The design system owns the field, so the mark rides the
        wrapper the same way the focus does. */
-    <div ref={wrapRef} data-ask className="a-brain-composer">
+    <div
+      ref={wrapRef} data-ask className="a-brain-composer"
+      // Capture, so the host's palette gets the four keys BEFORE the design
+      // system's textarea reads Enter as send.
+      onKeyDownCapture={e => { if (extras?.onKeyDown?.(e)) { e.preventDefault(); e.stopPropagation() } }}
+    >
       <input
         ref={fileRef} type="file" accept="image/*,application/pdf" multiple hidden
         onChange={e => { onFiles(e.target.files); e.target.value = '' }}
       />
+      {extras?.overlay}
+      <span className="a-brain-paste" onPaste={onPaste}>
       <DsComposer
         value={value}
         onChange={v => { onChange(v); setHeard(null) }}
@@ -176,6 +250,7 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
         tray={tray}
         note={attachments.length > 0 ? 'attachment stays on this phone for now' : undefined}
       />
+      </span>
     </div>
   )
 }

@@ -137,7 +137,7 @@ export const VOICE_LABEL: Record<VoiceState['s'], string> = {
 // The distinct, actionable copy the reference collapses into one string. Every
 // line here is a different remedy, which is the whole point of the reason field.
 export const VOICE_COPY: Record<VoiceErrorReason, string> = {
-  'mic-denied': 'Mic access is off. Enable it in Settings → Inbox → Microphone.',
+  'mic-denied': 'Mic access is off. Enable it in Settings > Inbox > Microphone.',
   // A refused permission and an absent microphone need different remedies, and the
   // reference collapsed both into "Transcription failed".
   'no-mic': 'No microphone was found on this device.',
@@ -185,7 +185,7 @@ export function micIsLive(state: VoiceState): boolean {
 // phase1-audit/voice.md does not exist and the fallback becomes the design:
 // webkitSpeechRecognition in, speechSynthesis out. That is better here rather than
 // merely cheaper — it removes two network legs from the reference's four-leg
-// pipeline (capture → upload → transcribe → send), needs no key, and cannot miss
+// pipeline (capture, upload, transcribe, send), needs no key, and cannot miss
 // the 1.2s first-audible target because nothing leaves the device to be
 // transcribed.
 // ---------------------------------------------------------------------------
@@ -226,7 +226,7 @@ export function ttsSupported(): boolean {
 }
 
 /**
- * SpeechRecognition error string → our typed reason. Each one has a different
+ * SpeechRecognition error string mapped to our typed reason. Each one has a different
  * remedy, which is the entire point of carrying a reason rather than a boolean.
  * `no-speech` is deliberately NOT an error: it is silence, and the machine has a
  * PAUSED state for it.

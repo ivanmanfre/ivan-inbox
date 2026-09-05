@@ -9,18 +9,10 @@
    ========================================================================== */
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { Icon, fadeT, spring, type IconName } from '../../ds'
-import { formatInput, groupRuns, summarizeTool } from '../../exp/v2c/chat/toolSummaries'
+import { Icon, fadeT, spring } from '../../ds'
+import { TOOL_ICON, formatInput, groupRuns, summarizeTool } from '../../exp/v2c/chat/toolSummaries'
 import { turnOutcome, type ToolCall, type Turn } from '../../exp/v2c/chat/events'
 import './ask.css'
-
-/** The tool a run belongs to, as a named icon. The old strip typed a glyph per
- * tool; the system's set carries the same distinctions by name. */
-const TOOL_ICON: Record<string, IconName> = {
-  Read: 'doc', Edit: 'edit', Write: 'edit', MultiEdit: 'edit', NotebookEdit: 'edit',
-  Bash: 'forward', Glob: 'search', Grep: 'search', WebFetch: 'external', WebSearch: 'search',
-  Task: 'layers', TodoWrite: 'tasks',
-}
 
 /** "Read 4 · Grep 2". what it touched, counted, in the labels the summaries
  * already use. Nothing here is a new noun. */

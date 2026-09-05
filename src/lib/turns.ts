@@ -229,6 +229,24 @@ export async function dismissNotification(id: string): Promise<void> {
   if (error) throw error
 }
 
+/**
+ * Put dismissed rows back, BY ID.
+ *
+ * The undo behind the dismiss toast (03-DIRECTION move 8). It is the exact
+ * inverse of the two writes above and it names the rows explicitly rather than
+ * re-using `group_key`: a group key also covers rows dismissed weeks ago, and
+ * an Undo that resurrects those would be a different act than the one the
+ * toast offers. Only the ids the surface just removed come back.
+ */
+export async function restoreNotifications(ids: string[]): Promise<void> {
+  const clean = ids.filter(isUuid)
+  if (!clean.length) return
+  const { error } = await supabase.from(NOTIFICATIONS_TABLE)
+    .update({ dismissed_at: null })
+    .in('id', clean)
+  if (error) throw error
+}
+
 /** Dismiss every live row a group folded together, in one statement. */
 export async function dismissGroup(groupKey: string): Promise<void> {
   const { error } = await supabase.from(NOTIFICATIONS_TABLE)
