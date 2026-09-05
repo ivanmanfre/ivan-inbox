@@ -376,14 +376,19 @@ function AgentGroupRow({ g, log }: { g: AgentGroup; log: AgentLogEntry[] }) {
   const n = g.entries.length
   // The score run is the whole reason to group: 62 → 93 → 90 across four passes
   // is a story, and three separate rows is not.
-  const run = g.scores.length > 1
-    ? `${g.scores.join(' → ')}${g.scoreMax ? `/${g.scoreMax}` : ''}`
+  // The run and the span both carried a typed arrow. An arrow is an icon in
+  // this system (`next`), so both are drawn from the parts rather than joined
+  // into one string.
+  const run: ReactNode = g.scores.length > 1
+    ? <>{g.scores.map((sc, i) => (
+      <span key={i}>{i > 0 ? <Icon name="next" size={16} /> : null}{sc}</span>
+    ))}{g.scoreMax ? `/${g.scoreMax}` : ''}</>
     : g.scores.length === 1
       ? `${g.scores[0]}${g.scoreMax ? `/${g.scoreMax}` : ''}`
       : null
-  const span = g.firstTs
+  const span: ReactNode = g.firstTs
     ? (g.lastTs && g.lastTs !== g.firstTs
-      ? `${absTime(g.firstTs)} → ${absTime(g.lastTs)}`
+      ? <>{absTime(g.firstTs)}<Icon name="next" size={16} />{absTime(g.lastTs)}</>
       : absTime(g.firstTs))
     : 'no timestamp'
   return (

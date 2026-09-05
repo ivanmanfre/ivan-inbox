@@ -9,7 +9,7 @@
    varied only in fill.
    ========================================================================== */
 import { useEffect, useState } from 'react'
-import { Banner, Button, Chip, Input, Textarea } from '../../ds'
+import { Banner, Button, Chip, Icon, Input, Kbd, Textarea } from '../../ds'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import {
   LANE_POSSESSIVE, clientDeletable, deleteClientDraft, deleteDraft, listStills,
@@ -452,7 +452,7 @@ export function NoteComposer({ id, onDone }: { id: string; onDone: () => void })
         label="Add a note to the generation register"
         labelHidden
         value={text}
-        placeholder="Add a note for future-you (⌘↵ to post)…"
+        placeholder="Add a note for future-you…"
         onChange={e => setText(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send() } }}
       />
@@ -460,6 +460,13 @@ export function NoteComposer({ id, onDone }: { id: string; onDone: () => void })
         <Button size="sm" busy={busy} disabled={!text.trim()} onClick={send}>
           {busy ? 'Posting…' : 'Post note'}
         </Button>
+        {/* The key pair lived inside the placeholder, and a placeholder is a
+            string attribute that cannot hold a drawn key. Same hint, same two
+            keys, said beside the control that takes them. */}
+        <span className="a-dw-keys">
+          <Kbd><Icon name="cmd" size={16} label="Command" /></Kbd>
+          <Kbd><Icon name="enter" size={16} label="Return" /></Kbd> posts
+        </span>
       </div>
     </div>
   )

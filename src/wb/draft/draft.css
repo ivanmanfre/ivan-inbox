@@ -382,3 +382,14 @@
   .a-dw-dim-k{ flex-basis:6rem }
   .a-dw-cap{ flex-direction:column; align-items:flex-start; gap:var(--ds-s2) }
 }
+
+/* A key hint: the caps are drawn, so the line is a row of marks with words
+   between them rather than a string with unicode in it. */
+.a-dw-keys{
+  display:inline-flex;
+  align-items:center;
+  gap:var(--ds-s2);
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-3);
+}

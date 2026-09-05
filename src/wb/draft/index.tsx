@@ -35,7 +35,7 @@
    than a missing one.
    ========================================================================== */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { Banner, Button, Chip, EmptyState, Skeleton, Tabs } from '../../ds'
+import { Banner, Button, Chip, EmptyState, Icon, Kbd, Skeleton, Tabs } from '../../ds'
 import { Takeover, TakeoverRailHead, HtmlPreview } from '../takeover'
 import { useDraftDetail } from '../../hooks/useContent'
 import { useSectionState } from '../../hooks/useSectionState'
@@ -520,7 +520,13 @@ function Body({ d, lane, queue, refresh, onClose, onPick, mobile }: {
                 {busy ? 'Saving…' : 'Save'}
               </Button>
               <Button variant="quiet" size="sm" disabled={busy} onClick={cancelEdit}>Cancel</Button>
-              <span className="a-mono a-dim">esc cancels · ⌘↵ saves</span>
+              {/* The caps are the system's icons, not the unicode marks: a key
+                  is drawn by `Kbd`, and ⌘ and ↵ are in the glyph map. */}
+              <span className="a-dw-keys">
+                <Kbd>esc</Kbd> cancels
+                <Kbd><Icon name="cmd" size={16} label="Command" /></Kbd>
+                <Kbd><Icon name="enter" size={16} label="Return" /></Kbd> saves
+              </span>
             </div>
           ) : saved ? (
             <div className="a-dw-editbar"><span className="a-mono a-dim">Saved to the database</span></div>
