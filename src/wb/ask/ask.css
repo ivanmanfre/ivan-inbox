@@ -71,28 +71,85 @@
    -------------------------------------------------------------------------- */
 .a-brain-cap{
   display:inline-flex;
+  flex-direction:column;
+  align-items:stretch;
+  border:1px solid var(--ds-line-strong);
+  border-radius:var(--ds-r-pill);
+  background:var(--ds-surface-2);
+  color:var(--ds-sev-attention);
+  white-space:nowrap;
+  overflow:hidden;
+}
+/* Open, it stops being a pill and becomes the alert: the same element, grown
+   on the one soft spring, never a popover appearing beside a badge. */
+.a-brain-cap[data-open]{
+  border-radius:var(--ds-r3);
+  white-space:normal;
+  max-inline-size:16rem;
+}
+.a-brain-cap-face{
+  display:inline-flex;
   align-items:center;
+  justify-content:center;
   gap:var(--ds-s2);
   /* The phone floor, on the one header control that was under it: this is a
      44px box whatever the numeral inside it reads. */
   min-height:var(--ds-tap);
   min-width:var(--ds-tap);
-  justify-content:center;
   padding:var(--ds-s1) var(--ds-s3);
-  border:1px solid var(--ds-line-strong);
-  border-radius:var(--ds-r-pill);
-  background:var(--ds-surface-2);
-  color:var(--ds-sev-attention);
+  border:0;
+  background:none;
+  color:inherit;
   font:inherit;
-  font-family:var(--ds-font-mono);
-  font-size:var(--ds-fs-mono);
-  font-variant-numeric:tabular-nums;
+  font-size:var(--ds-fs-meta);
   cursor:pointer;
-  white-space:nowrap;
   transition:background-color var(--ds-dur-hover) var(--ds-ease), color var(--ds-dur-hover) var(--ds-ease);
 }
-.a-brain-cap:hover{ background:var(--ds-surface-3) }
-.a-brain-cap-t{ color:var(--ds-text-2) }
+.a-brain-cap-face:hover{ background:var(--ds-surface-3) }
+.a-brain-cap-t{ color:var(--ds-text-2); font-size:var(--ds-fs-meta) }
+.a-brain-cap-body{
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s3);
+  padding:var(--ds-s0) var(--ds-s4) var(--ds-s3);
+}
+.a-brain-cap-note{
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-2);
+  white-space:normal;
+}
+.a-brain-cap-acts{ display:flex; gap:var(--ds-s2) }
+
+/* Move 19's affordance. The grip is the drag surface and it says so; it also
+   carries a real control, so a reader who never drags can still move the
+   sheet. */
+.a-brain-grip{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  touch-action:none;
+}
+.a-brain-grip-b{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  inline-size:var(--ds-s11);
+  min-block-size:var(--ds-tap);
+  border:0;
+  background:none;
+  cursor:grab;
+}
+.a-brain-grip-b > span{
+  display:block;
+  inline-size:var(--ds-s8);
+  block-size:var(--ds-s1);
+  border-radius:var(--ds-r1);
+  background:var(--ds-hairline-strong);
+  transition:background-color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-brain-grip-b:hover > span{ background:var(--ds-text-3) }
 
 /* The feed button carries its unread count as a pill on the corner. */
 .a-brain-feedbtn{ position:relative; display:inline-flex }
