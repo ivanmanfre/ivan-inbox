@@ -1,0 +1,84 @@
+/* ==========================================================================
+   src/wb/money/money.css — S11.
+
+   Tokens only. The one thing this sheet really owns is the phone answer to a
+   seven-column table: above 900px the ds `Table` renders and the stack is
+   hidden; at or below, the stack renders and the table is hidden. Neither is
+   ever in the DOM at the same width, so a screen reader meets one ledger and
+   the page never scrolls sideways.
+   ========================================================================== */
+
+.a-money{ flex:1 1 auto; min-height:0 }
+.a-money-load{ padding:var(--ds-card-pad) }
+
+/* One numeric cell: the figure, then where it came from, in that order and on
+   two lines. The provenance line is the smaller of the two on purpose — it is
+   the receipt, not the reading. */
+.a-money-cell{ display:flex; flex-direction:column; gap:var(--ds-s1); min-width:0; align-items:inherit }
+.a-money-cv{
+  font-size:var(--ds-fs-body);
+  line-height:var(--ds-lh-body);
+  color:var(--ds-text);
+  font-variant-numeric:tabular-nums;
+}
+.a-money-cp{
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-4);
+  overflow-wrap:anywhere;
+}
+.a-money-cell[data-stale] .a-money-cv{ color:var(--ds-text-3) }
+.a-money-cell[data-unv] .a-money-cv{ color:var(--ds-text-2) }
+.a-money-unv{ color:var(--ds-sev-attention) }
+
+/* A query that returned no row says so, in the same register as a figure, so a
+   missing number and a measured one are never mistaken for one another. */
+.a-money-nosource{
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-4);
+}
+.a-money-refusal{
+  font-size:var(--ds-fs-body);
+  line-height:var(--ds-lh-body);
+  color:var(--ds-sev-attention);
+}
+.a-money-runway{ display:flex; flex-direction:column; gap:var(--ds-s3); margin-block-start:var(--ds-s4) }
+.a-money-runway .a-money-cv{ font-size:var(--ds-fs-figure); line-height:var(--ds-lh-figure); font-weight:var(--ds-fw-semi) }
+
+.a-money-note{ display:block; color:var(--ds-text-3); overflow-wrap:anywhere }
+.a-money-block{ display:flex; flex-direction:column; gap:var(--ds-s3); min-width:0 }
+.a-money-block + .a-money-block{ margin-block-start:var(--ds-s6) }
+.a-money-tlabel{ color:var(--ds-text-3) }
+.a-money-grp{ color:var(--ds-text-3) }
+
+/* The grand total, stated once under the grouped table rather than as a
+   seventh colSpan row nobody can align against. */
+.a-money-totalrow{
+  display:flex;
+  align-items:flex-start;
+  gap:var(--ds-s4);
+  flex-wrap:wrap;
+  padding:var(--ds-row-y) var(--ds-row-x);
+  box-shadow:inset 0 1px 0 var(--ds-line);
+  color:var(--ds-text-3);
+}
+.a-money-totals{ display:flex; gap:var(--ds-s6); flex-wrap:wrap; min-width:0 }
+
+/* The two forms of one ledger. */
+.a-money-narrow{ display:none }
+.a-money-wide{ display:block; min-width:0 }
+.a-money-wide .ds-table-wrap{ overflow-x:auto }
+.a-money-wide .ds-table th,
+.a-money-wide .ds-table td{ vertical-align:top }
+
+.a-money-stack{ display:flex; flex-direction:column; gap:var(--ds-s3); margin-block-start:var(--ds-s2) }
+.a-money-pair{ display:flex; flex-direction:column; gap:var(--ds-s1); min-width:0 }
+.a-money-pk{ color:var(--ds-text-3) }
+.a-money-pv{ min-width:0 }
+.a-money-pv .a-money-cell{ align-items:flex-start }
+
+@media (max-width:900px){
+  .a-money-wide{ display:none }
+  .a-money-narrow{ display:block }
+}
