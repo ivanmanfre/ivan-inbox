@@ -1,0 +1,365 @@
+/* =========================================================================
+   Direction B, phone chrome + feed. The classes this folder adds on top of
+   dir-b.css. Tokens only: no colour literal, no px font-size, no px radius.
+
+   Section 0 exists because the shipped `brain-b.css` is statically imported
+   by the screen that mounts this override, and it carries
+   `.brain-b button{ font:inherit; background:none; padding:0; color:inherit }`
+   at a specificity that beats every `.ds-*` control class. Re-stating the
+   clobbered properties one level deeper is the whole fix; nothing else in
+   this sheet re-implements a primitive.
+   ========================================================================= */
+
+/* --- 0. put the design system's controls back ---------------------------- */
+
+.dirb-mob .ds-btn{
+  padding:0 var(--ds-s5);
+  background:var(--ds-surface-2); color:var(--ds-text);
+  font-family:var(--ds-font); font-size:var(--ds-fs-body);
+  font-weight:var(--ds-fw-medium); line-height:1;
+  cursor:pointer;
+}
+.dirb-mob .ds-btn[data-size='sm']{ padding:0 var(--ds-s4); font-size:var(--ds-fs-meta) }
+.dirb-mob .ds-btn[data-variant='primary']{ background:var(--ds-accent); color:var(--ds-accent-ink) }
+.dirb-mob .ds-btn[data-variant='quiet']{ background:transparent; color:var(--ds-text-2) }
+.dirb-mob .ds-btn[data-variant='outline']{ background:transparent }
+.dirb-mob .ds-ibtn{
+  background:transparent; color:var(--ds-text-2);
+  font-family:var(--ds-font); cursor:pointer;
+}
+.dirb-mob .ds-ibtn[data-variant='solid']{ background:var(--ds-surface-2) }
+.dirb-mob .ds-chip{
+  padding:0 var(--ds-s3);
+  background:var(--ds-surface-2); color:var(--ds-text-2);
+  font-family:var(--ds-font); font-size:var(--ds-fs-meta);
+  font-weight:var(--ds-fw-medium); line-height:1;
+}
+.dirb-mob .ds-tab{
+  padding:var(--ds-s2) var(--ds-s4);
+  background:transparent; color:var(--ds-text-3);
+  font-family:var(--ds-font); cursor:pointer;
+}
+.dirb-mob .ds-tab[data-active='true']{ color:var(--ds-accent-ink) }
+
+/* --- 1. the plate ------------------------------------------------------- */
+
+.brain-b.dirb-mob{
+  position:relative;
+  display:flex; flex-direction:column;
+  flex:1 1 auto; min-height:0; height:100%;
+  background:var(--ds-canvas); color:var(--ds-text);
+  font-family:var(--ds-font);
+  font-size:var(--ds-fs-body); line-height:var(--ds-lh-body);
+  font-variant-numeric:tabular-nums;
+  overflow:hidden;
+}
+.dirb-mob-plate{
+  position:relative;
+  display:flex; flex-direction:column;
+  flex:1 1 auto; min-height:0;
+}
+
+/* --- 2. the header island (move 17) ------------------------------------- */
+
+.dirb-mob-island{
+  display:flex; align-items:center; gap:var(--ds-s2);
+  padding:var(--ds-s1) var(--ds-s1) var(--ds-s1) var(--ds-s2);
+  border-radius:var(--ds-r-pill);
+  background:var(--ds-surface-1);
+  box-shadow:inset 0 0 0 1px var(--ds-line);
+}
+.dirb-mob-island[data-open='false']{
+  background:transparent;
+  box-shadow:none;
+  padding-inline:0;
+}
+.dirb-mob-alert{
+  display:inline-flex; align-items:center; gap:var(--ds-s2);
+  padding:var(--ds-s2) var(--ds-s3);
+  border-radius:var(--ds-r-pill);
+  background:var(--ds-sev-attention-soft);
+  color:var(--ds-text);
+  font-size:var(--ds-fs-meta); font-weight:var(--ds-fw-medium);
+  font-family:var(--ds-font);
+  white-space:nowrap; cursor:pointer;
+}
+.dirb-mob-feedbtn{
+  position:relative;
+  display:inline-flex; align-items:center; justify-content:center;
+  width:var(--ds-tap); height:var(--ds-tap);
+  border-radius:var(--ds-r-pill);
+  background:transparent; color:var(--ds-text-2);
+  font-family:var(--ds-font); cursor:pointer;
+}
+.dirb-mob-feedbtn .ds-badge{
+  position:absolute; top:var(--ds-s2); right:var(--ds-s2);
+  background:var(--ds-accent); color:var(--ds-accent-ink);
+}
+
+/* --- 3. the pager ------------------------------------------------------- */
+
+.dirb-mob-pager{ position:relative; flex:1 1 auto; min-height:0; overflow:hidden }
+.dirb-mob-pane{
+  position:absolute; inset:0;
+  display:flex; flex-direction:column; min-height:0;
+  background:var(--ds-canvas);
+}
+.dirb-mob-place{ z-index:1 }
+.dirb-mob-place[data-inert='true']{ pointer-events:none }
+.dirb-mob-plane{ display:flex; flex-direction:column; flex:1 1 auto; min-height:0 }
+.dirb-mob-plane[data-fading='true']{ animation:dirb-mob-fade var(--ds-dur) var(--ds-ease) }
+@keyframes dirb-mob-fade{ from{ opacity:0 } to{ opacity:1 } }
+
+.dirb-mob-scrim{
+  position:absolute; inset:0; z-index:2;
+  background:var(--ds-scrim);
+  pointer-events:none;
+}
+.dirb-mob-sheet{
+  z-index:3;
+  transform:translateX(100%);
+  transition:transform var(--ds-dur) var(--ds-ease);
+}
+.dirb-mob-sheet[data-open='true']{ transform:translateX(0) }
+@media (prefers-reduced-motion: reduce){
+  .dirb-mob-sheet{ transition:none }
+}
+.dirb-mob-sheet-inner{
+  display:flex; flex-direction:column;
+  flex:1 1 auto; min-height:0;
+  background:var(--ds-canvas);
+  border-start-start-radius:var(--ds-r4);
+  border-start-end-radius:var(--ds-r4);
+  box-shadow:inset 0 1px 0 var(--ds-line);
+}
+.dirb-mob-grip{
+  flex:0 0 auto;
+  display:flex; align-items:center; justify-content:center;
+  height:var(--ds-s6);
+  touch-action:none;
+}
+.dirb-mob-grip span{
+  width:var(--ds-s9); height:var(--ds-s2);
+  border-radius:var(--ds-r-pill);
+  background:var(--ds-line-strong);
+}
+
+/* --- 4. the feed body --------------------------------------------------- */
+
+.dirb-mob-feed{
+  position:relative;
+  flex:1 1 auto; min-height:0;
+  overflow-y:auto; overflow-x:hidden;
+  overscroll-behavior-y:contain;
+  display:flex; flex-direction:column; gap:var(--ds-s3);
+  padding:var(--ds-s2) var(--ds-gutter) var(--ds-s11);
+}
+.dirb-mob-day{ margin-inline:calc(var(--ds-s3) * -1) }
+
+/* --- 5. a feed row ------------------------------------------------------ */
+
+.dirb-mob-slot{ position:relative; isolation:isolate }
+.dirb-mob-slot[data-inset='true']{ margin-inline:var(--ds-s5) }
+
+/* The action revealed UNDER the card as it slides (move 8). */
+.dirb-mob-reveal{
+  position:absolute; inset:0; z-index:0;
+  display:flex; align-items:center; justify-content:flex-end;
+  gap:var(--ds-s2);
+  padding-inline-end:var(--ds-s5);
+  border-radius:var(--ds-r4);
+  background:var(--ds-surface-2);
+  color:var(--ds-text-3);
+  font-size:var(--ds-fs-meta);
+}
+
+.dirb-mob-card{
+  position:relative; z-index:1;
+  display:flex; flex-direction:column; gap:var(--ds-s3);
+  padding:var(--ds-card-pad);
+  border-radius:var(--ds-r4);
+  background:var(--ds-surface-1);
+  box-shadow:inset 0 0 0 1px var(--ds-line);
+  overflow:hidden;
+}
+/* OPAQUE, not transparent. The swipe reveal ("Dismiss") lies at inset 0 behind
+   every card; a transparent line card let that word print straight through the
+   row's own tail, which is what the collision at 390 actually was. */
+.dirb-mob-card[data-density='line']{
+  gap:var(--ds-s2);
+  padding:var(--ds-s3) var(--ds-s4);
+  border-radius:var(--ds-r3);
+  background:var(--ds-canvas);
+  box-shadow:inset 0 0 0 1px var(--ds-line);
+}
+.dirb-mob-card[data-raised='true']{ background:var(--ds-surface-1); box-shadow:inset 0 0 0 1px var(--ds-line-strong) }
+/* Unread is a STRIPE, not a ring. A full lime outline on every unread card put
+   four accent boxes on one screen, and the budget is a mark, not a frame: the
+   system's own wording for this state is "the accent stripe on an unread row".
+   The hairline the card already has stays; the stripe is added to its start
+   edge in the same shadow so nothing else has to move. */
+.dirb-mob-card[data-unread='true']{
+  box-shadow:inset 0 0 0 1px var(--ds-line), inset 2px 0 0 0 var(--ds-accent);
+}
+.dirb-mob-card[data-unread='true'][data-raised='true']{
+  box-shadow:inset 0 0 0 1px var(--ds-line-strong), inset 2px 0 0 0 var(--ds-accent);
+}
+
+/* The strip edge: a solid bar flush to the card edge. */
+.dirb-mob-edge{
+  position:absolute; inset-block:0; inset-inline-start:0;
+  width:var(--ds-s2);
+  background:var(--ds-sev-urgent);
+}
+
+/* --- 6. the headline ---------------------------------------------------- */
+
+.dirb-mob-head{ display:flex; align-items:center; gap:var(--ds-s3); min-width:0 }
+.dirb-mob-mark{ flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:var(--ds-s4) }
+.dirb-mob-mark i{ display:block }
+.dirb-mob-mark[data-shape='square'] i{
+  width:var(--ds-s4); height:var(--ds-s4);
+  border-radius:var(--ds-r1); background:var(--ds-sev-attention);
+}
+.dirb-mob-mark[data-shape='bar'] i{
+  width:var(--ds-s2); height:var(--ds-s5);
+  border-radius:var(--ds-r1); background:var(--ds-sev-urgent);
+}
+.dirb-mob-mark[data-shape='dot'] i{
+  width:var(--ds-s4); height:var(--ds-s4);
+  border-radius:var(--ds-r-pill);
+  box-shadow:inset 0 0 0 2px var(--ds-text-3);
+}
+.dirb-mob-card[data-unread='true'] .dirb-mob-mark[data-shape='dot'] i{ background:var(--ds-text-3) }
+
+.dirb-mob-word{
+  font-size:var(--ds-fs-title); line-height:var(--ds-lh-title);
+  font-weight:var(--ds-fw-semi); letter-spacing:var(--ds-tr-title);
+  color:var(--ds-text);
+}
+.dirb-mob-card[data-density='line'] .dirb-mob-word{
+  font-size:var(--ds-fs-body); font-weight:var(--ds-fw-medium);
+}
+.dirb-mob-head[data-big='true'] .dirb-mob-word{
+  font-size:var(--ds-fs-page); line-height:var(--ds-lh-page);
+  letter-spacing:var(--ds-tr-page);
+}
+/* The separator between the state word and its subject, drawn rather than
+   typed: no unicode glyph reaches this folder's TSX. */
+.dirb-mob-sep{
+  flex:0 0 auto;
+  width:var(--ds-s2); height:var(--ds-s2);
+  border-radius:var(--ds-r-pill);
+  background:var(--ds-text-4);
+}
+.dirb-mob-subj{ color:var(--ds-text-2); min-width:0 }
+
+/* The working wash: on while the row's own state word says it is running. */
+.dirb-mob-state{
+  display:inline-flex; align-items:center; gap:var(--ds-s2);
+  padding-inline:var(--ds-s2);
+  margin-inline:calc(var(--ds-s2) * -1);
+}
+
+/* --- 7. bodies ---------------------------------------------------------- */
+
+.dirb-mob-detail{ color:var(--ds-text-2) }
+.dirb-mob-timeblock{ display:flex; align-items:baseline; gap:var(--ds-s4) }
+.dirb-mob-day-word{ color:var(--ds-text-3); font-size:var(--ds-fs-meta) }
+.dirb-mob-fig{
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-figure); line-height:var(--ds-lh-figure);
+  letter-spacing:var(--ds-tr-figure);
+  font-variant-numeric:tabular-nums;
+  color:var(--ds-text);
+}
+.dirb-mob-asked{ color:var(--ds-text-3); font-size:var(--ds-fs-meta) }
+
+.dirb-mob-foot{
+  display:flex; align-items:center; gap:var(--ds-s3);
+  flex-wrap:wrap;
+}
+.dirb-mob-x{ position:absolute; top:var(--ds-s2); inset-inline-end:var(--ds-s2); z-index:2 }
+
+/* The tick that draws in place before the row leaves (move 8). */
+.dirb-mob-tick{
+  position:absolute; inset:0; z-index:3;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--ds-surface-1);
+  color:var(--ds-accent-ui);
+}
+
+/* --- 8. the deck (moves 6 and 7) ---------------------------------------- */
+
+.dirb-mob-deck{ position:relative; isolation:isolate }
+.dirb-mob-deck-rows{ display:flex; flex-direction:column; gap:var(--ds-s2); padding-top:var(--ds-s3) }
+.dirb-mob-row{
+  position:relative;
+  display:flex; align-items:center; gap:var(--ds-s3);
+  padding:var(--ds-s3) var(--ds-s4);
+  border-radius:var(--ds-r3);
+  background:var(--ds-surface-2);
+  color:var(--ds-text-2);
+  overflow:hidden;
+}
+.dirb-mob-row[data-unread='true']{ color:var(--ds-text) }
+
+/* --- 9. the new-items pill (move 5) ------------------------------------- */
+
+.dirb-mob-pill{
+  position:absolute; inset-inline:0; top:var(--ds-s5);
+  display:flex; justify-content:center;
+  z-index:var(--ds-z-bulk);
+  pointer-events:none;
+}
+.dirb-mob-pill > *{ pointer-events:auto }
+
+/* --- 10. the tab bar (move 18) ------------------------------------------ */
+
+.dirb-mob-tabs{ flex:0 0 auto }
+
+/* --- 11. the frame the override mounts in ------------------------------- */
+
+.dirb.dirb-mob-frame{ flex:1 1 auto; min-height:0; height:100% }
+.dirb-mob-feedwrap{
+  position:relative;
+  display:flex; flex-direction:column;
+  flex:1 1 auto; min-height:0;
+}
+
+/* --- 12. the one-line form, measured -------------------------------------
+   The quiet line (move 1) put its tail — tenant chip, mono time, the one
+   action — under the absolutely positioned dismiss control, and every piece
+   of it collided at 390. Three things fix it and none of them changes the
+   markup: the line reserves the dismiss control's lane on its inline end,
+   the dismiss control centres itself in a row that is one line tall, and the
+   headline stops wrapping so the subject is what shrinks. */
+.dirb-mob-card[data-density='line']{
+  padding-inline-end:calc(var(--ds-control-h-sm) + var(--ds-s5));
+}
+.dirb-mob-card[data-density='line'] .dirb-mob-x{
+  top:50%; transform:translateY(-50%);
+  inset-inline-end:var(--ds-s3);
+}
+.dirb-mob-head{ flex-wrap:nowrap; overflow:hidden }
+.dirb-mob-subj{ flex:0 1 auto }
+.dirb-mob-head > .dirb-grow{ flex:1 1 var(--ds-s3); min-width:var(--ds-s3) }
+.dirb-mob-head .ds-t-mono,
+.dirb-mob-head .ds-chip,
+.dirb-mob-head .ds-btn{ flex:0 0 auto }
+
+/* The full card keeps the control in its corner but stops the head running
+   under it. The density value is 'card', not 'full' (NotificationCard.tsx). */
+.dirb-mob-card[data-density='card'] .dirb-mob-head{
+  padding-inline-end:calc(var(--ds-control-h-sm) + var(--ds-s2));
+}
+
+/* The state word is the hero: it never wraps AND it never shrinks. Letting it
+   shrink first truncated it to "2 rep..." and then to nothing, which is the
+   one word on the row that has to survive. The SUBJECT is what gives up width,
+   and it already truncates. */
+.dirb-mob-state{ flex:0 0 auto }
+.dirb-mob-word{ white-space:nowrap }
+.dirb-mob-subj{ flex:0 1 auto; min-width:0 }  /* shrinks, never grows: the
+   spacer is what fills the gap, and a growing subject pushed the mono time and
+   the dismiss control off the end of a clipped row. */

@@ -1,0 +1,24 @@
+/* =========================================================================
+   S13 Settings — direction B. Only what dir-b.css does not already carry.
+   Tokens only: no colour literal, no px font-size, no px radius.
+   ========================================================================= */
+
+/* The stagger container. `display:contents` so the sections stay direct
+   children of `.dirb-surface` and keep its section gap, while motion still
+   propagates its variants down the React tree. */
+.dirb-set-sections{ display:contents }
+
+/* A hint that stacks a second line under it (the push error). */
+.dirb-set-hint{ display:flex; flex-direction:column; gap:var(--ds-s1) }
+.dirb-set-err{ color:var(--ds-sev-attention) }
+
+/* A board link is a row that is really an anchor. */
+.dirb-set-link{
+  display:block; color:inherit; text-decoration:none;
+  transition:background-color var(--ds-dur-hover) var(--ds-ease);
+}
+.dirb-set-link:hover{ background:var(--ds-surface-2) }
+.dirb-set-link[data-off="true"]{ opacity:.55; pointer-events:none }
+
+/* The diagnostic block: a label and its value on one line, value in mono. */
+.dirb-set-diag{ display:flex; align-items:baseline; justify-content:space-between; gap:var(--ds-s3) }
