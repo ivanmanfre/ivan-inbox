@@ -1,0 +1,159 @@
+/* ==========================================================================
+   src/wb/magnet/magnet.css — S17, the lead-magnet reading window.
+
+   Token-only: not one colour literal, not one px font-size, not one px radius.
+   The kit draws the group, the row, the eyebrow and the key/value grid; this
+   sheet adds the window frame, the three columns, and the evidence disclosure.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1 · The frame. Below the confirm layer, because a delete flow opens its
+   dialog ON TOP of this window.
+   -------------------------------------------------------------------------- */
+.a-tk-scrim{
+  position:fixed; inset:0; z-index:var(--ds-z-sheet);
+  background:var(--ds-scrim);
+  display:flex; align-items:center; justify-content:center;
+  padding:var(--ds-s6);
+}
+.a-tk{
+  display:flex; flex-direction:column; min-height:0;
+  width:100%; max-width:110rem; height:100%;
+  background:var(--ds-canvas);
+  border:1px solid var(--ds-line);
+  border-radius:var(--ds-r4);
+  box-shadow:var(--ds-shadow-float);
+  overflow:hidden;
+}
+.a-tk-head{
+  display:flex; align-items:center; gap:var(--ds-s3);
+  min-height:var(--ds-header-h);
+  padding:var(--ds-s2) var(--ds-gutter);
+  border-bottom:1px solid var(--ds-line);
+  flex:0 0 auto;
+}
+.a-tk-ttl{ display:flex; flex-direction:column; gap:var(--ds-s1); min-width:0; flex:1 1 auto }
+.a-tk-n{
+  font-size:var(--ds-fs-title); line-height:var(--ds-lh-title);
+  font-weight:var(--ds-fw-medium); letter-spacing:var(--ds-tr-title);
+  color:var(--ds-text);
+}
+.a-tk-s{
+  font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono);
+  line-height:var(--ds-lh-meta); color:var(--ds-text-3);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.a-tk-body{ flex:1 1 auto; min-height:0; overflow:auto; overscroll-behavior:contain }
+.a-tk-col{ max-width:48rem; margin:0 auto; padding:var(--ds-s7) var(--ds-gutter) }
+.a-tk-frame{
+  display:block; width:100%; border:1px solid var(--ds-line);
+  border-radius:var(--ds-r3); background:var(--ds-surface-1);
+}
+
+/* --------------------------------------------------------------------------
+   2 · The three panes. One DOM, two readings: at >=1180px the rail, the
+   artifact and the evidence are three columns each with its own scroller;
+   below that they stack into the window's single scroller in reading order.
+   -------------------------------------------------------------------------- */
+.a-mg-scroll{ display:flex; min-height:0 }
+.a-mg-cols{
+  display:flex; flex-direction:column; gap:var(--ds-s7);
+  width:100%; min-width:0; min-height:0;
+  padding:var(--ds-s6) var(--ds-gutter);
+}
+.a-mg-main{ display:flex; flex-direction:column; gap:var(--ds-s6); min-width:0 }
+.a-mg-cap{ display:flex; align-items:baseline; gap:var(--ds-s4); flex-wrap:wrap }
+.a-mg-chips{ display:flex; align-items:center; gap:var(--ds-s2); flex-wrap:wrap }
+.a-mg-promo{ display:flex; flex-direction:column; gap:var(--ds-s3); min-width:0 }
+.a-mg-imgs{ display:flex; flex-direction:column; gap:var(--ds-s3) }
+.a-mg-img{
+  display:block; width:100%; border-radius:var(--ds-r3);
+  border:1px solid var(--ds-line); background:var(--ds-surface-1);
+}
+.a-mg-acts{
+  display:flex; align-items:center; gap:var(--ds-s3); flex-wrap:wrap;
+  padding-top:var(--ds-s3);
+}
+.a-mg-hint{
+  display:flex; align-items:center; gap:var(--ds-s2);
+  font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3);
+}
+.a-mg-load{ padding:var(--ds-s7) var(--ds-gutter) }
+
+@media (min-width:1180px){
+  .a-mg-cols{
+    flex-direction:row; align-items:stretch; gap:var(--ds-s6);
+    overflow:hidden; height:100%; padding-block:var(--ds-s6);
+  }
+  .a-mg-cols > *{ min-height:0; overflow:auto; overscroll-behavior:contain }
+  .a-mg-queue{ flex:0 0 15rem }
+  .a-mg-main{ flex:1 1 auto }
+  .a-mg-insp{ flex:0 0 24rem }
+  .a-mg-cols:not([data-rail]) .a-mg-main{ max-width:44rem; margin-inline:auto }
+}
+
+/* --------------------------------------------------------------------------
+   3 · The evidence disclosure.
+   -------------------------------------------------------------------------- */
+.a-mg-insp{ display:flex; flex-direction:column; gap:var(--ds-s2); min-width:0 }
+.a-mg-insp-h{ padding-bottom:var(--ds-s2) }
+.a-mg-sec{
+  border:1px solid var(--ds-line); border-radius:var(--ds-r3);
+  background:var(--ds-surface-1); overflow:hidden;
+}
+.a-mg-sec-b{
+  display:flex; align-items:center; gap:var(--ds-s3); width:100%;
+  min-height:var(--ds-control-h); padding:var(--ds-s3) var(--ds-s4);
+  border:0; background:none; font:inherit; color:var(--ds-text);
+  text-align:left; cursor:pointer;
+  transition:background-color var(--ds-dur-hover) var(--ds-ease),
+             color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-mg-sec-b:hover{ background:var(--ds-wash) }
+.a-mg-sec-b .ds-icon{ transition:transform var(--ds-dur) var(--ds-ease); flex:0 0 auto }
+.a-mg-sec[data-on] .a-mg-sec-b .ds-icon{ transform:rotate(180deg) }
+.a-mg-sec-n{ flex:1 1 auto; min-width:0 }
+.a-mg-sec-t{
+  flex:0 0 auto; font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono);
+  color:var(--ds-text-3);
+}
+.a-mg-sec-body{
+  display:flex; flex-direction:column; gap:var(--ds-s4);
+  padding:var(--ds-s4); border-top:1px solid var(--ds-line);
+}
+
+/* --------------------------------------------------------------------------
+   4 · Blocks, cards, fields.
+   -------------------------------------------------------------------------- */
+.a-mg-block{ display:flex; flex-direction:column; gap:var(--ds-s3); min-width:0 }
+.a-mg-block-h{ display:flex; align-items:center; gap:var(--ds-s3) }
+.a-mg-block-h .a-eyebrow{ flex:1 1 auto; min-width:0 }
+.a-mg-block-t{ flex:0 0 auto; display:flex; align-items:center; gap:var(--ds-s2) }
+.a-mg-card{
+  display:flex; flex-direction:column; gap:var(--ds-s3);
+  background:var(--ds-surface-1); border:1px solid var(--ds-line);
+  border-radius:var(--ds-r3); padding:var(--ds-card-pad);
+  min-width:0;
+}
+.a-mg-links{ display:flex; flex-direction:column; gap:var(--ds-s2) }
+.a-mg-btnrow{ display:flex; align-items:center; gap:var(--ds-s3); flex-wrap:wrap }
+.a-mg-actions{ display:flex; flex-direction:column; gap:var(--ds-s3) }
+.a-mg-ask{ display:flex; flex-direction:column; gap:var(--ds-s3) }
+.a-mg-askq{ color:var(--ds-text-2) }
+.a-mg-note{ display:flex; flex-direction:column; gap:var(--ds-s3) }
+.a-mg-ta{ width:100%; min-height:8rem; resize:vertical }
+.a-mg-vlist{ display:flex; flex-direction:column; gap:var(--ds-s2) }
+.a-mg-vli{ min-width:0; overflow-wrap:anywhere }
+
+/* --------------------------------------------------------------------------
+   5 · Phone. The window IS the screen: no gutter of ground around it, no
+   radius, and the back mark in the head carries the close.
+   -------------------------------------------------------------------------- */
+@media (max-width:767px){
+  .a-tk-scrim{ padding:0 }
+  .a-tk{ border-radius:0; border:0; max-width:none }
+  .a-tk-col{ padding:var(--ds-s6) var(--ds-gutter) }
+  .a-mg-cols{ padding:var(--ds-s5) var(--ds-gutter) var(--ds-s9) }
+  .a-mg-insp{ order:2 }
+  .a-mg-queue{ order:3 }
+}
