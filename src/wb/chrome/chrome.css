@@ -79,7 +79,7 @@
    Claude hint and the sync line.
    -------------------------------------------------------------------------- */
 .a-rail-jobs{ display:flex; flex-direction:column }
-.a-rail-hint{ padding:var(--ds-s2) var(--ds-s4) var(--ds-s3); color:var(--ds-text-4) }
+.a-rail-hint{ padding:var(--ds-s2) var(--ds-s4) var(--ds-s3); color:var(--ds-text-3) }
 .a-rail-foot{ display:flex; flex-direction:column; gap:var(--ds-s1) }
 .a-rail-sync{
   display:flex;
@@ -90,7 +90,7 @@
   border:0;
   border-radius:var(--ds-r3);
   background:transparent;
-  color:var(--ds-text-4);
+  color:var(--ds-text-3);
   cursor:pointer;
   text-align:left;
 }
@@ -121,7 +121,7 @@
   border-bottom:1px solid var(--ds-line);
   background:var(--ds-canvas);
 }
-.a-worksep-l{ color:var(--ds-text-4); flex:0 0 auto }
+.a-worksep-l{ color:var(--ds-text-3); flex:0 0 auto }
 .a-worksep-seg{
   display:flex;
   align-items:center;
