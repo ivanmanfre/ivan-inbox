@@ -27,7 +27,8 @@ import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { useReactions } from '../../hooks/useReactions'
 import { relAge } from '../../exp/v2c/Surface'
 import { checkedPhrase } from '../../lib/today'
-import { Avatar, Banner, Button, EmptyState, Icon, SkeletonRows } from '../../ds'
+import { Avatar, Banner, Button, EmptyState, Icon } from '../../ds'
+import { OpsSkeleton } from '../chrome/Skeleton'
 import { Body, Group, Head, Screen } from '../kit'
 import { PendingCard } from './PendingCard'
 import { ReactionDesk } from './ReactionDesk'
@@ -123,7 +124,7 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
         {head}
         <Body>
           <Group label="Ops">
-            <SkeletonRows rows={4} label="Loading the ops queue" />
+            <OpsSkeleton />
           </Group>
         </Body>
       </Screen>

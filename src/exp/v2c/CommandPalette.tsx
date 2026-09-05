@@ -185,7 +185,10 @@ export function CommandPalette({ cmds, find, onQuery, onPick, onClose }: {
       onClose={onClose}
       size="wide"
       className="a-cmdk"
-      foot={null}
+      // The palette answers its own keys; a Cancel button under it would be a
+      // second way to do what Esc and the scrim already do. `<></>` rather than
+      // null because the primitive reads null as "give me the default pair".
+      foot={<></>}
     >
       <Input
         id={FIELD_ID}
@@ -260,7 +263,7 @@ export function ShortcutSheet({ cmds, onClose }: {
 }) {
   const rows = useMemo(() => keyRows(cmds), [cmds])
   return (
-    <Dialog open onClose={onClose} title="Keyboard" className="a-keys" foot={null}>
+    <Dialog open onClose={onClose} title="Keyboard" className="a-keys" foot={<></>}>
       <div className="a-keys-body">
         {GROUP_ORDER.map(g => {
           const gr = rows.filter(r => r.group === g)

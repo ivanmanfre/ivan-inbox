@@ -31,6 +31,7 @@ import {
 } from '../../lib/kpis'
 import { Badge, Icon, Table, type TableColumn } from '../../ds'
 import { BarLine, Body, Cell, Dot, Group, KV, Ledger, Row, Rows, Sep, Spark, type Tone } from '../kit'
+import { SendsSkeleton } from '../chrome/Skeleton'
 import './sends.css'
 
 type Client = 'all' | 'ivan' | 'risedtc' | 'arch'
@@ -946,7 +947,8 @@ export function OverviewView({ client, timeframe, setClient, range = null }: {
     return () => { live = false }
   }, [client])
 
-  if (loading && !data) return <Body><div className="a-sends-load">Loading…</div></Body>
+  // S43-3: the first load echoes the shape of the lane cards that replace it.
+  if (loading && !data) return <Body><SendsSkeleton /></Body>
   if (error) return <Body><div className="a-sends-load">{error}</div></Body>
   if (!data) return <Body><div className="a-sends-load">No data yet — the call returned, it just had nothing in it.</div></Body>
 

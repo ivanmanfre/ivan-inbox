@@ -6,23 +6,10 @@
    a ds primitive does not already draw: the composition around it.
    ========================================================================== */
 
-/* --------------------------------------------------------------------------
-   1 · S44-1 Avatar. The ds Avatar carries the tint and the initials; this adds
-   the channel mark, drawn on the corner as a MARK rather than as two letters.
-   -------------------------------------------------------------------------- */
-.a-av{ position:relative; display:inline-flex; flex:0 0 auto }
-.a-av-badge{
-  position:absolute;
-  right:calc(var(--ds-s1) * -1);
-  bottom:calc(var(--ds-s1) * -1);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  border-radius:var(--ds-r-pill);
-  background:var(--ds-surface-2);
-  color:var(--ds-text-2);
-  box-shadow:0 0 0 2px var(--ds-canvas);
-}
+/* S44-1 the avatar is NOT here. It is `Person` in src/wb/dms/parts.tsx: the ds
+   Avatar with the same deterministic bucket, and the channel stated once, as
+   the row's own chip, rather than twice. A corner badge repeating a word that
+   is already on the row is a second signal for one fact. */
 
 /* 2 · S44-2 Linkified. The link reads as the accent AS TEXT, never as a second
    hue, and it stays underlined so colour is not the only signal. */
@@ -194,3 +181,9 @@
 .a-keys-k{ flex:0 0 auto; min-width:calc(var(--ds-tap) * 1.5) }
 .a-keys-t{ min-width:0 }
 .a-keys-note{ color:var(--ds-text-4) }
+
+/* Neither overlay has an action row: the palette runs its rows and the sheet is
+   a reference. The primitive's foot is emptied rather than filled, so the box
+   ends at its last row instead of at a band of nothing. */
+.a-cmdk .ds-dialog-foot,
+.a-keys .ds-dialog-foot{ display:none }

@@ -168,7 +168,7 @@ function LogView({ client }: { client: Client }) {
     return () => { live = false }
   }, [client])
 
-  if (loading) return <div className="rows sc-rows"><div className="empty">Loading…</div></div>
+  if (loading) return <SendsSkeleton />
   if (error) return <div className="rows sc-rows"><div className="empty">{error}</div></div>
   if (items.length === 0) return <div className="rows sc-rows"><div className="empty">No send activity yet — a verified zero, not a failed load.</div></div>
 
