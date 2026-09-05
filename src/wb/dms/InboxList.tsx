@@ -270,6 +270,10 @@ export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, o
           label="Search people or messages"
           labelHidden
           icon="search"
+          // `type=search` is what the `/` key finds. CommandLayer's focusSearch
+          // looks for a search input inside the working region, and a text
+          // input that only LOOKS like one leaves the surface with no `/`.
+          type="search"
           className="a-grow"
           placeholder="Search people or messages"
           value={query}

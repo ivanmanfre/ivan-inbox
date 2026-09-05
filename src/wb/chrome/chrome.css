@@ -150,6 +150,18 @@
 .a-worksep-pill:hover{ color:var(--ds-text) }
 .a-worksep-pill[data-active='true']{ background:var(--ds-surface-2); color:var(--ds-text) }
 
+/* The phone form of the segment. The group label is dropped: the tab bar under
+   it already reads "Content", and repeating the word is what pushed the four
+   lanes past the plate. What is left fits, so nothing sits behind an edge, and
+   each pill takes the system's own 44px floor (doubled class, same reason
+   ds.css §17 gives). */
+@media (max-width:767px){
+  .a-worksep{ gap:0; padding-left:var(--ds-s3); padding-right:var(--ds-s3) }
+  .a-worksep-l{ display:none }
+  .a-worksep-seg{ flex:1 1 auto }
+  .a-worksep-pill.a-worksep-pill{ min-height:var(--ds-tap); padding:0 var(--ds-s3) }
+}
+
 /* 9 · S39 the phone bar. The 44px floor is the system's own, on `.ds-tab`; the
    wrapper only pins the bar to the bottom of the plate. */
 .a-tabs{ flex:0 0 auto; background:var(--ds-canvas); border-top:1px solid var(--ds-line) }

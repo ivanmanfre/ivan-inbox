@@ -155,7 +155,11 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
     : undefined
 
   return (
-    <div ref={wrapRef} className="a-brain-composer">
+    /* `data-ask` marks the ask composer for anything outside it that has to
+       find it: the deep-link probe, and the seat that focuses it after a
+       dictation. The design system owns the field, so the mark rides the
+       wrapper the same way the focus does. */
+    <div ref={wrapRef} data-ask className="a-brain-composer">
       <input
         ref={fileRef} type="file" accept="image/*,application/pdf" multiple hidden
         onChange={e => { onFiles(e.target.files); e.target.value = '' }}

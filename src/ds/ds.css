@@ -1087,7 +1087,13 @@ body.ds-body{
   .ds-btn.ds-btn, .ds-btn.ds-btn[data-size='sm']{ min-height:var(--ds-tap) }
   .ds-ibtn.ds-ibtn, .ds-ibtn.ds-ibtn[data-size='sm']{ min-width:var(--ds-tap); min-height:var(--ds-tap) }
   .ds-seg-item.ds-seg-item{ height:var(--ds-tap) }
-  .ds-chip.ds-chip[data-interactive='true']{ height:var(--ds-tap) }
+  /* A 32px-wide "All" chip is 44 tall and still misses a thumb: the floor is a
+     BOX, so the width has to come with the height. */
+  .ds-chip.ds-chip[data-interactive='true']{ height:var(--ds-tap); min-width:var(--ds-tap); justify-content:center }
+  /* A tab strip that does not fit WRAPS on the phone. Scrolling it hides tabs
+     behind an edge with no affordance, which is how a stage nobody could find
+     stayed unfound; two rows of tabs cost 44px and hide nothing. */
+  .ds-tabs.ds-tabs{ flex-wrap:wrap; overflow-x:visible; column-gap:var(--ds-s5); row-gap:0 }
   .ds-tabs-item.ds-tabs-item, .ds-popover-item.ds-popover-item, .ds-cmd-item.ds-cmd-item,
   .ds-row.ds-row, .ds-setting.ds-setting{ min-height:var(--ds-tap) }
   .ds-input.ds-input, .ds-composer-input.ds-composer-input, .ds-textarea.ds-textarea{ min-height:var(--ds-tap) }

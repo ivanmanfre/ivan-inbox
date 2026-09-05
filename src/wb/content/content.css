@@ -118,6 +118,13 @@
 }
 .a-ct-tabsbar::-webkit-scrollbar{ display:none }
 .a-ct-tabsbar .ds-tabs{ flex-wrap:nowrap }
+/* On the phone the strip WRAPS instead of scrolling, the same call ds.css §17
+   makes for the primitive: seven stages behind an edge with no affordance is a
+   stage nobody finds. Two rows cost 44px and hide nothing. */
+@media (max-width:767px){
+  .a-ct-tabsbar{ overflow-x:visible; overflow-y:visible }
+  .a-ct-tabsbar .ds-tabs{ flex-wrap:wrap }
+}
 
 /* --------------------------------------------------------------------------
    3 · The pull indicator, the sub-line, the quiet note.

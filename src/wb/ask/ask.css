@@ -73,7 +73,11 @@
   display:inline-flex;
   align-items:center;
   gap:var(--ds-s2);
-  min-height:var(--ds-control-h-sm);
+  /* The phone floor, on the one header control that was under it: this is a
+     44px box whatever the numeral inside it reads. */
+  min-height:var(--ds-tap);
+  min-width:var(--ds-tap);
+  justify-content:center;
   padding:var(--ds-s1) var(--ds-s3);
   border:1px solid var(--ds-line-strong);
   border-radius:var(--ds-r-pill);
