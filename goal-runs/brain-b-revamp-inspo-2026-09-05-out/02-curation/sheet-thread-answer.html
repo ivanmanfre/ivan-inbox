@@ -1,0 +1,90 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { margin:0; background:#0d0f0d; color:#e8ede6; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; padding:32px; width:1400px; box-sizing:border-box; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  .sub { color:#9aa39a; font-size:13px; margin:0 0 24px; }
+  h2 { font-size:14px; color:#c9f27a; text-transform:uppercase; letter-spacing:0.06em; margin:28px 0 12px; }
+  .grid { display:grid; grid-template-columns:repeat(5, 1fr); gap:16px; }
+  .card { background:#161915; border:1px solid #2a2f28; border-radius:10px; padding:10px; }
+  .card img { width:300px; max-width:100%; height:180px; object-fit:cover; object-position:top; border-radius:6px; background:#000; display:block; }
+  .name { font-size:13px; font-weight:600; margin:8px 0 0; }
+  .meta { font-size:11px; color:#9aa39a; margin:2px 0 6px; }
+  .move { font-size:11px; color:#d7ddd2; line-height:1.4; }
+  .rank { display:inline-block; background:#c9f27a; color:#0d0f0d; font-size:11px; font-weight:700; border-radius:4px; padding:1px 6px; margin-right:6px; }
+  .ru-card { background:#141712; border:1px solid #22261f; border-radius:8px; padding:8px; }
+  .ru-card img { width:100%; height:100px; object-fit:cover; object-position:top; border-radius:5px; background:#000; display:block; }
+  .ru-name { font-size:11px; font-weight:600; margin:6px 0 0; }
+  .ru-meta { font-size:10px; color:#8a938a; margin:2px 0; }
+</style>
+</head>
+<body>
+  <h1>thread-answer &mdash; 21st.dev curation</h1>
+  <p class="sub">Ask thread: operator turn, Claude's answer, sources / grounded chips, inline recall, markdown answers, chat message lists. Pool: 24 viewed.</p>
+
+  <h2>Top 5 picks</h2>
+  <div class="grid">
+    <div class="card">
+      <img src="../01-refs/previews/serafimcloud__tool-group.png">
+      <p class="name"><span class="rank">1</span>Tool Group</p>
+      <p class="meta">serafimcloud &middot; usage 8</p>
+      <p class="move">Collapsible "Exploring N files" header expands to a per-action mono list.</p>
+    </div>
+    <div class="card">
+      <img src="../01-refs/previews/educalvolpz__ai-response.png">
+      <p class="name"><span class="rank">2</span>AI Response</p>
+      <p class="meta">educalvolpz &middot; usage 8</p>
+      <p class="move">Numbered citation markers inline, right after the claim they support.</p>
+    </div>
+    <div class="card">
+      <img src="../01-refs/previews/serafimcloud__markdown.png">
+      <p class="name"><span class="rank">3</span>Markdown</p>
+      <p class="meta">serafimcloud &middot; usage 8</p>
+      <p class="move">Real heading/list/code hierarchy plus a quiet Streaming/Replay state.</p>
+    </div>
+    <div class="card">
+      <img src="../01-refs/previews/ibelick__response-stream.png">
+      <p class="name"><span class="rank">4</span>Response Stream</p>
+      <p class="meta">ibelick &middot; usage 253</p>
+      <p class="move">Answer reveals word by word as a fade-in, not an instant block-append.</p>
+    </div>
+    <div class="card">
+      <img src="../01-refs/previews/serafimcloud__text-shimmer.png">
+      <p class="name"><span class="rank">5</span>Text Shimmer</p>
+      <p class="meta">serafimcloud &middot; usage 10</p>
+      <p class="move">One status line shimmers while in flight, goes flat the instant it resolves.</p>
+    </div>
+  </div>
+
+  <h2>Runners-up</h2>
+  <div class="grid">
+    <div class="ru-card">
+      <img src="../01-refs/previews/serafimcloud__agent-chat.png">
+      <p class="ru-name">Agent Chat</p>
+      <p class="ru-meta">serafimcloud &middot; 55 &mdash; confirms current shell shape, no standalone move</p>
+    </div>
+    <div class="ru-card">
+      <img src="../01-refs/previews/serafimcloud__thinking-tool.png">
+      <p class="ru-name">Thinking Tool</p>
+      <p class="ru-meta">serafimcloud &middot; 0 &mdash; overlaps pick 1's collapsible idea</p>
+    </div>
+    <div class="ru-card">
+      <img src="../01-refs/previews/serafimcloud__subagent-tool.png">
+      <p class="ru-name">Subagent Tool</p>
+      <p class="ru-meta">serafimcloud &middot; 0 &mdash; thinner version of pick 1</p>
+    </div>
+    <div class="ru-card">
+      <img src="../01-refs/previews/serafimcloud__mcp-tool.png">
+      <p class="ru-name">MCP Tool</p>
+      <p class="ru-meta">serafimcloud &middot; 0 &mdash; same card family as pick 1, redundant</p>
+    </div>
+    <div class="ru-card">
+      <img src="../01-refs/previews/serafimcloud__error-message.png">
+      <p class="ru-name">Error Message</p>
+      <p class="ru-meta">serafimcloud &middot; 0 &mdash; belongs to turn-error surface</p>
+    </div>
+  </div>
+</body>
+</html>

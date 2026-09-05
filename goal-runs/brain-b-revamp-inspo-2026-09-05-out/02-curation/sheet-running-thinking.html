@@ -1,0 +1,68 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { margin:0; background:#0e0f0e; color:#e8ece6; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; padding:32px; width:1400px; box-sizing:border-box; }
+  h1 { font-size:20px; margin:0 0 4px; color:#c9f28a; }
+  h2 { font-size:14px; margin:28px 0 12px; color:#9aa398; text-transform:uppercase; letter-spacing:.06em; font-weight:600; }
+  .sub { font-size:13px; color:#8a938a; margin-bottom:20px; }
+  .grid { display:grid; grid-template-columns:repeat(5,1fr); gap:18px; }
+  .card { background:#17181a; border:1px solid #2a2d29; border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:8px; }
+  .card img { width:100%; max-width:300px; height:190px; object-fit:cover; object-position:top; border-radius:6px; background:#000; display:block; margin:0 auto; }
+  .name { font-size:14px; font-weight:600; color:#f2f5ef; }
+  .meta { font-size:11px; color:#8a938a; }
+  .move { font-size:12px; color:#c9f28a; line-height:1.4; }
+  .rugrid { display:grid; grid-template-columns:repeat(5,1fr); gap:18px; }
+  .rucard { background:#141513; border:1px solid #23251f; border-radius:8px; padding:14px; font-size:12px; color:#b7bfb2; line-height:1.5; }
+  .rucard .name { font-size:13px; margin-bottom:4px; }
+</style>
+</head>
+<body>
+  <h1>running-thinking — contact sheet</h1>
+  <div class="sub">the turn in flight: thinking indicators, streaming text, tool calls, reasoning blocks, loaders, the Stop control</div>
+
+  <h2>Top 5 picks</h2>
+  <div class="grid">
+    <div class="card">
+      <img src="../01-refs/previews/serafimcloud__tool-group.png">
+      <div class="name">Tool Group</div>
+      <div class="meta">serafimcloud &middot; usage 8</div>
+      <div class="move">Collapsible header summarizing nested tool calls underneath, state-driven.</div>
+    </div>
+    <div class="card">
+      <img src="../01-refs/previews/serafimcloud__thinking-tool.png">
+      <div class="name">Thinking Tool</div>
+      <div class="meta">serafimcloud &middot; usage n/a</div>
+      <div class="move">A minimal "Thinking" label that itself is the expand affordance.</div>
+    </div>
+    <div class="card">
+      <img src="../01-refs/previews/elements-__streaming-text.png">
+      <div class="name">AI Streaming Text</div>
+      <div class="meta">elements- &middot; usage n/a</div>
+      <div class="move">A blinking cursor rides the tail of the streamed text.</div>
+    </div>
+    <div class="card">
+      <img src="../01-refs/previews/larsen66__thinking-orbs.png">
+      <div class="name">Thinking Orbs</div>
+      <div class="meta">larsen66 &middot; usage n/a</div>
+      <div class="move">A living particle orb stands in for the spinner glyph.</div>
+    </div>
+    <div class="card">
+      <img src="../01-refs/previews/serafimcloud__send-button.png">
+      <div class="name">Send Button</div>
+      <div class="meta">serafimcloud &middot; usage 9</div>
+      <div class="move">One round control state-swaps between send / typing / stop.</div>
+    </div>
+  </div>
+
+  <h2>Runners-up</h2>
+  <div class="rugrid">
+    <div class="rucard"><div class="name">Signal Bars Loader</div>elements- &middot; usage n/a &mdash; equalizer/waveform bar-cluster loader, redundant once the orb is chosen.</div>
+    <div class="rucard"><div class="name">Text Shimmer</div>serafimcloud &middot; usage 10 &mdash; shimmering status word, overlaps with Thinking Tool's own shimmer state.</div>
+    <div class="rucard"><div class="name">Todo Tool</div>serafimcloud &middot; usage n/a &mdash; running plan as a checklist, heavier than a single turn needs.</div>
+    <div class="rucard"><div class="name">AI Chain of Thought</div>elements- &middot; usage n/a &mdash; richest structural idea, but its light colorful card skin fights the dark canon hardest.</div>
+    <div class="rucard"><div class="name">Agent Wave Loader</div>rorogogogo &middot; usage n/a &mdash; cycles the status caption through stages; the provider icons themselves are clutter.</div>
+  </div>
+</body>
+</html>
