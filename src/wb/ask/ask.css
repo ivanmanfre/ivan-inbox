@@ -498,6 +498,42 @@
 }
 .a-brain-prose .a-brain-recall:hover{ color:var(--ds-accent-ui) }
 
+/* Move 10. A word fades in ONCE, as it arrives. `forwards` holds the end
+   state so a word that has landed cannot flicker when its block re-renders,
+   and the reduced-motion collapse in §18 of ds.css zeroes the duration. */
+.a-brain-w{
+  display:inline;
+  animation:a-brain-wordin var(--ds-dur) var(--ds-ease) both;
+}
+@keyframes a-brain-wordin{ from{ opacity:0 } to{ opacity:1 } }
+
+/* Move 11. The status line SHIMMERS, and it is the surface's one continuous
+   loop, so the spinner the ds `Working` would otherwise turn is stilled here. */
+.a-brain-status{ display:inline-flex; border-radius:var(--ds-r2) }
+.a-brain-status .ds-working .ds-icon{ animation:none }
+
+/* Move 12. The mark sits on the name it cites, in the prose, not in a list at
+   the foot. It carries the same number the footer's expanded list gives that
+   file, so the two are one thing said twice. */
+.a-brain-src{ color:var(--ds-text) }
+.a-brain-citemark{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-inline-size:var(--ds-s5);
+  block-size:var(--ds-s5);
+  margin-inline-start:var(--ds-s1);
+  padding-inline:var(--ds-s1);
+  border:1px solid var(--ds-accent-line);
+  border-radius:var(--ds-r1);
+  background:var(--ds-accent-soft);
+  color:var(--ds-accent-ui);
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-eyebrow);
+  line-height:1;
+  vertical-align:super;
+}
+
 /* The caret riding the tail of a stream. Not a glyph: an element. */
 .a-brain-caret{
   display:inline-block;

@@ -114,7 +114,8 @@ function byDay(rows: Slot[]): { label: string; slots: Slot[]; unread: number }[]
 export function Feed({ feed, goJob, openThread, onNavigated, onScrolled }: {
   feed: FeedData
   goJob: (j: Job) => void
-  openThread: (id: string, turn?: string) => void
+  /** Move 9: the rect of the card that was tapped, so the answer can grow out of it. */
+  openThread: (id: string, turn?: string, from?: DOMRect | null) => void
   onNavigated: () => void
   /** The head condenses once the ledger has moved (move 3). */
   onScrolled?: (scrolled: boolean) => void
@@ -140,10 +141,12 @@ export function Feed({ feed, goJob, openThread, onNavigated, onScrolled }: {
 
   const toTop = () => scroller.current?.scrollTo({ top: 0, behavior: 'smooth' })
 
-  const openOne = (n: Notification) => {
+  const openOne = (n: Notification, el: HTMLElement | null) => {
     feed.markRead(n)
     const route = parseWbHash(notificationDeepLink(n))
-    if (route.thread) openThread(route.thread, route.turn)
+    // Measured NOW, before anything moves: once the sheet starts leaving, the
+    // card's rectangle is no longer where the operator's thumb was.
+    if (route.thread) openThread(route.thread, route.turn, el?.getBoundingClientRect() ?? null)
     else goJob(route.job)
     onNavigated()
   }

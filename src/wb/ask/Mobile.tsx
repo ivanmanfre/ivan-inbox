@@ -92,6 +92,12 @@ export function Mobile(p: BrainMobileProps) {
   // The turn a push notification named. Held here rather than inside AskThread
   // so a feed tap and a cold boot arrive at the same one place.
   const [focusTurn, setFocusTurn] = useState<string | null>(boot.turn ?? null)
+  // Move 9: the rectangle of the feed card that opened the focused turn. Held
+  // here rather than inside the thread because the card that owns it lives in
+  // the sheet, which is this component's other half. A cold boot has none, so
+  // a deep link from a push notification simply arrives without the morph
+  // rather than growing out of a card that was never on screen.
+  const [morphFrom, setMorphFrom] = useState<DOMRect | null>(null)
   const bootHandled = useRef(false)
   // Move 3: the head condenses once the ledger under it has moved.
   const [condensed, setCondensed] = useState(false)
@@ -196,9 +202,10 @@ export function Mobile(p: BrainMobileProps) {
   const sheetTo = `${openness * 100}%`
   const scrimTo = 1 - openness
 
-  const openThreadAt = useCallback((id: string, turn?: string) => {
+  const openThreadAt = useCallback((id: string, turn?: string, from?: DOMRect | null) => {
     chat.openThread(id)
     setFocusTurn(turn ?? null)
+    setMorphFrom(from ?? null)
     setPlace('ask')
     writePlace('ask')
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -290,6 +297,11 @@ export function Mobile(p: BrainMobileProps) {
                     <AskThread
                       chat={chat} job={job} about={about} mobile
                       focusTurn={focusTurn} onFocused={() => setFocusTurn(null)}
+                      morphFrom={morphFrom}
+                      onMorphed={() => setMorphFrom(null)}
+                      // The other half of move 9: a drag down on the answer he
+                      // arrived at goes back to the card he arrived from.
+                      onDragBack={() => { setFocusTurn(null); setFeedOpen(true) }}
                     />
                   )
                   : workSurface}

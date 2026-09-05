@@ -24,7 +24,26 @@ type Attachment = { id: string; kind: 'image' | 'pdf'; name: string; size: numbe
 /** How tall the field may grow before it starts scrolling under the caret. */
 const FIELD_MAX = 120
 
-export function Composer({ value, onChange, onSend, busy, runningElsewhere, onStop, placeholder }: {
+/**
+ * What a HOST can add to this composer without the composer knowing what it is.
+ *
+ * The docked desktop pane (S15) owns a slash palette; the phone composer (S30)
+ * does not and the ledger says so in writing. So the palette is not built in
+ * here: the pane passes an overlay to draw above the bar, a keydown filter that
+ * gets first refusal on the four palette keys, and a send interceptor so the
+ * send BUTTON obeys the palette too — which is the one path that used to send a
+ * literal "/model haiku" to the model.
+ */
+export type ComposerExtras = {
+  /** Drawn above the bar, in the same overlay grammar the tray uses. */
+  overlay?: React.ReactNode
+  /** Return true to swallow the key: the composer then does nothing with it. */
+  onKeyDown?: (e: React.KeyboardEvent) => boolean
+  /** Return true if the press was handled (a command ran) instead of sending. */
+  interceptSend?: () => boolean
+}
+
+export function Composer({ value, onChange, onSend, busy, runningElsewhere, onStop, placeholder, extras }: {
   value: string
   onChange: (v: string) => void
   onSend: (text: string) => void
@@ -32,6 +51,7 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
   runningElsewhere: boolean
   onStop: () => void
   placeholder: string
+  extras?: ComposerExtras
 }) {
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [heard, setHeard] = useState<string | null>(null)
@@ -53,6 +73,7 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
   const canSend = value.trim().length > 0 && !busy && !runningElsewhere
 
   const doSend = useCallback(() => {
+    if (extras?.interceptSend?.()) return
     if (!canSend) return
     const lines = [value.trim()]
     for (const a of attachments) lines.push(`[attached: ${a.name}]`)
@@ -62,7 +83,7 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
       for (const a of prev) URL.revokeObjectURL(a.url)
       return []
     })
-  }, [canSend, value, attachments, onSend])
+  }, [canSend, value, attachments, onSend, extras])
 
   useEffect(() => () => {
     for (const a of attachments) URL.revokeObjectURL(a.url)
@@ -159,11 +180,17 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
        find it: the deep-link probe, and the seat that focuses it after a
        dictation. The design system owns the field, so the mark rides the
        wrapper the same way the focus does. */
-    <div ref={wrapRef} data-ask className="a-brain-composer">
+    <div
+      ref={wrapRef} data-ask className="a-brain-composer"
+      // Capture, so the host's palette gets the four keys BEFORE the design
+      // system's textarea reads Enter as send.
+      onKeyDownCapture={e => { if (extras?.onKeyDown?.(e)) { e.preventDefault(); e.stopPropagation() } }}
+    >
       <input
         ref={fileRef} type="file" accept="image/*,application/pdf" multiple hidden
         onChange={e => { onFiles(e.target.files); e.target.value = '' }}
       />
+      {extras?.overlay}
       <DsComposer
         value={value}
         onChange={v => { onChange(v); setHeard(null) }}

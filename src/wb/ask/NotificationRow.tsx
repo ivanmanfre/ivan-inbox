@@ -21,6 +21,7 @@
    in place before it leaves, and the toast that follows carries a real Undo
    (`Feed.tsx` → `feed.restore` → `restoreNotifications`).
    ========================================================================== */
+import { useRef } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { Button, Icon, IconButton, fadeT, list, rise, spring } from '../../ds'
 import { Row, Rows, Sep } from '../kit'
@@ -41,7 +42,9 @@ function sevOf(shape: 'square' | 'bar' | 'dot'): 'attention' | 'urgent' | undefi
 
 export function NotificationRow({ n, onOpen, onDismiss, nested = false, going = false }: {
   n: Notification
-  onOpen: (n: Notification) => void
+  /** The row's own element rides along: move 9 grows the answer out of the
+   * rectangle of the card that was actually tapped, and only the card knows it. */
+  onOpen: (n: Notification, el: HTMLElement | null) => void
   /** The row travels with its id so the undo can put THIS row back without a refetch. */
   onDismiss: (id: string, row: Notification) => void
   nested?: boolean
@@ -49,6 +52,7 @@ export function NotificationRow({ n, onOpen, onDismiss, nested = false, going = 
   going?: boolean
 }) {
   const swipe = useSwipe(() => onDismiss(n.id, n))
+  const box = useRef<HTMLDivElement>(null)
   const shape = severityShape(n.severity)
   const form = formFor(n.family)
   const lane = laneLabel(n.family)
@@ -62,6 +66,7 @@ export function NotificationRow({ n, onOpen, onDismiss, nested = false, going = 
   if (nested) {
     return (
       <motion.div
+        ref={box}
         className="a-brain-swipe"
         data-card data-family={n.family}
         style={swipe.style}
@@ -73,7 +78,7 @@ export function NotificationRow({ n, onOpen, onDismiss, nested = false, going = 
           title={rowLine(n)}
           titleWrap
           unread={unread}
-          onClick={() => onOpen(n)}
+          onClick={() => onOpen(n, box.current)}
           tail={<span className="a-mono">{time}</span>}
           actions={<IconButton icon="close" label="Dismiss" size="sm" onClick={e => { e.stopPropagation(); onDismiss(n.id, n) }} />}
         />
@@ -118,17 +123,17 @@ export function NotificationRow({ n, onOpen, onDismiss, nested = false, going = 
   }
 
   const action = form === 'page'
-    ? <Button variant="quiet" size="sm" iconEnd="next" onClick={e => { e.stopPropagation(); onOpen(n) }}>Pick this up</Button>
+    ? <Button variant="quiet" size="sm" iconEnd="next" onClick={e => { e.stopPropagation(); onOpen(n, box.current) }}>Pick this up</Button>
     : lane
       ? (
-        <Button variant="quiet" size="sm" iconEnd="next" onClick={e => { e.stopPropagation(); onOpen(n) }}>
+        <Button variant="quiet" size="sm" iconEnd="next" onClick={e => { e.stopPropagation(); onOpen(n, box.current) }}>
           {form === 'quote' ? 'Reply' : form === 'time' ? 'Open' : lane}
         </Button>
       )
       : null
 
   return (
-    <div className="a-brain-slot" data-contained data-card data-family={n.family} data-shape={shape}>
+    <div ref={box} className="a-brain-slot" data-contained data-card data-family={n.family} data-shape={shape}>
       <div className="a-brain-reveal" aria-hidden>Dismiss</div>
       <motion.div
         className="a-brain-swipe"
@@ -155,7 +160,7 @@ export function NotificationRow({ n, onOpen, onDismiss, nested = false, going = 
           actions={<IconButton icon="close" label="Dismiss" size="sm" onClick={e => { e.stopPropagation(); onDismiss(n.id, n) }} />}
           sev={sevOf(shape)}
           unread={unread}
-          onClick={() => onOpen(n)}
+          onClick={() => onOpen(n, box.current)}
         >
           {payload}
         </Row>
@@ -202,7 +207,7 @@ export function GroupRow({ g, open, onToggle, onOpen, onDismissAll, onDismissOne
   g: NotificationGroup
   open: boolean
   onToggle: () => void
-  onOpen: (n: Notification) => void
+  onOpen: (n: Notification, el: HTMLElement | null) => void
   onDismissAll: () => void
   onDismissOne: (id: string, row: Notification) => void
 }) {
