@@ -829,7 +829,10 @@ function Body({ d, lane, queue, refresh, onClose, onPick, mobile }: {
 
   return (
     <Takeover
-      label={d.title || d.topic || 'Content draft'}
+      // The window is named for what it IS, not for what is in it: the draft's
+      // own title is the document's first line, one row below, and printing it
+      // twice was the double-title W1 left open.
+      label="Content draft"
       sub={`${LANE_LABEL[lane]}${d.type ? ` · ${typeLabel(d.type)}` : ''}`}
       onClose={onClose}
       mobile={mobile}

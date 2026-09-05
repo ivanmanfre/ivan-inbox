@@ -314,7 +314,7 @@
   color:var(--ds-text);
   flex:0 0 auto;
 }
-.a-dw-qa-r{ display:flex; flex-direction:column; gap:var(--ds-s2); flex:1 1 auto; min-width:0 }
+.a-dw-qa-r{ display:flex; flex-direction:column; align-items:flex-start; gap:var(--ds-s2); flex:1 1 auto; min-width:0 }
 .a-dw-qa-r .a-barline{ width:100% }
 
 .a-dw-rubric{ gap:var(--ds-s2) }

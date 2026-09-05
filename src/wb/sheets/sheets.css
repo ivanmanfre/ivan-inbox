@@ -10,7 +10,9 @@
    1 · Push later (S20). Divider rhythm from `efferd/drawer`: presets, custom
    time, decision, each block separated once.
    -------------------------------------------------------------------------- */
-.a-push{ display:flex; flex-direction:column; gap:var(--ds-s4); min-width:0 }
+/* Same measure as the context sheet: a preset row whose label and date sit
+   1,900px apart is a leader line, not a row. */
+.a-push{ display:flex; flex-direction:column; gap:var(--ds-s4); width:min(760px, 100%); min-width:0 }
 .a-push-presets{ display:flex; flex-direction:column; min-width:0 }
 
 /* A preset says its label AND the instant it resolves to, because the whole
@@ -40,7 +42,16 @@
    2 · Prospect context (S21). The key is an eyebrow ABOVE its value, so the
    values share a baseline and the eye reads one column of facts.
    -------------------------------------------------------------------------- */
-.a-ctx{ display:flex; flex-direction:column; gap:var(--ds-s6); min-width:0 }
+/* A sheet spans the plate, and at 1440 that laid seven fields across 2,000px
+   of one-line values: a grid that reads as a table nobody asked for. The facts
+   keep a reading measure of their own and the sheet stays a sheet. */
+.a-ctx{
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s6);
+  width:min(760px, 100%);
+  min-width:0;
+}
 .a-ctx-icp{ display:flex; flex-direction:column; gap:var(--ds-s2); min-width:0 }
 .a-ctx-score{
   font-size:var(--ds-fs-figure);

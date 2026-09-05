@@ -378,7 +378,13 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
           <b>{clientName(thread.client_id)}</b> · {channelSummary(bubbles)} · {label(thread.stage)}
         </>}
         tail={<>
-          {thread.draft && <Chip icon="wand">DRAFT</Chip>}
+          {/* DRAFT and Ask Claude are the PANE's marks, and the ledger has both
+              as desktop (S14-2, S14-3). At 390 they cost the head its whole
+              width: the name — the one control here that opens the context —
+              was squeezed to nothing and the actions ran off the plate. On the
+              phone the draft card is two lines below anyway, and Claude is his
+              own place in the tab bar. */}
+          {!mobile && thread.draft && <Chip icon="wand">DRAFT</Chip>}
           {/* The hand-off. The decision that a conversation needs Mattan is made
               HERE, reading it, so the link is one tap from the message that
               prompted it. */}
@@ -387,7 +393,7 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
             url={thread.linkedin_url}
             name={thread.prospect_name}
           />
-          <Button variant="quiet" icon="ask" onClick={onAsk}>Ask Claude</Button>
+          {!mobile && <Button variant="quiet" icon="ask" onClick={onAsk}>Ask Claude</Button>}
           {!mobile && <IconButton icon="close" label="Close" onClick={onClose} />}
         </>}
       />
