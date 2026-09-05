@@ -130,4 +130,15 @@
   .a-ops-act{ flex:1 1 100%; align-items:stretch; text-align:start }
   .a-ops-act-p{ margin-inline-start:var(--ds-s0); align-items:stretch; text-align:start }
   .a-ops-act .ds-btn{ width:100% }
+
+  /* The detail line is a CONTROL — it opens the rest of the task — and a
+     one-line clamp of 13px meta is 26px tall, which is not a finger. It keeps
+     the clamp (so a closed row is still one line of ink) and takes the floor as
+     padding, so the words stay where they were and the target grows around
+     them. The title above it already clears 44 on its own. */
+  .a-ops-td{
+    min-block-size:var(--ds-tap);
+    padding-block:var(--ds-s4);
+    box-sizing:border-box;
+  }
 }
