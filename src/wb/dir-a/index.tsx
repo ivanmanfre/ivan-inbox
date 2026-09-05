@@ -1,6 +1,4 @@
-// Direction a ("instrument"), Phase 2 of inbox-app-revamp-2026-09-05.
-// Fill `overrides` with the eight key screens rebuilt on src/ds; leave a name
-// out and the shipped component renders in its place.
-import type { Overrides } from '../index'
+// Direction A — "the instrument". See ../../../goal-runs/inbox-app-revamp-2026-09-05-out/02-directions/a/NOTES.md
+import type { Overrides } from '..'
 
 export const overrides: Overrides = {}
