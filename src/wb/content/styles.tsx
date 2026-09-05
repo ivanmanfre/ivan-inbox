@@ -24,8 +24,8 @@ import {
   type FilterState,
 } from '../../lib/contentFilters'
 import { relTime } from '../../exp/v2c/fmt'
-import { Chip, SectionCard, Segmented } from '../../ds'
-import { Body, Head, Screen } from '../kit'
+import { SectionCard, Segmented } from '../../ds'
+import { Bar, Body, Head, Screen } from '../kit'
 import { Failed, FilteredEmpty, PullIndicator } from './parts'
 import { FilterRow } from './filters'
 import './content.css'
@@ -69,7 +69,7 @@ function StyleCard({ p, preview }: {
   const blurb = blurbOf(p.body)
   return (
     <SectionCard
-      label={<span className="a-wrapline"><Chip tone="quiet">{p.family}</Chip></span>}
+      label={p.family}
       tail={<span className="a-dim a-mono">{relTime(p.updated_at)}</span>}
       className="a-st-card"
     >
@@ -129,12 +129,14 @@ function StyleRoster({ roster, laneRows, lane, loading, error, refresh }: {
         {LANE_POSSESSIVE[lane]} published rows, so an empty preview is a designed
         state — a wrong one would be a lie.
       </div>
-      <FilterRow
-        prominent={prominent} demoted={demoted}
-        state={filters} setState={setFilters}
-        shown={shown.length} loaded={roster.length} total={null} noun="styles"
-        inline
-      />
+      <Bar>
+        <FilterRow
+          prominent={prominent} demoted={demoted}
+          state={filters} setState={setFilters}
+          shown={shown.length} loaded={roster.length} total={null} noun="styles"
+          inline
+        />
+      </Bar>
       {shown.length === 0
         ? <FilteredEmpty noun="styles" onClear={() => setFilters({})} />
         : (
@@ -162,18 +164,16 @@ export function StylesList({ lane, setLane }: {
 
   return (
     <Screen className="a-ct">
-      <Head
-        title="Styles"
-        tail={
-          <Segmented
-            label="Lane"
-            markerId="a-st-lane"
-            value={lane}
-            onChange={k => setLane(k as ContentLane)}
-            options={CONTENT_LANES.map(k => ({ id: k, label: LANE_LABEL[k] }))}
-          />
-        }
-      />
+      <Head title="Styles" />
+      <Bar>
+        <Segmented
+          label="Lane"
+          markerId="a-st-lane"
+          value={lane}
+          onChange={k => setLane(k as ContentLane)}
+          options={CONTENT_LANES.map(k => ({ id: k, label: LANE_LABEL[k] }))}
+        />
+      </Bar>
       <Body innerRef={rowsRef}>
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
         <StyleRoster

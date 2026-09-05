@@ -24,7 +24,7 @@ import {
 import { CONTENT_LANES, LANE_LABEL, type ContentLane } from '../../lib/content'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import { Badge, Button, Card, IconButton, Input, Segmented, spring } from '../../ds'
-import { Body, Group, Head, Screen } from '../kit'
+import { Bar, Body, Group, Head, Screen } from '../kit'
 import { Failed, PullIndicator, relAge } from './parts'
 import './content.css'
 
@@ -256,10 +256,12 @@ export function StrategyView({ lane, setLane }: {
   const ptr = usePullToRefresh(rowsRef, () => { if (!st.dirty) st.refresh() })
 
   const head = (
+    <>
     <Head
       title="Strategy"
       sub={st.dirty ? 'unsaved' : st.updatedAt ? `saved ${relAge(st.updatedAt)}` : 'never saved'}
-      tail={
+    />
+    <Bar>
         <Segmented
           label="Lane"
           markerId="a-strat-lane"
@@ -280,8 +282,8 @@ export function StrategyView({ lane, setLane }: {
           }}
           options={CONTENT_LANES.map(k => ({ id: k, label: LANE_LABEL[k] }))}
         />
-      }
-    />
+    </Bar>
+    </>
   )
 
   if (st.error) {

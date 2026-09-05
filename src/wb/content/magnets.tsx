@@ -31,7 +31,7 @@ import {
 } from '../../lib/contentFilters'
 import { relTime } from '../../exp/v2c/fmt'
 import { Banner, Icon, Segmented, Tabs } from '../../ds'
-import { Body, Dot, Group, Head, Row, Rows, Screen, Sep } from '../kit'
+import { Bar, Body, Dot, Group, Head, Row, Rows, Screen, Sep } from '../kit'
 import { CalmEmpty, Failed, FilteredEmpty, PullIndicator } from './parts'
 import { FilterRow } from './filters'
 import { IdeasSection } from './ideas'
@@ -237,22 +237,15 @@ function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loadedAt, 
         />
       )}
 
-      <FilterRow
-        prominent={prominent} demoted={demoted}
-        state={filters} setState={setFilters} q={sect.q} setQ={setQ}
-        shown={shown.length} loaded={rows.length} total={null} noun="lead magnets"
-        placeholder="Search lead magnets by topic…"
-        inline
-      />
-
-      {ideas && ideaState && (
-        <IdeasSection
-          ideas={ideas} kind="lead_magnet" count={ideaCount}
-          loading={ideaState.loading} error={ideaState.error}
-          loadedAt={ideaState.loadedAt} refresh={ideaState.refresh}
-          title="Lead-magnet ideas"
+      <Bar>
+        <FilterRow
+          prominent={prominent} demoted={demoted}
+          state={filters} setState={setFilters} q={sect.q} setQ={setQ}
+          shown={shown.length} loaded={rows.length} total={null} noun="lead magnets"
+          placeholder="Search lead magnets by topic…"
+          inline
         />
-      )}
+      </Bar>
 
       <div className="a-ct-tabsbar">
         <Tabs
@@ -272,6 +265,15 @@ function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loadedAt, 
           }))}
         />
       </div>
+
+      {ideas && ideaState && (
+        <IdeasSection
+          ideas={ideas} kind="lead_magnet" count={ideaCount}
+          loading={ideaState.loading} error={ideaState.error}
+          loadedAt={ideaState.loadedAt} refresh={ideaState.refresh}
+          title="Lead-magnet ideas"
+        />
+      )}
 
       {shown.length === 0
         ? <FilteredEmpty noun="lead magnets" onClear={() => setSect(cur => ({ ...cur, filters: {}, q: '' }))} />
@@ -299,18 +301,19 @@ export function MagnetsList({ lane, setLane, onOpen }: {
 
   return (
     <Screen className="a-ct">
-      <Head
-        title="Lead magnets"
-        tail={
-          <Segmented
-            label="Lane"
-            markerId="a-lm-lane"
-            value={lane}
-            onChange={k => setLane(k as ContentLane)}
-            options={CONTENT_LANES.map(k => ({ id: k, label: LANE_LABEL[k] }))}
-          />
-        }
-      />
+      <Head title="Lead magnets" />
+      {/* The lane switch rides the thin bar rather than the head's tail: at 390
+          three client names and a title in one row crushed the title to an
+          ellipsis. The bar scrolls sideways and the title keeps its width. */}
+      <Bar>
+        <Segmented
+          label="Lane"
+          markerId="a-lm-lane"
+          value={lane}
+          onChange={k => setLane(k as ContentLane)}
+          options={CONTENT_LANES.map(k => ({ id: k, label: LANE_LABEL[k] }))}
+        />
+      </Bar>
       <Body innerRef={rowsRef}>
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
         {lane === 'ivan' ? (

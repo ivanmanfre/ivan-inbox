@@ -610,3 +610,13 @@ button.a-ct-chip-t:hover{ opacity:.75 }
   .a-strat-save{ inset-inline:var(--ds-s4); inset-block-end:var(--ds-s4) }
   .a-st-i img{ width:4.5rem; height:4.5rem }
 }
+
+/* The roster card's body is the ds section body, which draws the surface and
+   no padding (a settings row brings its own). A style card is prose, so it
+   pays for its own gutter here rather than every line sitting on the edge. */
+.a-st-card .ds-section-body{ padding:var(--ds-card-pad) }
+
+/* A thin bar that rides INSIDE the scrolling body (the lead-magnet and style
+   filters) sticks to the top of its own scroller, not to the head's height:
+   `.a-bar`'s offset is written for a bar that is the head's sibling. */
+.a-body .a-bar{ top:0; margin-inline:calc(var(--ds-gutter) * -1) }
