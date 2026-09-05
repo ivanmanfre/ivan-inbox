@@ -61,6 +61,13 @@ body.ds-body{
   font-variant-numeric:tabular-nums;
   color:inherit;
 }
+/* W3, one added rule. The `color:inherit` above is a two-part selector, so it
+   outranks `.ds-input`'s and `.ds-textarea`'s own single-class colour: the text
+   an operator TYPES was inheriting the wrapper's meta grey rather than taking
+   the body ink. Measured on the strategy section title, computed
+   rgb(148,148,148) where the token says white. Restated at the same
+   specificity so the field's own colour wins again. */
+.ds-body .ds-input, .ds-body .ds-textarea{ color:var(--ds-text) }
 
 .ds-body ::selection{ background:var(--ds-accent-soft) }
 
