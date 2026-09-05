@@ -24,7 +24,7 @@
 .a-money-cp{
   font-size:var(--ds-fs-meta);
   line-height:var(--ds-lh-meta);
-  color:var(--ds-text-4);
+  color:var(--ds-text-3);
   overflow-wrap:anywhere;
 }
 .a-money-cell[data-stale] .a-money-cv{ color:var(--ds-text-3) }
@@ -36,7 +36,7 @@
 .a-money-nosource{
   font-size:var(--ds-fs-meta);
   line-height:var(--ds-lh-meta);
-  color:var(--ds-text-4);
+  color:var(--ds-text-3);
 }
 .a-money-refusal{
   font-size:var(--ds-fs-body);

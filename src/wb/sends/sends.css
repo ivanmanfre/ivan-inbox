@@ -75,7 +75,7 @@
 }
 .a-sends-empty{
   padding:var(--ds-card-pad);
-  color:var(--ds-text-4);
+  color:var(--ds-text-3);
   font-size:var(--ds-fs-body);
   line-height:var(--ds-lh-body);
   background:var(--ds-surface-1);
@@ -84,7 +84,7 @@
 }
 .a-sends-load{
   padding:var(--ds-s9) var(--ds-card-pad);
-  color:var(--ds-text-4);
+  color:var(--ds-text-3);
   font-size:var(--ds-fs-body);
 }
 
@@ -489,7 +489,7 @@
 /* A header and its figure are ONE thing, and the middot between pairs is the
    same one every other meta line in this app uses to separate two facts. */
 .a-sends-pair .a-sep{ margin-inline-start:var(--ds-s2) }
-.a-sends-pk{ color:var(--ds-text-4) }
+.a-sends-pk{ color:var(--ds-text-3) }
 .a-sends-pv{ color:var(--ds-text-2); font-variant-numeric:tabular-nums }
 
 @media (max-width:767px){
