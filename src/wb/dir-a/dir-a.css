@@ -90,7 +90,69 @@
   flex:0 0 auto;
 }
 .a-bar::-webkit-scrollbar{ display:none }
+/* The bar scrolls sideways, so its children keep their own width instead of
+   being squeezed into an unreadable stack of collapsed chips. */
+.a-bar > *{ flex-shrink:0 }
 .a-bar-spacer{ flex:1 1 auto }
+
+/* --------------------------------------------------------------------------
+   1b · The phone chrome's button reset, undone for design system controls.
+
+   The phone chrome sheet carries `.brain-b button{ appearance:none; font:inherit;
+   color:inherit; background:0 0; border:none; margin:0; padding:0 }`. That is
+   right for its own chrome, where a button IS a bare glyph, and wrong for a
+   design system control that happens to be built on a button: at 390 it stripped
+   the box off every chip, every segmented arm and every button on the eight
+   screens, so a filter row read as one run of plain words.
+
+   One class plus a type is a weaker selector than two classes, so the base box
+   is simply restated here, from the same tokens `ds.css` states it with. No new
+   value is introduced and no `!important` is needed. Every VARIANT rule
+   (`[data-selected]`, `[data-tone]`, `[data-active]`, `[data-size]`, the hover
+   and phone blocks) already outranks the chrome reset on its own and is
+   untouched. Seam request in NOTES.md: put `src/ds/ds.css` in a cascade layer,
+   or scope the chrome reset to the chrome's own class names, and this block goes.
+   -------------------------------------------------------------------------- */
+/* The box (padding) is restated for every control, because no variant rule
+   touches padding. Fill and ink are restated only for the RESTING state, so the
+   variant, tone, selected, active and on rules keep winning on their own. */
+.a-root .ds-chip{ padding:0 var(--ds-s3); font-size:var(--ds-fs-meta); font-weight:var(--ds-fw-medium) }
+.a-root .ds-chip[data-tone='neutral']:not([data-selected='true']){
+  background:var(--ds-surface-2);
+  color:var(--ds-text-2);
+}
+.a-root .ds-btn{ padding:0 var(--ds-s5); font-size:var(--ds-fs-body); font-weight:var(--ds-fw-medium) }
+.a-root .ds-btn[data-variant='default']{ background:var(--ds-surface-2); color:var(--ds-text) }
+.a-root .ds-ibtn[data-variant='ghost']:not([data-active='true']){ background:transparent; color:var(--ds-text-2) }
+.a-root .ds-seg-item{ padding:0 var(--ds-s4); font-size:var(--ds-fs-meta); font-weight:var(--ds-fw-medium) }
+.a-root .ds-seg-item:not([data-active='true']){ color:var(--ds-text-3) }
+.a-root .ds-tabs-item{
+  padding:var(--ds-s2) var(--ds-s0) var(--ds-s3);
+  font-size:var(--ds-fs-body);
+  font-weight:var(--ds-fw-medium);
+}
+.a-root .ds-tabs-item:not([data-active='true']){ color:var(--ds-text-3) }
+.a-root .ds-cmd-item,
+.a-root .ds-popover-item{ padding:var(--ds-s2) var(--ds-s3); font-size:var(--ds-fs-body) }
+.a-root .ds-cmd-item:not([data-tone='danger']),
+.a-root .ds-popover-item:not([data-tone='danger']){ color:var(--ds-text-2) }
+.a-root .ds-switch:not([data-on='true']){ background:var(--ds-surface-3) }
+.a-root .ds-chip-x{ padding:var(--ds-s1); color:inherit }
+
+/* A control never gives up its own width to a neighbour. Inside a bar that
+   scrolls sideways (and inside a head that wraps), a chip, a segmented track and
+   its arms, a button and a badge hold their size and the container scrolls or
+   wraps instead of crushing them into an unreadable run of words. Measured at
+   390: without this the filter chips and the Overview/Lanes/Log arms lost their
+   padding and their fill, and the segmented read as one line of plain text. */
+.a-root .ds-chip,
+.a-root .ds-seg,
+.a-root .ds-seg > *,
+.a-root .ds-btn,
+.a-root .ds-ibtn,
+.a-root .ds-badge,
+.a-root .ds-kbd,
+.a-root .ds-tabs > *{ flex-shrink:0 }
 
 /* --------------------------------------------------------------------------
    2 · Body and sections.
@@ -108,6 +170,13 @@
 }
 .a-body[data-flush]{ padding:var(--ds-s0) }
 .a-stack{ display:flex; flex-direction:column; gap:var(--ds-s4); min-width:0 }
+/* A group is `overflow:hidden`, and an overflow that is not visible zeroes a
+   flex item's automatic minimum size. Inside a column scroller that lets the
+   browser squeeze a short group down to its two border lines once the page is
+   taller than the viewport, which is exactly what it did to the masthead. Every
+   direct child of a scroller or a stack therefore holds its own content height;
+   a child that wants to grow still can, by setting flex-grow itself. */
+.a-body > *, .a-stack > *{ flex-shrink:0 }
 .a-stack[data-tight]{ gap:var(--ds-s3) }
 .a-stack[data-wide]{ gap:var(--ds-s7) }
 .a-cols{ display:grid; gap:var(--ds-s4); grid-template-columns:1fr; min-width:0 }
@@ -447,6 +516,15 @@
    goes edge to edge, the ledger becomes two columns, a side column stacks.
    -------------------------------------------------------------------------- */
 @media (max-width:767px){
+  /* The phone row WRAPS rather than crushing the words it exists to show. The
+     main column keeps at least three fifths of the width; the tail and the
+     row's own actions take the rest and settle onto the line under it when they
+     do not fit. A list whose rows are height-windowed against a constant opts
+     back out in its own sheet (see dms.css). */
+  .a-row{ flex-wrap:wrap; row-gap:var(--ds-s2) }
+  .a-row-main{ flex:1 1 60% }
+  .a-row-tail{ margin-inline-start:auto }
+
   .a-body{ padding:var(--ds-s3) var(--ds-s0) var(--ds-s9) }
   .a-group{ border-radius:var(--ds-r4); margin-inline:var(--ds-gutter) }
   .a-ledger{ grid-template-columns:1fr 1fr; margin-inline:var(--ds-gutter) }
