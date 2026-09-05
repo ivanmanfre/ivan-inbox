@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { formatInput, groupRuns, shortPath, summarizeTool } from './toolSummaries'
+import { TOOL_ICON, formatInput, groupRuns, shortPath, summarizeTool } from './toolSummaries'
 
 describe('summarizeTool', () => {
   it('identifies a file tool by its tail path, not its absolute one', () => {
     expect(summarizeTool('Read', { file_path: '/Users/x/Desktop/ivan-inbox/src/hooks/useInbox.ts' }))
-      .toEqual({ icon: '▤', label: 'Read', preview: 'hooks/useInbox.ts' })
+      .toEqual({ label: 'Read', preview: 'hooks/useInbox.ts' })
+    expect(TOOL_ICON.Read).toBe('doc')
     expect(shortPath('a.ts')).toBe('a.ts')
     expect(shortPath('src/a.ts')).toBe('src/a.ts')
   })
@@ -29,7 +30,7 @@ describe('summarizeTool', () => {
   it('degrades a tool it has never heard of instead of throwing', () => {
     const s = summarizeTool('SomeNewTool', { a: 1 })
     expect(s.label).toBe('SomeNewTool')
-    expect(s.icon).toBe('·')
+    expect(TOOL_ICON['SomeNewTool']).toBeUndefined()
     expect(s.preview).toContain('"a"')
   })
 

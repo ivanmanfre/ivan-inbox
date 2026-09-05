@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { Icon } from '../../ds'
 import { parseMarkdown, type Block, type InlineNode } from './chat/renderer'
-import { formatInput, groupRuns, summarizeTool } from './chat/toolSummaries'
+import { TOOL_ICON, formatInput, groupRuns, summarizeTool } from './chat/toolSummaries'
 import { turnOutcome, type ToolCall, type Turn } from './chat/events'
 
 // Inline nodes → React elements. No HTML string, no dangerouslySetInnerHTML, so
@@ -72,7 +73,7 @@ export function ToolStrip({ calls }: { calls: ToolCall[] }) {
         return (
           <div className="wb-tool" key={key}>
             <div className="wb-tool-r" onClick={() => setOpen(isOpen ? null : key)}>
-              <span className="wb-tool-ic">{s.icon}</span>
+              <span className="wb-tool-ic"><Icon name={TOOL_ICON[run.tool] ?? 'dot'} size={16} /></span>
               <span className="wb-tool-n">{s.label}{many && <span className="wb-tool-x">×{run.ids.length}</span>}</span>
               <span className="wb-tool-p">{s.preview}</span>
               <span className="wb-tool-c">{isOpen ? '⌄' : '›'}</span>
