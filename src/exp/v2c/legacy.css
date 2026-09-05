@@ -2,36 +2,413 @@
    src/exp/v2c/legacy.css — the floor the not-yet-rebuilt sheets stand on.
 
    `src/styles.css` is stock-only from this wave on (DECISIONS D4): the live app
-   never loads it. Almost nothing live needed it, because faithful.css already
-   declares the whole legacy token set at its own `.wb` root (its §1.4 BRIDGE
-   block) and the design system brings its own reset in ds.css.
+   never loads it, and D2 forbids editing it, so it cannot be split. The nine
+   workbench sheets were written as OVERRIDES over that sheet's base, and six
+   surfaces still on them (Magnets, Styles, Strategy, Money, the chat pane, the
+   draft/magnet/call windows) render through it until W3, W4 and W5 rebuild
+   them.
 
-   What DID come from that sheet and has no other home is this: the element
-   reset the nine workbench sheets were written against, and the `.app` frame
-   the shell's own root still uses. Both are copied here rather than left to a
-   sheet stock owns, so stock stays byte-identical and the live app stops
-   reading it.
+   So this file is the measured subset: every rule in src/styles.css that a
+   LIVE, still-legacy component actually references, copied verbatim and in the
+   sheet's own order, plus the element reset those sheets were written over.
+   Nothing that only stock reaches is here. It was cut by intersecting the class
+   names in every live TSX with the selectors in that sheet, which is why it is
+   384 lines rather than 1,113.
 
-   W6 deletes this file with the sheets it serves.
+   Two things follow. It is a DUPLICATE and it is allowed to be one, because the
+   original is frozen and the copy dies young: W6 deletes this file with the
+   sheets it serves, and every wave between now and then shrinks it by taking a
+   surface off the old base. And it is not a place to write anything new: a rule
+   that is not already in src/styles.css does not belong in this file.
    ========================================================================== */
 
 /* The element reset. faithful.css and its four successors were written over a
    document where no element carried a UA margin; without it every <h2>, <p>
-   and <ul> inside a legacy surface gains one. */
+   and <ul> inside a legacy surface gains one. The height floor and the body
+   margin live in src/ds/ds.css §0 now, which every live path loads. */
 *{ margin:0; padding:0 }
 
-/* The shell frame. `.app` is the phone plate (a centred 480px column) and
-   `.app.dt` is the desktop canvas the rail and the regions sit in. */
-.app{
-  height:100%;
-  display:flex;
-  flex-direction:column;
-  overflow:hidden;
-  background:var(--bg);
-  max-width:480px;
-  margin:0 auto;
-  position:relative;
+:root[data-theme='light'] .chip.on{background:#000;color:#fff}
+:root[data-theme='light'] .b.out{color:#fff}
+/* ---- app shell (real app fills the viewport; mockup used a phone bezel) ---- */
+.app{height:100%;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);max-width:480px;margin:0 auto;position:relative}
+.app .rows{overflow-y:auto;-webkit-overflow-scrolling:touch}
+.loading{flex:1;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:16px}
+.empty{padding:60px 22px;text-align:center;color:var(--text3);font-size:15px}
+/* ---- nav / large title ---- */
+.nav{padding:22px 22px 0}
+.nav .row-top{display:flex;align-items:center;justify-content:space-between}
+.nav h2{font-size:34px;font-weight:800;letter-spacing:-.02em}
+.avatar-me{width:34px;height:34px;border-radius:99px;background:linear-gradient(135deg,#10A37F,#0A84FF);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700}
+.search{margin:14px 0 0;background:var(--surface);border-radius:12px;padding:9px 12px;color:var(--text3);font-size:16px;display:flex;gap:8px;align-items:center}
+.chips{display:flex;gap:8px;margin:14px 0 6px;overflow:hidden}
+.chip{font-size:14px;font-weight:600;padding:7px 14px;border-radius:99px;background:var(--surface);color:var(--text2);white-space:nowrap}
+.chip.on{background:#fff;color:#000}
+.chip .ct{color:var(--accent);font-weight:700}
+.chip.on .ct{color:#0B7A5F}
+.draftbanner .t{font-size:15px;font-weight:600}
+.draftbanner .s{font-size:13px;color:var(--text2)}
+.draftbanner .go{margin-left:auto;color:var(--accent);font-size:20px}
+.seatbanner .t{font-size:14px;font-weight:600}
+.seatbanner .t a{color:#ff6961;text-decoration:underline}
+.seatbanner .s{font-size:12px;color:var(--text2)}
+/* ---- rows ---- */
+.rows{flex:1;margin-top:6px;overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch;padding-bottom:20px}
+.r{display:flex;gap:12px;padding:12px 22px;align-items:center}
+.r + .r{border-top:.5px solid var(--sep)}
+.av .badge{position:absolute;bottom:-2px;right:-2px;width:19px;height:19px;border-radius:99px;background:var(--surface2);border:2px solid var(--bg);display:flex;align-items:center;justify-content:center;font-size:9px}
+.r .mid{flex:1;min-width:0}
+.r .top{display:flex;align-items:baseline;gap:8px}
+.r .name{font-size:16px;font-weight:600}
+.r .client{font-size:11px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:6px;background:var(--surface2);color:var(--text2)}
+.r .client.rise{background:var(--accent-soft);color:var(--accent)}
+.r .client.kind-inmail{background:rgba(191,90,242,.15);color:#BF5AF2}
+.r .client.kind-email{background:rgba(255,159,10,.15);color:#FF9F0A}
+.r .snip{font-size:14.5px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.r.unread .name{font-weight:700}
+.r.unread .snip{color:var(--text)}
+.r .right{flex:none;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.r .time{font-size:13px;color:var(--text3)}
+.r.unread .time{color:var(--accent)}
+/* The hand-this-chat-over link. It rides the `.client` badge box so it is the same type
+   tier and the same height as the pills beside it — all this adds is the anchor reset and
+   an outline, so an ACTION does not read as one more fact about the row. */
+.r .rowlink{flex:none;background:transparent;box-shadow:inset 0 0 0 1px var(--sep);
+  color:var(--text3);text-decoration:none;cursor:pointer}
+.r .rowlink:hover{color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+/* No chat exists on LinkedIn yet, so this copies the profile instead. It says so in
+   words ("copy profile"); the dashed edge is what makes the two tellable apart at a
+   glance down a list, without reading either one. */
+.r .rowlink.fallback,.copylink.fallback{box-shadow:none;outline:1px dashed var(--sep);outline-offset:-1px}
+@media (max-width:767px){
+  .r .rowlink{display:none}
 }
-.app.dt{ max-width:none; width:100%; flex-direction:row }
-.app .rows{ overflow-y:auto; -webkit-overflow-scrolling:touch }
-.loading{ flex:1; display:flex; align-items:center; justify-content:center; color:var(--text2) }
+.dpill{font-size:10px;font-weight:800;letter-spacing:.06em;color:#000;background:#FFD60A;border-radius:6px;padding:2px 6px}
+.tb .l{font-size:10px;font-weight:600;margin-top:3px}
+.tb.on{color:var(--accent)}
+.tb .bubble{position:relative;display:inline-block}
+.back{color:var(--accent);font-size:22px}
+.t-nav .who{flex:1;text-align:center;margin-right:22px}
+.t-nav .n{font-size:16.5px;font-weight:700}
+.t-nav .m{font-size:12px;color:var(--text2);margin-top:1px}
+.t-nav .m b{color:var(--accent);font-weight:600}
+/* The hand-this-chat-over link. Quiet by default — it is reached for a few times a day,
+   not every thread — and it never wraps, so it cannot grow the nav. */
+.copylink{flex:0 0 auto;padding:4px 9px;border-radius:8px;background:var(--surface2);
+  color:var(--text2);font-size:11.5px;font-weight:600;line-height:1.2;white-space:nowrap;
+  text-decoration:none;cursor:pointer}
+.copylink:hover{color:var(--text);background:var(--sep)}
+.msgs{flex:1;min-height:0;padding:16px 16px 8px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.day{font-size:11px;font-weight:600;color:var(--text3);text-align:center;margin:4px 0}
+.b{max-width:78%;padding:10px 14px;font-size:15.5px;line-height:1.4;border-radius:20px;white-space:pre-wrap;word-break:break-word}
+.b.in{align-self:flex-start;background:var(--surface2);border-bottom-left-radius:6px}
+.b.out{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:6px}
+/* The right/left modifiers are `blbl-r`/`blbl-l`, NOT `r`/`l`: the workbench
+   styles `.r` as the conversation-row GRID (faithful.css §7.1), so a label
+   carrying a bare `r` was laid out in that grid's 28px anchor column — which is
+   why "Sent · DM · typed on LinkedIn" rendered as a vertical stack overlapping
+   the label under it (Ivan, 2026-08-04). One-line by contract. */
+.blbl{font-size:11px;color:var(--text3);margin:0 6px;white-space:nowrap;display:flex;align-items:center;gap:5px}
+/* An email is a letter, not a chat bubble: wider, squared, hairlined, and it drops
+   the accent fill so the eye stops on it. Side still says who sent it, and the
+   accent rail on the send side keeps ours from reading as theirs. */
+.b.chan-b-email{max-width:92%;border-radius:12px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--sep)}
+.b.in.chan-b-email{border-bottom-left-radius:12px;border-left:3px solid var(--blue)}
+.b.out.chan-b-email{color:var(--text);border-bottom-right-radius:12px;border-right:3px solid var(--accent)}
+:root[data-theme='light'] .b.out.chan-b-email{color:var(--text)}
+.b.out.chan-b-email .msg-link{color:var(--blue);text-decoration-color:rgba(10,132,255,.7)}
+/* The card is CAPPED at half the pane (Ivan, 2026-08-20: "can't even see what
+   it says here because ai draft occupies the whole chat"). A long draft plus a
+   gap warning plus the evidence block measured ~70% of the thread pane, and
+   .msgs — flex-basis 0 — surrendered every pixel of it, leaving one clipped
+   bubble of the conversation the draft is answering. The header and the action
+   bar stay pinned outside the scroll region: the 2026-08-07 break was Approve
+   and Discard scrolling out of reach, and this must not reintroduce it. */
+.draftcard{margin:8px 14px 10px;background:var(--surface);border-radius:20px;overflow:hidden;border:1px solid rgba(16,163,127,.4);box-shadow:0 8px 30px rgba(0,0,0,.5);
+  display:flex;flex-direction:column;min-height:0;max-height:50%}
+.dc-h .t{font-size:13px;font-weight:700;color:var(--accent)}
+.dc-h .e{margin-left:auto;font-size:13px;color:var(--text2)}
+.btn{flex:1;text-align:center;padding:12px 0;border-radius:14px;font-size:15.5px;font-weight:700}
+.btn.p{background:var(--accent);color:#fff}
+.btn.s{background:var(--surface2);color:var(--text)}
+.composer{display:flex;gap:10px;align-items:center;padding:6px 14px 12px}
+.cfield{flex:1;background:var(--surface);border:1px solid var(--surface3);border-radius:22px;padding:11px 16px;font-size:15.5px;color:var(--text3)}
+.csend{width:38px;height:38px;border-radius:99px;background:var(--surface2);display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:16px;flex:none;cursor:pointer}
+input.cfield{color:var(--text);outline:none;font-family:inherit}
+input.cfield::placeholder{color:var(--text3)}
+.draftcard .btn,.csend{cursor:pointer}
+/* ---- drafts queue ---- */
+.seg{display:flex;background:var(--surface);border-radius:10px;padding:2px;margin:16px 22px 4px}
+/* Overview/Lanes/Log measured 30px tall on BOTH viewports (D28) — 7px of pad
+   around a 16px line box. `min-height`, not `height`, on purpose: the v2 sheet
+   sets `.seg .sg{height:30px}
+.sg.on{background:var(--surface3);color:var(--text)}
+.qc.dragging{box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.qc .h{display:flex;align-items:center;gap:10px}
+.qc .sub{font-size:12.5px;color:var(--text2);margin-top:2px}
+.qc .btn{padding:11px 0;font-size:15px}
+/* ---- settings ---- */
+.settings{padding-top:2px}
+.group{background:var(--surface);margin:0 16px;border-radius:14px;overflow:hidden}
+.grow{display:flex;align-items:center;gap:12px;padding:14px 16px;min-height:52px}
+.grow + .grow{border-top:.5px solid var(--sep)}
+.gt{font-size:16px;font-weight:500;color:var(--text)}
+.gt.danger{color:#FF453A}
+.gstate.on{flex:none;font-size:14.5px;font-weight:600;color:var(--accent)}
+.grow.tap{cursor:pointer;justify-content:center}
+a.grow.boardlink{color:inherit;text-decoration:none;cursor:pointer}
+a.grow.boardlink:active{background:var(--surface2)}
+a.grow.boardlink.off{opacity:.5;pointer-events:none}
+.seg.theme{margin:0;width:154px;flex:none;background:var(--surface2)}
+.seg.theme .sg{padding:6px 0}
+.sc-bar.zero{background:var(--surface3);opacity:1;min-height:2px}
+.ld-v.passed{background:rgba(16,163,127,.16);color:#10A37F}
+.ld-v.dropped{background:rgba(255,159,10,.16);color:#FF9F0A}
+/* ---- interactivity: tap feedback ---- */
+.r,.chip,.sg,.tb,.btn,.gbtn,.csend,.sc,.draftbanner,.qc .bd,.sheet-btn,.sc-refresh,.back,.grow.tap{
+  -webkit-tap-highlight-color:transparent;
+  transition:transform .12s ease,background-color .15s ease,filter .12s ease,opacity .12s ease;
+}
+.r:active{background:var(--surface2)}
+.chip:active,.sg:active{transform:scale(.94)}
+.btn:active,.gbtn:active,.sheet-btn:active,.csend:active{transform:scale(.97);filter:brightness(1.1)}
+.grow.tap:active{background:var(--surface2)}
+.back:active{opacity:.5}
+@media (hover:hover){
+  .r:hover{background:var(--surface)}
+}
+/* ---- action sheet (in-app confirm) ---- */
+.sheet-scrim{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.5);display:flex;flex-direction:column;justify-content:flex-end;animation:scrim-in .18s ease}
+.sheet-scrim.closing{animation:scrim-out .18s ease forwards}
+.sheet{max-width:480px;width:100%;margin:0 auto;padding:8px 8px calc(10px + env(safe-area-inset-bottom));animation:sheet-up .24s cubic-bezier(.2,.85,.25,1)}
+.sheet-scrim.closing .sheet{animation:sheet-down .18s ease forwards}
+.sheet-card{background:var(--surface2);border-radius:15px;padding:17px 18px;text-align:center;margin-bottom:8px}
+.sheet-title{font-size:16.5px;font-weight:700;letter-spacing:-.01em}
+.sheet-msg{font-size:13.5px;color:var(--text2);margin-top:6px;line-height:1.4}
+.sheet-btn{display:block;width:100%;border:none;border-radius:15px;padding:15px 0;font-size:17px;font-weight:700;font-family:inherit;cursor:pointer}
+.sheet-btn.confirm{background:var(--accent);color:#fff;margin-bottom:8px}
+.sheet-btn.danger{background:#FF453A;color:#fff;margin-bottom:8px}
+.sheet-btn.cancel{background:var(--surface2);color:var(--text)}
+/* ---- pull-to-refresh ---- */
+.ptr{display:flex;align-items:flex-end;justify-content:center;overflow:hidden;padding-bottom:6px}
+/* ---- skeletons ---- */
+.sk{background:var(--surface2);border-radius:7px;position:relative;overflow:hidden}
+.sk::after{content:'';position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.07),transparent);animation:sk-sh 1.3s ease-in-out infinite}
+.sk-line{height:12px;border-radius:6px}
+.sw.on{background:var(--accent)}
+.sw.busy{opacity:.55}
+.sw.on .sw-knob{transform:translateX(20px)}
+/* ---- stale drafts (Ivan already replied) ---- */
+.stale{margin-top:10px;background:rgba(255,159,10,.12);border:1px solid rgba(255,159,10,.35);color:#FF9F0A;font-size:12.5px;font-weight:600;line-height:1.35;padding:8px 11px;border-radius:10px}
+/* The SECOND leg of a paired draft (Thread.companionDraft): a real pending row on
+   the other channel, not a preview. Same blue family as .alsoemail so it reads as
+   part of the same send, with its own header naming the pipe and the recipient. */
+.legbox{margin-top:10px;background:rgba(10,132,255,.08);border:1px solid rgba(10,132,255,.3);border-radius:10px;padding:8px 11px}
+/* ---- push to later (db/037) — a draft that is parked, not pending.
+   Deliberately BLUE-GREY and quiet, never the orange of `.stale` or the red of
+   `.gapwarn`: those two say something is wrong, this says a decision was taken
+   and is holding. A parked draft that looked like a warning would pull him back
+   into work he has already scheduled away. ---- */
+.pushbar{display:flex;align-items:center;gap:10px;background:rgba(120,140,170,.12);border:1px solid rgba(120,140,170,.3);border-radius:12px;padding:9px 11px;font-size:12.5px;font-weight:600;line-height:1.35;color:var(--text2)}
+/* The list-row pill. Same slot as DRAFT, opposite message — muted, because a
+   pushed draft is the one draft that is NOT asking for attention. */
+.dpill.pushed{background:var(--surface3);color:var(--text2);letter-spacing:.02em;text-transform:none;font-weight:700}
+/* Three decisions on one bar: Approve & send keeps the width its label needs. */
+.dc-a.three .btn,.qc .ac.three .btn{font-size:14px;letter-spacing:-.01em;padding:11px 2px}
+.dc-a.three .btn.p,.qc .ac.three .btn.p{flex:1.5}
+/* ---- the push sheet ---- */
+.push-presets{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.push-preset{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--surface2);color:var(--text);border:none;border-radius:15px;padding:13px 6px;font-family:inherit;cursor:pointer}
+.push-preset:active{transform:scale(.97);filter:brightness(1.1)}
+.pp-l{font-size:16px;font-weight:700}
+.pp-s{font-size:11.5px;font-weight:500;color:var(--text3)}
+.push-custom{display:flex;gap:8px;margin-bottom:8px}
+.push-custom input{flex:1;min-width:0;background:var(--surface2);border:none;border-radius:15px;padding:13px 14px;font-size:15px;font-family:inherit;color:var(--text)}
+.push-go{flex:none;background:var(--surface3);color:var(--text);border:none;border-radius:15px;padding:13px 20px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer}
+.push-go:disabled{opacity:.5}
+/* ---- linkified urls in message/draft text ---- */
+.msg-link{color:var(--blue);text-decoration:underline;text-underline-offset:2px;word-break:break-all}
+.b.out .msg-link{color:#fff;text-decoration-color:rgba(255,255,255,.7)}
+.qc .bd .msg-link{color:var(--blue)}
+.err{color:#FF453A;font-size:13px}
+.login .hint{color:var(--text2);font-size:13px;text-align:center}
+/* ---- desktop: rail + list + conversation, side by side ---- */
+.app.dt{max-width:none;width:100%;flex-direction:row}
+.app.dt .tabbar{flex:none;flex-direction:column;justify-content:flex-start;gap:6px;width:86px;padding:18px 8px;border-top:none;border-right:.5px solid var(--sep)}
+.app.dt .tb{flex:none;padding:10px 0;border-radius:12px}
+.app.dt .tb:active{opacity:1;background:var(--surface)}
+.app.dt .tb:hover{background:var(--surface)}
+.app.dt .r.active{background:var(--surface)}
+.app.dt .r{cursor:pointer}
+.app.dt .b{max-width:62%}
+.app.dt .msgs{padding:20px 28px 10px}
+.app.dt .draftcard{margin:8px 24px 10px}
+.app.dt .composer{padding:8px 24px 16px}
+.app.dt .t-nav .who{text-align:left;margin-right:0}
+.app.dt .back{display:none}
+/* ---- prospect context sheet ---- */
+.ctx-card{text-align:left;max-height:78vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.who.tap{cursor:pointer}
+.ctx-head{display:flex;align-items:baseline;gap:10px}
+.ctx-name{font-size:18px;font-weight:800;letter-spacing:-.01em}
+.ctx-icp{margin-left:auto;font-size:13px;font-weight:800}
+.ctx-title{font-size:13px;color:var(--text2);margin-top:3px;line-height:1.35}
+.ctx-loading{color:var(--text3);font-size:14px;padding:18px 0}
+.ctx-grid{margin-top:14px;border-top:1px solid var(--surface3);padding-top:6px}
+.ctx-row{display:flex;padding:7px 0;font-size:13.5px;border-bottom:1px solid var(--surface3)}
+.ctx-row .k{color:var(--text3);width:96px;flex:none}
+.ctx-row .v{color:var(--text);font-weight:600;min-width:0;overflow-wrap:anywhere}
+.ctx-block{margin-top:14px}
+.ctx-lbl{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
+.ctx-lbl .ok{color:#30D158;text-transform:none;letter-spacing:0}
+.ctx-lbl .bad{color:#FF453A;text-transform:none;letter-spacing:0}
+.ctx-txt{font-size:13.5px;line-height:1.5;color:var(--text2);white-space:pre-wrap}
+.ctx-txt.sys{font-size:12.5px;color:var(--text3)}
+.ctx-links{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.ctx-link{font-size:13px;font-weight:700;color:var(--accent);background:var(--surface3);border-radius:9px;padding:8px 12px;text-decoration:none}
+.ctx-link.scan{color:#30D158}
+.ctx-link.none{color:var(--text3);font-weight:600}
+.ctx-note{width:100%;box-sizing:border-box;background:var(--surface3);border:none;border-radius:11px;color:var(--text);font-size:14.5px;line-height:1.45;padding:11px 12px;min-height:64px;resize:none;outline:none;font-family:inherit}
+.ctx-save{margin-top:8px;padding:10px 0;text-align:center}
+.ov-lg-r.today .ov-lg-d{color:var(--text);font-weight:700}
+.ov-lg-n.zero{color:var(--text3);font-weight:600}
+.ov-gauge.sm{height:7px}
+.ov-rc.on{border-color:var(--accent);background:var(--accent-soft,rgba(16,163,127,.10))}
+.ov-rc.tap{cursor:pointer}
+/* masthead — one number defined as the sum of the three zone loads, with a
+   stacked bar of those same three, so the headline cannot drift from its parts.
+   34px is the app's large-title size (.nav h2), i.e. the real top of this type
+   scale; the imported 40px gate was withdrawn in CALIBRATION.md for contradicting
+   it. */
+.td-mast{display:flex;gap:18px;align-items:stretch;margin:10px 16px 2px;padding:14px 16px;
+  background:var(--surface);border-radius:16px}
+.td-stack-s.clear{background:rgba(16,163,127,.22)}
+.td-lg.off{opacity:.5}
+.td-lg.off b{color:var(--text3)}
+/* `min-width:0` + ellipsis rather than `flex:none`: a zone count that grows
+   (e.g. "12 · oldest 35d") used to push its own tail off the 390 canvas and
+   render as "OLDEST 35". It now truncates visibly instead of lying quietly. */
+.td-zc{flex:0 1 auto;min-width:0;font-size:11.5px;font-weight:700;color:var(--text2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.td-zc.done{color:var(--accent)}
+.td-zmark.pending::after{content:'';width:6px;height:6px;border-radius:99px;background:#FF9F0A}
+.td-zmark.done{border-color:var(--accent);background:var(--accent)}
+.td-r.tap{cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background-color .15s ease}
+.td-r.tap:active{background:var(--surface2)}
+.td-kind.hand{background:var(--accent-soft);color:var(--accent)}
+.td-kind.appr{background:rgba(10,132,255,.16);color:var(--blue)}
+.td-kind.auto{background:rgba(255,159,10,.15);color:#FF9F0A}
+.td-more .n{font-weight:800;color:var(--text)}
+.td-more .tail{margin-left:auto;font-size:12px;color:var(--text3);font-weight:500;
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.td-dm.done{opacity:.6}
+.td-dm-ac .btn{padding:10px 0;font-size:14.5px;cursor:pointer}
+.td-dm-ac .btn.off{background:var(--surface3);color:var(--text2)}
+.td-qrow.tap{cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background-color .15s ease}
+.td-qrow.tap:active{background:var(--surface2)}
+.td-tb .u{font-size:13px;font-weight:700;color:var(--text2);letter-spacing:0}
+.td-lane-top .n{margin-left:auto;font-size:15px;font-weight:800}
+.td-lane-top .cap{flex:none;font-size:11px;color:var(--text3);font-weight:600}
+/* ---- Ops (escalations + updates queue) ---- */
+.ops-rows{padding-bottom:20px}
+/* min-height is 5 FULL LINES, not a round number: 5 x (15px x 1.5) + 24px of
+   padding = 136.5. At the old 80px the box was 2.5 line boxes and the third
+   line was sliced through the middle of its glyphs above the buttons, which
+   reads as broken rather than as "there is more" (D25). The mobile sheet fixed
+   exactly this at ≤767px and desktop never got it; longer drafts still scroll
+   inside the box, now on whole lines. */
+textarea.ops-body{display:block;width:100%;background:var(--surface2);border:none;border-radius:14px;color:var(--text);font-family:inherit;font-size:15px;line-height:1.5;padding:12px 14px;margin:12px 0;resize:none;outline:none;min-height:137px;max-height:44vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.ops-ac .btn{cursor:pointer}
+/* Three actions only ever happen on an empty comment card (Discard · Draft it ·
+   Mark handled). At 393px "Mark handled" runs into its own pill at the two-up
+   size, so the row tightens rather than truncating a label. */
+.ops-ac.three{gap:8px}
+.ops-ac.three .btn{font-size:14px;padding:12px 2px;letter-spacing:-.01em}
+.ops-err{color:#FF453A;font-size:13px;margin-top:2px;margin-bottom:8px}
+/* Desktop: Ops is a reading surface. Without a measure cap a card stretches the
+   full monitor width and the comment quote becomes one endless line. */
+.app.dt .ops-card,
+.app.dt .ops-sechdr,
+.app.dt .ops-rows .log-r{max-width:720px;margin-left:auto;margin-right:auto}
+.task-sec.flush{margin-left:0;margin-right:0}
+.task-tick.on::before{background:var(--accent);border-color:var(--accent)}
+.task-tick.on svg{opacity:1;transform:scale(1)}
+.task-d.open{display:block;overflow:visible}
+/* The age is the quietest thing on the row: no plate, no weight. */
+.task-chip.q{background:none;padding:2px 0;color:var(--text3);font-weight:500}
+.task-chip.due.over{background:rgba(255,69,58,.14);color:#FF453A}
+.task-chip.due.now{background:var(--accent-soft);color:var(--accent)}
+.task-chip.due.soon{background:rgba(255,159,10,.14);color:#FF9F0A}
+/* THE TICK'S RECEIPT. Struck through and leaving — the row plays this where it
+   stands and the queue is re-read after it, so completing reads as an act
+   rather than as the row disappearing. `.static` is the Done-today strip, which
+   is struck through but stays put. */
+.task-r.done .task-t,.task-r.done .task-d{text-decoration:line-through;color:var(--text3)}
+.task-r.done:not(.static){animation:task-leave 420ms ease forwards;pointer-events:none}
+.task-r.static{opacity:.6}
+@media (prefers-reduced-motion:reduce){
+  .task-r.done:not(.static){animation:none;opacity:.45}
+}
+/* Same reading measure the Ops cards take on a monitor. */
+.app.dt .task-sec{max-width:720px;margin-left:auto;margin-right:auto}
+/* The Range filter pill on Sends (phase 6 ask 8b). It replaced a second full-
+   width segmented row, which the plain app also rendered — so the BASE sheet
+   needs a working anatomy for it, or the stock app is left with an unstyled
+   button. Treatment (the spine §11.1 pill) still lives in the candidate sheet;
+   this is the structural floor only. :root is untouched. */
+.wb-fbar{display:flex;align-items:center;gap:8px;margin-left:auto}
+.wb-fopt.on{color:var(--text);font-weight:600}
+.wb-fopt-t{margin-left:auto;color:var(--text3)}
+/* Slash palette floor for the stock app (phase 6 ask 7) — treatment lives in
+   the candidate sheet; this keeps the control legible outside .wb. */
+.wb-palette{flex:none;display:flex;flex-direction:column;gap:2px;margin:0 14px;padding:6px;
+  max-height:260px;overflow-y:auto;background:var(--surface);border:1px solid var(--sep);
+  border-radius:14px}
+.wb-pal-opt{display:flex;align-items:baseline;gap:10px;width:100%;text-align:left;border:none;
+  background:none;font:inherit;font-size:12.5px;color:var(--text2);cursor:pointer;
+  padding:7px 9px;border-radius:9px}
+.wb-pal-opt.on{background:var(--surface2, rgba(120,120,128,.16));color:var(--text)}
+.wb-pal-n{flex:none;font-weight:600;color:var(--text)}
+.wb-pal-h{flex:1;min-width:0;color:var(--text3);overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap}
+.wb-pal-f{padding:6px 9px 2px;color:var(--text3);font-size:11.5px;
+  border-top:1px solid var(--sep);margin-top:4px}
+/* Controls that were spans/divs are real <button>s now (keyboard reach, the
+   focus ring). Zero-specificity reset so every class-defined look stays
+   byte-identical — :where() loses to any class rule, it only beats UA defaults. */
+:where(button.chip, button.sg, button.sw, button.csend, button.btn,
+       button.ct-alert, button.wb-ofresh, button.wb-sech){
+  font: inherit; color: inherit; letter-spacing: inherit; text-align: left;
+  border: none; background: none; padding: 0; margin: 0;
+  -webkit-appearance: none; appearance: none;
+}
+.ops-queue.capped{background:rgba(255,159,10,.10);color:#FF9F0A}
+/* DM history (2026-08-03) — the receipt section at the tail of DMs, and the
+   kind/manual marks Ivan asked to read apart at a glance. */
+.r .client.kind-dm,.dmh-r .client.kind-dm{background:rgba(16,163,127,.15);color:#10A37F}
+.r .client.kind-manual,.dmh-r .client.kind-manual{background:rgba(255,214,10,.16);color:#FFD60A}
+.r .client.kind-lm,.dmh-r .client.kind-lm{background:rgba(255,199,29,.18);color:#FFC71D}
+.dmh-r .client{font-size:11px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:6px;background:var(--surface2);color:var(--text2)}
+.dmh-r .client.rise{background:var(--accent-soft);color:var(--accent)}
+.dmh-r .client.kind-inmail{background:rgba(191,90,242,.15);color:#BF5AF2}
+.dmh-r .client.kind-email{background:rgba(255,159,10,.15);color:#FF9F0A}
+.dmh-h{display:flex;align-items:center;gap:8px;width:100%;padding:14px 16px;background:none;border:0;color:inherit;text-align:left;cursor:pointer;min-height:44px}
+.dmh-h:hover{background:rgba(255,255,255,.03)}
+.dmh-c{opacity:.5;font-size:13px;width:10px}
+.dmh-n{font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600}
+.dmh-m{margin-left:auto;font-size:12px;opacity:.55;font-variant-numeric:tabular-nums}
+.dmh-r{display:flex;align-items:center;gap:12px;width:100%;padding:10px 16px;background:none;border:0;color:inherit;text-align:left;cursor:pointer;min-height:44px}
+.dmh-r:hover{background:rgba(255,255,255,.03)}
+.dmh-r .mid{min-width:0;flex:1}
+.dmh-r .top{display:flex;align-items:center;gap:6px}
+.dmh-r .name{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dmh-r .snip{font-size:13px;opacity:.6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dmh-r .time{font-size:12px;opacity:.45;white-space:nowrap}
+/* A hand-typed reply reads as its own object in the thread. */
+.b.out.manual{border:1px solid rgba(255,214,10,.4)}
+/* Evidence on a DM draft (Ivan 2026-08-20: "see the draft on the dm with a small context
+   collapsed thing"). Collapsed by default so the card stays quiet; it is a logged list of what
+   the drafter was GIVEN, never the model's account of what it used. Uses the :root tokens --
+   this app is DARK-first with a light override, so hardcoded light-theme colours are invisible. */
+.dev{margin-top:10px;border-top:1px solid var(--sep);padding-top:8px}
+.dev[open] .dev-s::before{content:'\25BE\00a0'}
