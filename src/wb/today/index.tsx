@@ -247,7 +247,10 @@ function HandOff({ n, title, sub, meta, owner, href, onOpen, age }: {
   const lead = <span className="a-mono a-ink">{n}</span>
   const heading = <>{title}{age ? <span className="a-mono a-dim"> {age}</span> : null}</>
   const tail = <Icon name="forward" size={16} />
-  const ownerLine = <span className="a-row-meta a-dim-2">{owner}</span>
+  // E8: this is PROSE a reader has to read (who owns the pile and where it is
+  // decided), and `--ds-text-4` is the system's placeholder tier — 3.23:1 on
+  // surface-1, under the 4.5 floor. Meta ink, which clears it.
+  const ownerLine = <span className="a-row-meta a-dim">{owner}</span>
 
   if (href && !onOpen) {
     return (
