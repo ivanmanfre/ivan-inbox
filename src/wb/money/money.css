@@ -80,6 +80,14 @@
 .a-money-wide .ds-table{ table-layout:fixed }
 .a-money-wide .ds-table [data-numeric='true']{ white-space:normal }
 .a-money-wide .a-money-cv{ white-space:nowrap }
+/* Two more things in this ledger are longer than a column and were told never
+   to wrap. A column HEADER here is a full sentence of provenance — "Anthropic
+   API (token-priced estimate, not invoice-verified)" is 526px of ink in a 232px
+   column — and a group heading rides on the eyebrow, which ellipsises by
+   default because it is normally a two-word label. Both are the row's meaning,
+   not its decoration, so in this table they wrap and print in full. */
+.a-money-wide .ds-table thead th{ white-space:normal }
+.a-money-wide .a-money-grp{ white-space:normal; overflow:visible; text-overflow:clip }
 
 .a-money-stack{ display:flex; flex-direction:column; gap:var(--ds-s3); margin-block-start:var(--ds-s2) }
 .a-money-pair{ display:flex; flex-direction:column; gap:var(--ds-s1); min-width:0 }
