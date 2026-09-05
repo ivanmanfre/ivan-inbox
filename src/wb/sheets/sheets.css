@@ -119,8 +119,8 @@
    -------------------------------------------------------------------------- */
 /* AND IT DOES NOT INHERIT THE INK EITHER, which is the worse half. The sheet
    is a direct child of <body>: `.ds-t-title` names no colour of its own, so the
-   sheet's heading resolves to the UA's black on a `rgb(31,31,31)` panel —
-   measured `rgb(0,0,0)`, 1.27:1, a heading nobody can read. Every other line in
+   sheet's heading resolves to the UA's pure black on the panel's own dark
+   surface — measured at 1.27:1, a heading nobody can read. Every other line in
    the sheet happens to carry a colour class and so survived; the title is the
    one that did not. The sheet states the ground and the ink it is drawn on
    rather than borrowing them from a scope it is not inside. */
