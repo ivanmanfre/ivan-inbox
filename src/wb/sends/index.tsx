@@ -258,6 +258,7 @@ function LogView({ client }: { client: Client }) {
   return (
     <Body>
       <Group
+        className="a-log-g"
         label="Log"
         tail={
           <span className="a-mono">
@@ -574,33 +575,39 @@ export function SendsScreen({ client, setClient }: {
           ]}
         />
         <span className="a-bar-spacer" />
-        {CHIPS.map(c => (
-          <Chip key={c.key} selected={client === c.key} onClick={() => setClient(c.key)}>{c.label}</Chip>
-        ))}
-        {view === 'overview' && (
-          <span className="a-sends-pop">
-            <Button
-              variant="quiet"
-              size="sm"
-              iconEnd="disclose"
-              onClick={() => setRange(v => !v)}
-              title="The window every figure below is computed over"
-            >
-              Range: <b>{TIMEFRAMES.find(t => t.key === timeframe)?.label}</b>
-            </Button>
-            <Popover open={range} label="Range" className="a-sends-menu">
-              {TIMEFRAMES.map(t => (
-                <PopoverItem
-                  key={t.key}
-                  onClick={() => { setTimeframe(t.key); setRange(false) }}
-                  tail={timeframe === t.key ? <Icon name="check" size={16} /> : undefined}
-                >
-                  {t.label}
-                </PopoverItem>
-              ))}
-            </Popover>
-          </span>
-        )}
+        {/* The three chips and the pill are ONE control group, so the bar wraps
+            between the view switch and the group rather than through it: at 390
+            the third client used to drop to a line of its own, which reads as a
+            chip that got left behind rather than as a filter. */}
+        <span className="a-sends-filters">
+          {CHIPS.map(c => (
+            <Chip key={c.key} selected={client === c.key} onClick={() => setClient(c.key)}>{c.label}</Chip>
+          ))}
+          {view === 'overview' && (
+            <span className="a-sends-pop">
+              <Button
+                variant="quiet"
+                size="sm"
+                iconEnd="disclose"
+                onClick={() => setRange(v => !v)}
+                title="The window every figure below is computed over"
+              >
+                Range: <b>{TIMEFRAMES.find(t => t.key === timeframe)?.label}</b>
+              </Button>
+              <Popover open={range} label="Range" className="a-sends-menu">
+                {TIMEFRAMES.map(t => (
+                  <PopoverItem
+                    key={t.key}
+                    onClick={() => { setTimeframe(t.key); setRange(false) }}
+                    tail={timeframe === t.key ? <Icon name="check" size={16} /> : undefined}
+                  >
+                    {t.label}
+                  </PopoverItem>
+                ))}
+              </Popover>
+            </span>
+          )}
+        </span>
       </Bar>
 
       {/* The custom date pair stays a value editor, not a second filter chrome,

@@ -17,6 +17,15 @@
 /* The bar holds a popover, so it may not clip; on a phone it wraps instead of
    scrolling, which is also what keeps the page from ever moving sideways. */
 .a-sends .a-bar{ overflow:visible; flex-wrap:wrap; row-gap:var(--ds-s2) }
+/* The client chips and the range pill wrap as ONE group, never through it. */
+.a-sends-filters{ display:flex; align-items:center; gap:var(--ds-s2); flex:0 0 auto; min-width:0 }
+
+@media (max-width:767px){
+  /* The group takes the second line whole; the spacer that right-set it on the
+     desktop would otherwise hold a line of its own open. */
+  .a-sends .a-bar-spacer{ display:none }
+  .a-sends-filters{ flex:1 1 100% }
+}
 
 /* --------------------------------------------------------------------------
    1 · The range pill and its menu.
@@ -455,11 +464,13 @@
   .a-log{ min-inline-size:0 }
 }
 
-/* The log's denominator is a sentence, not a tail chip: on the phone it takes
-   its own line under the eyebrow rather than running off the plate edge. */
+/* The LOG's denominator is a sentence, not a tail chip: on the phone it takes
+   its own line under the eyebrow rather than running off the plate edge. Scoped
+   to that one group — every other tail on this screen ("what we sent") is two
+   words and belongs on the eyebrow's line. */
 @media (max-width:767px){
-  .a-sends .a-group-h{ flex-wrap:wrap; row-gap:var(--ds-s2) }
-  .a-sends .a-group-tail{ flex:1 1 100%; white-space:normal }
+  .a-sends .a-log-g .a-group-h{ flex-wrap:wrap; row-gap:var(--ds-s2) }
+  .a-sends .a-log-g .a-group-tail{ flex:1 1 100%; white-space:normal }
 }
 
 /* --------------------------------------------------------------------------
