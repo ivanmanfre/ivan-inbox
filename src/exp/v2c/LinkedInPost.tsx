@@ -118,10 +118,25 @@ const Glyph = {
   send: <svg {...S} aria-hidden><path d="M22 2 11 13" /><path d="M22 2 15 22l-4-9-9-4Z" /></svg>,
 }
 
-const REACTIONS = [
-  { bg: '#378fe9', ch: null },
-  { bg: '#df704d', ch: '❤' },
-  { bg: '#f5bb5c', ch: '💡' },
+// The reaction bubbles LinkedIn draws are white monochrome glyphs on a brand
+// circle, not colour emoji. The two emoji characters that stood here rendered
+// their own colours over a coloured chip (measured 1.73:1 and 3.2:1) and put an
+// emoji mark on screen; these are the same three glyphs in the same treatment
+// as the thumb that was already an inline path.
+const R = { width: 10, height: 10, viewBox: '0 0 24 24', fill: '#fff', 'aria-hidden': true } as const
+const REACTIONS: { bg: string; ch: ReactNode }[] = [
+  {
+    bg: '#378fe9',
+    ch: <svg {...R}><path d="M7 10v12h10.5a2 2 0 0 0 1.92-1.44l2.33-8A2 2 0 0 0 19.83 10H14l1-4.12A3.13 3.13 0 0 0 12 2L8.55 8.89A2 2 0 0 1 6.76 10H7Z" /></svg>,
+  },
+  {
+    bg: '#df704d',
+    ch: <svg {...R}><path d="M12 21s-7.5-4.6-9.3-9.2A5.3 5.3 0 0 1 12 6.6a5.3 5.3 0 0 1 9.3 5.2C19.5 16.4 12 21 12 21Z" /></svg>,
+  },
+  {
+    bg: '#f5bb5c',
+    ch: <svg {...R}><path d="M9.3 20.2h5.4v1.6H9.3v-1.6Zm5.4-1.4H9.3v-1.5l-.9-.7A7 7 0 1 1 19 11a7 7 0 0 1-2.7 5.6l-.9.7v1.5Z" /></svg>,
+  },
 ]
 
 const BAR: [keyof typeof Glyph, string][] = [
@@ -222,7 +237,7 @@ export function LinkedInPost({ lane, text, image, editing, value, onChange, onSt
           <span className="li-rs">
             {REACTIONS.map((r, i) => (
               <span className="li-r" style={{ background: r.bg, marginLeft: i ? -5 : 0 }} key={i}>
-                {r.ch ?? <svg width="10" height="10" viewBox="0 0 24 24" fill="#fff" aria-hidden><path d="M7 10v12h10.5a2 2 0 0 0 1.92-1.44l2.33-8A2 2 0 0 0 19.83 10H14l1-4.12A3.13 3.13 0 0 0 12 2L8.55 8.89A2 2 0 0 1 6.76 10H7Z" /></svg>}
+                {r.ch}
               </span>
             ))}
           </span>
