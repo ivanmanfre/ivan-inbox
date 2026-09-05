@@ -86,6 +86,16 @@ import './dwsys.css'
 // them, so its scope does not intersect dwsys's or wbcal's.
 import './wbcall.css'
 import { lazyBrainAsk, lazyBrainMobile, type BrainId } from '../brain'
+// Direction seam (inbox-app-revamp-2026-09-05, Phase 2): with no `?ds=` flag every
+// pick() below is the component named as its fallback, so nothing here changes.
+import { pick } from '../../wb'
+const TodayC = pick('Today', TodayScreen)
+const DmsC = pick('Dms', DmsSurface)
+const ThreadPeerC = pick('ThreadPeer', ThreadPeer)
+const ContentListC = pick('ContentList', ContentList)
+const SendsC = pick('SendsScreen', SendsScreen)
+const OpsBoardC = pick('OpsBoard', OpsBoard)
+const SettingsC = pick('Settings', SettingsScreen)
 
 // ============================================================================
 // Candidate v2c — WORKBENCH
@@ -512,7 +522,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
   // ---- the working surface for the active job ----
   const stale = inbox.threads.length > 0
   const dmsList = (
-    <DmsSurface
+    <DmsC
       threads={inbox.threads}
       filter={filter} setFilter={setFilter}
       status={status}
@@ -550,7 +560,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
   // when the pipeline and automation blocks came off Ops (Ivan: it is for
   // notifications, tasks and approvals). Nothing on the surface reads them now.
   const opsSurface = (
-    <OpsBoard
+    <OpsBoardC
       drafts={ops.drafts}
       loading={ops.loading}
       error={opsError}
@@ -571,7 +581,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
       <WorkSegment job={job} counts={counts} onJob={goJob} />
       {job === 'dms' && dmsSurface}
       {job === 'content' && (
-        <ContentList
+        <ContentListC
           key={`${lane}:${contentBump}`}
           lane={lane}
           setLane={setLane}
@@ -600,7 +610,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
       {job === 'strategy' && (
         <StrategyView lane={lane} setLane={setLane} />
       )}
-      {job === 'sends' && <SendsScreen client={sendsClient} setClient={setSendsClient} />}
+      {job === 'sends' && <SendsC client={sendsClient} setClient={setSendsClient} />}
       {/* Money joined 2026-09-01 (goal-run money-truth) — a whole-canvas
           reading surface like Strategy, so it takes no props from Shell at
           all: it owns its own fetch, same as Strategy owns client_strategy. */}
@@ -614,7 +624,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
           a queue row opens the exact thread or the exact lane rather than
           just the job. */}
       {job === 'today' && (
-        <TodayScreen
+        <TodayC
           onOpenDrafts={() => goJob('dms')}
           onOpenOps={() => goJob('ops')}
           threads={inbox.threads}
@@ -627,7 +637,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
       {/* `shell` is what earns the Density and Frame controls. SettingsScreen is
           shared with #exp/stock (App.tsx:148) and both arms only reach `.wb`, so
           without this the escape hatch renders two controls that do nothing. */}
-      {job === 'settings' && <SettingsScreen shell="workbench" />}
+      {job === 'settings' && <SettingsC shell="workbench" />}
     </>
   )
 
@@ -673,7 +683,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
       )
     }
     return (
-      <ThreadPeer
+      <ThreadPeerC
         thread={ctxThread}
         refresh={inbox.refresh}
         onClose={() => closePeer(key)}
