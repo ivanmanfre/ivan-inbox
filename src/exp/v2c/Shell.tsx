@@ -42,7 +42,6 @@ import { StrategyView } from './StrategyView'
 import type { OpenMagnet } from './ContentSections'
 import { DraftWindow, type QueueItem } from './DraftPane'
 import { MagnetWindow } from './MagnetWindow'
-import { CallWindow } from './CallWindow'
 import type { CallRow } from '../../lib/transcripts'
 import { ChatPane } from './ChatPane'
 import { draftSubject, laneSubject, threadSubject, type Subject } from './chat/paneContext'
@@ -91,6 +90,7 @@ import { ContentList as ContentListC } from '../../wb/content'
 import { SendsScreen as SendsC } from '../../wb/sends'
 import { OpsBoard as OpsBoardC } from '../../wb/ops'
 import { MoneyView as MoneyC } from '../../wb/money'
+import { CallWindow as CallC } from '../../wb/call'
 import { Settings as SettingsC } from '../../wb/settings'
 
 // ============================================================================
@@ -711,7 +711,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
     <>
       {itemWindow}
       {openCall && (
-        <CallWindow
+        <CallC
           id={openCall.id} queue={openCall.queue}
           onClose={closeCall} onPick={pickCall} mobile={mobile}
         />
