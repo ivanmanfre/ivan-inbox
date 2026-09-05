@@ -292,7 +292,7 @@ function NoteComposer({ id, onDone }: { id: string; onDone: () => void }) {
       {err && <Banner tone="urgent" icon="error" title={err} />}
       <textarea
         className="ds-textarea a-mg-ta" value={text}
-        placeholder="Add a note for future-you (⌘↵ to post)…"
+        placeholder="Add a note for future-you…"
         aria-label="Add a note to the generation register"
         onChange={e => setText(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void send() } }}
@@ -301,6 +301,12 @@ function NoteComposer({ id, onDone }: { id: string; onDone: () => void }) {
         <Button variant="primary" busy={busy} disabled={busy || !text.trim()} onClick={() => { void send() }}>
           {busy ? 'Posting…' : 'Post note'}
         </Button>
+        {/* The key hint the placeholder used to carry as two glyphs. A
+            placeholder cannot hold a mark, so it moved out beside the control
+            it describes. */}
+        <span className="a-mg-hint">
+          <Kbd><Icon name="cmd" size={16} /></Kbd><Kbd><Icon name="enter" size={16} /></Kbd> posts
+        </span>
       </div>
     </div>
   )
@@ -359,7 +365,10 @@ function LmPromo({ d, lane, refresh }: { d: ResourceDetail; lane: ContentLane; r
             </button>
             <button type="button" className="li-btn" disabled={busy}
               onClick={() => { setEditing(false); setText(shown) }}>Cancel</button>
-            <span className="li-editnote">esc cancels · ⌘↵ saves</span>
+            <span className="li-editnote">
+              <Kbd>esc</Kbd> cancels ·{' '}
+              <Kbd><Icon name="cmd" size={16} /></Kbd><Kbd><Icon name="enter" size={16} /></Kbd> saves
+            </span>
           </div>
         ) : saved ? (
           <div className="li-editbar"><span className="li-saved">Saved to the database</span></div>

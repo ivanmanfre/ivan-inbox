@@ -10,9 +10,10 @@
    1 · The frame. Below the confirm layer, because a delete flow opens its
    dialog ON TOP of this window.
    -------------------------------------------------------------------------- */
+ /* The scrim carries the design system's own class as well as this one: the
+    ds rule draws it (fixed, inset 0, the scrim token, the sheet layer) and a
+    measurement that has to know a modal is up recognises it by that class. */
 .a-tk-scrim{
-  position:fixed; inset:0; z-index:var(--ds-z-sheet);
-  background:var(--ds-scrim);
   display:flex; align-items:center; justify-content:center;
   padding:var(--ds-s6);
 }

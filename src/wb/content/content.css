@@ -117,14 +117,15 @@
   flex:0 0 auto;
 }
 .a-ct-tabsbar::-webkit-scrollbar{ display:none }
-.a-ct-tabsbar .ds-tabs{ flex-wrap:nowrap }
-/* On the phone the strip WRAPS instead of scrolling, the same call ds.css §17
-   makes for the primitive: seven stages behind an edge with no affordance is a
-   stage nobody finds. Two rows cost 44px and hide nothing. */
-@media (max-width:767px){
-  .a-ct-tabsbar{ overflow-x:visible; overflow-y:visible }
-  .a-ct-tabsbar .ds-tabs{ flex-wrap:wrap }
-}
+/* The strip WRAPS instead of scrolling, at EVERY width. W1 made that call for
+   the phone ("seven stages behind an edge with no affordance is a stage nobody
+   finds; two rows cost 44px and hide nothing"), and the measurement extends it:
+   the lead-magnet lane carries ten stages, which at 1024 overflowed a 716px
+   column into a sideways scroller with no affordance either. The row gap is
+   load-bearing, not decoration: two 44px rows sharing an edge put a thumb's
+   own hit rectangle onto the tab above it. */
+.a-ct-tabsbar{ overflow-x:visible; overflow-y:visible }
+.a-ct-tabsbar .ds-tabs{ flex-wrap:wrap; overflow-x:visible; row-gap:var(--ds-s3) }
 
 /* --------------------------------------------------------------------------
    3 · The pull indicator, the sub-line, the quiet note.
@@ -520,10 +521,9 @@ button.a-ct-chip-t:hover{ opacity:.75 }
 /* The example strip scrolls sideways rather than wrapping into a wall: a style
    with nine published examples is a fact about the style, not nine rows of
    this card. */
-.a-st-i{
-  display:flex; gap:var(--ds-s3); overflow-x:auto; padding-bottom:var(--ds-s2);
-  scrollbar-width:thin;
-}
+/* The example strip WRAPS. It was a sideways scroller, which is a row of
+   examples with no affordance saying there are more of them. */
+.a-st-i{ display:flex; flex-wrap:wrap; gap:var(--ds-s3) }
 .a-st-i img{
   flex:0 0 auto; width:5.5rem; height:5.5rem; object-fit:cover;
   border-radius:var(--ds-r2); background:var(--ds-surface-2);
@@ -620,3 +620,42 @@ button.a-ct-chip-t:hover{ opacity:.75 }
    filters) sticks to the top of its own scroller, not to the head's height:
    `.a-bar`'s offset is written for a bar that is the head's sibling. */
 .a-body .a-bar{ top:0; margin-inline:calc(var(--ds-gutter) * -1) }
+
+
+/* --------------------------------------------------------------------------
+   12 · The bars WRAP on the phone rather than scrolling sideways.
+
+   Same argument as the stage strip, and the same measurement behind it: at 390
+   the lane switch alone is 427px inside a 406px bar, which made every bar on
+   these five surfaces a sideways scroller with no affordance. Wrapped, nothing
+   is hidden and nothing overflows.
+   -------------------------------------------------------------------------- */
+@media (max-width:767px){
+  .a-ct .a-bar{ flex-wrap:wrap; overflow-x:visible; overflow-y:visible; row-gap:var(--ds-s2) }
+  .a-ct .a-bar > *{ flex-shrink:1; min-width:0 }
+  .a-ct .a-bar .ds-seg{ flex-wrap:wrap; row-gap:var(--ds-s1) }
+}
+
+
+/* --------------------------------------------------------------------------
+   13 · The two controls the phone hit floor had not reached.
+
+   Measured, not guessed: the row-select mark rendered 28 by 28 and each
+   pipeline mark 30 tall. Both are inside a row or a bar that is already 44,
+   so neither grows its own box: they take an invisible 44px hit rectangle,
+   which is the same move the design system makes for a chip's remove mark.
+   -------------------------------------------------------------------------- */
+@media (max-width:767px){
+  /* The select mark is an overlay sized to the anchor, so it cannot grow its
+     own box and takes an invisible hit rectangle instead. */
+  .a-ct .a-ct-selmark::after{
+    content:''; position:absolute; inset:50% auto auto 50%;
+    width:var(--ds-tap); height:var(--ds-tap);
+    transform:translate(-50%, -50%);
+  }
+  /* A pipeline mark sits in a bar that can simply be taller, so it grows
+     rather than carrying a rectangle wider than itself: the first and last
+     mark's invisible box reached past the strip and read as a miss where the
+     middle ones read as hits. */
+  .a-ct .a-ct-stat{ min-height:var(--ds-tap); justify-content:center }
+}

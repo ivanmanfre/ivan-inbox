@@ -49,7 +49,7 @@ export function Takeover({ label, sub, onClose, mobile, children, bodyClass }: {
   return (
     <AnimatePresence>
       <motion.div
-        className="a-tk-scrim ds-body"
+        className="ds-scrim a-tk-scrim ds-body"
         // Backdrop click closes on desktop. On the phone the window IS the
         // screen, so there is no backdrop to click and the back mark carries it.
         onClick={mobile ? undefined : onClose}
