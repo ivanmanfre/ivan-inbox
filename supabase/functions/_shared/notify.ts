@@ -20,6 +20,55 @@ export type Severity = (typeof SEVERITIES)[number]
 const DEDUPE_WINDOW_MS = 24 * 60 * 60 * 1000
 const PUSH_BODY_CHARS = 140
 
+/**
+ * Push-vs-feed default, per family (BALLOT row 3, applied 2026-09-05).
+ *
+ * Before this map the only rule was `severity !== 'info'`, which pushed every
+ * 'attention' row: 17 draft-pending and 12.5 engine-health notices a day each
+ * bought a buzz, so the phone taught him to ignore it. A family key is the
+ * honest unit for that decision because volume and worth are properties of the
+ * producer, not of one row's severity.
+ *
+ * `true`  interrupt the phone.
+ * `false` wait in the feed, whatever severity the row carries - these are the
+ *         families measured as routine chatter (heartbeats, no-op health
+ *         checks, digests, publish confirmations).
+ * absent  fall through to severity: only a hard 'error' (critical) wakes the
+ *         phone; 'attention' (warn) and 'info' wait in the feed.
+ *
+ * A producer that passes an explicit `push` flag still wins over all of this.
+ */
+export const PUSH_DEFAULT: Record<string, boolean> = {
+  // --- interrupt --------------------------------------------------------
+  claude_turn: true,          // an answer (or a failed turn) he is waiting on
+  inbound_reply_notice: true, // a human replied on ARCH / RISE / Ivan
+  booking_notice: true,       // a lead booked; the money event
+  reminder: true,             // reminders he set himself
+  night_brief: true,          // the night brief
+  thursday_brief: true,       // the Thursday brief
+
+  // --- feed only --------------------------------------------------------
+  outreach_engine_ops: false,       // engine heartbeats / pace
+  system_watchdog_digest: false,    // health + liveness no-ops
+  seat_health: false,               // seat liveness
+  health_reminder: false,           // personal, never a work interrupt
+  content_sourcing_pipeline: false, // Dreaming / sourcing digests
+  reporting_digest: false,          // daily-journal + recap digests
+  content_board_activity: false,    // publish confirmations, schedule taps
+  chat: false,                      // a live conversation, not a notification
+}
+
+/**
+ * The default push decision for a family that passed no explicit `push` flag.
+ * Kept as a function (not an inline lookup) so the fall-through rule has one
+ * definition and the tests can name it.
+ */
+export function pushDefault(family: string, severity: Severity): boolean {
+  const explicit = PUSH_DEFAULT[family]
+  if (typeof explicit === 'boolean') return explicit
+  return severity === 'error'
+}
+
 export interface NotifyInput {
   family: string
   source?: string | null
@@ -172,9 +221,10 @@ export async function notify(db: SupabaseClient, raw: unknown): Promise<NotifyRe
     .single()
   if (insErr || !row) throw new NotifyError(500, 'insert_failed', insErr?.message)
 
-  // Producer's call if it made one; otherwise anything above 'info' is worth a
-  // buzz and 'info' is not. Silence is the default for routine chatter.
-  const shouldPush = n.push ?? (n.severity !== 'info')
+  // Producer's call if it made one; otherwise the family map decides and a
+  // family it has never seen falls through to severity. Silence is the
+  // default for routine chatter.
+  const shouldPush = n.push ?? pushDefault(n.family, (n.severity ?? 'info') as Severity)
   if (!shouldPush) return { id: row.id, pushed: false, deduped: false, subs: 0, results: [] }
 
   const out = await sendPush(db, {
