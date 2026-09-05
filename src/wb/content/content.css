@@ -489,3 +489,124 @@ button.a-ct-chip-t:hover{ opacity:.75 }
   .a-ct-inflight{ inset-block-end:var(--ds-s7) }
   .a-ct-cal{ gap:var(--ds-s7) }
 }
+
+/* ==========================================================================
+   9 · S05 MAGNETS — what the LM row needs beyond the post row's anatomy.
+
+   The anchor, the thumb, the QA mark and the three-column tail are the post
+   row's (section 2 above) and are reused as they are. A lead magnet carries no
+   QA column, so its anchor mark renders in the "none" state and the landing
+   link rides in the row's own actions slot.
+   ========================================================================== */
+.a-ct-anchor[data-qa='none'] .a-ct-qa{ opacity:.5 }
+/* The landing link is a row action: it appears with the others on hover or
+   focus, it is a link and not a button, and it never opens the row under it. */
+.a-row-actions a.a-link{ display:inline-flex; align-items:center; gap:var(--ds-s2) }
+
+/* ==========================================================================
+   10 · S06 STYLES — the roster. A read-only run of cards, one per prompt.
+   ========================================================================== */
+.a-st-list{ display:flex; flex-direction:column; gap:var(--ds-s4); min-width:0 }
+.a-st-card .ds-section-body{ display:flex; flex-direction:column; gap:var(--ds-s3) }
+.a-st-t{
+  font-size:var(--ds-fs-title); line-height:var(--ds-lh-title);
+  font-weight:var(--ds-fw-medium); letter-spacing:var(--ds-tr-title);
+  color:var(--ds-text);
+}
+.a-st-b{
+  font-size:var(--ds-fs-body); line-height:var(--ds-lh-body);
+  color:var(--ds-text-2);
+}
+/* The example strip scrolls sideways rather than wrapping into a wall: a style
+   with nine published examples is a fact about the style, not nine rows of
+   this card. */
+.a-st-i{
+  display:flex; gap:var(--ds-s3); overflow-x:auto; padding-bottom:var(--ds-s2);
+  scrollbar-width:thin;
+}
+.a-st-i img{
+  flex:0 0 auto; width:5.5rem; height:5.5rem; object-fit:cover;
+  border-radius:var(--ds-r2); background:var(--ds-surface-2);
+  border:1px solid var(--ds-line);
+}
+
+/* ==========================================================================
+   11 · S07 STRATEGY — the editable document.
+
+   A section is a ds Card whose title is a real field. Read mode is typeset,
+   edit mode is the same box with a textarea in it, so nothing jumps when the
+   caret arrives. The save bar is the floating layer, and it exists only while
+   there is something to save.
+   ========================================================================== */
+.a-strat{ padding-bottom:var(--ds-s11) }
+.a-strat-card{ min-width:0 }
+.a-strat-card[data-blank] .ds-card{ background:var(--ds-canvas) }
+.a-strat-card .ds-card-head{ align-items:center; gap:var(--ds-s3) }
+.a-strat-card .ds-card-head-main{ min-width:0 }
+.a-strat-t{ flex:1 1 auto; min-width:0 }
+.a-strat-t .ds-input{
+  font-size:var(--ds-fs-title); line-height:var(--ds-lh-title);
+  font-weight:var(--ds-fw-medium); letter-spacing:var(--ds-tr-title);
+}
+.a-strat-ctl{ display:flex; align-items:center; gap:var(--ds-s2); flex:0 0 auto }
+
+.a-strat-read{
+  display:flex; flex-direction:column; gap:var(--ds-s2);
+  border-radius:var(--ds-r3); padding:var(--ds-s3);
+  cursor:text;
+  transition:background-color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-strat-read:hover{ background:var(--ds-wash) }
+.a-strat-read:focus-visible{ outline:none; box-shadow:0 0 0 2px var(--ds-accent-ring) }
+.a-strat-b{ width:100%; min-height:var(--ds-tap); resize:none }
+
+.a-strat-gap{ height:var(--ds-s3) }
+.a-strat-head{ display:flex; align-items:baseline; gap:var(--ds-s3); flex-wrap:wrap }
+.a-strat-headrest{ font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3) }
+.a-strat-kv{ display:flex; align-items:baseline; gap:var(--ds-s3); flex-wrap:wrap }
+.a-strat-k{ color:var(--ds-text-3); flex:0 0 auto }
+.a-strat-li{ display:flex; align-items:baseline; gap:var(--ds-s3); color:var(--ds-text-2) }
+.a-strat-bullet{ color:var(--ds-text-4); flex:0 0 auto }
+.a-strat-p{ color:var(--ds-text-2) }
+.a-strat-add{ display:flex; padding-top:var(--ds-s3) }
+.a-strat-foot{ height:var(--ds-s11) }
+
+/* The save bar. The floating layer's one shadow, the bulk bar's own inset. */
+.a-strat-save{
+  position:absolute; inset-inline:var(--ds-s6); inset-block-end:var(--ds-s6);
+  z-index:var(--ds-z-bulk);
+  display:flex; align-items:center; gap:var(--ds-s3);
+  padding:var(--ds-s3) var(--ds-s4);
+  background:var(--ds-surface-3); border:1px solid var(--ds-line-strong);
+  border-radius:var(--ds-r3); box-shadow:var(--ds-shadow-float);
+}
+
+/* The read-only filter spec the harvest run publishes. A table, not a wall. */
+.a-fs-g{ display:flex; flex-direction:column; gap:var(--ds-s2); padding-top:var(--ds-s3) }
+.a-fs-r{
+  display:grid; grid-template-columns:minmax(0,10rem) minmax(0,1fr);
+  gap:var(--ds-s2) var(--ds-s4); align-items:baseline;
+  padding:var(--ds-s2) 0;
+}
+.a-fs-r + .a-fs-r{ box-shadow:inset 0 1px 0 var(--ds-line) }
+.a-fs-l{ font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3) }
+.a-fs-v{ min-width:0; overflow-wrap:anywhere; color:var(--ds-text) }
+.a-fs-n{
+  grid-column:2; font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta);
+  color:var(--ds-text-3);
+}
+.a-fs-d{ grid-column:2; font-size:var(--ds-fs-meta); color:var(--ds-text-3) }
+.a-fs-d summary{ cursor:pointer; min-height:var(--ds-control-h-sm); display:flex; align-items:center }
+.a-fs-c{
+  display:block; font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono);
+  color:var(--ds-text-2); overflow-wrap:anywhere;
+  background:var(--ds-surface-2); border-radius:var(--ds-r2); padding:var(--ds-s3);
+  margin-top:var(--ds-s2);
+}
+
+@media (max-width:767px){
+  .a-fs-r{ grid-template-columns:minmax(0,1fr) }
+  .a-fs-n, .a-fs-d{ grid-column:1 }
+  .a-strat-save{ inset-inline:var(--ds-s4); inset-block-end:var(--ds-s4) }
+  .a-st-i img{ width:4.5rem; height:4.5rem }
+}
