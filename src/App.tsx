@@ -1,9 +1,16 @@
-import { useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
 import { reconcilePush } from './lib/push'
 import { parseHash } from './lib/route'
-import { LoginScreen } from './screens/LoginScreen'
+// S32 rebuilt on the design system (goal run inbox-app-revamp-2026-09-05, W1).
+// BOTH shells sign in through it. Lazy on purpose: `src/ds` then stays out of
+// the first paint of `#exp/stock`, which the pixel gate measures with a session
+// already in hand, so a login screen never enters that diff.
+const Login = lazy(() => import('./wb/login'))
+// `src/styles.css` moved out of src/main.tsx this wave (DECISIONS D4). This is
+// the module that carries it, and it is loaded only on the stock branch below.
+const StockStyles = lazy(() => import('./stockStyles'))
 import { InboxScreen } from './screens/InboxScreen'
 import { ThreadScreen } from './screens/ThreadScreen'
 import { DraftsScreen } from './screens/DraftsScreen'
@@ -66,13 +73,13 @@ export default function App() {
     void reconcilePush()
   }, [session])
   if (!ready) return null
-  if (!session) return <LoginScreen />
+  if (!session) return <Suspense fallback={null}><Login /></Suspense>
   // Deploy decision 2026-08-02 ("apply, not additive"): the workbench — the
   // faithful-revamp build the run verified — IS the app now. A load-time
   // #exp/ hash still reaches any candidate; #exp/stock is the escape hatch to
   // the pre-revamp shell.
   const exp = getExpVariant()
-  if (exp === 'stock') return <Shell />
+  if (exp === 'stock') return <Suspense fallback={null}><StockStyles><Shell /></StockStyles></Suspense>
   if (exp) return <ExpGate variant={exp} />
   // Ivan picked finalist B, 2026-09-04 (goal run inbox-brain-app). #exp/v2 and
   // #exp/brain-a stay reachable by hash.

@@ -9,7 +9,7 @@
    they are unit-tested.
    ========================================================================== */
 import { useRef, useState } from 'react'
-import { useConfirm } from '../../components/ConfirmSheet'
+import { useConfirm } from '../chrome/ConfirmSheet'
 import {
   approveDraft, boardGroupOf, canPromote, deleteClientDraft, deleteDraft, draftFailure,
   LANE_LABEL, LANE_POSSESSIVE, setBoardVisible, skipDraft,

@@ -18,7 +18,7 @@
      REMOVE is DESTRUCTIVE and keeps its sheet.
    ========================================================================== */
 import { useEffect, useRef, useState } from 'react'
-import { useConfirm } from '../../components/ConfirmSheet'
+import { useConfirm } from '../chrome/ConfirmSheet'
 import {
   completeTask, discardOpsDraft, doneTodayTasks, dueLabel, pendingTasks, taskDetails, taskDue,
   taskSource, taskTitle, type OpsDraft,

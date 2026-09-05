@@ -1,0 +1,196 @@
+/* ==========================================================================
+   src/wb/chrome/chrome.css — the frame's own sheet.
+
+   Same contract as wb.css: every value is a token from src/ds/tokens.css. No
+   colour literal, no px font-size, no px radius. What lives here is only what
+   a ds primitive does not already draw: the composition around it.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1 · S44-1 Avatar. The ds Avatar carries the tint and the initials; this adds
+   the channel mark, drawn on the corner as a MARK rather than as two letters.
+   -------------------------------------------------------------------------- */
+.a-av{ position:relative; display:inline-flex; flex:0 0 auto }
+.a-av-badge{
+  position:absolute;
+  right:calc(var(--ds-s1) * -1);
+  bottom:calc(var(--ds-s1) * -1);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:var(--ds-r-pill);
+  background:var(--ds-surface-2);
+  color:var(--ds-text-2);
+  box-shadow:0 0 0 2px var(--ds-canvas);
+}
+
+/* 2 · S44-2 Linkified. The link reads as the accent AS TEXT, never as a second
+   hue, and it stays underlined so colour is not the only signal. */
+.a-msglink{
+  color:var(--ds-accent-ui);
+  text-decoration:underline;
+  text-underline-offset:2px;
+  word-break:break-word;
+}
+
+/* --------------------------------------------------------------------------
+   3 · S42 pull indicator. The height IS the pull distance, so the mark travels
+   with the finger; the rotation is the caller's arithmetic.
+   -------------------------------------------------------------------------- */
+.a-ptr{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  color:var(--ds-text-3);
+}
+.a-ptr-mark{ display:flex; transition:opacity var(--ds-dur) var(--ds-ease) }
+.a-ptr-mark[data-live]{ animation:a-ptr-spin 900ms linear infinite }
+@keyframes a-ptr-spin{ to{ transform:rotate(360deg) } }
+
+/* 4 · S40 seat banner. One banner, one line per degraded seat. */
+.a-seatbanner{ padding:var(--ds-s3) var(--ds-gutter) 0 }
+.a-seatbanner-lines{ display:flex; flex-direction:column; gap:var(--ds-s2) }
+.a-seatbanner-line{ display:flex; align-items:center; gap:var(--ds-s3); flex-wrap:wrap }
+
+/* --------------------------------------------------------------------------
+   5 · S43 skeletons. Each one echoes the shape of the rows that replace it, so
+   nothing jumps when the data lands.
+   -------------------------------------------------------------------------- */
+.a-sk-rows{ display:flex; flex-direction:column }
+.a-sk-row{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s4);
+  padding:var(--ds-s4) var(--ds-gutter);
+  border-bottom:1px solid var(--ds-line);
+}
+.a-sk-lines{ display:flex; flex-direction:column; gap:var(--ds-s3); flex:1 1 auto; min-width:0 }
+.a-sk-cards{ display:flex; flex-direction:column; gap:var(--ds-s4); padding:var(--ds-s4) var(--ds-gutter) }
+.a-sk-card{
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s3);
+  padding:var(--ds-s5);
+  border-radius:var(--ds-r4);
+  border:1px solid var(--ds-line);
+  background:var(--ds-surface-1);
+}
+.a-sk-sends{ flex-direction:row; align-items:flex-end; gap:var(--ds-s5) }
+.a-sk-figure{ height:var(--ds-control-h) }
+
+/* 6 · S19 confirm. The two answers sit on one row, the confirm on the trailing
+   edge; the sheet stretches them so a thumb cannot miss either. */
+.a-confirm-foot{ display:flex; justify-content:flex-end; gap:var(--ds-s3) }
+@media (max-width:767px){
+  .a-confirm-foot{ justify-content:stretch }
+  .a-confirm-foot > *{ flex:1 1 0 }
+}
+
+/* --------------------------------------------------------------------------
+   7 · S38 the rail. The system draws the rows; this draws the footer, the
+   Claude hint and the sync line.
+   -------------------------------------------------------------------------- */
+.a-rail-jobs{ display:flex; flex-direction:column }
+.a-rail-hint{ padding:var(--ds-s2) var(--ds-s4) var(--ds-s3); color:var(--ds-text-4) }
+.a-rail-foot{ display:flex; flex-direction:column; gap:var(--ds-s1) }
+.a-rail-sync{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s3);
+  min-height:var(--ds-control-h);
+  padding:0 var(--ds-s4);
+  border:0;
+  border-radius:var(--ds-r3);
+  background:transparent;
+  color:var(--ds-text-4);
+  cursor:pointer;
+  text-align:left;
+}
+.a-rail-sync:hover{ background:var(--ds-surface-1); color:var(--ds-text-2) }
+.a-rail-sync-t{ flex:1 1 auto; min-width:0 }
+/* The dot is the sync's OWN element and carries no shared class: a past defect
+   had it borrowing a card class, which inflated it to a blob and left it green
+   through a real failure. */
+.a-rail-sync-dot{
+  width:var(--ds-s3);
+  height:var(--ds-s3);
+  flex:0 0 auto;
+  border-radius:var(--ds-r-pill);
+  background:var(--ds-sev-clear);
+}
+.a-rail-sync-dot[data-bad]{ background:var(--ds-sev-attention) }
+
+/* --------------------------------------------------------------------------
+   8 · S39-8 the work segment. The strip SCROLLS rather than shrinking: four
+   members already overflow a 390px canvas, and a fifth would overflow any
+   padding we could claw back.
+   -------------------------------------------------------------------------- */
+.a-worksep{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s4);
+  padding:var(--ds-s2) var(--ds-gutter);
+  border-bottom:1px solid var(--ds-line);
+  background:var(--ds-canvas);
+}
+.a-worksep-l{ color:var(--ds-text-4); flex:0 0 auto }
+.a-worksep-seg{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s2);
+  overflow-x:auto;
+  scrollbar-width:none;
+  min-width:0;
+}
+.a-worksep-seg::-webkit-scrollbar{ display:none }
+.a-worksep-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:var(--ds-s2);
+  flex:0 0 auto;
+  min-height:var(--ds-control-h-sm);
+  padding:0 var(--ds-s4);
+  border:0;
+  border-radius:var(--ds-r-pill);
+  background:transparent;
+  color:var(--ds-text-3);
+  font-size:var(--ds-fs-meta);
+  font-weight:var(--ds-fw-medium);
+  cursor:pointer;
+  white-space:nowrap;
+}
+.a-worksep-pill:hover{ color:var(--ds-text) }
+.a-worksep-pill[data-active='true']{ background:var(--ds-surface-2); color:var(--ds-text) }
+
+/* 9 · S39 the phone bar. The 44px floor is the system's own, on `.ds-tab`; the
+   wrapper only pins the bar to the bottom of the plate. */
+.a-tabs{ flex:0 0 auto; background:var(--ds-canvas); border-top:1px solid var(--ds-line) }
+
+/* --------------------------------------------------------------------------
+   10 · S22 palette and S23 shortcut sheet. The Dialog draws the box and the
+   CommandList draws the rows; this is the find section and the legend.
+   -------------------------------------------------------------------------- */
+.a-cmdk-legend{ display:inline-flex; align-items:center; gap:var(--ds-s1) }
+.a-find-lanes{ display:flex; align-items:center; gap:var(--ds-s2); padding:var(--ds-s2) 0 }
+.a-find-lane{
+  min-height:var(--ds-control-h-sm);
+  padding:0 var(--ds-s4);
+  border:0;
+  border-radius:var(--ds-r-pill);
+  background:transparent;
+  color:var(--ds-text-3);
+  font-size:var(--ds-fs-meta);
+  cursor:pointer;
+}
+.a-find-lane:hover{ color:var(--ds-text) }
+.a-find-lane[data-active='true']{ background:var(--ds-surface-2); color:var(--ds-text) }
+.a-find-badge{ color:var(--ds-text-4); flex:0 0 auto }
+.a-find-else{ display:flex; align-items:center; gap:var(--ds-s2); flex-wrap:wrap; color:var(--ds-text-3) }
+
+.a-keys-body{ display:flex; flex-direction:column; gap:var(--ds-s5) }
+.a-keys-grp{ display:flex; flex-direction:column; gap:var(--ds-s2) }
+.a-keys-row{ display:flex; align-items:center; gap:var(--ds-s4) }
+.a-keys-k{ flex:0 0 auto; min-width:calc(var(--ds-tap) * 1.5) }
+.a-keys-t{ min-width:0 }
+.a-keys-note{ color:var(--ds-text-4) }

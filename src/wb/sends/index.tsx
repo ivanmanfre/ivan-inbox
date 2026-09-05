@@ -24,9 +24,9 @@ import {
   buildInboundLanes, fetchInbound, fetchInboundDaily, fetchInboundDecisions,
   type InboundDecision, type InboundLane, type InboundLaneKey, type InboundStatus,
 } from '../../lib/inbound'
-import { SendsSkeleton } from '../../components/Skeleton'
-import { Linkified } from '../../components/Linkified'
-import { PullIndicator } from '../../components/PullIndicator'
+import { SendsSkeleton } from '../chrome/Skeleton'
+import { Linkified } from '../chrome/Linkified'
+import { PullIndicator } from '../chrome/PullIndicator'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { Button, Chip, Icon, IconButton, Input, Popover, PopoverItem, Segmented } from '../../ds'
 import { Bar, Head, Screen } from '../kit'

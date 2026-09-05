@@ -1,6 +1,32 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+/* ==========================================================================
+   S22 the command palette and S23 the shortcut sheet, on `src/ds`.
+
+   BOTH ARE STILL TWO RENDERINGS OF ONE ARRAY. They take the same `cmds` built
+   by buildCommands(), so a key that exists in the palette exists in the sheet
+   and neither can drift. Every rule the old file argued for is intact:
+
+     · token-wise matching, not whole-string. "model haiku" against
+       `/model claude-haiku-4-5` matched nothing under a whole-string rule.
+     · the vocabulary NEVER shrinks. An unavailable command stays listed,
+       dimmed, printing its reason. Running one is a no-op.
+     · a query that matches nothing does not close the palette. It renders a
+       sentence saying so and keeps the way back one key away.
+     · every row prints its own shortcut, and a row no key runs says so in
+       words rather than leaving the column blank.
+     · the cursor space is ONE space: the find rows sit after every command, so
+       the arrows and Enter reach a database row the way they reach a command.
+
+   What the design system changes is the drawing. The rows are `CommandList`,
+   whose key hints are real `Kbd` caps rather than a text column, the box is a
+   `Dialog` (so the scrim, the escape and the exit transition are the app's own
+   and not a third hand-rolled overlay), and the footer legend's two arrows are
+   drawn marks. The keyboard handling below is byte for byte the old handler:
+   the bindings live in CommandLayer and nothing about the close stack moved.
+   ========================================================================== */
+import { useEffect, useMemo, useState } from 'react'
+import { CommandList, Dialog, Icon, Input, Kbd, type CommandGroup, type CommandItem } from '../../ds'
 import {
-  GROUP_ORDER, keyRows, matchWbCommands, type WbCommand, type WbGroup,
+  GROUP_ORDER, keyRows, matchWbCommands, type WbCommand,
 } from './commandSource'
 import {
   CROSS_MIN, SURFACE_LABEL, laneName,
@@ -8,143 +34,7 @@ import {
 } from '../../lib/crossSearch'
 import type { ContentLane } from '../../lib/content'
 import { CONTENT_LANES } from '../../lib/content'
-
-// The ⌘K palette and the ? shortcut sheet. Two renderings of ONE array: both
-// take the same `cmds` built by buildCommands(), so a key that exists in the
-// palette exists in the sheet and neither can drift.
-//
-// WHAT THIS DELIBERATELY COPIES from ChatPane's slash palette, and why:
-//
-//   · token-wise matching, not whole-string. "model haiku" against
-//     `/model claude-haiku-4-5` matched nothing under the old whole-string
-//     rule, which closed that palette and let Enter fall through to the model.
-//   · the vocabulary NEVER shrinks. An unavailable command is listed, dimmed
-//     and prints its reason. Running one is a no-op.
-//   · a query that matches nothing does not close the palette. It renders a
-//     sentence saying so and keeps the way back (clear the query) one key away.
-//
-// WHAT IT ADDS: every row prints its own shortcut. Rows that no key runs print
-// that in words rather than leaving the column empty, because a column that is
-// blank on half the rows teaches the operator to stop reading it. The printed
-// legend is the pattern MagnetWindow already uses, applied to the whole app.
-
-function GroupRows({ group, cmds, cursor, onHover, onRun }: {
-  group: WbGroup
-  cmds: { c: WbCommand; i: number }[]
-  cursor: number
-  onHover: (i: number) => void
-  onRun: (c: WbCommand) => void
-}) {
-  if (cmds.length === 0) return null
-  return (
-    <div className="wb-cmdk-grp">
-      <div className="wb-cmdk-grph">{group}</div>
-      {cmds.map(({ c, i }) => (
-        <button
-          type="button"
-          key={c.id}
-          id={`wb-cmdk-${i}`}
-          role="option"
-          aria-selected={i === cursor}
-          aria-disabled={!c.ready}
-          className={`wb-cmdk-row${c.ready ? '' : ' off'}${i === cursor ? ' on' : ''}`}
-          onMouseEnter={() => onHover(i)}
-          onClick={() => onRun(c)}
-        >
-          <span className="wb-cmdk-t">{c.title}</span>
-          <span className="wb-cmdk-h">{c.ready ? c.hint : c.reason ?? 'not available here'}</span>
-          <span className="wb-cmdk-k">{c.key ?? 'no key'}</span>
-        </button>
-      ))}
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// The find section (AI pass item 3)
-// ---------------------------------------------------------------------------
-//
-// One key already opens this box, so crossing objects belongs INSIDE it rather
-// than behind a second overlay with a second shortcut. Type two characters and
-// the same query that filters the command list also asks the database for
-// conversations, drafts and lead magnets on ONE lane.
-//
-// The lane is shown and switchable, and every row prints which surface it came
-// from, because a list that mixed three objects without saying which is which
-// would be a worse answer than three lists.
-function FindRows({ find, cursorAt, base, onHover, onPick }: {
-  find: FindState
-  cursorAt: number
-  base: number
-  onHover: (i: number) => void
-  onPick: (h: CrossHit) => void
-}) {
-  if (find.q.trim().length < CROSS_MIN) return null
-  return (
-    <div className="wb-cmdk-grp">
-      <div className="wb-cmdk-grph wb-find-h">
-        <span>Anything you have written, in</span>
-        <span className="wb-find-lanes">
-          {CONTENT_LANES.map(l => (
-            <button
-              type="button"
-              key={l}
-              className={`wb-find-lane${l === find.lane ? ' on' : ''}`}
-              onMouseDown={e => { e.preventDefault(); find.setLane(l) }}
-            >{laneName(l)}</button>
-          ))}
-        </span>
-      </div>
-      {find.busy && find.hits.length === 0 && (
-        <div className="wb-cmdk-none">Looking…</div>
-      )}
-      {!find.busy && find.hits.length === 0 && (
-        <div className="wb-cmdk-none">
-          Nothing in {laneName(find.lane)} says “{find.q.trim()}”. Try another lane.
-        </div>
-      )}
-      {find.hits.map((h, n) => {
-        const i = base + n
-        return (
-          <button
-            type="button"
-            key={`${h.surface}:${h.id}`}
-            id={`wb-cmdk-${i}`}
-            role="option"
-            aria-selected={i === cursorAt}
-            className={`wb-cmdk-row wb-find-row${i === cursorAt ? ' on' : ''}`}
-            onMouseEnter={() => onHover(i)}
-            onClick={() => onPick(h)}
-          >
-            <span className="wb-cmdk-t">{h.title}</span>
-            <span className="wb-cmdk-h">{h.snippet || h.sub}</span>
-            <span className="wb-cmdk-k wb-find-badge">{SURFACE_LABEL[h.surface]}</span>
-          </button>
-        )
-      })}
-      {/* The dead end, ended, without putting one lane's rows under another
-          lane's name: a number and a way to go and look. */}
-      {find.elsewhere.length > 0 && (
-        <div className="wb-find-else">
-          <span>Also written elsewhere:</span>
-          {find.elsewhere.map(c => (
-            <button
-              type="button"
-              key={c.lane}
-              className="wb-find-lane"
-              onMouseDown={e => { e.preventDefault(); find.setLane(c.lane) }}
-            >{laneName(c.lane)} has {c.n}</button>
-          ))}
-        </div>
-      )}
-      {find.failed.length > 0 && (
-        <div className="wb-cmdk-none">
-          Could not reach {find.failed.join(' or ')} just now.
-        </div>
-      )}
-    </div>
-  )
-}
+import '../../wb/chrome/chrome.css'
 
 export type FindState = CrossResults & {
   q: string
@@ -152,6 +42,13 @@ export type FindState = CrossResults & {
   /** Other lanes, as a COUNT only. Never a row. See lib/crossSearch.ts. */
   elsewhere: LaneCount[]
   setLane: (l: ContentLane) => void
+}
+
+// A key string ('⌘K', 'Esc', 'j') as the caps a reader can find on a keyboard.
+// commandSource owns the strings; this only decides where one cap ends.
+function caps(key: string | null): string[] | undefined {
+  if (!key) return undefined
+  return [key]
 }
 
 export function CommandPalette({ cmds, find, onQuery, onPick, onClose }: {
@@ -163,12 +60,9 @@ export function CommandPalette({ cmds, find, onQuery, onPick, onClose }: {
 }) {
   const [q, setQ] = useState('')
   const [cursor, setCursor] = useState(0)
-  const field = useRef<HTMLInputElement>(null)
+  const FIELD_ID = 'wb-cmdk-q'
 
   const shown = useMemo(() => matchWbCommands(q, cmds), [q, cmds])
-  // The find rows sit AFTER every command in one cursor space, so ↑↓ and Enter
-  // reach a database row exactly the way they reach a command. There is no
-  // second keyboard model to learn and no second one to get out of step.
   const hits = find && q.trim().length >= CROSS_MIN ? find.hits : []
   const total = shown.length + hits.length
 
@@ -181,7 +75,13 @@ export function CommandPalette({ cmds, find, onQuery, onPick, onClose }: {
   }, [shown])
   useEffect(() => { setCursor(firstReady) }, [firstReady])
 
-  useEffect(() => { field.current?.focus() }, [])
+  // The field owns focus from the moment the dialog opens: every binding below
+  // is handled inside it, which is what keeps the global layer's "nothing fires
+  // while a field has focus" guard true.
+  useEffect(() => {
+    const t = setTimeout(() => document.getElementById(FIELD_ID)?.focus(), 0)
+    return () => clearTimeout(t)
+  }, [])
 
   // Keep the cursor row on screen while arrowing through 200 rows.
   useEffect(() => {
@@ -226,67 +126,128 @@ export function CommandPalette({ cmds, find, onQuery, onPick, onClose }: {
     }
   }
 
+  const idOf = (i: number) => `wb-cmdk-${i}`
   const indexed = shown.map((c, i) => ({ c, i }))
 
+  const groups: CommandGroup[] = GROUP_ORDER.map(g => ({
+    id: g,
+    label: g,
+    items: indexed
+      .filter(x => x.c.group === g)
+      .map<CommandItem>(({ c, i }) => ({
+        id: idOf(i),
+        label: c.title,
+        keys: caps(c.key),
+        ready: c.ready,
+        reason: c.ready ? c.hint : c.reason ?? 'not available here',
+        onRun: () => run(c),
+      })),
+  })).filter(g => g.items.length > 0)
+
+  // The find section. One key already opens this box, so crossing objects
+  // belongs INSIDE it rather than behind a second overlay with a second
+  // shortcut. Every row prints which surface it came from, because a list that
+  // mixed three objects without saying which is which would be a worse answer
+  // than three lists.
+  if (find && q.trim().length >= CROSS_MIN) {
+    const items: CommandItem[] = find.hits.map((h, n) => {
+      const i = shown.length + n
+      return {
+        id: idOf(i),
+        label: h.title,
+        reason: h.snippet || h.sub,
+        badge: <span className="a-find-badge ds-t-eyebrow">{SURFACE_LABEL[h.surface]}</span>,
+        onRun: () => pick(h),
+      }
+    })
+    groups.push({
+      id: 'find',
+      label: `Anything you have written, in ${laneName(find.lane)}`,
+      items,
+    })
+  }
+
+  const foot = (
+    <>
+      <span className="a-cmdk-legend">
+        <Icon name="up" size={16} /><Icon name="down" size={16} /> to move
+      </span>
+      <span>Opens, never acts</span>
+      <span><Kbd>Enter</Kbd> to run</span>
+      <span><Kbd>Esc</Kbd> to close</span>
+      <span><Kbd>?</Kbd> for every key</span>
+    </>
+  )
+
   return (
-    <div className="wb-cmdk-scrim" onMouseDown={onClose}>
-      <div
-        className="wb-cmdk"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Command palette"
-        onMouseDown={e => e.stopPropagation()}
-      >
-        <input
-          ref={field}
-          className="wb-cmdk-q"
-          type="text"
-          value={q}
-          placeholder="Find a command, or anything you have written"
-          aria-label="Find a command, or anything you have written"
-          role="combobox"
-          aria-expanded
-          aria-controls="wb-cmdk-list"
-          aria-activedescendant={`wb-cmdk-${cursor}`}
-          onChange={e => { setQ(e.target.value); onQuery?.(e.target.value) }}
-          onKeyDown={onKey}
-        />
-        <div className="wb-cmdk-list" id="wb-cmdk-list" role="listbox" aria-label="Commands">
-          {shown.length === 0 && hits.length === 0 && !find?.busy ? (
-            // 🔴 The palette stays OPEN on no match. Closing here is the exact
-            // behaviour ChatPane's comment was written about.
-            <div className="wb-cmdk-none">
-              Nothing is called “{q}”. Clear the box to see every command again.
-            </div>
-          ) : GROUP_ORDER.map(g => (
-            <GroupRows
-              key={g}
-              group={g}
-              cmds={indexed.filter(x => x.c.group === g)}
-              cursor={cursor}
-              onHover={setCursor}
-              onRun={run}
-            />
+    <Dialog
+      open
+      onClose={onClose}
+      size="wide"
+      className="a-cmdk"
+      foot={null}
+    >
+      <Input
+        id={FIELD_ID}
+        label="Find a command, or anything you have written"
+        labelHidden
+        icon="search"
+        value={q}
+        placeholder="Find a command, or anything you have written"
+        role="combobox"
+        aria-expanded
+        aria-controls="wb-cmdk-list"
+        aria-activedescendant={idOf(cursor)}
+        onChange={e => { setQ(e.target.value); onQuery?.(e.target.value) }}
+        onKeyDown={onKey}
+      />
+      {/* The lane switch: which lane the cross-object find is asking. */}
+      {find && q.trim().length >= CROSS_MIN ? (
+        <div className="a-find-lanes">
+          {CONTENT_LANES.map(l => (
+            <button
+              type="button"
+              key={l}
+              className="a-find-lane"
+              data-active={l === find.lane}
+              onMouseDown={e => { e.preventDefault(); find.setLane(l) }}
+            >{laneName(l)}</button>
           ))}
-          {find && (
-            <FindRows
-              find={{ ...find, q }}
-              cursorAt={cursor}
-              base={shown.length}
-              onHover={setCursor}
-              onPick={pick}
-            />
-          )}
         </div>
-        <div className="wb-cmdk-foot">
-          <span>↑ ↓ to move</span>
-          <span>Opens, never acts</span>
-          <span>Enter to run</span>
-          <span>Esc to close</span>
-          <span>? for every key</span>
+      ) : null}
+      <CommandList
+        head={null}
+        groups={groups}
+        activeId={idOf(cursor)}
+        className="a-cmdk-list"
+        // 🔴 The palette stays OPEN on no match. Closing here is the exact
+        // behaviour ChatPane's comment was written about.
+        empty={find?.busy
+          ? 'Looking...'
+          : hits.length === 0 && find && q.trim().length >= CROSS_MIN
+            ? `Nothing in ${laneName(find.lane)} says "${q.trim()}". Try another lane.`
+            : `Nothing is called "${q}". Clear the box to see every command again.`}
+        foot={foot}
+      />
+      {/* The dead end, ended, without putting one lane's rows under another
+          lane's name: a number and a way to go and look. */}
+      {find && find.elsewhere.length > 0 ? (
+        <div className="a-find-else ds-t-meta">
+          <span>Also written elsewhere:</span>
+          {find.elsewhere.map(c => (
+            <button
+              type="button"
+              key={c.lane}
+              className="a-find-lane"
+              onMouseDown={e => { e.preventDefault(); find.setLane(c.lane) }}
+            >{laneName(c.lane)} has {c.n}</button>
+          ))}
         </div>
-      </div>
-    </div>
+      ) : null}
+      {find && find.failed.length > 0 ? (
+        <div className="a-find-else ds-t-meta">Could not reach {find.failed.join(' or ')} just now.</div>
+      ) : null}
+    </Dialog>
   )
 }
 
@@ -298,49 +259,32 @@ export function ShortcutSheet({ cmds, onClose }: {
   onClose: () => void
 }) {
   const rows = useMemo(() => keyRows(cmds), [cmds])
-  const box = useRef<HTMLDivElement>(null)
-  useEffect(() => { box.current?.focus() }, [])
   return (
-    <div className="wb-keys-scrim" onMouseDown={onClose}>
-      <div
-        className="wb-keys"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Keyboard shortcuts"
-        tabIndex={-1}
-        ref={box}
-        onMouseDown={e => e.stopPropagation()}
-        onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); onClose() } }}
-      >
-        <div className="wb-keys-h">
-          <span className="wb-keys-ttl">Keyboard</span>
-          <button type="button" className="wb-keys-x" onClick={onClose} aria-label="Close">✕</button>
-        </div>
-        <div className="wb-keys-body">
-          {GROUP_ORDER.map(g => {
-            const gr = rows.filter(r => r.group === g)
-            if (gr.length === 0) return null
-            return (
-              <div className="wb-keys-grp" key={g}>
-                <div className="wb-keys-grph">{g}</div>
-                {gr.map(r => (
-                  <div className="wb-keys-row" key={r.id}>
-                    <span className="wb-keys-k">{r.key}</span>
-                    <span className="wb-keys-t">{r.title}</span>
-                  </div>
-                ))}
-              </div>
-            )
-          })}
-          {/* Stated, not implied: the keys that write are not here because they
-              do not exist. Approve, skip and delete stay on their buttons and
-              in the palette, behind the confirm each one already carries. */}
-          <div className="wb-keys-note">
-            No single key approves, skips, deletes or sends anything. Those run
-            from a button or from the palette, and each one asks first.
-          </div>
+    <Dialog open onClose={onClose} title="Keyboard" className="a-keys" foot={null}>
+      <div className="a-keys-body">
+        {GROUP_ORDER.map(g => {
+          const gr = rows.filter(r => r.group === g)
+          if (gr.length === 0) return null
+          return (
+            <div className="a-keys-grp" key={g}>
+              <div className="ds-t-eyebrow">{g}</div>
+              {gr.map(r => (
+                <div className="a-keys-row" key={r.id}>
+                  <span className="a-keys-k"><Kbd>{r.key}</Kbd></span>
+                  <span className="a-keys-t">{r.title}</span>
+                </div>
+              ))}
+            </div>
+          )
+        })}
+        {/* Stated, not implied: the keys that write are not here because they
+            do not exist. Approve, skip and delete stay on their buttons and in
+            the palette, behind the confirm each one already carries. */}
+        <div className="a-keys-note ds-t-meta">
+          No single key approves, skips, deletes or sends anything. Those run
+          from a button or from the palette, and each one asks first.
         </div>
       </div>
-    </div>
+    </Dialog>
   )
 }

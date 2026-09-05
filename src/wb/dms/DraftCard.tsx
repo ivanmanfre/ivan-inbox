@@ -12,8 +12,8 @@ import { useRef, useState } from 'react'
 import { Banner, Button, Icon } from '../../ds'
 import { Group, Row, Rows } from '../kit'
 import { Face, timeAgo } from './parts'
-import { Linkified } from '../../components/Linkified'
-import { useConfirm } from '../../components/ConfirmSheet'
+import { Linkified } from '../chrome/Linkified'
+import { useConfirm } from '../chrome/ConfirmSheet'
 import { returnsIn, usePushLater } from '../../components/PushLaterSheet'
 import {
   approveDraft, discardDraft, emailSenderLabel, isFollowUp, snoozeDraft, threadChatId, type Thread,

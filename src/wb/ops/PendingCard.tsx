@@ -13,7 +13,7 @@
    stopped — a post the poster refused, and a card waiting on its send window.
    ========================================================================== */
 import { useEffect, useState } from 'react'
-import { useConfirm } from '../../components/ConfirmSheet'
+import { useConfirm } from '../chrome/ConfirmSheet'
 import {
   approveOpsDraft, approveWeeklyReport, canGenerateDraft, canTagCommenter, isCloseOnlyComment,
   discardOpsDraft, DRAFT_CONTINUE_MAX, engineLabel, expiresIn, generateCommentDraft, likeComment,

@@ -1,8 +1,11 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import './styles.css'
 import App from './App.tsx'
-import { ConfirmProvider } from './components/ConfirmSheet'
+// `src/styles.css` is the stock shell's own sheet from Phase 3 W1 on
+// (DECISIONS D4): it is loaded by the lazy module the `#exp/stock` branch in
+// App.tsx mounts, so the live app never carries it. The design system brings
+// its own reset (src/ds/ds.css §0).
+import { ConfirmProvider } from './wb/chrome/ConfirmSheet'
 import { PushLaterProvider } from './components/PushLaterSheet'
 
 if (localStorage.getItem('inbox-theme') === 'light') {

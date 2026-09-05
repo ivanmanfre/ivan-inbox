@@ -1,25 +1,16 @@
-import { createContext, useCallback, useContext, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
+import { ConfirmCtx, type ConfirmOpts, type PendingConfirm } from '../lib/confirm'
+
+// The context and the hook moved to src/lib/confirm.ts so the workbench's own
+// provider (src/wb/chrome/ConfirmSheet.tsx) can answer the SAME hook. Re-exported
+// here because every call site in the app imports `useConfirm` from this path.
+export { useConfirm } from '../lib/confirm'
+export type { ConfirmOpts } from '../lib/confirm'
 
 // In-app iOS-style action sheet — replaces the native window.confirm popup,
 // which looks foreign inside a dark PWA and can't carry an accent/danger colour.
 
-type ConfirmOpts = {
-  title: string
-  message?: string
-  confirmText?: string
-  cancelText?: string
-  danger?: boolean
-}
-
-type Pending = ConfirmOpts & { resolve: (ok: boolean) => void }
-
-const ConfirmCtx = createContext<(opts: ConfirmOpts) => Promise<boolean>>(
-  () => Promise.resolve(false),
-)
-
-export function useConfirm() {
-  return useContext(ConfirmCtx)
-}
+type Pending = PendingConfirm
 
 export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const [pending, setPending] = useState<Pending | null>(null)

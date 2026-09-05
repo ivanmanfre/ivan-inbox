@@ -1,6 +1,6 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
-import { SeatHealthBanner } from '../../components/SeatHealthBanner'
-import { InboxSkeleton } from '../../components/Skeleton'
+import { SeatHealthBanner } from '../../wb/chrome/SeatHealthBanner'
+import { InboxSkeleton } from '../../wb/chrome/Skeleton'
 import { useInbox } from '../../hooks/useInbox'
 import { useOps } from '../../hooks/useOps'
 import { pendingOps } from '../../lib/ops'
@@ -55,6 +55,7 @@ import {
   JOB_LABEL, addPeer, contextPeer, dropPeer, hasChat, jobHasList, peerKey,
   planWorkbench, type Canvas, type Job, type Peer,
 } from './layout'
+import './legacy.css'
 import './styles.css'
 // Candidate `faithful` — the treatment layer. Imported AFTER the workbench's own
 // stylesheet (spine §1.3) so it is the last word inside .wb and has no reach at

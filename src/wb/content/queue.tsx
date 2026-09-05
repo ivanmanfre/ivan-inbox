@@ -16,7 +16,7 @@ import {
   applyFilters, buildFacets, QUEUE_PROMINENT, QUEUE_SPECS, splitFacets,
   type FilterState,
 } from '../../lib/contentFilters'
-import { useConfirm } from '../../components/ConfirmSheet'
+import { useConfirm } from '../chrome/ConfirmSheet'
 import { relOrAhead, relTime } from '../../exp/v2c/fmt'
 import { label } from '../../lib/labels'
 import { Button, Icon, IconButton } from '../../ds'

@@ -1,0 +1,33 @@
+/* S32 — the sign-in plate. Tokens only; the census reads this file. */
+.a-login{
+  min-height:100dvh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:var(--ds-s5);
+  background:var(--ds-ground);
+  font-family:var(--ds-font);
+  color:var(--ds-text);
+}
+.a-login-plate{
+  width:100%;
+  max-width:340px;
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s4);
+  padding:var(--ds-s6);
+  border-radius:var(--ds-r-plate);
+  background:var(--ds-canvas);
+  border:1px solid var(--ds-line);
+}
+.a-login-mark{
+  width:var(--ds-tap);
+  height:var(--ds-tap);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:var(--ds-r2);
+  background:var(--ds-surface-1);
+  color:var(--ds-accent-ui);
+}
+.a-login-err{ color:var(--ds-sev-urgent) }

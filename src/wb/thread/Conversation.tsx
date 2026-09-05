@@ -22,8 +22,8 @@ import { Bar, Body, Group, Head, Screen } from '../kit'
 import { ChatLink, Face } from '../dms/parts'
 import { RestoreStrip } from './RestoreStrip'
 import { ContextSheet } from '../../components/ContextSheet'
-import { Linkified } from '../../components/Linkified'
-import { useConfirm } from '../../components/ConfirmSheet'
+import { Linkified } from '../chrome/Linkified'
+import { useConfirm } from '../chrome/ConfirmSheet'
 import { formatReturn, returnsIn, usePushLater } from '../../components/PushLaterSheet'
 import {
   approveDraft, channelFamilies, composeReply, discardDraft, escalateDraftToClient, isDraft, isFollowUp, isMixedChannel,

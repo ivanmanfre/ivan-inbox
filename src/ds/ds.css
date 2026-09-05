@@ -25,6 +25,15 @@
 
 html{ -webkit-text-size-adjust:100% }
 
+/* The document reset src/styles.css used to carry for everyone. The app frame
+   measures itself against a full-height document (`height:100%` all the way
+   down to #root), and the UA's 8px body margin is what would otherwise put a
+   scrollbar on a shell that fits exactly. Declared on the bare elements, not
+   on `.ds-body`, because `ds-body` rides on the app's own root DIV rather than
+   on <body> and the document still needs the floor under it. */
+html, body, #root{ height:100% }
+body{ margin:0 }
+
 body.ds-body{
   margin:0;
   min-height:100dvh;

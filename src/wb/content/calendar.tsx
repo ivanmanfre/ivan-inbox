@@ -30,7 +30,7 @@ import {
   type ScheduledQueueRow,
 } from '../../lib/content'
 import { scheduleDraft } from '../../lib/studioActions'
-import { useConfirm } from '../../components/ConfirmSheet'
+import { useConfirm } from '../chrome/ConfirmSheet'
 import { place } from '../../exp/v2c/CalPopover'
 import { typeLabel } from '../../exp/v2c/fmt'
 import {

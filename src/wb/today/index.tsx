@@ -16,7 +16,7 @@ import {
   BarLine, Body, Cell, Dot, Group, Head, KV, Ledger, Row, Rows, Screen, StackBar,
   type Tone,
 } from '../kit'
-import { PullIndicator } from '../../components/PullIndicator'
+import { PullIndicator } from '../chrome/PullIndicator'
 import { SystemAlertStrip } from './alerts'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { useToday, type TodayHealth } from '../../hooks/useToday'
