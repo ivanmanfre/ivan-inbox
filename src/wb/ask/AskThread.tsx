@@ -378,7 +378,7 @@ const STARTERS = [
 
 export function AskThread({
   chat, about, mobile, focusTurn = null, onFocused, morphFrom = null, onMorphed, onDragBack,
-  composerExtras, see,
+  composerExtras, see, text: textProp, onText,
 }: {
   chat: ChatHandle
   job: Job
@@ -397,8 +397,14 @@ export function AskThread({
   composerExtras?: ComposerExtras
   /** S15: the exact block of screen context that rides with the next message. */
   see?: string
+  /** Controlled composer text. The docked pane holds it because its palette is
+   * derived from it; the phone does not, and keeps the state here. */
+  text?: string
+  onText?: (v: string) => void
 }) {
-  const [text, setText] = useState('')
+  const [ownText, setOwnText] = useState('')
+  const text = textProp ?? ownText
+  const setText = onText ?? setOwnText
   const scroller = useRef<HTMLDivElement>(null)
   const prevBusy = useRef(chat.busy)
   const [justLandedId, setJustLandedId] = useState<string | null>(null)

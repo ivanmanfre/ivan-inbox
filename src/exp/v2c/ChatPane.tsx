@@ -65,7 +65,11 @@ function modelLabel(id: string | null): string {
 //                  the parity pass had omitted it because no reset existed.
 // `/about <off-screen id>` stays absent (no path exists to reference a peer
 // that is not open).
-type Command = {
+// Exported so the DOCKED pane (src/wb/ask/AskPane.tsx, S15 on the design
+// system) runs the same palette rather than a second copy of the vocabulary.
+// The list, the matcher and the reasons stay here, where the comments that
+// explain why they are shaped this way live.
+export type Command = {
   name: string
   // What it does when it CAN run, and what is true instead when it cannot. The
   // second string is why `hint` is a function: "Abort the turn in flight" on a
@@ -79,7 +83,7 @@ type Command = {
   insert?: string
 }
 
-const COMMANDS: Command[] = [
+export const COMMANDS: Command[] = [
   ...MODEL_OPTIONS.map(m => ({
     name: `/model ${m.id ?? 'default'}`,
     hint: () => m.label,
