@@ -454,3 +454,10 @@
   .a-log-ago{ grid-column:5 }
   .a-log{ min-inline-size:0 }
 }
+
+/* The log's denominator is a sentence, not a tail chip: on the phone it takes
+   its own line under the eyebrow rather than running off the plate edge. */
+@media (max-width:767px){
+  .a-sends .a-group-h{ flex-wrap:wrap; row-gap:var(--ds-s2) }
+  .a-sends .a-group-tail{ flex:1 1 100%; white-space:normal }
+}

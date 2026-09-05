@@ -70,7 +70,16 @@
 .a-money-wide{ display:block; min-width:0 }
 .a-money-wide .ds-table-wrap{ overflow-x:auto }
 .a-money-wide .ds-table th,
-.a-money-wide .ds-table td{ vertical-align:top }
+.a-money-wide .ds-table td{ vertical-align:top; overflow-wrap:anywhere }
+/* Fixed columns, and a numeric cell that is allowed to WRAP. The design
+   system sets `white-space:nowrap` on a numeric cell, which is right for a
+   figure and wrong for the provenance sentence under it: unwrapped, a seven
+   column ledger of source strings drags the whole table past the plate edge
+   (measured at 1440 on the first shoot of this wave). The figure itself stays
+   on one line; only its receipt wraps. */
+.a-money-wide .ds-table{ table-layout:fixed }
+.a-money-wide .ds-table [data-numeric='true']{ white-space:normal }
+.a-money-wide .a-money-cv{ white-space:nowrap }
 
 .a-money-stack{ display:flex; flex-direction:column; gap:var(--ds-s3); margin-block-start:var(--ds-s2) }
 .a-money-pair{ display:flex; flex-direction:column; gap:var(--ds-s1); min-width:0 }
@@ -78,7 +87,9 @@
 .a-money-pv{ min-width:0 }
 .a-money-pv .a-money-cell{ align-items:flex-start }
 
-@media (max-width:900px){
+/* The stack takes over well before the phone: a seven column ledger needs real
+   room before it beats one record per block. */
+@media (max-width:1100px){
   .a-money-wide{ display:none }
   .a-money-narrow{ display:block }
 }

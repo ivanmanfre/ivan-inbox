@@ -207,3 +207,10 @@
   .a-cw-insp{ box-shadow:inset 0 1px 0 var(--ds-line); overflow:visible }
   .a-cw-q{ display:none }
 }
+
+/* A rail is a COLUMN of records, not a stack that shares one height. Without
+   this the flex container hands each of thirteen buttons an equal share of the
+   pane and their two lines print on top of one another (measured at 1440 on the
+   first shoot of this wave). The pane scrolls; the rows keep their size. */
+.a-cw-q > *,
+.a-cw-insp > *{ flex:0 0 auto }
