@@ -265,3 +265,24 @@
 @media (max-width:767px){
   .a-dms-rowhost > .a-selmark{ display:none }
 }
+
+/* --------------------------------------------------------------------------
+   THE FOURTH CASCADE TRAP, and it is the same shape as W1's three.
+
+   `faithful.css` has a `prefers-reduced-motion` block of its own that RE-ARMS
+   a 100ms opacity transition on `.wb.wb.wb .r` with `!important`. The design
+   system's own reduced-motion block (ds.css §18) is `!important` too, but it is
+   written at `.ds-body *` and loses on specificity, so a reader who asked the
+   OS for no motion still got one on every DMs row. Measured by E8 at 390: six
+   rows, `transition opacity 0.1s linear`.
+
+   The row wears `r` because the legacy sheets and the shoot recipes reach it by
+   that name; when W6 deletes `faithful.css` the class goes with it and this
+   block goes too.
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce){
+  .a-dms .a-row.a-row.a-row.a-row.r{
+    transition-duration:0ms !important;
+    animation-duration:0ms !important;
+  }
+}
