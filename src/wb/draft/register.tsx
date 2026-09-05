@@ -399,7 +399,7 @@ function AgentGroupRow({ g, log }: { g: AgentGroup; log: AgentLogEntry[] }) {
         <span className="a-dw-fold-k">{g.agent ?? 'Unattributed'}</span>
         {n > 1 && <span className="a-mono a-dim">×{n}</span>}
         {g.status && <Mark status={g.status}>{label(g.status)}</Mark>}
-        {run && <Chip>{run}</Chip>}
+        {run && <Chip className="a-dw-run">{run}</Chip>}
         <span className="a-mono a-dim a-dw-fold-t">{span}</span>
       </summary>
       <div className="a-dw-fold-b">

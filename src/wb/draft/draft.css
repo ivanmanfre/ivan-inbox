@@ -294,6 +294,15 @@
   color:var(--ds-text-2);
   min-width:0;
 }
+/* A RUN BREAKS AS ONE THING OR NOT AT ALL. The score run and the time span are
+   built from their parts with the `next` icon between them rather than from a
+   typed arrow, and an inline icon is a wrap opportunity: in the shot the Log
+   tab read "58 →" on one line and "69/90" tucked under it, and the span put a
+   lone arrow on a line of its own. Both are one unit; both say so. */
+.a-dw-run, .a-dw-fold-t{ white-space:nowrap }
+/* Each score keeps its own arrow beside it; the denominator stays an inline
+   sibling so it reads "69/90" and not "69 /90". */
+.a-dw-run > span, .a-dw-fold-t{ display:inline-flex; align-items:center; gap:var(--ds-s1) }
 .a-dw-fold-t{ margin-inline-start:auto; flex:0 0 auto }
 .a-dw-fold-b{
   display:flex;
