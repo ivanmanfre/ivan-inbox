@@ -33,6 +33,10 @@ html{ -webkit-text-size-adjust:100% }
    on <body> and the document still needs the floor under it. */
 html, body, #root{ height:100% }
 body{ margin:0 }
+/* The face is declared on the bare element too: since `src/styles.css` became
+   stock-only (D4) nothing else names a font-family for the live document, and
+   the UA default is a serif. W1 hotfix, found by looking at the shots. */
+body{ font-family:var(--ds-font); -webkit-font-smoothing:antialiased }
 
 body.ds-body{
   margin:0;
