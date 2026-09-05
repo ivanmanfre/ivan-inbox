@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en" data-frame="b">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Inbox design system</title>
+    <style>
+      /* Gallery chrome only. Kept in the page, not in src/ds/*.css, so the
+         gallery's own layout never lands in the app's CSS budget. Every value
+         is a design-system token; the gallery invents no colour of its own. */
+      html, body { margin:0 }
+      /* The gallery is the app's own shell: the pistachio ground is the page,
+         the plate is where every specimen lives. A specimen photographed on the
+         raw ground is a specimen no surface will ever render on. */
+      .gal { min-height:100dvh; background:var(--ds-ground); padding:var(--ds-plate-gap) }
+      .gal-plate {
+        min-height:calc(100dvh - (var(--ds-plate-gap) * 2));
+        background:var(--ds-canvas);
+        border-radius:var(--ds-r-plate);
+        overflow:hidden;
+      }
+      .gal-bar {
+        position:sticky; top:0; z-index:100;
+        display:flex; align-items:center; gap:var(--ds-s4); flex-wrap:wrap;
+        padding:var(--ds-s4) var(--ds-s6);
+        background:var(--ds-canvas);
+        border-bottom:1px solid var(--ds-line);
+        background:var(--ds-surface-1);
+      }
+      .gal-bar-title { color:var(--ds-text); font-weight:600; margin-right:auto }
+      .gal-cols { display:flex; align-items:flex-start; gap:var(--ds-s6); padding:var(--ds-s6) }
+      .gal-desktop { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:var(--ds-s8) }
+      .gal-phone { flex:0 0 auto; position:sticky; top:76px }
+      .gal-phone-frame {
+        width:390px; height:820px;
+        border:1px solid var(--ds-line);
+        border-radius:var(--ds-r4);
+        overflow:hidden;
+        background:var(--ds-ground);
+        box-shadow:var(--ds-shadow-float);
+      }
+      .gal-phone-frame iframe { width:390px; height:820px; border:0; display:block }
+      .gal-phone-cap { padding:var(--ds-s2) var(--ds-s1); color:var(--ds-text-3) }
+      .gal-sec { display:flex; flex-direction:column; gap:var(--ds-s4) }
+      .gal-sec-head {
+        display:flex; align-items:baseline; gap:var(--ds-s4);
+        padding-bottom:var(--ds-s2);
+        border-bottom:1px solid var(--ds-line);
+      }
+      .gal-name { color:var(--ds-text); font-weight:600 }
+      .gal-grid { display:flex; flex-wrap:wrap; gap:var(--ds-s5); align-items:flex-start }
+      .gal-item { display:flex; flex-direction:column; gap:var(--ds-s2); min-width:0 }
+      .gal-item[data-wide='true'] { flex:1 1 100%; }
+      .gal-label {
+        color:var(--ds-text-4);
+        font-family:var(--ds-font-mono); font-size:var(--ds-fs-eyebrow);
+        text-transform:uppercase; letter-spacing:var(--ds-tr-eyebrow);
+      }
+      .gal-body { color:var(--ds-text) }
+      .gal-panel {
+        padding:var(--ds-s5);
+        background:var(--ds-surface-1);
+        border-radius:var(--ds-r4);
+      }
+      /* A stage gives the floating layer a containing block, so a sheet, a
+         dialog, a toast and the bulk bar can be photographed in place. */
+      .gal-stage {
+        position:relative; overflow:hidden;
+        transform:translateZ(0);
+        background:var(--ds-surface-1);
+        border-radius:var(--ds-r4);
+      }
+      .gal-stage[data-h='sm'] { height:200px }
+      .gal-stage[data-h='md'] { height:300px }
+      .gal-stage[data-h='lg'] { height:420px }
+      /* the desktop shell is a desktop specimen: it keeps its real width and
+         scrolls sideways inside the gallery rather than collapsing into a lie */
+      .gal-shell-scroll { width:100%; overflow-x:auto }
+      .gal-shell { width:100%; height:520px; overflow:hidden; border-radius:var(--ds-r4) }
+      .gal-shell[data-w='desktop'] { min-width:1120px }
+      .gal-shell .ds-shell { min-height:100%; height:100% }
+      .gal-shell[data-w='phone'] { width:390px }
+      .gal-icons { display:flex; flex-wrap:wrap; gap:var(--ds-s3) }
+      .gal-icon {
+        display:flex; flex-direction:column; align-items:center; gap:var(--ds-s1);
+        width:74px; padding:var(--ds-s3) var(--ds-s1);
+        background:var(--ds-surface-1); border-radius:var(--ds-r2);
+        color:var(--ds-text-2);
+      }
+      .gal-icon span {
+        font-size:var(--ds-fs-eyebrow); color:var(--ds-text-4);
+        max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+      }
+      .gal-swatches { display:flex; flex-wrap:wrap; gap:var(--ds-s3) }
+      .gal-sw { display:flex; flex-direction:column; gap:var(--ds-s1); width:120px }
+      .gal-sw i {
+        display:block; height:44px; border-radius:var(--ds-r2);
+        box-shadow:inset 0 0 0 1px var(--ds-line);
+      }
+      .gal-phone-page { padding:var(--ds-s4); display:flex; flex-direction:column; gap:var(--ds-s7) }
+      .gal-sec, .gal-grid, .gal-item, .gal-body { min-width:0; max-width:100% }
+      @media (max-width:767px) {
+        .gal-cols { flex-direction:column; align-items:stretch; padding:var(--ds-s4) }
+        .gal-desktop { width:100% }
+        .gal-phone { display:none }
+        /* the desktop shell is a desktop specimen: it keeps its real width and
+         scrolls sideways inside the gallery rather than collapsing into a lie */
+      .gal-shell-scroll { width:100%; overflow-x:auto }
+      .gal-shell { width:100%; height:520px; overflow:hidden; border-radius:var(--ds-r4) }
+      .gal-shell[data-w='desktop'] { min-width:1120px }
+      .gal-shell .ds-shell { min-height:100%; height:100% }
+      .gal-shell[data-w='phone'] { width:390px }
+      .gal-icons { max-width:100% }
+      }
+    </style>
+  </head>
+  <body class="ds-body">
+    <div id="root"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>
