@@ -305,11 +305,14 @@
    the main column, which already carries `min-width:0`, gives up the width.
 
    Restated at four classes to out-specify faithful; it dies with that sheet.
+
+   `flex-wrap` is restated with it, and it is the load-bearing half. Left to
+   wrap, the 390 row breaks into THREE lines inside a host fixed at 96px with
+   `overflow:hidden`: lead at 14-42, main at 50-103, tail and actions at
+   111-155. That is not a clip, it is a DELETE — the time, the unread dot, the
+   DRAFT pill, "sum up" and Discard (S02-17, 18, 19, 20, 22) all sit below the
+   host and no phone ever shows them. Measured.
    -------------------------------------------------------------------------- */
-/* `flex-wrap` is restated too: the legacy sheet wraps this row, and a wrapped
-   line inside a fixed-height host with `overflow:hidden` does not clip the
-   button, it DELETES it — the actions landed on a second line at x=41, out of
-   sight, which would have dropped S02-22 on the phone entirely. */
 .a-dms-rowhost > .a-row.a-row.a-row.a-row.r{
   display:flex;
   flex-wrap:nowrap;
@@ -317,5 +320,25 @@
   gap:var(--ds-stack);
   padding:var(--ds-row-y) var(--ds-row-x);
 }
-.a-dms-rowhost > .a-row.r > .a-row-main{ min-width:0; flex:1 1 auto }
 .a-dms-rowhost > .a-row.r > .a-row-actions{ flex:0 0 auto }
+
+/* A ROW HAS TO SAY WHO IT IS FROM. `.a-row-main` absorbs the whole of the
+   line's shrink, so on the fullest row at 390 — a pending draft, which carries
+   the time, the unread dot, the DRAFT pill AND an inline Discard — it fell to
+   55px and the name collapsed to ZERO: the shot showed a row headed by a lane
+   badge and nothing else. The name is the one thing on that line that cannot be
+   read anywhere else on the screen, so the main column takes a floor and the
+   tail, whose DRAFT pill is already restated by the "Draft:" prefix on the
+   preview line under it, is what gives way instead.
+
+   THE TIME IS PINNED INSIDE IT. A shrinkable tail on its own took the time
+   (S02-20) to 1px on a plain row — trading one lost mark for another. The
+   timestamp is `flex:none` so the DRAFT pill is the only thing in the tail that
+   can yield, and the three-gap line is tightened on the phone to buy back the
+   24px that made the draft row impossible in the first place. */
+@media (max-width:767px){
+  .a-dms-rowhost > .a-row.a-row.a-row.a-row.r{ gap:var(--ds-s2) }
+  .a-dms-rowhost > .a-row.r > .a-row-main{ flex:1 1 auto; min-width:35% }
+  .a-dms-rowhost > .a-row.r > .a-row-tail{ flex:0 1 auto; min-width:var(--ds-s9); overflow:hidden }
+  .a-dms-rowhost > .a-row.r > .a-row-tail > .a-mono{ flex:0 0 auto }
+}
