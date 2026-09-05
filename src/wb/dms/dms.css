@@ -286,3 +286,36 @@
     animation-duration:0ms !important;
   }
 }
+
+/* --------------------------------------------------------------------------
+   THE FIFTH CASCADE TRAP, and the one the PNGs caught rather than a gate.
+
+   `faithful.css:614` makes `.wb.wb.wb .r` a FOUR-TRACK GRID —
+   `var(--anchor-w) minmax(0,1fr) auto var(--tail-w)` — because the old row had
+   four fixed cells and scattering right edges was the defect it was fixing.
+   The kit's Row is `display:flex` at ONE class (wb.css), so inside `.wb` it
+   loses and its four children land in those tracks. The fourth is FIXED at
+   `--tail-w`, so `.a-row-actions` is 62px wide at 390 while the "sum up" button
+   inside it needs 97: measured right edge 384 against a row that ends at 365,
+   with `.a-dms-rowhost{overflow:hidden}` shearing the word. Every phone row in
+   the S02/S33 shots reads "sum up" cut mid-letter.
+
+   S02-22 is a BOTH row in the ledger, so the phone cannot answer this by
+   hiding the button. The row goes back to the flex line the kit declares and
+   the main column, which already carries `min-width:0`, gives up the width.
+
+   Restated at four classes to out-specify faithful; it dies with that sheet.
+   -------------------------------------------------------------------------- */
+/* `flex-wrap` is restated too: the legacy sheet wraps this row, and a wrapped
+   line inside a fixed-height host with `overflow:hidden` does not clip the
+   button, it DELETES it — the actions landed on a second line at x=41, out of
+   sight, which would have dropped S02-22 on the phone entirely. */
+.a-dms-rowhost > .a-row.a-row.a-row.a-row.r{
+  display:flex;
+  flex-wrap:nowrap;
+  align-items:center;
+  gap:var(--ds-stack);
+  padding:var(--ds-row-y) var(--ds-row-x);
+}
+.a-dms-rowhost > .a-row.r > .a-row-main{ min-width:0; flex:1 1 auto }
+.a-dms-rowhost > .a-row.r > .a-row-actions{ flex:0 0 auto }
