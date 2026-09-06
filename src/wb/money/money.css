@@ -80,6 +80,15 @@
 .a-money-wide .ds-table{ table-layout:fixed }
 .a-money-wide .ds-table [data-numeric='true']{ white-space:normal }
 .a-money-wide .a-money-cv{ white-space:nowrap }
+/* THE FIGURE IS RIGHT-ALIGNED; ITS RECEIPT IS NOT. W6, from W4's leftover: the
+   provenance and the "reason:" block inherited the numeric column's alignment,
+   so a three-line receipt wrapped with a ragged LEFT edge on the one surface
+   whose whole thesis is "read the provenance". The number keeps the column it
+   is read down; the sentence under it reads the way a sentence reads. */
+.a-money-wide .ds-table [data-numeric='true'] .a-money-cell{ align-items:flex-end }
+.a-money-wide .ds-table [data-numeric='true'] .a-money-cp,
+.a-money-wide .ds-table [data-numeric='true'] .a-money-note,
+.a-money-wide .ds-table [data-numeric='true'] .a-money-nosource{ display:block; text-align:left }
 /* Two more things in this ledger are longer than a column and were told never
    to wrap. A column HEADER here is a full sentence of provenance — "Anthropic
    API (token-priced estimate, not invoice-verified)" is 526px of ink in a 232px

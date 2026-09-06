@@ -231,8 +231,17 @@
    side of the plate. */
 .wb-work{ overflow:hidden }
 .wb-work.list{ flex:0 0 auto; width:var(--ds-peer-w); border-right:1px solid var(--ds-line) }
-.wb-work.wide{ flex:1 1 auto }
-.wb-peer{ background:var(--ds-canvas) }
+/* `flex:1 1 0`, not `1 1 auto`: with an auto basis the two halves are sized by
+   their own max-content and a long answer in the peer took two thirds of the
+   canvas, squeezing the DM list until every name ellipsised to a single
+   letter. A zero basis is what the sheet this replaces meant by `flex:1`. */
+.wb-work.wide{ flex:1 1 0 }
+/* THE PEER FILLS WHAT IS LEFT. `.ds-peer` is `flex:0 0 var(--ds-peer-w)`,
+   which is right for a peer BESIDE a full working column and wrong for the
+   workbench's list-plus-peer canvas: with the list pinned at its own width and
+   the peer refusing to grow, 2560 rendered a 400px list, an 830px thread and
+   2,900px of empty plate. The peer is the elastic half here. */
+.wb-peer{ flex:1 1 0; min-width:0; background:var(--ds-canvas) }
 /* The focused peer is the one keyboard and hash state point at. A hairline,
    not a glow: two panes both shouting is worse than neither. */
 .wb-peer.on{ box-shadow:inset 1px 0 0 var(--ds-accent-line) }
@@ -241,18 +250,75 @@
    the defect this wave exists to close: a row whose text runs 2,000px is not
    read, it is scanned and abandoned. It starts at 1800px and not below,
    because at 1440 the working column is already inside the measure and every
-   wave's 1440 shot is the reference this wave must not move. A table keeps its
-   own width INSIDE the capped column, so the ladder's column rules are
-   untouched. */
+   wave's 1440 shot is the reference this wave must not move.
+
+   The cap goes on the column's OWN CHILDREN, all of them, and that is the
+   whole point: the work segment, the seat banner and the screen then share one
+   left edge. The first attempt capped only the screen's head, bar and body and
+   the result was three different left edges on Content at 2560 (a full-bleed
+   stage strip over a centred filter bar over a full-bleed tab row). A table
+   keeps its own width INSIDE the capped column, so the ladder's column rules
+   are untouched. */
 @media (min-width:1800px){
-  .wb.dt .wb-work.wide > .a-root > .a-body,
-  .wb.dt .wb-work.wide > .a-root > .a-bar{
+  /* The peer's own content takes the same measure: a thread or an answer read
+     across 1,800px is the same defect as a row read across 2,000px. */
+  .wb.dt .wb-peer > *{
     max-width:var(--ds-measure); width:100%;
     margin-left:auto; margin-right:auto;
   }
-  .wb.dt .wb-work.wide > .a-root > .a-head{
+  .wb.dt .wb-work.wide > *{
     max-width:var(--ds-measure); width:100%;
     margin-left:auto; margin-right:auto;
+  }
+  /* AND THE CAP LETS THE FLOATING LAYER GO. `> *` is right for the column's
+     in-flow blocks and WRONG for the overlays that happen to be mounted in it:
+     `.ds-scrim` and `.ds-dialog-wrap` are `position:fixed; inset:0` and the cap
+     shrank them to 1240px, so at 2560 the command palette dimmed a 1,240px
+     stripe of the screen and left the rail and both margins lit. Measured:
+     scrim x=660 w=1240 against a 2560 viewport. A fixed overlay is sized by the
+     viewport, never by the measure; only what is READ takes the measure.
+     A new overlay class is capped until it is named here, which is the failure
+     direction that shows itself in a shot. */
+  .wb.dt .wb-work.wide > .ds-scrim,
+  .wb.dt .wb-work.wide > .ds-dialog-wrap,
+  .wb.dt .wb-work.wide > .a-tk-scrim,
+  .wb.dt .wb-work.wide > .a-dms-pop,
+  .wb.dt .wb-work.wide > .a-ct-tipwrap{
+    max-width:none; width:auto;
+    margin-left:0; margin-right:0;
+  }
+  /* The bulk bar and the toast stack are fixed too, and they already carry a
+     width of their own (`min(720px, 100% - s8)`, centred). The cap's
+     `width:100%` outranked it at three classes and inflated the bar to the full
+     1,240px measure: the S24 shot is a 720px bar's contents strung across a
+     1,240px box. They keep their own width.
+
+     They also stop being VIEWPORT-fixed here and become column-absolute. Fixed,
+     they centre on 2560/2 while the rows they act on centre on the plate right
+     of the rail: the re-shot S24 put a 720px bar 127px to the left of the table
+     whose selection it reports. Absolute inside the (now relative) column, the
+     bar and the rows share one centre. Only inside this query, so the 1440
+     reference shots are untouched. */
+  .wb.dt .wb-work.wide{ position:relative }
+  .wb.dt .wb-work.wide > .ds-bulkbar,
+  .wb.dt .wb-work.wide > .ds-toast-stack{
+    position:absolute;
+    max-width:none;
+    width:min(720px, calc(100% - var(--ds-s8)));
+  }
+  /* THE BOTTOM SHEET IS A PHONE FORM ON A 2560 PLATE. `.ds-sheet` is
+     `left:0; right:0`, so the push-later and context sheets ran the full 2,560
+     with their rows pinned to the left 760px and the Cancel button centred on
+     the viewport: one panel, two alignments, and it painted over the rail. It
+     keeps the measure and centres, the same rule the column reads by.
+
+     It is written WITHOUT the `.wb` prefix on purpose: the Sheet primitive
+     mounts against the document, not inside the shell tree, so a shell-scoped
+     selector never reaches it -- which is why the first attempt left the sheet
+     full-bleed in the re-shot S20. */
+  .ds-sheet{
+    max-width:var(--ds-measure);
+    margin-inline:auto;
   }
 }
 

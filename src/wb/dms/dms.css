@@ -64,7 +64,17 @@
   min-width:0;
   overflow:hidden;
 }
-.a-dms-titleline > :first-child{ min-width:0; flex:0 1 auto }
+/* THE NAME OUTRANKS THE BADGES BESIDE IT. W6, from D27. `flex:0 1 auto` with
+   `min-width:0` let the name shrink to nothing while the lane and channel pills
+   next to it are Chips, which are `flex:none` and never yield. In any column
+   narrower than the full line -- the 420px list beside an open thread at 1440
+   and 2560, and the phone row -- every name ellipsised to one or two letters:
+   the S14 and S15 shots read `PN  R  D...  6h  DRAFT`, a row whose only
+   identity is an avatar monogram. The pills restate the lane filter directly
+   above the list; the name is the one thing on that line that is nowhere else.
+   So the name takes the growth AND a floor, and the pills are what give way. */
+.a-dms-titleline > :first-child{ min-width:9ch; flex:1 1 auto }
+.a-dms-titleline [data-ds='Chip']{ flex:0 1 auto; min-width:0; overflow:hidden }
 /* THE ROW IS A FIXED BOX. A chip at its own control height would push the title
    line past the height the windowing measures against, so the pills that ride
    the name take the compact height instead of the control height. */
@@ -323,3 +333,22 @@
   .a-dms-rowhost > .a-row.r > .a-row-tail{ flex:0 1 auto; min-width:var(--ds-s9); overflow:hidden }
   .a-dms-rowhost > .a-row.r > .a-row-tail > .a-mono{ flex:0 0 auto }
 }
+
+/* --------------------------------------------------------------------------
+   THE LIST COLUMN IS A PHONE-WIDTH COLUMN ON A DESKTOP. W6.
+
+   With a thread or the Ask pane open, `.wb-work.list` is pinned at
+   `--ds-peer-w` (420px) at every desktop width. The row inside it is the same
+   row the 1440 list renders full-bleed, so none of the `max-width:767px` rules
+   above reach it -- and 420px is TIGHTER than the phone, because the phone row
+   is allowed to break onto a second line and this one is not. Measured at 2560
+   with a thread open: main column 108px, of which the two pills took 60 and
+   the name got 48. The floor and the yielding tail from the phone block are
+   restated here against the container instead of the viewport, and the copy
+   link steps aside for the same reason it does at 390.
+   -------------------------------------------------------------------------- */
+.wb-work.list .a-dms-rowhost > .a-row.a-row.a-row.a-row.r{ gap:var(--ds-s2) }
+.wb-work.list .a-dms-rowhost > .a-row.r > .a-row-main{ flex:1 1 auto; min-width:55% }
+.wb-work.list .a-dms-rowhost > .a-row.r > .a-row-tail{ flex:0 1 auto; min-width:var(--ds-s9); overflow:hidden }
+.wb-work.list .a-dms-rowhost > .a-row.r > .a-row-tail > .a-mono{ flex:0 0 auto }
+.wb-work.list .a-dms-tagact{ display:none }
