@@ -23,6 +23,7 @@ import { Head, Screen } from '../kit'
 import type { BrainMobileProps } from '../../exp/brain/types'
 import { JOB_LABEL, type Job } from '../../exp/v2c/layout'
 import { readPlace, resolveBootPlace, tabForJob, writePlace, TABS, TAB_LABEL, type Place } from '../../exp/brain/b/place'
+import { hashNamesJob } from '../../exp/v2c/route'
 import { AskThread } from './AskThread'
 import { Feed } from './Feed'
 import { useFeedData } from '../../exp/brain/b/useFeedData'
@@ -41,7 +42,7 @@ const AXIS_LOCK_PX = 8
  * six distinctions the phone and the desktop rail already agreed on, by name
  * rather than by a typed character. */
 const TAB_ICON: Record<Place, IconName> = {
-  ask: 'ask', today: 'today', dms: 'dms', content: 'content', sends: 'sends', ops: 'ops',
+  ask: 'ask', today: 'today', sales: 'sales', dms: 'dms', content: 'content', sends: 'sends', ops: 'ops',
 }
 
 /** The five Job counts/severities, folded onto the five lane tabs (Ask carries
@@ -135,7 +136,11 @@ export function Mobile(p: BrainMobileProps) {
   const { chat, job, goJob, counts, sev, boot, workSurface, windows, peerView, about } = p
   const feed = useFeedData()
 
-  const [place, setPlace] = useState<Place>(() => resolveBootPlace(boot, readPlace()))
+  // A link that names a job (`#exp/brain-b/sales`, `?section=sales`) opens that
+  // place; a bare cold boot still lands where he left off.
+  const [place, setPlace] = useState<Place>(
+    () => resolveBootPlace({ ...boot, place: hashNamesJob(location.hash) ? tabForJob(job) : null }, readPlace()),
+  )
   const [feedOpen, setFeedOpen] = useState<boolean>(!!boot.feed)
   // The turn a push notification named. Held here rather than inside AskThread
   // so a feed tap and a cold boot arrive at the same one place.

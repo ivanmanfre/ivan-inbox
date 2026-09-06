@@ -31,6 +31,7 @@
 
    Nothing here writes. The window has no control that changes a pack.
    ========================================================================== */
+import { createPortal } from 'react-dom'
 import { useEffect, useState } from 'react'
 import { Button, Icon, Skeleton, type IconName } from '../../ds'
 import { Takeover } from '../takeover'
@@ -170,7 +171,7 @@ export function Pack({ slug, doc, onDoc, onClose, mobile, index, event }: {
     )
     : undefined
 
-  return (
+  const win = (
     <Takeover label={label} sub={sub || undefined} onClose={onClose} mobile={mobile} tail={tail} bodyClass="a-pk">
       <div className="a-pk-tabs" role="tablist" aria-label="This pack">
         {DOCS.map(d => {
@@ -248,4 +249,12 @@ export function Pack({ slug, doc, onDoc, onClose, mobile, index, event }: {
       </div>
     </Takeover>
   )
+
+  // THE WINDOW GOES ON THE BODY. On the phone the surface is rendered inside
+  // `.a-brain-pane`, which sets `z-index: 0` and so opens a stacking context:
+  // a fixed scrim at z-70 inside it still paints UNDER the phone's own chrome,
+  // which is how the pack's header — the name, Join, and the way back — ended
+  // up invisible behind the alarm capsule. The Ask pane's report sheet hit the
+  // same wall and was portalled for the same reason (`Runner.tsx`).
+  return typeof document === 'undefined' ? win : createPortal(win, document.body)
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readProspect, auditUrl, prettify } from './Prospect'
+import { readProspect, auditUrl, prettify, richTokens } from './Prospect'
 
 // Invented prospect. The repo is public; no real slug, name, company, domain or
 // line of a real pack appears in this file.
@@ -104,5 +104,29 @@ describe('prettify', () => {
     expect(prettify('context_qualify')).toBe('Context qualify')
     expect(prettify('outbound-upsell')).toBe('Outbound upsell')
     expect(prettify('')).toBe('')
+  })
+})
+
+// The card generator writes HTML inside the file's prose. These cases pin the
+// tokeniser that turns it back into nodes without ever running it as markup.
+describe('richTokens — the file\'s own HTML, rebuilt as nodes', () => {
+  it('bold and entities become text, tags never survive', () => {
+    const out = richTokens('<b>Ada Lovelace</b>, Founder &amp; CEO')
+    expect(out.map(t => (t.t === 'text' ? t.s : '<br>')).join('')).toBe('Ada Lovelace, Founder & CEO')
+    expect(out[0]).toMatchObject({ t: 'text', s: 'Ada Lovelace', b: true })
+    expect(out[1]).toMatchObject({ t: 'text', b: undefined })
+  })
+  it('an unknown tag is dropped and its text kept', () => {
+    expect(richTokens('<span style="x">kept</span>').map(t => (t.t === 'text' ? t.s : '')).join('')).toBe('kept')
+  })
+  it('a line break is its own token', () => {
+    expect(richTokens('one<br>two').filter(t => t.t === 'br')).toHaveLength(1)
+  })
+  it('numeric entities decode and a stray < is left alone', () => {
+    expect(richTokens('a &#8594; b').map(t => (t.t === 'text' ? t.s : '')).join('')).toBe('a → b')
+    expect(richTokens('5 < 6').map(t => (t.t === 'text' ? t.s : '')).join('')).toBe('5 < 6')
+  })
+  it('plain prose passes through as one token', () => {
+    expect(richTokens('no markup here')).toEqual([{ t: 'text', s: 'no markup here', b: undefined, i: undefined }])
   })
 })

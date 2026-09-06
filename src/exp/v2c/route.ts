@@ -120,3 +120,17 @@ export function wbHash(job: Job, focus: PeerKey | null, prefix: WbPrefix = WB_PR
   const tail = focus === 'chat' ? '/chat' : ''
   return `#exp/${prefix}/${job}${tail}`
 }
+
+/**
+ * Did the URL NAME a job, or is the job we returned the fallback? Both parse to
+ * a `WbRoute.job`; only one is a request. The phone reads this to tell "open
+ * Sales" from "open wherever I was", and it is a separate function rather than
+ * a field so `WbRoute` keeps the exact shape every caller and test asserts.
+ */
+export function hashNamesJob(hash: string): boolean {
+  const m = hash.match(/^#exp\/(?:v2c?|brain-[abc])(?:\/([^/?]*))?(?:\/([^/?]*))?(?:\?([^#]*))?/)
+  if (!m) return false
+  const seg = m[1] ?? ''
+  if ((JOBS as string[]).includes(seg) || seg in JOB_ALIAS) return true
+  return sectionJob(new URLSearchParams(m[3] ?? '')) !== undefined
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_ROUTE, parseWbHash, prefixOf, wbHash } from './route'
+import { DEFAULT_ROUTE, parseWbHash, prefixOf, wbHash, hashNamesJob } from './route'
 
 // The winner-apply build moved from #exp/v2c to #exp/v2 and kept v2c readable so
 // tournament-era ballot links do not 404. Both halves of that are asserted here,
@@ -156,5 +156,21 @@ describe('ask deep link', () => {
     expect(r.focus).toBe('chat')
     expect(r.thread).toBe('e53d8fb8-382c-43fd-87a9-f0f668f408d4')
     expect(r.turn).toBe('0b3e74fc-d702-4a3b-9984-7549b1eb0148')
+  })
+})
+
+describe('hashNamesJob', () => {
+  it('is true when a path segment names a job', () => {
+    expect(hashNamesJob('#exp/brain-b/sales')).toBe(true)
+    expect(hashNamesJob('#exp/v2c/today?slug=x')).toBe(true)
+  })
+  it('is true for ?section= and for the retired aliases', () => {
+    expect(hashNamesJob('#exp/v2c?section=sales')).toBe(true)
+    expect(hashNamesJob('#exp/v2c/inbox')).toBe(true)
+  })
+  it('is false for a bare shell, an unknown segment and a non-workbench hash', () => {
+    expect(hashNamesJob('#exp/brain-b')).toBe(false)
+    expect(hashNamesJob('#exp/v2c/nonsense')).toBe(false)
+    expect(hashNamesJob('#thread/abc')).toBe(false)
   })
 })

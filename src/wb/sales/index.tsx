@@ -238,7 +238,14 @@ export function SalesSurface({ onOpenCall, mobile }: {
     const reportId = past ? reportIdFor(e, slug, calls) : null
 
     return (
-      <div className="a-row a-sl-row" key={e.id} data-past={past ? '' : undefined}>
+      <div
+        className="a-row a-sl-row" key={e.id} data-past={past ? '' : undefined}
+        // The two attributes the week gate reads: which calendar row this is,
+        // and which pack the matcher put under it. They are the only way an
+        // outside check can tell "the right call, the right pack" from "a row
+        // that looks plausible".
+        data-cal-id={e.id} data-slug={slug ?? undefined} data-group={group}
+      >
         <div className="a-sl-top">
           <span className="a-sl-head">
             {slug && m.name

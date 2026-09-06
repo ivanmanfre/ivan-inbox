@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { readPlace, resolveBootPlace, tabForJob, writePlace } from './place'
+import { readPlace, resolveBootPlace, tabForJob, jobForTab, TABS, writePlace } from './place'
 
 // This suite runs under vitest's default `node` environment (no jsdom), which
 // has no global localStorage. place.ts already treats a missing/throwing
@@ -64,5 +64,23 @@ describe('resolveBootPlace', () => {
   })
   it('with nothing persisted and no deep link, Ask is the default landing', () => {
     expect(resolveBootPlace({}, null)).toBe('ask')
+  })
+})
+
+describe('a link that names a place', () => {
+  it('opens that place instead of the persisted one', () => {
+    expect(resolveBootPlace({ place: 'sales' }, 'ops')).toBe('sales')
+  })
+  it('still loses to a feed or thread deep link', () => {
+    expect(resolveBootPlace({ feed: true, place: 'sales' }, 'ops')).toBe('ask')
+    expect(resolveBootPlace({ thread: 'abc', place: 'sales' }, 'ops')).toBe('ask')
+  })
+  it('a bare boot still lands where he left off', () => {
+    expect(resolveBootPlace({ place: null }, 'ops')).toBe('ops')
+  })
+  it('Sales is a tab and the Sales job maps to it', () => {
+    expect(TABS).toContain('sales')
+    expect(tabForJob('sales')).toBe('sales')
+    expect(jobForTab('sales')).toBe('sales')
   })
 })

@@ -190,17 +190,73 @@ function Section({ head, tail, children }: { head: string; tail?: ReactNode; chi
   )
 }
 
+/**
+ * The prospect file is written for the CARD, which is HTML, so a fact reads
+ * `<b>Their Name</b>, Founder &amp; Chief …`. Rendered as text that is
+ * tag soup on the phone; rendered with `dangerouslySetInnerHTML` it would be a
+ * document from another machine executing inside the app. So the small
+ * vocabulary the generator actually uses is TOKENISED and rebuilt as React
+ * nodes — bold, italic, line break, the five entities — and every other tag is
+ * dropped rather than escaped, because a stray `<span style=…>` is noise, not
+ * content. Pure and exported so the mapping is testable without a DOM.
+ */
+export type RichToken = { t: 'text'; s: string; b?: boolean; i?: boolean } | { t: 'br' }
+
+const ENTITIES: Record<string, string> = {
+  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', hellip: '…', mdash: '—', ndash: '–',
+}
+
+export function richTokens(src: string): RichToken[] {
+  const out: RichToken[] = []
+  let b = 0, i = 0, buf = ''
+  const flush = () => { if (buf) { out.push({ t: 'text', s: buf, b: b > 0 || undefined, i: i > 0 || undefined }); buf = '' } }
+  const rx = /<\/?([a-zA-Z][a-zA-Z0-9]*)[^>]*>|&(#x?[0-9a-fA-F]+|[a-zA-Z]+);/g
+  let last = 0, m: RegExpExecArray | null
+  while ((m = rx.exec(src))) {
+    buf += src.slice(last, m.index)
+    last = m.index + m[0].length
+    if (m[1]) {
+      const tag = m[1].toLowerCase(), close = m[0][1] === '/'
+      if (tag === 'br') { flush(); out.push({ t: 'br' }) }
+      else if (tag === 'b' || tag === 'strong') { flush(); b += close ? -1 : 1; if (b < 0) b = 0 }
+      else if (tag === 'i' || tag === 'em') { flush(); i += close ? -1 : 1; if (i < 0) i = 0 }
+      // every other tag is dropped, its text kept
+    } else if (m[2]) {
+      const e = m[2]
+      buf += e[0] === '#'
+        ? String.fromCodePoint(Number(e[1] === 'x' || e[1] === 'X' ? `0${e.slice(1)}` : e.slice(1)) || 63)
+        : ENTITIES[e.toLowerCase()] ?? `&${e};`
+    }
+  }
+  buf += src.slice(last)
+  flush()
+  return out
+}
+
+/** The tokens as nodes. `<Rich s={fact} />` wherever the file's prose lands. */
+export function Rich({ s }: { s: string }) {
+  return (
+    <>
+      {richTokens(s).map((tk, n) => tk.t === 'br'
+        ? <br key={n} />
+        : tk.b
+          ? <strong key={n}>{tk.i ? <em>{tk.s}</em> : tk.s}</strong>
+          : tk.i ? <em key={n}>{tk.s}</em> : <span key={n}>{tk.s}</span>)}
+    </>
+  )
+}
+
 function Phase({ name, phase }: { name: string; phase: ProspectPhase }) {
   const lines = Object.entries(phase.lines ?? {})
   return (
     <Section head={prettify(name)}>
       {(phase.add ?? []).map((line, i) => (
-        <blockquote key={`a${i}`} className="a-quote a-pk-quote">{line}</blockquote>
+        <blockquote key={`a${i}`} className="a-quote a-pk-quote"><Rich s={line} /></blockquote>
       ))}
       {lines.length > 0 && (
         <dl className="a-kv a-pk-lines">
           {lines.map(([k, v]) => (
-            <span key={k} style={{ display: 'contents' }}><dt>{prettify(k)}</dt><dd>{v}</dd></span>
+            <span key={k} style={{ display: 'contents' }}><dt>{prettify(k)}</dt><dd><Rich s={v} /></dd></span>
           ))}
         </dl>
       )}
@@ -209,8 +265,8 @@ function Phase({ name, phase }: { name: string; phase: ProspectPhase }) {
           {(phase.drop ?? []).map((d, i) => <Chip key={i} tone="quiet">{d}</Chip>)}
         </div>
       )}
-      {phase.skip ? <div className="a-body-t a-dim">Skip: {phase.skip}</div> : null}
-      {phase.note ? <div className="a-meta">{phase.note}</div> : null}
+      {phase.skip ? <div className="a-body-t a-dim">Skip: <Rich s={phase.skip} /></div> : null}
+      {phase.note ? <div className="a-meta"><Rich s={phase.note} /></div> : null}
     </Section>
   )
 }
@@ -230,7 +286,7 @@ export function Prospect({ json }: { json: string }) {
   const columns = (v.table?.head ?? []).map((h, i) => ({
     id: `c${i}`,
     header: h,
-    cell: (row: string[]) => <span className="a-pre">{row[i] ?? ''}</span>,
+    cell: (row: string[]) => <span className="a-pre"><Rich s={row[i] ?? ''} /></span>,
   }))
 
   return (
@@ -238,7 +294,7 @@ export function Prospect({ json }: { json: string }) {
       {v.facts.length > 0 && (
         <Section head="Facts" tail={`${v.facts.length}`}>
           <ul className="a-pk-facts">
-            {v.facts.map((f, i) => <li key={i} className="a-body-t">{f}</li>)}
+            {v.facts.map((f, i) => <li key={i} className="a-body-t"><Rich s={f} /></li>)}
           </ul>
         </Section>
       )}
@@ -252,13 +308,13 @@ export function Prospect({ json }: { json: string }) {
             rowKey={row => row.join('|')}
             label={v.table.title || 'The numbers'}
           />
-          {v.tableNote ? <div className="a-meta">{v.tableNote}</div> : null}
+          {v.tableNote ? <div className="a-meta"><Rich s={v.tableNote} /></div> : null}
         </Section>
       )}
 
       {v.walk ? (
         <Section head="How the call walks">
-          <p className="a-body-t a-pre">{v.walk}</p>
+          <p className="a-body-t a-pre"><Rich s={v.walk} /></p>
         </Section>
       ) : null}
 
@@ -274,9 +330,9 @@ export function Prospect({ json }: { json: string }) {
                 {ins.after ? <span className="a-meta">after {prettify(ins.after)}</span> : null}
               </div>
               {(ins.lines ?? []).map((line, j) => (
-                <blockquote key={j} className="a-quote a-pk-quote">{line}</blockquote>
+                <blockquote key={j} className="a-quote a-pk-quote"><Rich s={line} /></blockquote>
               ))}
-              {ins.note ? <div className="a-meta">{ins.note}</div> : null}
+              {ins.note ? <div className="a-meta"><Rich s={ins.note} /></div> : null}
             </div>
           ))}
         </Section>

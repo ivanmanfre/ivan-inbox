@@ -18,12 +18,16 @@
 
 import { isWorkJob, type Job } from '../../v2c/layout'
 
-export type Place = 'ask' | 'today' | 'dms' | 'content' | 'sends' | 'ops'
+export type Place = 'ask' | 'today' | 'sales' | 'dms' | 'content' | 'sends' | 'ops'
 
-export const TABS: Place[] = ['ask', 'today', 'dms', 'content', 'sends', 'ops']
+// `sales` joined 2026-09-06 next to Today, because a call starting in ten
+// minutes is the one thing on the phone with a deadline. Seven tabs at 390
+// is the measured ceiling: the bar is a flex row of equal parts, so each is
+// 55px wide and still clears the 44px tap floor `.ds-tab` enforces.
+export const TABS: Place[] = ['ask', 'today', 'sales', 'dms', 'content', 'sends', 'ops']
 
 export const TAB_LABEL: Record<Place, string> = {
-  ask: 'Ask', today: 'Today', dms: 'DMs', content: 'Content', sends: 'Lanes', ops: 'Ops',
+  ask: 'Ask', today: 'Today', sales: 'Sales', dms: 'DMs', content: 'Content', sends: 'Lanes', ops: 'Ops',
 }
 
 // The per-tab mark is a lucide icon now and it lives with the bar that draws
@@ -37,7 +41,7 @@ export const TAB_LABEL: Record<Place, string> = {
 export function tabForJob(job: Job): Place {
   if (isWorkJob(job)) return 'content'
   if (job === 'settings' || job === 'money') return 'today'
-  if (job === 'today' || job === 'dms' || job === 'sends' || job === 'ops') return job
+  if (job === 'today' || job === 'sales' || job === 'dms' || job === 'sends' || job === 'ops') return job
   return 'today'
 }
 
@@ -67,10 +71,15 @@ export function writePlace(p: Place): void {
 // whatever was persisted: someone tapped a specific thing, and landing
 // somewhere else because "that's where you left off" would defeat the link.
 // ---------------------------------------------------------------------------
-export type Boot = { feed?: boolean; thread?: string }
+export type Boot = { feed?: boolean; thread?: string; place?: Place | null }
 
 export function resolveBootPlace(boot: Boot, persisted: Place | null): Place {
   if (boot.feed) return 'ask' // the feed opens as a sheet OVER a place; Ask under it is the sane default
   if (boot.thread) return 'ask'
+  // A link that NAMES a place beats what was persisted, for the same reason a
+  // thread link does: somebody tapped that thing. Only a link with a place
+  // segment of its own carries this — a bare `#exp/brain-b` does not, so the
+  // ordinary cold boot still lands where he left off.
+  if (boot.place) return boot.place
   return persisted ?? 'ask'
 }

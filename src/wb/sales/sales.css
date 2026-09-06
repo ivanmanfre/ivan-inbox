@@ -83,6 +83,23 @@
 @media (max-width:700px){
   .a-sl-top{ flex:1 1 100% }
   .a-sl-time{ flex-wrap:wrap }
+
+  /* A is the instrument, and on a phone an instrument means the whole week on
+     one screen. Measured before this block: one call took 290px of 715, so
+     two and a half calls fitted and the Thursday one was three scrolls away.
+     The name row keeps the join control on its right (it is one word and it
+     never wraps), and the six chips ride ONE row that scrolls sideways rather
+     than wrapping into three lines. Same markup, same tap floor. */
+  .a-sl[data-density='a'] .a-sl-row{ position:relative; padding-right:calc(var(--ds-tap) + var(--ds-s4)) }
+  .a-sl[data-density='a'] .a-sl-join{
+    position:absolute; top:var(--ds-row-y); right:var(--ds-row-x);
+    min-width:0; padding-inline:var(--ds-s3);
+  }
+  .a-sl[data-density='a'] .a-sl-chips{
+    flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none;
+    padding-bottom:2px;
+  }
+  .a-sl[data-density='a'] .a-sl-chips::-webkit-scrollbar{ display:none }
 }
 
 /* --------------------------------------------------------------------------
