@@ -13,7 +13,7 @@ import {
   ChartColumn, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp,
   ChevronsLeft, ChevronsRight, Circle, CircleAlert, CircleCheck,
   ClipboardCheck, Clock, Command, Copy, CornerDownLeft, Delete, Diamond, Dot,
-  ExternalLink, Eye, FileText, Filter, Flame, GripVertical, Hash, Image,
+  ExternalLink, Eye, FileText, Filter, Flame, GripVertical, Handshake, Hash, Image,
   Inbox, Keyboard, Layers, LayoutList, Link, List, ListChecks, Loader, Lock,
   LogOut, Magnet, Mail, Maximize2, MessagesSquare, Mic, Minus, MoreHorizontal,
   OctagonX, Palette, PanelLeft, PanelRight, Paperclip, Pause, Pencil, Phone,
@@ -28,6 +28,7 @@ import type { SVGProps } from 'react'
 export const ICONS = {
   /* the ten job icons (src/exp/v2c/layout.ts JOB_ICON, src/exp/brain/b/place.ts) */
   today: Sun,               /* was the sun glyph */
+  sales: Handshake,         /* joined 2026-09-06 with the Sales job */
   dms: MessagesSquare,      /* was the fisheye glyph */
   content: LayoutList,      /* was the squared-fill glyph */
   magnets: Magnet,          /* was the square-lattice glyph */

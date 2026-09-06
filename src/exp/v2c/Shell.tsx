@@ -82,6 +82,7 @@ import { ContentList as ContentListC } from '../../wb/content'
 import { SendsScreen as SendsC } from '../../wb/sends'
 import { OpsBoard as OpsBoardC } from '../../wb/ops'
 import { MoneyView as MoneyC } from '../../wb/money'
+import { SalesSurface as SalesC } from '../../wb/sales'
 import { CallWindow as CallC } from '../../wb/call'
 import { Settings as SettingsC } from '../../wb/settings'
 
@@ -607,6 +608,12 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
           reading surface like Strategy, so it takes no props from Shell at
           all: it owns its own fetch, same as Strategy owns client_strategy. */}
       {job === 'money' && <MoneyC />}
+      {/* Sales joined 2026-09-06 (goal-run inbox-sales-section) — the week's
+          calls, and the reading for each one. It takes `openCallRow` for the
+          same reason Today does: a past call's report opens the SAME call
+          window every other surface opens, rather than a second one that would
+          drift from it. */}
+      {job === 'sales' && <SalesC onOpenCall={openCallRow} mobile={mobile} />}
       {job === 'ops' && opsSurface}
       {/* Today aggregates, so its hand-off rows navigate INSIDE the workbench
           rather than through the default app's hash routes. The work-queue
