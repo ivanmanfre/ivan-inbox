@@ -130,7 +130,7 @@ describe('model plumbing — never a silent fallback', () => {
     // opus-4-7/4-6 map to the same upstream "opus" alias as opus-4-8, so they
     // were the same model under three names (phase4-model-probes.md).
     expect(CLAUDE_MODELS.map(m => m.id)).toEqual([
-      'claude-opus-4-8', 'claude-sonnet-4-6', 'claude-haiku-4-5',
+      'claude-fable-5-1', 'claude-opus-5', 'claude-sonnet-5', 'claude-haiku-4-5',
     ])
   })
 

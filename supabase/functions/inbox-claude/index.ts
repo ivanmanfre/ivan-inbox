@@ -99,11 +99,13 @@ export { MAX_SYSTEM_PROMPT_CHARS }
  * allowlist governs what LEAVES the broker, and the honest-degrade path below is
  * what the operator actually sees.
  */
+// 2026-09-06: the Claude 5 family. The upstream's MODEL_MAP (main.py) carries
+// the same four ids; the 4.x ids stay accepted there for the content engine but
+// are no longer offered or forwarded from the inbox.
 const ALLOWED_MODELS = [
-  'claude-opus-4-8',
-  'claude-opus-4-7',
-  'claude-opus-4-6',
-  'claude-sonnet-4-6',
+  'claude-fable-5-1',
+  'claude-opus-5',
+  'claude-sonnet-5',
   'claude-haiku-4-5',
 ] as const
 

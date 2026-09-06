@@ -17,23 +17,18 @@ import { supabase } from './supabase'
 
 const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/inbox-claude`
 
-// The models the picker offers — the TRUTHFUL working set, probed against the
-// deployed container on 2026-08-03 (goal-runs/inbox-usability-and-voice-live-
-// 2026-08-03-out/phase4-model-probes.md):
-//   - claude-opus-4-8: frames echo it back honestly. opus-4-7 and opus-4-6 map
-//     to the SAME CLI "opus" alias upstream, so offering them was offering the
-//     same model three times under three names — dropped as duplicates.
-//   - claude-sonnet-4-6 and claude-haiku-4-5 (runs -20251001): both honoured.
-//   - Claude 5 ids CANNOT run today: the container's MODEL_MAP rejects them on
-//     /chat, and the /v1/messages "acceptance" is a cosmetic echo that silently
-//     runs Sonnet. They are not offered.
-// The broker (supabase/functions/inbox-claude) still allowlists the old 5-id
-// set — a harmless SUPERSET of this list, deliberately left alone: the picker
-// is the minimal truthful surface, the broker's list only refuses ids, and a
-// drifted value would fail visibly with `model_not_allowed`, never silently.
+// The models the picker offers. 2026-09-06: the Claude 5 family. The container
+// (claude-code-railway main.py MODEL_MAP) passes these ids to the CLI verbatim
+// and the broker (inbox-claude ALLOWED_MODELS) forwards exactly this set; a
+// drifted value fails visibly with `model_not_allowed`, never silently.
+//   - claude-fable-5-1: the most capable; a deliberate per-turn pick.
+//   - claude-opus-5: what the container boots with (its CLAUDE_MODEL default),
+//     so "Claude default" and this row run the same model today.
+//   - claude-sonnet-5 and claude-haiku-4-5: the cheaper tiers.
 export const CLAUDE_MODELS = [
-  { id: 'claude-opus-4-8', label: 'Opus 4.8', note: 'Most capable' },
-  { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6', note: 'Balanced' },
+  { id: 'claude-fable-5-1', label: 'Fable 5.1', note: 'Most capable' },
+  { id: 'claude-opus-5', label: 'Opus 5', note: 'Strong, the default' },
+  { id: 'claude-sonnet-5', label: 'Sonnet 5', note: 'Balanced' },
   { id: 'claude-haiku-4-5', label: 'Haiku 4.5', note: 'Fastest' },
 ] as const
 
@@ -126,7 +121,7 @@ export const CLAUDE_ERROR_COPY: Record<ClaudeErrorCode, string> = {
   // Says what is true and what to do, because this is the state the picker is in
   // today and will stay in until the container change lands.
   model_not_supported_upstream:
-    'Claude cannot take a per-turn model yet. It would quietly use its own. Switch back to the Claude default to send.',
+    'The container refused the per-turn model and would have run its own instead. Switch back to the Claude default to send.',
   model_support_unknown:
     'Cannot confirm Claude would honour that model, so it did not send. Switch back to the Claude default.',
   thread_busy: 'Still working on the last one. Wait for it or start a new thread.',

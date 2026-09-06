@@ -151,8 +151,8 @@ export function AskPane({ chat, job, about, aboutContext, subjects = [], onClose
                 {/* Stated once, where the choice is made, rather than
                     discovered by sending a turn that fails. */}
                 <div className="a-brain-modelnote">
-                  The container takes no per-turn model yet, so anything but the
-                  default is refused rather than quietly ignored.
+                  The pick applies to the next turn only. The pane shows what the
+                  turn actually ran on, read back from the broker, never the pick.
                 </div>
               </Popover>
             </span>
