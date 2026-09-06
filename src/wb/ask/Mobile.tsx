@@ -321,7 +321,16 @@ export function Mobile(p: BrainMobileProps) {
     )
   }
 
-  const title = feedOpen ? 'Feed' : place === 'ask' ? 'Ask' : JOB_LABEL[job]
+  // ONE TITLE PER PLACE. D27: every phone place printed its name twice -- this
+  // chrome row and, right under it, the screen's own head, which says the same
+  // word plus the thing that makes it useful (the date on Today, the avatar and
+  // search on DMs, the stage counts on Content). Two identical <h2>s stacked
+  // cost ~56px of a 844px viewport and told a reader nothing the second time.
+  // The chrome row keeps its CONTROLS -- the alarm capsule, the feed bell, the
+  // live dot -- and gives the name back to the screen. Ask and Feed keep theirs:
+  // neither has a head of its own underneath.
+  const ownsTitle = feedOpen || place === 'ask'
+  const title = feedOpen ? 'Feed' : place === 'ask' ? 'Ask' : undefined
 
   const tabCounts = foldOnTabs(counts)
   const tabSev = foldOnTabs(sev)
@@ -352,6 +361,7 @@ export function Mobile(p: BrainMobileProps) {
               chrome, and it swaps its own label. */}
           <Head
             title={title}
+            lead={ownsTitle ? undefined : <span className="ds-sr">{JOB_LABEL[job]}</span>}
             sub={feedOpen && !condensed ? `${feed.unreadTotal} unread` : undefined}
             tail={
               <>
