@@ -352,7 +352,7 @@
   min-height:var(--ds-tap); padding:0 var(--ds-s2); cursor:pointer;
   font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3);
 }
-.wb-rib-sync.bad{ color:var(--ds-sev-attention) }
+.wb-rib-sync.bad{ color:var(--ds-sev-attention-ui) }
 .wb-sync-dot{
   flex:0 0 auto; width:7px; height:7px;
   border-radius:var(--ds-r-pill); background:var(--ds-accent-ui);

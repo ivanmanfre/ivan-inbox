@@ -30,4 +30,4 @@
   background:var(--ds-surface-1);
   color:var(--ds-accent-ui);
 }
-.a-login-err{ color:var(--ds-sev-urgent) }
+.a-login-err{ color:var(--ds-sev-urgent-ui) }

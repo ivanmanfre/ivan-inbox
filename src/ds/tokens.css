@@ -52,7 +52,15 @@
   --ds-text:#FFFFFF;
   --ds-text-2:#C7C7C7;
   --ds-text-3:#949494;
-  --ds-text-4:#6E6E6E;
+  /* Step 4 was #6E6E6E and E8 measured it at 3.84:1 on the canvas carrying the
+     Settings build line -- D24's leftover, the token itself rather than the one
+     screen. It moves to the darkest value that clears 4.5 on the two beds it
+     actually sits on (canvas 5.97, surface-1 5.03). It cannot clear surface-3:
+     that needs >= #9E9E9E, which is LIGHTER than step 3, so a four-step ink
+     ladder and 4.5:1 on the deepest surface are mutually exclusive here. Step 4
+     is therefore canvas-and-surface-1 ink, and E8 is what holds anything from
+     placing it deeper. */
+  --ds-text-4:#8E8E8E;
 
   /* 1.5 THE ONE ACCENT. Budget (design-elevation E4, SYSTEM.md §1):
        primary action fill · active nav · the operator's own turn. Nothing
@@ -72,6 +80,16 @@
   --ds-sev-clear:#10A37F;
   --ds-sev-attention:#FF9F0A;
   --ds-sev-urgent:#FF453A;
+  /* A SEVERITY HAS A FILL AND AN INK, the same split the accent already makes.
+     The three above are FILLS, tuned on the dark ground the system anchors to,
+     and on light they carry text at 3.2 (clear), 3.41 (urgent) and 2.06
+     (attention) -- 279 contrast misses on twelve surfaces, which is what the
+     first light-theme E8 run ever measured. Dark keeps the fill as its ink; the
+     light block below darkens the ink and leaves the fill alone, so a dot, a
+     bar and a banner tint are unchanged and only the WORDS move. */
+  --ds-sev-clear-ui:#10A37F;
+  --ds-sev-attention-ui:#FF9F0A;
+  --ds-sev-urgent-ui:#FF453A;
   --ds-sev-clear-soft:rgba(16,163,127,.14);
   --ds-sev-attention-soft:rgba(255,159,10,.14);
   --ds-sev-urgent-soft:rgba(255,69,58,.14);
@@ -220,13 +238,21 @@
   --ds-text:#131313;
   --ds-text-2:#3D3D3B;
   --ds-text-3:#5C5C5A;
-  --ds-text-4:#6E6E6E;
+  --ds-text-4:#5F5F5D;
   /* Lime cannot carry a glyph on white (1.4:1). The FILL keeps #B8FF66 with an
-     ink label (14.97:1, theme-proof); the GLYPH form darkens to 4.14:1. */
-  --ds-accent-ui:#5A8A00;
-  --ds-accent-soft:rgba(90,138,0,.14);
-  --ds-accent-line:rgba(90,138,0,.30);
-  --ds-accent-ring:rgba(90,138,0,.55);
+     ink label (14.97:1, theme-proof); the GLYPH form darkens. #5A8A00 was
+     4.14:1 -- under the bar on every surface, and E8 counted 29 links and day
+     numbers reading at it. #4A7000 clears 4.5 on all four (5.82 on white,
+     4.53 on surface-3). */
+  --ds-accent-ui:#4A7000;
+  --ds-accent-soft:rgba(74,112,0,.14);
+  --ds-accent-line:rgba(74,112,0,.30);
+  --ds-accent-ring:rgba(74,112,0,.55);
+  /* The severity INKS, darkened for this ground; the fills above are untouched.
+     Worst surface: clear 4.59, attention 4.92, urgent 4.53. */
+  --ds-sev-clear-ui:#0A7256;
+  --ds-sev-attention-ui:#8A5300;
+  --ds-sev-urgent-ui:#C4231A;
   --ds-av-1:rgba(90,138,0,.18);
   --ds-av-2:rgba(196,105,0,.18);
   --ds-av-3:rgba(19,19,19,.16);
@@ -238,7 +264,8 @@
   --ds-sev-clear-soft:rgba(16,163,127,.16);
   --ds-sev-attention-soft:rgba(255,159,10,.20);
   --ds-sev-urgent-soft:rgba(255,69,58,.14);
-  --ds-delta-down:#C46900;
+  /* 3.91:1 on this ground; #9A5200 is 5.86 on white and 4.56 on surface-3. */
+  --ds-delta-down:#9A5200;
 }
 
 /* ==========================================================================
@@ -310,4 +337,46 @@
 :root[data-frame='c']{ --ds-plate-gap:3px;  --ds-r-plate:0px }
 @media (max-width:767px){
   :root[data-frame='a']{ --ds-plate-gap:8px; --ds-r-plate:24px }
+}
+
+/* ==========================================================================
+   THE LINKEDIN SIMULACRUM (Phase 3 W6). NOT part of the design system.
+
+   The draft window's preview answers one question: "what will this look like
+   on LinkedIn". Its colours and its type sizes are therefore a DEPICTION OF
+   ANOTHER PRODUCT, the same class of thing as the photo inside it -- they are
+   content, not palette, and repainting them in our inks would make the preview
+   a lie. They live here because tokens.css is the one file the colour gate
+   exempts, so the sheet that uses them (src/wb/draft/linkedin.css) can stay
+   var()-only and the literals stay named, counted and in one place.
+
+   They do NOT invert with the theme: LinkedIn is white in a dark app too.
+   Values recovered from src/exp/v2c/styles.css:1208-1284, the sheet W6 deleted
+   -- deleting it took every .li- rule with it and left the preview unstyled
+   (black inherited text on the dark canvas, measured at 1.07:1 by E8 on S16).
+   ========================================================================== */
+:root{
+  --li-card:#FFFFFF;
+  --li-line:rgba(0,0,0,.10);
+  --li-line-soft:rgba(0,0,0,.08);
+  --li-line-strong:rgba(0,0,0,.18);
+  --li-ink:rgba(0,0,0,.9);
+  --li-ink-2:rgba(0,0,0,.75);
+  --li-ink-3:rgba(0,0,0,.6);
+  --li-ink-4:rgba(0,0,0,.55);
+  --li-ink-5:rgba(0,0,0,.4);
+  --li-wash:rgba(0,0,0,.04);
+  --li-brand:#0A66C2;
+  --li-brand-deep:#004182;
+  --li-brand-soft:rgba(10,102,194,.06);
+  --li-brand-wash:#E3EBF3;
+  --li-media:#F3F2EF;
+  --li-saved:#0A6B3D;
+  --li-shadow:0 2px 10px rgba(15,23,42,.10);
+  --li-fs-name:13px;
+  --li-fs-meta:11.5px;
+  --li-fs-body:13.5px;
+  --li-fs-act:12px;
+  --li-fs-av:14px;
+  --li-fs-react:10px;
 }

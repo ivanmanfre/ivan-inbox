@@ -58,7 +58,7 @@
   font-variant-numeric:tabular-nums; color:var(--ds-text);
   margin-inline-start:auto; padding-inline-start:var(--ds-s2);
 }
-.a-ct-stat[data-tone='attention'] .a-ct-stat-n{ color:var(--ds-sev-attention) }
+.a-ct-stat[data-tone='attention'] .a-ct-stat-n{ color:var(--ds-sev-attention-ui) }
 .a-ct-stat-r{ height:2px; background:var(--ds-surface-2); border-radius:var(--ds-r1); overflow:hidden }
 .a-ct-stat-r > i{ display:block; height:100%; background:var(--ds-hairline-strong) }
 .a-ct-stat[data-tone='attention'] .a-ct-stat-r > i{ background:var(--ds-sev-attention) }
@@ -190,12 +190,12 @@
 .a-ct-reasonrow{ display:flex; align-items:center; gap:var(--ds-s3); flex-wrap:wrap; min-width:0 }
 .a-ct-reason{
   flex:1 1 12rem; min-width:0;
-  font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-sev-attention);
+  font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-sev-attention-ui);
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 .a-ct-reason[data-kind='completed']{ color:var(--ds-text-3) }
 .a-ct-msg{ flex:1 1 100%; font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3) }
-.a-ct-err{ font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-sev-urgent) }
+.a-ct-err{ font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-sev-urgent-ui) }
 
 /* The row's own sub-stack: the excerpt, the source line and the failure row,
    one under the other, tight. */
@@ -298,7 +298,7 @@
 .a-ct-inflight:hover{ background:var(--ds-surface-2) }
 .a-ct-inflight-n{ font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono); font-variant-numeric:tabular-nums }
 .a-ct-inflight-t{ font-size:var(--ds-fs-meta); color:var(--ds-text-3) }
-.a-ct-inflight[data-bad] .a-ct-inflight-t{ color:var(--ds-sev-urgent) }
+.a-ct-inflight[data-bad] .a-ct-inflight-t{ color:var(--ds-sev-urgent-ui) }
 
 /* --------------------------------------------------------------------------
    7 · THE CALENDAR. One DOM, two readings: a real month grid with a hairline
@@ -317,7 +317,7 @@
 }
 .a-ct-count span{ font-size:var(--ds-fs-meta); color:var(--ds-text-3) }
 .a-ct-count[data-tone='attention'] b,
-.a-ct-count[data-tone='attention'] span{ color:var(--ds-sev-attention) }
+.a-ct-count[data-tone='attention'] span{ color:var(--ds-sev-attention-ui) }
 
 .a-ct-callayout{ display:grid; grid-template-columns:1fr; gap:var(--ds-section-gap); min-width:0 }
 @media (min-width:1000px){
@@ -432,8 +432,8 @@ button.a-ct-chip-t:hover{ opacity:.75 }
   font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono);
   font-variant-numeric:tabular-nums; color:var(--ds-text-3);
 }
-.a-ct-chip-out{ color:var(--ds-sev-clear); display:inline-flex }
-.a-ct-chip-drift{ color:var(--ds-sev-attention); display:inline-flex }
+.a-ct-chip-out{ color:var(--ds-sev-clear-ui); display:inline-flex }
+.a-ct-chip-drift{ color:var(--ds-sev-attention-ui); display:inline-flex }
 .a-ct-chip-q{ color:var(--ds-text-3); display:inline-flex }
 .a-ct-chip-arm{ font-family:var(--ds-font); font-size:var(--ds-fs-meta); color:var(--ds-text-3) }
 .a-ct-chip-n{

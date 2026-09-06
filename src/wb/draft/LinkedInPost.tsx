@@ -1,3 +1,4 @@
+import './linkedin.css'
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
 import type { ContentLane } from '../../lib/content'
 

@@ -29,7 +29,7 @@
 }
 .a-money-cell[data-stale] .a-money-cv{ color:var(--ds-text-3) }
 .a-money-cell[data-unv] .a-money-cv{ color:var(--ds-text-2) }
-.a-money-unv{ color:var(--ds-sev-attention) }
+.a-money-unv{ color:var(--ds-sev-attention-ui) }
 
 /* A query that returned no row says so, in the same register as a figure, so a
    missing number and a measured one are never mistaken for one another. */
@@ -41,7 +41,7 @@
 .a-money-refusal{
   font-size:var(--ds-fs-body);
   line-height:var(--ds-lh-body);
-  color:var(--ds-sev-attention);
+  color:var(--ds-sev-attention-ui);
 }
 .a-money-runway{ display:flex; flex-direction:column; gap:var(--ds-s3); margin-block-start:var(--ds-s4) }
 .a-money-runway .a-money-cv{ font-size:var(--ds-fs-figure); line-height:var(--ds-lh-figure); font-weight:var(--ds-fw-semi) }

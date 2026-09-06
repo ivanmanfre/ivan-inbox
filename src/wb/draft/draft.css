@@ -84,8 +84,8 @@
   color:var(--ds-text-3);
   overflow-wrap:anywhere;
 }
-.a-dw-say[data-tone='attention']{ color:var(--ds-sev-attention) }
-.a-dw-say[data-tone='urgent']{ color:var(--ds-sev-urgent) }
+.a-dw-say[data-tone='attention']{ color:var(--ds-sev-attention-ui) }
+.a-dw-say[data-tone='urgent']{ color:var(--ds-sev-urgent-ui) }
 .a-dw-note{
   margin:var(--ds-s0);
   font-size:var(--ds-fs-meta);

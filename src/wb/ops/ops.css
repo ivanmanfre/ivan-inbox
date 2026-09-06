@@ -54,8 +54,8 @@
 }
 .a-ops-td[data-open]{ display:block; white-space:pre-wrap }
 .a-ops-due{ color:var(--ds-text-3) }
-.a-ops-due-over{ color:var(--ds-sev-urgent) }
-.a-ops-due-now{ color:var(--ds-sev-attention) }
+.a-ops-due-over{ color:var(--ds-sev-urgent-ui) }
+.a-ops-due-now{ color:var(--ds-sev-attention-ui) }
 .a-ops-due-soon{ color:var(--ds-text-2) }
 .a-ops-due-later{ color:var(--ds-text-3) }
 /* A task settles the moment the write returns: the sweep stops, the line stays. */
@@ -68,10 +68,10 @@
    it and the decision bar in its foot.
    -------------------------------------------------------------------------- */
 .a-ops-card .a-ops-body textarea{ min-height:var(--ds-s11) }
-.a-ops-warn{ color:var(--ds-sev-attention) }
+.a-ops-warn{ color:var(--ds-sev-attention-ui) }
 .a-ops-tags{ display:flex; flex-wrap:wrap; gap:var(--ds-s2) }
-.a-ops-err{ color:var(--ds-sev-urgent) }
-.a-ops-refused{ color:var(--ds-sev-attention) }
+.a-ops-err{ color:var(--ds-sev-urgent-ui) }
+.a-ops-refused{ color:var(--ds-sev-attention-ui) }
 .a-ops-cons{ color:var(--ds-text-3) }
 
 .a-ops-decide{ display:flex; flex-direction:column; gap:var(--ds-s3); width:100%; min-width:0 }

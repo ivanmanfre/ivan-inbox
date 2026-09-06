@@ -67,12 +67,25 @@ body.ds-body{
    the body ink. Measured on the strategy section title: the computed value was
    --ds-text-3 where the token says --ds-text. Restated at the same specificity
    so the field's own colour wins again. */
-.ds-body .ds-input, .ds-body .ds-textarea{ color:var(--ds-text) }
+/* W6: the `.ds-body ` prefix was the bug, not the fix. `ds-body` is a class on
+   ONE div (the phone takeover); nothing puts it on <body>, so this rule and the
+   focus ring below never applied to the app at all -- the same shape as W1's
+   serif hotfix (D19), found the same way, by an instrument reaching further.
+   `.ds-input` and `.ds-textarea` are design-system classes stock never uses, so
+   the prefix can simply go. */
+.ds-input, .ds-textarea{ color:var(--ds-text) }
 
 .ds-body ::selection{ background:var(--ds-accent-soft) }
 
-.ds-body :focus{ outline:none }
-.ds-body :focus-visible{
+/* THE FOCUS RING, ON THE DOCUMENT. Written at `.ds-body ` it reached nothing:
+   E8 counted 27 focusables that showed no ring on Tab across the twelve
+   surfaces (every search field, both Ops textareas). It is scoped to `body`
+   now, which also covers the overlays the Sheet and Dialog mount outside the
+   shell tree. Stock is inside that scope and is NOT moved by it: a ring paints
+   only while a control holds keyboard focus, and stock-diff shoots an
+   unfocused document. */
+body :focus{ outline:none }
+body :focus-visible{
   outline:2px solid var(--ds-accent-ring);
   outline-offset:2px;
   border-radius:var(--ds-r1);
@@ -426,7 +439,7 @@ body.ds-body{
 .ds-section-body > .ds-setting + .ds-setting{ box-shadow:inset 0 1px 0 0 var(--ds-line) }
 .ds-setting-main{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:var(--ds-s1) }
 .ds-setting-tail{ flex:0 0 auto; display:flex; align-items:center; gap:var(--ds-s3) }
-.ds-setting[data-tone='danger'] .ds-setting-main{ color:var(--ds-sev-urgent) }
+.ds-setting[data-tone='danger'] .ds-setting-main{ color:var(--ds-sev-urgent-ui) }
 
 /* ==========================================================================
    8 · CHIP · BADGE · KBD · AVATAR
@@ -452,9 +465,9 @@ body.ds-body{
 }
 .ds-chip[data-tone='quiet']{ background:transparent; box-shadow:inset 0 0 0 1px var(--ds-line) }
 .ds-chip[data-tone='accent']{ background:var(--ds-accent); color:var(--ds-accent-ink) }
-.ds-chip[data-tone='clear']{ background:var(--ds-sev-clear-soft); color:var(--ds-sev-clear) }
-.ds-chip[data-tone='attention']{ background:var(--ds-sev-attention-soft); color:var(--ds-sev-attention) }
-.ds-chip[data-tone='urgent']{ background:var(--ds-sev-urgent-soft); color:var(--ds-sev-urgent) }
+.ds-chip[data-tone='clear']{ background:var(--ds-sev-clear-soft); color:var(--ds-sev-clear-ui) }
+.ds-chip[data-tone='attention']{ background:var(--ds-sev-attention-soft); color:var(--ds-sev-attention-ui) }
+.ds-chip[data-tone='urgent']{ background:var(--ds-sev-urgent-soft); color:var(--ds-sev-urgent-ui) }
 .ds-chip-x{
   display:inline-flex; align-items:center; justify-content:center;
   margin-right:calc(var(--ds-s2) * -1);
@@ -549,7 +562,7 @@ body.ds-body{
 .ds-btn[data-variant='quiet']:hover{ background:var(--ds-wash); color:var(--ds-text) }
 .ds-btn[data-variant='outline']{ background:transparent; box-shadow:inset 0 0 0 1px var(--ds-line-strong) }
 .ds-btn[data-variant='outline']:hover{ background:var(--ds-wash) }
-.ds-btn[data-variant='danger']{ background:transparent; color:var(--ds-sev-urgent); box-shadow:inset 0 0 0 1px var(--ds-sev-urgent-soft) }
+.ds-btn[data-variant='danger']{ background:transparent; color:var(--ds-sev-urgent-ui); box-shadow:inset 0 0 0 1px var(--ds-sev-urgent-soft) }
 .ds-btn[data-variant='danger']:hover{ background:var(--ds-sev-urgent-soft) }
 .ds-btn:disabled{ opacity:.45; cursor:not-allowed }
 .ds-btn:disabled:active{ transform:none }
@@ -570,7 +583,7 @@ body.ds-body{
 .ds-ibtn[data-variant='solid']{ background:var(--ds-surface-2) }
 .ds-ibtn[data-variant='solid']:hover{ background:var(--ds-surface-3) }
 .ds-ibtn[data-variant='accent']{ background:var(--ds-accent); color:var(--ds-accent-ink) }
-.ds-ibtn[data-variant='danger']:hover{ background:var(--ds-sev-urgent-soft); color:var(--ds-sev-urgent) }
+.ds-ibtn[data-variant='danger']:hover{ background:var(--ds-sev-urgent-soft); color:var(--ds-sev-urgent-ui) }
 .ds-ibtn[data-active='true']{ background:var(--ds-accent-soft); color:var(--ds-accent-ui) }
 .ds-ibtn:disabled{ opacity:.45; cursor:not-allowed }
 .ds-ibtn[data-round='true']{ border-radius:var(--ds-r-pill) }
@@ -666,7 +679,22 @@ body.ds-body{
   transition:box-shadow var(--ds-dur-hover) var(--ds-ease),
              background-color var(--ds-dur-hover) var(--ds-ease);
 }
-.ds-input-wrap:focus-within{ box-shadow:inset 0 0 0 1px var(--ds-accent-line) }
+/* THE RING IS ON THE CONTROL, NOT ON ITS BOX. W6, D26's routed leftover.
+   The wrap took the focus signal and the input inside it was told
+   `outline:none`, so the ring a reader sees belonged to a DIV that never takes
+   focus: E8 tabbed into every search field on the twelve surfaces and measured
+   no change on the control itself, 27 times. The field keeps the wrap's tint as
+   a state. Drawing it on the INPUT was tried first and the wrap clips: at any
+   offset that cleared the text the ring was sheared to a sliver of one arc
+   (shots-probe/focus-ring-1440.png). So the ring stays on the wrap, where it is
+   whole, and it is the ring token at 2px rather than the hairline tint -- the
+   reader gets a focus signal that is unmistakably a focus signal. The gate now
+   credits a ring painted by a composite control's own wrapper; a bare control
+   still has to paint its own. */
+.ds-input-wrap:focus-within{
+  background:var(--ds-surface-3);
+  box-shadow:inset 0 0 0 2px var(--ds-accent-ring);
+}
 .ds-input-wrap[data-invalid='true']{ box-shadow:inset 0 0 0 1px var(--ds-sev-urgent) }
 .ds-input-wrap[data-disabled='true']{ opacity:.5 }
 .ds-input{
@@ -690,7 +718,7 @@ body.ds-body{
   transition:box-shadow var(--ds-dur-hover) var(--ds-ease);
 }
 .ds-textarea::placeholder{ color:var(--ds-text-4) }
-.ds-textarea:focus-visible{ outline:none; box-shadow:inset 0 0 0 1px var(--ds-accent-line) }
+.ds-textarea:focus-visible{ outline:2px solid var(--ds-accent-ring); outline-offset:1px; box-shadow:inset 0 0 0 1px var(--ds-accent-line) }
 .ds-textarea:disabled{ opacity:.5 }
 
 .ds-composer{
@@ -718,6 +746,9 @@ body.ds-body{
 }
 .ds-composer-input::placeholder{ color:var(--ds-text-4) }
 .ds-composer-input:focus-visible{ outline:none }
+/* Same composite as the input wrap: the ring belongs to the box the reader
+   sees, and the field inside it is transparent and borderless. */
+.ds-composer:focus-within{ box-shadow:inset 0 0 0 2px var(--ds-accent-ring) }
 .ds-composer-note{ padding:var(--ds-s0) var(--ds-s3) }
 /* the level meter drawn while dictating: deterministic bars, never random */
 .ds-level{ display:flex; align-items:center; gap:2px; height:20px }
@@ -906,7 +937,7 @@ body.ds-body{
              color var(--ds-dur-hover) var(--ds-ease);
 }
 .ds-popover-item:hover{ background:var(--ds-wash); color:var(--ds-text) }
-.ds-popover-item[data-tone='danger']{ color:var(--ds-sev-urgent) }
+.ds-popover-item[data-tone='danger']{ color:var(--ds-sev-urgent-ui) }
 .ds-popover-item-label{ flex:1 1 auto; min-width:0 }
 
 .ds-toast-stack{
@@ -927,9 +958,9 @@ body.ds-body{
   pointer-events:auto;
 }
 .ds-toast-main{ flex:1 1 auto; min-width:0 }
-.ds-toast[data-tone='urgent'] .ds-icon{ color:var(--ds-sev-urgent) }
-.ds-toast[data-tone='attention'] .ds-icon{ color:var(--ds-sev-attention) }
-.ds-toast[data-tone='clear'] .ds-icon{ color:var(--ds-sev-clear) }
+.ds-toast[data-tone='urgent'] .ds-icon{ color:var(--ds-sev-urgent-ui) }
+.ds-toast[data-tone='attention'] .ds-icon{ color:var(--ds-sev-attention-ui) }
+.ds-toast[data-tone='clear'] .ds-icon{ color:var(--ds-sev-clear-ui) }
 
 .ds-bulkbar{
   position:fixed; left:0; right:0; bottom:var(--ds-s6);
@@ -1004,11 +1035,11 @@ body.ds-body{
 .ds-banner-main{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:var(--ds-s1) }
 .ds-banner-tail{ flex:0 0 auto; display:flex; align-items:center; gap:var(--ds-s2) }
 .ds-banner[data-tone='clear']{ background:var(--ds-sev-clear-soft) }
-.ds-banner[data-tone='clear'] .ds-icon{ color:var(--ds-sev-clear) }
+.ds-banner[data-tone='clear'] .ds-icon{ color:var(--ds-sev-clear-ui) }
 .ds-banner[data-tone='attention']{ background:var(--ds-sev-attention-soft) }
-.ds-banner[data-tone='attention'] .ds-icon{ color:var(--ds-sev-attention) }
+.ds-banner[data-tone='attention'] .ds-icon{ color:var(--ds-sev-attention-ui) }
 .ds-banner[data-tone='urgent']{ background:var(--ds-sev-urgent-soft) }
-.ds-banner[data-tone='urgent'] .ds-icon{ color:var(--ds-sev-urgent) }
+.ds-banner[data-tone='urgent'] .ds-icon{ color:var(--ds-sev-urgent-ui) }
 .ds-banner[data-tone='accent']{ background:var(--ds-accent-soft) }
 .ds-banner[data-tone='accent'] .ds-icon{ color:var(--ds-accent-ui) }
 
@@ -1143,8 +1174,13 @@ body.ds-body{
    in this sheet. MotionConfig reducedMotion="user" does the same for the
    motion components, so the two halves of the system stop together.
    ========================================================================== */
+/* Same dead scope as the focus ring, and the more expensive one: E8 measured
+   166 live transitions still running under `prefers-reduced-motion: reduce` on
+   twelve surfaces, `.ds-tab`'s 120ms colour among them. On `body` it reaches
+   the document, overlays included. Stock is unmoved: nothing screenshots with
+   reduced motion, and honouring the preference is not a regression. */
 @media (prefers-reduced-motion: reduce){
-  .ds-body, .ds-body *, .ds-body *::before, .ds-body *::after{
+  body, body *, body *::before, body *::after{
     transition-duration:0ms !important;
     animation-duration:0ms !important;
     animation-iteration-count:1 !important;

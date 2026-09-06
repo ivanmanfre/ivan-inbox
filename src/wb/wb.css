@@ -335,9 +335,9 @@
 .a-dim-2{ color:var(--ds-text-3) } /* W3: was --ds-text-4, 3.23:1 on the list surface */
 .a-ink{ color:var(--ds-text) }
 .a-accent{ color:var(--ds-accent-ui) }
-.a-sev-clear{ color:var(--ds-sev-clear) }
-.a-sev-attention{ color:var(--ds-sev-attention) }
-.a-sev-urgent{ color:var(--ds-sev-urgent) }
+.a-sev-clear{ color:var(--ds-sev-clear-ui) }
+.a-sev-attention{ color:var(--ds-sev-attention-ui) }
+.a-sev-urgent{ color:var(--ds-sev-urgent-ui) }
 .a-up{ color:var(--ds-delta-up) }
 .a-down{ color:var(--ds-delta-down) }
 .a-clamp{ display:-webkit-box; -webkit-line-clamp:2; line-clamp:2; -webkit-box-orient:vertical; overflow:hidden }

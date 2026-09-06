@@ -30,7 +30,7 @@
 }
 
 /* A push failure is a live thing that stopped, which is what earns the tone. */
-.a-set-err{ display:block; margin-block-start:var(--ds-s1); color:var(--ds-sev-attention) }
+.a-set-err{ display:block; margin-block-start:var(--ds-s1); color:var(--ds-sev-attention-ui) }
 
 .a-set-build{
   margin:var(--ds-s0);

@@ -94,11 +94,11 @@
 .a-ctx-link.a-dim{ color:var(--ds-text-3); text-decoration:none }
 .a-ctx-note{ min-height:5.5rem; resize:vertical }
 .a-ctx-notefoot{ display:flex; align-items:center; gap:var(--ds-s3); min-height:var(--ds-control-h) }
-.a-ctx-bad{ color:var(--ds-sev-urgent) }
+.a-ctx-bad{ color:var(--ds-sev-urgent-ui) }
 .a-ctx-err{
   font-size:var(--ds-fs-meta);
   line-height:var(--ds-lh-meta);
-  color:var(--ds-sev-urgent);
+  color:var(--ds-sev-urgent-ui);
   overflow-wrap:anywhere;
 }
 

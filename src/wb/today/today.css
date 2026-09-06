@@ -40,7 +40,7 @@
 /* The one line on this screen that has to be impossible to miss: people who
    wrote in and were never opened here. Severity, because it is a live neglect
    that is happening right now, not a queue depth. */
-.a-today-alarm{ color:var(--ds-sev-urgent); font-weight:var(--ds-fw-semi) }
+.a-today-alarm{ color:var(--ds-sev-urgent-ui); font-weight:var(--ds-fw-semi) }
 
 /* A group's right-hand count: mono, right aligned, ink when the zone is hot. */
 .a-today-tail{ display:inline-flex; align-items:center; gap:var(--ds-s2); justify-content:flex-end }

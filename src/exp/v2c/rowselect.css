@@ -76,7 +76,7 @@
 /* The client-facing action takes a line of its own, so the verbs below it start
    at the same x whether or not a promote capability is present. */
 .a-bulk .a-bulk-client{ flex:1 0 100%; display:flex }
-.a-bulk .a-bulk-err{ color:var(--ds-sev-urgent) }
+.a-bulk .a-bulk-err{ color:var(--ds-sev-urgent-ui) }
 
 /* --------------------------------------------------------------------------
    IT DOES NOT RENDER ON THE PHONE, and the reason is paint order, not size.
