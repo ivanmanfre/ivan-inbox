@@ -64,7 +64,9 @@ self.addEventListener('push', (e) => {
   const d = e.data?.json() ?? { title: 'Inbox', body: '' }
   const url = d.url ?? './'
   e.waitUntil((async () => {
-    await self.registration.showNotification(d.title, {
+    // `image` is real in Chrome (desktop and Android) and simply ignored where
+    // it is not; lib.dom's NotificationOptions never learned it, hence the cast.
+    const options: NotificationOptions & { image?: string } = {
       body: d.body, icon: './icon-192.png', badge: './badge-96.png',
       image: typeof d.image === 'string' ? d.image : pushArt(d.family),
       data: { url, family: d.family },
@@ -72,7 +74,8 @@ self.addEventListener('push', (e) => {
       // Explicitly non-silent so the OS plays its notification sound (macOS:
       // Settings → Notifications → browser → "Play sound" must be on).
       silent: false,
-    })
+    }
+    await self.registration.showNotification(d.title, options)
     // A tab that is already open must not have to be tapped to learn something
     // arrived. Without this the badge on the surface Ivan is LOOKING AT only
     // updates on the next refetch, which is the state that makes an operator
