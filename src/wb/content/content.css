@@ -216,16 +216,28 @@
     font-size:var(--ds-fs-meta); color:var(--ds-text-3);
   }
   .a-ct-colv{ width:7rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
-  /* The head mirrors the row: an anchor-width spacer, the title column, then
-     the same three fixed columns, so the labels sit over their own values. */
+  /* The clock is a column too: one fixed width, right-aligned, so "27m ago"
+     and "1d ago" end on the same x and the three facts never drift per row. */
+  .a-ct-when{
+    display:inline-flex; justify-content:flex-end; align-items:center; gap:var(--ds-s2);
+    width:4.5rem; white-space:nowrap; text-align:right;
+  }
+  /* The hover actions reserve their width whether or not they are showing, and
+     the same width on every stage, so the columns above them hold still. */
+  .a-ct-row .a-row-actions{ min-width:12.5rem; justify-content:flex-end }
+  /* The head mirrors the row box for box (row gap, lead spacer, title, tail
+     with the three columns and the clock, actions spacer), so a label sits
+     over its own value at any width. */
   .a-ct-colhead{
-    display:flex; align-items:center; gap:var(--ds-s4);
+    display:flex; align-items:center; gap:var(--ds-stack);
     padding:var(--ds-s2) var(--ds-row-x);
     padding-inline-start:calc(var(--ds-row-x) + 1.75rem + var(--ds-stack));
     border-bottom:1px solid var(--ds-line);
   }
   .a-ct-colhead-t{ flex:1 1 auto; min-width:0 }
-  .a-ct-colhead-c{ width:7rem; flex:0 0 auto }
+  .a-ct-colhead-tail{ display:flex; align-items:center; gap:var(--ds-s2); flex:0 0 auto }
+  .a-ct-colhead-tail .a-ct-cols{ color:inherit; font-size:inherit }
+  .a-ct-colhead-a{ flex:0 0 auto; min-width:12.5rem }
 }
 
 /* The approve beat: the row lifts and fades over one value duration. */

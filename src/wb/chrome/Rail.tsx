@@ -140,7 +140,10 @@ export function Rail({
     />
   )
 
-  const before = JOBS.filter(j => j !== 'settings' && !isWorkJob(j) && j !== 'sends' && j !== 'ops')
+  // Money stays a job (its URL and its view still resolve) but leaves the
+  // rail: Ivan, 2026-09-06, "I don't feel the money section being necessary
+  // at this point". A row he does not use is a row he has to read past.
+  const before = JOBS.filter(j => j !== 'settings' && !isWorkJob(j) && j !== 'sends' && j !== 'ops' && j !== 'money')
   const after = JOBS.filter(j => j === 'sends' || j === 'ops')
 
   return (

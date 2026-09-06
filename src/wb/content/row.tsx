@@ -171,10 +171,12 @@ export function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
           {/* The armed time, right-aligned and tabular, and only when the row
               HAS one. It shows the CLOCK, not "in 2d": the question asked of an
               armed row is which day and what time. */}
-          {d.scheduled_at && (
-            <span className="a-ink" title={`Scheduled for ${d.scheduled_at}`}>{postTime(d.scheduled_at)}</span>
-          )}
-          <span className="a-dim">{relTime(d.updated_at)}</span>
+          <span className="a-ct-when">
+            {d.scheduled_at && (
+              <span className="a-ink" title={`Scheduled for ${d.scheduled_at}`}>{postTime(d.scheduled_at)}</span>
+            )}
+            <span className="a-dim">{relTime(d.updated_at)}</span>
+          </span>
         </>
       }
       actions={
@@ -221,11 +223,21 @@ export function StageTable({ s, rows, lane, refresh, onOpen, openId, sub, empty,
             tail={rows.length}
             stickyHead
           >
+            {/* The head is built from the row's own boxes (lead spacer, title,
+                tail with the three columns and the clock, actions spacer) so a
+                label can only ever sit over its own value. Ivan, 2026-09-06:
+                the labels sat one column left of the values. */}
             <div className="a-ct-colhead" aria-hidden>
               <span className="a-ct-colhead-t a-eyebrow">Title</span>
-              <span className="a-ct-colhead-c a-eyebrow">Pillar</span>
-              <span className="a-ct-colhead-c a-eyebrow">Funnel</span>
-              <span className="a-ct-colhead-c a-eyebrow">Source</span>
+              <span className="a-ct-colhead-tail">
+                <span className="a-ct-cols">
+                  <span className="a-ct-colv a-eyebrow">Pillar</span>
+                  <span className="a-ct-colv a-eyebrow">Funnel</span>
+                  <span className="a-ct-colv a-eyebrow">Source</span>
+                </span>
+                <span className="a-ct-when a-eyebrow">Updated</span>
+              </span>
+              <span className="a-ct-colhead-a" />
             </div>
             <Rows>
               {rows.map(d => (
