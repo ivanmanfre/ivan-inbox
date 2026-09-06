@@ -1,0 +1,37 @@
+/* src/wb/sales/pack.css — the pack window. Prefix `a-pk-`, ds tokens only.
+   The tab strip is the one sticky thing in the column and it scrolls sideways
+   at 390; the card frame is pinned to the viewport and scrolls INSIDE itself;
+   every table and every code block scrolls inside its own wrapper. */
+.a-pk{ display:flex; flex-direction:column; gap:var(--ds-s4); padding-top:var(--ds-s2) }
+.a-pk-tabs{ position:sticky; top:0; z-index:1; flex:0 0 auto; display:flex; align-items:center; gap:var(--ds-s5); overflow-x:auto; scrollbar-width:none; background:var(--ds-canvas); border-bottom:1px solid var(--ds-line) }
+.a-pk-tabs::-webkit-scrollbar{ display:none }
+.a-pk-tabs .ds-tabs-item[data-active='true']{ box-shadow:inset 0 -2px 0 var(--ds-accent) }
+.a-pk-tabs .ds-tabs-item:disabled{ opacity:.4; cursor:not-allowed }
+.a-pk-doc{ display:flex; flex-direction:column; gap:var(--ds-s4); min-width:0; flex:1 1 auto }
+.a-pk-frame{ width:100%; flex:0 0 auto; border:0; border-radius:var(--ds-r3); background:var(--ds-surface-1); min-height:70vh; height:calc(100vh - 220px) }
+.a-pk-stamp, .a-pk-foot, .a-pk-url{ overflow-wrap:anywhere }
+.a-pk-load{ display:flex; flex-direction:column; gap:var(--ds-s3) }
+.a-pk-cards{ display:flex; flex-direction:column; gap:var(--ds-s3) }
+.a-pk-card{ display:flex; align-items:center; gap:var(--ds-s4); min-height:44px; min-width:0; padding:var(--ds-s3) var(--ds-s4); border-radius:var(--ds-r3); background:var(--ds-surface-1); color:var(--ds-text); text-decoration:none }
+.a-pk-card[data-off]{ opacity:.5 }
+.a-pk-card-t{ display:flex; flex-direction:column; gap:var(--ds-s1); min-width:0; flex:1 1 auto }
+.a-pk-md{ display:flex; flex-direction:column; gap:var(--ds-s4); min-width:0 }
+.a-pk-h{ margin:var(--ds-s3) 0 0 }
+.a-pk-p{ margin:0 }
+.a-pk-list{ margin:0; padding-inline-start:var(--ds-s6); display:flex; flex-direction:column; gap:var(--ds-s2) }
+.a-pk-pre{ margin:0; padding:var(--ds-s4); border-radius:var(--ds-r3); background:var(--ds-surface-1); overflow-x:auto }
+.a-pk-code{ padding:0 var(--ds-s1); border-radius:var(--ds-r1); background:var(--ds-surface-2) }
+.a-pk-quote{ margin:0; white-space:pre-wrap }
+.a-pk-sec{ display:flex; flex-direction:column; gap:var(--ds-s3); min-width:0 }
+.a-pk-sec-h{ display:flex; align-items:baseline; justify-content:space-between; gap:var(--ds-s3) }
+.a-pk-facts{ margin:0; padding-inline-start:var(--ds-s6) }
+.a-pk-facts li{ margin-bottom:var(--ds-s2); break-inside:avoid }
+.a-pk-drop .ds-chip{ text-decoration:line-through }
+.a-pk-ins{ display:flex; flex-direction:column; gap:var(--ds-s3); min-width:0 }
+.a-pk-fold{ border-top:1px solid var(--ds-line); padding-top:var(--ds-s3) }
+.a-pk-fold-b{ display:flex; align-items:center; gap:var(--ds-s3); width:100%; min-height:var(--ds-control-h) }
+.a-pk-fold-c{ margin-inline-start:auto; display:inline-flex; transition:transform var(--ds-dur-hover) var(--ds-ease) }
+.a-pk-fold[data-on] .a-pk-fold-c{ transform:rotate(90deg) }
+.a-pk-fold-body{ padding-top:var(--ds-s3) }
+@media (min-width:720px){ .a-pk-facts{ columns:2; column-gap:var(--ds-s6) } }
+@media (max-width:767px){ .a-pk-frame{ min-height:0; height:calc(100dvh - 200px) } }
