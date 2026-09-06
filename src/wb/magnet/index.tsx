@@ -30,8 +30,8 @@ import {
 import { LM_STAGE_LABEL, stageOfLm, type ResourceDetail } from '../../lib/styles'
 import { label } from '../../lib/labels'
 import { appendAgentNote, regenLmContent, regenLmCover, saveLmField } from '../../lib/studioActions'
-import { AgentRegister, QaRegister } from '../../exp/v2c/Register'
-import { LinkedInPost } from '../../exp/v2c/LinkedInPost'
+import { AgentRegister, QaRegister } from '../draft/register'
+import { LinkedInPost } from '../draft/LinkedInPost'
 import { absTime, relTime } from '../../exp/v2c/fmt'
 import {
   Banner, Button, Chip, EmptyState, Icon, Kbd, SkeletonRows, fadeT, spring,

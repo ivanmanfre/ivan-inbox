@@ -8,7 +8,14 @@ import {
   type CrossHit, type CrossResults, type LaneCount,
 } from '../../lib/crossSearch'
 import { CONTENT_LANES, type ContentLane } from '../../lib/content'
-import { BulkBar, capCountOf, useBulkRun } from './BulkBar'
+// THE BULK BAR IS MOUNTED ONCE, HERE. The design-system rebuild
+// (`src/wb/content/bulk.tsx`, W2) reads the same global selection store this
+// layer does, so it is surface-agnostic: it was mounted BOTH here (as the old
+// `./BulkBar` view) and inside the content screen, which printed two bars over
+// the content rows and none over any other surface's selection. Phase 3 W6
+// keeps the global mount and drops the screen-local one.
+import { ContentBulkBar } from '../../wb/content/bulk'
+import { capCountOf, useBulkRun } from './BulkBar'
 import {
   clearSelection, getFocusId, getSelected, lookupRow, selectRows, setFocus, setLayerMounted,
   setScope, subscribe, toggleRow, type RowCap, type SelectedRow,
@@ -204,7 +211,6 @@ export function CommandLayer() {
     : []), [palette])
   // What "select all" would take. Only asked while a selection exists, and a
   // render only happens on a real interaction.
-  const rowCount = selected.length > 0 ? visibleRows().length : 0
 
   const move = useCallback((delta: number) => {
     const list = visibleRows()
@@ -387,15 +393,7 @@ export function CommandLayer() {
 
   return (
     <>
-      <BulkBar
-        rows={selected}
-        state={bulk.state}
-        onRun={runBulk}
-        onDismiss={bulk.dismiss}
-        onSelectAll={selectAll}
-        onClear={clearSelection}
-        rowCount={rowCount}
-      />
+      <ContentBulkBar />
       {palette && (
         <CommandPalette
           cmds={cmds}

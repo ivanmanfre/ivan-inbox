@@ -1,5 +1,4 @@
 import { useCallback, useState } from 'react'
-import { BulkBar as DsBulkBar, Button } from '../../ds'
 import { useConfirm } from '../../wb/chrome/ConfirmSheet'
 import {
   LANE_LABEL, approveDraft, deleteClientDraft, deleteDraft, setBoardVisible, skipDraft,
@@ -41,10 +40,6 @@ export type BulkState = {
 }
 
 const IDLE: BulkState = { busy: false, done: 0, total: 0, errors: [], note: null }
-
-const VERB: Record<RowCap, string> = {
-  approve: 'Approve', skip: 'Skip', promote: 'Put on board', delete: 'Delete', discard: 'Discard',
-}
 
 // 🔴 WHY PROMOTE IS NOT IN THE BUTTON GROUP, MEASURED.
 //
@@ -232,121 +227,9 @@ export function useBulkRun(): {
   return { state, run, dismiss }
 }
 
-export function BulkBar({ rows, state, onRun, onDismiss, onSelectAll, onClear, rowCount }: {
-  rows: SelectedRow[]
-  state: BulkState
-  onRun: (cap: RowCap) => void
-  onDismiss: () => void
-  onSelectAll: () => void
-  onClear: () => void
-  rowCount: number
-}) {
-  const n = rows.length
-  const open = n > 0 || state.busy || Boolean(state.note)
-
-  // THE RUNNING / DONE STRIP. It replaces the selection bar while a batch runs
-  // and just after it, because the selection it was reporting on is gone: the
-  // run clears it. The count is the progress, the note is the outcome, and a
-  // per-row refusal keeps its own message with the row's own label.
-  if (n === 0) {
-    return (
-      <DsBulkBar
-        open={open}
-        className="a-bulk"
-        count={state.busy ? `${state.done} of ${state.total}` : 'Done'}
-        progress={state.busy ? { done: state.done, total: state.total } : undefined}
-        note={
-          <>
-            {state.note ?? 'Working through the selection.'}
-            {state.errors.length > 0 && (
-              <span className="a-bulk-err" title={state.errors.join('\n')}> {state.errors[0]}</span>
-            )}
-          </>
-        }
-        actions={state.busy ? undefined : (
-          <Button variant="quiet" size="sm" onClick={onDismiss}>Dismiss</Button>
-        )}
-      />
-    )
-  }
-
-  const caps = capCountOf(rows)
-  const noun = selectionNoun(rows)
-  const kinds = new Set(rows.map(r => r.kind))
-  // Read off CAP_ORDER rather than a hand-written list of caps, so a capability
-  // added later cannot be left out of this check and silently print the refusal
-  // over a bar that does have a button to offer.
-  const noWrites = CAP_ORDER.every(c => caps[c] === 0)
-  const partial = !noWrites && CAP_ORDER.some(c => caps[c] > 0 && caps[c] < n)
-
-  const actions = noWrites ? undefined : (
-    <>
-      {/* THE CLIENT-FACING ROW. It claims a line of its own above the verbs,
-          and that is a MEASURED constraint rather than a style choice.
-          The old bar was centred and sized to its content, so appending one
-          button widened it and slid Delete 63.4px LEFT — the point a hand had
-          learned as Delete landed inside a button that puts 54 posts on a
-          paying client's live board. The bar has a fixed measure now, and this
-          row keeps the verbs starting at the same x whether or not a promote
-          capability is present. */}
-      {caps.promote > 0 && (
-        <span className="a-bulk-client">
-          <Button
-            variant="primary"
-            size="sm"
-            disabled={caps.promote !== n || state.busy}
-            title={caps.promote === n
-              ? `Put all ${n} on ${promoteAudience(rows)}\u2019s board. He sees them.`
-              : `${caps.promote} of the ${n} selected rows can take this. A bulk action runs on every selected row or none.`}
-            onClick={() => onRun('promote')}
-          >
-            {VERB.promote} {caps.promote === n ? n : `${caps.promote}/${n}`}
-          </Button>
-        </span>
-      )}
-      {CAP_BUTTONS.map(cap => {
-        const have = caps[cap]
-        if (have === 0) return null
-        const all = have === n
-        return (
-          <Button
-            key={cap}
-            size="sm"
-            // Delete and discard both carry a danger confirm, so both read as
-            // destructive here. Promote never reaches this map at all: it draws
-            // its own row above, for the measured reason recorded there.
-            variant={cap === 'delete' || cap === 'discard' ? 'danger' : 'default'}
-            disabled={!all || state.busy}
-            title={all
-              ? `${VERB[cap]} all ${n}`
-              : `${have} of the ${n} selected rows can take this. A bulk action runs on every selected row or none.`}
-            onClick={() => onRun(cap)}
-          >
-            {VERB[cap]} {all ? n : `${have}/${n}`}
-          </Button>
-        )
-      })}
-    </>
-  )
-
-  return (
-    <DsBulkBar
-      open={open}
-      className="a-bulk"
-      // Rule 1: the count names the object, and the noun comes from the rows.
-      count={`${n} ${noun} selected`}
-      actions={actions}
-      note={noWrites ? (
-        kinds.has('thread')
-          ? 'A conversation is answered one at a time. Open one to read it and reply.'
-          : 'Nothing on this tab can be changed in bulk. Open a row to act on it.'
-      ) : partial ? (
-        // Rule 2, said out loud rather than left to a disabled button.
-        <>Some of these rows cannot take every action. A bulk action runs on all {n} or none, so narrow the selection first.</>
-      ) : undefined}
-      onSelectAll={n < rowCount ? onSelectAll : undefined}
-      selectAllLabel={`Select all ${rowCount}`}
-      onClear={onClear}
-    />
-  )
-}
+/* The VIEW that used to live here is deleted (Phase 3 W6). It was a second
+   floating bar over the same selection this module's `useBulkRun` drives, and
+   `src/wb/content/bulk.tsx` -- the design-system rebuild that reads the same
+   store -- is now the only one mounted (from `CommandLayer`). What stays here
+   is the half that was never a view: the capability arithmetic, the confirm
+   copy and the run loop. */

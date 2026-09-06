@@ -43,7 +43,7 @@ import {
 } from '../../lib/money'
 import { PullIndicator } from '../chrome/PullIndicator'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
-import { relAge } from '../../exp/v2c/Surface'
+import { relAge } from '../kit'
 import { Banner, Button, Chip, EmptyState, Table, type TableColumn } from '../../ds'
 import { Body, Group, Head, Rows, Row, Screen, Sep } from '../kit'
 import './money.css'

@@ -20,7 +20,7 @@ import { notificationDeepLink, type Notification, type NotificationGroup } from 
 import { parseWbHash } from '../../exp/v2c/route'
 import type { Job } from '../../exp/v2c/layout'
 import type { FeedData } from '../../exp/brain/b/useFeedData'
-import { dayWord } from '../../exp/brain/b/skins/b/forms'
+import { dayWord } from './forms'
 import { GroupRow, NotificationRow } from './NotificationRow'
 import './ask.css'
 

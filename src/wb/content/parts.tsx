@@ -10,21 +10,11 @@ import type { ReactNode } from 'react'
 import { Banner, Button, EmptyState, Icon } from '../../ds'
 import './content.css'
 
-/** The freshness stamp. An empty list carrying "checked 4s ago" is confirmed
-    empty; an empty list carrying nothing is unverified. */
-export function relAge(iso: string | null, now: number = Date.now()): string {
-  if (!iso) return 'never'
-  const t = new Date(iso).getTime()
-  if (!Number.isFinite(t)) return 'never'
-  const s = Math.max(0, Math.round((now - t) / 1000))
-  if (s < 5) return 'just now'
-  if (s < 60) return `${s}s ago`
-  const m = Math.floor(s / 60)
-  if (m < 60) return `${m}m ago`
-  const h = Math.floor(m / 60)
-  if (h < 24) return `${h}h ago`
-  return `${Math.floor(h / 24)}d ago`
-}
+/* `relAge` moved to the shared kit in Phase 3 W6 (the rail, Money and Ops read
+   it too). Re-exported here so every call site that named this module keeps
+   working. */
+import { relAge } from '../kit'
+export { relAge }
 
 /** State 3 — FETCH FAILED. Names what broke, offers the retry, and says what
     the operator is looking at instead (stale rows or nothing). */

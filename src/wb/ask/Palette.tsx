@@ -23,7 +23,7 @@
    ========================================================================== */
 import { useState } from 'react'
 import { CommandList, Icon, Kbd, type CommandItem } from '../../ds'
-import { matchCommands, type Command } from '../../exp/v2c/ChatPane'
+import { INSERT_CURSOR, matchCommands, type Command } from './commands'
 import type { ChatHandle } from '../../exp/v2c/useChat'
 import type { ComposerExtras } from './Composer'
 import './ask.css'
@@ -32,7 +32,6 @@ import './ask.css'
  * It is DATA, never drawn: it is stripped as the template lands in the field,
  * and the caret is naturally at the end. Written as an escape so a grep for a
  * typed glyph in this folder keeps reading zero. */
-const INSERT_CURSOR = '\u2336'
 
 /** The three groups the vocabulary already falls into: what this pane can do
  * about the turn, which model answers, and what the container can run. */

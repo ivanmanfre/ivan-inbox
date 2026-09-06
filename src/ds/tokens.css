@@ -193,6 +193,10 @@
 
   /* --- 9 · SHELL GEOMETRY ------------------------------------------------ */
   --ds-plate-gap:10px;   /* the pistachio reveal (frame arm b, the shipped default) */
+  /* THE READING MEASURE (Phase 3 W6). The widest a working column's own
+     content is allowed to become before it stops being read. It bites at
+     1800px and above; below that every column is already inside it. */
+  --ds-measure:1240px;
   --ds-rail-w:224px;
   --ds-rail-w-collapsed:60px;
   --ds-peer-w:420px;
@@ -289,4 +293,21 @@
 /* The one width above which the display size earns its full step. */
 @media (min-width:1200px){
   :root{ --ds-fs-display:56px }
+}
+
+/* ==========================================================================
+   FRAME ARMS. `src/main.tsx` writes `data-frame` at boot and B is the shipped
+   default (Ivan's call, 2026-08-22, handed back as "you choose"). The three
+   arms were token sets in `src/exp/v2c/wbcal.css` §5, which Phase 3 W6 deletes;
+   they are token sets here now, and the plate reads them through `.ds-plate`.
+   A is 20px of ground with a 40px corner, which reads as a mat the app rests
+   on. C cuts the frame to a hairline and the ground stops reading as a frame
+   at all. B is the middle: unmistakably still the frame, and no longer
+   furniture.
+   ========================================================================== */
+:root[data-frame='a']{ --ds-plate-gap:20px; --ds-r-plate:40px }
+:root[data-frame='b']{ --ds-plate-gap:10px; --ds-r-plate:22px }
+:root[data-frame='c']{ --ds-plate-gap:3px;  --ds-r-plate:0px }
+@media (max-width:767px){
+  :root[data-frame='a']{ --ds-plate-gap:8px; --ds-r-plate:24px }
 }

@@ -12,7 +12,7 @@ import type { Subject } from '../v2c/chat/paneContext'
 // is what lets three candidates be built in parallel without one of them
 // touching Shell.tsx, Rail.tsx or layout.ts.
 
-export type BrainId = 'a' | 'b' | 'c'
+export type BrainId = 'b'
 
 export interface BrainMobileProps {
   chat: ChatHandle

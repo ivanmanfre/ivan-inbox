@@ -25,9 +25,6 @@
    no sheet in the app has a rule strong enough to undo. */
 .a-ct-scopehost{ display:none }
 
-/* While this screen is mounted its own bulk bar is the one on screen. */
-[data-a-content-bulk] .wb-bulk{ display:none }
-
 /* --------------------------------------------------------------------------
    1 · The head cluster: the lane switch, the view switch, the lane note.
    -------------------------------------------------------------------------- */

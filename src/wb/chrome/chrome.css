@@ -199,3 +199,103 @@
    ends at its last row instead of at a band of nothing. */
 .a-cmdk .ds-dialog-foot,
 .a-keys .ds-dialog-foot{ display:none }
+
+/* --------------------------------------------------------------------------
+   11 · THE FRAME (Phase 3 W6). The Shell's own geometry, which lived across
+   faithful.css, v2c/styles.css, wb2026.css, wbsys.css and wbcal.css until this
+   wave deleted them. Everything structural is the design system's shell
+   primitives (`.ds-shell`, `.ds-plate`, `.ds-col`, `.ds-peer`); what is here
+   is the workbench-specific remainder, on tokens.
+   -------------------------------------------------------------------------- */
+
+/* The app root is a Screen AND the shell: the pistachio ground is the page and
+   the plate is the app. Two classes, so it outranks `.a-root`'s own canvas. */
+.a-root.ds-shell{
+  background:var(--ds-ground);
+  padding:var(--ds-plate-gap);
+  gap:var(--ds-plate-gap);
+  height:100%;
+  min-height:0;
+  overflow:hidden;
+}
+/* The takeover root (a phone thread or chat) is already an overlay over the
+   whole viewport and gets NO plate: it stays edge to edge on the canvas. */
+.wb-take{ display:flex; flex-direction:column; height:100%; background:var(--ds-canvas) }
+/* rail | regions */
+.ds-plate-row{ flex-direction:row }
+
+.wb-regions{ flex:1 1 auto; display:flex; min-width:0; min-height:0; overflow:hidden }
+/* The column CLIPS. `.ds-col` gives it `min-width:0`, which lets it shrink, but
+   a long unbroken message line still paints past the plate's rounded edge
+   without this -- measured at 1440 on DMs, where every row ran off the right
+   side of the plate. */
+.wb-work{ overflow:hidden }
+.wb-work.list{ flex:0 0 auto; width:var(--ds-peer-w); border-right:1px solid var(--ds-line) }
+.wb-work.wide{ flex:1 1 auto }
+.wb-peer{ background:var(--ds-canvas) }
+/* The focused peer is the one keyboard and hash state point at. A hairline,
+   not a glow: two panes both shouting is worse than neither. */
+.wb-peer.on{ box-shadow:inset 1px 0 0 var(--ds-accent-line) }
+
+/* THE MEASURE, AND WHERE IT STARTS. A phone layout stretched across 2560 is
+   the defect this wave exists to close: a row whose text runs 2,000px is not
+   read, it is scanned and abandoned. It starts at 1800px and not below,
+   because at 1440 the working column is already inside the measure and every
+   wave's 1440 shot is the reference this wave must not move. A table keeps its
+   own width INSIDE the capped column, so the ladder's column rules are
+   untouched. */
+@media (min-width:1800px){
+  .wb.dt .wb-work.wide > .a-root > .a-body,
+  .wb.dt .wb-work.wide > .a-root > .a-bar{
+    max-width:var(--ds-measure); width:100%;
+    margin-left:auto; margin-right:auto;
+  }
+  .wb.dt .wb-work.wide > .a-root > .a-head{
+    max-width:var(--ds-measure); width:100%;
+    margin-left:auto; margin-right:auto;
+  }
+}
+
+/* Rows kept on screen behind a failed refresh: dimmed, so "this is the last
+   good copy" is felt as well as stated. */
+.wb-stalewrap{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; opacity:.55 }
+.wb-stalewrap .a-head{ display:none }
+/* Scoped header suppression for any host that wraps a screen and supplies its
+   own title. The tournament's Ops defect (two "Ops" titles) was this rule
+   missing, and it is a CLASS of hazard every wrapping host inherits. */
+.wb-hidenav .a-head{ display:none }
+
+/* --------------------------------------------------------------------------
+   12 · The phone ribbon. One quiet line carrying the two things every screen
+   needed and none had: how fresh the data is, and the way to Settings.
+   -------------------------------------------------------------------------- */
+.wb-ribbon{
+  flex:0 0 auto; display:flex; align-items:center; gap:var(--ds-s3);
+  padding:var(--ds-s2) var(--ds-gutter) var(--ds-s1);
+  min-height:var(--ds-control-h-sm);
+}
+.wb-rib-j{ flex:1 1 auto; min-width:0; color:var(--ds-text-2) }
+.wb-rib-health{
+  flex:0 0 auto; display:inline-flex; align-items:center; gap:var(--ds-s1);
+  min-height:var(--ds-tap); padding:0 var(--ds-s2); cursor:pointer;
+  color:var(--ds-text-2);
+}
+.wb-rib-health-n{ font-variant-numeric:tabular-nums }
+.wb-rib-sync{
+  flex:0 0 auto; display:inline-flex; align-items:center; gap:var(--ds-s2);
+  min-height:var(--ds-tap); padding:0 var(--ds-s2); cursor:pointer;
+  font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3);
+}
+.wb-rib-sync.bad{ color:var(--ds-sev-attention) }
+.wb-sync-dot{
+  flex:0 0 auto; width:7px; height:7px;
+  border-radius:var(--ds-r-pill); background:var(--ds-accent-ui);
+}
+.wb-sync-dot.bad{ background:var(--ds-sev-attention) }
+/* The gear was a 14px glyph in a 4px box. It carries the tap floor now. */
+.wb-gear{
+  flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center;
+  min-width:var(--ds-tap); min-height:var(--ds-tap);
+  color:var(--ds-text-2); cursor:pointer;
+  font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta);
+}

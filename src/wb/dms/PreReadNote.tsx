@@ -13,7 +13,7 @@
    ========================================================================== */
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { place, type Placed } from '../../exp/v2c/CalPopover'
+import { place, type Placed } from '../place'
 import { splitPreRead } from '../../exp/v2c/chat/preread'
 import './dms.css'
 

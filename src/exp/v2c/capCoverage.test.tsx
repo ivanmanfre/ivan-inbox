@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { BulkBar, CAP_BUTTONS, CAP_ORDER, capCountOf, type BulkState } from './BulkBar'
+import { CAP_BUTTONS, CAP_ORDER, capCountOf } from './BulkBar'
+// Phase 3 W6: the view under test is the design-system bar (the only one
+// mounted now). It reads the global selection store rather than props, so the
+// render below seeds the store instead of passing rows.
+import { ContentBulkBar } from '../../wb/content/bulk'
+import { clearSelection, selectRows } from './commandStore'
 import { buildCommands, type CommandCtx } from './commandSource'
 import type { RowCap, SelectedRow } from './commandStore'
 
@@ -38,8 +43,6 @@ const row = (cap: RowCap, over: Partial<SelectedRow> = {}): SelectedRow => ({
   lane: cap === 'promote' ? 'risedtc' : 'ivan',
   ...over,
 })
-
-const IDLE_STATE: BulkState = { busy: false, done: 0, total: 0, errors: [], note: null }
 
 function ctx(over: Partial<CommandCtx> = {}): CommandCtx {
   const noop = () => {}
@@ -93,17 +96,9 @@ describe('every RowCap reaches every cap-keyed map and list', () => {
 
   it('the bar draws a labelled control for every cap a row can carry', () => {
     for (const cap of CAPS) {
-      const html = renderToStaticMarkup(
-        <BulkBar
-          rows={[row(cap)]}
-          state={IDLE_STATE}
-          onRun={() => {}}
-          onDismiss={() => {}}
-          onSelectAll={() => {}}
-          onClear={() => {}}
-          rowCount={1}
-        />,
-      )
+      clearSelection()
+      selectRows([row(cap)])
+      const html = renderToStaticMarkup(<ContentBulkBar />)
       // A cap missing from VERB renders its button as "undefined 1"; a cap
       // missing from both CAP_BUTTONS and the client row renders no button at
       // all and the bar prints its "nothing can be changed in bulk" refusal
@@ -136,17 +131,9 @@ describe('the two branches of this merge never meet on one selection', () => {
   it('a conversation row can never reach approve, because a bulk approve is a bulk send', () => {
     const counts = capCountOf([row('discard', { kind: 'thread' })])
     expect(counts.approve).toBe(0)
-    const html = renderToStaticMarkup(
-      <BulkBar
-        rows={[row('discard', { kind: 'thread' })]}
-        state={IDLE_STATE}
-        onRun={() => {}}
-        onDismiss={() => {}}
-        onSelectAll={() => {}}
-        onClear={() => {}}
-        rowCount={1}
-      />,
-    )
+    clearSelection()
+    selectRows([row('discard', { kind: 'thread' })])
+    const html = renderToStaticMarkup(<ContentBulkBar />)
     expect(html).toContain('Discard')
     expect(html).not.toContain('Approve')
   })

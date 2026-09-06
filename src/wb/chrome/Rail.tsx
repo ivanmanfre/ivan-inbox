@@ -28,7 +28,7 @@ import {
   RailSeparator, TabBar, type IconName, type TabItem,
 } from '../../ds'
 import { JOBS, JOB_LABEL, WORK_JOBS, isWorkJob, type Job } from '../../exp/v2c/layout'
-import { relAge } from '../../exp/v2c/Surface'
+import { relAge } from '../kit'
 import './chrome.css'
 
 type Counts = Partial<Record<Job, number>>

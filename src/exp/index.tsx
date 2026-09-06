@@ -1,8 +1,6 @@
 import { lazy, Suspense } from 'react'
 
 // Experiment gate. Two generations of candidates live behind it:
-//   a|b|c  — the content-hub IA tournament (goal-run
-//            agentops-inbox-content-hub-2026-07-31)
 //   v2c    — the inbox-v2 revamp tournament's "Workbench" candidate
 //            (goal-run inbox-v2-revamp-2026-08-01)
 //   v2     — the WINNER-APPLY build of that tournament: v2c's structure plus the
@@ -24,17 +22,21 @@ import { lazy, Suspense } from 'react'
 // 'stock' (added at deploy, 2026-08-02): the workbench is the default app now,
 // so the PRE-revamp shell is the one that needs a flag. App.tsx renders it
 // directly; ExpGate never sees it.
-// brain-a|b|c (goal-run inbox-brain-app-2026-09-04): the workbench shell with
-// one of the phone/Ask tournament candidates mounted through src/exp/brain.
-export type ExpVariant = 'a' | 'b' | 'c' | 'v2' | 'v2c' | 'stock' | 'brain-a' | 'brain-b' | 'brain-c'
+// brain-b (goal-run inbox-brain-app-2026-09-04): the workbench shell with the
+// phone/Ask finalist Ivan picked, mounted through src/exp/brain.
+// Phase 3 W6 (inbox-app-revamp-2026-09-05) swept the losers: the content-hub
+// candidates a|b|c and the brain candidates a|c are off the disk, so the three
+// routes that reached them are gone with them. `stock`, `v2`/`v2c` and
+// `brain-b` are the surviving ids.
+export type ExpVariant = 'v2' | 'v2c' | 'stock' | 'brain-b'
 
 const KEY = 'exp_variant'
-const VARIANTS: ExpVariant[] = ['a', 'b', 'c', 'v2', 'v2c', 'stock', 'brain-a', 'brain-b', 'brain-c']
+const VARIANTS: ExpVariant[] = ['v2', 'v2c', 'stock', 'brain-b']
 
 export function getExpVariant(): ExpVariant | null {
   // v2c before v2 — the alternation is ordered, so the shorter id must not eat
   // the longer one's prefix.
-  const m = location.hash.match(/^#exp\/(brain-a|brain-b|brain-c|v2c|v2|a|b|c|stock|off)\b/)
+  const m = location.hash.match(/^#exp\/(brain-b|v2c|v2|stock|off)\b/)
   if (m) {
     if (m[1] === 'off') { sessionStorage.removeItem(KEY); return null }
     sessionStorage.setItem(KEY, m[1])
@@ -44,21 +46,13 @@ export function getExpVariant(): ExpVariant | null {
   return saved && VARIANTS.includes(saved) ? saved : null
 }
 
-const ShellA = lazy(() => import('./cand-a/Shell'))
-const ShellB = lazy(() => import('./cand-b/Shell'))
-const ShellC = lazy(() => import('./cand-c/Shell'))
 const ShellV2 = lazy(() => import('./v2c/Shell'))
 
 export function ExpGate({ variant }: { variant: ExpVariant }) {
   return (
     <Suspense fallback={null}>
-      {variant === 'a' && <ShellA />}
-      {variant === 'b' && <ShellB />}
-      {variant === 'c' && <ShellC />}
       {(variant === 'v2' || variant === 'v2c') && <ShellV2 />}
-      {variant === 'brain-a' && <ShellV2 brain="a" />}
       {variant === 'brain-b' && <ShellV2 brain="b" />}
-      {variant === 'brain-c' && <ShellV2 brain="c" />}
     </Suspense>
   )
 }

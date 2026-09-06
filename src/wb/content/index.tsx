@@ -56,7 +56,6 @@ import { FilterRow } from './filters'
 import { StageTable, type OpenDraft } from './row'
 import { ClientIdeasSection, IdeasSection } from './ideas'
 import { InFlight, PillarMix, QueueStrip } from './queue'
-import { ContentBulkBar } from './bulk'
 import { ContentCalendar } from './calendar'
 import './content.css'
 
@@ -817,7 +816,6 @@ export function ContentList({ lane, setLane, openId, onOpen, laneCounts }: {
         />
       )}
       {/* S24 — the selection bar, over the plate. */}
-      <ContentBulkBar />
     </Screen>
   )
 }

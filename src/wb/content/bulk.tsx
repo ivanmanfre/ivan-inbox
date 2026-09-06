@@ -25,7 +25,7 @@
    not stack: the SELECTION is shared through the store, so both would
    otherwise draw the same rows.
    ========================================================================== */
-import { useCallback, useEffect, useSyncExternalStore } from 'react'
+import { useCallback, useSyncExternalStore } from 'react'
 import {
   CAP_BUTTONS, CAP_ORDER, capCountOf, promoteAudience, useBulkRun,
 } from '../../exp/v2c/BulkBar'
@@ -44,21 +44,26 @@ const VERB: Record<RowCap, string> = {
 /** The rows the keyboard layer would walk: the DOM is the order, and the
     registry is the metadata. Read only when something needs it. */
 function visibleRows(): HTMLElement[] {
+  // Read during render, so it has to survive a DOM-less one (the cap-coverage
+  // test renders this bar to static markup).
+  if (typeof document === 'undefined') return []
   return [...document.querySelectorAll<HTMLElement>('.wb-work [data-wbrow]')]
     .filter(el => el.offsetParent !== null)
 }
 
 export function ContentBulkBar() {
-  const selected = useSyncExternalStore(subscribe, getSelected)
+  // The third argument is the SERVER snapshot and is the same cached array:
+  // the store is in memory, so a static render (the cap-coverage test) reads
+  // exactly what the browser would.
+  const selected = useSyncExternalStore(subscribe, getSelected, getSelected)
   const bulk = useBulkRun()
 
-  // The app mounts its own bar from the command layer. While this screen is up,
-  // this one is the bar on screen.
-  useEffect(() => {
-    const root = document.documentElement
-    root.setAttribute('data-a-content-bulk', '')
-    return () => root.removeAttribute('data-a-content-bulk')
-  }, [])
+  // Phase 3 W6: THIS IS THE ONLY BULK BAR. It used to be mounted here AND, as
+  // the pre-revamp view, from the command layer, so the content rows carried
+  // two bars and every other surface's selection carried the old one. The
+  // command layer now mounts THIS component (it reads the same global
+  // selection store, so it was never content-specific), the old view is
+  // deleted, and the attribute that hid one bar from the other went with it.
 
   const selectAll = useCallback(() => {
     const all = visibleRows()

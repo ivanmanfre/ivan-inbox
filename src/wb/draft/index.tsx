@@ -54,12 +54,18 @@ import { AgentRegister, QaRegister } from './register'
 import {
   DeleteClientDraft, DeleteDraft, NoteComposer, RegenDraft, RestartDraft, ScheduleDraft, SwapImage,
 } from './actions'
-import { LinkedInPost } from '../../exp/v2c/LinkedInPost'
+import { LinkedInPost } from './LinkedInPost'
 import { absTime, linkedInPostUrl, postTime, relOrAhead, relTime, typeLabel } from '../../exp/v2c/fmt'
 import './draft.css'
 
-export type { QueueItem } from '../../exp/v2c/DraftPane'
-import type { QueueItem } from '../../exp/v2c/DraftPane'
+/** The queue rail's row -- moved here in Phase 3 W6 from `src/exp/v2c/DraftPane`,
+    the component this window replaced and which is now deleted. */
+export type QueueItem = {
+  id: string; title: string; type: string | null; updated_at: string; status: string
+  // WHEN IT POSTS. Optional because the LM queue (`toLmQueueItem`) has no such
+  // column -- a resource is not scheduled, it is published or it is not.
+  scheduled_at?: string | null
+}
 
 function scalar(v: unknown): string | null {
   if (typeof v === 'string') return v.trim() || null

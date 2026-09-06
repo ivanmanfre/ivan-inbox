@@ -16,6 +16,25 @@ export type Tone = 'accent' | 'clear' | 'attention' | 'urgent' | 'quiet'
 /* The screen frame: a compact sticky head over a scrolling body. `ds-body`
    rides on the root so the focus ring and the reduced-motion collapse reach
    everything inside without `body` taking the system's ground colour. */
+/** The freshness stamp. An empty list carrying "checked 4s ago" is confirmed
+    empty; an empty list carrying nothing is unverified. Moved here in Phase 3
+    W6 from `src/exp/v2c/Surface.tsx`, which is deleted with the sheets that
+    styled it: the rail, Money, Ops, the content parts and the Shell all read
+    it, so it belongs to the kit rather than to any one screen. */
+export function relAge(iso: string | null, now: number = Date.now()): string {
+  if (!iso) return 'never'
+  const t = new Date(iso).getTime()
+  if (!Number.isFinite(t)) return 'never'
+  const s = Math.max(0, Math.round((now - t) / 1000))
+  if (s < 5) return 'just now'
+  if (s < 60) return `${s}s ago`
+  const m = Math.floor(s / 60)
+  if (m < 60) return `${m}m ago`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h ago`
+  return `${Math.floor(h / 24)}d ago`
+}
+
 export function Screen({ className, children }: { className?: string; children: ReactNode }) {
   return <div className={`a-root ds-body${className ? ` ${className}` : ''}`}>{children}</div>
 }

@@ -158,7 +158,7 @@ const EMOJI_RE = /\p{Extended_Pictographic}/gu
 export function sanitizeBody(body: string): string {
   return body
     .replace(EMOJI_RE, '')
-    .replace(/OK\s*(?:→|->)\s*[A-Z][A-Z0-9_]*/g, 'disconnected')
+    .replace(/OK\s*(?:\u2192|->)\s*[A-Z][A-Z0-9_]*/g, 'disconnected')
     .replace(RAW_ENUM_RE_G, '')
     .replace(SNAKE_RE_G, '')
     // Taking the value out of `(stop=max_tokens)` leaves `(stop=)`, which is
@@ -186,9 +186,9 @@ function extractSeatHealth(body: string): string {
   // The corpus states transitions as "OK -> CONNECTING" / "OK -> PARENT_CONNECTING"
   // / "OK -> CREDENTIALS". Any arrow whose right side is not OK is a broken
   // seat; the raw right-hand token never reaches the word itself.
-  const m = body.match(/OK\s*(?:→|->)\s*([A-Z_]+)/)
+  const m = body.match(/OK\s*(?:\u2192|->)\s*([A-Z_]+)/)
   if (m) return 'Disconnected'
-  if (/✅|OK\s*$/im.test(body)) return 'Reconnected'
+  if (/\u2705|OK\s*$/im.test(body)) return 'Reconnected'
   return 'Needs attention'
 }
 

@@ -25,7 +25,7 @@ import { doneTodayTasks, isTaskKind, outboundFeedId, pendingOps, type OpsDraft }
 import { useCommentQueue } from '../../hooks/useCommentQueue'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { useReactions } from '../../hooks/useReactions'
-import { relAge } from '../../exp/v2c/Surface'
+import { relAge } from '../kit'
 import { checkedPhrase } from '../../lib/today'
 import { Avatar, Banner, Button, EmptyState, Icon } from '../../ds'
 import { OpsSkeleton } from '../chrome/Skeleton'

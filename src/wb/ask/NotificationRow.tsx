@@ -29,7 +29,7 @@ import type { Notification, NotificationGroup } from '../../lib/turns'
 import { groupStateWord, severityShape, stateWord } from '../../exp/brain/b/families'
 import {
   dayWord, detailLine, formFor, pageCard, quoteCard, raised, rowLine, subjectFor,
-} from '../../exp/brain/b/skins/b/forms'
+} from './forms'
 import { Mark, TenantChip, clock, isRunningWord, laneLabel, useSwipe } from './parts'
 import './ask.css'
 

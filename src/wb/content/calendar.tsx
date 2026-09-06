@@ -31,7 +31,7 @@ import {
 } from '../../lib/content'
 import { scheduleDraft } from '../../lib/studioActions'
 import { useConfirm } from '../chrome/ConfirmSheet'
-import { place } from '../../exp/v2c/CalPopover'
+import { place } from '../place'
 import { typeLabel } from '../../exp/v2c/fmt'
 import {
   Banner, Button, DayHeader, Dialog, Icon, IconButton, Input, Popover,

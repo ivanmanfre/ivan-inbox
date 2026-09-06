@@ -1,4 +1,7 @@
-// forms.ts — skin `b`, "Cards with a form".
+// forms.ts -- the notification card grammar (was brain b's skin `b`).
+//
+// Phase 3 W6 (inbox-app-revamp-2026-09-05): the skin tree it shipped in is
+// deleted; the three files that read it all live here, so it moved with them.
 //
 // THE THESIS: a notification's FORM says what it is before a word is read.
 // Six forms carry seventeen families:
@@ -20,8 +23,8 @@
 // word is still the thing a card says, this file only decides the SHAPE it is
 // said in.
 
-import type { Notification, NotificationSeverity } from '../../../../../lib/turns'
-import { answerHeadline, familyLabel, sanitizeBody, stateWord } from '../../families'
+import type { Notification, NotificationSeverity } from '../../lib/turns'
+import { answerHeadline, familyLabel, sanitizeBody, stateWord } from '../../exp/brain/b/families'
 
 export type CardForm = 'quote' | 'time' | 'strip' | 'page' | 'tile'
 

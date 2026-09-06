@@ -1,14 +1,12 @@
 import { lazy, type ComponentType } from 'react'
 import type { BrainAskPaneProps, BrainCandidate, BrainId, BrainMobileProps } from './types'
 
-// Registry. Each candidate folder exports `candidate: BrainCandidate` from its
-// index and imports its own CSS layer there (`./brain-<id>.css`), so the
-// stylesheet only loads when that candidate is on. Nothing here is reachable
-// without `#exp/brain-<id>` in the URL at load (see ../index.tsx).
+// Registry. The candidate folder exports `candidate: BrainCandidate` from its
+// index. Phase 3 W6 (inbox-app-revamp-2026-09-05) swept the two losing
+// candidates off the disk, so `b` -- the one Ivan picked on 09-04, and the one
+// the default app mounts -- is the only row left.
 const LOADERS: Record<BrainId, () => Promise<{ candidate: BrainCandidate }>> = {
-  a: () => import('./a'),
   b: () => import('./b'),
-  c: () => import('./c'),
 }
 
 export function loadBrain(id: BrainId): Promise<BrainCandidate> {

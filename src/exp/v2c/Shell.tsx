@@ -1,5 +1,4 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
-import { Icon } from '../../ds'
 import { SeatHealthBanner } from '../../wb/chrome/SeatHealthBanner'
 import { InboxSkeleton } from '../../wb/chrome/Skeleton'
 import { useInbox } from '../../hooks/useInbox'
@@ -34,21 +33,26 @@ function toQueueItem(d: ContentDraft): QueueItem {
   }
 }
 import { MobileTabs, Rail, WorkSegment } from './Rail'
-import type { OpenDraft } from './ContentList'
+import type { OpenDraft } from '../../wb/content'
 import { CommandLayer } from './CommandLayer'
 import { MagnetsList } from '../../wb/content/magnets'
 import { StylesList } from '../../wb/content/styles'
 import { StrategyView } from '../../wb/content/strategy'
 import type { OpenMagnet } from '../../wb/content/magnets'
-import type { QueueItem } from './DraftPane'
-// S16 is on the design system now (src/wb/draft). `DraftPane.tsx` stays on disk
-// while the magnets window still reads its `QueueItem` type; W6 deletes it.
-import { DraftWindow } from '../../wb/draft'
+// S16 is on the design system (src/wb/draft) and owns the `QueueItem` type now;
+// `DraftPane.tsx` is deleted in Phase 3 W6.
+import { DraftWindow, type QueueItem } from '../../wb/draft'
 import { MagnetWindow } from '../../wb/magnet'
 import type { CallRow } from '../../lib/transcripts'
-import { ChatPane } from './ChatPane'
+// The Ask pane is the design-system rebuild (src/wb/ask, W5). `#exp/v2` -- the
+// same Shell with no brain candidate mounted -- renders it directly; the
+// brain-b route reaches the identical component through the registry.
+import { AskPane } from '../../wb/ask/AskPane'
 import { draftSubject, laneSubject, threadSubject, type Subject } from './chat/paneContext'
-import { Failed, relAge } from './Surface'
+// `Surface.tsx` is deleted with the sheets that styled it (Phase 3 W6): the
+// three data states are the design-system ports in `src/wb/content/parts`, and
+// the freshness stamp is in the shared kit.
+import { Failed } from '../../wb/content/parts'
 import { useChat } from './useChat'
 import { useGlanceCounts } from './useGlanceCounts'
 import { hasMock } from './mock'
@@ -57,31 +61,16 @@ import {
   JOB_LABEL, addPeer, contextPeer, dropPeer, hasChat, jobHasList, peerKey,
   planWorkbench, type Canvas, type Job, type Peer,
 } from './layout'
-import './legacy.css'
-import './styles.css'
-// Candidate `faithful` — the treatment layer. Imported AFTER the workbench's own
-// stylesheet (spine §1.3) so it is the last word inside .wb and has no reach at
-// all outside it. :root in src/styles.css is never touched.
-import './faithful.css'
-// The 2026 pass. Last import, so it is the final word inside .wb; it carries no
-// tokens of its own and forks no tier — see its header.
-import './wb2026.css'
-// Phase 1 system primitives (elevation ladder, radius scale, .wbb controls,
-// .wbkv metadata, motion). Imported LAST so it overrides rather than deletes;
-// see its header for the three-.wb rule it obeys on every component selector.
-import './wbsys.css'
-// Phase 3, THE CALENDAR. After wbsys so the calendar's own overrides are the
-// last word on .cal, and only on .cal — this sheet reaches nothing else.
-import './wbcal.css'
-// The draft window, built on those primitives. Imported after them because it
-// composes them; it reaches nothing outside `.dw`. See its header. Its scope and
-// wbcal's do not intersect, so the order of these last two is not load-bearing.
-import './dwsys.css'
-// The call reader (port #2). Last, and it reaches only `.cw` and `.cw-segs`;
-// it defines no token and forks no tier. It borrows the three-column frame,
-// the queue rail, the disclosure, `.wbkv` and `.wbb` rather than restating
-// them, so its scope does not intersect dwsys's or wbcal's.
-import './wbcall.css'
+// The nine workbench stylesheets this Shell used to carry (legacy, styles,
+// faithful, wb2026, wbsys, wbcal, dwsys, wbcall, plus brain-b's own) are
+// DELETED in Phase 3 W6. The frame below is the design system's shell
+// primitives (`.ds-shell`, `.ds-plate`, `.ds-col`, `.ds-peer` in src/ds/ds.css)
+// and the handful of workbench-specific frame rules that had no primitive, now
+// in src/wb/chrome/chrome.css on tokens. Every screen inside it brings its own
+// sheet.
+import { Dot, Head, Screen, relAge } from '../../wb/kit'
+import { EmptyState, Icon } from '../../ds'
+import '../../wb/chrome/chrome.css'
 import { lazyBrainAsk, lazyBrainMobile, type BrainId } from '../brain'
 // The eight key screens, rebuilt on `src/ds` (goal run inbox-app-revamp-2026-09-05,
 // Phase 3 W1). The `?ds=` seam is gone: these ARE the screens now. The components
@@ -495,18 +484,22 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
   // load and reads as a different app flashing by.
   if (inbox.loading && inbox.threads.length === 0 && !inboxError && !(mobile && BrainMobile)) {
     return (
-      <div className={mobile ? 'app wb' : 'app dt wb'}>
+      <Screen className={`app wb ds-shell${mobile ? '' : ' dt'}`}>
         {/* style-delta §3a — the ONE licensed DOM change: the app plate the
             two-surface inversion rests on. Same wrapper at all three roots. */}
-        <div className="wb-plate">
+        <div className={`wb-plate ds-plate${mobile ? '' : ' ds-plate-row'}`}>
           {!mobile && (
             <Rail job={job} counts={{}} sev={{}} chatOn={hasChat(peers)} chatLive={false}
               onJob={goJob} onChat={toggleChat} loadedAt={null} stale={false} onRefresh={inbox.refresh}
               collapsed={railMin} onToggle={toggleRail} />
           )}
           <div className="wb-regions">
-            <div className="wb-work wide" data-wblane={lane}>
-              <div className="nav"><div className="row-top"><h2>DMs</h2></div></div>
+            <div className="wb-work wide ds-col" data-wblane={lane}>
+              {/* 🔴 THIS HEAD PRINTED "DMs" FOR EVERY JOB. A cold load on Ops,
+                  Content or Money spent its first seconds titled DMs, because
+                  the string was hard-coded rather than read off the job the
+                  hash asked for (W1 logged it as the "DMS" loading label). */}
+              <Head title={JOB_LABEL[job]} />
               <InboxSkeleton />
             </div>
           </div>
@@ -514,7 +507,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
             <MobileTabs job={job} counts={{}} sev={{}} chatLive={false} onJob={goJob} onChat={toggleChat} />
           )}
         </div>
-      </div>
+      </Screen>
     )
   }
 
@@ -535,7 +528,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
   )
   const dmsSurface = inboxError ? (
     <>
-      <div className="nav"><div className="row-top"><h2>DMs</h2><div className="avatar-me">IM</div></div></div>
+      <Head title="DMs" />
       <Failed
         what="Your DMs"
         message={inboxError}
@@ -656,11 +649,11 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
         )
       }
       return (
-        <ChatPane
+        <AskPane
           chat={chat}
           job={job}
           about={aboutLabel}
-          aboutContext={aboutContext}
+          aboutContext={aboutContext ?? null}
           subjects={seeSubjects}
           onClose={() => closePeer('chat')}
           // Mobile only: no third region, so the pair degrades to a tappable
@@ -675,10 +668,10 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
     // functions stay general, but the Shell has no renderer for it.
     if (!ctxThread) {
       return (
-        <div className="wb-empty">
-          <div className="wb-empty-l">That thread is no longer in the inbox.</div>
-          <div className="wb-empty-s">It may have been resolved on another device.</div>
-        </div>
+        <EmptyState
+          title="That thread is no longer in the inbox."
+          sub="It may have been resolved on another device."
+        />
       )
     }
     return (
@@ -746,7 +739,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
     if (plan.work === 'hidden' && plan.peers[0]) {
       const p = plan.peers[0]
       return (
-        <div className={`app wb wb-take wb-take-${p.kind}`}>
+        <div className={`app wb ds-body wb-take wb-take-${p.kind}`}>
           {/* This branch does not render the work surface, so the layer mounted
               in it is gone. Measured at 390: a thread opened with Enter had no
               key that closed it. The list keys are inert here (no rows), but
@@ -758,10 +751,10 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
       )
     }
     return (
-      <div className="app wb">
+      <Screen className="app wb ds-shell">
         {/* style-delta §3a — the plate. The takeover window (itemWindow) is a
             fixed overlay and stays OUTSIDE it. */}
-        <div className="wb-plate">
+        <div className="wb-plate ds-plate">
           <div className="wb-ribbon">
             {/* The lane switch moved into the working surface (WorkSegment) so both
                 viewports carry the identical control. The ribbon keeps what belongs
@@ -792,7 +785,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
                 className="wb-rib-health" title={health.note}
                 onClick={() => goJob('ops')}
               >
-                <span className="wb-sech-dot attention" />
+                <Dot tone="attention" />
                 <span className="wb-rib-health-n">{health.n}</span>
               </span>
             )}
@@ -804,20 +797,20 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
               ? <span className="wb-gear" onClick={() => goJob(prevJob)}>Done</span>
               : <span className="wb-gear" onClick={() => goJob('settings')} aria-label="Settings"><Icon name="settings" size={20} /></span>}
           </div>
-          <div className={`wb-work wide${plan.narrow ? ' wb-narrow' : ''}`} data-wblane={lane}>{workSurface}</div>
+          <div className={`wb-work wide ds-col${plan.narrow ? ' wb-narrow' : ''}`} data-wblane={lane}>{workSurface}</div>
           <MobileTabs job={job} counts={counts} sev={sev} chatLive={chat.busy} onJob={goJob} onChat={toggleChat} />
         </div>
         {windows}
-      </div>
+      </Screen>
     )
   }
 
   // ---- desktop / wide: rail + regions ----
   return (
-    <div className={`app dt wb wb-${canvas}`}>
+    <Screen className={`app dt wb ds-shell wb-${canvas}`}>
       {/* style-delta §3a — the plate: rail | regions ride inside it; the
           takeover window is a fixed overlay and stays outside. */}
-      <div className="wb-plate">
+      <div className="wb-plate ds-plate ds-plate-row">
         <Rail
           job={job}
           counts={counts}
@@ -847,7 +840,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
           </div>
           {plan.peers.map(p => (
             <div
-              className={`wb-peer wb-peer-${p.kind}${focus === peerKey(p) ? ' on' : ''}`}
+              className={`wb-peer ds-peer wb-peer-${p.kind}${focus === peerKey(p) ? ' on' : ''}`}
               key={peerKey(p)}
             >
               {renderPeer(p)}
@@ -856,6 +849,6 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
         </div>
       </div>
       {windows}
-    </div>
+    </Screen>
   )
 }

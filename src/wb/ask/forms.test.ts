@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { Notification } from '../../../../../lib/turns'
-import { mockNotificationRows } from '../../mockNotifications'
+import type { Notification } from '../../lib/turns'
+import { mockNotificationRows } from '../../exp/brain/b/mockNotifications'
 import { dayWord, fileSize, formFor, pageCard, quoteCard, raised, tileCard, timeCard } from './forms'
 
 const rows = mockNotificationRows()
