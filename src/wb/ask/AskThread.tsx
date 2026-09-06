@@ -571,9 +571,9 @@ export function AskThread({
         runner={<RunnerControl runner={runner} text={text} onSent={() => setText('')} />}
       />
 
-      {/* Outside the scroller: a `position: fixed` sheet under the band's own
-          animated transforms is positioned against that transform, not the
-          viewport, and came up clipped behind the tab bar. */}
+      {/* Portalled to the body from inside: a `position: fixed` sheet under
+          `.a-brain-pane`'s stacking context and the band's own transforms came
+          up clipped behind the phone's tab bar. */}
       <RunnerReport runner={runner} />
     </div>
   )

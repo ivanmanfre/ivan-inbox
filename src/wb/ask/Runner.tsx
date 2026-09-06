@@ -24,6 +24,7 @@
    thing he will reach for twenty times a day and it must cost one press.
    ========================================================================== */
 import { useCallback, useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { Button, Icon, Popover, PopoverItem, Sheet, fadeT, list, rise, spring } from '../../ds'
 import {
@@ -200,17 +201,21 @@ export function RunnerControl({ runner, text, onSent }: {
 // ---------------------------------------------------------------------------
 
 /**
- * The report sheet, exported SEPARATELY from the band on purpose.
+ * The report sheet, exported separately from the band and PORTALLED to the body.
  *
- * `ds`'s Sheet is `position: fixed` with no portal, and the band lives inside
- * the thread's own scroller under two `motion.div`s. A fixed box under an
- * animated transform is positioned against that transform, not the viewport, so
- * a sheet rendered from inside the band came up clipped under the tab bar.
- * `AskThread` mounts this one as a sibling of the scroller instead.
+ * `ds`'s Sheet is `position: fixed` and portals nothing itself, which is fine
+ * everywhere it is used today because those call sites sit at a shell root. This
+ * one does not: the Ask pane hangs inside `.a-brain-pane`, which carries an
+ * explicit `z-index: 0` — a stacking context — and the band above it adds two
+ * `motion.div` transforms, which make a fixed box position against the transform
+ * rather than the viewport. Rendered in place, the sheet came up under the phone's
+ * tab bar. One portal to `document.body` puts it where a sheet belongs, and needs
+ * no change to `ds` or to either shell.
  */
 export function RunnerReport({ runner }: { runner: RunnerHandle }) {
   const job = runner.report ? runner.jobs.find(j => j.id === runner.report) ?? null : null
-  return <ReportSheet job={job} onClose={runner.closeReport} />
+  const sheet = <ReportSheet job={job} onClose={runner.closeReport} />
+  return typeof document === 'undefined' ? sheet : createPortal(sheet, document.body)
 }
 
 function ReportSheet({ job, onClose }: { job: RunnerJob | null; onClose: () => void }) {
