@@ -26,6 +26,9 @@ export default defineConfig({
       icons: [
         { src: './icon-192.png', sizes: '192x192', type: 'image/png' },
         { src: './icon-512.png', sizes: '512x512', type: 'image/png' },
+        // Full-bleed ground with the mark inside the safe zone, so Android can
+        // cut its own shape without clipping the pill.
+        { src: './icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
       ],
     },
   })],

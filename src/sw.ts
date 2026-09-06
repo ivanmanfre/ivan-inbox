@@ -26,12 +26,47 @@ precacheAndRoute(self.__WB_MANIFEST)
 //            folds are the same fold.
 //   family — travels on to the open tabs so the feed can refetch just itself
 //            rather than reloading everything on every push.
+// What a push LOOKS like (Ivan, 2026-09-06: "make the pwa notifications look
+// cooler and have a nicer logo and image"). Three pieces, each doing the most
+// its platform allows:
+//   icon  — the app mark (public/icon-192.png). On iOS the OS shows the app
+//           icon regardless, so the icon set itself is the whole look there.
+//   badge — Android's status-bar silhouette: a white glyph on clear. The old
+//           build pointed this at the colour icon, which Android flattens into
+//           a grey square.
+//   image — the big picture Chrome (desktop, Android) hangs under the text: a
+//           2:1 card per FAMILY, so a reply, a draft, a Claude turn, an alarm
+//           and a digest each read at a glance before the title does. A
+//           producer that sends its own `image` wins over the family card.
+const PUSH_ART: Record<string, string> = {
+  inbound_reply_notice: 'reply', reply_draft_pending: 'reply',
+  drafts: 'content', content_board_activity: 'content', content_sourcing_pipeline: 'content',
+  post_generation_failed: 'content', draft_generation_error: 'content',
+  claude_turn: 'claude',
+  engine_error: 'alarm', system_infra_alarm: 'alarm', send_failed_alert: 'alarm',
+  seat_health: 'alarm', outreach_engine_ops: 'alarm', scan_quality_alert: 'alarm',
+  reporting_digest: 'digest', system_watchdog_digest: 'digest', health_reminder: 'digest',
+}
+function pushArt(family: unknown): string {
+  const f = typeof family === 'string' ? family : ''
+  const known = PUSH_ART[f]
+  if (known) return `./push-${known}.png`
+  // A family the map has never met still gets the nearest card by its name.
+  if (/reply|inbound|dm/.test(f)) return './push-reply.png'
+  if (/draft|content|post|magnet/.test(f)) return './push-content.png'
+  if (/claude|turn/.test(f)) return './push-claude.png'
+  if (/error|alarm|fail|health|watchdog/.test(f)) return './push-alarm.png'
+  if (/digest|report/.test(f)) return './push-digest.png'
+  return './push-inbox.png'
+}
+
 self.addEventListener('push', (e) => {
   const d = e.data?.json() ?? { title: 'Inbox', body: '' }
   const url = d.url ?? './'
   e.waitUntil((async () => {
     await self.registration.showNotification(d.title, {
-      body: d.body, icon: './icon-192.png', badge: './icon-192.png',
+      body: d.body, icon: './icon-192.png', badge: './badge-96.png',
+      image: typeof d.image === 'string' ? d.image : pushArt(d.family),
       data: { url, family: d.family },
       ...(d.tag ? { tag: d.tag } : {}),
       // Explicitly non-silent so the OS plays its notification sound (macOS:
