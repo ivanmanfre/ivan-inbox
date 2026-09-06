@@ -43,6 +43,11 @@ const PUSH_ART: Record<string, string> = {
   drafts: 'content', content_board_activity: 'content', content_sourcing_pipeline: 'content',
   post_generation_failed: 'content', draft_generation_error: 'content',
   claude_turn: 'claude',
+  // The runner: a job that finished (or died) on the Railway mirror, and the
+  // two-way sync that carries its work back to the Mac. Both are Claude doing
+  // work, so both take the Claude card rather than the generic inbox one —
+  // which is where the name fall-through below would otherwise put them.
+  runner_job: 'claude', runner_sync: 'claude',
   engine_error: 'alarm', system_infra_alarm: 'alarm', send_failed_alert: 'alarm',
   seat_health: 'alarm', outreach_engine_ops: 'alarm', scan_quality_alert: 'alarm',
   reporting_digest: 'digest', system_watchdog_digest: 'digest', health_reminder: 'digest',

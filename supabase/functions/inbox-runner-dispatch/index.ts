@@ -108,7 +108,15 @@ async function proxyRunner(path: string, origin: string | null): Promise<Respons
     })
     const text = await res.text()
     if (!res.ok) {
-      return fail(502, 'runner_error', origin, `status ${res.status} ${text.slice(0, 300)}`)
+      // A Railway domain that exists with nothing deployed behind it answers
+      // 404 "Application not found" from the EDGE, not from the runner. That is
+      // the same fact as a refused socket — the runner is not there — and the
+      // pane should say so in those words rather than print a proxy's status
+      // code. Anything else (401 on the key, a 500 out of the app itself) is a
+      // runner that IS there and answered badly, which is a different sentence.
+      const absent = res.status === 404 || res.status === 502 || res.status === 503 || res.status === 504
+      return fail(absent ? 503 : 502, absent ? 'runner_unreachable' : 'runner_error', origin,
+        `status ${res.status} ${text.slice(0, 300)}`)
     }
     return new Response(text, {
       status: 200,

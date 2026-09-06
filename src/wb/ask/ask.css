@@ -1055,3 +1055,57 @@
   z-index:2;
 }
 .a-brain-feed [data-contained] .a-row-main{ padding-inline-end:var(--ds-s7) }
+
+/* --------------------------------------------------------------------------
+   8 · The runner. A "Run on the runner" split control on the composer strip,
+   and the band of job cards the thread carries above the conversation.
+
+   Same discipline as everything above it: not one colour literal, not one
+   font-size or radius outside the `--ds-` set. The job card is drawn on the
+   answer card's own inline rule, because a job IS an answer at a longer time
+   scale and a second grammar would split the thread into two apps. Written
+   tight on purpose: this sheet is already the largest live one in the app.
+   -------------------------------------------------------------------------- */
+.a-brain-runner{ display:flex; align-items:center; flex-wrap:wrap; gap:var(--ds-s2) var(--ds-s3); padding-block-end:var(--ds-s2); min-width:0 }
+/* The two halves read as ONE control: the second button drops its own leading
+   edge so the pair share a seam instead of sitting as two buttons. */
+.a-brain-runbtn{ position:relative; display:inline-flex; align-items:center }
+.a-brain-runbtn > :first-child{ border-start-end-radius:0; border-end-end-radius:0 }
+.a-brain-runbtn > :nth-child(2){ border-start-start-radius:0; border-end-start-radius:0; margin-inline-start:-1px }
+/* Above the bar, not below it: the composer sits on the bottom edge. */
+.a-brain-specmenu{
+  position:absolute; inset-inline-start:0; bottom:calc(100% + var(--ds-s2));
+  inline-size:22rem; max-inline-size:min(22rem, calc(100vw - var(--ds-s8)));
+  max-block-size:60vh; overflow-y:auto;
+}
+.a-brain-runnote{ display:inline-flex; align-items:center; gap:var(--ds-s2); min-width:0; font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3) }
+
+.a-brain-runlane{
+  display:flex; flex-direction:column; gap:var(--ds-s4);
+  padding-block-end:var(--ds-s5); margin-block-end:var(--ds-s5);
+  border-block-end:1px solid var(--ds-line);
+}
+.a-brain-runlane-h{ display:flex; align-items:center; gap:var(--ds-s3) }
+.a-brain-runlane-t{ font-size:var(--ds-fs-eyebrow); line-height:var(--ds-lh-eyebrow); letter-spacing:var(--ds-tr-eyebrow); text-transform:uppercase; color:var(--ds-text-3) }
+.a-brain-runlane-n{ flex:1 1 auto; font-size:var(--ds-fs-mono); color:var(--ds-text-3) }
+.a-brain-runlane-b{ display:flex; flex-direction:column; gap:var(--ds-s5) }
+
+.a-brain-job{ display:flex; flex-direction:column; gap:var(--ds-s3); min-width:0; padding-inline-start:var(--ds-s4); border-inline-start:2px solid var(--ds-line) }
+/* Running and deep-linked both take the accent edge: one is live, the other is
+   the card he was sent here to read, and both mean "look here". */
+.a-brain-job[data-status='running'], .a-brain-job[data-focus]{ border-inline-start-color:var(--ds-accent) }
+.a-brain-job[data-status='error']{ border-inline-start-color:var(--ds-sev-urgent) }
+.a-brain-job-head{ display:flex; align-items:center; gap:var(--ds-s3); min-width:0 }
+.a-brain-job-t{ flex:1 1 auto; min-width:0; font-size:var(--ds-fs-title); line-height:var(--ds-lh-title); letter-spacing:var(--ds-tr-title); color:var(--ds-text) }
+.a-brain-jobpath{ overflow-wrap:anywhere }
+
+/* The log is the one monospace block on this surface and it earns it: these are
+   file and tool names, and a proportional face runs two of them into one
+   sentence. The last line is the live one, so it holds the readable colour. */
+.a-brain-joblog{ display:flex; flex-direction:column; gap:var(--ds-s1); min-width:0; font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono); line-height:var(--ds-lh-meta); color:var(--ds-text-3) }
+.a-brain-joblog-l{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.a-brain-joblog-l[data-last]{ color:var(--ds-text-2) }
+.a-brain-joblog[data-full]{ max-block-size:50vh; overflow-y:auto }
+.a-brain-joblog[data-full] .a-brain-joblog-l{ white-space:pre-wrap; overflow-wrap:anywhere }
+.a-brain-reportsheet .a-brain-joblog{ margin-block-start:var(--ds-s4) }
+.a-brain-reportpath{ display:flex; flex-direction:column; gap:var(--ds-s1); padding-block-end:var(--ds-s3); font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); overflow-wrap:anywhere }

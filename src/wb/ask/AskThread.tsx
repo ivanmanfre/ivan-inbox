@@ -39,6 +39,7 @@ import { detectLinks } from '../../lib/unfurl'
 import { ToolStrip, TurnMeta } from './Tools'
 import { LinkPreview } from './LinkPreview'
 import { Composer, type ComposerExtras } from './Composer'
+import { RunnerControl, RunnerSection, useRunner } from './Runner'
 import './ask.css'
 
 // The one place a turn error's text is checked against D6's exact copy. The
@@ -406,6 +407,10 @@ export function AskThread({
   const text = textProp ?? ownText
   const setText = onText ?? setOwnText
   const scroller = useRef<HTMLDivElement>(null)
+  // The runner lives HERE rather than in either shell, because this is the one
+  // component both the phone screen and the docked desktop pane draw. The model
+  // the picker holds rides with a job the same way it rides with a turn.
+  const runner = useRunner(chat.wanted ?? null)
   const prevBusy = useRef(chat.busy)
   const [justLandedId, setJustLandedId] = useState<string | null>(null)
   const landedFocus = useRef<string | null>(null)
@@ -470,6 +475,12 @@ export function AskThread({
             <Button variant="quiet" size="sm" icon="add" onClick={() => chat.newThread()}>New thread</Button>
           </span>
         </div>
+
+        {/* Work running somewhere else that this thread can see. It sits above
+            the conversation because a job outlives every turn under it: he
+            comes back to this screen to find out whether the hour of Claude he
+            started is done, and that answer must not be at the end of a scroll. */}
+        <RunnerSection runner={runner} />
 
         {empty ? (
           <motion.div className="a-stack" variants={list} initial="hidden" animate="show">
@@ -557,6 +568,7 @@ export function AskThread({
         onStop={chat.busy ? chat.abort : stopRunningElsewhere}
         placeholder={about ? `Ask about ${about}…` : mobile ? 'Ask Claude…' : 'Ask Claude…'}
         extras={composerExtras}
+        runner={<RunnerControl runner={runner} text={text} onSent={() => setText('')} />}
       />
     </div>
   )

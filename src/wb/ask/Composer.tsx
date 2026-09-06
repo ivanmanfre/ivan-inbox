@@ -50,7 +50,7 @@ export type ComposerExtras = {
   interceptSend?: () => boolean
 }
 
-export function Composer({ value, onChange, onSend, busy, runningElsewhere, onStop, placeholder, extras }: {
+export function Composer({ value, onChange, onSend, busy, runningElsewhere, onStop, placeholder, extras, runner }: {
   value: string
   onChange: (v: string) => void
   onSend: (text: string) => void
@@ -59,6 +59,10 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
   onStop: () => void
   placeholder: string
   extras?: ComposerExtras
+  /** The "Run on the runner" strip, drawn on its own line above the bar.
+   * A node rather than a built-in control for the same reason `extras` is one:
+   * the composer draws what it is handed and knows nothing about jobs. */
+  runner?: React.ReactNode
 }) {
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [heard, setHeard] = useState<string | null>(null)
@@ -237,6 +241,7 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
         onChange={e => { onFiles(e.target.files); e.target.value = '' }}
       />
       {extras?.overlay}
+      {runner}
       <span className="a-brain-paste" onPaste={onPaste}>
       <DsComposer
         value={value}
