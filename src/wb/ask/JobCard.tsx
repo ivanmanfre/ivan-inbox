@@ -96,10 +96,11 @@ export function JobCard({ job, focused, onCancel, onOpenReport }: {
         <Chip tone={state.tone}>{state.word}</Chip>
       </div>
 
+      {/* "on the runner" is NOT here: the band above these cards is titled
+          RUNNER, and repeating it per card cost three wrapped lines at 390 for
+          a fact already on screen. */}
       <div className="a-brain-tmeta">
         <span>{job.kind === 'goal' ? 'goal run' : 'prompt'}</span>
-        <span className="a-brain-tdot" aria-hidden />
-        <span>on the runner</span>
         {job.ran_on && <><span className="a-brain-tdot" aria-hidden /><span className="a-brain-tmeta-n">{job.ran_on}</span></>}
         {elapsed && <><span className="a-brain-tdot" aria-hidden /><span className="a-brain-tmeta-n">{elapsed}</span></>}
         {typeof job.cost_usd === 'number' && (

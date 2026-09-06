@@ -8,8 +8,9 @@
    the right half opens the goal specs the runner can see on disk and sends one
    as a GOAL job. Whatever model the picker holds rides with either.
 
-   `RunnerSection` is the band at the top of the thread that the jobs land in,
-   plus the sheet behind "Open report".
+   `RunnerSection` is the band at the top of the thread that the jobs land in.
+   `RunnerReport` is the sheet behind "Open report", mounted OUTSIDE the thread
+   scroller for the reason its own header gives.
 
    WHY A BAND AND NOT AN INTERLEAVE. The direction offered both. A job carries
    a `created_at`; a `Turn` in this pane does not — the chat handle keeps turns
@@ -198,6 +199,20 @@ export function RunnerControl({ runner, text, onSent }: {
 // The band, and the report sheet.
 // ---------------------------------------------------------------------------
 
+/**
+ * The report sheet, exported SEPARATELY from the band on purpose.
+ *
+ * `ds`'s Sheet is `position: fixed` with no portal, and the band lives inside
+ * the thread's own scroller under two `motion.div`s. A fixed box under an
+ * animated transform is positioned against that transform, not the viewport, so
+ * a sheet rendered from inside the band came up clipped under the tab bar.
+ * `AskThread` mounts this one as a sibling of the scroller instead.
+ */
+export function RunnerReport({ runner }: { runner: RunnerHandle }) {
+  const job = runner.report ? runner.jobs.find(j => j.id === runner.report) ?? null : null
+  return <ReportSheet job={job} onClose={runner.closeReport} />
+}
+
 function ReportSheet({ job, onClose }: { job: RunnerJob | null; onClose: () => void }) {
   const lines = logTail(job?.log ?? null)
   return (
@@ -243,7 +258,6 @@ export function RunnerSection({ runner }: { runner: RunnerHandle }) {
   const count = running > 0
     ? `${running} running`
     : queued > 0 ? `${queued} waiting` : `${jobs.length} recent`
-  const shown = runner.report ? jobs.find(j => j.id === runner.report) ?? null : null
 
   return (
     <section className="a-brain-runlane" data-runner-lane>
@@ -277,7 +291,6 @@ export function RunnerSection({ runner }: { runner: RunnerHandle }) {
           </motion.div>
         )}
       </AnimatePresence>
-      <ReportSheet job={shown} onClose={runner.closeReport} />
     </section>
   )
 }

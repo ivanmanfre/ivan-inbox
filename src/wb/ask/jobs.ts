@@ -320,24 +320,53 @@ export function useRunnerJobs() {
 }
 
 /**
- * The `?job=<id>` (and `&report=1`) a notification's url carries, read off the
- * hash and kept current as it changes.
+ * The `?job=<id>` (and `&report=1`) a notification's url carries.
  *
- * The hash is parsed here rather than through `parseWbHash` because that
- * parser resolves a ROUTE — a job id is a parameter of the ask place, not a
- * place of its own, and teaching the router about it would put a runner
- * concept in the app's route table for one deep link.
+ * The hash is parsed here rather than through `parseWbHash` because that parser
+ * resolves a ROUTE — a job id is a parameter of the ask place, not a place of
+ * its own, and teaching the router about it would put a runner concept in the
+ * app's route table for one deep link.
+ *
+ * TWO THINGS MAKE IT WORK, and both were measured rather than assumed.
+ *
+ * 1. THE ROUTER REWRITES THE HASH BEFORE THIS PANE EXISTS. `Shell` reads
+ *    `parseWbHash(location.hash)` once at mount and then writes the canonical
+ *    form back, dropping every key it does not own — `?skin=b` and `?job=` both.
+ *    This module lives in a LAZILY imported chunk, so by the time it evaluates,
+ *    `location.hash` no longer carries the id. The navigation entry does: its
+ *    `name` is the URL the document was actually loaded with, and nothing
+ *    rewrites that. Measured: landing on `…/ask?job=<id>&report=1` leaves
+ *    `location.hash === '#exp/brain-b/dms/chat'` six seconds later.
+ * 2. IT LATCHES. When the app is ALREADY open, the service worker navigates the
+ *    existing tab, so the id arrives as a `hashchange` and is then normalised
+ *    away a beat later. Holding the last id seen — until a DIFFERENT one
+ *    arrives — is what keeps the card marked, and it is what the mark wants
+ *    anyway: he came here to read one job.
  */
 export function useJobDeepLink(): { job: string | null; report: boolean } {
-  const read = () => {
-    const q = location.hash.indexOf('?')
+  const readFrom = (url: string) => {
+    const q = url.indexOf('?', url.indexOf('#'))
     if (q === -1) return { job: null, report: false }
-    const params = new URLSearchParams(location.hash.slice(q + 1))
+    const params = new URLSearchParams(url.slice(q + 1))
     return { job: params.get('job'), report: params.get('report') === '1' }
   }
-  const [link, setLink] = useState(read)
+  const read = () => readFrom(location.hash)
+  /** The URL this document was loaded with, before anything rewrote it. */
+  const readBoot = () => {
+    try {
+      const nav = performance.getEntriesByType('navigation')[0] as { name?: string } | undefined
+      const fromNav = nav?.name ? readFrom(nav.name) : { job: null, report: false }
+      if (fromNav.job) return fromNav
+    } catch { /* no navigation timing here; the live hash is the only source */ }
+    return read()
+  }
+  const [link, setLink] = useState(readBoot)
   useEffect(() => {
-    const on = () => setLink(read())
+    const on = () => setLink(prev => {
+      const next = read()
+      if (!next.job) return prev
+      return next.job === prev.job && next.report === prev.report ? prev : next
+    })
     window.addEventListener('hashchange', on)
     return () => window.removeEventListener('hashchange', on)
   }, [])

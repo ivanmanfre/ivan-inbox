@@ -1098,6 +1098,8 @@
 .a-brain-job-head{ display:flex; align-items:center; gap:var(--ds-s3); min-width:0 }
 .a-brain-job-t{ flex:1 1 auto; min-width:0; font-size:var(--ds-fs-title); line-height:var(--ds-lh-title); letter-spacing:var(--ds-tr-title); color:var(--ds-text) }
 .a-brain-jobpath{ overflow-wrap:anywhere }
+/* The shared meta line does not wrap; at 390 a job's has four facts on it. */
+.a-brain-job .a-brain-tmeta{ flex-wrap:wrap; row-gap:0 }
 
 /* The log is the one monospace block on this surface and it earns it: these are
    file and tool names, and a proportional face runs two of them into one

@@ -39,7 +39,7 @@ import { detectLinks } from '../../lib/unfurl'
 import { ToolStrip, TurnMeta } from './Tools'
 import { LinkPreview } from './LinkPreview'
 import { Composer, type ComposerExtras } from './Composer'
-import { RunnerControl, RunnerSection, useRunner } from './Runner'
+import { RunnerControl, RunnerReport, RunnerSection, useRunner } from './Runner'
 import './ask.css'
 
 // The one place a turn error's text is checked against D6's exact copy. The
@@ -570,6 +570,11 @@ export function AskThread({
         extras={composerExtras}
         runner={<RunnerControl runner={runner} text={text} onSent={() => setText('')} />}
       />
+
+      {/* Outside the scroller: a `position: fixed` sheet under the band's own
+          animated transforms is positioned against that transform, not the
+          viewport, and came up clipped behind the tab bar. */}
+      <RunnerReport runner={runner} />
     </div>
   )
 }
