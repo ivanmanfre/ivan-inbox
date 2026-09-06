@@ -172,8 +172,7 @@
   top:calc(var(--ds-s1) * -1);
   inset-inline-end:calc(var(--ds-s2) * -1);
   pointer-events:none;
-  transform:scale(.85);
-  transform-origin:top right;
+  /* No scale: a 12px figure under scale(.85) renders 10px (S3 micro). */
 }
 
 /* --------------------------------------------------------------------------
@@ -191,7 +190,8 @@
      sitting on top of "YESTERDAY". 5 clears the row actions (2) and anything
      the layout animation assigns. */
   z-index:5;
-  transition:min-block-size var(--ds-dur) var(--ds-ease), padding-block var(--ds-dur) var(--ds-ease);
+  /* The condense is a transform/opacity change only (S4: no layout props animate). */
+  transition:transform var(--ds-dur) var(--ds-ease), opacity var(--ds-dur) var(--ds-ease);
 }
 /* Move 3. Once the ledger under it has moved, the run of day heads condenses:
    the same day and the same LIVE count on one compact bar at the eyebrow
