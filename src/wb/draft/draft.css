@@ -338,7 +338,9 @@
   white-space:nowrap;
 }
 .a-dw-dim .a-barline{ flex:1 1 auto; min-width:0 }
-.a-dw-dim-n{ flex:0 0 auto }
+/* W6: this inherited BLACK -- nothing on the takeover branch sets a colour, so
+   the rubric scores read at 1.46:1 on the dark well (E8, nine of them). */
+.a-dw-dim-n{ flex:0 0 auto; color:var(--ds-text) }
 .a-dw-clash{
   padding:var(--ds-s3) var(--ds-s4);
   background:var(--ds-surface-2);

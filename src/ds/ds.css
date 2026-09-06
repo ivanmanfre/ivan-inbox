@@ -817,7 +817,8 @@ body :focus-visible{
   flex:0 0 auto;
   display:inline-flex; align-items:center; justify-content:center;
   width:20px; height:20px; border-radius:var(--ds-r-pill);
-  background:var(--ds-surface-3); color:var(--ds-text-3);
+  /* text-2, not text-3: step 3 on surface-3 is 4.05:1 (E8). */
+  background:var(--ds-surface-3); color:var(--ds-text-2);
   font-size:var(--ds-fs-eyebrow); font-weight:var(--ds-fw-medium); line-height:1;
 }
 .ds-step[data-state='done'] .ds-step-mark{ background:var(--ds-accent); color:var(--ds-accent-ink) }
