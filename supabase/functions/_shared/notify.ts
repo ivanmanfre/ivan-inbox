@@ -55,6 +55,11 @@ export const PUSH_DEFAULT: Record<string, boolean> = {
   // 24h by the 08-20 shared error ledger, so the volume is ~3/day, not 23.
   system_infra_alarm: true,   // a workflow is failing (Error Handler / Client Health Monitor)
   send_failed_alert: true,    // a message to a prospect did not go out
+  // Ivan 2026-09-06: "alerts of low supply from mattan, arch or ivan lane are very
+  // important.... Also if daily sends on any seat are below 20 its also a disaster".
+  // A starving lane is the one failure that costs money while looking like silence,
+  // so it rings. Pace/heartbeat wording stays in outreach_engine_ops (feed-only).
+  lane_supply_alarm: true,    // lane halted, under floor, pool empty, output down/collapse
 
   // --- feed only --------------------------------------------------------
   outreach_engine_ops: false,       // engine heartbeats / pace
