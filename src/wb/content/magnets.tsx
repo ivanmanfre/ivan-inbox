@@ -66,7 +66,7 @@ function LmRow({ r, onOpen, queue }: { r: Resource; onOpen?: OpenMagnet; queue: 
   // spent on it.
   const folded = normalizeLmStatus(r.status) !== r.status
   const stageTitle = folded
-    ? `${LM_STAGE_LABEL[stage]} — folded from the database value "${r.status}"`
+    ? `${LM_STAGE_LABEL[stage]}, folded from the database value "${r.status}"`
     : `${LM_STAGE_LABEL[stage]} (status: ${r.status})`
 
   return (

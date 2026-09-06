@@ -218,7 +218,7 @@ export function QaRegister({ qa }: { qa: QaSummary }) {
         <Fold
           label="The applied rewrite"
           tail={`the copy that published · ${qa.rewriteText.length.toLocaleString()} chars${
-            qa.rewriteTotal !== null ? ` · rewrite_total ${qa.rewriteTotal}` : ''}`}
+            qa.rewriteTotal !== null ? ` · rewrites ${qa.rewriteTotal}` : ''}`}
         >
           <p className="a-dw-note">
             This is the copy the gate substituted. It is what published, not the

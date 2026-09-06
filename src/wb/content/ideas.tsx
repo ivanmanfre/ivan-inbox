@@ -147,7 +147,7 @@ function IdeaCard({ i, onDeleted, onDecided }: {
                   type="text"
                   value={note}
                   onChange={e => setNote(e.target.value)}
-                  placeholder="Optional note — steers the curator, and is logged as the reject reason"
+                  placeholder="Optional note, steers the curator, and is logged as the reject reason"
                   disabled={!!deciding}
                 />
                 <div className="a-ct-acts">
@@ -251,14 +251,14 @@ export function IdeasSection({
       {hiddenByFilter ? (
         <div className="a-ct-sub">
           Hidden while a draft filter is on. These {all.length} rows are{' '}
-          <code>lm_idea_candidates</code> — a different table from the drafts the
+          <code>lm_idea_candidates</code>, a different table from the drafts the
           facets and the search box run over, so no filter here can narrow them.
           Clear the filter to read them.
         </div>
       ) : error ? (
         <Failed what="The idea queue" message={error} onRetry={refresh} loadedAt={null} />
       ) : loading && all.length === 0 ? (
-        <div className="a-ct-sub">Reading lm_idea_candidates…</div>
+        <div className="a-ct-sub">Reading the idea candidates…</div>
       ) : all.length === 0 ? (
         <CalmEmpty line="No ideas waiting to be scored." loadedAt={loadedAt} />
       ) : (
@@ -274,7 +274,7 @@ export function IdeasSection({
               {kindRows.length} {kind === 'post' ? 'post' : 'lead-magnet'} rows waiting for review
               {count !== null && count > kindRows.length ? ` of ${count} in the database` : ''}
               {otherRows.length > 0
-                ? ` · plus ${otherRows.length} with no content_type, shown here rather than dropped`
+                ? ` · plus ${otherRows.length} with no content type, shown here rather than dropped`
                 : ''} ·
               open one to approve or reject it
             </div>

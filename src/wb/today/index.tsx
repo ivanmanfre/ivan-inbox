@@ -192,7 +192,7 @@ function ZoneNew({ plate, loading, brief, onOpenDrafts, onOpenOps }: {
           <Note>
             {loading && !brief
               ? 'Loading the brief…'
-              : 'Nothing new since yesterday. Everything on your plate is carried over — and this is a live read, not a stall.'}
+              : 'Nothing new since yesterday. Everything on your plate is carried over, and this is a live read, not a stall.'}
           </Note>
         ) : (
           <Rows>
@@ -317,7 +317,7 @@ function QueueReplyRow({ item, onOpen }: { item: QueueItem; onOpen: () => void }
             </span>
           )}
           {/* The lane, said the way the rest of the app says it. This printed
-              the raw internal shorthand (`RISE` / `ARCH`) — an internal name on
+              the raw internal shorthand (`RISE` / `ARCH`), an internal name on
               screen, and the only place in the app that spelled a lane that
               way. LANE_LABEL is the one map that owns the mapping, so the row
               reads the person's own name and a rename can never half-land. */}
@@ -629,7 +629,7 @@ function ZoneCallLog({ rows, loading, onOpen }: {
 
 function dmPreview(d: DmDraft | undefined): string | null {
   if (!d) return null
-  return `${d.prospect_name} — ${d.message_text}`
+  return `${d.prospect_name}, ${d.message_text}`
 }
 
 function oldest(dates: (string | null | undefined)[]): string | null {
@@ -654,7 +654,7 @@ function ZoneCarried({ plate, aging, loading, brief, onOpenDrafts, onOpenOps }: 
       <div className="a-today-z" id="td-z2">
         <Group label={zoneLabel('02', 'Carried over')} tail={<ZoneTail right="clear" state="done" />}>
           <Note>
-            {loading && !brief ? 'Loading the brief…' : 'Nothing carried over — the plate is today’s only.'}
+            {loading && !brief ? 'Loading the brief…' : 'Nothing carried over, the plate is today’s only.'}
           </Note>
         </Group>
       </div>
@@ -687,7 +687,7 @@ function ZoneCarried({ plate, aging, loading, brief, onOpenDrafts, onOpenOps }: 
             <HandOff
               n={aging}
               title={`${aging} older ${aging === 1 ? 'reply' : 'replies'}`}
-              sub="Demoted out of the urgent count after 3 days — still owed."
+              sub="Demoted out of the urgent count after 3 days, still owed."
               meta="not in the plate number above"
               owner="open them in DMs"
               onOpen={onOpenDrafts}
@@ -703,7 +703,7 @@ function ZoneCarried({ plate, aging, loading, brief, onOpenDrafts, onOpenOps }: 
                   </span>
                 )}
                 title="auto-replies"
-                tail={<span className="a-mono">out of office — not waiting on you</span>}
+                tail={<span className="a-mono">out of office, not waiting on you</span>}
                 onClick={() => setShowAuto(v => !v)}
               />
               {showAuto && plate.autoreplies.map(u => <UrgencyRow key={u.id} u={u} auto />)}
@@ -736,7 +736,7 @@ function ApprovalRows({ dms, comments, feed, onOpenDrafts, onOpenOps }: {
           age={ageTag(dOldest)}
           sub={dmPreview(dms[0])}
           meta={`${dms.length} waiting${dOldest ? ` · oldest drafted ${ago(dOldest)} ago` : ''}${dAging > 0 ? ` · ${dAging} owed >7d` : ''}`}
-          owner="live rows and Approve & send are in the DM queue — this list is the cached brief"
+          owner="live rows and Approve & send are in the DM queue, this list is the cached brief"
           onOpen={onOpenDrafts}
         />
       )}
@@ -747,7 +747,7 @@ function ApprovalRows({ dms, comments, feed, onOpenDrafts, onOpenOps }: {
           age={ageTag(cOldest)}
           sub={commentPreview(comments[0])}
           meta={`${comments.length} target${comments.length === 1 ? '' : 's'}${cOldest ? ` · oldest drafted ${ago(cOldest)} ago` : ''}${cAging > 0 ? ` · ${cAging} owed >7d` : ''}`}
-          owner="posting is live on LinkedIn — approved in Ops"
+          owner="posting is live on LinkedIn, approved in Ops"
           onOpen={onOpenOps}
         />
       )}
@@ -768,14 +768,14 @@ function ApprovalRows({ dms, comments, feed, onOpenDrafts, onOpenOps }: {
 
 function commentPreview(c: CommentDraft | undefined): string | null {
   if (!c) return null
-  const who = c.post_author_name ? `${c.post_author_name} — ` : ''
+  const who = c.post_author_name ? `${c.post_author_name}, ` : ''
   const text = c.comment_text ?? c.post_excerpt ?? ''
   return text ? `${who}${text}` : who || null
 }
 
 function feedPreview(f: FeedDraft | undefined): string | null {
   if (!f) return null
-  const who = f.target_name ? `${f.target_name}${f.target_class ? ` (${f.target_class})` : ''} — ` : ''
+  const who = f.target_name ? `${f.target_name}${f.target_class ? ` (${f.target_class})` : ''}, ` : ''
   const text = f.draft ?? f.hook ?? ''
   return text ? `${who}${text}` : who || null
 }
@@ -806,7 +806,7 @@ function ZoneSchedule({ brief, loading, plate }: {
       <>
         <b>{next.scheduled_at ? dayTime(next.scheduled_at) : 'unscheduled'}</b>
         {next.post_format ? ` · ${next.post_format}` : ''}
-        {next.post_text ? ` — ${next.post_text}` : ''}
+        {next.post_text ? `, ${next.post_text}` : ''}
       </>
     )])
   }
@@ -1165,7 +1165,7 @@ export function Today({
           </Banner>
         )}
         {!t.authError && !t.degraded && t.error && t.brief && (
-          <Banner tone="attention" icon="alert">Couldn’t refresh — showing the last brief on this device.</Banner>
+          <Banner tone="attention" icon="alert">Couldn’t refresh, showing the last brief on this device.</Banner>
         )}
         {t.error && !t.brief && !t.refreshing && (
           <EmptyState icon="error" title={t.error} />

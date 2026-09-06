@@ -15,7 +15,7 @@
    rules. The terminal fact of an Ivan row is whether it published; the terminal
    fact of a client row is whether it is on that client's board. On Ivan's lane
    `review` means "waiting on Ivan"; on a client's it means "available to be
-   promoted", and most of the rows sit there — reading that lane through the
+   promoted", and most of the rows sit there, reading that lane through the
    pipeline's eyes produces "70 things waiting on you", which is false.
 
    So: Ivan groups by pipeline stage. A client groups by promotion state, with
@@ -170,7 +170,7 @@ function PipelineStats({ stages, onJump }: {
         const note = p.stage === 'review'
           ? `waiting on you · ${inPipeline} in pipeline`
           : p.stage === 'approved' && undated > 0
-            ? `${undated} of them approved with no date — on no other surface`
+            ? `${undated} of them approved with no date, on no other surface`
             : `${inPipeline} in pipeline`
         return (
           <button
@@ -427,7 +427,7 @@ function IvanLane({
               refresh={refresh} onOpen={onOpen} openId={openId}
               sub={
                 tab === 'approved' && countUndated(shownStages.approved) > 0
-                  ? `${countUndated(shownStages.approved)} approved without a date — on no other surface`
+                  ? `${countUndated(shownStages.approved)} approved without a date, on no other surface`
                   // EVERY ERRORED ROW, not the old ones only. This table used
                   // to exclude the last 48 hours because that window belonged
                   // to an alarm band; the band went and the window survives as
@@ -444,7 +444,7 @@ function IvanLane({
                     // nothing published. It keeps its own tab and its own
                     // sentence.
                     : tab === 'stuck'
-                      ? 'Their time passed and no published post came back — they never went out.'
+                      ? 'Their time passed and no published post came back, they never went out.'
                       : null
               }
               empty={tab === 'review' ? 'Nothing is waiting on you.' : undefined}
@@ -648,7 +648,7 @@ function MattanLane({
           draftFacetsActive(filters, q) ? (
             <div className="a-ct-sub">
               Hidden while a draft filter is on. These {ideas.rows.length} rows are{' '}
-              <code>client_ideas</code> — a different table from the drafts the facets
+              <code>client_ideas</code>, a different table from the drafts the facets
               and the search box run over, so no filter here can narrow them. Clear the
               filter to read them.
             </div>
@@ -677,7 +677,7 @@ function MattanLane({
           )}
       </Body>
 
-      {/* Same mark as Ivan's lane, and the count is the LANE's — both board
+      {/* Same mark as Ivan's lane, and the count is the LANE's, both board
           groups, unfiltered. Which group an in-flight draft is in is not a
           question anyone asks while it is running; how many are running is. */}
       <InFlight

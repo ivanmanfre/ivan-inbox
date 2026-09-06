@@ -105,7 +105,7 @@ export function QueueStrip({ rows, loading, error, loadedAt, refresh }: {
     splitFacets(buildFacets(rows, QUEUE_SPECS), QUEUE_PROMINENT)
   const shown = applyFilters(rows, QUEUE_SPECS, filters)
   if (error) return <Failed what="The publish queue" message={error} onRetry={refresh} loadedAt={null} />
-  if (loading && rows.length === 0) return <div className="a-ct-sub">Reading scheduled_posts…</div>
+  if (loading && rows.length === 0) return <div className="a-ct-sub">Reading the schedule…</div>
   if (rows.length === 0) return <CalmEmpty line="Nothing in the publish queue." loadedAt={loadedAt} />
   return (
     <Group label="Publish queue" tail={rows.length}>
@@ -190,7 +190,7 @@ export function PillarMix({ rows }: { rows: ContentDraft[] }) {
           {/* A percentage that hides its own denominator is a fabricated number. */}
           <div className="a-ct-sub">
             Percentages are of the {withPillar} rows that carry a pillar, not of all{' '}
-            {rows.length}. Targets are Ivan's editorial strategy and are advisory —
+            {rows.length}. Targets are Ivan's editorial strategy and are advisory ,
             nothing here gates, warns or scores.
           </div>
         </>
@@ -225,7 +225,7 @@ export function InFlight({ n, stalled, onOpen }: {
       data-bad={stalled > 0 ? '' : undefined}
       onClick={onOpen}
       title={stalled > 0
-        ? `${stalled} of them have been running past ${STUCK_GENERATING_MINUTES}m — open Generating`
+        ? `${stalled} of them have been running past ${STUCK_GENERATING_MINUTES}m, open Generating`
         : 'Open Generating'}
     >
       <Dot tone={stalled > 0 ? 'urgent' : 'accent'} />

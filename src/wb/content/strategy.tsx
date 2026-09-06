@@ -157,7 +157,7 @@ function StrategySection({ s, first, last, onPatch, onMove, onRemove, onAddAfter
             aria-label="Section body"
             value={s.body}
             rows={2}
-            placeholder="One line per decision. CAPS heads a group, Label — value, - for a list."
+            placeholder="One line per decision. CAPS heads a group, Label, value, - for a list."
             onChange={e => onPatch({ body: e.target.value })}
             onBlur={() => setEditing(false)}
           />

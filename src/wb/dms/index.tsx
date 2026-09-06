@@ -139,8 +139,8 @@ export function Dms({
         ? t => <DraftCard key={t.prospect_id} thread={t} onOpenThread={onOpenThread} refresh={refresh} />
         : undefined}
       emptyLine={
-        status === 'needs' ? 'Nothing waiting on you — replies land here, sends live in Sends'
-          : status === 'all' ? 'No conversations — replies land here, sends live in Sends'
+        status === 'needs' ? 'Nothing waiting on you, replies land here, sends live in Sends'
+          : status === 'all' ? 'No conversations, replies land here, sends live in Sends'
             : `No conversations in “${STATUS_LABEL[status]}”`
       }
     />

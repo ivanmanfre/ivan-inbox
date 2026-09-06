@@ -268,7 +268,7 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
     ? {
       title: approveUrl ? `Send this to the ${where} comment gate?` : `Copy this to post as ${where}?`,
       message: approveUrl
-        ? 'The poster’s rate caps, cooldown and jitter still decide. You get their answer on the card — no new tab.'
+        ? 'The poster’s rate caps, cooldown and jitter still decide. You get their answer on the card, no new tab.'
         : 'Nothing is posted by the system. The comment goes to your clipboard - paste it under the post from Mattan’s seat.',
       confirmText: approveUrl ? 'Approve & queue' : 'Approve & copy',
     }
@@ -386,7 +386,7 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
           const out = await postCommentReply(draft.id, body, tag)
           if (!out.posted) setError('Mattan already replied to this one, so nothing was posted. Card cleared.')
           else if (out.tagged && out.tagVerified === false) {
-            setError('Posted fine — but the tag rendered as plain text: LinkedIn would not resolve this profile for a mention (usually an out-of-network commenter with a hidden surname).')
+            setError('Posted fine, but the tag rendered as plain text: LinkedIn would not resolve this profile for a mention (usually an out-of-network commenter with a hidden surname).')
           }
         }
         refresh()
@@ -511,7 +511,7 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
               : 'Edit it first. Approve posts it live under their comment.')
         : isOutbound
           ? (approveUrl
-            ? 'A comment on their post, from your seat. Approve queues it here — caps, cooldown and jitter still decide.'
+            ? 'A comment on their post, from your seat. Approve queues it here, caps, cooldown and jitter still decide.'
             : 'A comment on their post, from Mattan’s seat. Approve copies it - you paste it on LinkedIn yourself.')
           : undefined
 

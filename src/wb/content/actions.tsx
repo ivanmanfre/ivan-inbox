@@ -56,11 +56,11 @@ export function ReviewActions({ id, onDone, demoteApprove }: {
   async function run(kind: 'approve' | 'skip') {
     const ok = await confirm(kind === 'approve' ? {
       title: 'Approve this draft?',
-      message: 'Marks approved. Nothing publishes — scheduling stays on the board.',
+      message: 'Marks approved. Nothing publishes, scheduling stays on the board.',
       confirmText: 'Approve',
     } : {
       title: 'Skip this draft?',
-      message: 'Marks it disqualified — it drops out of the queue for good.',
+      message: 'Marks it disqualified, it drops out of the queue for good.',
       confirmText: 'Skip',
       danger: true,
     })

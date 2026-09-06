@@ -109,7 +109,7 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
               <span className="a-ops-failf">
                 {drafts.length > 0 && loadedAt
                   ? `Showing what loaded ${relAge(loadedAt)}. It may be out of date.`
-                  : 'Nothing has loaded yet, so this is not an empty queue — it is an unread one.'}
+                  : 'Nothing has loaded yet, so this is not an empty queue, it is an unread one.'}
               </span>
             </>
           </Banner>
@@ -148,7 +148,7 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
                   // The panel's best line, and it earns its place here more than
                   // anywhere: this is the surface where "empty" and "broken" looked
                   // identical before.
-                  title="Nothing waiting on you — and this is a live read, not a stall."
+                  title="Nothing waiting on you, and this is a live read, not a stall."
                   sub={
                     <>
                       Comment replies, newsjacks, weekly reports and escalations all clear.
@@ -164,8 +164,8 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
                   {queue.waiting.length > 0 && (
                     <Banner tone={queue.cappedToday ? 'attention' : 'neutral'} icon={queue.cappedToday ? 'blocked' : 'time'}>
                       {queue.cappedToday
-                        ? `${queue.waiting.length} comment${queue.waiting.length === 1 ? '' : 's'} held — the poster hit its 3-a-day cap. They stay here for tomorrow.`
-                        : `${queue.waiting.length} comment${queue.waiting.length === 1 ? '' : 's'} queued here — the poster takes one at a time, so this retries the next as its window opens. Leave the tab open.`}
+                        ? `${queue.waiting.length} comment${queue.waiting.length === 1 ? '' : 's'} held, the poster hit its 3-a-day cap. They stay here for tomorrow.`
+                        : `${queue.waiting.length} comment${queue.waiting.length === 1 ? '' : 's'} queued here, the poster takes one at a time, so this retries the next as its window opens. Leave the tab open.`}
                     </Banner>
                   )}
                   {cards.map(d => (

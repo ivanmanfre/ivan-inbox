@@ -267,7 +267,7 @@ export function GroupRow({ g, open, onToggle, onOpen, onDismissAll, onDismissOne
 
           Edges rather than whole cards on purpose: a full-height copy has to
           be clipped to the front card's box, and the container that clips it
-          is the same one that draws the card's own border — so the pile either
+          is the same one that draws the card's own border, so the pile either
           disappeared inside it or escaped it. An edge needs no height to
           match. */}
       <AnimatePresence initial={false}>

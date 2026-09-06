@@ -73,7 +73,7 @@ export async function decodePeaks(blob: Blob, buckets = 28): Promise<number[] | 
 
 export type SttResult =
   | { kind: 'text'; text: string }
-  | { kind: 'silence' } // 422 no_speech_detected — "didn't catch that"
+  | { kind: 'silence' } // 422 no_speech_detected, "didn't catch that"
   | { kind: 'error'; message: string }
 
 type UseStt = {
@@ -94,7 +94,7 @@ type UseStt = {
 function errorCopy(status: number, code: string | undefined): string {
   if (status === 401) return 'Your session expired. Sign in again.'
   if (status === 403) return 'This mic is not enabled for this account.'
-  if (code === 'audio_too_short') return 'Too quick — hold it a beat longer.'
+  if (code === 'audio_too_short') return 'Too quick, hold it a beat longer.'
   if (status === 413) return 'That recording ran too long.'
   if (status === 502 || status === 504) return 'Transcription is slow right now. Try again.'
   if (status === 503) return 'Transcription is not configured server-side.'

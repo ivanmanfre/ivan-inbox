@@ -164,7 +164,7 @@ export function ContextSheet({ thread, onClose }: { thread: Thread; onClose: () 
                 }}
               />
               <span className="a-ctx-notefoot">
-                {noteState === 'saved' && <span className="a-mono a-dim">saved — drafts will use it</span>}
+                {noteState === 'saved' && <span className="a-mono a-dim">saved, drafts will use it</span>}
                 {noteState === 'error' && <span className="a-mono a-ctx-bad">save failed, retry</span>}
                 {(noteState === 'dirty' || noteState === 'saving' || noteState === 'error') && (
                   <Button

@@ -9,7 +9,7 @@
        always knows the thing exists (the silent clamp is what it replaced);
      · a CLAMP is not a fold: it shows the prose and stops, and it only draws a
        control when the text actually overflows;
-     · a status is a CHIP, and the tones are the system's three severities —
+     · a status is a CHIP, and the tones are the system's three severities ,
        a live gate refusal is a live signal, not a category.
    ========================================================================== */
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'

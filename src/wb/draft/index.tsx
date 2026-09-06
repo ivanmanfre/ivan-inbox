@@ -17,7 +17,7 @@
      │          │ decision bar pinned    │ Fields, on tabs  │
      └──────────┴────────────────────────┴──────────────────┘
 
-   Below 1180 it is ONE column in the takeover shell's deliberate order — the
+   Below 1180 it is ONE column in the takeover shell's deliberate order, the
    artifact, then its decision, then the evidence, then the queue LAST, because
    on a phone you arrived here by tapping a row and the list is one back-tap
    away; twelve sibling titles above the post is exactly the vertical scroll
@@ -279,12 +279,12 @@ function Body({ d, lane, queue, refresh, onClose, onPick, mobile }: {
     const ok = await confirm(kind === 'approve' ? {
       title: overriding ? 'Approve this draft anyway?' : 'Approve this draft?',
       message: overriding
-        ? 'QA refused this one. Approving overrides that verdict. Nothing publishes — scheduling is the separate act below.'
-        : 'Marks approved. Nothing publishes — scheduling is the separate act below.',
+        ? 'QA refused this one. Approving overrides that verdict. Nothing publishes, scheduling is the separate act below.'
+        : 'Marks approved. Nothing publishes, scheduling is the separate act below.',
       confirmText: 'Approve',
     } : {
       title: 'Skip this draft?',
-      message: 'Marks it disqualified — it drops out of the queue for good.',
+      message: 'Marks it disqualified, it drops out of the queue for good.',
       confirmText: 'Skip',
       danger: true,
     })
@@ -322,16 +322,16 @@ function Body({ d, lane, queue, refresh, onClose, onPick, mobile }: {
     const ok = await confirm(next ? {
       title: 'Put this on Mattan’s board?',
       message:
-        'Mattan sees it. This is the one action here that reaches a client — it fires his board’s '
+        'Mattan sees it. This is the one action here that reaches a client, it fires his board’s '
         + 'own sync, so it lands on his board within moments, not at some later batch. From there '
         + 'the decisions are his: approve, edit, veto, schedule. '
-        + 'Nothing publishes — this writes board visibility and never touches the publisher.',
+        + 'Nothing publishes, this writes board visibility and never touches the publisher.',
       confirmText: 'Put it on his board',
     } : {
       title: 'Take this off Mattan’s board?',
       message:
         'It goes back to our side only and disappears from his board on the same sync. Nothing is '
-        + 'deleted and no status changes — the draft stays here, and you can put it back.',
+        + 'deleted and no status changes, the draft stays here, and you can put it back.',
       confirmText: 'Take it off',
     })
     if (!ok) return
@@ -602,8 +602,8 @@ function Body({ d, lane, queue, refresh, onClose, onPick, mobile }: {
         {lane !== 'ivan' && !promotable && !unpromotable && (
           <p className="a-dw-note">
             {d.status === 'error'
-              ? `This one errored, and only a draft at Needs review can go on ${LANE_POSSESSIVE[lane]} board. Fix or regenerate it on our side first — nothing here reaches him.`
-              : `Not promotable at ${STAGE_LABEL[stage].toLowerCase()} — the database only promotes a draft that is still at Needs review.`}
+              ? `This one errored, and only a draft at Needs review can go on ${LANE_POSSESSIVE[lane]} board. Fix or regenerate it on our side first, nothing here reaches him.`
+              : `Not promotable at ${STAGE_LABEL[stage].toLowerCase()}, the database only promotes a draft that is still at Needs review.`}
           </p>
         )}
         {lane !== 'ivan' && !editable && (
@@ -641,7 +641,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick, mobile }: {
           </Button>
         )}
         {/* 🔴 The client-facing decision. It wears the same primary weight as
-            Ivan's Approve because it is the same gesture in his hands — but
+            Ivan's Approve because it is the same gesture in his hands, but
             never the same WORD, because this one is seen by a paying client and
             "Approve" would not say so. */}
         {promotable && (
@@ -759,7 +759,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick, mobile }: {
               </Block>
             )}
             {source.length === 0 && sourceIds.length === 0 && !detail && points.length === 0 && !d.description && (
-              <p className="a-dw-note">Pre-pipeline draft — no linked idea.</p>
+              <p className="a-dw-note">Pre-pipeline draft, no linked idea.</p>
             )}
           </>
         ),

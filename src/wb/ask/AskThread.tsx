@@ -64,7 +64,7 @@ export function errorCopy(message: string): string {
   for (const [re, plain] of ERROR_COPY) if (re.test(message)) return plain
   // Never leak a name he has not been introduced to, even from a string this
   // map has not seen.
-  return message.replace(/\bbrokers?\b/gi, 'Claude').replace(/\s+—\s+/g, '. ')
+  return message.replace(/\bbrokers?\b/gi, 'Claude').replace(/\s+,\s+/g, '. ')
 }
 
 /**

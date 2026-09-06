@@ -140,8 +140,8 @@ function BoardLinks() {
   }, [])
 
   const clients = [
-    { id: 'risedtc', label: 'Mattan — RISE DTC' },
-    { id: 'arch', label: 'Davorin — ARCH' },
+    { id: 'risedtc', label: 'Mattan, RISE DTC' },
+    { id: 'arch', label: 'Davorin, ARCH' },
   ]
   return (
     <SectionCard label="Content boards">
@@ -158,7 +158,7 @@ function BoardLinks() {
           >
             <span className="a-set-link-m">
               <span className="a-body-t a-ink">{label}</span>
-              <span className="a-meta">{b ? 'Client board — queue, drafts, schedule.' : 'Loading…'}</span>
+              <span className="a-meta">{b ? 'Client board, queue, drafts, schedule.' : 'Loading…'}</span>
             </span>
             <Icon name="external" size={16} />
           </a>
@@ -171,7 +171,7 @@ function BoardLinks() {
         rel="noreferrer"
       >
         <span className="a-set-link-m">
-          <span className="a-body-t a-ink">Ivan — my content</span>
+          <span className="a-body-t a-ink">Ivan, my content</span>
           <span className="a-meta">Dashboard content section.</span>
         </span>
         <Icon name="external" size={16} />

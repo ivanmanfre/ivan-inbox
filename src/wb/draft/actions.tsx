@@ -56,7 +56,7 @@ export function RegenDraft({ d, onDone, disabled }: {
       const p = await regenerateDraft(d as unknown as ContentDraft, withImage)
       setNote(
         `Firing ${p.postFormat}${p.includeImage === 'Yes' ? ' with a new image' : ' (copy only)'}. `
-        + `The run takes minutes — the row sits in Generating until it lands.`,
+        + `The run takes minutes, the row sits in Generating until it lands.`,
       )
       setAsking(false)
       onDone()
@@ -124,7 +124,7 @@ export function RestartDraft({ d, onDone, disabled }: {
     try {
       const did = await restartDraftToIdea(d, confirm)
       if (did) {
-        setNote('Back at Idea. The pipeline re-derives it from there — the row sits at Idea until it does.')
+        setNote('Back at Idea. The pipeline re-derives it from there, the row sits at Idea until it does.')
         onDone()
       }
     } catch (e) {
@@ -173,7 +173,7 @@ export function ScheduleDraft({ d, onDone }: { d: ContentDraftDetail; onDone: ()
     const ok = await confirm({
       title: already ? 'Move this post?' : 'Put this post on LinkedIn?',
       message: `The publisher reads status='scheduled' and posts it at ${at.toLocaleString()}. `
-        + 'This is not an internal mark — it arms the bridge that publishes.',
+        + 'This is not an internal mark, it arms the bridge that publishes.',
       confirmText: already ? 'Reschedule' : 'Schedule it',
     })
     if (!ok) return

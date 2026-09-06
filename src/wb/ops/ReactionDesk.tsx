@@ -10,7 +10,7 @@
    identified 14 of 14 as machine-written. The artifact and the evidence are
    automated; the answer is typed here.
 
-   Direction A's move: the four controversy counts become a LEDGER — one ruled
+   Direction A's move: the four controversy counts become a LEDGER, one ruled
    block of cells sharing a baseline, each number under its own predicate — and
    an absent count is SAID ("No reading"), never drawn as a dash.
    ========================================================================== */
@@ -85,7 +85,7 @@ function ReactionCard({ row, body, busy, nextSlot, onBody, onKill, onApprove }: 
   // The refusal says which rule refused, rather than a dead button.
   const why = ready
     ? (row.lane === 'risedtc'
-      ? 'Puts it on Mattan’s board for his call — it does not schedule or publish'
+      ? 'Puts it on Mattan’s board for his call, it does not schedule or publish'
       : `Schedules for ${slotLabel(nextSlot)}`)
     : 'Write the reaction first'
 
@@ -124,7 +124,7 @@ function ReactionCard({ row, body, busy, nextSlot, onBody, onKill, onApprove }: 
         {/* The take, verbatim. Never summarised: what he is answering IS these
             words, and a paraphrase would quietly change the target.
 
-            The RISE lane does not store the tweet's own text — its grader keeps
+            The RISE lane does not store the tweet's own text, its grader keeps
             the ANGLE it proposed instead. That is shown, labelled as the angle,
             because presenting a graded line as if it were the source's words is
             the same misattribution in a smaller font. The screenshot below
@@ -154,7 +154,7 @@ function ReactionCard({ row, body, busy, nextSlot, onBody, onKill, onApprove }: 
             must never be dressed up as "shot pending". */}
         {row.shot_url
           ? <img className="a-ops-shot" src={row.shot_url} alt="Screenshot of the post being answered" />
-          : <div className="a-meta a-dim">No screenshot captured yet — approving posts the text alone.</div>}
+          : <div className="a-meta a-dim">No screenshot captured yet, approving posts the text alone.</div>}
 
         <Textarea
           label="Your reaction"
@@ -199,7 +199,7 @@ export function ReactionDesk({ rx }: { rx: ReactionsState }) {
         <Banner tone="clear" icon="check">
           {rx.done.lane === 'risedtc'
             ? 'On Mattan’s board, waiting on him. Nothing is dated and nothing is armed.'
-            : `Scheduled for ${slotLabel(rx.done.scheduledAt)}. It is a draft on the calendar, not a publish — edit it in Content like any other post.`}
+            : `Scheduled for ${slotLabel(rx.done.scheduledAt)}. It is a draft on the calendar, not a publish, edit it in Content like any other post.`}
         </Banner>
       )}
       {rx.rows.map(r => (

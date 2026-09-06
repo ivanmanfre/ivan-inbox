@@ -89,10 +89,10 @@ export function ChatLink({ chatProviderId, url, name, quiet }: {
       rel="noreferrer"
       onClick={copy}
       title={state === 'fail'
-        ? `Copy failed — right-click to copy this link: ${link.href}`
+        ? `Copy failed, right-click to copy this link: ${link.href}`
         : link.isChat
           ? `Copy the LinkedIn chat with ${name}, to hand it over\n${link.href}`
-          : `No LinkedIn chat with ${name} yet — this is their profile\n${link.href}`}
+          : `No LinkedIn chat with ${name} yet, this is their profile\n${link.href}`}
     >
       <Icon name="copy" size={16} />
       {state === 'done' ? 'copied' : state === 'fail' ? 'copy failed' : label}

@@ -469,7 +469,7 @@ function Funnel({ accept, scans, outcomes, client }: {
       <div className="a-sends-cap">
         30d · accepted {acc30}/{sent30} · scan opens 7d {opens7} / 30d {opens30} · {distinct} prospects{lastOpen ? ` · last ${ago(lastOpen)}` : ''}
       </div>
-      <div className="a-sends-cap">Ivan scope counts the warm-lane era only (since 07-11); Rise counts full history. Recent sends are still maturing — accept rate only rises.</div>
+      <div className="a-sends-cap">Ivan scope counts the warm-lane era only (since 07-11); Rise counts full history. Recent sends are still maturing, accept rate only rises.</div>
     </Section>
   )
 }
@@ -677,7 +677,7 @@ function RangeSummary({ range, client }: { range: DateRange; client: Client }) {
             { id: 'convos', n: convos, label: 'Convos' },
             { id: 'calls', n: calls, label: 'Calls' },
           ]} />
-          <div className="a-sends-cap">Exact range, no era cutoff — accepts counted on the notes sent inside it.</div>
+          <div className="a-sends-cap">Exact range, no era cutoff, accepts counted on the notes sent inside it.</div>
         </>
       )}
     </Section>
@@ -763,7 +763,7 @@ function GovGauge({ g }: { g: GovernorRow }) {
         </span>
         <span className="a-sends-gline">cap {g.cap} <Sep />{cohortStr}</span>
         {gated && (
-          <span className="a-sends-gline a-sev-attention">governor counter {g.gov_used}/{g.gov_cap} (shared) — cold sends gated</span>
+          <span className="a-sends-gline a-sev-attention">governor counter {g.gov_used}/{g.gov_cap} (shared), cold sends gated</span>
         )}
         {g.daily_cap > 0 && (
           <>
@@ -1080,7 +1080,7 @@ export function OverviewView({ client, timeframe, setClient, range = null }: {
   // S43-3: the first load echoes the shape of the lane cards that replace it.
   if (loading && !data) return <Body><SendsSkeleton /></Body>
   if (error) return <Body><div className="a-sends-load">{error}</div></Body>
-  if (!data) return <Body><div className="a-sends-load">No data yet — the call returned, it just had nothing in it.</div></Body>
+  if (!data) return <Body><div className="a-sends-load">No data yet, the call returned, it just had nothing in it.</div></Body>
 
   const lanes = buildLanes(data.rows, data.daily, client)
 

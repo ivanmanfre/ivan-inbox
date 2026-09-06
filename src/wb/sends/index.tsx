@@ -239,7 +239,7 @@ function LogView({ client }: { client: Client }) {
   if (items.length === 0) {
     return (
       <Body>
-        <EmptyState icon="sends" title="No send activity yet — a verified zero, not a failed load." />
+        <EmptyState icon="sends" title="No send activity yet, a verified zero, not a failed load." />
       </Body>
     )
   }
@@ -341,7 +341,7 @@ function LaneDetail({ lane, client, onBack }: {
         ) : error ? (
           <EmptyState icon="error" title={error} />
         ) : rows.length === 0 ? (
-          <EmptyState icon="sends" title="No sends in this lane yet — a verified zero, not a failed load." />
+          <EmptyState icon="sends" title="No sends in this lane yet, a verified zero, not a failed load." />
         ) : (
           <Group label="Recent sends" tail={`${rows.length}`}>
             <Rows>
@@ -401,7 +401,7 @@ function InboundDetail({ lane, client, onBack }: {
           <EmptyState
             icon="sends"
             title={lane.status === 'off'
-              ? 'Nothing recorded for this client. Either nothing has come in, or the lane was never armed here — the data cannot tell those apart yet.'
+              ? 'Nothing recorded for this client. Either nothing has come in, or the lane was never armed here, the data cannot tell those apart yet.'
               : 'No decisions in this lane yet, a verified zero rather than a failed load.'}
           />
         ) : (

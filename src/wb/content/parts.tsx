@@ -37,7 +37,7 @@ export function Failed({ what, message, onRetry, loadedAt, children }: {
         <span className="a-dim">
           {loadedAt
             ? `Showing what loaded ${relAge(loadedAt)}. It may be out of date.`
-            : 'Nothing has loaded yet, so this is not an empty queue — it is an unread one.'}
+            : 'Nothing has loaded yet, so this is not an empty queue, it is an unread one.'}
         </span>
         {children}
       </span>
@@ -71,7 +71,7 @@ export function FilteredEmpty({ noun, onClear }: { noun: string; onClear: () => 
     <EmptyState
       icon="filter"
       title={`No ${noun} match this filter.`}
-      sub="The lane is not empty — the filter is."
+      sub="The lane is not empty, the filter is."
       action={<Button variant="quiet" size="sm" icon="clear" onClick={onClear}>Clear the filter</Button>}
     />
   )

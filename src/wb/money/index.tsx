@@ -3,7 +3,7 @@
 
    MONEY — goal-run money-truth-2026-09-01, rebuilt for the revamp.
 
-   A whole-canvas reading surface (Job = 'money'; not a list job — nothing here
+   A whole-canvas reading surface (Job = 'money'; not a list job, nothing here
    hands a row to a peer). Its whole reason to exist is that every number on it
    is walked back to where it came from. That rule is enforced STRUCTURALLY, not
    by convention, and this rebuild keeps the structure byte for byte:

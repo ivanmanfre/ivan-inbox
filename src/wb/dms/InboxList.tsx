@@ -129,11 +129,11 @@ const CHIPS: { key: Filter; label: string }[] = [
 // The list holds CONVERSATIONS (send echoes moved to Sends), so an empty lane
 // says exactly that instead of implying nothing was ever sent.
 const EMPTY: Record<Filter, string> = {
-  all: 'No conversations — replies land here, sends live in Sends',
-  ivan: 'No Ivan conversations — sends live in Sends',
-  risedtc: 'No Rise conversations — sends live in Sends',
-  arch: 'No Arch conversations — the reply detector for Davorin’s seat is not armed yet',
-  email: 'No email conversations — sends live in Sends',
+  all: 'No conversations, replies land here, sends live in Sends',
+  ivan: 'No Ivan conversations, sends live in Sends',
+  risedtc: 'No Rise conversations, sends live in Sends',
+  arch: 'No Arch conversations, the reply detector for Davorin’s seat is not armed yet',
+  email: 'No email conversations, sends live in Sends',
 }
 
 // The honest-empty register. "No threads yet" and "the fetch failed" rendered
@@ -299,7 +299,7 @@ export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, o
 
       <Body innerRef={rowsRef} className="a-dms-body">
         <PullMark pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
-        {/* With a status axis present, "drafts" is one of the statuses — a banner
+        {/* With a status axis present, "drafts" is one of the statuses, a banner
             pointing at a separate screen would be pointing at this one. */}
         {status === undefined && draftTotal > 0 && (
           <Banner

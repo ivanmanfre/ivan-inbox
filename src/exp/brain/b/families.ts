@@ -73,7 +73,7 @@ export function familyLabel(family: string): string {
 // ---------------------------------------------------------------------------
 export const FAMILY_LANE: Record<FamilyKey, Job | null> = {
   reply_draft_pending: 'dms',
-  system_infra_alarm: null, // "claude" in the source doc — no Job for it here, see below
+  system_infra_alarm: null, // "claude" in the source doc, no Job for it here, see below
   outreach_engine_ops: 'sends',
   post_generation_failed: 'content',
   content_board_activity: 'content',
