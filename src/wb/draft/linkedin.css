@@ -1,26 +1,19 @@
 /* ==========================================================================
    src/wb/draft/linkedin.css — the post preview, restored.
 
-   W6 task 1 deleted the nine workbench sheets; `src/exp/v2c/styles.css` was one
-   of them and it held every `.li-` rule. LinkedInPost.tsx moved to this folder
-   and its stylesheet did not, so the preview shipped UNSTYLED: no white card,
-   no measure, and inherited black text on the dark canvas (E8 measured the
-   author line and the body at 1.07:1 on S16 at both widths).
-
-   Ported from styles.css:1208-1284 with every ratio the reference owns kept.
-   The `.wb.wb.wb` prefix the original carried is dropped: it existed to outrank
-   the sheets this wave deleted, and nothing outranks these rules now.
-
-   Colours and type sizes are `--li-*` (src/ds/tokens.css, "the LinkedIn
-   simulacrum"): they depict another product, so they are content rather than
-   palette, and they do not invert with the theme. Everything that is OURS --
-   spacing, radii, tap floor -- is a design-system token.
+   W6 task 1 deleted `src/exp/v2c/styles.css`, which held every `.li-` rule,
+   while LinkedInPost.tsx moved to this folder without its sheet: the preview
+   shipped UNSTYLED, inheriting black text on the dark canvas (E8 read the
+   author line at 1.07:1 on S16). Ported from styles.css:1208-1284, every ratio
+   the reference owns kept, `.wb.wb.wb` dropped with the sheets it outranked.
+   Colours and type sizes are `--li-*` (tokens.css, "the LinkedIn simulacrum"):
+   a depiction of another product, content rather than palette, which is why
+   they do not invert. Spacing, radii and the tap floor are ours.
    ========================================================================== */
 
-/* Centred inside the column rather than filling it: at 640 the preview ran to
-   1,189px against an 850px viewport and put the reaction bar below the fold on
-   the one surface whose job is "the post as it will appear". The gutter
-   survives at 390, where the cap never binds. */
+/* Centred, not filling: at 640 the preview ran 1,189px against an 850px
+   viewport and put the reaction bar below the fold on the one surface whose
+   job is "the post as it will appear". The gutter survives at 390. */
 .li-card{
   max-width:520px; width:calc(100% - var(--ds-s8)); margin:0 auto;
   background:var(--li-card);
@@ -44,8 +37,7 @@
 .li-hl{ font-size:var(--li-fs-meta); color:var(--li-ink-3) }
 .li-when{ font-size:var(--li-fs-meta); color:var(--li-ink-4); display:flex; align-items:center; gap:var(--ds-s1) }
 
-/* ONE declaration, shared by the read div and the textarea: that is what makes
-   the field land exactly where the words already were. */
+/* ONE declaration, read div and textarea: the field lands where the words were. */
 .li-body,
 .li-ta{
   font-family:inherit; font-size:var(--li-fs-body); line-height:1.58;
@@ -58,8 +50,7 @@
   border-left:2px solid var(--li-brand); padding-left:var(--ds-s3); margin-left:calc(var(--ds-s3) * -1);
 }
 .li-ta:disabled{ opacity:.6 }
-/* An empty body is still a tap target: on a row with no promo copy the
-   clickable div measured 586x20. A control you can press has to be pressable. */
+/* An empty body is still a tap target: it measured 586x20 on a row with no copy. */
 .li-body-edit{
   cursor:text; border-radius:var(--ds-r1);
   margin-inline:calc(var(--ds-s2) * -1); padding-inline:var(--ds-s2);
@@ -70,10 +61,8 @@
 .li-tok{ color:var(--li-brand); font-weight:var(--ds-fw-semi) }
 .li-empty{ color:var(--li-ink-5) }
 
-/* The photo is CAPPED, and it is `contain`, not `cover`: cover at 260px cut a
-   face in half, and the question this surface exists to answer about a photo is
-   "is it the right one". The letterbox is the neutral the reference puts behind
-   an image that does not fill its frame. */
+/* CAPPED, and `contain` not `cover`: cover at 260px cut a face in half, and the
+   question about a photo here is "is it the right one". */
 .li-media{ width:100%; background:var(--li-media); overflow:hidden; max-height:260px }
 .li-media img{ width:100%; display:block; object-fit:contain; max-height:260px }
 
@@ -94,15 +83,13 @@
 }
 .li-act svg{ width:15px; height:15px }
 @media (max-width:430px){
-  /* Four labelled actions do not fit 390 minus gutters; the reference's own
-     preview drops the labels rather than truncating them. */
+  /* Four labelled actions do not fit 390; the reference drops the labels too. */
   .li-bar{ justify-content:space-around }
   .li-act{ font-size:0; gap:0 }
   .li-act svg{ width:19px; height:19px }
 }
 
-/* The in-card edit bar sits INSIDE the white artifact, so save and cancel
-   belong visibly to the words they act on. */
+/* The edit bar sits INSIDE the artifact: save and cancel belong to the words. */
 .li-editbar{
   display:flex; align-items:center; flex-wrap:wrap; gap:var(--ds-s3);
   margin:0 0 var(--ds-s5); padding-top:var(--ds-s3);

@@ -334,36 +334,24 @@
   .a-dms-rowhost > .a-row.r > .a-row-tail > .a-mono{ flex:0 0 auto }
 }
 
-/* --------------------------------------------------------------------------
-   THE LIST COLUMN IS A PHONE-WIDTH COLUMN ON A DESKTOP. W6.
-
-   With a thread or the Ask pane open, `.wb-work.list` is pinned at
-   `--ds-peer-w` (420px) at every desktop width. The row inside it is the same
-   row the 1440 list renders full-bleed, so none of the `max-width:767px` rules
-   above reach it -- and 420px is TIGHTER than the phone, because the phone row
-   is allowed to break onto a second line and this one is not. Measured at 2560
-   with a thread open: main column 108px, of which the two pills took 60 and
-   the name got 48. The floor and the yielding tail from the phone block are
-   restated here against the container instead of the viewport, and the copy
-   link steps aside for the same reason it does at 390.
-   -------------------------------------------------------------------------- */
+/* THE LIST COLUMN IS A PHONE-WIDTH COLUMN ON A DESKTOP. With a thread or the
+   Ask pane open, `.wb-work.list` is pinned at 420px at every desktop width, so
+   no `max-width:767px` rule above reaches it -- and 420 is TIGHTER than the
+   phone, whose row may break onto a second line where this one may not.
+   Measured at 2560 with a thread open: main column 108px, two pills took 60,
+   the name got 48. The phone's floor and yielding tail, restated against the
+   container instead of the viewport. */
 .wb-work.list .a-dms-rowhost > .a-row.a-row.a-row.a-row.r{ gap:var(--ds-s2) }
 .wb-work.list .a-dms-rowhost > .a-row.r > .a-row-main{ flex:1 1 auto; min-width:55% }
 .wb-work.list .a-dms-rowhost > .a-row.r > .a-row-tail{ flex:0 1 auto; min-width:var(--ds-s9); overflow:hidden }
 .wb-work.list .a-dms-rowhost > .a-row.r > .a-row-tail > .a-mono{ flex:0 0 auto }
 .wb-work.list .a-dms-tagact{ display:none }
 
-/* --------------------------------------------------------------------------
-   THE PHONE ROW SAYS THE NAME. D27, and the second half of the fix above.
-
-   With the name given a floor, the lane and channel pills beside it became the
-   thing that gets sheared: the 390 shot reads `Puneet Na...  RIS  DM` with the
-   pills cut mid-word and the timestamp painted over them. Both pills restate
-   the lane strip directly above this list, which is a permanent control on this
-   viewport -- so on the phone they come off the line entirely and the name and
-   the newest message get the width back. Nothing is lost: the lane is on the
-   filter row, the channel is in the thread's own header.
-   -------------------------------------------------------------------------- */
+/* THE PHONE ROW SAYS THE NAME. D27's second half. With the name floored, the
+   pills became what got sheared: `Puneet Na...  RIS  DM`, both cut mid-word
+   with the timestamp painted over them. They restate the lane strip directly
+   above this list, permanent on this viewport, so on the phone they come off
+   the line and the name and the newest message take the width back. */
 @media (max-width:767px){
   .a-dms-titleline [data-ds='Chip']{ display:none }
   .a-dms-titleline > :first-child{ min-width:0 }

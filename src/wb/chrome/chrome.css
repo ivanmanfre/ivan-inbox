@@ -270,15 +270,12 @@
     max-width:var(--ds-measure); width:100%;
     margin-left:auto; margin-right:auto;
   }
-  /* AND THE CAP LETS THE FLOATING LAYER GO. `> *` is right for the column's
-     in-flow blocks and WRONG for the overlays that happen to be mounted in it:
-     `.ds-scrim` and `.ds-dialog-wrap` are `position:fixed; inset:0` and the cap
-     shrank them to 1240px, so at 2560 the command palette dimmed a 1,240px
-     stripe of the screen and left the rail and both margins lit. Measured:
-     scrim x=660 w=1240 against a 2560 viewport. A fixed overlay is sized by the
-     viewport, never by the measure; only what is READ takes the measure.
-     A new overlay class is capped until it is named here, which is the failure
-     direction that shows itself in a shot. */
+  /* AND THE CAP LETS THE FLOATING LAYER GO. `.ds-scrim` and `.ds-dialog-wrap`
+     are `position:fixed; inset:0`; the cap shrank them to 1240px, so at 2560
+     the palette dimmed a stripe and left the rail lit (scrim x=660 w=1240 on a
+     2560 viewport). A fixed overlay is sized by the viewport; only what is READ
+     takes the measure. A new overlay class is capped until it is named here,
+     which is the failure direction a shot shows. */
   .wb.dt .wb-work.wide > .ds-scrim,
   .wb.dt .wb-work.wide > .ds-dialog-wrap,
   .wb.dt .wb-work.wide > .a-tk-scrim,
@@ -287,18 +284,11 @@
     max-width:none; width:auto;
     margin-left:0; margin-right:0;
   }
-  /* The bulk bar and the toast stack are fixed too, and they already carry a
-     width of their own (`min(720px, 100% - s8)`, centred). The cap's
-     `width:100%` outranked it at three classes and inflated the bar to the full
-     1,240px measure: the S24 shot is a 720px bar's contents strung across a
-     1,240px box. They keep their own width.
-
-     They also stop being VIEWPORT-fixed here and become column-absolute. Fixed,
-     they centre on 2560/2 while the rows they act on centre on the plate right
-     of the rail: the re-shot S24 put a 720px bar 127px to the left of the table
-     whose selection it reports. Absolute inside the (now relative) column, the
-     bar and the rows share one centre. Only inside this query, so the 1440
-     reference shots are untouched. */
+  /* The bar and the toast stack carry their own width (`min(720px, 100% - s8)`)
+     and the cap's `width:100%` outranked it, strewing a 720px bar across 1,240.
+     They also become column-absolute: fixed, they centre on 2560/2 while the
+     rows they act on centre on the plate right of the rail, which put the bar
+     127px left of its own table. Only inside this query, so 1440 is untouched. */
   .wb.dt .wb-work.wide{ position:relative }
   .wb.dt .wb-work.wide > .ds-bulkbar,
   .wb.dt .wb-work.wide > .ds-toast-stack{
@@ -306,16 +296,11 @@
     max-width:none;
     width:min(720px, calc(100% - var(--ds-s8)));
   }
-  /* THE BOTTOM SHEET IS A PHONE FORM ON A 2560 PLATE. `.ds-sheet` is
-     `left:0; right:0`, so the push-later and context sheets ran the full 2,560
-     with their rows pinned to the left 760px and the Cancel button centred on
-     the viewport: one panel, two alignments, and it painted over the rail. It
-     keeps the measure and centres, the same rule the column reads by.
-
-     It is written WITHOUT the `.wb` prefix on purpose: the Sheet primitive
-     mounts against the document, not inside the shell tree, so a shell-scoped
-     selector never reaches it -- which is why the first attempt left the sheet
-     full-bleed in the re-shot S20. */
+  /* THE BOTTOM SHEET IS A PHONE FORM ON A 2560 PLATE. `left:0; right:0` ran
+     push-later and context the full 2,560 with rows pinned left and Cancel
+     centred on the viewport -- one panel, two alignments, over the rail. No
+     `.wb` prefix: the Sheet mounts against the document, so a shell-scoped
+     selector never reaches it, which is what the first attempt proved. */
   .ds-sheet{
     max-width:var(--ds-measure);
     margin-inline:auto;

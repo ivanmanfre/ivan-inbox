@@ -67,23 +67,18 @@ body.ds-body{
    the body ink. Measured on the strategy section title: the computed value was
    --ds-text-3 where the token says --ds-text. Restated at the same specificity
    so the field's own colour wins again. */
-/* W6: the `.ds-body ` prefix was the bug, not the fix. `ds-body` is a class on
-   ONE div (the phone takeover); nothing puts it on <body>, so this rule and the
-   focus ring below never applied to the app at all -- the same shape as W1's
-   serif hotfix (D19), found the same way, by an instrument reaching further.
-   `.ds-input` and `.ds-textarea` are design-system classes stock never uses, so
-   the prefix can simply go. */
+/* W6: the `.ds-body ` prefix was the bug. `ds-body` is a class on ONE div (the
+   phone takeover); nothing puts it on <body>, so this and the ring below never
+   applied at all -- W1's serif hotfix (D19) again. `.ds-input` and
+   `.ds-textarea` are ds classes stock never uses, so the prefix can just go. */
 .ds-input, .ds-textarea{ color:var(--ds-text) }
 
 .ds-body ::selection{ background:var(--ds-accent-soft) }
 
-/* THE FOCUS RING, ON THE DOCUMENT. Written at `.ds-body ` it reached nothing:
-   E8 counted 27 focusables that showed no ring on Tab across the twelve
-   surfaces (every search field, both Ops textareas). It is scoped to `body`
-   now, which also covers the overlays the Sheet and Dialog mount outside the
-   shell tree. Stock is inside that scope and is NOT moved by it: a ring paints
-   only while a control holds keyboard focus, and stock-diff shoots an
-   unfocused document. */
+/* THE FOCUS RING, ON THE DOCUMENT. At `.ds-body ` it reached nothing: E8 found
+   27 focusables with no ring on Tab. `body` also covers the overlays Sheet and
+   Dialog mount outside the shell tree. Stock is inside that scope and unmoved:
+   a ring paints only under keyboard focus, and stock-diff shoots unfocused. */
 body :focus{ outline:none }
 body :focus-visible{
   outline:2px solid var(--ds-accent-ring);
@@ -679,18 +674,13 @@ body :focus-visible{
   transition:box-shadow var(--ds-dur-hover) var(--ds-ease),
              background-color var(--ds-dur-hover) var(--ds-ease);
 }
-/* THE RING IS ON THE CONTROL, NOT ON ITS BOX. W6, D26's routed leftover.
-   The wrap took the focus signal and the input inside it was told
-   `outline:none`, so the ring a reader sees belonged to a DIV that never takes
-   focus: E8 tabbed into every search field on the twelve surfaces and measured
-   no change on the control itself, 27 times. The field keeps the wrap's tint as
-   a state. Drawing it on the INPUT was tried first and the wrap clips: at any
-   offset that cleared the text the ring was sheared to a sliver of one arc
-   (shots-probe/focus-ring-1440.png). So the ring stays on the wrap, where it is
-   whole, and it is the ring token at 2px rather than the hairline tint -- the
-   reader gets a focus signal that is unmistakably a focus signal. The gate now
-   credits a ring painted by a composite control's own wrapper; a bare control
-   still has to paint its own. */
+/* THE FOCUS RING IS THE WRAP'S, AND IT IS A RING NOW. D26's routed leftover.
+   Drawing it on the INPUT was tried first: the wrap clips, so at any offset
+   clearing the text the ring was sheared to a sliver of one arc
+   (shots-probe/focus-ring-1440.png). It stays on the wrap, where it is whole,
+   at the ring token and 2px rather than a hairline tint. The gate now credits a
+   ring painted by a composite control's own wrapper; a bare control still has
+   to paint its own. */
 .ds-input-wrap:focus-within{
   background:var(--ds-surface-3);
   box-shadow:inset 0 0 0 2px var(--ds-accent-ring);
@@ -747,8 +737,10 @@ body :focus-visible{
 .ds-composer-input::placeholder{ color:var(--ds-text-4) }
 .ds-composer-input:focus-visible{ outline:none }
 /* Same composite as the input wrap: the ring belongs to the box the reader
-   sees, and the field inside it is transparent and borderless. */
-.ds-composer:focus-within{ box-shadow:inset 0 0 0 2px var(--ds-accent-ring) }
+   sees -- the BAR, which is the rounded box around the field, not the composer
+   block that also holds the tray -- and the field inside it is transparent and
+   borderless. */
+.ds-composer-bar:focus-within{ box-shadow:inset 0 0 0 2px var(--ds-accent-ring) }
 .ds-composer-note{ padding:var(--ds-s0) var(--ds-s3) }
 /* the level meter drawn while dictating: deterministic bars, never random */
 .ds-level{ display:flex; align-items:center; gap:2px; height:20px }
@@ -1174,11 +1166,10 @@ body :focus-visible{
    in this sheet. MotionConfig reducedMotion="user" does the same for the
    motion components, so the two halves of the system stop together.
    ========================================================================== */
-/* Same dead scope as the focus ring, and the more expensive one: E8 measured
-   166 live transitions still running under `prefers-reduced-motion: reduce` on
-   twelve surfaces, `.ds-tab`'s 120ms colour among them. On `body` it reaches
-   the document, overlays included. Stock is unmoved: nothing screenshots with
-   reduced motion, and honouring the preference is not a regression. */
+/* Same dead scope, and the more expensive one: 166 live transitions still ran
+   under `prefers-reduced-motion: reduce` on twelve surfaces. Stock is unmoved:
+   nothing screenshots reduced, and honouring the preference is not a
+   regression. */
 @media (prefers-reduced-motion: reduce){
   body, body *, body *::before, body *::after{
     transition-duration:0ms !important;

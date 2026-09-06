@@ -52,14 +52,12 @@
   --ds-text:#FFFFFF;
   --ds-text-2:#C7C7C7;
   --ds-text-3:#949494;
-  /* Step 4 was #6E6E6E and E8 measured it at 3.84:1 on the canvas carrying the
-     Settings build line -- D24's leftover, the token itself rather than the one
-     screen. It moves to the darkest value that clears 4.5 on the two beds it
-     actually sits on (canvas 5.97, surface-1 5.03). It cannot clear surface-3:
-     that needs >= #9E9E9E, which is LIGHTER than step 3, so a four-step ink
-     ladder and 4.5:1 on the deepest surface are mutually exclusive here. Step 4
-     is therefore canvas-and-surface-1 ink, and E8 is what holds anything from
-     placing it deeper. */
+  /* Step 4 was #6E6E6E, measured at 3.84:1 on the canvas under the Settings
+     build line (D24's leftover: the token, not the one screen). It takes the
+     darkest value clearing 4.5 on the two beds it sits on (canvas 5.97,
+     surface-1 5.03). Surface-3 would need >= #9E9E9E, LIGHTER than step 3, so
+     four ink steps and 4.5 on the deepest surface are mutually exclusive here;
+     step 4 is canvas-and-surface-1 ink and E8 holds it there. */
   --ds-text-4:#8E8E8E;
 
   /* 1.5 THE ONE ACCENT. Budget (design-elevation E4, SYSTEM.md §1):
@@ -80,13 +78,11 @@
   --ds-sev-clear:#10A37F;
   --ds-sev-attention:#FF9F0A;
   --ds-sev-urgent:#FF453A;
-  /* A SEVERITY HAS A FILL AND AN INK, the same split the accent already makes.
-     The three above are FILLS, tuned on the dark ground the system anchors to,
-     and on light they carry text at 3.2 (clear), 3.41 (urgent) and 2.06
-     (attention) -- 279 contrast misses on twelve surfaces, which is what the
-     first light-theme E8 run ever measured. Dark keeps the fill as its ink; the
-     light block below darkens the ink and leaves the fill alone, so a dot, a
-     bar and a banner tint are unchanged and only the WORDS move. */
+  /* A SEVERITY HAS A FILL AND AN INK, the split the accent already makes. The
+     three above are FILLS, tuned on dark; on light they carried text at 3.2,
+     3.41 and 2.06 -- 279 misses on twelve surfaces, the first light E8 ever
+     run. Dark keeps the fill as its ink; light darkens the ink only, so dots,
+     bars and banner tints are unchanged and only the WORDS move. */
   --ds-sev-clear-ui:#10A37F;
   --ds-sev-attention-ui:#FF9F0A;
   --ds-sev-urgent-ui:#FF453A;
@@ -240,10 +236,8 @@
   --ds-text-3:#5C5C5A;
   --ds-text-4:#5F5F5D;
   /* Lime cannot carry a glyph on white (1.4:1). The FILL keeps #B8FF66 with an
-     ink label (14.97:1, theme-proof); the GLYPH form darkens. #5A8A00 was
-     4.14:1 -- under the bar on every surface, and E8 counted 29 links and day
-     numbers reading at it. #4A7000 clears 4.5 on all four (5.82 on white,
-     4.53 on surface-3). */
+     ink label; the GLYPH form darkens. #5A8A00 read 4.14 on every surface (29
+     links and day numbers); #4A7000 clears 4.5 on all four. */
   --ds-accent-ui:#4A7000;
   --ds-accent-soft:rgba(74,112,0,.14);
   --ds-accent-line:rgba(74,112,0,.30);
@@ -340,20 +334,14 @@
 }
 
 /* ==========================================================================
-   THE LINKEDIN SIMULACRUM (Phase 3 W6). NOT part of the design system.
-
-   The draft window's preview answers one question: "what will this look like
-   on LinkedIn". Its colours and its type sizes are therefore a DEPICTION OF
-   ANOTHER PRODUCT, the same class of thing as the photo inside it -- they are
-   content, not palette, and repainting them in our inks would make the preview
-   a lie. They live here because tokens.css is the one file the colour gate
-   exempts, so the sheet that uses them (src/wb/draft/linkedin.css) can stay
-   var()-only and the literals stay named, counted and in one place.
-
-   They do NOT invert with the theme: LinkedIn is white in a dark app too.
-   Values recovered from src/exp/v2c/styles.css:1208-1284, the sheet W6 deleted
-   -- deleting it took every .li- rule with it and left the preview unstyled
-   (black inherited text on the dark canvas, measured at 1.07:1 by E8 on S16).
+   THE LINKEDIN SIMULACRUM (Phase 3 W6). NOT part of the design system: a
+   DEPICTION OF ANOTHER PRODUCT, the same class of thing as the photo inside
+   it, so repainting it in our inks would make the preview a lie. It lives here
+   because tokens.css is the one file the colour gate exempts, which keeps
+   src/wb/draft/linkedin.css var()-only and the literals named and counted. It
+   does NOT invert: LinkedIn is white in a dark app too. Recovered from
+   styles.css:1208-1284, the sheet W6 deleted -- taking every .li- rule with it
+   and leaving the preview unstyled at 1.07:1 (E8, S16).
    ========================================================================== */
 :root{
   --li-card:#FFFFFF;
