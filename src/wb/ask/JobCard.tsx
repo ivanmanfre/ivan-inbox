@@ -145,7 +145,10 @@ export function JobCard({ job, focused, onCancel, onOpenReport }: {
       <div className="a-wrapline">
         {open && (
           <Button
-            variant="quiet" size="sm" icon="stop" busy={stopping}
+            // `stop`'s glyph is a filled square, and a square to the left of a
+            // word reads as an unchecked box on a row of them. `close` is the
+            // same meaning without the false affordance.
+            variant="quiet" size="sm" icon="close" busy={stopping}
             onClick={() => { setStopping(true); onCancel(job.id) }}
           >Cancel</Button>
         )}

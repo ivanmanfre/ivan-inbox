@@ -235,16 +235,21 @@ export function RunnerSection({ runner }: { runner: RunnerHandle }) {
   const [open, setOpen] = useState(true)
   const jobs = runner.jobs
   if (jobs.length === 0) return null
-  const live = jobs.filter(j => j.status === 'queued' || j.status === 'running').length
+  // Queued and running are DIFFERENT facts and the band must not print one as
+  // the other: "2 running" over two jobs nothing has picked up yet is the header
+  // telling him work is happening that is not.
+  const running = jobs.filter(j => j.status === 'running').length
+  const queued = jobs.filter(j => j.status === 'queued').length
+  const count = running > 0
+    ? `${running} running`
+    : queued > 0 ? `${queued} waiting` : `${jobs.length} recent`
   const shown = runner.report ? jobs.find(j => j.id === runner.report) ?? null : null
 
   return (
     <section className="a-brain-runlane" data-runner-lane>
       <div className="a-brain-runlane-h">
         <span className="a-brain-runlane-t">Runner</span>
-        <span className="a-brain-runlane-n a-mono">
-          {live > 0 ? `${live} running` : `${jobs.length} recent`}
-        </span>
+        <span className="a-brain-runlane-n a-mono">{count}</span>
         <Button
           variant="quiet" size="sm" iconEnd={open ? 'discloseUp' : 'disclose'}
           aria-expanded={open}
