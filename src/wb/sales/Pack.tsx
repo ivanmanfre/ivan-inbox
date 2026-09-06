@@ -145,9 +145,12 @@ export function Pack({ slug, doc, onDoc, onClose, mobile, index, event }: {
     return () => { alive = false }
   }, [slug, want, stamp, have])
 
+  // The window's name is the person and the company, the way the mock reads it
+  // and the way the prospect file writes it. The prettified slug is the floor,
+  // so an unpublished prospect row never leaves the header blank.
   const prospectRow = byKind('prospect')
-  const name = prospectRow?.meta.name ?? ''
-  const label = name || prettify(slug.replace(/-/g, ' '))
+  const named = [prospectRow?.meta.name, prospectRow?.meta.company].filter(Boolean).join(' · ')
+  const label = named || prettify(slug.replace(/-/g, ' '))
   const sub = event
     ? whenLine(event.start_time)
     : (row?.meta.when ?? prospectRow?.meta.when ?? rows.find(r => r.meta.when)?.meta.when ?? '')
@@ -219,9 +222,12 @@ export function Pack({ slug, doc, onDoc, onClose, mobile, index, event }: {
         ) : doc === 'card' ? (
           <>
             <div className="a-meta a-pk-stamp" data-pack-updated={have.updated_at}>
-              {basename(have.source_path) || have.title}
-              <Sep />{Math.max(1, Math.round((have.meta.bytes ?? have.body.length) / 1024))} KB
-              <Sep />published {relAge(have.updated_at)}
+              <span>
+                {basename(have.source_path) || have.title}
+                <Sep />{Math.max(1, Math.round((have.meta.bytes ?? have.body.length) / 1024))} KB
+                <Sep />published {relAge(have.updated_at)}
+              </span>
+              <span className="a-dim">sandboxed, scripts off</span>
             </div>
             <iframe
               className="a-pk-frame"

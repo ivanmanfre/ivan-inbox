@@ -9,6 +9,7 @@
 .a-pk-tabs .ds-tabs-item:disabled{ opacity:.4; cursor:not-allowed }
 .a-pk-doc{ display:flex; flex-direction:column; gap:var(--ds-s4); min-width:0; flex:1 1 auto }
 .a-pk-frame{ width:100%; flex:0 0 auto; border:0; border-radius:var(--ds-r3); background:var(--ds-surface-1); min-height:70vh; height:calc(100vh - 220px) }
+.a-pk-stamp{ display:flex; flex-wrap:wrap; justify-content:space-between; gap:var(--ds-s3) }
 .a-pk-stamp, .a-pk-foot, .a-pk-url{ overflow-wrap:anywhere }
 .a-pk-load{ display:flex; flex-direction:column; gap:var(--ds-s3) }
 .a-pk-cards{ display:flex; flex-direction:column; gap:var(--ds-s3) }
