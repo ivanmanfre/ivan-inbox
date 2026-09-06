@@ -44,7 +44,7 @@ export const WORK_LANE_LABEL: Record<string, string> = {
 // name the phone bar reads, so the two canvases cannot disagree about what a
 // job looks like.
 const JOB_MARK: Record<Job, IconName> = {
-  today: 'today', dms: 'dms', content: 'content', magnets: 'magnets',
+  today: 'today', sales: 'sales', dms: 'dms', content: 'content', magnets: 'magnets',
   styles: 'styles', strategy: 'strategy', sends: 'sends', money: 'money',
   ops: 'ops', settings: 'settings',
 }
@@ -223,13 +223,19 @@ export function Rail({
 }
 
 // --------------------------------------------------------------------------
-// S39 · the phone bar. Six slots, spent deliberately: Settings leaves (the one
+// S39 · the phone bar. Seven slots, spent deliberately: Settings leaves (the one
 // unambiguously non-daily job), Claude takes a real slot because a conversation
 // you have to hunt for is one you stop having, and the four content lanes SHARE
 // one slot, setting the same `job` state the rail sets. One state, one model,
 // two renderings; never a second router nested inside a tab.
 // --------------------------------------------------------------------------
-const MOBILE: Job[] = ['today', 'dms', 'content', 'sends', 'ops']
+// 2026-09-06: Sales took the sixth job slot, directly after Today, because a
+// call he is walking into is the one thing on this app that has a deadline
+// measured in minutes. It did not displace anything — the slot Money vacated
+// when it left the rail is the one it fills. Measured at 390 before it shipped:
+// six job tabs plus Claude leave the active tab 98px, and the row's right edge
+// lands at 382 of 390, so nothing spills and no tab drops under the 44px floor.
+const MOBILE: Job[] = ['today', 'sales', 'dms', 'content', 'sends', 'ops']
 
 export function MobileTabs({ job, counts, sev, chatLive, onJob, onChat }: {
   job: Job

@@ -1,0 +1,105 @@
+/* ==========================================================================
+   src/wb/sales/sales.css — S-SALES, the week list.
+
+   Only what the shared kit does not already carry: the head, the group and the
+   row frame are `.a-head` / `.a-group` / `.a-row` from wb.css, and every chip,
+   dot and empty state is a ds primitive. Every colour is a `--ds-*` token,
+   every radius a `--ds-r*` step, every size a `--ds-fs-*` role.
+
+   DENSITY IS ONE ATTRIBUTE. `data-density="a"` is the instrument and ships;
+   `data-density="b"` is the same markup as cards. The B block at the bottom is
+   the whole difference between the two looks — nothing above it is duplicated.
+   ========================================================================== */
+
+.a-sl{ flex:1 1 auto; min-height:0 }
+
+/* The section's own name, above the week it is showing. */
+.a-sl-eb{ display:block }
+
+/* --------------------------------------------------------------------------
+   1 · The row. Person and clocks on the left, the meeting link on the right,
+   the chips on their own wrapped line — so the strip never competes with the
+   name for width, which is the fight that turns both into ellipses.
+   -------------------------------------------------------------------------- */
+.a-sl-row{ flex-wrap:wrap; align-items:center; gap:var(--ds-stack) }
+.a-sl-row[data-past]{ color:var(--ds-text-2) }
+
+.a-sl-top{
+  display:flex; flex-wrap:wrap; align-items:baseline;
+  gap:var(--ds-s2) var(--ds-s4);
+  flex:1 1 260px; min-width:0;
+}
+.a-sl-head{ display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--ds-s1); min-width:0 }
+.a-sl-name{
+  font-size:var(--ds-fs-title); line-height:var(--ds-lh-title);
+  font-weight:var(--ds-fw-medium); color:var(--ds-text);
+}
+.a-sl-co{ font-size:var(--ds-fs-meta); color:var(--ds-text-3) }
+/* An unmatched call keeps its calendar title verbatim, in the quieter ink: it
+   is a fact off the calendar, not a name the app worked out. */
+.a-sl-raw{
+  font-size:var(--ds-fs-title); line-height:var(--ds-lh-title);
+  font-weight:var(--ds-fw-medium); color:var(--ds-text-2);
+}
+.a-sl-time{ display:flex; align-items:center; gap:var(--ds-s2); color:var(--ds-text-3); min-width:0 }
+
+/* --------------------------------------------------------------------------
+   2 · Join. A link, drawn as a control, at the tap floor. It turns accent when
+   the call is inside the hour, because at that point it is the only thing on
+   the screen worth touching.
+   -------------------------------------------------------------------------- */
+.a-sl-join{
+  flex:0 0 auto;
+  display:inline-flex; align-items:center; justify-content:center;
+  min-height:var(--ds-tap); min-width:var(--ds-tap);
+  padding-inline:var(--ds-s4);
+  border-radius:var(--ds-r3);
+  background:var(--ds-surface-2); color:var(--ds-text);
+  font-size:var(--ds-fs-meta); font-weight:var(--ds-fw-medium);
+  text-decoration:none; white-space:nowrap;
+  transition:background-color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-sl-join:hover{ background:var(--ds-surface-3) }
+.a-sl-join[data-live]{ background:var(--ds-accent); color:var(--ds-accent-ink) }
+
+/* --------------------------------------------------------------------------
+   3 · The chip strip. Full width, so six chips wrap as a block instead of
+   pushing the name off the row.
+   -------------------------------------------------------------------------- */
+.a-sl-chips{
+  display:flex; flex-wrap:wrap; align-items:center;
+  gap:var(--ds-s2);
+  flex:1 1 100%; min-width:0;
+}
+
+.a-sl-err{ padding:var(--ds-row-y) var(--ds-row-x); color:var(--ds-sev-urgent) }
+.a-sl-none{ padding:var(--ds-row-y) var(--ds-row-x) }
+
+/* --------------------------------------------------------------------------
+   4 · The phone. The join control drops under the name rather than sharing the
+   line with it: at 390 that share is what collapses every word to its first
+   letter under flexbox's automatic minimum size.
+   -------------------------------------------------------------------------- */
+@media (max-width:700px){
+  .a-sl-top{ flex:1 1 100% }
+  .a-sl-time{ flex-wrap:wrap }
+}
+
+/* --------------------------------------------------------------------------
+   5 · Density B — cards. One attribute on the root, and this block is the
+   entire difference. Ivan picks; A ships until he does.
+   -------------------------------------------------------------------------- */
+.a-sl[data-density='b'] .a-group{ background:transparent; border:0 }
+.a-sl[data-density='b'] .a-group-h{ border-bottom:0 }
+.a-sl[data-density='b'] .a-rows{ gap:var(--ds-s4) }
+.a-sl[data-density='b'] .a-rows > .a-row + .a-row{ box-shadow:none }
+.a-sl[data-density='b'] .a-sl-row{
+  flex-direction:column; align-items:stretch;
+  background:var(--ds-surface-1);
+  border-radius:var(--ds-r4);
+  padding:var(--ds-card-pad);
+  gap:var(--ds-s4);
+}
+.a-sl[data-density='b'] .a-sl-top{ flex:0 0 auto; flex-direction:column; align-items:flex-start }
+.a-sl[data-density='b'] .a-sl-join{ align-self:flex-start }
+.a-sl[data-density='b'] .a-sl-chips{ flex:0 0 auto; gap:var(--ds-s3) }

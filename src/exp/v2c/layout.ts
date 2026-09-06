@@ -22,7 +22,11 @@
 // The removal freed a mobile slot, which is what lets DMs be a destination
 // again instead of half of a "Work" tab. WORK_JOBS is now what it always
 // described — the two CONTENT lanes.
-export type Job = 'today' | 'dms' | 'content' | 'magnets' | 'styles' | 'strategy' | 'sends' | 'money' | 'ops' | 'settings'
+// 2026-09-06, goal run inbox-sales-section: `sales` joined as the eleventh job.
+// It sits beside `today` rather than inside any group because it answers a
+// different question — Today asks what is waiting on him, Sales asks who he is
+// talking to this week and what he should have read before he says hello.
+export type Job = 'today' | 'sales' | 'dms' | 'content' | 'magnets' | 'styles' | 'strategy' | 'sends' | 'money' | 'ops' | 'settings'
 
 // Three canvases, two media queries, one hook (useCanvas). 'wide' is where the
 // workbench can hold the working list AND two context peers at once — 1440px is
@@ -47,7 +51,7 @@ export function peerKey(p: Peer): PeerKey {
 
 // Rail order. Jobs first (they set the working surface), Claude last — it is
 // deliberately NOT a job (see dockChat below).
-export const JOBS: Job[] = ['today', 'dms', 'content', 'magnets', 'styles', 'strategy', 'sends', 'money', 'ops', 'settings']
+export const JOBS: Job[] = ['today', 'sales', 'dms', 'content', 'magnets', 'styles', 'strategy', 'sends', 'money', 'ops', 'settings']
 
 // `sends` reads "Lanes" from 2026-08-23: the surface carries the INBOUND automations too
 // now (auto-accepted connection requests, the cold-DM filter — db/040), and a label that
@@ -56,8 +60,10 @@ export const JOBS: Job[] = ['today', 'dms', 'content', 'magnets', 'styles', 'str
 // `money` joined 2026-09-01 (goal-run money-truth): a whole-canvas provenance
 // surface, same class as `strategy` — read-only reporting, not a queue — so it
 // carries no plural "money items" framing, just the job's own name.
+// `sales` joined 2026-09-06 (goal-run inbox-sales-section): the week's calls
+// and, per prospect, the reading he wants open while the call is happening.
 export const JOB_LABEL: Record<Job, string> = {
-  today: 'Today', dms: 'DMs', content: 'Content',
+  today: 'Today', sales: 'Sales', dms: 'DMs', content: 'Content',
   magnets: 'Magnets', styles: 'Styles', strategy: 'Strategy',
   sends: 'Lanes', money: 'Money', ops: 'Ops', settings: 'Settings',
 }

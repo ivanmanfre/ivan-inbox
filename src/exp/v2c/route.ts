@@ -75,13 +75,25 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-9a-f][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
 // rewritten in the address bar.
 const JOB_ALIAS: Record<string, Job> = { inbox: 'dms', drafts: 'dms' }
 
+// `?section=<job>` is the spelling the old dashboard's links used, and the one
+// the Sales section was specified with (`?section=sales`). It is a FALLBACK, not
+// an override: a path segment that already names a job wins, so every link and
+// every test written against the path grammar keeps resolving where it did.
+// An unknown section is ignored exactly the way an unknown segment is.
+function sectionJob(q: URLSearchParams): Job | undefined {
+  const s = q.get('section') ?? ''
+  if ((JOBS as string[]).includes(s)) return s as Job
+  return JOB_ALIAS[s]
+}
+
 export function parseWbHash(hash: string): WbRoute {
   const m = hash.match(/^#exp\/(?:v2c?|brain-[abc])(?:\/([^/?]*))?(?:\/([^/?]*))?(?:\?([^#]*))?/)
   if (!m) return DEFAULT_ROUTE
   const seg = m[1] ?? ''
+  const query = new URLSearchParams(m[3] ?? '')
   const job = (JOBS as string[]).includes(seg)
     ? (seg as Job)
-    : JOB_ALIAS[seg] ?? DEFAULT_ROUTE.job
+    : JOB_ALIAS[seg] ?? sectionJob(query) ?? DEFAULT_ROUTE.job
   // Only 'chat' is addressable as a focus: a thread/draft peer key is a database
   // id, and a URL that pretends to restore one would 404 into an empty pane.
   // 'ask' is what a push notification for a finished turn links to (inbox-turn-run
@@ -90,10 +102,9 @@ export function parseWbHash(hash: string): WbRoute {
   // opens Ask from `thread`/`turn`.
   const focus = m[2] === 'chat' || m[1] === 'chat' || m[1] === 'ask' ? 'chat' : null
   // '#exp/v2c/chat' means "chat over the default job", not "a job named chat".
-  const q = new URLSearchParams(m[3] ?? '')
-  const thread = q.get('thread')
-  const turn = q.get('turn')
-  const feed = q.get('feed')
+  const thread = query.get('thread')
+  const turn = query.get('turn')
+  const feed = query.get('feed')
   return {
     job,
     focus,
