@@ -1,0 +1,171 @@
+/* ==========================================================================
+   src/wb/takeover/takeover.css — the window shell (S16, S17, S18).
+
+   Every colour is a `--ds-*` token, every radius a `--ds-r*` step, every size
+   a `--ds-fs-*` role, every gap a spacing step, and the only shadow is the
+   system's one float token.
+   ========================================================================== */
+
+.a-tk-scrim{
+  position:fixed;
+  inset:0;
+  /* Under the confirm layer (--ds-z-sheet / --ds-z-dialog), because every
+     decision this window carries opens a confirm ON TOP of it. */
+  z-index:var(--ds-z-popover);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:var(--ds-s6);
+  background:var(--ds-scrim);
+}
+
+.a-tk{
+  display:flex;
+  flex-direction:column;
+  width:min(1400px, 100%);
+  height:min(920px, 100%);
+  min-width:0;
+  background:var(--ds-canvas);
+  border:1px solid var(--ds-line);
+  border-radius:var(--ds-r4);
+  box-shadow:var(--ds-shadow-float);
+  overflow:hidden;
+}
+
+/* --------------------------------------------------------------------------
+   1 · The head. One line: the window's name, what it is, its own controls.
+   -------------------------------------------------------------------------- */
+.a-tk-head{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s3);
+  padding:var(--ds-s3) var(--ds-s4);
+  border-bottom:1px solid var(--ds-line);
+  min-width:0;
+  flex:0 0 auto;
+}
+.a-tk-ttl{ display:flex; flex-direction:column; gap:var(--ds-s1); min-width:0; flex:1 1 auto }
+.a-tk-n{
+  font-size:var(--ds-fs-title);
+  line-height:var(--ds-lh-title);
+  font-weight:var(--ds-fw-medium);
+  letter-spacing:var(--ds-tr-title);
+  color:var(--ds-text);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.a-tk-s{
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-3);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.a-tk-tail{ display:flex; align-items:center; gap:var(--ds-s2); flex:0 0 auto }
+
+/* --------------------------------------------------------------------------
+   2 · The panes. Rail · document · inspector on a wide canvas; one column
+   below 1180, where the rails fold UNDER the document and stay scrollable.
+   -------------------------------------------------------------------------- */
+.a-tk-body{
+  display:flex;
+  min-width:0;
+  flex:1 1 auto;
+  overflow:auto;
+}
+.a-tk[data-panes] .a-tk-body{ overflow:hidden }
+
+.a-tk-main{
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  flex:1 1 auto;
+  overflow:auto;
+}
+/* The comfortable measure, for a window with no panes of its own. */
+.a-tk-col{
+  width:min(760px, 100%);
+  margin-inline:auto;
+  padding:var(--ds-card-pad);
+  min-width:0;
+}
+.a-tk-doc{ padding:var(--ds-card-pad); min-width:0; flex:1 1 auto }
+
+.a-tk-rail,
+.a-tk-peer{
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  overflow:auto;
+  background:var(--ds-surface-1);
+}
+.a-tk-rail{ flex:0 0 auto; width:16rem; border-right:1px solid var(--ds-line) }
+.a-tk-peer{ flex:0 0 auto; width:24rem; border-left:1px solid var(--ds-line) }
+
+.a-tk-railhead{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:var(--ds-s3);
+  padding:var(--ds-s3) var(--ds-row-x);
+  border-bottom:1px solid var(--ds-line);
+  position:sticky;
+  top:0;
+  z-index:1;
+  background:var(--ds-surface-1);
+  min-width:0;
+}
+
+/* The decision bar sticks to the foot of the DOCUMENT column, so a scroll
+   through the artifact never carries it off the screen. */
+.a-tk-foot{
+  position:sticky;
+  bottom:0;
+  z-index:1;
+  padding:var(--ds-s3) var(--ds-card-pad);
+  border-top:1px solid var(--ds-line);
+  background:var(--ds-canvas);
+  min-width:0;
+  flex:0 0 auto;
+}
+
+.a-tk-frame{
+  width:100%;
+  border:0;
+  border-radius:var(--ds-r3);
+  background:var(--ds-surface-1);
+}
+
+/* --------------------------------------------------------------------------
+   3 · Below 1180: one column. The document first, its decision under it, then
+   the inspector, then the queue. Nothing is dropped and nothing is hidden
+   behind an edge with no affordance.
+   -------------------------------------------------------------------------- */
+@media (max-width:1179px){
+  .a-tk[data-panes] .a-tk-body{
+    flex-direction:column;
+    overflow:auto;
+  }
+  .a-tk-main{ order:1; overflow:visible }
+  .a-tk-peer{ order:2; width:auto; border-left:0; border-top:1px solid var(--ds-line); overflow:visible }
+  .a-tk-rail{ order:3; width:auto; border-right:0; border-top:1px solid var(--ds-line); overflow:visible }
+}
+
+/* --------------------------------------------------------------------------
+   4 · The phone. The window IS the screen: no scrim gutter, no corner, the
+   plate's own radius already frames it.
+   -------------------------------------------------------------------------- */
+@media (max-width:767px){
+  .a-tk-scrim{ padding:var(--ds-s0) }
+  .a-tk{
+    width:100%;
+    height:100%;
+    border:0;
+    border-radius:var(--ds-s0);
+    box-shadow:none;
+  }
+  .a-tk-col, .a-tk-doc{ padding:var(--ds-gutter) }
+  .a-tk-foot{ padding-inline:var(--ds-gutter) }
+}

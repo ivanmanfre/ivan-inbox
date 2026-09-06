@@ -1,0 +1,149 @@
+/* ==========================================================================
+   src/wb/sheets/sheets.css — S20 push-later, S21 prospect context.
+
+   Only what the design system and the shared kit do not already carry. Every
+   colour is a `--ds-*` token, every radius a `--ds-r*` step, every size a
+   `--ds-fs-*` role, every gap a spacing step.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1 · Push later (S20). Divider rhythm from `efferd/drawer`: presets, custom
+   time, decision, each block separated once.
+   -------------------------------------------------------------------------- */
+/* Same measure as the context sheet: a preset row whose label and date sit
+   1,900px apart is a leader line, not a row. */
+.a-push{ display:flex; flex-direction:column; gap:var(--ds-s4); width:min(760px, 100%); min-width:0 }
+.a-push-presets{ display:flex; flex-direction:column; min-width:0 }
+
+/* A preset says its label AND the instant it resolves to, because the whole
+   decision is which date this comes back on. */
+.a-push-preset{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:var(--ds-s4);
+  min-height:var(--ds-tap);
+  padding:var(--ds-row-y) var(--ds-s0);
+  background:transparent;
+  border:0;
+  border-radius:var(--ds-r2);
+  color:var(--ds-text);
+  text-align:start;
+  cursor:pointer;
+  transition:background-color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-push-preset + .a-push-preset{ box-shadow:inset 0 1px 0 var(--ds-line) }
+.a-push-preset:hover{ background:var(--ds-wash) }
+
+.a-push-custom{ display:flex; align-items:flex-end; gap:var(--ds-s3); min-width:0 }
+.a-push-custom > :first-child{ flex:1 1 auto; min-width:0 }
+
+/* --------------------------------------------------------------------------
+   2 · Prospect context (S21). The key is an eyebrow ABOVE its value, so the
+   values share a baseline and the eye reads one column of facts.
+   -------------------------------------------------------------------------- */
+/* A sheet spans the plate, and at 1440 that laid seven fields across 2,000px
+   of one-line values: a grid that reads as a table nobody asked for. The facts
+   keep a reading measure of their own and the sheet stays a sheet. */
+.a-ctx{
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s6);
+  width:min(760px, 100%);
+  min-width:0;
+}
+.a-ctx-icp{ display:flex; flex-direction:column; gap:var(--ds-s2); min-width:0 }
+.a-ctx-score{
+  font-size:var(--ds-fs-figure);
+  line-height:var(--ds-lh-figure);
+  font-weight:var(--ds-fw-semi);
+  letter-spacing:var(--ds-tr-figure);
+  color:var(--ds-text);
+}
+.a-ctx-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(9rem, 1fr));
+  gap:var(--ds-s5) var(--ds-s6);
+  min-width:0;
+}
+.a-ctx-f{ display:flex; flex-direction:column; gap:var(--ds-s1); min-width:0 }
+.a-ctx-v{
+  font-size:var(--ds-fs-body);
+  line-height:var(--ds-lh-body);
+  color:var(--ds-text);
+  overflow-wrap:anywhere;
+}
+.a-ctx-block{ display:flex; flex-direction:column; gap:var(--ds-s2); min-width:0 }
+.a-ctx-txt{
+  font-size:var(--ds-fs-body);
+  line-height:var(--ds-lh-body);
+  color:var(--ds-text-2);
+  overflow-wrap:anywhere;
+}
+.a-ctx-links{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--ds-s3) var(--ds-s5) }
+.a-ctx-link{
+  min-height:var(--ds-tap);
+  display:inline-flex;
+  align-items:center;
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-accent-ui);
+  text-decoration:underline;
+  text-underline-offset:.2em;
+}
+.a-ctx-link.a-dim{ color:var(--ds-text-3); text-decoration:none }
+.a-ctx-note{ min-height:5.5rem; resize:vertical }
+.a-ctx-notefoot{ display:flex; align-items:center; gap:var(--ds-s3); min-height:var(--ds-control-h) }
+.a-ctx-bad{ color:var(--ds-sev-urgent) }
+.a-ctx-err{
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-sev-urgent);
+  overflow-wrap:anywhere;
+}
+
+/* --------------------------------------------------------------------------
+   THE SHEET SITS OUTSIDE `.ds-body`, so the design system's reduced-motion
+   collapse never reaches it.
+
+   `ds-body` rides on `.a-root` — the SCREEN frame in `src/wb/kit.tsx`, not the
+   document — and a sheet is mounted above the screen, not inside it. ds.css
+   §18 is written `.ds-body, .ds-body *`, so every control in a sheet keeps its
+   transitions however the reader has set the OS. E8 measured 32 live
+   transitions on S20 at 390 alone: `ds-ibtn`, `a-push-preset`, `ds-input-wrap`
+   and `ds-btn`, all 0.12s.
+
+   The collapse is restated for the sheet's own subtree. It is the same shape as
+   the trap in `dms.css`, from a different cause: there a later sheet out-
+   specified the rule, here the rule's scope simply does not contain the node.
+   -------------------------------------------------------------------------- */
+/* AND IT DOES NOT INHERIT THE INK EITHER, which is the worse half. The sheet
+   is a direct child of <body>: `.ds-t-title` names no colour of its own, so the
+   sheet's heading resolves to the UA's pure black on the panel's own dark
+   surface — measured at 1.27:1, a heading nobody can read. Every other line in
+   the sheet happens to carry a colour class and so survived; the title is the
+   one that did not. The sheet states the ground and the ink it is drawn on
+   rather than borrowing them from a scope it is not inside. */
+[data-ds='Sheet']{ color:var(--ds-text); background:var(--ds-surface-1) }
+
+@media (prefers-reduced-motion: reduce){
+  [data-ds='Sheet'], [data-ds='Sheet'] *,
+  [data-ds='Sheet'] *::before, [data-ds='Sheet'] *::after{
+    transition-duration:0ms !important;
+    animation-duration:0ms !important;
+    animation-iteration-count:1 !important;
+  }
+}
+
+/* THE RING HAS TO BE ON THE THING THAT IS FOCUSED. `ds.css` paints an Input's
+   focus ring on the WRAP (`.ds-input-wrap:focus-within`) and clears the
+   control's own outline, so a sweep that Tabs into the field and reads the
+   focused element sees no change at all — E8 flags S20's custom-return field at
+   both widths. A keyboard reader who is looking at the field and not at the box
+   around it deserves the same answer. The ring is restated on the control,
+   offset outward so it reads as one ring with the wrap's inset line rather than
+   two. The ds-wide version of this belongs to whoever owns the primitive. */
+.a-push-custom .ds-input:focus-visible{
+  outline:2px solid var(--ds-accent-ring);
+  outline-offset:1px;
+}

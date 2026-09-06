@@ -40,7 +40,10 @@ import { MagnetsList } from '../../wb/content/magnets'
 import { StylesList } from '../../wb/content/styles'
 import { StrategyView } from '../../wb/content/strategy'
 import type { OpenMagnet } from '../../wb/content/magnets'
-import { DraftWindow, type QueueItem } from './DraftPane'
+import type { QueueItem } from './DraftPane'
+// S16 is on the design system now (src/wb/draft). `DraftPane.tsx` stays on disk
+// while the magnets window still reads its `QueueItem` type; W6 deletes it.
+import { DraftWindow } from '../../wb/draft'
 import { MagnetWindow } from '../../wb/magnet'
 import type { CallRow } from '../../lib/transcripts'
 import { ChatPane } from './ChatPane'

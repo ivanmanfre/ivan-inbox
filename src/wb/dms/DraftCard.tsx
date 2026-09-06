@@ -14,7 +14,7 @@ import { Group, Row, Rows } from '../kit'
 import { Face, timeAgo } from './parts'
 import { Linkified } from '../chrome/Linkified'
 import { useConfirm } from '../chrome/ConfirmSheet'
-import { returnsIn, usePushLater } from '../../components/PushLaterSheet'
+import { returnsIn, usePushLater } from '../../lib/pushLater'
 import {
   approveDraft, discardDraft, emailSenderLabel, isFollowUp, snoozeDraft, threadChatId, type Thread,
 } from '../../lib/inbox'

@@ -1,0 +1,404 @@
+/* ==========================================================================
+   src/wb/draft/draft.css — S16, the draft window.
+
+   Only what the design system, the shared kit and the takeover shell do not
+   already carry. Every colour is a `--ds-*` token, every radius a `--ds-r*`
+   step, every size a `--ds-fs-*` role, every gap a spacing step.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1 · The document column. The artifact keeps its own measure — `LinkedInPost`
+   is a reproduction of a platform surface and widening it would make the
+   preview lie about what LinkedIn will show.
+   -------------------------------------------------------------------------- */
+.a-dw{ min-width:0 }
+.a-dw .a-tk-doc{
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s5);
+  width:min(660px, 100%);
+  margin-inline:auto;
+}
+.a-dw-cap{ display:flex; align-items:baseline; justify-content:space-between; gap:var(--ds-s4); min-width:0 }
+.a-dw-cap-t{
+  margin:var(--ds-s0);
+  font-size:var(--ds-fs-page);
+  line-height:var(--ds-lh-page);
+  font-weight:var(--ds-fw-semi);
+  letter-spacing:var(--ds-tr-page);
+  color:var(--ds-text);
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+.a-dw-chips{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--ds-s2); min-width:0 }
+.a-dw-sub{
+  margin:var(--ds-s0);
+  font-size:var(--ds-fs-body);
+  line-height:var(--ds-lh-body);
+  color:var(--ds-text-2);
+}
+.a-dw-stage{ display:flex; flex-direction:column; gap:var(--ds-s4); min-width:0 }
+.a-dw-editbar{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--ds-s3); min-width:0 }
+
+/* The save conflict. BOTH texts stay on screen and no winner is picked. */
+.a-dw-conf{
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s3);
+  padding:var(--ds-card-pad);
+  background:var(--ds-surface-1);
+  border:1px solid var(--ds-sev-attention);
+  border-radius:var(--ds-r4);
+  min-width:0;
+}
+
+.a-dw-slides{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(7rem, 1fr));
+  gap:var(--ds-s3);
+  min-width:0;
+}
+.a-dw-slides img{ width:100%; border-radius:var(--ds-r3); display:block }
+
+/* --------------------------------------------------------------------------
+   2 · The decision bar. Two tiers, and the split is the point: DECIDE, then
+   REMAKE. The geometry is the system's on every button; only the WEIGHT
+   varies, which is what tells the tiers apart.
+   -------------------------------------------------------------------------- */
+.a-dw-acts{ display:flex; flex-direction:column; gap:var(--ds-s3); min-width:0 }
+.a-dw-decide,
+.a-dw-remake{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--ds-s3); min-width:0 }
+.a-dw-remake{ padding-top:var(--ds-s3); border-top:1px solid var(--ds-line) }
+.a-dw-shelfrow{ flex:1 0 100%; min-width:0 }
+
+.a-dw-inline{ display:flex; flex-direction:column; gap:var(--ds-s3); min-width:0 }
+.a-dw-inline-a{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--ds-s3); min-width:0 }
+.a-dw-q{
+  font-size:var(--ds-fs-body);
+  line-height:var(--ds-lh-body);
+  color:var(--ds-text);
+}
+.a-dw-say{
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-3);
+  overflow-wrap:anywhere;
+}
+.a-dw-say[data-tone='attention']{ color:var(--ds-sev-attention) }
+.a-dw-say[data-tone='urgent']{ color:var(--ds-sev-urgent) }
+.a-dw-note{
+  margin:var(--ds-s0);
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-3);
+  overflow-wrap:anywhere;
+}
+.a-dw-delzone{ display:flex; flex-direction:column; gap:var(--ds-s3); min-width:0 }
+
+.a-dw-sched{ display:flex; flex-direction:column; gap:var(--ds-s3); min-width:0 }
+.a-dw-sched-r{ display:flex; align-items:flex-end; gap:var(--ds-s3); min-width:0 }
+.a-dw-sched-r > :first-child{ flex:1 1 auto; min-width:0 }
+
+/* The still picker, inside the shelf: a picker that opened its own modal on
+   top of a modal would be the third layer of window on this screen. */
+.a-dw-swap{ display:flex; flex-direction:column; gap:var(--ds-s3); min-width:0 }
+.a-dw-swap-h{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--ds-s2); min-width:0 }
+.a-dw-swap-g{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(6rem, 1fr));
+  gap:var(--ds-s3);
+  min-width:0;
+}
+.a-dw-tile{
+  position:relative;
+  padding:var(--ds-s0);
+  border:1px solid var(--ds-line);
+  border-radius:var(--ds-r3);
+  background:var(--ds-surface-2);
+  overflow:hidden;
+  cursor:pointer;
+  min-height:var(--ds-tap);
+  transition:border-color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-dw-tile:hover{ border-color:var(--ds-line-strong) }
+.a-dw-tile[data-on]{ border-color:var(--ds-accent) }
+.a-dw-tile img{ width:100%; aspect-ratio:1; object-fit:cover; display:block }
+.a-dw-tile-b{
+  position:absolute;
+  inset-inline:0;
+  bottom:0;
+  padding:var(--ds-s1) var(--ds-s2);
+  font-size:var(--ds-fs-meta);
+  color:var(--ds-text);
+  background:var(--ds-surface-3);
+}
+.a-dw-note-c{ display:flex; flex-direction:column; gap:var(--ds-s3); min-width:0 }
+
+/* --------------------------------------------------------------------------
+   3 · The queue rail. The ordinal at a fixed x is what makes it read as a
+   QUEUE rather than a second copy of the list.
+   -------------------------------------------------------------------------- */
+.a-dw-q-rail{ display:flex; flex-direction:column; min-width:0 }
+.a-dw-qrow{
+  display:flex;
+  align-items:flex-start;
+  gap:var(--ds-s3);
+  padding:var(--ds-row-y) var(--ds-row-x);
+  min-height:var(--ds-tap);
+  background:transparent;
+  border:0;
+  box-shadow:inset 0 -1px 0 var(--ds-line);
+  color:var(--ds-text-2);
+  text-align:start;
+  cursor:pointer;
+  min-width:0;
+  transition:background-color var(--ds-dur-hover) var(--ds-ease), color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-dw-qrow:hover{ background:var(--ds-wash); color:var(--ds-text) }
+.a-dw-qrow[data-on]{ background:var(--ds-accent-soft); color:var(--ds-text) }
+.a-dw-qrow-i{ flex:0 0 auto; padding-top:var(--ds-s1) }
+.a-dw-qrow-b{ display:flex; flex-direction:column; gap:var(--ds-s1); min-width:0; flex:1 1 auto }
+.a-dw-qrow-t{
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:1;
+  overflow:hidden;
+}
+/* The row you are ON opens to two lines, because that is the one title worth
+   reading in full. */
+.a-dw-qrow[data-on] .a-dw-qrow-t{ -webkit-line-clamp:2 }
+.a-dw-qrow-m{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+
+/* --------------------------------------------------------------------------
+   4 · The evidence rail. One tab at a time; the headline fact sits on the
+   header so the score, the agent count and the source kind are readable
+   without opening the panel.
+   -------------------------------------------------------------------------- */
+.a-dw-insp{ display:flex; flex-direction:column; min-width:0; flex:1 1 auto }
+.a-dw-insp-h{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s3);
+  padding-inline:var(--ds-row-x);
+  border-bottom:1px solid var(--ds-line);
+  position:sticky;
+  top:0;
+  z-index:1;
+  background:var(--ds-surface-1);
+  min-width:0;
+}
+.a-dw-insp-h .ds-tabs{ flex:1 1 auto; min-width:0; overflow-x:auto; border-bottom:0 }
+.a-dw-insp-t{ flex:0 0 auto }
+.a-dw-insp-b{
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s5);
+  padding:var(--ds-card-pad);
+  min-width:0;
+}
+
+/* --------------------------------------------------------------------------
+   5 · The registers. A register is a DOCUMENT: nothing is dropped, and a fold
+   states what it holds and what opening it costs.
+   -------------------------------------------------------------------------- */
+.a-dw-block{ display:flex; flex-direction:column; gap:var(--ds-s3); min-width:0 }
+.a-dw-block-h{ display:flex; align-items:baseline; justify-content:space-between; gap:var(--ds-s3); min-width:0 }
+.a-dw-well{
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s3);
+  padding:var(--ds-s4);
+  background:var(--ds-surface-2);
+  border-radius:var(--ds-r3);
+  min-width:0;
+}
+.a-dw-pre{
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  font-size:var(--ds-fs-body);
+  line-height:var(--ds-lh-body);
+  color:var(--ds-text-2);
+}
+.a-dw-body{
+  font-size:var(--ds-fs-body);
+  line-height:var(--ds-lh-body);
+  color:var(--ds-text-2);
+  overflow-wrap:anywhere;
+}
+.a-dw-point{
+  margin:var(--ds-s0);
+  font-size:var(--ds-fs-body);
+  line-height:var(--ds-lh-body);
+  color:var(--ds-text-2);
+}
+.a-dw-rows{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  gap:var(--ds-s2) var(--ds-s4);
+  align-items:baseline;
+  margin:var(--ds-s0);
+  min-width:0;
+}
+.a-dw-rows dt{
+  font-size:var(--ds-fs-eyebrow);
+  letter-spacing:var(--ds-tr-eyebrow);
+  text-transform:uppercase;
+  color:var(--ds-text-3);
+  font-weight:var(--ds-fw-medium);
+}
+.a-dw-rows dd{
+  margin:var(--ds-s0);
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-2);
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+.a-dw-vlist,
+.a-dw-vobj{ display:flex; flex-direction:column; gap:var(--ds-s1); min-width:0 }
+.a-dw-vrow{ display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--ds-s2); min-width:0 }
+.a-dw-vv{ min-width:0; overflow-wrap:anywhere }
+.a-dw-vli{ min-width:0; overflow-wrap:anywhere }
+.a-dw-reason{ display:block; color:var(--ds-text-3) }
+
+.a-dw-link{
+  color:var(--ds-accent-ui);
+  text-decoration:underline;
+  text-underline-offset:.2em;
+}
+
+/* The fold. The caret turns; nothing else moves. */
+.a-dw-fold{ min-width:0 }
+.a-dw-fold > summary{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:var(--ds-s2);
+  padding:var(--ds-s2) var(--ds-s0);
+  min-height:var(--ds-tap);
+  list-style:none;
+  cursor:pointer;
+  color:var(--ds-text-3);
+  transition:color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-dw-fold > summary::-webkit-details-marker{ display:none }
+.a-dw-fold > summary::marker{ content:'' }
+.a-dw-fold > summary:hover{ color:var(--ds-text) }
+.a-dw-caret{ transition:transform var(--ds-dur) var(--ds-ease); flex:0 0 auto }
+.a-dw-fold[open] > summary .a-dw-caret{ transform:rotate(90deg) }
+.a-dw-fold-k{
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-2);
+  min-width:0;
+}
+/* A RUN BREAKS AS ONE THING OR NOT AT ALL. The score run and the time span are
+   built from their parts with the `next` icon between them rather than from a
+   typed arrow, and an inline icon is a wrap opportunity: in the shot the Log
+   tab read "58 →" on one line and "69/90" tucked under it, and the span put a
+   lone arrow on a line of its own. Both are one unit; both say so. */
+.a-dw-run, .a-dw-fold-t{ white-space:nowrap }
+/* Each score keeps its own arrow beside it; the denominator stays an inline
+   sibling so it reads "69/90" and not "69 /90". */
+.a-dw-run > span, .a-dw-fold-t{ display:inline-flex; align-items:center; gap:var(--ds-s1) }
+.a-dw-fold-t{ margin-inline-start:auto; flex:0 0 auto }
+.a-dw-fold-b{
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s3);
+  padding-block:var(--ds-s2);
+  padding-inline-start:var(--ds-s5);
+  min-width:0;
+}
+
+/* The verdict: the figure, then the mark, then the meter. */
+.a-dw-qa{ display:flex; align-items:center; gap:var(--ds-s4); min-width:0 }
+.a-dw-qa-n{
+  font-size:var(--ds-fs-figure);
+  line-height:var(--ds-lh-figure);
+  font-weight:var(--ds-fw-semi);
+  letter-spacing:var(--ds-tr-figure);
+  color:var(--ds-text);
+  flex:0 0 auto;
+}
+.a-dw-qa-r{ display:flex; flex-direction:column; align-items:flex-start; gap:var(--ds-s2); flex:1 1 auto; min-width:0 }
+.a-dw-qa-r .a-barline{ width:100% }
+
+.a-dw-rubric{ gap:var(--ds-s2) }
+.a-dw-dim{ display:flex; align-items:center; gap:var(--ds-s3); min-width:0 }
+.a-dw-dim-k{
+  flex:0 0 8rem;
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-2);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.a-dw-dim .a-barline{ flex:1 1 auto; min-width:0 }
+.a-dw-dim-n{ flex:0 0 auto }
+.a-dw-clash{
+  padding:var(--ds-s3) var(--ds-s4);
+  background:var(--ds-surface-2);
+  border-inline-start:2px solid var(--ds-sev-attention);
+  border-radius:var(--ds-r2);
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-2);
+}
+.a-dw-p{ display:flex; flex-direction:column; gap:var(--ds-s2); min-width:0 }
+.a-dw-clamp{
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  font-size:var(--ds-fs-body);
+  line-height:var(--ds-lh-body);
+  color:var(--ds-text-2);
+}
+.a-dw-clamp[data-open]{ display:block; overflow:visible }
+.a-dw-attempt{ display:flex; flex-direction:column; gap:var(--ds-s2); min-width:0 }
+.a-dw-attempt-h{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--ds-s2); min-width:0 }
+.a-dw-prog{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--ds-s4); min-width:0 }
+.a-dw-prog-s{ display:flex; flex-direction:column; gap:var(--ds-s1); min-width:0 }
+.a-dw-prog-n{ color:var(--ds-text) }
+.a-dw-agrp > summary,
+.a-dw-entry > summary{ flex-direction:column; align-items:stretch }
+.a-dw-agrp > summary{ flex-direction:row }
+.a-dw-entry-h{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--ds-s2); min-width:0 }
+.a-dw-entry-p{
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-3);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  min-width:0;
+}
+.a-dw-gap{ margin-inline-start:var(--ds-s2) }
+
+.a-dw-sk{ display:flex; flex-direction:column; gap:var(--ds-s4) }
+
+/* --------------------------------------------------------------------------
+   6 · The phone. One column already, from the takeover shell; the document
+   column gives up its centring so the artifact runs the full plate.
+   -------------------------------------------------------------------------- */
+@media (max-width:767px){
+  .a-dw .a-tk-doc{ width:100% }
+  .a-dw-dim-k{ flex-basis:6rem }
+  .a-dw-cap{ flex-direction:column; align-items:flex-start; gap:var(--ds-s2) }
+}
+
+/* A key hint: the caps are drawn, so the line is a row of marks with words
+   between them rather than a string with unicode in it. */
+.a-dw-keys{
+  display:inline-flex;
+  align-items:center;
+  gap:var(--ds-s2);
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  color:var(--ds-text-3);
+}

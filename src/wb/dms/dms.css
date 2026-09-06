@@ -54,8 +54,8 @@
    one is keyed to the old row class, so it is restated here. The class is
    repeated to out-specify the three-class selectors the old sheets are written
    with, which is the same device those sheets use. */
-.a-dms-rowhost > .wb-selmark{ align-self:center }
-.a-dms-rowhost.a-dms-rowhost.a-dms-rowhost.a-dms-rowhost:hover .wb-selmark{ opacity:1 }
+.a-dms-rowhost > .a-selmark{ align-self:center }
+.a-dms-rowhost:hover > .a-selmark{ opacity:1 }
 
 .a-dms-titleline{
   display:flex;
@@ -244,27 +244,82 @@
   .a-dms .a-dms-tagact{ display:none }
 }
 
+/* The row-select mark's phone form is decided in `rowselect.css`, beside the
+   component, because the reason is the component's and not this list's. */
+
 /* --------------------------------------------------------------------------
-   The row-select mark, on the phone.
+   THE FOURTH CASCADE TRAP, and it is the same shape as W1's three.
 
-   `RowSelect` and the row are SIBLINGS inside `.a-dms-rowhost` (the command
-   layer walks the host, so the mark and the row it registers have to share one
-   box). The row is later in the DOM, so it paints over the mark's 44px hit
-   overlay: every probe out from the mark's centre lands on the row instead, and
-   the mark reads as a control no thumb can hit however far its overlay reaches.
-   Measured under E5 at 390; widening the overlay to 50px did not move it,
-   because the problem is paint order and not size.
+   `faithful.css` has a `prefers-reduced-motion` block of its own that RE-ARMS
+   a 100ms opacity transition on `.wb.wb.wb .r` with `!important`. The design
+   system's own reduced-motion block (ds.css §18) is `!important` too, but it is
+   written at `.ds-body *` and loses on specificity, so a reader who asked the
+   OS for no motion still got one on every DMs row. Measured by E8 at 390: six
+   rows, `transition opacity 0.1s linear`.
 
-   Lifting the mark over the row would fix the probe and cost the row a 44px
-   dead zone over its own avatar, which is worse than what it buys. So the mark
-   does not render on the phone: a conversation carries no bulk capability there
-   (the one exception, discarding a pending draft, is reached from the draft
-   card), selection is a keyboard idea, and every key that drives it is desktop
-   in the ledger. The desktop mark is untouched.
+   The row wears `r` because the legacy sheets and the shoot recipes reach it by
+   that name; when W6 deletes `faithful.css` the class goes with it and this
+   block goes too.
    -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce){
+  .a-dms .a-row.a-row.a-row.a-row.r{
+    transition-duration:0ms !important;
+    animation-duration:0ms !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   THE FIFTH CASCADE TRAP, and the one the PNGs caught rather than a gate.
+
+   `faithful.css:614` makes `.wb.wb.wb .r` a FOUR-TRACK GRID —
+   `var(--anchor-w) minmax(0,1fr) auto var(--tail-w)` — because the old row had
+   four fixed cells and scattering right edges was the defect it was fixing.
+   The kit's Row is `display:flex` at ONE class (wb.css), so inside `.wb` it
+   loses and its four children land in those tracks. The fourth is FIXED at
+   `--tail-w`, so `.a-row-actions` is 62px wide at 390 while the "sum up" button
+   inside it needs 97: measured right edge 384 against a row that ends at 365,
+   with `.a-dms-rowhost{overflow:hidden}` shearing the word. Every phone row in
+   the S02/S33 shots reads "sum up" cut mid-letter.
+
+   S02-22 is a BOTH row in the ledger, so the phone cannot answer this by
+   hiding the button. The row goes back to the flex line the kit declares and
+   the main column, which already carries `min-width:0`, gives up the width.
+
+   Restated at four classes to out-specify faithful; it dies with that sheet.
+
+   `flex-wrap` is restated with it, and it is the load-bearing half. Left to
+   wrap, the 390 row breaks into THREE lines inside a host fixed at 96px with
+   `overflow:hidden`: lead at 14-42, main at 50-103, tail and actions at
+   111-155. That is not a clip, it is a DELETE — the time, the unread dot, the
+   DRAFT pill, "sum up" and Discard (S02-17, 18, 19, 20, 22) all sit below the
+   host and no phone ever shows them. Measured.
+   -------------------------------------------------------------------------- */
+.a-dms-rowhost > .a-row.a-row.a-row.a-row.r{
+  display:flex;
+  flex-wrap:nowrap;
+  align-items:center;
+  gap:var(--ds-stack);
+  padding:var(--ds-row-y) var(--ds-row-x);
+}
+.a-dms-rowhost > .a-row.r > .a-row-actions{ flex:0 0 auto }
+
+/* A ROW HAS TO SAY WHO IT IS FROM. `.a-row-main` absorbs the whole of the
+   line's shrink, so on the fullest row at 390 — a pending draft, which carries
+   the time, the unread dot, the DRAFT pill AND an inline Discard — it fell to
+   55px and the name collapsed to ZERO: the shot showed a row headed by a lane
+   badge and nothing else. The name is the one thing on that line that cannot be
+   read anywhere else on the screen, so the main column takes a floor and the
+   tail, whose DRAFT pill is already restated by the "Draft:" prefix on the
+   preview line under it, is what gives way instead.
+
+   THE TIME IS PINNED INSIDE IT. A shrinkable tail on its own took the time
+   (S02-20) to 1px on a plain row — trading one lost mark for another. The
+   timestamp is `flex:none` so the DRAFT pill is the only thing in the tail that
+   can yield, and the three-gap line is tightened on the phone to buy back the
+   24px that made the draft row impossible in the first place. */
 @media (max-width:767px){
-  /* THE CLASSES ARE DOUBLED, same reason ds.css §17 doubles its floor: the rule
-     this overrides is `.wb.wb.wb .wb-selmark` at (0,4,0), and a single-class
-     selector loses to it however late it is loaded. */
-  .a-dms-rowhost.a-dms-rowhost > .wb-selmark.wb-selmark{ display:none }
+  .a-dms-rowhost > .a-row.a-row.a-row.a-row.r{ gap:var(--ds-s2) }
+  .a-dms-rowhost > .a-row.r > .a-row-main{ flex:1 1 auto; min-width:35% }
+  .a-dms-rowhost > .a-row.r > .a-row-tail{ flex:0 1 auto; min-width:var(--ds-s9); overflow:hidden }
+  .a-dms-rowhost > .a-row.r > .a-row-tail > .a-mono{ flex:0 0 auto }
 }

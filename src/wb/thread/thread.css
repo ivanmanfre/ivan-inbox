@@ -163,3 +163,13 @@
   .a-thread-said, .a-thread-box{ max-width:100% }
   .a-thread-draft > .a-group{ max-height:56vh }
 }
+
+/* THE HEAD WRAPS RATHER THAN CUTS, at every width. The tail is `flex:0 0 auto`
+   in the kit, so on any canvas narrower than the name plus its four marks the
+   title was squeezed to nothing and read as a missing control: measured at 390
+   (no name at all) and in the 840px desktop peer ("Reyd Cronkwr", "Rise ·
+   Linke..."). The name is the only thing in this head that OPENS something, so
+   it keeps its line and the marks take the next one when they do not fit. */
+.a-thread > .a-head{ flex-wrap:wrap; row-gap:var(--ds-s2) }
+.a-thread > .a-head > .a-head-t{ flex:1 1 14rem }
+.a-thread > .a-head > .a-head-tail{ margin-inline-start:auto }

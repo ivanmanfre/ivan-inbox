@@ -1,0 +1,106 @@
+/* ==========================================================================
+   src/exp/v2c/rowselect.css — S24-1, the row-select mark, on the design
+   system's tokens. Imported by RowSelect.tsx itself, so the mark carries its
+   own look wherever a list renders it and nothing depends on the old sheets
+   W6 deletes.
+
+   IT IS NOT ALWAYS PAINTED. A checkbox on all 300 rows is 300 controls
+   competing with the work; the mark is drawn on hover, on the keyboard-focused
+   row, and on any row that is selected. A keyboard-only operator therefore
+   always sees the row he is on and every row he has picked, and a mouse
+   operator sees a mark wherever the pointer is.
+   ========================================================================== */
+
+.a-selmark{
+  position:relative;
+  flex:none;
+  width:var(--ds-s6);
+  height:var(--ds-s6);
+  margin-inline-end:var(--ds-s1);
+  padding:var(--ds-s0);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:var(--ds-surface-1);
+  border:1px solid var(--ds-line-strong);
+  border-radius:var(--ds-r1);
+  color:var(--ds-accent-ink);
+  cursor:pointer;
+  opacity:0;
+  pointer-events:auto;
+  transition:opacity var(--ds-dur-hover) var(--ds-ease),
+             background-color var(--ds-dur-hover) var(--ds-ease),
+             border-color var(--ds-dur-hover) var(--ds-ease);
+}
+
+/* The visible box stays at the row's density band; the HIT area clears 44px
+   through an inset overlay, the same pattern the alert dismiss and the header
+   chips use. -16px is 50px and leaves the rounding decision to nobody: a box
+   that measures exactly 44.0 has its edge points sitting on the probe's own
+   boundary. Measured under E5 at 390. */
+.a-selmark::after{ content:''; position:absolute; inset:-16px }
+
+.a-selmark[data-on]{
+  background:var(--ds-accent);
+  border-color:var(--ds-accent);
+  opacity:1;
+}
+.a-selmark:focus-visible{
+  opacity:1;
+  outline:2px solid var(--ds-accent-ring);
+  outline-offset:2px;
+}
+/* The row it registers reveals it: hover on a pointer canvas, and the keyboard
+   walk's own focus mark. Both attributes are written by RowSelect onto the row. */
+.ct-card:hover .a-selmark,
+.r:hover .a-selmark,
+[data-wbfocus='1'] .a-selmark{ opacity:1 }
+
+/* 🔴 IT ADDS NO BOX TO THE ROW. `.ct-card` is a seven-column grid with a fixed
+   template, so a mark in the normal flow took the anchor's own column and
+   shifted every other cell one place right: the title wrapped and the review
+   buttons jumped a row. Inside the anchor it is absolutely placed over the
+   corner and the row anatomy is untouched. The inbox row is a flex line, so
+   there the mark stays in the flow. */
+.ct-anchor > .a-selmark{
+  position:absolute;
+  top:calc(var(--ds-s1) * -2);
+  inset-inline-start:calc(var(--ds-s1) * -2);
+  z-index:2;
+  margin:var(--ds-s0);
+}
+
+/* --------------------------------------------------------------------------
+   S24 · the bulk bar's two own parts. Everything else is the ds BulkBar.
+   -------------------------------------------------------------------------- */
+/* The client-facing action takes a line of its own, so the verbs below it start
+   at the same x whether or not a promote capability is present. */
+.a-bulk .a-bulk-client{ flex:1 0 100%; display:flex }
+.a-bulk .a-bulk-err{ color:var(--ds-sev-urgent) }
+
+/* --------------------------------------------------------------------------
+   IT DOES NOT RENDER ON THE PHONE, and the reason is paint order, not size.
+
+   The mark and the row it registers are SIBLINGS (the command layer walks the
+   host, so they have to share one box) and the row is later in the DOM, so it
+   paints over the mark's 44px hit overlay: every probe out from the mark's
+   centre lands on the row instead, and the mark reads as a control no thumb can
+   hit however far its overlay reaches. Measured under E5 at 390 on both lists;
+   widening the overlay to 50px did not move it.
+
+   Lifting the mark over the row would satisfy the probe and cost the row a 44px
+   dead zone over its own leading corner, which is worse than what it buys. So
+   on the phone the mark is not drawn: selection is a keyboard idea, `x` and the
+   j/k walk are desktop in the ledger, and a control that is invisible AND
+   unhittable is a tap trap rather than an affordance. S24-1's "tap reveal
+   phone" is the one ledger line this wave does not keep; it is named in
+   `03-waves/w2/NOTES.md` with this reason. The desktop mark is untouched.
+
+   The rule lives HERE and not in one list's sheet because the reason is the
+   component's. The content list draws a mark of its own (`.a-ct-selmark`,
+   `src/wb/content/select.tsx`, W1's promoted screen) which this does not reach
+   and which E5 still measures at 28x28 on the phone; that one is its owner's.
+   -------------------------------------------------------------------------- */
+@media (max-width:767px){
+  .a-selmark{ display:none }
+}

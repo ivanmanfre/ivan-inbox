@@ -6,7 +6,10 @@ import App from './App.tsx'
 // App.tsx mounts, so the live app never carries it. The design system brings
 // its own reset (src/ds/ds.css §0).
 import { ConfirmProvider } from './wb/chrome/ConfirmSheet'
-import { PushLaterProvider } from './components/PushLaterSheet'
+// Same split as ConfirmProvider above (Phase 3 W2): the context lives in
+// src/lib/pushLater.ts and this is the design system's provider over it, so
+// every `usePushLater()` call site is unchanged.
+import { PushLaterProvider } from './wb/sheets/PushLater'
 
 if (localStorage.getItem('inbox-theme') === 'light') {
   document.documentElement.dataset.theme = 'light'

@@ -18,7 +18,7 @@ import { Badge, Banner, Button, Chip, DayHeader, EmptyState, IconButton, Input }
 import { Body, Group, Head, Bar, Row, Rows, Screen } from '../kit'
 import { Face, PullMark, Pill, timeAgo } from './parts'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
-import { returnsIn } from '../../components/PushLaterSheet'
+import { returnsIn } from '../../lib/pushLater'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import { discardDraft, filterByStatus, filterThreads, inboxWaitingCount, isLeadMagnet, searchThreads, threadKind, type Filter, type Status, type Thread, eventTime } from '../../lib/inbox'
 import { checkedPhrase } from '../../lib/today'

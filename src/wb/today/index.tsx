@@ -21,6 +21,7 @@ import { SystemAlertStrip } from './alerts'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { useToday, type TodayHealth } from '../../hooks/useToday'
 import { label } from '../../lib/labels'
+import { LANE_LABEL, type ContentLane } from '../../lib/content'
 import { acceptRate, laneLabel, type GovernorRow } from '../../lib/kpis'
 import type { Thread } from '../../lib/inbox'
 import type { OpsDraft } from '../../lib/ops'
@@ -61,6 +62,12 @@ const KIND: Record<string, { label: string; cls: string }> = {
 
 function kindOf(k: string) {
   return KIND[k] ?? { label: label(k), cls: 'reply' }
+}
+
+/** The lane as a person, first name only: a queue row has no room for two. */
+function laneOwner(lane: string): string {
+  const full = LANE_LABEL[lane as ContentLane]
+  return full ? full.split(' ')[0] : lane
 }
 
 type ZoneState = 'done' | 'pending' | 'hot'
@@ -240,7 +247,10 @@ function HandOff({ n, title, sub, meta, owner, href, onOpen, age }: {
   const lead = <span className="a-mono a-ink">{n}</span>
   const heading = <>{title}{age ? <span className="a-mono a-dim"> {age}</span> : null}</>
   const tail = <Icon name="forward" size={16} />
-  const ownerLine = <span className="a-row-meta a-dim-2">{owner}</span>
+  // E8: this is PROSE a reader has to read (who owns the pile and where it is
+  // decided), and `--ds-text-4` is the system's placeholder tier — 3.23:1 on
+  // surface-1, under the 4.5 floor. Meta ink, which clears it.
+  const ownerLine = <span className="a-row-meta a-dim">{owner}</span>
 
   if (href && !onOpen) {
     return (
@@ -306,8 +316,13 @@ function QueueReplyRow({ item, onOpen }: { item: QueueItem; onOpen: () => void }
               <span className="a-mono">never opened</span>
             </span>
           )}
+          {/* The lane, said the way the rest of the app says it. This printed
+              the raw internal shorthand (`RISE` / `ARCH`) — an internal name on
+              screen, and the only place in the app that spelled a lane that
+              way. LANE_LABEL is the one map that owns the mapping, so the row
+              reads the person's own name and a rename can never half-land. */}
           {item.lane !== 'ivan' && (
-            <span className="a-mono a-dim"> {item.lane === 'risedtc' ? 'RISE' : 'ARCH'}</span>
+            <span className="a-mono a-dim"> {laneOwner(item.lane)}</span>
           )}
         </>
       }
@@ -851,7 +866,9 @@ function sum<T>(rows: T[], key: keyof T): number {
 }
 
 function govMode(g: GovernorRow | undefined): { label: string; cls: string } {
-  if (!g) return { label: 'NO DATA', cls: 'a-dim-2' }
+  // E8: 'NO DATA' is a reading a person acts on, not a placeholder, so it takes
+  // meta ink rather than the system's faintest tier (3.23:1 on surface-1).
+  if (!g) return { label: 'NO DATA', cls: 'a-dim' }
   if (g.mode === 'cold_paused') return { label: 'COLD-PAUSED', cls: 'a-sev-urgent' }
   if (g.mode === 'warm_only') return { label: 'WARM-ONLY', cls: 'a-sev-attention' }
   return { label: 'NORMAL', cls: 'a-sev-clear' }
