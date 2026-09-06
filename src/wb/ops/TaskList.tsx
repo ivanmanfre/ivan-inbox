@@ -20,10 +20,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import {
-  completeTask, discardOpsDraft, doneTodayTasks, dueLabel, pendingTasks, taskDetails, taskDue,
-  taskSource, taskTitle, type OpsDraft,
+  completeTask, discardOpsDraft, discardPendingTasks, doneTodayTasks, dueLabel, pendingTasks,
+  taskDetails, taskDue, taskSource, taskTitle, type OpsDraft,
 } from '../../lib/ops'
-import { Icon, IconButton } from '../../ds'
+import { Button, Icon, IconButton } from '../../ds'
 import { Group, Row, Rows, Sep } from '../kit'
 import { errText, timeAgo } from './PendingCard'
 import './ops.css'
@@ -145,6 +145,9 @@ export function TaskList({ drafts, refresh }: {
   // Ids that have been ticked and are playing out. They are held here rather
   // than in the row so the delayed refresh survives the row unmounting.
   const [doneOpen, setDoneOpen] = useState(false)
+  const [clearing, setClearing] = useState(false)
+  const [clearError, setClearError] = useState('')
+  const confirm = useConfirm()
   const timers = useRef<ReturnType<typeof setTimeout>[]>([])
   useEffect(() => () => { timers.current.forEach(clearTimeout) }, [])
 
@@ -156,10 +159,42 @@ export function TaskList({ drafts, refresh }: {
     timers.current.push(setTimeout(refresh, TICK_LEAVE_MS))
   }
 
+  // The whole list in one go. Destructive, so it keeps the same sheet as a
+  // single Remove, and the sheet says the count so he is agreeing to a number.
+  async function onClearAll() {
+    const n = tasks.length
+    const ok = await confirm({
+      title: n === 1 ? 'Delete the 1 pending task?' : `Delete all ${n} pending tasks?`,
+      message: 'They come off the board for good. Nothing is sent and nothing else happens.',
+      confirmText: n === 1 ? 'Delete it' : `Delete all ${n}`,
+      danger: true,
+    })
+    if (!ok) return
+    setClearing(true); setClearError('')
+    try { await discardPendingTasks(tasks.map(t => t.id)); refresh() }
+    catch (e) { setClearError(errText(e)) }
+    finally { setClearing(false) }
+  }
+
   return (
     <div className="a-stack" data-tight>
       {tasks.length > 0 && (
-        <Group label={<>Your list<Sep />{tasks.length}</>}>
+        <Group
+          label={<>Your list<Sep />{tasks.length}</>}
+          tail={
+            <Button
+              variant="quiet"
+              size="sm"
+              icon="close"
+              busy={clearing}
+              disabled={clearing}
+              onClick={onClearAll}
+            >
+              Delete all pending
+            </Button>
+          }
+        >
+          {clearError && <div className="a-ops-err a-meta">{clearError}</div>}
           <Rows>
             {tasks.map(d => (
               <TaskRow key={d.id} draft={d} refresh={refresh} onLeaving={leaveThen} />

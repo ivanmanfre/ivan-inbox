@@ -532,6 +532,20 @@ export async function discardOpsDraft(id: string): Promise<void> {
   if (error) throw error
 }
 
+// Every pending task at once (Ivan, 2026-09-06: "in ops tasks add a delete all
+// pending"). The same discard as the row's Remove, over the ids the list is
+// showing RIGHT NOW: a task that arrives between his tap and the write is not
+// on the list he agreed to clear, so it stays.
+export async function discardPendingTasks(ids: string[]): Promise<number> {
+  if (ids.length === 0) return 0
+  const { data, error } = await supabase.from('ops_drafts')
+    .update({ send_blocked_reason: DISCARDED_REASON })
+    .in('id', ids).is('sent_at', null).is('approved_at', null)
+    .select('id')
+  if (error) throw error
+  return data?.length ?? 0
+}
+
 // ---------------------------------------------------------------------------
 // The comment gate, fired FROM THE APP (2026-08-03)
 // ---------------------------------------------------------------------------
