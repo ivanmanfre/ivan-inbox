@@ -16,11 +16,9 @@
 /* The section's own name, above the week it is showing. */
 .a-sl-eb{ display:block }
 
-/* --------------------------------------------------------------------------
-   1 · The row. Person and clocks on the left, the meeting link on the right,
-   the chips on their own wrapped line — so the strip never competes with the
-   name for width, which is the fight that turns both into ellipses.
-   -------------------------------------------------------------------------- */
+/* 1 · The row. Person and clocks left, the meeting link right, the chips on
+   their own line — the strip never competes with the name for width, which is
+   the fight that turns both into ellipses. */
 .a-sl-row{ flex-wrap:wrap; align-items:center; gap:var(--ds-stack) }
 .a-sl-row[data-past]{ color:var(--ds-text-2) }
 
@@ -43,11 +41,8 @@
 }
 .a-sl-time{ display:flex; align-items:center; gap:var(--ds-s2); color:var(--ds-text-3); min-width:0 }
 
-/* --------------------------------------------------------------------------
-   2 · Join. A link, drawn as a control, at the tap floor. It turns accent when
-   the call is inside the hour, because at that point it is the only thing on
-   the screen worth touching.
-   -------------------------------------------------------------------------- */
+/* 2 · Join. A link drawn as a control, at the tap floor. It turns accent
+   inside the hour, when it is the only thing worth touching. */
 .a-sl-join{
   flex:0 0 auto;
   display:inline-flex; align-items:center; justify-content:center;
@@ -62,10 +57,8 @@
 .a-sl-join:hover{ background:var(--ds-surface-3) }
 .a-sl-join[data-live]{ background:var(--ds-accent); color:var(--ds-accent-ink) }
 
-/* --------------------------------------------------------------------------
-   3 · The chip strip. Full width, so six chips wrap as a block instead of
-   pushing the name off the row.
-   -------------------------------------------------------------------------- */
+/* 3 · The chip strip. Full width, so six chips wrap as a block instead of
+   pushing the name off the row. */
 .a-sl-chips{
   display:flex; flex-wrap:wrap; align-items:center;
   gap:var(--ds-s2);
@@ -75,21 +68,16 @@
 .a-sl-err{ padding:var(--ds-row-y) var(--ds-row-x); color:var(--ds-sev-urgent) }
 .a-sl-none{ padding:var(--ds-row-y) var(--ds-row-x) }
 
-/* --------------------------------------------------------------------------
-   4 · The phone. The join control drops under the name rather than sharing the
-   line with it: at 390 that share is what collapses every word to its first
-   letter under flexbox's automatic minimum size.
-   -------------------------------------------------------------------------- */
+/* 4 · The phone. In B the join control drops under the name rather than
+   sharing the line: at 390 that share is what collapses every word to its
+   first letter under flexbox's automatic minimum size. */
 @media (max-width:700px){
   .a-sl-top{ flex:1 1 100% }
   .a-sl-time{ flex-wrap:wrap }
 
-  /* A is the instrument, and on a phone an instrument means the whole week on
-     one screen. Measured before this block: one call took 290px of 715, so
-     two and a half calls fitted and the Thursday one was three scrolls away.
-     The name row keeps the join control on its right (it is one word and it
-     never wraps), and the six chips ride ONE row that scrolls sideways rather
-     than wrapping into three lines. Same markup, same tap floor. */
+  /* A is the instrument: the whole week on one screen. One call took 290px of
+     715 before this block, so Thursday was three scrolls away. Join sits on the
+     name row, the six chips ride one sideways-scrolling row. Same tap floor. */
   .a-sl[data-density='a'] .a-sl-row{ position:relative; padding-right:calc(var(--ds-tap) + var(--ds-s4)) }
   .a-sl[data-density='a'] .a-sl-join{
     position:absolute; top:var(--ds-row-y); right:var(--ds-row-x);
@@ -102,10 +90,8 @@
   .a-sl[data-density='a'] .a-sl-chips::-webkit-scrollbar{ display:none }
 }
 
-/* --------------------------------------------------------------------------
-   5 · Density B — cards. One attribute on the root, and this block is the
-   entire difference. Ivan picks; A ships until he does.
-   -------------------------------------------------------------------------- */
+/* 5 · Density B — cards. One attribute on the root, and this block is the
+   entire difference. Ivan picks; A ships until he does. */
 .a-sl[data-density='b'] .a-group{ background:transparent; border:0 }
 .a-sl[data-density='b'] .a-group-h{ border-bottom:0 }
 .a-sl[data-density='b'] .a-rows{ gap:var(--ds-s4) }
