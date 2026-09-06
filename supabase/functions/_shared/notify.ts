@@ -47,15 +47,33 @@ export const PUSH_DEFAULT: Record<string, boolean> = {
   night_brief: true,          // the night brief
   thursday_brief: true,       // the Thursday brief
 
+  // Added 2026-09-06 after the first live day of the WhatsApp migration. The
+  // fall-through below is `severity === 'error'`, and the n8n relay classifies
+  // at most `attention` — so BEFORE this block nothing a workflow broke on ever
+  // reached the phone. These two are the "something is broken / a send to a
+  // human failed" families, both already collapsed to one row per workflow per
+  // 24h by the 08-20 shared error ledger, so the volume is ~3/day, not 23.
+  system_infra_alarm: true,   // a workflow is failing (Error Handler / Client Health Monitor)
+  send_failed_alert: true,    // a message to a prospect did not go out
+
   // --- feed only --------------------------------------------------------
   outreach_engine_ops: false,       // engine heartbeats / pace
   system_watchdog_digest: false,    // health + liveness no-ops
   seat_health: false,               // seat liveness
   health_reminder: false,           // personal, never a work interrupt
-  content_sourcing_pipeline: false, // Dreaming / sourcing digests
+  content_sourcing_pipeline: false, // Dreaming / sourcing digests, call-topic mining
   reporting_digest: false,          // daily-journal + recap digests
   content_board_activity: false,    // publish confirmations, schedule taps
   chat: false,                      // a live conversation, not a notification
+  // Explicit `false` rather than left to the severity fall-through: these are
+  // genuine errors, but self-healing or already visible where he works, and at
+  // 4+/day they would be the new wallpaper (the 08-20 lesson).
+  post_generation_failed: false,    // the drainer retries; the board shows it
+  draft_generation_error: false,    // same, per-lead retries
+  scan_quality_alert: false,        // eyeball-before-send nudges
+  comment_engagement_notice: false, // handled in the DMs tab
+  arch_build_progress: false,       // deck/audit build narration
+  ops_other: false,                 // unclassified: never interrupt on a guess
 }
 
 /**
