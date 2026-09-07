@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { outboundApproveUrl, outboundSkipUrl, pendingOps, pendingDmLaneOps, sentOps, blockedOps, canGenerateDraft, isCloseOnlyComment, claimingOps, engineLabel, expiresIn, DISCARDED_REASON, classifyGateReply, cardStateOf, outboundFeedId, taskTitle, taskDetails, taskDue, taskSource, dueLabel, pendingTasks, doneTodayTasks, isTaskKind, TASK_TITLE_MAX, type OpsDraft } from './ops'
+import { outboundApproveUrl, outboundSkipUrl, pendingOps, pendingDmLaneOps, sentOps, blockedOps, canGenerateDraft, isCloseOnlyComment, claimingOps, engineLabel, expiresIn, DISCARDED_REASON, classifyGateReply, cardStateOf, outboundFeedId, taskTitle, taskDetails, taskDue, taskSource, dueLabel, pendingTasks, doneTodayTasks, isTaskKind, TASK_TITLE_MAX, weeklyReportDispatches, weeklySendAfter, type OpsDraft } from './ops'
 
 const base: OpsDraft = {
   id: '1', client_id: 'risedtc', kind: 'escalation', slack_channel: '#rise-ops',
@@ -93,11 +93,15 @@ describe('claimingOps', () => {
   })
 })
 
-describe('weekly_report lifecycle', () => {
-  // Nothing dispatches a weekly report, so approve stamps approved_at AND
-  // sent_at together. If it ever stamps only approved_at the card lands in
-  // claimingOps and sits in the Working group forever, waiting for a writer
-  // that does not exist. This test is the guard on that.
+describe('weekly_report lifecycle — the hand-paste shape (no send_after)', () => {
+  // A weekly report with NO gate on it has no dispatcher, so approve stamps
+  // approved_at AND sent_at together. If it ever stamps only approved_at the
+  // card lands in claimingOps and sits in the Working group forever, waiting
+  // for a writer that does not exist. This test is the guard on that.
+  //
+  // The gated shape is the exact opposite and is covered by
+  // weeklyReportDispatches below: it MUST stamp approved_at alone, or the
+  // sender never sees it. Do not collapse these two into one rule.
   it('leaves the Working group empty once approved, and shows up as sent', () => {
     const weekly: OpsDraft = {
       ...base, id: 'wk', kind: 'weekly_report', slack_channel: null as unknown as string,
@@ -449,5 +453,38 @@ describe('taskSource — a chip is a label, never a guess', () => {
     expect(taskSource({ ...task, context: { source: 'claude' } })).toBe('Claude')
     expect(taskSource({ ...task, context: { source: 'ops_task_insert' } })).toBe(null)
     expect(taskSource(task)).toBe(null)
+  })
+})
+
+// 2026-09-07: the 0830 ARCH report was approved at 08:20 and never reached
+// Davorin. The app double-stamped sent_at at approve time, which hid the row
+// from the sender whose whole predicate is `approved_at NOT NULL AND sent_at
+// IS NULL`. The discriminator below is what decides which stamp the card gets,
+// so it is the one function standing between a client and silence.
+describe('weeklyReportDispatches — the card says whether a sender exists, not the client id', () => {
+  const weekly: OpsDraft = { ...base, client_id: 'arch', kind: 'weekly_report', slack_channel: '' }
+
+  it('a gate on the card means a sender is behind it', () => {
+    expect(weeklyReportDispatches({ ...weekly, context: { send_after: '2026-09-07T07:00:00.000Z' } })).toBe(true)
+  })
+
+  it('no gate means the old hand-paste path, whoever the client is', () => {
+    expect(weeklyReportDispatches({ ...weekly, context: { week: '2026-09-06' } })).toBe(false)
+    expect(weeklyReportDispatches({ ...weekly, context: null })).toBe(false)
+    // the RISE shape, verified live 2026-09-07: no send_after, no slack_bot_text
+    expect(weeklyReportDispatches({ ...weekly, client_id: 'risedtc', context: { week: '2026-09-06' } })).toBe(false)
+  })
+
+  it('never claims a sender for a kind that has none', () => {
+    for (const kind of ['escalation', 'update', 'booking', 'task', 'newsjack'] as OpsDraft['kind'][]) {
+      expect(weeklyReportDispatches({ ...weekly, kind, context: { send_after: '2026-09-07T07:00:00.000Z' } })).toBe(false)
+    }
+  })
+
+  it('reads the gate as a moment, and refuses a garbage one rather than sending early', () => {
+    expect(weeklySendAfter({ ...weekly, context: { send_after: '2026-09-07T07:00:00.000Z' } }))
+      .toBe(Date.parse('2026-09-07T07:00:00.000Z'))
+    expect(weeklySendAfter({ ...weekly, context: { send_after: 'monday morning' } })).toBe(null)
+    expect(weeklySendAfter({ ...weekly, context: null })).toBe(null)
   })
 })

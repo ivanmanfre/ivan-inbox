@@ -5,7 +5,7 @@ import { PullIndicator } from '../components/PullIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useOps } from '../hooks/useOps'
 import {
-  approveOpsDraft, approveWeeklyReport, blockedOps, canGenerateDraft, canTagCommenter, isCloseOnlyComment, claimingOps, discardOpsDraft, DRAFT_CONTINUE_MAX, engineLabel, expiresIn, generateCommentDraft, likeComment, markCommentHandled, outboundApproveUrl, outboundSkipUrl, pendingOps, postCommentReply, seatLabel, sentOps,
+  approveOpsDraft, approveWeeklyReport, blockedOps, canGenerateDraft, canTagCommenter, isCloseOnlyComment, claimingOps, discardOpsDraft, DRAFT_CONTINUE_MAX, engineLabel, expiresIn, generateCommentDraft, likeComment, markCommentHandled, outboundApproveUrl, outboundSkipUrl, pendingOps, postCommentReply, seatLabel, sentOps, weeklyReportDispatches, weeklySendAfter,
   dispatchCommentGate, cardStateOf,
   completeTask, doneTodayTasks, dueLabel, isTaskKind, pendingTasks, taskDetails, taskDue, taskSource, taskTitle,
   type OpsDraft, type OpsKind, type GateVerdict, type FeedState,
@@ -414,6 +414,13 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
 
   const isNewsjack = draft.kind === 'newsjack'
   const isWeekly = draft.kind === 'weekly_report'
+  // A weekly report with a send gate on it has a sender behind it; one without
+  // is still hand-pasted. The card decides, not the client id. See ops.ts.
+  const weeklyDispatches = weeklyReportDispatches(draft)
+  const weeklyGateMs = weeklySendAfter(draft)
+  const weeklyHeld = weeklyGateMs !== null && Date.now() < weeklyGateMs
+  const weeklyGateLabel = weeklyGateMs === null ? '' : new Date(weeklyGateMs)
+    .toLocaleString([], { weekday: 'long', hour: '2-digit', minute: '2-digit' })
   const isBallot = draft.kind === 'leads_ballot'
   // NOTE: `kind='task'` never reaches this card. Tasks are rows in TaskList
   // above — they have no body to edit and nothing to send, and wearing a draft
@@ -567,21 +574,35 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
       finally { setBusy(false) }
       return
     }
-    // Nothing dispatches a weekly report: approving copies the message and closes
-    // the card; Ivan pastes it to the client himself.
     if (isWeekly) {
-      const ok = await confirm({
-        title: 'Copy the message and close this?',
-        message: 'Nothing is sent to the client. The message goes to your clipboard and the card clears.',
-        confirmText: 'Approve & copy',
-      })
+      const ok = await confirm(weeklyDispatches
+        ? {
+          title: `Send this report to ${where}?`,
+          message: weeklyHeld
+            ? `Held until ${weeklyGateLabel}. It posts itself then — the report from the app, then your line from your own account ten seconds later.`
+            : 'Posts within about a minute: the report from the app, then your line from your own account ten seconds later. Edits you made above go out as written.',
+          confirmText: 'Approve & send',
+        }
+        : {
+          title: 'Copy the message and close this?',
+          message: 'Nothing is sent to the client. The message goes to your clipboard and the card clears.',
+          confirmText: 'Approve & copy',
+        })
       if (!ok) return
       setBusy(true); setError('')
       try {
-        // Copy first: if the clipboard is blocked, the card stays put and the
-        // message is still recoverable from the textarea.
-        await navigator.clipboard.writeText(body)
-        await approveWeeklyReport(draft.id, body)
+        if (weeklyDispatches) {
+          // A sender is watching for approved_at with sent_at still null, so
+          // stamp approved_at ALONE and let it post. Stamping both is what
+          // silently swallowed the 0830 ARCH report (2026-09-07).
+          await approveOpsDraft(draft.id, body)
+        } else {
+          // No sender for this shape: approving IS the send. Copy first, so a
+          // blocked clipboard leaves the card put and the message recoverable
+          // from the textarea.
+          await navigator.clipboard.writeText(body)
+          await approveWeeklyReport(draft.id, body)
+        }
         refresh()
       } catch (e) { setError(errText(e)) }
       finally { setBusy(false) }
@@ -692,7 +713,9 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
         placeholder={canDraft ? 'Write his reply, or press Draft it.' : undefined}
       />
       {isNewsjack && <div className="ops-ctx">Angle the post gets written from, edit before approving.</div>}
-      {isWeekly && <div className="ops-ctx">Read the page first. Edit this message, then copy it and send it yourself.</div>}
+      {isWeekly && <div className="ops-ctx">{weeklyDispatches
+        ? 'Read the page first. Both messages below go out as written — the section markers and the reference footer are stripped before sending.'
+        : 'Read the page first. Edit this message, then copy it and send it yourself.'}</div>}
       {isBallot && <div className="ops-ctx">Posts from your own Slack account, not the app. What you approve is exactly what Davorin reads.</div>}
       {isComment && (
         <div className="ops-ctx">
@@ -788,8 +811,8 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
         )}
         <div className="btn p" onClick={busy || drafting ? undefined : onApprove}>
           {busy
-            ? (isNewsjack ? 'Writing…' : isCloseOnly ? 'Closing…' : isComment ? 'Posting…' : isOutbound ? (approveUrl ? 'Opening…' : 'Copying…') : isWeekly ? 'Copying…' : 'Sending…')
-            : (isNewsjack ? 'Approve & draft' : isCloseOnly ? 'Mark handled' : isComment ? 'Approve & post' : isOutbound ? (approveUrl ? 'Approve & queue' : 'Approve & copy') : isWeekly ? 'Approve & copy' : 'Approve & send')}
+            ? (isNewsjack ? 'Writing…' : isCloseOnly ? 'Closing…' : isComment ? 'Posting…' : isOutbound ? (approveUrl ? 'Opening…' : 'Copying…') : isWeekly ? (weeklyDispatches ? 'Sending…' : 'Copying…') : 'Sending…')
+            : (isNewsjack ? 'Approve & draft' : isCloseOnly ? 'Mark handled' : isComment ? 'Approve & post' : isOutbound ? (approveUrl ? 'Approve & queue' : 'Approve & copy') : isWeekly ? (weeklyDispatches ? 'Approve & send' : 'Approve & copy') : 'Approve & send')}
         </div>
       </div>
     </div>

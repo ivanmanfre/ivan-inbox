@@ -41,6 +41,12 @@ export type OpsContext = {
   impressions?: number
   engagers?: number
   moved?: number
+  // Set only on a weekly_report card that a dedicated sender dispatches (ARCH):
+  // the earliest it may post, ISO-8601 — 09:00 Monday Warsaw. Its presence is
+  // what tells the card it dispatches at all; see weeklyReportDispatches.
+  send_after?: string
+  slack_bot_text?: string
+  slack_ivan_text?: string
   // comment_reply
   comment_id?: string
   post_url?: string
@@ -363,10 +369,32 @@ export async function approveOpsDraft(id: string, editedBody: string): Promise<v
   if (error) throw error
 }
 
-// weekly_report is the one kind with no dispatcher behind it: Ivan sends the
-// report to the client himself, so approving IS the send. Stamping only
-// approved_at would strand the card in the Working group forever, waiting on a
-// writer that does not exist. Both timestamps go down together.
+// A weekly_report card either dispatches or it does not, and the CARD says
+// which — never the client id, never a hardcoded list here.
+//
+// The ARCH shape carries `send_after` (the 09:00 Monday Warsaw gate) and a
+// dedicated n8n sender (I1Kp0jSPBWF9ZP0A) posts it as two messages: the report
+// from the app, then Ivan's read from his own account ten seconds later. Those
+// cards must stamp approved_at ALONE — the sender's predicate is
+// `approved_at NOT NULL AND sent_at IS NULL`, so double-stamping hides the row
+// from the writer built to send it. That is exactly what happened to the 0830
+// ARCH report on 2026-09-07: approved, stamped sent, never posted, sent by hand.
+//
+// The RISE shape carries no gate and no sender: Ivan still pastes it from
+// Mattan's seat, so approving IS the send and both stamps go down together
+// (approved_at alone would strand that card in Working forever).
+export function weeklyReportDispatches(d: OpsDraft): boolean {
+  return d.kind === 'weekly_report' && typeof d.context?.send_after === 'string'
+}
+
+// When a dispatching card is allowed out. null = no gate, it goes on the next
+// pass. The sender runs every minute, so "approved after the gate" means now.
+export function weeklySendAfter(d: OpsDraft): number | null {
+  const s = d.context?.send_after
+  if (typeof s !== 'string') return null
+  const t = Date.parse(s)
+  return Number.isFinite(t) ? t : null
+}
 // A comment older than this is dead: the post has left the feed and a reply lands
 // on nobody (Ivan, 2026-07-30). Same number the card writer uses.
 export const MAX_COMMENT_AGE_DAYS = 4
