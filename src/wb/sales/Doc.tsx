@@ -28,13 +28,14 @@
       the only thing telling them apart, and a row of tabs that all read the
       same is the annoyance he is complaining about in another form.
 
-   2. THE CARD FILLS THE VIEWPORT. The shell exports `HtmlPreview`, which
-      MEASURES its content and grows to it (160-1200px). That is right for a
-      3 KB draft preview and wrong here: the cards are 40-50 KB of generated
-      HTML. This frame is pinned to the viewport and scrolls INSIDE itself.
-      Same sandbox — `allow-same-origin` with no `allow-scripts`, so nothing in
-      a published card can execute — and no postMessage, because the sandbox
-      forbids it.
+   2. AN HTML DOCUMENT GETS THE WHOLE SCREEN. The card, the call sheet, the
+      audience audit and the asset ideas are all published as PAGES now
+      (`scripts/precall-doc-html.py` renders one beside each markdown, and a
+      hand-built `-ONEPAGER.html` always wins), each with its own sticky header,
+      section rail and measure. So for `text/html` this file renders nothing but
+      the frame — chrome around a designed page is a letterbox, which is exactly
+      what he objected to. Same sandbox — `allow-same-origin` with no
+      `allow-scripts`, so nothing in a published page can execute.
 
    3. A BODY IS FETCHED WHEN ITS DOCUMENT IS OPENED, AND CACHED BY ITS STAMP.
       The cache key is `kind:updated_at`, so a republish from the Mac
@@ -108,9 +109,10 @@ export function readDocHash(hash: string): { slug: string; doc: PackDoc } | null
  *  deliberate reload on the way out. */
 const SALES_HREF = '#exp/brain-b/sales'
 
-function basename(path: string | null): string {
-  const p = (path ?? '').split('/').filter(Boolean).pop()
-  return p ?? ''
+/** Is this body a page in its own right? `mime` is the publisher's word for it;
+ *  the doctype sniff covers a row written before the column carried html. */
+function isHtml(row: SalesPackBody): boolean {
+  return row.mime === 'text/html' || /^\s*<!doctype html/i.test(row.body)
 }
 
 /**
@@ -263,6 +265,31 @@ export function SalesDoc() {
     )
   }
 
+  // AN HTML DOCUMENT IS THE WHOLE SCREEN. The card, and now the call sheet, the
+  // audience audit and the asset ideas, are real pages: they carry their own
+  // sticky header with the person's name, their own section rail and their own
+  // measure. Wrapping one in this app's header, tab strip and footer takes a
+  // third of the viewport to repeat what the page already says and leaves him
+  // reading a designed document through a letterbox — which is the complaint
+  // that produced this ("i want the full screen html link for each of them...
+  // cant see shit like this"). So for `text/html` the app renders nothing but
+  // the frame. Same sandbox as ever: `allow-same-origin`, no `allow-scripts`,
+  // so a published page cannot execute.
+  if (have && isHtml(have)) {
+    return (
+      <iframe
+        className="a-dc-full"
+        title={`${label} ${DOC_LABEL[doc]}`}
+        sandbox="allow-same-origin"
+        srcDoc={have.body}
+        data-surface="sales-doc"
+        data-doc={doc}
+        data-slug={slug}
+        data-full=""
+      />
+    )
+  }
+
   return (
     <div className="a-root ds-body" data-surface="sales-doc" data-doc={doc} data-slug={slug}>
       <div className="a-head">
@@ -326,23 +353,6 @@ export function SalesDoc() {
             <div className="a-meta a-sev-urgent">{error}</div>
           ) : !have ? (
             <div className="a-meta">This document is not published yet.</div>
-          ) : doc === 'card' ? (
-            <>
-              <div className="a-meta a-pk-stamp" data-pack-updated={have.updated_at}>
-                <span>
-                  {basename(have.source_path) || have.title}
-                  <Sep />{Math.max(1, Math.round((have.meta.bytes ?? have.body.length) / 1024))} KB
-                  <Sep />published {relAge(have.updated_at)}
-                </span>
-                <span className="a-dim">sandboxed, scripts off</span>
-              </div>
-              <iframe
-                className="a-pk-frame"
-                title={`${label} call card`}
-                sandbox="allow-same-origin"
-                srcDoc={have.body}
-              />
-            </>
           ) : doc === 'prospect' ? (
             <Prospect json={have.body} />
           ) : (

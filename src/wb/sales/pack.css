@@ -6,6 +6,9 @@
 .a-pk-tabs{ position:sticky; top:0; z-index:1; flex:0 0 auto; display:flex; align-items:center; gap:var(--ds-s5); overflow-x:auto; scrollbar-width:none; background:var(--ds-canvas); border-bottom:1px solid var(--ds-line) }
 .a-pk-tabs::-webkit-scrollbar{ display:none }
 .a-pk-tabs .ds-tabs-item[data-active='true']{ box-shadow:inset 0 -2px 0 var(--ds-accent) }
+/* A published HTML document, taking the whole window: no app chrome around a
+   page that already has a header, a section rail and a measure of its own. */
+.a-dc-full{ position:fixed; inset:0; width:100%; height:100%; border:0; background:var(--ds-canvas) }
 .a-pk-eb{ display:block }
 /* A table in these documents has a LABEL column and a prose column, and at 390
    `width:100%` gave the label 40px and broke "Nitin" across four lines. The
