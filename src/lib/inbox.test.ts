@@ -826,3 +826,20 @@ describe('discard + restore guards', () => {
     expect(passes({ ...discarded, sent_at: '2026-07-22T11:30:00Z' }, RESTORE_GUARD)).toBe(false)
   })
 })
+
+describe('likely spam folder (2026-09-07)', () => {
+  const pitch: InboxMessage = { ...base, id: 'sp1', prospect_id: 'spam1', direction: 'inbound', message_text: 'Top Rated Upwork strategist, open to a call?', sent_at: '2026-09-01T23:29:00Z', client_id: 'risedtc', prospect_stage: 'disqualified', prospect_skip_reason: 'inbound_vendor_pitch' }
+  const real: InboxMessage = { ...base, id: 'rl1', prospect_id: 'real1', direction: 'inbound', message_text: 'what do you charge?', sent_at: '2026-09-01T23:29:00Z', client_id: 'risedtc', prospect_skip_reason: null }
+  it('a filed pitch is only in the spam lane, and a real reply never is', () => {
+    const threads = groupThreads([pitch, real])
+    expect(threads.find(t => t.prospect_id === 'spam1')?.spam).toBe(true)
+    expect(filterThreads(threads, 'all').map(t => t.prospect_id)).toEqual(['real1'])
+    expect(filterThreads(threads, 'risedtc').map(t => t.prospect_id)).toEqual(['real1'])
+    expect(filterThreads(threads, 'spam').map(t => t.prospect_id)).toEqual(['spam1'])
+  })
+  it('a filed pitch does not ring the badge', () => {
+    const threads = groupThreads([pitch, real])
+    expect(inboxWaitingCount(threads)).toBe(1)
+    expect(inboxBreakdown(threads).answer).toBe(1)
+  })
+})

@@ -124,6 +124,9 @@ const CHIPS: { key: Filter; label: string }[] = [
   { key: 'risedtc', label: 'Rise' },
   { key: 'arch', label: 'Arch' },
   { key: 'email', label: 'Email' },
+  // Cold pitches the reply detector (or Ivan) filed. Out of every other chip and
+  // out of the badge; here so nothing a client's seat received is ever unreachable.
+  { key: 'spam', label: 'Likely spam' },
 ]
 
 // The list holds CONVERSATIONS (send echoes moved to Sends), so an empty lane
@@ -134,6 +137,7 @@ const EMPTY: Record<Filter, string> = {
   risedtc: 'No Rise conversations, sends live in Sends',
   arch: 'No Arch conversations, the reply detector for Davorin’s seat is not armed yet',
   email: 'No email conversations, sends live in Sends',
+  spam: 'Nothing filed as likely spam, cold pitches to a client seat land here without a push',
 }
 
 // The honest-empty register. "No threads yet" and "the fetch failed" rendered
@@ -229,9 +233,11 @@ export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, o
   // what is waiting on him, while typing a name still finds a conversation where
   // the ball is with them. Cutting those rows from search too would turn "I
   // don't need to browse these" into "I can never look one up".
+  // The spam folder is read whole: its rows are closed and owe nothing, so a
+  // status axis would empty it.
   const shown = query
     ? searchThreads(laned, query)
-    : (status ? filterByStatus(laned, status) : laned)
+    : (status && filter !== 'spam' ? filterByStatus(laned, status) : laned)
   const rowH = useRowH()
   const phone = usePhone()
   // GRAFT B-1: the run of rows becomes a run of day groups on the desktop, each
@@ -260,6 +266,7 @@ export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, o
   // Same derivation as the tab badge (lib/inbox.ts) — the chip suffix and the
   // bubble must never say two different numbers for the same list.
   const waitingTotal = inboxWaitingCount(threads)
+  const spamTotal = filterThreads(threads, 'spam').length
   rowsFor?.(shown)
 
   return (
@@ -290,7 +297,8 @@ export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, o
             selected={filter === c.key}
             onClick={() => setFilter(c.key)}
             // tabs-07: the count appears only when there is one to show.
-            count={c.key === 'all' && waitingTotal > 0 ? waitingTotal : undefined}
+            count={c.key === 'all' && waitingTotal > 0 ? waitingTotal
+              : c.key === 'spam' && spamTotal > 0 ? spamTotal : undefined}
           >{c.label}</Chip>
         ))}
       </Bar>

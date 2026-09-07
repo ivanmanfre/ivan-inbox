@@ -31,6 +31,7 @@ import {
   markThreadRead, messageChannel, threadChatId, NATIVE_EMAIL_SENDER,
   type InboxMessage, type MsgChannel, type Thread, eventTime, emailSenderLabel } from '../../lib/inbox'
 import { label } from '../../lib/labels'
+import { markNotSpam, markSpam } from '../../lib/inbox'
 import { STAGE_LADDER, stageIsOff, stageStep } from '../../exp/v2c/stage'
 import './thread.css'
 
@@ -250,6 +251,25 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
     finally { setBusy(false) }
   }
 
+  // The spam folder's two controls (Ivan, 2026-09-07). Filing is confirmed
+  // because it closes the row for the engine too; unfiling is one tap, since
+  // the cost of a wrong "spam" is a lost lead and the way back has to be cheap.
+  async function onSpam() {
+    const ok = await confirm({
+      title: 'File as likely spam?',
+      message: `${thread.prospect_name} leaves the inbox and the reply lane, and any pending draft is discarded. "Not spam" on the thread brings it back.`,
+      confirmText: 'File as spam',
+      danger: true,
+    })
+    if (!ok) return
+    setBusy(true)
+    try { await markSpam(thread); refresh(); onBack() } finally { setBusy(false) }
+  }
+  async function onNotSpam() {
+    setBusy(true)
+    try { await markNotSpam(thread); refresh() } finally { setBusy(false) }
+  }
+
   async function onDiscard() {
     if (!draft) return
     const ok = await confirm({
@@ -399,6 +419,13 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
       />
       <Bar>
         <Ladder stage={thread.stage} />
+        <span style={{ marginLeft: 'auto' }}>
+          {thread.spam
+            ? <Button variant="quiet" size="sm" busy={busy} onClick={busy ? undefined : onNotSpam}>Not spam</Button>
+            : thread.client_id !== 'ivan'
+              ? <Button variant="quiet" size="sm" onClick={busy ? undefined : onSpam}>Spam</Button>
+              : null}
+        </span>
       </Bar>
       {showCtx && <ContextSheet thread={thread} onClose={() => setShowCtx(false)} />}
 

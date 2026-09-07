@@ -73,6 +73,7 @@ const EMPTY: Record<Filter, string> = {
   risedtc: 'No Rise conversations — sends live in Sends',
   arch: 'No Arch conversations — the reply detector for Davorin’s seat is not armed yet',
   email: 'No email conversations — sends live in Sends',
+  spam: 'Nothing filed as likely spam',
 }
 
 // The honest-empty register. "No threads yet" and "the fetch failed" rendered the

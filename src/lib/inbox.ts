@@ -20,6 +20,12 @@ export type InboxMessage = {
   // thread URL — see CopyChatLink. Null on threads that are still invite-only.
   chat_provider_id: string | null;
   campaign_name: string; client_id: string;
+  // outreach_prospects.skip_reason, denormalised into inbox_messages_v on 2026-09-07. The one
+  // value this app reads is SPAM_REASON: the reply detector's verdict that a stranger was
+  // cold-pitching a client's seat (Ivan, on John Adegboye's Upwork pitch reaching his inbox as
+  // "Replied": "a small likely-spam folder ... so I don't miss anything ... but no push").
+  // Optional because the stock screens' fixtures predate the column.
+  prospect_skip_reason?: string | null;
   // Not in inbox_messages_v — annotated onto pending drafts by useInbox from the
   // fetchDraftEmailStamps() probe. When set on a draft, approving it makes the
   // dispatcher ALSO email the scan to this address (rise_dm2_scan_delivery_v1 rows).
@@ -54,6 +60,10 @@ export type Thread = {
   linkedin_url: string | null;
   chat_provider_id: string | null;
   last: InboxMessage; unread: number; draft: InboxMessage | null; messages: InboxMessage[];
+  // Filed as a cold pitch (prospect_skip_reason === SPAM_REASON). A spam thread is out of
+  // every lane but 'spam', out of the badge and out of the push, and stays readable there
+  // so nothing is lost. See filterThreads / inboxBreakdown / markSpam / markNotSpam.
+  spam: boolean;
   // A SECOND pending draft on a DIFFERENT channel, staged as one intent with the
   // first (Ivan, 2026-09-04, Nitin Manchanda: "he asked for an email so we should
   // have the ability to check the email draft as well as the dm").
@@ -92,7 +102,12 @@ export type Thread = {
   needsManualReply: boolean;
 }
 
-export type Filter = 'all' | 'ivan' | 'risedtc' | 'arch' | 'email'
+export type Filter = 'all' | 'ivan' | 'risedtc' | 'arch' | 'email' | 'spam'
+
+// The marker the RISE reply detector writes on a vendor verdict (skip_reason). The inbox's
+// own Spam button writes the same value, so the engine, the push trigger and this app all
+// read one word.
+export const SPAM_REASON = 'inbound_vendor_pitch'
 
 // A draft the dispatcher HELD at the send moment because the thread changed
 // after approval (Mattan typed on LinkedIn mid-queue, or a fresh inbound
@@ -271,6 +286,7 @@ export function groupThreads(
         && lastInbound !== null && lastSent !== null && lastSent > lastInbound,
       draftSnoozedUntil: snoozedUntil,
       needsManualReply: manualReplyIds.has(last.prospect_id),
+      spam: (last.prospect_skip_reason ?? null) === SPAM_REASON,
       messages,
     })
   }
@@ -501,7 +517,9 @@ export function threadBucket(t: Thread): ThreadBucket {
 export function inboxBreakdown(threads: Thread[]): InboxBreakdown {
   const out: InboxBreakdown = { answer: 0, approve: 0, flagged: 0, waiting: 0 }
   for (const t of threads) {
-    if (!isConversation(t)) continue
+    // A filed cold pitch owes nobody a reply; counting it would ring the badge
+    // for exactly the message the folder exists to keep quiet.
+    if (!isConversation(t) || t.spam) continue
     out[threadBucket(t)] += 1
   }
   return out
@@ -566,9 +584,36 @@ export function searchThreads(threads: Thread[], query: string): Thread[] {
 
 export function filterThreads(threads: Thread[], f: Filter): Thread[] {
   const convos = threads.filter(isConversation)
-  if (f === 'all') return convos
-  if (f === 'email') return convos.filter(t => t.channel === 'email')
-  return convos.filter(t => t.client_id === f)
+  // The spam folder is its own lane: a filed pitch appears there and nowhere
+  // else, so 'all' stays what he actually reads and the folder stays complete.
+  if (f === 'spam') return convos.filter(t => t.spam)
+  const live = convos.filter(t => !t.spam)
+  if (f === 'all') return live
+  if (f === 'email') return live.filter(t => t.channel === 'email')
+  return live.filter(t => t.client_id === f)
+}
+
+// File a conversation as a cold pitch by hand. Same row the detector's vendor verdict writes
+// (closed stage + blacklisted + the marker), so the engine's closedBl catches every later
+// message from this person, no reply drafter picks the stage, and the push trigger stays
+// quiet. Pending drafts are discarded: a draft answering a pitch is a reply slot spent.
+export async function markSpam(t: Thread): Promise<void> {
+  const { error } = await supabase.from('outreach_prospects')
+    .update({ stage: 'disqualified', blacklisted: true, needs_manual_reply: false,
+              skip_reason: SPAM_REASON, updated_at: new Date().toISOString() })
+    .eq('id', t.prospect_id)
+  if (error) throw error
+  for (const d of [t.draft, t.companionDraft]) { if (d) await discardDraft(d.id) }
+}
+
+// The way back. Reopens the thread as a reply owed, which is exactly what the detector
+// would have written had it judged BUYER, so the reply drafter picks it up on its next pass.
+export async function markNotSpam(t: Thread): Promise<void> {
+  const { error } = await supabase.from('outreach_prospects')
+    .update({ stage: 'replied', blacklisted: false, needs_manual_reply: true,
+              skip_reason: null, updated_at: new Date().toISOString() })
+    .eq('id', t.prospect_id).eq('skip_reason', SPAM_REASON)
+  if (error) throw error
 }
 
 export async function fetchMessages(): Promise<InboxMessage[]> {
