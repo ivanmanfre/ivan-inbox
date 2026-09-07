@@ -12,10 +12,14 @@
    · BOTH TIME ZONES, ALWAYS. Plenty of these calls are booked by someone who
      quoted UTC. A row that showed one local time is the row that gets read as
      the other, and the cost of being wrong is a call he is not on.
-   · THE CHIPS ARE THE WHOLE POINT. A pack he has to go and find is a pack he
-     reads afterwards. Every document that exists for a matched prospect is one
-     tap from the row; every one that does not exist is still drawn, in the
-     quiet tone, so the gap is visible before the call rather than during it.
+   · THE CHIPS ARE THE WHOLE POINT, AND EVERY ONE OF THEM IS A BROWSER TAB.
+     A pack he has to go and find is a pack he reads afterwards. Every document
+     that exists for a matched prospect is one click from the row and opens in
+     its OWN tab (`./Doc`, `#doc?slug=…&doc=…`), because on a call he reads the
+     card and the audit next to each other, not one at a time inside a window —
+     his words on the first build: "this is all embedded which is annoying".
+     Every document that does not exist is still drawn, in the quiet tone, so
+     the gap is visible before the call rather than during it.
    · AN UNMATCHED CALL STILL LISTS. A client's weekly, or a prospect whose pack
      was never published, appears with its raw title and "no pack yet". A list
      that silently drops what it cannot explain is a list he cannot trust.
@@ -34,7 +38,7 @@ import {
   type PackKind, type PackMeta, type SalesPack, type WeekEvent,
 } from '../../lib/salesPacks'
 import { fetchCalls, type CallRow } from '../../lib/transcripts'
-import { Pack, type PackDoc } from './Pack'
+import { docHref, DOC_LABEL, type PackDoc } from './Doc'
 import { dayKey, describeTimes, groupEvents, matchPack, norm, weekWindow } from './match'
 import './sales.css'
 
@@ -61,11 +65,15 @@ const GROUP_LABEL = {
 type GroupKey = keyof typeof GROUP_LABEL
 
 // ---------------------------------------------------------------------------
-// The deep link
+// The old deep link
 // ---------------------------------------------------------------------------
 
 /**
- * `#exp/v2/sales?slug=<s>&doc=<kind>`.
+ * `#exp/v2/sales?slug=<s>&doc=<kind>` — the address the FIRST build used to
+ * open a document as a window inside the app. It is dead as a surface (a
+ * document is its own page now: see `./Doc`) but it is alive in Ivan's history,
+ * in the Slack messages that carried it and in whatever he has bookmarked, so
+ * it still resolves — by forwarding to the page that replaced it.
  *
  * Read from the URL the DOCUMENT WAS LOADED WITH, not from `location.hash`.
  * The Shell parses the hash once at mount and immediately writes the canonical
@@ -94,12 +102,6 @@ function readDeepLink(): { slug: string; doc: PackDoc } | null {
     }
   } catch { /* no navigation timing here; the live hash is the only source */ }
   return from(location.hash)
-}
-
-function writeDeepLink(open: { slug: string; doc: PackDoc } | null) {
-  const base = location.hash.split('?')[0] || '#exp/v2/sales'
-  const next = open ? `${base}?slug=${encodeURIComponent(open.slug)}&doc=${open.doc}` : base
-  try { history.replaceState(null, '', next) } catch { /* a hash we cannot write is not worth throwing over */ }
 }
 
 // ---------------------------------------------------------------------------
@@ -136,7 +138,10 @@ function reportIdFor(event: WeekEvent, slug: string | null, calls: CallRow[]): s
 // The surface
 // ---------------------------------------------------------------------------
 
-export function SalesSurface({ onOpenCall, mobile }: {
+// `mobile` is still in the contract the Shell calls with, and is deliberately
+// not destructured: the window it used to size is gone (a document is its own
+// browser tab now), and the list itself is one layout at every width.
+export function SalesSurface({ onOpenCall }: {
   onOpenCall: (id: string, queue: CallRow[]) => void
   mobile: boolean
 }) {
@@ -145,7 +150,6 @@ export function SalesSurface({ onOpenCall, mobile }: {
   const [calls, setCalls] = useState<CallRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [open, setOpen] = useState(readDeepLink)
   const [density, setDensity] = useState<'a' | 'b'>(() => {
     try { return localStorage.getItem('sales.density') === 'b' ? 'b' : 'a' } catch { return 'a' }
   })
@@ -194,17 +198,14 @@ export function SalesSurface({ onOpenCall, mobile }: {
     })
   }, [])
 
-  const openPack = useCallback((slug: string, doc: PackDoc) => {
-    setOpen({ slug, doc })
-    writeDeepLink({ slug, doc })
-  }, [])
-  const closePack = useCallback(() => { setOpen(null); writeDeepLink(null) }, [])
-  const setDoc = useCallback((doc: PackDoc) => {
-    setOpen(cur => {
-      if (!cur) return cur
-      writeDeepLink({ ...cur, doc })
-      return { ...cur, doc }
-    })
+  // A LINK HE HAD BEFORE STILL LANDS ON THE DOCUMENT. The window this list used
+  // to open is gone; the address that opened it forwards to the page that
+  // replaced it, once, on the load that carried it.
+  useEffect(() => {
+    const old = readDeepLink()
+    if (!old) return
+    location.replace(docHref(old.slug, old.doc))
+    location.reload()
   }, [])
 
   // ---- the match, once per (events, index) pair ----
@@ -223,10 +224,6 @@ export function SalesSurface({ onOpenCall, mobile }: {
   const groups = useMemo(() => groupEvents(events, now), [events, now])
 
   const packCount = slugs.length
-  const openEvent = useMemo(
-    () => (open ? events.find(e => matchPack(e, slugs, meta) === open.slug) ?? null : null),
-    [open, events, slugs, meta],
-  )
 
   // ---- one row ----
   const renderRow = (e: WeekEvent, group: GroupKey) => {
@@ -278,9 +275,19 @@ export function SalesSurface({ onOpenCall, mobile }: {
         <div className="a-sl-chips">
           {slug ? CHIPS.map(c => {
             const on = c.kind === null || have.has(c.kind)
+            // EVERY DOCUMENT IS A TAB, NOT A PANEL. `target="_blank"` on an
+            // anchor is what lets him put the card, the sheet and the audit
+            // side by side the way he reads them off disk — and it is what he
+            // asked for after the window build shipped (see ./Doc).
             return on
               ? (
-                <Chip key={c.doc} tone="neutral" onClick={() => openPack(slug, c.doc)}>
+                <Chip
+                  key={c.doc}
+                  tone="neutral"
+                  href={docHref(slug, c.doc)}
+                  target="_blank"
+                  title={`${DOC_LABEL[c.doc]} — opens in a new tab`}
+                >
                   {c.label}
                 </Chip>
               )
@@ -352,17 +359,6 @@ export function SalesSurface({ onOpenCall, mobile }: {
         })}
       </div>
 
-      {open ? (
-        <Pack
-          slug={open.slug}
-          doc={open.doc}
-          onDoc={setDoc}
-          onClose={closePack}
-          mobile={mobile}
-          index={index}
-          event={openEvent}
-        />
-      ) : null}
     </div>
   )
 }
