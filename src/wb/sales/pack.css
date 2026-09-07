@@ -1,4 +1,4 @@
-/* src/wb/sales/pack.css — the pack window. Prefix `a-pk-`, ds tokens only.
+/* src/wb/sales/pack.css — one pack document, on its own page. `a-pk-`, ds tokens only.
    The tab strip is the one sticky thing in the column and it scrolls sideways
    at 390; the card frame is pinned to the viewport and scrolls INSIDE itself;
    every table and every code block scrolls inside its own wrapper. */
@@ -6,7 +6,14 @@
 .a-pk-tabs{ position:sticky; top:0; z-index:1; flex:0 0 auto; display:flex; align-items:center; gap:var(--ds-s5); overflow-x:auto; scrollbar-width:none; background:var(--ds-canvas); border-bottom:1px solid var(--ds-line) }
 .a-pk-tabs::-webkit-scrollbar{ display:none }
 .a-pk-tabs .ds-tabs-item[data-active='true']{ box-shadow:inset 0 -2px 0 var(--ds-accent) }
-.a-pk-tabs .ds-tabs-item:disabled{ opacity:.4; cursor:not-allowed }
+.a-pk-eb{ display:block }
+/* A table in these documents has a LABEL column and a prose column, and at 390
+   `width:100%` gave the label 40px and broke "Nitin" across four lines. The
+   wrapper already scrolls sideways; this is what gives it something to scroll. */
+.a-pk-table .ds-table{ min-width:32rem }
+.a-pk-table .ds-table td:first-child{ min-width:9rem }
+.a-pk-tabs .ds-tabs-item{ text-decoration:none }
+.a-pk-tabs .ds-tabs-item[data-missing]{ opacity:.4; cursor:default }
 .a-pk-doc{ display:flex; flex-direction:column; gap:var(--ds-s4); min-width:0; flex:1 1 auto }
 .a-pk-frame{ width:100%; flex:0 0 auto; border:0; border-radius:var(--ds-r3); background:var(--ds-surface-1); min-height:70vh; height:calc(100vh - 220px) }
 .a-pk-stamp{ display:flex; flex-wrap:wrap; justify-content:space-between; gap:var(--ds-s3) }

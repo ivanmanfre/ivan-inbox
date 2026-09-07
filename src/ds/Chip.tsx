@@ -9,6 +9,16 @@ export interface ChipProps {
   selected?: boolean
   /** Present the chip as a filter toggle. */
   onClick?: () => void
+  /**
+   * Present the chip as a LINK. A chip that leaves the page — the sales row's
+   * document chips, which open a real browser tab — has to be an anchor, or
+   * the middle click, the cmd-click and the browser's own "open in new tab"
+   * all do nothing on it.
+   */
+  href?: string
+  target?: string
+  /** The anchor's tooltip, when the visible label is a one-word abbreviation. */
+  title?: string
   /** Present a remove control inside the chip. */
   onRemove?: () => void
   removeLabel?: string
@@ -19,18 +29,25 @@ export interface ChipProps {
 
 export function Chip({
   children, icon, tone = 'neutral', selected = false, onClick, onRemove,
-  removeLabel = 'Remove', count, className,
+  removeLabel = 'Remove', count, className, href, target, title,
 }: ChipProps) {
-  const interactive = Boolean(onClick)
-  const Tag = interactive ? 'button' : 'span'
+  const link = Boolean(href)
+  const interactive = link || Boolean(onClick)
+  const Tag = link ? 'a' : onClick ? 'button' : 'span'
   return (
     <Tag
       data-ds="Chip"
       data-tone={tone}
       data-selected={selected}
       data-interactive={interactive}
-      aria-pressed={interactive ? selected : undefined}
-      type={interactive ? 'button' : undefined}
+      // A link is not a toggle: `aria-pressed` on an anchor announces a state
+      // it does not have.
+      aria-pressed={!link && interactive ? selected : undefined}
+      type={!link && interactive ? 'button' : undefined}
+      href={href}
+      target={target}
+      rel={target === '_blank' ? 'noopener noreferrer' : undefined}
+      title={title}
       onClick={onClick}
       className={cx('ds-chip', className)}
     >

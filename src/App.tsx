@@ -11,6 +11,30 @@ const Login = lazy(() => import('./wb/login'))
 // `src/styles.css` moved out of src/main.tsx this wave (DECISIONS D4). This is
 // the module that carries it, and it is loaded only on the stock branch below.
 const StockStyles = lazy(() => import('./stockStyles'))
+// One sales document, as a whole page (`#doc?slug=…&doc=…`). Lazy for the same
+// reason as the two above: a route only the call packs link to must not sit in
+// the first paint of the app everything else loads.
+const SalesDoc = lazy(() => import('./wb/sales/Doc'))
+
+/**
+ * A LINK HE ALREADY HAS STILL LANDS ON THE DOCUMENT. The first build opened a
+ * pack as a window inside the app and addressed it
+ * `#exp/v2/sales?slug=<s>&doc=<d>`; that address is in his history, in Slack
+ * and in whatever he bookmarked. It is normalised to `#doc?slug=…&doc=…` here,
+ * at MODULE SCOPE, because the workbench Shell rewrites the hash to its own
+ * canonical form on mount and drops every key it does not own — a forward
+ * written inside the Sales surface races that rewrite and loses.
+ */
+;(() => {
+  if (typeof location === 'undefined') return
+  const m = location.hash.match(/^#exp\/(?:v2c?|brain-[abc])\/sales\?(.+)$/)
+  if (!m) return
+  const q = new URLSearchParams(m[1])
+  const slug = q.get('slug')
+  if (!slug) return
+  const doc = q.get('doc') || 'card'
+  history.replaceState(null, '', `#doc?slug=${encodeURIComponent(slug)}&doc=${doc}`)
+})()
 import { InboxScreen } from './screens/InboxScreen'
 import { ThreadScreen } from './screens/ThreadScreen'
 import { DraftsScreen } from './screens/DraftsScreen'
@@ -74,6 +98,15 @@ export default function App() {
   }, [session])
   if (!ready) return null
   if (!session) return <Suspense fallback={null}><Login /></Suspense>
+  // A SALES DOCUMENT IS A PAGE, NOT A PANEL. `#doc?slug=…&doc=…` paints the
+  // document and nothing else — no rail, no phone chrome, no shell — because
+  // the chips on the week's calls open it with target="_blank" and the point of
+  // the tab is to sit beside three other tabs on a call. Ahead of the
+  // experiment gate on purpose: the gate is sticky per session, and a document
+  // tab must not inherit whichever candidate the last hash chose.
+  if (/^#doc(\?|$)/.test(location.hash)) {
+    return <Suspense fallback={null}><SalesDoc /></Suspense>
+  }
   // Deploy decision 2026-08-02 ("apply, not additive"): the workbench — the
   // faithful-revamp build the run verified — IS the app now. A load-time
   // #exp/ hash still reaches any candidate; #exp/stock is the escape hatch to

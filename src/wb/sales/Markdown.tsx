@@ -18,7 +18,7 @@
    ========================================================================== */
 import { Fragment, type ReactNode } from 'react'
 import { Table } from '../../ds'
-import { parseMarkdown, type Block, type InlineNode } from '../../exp/v2c/chat/renderer'
+import { parseInline, parseMarkdown, type Block, type InlineNode } from '../../exp/v2c/chat/renderer'
 import { splitBlocks } from './md'
 import './pack.css'
 
@@ -58,7 +58,10 @@ function MdTable({ head, rows, label }: { head: string[]; rows: string[][]; labe
   const columns = head.map((h, i) => ({
     id: `c${i}`,
     header: h,
-    cell: (row: string[]) => <span className="a-pre">{row[i] ?? ''}</span>,
+    // Through the inline tokeniser, not raw: these documents put their numbers
+    // in bold INSIDE the table ("**23,948**"), and a cell that printed the
+    // asterisks was the one thing on the audit page that read as unfinished.
+    cell: (row: string[]) => <span className="a-pre">{renderInline(parseInline(row[i] ?? ''))}</span>,
   }))
   return (
     <Table

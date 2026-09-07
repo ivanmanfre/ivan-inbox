@@ -448,7 +448,7 @@ body :focus-visible{
   color:var(--ds-text-2);
   border:0;
   font-size:var(--ds-fs-meta); line-height:1; font-weight:var(--ds-fw-medium);
-  white-space:nowrap;
+  white-space:nowrap; text-decoration:none;
   transition:background-color var(--ds-dur-hover) var(--ds-ease),
              color var(--ds-dur-hover) var(--ds-ease);
 }
