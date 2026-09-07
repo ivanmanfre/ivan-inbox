@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { describeWhen, isRealBooking, isStartingSoon, resolveMeetingType, type CalendarEvent } from './nextCall'
+import { describeWhen, isRealBooking, isStartingSoon, resolveMeetingType, type CalendarEvent, isCancelled, isLiveBooking } from './nextCall'
 
 const NOW = new Date('2026-08-22T12:00:00Z')
 
@@ -73,5 +73,22 @@ describe('isStartingSoon', () => {
   it('false more than 60 minutes out', () => {
     const w = describeWhen(ev({ start_time: '2026-08-22T15:00:00Z' }), NOW)
     expect(isStartingSoon(w)).toBe(false)
+  })
+})
+
+describe('isCancelled / isLiveBooking', () => {
+  it('reads the "Canceled:" prefix Calendly writes when a slot is cancelled', () => {
+    expect(isCancelled({ title: 'Canceled: Someone and Ivan Manfredi' })).toBe(true)
+    expect(isCancelled({ title: 'CANCELLED: Someone and Ivan Manfredi' })).toBe(true)
+    expect(isCancelled({ title: 'Someone and Ivan Manfredi' })).toBe(false)
+    // Only the prefix: a call ABOUT cancellations is still a call.
+    expect(isCancelled({ title: 'Cancelled orders review' })).toBe(false)
+    expect(isCancelled({ title: null })).toBe(false)
+  })
+
+  it('a live booking is neither a test nor a cancelled slot', () => {
+    expect(isLiveBooking({ is_test: null, title: 'Paolo and Ivan Manfredi' })).toBe(true)
+    expect(isLiveBooking({ is_test: true, title: 'Paolo and Ivan Manfredi' })).toBe(false)
+    expect(isLiveBooking({ is_test: null, title: 'Canceled: Paolo and Ivan Manfredi' })).toBe(false)
   })
 })

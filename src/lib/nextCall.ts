@@ -52,6 +52,22 @@ export function isRealBooking(e: { is_test: boolean | null }): boolean {
   return e.is_test !== true
 }
 
+// `calendar_events` has no status column. A Calendly cancellation does not
+// delete the Google event, it RENAMES it ("Canceled: <name> and Ivan Manfredi"),
+// so the row keeps syncing with the new title and would keep its Join button and
+// its place in the week (the Whiz slot, 2026-09-07). Read the prefix the way the
+// listener app does, and drop the row on every calendar read.
+const CANCELLED_RX = /^\s*cancell?ed\b\s*:/i
+
+export function isCancelled(e: { title: string | null }): boolean {
+  return CANCELLED_RX.test(e.title ?? '')
+}
+
+/** A row worth drawing: not a test booking, not a cancelled slot. */
+export function isLiveBooking(e: { is_test: boolean | null; title: string | null }): boolean {
+  return isRealBooking(e) && !isCancelled(e)
+}
+
 export async function fetchUpcomingEvents(now: Date = new Date()): Promise<CalendarEvent[]> {
   const nowIso = now.toISOString()
   const weekIso = new Date(now.getTime() + 7 * 86_400_000).toISOString()
@@ -69,7 +85,7 @@ export async function fetchUpcomingEvents(now: Date = new Date()): Promise<Calen
   // infer the select shape and falls back to a safety-net error type. Cast
   // through unknown, same as every other ad-hoc read in this codebase that
   // touches a table outside the generated types.
-  return ((data ?? []) as unknown as CalendarEvent[]).filter(isRealBooking)
+  return ((data ?? []) as unknown as CalendarEvent[]).filter(isLiveBooking)
 }
 
 const DISCOVERY_RX = /\b(discovery|intro|fit\s*call|sales|consult|consultation|first\s*call)\b/i

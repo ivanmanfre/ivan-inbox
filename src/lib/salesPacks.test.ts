@@ -146,12 +146,15 @@ describe('fetchWeekEvents', () => {
     expect(s.order).toEqual([['start_time', true]])
   })
 
-  it('drops only is_test === true, and keeps the NULLs Google Calendar writes', async () => {
+  it('drops is_test === true and cancelled titles, and keeps the NULLs Google Calendar writes', async () => {
     result = {
       data: [
         { id: 'a', is_test: null },
         { id: 'b', is_test: true },
         { id: 'c', is_test: false },
+        // A Calendly cancellation renames the Google event instead of deleting
+        // it, so the row keeps syncing under the new title.
+        { id: 'd', is_test: null, title: 'Canceled: Someone and Ivan Manfredi' },
       ],
       error: null,
     }

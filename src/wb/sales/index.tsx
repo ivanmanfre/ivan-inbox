@@ -188,7 +188,9 @@ export function SalesSurface({ onOpenCall }: {
     const t = describeTimes(e.start_time, now)
     const m: PackMeta = slug ? meta[slug] ?? {} : {}
     const have = slug ? kindsBySlug[slug] ?? new Set<string>() : new Set<string>()
-    const past = group === 'earlier'
+    // Done once it has ENDED, whichever group it sits in: a call that finished
+    // three hours ago is still "today", and it must not keep offering Join.
+    const past = group === 'earlier' || t.past || new Date(e.end_time ?? e.start_time).getTime() <= now.getTime()
     const reportId = past ? reportIdFor(e, slug, calls) : null
 
     return (
@@ -213,7 +215,7 @@ export function SalesSurface({ onOpenCall }: {
           </span>
           <span className="a-sl-time a-mono">
             {t.soon ? <LiveDot label="Starting now" /> : null}
-            {t.warsaw} Warsaw<Sep />{t.utc}<Sep />{t.rel}
+            {t.warsaw} Warsaw<Sep />{t.utc}<Sep />{past ? 'done' : t.rel}
           </span>
         </div>
 
