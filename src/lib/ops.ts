@@ -5,7 +5,12 @@ import { supabase } from './supabase'
 // double-stamps (nothing is sent), Remove discards. It is deliberately absent from
 // the Slack dispatcher's pick list (kind IN escalation/update/booking), so a task
 // can never reach a channel — least of all the client-facing one `update` writes to.
-export type OpsKind = 'escalation' | 'update' | 'newsjack' | 'weekly_report' | 'comment_reply' | 'comment_outbound' | 'booking' | 'precall_email' | 'manual_invite' | 'task'
+// `leads_ballot` is the ARCH lead batch waiting on Davorin's eyes. It is raised only
+// when the sendable queue has run down AND enough companies have piled up on the review
+// page, and approving it posts ONE message to the ARCH channel FROM IVAN'S OWN ACCOUNT
+// (user token), never from the app bot. Before 2026-09-07 a Monday cron posted this
+// straight at the client with nothing in between; see the memory of that morning.
+export type OpsKind = 'escalation' | 'update' | 'newsjack' | 'weekly_report' | 'comment_reply' | 'comment_outbound' | 'booking' | 'precall_email' | 'manual_invite' | 'task' | 'leads_ballot'
 
 // The row shape varies by kind (escalation carries a prospect, update carries
 // receipts, newsjack carries the idea it will generate from), so context stays a
@@ -94,6 +99,14 @@ export type OpsContext = {
   // Where the row came from, so the row can carry a source chip without
   // guessing: 'whatsapp' | 'claude'.
   source?: string
+  // leads_ballot — what the batch is and what state the lane was in when it was
+  // raised. `posts_as` names the Slack identity the approved body goes out under,
+  // so the card can never imply the bot is speaking for him.
+  company_count?: number
+  people?: number
+  sendable?: number
+  page_url?: string
+  posts_as?: string
   [key: string]: unknown
 }
 

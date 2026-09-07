@@ -34,17 +34,17 @@ function timeAgo(iso: string): string {
 // 'OUTBOUND' said what the ENGINE calls the lane, not what the card is. Ivan
 // reads these as comments, so they say Comments; `comment_reply` becomes REPLY
 // in the same pass so the two comment kinds cannot be told apart by an S.
-const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK', weekly_report: 'WEEKLY', comment_reply: 'REPLY', comment_outbound: 'COMMENTS', booking: 'BOOKED', precall_email: 'PRE-CALL', manual_invite: 'INVITE', task: 'TASK' }
+const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK', weekly_report: 'WEEKLY', comment_reply: 'REPLY', comment_outbound: 'COMMENTS', booking: 'BOOKED', precall_email: 'PRE-CALL', manual_invite: 'INVITE', task: 'TASK', leads_ballot: 'LEADS' }
 // Escalations run warm/red (something needs attention); updates stay neutral/blue (fyi);
 // newsjack runs amber because it is the only kind with a clock on it. Booking takes the
 // Rise accent gold: it is the only card that reports money arriving rather than work owed.
 // A task runs neutral grey: it is the only card that asks for nothing to be sent,
 // so it should not compete for attention with the kinds that publish.
-const KIND_COLOR: Record<OpsKind, string> = { escalation: '#FF453A', update: '#0A84FF', newsjack: '#FF9F0A', weekly_report: '#30D158', comment_reply: '#BF5AF2', comment_outbound: '#64D2FF', booking: '#FFD60A', precall_email: '#5E5CE6', manual_invite: '#66D4CF', task: '#8E8E93' }
+const KIND_COLOR: Record<OpsKind, string> = { escalation: '#FF453A', update: '#0A84FF', newsjack: '#FF9F0A', weekly_report: '#30D158', comment_reply: '#BF5AF2', comment_outbound: '#64D2FF', booking: '#FFD60A', precall_email: '#5E5CE6', manual_invite: '#66D4CF', task: '#8E8E93', leads_ballot: '#FF6482' }
 
 // Slack channel ids are unreadable on a card. escalation/update/booking all print a
 // destination, so name the ones we own and fall back to the raw id for anything else.
-const CHANNEL_NAME: Record<string, string> = { C0BJ72F58BY: 'the Rise DTC channel' }
+const CHANNEL_NAME: Record<string, string> = { C0BJ72F58BY: 'the Rise DTC channel', C0BPJ0KHXV1: 'the ARCH channel' }
 function channelLabel(id: string): string {
   return CHANNEL_NAME[id] ?? `#${id}`
 }
@@ -85,6 +85,24 @@ function ContextLine({ draft }: { draft: OpsDraft }) {
         {parts.length > 0 && <span>{parts.join(' · ')}</span>}
         {ctx.report_url && (
           <a className="ops-link" href={ctx.report_url} target="_blank" rel="noreferrer">read the page</a>
+        )}
+      </div>
+    )
+  }
+  // A leads ballot is read as a supply decision: how thin the sendable queue got,
+  // how much is stacked on his page waiting, and the page itself.
+  if (draft.kind === 'leads_ballot') {
+    const n = (v: unknown) => (typeof v === 'number' ? v : null)
+    const parts = [
+      n(ctx.company_count) !== null ? `${ctx.company_count} companies` : null,
+      n(ctx.people) !== null ? `${ctx.people} people` : null,
+      n(ctx.sendable) !== null ? `${ctx.sendable} left to send` : null,
+    ].filter(Boolean)
+    return (
+      <div className="ops-ctx">
+        {parts.length > 0 && <span>{parts.join(' · ')}</span>}
+        {ctx.page_url && (
+          <a className="ops-link" href={ctx.page_url} target="_blank" rel="noreferrer">open his page</a>
         )}
       </div>
     )
@@ -396,6 +414,7 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
 
   const isNewsjack = draft.kind === 'newsjack'
   const isWeekly = draft.kind === 'weekly_report'
+  const isBallot = draft.kind === 'leads_ballot'
   // NOTE: `kind='task'` never reaches this card. Tasks are rows in TaskList
   // above — they have no body to edit and nothing to send, and wearing a draft
   // card is exactly what Ivan rejected on 2026-08-29. Both Ops surfaces route
@@ -674,6 +693,7 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
       />
       {isNewsjack && <div className="ops-ctx">Angle the post gets written from, edit before approving.</div>}
       {isWeekly && <div className="ops-ctx">Read the page first. Edit this message, then copy it and send it yourself.</div>}
+      {isBallot && <div className="ops-ctx">Posts from your own Slack account, not the app. What you approve is exactly what Davorin reads.</div>}
       {isComment && (
         <div className="ops-ctx">
           {isCloseOnly

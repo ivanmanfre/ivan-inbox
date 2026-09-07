@@ -28,11 +28,11 @@ import './ops.css'
 // 'OUTBOUND' said what the ENGINE calls the lane, not what the card is. Ivan
 // reads these as comments, so they say Comments; `comment_reply` becomes REPLY
 // in the same pass so the two comment kinds cannot be told apart by an S.
-export const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK', weekly_report: 'WEEKLY', comment_reply: 'REPLY', comment_outbound: 'COMMENTS', booking: 'BOOKED', precall_email: 'PRE-CALL', manual_invite: 'INVITE', task: 'TASK' }
+export const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK', weekly_report: 'WEEKLY', comment_reply: 'REPLY', comment_outbound: 'COMMENTS', booking: 'BOOKED', precall_email: 'PRE-CALL', manual_invite: 'INVITE', task: 'TASK', leads_ballot: 'LEADS' }
 
 // Slack channel ids are unreadable on a card. escalation/update/booking all print a
 // destination, so name the ones we own and fall back to the raw id for anything else.
-const CHANNEL_NAME: Record<string, string> = { C0BJ72F58BY: 'the Rise DTC channel' }
+const CHANNEL_NAME: Record<string, string> = { C0BJ72F58BY: 'the Rise DTC channel', C0BPJ0KHXV1: 'the ARCH channel' }
 function channelLabel(id: string): string {
   return CHANNEL_NAME[id] ?? `#${id}`
 }
@@ -91,6 +91,20 @@ function ContextBlock({ draft }: { draft: OpsDraft }) {
     if (ctx.week) rows.push(['week of', ctx.week])
     if (parts.length > 0) rows.push(['Week', parts.join(' · ')])
     if (ctx.report_url) rows.push(['Page', <Link href={ctx.report_url}>read the page</Link>])
+    return rows.length > 0 ? <KV rows={rows} /> : null
+  }
+  // A leads ballot is read as a supply decision: how thin the sendable queue got, how
+  // much is stacked on his review page, and the page itself.
+  if (draft.kind === 'leads_ballot') {
+    const n = (v: unknown) => (typeof v === 'number' ? v : null)
+    const rows: Array<[React.ReactNode, React.ReactNode]> = []
+    const parts = [
+      n(ctx.company_count) !== null ? `${ctx.company_count} companies` : null,
+      n(ctx.people) !== null ? `${ctx.people} people` : null,
+      n(ctx.sendable) !== null ? `${ctx.sendable} left to send` : null,
+    ].filter(Boolean)
+    if (parts.length > 0) rows.push(['Batch', parts.join(' · ')])
+    if (ctx.page_url) rows.push(['Page', <Link href={ctx.page_url}>open his page</Link>])
     return rows.length > 0 ? <KV rows={rows} /> : null
   }
   // A pre-call reminder is read the same way: who it emails and when the call is.
@@ -222,6 +236,7 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
 
   const isNewsjack = draft.kind === 'newsjack'
   const isWeekly = draft.kind === 'weekly_report'
+  const isBallot = draft.kind === 'leads_ballot'
   // NOTE: `kind='task'` never reaches this card. Tasks are rows in TaskList —
   // they have no body to edit and nothing to send, and wearing a draft card is
   // exactly what Ivan rejected on 2026-08-29.
@@ -306,7 +321,9 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
               title: isNewsjack ? `Write this one for ${where}?` : `Post to ${where}?`,
               message: isNewsjack
                 ? 'Writes the post now and drops it in the buffer for review. Nothing is scheduled and nothing already in the queue moves.'
-                : 'The dispatcher posts this to Slack within about 2 minutes.',
+                : isBallot
+                  ? 'Goes out under your own name in about 5 minutes. Davorin sees it from you, not from the app.'
+                  : 'The dispatcher posts this to Slack within about 2 minutes.',
               confirmText: isNewsjack ? 'Approve & draft' : 'Approve & send',
             }
 
@@ -497,6 +514,8 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
   // The one note that rides under the editor, exactly as the card said it.
   const editorNote = isNewsjack
     ? 'Angle the post gets written from, edit before approving.'
+    : isBallot
+    ? 'Posts from your own Slack account, not the app. What you approve is exactly what Davorin reads.'
     : isWeekly
       ? 'Read the page first. Edit this message, then copy it and send it yourself.'
       : isComment
