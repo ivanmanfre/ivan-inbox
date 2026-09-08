@@ -75,7 +75,7 @@ describe('a link that names a place', () => {
     expect(resolveBootPlace({ feed: true, place: 'sales' }, 'ops')).toBe('ask')
   })
   // W2-1: a hash that NAMES a place (e.g. `#exp/brain-b/dms?thread=<uuid>`)
-  // must win over a bare thread id — that thread is a DM peer opening on the
+  // must win over a bare thread id, that thread is a DM peer opening on the
   // place the hash named, not an Ask conversation. Only a thread with NO
   // place segment (the Ask push's own `#exp/v2/ask?thread=<uuid>` shape)
   // still means Ask, covered by the 'a thread deep link' case above.

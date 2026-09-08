@@ -1016,7 +1016,7 @@
 .a-brain-feed [data-contained] .a-brain-swipe,
 .a-brain-feed [data-contained] .a-row{ background:transparent }
 /* W2-11: unread carried on the row's own ground, in addition to the left
-   accent bar every severity already draws — never a replacement for it. */
+   accent bar every severity already draws, never a replacement for it. */
 .a-brain-feed [data-contained] .a-row[data-unread]{
   background:color-mix(in srgb, var(--ds-accent) 6%, transparent);
 }
@@ -1087,7 +1087,7 @@
 .a-brain-runbtn > :nth-child(2){ border-start-start-radius:0; border-end-start-radius:0; margin-inline-start:-1px }
 /* W5-5: the spec-picker chevron is an icon-only Button, which gets the
    system's phone height floor but not its width floor (that one is `IconButton`'s
-   job) — it measured 40px, missing 1 of 5 hit-test points. Scoped to this one
+   job), it measured 40px, missing 1 of 5 hit-test points. Scoped to this one
    split-button chevron rather than every icon-only Button on the phone. */
 @media (max-width:767px){
   /* min-width alone still missed the left probe point: the -1px overlap

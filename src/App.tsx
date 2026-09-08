@@ -37,14 +37,14 @@ const SalesDoc = lazy(() => import('./wb/sales/Doc'))
 })()
 /**
  * W2-1 (P0). `#thread/<prospect_id>` is `src/lib/route.ts`'s grammar for the
- * PRE-revamp stock shell (`#exp/stock`), which nothing links to any more —
+ * PRE-revamp stock shell (`#exp/stock`), which nothing links to any more -
  * every writer of this exact form (an old bookmark, a pasted link, a manually
  * typed address) is aiming at "open this conversation" on whatever shell is
  * actually live. Left alone it never reaches `parseHash` at all: `App()`
  * below only mounts the legacy `Shell()` under `#exp/stock`, so a bare
  * `#thread/<id>` falls through to the brain-b default with the id silently
  * dropped, and the SAME MODULE-SCOPE ordering problem as the sales-doc
- * rewrite above bites a second time — `route.ts`'s `WB_PREFIX` is read once,
+ * rewrite above bites a second time, `route.ts`'s `WB_PREFIX` is read once,
  * at that module's own load, from whatever `location.hash` already says, so
  * rewriting from inside Shell would be one render too late. Normalising here,
  * before any workbench module has been imported, lands the id on

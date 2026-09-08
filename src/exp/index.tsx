@@ -48,7 +48,7 @@ export function getExpVariant(): ExpVariant | null {
   if (m) {
     if (m[1] === 'off') { sessionStorage.removeItem(KEY); return null }
     // W1-1: v2/v2c's phone chrome is retired and does not lay out at 390px
-    // (phase3-skeptic-A §1 — it mounts a `Shell.tsx` branch nothing paints
+    // (phase3-skeptic-A §1, it mounts a `Shell.tsx` branch nothing paints
     // any more). A cold boot on that prefix self-heals into brain-b here,
     // on the phone only: the desktop comparison the tournament ballot still
     // wants (App.tsx's own comment, "#exp/v2 ... stay reachable by hash")

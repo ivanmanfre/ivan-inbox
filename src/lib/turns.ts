@@ -288,7 +288,7 @@ const seenAt = (n: Notification): string => n.last_seen_at || n.created_at
 
 // W2-4: pure so the dismiss failure path is unit-testable without a network.
 // A dismiss that the server refused (or an Undo) puts rows back without
-// duplicating one still present, newest first — the same order a refetch
+// duplicating one still present, newest first, the same order a refetch
 // would produce. Shared by useFeedData's optimistic-dismiss rollback and its
 // restore-on-Undo, so there is one merge rule instead of two that could drift.
 export function mergeBackRows(rows: Notification[], restored: Notification[]): Notification[] {
@@ -330,7 +330,7 @@ export function groupNotifications(rows: Notification[]): NotificationGroup[] {
 // surface that is always meaningful, so a broken deep link costs a wasted tap
 // rather than an empty screen.
 //
-// W1-1: this used to be `#exp/v2/today` — the exact hash H1 proved is a
+// W1-1: this used to be `#exp/v2/today`, the exact hash H1 proved is a
 // retired phone chrome that no longer paints at 390px (phase3-skeptic-A §1).
 // Every reply push that had no more specific url landed here, so this one
 // constant was the single largest live source of the broken boot. `src/exp/

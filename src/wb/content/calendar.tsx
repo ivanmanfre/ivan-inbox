@@ -165,7 +165,7 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
 
   // W3-12: on the FIRST paint only, jump to today's header. `data-empty` days
   // are not in the DOM at all on the phone (agenda reading), so "today" itself
-  // may hold nothing to scroll to — the target is the first day AT OR AFTER
+  // may hold nothing to scroll to, the target is the first day AT OR AFTER
   // today that actually rendered, and if the whole month is behind today's
   // date, the last rendered day (there is nowhere further forward to land).
   // Guarded by a ref rather than an empty deps array so a later month step

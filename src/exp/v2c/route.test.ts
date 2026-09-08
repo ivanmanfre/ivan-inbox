@@ -162,7 +162,7 @@ describe('ask deep link', () => {
   // it falls to DEFAULT_ROUTE.job the same as no segment at all), and the ONE
   // field that tells them apart is `focus`: 'chat' only when the hash itself
   // said 'ask' or 'chat'. Shell.tsx and resolveBootPlace both key off exactly
-  // this to decide "open an Ask conversation" vs "open a DM peer thread" —
+  // this to decide "open an Ask conversation" vs "open a DM peer thread" -
   // this pins the distinction the fix depends on so it cannot silently drift.
   it('a DM thread deep link is NOT a chat focus, unlike the ask push shape', () => {
     const TH = 'e53d8fb8-382c-43fd-87a9-f0f668f408d4'

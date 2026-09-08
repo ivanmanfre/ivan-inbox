@@ -20,7 +20,7 @@ function hashName(name: string): number {
 }
 
 // W2-13: sliced off the raw name, "Dragos Bogdan 🔜 Gamescom (Cologne)" read
-// as "D(" — the last whitespace-split token was punctuation, not a name. Take
+// as "D(", the last whitespace-split token was punctuation, not a name. Take
 // the first two LETTER tokens instead (\p{L}), so emoji and punctuation are
 // never candidates.
 export function initials(name: string): string {

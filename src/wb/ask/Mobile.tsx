@@ -178,7 +178,7 @@ export function Mobile(p: BrainMobileProps) {
   // A DM deep link (`#exp/brain-b/dms?thread=<uuid>`) names 'dms' as the
   // place instead, and Shell.tsx already opened that thread as a peer before
   // this component mounted (resolveBootPlace lands `place` on 'dms' for it)
-  // — calling chat.openThread with a DM's prospect id here would feed a peer
+  //, calling chat.openThread with a DM's prospect id here would feed a peer
   // thread id into the Ask conversation opener as if it were a chat run id.
   useEffect(() => {
     if (bootHandled.current) return
@@ -390,7 +390,7 @@ export function Mobile(p: BrainMobileProps) {
                   <StatusCapsule n={p.health.n} note={p.health.note} onClick={() => onTab('ops')} />
                 )}
                 {/* W1-2: the only route into Settings on the phone chrome was
-                    the direct hash (`#exp/brain-b/settings`, GAPS2-1) — no
+                    the direct hash (`#exp/brain-b/settings`, GAPS2-1), no
                     tap target anywhere. The `IM` avatar this used to be
                     hoped to be is `role="img"` with no handler (ds/Avatar.tsx),
                     decoration by construction, so a real control goes here

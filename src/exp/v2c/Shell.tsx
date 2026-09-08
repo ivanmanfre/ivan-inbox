@@ -163,7 +163,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
   // had asked for. The rail button and #exp/v2/<job>/chat both still open it.
   // W2-1: a `?thread=<uuid>` on a hash that did not itself name 'ask' (the
   // Ask push's own `#exp/v2/ask?thread=…` form, which sets `boot.focus`
-  // to 'chat') is a DM peer, not an Ask conversation — open it the same
+  // to 'chat') is a DM peer, not an Ask conversation, open it the same
   // way an ordinary tap on an inbox row does (Shell's own `openThread`
   // below), so it renders as the peer takeover / phone thread view rather
   // than silently landing on Ask with nothing loaded.
@@ -398,7 +398,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
       } else if (r.thread) {
         // W2-1: an IN-APP hash write naming a DM thread (Today's urgency-row
         // tap writes the brain-b-prefixed form directly now) opens it as a
-        // peer the same way a tap-through does — mirrors the boot-time seed
+        // peer the same way a tap-through does, mirrors the boot-time seed
         // above so a live navigation and a cold boot behave identically.
         setPeers(p => addPeer(p, { kind: 'thread', id: r.thread! }))
         setFocus(peerKey({ kind: 'thread', id: r.thread! }))
@@ -692,7 +692,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
     if (!ctxThread) {
       // W2-1: a boot-time deep link (`?thread=<uuid>`) seeds this peer before
       // `inbox.threads` has loaded, so a miss on the FIRST pass means "not
-      // fetched yet", not "gone" — asserting the empty state here would lie
+      // fetched yet", not "gone", asserting the empty state here would lie
       // exactly the way W2-5 does on the list. Say nothing until the load that
       // would have found it has actually finished; only then is a miss real.
       if (inbox.loading) return null

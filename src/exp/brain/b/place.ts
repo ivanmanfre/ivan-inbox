@@ -85,7 +85,7 @@ export function resolveBootPlace(boot: Boot, persisted: Place | null): Place {
   if (boot.place) return boot.place
   // No place segment and a thread id: this is the Ask push's own shape
   // (`#exp/v2/ask?thread=<uuid>`, where 'ask' is not a Job so no place is
-  // named) — Ask is where that thread lives.
+  // named), Ask is where that thread lives.
   if (boot.thread) return 'ask'
   return persisted ?? 'ask'
 }

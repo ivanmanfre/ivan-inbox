@@ -424,10 +424,10 @@
   color:var(--ds-text-3);
 }
 /* W3-15: this same span also renders as the editor's footer prop, INSIDE the
-   LinkedIn preview card — a deliberately white island regardless of app
+   LinkedIn preview card, a deliberately white island regardless of app
    theme (linkedin.css's own comment: "a depiction of another product").
    `--ds-text-3` is a dark-theme grey; on white it read 3.03:1. The Kbd glyphs
    are unaffected (they carry their own background). Scoped to the card only
-   — the same span in the note composer (actions.tsx) sits on the dark
+, the same span in the note composer (actions.tsx) sits on the dark
    canvas and keeps `--ds-text-3`. */
 .li-card .a-dw-keys{ color:var(--li-ink-3) }

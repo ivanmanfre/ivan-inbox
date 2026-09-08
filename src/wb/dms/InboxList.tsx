@@ -150,7 +150,7 @@ const EMPTY: Record<Filter, string> = {
 // constant: a screen that cannot see its own fetch must not promise a live read.
 // W2-5: pure so it is unit-testable without mounting the list. A screen with
 // zero rows on screen is either (a) still waiting on its first fetch, (b) a
-// search that found nothing, or (c) a fetch that DID resolve to zero — and
+// search that found nothing, or (c) a fetch that DID resolve to zero, and
 // only (c) is allowed to assert "nothing waiting on you". `verifiedAt === null`
 // means the host has not yet established the fetch outcome, so the row
 // skeleton renders instead of a claim the app cannot back up.

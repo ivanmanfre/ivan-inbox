@@ -274,7 +274,7 @@ body :focus-visible{
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   gap:var(--ds-s1);
   min-height:var(--ds-tap); min-width:var(--ds-tap);
-  padding:var(--ds-s2) var(--ds-s1);
+  padding:var(--ds-s2) 0;
   border:0; background:transparent; color:var(--ds-text-3);
   border-radius:var(--ds-r-pill);
   cursor:pointer;
@@ -299,17 +299,17 @@ body :focus-visible{
   background:var(--ds-accent);
   z-index:0;
 }
-/* W1-5: every tab carries this now, not only the active one — small-caps,
+/* W1-5: every tab carries this now, not only the active one, small-caps,
    the size place.ts's own comment named for it (--fs-eyebrow), so the 7-way
    equal column split still clears the 44px floor with the label INSIDE it
    (stacked under the glyph) rather than beside it. No letter-spacing: with it
    "Content" (the longest label) overflowed its own 45-49px column and drew
-   over "Lanes" next to it — `.ds-tab` never grew to fit, the text just
+   over "Lanes" next to it, `.ds-tab` never grew to fit, the text just
    painted past its box, since nothing here clipped it. `max-width` +
    `text-overflow` is the same backstop for any future label this wide. */
 .ds-tab-label{
-  font-size:var(--ds-fs-eyebrow); line-height:var(--ds-lh-eyebrow);
-  font-weight:var(--ds-fw-medium); text-transform:uppercase;
+  font-size:var(--ds-fs-tab); line-height:var(--ds-lh-eyebrow);
+  font-weight:var(--ds-fw-medium); font-variant-caps:small-caps; letter-spacing:0;
   white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis;
 }
 .ds-tab-count{

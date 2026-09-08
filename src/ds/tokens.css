@@ -157,6 +157,7 @@
   --ds-fs-body:15px;      /* prose and control labels */
   --ds-fs-meta:13px;      /* secondary meta, chips, counts */
   --ds-fs-eyebrow:12px;   /* uppercase label above a group */
+  --ds-fs-tab:10px;       /* the phone tab bar label: seven of them share 375px */
   --ds-fs-mono:13px;      /* time, id, count — tabular */
 
   --ds-lh-display:1.05;
@@ -247,7 +248,7 @@
   --ds-accent-ui:#4A7000;
   /* GAPS2-3: baked opaque, not translucent. The contrast instrument reads a
      background's literal channel values and does not composite alpha, so
-     this wash measured as if it were the fully saturated green underneath —
+     this wash measured as if it were the fully saturated green underneath -
      3.19:1 for #131313 text on it, real text on real white reads far
      lighter. The mix below is the same visual result (14% of the ink tint
      into the light surface) with nothing left for a naive reader to miss.
@@ -255,7 +256,7 @@
   /* `color-mix()` serialises to `color(srgb ...)` in Chromium/WebKit, whose
      fractional 0-1 channels the contrast instrument's regex reads as if they
      were 0-255 (matching CSS Color 4's own wider gamut, not a bug in that
-     serialisation) — a background near-black by the instrument's math though
+     serialisation), a background near-black by the instrument's math though
      it is really 230,235,219. Baked to a literal hex instead: 86% white /
      14% #4A7000. */
   --ds-accent-soft:#E6EBDB;

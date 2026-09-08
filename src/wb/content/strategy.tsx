@@ -134,7 +134,7 @@ function StrategySection({ s, first, last, onPatch, onMove, onRemove, onAddAfter
               icon="close" label="Remove this section" size="sm"
               onClick={async () => {
                 // W3-20: the only destructive control in this cluster, so it
-                // never fires bare — a blank section confirms too now, same
+                // never fires bare, a blank section confirms too now, same
                 // as ReactionDesk's Kill, just with a message that does not
                 // claim lost text when there was none to lose.
                 const ok = await confirm({

@@ -80,7 +80,7 @@ export function useFeedData() {
 
   // W2-4: a dismiss the server refused must not read as done. The row leaves
   // the list on the tap (so the gesture still feels instant) but the write is
-  // AWAITED, not fired-and-forgotten — the caller learns whether it landed,
+  // AWAITED, not fired-and-forgotten, the caller learns whether it landed,
   // and on a throw (the audit's interceptor 403s every PATCH; a real network
   // drop looks the same to this catch) the row goes right back via the same
   // merge rule Undo uses, instead of staying gone under a claim nobody made

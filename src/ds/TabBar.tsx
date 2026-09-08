@@ -23,7 +23,7 @@ export interface TabBarProps {
 
 /**
  * The phone tab bar. W1-5: every place carries its own small-caps label under
- * the glyph now, not only the active one — 7 equal slots at 390px is 55px
+ * the glyph now, not only the active one, 7 equal slots at 390px is 55px
  * each, which is the width the label already fits in (place.ts's own
  * comment), so the 44px tap floor was never the reason 6 of 7 read blank.
  * The active place still gets the sliding pill underneath it.

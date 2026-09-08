@@ -50,7 +50,7 @@
   border-left:2px solid var(--li-brand); padding-left:var(--ds-s3); margin-left:calc(var(--ds-s3) * -1);
   /* W3-5: the only sub-16px input the audit found anywhere; iOS Safari
      auto-zooms a focused field under 16px with no reliable way back. The
-     read-only preview (.li-body, above) keeps the LinkedIn-accurate 13.5px —
+     read-only preview (.li-body, above) keeps the LinkedIn-accurate 13.5px -
      that is the "as it will appear" claim, and it is not what is focused. */
   font-size:16px;
 }
