@@ -542,10 +542,12 @@ function Body({ d, lane, queue, refresh, onClose, onPick, mobile }: {
           busy={busy}
           footer={editing ? (
             <div className="a-dw-editbar">
-              <Button variant="primary" size="sm" busy={busy} onClick={save}>
-                {busy ? 'Saving…' : 'Save'}
-              </Button>
-              <Button variant="quiet" size="sm" disabled={busy} onClick={cancelEdit}>Cancel</Button>
+              {/* Save and Cancel are NOT here. They sat at the bottom of a card
+                  that scrolls inside the window, and the window's own pinned
+                  foot covered them: measured on i15, both engines, hit-testing
+                  a miss on all five probe points and recoverable only by
+                  scrolling about 51px. They live in the decision bar now, which
+                  is the one row that cannot be scrolled under. */}
               {/* The caps are the system's icons, not the unicode marks: a key
                   is drawn by `Kbd`, and ⌘ and ↵ are in the glyph map. */}
               <span className="a-dw-keys">
@@ -722,7 +724,17 @@ function Body({ d, lane, queue, refresh, onClose, onPick, mobile }: {
           />
         </div>
       )}
-      {editing && <span className="a-mono a-dim">Save or cancel the edit first</span>}
+      {/* While the editor is open the bar IS the editor's bar: the two acts
+          that end the edit, and the sentence that says why the rest refuse. */}
+      {editing && (
+        <div className="a-dw-decide">
+          <Button variant="primary" busy={busy} onClick={save}>
+            {busy ? 'Saving…' : 'Save'}
+          </Button>
+          <Button variant="quiet" disabled={busy} onClick={cancelEdit}>Cancel</Button>
+          <span className="a-mono a-dim">Save or cancel the edit first</span>
+        </div>
+      )}
     </div>
   )
 

@@ -334,8 +334,16 @@ export function Mobile(p: BrainMobileProps) {
   // The chrome row keeps its CONTROLS -- the alarm capsule, the feed bell, the
   // live dot -- and gives the name back to the screen. Ask and Feed keep theirs:
   // neither has a head of its own underneath.
-  const ownsTitle = feedOpen || place === 'ask'
-  const title = feedOpen ? 'Feed' : place === 'ask' ? 'Ask' : undefined
+  //
+  // W2-7: the FEED is no longer one of them. Its name and its unread count sat
+  // on this row, which does not travel with the sheet: at the half snap the
+  // sheet's body slid down to reveal the DMs head underneath while "Feed / 198
+  // unread" stayed pinned at y0, and the screen read as two feeds stacked. The
+  // feed's head is inside the sheet now, so head and body move together, and
+  // this row goes back to being the lane's chrome, which is exactly what the
+  // drop reveals.
+  const ownsTitle = place === 'ask'
+  const title = place === 'ask' ? 'Ask' : undefined
 
   const tabCounts = foldOnTabs(counts)
   const tabSev = foldOnTabs(sev)
@@ -367,30 +375,28 @@ export function Mobile(p: BrainMobileProps) {
           <Head
             title={title}
             lead={ownsTitle ? undefined : <span className="ds-sr">{JOB_LABEL[job]}</span>}
-            sub={feedOpen && !condensed ? `${feed.unreadTotal} unread` : undefined}
             tail={
               <>
                 {chat.busy && <LiveDot label="Claude is working" />}
-                {!feedOpen && p.health.n > 0 && (
+                {p.health.n > 0 && (
                   <StatusCapsule n={p.health.n} note={p.health.note} onClick={() => onTab('ops')} />
                 )}
-                {feedOpen
-                  ? <IconButton icon="back" label="Close feed" onClick={closeSheet} />
-                  : (
-                    <span className="a-brain-feedbtn" data-feed-open>
-                      <IconButton
-                        icon="bell" label={`Feed, ${feed.unreadTotal} unread`}
-                        onClick={() => setFeedOpen(true)}
-                      />
-                      {feed.unreadTotal > 0 && (
-                        <span className="a-brain-feedbtn-n">
-                          <Badge tone="neutral" label={`${feed.unreadTotal} unread`}>
-                            {feed.unreadTotal > 99 ? '99+' : feed.unreadTotal}
-                          </Badge>
-                        </span>
-                      )}
+                <span className="a-brain-feedbtn" data-feed-open>
+                  <IconButton
+                    icon="bell" label={`Feed, ${feed.unreadTotal} unread`}
+                    // Also the way back up from the half snap: the feed is
+                    // already open there, so opening it again has to mean
+                    // putting it back where it was.
+                    onClick={() => { setFeedOpen(true); setSnap(0); setVy(null) }}
+                  />
+                  {feed.unreadTotal > 0 && (
+                    <span className="a-brain-feedbtn-n">
+                      <Badge tone="neutral" label={`${feed.unreadTotal} unread`}>
+                        {feed.unreadTotal > 99 ? '99+' : feed.unreadTotal}
+                      </Badge>
                     </span>
                   )}
+                </span>
               </>
             }
           />
@@ -449,6 +455,14 @@ export function Mobile(p: BrainMobileProps) {
                   onClick={() => setSnap(drop > 0.2 ? 0 : 0.45)}
                 ><span /></button>
               </div>
+              {/* The feed's own head, INSIDE the element that carries the drop,
+                  so the name, the count and the way out travel with the rows
+                  they belong to. */}
+              <Head
+                title="Feed"
+                sub={condensed ? undefined : `${feed.unreadTotal} unread`}
+                tail={<IconButton icon="back" label="Close feed" onClick={closeSheet} />}
+              />
               <Feed
                 feed={feed} goJob={goJob}
                 openThread={openThreadAt}

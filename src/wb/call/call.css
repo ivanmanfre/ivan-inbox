@@ -8,6 +8,14 @@
 
 /* --- the shell ---------------------------------------------------------- */
 
+/* THE WINDOW'S INK, DECLARED. `ds-body` sets the app's colour on the ROOT div,
+   and this overlay is mounted outside it, so nothing between the call title and
+   the document handed it a colour: `.a-page-t` and the head's chevrons declare
+   none of their own and rendered in the UA's black on rgb(12,12,11), a ratio of
+   1.07. Scoped to this window's own class rather than to `.a-page-t`, which the
+   light-themed doc pages in Markdown.tsx share. */
+.a-cw-tk{ color:var(--ds-text) }
+
 .a-tk-scrim{
   position:fixed;
   inset:0;

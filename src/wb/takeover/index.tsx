@@ -78,6 +78,25 @@ export function Takeover({
 
   const panes = Boolean(rail || peer)
 
+  // THE RAIL IS WHAT WAS ASKED FOR, SO THE WINDOW WALKS TO IT. Below 1180 the
+  // rail folds UNDER the document; on the phone that put the queue 2,138px past
+  // the fold with nothing moving to it, so the header control that opens it
+  // ("1 of 33") read as a dead button. Only on the transition into open: a
+  // window whose rail was already on from the last row still opens on the
+  // document, which is what the reader came for.
+  const railRef = useRef<HTMLElement>(null)
+  const hasRail = Boolean(rail)
+  const railWas = useRef(hasRail)
+  useEffect(() => {
+    const justOpened = hasRail && !railWas.current
+    railWas.current = hasRail
+    if (!mobile || !justOpened) return
+    const id = requestAnimationFrame(() => {
+      railRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+    })
+    return () => cancelAnimationFrame(id)
+  }, [mobile, hasRail])
+
   return (
     <AnimatePresence>
       <motion.div
@@ -116,7 +135,7 @@ export function Takeover({
           </header>
 
           <div className={`a-tk-body${bodyClass ? ` ${bodyClass}` : ''}`}>
-            {rail ? <aside className="a-tk-rail">{rail}</aside> : null}
+            {rail ? <aside className="a-tk-rail" ref={railRef}>{rail}</aside> : null}
             <div className="a-tk-main">
               <div className={panes || bodyClass ? 'a-tk-doc' : 'a-tk-col'}>{children}</div>
               {foot ? <div className="a-tk-foot">{foot}</div> : null}

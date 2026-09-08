@@ -162,6 +162,28 @@
   .a-thread-ladder{ max-width:100% }
   .a-thread-said, .a-thread-box{ max-width:100% }
   .a-thread-draft > .a-group{ max-height:56vh }
+
+  /* THREE CONTROLS, THREE BOUNDED BUTTONS. Discard and Later carry the quiet
+     variant, which is transparent with no edge: above a full-width accent
+     Approve they measured as unbounded 44px text and read as captions rather
+     than as the two other answers. The ring bounds them at this width only;
+     Approve's accent fill is untouched, and neither button changes what it
+     does. */
+  .a-thread-acts .ds-btn[data-variant='quiet']{
+    box-shadow:inset 0 0 0 1px var(--ds-line-strong);
+    color:var(--ds-text);
+  }
+
+  /* THE CARD SAYS WHEN IT HAS MORE. It scrolls inside itself with no visible
+     edge, so the last line was cut mid-word and read as the end of the text. A
+     `local` cover over a `scroll` shade paints the fade ONLY while there is
+     content below the fold: at the bottom of the travel the cover slides over
+     the shade and the edge disappears on its own, with no scroll listener. */
+  .a-thread-dscroll{
+    background:
+      linear-gradient(to top, var(--ds-surface-1), transparent) 0 100% / 100% var(--ds-s6) no-repeat local,
+      linear-gradient(to top, var(--ds-scrim), transparent) 0 100% / 100% var(--ds-s5) no-repeat scroll;
+  }
 }
 
 /* THE HEAD WRAPS RATHER THAN CUTS, at every width. The tail is `flex:0 0 auto`

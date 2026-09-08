@@ -18,6 +18,7 @@ import { canApprove, type ReactionRow } from '../../lib/reactions'
 import type { useReactions } from '../../hooks/useReactions'
 import type { ReactNode } from 'react'
 import { Badge, Banner, Button, Icon, Textarea } from '../../ds'
+import { useConfirm } from '../chrome/ConfirmSheet'
 import { Cell, Group, Ledger, Sep } from '../kit'
 import './ops.css'
 
@@ -178,6 +179,12 @@ function ReactionCard({ row, body, busy, nextSlot, onBody, onKill, onApprove }: 
  * in it before it draws a column.
  */
 export function ReactionDesk({ rx }: { rx: ReactionsState }) {
+  // Kill is irreversible and was one tap: the row is archived in the database
+  // and dropped from the list, with nothing to undo it. TaskList's Remove
+  // already gates the same class of act, so this desk asks the same way, in
+  // the same sheet. The hook is called before the empty-state return because a
+  // hook cannot sit behind a condition.
+  const confirm = useConfirm()
   if (!rx.error && rx.rows.length === 0) return null
 
   return (
@@ -210,7 +217,15 @@ export function ReactionDesk({ rx }: { rx: ReactionsState }) {
           busy={rx.busy === r.id}
           nextSlot={rx.nextSlot}
           onBody={v => rx.setBody(r.id, v)}
-          onKill={() => rx.kill(r)}
+          onKill={async () => {
+            const ok = await confirm({
+              title: 'Kill this reaction?',
+              message: 'It comes off the desk for good. Nothing is posted and nothing else happens.',
+              confirmText: 'Kill it',
+              danger: true,
+            })
+            if (ok) rx.kill(r)
+          }}
           onApprove={() => rx.approve(r)}
         />
       ))}

@@ -203,6 +203,12 @@
   --ds-z-popover:50;
   --ds-z-sheet:60;
   --ds-z-dialog:70;
+  /* The confirm rides ABOVE every dialog, because a confirm is always raised
+     FROM one: the call takeover sits on --ds-z-dialog and the ds Sheet the
+     confirm uses sits on --ds-z-sheet, so "Schedule it" painted behind the
+     window that asked the question and elementFromPoint returned that window's
+     own date input. A confirm is the last thing on screen, by name. */
+  --ds-z-confirm:75;
   --ds-z-toast:80;
 
   /* --- 9 · SHELL GEOMETRY ------------------------------------------------ */

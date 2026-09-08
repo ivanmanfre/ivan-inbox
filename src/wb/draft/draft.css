@@ -392,6 +392,25 @@
   .a-dw .a-tk-doc{ width:100% }
   .a-dw-dim-k{ flex-basis:6rem }
   .a-dw-cap{ flex-direction:column; align-items:flex-start; gap:var(--ds-s2) }
+
+  /* THE RUN BREAKS RATHER THAN PUSHES. `white-space:nowrap` keeps the score run
+     and the time span as one unit at desk widths; on the phone the fold's tail
+     ("the copy that published · 570 chars · reviewed") measured 384px against a
+     390px window and made the whole document a horizontal scroller, 10px on
+     i15 and 35px on SE. It wraps here. Nothing is clipped or ellipsed: the
+     panel content is what the fold is for. */
+  .a-dw-fold-t{
+    white-space:normal;
+    flex-wrap:wrap;
+    margin-inline-start:0;
+    flex:1 1 auto;
+    min-width:0;
+  }
+
+  /* The inspector's four tabs measured 23/27/43px, three of them under the
+     44px floor. The ds Tabs elsewhere keep their own measure; this pads only
+     this segment, and the row still fits inside 390 (4 x 44 + 3 gaps). */
+  .a-dw-insp-h .ds-tabs-item{ min-width:var(--ds-tap); justify-content:center }
 }
 
 /* A key hint: the caps are drawn, so the line is a row of marks with words

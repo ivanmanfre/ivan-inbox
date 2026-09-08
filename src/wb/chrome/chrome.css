@@ -68,9 +68,23 @@
 
 /* 6 · S19 confirm. The two answers sit on one row, the confirm on the trailing
    edge; the sheet stretches them so a thumb cannot miss either. */
+
+/* THE CONFIRM IS THE LAST LAYER. Both the sheet and the scrim it fades in with
+   ride --ds-z-confirm, above every takeover: the ds Sheet's own layer is
+   --ds-z-sheet (60) and the call takeover's scrim is --ds-z-dialog (70), so a
+   confirm raised from inside that window painted underneath it and the tap at
+   the confirm button's centre landed on the window's own date input. The scrim
+   is the sheet's immediate previous sibling in ds/Sheet.tsx, which is what the
+   :has() names, so no call site had to pass a second class down. */
+.a-confirm,
+.ds-scrim:has(+ .a-confirm){ z-index:var(--ds-z-confirm) }
+
 .a-confirm-foot{ display:flex; justify-content:flex-end; gap:var(--ds-s3) }
 @media (max-width:767px){
-  .a-confirm-foot{ justify-content:stretch }
+  /* The wrapper is itself a flex item of .ds-sheet-foot, and with no grow it
+     sized to its own content: the stretch below then split 193px of button
+     across a 390px sheet and left 173px of dead space beside them. */
+  .a-confirm-foot{ flex:1 1 auto; justify-content:stretch }
   .a-confirm-foot > *{ flex:1 1 0 }
 }
 

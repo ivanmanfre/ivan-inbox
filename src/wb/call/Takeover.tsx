@@ -51,7 +51,7 @@ export function Takeover({ label, sub, onClose, mobile, children }: {
         // this window is deliberately out of reach. Without it the window
         // reads as a panel painted over a live screen, and every control on
         // the screen underneath is measured as a control the reader missed.
-        className="a-tk-scrim ds-scrim ds-body"
+        className="a-tk-scrim ds-scrim ds-body a-cw-tk"
         onClick={mobile ? undefined : onClose}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

@@ -97,15 +97,22 @@ export function ContextSheet({ thread, onClose }: { thread: Thread; onClose: () 
     } catch { setNoteState('error') }
   }
 
-  const rows: Array<[string, string]> = ctx ? [
-    ['Lane', thread.last.campaign_name || '—'],
-    ['Stage', thread.stage ? label(thread.stage) : '—'],
+  // A FIELD WE DO NOT HOLD DOES NOT TAKE A ROW. Each entry is a value or null,
+  // and the nulls are dropped: two of the six fact fields carried a dash on a
+  // real prospect, and each reserved grid row pushed YOUR NOTE 6px past the
+  // bottom of an 844px phone with only 74px of scroll to find it with. A dash
+  // said nothing the empty grid does not; the count fields still print 0,
+  // because zero is a reading.
+  const rows: Array<[string, string]> = ctx ? ([
+    ['Lane', thread.last.campaign_name || null],
+    ['Stage', thread.stage ? label(thread.stage) : null],
     ['DMs sent', String(ctx.dm_count ?? 0)],
     ['Replies', `${ctx.reply_count ?? 0}${ctx.last_reply_at ? ` · last ${ago(ctx.last_reply_at)}` : ''}`],
-    ['Connected', ctx.connected_at ? ago(ctx.connected_at) : ctx.connection_sent_at ? `invited ${ago(ctx.connection_sent_at)}` : '—'],
-    ['Location', ctx.location || '—'],
-    ['Industry', ctx.industry || '—'],
-  ] : []
+    ['Connected', ctx.connected_at ? ago(ctx.connected_at) : ctx.connection_sent_at ? `invited ${ago(ctx.connection_sent_at)}` : null],
+    ['Location', ctx.location || null],
+    ['Industry', ctx.industry || null],
+  ] as Array<[string, string | null]>)
+    .filter((r): r is [string, string] => r[1] !== null) : []
 
   const icp = ctx?.icp_score ?? null
 
