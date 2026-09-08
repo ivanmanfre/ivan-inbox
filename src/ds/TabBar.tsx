@@ -22,9 +22,11 @@ export interface TabBarProps {
 }
 
 /**
- * The phone tab bar. The active place expands to icon + label inside a
- * highlight that slides between places; every other place stays icon-only and
- * keeps a 44px hit area.
+ * The phone tab bar. W1-5: every place carries its own small-caps label under
+ * the glyph now, not only the active one — 7 equal slots at 390px is 55px
+ * each, which is the width the label already fits in (place.ts's own
+ * comment), so the 44px tap floor was never the reason 6 of 7 read blank.
+ * The active place still gets the sliding pill underneath it.
  */
 export function TabBar({ items, active, onSelect, markerId = 'ds-tab-active', className }: TabBarProps) {
   return (
@@ -44,7 +46,7 @@ export function TabBar({ items, active, onSelect, markerId = 'ds-tab-active', cl
           >
             {on ? <motion.span layoutId={markerId} className="ds-tab-marker" /> : null}
             <Icon name={t.icon} size={20} />
-            {on ? <span className="ds-tab-label">{t.label}</span> : null}
+            <span className="ds-tab-label">{t.label}</span>
             {!on && t.count ? (
               <span className="ds-tab-count">
                 <Badge tone={t.sev ?? 'neutral'} label={`${t.count} in ${t.label}`}>

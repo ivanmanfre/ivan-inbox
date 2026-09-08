@@ -81,6 +81,10 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
   const [step, setStep] = useState<{ key: string; dir: 1 | -1 }>(
     () => ({ key: 'first', dir: 1 }))
   const [moving, setMoving] = useState<Moving | null>(null)
+  // W3-12: the day cell nodes, keyed by their day string, so the mount effect
+  // below can scroll straight to today's header instead of the agenda
+  // opening on day 1 of the month, whatever that day happens to hold.
+  const dayRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const [drag, setDrag] = useState<Dragging | null>(null)
   const [over, setOver] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -158,6 +162,24 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
   const monthArmed = monthItems.filter(i => i.arming === 'armed').length
   const monthPlanned = monthItems.filter(i => i.arming === 'planned').length
   const monthOut = monthItems.filter(i => i.arming === 'out').length
+
+  // W3-12: on the FIRST paint only, jump to today's header. `data-empty` days
+  // are not in the DOM at all on the phone (agenda reading), so "today" itself
+  // may hold nothing to scroll to — the target is the first day AT OR AFTER
+  // today that actually rendered, and if the whole month is behind today's
+  // date, the last rendered day (there is nowhere further forward to land).
+  // Guarded by a ref rather than an empty deps array so a later month step
+  // (the Previous/Next/Today controls above) is never fought by this effect.
+  const autoScrolled = useRef(false)
+  useLayoutEffect(() => {
+    if (autoScrolled.current) return
+    autoScrolled.current = true
+    const visible = weeks.flat().filter(k => (byDay.get(k) ?? []).length > 0)
+    const at = visible.find(k => k >= today) ?? visible[visible.length - 1]
+    if (!at) return
+    dayRefs.current[at]?.scrollIntoView({ block: 'start' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const startMove = (id: string, title: string, at: string | null) => {
     setErr(null); setDone(null)
@@ -289,6 +311,7 @@ export function ContentCalendar({ rows, queue = [], onOpen, refresh }: {
                   return (
                     <div
                       key={k}
+                      ref={el => { dayRefs.current[k] = el }}
                       className="a-ct-day"
                       data-empty={day.length === 0 ? '' : undefined}
                       data-out={outside ? '' : undefined}

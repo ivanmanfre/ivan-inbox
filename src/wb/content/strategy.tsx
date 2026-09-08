@@ -133,17 +133,17 @@ function StrategySection({ s, first, last, onPatch, onMove, onRemove, onAddAfter
             <IconButton
               icon="close" label="Remove this section" size="sm"
               onClick={async () => {
-                // The only destructive control on the surface, and a section can
-                // hold a paragraph Ivan wrote once and never re-derived.
-                if (s.body.trim()) {
-                  const ok = await confirm({
-                    title: `Remove "${s.title || 'this section'}"?`,
-                    message: 'Its text is not recoverable.',
-                    confirmText: 'Remove',
-                    danger: true,
-                  })
-                  if (!ok) return
-                }
+                // W3-20: the only destructive control in this cluster, so it
+                // never fires bare — a blank section confirms too now, same
+                // as ReactionDesk's Kill, just with a message that does not
+                // claim lost text when there was none to lose.
+                const ok = await confirm({
+                  title: `Remove "${s.title || 'this section'}"?`,
+                  message: blank ? 'Nothing is written in it yet.' : 'Its text is not recoverable.',
+                  confirmText: 'Remove',
+                  danger: true,
+                })
+                if (!ok) return
                 onRemove()
               }}
             />

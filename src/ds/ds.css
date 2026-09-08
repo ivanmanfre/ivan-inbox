@@ -270,11 +270,11 @@ body :focus-visible{
 }
 .ds-tab{
   position:relative;
-  flex:0 0 auto;
-  display:flex; align-items:center; gap:var(--ds-s2);
+  flex:1 1 0;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:var(--ds-s1);
   min-height:var(--ds-tap); min-width:var(--ds-tap);
-  padding:var(--ds-s2) var(--ds-s4);
-  justify-content:center;
+  padding:var(--ds-s2) var(--ds-s1);
   border:0; background:transparent; color:var(--ds-text-3);
   border-radius:var(--ds-r-pill);
   cursor:pointer;
@@ -287,7 +287,6 @@ body :focus-visible{
    held back by the spring's settle so the travelling pill is still the only
    thing that moves; leaving reverts with no delay, so no pill is left behind. */
 .ds-tab[data-active='true']{
-  flex:1 1 auto;
   color:var(--ds-accent-ink);
   background:var(--ds-accent);
   transition:color var(--ds-dur-hover) var(--ds-ease),
@@ -300,9 +299,18 @@ body :focus-visible{
   background:var(--ds-accent);
   z-index:0;
 }
+/* W1-5: every tab carries this now, not only the active one — small-caps,
+   the size place.ts's own comment named for it (--fs-eyebrow), so the 7-way
+   equal column split still clears the 44px floor with the label INSIDE it
+   (stacked under the glyph) rather than beside it. No letter-spacing: with it
+   "Content" (the longest label) overflowed its own 45-49px column and drew
+   over "Lanes" next to it — `.ds-tab` never grew to fit, the text just
+   painted past its box, since nothing here clipped it. `max-width` +
+   `text-overflow` is the same backstop for any future label this wide. */
 .ds-tab-label{
-  font-size:var(--ds-fs-meta); font-weight:var(--ds-fw-medium);
-  white-space:nowrap;
+  font-size:var(--ds-fs-eyebrow); line-height:var(--ds-lh-eyebrow);
+  font-weight:var(--ds-fw-medium); text-transform:uppercase;
+  white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis;
 }
 .ds-tab-count{
   position:absolute; top:var(--ds-s1); right:var(--ds-s1); z-index:2;
