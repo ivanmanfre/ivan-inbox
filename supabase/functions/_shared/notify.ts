@@ -41,7 +41,12 @@ const PUSH_BODY_CHARS = 140
 export const PUSH_DEFAULT: Record<string, boolean> = {
   // --- interrupt --------------------------------------------------------
   claude_turn: true,          // an answer (or a failed turn) he is waiting on
-  inbound_reply_notice: true, // a human replied on ARCH / RISE / Ivan
+  // inbound_reply_notice is deliberately NOT here. The DB trigger on
+  // outreach_messages (db/002, db/054) already pushes every inbound DM through
+  // inbox-push with the prospect's name and the message text, so a push here
+  // was the same reply ringing twice, 20 s apart (Ivan 2026-09-08: "1 is the dm,
+  // and next i get a new inbound reply notif again"). The row stays in the feed;
+  // the phone hears the DM itself. See the feed-only block below.
   booking_notice: true,       // a lead booked; the money event
   reminder: true,             // reminders he set himself
   night_brief: true,          // the night brief
@@ -77,6 +82,7 @@ export const PUSH_DEFAULT: Record<string, boolean> = {
   draft_generation_error: false,    // same, per-lead retries
   scan_quality_alert: false,        // eyeball-before-send nudges
   comment_engagement_notice: false, // handled in the DMs tab
+  inbound_reply_notice: false,      // the DM push (inbox-push, DB trigger) already rang
   arch_build_progress: false,       // deck/audit build narration
   ops_other: false,                 // unclassified: never interrupt on a guess
 }
