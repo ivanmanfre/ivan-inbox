@@ -245,7 +245,20 @@
      ink label; the GLYPH form darkens. #5A8A00 read 4.14 on every surface (29
      links and day numbers); #4A7000 clears 4.5 on all four. */
   --ds-accent-ui:#4A7000;
-  --ds-accent-soft:rgba(74,112,0,.14);
+  /* GAPS2-3: baked opaque, not translucent. The contrast instrument reads a
+     background's literal channel values and does not composite alpha, so
+     this wash measured as if it were the fully saturated green underneath —
+     3.19:1 for #131313 text on it, real text on real white reads far
+     lighter. The mix below is the same visual result (14% of the ink tint
+     into the light surface) with nothing left for a naive reader to miss.
+     Border/ring forms keep their alpha; nothing sits inside them as text. */
+  /* `color-mix()` serialises to `color(srgb ...)` in Chromium/WebKit, whose
+     fractional 0-1 channels the contrast instrument's regex reads as if they
+     were 0-255 (matching CSS Color 4's own wider gamut, not a bug in that
+     serialisation) — a background near-black by the instrument's math though
+     it is really 230,235,219. Baked to a literal hex instead: 86% white /
+     14% #4A7000. */
+  --ds-accent-soft:#E6EBDB;
   --ds-accent-line:rgba(74,112,0,.30);
   --ds-accent-ring:rgba(74,112,0,.55);
   /* The severity INKS, darkened for this ground; the fills above are untouched.
@@ -253,7 +266,10 @@
   --ds-sev-clear-ui:#0A7256;
   --ds-sev-attention-ui:#8A5300;
   --ds-sev-urgent-ui:#C4231A;
-  --ds-av-1:rgba(90,138,0,.18);
+  /* GAPS2-3: same bake as --ds-accent-soft above, same reason (the avatar
+     initials sit directly on this tint). */
+  /* Same bake as --ds-accent-soft above, same reason: 82% white / 18% #5A8A00. */
+  --ds-av-1:#E1EAD1;
   --ds-av-2:rgba(196,105,0,.18);
   --ds-av-3:rgba(19,19,19,.16);
   --ds-av-4:rgba(19,19,19,.06);

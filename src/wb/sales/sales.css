@@ -81,7 +81,10 @@
   .a-sl[data-density='a'] .a-sl-row{ position:relative; padding-right:calc(var(--ds-tap) + var(--ds-s4)) }
   .a-sl[data-density='a'] .a-sl-join{
     position:absolute; top:var(--ds-row-y); right:var(--ds-row-x);
-    min-width:0; padding-inline:var(--ds-s3);
+    /* W5-4: 0 let the tightened padding shrink the pill to 42px, 2px under
+       the tap floor. The absolute position still lifts it off the name row;
+       the floor just stays a floor. */
+    min-width:var(--ds-tap); padding-inline:var(--ds-s3);
   }
   .a-sl[data-density='a'] .a-sl-chips{
     flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none;

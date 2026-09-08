@@ -163,6 +163,13 @@
   .a-thread-said, .a-thread-box{ max-width:100% }
   .a-thread-draft > .a-group{ max-height:56vh }
 
+  /* W2-6: four full labels plus Spam ran "Invited ConnectedMessaged Replied"
+     with zero gap at 390. The dots and the connector still say where the
+     ladder stands; only the current step keeps its word, which is the one
+     fact the thread's own header does not already say. */
+  .a-thread-ladder .ds-step-label{ display:none }
+  .a-thread-ladder .ds-step[data-state='current'] .ds-step-label{ display:inline-block; white-space:nowrap }
+
   /* THREE CONTROLS, THREE BOUNDED BUTTONS. Discard and Later carry the quiet
      variant, which is transparent with no edge: above a full-width accent
      Approve they measured as unbounded 44px text and read as captions rather

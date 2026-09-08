@@ -113,10 +113,13 @@ function Promises({ items }: { items: ActionItem[] }) {
       <ul className="a-cw-ai">
         {list.map((it, i) => (
           <li className="a-cw-ai-i" key={`${heading}-${i}`}>
-            <span className="a-cw-ai-t a-body-t">{it.action}</span>
+            <span className="a-cw-ai-t a-body-t">
+              <Icon name="checked" size={16} />
+              <span>{it.action}</span>
+            </span>
             {(it.owner || it.due || it.why) && (
               <span className="a-wrapline a-meta">
-                {it.owner && !it.mine && <span className="a-cw-own">{it.owner}</span>}
+                {it.owner && !it.mine && <Chip tone="quiet">{it.owner}</Chip>}
                 {it.due && <Chip tone="quiet">Due {it.due}</Chip>}
                 {it.why && <span className="a-dim">{it.why}</span>}
               </span>

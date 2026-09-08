@@ -19,11 +19,16 @@ function hashName(name: string): number {
   return h
 }
 
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return '?'
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+// W2-13: sliced off the raw name, "Dragos Bogdan 🔜 Gamescom (Cologne)" read
+// as "D(" — the last whitespace-split token was punctuation, not a name. Take
+// the first two LETTER tokens instead (\p{L}), so emoji and punctuation are
+// never candidates.
+export function initials(name: string): string {
+  const words = name.match(/\p{L}+/gu) ?? []
+  const [first, second] = words
+  if (!first) return '?'
+  if (!second) return first.slice(0, 2).toUpperCase()
+  return (first[0] + second[0]).toUpperCase()
 }
 
 export function Face({ name, size = 'md', live }: {

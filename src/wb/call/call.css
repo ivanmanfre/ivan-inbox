@@ -153,8 +153,18 @@
 .a-cw-h-t{ color:var(--ds-text-3) }
 .a-cw-ai, .a-cw-li{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:var(--ds-s4) }
 .a-cw-li{ gap:var(--ds-s3) }
-.a-cw-ai-i{ display:flex; flex-direction:column; gap:var(--ds-s2); min-width:0 }
-.a-cw-ai-t{ color:var(--ds-text) }
+/* W5-3: "THEY SAID THEY WOULD" was semantic ul/li but read as body prose —
+   no boundary said "this is a commitment", not a sentence. The li keeps its
+   role; a border and a glyph say what kind of thing sits inside it. Owner
+   moved from plain text to the same Chip the due date already used. */
+.a-cw-ai-i{
+  display:flex; flex-direction:column; gap:var(--ds-s2); min-width:0;
+  padding:var(--ds-s3) var(--ds-s4);
+  border-radius:var(--ds-r3);
+  box-shadow:inset 0 0 0 1px var(--ds-line);
+}
+.a-cw-ai-t{ display:flex; align-items:flex-start; gap:var(--ds-s2); color:var(--ds-text) }
+.a-cw-ai-t svg{ flex:0 0 auto; margin-block-start:2px; color:var(--ds-text-3) }
 .a-cw-own{ color:var(--ds-text-2) }
 .a-cw-note{ color:var(--ds-text-3) }
 .a-cw-fmt{ margin-inline-start:var(--ds-s3); color:var(--ds-text-3) }

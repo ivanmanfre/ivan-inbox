@@ -462,6 +462,17 @@
   .a-log-cl{ grid-column:4 }
   .a-log-ago{ grid-column:5 }
   .a-log{ min-inline-size:0 }
+
+  /* W4-5: a single-line ellipsis cuts a long name mid-word ("Popdarts ·
+     Ris…") with spare vertical room right underneath it. Two lines, word
+     boundaries only, ellipsis after that if it is still too long. */
+  .a-log-nm{
+    white-space:normal;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
 }
 
 /* The LOG's denominator is a sentence, not a tail chip: on the phone it takes
