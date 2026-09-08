@@ -338,6 +338,28 @@
     --ds-r-plate:24px;
     --ds-plate-gap:8px;
     --ds-header-h:56px;
+
+    /* N2 (native pass, 2026-09-09): THE LEDGER'S OWN SIZES, phone only. The
+       locked visual spec names sizes the eight type roles above do not carry
+       (a 15px chip label between body 16 and meta 13, a 14px preview, a 10px
+       count pill, a 10.5px lane tag), so they are named here rather than typed
+       as literals into four sheets. Every one is phone-scoped: the desktop
+       ramp is untouched, which is what keeps the 1400x900 floor at 0 px. */
+    /* 10px, not the spec's 11: at 11px mono with .08em of tracking "CONTENT"
+       is 52.4px against a 51.7px column at 390 and a 49.6px column at 375, and
+       the PNG showed it ellipsised to "CONTE..." on BOTH. The gate's own
+       fallback, taken with the shot that forced it
+       (evidence/N2/tab-label-11px-ellipsis-i15.png). */
+    --ds-fs-tab:10px;      /* the tab label, mono uppercase, letter-spaced */
+    --ds-fs-chip:15px;     /* a filter chip's label */
+    --ds-fs-preview:14px;  /* the conversation row's second line */
+    --ds-fs-badge:10px;    /* a count pill on a rib tile */
+    --ds-fs-lane:10.5px;   /* the lane tag on the row's second line */
+    --ds-chip-h:40px;      /* the visible chip pill inside its 44px hit box */
+    --ds-pill-h:34px;      /* the row's one action, and the strip's */
+    --ds-pill-r:17px;
+    --ds-tr-tab:0.08em;
+    --ds-tr-lane:0.06em;
   }
 }
 

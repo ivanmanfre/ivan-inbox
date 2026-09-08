@@ -283,6 +283,10 @@ export function PushedBar({ pushed, onOpen }: { pushed: Thread[]; onOpen: (id: s
   return (
     <Banner
       icon="time"
+      /* N2-2: named so the phone can paint it as the one live strip on the
+         screen. The TONE stays neutral: nothing here is stopped or failing,
+         and a severity tone would say it is. */
+      className="a-dms-pushed"
       title={`${pushed.length} draft${pushed.length === 1 ? '' : 's'} pushed to later · next `
         + `is ${next.prospect_name.split(' ')[0]}, ${returnsIn(next.draftSnoozedUntil!)}`}
       action={<Button variant="quiet" onClick={() => onOpen(next.prospect_id)}>Open</Button>}

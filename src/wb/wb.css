@@ -508,4 +508,19 @@
   .a-group{ border-radius:var(--ds-r4); margin-inline:var(--ds-gutter) }
   .a-ledger{ grid-template-columns:1fr 1fr; margin-inline:var(--ds-gutter) }
   .a-head, .a-bar{ padding-inline:var(--ds-gutter) }
+
+  /* N2-1 · THE RIB TILE. Every head control on the phone is a square 44x44
+     tile on the raised surface with a 12px corner, so the top strip reads as
+     a row of buttons rather than three glyphs floating on the canvas. The
+     44px box is already the §19 floor's; what is added here is the SURFACE.
+     Ghost is the default variant, so the fill has to be stated on the class,
+     not on a variant, or the one control a reader taps most stays invisible. */
+  .a-head .ds-ibtn{
+    background:var(--ds-surface-2);
+    border-radius:var(--ds-r3);
+    color:var(--ds-text);
+  }
+  .a-head .ds-ibtn:active:not(:disabled){ background:var(--ds-surface-3) }
+  /* The glyph carries the tile. 16px inside a 44px square reads as a dot. */
+  .a-head .ds-ibtn .ds-icon{ width:var(--ds-icon-md); height:var(--ds-icon-md) }
 }

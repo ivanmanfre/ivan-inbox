@@ -400,3 +400,94 @@
      chips would have handed the fold back what W2-10 just won for the list. */
   .a-dms > .a-bar [data-ds='Chip']{ padding-inline:var(--ds-s2) }
 }
+
+/* --------------------------------------------------------------------------
+   N2-2 · THE ROW'S RIGHT COLUMN (native pass, 2026-09-09). Phone only.
+
+   The locked spec's row is three tracks: avatar, text, and a right column that
+   stacks the time OVER the one action. The row is a flex LINE everywhere else
+   (and the trap comment above says why it had to be), so the phone restates it
+   as a two-row grid at the same four-class specificity: lead and main span
+   both rows, the tail takes the first, the actions take the second. Nothing
+   about ROW_H_PHONE moves -- the stack is 20 + 4 + 34 inside the 96px host,
+   which is less than the 68px the padded box already allowed.
+   -------------------------------------------------------------------------- */
+@media (max-width:767px){
+  .a-dms-rowhost > .a-row.a-row.a-row.a-row.r{
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr) auto;
+    grid-template-rows:auto auto;
+    align-content:center;
+    column-gap:var(--ds-s4);
+    row-gap:var(--ds-s2);
+  }
+  .a-dms .a-row.r > .a-row-lead{ grid-column:1; grid-row:1 / span 2; align-self:center }
+  .a-dms .a-row.r > .a-row-main{ grid-column:2; grid-row:1 / span 2; align-self:center; width:100% }
+  .a-dms .a-row.r > .a-row-tail{ grid-column:3; grid-row:1; justify-self:end }
+  .a-dms .a-row.r > .a-row-actions{ grid-column:3; grid-row:2; justify-self:end }
+  /* A row whose actions box holds nothing a phone can see collapses it, and
+     the tail then centres itself against the two lines of text rather than
+     riding their top edge. The box is almost never absent: the copy-chat link
+     renders on EVERY row and is hidden here, so an `:empty` test would have
+     matched nothing and every plain row would have kept a 4px offset. */
+  .a-dms .a-row.r > .a-row-actions:not(:has(.ds-btn)){ display:none }
+  .a-dms .a-row.r:not(:has(> .a-row-actions .ds-btn)) > .a-row-tail{ grid-row:1 / span 2; align-self:center }
+
+  /* The three type values the spec names for this row. The name is the one
+     thing on the line that is nowhere else, so it takes the semibold step; the
+     preview drops to the third ink because the name above it is the first. */
+  .a-dms .a-row.r .a-row-title{ font-weight:var(--ds-fw-semi) }
+  .a-dms .a-row.r > .a-row-main > .a-row-sub{
+    font-size:var(--ds-fs-preview);
+    color:var(--ds-text-3);
+  }
+  .a-dms .a-row.r > .a-row-tail{ font-size:var(--ds-fs-eyebrow) }
+  /* The lane tag: mono, letter-spaced, on the raised surface. A tag, not a
+     control, which is why it may sit under the 13px interactive floor. */
+  .a-dms-lane [data-ds='Chip']{
+    height:auto;
+    padding:var(--ds-s1) var(--ds-s2);
+    border-radius:var(--ds-r1);
+    background:var(--ds-surface-2);
+    color:var(--ds-text-2);
+    font-family:var(--ds-font-mono);
+    font-size:var(--ds-fs-lane);
+    letter-spacing:var(--ds-tr-lane);
+  }
+
+  /* THE ONE ACTION IS A PILL, NEVER BARE TEXT. `quiet` paints nothing, so on a
+     phone the row's only verb read as a floating word with no edges. It takes
+     the raised surface and the spec's 34px pill here; the 44px tap floor is
+     answered by the row itself, which is 96px of target around it. */
+  .a-dms .a-row.r > .a-row-actions .ds-btn{
+    height:var(--ds-pill-h);
+    min-height:var(--ds-pill-h);
+    padding:0 var(--ds-s4);
+    border-radius:var(--ds-pill-r);
+    background:var(--ds-surface-2);
+    color:var(--ds-text);
+    font-size:var(--ds-fs-preview);
+    font-weight:var(--ds-fw-semi);
+  }
+  .a-dms .a-row.r > .a-row-actions .ds-btn:active:not(:disabled){ background:var(--ds-surface-3) }
+
+  /* N2-2 · THE PUSHED STRIP. What is parked is live state, so this is the one
+     strip on the screen that takes the accent: a soft fill, a lime line, and a
+     lime primary on the one thing it offers. */
+  .a-dms-pushed{
+    background:var(--ds-accent-soft);
+    box-shadow:inset 0 0 0 1px var(--ds-accent-line);
+    color:var(--ds-text-2);
+  }
+  .a-dms-pushed .ds-icon{ color:var(--ds-accent-ui) }
+  .a-dms-pushed .ds-btn{
+    height:var(--ds-pill-h);
+    min-height:var(--ds-pill-h);
+    padding:0 var(--ds-s4);
+    border-radius:var(--ds-pill-r);
+    background:var(--ds-accent);
+    color:var(--ds-accent-ink);
+    font-size:var(--ds-fs-preview);
+    font-weight:var(--ds-fw-semi);
+  }
+}

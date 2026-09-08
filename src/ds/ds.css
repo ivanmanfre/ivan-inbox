@@ -1205,6 +1205,87 @@ body :focus-visible{
 }
 
 /* ==========================================================================
+   20 · N2, THE LEDGER AT TOUCH SCALE (native pass, 2026-09-09). Phone only.
+
+   §19 above put every control ON the 44px floor. This section is what the
+   locked visual spec asks for INSIDE that floor: a chip whose pill reads 40px
+   tall while its hit box stays 44, a tab label in mono small caps rather than
+   a 10px sentence, and a pressed state on everything a thumb can land on.
+   Nothing here is written outside `max-width:767px`, so the desktop shell and
+   the frozen `#exp/stock` shot cannot move.
+   ========================================================================== */
+@media (max-width:767px){
+
+  /* 20.1 · THE FILTER CHIP. The spec's "40px tall inside a 44px hit box" is
+     drawn as a pseudo-element rather than by shrinking the button, so the
+     THING A THUMB HITS and the THING AN EYE READS are two different boxes and
+     both are measurable: the element's rect stays 44 (tapTargets), the
+     ::before's computed height is 40 (the chip gate). `z-index:-1` inside an
+     isolated stacking context puts the pill under the label and over the bar's
+     own canvas; a 0 or positive z-index would paint the pill OVER its text. */
+  .ds-chip.ds-chip[data-interactive='true']{
+    position:relative;
+    isolation:isolate;
+    gap:var(--ds-s2);
+    padding:0 var(--ds-s4);
+    border-radius:var(--ds-r3);
+    background:transparent;
+    box-shadow:none;
+    color:var(--ds-text-2);
+    font-size:var(--ds-fs-chip);
+    font-weight:var(--ds-fw-medium);
+  }
+  .ds-chip.ds-chip[data-interactive='true']::before{
+    content:'';
+    position:absolute;
+    inset:var(--ds-s1) var(--ds-s0);
+    z-index:-1;
+    border-radius:var(--ds-r3);
+    background:var(--ds-surface-2);
+    transition:background-color var(--ds-dur-hover) var(--ds-ease);
+  }
+  .ds-chip.ds-chip[data-interactive='true'] .ds-t-mono{
+    font-size:var(--ds-fs-eyebrow);
+    color:var(--ds-text-3);
+  }
+  /* Selected is a LIVE state, so it takes the one accent as a fill with ink on
+     it, never the hairline ring the desktop chip wears. */
+  .ds-chip.ds-chip[data-interactive='true'][data-selected='true']{ color:var(--ds-accent-ink) }
+  .ds-chip.ds-chip[data-interactive='true'][data-selected='true']::before{ background:var(--ds-accent) }
+  .ds-chip.ds-chip[data-interactive='true'][data-selected='true'] .ds-t-mono{ color:var(--ds-accent-ink); opacity:.75 }
+
+  /* 20.2 · THE TAB LABEL. Small caps at 10px read as a shrunken sentence; the
+     spec's mono uppercase at 11px with .08em reads as a label. The
+     letter-spacing W1-5's comment warned about is affordable now only because
+     the ellipsis backstop it added is still here: nothing overflows its
+     column, it truncates. PNG-verified at 375 for all seven. */
+  .ds-tab-label{
+    font-family:var(--ds-font-mono);
+    font-size:var(--ds-fs-tab);
+    font-variant-caps:normal;
+    text-transform:uppercase;
+    letter-spacing:var(--ds-tr-tab);
+    font-weight:var(--ds-fw-medium);
+  }
+
+  /* 20.3 · PRESSED STATES. A phone has no hover, so the only feedback a
+     control can give is the press itself. One scale step for anything that
+     moves as a whole, a tint for a row that is too wide to scale without
+     reading as a wobble, and the blue flash off everywhere. */
+  html, body, body *{ -webkit-tap-highlight-color:transparent }
+  .ds-btn:active:not(:disabled),
+  .ds-ibtn:active:not(:disabled),
+  .ds-chip[data-interactive='true']:active,
+  .ds-tab:active{ transform:scale(.97) }
+  .ds-tab{ transition:color var(--ds-dur-hover) var(--ds-ease), transform var(--ds-dur-hover) var(--ds-ease) }
+  .ds-ibtn{ transition:background-color var(--ds-dur-hover) var(--ds-ease), color var(--ds-dur-hover) var(--ds-ease), transform var(--ds-dur-hover) var(--ds-ease) }
+  .ds-chip[data-interactive='true']{ transition:color var(--ds-dur-hover) var(--ds-ease), transform var(--ds-dur-hover) var(--ds-ease) }
+  .ds-row[data-interactive='true']:active,
+  .ds-cmd-item:active,
+  .ds-popover-item:active{ background:var(--ds-wash-strong) }
+}
+
+/* ==========================================================================
    18 · THE COLLAPSE. A reduced-motion request outranks every authored duration
    in this sheet. MotionConfig reducedMotion="user" does the same for the
    motion components, so the two halves of the system stop together.

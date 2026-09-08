@@ -1135,3 +1135,68 @@
 .a-brain-joblog[data-full] .a-brain-joblog-l{ white-space:pre-wrap; overflow-wrap:anywhere }
 .a-brain-reportsheet .a-brain-joblog{ margin-block-start:var(--ds-s4) }
 .a-brain-reportpath{ display:flex; flex-direction:column; gap:var(--ds-s1); padding-block-end:var(--ds-s3); font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); overflow-wrap:anywhere }
+
+/* --------------------------------------------------------------------------
+   N2-1 · THE RIB, AT TOUCH SCALE (native pass, 2026-09-09). Phone only.
+
+   The two controls in the rib that are not plain IconButtons: the status
+   capsule (its own morphing element) and the two count pills. Closed, the
+   capsule becomes the same 44x44 tile the icon buttons became, and its figure
+   leaves the pill's inside for the tile's corner, where the feed bell already
+   carries its own. A count is LIVE STATE, which is the accent's third role,
+   so both pills take the lime fill with ink on it.
+   -------------------------------------------------------------------------- */
+@media (max-width:767px){
+  /* Closed, it is a tile. Open, it is still the alert panel it morphs into,
+     so every rule here is written against `:not([data-open])`. */
+  .a-brain-cap:not([data-open]){
+    inline-size:var(--ds-tap);
+    block-size:var(--ds-tap);
+    border-radius:var(--ds-r3);
+    border-color:transparent;
+    background:var(--ds-surface-2);
+    /* The corner pill sits outside the tile, and the capsule clips its own
+       overflow so the open morph can wipe. Closed there is nothing to wipe. */
+    overflow:visible;
+  }
+  .a-brain-cap:not([data-open]) .a-brain-cap-face{
+    position:relative;
+    inline-size:var(--ds-tap);
+    block-size:var(--ds-tap);
+    padding:var(--ds-s0);
+    border-radius:var(--ds-r3);
+  }
+  .a-brain-cap:not([data-open]) .a-brain-cap-face .ds-icon{
+    inline-size:var(--ds-icon-md);
+    block-size:var(--ds-icon-md);
+  }
+  /* The figure comes off the glyph's line and onto the tile's corner. */
+  .a-brain-cap:not([data-open]) .a-brain-cap-face > .a-mono{
+    position:absolute;
+    top:calc(var(--ds-s1) * -1);
+    inset-inline-end:calc(var(--ds-s2) * -1);
+    padding:var(--ds-s1) var(--ds-s2);
+    border-radius:var(--ds-r2);
+    background:var(--ds-accent);
+    color:var(--ds-accent-ink);
+    font-family:var(--ds-font-mono);
+    font-size:var(--ds-fs-badge);
+    font-weight:var(--ds-fw-semi);
+    line-height:1.4;
+  }
+  .a-brain-cap:not([data-open]) .a-brain-cap-face:active{ background:var(--ds-surface-3) }
+
+  /* The bell's own count, on the same pill. */
+  .a-brain-feedbtn-n .ds-badge{
+    min-width:var(--ds-s0);
+    height:auto;
+    padding:var(--ds-s1) var(--ds-s2);
+    border-radius:var(--ds-r2);
+    background:var(--ds-accent);
+    color:var(--ds-accent-ink);
+    font-family:var(--ds-font-mono);
+    font-size:var(--ds-fs-badge);
+    font-weight:var(--ds-fw-semi);
+    line-height:1.4;
+  }
+}
