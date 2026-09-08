@@ -1,0 +1,21 @@
+.draft-explanation{
+  min-width:0;
+  max-width:68ch;
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s2,8px);
+  color:var(--ds-text-2,var(--text));
+  font-size:var(--ds-fs-meta,13px);
+  line-height:var(--ds-lh-body,1.5);
+  font-variant-numeric:normal;
+  overflow-wrap:anywhere;
+}
+.draft-explanation-title{ font-weight:600; color:var(--ds-text,var(--text)) }
+.draft-explanation p{ margin:0 }
+.draft-explanation b{ font-weight:600 }
+.draft-explanation-note{ color:var(--ds-text-3,var(--text2)) }
+.draft-explanation-sources summary{ cursor:pointer; min-height:44px; padding-block:var(--ds-s4,12px) }
+.draft-explanation-sources p{ margin-block:var(--ds-s2,8px) }
+.draft-explanation-sources ul{ margin:var(--ds-s2,8px) 0 0; padding-left:var(--ds-s4,20px) }
+.draft-explanation-sources a{ display:inline-flex; align-items:center; min-height:44px; color:inherit; text-decoration:underline; text-underline-offset:3px }
+.draft-explanation-retry{ align-self:flex-start; min-height:44px; background:none; border:0; padding:0; color:inherit; font:inherit; text-decoration:underline; cursor:pointer }

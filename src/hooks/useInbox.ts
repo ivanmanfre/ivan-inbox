@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { fetchDraftContextGaps, fetchDraftEmailStamps, fetchDraftEvidence, fetchManualReplyIds, fetchMessages, groupThreads, type DraftContextGap, type DraftEmailStamp, type DraftEvidence, type Thread } from '../lib/inbox'
+import { fetchDraftContextGaps, fetchDraftEmailStamps, fetchDraftEvidence, fetchManualReplyIds, fetchMessages, groupThreads, type DraftContextGap, type DraftEmailStamp, type Thread } from '../lib/inbox'
 import { playChime } from '../lib/chime'
 
 // A burst of dispatcher writes (one row every ~2 min per active lane, plus
@@ -43,15 +43,19 @@ export function useInbox() {
       // Same degrade rule again: losing this only loses the "unverified answer"
       // warning, never the inbox.
       fetchDraftContextGaps().catch(() => new Map<string, DraftContextGap>()),
-      // Same degrade rule once more: losing this only loses the Evidence collapsible.
-      fetchDraftEvidence().catch(() => new Map<string, DraftEvidence>()),
-    ]).then(([rows, manualReplyIds, emailStamps, contextGaps, evidence]) => {
+    ]).then(async ([rows, manualReplyIds, emailStamps, contextGaps]) => {
+      const draftIds = groupThreads(rows, manualReplyIds).flatMap(t =>
+        [t.draft, t.companionDraft].flatMap(m => m ? [m.id] : []))
+      // A failed evidence read still only loses the explanation, never the inbox.
+      const evidence = await fetchDraftEvidence(draftIds).catch(() => null)
+      const pendingIds = new Set(draftIds)
       for (const m of rows) {
         const em = emailStamps.get(m.id)
         if (em) { m.recipient_email = em.recipient_email; m.email_mirror_text = em.email_mirror_text }
         const cg = contextGaps.get(m.id)
         if (cg) m.context_gap = cg
-        const ev = evidence.get(m.id)
+        m.draft_evidence_unavailable = evidence === null && pendingIds.has(m.id)
+        const ev = evidence?.get(m.id)
         if (ev) m.draft_evidence = ev
       }
       const latest = rows

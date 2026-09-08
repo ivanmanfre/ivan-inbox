@@ -9,6 +9,7 @@
    Banners — attention only on the one that is holding something right now.
    ========================================================================== */
 import { useRef, useState } from 'react'
+import { DraftExplanation } from '../../components/DraftExplanation'
 import { Banner, Button, Icon } from '../../ds'
 import { Group, Row, Rows } from '../kit'
 import { Face, timeAgo } from './parts'
@@ -206,6 +207,7 @@ export function DraftCard({ thread, onOpenThread, refresh }: {
               {draft.email_mirror_text && (
                 <div className="a-quote a-pre"><Linkified text={draft.email_mirror_text} /></div>
               )}
+              {draft.email_mirror_text && <DraftExplanation messageId={`${draft.id}:email`} messageText={draft.email_mirror_text} evidence={draft.draft_evidence?.email} unavailable={draft.draft_evidence_unavailable} onRetry={refresh} />}
             </div>
           )}
           {/* The body IS the way in: tapping it opens the thread, which is where
@@ -218,6 +220,7 @@ export function DraftCard({ thread, onOpenThread, refresh }: {
             <span className="a-pre a-body-t"><Linkified text={draft.message_text} /></span>
             <span className="a-dms-cue"><Icon name="edit" size={16} />Tap to edit</span>
           </button>
+          <DraftExplanation messageId={draft.id} messageText={draft.message_text} evidence={draft.draft_evidence} unavailable={draft.draft_evidence_unavailable} onRetry={refresh} />
           {error && (
             <Banner tone="urgent" icon="error">{error}</Banner>
           )}

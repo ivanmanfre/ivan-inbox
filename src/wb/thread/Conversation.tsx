@@ -17,6 +17,7 @@
      · every message carries a mono time, and a day is a DayHeader.
    ========================================================================== */
 import { useEffect, useRef, useState } from 'react'
+import { DraftExplanation } from '../../components/DraftExplanation'
 import { Banner, Button, Chip, Composer, DayHeader, Icon, IconButton, Stepper, Textarea } from '../../ds'
 import { Bar, Body, Group, Head, Screen } from '../kit'
 import { ChatLink, Face } from '../dms/parts'
@@ -571,6 +572,7 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
                   disabled={busy}
                 />
               </div>
+              <DraftExplanation messageId={draft.id} messageText={draft.message_text} editedText={edited} evidence={draft.draft_evidence} unavailable={draft.draft_evidence_unavailable} onRetry={refresh} />
               {draft.context_gap && (
                 <Banner
                   tone="attention"
@@ -606,7 +608,11 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
                   </span>
                 </Banner>
               )}
-              {draft.draft_evidence && (
+              {draft.draft_evidence && Boolean(
+                draft.draft_evidence.learned?.length || (!Array.isArray(draft.draft_evidence.facts) && draft.draft_evidence.facts)
+                || draft.draft_evidence.store_fact || draft.draft_evidence.anchor || draft.draft_evidence.scan_finding
+                || draft.draft_evidence.exemplars?.length
+              ) && (
                 <details className="a-thread-dev">
                   <summary className="a-thread-devs">Where this came from</summary>
                   <div className="a-stack" data-tight>
@@ -621,9 +627,9 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
                         ))}
                       </div>
                     )}
-                    {draft.draft_evidence.facts && (
+                    {draft.draft_evidence.facts && !Array.isArray(draft.draft_evidence.facts) && (
                       <div className="a-thread-devg">
-                        <span className="a-eyebrow">RISE notes</span>
+                        <span className="a-eyebrow">{clientName(thread.client_id)} notes</span>
                         <div className="a-thread-devr">
                           <span>{draft.draft_evidence.facts.slug}</span>
                           <span className="a-mono a-dim">v{draft.draft_evidence.facts.version ?? '?'}</span>
@@ -669,6 +675,7 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
                   disabled={busy}
                 />
               )}
+              {companion && <DraftExplanation messageId={companion.id} messageText={companion.message_text} editedText={editedCompanion} evidence={companion.draft_evidence} unavailable={companion.draft_evidence_unavailable} onRetry={refresh} />}
               {/* Only on a row that is NOT itself the email. On an email draft the
                   body above IS what gets mailed, and "approving ALSO emails..."
                   read as a second, invisible send. */}
@@ -692,6 +699,7 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
                       disabled={busy}
                     />
                   )}
+                  {showEmail && draft.email_mirror_text && <DraftExplanation messageId={`${draft.id}:email`} messageText={draft.email_mirror_text} editedText={editedEmail} evidence={draft.draft_evidence?.email} unavailable={draft.draft_evidence_unavailable} onRetry={refresh} />}
                 </div>
               )}
               {draftErr && <Banner tone="urgent" icon="error">{draftErr}</Banner>}

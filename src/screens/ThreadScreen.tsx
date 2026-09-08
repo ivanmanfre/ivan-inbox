@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { DraftExplanation } from '../components/DraftExplanation'
 import { Avatar } from '../components/Avatar'
 import { ContextSheet } from '../components/ContextSheet'
 import { CopyChatLink } from '../components/CopyChatLink'
@@ -437,6 +438,9 @@ export function ThreadScreen({ thread, onBack, refresh }: {
             onChange={e => setEdited(e.target.value)}
             disabled={busy}
           />
+          <div style={{ margin: '0 14px 10px' }}>
+            <DraftExplanation messageId={draft.id} messageText={draft.message_text} editedText={edited} evidence={draft.draft_evidence} unavailable={draft.draft_evidence_unavailable} onRetry={refresh} />
+          </div>
           {draft.context_gap && (
             <div className="gapwarn" style={{ margin: '0 14px 10px' }}>
               <div className="gw-h">
@@ -467,7 +471,11 @@ export function ThreadScreen({ thread, onBack, refresh }: {
               {askNote && <div className="gw-note" style={{ marginTop: 6 }}>{askNote}</div>}
             </div>
           )}
-          {draft.draft_evidence && (
+          {draft.draft_evidence && Boolean(
+            draft.draft_evidence.learned?.length || (!Array.isArray(draft.draft_evidence.facts) && draft.draft_evidence.facts)
+            || draft.draft_evidence.store_fact || draft.draft_evidence.anchor || draft.draft_evidence.scan_finding
+            || draft.draft_evidence.exemplars?.length
+          ) && (
             <details className="dev" style={{ margin: '0 14px 10px' }}>
               <summary className="dev-s">Where this came from</summary>
               <div className="dev-b">
@@ -482,9 +490,9 @@ export function ThreadScreen({ thread, onBack, refresh }: {
                     ))}
                   </div>
                 )}
-                {draft.draft_evidence.facts && (
+                {draft.draft_evidence.facts && !Array.isArray(draft.draft_evidence.facts) && (
                   <div className="dev-g">
-                    <span className="dev-k">RISE notes</span>
+                    <span className="dev-k">{clientName(thread.client_id)} notes</span>
                     <div className="dev-r">
                       <span className="dev-f">{draft.draft_evidence.facts.slug}</span>
                       <span className="dev-o">v{draft.draft_evidence.facts.version ?? '?'}</span>
@@ -534,6 +542,9 @@ export function ThreadScreen({ thread, onBack, refresh }: {
               />
             </div>
           )}
+          {companion && <div style={{ margin: '0 14px 10px' }}>
+            <DraftExplanation messageId={companion.id} messageText={companion.message_text} editedText={editedCompanion} evidence={companion.draft_evidence} unavailable={companion.draft_evidence_unavailable} onRetry={refresh} />
+          </div>}
           {/* Only on a row that is NOT itself the email. On a channel='email' draft
               the body above IS what gets mailed, and "approving ALSO emails..."
               read as a second, invisible send (Ivan, 2026-09-04). */}
@@ -555,6 +566,7 @@ export function ThreadScreen({ thread, onBack, refresh }: {
                   disabled={busy}
                 />
               )}
+              {showEmail && draft.email_mirror_text && <DraftExplanation messageId={`${draft.id}:email`} messageText={draft.email_mirror_text} editedText={editedEmail} evidence={draft.draft_evidence?.email} unavailable={draft.draft_evidence_unavailable} onRetry={refresh} />}
             </div>
           )}
           </div>
