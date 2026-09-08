@@ -317,7 +317,15 @@ export function groupNotifications(rows: Notification[]): NotificationGroup[] {
 // Where a notification with nothing usable to point at lands. Today is the one
 // surface that is always meaningful, so a broken deep link costs a wasted tap
 // rather than an empty screen.
-export const NOTIFICATION_FALLBACK_HASH = '#exp/v2/today'
+//
+// W1-1: this used to be `#exp/v2/today` — the exact hash H1 proved is a
+// retired phone chrome that no longer paints at 390px (phase3-skeptic-A §1).
+// Every reply push that had no more specific url landed here, so this one
+// constant was the single largest live source of the broken boot. `src/exp/
+// index.tsx`'s `getExpVariant` now self-heals a `v2`/`v2c` cold boot on the
+// phone regardless, but writing the working prefix here means this path
+// never needed healing in the first place.
+export const NOTIFICATION_FALLBACK_HASH = '#exp/brain-b/today'
 
 // A hash this app will actually route. Anything with whitespace, a quote or a
 // scheme in it is not a route, it is someone's idea of one.

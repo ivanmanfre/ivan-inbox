@@ -71,9 +71,17 @@ describe('a link that names a place', () => {
   it('opens that place instead of the persisted one', () => {
     expect(resolveBootPlace({ place: 'sales' }, 'ops')).toBe('sales')
   })
-  it('still loses to a feed or thread deep link', () => {
+  it('still loses to a feed deep link (the feed is a sheet OVER whatever place is under it)', () => {
     expect(resolveBootPlace({ feed: true, place: 'sales' }, 'ops')).toBe('ask')
-    expect(resolveBootPlace({ thread: 'abc', place: 'sales' }, 'ops')).toBe('ask')
+  })
+  // W2-1: a hash that NAMES a place (e.g. `#exp/brain-b/dms?thread=<uuid>`)
+  // must win over a bare thread id — that thread is a DM peer opening on the
+  // place the hash named, not an Ask conversation. Only a thread with NO
+  // place segment (the Ask push's own `#exp/v2/ask?thread=<uuid>` shape)
+  // still means Ask, covered by the 'a thread deep link' case above.
+  it('a place beats a thread id on the SAME boot', () => {
+    expect(resolveBootPlace({ thread: 'abc', place: 'sales' }, 'ops')).toBe('sales')
+    expect(resolveBootPlace({ thread: 'abc', place: 'dms' }, 'ops')).toBe('dms')
   })
   it('a bare boot still lands where he left off', () => {
     expect(resolveBootPlace({ place: null }, 'ops')).toBe('ops')

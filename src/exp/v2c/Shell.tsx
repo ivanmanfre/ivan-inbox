@@ -161,10 +161,20 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
   // pane used to dock itself on any canvas with room, which meant the working
   // surface started the session sharing the width with a conversation nobody
   // had asked for. The rail button and #exp/v2/<job>/chat both still open it.
-  const [peers, setPeers] = useState<Peer[]>(
-    () => (boot.focus === 'chat' ? [{ kind: 'chat' } as Peer] : []),
+  // W2-1: a `?thread=<uuid>` on a hash that did not itself name 'ask' (the
+  // Ask push's own `#exp/v2/ask?thread=…` form, which sets `boot.focus`
+  // to 'chat') is a DM peer, not an Ask conversation — open it the same
+  // way an ordinary tap on an inbox row does (Shell's own `openThread`
+  // below), so it renders as the peer takeover / phone thread view rather
+  // than silently landing on Ask with nothing loaded.
+  const [peers, setPeers] = useState<Peer[]>(() => {
+    if (boot.focus === 'chat') return [{ kind: 'chat' } as Peer]
+    if (boot.thread) return [{ kind: 'thread', id: boot.thread } as Peer]
+    return []
+  })
+  const [focus, setFocus] = useState<string | null>(
+    boot.focus === 'chat' ? 'chat' : boot.thread ? peerKey({ kind: 'thread', id: boot.thread }) : null,
   )
-  const [focus, setFocus] = useState<string | null>(boot.focus)
   const [filter, setFilter] = useState<Filter>('all')
   // The DMs view. 'needs' — what the badge counts — is the only one now: the
   // head that switched between buckets was removed on 2026-08-04.
@@ -385,6 +395,13 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
       if (r.focus === 'chat') {
         setPeers(p => addPeer(p, { kind: 'chat' }))
         setFocus('chat')
+      } else if (r.thread) {
+        // W2-1: an IN-APP hash write naming a DM thread (Today's urgency-row
+        // tap writes the brain-b-prefixed form directly now) opens it as a
+        // peer the same way a tap-through does — mirrors the boot-time seed
+        // above so a live navigation and a cold boot behave identically.
+        setPeers(p => addPeer(p, { kind: 'thread', id: r.thread! }))
+        setFocus(peerKey({ kind: 'thread', id: r.thread! }))
       }
     }
     window.addEventListener('hashchange', apply)
@@ -673,6 +690,12 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
     // takeover window (openItem). The layout model keeps the kind so the pure
     // functions stay general, but the Shell has no renderer for it.
     if (!ctxThread) {
+      // W2-1: a boot-time deep link (`?thread=<uuid>`) seeds this peer before
+      // `inbox.threads` has loaded, so a miss on the FIRST pass means "not
+      // fetched yet", not "gone" — asserting the empty state here would lie
+      // exactly the way W2-5 does on the list. Say nothing until the load that
+      // would have found it has actually finished; only then is a miss real.
+      if (inbox.loading) return null
       return (
         <EmptyState
           title="That thread is no longer in the inbox."

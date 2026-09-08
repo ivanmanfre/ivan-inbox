@@ -157,6 +157,24 @@ describe('ask deep link', () => {
     expect(r.thread).toBe('e53d8fb8-382c-43fd-87a9-f0f668f408d4')
     expect(r.turn).toBe('0b3e74fc-d702-4a3b-9984-7549b1eb0148')
   })
+
+  // W2-1. Both shapes resolve `job:'dms'` (the 'ask' segment is not a Job, so
+  // it falls to DEFAULT_ROUTE.job the same as no segment at all), and the ONE
+  // field that tells them apart is `focus`: 'chat' only when the hash itself
+  // said 'ask' or 'chat'. Shell.tsx and resolveBootPlace both key off exactly
+  // this to decide "open an Ask conversation" vs "open a DM peer thread" —
+  // this pins the distinction the fix depends on so it cannot silently drift.
+  it('a DM thread deep link is NOT a chat focus, unlike the ask push shape', () => {
+    const TH = 'e53d8fb8-382c-43fd-87a9-f0f668f408d4'
+    const dm = parseWbHash(`#exp/brain-b/dms?thread=${TH}`)
+    expect(dm.job).toBe('dms')
+    expect(dm.focus).toBeNull()
+    expect(dm.thread).toBe(TH)
+    const ask = parseWbHash(`#exp/brain-b/ask?thread=${TH}`)
+    expect(ask.job).toBe('dms')
+    expect(ask.focus).toBe('chat')
+    expect(ask.thread).toBe(TH)
+  })
 })
 
 describe('hashNamesJob', () => {

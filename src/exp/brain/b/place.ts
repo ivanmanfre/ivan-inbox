@@ -75,11 +75,17 @@ export type Boot = { feed?: boolean; thread?: string; place?: Place | null }
 
 export function resolveBootPlace(boot: Boot, persisted: Place | null): Place {
   if (boot.feed) return 'ask' // the feed opens as a sheet OVER a place; Ask under it is the sane default
-  if (boot.thread) return 'ask'
-  // A link that NAMES a place beats what was persisted, for the same reason a
-  // thread link does: somebody tapped that thing. Only a link with a place
-  // segment of its own carries this — a bare `#exp/brain-b` does not, so the
-  // ordinary cold boot still lands where he left off.
+  // A link that NAMES a place (the hash's own job segment, e.g. `dms`) beats a
+  // bare thread id: `#exp/brain-b/dms?thread=<uuid>` is a DM peer opening ON
+  // the DMs place, not an Ask conversation, and `boot.place` is only ever set
+  // when the hash named a real job (see the `hashNamesJob` guard at the call
+  // site), so this never overrides an ordinary cold boot's "wherever he left
+  // off". W2-1: checking this BEFORE `boot.thread` is what stops a DM deep
+  // link from being forced onto Ask.
   if (boot.place) return boot.place
+  // No place segment and a thread id: this is the Ask push's own shape
+  // (`#exp/v2/ask?thread=<uuid>`, where 'ask' is not a Job so no place is
+  // named) — Ask is where that thread lives.
+  if (boot.thread) return 'ask'
   return persisted ?? 'ask'
 }

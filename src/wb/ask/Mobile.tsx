@@ -172,10 +172,18 @@ export function Mobile(p: BrainMobileProps) {
   // Boot deep link: a thread opens Ask on THIS thread, a turn scrolls to that
   // turn inside it, a feed link opens the sheet. All only ever fire once, off
   // the hash the page was loaded with.
+  //
+  // W2-1: `boot.thread` names an Ask conversation ONLY on the push's own
+  // shape (`#exp/v2/ask?thread=…`, no place segment, `boot.focus==='chat'`).
+  // A DM deep link (`#exp/brain-b/dms?thread=<uuid>`) names 'dms' as the
+  // place instead, and Shell.tsx already opened that thread as a peer before
+  // this component mounted (resolveBootPlace lands `place` on 'dms' for it)
+  // — calling chat.openThread with a DM's prospect id here would feed a peer
+  // thread id into the Ask conversation opener as if it were a chat run id.
   useEffect(() => {
     if (bootHandled.current) return
     bootHandled.current = true
-    if (boot.thread && boot.thread !== chat.threadId) chat.openThread(boot.thread)
+    if (boot.focus === 'chat' && boot.thread && boot.thread !== chat.threadId) chat.openThread(boot.thread)
     if (boot.feed) setFeedOpen(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -381,6 +389,18 @@ export function Mobile(p: BrainMobileProps) {
                 {p.health.n > 0 && (
                   <StatusCapsule n={p.health.n} note={p.health.note} onClick={() => onTab('ops')} />
                 )}
+                {/* W1-2: the only route into Settings on the phone chrome was
+                    the direct hash (`#exp/brain-b/settings`, GAPS2-1) — no
+                    tap target anywhere. The `IM` avatar this used to be
+                    hoped to be is `role="img"` with no handler (ds/Avatar.tsx),
+                    decoration by construction, so a real control goes here
+                    instead, beside the feed bell it already shares the rib
+                    with. `goJob('settings')` is the exact same job the hash
+                    route resolves to; the hash keeps working unchanged. */}
+                <IconButton
+                  icon="settings" label="Settings"
+                  onClick={() => goJob('settings')}
+                />
                 <span className="a-brain-feedbtn" data-feed-open>
                   <IconButton
                     icon="bell" label={`Feed, ${feed.unreadTotal} unread`}

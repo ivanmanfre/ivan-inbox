@@ -160,8 +160,15 @@ function Masthead({ c, plate, syncedAt, stale }: {
 function UrgencyRow({ u, auto }: { u: Urgency; auto?: boolean }) {
   const k = auto ? { label: 'Auto-reply', cls: 'auto' } : kindOf(u.kind)
   const org = [u.company, u.title].filter(Boolean).join(' · ')
+  // W1-1/W2-1: `#thread/<id>` is the STOCK shell's grammar. Writing it from
+  // inside the live brain-b app used to get canonicalised by Shell.tsx's own
+  // address-bar rewrite into `#exp/v2/dms` (WB_PREFIX defaults to 'v2' for
+  // any hash it does not recognise) — the retired phone chrome H1 proved
+  // does not paint, with the thread id dropped on the way. Writing the
+  // canonical brain-b DM-thread hash directly opens the thread instead
+  // (Shell's hashchange handler now reads `?thread=` on this prefix).
   const open = u.prospect_id
-    ? () => { location.hash = `#thread/${encodeURIComponent(u.prospect_id!)}` }
+    ? () => { location.hash = `#exp/brain-b/dms?thread=${encodeURIComponent(u.prospect_id!)}` }
     : undefined
   return (
     <Row
