@@ -17,6 +17,7 @@
      · every message carries a mono time, and a day is a DayHeader.
    ========================================================================== */
 import { useEffect, useRef, useState } from 'react'
+import { OwnerConfirmation } from '../../components/OwnerConfirmation'
 import { DraftExplanation } from '../../components/DraftExplanation'
 import { Banner, Button, Chip, Composer, DayHeader, Icon, IconButton, Stepper, Textarea } from '../../ds'
 import { Bar, Body, Group, Head, Screen } from '../kit'
@@ -27,7 +28,7 @@ import { Linkified } from '../chrome/Linkified'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import { formatReturn, returnsIn, usePushLater } from '../../lib/pushLater'
 import {
-  approveDraft, channelFamilies, composeReply, discardDraft, escalateDraftToClient, isDraft, isFollowUp, isMixedChannel,
+  approveDraft, channelFamilies, composeReply, discardDraft, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isFollowUp, isMixedChannel,
   saveDraftEmail, saveDraftText, snoozeDraft, unsnoozeDraft,
   markThreadRead, messageChannel, threadChatId, NATIVE_EMAIL_SENDER,
   type InboxMessage, type MsgChannel, type Thread, eventTime, emailSenderLabel } from '../../lib/inbox'
@@ -362,7 +363,7 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
   // Messages: everything except discarded rows and unapproved drafts (drafts
   // live in the card).
   const bubbles = thread.messages.filter(
-    m => m.send_blocked_reason !== 'discarded_in_inbox' && !isDraft(m),
+    m => m.send_blocked_reason !== 'discarded_in_inbox' && !isDraft(m) && !isInternalConfirmation(m),
   )
   // Judged on what is actually ON SCREEN — a pending email draft sitting in the
   // card below has not happened yet and must not relabel the conversation.
@@ -370,7 +371,9 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
 
   const emailDisabled = thread.channel === 'email'
   const engagedDisabled = thread.stage === 'engaged'
-  const composerNote = emailDisabled
+  const composerNote = thread.ownerConfirmation
+    ? isReplyRetryPending(thread.ownerConfirmation) ? 'Reply paused while drafting retries automatically.' : 'Reply paused while an internal fact is confirmed.'
+    : emailDisabled
     ? 'Email compose lands in v1.1. Approving email drafts works now.'
     : engagedDisabled
       ? 'Not connected yet. A reply here would go out as a connection invite, so compose is off for this thread.'
@@ -505,6 +508,8 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
           The strip is the only place it is readable, and the only place a restore
           is offered. */}
       <RestoreStrip thread={thread} refresh={refresh} />
+
+      {thread.ownerConfirmation && <OwnerConfirmation message={thread.ownerConfirmation} onAddNote={() => setShowCtx(true)} onRetry={refresh} />}
 
       {draft && (
         <div className="a-thread-draft">

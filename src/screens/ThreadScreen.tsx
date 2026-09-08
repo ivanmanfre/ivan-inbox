@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { OwnerConfirmation } from '../components/OwnerConfirmation'
 import { DraftExplanation } from '../components/DraftExplanation'
 import { Avatar } from '../components/Avatar'
 import { ContextSheet } from '../components/ContextSheet'
@@ -7,7 +8,7 @@ import { Linkified } from '../components/Linkified'
 import { useConfirm } from '../components/ConfirmSheet'
 import { formatReturn, returnsIn, usePushLater } from '../components/PushLaterSheet'
 import {
-  approveDraft, channelFamilies, composeReply, discardDraft, escalateDraftToClient, isDraft, isFollowUp, isMixedChannel,
+  approveDraft, channelFamilies, composeReply, discardDraft, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isFollowUp, isMixedChannel,
   saveDraftEmail, saveDraftText, snoozeDraft, unsnoozeDraft,
   markThreadRead, messageChannel, threadChatId, NATIVE_EMAIL_SENDER,
   type InboxMessage, type MsgChannel, type Thread, eventTime, emailSenderLabel } from '../lib/inbox'
@@ -278,7 +279,7 @@ export function ThreadScreen({ thread, onBack, refresh }: {
 
   // Bubbles: everything except discarded rows and unapproved drafts (drafts live in the card).
   const bubbles = thread.messages.filter(
-    m => m.send_blocked_reason !== 'discarded_in_inbox' && !isDraft(m),
+    m => m.send_blocked_reason !== 'discarded_in_inbox' && !isDraft(m) && !isInternalConfirmation(m),
   )
   // Judged on what is actually ON SCREEN — a pending email draft sitting in the
   // card below has not happened yet and must not relabel the conversation.
@@ -286,7 +287,9 @@ export function ThreadScreen({ thread, onBack, refresh }: {
 
   const emailDisabled = thread.channel === 'email'
   const engagedDisabled = thread.stage === 'engaged'
-  const composerNote = emailDisabled
+  const composerNote = thread.ownerConfirmation
+    ? isReplyRetryPending(thread.ownerConfirmation) ? 'Reply paused while drafting retries automatically.' : 'Reply paused while an internal fact is confirmed.'
+    : emailDisabled
     ? 'Email compose lands in v1.1. Approving email drafts works now.'
     : engagedDisabled
       ? 'Not connected yet. A reply here would go out as a connection invite, so compose is off for this thread.'
@@ -385,6 +388,8 @@ export function ThreadScreen({ thread, onBack, refresh }: {
           the failed-send log excludes it too. The strip is the only place it is
           readable, and the only place a restore is offered. */}
       <RestoreStrip thread={thread} refresh={refresh} />
+
+      {thread.ownerConfirmation && <OwnerConfirmation message={thread.ownerConfirmation} onAddNote={() => setShowCtx(true)} onRetry={refresh} />}
 
       {draft && (
         <div className="draftcard">

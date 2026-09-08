@@ -101,6 +101,9 @@ describe('buildSendLog', () => {
       lr({ id: 'f1', send_blocked_at: '2026-07-22T09:00:00Z', send_blocked_reason: 'chat create failed: 422' }),
       lr({ id: 'f2', send_blocked_at: '2026-07-22T09:30:00Z', send_blocked_reason: 'discarded_in_inbox' }), // Ivan's discard, excluded
     ]
+    failed.push(lr({ id: 'hold', send_blocked_at: '2026-07-22T09:40:00Z', send_blocked_reason: 'owner_confirmation' }))
+    failed.push(lr({ id: 'retired', send_blocked_at: '2026-07-22T09:40:00Z', send_blocked_reason: 'owner_confirmation_superseded' }))
+    failed.push(lr({ id: 'retry', send_blocked_at: '2026-07-22T09:40:00Z', send_blocked_reason: 'reply_retry_pending' }))
     const log = buildSendLog(sent as never, failed as never)
     expect(log.map(i => i.id)).toEqual(['s1', 'f1', 's2'])
     expect(log[1].kind).toBe('failed')

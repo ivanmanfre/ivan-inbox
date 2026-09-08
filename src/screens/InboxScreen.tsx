@@ -1,3 +1,4 @@
+import { internalHoldSummary } from '../lib/inbox'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Avatar } from '../components/Avatar'
 import { PullIndicator } from '../components/PullIndicator'
@@ -277,7 +278,8 @@ export function InboxScreen({ threads, filter, setFilter, refresh, onOpenThread,
             const pendingDraft = draftRowActions && t.draft != null && t.draftSnoozedUntil === null
               ? t.draft : null
             let snip = t.last.message_text
-            if (pendingDraft) snip = pendingDraft.message_text
+            if (t.ownerConfirmation) snip = internalHoldSummary(t.ownerConfirmation)
+                else if (pendingDraft) snip = pendingDraft.message_text
             else if (isDraftLast) snip = `✦ Draft: ${t.last.message_text}`
             else if (t.last.direction === 'outbound' && t.last.sent_at) snip = `You: ${t.last.message_text}`
             const note = rowNote?.(t) ?? null

@@ -134,7 +134,8 @@ export function buildSendLog(sent: LogRow[], failed: LogRow[]): SendLogItem[] {
     })
   }
   for (const m of failed) {
-    if (!m.send_blocked_at || m.send_blocked_reason === 'discarded_in_inbox') continue
+    if (!m.send_blocked_at || m.send_blocked_reason === 'discarded_in_inbox'
+      || m.send_blocked_reason === 'owner_confirmation' || m.send_blocked_reason === 'owner_confirmation_superseded' || m.send_blocked_reason === 'reply_retry_pending') continue
     items.push({
       id: m.id, prospect_id: m.prospect_id, prospect_name: m.prospect_name,
       client_id: m.client_id, message_type: m.message_type ?? 'dm', ai_model: m.ai_model ?? null,
@@ -155,6 +156,7 @@ export async function fetchSendLog(
     .order('sent_at', { ascending: false }).limit(limit * 3) // wide for dedupe headroom
   let failQ = supabase.from('inbox_messages_v').select(cols)
     .eq('direction', 'outbound').not('send_blocked_at', 'is', null)
+    .or('send_blocked_reason.is.null,send_blocked_reason.not.in.(discarded_in_inbox,owner_confirmation,owner_confirmation_superseded,reply_retry_pending)')
     .order('send_blocked_at', { ascending: false }).limit(60)
   if (client !== 'all') { sentQ = sentQ.eq('client_id', client); failQ = failQ.eq('client_id', client) }
   const [sent, fail] = await Promise.all([sentQ, failQ])
@@ -187,18 +189,10 @@ export async function fetchSendLogTotals(
   }
   const [sent, blocked] = await Promise.all([
     base().not('sent_at', 'is', null),
-    // The log itself drops discarded_in_inbox, so the denominator has to drop it
-    // too or the fraction compares two different populations.
-    //
-    // …and it has to drop ONLY that. A bare `.neq()` is SQL three-valued logic:
-    // `NULL <> 'discarded_in_inbox'` evaluates to NULL, not TRUE, so PostgREST
-    // silently drops every block with no recorded reason. Measured against the
-    // live table: 246 blocked total, `neq` returns 210, this `or` returns 213 —
-    // the three NULL-reason blocks that `buildSendLog` above DOES render
-    // (`m.send_blocked_reason === 'discarded_in_inbox'` is false for null in JS)
-    // would have been invisible in their own denominator.
+    // Internal confirmation decisions and discards are not send failures.
+    // Keep NULL-reason failures: a bare not.in would silently exclude them.
     base().not('send_blocked_at', 'is', null)
-      .or('send_blocked_reason.is.null,send_blocked_reason.neq.discarded_in_inbox'),
+      .or('send_blocked_reason.is.null,send_blocked_reason.not.in.(discarded_in_inbox,owner_confirmation,owner_confirmation_superseded,reply_retry_pending)'),
   ])
   if (sent.error) throw sent.error
   if (blocked.error) throw blocked.error

@@ -37,7 +37,7 @@ export type InboxMessage = {
   // prospect asked something rise-company-facts does not cover, so the reply's
   // substance is UNVERIFIED (George Gazzard/SOLSKIN asked how the creative gets
   // produced; the drafter invented "real shoots for model and skin content").
-  // ADVISORY: the draft is still editable and approvable exactly as before.
+  // Advisory on ordinary drafts; owner_confirmation rows are internal holds.
   context_gap?: DraftContextGap | null;
   // What the drafter was actually GIVEN when it wrote this (Ivan 2026-08-20: "see the draft on the
   // dm with a small context collapsed thing"). A logged input list, never the model's account of
@@ -84,6 +84,8 @@ export type Thread = {
   // pair, the EMAIL is the one that lands here and the LinkedIn message keeps the
   // main box — see the ordering note in groupThreads.
   companionDraft: InboxMessage | null;
+  // Internal decision waiting on a confirmed fact or automatic retry; never sendable.
+  ownerConfirmation?: InboxMessage | null;
   // The drafter sometimes writes a reply after Ivan already answered the
   // prospect himself (5 live cases on 2026-07-22: George, Jeremy, Jonathan,
   // Antoine, Rudra). True when a real outbound send is newer than the last
@@ -142,8 +144,30 @@ export function isRecoverableHold(reason: string | null): boolean {
   return isRaceHold(reason) || (reason !== null && reason.startsWith(LINT_HOLD_PREFIX))
 }
 
-export function isDraft(m: InboxMessage): boolean {
+export function confirmationOwner(clientId: string): string {
+  return clientId === 'arch' ? 'Davorin' : clientId === 'risedtc' ? 'Mattan' : 'owner'
+}
+
+export function isInternalConfirmation(m: InboxMessage): boolean {
   return m.direction === 'outbound' && !m.sent_at && !m.approved_at &&
+    (m.send_blocked_reason === 'owner_confirmation' || m.send_blocked_reason === 'owner_confirmation_superseded' || m.send_blocked_reason === 'reply_retry_pending')
+}
+
+export function isOwnerConfirmation(m: InboxMessage): boolean {
+  return isInternalConfirmation(m) && m.send_blocked_reason === 'owner_confirmation'
+}
+
+export function isReplyRetryPending(m: InboxMessage): boolean {
+  return isInternalConfirmation(m) && m.send_blocked_reason === 'reply_retry_pending'
+}
+
+export function internalHoldSummary(m: InboxMessage): string {
+  return isReplyRetryPending(m) ? 'Waiting for automatic retry'
+    : `Needs owner confirmation: ${m.context_gap?.question || 'Open the internal question'}`
+}
+
+export function isDraft(m: InboxMessage): boolean {
+  return m.direction === 'outbound' && !m.sent_at && !m.approved_at && !isInternalConfirmation(m) &&
     (!m.send_blocked_at || isRecoverableHold(m.send_blocked_reason))
 }
 
@@ -224,7 +248,13 @@ export function groupThreads(
   for (const messages of map.values()) {
     messages.sort((a, b) => eventTime(a).localeCompare(eventTime(b)))
     const last = messages[messages.length - 1]
-    const drafts = messages.filter(isDraft)
+    const latestHold = messages.filter(isInternalConfirmation).at(-1)
+    // A newer internal decision invalidates every older leg, including a paired email.
+    const drafts = messages.filter(m => isDraft(m) && (!latestHold || eventTime(m) > eventTime(latestHold)))
+    const newerOutbound = latestHold && messages.some(m => m.direction === 'outbound'
+      && !isInternalConfirmation(m) && eventTime(m) > eventTime(latestHold))
+    const ownerConfirmation = latestHold && (isOwnerConfirmation(latestHold) || isReplyRetryPending(latestHold)) && !newerOutbound
+      && !CLOSED_STAGES.has(last.prospect_stage) ? latestHold : null
     // Archived prospects are dead lanes (e.g. ~76 April cold-email drafts from
     // a retired campaign) — their leftover drafts don't belong in the queue.
     const newestDraft = last.prospect_stage === 'archived'
@@ -268,7 +298,7 @@ export function groupThreads(
     // and switched the composer off ("Email compose lands in v1.1") on a live
     // LinkedIn thread. Judged on sent history; a thread that is only ever a draft
     // (retired April cold-email lane) still falls back to the last row.
-    const lastRode = messages.filter(m => !isDraft(m)).at(-1) ?? last
+    const lastRode = messages.filter(m => !isDraft(m) && !isInternalConfirmation(m)).at(-1) ?? last
     threads.push({
       prospect_id: last.prospect_id, prospect_name: last.prospect_name,
       prospect_company: last.prospect_company, client_id: last.client_id,
@@ -279,7 +309,7 @@ export function groupThreads(
       // can be a pending draft, which has none. Take the first row that has one.
       chat_provider_id: messages.map(m => m.chat_provider_id).find(Boolean) ?? null,
       unread: messages.filter(m => m.direction === 'inbound' && !m.read_at).length,
-      draft, companionDraft,
+      draft, companionDraft, ownerConfirmation,
       // isFollowUp: a nudge is DEFINED by "we spoke last and they went quiet",
       // which is what this test measures — so without the exemption every
       // follow-up draft ever written scores stale. See isFollowUp.
@@ -366,7 +396,7 @@ export function isLeadMagnet(t: Thread): boolean {
 }
 
 function isConversation(t: Thread): boolean {
-  return t.draft !== null || t.messages.some(m => m.direction === 'inbound') || isLeadMagnet(t)
+  return Boolean(t.ownerConfirmation) || t.draft !== null || t.messages.some(m => m.direction === 'inbound') || isLeadMagnet(t)
 }
 
 // Nobody has answered their last message: unread inbound exists and no real
@@ -445,6 +475,7 @@ function isRealReply(m: InboxMessage): boolean {
 // moment the wait began, or null when the thread does not owe a reply at all.
 function unansweredSince(t: Thread): string | null {
   if (CLOSED_STAGES.has(t.stage)) return null
+  if (t.ownerConfirmation) return eventTime(t.ownerConfirmation)
   // PUSHING A DRAFT IS AN ANSWER TO "does this need a reply TODAY" — the same
   // move as the discard rule below, with a return date on it. Ivan read the
   // thread, the person said they were travelling, and he said "not yet". A
@@ -472,6 +503,7 @@ function unansweredSince(t: Thread): string | null {
 }
 
 export function needsAnswer(t: Thread, now: number = Date.now()): boolean {
+  if (t.ownerConfirmation && !CLOSED_STAGES.has(t.stage)) return true
   const since = unansweredSince(t)
   return since !== null && now - Date.parse(since) <= STALE_DAYS * 86_400_000
 }
@@ -674,6 +706,7 @@ export type DraftEvidenceFact = { id: string; fact: string; topic: string; at: s
 export type DraftEvidenceExemplar = { they: string | null; reply: string | null; at: string | null; prospect: string | null }
 export type DraftEvidence = {
   facts?: { slug: string; version: number | null; updated_at?: string | null } | string[] | null
+  retry_after?: string | null
   generated_text?: string | null
   // Mirror email's exact full body (including Subject:), never the DM snapshot.
   email?: { generated_text?: string | null } | null
@@ -704,22 +737,24 @@ export async function fetchDraftEvidence(draftIds: string[]): Promise<Map<string
   return m
 }
 
-export async function fetchDraftContextGaps(): Promise<Map<string, DraftContextGap>> {
-  const { data, error } = await supabase.from('outreach_messages')
-    .select('id,prospect_id,context_gap')
-    .eq('direction', 'outbound')
-    .is('sent_at', null).is('approved_at', null)
-    .not('context_gap', 'is', null)
-    .limit(500)
-  if (error) throw error
-  const rows = (data ?? []) as { id: string; prospect_id: string; context_gap: { question?: string; why?: string } | null }[]
+export async function fetchDraftContextGaps(draftIds: string[]): Promise<Map<string, DraftContextGap>> {
+  const rows: { id: string; prospect_id: string; context_gap: { question?: string; why?: string } | null }[] = []
+  const ids = Array.from(new Set(draftIds))
+  for (let start = 0; start < ids.length; start += 100) {
+    const { data, error } = await supabase.from('outreach_messages')
+      .select('id,prospect_id,context_gap').in('id', ids.slice(start, start + 100))
+    if (error) throw error
+    rows.push(...(data ?? []) as typeof rows)
+  }
   const m = new Map<string, DraftContextGap>()
   if (!rows.length) return m
   const urls = new Map<string, string | null>()
-  const { data: props } = await supabase.from('outreach_prospects')
-    .select('id,linkedin_url')
-    .in('id', Array.from(new Set(rows.map(r => r.prospect_id))))
-  for (const p of (props ?? []) as { id: string; linkedin_url: string | null }[]) urls.set(p.id, p.linkedin_url)
+  const prospectIds = Array.from(new Set(rows.map(r => r.prospect_id)))
+  for (let start = 0; start < prospectIds.length; start += 100) {
+    const { data: props } = await supabase.from('outreach_prospects')
+      .select('id,linkedin_url').in('id', prospectIds.slice(start, start + 100))
+    for (const p of (props ?? []) as { id: string; linkedin_url: string | null }[]) urls.set(p.id, p.linkedin_url)
+  }
   for (const r of rows) {
     if (!r.context_gap) continue
     m.set(r.id, {

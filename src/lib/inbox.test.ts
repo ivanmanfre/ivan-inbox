@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, type InboxMessage, type Status, type DraftGuard } from './inbox'
+import { isReplyRetryPending, internalHoldSummary, isOwnerConfirmation, isInternalConfirmation, isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, type InboxMessage, type Status, type DraftGuard } from './inbox'
 
 // inbox.ts:191 gates needsAnswer on a 14-day wall-clock staleness window
 // (STALE_DAYS), measured against Date.now() by default -- and most callers
@@ -841,5 +841,58 @@ describe('likely spam folder (2026-09-07)', () => {
     const threads = groupThreads([pitch, real])
     expect(inboxWaitingCount(threads)).toBe(1)
     expect(inboxBreakdown(threads).answer).toBe(1)
+  })
+})
+
+
+describe('owner confirmation holds', () => {
+  const hold: InboxMessage = { ...base, id: 'hold', message_text: '', created_at: '2026-07-22T12:00:00Z', send_blocked_at: '2026-07-22T12:00:00Z', send_blocked_reason: 'owner_confirmation' }
+  it('is internal work, never an approvable or restorable draft', () => {
+    expect(isOwnerConfirmation(hold)).toBe(true)
+    expect(isDraft(hold)).toBe(false)
+    expect(isDraft({ ...hold, send_blocked_at: null })).toBe(false)
+    expect(isDiscarded(hold)).toBe(false)
+    const thread = groupThreads([base, hold])[0]
+    expect(thread.ownerConfirmation?.id).toBe('hold')
+    expect(thread.draft).toBeNull()
+    expect(thread.companionDraft).toBeNull()
+    expect(threadBucket(thread)).toBe('answer')
+    expect(filterByStatus([thread], 'needs')).toHaveLength(1)
+    expect(filterThreads([thread], 'all')).toHaveLength(1)
+    expect(inboxWaitingCount([thread])).toBe(1)
+  })
+  it('suppresses an older companion and retires the hold when a newer decision appears', () => {
+    const email = { ...base, id: 'email', channel: 'email' as const }
+    expect(groupThreads([base, email, hold])[0].companionDraft).toBeNull()
+    const fresh = { ...base, id: 'fresh', created_at: '2026-07-22T13:00:00Z' }
+    const thread = groupThreads([base, email, hold, fresh])[0]
+    expect(thread.ownerConfirmation).toBeNull()
+    expect(thread.draft?.id).toBe('fresh')
+    expect(thread.companionDraft).toBeNull()
+  })
+  it('hides retired internal holds without presenting them as current work', () => {
+    const retired = { ...hold, send_blocked_reason: 'owner_confirmation_superseded' }
+    expect(isInternalConfirmation(retired)).toBe(true)
+    expect(isOwnerConfirmation(retired)).toBe(false)
+    expect(groupThreads([retired])[0].ownerConfirmation).toBeNull()
+    expect(isInternalConfirmation({ ...hold, sent_at: hold.created_at })).toBe(false)
+  })
+})
+
+
+describe('automatic reply retry boundary', () => {
+  it('keeps a due retry internal until a new decision row exists', () => {
+    const retry = { ...base, id: 'retry', message_text: '', send_blocked_reason: 'reply_retry_pending', send_blocked_at: base.created_at, draft_evidence: { retry_after: '2026-07-22T10:05:00Z' } }
+    expect(isReplyRetryPending(retry)).toBe(true)
+    expect(isOwnerConfirmation(retry)).toBe(false)
+    expect(isDraft(retry)).toBe(false)
+    expect(internalHoldSummary(retry)).toBe('Waiting for automatic retry')
+    const thread = groupThreads([retry])[0]
+    expect(thread.ownerConfirmation?.id).toBe('retry')
+    expect(thread.draft).toBeNull()
+    expect(filterThreads([thread], 'all')).toHaveLength(1)
+    const next = { ...base, id: 'new', created_at: '2026-07-22T11:00:00Z' }
+    expect(groupThreads([retry, next])[0].ownerConfirmation).toBeNull()
+    expect(groupThreads([retry, next])[0].draft?.id).toBe('new')
   })
 })

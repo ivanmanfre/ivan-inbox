@@ -3,7 +3,8 @@ import {
   fetchProspectContext, fetchScan, saveOperatorNote,
   type ProspectContext, type ScanInfo,
 } from '../lib/context'
-import type { Thread } from '../lib/inbox'
+import { ConfirmationNoteGuidance } from '../components/OwnerConfirmation'
+import { isOwnerConfirmation, type Thread } from '../lib/inbox'
 import { inlineLabel, label } from '../lib/labels'
 
 function ago(iso: string | null): string {
@@ -32,6 +33,14 @@ export function ContextSheet({ thread, onClose }: { thread: Thread; onClose: () 
   const [note, setNote] = useState('')
   const [noteState, setNoteState] = useState<'idle' | 'dirty' | 'saving' | 'saved' | 'error'>('idle')
   const loadedNote = useRef('')
+  const noteInput = useRef<HTMLTextAreaElement>(null)
+  const confirmationId = thread.ownerConfirmation && isOwnerConfirmation(thread.ownerConfirmation) ? thread.ownerConfirmation.id : undefined
+  useEffect(() => {
+    if (ctx && confirmationId) {
+      noteInput.current?.focus()
+      noteInput.current?.scrollIntoView({ block: 'center' })
+    }
+  }, [ctx, confirmationId])
 
   useEffect(() => {
     let alive = true
@@ -129,7 +138,10 @@ export function ContextSheet({ thread, onClose }: { thread: Thread; onClose: () 
                 {noteState === 'saved' && <span className="ok"> · saved — drafts will use it</span>}
                 {noteState === 'error' && <span className="bad"> · save failed, retry</span>}
               </div>
+              {confirmationId && <ConfirmationNoteGuidance clientId={thread.client_id} />}
               <textarea
+                ref={noteInput}
+                aria-label="Your note"
                 className="ctx-note"
                 placeholder="e.g. wants Q4 start, prefers email…"
                 value={note}

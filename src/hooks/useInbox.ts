@@ -40,14 +40,13 @@ export function useInbox() {
       // Same degrade rule as the flag probe: a failed stamp read only loses the
       // "also emails" badge, it must never take the inbox down.
       fetchDraftEmailStamps().catch(() => new Map<string, DraftEmailStamp>()),
-      // Same degrade rule again: losing this only loses the "unverified answer"
-      // warning, never the inbox.
-      fetchDraftContextGaps().catch(() => new Map<string, DraftContextGap>()),
-    ]).then(async ([rows, manualReplyIds, emailStamps, contextGaps]) => {
+    ]).then(async ([rows, manualReplyIds, emailStamps]) => {
       const draftIds = groupThreads(rows, manualReplyIds).flatMap(t =>
-        [t.draft, t.companionDraft].flatMap(m => m ? [m.id] : []))
-      // A failed evidence read still only loses the explanation, never the inbox.
-      const evidence = await fetchDraftEvidence(draftIds).catch(() => null)
+        [t.draft, t.companionDraft, t.ownerConfirmation].flatMap(m => m ? [m.id] : []))
+      const [evidence, contextGaps] = await Promise.all([
+        fetchDraftEvidence(draftIds).catch(() => null),
+        fetchDraftContextGaps(draftIds).catch(() => new Map<string, DraftContextGap>()),
+      ])
       const pendingIds = new Set(draftIds)
       for (const m of rows) {
         const em = emailStamps.get(m.id)

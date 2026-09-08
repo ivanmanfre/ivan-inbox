@@ -25,7 +25,8 @@ import {
   fetchProspectContext, fetchScan, saveOperatorNote,
   type ProspectContext, type ScanInfo,
 } from '../../lib/context'
-import type { Thread } from '../../lib/inbox'
+import { ConfirmationNoteGuidance } from '../../components/OwnerConfirmation'
+import { isOwnerConfirmation, type Thread } from '../../lib/inbox'
 import { inlineLabel, label } from '../../lib/labels'
 import './sheets.css'
 
@@ -63,6 +64,14 @@ export function ContextSheet({ thread, onClose }: { thread: Thread; onClose: () 
   const [note, setNote] = useState('')
   const [noteState, setNoteState] = useState<'idle' | 'dirty' | 'saving' | 'saved' | 'error'>('idle')
   const loadedNote = useRef('')
+  const noteInput = useRef<HTMLTextAreaElement>(null)
+  const confirmationId = thread.ownerConfirmation && isOwnerConfirmation(thread.ownerConfirmation) ? thread.ownerConfirmation.id : undefined
+  useEffect(() => {
+    if (ctx && confirmationId) {
+      noteInput.current?.focus()
+      noteInput.current?.scrollIntoView({ block: 'center' })
+    }
+  }, [ctx, confirmationId])
 
   useEffect(() => {
     let alive = true
@@ -153,7 +162,9 @@ export function ContextSheet({ thread, onClose }: { thread: Thread; onClose: () 
             </div>
 
             <Block k="Your note">
+              {confirmationId && <ConfirmationNoteGuidance clientId={thread.client_id} />}
               <textarea
+                ref={noteInput}
                 className="ds-textarea a-ctx-note"
                 aria-label="Your note"
                 placeholder="e.g. wants Q4 start, prefers email…"

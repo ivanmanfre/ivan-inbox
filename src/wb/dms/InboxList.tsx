@@ -1,3 +1,4 @@
+import { internalHoldSummary } from '../../lib/inbox'
 /* ==========================================================================
    src/wb/dms/InboxList.tsx — S02 / S33: the conversation list.
 
@@ -346,7 +347,8 @@ export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, o
                 const pendingDraft = draftRowActions && t.draft != null && t.draftSnoozedUntil === null
                   ? t.draft : null
                 let snip = t.last.message_text
-                if (pendingDraft) snip = pendingDraft.message_text
+                if (t.ownerConfirmation) snip = internalHoldSummary(t.ownerConfirmation)
+                else if (pendingDraft) snip = pendingDraft.message_text
                 else if (isDraftLast) snip = `Draft: ${t.last.message_text}`
                 else if (t.last.direction === 'outbound' && t.last.sent_at) snip = `You: ${t.last.message_text}`
                 const note = rowNote?.(t) ?? null

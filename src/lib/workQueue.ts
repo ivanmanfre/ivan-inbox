@@ -1,3 +1,4 @@
+import { internalHoldSummary } from './inbox'
 import { supabase } from './supabase'
 import { unansweredWaitSince, type Thread } from './inbox'
 import { isCommentKind, pendingOps, type OpsDraft, type OpsKind } from './ops'
@@ -74,7 +75,7 @@ export function buildReplyItems(threads: Thread[], now: number): QueueItem[] {
       tier: neverOpened(t) ? 0 : 1,
       kind: 'reply',
       title: t.prospect_name,
-      sub: t.last.message_text,
+      sub: t.ownerConfirmation ? internalHoldSummary(t.ownerConfirmation) : t.last.message_text,
       lane: t.client_id,
       waitingSince: since,
       ageDays: ageDaysOf(since, now),

@@ -1,3 +1,4 @@
+import { internalHoldSummary } from '../../lib/inbox'
 /* ==========================================================================
    src/wb/dms/DmHistory.tsx — S02-30 to S02-32, the receipt.
 
@@ -98,7 +99,9 @@ export function DmHistory({ threads, onOpen }: {
             const kind = threadKind(t)
             const manual = manualCount(t)
             const last = t.last
-            const snip = last.direction === 'outbound'
+            const snip = t.ownerConfirmation
+              ? internalHoldSummary(t.ownerConfirmation)
+              : last.direction === 'outbound'
               ? `You: ${last.message_text}`
               : last.message_text
             return (
