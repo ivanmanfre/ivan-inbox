@@ -8,6 +8,32 @@ function b64ToU8(s: string) {
 
 export type PushState = 'unsupported' | 'denied' | 'off' | 'on'
 
+// ONE DEVICE, ONE ROW.
+//
+// Ivan, 2026-09-08: "keep receiving double notif on inbox on every dm reply".
+// The feed-side dupe (inbound_reply_notice pushing on top of the DM push) had
+// already been cut that morning; the phone still rang twice because
+// push_subscriptions held TWO live Apple endpoints for the same iPhone — same
+// user agent to the byte, one from 08-24, one from 09-02 — both labelled
+// ivan-inbox, and every sender fans out to every row under the label
+// (`{"subs":3,"results":["sent","sent","sent"]}` on each DM). The note above
+// bet that a stale row would 410 and prune itself. Apple never 410'd it in
+// fifteen days: a re-added home-screen install leaves the old subscription
+// accepted at the vendor.
+//
+// So the launch-time reconcile now also drops the OTHER ivan-inbox rows that
+// carry this device's user agent. The endpoint we just wrote is the one this
+// install answers to; a sibling row with the same UA is either a previous
+// install of this same phone or a zombie the vendor still accepts. Either way
+// it is a second ring on one device. Scoped three ways — label, UA, not-this-
+// endpoint — so the dashboard's rows and any other device are never touched.
+async function dropSiblingRows(endpoint: string) {
+  await supabase.from('push_subscriptions').delete()
+    .eq('device_label', 'ivan-inbox')
+    .eq('user_agent', navigator.userAgent)
+    .neq('endpoint', endpoint)
+}
+
 // What's true for THIS device right now — drives the Settings toggle.
 export async function getPushState(): Promise<PushState> {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return 'unsupported'
@@ -33,6 +59,7 @@ export async function enablePush(): Promise<boolean> {
   const { error } = await supabase.from('push_subscriptions').upsert(
     { endpoint: sub.endpoint, p256dh: j.keys!.p256dh, auth: j.keys!.auth, device_label: 'ivan-inbox', user_agent: navigator.userAgent },
     { onConflict: 'endpoint' })
+  if (!error) await dropSiblingRows(sub.endpoint)
   return !error
 }
 
@@ -62,10 +89,12 @@ export async function enablePush(): Promise<boolean> {
 // subscription, that is the orphaned case, and re-subscribing is exactly the
 // repair.
 //
-// It does NOT delete anything. `push_subscriptions` is shared with the
-// dashboard and rows are told apart by `device_label`; a stale row costs one
-// wasted send and a 410 the sender can act on, while a wrong delete costs a
-// device that goes quiet. Cheap wrong beats expensive wrong.
+// It deletes exactly one kind of row: another ivan-inbox row carrying THIS
+// device's user agent (see dropSiblingRows). `push_subscriptions` is shared
+// with the dashboard and rows are told apart by `device_label`, so nothing
+// outside the label is ever touched, and a row for a different device never
+// matches the UA. The earlier bet — leave stale rows, the vendor 410s them —
+// was measured false on 2026-09-08.
 export async function reconcilePush(): Promise<'skipped' | 'healed' | 'ok' | 'failed'> {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return 'skipped'
   if (Notification.permission !== 'granted') return 'skipped'
@@ -87,6 +116,7 @@ export async function reconcilePush(): Promise<'skipped' | 'healed' | 'ok' | 'fa
       },
       { onConflict: 'endpoint' })
     if (error) return 'failed'
+    await dropSiblingRows(sub.endpoint)
     return existing ? 'ok' : 'healed'
   } catch {
     return 'failed'
