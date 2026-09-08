@@ -51,7 +51,7 @@ import { draftFacetsActive } from '../../exp/v2c/contentIdeas'
 import { hasMock } from '../../exp/v2c/mock'
 import { Segmented, SkeletonRows, Tabs } from '../../ds'
 import { Bar, Body, Dot, Head, Screen } from '../kit'
-import { CalmEmpty, Failed, FilteredEmpty, PullIndicator } from './parts'
+import { CalmEmpty, cacheLoadedAt, Failed, FilteredEmpty, PullIndicator } from './parts'
 import { FilterRow } from './filters'
 import { StageTable, type OpenDraft } from './row'
 import { ClientIdeasSection, IdeasSection } from './ideas'
@@ -776,7 +776,7 @@ export function ContentList({ lane, setLane, openId, onOpen, laneCounts }: {
                 what="The content pipeline"
                 message={err}
                 onRetry={refresh}
-                loadedAt={drafts.length > 0 ? loadedAt : null}
+                loadedAt={cacheLoadedAt(drafts.length, loadedAt)}
               />
             ) : firstLoad ? (
               <SkeletonRows rows={8} label="Reading the content pipeline" />

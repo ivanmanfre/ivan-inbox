@@ -16,6 +16,13 @@ import './content.css'
 import { relAge } from '../kit'
 export { relAge }
 
+// W3-10: pure so the boundary is unit-testable without a fetch. `count` is the
+// cached row set the caller currently holds for the open lane; an empty cache
+// must not claim rows survived, and a non-empty one must not lose the claim.
+export function cacheLoadedAt(count: number, loadedAt: string | null): string | null {
+  return count > 0 ? loadedAt : null
+}
+
 /** State 3 — FETCH FAILED. Names what broke, offers the retry, and says what
     the operator is looking at instead (stale rows or nothing). */
 export function Failed({ what, message, onRetry, loadedAt, children }: {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   dismissGroup, dismissNotification, groupNotifications, listNotifications,
-  markNotificationsRead, restoreNotifications, type Notification, type NotificationGroup,
+  markNotificationsRead, mergeBackRows, restoreNotifications, type Notification, type NotificationGroup,
 } from '../../../lib/turns'
 import { mockFlag } from '../../v2c/mock'
 import { mockNotificationRows } from './mockNotifications'
@@ -78,17 +78,39 @@ export function useFeedData() {
     setRows(prev => prev.map(r => r.id === n.id ? { ...r, read_at: r.read_at ?? new Date().toISOString() } : r))
   }, [])
 
-  const dismissOne = useCallback((id: string) => {
+  // W2-4: a dismiss the server refused must not read as done. The row leaves
+  // the list on the tap (so the gesture still feels instant) but the write is
+  // AWAITED, not fired-and-forgotten — the caller learns whether it landed,
+  // and on a throw (the audit's interceptor 403s every PATCH; a real network
+  // drop looks the same to this catch) the row goes right back via the same
+  // merge rule Undo uses, instead of staying gone under a claim nobody made
+  // good on.
+  const dismissOne = useCallback(async (id: string, row: Notification): Promise<boolean> => {
     setRows(prev => prev.filter(r => r.id !== id))
-    if (!FEED_MOCK) void dismissNotification(id)
+    if (FEED_MOCK) return true
+    try {
+      await dismissNotification(id)
+      return true
+    } catch (e) {
+      console.error('[brain-b] dismiss failed', e)
+      setRows(prev => mergeBackRows(prev, [row]))
+      return false
+    }
   }, [])
 
-  const dismissGroupRows = useCallback((g: NotificationGroup) => {
+  const dismissGroupRows = useCallback(async (g: NotificationGroup): Promise<boolean> => {
     const ids = new Set(g.items.map(i => i.id))
     setRows(prev => prev.filter(r => !ids.has(r.id)))
-    if (FEED_MOCK) return
-    if (g.groupKey) void dismissGroup(g.groupKey)
-    else for (const id of ids) void dismissNotification(id)
+    if (FEED_MOCK) return true
+    try {
+      if (g.groupKey) await dismissGroup(g.groupKey)
+      else await Promise.all(g.items.map(i => dismissNotification(i.id)))
+      return true
+    } catch (e) {
+      console.error('[brain-b] group dismiss failed', e)
+      setRows(prev => mergeBackRows(prev, g.items))
+      return false
+    }
   }, [])
 
   /**
@@ -105,14 +127,10 @@ export function useFeedData() {
    */
   const restore = useCallback((back: Notification[]) => {
     if (!back.length) return
-    setRows(prev => {
-      const have = new Set(prev.map(r => r.id))
-      const add = back.filter(r => !have.has(r.id))
-      if (!add.length) return prev
-      // Newest first is the order `listNotifications` reads in, so a restored
-      // row lands where a refetch would have put it rather than at the end.
-      return [...prev, ...add].sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
-    })
+    // Same merge rule the failed-dismiss rollback above uses (W2-4): one place
+    // decides how a row that left comes back, whether the reason is Undo or a
+    // refused write.
+    setRows(prev => mergeBackRows(prev, back))
     if (!FEED_MOCK) void restoreNotifications(back.map(r => r.id))
   }, [])
 

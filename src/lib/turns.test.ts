@@ -60,7 +60,7 @@ const {
   NOTIFICATION_FALLBACK_HASH, NOTIFICATIONS_TABLE, NOTIFICATIONS_VIEW, THREADS_VIEW,
   TURNS_TABLE, TURNS_VIEW, abortTurn, dismissGroup, dismissNotification, getThread, getTurn,
   groupNotifications, isUuid, latestThread, listNotifications, listThreads, listTurns,
-  markNotificationsRead, notificationDeepLink,
+  markNotificationsRead, mergeBackRows, notificationDeepLink,
 } = await import('./turns')
 
 beforeEach(() => { steps.length = 0; queue = [] })
@@ -258,6 +258,33 @@ describe('groupNotifications', () => {
 
   it('is empty for no rows', () => {
     expect(groupNotifications([])).toEqual([])
+  })
+})
+
+// W2-4: the dismiss-failure rollback and the Undo toast both put rows back
+// through this one merge rule.
+describe('mergeBackRows', () => {
+  it('puts a dismissed row back when its write failed', () => {
+    const rows = [notif({ id: 'a' })]
+    const restored = mergeBackRows(rows, [notif({ id: 'b', created_at: '2026-09-04T08:00:00.000Z' })])
+    expect(restored.map(r => r.id)).toEqual(['a', 'b'])
+  })
+
+  it('does not duplicate a row that is still present', () => {
+    const rows = [notif({ id: 'a' })]
+    const restored = mergeBackRows(rows, [notif({ id: 'a' })])
+    expect(restored).toBe(rows)
+  })
+
+  it('orders newest first, the same order a refetch would', () => {
+    const rows = [notif({ id: 'old', created_at: '2026-09-01T00:00:00.000Z' })]
+    const restored = mergeBackRows(rows, [notif({ id: 'new', created_at: '2026-09-05T00:00:00.000Z' })])
+    expect(restored.map(r => r.id)).toEqual(['new', 'old'])
+  })
+
+  it('is a no-op on an empty restore list', () => {
+    const rows = [notif({ id: 'a' })]
+    expect(mergeBackRows(rows, [])).toBe(rows)
   })
 })
 

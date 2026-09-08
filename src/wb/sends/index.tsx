@@ -41,6 +41,7 @@ import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { Badge, Button, Card, Chip, DayHeader, EmptyState, Icon, IconButton, Input, Popover, PopoverItem, Segmented } from '../../ds'
 import { Bar, Body, Dot, Group, Head, Row, Rows, Screen, Sep, Spark, type Tone } from '../kit'
 import { OverviewView } from './Overview'
+import { hasMock } from '../../exp/v2c/mock'
 import './sends.css'
 
 type Client = 'all' | 'ivan' | 'risedtc' | 'arch'
@@ -234,8 +235,11 @@ function LogView({ client }: { client: Client }) {
     return () => { live = false }
   }, [client])
 
+  // W4-1: `?wbmock=fetch-error` (before the `#`) had no wiring here, so this
+  // surface's error path was unreachable by anything but a real outage.
+  const err = error ?? (hasMock('fetch-error') ? 'Send log read failed' : null)
   if (loading) return <Body><SendsSkeleton /></Body>
-  if (error) return <Body><EmptyState icon="error" title={error} /></Body>
+  if (err) return <Body><EmptyState icon="error" title={err} /></Body>
   if (items.length === 0) {
     return (
       <Body>
@@ -531,6 +535,8 @@ export function SendsScreen({ client, setClient }: {
 
   useEffect(() => { load() }, [load])
   const ptr = usePullToRefresh(rowsRef, load)
+  // W4-1: same override as LogView's, for the Lanes view's own fetch.
+  const err = error ?? (hasMock('fetch-error') ? 'Send lanes read failed' : null)
 
   const lanes = buildLanes(rows, daily, client)
   const inbound = buildInboundLanes(inRows, inDaily, client)
@@ -639,8 +645,8 @@ export function SendsScreen({ client, setClient }: {
         <LogView client={client} />
       ) : loading && rows.length === 0 ? (
         <Body><SendsSkeleton /></Body>
-      ) : error ? (
-        <Body><EmptyState icon="error" title={error} /></Body>
+      ) : err ? (
+        <Body><EmptyState icon="error" title={err} /></Body>
       ) : (
         <Body innerRef={rowsRef}>
           <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />

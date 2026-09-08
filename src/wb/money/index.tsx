@@ -43,6 +43,7 @@ import {
 } from '../../lib/money'
 import { PullIndicator } from '../chrome/PullIndicator'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
+import { hasMock } from '../../exp/v2c/mock'
 import { relAge } from '../kit'
 import { Banner, Button, Chip, EmptyState, Table, type TableColumn } from '../../ds'
 import { Body, Group, Head, Rows, Row, Screen, Sep } from '../kit'
@@ -637,7 +638,9 @@ export function MoneyView() {
     />
   )
 
-  if (m.error) {
+  // W4-1: `?wbmock=fetch-error` (before the `#`) had no wiring here.
+  const err = m.error ?? (hasMock('fetch-error') ? 'Money read failed' : null)
+  if (err) {
     return (
       <Screen className="a-money">
         {head}
@@ -648,7 +651,7 @@ export function MoneyView() {
             title="Money didn’t load"
             action={<Button variant="quiet" onClick={m.refresh}>Try again</Button>}
           >
-            {m.error}
+            {err}
           </Banner>
         </Body>
       </Screen>

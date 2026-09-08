@@ -286,6 +286,18 @@ function foldKey(n: Notification): string {
 
 const seenAt = (n: Notification): string => n.last_seen_at || n.created_at
 
+// W2-4: pure so the dismiss failure path is unit-testable without a network.
+// A dismiss that the server refused (or an Undo) puts rows back without
+// duplicating one still present, newest first — the same order a refetch
+// would produce. Shared by useFeedData's optimistic-dismiss rollback and its
+// restore-on-Undo, so there is one merge rule instead of two that could drift.
+export function mergeBackRows(rows: Notification[], restored: Notification[]): Notification[] {
+  const have = new Set(rows.map(r => r.id))
+  const add = restored.filter(r => !have.has(r.id))
+  if (!add.length) return rows
+  return [...rows, ...add].sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
+}
+
 export function groupNotifications(rows: Notification[]): NotificationGroup[] {
   const byKey = new Map<string, Notification[]>()
   for (const n of rows) {

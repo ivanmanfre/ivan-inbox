@@ -18,6 +18,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Badge, Banner, Button, Chip, DayHeader, EmptyState, IconButton, Input } from '../../ds'
 import { Body, Group, Head, Bar, Row, Rows, Screen } from '../kit'
 import { Face, PullMark, Pill, timeAgo } from './parts'
+import { InboxSkeleton } from '../chrome/Skeleton'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { returnsIn } from '../../lib/pushLater'
 import { useConfirm } from '../chrome/ConfirmSheet'
@@ -147,6 +148,19 @@ const EMPTY: Record<Filter, string> = {
 // operator actually trusts. The claim is only made where the HOST has
 // established there was no error, which is why `verifiedAt` is a prop and not a
 // constant: a screen that cannot see its own fetch must not promise a live read.
+// W2-5: pure so it is unit-testable without mounting the list. A screen with
+// zero rows on screen is either (a) still waiting on its first fetch, (b) a
+// search that found nothing, or (c) a fetch that DID resolve to zero — and
+// only (c) is allowed to assert "nothing waiting on you". `verifiedAt === null`
+// means the host has not yet established the fetch outcome, so the row
+// skeleton renders instead of a claim the app cannot back up.
+export function dmsEmptyKind(shownLength: number, query: string, verifiedAt: string | null | undefined): 'none' | 'search' | 'loading' | 'verified' {
+  if (shownLength > 0) return 'none'
+  if (query) return 'search'
+  if (verifiedAt === null) return 'loading'
+  return 'verified'
+}
+
 function EmptyVerified({ line, verifiedAt }: { line: string; verifiedAt?: string | null }) {
   return (
     <EmptyState
@@ -318,11 +332,14 @@ export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, o
           />
         )}
         {before}
-        {shown.length === 0 ? (
-          query
-            ? <EmptyState icon="search" title={`No matches for “${query}”`} />
-            : <EmptyVerified line={emptyLine ?? EMPTY[filter]} verifiedAt={verifiedAt} />
-        ) : renderRow ? (
+        {(() => {
+          const kind = dmsEmptyKind(shown.length, query, verifiedAt)
+          if (kind === 'search') return <EmptyState icon="search" title={`No matches for “${query}”`} />
+          if (kind === 'loading') return <InboxSkeleton />
+          if (kind === 'verified') return <EmptyVerified line={emptyLine ?? EMPTY[filter]} verifiedAt={verifiedAt} />
+          return null
+        })()}
+        {shown.length > 0 && (renderRow ? (
           <div className="a-stack">{shown.map(t => renderRow(t))}</div>
         ) : (
           <Group>
@@ -443,7 +460,7 @@ export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, o
               {win.padBottom > 0 && <div style={{ height: win.padBottom }} aria-hidden />}
             </Rows>
           </Group>
-        )}
+        ))}
         {after}
       </Body>
     </Screen>

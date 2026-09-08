@@ -174,7 +174,38 @@ export function Feed({ feed, goJob, openThread, onNavigated, onScrolled }: {
     window.setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 6000)
   }
 
-  const dismissOne = (id: string, row: Notification) => { feed.dismissOne(id); drop(id, [row], 'Dismissed') }
+  // W2-4: the toast now waits on the write. "Dismissed / Undo" is a claim that
+  // the server agreed, so it is only allowed to render once `feed.dismissOne`
+  // resolves true; a refused PATCH (the audit's interceptor 403s every one)
+  // gets its own toast instead, with a Retry that replays the same dismiss
+  // rather than an Undo for a thing that never happened.
+  const failDrop = (id: string, message: string, retry: () => void) => {
+    setToasts(prev => [...prev, {
+      id,
+      message,
+      icon: 'alert',
+      tone: 'urgent',
+      actionLabel: 'Retry',
+      onAction: () => { setToasts(cur => cur.filter(t => t.id !== id)); retry() },
+    }])
+    window.setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 6000)
+  }
+
+  const dismissOne = (id: string, row: Notification) => {
+    void (async () => {
+      const ok = await feed.dismissOne(id, row)
+      if (ok) drop(id, [row], 'Dismissed')
+      else failDrop(id, 'Could not dismiss, try again', () => dismissOne(id, row))
+    })()
+  }
+
+  const dismissAll = (g: NotificationGroup) => {
+    void (async () => {
+      const ok = await feed.dismissGroupRows(g)
+      if (ok) drop(g.key, g.items, `${g.count} dismissed`)
+      else failDrop(g.key, 'Could not dismiss, try again', () => dismissAll(g))
+    })()
+  }
 
   return (
     <>
@@ -223,10 +254,7 @@ export function Feed({ feed, goJob, openThread, onNavigated, onScrolled }: {
                         <GroupRow
                           g={g} open={feed.expanded.has(g.key)} onToggle={() => feed.toggle(g.key)}
                           onOpen={openOne}
-                          onDismissAll={() => leave(g, at, () => {
-                            feed.dismissGroupRows(g)
-                            drop(g.key, g.items, `${g.count} dismissed`)
-                          })}
+                          onDismissAll={() => leave(g, at, () => dismissAll(g))}
                           onDismissOne={(id, row) => dismissOne(id, row)}
                         />
                       )

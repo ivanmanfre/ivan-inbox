@@ -20,6 +20,7 @@ import { PullIndicator } from '../chrome/PullIndicator'
 import { SystemAlertStrip } from './alerts'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { useToday, type TodayHealth } from '../../hooks/useToday'
+import { hasMock } from '../../exp/v2c/mock'
 import { label } from '../../lib/labels'
 import { LANE_LABEL, type ContentLane } from '../../lib/content'
 import { acceptRate, laneLabel, type GovernorRow } from '../../lib/kpis'
@@ -1131,7 +1132,9 @@ export function Today({
   const plate = todayPlate(t.brief, 'all')
   const aging = t.brief?.aging_count ?? 0
   const syncedAt = t.brief?.generated_at ?? t.counts?.generated_at ?? t.cachedAt ?? null
-  const stale = t.fromCache || t.degraded || (t.error != null && t.brief != null)
+  // W4-1: `?wbmock=fetch-error` (before the `#`) had no wiring here.
+  const err = t.error ?? (hasMock('fetch-error') ? 'Today read failed' : null)
+  const stale = t.fromCache || t.degraded || (err != null && t.brief != null)
 
   const nextCall = threads !== undefined
     ? <ZoneNextCall events={events} loading={eventsLoading} archive={callsLoading ? null : callStats(calls)} />
@@ -1171,11 +1174,11 @@ export function Today({
             Counts only — this session isn’t authorised for the full brief. Sign in again to see the rows.
           </Banner>
         )}
-        {!t.authError && !t.degraded && t.error && t.brief && (
+        {!t.authError && !t.degraded && err && t.brief && (
           <Banner tone="attention" icon="alert">Couldn’t refresh, showing the last brief on this device.</Banner>
         )}
-        {t.error && !t.brief && !t.refreshing && (
-          <EmptyState icon="error" title={t.error} />
+        {err && !t.brief && !t.refreshing && (
+          <EmptyState icon="error" title={err} />
         )}
 
         <div className="a-stack">

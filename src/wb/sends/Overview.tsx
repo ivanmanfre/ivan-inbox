@@ -22,6 +22,7 @@ import {
   type Lane, type DailyRow, type CampaignSend,
 } from '../../lib/sends'
 import { getExpVariant } from '../../exp'
+import { hasMock } from '../../exp/v2c/mock'
 import {
   fetchAccept, fetchReply, fetchPipeline, fetchGovernor, fetchScanOpens, fetchOutcomes, fetchRangeKpis,
   fetchReplacement, replacementRate, daysToEmpty, fetchDayLedger, buildLedger,
@@ -1077,9 +1078,11 @@ export function OverviewView({ client, timeframe, setClient, range = null }: {
     return () => { live = false }
   }, [client])
 
+  // W4-1: `?wbmock=fetch-error` (before the `#`) had no wiring here.
+  const err = error ?? (hasMock('fetch-error') ? 'Sends overview read failed' : null)
   // S43-3: the first load echoes the shape of the lane cards that replace it.
   if (loading && !data) return <Body><SendsSkeleton /></Body>
-  if (error) return <Body><div className="a-sends-load">{error}</div></Body>
+  if (err) return <Body><div className="a-sends-load">{err}</div></Body>
   if (!data) return <Body><div className="a-sends-load">No data yet, the call returned, it just had nothing in it.</div></Body>
 
   const lanes = buildLanes(data.rows, data.daily, client)

@@ -153,6 +153,11 @@
   width:100%; height:100%; object-fit:cover; display:block;
   border-radius:var(--ds-r2); background:var(--ds-surface-2);
 }
+/* W3-17: the storage-400 fallback. Same box, no image, two letters. */
+.a-ct-thumb-fb{
+  display:flex; align-items:center; justify-content:center;
+  font-size:var(--ds-t-eyebrow-size, 10px); font-weight:600; color:var(--ds-text-2);
+}
 .a-ct-qa{
   position:absolute; inset-block-end:0; inset-inline-end:0;
   width:var(--ds-s3); height:var(--ds-s3); border-radius:var(--ds-r-pill);

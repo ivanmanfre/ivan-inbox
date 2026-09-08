@@ -9,7 +9,7 @@
    below 1000px; the capability list is written here, where the row's status,
    its lane and its board visibility are known, and never inferred by the bar.
    ========================================================================== */
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
   boardGroupOf, canPromote, draftExcerpt, draftFailure, elapsedMinutes, generatingSince,
   isStuckGenerating, reviewActionable, stageOf, STAGE_LABEL, taxonomyValue,
@@ -29,6 +29,17 @@ import './content.css'
 /** Opening a draft hands the window the QUEUE it was opened from, so j/k and
     the window's rail walk exactly the rows Ivan is looking at. */
 export type OpenDraft = (id: string, label: string, queue: ContentDraft[]) => void
+
+// W3-17: some client-photo thumbnail objects 400 from storage (a stale path
+// or a removed object, not this row's fault). Pure so the two-letter fallback
+// is unit-testable without mounting the row.
+export function draftInitials(title: string): string {
+  const words = title.match(/\p{L}+/gu) ?? []
+  const [first, second] = words
+  if (!first) return '?'
+  if (!second) return first.slice(0, 2).toUpperCase()
+  return (first[0] + second[0]).toUpperCase()
+}
 
 /** The stage's own mark on a group eyebrow: a dot, then the word. */
 export function StageMark({ stage, children }: { stage: ContentStage | 'ideas'; children: ReactNode }) {
@@ -55,6 +66,8 @@ export function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
 }) {
   const thumb = d.image_urls?.[0]
   const title = d.title || d.topic || 'Untitled'
+  // W3-17: a storage 400 must not leave a broken-image glyph on the row.
+  const [thumbBroken, setThumbBroken] = useState(false)
   const score = draftScore(d)
   const stage = stageOf(d)
   const qa = d.qa_verdict?.trim().toUpperCase()
@@ -98,9 +111,11 @@ export function Card({ d, lane, refresh, onOpen, active, queue, glance }: {
             id={d.id} kind="draft" label={title} caps={caps}
             taxonomy={d.taxonomy} lane={lane}
           />
-          {thumb
-            ? <img className="a-ct-thumb" src={thumb} alt="" />
-            : <span className="a-ct-thumb" aria-hidden />}
+          {thumb && !thumbBroken
+            ? <img className="a-ct-thumb" src={thumb} alt="" onError={() => setThumbBroken(true)} />
+            : thumb
+              ? <span className="a-ct-thumb a-ct-thumb-fb" aria-hidden>{draftInitials(title)}</span>
+              : <span className="a-ct-thumb" aria-hidden />}
           <span
             className="a-ct-qa" data-qa={qaState}
             title={qa ? `QA ${label(d.qa_verdict)}` : 'no QA verdict on this row'}
