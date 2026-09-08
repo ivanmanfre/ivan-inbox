@@ -10,6 +10,15 @@
    through `React.lazy`, so the sheet arrives with the chunk and is in the
    document before the shell inside it paints; nothing on any other path
    reaches this file, so the live app never loads it.
+
+   W6-7: `styles.css`'s 81 colour literals are deliberately NOT mapped onto
+   `src/ds` tokens. The stock shell is the pre-revamp shell, frozen on
+   purpose (D4 above) so it stays reachable as a comparison point, and the
+   regression floor requires it to render byte-identical (`#exp/stock`
+   0-px diff) on every wave of this repair run. Re-pointing its colours at
+   live tokens would change what it paints, which is exactly what the floor
+   exists to catch. If stock is ever retired for real, delete this file and
+   `styles.css` together rather than partially converting them.
    ========================================================================== */
 import type { ReactNode } from 'react'
 import './styles.css'

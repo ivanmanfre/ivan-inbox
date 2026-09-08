@@ -350,9 +350,15 @@ export function blockedOps(rows: OpsDraft[]): OpsDraft[] {
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
 }
 
+// W6-2: an explicit column list, not `select=*`. The table has exactly these
+// ten columns (db/015_ops_drafts.sql) so the rows are unchanged; naming them
+// is what stops the request from being schema-fragile (a future wide column
+// added to the table would otherwise ride along on every load unasked).
+const OPS_DRAFT_COLUMNS = 'id,client_id,kind,slack_channel,body,context,created_at,approved_at,sent_at,send_blocked_reason'
+
 export async function fetchOpsDrafts(): Promise<OpsDraft[]> {
   const { data, error } = await supabase.from('ops_drafts')
-    .select('*')
+    .select(OPS_DRAFT_COLUMNS)
     .order('created_at', { ascending: false })
     .limit(300)
   if (error) throw error

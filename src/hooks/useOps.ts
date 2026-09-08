@@ -2,7 +2,13 @@ import { useCallback, useEffect, useId, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { fetchOpsDrafts, type OpsDraft } from '../lib/ops'
 
-export function useOps() {
+// W6-2: `enabled` (default true, so every existing caller keeps today's
+// always-on behaviour) lets a shared shell defer the read until the surface
+// that actually renders ops drafts is on screen, instead of paying for it on
+// every route's boot `Promise.all`. `refresh` still works with `enabled:
+// false` (a caller can always ask by hand); only the automatic fetch and the
+// realtime subscription are gated.
+export function useOps(enabled = true) {
   const [drafts, setDrafts] = useState<OpsDraft[]>([])
   const [loading, setLoading] = useState(true)
   // "Nothing waiting on you." and "this queue failed to load" are different
@@ -29,6 +35,7 @@ export function useOps() {
     })
   }, [])
   useEffect(() => {
+    if (!enabled) { setLoading(false); return }
     refresh()
     const ch = supabase.channel(topic)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ops_drafts' }, refresh)
@@ -36,6 +43,6 @@ export function useOps() {
     const onFocus = () => refresh()
     window.addEventListener('focus', onFocus)
     return () => { supabase.removeChannel(ch); window.removeEventListener('focus', onFocus) }
-  }, [refresh, topic])
+  }, [refresh, topic, enabled])
   return { drafts, loading, error, loadedAt, refresh }
 }

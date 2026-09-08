@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
 import { SeatHealthBanner } from '../../wb/chrome/SeatHealthBanner'
 import { InboxSkeleton } from '../../wb/chrome/Skeleton'
 import { useInbox } from '../../hooks/useInbox'
@@ -47,7 +47,13 @@ import type { CallRow } from '../../lib/transcripts'
 // The Ask pane is the design-system rebuild (src/wb/ask, W5). `#exp/v2` -- the
 // same Shell with no brain candidate mounted -- renders it directly; the
 // brain-b route reaches the identical component through the registry.
-import { AskPane } from '../../wb/ask/AskPane'
+//
+// W6-1: lazy, not a top-level import. `AskPane.tsx` is 46.8KB of JS + 24KB of
+// CSS that every brain-b route (which never takes this branch, BrainAsk is
+// always set) was paying for on cold load, because a static import here made
+// it a build-time dependency of Shell's own chunk regardless of whether the
+// branch below ever ran. Deferred to first render of the branch instead.
+const AskPaneDirect = lazy(() => import('../../wb/ask/AskPane').then(m => ({ default: m.AskPane })))
 import { draftSubject, laneSubject, threadSubject, type Subject } from './chat/paneContext'
 // `Surface.tsx` is deleted with the sheets that styled it (Phase 3 W6): the
 // three data states are the design-system ports in `src/wb/content/parts`, and
@@ -216,7 +222,13 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
   // (The topic is also namespaced now, so a second mount could not black the
   // tree out even if a later edit added one.)
   const inbox = useInbox()
-  const ops = useOps()
+  // W6-2: the ops_drafts read only fires where ops drafts actually render —
+  // Ops itself, and Today (whose work-queue count is real work, not a
+  // decoration). Every other job reads a badge number off `opsPend.length`
+  // below; that number stays whatever it was last time the surface was
+  // enabled (0 on a cold boot into e.g. Content) rather than firing an
+  // unbounded read nobody on that route is looking at.
+  const ops = useOps(job === 'ops' || job === 'today')
   const chat = useChat()
   const glance = useGlanceCounts()
 
@@ -672,18 +684,20 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
         )
       }
       return (
-        <AskPane
-          chat={chat}
-          job={job}
-          about={aboutLabel}
-          aboutContext={aboutContext ?? null}
-          subjects={seeSubjects}
-          onClose={() => closePeer('chat')}
-          // Mobile only: no third region, so the pair degrades to a tappable
-          // context card that flips focus back to the item.
-          onOpenAbout={mobile && ctx ? () => setFocus(peerKey(ctx)) : null}
-          mobile={mobile}
-        />
+        <Suspense fallback={null}>
+          <AskPaneDirect
+            chat={chat}
+            job={job}
+            about={aboutLabel}
+            aboutContext={aboutContext ?? null}
+            subjects={seeSubjects}
+            onClose={() => closePeer('chat')}
+            // Mobile only: no third region, so the pair degrades to a tappable
+            // context card that flips focus back to the item.
+            onOpenAbout={mobile && ctx ? () => setFocus(peerKey(ctx)) : null}
+            mobile={mobile}
+          />
+        </Suspense>
       )
     }
     // kind:'draft' peers are no longer created anywhere — a draft opens as the
