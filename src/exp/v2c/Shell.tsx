@@ -222,7 +222,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
   // (The topic is also namespaced now, so a second mount could not black the
   // tree out even if a later edit added one.)
   const inbox = useInbox()
-  // W6-2: the ops_drafts read only fires where ops drafts actually render —
+  // W6-2: the ops_drafts read only fires where ops drafts actually render,
   // Ops itself, and Today (whose work-queue count is real work, not a
   // decoration). Every other job reads a badge number off `opsPend.length`
   // below; that number stays whatever it was last time the surface was
