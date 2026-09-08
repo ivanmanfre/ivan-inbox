@@ -23,7 +23,7 @@ import { Head, Screen } from '../kit'
 import type { BrainMobileProps } from '../../exp/brain/types'
 import { JOB_LABEL, type Job } from '../../exp/v2c/layout'
 import { readPlace, resolveBootPlace, tabForJob, writePlace, TABS, TAB_LABEL, type Place } from '../../exp/brain/b/place'
-import { hashNamesJob } from '../../exp/v2c/route'
+import { hashNamesJob, parseWbHash } from '../../exp/v2c/route'
 import { AskThread } from './AskThread'
 import { Feed } from './Feed'
 import { useFeedData } from '../../exp/brain/b/useFeedData'
@@ -195,6 +195,23 @@ export function Mobile(p: BrainMobileProps) {
   }
 
   const onTab = (t: Place) => { setFeedOpen(false); setSnap(0); goPlace(t) }
+
+  // An explicit link must leave Ask, even when the destination job was
+  // already mounted behind it. The job-change effect alone cannot do that.
+  useEffect(() => {
+    const onHash = () => {
+      if (!hashNamesJob(location.hash)) return
+      const route = parseWbHash(location.hash)
+      if (route.focus === 'chat' || route.feed) return
+      const next = tabForJob(route.job)
+      setPlace(next)
+      writePlace(next)
+      setFeedOpen(false)
+      setSnap(0)
+    }
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
 
   // A Content sub-lane change (WorkSegment, inside workSurface) calls the same
   // `goJob` this component was handed, so `job` can drift to magnets/styles/
@@ -484,7 +501,12 @@ export function Mobile(p: BrainMobileProps) {
                 tail={<IconButton icon="back" label="Close feed" onClick={closeSheet} />}
               />
               <Feed
-                feed={feed} goJob={goJob}
+                feed={feed} goJob={j => {
+                  const next = tabForJob(j)
+                  setPlace(next)
+                  writePlace(next)
+                  goJob(j)
+                }}
                 openThread={openThreadAt}
                 onNavigated={closeSheet}
                 onScrolled={setCondensed}
