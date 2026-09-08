@@ -171,7 +171,6 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
   const [status] = useState<Status>('needs')
   const [sendsClient, setSendsClient] = useState<'all' | 'ivan' | 'risedtc' | 'arch'>('ivan')
   const [lane, setLane] = useState<ContentLane>('ivan')
-  const [contentBump, setContentBump] = useState(0)
   // The reading window (usability-voice ask 2). A draft or a lead magnet opened
   // from Content/Magnets is a TAKEOVER over the canvas, not a 420px peer — the
   // peers model stays for chat and inbox threads only.
@@ -575,7 +574,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
       {job === 'dms' && dmsSurface}
       {job === 'content' && (
         <ContentListC
-          key={`${lane}:${contentBump}`}
+          key={lane}
           lane={lane}
           setLane={setLane}
           openId={openItem?.kind === 'draft' ? openItem.id : null}
@@ -697,7 +696,13 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
     openItem.kind === 'draft'
       ? <DraftWindow
           id={openItem.id} lane={lane} queue={openItem.queue}
-          refresh={() => setContentBump(b => b + 1)}
+          // 🔴 A REFETCH, NOT A REMOUNT. This used to bump a key on the whole
+          // Content section, so every approve tore down the list, the ideas
+          // read, the scheduled queue and the lane probes and rebuilt them from
+          // skeletons — the "takes too long to move to scheduled" Ivan saw on
+          // 2026-09-08. The list already listens for this event (the bulk bar
+          // fires it) and refetches its own rows in place.
+          refresh={() => window.dispatchEvent(new CustomEvent('wb-rows-changed'))}
           onClose={closeItem} onPick={pickItem} mobile={mobile}
         />
       : <MagnetWindow

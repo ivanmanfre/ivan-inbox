@@ -12,8 +12,8 @@ import { useEffect, useState } from 'react'
 import { Banner, Button, Chip, Icon, Input, Kbd, Textarea } from '../../ds'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import {
-  LANE_POSSESSIVE, clientDeletable, deleteClientDraft, deleteDraft, listStills,
-  normalizeImageUrls, restartDraftToIdea, setDraftImage, STILL_FOLDERS,
+  LANE_POSSESSIVE, clientDeletable, deleteClientDraft, deleteDraft, fetchIvanArmedDays, listStills,
+  localDay, normalizeImageUrls, restartDraftToIdea, setDraftImage, STILL_FOLDERS,
   type ContentDraft, type ContentDraftDetail, type ContentLane, type Still, type StillFolder,
 } from '../../lib/content'
 import { appendAgentNote, clearHumanEdit, planRegen, regenerateDraft, scheduleDraft } from '../../lib/studioActions'
@@ -151,21 +151,54 @@ export function RestartDraft({ d, onDone, disabled }: {
 // put a post on LinkedIn, so the confirm says that in those words rather than
 // calling it "scheduling". Ivan lane only, like every other write in this file.
 // ---------------------------------------------------------------------------
-function localNowPlus(hours: number): string {
-  const t = new Date(Date.now() + hours * 3600_000)
+function localInput(t: Date): string {
   const p = (n: number) => String(n).padStart(2, '0')
-  return `${t.getFullYear()}-${p(t.getMonth() + 1)}-${p(t.getDate())}T${p(t.getHours())}:${p(t.getMinutes())}`
+  return `${localDay(t)}T${p(t.getHours())}:${p(t.getMinutes())}`
 }
 
-export function ScheduleDraft({ d, onDone }: { d: ContentDraftDetail; onDone: () => void }) {
+// THE POSTING SLOT. Ivan's armed rows over the last 60 days cluster at 10:45
+// local (measured 2026-09-08: 10:45 x4, 17:00 x4, the rest 10:00-10:46), and
+// the standing rule is a 3-5 day buffer, never same-day. The default is
+// therefore the first day at least three days out that his queue does not
+// already hold, at 10:45 — one click arms it, and the field stays editable for
+// the times that are not that.
+const SLOT_H = 10
+const SLOT_M = 45
+const BUFFER_DAYS = 3
+
+function nextFreeSlot(taken: Set<string>): Date {
+  const t = new Date()
+  t.setHours(SLOT_H, SLOT_M, 0, 0)
+  t.setDate(t.getDate() + BUFFER_DAYS)
+  // Bounded: a queue cannot be more than 500 rows deep (the read's own limit).
+  for (let i = 0; i < 366 && taken.has(localDay(t)); i++) t.setDate(t.getDate() + 1)
+  return t
+}
+
+export function ScheduleDraft({ d, onDone, onArmed }: {
+  d: ContentDraftDetail
+  onDone: () => void
+  /** A FRESH arm landed (not a move). The window walks on from here. */
+  onArmed?: () => void
+}) {
+  const already = d.status === 'scheduled'
   const [when, setWhen] = useState(() => (d.scheduled_at
-    ? localNowPlus((Date.parse(d.scheduled_at) - Date.now()) / 3600_000)
-    : localNowPlus(24)))
+    ? localInput(new Date(d.scheduled_at))
+    : localInput(nextFreeSlot(new Set()))))
+  // The free-day default needs one read; until it lands the field holds the
+  // buffer day, which is only wrong when that day is already taken.
+  useEffect(() => {
+    if (d.scheduled_at) return
+    let live = true
+    fetchIvanArmedDays()
+      .then(days => { if (live) setWhen(localInput(nextFreeSlot(days))) })
+      .catch(() => { /* the buffer-day default stands */ })
+    return () => { live = false }
+  }, [d.id, d.scheduled_at])
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [note, setNote] = useState('')
   const confirm = useConfirm()
-  const already = d.status === 'scheduled'
 
   const run = async () => {
     const at = new Date(when)
@@ -182,6 +215,7 @@ export function ScheduleDraft({ d, onDone }: { d: ContentDraftDetail; onDone: ()
       await scheduleDraft(d.id, at.toISOString())
       setNote(`Armed for ${at.toLocaleString()}.`)
       onDone()
+      if (!already) onArmed?.()
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not schedule it')
     } finally { setBusy(false) }

@@ -406,6 +406,31 @@ export async function fetchScheduledQueue(): Promise<ScheduledQueueRow[]> {
   return (data ?? []) as unknown as ScheduledQueueRow[]
 }
 
+// THE DAYS IVAN'S QUEUE ALREADY HOLDS, as local calendar days. The schedule
+// control's default is the next day that is not in this set (see
+// ScheduleDraft): one date column, Ivan's lane only, future rows only, so the
+// read stays a few hundred bytes however long the archive gets.
+export async function fetchIvanArmedDays(): Promise<Set<string>> {
+  const { data, error } = await supabase.from('carousel_drafts')
+    .select('scheduled_at')
+    .is('client_id', null)
+    .eq('status', 'scheduled')
+    .gte('scheduled_at', new Date().toISOString())
+    .limit(500)
+  if (error) throw error
+  const days = new Set<string>()
+  for (const r of (data ?? []) as { scheduled_at: string | null }[]) {
+    if (r.scheduled_at) days.add(localDay(new Date(r.scheduled_at)))
+  }
+  return days
+}
+
+/** `YYYY-MM-DD` in the browser's own zone, the key fetchIvanArmedDays uses. */
+export function localDay(t: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${t.getFullYear()}-${p(t.getMonth() + 1)}-${p(t.getDate())}`
+}
+
 // Removes a published post from LinkedIn (Ivan, 08-28 — inbox only, never the
 // client panel). The edge fn resolves the real share urn (share id ≠ activity
 // id), deletes via the raw voyager route, and REFUSES to report success unless

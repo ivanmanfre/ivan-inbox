@@ -50,6 +50,13 @@
   border-left:2px solid var(--li-brand); padding-left:var(--ds-s3); margin-left:calc(var(--ds-s3) * -1);
 }
 .li-ta:disabled{ opacity:.6 }
+/* 🔴 THE INK, RESTATED AT TWO CLASSES. ds.css declares `.ds-body textarea
+   { color:inherit }`, a two-part selector that outranks the single-class rule
+   above, and the nearest colour to inherit is the window's canvas text: on the
+   dark theme that is WHITE, on a card that is white. Measured live 2026-09-08:
+   the field computed rgb(255,255,255) on rgb(255,255,255) — Ivan: "when
+   clicking edit i dont see shit". The card owns its ink; say so where it wins. */
+.li-card .li-ta{ color:var(--li-ink); caret-color:var(--li-brand); -webkit-text-fill-color:var(--li-ink) }
 /* An empty body is still a tap target: it measured 586x20 on a row with no copy. */
 .li-body-edit{
   cursor:text; border-radius:var(--ds-r1);

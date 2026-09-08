@@ -67,6 +67,8 @@ export type QueueItem = {
   scheduled_at?: string | null
 }
 
+const RAIL_KEY = 'wb-draft-rail'
+
 function scalar(v: unknown): string | null {
   if (typeof v === 'string') return v.trim() || null
   if (typeof v === 'number' && Number.isFinite(v)) return String(v)
@@ -276,11 +278,13 @@ function Body({ d, lane, queue, refresh, onClose, onPick, mobile }: {
     // override (Ivan is the judge of last resort), so the confirm names the
     // state instead of the button pretending the row is clean.
     const overriding = d.status === 'error'
-    const ok = await confirm(kind === 'approve' ? {
-      title: overriding ? 'Approve this draft anyway?' : 'Approve this draft?',
-      message: overriding
-        ? 'QA refused this one. Approving overrides that verdict. Nothing publishes, scheduling is the separate act below.'
-        : 'Marks approved. Nothing publishes, scheduling is the separate act below.',
+    // A clean approve is a reversible status mark that publishes nothing, and
+    // a sheet in front of it was one more click on every one of 33 rows (Ivan,
+    // 2026-09-08: "takes too long"). The sheet stays where the act is not
+    // clean: overriding a QA refusal, or skipping, which is durable.
+    const ok = (kind === 'approve' && !overriding) || await confirm(kind === 'approve' ? {
+      title: 'Approve this draft anyway?',
+      message: 'QA refused this one. Approving overrides that verdict. Nothing publishes, scheduling is the separate act below.',
       confirmText: 'Approve',
     } : {
       title: 'Skip this draft?',
@@ -352,10 +356,27 @@ function Body({ d, lane, queue, refresh, onClose, onPick, mobile }: {
     } finally { setPromoting(false) }
   }, [confirm, d.id, nextId, onClose, onPick, promoting, refresh])
 
-  const [more, setMore] = useState(false)
+  // OPEN by default on a row that is waiting to be armed: needs review →
+  // scheduled is the walk Ivan makes on every row, and a disclosure in front
+  // of the date was a click on each. Closed on a row that is already armed or
+  // past deciding, where a date field would only be noise.
+  const [more, setMore] = useState(lane === 'ivan' && (stage === 'review' || stage === 'approved'))
   // The four recovery acts used to be a permanently rendered tier. They are one
   // disclosure away now — see the bar's own comment for why.
   const [shelf, setShelf] = useState(false)
+  // THE QUEUE RAIL, CLOSED BY DEFAULT. Thirty-three truncated titles beside the
+  // post is the clutter Ivan named on 2026-09-08; j/k still walk the queue and
+  // the header's own count says where you are. Persisted, because "show me the
+  // queue" is a way of working, not a per-row answer.
+  const [railOpen, setRailOpen] = useState(() => {
+    try { return localStorage.getItem(RAIL_KEY) === '1' } catch { return false }
+  })
+  const toggleRail = useCallback(() => {
+    setRailOpen(o => {
+      try { localStorage.setItem(RAIL_KEY, o ? '0' : '1') } catch { /* private mode */ }
+      return !o
+    })
+  }, [])
 
   // ---- keyboard (S16-40) --------------------------------------------------
   //
@@ -445,12 +466,11 @@ function Body({ d, lane, queue, refresh, onClose, onPick, mobile }: {
     <>
       <div className="a-dw-cap">
         <h2 className="a-dw-cap-t">{d.title || d.topic || 'Untitled'}</h2>
-        {queue.length > 1 && at >= 0 && (
-          <span className="a-mono a-dim">{at + 1} of {queue.length}</span>
-        )}
       </div>
+      {/* The type and the position are NOT repeated here: the window's header
+          prints both, and a fact printed twice on one screen is the clutter
+          Ivan named. */}
       <div className="a-dw-chips">
-        <Chip>{typeLabel(d.type)}</Chip>
         {/* One status, two meanings. `review` here is "waiting on Mattan" when
             he has it and "waiting on you" when he does not, so the chip reads
             the promotion state rather than repeating the raw stage — and it
@@ -656,8 +676,11 @@ function Body({ d, lane, queue, refresh, onClose, onPick, mobile }: {
         )}
         {editable && !editing && <Button onClick={startEdit}>Edit</Button>}
         {lane === 'ivan' && (
-          <Button disabled={editing} aria-expanded={more} onClick={() => setMore(m => !m)}>
-            {more ? 'Hide schedule' : 'Schedule'}
+          // Quiet while the date row is open: the row's own button is the act,
+          // and this one only folds it away.
+          <Button variant={more ? 'quiet' : 'default'} disabled={editing} aria-expanded={more}
+            onClick={() => setMore(m => !m)}>
+            {more ? 'Hide date' : 'Schedule'}
           </Button>
         )}
         {/* Regenerate, Swap image, Back to idea and Delete draft were four
@@ -688,8 +711,16 @@ function Body({ d, lane, queue, refresh, onClose, onPick, mobile }: {
       )}
       {/* 🔴 THE ONE AFFORDANCE HERE THAT ARMS A PUBLISHER, and it unfolds
           INSIDE the bar like every other disclosure in this window. */}
-      {more && lane === 'ivan' && (
-        <div className="a-dw-shelfrow"><ScheduleDraft d={d} onDone={refresh} /></div>
+      {more && lane === 'ivan' && !editing && (
+        <div className="a-dw-shelfrow">
+          <ScheduleDraft
+            d={d}
+            onDone={refresh}
+            // A fresh arm is a decision like approve: the reader walks on to
+            // the next row rather than sitting on the one just settled.
+            onArmed={() => { if (nextId) onPick(nextId); else onClose() }}
+          />
+        </div>
       )}
       {editing && <span className="a-mono a-dim">Save or cancel the edit first</span>}
     </div>
@@ -835,8 +866,15 @@ function Body({ d, lane, queue, refresh, onClose, onPick, mobile }: {
 
   // A one-row queue has nowhere to walk to, so it draws no rail and the window
   // gives the width back to the artifact.
-  const rail = queue.length > 1
+  const rail = queue.length > 1 && railOpen
     ? <QueueRail queue={queue} id={d.id} onPick={onPick} />
+    : undefined
+  const railToggle = queue.length > 1
+    ? (
+      <Button variant="quiet" size="sm" icon="list" aria-expanded={railOpen} onClick={toggleRail}>
+        {at >= 0 ? `${at + 1} of ${queue.length}` : `${queue.length} in queue`}
+      </Button>
+    )
     : undefined
 
   return (
@@ -848,6 +886,7 @@ function Body({ d, lane, queue, refresh, onClose, onPick, mobile }: {
       sub={`${LANE_LABEL[lane]}${d.type ? ` · ${typeLabel(d.type)}` : ''}`}
       onClose={onClose}
       mobile={mobile}
+      tail={railToggle}
       rail={rail}
       peer={evidence}
       foot={decisionBar}
