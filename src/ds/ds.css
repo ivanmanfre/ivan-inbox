@@ -169,6 +169,22 @@ body :focus-visible{
 .ds-shell[data-layout='desktop'] .ds-plate{ flex-direction:row }
 .ds-shell[data-layout='phone'] .ds-plate{ flex-direction:column }
 
+/* N1 (native pass, 2026-09-09): the pistachio ground + plate-gap reveal is a
+   desktop frame device (arm a/b/c, tokens.css §FRAME ARMS). On the phone
+   layout it painted a green band on every edge and above the status bar
+   (Ivan's own iPhone screenshot: "that green background... i feel like im on
+   a web version"). The phone shell is full-bleed canvas instead: no ground,
+   no gap, no plate corner. Scoped to [data-layout='phone'] only so the
+   desktop shell (data-layout='desktop') keeps its ground and its gap. */
+.ds-shell[data-layout='phone']{
+  background:var(--ds-canvas);
+  padding:0;
+  gap:0;
+}
+.ds-shell[data-layout='phone'] .ds-plate{
+  border-radius:0;
+}
+
 .ds-col{
   flex:1 1 auto; min-width:0; min-height:0;
   display:flex; flex-direction:column;
@@ -263,7 +279,9 @@ body :focus-visible{
   display:flex; align-items:center; justify-content:space-between;
   gap:var(--ds-s1);
   padding:var(--ds-s2) var(--ds-s3);
-  padding-bottom:calc(var(--ds-s2) + env(safe-area-inset-bottom,0px));
+  /* N1: --sab is the same safe-area token the rib reads for --sat
+     (tokens.css §9), so the two ends of the phone chrome share one wire. */
+  padding-bottom:calc(var(--ds-s2) + var(--sab));
   background:var(--ds-canvas);
   border-top:1px solid var(--ds-line);
   z-index:var(--ds-z-tabbar);

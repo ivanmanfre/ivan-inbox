@@ -214,6 +214,13 @@
 
   /* --- 9 · SHELL GEOMETRY ------------------------------------------------ */
   --ds-plate-gap:10px;   /* the pistachio reveal (frame arm b, the shipped default) */
+  /* N1 (native pass, 2026-09-09): the safe-area insets, named so the rib and
+     the tab bar read ONE variable each rather than repeating env() at every
+     call site, and so a test can prove the wiring by overriding the custom
+     property directly (env() itself cannot be forced from a page script; a
+     browser with no notch always resolves it to 0px). */
+  --sat:env(safe-area-inset-top,0px);
+  --sab:env(safe-area-inset-bottom,0px);
   /* THE READING MEASURE (Phase 3 W6). The widest a working column's own
      content is allowed to become before it stops being read. It bites at
      1800px and above; below that every column is already inside it. */

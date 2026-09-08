@@ -47,6 +47,11 @@
   gap:var(--ds-s3);
   min-height:var(--ds-header-h);
   padding:var(--ds-s2) var(--ds-gutter);
+  /* N1: the rib is the phone chrome's own status-bar band (standalone,
+     theme_color #000000). Without the inset it sat under the notch; a
+     device with no notch reports 0px for --sat so every desktop screen
+     using Head is unmoved. */
+  padding-top:calc(var(--ds-s2) + var(--sat));
   background:var(--ds-canvas);
   border-bottom:1px solid var(--ds-line);
   flex:0 0 auto;
