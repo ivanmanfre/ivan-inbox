@@ -12,11 +12,15 @@ Deno.serve(async (req) => {
   // setup, the fan-out and the 404/410 prune now live in _shared/push-send.ts so
   // inbox-notify and inbox-turn-run push through the same code rather than a copy.
   const { subs, results } = await sendPush(db, {
-    title: `${m.prospect_name} · ${m.client_id === 'risedtc' ? 'Rise' : 'Ivan'}`,
+    title: `${m.prospect_name} · ${m.client_id === 'risedtc' ? 'Rise' : m.client_id === 'arch' ? 'ARCH' : 'Ivan'}`,
     body: (m.message_text ?? '').slice(0, 140),
     // Relative URL: resolves against the sw scope (/ivan-inbox/ on GH Pages).
     // A leading slash resolves to the *user root* and the app never loads.
     url: `./#thread/${m.prospect_id}`,
+    // This is THE inbound-reply push (the feed's inbound_reply_notice row is
+    // feed-only since 2026-09-08), so it carries the family: the service worker
+    // hangs the reply card under it and the open tabs refetch the DMs feed.
+    family: 'inbound_reply_notice',
   })
   console.log(JSON.stringify({ message_id, subs, results }))
   return new Response('ok')
