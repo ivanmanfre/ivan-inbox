@@ -305,7 +305,7 @@ export function StrategyView({ lane, setLane }: {
       <Body innerRef={rowsRef} className="a-strat">
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
         {st.loading ? (
-          <div className="a-ct-sub">Loading…</div>
+          <div className="a-ct-sub a-strat-hold">Loading…</div>
         ) : (
           <>
             <div className="a-ct-sub">
@@ -335,7 +335,11 @@ export function StrategyView({ lane, setLane }: {
             </div>
           </>
         )}
-        <FilterSpecBlock />
+        {/* W6-5: CLS 0.4992, one element (`section.a-group`) carrying 0.496 of
+            it. This block used to render under the "Loading…" line and then be
+            shoved a whole document down when the sections arrived. It mounts
+            once the sections have, so it lands where it stays. */}
+        {!st.loading && <FilterSpecBlock />}
         <div className="a-strat-foot" aria-hidden />
       </Body>
       {/* The save bar exists only when there is something to save — a

@@ -112,3 +112,17 @@
   .a-today-z .a-group-h > .a-eyebrow{ flex:1 0 auto; overflow:visible }
   .a-today-z .a-group-h > .a-group-tail{ margin-inline-start:auto }
 }
+
+
+/* --------------------------------------------------------------------------
+   W6-4 · THE HELD SLOTS. Two zones arrive one payload later than the rest of
+   the screen, and every zone under them moved when they did (CLS 0.4306, the
+   "poor" line is 0.25). The heights are the ones those zones land at on a
+   phone, measured, not guessed: a slot that is roughly right turns a
+   half-screen shove into a nudge.
+   -------------------------------------------------------------------------- */
+
+/* The counters grow from a dash to a number inside one line. Pinning the
+   figure's box stops the words beside it sliding as the read lands. */
+.a-today-lg .a-ink{ display:inline-block; min-width:2ch; text-align:right }
+.a-today-fig .a-figure-t{ display:inline-block; min-width:2ch }

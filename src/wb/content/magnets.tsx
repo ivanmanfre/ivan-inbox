@@ -301,19 +301,22 @@ export function MagnetsList({ lane, setLane, onOpen }: {
 
   return (
     <Screen className="a-ct">
-      <Head title="Lead magnets" />
-      {/* The lane switch rides the thin bar rather than the head's tail: at 390
-          three client names and a title in one row crushed the title to an
-          ellipsis. The bar scrolls sideways and the title keeps its width. */}
-      <Bar>
-        <Segmented
-          label="Lane"
-          markerId="a-lm-lane"
-          value={lane}
-          onChange={k => setLane(k as ContentLane)}
-          options={CONTENT_LANES.map(k => ({ id: k, label: LANE_LABEL[k] }))}
-        />
-      </Bar>
+      {/* W3-11: the title and the lane switch share ONE 44px band. They were
+          two, and with the stage strip's four wrapped rows under them not one
+          magnet row reached the fold. The row itself scrolls sideways, so the
+          title is not crushed the way it was when the two shared a head
+          without one. */}
+      <Head title="Lead magnets">
+        <div className="a-ct-headrow">
+          <Segmented
+            label="Lane"
+            markerId="a-lm-lane"
+            value={lane}
+            onChange={k => setLane(k as ContentLane)}
+            options={CONTENT_LANES.map(k => ({ id: k, label: LANE_LABEL[k] }))}
+          />
+        </div>
+      </Head>
       <Body innerRef={rowsRef}>
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
         {lane === 'ivan' ? (

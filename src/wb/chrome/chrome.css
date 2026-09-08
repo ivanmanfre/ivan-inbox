@@ -170,7 +170,28 @@
    each pill takes the system's own 44px floor (doubled class, same reason
    ds.css §17 gives). */
 @media (max-width:767px){
-  .a-worksep{ gap:0; padding-left:var(--ds-s3); padding-right:var(--ds-s3) }
+  /* W3-2: the strip is one 44px pill row and nothing else, so it pays for no
+     block padding, and the hairline under it is drawn again 45px lower by the
+     head it sits on. Both come off: 53px to 44 on a fold this surface was
+     losing by 14. */
+  .a-worksep{
+    gap:0; padding-left:var(--ds-s3); padding-right:var(--ds-s3);
+    padding-block:var(--ds-s0); border-bottom:0;
+    /* The head under it is sticky and stacks above everything unpositioned, so
+       at the shared seam the head's segment marker took the pill's own bottom
+       probe point. The strip is raised one step over the header layer, which is
+       the order the eye already reads: the strip is chrome ABOVE the head. */
+    position:relative; z-index:calc(var(--ds-z-header) + 1);
+  }
+  /* With the strip's padding gone the pill's bottom edge and the head's top
+     edge are the same line, and the head's segment marker won the probe point
+     that sits on it: all four work pills hit-tested `miss` from below. The
+     pill's BOX reaches two pixels past the line and the margin takes them back,
+     so the hit rectangle clears the seam and the strip stays 44. */
+  .a-worksep-pill{
+    padding-block-end:var(--ds-s1);
+    margin-block-end:calc(var(--ds-s1) * -1);
+  }
   .a-worksep-l{ display:none }
   .a-worksep-seg{ flex:1 1 auto }
   .a-worksep-pill.a-worksep-pill{ min-height:var(--ds-tap); padding:0 var(--ds-s3) }

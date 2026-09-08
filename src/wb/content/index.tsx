@@ -65,6 +65,22 @@ import './content.css'
 // disagree about what is scheduled.
 export type ContentView = 'flow' | 'calendar'
 const VIEW_KEY = 'wb-content-view'
+const PHONE_MQ = '(max-width: 767px)'
+
+/** The phone, as a boolean. W3-2: the band stack collapses there and nowhere
+    else, and the merge is structural (one row instead of two), so a media
+    query alone cannot make it. */
+function usePhone(): boolean {
+  const [on, setOn] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia(PHONE_MQ).matches)
+  useEffect(() => {
+    const mq = window.matchMedia(PHONE_MQ)
+    const fn = (e: MediaQueryListEvent) => setOn(e.matches)
+    mq.addEventListener('change', fn)
+    return () => mq.removeEventListener('change', fn)
+  }, [])
+  return on
+}
 
 export type { OpenDraft }
 
@@ -93,6 +109,7 @@ function CommandStrip({
   stats?: ReactNode
   filter?: ReactNode
 }) {
+  const phone = usePhone()
   return (
     <>
       <Head>
@@ -132,10 +149,16 @@ function CommandStrip({
             />
           )}
           {laneNote}
+          {/* W3-2: five stacked bands ate 483px of a 844px phone. On the phone
+              the filter row rides the SAME 44px bar as the lane and view
+              switches (the bar scrolls sideways, so nothing is squeezed), the
+              search field moves into the All-filters sheet one tap away, and
+              the stage strip below is the second and last band. */}
+          {phone && filter && <span className="a-ct-headfilter">{filter}</span>}
         </div>
       </Head>
       {stats && <Bar>{stats}</Bar>}
-      {filter && <Bar>{filter}</Bar>}
+      {filter && !phone && <Bar>{filter}</Bar>}
     </>
   )
 }

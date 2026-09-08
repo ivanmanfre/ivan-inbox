@@ -970,6 +970,22 @@ body :focus-visible{
 .ds-bulkbar-count{ flex:1 1 auto; min-width:0 }
 .ds-bulkbar-actions{ display:flex; align-items:center; gap:var(--ds-s2); flex-wrap:wrap }
 .ds-bulkbar-note{ width:100% }
+/* W3-8/W3-9 · THE PHONE. The bar is fixed to the bottom of the viewport, which
+   on a phone is where the tab bar lives: it covered all seven tabs (every one
+   hit-tested `miss` until Clear was tapped) and the bottom third of a 298px
+   list, so the second row you tried to select was under the bar that had just
+   appeared. It sits ABOVE the tab bar now and keeps every action on one row,
+   scrolled sideways rather than wrapped onto a second. */
+@media (max-width:767px){
+  .ds-bulkbar{
+    bottom:calc(var(--ds-tabbar-h) + var(--ds-s3) + env(safe-area-inset-bottom));
+    width:calc(100% - var(--ds-s4));
+  }
+  .ds-bulkbar-top{ flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none }
+  .ds-bulkbar-top::-webkit-scrollbar{ display:none }
+  .ds-bulkbar-count{ flex:0 0 auto; white-space:nowrap }
+  .ds-bulkbar-actions{ flex-wrap:nowrap }
+}
 .ds-bulkbar-progress{
   height:2px; border-radius:var(--ds-r-pill);
   background:var(--ds-line); overflow:hidden;

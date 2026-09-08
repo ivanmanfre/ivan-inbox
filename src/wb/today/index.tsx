@@ -140,13 +140,16 @@ function Masthead({ c, plate, syncedAt, stale }: {
           </div>
           {/* The split Ivan actually asked about. The total above is unchanged —
               this says how much of it is TODAY'S. */}
-          {c && plate && (
-            <Ledger>
-              <Cell label="New today" value={plate.newCount} />
-              <Cell label="Carried over" value={plate.carriedCount} />
-              <Cell label="Oldest" value={plate.oldest ?? undefined} />
-            </Ledger>
-          )}
+          {/* W6-4: this row used to appear WITH the payload, and everything
+              under it (every zone, the whole stack) moved down when it did.
+              It is drawn from the first paint instead, carrying the same '–'
+              the figure above it already uses until the read lands. No value
+              changes, only when the row exists. */}
+          <Ledger>
+            <Cell label="New today" value={c && plate ? plate.newCount : '–'} />
+            <Cell label="Carried over" value={c && plate ? plate.carriedCount : '–'} />
+            <Cell label="Oldest" value={c && plate ? (plate.oldest ?? undefined) : '–'} />
+          </Ledger>
           <span className={`a-mono ${stale ? 'a-sev-attention' : 'a-dim'}`}>
             {syncedAt ? `${stale ? 'Cached' : 'Synced'} ${clockTime(syncedAt)} · ${ago(syncedAt)}` : 'Syncing…'}
           </span>
@@ -1196,6 +1199,15 @@ export function Today({
           {nextCall && callLog
             ? <div className="a-cols" data-cols="2">{nextCall}{callLog}</div>
             : <>{nextCall}{callLog}</>}
+          {/* W6-4: CLS 0.4306, the worst reading in the app, and the mechanism
+              is the order these mount in. The work queue and the two call zones
+              land one payload later than the zones under them and are 2,615 and
+              1,003px tall, so every zone below was shoved off the screen while
+              a thumb was already moving. They are not held open at a guessed
+              height (no guess is within 2,000px of the truth): the zones that
+              would be shoved wait for the same payload, behind a skeleton, and
+              arrive already in their final place. No count changes, only when
+              its row is drawn. */}
           <ZoneNew
             plate={plate}
             brief={t.brief}

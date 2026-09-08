@@ -356,3 +356,47 @@
   .a-dms-titleline [data-ds='Chip']{ display:none }
   .a-dms-titleline > :first-child{ min-width:0 }
 }
+
+
+/* --------------------------------------------------------------------------
+   W2-2 · THE LANE BADGE, ON THE SECOND LINE.
+
+   The pills rendered 0x0 on every phone row: the name is floored on the title
+   line and `display:none` was what stopped them shearing it. A three-tenant
+   inbox has to say whose row it is, so the lane badge moves to the line under
+   the name, where the preview already gives up its own width by ellipsis. The
+   title line keeps its rule: the name still outranks anything beside it.
+   Nothing here grows the box, ROW_H_PHONE is untouched.
+   -------------------------------------------------------------------------- */
+.a-dms-lane{ display:none }
+.a-dms-subtext{ display:contents }
+@media (max-width:767px){
+  .a-dms .a-row.r > .a-row-main > .a-row-sub{
+    display:flex; align-items:center; gap:var(--ds-s2);
+  }
+  .a-dms-lane{ display:inline-flex; flex:0 0 auto }
+  .a-dms-lane [data-ds='Chip']{ height:var(--ds-s6); padding-inline:var(--ds-s2) }
+  .a-dms-subtext{
+    display:block; min-width:0;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  /* W2-9 · The inline Discard was painting over the DRAFT chip by 51px, so the
+     wand glyph read as a box sliced by a hard edge. The button already says a
+     draft is pending (and the preview line under it is prefixed "Draft:"), so
+     the chip is what gives way wherever the row's actions render. */
+  .a-dms .a-row.r:has(> .a-row-actions) .a-dms-draftchip{ display:none }
+  /* W2-3 · The six lane chips overflowed the 390 bar and clipped a chip at
+     BOTH ends ("Likely spam 11" at the right, "All 17" at the left), and the
+     counts land after the fetch so the bar grew under the thumb. It wraps
+     instead, which is the call the content bars already made: nothing is
+     hidden and nothing overflows. */
+  .a-dms > .a-bar{
+    flex-wrap:wrap; overflow-x:visible; overflow-y:visible; row-gap:var(--ds-s2);
+    padding-inline:var(--ds-s3);
+  }
+  .a-dms > .a-bar > *{ flex-shrink:1; min-width:0 }
+  /* The six of them fit ONE row once the inline padding comes off (the 44px
+     floor is a min-width, so no chip gets smaller than a thumb). Two rows of
+     chips would have handed the fold back what W2-10 just won for the list. */
+  .a-dms > .a-bar [data-ds='Chip']{ padding-inline:var(--ds-s2) }
+}

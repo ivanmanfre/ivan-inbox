@@ -226,6 +226,11 @@ export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, o
   const rowsRef = useRef<HTMLDivElement>(null)
   const ptr = usePullToRefresh(rowsRef, () => refresh())
   const [query, setQuery] = useState('')
+  // W2-10: the search field is a permanent 44px band on a list of 17 rows. On
+  // the phone it opens from the head instead, so the fold spends those pixels
+  // on conversations. The DESKTOP is untouched, which is where `/` lives: the
+  // input stays mounted there for CommandLayer's focusSearch to find.
+  const [searchOpen, setSearchOpen] = useState(false)
   const confirm = useConfirm()
   // Row-level draft actions (preview text + inline discard) are gated on
   // `status` being passed at all, the same opt-in signal the draft banner above
@@ -286,7 +291,20 @@ export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, o
 
   return (
     <Screen className="a-dms">
-      <Head title={title} tail={<Face name="IM" size="sm" />} />
+      <Head
+        title={title}
+        tail={<>
+          {phone && (
+            <IconButton
+              icon="search"
+              label="Search people or messages"
+              onClick={() => setSearchOpen(v => !v)}
+            />
+          )}
+          <Face name="IM" size="sm" />
+        </>}
+      />
+      {(!phone || searchOpen || query) && (
       <Bar>
         <Input
           label="Search people or messages"
@@ -305,6 +323,7 @@ export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, o
             : undefined}
         />
       </Bar>
+      )}
       <Bar>
         {CHIPS.map(c => (
           <Chip
@@ -419,9 +438,17 @@ export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, o
                          pending-draft prefix is the no-note branch — a row that
                          was summed up shows the summary, not a draft marker
                          twice. */
-                      sub={note && renderNote
-                        ? renderNote(t, note)
-                        : (note ?? (pendingDraft ? `Draft: ${snip}` : snip))}
+                      /* W2-2: the lane badge rides the SECOND line on the
+                         phone. On the title line it collapsed to 0x0 (the name
+                         is floored and the pills were what gave way), and a
+                         three-tenant inbox has to say whose row this is. Here
+                         it costs the name nothing. */
+                      sub={<>
+                        <span className="a-dms-lane"><Pill>{clientBadge(t.client_id)}</Pill></span>
+                        <span className="a-dms-subtext">{note && renderNote
+                          ? renderNote(t, note)
+                          : (note ?? (pendingDraft ? `Draft: ${snip}` : snip))}</span>
+                      </>}
                       tail={<>
                         <span className="a-mono">{timeAgo(eventTime(t.last))}</span>
                         {t.unread > 0 && <Badge variant="dot" tone="accent" label={`${t.unread} unread`} />}
@@ -431,7 +458,10 @@ export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, o
                             queued work. */}
                         {t.draft != null && (t.draftSnoozedUntil !== null
                           ? <Chip icon="time">{returnsIn(t.draftSnoozedUntil)}</Chip>
-                          : <Chip icon="wand">DRAFT</Chip>)}
+                          /* W2-9: named so the phone can drop it where the
+                             inline Discard is painting over it. The wrapper is
+                             `display:contents` everywhere else. */
+                          : <span className="a-dms-draftchip"><Chip icon="wand">DRAFT</Chip></span>)}
                       </>}
                       /* In the row, on hover or focus. Approve is deliberately
                          NOT here: approving a DM sends it to a real person, and

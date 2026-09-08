@@ -12,6 +12,7 @@
    `Popover` on a pointer canvas and a ds `Sheet` on the phone.
    ========================================================================== */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import type { Facet, FacetOption, FilterState } from '../../lib/contentFilters'
 import { Button, Chip, Icon, IconButton, Input, Popover, Sheet } from '../../ds'
 import './content.css'
@@ -164,12 +165,19 @@ function FacetPill({ f, state, setState, sheet }: {
 
 /** The disclosure. Every demoted facet in ONE panel, each with the same
     option-with-count rows, and a live badge of how many of them are set. */
-function MorePill({ facets, state, setState, sheet, badgeKeys, label }: {
+function MorePill({ facets, state, setState, sheet, badgeKeys, label, search, onClearAll, note }: {
   facets: Facet[]; state: FilterState; setState: (s: FilterState) => void; sheet: boolean
   /** Which facets this pill is allowed to COUNT. It counts what it alone is
       hiding, never the ones already rendered as their own chip beside it. */
   badgeKeys?: string[]
   label?: string
+  /** W3-2: on the phone the search field is not a standing band, it opens with
+      this sheet. The desktop keeps it inline and passes nothing here. */
+  search?: ReactNode
+  /** W3-7: the sheet had no Apply/Clear/Done anywhere. Clearing is the one
+      thing a filter panel owes a reader who cannot remember what is on. */
+  onClearAll?: () => void
+  note?: ReactNode
 }) {
   const [open, setOpen] = useState(false)
   const ref = useDismiss(open, () => setOpen(false), !sheet)
@@ -186,6 +194,8 @@ function MorePill({ facets, state, setState, sheet, badgeKeys, label }: {
   }
   const body = (
     <>
+      {search && <div className="a-ct-fsheet-s">{search}</div>}
+      {note && <div className="a-ct-fsheet-n">{note}</div>}
       {facets.map(f => (
         <div className="a-ct-fgrp" key={f.key}>
           <div className="a-ct-fgrp-h a-eyebrow">{f.label}</div>
@@ -197,7 +207,7 @@ function MorePill({ facets, state, setState, sheet, badgeKeys, label }: {
       )}
     </>
   )
-  if (facets.length === 0 && n === 0) return null
+  if (facets.length === 0 && n === 0 && !search) return null
   const name = label ?? 'Filters'
   return (
     <div className="a-ct-fpop" ref={ref}>
@@ -210,7 +220,21 @@ function MorePill({ facets, state, setState, sheet, badgeKeys, label }: {
         {name}
       </Chip>
       {sheet ? (
-        <Sheet open={open} onClose={() => setOpen(false)} title="All filters">{body}</Sheet>
+        <Sheet
+          open={open}
+          onClose={() => setOpen(false)}
+          title="All filters"
+          foot={
+            <div className="a-ct-fsheet-f">
+              {onClearAll && (
+                <Button variant="quiet" onClick={() => { onClearAll(); setOpen(false) }}>
+                  Clear all
+                </Button>
+              )}
+              <Button onClick={() => setOpen(false)}>Done</Button>
+            </div>
+          }
+        >{body}</Sheet>
       ) : (
         <Popover
           open={open}
@@ -291,7 +315,7 @@ export function FilterRow({
 
   return (
     <>
-      {search}
+      {!sheet && search}
       {pills.map(f => (
         <FacetPill key={f.key} f={f} state={state} setState={setState} sheet={sheet} />
       ))}
@@ -299,6 +323,9 @@ export function FilterRow({
         facets={inPanel} state={state} setState={setState} sheet={sheet}
         badgeKeys={inline ? demoted.map(f => f.key) : undefined}
         label={label}
+        search={sheet ? search : undefined}
+        note={sheet ? note : undefined}
+        onClearAll={sheet ? () => { setState({}); setQ?.('') } : undefined}
       />
       {activeN > 0 && (
         <Button

@@ -660,13 +660,24 @@ button.a-ct-chip-t:hover{ opacity:.75 }
    which is the same move the design system makes for a chip's remove mark.
    -------------------------------------------------------------------------- */
 @media (max-width:767px){
-  /* The select mark is an overlay sized to the anchor, so it cannot grow its
-     own box and takes an invisible hit rectangle instead. */
-  .a-ct .a-ct-selmark::after{
-    content:''; position:absolute; inset:50% auto auto 50%;
-    width:var(--ds-tap); height:var(--ds-tap);
+  /* W3-13: the invisible 44px child that used to live here hit-tested fine and
+     measured 28x28, which is what a thumb and every instrument read. The BOX
+     grows to 44 instead, centred on the anchor it overlays, and the painted
+     mark stays the 28px square it always was, drawn as a child layer. */
+  .a-ct .a-ct-selmark{
+    inset:50% auto auto 50%;
     transform:translate(-50%, -50%);
+    width:var(--ds-tap); height:var(--ds-tap);
+    min-width:var(--ds-tap); min-height:var(--ds-tap);
+    background:transparent;
   }
+  .a-ct .a-ct-selmark::before{
+    content:''; position:absolute; inset:var(--ds-s3);
+    border-radius:var(--ds-r2); background:var(--ds-surface-3);
+  }
+  .a-ct .a-ct-selmark[aria-checked='true']{ background:transparent }
+  .a-ct .a-ct-selmark[aria-checked='true']::before{ background:var(--ds-accent) }
+  .a-ct .a-ct-selmark > *{ position:relative }
   /* A pipeline mark sits in a bar that can simply be taller, so it grows
      rather than carrying a rectangle wider than itself: the first and last
      mark's invisible box reached past the strip and read as a miss where the
@@ -674,3 +685,74 @@ button.a-ct-chip-t:hover{ opacity:.75 }
   .a-ct .a-ct-stat{ min-height:var(--ds-tap); justify-content:center }
 }
 
+
+
+/* ==========================================================================
+   14 · W3-2 / W3-11 · THE PHONE FOLD. Five bands to two.
+
+   Measured at 390x844: shell bar 56 + work separator 53 + content head 113 +
+   search-and-filters 101 + three wrapped rows of stage tabs 150 = 483px of
+   chrome before the first draft row, and 18/35/41 percent of the fold left for
+   the list on SE / 15 / Pro Max. Nothing here removes a control: the lane and
+   view switches and the filter chips share ONE bar that scrolls sideways, the
+   stage strip is ONE scrolling row instead of three wrapped ones, and the
+   search field moves inside the All-filters sheet the Filters chip already
+   opens (one tap, and the sheet now has a Clear all / Done foot of its own).
+   ========================================================================== */
+@media (max-width:767px){
+  /* Band 1: lane, view, the filter chips. One 44px row, scrolled sideways with
+     snap points so a partly-scrolled bar reads as scrollable. */
+  .a-ct > .a-head{ min-height:var(--ds-tap); padding-block:var(--ds-s0) }
+  .a-ct > .a-head > .a-head-t{ flex:0 0 auto }
+  .a-ct-headrow{
+    flex-wrap:nowrap;
+    overflow-x:auto; overflow-y:hidden;
+    scrollbar-width:none;
+    scroll-snap-type:x proximity;
+    gap:var(--ds-s2);
+  }
+  .a-ct-headrow::-webkit-scrollbar{ display:none }
+  .a-ct-headrow > *{ flex:0 0 auto; scroll-snap-align:start }
+  .a-ct-headfilter{ display:inline-flex; align-items:center; gap:var(--ds-s2); flex:0 0 auto }
+  /* The row count and the search field live in the sheet now; the standing bar
+     carries the controls only. */
+  .a-ct-headfilter .a-ct-fnote{ display:none }
+  .a-ct .a-ct-headrow .ds-seg{ flex-wrap:nowrap; padding-block:var(--ds-s0) }
+
+  /* Band 2: the stage strip, one scrolling row. The wrap rule this overrides
+     was written when the strip was the only band that could give; with the
+     head merged it is the 106px this fold could not spare. */
+  .a-ct .a-ct-tabsbar{
+    overflow-x:auto; overflow-y:hidden; scroll-snap-type:x proximity;
+    border-bottom:0; /* the ds tabs inside it draw the same line */
+  }
+  .a-ct .a-ct-tabsbar .ds-tabs.ds-tabs{ flex-wrap:nowrap; overflow-x:visible }
+  .a-ct .a-ct-tabsbar .ds-tabs-item{ scroll-snap-align:start; min-width:var(--ds-tap) }
+
+  /* W3-11: the magnets lane's own bars ride inside the scroller, so they cost
+     the fold the same way. The filter bar keeps its chips and loses the field. */
+  .a-ct .a-body > .a-stack > .a-bar{ padding-block:var(--ds-s2) }
+
+  /* W3-7 · The all-filters sheet: 21 option rows at 32px, the last one under
+     the tab bar, and no way to clear or dismiss. */
+  .ds-sheet .a-ct-opt{ min-height:var(--ds-tap) }
+  .ds-sheet .ds-sheet-body{
+    padding-bottom:calc(var(--ds-tabbar-h) + env(safe-area-inset-bottom));
+  }
+  .a-ct-fsheet-s{ padding-bottom:var(--ds-s3) }
+  .a-ct-fsheet-s .a-ct-search{ flex:1 1 100%; width:100% }
+  .a-ct-fsheet-n{
+    font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono);
+    color:var(--ds-text-3); padding-bottom:var(--ds-s3);
+  }
+  .a-ct-fsheet-f{ display:flex; align-items:center; justify-content:space-between; gap:var(--ds-s3) }
+
+  /* W3-8 · The bulk bar covered the bottom 99px of a 298px list and every tab
+     under it. It sits above the tab bar now (see ds.css), and the list is
+     padded by its height while a selection is live so the rows scroll clear. */
+  html:has(.ds-bulkbar) .a-ct .a-body{ padding-bottom:var(--ds-s11) }
+}
+
+/* W6-5: the loading line holds the document's own room, so the sections do not
+   arrive by pushing what is under them off the screen. */
+.a-strat-hold{ min-height:24rem }
