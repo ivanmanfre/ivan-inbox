@@ -31,7 +31,7 @@ import './dms.css'
 // approved from the thread it belongs to.
 export function Dms({
   threads, filter, setFilter, status,
-  refresh, onOpenThread, loadedAt,
+  refresh, onOpenThread, loadedAt, refreshing = false, cachedAt = null,
 }: {
   threads: Thread[]
   filter: Filter
@@ -40,6 +40,10 @@ export function Dms({
   refresh: () => void
   onOpenThread: (id: string) => void
   loadedAt: string | null
+  // The saved-copy paint. See InboxList's own note: this is an affordance, not
+  // a freshness claim.
+  refreshing?: boolean
+  cachedAt?: string | null
 }) {
   // The stale-draft strip is lane-scoped so it agrees with the list under it: a
   // bar counting a lane Ivan is not looking at would be the tenancy version of a
@@ -74,6 +78,8 @@ export function Dms({
       onOpenDrafts={() => {}}
       windowed
       verifiedAt={loadedAt}
+      refreshing={refreshing}
+      cachedAt={cachedAt}
       before={<>
         <StaleBar stale={staleDrafts} refresh={refresh} />
         <PushedBar pushed={pushedDrafts} onOpen={onOpenThread} />

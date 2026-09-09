@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { currentUserId } from './swr'
 
 // Today tab data layer: the get-morning-brief edge function + a small
 // localStorage projection so the tab paints instantly on open.
@@ -472,6 +473,16 @@ export async function fetchBrief(mode: 'counts' | 'full'): Promise<unknown> {
 
 export const CACHE_KEY = 'today-cache'
 
+// N3-3: the brief is per-account data and this device can hold two accounts.
+// The key carries the JWT `sub` of the session that wrote it, so a different
+// user reads a miss instead of the previous user's plate. The legacy unkeyed
+// key is dropped on the next successful write rather than migrated: it is one
+// brief, it is rewritten within the first refresh, and guessing which account
+// wrote it is exactly the mistake this fixes.
+export function todayCacheKey(userId: string | null): string | null {
+  return userId ? `${CACHE_KEY}:${userId}` : null
+}
+
 export type TodayCache = { fetched_at: string; brief: Brief }
 
 const MAX_ROWS = 30
@@ -559,6 +570,8 @@ export function cacheSafe(json: string): boolean {
 }
 
 export function writeCache(b: Brief): void {
+  const key = todayCacheKey(currentUserId())
+  if (!key) return
   let json: string
   try {
     json = JSON.stringify({ fetched_at: new Date().toISOString(), brief: projectBrief(b) })
@@ -566,12 +579,17 @@ export function writeCache(b: Brief): void {
     return
   }
   if (!cacheSafe(json)) return
-  try { localStorage.setItem(CACHE_KEY, json) } catch { /* quota / private mode */ }
+  try {
+    localStorage.setItem(key, json)
+    localStorage.removeItem(CACHE_KEY)
+  } catch { /* quota / private mode */ }
 }
 
 export function readCache(): TodayCache | null {
+  const key = todayCacheKey(currentUserId())
+  if (!key) return null
   let raw: string | null
-  try { raw = localStorage.getItem(CACHE_KEY) } catch { return null }
+  try { raw = localStorage.getItem(key) } catch { return null }
   if (!raw) return null
   try {
     const parsed = JSON.parse(raw) as { fetched_at?: unknown; brief?: unknown }

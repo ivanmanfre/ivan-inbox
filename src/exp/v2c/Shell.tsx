@@ -35,9 +35,6 @@ function toQueueItem(d: ContentDraft): QueueItem {
 import { MobileTabs, Rail, WorkSegment } from './Rail'
 import type { OpenDraft } from '../../wb/content'
 import { CommandLayer } from './CommandLayer'
-import { MagnetsList } from '../../wb/content/magnets'
-import { StylesList } from '../../wb/content/styles'
-import { StrategyView } from '../../wb/content/strategy'
 import type { OpenMagnet } from '../../wb/content/magnets'
 // S16 is on the design system (src/wb/draft) and owns the `QueueItem` type now;
 // `DraftPane.tsx` is deleted in Phase 3 W6.
@@ -84,13 +81,23 @@ import { lazyBrainAsk, lazyBrainMobile, type BrainId } from '../brain'
 import { Today as TodayC } from '../../wb/today'
 import { Dms as DmsC } from '../../wb/dms'
 import { ThreadPeer as ThreadPeerC } from '../../wb/thread'
-import { ContentList as ContentListC } from '../../wb/content'
-import { SendsScreen as SendsC } from '../../wb/sends'
-import { OpsBoard as OpsBoardC } from '../../wb/ops'
-import { MoneyView as MoneyC } from '../../wb/money'
-import { SalesSurface as SalesC } from '../../wb/sales'
-import { CallWindow as CallC } from '../../wb/call'
-import { Settings as SettingsC } from '../../wb/settings'
+// N3-4: PER-TAB CODE SPLIT. Today and DMs are the two tabs a cold open lands
+// on, so they stay in Shell's own chunk and pay no extra round trip. Every
+// other work surface is a tab switch away, which is a user gesture with a
+// natural place to show the skeleton it already has, so it is fetched then
+// instead of riding on the boot of a phone that opened DMs. `lazy` outside the
+// component body: a lazy() built during render remounts the surface on every
+// keystroke that re-renders Shell.
+const ContentListC = lazy(() => import('../../wb/content').then(m => ({ default: m.ContentList })))
+const MagnetsList = lazy(() => import('../../wb/content/magnets').then(m => ({ default: m.MagnetsList })))
+const StylesList = lazy(() => import('../../wb/content/styles').then(m => ({ default: m.StylesList })))
+const StrategyView = lazy(() => import('../../wb/content/strategy').then(m => ({ default: m.StrategyView })))
+const SendsC = lazy(() => import('../../wb/sends').then(m => ({ default: m.SendsScreen })))
+const OpsBoardC = lazy(() => import('../../wb/ops').then(m => ({ default: m.OpsBoard })))
+const MoneyC = lazy(() => import('../../wb/money').then(m => ({ default: m.MoneyView })))
+const SalesC = lazy(() => import('../../wb/sales').then(m => ({ default: m.SalesSurface })))
+const CallC = lazy(() => import('../../wb/call').then(m => ({ default: m.CallWindow })))
+const SettingsC = lazy(() => import('../../wb/settings').then(m => ({ default: m.Settings })))
 
 // ============================================================================
 // Candidate v2c — WORKBENCH
@@ -553,6 +560,9 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
       // Failed below instead), so it is the one allowed to hand the list its
       // freshness.
       loadedAt={inbox.loadedAt}
+      // N3-1: rows from the device, live read still out.
+      refreshing={inbox.fromCache}
+      cachedAt={inbox.cachedAt}
     />
   )
   const dmsSurface = inboxError ? (
@@ -601,6 +611,11 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
           the mobile ribbon, so desktop and phone teach the same thing (MF3). */}
       <WorkSegment job={job} counts={counts} onJob={goJob} />
       {job === 'dms' && dmsSurface}
+      {/* One boundary around every lazy work surface. The fallback is the list
+          skeleton these screens already show while their own read is out, so a
+          tab switch reads as the loading state it always had rather than as a
+          blank. DMs and Today are outside it: they are in Shell's chunk. */}
+      <Suspense fallback={job === 'dms' || job === 'today' ? null : <InboxSkeleton />}>
       {job === 'content' && (
         <ContentListC
           key={lane}
@@ -665,6 +680,7 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
           shared with #exp/stock (App.tsx:148) and both arms only reach `.wb`, so
           without this the escape hatch renders two controls that do nothing. */}
       {job === 'settings' && <SettingsC shell="workbench" />}
+      </Suspense>
     </>
   )
 
@@ -755,11 +771,16 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
   const windows = (
     <>
       {itemWindow}
+      {/* The call reader is a takeover opened by a tap, so it fetches its own
+          chunk then rather than on every boot. No fallback: the window animates
+          in, and a skeleton frame with nothing behind it would flash. */}
       {openCall && (
-        <CallC
-          id={openCall.id} queue={openCall.queue}
-          onClose={closeCall} onPick={pickCall} mobile={mobile}
-        />
+        <Suspense fallback={null}>
+          <CallC
+            id={openCall.id} queue={openCall.queue}
+            onClose={closeCall} onPick={pickCall} mobile={mobile}
+          />
+        </Suspense>
       )}
     </>
   )
