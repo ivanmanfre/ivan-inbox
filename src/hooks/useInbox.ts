@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { fetchDraftContextGaps, fetchDraftEmailStamps, fetchDraftEvidence, fetchManualReplyIds, fetchMessages, groupThreads, type DraftContextGap, type DraftEmailStamp, type Thread } from '../lib/inbox'
 import { playChime } from '../lib/chime'
+import { readInboxCache, writeInboxCache } from '../lib/inboxCache'
 
 // A burst of dispatcher writes (one row every ~2 min per active lane, plus
 // phantom-duplicate bursts) used to trigger one full 20k-row re-page EACH.
@@ -11,8 +12,19 @@ import { playChime } from '../lib/chime'
 const COALESCE_MS = 1500
 
 export function useInbox() {
-  const [threads, setThreads] = useState<Thread[]>([])
-  const [loading, setLoading] = useState(true)
+  // N3-1: the last reconciled list, read SYNCHRONOUSLY so the first render pass
+  // already has rows. Anything async here (IndexedDB, supabase.auth.getSession)
+  // paints a frame late, which is the skeleton flash this exists to remove.
+  const seed = useMemo(() => readInboxCache(), [])
+  const [threads, setThreads] = useState<Thread[]>(seed?.cache.threads ?? [])
+  // True while the ONLY thing on screen came off the device. It is not a
+  // freshness claim and must never be read as one: `loadedAt` stays null until a
+  // live fetch resolves, which is what dmsEmptyKind reads.
+  const [fromCache, setFromCache] = useState(seed != null)
+  const [cachedAt] = useState<string | null>(seed?.savedAt ?? null)
+  // A seeded paint is not loading: there are real rows on screen. Only a cold
+  // open (no cache) is still the skeleton the repair's W2-5 rule requires.
+  const [loading, setLoading] = useState(seed == null)
   // A failed fetch and an empty inbox must never render the same (U2). Callers
   // that ignore `error` behave exactly as before.
   const [error, setError] = useState<string | null>(null)
@@ -63,6 +75,7 @@ export function useInbox() {
       if (latest && newestInbound.current && latest > newestInbound.current) playChime()
       if (latest) newestInbound.current = latest
       setThreads(groupThreads(rows, manualReplyIds))
+      setFromCache(false)
       setError(null)
       setLoadedAt(new Date().toISOString())
       setLoading(false)
@@ -71,6 +84,17 @@ export function useInbox() {
       setLoading(false)
     })
   }, [])
+  // THE CACHE IS WRITTEN FROM WHAT THE SCREEN IS RENDERING, never from the raw
+  // response. `threads` is the reconciled array: anything the app removed or
+  // changed locally after the fetch is already in it, so the next open cannot
+  // resurrect a row this session took away. Gated on `loadedAt`, which is only
+  // stamped by a fetch that RESOLVED, so a 4xx/5xx session writes nothing at all
+  // and a cache-seeded paint never rewrites itself.
+  useEffect(() => {
+    if (loadedAt === null) return
+    writeInboxCache(threads)
+  }, [threads, loadedAt])
+
   const pending = useRef<number | null>(null)
   useEffect(() => {
     refresh()
@@ -90,5 +114,5 @@ export function useInbox() {
       window.removeEventListener('focus', nudge)
     }
   }, [refresh, topic])
-  return { threads, loading, error, loadedAt, refresh }
+  return { threads, loading, error, loadedAt, fromCache, cachedAt, refresh }
 }

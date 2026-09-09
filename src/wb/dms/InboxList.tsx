@@ -173,7 +173,7 @@ function EmptyVerified({ line, verifiedAt }: { line: string; verifiedAt?: string
   )
 }
 
-export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt, title = 'Inbox', status, before, after, rowsFor, renderRow, rowNote, rowChip, rowTag, renderNote, emptyLine }: {
+export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt, refreshing = false, cachedAt = null, title = 'Inbox', status, before, after, rowsFor, renderRow, rowNote, rowChip, rowTag, renderNote, emptyLine }: {
   threads: Thread[]
   filter: Filter
   setFilter: (f: Filter) => void
@@ -188,6 +188,11 @@ export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, o
   // Supplied only by a host that has already established the fetch SUCCEEDED, so
   // an empty list can honestly say it was checked. Omitted = no claim made.
   verifiedAt?: string | null
+  // N3-1: the rows on screen came off the device and the live read has not
+  // landed yet. It drives the affordance below and nothing else, and it is never a
+  // freshness claim, which is `verifiedAt`'s job and stays null while this is on.
+  refreshing?: boolean
+  cachedAt?: string | null
   title?: string
   // The status axis (bucket filter). Omitted = no status filtering, and the
   // draft banner keeps its old job of pointing at a separate drafts screen.
@@ -354,6 +359,19 @@ export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, o
             title={`${draftTotal} draft${draftTotal === 1 ? '' : 's'} waiting for you`}
             action={<Button variant="quiet" iconEnd="forward" onClick={onOpenDrafts}>Clear them in one pass</Button>}
           />
+        )}
+        {/* N3-1: what a person sees while the saved copy is on screen. The rows
+            are real and they are old, and this says both without pretending the
+            screen has been checked (dmsEmptyKind still reads `verifiedAt`, which
+            is null until the live read resolves). */}
+        {refreshing && (
+          <div className="a-dms-refresh" role="status">
+            <span className="a-dms-refresh-dot" aria-hidden />
+            {/* "now" is timeAgo's under-a-minute answer and "Saved copy from
+                now" reads as nonsense, so the age is named only when there is
+                an age worth naming. */}
+            <span>Saved copy{cachedAt && timeAgo(cachedAt) !== 'now' ? ` from ${timeAgo(cachedAt)} ago` : ''}, refreshing…</span>
+          </div>
         )}
         {before}
         {(() => {

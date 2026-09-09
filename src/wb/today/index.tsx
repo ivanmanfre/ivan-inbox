@@ -102,8 +102,11 @@ function Note({ children }: { children: React.ReactNode }) {
 // (`--ds-fs-figure`) with its predicate directly under it. It is the SUM of the
 // three zone loads and nothing else, and the stacked bar beneath it draws those
 // same three counts, so the headline and the breakdown cannot disagree.
-function Masthead({ c, plate, syncedAt, stale }: {
+function Masthead({ c, plate, syncedAt, stale, refreshing }: {
   c: BriefCounts | null; plate: TodayPlate | null; syncedAt: string | null; stale: boolean
+  // N3-2: a live read is out. The stamp beside it still names the CACHE's own
+  // time, never now, so the screen cannot pass an old brief off as current.
+  refreshing?: boolean
 }) {
   const load = todayLoad(c)
   const segs: Array<{ k: string; n: number; tone: Tone; l: string }> = [
@@ -151,7 +154,9 @@ function Masthead({ c, plate, syncedAt, stale }: {
             <Cell label="Oldest" value={c && plate ? (plate.oldest ?? undefined) : '–'} />
           </Ledger>
           <span className={`a-mono ${stale ? 'a-sev-attention' : 'a-dim'}`}>
-            {syncedAt ? `${stale ? 'Cached' : 'Synced'} ${clockTime(syncedAt)} · ${ago(syncedAt)}` : 'Syncing…'}
+            {syncedAt
+              ? `${stale ? 'Cached' : 'Synced'} ${clockTime(syncedAt)} · ${ago(syncedAt)}${refreshing ? ' · refreshing…' : ''}`
+              : 'Syncing…'}
           </span>
         </div>
       </div>
@@ -1167,7 +1172,7 @@ export function Today({
             keeps the strip it has always had and only the workbench gets the
             narrowed auto-open. */}
         <SystemAlertStrip autoOpen={threads === undefined ? 'all' : 'critical'} />
-        <Masthead c={counts} plate={t.brief ? plate : null} syncedAt={syncedAt} stale={stale} />
+        <Masthead c={counts} plate={t.brief ? plate : null} syncedAt={syncedAt} stale={stale} refreshing={t.refreshing} />
 
         {t.authError && (
           <Banner tone="urgent" icon="lock">
