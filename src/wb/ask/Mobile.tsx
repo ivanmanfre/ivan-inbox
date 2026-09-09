@@ -16,7 +16,7 @@
    The axis it tracks is x, not y, because the gesture this screen already had
    is a horizontal pager and that gesture is the ledger's (S26-6).
    ========================================================================== */
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { Button, Icon, IconButton, Badge, LiveDot, Shell, TabBar, fadeT, springSoft, type IconName, type TabItem } from '../../ds'
@@ -343,6 +343,13 @@ export function Mobile(p: BrainMobileProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chat])
 
+  // Every hook sits above the peer-view return below. The N2b build declared
+  // these three after it, so a conversation opening rendered Mobile with three
+  // fewer hooks and React threw error 300 (2026-09-09, the phone went blank).
+  const [ribNode] = useState(() => { const d = document.createElement('div'); d.className = 'a-head-slot-in'; return d })
+  const [ribClaimed, setRibClaimed] = useState(false)
+  const ribSlot = useMemo(() => ({ node: ribNode, setClaimed: setRibClaimed }), [ribNode])
+
   if (peerView) {
     return (
       <div className="app wb wb-take wb-take-thread" data-place="lane">
@@ -370,7 +377,6 @@ export function Mobile(p: BrainMobileProps) {
   // drop reveals.
   // N2b-1: set by the surface head that opts into carrying the chrome tiles.
   // Null means no surface claimed them and the rib draws its own row.
-  const [ribSlot, setRibSlot] = useState<HTMLDivElement | null>(null)
 
   // N2b-1: the chrome's tiles, in the reference's own order once the surface's
   // own search lands ahead of them: search, alerts, bell, settings. They render
@@ -436,7 +442,7 @@ export function Mobile(p: BrainMobileProps) {
         layout="phone"
         tabBar={<TabBar items={tabs} active={place} onSelect={id => onTab(id as Place)} markerId="a-brain-tab" />}
       >
-        <RibSlotCtx.Provider value={setRibSlot}>
+        <RibSlotCtx.Provider value={ribSlot}>
         <Screen className="a-brain-screen">
           {/* ONE header. The place's own header and the feed sheet's header
               stacked into two title rows in an earlier build and spent about
@@ -447,14 +453,16 @@ export function Mobile(p: BrainMobileProps) {
               `chrome`) takes them into its own 56px row and this one goes,
               which is the one head the reference has. Ask keeps the rib,
               because its pane has no head of its own to merge into. */}
-          {ribSlot ? null : (
+          {ribClaimed ? null : (
             <Head
               title={title}
               lead={ownsTitle ? undefined : <span className="ds-sr">{JOB_LABEL[job]}</span>}
               tail={ribTiles}
             />
           )}
-          {ribSlot ? createPortal(ribTiles, ribSlot) : null}
+          {/* The tiles live in the stable node whether or not a head has adopted it;
+              unadopted, the node is detached and paints nothing. */}
+          {createPortal(ribTiles, ribNode)}
 
           <div
             className="a-brain-pager" ref={pager}

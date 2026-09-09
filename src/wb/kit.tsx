@@ -6,7 +6,7 @@
    nothing here holds state or touches data. A screen imports Screen/Group/Row
    and spends its own code on the ledger it has to keep.
    ========================================================================== */
-import { createContext, useContext, type CSSProperties, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 import { Icon, type IconName } from '../ds'
 import './wb.css'
 import '../ds/ds.css'
@@ -46,15 +46,30 @@ export function Screen({ className, children }: { className?: string; children: 
    chrome portals its tiles into it and stops drawing a row of its own. Nothing
    provides the context off the phone chrome, so `chrome` is inert on the
    desktop and no desktop head gains so much as an empty element. */
-export type RibSlotSetter = (el: HTMLDivElement | null) => void
-export const RibSlotCtx = createContext<RibSlotSetter | null>(null)
+/* The slot is a stable DOM node the phone chrome owns for the whole session and
+   portals its tiles into once. A surface head that opts in adopts that node into
+   its own row from an effect and gives it back from the effect's cleanup. The
+   earlier shape passed a state setter as the slot's `ref`; React fires a ref
+   with null while it commits the unmount, which set state in the middle of the
+   commit that was mounting the next surface and threw "Rendered fewer hooks"
+   the moment a DM conversation opened (2026-09-09). Effects run after commit,
+   so the adoption and the release never race a render. */
+export type RibSlot = { node: HTMLDivElement; setClaimed: (claimed: boolean) => void }
+export const RibSlotCtx = createContext<RibSlot | null>(null)
 
 /** The node the phone chrome portals its tiles into. Renders nothing when no
     phone chrome is above it, which is every desktop surface. */
 export function HeadChromeSlot() {
-  const setSlot = useContext(RibSlotCtx)
-  if (!setSlot) return null
-  return <div className="a-head-slot" ref={setSlot} />
+  const slot = useContext(RibSlotCtx)
+  const host = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!slot || !host.current) return
+    host.current.appendChild(slot.node)
+    slot.setClaimed(true)
+    return () => { slot.setClaimed(false); slot.node.remove() }
+  }, [slot])
+  if (!slot) return null
+  return <div className="a-head-slot" ref={host} />
 }
 
 export function Head({ title, sub, lead, tail, chrome, children }: {
@@ -67,8 +82,8 @@ export function Head({ title, sub, lead, tail, chrome, children }: {
   chrome?: boolean
   children?: ReactNode
 }) {
-  const setSlot = useContext(RibSlotCtx)
-  const slot = chrome && setSlot ? <div className="a-head-slot" ref={setSlot} /> : null
+  const ctx = useContext(RibSlotCtx)
+  const slot = chrome && ctx ? <HeadChromeSlot /> : null
   return (
     <div className="a-head" data-chrome={slot ? '' : undefined}>
       {lead}

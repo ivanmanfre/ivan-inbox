@@ -523,6 +523,7 @@
      would drop the freshness read Ops and Lanes put there. */
   .a-head-tail{ margin-inline-start:auto }
   .a-head-slot{ display:flex; align-items:center; gap:var(--ds-s2); flex:0 0 auto }
+  .a-head-slot-in{ display:contents }
   .a-head[data-chrome]{
     min-height:var(--ds-header-h);
     /* The alerts capsule expands into a panel absolutely placed over the head.
