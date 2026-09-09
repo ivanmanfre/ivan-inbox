@@ -188,3 +188,19 @@ export function pileItems(piles: LanePile[], kind: 'contentReview' | 'contentErr
 export function rankQueue(items: QueueItem[]): QueueItem[] {
   return [...items].sort((a, b) => a.tier - b.tier || b.ageDays - a.ageDays)
 }
+
+// Oldest-first is the rule inside the queue, and taken alone it turned Today
+// into an archive: on 2026-09-09 the top of the plate was a thread from 151
+// days ago, a pile of errored drafts from 53 days ago and 266 staged ideas
+// from 51 days ago, every one of them ranked above this week's work. The
+// order stays; what changes is that anything waiting longer than a fortnight
+// folds into one line the operator opens on purpose. Nothing is dropped and
+// the head count still counts it.
+export const QUEUE_LIVE_DAYS = 14
+
+export function foldQueue(items: QueueItem[], liveDays = QUEUE_LIVE_DAYS): { live: QueueItem[]; older: QueueItem[] } {
+  const live: QueueItem[] = []
+  const older: QueueItem[] = []
+  for (const i of items) (i.ageDays > liveDays ? older : live).push(i)
+  return { live, older }
+}

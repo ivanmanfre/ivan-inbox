@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { groupThreads, type InboxMessage } from './inbox'
 import type { OpsDraft } from './ops'
 import {
-  ageDaysOf, buildOpsItems, buildReplyItems, neverOpened, pileItems, rankQueue, type QueueItem,
+  ageDaysOf, buildOpsItems, buildReplyItems, foldQueue, neverOpened, pileItems, rankQueue, type QueueItem,
 } from './workQueue'
 
 const NOW = Date.parse('2026-08-22T12:00:00Z')
@@ -120,5 +120,21 @@ describe('ageDaysOf', () => {
   })
   it('measures whole days elapsed', () => {
     expect(ageDaysOf(new Date(NOW - 2 * 86_400_000).toISOString(), NOW)).toBeCloseTo(2, 5)
+  })
+})
+
+describe('foldQueue', () => {
+  const item = (id: string, ageDays: number): QueueItem => ({
+    id, tier: 0, kind: 'reply', title: id, sub: null, lane: 'ivan', waitingSince: '', ageDays, openId: id,
+  })
+  it('keeps a fortnight live and folds the rest, in the order given', () => {
+    const { live, older } = foldQueue([item('a', 151), item('b', 3), item('c', 14), item('d', 14.5)])
+    expect(live.map(i => i.id)).toEqual(['b', 'c'])
+    expect(older.map(i => i.id)).toEqual(['a', 'd'])
+  })
+  it('drops nothing', () => {
+    const items = [item('a', 1), item('b', 100)]
+    const { live, older } = foldQueue(items)
+    expect(live.length + older.length).toBe(items.length)
   })
 })

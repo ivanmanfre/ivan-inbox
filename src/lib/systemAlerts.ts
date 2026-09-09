@@ -36,10 +36,19 @@ const COLS = 'id, source, dedupe_key, severity, title, body, action_url, action_
 // Open rows only. A dismissed alert is gone from the surface for good: the
 // writer's dedupe_key is unique, so nothing re-inserts the same warning and
 // nothing resurrects a row Ivan has already read.
+// The strip is a strip, not an archive. Measured 2026-09-09: 79 open rows going
+// back to 2026-08-07, because the daily writers (outreach output rate, scan
+// integrity) stamp a fresh dedupe_key every day and never resolve yesterday's
+// row. db/056 makes the writer supersede its own older rows; this window is
+// the reader's half, so a row nobody resolved cannot sit on Today for a month.
+export const ALERT_WINDOW_DAYS = 14
+
 export async function fetchSystemAlerts(limit = 20): Promise<SystemAlert[]> {
+  const since = new Date(Date.now() - ALERT_WINDOW_DAYS * 86_400_000).toISOString()
   const { data, error } = await supabase.from(SYSTEM_ALERTS_TABLE)
     .select(COLS)
     .is('resolved_at', null)
+    .gte('created_at', since)
     .order('created_at', { ascending: false })
     .limit(limit)
   if (error) throw error
@@ -50,6 +59,14 @@ export async function dismissSystemAlert(id: string): Promise<void> {
   const { error } = await supabase.from(SYSTEM_ALERTS_TABLE)
     .update({ resolved_at: new Date().toISOString(), resolved_by: 'inbox' })
     .eq('id', id)
+  if (error) throw error
+}
+
+/** Every open row at once, the strip's Clear all. Final, like the single dismiss. */
+export async function resolveAllSystemAlerts(): Promise<void> {
+  const { error } = await supabase.from(SYSTEM_ALERTS_TABLE)
+    .update({ resolved_at: new Date().toISOString(), resolved_by: 'inbox:clear-all' })
+    .is('resolved_at', null)
   if (error) throw error
 }
 

@@ -16,9 +16,10 @@ import {
   type AlertAutoOpen, type AlertStripState,
 } from '../../components/SystemAlertStrip'
 import {
-  alertSummary, bodyPreview, dismissSystemAlert, fetchSystemAlerts, groupHeadline, shapeAlerts,
-  type AlertGroup, type AlertMember, type Severity, type SystemAlert,
+  alertSummary, bodyPreview, dismissSystemAlert, fetchSystemAlerts, groupHeadline, resolveAllSystemAlerts,
+  shapeAlerts, type AlertGroup, type AlertMember, type Severity, type SystemAlert,
 } from '../../lib/systemAlerts'
+import { useConfirm } from '../chrome/ConfirmSheet'
 import './today.css'
 
 // Today's note says a system zone was deliberately cut from this surface, and
@@ -183,6 +184,22 @@ export function SystemAlertStrip({ autoOpen = 'all' }: { autoOpen?: AlertAutoOpe
     Promise.all(ids.map(id => dismissSystemAlert(id))).catch(() => load())
   }, [load])
 
+  // The strip's own Clear all. One tap per member across a fortnight of daily
+  // writers is the same trap the feed had; the hook sits above the early
+  // return because a hook cannot sit behind a condition.
+  const confirm = useConfirm()
+  const clearAll = async () => {
+    const ok = await confirm({
+      title: 'Clear every alert?',
+      message: `${members.length} ${members.length === 1 ? 'alert leaves' : 'alerts leave'} the strip for good. New ones still land.`,
+      confirmText: 'Clear all',
+      danger: true,
+    })
+    if (!ok) return
+    setRows([])
+    try { await resolveAllSystemAlerts() } catch { load() }
+  }
+
   if (groups.length === 0) return null
 
   // Anything critical opens on sight. A silent grant expiry is not a thing to
@@ -200,6 +217,12 @@ export function SystemAlertStrip({ autoOpen = 'all' }: { autoOpen?: AlertAutoOpe
             title={alertSummary(members)}
             titleWrap
             tail={<Icon name={allShown ? 'disclose' : 'forward'} size={16} />}
+            actions={(
+              <IconButton
+                icon="close" label="Clear all alerts" size="sm"
+                onClick={e => { e.stopPropagation(); void clearAll() }}
+              />
+            )}
             onClick={() => setStrip(cur => toggleAlertStrip(groups, autoOpen, cur))}
           />
         </Rows>

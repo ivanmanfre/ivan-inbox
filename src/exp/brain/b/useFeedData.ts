@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  dismissGroup, dismissNotification, groupNotifications, listNotifications,
-  markNotificationsRead, mergeBackRows, restoreNotifications, type Notification, type NotificationGroup,
+  dismissAllNotifications, dismissGroup, dismissNotification, groupNotifications, listNotifications,
+  markNotificationsRead, mergeBackRows, restoreDismissedAt, restoreNotifications,
+  type Notification, type NotificationGroup,
 } from '../../../lib/turns'
 import { mockFlag } from '../../v2c/mock'
 import { mockNotificationRows } from './mockNotifications'
@@ -134,6 +135,37 @@ export function useFeedData() {
     if (!FEED_MOCK) void restoreNotifications(back.map(r => r.id))
   }, [])
 
+  /**
+   * Clear the whole feed. Optimistic like the single dismiss: the rows leave
+   * this device in the same commit as the press, and the server statement
+   * closes every open row, loaded or not. Returns the stamp the rows took, so
+   * the receipt's Undo can hand it to undoClear; null when the write failed,
+   * in which case the rows are already back on screen.
+   */
+  const rowsRef = useRef<Notification[]>(rows)
+  rowsRef.current = rows
+  const clearAll = useCallback(async (): Promise<string | null> => {
+    const stamp = new Date().toISOString()
+    const before = rowsRef.current
+    setRows([])
+    if (FEED_MOCK) return stamp
+    try {
+      await dismissAllNotifications(stamp)
+      return stamp
+    } catch (e) {
+      console.error('[brain-b] clear all failed', e)
+      setRows(prev => mergeBackRows(prev, before))
+      return null
+    }
+  }, [])
+
+  const undoClear = useCallback(async (stamp: string) => {
+    if (!FEED_MOCK) {
+      try { await restoreDismissedAt(stamp) } catch (e) { console.error('[brain-b] undo clear failed', e) }
+    }
+    await refresh()
+  }, [refresh])
+
   const toggle = useCallback((key: string) => setExpanded(prev => {
     const next = new Set(prev)
     if (next.has(key)) next.delete(key); else next.add(key)
@@ -142,7 +174,7 @@ export function useFeedData() {
 
   return {
     rows, groups, unreadTotal, loaded, error, lastEmptySince, expanded,
-    refresh, markRead, dismissOne, dismissGroupRows, restore, toggle,
+    refresh, markRead, dismissOne, dismissGroupRows, restore, toggle, clearAll, undoClear,
   }
 }
 

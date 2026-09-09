@@ -16,6 +16,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { Button, DayHeader, EmptyState, ToastStack, fadeT, rise, spring, type ToastItem } from '../../ds'
 import { Body, Rows } from '../kit'
+import { useConfirm } from '../chrome/ConfirmSheet'
 import { notificationDeepLink, type Notification, type NotificationGroup } from '../../lib/turns'
 import { parseWbHash } from '../../exp/v2c/route'
 import type { Job } from '../../exp/v2c/layout'
@@ -199,6 +200,36 @@ export function Feed({ feed, goJob, openThread, onNavigated, onScrolled }: {
     })()
   }
 
+  // The whole feed, in one act. 250 open rows against a dismiss that takes one
+  // tap per row is a badge that never moves, which is what "99+" had become.
+  // The write closes every open row on the server (not only the 200 loaded),
+  // and the receipt's Undo restores exactly that set by its shared stamp.
+  const confirm = useConfirm()
+  const clearAll = () => {
+    void (async () => {
+      const ok = await confirm({
+        title: 'Clear the whole feed?',
+        message: 'Every notification goes, not only the ones on screen. Undo stays on the receipt for a few seconds.',
+        confirmText: 'Clear all',
+        danger: true,
+      })
+      if (!ok) return
+      const stamp = await feed.clearAll()
+      if (!stamp) { failDrop('clear-all', 'Could not clear, try again', clearAll); return }
+      setToasts(prev => [...prev.filter(t => t.id !== 'clear-all'), {
+        id: 'clear-all',
+        message: 'Feed cleared',
+        icon: 'discard',
+        actionLabel: 'Undo',
+        onAction: () => {
+          void feed.undoClear(stamp)
+          setToasts(cur => cur.filter(t => t.id !== 'clear-all'))
+        },
+      }])
+      window.setTimeout(() => setToasts(prev => prev.filter(t => t.id !== 'clear-all')), 8000)
+    })()
+  }
+
   const dismissAll = (g: NotificationGroup) => {
     void (async () => {
       const ok = await feed.dismissGroupRows(g)
@@ -226,6 +257,12 @@ export function Feed({ feed, goJob, openThread, onNavigated, onScrolled }: {
                   title={feed.lastEmptySince ? `Nothing new since ${clockTime(feed.lastEmptySince)}.` : 'Nothing here yet.'}
                 />
               )}
+          </div>
+        )}
+
+        {feed.loaded && feed.groups.length > 0 && (
+          <div className="a-brain-clear">
+            <Button variant="quiet" size="sm" icon="discard" onClick={clearAll}>Clear all</Button>
           </div>
         )}
 

@@ -356,6 +356,9 @@
 .a-brain-deck-rows > * + *{ box-shadow:inset 0 1px 0 var(--ds-line) }
 
 /* The floating pill: something landed while he was scrolled down. */
+/* The feed's one whole-list act, right-aligned above the first day band. */
+.a-brain-clear{ display:flex; justify-content:flex-end; padding:var(--ds-s2) var(--ds-s4) 0 }
+
 .a-brain-newpill{
   position:absolute;
   inset-inline:var(--ds-s0);

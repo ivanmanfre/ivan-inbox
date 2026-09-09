@@ -256,6 +256,28 @@ export async function dismissGroup(groupKey: string): Promise<void> {
   if (error) throw error
 }
 
+/**
+ * Dismiss EVERY open row, server side, in one statement. The feed only ever
+ * holds the newest 200 rows, so a clear that walked the loaded list would
+ * leave the older rows behind and the badge would refill on the next poll.
+ * Every row takes the SAME stamp, so the act can be undone as a whole by
+ * restoreDismissedAt(stamp): exactly the rows this call closed come back and
+ * nothing dismissed by hand before it does.
+ */
+export async function dismissAllNotifications(stamp: string): Promise<void> {
+  const { error } = await supabase.from(NOTIFICATIONS_TABLE)
+    .update({ dismissed_at: stamp })
+    .is('dismissed_at', null)
+  if (error) throw error
+}
+
+export async function restoreDismissedAt(stamp: string): Promise<void> {
+  const { error } = await supabase.from(NOTIFICATIONS_TABLE)
+    .update({ dismissed_at: null })
+    .eq('dismissed_at', stamp)
+  if (error) throw error
+}
+
 // ---------- pure ----------
 
 export type NotificationGroup = {

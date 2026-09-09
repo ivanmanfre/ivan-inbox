@@ -34,7 +34,7 @@ import {
 } from '../../lib/today'
 import {
   buildOpsItems, buildReplyItems, fetchContentErrorPile, fetchContentReviewPile,
-  fetchStagedIdeaPile, pileItems, rankQueue, type QueueItem,
+  fetchStagedIdeaPile, foldQueue, pileItems, rankQueue, type QueueItem,
 } from '../../lib/workQueue'
 import {
   describeWhen, fetchUpcomingEvents, isStartingSoon, resolveMeetingType,
@@ -374,6 +374,17 @@ function ZoneQueue({ items, onOpenThread, onOpenOps, onOpenContent }: {
   onOpenContent: (lane: string) => void
 }) {
   const neverOpened = items.filter(i => i.tier === 0).length
+  const { live, older } = foldQueue(items)
+  const [showOlder, setShowOlder] = useState(false)
+  const queueRow = (item: QueueItem) => item.kind === 'reply'
+    ? <QueueReplyRow key={item.id} item={item} onOpen={() => onOpenThread(item.openId!)} />
+    : (
+      <QueuePileRow
+        key={item.id}
+        item={item}
+        onOpen={item.kind === 'ops' ? onOpenOps : () => onOpenContent(item.openId!)}
+      />
+    )
   return (
     <div className="a-today-z" id="td-z0">
       <Group
@@ -400,15 +411,17 @@ function ZoneQueue({ items, onOpenThread, onOpenOps, onOpenContent }: {
                 titleWrap
               />
             )}
-            {items.map(item => item.kind === 'reply'
-              ? <QueueReplyRow key={item.id} item={item} onOpen={() => onOpenThread(item.openId!)} />
-              : (
-                <QueuePileRow
-                  key={item.id}
-                  item={item}
-                  onOpen={item.kind === 'ops' ? onOpenOps : () => onOpenContent(item.openId!)}
-                />
-              ))}
+            {live.map(queueRow)}
+            {older.length > 0 && (
+              <Row
+                lead={<span className="a-mono a-ink">{older.length}</span>}
+                title="Older than two weeks"
+                sub={showOlder ? 'Oldest first, same as above.' : 'Still waiting. Open the fold to work them.'}
+                tail={<Icon name={showOlder ? 'disclose' : 'forward'} size={16} />}
+                onClick={() => setShowOlder(v => !v)}
+              />
+            )}
+            {showOlder && older.map(queueRow)}
           </Rows>
         )}
       </Group>
