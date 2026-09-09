@@ -1151,6 +1151,8 @@ export function Today({
       <Head
         title="Today"
         sub={longDate()}
+        // N2b-1: one head on the phone. The chrome tiles land in this tail.
+        chrome
         tail={<IconButton icon="refresh" label="Refresh" onClick={() => { t.refresh() }} />}
       />
 

@@ -109,3 +109,43 @@
 .a-sl[data-density='b'] .a-sl-top{ flex:0 0 auto; flex-direction:column; align-items:flex-start }
 .a-sl[data-density='b'] .a-sl-join{ align-self:flex-start }
 .a-sl[data-density='b'] .a-sl-chips{ flex:0 0 auto; gap:var(--ds-s3) }
+
+/* ==========================================================================
+   6 · N2b-1 · THE MERGED PHONE HEAD. This screen writes its head by hand, and
+   it wrote three stacked lines into it: the eyebrow "Sales", the week, and a
+   count line. Merged with the chrome tiles that is a 100px head on a 375px
+   phone. On the phone the three become one baseline row: the eyebrow IS the
+   page title (it is the only place the screen names itself), the week rides
+   beside it as the predicate, and the counts drop, because the groups below
+   already print "today", "later", "next" with their own totals.
+   ========================================================================== */
+@media (max-width:767px){
+  .a-sl > .a-head[data-chrome] > .a-head-t > .a-head-title{
+    display:flex;
+    align-items:baseline;
+    gap:var(--ds-s3);
+    min-width:0;
+  }
+  .a-sl > .a-head[data-chrome] .a-sl-eb{
+    display:inline;
+    flex:0 0 auto;
+    font-size:var(--ds-fs-page);
+    line-height:var(--ds-lh-page);
+    font-weight:var(--ds-fw-semi);
+    letter-spacing:var(--ds-tr-page);
+    text-transform:none;
+    color:var(--ds-text);
+  }
+  .a-sl > .a-head[data-chrome] .a-sl-week{
+    flex:0 1 auto;
+    min-width:0;
+    font-family:var(--ds-font-mono);
+    font-size:var(--ds-fs-mono);
+    line-height:var(--ds-lh-meta);
+    color:var(--ds-text-3);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .a-sl > .a-head[data-chrome] > .a-head-t > .a-head-sub{ display:none }
+}

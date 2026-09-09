@@ -6,7 +6,7 @@
    nothing here holds state or touches data. A screen imports Screen/Group/Row
    and spends its own code on the ledger it has to keep.
    ========================================================================== */
-import type { CSSProperties, ReactNode } from 'react'
+import { createContext, useContext, type CSSProperties, type ReactNode } from 'react'
 import { Icon, type IconName } from '../ds'
 import './wb.css'
 import '../ds/ds.css'
@@ -39,15 +39,38 @@ export function Screen({ className, children }: { className?: string; children: 
   return <div className={`a-root ds-body${className ? ` ${className}` : ''}`}>{children}</div>
 }
 
-export function Head({ title, sub, lead, tail, children }: {
+/* N2b-1 - ONE HEAD ON THE PHONE. The phone chrome (alerts, bell, settings) drew
+   its own 56px rib ABOVE the surface's own head, so every list surface opened
+   with two stacked head rows; the locked reference has one. A surface head that
+   opts in with `chrome` publishes a slot node through this context, the phone
+   chrome portals its tiles into it and stops drawing a row of its own. Nothing
+   provides the context off the phone chrome, so `chrome` is inert on the
+   desktop and no desktop head gains so much as an empty element. */
+export type RibSlotSetter = (el: HTMLDivElement | null) => void
+export const RibSlotCtx = createContext<RibSlotSetter | null>(null)
+
+/** The node the phone chrome portals its tiles into. Renders nothing when no
+    phone chrome is above it, which is every desktop surface. */
+export function HeadChromeSlot() {
+  const setSlot = useContext(RibSlotCtx)
+  if (!setSlot) return null
+  return <div className="a-head-slot" ref={setSlot} />
+}
+
+export function Head({ title, sub, lead, tail, chrome, children }: {
   title?: ReactNode
   sub?: ReactNode
   lead?: ReactNode
   tail?: ReactNode
+  /** Take the phone chrome's tiles into this head's tail and merge the two
+      rows into one. Set it on the surface heads that are a page title. */
+  chrome?: boolean
   children?: ReactNode
 }) {
+  const setSlot = useContext(RibSlotCtx)
+  const slot = chrome && setSlot ? <div className="a-head-slot" ref={setSlot} /> : null
   return (
-    <div className="a-head">
+    <div className="a-head" data-chrome={slot ? '' : undefined}>
       {lead}
       {(title || sub) && (
         <div className="a-head-t">
@@ -56,7 +79,7 @@ export function Head({ title, sub, lead, tail, children }: {
         </div>
       )}
       {children}
-      {tail && <div className="a-head-tail">{tail}</div>}
+      {(tail || slot) && <div className="a-head-tail">{tail}{slot}</div>}
     </div>
   )
 }

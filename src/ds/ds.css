@@ -1268,6 +1268,23 @@ body :focus-visible{
     font-weight:var(--ds-fw-medium);
   }
 
+  /* 20.4 · THE ACTIVE PILL FITS ITS LABEL. Seven equal columns are 49.6px at
+     375; "CONTENT" at 10px mono with .08em is wider than the pill it sits in,
+     so the active label painted past its own fill. The active tab sizes to its
+     content plus 8px of padding on each side (the label's width + 16), with a
+     52px floor so a short word still reads as a pill, and the six others share
+     what is left down to the 44px tap floor `.ds-tab` already carries. The
+     sliding marker is `inset:0` of this same box, so it cannot desync. */
+  .ds-tab[data-active='true']{
+    flex:0 0 auto;
+    min-width:52px;
+    /* 12px a side, not 8: at 8 the pill is the label's width + 16 EXACTLY,
+       which a rounded-up `scrollWidth` reads as one pixel short of its own
+       floor. 12 puts real air on both sides of the longest label and still
+       leaves the six others 45.7px at 375, above the 44px tap floor. */
+    padding-inline:var(--ds-s4);
+  }
+
   /* 20.3 · PRESSED STATES. A phone has no hover, so the only feedback a
      control can give is the press itself. One scale step for anything that
      moves as a whole, a tint for a row that is too wide to scale without

@@ -293,6 +293,11 @@ export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, o
     <Screen className="a-dms">
       <Head
         title={title}
+        // N2b-1: this head carries the phone chrome's tiles now, so the phone
+        // opens on ONE 56px row instead of two. The `IM` face goes with it on
+        // the phone: it is `role="img"` with no handler, and the Settings tile
+        // that arrives beside it is the real route into the account.
+        chrome
         tail={<>
           {phone && (
             <IconButton
@@ -301,7 +306,7 @@ export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, o
               onClick={() => setSearchOpen(v => !v)}
             />
           )}
-          <Face name="IM" size="sm" />
+          {!phone && <Face name="IM" size="sm" />}
         </>}
       />
       {(!phone || searchOpen || query) && (

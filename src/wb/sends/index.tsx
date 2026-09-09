@@ -557,6 +557,8 @@ export function SendsScreen({ client, setClient }: {
       <Head
         title="Lanes"
         sub="Outreach and inbound, per client"
+        // N2b-1: one head on the phone. The chrome tiles land in this tail.
+        chrome
         tail={<IconButton icon="refresh" label="Refresh" onClick={load} />}
       />
 

@@ -32,7 +32,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Chip, EmptyState, IconButton, LiveDot } from '../../ds'
 import { InboxSkeleton } from '../chrome/Skeleton'
-import { Group, Rows, Sep } from '../kit'
+import { Group, HeadChromeSlot, Rows, Sep } from '../kit'
 import {
   fetchPackIndex, fetchWeekEvents, subscribePacks,
   type PackKind, type PackMeta, type SalesPack, type WeekEvent,
@@ -269,11 +269,14 @@ export function SalesSurface({ onOpenCall }: {
     // switch, and `data-surface`, the literal the deploy gate greps for in the
     // built bundle.
     <div className="a-root ds-body a-sl" data-surface="sales" data-density={density}>
-      <div className="a-head">
+      {/* N2b-1: `data-chrome` is what wb.css keys the merged phone head off,
+          and HeadChromeSlot is where the phone chrome portals its tiles. Both
+          are inert on the desktop, where nothing provides the slot. */}
+      <div className="a-head" data-chrome="">
         <div className="a-head-t">
           <h2 className="a-head-title">
             <span className="a-eyebrow a-sl-eb">Sales</span>
-            Week of {week.mondayLabel}
+            <span className="a-sl-week">Week of {week.mondayLabel}</span>
           </h2>
           <div className="a-head-sub a-mono">
             {total} {total === 1 ? 'call' : 'calls'}<Sep />{packCount} {packCount === 1 ? 'pack' : 'packs'}
@@ -286,6 +289,7 @@ export function SalesSurface({ onOpenCall }: {
             size="sm"
             onClick={toggleDensity}
           />
+          <HeadChromeSlot />
         </div>
       </div>
 

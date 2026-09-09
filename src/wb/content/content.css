@@ -725,6 +725,11 @@ button.a-ct-chip-t:hover{ opacity:.75 }
   .a-ct .a-ct-tabsbar{
     overflow-x:auto; overflow-y:hidden; scroll-snap-type:x proximity;
     border-bottom:0; /* the ds tabs inside it draw the same line */
+    /* N2b-5: the strip auto-scrolls the active stage into view, and a scroller
+       whose padding is its only gutter loses that gutter the moment it moves:
+       "Ideas" ended up touching the left edge. The scroll padding is what a
+       snap and a scrollIntoView both land against, so the gutter survives. */
+    scroll-padding-inline:var(--ds-gutter);
   }
   .a-ct .a-ct-tabsbar .ds-tabs.ds-tabs{ flex-wrap:nowrap; overflow-x:visible }
   .a-ct .a-ct-tabsbar .ds-tabs-item{ scroll-snap-align:start; min-width:var(--ds-tap) }
@@ -746,6 +751,27 @@ button.a-ct-chip-t:hover{ opacity:.75 }
     color:var(--ds-text-3); padding-bottom:var(--ds-s3);
   }
   .a-ct-fsheet-f{ display:flex; align-items:center; justify-content:space-between; gap:var(--ds-s3) }
+
+  /* N2b-4 · THE ROW'S ACTIONS ARE PILLS. `quiet` paints nothing, so Skip and
+     Delete read as two bare words floating beside the one filled button. They
+     take the same 34px pill the DMs row action took in N2, on the raised
+     surface; Approve keeps `primary`, so it stays the only lime fill in the
+     row and the eye still lands on it first. */
+  .a-ct .a-row-actions .ds-btn{
+    height:var(--ds-pill-h);
+    min-height:var(--ds-pill-h);
+    padding:0 var(--ds-s4);
+    border-radius:var(--ds-pill-r);
+    font-size:var(--ds-fs-preview);
+    font-weight:var(--ds-fw-semi);
+  }
+  .a-ct .a-row-actions .ds-btn[data-variant='quiet']{
+    background:var(--ds-surface-2);
+    color:var(--ds-text);
+  }
+  .a-ct .a-row-actions .ds-btn[data-variant='quiet']:active:not(:disabled){
+    background:var(--ds-surface-3);
+  }
 
   /* W3-8 · The bulk bar covered the bottom 99px of a 298px list and every tab
      under it. It sits above the tab bar now (see ds.css), and the list is

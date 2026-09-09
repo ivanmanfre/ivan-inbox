@@ -17,9 +17,10 @@
    is a horizontal pager and that gesture is the ledger's (S26-6).
    ========================================================================== */
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { Button, Icon, IconButton, Badge, LiveDot, Shell, TabBar, fadeT, springSoft, type IconName, type TabItem } from '../../ds'
-import { Head, Screen } from '../kit'
+import { Head, RibSlotCtx, Screen } from '../kit'
 import type { BrainMobileProps } from '../../exp/brain/types'
 import { JOB_LABEL, type Job } from '../../exp/v2c/layout'
 import { readPlace, resolveBootPlace, tabForJob, writePlace, TABS, TAB_LABEL, type Place } from '../../exp/brain/b/place'
@@ -367,6 +368,49 @@ export function Mobile(p: BrainMobileProps) {
   // feed's head is inside the sheet now, so head and body move together, and
   // this row goes back to being the lane's chrome, which is exactly what the
   // drop reveals.
+  // N2b-1: set by the surface head that opts into carrying the chrome tiles.
+  // Null means no surface claimed them and the rib draws its own row.
+  const [ribSlot, setRibSlot] = useState<HTMLDivElement | null>(null)
+
+  // N2b-1: the chrome's tiles, in the reference's own order once the surface's
+  // own search lands ahead of them: search, alerts, bell, settings. They render
+  // in exactly one place per commit, either this file's rib or the surface
+  // head's slot, so no control is ever drawn twice.
+  const ribTiles = (
+    <>
+      {chat.busy && <LiveDot label="Claude is working" />}
+      {p.health.n > 0 && (
+        <StatusCapsule n={p.health.n} note={p.health.note} onClick={() => onTab('ops')} />
+      )}
+      <span className="a-brain-feedbtn" data-feed-open>
+        <IconButton
+          icon="bell" label={`Feed, ${feed.unreadTotal} unread`}
+          // Also the way back up from the half snap: the feed is already open
+          // there, so opening it again has to mean putting it back where it was.
+          onClick={() => { setFeedOpen(true); setSnap(0); setVy(null) }}
+        />
+        {feed.unreadTotal > 0 && (
+          <span className="a-brain-feedbtn-n">
+            <Badge tone="neutral" label={`${feed.unreadTotal} unread`}>
+              {feed.unreadTotal > 99 ? '99+' : feed.unreadTotal}
+            </Badge>
+          </span>
+        )}
+      </span>
+      {/* W1-2: the only route into Settings on the phone chrome was the direct
+          hash (`#exp/brain-b/settings`, GAPS2-1), no tap target anywhere. The
+          `IM` avatar this used to be hoped to be is `role="img"` with no
+          handler (ds/Avatar.tsx), decoration by construction, so a real control
+          goes here instead, beside the feed bell it already shares the rib
+          with. `goJob('settings')` is the exact same job the hash route
+          resolves to; the hash keeps working unchanged. */}
+      <IconButton
+        icon="settings" label="Settings"
+        onClick={() => goJob('settings')}
+      />
+    </>
+  )
+
   const ownsTitle = place === 'ask'
   const title = place === 'ask' ? 'Ask' : undefined
 
@@ -392,51 +436,25 @@ export function Mobile(p: BrainMobileProps) {
         layout="phone"
         tabBar={<TabBar items={tabs} active={place} onSelect={id => onTab(id as Place)} markerId="a-brain-tab" />}
       >
+        <RibSlotCtx.Provider value={setRibSlot}>
         <Screen className="a-brain-screen">
           {/* ONE header. The place's own header and the feed sheet's header
               stacked into two title rows in an earlier build and spent about
               120px before the first row. The sheet is content; this row is
               chrome, and it swaps its own label. */}
-          <Head
-            title={title}
-            lead={ownsTitle ? undefined : <span className="ds-sr">{JOB_LABEL[job]}</span>}
-            tail={
-              <>
-                {chat.busy && <LiveDot label="Claude is working" />}
-                {p.health.n > 0 && (
-                  <StatusCapsule n={p.health.n} note={p.health.note} onClick={() => onTab('ops')} />
-                )}
-                {/* W1-2: the only route into Settings on the phone chrome was
-                    the direct hash (`#exp/brain-b/settings`, GAPS2-1), no
-                    tap target anywhere. The `IM` avatar this used to be
-                    hoped to be is `role="img"` with no handler (ds/Avatar.tsx),
-                    decoration by construction, so a real control goes here
-                    instead, beside the feed bell it already shares the rib
-                    with. `goJob('settings')` is the exact same job the hash
-                    route resolves to; the hash keeps working unchanged. */}
-                <IconButton
-                  icon="settings" label="Settings"
-                  onClick={() => goJob('settings')}
-                />
-                <span className="a-brain-feedbtn" data-feed-open>
-                  <IconButton
-                    icon="bell" label={`Feed, ${feed.unreadTotal} unread`}
-                    // Also the way back up from the half snap: the feed is
-                    // already open there, so opening it again has to mean
-                    // putting it back where it was.
-                    onClick={() => { setFeedOpen(true); setSnap(0); setVy(null) }}
-                  />
-                  {feed.unreadTotal > 0 && (
-                    <span className="a-brain-feedbtn-n">
-                      <Badge tone="neutral" label={`${feed.unreadTotal} unread`}>
-                        {feed.unreadTotal > 99 ? '99+' : feed.unreadTotal}
-                      </Badge>
-                    </span>
-                  )}
-                </span>
-              </>
-            }
-          />
+          {/* N2b-1: the rib draws its own row ONLY while no surface head has
+              claimed the tiles. A surface that publishes a slot (kit's
+              `chrome`) takes them into its own 56px row and this one goes,
+              which is the one head the reference has. Ask keeps the rib,
+              because its pane has no head of its own to merge into. */}
+          {ribSlot ? null : (
+            <Head
+              title={title}
+              lead={ownsTitle ? undefined : <span className="ds-sr">{JOB_LABEL[job]}</span>}
+              tail={ribTiles}
+            />
+          )}
+          {ribSlot ? createPortal(ribTiles, ribSlot) : null}
 
           <div
             className="a-brain-pager" ref={pager}
@@ -514,6 +532,7 @@ export function Mobile(p: BrainMobileProps) {
             </motion.div>
           </div>
         </Screen>
+        </RibSlotCtx.Provider>
       </Shell>
       {windows}
     </div>

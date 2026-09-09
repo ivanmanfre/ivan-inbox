@@ -117,7 +117,9 @@ export function Dms({
               ? 'Sum up what this one is about, without opening it'
               : `Waiting ${days} days. Sum it up without opening it.`}
             onClick={e => { e.stopPropagation(); pre.run(t) }}
-          >{st.s === 'error' ? 'again' : 'sum up'}</Button>
+          // N2b-4: a button's label is Title case, like Discard and Open beside
+          // it. UI control name, not a message anyone is sent.
+          >{st.s === 'error' ? 'Again' : 'Sum up'}</Button>
         )
       }}
       // "so I can copy and send to Mattan when the chat requires him to do

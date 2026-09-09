@@ -490,4 +490,33 @@
     font-size:var(--ds-fs-preview);
     font-weight:var(--ds-fw-semi);
   }
+
+  /* N2b-2 · THE HAIRLINE BETWEEN ROWS. With the group edge to edge the
+     separator would run the whole width and read as a table rule. It starts at
+     the gutter instead, under the avatar column, and bleeds off the right,
+     which is the shape every native list draws. `box-shadow:inset` cannot be
+     inset on one side only, so the line becomes a pseudo element on the host
+     that already carries `position:relative`. */
+  .a-dms-rowhost + .a-dms-rowhost{ box-shadow:none }
+  .a-dms-rowhost + .a-dms-rowhost::after{
+    content:'';
+    position:absolute;
+    top:0;
+    left:var(--ds-gutter);
+    right:0;
+    height:1px;
+    background:var(--ds-line);
+    pointer-events:none;
+    z-index:1;
+  }
+  /* A row that opens a day already has the day header's own line above it. */
+  .a-dms-dayhost + .a-dms-rowhost::after{ content:none }
+
+  /* And the unread mark stops being an edge stripe. `.a-row[data-unread]` paints
+     a 2px accent bar on the row's leading edge (wb.css); inside a rounded inset
+     card that read as a mark, hard against the screen edge it reads as a lane
+     stripe, which is the one thing direction B rules out. The same row already
+     carries the reference's own unread mark, the accent dot beside the time
+     (InboxList.tsx:459), so the signal is not lost, only spelled once. */
+  .a-dms .a-row.r[data-unread]::before{ content:none }
 }

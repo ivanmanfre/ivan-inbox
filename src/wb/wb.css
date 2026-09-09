@@ -505,9 +505,46 @@
   .a-row-tail{ margin-inline-start:auto }
 
   .a-body{ padding:var(--ds-s3) var(--ds-s0) var(--ds-s9) }
-  .a-group{ border-radius:var(--ds-r4); margin-inline:var(--ds-gutter) }
+  /* N2b-2 · EDGE TO EDGE. An inset rounded card around a list of 17 rows is a
+     web page's idea of a list; the reference (and every native list) runs the
+     rows to both edges and separates them with a hairline. The group keeps its
+     top and bottom hairlines, loses the two side ones with the radius they
+     were rounding, and the 16px gutter moves from the box onto the text inside
+     it, which the row and the group header already carry (--ds-row-x is 16). */
+  .a-group{ border-radius:0; margin-inline:var(--ds-s0); border-inline:0 }
   .a-ledger{ grid-template-columns:1fr 1fr; margin-inline:var(--ds-gutter) }
   .a-head, .a-bar{ padding-inline:var(--ds-gutter) }
+
+  /* N2b-1 · ONE HEAD. The phone chrome portals its tiles into the slot the
+     surface head publishes (kit.tsx), so the two stacked 56px rows become one:
+     title left at the gutter, tiles right. The predicate line rides BESIDE the
+     title rather than under it, because a merged row that grows to 74px to
+     keep a date is not the row the reference draws, and dropping the line
+     would drop the freshness read Ops and Lanes put there. */
+  .a-head-tail{ margin-inline-start:auto }
+  .a-head-slot{ display:flex; align-items:center; gap:var(--ds-s2); flex:0 0 auto }
+  .a-head[data-chrome]{
+    min-height:var(--ds-header-h);
+    /* The alerts capsule expands into a panel absolutely placed over the head.
+       It used to hang off the chrome rib, which had nothing under it; inside
+       the surface head it shares --ds-z-header with `.a-bar` and the strip
+       BELOW it in the DOM, so the panel painted underneath both. One step up
+       the header band, still far below the tab bar at 30 and the sheet at 60. */
+    z-index:calc(var(--ds-z-header) + 1);
+  }
+  .a-head[data-chrome] > .a-head-t{
+    flex-direction:row;
+    align-items:baseline;
+    gap:var(--ds-s3);
+    overflow:hidden;
+  }
+  /* The title never gives. Both children are nowrap, so a plain `0 1 auto` on
+     each let flexbox shrink them in proportion and "Today" ellipsised to
+     "To..." beside a date that had room to spare. `min-content` of nowrap text
+     is the text itself, so the title holds its width and the predicate line is
+     the only thing that truncates. */
+  .a-head[data-chrome] > .a-head-t > .a-head-title{ flex:0 1 auto; min-width:min-content }
+  .a-head[data-chrome] > .a-head-t > .a-head-sub{ flex:0 1 auto; min-width:0 }
 
   /* N2-1 · THE RIB TILE. Every head control on the phone is a square 44x44
      tile on the raised surface with a 12px corner, so the top strip reads as

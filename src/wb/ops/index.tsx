@@ -27,7 +27,7 @@ import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { useReactions } from '../../hooks/useReactions'
 import { relAge } from '../kit'
 import { checkedPhrase } from '../../lib/today'
-import { Avatar, Banner, Button, EmptyState, Icon } from '../../ds'
+import { Banner, Button, EmptyState, Icon } from '../../ds'
 import { OpsSkeleton } from '../chrome/Skeleton'
 import { Body, Group, Head, Screen } from '../kit'
 import { PendingCard } from './PendingCard'
@@ -89,7 +89,10 @@ export function OpsBoard({ drafts, loading, error, loadedAt, refresh }: {
     <Head
       title="Ops"
       sub={checkedPhrase(loadedAt)}
-      tail={<Avatar name="IM" initials="IM" size="sm" />}
+      // N2b-1: one head on the phone. The decorative `IM` avatar goes with the
+      // merge on every width here: the Settings tile it sat beside is the real
+      // route into the account, and this head never had another control.
+      chrome
     />
   )
 
