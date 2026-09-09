@@ -305,6 +305,17 @@ export type RecLine = {
   sub: string | null
   created_at: string | null
   decision: DecisionState
+  /** The idea row's own status, carried ONLY when no decision is on record.
+
+      Run 04 A2. Before this, a candidate sitting at `reviewing` on Ivan's lane
+      was converted into `decision: 'deferred'`, because a defer there writes no
+      row. Seat D looked at the screen: it rendered a `deferred` badge, with no
+      timestamp, for a call nobody had taken — the adjacent failure to calling
+      an unread thing empty. The status is now carried unconverted and the
+      surface says what is actually on record ("no decision · reviewing").
+      Null whenever a decision row was found: a recorded decision is the
+      stronger fact and the status adds nothing to it. */
+  undecided_status: string | null
   reason: string | null
   decided_at: string | null
   link_state: LinkState
@@ -530,7 +541,7 @@ export function summarize(src: AudienceSources): AudienceSummary {
     if (base.recommendations.length === 0 && src.storeCount === 0 && storeFloor > 0) {
       base.recommendationsBlocked = true
       base.partial.push(
-        `recommendations: this lane's idea bank read as empty over ${storeFloor} rows on record — not read, sign in`,
+        `recommendations: this lane's idea bank read as empty over ${storeFloor} rows on record, so it was not read. Sign in.`,
       )
     }
   } else {
@@ -553,7 +564,7 @@ export function summarize(src: AudienceSources): AudienceSummary {
       ...base,
       state: 'failed_nonempty_expected',
       message:
-        `0 rows for a lane that has ${floor} people on record — treat as a load failure, not an empty audience.`,
+        `0 rows for a lane that has ${floor} people on record. Treat this as a load failure.`,
     }
   }
   if (raw === 0 && base.topics.length === 0 && base.recommendations.length === 0) {
@@ -563,7 +574,7 @@ export function summarize(src: AudienceSources): AudienceSummary {
     return {
       ...base,
       state: 'unknown',
-      message: `No person in this lane carries a judgement yet — ${base.labels.unknown} of ${adjusted} unknown.`,
+      message: `No person in this lane carries a judgement yet. ${base.labels.unknown} of ${adjusted} unknown.`,
     }
   }
   return base
@@ -623,12 +634,16 @@ function joinDecisions(
       if (d.action === 'audn_accept' || d.action === 'approve') decision = 'accepted'
       else if (d.action === 'audn_reject' || d.action === 'reject') decision = 'rejected'
       else if (d.action === 'audn_defer') decision = 'deferred'
-    } else if (lane === 'ivan' && r.status === 'reviewing') {
-      // D3: on Ivan's lane a defer leaves no row. A candidate still sitting in
-      // `reviewing` with no decision IS the deferred state — documented there,
-      // recorded here so the log does not read as undecided forever.
-      decision = 'deferred'
     }
+
+    // D3: on Ivan's lane a defer leaves no row, so a candidate still sitting at
+    // `reviewing` used to be READ as 'deferred' here. It is not. A status is
+    // what the store holds; a decision is something a person did, and the two
+    // are not interchangeable in a log whose whole job is to say who chose
+    // what. The status travels as itself, and the surface renders "no decision"
+    // beside it. Lane-agnostic on purpose: `staged` on a client lane is the
+    // same kind of fact, and one rule is easier to keep true than two.
+    const undecided_status = d ? null : r.status?.trim() || null
 
     // What the idea store alone proves. This is the whole of the old
     // derivation, and it is still what runs when the view has no row for this
@@ -644,6 +659,7 @@ function joinDecisions(
       sub: r.sub?.trim() || null,
       created_at: r.created_at,
       decision,
+      undecided_status,
       reason: d?.reason ?? null,
       decided_at: d?.decided_at ?? null,
       link_state: fromView === undefined ? derived : strongestLink(derived, fromView),

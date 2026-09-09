@@ -51,12 +51,27 @@ const LINK_WORD: Record<string, string> = {
   unknown: 'link unknown',
 }
 
+// The same ladder again, short enough to sit in a badge. Two vocabularies for
+// one fact would be worse than one, so these are the SAME words cut down, never
+// different ones: the badge is the glance target, the meta line is the sentence.
+const LINK_BADGE: Record<string, string> = {
+  published: 'published',
+  drafted: 'drafted',
+  idea: 'idea only',
+  recommended: 'no idea row',
+  unknown: 'link unknown',
+}
+
+// Run 04 A2, from Seat D's look at the real screen: the badge used to repeat
+// the decision word the meta line already opens with, while the ladder state —
+// the one fact nothing else on the row carries — had no badge at all. So the
+// badge is the ladder now, and the decision word is said once.
+//
 // The decision log is a record, not a live signal, so every badge here is the
 // neutral ring: a severity tone on this surface would claim something is
 // happening now (ds/Badge: "severity tones are live signals only").
-function DecisionBadge({ r }: { r: RecLine }) {
-  const word = r.decision ? DECISION_WORD[r.decision] : 'undecided'
-  return <Badge tone="neutral" variant="ring">{word}</Badge>
+function LinkBadge({ r }: { r: RecLine }) {
+  return <Badge tone="neutral" variant="ring">{LINK_BADGE[r.link_state] ?? 'link unknown'}</Badge>
 }
 
 function Numbers({ s }: { s: AudienceSummary }) {
@@ -88,7 +103,7 @@ function Numbers({ s }: { s: AudienceSummary }) {
         <Cell
           label="Observed across posts"
           value={returns.observedAcrossPosts}
-          note="seen on 2+ posts — a signal, not a return"
+          note="seen on 2+ posts · weaker than a confirmed return"
         />
         <Cell
           label="Return timing unknown"
@@ -104,7 +119,7 @@ function Ranks({ s }: { s: AudienceSummary }) {
   if (!s.ranks.length) {
     return (
       <div className="a-ct-sub">
-        No matched-age snapshots yet — ranks appear after the first 7/14-day captures.
+        No matched-age snapshots yet. Ranks appear after the first 7/14-day captures.
       </div>
     )
   }
@@ -130,13 +145,18 @@ function Ranks({ s }: { s: AudienceSummary }) {
   )
 }
 
-function Recommendations({ s }: { s: AudienceSummary }) {
+/** Exported for the unit suite ONLY. A phrase that has never been rendered is
+    a phrase nobody has checked, and `recommended, no idea row` / `link unknown`
+    were exactly that until Run 04 A2 — type-checked, unit-tested on the state
+    machine, and never once produced as text. The tests render THIS, so the
+    assertion is about the shipped markup rather than about a copy of it. */
+export function Recommendations({ s }: { s: AudienceSummary }) {
   if (s.recommendationsBlocked) {
     // Signed out, PostgREST answers this lane's idea bank with zero rows and no
     // error. "None yet" would be a sentence about a table nobody read.
     return (
       <div className="a-ct-sub a-sev-urgent">
-        This lane's idea bank read as empty over a store that is not empty — the
+        This lane's idea bank read as empty over a store that is not empty, so the
         recommendations were not read. Sign in and refresh.
       </div>
     )
@@ -158,15 +178,23 @@ function Recommendations({ s }: { s: AudienceSummary }) {
           sub={r.sub ?? undefined}
           subWrap
           meta={
+            /* The ladder state sits SECOND, ahead of the reason. At 375px the
+               reason wraps to three lines, and behind it the strongest new fact
+               on this row ("reached a published post") broke across the last
+               two and read as the tail of a sentence about something else.
+               A row with no decision says so and names the status it is
+               actually sitting at — never a decision word nobody chose. */
             <span className="a-aud-meta">
               {r.decision
                 ? <>{DECISION_WORD[r.decision]}{r.decided_at ? ` ${relAge(r.decided_at)}` : ''}</>
-                : 'no decision recorded'}
-              {r.reason ? <> · {r.reason}</> : null}
+                : r.undecided_status
+                  ? `no decision · ${r.undecided_status}`
+                  : 'no decision recorded'}
               {' · '}{LINK_WORD[r.link_state] ?? 'link unknown'}
+              {r.reason ? <> · {r.reason}</> : null}
             </span>
           }
-          tail={<DecisionBadge r={r} />}
+          tail={<LinkBadge r={r} />}
         />
       ))}
       {/* The note says which of the two readings produced the states above, and
@@ -177,15 +205,15 @@ function Recommendations({ s }: { s: AudienceSummary }) {
       <div className="a-ct-sub">
         {s.linkSource === 'view'
           ? <>
-              Decisions are made in the idea flow, not here. How far each one got is
-              read from the recommendation link view: idea → draft → published post,
-              for a client lane and for Ivan's alike. A line with no row in that view
-              yet shows only what its own idea store proves.
+              Decisions are made in the idea flow. How far each one got is read from
+              the recommendation link view: idea → draft → published post, for a
+              client lane and for Ivan's alike. A line with no row in that view yet
+              shows only what its own idea store proves.
             </>
           : <>
-              Decisions are made in the idea flow, not here. The recommendation link
-              view was not read, so "a draft exists" is as far as this can follow a
-              recommendation — nothing on this screen can see whether a post went live.
+              Decisions are made in the idea flow. The recommendation link view was
+              not read, so "a draft exists" is as far as this can follow a
+              recommendation. Nothing on this screen can see whether a post went live.
             </>}
       </div>
     </>

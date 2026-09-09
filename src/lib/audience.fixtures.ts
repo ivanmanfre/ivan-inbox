@@ -31,7 +31,30 @@ type LaneSpec = {
   topics: Array<[string | null, number, number, number]>   // topic, people, events, posts
   ranks: Array<[string, number, number, number, number]>   // post, rank, eligible_n, age, reactions
   monthly: Array<[string, number, number]>                  // month, median, n
-  recs: Array<[string, string, string | null, string | null]> // ref, title, action, reason
+  recs: RecSpec[]
+}
+
+/** One fixture recommendation. Spelled out rather than positional, because Run
+    04 A2 has to steer three things per row that used to be hard-coded: the idea
+    row's status, whether the store knows about a draft, and what (if anything)
+    `audn_recommendation_links_v` says about it.
+
+    `link: null` — and a row that omits `link` — means THE VIEW HAS NO ROW FOR
+    THIS RECOMMENDATION. That is a legitimate state, not a load failure, and the
+    derivation off the idea store alone is what runs for it. */
+type RecSpec = {
+  ref: string
+  title: string
+  /** The decision action, or null for a recommendation nobody has answered. */
+  action: string | null
+  reason: string | null
+  /** The idea row's own status. `null` = a row in the store with no status at
+      all, which is the only way the ladder can floor at `unknown`. */
+  status?: string | null
+  /** `promoted_draft_id` on the idea row. */
+  draft?: boolean
+  /** What migration 08's view would answer for this ref, if anything. */
+  link?: { state: string; draft_id?: string | null; published?: string | null } | null
 }
 
 // Census: distinct_people ivan 90 · risedtc 191 · arch 48;
@@ -52,9 +75,12 @@ const SPEC: Record<ContentLane, LaneSpec> = {
     ],
     monthly: [['2026-08', 31, 12], ['2026-07', 24, 9]],
     recs: [
-      ['audn-rec:11111111-1111-4111-8111-111111111111', 'Publish the seat-pacing receipt as a teardown', 'approve', 'matches the demand topic the positive engagers cluster on'],
-      ['audn-rec:22222222-2222-4222-8222-222222222222', 'Second post on the same rebuild', 'reject', 'same claim as last week, no new receipt'],
-      ['audn-rec:33333333-3333-4333-8333-333333333333', 'Ask the three quiet buyers what broke', null, null],
+      { ref: 'audn-rec:11111111-1111-4111-8111-111111111111', title: 'Publish the seat-pacing receipt as a teardown', action: 'approve', reason: 'matches the demand topic the positive engagers cluster on', draft: true, link: { state: 'published', draft_id: 'draft-1', published: 'urn:li:activity:7490000000000000011' } },
+      { ref: 'audn-rec:22222222-2222-4222-8222-222222222222', title: 'Second post on the same rebuild', action: 'reject', reason: 'same claim as last week, no new receipt', link: { state: 'drafted', draft_id: 'draft-2' } },
+      // No decision row and no view row. On Ivan's lane this is the case Seat D
+      // caught rendering a `deferred` badge for a call nobody took: it now says
+      // "no decision · reviewing", which is the whole of what is on record.
+      { ref: 'audn-rec:33333333-3333-4333-8333-333333333333', title: 'Ask the three quiet buyers what broke', action: null, reason: null },
     ],
   },
   risedtc: {
@@ -68,8 +94,8 @@ const SPEC: Record<ContentLane, LaneSpec> = {
     ],
     monthly: [['2026-08', 96, 18], ['2026-07', 88, 15], ['2026-06', 71, 11]],
     recs: [
-      ['audn-rec:44444444-4444-4444-8444-444444444444', 'One founder-voice post per week on supply', 'audn_accept', 'the 13 positive people all engaged on trust posts'],
-      ['audn-rec:55555555-5555-4555-8555-555555555555', 'Run the same angle twice in a week', 'audn_defer', 'wait for the next two weeks of snapshots'],
+      { ref: 'audn-rec:44444444-4444-4444-8444-444444444444', title: 'One founder-voice post per week on supply', action: 'audn_accept', reason: 'the 13 positive people all engaged on trust posts', draft: true, link: { state: 'published', draft_id: 'draft-1', published: 'urn:li:activity:7490000000000000021' } },
+      { ref: 'audn-rec:55555555-5555-4555-8555-555555555555', title: 'Run the same angle twice in a week', action: 'audn_defer', reason: 'wait for the next two weeks of snapshots', link: { state: 'drafted', draft_id: 'draft-2' } },
     ],
   },
   arch: {
@@ -81,8 +107,22 @@ const SPEC: Record<ContentLane, LaneSpec> = {
     topics: [[null, 48, 92, 6]],
     ranks: [],       // no matched-age snapshots — the block says so in words
     monthly: [],
+    // ARCH carries the two states no lane could reach before Run 04 A2. Seat D
+    // photographed three of the five link phrases and reported the other two as
+    // never having reached a screen; these are those two, on the shortest lane,
+    // so both land in one frame.
     recs: [
-      ['audn-rec:66666666-6666-4666-8666-666666666666', 'Publish the placement rule as a games-marketing note', 'audn_accept', 'two positive engagers are both studio-side'],
+      { ref: 'audn-rec:66666666-6666-4666-8666-666666666666', title: 'Publish the placement rule as a games-marketing note', action: 'audn_accept', reason: 'two positive engagers are both studio-side', draft: true, link: { state: 'published', draft_id: 'draft-1', published: 'urn:li:activity:7490000000000000031' } },
+      // `recommended`: 08 emits it for a ref with NO idea row behind it. The
+      // corner where this consumer can still see one is 08's `audn_cutoff()` —
+      // an idea created after the cutoff is invisible to the view while the app
+      // reads it fine, so the view answers with an orphan recommendation. The
+      // store side has no status at all, which is what stops precedence lifting
+      // it to `idea`.
+      { ref: 'audn-rec:77777777-7777-4777-8777-777777777777', title: 'Name the placement judge in the weekly note', action: 'audn_reject', reason: 'the second judge pass is four days old, wait for a Saturday run', status: null, link: { state: 'recommended' } },
+      // `link unknown`: no view row AND no status to derive from. The floor of
+      // the ladder, said out loud rather than smoothed into "idea only".
+      { ref: 'audn-rec:88888888-8888-4888-8888-888888888888', title: 'Ask the two studio-side engagers what they build on', action: null, reason: null, status: null },
     ],
   },
 }
@@ -130,37 +170,36 @@ export function fixtureSources(lane: ContentLane): AudienceSources {
     ({ client_id: lane, post_social_id: post, rank, eligible_n: n, target_age_days: age, reactions, rank_basis: 'matched_age' }))
   const monthly: MonthlyMedianRow[] = spec.monthly.map(([month, median, n]) =>
     ({ client_id: lane, month, median_reactions: median, n, target_age_days: 7, basis: 'matched_age' }))
-  const recommendations: RecommendationRow[] = spec.recs.map(([ref, title], i) => ({
+  const recommendations: RecommendationRow[] = spec.recs.map((r, i) => ({
     id: `${lane}-rec-${i}`,
-    source_ref: ref,
-    title,
+    source_ref: r.ref,
+    title: r.title,
     sub: null,
-    status: 'reviewing',
+    status: r.status === undefined ? 'reviewing' : r.status,
     created_at: '2026-09-08T09:00:00Z',
-    promoted_draft_id: i === 0 ? 'draft-1' : null,
+    promoted_draft_id: r.draft ? 'draft-1' : null,
   }))
-  const decisions: DecisionRow[] = spec.recs.flatMap(([ref, , action, reason], i) =>
-    action ? [{
-      key: lane === 'ivan' ? `${lane}-rec-${i}` : ref,
-      action, reason, decided_at: '2026-09-09T08:30:00Z',
+  const decisions: DecisionRow[] = spec.recs.flatMap((r, i) =>
+    r.action ? [{
+      key: lane === 'ivan' ? `${lane}-rec-${i}` : r.ref,
+      action: r.action, reason: r.reason, decided_at: '2026-09-09T08:30:00Z',
     }] : [])
   // `audn_recommendation_links_v` as migration 08 would answer it once applied,
   // so the preview shows the WHOLE ladder rather than the two states the idea
-  // store can prove on its own:
-  //   rec 0  a published post resolves        -> published
-  //   rec 1  a draft row, nothing published    -> drafted
-  //   rec 2+ no view row at all                -> whatever the store derives
-  // The last one is the case that must NOT read as a failure: a recommendation
-  // can legitimately have no link row yet.
-  const links: RecommendationLinkRow[] = spec.recs.slice(0, 2).map(([ref], i) => ({
-    client_id: lane,
-    recommendation_id: ref.replace('audn-rec:', ''),
-    recommendation_ref: ref,
-    idea_id: `${lane}-rec-${i}`,
-    draft_id: i === 0 ? 'draft-1' : 'draft-2',
-    published_post_social_id: i === 0 ? `urn:li:activity:74900000000000000${i}1` : null,
-    link_state: i === 0 ? 'published' : 'drafted',
-  }))
+  // store can prove on its own. A rec that declares no `link` gets NO ROW here,
+  // which is the case that must not read as a failure: a recommendation can
+  // legitimately have no link row yet, and the derivation off its own idea row
+  // is what runs for it.
+  const links: RecommendationLinkRow[] = spec.recs.flatMap((r, i) =>
+    r.link ? [{
+      client_id: lane,
+      recommendation_id: r.ref.replace('audn-rec:', ''),
+      recommendation_ref: r.ref,
+      idea_id: `${lane}-rec-${i}`,
+      draft_id: r.link.draft_id ?? null,
+      published_post_social_id: r.link.published ?? null,
+      link_state: r.link.state,
+    }] : [])
   return {
     lane,
     topics: { ok: true, rows: topics },

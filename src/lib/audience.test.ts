@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 import type {
   AudienceSources, PersonActivityRow, PersonLabelRow, RecommendationRow,
   RecommendationLinkRow, DecisionRow, Soft,
@@ -39,6 +41,15 @@ const {
   fetchRecommendationLinks, fetchAudienceSummary, KNOWN_NONEMPTY, knownFloorFor,
 } = await import('./audience')
 const { fixtureSummary } = await import('./audience.fixtures')
+
+// The block itself, so the phrases below are asserted against the SHIPPED
+// markup instead of a copy of it. `Recommendations` takes a summary and uses no
+// hook, so `renderToStaticMarkup` is enough and no DOM is needed.
+const { Recommendations } = await import('../wb/content/AudienceBlock')
+const html = (s: Parameters<typeof Recommendations>[0]['s']) =>
+  renderToStaticMarkup(createElement(Recommendations, { s }))
+const text = (s: Parameters<typeof Recommendations>[0]['s']) =>
+  html(s).replace(/<[^>]*>/g, '')
 
 beforeEach(() => {
   queries = []
@@ -360,16 +371,19 @@ describe('recommendations and their decisions (D3: no new table)', () => {
     expect(s.recommendations[0].reason).toBe('top of the queue')
   })
 
-  it('reads a candidate still in review with no decision row as deferred (Ivan lane only)', () => {
-    // D3: on Ivan's lane a defer writes nothing; the candidate is simply left
-    // at status='reviewing'. On a client lane the same absence is undecided,
-    // because a defer there DOES write an audn_defer row.
+  it('carries a still-in-review candidate as a STATUS, never as a decision', () => {
+    // Run 04 A2, and the reason the old assertion here is gone: D3 says a defer
+    // on Ivan's lane writes nothing, so this block used to read `reviewing` AS
+    // 'deferred'. Seat D looked at the screen and found a `deferred` badge on a
+    // row nobody had decided. A status is what the store holds; a decision is
+    // something a person did. The status travels as itself.
     const ivan = summarize(sources({
       lane: 'ivan',
       activity: ok([person('a')]), labels: ok([labelled('a', 'positive')]),
       recommendations: ok([rec({ status: 'reviewing' })]), decisions: ok([]),
     }))
-    expect(ivan.recommendations[0].decision).toBe('deferred')
+    expect(ivan.recommendations[0].decision).toBeNull()
+    expect(ivan.recommendations[0].undecided_status).toBe('reviewing')
 
     const client = summarize(sources({
       lane: 'risedtc',
@@ -377,6 +391,18 @@ describe('recommendations and their decisions (D3: no new table)', () => {
       recommendations: ok([rec({ status: 'staged' })]), decisions: ok([]),
     }))
     expect(client.recommendations[0].decision).toBeNull()
+    expect(client.recommendations[0].undecided_status).toBe('staged')
+  })
+
+  it('drops the status once a real decision is on record', () => {
+    const s = summarize(sources({
+      lane: 'risedtc',
+      activity: ok([person('a')]), labels: ok([labelled('a', 'positive')]),
+      recommendations: ok([rec({ status: 'reviewing' })]), decisions: ok([decision()]),
+    }))
+    expect(s.recommendations[0]).toMatchObject({
+      decision: 'accepted', undecided_status: null, decided_at: '2026-09-09T08:00:00Z',
+    })
   })
 
   it('never claims a recommendation was published when the link view was not read', () => {
@@ -663,5 +689,98 @@ describe('the dev fixture renders the census, not an invention', () => {
   it('keeps ARCH without matched-age ranks, because ARCH has none', () => {
     expect(fixtureSummary('arch').ranks).toEqual([])
     expect(fixtureSummary('risedtc').ranks.length).toBeGreaterThan(0)
+  })
+})
+
+describe('the row, as it actually renders (Run 04 A2 — after the visual review)', () => {
+  /* Seat D photographed the block at 375px and reported three things this
+     describe now holds in place: the ladder state was the LAST thing in a grey
+     run-on and broke across two lines; the badge repeated the decision word the
+     meta already opened with; and a `deferred` badge appeared on a row nobody
+     had decided. Two of the five link phrases had also never reached a screen
+     at all. Every assertion below is against the shipped component's markup. */
+
+  const summaryWith = (o: Partial<AudienceSources> = {}) => summarize(sources({
+    lane: 'risedtc',
+    activity: ok([person('a')]), labels: ok([labelled('a', 'positive')]),
+    recommendations: ok([rec()]), decisions: ok([]),
+    ...o,
+  }))
+
+  it('says the ladder state BEFORE the reason', () => {
+    const t = text(summaryWith({
+      decisions: ok([decision({ reason: 'two positive engagers' })]),
+      links: ok([link({ link_state: 'published', published_post_social_id: 'urn:li:activity:1' })]),
+    }))
+    expect(t).toContain('reached a published post')
+    expect(t).toContain('two positive engagers')
+    expect(t.indexOf('reached a published post')).toBeLessThan(t.indexOf('two positive engagers'))
+  })
+
+  it('says the decision word once, with its timestamp, and badges the ladder instead', () => {
+    const t = text(summaryWith({
+      decisions: ok([decision({ action: 'audn_accept', reason: 'two positive engagers' })]),
+      links: ok([link({ link_state: 'published', published_post_social_id: 'urn:li:activity:1' })]),
+    }))
+    expect(t.match(/accepted/g)?.length).toBe(1)
+    expect(t).toMatch(/accepted \S+ ago/)
+    // The tail badge carries the ladder, not the decision.
+    const badge = html(summaryWith({
+      decisions: ok([decision({ action: 'audn_accept' })]),
+      links: ok([link({ link_state: 'published', published_post_social_id: 'urn:li:activity:1' })]),
+    })).match(/data-ds="Badge"[^>]*>([^<]*)</)
+    expect(badge?.[1]).toBe('published')
+  })
+
+  it('does NOT render a reviewing candidate as deferred', () => {
+    // The whole point: the word `deferred` must not appear anywhere in the
+    // markup for a row that has no decision row behind it.
+    const t = text(summarize(sources({
+      lane: 'ivan',
+      activity: ok([person('a')]), labels: ok([labelled('a', 'positive')]),
+      recommendations: ok([rec({ status: 'reviewing' })]), decisions: ok([]),
+    })))
+    expect(t).toContain('no decision · reviewing')
+    expect(t).not.toContain('deferred')
+  })
+
+  it('renders `recommended, no idea row` — a phrase that had never reached a screen', () => {
+    const t = text(summaryWith({
+      recommendations: ok([rec({ status: null })]),
+      links: ok([link({ link_state: 'recommended' })]),
+    }))
+    expect(t).toContain('recommended, no idea row')
+  })
+
+  it('renders `link unknown` — the other phrase that had never reached a screen', () => {
+    const t = text(summaryWith({
+      recommendations: ok([rec({ status: null })]),
+      links: ok([]),
+    }))
+    expect(t).toContain('link unknown')
+  })
+
+  it('reaches both of those phrases through the DEV fixture, on a real lane', () => {
+    // Seat D could not photograph either one: the fixture topped out at
+    // `drafted` and every recommendation carried a status. ARCH now carries
+    // both, so the preview can be LOOKED at rather than reasoned about.
+    const arch = fixtureSummary('arch')
+    expect(arch.recommendations.map(r => r.link_state))
+      .toEqual(['published', 'recommended', 'unknown'])
+    const t = text(arch)
+    expect(t).toContain('recommended, no idea row')
+    expect(t).toContain('link unknown')
+  })
+
+  it('keeps Ivan’s undecided fixture row off the decision vocabulary', () => {
+    const t = text(fixtureSummary('ivan'))
+    expect(t).toContain('no decision · reviewing')
+    expect(t).not.toContain('deferred')
+  })
+
+  it('opens the note with a plain statement, with no "X, not Y" contrast', () => {
+    const t = text(fixtureSummary('ivan'))
+    expect(t).toContain('Decisions are made in the idea flow.')
+    expect(t).not.toContain('not here')
   })
 })
