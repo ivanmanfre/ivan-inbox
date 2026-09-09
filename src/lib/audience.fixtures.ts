@@ -18,7 +18,8 @@ import {
   summarize,
   type AudienceSources, type AudienceSummary, type MatchedAgeRankRow,
   type MonthlyMedianRow, type PersonActivityRow, type PersonLabelRow,
-  type RecommendationRow, type DecisionRow, type TopicPeopleRow, type PersonLabel,
+  type RecommendationRow, type RecommendationLinkRow, type DecisionRow,
+  type TopicPeopleRow, type PersonLabel,
 } from './audience'
 
 type LaneSpec = {
@@ -143,6 +144,23 @@ export function fixtureSources(lane: ContentLane): AudienceSources {
       key: lane === 'ivan' ? `${lane}-rec-${i}` : ref,
       action, reason, decided_at: '2026-09-09T08:30:00Z',
     }] : [])
+  // `audn_recommendation_links_v` as migration 08 would answer it once applied,
+  // so the preview shows the WHOLE ladder rather than the two states the idea
+  // store can prove on its own:
+  //   rec 0  a published post resolves        -> published
+  //   rec 1  a draft row, nothing published    -> drafted
+  //   rec 2+ no view row at all                -> whatever the store derives
+  // The last one is the case that must NOT read as a failure: a recommendation
+  // can legitimately have no link row yet.
+  const links: RecommendationLinkRow[] = spec.recs.slice(0, 2).map(([ref], i) => ({
+    client_id: lane,
+    recommendation_id: ref.replace('audn-rec:', ''),
+    recommendation_ref: ref,
+    idea_id: `${lane}-rec-${i}`,
+    draft_id: i === 0 ? 'draft-1' : 'draft-2',
+    published_post_social_id: i === 0 ? `urn:li:activity:74900000000000000${i}1` : null,
+    link_state: i === 0 ? 'published' : 'drafted',
+  }))
   return {
     lane,
     topics: { ok: true, rows: topics },
@@ -152,6 +170,7 @@ export function fixtureSources(lane: ContentLane): AudienceSources {
     monthly: { ok: true, rows: monthly },
     recommendations: { ok: true, rows: recommendations },
     decisions: { ok: true, rows: decisions },
+    links: { ok: true, rows: links },
   }
 }
 

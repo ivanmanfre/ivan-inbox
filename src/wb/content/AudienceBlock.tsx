@@ -35,6 +35,22 @@ const DECISION_WORD: Record<string, string> = {
   accepted: 'accepted', rejected: 'rejected', deferred: 'deferred',
 }
 
+// How far the recommendation got, in words. Migration 08's ladder, said plainly
+// — each phrase names the EVIDENCE, so none of them can be read as a promise
+// about what happens next:
+//   published    a published post resolved at the end of the chain
+//   drafted      a draft row exists and no published post resolved
+//   idea         the idea row exists and no draft does
+//   recommended  a decision is on record for a ref with no idea row behind it
+//   unknown      the chain could not be evaluated — SAID, never smoothed over
+const LINK_WORD: Record<string, string> = {
+  published: 'reached a published post',
+  drafted: 'a draft exists',
+  idea: 'idea only',
+  recommended: 'recommended, no idea row',
+  unknown: 'link unknown',
+}
+
 // The decision log is a record, not a live signal, so every badge here is the
 // neutral ring: a severity tone on this surface would claim something is
 // happening now (ds/Badge: "severity tones are live signals only").
@@ -147,18 +163,30 @@ function Recommendations({ s }: { s: AudienceSummary }) {
                 ? <>{DECISION_WORD[r.decision]}{r.decided_at ? ` ${relAge(r.decided_at)}` : ''}</>
                 : 'no decision recorded'}
               {r.reason ? <> · {r.reason}</> : null}
-              {' · '}{r.link_state === 'drafted' ? 'a draft exists' : r.link_state === 'idea' ? 'idea only' : 'link unknown'}
+              {' · '}{LINK_WORD[r.link_state] ?? 'link unknown'}
             </span>
           }
           tail={<DecisionBadge r={r} />}
         />
       ))}
-      {/* Deliberately NOT a `published` state. Proving a recommendation reached
-          a published post needs audn_recommendation_links_v, which is not
-          deployed; reading it off an idea's status would be a claim we made up. */}
+      {/* The note says which of the two readings produced the states above, and
+          it changes when the reading does. A fixed sentence here would go on
+          claiming the link view is unavailable long after it was applied — or,
+          worse, imply publication is tracked on a screen that could not read
+          the view. `linkSource` is the summary's own record of what happened. */}
       <div className="a-ct-sub">
-        Decisions are made in the idea flow, not here. "A draft exists" is as far as
-        this can follow a recommendation until the link view ships.
+        {s.linkSource === 'view'
+          ? <>
+              Decisions are made in the idea flow, not here. How far each one got is
+              read from the recommendation link view: idea → draft → published post,
+              for a client lane and for Ivan's alike. A line with no row in that view
+              yet shows only what its own idea store proves.
+            </>
+          : <>
+              Decisions are made in the idea flow, not here. The recommendation link
+              view was not read, so "a draft exists" is as far as this can follow a
+              recommendation — nothing on this screen can see whether a post went live.
+            </>}
       </div>
     </>
   )

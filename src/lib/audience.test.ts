@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type {
-  AudienceSources, PersonActivityRow, PersonLabelRow, RecommendationRow, DecisionRow, Soft,
+  AudienceSources, PersonActivityRow, PersonLabelRow, RecommendationRow,
+  RecommendationLinkRow, DecisionRow, Soft,
 } from './audience'
 import type { ContentLane } from './content'
 
@@ -35,7 +36,7 @@ vi.mock('./supabase', () => ({ supabase: { from: (t: string) => builder(t) } }))
 
 const {
   summarize, fetchRecommendations, fetchDecisions, fetchPersonLabels,
-  fetchAudienceSummary, KNOWN_NONEMPTY, knownFloorFor,
+  fetchRecommendationLinks, fetchAudienceSummary, KNOWN_NONEMPTY, knownFloorFor,
 } = await import('./audience')
 const { fixtureSummary } = await import('./audience.fixtures')
 
@@ -77,6 +78,21 @@ const rec = (o: Partial<RecommendationRow> = {}): RecommendationRow => ({
 const decision = (o: Partial<DecisionRow> = {}): DecisionRow => ({
   key: 'audn-rec:1111', action: 'audn_accept', reason: 'two positive engagers',
   decided_at: '2026-09-09T08:00:00Z', ...o,
+})
+
+// One row of audn_recommendation_links_v, keyed the way migration 08 keys it:
+// `recommendation_ref` is the prefixed source_ref, `idea_id` the idea row's own
+// primary key. Defaults to the weakest honest row — the idea exists and nothing
+// downstream of it does.
+const link = (o: Partial<RecommendationLinkRow> = {}): RecommendationLinkRow => ({
+  client_id: 'risedtc',
+  recommendation_id: '1111',
+  recommendation_ref: 'audn-rec:1111',
+  idea_id: 'c1',
+  draft_id: null,
+  published_post_social_id: null,
+  link_state: 'idea',
+  ...o,
 })
 
 // ---------------------------------------------------------------------------
@@ -363,15 +379,16 @@ describe('recommendations and their decisions (D3: no new table)', () => {
     expect(client.recommendations[0].decision).toBeNull()
   })
 
-  it('never claims a recommendation was published', () => {
-    // `published` needs audn_recommendation_links_v, which is not deployed.
-    // The furthest this block may go is "a draft exists".
+  it('never claims a recommendation was published when the link view was not read', () => {
+    // Without audn_recommendation_links_v the furthest this block may go is
+    // "a draft exists". A status string does not prove a post went live.
     const s = summarize(sources({
       lane: 'ivan',
       activity: ok([person('a')]), labels: ok([labelled('a', 'positive')]),
       recommendations: ok([rec({ promoted_draft_id: 'd-1' })]), decisions: ok([]),
     }))
     expect(s.recommendations[0].link_state).toBe('drafted')
+    expect(s.linkSource).toBe('derived')
     expect(JSON.stringify(s.recommendations)).not.toContain('published')
   })
 
@@ -386,6 +403,143 @@ describe('recommendations and their decisions (D3: no new table)', () => {
       ]),
     }))
     expect(s.recommendations[0]).toMatchObject({ decision: 'accepted', reason: 'go' })
+  })
+})
+
+describe('the link view carries the rest of the ladder (migration 08)', () => {
+  /* Run 04 F-A. Before this, `LinkState` was idea | drafted | unknown and
+     nothing ever queried audn_recommendation_links_v — so "published" could not
+     be shown no matter how many migrations were applied. These cases fix the
+     four states, the absent-row fallback, and the tenancy filter. */
+  const withLinks = (
+    links: RecommendationLinkRow[] | null,
+    o: Partial<AudienceSources> = {},
+  ) => summarize(sources({
+    lane: 'risedtc',
+    activity: ok([person('a')]), labels: ok([labelled('a', 'positive')]),
+    recommendations: ok([rec()]), decisions: ok([]),
+    ...(links === null ? {} : { links: ok(links) }),
+    ...o,
+  }))
+
+  it('reads `published` off a resolved post id', () => {
+    const s = withLinks([link({
+      link_state: 'published',
+      draft_id: 'd-1',
+      published_post_social_id: 'urn:li:activity:7490000000000000021',
+    })])
+    expect(s.recommendations[0].link_state).toBe('published')
+    expect(s.linkSource).toBe('view')
+  })
+
+  it('reads `drafted` when a draft resolved and no post did', () => {
+    expect(withLinks([link({ link_state: 'drafted', draft_id: 'd-1' })])
+      .recommendations[0].link_state).toBe('drafted')
+  })
+
+  it('reads `idea` when only the idea row resolved', () => {
+    expect(withLinks([link()]).recommendations[0].link_state).toBe('idea')
+  })
+
+  it('reads `recommended` for a ref the idea store cannot place', () => {
+    // 08's orphan branch: a decision on record for a ref with no idea row. It
+    // reaches a line here only when the local derivation has nothing either —
+    // an idea row with no status at all — because precedence never downgrades.
+    const s = withLinks(
+      [link({ link_state: 'recommended', idea_id: null })],
+      { recommendations: ok([rec({ status: null })]) },
+    )
+    expect(s.recommendations[0].link_state).toBe('recommended')
+  })
+
+  it('falls back to the idea store for a recommendation with no view row', () => {
+    // CONTRACTS §2.3. And an EMPTY view result is not a load failure: a
+    // recommendation can legitimately have no link row yet, so nothing is
+    // named in `partial` and nothing is flagged.
+    const s = withLinks([], { recommendations: ok([rec({ promoted_draft_id: 'd-9' })]) })
+    expect(s.recommendations[0].link_state).toBe('drafted')
+    expect(s.linkSource).toBe('view')
+    expect(s.partial).toEqual([])
+    expect(s.recommendationsBlocked).toBe(false)
+  })
+
+  it('never lets a view row downgrade a state the idea store already proved', () => {
+    // The view says `idea`; the store holds a draft pointer. Reconciled
+    // upwards, because a partial chain reading low is the failure mode 08's
+    // own header warns about.
+    const s = withLinks(
+      [link({ link_state: 'idea' })],
+      { recommendations: ok([rec({ promoted_draft_id: 'd-1' })]) },
+    )
+    expect(s.recommendations[0].link_state).toBe('drafted')
+  })
+
+  it('ignores another client’s rows even when they are handed to it', () => {
+    // The fetcher scopes by client_id, so a foreign row should never arrive.
+    // "Should never arrive" is not a filter: on a LINK view, one client's row
+    // under another client's heading is a tenancy leak, not a cosmetic bug.
+    const foreign = withLinks([
+      link({
+        client_id: 'arch',
+        link_state: 'published',
+        published_post_social_id: 'urn:li:activity:7490000000000000099',
+      }),
+    ])
+    expect(foreign.recommendations[0].link_state).toBe('idea')
+
+    // Same payload with the lane's OWN row present: the foreign row still
+    // changes nothing, and the lane's row is honoured.
+    const both = withLinks([
+      link({
+        client_id: 'arch',
+        link_state: 'published',
+        published_post_social_id: 'urn:li:activity:7490000000000000099',
+      }),
+      link({ client_id: 'risedtc', link_state: 'drafted', draft_id: 'd-1' }),
+    ])
+    expect(both.recommendations[0].link_state).toBe('drafted')
+  })
+
+  it('names a FAILED link read in partial, and drops back to the derivation', () => {
+    // Until migration 08 is applied this is what production answers. It must
+    // not take the block to `unavailable` — the people counts do not need it.
+    const s = withLinks(null, {
+      links: bad('recommendation links: relation "public.audn_recommendation_links_v" does not exist'),
+      recommendations: ok([rec({ promoted_draft_id: 'd-1' })]),
+    })
+    expect(s.state).toBe('normal')
+    expect(s.linkSource).toBe('derived')
+    expect(s.recommendations[0].link_state).toBe('drafted')
+    expect(s.partial.some(p => p.includes('audn_recommendation_links_v'))).toBe(true)
+  })
+
+  it('matches on the idea id when the recommendation carries no ref', () => {
+    const s = withLinks(
+      [link({ recommendation_ref: null, idea_id: 'c1', link_state: 'published', published_post_social_id: 'urn:li:activity:1' })],
+      { recommendations: ok([rec({ source_ref: null })]) },
+    )
+    expect(s.recommendations[0].link_state).toBe('published')
+  })
+
+  it('reads the view client-scoped, on BOTH lanes', async () => {
+    await fetchRecommendationLinks('arch')
+    expect(queries).toHaveLength(1)
+    expect(queries[0].table).toBe('audn_recommendation_links_v')
+    expect(queries[0].ops).toContainEqual(['eq', 'client_id', 'arch'])
+
+    queries = []
+    // Ivan's own store (lm_idea_candidates) has no client_id column, but the
+    // VIEW gives that branch the literal 'ivan' — so the same filter applies
+    // here, and it is the only thing keeping the lanes apart in one relation.
+    await fetchRecommendationLinks('ivan')
+    expect(queries[0].table).toBe('audn_recommendation_links_v')
+    expect(queries[0].ops).toContainEqual(['eq', 'client_id', 'ivan'])
+  })
+
+  it('is read by fetchAudienceSummary — the whole point of Run 04 F-A', async () => {
+    result = { data: [], error: null, count: 0 }
+    await fetchAudienceSummary('risedtc')
+    expect(queries.some(q => q.table === 'audn_recommendation_links_v')).toBe(true)
   })
 })
 
@@ -492,6 +646,17 @@ describe('the dev fixture renders the census, not an invention', () => {
   it('lands on `normal` so the layout under the fixture flag is the real one', () => {
     for (const lane of ['ivan', 'risedtc', 'arch'] as const) {
       expect(fixtureSummary(lane).state).toBe('normal')
+    }
+  })
+
+  it('shows the whole link ladder, so the preview is the post-08 layout', () => {
+    // The dev preview is the only place the `normal` layout can be LOOKED at,
+    // and a preview that tops out at "a draft exists" would hide the states
+    // Run 04 added. Ivan's lane included: the view covers lm_idea_candidates.
+    for (const lane of ['ivan', 'risedtc'] as const) {
+      const s = fixtureSummary(lane)
+      expect(s.linkSource).toBe('view')
+      expect(s.recommendations.map(r => r.link_state)).toEqual(['published', 'drafted', 'idea'].slice(0, s.recommendations.length))
     }
   })
 

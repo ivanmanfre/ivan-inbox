@@ -5,11 +5,14 @@ import type { ContentLane } from './content'
    AUDIENCE — the read-only layer behind the Strategy tab's audience block
    (goal-run audience-learning-03, worklist W16).
 
-   Every object read here is a `public.audn_*` view from Run 02. Those views
-   live on the personal-site worktree branch `audn-run02/03` and are NOT
-   deployed: production answers a select on them with "relation does not
-   exist". That is not a bug to hide — it is the `unavailable` state, and it
-   is what this surface renders until Run 04 applies the migrations.
+   Every `audn_*` object read here is a view from Run 02, plus
+   `audn_recommendation_links_v` from Run 03's migration 08. They live on the
+   personal-site worktree branch `audn-run02/03` and are NOT deployed:
+   production answers a select on them with "relation does not exist". That is
+   not a bug to hide — it is the `unavailable` state, and it is what this
+   surface renders until Run 04 applies the migrations. (The link view is the
+   one exception to `unavailable`: it is auxiliary, so losing it costs the top
+   of the recommendation ladder and nothing else — see `fetchRecommendationLinks`.)
 
    Three rules from the data contract (R2/INTERFACES.md) are enforced here
    rather than left to the component:
@@ -155,6 +158,30 @@ export type DecisionRow = {
   decided_at: string | null
 }
 
+/** One row of `audn_recommendation_links_v` (migration 08): the recommendation,
+    the idea row it IS, the draft it became, and the published post it reached.
+
+    The seven columns below are the ones this surface reads, taken from the
+    view's own select list (`20260911_audn_08_recommendation_links.sql`, the
+    `create or replace view` at the foot of the file). The view also carries
+    `idea_table`, `idea_status`, `decision`, `decision_reason`, `decided_at` and
+    `decision_source`; the decision half is deliberately NOT read here, because
+    this block already reads the decision log directly out of
+    `client_board_actions` / `lm_idea_review_decisions` and two sources for one
+    fact is two chances to disagree. */
+export type RecommendationLinkRow = {
+  client_id: string
+  /** The BARE uuid. */
+  recommendation_id: string | null
+  /** `audn-rec:<uuid>` — matches `RecommendationRow.source_ref`. */
+  recommendation_ref: string | null
+  /** The idea row's own primary key — matches `RecommendationRow.id`. */
+  idea_id: string | null
+  draft_id: string | null
+  published_post_social_id: string | null
+  link_state: string | null
+}
+
 // ---------------------------------------------------------------------------
 // Soft failure. One missing relation must not take the whole block down (the
 // same posture `fetchFilterSpec` takes on the same screen), but it must also
@@ -232,12 +259,42 @@ export type MonthlyLine = {
 
 export type DecisionState = 'accepted' | 'rejected' | 'deferred' | null
 
-/** What can be PROVEN about a recommendation from the idea store alone.
-    `published` is deliberately absent: proving a recommendation reached a
-    published post needs `audn_recommendation_links_v` (Run 03 adapters seat,
-    not deployed), and inventing it from a status string would be a claim we
-    made up. */
-export type LinkState = 'idea' | 'drafted' | 'unknown'
+/** How far a recommendation got. The ladder is migration 08's, in its order:
+
+      recommended  a decision is on record for a ref with NO idea row (an
+                   orphan — the idea was deleted, or the answer arrived first)
+      idea         the idea row exists, no draft
+      drafted      a draft row exists, no published post resolves
+      published    a published post resolves at the end of the chain
+      unknown      the chain could not be evaluated
+
+    `published` and `recommended` can only come from `audn_recommendation_links_v`
+    (migration 08). Read from the idea store alone this block still tops out at
+    `drafted`, because a status string does not prove a post went live and
+    inventing one would be a claim we made up. Where the view is unreadable the
+    old two-state derivation is what runs, and `AudienceSummary.linkSource` says
+    which of the two produced the states on screen. */
+export type LinkState = 'recommended' | 'idea' | 'drafted' | 'published' | 'unknown'
+
+/** Ascending strength. Precedence is `published > drafted > idea > recommended`
+    (CONTRACTS §2.3), and `unknown` is the floor: it is the absence of a
+    judgement, so anything at all outranks it. Used to reconcile a view row with
+    the local derivation, and to reconcile two view rows that name the same
+    recommendation — always UPWARDS, so a partial read can never quietly
+    downgrade a state something else already proved. */
+const LINK_RANK: Record<LinkState, number> = {
+  unknown: 0, recommended: 1, idea: 2, drafted: 3, published: 4,
+}
+
+function asLinkState(v: unknown): LinkState {
+  return v === 'recommended' || v === 'idea' || v === 'drafted' || v === 'published'
+    ? v
+    : 'unknown'
+}
+
+function strongestLink(a: LinkState, b: LinkState): LinkState {
+  return LINK_RANK[a] >= LINK_RANK[b] ? a : b
+}
 
 export type RecLine = {
   id: string
@@ -282,6 +339,16 @@ export type AudienceSummary = {
   ranks: RankLine[]
   monthly: MonthlyLine[]
   recommendations: RecLine[]
+  /** Where the `link_state` on each line came from.
+
+      `view`    `audn_recommendation_links_v` was read, so `published` and
+                `recommended` are reachable states. A read that succeeded and
+                returned NO rows still counts as `view`: see the note on
+                `AudienceSources.links`.
+      `derived` the view was not read (absent or failed), so every line falls
+                back to the idea store's own two states and the surface must
+                not imply it can see publication. */
+  linkSource: 'view' | 'derived'
   /** The recommendation read came back empty over a store that is not empty —
       i.e. it was not read at all. Rendered as a failure, never as "none yet". */
   recommendationsBlocked: boolean
@@ -306,6 +373,27 @@ export type AudienceSources = {
   monthly: Soft<MonthlyMedianRow>
   recommendations: Soft<RecommendationRow>
   decisions: Soft<DecisionRow>
+  /** `audn_recommendation_links_v`, client-scoped. THREE DIFFERENT THINGS, and
+      the block must not confuse them:
+
+        absent (undefined)  nobody asked. The old derivation runs and the
+                            surface says only what the idea store proves.
+        `{ok:false}`        the read FAILED — the view is not deployed, or RLS
+                            refused it. Named in `partial` like every other
+                            auxiliary source, and the derivation runs.
+        `{ok:true, rows:[]}` the view WAS read and this lane has no link row.
+                            THIS IS NOT A FAILURE. Migration 08 emits a row per
+                            recommendation that reached an idea store; a
+                            recommendation written moments ago, or one whose
+                            chain 08 cannot evaluate, legitimately has no row.
+                            Each such recommendation falls back to its own
+                            derivation and nothing is flagged.
+
+      That last case is why this source is NOT wired into the
+      "empty over a known-non-empty set" check the way `storeCount` is: there
+      is no floor to check it against. `recommendations` (the idea store) is
+      the read that must never come back silently empty, and it still is. */
+  links?: Soft<RecommendationLinkRow>
   /** Exact row count of the lane's whole idea store, unfiltered. `null` when
       it was not asked for. Zero is the RLS-empty signal described at
       STORE_NONEMPTY. */
@@ -331,6 +419,7 @@ export function summarize(src: AudienceSources): AudienceSummary {
     ranks: [],
     monthly: [],
     recommendations: [],
+    linkSource: 'derived',
     recommendationsBlocked: false,
     partial: [],
   }
@@ -423,11 +512,19 @@ export function summarize(src: AudienceSources): AudienceSummary {
   }
 
   if (!src.decisions.ok) base.partial.push(src.decisions.error)
+
+  // The link view. A FAILED read is named (it is why the ladder tops out at
+  // "a draft exists"); an EMPTY one is not, because a recommendation with no
+  // link row yet is an ordinary state, not a lost read.
+  if (src.links && !src.links.ok) base.partial.push(src.links.error)
+  base.linkSource = src.links?.ok ? 'view' : 'derived'
+
   if (src.recommendations.ok) {
     base.recommendations = joinDecisions(
       src.lane,
       src.recommendations.rows,
       src.decisions.ok ? src.decisions.rows : [],
+      src.links?.ok ? src.links.rows : [],
     )
     const storeFloor = src.storeFloor ?? storeFloorFor(src.lane)
     if (base.recommendations.length === 0 && src.storeCount === 0 && storeFloor > 0) {
@@ -479,6 +576,7 @@ function joinDecisions(
   lane: ContentLane,
   recs: RecommendationRow[],
   decisions: DecisionRow[],
+  links: RecommendationLinkRow[],
 ): RecLine[] {
   const byKey = new Map<string, DecisionRow>()
   for (const d of decisions) {
@@ -486,6 +584,38 @@ function joinDecisions(
     const prev = byKey.get(d.key)
     if (!prev || (d.decided_at ?? '') >= (prev.decided_at ?? '')) byKey.set(d.key, d)
   }
+
+  // ---- the link view, keyed both ways ------------------------------------
+  // A row is reachable by its prefixed ref (`audn-rec:<uuid>`, which is what a
+  // client_ideas / lm_idea_candidates row carries as source_ref) and by the
+  // idea's own primary key, because a recommendation that lost its source_ref
+  // still has an id. Both maps hold the STRONGEST state seen for a key.
+  //
+  // AND EVERY ROW IS RE-CHECKED AGAINST THE LANE. The fetcher already sends
+  // `.eq('client_id', lane)`, so a foreign row should never arrive — but "should
+  // never arrive" is not a filter, and a link view is exactly the object where
+  // one client's row landing under another client's heading would be a tenancy
+  // leak rather than a cosmetic bug. Two locks, one door.
+  const linkByRef = new Map<string, LinkState>()
+  const linkByIdea = new Map<string, LinkState>()
+  for (const row of links) {
+    if (row.client_id !== lane) continue
+    // Field evidence first: an id in `published_post_social_id` or `draft_id`
+    // is the thing itself, and `link_state` is 08's summary of it. Reconciled
+    // upwards so neither can pull the other down.
+    const fromFields: LinkState = row.published_post_social_id
+      ? 'published'
+      : row.draft_id ? 'drafted' : 'unknown'
+    const state = strongestLink(fromFields, asLinkState(row.link_state))
+    for (const [map, key] of [
+      [linkByRef, row.recommendation_ref],
+      [linkByIdea, row.idea_id],
+    ] as const) {
+      if (!key) continue
+      map.set(key, strongestLink(map.get(key) ?? 'unknown', state))
+    }
+  }
+
   return recs.map(r => {
     const d = byKey.get(lane === 'ivan' ? r.id : r.source_ref ?? r.id) ?? null
     let decision: DecisionState = null
@@ -499,6 +629,14 @@ function joinDecisions(
       // recorded here so the log does not read as undecided forever.
       decision = 'deferred'
     }
+
+    // What the idea store alone proves. This is the whole of the old
+    // derivation, and it is still what runs when the view has no row for this
+    // recommendation — CONTRACTS §2.3, "no view row → existing derivation".
+    const derived: LinkState = r.promoted_draft_id ? 'drafted' : r.status ? 'idea' : 'unknown'
+    const fromView = (r.source_ref ? linkByRef.get(r.source_ref) : undefined)
+      ?? linkByIdea.get(r.id)
+
     return {
       id: r.id,
       recommendation_ref: r.source_ref,
@@ -508,7 +646,7 @@ function joinDecisions(
       decision,
       reason: d?.reason ?? null,
       decided_at: d?.decided_at ?? null,
-      link_state: r.promoted_draft_id ? 'drafted' : r.status ? 'idea' : 'unknown',
+      link_state: fromView === undefined ? derived : strongestLink(derived, fromView),
     }
   })
 }
@@ -619,6 +757,32 @@ export async function fetchRecommendations(lane: ContentLane): Promise<Soft<Reco
   }
 }
 
+/** `audn_recommendation_links_v` — recommendation → idea → draft → published
+    post, one row per recommendation per client (migration 08).
+
+    CLIENT-SCOPED BY THE LANE THAT WAS PASSED IN, exactly like every other
+    `audn_*` read on this surface: the view carries a `client_id` for BOTH
+    stores — `client_ideas.client_id` for a client lane and the literal `'ivan'`
+    for the `lm_idea_candidates` branch — so one filter covers both and nothing
+    here has to know which store it is looking at.
+
+    Soft. This is an AUXILIARY source, not a core one: until migration 08 is
+    applied, production answers this select with 42P01 and the block still
+    renders every recommendation it can read from the idea store, with the
+    ladder topping out at `drafted` and the failure named in `partial`. It must
+    never take the block to `unavailable` — the people counts do not depend on
+    it. */
+export function fetchRecommendationLinks(lane: ContentLane): Promise<Soft<RecommendationLinkRow>> {
+  return soft('recommendation links', () =>
+    supabase.from('audn_recommendation_links_v')
+      .select(
+        'client_id, recommendation_id, recommendation_ref, idea_id, draft_id, ' +
+        'published_post_social_id, link_state',
+      )
+      .eq('client_id', lane)
+      .limit(200))
+}
+
 /** The lane's whole idea store, counted without the audn filter. The only
     thing that can tell an empty recommendation set apart from an unread table
     (see STORE_NONEMPTY). Never throws; `null` means the count itself failed. */
@@ -683,13 +847,17 @@ export async function fetchDecisions(
     only sequential step, because Ivan's decisions key off the candidate ids
     the recommendation read returns. */
 export async function fetchAudienceSummary(lane: ContentLane): Promise<AudienceSummary> {
-  const [topics, labels, activity, ranks, monthly, storeCount, pair] = await Promise.all([
+  const [topics, labels, activity, ranks, monthly, storeCount, links, pair] = await Promise.all([
     fetchTopicPeople(lane),
     fetchPersonLabels(lane),
     fetchPersonActivity(lane),
     fetchMatchedAgeRanks(lane),
     fetchMonthlyMedian(lane),
     fetchIdeaStoreCount(lane),
+    // Parallel with the recommendations rather than after them: the join is
+    // done here, on keys the view already carries, so it needs no ids from the
+    // idea read the way `fetchDecisions` does.
+    fetchRecommendationLinks(lane),
     (async () => {
       const recommendations = await fetchRecommendations(lane)
       const decisions = await fetchDecisions(lane, recommendations.ok ? recommendations.rows : [])
@@ -697,7 +865,7 @@ export async function fetchAudienceSummary(lane: ContentLane): Promise<AudienceS
     })(),
   ])
   return summarize({
-    lane, topics, labels, activity, ranks, monthly, storeCount,
+    lane, topics, labels, activity, ranks, monthly, storeCount, links,
     recommendations: pair.recommendations,
     decisions: pair.decisions,
   })
