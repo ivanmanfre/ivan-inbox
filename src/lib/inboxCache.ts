@@ -29,7 +29,7 @@
    ========================================================================== */
 import type { InboxMessage, Thread } from './inbox'
 import { eventTime, inboxWaitingCount, filterThreads, threadBucket } from './inbox'
-import { readSwr, writeSwr, type SwrWriteResult } from './swr'
+import { readSwr, redactCapability, writeSwr, type SwrWriteResult } from './swr'
 
 // The byte budget for the ROWS. Well under lib/swr.ts's own 2 MB cap, so a
 // payload built here is never refused for size by the layer below it, and well
@@ -40,6 +40,33 @@ import { readSwr, writeSwr, type SwrWriteResult } from './swr'
 export const ROWS_BUDGET_BYTES = 700_000
 
 export const INBOX_QUERY = 'dms/threads'
+
+// N3b-5. How much of one message body is kept. The screen draws ONE clamped
+// preview line per row (the DMs row and the DM history row both), which is about
+// 70 visible characters at the widest phone row, so 200 is nearly three times
+// what the list can ever show and still covers the opening sentences that
+// searchThreads reads. The whole bodies were the payload's bulk: 353 messages,
+// 98 of them over 200 chars, the longest 1,333, whole inbound pitches verbatim
+// on a device where localStorage is readable by anything that runs here.
+//
+// The trade, stated: while the saved copy is the only thing on screen, search
+// matches the first 200 characters of a message rather than all of it. The live
+// read lands seconds later and search is whole again. A clipped body ends in an
+// ellipsis so it never reads as the complete message.
+export const BODY_CAP = 200
+
+// A PENDING DRAFT IS NEVER CLIPPED. approveDraft(id, editedText) sends the text
+// the card is holding, so a truncated draft in the cache would be a truncated
+// message SENT. Only what is already sent or already received gets the cap.
+function clippable(m: InboxMessage): boolean {
+  return m.direction === 'inbound' || m.sent_at !== null
+}
+
+function capBody(text: string | null, cap: boolean): string | null {
+  const t = redactCapability(text)
+  if (!cap || t === null || t.length <= BODY_CAP) return t
+  return `${t.slice(0, BODY_CAP - 1)}…`
+}
 
 export type InboxCache = {
   threads: Thread[]
@@ -75,9 +102,11 @@ export function orderForCache(threads: Thread[]): Thread[] {
 // grows and a screen starts reading is a compile error here rather than a field
 // that silently vanishes from the cached copy.
 function projectMessage(m: InboxMessage): InboxMessage {
+  const cap = clippable(m)
   return {
     id: m.id, prospect_id: m.prospect_id, direction: m.direction,
-    message_text: m.message_text, message_type: m.message_type, channel: m.channel,
+    message_text: capBody(m.message_text, cap) ?? '',
+    message_type: m.message_type, channel: m.channel,
     sent_at: m.sent_at, approved_at: m.approved_at, read_at: m.read_at,
     created_at: m.created_at, send_blocked_at: m.send_blocked_at,
     send_blocked_reason: m.send_blocked_reason, unipile_chat_id: m.unipile_chat_id,
@@ -88,7 +117,7 @@ function projectMessage(m: InboxMessage): InboxMessage {
     chat_provider_id: m.chat_provider_id, campaign_name: m.campaign_name,
     client_id: m.client_id, prospect_skip_reason: m.prospect_skip_reason ?? null,
     recipient_email: m.recipient_email ?? null,
-    email_mirror_text: m.email_mirror_text ?? null,
+    email_mirror_text: capBody(m.email_mirror_text ?? null, cap),
     context_gap: m.context_gap ?? null,
     // draft_evidence is deliberately dropped (see the header). The card that
     // draws it re-reads it live; a missing blob renders the same "not recorded"
@@ -97,6 +126,13 @@ function projectMessage(m: InboxMessage): InboxMessage {
   }
 }
 
+// THE ONE RULE FOR BOTH CACHES, written down because the two files disagreed in
+// their comments. A CAPABILITY LINK is a URL that carries a token and acts on
+// its own: `?k=`, approve_url, skip_url, action_url. A PUBLIC PROFILE URL is not
+// one: it opens a page anybody with the name can already find, it grants
+// nothing, and the row DRAWS it (index.tsx hands it to ChatLink). So
+// `linkedin_url` is kept here, and lib/today.ts drops it for the only reason
+// that actually applies there, which is that no Today surface renders it.
 export function projectThread(t: Thread): Thread {
   return {
     prospect_id: t.prospect_id, prospect_name: t.prospect_name,

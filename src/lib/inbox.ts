@@ -649,7 +649,19 @@ export async function markNotSpam(t: Thread): Promise<void> {
   if (error) throw error
 }
 
-export async function fetchMessages(): Promise<InboxMessage[]> {
+/**
+ * N3b-2. `knownRows` is how many conversations the caller already has on screen
+ * (from the saved copy or the last good read). It exists because a SHORT page
+ * and an EMPTY page are not the same event and this loop used to treat them as
+ * one: `data.length < page` ends the pagination, which is right for a short
+ * page and wrong for a first page of zero on an inbox that had 3,571 threads a
+ * moment ago. Zero rows there is not a state the data can be in; it is a proxy,
+ * an RLS lapse or a filter fault arriving as a 200, which is the one shape
+ * okToCache cannot catch. Thrown rather than returned, so the failure travels
+ * the same path a 500 does: the rows stay, the cache is not written, and
+ * nothing stamps the screen as checked.
+ */
+export async function fetchMessages(knownRows = 0): Promise<InboxMessage[]> {
   // PostgREST caps a single response at 1000 rows regardless of .limit(),
   // so page through the view; id tiebreak keeps pages stable.
   const all: InboxMessage[] = []
@@ -663,6 +675,7 @@ export async function fetchMessages(): Promise<InboxMessage[]> {
     all.push(...(data as InboxMessage[]))
     if (!data || data.length < page) break
   }
+  if (all.length === 0 && knownRows > 0) throw new Error('The inbox read came back empty')
   return dedupeMessages(all)
 }
 

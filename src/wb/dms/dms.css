@@ -536,6 +536,13 @@
   background: var(--ds-surface-2, transparent);
   border-bottom: 1px solid var(--ds-line);
 }
+/* N3b-3: the same strip, saying the refresh failed. Attention tone, and it
+   carries the Retry rather than a pulsing dot, because nothing is in flight. */
+.a-dms-refresh.bad {
+  color: var(--ds-text-2);
+  background: var(--ds-sev-attention-soft);
+  justify-content: space-between;
+}
 .a-dms-refresh-dot {
   width: 6px;
   height: 6px;

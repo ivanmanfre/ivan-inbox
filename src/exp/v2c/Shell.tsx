@@ -563,6 +563,9 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
       // N3-1: rows from the device, live read still out.
       refreshing={inbox.fromCache}
       cachedAt={inbox.cachedAt}
+      // N3b-3: and when that read failed, the strip says so rather than
+      // pretending one is still in flight.
+      error={inboxError}
     />
   )
   const dmsSurface = inboxError ? (

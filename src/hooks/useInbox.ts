@@ -42,12 +42,18 @@ export function useInbox() {
   // hook was the one exception to the rule every other hook follows
   // (useOps.ts:8-15, useContent.ts:28-35, useAgent.ts:21-26); it no longer is.
   const topic = `inbox:${useId()}`
+  // N3b-2: how many conversations we already know exist, from the saved copy or
+  // from the last good read. A fetch that comes back with zero against this is a
+  // failed refresh, never a truth. Kept in a ref rather than read off `threads`
+  // so `refresh` stays a stable callback (the realtime subscription is bound to
+  // it and re-subscribing on every list change is a channel churn bug).
+  const knownRows = useRef<number>(seed?.cache.threads.length ?? 0)
   const refresh = useCallback(() => {
     // The needs_manual_reply probe rides alongside the message fetch, never in
     // front of it: a failed flag read degrades the badge (those threads drop to
     // "waiting"), it must not take the whole inbox down with it.
     Promise.all([
-      fetchMessages(),
+      fetchMessages(knownRows.current),
       fetchManualReplyIds().catch(() => new Set<string>()),
       // Same degrade rule as the flag probe: a failed stamp read only loses the
       // "also emails" badge, it must never take the inbox down.
@@ -72,9 +78,22 @@ export function useInbox() {
       const latest = rows
         .filter(m => m.direction === 'inbound')
         .map(m => m.created_at).sort().at(-1) ?? null
+      const grouped = groupThreads(rows, manualReplyIds)
+      // THE SAME RULE fetchMessages applies to its first page, applied once more
+      // to the grouped list: an empty result over an inbox we KNOW had rows is a
+      // failed refresh. It must not wipe the rows, must not write the cache, and
+      // must not stamp `loadedAt`, because `loadedAt` is what licenses the
+      // screen to say "this is a live read, not a stall". A genuinely empty
+      // inbox on a cold open (knownRows 0) falls through and keeps that copy.
+      if (grouped.length === 0 && knownRows.current > 0) {
+        setError('The inbox read came back empty')
+        setLoading(false)
+        return
+      }
       if (latest && newestInbound.current && latest > newestInbound.current) playChime()
       if (latest) newestInbound.current = latest
-      setThreads(groupThreads(rows, manualReplyIds))
+      knownRows.current = grouped.length
+      setThreads(grouped)
       setFromCache(false)
       setError(null)
       setLoadedAt(new Date().toISOString())

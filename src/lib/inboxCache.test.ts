@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest'
-import { buildInboxCache, keepWhole, orderForCache, projectThread, readInboxCache, writeInboxCache, INBOX_QUERY } from './inboxCache'
+import { BODY_CAP, buildInboxCache, keepWhole, orderForCache, projectThread, readInboxCache, writeInboxCache, INBOX_QUERY } from './inboxCache'
 import { swrKey } from './swr'
+import { searchThreads } from './inbox'
 import type { InboxMessage, Thread } from './inbox'
 import { dmsEmptyKind } from '../wb/dms/InboxList'
 
@@ -111,10 +112,44 @@ describe('the write-from-reconciled rule', () => {
     writeInboxCache([thread('a')])
     expect(readInboxCache()?.cache.threads.map(t => t.prospect_id)).toEqual(['a'])
   })
-  it('refuses a payload carrying a capability link', () => {
-    const t = thread('a', { messages: [msg({ message_text: 'open https://x.dev/scan?k=tok' })] })
-    expect(writeInboxCache([t])).toBe('unsafe')
-    expect(readInboxCache()).toBeNull()
+  it('stores a body with the capability link taken out, and keeps the rest', () => {
+    // N3b-4. This used to refuse the WHOLE payload, so one scan link in one
+    // message froze the cache for good. The token is what may not be stored;
+    // the words around it are what the list draws.
+    const t = thread('a', { messages: [msg({ message_text: 'here it is https://x.dev/scan?k=tok have a look' })] })
+    expect(writeInboxCache([t])).toBe('written')
+    const body = readInboxCache()?.cache.threads[0].messages[0].message_text ?? ''
+    expect(body).toContain('here it is')
+    expect(body).toContain('have a look')
+    expect(body).not.toContain('k=tok')
+  })
+  it('drops a body whose token is not inside a URL at all', () => {
+    const t = thread('a', { messages: [msg({ message_text: 'the approve_url field is broken' })] })
+    expect(writeInboxCache([t])).toBe('written')
+    expect(readInboxCache()?.cache.threads[0].messages[0].message_text)
+      .toBe('[hidden from the saved copy]')
+  })
+})
+
+describe('N3b-5, the body cap', () => {
+  const long = 'x'.repeat(900)
+  it('clips a received body to the cap and marks the clip', () => {
+    const t = thread('a', { messages: [msg({ message_text: long })] })
+    const p = projectThread(t)
+    expect(p.messages[0].message_text.length).toBe(BODY_CAP)
+    expect(p.messages[0].message_text.endsWith('…')).toBe(true)
+  })
+  it('never clips a PENDING DRAFT, because approving one sends the text it holds', () => {
+    const draft = msg({ id: 'd', direction: 'outbound', sent_at: null, approved_at: null, message_text: long })
+    const t = thread('a', { draft, messages: [draft] })
+    const p = projectThread(t)
+    expect(p.draft?.message_text.length).toBe(900)
+    expect(p.messages[0].message_text.length).toBe(900)
+  })
+  it('search still finds a thread by a word in its preview', () => {
+    const t = thread('a', { messages: [msg({ message_text: `we run outreach for supplement brands. ${long}` })] })
+    const cached = buildInboxCache([t]).threads
+    expect(searchThreads(cached, 'supplement').length).toBe(1)
   })
 })
 

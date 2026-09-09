@@ -33,9 +33,12 @@ function manualCount(t: Thread): number {
 // states exactly how many are still folded.
 const PAGE = 20
 
-export function DmHistory({ threads, onOpen }: {
+export function DmHistory({ threads, onOpen, verified = true }: {
   threads: Thread[]
   onOpen: (id: string) => void
+  // N3b-1: has a LIVE read landed. False while the only thing on screen came off
+  // the device, and while it is false this head states no count at all.
+  verified?: boolean
 }) {
   const [sect, setSect] = useSectionState('dms.history')
   const open = sect.open.includes('history')
@@ -67,9 +70,23 @@ export function DmHistory({ threads, onOpen }: {
     <Group
       label="DM history"
       tail={<>
+        {/* THE ONE COUNT ON THIS SCREEN THE SAVED COPY CANNOT STATE. Its
+            membership rule is "the other person answered", which is exactly the
+            set lib/inboxCache.ts's keepWhole() returns FALSE for and the byte
+            budget drops first: measured 23 conversations from cache against 321
+            live, 7 percent, written as a flat assertion.
+            A "saved copy" qualifier was the other option and it is the wrong
+            one here: this number is not STALE, it is a count of a set the cache
+            deliberately does not hold, so qualifying it would still be stating
+            it. The head says what it can back up and nothing else, and the true
+            counts arrive with the live read a second or two later. */}
         <span className="a-mono a-dim a-nowrap">
-          {answered.length} conversations · {replies} replies
-          {magnets > 0 && ` · ${magnets} lead magnet${magnets === 1 ? '' : 's'}`}
+          {verified ? (
+            <>
+              {answered.length} conversations · {replies} replies
+              {magnets > 0 && ` · ${magnets} lead magnet${magnets === 1 ? '' : 's'}`}
+            </>
+          ) : 'counting…'}
         </span>
         <IconButton
           icon={open ? 'discloseUp' : 'disclose'}
@@ -80,7 +97,7 @@ export function DmHistory({ threads, onOpen }: {
           onClick={toggle}
         />
       </>}
-      foot={open && answered.length > shown
+      foot={open && verified && answered.length > shown
         ? (
           /* What is still folded, counted, with the way to get it. A "show more"
              that does not say how much more is behind it is a guess. */

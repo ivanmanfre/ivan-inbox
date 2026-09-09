@@ -31,7 +31,7 @@ import './dms.css'
 // approved from the thread it belongs to.
 export function Dms({
   threads, filter, setFilter, status,
-  refresh, onOpenThread, loadedAt, refreshing = false, cachedAt = null,
+  refresh, onOpenThread, loadedAt, refreshing = false, cachedAt = null, error = null,
 }: {
   threads: Thread[]
   filter: Filter
@@ -44,6 +44,9 @@ export function Dms({
   // a freshness claim.
   refreshing?: boolean
   cachedAt?: string | null
+  // N3b-3: the read behind the saved copy failed. Handed down so the strip names
+  // the failure instead of claiming a refresh that has already died.
+  error?: string | null
 }) {
   // The stale-draft strip is lane-scoped so it agrees with the list under it: a
   // bar counting a lane Ivan is not looking at would be the tenancy version of a
@@ -80,6 +83,7 @@ export function Dms({
       verifiedAt={loadedAt}
       refreshing={refreshing}
       cachedAt={cachedAt}
+      error={error}
       before={<>
         <StaleBar stale={staleDrafts} refresh={refresh} />
         <PushedBar pushed={pushedDrafts} onOpen={onOpenThread} />
@@ -87,7 +91,10 @@ export function Dms({
       // DM HISTORY ("so i know this is working"). With zero pending the surface
       // would otherwise be an empty screen that proves nothing; the history is
       // the receipt that the engine holds conversations.
-      after={<DmHistory threads={filterThreads(threads, filter)} onOpen={onOpenThread} />}
+      // N3b-1: `loadedAt` is stamped only by a fetch that RESOLVED, so this is
+      // false for exactly as long as the rows came off the device, and the
+      // history head states no count while it is.
+      after={<DmHistory threads={filterThreads(threads, filter)} onOpen={onOpenThread} verified={loadedAt !== null} />}
       // The generated line stands in place of the message preview (the row's
       // height is what the list windows against). Absent on any row where Ivan is
       // not the one being waited on.

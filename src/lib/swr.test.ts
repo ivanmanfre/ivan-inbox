@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import {
   SWR_CAP_BYTES, dropForeignKeys, okToCache, readSwr, readUserIdFrom,
-  swrKey, swrKeyUser, swrSafe, writeSwr,
+  swrKey, swrKeyUser, swrSafe, writeSwr, dropOtherQueries, redactCapability,
 } from './swr'
 
 // A localStorage stand-in with the two properties the layer actually uses
@@ -74,6 +74,52 @@ describe('the capability-link lock', () => {
   it('refuses the write outright rather than stripping it', () => {
     expect(writeSwr('q', { approve_url: 'https://x/a' }, 'user-a')).toBe('unsafe')
     expect(store.getItem(swrKey('user-a', 'q'))).toBeNull()
+  })
+  it('takes the link out of a body instead of refusing the payload it sits in', () => {
+    expect(redactCapability('read it https://x.dev/scan?k=tok now')).toBe('read it [link] now')
+    expect(swrSafe(JSON.stringify({ t: redactCapability('read it https://x.dev/scan?k=tok now') }))).toBe(true)
+  })
+  it('drops a body whose token survives outside a URL', () => {
+    expect(redactCapability('the approve_url is broken')).toBe('[hidden from the saved copy]')
+  })
+  it('leaves an ordinary body, and a null, alone', () => {
+    expect(redactCapability('hello https://linkedin.com/in/dom')).toBe('hello https://linkedin.com/in/dom')
+    expect(redactCapability(null)).toBeNull()
+  })
+})
+
+describe('N3b-4, a refused write does not leave the old copy behind', () => {
+  it('drops this query on an unsafe refusal', () => {
+    writeSwr('q', { rows: ['a'] }, 'user-a')
+    expect(store.getItem(swrKey('user-a', 'q'))).not.toBeNull()
+    expect(writeSwr('q', { approve_url: 'https://x/a' }, 'user-a')).toBe('unsafe')
+    // The old entry is GONE: the next open is a cold honest paint rather than a
+    // copy the app has decided it may never update again.
+    expect(store.getItem(swrKey('user-a', 'q'))).toBeNull()
+  })
+  it('drops this query on a too-big refusal', () => {
+    writeSwr('q', { rows: ['a'] }, 'user-a')
+    expect(writeSwr('q', { blob: 'x'.repeat(SWR_CAP_BYTES + 10) }, 'user-a')).toBe('too-big')
+    expect(store.getItem(swrKey('user-a', 'q'))).toBeNull()
+  })
+  it('leaves ANOTHER query of the same user alone on a refusal', () => {
+    writeSwr('other', { rows: ['a'] }, 'user-a')
+    expect(writeSwr('q', { approve_url: 'https://x/a' }, 'user-a')).toBe('unsafe')
+    expect(store.getItem(swrKey('user-a', 'other'))).not.toBeNull()
+  })
+  it('the quota sweep does what its comment says: this user OTHER queries, never this one', () => {
+    writeSwr('q', { rows: ['keep'] }, 'user-a')
+    writeSwr('other', { rows: ['go'] }, 'user-a')
+    dropOtherQueries('user-a', 'q')
+    expect(store.getItem(swrKey('user-a', 'q'))).not.toBeNull()
+    expect(store.getItem(swrKey('user-a', 'other'))).toBeNull()
+  })
+  it('the quota sweep never touches a key outside the prefix', () => {
+    store.setItem('today-cache', 'keep me')
+    store.setItem('sb-ref-auth-token', 'keep me too')
+    dropOtherQueries('user-a', 'q')
+    expect(store.getItem('today-cache')).toBe('keep me')
+    expect(store.getItem('sb-ref-auth-token')).toBe('keep me too')
   })
 })
 

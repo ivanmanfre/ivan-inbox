@@ -173,7 +173,7 @@ function EmptyVerified({ line, verifiedAt }: { line: string; verifiedAt?: string
   )
 }
 
-export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt, refreshing = false, cachedAt = null, title = 'Inbox', status, before, after, rowsFor, renderRow, rowNote, rowChip, rowTag, renderNote, emptyLine }: {
+export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt, refreshing = false, cachedAt = null, error = null, title = 'Inbox', status, before, after, rowsFor, renderRow, rowNote, rowChip, rowTag, renderNote, emptyLine }: {
   threads: Thread[]
   filter: Filter
   setFilter: (f: Filter) => void
@@ -193,6 +193,11 @@ export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, o
   // freshness claim, which is `verifiedAt`'s job and stays null while this is on.
   refreshing?: boolean
   cachedAt?: string | null
+  // N3b-3: the refresh behind the saved copy FAILED. The strip said
+  // "refreshing…" for ever after a read that had already died, which is a claim
+  // about something in flight that is not in flight. Given one, the strip names
+  // the failure and offers the way back instead.
+  error?: string | null
   title?: string
   // The status axis (bucket filter). Omitted = no status filtering, and the
   // draft banner keeps its old job of pointing at a separate drafts screen.
@@ -364,13 +369,20 @@ export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, o
             are real and they are old, and this says both without pretending the
             screen has been checked (dmsEmptyKind still reads `verifiedAt`, which
             is null until the live read resolves). */}
-        {refreshing && (
-          <div className="a-dms-refresh" role="status">
-            <span className="a-dms-refresh-dot" aria-hidden />
-            {/* "now" is timeAgo's under-a-minute answer and "Saved copy from
-                now" reads as nonsense, so the age is named only when there is
-                an age worth naming. */}
-            <span>Saved copy{cachedAt && timeAgo(cachedAt) !== 'now' ? ` from ${timeAgo(cachedAt)} ago` : ''}, refreshing…</span>
+        {(refreshing || error) && (
+          <div className={`a-dms-refresh${error ? ' bad' : ''}`} role="status">
+            {!error && <span className="a-dms-refresh-dot" aria-hidden />}
+            {error ? (
+              <>
+                <span>Couldn’t refresh, showing the saved copy{cachedAt && timeAgo(cachedAt) !== 'now' ? ` from ${timeAgo(cachedAt)} ago` : ''}</span>
+                <Button variant="quiet" size="sm" icon="refresh" onClick={refresh}>Retry</Button>
+              </>
+            ) : (
+              /* "now" is timeAgo's under-a-minute answer and "Saved copy from
+                 now" reads as nonsense, so the age is named only when there is
+                 an age worth naming. */
+              <span>Saved copy{cachedAt && timeAgo(cachedAt) !== 'now' ? ` from ${timeAgo(cachedAt)} ago` : ''}, refreshing…</span>
+            )}
           </div>
         )}
         {before}

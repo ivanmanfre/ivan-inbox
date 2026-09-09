@@ -63,8 +63,34 @@ export function okToCache(status: number): boolean {
 // cacheSafe(): if a projection ever stringifies with a capability-token pattern
 // in it, the write is refused (fail closed) rather than trusting the projection
 // was kept correct upstream.
+//
+// N3b-4: this stays a whole-payload refusal ON PURPOSE, but it is no longer the
+// thing a real message body trips. The lanes send scan links, so ONE inbound
+// message carrying a `?k=` token used to freeze the DMs cache for good (nothing
+// retried, nothing cleared it, and every local removal after that was lost on
+// every open). The narrowing is upstream at the projection: redactCapability()
+// takes the token out of the BODY, so the payload reaching this lock is already
+// clean and the lock is the last line rather than the first.
 export function swrSafe(json: string): boolean {
   return !/approve_url|skip_url|action_url|[?&]k=/.test(json)
+}
+
+// The URL shape that is a bearer token: anything carrying `?k=`/`&k=`, or a
+// literal approve/skip/action_url. A body carrying one is stored with the LINK
+// removed rather than the whole payload refused; the words around it are what
+// the list draws and what search reads.
+const CAP_URL = /https?:\/\/[^\s"'<>)\]]*(?:[?&]k=|approve_url|skip_url|action_url)[^\s"'<>)\]]*/gi
+
+/**
+ * Take capability links out of one body. Each such URL becomes a visible
+ * marker; if a bare token word survives outside a URL (so the lock above would
+ * still refuse the payload) the body is dropped instead: one lost preview beats
+ * a cache that can never be written again.
+ */
+export function redactCapability(text: string | null): string | null {
+  if (text === null || text === undefined) return text
+  const cleaned = text.replace(CAP_URL, '[link]')
+  return swrSafe(cleaned) ? cleaned : '[hidden from the saved copy]'
 }
 
 /**
@@ -132,18 +158,32 @@ export function writeSwr<T>(query: string, payload: T, userId: string | null = c
   try {
     json = JSON.stringify({ savedAt: new Date().toISOString(), user: userId, payload })
   } catch { return 'failed' }
-  if (json.length > SWR_CAP_BYTES) return 'too-big'
-  if (!swrSafe(json)) return 'unsafe'
+  // N3b-4: a refused write must not leave the OLD entry behind. Before this,
+  // 'too-big' and 'unsafe' both returned with the previous payload still on
+  // disk, so the app kept painting a copy it had just decided it may not write,
+  // for ever, and every local removal after that point came back on every open.
+  // Dropping the entry costs one cold honest paint and nothing else.
+  if (json.length > SWR_CAP_BYTES) { dropEntry(userId, query); return 'too-big' }
+  if (!swrSafe(json)) { dropEntry(userId, query); return 'unsafe' }
   try {
     localStorage.setItem(swrKey(userId, query), json)
   } catch {
-    // Quota. Drop every other user's keys and this user's other queries once,
+    // Quota. Drop every other user's keys AND this user's other queries once,
     // then try again; a second failure is a miss, not a half-written payload.
+    // This query's own previous entry is deliberately left alone here: the
+    // retry overwrites it on success, and on failure it is the only copy left.
     dropForeignKeys(userId)
+    dropOtherQueries(userId, query)
     try { localStorage.setItem(swrKey(userId, query), json) } catch { return 'failed' }
   }
   dropForeignKeys(userId)
   return 'written'
+}
+
+/** This user's entry for one query, gone. */
+export function dropEntry(userId: string, query: string): void {
+  if (typeof localStorage === 'undefined') return
+  try { localStorage.removeItem(swrKey(userId, query)) } catch { /* private mode */ }
 }
 
 /** Every swr key that does not belong to this user goes. */
@@ -155,6 +195,26 @@ export function dropForeignKeys(userId: string): void {
       const k = localStorage.key(i)
       const owner = k ? swrKeyUser(k) : null
       if (k && owner && owner !== userId) doomed.push(k)
+    }
+    for (const k of doomed) localStorage.removeItem(k)
+  } catch { /* private mode */ }
+}
+
+/**
+ * This user's OTHER queries, on the quota retry only. dropForeignKeys skips any
+ * key this user owns, so on a single-account device it freed nothing and the
+ * retry was guaranteed to fail again. `keep` is never removed: it is the query
+ * being written, and its stored copy is what the app falls back to if the retry
+ * fails too.
+ */
+export function dropOtherQueries(userId: string, keep: string): void {
+  if (typeof localStorage === 'undefined') return
+  const mine = swrKey(userId, keep)
+  const doomed: string[] = []
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const k = localStorage.key(i)
+      if (k && k !== mine && swrKeyUser(k) === userId) doomed.push(k)
     }
     for (const k of doomed) localStorage.removeItem(k)
   } catch { /* private mode */ }

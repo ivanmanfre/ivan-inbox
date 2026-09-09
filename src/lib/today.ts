@@ -34,8 +34,12 @@ export type Urgency = {
   client_id?: string | null
 }
 // The fn also returns action_url / linkedin_url on urgencies and
-// approve_url / skip_url on feed drafts. Those are capability-bearing (…?k=…)
-// or PII links: not typed here, never rendered, never cached.
+// approve_url / skip_url on feed drafts. action_url / approve_url / skip_url are
+// capability-bearing (…?k=…): a bearer token that sends or skips a real message,
+// never typed here and never cached. linkedin_url is NOT one of those, and the
+// N3b rule for both caches says so: a public profile URL grants nothing. It is
+// absent here for the plain reason that no Today surface renders it, which is
+// also why lib/inboxCache.ts keeps it (the DMs row draws it).
 
 export type DmDraft = {
   id: string
@@ -489,11 +493,16 @@ const MAX_ROWS = 30
 
 // SECURITY — WHITELIST PROJECTION, NOT A COPY.
 // Everything written to localStorage is enumerated field by field below.
-// approve_url, skip_url, action_url, linkedin_url and any other capability
-// link (…?k=…) are dropped here and MUST NEVER be added: localStorage on this
-// origin is readable by any script that ends up running here, and those URLs
-// are bearer tokens that send/skip real messages. Never replace the explicit
-// fields with a spread. cacheSafe() below is the second lock.
+// approve_url, skip_url, action_url and any other capability link (…?k=…) are
+// dropped here and MUST NEVER be added: localStorage on this origin is readable
+// by any script that ends up running here, and those URLs are bearer tokens
+// that send/skip real messages. linkedin_url is dropped too, but for a
+// different and weaker reason, and the two used to be listed as if they were
+// the same thing: a public profile URL is not a bearer token (see the N3b rule
+// at lib/inboxCache.ts's projectThread, which keeps it because the DMs row
+// draws it). Nothing on Today renders it, so nothing on Today stores it.
+// Never replace the explicit fields with a spread. cacheSafe() below is the
+// second lock.
 export function projectBrief(b: Brief): Brief {
   return {
     generated_at: b.generated_at,
