@@ -26,6 +26,7 @@ import { useConfirm } from '../chrome/ConfirmSheet'
 import { Badge, Button, Card, IconButton, Input, Segmented, spring } from '../../ds'
 import { Bar, Body, Group, Head, Screen } from '../kit'
 import { Failed, PullIndicator, relAge } from './parts'
+import { AudienceBlock } from './AudienceBlock'
 import './content.css'
 
 // A textarea that grows to its content, because a strategy section is 2 lines
@@ -339,6 +340,12 @@ export function StrategyView({ lane, setLane }: {
             it. This block used to render under the "Loading…" line and then be
             shoved a whole document down when the sections arrived. It mounts
             once the sections have, so it lands where it stays. */}
+        {/* W16 · The audience read, under what Ivan writes and above what the
+            engine publishes. Gated on `!st.loading` for the same CLS reason as
+            the block below it: mounted under "Loading…" it would be shoved a
+            document down the moment the sections arrive. Read-only — the
+            sections above stay the only writer on this screen. */}
+        {!st.loading && <AudienceBlock lane={lane} />}
         {!st.loading && <FilterSpecBlock />}
         <div className="a-strat-foot" aria-hidden />
       </Body>

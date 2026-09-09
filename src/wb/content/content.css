@@ -782,3 +782,61 @@ button.a-ct-chip-t:hover{ opacity:.75 }
 /* W6-5: the loading line holds the document's own room, so the sections do not
    arrive by pushing what is under them off the screen. */
 .a-strat-hold{ min-height:24rem }
+
+/* ==========================================================================
+   audience block (W16 — src/wb/content/AudienceBlock.tsx)
+   Six rules, all of them about the phone: the block is read on a 375px screen
+   before it is read anywhere else.
+   ========================================================================== */
+
+/* Holds the room the block will occupy so the filter spec under it is not
+   shoved a screen down when the read lands (the same CLS reason the strategy
+   sections hold `.a-strat-hold`). */
+.a-aud-hold{ min-height:9rem }
+
+/* Sections inside the block: an eyebrow and its rows, spaced like a group but
+   without a second frame — a card inside a card reads as two surfaces. */
+.a-aud-sec{ display:flex; flex-direction:column; gap:var(--ds-s2); padding-top:var(--ds-s4) }
+.a-aud-sec > .a-row{ padding-inline:0 }
+
+/* Two ledgers stacked need air between them, and the first needs air under the
+   note line above it. */
+.a-aud-sec + .a-aud-sec, .a-ledger + .a-ledger{ margin-top:var(--ds-s3) }
+
+/* A post urn is 30+ opaque characters and must never be shortened (an id is
+   only an id whole), so it wraps instead of truncating. */
+.a-aud-id{
+  font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono);
+  color:var(--ds-text-3); overflow-wrap:anywhere;
+}
+
+/* The decision line carries a reason written by a human; it wraps rather than
+   ellipsing, because half a reason is worse than no reason. */
+.a-aud-meta{ overflow-wrap:anywhere }
+
+.a-aud-tail{ display:flex; align-items:center; gap:var(--ds-s2); min-width:0; flex-wrap:wrap }
+.a-aud-partial{ padding-top:var(--ds-s3); overflow-wrap:anywhere }
+
+@media (max-width:39.999rem){
+  /* An odd last cell takes the whole phone row instead of leaving a dead
+     half-cell beside it (five label figures and three return figures are both
+     odd). PHONE ONLY: the desktop ledger is `auto-fit`, and a spanning child
+     stops auto-fit collapsing its empty tracks — which is how the first draft
+     of this rule put a grey void beside "Observed across posts" at 1280px. */
+  .a-ledger > .a-cell:last-child:nth-child(odd){ grid-column:1 / -1 }
+
+  /* The group head is one flex row, and the eyebrow is the part that shrinks:
+     at 375px "risedtc · read just now" clipped the label to
+     "AUDIENCE (READ-ON…". Both halves are load-bearing here — one says what the
+     block is, the other says whether it was read — so the row wraps instead. */
+  .a-aud .a-group-h{ flex-wrap:wrap; row-gap:var(--ds-s1) }
+  .a-aud .a-group-h .a-eyebrow{ flex:0 1 auto; overflow:visible }
+
+  /* The group is already gutter-padded on the phone; the rows inside a section
+     must not add a second inset or the block steps in from everything above it. */
+  .a-aud-sec > .a-row{ padding-inline:0 }
+  /* wb.css gives a phone ledger its own gutter margin, which is right when the
+     ledger is the page's own child and wrong here: inside `a-group-pad` it
+     insets a second time and the figures step in from every row above them. */
+  .a-aud-sec .a-ledger, .a-group-pad > .a-ledger{ margin-inline:0 }
+}
