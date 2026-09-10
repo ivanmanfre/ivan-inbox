@@ -952,7 +952,7 @@ function Pipeline({ rows, governor, client }: {
             <span className="a-sends-legend"><Dot tone="clear" />5d+</span>
             <span className="a-sends-legend"><Dot tone="attention" />2-5d</span>
             <span className="a-sends-legend"><Dot tone="urgent" />under 2d</span>
-            <span className="a-sends-tot">Total: <b>{totalSendable}</b> sendable</span>
+            <span className="a-sends-tot">Total: <b>{totalSendable}</b> sendable · bar = waiting to send</span>
           </span>
         )}>
           <Rows>
@@ -961,8 +961,10 @@ function Pipeline({ rows, governor, client }: {
               const tone: Tone = laneRunway < 2 ? 'urgent' : laneRunway < 5 ? 'attention' : 'clear'
               return (
                 <Row key={lane} lead={<Dot tone={tone} />} title={laneLabel(lane)}>
-                  <BarLine pct={(e.sendable / maxSendable) * 100} tone={tone} tail={<b className="a-ink">{e.sendable}</b>} />
-                  <span className="a-row-meta">sent · 7d {e.sent7} · 30d {e.sent30}</span>
+                  {/* 2026-09-10 (Ivan): the bare number read as "sent" (46 partners looked like 46
+                      invites). Name both quantities on the row: what is waiting, what went out. */}
+                  <BarLine pct={(e.sendable / maxSendable) * 100} tone={tone} tail={<><b className="a-ink">{e.sendable}</b> sendable</>} />
+                  <span className="a-row-meta"><b className="a-ink">{e.sent7}</b> sent this week · {e.sent30} in 30d</span>
                 </Row>
               )
             })}
