@@ -191,7 +191,7 @@ export function governorEnforcementGap(
 }
 
 const LANE_LABELS: Record<string, string> = {
-  cold: 'Cold', warm: 'Warm / Orbit', engager: 'Engager', harvest: 'Harvested', other: 'Other',
+  cold: 'Cold', warm: 'Warm / Orbit', engager: 'Engager', harvest: 'Harvested', partner: 'Partners', other: 'Other',
 }
 export function laneLabel(lane: string): string {
   return LANE_LABELS[lane] ?? lane
