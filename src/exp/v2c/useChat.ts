@@ -4,7 +4,7 @@ import { createPacer } from './chat/pacer'
 import type { ChatStatus, ToolCall, Turn } from './chat/events'
 import { CLAUDE_ERROR_COPY, type ClaudeErrorCode } from '../../lib/claude'
 import {
-  abortTurn, getThread, getTurn, isUuid, latestThread, listTurns,
+  abortTurn, getBotThread, getThread, getTurn, isUuid, latestThread, listTurns, markBotSeen,
   type Thread, type TurnRow,
 } from '../../lib/turns'
 
@@ -149,6 +149,7 @@ export function assistantFromRow(row: TurnRow): Turn {
     turnId: row.id,
     status: row.status,
     sources: row.sources ?? [],
+    origin: row.origin,
   }
 }
 
@@ -162,7 +163,7 @@ export function turnsFromRows(rows: TurnRow[]): Turn[] {
   for (const row of rows) {
     out.push({
       id: nextId(), role: 'user', text: row.prompt, tools: [], error: null,
-      turnId: row.id, status: row.status,
+      turnId: row.id, status: row.status, origin: row.origin,
     })
     if (row.status === 'queued' || row.status === 'running') continue
     out.push(assistantFromRow(row))
@@ -237,6 +238,14 @@ export function useChat() {
   // A turn is running that this tab is NOT streaming: hydration found it open.
   // The phone was locked, the tab was closed, the answer is still being written.
   const [runningElsewhere, setRunningElsewhere] = useState(false)
+  // ---- db/060 state ----
+  // The one bot thread, pinned in the shelf. Null until the tick has ever run,
+  // and the chip is not rendered at all in that case: a pinned thread that does
+  // not exist would be a control that leads nowhere.
+  const [botThread, setBotThread] = useState<Thread | null>(null)
+  // The handler above must not re-bind every time the bot row changes.
+  const botRef = useRef<Thread | null>(null)
+  botRef.current = botThread
 
   const abortRef = useRef<AbortController | null>(null)
   const lastSent = useRef<{ prompt: string; about?: string; see?: string } | null>(null)
@@ -281,6 +290,19 @@ export function useChat() {
       threadRef.current = t
       setThread(t)
     } catch { /* offline: the next send just replays a little more than it needs to */ }
+  }, [])
+
+  // The bot thread's own row, on its own schedule: the tick writes into it
+  // whether or not this tab is looking, so the unread dot is only as honest as
+  // the last time this was read. Never throws — an offline phone keeps the dot
+  // it had rather than dropping the pin.
+  const refreshBot = useCallback(async () => {
+    try {
+      const b = await getBotThread()
+      if (!alive.current) return
+      botRef.current = b
+      setBotThread(b)
+    } catch { /* offline: the chip keeps whatever it last knew */ }
   }, [])
 
   const land = useCallback((row: TurnRow) => {
@@ -355,6 +377,9 @@ export function useChat() {
     const gen = ++hydrateGen.current
     const stale = () => !alive.current || gen !== hydrateGen.current
     setTurnsLoading(true)
+    // Every hydrate re-reads the pin. The tick can have written a bot turn since
+    // the last one, and the dot is the only thing on the shelf that says so.
+    void refreshBot()
     try {
       const t = (id ? await getThread(id) : null) ?? await latestThread()
       if (stale()) return
@@ -394,10 +419,14 @@ export function useChat() {
     } finally {
       if (!stale()) setTurnsLoading(false)
     }
-  }, [armPoll])
+  }, [armPoll, refreshBot])
 
   useEffect(() => {
     alive.current = true
+    // The pin is read on mount whichever way this mount was entered: a deep link
+    // takes the branch below without calling hydrate here, and the shelf would
+    // otherwise have no chip until the next hydration.
+    void refreshBot()
     // A deep link may already own this mount. Child effects run before a parent's,
     // so a shell that read `?thread=` has already called openThread and its
     // hydration is in flight. Painting the cached id over it is exactly how the
@@ -433,6 +462,14 @@ export function useChat() {
     if (typeof document === 'undefined') return
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return
+      // db/060: the tick runs on a clock, not on a tap, so coming back to the
+      // tab is the moment to ask whether Claude said anything. And if the bot
+      // thread is the one on screen, re-read its TURNS as well: a bot turn that
+      // landed while the phone was locked has no stream and no poll behind it,
+      // so nothing else would ever put it on the glass without a reload.
+      void refreshBot()
+      const open = threadIdRef.current
+      if (open && botRef.current && open === botRef.current.id) void hydrate(open)
       const p = pollRef.current
       if (!p) return
       clearTimeout(p.timer)
@@ -440,7 +477,7 @@ export function useChat() {
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [poll])
+  }, [hydrate, poll, refreshBot])
 
   const send = useCallback(async (prompt: string, about?: string, see?: string) => {
     const text = prompt.trim()
@@ -635,12 +672,38 @@ export function useChat() {
 
   const reset = newThread
 
+  /**
+   * Open Claude's own thread and mark it seen.
+   *
+   * The stamp goes down AFTER the open, not before: the dot means "there is
+   * something here you have not read", and the act that makes that false is
+   * arriving, not intending to. `markBotSeen` never throws, so a refused or
+   * lost write leaves the dot lit for another read rather than breaking the tap.
+   */
+  const openBot = useCallback(() => {
+    const b = botRef.current
+    if (!b) return
+    openThread(b.id)
+    void (async () => {
+      await markBotSeen(b.id)
+      await refreshBot()
+    })()
+  }, [openThread, refreshBot])
+
+  // The spec's own sentence: `last_turn_at > coalesce(bot_seen_at, 'epoch')`.
+  // Both are ISO-8601 from PostgREST, which sorts lexically the same way it
+  // sorts chronologically, so this is a string compare rather than two Date
+  // allocations per render.
+  const botUnread = !!botThread?.last_turn_at
+    && botThread.last_turn_at > (botThread.bot_seen_at ?? '')
+
   const busy = status !== 'idle'
 
   return {
     turns, status, busy, streamText, streamTools, sessionId, model, slow,
     wanted, setWanted,
     threadId, thread, turnsLoading, grounding, runningElsewhere,
+    botThread, botUnread, refreshBot, openBot,
     send, abort, retry, reset, newThread, openThread,
   }
 }

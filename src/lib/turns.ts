@@ -10,9 +10,10 @@ import { supabase } from './supabase'
 //    decides visibility and the service-role-only columns (usage, push_result)
 //    can be withheld later without a client change. Never select the base table
 //    for a read.
-// 2. WRITES ARE TWO NARROW PATHS AND NOTHING ELSE. The browser may stop its own
-//    turn (status -> 'aborted') and it may stamp read_at / dismissed_at on a
-//    notification. Those are the only column grants `authenticated` holds, so
+// 2. WRITES ARE THREE NARROW PATHS AND NOTHING ELSE. The browser may stop its
+//    own turn (status -> 'aborted'), it may stamp read_at / dismissed_at on a
+//    notification, and (db/060) it may stamp bot_seen_at on its own bot thread.
+//    Those are the only column grants `authenticated` holds, so
 //    anything else here would fail at the database rather than at review — but
 //    it would fail at RUNTIME, on Ivan, which is why it is written down instead.
 //
@@ -32,6 +33,12 @@ export type ToolEvent = { t?: number; name: string; summary?: string }
 export type Thread = {
   id: string
   title: string | null
+  // db/060: 'bot' is the ONE thread the tick writes into, pinned in the Ask
+  // shelf. Every other thread Ivan ever opened is 'ask'.
+  kind: 'ask' | 'bot'
+  // When he last LOOKED at the bot thread. The unread dot is
+  // `last_turn_at > coalesce(bot_seen_at, epoch)`, so null means never opened.
+  bot_seen_at: string | null
   session_id: string
   // null = the container has never held this session, so the next turn carries
   // the full memory envelope again. This flag is what `send` reads to decide
@@ -50,6 +57,10 @@ export type Thread = {
 export type TurnRow = {
   id: string
   thread_id: string
+  // db/060: who started the turn. A bot turn's prompt is the event bundle the
+  // tick assembled, not something Ivan typed, so the surface renders it as a
+  // fold rather than as his own words.
+  origin: 'operator' | 'bot'
   prompt: string
   context: string | null
   context_chars: number | null
@@ -93,6 +104,7 @@ export type Notification = {
 export const THREADS_VIEW = 'inbox_threads_v'
 export const TURNS_VIEW = 'inbox_turns_v'
 export const NOTIFICATIONS_VIEW = 'inbox_notifications_v'
+export const THREADS_TABLE = 'inbox_threads'
 export const TURNS_TABLE = 'inbox_turns'
 export const NOTIFICATIONS_TABLE = 'inbox_notifications'
 
@@ -100,12 +112,12 @@ export const NOTIFICATIONS_TABLE = 'inbox_notifications'
 // everything starts shipping columns nobody chose to send to the browser.
 const THREAD_COLS =
   'id, title, session_id, session_started_at, session_reset_count, grounded_summary_date, ' +
-  'grounding, model, last_turn_at, created_at, turn_count, last_status'
+  'grounding, model, last_turn_at, created_at, turn_count, last_status, kind, bot_seen_at'
 
 const TURN_COLS =
   'id, thread_id, prompt, context, context_chars, model, ran_on, status, answer, tool_events, ' +
   'sources, grounding, resumed, cost_usd, duration_ms, client_gone_at, error_code, error_detail, ' +
-  'created_at, started_at, finished_at'
+  'created_at, started_at, finished_at, origin'
 
 const NOTIFICATION_COLS =
   'id, family, source, severity, title, body, url, media, group_key, tenant, count, ' +
@@ -142,10 +154,19 @@ export async function getThread(id: string): Promise<Thread | null> {
   return (data ?? null) as unknown as Thread | null
 }
 
-/** The thread a fresh tab lands in when localStorage has nothing to say. */
+/**
+ * The thread a fresh tab lands in when localStorage has nothing to say.
+ *
+ * D1: `kind='ask'` is not a nicety. The tick writes a bot turn every half hour
+ * of activity, which makes the bot thread the NEWEST thread almost always, so
+ * without this filter every cold boot would land on Claude's own thread instead
+ * of the conversation Ivan was last having. The bot thread is reached by the
+ * pinned chip, deliberately, and never by accident.
+ */
 export async function latestThread(): Promise<Thread | null> {
   const { data, error } = await supabase.from(THREADS_VIEW)
     .select(THREAD_COLS)
+    .eq('kind', 'ask')
     .is('archived_at', null)
     .order('last_turn_at', { ascending: false, nullsFirst: false })
     .limit(1)
@@ -167,6 +188,41 @@ export async function listTurns(threadId: string): Promise<TurnRow[]> {
     .limit(MAX_TURNS)
   if (error) throw error
   return (data ?? []) as unknown as TurnRow[]
+}
+
+/**
+ * The one bot thread, or null before the tick has ever run.
+ *
+ * There is exactly one per user (db/060's partial unique index), so this is a
+ * read of a singleton rather than a list the surface has to pick from.
+ */
+export async function getBotThread(): Promise<Thread | null> {
+  const { data, error } = await supabase.from(THREADS_VIEW)
+    .select(THREAD_COLS)
+    .eq('kind', 'bot')
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  return (data ?? null) as unknown as Thread | null
+}
+
+/**
+ * The rows a bot turn folded, INCLUDING the dismissed ones (D7).
+ *
+ * `listNotifications` hides dismissed rows because the feed is a list of things
+ * still open. This is the opposite question: what did Claude read when it wrote
+ * that message. A row he folded from the pill afterwards is still part of the
+ * answer to it, so the fold chip would otherwise empty itself the moment the
+ * `fold` pill was used.
+ */
+export async function listGroupRows(groupKey: string): Promise<Notification[]> {
+  const { data, error } = await supabase.from(NOTIFICATIONS_VIEW)
+    .select(NOTIFICATION_COLS)
+    .eq('group_key', groupKey)
+    .order('created_at', { ascending: true })
+    .limit(200)
+  if (error) throw error
+  return (data ?? []) as unknown as Notification[]
 }
 
 export async function getTurn(id: string): Promise<TurnRow | null> {
@@ -193,6 +249,27 @@ export async function abortTurn(id: string): Promise<boolean> {
       .update({ status: 'aborted' })
       .eq('id', id)
       .in('status', ['queued', 'running'])
+    return !error
+  } catch {
+    return false
+  }
+}
+
+/**
+ * THE THIRD NARROW BROWSER WRITE (db/060).
+ *
+ * `authenticated` holds an UPDATE grant on exactly one more column than it did:
+ * `inbox_threads.bot_seen_at`, on its own rows. Everything the rule about the
+ * other two writes says applies here unchanged — it never throws, because a
+ * stamp that the network lost is a dot that stays lime for another minute, and
+ * that is not an error to put in front of Ivan.
+ */
+export async function markBotSeen(threadId: string): Promise<boolean> {
+  if (!isUuid(threadId)) return false
+  try {
+    const { error } = await supabase.from(THREADS_TABLE)
+      .update({ bot_seen_at: new Date().toISOString() })
+      .eq('id', threadId)
     return !error
   } catch {
     return false

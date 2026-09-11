@@ -395,6 +395,41 @@ export async function fetchOpsDrafts(): Promise<OpsDraft[]> {
   return data as OpsDraft[]
 }
 
+/**
+ * A task from a bot message's `task` pill (spec section 3).
+ *
+ * Ops IS his task list, so a pill that says "make this a task" writes exactly
+ * the row the WhatsApp dictation and the Claude session already write: kind
+ * 'task', client 'ivan', the title as the first line, the detail under it.
+ * `TaskList` reads `taskTitle(body)`, so the shape of the body IS the contract
+ * and nothing here invents a second one.
+ *
+ * `card_key` is `bot:<turn id>:<index>`, which makes a double tap on the same
+ * pill identifiable in the table rather than merely duplicated. The pill also
+ * disables itself on success, which is the cheap half of the same guard.
+ *
+ * Never any other kind: the spec says so in one sentence and this is the only
+ * place that could break it.
+ */
+export async function createBotTask(
+  turnId: string, index: number, title: string, body?: string,
+): Promise<boolean> {
+  const head = (title ?? '').trim()
+  if (!head) return false
+  const detail = (body ?? '').trim()
+  try {
+    const { error } = await supabase.from('ops_drafts').insert({
+      client_id: 'ivan',
+      kind: 'task',
+      body: detail ? `${head}\n\n${detail}` : head,
+      context: { source: 'claude', card_key: `bot:${turnId}:${index}` },
+    })
+    return !error
+  } catch {
+    return false
+  }
+}
+
 // Approve stamps the (possibly edited) body and approved_at together, same
 // shape as outreach_messages' approveDraft — the n8n dispatcher picks up any
 // row with approved_at set and posts it to Slack within ~2 minutes.

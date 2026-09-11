@@ -27,7 +27,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AnimatePresence, animate, motion, useReducedMotion } from 'motion/react'
-import { Button, Chip, Icon, Working, fadeT, list, rise, spring } from '../../ds'
+import { Button, Chip, Icon, ToastStack, Working, fadeT, list, rise, spring, type ToastItem } from '../../ds'
 import { parseMarkdown, type InlineNode } from '../../exp/v2c/chat/renderer'
 import { turnOutcome, type Turn } from '../../exp/v2c/chat/events'
 import { abortTurn } from '../../lib/turns'
@@ -39,6 +39,13 @@ import { detectLinks } from '../../lib/unfurl'
 import { ToolStrip, TurnMeta } from './Tools'
 import { LinkPreview } from './LinkPreview'
 import { Composer, type ComposerExtras } from './Composer'
+import { BotBundle } from './BotTurn'
+import { ActionPills, type PillsHost } from './ActionPills'
+import { parseActions } from './actions'
+// NOT lazy, and measured rather than assumed: a React.lazy split of these two
+// cost 1.0 KB MORE on the DMs cold path (278.1 vs 277.1 KB script transfer) and
+// two extra requests, because the weight this wave adds is in turns.ts, the
+// feed row and ask.css, none of which can be split off a cold boot.
 import { RunnerControl, RunnerReport, RunnerSection, useRunner } from './Runner'
 import './ask.css'
 
@@ -310,13 +317,15 @@ function useMorphFrom(from: DOMRect | null, done: (() => void) | undefined) {
   return ref
 }
 
-function AnswerCard({ turn, onRetry, onRecall, justLanded, focused, cites, morphFrom, onMorphed, onDragBack }: {
+function AnswerCard({ turn, onRetry, onRecall, justLanded, focused, cites, morphFrom, onMorphed, onDragBack, host }: {
   turn: Turn
   onRetry?: () => void
   onRecall: (noun: string) => void
   justLanded: boolean
   focused: boolean
   cites: Cites
+  /** Present only on a bot answer: what its pills write into (W3-3). */
+  host?: PillsHost
   /** The rect of the feed card that opened this turn, once (move 9). */
   morphFrom?: DOMRect | null
   onMorphed?: () => void
@@ -327,11 +336,18 @@ function AnswerCard({ turn, onRetry, onRecall, justLanded, focused, cites, morph
   const isBusy = THREAD_BUSY_RE.test(turn.error?.message ?? '')
   const ref = useMorphFrom(morphFrom ?? null, onMorphed)
   const drag = focused && onDragBack
+  // A bot answer is an INCOMING message, so the actions block never reaches the
+  // prose renderer: the pills ARE the block, and printing the fence as well
+  // would say the same thing twice, once in a language he does not read.
+  const bot = turn.origin === 'bot'
+  const parsed = bot ? parseActions(turn.text || '') : null
+  const text = parsed ? parsed.body : turn.text
   return (
     <motion.div
       ref={ref}
-      className="a-brain-answer"
+      className={bot ? 'a-brain-answer a-brain-bot' : 'a-brain-answer'}
       data-answer data-turn={turn.turnId ?? turn.id}
+      data-origin={bot ? 'bot' : undefined}
       data-focus={focused ? '' : undefined}
       data-settle={justLanded ? '' : undefined}
       animate={justLanded ? { opacity: [0, 1], y: [8, 0] } : { opacity: 1, y: 0 }}
@@ -344,8 +360,11 @@ function AnswerCard({ turn, onRetry, onRecall, justLanded, focused, cites, morph
     >
       <TurnMeta turn={turn} outcome={outcome} />
       <ToolStrip calls={turn.tools} />
-      {turn.text && <div className="a-brain-prose">{<AnswerBody text={turn.text} onRecall={onRecall} cites={cites} />}</div>}
-      {detectLinks(turn.text || '').slice(0, 1).map(l => <LinkPreview key={l.url} url={l.url} />)}
+      {text && <div className="a-brain-prose">{<AnswerBody text={text} onRecall={onRecall} cites={cites} />}</div>}
+      {parsed && host && turn.turnId && parsed.actions.length > 0 && (
+        <ActionPills turnId={turn.turnId} groupKey={`bot:${turn.turnId}`} actions={parsed.actions} host={host} />
+      )}
+      {detectLinks(text || '').slice(0, 1).map(l => <LinkPreview key={l.url} url={l.url} />)}
       {turn.aborted && <div className="a-brain-note">You stopped this one. Nothing more is coming.</div>}
       {turn.error && (
         <div className="a-brain-err">
@@ -414,6 +433,10 @@ export function AskThread({
   const prevBusy = useRef(chat.busy)
   const [justLandedId, setJustLandedId] = useState<string | null>(null)
   const landedFocus = useRef<string | null>(null)
+  // The pills need a receipt (a fold's Undo) and this surface had no stack of
+  // its own: the feed's toasts live inside the sheet, which is not on screen
+  // when the bot thread is.
+  const [toasts, setToasts] = useState<ToastItem[]>([])
 
   useEffect(() => {
     if (prevBusy.current && !chat.busy) {
@@ -458,6 +481,15 @@ export function AskThread({
   }
   const onRecall = (noun: string) => send(buildRecallCommand(noun))
 
+  const onBot = !!chat.botThread && chat.threadId === chat.botThread.id
+  const pillsHost: PillsHost = {
+    setText,
+    pushToast: (t: ToastItem) => {
+      setToasts(prev => [...prev.filter(x => x.id !== t.id), t])
+      window.setTimeout(() => setToasts(prev => prev.filter(x => x.id !== t.id)), 6000)
+    },
+  }
+
   const lastTurn = chat.turns[chat.turns.length - 1]
   const runningElsewhereActive = chat.runningElsewhere && lastTurn?.role === 'user'
   const empty = chat.turns.length === 0 && chat.status === 'idle' && !chat.runningElsewhere
@@ -470,7 +502,27 @@ export function AskThread({
     <div className="a-brain-ask">
       <div className="a-brain-thread" ref={scroller}>
         <div className="a-brain-shelf">
-          <span className="a-brain-shelf-t">{sessionLine(chat.grounding)}</span>
+          {/* D1: the pin. There is no thread list on this surface, so Claude's
+              own thread is one chip on the shelf: it is the only thread that
+              writes to itself, and the lime dot is the only thing on this row
+              that ever says something happened while he was away. It renders
+              only once the thread exists, because a pin to nothing is a control
+              that leads nowhere. */}
+          {chat.botThread && (
+            <span data-bot-chip>
+              <Chip
+                icon="ask"
+                selected={onBot}
+                onClick={() => chat.openBot()}
+              >
+                <span className="a-brain-bot-chip-l">
+                  Claude
+                  {chat.botUnread && <span className="a-brain-bot-dot" data-bot-unread aria-label="Unread" />}
+                </span>
+              </Chip>
+            </span>
+          )}
+          <span className="a-brain-shelf-t">{onBot ? 'Claude' : sessionLine(chat.grounding)}</span>
           <span data-new-thread>
             <Button variant="quiet" size="sm" icon="add" onClick={() => chat.newThread()}>New thread</Button>
           </span>
@@ -500,9 +552,15 @@ export function AskThread({
           </motion.div>
         ) : (
           chat.turns.map(t => t.role === 'user' ? (
-            <div className="a-brain-uturn" key={t.id} data-turn={t.turnId ?? t.id}>
-              <div className="a-brain-ubub">{t.text}</div>
-            </div>
+            // A bot turn's "question" is the bundle the tick assembled, never
+            // something Ivan typed, so it does not take his bubble.
+            t.origin === 'bot' && t.turnId ? (
+              <BotBundle key={t.id} turnId={t.turnId} prompt={t.text} />
+            ) : (
+              <div className="a-brain-uturn" key={t.id} data-turn={t.turnId ?? t.id}>
+                <div className="a-brain-ubub">{t.text}</div>
+              </div>
+            )
           ) : (
             <AnswerCard
               key={t.id} turn={t} onRetry={chat.retry} onRecall={onRecall}
@@ -512,6 +570,7 @@ export function AskThread({
               morphFrom={!!focusTurn && (t.turnId ?? t.id) === focusTurn ? morphFrom : null}
               onMorphed={onMorphed}
               onDragBack={onDragBack}
+              host={t.origin === 'bot' ? pillsHost : undefined}
             />
           ))
         )}
@@ -570,6 +629,8 @@ export function AskThread({
         extras={composerExtras}
         runner={<RunnerControl runner={runner} text={text} onSent={() => setText('')} />}
       />
+
+      <ToastStack items={toasts} onDismiss={id => setToasts(prev => prev.filter(t => t.id !== id))} />
 
       {/* Portalled to the body from inside: a `position: fixed` sheet under
           `.a-brain-pane`'s stacking context and the band's own transforms came

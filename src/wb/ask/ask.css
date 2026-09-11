@@ -1203,3 +1203,64 @@
     line-height:1.4;
   }
 }
+
+/* ==========================================================================
+   W3 · THE BOT THREAD. Claude's own messages, pinned and incoming.
+
+   Three facts and no new vocabulary: the pin is a Chip, the unread mark is the
+   same lime the feed's unread ground already spends (`--ds-accent`), and the
+   incoming bubble is the user bubble's radius mirrored on surface-1, so the
+   two sides of the conversation read as one system seen from two ends.
+   ========================================================================== */
+.a-brain-bot-chip-l{ display:inline-flex; align-items:center; gap:var(--ds-s2) }
+/* The one lime disc on this row. Same token the feed's unread ground uses, at
+   the size the design system's live dot already fixed; no ripple, because a
+   pin is a standing fact, not a thing happening right now. */
+.a-brain-bot-dot{
+  flex:0 0 auto;
+  width:6px; height:6px;
+  border-radius:var(--ds-r-pill);
+  background:var(--ds-accent);
+}
+/* The shelf's own line gives way: on the bot thread the chip and the title say
+   the same word, so the title is the one that shrinks first. */
+.a-brain-shelf > [data-bot-chip]{ flex:0 0 auto }
+
+/* The bundle: one quiet chip, and the rows it really folded under it. */
+.a-brain-bundle{ display:flex; flex-direction:column; gap:var(--ds-s2); align-items:flex-start; min-width:0 }
+.a-brain-bundle-rows{
+  align-self:stretch;
+  min-width:0;
+  border:1px solid var(--ds-line);
+  border-radius:var(--ds-r4);
+  background:var(--ds-surface-1);
+  overflow:hidden;
+}
+
+/* An INCOMING bubble. The operator's turn is the accent tint on the right; this
+   is its mirror: surface-1, the same radius, left. The answer card's left rule
+   goes, because a bubble already has an edge. */
+.a-brain-answer.a-brain-bot{
+  align-self:flex-start;
+  max-width:92%;
+  padding:var(--ds-s3) var(--ds-s4);
+  border-inline-start:0;
+  border-radius:var(--ds-r3);
+  background:var(--ds-surface-1);
+}
+.a-brain-answer.a-brain-bot[data-focus]{ box-shadow:inset 2px 0 0 0 var(--ds-accent) }
+
+/* The pills. A wrapping row, every control at the phone tap floor. */
+.a-brain-pills{ display:flex; flex-wrap:wrap; gap:var(--ds-s2); align-items:center }
+.a-brain-pills [data-ds="Button"]{ min-height:44px }
+.a-brain-pill-done{
+  display:inline-flex; align-items:center; gap:var(--ds-s2);
+  min-height:44px;
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-mono);
+  color:var(--ds-text-3);
+}
+
+/* The feed's "in chat" mark. It sits in the meta run, at the meta's weight, so
+   it says a fact without competing with the state word. */
+.a-brain-inchat{ display:inline-flex; align-items:center }

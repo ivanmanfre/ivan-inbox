@@ -17,12 +17,12 @@ import { AnimatePresence, motion } from 'motion/react'
 import { Button, DayHeader, EmptyState, ToastStack, fadeT, rise, spring, type ToastItem } from '../../ds'
 import { Body, Rows } from '../kit'
 import { useConfirm } from '../chrome/ConfirmSheet'
-import { notificationDeepLink, type Notification, type NotificationGroup } from '../../lib/turns'
+import { getTurn, notificationDeepLink, type Notification, type NotificationGroup } from '../../lib/turns'
 import { parseWbHash } from '../../exp/v2c/route'
 import type { Job } from '../../exp/v2c/layout'
 import type { FeedData } from '../../exp/brain/b/useFeedData'
 import { dayWord } from './forms'
-import { GroupRow, NotificationRow } from './NotificationRow'
+import { GroupRow, NotificationRow, inChatTurnId } from './NotificationRow'
 import './ask.css'
 
 function clockTime(iso: string): string {
@@ -144,10 +144,29 @@ export function Feed({ feed, goJob, openThread, onNavigated, onScrolled }: {
 
   const openOne = (n: Notification, el: HTMLElement | null) => {
     feed.markRead(n)
-    const route = parseWbHash(notificationDeepLink(n))
     // Measured NOW, before anything moves: once the sheet starts leaving, the
     // card's rectangle is no longer where the operator's thumb was.
-    if (route.thread) openThread(route.thread, route.turn, el?.getBoundingClientRect() ?? null)
+    const rect = el?.getBoundingClientRect() ?? null
+    // A row Claude folded goes to the MESSAGE about it, not to the lane the
+    // row's own url names: the answer he wants is the one already written, and
+    // the turn row is what says which thread it lives in. The existing focus
+    // and morph path then scrolls to that turn.
+    const botTurn = inChatTurnId(n)
+    if (botTurn) {
+      void (async () => {
+        try {
+          const row = await getTurn(botTurn)
+          if (row) { openThread(row.thread_id, row.id, rect); onNavigated(); return }
+        } catch { /* fall through to the row's own url */ }
+        const back = parseWbHash(notificationDeepLink(n))
+        if (back.thread) openThread(back.thread, back.turn, rect)
+        else goJob(back.job)
+        onNavigated()
+      })()
+      return
+    }
+    const route = parseWbHash(notificationDeepLink(n))
+    if (route.thread) openThread(route.thread, route.turn, rect)
     else goJob(route.job)
     onNavigated()
   }

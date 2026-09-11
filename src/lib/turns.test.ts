@@ -58,9 +58,10 @@ vi.mock('./supabase', () => ({
 
 const {
   NOTIFICATION_FALLBACK_HASH, NOTIFICATIONS_TABLE, NOTIFICATIONS_VIEW, THREADS_VIEW,
-  TURNS_TABLE, TURNS_VIEW, abortTurn, dismissGroup, dismissNotification, getThread, getTurn,
-  groupNotifications, isUuid, latestThread, listNotifications, listThreads, listTurns,
-  markNotificationsRead, mergeBackRows, notificationDeepLink,
+  THREADS_TABLE, TURNS_TABLE, TURNS_VIEW, abortTurn, dismissGroup, dismissNotification,
+  getBotThread, getThread, getTurn, groupNotifications, isUuid, latestThread, listGroupRows,
+  listNotifications, listThreads, listTurns, markBotSeen, markNotificationsRead, mergeBackRows,
+  notificationDeepLink,
 } = await import('./turns')
 
 beforeEach(() => { steps.length = 0; queue = [] })
@@ -110,6 +111,56 @@ describe('reads go through the views, never the base tables', () => {
     expect(steps[0].limit).toBe(1)
     expect(steps[0].single).toBe(true)
     expect(steps[0].filters).toContain('is:archived_at=null')
+  })
+
+  // db/060 D1. The tick makes the bot thread the newest thread every half hour
+  // of activity, so without this filter a cold boot would land on Claude's own
+  // thread instead of the conversation Ivan was last having.
+  it('latestThread refuses the bot thread outright', async () => {
+    queue.push({ data: null, error: null })
+    await latestThread()
+    expect(steps[0].filters).toContain('eq:kind=ask')
+  })
+
+  it('getBotThread reads the one bot row through the view', async () => {
+    queue.push({ data: null, error: null })
+    expect(await getBotThread()).toBeNull()
+    expect(steps[0].table).toBe(THREADS_VIEW)
+    expect(steps[0].filters).toEqual(['eq:kind=bot'])
+    expect(steps[0].limit).toBe(1)
+    expect(steps[0].single).toBe(true)
+    // The new columns ride on the same list the rest of the surface reads.
+    expect(steps[0].cols).toContain('kind')
+    expect(steps[0].cols).toContain('bot_seen_at')
+  })
+
+  // D7: the bundle's rows INCLUDE the dismissed ones. A row he folded from the
+  // pill is still part of what Claude read, so `is:dismissed_at=null` must not
+  // appear here the way it does on the feed's own read.
+  it('listGroupRows reads a bundle oldest first and keeps the dismissed rows', async () => {
+    queue.push({ data: [], error: null })
+    await listGroupRows('bot:abc')
+    expect(steps[0].table).toBe(NOTIFICATIONS_VIEW)
+    expect(steps[0].filters).toEqual(['eq:group_key=bot:abc'])
+    expect(steps[0].order).toBe('created_at:asc')
+    expect(steps[0].limit).toBe(200)
+  })
+
+  it('markBotSeen is the third narrow write: one column, one row, never a throw', async () => {
+    queue.push({ data: null, error: null })
+    expect(await markBotSeen(U1)).toBe(true)
+    expect(steps[0].table).toBe(THREADS_TABLE)
+    expect(steps[0].op).toBe('update')
+    expect(Object.keys(steps[0].payload!)).toEqual(['bot_seen_at'])
+    expect(steps[0].filters).toEqual([`eq:id=${U1}`])
+  })
+
+  it('markBotSeen reports a refused write instead of throwing it at Ivan', async () => {
+    queue.push({ data: null, error: { code: '42501' } })
+    expect(await markBotSeen(U1)).toBe(false)
+    // A rotted cache is never a query.
+    expect(await markBotSeen('not-a-uuid')).toBe(false)
+    expect(steps).toHaveLength(1)
   })
 
   it('listTurns reads a transcript oldest first and bounded', async () => {

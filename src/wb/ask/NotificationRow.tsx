@@ -30,6 +30,7 @@ import { groupStateWord, severityShape, stateWord } from '../../exp/brain/b/fami
 import {
   dayWord, detailLine, formFor, pageCard, quoteCard, raised, rowLine, subjectFor,
 } from './forms'
+import { Chip } from '../../ds'
 import { Mark, TenantChip, clock, isRunningWord, laneLabel, useSwipe } from './parts'
 import './ask.css'
 
@@ -38,6 +39,24 @@ import './ask.css'
  * instruments use to find one. */
 function sevOf(shape: 'square' | 'bar' | 'dot'): 'attention' | 'urgent' | undefined {
   return shape === 'bar' ? 'urgent' : shape === 'square' ? 'attention' : undefined
+}
+
+/**
+ * A row Claude already wrote about (spec section 5). The group key IS the mark:
+ * `bot:<turn id>` is stamped by the tick on every row that went into a bundle,
+ * so this is not a guess about whether the message mentioned it.
+ *
+ * Quiet on purpose. The fact is useful ("you have read this already, in the
+ * thread"), and it is not an event: it must not compete with the state word.
+ */
+export function inChatTurnId(n: { group_key: string | null }): string | null {
+  const k = n.group_key ?? ''
+  return k.startsWith('bot:') ? k.slice(4) : null
+}
+
+function InChatMark({ n }: { n: { group_key: string | null } }) {
+  if (!inChatTurnId(n)) return null
+  return <span className="a-brain-inchat" data-in-chat><Chip tone="quiet">in chat</Chip></span>
 }
 
 export function NotificationRow({ n, onOpen, onDismiss, nested = false, going = false }: {
@@ -79,7 +98,7 @@ export function NotificationRow({ n, onOpen, onDismiss, nested = false, going = 
           titleWrap
           unread={unread}
           onClick={() => onOpen(n, box.current)}
-          tail={<span className="a-mono">{time}</span>}
+          tail={<><InChatMark n={n} /><span className="a-mono">{time}</span></>}
           actions={<IconButton icon="close" label="Dismiss" size="sm" onClick={e => { e.stopPropagation(); onDismiss(n.id, n) }} />}
         />
       </motion.div>
@@ -158,6 +177,7 @@ export function NotificationRow({ n, onOpen, onDismiss, nested = false, going = 
           meta={
             <>
               <TenantChip tenant={n.tenant} />
+              <InChatMark n={n} />
               <span>{time}</span>
             </>
           }
@@ -243,6 +263,7 @@ export function GroupRow({ g, open, onToggle, onOpen, onDismissAll, onDismissOne
           meta={
             <>
               <TenantChip tenant={g.latest.tenant} />
+              <InChatMark n={g.latest} />
               <MarkStack items={g.items} />
               <span>latest {time}</span>
             </>

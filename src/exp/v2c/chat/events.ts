@@ -91,6 +91,13 @@ export type Turn = {
   status?: TurnStatus
   /** What the broker grounded the answer on: one entry per assembled block. */
   sources?: TurnSource[]
+  /**
+   * db/060. Who started the turn this half belongs to. Absent on a turn that is
+   * being streamed right now, which is always Ivan's; carried on BOTH halves of
+   * a hydrated row, because the question and the answer of a bot turn are both
+   * rendered differently from his.
+   */
+  origin?: 'operator' | 'bot'
 }
 
 // The outcome of an assistant turn as one value, so the dot, the label and the

@@ -9,7 +9,7 @@ import type { Turn } from './chat/events'
 // on a transcript the stream already half-wrote.
 
 const row = (o: Partial<TurnRow>): TurnRow => ({
-  id: 'r1', thread_id: 'th', prompt: 'why', context: null, context_chars: null,
+  id: 'r1', thread_id: 'th', origin: 'operator', prompt: 'why', context: null, context_chars: null,
   model: null, ran_on: 'claude-opus-4-8', status: 'done', answer: 'because',
   tool_events: [], sources: [], grounding: null, resumed: false,
   cost_usd: null, duration_ms: null, client_gone_at: null,
@@ -35,6 +35,16 @@ describe('turnsFromRows', () => {
     // Both halves carry the row id: it is the handle the poll updates in place.
     expect(out[0].turnId).toBe('r1')
     expect(out[1].turnId).toBe('r1')
+  })
+
+  // db/060: both halves carry the origin, because a bot turn's question is the
+  // event bundle (rendered as a fold) and its answer is an incoming bubble.
+  it('carries the row origin onto both halves', () => {
+    const bot = turnsFromRows([row({ origin: 'bot', prompt: '[send_failed · error] 2 sends failed', answer: 'Two sends failed.' })])
+    expect(bot.map(t => t.origin)).toEqual(['bot', 'bot'])
+    const ivan = turnsFromRows([row({})])
+    expect(ivan.map(t => t.origin)).toEqual(['operator', 'operator'])
+    expect(assistantFromRow(row({ origin: 'bot' })).origin).toBe('bot')
   })
 
   it('a still-running row contributes its QUESTION only', () => {
