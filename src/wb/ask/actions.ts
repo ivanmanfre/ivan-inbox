@@ -68,7 +68,15 @@ function toAction(raw: unknown): Action | null {
   const { label, kind, payload } = raw
   if (!str(label, LABEL_MAX)) return null
   if (payload !== undefined && !isObject(payload)) return null
-  const p = isObject(payload) ? payload : {}
+  // A model that writes {"kind":"reply","prompt":"..."} with no payload wrapper
+  // said the same thing one level up (seen live, skeptic S2 attempt 2). Lift the
+  // four known fields into the payload only when payload is absent; a present
+  // payload is read as written.
+  const lifted: Record<string, unknown> = {}
+  if (payload === undefined) {
+    for (const k of ['url', 'title', 'body', 'prompt'] as const) if (k in raw) lifted[k] = raw[k]
+  }
+  const p = isObject(payload) ? payload : lifted
   if (kind === 'open') return urlOk(p.url) ? { label, kind, payload: { url: (p.url as string).trim() } } : null
   if (kind === 'task') {
     if (!str(p.title)) return null

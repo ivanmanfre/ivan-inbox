@@ -119,3 +119,16 @@ describe('parseActions', () => {
     expect(body).not.toContain('Second')
   })
 })
+
+describe('payload lifted when absent', () => {
+  it('reads a top-level prompt as the reply payload', () => {
+    const text = 'x\n\n```actions\n[{"label":"Do it","kind":"reply","prompt":"go"}]\n```'
+    const out = parseActions(text)
+    expect(out.actions).toEqual([{ label: 'Do it', kind: 'reply', payload: { prompt: 'go' } }])
+    expect(out.body).toBe('x')
+  })
+  it('still drops a present but wrong payload', () => {
+    const text = '```actions\n[{"label":"Do it","kind":"reply","payload":{},"prompt":"go"}]\n```'
+    expect(parseActions(text).actions).toEqual([])
+  })
+})
