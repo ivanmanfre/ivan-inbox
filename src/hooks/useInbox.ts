@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { fetchDraftContextGaps, fetchDraftEmailStamps, fetchDraftEvidence, fetchManualReplyIds, fetchMessages, groupThreads, type DraftContextGap, type DraftEmailStamp, type Thread } from '../lib/inbox'
+import { fetchDraftContextGaps, fetchDraftEmailStamps, fetchDraftEvidence, fetchManualReplyIds, fetchMessages, groupThreads, type DraftContextGap, type DraftEmailStamp, type Thread, SPAM_REASON } from '../lib/inbox'
 import { playChime } from '../lib/chime'
 import { readInboxCache, writeInboxCache } from '../lib/inboxCache'
 
@@ -75,8 +75,11 @@ export function useInbox() {
         const ev = evidence?.get(m.id)
         if (ev) m.draft_evidence = ev
       }
+      // 2026-09-10 (Ivan: strangers filed under Likely spam get "no notifications or sound"):
+      // a filed thread never moves the chime watermark. Registration inserts old messages with
+      // a fresh created_at, so without this every triage batch would ring the open app.
       const latest = rows
-        .filter(m => m.direction === 'inbound')
+        .filter(m => m.direction === 'inbound' && (m.prospect_skip_reason ?? null) !== SPAM_REASON)
         .map(m => m.created_at).sort().at(-1) ?? null
       const grouped = groupThreads(rows, manualReplyIds)
       // THE SAME RULE fetchMessages applies to its first page, applied once more
