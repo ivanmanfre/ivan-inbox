@@ -94,16 +94,20 @@ export function FollowUpStrip({ thread }: { thread: Thread }) {
           <Button variant="quiet" size="sm" busy={busy} onClick={busy ? undefined : onClear}>Clear</Button>
         </div>
       ) : suggested && !open ? (
-        <Banner
-          icon="time"
-          title={`${first} asked to hear from you again later${suggested.dated ? `, around ${formatReturn(suggested.at)}` : ''}.`}
-          action={<>
+        <>
+          {/* Buttons UNDER the text, not in the banner's tail: at 390px the tail
+              crushed the sentence to one word per line (seen on the first live shot). */}
+          <Banner
+            icon="time"
+            title={`${first} asked to hear from you again later${suggested.dated ? `, around ${formatReturn(suggested.at)}` : ''}.`}
+          >
+            {suggested.why ? `"${suggested.why}" · ` : ''}Send the reply now; on that date a follow-up is drafted for you to approve. If {first} writes first, the date is dropped.
+          </Banner>
+          <div className="a-thread-followup-row">
             <Button variant="primary" size="sm" busy={busy} onClick={busy ? undefined : onTakeSuggestion}>Follow up {formatReturn(suggested.at)}</Button>
             <Button variant="quiet" size="sm" disabled={busy} onClick={() => { setWhy(suggested.why); setOpen(true) }}>Another date</Button>
-          </>}
-        >
-          {suggested.why ? `"${suggested.why}" · ` : ''}Send the reply now; on that date a follow-up is drafted for you to approve. If {first} writes first, the date is dropped.
-        </Banner>
+          </div>
+        </>
       ) : !open ? (
         <div className="a-thread-followup-row">
           <Button variant="quiet" size="sm" icon="time" onClick={() => setOpen(true)}>Follow up on a date</Button>
