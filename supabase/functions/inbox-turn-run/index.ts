@@ -8,19 +8,19 @@
 //
 // Server-to-server: `x-inbox-secret` = INBOX_PUSH_SECRET, checked before the body
 // is read, never the anon key. Deployed with --no-verify-jwt for that reason.
+//
+// A bot-origin turn (row.origin='bot') skips the claude_turn notification: the
+// bot writes a colleague message, not a push. On a clean finish it folds the
+// feed rows it read instead; on error the rows stay unread for the next tick.
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { notify } from '../_shared/notify.ts'
+import { planCompletion } from './completion.ts'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
 
 /** A turn still 'running' after this long has lost its container. */
 const LOST_AFTER_MS = 15 * 60 * 1000
-/**
- * Below this, the operator was almost certainly still watching the stream when
- * the answer landed, so a push would only tell them what they just read.
- */
-const PUSH_IF_SLOWER_THAN_MS = 20_000
 
 function err(status: number, code: string, detail?: string) {
   return new Response(JSON.stringify({ error: code, detail }), { status, headers: JSON_HEADERS })
@@ -163,6 +163,23 @@ Deno.serve(async (req) => {
   const { error: updErr } = await db.from('inbox_turns').update(patch).eq('id', turnId)
   if (updErr) return err(500, 'turn_update_failed', updErr.message)
 
+  const plan = planCompletion({ row, status, patch, turnId, nowMs: now.getTime() })
+
+  // ---- bot fold -------------------------------------------------------------
+  // Before the thread update so a webhook that fails later on this request
+  // still folded the rows the bot turn read. On error/aborted plan.foldGroupKey
+  // is null and this is skipped, leaving the rows unread for the next tick.
+  if (plan.foldGroupKey) {
+    const { data: folded, error: foldErr } = await db
+      .from('inbox_notifications')
+      .update({ read_at: nowIso })
+      .eq('group_key', plan.foldGroupKey)
+      .is('read_at', null)
+      .select('id')
+    if (foldErr) console.error('bot fold failed', turnId, foldErr.message)
+    else console.log(JSON.stringify({ bot_fold: turnId, folded: folded?.length ?? 0 }))
+  }
+
   // ---- thread -------------------------------------------------------------
   const { data: thread } = await db
     .from('inbox_threads').select('*').eq('id', row.thread_id).maybeSingle()
@@ -189,27 +206,13 @@ Deno.serve(async (req) => {
   }
 
   // ---- push ---------------------------------------------------------------
-  // Only when the operator plausibly stopped watching: they closed the tab, or
-  // the turn took long enough that nobody sat through it.
-  const startedMs = row.started_at ? Date.parse(row.started_at) : Date.parse(row.created_at)
-  const elapsed = now.getTime() - startedMs
-  const worthTelling = (status === 'done' || status === 'error') &&
-    (row.client_gone_at != null || elapsed > PUSH_IF_SLOWER_THAN_MS)
-
+  // plan.notify is the single early condition: null for a bot turn (rule 1) or
+  // a turn not worth telling about, otherwise the same object and the same
+  // worthTelling expression this handler used before the bot thread existed.
   let pushed = false
-  if (worthTelling) {
+  if (plan.notify) {
     try {
-      const answer = typeof patch.answer === 'string' ? patch.answer : ''
-      const out = await notify(db, {
-        family: 'claude_turn',
-        source: 'inbox-turn-run',
-        dedupe_key: `turn:${turnId}`,
-        severity: status === 'error' ? 'attention' : 'info',
-        push: true,
-        title: String(row.prompt ?? 'Claude turn').slice(0, 60),
-        body: (status === 'error' ? (patch.error_detail as string | null) ?? 'The turn failed.' : answer).slice(0, 140),
-        url: `./#exp/brain-b/ask?thread=${row.thread_id}&turn=${turnId}`,
-      })
+      const out = await notify(db, plan.notify)
       pushed = out.pushed
     } catch (e) {
       // A failed notification must never fail the webhook: the turn row is already
