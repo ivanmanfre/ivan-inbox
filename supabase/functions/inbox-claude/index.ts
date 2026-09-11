@@ -469,8 +469,15 @@ Deno.serve(async (req) => {
   // recipes stay byte-stable ahead of it, and its length is reserved below so
   // the cap still bounds what actually leaves the broker.
   const BASE_APPEND_SYSTEM_PROMPT = `${P16_OPERATOR_RULES.trimEnd()}\n\n${DEPTH_BLOCK}`
+  // A bot turn carries the operator rules and its standing instruction, and NOT
+  // the depth recipes: those are operator commands. Measured live 2026-09-11:
+  // rules + recipes + instruction (609 + 5497 + 3195 chars) pushed the reserve to
+  // 9302 and the assembled artifact to 47165, over the 46000 cap after the full
+  // shed ladder, so every bot turn failed closed (evidence/W2/w2-1-server-door
+  // .txt, first run). Without the recipes the reserve is 3806 and 4k of headroom
+  // remains. The operator turn's append is untouched.
   const APPEND_SYSTEM_PROMPT = systemAppend
-    ? `${BASE_APPEND_SYSTEM_PROMPT}\n\n${systemAppend}`
+    ? `${P16_OPERATOR_RULES.trimEnd()}\n\n${systemAppend}`
     : BASE_APPEND_SYSTEM_PROMPT
 
   let envelope = ''
