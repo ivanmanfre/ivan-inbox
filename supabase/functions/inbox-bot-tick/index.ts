@@ -58,13 +58,56 @@ function utcDayStart(now: Date): string {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString()
 }
 
-/** Put the rows back the way they were found. Called only when the broker refused. */
-async function unstamp(db: SupabaseClient, groupKey: string) {
+/**
+ * Put the rows back the way they were found. Called only when the broker
+ * refused. Each row gets ITS OWN previous group_key back (a producer's key, or
+ * null), not a blanket null: skeptic S1 (waves/W2-skeptic.md, hole 6b) showed
+ * 404 live rows carry a producer key the feed folds by.
+ */
+async function unstamp(db: SupabaseClient, groupKey: string, previous: Map<string, string | null>) {
+  for (const [id, prev] of previous) {
+    const { error } = await db
+      .from('inbox_notifications')
+      .update({ group_key: prev })
+      .eq('id', id)
+      .eq('group_key', groupKey)
+    if (error) console.error('unstamp failed', { id, message: error.message })
+  }
+}
+
+/**
+ * One tick at a time, taken atomically. Two ticks a second apart both passed
+ * the busy check (S1 hole 3: two turns, same session, two near-identical
+ * messages). The lock is one integration_config row: the UPDATE is atomic, so
+ * only the first caller sees 'free' (or a holder older than LOCK_STALE_MS, a
+ * tick that died). Released on every exit after it is taken.
+ */
+const LOCK_KEY = 'bot_tick_lock'
+const LOCK_FREE = 'free'
+const LOCK_STALE_MS = 10 * 60 * 1000
+
+async function takeLock(db: SupabaseClient, holder: string): Promise<boolean> {
+  const stale = new Date(Date.now() - LOCK_STALE_MS).toISOString()
+  const { data, error } = await db
+    .from('integration_config')
+    .update({ value: holder, updated_at: new Date().toISOString() })
+    .eq('key', LOCK_KEY)
+    .or(`value.eq.${LOCK_FREE},updated_at.lt.${stale}`)
+    .select('key')
+  if (error) {
+    console.error('lock update failed', error.message)
+    return false
+  }
+  return (data?.length ?? 0) === 1
+}
+
+async function releaseLock(db: SupabaseClient, holder: string) {
   const { error } = await db
-    .from('inbox_notifications')
-    .update({ group_key: null })
-    .eq('group_key', groupKey)
-  if (error) console.error('unstamp failed', { groupKey, message: error.message })
+    .from('integration_config')
+    .update({ value: LOCK_FREE, updated_at: new Date().toISOString() })
+    .eq('key', LOCK_KEY)
+    .eq('value', holder)
+  if (error) console.error('lock release failed', error.message)
 }
 
 Deno.serve(async (req) => {
@@ -99,6 +142,13 @@ Deno.serve(async (req) => {
   if (cfgMap.get('bot_tick_enabled') !== 'true' && !forced) {
     return say({ bot_tick: 'disabled' })
   }
+
+  // ---- 1b. the lock ------------------------------------------------------
+  const lockHolder = crypto.randomUUID()
+  if (!(await takeLock(db, lockHolder))) {
+    return say({ bot_tick: 'busy', lock: 'held', ...(forced ? { forced: true } : {}) })
+  }
+  try {
 
   // ---- 2. the one bot thread --------------------------------------------
   let threadId: string
@@ -194,6 +244,7 @@ Deno.serve(async (req) => {
 
   // ---- 7. stamp, before the broker is asked anything ---------------------
   const groupKey = `bot:${turnId}`
+  const previousKeys = new Map(candidates.filter((r) => bundle.included.includes(r.id)).map((r) => [r.id, r.group_key ?? null]))
   const { error: stampErr } = await db
     .from('inbox_notifications')
     .update({ group_key: groupKey })
@@ -213,7 +264,7 @@ Deno.serve(async (req) => {
   if (!briefBody) {
     // A turn with no standing instruction is a turn with no voice rules, which
     // is worse than no turn. Put the rows back and say why.
-    await unstamp(db, groupKey)
+    await unstamp(db, groupKey, previousKeys)
     return say({ bot_tick: 'no_brief', slug: BRIEF_SLUG, scope: BRIEF_SCOPE }, 503)
   }
 
@@ -242,14 +293,14 @@ Deno.serve(async (req) => {
       }),
     })
   } catch (e) {
-    await unstamp(db, groupKey)
+    await unstamp(db, groupKey, previousKeys)
     const detail = e instanceof Error ? e.message.slice(0, 200) : 'fetch failed'
     return say({ bot_tick: 'broker_error', status: 0, error: detail })
   }
 
   if (res.status !== 200) {
     const detail = (await res.text().catch(() => '')).slice(0, 300)
-    await unstamp(db, groupKey)
+    await unstamp(db, groupKey, previousKeys)
     return say({ bot_tick: 'broker_error', status: res.status, error: detail })
   }
 
@@ -270,4 +321,7 @@ Deno.serve(async (req) => {
     ...(createdThread ? { created_thread: threadId } : {}),
     ...(forced ? { forced: true } : {}),
   })
+  } finally {
+    await releaseLock(db, lockHolder)
+  }
 })

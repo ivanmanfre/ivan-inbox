@@ -204,7 +204,7 @@ export async function notify(db: SupabaseClient, raw: unknown): Promise<NotifyRe
     const since = new Date(Date.now() - DEDUPE_WINDOW_MS).toISOString()
     const { data: hit, error: findErr } = await db
       .from('inbox_notifications')
-      .select('id, count')
+      .select('id, count, read_at, group_key')
       .eq('dedupe_key', n.dedupe_key)
       .gt('last_seen_at', since)
       .is('dismissed_at', null)
@@ -216,6 +216,14 @@ export async function notify(db: SupabaseClient, raw: unknown): Promise<NotifyRe
     if (hit) {
       // The newest telling wins the visible fields; the count is what says it
       // happened again. No push: the operator has already been told once.
+      //
+      // A row the BOT already read (group_key 'bot:<turn>', read_at set) comes
+      // back as unread with the bot's stamp cleared, so the repeat reaches the
+      // bell and the next bot message. Without this a lane alarm that fires
+      // again inside the 24h window folded silently into a row nobody would
+      // look at again (skeptic S1, waves/W2-skeptic.md, hole 6a). A row Ivan
+      // read by hand keeps today's behaviour.
+      const botFolded = typeof hit.group_key === 'string' && hit.group_key.startsWith('bot:') && hit.read_at != null
       const { error: updErr } = await db
         .from('inbox_notifications')
         .update({
@@ -225,6 +233,7 @@ export async function notify(db: SupabaseClient, raw: unknown): Promise<NotifyRe
           body: n.body,
           severity: n.severity,
           media: n.media,
+          ...(botFolded ? { read_at: null, group_key: null } : {}),
         })
         .eq('id', hit.id)
       if (updErr) throw new NotifyError(500, 'dedupe_update_failed', updErr.message)
