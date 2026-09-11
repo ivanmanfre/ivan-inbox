@@ -14,6 +14,17 @@
 //
 // Fails closed on every ambiguity: missing config, unverifiable token, wrong
 // user, unparseable body.
+//
+// TWO DOORS, 2026-09-11. The JWT door above is the browser's and is unchanged.
+// A SERVER DOOR was added for inbox-bot-tick, the cron that starts a bot turn:
+// it presents `x-inbox-secret` (INBOX_PUSH_SECRET) instead of a bearer and must
+// NAME the operator in its body. A browser cannot reach it, because
+// `x-inbox-secret` is not in the CORS allow-headers list below, so the preflight
+// refuses it. From the turn code's point of view a bot turn differs in exactly
+// four ways: the user comes from the allowlist instead of getUser, the thread is
+// required and must be `kind='bot'`, the row carries `origin='bot'`, and the
+// upstream body carries the read-only tool set in ./bot-tools.ts instead of the
+// operator's bypassPermissions grant.
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import {
   assembleSystemPrompt,
@@ -21,6 +32,7 @@ import {
   P16_OPERATOR_RULES,
   summaryDelta,
 } from './assembler.ts'
+import { BOT_TOOLS, MAX_SYSTEM_APPEND_CHARS } from './bot-tools.ts'
 import { DEPTH_BLOCK, DEPTH_BLOCK_CHARS } from './depth-block.ts'
 import { unfurl, UnfurlError } from './unfurl.ts'
 
@@ -177,6 +189,11 @@ async function upstreamAcceptsModel(base: string): Promise<boolean | null> {
   }
 }
 
+// The same shape check the app uses (src/lib/turns.ts:117). A thread id or a
+// turn id that is not a uuid addresses nothing, so it is refused at the door
+// rather than handed to PostgREST as a cast error.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-9a-f][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
 function fail(status: number, code: string, origin: string | null, detail?: string) {
   // Distinct machine-readable codes so the UI can say what actually went wrong
   // rather than the reference implementation's single "failed" string.
@@ -202,22 +219,6 @@ Deno.serve(async (req) => {
     return fail(503, 'broker_not_configured', origin)
   }
 
-  const authz = req.headers.get('Authorization') ?? ''
-  const jwt = authz.startsWith('Bearer ') ? authz.slice(7).trim() : ''
-  if (!jwt) return fail(401, 'unauthenticated', origin)
-
-  // Library-verified: getUser() validates the signature and expiry server-side.
-  // Never decode the payload manually — the repo has precedent functions that
-  // atob the middle segment and trust it, which accepts any forged token.
-  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } })
-  const { data, error } = await sb.auth.getUser(jwt)
-  const user = data?.user
-  if (error || !user) return fail(401, 'invalid_token', origin)
-  if (user.id !== ALLOWED_USER_ID) {
-    console.warn('rejected non-allowlisted user', { attempted: user.id })
-    return fail(403, 'forbidden_user', origin)
-  }
-
   // The request type deliberately has no working_directory and no client_id.
   // Those two fields are the upstream's cross-tenant primitive: working_directory
   // is used raw as the cwd with no allowlist (main.py:89,656) and client_id makes
@@ -238,10 +239,105 @@ Deno.serve(async (req) => {
     prompt?: unknown; context?: unknown; model?: unknown
     thread_id?: unknown; turn_id?: unknown; unfurl?: unknown
   }
-  try {
-    body = await req.json()
-  } catch {
-    return fail(400, 'bad_json', origin)
+  // Who this turn belongs to, and who authored it. Both are decided by the door
+  // the request came through, and everything after this point reads them instead
+  // of re-deciding. `user` is narrowed to the one field the turn code uses.
+  let user: { id: string }
+  let turnOrigin: 'operator' | 'bot' = 'operator'
+  // The bot's standing instruction (content_prompts slug inbox-bot-brief), which
+  // the tick reads and passes here. Empty on every operator turn.
+  let systemAppend = ''
+
+  // ---- which door ----------------------------------------------------------
+  // A browser cannot enter the server door: `x-inbox-secret` is not in the CORS
+  // allow-headers list above, so the preflight refuses it before the request is
+  // ever sent. Presence of the header therefore means a server-to-server caller,
+  // and the ONLY one is inbox-bot-tick.
+  const serverSecret = req.headers.get('x-inbox-secret')
+  if (serverSecret !== null) {
+    // ---- server door: the tick's entry, fail closed in this exact order ----
+    // Copied from inbox-runner-dispatch and inbox-turn-run: every check returns
+    // before any database read, so a caller that fails one of them cannot learn
+    // whether a thread or a turn exists.
+    if (!INBOX_PUSH_SECRET) {
+      console.error('refusing: server door has no INBOX_PUSH_SECRET')
+      return fail(503, 'broker_not_configured', origin)
+    }
+    if (serverSecret !== INBOX_PUSH_SECRET) return fail(401, 'unauthorized', origin)
+    // Unreachable today (the 405 above already fired) and kept anyway: the order
+    // of these checks is the contract, not the reachability of any one of them.
+    if (req.method !== 'POST') return fail(405, 'method_not_allowed', origin)
+
+    let sBody: Record<string, unknown>
+    try {
+      const parsed = await req.json()
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        return fail(400, 'bad_json', origin)
+      }
+      sBody = parsed as Record<string, unknown>
+    } catch {
+      return fail(400, 'bad_json', origin)
+    }
+
+    // The caller must NAME the operator, and it must match. A body with no
+    // operator_id is a caller that did not name one, which is also a refusal:
+    // the allowlist is never satisfied by silence.
+    if (typeof sBody.operator_id !== 'string' || sBody.operator_id !== ALLOWED_USER_ID) {
+      console.warn('server door: rejected operator_id', { attempted: typeof sBody.operator_id })
+      return fail(403, 'forbidden_user', origin)
+    }
+    if (sBody.origin !== 'bot') return fail(400, 'bad_origin', origin, "origin must be 'bot'")
+
+    const sThreadId = typeof sBody.thread_id === 'string' ? sBody.thread_id.trim() : ''
+    const sTurnId = typeof sBody.turn_id === 'string' ? sBody.turn_id.trim() : ''
+    // The door never creates a thread: the tick owns the one bot thread and
+    // names it, so a missing thread_id is a bug upstream, not a new thread.
+    if (!UUID_RE.test(sThreadId)) return fail(400, 'bad_thread_id', origin)
+    if (!UUID_RE.test(sTurnId)) return fail(400, 'bad_turn_id', origin)
+
+    const sPrompt = typeof sBody.prompt === 'string' ? sBody.prompt.trim() : ''
+    if (!sPrompt) return fail(400, 'empty_prompt', origin)
+    if (sPrompt.length > MAX_PROMPT_CHARS) return fail(413, 'prompt_too_long', origin)
+
+    if (sBody.system_append != null && typeof sBody.system_append !== 'string') {
+      return fail(400, 'bad_system_append', origin, 'system_append must be a string')
+    }
+    const sAppend = typeof sBody.system_append === 'string' ? sBody.system_append : ''
+    if (sAppend.length > MAX_SYSTEM_APPEND_CHARS) {
+      return fail(400, 'system_append_too_long', origin, `max ${MAX_SYSTEM_APPEND_CHARS}`)
+    }
+
+    user = { id: ALLOWED_USER_ID }
+    turnOrigin = 'bot'
+    systemAppend = sAppend
+    // Rebuilt rather than forwarded: the server door accepts four fields and no
+    // others, so nothing else in the caller's body can reach the turn code. In
+    // particular there is no `model` (decision D5) and no `unfurl`.
+    body = { prompt: sPrompt, thread_id: sThreadId, turn_id: sTurnId }
+    console.log(JSON.stringify({ door: 'server', origin: 'bot', turn_id: sTurnId }))
+  } else {
+    const authz = req.headers.get('Authorization') ?? ''
+    const jwt = authz.startsWith('Bearer ') ? authz.slice(7).trim() : ''
+    if (!jwt) return fail(401, 'unauthenticated', origin)
+
+    // Library-verified: getUser() validates the signature and expiry server-side.
+    // Never decode the payload manually — the repo has precedent functions that
+    // atob the middle segment and trust it, which accepts any forged token.
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } })
+    const { data, error } = await sb.auth.getUser(jwt)
+    const authed = data?.user
+    if (error || !authed) return fail(401, 'invalid_token', origin)
+    if (authed.id !== ALLOWED_USER_ID) {
+      console.warn('rejected non-allowlisted user', { attempted: authed.id })
+      return fail(403, 'forbidden_user', origin)
+    }
+    user = { id: authed.id }
+
+    try {
+      body = await req.json()
+    } catch {
+      return fail(400, 'bad_json', origin)
+    }
   }
 
   // ---- alternative mode: unfurl a pasted link ------------------------------
@@ -307,16 +403,20 @@ Deno.serve(async (req) => {
   // session.
   let thread: {
     id: string; session_id: string; session_started_at: string | null
-    grounded_summary_date: string | null; user_id: string
+    grounded_summary_date: string | null; user_id: string; kind: string
   }
   if (wantThreadId) {
     const { data: t, error: tErr } = await db
       .from('inbox_threads')
-      .select('id, user_id, session_id, session_started_at, grounded_summary_date')
+      .select('id, user_id, session_id, session_started_at, grounded_summary_date, kind')
       .eq('id', wantThreadId)
       .maybeSingle()
     if (tErr) return fail(500, 'thread_lookup_failed', origin, tErr.message.slice(0, 200))
     if (!t || t.user_id !== user.id) return fail(404, 'thread_not_found', origin)
+    // A bot turn may only land on the bot thread. Same sentence as the ownership
+    // check above and the same refusal: a thread that is not this turn's kind is
+    // not this turn's thread.
+    if (turnOrigin === 'bot' && t.kind !== 'bot') return fail(404, 'thread_not_found', origin)
     thread = t
     // ONE TURN AT A TIME PER SESSION. Measured on the container 2026-09-04: two
     // runs overlapping on one session_id lost the first run's assistant reply from
@@ -334,10 +434,13 @@ Deno.serve(async (req) => {
         `turn ${busy[0].id} is still running on this thread; wait for it or start a new thread`)
     }
   } else {
+    // Unreachable from the server door (it validates thread_id as a uuid), and
+    // stated anyway: the bot never gets a thread created for it here.
+    if (turnOrigin === 'bot') return fail(400, 'thread_required', origin)
     const { data: t, error: tErr } = await db
       .from('inbox_threads')
       .insert({ user_id: user.id, title: prompt.slice(0, 80), model: wantModel || null })
-      .select('id, user_id, session_id, session_started_at, grounded_summary_date')
+      .select('id, user_id, session_id, session_started_at, grounded_summary_date, kind')
       .single()
     if (tErr || !t) return fail(500, 'thread_create_failed', origin, tErr?.message.slice(0, 200))
     thread = t
@@ -360,7 +463,15 @@ Deno.serve(async (req) => {
   // pure cost. What stays in append_system_prompt is the small, byte-stable pair
   // (operator rules + depth recipes) — byte-stable so the container's own prompt
   // cache is not invalidated turn over turn.
-  const APPEND_SYSTEM_PROMPT = `${P16_OPERATOR_RULES.trimEnd()}\n\n${DEPTH_BLOCK}`
+  //
+  // A bot turn appends one more block: the standing instruction the tick read
+  // from content_prompts. It rides LAST so the operator rules and the depth
+  // recipes stay byte-stable ahead of it, and its length is reserved below so
+  // the cap still bounds what actually leaves the broker.
+  const BASE_APPEND_SYSTEM_PROMPT = `${P16_OPERATOR_RULES.trimEnd()}\n\n${DEPTH_BLOCK}`
+  const APPEND_SYSTEM_PROMPT = systemAppend
+    ? `${BASE_APPEND_SYSTEM_PROMPT}\n\n${systemAppend}`
+    : BASE_APPEND_SYSTEM_PROMPT
 
   let envelope = ''
   let contextShed: string[] = []
@@ -370,7 +481,8 @@ Deno.serve(async (req) => {
       env: (k) => Deno.env.get(k),
       // Reserve BOTH halves of what append_system_prompt will carry, so the
       // artifact that actually leaves the broker is the thing bounded.
-      reserveChars: DEPTH_BLOCK_CHARS + P16_OPERATOR_RULES.length,
+      reserveChars: DEPTH_BLOCK_CHARS + P16_OPERATOR_RULES.length +
+        (APPEND_SYSTEM_PROMPT.length - BASE_APPEND_SYSTEM_PROMPT.length),
     })
     envelope = assembled.text
     contextShed = assembled.shed
@@ -441,6 +553,9 @@ Deno.serve(async (req) => {
     context_chars: contextChars,
     model: wantModel || null,
     status: 'running',
+    // 'operator' is the column default, so the JWT path writes what it always
+    // wrote; the server door is the only thing that ever writes 'bot'.
+    origin: turnOrigin,
     started_at: startedAt,
     session_id: thread.session_id,
     resumed: resumed,
@@ -488,11 +603,23 @@ Deno.serve(async (req) => {
   //
   // To take the grant back: delete the line. The container returns to
   // acceptEdits on the next request, no deploy needed upstream.
+  //
+  // A BOT TURN DOES NOT GET THAT GRANT. It is started by a clock, not by Ivan,
+  // so it goes up with the read-only tool set and the deny rules in
+  // ./bot-tools.ts instead (decision D2). That is the only difference in this
+  // body; everything else a bot turn sends is what an operator turn sends.
   const upstreamBody = {
     prompt: upstreamPrompt,
     stream: true,
     append_system_prompt: APPEND_SYSTEM_PROMPT,
-    permission_mode: 'bypassPermissions',
+    ...(turnOrigin === 'bot'
+      ? {
+        permission_mode: BOT_TOOLS.permission_mode,
+        tools: BOT_TOOLS.tools,
+        allowed_tools: BOT_TOOLS.allowed_tools,
+        disallowed_tools: BOT_TOOLS.disallowed_tools,
+      }
+      : { permission_mode: 'bypassPermissions' }),
     ...(wantModel ? { model: wantModel } : {}),
     // The four fields that make a turn outlive its tab. The container resumes the
     // session when it holds the jsonl, starts one under this id when it does not,
