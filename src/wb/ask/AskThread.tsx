@@ -522,7 +522,7 @@ export function AskThread({
               </Chip>
             </span>
           )}
-          <span className="a-brain-shelf-t">{onBot ? 'Claude' : sessionLine(chat.grounding)}</span>
+          <span className="a-brain-shelf-t">{sessionLine(chat.grounding)}</span>
           <span data-new-thread>
             <Button variant="quiet" size="sm" icon="add" onClick={() => chat.newThread()}>New thread</Button>
           </span>
