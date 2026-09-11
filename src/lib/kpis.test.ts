@@ -35,6 +35,7 @@ describe('laneLabel', () => {
     expect(laneLabel('warm')).toBe('Warm / Orbit')
     expect(laneLabel('engager')).toBe('Engager')
     expect(laneLabel('harvest')).toBe('Harvested')
+    expect(laneLabel('signal')).toBe('Signal trial')
     expect(laneLabel('other')).toBe('Other')
   })
 })
