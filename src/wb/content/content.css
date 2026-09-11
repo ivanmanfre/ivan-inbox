@@ -974,3 +974,22 @@ a.a-prop-src:hover{ color:var(--ds-text) }
 .a-bm-post-angle { font-size: var(--ds-fs-meta); color: var(--ds-text-2); border-top: 1px dashed var(--ds-line); padding-top: 6px; }
 .a-bm-post-angle b { color: var(--ds-text); font-weight: 600; }
 .a-bm-foot { margin-top: var(--ds-s2); }
+
+/* ==========================================================================
+   OWN-POST THEMES (Strategy) — the tail per theme, with engager fit.
+   ========================================================================== */
+.a-th-g .ds-badge { max-width: 60vw; white-space: normal; text-align: right; }
+.a-th-intro { margin-bottom: var(--ds-s3); }
+.a-th-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--ds-s2); }
+.a-th-card { border: 1px solid var(--ds-line); border-radius: var(--ds-r2); padding: var(--ds-s3); display: flex; flex-direction: column; gap: var(--ds-s2); min-width: 0; }
+.a-th-card[data-theme="untagged"] { opacity: .7; }
+.a-th-head { display: flex; justify-content: space-between; gap: var(--ds-s2); align-items: flex-start; }
+.a-th-name { font-weight: 600; font-size: 15px; }
+.a-th-best { text-align: right; display: flex; flex-direction: column; align-items: flex-end; }
+.a-th-best-v { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.a-th-angles { border-top: 1px dashed var(--ds-line); padding-top: var(--ds-s1); }
+.a-th-posts { display: flex; flex-direction: column; gap: var(--ds-s2); }
+.a-th-post { border-top: 1px solid var(--ds-line); padding-top: var(--ds-s2); display: flex; flex-direction: column; gap: 4px; }
+.a-th-post-top { display: flex; justify-content: space-between; gap: var(--ds-s2); font-size: var(--ds-fs-meta); flex-wrap: wrap; }
+.a-th-post-txt { font-size: var(--ds-fs-meta); line-height: var(--ds-lh-meta); color: var(--ds-text-2); white-space: pre-line; max-height: 4.5em; overflow: hidden; overflow-wrap: anywhere; }
+.a-th-post a { color: var(--ds-text); }

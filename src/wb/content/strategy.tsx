@@ -29,6 +29,7 @@ import { Failed, PullIndicator, relAge } from './parts'
 import { AudienceBlock } from './AudienceBlock'
 import { ProposalsBlock } from './ProposalsBlock'
 import { BenchmarkBlock } from './BenchmarkBlock'
+import { ThemesBlock } from './ThemesBlock'
 import './content.css'
 
 // A textarea that grows to its content, because a strategy section is 2 lines
@@ -357,6 +358,8 @@ export function StrategyView({ lane, setLane }: {
         {/* Ivan 09-11: the benchmark (this lane vs the accounts we watch) above
             the proposals written from it. Read-only; one RPC. */}
         {!st.loading && <BenchmarkBlock lane={lane} />}
+        {/* Ivan 09-12: his posts by theme, read for the tail. */}
+        {!st.loading && <ThemesBlock lane={lane} />}
         {!st.loading && <ProposalsBlock lane={lane} />}
         {!st.loading && <AudienceBlock lane={lane} />}
         {!st.loading && <FilterSpecBlock />}
