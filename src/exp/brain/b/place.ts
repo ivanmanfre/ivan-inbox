@@ -41,6 +41,10 @@ export const TAB_LABEL: Record<Place, string> = {
 export function tabForJob(job: Job): Place {
   if (isWorkJob(job)) return 'content'
   if (job === 'settings' || job === 'money') return 'today'
+  // Orbit (2026-09-11) has no tab of its own — it collapses onto Sales, the
+  // same place its one entry button lives, so re-entering the tab bar after
+  // opening it lands back where the button was tapped from.
+  if (job === 'orbit') return 'sales'
   if (job === 'today' || job === 'sales' || job === 'dms' || job === 'sends' || job === 'ops') return job
   return 'today'
 }

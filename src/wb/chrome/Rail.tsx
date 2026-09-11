@@ -46,7 +46,7 @@ export const WORK_LANE_LABEL: Record<string, string> = {
 const JOB_MARK: Record<Job, IconName> = {
   today: 'today', sales: 'sales', dms: 'dms', content: 'content', magnets: 'magnets',
   styles: 'styles', strategy: 'strategy', sends: 'sends', money: 'money',
-  ops: 'ops', settings: 'settings',
+  ops: 'ops', settings: 'settings', orbit: 'orbit',
 }
 
 export function labelFor(j: Job): string {
@@ -143,7 +143,9 @@ export function Rail({
   // Money stays a job (its URL and its view still resolve) but leaves the
   // rail: Ivan, 2026-09-06, "I don't feel the money section being necessary
   // at this point". A row he does not use is a row he has to read past.
-  const before = JOBS.filter(j => j !== 'settings' && !isWorkJob(j) && j !== 'sends' && j !== 'ops' && j !== 'money')
+  // Orbit (2026-09-11) gets the same treatment on purpose: its one entry
+  // point is a button on the Sales head, not a second rail row.
+  const before = JOBS.filter(j => j !== 'settings' && !isWorkJob(j) && j !== 'sends' && j !== 'ops' && j !== 'money' && j !== 'orbit')
   const after = JOBS.filter(j => j === 'sends' || j === 'ops')
 
   return (
