@@ -81,6 +81,24 @@ function angularDist(a: number, b: number): number {
  *  at a busy point on the rim (bottom-left of a heavy posting week, e.g.). */
 const POST_LABEL_MIN_ARC = 0.1;
 
+/** Floor for a node's FINAL rendered size, after density scaling and every
+ *  other multiplier — a dense poll must not shrink dots past the point
+ *  they're visible and roughly targetable. Selection itself no longer
+ *  depends on hitting this exact radius (see findNearestSelectable below),
+ *  but a node nobody can see is still a node nobody can tap. */
+const MIN_RENDER_SIZE = 2.5;
+
+/** A realistic fingertip on a phone, in CSS px — the search radius for
+ *  tap-to-select. Sigma's own exact-hit test (getNodeAtPosition) requires
+ *  landing within the rendered node's own radius, which at ~1,100 visible
+ *  people (densityScale shrinks dots to a few px) is untappable; worse,
+ *  that hit test reads a spatial index that refresh({skipIndexation:true})
+ *  — called every RAF frame for the ambient/travel animations — never
+ *  rebuilds, so it can go stale even for a normally-sized node. Selection
+ *  is decided in JS against the CURRENT layout instead, independent of
+ *  both problems. */
+const TAP_RADIUS_PX = 17;
+
 export default function OrbitCanvas(props: OrbitCanvasProps): JSX.Element {
   const propsRef = useRef(props);
   propsRef.current = props;
@@ -120,6 +138,49 @@ export default function OrbitCanvas(props: OrbitCanvasProps): JSX.Element {
       g.forEachNeighbor(id, (n) => set.add(n));
     }
     neighborsRef.current = set;
+  };
+
+  /** Tap-to-select, independent of sigma's own hit test (see TAP_RADIUS_PX).
+   *  `vx`/`vy` are container-relative CSS pixels — the same space sigma's
+   *  click events and graphToViewport/viewportToFramedGraph already use. */
+  const findNearestSelectable = (vx: number, vy: number): { kind: 'person' | 'post'; id: string } | null => {
+    const renderer = rendererRef.current;
+    if (!renderer) return null;
+    const click = renderer.viewportToFramedGraph({ x: vx, y: vy });
+    // Graph-space length of a TAP_RADIUS_PX screen segment at this zoom.
+    const a = renderer.viewportToFramedGraph({ x: vx + TAP_RADIUS_PX, y: vy });
+    const graphRadius = Math.hypot(a.x - click.x, a.y - click.y);
+    if (!Number.isFinite(graphRadius) || graphRadius <= 0) return null;
+
+    const p = propsRef.current;
+    const cursorIso = p.time ? endOfDayIso(p.time) : null;
+    let bestKind: 'person' | 'post' | null = null;
+    let bestId: string | null = null;
+    let bestD = graphRadius;
+
+    for (const [id, pt] of peopleLayoutRef.current) {
+      const person = peopleByIdRef.current.get(id);
+      if (!person || !p.visible(person)) continue;
+      let px = pt.x, py = pt.y;
+      if (cursorIso) {
+        if (person.t0 > cursorIso) continue;
+        const s = stageAsOf(person, cursorIso);
+        if (s === -1) continue;
+        const r = radiusForStage(person, s);
+        px = Math.cos(pt.a) * r;
+        py = Math.sin(pt.a) * r;
+      }
+      const d = Math.hypot(px - click.x, py - click.y);
+      if (d <= bestD) { bestD = d; bestKind = 'person'; bestId = id; }
+    }
+    for (const [id, pt] of postsLayoutRef.current) {
+      const post = postsByIdRef.current.get(id);
+      if (!post) continue;
+      if (cursorIso && post.d > cursorIso) continue;
+      const d = Math.hypot(pt.x - click.x, pt.y - click.y);
+      if (d <= bestD) { bestD = d; bestKind = 'post'; bestId = id; }
+    }
+    return bestKind && bestId ? { kind: bestKind, id: bestId } : null;
   };
 
   const recomputeOverlayPeople = () => {
@@ -239,6 +300,7 @@ export default function OrbitCanvas(props: OrbitCanvasProps): JSX.Element {
       // comment on withAlpha() in theme.ts (WebGL premultipliedAlpha bug).
       if (p.selected && !lit) color = blendOver(theme.dead, 0.12, theme.canvas);
       if (isSel || isHover) { size += 2.5; color = theme.text; }
+      size = Math.max(p.selected && !lit ? 1.2 : MIN_RENDER_SIZE, size);
       return {
         ...data,
         x: layoutPt?.x ?? data.x, y: layoutPt?.y ?? data.y,
@@ -298,6 +360,10 @@ export default function OrbitCanvas(props: OrbitCanvasProps): JSX.Element {
     // is selected").
     if (p.selected && !lit) { color = blendOver(theme.dead, 0.12, theme.canvas); label = ''; size = Math.max(1.2, size * 0.85); }
     if (isSel || isHover) { size += 2.5; color = theme.text; label = person.n; }
+    // Visibility floor — see MIN_RENDER_SIZE. Deliberately below the dim
+    // branch above: a spotlighted-away node is ALLOWED to shrink further,
+    // it's meant to recede, not disappear entirely.
+    size = Math.max(p.selected && !lit ? 1.2 : MIN_RENDER_SIZE, size);
 
     return {
       ...data,
@@ -371,12 +437,26 @@ export default function OrbitCanvas(props: OrbitCanvasProps): JSX.Element {
       renderer.refresh({ skipIndexation: true });
     });
     renderer.on('clickNode', ({ node }) => {
+      // Fast path: sigma's own exact hit landed on something. Still routed
+      // through findNearestSelectable's toggle semantics via the shared
+      // helper below for one code path, not two divergent ones.
       if (node === 'you') { propsRef.current.onSelect(null); return; }
       const kind: 'person' | 'post' = postsByIdRef.current.has(node) ? 'post' : 'person';
       const cur = propsRef.current.selected;
       propsRef.current.onSelect(cur && cur.kind === kind && cur.id === node ? null : { kind, id: node });
     });
-    renderer.on('clickStage', () => propsRef.current.onSelect(null));
+    // The primary path: sigma's exact-radius hit test misses almost every
+    // tap once dots are a few px (dense poll) or its spatial index has gone
+    // stale under continuous skipIndexation refreshes (see TAP_RADIUS_PX) —
+    // so MOST taps land here, not in clickNode. Select the nearest visible
+    // node within a fingertip-sized radius instead; a true empty tap (no
+    // node within radius) clears the selection.
+    renderer.on('clickStage', ({ event }) => {
+      const hit = findNearestSelectable(event.x, event.y);
+      if (!hit) { propsRef.current.onSelect(null); return; }
+      const cur = propsRef.current.selected;
+      propsRef.current.onSelect(cur && cur.kind === hit.kind && cur.id === hit.id ? null : hit);
+    });
     // Camera pans/zooms reposition the rings/ticks (they're drawn in
     // viewport space via graphToViewport) — repaint the underlay when that
     // happens, not on every ambient frame.
