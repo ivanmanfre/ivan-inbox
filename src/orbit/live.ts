@@ -212,13 +212,24 @@ function labelPlateX(anchorX: number, nodeSize: number, plateW: number, canvasW:
   return { plateX: Math.max(2, Math.min(plateX, canvasW - plateW - 2)), flipped };
 }
 
+/** True for a non-empty, non-whitespace-only string — the one check both
+ *  plate drawers below must pass before painting anything. A blank/empty
+ *  label must never get a ground-plate: sigma calls defaultDrawNodeHover
+ *  for whatever `hoveredNode` currently is regardless of whether that
+ *  node's label is empty (renderHighlightedNodes in sigma's own source
+ *  has no such guard), so a hover left on a low-stage person with no
+ *  default label used to paint a blank rounded plate with nothing in it. */
+function hasText(s: unknown): s is string {
+  return typeof s === 'string' && s.trim().length > 0;
+}
+
 export function makeNodeLabelDrawer(theme: OrbitTheme) {
   return function drawNodeLabel(
     ctx: CanvasRenderingContext2D,
     data: LabelData,
     settings: Settings<OrbitNodeAttrs, OrbitEdgeAttrs, Attributes>,
   ): void {
-    if (!data.label) return;
+    if (!hasText(data.label)) return;
     const size = settings.labelSize;
     ctx.font = '500 ' + size + 'px ' + settings.labelFont;
     const w = ctx.measureText(data.label).width + 8;
@@ -240,11 +251,16 @@ export function makeNodeHoverDrawer(theme: OrbitTheme) {
     data: LabelData,
     settings: Settings<OrbitNodeAttrs, OrbitEdgeAttrs, Attributes>,
   ): void {
-    const headline = typeof data.headline === 'string' && data.headline ? data.headline : null;
+    const headline = hasText(data.headline) ? data.headline : null;
+    const hasLabel = hasText(data.label);
+    // Nothing to say about this node right now (e.g. hover left on a
+    // low-stage person with no default label and no headline) — paint
+    // nothing rather than an empty plate. See hasText() above.
+    if (!hasLabel && !headline) return;
     const nameSize = settings.labelSize + 1;
     const subSize = settings.labelSize - 2;
     ctx.font = '600 ' + nameSize + 'px ' + settings.labelFont;
-    const nameW = data.label ? ctx.measureText(data.label).width : 0;
+    const nameW = hasLabel ? ctx.measureText(data.label as string).width : 0;
     ctx.font = '400 ' + subSize + 'px ' + settings.labelFont;
     const subW = headline ? ctx.measureText(headline).width : 0;
     const w = Math.max(nameW, subW) + 20;

@@ -24,6 +24,12 @@ export const POST_RING = 0.96;
  *  painted stripe rather than a spread population. */
 export const RADIAL_BAND_FRACTION = 0.045;
 
+/** Bucket population at which the angular slice starts widening (and at
+ *  3x this size, hits the 3-slice cap). ~15 people already fills a nominal
+ *  one-day slice comfortably at phone width; the real 30d ivan window's
+ *  busiest single (day, stage) cell holds 40. */
+export const BUCKET_WIDEN_AT = 15;
+
 /** Clock starts at 12 o'clock (-90deg) and doesn't quite close the circle,
  *  so day 0 and the present day are visually distinct wedges. */
 export const CLOCK_START = -Math.PI / 2;
@@ -122,11 +128,18 @@ export function layoutPeople(people: readonly OrbitPerson[], win: OrbitWindow): 
     const a0 = angleForDay(day, win);
     const n = grp.length;
     const band = RADIAL_BAND_FRACTION * STAGE_RING[st];
+    // A single busy day can hold 40+ people in one (day, stage) cell — far
+    // more than the nominal one-day slice has room for at phone width even
+    // with the proportional radial band above (40 dots need roughly 3x the
+    // area one day-slice provides at a 390px viewport). Let an over-full
+    // bucket borrow angular width from its otherwise-empty neighbours,
+    // capped at 3 slices so it never reads as spanning unrelated days.
+    const effSliceW = sliceW * Math.min(3, Math.max(1, n / BUCKET_WIDEN_AT));
     for (let j = 0; j < n; j++) {
       const p = grp[j];
       // Spread all the way to the slice's own edges (not just its middle
       // 80%) so a busy day-slice fills the space it actually has.
-      const aa = n > 1 ? a0 - sliceW / 2 + (j / (n - 1)) * sliceW : a0;
+      const aa = n > 1 ? a0 - effSliceW / 2 + (j / (n - 1)) * effSliceW : a0;
       const rr = STAGE_RING[st] + (hashUnit(p.id, 1) - 0.5) * band * 2 * Math.min(1, 0.4 + n / 30);
       out.set(p.id, { id: p.id, a: aa, r: rr, x: Math.cos(aa) * rr, y: Math.sin(aa) * rr });
     }
