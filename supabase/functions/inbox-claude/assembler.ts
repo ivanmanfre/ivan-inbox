@@ -84,7 +84,15 @@ export { ALLOWLIST }
  * every turn at 53.6% of the payload is a ballot item (VERDICT.md), not a build
  * decision, and is deliberately left alone.
  */
-export const MAX_SYSTEM_PROMPT_CHARS = 46_000
+// RAISED TO 60,000 on 2026-09-11 (goal run claude-bot-thread, DECISIONS D11).
+// Measured live that day: MEMORY.md in claude_memory is 34,777 chars (its own
+// loader limit is 24,400; the size ratchet that would hold it there is still
+// awaiting adoption), and the assembly floor after the FULL ladder is 47,165,
+// so every turn, operator or bot, was refused with context_assembly_over_cap.
+// Nothing had run through this broker since 09-06. Operator reserve 6,106 and
+// bot reserve 3,806 both fit under 60,000 with room for growth; the cost
+// consequence is the one already priced above (~$0.22 per first turn).
+export const MAX_SYSTEM_PROMPT_CHARS = 60_000
 
 /** Warn into the function log above this, so the next squeeze is seen before it bites. */
 const CAP_WARN_RATIO = 0.9
