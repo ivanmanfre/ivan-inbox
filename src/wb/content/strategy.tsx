@@ -28,6 +28,7 @@ import { Bar, Body, Group, Head, Screen } from '../kit'
 import { Failed, PullIndicator, relAge } from './parts'
 import { AudienceBlock } from './AudienceBlock'
 import { ProposalsBlock } from './ProposalsBlock'
+import { BenchmarkBlock } from './BenchmarkBlock'
 import './content.css'
 
 // A textarea that grows to its content, because a strategy section is 2 lines
@@ -353,6 +354,9 @@ export function StrategyView({ lane, setLane }: {
             This block is the ONE writer of proposal decisions on this screen
             (approve calls the publish RPC, drop deletes the row); the strategy
             sections editor above stays the only writer of strategy text. */}
+        {/* Ivan 09-11: the benchmark (this lane vs the accounts we watch) above
+            the proposals written from it. Read-only; one RPC. */}
+        {!st.loading && <BenchmarkBlock lane={lane} />}
         {!st.loading && <ProposalsBlock lane={lane} />}
         {!st.loading && <AudienceBlock lane={lane} />}
         {!st.loading && <FilterSpecBlock />}

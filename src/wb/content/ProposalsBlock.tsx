@@ -131,9 +131,9 @@ export function ProposalRow({ p, onApprove, onDrop }: {
 
   const drop = useCallback(async () => {
     const ok = await confirm({
-      title: 'Drop this proposal?',
+      title: 'Delete this proposal?',
       message: 'It is deleted, not archived.',
-      confirmText: 'Drop it',
+      confirmText: 'Delete it',
       danger: true,
     })
     if (!ok) return
@@ -197,7 +197,7 @@ export function ProposalRow({ p, onApprove, onDrop }: {
             />
           ))}
           <div className="a-ct-sub">
-            Approve sends only the fields you changed. The evidence is never editable.
+            Send to ideas sends only the fields you changed. The evidence is never editable.
           </div>
         </div>
       ) : (
@@ -240,7 +240,7 @@ export function ProposalRow({ p, onApprove, onDrop }: {
           disabled={busy !== null}
           onClick={() => { void approve() }}
         >
-          Approve
+          Send to ideas
         </Button>
         {editing ? (
           <Button variant="quiet" size="sm" disabled={busy !== null} onClick={() => setEditing(false)}>
@@ -258,7 +258,7 @@ export function ProposalRow({ p, onApprove, onDrop }: {
           disabled={busy !== null}
           onClick={() => { void drop() }}
         >
-          Drop
+          Delete
         </Button>
       </div>
     </div>
@@ -306,7 +306,7 @@ export function ProposalsView({ lane, state, loadedAt, onRetry, onApprove, onDro
 
   if (state.kind === 'loading') {
     return (
-      <Group className="a-prop-g" label="Audience proposals" tail={stamp} pad>
+      <Group className="a-prop-g" label="Next posts to consider" tail={stamp} pad>
         <div className="a-ct-sub a-prop-hold">Reading this lane’s proposals…</div>
       </Group>
     )
@@ -314,7 +314,7 @@ export function ProposalsView({ lane, state, loadedAt, onRetry, onApprove, onDro
 
   if (state.kind === 'failed') {
     return (
-      <Group className="a-prop-g" label="Audience proposals" tail={stamp} pad>
+      <Group className="a-prop-g" label="Next posts to consider" tail={stamp} pad>
         {/* The message opens with `proposals: `, the name `fetchProposals`
             gives its own read. A failure that does not say WHAT failed sends
             the reader to the wrong table. */}
@@ -330,7 +330,7 @@ export function ProposalsView({ lane, state, loadedAt, onRetry, onApprove, onDro
 
   if (state.kind === 'empty') {
     return (
-      <Group className="a-prop-g" label="Audience proposals" tail={stamp} pad>
+      <Group className="a-prop-g" label="Next posts to consider" tail={stamp} pad>
         <CalmEmpty
           line="No proposal is waiting for this lane."
           sub="The writer runs weekly. Either nothing was proposed on the last run, or every proposal has been decided."
@@ -343,7 +343,7 @@ export function ProposalsView({ lane, state, loadedAt, onRetry, onApprove, onDro
   return (
     <Group
       className="a-prop-g"
-      label="Audience proposals"
+      label="Next posts to consider"
       tail={
         <span className="a-prop-tail">
           <Badge tone="neutral" variant="ring">{state.rows.length} open</Badge>
@@ -353,8 +353,9 @@ export function ProposalsView({ lane, state, loadedAt, onRetry, onApprove, onDro
       pad
     >
       <div className="a-ct-sub">
-        Written weekly from what this lane’s audience did. Approve puts one in the idea
-        bank; drop deletes it. Nothing reaches a client until you approve it.
+        Written weekly from the posts in the benchmark above. Send to ideas puts one
+        in this lane’s idea bank, where it joins the normal idea flow; Delete removes
+        it for good. Nothing is published from here.
       </div>
       <ProposalsList rows={state.rows} onApprove={onApprove} onDrop={onDrop} />
     </Group>

@@ -924,3 +924,53 @@ a.a-prop-src:hover{ color:var(--ds-text) }
    in `ch` so it tracks the type size rather than a guessed pixel. The phone is
    far under it, so nothing changes there. */
 .a-prop-body, .a-prop-editor{ max-width:78ch }
+
+/* ==========================================================================
+   AUDIENCE BENCHMARK (Strategy) — this lane against the accounts we watch.
+   Two series only: them (--ds-text-2 bars), the lane's own row highlighted
+   with the attention tint. Heat = one hue, opacity by intensity.
+   ========================================================================== */
+.a-bm-g .ds-badge { max-width: 60vw; white-space: normal; text-align: right; }
+.a-bm-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--ds-s2); margin-bottom: var(--ds-s3); }
+.a-bm-tile { display: flex; flex-direction: column; gap: 2px; padding: var(--ds-s3); border: 1px solid var(--ds-line); border-radius: var(--ds-r2); background: var(--ds-surface-2); min-width: 0; }
+.a-bm-v { font-size: 26px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.a-bm-v small { font-size: var(--ds-fs-meta); font-weight: var(--ds-fw-medium); color: var(--ds-text-3); margin-left: 6px; }
+.a-bm-d { font-size: var(--ds-fs-meta); line-height: var(--ds-lh-meta); color: var(--ds-text-3); }
+.a-bm-cap { text-transform: capitalize; }
+.a-bm-two { display: grid; grid-template-columns: 1fr 1.4fr; gap: var(--ds-s2); margin-bottom: var(--ds-s2); }
+@media (max-width: 760px) { .a-bm-two { grid-template-columns: 1fr; } }
+.a-bm-panel { border: 1px solid var(--ds-line); border-radius: var(--ds-r2); padding: var(--ds-s3); margin-bottom: var(--ds-s2); min-width: 0; }
+.a-bm-h { font-weight: 600; margin-bottom: 2px; }
+.a-bm-bars { display: flex; flex-direction: column; gap: var(--ds-s1); margin-top: var(--ds-s2); }
+.a-bm-bar-row { display: grid; grid-template-columns: 96px 1fr 56px; gap: var(--ds-s2); align-items: center; }
+.a-bm-bar-lbl { font-size: var(--ds-fs-meta); }
+.a-bm-bar-track { height: 10px; background: var(--ds-surface-3); border-radius: 4px; overflow: hidden; }
+.a-bm-bar { height: 100%; background: var(--ds-text-2); border-radius: 0 4px 4px 0; }
+.a-bm-bar-val { text-align: right; font-size: var(--ds-fs-meta); color: var(--ds-text-2); }
+.a-bm-heat-scroll { overflow-x: auto; margin-top: var(--ds-s2); }
+.a-bm-heat { display: grid; grid-template-columns: 34px repeat(24, minmax(14px, 1fr)); gap: 2px; min-width: 520px; font-size: 10px; }
+.a-bm-heat-rowc { display: contents; }
+.a-bm-heat-hl { color: var(--ds-text-3); text-align: center; font-family: var(--ds-font-mono); }
+.a-bm-heat-dl { color: var(--ds-text-3); font-family: var(--ds-font-mono); line-height: 18px; }
+.a-bm-cell { height: 18px; border-radius: 3px; background: var(--ds-sev-attention-ui); }
+.a-bm-cell[data-on="0"] { background: var(--ds-surface-3); }
+.a-bm-tscroll { overflow-x: auto; margin-top: var(--ds-s2); }
+.a-bm-table { width: 100%; border-collapse: collapse; font-size: var(--ds-fs-meta); min-width: 640px; }
+.a-bm-table th { font-family: var(--ds-font-mono); font-size: var(--ds-fs-mono); font-weight: 500; letter-spacing: .05em; text-transform: uppercase; color: var(--ds-text-3); text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--ds-line); }
+.a-bm-table td { padding: 7px 8px; border-bottom: 1px solid var(--ds-line); vertical-align: top; }
+.a-bm-table td a { color: var(--ds-text); text-decoration: underline; text-decoration-color: var(--ds-line); }
+.a-bm-num { text-align: right !important; font-family: var(--ds-font-mono); font-variant-numeric: tabular-nums; }
+.a-bm-you td { background: var(--ds-accent-soft); font-weight: 600; }
+.a-bm-role { display: inline-block; font-family: var(--ds-font-mono); font-size: var(--ds-fs-mono); padding: 1px 7px; border-radius: 999px; border: 1px solid var(--ds-line); color: var(--ds-text-3); white-space: nowrap; }
+.a-bm-role-direct_competitor { color: var(--ds-text); border-color: var(--ds-hairline-strong); }
+.a-bm-role-buyer_voice { color: var(--ds-accent-ui); }
+.a-bm-role-format_reference { color: var(--ds-sev-attention-ui); }
+.a-bm-posts { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--ds-s2); margin-top: var(--ds-s2); }
+.a-bm-post { border: 1px solid var(--ds-line); border-radius: var(--ds-r2); padding: var(--ds-s3); display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.a-bm-post-who { display: flex; justify-content: space-between; gap: 8px; font-size: var(--ds-fs-meta); color: var(--ds-text-3); flex-wrap: wrap; }
+.a-bm-post-eng { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.a-bm-post-eng small { font-size: var(--ds-fs-meta); font-weight: 400; color: var(--ds-text-3); margin-left: 4px; }
+.a-bm-post-txt { white-space: pre-line; max-height: 6em; overflow: hidden; overflow-wrap: anywhere; }
+.a-bm-post-angle { font-size: var(--ds-fs-meta); color: var(--ds-text-2); border-top: 1px dashed var(--ds-line); padding-top: 6px; }
+.a-bm-post-angle b { color: var(--ds-text); font-weight: 600; }
+.a-bm-foot { margin-top: var(--ds-s2); }

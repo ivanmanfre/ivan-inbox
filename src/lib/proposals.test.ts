@@ -355,7 +355,7 @@ describe('the three states, as they actually render', () => {
     expect(h).toContain('rel="noreferrer"')
     expect(t).toContain('Northwind Studio')
     // And the three actions.
-    for (const label of ['Approve', 'Edit', 'Drop']) expect(t).toContain(label)
+    for (const label of ['Send to ideas', 'Edit', 'Delete']) expect(t).toContain(label)
   })
 
   it('names the asset when one is required, and stays silent when none is', () => {
@@ -388,7 +388,7 @@ describe('the three states, as they actually render', () => {
     // mounts.
     const list = view({ kind: 'list', rows: [proposal()] })
     expect(list).toContain('Post the placement rule')
-    expect(list).toContain('Approve')
+    expect(list).toContain('Send to ideas')
     expect(list).toContain('1 open')
   })
 
