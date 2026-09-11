@@ -1086,10 +1086,20 @@ export function emailSenderLabel(clientId: string | null | undefined): string {
   return from ? ` (from ${from})` : ''
 }
 
-// A channel='email' ROW is a different pipe from the mirror above. The mirror goes
-// through Resend on the client's sending domain; a native email row is handed to
-// the dispatcher's Gmail node, whose credential is Ivan's own mailbox — so it
-// leaves im@ivanmanfredi.com whatever lane the row belongs to. Named on the card
-// because "which address does this arrive from" is the operator's whole question,
-// and 🔴 because the day a client row rides this path it will go out as Ivan.
+// A channel='email' ROW is a different pipe from the mirror above. Ivan's own rows
+// are handed to the dispatcher's Gmail node, whose credential is his mailbox, so
+// they leave im@ivanmanfredi.com. Since 2026-09-11 (Send Messages > Poll + Send,
+// "CLIENT-TENANT NATIVE EMAIL") a CLIENT row goes out through Resend on the same
+// client identity the mirror uses, and is HELD with a reason when no identity
+// exists, never mailed as Ivan. Named on the card because "which address does
+// this arrive from" is the operator's whole question. KEEP emailRowSender IN SYNC
+// WITH integration_config.outreach_email_identities.
 export const NATIVE_EMAIL_SENDER = 'im@ivanmanfredi.com'
+
+export function emailRowSender(clientId: string | null | undefined): string {
+  const senders: Record<string, string> = {
+    risedtc: 'itsmattan@risedtc.com',
+    arch: 'davorin@madebyarch.com',
+  }
+  return senders[String(clientId ?? '')] ?? NATIVE_EMAIL_SENDER
+}

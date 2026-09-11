@@ -14,10 +14,27 @@
    ========================================================================== */
 import { createContext, useContext } from 'react'
 
-export type PendingPush = { name: string; resolve: (until: string | null) => void }
+// 'draft' parks an existing draft (the original sheet). 'followup' asks for a NEW
+// message on a date, on a thread that may have no draft at all (2026-09-11, Tessa
+// Tysome: "catch up when I am back mid October"). Same picker, different consequence.
+export type PushVariant = 'draft' | 'followup'
+export type PendingPush = { name: string; variant: PushVariant; resolve: (until: string | null) => void }
+
+export const PUSH_COPY: Record<PushVariant, { title: string; sub: (first: string) => string; go: string }> = {
+  draft: {
+    title: 'Push this draft to later',
+    sub: first => `It leaves your queue and comes back on the date you pick. Nothing is sent and nothing is thrown away. If ${first} writes back before then, it returns straight away.`,
+    go: 'Push',
+  },
+  followup: {
+    title: 'Follow up on a date',
+    sub: first => `Nothing is sent now. On the date you pick, a follow-up is drafted for you to approve. If ${first} writes back before then, the normal reply takes over and the date is dropped.`,
+    go: 'Set the date',
+  },
+}
 
 /** Default resolves null: an unmounted provider must never park a draft. */
-export const PushCtx = createContext<(name: string) => Promise<string | null>>(
+export const PushCtx = createContext<(name: string, variant?: PushVariant) => Promise<string | null>>(
   () => Promise.resolve(null),
 )
 

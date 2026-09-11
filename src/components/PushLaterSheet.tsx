@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { SNOOZE_PRESETS, snoozeTarget } from '../lib/inbox'
 import {
-  PushCtx, formatReturn, fromLocalInput, toLocalInput, type PendingPush,
+  PUSH_COPY, PushCtx, formatReturn, fromLocalInput, toLocalInput, type PendingPush, type PushVariant,
 } from '../lib/pushLater'
 
 // The context, the hook and the four date helpers moved to src/lib/pushLater.ts
@@ -28,13 +28,13 @@ export function PushLaterProvider({ children }: { children: React.ReactNode }) {
   const [custom, setCustom] = useState('')
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const ask = useCallback((name: string) => {
+  const ask = useCallback((name: string, variant: PushVariant = 'draft') => {
     return new Promise<string | null>(resolve => {
       setClosing(false)
       // Seed the custom field with the middle preset so the picker opens on a
       // sane date instead of on 1970 or on right now.
       setCustom(toLocalInput(new Date(snoozeTarget(7))))
-      setPending({ name, resolve })
+      setPending({ name, variant, resolve })
     })
   }, [])
 
@@ -55,12 +55,8 @@ export function PushLaterProvider({ children }: { children: React.ReactNode }) {
         <div className={`sheet-scrim ${closing ? 'closing' : ''}`} onClick={() => settle(null)}>
           <div className="sheet" onClick={e => e.stopPropagation()}>
             <div className="sheet-card">
-              <div className="sheet-title">Push this draft to later</div>
-              <div className="sheet-msg">
-                It leaves your queue and comes back on the date you pick. Nothing is
-                sent and nothing is thrown away. If {pending.name.split(' ')[0]} writes
-                back before then, it returns straight away.
-              </div>
+              <div className="sheet-title">{PUSH_COPY[pending.variant].title}</div>
+              <div className="sheet-msg">{PUSH_COPY[pending.variant].sub(pending.name.split(' ')[0])}</div>
             </div>
             <div className="push-presets">
               {SNOOZE_PRESETS.map(p => (
@@ -91,7 +87,7 @@ export function PushLaterProvider({ children }: { children: React.ReactNode }) {
                   if (iso) settle(iso)
                 }}
               >
-                Push
+                {PUSH_COPY[pending.variant].go}
               </button>
             </div>
             <button className="sheet-btn cancel" onClick={() => settle(null)}>Cancel</button>

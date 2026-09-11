@@ -92,6 +92,27 @@
   gap:var(--ds-s3);
   padding:var(--ds-s0) var(--ds-gutter) var(--ds-s3);
 }
+.a-thread-followup{
+  flex:0 0 auto;
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s2);
+  padding:var(--ds-s0) var(--ds-gutter) var(--ds-s2);
+}
+.a-thread-followup-row{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s2);
+  flex-wrap:wrap;
+  min-width:0;
+}
+.a-thread-followup-note{ min-width:0; flex:1 1 12em }
+.a-thread-followup-form{
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s2);
+}
+.a-thread-followup-form .a-thread-acts{ justify-content:flex-end }
 .a-thread-draft{
   flex:0 0 auto;
   min-height:0;

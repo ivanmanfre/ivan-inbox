@@ -23,6 +23,7 @@ import { Banner, Button, Chip, Composer, DayHeader, Icon, IconButton, Stepper, T
 import { Bar, Body, Group, Head, Screen } from '../kit'
 import { ChatLink, Face } from '../dms/parts'
 import { RestoreStrip } from './RestoreStrip'
+import { FollowUpStrip } from './FollowUpStrip'
 import { ContextSheet } from '../sheets/Context'
 import { Linkified } from '../chrome/Linkified'
 import { useConfirm } from '../chrome/ConfirmSheet'
@@ -30,7 +31,7 @@ import { formatReturn, returnsIn, usePushLater } from '../../lib/pushLater'
 import {
   approveDraft, channelFamilies, composeReply, discardDraft, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isFollowUp, isMixedChannel,
   saveDraftEmail, saveDraftText, snoozeDraft, unsnoozeDraft,
-  markThreadRead, messageChannel, threadChatId, NATIVE_EMAIL_SENDER,
+  markThreadRead, messageChannel, threadChatId, emailRowSender,
   type InboxMessage, type MsgChannel, type Thread, eventTime, emailSenderLabel } from '../../lib/inbox'
 import { label } from '../../lib/labels'
 import { markNotSpam, markSpam } from '../../lib/inbox'
@@ -509,6 +510,10 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
           is offered. */}
       <RestoreStrip thread={thread} refresh={refresh} />
 
+      {/* "Follow up on a date": a NEW message on a day he names, with or without a
+          draft on the thread. Distinct from Later, which parks the draft below. */}
+      <FollowUpStrip thread={thread} />
+
       {thread.ownerConfirmation && <OwnerConfirmation message={thread.ownerConfirmation} onAddNote={() => setShowCtx(true)} onRetry={refresh} />}
 
       {draft && (
@@ -564,7 +569,7 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
                   happens to start with "Subject:". */}
               {messageChannel(draft) === 'email' && draft.recipient_email && (
                 <div className="a-meta">
-                  Email to {draft.recipient_email} (from {NATIVE_EMAIL_SENDER})
+                  Email to {draft.recipient_email} (from {emailRowSender(thread.client_id)})
                 </div>
               )}
               <div ref={editRef} className="a-thread-editbox">
@@ -672,7 +677,7 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
                     // one whose pipe is the Gmail node. A LinkedIn row stamped
                     // with an address is the mirror, which the badge below names.
                     + (messageChannel(companion) === 'email' && companion.recipient_email
-                      ? ` to ${companion.recipient_email} (from ${NATIVE_EMAIL_SENDER})`
+                      ? ` to ${companion.recipient_email} (from ${emailRowSender(thread.client_id)})`
                       : '')}
                   className="a-thread-leg"
                   value={editedCompanion}

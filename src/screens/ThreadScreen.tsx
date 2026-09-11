@@ -10,7 +10,7 @@ import { formatReturn, returnsIn, usePushLater } from '../components/PushLaterSh
 import {
   approveDraft, channelFamilies, composeReply, discardDraft, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isFollowUp, isMixedChannel,
   saveDraftEmail, saveDraftText, snoozeDraft, unsnoozeDraft,
-  markThreadRead, messageChannel, threadChatId, NATIVE_EMAIL_SENDER,
+  markThreadRead, messageChannel, threadChatId, emailRowSender,
   type InboxMessage, type MsgChannel, type Thread, eventTime, emailSenderLabel } from '../lib/inbox'
 import { label } from '../lib/labels'
 import { RestoreStrip } from '../exp/v2c/RestoreStrip'
@@ -433,7 +433,7 @@ export function ThreadScreen({ thread, onBack, refresh }: {
               start with "Subject:". */}
           {messageChannel(draft) === 'email' && draft.recipient_email && (
             <div className="dc-to">
-              Email to {draft.recipient_email} (from {NATIVE_EMAIL_SENDER})
+              Email to {draft.recipient_email} (from {emailRowSender(thread.client_id)})
             </div>
           )}
           <textarea
@@ -536,7 +536,7 @@ export function ThreadScreen({ thread, onBack, refresh }: {
                     whose pipe is the Gmail node. A LinkedIn row stamped with an
                     address is the Resend mirror, which the badge below names. */}
                 {messageChannel(companion) === 'email' && companion.recipient_email
-                  ? ` to ${companion.recipient_email} (from ${NATIVE_EMAIL_SENDER})`
+                  ? ` to ${companion.recipient_email} (from ${emailRowSender(thread.client_id)})`
                   : ''}
               </div>
               <textarea

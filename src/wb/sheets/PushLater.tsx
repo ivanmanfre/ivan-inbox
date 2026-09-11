@@ -25,7 +25,7 @@ import type { ReactNode } from 'react'
 import { Button, Divider, Input, Sheet } from '../../ds'
 import { SNOOZE_PRESETS, snoozeTarget } from '../../lib/inbox'
 import {
-  PushCtx, formatReturn, fromLocalInput, toLocalInput, type PendingPush,
+  PUSH_COPY, PushCtx, formatReturn, fromLocalInput, toLocalInput, type PendingPush, type PushVariant,
 } from '../../lib/pushLater'
 import './sheets.css'
 
@@ -36,12 +36,12 @@ export function PushLaterProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false)
   const [custom, setCustom] = useState('')
 
-  const ask = useCallback((name: string) => {
+  const ask = useCallback((name: string, variant: PushVariant = 'draft') => {
     return new Promise<string | null>(resolve => {
       // Seed the custom field with the middle preset so the picker opens on a
       // sane date instead of on 1970 or on right now.
       setCustom(toLocalInput(new Date(snoozeTarget(7))))
-      setPending({ name, resolve })
+      setPending({ name, variant, resolve })
       setOpen(true)
     })
   }, [])
@@ -55,6 +55,7 @@ export function PushLaterProvider({ children }: { children: ReactNode }) {
 
   const customIso = fromLocalInput(custom)
   const firstName = pending ? pending.name.split(' ')[0] : ''
+  const copy = PUSH_COPY[pending?.variant ?? 'draft']
 
   return (
     <PushCtx.Provider value={ask}>
@@ -62,14 +63,8 @@ export function PushLaterProvider({ children }: { children: ReactNode }) {
       <Sheet
         open={open}
         onClose={() => settle(null)}
-        title="Push this draft to later"
-        sub={pending ? (
-          <>
-            It leaves your queue and comes back on the date you pick. Nothing is
-            sent and nothing is thrown away. If {firstName} writes back before
-            then, it returns straight away.
-          </>
-        ) : undefined}
+        title={copy.title}
+        sub={pending ? copy.sub(firstName) : undefined}
         foot={<Button variant="quiet" block onClick={() => settle(null)}>Cancel</Button>}
       >
         <div className="a-push">
@@ -104,7 +99,7 @@ export function PushLaterProvider({ children }: { children: ReactNode }) {
               disabled={customIso === null}
               onClick={() => { if (customIso) settle(customIso) }}
             >
-              Push
+              {copy.go}
             </Button>
           </div>
         </div>
