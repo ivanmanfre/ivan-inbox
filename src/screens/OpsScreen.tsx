@@ -34,13 +34,13 @@ function timeAgo(iso: string): string {
 // 'OUTBOUND' said what the ENGINE calls the lane, not what the card is. Ivan
 // reads these as comments, so they say Comments; `comment_reply` becomes REPLY
 // in the same pass so the two comment kinds cannot be told apart by an S.
-const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK', weekly_report: 'WEEKLY', comment_reply: 'REPLY', comment_outbound: 'COMMENTS', booking: 'BOOKED', precall_email: 'PRE-CALL', manual_invite: 'INVITE', task: 'TASK', leads_ballot: 'LEADS' }
+const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK', weekly_report: 'WEEKLY', comment_reply: 'REPLY', comment_outbound: 'COMMENTS', booking: 'BOOKED', precall_email: 'PRE-CALL', manual_invite: 'INVITE', task: 'TASK', leads_ballot: 'LEADS', audn_recommendation: 'AUDIENCE' }
 // Escalations run warm/red (something needs attention); updates stay neutral/blue (fyi);
 // newsjack runs amber because it is the only kind with a clock on it. Booking takes the
 // Rise accent gold: it is the only card that reports money arriving rather than work owed.
 // A task runs neutral grey: it is the only card that asks for nothing to be sent,
 // so it should not compete for attention with the kinds that publish.
-const KIND_COLOR: Record<OpsKind, string> = { escalation: '#FF453A', update: '#0A84FF', newsjack: '#FF9F0A', weekly_report: '#30D158', comment_reply: '#BF5AF2', comment_outbound: '#64D2FF', booking: '#FFD60A', precall_email: '#5E5CE6', manual_invite: '#66D4CF', task: '#8E8E93', leads_ballot: '#FF6482' }
+const KIND_COLOR: Record<OpsKind, string> = { escalation: '#FF453A', update: '#0A84FF', newsjack: '#FF9F0A', weekly_report: '#30D158', comment_reply: '#BF5AF2', comment_outbound: '#64D2FF', booking: '#FFD60A', precall_email: '#5E5CE6', manual_invite: '#66D4CF', task: '#8E8E93', leads_ballot: '#FF6482', audn_recommendation: '#8E8E93' }
 
 // Slack channel ids are unreadable on a card. escalation/update/booking all print a
 // destination, so name the ones we own and fall back to the raw id for anything else.

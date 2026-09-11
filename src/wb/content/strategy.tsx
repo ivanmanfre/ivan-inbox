@@ -27,6 +27,7 @@ import { Badge, Button, Card, IconButton, Input, Segmented, spring } from '../..
 import { Bar, Body, Group, Head, Screen } from '../kit'
 import { Failed, PullIndicator, relAge } from './parts'
 import { AudienceBlock } from './AudienceBlock'
+import { ProposalsBlock } from './ProposalsBlock'
 import './content.css'
 
 // A textarea that grows to its content, because a strategy section is 2 lines
@@ -345,6 +346,14 @@ export function StrategyView({ lane, setLane }: {
             the block below it: mounted under "Loading…" it would be shoved a
             document down the moment the sections arrive. Read-only — the
             sections above stay the only writer on this screen. */}
+        {/* Run 06 · The audience writer's proposals, above the numbers that
+            produced them. Gated on `!st.loading` for the same CLS reason as the
+            two blocks below: mounted under "Loading…" it would be shoved a
+            document down the moment the sections arrive.
+            This block is the ONE writer of proposal decisions on this screen
+            (approve calls the publish RPC, drop deletes the row); the strategy
+            sections editor above stays the only writer of strategy text. */}
+        {!st.loading && <ProposalsBlock lane={lane} />}
         {!st.loading && <AudienceBlock lane={lane} />}
         {!st.loading && <FilterSpecBlock />}
         <div className="a-strat-foot" aria-hidden />

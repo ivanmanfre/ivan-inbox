@@ -10,7 +10,13 @@ import { supabase } from './supabase'
 // page, and approving it posts ONE message to the ARCH channel FROM IVAN'S OWN ACCOUNT
 // (user token), never from the app bot. Before 2026-09-07 a Monday cron posted this
 // straight at the client with nothing in between; see the memory of that morning.
-export type OpsKind = 'escalation' | 'update' | 'newsjack' | 'weekly_report' | 'comment_reply' | 'comment_outbound' | 'booking' | 'precall_email' | 'manual_invite' | 'task' | 'leads_ballot'
+// `audn_recommendation` is the audience writer's weekly proposal (Run 06). It
+// shares this table and NOTHING else with the kinds above: the Slack dispatcher
+// picks `kind IN (escalation, update, booking, weekly_report)` so it can never
+// reach a channel, and it is not an Ops card either — it is decided in Strategy,
+// under the audience block, where the evidence it cites is on the same screen.
+// See `isAudnKind` below for the one place that exclusion is written.
+export type OpsKind = 'escalation' | 'update' | 'newsjack' | 'weekly_report' | 'comment_reply' | 'comment_outbound' | 'booking' | 'precall_email' | 'manual_invite' | 'task' | 'leads_ballot' | 'audn_recommendation'
 
 // The row shape varies by kind (escalation carries a prospect, update carries
 // receipts, newsjack carries the idea it will generate from), so context stays a
@@ -163,11 +169,28 @@ export type OpsDraft = {
 // discard is deliberately invisible everywhere (never re-shown as "blocked").
 export const DISCARDED_REASON = 'discarded_by_operator'
 
+// An audience proposal lives in this table and is NOT an ops card (Run 06
+// CONTRACTS B2). It has no channel, no dispatcher and no approve button here:
+// it is read and decided in Strategy, beside the audience numbers that produced
+// it, and approving it calls a database function rather than sending anything.
+//
+// The exclusion is written ONCE, here, because `pendingOps` is what every Ops
+// surface counts: the Ops screen's card list (wb/ops, screens/OpsScreen), the
+// DM lane preview (`pendingDmLaneOps`, DraftsScreen, stockShell) and the v2c
+// Shell badge all derive from this one filter. A row of this kind showing up as
+// an unread ops card would be a to-do nobody can do from that screen.
+export const AUDN_KIND = 'audn_recommendation'
+
+export function isAudnKind(kind: OpsKind): boolean {
+  return kind === AUDN_KIND
+}
+
 // Pending = nothing has happened to it yet — the only rows the operator acts on.
 // Comment cards also age out: past the window they are noise, not a to-do.
 export function pendingOps(rows: OpsDraft[], now = Date.now()): OpsDraft[] {
   return rows.filter(d =>
-    !d.approved_at && !d.sent_at && !d.send_blocked_reason && !isStaleComment(d, now))
+    !d.approved_at && !d.sent_at && !d.send_blocked_reason
+    && !isAudnKind(d.kind) && !isStaleComment(d, now))
 }
 
 // Ask 12 — "i see in dms that its showing drafts that arent dm they are comment
@@ -359,6 +382,13 @@ const OPS_DRAFT_COLUMNS = 'id,client_id,kind,slack_channel,body,context,created_
 export async function fetchOpsDrafts(): Promise<OpsDraft[]> {
   const { data, error } = await supabase.from('ops_drafts')
     .select(OPS_DRAFT_COLUMNS)
+    // The audience kind is filtered at the READ as well as at `pendingOps`.
+    // One rule (`AUDN_KIND`), two locks: `pendingOps` is what the card lists
+    // and the badges count, but this fetch also feeds `sentOps`, `claimingOps`
+    // and `blockedOps` — and an APPROVED proposal carries `sent_at` (the
+    // publish RPC stamps both), so without this filter it would surface in the
+    // Ops screen's Sent list, labelled as something it is not.
+    .neq('kind', AUDN_KIND)
     .order('created_at', { ascending: false })
     .limit(300)
   if (error) throw error

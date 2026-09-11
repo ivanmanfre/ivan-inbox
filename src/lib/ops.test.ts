@@ -488,3 +488,21 @@ describe('weeklyReportDispatches — the card says whether a sender exists, not 
     expect(weeklySendAfter({ ...weekly, context: null })).toBe(null)
   })
 })
+
+// Run 06 CONTRACTS B2. An audience proposal shares this table with the ops
+// cards and nothing else: it has no channel, the Slack dispatcher's pick list
+// cannot reach it, and it is decided in Strategy beside the numbers that
+// produced it. `pendingOps` is the one filter every Ops surface derives from —
+// the card list, the DM lane preview (`pendingDmLaneOps`), the v2c Shell badge
+// and the work queue — so excluding it here excludes it from all of them.
+describe('an audience proposal is never an ops card', () => {
+  it('leaves the audn kind out of pendingOps while every other kind still passes', () => {
+    const rows: OpsDraft[] = [
+      { ...base, id: 'esc' },
+      { ...base, id: 'audn', kind: 'audn_recommendation', slack_channel: '' },
+      { ...base, id: 'task', kind: 'task' },
+    ]
+    expect(pendingOps(rows).map(r => r.id)).toEqual(['esc', 'task'])
+    expect(pendingDmLaneOps(rows).map(r => r.id)).toEqual(['esc', 'task'])
+  })
+})

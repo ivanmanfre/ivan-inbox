@@ -840,3 +840,87 @@ button.a-ct-chip-t:hover{ opacity:.75 }
      insets a second time and the figures step in from every row above them. */
   .a-aud-sec .a-ledger, .a-group-pad > .a-ledger{ margin-inline:0 }
 }
+
+/* ==========================================================================
+   audience proposals (Run 06) — the decision surface above the audience block.
+
+   Everything here is a layout rule. No colour, size or radius is invented:
+   the type scale, the greys and the spacing steps are the ds tokens the rest
+   of this file uses, and the rows are the kit's own.
+   ========================================================================== */
+
+/* One proposal. A stack, not a card: a card inside `a-group-pad` would be the
+   second frame the audience block already refuses. The hairline is what
+   separates two of them. */
+.a-prop{
+  display:flex; flex-direction:column; gap:var(--ds-s2);
+  padding:var(--ds-s3) 0; min-width:0;
+}
+.a-prop + .a-prop{ border-top:1px solid var(--ds-line) }
+.a-prop > .a-row{ padding-inline:0 }
+
+/* The approved row: the title and where it went, nothing else. */
+.a-prop-done{ gap:var(--ds-s1) }
+.a-prop-title{ font-weight:var(--ds-fw-medium); overflow-wrap:anywhere }
+
+/* A proposal is READ before it is decided, so the four fields are a reading
+   column, not a table: label above, text under it, full measure. */
+.a-prop-body{ display:flex; flex-direction:column; gap:var(--ds-s2); min-width:0 }
+.a-prop-f{ display:flex; flex-direction:column; gap:2px; min-width:0 }
+.a-prop-v{ overflow-wrap:anywhere }
+
+.a-prop-meta{ overflow-wrap:anywhere }
+
+/* The evidence line and the citations. Mono, dim, and allowed to wrap: a
+   truncated citation is a citation you cannot check. */
+.a-prop-ev{
+  font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono);
+  color:var(--ds-text-3); overflow-wrap:anywhere;
+}
+.a-prop-srcs{ display:flex; flex-direction:column; gap:var(--ds-s1); min-width:0 }
+.a-prop-src{
+  font-size:var(--ds-fs-meta); color:var(--ds-text-2);
+  overflow-wrap:anywhere; text-decoration:none;
+}
+a.a-prop-src{ text-decoration:underline; text-underline-offset:2px }
+a.a-prop-src:hover{ color:var(--ds-text) }
+
+.a-prop-err{ overflow-wrap:anywhere }
+
+/* The editor: the same textarea the strategy sections use, grown to content. */
+.a-prop-editor{ display:flex; flex-direction:column; gap:var(--ds-s3); min-width:0 }
+.a-prop-edit{ display:flex; flex-direction:column; gap:var(--ds-s1); min-width:0 }
+.a-prop-ta{ width:100%; resize:vertical; overflow:hidden }
+
+/* The actions WRAP. Three buttons plus a busy spinner do not fit one 375px
+   row beside a 16px gutter, and a control pushed off the edge is a control
+   that does not exist. */
+.a-prop-acts{ display:flex; flex-wrap:wrap; gap:var(--ds-s2); padding-top:var(--ds-s1) }
+
+.a-prop-tail{ display:flex; align-items:center; gap:var(--ds-s2); min-width:0; flex-wrap:wrap }
+
+/* Holds the block's height while the first read lands, so the audience block
+   under it is not shoved a screen down when the rows arrive. */
+.a-prop-hold{ min-height:6rem }
+
+@media (max-width:39.999rem){
+  /* Same clip the audience head hit at 375px: the eyebrow is the flex child
+     that shrinks, and `ivan · read just now` took the row. Both halves are
+     load-bearing, so the head wraps instead of truncating the label. */
+  .a-prop-g .a-group-h{ flex-wrap:wrap; row-gap:var(--ds-s1) }
+  .a-prop-g .a-group-h .a-eyebrow{ flex:0 1 auto; overflow:visible }
+}
+
+/* A `.a-ct-sub` pays `--ds-row-x` of its own, which is right when it is the
+   body's direct child and wrong inside `a-group-pad`: the note and the
+   "asset needed" line stepped IN from the proposal text beside them, so the
+   reading column moved twice per proposal. Scoped to this block; the audience
+   block's own notes are not this file's to re-inset. */
+.a-prop-g .a-group-pad > .a-ct-sub,
+.a-prop .a-ct-sub{ padding-inline:0 }
+
+/* The four fields are a READING column. At 1280 the group runs ~1900px wide,
+   which put a 150-character measure on four paragraphs of prose; the cap is
+   in `ch` so it tracks the type size rather than a guessed pixel. The phone is
+   far under it, so nothing changes there. */
+.a-prop-body, .a-prop-editor{ max-width:78ch }

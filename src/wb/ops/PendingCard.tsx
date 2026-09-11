@@ -28,7 +28,7 @@ import './ops.css'
 // 'OUTBOUND' said what the ENGINE calls the lane, not what the card is. Ivan
 // reads these as comments, so they say Comments; `comment_reply` becomes REPLY
 // in the same pass so the two comment kinds cannot be told apart by an S.
-export const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK', weekly_report: 'WEEKLY', comment_reply: 'REPLY', comment_outbound: 'COMMENTS', booking: 'BOOKED', precall_email: 'PRE-CALL', manual_invite: 'INVITE', task: 'TASK', leads_ballot: 'LEADS' }
+export const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK', weekly_report: 'WEEKLY', comment_reply: 'REPLY', comment_outbound: 'COMMENTS', booking: 'BOOKED', precall_email: 'PRE-CALL', manual_invite: 'INVITE', task: 'TASK', leads_ballot: 'LEADS', audn_recommendation: 'AUDIENCE' }
 
 // Slack channel ids are unreadable on a card. escalation/update/booking all print a
 // destination, so name the ones we own and fall back to the raw id for anything else.
