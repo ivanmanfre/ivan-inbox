@@ -35,6 +35,11 @@ export interface OrbitEvent {
   p: string | null;
 }
 
+/** Which of the three never-reached buckets a person falls in (db/062). `null`
+ *  once `reached` is true — the three are mutually exclusive and exhaustive
+ *  over the never-reached population (see OrbitStats' matching counts). */
+export type OrbitNeverReached = 'judged_out' | 'icp_unasked' | 'unjudged' | null;
+
 /** One resolved identity in the window (a row of `people`). */
 export interface OrbitPerson {
   /** contacts.id — the stable node id for this person. */
@@ -75,6 +80,12 @@ export interface OrbitPerson {
   inb: boolean;
   /** True when outreach (invite/DM/InMail/email) was sent. */
   reached: boolean;
+  /** Never-reached bucket, or null once reached. See OrbitNeverReached. */
+  nr: OrbitNeverReached;
+  /** Human-readable reason for `nr`, or null once reached — e.g. "Judged out:
+   *  engager rubric 4/10" or "ICP 8, never asked". Server-computed so the UI
+   *  never re-derives the judgement logic. */
+  nrw: string | null;
   /** True when they viewed your profile. */
   v: boolean;
   /** True when they reacted to or commented on a post. */
@@ -134,6 +145,20 @@ export interface OrbitStats {
   posts: number;
   content_edges: number;
   events: number;
+  /** Count of people with nr !== null (never reached), over the full window
+   *  population (not the client-side filtered set — see filters.ts'
+   *  computeStats for the filtered equivalent). Always equal to
+   *  judged_out + icp_unasked + unjudged (db/062 computes all four from the
+   *  same per-contact judgement, so they cannot drift apart). */
+  never_reached: number;
+  /** Never reached AND judged not-ICP (low engager score, failed profile-view
+   *  judge, or a disqualified/skipped/archived/blacklisted prospect row). */
+  judged_out: number;
+  /** Never reached, not judged_out, AND has a positive ICP judgement
+   *  somewhere (engager score >=7, profile-view pass, or prospect ICP >=7). */
+  icp_unasked: number;
+  /** Never reached, not judged_out, and no score anywhere. */
+  unjudged: number;
   /** RPC server time, ms. */
   ms: number;
   /** True earliest event timestamp in the window, ISO — NOT the layout domain

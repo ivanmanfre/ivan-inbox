@@ -299,6 +299,13 @@
 .a-orbit-panel-head-t { min-width: 0; }
 .a-orbit-panel-name { font-size: var(--ds-fs-title); font-weight: var(--ds-fw-semi); }
 .a-orbit-panel-sub { font-size: var(--ds-fs-meta); color: var(--ds-text-3); margin-top: 2px; }
+/* Never-reached blocker line (db/062's nr/nrw): judged_out reads as a caution
+   (this person was actively screened out), icp_unasked as an accent (a scored
+   person nobody has approached — the actionable case), unjudged stays quiet. */
+.a-orbit-panel-nr { font-size: var(--ds-fs-meta); margin-top: 4px; }
+.a-orbit-panel-nr[data-bucket='judged_out'] { color: var(--ds-sev-attention-ui); }
+.a-orbit-panel-nr[data-bucket='icp_unasked'] { color: var(--ds-accent-ui); }
+.a-orbit-panel-nr[data-bucket='unjudged'] { color: var(--ds-text-3); }
 .a-orbit-panel-body {
   flex: 1 1 auto;
   min-height: 0;

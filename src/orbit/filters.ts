@@ -3,7 +3,7 @@
 // transform over OrbitGraph/OrbitPerson, so it is testable without a mount
 // (filters.test.ts) and safe to call on every keystroke/tap.
 
-import type { OrbitLane, OrbitPerson } from './types'
+import type { OrbitLane, OrbitNeverReached, OrbitPerson } from './types'
 
 export type DatePreset = '7d' | '30d' | '90d' | 'all' | 'custom'
 
@@ -19,8 +19,10 @@ export interface OrbitFilters {
   contentOnly: boolean
   /** Only people who moved first (person.inb). */
   movedFirst: boolean
-  /** Only people who were never reached (person.reached === false). */
-  neverReached: boolean
+  /** Only people whose never-reached bucket (person.nr) is in this set. Empty
+   *  set = no never-reached filter applied (the three chips are independent
+   *  toggles, not a single on/off switch — see db/062 for the bucket defs). */
+  neverReached: Set<Exclude<OrbitNeverReached, null>>
   /** Minimum ICP score, inclusive. null = no floor. */
   icpMin: number | null
   /** Free-text search over name / company / headline, case-insensitive. */
@@ -30,7 +32,7 @@ export interface OrbitFilters {
 export function defaultFilters(tenant: OrbitFilters['tenant'] = 'ivan'): OrbitFilters {
   return {
     tenant, preset: '30d', from: '', to: '',
-    lanes: new Set(), contentOnly: false, movedFirst: false, neverReached: false,
+    lanes: new Set(), contentOnly: false, movedFirst: false, neverReached: new Set(),
     icpMin: null, q: '',
   }
 }
@@ -69,7 +71,7 @@ export function matchesFilters(p: OrbitPerson, f: OrbitFilters): boolean {
   if (f.lanes.size > 0 && !(p.camp && f.lanes.has(p.camp))) return false
   if (f.contentOnly && p.pid) return false
   if (f.movedFirst && !p.inb) return false
-  if (f.neverReached && p.reached) return false
+  if (f.neverReached.size > 0 && !(p.nr && f.neverReached.has(p.nr))) return false
   if (f.icpMin != null && (p.i == null || p.i < f.icpMin)) return false
   if (f.q.trim()) {
     const q = f.q.trim().toLowerCase()
@@ -108,6 +110,13 @@ export interface OrbitStatsView {
   reached: number
   replied: number
   booked: number
+  /** Never-reached AND has a positive ICP judgement — the headline number for
+   *  the never-reached split (see filters.ts' neverReached / db/062). */
+  icpUnasked: number
+  /** Never-reached AND judged not-ICP. */
+  judgedOut: number
+  /** Never-reached with no score anywhere. */
+  unjudged: number
   /** % of reached people who moved first (inb) and went on to reply (st>=3). null = no reached-and-moved-first population to rate. */
   movedFirstRate: number | null
   /** Same rate for reached people we moved on first (not inb). */
@@ -119,6 +128,7 @@ export interface OrbitStatsView {
  *  separately from the graph. */
 export function computeStats(people: OrbitPerson[]): OrbitStatsView {
   let reached = 0, replied = 0, booked = 0
+  let icpUnasked = 0, judgedOut = 0, unjudged = 0
   let movedReached = 0, movedReplied = 0, coldReached = 0, coldReplied = 0
   for (const p of people) {
     if (p.reached) {
@@ -126,11 +136,14 @@ export function computeStats(people: OrbitPerson[]): OrbitStatsView {
       if (p.inb) { movedReached++; if (p.st >= 3) movedReplied++ }
       else { coldReached++; if (p.st >= 3) coldReplied++ }
     }
+    if (p.nr === 'icp_unasked') icpUnasked++
+    else if (p.nr === 'judged_out') judgedOut++
+    else if (p.nr === 'unjudged') unjudged++
     if (p.st >= 3) replied++
     if (p.st === 4) booked++
   }
   return {
-    people: people.length, reached, replied, booked,
+    people: people.length, reached, replied, booked, icpUnasked, judgedOut, unjudged,
     movedFirstRate: movedReached > 0 ? movedReplied / movedReached : null,
     coldFirstRate: coldReached > 0 ? coldReplied / coldReached : null,
   }

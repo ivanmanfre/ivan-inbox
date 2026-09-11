@@ -11,6 +11,7 @@ function person(o: Partial<OrbitPerson> & { id: string }): OrbitPerson {
     pid: null, camp: null, lane: 'content', pstage: null, skip: null,
     st: 0, sd: [null, null, null, null, null], t0: '2026-08-01T00:00:00Z', t1: '2026-08-01T00:00:00Z',
     fresh: 0, inb: false, reached: false, v: false, pg: false, dmi: 0, dmo: 0, ev: [],
+    nr: null, nrw: null,
     ...o,
   }
 }
@@ -41,6 +42,18 @@ describe('matchesFilters', () => {
     expect(matchesFilters(person({ id: '4', inb: true, i: null }), f)).toBe(false)
   })
 
+  it('neverReached filters by bucket membership, not a single on/off switch', () => {
+    const f = { ...defaultFilters(), neverReached: new Set<'judged_out' | 'icp_unasked'>(['icp_unasked']) }
+    expect(matchesFilters(person({ id: '1', nr: 'icp_unasked' }), f)).toBe(true)
+    expect(matchesFilters(person({ id: '2', nr: 'judged_out' }), f)).toBe(false)
+    expect(matchesFilters(person({ id: '3', nr: 'unjudged' }), f)).toBe(false)
+    expect(matchesFilters(person({ id: '4', nr: null, reached: true }), f)).toBe(false)
+    // empty set = filter off, every bucket (and reached people) pass
+    const off = { ...defaultFilters() }
+    expect(matchesFilters(person({ id: '5', nr: 'unjudged' }), off)).toBe(true)
+    expect(matchesFilters(person({ id: '6', nr: null, reached: true }), off)).toBe(true)
+  })
+
   it('search matches name, company or headline, case-insensitively', () => {
     const f = { ...defaultFilters(), q: 'acme' }
     expect(matchesFilters(person({ id: '1', c: 'Acme Corp' }), f)).toBe(true)
@@ -55,13 +68,19 @@ describe('computeStats', () => {
       person({ id: '1', reached: true, inb: true, st: 3 }),  // moved-first, replied
       person({ id: '2', reached: true, inb: true, st: 1 }),  // moved-first, not replied
       person({ id: '3', reached: true, inb: false, st: 4 }), // cold-first, replied+booked
-      person({ id: '4', reached: false, inb: false, st: 0 }),// never reached at all
+      person({ id: '4', reached: false, inb: false, st: 0, nr: 'icp_unasked' }),
+      person({ id: '5', reached: false, inb: false, st: 0, nr: 'judged_out' }),
+      person({ id: '6', reached: false, inb: false, st: 0, nr: 'judged_out' }),
+      person({ id: '7', reached: false, inb: false, st: 0, nr: 'unjudged' }),
     ]
     const s = computeStats(people)
-    expect(s.people).toBe(4)
+    expect(s.people).toBe(7)
     expect(s.reached).toBe(3)
     expect(s.replied).toBe(2)
     expect(s.booked).toBe(1)
+    expect(s.icpUnasked).toBe(1)
+    expect(s.judgedOut).toBe(2)
+    expect(s.unjudged).toBe(1)
     expect(s.movedFirstRate).toBeCloseTo(1 / 2) // 1 of 2 moved-first-and-reached replied
     expect(s.coldFirstRate).toBeCloseTo(1 / 1)  // 1 of 1 cold-first-and-reached replied
   })

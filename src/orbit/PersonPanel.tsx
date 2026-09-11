@@ -146,6 +146,9 @@ export function PersonPanel({ person, tenant, lanes, onClose }: PersonPanelProps
                 <div className="a-orbit-panel-sub">
                   ICP {person.i ?? '—'} · {laneRow?.name ?? (person.pid ? 'campaign unknown' : 'no campaign — content touch only')}
                 </div>
+                {person.nr && person.nrw ? (
+                  <div className="a-orbit-panel-nr" data-bucket={person.nr}>{person.nrw}</div>
+                ) : null}
               </div>
               <IconButton icon="close" label="Close" onClick={onClose} />
             </div>

@@ -106,6 +106,15 @@ export function Orbit() {
   const filteredPeople = useMemo(() => (graph ? graph.people.filter(visible) : []), [graph, visible])
   const stats = useMemo(() => computeStats(filteredPeople), [filteredPeople])
   const laneChips = useMemo(() => (graph ? sortedLaneChips(graph.lanes) : []), [graph])
+  // The three never-reached chip counts: every OTHER active filter applies (lane,
+  // content-only, moved-first, ICP floor, search) but not the neverReached filter
+  // itself — same convention as the lane chips' own `n`, so toggling one bucket
+  // chip doesn't zero out the other two chips' counts.
+  const nrCounts = useMemo(() => {
+    if (!graph) return { icpUnasked: 0, judgedOut: 0, unjudged: 0 }
+    const base = graph.people.filter(p => matchesFilters(p, { ...filters, neverReached: new Set() }))
+    return computeStats(base)
+  }, [graph, filters])
 
   const toggleLane = useCallback((id: string) => {
     setFilters(f => {
@@ -195,7 +204,7 @@ export function Orbit() {
         ) : null}
       </div>
 
-      <ChipRow filters={filters} setFilters={setFilters} laneChips={laneChips} toggleLane={toggleLane} />
+      <ChipRow filters={filters} setFilters={setFilters} laneChips={laneChips} toggleLane={toggleLane} nrCounts={nrCounts} />
 
       {/* Four numbers, one phone row, no card chrome, no scroll — the
           coordinator's fix: the old StatTile row measured 950px of 390
@@ -297,11 +306,22 @@ export function Orbit() {
 // buried at the tail of a 3,690px campaign scroller; the campaign chips keep
 // scrolling below, now with a right-edge fade so the cut reads as "more
 // here" instead of a layout bug.
-function ChipRow({ filters, setFilters, laneChips, toggleLane }: {
+// The never-reached split (db/062): three independent bucket toggles replacing
+// the old single "Never reached" chip. 'ICP never asked' is the headline of
+// the three — it's the actionable one (a scored person nobody has approached
+// yet) — so it goes first and keeps its accent tone even unselected.
+function toggleNr(f: OrbitFilters, bucket: 'icp_unasked' | 'judged_out' | 'unjudged'): OrbitFilters {
+  const next = new Set(f.neverReached)
+  if (next.has(bucket)) next.delete(bucket); else next.add(bucket)
+  return { ...f, neverReached: next }
+}
+
+function ChipRow({ filters, setFilters, laneChips, toggleLane, nrCounts }: {
   filters: OrbitFilters
   setFilters: React.Dispatch<React.SetStateAction<OrbitFilters>>
   laneChips: ReturnType<typeof sortedLaneChips>
   toggleLane: (id: string) => void
+  nrCounts: { icpUnasked: number; judgedOut: number; unjudged: number }
 }) {
   const [searchOpen, setSearchOpen] = useState(false)
   return (
@@ -309,7 +329,21 @@ function ChipRow({ filters, setFilters, laneChips, toggleLane }: {
       <div className="a-orbit-filterrow">
         <Chip tone="neutral" selected={filters.contentOnly} onClick={() => setFilters(f => ({ ...f, contentOnly: !f.contentOnly }))}>Content only</Chip>
         <Chip tone="neutral" selected={filters.movedFirst} onClick={() => setFilters(f => ({ ...f, movedFirst: !f.movedFirst }))}>Moved first</Chip>
-        <Chip tone="neutral" selected={filters.neverReached} onClick={() => setFilters(f => ({ ...f, neverReached: !f.neverReached }))}>Never reached</Chip>
+        <Chip
+          tone="accent" count={nrCounts.icpUnasked}
+          selected={filters.neverReached.has('icp_unasked')}
+          onClick={() => setFilters(f => toggleNr(f, 'icp_unasked'))}
+        >ICP never asked</Chip>
+        <Chip
+          tone="neutral" count={nrCounts.judgedOut}
+          selected={filters.neverReached.has('judged_out')}
+          onClick={() => setFilters(f => toggleNr(f, 'judged_out'))}
+        >Judged out</Chip>
+        <Chip
+          tone="neutral" count={nrCounts.unjudged}
+          selected={filters.neverReached.has('unjudged')}
+          onClick={() => setFilters(f => toggleNr(f, 'unjudged'))}
+        >Not yet judged</Chip>
         <Chip tone="neutral" selected={filters.icpMin === 7} onClick={() => setFilters(f => ({ ...f, icpMin: f.icpMin === 7 ? null : 7 }))}>ICP ≥ 7</Chip>
         {searchOpen ? (
           <input
