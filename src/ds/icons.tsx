@@ -16,7 +16,7 @@ import {
   ExternalLink, Eye, FileText, Filter, Flame, GripVertical, Handshake, Hash, Image,
   Inbox, Keyboard, Layers, LayoutList, Link, List, ListChecks, Loader, Lock,
   LogOut, Magnet, Mail, Maximize2, MessagesSquare, Mic, Minus, MoreHorizontal,
-  OctagonX, Palette, PanelLeft, PanelRight, Paperclip, Pause, Pencil, Phone,
+  OctagonX, Orbit, Palette, PanelLeft, PanelRight, Paperclip, Pause, Pencil, Phone,
   Play, Plus, Quote, RefreshCw, Reply, RotateCw, Search, Send, Settings,
   ShieldAlert, SlidersHorizontal, Smile, Sparkles, Square, SquareCheck, Star,
   Sun, Target, ThumbsUp, Timer, Trash2, TrendingDown, TrendingUp, TriangleAlert,
@@ -39,6 +39,7 @@ export const ICONS = {
   ops: ClipboardCheck,      /* was the lozenge glyph */
   settings: Settings,       /* was the gear glyph */
   ask: Sparkles,            /* was the eight-spoked asterisk (Claude's mark) */
+  orbit: Orbit,             /* joined 2026-09-11 with the Orbit job (signal-orbit-live) */
 
   /* chrome and navigation */
   close: X,

@@ -283,6 +283,16 @@ export function SalesSurface({ onOpenCall }: {
           </div>
         </div>
         <div className="a-head-tail">
+          {/* The one entry point into /orbit (goal run signal-orbit-live,
+              2026-09-11) — no rail row, no tab-bar slot, just this button.
+              A direct hash write, same as every other cross-surface deep link
+              in this app (see src/lib/inbox.ts's thread links). */}
+          <IconButton
+            icon="orbit"
+            label="Orbit"
+            size="sm"
+            onClick={() => { location.hash = '#exp/brain-b/orbit?tenant=ivan&range=30d' }}
+          />
           <IconButton
             icon={density === 'a' ? 'list' : 'layers'}
             label={density === 'a' ? 'Show the calls as cards' : 'Show the calls as rows'}
