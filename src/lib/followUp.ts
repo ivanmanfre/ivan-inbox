@@ -20,6 +20,7 @@
    this asks for a NEW one on a date, and works on a thread with no draft.
    ========================================================================== */
 import { supabase } from './supabase'
+import { snoozeTarget, SNOOZE_HOUR, type DraftEvidence } from './inbox'
 
 export const FOLLOW_UP_REASON = 'follow_up_dated'
 
@@ -103,4 +104,31 @@ export async function clearFollowUp(prospectId: string): Promise<void> {
     })
     .eq('id', prospectId).eq('skip_reason', FOLLOW_UP_REASON)
   if (error) throw error
+}
+
+/* ---------------------------------------------------------------------------
+   The SUGGESTION (2026-09-12, Serg Safonov / Savvy KID: "I'll forward to my CMO"
+   + "remind in few weeks"; Ivan: "the ui should tell me reply and draft follow
+   up in 2 weeks or so"). The reply planner reads every inbound and records,
+   on the draft's evidence, whether the person asked to be contacted again
+   later and when. This turns that read into a date the strip can offer in
+   one tap. It never stamps anything: a suggestion the model made is not a
+   decision, and every other lane reads the prospect row as one.
+   --------------------------------------------------------------------------- */
+export const SUGGEST_DEFAULT_DAYS = 14
+
+export type FollowUpSuggestion = { at: string; why: string; dated: boolean }
+
+/** 08:00 local on the model's YYYY-MM-DD, or the default when it gave none
+ *  (or one already behind us). */
+export function followUpSuggestion(evidence: DraftEvidence | null | undefined, now: Date = new Date()): FollowUpSuggestion | null {
+  const fu = evidence?.brief?.follow_up
+  if (!fu || !fu.asked) return null
+  const why = (fu.why ?? '').trim()
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(fu.when ?? '')
+  if (m) {
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), SNOOZE_HOUR, 0, 0, 0)
+    if (!Number.isNaN(d.getTime()) && d.getTime() > now.getTime()) return { at: d.toISOString(), why, dated: true }
+  }
+  return { at: snoozeTarget(SUGGEST_DEFAULT_DAYS, now), why, dated: false }
 }

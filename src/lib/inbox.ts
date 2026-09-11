@@ -723,7 +723,13 @@ export type DraftEvidence = {
   generated_text?: string | null
   // Mirror email's exact full body (including Subject:), never the DM snapshot.
   email?: { generated_text?: string | null } | null
-  brief?: { they_mean?: string | null; the_move?: string | null; limits_to_name?: string | null; unresolved?: string[] | null } | null
+  brief?: {
+    they_mean?: string | null; the_move?: string | null; limits_to_name?: string | null; unresolved?: string[] | null
+    // The planner's read of whether THIS inbound asked to be contacted again later
+    // ("remind me in a few weeks", "back mid October"). A suggestion, never a stamp:
+    // the inbox offers the date, the operator sets it. See followUpSuggestion.
+    follow_up?: { asked?: boolean | null; when?: string | null; why?: string | null } | null
+  } | null
   research?: { hits?: { title?: string | null; url?: string | null }[] | null }[] | null
   learned?: DraftEvidenceFact[] | null
   exemplars?: DraftEvidenceExemplar[] | null
