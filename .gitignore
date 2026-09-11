@@ -38,3 +38,6 @@ dist-stock-branch/
 goal-runs/
 *.session.json
 dist-gallery/
+
+# dev-only Signal Orbit fixtures: REAL prospect data, never bundled, never committed
+orbit-fixtures/

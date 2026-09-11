@@ -96,6 +96,11 @@ const SendsC = lazy(() => import('../../wb/sends').then(m => ({ default: m.Sends
 const OpsBoardC = lazy(() => import('../../wb/ops').then(m => ({ default: m.OpsBoard })))
 const MoneyC = lazy(() => import('../../wb/money').then(m => ({ default: m.MoneyView })))
 const SalesC = lazy(() => import('../../wb/sales').then(m => ({ default: m.SalesSurface })))
+// Orbit (2026-09-11, goal run signal-orbit-live): its own lazy boundary, same
+// reasoning as every other tab-switch-away surface above — nothing pays for
+// it (or, inside it, for OrbitCanvas's own further-lazy sigma/graphology
+// chunk) until the Sales head's one entry button is actually tapped.
+const OrbitC = lazy(() => import('../../orbit/Orbit').then(m => ({ default: m.Orbit })))
 const CallC = lazy(() => import('../../wb/call').then(m => ({ default: m.CallWindow })))
 const SettingsC = lazy(() => import('../../wb/settings').then(m => ({ default: m.Settings })))
 
@@ -660,6 +665,11 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
           window every other surface opens, rather than a second one that would
           drift from it. */}
       {job === 'sales' && <SalesC onOpenCall={openCallRow} mobile={mobile} />}
+      {/* Orbit joined 2026-09-06's Sales sibling as a whole-canvas surface with
+          no props from Shell — it owns its own tenant/range filters and its
+          own signal_graph read, the same class of surface Money and Strategy
+          already are. */}
+      {job === 'orbit' && <OrbitC />}
       {job === 'ops' && opsSurface}
       {/* Today aggregates, so its hand-off rows navigate INSIDE the workbench
           rather than through the default app's hash routes. The work-queue

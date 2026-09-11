@@ -1,0 +1,365 @@
+/* ==========================================================================
+   src/orbit/orbit.css — the /orbit shell. Tokens only (var(--ds-*)); the one
+   new colour the surface introduces (outbound, cool blue) lives in theme.ts
+   for the canvas layer and is never duplicated as a literal here.
+   ========================================================================== */
+
+.a-orbit {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--ds-canvas);
+  color: var(--ds-text);
+}
+
+/* --- head: tenant switch + date presets + live dot, 56px on phone -------- */
+.a-orbit-head {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-s2);
+  padding: var(--ds-s2) var(--ds-gutter);
+  border-bottom: 1px solid var(--ds-hairline);
+  min-height: var(--ds-header-h);
+  justify-content: center;
+}
+.a-orbit-head-row1 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-s3);
+}
+.a-orbit-title {
+  font-size: var(--ds-fs-title);
+  font-weight: var(--ds-fw-semi);
+  letter-spacing: var(--ds-tr-title);
+}
+.a-orbit-live {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-s2);
+  font-size: var(--ds-fs-meta);
+  color: var(--ds-text-3);
+  font-family: var(--ds-font-mono);
+}
+.a-orbit-head-row2 {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-s4);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.a-orbit-head-row2::-webkit-scrollbar { display: none; }
+.a-orbit-presets {
+  display: flex;
+  gap: var(--ds-s1);
+  flex: 0 0 auto;
+}
+.a-orbit-preset {
+  appearance: none;
+  border: 1px solid var(--ds-hairline);
+  background: var(--ds-surface-2);
+  color: var(--ds-text-2);
+  border-radius: var(--ds-r-pill);
+  font-size: var(--ds-fs-meta);
+  font-family: var(--ds-font-mono);
+  padding: 0 var(--ds-s4);
+  height: 28px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.a-orbit-preset[data-active] {
+  background: var(--ds-accent-soft);
+  border-color: var(--ds-accent-line);
+  color: var(--ds-accent-ui);
+}
+
+/* --- chip rows: filters (own row, most-reached-for) then campaigns -------- */
+.a-orbit-chiprows {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--ds-hairline);
+}
+.a-orbit-filterrow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--ds-s2);
+  padding: var(--ds-s2) var(--ds-gutter);
+  overflow-x: auto;
+  scrollbar-width: none;
+  min-height: var(--ds-tap);
+}
+.a-orbit-filterrow::-webkit-scrollbar { display: none; }
+/* Same defect class the coordinator flagged on the campaign row below: four
+   chips + search do not all fit at 390px, so the same fade applies here. */
+.a-orbit-filterrow::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 28px;
+  background: linear-gradient(to right, transparent, var(--ds-canvas));
+  pointer-events: none;
+}
+.a-orbit-search {
+  flex: 0 0 auto;
+  width: 168px;
+  height: var(--ds-control-h-sm);
+  border-radius: var(--ds-r-pill);
+  border: 1px solid var(--ds-hairline);
+  background: var(--ds-surface-2);
+  color: var(--ds-text);
+  font-size: var(--ds-fs-meta);
+  padding: 0 var(--ds-s4);
+}
+.a-orbit-search:focus { outline: 2px solid var(--ds-accent-ring); outline-offset: 1px; }
+
+/* The campaign row: same scroller as before, but now with a right-edge fade
+   so a chip sliced mid-word reads as "more to scroll" rather than a bug
+   (coordinator's fix — it was a 3,690px scroller with no affordance). */
+.a-orbit-lanerow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--ds-s2);
+  padding: var(--ds-s2) var(--ds-gutter);
+  overflow-x: auto;
+  scrollbar-width: none;
+  min-height: var(--ds-tap);
+}
+.a-orbit-lanerow::-webkit-scrollbar { display: none; }
+.a-orbit-lanerow::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 36px;
+  background: linear-gradient(to right, transparent, var(--ds-canvas));
+  pointer-events: none;
+}
+
+/* --- stats strip: 4-up grid, no card chrome, one phone row ---------------- */
+.a-orbit-stats {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--ds-s2);
+  padding: var(--ds-s4) var(--ds-gutter) var(--ds-s2);
+}
+.a-orbit-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.a-orbit-stat-n {
+  font-size: var(--ds-fs-title);
+  font-weight: var(--ds-fw-semi);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--ds-tr-title);
+}
+.a-orbit-stat-l {
+  font-size: var(--ds-fs-eyebrow);
+  color: var(--ds-text-3);
+  text-transform: uppercase;
+  letter-spacing: var(--ds-tr-eyebrow);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.a-orbit-rates {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 var(--ds-gutter) var(--ds-s3);
+  border-bottom: 1px solid var(--ds-hairline);
+}
+.a-orbit-rate-line {
+  margin: 0;
+  font-size: var(--ds-fs-meta);
+  color: var(--ds-text-3);
+}
+.a-orbit-rate-line strong { color: var(--ds-text); font-weight: var(--ds-fw-semi); }
+
+/* --- canvas region ---------------------------------------------------------- */
+.a-orbit-canvas {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.a-orbit-canvas-fallback {
+  position: absolute;
+  inset: 0;
+  background: var(--ds-canvas);
+}
+.a-orbit-canvas-empty {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- scrub bar --------------------------------------------------------------- */
+.a-orbit-scrub {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--ds-s3);
+  padding: var(--ds-s2) var(--ds-gutter);
+  border-top: 1px solid var(--ds-hairline);
+  background: var(--ds-surface-1);
+}
+.a-orbit-scrub input[type='range'] {
+  flex: 1 1 auto;
+  accent-color: var(--ds-accent);
+  height: var(--ds-tap);
+}
+.a-orbit-scrub-date {
+  flex: 0 0 auto;
+  font-size: var(--ds-fs-meta);
+  color: var(--ds-text-3);
+}
+.a-orbit-live-btn {
+  flex: 0 0 auto;
+  appearance: none;
+  border: 1px solid var(--ds-hairline);
+  background: var(--ds-surface-2);
+  color: var(--ds-text-2);
+  border-radius: var(--ds-r-pill);
+  font-size: var(--ds-fs-meta);
+  padding: 0 var(--ds-s4);
+  height: 28px;
+  cursor: pointer;
+}
+.a-orbit-live-btn[data-live='true'] {
+  background: var(--ds-accent-soft);
+  border-color: var(--ds-accent-line);
+  color: var(--ds-accent-ui);
+}
+
+/* --- panels: bottom sheet on phone, right rail >= 1000px ------------------- */
+.a-orbit-scrim {
+  position: fixed;
+  inset: 0;
+  background: var(--ds-scrim);
+  z-index: calc(var(--ds-z-sheet) - 1);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--ds-dur) var(--ds-ease);
+}
+.a-orbit-scrim[data-open] { opacity: 1; pointer-events: auto; }
+
+.a-orbit-panel {
+  position: fixed;
+  z-index: var(--ds-z-sheet);
+  background: var(--ds-surface-1);
+  display: flex;
+  flex-direction: column;
+  transition: transform var(--ds-dur-slow) var(--ds-ease);
+  pointer-events: none;
+}
+.a-orbit-panel[data-open] { pointer-events: auto; }
+
+@media (max-width: 999px) {
+  .a-orbit-panel {
+    left: 0; right: 0; bottom: 0;
+    max-height: 82vh;
+    border-radius: var(--ds-r4) var(--ds-r4) 0 0;
+    border-top: 1px solid var(--ds-hairline);
+    transform: translateY(100%);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .a-orbit-panel[data-open] { transform: translateY(0); }
+  .a-orbit-scrim { display: block; }
+}
+@media (min-width: 1000px) {
+  .a-orbit-panel {
+    top: 0; right: 0; bottom: 0;
+    width: var(--ds-peer-w);
+    border-left: 1px solid var(--ds-hairline);
+    transform: translateX(100%);
+  }
+  .a-orbit-panel[data-open] { transform: translateX(0); }
+  .a-orbit-scrim { display: none; }
+}
+
+.a-orbit-panel-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ds-s3);
+  padding: var(--ds-card-pad);
+  border-bottom: 1px solid var(--ds-hairline);
+}
+.a-orbit-panel-head-t { min-width: 0; }
+.a-orbit-panel-name { font-size: var(--ds-fs-title); font-weight: var(--ds-fw-semi); }
+.a-orbit-panel-sub { font-size: var(--ds-fs-meta); color: var(--ds-text-3); margin-top: 2px; }
+.a-orbit-panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--ds-card-pad);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-s6);
+}
+
+/* --- stage ladder ------------------------------------------------------------ */
+.a-orbit-ladder { display: flex; flex-direction: column; gap: var(--ds-s2); }
+.a-orbit-ladder-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-s3);
+  font-size: var(--ds-fs-meta);
+}
+.a-orbit-ladder-dot {
+  width: 8px; height: 8px; border-radius: 999px;
+  background: var(--ds-hairline-strong);
+  flex: 0 0 auto;
+}
+.a-orbit-ladder-row[data-reached] .a-orbit-ladder-dot { background: var(--ds-text-3); }
+.a-orbit-ladder-row[data-current] .a-orbit-ladder-dot { background: var(--ds-accent); }
+.a-orbit-ladder-label { flex: 0 0 96px; color: var(--ds-text-2); }
+.a-orbit-ladder-date { color: var(--ds-text-3); font-family: var(--ds-font-mono); }
+
+/* --- event history ------------------------------------------------------------ */
+.a-orbit-events { display: flex; flex-direction: column; gap: var(--ds-s3); }
+.a-orbit-event { display: flex; gap: var(--ds-s3); font-size: var(--ds-fs-meta); }
+.a-orbit-event-mark { width: 6px; border-radius: 3px; flex: 0 0 auto; background: var(--ds-hairline-strong); }
+.a-orbit-event[data-dir='in'] .a-orbit-event-mark { background: var(--ds-sev-attention); }
+.a-orbit-event-body { min-width: 0; }
+.a-orbit-event-kind { color: var(--ds-text-2); font-family: var(--ds-font-mono); font-size: var(--ds-fs-mono); }
+.a-orbit-event-date { color: var(--ds-text-4); margin-left: var(--ds-s2); }
+.a-orbit-event-text { color: var(--ds-text-3); margin-top: 2px; word-break: break-word; }
+
+/* --- action list --------------------------------------------------------------- */
+.a-orbit-actions { display: flex; flex-direction: column; gap: var(--ds-s5); }
+.a-orbit-action { display: flex; flex-direction: column; gap: var(--ds-s2); }
+.a-orbit-action-effect { font-size: var(--ds-fs-meta); color: var(--ds-text-3); }
+.a-orbit-action-blockers { font-size: var(--ds-fs-meta); color: var(--ds-sev-attention-ui); }
+.a-orbit-action-note { font-size: var(--ds-fs-meta); color: var(--ds-accent-ui); }
+
+/* --- post panel: engagers list -------------------------------------------------- */
+.a-orbit-engager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-s3);
+  padding: var(--ds-s2) 0;
+  border-bottom: 1px solid var(--ds-line);
+}
+.a-orbit-engager-main { min-width: 0; }
+.a-orbit-engager-name { font-size: var(--ds-fs-body); }
+.a-orbit-engager-meta { font-size: var(--ds-fs-meta); color: var(--ds-text-3); }
+
+.a-orbit-lane-pick { display: flex; flex-wrap: wrap; gap: var(--ds-s2); }
+
+/* The bulk-queue confirm rides above the post/person sheet it was raised
+   from — same "a confirm is the last thing on screen" rule tokens.css §8
+   documents for --ds-z-confirm. */
+.a-orbit-confirm.ds-sheet { z-index: var(--ds-z-confirm); }

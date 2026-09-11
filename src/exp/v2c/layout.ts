@@ -26,7 +26,13 @@
 // It sits beside `today` rather than inside any group because it answers a
 // different question — Today asks what is waiting on him, Sales asks who he is
 // talking to this week and what he should have read before he says hello.
-export type Job = 'today' | 'sales' | 'dms' | 'content' | 'magnets' | 'styles' | 'strategy' | 'sends' | 'money' | 'ops' | 'settings'
+// `orbit` joined 2026-09-11 (goal run signal-orbit-live): the live signal map
+// (who moved, who we reached, who replied/booked, charted on a clock).
+// Reached the same way `money` is — a real job with its own URL and view,
+// but not a rail destination of its own; see Rail.tsx's `before` filter and
+// place.ts's tabForJob (it collapses onto the `sales` tab, opened from ONE
+// button on the Sales head rather than a rail/tab-bar slot of its own).
+export type Job = 'today' | 'sales' | 'dms' | 'content' | 'magnets' | 'styles' | 'strategy' | 'sends' | 'money' | 'ops' | 'settings' | 'orbit'
 
 // Three canvases, two media queries, one hook (useCanvas). 'wide' is where the
 // workbench can hold the working list AND two context peers at once — 1440px is
@@ -51,7 +57,7 @@ export function peerKey(p: Peer): PeerKey {
 
 // Rail order. Jobs first (they set the working surface), Claude last — it is
 // deliberately NOT a job (see dockChat below).
-export const JOBS: Job[] = ['today', 'sales', 'dms', 'content', 'magnets', 'styles', 'strategy', 'sends', 'money', 'ops', 'settings']
+export const JOBS: Job[] = ['today', 'sales', 'dms', 'content', 'magnets', 'styles', 'strategy', 'sends', 'money', 'ops', 'settings', 'orbit']
 
 // `sends` reads "Lanes" from 2026-08-23: the surface carries the INBOUND automations too
 // now (auto-accepted connection requests, the cold-DM filter — db/040), and a label that
@@ -66,6 +72,7 @@ export const JOB_LABEL: Record<Job, string> = {
   today: 'Today', sales: 'Sales', dms: 'DMs', content: 'Content',
   magnets: 'Magnets', styles: 'Styles', strategy: 'Strategy',
   sends: 'Lanes', money: 'Money', ops: 'Ops', settings: 'Settings',
+  orbit: 'Orbit',
 }
 
 // The per-job mark lives with the chrome that draws it now: src/wb/chrome/
