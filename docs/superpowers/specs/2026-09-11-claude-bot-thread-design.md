@@ -53,9 +53,9 @@ Thread unread = `last_turn_at > coalesce(bot_seen_at, 'epoch')` for the bot thre
 - A running bot turn on the thread → exit `{bot_tick:'busy'}` (the broker already answers 409
   `thread_busy`; check first so we never stamp rows for a turn that will not start).
 - Mint `turn_id` (uuid). Stamp the selected rows `group_key = 'bot:<turn_id>'` BEFORE the turn
-  starts (so a second tick during a slow turn cannot re-select them: add `and group_key not like
-  'bot:%' or <that turn is done/error>` — concretely: exclude rows whose `group_key` points at a turn
-  with status in (`queued`,`running`)).
+  starts. The select excludes any row whose `group_key` points at a bot turn still in
+  (`queued`,`running`), so a slow turn cannot have its rows re-selected; rows whose turn ended in
+  `error` are eligible again.
 - Prompt = the bundle: one line per row `[family · severity · tenant · count×] title — body (url)`,
   plus the last bot answer's first 300 chars ("what you said last time", so it does not repeat).
   The standing instruction comes from `content_prompts` slug `inbox-bot-brief` and is passed as the
@@ -76,9 +76,11 @@ Cost: ≤ 1 Ask-sized turn per 30 min of activity; quiet hours cost nothing; har
 
 ## 3. What the bot may do
 
-- Container call carries `allowed_tools: ["Read","Grep","Glob","Bash"]` with Bash limited by the
-  standing instruction to read-only commands; the container's `main.py` already forwards
-  `allowed_tools` as `--allowedTools`. The bot reads memory, the rows and the DB; it proposes.
+- Container call carries `allowed_tools: ["Read","Grep","Glob","Bash(curl:*)"]`; the container's
+  `main.py` already forwards `allowed_tools` as `--allowedTools`. Write tools (Edit/Write/Agent) are
+  off at the CLI boundary. `curl` is the DB read path and the allowlist cannot tell GET from POST,
+  so the standing instruction forbids writes and week one reviews every bot turn's `tool_events`
+  for a non-GET call; one observed write upgrades this to a dedicated read-only query helper.
 - Actions block: the answer ENDS with a fenced block
   ```actions
   [{"label":"…","kind":"open|task|fold|reply","payload":{…}}]
@@ -135,8 +137,8 @@ Cost: ≤ 1 Ask-sized turn per 30 min of activity; quiet hours cost nothing; har
 
 ## Risks named
 
-- A cron-started turn with write tools is the one real hazard → read-only allowlist at the container
-  boundary, not only in the prompt.
+- A cron-started turn with write tools is the one real hazard → write tools off at the container
+  boundary; the residual (curl POST) is prompt-bound and audited in week one (see §3).
 - Two ticks overlapping → group_key-on-running-turn exclusion + `busy` exit.
 - The broker's new server door must fail closed exactly like the JWT door (missing secret, wrong
   operator id, unparseable body) — copy the runner-dispatch fail-closed checks.
