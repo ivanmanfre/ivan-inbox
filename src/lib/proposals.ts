@@ -212,7 +212,7 @@ export type PublishResult = {
 // reader is looking at. Anything unmapped keeps the raw code (`clientRpcMessage`
 // does that), because an unnamed refusal is unsearchable.
 export const PUBLISH_MESSAGES: Record<string, string> = {
-  not_found: 'That proposal is gone — dropped or already approved elsewhere.',
+  not_found: 'That proposal is gone: dropped or already approved elsewhere.',
   unknown_client:
     'That lane has no client registry row, so the database refused to publish it. Nothing changed.',
   no_text:

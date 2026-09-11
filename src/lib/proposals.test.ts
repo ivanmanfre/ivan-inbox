@@ -190,7 +190,7 @@ describe('publish — the one path to an idea bank', () => {
   it('throws the MAPPED sentence on not_found, carrying the server code', async () => {
     rpcResult = { data: { ok: false, error: 'not_found' }, error: null }
     await expect(publishProposal('risedtc', 'gone')).rejects.toThrow(
-      'That proposal is gone — dropped or already approved elsewhere.',
+      'That proposal is gone: dropped or already approved elsewhere.',
     )
     rpcResult = { data: { ok: false, error: 'not_found' }, error: null }
     const err = await publishProposal('risedtc', 'gone').catch((e: unknown) => e)
