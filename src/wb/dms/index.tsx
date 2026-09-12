@@ -6,6 +6,7 @@
    it (./InboxList) so the view could be rebuilt without touching the screen the
    app still ships.
    ========================================================================== */
+import { useEffect, useState } from 'react'
 import { InboxList } from './InboxList'
 import { DraftCard, PushedBar, StaleBar } from './DraftCard'
 import { DmHistory } from './DmHistory'
@@ -13,7 +14,11 @@ import { WarmSignals } from './WarmSignals'
 import { PreReadNote } from './PreReadNote'
 import { ChatLink } from './parts'
 import { Button } from '../../ds'
-import { STATUS_LABEL, filterThreads, type Filter, type Status, type Thread } from '../../lib/inbox'
+import { STATUS_LABEL, type Filter, type Status, type Thread } from '../../lib/inbox'
+import {
+  applyThreadTokens, filterFromTokens, readTokens, writeTokens,
+  type FilterToken,
+} from '../../lib/filterTokens'
 import { preReadWorthwhile, waitingDays } from '../../exp/v2c/chat/preread'
 import { usePreRead } from '../../exp/v2c/chat/usePreRead'
 import './dms.css'
@@ -51,10 +56,35 @@ export function Dms({
   // `?warm=1` scrolls to the Warm signals section, `?warm=<uuid>` to one card.
   warm?: string | null
 }) {
+  /* E2 · THE TOKEN SET IS THE QUESTION, AND IT LIVES HERE.
+
+     The six lane chips are shortcuts that write it; `filter` is DERIVED from it
+     and pushed back up to the Shell, so WarmSignals (Ivan's tenant only),
+     DmHistory, the stale bar and the pushed bar keep taking the `Filter` union
+     they have always taken and not one of them changed signature.
+
+     sessionStorage, read ONCE at mount: a refresh keeps the question you were
+     asking, and closing the tab forgets it. A filter that outlives the day it
+     was set is a list that looks empty for a reason nobody remembers. */
+  const [tokens, setTokensState] = useState<FilterToken[]>(() => readTokens('dms'))
+  const setTokens = (next: FilterToken[]) => {
+    setTokensState(next)
+    writeTokens('dms', next)
+    setFilter(filterFromTokens(next))
+  }
+  // The Shell mounts with `filter = 'all'`; a restored set has to reach it, or
+  // the lane the list is showing and the lane the rest of the app believes in
+  // disagree from the first paint. Runs once, on the restored set only.
+  useEffect(() => {
+    const restored = readTokens('dms')
+    if (restored.length > 0) setFilter(filterFromTokens(restored))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // The stale-draft strip is lane-scoped so it agrees with the list under it: a
   // bar counting a lane Ivan is not looking at would be the tenancy version of a
   // phantom badge.
-  const laned = filterThreads(threads, filter)
+  const laned = applyThreadTokens(threads, tokens)
   const staleDrafts = laned.filter(t => t.draft !== null && t.draftStale)
   // Lane-scoped for the same reason the stale bar is.
   const pushedDrafts = laned.filter(t => t.draftSnoozedUntil !== null)
@@ -76,6 +106,8 @@ export function Dms({
       threads={threads}
       filter={filter}
       setFilter={setFilter}
+      tokens={tokens}
+      setTokens={setTokens}
       status={status}
       refresh={refresh}
       onOpenThread={onOpenThread}
@@ -104,7 +136,7 @@ export function Dms({
       // N3b-1: `loadedAt` is stamped only by a fetch that RESOLVED, so this is
       // false for exactly as long as the rows came off the device, and the
       // history head states no count while it is.
-      after={<DmHistory threads={filterThreads(threads, filter)} onOpen={onOpenThread} verified={loadedAt !== null} />}
+      after={<DmHistory threads={laned} onOpen={onOpenThread} verified={loadedAt !== null} />}
       // The generated line stands in place of the message preview (the row's
       // height is what the list windows against). Absent on any row where Ivan is
       // not the one being waited on.

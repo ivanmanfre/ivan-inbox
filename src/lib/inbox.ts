@@ -474,7 +474,10 @@ export function isLeadMagnet(t: Thread): boolean {
   return t.messages.some(m => m.ai_model === 'lm_gate_v1')
 }
 
-function isConversation(t: Thread): boolean {
+// Exported for lib/filterTokens.ts (E2): applyThreadTokens has to apply the two
+// rules filterThreads applies BEFORE any token narrows, or a chip shortcut
+// stops selecting the rows its chip did.
+export function isConversation(t: Thread): boolean {
   return Boolean(t.ownerConfirmation) || t.draft !== null || t.messages.some(m => m.direction === 'inbound') || isLeadMagnet(t)
 }
 

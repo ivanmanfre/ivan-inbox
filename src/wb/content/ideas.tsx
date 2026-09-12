@@ -282,7 +282,7 @@ export function IdeasSection({
               prominent={ideaProminent} demoted={ideaDemoted}
               state={filters} setState={setFilters}
               shown={shown.length} loaded={all.length} total={count} noun="ideas"
-              inline idleCount={false} label="Idea filters"
+              idleCount={false} label="Idea filters"
             />
           </div>
           {shown.length === 0
@@ -455,7 +455,7 @@ export function ClientIdeasSection({ ideas, lane, loading, error, loadedAt, refr
           prominent={prominent} demoted={demoted}
           state={filters} setState={setFilters}
           shown={shown.length} loaded={rows.length} total={null} noun="ideas"
-          inline idleCount={false} label="Idea filters"
+          idleCount={false} label="Idea filters"
         />
       </div>
       {shown.length === 0
