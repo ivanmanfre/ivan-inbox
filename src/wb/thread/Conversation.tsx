@@ -19,7 +19,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { OwnerConfirmation } from '../../components/OwnerConfirmation'
 import { DraftExplanation } from '../../components/DraftExplanation'
-import { Banner, Button, Chip, Composer, DayHeader, Icon, IconButton, Stepper, Textarea } from '../../ds'
+import { Banner, Button, Chip, Composer, DayHeader, EmptyState, Icon, IconButton, Stepper, Textarea } from '../../ds'
 import { Bar, Body, Group, Head, Screen } from '../kit'
 import { ChatLink, Face } from '../dms/parts'
 import { RestoreStrip } from './RestoreStrip'
@@ -118,6 +118,25 @@ function channelSummary(ms: InboxMessage[]): string {
 
 function errText(e: unknown): string {
   return e instanceof Error ? e.message : String(e)
+}
+
+/* R1 · WHAT A CONVERSATION WITH NO MESSAGES SAYS.
+
+   The message pane mapped `bubbles` and nothing else, so a thread whose only
+   row is a pending draft (or whose every message was discarded) rendered an
+   empty box between the ladder and the draft card — on the phone, a blank
+   screen. The sub-line is the one fact that changes what the void means: a
+   draft below is the first thing that will ever have been said here, and
+   without one nothing has happened on this thread at all.
+
+   Pure and exported so the branch is testable without mounting the pane. */
+export function emptyCopy(thread: Pick<Thread, 'draft'>): { title: string; sub: string } {
+  return {
+    title: 'No messages yet.',
+    sub: thread.draft
+      ? 'The draft below is the first one.'
+      : 'Nothing has been sent or received on this thread yet.',
+  }
 }
 
 /* THE LADDER, as the system's Stepper. It is the one fact the thread's own
@@ -435,6 +454,9 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
       {showCtx && <ContextSheet thread={thread} onClose={() => setShowCtx(false)} />}
 
       <Body className="a-thread-msgs" innerRef={msgsRef}>
+        {bubbles.length === 0 && (
+          <EmptyState icon="inbox" {...emptyCopy(thread)} />
+        )}
         {bubbles.map(m => {
           // Label the day the message was SENT. created_at is when we stored it,
           // so a reply backfilled the next morning was filed under TODAY despite
