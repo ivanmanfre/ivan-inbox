@@ -116,13 +116,20 @@ function reportIdFor(event: WeekEvent, slug: string | null, calls: CallRow[]): s
    that every document that exists is ONE CLICK from the row.
 
    WHICH ONE, read off the row kinds this list already draws:
-   · a call that has happened and has a report under it → the report. It is the
-     only thing on a past row that did not exist before the call.
    · a call still to come with a matched pack → the card. It is the document the
-     file's header names as the one he reads first.
-   · a past call with no report, or any call with no pack → NOTHING. There is no
+     file's header names as the one he reads first, and it is the one buried
+     among six chips that all look the same.
+   · anything else → NOTHING, and the row keeps its clocks. There is no
      affirmative verb to offer and inventing one ("Find pack") would be a button
      that cannot do what it says.
+
+   🔴 E3b · A PAST CALL'S REPORT IS NOT A HOVER VERB, because the row already
+   shows it. The strip draws an accent `Report` chip whenever `reportId` is
+   found, standing, not hover-gated — so a hover verb there was the SAME handler
+   drawn a second time, two controls for one job on the same row. The move
+   exists to give a row a hierarchy it lacks; a past row already has one. It
+   keeps its clocks and its chip, and it does not participate (`a-sl-hasverb` is
+   absent, so the sheet does not recede the clocks either).
 
    `Join` is deliberately NOT a hover verb: it is already a standing control at
    the tap floor, and it is the one thing on this screen with a deadline
@@ -135,15 +142,16 @@ function reportIdFor(event: WeekEvent, slug: string | null, calls: CallRow[]): s
    `e3-d-sales-hover.png`, where the lime verb sits next to Join.
 
    Pure and exported so the fork is a unit test rather than a screenshot. */
-export function salesVerbFor({ past, hasReport, hasPack, joinLive = false }: {
+export function salesVerbFor({ past, hasPack, joinLive = false }: {
   past: boolean
-  hasReport: boolean
   hasPack: boolean
   /** The call starts inside the hour and Join has gone accent. */
   joinLive?: boolean
-}): 'report' | 'card' | null {
+}): 'card' | null {
   if (joinLive) return null
-  if (past) return hasReport ? 'report' : null
+  // A past row's one verb is the Report chip the strip already draws, standing
+  // and accent. Drawing it again on hover is two controls for one job.
+  if (past) return null
   return hasPack ? 'card' : null
 }
 
@@ -259,7 +267,6 @@ export function SalesSurface({ onOpenCall }: {
     // E3: the one verb this row is for, revealed where the clocks are.
     const verb = salesVerbFor({
       past,
-      hasReport: reportId !== null,
       hasPack: slug !== null,
       joinLive: t.soon && !past && Boolean(e.meeting_url),
     })
@@ -291,11 +298,6 @@ export function SalesSurface({ onOpenCall }: {
           {/* E3: absolutely positioned over the clocks by the sheet, so the row
               at rest is byte-for-byte the row E2 measured, and the clocks come
               straight back when the pointer leaves. Hover canvases only. */}
-          {verb === 'report' && reportId ? (
-            <span className="a-sl-verb">
-              <Chip icon="doc" tone="accent" onClick={() => onOpenCall(reportId, calls)}>Report</Chip>
-            </span>
-          ) : null}
           {verb === 'card' && slug ? (
             <span className="a-sl-verb">
               <Chip

@@ -62,9 +62,26 @@
    root by CommandLayer, which is the only place that holds the live selection;
    it is withdrawn the moment the selection empties (Escape, Clear, a scope
    change), and the marks go back to hover-and-focus. Both sheets' marks answer
-   to it, so the two lists cannot disagree about when the column is up. */
-:root[data-wbselecting] .a-selmark,
-:root[data-wbselecting] .a-ct-selmark{ opacity:1 }
+   to it, so the two lists cannot disagree about when the column is up.
+
+   🔴 E3b · GATED TO THE POINTER CANVAS, and `max-width:767px` was not enough.
+   The block below shipped ungated, so on a TOUCH device wide enough to miss
+   that width gate — a tablet at 1024, a phone held sideways — one selection
+   raised every mark on the screen. Two reasons that is wrong there, and both
+   are already written down in this file: a mark on a touch canvas is a tap
+   trap (the row is later in the DOM and paints over the mark's own 44px hit
+   overlay, measured under E5), and `.a-ct-selmark` already answers `hover:none`
+   with a standing mark of its own, so this rule was competing with the phone's
+   deliberate affordance rather than adding anything.
+
+   The condition is the SAME ONE the hover verb uses (dms.css, sales.css): a
+   pointer that can hover, a pointer that is fine, and a canvas at least 768
+   wide. The checkbox column and the hover verb are one move and they now
+   appear on exactly one canvas. */
+@media (hover:hover) and (pointer:fine) and (min-width:768px){
+  :root[data-wbselecting] .a-selmark,
+  :root[data-wbselecting] .a-ct-selmark{ opacity:1 }
+}
 
 /* 🔴 IT ADDS NO BOX TO THE ROW. `.ct-card` is a seven-column grid with a fixed
    template, so a mark in the normal flow took the anchor's own column and
@@ -133,15 +150,24 @@
    selection stands, and twelve invisible checkboxes are not a checkbox column,
    so the box has to be real. Restated at 0,4,1, which is the same out-specify
    device the sheets it is fighting are themselves written with.
+
+   🔴 E3b · ON THE POINTER CANVAS ONLY. The box exists because E3 draws twelve
+   marks at once and twelve invisible checkboxes are not a column. Nowhere else
+   does the mark need one: a touch canvas draws it one at a time or not at all,
+   and giving it a box there would MAKE VISIBLE a control that has been
+   invisible — and, per the paint-order note above, unhittable — since it was
+   built. Same canvas as the rule above and as the hover verb.
    -------------------------------------------------------------------------- */
-.a-root button.a-selmark.a-selmark.a-selmark{
-  padding:var(--ds-s0);
-  background:var(--ds-surface-1);
-  border:1px solid var(--ds-line-strong);
-  border-radius:var(--ds-r1);
-  color:var(--ds-accent-ink);
-}
-.a-root button.a-selmark.a-selmark.a-selmark[data-on]{
-  background:var(--ds-accent);
-  border-color:var(--ds-accent);
+@media (hover:hover) and (pointer:fine) and (min-width:768px){
+  .a-root button.a-selmark.a-selmark.a-selmark{
+    padding:var(--ds-s0);
+    background:var(--ds-surface-1);
+    border:1px solid var(--ds-line-strong);
+    border-radius:var(--ds-r1);
+    color:var(--ds-accent-ink);
+  }
+  .a-root button.a-selmark.a-selmark.a-selmark[data-on]{
+    background:var(--ds-accent);
+    border-color:var(--ds-accent);
+  }
 }
