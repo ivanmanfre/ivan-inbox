@@ -655,3 +655,24 @@
      chip's own tokens, so the row under it is reachable. */
   .a-dms .a-dms-body{ padding-bottom:calc(var(--ds-tap) + var(--ds-s3) * 2) }
 }
+
+/* R5a · THE DRAFT CHIP WAS SHEARED TO ~10px IN THE NARROW LIST. With a thread
+   or the drawer open, `.wb-work.list` is pinned at 420px, the tail is allowed to
+   shrink to `--ds-s9` and carries `overflow:hidden`, and the row's actions box
+   is `flex:0 0 auto` whether or not it is under a pointer (it is only opacity
+   that hover changes, never layout). So the wand glyph read as a box cut by a
+   hard edge, exactly the defect W2-9 fixed on the phone.
+
+   SAME CALL AS THE PHONE'S, and for the same reason: the button already says a
+   draft is pending and the preview line under it is prefixed "Draft:", so the
+   chip is what gives way. Narrower than the phone's rule, though — it fires only
+   where a real button renders, not merely where an actions box exists (the
+   copy-chat link renders one on every row). Letting the chip win instead would
+   mean a tail that cannot shrink, which is the name's width back on the fire.
+   -------------------------------------------------------------------------- */
+.wb-work.list .a-dms .a-row.r:has(> .a-row-actions .ds-btn) .a-dms-draftchip{ display:none }
+
+/* R5b · The lane bar's chips, at the chip gap. See tokens.css §2. `column-gap`
+   rather than `gap`: the phone wraps this bar and tunes its own row gap against
+   the 390 fold, which is not a chip gap and is not this rule's business. */
+.a-dms > .a-bar{ column-gap:var(--ds-chip-gap) }

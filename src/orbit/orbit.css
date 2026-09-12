@@ -370,3 +370,9 @@
    from — same "a confirm is the last thing on screen" rule tokens.css §8
    documents for --ds-z-confirm. */
 .a-orbit-confirm.ds-sheet { z-index: var(--ds-z-confirm); }
+
+/* R5b · The range strip and the filter row, at the chip gap (tokens.css §2).
+   The presets were 2px apart — `--ds-s1`, the optical-nudge step — so six date
+   ranges read as one segmented control rather than six chips. */
+.a-orbit-presets{ column-gap: var(--ds-chip-gap); }
+.a-orbit-filterrow{ column-gap: var(--ds-chip-gap); }

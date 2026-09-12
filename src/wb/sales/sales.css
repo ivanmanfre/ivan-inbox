@@ -149,3 +149,6 @@
   }
   .a-sl > .a-head[data-chrome] > .a-head-t > .a-head-sub{ display:none }
 }
+
+/* R5b · The week row's chips, at the chip gap (tokens.css §2). */
+.a-sl-chips{ column-gap:var(--ds-chip-gap) }

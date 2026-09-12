@@ -5,6 +5,13 @@ import App from './App.tsx'
 // (DECISIONS D4): it is loaded by the lazy module the `#exp/stock` branch in
 // App.tsx mounts, so the live app never carries it. The design system brings
 // its own reset (src/ds/ds.css §0).
+// R5c · ONE MotionConfig FOR THE APP. `src/ds/MotionProvider.tsx` has existed
+// since the design system was built and was mounted by the GALLERY only, so
+// every motion component in the shipped app ignored `prefers-reduced-motion`
+// unless it happened to call `useReducedMotion()` itself. `reducedMotion="user"`
+// makes the whole JS half honour the OS setting without one per-component
+// check; the CSS half already collapses in ds.css.
+import { Motion } from './ds/MotionProvider'
 import { ConfirmProvider } from './wb/chrome/ConfirmSheet'
 // Same split as ConfirmProvider above (Phase 3 W2): the context lives in
 // src/lib/pushLater.ts and this is the design system's provider over it, so
@@ -110,10 +117,12 @@ console.log('[inbox] build', __BUILD__)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ConfirmProvider>
-      <PushLaterProvider>
-        <App />
-      </PushLaterProvider>
-    </ConfirmProvider>
+    <Motion>
+      <ConfirmProvider>
+        <PushLaterProvider>
+          <App />
+        </PushLaterProvider>
+      </ConfirmProvider>
+    </Motion>
   </StrictMode>,
 )

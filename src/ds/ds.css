@@ -721,6 +721,19 @@ body :focus-visible{
 }
 .ds-input::placeholder{ color:var(--ds-text-4) }
 .ds-input:focus-visible{ outline:none }
+/* R5e · TWO CLEAR BUTTONS. Chromium draws its own ✕ inside `input[type=search]`,
+   beside the system's own `Clear` IconButton in the field's tail — two controls
+   for one job, and only one of them is ours. The type STAYS `search`: it is what
+   CommandLayer's `focusSearch` binds `/` to (InboxList.tsx says so), and a text
+   input that only looks like one would leave those surfaces with no `/`. So the
+   native decoration goes instead. Covers every search field in the system, not
+   just the two the audit found. */
+.ds-input[type='search']::-webkit-search-cancel-button,
+.ds-input[type='search']::-webkit-search-decoration{
+  -webkit-appearance:none;
+  appearance:none;
+  display:none;
+}
 
 .ds-textarea{
   width:100%;

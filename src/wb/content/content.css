@@ -993,3 +993,7 @@ a.a-prop-src:hover{ color:var(--ds-text) }
 .a-th-post-top { display: flex; justify-content: space-between; gap: var(--ds-s2); font-size: var(--ds-fs-meta); flex-wrap: wrap; }
 .a-th-post-txt { font-size: var(--ds-fs-meta); line-height: var(--ds-lh-meta); color: var(--ds-text-2); white-space: pre-line; max-height: 4.5em; overflow: hidden; overflow-wrap: anywhere; }
 .a-th-post a { color: var(--ds-text); }
+
+/* R5b · The filter bar's chips, at the chip gap (tokens.css §2). `column-gap`
+   only: the phone wraps this bar and owns its own row gap. */
+.a-ct .a-bar{ column-gap:var(--ds-chip-gap) }

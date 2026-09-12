@@ -121,6 +121,15 @@
   --ds-s10:48px;
   --ds-s11:64px;
 
+  /* R5b · THE CHIP GAP. A filter bar's chips sat 4px apart — `--ds-s2`, the
+     optical step for a pip inside a badge — so six chips read as one ribbon
+     rather than six choices. 8px is the separation; it is a NAMED token rather
+     than `--ds-s3` written into four sheets, because the next bar that appears
+     has to be able to ask for "the chip gap" and get the same answer. It is
+     applied to filter bars only. `--ds-s2` is NOT touched: it is the gap inside
+     a chip and inside a row, and moving it would move the whole app. */
+  --ds-chip-gap:var(--ds-s3);
+
   /* 2.1 the named steps. These are the ONLY spacing values a primitive is
      allowed to reach for; they are re-pointed by density and by the phone
      query below, which is how one component gets three densities. */
