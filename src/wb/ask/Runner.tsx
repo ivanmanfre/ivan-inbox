@@ -106,6 +106,80 @@ export function useRunner(model: string | null) {
 // The control.
 // ---------------------------------------------------------------------------
 
+/**
+ * The runner's own items, for a menu somebody else owns.
+ *
+ * The DESKTOP drawer stopped drawing a strip for this (a band of chrome for a
+ * control reached a few times a week), so the same two things — run what is
+ * typed, or run a goal spec off disk — are `PopoverItem`s inside the composer
+ * plate's overflow. The specs are still fetched only when the menu opens and
+ * `fetchSpecs` still caches for a minute, so nothing about WHEN the runner is
+ * asked anything changed; only where the press lives.
+ */
+export function RunnerMenuItems({ runner, text, onSent, open, close }: {
+  runner: RunnerHandle
+  text: string
+  onSent: () => void
+  /** The menu that holds these items is open: fetch the specs once per open. */
+  open: boolean
+  close: () => void
+}) {
+  const [specs, setSpecs] = useState<GoalSpec[] | null>(null)
+  const [specErr, setSpecErr] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    let live = true
+    setLoading(true)
+    setSpecErr(null)
+    void (async () => {
+      try {
+        const next = await fetchSpecs()
+        if (live) setSpecs(next)
+      } catch (e) {
+        if (!live) return
+        setSpecs(null)
+        setSpecErr(e instanceof RunnerError && e.code === 'runner_not_configured'
+          ? 'The runner has no address yet.'
+          : 'The runner is not answering, so its specs cannot be listed.')
+      } finally {
+        if (live) setLoading(false)
+      }
+    })()
+    return () => { live = false }
+  }, [open])
+
+  return (
+    <>
+      <PopoverItem
+        icon="zap"
+        disabled={!text.trim() || runner.busy}
+        onClick={() => { close(); void (async () => { if (await runner.run('prompt', text)) onSent() })() }}
+      >Run on the runner</PopoverItem>
+      {loading && <div className="a-brain-modelnote">Asking the runner what it can see…</div>}
+      {!loading && specErr && <div className="a-brain-modelnote">{specErr}</div>}
+      {!loading && !specErr && specs && specs.length === 0 && (
+        <div className="a-brain-modelnote">The runner sees no goal specs on disk.</div>
+      )}
+      {!loading && !specErr && specs?.map(s => (
+        <PopoverItem
+          key={s.path}
+          icon="doc"
+          onClick={() => { close(); void runner.run('goal', s.path, s.cwd ?? null) }}
+          tail={s.mtime ? <span className="a-dim a-mono">{s.mtime.slice(0, 10)}</span> : undefined}
+        >{s.name || s.path.split('/').pop()}</PopoverItem>
+      ))}
+      {/* Said once, where the choice is made, rather than discovered by a job
+          that runs for an hour on the wrong machine. */}
+      <div className="a-brain-modelnote">
+        A job runs on the runner, not in this tab. Lock the phone; the finish
+        lands in the feed.
+      </div>
+    </>
+  )
+}
+
 export function RunnerControl({ runner, text, onSent }: {
   runner: RunnerHandle
   /** The composer's text, which is what a prompt job carries. */

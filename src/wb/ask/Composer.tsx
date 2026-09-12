@@ -48,6 +48,11 @@ export type ComposerExtras = {
   onKeyDown?: (e: React.KeyboardEvent) => boolean
   /** Return true if the press was handled (a command ran) instead of sending. */
   interceptSend?: () => boolean
+  /** Items the host adds to the plate's own overflow menu. The docked pane puts
+   * the model picker here: it is a property of the NEXT TURN, which is what the
+   * composer is, and it was costing a control in the head for a choice that is
+   * made once a month. `close` puts the menu away after a pick. */
+  menu?: (close: () => void) => React.ReactNode
 }
 
 /**
@@ -64,7 +69,7 @@ export function isSendChord(e: { key: string; metaKey: boolean; ctrlKey: boolean
   return e.key === 'Enter' && (e.metaKey || e.ctrlKey)
 }
 
-export function Composer({ value, onChange, onSend, busy, runningElsewhere, onStop, placeholder, extras, runner }: {
+export function Composer({ value, onChange, onSend, busy, runningElsewhere, onStop, placeholder, extras, runner, lead, above }: {
   value: string
   onChange: (v: string) => void
   onSend: (text: string) => void
@@ -75,8 +80,15 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
   extras?: ComposerExtras
   /** The "Run on the runner" strip, drawn on its own line above the bar.
    * A node rather than a built-in control for the same reason `extras` is one:
-   * the composer draws what it is handed and knows nothing about jobs. */
+   * the composer draws what it is handed and knows nothing about jobs.
+   * The DESKTOP drawer passes nothing here any more — the runner moved inside
+   * the plate's own overflow (`lead`), where it costs no band. */
   runner?: React.ReactNode
+  /** Controls inside the plate's left cluster, beside the attach mark. */
+  lead?: React.ReactNode
+  /** One chip row directly above the plate: what travels with the next
+   * message. The attachment register, in the place a reader looks for it. */
+  above?: React.ReactNode
 }) {
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [heard, setHeard] = useState<string | null>(null)
@@ -261,6 +273,7 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
         onChange={e => { onFiles(e.target.files); e.target.value = '' }}
       />
       {extras?.overlay}
+      {above}
       {runner}
       <span className="a-brain-paste" onPaste={onPaste}>
       <DsComposer
@@ -270,6 +283,7 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
         onStop={onStop}
         onAttach={() => fileRef.current?.click()}
         onDictate={stt.supported ? () => { if (!transcribing) stt.toggle() } : undefined}
+        lead={lead}
         placeholder={placeholder}
         mode={mode}
         tray={tray}

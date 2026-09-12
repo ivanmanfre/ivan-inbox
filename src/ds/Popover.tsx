@@ -35,15 +35,18 @@ export function Popover({ open, style, label, className, children }: PopoverProp
   )
 }
 
-export function PopoverItem({ icon, tone = 'default', onClick, tail, children }: {
+export function PopoverItem({ icon, tone = 'default', onClick, tail, disabled, children }: {
   icon?: IconName
   tone?: 'default' | 'danger'
   onClick?: () => void
   tail?: ReactNode
+  /** An item that is present but not available yet, so the menu never changes
+   * shape under the cursor between one open and the next. */
+  disabled?: boolean
   children?: ReactNode
 }) {
   return (
-    <button data-ds="PopoverItem" type="button" role="menuitem" data-tone={tone} className="ds-popover-item" onClick={onClick}>
+    <button data-ds="PopoverItem" type="button" role="menuitem" data-tone={tone} className="ds-popover-item" disabled={disabled} onClick={onClick}>
       {icon ? <Icon name={icon} size={16} /> : null}
       <span className="ds-popover-item-label ds-truncate">{children}</span>
       {tail}
