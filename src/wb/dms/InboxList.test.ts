@@ -74,3 +74,23 @@ describe('the list exposes no approve/send capability', () => {
     }
   })
 })
+
+// R2b · A drag that locked sideways and then died under the 72px threshold
+// fires no click, so the click-swallowing flag had nothing to clear it and the
+// row's NEXT tap was eaten. The flag is a ref inside a mounted component, so the
+// guard is on the SHIPPED source: the clear has to be at the start of a gesture,
+// which is both late enough to swallow this gesture's click and early enough to
+// let the next tap through.
+describe('the swipe never eats the next tap', () => {
+  const src = readFileSync(join(process.cwd(), 'src/wb/dms/InboxList.tsx'), 'utf8')
+  const down = src.slice(src.indexOf('onPointerDown={e => {'), src.indexOf('onPointerMove={e => {'))
+
+  it('clears the click-swallow flag when a new gesture starts', () => {
+    expect(down).toContain('swiped.current = false')
+  })
+
+  it('does not clear it when the gesture ENDS, which would let the click through', () => {
+    const reset = src.slice(src.indexOf('const reset = () => {'), src.indexOf('return ('))
+    expect(reset).not.toContain('swiped.current')
+  })
+})

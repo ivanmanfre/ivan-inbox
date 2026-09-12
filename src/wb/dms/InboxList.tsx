@@ -222,6 +222,13 @@ function RowHost({ height, onDiscard, children }: {
   const dxRef = useRef(0)
   // A gesture that travelled sideways must not also open the thread. The click
   // is swallowed in the CAPTURE phase, before the row's own handler sees it.
+  //
+  // R2b · IT IS CLEARED AT POINTERDOWN, NOT AT POINTERUP. Clearing it when the
+  // gesture ends would be too early — the click this flag exists to swallow is
+  // dispatched AFTER pointerup, on the same gesture. Clearing it only in the
+  // click handler was too late: a drag that locked sideways and then died under
+  // the threshold fires no click at all, so the flag survived and ate the NEXT
+  // tap on that row. The start of a new gesture is the one moment that is both.
   const swiped = useRef(false)
 
   if (!onDiscard) {
@@ -245,6 +252,7 @@ function RowHost({ height, onDiscard, children }: {
       onPointerDown={e => {
         start.current = { x: e.clientX, y: e.clientY }
         axis.current = 'none'
+        swiped.current = false
         setDragging(true)
       }}
       onPointerMove={e => {
