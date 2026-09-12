@@ -428,6 +428,34 @@
   padding-top:var(--ds-s4);
 }
 .a-drawer-openwrap{ position:relative; display:inline-flex }
+/* E5 · The collapsed drawer's own name plate. It is the design system's
+   `.ds-rail-tip` (ds.css §3) — same box, same tokens, same 0.12s — mirrored to
+   open LEFT, because this column is against the right edge of the plate and a
+   plate opening right would open off-screen. The drawer is not a scroller, so
+   nothing here has to stop clipping. */
+@media (hover:hover) and (pointer:fine){
+  .a-drawer-tip{
+    display:block;
+    left:auto;
+    right:100%;
+    margin-left:0;
+    /* Measured: the control is centred in a 72px column, so 8px of offset left
+       the plate overlapping the drawer's own edge. 20px clears it. */
+    margin-right:var(--ds-s6);
+  }
+  .a-drawer-openwrap:hover .a-drawer-tip,
+  .a-drawer-openwrap:focus-within .a-drawer-tip{
+    opacity:1;
+    transition:opacity var(--ds-dur-hover) var(--ds-ease);
+  }
+  .a-drawer-openwrap .ds-ibtn .ds-icon{ transition:transform var(--ds-dur-hover) var(--ds-ease) }
+  .a-drawer-openwrap:hover .ds-ibtn .ds-icon,
+  .a-drawer-openwrap .ds-ibtn:focus-visible .ds-icon{ transform:scale(1.15) }
+}
+@media (prefers-reduced-motion:reduce){
+  .a-drawer-openwrap:hover .ds-ibtn .ds-icon,
+  .a-drawer-openwrap .ds-ibtn:focus-visible .ds-icon{ transform:none }
+}
 /* Riding the bot thread row's own unread mark (`.a-brain-bot-dot`, ask.css) —
    corner-pinned here because on the collapsed rail it reads as a badge on the
    control, not a list row's own leading dot. */

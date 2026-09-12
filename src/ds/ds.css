@@ -270,6 +270,86 @@ body :focus-visible{
 .ds-rail-pip[data-sev='attention']{ background:var(--ds-sev-attention) }
 .ds-rail-pip[data-sev='urgent']{ background:var(--ds-sev-urgent) }
 
+/* --------------------------------------------------------------------------
+   E5 · THE COLLAPSED RAIL NAMES WHAT YOU POINT AT.
+   (goal run inbox-repair-floor-and-21st-moves-2026-09-12.)
+
+   At 72px the rail is ten glyphs and no words, and the only name each one
+   carried was `aria-label` — which a sighted pointer cannot read. The move is
+   ported from ibelick's dock: the item you point at magnifies a touch and its
+   name appears beside it, and the container never reflows. The neighbour
+   distance-falloff is deliberately NOT ported — it is the expensive half, it
+   needs a pointer-position listener per frame, and this rail is a list of
+   places rather than a row of app icons.
+
+   THE PLATE IS IN THE DOM AT REST and hidden by opacity, so revealing it costs
+   no layout. Only `transform` and `opacity` animate, on `--ds-dur-hover`
+   (0.12s, the same number `DUR_HOVER` exports in ds/motion.ts) and `--ds-ease`.
+
+   HOVER-CAPABLE POINTERS ONLY. On a touch device there is no hover to name
+   anything with, and a tip stuck open after a tap is worse than no tip.
+   -------------------------------------------------------------------------- */
+.ds-rail-tip{
+  position:absolute;
+  left:100%;
+  top:50%;
+  /* Measured, not guessed: the item sits inside the rail's own 8px inline
+     padding, so 4px of offset put the plate's left edge 5px INSIDE the rail's
+     border. 12px clears the column. */
+  margin-left:var(--ds-s4);
+  transform:translateY(-50%);
+  z-index:var(--ds-z-popover);
+  display:none;
+  padding:var(--ds-s2) var(--ds-s3);
+  border-radius:var(--ds-r2);
+  border:1px solid var(--ds-line);
+  background:var(--ds-surface-3);
+  color:var(--ds-text);
+  box-shadow:var(--ds-shadow-float);
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  white-space:nowrap;
+  pointer-events:none;
+  opacity:0;
+}
+@media (hover:hover) and (pointer:fine){
+  .ds-rail[data-collapsed='true'] .ds-rail-item .ds-icon{
+    transition:transform var(--ds-dur-hover) var(--ds-ease);
+  }
+  .ds-rail[data-collapsed='true'] .ds-rail-item:hover .ds-icon,
+  .ds-rail[data-collapsed='true'] .ds-rail-item:focus-visible .ds-icon{
+    transform:scale(1.15);
+  }
+}
+/* THE PLATE NEEDS THE RAIL TO STOP CLIPPING, AND THE RAIL SOMETIMES HAS TO
+   SCROLL. `overflow-y:auto` coerces `overflow-x` to `auto` as well, so a plate
+   sitting outside the column is clipped by the scroller — and there is no CSS
+   pairing that scrolls one axis and lets the other overflow.
+
+   Measured rather than assumed: the collapsed rail's content is 586px, so it
+   fits without scrolling in any window 620px tall or more (a 480px window needs
+   the scroller and gets it). Above 640px the column stops clipping and the names
+   appear; below it, the rail scrolls exactly as it does today and no plate is
+   drawn, because a name sheared off at the column edge is worse than no name. */
+@media (hover:hover) and (pointer:fine) and (min-height:640px){
+  .ds-rail[data-collapsed='true']{ overflow:visible }
+  .ds-rail[data-collapsed='true'] .ds-rail-tip{ display:block }
+  .ds-rail[data-collapsed='true'] .ds-rail-item:hover .ds-rail-tip,
+  .ds-rail[data-collapsed='true'] .ds-rail-item:focus-visible .ds-rail-tip{
+    opacity:1;
+    transition:opacity var(--ds-dur-hover) var(--ds-ease);
+  }
+}
+/* The name is the point; the magnification is the flourish. Reduced motion
+   keeps the first and drops the second. */
+@media (prefers-reduced-motion:reduce){
+  .ds-rail[data-collapsed='true'] .ds-rail-item:hover .ds-icon,
+  .ds-rail[data-collapsed='true'] .ds-rail-item:focus-visible .ds-icon{
+    transform:none;
+  }
+  .ds-rail-tip{ transition:none }
+}
+
 /* ==========================================================================
    4 · TAB BAR (phone). The active place expands to icon + label inside a
    sliding highlight; the others stay icon-only.

@@ -55,9 +55,18 @@ export function Drawer({
             {/* Reuses the bot thread's own unread mark (`.a-brain-bot-dot`) —
                 one dot, one meaning, everywhere it appears. */}
             {unread ? <span className="a-brain-bot-dot" data-drawer-unread /> : null}
+            {/* E5: the collapsed column is two glyphs and no words, the same
+                defect the 72px rail had. Same plate, same tokens, mirrored —
+                this column is against the right edge, so the name opens to the
+                LEFT or it opens off-screen. `aria-hidden` because the button
+                already carries the name. */}
+            <span className="ds-rail-tip a-drawer-tip" aria-hidden="true">Open Claude</span>
           </span>
           {busy ? <LiveDot label="Claude is working" /> : null}
-          <IconButton icon="expand" label="Open Claude" onClick={onOpen} />
+          <span className="a-drawer-openwrap">
+            <IconButton icon="expand" label="Open Claude" onClick={onOpen} />
+            <span className="ds-rail-tip a-drawer-tip" aria-hidden="true">Open Claude</span>
+          </span>
         </div>
       )}
     </aside>

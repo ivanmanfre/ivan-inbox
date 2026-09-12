@@ -43,6 +43,13 @@ export function RailItem({
       {active ? <motion.span layoutId={markerId} className="ds-rail-marker" /> : null}
       <Icon name={icon} size={20} />
       {!collapsed ? <span className="ds-rail-item-label ds-truncate">{label}</span> : null}
+      {/* E5 · THE COLLAPSED RAIL NAMES WHAT YOU POINT AT. Ten glyphs and no
+          words: the name existed only as `aria-label` above, which a sighted
+          pointer cannot read. `aria-hidden` because that label is already the
+          accessible name and a second copy would have the row announce itself
+          twice. It is in the DOM at rest and hidden by opacity, so revealing it
+          costs no layout and the plate under it never reflows. */}
+      {collapsed ? <span className="ds-rail-tip" aria-hidden="true">{label}</span> : null}
       {!collapsed && (hasCount || tail) ? (
         <span className="ds-rail-item-tail">
           {tail}
