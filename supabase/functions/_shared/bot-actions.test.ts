@@ -46,14 +46,14 @@ describe('parseActions + isActionable', () => {
     expect(isActionable(out.actions)).toBe(true)
   })
 
-  it('a task pill and a reply pill are actionable', () => {
+  it('a task pill is actionable, a reply pill is not (D11: the bot asking permission never rings)', () => {
     const task = parseActions(block('[{"label":"Name the price","kind":"task","payload":{"title":"Name Botpresso price"}}]'))
     expect(isActionable(task.actions)).toBe(true)
     const reply = parseActions(block('[{"label":"Tell me to send it","kind":"reply","prompt":"send it"}]'))
     expect(reply.actions).toEqual([
       { label: 'Tell me to send it', kind: 'reply', payload: { prompt: 'send it' } },
     ])
-    expect(isActionable(reply.actions)).toBe(true)
+    expect(isActionable(reply.actions)).toBe(false)
   })
 
   it('a fold beside an open is actionable: one real pill is enough', () => {

@@ -34,8 +34,14 @@ export type ParsedActions = { body: string; actions: Action[] }
 export const MAX_ACTIONS = 3
 const LABEL_MAX = 40
 
-/** A pill of one of these kinds is a thing only Ivan can do, so it rings (D4). */
-const ACTIONABLE_KINDS: readonly ActionKind[] = ['open', 'task', 'reply']
+/** A pill of one of these kinds is a thing only Ivan can do, so it rings (D4).
+ *  `reply` is NOT here (decision D11, measured on the first live hour after the
+ *  deploy on 2026-09-12: three bot turns in a row, 08:17, 08:30 and 09:00, each
+ *  closed with a reply pill of the "say go and I will start it" kind, and each
+ *  rang the phone. A reply pill is the bot asking permission for its own work;
+ *  an open or a task pill is an event that needs his hand. Only the second kind
+ *  rings.) */
+const ACTIONABLE_KINDS: readonly ActionKind[] = ['open', 'task']
 
 const BLOCK_RE = /^[ \t]*```[ \t]*actions[ \t]*\r?\n([\s\S]*?)\r?\n?[ \t]*```[ \t]*$/gm
 
@@ -132,7 +138,7 @@ export function parseActions(text: string): ParsedActions {
 
 /**
  * Decision D4, said once: a bot turn rings iff it carries at least one pill of
- * kind open, task or reply. `fold`-only and an empty array are QUIET, because
+ * kind open or task. `reply`, `fold`-only and an empty array are QUIET, because
  * the brief only lets a pill exist for his money, a send to a person outside
  * the company, new copy to approve or a taste call. No keyword list on the
  * prose: the pills are the decision.

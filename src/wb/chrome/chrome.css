@@ -428,3 +428,12 @@
    drawer is open over a shown peer at the 'desktop' canvas: the list column
    drops out of `.wb-regions` and the peer takes what it leaves behind. */
 .wb-work.hidden{ display:none }
+
+/* D12 (inbox-agent-drawer 2026-09-12): a reading window (draft / magnet / call
+   takeover, `.a-tk-scrim` is `position:fixed; inset:0`) covered the OPEN drawer,
+   so a draft was attached as context (the chip proved it) while the composer to
+   ask about it sat under the window. On the desktop canvas with the drawer
+   open the window stops at the drawer's edge; the phone and the collapsed
+   drawer are untouched. The drawer's own width, said once here and once in
+   `.a-drawer[data-open]` above. */
+.wb.dt:has(.a-drawer[data-open]) .a-tk-scrim{ right:380px }
