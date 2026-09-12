@@ -32,6 +32,8 @@
 // but not a rail destination of its own; see Rail.tsx's `before` filter and
 // place.ts's tabForJob (it collapses onto the `sales` tab, opened from ONE
 // button on the Sales head rather than a rail/tab-bar slot of its own).
+import type { IconName } from '../../ds/icons'
+
 export type Job = 'today' | 'sales' | 'dms' | 'content' | 'magnets' | 'styles' | 'strategy' | 'sends' | 'money' | 'ops' | 'settings' | 'orbit'
 
 // Three canvases, two media queries, one hook (useCanvas). 'wide' is where the
@@ -75,11 +77,25 @@ export const JOB_LABEL: Record<Job, string> = {
   orbit: 'Orbit',
 }
 
-// The per-job mark lives with the chrome that draws it now: src/wb/chrome/
-// Rail.tsx JOB_MARK, on the lucide names src/ds/icons.tsx gives the ten jobs.
-// The unicode map this file used to carry (☼ ◉ ▤ ▦ ▧ ◎ ⇅ ▣ ◈ ⚙︎) was read by
-// the rail and the phone bar only, and both are on the design system from
-// Phase 3 W1 (goal run inbox-app-revamp-2026-09-05).
+// The per-job mark, on the lucide names src/ds/icons.tsx gives the twelve jobs.
+// The unicode map this file used to carry (☼ ◉ ▤ ▦ ▧ ◎ ⇅ ▣ ◈ ⚙︎) died with
+// Phase 3 W1, and the lucide map that replaced it lived in src/wb/chrome/
+// Rail.tsx while the rail and the phone bar were its only two readers.
+//
+// E4 (2026-09-12) gives it a THIRD reader — the command palette draws a glyph
+// on every row, and "Go to Sales" has to wear the same mark the rail wears or
+// the two surfaces teach two different icons for one place. A map read by three
+// files belongs in the pure module all three already import, not inside one of
+// them: `commandSource.ts` importing Rail.tsx would pull a React component into
+// the command registry to read one record.
+//
+// `import type` — erased at build, so this file stays free of lucide.
+
+export const JOB_MARK: Record<Job, IconName> = {
+  today: 'today', sales: 'sales', dms: 'dms', content: 'content', magnets: 'magnets',
+  styles: 'styles', strategy: 'strategy', sends: 'sends', money: 'money',
+  ops: 'ops', settings: 'settings', orbit: 'orbit',
+}
 
 // Jobs whose working surface is a LIST that can hand a row to a context peer.
 // Everything else is a whole-canvas reading/monitoring surface. This replaces

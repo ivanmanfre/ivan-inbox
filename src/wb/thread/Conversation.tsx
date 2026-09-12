@@ -562,7 +562,21 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
               <div className="a-thread-acts">
                 <Button variant="quiet" onClick={busy ? undefined : onDiscard}>Discard</Button>
                 {thread.draftSnoozedUntil === null && (
-                  <Button variant="quiet" onClick={busy ? undefined : onPushLater}>Later</Button>
+                  /* E4 · the palette's "Push this conversation to later" PRESSES
+                     THIS BUTTON. Not a second snooze path: `onPushLater` above
+                     saves whatever he has edited in the box before it parks the
+                     draft, and it parks both legs of a pair — a palette that
+                     called snoozeDraft itself would quietly do neither. The two
+                     attributes are the whole seam: the button is in the DOM only
+                     while there is something to push, so its presence IS the
+                     verb's availability, and the name is the context line the
+                     palette prints. */
+                  <Button
+                    variant="quiet"
+                    data-wbcmd="snooze"
+                    data-wbname={thread.prospect_name}
+                    onClick={busy ? undefined : onPushLater}
+                  >Later</Button>
                 )}
                 <span className="a-grow" />
                 <Button variant="primary" icon="send" busy={busy} onClick={busy ? undefined : onApprove}>

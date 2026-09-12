@@ -26,8 +26,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CommandList, Dialog, Icon, Input, Kbd, type CommandGroup, type CommandItem } from '../../ds'
 import {
-  GROUP_ORDER, keyRows, matchWbCommands, type WbCommand,
+  GROUP_ORDER, keyRows, type WbCommand,
 } from './commandSource'
+import { rankCommands } from './commandRank'
 import {
   CROSS_MIN, SURFACE_LABEL, laneName,
   type CrossHit, type CrossResults, type LaneCount,
@@ -62,7 +63,17 @@ export function CommandPalette({ cmds, find, onQuery, onPick, onClose }: {
   const [cursor, setCursor] = useState(0)
   const FIELD_ID = 'wb-cmdk-q'
 
-  const shown = useMemo(() => matchWbCommands(q, cmds), [q, cmds])
+  // E4 · RANKED, not merely filtered. `matchWbCommands` returned survivors in
+  // registry order, so typing "sal" put "Select every row in this tab" above
+  // "Go to Sales" — Select is simply built first. `rankCommands` keeps the
+  // bands in GROUP_ORDER (which is what keeps this flat index the same as the
+  // visual order, and therefore what ↓ walks) and orders inside each one:
+  // prefix on the verb, then a word prefix, then anywhere in it, then the old
+  // token rule. The two data-shaped bands are capped at eight.
+  const shown = useMemo(
+    () => rankCommands(q, cmds, { order: GROUP_ORDER }),
+    [q, cmds],
+  )
   const hits = find && q.trim().length >= CROSS_MIN ? find.hits : []
   const total = shown.length + hits.length
 
@@ -137,9 +148,16 @@ export function CommandPalette({ cmds, find, onQuery, onPick, onClose }: {
       .map<CommandItem>(({ c, i }) => ({
         id: idOf(i),
         label: c.title,
+        icon: c.icon,
         keys: caps(c.key),
         ready: c.ready,
-        reason: c.ready ? c.hint : c.reason ?? 'not available here',
+        // The CONTEXT line and the REFUSAL are two different sentences and they
+        // now go to two different slots. Before E4 both were handed to `reason`,
+        // which `CommandList` draws only on a row that cannot run — so the hint
+        // every command in this file carries was built on every open and printed
+        // on none of the rows a reader could actually press.
+        sub: c.ready ? c.hint : undefined,
+        reason: c.ready ? undefined : c.reason ?? 'not available here',
         onRun: () => run(c),
       })),
   })).filter(g => g.items.length > 0)
@@ -155,20 +173,48 @@ export function CommandPalette({ cmds, find, onQuery, onPick, onClose }: {
       return {
         id: idOf(i),
         label: h.title,
-        reason: h.snippet || h.sub,
+        icon: 'doc',
+        sub: h.snippet || h.sub,
         badge: <span className="a-find-badge ds-t-eyebrow">{SURFACE_LABEL[h.surface]}</span>,
         onRun: () => pick(h),
       }
     })
-    groups.push({
-      id: 'find',
-      label: `Anything you have written, in ${laneName(find.lane)}`,
-      items,
-    })
+    // 🔴 A BAND LABEL WITH NOTHING UNDER IT. Caught by LOOKING at
+    // e4-d-palette-query.png: eight people matched "tim", so the list was not
+    // empty and the palette's own empty sentence did not fire — leaving the
+    // find band drawn as a heading over a void. The heading is the promise; a
+    // band that has nothing to show says so in the same dimmed row every
+    // unavailable command in this palette uses, and the vocabulary still never
+    // shrinks.
+    // 🔴 AND IT IS DROPPED ENTIRELY when nothing above it matched either: with
+    // no commands and no hits, `CommandList` renders its own one-line empty
+    // state, and a band label under that sentence would be a second heading
+    // over the same void. The first fix here re-broke exactly that — the
+    // placeholder made the group non-empty, so the palette's own "Nothing is
+    // called …" line stopped firing. Caught in e4-measure.json, not by eye.
+    if (items.length > 0 || shown.length > 0) {
+      groups.push({
+        id: 'find',
+        label: `Anything you have written, in ${laneName(find.lane)}`,
+        items: items.length > 0 ? items : [{
+          id: 'find.none',
+          label: find.busy ? 'Looking…' : `Nothing you have written says "${q.trim()}"`,
+          icon: 'doc',
+          ready: false,
+          reason: find.busy
+            ? `Reading ${laneName(find.lane)}.`
+            : `Not in ${laneName(find.lane)}. The lanes above switch where this looks.`,
+        }],
+      })
+    }
   }
 
+  // The persistent legend. `⌘K to open` joins it in E4: the reference's footer
+  // teaches the way IN as well as the way out, and this app had the key bound
+  // for a month with nothing on any screen that named it.
   const foot = (
     <>
+      <span><Kbd>⌘K</Kbd> to open</span>
       <span className="a-cmdk-legend">
         <Icon name="up" size={16} /><Icon name="down" size={16} /> to move
       </span>

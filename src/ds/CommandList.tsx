@@ -13,6 +13,15 @@ export interface CommandItem {
   ready?: boolean
   /** Why it is not available right now. */
   reason?: ReactNode
+  /**
+   * The CONTEXT line, drawn under the label whether or not the row is ready.
+   * kokonutd/action-search-bar's row is `glyph · action · context · ⌘-hint ·
+   * category`, and until E4 this component had nowhere to put the third of
+   * those: `reason` renders only on a row that CANNOT run, so a palette whose
+   * every row was ready printed no context at all. One line, truncated, because
+   * a row that wraps turns a scannable list into a paragraph.
+   */
+  sub?: ReactNode
   /** A surface label on a cross-object find result. */
   badge?: ReactNode
   onRun?: () => void
@@ -64,6 +73,7 @@ export function CommandList({ head, groups, activeId, empty, foot, className }: 
                   {c.icon ? <Icon name={c.icon} size={16} /> : null}
                   <span className="ds-cmd-item-main">
                     <span className="ds-truncate">{c.label}</span>
+                    {ready && c.sub ? <span className="ds-t-meta ds-truncate">{c.sub}</span> : null}
                     {!ready && c.reason ? <span className="ds-t-meta">{c.reason}</span> : null}
                   </span>
                   {c.badge}

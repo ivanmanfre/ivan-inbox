@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { parseWbHash, wbHash } from './route'
 import type { Job } from './layout'
 import { buildCommands } from './commandSource'
+import { peopleFromThreads } from './commandVerbs'
+import type { Thread } from '../../lib/inbox'
 import { CommandPalette, ShortcutSheet, type FindState } from './CommandPalette'
 import {
   CROSS_MIN, crossSearch, crossSearchOtherLanes,
@@ -92,6 +94,36 @@ function searchField(): HTMLInputElement | null {
   )
 }
 
+/* --------------------------------------------------------------------------
+   E4 · WHAT THE PALETTE PRESSES INSTEAD OF WHAT IT WRITES.
+
+   The layer reaches the conversation's own "Later" control and clicks it, the
+   way `closeTop` below presses a peer's own close chevron. Conversation.tsx
+   keeps the single write path (it saves any edit in the box first, then parks
+   both legs of a pair), the sheet keeps the date, and this file keeps knowing
+   nothing about draft ids. A second snooze path is how the button and the
+   palette start disagreeing about what "Later" does.
+
+   `data-wbcmd="snooze"` exists on that button for exactly this, and the button
+   is rendered only while there IS something to push — no draft, or a draft
+   already parked, and it is not in the DOM. So its presence answers "is this
+   verb available" and `data-wbname` answers "on whom", with no second copy of
+   Conversation's own conditions living out here.
+   -------------------------------------------------------------------------- */
+const DESKTOP = '(min-width: 768px)'
+
+function isDesktop(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia(DESKTOP).matches
+}
+
+function threadPeer(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('.wb-peer-thread')
+}
+
+function snoozeControl(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('.wb-peer-thread [data-wbcmd="snooze"]')
+}
+
 // The signature a selection is allowed to survive. Job, lane, tab and the search
 // text: change any one of them and the rows underneath are different rows.
 // The lane the search runs in. Shell publishes it on the work region
@@ -117,7 +149,7 @@ function readScope(): string {
   return `${job}|${lane}|${tab}|${searchField()?.value ?? ''}`
 }
 
-export function CommandLayer() {
+export function CommandLayer({ people = [] }: { people?: Thread[] } = {}) {
   const [palette, setPalette] = useState(false)
   const [sheet, setSheet] = useState(false)
   const bulk = useBulkRun()
@@ -291,6 +323,36 @@ export function CommandLayer() {
     void bulk.run(cap, getSelected())
   }, [bulk])
 
+  /* ---- E4 · the four verbs' handlers --------------------------------------
+     Three of them are one line each because all three already existed: a
+     person opens through the SAME 'wb-open' event the cross-object find has
+     dispatched since the AI pass (Shell.tsx moves to DMs and docks the peer),
+     and the drawer's two are Shell's own `openDrawer` and `chat.newThread` —
+     the handlers the rail's Claude row and ThreadMenu's "New thread" item run.
+     A window event keeps this layer propless for all three, which is the same
+     trade `wb-open` and `wb-voice-toggle` already made. */
+  const openPerson = useCallback((id: string) => {
+    window.dispatchEvent(new CustomEvent('wb-open', { detail: { kind: 'thread', id } }))
+  }, [])
+
+  const openChat = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('wb-cmd', { detail: { action: 'chat-open' } }))
+  }, [])
+
+  const newChatThread = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('wb-cmd', { detail: { action: 'chat-new' } }))
+  }, [])
+
+  const snooze = useCallback(() => { snoozeControl()?.click() }, [])
+
+  // Built when the palette opens, not on every keystroke: 1,354 conversations
+  // is 1,354 objects, and the query narrows what is DRAWN rather than what is
+  // built (commandVerbs.ts says why the build is uncapped).
+  const peopleRows = useMemo(
+    () => (palette && isDesktop() ? peopleFromThreads(people) : []),
+    [palette, people],
+  )
+
   // Escape, in the order the layers stack. Each press closes exactly one thing:
   // an Escape that dropped the palette AND the selection would throw away a
   // 46-row pick as the side effect of closing a window.
@@ -338,8 +400,21 @@ export function CommandLayer() {
     closeTop,
     runBulk,
     openRow,
+    // 🔴 THE DESKTOP GATE. Undefined on the phone, and `buildCommands` then
+    // builds precisely the vocabulary it built before E4 — no People band, no
+    // Claude row, no Thread row, and not one extra node in the phone's DOM.
+    verbs: isDesktop() ? {
+      people: peopleRows,
+      openPerson,
+      openChat,
+      newChatThread,
+      threadOpen: threadPeer() !== null,
+      snoozeOn: snoozeControl()?.getAttribute('data-wbname') ?? null,
+      snooze,
+    } : undefined,
   })), [palette, sheet, rows, focusId, selected, go, move, openFocused, toggleFocused,
-    selectAll, focusSearch, closeTop, runBulk, openRow])
+    selectAll, focusSearch, closeTop, runBulk, openRow, peopleRows, openPerson,
+    openChat, newChatThread, snooze])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

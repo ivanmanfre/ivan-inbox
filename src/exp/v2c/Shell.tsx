@@ -546,6 +546,24 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
     window.addEventListener('wb-open', onOpen)
     return () => window.removeEventListener('wb-open', onOpen)
   }, [openThread])
+
+  // ---- E4 · the two Claude verbs the palette cannot reach on its own ----
+  //
+  // The drawer and the chat thread are Shell state, and CommandLayer holds no
+  // props but the corpus. Same window-event seam 'wb-open' uses above, and the
+  // same discipline: each branch calls the handler that ALREADY runs that verb
+  // — `openDrawer` is what the rail's Claude row runs, `chat.newThread` is what
+  // ThreadMenu's own "New thread" item runs. Nothing new is written here.
+  const newChat = chat.newThread
+  useEffect(() => {
+    const onCmd = (e: Event) => {
+      const d = (e as CustomEvent).detail as { action?: string } | null
+      if (d?.action === 'chat-open') { openDrawer(); return }
+      if (d?.action === 'chat-new') { openDrawer(); newChat() }
+    }
+    window.addEventListener('wb-cmd', onCmd)
+    return () => window.removeEventListener('wb-cmd', onCmd)
+  }, [openDrawer, newChat])
   // Ask 2 — a draft is a READING surface, so it opens the takeover window, not
   // a peer. Same for a lead-magnet row.
   const openDraft = useCallback<OpenDraft>((id, _label, queue) => {
@@ -667,9 +685,15 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
     <>
       <SeatHealthBanner />
       {/* The command layer: ⌘K, j/k/Enter/x, / and ?, plus the bulk bar. It
-          takes no props (it reads the hash and the rendered list), and it rides
-          in the work surface so both canvases mount it exactly once. */}
-      <CommandLayer />
+          reads the hash and the rendered list, and it rides in the work surface
+          so both canvases mount it exactly once.
+
+          E4 gives it its ONE prop. The palette could reach a person only if the
+          DMs window happened to have drawn that person's row — ~12 of 1,354 —
+          because everything else it knows it reads off the DOM. The loaded
+          corpus is not on the DOM and cannot be; it is here. Read-only: the
+          layer maps it to names and dispatches 'wb-open'. */}
+      <CommandLayer people={inbox.threads} />
       {/* One model, both canvases: the lane switch for Work lives HERE now, not in
           the mobile ribbon, so desktop and phone teach the same thing (MF3). */}
       <WorkSegment job={job} counts={counts} onJob={goJob} />

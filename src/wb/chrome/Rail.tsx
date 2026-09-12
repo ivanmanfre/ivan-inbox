@@ -24,10 +24,10 @@
    ========================================================================== */
 import { useEffect, useRef } from 'react'
 import {
-  Avatar, Badge, Icon, IconButton, LiveDot, Rail as DsRail, RailGroup, RailItem,
-  RailSeparator, TabBar, type IconName, type TabItem,
+  Avatar, Badge, Icon, IconButton, Kbd, LiveDot, Rail as DsRail, RailGroup,
+  RailItem, RailSeparator, TabBar, type TabItem,
 } from '../../ds'
-import { JOBS, JOB_LABEL, WORK_JOBS, isWorkJob, type Job } from '../../exp/v2c/layout'
+import { JOBS, JOB_LABEL, JOB_MARK, WORK_JOBS, isWorkJob, type Job } from '../../exp/v2c/layout'
 import { relAge } from '../kit'
 import './chrome.css'
 
@@ -41,13 +41,9 @@ export const WORK_LANE_LABEL: Record<string, string> = {
 }
 
 // The lucide mark per job (SYSTEM.md's icon map). One name per job, the same
-// name the phone bar reads, so the two canvases cannot disagree about what a
-// job looks like.
-const JOB_MARK: Record<Job, IconName> = {
-  today: 'today', sales: 'sales', dms: 'dms', content: 'content', magnets: 'magnets',
-  styles: 'styles', strategy: 'strategy', sends: 'sends', money: 'money',
-  ops: 'ops', settings: 'settings', orbit: 'orbit',
-}
+// name the phone bar reads AND the command palette draws, so the three surfaces
+// cannot disagree about what a job looks like. It moved to `exp/v2c/layout.ts`
+// with E4's third reader; this file is unchanged except for where it reads it.
 
 export function labelFor(j: Job): string {
   return isWorkJob(j) ? WORK_LANE_LABEL[j] : JOB_LABEL[j]
@@ -187,6 +183,19 @@ export function Rail({
             />
           ) : null}
           {row('settings')}
+          {/* E4 · the key, named. ⌘K has opened the palette since the command
+              layer shipped and NOTHING on any screen said so — a shortcut
+              nobody is told about is a shortcut nobody presses. It sits in the
+              foot rather than the head because it is a standing fact about the
+              app, not a control: there is no click target here. Collapsed, the
+              rail is 61px and a key cap plus a word does not fit, so it is not
+              drawn — the same rule the sync line and every label already
+              follow. */}
+          {!collapsed ? (
+            <div className="a-rail-cmdk ds-t-meta">
+              <Kbd>⌘K</Kbd> for anything
+            </div>
+          ) : null}
           <button
             type="button" className="a-rail-sync" onClick={onRefresh}
             title={stale ? 'The last read failed or went stale. Read again.' : 'Read again'}

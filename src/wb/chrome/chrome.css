@@ -95,6 +95,13 @@
 .a-rail-jobs{ display:flex; flex-direction:column }
 .a-rail-hint{ padding:var(--ds-s2) var(--ds-s4) var(--ds-s3); color:var(--ds-text-3) }
 .a-rail-foot{ display:flex; flex-direction:column; gap:var(--ds-s1) }
+/* E4 · the ⌘K legend. One line, the meta ink, and the cap is the system's own
+   `Kbd` so it is the same object the palette's own footer draws. */
+.a-rail-cmdk{
+  display:flex; align-items:center; gap:var(--ds-s2);
+  padding:var(--ds-s2) var(--ds-s4);
+  color:var(--ds-text-4);
+}
 .a-rail-sync{
   display:flex;
   align-items:center;
@@ -212,7 +219,19 @@
    -------------------------------------------------------------------------- */
 .a-cmdk-legend{ display:inline-flex; align-items:center; gap:var(--ds-s1) }
 .a-find-lanes{ display:flex; align-items:center; gap:var(--ds-s2); padding:var(--ds-s2) 0 }
-.a-find-lane{
+/* 🔴 E4 · THE LANE SWITCH HAD NO PILL, AND HAD NOT HAD ONE FOR A WHILE — the
+   SAME cascade trap D11.7 caught on the selection mark, in a second place.
+   `wb.css`'s `.a-root button:not([class*="ds-"]):not([class*="wb-"])` strips
+   `background`, `border` and `padding` off every workbench button that is
+   neither a design-system control nor shell chrome, and `.a-find-lane` is
+   exactly that button. At 0,3,1 it outranked these 0,1,0 declarations, so the
+   three lanes rendered as one run of bare words — "Ivan Mattan Danino Davorin
+   Smit" — with no padding between them and NO BACKGROUND ON THE ACTIVE ONE,
+   i.e. a switch that never showed which lane it was switched to. Caught by
+   LOOKING at e4-d-palette-query.png. Restated at 0,4,1, the same weight D11.7
+   used, so the reset still applies to every bare button that has no box of its
+   own. */
+.a-root .a-find-lanes button.a-find-lane.a-find-lane{
   min-height:var(--ds-control-h-sm);
   padding:0 var(--ds-s4);
   border:0;
@@ -222,8 +241,14 @@
   font-size:var(--ds-fs-meta);
   cursor:pointer;
 }
+.a-root .a-find-lanes button.a-find-lane.a-find-lane:hover{ color:var(--ds-text) }
+.a-root .a-find-lanes button.a-find-lane.a-find-lane[data-active='true']{
+  background:var(--ds-surface-2); color:var(--ds-text);
+}
+/* The `Also written elsewhere` row's buttons are the same class outside
+   `.a-find-lanes`; they keep the plain-text look they have always had. */
+.a-find-lane{ color:var(--ds-text-3); cursor:pointer }
 .a-find-lane:hover{ color:var(--ds-text) }
-.a-find-lane[data-active='true']{ background:var(--ds-surface-2); color:var(--ds-text) }
 .a-find-badge{ color:var(--ds-text-4); flex:0 0 auto }
 .a-find-else{ display:flex; align-items:center; gap:var(--ds-s2); flex-wrap:wrap; color:var(--ds-text-3) }
 

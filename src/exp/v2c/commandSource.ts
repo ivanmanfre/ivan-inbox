@@ -1,5 +1,7 @@
-import { JOBS, JOB_LABEL, type Job } from './layout'
+import type { IconName } from '../../ds/icons'
+import { JOBS, JOB_LABEL, JOB_MARK, type Job } from './layout'
 import type { RowCap, SelectedRow } from './commandStore'
+import { e4Commands, type PersonEntry, type VerbCtx } from './commandVerbs'
 
 // THE ONE COMMAND SOURCE. The palette and the shortcut sheet are two renderings
 // of this list, so they cannot disagree about what exists or about which key
@@ -19,14 +21,33 @@ import type { RowCap, SelectedRow } from './commandStore'
 // (CommandPalette.tsx renders a line saying so and keeps the list reachable by
 // clearing the query). There is no fall-through here for a stray Enter to hit.
 
-export type WbGroup = 'Move' | 'Select' | 'Act' | 'Go' | 'Open'
+// E4 adds three bands. 'Thread' and 'Claude' sit ABOVE 'Go' because they act on
+// what is already on the canvas, and 'People' sits below it because a verb
+// should outrank a name — see commandRank.ts rule 1, which is what makes
+// "prefix on the verb first, then people" true without sorting across bands.
+export type WbGroup = 'Move' | 'Select' | 'Act' | 'Thread' | 'Claude' | 'Go' | 'People' | 'Open'
 
-export const GROUP_ORDER: WbGroup[] = ['Move', 'Select', 'Act', 'Go', 'Open']
+export const GROUP_ORDER: WbGroup[] = [
+  'Move', 'Select', 'Act', 'Thread', 'Claude', 'Go', 'People', 'Open',
+]
 
 export type WbCommand = {
   id: string
   title: string
   group: WbGroup
+  /**
+   * E4 · the glyph the row wears. kokonutd/action-search-bar's row is
+   * `glyph · action · context · ⌘-hint · category`, and a list of forty verbs
+   * with no marks is forty lines of prose to read linearly. Optional because
+   * `CommandList` has always drawn the row without one.
+   */
+  icon?: IconName
+  /**
+   * E4 · extra text this row can be FOUND by without printing it. A person's
+   * company: it belongs in the context line, not in the verb, but typing it has
+   * to reach the row. See commandRank.matchScore.
+   */
+  search?: string
   /**
    * The key that runs this command with no palette, printed on the row. `null`
    * means there is no direct key and the row prints that in words rather than
@@ -64,7 +85,21 @@ export type CommandCtx = {
   closeTop: () => void
   runBulk: (cap: RowCap) => void
   openRow: (el: HTMLElement) => void
+  /**
+   * E4 · the four verbs kokonutd's move asks for, and the ONE fork that decides
+   * whether they exist at all.
+   *
+   * `verbs` is undefined on the phone and in the unit tests, and `buildCommands`
+   * then builds exactly the vocabulary it built before E4. That is the desktop
+   * gate: the layer is mounted on both canvases (it rides in `workSurface`, one
+   * mount per canvas), but ⌘K is a key a phone does not have, and a band of
+   * rows nothing there can open would be four hundred DOM nodes built for
+   * nobody. CommandLayer passes `verbs` only above 768px.
+   */
+  verbs?: VerbCtx
 }
+
+export type { PersonEntry, VerbCtx }
 
 const CAP_VERB: Record<RowCap, string> = {
   approve: 'Approve',
@@ -80,6 +115,13 @@ const CAP_PAST: Record<RowCap, string> = {
   promote: 'put on a client’s board',
   delete: 'deleted',
   discard: 'discarded',
+}
+
+// E4 · one glyph per capability, from the same names the buttons that run
+// these actions already wear (ds/icons.tsx).
+const CAP_ICON: Record<RowCap, IconName> = {
+  approve: 'approve', skip: 'blocked', promote: 'external', delete: 'discard',
+  discard: 'discard',
 }
 
 const CAP_HINT: Record<RowCap, string> = {
@@ -114,6 +156,7 @@ export function buildCommands(c: CommandCtx): WbCommand[] {
       id: 'move.next',
       title: 'Next row',
       group: 'Move',
+      icon: 'down',
       key: 'j',
       hint: 'Moves the keyboard focus down one row in this list.',
       ready: hasRows,
@@ -124,6 +167,7 @@ export function buildCommands(c: CommandCtx): WbCommand[] {
       id: 'move.prev',
       title: 'Previous row',
       group: 'Move',
+      icon: 'up',
       key: 'k',
       hint: 'Moves the keyboard focus up one row in this list.',
       ready: hasRows,
@@ -134,6 +178,7 @@ export function buildCommands(c: CommandCtx): WbCommand[] {
       id: 'move.open',
       title: 'Open the focused row',
       group: 'Move',
+      icon: 'enter',
       key: 'Enter',
       hint: 'Opens the row the keyboard is on, the same as clicking it.',
       ready: focused,
@@ -144,6 +189,7 @@ export function buildCommands(c: CommandCtx): WbCommand[] {
       id: 'move.search',
       title: 'Search this list',
       group: 'Move',
+      icon: 'search',
       key: '/',
       hint: 'Puts the cursor in this list’s search field.',
       ready: c.hasSearch,
@@ -154,6 +200,7 @@ export function buildCommands(c: CommandCtx): WbCommand[] {
       id: 'move.sheet',
       title: 'Keyboard shortcuts',
       group: 'Move',
+      icon: 'cmd',
       key: '?',
       hint: 'Lists every key, from this same list of commands.',
       ready: true,
@@ -163,6 +210,7 @@ export function buildCommands(c: CommandCtx): WbCommand[] {
       id: 'move.palette',
       title: 'Command palette',
       group: 'Move',
+      icon: 'cmd',
       key: '⌘K',
       hint: 'Opens this palette. Ctrl+K does the same on a keyboard with no ⌘.',
       ready: true,
@@ -172,6 +220,7 @@ export function buildCommands(c: CommandCtx): WbCommand[] {
       id: 'move.close',
       title: 'Close what is open',
       group: 'Move',
+      icon: 'close',
       key: 'Esc',
       hint: 'Closes the palette, then the shortcut sheet, then clears the selection.',
       ready: true,
@@ -181,6 +230,7 @@ export function buildCommands(c: CommandCtx): WbCommand[] {
       id: 'select.toggle',
       title: 'Select the focused row',
       group: 'Select',
+      icon: 'checked',
       key: 'x',
       hint: 'Adds the focused row to the selection, or takes it back out.',
       ready: focused,
@@ -191,6 +241,7 @@ export function buildCommands(c: CommandCtx): WbCommand[] {
       id: 'select.all',
       title: 'Select every row in this tab',
       group: 'Select',
+      icon: 'check',
       key: null,
       hint: `Selects all ${c.rows.length} rows currently on screen.`,
       ready: hasRows,
@@ -201,6 +252,7 @@ export function buildCommands(c: CommandCtx): WbCommand[] {
       id: 'select.clear',
       title: 'Clear the selection',
       group: 'Select',
+      icon: 'remove',
       key: 'Esc',
       hint: 'Drops all selected rows. Nothing is written.',
       ready: n > 0,
@@ -219,6 +271,7 @@ export function buildCommands(c: CommandCtx): WbCommand[] {
       id: `act.${cap}`,
       title: `${CAP_VERB[cap]} the selected ${noun}`,
       group: 'Act',
+      icon: CAP_ICON[cap],
       key: null,
       hint: CAP_HINT[cap],
       ready,
@@ -238,6 +291,7 @@ export function buildCommands(c: CommandCtx): WbCommand[] {
       id: `go.${j}`,
       title: `Go to ${JOB_LABEL[j]}`,
       group: 'Go',
+      icon: JOB_MARK[j],
       key: null,
       hint: `Switches the working surface to ${JOB_LABEL[j]}.`,
       ready: j !== c.job,
@@ -245,6 +299,12 @@ export function buildCommands(c: CommandCtx): WbCommand[] {
       run: () => c.go(j),
     })
   }
+
+  // E4's four verbs, appended rather than interleaved: `rankCommands` sorts by
+  // band before it sorts by relevance, so where in this array a command is
+  // pushed changes nothing about where it is drawn, and the `?` sheet groups by
+  // GROUP_ORDER itself.
+  if (c.verbs) out.push(...e4Commands(c.verbs))
 
   // The rows on screen, by name. This is what makes the palette a way to reach
   // a person rather than only a lane. Capped at 200: past that the palette is
@@ -254,6 +314,7 @@ export function buildCommands(c: CommandCtx): WbCommand[] {
       id: `open.${r.id}`,
       title: `Open ${r.label}`,
       group: 'Open',
+      icon: 'open',
       key: r.id === c.focusId ? 'Enter' : null,
       hint: 'Opens this row.',
       ready: true,

@@ -206,7 +206,10 @@ export function lastReplyAt(t: Thread): string | null {
   return out
 }
 
-function stageValue(t: Thread): string | null {
+/** The rung this row sits on, as one of STAGE_VALUES. Exported for E4: the
+ *  palette prints `lane · stage` under a person's name and has to say the same
+ *  word the `stage is …` token says about the same row. */
+export function stageValue(t: Thread): string | null {
   const raw = (t.stage ?? '').trim().toLowerCase()
   if (stageIsOff(raw)) return raw
   const step = stageStep(raw)
