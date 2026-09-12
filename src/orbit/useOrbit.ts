@@ -71,6 +71,9 @@ export interface UseOrbitResult {
   error: string | null
   loadedAt: string | null
   refresh: () => void
+  /** R4a · The USER's re-read: clears the error and raises `loading`, which the
+      poll's own `refresh` must never do. */
+  retry: () => void
 }
 
 export function useOrbit(filters: OrbitFilters): UseOrbitResult {
