@@ -38,7 +38,7 @@ import {
   CONTENT_LANES, ERROR_ALARM_HOURS, LANE_LABEL, LANE_POSSESSIVE, PIPELINE_STAGES,
   STAGE_LABEL, STAGE_SHORT, boardGroupOf, clientStageLabel,
   countBoardVisible, countUndated, groupByLaneStage, groupByStage,
-  isRecentError, isStuckGenerating, stageOfLane,
+  isRecentError, isStuckGenerating, stageOfLane, tabSev,
   type BoardGroup, type ContentDraft, type ContentLane, type ContentStage, type ContentStages,
 } from '../../lib/content'
 import {
@@ -301,6 +301,11 @@ function StageTabs({ tabs, active, onSelect }: {
             </span>
           ),
           count: t.n > 0 ? t.n : undefined,
+          // R3: only Errors and Stuck. Every other tab is a backlog, and a
+          // backlog that paints like an alarm is what makes a real alarm
+          // unreadable. Applied HERE rather than at each of the three callers
+          // (Ivan's lane, a client lane, Magnets) so the rule cannot drift.
+          sev: t.n > 0 ? tabSev(t.key) : undefined,
         }))}
       />
     </div>

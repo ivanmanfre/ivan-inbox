@@ -1577,6 +1577,27 @@ export const STAGE_LABEL: Record<ContentStage, string> = {
   other: 'Other',
 }
 
+/* R3 · WHICH TAB MAY CARRY A SEVERITY (2026-09-12).
+
+   tokens.css §1.6: a severity is a live signal — a stopped workflow, a failed
+   send, an alarm. Never a category, never a backlog count. The stage bar is
+   fourteen categories with counts, and every one of them was drawn identically,
+   which meant the two that ARE alarms said nothing either.
+
+   `error` is a row a run FAILED on: urgent. `stuck` is a run nobody picked up
+   and that is still notionally in flight: attention. Every other tab is a pile
+   of work and draws plain, however big it gets.
+
+   Client-lane tabs are `<group>_<stage>` (BOARD_ORDER x CLIENT_STAGES), so the
+   two group prefixes are stripped by NAME rather than by splitting on the last
+   underscore — a future stage carrying one would not be mis-read. */
+export function tabSev(tabId: string): 'attention' | 'urgent' | undefined {
+  const stage = tabId.replace(/^(?:internal|board)_/, '')
+  if (stage === 'error') return 'urgent'
+  if (stage === 'stuck') return 'attention'
+  return undefined
+}
+
 // ---------- the client lane's two categories (Ivan's item 3) ----------
 //
 // Ivan, 2026-08-03: "i see the needs review and on mattan's board are different

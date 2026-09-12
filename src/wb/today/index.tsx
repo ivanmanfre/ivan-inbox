@@ -109,13 +109,27 @@ function Masthead({ c, plate, syncedAt, stale, refreshing }: {
   refreshing?: boolean
 }) {
   const load = todayLoad(c)
+  // R3 (2026-09-12): A SEVERITY IS A LIVE SIGNAL, NEVER A BACKLOG COUNT
+  // (tokens.css §1.6). These three are the SIZE of three piles — urgencies,
+  // things to approve, posts going out — and the first two were painting the
+  // masthead red and green every morning of a perfectly ordinary day, which is
+  // exactly the wear that makes a real alarm unreadable.
+  //
+  // The urgent pile keeps a distinct colour and it is the ACCENT, not a
+  // severity: the accent's budget already names "the operator's own turn"
+  // (SYSTEM.md §1), and an urgency is nothing but his turn. The other two are
+  // quiet — the legend under the bar prints each count and each predicate, so
+  // the bar's job is proportion and the words do the naming.
   const segs: Array<{ k: string; n: number; tone: Tone; l: string }> = [
-    { k: 'urgent', n: load.urgent, tone: 'urgent', l: 'urgent' },
-    { k: 'approvals', n: load.approvals, tone: 'clear', l: 'to approve' },
+    { k: 'urgent', n: load.urgent, tone: 'accent', l: 'urgent' },
+    { k: 'approvals', n: load.approvals, tone: 'quiet', l: 'to approve' },
     { k: 'going', n: load.going, tone: 'quiet', l: 'going out' },
   ]
   // The clear segment when there is nothing on the plate at all, exactly as
   // before: an empty track would read as a missing reading, not as a clear day.
+  // R3 KEEPS THE GREEN HERE, and it is the only green left on the screen: an
+  // empty plate is a LIVE STATE — the system is at zero right now — which is
+  // precisely what a severity token is for. The three segments above are not.
   const bar = load.total === 0
     ? [{ id: 'clear', n: 1, tone: 'clear' as Tone }]
     : segs.map(s => ({ id: s.k, n: s.n, tone: s.tone, note: `${s.n} ${s.l}` }))

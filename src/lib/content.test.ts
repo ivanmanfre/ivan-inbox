@@ -4,7 +4,7 @@ import {
   SKIP_STATUS, type ContentDraft,
   groupByStage, groupByLaneStage, stageOf, stageOfLane, countUndated, countBoardVisible,
   isStuckGenerating,
-  PIPELINE_STAGES, ALERT_STAGES, STAGE_LABEL,
+  PIPELINE_STAGES, ALERT_STAGES, STAGE_LABEL, tabSev,
   normalizeAgentLog, normalizeQa, taxonomyFields, normalizeKeyPoints,
   normalizeImageUrls, reviewActionable,
   CONTENT_LANES, LANE_LABEL, LANE_POSSESSIVE, isBackfillEntry, parseLogEntry,
@@ -1029,5 +1029,39 @@ describe('draftFailure', () => {
   it('draftFailureReason is still the one-line form the card calls', () => {
     const d = { taxonomy: STALE_STAMP, qa_verdict: null, qa_score: null, log_agent: 'Lint Gate', log_body: 'VERDICT: PASS (first draft clean)', log_ts: null }
     expect(draftFailureReason(d)).toBe(draftFailure(d).reason)
+  })
+})
+
+// R3 · A severity is a live signal, never a category and never a backlog count
+// (tokens.css §1.6). Fourteen stage tabs all drew the same, so the two that ARE
+// alarms said nothing. Exactly two may carry one.
+describe('tabSev', () => {
+  const ALL_TABS = [
+    'ideas', 'review', 'generating', 'approved', 'scheduled', 'published',
+    'error', 'stuck', 'other', 'archived',
+  ]
+
+  it('marks a failed run urgent and a run nobody picked up attention', () => {
+    expect(tabSev('error')).toBe('urgent')
+    expect(tabSev('stuck')).toBe('attention')
+  })
+
+  it('gives every other tab no severity at all, however big the pile', () => {
+    for (const t of ALL_TABS) {
+      if (t === 'error' || t === 'stuck') continue
+      expect(tabSev(t)).toBe(undefined)
+    }
+  })
+
+  it('reads through the client lane\'s group prefix', () => {
+    expect(tabSev('internal_error')).toBe('urgent')
+    expect(tabSev('board_stuck')).toBe('attention')
+    expect(tabSev('internal_review')).toBe(undefined)
+    expect(tabSev('board_published')).toBe(undefined)
+  })
+
+  it('only the two ALERT_STAGES carry one, by construction', () => {
+    const withSev = ALL_TABS.filter(t => tabSev(t) !== undefined)
+    expect(withSev).toEqual([...ALERT_STAGES])
   })
 })
