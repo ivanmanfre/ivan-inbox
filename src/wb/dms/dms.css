@@ -419,7 +419,9 @@
     grid-template-rows:auto auto;
     align-content:center;
     column-gap:var(--ds-s4);
-    row-gap:var(--ds-s2);
+    /* R2: 2px, not 4 — the action pill took the 44px floor and the gap is the
+       only pixel the 68px content box had spare. */
+    row-gap:var(--ds-s1);
   }
   .a-dms .a-row.r > .a-row-lead{ grid-column:1; grid-row:1 / span 2; align-self:center }
   .a-dms .a-row.r > .a-row-main{ grid-column:2; grid-row:1 / span 2; align-self:center; width:100% }
@@ -457,13 +459,21 @@
 
   /* THE ONE ACTION IS A PILL, NEVER BARE TEXT. `quiet` paints nothing, so on a
      phone the row's only verb read as a floating word with no edges. It takes
-     the raised surface and the spec's 34px pill here; the 44px tap floor is
-     answered by the row itself, which is 96px of target around it. */
+     the raised surface and a pill here.
+
+     R2 (2026-09-12): the pill was 34px on the argument that the 96px row around
+     it is the real target. It is not: the row's own tap OPENS the thread, so
+     the button is a separate target inside it and it was 76x34, under the floor,
+     on six of eight rows. It takes the floor itself now. The arithmetic the row
+     grid has to survive: 20 (the time line) + 2 (the tightened gap below) + 44
+     = 66, inside the 68px the 96px host allows once its 14px padding is paid.
+     ROW_H_PHONE is untouched. */
   .a-dms .a-row.r > .a-row-actions .ds-btn{
-    height:var(--ds-pill-h);
-    min-height:var(--ds-pill-h);
+    height:var(--ds-tap);
+    min-height:var(--ds-tap);
+    min-width:var(--ds-tap);
     padding:0 var(--ds-s4);
-    border-radius:var(--ds-pill-r);
+    border-radius:var(--ds-r-pill);
     background:var(--ds-surface-2);
     color:var(--ds-text);
     font-size:var(--ds-fs-preview);
@@ -621,3 +631,27 @@
 }
 .a-warm-card[data-compact]{ background:transparent }
 .a-warm-card[data-compact] .a-row{ align-items:center }
+
+/* --------------------------------------------------------------------------
+   R2 · THE SWIPE, AND THE CHIP THAT WAS SITTING ON THE LAST ROW.
+   (goal run inbox-repair-floor-and-21st-moves-2026-09-12.)
+
+   Discard leaves the phone row's visible slot, so it needs a way back that is
+   not three taps. It is the gesture the draft card already carries
+   (DraftCard.tsx): pointer, directional lock, the same 72px threshold, LEFT
+   only — the card's right swipe approves, and approving from a list is the one
+   thing this surface may never offer. The confirm sheet still runs.
+
+   `touch-action:pan-y` hands the browser the vertical axis (the list scrolls
+   and pulls to refresh under the same finger) and keeps the horizontal one.
+   -------------------------------------------------------------------------- */
+.a-dms-rowhost[data-swipe]{ touch-action:pan-y }
+
+@media (max-width:767px){
+  /* THE CLAUDE CHIP WAS PAINTING ON THE LAST ROW'S BUTTON. `.a-ask-fab` is
+     fixed 44px, `--ds-s3` above the tab bar, which is `--ds-s3` above this
+     scroller's own bottom edge (the tab bar is a flex sibling, not an overlay).
+     The scroller pays for the chip's whole box plus one gap above it, in the
+     chip's own tokens, so the row under it is reachable. */
+  .a-dms .a-dms-body{ padding-bottom:calc(var(--ds-tap) + var(--ds-s3) * 2) }
+}

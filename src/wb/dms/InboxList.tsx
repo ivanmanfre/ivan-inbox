@@ -173,6 +173,114 @@ function EmptyVerified({ line, verifiedAt }: { line: string; verifiedAt?: string
   )
 }
 
+/* R2 · THE VERB UNDER THE THUMB.
+
+   On the phone a pending-draft row's ONLY affordance was `Discard`, a 76x34
+   button under the 44px floor — six of eight rows on the live list offered
+   destruction and nothing else. A list is not where a draft is destroyed on a
+   first tap, and it is certainly not where the only verb is destructive.
+
+   Desktop is untouched: a pointer on a 73px row reaching a hover-revealed
+   Discard is the affordance that has always been there and nothing about it is
+   under a thumb.
+
+   Pure and exported so the fork is a unit test rather than a screenshot. */
+export function rowVerb({ mobile, pendingDraft, preRead }: {
+  mobile: boolean
+  pendingDraft: boolean
+  preRead: boolean
+}): 'discard' | 'open' | null {
+  if (!pendingDraft) return null
+  if (!mobile) return 'discard'
+  // The row already offers an affirmative verb (Sum up). It keeps the slot: two
+  // 44px pills do not fit the row's one action track at 390, and the row itself
+  // is 96px of tap target that opens the thread.
+  return preRead ? null : 'open'
+}
+
+// The phone's way back to Discard. Ported from the draft card's own swipe
+// (DraftCard.tsx): the same pointer model, the same directional lock, the same
+// threshold constant — one gesture, one meaning, in both places a draft can be
+// thrown away. LEFT ONLY: the card's right-swipe approves, and approving from
+// a list is the one thing this surface may never offer.
+//
+// It rides the ROW HOST, not a new wrapper, so `RowSelect` and the row stay the
+// siblings the command layer registers and the fixed height the window measures
+// against is untouched.
+const ROW_SWIPE_THRESHOLD = 72
+
+function RowHost({ height, onDiscard, children }: {
+  height: number
+  /** Absent on any row with nothing to discard: no gesture is bound at all. */
+  onDiscard?: () => void
+  children: ReactNode
+}) {
+  const [dx, setDx] = useState(0)
+  const [dragging, setDragging] = useState(false)
+  const start = useRef({ x: 0, y: 0 })
+  const axis = useRef<'none' | 'x' | 'y'>('none')
+  const dxRef = useRef(0)
+  // A gesture that travelled sideways must not also open the thread. The click
+  // is swallowed in the CAPTURE phase, before the row's own handler sees it.
+  const swiped = useRef(false)
+
+  if (!onDiscard) {
+    return <div className="a-dms-rowhost" style={{ height }}>{children}</div>
+  }
+  const reset = () => {
+    setDragging(false)
+    axis.current = 'none'
+    dxRef.current = 0
+    setDx(0)
+  }
+  return (
+    <div
+      className="a-dms-rowhost"
+      data-swipe=""
+      style={{
+        height,
+        transform: dx ? `translateX(${dx}px)` : undefined,
+        transition: dragging ? 'none' : 'transform var(--ds-dur) var(--ds-ease)',
+      }}
+      onPointerDown={e => {
+        start.current = { x: e.clientX, y: e.clientY }
+        axis.current = 'none'
+        setDragging(true)
+      }}
+      onPointerMove={e => {
+        if (!dragging) return
+        const ddx = e.clientX - start.current.x
+        const ddy = e.clientY - start.current.y
+        if (axis.current === 'none') {
+          if (Math.abs(ddx) < 6 && Math.abs(ddy) < 6) return
+          axis.current = Math.abs(ddx) > Math.abs(ddy) ? 'x' : 'y'
+          if (axis.current === 'x') {
+            swiped.current = true
+            e.currentTarget.setPointerCapture(e.pointerId)
+          }
+        }
+        if (axis.current !== 'x') return
+        // Left only. A rightward drag springs back rather than arming anything.
+        dxRef.current = Math.min(0, ddx)
+        setDx(dxRef.current)
+      }}
+      onPointerUp={() => {
+        if (!dragging) return
+        const final = axis.current === 'x' ? dxRef.current : 0
+        reset()
+        if (final < -ROW_SWIPE_THRESHOLD) onDiscard()
+      }}
+      onPointerCancel={reset}
+      onClickCapture={e => {
+        if (!swiped.current) return
+        swiped.current = false
+        e.stopPropagation()
+        e.preventDefault()
+      }}
+    >{children}</div>
+  )
+}
+
 export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt, refreshing = false, cachedAt = null, error = null, title = 'Inbox', status, before, after, rowsFor, renderRow, rowNote, rowChip, rowTag, renderNote, emptyLine }: {
   threads: Thread[]
   filter: Filter
@@ -246,8 +354,10 @@ export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, o
   // `status` being passed at all, the same opt-in signal the draft banner above
   // already uses.
   const draftRowActions = status !== undefined
-  async function onRowDiscard(e: React.MouseEvent, t: Thread) {
-    e.stopPropagation()
+  // `e` is null when the SWIPE calls it (R2): there is no click to stop, and the
+  // confirm below is the same one the button raises.
+  async function onRowDiscard(e: React.MouseEvent | null, t: Thread) {
+    e?.stopPropagation()
     if (!t.draft) return
     const ok = await confirm({
       title: 'Discard this draft?',
@@ -426,16 +536,19 @@ export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, o
                 const kind = threadKind(t)
                 const chip = rowChip?.(t)
                 const tag = rowTag?.(t)
+                // R2: which verb this row shows, and where Discard went on the
+                // phone (a left swipe on the row, same gesture as the card).
+                const verb = rowVerb({ mobile: phone, pendingDraft: pendingDraft != null, preRead: chip != null })
                 return (
                   /* THE HOST ELEMENT is what the command layer walks. RowSelect
                      writes `data-wbrow`, `data-wbsel` and `data-wbfocus` onto its
                      own parent, so the mark and the row it registers have to be
                      siblings inside one box — and that box is what carries the
                      fixed height the window measures against. */
-                  <div
+                  <RowHost
                     key={t.prospect_id}
-                    className="a-dms-rowhost"
-                    style={{ height: rowH }}
+                    height={rowH}
+                    onDiscard={phone && pendingDraft ? () => { void onRowDiscard(null, t) } : undefined}
                   >
                     {/* A conversation carries NO bulk capability — an answer is
                         written one at a time, and the bulk bar says that in words
@@ -512,14 +625,26 @@ export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, o
                             height, so on the phone the width goes to the name
                             and the newest message instead. */}
                         <span className="a-dms-tagact">{tag}</span>
-                        {pendingDraft && (
+                        {/* R2: the destructive verb is the DESKTOP's, where a
+                            hover reveals it under a pointer. On the phone the
+                            row's one pill is the affirmative one, and Discard is
+                            the left swipe (RowHost above), which is the same
+                            gesture the draft card already carries. */}
+                        {verb === 'discard' && (
                           <Button variant="quiet" size="sm" onClick={e => onRowDiscard(e, t)}>
                             Discard
                           </Button>
                         )}
+                        {verb === 'open' && (
+                          <Button
+                            variant="quiet"
+                            size="sm"
+                            onClick={e => { e.stopPropagation(); onOpenThread(t.prospect_id) }}
+                          >Open</Button>
+                        )}
                       </> : undefined}
                     />
-                  </div>
+                  </RowHost>
                 )
               })}
               {win.padBottom > 0 && <div style={{ height: win.padBottom }} aria-hidden />}
