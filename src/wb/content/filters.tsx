@@ -11,10 +11,13 @@
    What changed is the chrome: a pill is a ds `Chip`, its panel is a ds
    `Popover` on a pointer canvas and a ds `Sheet` on the phone.
    ========================================================================== */
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Facet, FacetOption, FilterState } from '../../lib/contentFilters'
-import { Button, Chip, Icon, IconButton, Input, Popover, Sheet } from '../../ds'
+import { Button, Chip, FilterTokens, Icon, IconButton, Input, Popover, Sheet } from '../../ds'
+import {
+  contentFields, filterStateFromTokens, readTokens, tokensFromFilterState, writeTokens,
+} from '../../lib/filterTokens'
 import './content.css'
 
 const MOBILE_MQ = '(max-width: 767px)'
@@ -117,51 +120,10 @@ function FacetOptions({ f, state, pick }: {
   )
 }
 
-/** One `label: value` chip with its panel. */
-function FacetPill({ f, state, setState, sheet }: {
-  f: Facet; state: FilterState; setState: (s: FilterState) => void; sheet: boolean
-}) {
-  const [open, setOpen] = useState(false)
-  const ref = useDismiss(open, () => setOpen(false), !sheet)
-  const place = usePlace(open && !sheet)
-  const active = state[f.key]
-  const label = active
-    ? (f.options.find(o => o.value === active)?.label ?? active)
-    : 'Any'
-  const pick = (key: string, value: string) => {
-    const next = { ...state }
-    if (value) next[key] = value
-    else delete next[key]
-    setState(next)
-    setOpen(false)
-  }
-  const body = <FacetOptions f={f} state={state} pick={pick} />
-  return (
-    <div className="a-ct-fpop" ref={ref}>
-      <Chip
-        selected={!!active}
-        onClick={() => setOpen(v => !v)}
-        // The clear affordance only exists once there is something to clear.
-        onRemove={active ? () => pick(f.key, '') : undefined}
-        removeLabel={`Clear ${f.label.toLowerCase()} filter`}
-      >
-        {f.label}: <b>{label}</b>
-      </Chip>
-      {sheet ? (
-        <Sheet open={open} onClose={() => setOpen(false)} title={f.label}>{body}</Sheet>
-      ) : (
-        <Popover
-          open={open}
-          label={f.label}
-          className="a-ct-menu"
-          style={place.maxH ? { maxHeight: place.maxH } : undefined}
-        >
-          <div ref={place.ref} data-flip={place.flip ? '' : undefined}>{body}</div>
-        </Popover>
-      )}
-    </div>
-  )
-}
+/* THE `label: value` PILL IS GONE (E2). A facet that is ON is a TOKEN now —
+   `[stage] [is] [Review] [×]` — and a facet that is off is reached through the
+   `+`, so there is no longer a pill wearing the word "Any". `FacetOptions` and
+   `OptionRow` above survive: the phone's all-filters sheet still draws them. */
 
 /** The disclosure. Every demoted facet in ONE panel, each with the same
     option-with-count rows, and a live badge of how many of them are set. */
@@ -251,7 +213,7 @@ function MorePill({ facets, state, setState, sheet, badgeKeys, label, search, on
 
 export function FilterRow({
   prominent, demoted, state, setState, q, setQ, shown, loaded, total, noun, placeholder,
-  idleCount = true, inline = false, label,
+  idleCount = true, label, persist,
 }: {
   prominent: Facet[]
   demoted: Facet[]
@@ -267,20 +229,57 @@ export function FilterRow({
   noun: string
   placeholder?: string
   idleCount?: boolean
-  inline?: boolean
   /** Two rows on this surface run filters over DIFFERENT TABLES, so their
       state cannot be shared and the honest fix is one grammar plus a name. */
   label?: string
+  /** E2. The sessionStorage surface name this row's question is kept under.
+      OPT-IN, and only the two draft rows pass one: seven call sites run this
+      component over five different tables, and one shared key would restore a
+      draft-stage filter onto the styles roster. Absent = nothing persisted,
+      which is what every one of them did before. */
+  persist?: string
 }) {
   const sheet = useSheetMode()
+  /* E2 · THE SET PILLS ARE TOKENS NOW.
+
+     Nothing about the DERIVATION moves: buildFacets still counts the loaded
+     rows, splitFacets still decides prominence, applyFilters still runs the
+     state, and every count and every cap note is the one that was here. What
+     changed is the control — a facet that is ON reads as
+     `[stage] [is] [Review] [×]` instead of `Stage: Review`, and a facet that
+     is off is reached through the `+` rather than through a standing pill
+     wearing the word "Any".
+
+     `is` only, which is FilterState's own shape: one value per facet, read by
+     applyFilters at seven call sites. A control port does not get to change
+     what the control can express. */
+  const allFacets = useMemo(() => [...prominent, ...demoted], [prominent, demoted])
+  const fields = useMemo(() => contentFields(allFacets), [allFacets])
+  const tokens = useMemo(() => tokensFromFilterState(state, allFacets), [state, allFacets])
+  // The restore, once, and only for a row that asked for one by name.
+  const restored = useRef(false)
+  useEffect(() => {
+    if (!persist || restored.current) return
+    restored.current = true
+    const saved = readTokens(persist)
+    if (saved.length > 0) setState(filterStateFromTokens(saved))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [persist])
+  const setTokens = (next: typeof tokens) => {
+    const nextState = filterStateFromTokens(next)
+    if (persist) writeTokens(persist, next)
+    setState(nextState)
+  }
   const searchable = typeof setQ === 'function'
   const qv = q ?? ''
   const activeN = Object.values(state).filter(Boolean).length + (qv.trim() ? 1 : 0)
   if (prominent.length === 0 && demoted.length === 0 && activeN === 0) return null
   // ONLY THE SET ONES. What earns a standing slot is a filter that is ON: it
   // hides rows, so it is never one click away.
-  const pills = inline ? prominent.filter(f => state[f.key]) : prominent
-  const inPanel = inline ? [...prominent, ...demoted] : demoted
+  // Every facet lives in the one panel now: the `+` searches the whole list, so
+  // there is no demoted half to disclose separately, and the prominence split
+  // survives only as the ORDER the fields are offered in.
+  const inPanel = allFacets
   const note = (activeN > 0 || idleCount || (total !== null && total > loaded))
     ? (
       <>
@@ -316,17 +315,28 @@ export function FilterRow({
   return (
     <>
       {!sheet && search}
-      {pills.map(f => (
-        <FacetPill key={f.key} f={f} state={state} setState={setState} sheet={sheet} />
-      ))}
-      <MorePill
-        facets={inPanel} state={state} setState={setState} sheet={sheet}
-        badgeKeys={inline ? demoted.map(f => f.key) : undefined}
-        label={label}
-        search={sheet ? search : undefined}
-        note={sheet ? note : undefined}
-        onClearAll={sheet ? () => { setState({}); setQ?.('') } : undefined}
+      <FilterTokens
+        fields={fields}
+        tokens={tokens}
+        setTokens={setTokens}
+        surfaceLabel={noun}
+        // On the phone the all-filters SHEET is the way in: it carries the
+        // search field (W3-2) and the Clear/Done foot (W3-7), and a second
+        // opener beside it on a 390px bar would be two controls for one job.
+        showAdd={!sheet}
+        // This row already has a Clear that does more — it empties the search
+        // box too.
+        showClear={false}
       />
+      {sheet && (
+        <MorePill
+          facets={inPanel} state={state} setState={setState} sheet={sheet}
+          label={label}
+          search={search}
+          note={note}
+          onClearAll={() => { setState({}); setQ?.('') }}
+        />
+      )}
       {activeN > 0 && (
         <Button
           variant="quiet" size="sm"

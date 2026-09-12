@@ -417,7 +417,7 @@ function IvanLane({
             prominent={prominent} demoted={demoted}
             state={filters} setState={setFilters} q={q} setQ={setQ}
             shown={shown.length} loaded={drafts.length} total={matched} noun="drafts"
-            idleCount={false} inline
+            idleCount={false} persist="content"
           />
         }
       />
@@ -658,7 +658,7 @@ function MattanLane({
             prominent={prominent} demoted={demoted}
             state={filters} setState={setFilters} q={q} setQ={setQ}
             shown={shown.length} loaded={drafts.length} total={matched} noun="drafts"
-            idleCount={false} inline
+            idleCount={false} persist="content-client"
           />
         }
       />

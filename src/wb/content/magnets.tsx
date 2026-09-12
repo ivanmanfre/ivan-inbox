@@ -243,7 +243,6 @@ function ResourceLane({ rows, lane, ideas, ideaCount, loading, error, loadedAt, 
           state={filters} setState={setFilters} q={sect.q} setQ={setQ}
           shown={shown.length} loaded={rows.length} total={null} noun="lead magnets"
           placeholder="Search lead magnets by topic…"
-          inline
         />
       </Bar>
 
