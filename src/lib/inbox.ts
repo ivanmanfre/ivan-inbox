@@ -321,7 +321,12 @@ export function groupThreads(
       messages,
     })
   }
-  return threads.sort((a, b) => b.last.created_at.localeCompare(a.last.created_at))
+  // Newest CONVERSATION first, by when its last message happened, not when the
+  // row was stored. The spam folder made the gap visible: the detector files cold
+  // pitches in one sweep, so every filed thread shared a created_at and the list
+  // printed Aug 31 above Sep 1 above Sep 2 under headers that read the real day.
+  // The day header and the row's age already read eventTime; now the order does too.
+  return threads.sort((a, b) => eventTime(b.last).localeCompare(eventTime(a.last)))
 }
 
 // What kind of thread this really is, judged by its message mix rather than

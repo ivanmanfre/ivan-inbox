@@ -83,6 +83,19 @@ describe('groupThreads', () => {
     expect(groupThreads(rows)[0].messages.map(m => m.id)).toEqual(['note', 'reply', 'dm'])
   })
 
+  // The Likely spam folder, 2026-09-12. The detector files cold pitches in one sweep,
+  // so three threads whose people wrote on Aug 31, Sep 1 and Sep 2 all carry the same
+  // created_at and came out Aug 31 first under day headers that read the real day.
+  it('orders THREADS by when the last message happened, not when it was stored', () => {
+    const filed = '2026-09-01T09:00:00Z'
+    const rows: InboxMessage[] = [
+      { ...base, id: 'a', prospect_id: 'p-aug31', direction: 'inbound', sent_at: '2026-08-31T10:00:00Z', created_at: filed },
+      { ...base, id: 'b', prospect_id: 'p-sep2', direction: 'inbound', sent_at: '2026-09-02T10:00:00Z', created_at: filed },
+      { ...base, id: 'c', prospect_id: 'p-sep1', direction: 'inbound', sent_at: '2026-09-01T10:00:00Z', created_at: filed },
+    ]
+    expect(groupThreads(rows).map(t => t.prospect_id)).toEqual(['p-sep2', 'p-sep1', 'p-aug31'])
+  })
+
   // draftStale compared lastInbound (created_at) against lastSent (sent_at) -- two different
   // clocks. A backfilled reply made an unsent draft look stale when it was not.
   it('does not mark a draft stale when the newest human message is their reply', () => {
