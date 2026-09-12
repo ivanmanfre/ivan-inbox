@@ -30,7 +30,7 @@
    header and remembers itself.
    ========================================================================== */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Chip, EmptyState, IconButton, LiveDot } from '../../ds'
+import { Chip, EmptyState, FilterTokens, IconButton, LiveDot } from '../../ds'
 import { InboxSkeleton } from '../chrome/Skeleton'
 import { Group, HeadChromeSlot, Rows, Sep } from '../kit'
 import {
@@ -40,6 +40,10 @@ import {
 import { fetchCalls, type CallRow } from '../../lib/transcripts'
 import { docHref, DOC_LABEL, type PackDoc } from './Doc'
 import { dayKey, describeTimes, groupEvents, matchPack, norm, weekWindow } from './match'
+import {
+  SALES_FIELDS, readTokens, salesRowMatches, writeTokens,
+  type FilterToken,
+} from '../../lib/filterTokens'
 import './sales.css'
 
 // The chip strip, left to right, and the label each document wears on it. Short
@@ -119,6 +123,23 @@ export function SalesSurface({ onOpenCall }: {
   const [density, setDensity] = useState<'a' | 'b'>(() => {
     try { return localStorage.getItem('sales.density') === 'b' ? 'b' : 'a' } catch { return 'a' }
   })
+  /* E2 · THE THREE QUESTIONS THIS LIST CAN BE ASKED.
+
+     This surface had no filter at all, so the fields are not ported from
+     somewhere — they are the three facts `renderRow` below already computes
+     for every call before it draws one: which part of the fortnight it sits
+     in, whether the matcher found a pack, and whether a past call has a report
+     under it. "Who am I talking to" is what the list itself answers, so it is
+     not a filter; nothing else on the row is a question.
+
+     `pack has no` is the one that earns the control: the comment at the top of
+     this file says a missing pack has to be visible BEFORE the call rather
+     than during it, and until now that meant reading every row. */
+  const [tokens, setTokensState] = useState<FilterToken[]>(() => readTokens('sales'))
+  const setTokens = useCallback((next: FilterToken[]) => {
+    setTokensState(next)
+    writeTokens('sales', next)
+  }, [])
   const alive = useRef(true)
 
   // The window and the clock are fixed at mount. Recomputing them every render
@@ -303,6 +324,18 @@ export function SalesSurface({ onOpenCall }: {
         </div>
       </div>
 
+      {/* Its own band rather than the head's tail: the two IconButtons up there
+          are view switches and this is a question about the rows. It never
+          sticks — the list is short by construction (a fortnight of calls). */}
+      <div className="a-bar a-sl-filterbar">
+        <FilterTokens
+          fields={SALES_FIELDS}
+          tokens={tokens}
+          setTokens={setTokens}
+          surfaceLabel="calls"
+        />
+      </div>
+
       <div className="a-body">
         {error ? <div className="a-meta a-sl-err">The week did not load: {error}</div> : null}
 
@@ -318,7 +351,21 @@ export function SalesSurface({ onOpenCall }: {
         ) : null}
 
         {order.map(g => {
-          const rows = groups[g]
+          // The tokens narrow INSIDE the group, so the group headers keep
+          // counting what is actually under them. A group emptied by a filter
+          // is dropped exactly like a group that was empty to begin with.
+          const rows = groups[g].filter(e => {
+            if (tokens.length === 0) return true
+            const slug = matchPack(e, slugs, meta)
+            const t = describeTimes(e.start_time, now)
+            const past = g === 'earlier' || t.past
+              || new Date(e.end_time ?? e.start_time).getTime() <= now.getTime()
+            return salesRowMatches({
+              when: g,
+              pack: slug !== null,
+              report: past ? reportIdFor(e, slug, calls) !== null : false,
+            }, tokens)
+          })
           // Today is drawn even when it is empty, because "nothing today" is an
           // answer he came here for. The other three are noise when empty.
           if (rows.length === 0 && (g !== 'today' || total === 0)) return null

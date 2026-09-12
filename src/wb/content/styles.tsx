@@ -134,7 +134,6 @@ function StyleRoster({ roster, laneRows, lane, loading, error, refresh }: {
           prominent={prominent} demoted={demoted}
           state={filters} setState={setFilters}
           shown={shown.length} loaded={roster.length} total={null} noun="styles"
-          inline
         />
       </Bar>
       {shown.length === 0
