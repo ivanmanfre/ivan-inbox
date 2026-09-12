@@ -53,6 +53,15 @@ const listeners = new Set<Listener>()
 let selected: SelectedRow[] = []
 let focusId: string | null = null
 let scope = ''
+// E3 · THE ANCHOR A SHIFT+CLICK MEASURES FROM: the last row a hand or a key
+// actually touched, which is NOT "the last row in the selection" — that array is
+// insertion-ordered and a range write appends many at once. It is a scalar
+// rather than part of the selection because a range is about the GESTURE, not
+// the set. Clearing the selection clears it, and so does a scope change: an
+// anchor left pointing at a row that is no longer on screen would silently
+// select from the top of the new list, which is the same class of accident
+// `setScope` exists to prevent.
+let anchorId: string | null = null
 // Is a keyboard layer mounted and listening?
 //
 // 🔴 WHY THIS EXISTS. `RowSelect` is rendered from `InboxScreen.tsx`, and that
@@ -86,6 +95,7 @@ export function setLayerMounted(v: boolean): void {
 
 export function getSelected(): SelectedRow[] { return selected }
 export function getFocusId(): string | null { return focusId }
+export function getAnchorId(): string | null { return anchorId }
 export function getScope(): string { return scope }
 export function isSelected(id: string): boolean { return selected.some(r => r.id === id) }
 
@@ -105,6 +115,10 @@ export function setFocus(id: string | null): void {
 
 export function toggleRow(row: SelectedRow): void {
   selected = isSelected(row.id) ? selected.filter(r => r.id !== row.id) : [...selected, row]
+  // A plain toggle is what a range is measured FROM, in both directions: a
+  // deselect leaves the anchor here too, so shift-clicking back over a run
+  // walks from the row the hand last touched rather than from a stale one.
+  anchorId = row.id
   emit()
 }
 
@@ -116,9 +130,28 @@ export function selectRows(rows: SelectedRow[]): void {
 }
 
 export function clearSelection(): void {
+  anchorId = null
   if (selected.length === 0) return
   selected = []
   emit()
+}
+
+/* E3 · THE IDS A SHIFT+CLICK COVERS. Pure: the ORDER comes from the caller
+   (which reads it off the live DOM, the same way j/k does), so this never has
+   an opinion about what is on screen. Two rules:
+
+   · No anchor, or an anchor that has scrolled out of the rendered window, means
+     this click selects ONE row. A range measured from a row the list can no
+     longer find would run from index 0, i.e. select everything above the
+     pointer, which is the accident this returns a single id to prevent.
+   · The direction does not matter; a range is a range. */
+export function rangeIds(order: string[], from: string | null, to: string): string[] {
+  const b = order.indexOf(to)
+  if (b < 0) return [to]
+  const a = from === null ? -1 : order.indexOf(from)
+  if (a < 0) return [to]
+  const [lo, hi] = a <= b ? [a, b] : [b, a]
+  return order.slice(lo, hi + 1)
 }
 
 // The tab / lane / filter guard. Called with a signature read off the DOM; any
@@ -130,6 +163,7 @@ export function setScope(next: string): void {
   const had = selected.length > 0 || focusId !== null
   selected = []
   focusId = null
+  anchorId = null
   if (had) emit()
 }
 
@@ -155,6 +189,7 @@ export function lookupRow(id: string): SelectedRow | null {
 export function resetStore(): void {
   selected = []
   focusId = null
+  anchorId = null
   scope = ''
   registry.clear()
   emit()

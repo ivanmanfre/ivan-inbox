@@ -64,6 +64,27 @@ function useRowH() {
   return h
 }
 
+/* E3 · THE CANVAS THE HOVER VERB IS FOR. Not "not the phone": a hover verb on
+   a touch device is a control that is either always on (the `hover:none` rule
+   in wb.css paints the inline actions at rest) or unreachable. This asks the
+   two questions that actually decide it -- is there a pointer that can hover,
+   and is the list wide enough to spend a tail on a verb -- and it is the SAME
+   condition the sheet uses, spelled once in each language. */
+const DESKTOP_HOVER_MQ = '(hover:hover) and (pointer:fine) and (min-width:768px)'
+
+function useDesktopHover(): boolean {
+  const [on, setOn] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia(DESKTOP_HOVER_MQ).matches)
+  useEffect(() => {
+    const mq = window.matchMedia(DESKTOP_HOVER_MQ)
+    const fn = (e: MediaQueryListEvent) => setOn(e.matches)
+    setOn(mq.matches)
+    mq.addEventListener('change', fn)
+    return () => mq.removeEventListener('change', fn)
+  }, [])
+  return on
+}
+
 /** The phone, as a boolean. The day groups are a desktop move. */
 function usePhone(): boolean {
   const [on, setOn] = useState(() =>
@@ -197,6 +218,38 @@ export function rowVerb({ mobile, pendingDraft, preRead }: {
   // 44px pills do not fit the row's one action track at 390, and the row itself
   // is 96px of tap target that opens the thread.
   return preRead ? null : 'open'
+}
+
+/* E3 · THE ROW NAMES ITS ONE VERB (isaiahbjork/leads-data-table).
+
+   The move: a row is quiet until it is pointed at, and the row under the
+   pointer swaps its right-hand metadata for the ONE thing that row is for. Here
+   the metadata is the age, the unread dot and the DRAFT chip, and the verb is
+   the affirmative action this row kind already offers -- nothing new is
+   introduced except the word `Open` on a plain conversation, which is what the
+   row's own click has always done and has never said.
+
+   WHY IT IS NAMED AND NOT JUST DRAWN: two of the three verbs already render
+   (Discard from `rowVerb`, `Sum up` from the host's `rowChip`), so without this
+   the tail would have to guess whether a row has a verb worth receding for. It
+   answers that in one place, and the sheet recedes the tail only where this
+   says there is something to recede FOR.
+
+   🔴 NOTHING HERE SENDS. `discard` stops a draft, `sumup` is a read, `open`
+   is a route. There is no branch of this function that can reach an approve,
+   and a conversation row's `caps` stay ['discard'] / [] regardless of it. */
+export function hoverVerbFor({ desktopHover, pendingDraft, preRead }: {
+  desktopHover: boolean
+  pendingDraft: boolean
+  preRead: boolean
+}): 'discard' | 'sumup' | 'open' | null {
+  // The phone and every touch canvas keep `rowVerb` exactly as R2 left it.
+  if (!desktopHover) return null
+  if (pendingDraft) return 'discard'
+  // The row already draws `Sum up`; it IS this row's verb, so no second one is
+  // added beside it.
+  if (preRead) return 'sumup'
+  return 'open'
 }
 
 // The phone's way back to Discard. Ported from the draft card's own swipe
@@ -404,6 +457,7 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
     : (status && filter !== 'spam' && !statusToken ? filterByStatus(laned, status) : laned)
   const rowH = useRowH()
   const phone = usePhone()
+  const desktopHover = useDesktopHover()
   // GRAFT B-1: the run of rows becomes a run of day groups on the desktop, each
   // header carrying how many conversations landed that day. The phone keeps the
   // flat run: at 390 the row already spends two lines on the same parts and a
@@ -575,6 +629,13 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
                 // R2: which verb this row shows, and where Discard went on the
                 // phone (a left swipe on the row, same gesture as the card).
                 const verb = rowVerb({ mobile: phone, pendingDraft: pendingDraft != null, preRead: chip != null })
+                // E3: which verb this row shows UNDER A POINTER, and whether
+                // the tail has something to recede for. `discard` and `sumup`
+                // already render (above, and as the host's chip); only `open`
+                // is drawn here, and only in the tail's own overlay.
+                const hover = hoverVerbFor({
+                  desktopHover, pendingDraft: pendingDraft != null, preRead: chip != null,
+                })
                 return (
                   /* THE HOST ELEMENT is what the command layer walks. RowSelect
                      writes `data-wbrow`, `data-wbsel` and `data-wbfocus` onto its
@@ -601,7 +662,7 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
                       lane={t.client_id}
                     />
                     <Row
-                      className="r"
+                      className={hover ? 'r a-dms-hasverb' : 'r'}
                       onClick={() => onOpenThread(t.prospect_id)}
                       unread={t.unread > 0}
                       selected={activeThread === t.prospect_id}
@@ -646,6 +707,24 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
                              inline Discard is painting over it. The wrapper is
                              `display:contents` everywhere else. */
                           : <span className="a-dms-draftchip"><Chip icon="wand">DRAFT</Chip></span>)}
+                        {/* E3 · THE VERB, IN THE METADATA'S OWN PLACE. It is
+                            absolutely positioned over the tail (the sheet), so
+                            it costs the row NOTHING at rest: the resting flex
+                            line, the 73px box the window measures against and
+                            the 420px list column's tuning are all untouched,
+                            and no `.ds-btn` is added to `.a-row-actions`, which
+                            three shipped rules key the DRAFT chip and the phone
+                            action track off. Drawn only where there is a
+                            pointer to reveal it. */}
+                        {hover === 'open' && (
+                          <span className="a-dms-verb">
+                            <Button
+                              variant="quiet"
+                              size="sm"
+                              onClick={e => { e.stopPropagation(); onOpenThread(t.prospect_id) }}
+                            >Open</Button>
+                          </span>
+                        )}
                       </>}
                       /* In the row, on hover or focus. Approve is deliberately
                          NOT here: approving a DM sends it to a real person, and

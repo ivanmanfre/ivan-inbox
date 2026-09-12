@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { dmsEmptyKind, rowVerb } from './InboxList'
+import { dmsEmptyKind, hoverVerbFor, rowVerb } from './InboxList'
 
 // W2-5 (absorbs GAPS-3): a screen with 0 rows on it is not always genuinely
 // empty. Only a host that has established the fetch resolved (`verifiedAt`
@@ -92,5 +92,44 @@ describe('the swipe never eats the next tap', () => {
   it('does not clear it when the gesture ENDS, which would let the click through', () => {
     const reset = src.slice(src.indexOf('const reset = () => {'), src.indexOf('return ('))
     expect(reset).not.toContain('swiped.current')
+  })
+})
+
+/* E3 · THE ROW NAMES ITS ONE VERB UNDER A POINTER (isaiahbjork/leads-data-table).
+   The hovered row gives up its right-hand metadata for the single thing it is
+   for. This is which thing — and the only NEW control it can ask for is `open`,
+   which is what the row's own click has always done and never said. */
+describe('hoverVerbFor', () => {
+  it('is silent on every canvas without a fine pointer to hover with', () => {
+    for (const pendingDraft of [true, false]) {
+      for (const preRead of [true, false]) {
+        expect(hoverVerbFor({ desktopHover: false, pendingDraft, preRead })).toBe(null)
+      }
+    }
+  })
+
+  it('keeps Discard as the pending-draft row\u2019s verb, which is what it already was', () => {
+    expect(hoverVerbFor({ desktopHover: true, pendingDraft: true, preRead: false })).toBe('discard')
+    expect(hoverVerbFor({ desktopHover: true, pendingDraft: true, preRead: true })).toBe('discard')
+  })
+
+  it('lets the Sum up the row already draws BE the verb, rather than adding a second', () => {
+    expect(hoverVerbFor({ desktopHover: true, pendingDraft: false, preRead: true })).toBe('sumup')
+  })
+
+  it('names Open on a plain conversation', () => {
+    expect(hoverVerbFor({ desktopHover: true, pendingDraft: false, preRead: false })).toBe('open')
+  })
+
+  it('never answers with anything that sends', () => {
+    const answers = new Set<unknown>()
+    for (const desktopHover of [true, false]) {
+      for (const pendingDraft of [true, false]) {
+        for (const preRead of [true, false]) {
+          answers.add(hoverVerbFor({ desktopHover, pendingDraft, preRead }))
+        }
+      }
+    }
+    expect([...answers].sort()).toEqual([null, 'discard', 'open', 'sumup'].sort())
   })
 })

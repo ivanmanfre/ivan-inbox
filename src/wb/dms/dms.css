@@ -676,3 +676,112 @@
    rather than `gap`: the phone wraps this bar and tunes its own row gap against
    the 390 fold, which is not a chip gap and is not this rule's business. */
 .a-dms > .a-bar{ column-gap:var(--ds-chip-gap) }
+
+/* ==========================================================================
+   E3 · THE HOVERED ROW SWAPS ITS METADATA FOR ITS ONE VERB.
+
+   Ported from isaiahbjork/leads-data-table (21st.dev, 120 uses): every row is
+   quiet until it is pointed at, and the row under the pointer gives up its
+   right-hand metadata — there, a date; here, the age, the unread dot and the
+   DRAFT chip — for the single thing that row is for. The skin is discarded
+   entirely; what is kept is the trade.
+
+   IT IS OPACITY AND TRANSFORM ONLY. Nothing in this block changes a box: the
+   tail keeps its width while its contents fade, and the verb is out of flow. A
+   row whose geometry moved under the pointer would fight `useRowWindow`, which
+   maps a scroll offset onto a FIXED height, and it would re-run the 420px
+   column's measured shrink on every hover.
+
+   WHERE IT DOES NOT APPLY, and why each one is a rule and not an oversight:
+   · No hover, or a coarse pointer: the metadata is the only thing there, and
+     `wb.css` already paints the inline actions at rest on such a canvas. A row
+     that hid its own age on tap would just lose the age.
+   · Under 768px: R2 owns the phone row and its verb is under the thumb.
+   · `.wb-work.list`: the pinned 420px column (a thread or the drawer open) is
+     TIGHTER than the phone — its tail carries `overflow:hidden` precisely so a
+     sheared DRAFT chip is hidden rather than clipped (R5a), so a verb drawn
+     inside that box would be cut off. The column keeps the row it has.
+   -------------------------------------------------------------------------- */
+.a-dms-verb{ display:none }
+
+@media (hover:hover) and (pointer:fine) and (min-width:768px){
+  .a-dms .a-row.r > .a-row-tail{ position:relative }
+
+  /* The metadata gives way. Only the rows that HAVE a verb to show do it, which
+     is what `.a-dms-hasverb` is written for: a row with nothing to offer keeps
+     its age under the pointer rather than blanking for nothing. */
+  .a-dms .a-row.r.a-dms-hasverb:hover > .a-row-tail > :not(.a-dms-verb),
+  .a-dms .a-row.r.a-dms-hasverb:focus-within > .a-row-tail > :not(.a-dms-verb),
+  .a-dms .a-row.r.a-dms-hasverb[data-focused] > .a-row-tail > :not(.a-dms-verb){
+    opacity:0;
+    transform:translateX(calc(var(--ds-s2) * -1));
+  }
+  .a-dms .a-row.r > .a-row-tail > *{
+    transition:opacity var(--ds-dur-hover) var(--ds-ease),
+               transform var(--ds-dur-hover) var(--ds-ease);
+  }
+
+  /* 🔴 THE TAIL HAS TO BE WIDE ENOUGH TO HOLD THE VERB, and the first build was
+     not: on a plain row the tail is only its timestamp (measured 16px for
+     "2d"), so a 55px button anchored to its right edge ran LEFT out of the cell
+     and painted over the title line's lane and channel pills — content that is
+     not receding and must not be covered. Caught by LOOKING at
+     `e3-d-dms-hover-open.png`, not by a number.
+
+     The floor is on the tail of exactly the rows that carry a verb inside it
+     (the `open` rows; `discard` and `sumup` render in the row's own actions and
+     their tails are already wider than this), so it is a 64px reservation on a
+     1070px row and nothing else moves. It is the same shape the reference's
+     grid gets for free: there the LAST ACTION column is a fixed track and the
+     button simply takes it. */
+  .a-dms .a-row.r:has(> .a-row-tail > .a-dms-verb) > .a-row-tail{
+    min-width:var(--ds-s11);
+    justify-content:flex-end;
+  }
+
+  /* The verb takes the place the metadata vacated: same right edge, out of
+     flow, so the resting line is byte-for-byte the one R5 measured. */
+  .a-dms-verb{
+    display:flex;
+    align-items:center;
+    position:absolute;
+    inset-block:0;
+    inset-inline-end:0;
+    opacity:0;
+    transform:translateX(var(--ds-s2));
+    pointer-events:none;
+    transition:opacity var(--ds-dur-hover) var(--ds-ease),
+               transform var(--ds-dur-hover) var(--ds-ease);
+  }
+  .a-dms .a-row.r:hover > .a-row-tail > .a-dms-verb,
+  .a-dms .a-row.r:focus-within > .a-row-tail > .a-dms-verb,
+  .a-dms .a-row.r[data-focused] > .a-row-tail > .a-dms-verb{
+    opacity:1;
+    transform:none;
+    pointer-events:auto;
+  }
+
+  /* The 420px column keeps the row it has (see the head of this block). The
+     width floor is withdrawn with the verb: `:has()` matches a `display:none`
+     child, so without this the pinned column would pay 64px of tail for a
+     control it never draws. Restated at the same four classes the column's own
+     tail rule uses, so it wins on specificity rather than on order. */
+  .wb-work.list .a-dms-verb{ display:none }
+  .wb-work.list .a-dms-rowhost > .a-row.r:has(> .a-row-tail > .a-dms-verb) > .a-row-tail{
+    min-width:var(--ds-s9);
+    justify-content:flex-start;
+  }
+  .wb-work.list .a-dms .a-row.r.a-dms-hasverb:hover > .a-row-tail > *{
+    opacity:1;
+    transform:none;
+  }
+}
+
+/* The setting is read: the swap survives, the travel does not. A verb that
+   appears is information; a verb that slides is decoration. The canvas
+   conditions are restated so the phone stays byte-for-byte untouched by this
+   move at every motion setting. */
+@media (prefers-reduced-motion:reduce) and (hover:hover) and (pointer:fine) and (min-width:768px){
+  .a-dms .a-row.r > .a-row-tail > *,
+  .a-dms-verb{ transform:none !important; transition:opacity var(--ds-dur-hover) var(--ds-ease) }
+}

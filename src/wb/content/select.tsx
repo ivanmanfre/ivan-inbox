@@ -15,6 +15,7 @@ import {
   isLayerMounted, registerRow, rowState, subscribe, toggleRow,
   type RowCap, type RowKind, type SelectedRow,
 } from '../../exp/v2c/commandStore'
+import { selectRange } from '../../exp/v2c/rangeSelect'
 import { Icon } from '../../ds'
 import './content.css'
 
@@ -75,9 +76,15 @@ export function RowSelect({ id, kind, label, caps, taxonomy, lane }: {
       role="checkbox"
       aria-checked={on}
       aria-label={on ? `Deselect ${label}` : `Select ${label}`}
-      title={on ? 'Selected. Click or press x to deselect.' : 'Select this row (x)'}
+      title={on ? 'Selected. Click or press x to deselect.' : 'Select this row (x). Shift+click to take a run.'}
       // A tap on the row opens it; the mark must not also fire that.
-      onClick={e => { e.stopPropagation(); toggleRow(rowRef.current) }}
+      // E3 · the SAME range helper the inbox mark calls — one answer to "what
+      // is between these two rows", shared rather than copied.
+      onClick={e => {
+        e.stopPropagation()
+        if (e.shiftKey && selectRange(id)) return
+        toggleRow(rowRef.current)
+      }}
     >
       {on ? <Icon name="check" size={16} /> : null}
     </button>

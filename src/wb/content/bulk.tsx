@@ -27,7 +27,7 @@
    ========================================================================== */
 import { useCallback, useSyncExternalStore } from 'react'
 import {
-  CAP_BUTTONS, CAP_ORDER, capCountOf, promoteAudience, useBulkRun,
+  CAP_BUTTONS, bulkVerbsFor, capCountOf, promoteAudience, useBulkRun,
 } from '../../exp/v2c/BulkBar'
 import { selectionNoun } from '../../exp/v2c/commandSource'
 import {
@@ -108,12 +108,15 @@ export function ContentBulkBar() {
   const caps = capCountOf(selected)
   const noun = selectionNoun(selected)
   const kinds = new Set(selected.map(r => r.kind))
-  // Read off CAP_ORDER rather than a hand-written list, so a capability added
-  // later cannot be left out of this check and silently print the refusal over
-  // a bar that does have a button to offer.
-  const noWrites = CAP_ORDER.every(c => caps[c] === 0)
+  // E3: the three questions this bar asks of a selection -- which verbs, which
+  // of them are live, and what to say about the ones that are not -- are ONE
+  // pure function now (`bulkVerbsFor`, exp/v2c/BulkBar.tsx), walked in CAP_ORDER
+  // so a capability added later cannot be left out of this check and silently
+  // print the refusal over a bar that does have a button to offer.
+  const verbs = bulkVerbsFor(selected)
+  const noWrites = verbs.length === 0
   const rowCount = visibleRows().length
-  const partial = !noWrites && CAP_ORDER.some(c => caps[c] > 0 && caps[c] < n)
+  const partial = verbs.some(v => !v.enabled)
 
   return (
     <BulkBar
@@ -134,27 +137,20 @@ export function ContentBulkBar() {
               {VERB.promote} {caps.promote === n ? n : `${caps.promote}/${n}`}
             </Button>
           )}
-          {!noWrites && CAP_BUTTONS.map(cap => {
-            const have = caps[cap]
-            if (have === 0) return null
-            const all = have === n
-            return (
-              <Button
-                key={cap}
-                // Delete and discard both carry a danger confirm, so both read
-                // as destructive here. Promote never reaches this map at all.
-                variant={cap === 'delete' || cap === 'discard' ? 'danger' : 'default'}
-                size="sm"
-                disabled={!all || state.busy}
-                title={all
-                  ? `${VERB[cap]} all ${n}`
-                  : `${have} of the ${n} selected rows can take this. A bulk action runs on every selected row or none.`}
-                onClick={() => run(cap)}
-              >
-                {VERB[cap]} {all ? n : `${have}/${n}`}
-              </Button>
-            )
-          })}
+          {verbs.filter(v => CAP_BUTTONS.includes(v.cap)).map(v => (
+            <Button
+              key={v.cap}
+              // Delete and discard both carry a danger confirm, so both read
+              // as destructive here. Promote never reaches this map at all.
+              variant={v.cap === 'delete' || v.cap === 'discard' ? 'danger' : 'default'}
+              size="sm"
+              disabled={!v.enabled || state.busy}
+              title={v.reason ?? `${VERB[v.cap]} all ${n}`}
+              onClick={() => run(v.cap)}
+            >
+              {VERB[v.cap]} {v.enabled ? n : `${v.have}/${n}`}
+            </Button>
+          ))}
         </>
       }
       note={

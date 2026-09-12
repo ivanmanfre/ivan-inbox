@@ -56,6 +56,16 @@
 .r:hover .a-selmark,
 [data-wbfocus='1'] .a-selmark{ opacity:1 }
 
+/* E3 · THE COLUMN APPEARS WHEN THE LIST IS BEING WORKED AS A SET. One row
+   picked and every mark is drawn, so "which others?" is a question the eye can
+   answer instead of a hunt with the pointer. The attribute is written on the
+   root by CommandLayer, which is the only place that holds the live selection;
+   it is withdrawn the moment the selection empties (Escape, Clear, a scope
+   change), and the marks go back to hover-and-focus. Both sheets' marks answer
+   to it, so the two lists cannot disagree about when the column is up. */
+:root[data-wbselecting] .a-selmark,
+:root[data-wbselecting] .a-ct-selmark{ opacity:1 }
+
 /* 🔴 IT ADDS NO BOX TO THE ROW. `.ct-card` is a seven-column grid with a fixed
    template, so a mark in the normal flow took the anchor's own column and
    shifted every other cell one place right: the title wrapped and the review
@@ -103,4 +113,35 @@
    -------------------------------------------------------------------------- */
 @media (max-width:767px){
   .a-selmark{ display:none }
+}
+
+/* --------------------------------------------------------------------------
+   🔴 E3 · THE MARK HAD NO BOX, AND HAD NOT HAD ONE FOR A WHILE.
+
+   `wb.css` carries `.a-root button:not([class*="ds-"]):not([class*="wb-"])`,
+   which strips `background`, `border` and `padding` off every button on a
+   workbench surface that is neither a design-system control nor shell chrome.
+   The selection mark is exactly that button, and at 0,3,1 that rule outranks
+   the 0,1,0 declarations at the top of this file. Measured through CDP's
+   matched-rule list (`CSS.getMatchedStylesForNode`), not by eye: computed
+   `background rgba(0,0,0,0)`, `border-width 0px`, on the checked state AND the
+   unchecked one. So the picked row showed a bare tick with no accent fill, and
+   an unpicked row showed nothing at all.
+
+   It never mattered while the mark was drawn one at a time under the pointer —
+   there was always a tick where the hand was. E3 draws every mark while a
+   selection stands, and twelve invisible checkboxes are not a checkbox column,
+   so the box has to be real. Restated at 0,4,1, which is the same out-specify
+   device the sheets it is fighting are themselves written with.
+   -------------------------------------------------------------------------- */
+.a-root button.a-selmark.a-selmark.a-selmark{
+  padding:var(--ds-s0);
+  background:var(--ds-surface-1);
+  border:1px solid var(--ds-line-strong);
+  border-radius:var(--ds-r1);
+  color:var(--ds-accent-ink);
+}
+.a-root button.a-selmark.a-selmark.a-selmark[data-on]{
+  background:var(--ds-accent);
+  border-color:var(--ds-accent);
 }

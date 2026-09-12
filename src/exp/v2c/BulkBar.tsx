@@ -94,6 +94,53 @@ export function capCountOf(rows: SelectedRow[]): Record<RowCap, number> {
   }
 }
 
+// E3 · WHICH VERBS A SELECTION ALLOWS, as a value rather than as four
+// expressions inside a render.
+//
+// Rule 2 of this bar -- an action runs on every selected row or none -- was
+// true in three places at once (the disabled state, the title, and `run`'s own
+// eligibility check) and nowhere as a thing that could be tested on a MIXED
+// selection. This is that thing: given the rows, it says which verbs appear,
+// which of them are live, and, for the ones that are not, the sentence that
+// says why. `capCountOf` still does the counting; this only reads it.
+//
+// 🔴 IT INVENTS NOTHING. A verb appears only when at least one selected row
+// WROTE that capability onto itself, and the row is the only place a capability
+// is written (RowSelect's `caps` prop). A conversation row carries ['discard']
+// for a pending draft and [] otherwise, so a DMs selection can never produce an
+// approve here however it is mixed -- pinned in bulkVerbs.test.ts.
+export type BulkVerb = {
+  cap: RowCap
+  /** How many of the selected rows can take it. */
+  have: number
+  total: number
+  enabled: boolean
+  /** Why it is refused. Null when it is live. */
+  reason: string | null
+}
+
+export function bulkVerbsFor(rows: SelectedRow[]): BulkVerb[] {
+  const total = rows.length
+  const counts = capCountOf(rows)
+  const out: BulkVerb[] = []
+  for (const cap of CAP_ORDER) {
+    const have = counts[cap]
+    if (have === 0) continue
+    const enabled = have === total
+    out.push({
+      cap,
+      have,
+      total,
+      enabled,
+      reason: enabled
+        ? null
+        : `${have} of the ${total} selected rows can take this. `
+          + 'A bulk action runs on every selected row or none.',
+    })
+  }
+  return out
+}
+
 // Whose board this batch would land on. A promote confirm that does not name the
 // client is not a confirm. Every selection here is lane-scoped by the fetch
 // (content.ts laneFilter), so this is one value in practice, but it is READ off

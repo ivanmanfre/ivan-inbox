@@ -190,6 +190,25 @@ export function CommandLayer() {
     return () => setLayerMounted(false)
   }, [])
 
+  // E3 · WHILE A SELECTION EXISTS, EVERY MARK IS VISIBLE. At rest a mark is
+  // drawn only under the pointer or on the row the keyboard is on, which is the
+  // rule that keeps 300 checkboxes off the screen. The moment ONE row is picked
+  // the list is being worked as a set, and a column of marks the eye can scan is
+  // what makes "which others?" answerable — a hidden checkbox on the row beside
+  // a selected one reads as a row that cannot be selected at all.
+  //
+  // It is an attribute on the ROOT rather than a class per row: the marks are
+  // owned by two different sheets on three different lists, and a store the CSS
+  // could read does not exist. Written here because this layer already holds the
+  // live selection, and withdrawn on unmount with the layer itself.
+  const selectingCount = selected.length
+  useEffect(() => {
+    const root = document.documentElement
+    if (selectingCount > 0) root.setAttribute('data-wbselecting', '')
+    else root.removeAttribute('data-wbselecting')
+    return () => root.removeAttribute('data-wbselecting')
+  }, [selectingCount])
+
   // Scope watch. Cheap poll rather than a subtree MutationObserver over a list
   // that can hold 300 rows: this asks four questions of four elements.
   useEffect(() => {

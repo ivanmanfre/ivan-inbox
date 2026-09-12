@@ -5,6 +5,7 @@ import {
   isLayerMounted, registerRow, rowState, subscribe, toggleRow,
   type RowCap, type RowKind, type SelectedRow,
 } from './commandStore'
+import { selectRange } from './rangeSelect'
 
 // THE SELECTION MARK, and the row's registration with the keyboard layer.
 //
@@ -87,9 +88,18 @@ export function RowSelect({ id, kind, label, caps, taxonomy, lane }: {
       role="checkbox"
       aria-checked={on}
       aria-label={on ? `Deselect ${label}` : `Select ${label}`}
-      title={on ? 'Selected. Click or press x to deselect.' : 'Select this row (x)'}
+      title={on ? 'Selected. Click or press x to deselect.' : 'Select this row (x). Shift+click to take a run.'}
       // A tap on the row opens it; the mark must not also fire that.
-      onClick={e => { e.stopPropagation(); toggleRow(rowRef.current) }}
+      //
+      // E3 · SHIFT TAKES THE RUN. `selectRange` answers false when there is
+      // nothing to extend from — no anchor yet, or an anchor that has scrolled
+      // out of a windowed list — and the click then does what a plain click
+      // does. A modifier that silently no-ops is worse than one that falls back.
+      onClick={e => {
+        e.stopPropagation()
+        if (e.shiftKey && selectRange(id)) return
+        toggleRow(rowRef.current)
+      }}
     >
       {/* The tick was a unicode glyph doing an icon's job. */}
       {on ? <Icon name="check" size={16} /> : null}

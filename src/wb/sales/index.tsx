@@ -104,6 +104,49 @@ function reportIdFor(event: WeekEvent, slug: string | null, calls: CallRow[]): s
   return hit?.id ?? null
 }
 
+/* ===========================================================================
+   E3 · THE ONE VERB THIS ROW NEEDS (isaiahbjork/leads-data-table).
+
+   The row draws six equal chips — card / sheet / audit / ideas / JSON / compare
+   — and equal is the defect: nothing on the strip says which of them he should
+   have open when he says hello. The move gives the row a hierarchy without
+   taking anything away: under a pointer the row's right-hand metadata (the two
+   clocks) gives way to the ONE document this row is for, and the six chips stay
+   exactly where they are, one click each, because this file's own contract is
+   that every document that exists is ONE CLICK from the row.
+
+   WHICH ONE, read off the row kinds this list already draws:
+   · a call that has happened and has a report under it → the report. It is the
+     only thing on a past row that did not exist before the call.
+   · a call still to come with a matched pack → the card. It is the document the
+     file's header names as the one he reads first.
+   · a past call with no report, or any call with no pack → NOTHING. There is no
+     affirmative verb to offer and inventing one ("Find pack") would be a button
+     that cannot do what it says.
+
+   `Join` is deliberately NOT a hover verb: it is already a standing control at
+   the tap floor, and it is the one thing on this screen with a deadline
+   attached — it may never depend on a pointer being in the right place.
+
+   🔴 AND INSIDE THE HOUR THERE IS NO HOVER VERB AT ALL. This file's rule for
+   Join is that it turns accent "when it is the only thing worth touching". A
+   second accent control beside it would make that sentence false, on the one
+   row where being wrong costs him a call he is not on. Caught by LOOKING at
+   `e3-d-sales-hover.png`, where the lime verb sits next to Join.
+
+   Pure and exported so the fork is a unit test rather than a screenshot. */
+export function salesVerbFor({ past, hasReport, hasPack, joinLive = false }: {
+  past: boolean
+  hasReport: boolean
+  hasPack: boolean
+  /** The call starts inside the hour and Join has gone accent. */
+  joinLive?: boolean
+}): 'report' | 'card' | null {
+  if (joinLive) return null
+  if (past) return hasReport ? 'report' : null
+  return hasPack ? 'card' : null
+}
+
 // ---------------------------------------------------------------------------
 // The surface
 // ---------------------------------------------------------------------------
@@ -213,10 +256,17 @@ export function SalesSurface({ onOpenCall }: {
     // three hours ago is still "today", and it must not keep offering Join.
     const past = group === 'earlier' || t.past || new Date(e.end_time ?? e.start_time).getTime() <= now.getTime()
     const reportId = past ? reportIdFor(e, slug, calls) : null
+    // E3: the one verb this row is for, revealed where the clocks are.
+    const verb = salesVerbFor({
+      past,
+      hasReport: reportId !== null,
+      hasPack: slug !== null,
+      joinLive: t.soon && !past && Boolean(e.meeting_url),
+    })
 
     return (
       <div
-        className="a-row a-sl-row" key={e.id} data-past={past ? '' : undefined}
+        className={`a-row a-sl-row${verb ? ' a-sl-hasverb' : ''}`} key={e.id} data-past={past ? '' : undefined}
         // The two attributes the week gate reads: which calendar row this is,
         // and which pack the matcher put under it. They are the only way an
         // outside check can tell "the right call, the right pack" from "a row
@@ -238,6 +288,24 @@ export function SalesSurface({ onOpenCall }: {
             {t.soon ? <LiveDot label="Starting now" /> : null}
             {t.warsaw} Warsaw<Sep />{t.utc}<Sep />{past ? 'done' : t.rel}
           </span>
+          {/* E3: absolutely positioned over the clocks by the sheet, so the row
+              at rest is byte-for-byte the row E2 measured, and the clocks come
+              straight back when the pointer leaves. Hover canvases only. */}
+          {verb === 'report' && reportId ? (
+            <span className="a-sl-verb">
+              <Chip icon="doc" tone="accent" onClick={() => onOpenCall(reportId, calls)}>Report</Chip>
+            </span>
+          ) : null}
+          {verb === 'card' && slug ? (
+            <span className="a-sl-verb">
+              <Chip
+                tone="accent"
+                href={docHref(slug, 'card')}
+                target="_blank"
+                title={`${DOC_LABEL.card} — opens in a new tab`}
+              >Open card</Chip>
+            </span>
+          ) : null}
         </div>
 
         {/* One tap, and it leaves the app: the meeting link is the only control

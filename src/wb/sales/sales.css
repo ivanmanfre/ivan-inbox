@@ -169,3 +169,74 @@
   flex-wrap:wrap; row-gap:var(--ds-s2);
   column-gap:var(--ds-chip-gap);
 }
+
+/* ==========================================================================
+   E3 · THE CLOCKS GIVE WAY TO THE ROW'S ONE VERB.
+
+   Same trade as the DMs list, same source (isaiahbjork/leads-data-table): the
+   row under the pointer swaps its right-hand metadata for the single thing that
+   row is for. Here the metadata is the two clocks and the verb is the document
+   he should have open — the report on a call that happened, the card on one
+   still to come (`salesVerbFor`, index.tsx).
+
+   THE SIX CHIPS ARE NOT TOUCHED. They keep their line and their one click
+   each, including the quiet ones for documents that do not exist, because this
+   file's own rules are that a missing pack has to be visible BEFORE the call
+   and that every document that exists is one click from the row. Dissolving
+   the strip on hover would have cost five of six documents a second click and
+   hidden the gaps at exactly the moment he looks for them.
+
+   OPACITY AND TRANSFORM ONLY, and the verb is out of flow, so the resting row
+   is the one E2 measured. `Join` is untouched: it is a standing control with a
+   deadline on it and it never depends on where a pointer is.
+   -------------------------------------------------------------------------- */
+.a-sl-verb{ display:none }
+
+@media (hover:hover) and (pointer:fine) and (min-width:768px){
+  .a-sl-top{ position:relative }
+
+  .a-sl-row.a-sl-hasverb:hover .a-sl-time,
+  .a-sl-row.a-sl-hasverb:focus-within .a-sl-time{
+    opacity:0;
+    transform:translateX(calc(var(--ds-s2) * -1));
+  }
+  .a-sl-time{
+    transition:opacity var(--ds-dur-hover) var(--ds-ease),
+               transform var(--ds-dur-hover) var(--ds-ease);
+  }
+
+  .a-sl-verb{
+    display:flex;
+    align-items:center;
+    position:absolute;
+    inset-inline-end:0;
+    inset-block-start:50%;
+    opacity:0;
+    transform:translateY(-50%) translateX(var(--ds-s2));
+    pointer-events:none;
+    transition:opacity var(--ds-dur-hover) var(--ds-ease),
+               transform var(--ds-dur-hover) var(--ds-ease);
+  }
+  .a-sl-row:hover .a-sl-verb,
+  .a-sl-row:focus-within .a-sl-verb{
+    opacity:1;
+    transform:translateY(-50%);
+    pointer-events:auto;
+  }
+
+  /* Density B stacks the head and the clocks into a column, so there is no
+     right-hand metadata cell to trade. The cards keep their chips and nothing
+     is hidden under a pointer. */
+  .a-sl[data-density='b'] .a-sl-verb{ display:none }
+  .a-sl[data-density='b'] .a-sl-row.a-sl-hasverb:hover .a-sl-time{ opacity:1; transform:none }
+}
+
+/* The swap survives, the travel does not. Canvas conditions restated so the
+   phone is untouched at every motion setting. */
+@media (prefers-reduced-motion:reduce) and (hover:hover) and (pointer:fine) and (min-width:768px){
+  .a-sl-time,
+  .a-sl-verb{ transition:opacity var(--ds-dur-hover) var(--ds-ease) }
+  .a-sl-row.a-sl-hasverb:hover .a-sl-time{ transform:none }
+  .a-sl-verb{ transform:translateY(-50%) }
+  .a-sl-row:hover .a-sl-verb{ transform:translateY(-50%) }
+}
