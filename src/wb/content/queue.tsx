@@ -114,7 +114,6 @@ export function QueueStrip({ rows, loading, error, loadedAt, refresh }: {
           prominent={queueProminent} demoted={queueDemoted}
           state={filters} setState={setFilters}
           shown={shown.length} loaded={rows.length} total={null} noun="queue rows"
-          inline
         />
       </div>
       {shown.length === 0

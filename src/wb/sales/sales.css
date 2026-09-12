@@ -152,3 +152,20 @@
 
 /* R5b · The week row's chips, at the chip gap (tokens.css §2). */
 .a-sl-chips{ column-gap:var(--ds-chip-gap) }
+
+
+/* --------------------------------------------------------------------------
+   E2 · THE FILTER BAND (goal run inbox-repair-floor-and-21st-moves-2026-09-12).
+
+   `.a-bar` is borrowed for the look and the padding; the sticky offset it
+   carries is written for a bar that is the kit `Head`'s sibling, and this head
+   is this file's own. So it sits still, and it lets a popover out — an
+   absolutely positioned panel inside an `overflow-x:auto` box is cut off at
+   the bar's edge.
+   -------------------------------------------------------------------------- */
+.a-sl .a-sl-filterbar{
+  position:static;
+  overflow-x:visible; overflow-y:visible;
+  flex-wrap:wrap; row-gap:var(--ds-s2);
+  column-gap:var(--ds-chip-gap);
+}
