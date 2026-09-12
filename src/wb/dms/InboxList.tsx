@@ -15,7 +15,7 @@ import { internalHoldSummary } from '../../lib/inbox'
    number, used by the arithmetic and by the box, so the two cannot drift.
    ========================================================================== */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Badge, Banner, Button, Chip, DayHeader, EmptyState, IconButton, Input } from '../../ds'
+import { Badge, Banner, Button, Chip, DayHeader, EmptyState, FilterTokens, IconButton, Input } from '../../ds'
 import { Body, Group, Head, Bar, Row, Rows, Screen } from '../kit'
 import { Face, PullMark, Pill, timeAgo } from './parts'
 import { InboxSkeleton } from '../chrome/Skeleton'
@@ -23,6 +23,7 @@ import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { returnsIn } from '../../lib/pushLater'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import { discardDraft, filterByStatus, filterThreads, inboxWaitingCount, isLeadMagnet, searchThreads, threadKind, type Filter, type Status, type Thread, eventTime } from '../../lib/inbox'
+import { DM_FIELDS, applyThreadTokens, hasStatusToken, tokensForFilter, type FilterToken } from '../../lib/filterTokens'
 import { checkedPhrase } from '../../lib/today'
 import { clientBadge } from '../../lib/labels'
 import { RowSelect } from '../../exp/v2c/RowSelect'
@@ -289,10 +290,19 @@ function RowHost({ height, onDiscard, children }: {
   )
 }
 
-export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt, refreshing = false, cachedAt = null, error = null, title = 'Inbox', status, before, after, rowsFor, renderRow, rowNote, rowChip, rowTag, renderNote, emptyLine }: {
+export function InboxList({ threads, filter, setFilter, tokens, setTokens, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt, refreshing = false, cachedAt = null, error = null, title = 'Inbox', status, before, after, rowsFor, renderRow, rowNote, rowChip, rowTag, renderNote, emptyLine }: {
   threads: Thread[]
   filter: Filter
   setFilter: (f: Filter) => void
+  /* E2 · THE LANE IS A TOKEN SET NOW.
+     Supplied together or not at all. Given both, the six lane chips become
+     SHORTCUTS that write tokens, the `+` adds any of the nine fields the
+     Thread type proves, and `filter` above is DERIVED from the set by the
+     host (filterFromTokens) so that WarmSignals, DmHistory, PushedBar and the
+     stale bar keep the `Filter` they have always taken. Given neither, this
+     list is byte-for-byte the chip bar it was. */
+  tokens?: FilterToken[]
+  setTokens?: (t: FilterToken[]) => void
   refresh: () => void
   onOpenThread: (id: string) => void
   onOpenDrafts: () => void
@@ -376,16 +386,22 @@ export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, o
     if (!ok) return
     try { await discardDraft(t.draft.id) } finally { refresh() }
   }
-  const laned = filterThreads(threads, filter)
+  const tokenMode = tokens !== undefined && setTokens !== undefined
+  const laned = tokenMode ? applyThreadTokens(threads, tokens) : filterThreads(threads, filter)
   // A SEARCH reaches the whole lane; the LIST does not. The browsable list is
   // what is waiting on him, while typing a name still finds a conversation where
   // the ball is with them. Cutting those rows from search too would turn "I
   // don't need to browse these" into "I can never look one up".
   // The spam folder is read whole: its rows are closed and owe nothing, so a
   // status axis would empty it.
+  // A `status` TOKEN is the authority on that axis: applyThreadTokens has
+  // already run filterByStatus with the value he picked, and intersecting it
+  // with the surface's own default ('needs', frozen since 2026-08-04) would
+  // empty every view but that one.
+  const statusToken = tokenMode && hasStatusToken(tokens)
   const shown = query
     ? searchThreads(laned, query)
-    : (status && filter !== 'spam' ? filterByStatus(laned, status) : laned)
+    : (status && filter !== 'spam' && !statusToken ? filterByStatus(laned, status) : laned)
   const rowH = useRowH()
   const phone = usePhone()
   // GRAFT B-1: the run of rows becomes a run of day groups on the desktop, each
@@ -462,12 +478,24 @@ export function InboxList({ threads, filter, setFilter, refresh, onOpenThread, o
           <Chip
             key={c.key}
             selected={filter === c.key}
-            onClick={() => setFilter(c.key)}
+            // E2: in token mode the chip WRITES the token set it stands for
+            // (`Arch` → `lane is Arch`, `Likely spam` → `spam is yes`, `All` →
+            // nothing at all) and the lane it selects is unchanged — the same
+            // rows, reached by a control that can now say more than six things.
+            onClick={() => (tokenMode ? setTokens!(tokensForFilter(c.key)) : setFilter(c.key))}
             // tabs-07: the count appears only when there is one to show.
             count={c.key === 'all' && waitingTotal > 0 ? waitingTotal
               : c.key === 'spam' && spamTotal > 0 ? spamTotal : undefined}
           >{c.label}</Chip>
         ))}
+        {tokenMode && (
+          <FilterTokens
+            fields={DM_FIELDS}
+            tokens={tokens}
+            setTokens={setTokens!}
+            surfaceLabel="DMs"
+          />
+        )}
       </Bar>
 
       {head}

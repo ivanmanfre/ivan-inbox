@@ -1406,6 +1406,161 @@ body :focus-visible{
 }
 
 /* ==========================================================================
+   21 · FILTER TOKENS (E2, goal run inbox-repair-floor-and-21st-moves-2026-09-12).
+
+   Ported from andrewlu0/filters: a filter is a row of segmented pills read as
+   a sentence — `[field] [is] [value] [×]` — with a `+` that opens a searchable
+   field list. Every pixel of the reference's skin is discarded; what survives
+   is the shape.
+
+   THREE RULES THIS SHEET KEEPS:
+   · `display:contents` on the row, so the tokens are direct flex children of
+     whatever bar hosts them and the chip row and the token row are ONE row.
+   · The field NAME is mono. It is a column, and a column name is not prose.
+   · The lime is spent ONCE per token, on the VALUE — the half that is hiding
+     rows right now. As text, never as a fill: the fill budget belongs to the
+     one primary action on a screen (tokens.css §1.5).
+   ========================================================================== */
+.ds-ftk{ display:contents }
+.ds-ftk-slot{ display:inline-flex; min-width:0 }
+
+/* A bar that hosts a token row WRAPS and stops clipping. `.a-bar` scrolls
+   sideways by default, which is right for a run of chips and fatal for a
+   popover anchored inside it — an absolutely positioned panel in an
+   `overflow-x:auto` box is cut off at the bar's own edge. Matched with
+   `:has()` so the three surfaces (and content's seven call sites) get it from
+   one rule and nothing that has no tokens changes at all. */
+.a-bar:has(.ds-ftk){
+  flex-wrap:wrap; row-gap:var(--ds-s2);
+  overflow-x:visible; overflow-y:visible;
+}
+.a-bar .ds-ftk-slot, .a-bar .ds-ftk-anchor, .a-bar .ds-ftk-clear{ flex-shrink:0 }
+
+.ds-ftk-token{
+  display:inline-flex; align-items:stretch;
+  /* THE SEAM. One pixel of the ground between the parts is what makes four
+     controls read as one pill with four jobs, which is the whole move. */
+  gap:1px;
+  height:var(--ds-control-h);
+  max-width:100%;
+}
+/* THE PILL'S ENDS, ROUNDED ON THE PARTS THEMSELVES. `overflow:hidden` on the
+   token would be the shorter way to say this and it CLIPPED THE POPOVER: the
+   value menu is anchored inside the token it belongs to, so a container that
+   crops its own children cropped the menu to a 36px strip. Measured on the
+   first capture — `popoverOpen: true` with nothing on screen. The first part is
+   always the field label and the last is always the × , so two rules do it. */
+.ds-ftk-f{ border-start-start-radius:var(--ds-r2); border-end-start-radius:var(--ds-r2) }
+.ds-ftk-x{ border-start-end-radius:var(--ds-r2); border-end-end-radius:var(--ds-r2) }
+.ds-ftk-anchor{ position:relative; display:inline-flex; align-items:stretch; min-width:0 }
+
+.ds-ftk-f,
+.ds-ftk-op,
+.ds-ftk-v,
+.ds-ftk-x{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:0;
+  padding-inline:var(--ds-s3);
+  margin:0; border:0;
+  background:var(--ds-surface-2);
+  color:var(--ds-text-3);
+  font-family:inherit; font-size:var(--ds-fs-meta); line-height:1;
+  white-space:nowrap;
+  transition:background-color var(--ds-dur-hover) var(--ds-ease),
+             color var(--ds-dur-hover) var(--ds-ease);
+}
+.ds-ftk-f{
+  background:var(--ds-surface-3);
+  color:var(--ds-text-2);
+  font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono);
+  font-variant-numeric:tabular-nums;
+}
+/* §0's `.ds-body button{ color:inherit }` is 0,1,1 and outranks a bare class,
+   so every one of these read WHITE off the bar until the selectors were raised
+   to match it. Caught by probing the computed colour, not by looking. */
+.ds-body button.ds-ftk-op,
+.ds-body button.ds-ftk-x,
+.ds-body button.ds-ftk-add,
+.ds-body button.ds-ftk-clear{ color:var(--ds-text-3) }
+
+button.ds-ftk-op, button.ds-ftk-v, button.ds-ftk-x{ cursor:pointer }
+.ds-body button.ds-ftk-op:hover,
+.ds-body button.ds-ftk-op[aria-expanded='true']{ background:var(--ds-surface-3); color:var(--ds-text) }
+
+/* THE LIVE HALF, and the only lime on the control. */
+.ds-body button.ds-ftk-v{ color:var(--ds-accent-ui); font-weight:var(--ds-fw-medium) }
+.ds-body button.ds-ftk-v:hover,
+.ds-body button.ds-ftk-v[aria-expanded='true']{ background:var(--ds-surface-3) }
+
+/* 32px is the desktop hit floor the audit measures against; the glyph is 16. */
+.ds-ftk-x{ padding-inline:var(--ds-s2); min-width:var(--ds-s8) }
+.ds-body button.ds-ftk-x:hover{ background:var(--ds-sev-urgent-soft); color:var(--ds-sev-urgent-ui) }
+
+.ds-ftk-add{
+  display:inline-flex; align-items:center; justify-content:center; gap:var(--ds-s2);
+  height:var(--ds-control-h); min-width:var(--ds-control-h);
+  padding-inline:var(--ds-s3);
+  margin:0; border:0; border-radius:var(--ds-r2);
+  background:transparent; box-shadow:inset 0 0 0 1px var(--ds-line);
+  color:var(--ds-text-3);
+  font-family:inherit; font-size:var(--ds-fs-meta); line-height:1;
+  white-space:nowrap; cursor:pointer;
+  transition:background-color var(--ds-dur-hover) var(--ds-ease),
+             color var(--ds-dur-hover) var(--ds-ease),
+             box-shadow var(--ds-dur-hover) var(--ds-ease);
+}
+.ds-body button.ds-ftk-add:hover{ background:var(--ds-wash); color:var(--ds-text) }
+.ds-body button.ds-ftk-add[aria-expanded='true']{
+  background:var(--ds-wash); color:var(--ds-text);
+  box-shadow:inset 0 0 0 1px var(--ds-accent-line);
+}
+.ds-ftk-add-t{ font-size:var(--ds-fs-meta) }
+
+.ds-ftk-clear{
+  display:inline-flex; align-items:center; justify-content:center;
+  height:var(--ds-control-h); padding-inline:var(--ds-s3);
+  margin:0; border:0; border-radius:var(--ds-r2);
+  background:transparent; color:var(--ds-text-3);
+  font-family:inherit; font-size:var(--ds-fs-meta); line-height:1;
+  cursor:pointer;
+  transition:background-color var(--ds-dur-hover) var(--ds-ease),
+             color var(--ds-dur-hover) var(--ds-ease);
+}
+.ds-body button.ds-ftk-clear:hover{ background:var(--ds-wash); color:var(--ds-text) }
+
+/* The panel. Same geometry as content's own facet menu, which is the panel a
+   filter on this app already opens. */
+.ds-popover.ds-ftk-pop{
+  inset-inline-start:0; top:calc(100% + var(--ds-s2));
+  min-width:13rem; max-width:20rem;
+  padding:var(--ds-s2);
+}
+.ds-ftk-menu{ display:flex; flex-direction:column; gap:var(--ds-s2); min-width:0 }
+.ds-ftk-menu-head{ padding:var(--ds-s1) }
+.ds-ftk-menu-body{ display:flex; flex-direction:column; max-height:16rem; overflow-y:auto }
+.ds-ftk-menu-empty{ padding:var(--ds-s3) }
+.ds-ftk-menu-row{
+  flex:1 1 auto; min-width:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.ds-ftk-menu-row[data-on]{ color:var(--ds-accent-ui) }
+/* The keyboard highlight rides the row it names rather than a second colour on
+   the label, so arrowing down and hovering look like the same thing. */
+.ds-popover-item:has(.ds-ftk-menu-row[data-hi]){ background:var(--ds-wash); color:var(--ds-text) }
+
+/* 21.1 · The phone. Every control on the token reaches the 44px floor, which
+   is why a token is a wide object here and the row wraps rather than scrolls. */
+@media (max-width:767px){
+  .ds-ftk-token{ height:var(--ds-tap) }
+  .ds-ftk-token button{ min-width:var(--ds-tap) }
+  .ds-ftk-f{ padding-inline:var(--ds-s4) }
+  .ds-ftk-x{ min-width:var(--ds-tap); padding-inline:var(--ds-s3) }
+  .ds-ftk-add, .ds-ftk-clear{ height:var(--ds-tap); min-width:var(--ds-tap) }
+  .ds-ftk-menu-body{ max-height:none }
+  .ds-sheet .ds-ftk-menu-body .ds-popover-item{ min-height:var(--ds-tap) }
+}
+
+/* ==========================================================================
    18 · THE COLLAPSE. A reduced-motion request outranks every authored duration
    in this sheet. MotionConfig reducedMotion="user" does the same for the
    motion components, so the two halves of the system stop together.
