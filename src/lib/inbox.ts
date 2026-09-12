@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { STAGE_LADDER, stageIsOff, stageStep } from '../exp/v2c/stage'
 
 export type InboxMessage = {
   id: string; prospect_id: string; direction: 'inbound' | 'outbound';
@@ -103,6 +104,79 @@ export type Thread = {
   // view — the reply-blindspot class of bug). Going by message rows alone would
   // make every one of them invisible, so the flag rides on the thread.
   needsManualReply: boolean;
+}
+
+/* ==========================================================================
+   E1 · THE LADDER, DERIVED FROM FIELDS (goal run
+   inbox-repair-floor-and-21st-moves-2026-09-12).
+
+   The thread pane drew the stage ladder off `stageStep(stage)` alone, which can
+   only ever say done / current / todo. A pipeline that can only move forward
+   cannot say a thing FAILED, so a send the dispatcher blocked at the send moment
+   drew exactly like a person who has simply not replied yet.
+
+   THE RULE: `failed` renders only where a FIELD proves it. Nothing here infers a
+   failure from a stage that stopped moving, from an age, or from a silence.
+   ========================================================================== */
+
+/** A send that was blocked and is not coming back on its own.
+
+    ONE predicate for the ladder and for the bubble's own "Send failed: …" label
+    (Conversation.tsx's `outLabel`), so the rung and the message under it can
+    never disagree about whether something failed. Every recoverable state is
+    excluded by name: the discard marker, a race hold and a lint hold (both of
+    which `isDraft` treats as still-pending), and the internal-confirmation
+    reasons, which are a question waiting on an owner rather than a failure. */
+export function sendFailed(m: InboxMessage): boolean {
+  if (m.direction !== 'outbound') return false
+  if (m.send_blocked_at === null) return false
+  if (m.send_blocked_reason === DISCARD_REASON) return false
+  if (isRecoverableHold(m.send_blocked_reason)) return false
+  if (isInternalConfirmation(m)) return false
+  return true
+}
+
+export type LadderStepState = 'done' | 'current' | 'todo' | 'failed'
+export type LadderStep = { id: string; label: string; state: LadderStepState }
+
+/** What the pane draws where the ladder goes. `off` and `unknown` carry the raw
+    stage so the caller can put it through `label()`; this module never renders. */
+export type LadderView =
+  | { kind: 'off'; stage: string }
+  | { kind: 'unknown'; stage: string }
+  | { kind: 'steps'; steps: LadderStep[] }
+
+export function ladderSteps(thread: Pick<Thread, 'stage' | 'messages'>): LadderView {
+  const stage = thread.stage ?? ''
+  // Off the ladder entirely (archived / disqualified / bounced). Not a failed
+  // RUNG — there is no rung — and not a state this function invents a position
+  // for either.
+  if (stageIsOff(stage)) return { kind: 'off', stage }
+  const step = stageStep(stage)
+  // A stage this app has not been taught. Saying so beats drawing a guess: the
+  // outreach engine owns that vocabulary and adds to it regularly.
+  if (step === null) return { kind: 'unknown', stage }
+  // THE LAST OUTBOUND ROW, and only that one. A send that failed in March and
+  // was followed by one that landed is history, not the state of this
+  // conversation; marking the rung red for ever would be the same class of lie
+  // as a severity on a backlog.
+  let lastOut: InboxMessage | null = null
+  for (const m of thread.messages) {
+    if (m.direction !== 'outbound') continue
+    if (isDraft(m) || isInternalConfirmation(m)) continue
+    lastOut = m
+  }
+  const failed = lastOut !== null && sendFailed(lastOut)
+  return {
+    kind: 'steps',
+    steps: STAGE_LADDER.map((l, i) => ({
+      id: l,
+      label: l,
+      // The failure happened on the rung the conversation is standing on: the
+      // ones behind it really were climbed.
+      state: i < step ? 'done' : i === step ? (failed ? 'failed' : 'current') : 'todo',
+    })),
+  }
 }
 
 export type Filter = 'all' | 'ivan' | 'risedtc' | 'arch' | 'email' | 'spam'

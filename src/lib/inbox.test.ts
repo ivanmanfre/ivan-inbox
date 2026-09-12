@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { isReplyRetryPending, internalHoldSummary, isOwnerConfirmation, isInternalConfirmation, isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, type InboxMessage, type Status, type DraftGuard } from './inbox'
+import { isReplyRetryPending, internalHoldSummary, isOwnerConfirmation, isInternalConfirmation, isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, ladderSteps, sendFailed, type InboxMessage, type Status, type DraftGuard } from './inbox'
 
 // inbox.ts:191 gates needsAnswer on a 14-day wall-clock staleness window
 // (STALE_DAYS), measured against Date.now() by default -- and most callers
@@ -907,5 +907,94 @@ describe('automatic reply retry boundary', () => {
     const next = { ...base, id: 'new', created_at: '2026-07-22T11:00:00Z' }
     expect(groupThreads([retry, next])[0].ownerConfirmation).toBeNull()
     expect(groupThreads([retry, next])[0].draft?.id).toBe('new')
+  })
+})
+
+/* E1 · THE LADDER, DERIVED FROM FIELDS.
+
+   `failed` is a live signal, so it may only be drawn where a field proves it.
+   These fixtures are the four shapes the pane has to get right: a young thread,
+   one that has stalled (which is NOT a failure), one that has left the ladder,
+   and one where the last send was actually blocked. */
+describe('ladderSteps', () => {
+  const out = (o: Partial<InboxMessage>): InboxMessage => ({ ...base, direction: 'outbound', sent_at: '2026-07-22T10:00:00Z', approved_at: '2026-07-22T09:00:00Z', ...o })
+  const inb = (o: Partial<InboxMessage> = {}): InboxMessage => ({ ...base, direction: 'inbound', sent_at: '2026-07-22T10:00:00Z', ...o })
+  const states = (v: ReturnType<typeof ladderSteps>) =>
+    (v.kind === 'steps' ? v.steps.map(s => s.state) : v.kind)
+
+  it('a young thread: the invite is the rung it stands on', () => {
+    expect(states(ladderSteps({ stage: 'connection_sent', messages: [out({ message_type: 'connection_note' })] })))
+      .toEqual(['current', 'todo', 'todo', 'todo'])
+  })
+
+  it('a stalled thread is not a failed one — silence is not a field', () => {
+    // Messaged weeks ago, nothing since. Still `current`: nothing FAILED.
+    expect(states(ladderSteps({ stage: 'dm_sent', messages: [out({ created_at: '2026-06-01T10:00:00Z' })] })))
+      .toEqual(['done', 'done', 'current', 'todo'])
+  })
+
+  it('an archived thread is off the ladder, and says which exit it took', () => {
+    expect(ladderSteps({ stage: 'archived', messages: [] })).toEqual({ kind: 'off', stage: 'archived' })
+    expect(ladderSteps({ stage: 'bounced', messages: [] })).toEqual({ kind: 'off', stage: 'bounced' })
+  })
+
+  it('a stage this app has not been taught draws no guessed position', () => {
+    expect(ladderSteps({ stage: 'some_new_engine_stage', messages: [] }))
+      .toEqual({ kind: 'unknown', stage: 'some_new_engine_stage' })
+  })
+
+  it('a blocked last send marks the rung FAILED', () => {
+    const v = ladderSteps({
+      stage: 'dm_sent',
+      messages: [out({ id: 'a' }), out({ id: 'b', sent_at: null, send_blocked_at: '2026-07-22T11:00:00Z', send_blocked_reason: 'send_failed_verified:unipile_422' })],
+    })
+    expect(states(v)).toEqual(['done', 'done', 'failed', 'todo'])
+  })
+
+  it('an OLD failure followed by a send that landed is history, not state', () => {
+    const v = ladderSteps({
+      stage: 'dm_sent',
+      messages: [
+        out({ id: 'a', sent_at: null, send_blocked_at: '2026-07-20T11:00:00Z', send_blocked_reason: 'send_failed_verified:unipile_422' }),
+        out({ id: 'b' }),
+      ],
+    })
+    expect(states(v)).toEqual(['done', 'done', 'current', 'todo'])
+  })
+
+  it('a pending draft or an inbound reply never decides the rung', () => {
+    const draft = { ...base, id: 'd', direction: 'outbound' as const, sent_at: null, approved_at: null }
+    expect(states(ladderSteps({ stage: 'dm_sent', messages: [out({ id: 'a' }), draft, inb({ id: 'i' })] })))
+      .toEqual(['done', 'done', 'current', 'todo'])
+  })
+})
+
+describe('sendFailed', () => {
+  const blocked = (reason: string): InboxMessage => ({
+    ...base, direction: 'outbound', sent_at: null, approved_at: '2026-07-22T09:00:00Z',
+    send_blocked_at: '2026-07-22T11:00:00Z', send_blocked_reason: reason,
+  })
+
+  it('a verified send failure is a failure', () => {
+    expect(sendFailed(blocked('send_failed_verified:unipile_422'))).toBe(true)
+  })
+
+  it('a discard is not a failure', () => {
+    expect(sendFailed(blocked(DISCARD_REASON))).toBe(false)
+  })
+
+  it('a recoverable hold is not a failure — it is one tap from being sent', () => {
+    expect(sendFailed(blocked(`${RACE_HOLD_PREFIX}newer_inbound`))).toBe(false)
+    expect(sendFailed(blocked('lint_unbacked_commitment'))).toBe(false)
+  })
+
+  it('an internal confirmation is a question, not a failure', () => {
+    expect(sendFailed({ ...blocked('owner_confirmation'), approved_at: null })).toBe(false)
+    expect(sendFailed({ ...blocked('reply_retry_pending'), approved_at: null })).toBe(false)
+  })
+
+  it('an unblocked or inbound row is never a failure', () => {
+    expect(sendFailed({ ...base, direction: 'outbound', sent_at: '2026-07-22T10:00:00Z' })).toBe(false)
+    expect(sendFailed({ ...blocked('send_failed_verified:x'), direction: 'inbound' })).toBe(false)
   })
 })

@@ -31,11 +31,10 @@ import { formatReturn, returnsIn, usePushLater } from '../../lib/pushLater'
 import {
   approveDraft, channelFamilies, composeReply, discardDraft, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isFollowUp, isMixedChannel,
   saveDraftEmail, saveDraftText, snoozeDraft, unsnoozeDraft,
-  markThreadRead, messageChannel, threadChatId, emailRowSender,
+  markThreadRead, messageChannel, threadChatId, emailRowSender, ladderSteps, sendFailed,
   type InboxMessage, type MsgChannel, type Thread, eventTime, emailSenderLabel } from '../../lib/inbox'
 import { label } from '../../lib/labels'
 import { markNotSpam, markSpam } from '../../lib/inbox'
-import { STAGE_LADDER, stageIsOff, stageStep } from '../../exp/v2c/stage'
 import './thread.css'
 
 function clientName(id: string): string {
@@ -81,7 +80,12 @@ function clockTime(iso: string): string {
 // Micro-label shown above an outbound message. Truthful about queue/send state.
 // The channel it rode is carried by the chip beside it, not by this text.
 function outLabel(m: InboxMessage, stage: string): { text: string; failed: boolean } {
-  if (m.send_blocked_at && m.send_blocked_reason !== 'discarded_in_inbox') {
+  // E1: the SAME predicate the ladder's failed rung reads (lib/inbox), so the
+  // rung and the message under it can never disagree about whether a send
+  // failed. It was `send_blocked_at && reason !== 'discarded_in_inbox'` here,
+  // which also caught a race hold and a lint hold — both recoverable, both one
+  // tap from being sent, and neither a failure.
+  if (sendFailed(m)) {
     return { text: `Send failed: ${label(m.send_blocked_reason)}`, failed: true }
   }
   if (m.approved_at && !m.sent_at) return { text: 'Queued', failed: false }
@@ -142,33 +146,33 @@ export function emptyCopy(thread: Pick<Thread, 'draft'>): { title: string; sub: 
 /* THE LADDER, as the system's Stepper. It is the one fact the thread's own
    header cannot express: that header prints the stage string, which says nothing
    about what came before or what comes next. An unknown stage still prints its
-   label rather than a guessed position, and an off-pipeline stage says so. */
-function Ladder({ stage }: { stage: string }) {
-  const step = stageStep(stage)
-  const off = stageIsOff(stage)
-  if (off) {
+   label rather than a guessed position, and an off-pipeline stage says so.
+
+   E1: every state comes from `ladderSteps(thread)` now — a pure derivation over
+   real fields, unit-tested in lib/inbox.test.ts — so this function renders and
+   decides nothing. The fourth state, `failed`, is drawn only where a field
+   proves a send was blocked and is not coming back. */
+function Ladder({ thread }: { thread: Thread }) {
+  const view = ladderSteps(thread)
+  const stage = thread.stage
+  if (view.kind === 'off') {
     return (
       <span className="a-wrapline" title={`Stage: ${label(stage)}`}>
         <Icon name="blocked" size={16} />
-        <span className="a-meta">Archived</span>
+        {/* It printed "Archived" for `disqualified` and `bounced` too, which are
+            three different exits with three different meanings. */}
+        <span className="a-meta">{label(stage)}</span>
       </span>
     )
   }
-  if (step === null) {
-    // A stage this file has not seen. Say so rather than draw a guess, and say
-    // it in words, not the raw column.
+  if (view.kind === 'unknown') {
+    // A stage this app has not been taught. Say so rather than draw a guess, and
+    // say it in words, not the raw column.
     return <span className="a-meta a-dim">{stage ? label(stage) : 'no stage'}</span>
   }
   return (
     <span className="a-thread-ladder" title={`Stage: ${label(stage)}`}>
-      <Stepper
-        label="Stage"
-        steps={STAGE_LADDER.map((l, i) => ({
-          id: l,
-          label: l,
-          state: i < step ? 'done' as const : i === step ? 'current' as const : 'todo' as const,
-        }))}
-      />
+      <Stepper label="Stage" steps={view.steps} />
     </span>
   )
 }
@@ -442,7 +446,7 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
         </>}
       />
       <Bar>
-        <Ladder stage={thread.stage} />
+        <Ladder thread={thread} />
         <span style={{ marginLeft: 'auto' }}>
           {thread.spam
             ? <Button variant="quiet" size="sm" busy={busy} onClick={busy ? undefined : onNotSpam}>Not spam</Button>
