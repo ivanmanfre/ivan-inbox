@@ -133,6 +133,30 @@ function StatusCapsule({ n, note, onClick }: { n: number; note: string; onClick:
   )
 }
 
+/**
+ * D3 (goal run inbox-agent-drawer-2026-09-12): the phone's one entry into
+ * Claude when Ask is not the place already open — a floating chip rather than
+ * a second sheet, because the feed sheet already spent the phone's one
+ * horizontal gesture and "one region at a time" is this screen's whole rule.
+ *
+ * A PLAIN FUNCTION COMPONENT, not inline JSX in `Mobile` and not a hook of its
+ * own: N2b (2026-09-09, the comment above `if (peerView)`) is the standing
+ * proof that a conditional hook added to THIS file blanks the phone. This
+ * component carries no hook at all, so it can be dropped into either return
+ * branch below without touching Mobile's own hook order.
+ */
+function AskFab({ unread, busy, onTap }: { unread: boolean; busy: boolean; onTap: () => void }) {
+  return (
+    <button type="button" className="a-ask-fab" data-ask-fab onClick={onTap} aria-label="Open Claude">
+      <Icon name="ask" size={24} />
+      {/* Same dot, same meaning, as the bot thread row and the desktop drawer:
+          a bot turn landed and nobody has opened it yet. */}
+      {unread ? <span className="a-brain-bot-dot" data-ask-fab-unread /> : null}
+      {busy ? <LiveDot label="Claude is working" /> : null}
+    </button>
+  )
+}
+
 export function Mobile(p: BrainMobileProps) {
   const { chat, job, goJob, counts, sev, boot, workSurface, windows, peerView, about } = p
   const feed = useFeedData()
@@ -196,6 +220,14 @@ export function Mobile(p: BrainMobileProps) {
   }
 
   const onTab = (t: Place) => { setFeedOpen(false); setSnap(0); goPlace(t) }
+
+  // D3: the fab's tap. An unread bot turn opens Claude's own thread directly
+  // (same stamp-on-arrival as the feed's bot row); either way it lands on the
+  // Ask place, the tab bar's own route.
+  const openAsk = () => {
+    if (chat.botUnread) chat.openBot()
+    onTab('ask')
+  }
 
   // An explicit link must leave Ask, even when the destination job was
   // already mounted behind it. The job-change effect alone cannot do that.
@@ -355,6 +387,16 @@ export function Mobile(p: BrainMobileProps) {
       <div className="app wb wb-take wb-take-thread" data-place="lane">
         {peerView}
         {windows}
+        {/* D3: the chip reaches into Ask from the takeover too. `onTab('ask')`
+            alone cannot leave a takeover — it sets THIS component's own
+            `place`, and the takeover is Shell's `focus`/`peers` state, which
+            only `goJob` clears (on mobile it always drops focus, whatever job
+            it is handed). `goJob(job)` is a same-job call for exactly that
+            side effect, then `openAsk()` lands the tab bar on Ask. */}
+        <AskFab
+          unread={chat.botUnread} busy={chat.busy}
+          onTap={() => { goJob(job); openAsk() }}
+        />
       </div>
     )
   }
@@ -542,6 +584,12 @@ export function Mobile(p: BrainMobileProps) {
         </Screen>
         </RibSlotCtx.Provider>
       </Shell>
+      {/* D3: every non-Ask place, and not while the feed sheet has the screen —
+          "one region at a time" already governs the sheet, and a chip floating
+          over it would be a second thing claiming the same gesture's space. */}
+      {place !== 'ask' && !feedOpen ? (
+        <AskFab unread={chat.botUnread} busy={chat.busy} onTap={openAsk} />
+      ) : null}
       {windows}
     </div>
   )

@@ -76,6 +76,13 @@ export type Turn = {
   // What the turn was asked ABOUT (a thread, a draft). Rendered as a chip on the
   // user turn so the transcript still makes sense a day later.
   about?: string
+  // When the turn happened, ISO. A hydrated row's is `created_at` (assistant:
+  // `finished_at ?? created_at`, since an assistant half can finish a day after
+  // its question was asked); a freshly sent or streamed turn stamps the instant
+  // it left the browser. Optional because a turn from before this field existed
+  // carries none — the day-separator walk in `wb/ask/days.ts` treats that as "no
+  // day boundary here" rather than inventing one.
+  at?: string
   // Per-turn telemetry, grafted from v2a. Nobody asked for it; on a Claude Code
   // surface the difference between a 2s answer and a 9s one is the thing you
   // actually feel, and it belongs on the turn rather than on the pane, so an old

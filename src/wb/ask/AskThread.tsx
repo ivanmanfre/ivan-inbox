@@ -27,7 +27,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { AnimatePresence, animate, motion, useReducedMotion } from 'motion/react'
-import { Button, Chip, Icon, ToastStack, Working, fadeT, list, rise, spring, type ToastItem } from '../../ds'
+import { Button, Chip, Icon, IconButton, ToastStack, Working, fadeT, list, rise, spring, type ToastItem } from '../../ds'
 import { parseMarkdown, type InlineNode } from '../../exp/v2c/chat/renderer'
 import { turnOutcome, type Turn } from '../../exp/v2c/chat/events'
 import { abortTurn } from '../../lib/turns'
@@ -42,6 +42,7 @@ import { Composer, type ComposerExtras } from './Composer'
 import { BotBundle } from './BotTurn'
 import { ActionPills, type PillsHost } from './ActionPills'
 import { parseActions } from './actions'
+import { daySeparators } from './days'
 // NOT lazy, and measured rather than assumed: a React.lazy split of these two
 // cost 1.0 KB MORE on the DMs cold path (278.1 vs 277.1 KB script transfer) and
 // two extra requests, because the weight this wave adds is in turns.ts, the
@@ -493,6 +494,10 @@ export function AskThread({
   const lastTurn = chat.turns[chat.turns.length - 1]
   const runningElsewhereActive = chat.runningElsewhere && lastTurn?.role === 'user'
   const empty = chat.turns.length === 0 && chat.status === 'idle' && !chat.runningElsewhere
+  // Bot bundles and answers count as turns for this walk exactly like an
+  // operator's do (days.ts): the marker is keyed on the turn's own React id,
+  // which is stable across a render regardless of role.
+  const dayMarks = daySeparators(chat.turns)
 
   const stopRunningElsewhere = () => {
     if (lastTurn?.turnId) void abortTurn(lastTurn.turnId)
@@ -520,6 +525,20 @@ export function AskThread({
                   {chat.botUnread && <span className="a-brain-bot-dot" data-bot-unread aria-label="Unread" />}
                 </span>
               </Chip>
+            </span>
+          )}
+          {/* D6: mute is a property of Claude's own thread, so the control only
+              ever shows while that thread is the one on screen — muting "the
+              conversation you happen to be looking at" would be a control that
+              silently changes what it does depending on where you tapped it. */}
+          {onBot && (
+            <span data-bot-mute data-muted={chat.botPushMuted ? '' : undefined}>
+              <IconButton
+                icon={chat.botPushMuted ? 'bellOff' : 'bell'}
+                label={chat.botPushMuted ? 'Pushes from Claude are muted. Unmute' : 'Mute pushes from Claude'}
+                size="sm"
+                onClick={() => chat.setBotPushMuted(!chat.botPushMuted)}
+              />
             </span>
           )}
           <span className="a-brain-shelf-t">{sessionLine(chat.grounding)}</span>
@@ -551,28 +570,38 @@ export function AskThread({
             </motion.div>
           </motion.div>
         ) : (
-          chat.turns.map(t => t.role === 'user' ? (
-            // A bot turn's "question" is the bundle the tick assembled, never
-            // something Ivan typed, so it does not take his bubble.
-            t.origin === 'bot' && t.turnId ? (
-              <BotBundle key={t.id} turnId={t.turnId} prompt={t.text} />
-            ) : (
-              <div className="a-brain-uturn" key={t.id} data-turn={t.turnId ?? t.id}>
-                <div className="a-brain-ubub">{t.text}</div>
-              </div>
+          chat.turns.map(t => {
+            const dayMark = dayMarks.get(t.id)
+            const separator = dayMark && (
+              <div className="a-brain-day" data-day key={`day:${t.id}`}>{dayMark}</div>
             )
-          ) : (
-            <AnswerCard
-              key={t.id} turn={t} onRetry={chat.retry} onRecall={onRecall}
-              cites={buildCites(sourceBasenames(t.sources))}
-              justLanded={t.id === justLandedId}
-              focused={!!focusTurn && (t.turnId ?? t.id) === focusTurn}
-              morphFrom={!!focusTurn && (t.turnId ?? t.id) === focusTurn ? morphFrom : null}
-              onMorphed={onMorphed}
-              onDragBack={onDragBack}
-              host={t.origin === 'bot' ? pillsHost : undefined}
-            />
-          ))
+            const turn = t.role === 'user' ? (
+              // A bot turn's "question" is the bundle the tick assembled, never
+              // something Ivan typed, so it does not take his bubble.
+              t.origin === 'bot' && t.turnId ? (
+                <BotBundle key={t.id} turnId={t.turnId} prompt={t.text} />
+              ) : (
+                <div className="a-brain-uturn" key={t.id} data-turn={t.turnId ?? t.id}>
+                  <div className="a-brain-ubub">{t.text}</div>
+                </div>
+              )
+            ) : (
+              <AnswerCard
+                key={t.id} turn={t} onRetry={chat.retry} onRecall={onRecall}
+                cites={buildCites(sourceBasenames(t.sources))}
+                justLanded={t.id === justLandedId}
+                focused={!!focusTurn && (t.turnId ?? t.id) === focusTurn}
+                morphFrom={!!focusTurn && (t.turnId ?? t.id) === focusTurn ? morphFrom : null}
+                onMorphed={onMorphed}
+                onDragBack={onDragBack}
+                host={t.origin === 'bot' ? pillsHost : undefined}
+              />
+            )
+            // Returning an array rather than a Fragment: each child already
+            // carries its own key (`day:${t.id}` / `t.id`), so React needs
+            // nothing extra on the wrapper, and `.map()` flattens it in place.
+            return separator ? [separator, turn] : turn
+          })
         )}
 
         {/* ONE stop control per state, and it is always the same control in the

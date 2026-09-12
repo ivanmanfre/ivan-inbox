@@ -61,7 +61,7 @@ const {
   THREADS_TABLE, TURNS_TABLE, TURNS_VIEW, abortTurn, dismissGroup, dismissNotification,
   getBotThread, getThread, getTurn, groupNotifications, isUuid, latestThread, listGroupRows,
   listNotifications, listThreads, listTurns, markBotSeen, markNotificationsRead, mergeBackRows,
-  notificationDeepLink,
+  notificationDeepLink, setBotPushMuted,
 } = await import('./turns')
 
 beforeEach(() => { steps.length = 0; queue = [] })
@@ -160,6 +160,29 @@ describe('reads go through the views, never the base tables', () => {
     expect(await markBotSeen(U1)).toBe(false)
     // A rotted cache is never a query.
     expect(await markBotSeen('not-a-uuid')).toBe(false)
+    expect(steps).toHaveLength(1)
+  })
+
+  it('getBotThread also reads the fourth write\'s own column', async () => {
+    queue.push({ data: null, error: null })
+    await getBotThread()
+    expect(steps[0].cols).toContain('bot_push_muted')
+  })
+
+  it('setBotPushMuted is the fourth narrow write: one boolean, one row, never a throw', async () => {
+    queue.push({ data: null, error: null })
+    expect(await setBotPushMuted(U1, true)).toBe(true)
+    expect(steps[0].table).toBe(THREADS_TABLE)
+    expect(steps[0].op).toBe('update')
+    expect(steps[0].payload).toEqual({ bot_push_muted: true })
+    expect(steps[0].filters).toEqual([`eq:id=${U1}`])
+  })
+
+  it('setBotPushMuted reports a refused write instead of throwing it at Ivan', async () => {
+    queue.push({ data: null, error: { code: '42501' } })
+    expect(await setBotPushMuted(U1, false)).toBe(false)
+    // A rotted cache is never a query.
+    expect(await setBotPushMuted('not-a-uuid', true)).toBe(false)
     expect(steps).toHaveLength(1)
   })
 

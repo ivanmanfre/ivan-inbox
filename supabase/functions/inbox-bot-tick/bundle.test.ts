@@ -6,7 +6,7 @@
 // What these pin is the two rules that decide whether a feed row gets told to
 // Ivan twice: the open-turn exclusion, and "only what fits gets stamped".
 import { describe, expect, it } from 'vitest'
-import { buildBundle, BUNDLE_MAX_CHARS, type FeedRow, selectRows } from './bundle.ts'
+import { buildBundle, BUNDLE_MAX_CHARS, type FeedRow, MUTED_FAMILIES, selectRows } from './bundle.ts'
 
 function row(over: Partial<FeedRow> & { id: string; created_at: string }): FeedRow {
   return {
@@ -58,6 +58,21 @@ describe('selectRows', () => {
       row({ id: 'real', created_at: '2026-09-11T10:03:00Z', family: 'booking_notice' }),
     ]
     expect(selectRows(rows, []).map((r) => r.id)).toEqual(['real'])
+  })
+
+  it('never reads family bot: the bot must not be handed its own notification', () => {
+    // From 2026-09-12 an actionable bot message writes one row in family 'bot'
+    // (decision D5). If the tick could select it, the next bundle would contain
+    // the bot's own push and it would answer itself every 30 minutes.
+    const rows = [
+      row({ id: 'own', created_at: '2026-09-11T10:00:00Z', family: 'bot', title: 'Mattan seat under floor' }),
+      row({ id: 'real', created_at: '2026-09-11T10:01:00Z', family: 'lane_supply_alarm' }),
+    ]
+    expect(selectRows(rows, []).map((r) => r.id)).toEqual(['real'])
+    // The SQL in index.ts filters on this same constant
+    // (.not('family','in',`(${MUTED_FAMILIES.join(',')})`)), so the row never
+    // even reaches selectRows in production. One definition, two enforcements.
+    expect(MUTED_FAMILIES).toContain('bot')
   })
 })
 

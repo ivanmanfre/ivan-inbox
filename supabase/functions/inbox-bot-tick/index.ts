@@ -14,8 +14,11 @@
 // as a bearer as well, because the platform gateway on inbox-claude verifies a
 // JWT before that function's own code runs.
 //
-// Mute list (families the bot never reads): chat, claude_turn, health_reminder.
-// It lives in ./bundle.ts as MUTED_FAMILIES, one definition.
+// Mute list (families the bot never reads): chat, claude_turn, health_reminder,
+// bot. It lives in ./bundle.ts as MUTED_FAMILIES, one definition, read both by
+// the SQL filter below and by selectRows. `bot` is there because an actionable
+// bot message now writes its own notification row (2026-09-12, decision D5) and
+// a bot that can read its own push answers itself every 30 minutes.
 //
 // The two rules this function holds, whatever else changes:
 //   1. It NEVER notifies. A bot turn writes no inbox_notifications row and

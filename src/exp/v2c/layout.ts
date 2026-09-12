@@ -166,6 +166,24 @@ export function planWorkbench(
   }
 }
 
+// The drawer (goal run inbox-agent-drawer-2026-09-12, D2): Claude is no longer
+// a peer on desktop. It is a persistent right column of the plate (72px
+// collapsed, 380px open) that `planWorkbench` above knows nothing about — that
+// function's whole job is the rail/list/peer fork and it keeps its own tests
+// unchanged. This is the ONE extra pure step Shell applies to its result: at
+// the 'desktop' canvas (1000-1319, `MQ_DESKTOP` without `MQ_WIDE`) rail(60) +
+// list(420) + a thread peer + drawer(380) does not fit, so an OPEN drawer
+// hides the working list and lets the thread peer take the column instead —
+// the same trade a focused peer already makes at that width, just triggered
+// by the drawer rather than by peer count. At 'wide' (>=1320) there is room
+// for all four, so nothing changes; on 'mobile' the drawer does not exist.
+export function applyDrawer(plan: Plan, canvas: Canvas, drawerOpen: boolean): Plan {
+  if (canvas === 'desktop' && drawerOpen && plan.work === 'list' && plan.peers.length > 0) {
+    return { ...plan, work: 'hidden', narrow: true }
+  }
+  return plan
+}
+
 // ---- peer set transitions (pure, so the Shell holds no set logic) ----
 //
 // The invariant: at most ONE context peer (a thread or a draft) plus Claude,

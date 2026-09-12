@@ -61,8 +61,8 @@ import { useGlanceCounts } from './useGlanceCounts'
 import { hasMock } from './mock'
 import { parseWbHash, wbHash } from './route'
 import {
-  JOB_LABEL, addPeer, contextPeer, dropPeer, hasChat, jobHasList, peerKey,
-  planWorkbench, type Canvas, type Job, type Peer,
+  JOB_LABEL, addPeer, applyDrawer, contextPeer, dropPeer, hasChat, jobHasList,
+  peerKey, planWorkbench, type Canvas, type Job, type Peer,
 } from './layout'
 // The nine workbench stylesheets this Shell used to carry (legacy, styles,
 // faithful, wb2026, wbsys, wbcal, dwsys, wbcall, plus brain-b's own) are
@@ -81,6 +81,7 @@ import { lazyBrainAsk, lazyBrainMobile, type BrainId } from '../brain'
 import { Today as TodayC } from '../../wb/today'
 import { Dms as DmsC } from '../../wb/dms'
 import { ThreadPeer as ThreadPeerC } from '../../wb/thread'
+import { Drawer } from '../../wb/ask/Drawer'
 // N3-4: PER-TAB CODE SPLIT. Today and DMs are the two tabs a cold open lands
 // on, so they stay in Shell's own chunk and pay no extra round trip. Every
 // other work surface is a tab switch away, which is a user gesture with a
@@ -185,14 +186,36 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
   // way an ordinary tap on an inbox row does (Shell's own `openThread`
   // below), so it renders as the peer takeover / phone thread view rather
   // than silently landing on Ask with nothing loaded.
+  // 2026-09-12 (D2, goal run inbox-agent-drawer): on desktop Claude is the
+  // DRAWER below, never a `peers` entry any more — `boot.focus==='chat'`
+  // (the Ask push's own link) is handled by the drawer-boot effect below
+  // instead of seeding a chat peer here. `boot.thread` alone (no chat focus)
+  // is still an ordinary DM deep link and keeps opening as a context peer.
   const [peers, setPeers] = useState<Peer[]>(() => {
-    if (boot.focus === 'chat') return [{ kind: 'chat' } as Peer]
+    if (boot.focus === 'chat') return []
     if (boot.thread) return [{ kind: 'thread', id: boot.thread } as Peer]
     return []
   })
   const [focus, setFocus] = useState<string | null>(
-    boot.focus === 'chat' ? 'chat' : boot.thread ? peerKey({ kind: 'thread', id: boot.thread }) : null,
+    boot.focus === 'chat' ? null : boot.thread ? peerKey({ kind: 'thread', id: boot.thread }) : null,
   )
+  // The drawer's own open/closed state (D2). Read once from how Ivan left it —
+  // same pattern as `wb-railmin` just above/below — never from the hash: the
+  // drawer is not addressable, only what THREAD it is showing (via the bot
+  // thread's own id, already reachable through `#…/ask?thread=…`) is.
+  const [drawerOpen, setDrawerOpen] = useState<boolean>(() => {
+    try { return localStorage.getItem('wb-drawer') === '1' } catch { return false }
+  })
+  const persistDrawer = useCallback((v: boolean) => {
+    try { localStorage.setItem('wb-drawer', v ? '1' : '0') } catch { /* private mode */ }
+  }, [])
+  const openDrawer = useCallback(() => { setDrawerOpen(true); persistDrawer(true) }, [persistDrawer])
+  const collapseDrawer = useCallback(() => { setDrawerOpen(false); persistDrawer(false) }, [persistDrawer])
+  const toggleDrawer = useCallback(() => setDrawerOpen(o => {
+    const n = !o
+    persistDrawer(n)
+    return n
+  }), [persistDrawer])
   const [filter, setFilter] = useState<Filter>('all')
   // The DMs view. 'needs' — what the badge counts — is the only one now: the
   // head that switched between buckets was removed on 2026-08-04.
@@ -332,7 +355,12 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
     dms: inboxError ? ('urgent' as const) : undefined,
   }
 
-  const plan = planWorkbench(job, canvas, peers, focus)
+  // D2: the drawer hides the working list on its own (`applyDrawer`,
+  // layout.ts) rather than folding into `planWorkbench` itself — that
+  // function's fork is rail/list/peer and stays ignorant of the drawer, on
+  // purpose, so its own tests (and every one of its callers that is not this
+  // Shell) are untouched by a desktop-only concern.
+  const plan = applyDrawer(planWorkbench(job, canvas, peers, focus), canvas, drawerOpen)
   // A list job holding the WHOLE canvas needs its measure capped, or the ghost-pane
   // fix trades one defect (a dead pane) for another (a 1,240px message row).
   const solo = !mobile && plan.work === 'wide' && jobHasList(job)
@@ -411,14 +439,34 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  // Drawer boot deep link (D2): `boot.focus==='chat'` is the Ask push's own
+  // link shape (`#exp/v2/ask?thread=…`, inbox-turn-run writes it). It used to
+  // seed a `chat` peer; now it opens the drawer instead, and — because the
+  // phone already does the equivalent open in Mobile.tsx's own boot effect
+  // but desktop never did — also opens the named thread inside it, which is
+  // the fix for the push deep link landing on an empty pane at desktop widths.
+  // Runs once, off the hash the page loaded with, and only on desktop: on
+  // mobile the drawer does not exist and Mobile.tsx already owns this.
+  useEffect(() => {
+    if (mobile) return
+    if (boot.focus === 'chat') {
+      openDrawer()
+      if (boot.thread) chat.openThread(boot.thread)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // ---- hash: job + focus are addressable, so every surface has a fresh-load URL ----
   useEffect(() => {
     const apply = () => {
       const r = parseWbHash(location.hash)
       setJob(r.job)
       if (r.focus === 'chat') {
-        setPeers(p => addPeer(p, { kind: 'chat' }))
-        setFocus('chat')
+        // D2: a live `#…/ask?thread=…` navigation opens the drawer on that
+        // thread instead of docking a chat peer — same shape as the boot
+        // effect above, just for a hash change after mount.
+        openDrawer()
+        if (r.thread) chat.openThread(r.thread)
       } else if (r.thread) {
         // W2-1: an IN-APP hash write naming a DM thread (Today's urgency-row
         // tap writes the brain-b-prefixed form directly now) opens it as a
@@ -430,12 +478,16 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
     }
     window.addEventListener('hashchange', apply)
     return () => window.removeEventListener('hashchange', apply)
-  }, [])
+  }, [openDrawer, chat.openThread])
   useEffect(() => {
     if (!location.hash.startsWith('#access_token')) {
-      history.replaceState(null, '', wbHash(job, focus === 'chat' ? 'chat' : null))
+      // D2: the drawer is not addressable state, so the hash never carries
+      // 'chat' any more — only a thread/turn id (already IN the hash via
+      // `?thread=`) survives a write. `#…/ask?thread=` still PARSES in
+      // (parseWbHash above), this file just never WRITES that form back.
+      history.replaceState(null, '', wbHash(job, null))
     }
-  }, [job, focus])
+  }, [job])
 
   // ---- navigation ----
   const goJob = useCallback((j: Job) => {
@@ -530,8 +582,8 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
             two-surface inversion rests on. Same wrapper at all three roots. */}
         <div className={`wb-plate ds-plate${mobile ? '' : ' ds-plate-row'}`}>
           {!mobile && (
-            <Rail job={job} counts={{}} sev={{}} chatOn={hasChat(peers)} chatLive={false}
-              onJob={goJob} onChat={toggleChat} loadedAt={null} stale={false} onRefresh={inbox.refresh}
+            <Rail job={job} counts={{}} sev={{}} chatOn={drawerOpen} chatLive={false}
+              onJob={goJob} onChat={toggleDrawer} loadedAt={null} stale={false} onRefresh={inbox.refresh}
               collapsed={railMin} onToggle={toggleRail} />
           )}
           <div className="wb-regions">
@@ -697,38 +749,52 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
     </>
   )
 
-  // ---- peers ----
-  const renderPeer = (p: Peer) => {
-    const key = peerKey(p)
-    if (p.kind === 'chat') {
-      if (BrainAsk) {
-        return (
-          <Suspense fallback={null}>
-            <BrainAsk
-              chat={chat} job={job} about={aboutLabel} aboutContext={aboutContext ?? null}
-              subjects={seeSubjects} onClose={() => closePeer('chat')}
-              onOpenAbout={mobile && ctx ? () => setFocus(peerKey(ctx)) : null} mobile={mobile}
-            />
-          </Suspense>
-        )
-      }
+  // ---- the Ask pane, wherever it is docked ----
+  //
+  // D2 (2026-09-12): this used to live inline in `renderPeer`'s `chat` case.
+  // It is now a function of `onClose` alone because it has TWO callers: the
+  // mobile bare-fallback branch still docks it as a `chat` peer (below,
+  // `renderPeer`), and the desktop drawer mounts the identical pane with a
+  // different close handler (collapse, not drop-the-peer). Same props either
+  // way — the pane itself does not know which frame it is sitting in.
+  const renderAskPane = (onClose: () => void) => {
+    if (BrainAsk) {
       return (
         <Suspense fallback={null}>
-          <AskPaneDirect
-            chat={chat}
-            job={job}
-            about={aboutLabel}
-            aboutContext={aboutContext ?? null}
-            subjects={seeSubjects}
-            onClose={() => closePeer('chat')}
-            // Mobile only: no third region, so the pair degrades to a tappable
-            // context card that flips focus back to the item.
-            onOpenAbout={mobile && ctx ? () => setFocus(peerKey(ctx)) : null}
-            mobile={mobile}
+          <BrainAsk
+            chat={chat} job={job} about={aboutLabel} aboutContext={aboutContext ?? null}
+            subjects={seeSubjects} onClose={onClose}
+            onOpenAbout={mobile && ctx ? () => setFocus(peerKey(ctx)) : null} mobile={mobile}
           />
         </Suspense>
       )
     }
+    return (
+      <Suspense fallback={null}>
+        <AskPaneDirect
+          chat={chat}
+          job={job}
+          about={aboutLabel}
+          aboutContext={aboutContext ?? null}
+          subjects={seeSubjects}
+          onClose={onClose}
+          // Mobile only: no third region, so the pair degrades to a tappable
+          // context card that flips focus back to the item.
+          onOpenAbout={mobile && ctx ? () => setFocus(peerKey(ctx)) : null}
+          mobile={mobile}
+        />
+      </Suspense>
+    )
+  }
+
+  // ---- peers ----
+  const renderPeer = (p: Peer) => {
+    const key = peerKey(p)
+    // A `chat` peer is never created on desktop any more (D2 — it is the
+    // drawer, rendered separately below); this branch survives only for the
+    // mobile bare-fallback shell (`#exp/v2` with no `brain` mounted), which
+    // still docks Claude as a takeover peer exactly as it always has.
+    if (p.kind === 'chat') return renderAskPane(() => closePeer('chat'))
     // kind:'draft' peers are no longer created anywhere — a draft opens as the
     // takeover window (openItem). The layout model keeps the kind so the pure
     // functions stay general, but the Shell has no renderer for it.
@@ -751,7 +817,10 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
         thread={ctxThread}
         refresh={inbox.refresh}
         onClose={() => closePeer(key)}
-        onAsk={() => { setPeers(cur => addPeer(cur, { kind: 'chat' })); setFocus('chat') }}
+        // D2: "Ask about this thread" opens the drawer now, not a second
+        // peer — the drawer already carries whatever thread/subject context
+        // Shell attaches (`seeSubjects`, above), same as the old chat peer did.
+        onAsk={openDrawer}
         mobile={mobile}
       />
     )
@@ -900,10 +969,10 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
           countNote={countNote}
           health={health}
           sev={sev}
-          chatOn={hasChat(peers)}
+          chatOn={drawerOpen}
           chatLive={chat.busy}
           onJob={goJob}
-          onChat={toggleChat}
+          onChat={toggleDrawer}
           loadedAt={inbox.loadedAt}
           stale={!!inboxError}
           onRefresh={inbox.refresh}
@@ -930,6 +999,13 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
             </div>
           ))}
         </div>
+        {/* D2: the drawer, mounted on every desktop job — including Settings —
+            as a persistent fourth region rather than a peer. The pane is only
+            built while open, so the lazy Ask chunk still costs nothing on a
+            cold boot that never opens it. */}
+        <Drawer open={drawerOpen} unread={chat.botUnread} busy={chat.busy} onOpen={openDrawer}>
+          {drawerOpen ? renderAskPane(collapseDrawer) : null}
+        </Drawer>
       </div>
       {windows}
     </Screen>

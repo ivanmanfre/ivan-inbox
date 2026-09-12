@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  addPeer, contextPeer, dropPeer, hasChat, isWorkJob, jobHasList, peerCapacity,
-  peerKey, planWorkbench, type Peer,
+  addPeer, applyDrawer, contextPeer, dropPeer, hasChat, isWorkJob, jobHasList,
+  peerCapacity, peerKey, planWorkbench, type Peer,
 } from './layout'
 import { parseWbHash, wbHash } from './route'
 import { STAGE_LADDER, stageIsOff, stageStep } from './stage'
@@ -73,6 +73,28 @@ describe('planWorkbench', () => {
     // Chat docked but not focused must NOT take a phone screen over.
     expect(planWorkbench('dms', 'mobile', [chat], null))
       .toEqual({ work: 'wide', peers: [], narrow: false })
+  })
+})
+
+describe('applyDrawer (goal run inbox-agent-drawer-2026-09-12, D2)', () => {
+  it('hides the list at the desktop canvas when the drawer is open over a shown peer', () => {
+    const plan = { work: 'list' as const, peers: [thread], narrow: false }
+    expect(applyDrawer(plan, 'desktop', true)).toEqual({ work: 'hidden', peers: [thread], narrow: true })
+  })
+
+  it('leaves the plan untouched when the drawer is collapsed', () => {
+    const plan = { work: 'list' as const, peers: [thread], narrow: false }
+    expect(applyDrawer(plan, 'desktop', false)).toEqual(plan)
+  })
+
+  it('leaves the plan untouched at wide — rail + list + peer + drawer all fit', () => {
+    const plan = { work: 'list' as const, peers: [thread], narrow: false }
+    expect(applyDrawer(plan, 'wide', true)).toEqual(plan)
+  })
+
+  it('leaves a non-list job (already wide) untouched — nothing to hide', () => {
+    const plan = { work: 'wide' as const, peers: [], narrow: true }
+    expect(applyDrawer(plan, 'desktop', true)).toEqual(plan)
   })
 })
 

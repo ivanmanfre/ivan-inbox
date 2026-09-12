@@ -9,7 +9,7 @@
    ========================================================================== */
 import {
   Activity, ArrowDown, ArrowLeftRight, ArrowRight, ArrowUp, ArrowUpDown,
-  ArrowUpRight, Banknote, Bell, BadgeCheck, Calendar, CalendarClock,
+  ArrowUpRight, Banknote, Bell, BellOff, BadgeCheck, Calendar, CalendarClock,
   ChartColumn, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp,
   ChevronsLeft, ChevronsRight, Circle, CircleAlert, CircleCheck,
   ClipboardCheck, Clock, Command, Copy, CornerDownLeft, Delete, Diamond, Dot,
@@ -127,6 +127,7 @@ export const ICONS = {
   eye: Eye,
   lock: Lock,
   bell: Bell,
+  bellOff: BellOff,
   flame: Flame,
   zap: Zap,
   smile: Smile,

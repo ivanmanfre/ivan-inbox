@@ -10,10 +10,11 @@ import { supabase } from './supabase'
 //    decides visibility and the service-role-only columns (usage, push_result)
 //    can be withheld later without a client change. Never select the base table
 //    for a read.
-// 2. WRITES ARE THREE NARROW PATHS AND NOTHING ELSE. The browser may stop its
+// 2. WRITES ARE FOUR NARROW PATHS AND NOTHING ELSE. The browser may stop its
 //    own turn (status -> 'aborted'), it may stamp read_at / dismissed_at on a
-//    notification, and (db/060) it may stamp bot_seen_at on its own bot thread.
-//    Those are the only column grants `authenticated` holds, so
+//    notification, it may stamp bot_seen_at on its own bot thread (db/060),
+//    and (db/065) it may flip bot_push_muted on its own bot thread. Those are
+//    the only column grants `authenticated` holds, so
 //    anything else here would fail at the database rather than at review — but
 //    it would fail at RUNTIME, on Ivan, which is why it is written down instead.
 //
@@ -39,6 +40,10 @@ export type Thread = {
   // When he last LOOKED at the bot thread. The unread dot is
   // `last_turn_at > coalesce(bot_seen_at, epoch)`, so null means never opened.
   bot_seen_at: string | null
+  // db/065, D6. Ivan's own choice, not a computed state: the completion
+  // webhook reads this before it pushes a bot turn, and the drawer is the only
+  // thing that ever flips it.
+  bot_push_muted: boolean
   session_id: string
   // null = the container has never held this session, so the next turn carries
   // the full memory envelope again. This flag is what `send` reads to decide
@@ -112,7 +117,8 @@ export const NOTIFICATIONS_TABLE = 'inbox_notifications'
 // everything starts shipping columns nobody chose to send to the browser.
 const THREAD_COLS =
   'id, title, session_id, session_started_at, session_reset_count, grounded_summary_date, ' +
-  'grounding, model, last_turn_at, created_at, turn_count, last_status, kind, bot_seen_at'
+  'grounding, model, last_turn_at, created_at, turn_count, last_status, kind, bot_seen_at, ' +
+  'bot_push_muted'
 
 const TURN_COLS =
   'id, thread_id, prompt, context, context_chars, model, ran_on, status, answer, tool_events, ' +
@@ -269,6 +275,26 @@ export async function markBotSeen(threadId: string): Promise<boolean> {
   try {
     const { error } = await supabase.from(THREADS_TABLE)
       .update({ bot_seen_at: new Date().toISOString() })
+      .eq('id', threadId)
+    return !error
+  } catch {
+    return false
+  }
+}
+
+/**
+ * THE FOURTH NARROW BROWSER WRITE (db/065, D6).
+ *
+ * `authenticated` holds an UPDATE grant on exactly one more column than it did:
+ * `inbox_threads.bot_push_muted`, on its own rows, same policy shape as
+ * `bot_seen_at`. Never throws for the same reason: a refused or lost write
+ * leaves the bell showing what it last knew rather than breaking the tap.
+ */
+export async function setBotPushMuted(threadId: string, muted: boolean): Promise<boolean> {
+  if (!isUuid(threadId)) return false
+  try {
+    const { error } = await supabase.from(THREADS_TABLE)
+      .update({ bot_push_muted: muted })
       .eq('id', threadId)
     return !error
   } catch {

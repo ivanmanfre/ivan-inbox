@@ -50,6 +50,20 @@ export type ComposerExtras = {
   interceptSend?: () => boolean
 }
 
+/**
+ * The chord that sends regardless of what plain Enter is doing right now.
+ *
+ * Plain Enter already sends (the design system's own `Composer` reads it off
+ * the textarea, `!e.shiftKey`), and a host's palette can swallow plain Enter
+ * for its own purpose (picking a highlighted item). Cmd/Ctrl+Enter is the
+ * operator overriding that: it must send even when the palette is open, so
+ * it is checked in the WRAPPER, in capture phase, ahead of the field. Pure so
+ * the decision is unit-testable without a DOM.
+ */
+export function isSendChord(e: { key: string; metaKey: boolean; ctrlKey: boolean }): boolean {
+  return e.key === 'Enter' && (e.metaKey || e.ctrlKey)
+}
+
 export function Composer({ value, onChange, onSend, busy, runningElsewhere, onStop, placeholder, extras, runner }: {
   value: string
   onChange: (v: string) => void
@@ -233,8 +247,14 @@ export function Composer({ value, onChange, onSend, busy, runningElsewhere, onSt
     <div
       ref={wrapRef} data-ask className="a-brain-composer"
       // Capture, so the host's palette gets the four keys BEFORE the design
-      // system's textarea reads Enter as send.
-      onKeyDownCapture={e => { if (extras?.onKeyDown?.(e)) { e.preventDefault(); e.stopPropagation() } }}
+      // system's textarea reads Enter as send. The palette gets first refusal;
+      // only once it declines does Cmd/Ctrl+Enter get to force a send here,
+      // ahead of the field, so it works even while the palette owns plain
+      // Enter for its own selection.
+      onKeyDownCapture={e => {
+        if (extras?.onKeyDown?.(e)) { e.preventDefault(); e.stopPropagation(); return }
+        if (isSendChord(e)) { e.preventDefault(); e.stopPropagation(); doSend() }
+      }}
     >
       <input
         ref={fileRef} type="file" accept="image/*,application/pdf" multiple hidden

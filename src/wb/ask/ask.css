@@ -1264,3 +1264,59 @@
 /* The feed's "in chat" mark. It sits in the meta run, at the meta's weight, so
    it says a fact without competing with the state word. */
 .a-brain-inchat{ display:inline-flex; align-items:center }
+
+/* ---- inbox-agent-drawer 2026-09-12 · C ---- */
+/* The thread's day separator. `.a-brain-day` already exists as the feed
+   ledger's day BAND (a flex column wrapping a sticky head and its rows); this
+   selector is scoped to the thread and made more specific with `[data-day]`
+   so it wins over that base rule instead of drifting the feed's own layout. A
+   quiet mono eyebrow, centred, with a hairline running out to either side —
+   it marks a change of day in the transcript without competing with a turn. */
+.a-brain-thread .a-brain-day[data-day]{
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s2);
+  margin-block:var(--ds-s4) var(--ds-s2);
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-eyebrow);
+  letter-spacing:var(--ds-tr-eyebrow);
+  text-transform:uppercase;
+  color:var(--ds-text-3);
+}
+.a-brain-thread .a-brain-day[data-day]::before,
+.a-brain-thread .a-brain-day[data-day]::after{
+  content:'';
+  flex:1 1 auto;
+  block-size:1px;
+  background:var(--ds-line);
+}
+
+/* ---- inbox-agent-drawer 2026-09-12 · B ---- */
+/* D3: the phone's floating entry into Claude. Same bottom-inset arithmetic the
+   bulk bar already uses at this width (ds.css `.ds-bulkbar` under
+   `max-width:767px`) so the chip sits clear of the tab bar and the home
+   indicator on the same terms every other floating control on this canvas
+   does. `--ds-z-popover` (50): above the pager and the tab bar
+   (`--ds-z-tabbar`, 30), below a sheet (`--ds-z-sheet`, 60) or a dialog —
+   the feed sheet and any confirm must still cover it. */
+.a-ask-fab{
+  position:fixed;
+  right:var(--ds-s4);
+  bottom:calc(var(--ds-tabbar-h) + var(--ds-s3) + var(--sab));
+  z-index:var(--ds-z-popover);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  inline-size:var(--ds-tap);
+  block-size:var(--ds-tap);
+  border-radius:var(--ds-r-pill);
+  border:1px solid var(--ds-line-strong);
+  background:var(--ds-surface-2);
+  color:var(--ds-text);
+  box-shadow:var(--ds-shadow-float);
+  transition:background-color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-ask-fab:active{ background:var(--ds-surface-3) }
+/* The unread mark rides the same corner every badge on this system rides. */
+.a-ask-fab > .a-brain-bot-dot{ position:absolute; top:8px; right:8px }
+.a-ask-fab > .ds-live-dot{ position:absolute; bottom:6px; right:6px }

@@ -12,6 +12,13 @@
 // A bot-origin turn (row.origin='bot') skips the claude_turn notification: the
 // bot writes a colleague message, not a push. On a clean finish it folds the
 // feed rows it read instead; on error the rows stay unread for the next tick.
+//
+// From 2026-09-12 (inbox-agent-drawer, mission 2.3) a bot turn whose answer
+// carries an ACTIONABLE pill is the one exception: it writes one row in family
+// `bot` and rings Ivan's phone once. Before that row is inserted, every open
+// `bot` row younger than 14 days is dismissed, so the bell holds one bot
+// notification at a time (decision D5). `inbox_threads.bot_push_muted`
+// (db/065) turns it off from the drawer.
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { notify } from '../_shared/notify.ts'
@@ -21,6 +28,10 @@ const JSON_HEADERS = { 'Content-Type': 'application/json' }
 
 /** A turn still 'running' after this long has lost its container. */
 const LOST_AFTER_MS = 15 * 60 * 1000
+
+/** How far back the bot supersede reaches. Same window the 09-09 feed clear
+ *  uses: older than this and the row is history, not an open ask. */
+const BOT_SUPERSEDE_MS = 14 * 24 * 60 * 60 * 1000
 
 function err(status: number, code: string, detail?: string) {
   return new Response(JSON.stringify({ error: code, detail }), { status, headers: JSON_HEADERS })
@@ -163,7 +174,22 @@ Deno.serve(async (req) => {
   const { error: updErr } = await db.from('inbox_turns').update(patch).eq('id', turnId)
   if (updErr) return err(500, 'turn_update_failed', updErr.message)
 
-  const plan = planCompletion({ row, status, patch, turnId, nowMs: now.getTime() })
+  // Read the thread BEFORE the plan: bot_push_muted (db/065) is what decides
+  // whether an actionable bot message reaches the phone, and the same row is
+  // patched further down. One read, two uses.
+  const { data: thread } = await db
+    .from('inbox_threads').select('*').eq('id', row.thread_id).maybeSingle()
+
+  const plan = planCompletion({
+    row,
+    status,
+    patch,
+    turnId,
+    nowMs: now.getTime(),
+    // A thread this webhook could not read counts as unmuted: the same posture
+    // the thread patch below already takes when `thread` is null.
+    botPushMuted: thread?.bot_push_muted === true,
+  })
 
   // ---- bot fold -------------------------------------------------------------
   // Before the thread update so a webhook that fails later on this request
@@ -181,8 +207,9 @@ Deno.serve(async (req) => {
   }
 
   // ---- thread -------------------------------------------------------------
-  const { data: thread } = await db
-    .from('inbox_threads').select('*').eq('id', row.thread_id).maybeSingle()
+  // The row itself was read above planCompletion (bot_push_muted decides the
+  // push); this block is the patch, and it stays exactly where it was so the
+  // order of writes on this request is unchanged.
   if (thread) {
     const tPatch: Record<string, unknown> = { last_turn_at: nowIso, updated_at: nowIso }
     if (status === 'done') {
@@ -205,10 +232,47 @@ Deno.serve(async (req) => {
     await db.from('inbox_threads').update(tPatch).eq('id', row.thread_id)
   }
 
+  // ---- bot supersede ------------------------------------------------------
+  // Before the insert, so the bell never holds two bot asks: one open `bot` row
+  // at a time (decision D5). Two passes
+  // rather than one because PostgREST cannot express `coalesce(read_at, now)`,
+  // and a row Ivan already read must keep the timestamp that says WHEN he read
+  // it. Never fails the webhook: the turn row is already written.
+  if (plan.supersede) {
+    try {
+      const since = new Date(now.getTime() - BOT_SUPERSEDE_MS).toISOString()
+      // Pass one: never read, so reading it now is honest - he is being told
+      // the newer message instead.
+      const { data: unread, error: e1 } = await db.from('inbox_notifications')
+        .update({ dismissed_at: nowIso, read_at: nowIso })
+        .eq('family', 'bot')
+        .is('dismissed_at', null)
+        .is('read_at', null)
+        .gt('created_at', since)
+        .select('id')
+      // Pass two: already read by hand, so only the dismissal is added. The
+      // rows pass one just touched carry dismissed_at now and drop out here, so
+      // nothing is counted twice.
+      const { data: alreadyRead, error: e2 } = await db.from('inbox_notifications')
+        .update({ dismissed_at: nowIso })
+        .eq('family', 'bot')
+        .is('dismissed_at', null)
+        .not('read_at', 'is', null)
+        .gt('created_at', since)
+        .select('id')
+      const failed = e1?.message ?? e2?.message
+      if (failed) console.error('bot supersede failed', turnId, failed)
+      else console.log(JSON.stringify({ bot_supersede: (unread?.length ?? 0) + (alreadyRead?.length ?? 0) }))
+    } catch (e) {
+      console.error('bot supersede failed', turnId, e)
+    }
+  }
+
   // ---- push ---------------------------------------------------------------
-  // plan.notify is the single early condition: null for a bot turn (rule 1) or
-  // a turn not worth telling about, otherwise the same object and the same
-  // worthTelling expression this handler used before the bot thread existed.
+  // plan.notify is the single early condition: null for a quiet or muted bot
+  // turn and for a turn not worth telling about, otherwise the same object and
+  // the same worthTelling expression this handler used before the bot thread
+  // existed. notify() stamps pushed_at / push_result itself.
   let pushed = false
   if (plan.notify) {
     try {
@@ -221,5 +285,9 @@ Deno.serve(async (req) => {
     }
   }
 
-  return new Response(JSON.stringify({ id: turnId, status, pushed }), { headers: JSON_HEADERS })
+  // `bot_push` is the DECISION (this completion planned the bot's row), `pushed`
+  // is the DELIVERY (a device was subscribed and took it). The gate asserts the
+  // decision, because it must hold on a machine with no subscription.
+  const botPush = plan.notify?.family === 'bot'
+  return new Response(JSON.stringify({ id: turnId, status, pushed, bot_push: botPush }), { headers: JSON_HEADERS })
 })

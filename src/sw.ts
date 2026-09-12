@@ -43,6 +43,10 @@ const PUSH_ART: Record<string, string> = {
   drafts: 'content', content_board_activity: 'content', content_sourcing_pipeline: 'content',
   post_generation_failed: 'content', draft_generation_error: 'content',
   claude_turn: 'claude',
+  // The bot's own ask (2026-09-12). The name fall-through below matches
+  // /claude|turn/, and 'bot' matches neither, so without this line an actionable
+  // bot message would arrive wearing the generic inbox card.
+  bot: 'claude',
   // The runner: a job that finished (or died) on the Railway mirror, and the
   // two-way sync that carries its work back to the Mac. Both are Claude doing
   // work, so both take the Claude card rather than the generic inbox one —

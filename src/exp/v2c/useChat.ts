@@ -5,6 +5,7 @@ import type { ChatStatus, ToolCall, Turn } from './chat/events'
 import { CLAUDE_ERROR_COPY, type ClaudeErrorCode } from '../../lib/claude'
 import {
   abortTurn, getBotThread, getThread, getTurn, isUuid, latestThread, listTurns, markBotSeen,
+  setBotPushMuted as writeBotPushMuted,
   type Thread, type TurnRow,
 } from '../../lib/turns'
 
@@ -150,6 +151,10 @@ export function assistantFromRow(row: TurnRow): Turn {
     status: row.status,
     sources: row.sources ?? [],
     origin: row.origin,
+    // `finished_at` is when the ANSWER landed, which is the day the day
+    // separator should count a turn under; a row still open has no
+    // `finished_at` yet, so it falls back to when it was created.
+    at: row.finished_at ?? row.created_at,
   }
 }
 
@@ -163,7 +168,7 @@ export function turnsFromRows(rows: TurnRow[]): Turn[] {
   for (const row of rows) {
     out.push({
       id: nextId(), role: 'user', text: row.prompt, tools: [], error: null,
-      turnId: row.id, status: row.status, origin: row.origin,
+      turnId: row.id, status: row.status, origin: row.origin, at: row.created_at,
     })
     if (row.status === 'queued' || row.status === 'running') continue
     out.push(assistantFromRow(row))
@@ -494,8 +499,9 @@ export function useChat() {
     // only continuity there is.
     const replay = threadRef.current?.session_started_at ? [] : turnsRef.current
     const context = buildContext(replay, about, see)
+    const sentAt = new Date().toISOString()
     setTurns(t => [...t, {
-      id: nextId(), role: 'user', text, tools: [], error: null, about, turnId, status: 'running',
+      id: nextId(), role: 'user', text, tools: [], error: null, about, turnId, status: 'running', at: sentAt,
     }])
     setStreamText('')
     setStreamTools([])
@@ -583,6 +589,9 @@ export function useChat() {
             costUsd: landed?.costUsd ?? null,
             durationMs: landed?.durationMs ?? null,
             turnId,
+            // The instant the answer actually landed, which can be a real gap
+            // after `sentAt` — this is what a day separator has to key on.
+            at: new Date().toISOString(),
           }])
         }
         setStreamText('')
@@ -697,13 +706,35 @@ export function useChat() {
   const botUnread = !!botThread?.last_turn_at
     && botThread.last_turn_at > (botThread.bot_seen_at ?? '')
 
+  const botPushMuted = !!botThread?.bot_push_muted
+
+  /**
+   * D6 / db/065. Optimistic, like every toggle on this surface: the drawer
+   * flips the instant he taps it, the write goes down behind it, and
+   * `refreshBot` re-reads the row so a refused write (or a second tab) does
+   * not leave the bell lying about its own state for long. Never throws —
+   * `setBotPushMuted` in turns.ts already swallows a refused write the same
+   * way `markBotSeen` does.
+   */
+  const setBotPushMuted = useCallback((muted: boolean) => {
+    const b = botRef.current
+    if (!b) return
+    const next = { ...b, bot_push_muted: muted }
+    botRef.current = next
+    setBotThread(next)
+    void (async () => {
+      await writeBotPushMuted(b.id, muted)
+      await refreshBot()
+    })()
+  }, [refreshBot])
+
   const busy = status !== 'idle'
 
   return {
     turns, status, busy, streamText, streamTools, sessionId, model, slow,
     wanted, setWanted,
     threadId, thread, turnsLoading, grounding, runningElsewhere,
-    botThread, botUnread, refreshBot, openBot,
+    botThread, botUnread, refreshBot, openBot, botPushMuted, setBotPushMuted,
     send, abort, retry, reset, newThread, openThread,
   }
 }

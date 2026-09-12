@@ -14,8 +14,13 @@
 //      the feed cannot undo (decision D4).
 
 /** Families the bot never reads. A live conversation and a turn receipt are not
- *  events, and a health reminder is personal, not work. */
-export const MUTED_FAMILIES = ['chat', 'claude_turn', 'health_reminder'] as const
+ *  events, and a health reminder is personal, not work.
+ *
+ *  `bot` joined the list on 2026-09-12, when an actionable bot message started
+ *  writing its own notification row (decision D5). Without it the next tick
+ *  would hand the bot its OWN push as a feed row to comment on, and it would
+ *  answer itself every 30 minutes forever. */
+export const MUTED_FAMILIES = ['chat', 'claude_turn', 'health_reminder', 'bot'] as const
 
 /** The broker caps a prompt at 12,000 chars. The bundle stays under this so the
  *  header and the last-answer tail always fit inside it. */

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  answerHeadline, cardLines, FAMILY_LABEL, familyLabel, groupStateWord, heroSaysFailed, looksRaw, sanitizeBody,
-  severityShape, stateWord, stripMarkdown, type FamilyKey,
+  answerHeadline, cardLines, FAMILY_LABEL, FAMILY_LANE, familyLabel, groupStateWord, heroSaysFailed, looksRaw,
+  sanitizeBody, severityShape, stateWord, stripMarkdown, type FamilyKey,
 } from './families'
 import type { Notification } from '../../../lib/turns'
 
@@ -31,10 +31,12 @@ const ALL_FAMILIES: FamilyKey[] = [
   // itself when a turn finishes while the phone is away. It is the single
   // highest-volume family on the live feed.
   'claude_turn',
+  // db/065: the tick's own push row, superseded rather than accumulated.
+  'bot',
 ]
 
 describe('FAMILY_LABEL', () => {
-  it('covers all 17 keys plus chat and claude_turn', () => {
+  it('covers all 17 keys plus chat, claude_turn and bot', () => {
     expect(Object.keys(FAMILY_LABEL).sort()).toEqual([...ALL_FAMILIES].sort())
   })
   it('never leaks a raw DB value as the label', () => {
@@ -315,6 +317,20 @@ describe('claude_turn — the family the live feed is mostly made of', () => {
   it('falls back to a state word when the answer never arrived', () => {
     expect(stateWord(n('claude_turn', '', { severity: 'info' }))).toBe('Answered')
     expect(stateWord(n('claude_turn', '', { severity: 'error' }))).toBe('The turn failed')
+  })
+})
+
+describe('bot — the tick\'s own push row (db/065)', () => {
+  it('has a human label distinct from claude_turn, no lane, and the same state word rule', () => {
+    expect(familyLabel('bot')).toBe('Claude needs you')
+    expect(FAMILY_LANE.bot).toBeNull()
+    expect(stateWord(n('bot', '', { severity: 'info' }))).toBe('Answered')
+    expect(stateWord(n('bot', '', { severity: 'error' }))).toBe('The turn failed')
+  })
+
+  it('counts the same noun as claude_turn', () => {
+    expect(groupStateWord(2, 'bot')).toBe('2 answers')
+    expect(groupStateWord(1, 'bot')).toBe('1 answer')
   })
 })
 

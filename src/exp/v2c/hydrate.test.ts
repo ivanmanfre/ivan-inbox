@@ -86,6 +86,22 @@ describe('turnsFromRows', () => {
   it('is empty for no rows', () => {
     expect(turnsFromRows([])).toEqual([])
   })
+
+  // Day separators (wb/ask/days.ts) key off `at`. The question is stamped
+  // when it was asked; the answer is stamped when it LANDED, which can be a
+  // real day later than the question if the phone was away.
+  it('stamps `at`: the question from created_at, the answer from finished_at', () => {
+    const out = turnsFromRows([row({
+      created_at: '2026-09-04T09:00:00.000Z', finished_at: '2026-09-05T02:00:00.000Z',
+    })])
+    expect(out[0].at).toBe('2026-09-04T09:00:00.000Z')
+    expect(out[1].at).toBe('2026-09-05T02:00:00.000Z')
+  })
+
+  it('an answer with no finished_at yet falls back to created_at', () => {
+    const out = turnsFromRows([row({ created_at: '2026-09-04T09:00:00.000Z', finished_at: null })])
+    expect(out[1].at).toBe('2026-09-04T09:00:00.000Z')
+  })
 })
 
 describe('mergeRow — the row wins, but never blanks what streamed', () => {
@@ -142,6 +158,11 @@ describe('mergeRow — the row wins, but never blanks what streamed', () => {
     const t = streamed()
     mergeRow(t, row({ answer: 'new' }))
     expect(t[1].text).toBe('partial')
+  })
+
+  it("keeps the row's own `at`, not whatever the stream stamped", () => {
+    const out = mergeRow(streamed({ at: '2026-09-04T09:00:00.000Z' }), row({ finished_at: '2026-09-04T10:00:00.000Z' }))
+    expect(out[1].at).toBe('2026-09-04T10:00:00.000Z')
   })
 })
 

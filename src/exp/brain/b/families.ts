@@ -34,6 +34,12 @@ export type FamilyKey =
   // index.ts:196). It is the single highest-volume family on the live feed, so
   // leaving it out of this map is what made a real feed print "Notification".
   | 'claude_turn'
+  // db/065, D5. The TICK's own push row — one open row at a time, superseded
+  // rather than accumulated, and never read by the tick itself
+  // (MUTED_FAMILIES, Seat A). Distinct from `claude_turn`, which is raised for
+  // any turn (operator or bot) that finishes while the phone is away: `bot` is
+  // raised only for a bot turn that actually carries a pill worth surfacing.
+  | 'bot'
 
 // ---------------------------------------------------------------------------
 // 1. The human label. What "family" printed on screen actually says.
@@ -58,6 +64,7 @@ export const FAMILY_LABEL: Record<FamilyKey, string> = {
   send_failed_alert: 'Send failed',
   chat: 'Conversation',
   claude_turn: 'Claude answered',
+  bot: 'Claude needs you',
 }
 
 /** Any string, mapped to its human label; an unknown key falls back rather than throwing. */
@@ -94,6 +101,9 @@ export const FAMILY_LANE: Record<FamilyKey, Job | null> = {
   // Ask is where it lands. A lane button would be a worse version of the tap
   // the whole card already is.
   claude_turn: null,
+  // Same reason as claude_turn: the row's own url already carries
+  // `?thread=<bot thread>&turn=<id>`, so the tap goes straight to the answer.
+  bot: null,
 }
 
 // ---------------------------------------------------------------------------
@@ -254,6 +264,10 @@ export function stateWord(n: Pick<Notification, 'family' | 'title' | 'body' | 's
     // card reads off `body` through `answerHeadline` rather than out of this
     // switch. This branch is the fallback for a row whose body never arrived.
     case 'claude_turn': word = n.severity === 'error' ? 'The turn failed' : 'Answered'; break
+    // Same treatment as claude_turn: it is the same kind of row (a turn that
+    // finished), just on the tick's own push path rather than the "phone was
+    // away" one.
+    case 'bot': word = n.severity === 'error' ? 'The turn failed' : 'Answered'; break
     default: word = FALLBACK_BY_SEVERITY[n.severity] ?? 'Update'
   }
   // The safety net: whatever branch ran, a raw enum token never survives to
@@ -298,6 +312,7 @@ const COUNTED_NOUN: Record<FamilyKey, [one: string, many: string]> = {
   send_failed_alert: ['send failed', 'sends failed'],
   chat: ['message', 'messages'],
   claude_turn: ['answer', 'answers'],
+  bot: ['answer', 'answers'],
 }
 
 /** The hero line for a folded GROUP: the count and the thing it counts. */

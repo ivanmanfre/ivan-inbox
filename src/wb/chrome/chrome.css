@@ -385,3 +385,46 @@
   color:var(--ds-text-2); cursor:pointer;
   font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta);
 }
+
+/* ---- inbox-agent-drawer 2026-09-12 · B ---- */
+/* D2: the desktop drawer. A fourth flex child of `.wb-plate.ds-plate-row`
+   (rail | regions | drawer), so it sits beside `.wb-regions` rather than
+   inside it — it is not a peer and does not compete with `peers-N`'s own
+   sizing. `flex:0 0 72px` collapsed, 380px open; the WIDTH change is the one
+   thing that animates, on the system's one duration/easing pair, and the
+   reduced-motion collapse in ds.css §18 (`body *{transition-duration:0ms}`)
+   already reaches it — nothing extra to opt in here. */
+.a-drawer{
+  flex:0 0 72px;
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  border-left:1px solid var(--ds-line);
+  background:var(--ds-surface-1);
+  transition:flex-basis var(--ds-dur) var(--ds-ease);
+}
+.a-drawer[data-open]{ flex-basis:380px }
+/* The open pane fills the column height; it is the same Ask pane the peer
+   used to render, and that component already manages its own scroll. */
+.a-drawer > *{ flex:1 1 auto; min-height:0 }
+.a-drawer-collapsed{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:var(--ds-s4);
+  padding-top:var(--ds-s4);
+}
+.a-drawer-openwrap{ position:relative; display:inline-flex }
+/* Riding the bot thread row's own unread mark (`.a-brain-bot-dot`, ask.css) —
+   corner-pinned here because on the collapsed rail it reads as a badge on the
+   control, not a list row's own leading dot. */
+.a-drawer-openwrap > .a-brain-bot-dot{
+  position:absolute; top:2px; right:2px;
+}
+/* §11 THE FRAME's 1800px measure rules cap `.wb-peer` and `.wb-work.wide`
+   content only (chrome.css above) — `.a-drawer` is neither selector, so it is
+   already exempt at every width; nothing to add here.
+   `.wb-work.hidden` is what `applyDrawer` (layout.ts) asks for when the
+   drawer is open over a shown peer at the 'desktop' canvas: the list column
+   drops out of `.wb-regions` and the peer takes what it leaves behind. */
+.wb-work.hidden{ display:none }
