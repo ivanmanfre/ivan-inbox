@@ -4,7 +4,7 @@
 // rendering lives here — this file is state + chrome only.
 
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
-import { Chip, EmptyState, IconButton, LiveDot } from '../ds'
+import { Button, Chip, EmptyState, IconButton, LiveDot } from '../ds'
 import { relAge } from '../wb/kit'
 import { computeWindow, endOfDayIso } from './layout'
 import { PersonPanel } from './PersonPanel'
@@ -16,6 +16,17 @@ import {
 } from './filters'
 import type { OrbitPerson, OrbitTenant } from './types'
 import './orbit.css'
+
+/* R4a · The failure, said ONCE. `useOrbit` sets `error` to the thrown message,
+   whose own fallback is "the orbit graph did not load" — printed under the
+   title "The graph did not load" that was the same sentence a second time. A
+   reason that adds nothing is dropped; a real one (an HTTP status, a Postgres
+   message) is folded into the same line. */
+function errorLine(error: string): string {
+  const reason = error.trim().replace(/\.$/, '')
+  if (!reason || /graph did not load/i.test(reason)) return 'The graph did not load.'
+  return `The graph did not load: ${reason}.`
+}
 
 // S1's canvas, its own lazy boundary — nothing else on the app pays for
 // sigma/graphology until this route actually mounts.
@@ -98,7 +109,7 @@ export function Orbit() {
   const [scrubDay, setScrubDay] = useState<number | null>(null)
   const reducedMotion = usePrefersReducedMotion()
 
-  const { graph, prev, loading, error, loadedAt, refresh } = useOrbit(filters)
+  const { graph, prev, loading, error, loadedAt, refresh, retry } = useOrbit(filters)
   const { from: winFrom, to: winTo } = rangeOf(filters)
 
   const visible = useCallback((p: OrbitPerson) => matchesFilters(p, filters), [filters])
@@ -243,7 +254,20 @@ export function Orbit() {
 
       <div className="a-orbit-canvas">
         {error ? (
-          <div className="a-orbit-canvas-empty"><EmptyState icon="alert" title="The graph did not load" sub={error} /></div>
+          /* R4a · ONE SENTENCE, AND A WAY OUT. The title and the sub said the
+             same thing twice ("The graph did not load" over "the orbit graph
+             did not load", which is the hook's own fallback message), and
+             neither offered anything to do about it. The reason is folded into
+             the one line when it ADDS something, and Retry re-runs the fetch —
+             through the hook's own retry arm, which raises `loading`, so the
+             screen stops claiming a failure while a read is out. */
+          <div className="a-orbit-canvas-empty">
+            <EmptyState
+              icon="alert"
+              title={errorLine(error)}
+              action={<Button variant="quiet" icon="refresh" onClick={retry}>Retry</Button>}
+            />
+          </div>
         ) : null}
         {!error && !loading && graph && graph.people.length === 0 ? (
           <div className="a-orbit-canvas-empty">

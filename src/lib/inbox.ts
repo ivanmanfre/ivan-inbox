@@ -666,19 +666,48 @@ export async function markNotSpam(t: Thread): Promise<void> {
  * the same path a 500 does: the rows stay, the cache is not written, and
  * nothing stamps the screen as checked.
  */
+/* R4c · THE PAGES GO OUT TOGETHER (2026-09-12).
+
+   PostgREST caps a single response at 1000 rows regardless of `.limit()`, so
+   this view has to be paged; the id tiebreak keeps the pages stable.
+
+   IT USED TO PAGE ONE AT A TIME, AND EVERY SURFACE IN THE APP WAITED FOR IT.
+   Measured on a cold profile against a local preview: seven pages, ~850ms each,
+   6.1 SECONDS of strictly serial round trips, and `Shell` holds the whole app on
+   one skeleton until this resolves (Spine §1.7) — so Today's own reads did not
+   even START until 6,643ms, and the morning brief that takes 1.4s landed at
+   8.1s. Content, Sales, Ops and Sends paid the same toll for a corpus none of
+   them reads.
+
+   Four pages go out at once now. Seven pages is two round trips instead of
+   seven, and the last batch is the one that discovers the end. The order is
+   unchanged (offsets are pushed in order, inside a batch and across batches),
+   and the consistency is slightly BETTER than before rather than worse: every
+   page in a batch is issued in the same instant, so there is less wall-clock
+   room for an insert to shift the window under it than there was between seven
+   sequential requests. `dedupeMessages` still runs on the result. */
+const MSG_PAGE = 1000
+const MSG_BATCH = 4
+
 export async function fetchMessages(knownRows = 0): Promise<InboxMessage[]> {
-  // PostgREST caps a single response at 1000 rows regardless of .limit(),
-  // so page through the view; id tiebreak keeps pages stable.
   const all: InboxMessage[] = []
-  const page = 1000
-  for (let from = 0; from < 20000; from += page) {
-    const { data, error } = await supabase.from('inbox_messages_v')
+  const span = MSG_PAGE * MSG_BATCH
+  for (let from = 0; from < 20000; from += span) {
+    const offsets: number[] = []
+    for (let i = 0; i < MSG_BATCH && from + i * MSG_PAGE < 20000; i += 1) offsets.push(from + i * MSG_PAGE)
+    const pages = await Promise.all(offsets.map(o => supabase.from('inbox_messages_v')
       .select('*')
       .order('created_at', { ascending: true }).order('id', { ascending: true })
-      .range(from, from + page - 1)
-    if (error) throw error
-    all.push(...(data as InboxMessage[]))
-    if (!data || data.length < page) break
+      .range(o, o + MSG_PAGE - 1)))
+    // A short page anywhere in the batch means the end of the view is inside
+    // it. The whole batch is still appended, in offset order, before stopping.
+    let last = false
+    for (const { data, error } of pages) {
+      if (error) throw error
+      all.push(...(data as InboxMessage[]))
+      if (!data || data.length < MSG_PAGE) last = true
+    }
+    if (last) break
   }
   if (all.length === 0 && knownRows > 0) throw new Error('The inbox read came back empty')
   return dedupeMessages(all)

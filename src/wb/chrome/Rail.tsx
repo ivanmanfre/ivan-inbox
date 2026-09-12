@@ -124,6 +124,11 @@ export function Rail({
   collapsed?: boolean
   onToggle?: () => void
 }) {
+  // R4b: the sync line's three honest states. `stale` is the host's own word for
+  // "the last read failed or went stale" (the button's title says both), and a
+  // read that has not landed yet is neither of the other two.
+  const syncState: 'pending' | 'ok' | 'bad' = stale ? 'bad' : loadedAt ? 'ok' : 'pending'
+
   const row = (j: Job, nested = false) => (
     <RailItem
       key={j}
@@ -186,9 +191,19 @@ export function Rail({
             type="button" className="a-rail-sync" onClick={onRefresh}
             title={stale ? 'The last read failed or went stale. Read again.' : 'Read again'}
           >
-            <span className="a-rail-sync-dot" data-bad={stale || undefined} aria-hidden />
+            {/* R4b · THREE STATES, NOT TWO. The dot had exactly one failure
+                mode and no pending one, so for the whole of a cold boot it sat
+                GREEN beside the words "not loaded" — measured at 7.5s on
+                2026-09-12. Green is a claim that a read landed, so it is spent
+                only once one has. Before that the dot is neutral ink and the
+                line says a read is out; a failed or stale read is the third
+                state and says which. */}
+            <span className="a-rail-sync-dot" data-state={syncState} aria-hidden />
             {!collapsed ? (
-              <span className="a-rail-sync-t a-mono">{loadedAt ? relAge(loadedAt) : 'not loaded'}</span>
+              <span className="a-rail-sync-t a-mono">
+                {syncState === 'pending' ? 'loading…'
+                  : loadedAt ? relAge(loadedAt) : 'not loaded'}
+              </span>
             ) : null}
             <Icon name="refresh" size={16} />
           </button>

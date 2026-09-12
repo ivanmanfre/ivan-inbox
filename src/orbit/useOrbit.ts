@@ -133,6 +133,17 @@ export function useOrbit(filters: OrbitFilters): UseOrbitResult {
   const refreshRef = useRef(refresh)
   refreshRef.current = refresh
 
+  // R4a · A RETRY IS A USER ACTION AND HAS TO LOOK LIKE ONE. `refresh` cannot
+  // raise `loading` itself — the 15s poll and the realtime nudge below both go
+  // through it, and a graph that flashed into a loading state on its own clock
+  // would be worse than the error it replaced. So the retry arm is separate: it
+  // clears the error, says the read is out, and runs the same fetch.
+  const retry = useCallback(() => {
+    setError(null)
+    setLoading(true)
+    refreshRef.current()
+  }, [])
+
   // Fetch on mount AND every time the tenant/range actually changes.
   useEffect(() => { refreshRef.current() }, [query])
 
@@ -158,5 +169,5 @@ export function useOrbit(filters: OrbitFilters): UseOrbitResult {
     }
   }, [topic])
 
-  return { graph, prev, loading, error, loadedAt, refresh }
+  return { graph, prev, loading, error, loadedAt, refresh, retry }
 }

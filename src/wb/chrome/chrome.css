@@ -118,9 +118,14 @@
   height:var(--ds-s3);
   flex:0 0 auto;
   border-radius:var(--ds-r-pill);
-  background:var(--ds-sev-clear);
+  /* R4b · NEUTRAL IS THE DEFAULT, AND GREEN IS EARNED. The default used to be
+     `--ds-sev-clear`, so a rail that had never read anything still drew a
+     healthy green dot; beside the words "not loaded" that is a green light on
+     a claim the app cannot make. Ink, until a read lands. */
+  background:var(--ds-text-3);
 }
-.a-rail-sync-dot[data-bad]{ background:var(--ds-sev-attention) }
+.a-rail-sync-dot[data-state='ok']{ background:var(--ds-sev-clear) }
+.a-rail-sync-dot[data-state='bad']{ background:var(--ds-sev-urgent) }
 
 /* --------------------------------------------------------------------------
    8 · S39-8 the work segment. The strip SCROLLS rather than shrinking: four
