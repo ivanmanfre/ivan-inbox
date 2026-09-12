@@ -58,3 +58,38 @@ describe('benchmark arithmetic', () => {
     expect(subLine(b)).toBe('15 accounts · 682 of their posts in the last 90 days · collected 2025-11-16 to 2026-09-08')
   })
 })
+
+describe('you vs one account', () => {
+  const you = { n: 40, per_wk: 3.1, median: 1, smart: 4, imp_median: 80 }
+  const acc = (who: string, role: string, smart: number | null, per_wk = 2): import('./benchmark').BenchAccount =>
+    ({ who, role, n: 20, per_wk, median: smart, smart, media: 'text', best: null })
+
+  it('pickCompare keeps a saved pick, else the strongest competitor, else the strongest account', async () => {
+    const { pickCompare } = await import('./benchmark')
+    const rows = [acc('Sweep Guy', 'sweep', 900), acc('Rival A', 'direct_competitor', 100), acc('Rival B', 'direct_competitor', 300)]
+    expect(pickCompare(rows, 'Rival A')?.who).toBe('Rival A')
+    expect(pickCompare(rows, 'Gone')?.who).toBe('Rival B')
+    expect(pickCompare(rows, null)?.who).toBe('Rival B')
+    expect(pickCompare([acc('Only', 'sweep', 5)], null)?.who).toBe('Only')
+    expect(pickCompare([], null)).toBeNull()
+  })
+
+  it('pairPct puts both bars on one scale and floors a positive bar at 2%', async () => {
+    const { pairPct } = await import('./benchmark')
+    expect(pairPct(1, 100)).toEqual({ you: 2, them: 100 })
+    expect(pairPct(50, 100)).toEqual({ you: 50, them: 100 })
+    expect(pairPct(0, 0)).toEqual({ you: 0, them: 0 })
+    expect(pairPct(null, 10)).toEqual({ you: 0, them: 100 })
+  })
+
+  it('compareRows names the gap in plain words on every row', async () => {
+    const { compareRows, compareSummary } = await import('./benchmark')
+    const rows = compareRows(you, acc('Rival B', 'direct_competitor', 300, 1))
+    expect(rows.map(r => r.label)).toEqual(['Posts per week', 'Median post', 'Typical post'])
+    expect(rows[0].note).toBe('you post 3.1× more often')
+    expect(rows[1].note).toBe('they get 300.0×')
+    expect(rows[2].note).toBe('they get 75.0×')
+    expect(compareSummary(you, acc('Rival B', 'direct_competitor', 300, 1), 'You'))
+      .toBe('Rival B posts 1 a week, you 3.1. Their typical post gets 300, yours 4 (they get 75.0×).')
+  })
+})

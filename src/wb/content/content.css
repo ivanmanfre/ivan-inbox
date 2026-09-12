@@ -975,6 +975,23 @@ a.a-prop-src:hover{ color:var(--ds-text) }
 .a-bm-post-angle b { color: var(--ds-text); font-weight: 600; }
 .a-bm-foot { margin-top: var(--ds-s2); }
 
+/* You vs one account */
+.a-bm-cmp-head { display: flex; justify-content: space-between; gap: var(--ds-s3); align-items: flex-start; margin-bottom: var(--ds-s3); flex-wrap: wrap; }
+.a-bm-cmp-pick { display: flex; flex-direction: column; gap: 2px; min-width: 200px; }
+.a-bm-cmp-pick select { font: inherit; color: var(--ds-text); background: var(--ds-surface-2); border: 1px solid var(--ds-line); border-radius: var(--ds-r1); padding: 4px 8px; max-width: 100%; }
+.a-bm-cmp-cols, .a-bm-cmp-row { display: grid; grid-template-columns: 150px 1fr 1fr; gap: var(--ds-s2); align-items: center; }
+.a-bm-cmp-cols { margin-bottom: 4px; }
+.a-bm-cmp-row { padding: 6px 0; border-top: 1px solid var(--ds-line); }
+.a-bm-cmp-lbl { display: flex; flex-direction: column; font-size: var(--ds-fs-meta); }
+.a-bm-cmp-cell { display: grid; grid-template-columns: 1fr 56px; gap: var(--ds-s2); align-items: center; min-width: 0; }
+.a-bm-bar-you { background: var(--ds-text); }
+.a-bm-cmp-text { font-size: var(--ds-fs-meta); }
+.a-bm-cmp-text > div { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 560px) {
+  .a-bm-cmp-cols, .a-bm-cmp-row { grid-template-columns: 96px 1fr 1fr; }
+}
+
+
 /* ==========================================================================
    OWN-POST THEMES (Strategy) — the tail per theme, with engager fit.
    ========================================================================== */

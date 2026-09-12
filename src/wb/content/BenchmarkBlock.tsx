@@ -19,8 +19,8 @@ import { Badge } from '../../ds'
 import { Group } from '../kit'
 import { CalmEmpty, Failed } from './parts'
 import {
-  DAYS, HEAT_FLOOR, ROLE_EXPLAINER, ROLE_LABEL, fetchBenchmark, formatRows, heatIndex, heatScale,
-  num, peakLine, ratioLine, shortDate, subLine,
+  DAYS, HEAT_FLOOR, ROLE_EXPLAINER, ROLE_LABEL, compareRows, compareSummary, fetchBenchmark, formatRows,
+  heatIndex, heatScale, num, peakLine, pickCompare, ratioLine, shortDate, subLine,
   type Benchmark, type BenchmarkState, type BenchPost,
 } from '../../lib/benchmark'
 import type { ContentLane } from '../../lib/content'
@@ -59,6 +59,77 @@ function Tiles({ b, lane }: { b: Benchmark; lane: ContentLane }) {
         <span className="a-eyebrow">Format that lands for them</span>
         <span className="a-bm-v a-bm-cap">{t.top_format ?? '–'}</span>
         <span className="a-bm-d">{f ? `typical ${num(f.theirs)} on ${f.n} posts` : 'fewer than 5 posts in any format'}</span>
+      </div>
+    </div>
+  )
+}
+
+/* You vs one account. Ivan 2026-09-12: "you vs one account is good i want
+   that". The pick is remembered per lane in this browser only. */
+function Compare({ b, lane }: { b: Benchmark; lane: ContentLane }) {
+  const key = `audn.compare.${lane}`
+  const [saved, setSaved] = useState<string | null>(() => {
+    try { return localStorage.getItem(key) } catch { return null }
+  })
+  const them = pickCompare(b.accounts, saved)
+  if (!them) return null
+  const you = b.tiles.you
+  const youLabel = lane === 'ivan' ? 'You' : 'This lane'
+  const rows = compareRows(you, them)
+  const pick = (who: string) => {
+    setSaved(who)
+    try { localStorage.setItem(key, who) } catch { /* private window: the pick just does not stick */ }
+  }
+  return (
+    <div className="a-bm-panel a-bm-cmp">
+      <div className="a-bm-cmp-head">
+        <div>
+          <div className="a-bm-h">{youLabel} vs one account</div>
+          <div className="a-ct-sub">{compareSummary(you, them, youLabel)}</div>
+        </div>
+        <label className="a-bm-cmp-pick">
+          <span className="a-eyebrow">Compare with</span>
+          <select value={them.who} onChange={e => pick(e.target.value)} aria-label="Account to compare with">
+            {b.accounts.map(a => (
+              <option key={a.who} value={a.who}>{a.who} · {ROLE_LABEL[a.role] ?? a.role}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className="a-bm-cmp-cols">
+        <span />
+        <span className="a-eyebrow">{youLabel}</span>
+        <span className="a-eyebrow">{them.who}</span>
+      </div>
+      {rows.map(r => (
+        <div key={r.label} className="a-bm-cmp-row">
+          <div className="a-bm-cmp-lbl">
+            <span>{r.label}</span>
+            {r.note ? <span className="a-dim">{r.note}</span> : null}
+          </div>
+          <div className="a-bm-cmp-cell">
+            <div className="a-bm-bar-track"><div className="a-bm-bar a-bm-bar-you" style={{ width: `${r.youPct}%` }} /></div>
+            <span className="a-bm-bar-val a-mono">{r.you}</span>
+          </div>
+          <div className="a-bm-cmp-cell">
+            <div className="a-bm-bar-track"><div className="a-bm-bar" style={{ width: `${r.themPct}%` }} /></div>
+            <span className="a-bm-bar-val a-mono">{r.them}</span>
+          </div>
+        </div>
+      ))}
+      <div className="a-bm-cmp-row a-bm-cmp-text">
+        <div className="a-bm-cmp-lbl"><span>Mostly</span></div>
+        <div className="a-dim">{lane === 'ivan' ? 'see the themes below' : '–'}</div>
+        <div className="a-bm-cap">{them.media}</div>
+      </div>
+      <div className="a-bm-cmp-row a-bm-cmp-text">
+        <div className="a-bm-cmp-lbl"><span>Best post, {b.days} d</span></div>
+        <div className="a-dim">{you.n} posts with metrics</div>
+        <div>
+          {them.best?.url
+            ? <a href={them.best.url} target="_blank" rel="noreferrer">{num(them.best.eng)} · {them.best.text}</a>
+            : <span>{them.best ? `${num(them.best.eng)} · ${them.best.text}` : '–'}</span>}
+        </div>
       </div>
     </div>
   )
@@ -236,6 +307,7 @@ export function BenchmarkView({ lane, state, onRetry }: {
       pad
     >
       <Tiles b={b} lane={lane} />
+      <Compare b={b} lane={lane} />
       <div className="a-bm-two">
         <Formats b={b} />
         <Heat b={b} />

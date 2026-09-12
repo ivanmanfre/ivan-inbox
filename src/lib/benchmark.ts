@@ -157,3 +157,63 @@ export async function fetchBenchmark(lane: ContentLane): Promise<BenchmarkState>
   if (!b.window || b.window.posts === 0) return { kind: 'empty', reason: 'No competitor posts collected for this lane yet.' }
   return { kind: 'ready', data: b }
 }
+
+/* ---- You vs one account ---------------------------------------------------
+   Ivan, 2026-09-12: "you vs one account is good i want that". The account is
+   picked on the page; the arithmetic below is what the two columns print. */
+
+export type CompareRow = {
+  label: string
+  you: string
+  them: string
+  youPct: number
+  themPct: number
+  note: string | null
+}
+
+/** The saved pick if it is still on the table, else the strongest competitor,
+    else the strongest account of any role. Null only when the table is empty. */
+export function pickCompare(accounts: BenchAccount[], saved: string | null): BenchAccount | null {
+  if (accounts.length === 0) return null
+  if (saved) {
+    const s = accounts.find(a => a.who === saved)
+    if (s) return s
+  }
+  const bySmart = (a: BenchAccount, b: BenchAccount) => (b.smart ?? 0) - (a.smart ?? 0)
+  const comp = accounts.filter(a => a.role === 'direct_competitor').sort(bySmart)
+  return comp[0] ?? [...accounts].sort(bySmart)[0]
+}
+
+/** Two bar widths on one scale; a positive value never draws under 2%. */
+export function pairPct(you: number | null, them: number | null): { you: number; them: number } {
+  const max = Math.max(you ?? 0, them ?? 0)
+  if (max <= 0) return { you: 0, them: 0 }
+  const f = (v: number | null) => (v === null || v <= 0 ? 0 : Math.max(2, (100 * v) / max))
+  return { you: f(you), them: f(them) }
+}
+
+function paceNote(you: number, them: number): string | null {
+  if (!you || !them) return null
+  const r = them / you
+  if (r > 1.15) return `they post ${r.toFixed(1)}× more often`
+  if (r < 0.87) return `you post ${(1 / r).toFixed(1)}× more often`
+  return 'same pace'
+}
+
+export function compareRows(you: BenchYou, them: BenchAccount): CompareRow[] {
+  const pace = pairPct(you.per_wk, them.per_wk)
+  const med = pairPct(you.median, them.median)
+  const typ = pairPct(you.smart, them.smart)
+  return [
+    { label: 'Posts per week', you: String(you.per_wk), them: String(them.per_wk), youPct: pace.you, themPct: pace.them, note: paceNote(you.per_wk, them.per_wk) },
+    { label: 'Median post', you: num(you.median), them: num(them.median), youPct: med.you, themPct: med.them, note: ratioLine(them.median, you.median) },
+    { label: 'Typical post', you: num(you.smart), them: num(them.smart), youPct: typ.you, themPct: typ.them, note: ratioLine(them.smart, you.smart) },
+  ]
+}
+
+/** One sentence for the top of the panel. */
+export function compareSummary(you: BenchYou, them: BenchAccount, youLabel: string): string {
+  const r = ratioLine(them.smart, you.smart)
+  const gap = r ? ` (${r})` : ''
+  return `${them.who} posts ${them.per_wk} a week, ${youLabel.toLowerCase()} ${you.per_wk}. Their typical post gets ${num(them.smart)}, yours ${num(you.smart)}${gap}.`
+}
