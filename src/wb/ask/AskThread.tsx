@@ -48,6 +48,7 @@ import { daySeparators } from './days'
 // two extra requests, because the weight this wave adds is in turns.ts, the
 // feed row and ask.css, none of which can be split off a cold boot.
 import { RunnerControl, RunnerReport, RunnerSection, useRunner } from './Runner'
+import { Overflow } from './Overflow'
 import './ask.css'
 
 // The one place a turn error's text is checked against D6's exact copy. The
@@ -237,31 +238,42 @@ function AnswerBody({ text, onRecall, stream, cites }: {
 }
 
 /**
- * The answer's footer. What the brain read and what it was grounded on are
- * CHIPS on one row under the prose, not a stack of lines: they are metadata
- * about the answer, and a conversation surface keeps metadata to the footer
- * where the eye can skip it. The count and the list are the memory files ALONE
- * (brainMeta.ts); the summary is its own chip and is never counted as a file.
+ * What the answer was built on, as ONE dim line under the prose.
+ *
+ * It was two boxed pills side by side ("read 1 memory file", "grounded on
+ * 2026-09-05"). Two boxes for one sentence of metadata drew the eye to the
+ * quietest thing on the surface, under EVERY answer. The line is the same two
+ * facts, joined, in the register metadata belongs to; the click is the same
+ * click and opens the same numbered list. The count and the list are the
+ * memory files ALONE (brainMeta.ts); the summary is never counted as a file.
  *
  * Move 12 asked for numbered citation marks. The marks are numbered HERE,
  * where the sources are listed, and not inline in the prose: nothing in
  * `turn.sources` says which claim came from which file, so an inline mark
  * would be an attribution this surface invented.
  */
+export function footLine(label: string | null, grounded: string | null): string {
+  const s = [label, grounded].filter(Boolean).join(' · ')
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''
+}
+
 function AnswerFooter({ turn }: { turn: Turn }) {
   const [open, setOpen] = useState(false)
   const label = sourcesChipLabel(turn.sources)
   const grounded = groundedClause(turn.sources)
   if (!label && !grounded) return null
   const names = sourceBasenames(turn.sources)
+  const line = footLine(label, grounded)
   return (
-    <div className="a-wrapline">
-      {label && (
-        <Chip icon={open ? 'discloseUp' : 'disclose'} onClick={() => setOpen(v => !v)} selected={open}>
-          <span data-sources>{label}</span>
-        </Chip>
-      )}
-      {grounded && <Chip tone="quiet">{grounded}</Chip>}
+    <div className="a-brain-foot">
+      {label
+        ? (
+          <button
+            type="button" className="a-brain-footline" data-open={open ? '' : undefined}
+            aria-expanded={open} onClick={() => setOpen(v => !v)}
+          ><span data-sources>{line}</span></button>
+        )
+        : <span className="a-brain-footline" data-flat=""><span>{line}</span></span>}
       <AnimatePresence initial={false}>
         {open && names.length > 0 && (
           <motion.div
@@ -351,7 +363,7 @@ function AnswerCard({ turn, onRetry, onRecall, justLanded, focused, cites, morph
       data-origin={bot ? 'bot' : undefined}
       data-focus={focused ? '' : undefined}
       data-settle={justLanded ? '' : undefined}
-      animate={justLanded ? { opacity: [0, 1], y: [8, 0] } : { opacity: 1, y: 0 }}
+      animate={justLanded ? { opacity: [0, 1], y: [6, 0] } : { opacity: 1, y: 0 }}
       transition={spring}
       drag={drag ? 'y' : false}
       dragConstraints={{ top: 0, bottom: 0 }}
@@ -384,7 +396,7 @@ function AnswerCard({ turn, onRetry, onRecall, justLanded, focused, cites, morph
   )
 }
 
-function sessionLine(grounding: ChatHandle['grounding']): string {
+export function sessionLine(grounding: ChatHandle['grounding']): string {
   // The grounding date already sits under every answer as its own chip, so the
   // shelf says only which session this is and never truncates at 390.
   if (!grounding) return 'New conversation'
@@ -399,7 +411,7 @@ const STARTERS = [
 
 export function AskThread({
   chat, about, mobile, focusTurn = null, onFocused, morphFrom = null, onMorphed, onDragBack,
-  composerExtras, see, text: textProp, onText,
+  composerExtras, see, context, text: textProp, onText,
 }: {
   chat: ChatHandle
   job: Job
@@ -418,6 +430,9 @@ export function AskThread({
   composerExtras?: ComposerExtras
   /** S15: the exact block of screen context that rides with the next message. */
   see?: string
+  /** The chip row naming that context, drawn directly above the composer. The
+   * pane owns the state (it owns the subjects), the thread owns the place. */
+  context?: ReactNode
   /** Controlled composer text. The docked pane holds it because its palette is
    * derived from it; the phone does not, and keeps the state here. */
   text?: string
@@ -506,6 +521,16 @@ export function AskThread({
   return (
     <div className="a-brain-ask">
       <div className="a-brain-thread" ref={scroller}>
+        {/* THE SHELF IS A PHONE ROW NOW (2026-09-12, Ivan: "i feel like UI
+            could be cleaner on claude chat.... and smoother looking....").
+            On the desktop drawer it was a third band of chrome before the
+            first message, and two of its three items truncated at 380px. Its
+            contents did not disappear, they moved to the one head row above:
+            the pin and the mute are items in the thread menu (ThreadMenu.tsx),
+            "New thread" is the first item in that same menu, and the session
+            line is the status dot's own label. The phone has no head of its
+            own over this thread, so there the shelf stays exactly as it was. */}
+        {mobile && (
         <div className="a-brain-shelf">
           {/* D1: the pin. There is no thread list on this surface, so Claude's
               own thread is one chip on the shelf: it is the only thread that
@@ -546,6 +571,7 @@ export function AskThread({
             <Button variant="quiet" size="sm" icon="add" onClick={() => chat.newThread()}>New thread</Button>
           </span>
         </div>
+        )}
 
         {/* Work running somewhere else that this thread can see. It sits above
             the conversation because a job outlives every turn under it: he
@@ -618,7 +644,7 @@ export function AskThread({
           {chat.busy && (
             <motion.div
               className="a-brain-answer" data-live=""
-              initial={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0, transition: spring }}
               exit={{ opacity: 0, transition: fadeT }}
             >
@@ -654,9 +680,36 @@ export function AskThread({
         busy={chat.busy}
         runningElsewhere={!!runningElsewhereActive}
         onStop={chat.busy ? chat.abort : stopRunningElsewhere}
-        placeholder={about ? `Ask about ${about}…` : mobile ? 'Ask Claude…' : 'Ask Claude…'}
+        placeholder={about ? `Ask about ${about}…` : 'Message Claude'}
         extras={composerExtras}
-        runner={<RunnerControl runner={runner} text={text} onSent={() => setText('')} />}
+        // What travels with the next message, as one chip row directly above
+        // the plate — and, only while there is one, the runner's own refusal.
+        // The refusal used to ride the strip that is gone on the desktop, and a
+        // door that fails silently is a door that lies.
+        above={(context || (!mobile && runner.note)) ? (
+          <div className="a-brain-above">
+            {context}
+            {!mobile && runner.note && (
+              <span className="a-brain-runnote">
+                <Icon name="alert" size={16} />
+                <span>{runner.note}</span>
+                <Button variant="quiet" size="sm" onClick={runner.clearNote}>Dismiss</Button>
+              </span>
+            )}
+          </div>
+        ) : undefined}
+        // Inside the plate's own left cluster: the model (from the host) and,
+        // on the desktop, the runner. The phone keeps its strip below, so it
+        // passes no runner here and the two never say the same thing twice.
+        lead={
+          <Overflow
+            runner={mobile ? undefined : runner}
+            text={text}
+            onSent={() => setText('')}
+            menu={composerExtras?.menu}
+          />
+        }
+        runner={mobile ? <RunnerControl runner={runner} text={text} onSent={() => setText('')} /> : undefined}
       />
 
       <ToastStack items={toasts} onDismiss={id => setToasts(prev => prev.filter(t => t.id !== id))} />

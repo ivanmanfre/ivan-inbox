@@ -14,7 +14,8 @@
    `wb-railmin` the same way and the two toggles should not drift apart into
    two different storage patterns for the same kind of "how I left it" state.
    ========================================================================== */
-import { IconButton, LiveDot } from '../../ds'
+import { motion, useReducedMotion } from 'motion/react'
+import { IconButton, LiveDot, fadeT } from '../../ds'
 import type { ReactNode } from 'react'
 
 export function Drawer({
@@ -31,10 +32,22 @@ export function Drawer({
       caller while `open`, so pass `null` while collapsed. */
   children: ReactNode
 }) {
+  const reduced = useReducedMotion()
   return (
     <aside className="a-drawer" data-open={open || undefined} data-drawer>
       {open ? (
-        children
+        /* The column's WIDTH is animated by CSS (`.a-drawer` in chrome.css);
+           what mounts inside it arrives on a fade, so the pane does not snap
+           into existence a frame before the column has finished widening.
+           Opacity only — no transform — because the pane holds a `position:
+           fixed` sheet (the feed) and a transformed ancestor would position it
+           against this box instead of the viewport. */
+        <motion.div
+          className="a-drawer-pane"
+          initial={reduced ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={fadeT}
+        >{children}</motion.div>
       ) : (
         <div className="a-drawer-collapsed">
           <span className="a-drawer-openwrap">

@@ -26,11 +26,12 @@
    ========================================================================== */
 import { useMemo, useState, useSyncExternalStore } from 'react'
 import {
-  Badge, Banner, Button, Chip, IconButton, LiveDot, Popover, PopoverItem, Sheet,
+  Badge, Banner, Button, Chip, IconButton, LiveDot, PopoverItem, Sheet,
 } from '../../ds'
 import { Head } from '../kit'
 import type { BrainAskPaneProps } from '../../exp/brain/types'
-import { AskThread } from './AskThread'
+import { AskThread, sessionLine } from './AskThread'
+import { ThreadMenu } from './ThreadMenu'
 import { Feed } from './Feed'
 import { See } from './See'
 import { usePalette } from './Palette'
@@ -77,7 +78,6 @@ function short(label: string, max = 52): string {
 export function AskPane({ chat, job, about, aboutContext, subjects = [], onClose, onOpenAbout, mobile }: BrainAskPaneProps) {
   const feed = useFeedData()
   const [feedOpen, setFeedOpen] = useState(false)
-  const [models, setModels] = useState(false)
   // The turn a feed row names, so the docked pane lands on the same answer the
   // phone would (a `claude_turn` row's url carries `&turn=`), and the rect of
   // the card it came from, so it grows out of it (move 9).
@@ -107,6 +107,35 @@ export function AskPane({ chat, job, about, aboutContext, subjects = [], onClose
   const seeBlock = buildSeeBlock(allSubjects, see)
 
   const mock = transportIsMock()
+  /** The model list, as items for the composer plate's overflow. Same options,
+   * same note, same "next turn only" contract — a different door. */
+  const modelMenu = (close: () => void) => (
+    <>
+      {/* The one fact the head used to carry as a subtitle: before a turn it
+          names the model that WILL run, after one it names what actually
+          answered, read back from the broker. It travels with the picker
+          rather than costing a line of chrome under the title. */}
+      <div className="a-brain-modelnote" data-model-now>
+        {chat.model
+          ? `The last turn ran on ${modelLabel(chat.model)}.`
+          : chat.wanted ? `${modelLabel(chat.wanted)} on the next turn.` : 'Claude default.'}
+      </div>
+      {MODEL_OPTIONS.map(m => (
+        <PopoverItem
+          key={m.id ?? 'default'}
+          icon={chat.wanted === m.id ? 'check' : undefined}
+          onClick={() => { chat.setWanted(m.id); close() }}
+          tail={<span className="a-dim">{m.note}</span>}
+        >{m.label}</PopoverItem>
+      ))}
+      {/* Stated once, where the choice is made, rather than discovered by
+          sending a turn that fails. */}
+      <div className="a-brain-modelnote">
+        The pick applies to the next turn only. The pane shows what the turn
+        actually ran on, read back from the broker, never the pick.
+      </div>
+    </>
+  )
   const lastTurn = chat.turns[chat.turns.length - 1]
   const lastErr = !!lastTurn?.error
   // The honest-degrade state. A picked model the container refused leaves the
@@ -118,44 +147,32 @@ export function AskPane({ chat, job, about, aboutContext, subjects = [], onClose
   return (
     <div className="a-brain-desktop">
       <Head
-        title="Ask"
-        // The one fact worth a subtitle is WHICH MODEL is answering: before a
-        // turn the pane names the model that WILL run, after one it names what
-        // actually answered.
-        sub={chat.model
-          ? modelLabel(chat.model)
-          : chat.wanted ? `${modelLabel(chat.wanted)} · next turn` : 'Claude default'}
+        title="Claude"
+        // ONE row at the system's own header height (--ds-header-h, 52px on
+        // the desktop, so it lines up with the thread head beside it) and no
+        // subtitle at all. The name, then a CONTROL that
+        // says which thread is open and switches it — beside the title rather
+        // than under it, because a second line here is a second band before the
+        // first message. The model picker used to live up here beside the
+        // close; it is a property of the next turn, so it moved into the
+        // composer's own overflow (`extras.menu` below), which is where the
+        // next turn is written.
         lead={mobile ? <IconButton icon="back" label="Back" onClick={onClose} /> : undefined}
         tail={
           <>
-            {/* Live, busy, or the last turn failed. Three states, one mark. */}
+            {/* Live, busy, or the last turn failed. Three states, one mark —
+                and the mark carries the session line the shelf used to print
+                as a row of its own. */}
             {chat.busy
-              ? <LiveDot label="Claude is working" />
-              : <span className="a-brain-dot" data-state={lastErr ? 'error' : 'ready'} role="status" aria-label={lastErr ? 'The last turn failed' : 'Ready'} />}
+              ? <LiveDot label={`Claude is working. ${sessionLine(chat.grounding)}`} />
+              : (
+                <span
+                  className="a-brain-dot" data-state={lastErr ? 'error' : 'ready'} role="status"
+                  title={sessionLine(chat.grounding)}
+                  aria-label={lastErr ? `The last turn failed. ${sessionLine(chat.grounding)}` : sessionLine(chat.grounding)}
+                />
+              )}
             {mock && <Chip tone="quiet">mock transport</Chip>}
-            <span className="a-brain-modelbtn">
-              <Button
-                variant={chat.wanted ? 'outline' : 'quiet'} size="sm" iconEnd="disclose"
-                aria-expanded={models}
-                onClick={() => setModels(v => !v)}
-              >{modelLabel(chat.wanted)}</Button>
-              <Popover open={models} label="Choose the model for the next turn" className="a-brain-modelmenu">
-                {MODEL_OPTIONS.map(m => (
-                  <PopoverItem
-                    key={m.id ?? 'default'}
-                    icon={chat.wanted === m.id ? 'check' : undefined}
-                    onClick={() => { chat.setWanted(m.id); setModels(false) }}
-                    tail={<span className="a-dim">{m.note}</span>}
-                  >{m.label}</PopoverItem>
-                ))}
-                {/* Stated once, where the choice is made, rather than
-                    discovered by sending a turn that fails. */}
-                <div className="a-brain-modelnote">
-                  The pick applies to the next turn only. The pane shows what the
-                  turn actually ran on, read back from the broker, never the pick.
-                </div>
-              </Popover>
-            </span>
             <span className="a-brain-feedbtn">
               <IconButton
                 icon="bell" label={`Feed, ${feed.unreadTotal} unread`}
@@ -173,7 +190,9 @@ export function AskPane({ chat, job, about, aboutContext, subjects = [], onClose
             {!mobile && <IconButton icon="close" label="Close the Ask pane" onClick={onClose} />}
           </>
         }
-      />
+      >
+        <ThreadMenu chat={chat} />
+      </Head>
 
       {modelRefused && (
         <Banner
@@ -196,15 +215,19 @@ export function AskPane({ chat, job, about, aboutContext, subjects = [], onClose
         </button>
       )}
 
-      <See subjects={allSubjects} see={see} setSee={setSee} />
-
       <AskThread
         chat={chat} job={job} about={aboutContext ?? about} mobile={mobile}
         focusTurn={focusTurn} onFocused={() => setFocusTurn(null)}
         morphFrom={morphFrom} onMorphed={() => setMorphFrom(null)}
         onDragBack={() => { setFocusTurn(null); setFeedOpen(true) }}
-        composerExtras={palette}
+        composerExtras={{ ...palette, menu: modelMenu }}
         see={seeBlock}
+        // The context strip sits directly above the composer now, where an
+        // attachment register belongs — not as a band under the head whose
+        // sentence truncated at 380px.
+        // Passed as `undefined` rather than as a component that returns null,
+        // so an empty context costs no padding either.
+        context={allSubjects.length ? <See subjects={allSubjects} see={see} setSee={setSee} /> : undefined}
         text={text} onText={setText}
       />
 

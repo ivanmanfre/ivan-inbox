@@ -404,9 +404,17 @@
   transition:flex-basis var(--ds-dur) var(--ds-ease);
 }
 .a-drawer[data-open]{ flex-basis:380px }
+/* The global reduced-motion collapse in ds.css §18 already zeroes this; said
+   again here so the one thing that moves on this surface is never left to an
+   ordering accident between two stylesheets. */
+@media (prefers-reduced-motion: reduce){ .a-drawer{ transition:none } }
 /* The open pane fills the column height; it is the same Ask pane the peer
    used to render, and that component already manages its own scroll. */
 .a-drawer > *{ flex:1 1 auto; min-height:0 }
+/* The fade wrapper Drawer.tsx mounts around the pane: it must pass the column's
+   own height through rather than becoming a box of its own. */
+.a-drawer-pane{ display:flex; flex-direction:column; min-height:0 }
+.a-drawer-pane > *{ flex:1 1 auto; min-height:0 }
 .a-drawer-collapsed{
   display:flex;
   flex-direction:column;

@@ -852,15 +852,62 @@
 }
 .a-brain-dot[data-state='error']{ background:var(--ds-sev-urgent) }
 
-/* The model picker and its menu. The menu is anchored to the button, so the
-   pane never has to know where in the window it is docked. */
-.a-brain-modelbtn{ position:relative; display:inline-flex }
-.a-brain-modelmenu{
-  position:absolute;
-  inset-inline-end:0;
-  top:calc(100% + var(--ds-s2));
-  inline-size:18rem;
+/* The head's thread switcher, the composer plate's overflow, and the note both
+   menus share. The model picker's own button and menu left this file with the
+   head row (2026-09-12): the model is chosen in the composer's overflow now,
+   and the menus below are anchored to what they hang off, so the pane never
+   has to know where in the window it is docked. */
+/* The head's subtitle IS the thread switcher, so it sits on the sub row and
+   its menu hangs off it. A quiet button on a 12px sub line needs no inset of
+   its own: the kit's `a-head-sub` already holds the column. */
+.a-brain-threadbtn{ position:static; display:flex; min-width:0; flex:1 1 auto }
+.a-brain-threadbtn > button{
+  min-width:0; max-inline-size:100%; overflow:hidden;
+  /* Beside the name, in the register a subtitle would have had, so the row
+     reads "Claude — this thread" rather than as two titles. */
+  color:var(--ds-text-3);
+  font-weight:var(--ds-fw-regular);
 }
+.a-brain-threadbtn > button:hover{ color:var(--ds-text) }
+/* The title is a cut sentence; it ellipses inside the control rather than
+   pushing the disclose mark off the row. */
+.a-brain-threadbtn > button > :not(svg){ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+/* The name holds only its own width — it never truncates — so the switcher
+   beside it takes the rest of the row and does the cutting. */
+.a-brain-desktop .a-head-t{ flex:0 0 auto }
+/* Anchored to the HEAD, not to the button: at 380px a menu hung off a control
+   that sits two thirds along the row runs past the window's right edge
+   (measured, 1304 of 1280). Under the whole head it is a thread picker the
+   width of the pane, which is also what it is. */
+.a-brain-threadmenu{
+  position:absolute;
+  inset-inline:var(--ds-gutter);
+  top:calc(100% + var(--ds-s2));
+  max-block-size:22rem;
+  overflow:auto;
+}
+/* The composer plate's overflow: the model, and (on the desktop) the runner.
+   Anchored to the `+` inside the plate and opening UPWARD, because the plate
+   is the last thing before the bottom of the drawer. */
+.a-brain-more{ position:relative; display:inline-flex; flex:0 0 auto }
+.a-brain-moremenu{
+  position:absolute;
+  inset-inline-start:0;
+  bottom:calc(100% + var(--ds-s2));
+  inline-size:min(20rem, calc(100vw - var(--ds-s5)));
+  max-block-size:26rem;
+  overflow:auto;
+}
+.a-brain-moreh{
+  padding:var(--ds-s2) var(--ds-s4) var(--ds-s0);
+  font-family:var(--ds-font-mono);
+  font-size:var(--ds-fs-eyebrow);
+  letter-spacing:var(--ds-tr-eyebrow);
+  text-transform:uppercase;
+  color:var(--ds-text-4);
+}
+.a-brain-moremenu .a-brain-moreh + .a-brain-moreh{ border-top:1px solid var(--ds-line) }
+.a-brain-moremenu > .a-brain-moreh ~ .a-brain-moreh{ margin-block-start:var(--ds-s2) }
 .a-brain-modelnote{
   padding:var(--ds-s3) var(--ds-s4);
   border-top:1px solid var(--ds-line);
@@ -888,16 +935,24 @@
 .a-brain-about[data-tap]{ cursor:pointer }
 .a-brain-about[data-tap]:hover{ background:var(--ds-surface-3) }
 
-/* S15-15 to S15-20. What travels with the next message, said before it does. */
+/* S15-15 to S15-20. What travels with the next message, said before it does.
+   2026-09-12: it sits directly ABOVE the composer now (the attachment
+   register), as one chip row with no border of its own — the composer plate
+   below it is the edge — so the drawer opens on the conversation instead of on
+   three bands of chrome. */
+.a-brain-above{
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s2);
+  padding:var(--ds-s3) var(--ds-s3) 0;
+  min-width:0;
+}
 .a-brain-see{
   display:flex;
   flex-direction:column;
   gap:var(--ds-s3);
-  padding:var(--ds-s3) var(--ds-gutter);
-  border-bottom:1px solid var(--ds-line);
   min-width:0;
 }
-.a-brain-see-top{ display:flex; align-items:center; gap:var(--ds-s2); min-width:0 }
 .a-brain-see-l{
   flex:1 1 auto;
   min-width:0;
@@ -908,7 +963,23 @@
   text-overflow:ellipsis;
   white-space:nowrap;
 }
-.a-brain-see-chips{ display:flex; flex-wrap:wrap; gap:var(--ds-s2); min-width:0 }
+.a-brain-see-chips{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--ds-s2); min-width:0 }
+/* The eye at the end of the row: the sentence, the exact block and "Detach
+   all" behind one mark, opening UPWARD because this row lives at the bottom
+   of the pane. */
+.a-brain-see-peekwrap{ position:relative; display:inline-flex; margin-inline-start:auto }
+.a-brain-see-menu{
+  position:absolute;
+  inset-inline-end:0;
+  bottom:calc(100% + var(--ds-s2));
+  inline-size:min(22rem, calc(100vw - var(--ds-s5)));
+  padding:var(--ds-s3);
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s2);
+}
+.a-brain-see-menu .a-brain-see-l{ white-space:normal; padding-inline:var(--ds-s1) }
+.a-brain-see-act{ display:flex; justify-content:flex-end }
 .a-brain-see-chips [data-off]{ color:var(--ds-text-4) }
 .a-brain-see-d{
   padding:var(--ds-s0) var(--ds-s2);
@@ -924,8 +995,8 @@
 .a-brain-see-d[data-on]{ border-color:var(--ds-accent-line); color:var(--ds-accent-ui) }
 .a-brain-see-d:hover{ color:var(--ds-text) }
 .a-brain-see-peek{
-  margin:var(--ds-s0);
-  padding:var(--ds-s4);
+  margin:0;
+  padding:var(--ds-s3);
   border-radius:var(--ds-r2);
   background:var(--ds-surface-2);
   color:var(--ds-text-2);
@@ -959,6 +1030,36 @@
 /* The list scrolls inside the palette. Without this the vocabulary ran past
    the bottom of the box and the foot painted over the last two commands. */
 .a-brain-palette .ds-cmd-body{ overflow:auto; min-block-size:0 }
+/* The answer's footer. ONE dim line of plain text under the prose ("Read 1
+   memory file · grounded on 2026-09-05"), not two boxed pills: it is metadata,
+   and metadata that draws a border draws the eye. Same click, same numbered
+   list under it. */
+.a-brain-foot{ display:flex; flex-direction:column; gap:var(--ds-s2); align-items:flex-start; min-width:0 }
+/* Four classes deep on purpose. `.a-root button:not([class*="ds-"]):not(
+   [class*="wb-"])` in wb.css is the bare-button reset and carries `font:
+   inherit; color:inherit`; each `:not()` counts its argument, so that selector
+   weighs (0,3,1) and a three-class rule still lost to it — the line came out
+   white at 15px twice before this was MEASURED in the browser rather than
+   reasoned about. */
+.a-brain-answer .a-brain-foot .a-brain-footline.a-brain-footline{
+  display:inline-flex;
+  align-items:center;
+  gap:var(--ds-s2);
+  min-block-size:var(--ds-s5);
+  padding:0;
+  border:0;
+  background:none;
+  color:var(--ds-text-4);
+  font-size:var(--ds-fs-meta);
+  line-height:var(--ds-lh-meta);
+  text-align:start;
+  cursor:pointer;
+  transition:color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-brain-foot .a-brain-footline[data-flat]{ cursor:default }
+.a-brain-answer .a-brain-foot .a-brain-footline.a-brain-footline:not([data-flat]):hover,
+.a-brain-answer .a-brain-foot .a-brain-footline.a-brain-footline[data-open]{ color:var(--ds-text-2) }
+
 .a-brain-composer{ position:relative }
 .a-brain-feedsheet{ margin-inline:auto; max-width:var(--ds-peer-w) }
 

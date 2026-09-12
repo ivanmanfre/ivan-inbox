@@ -14,6 +14,11 @@ export interface ComposerProps {
   onStop?: () => void
   onAttach?: () => void
   onDictate?: () => void
+  /** Extra controls in the bar's own left cluster, beside the attach mark.
+   * The bar draws what it is handed and knows nothing about what is in it —
+   * the ask composer puts its overflow menu (model, runner) here so neither
+   * costs a band of its own above the plate. */
+  lead?: ReactNode
   placeholder?: string
   /** 'empty' cannot send · 'busy' shows stop · 'recording' shows the level meter. */
   mode?: ComposerMode
@@ -29,7 +34,7 @@ export interface ComposerProps {
  * height as the tray changes. Enter sends.
  */
 export function Composer({
-  value, onChange, onSend, onStop, onAttach, onDictate,
+  value, onChange, onSend, onStop, onAttach, onDictate, lead,
   placeholder = 'Write a message', mode = 'empty', tray, note, className,
 }: ComposerProps) {
   const busy = mode === 'busy'
@@ -41,6 +46,7 @@ export function Composer({
       ) : null}
       <motion.div layout transition={spring} className="ds-composer-bar">
         {onAttach ? <IconButton icon="attach" label="Attach a file" size="sm" onClick={onAttach} /> : null}
+        {lead}
         <textarea
           className="ds-composer-input"
           rows={1}

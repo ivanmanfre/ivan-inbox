@@ -10,14 +10,21 @@
    is opened to full text — at which point the chip says so, and so does the
    strip's own sentence.
 
+   2026-09-12 (Ivan: "i feel like UI could be cleaner on claude chat.... and
+   smoother looking...."). WHERE it sits and how much of it is printed changed;
+   what travels did not. It was a band under the head carrying a sentence that
+   truncated at 380px, two text buttons, and then the chips. It is now ONE chip
+   row directly above the composer — the attachment register, in the place a
+   reader looks for attachments — and the sentence, the exact block and
+   "Detach all" live behind the eye at the end of the row.
+
    Every predicate here (`seeLine`, `attached`, `buildSeeBlock`, `isOff`,
    `isDeep`, `toggleOff`, `toggleDeep`, `onAll`, `offAll`) is imported from
    `chat/paneContext.ts` unchanged: this file rebuilt the view, not the rule
    about what travels.
    ========================================================================== */
 import { useState } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
-import { Button, Chip, fadeT, spring } from '../../ds'
+import { Button, Chip, IconButton, Popover } from '../../ds'
 import {
   attached, buildSeeBlock, isDeep, isOff, offAll, onAll, seeLine, toggleDeep, toggleOff,
   type SeeState, type Subject,
@@ -35,18 +42,6 @@ export function See({ subjects, see, setSee }: {
   if (subjects.length === 0) return null
   return (
     <div className="a-brain-see" data-see>
-      <div className="a-brain-see-top">
-        <span className="a-brain-see-l">{seeLine(subjects, see)}</span>
-        <Button
-          variant="quiet" size="sm"
-          onClick={() => setSee(s => (on.length === 0 ? onAll(s, subjects) : offAll(s, subjects)))}
-        >{on.length === 0 ? 'Attach again' : 'Detach all'}</Button>
-        <Button
-          variant="quiet" size="sm" aria-expanded={peek}
-          iconEnd={peek ? 'discloseUp' : 'disclose'}
-          onClick={() => setPeek(v => !v)}
-        >{peek ? 'Hide' : 'Show me'}</Button>
-      </div>
       <div className="a-brain-see-chips">
         {subjects.map(x => {
           const off = isOff(see, x.key)
@@ -74,17 +69,28 @@ export function See({ subjects, see, setSee }: {
             </Chip>
           )
         })}
+        {/* The peek, and the only place "Detach all" still lives. The eye is
+            the LAST thing on the row because the chips are the answer and this
+            is the receipt for them. */}
+        <span className="a-brain-see-peekwrap" data-see-peek>
+          <IconButton
+            icon="eye" size="sm"
+            active={peek}
+            label={`What travels with your next message. ${seeLine(subjects, see)}`}
+            onClick={() => setPeek(v => !v)}
+          />
+          <Popover open={peek} label="What travels with your next message" className="a-brain-see-menu">
+            <div className="a-brain-see-l">{seeLine(subjects, see)}</div>
+            <pre className="a-brain-see-peek">{block ?? 'Nothing about your screen travels with your next message.'}</pre>
+            <div className="a-brain-see-act">
+              <Button
+                variant="quiet" size="sm"
+                onClick={() => setSee(s => (on.length === 0 ? onAll(s, subjects) : offAll(s, subjects)))}
+              >{on.length === 0 ? 'Attach again' : 'Detach all'}</Button>
+            </div>
+          </Popover>
+        </span>
       </div>
-      <AnimatePresence initial={false}>
-        {peek && (
-          <motion.pre
-            className="a-brain-see-peek"
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0, transition: spring }}
-            exit={{ opacity: 0, transition: fadeT }}
-          >{block ?? 'Nothing about your screen travels with your next message.'}</motion.pre>
-        )}
-      </AnimatePresence>
     </div>
   )
 }
