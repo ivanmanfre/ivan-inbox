@@ -557,3 +557,67 @@
 @media (prefers-reduced-motion: reduce) {
   .a-dms-refresh-dot { animation: none; opacity: .8; }
 }
+
+/* --------------------------------------------------------------------------
+   WARM SIGNALS (goal run warm-signal-drafts-2026-09-12). The people who engaged
+   Ivan first, above the conversation list, one card per person. Same parts as
+   the draft card: a Group, a Row for the person, a body, a decision foot.
+   -------------------------------------------------------------------------- */
+.a-warm{ min-width:0 }
+.a-warm-toggle{
+  display:inline-flex; align-items:center; gap:var(--ds-s2);
+  padding:0; border:0; background:transparent; color:inherit; font:inherit;
+  text-transform:inherit; letter-spacing:inherit; cursor:pointer;
+}
+.a-warm-group{ display:flex; flex-direction:column; gap:var(--ds-s3); padding:var(--ds-s3) var(--ds-card-pad) var(--ds-s4) }
+.a-warm-group + .a-warm-group{ border-top:1px solid var(--ds-line) }
+.a-warm-sub{
+  display:flex; align-items:baseline; gap:var(--ds-s2);
+  font-size:var(--ds-fs-eyebrow); line-height:var(--ds-lh-eyebrow);
+  letter-spacing:.04em; text-transform:uppercase; color:var(--ds-text-3);
+}
+.a-warm-card{
+  display:flex; flex-direction:column; min-width:0;
+  border:1px solid var(--ds-line); border-radius:var(--ds-r3);
+  background:var(--ds-surface-1); overflow:hidden;
+}
+.a-warm-card[data-warm-card]:target, .a-warm-card[data-focus]{ box-shadow:0 0 0 2px var(--ds-accent-ring) }
+.a-warm-tail{ display:inline-flex; align-items:center; gap:var(--ds-s2); white-space:nowrap }
+.a-warm-body{ display:flex; flex-direction:column; gap:var(--ds-s3); padding:0 var(--ds-card-pad) var(--ds-s3) }
+.a-warm-ev{
+  display:flex; align-items:center; gap:var(--ds-s2);
+  font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-2);
+}
+.a-warm-quote{
+  margin:0; padding:var(--ds-s2) var(--ds-s4);
+  border-left:2px solid var(--ds-accent); background:var(--ds-surface-2); border-radius:var(--ds-r2);
+  font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); color:var(--ds-text); white-space:pre-wrap; overflow-wrap:anywhere;
+}
+.a-warm-block{ display:flex; flex-direction:column; gap:var(--ds-s2); min-width:0 }
+.a-warm-lbl{
+  display:flex; align-items:baseline; justify-content:space-between; gap:var(--ds-s2);
+  font-size:var(--ds-fs-eyebrow); line-height:var(--ds-lh-eyebrow); letter-spacing:.04em; text-transform:uppercase; color:var(--ds-text-3);
+}
+.a-warm-cnt{ font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono); font-variant-numeric:tabular-nums; text-transform:none; letter-spacing:0 }
+.a-warm-cnt[data-over]{ color:var(--ds-sev-urgent) }
+.a-warm-ta{
+  width:100%; box-sizing:border-box; resize:vertical; min-height:2.6em;
+  padding:var(--ds-s3) var(--ds-s4);
+  border:1px solid var(--ds-line); border-radius:var(--ds-r3);
+  background:var(--ds-surface-2); color:var(--ds-text);
+  font:inherit; font-size:var(--ds-fs-body); line-height:var(--ds-lh-body);
+}
+.a-warm-ta:focus{ outline:2px solid var(--ds-accent-ring); outline-offset:1px }
+.a-warm-acts{ display:flex; gap:var(--ds-s2) }
+.a-warm-done{ display:inline-flex; align-items:center; gap:var(--ds-s2); color:var(--ds-sev-clear) }
+.a-warm-foot{
+  display:flex; align-items:center; gap:var(--ds-s2);
+  padding:var(--ds-s3) var(--ds-card-pad); border-top:1px solid var(--ds-line); background:var(--ds-surface-2);
+}
+@media (max-width:767px){
+  .a-warm-group{ padding-inline:var(--ds-s3) }
+  .a-warm-body{ padding-inline:var(--ds-s3) }
+  .a-warm-foot{ padding-inline:var(--ds-s3) }
+}
+.a-warm-card[data-compact]{ background:transparent }
+.a-warm-card[data-compact] .a-row{ align-items:center }

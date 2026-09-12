@@ -623,6 +623,9 @@ export default function Shell({ brain }: { brain?: BrainId } = {}) {
       // N3b-3: and when that read failed, the strip says so rather than
       // pretending one is still in flight.
       error={inboxError}
+      // Warm signals deep link (`?warm=1` / `?warm=<uuid>`), read once at boot
+      // like `thread` above, so a WhatsApp line can land on the card.
+      warm={boot.warm ?? null}
     />
   )
   const dmsSurface = inboxError ? (

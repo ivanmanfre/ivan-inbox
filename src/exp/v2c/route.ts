@@ -32,6 +32,10 @@ export type WbRoute = {
   thread?: string
   turn?: string
   feed?: boolean
+  // `#exp/v2/dms?warm=1` opens DMs scrolled to the Warm signals section;
+  // `?warm=<prospect uuid>` lands on that person's card (goal run
+  // warm-signal-drafts-2026-09-12). Read once at boot like `thread`.
+  warm?: string
 }
 
 export const DEFAULT_ROUTE: WbRoute = { job: 'dms', focus: null }
@@ -105,6 +109,7 @@ export function parseWbHash(hash: string): WbRoute {
   const thread = query.get('thread')
   const turn = query.get('turn')
   const feed = query.get('feed')
+  const warm = query.get('warm')
   return {
     job,
     focus,
@@ -113,6 +118,7 @@ export function parseWbHash(hash: string): WbRoute {
     ...(thread && UUID.test(thread) ? { thread } : {}),
     ...(turn && UUID.test(turn) ? { turn } : {}),
     ...(feed === '1' || feed === 'true' ? { feed: true } : {}),
+    ...(warm && (warm === '1' || UUID.test(warm)) ? { warm } : {}),
   }
 }
 

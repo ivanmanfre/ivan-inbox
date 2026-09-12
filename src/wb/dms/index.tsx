@@ -9,6 +9,7 @@
 import { InboxList } from './InboxList'
 import { DraftCard, PushedBar, StaleBar } from './DraftCard'
 import { DmHistory } from './DmHistory'
+import { WarmSignals } from './WarmSignals'
 import { PreReadNote } from './PreReadNote'
 import { ChatLink } from './parts'
 import { Button } from '../../ds'
@@ -31,7 +32,7 @@ import './dms.css'
 // approved from the thread it belongs to.
 export function Dms({
   threads, filter, setFilter, status,
-  refresh, onOpenThread, loadedAt, refreshing = false, cachedAt = null, error = null,
+  refresh, onOpenThread, loadedAt, refreshing = false, cachedAt = null, error = null, warm = null,
 }: {
   threads: Thread[]
   filter: Filter
@@ -47,6 +48,8 @@ export function Dms({
   // N3b-3: the read behind the saved copy failed. Handed down so the strip names
   // the failure instead of claiming a refresh that has already died.
   error?: string | null
+  // `?warm=1` scrolls to the Warm signals section, `?warm=<uuid>` to one card.
+  warm?: string | null
 }) {
   // The stale-draft strip is lane-scoped so it agrees with the list under it: a
   // bar counting a lane Ivan is not looking at would be the tenancy version of a
@@ -87,6 +90,13 @@ export function Dms({
       before={<>
         <StaleBar stale={staleDrafts} refresh={refresh} />
         <PushedBar pushed={pushedDrafts} onOpen={onOpenThread} />
+        {/* WARM SIGNALS (Ivan, 2026-09-12: "i want to see these cases on DM
+            section before directly outreaching as draft all above.. with a
+            special category - profile viewers and warm engagers etc"). The
+            people who engaged HIM first, each as a card he taps before a single
+            invite or DM goes out. Ivan's tenant only; hidden on client lanes.
+            Nothing on it sends: the senders read the stamps on their own clock. */}
+        <WarmSignals filter={filter} refresh={refresh} inboxLoadedAt={loadedAt} focus={warm} onOpenThread={onOpenThread} />
       </>}
       // DM HISTORY ("so i know this is working"). With zero pending the surface
       // would otherwise be an empty screen that proves nothing; the history is
