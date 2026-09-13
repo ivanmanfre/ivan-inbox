@@ -57,13 +57,13 @@ for (const vp of VIEWPORTS) {
       })
     }
     await page.goto(`${BASE}${c.q}${c.hash}`, { waitUntil: 'domcontentloaded' })
-    await page.waitForTimeout(c.slowPayload ? 2200 : 4500)
+    await page.waitForTimeout(c.slowPayload ? 2200 : 1500)
     if (!c.slowPayload) {
       await page.waitForFunction(() => {
         const secs = [...document.querySelectorAll('.a-sends-sec')]
         const ctrl = secs.find(s => (s.querySelector('.a-eyebrow')?.textContent || '').trim() === 'Control')
-        return !!ctrl && ctrl.querySelectorAll('.a-rows > .a-row').length >= 1
-      }, null, { timeout: 15000 }).catch(() => {})
+        return !!ctrl && ctrl.querySelectorAll('.a-rows > .a-row').length >= 3
+      }, null, { timeout: 30000 }).catch(() => {})
     }
     if (c.view) { await page.getByRole('button', { name: c.view, exact: true }).click().catch(() => {}); await page.waitForTimeout(1500) }
     if (c.allClients) {
