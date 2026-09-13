@@ -514,3 +514,63 @@
    separator belonging to the fact above it ("· 30d", "· 7d" alone). Each fact
    is a group that breaks between groups, never inside one. */
 .a-sends-nb{ white-space:nowrap }
+
+/* ==========================================================================
+   Control / Delivery / Recurring problems (goal run campaign-control-03).
+
+   No new colour, no new radius, no new type size: every rule below is layout
+   over the tokens the rest of this file already uses. The status word borrows
+   the severity tones through `data-tone`, and `outside_window` deliberately has
+   no tone at all — a closed window is the absence of a signal, not a fault.
+   ========================================================================== */
+.a-cc-status{
+  font: var(--ds-t-meta); letter-spacing:.04em; text-transform:uppercase;
+  color:var(--ds-text-2); margin-inline-start:var(--ds-s2);
+}
+.a-cc-status[data-tone="clear"]{ color:var(--ds-clear) }
+.a-cc-status[data-tone="attention"]{ color:var(--ds-attention) }
+.a-cc-status[data-tone="urgent"]{ color:var(--ds-urgent) }
+
+/* "unverified" is a WORD, not a hue: a reading nobody took must survive a
+   greyscale screenshot and a colour-blind reader. */
+.a-cc-unverified{
+  font: var(--ds-t-meta); text-transform:uppercase; letter-spacing:.04em;
+  margin-inline-start:var(--ds-s2); padding:0 var(--ds-s2);
+  border:1px solid var(--ds-line); border-radius:var(--ds-r1); color:var(--ds-text-2);
+}
+.a-cc-tail{ display:flex; flex-direction:column; align-items:flex-end; gap:0; min-width:0 }
+.a-cc-meta{ display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--ds-s2); min-width:0 }
+.a-cc-panel{
+  display:flex; flex-direction:column; gap:var(--ds-s4);
+  padding:var(--ds-s4) var(--ds-s4) var(--ds-s5);
+  border-block-start:1px solid var(--ds-line); min-width:0;
+}
+.a-cc-block{ display:flex; flex-direction:column; gap:var(--ds-s2); min-width:0 }
+.a-cc-sub{ display:block }
+.a-cc-sublabel{ color:var(--ds-text-3) }
+.a-cc-pools{ display:flex; flex-wrap:wrap; gap:var(--ds-s2) var(--ds-s4); min-width:0 }
+.a-cc-pool{ display:inline-flex; align-items:baseline; gap:var(--ds-s2) }
+.a-cc-inc{
+  display:flex; flex-direction:column; gap:var(--ds-s2);
+  padding:var(--ds-s3) var(--ds-s4); min-width:0;
+  border:1px solid var(--ds-line); border-radius:var(--ds-r2);
+}
+.a-cc-rec{
+  display:flex; flex-direction:column; gap:var(--ds-s2);
+  padding:var(--ds-s3) var(--ds-s0); min-width:0;
+  border-block-start:1px solid var(--ds-line);
+}
+.a-cc-rec:first-of-type{ border-block-start:0 }
+.a-cc-receipt{ display:block }
+/* A fold, not a modal: the evidence stays on the row it belongs to, and a long
+   list scrolls inside its own box rather than pushing the page sideways. */
+.a-cc-fold{ min-width:0 }
+.a-cc-fold > summary{
+  font: var(--ds-t-meta); color:var(--ds-text-2); cursor:pointer;
+  padding:var(--ds-s2) 0; list-style:none;
+}
+.a-cc-fold > summary::-webkit-details-marker{ display:none }
+.a-cc-fold > summary::before{ content:'▸ '; color:var(--ds-text-3) }
+.a-cc-fold[open] > summary::before{ content:'▾ ' }
+.a-cc-fold > summary:focus-visible{ outline:var(--ds-ring) }
+.a-cc-fold[open] > :not(summary){ max-block-size:22rem; overflow:auto; overscroll-behavior:contain }
