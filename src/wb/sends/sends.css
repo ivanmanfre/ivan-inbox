@@ -579,3 +579,18 @@
    edge on a 390 plate — an instruction the operator could not read. */
 .a-cc-meta > span{ min-width:0; overflow-wrap:anywhere }
 .a-cc-next{ white-space:normal; flex:1 1 100% }
+/* A long predicate wraps rather than being clipped. `.a-sends-h-s` is nowrap
+   because the legacy tails are four words ("last 7 days · UTC"); the Control
+   tail names the snapshot, the monitor and the tick, and at 390 that is three
+   lines of truth or one line of ellipsis. */
+.a-sends-h[data-wrap]{ flex-wrap:wrap }
+.a-sends-h[data-wrap] .a-sends-h-s{ white-space:normal; flex-wrap:wrap }
+/* The eyebrow is nowrap + overflow:hidden, which is right for a four-letter
+   section label and wrong for "Confirmed today" inside a 342px record. */
+.a-cc-tbl .a-sends-pk, .a-cc-tbl .a-eyebrow{ white-space:normal; overflow:visible }
+/* The panel already has its own padding, so the ledger must not add the
+   gutter margin it takes when it is the page's own instrument. */
+.a-cc-panel .a-ledger{ margin-inline:0 }
+@media (max-width:767px){
+  .a-cc-panel .a-ledger{ grid-template-columns:1fr }
+}

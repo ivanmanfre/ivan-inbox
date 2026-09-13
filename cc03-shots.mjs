@@ -126,7 +126,7 @@ for (const vp of VIEWPORTS) {
         controlRows: rows,
         unverifiedBadges: document.querySelectorAll('.a-cc-unverified').length,
         statusWords: [...document.querySelectorAll('.a-cc-status')].map(e => `${e.textContent}|${e.dataset.tone}`),
-        loginGate: !!document.querySelector('input[type="email"]') || /sign in|magic link/i.test(document.body.textContent || ''),
+        loginGate: /Send code|Email me a link/i.test(document.body.textContent || ''),
         bodyHead: (document.body.textContent || '').replace(/\s+/g, ' ').slice(0, 420),
       }
     })
@@ -151,7 +151,7 @@ for (const vp of VIEWPORTS) {
     innerWidth: window.innerWidth,
     overflow: document.documentElement.scrollWidth > window.innerWidth,
     controlPresent: [...document.querySelectorAll('.a-eyebrow')].some(e => e.textContent.trim() === 'Control'),
-    loginGate: !!document.querySelector('input[type="email"]'),
+    loginGate: /Send code|Email me a link/i.test(document.body.textContent || ''),
     bodyHead: (document.body.textContent || '').replace(/\s+/g, ' ').slice(0, 300),
   }))
   const path = `${OUT}/${vp.tag}-expired-auth.png`

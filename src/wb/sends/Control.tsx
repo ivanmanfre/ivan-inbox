@@ -192,7 +192,7 @@ function LaneTable({ ch }: { ch: CcChannel }) {
     { id: 'stock', header: 'Eligible', numeric: true, cell: r => r.stock },
     { id: 'exec', header: 'Can send now', cell: r => r.exec },
   ]
-  return <TableOrRecords label={`${ch.channel} by source lane`} columns={columns} rows={rows} rowKey={r => r.id} />
+  return <div className="a-cc-tbl"><TableOrRecords label={`${ch.channel} by source lane`} columns={columns} rows={rows} rowKey={r => r.id} /></div>
 }
 
 function IncidentBlock({ inc, asOf }: { inc: CcIncident; asOf: number }) {
@@ -367,11 +367,11 @@ export function ControlSection({ cc, client, now = Date.now() }: {
   cc: CcState | null; client: Client; now?: number
 }) {
   if (cc === null) {
-    return <Section label="Control" tail="reading"><SkeletonRows rows={3} label="Reading the control payload" /></Section>
+    return <Section label="Control" tail="reading" wrapTail><SkeletonRows rows={3} label="Reading the control payload" /></Section>
   }
   if (cc.state === 'unavailable') {
     return (
-      <Section label="Control" tail="no reading">
+      <Section label="Control" tail="no reading" wrapTail>
         <Rows>
           <Row
             lead={<Dot tone="attention" />}
@@ -386,7 +386,7 @@ export function ControlSection({ cc, client, now = Date.now() }: {
   }
   if (cc.state === 'error') {
     return (
-      <Section label="Control" tail="unverified">
+      <Section label="Control" tail="unverified" wrapTail>
         <Rows>
           <Row
             lead={<Dot tone="attention" />}
@@ -409,6 +409,7 @@ export function ControlSection({ cc, client, now = Date.now() }: {
   return (
     <Section
       label="Control"
+      wrapTail
       tail={
         <span className="a-mono">
           {p.source_mode ?? 'snapshot'} <Sep />as of {asOfClock} {tzShort} ({relAge(p.as_of, now)})
@@ -454,7 +455,7 @@ function cohortText(c: CcRangeRow['acceptance_cohort'] | CcRangeRow['reply_cohor
     const base = hitKey === 'accepted_within_72h' ? c.invited : c.first_messaged
     const word = hitKey === 'accepted_within_72h' ? 'invited' : 'first messaged'
     if (base !== null && base !== undefined) {
-      return <>{num(hit)} of {num(base)} {word} <span className="a-dim">· rate not shown (maturity not tracked)</span></>
+      return <>{num(hit)} of {num(base)} {word}</>
     }
     return <>{num(hit)} <span className="a-dim">· no denominator recorded</span></>
   }
@@ -472,7 +473,7 @@ type DeliveryRow = {
 export function DeliverySection({ cc, timeframe, range, client }: {
   cc: CcState | null; timeframe: CcTimeframe; range: DateRange | null; client: Client
 }) {
-  if (cc === null) return <Section label="Delivery" tail="reading"><SkeletonRows rows={3} label="Reading delivery" /></Section>
+  if (cc === null) return <Section label="Delivery" tail="reading" wrapTail><SkeletonRows rows={3} label="Reading delivery" /></Section>
   if (cc.state !== 'ok') return null
 
   const p = cc.payload
@@ -482,7 +483,7 @@ export function DeliverySection({ cc, timeframe, range, client }: {
 
   if (!iv || !customMatches) {
     return (
-      <Section label="Delivery" tail={timeframe}>
+      <Section label="Delivery" tail={timeframe} wrapTail>
         <div className="a-sends-empty">
           {timeframe === 'custom'
             ? 'custom range not in this snapshot — run build --custom'
@@ -554,16 +555,21 @@ export function DeliverySection({ cc, timeframe, range, client }: {
     }), { attempted: 0, failed: 0, phantom: 0 })
 
   return (
-    <Section label="Delivery" tail={<span className="a-mono">{iv.from.slice(0, 10)} → {iv.to.slice(0, 10)} · {iv.days}d · {p.ranges.tz}</span>}>
-      <TableOrRecords label="Delivery by seat" columns={columns} rows={rows} rowKey={r => r.id} />
+    <Section wrapTail label="Delivery" tail={<span className="a-mono">{iv.from.slice(0, 10)} → {iv.to.slice(0, 10)} · {iv.days}d · {p.ranges.tz}</span>}>
+      <div className="a-cc-tbl">
+        <TableOrRecords label="Delivery by seat" columns={columns} rows={rows} rowKey={r => r.id} />
+      </div>
       <div className="a-sends-cap">
         Confirmed sends only. Invitations attempted {disclosure.attempted}, of which {disclosure.failed} failed and {disclosure.phantom} were phantom rows that never left the seat. Invitations, DMs and InMail are never combined into one total.
+        {' '}A cohort shown as "n of m first messaged" or "n of m invited" has no matured denominator in this snapshot — maturity is not tracked for it, so no rate is shown.
       </div>
 
       {lanes.length > 0 && (
         <>
           <div className="a-eyebrow a-cc-sublabel">By source lane</div>
-          <TableOrRecords label="Delivery by source lane" columns={laneCols} rows={lanes} rowKey={r => r.id} />
+          <div className="a-cc-tbl">
+            <TableOrRecords label="Delivery by source lane" columns={laneCols} rows={lanes} rowKey={r => r.id} />
+          </div>
         </>
       )}
 
@@ -700,7 +706,7 @@ export function RecurrenceSection({ cc }: { cc: CcState | null }) {
   const p = cc.payload
   if (p.recurrence === null) {
     return (
-      <Section label="Recurring problems" tail="partial">
+      <Section label="Recurring problems" tail="partial" wrapTail>
         <div className="a-sends-empty">
           This snapshot carries no recurrence ledger, so nothing recurring is shown. That is an absent section, not an empty one.
         </div>
@@ -710,7 +716,7 @@ export function RecurrenceSection({ cc }: { cc: CcState | null }) {
   const r = p.recurrence
   const items = (r.items ?? []).filter(i => i.rank?.daily_pick).slice(0, 3)
   return (
-    <Section label="Recurring problems" tail={<span className="a-mono">as of {r.as_of ?? '—'}</span>}>
+    <Section wrapTail label="Recurring problems" tail={<span className="a-mono">as of {r.as_of ?? '—'}</span>}>
       <div className="a-sends-cap">
         Weekly result: <b>{r.weekly?.result ?? 'unknown'}</b>
         {r.weekly?.reason ? ` — ${r.weekly.reason}` : ''}

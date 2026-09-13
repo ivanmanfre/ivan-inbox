@@ -134,7 +134,7 @@ describe('Delivery', () => {
     expect(t).toContain('Replied ≤72h')
     // A null matured denominator names the denominator it DOES have.
     expect(t).toContain('first messaged')
-    expect(t).toContain('maturity not tracked')
+    expect(t).toContain('maturity is not tracked for it, so no rate is shown')
     expect(t).toContain('matured')
   })
   it('shows the partial day separately and the coverage note', () => {

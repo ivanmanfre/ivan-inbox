@@ -12,10 +12,16 @@ import { Table, type TableColumn } from '../../ds'
 import { Row, Rows, Sep, type Tone } from '../kit'
 
 /** An eyebrow line and its predicate, over one instrument. */
-export function Section({ label, tail, children }: { label: ReactNode; tail?: ReactNode; children: ReactNode }) {
+export function Section({ label, tail, wrapTail, children }: {
+  label: ReactNode; tail?: ReactNode
+  /** Let a long predicate wrap onto its own line instead of being clipped by
+      the nowrap the short legacy tails ("last 7 days · UTC") are sized for. */
+  wrapTail?: boolean
+  children: ReactNode
+}) {
   return (
     <section className="a-sends-sec">
-      <div className="a-sends-h">
+      <div className="a-sends-h" data-wrap={wrapTail ? '' : undefined}>
         <span className="a-eyebrow">{label}</span>
         {tail !== undefined && tail !== null && <span className="a-sends-h-s">{tail}</span>}
       </div>
