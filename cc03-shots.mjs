@@ -62,7 +62,7 @@ for (const vp of VIEWPORTS) {
       await page.waitForFunction(() => {
         const secs = [...document.querySelectorAll('.a-sends-sec')]
         const ctrl = secs.find(s => (s.querySelector('.a-eyebrow')?.textContent || '').trim() === 'Control')
-        return !!ctrl && ctrl.querySelectorAll('.a-rows > .a-row').length >= 3
+        return !!ctrl && ctrl.querySelectorAll('.a-cc-row').length >= 3
       }, null, { timeout: 30000 }).catch(() => {})
     }
     if (c.view) { await page.getByRole('button', { name: c.view, exact: true }).click().catch(() => {}); await page.waitForTimeout(1500) }
@@ -85,7 +85,10 @@ for (const vp of VIEWPORTS) {
       const t = (el) => (el ? el.textContent.replace(/\s+/g, ' ').trim() : null)
       const sec = [...document.querySelectorAll('.a-sends-sec')].map(s => t(s.querySelector('.a-eyebrow')))
       const ctrl = [...document.querySelectorAll('.a-sends-sec')].find(s => t(s.querySelector('.a-eyebrow')) === 'Control')
-      const rows = ctrl ? [...ctrl.querySelectorAll('.a-rows > .a-row')].map(r => {
+      // ONLY the seat summary rows. The lane table's narrow records and the
+      // evidence fold are `.a-row`s too, and counting those turned "three seats"
+      // into "thirteen rows".
+      const rows = ctrl ? [...ctrl.querySelectorAll('.a-cc-row')].map(r => {
         const b = r.getBoundingClientRect()
         return {
           title: t(r.querySelector('.a-row-title')),
@@ -174,7 +177,12 @@ for (const vp of VIEWPORTS) {
     // The Lanes and Log views are untouched by this branch and read Supabase
     // directly; a 500 from one of their own requests is a backend state, not a
     // defect introduced here, and it is recorded with the URL that produced it.
+    /* The control payload is served from 127.0.0.1:8791. A 5xx from Supabase is
+       a backend state under the LEGACY instruments on this screen (Decision,
+       Governor, Campaigns…), not a defect introduced here, and it is recorded
+       with the URL that produced it rather than waved away. */
     const preExistingView = c.id === 'lanes' || c.id === 'log'
+      || (failedRequests.length > 0 && failedRequests.every(f => !f.url.includes('127.0.0.1:8791')))
     results.push({
       case: c.id, viewport: vp.tag, png: path, facts,
       errors: errors.slice(0, 6),

@@ -304,6 +304,7 @@ function ControlSummary({ c, liveness, asOf, staleMinutes, selected, onOpen }: {
 
   return (
       <Row
+        className="a-cc-row"
         lead={<Dot tone={tone as Tone} off={tone === undefined} />}
         title={
           <>
