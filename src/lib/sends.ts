@@ -52,27 +52,34 @@ const LANE_LABEL: Record<LaneKey, string> = {
 // leads and outreach"). Client-specific line when one client is selected, the
 // 'all' line otherwise. Canonical definitions live in memory
 // (arch-lead-logic-contract-2026-08-28); edits here must match there.
+/* Lane blurbs. These are the LIVE rules as Run 01 froze them, read out of
+   `campaign-control-01/examples/rules-manifest.json` (per-workflow `gate_facts`,
+   categories `triggers` / `capacity`), not from memory: the previous strings
+   said RISE sent "09:00-01:00 UTC" and ARCH was "born-dead until launch", and
+   both had been false for weeks. Windows, timezones and caps below cite the
+   workflow that enforces them. `email` keeps its tombstone — the lane is dead
+   and the row exists so nobody goes looking for it. */
 const LANE_BLURB: Record<string, Partial<Record<LaneKey, string>>> = {
   all: {
-    connection_note: 'LinkedIn invites, per each client\u2019s lanes and note rules.',
-    dm: 'Messages after an accepted invite, per each client\u2019s ladder.',
-    inmail: 'Paid second knock where armed; open-profile sends log as OPEN PROF.',
+    connection_note: 'LinkedIn invites that the provider confirmed — refused and blocked attempts are not counted here. Each seat sends inside its own clock: Ivan New York, Mattan Los Angeles 05:00-17:59, Davorin Berlin 08:00-20:59.',
+    dm: 'Messages after an accepted invite. One drafter every 30 minutes, one dispatcher every 2 minutes, per-seat DM cap of 50 a day.',
+    inmail: 'Paid second knock where armed, plus free open-profile sends, each on its own daily and monthly cap.',
     email: 'Cold email is DEAD (Smartlead cancelled 08-13); email-preferred rows wall out of every picker.',
   },
   ivan: {
-    connection_note: 'Invites to ICP leads, warm-first picker; geo gate parks NULL-geo rows.',
-    dm: 'DM ladder after accept + profile-view openers; price asks mirror his own sent replies.',
-    inmail: 'Open-profile messages ride this channel; capped per seat per day.',
+    connection_note: 'Invites to ICP leads, warm first. Confirmed sends only — refused attempts are not counted. Seat clock America/New_York, Saturday view-only, Sunday sends; daily and weekly caps come from integration_config (40/280 at Run 01’s freeze) and the rollback rule can lower the weekly one without asking.',
+    dm: 'DM ladder after accept plus profile-view openers, 5 per run on this seat; price asks mirror his own sent replies.',
+    inmail: 'Audit InMail runs hourly 13:00-19:00 UTC against a monthly cap of 150; open-profile messages ride the same channel on their own cap of 5 a day.',
   },
   risedtc: {
-    connection_note: 'Invites to DTC brand owners: warm engagers first, cold only with ad history.',
-    dm: 'Mattan-seat DMs: warm ladder + profile-view openers, seat window 09:00-01:00 UTC.',
-    inmail: 'Not a RISE lane today; anything here is a one-off.',
+    connection_note: 'Invites to DTC brand owners, warm engagers first. Confirmed sends only — refused attempts are not counted. Seat window 05:00-17:59 America/Los_Angeles, Saturday view-only, Sunday sends; 9 per run in the 05:00-09:59 burst and 2 after it; daily and weekly caps come from integration_config (40/280 at Run 01’s freeze).',
+    dm: 'Mattan-seat DMs: warm ladder plus profile-view openers, 2 per run with a reserved slot for the third rung and one for a follow-up.',
+    inmail: 'RISE InMail runs hourly on a daily cap of 2 and a monthly cap of 30, with a reserved partner slice; open-profile sends have their own cap of 5.',
   },
   arch: {
-    connection_note: 'Lanes: game studios, apps, sponsors (EU or US note by eu_logic), engagers. Half blank-arm as the A/B. Born-dead until launch.',
-    dm: 'Davorin-seat ladders: main dm1-3, sponsor sp_eu/sp_us dm1-3. Warm DM copy unratified.',
-    inmail: 'Second knock on invites ignored 7+ days. 3/day, 50/month cap.',
+    connection_note: 'Lanes: game studios, apps, sponsors (EU or US note by eu_logic), engagers. Confirmed sends only — refused attempts are not counted. Seat window 08:00-20:59 Europe/Berlin, Saturday off, Sunday on. The daily cap is a ramp, not a flat number: day one 10, +5 per elapsed weekday, ceiling 40. Cold is capped at about a third of each run.',
+    dm: 'Davorin-seat ladders: main dm1-3, sponsor sp_eu/sp_us dm1-3, drafted every 30 minutes and dispatched under the shared seat cap of 50.',
+    inmail: 'Second knock on invites ignored 7+ days, 3 paid sends a day at 10:00/13:00/16:00 Berlin on weekdays, under a monthly cap; free open-profile sends have their own cap of 10.',
   },
 }
 
