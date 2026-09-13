@@ -36,7 +36,7 @@ import { SendsSkeleton } from '../chrome/Skeleton'
 import { Section, BarGauge, TableOrRecords } from './parts'
 import {
   ControlSection, DeliverySection, RecurrenceSection, useCampaignControl,
-  ccPayload, ccInvitationsForDay, ccInvitationsInWindow,
+  ccPayload, ccInvitationsForDay, ccInvitationsInWindow, ccAcceptCohort,
 } from './Control'
 import type { CcPayload } from '../../lib/campaignControl'
 import './sends.css'
@@ -431,11 +431,23 @@ function Funnel({ accept, scans, outcomes, client, cc }: {
   const convos7 = sum(oRows, 'convos_7d'), convosTotal = sum(oRows, 'convos_total')
   const calls7 = sum(oRows, 'calls_7d'), callsTotal = sum(oRows, 'calls_total')
 
-  // The first step is the confirmed invitation count when the payload carries
-  // it; the accept rate stays on the legacy denominator it was computed from.
+  /* Both of the first two steps come from the SAME source or neither does. A
+     confirmed invitation count standing next to a rate computed over legacy
+     message rows is two different denominators drawn as one funnel — 191
+     confirmed beside a rate taken over 217 rows. When the payload is present
+     the first step is confirmed invitations and the second is its own 72-hour
+     cohort over its own matured denominator; when it is absent both are the
+     legacy figures and the caption says so. */
   const confirmed7 = cc ? ccInvitationsInWindow(cc, client, '7d', null) : null
-  const invitesStep = confirmed7 !== null ? confirmed7 : sent7
-  const acceptStep = sent7 > 0 ? `${Math.round((acc7 / sent7) * 100)}%` : '—'
+  const cohort7 = cc ? ccAcceptCohort(cc, client, '7d') : null
+  const cohort30 = cc ? ccAcceptCohort(cc, client, '30d') : null
+  const confirmed30 = cc ? ccInvitationsInWindow(cc, client, '30d', null) : null
+  const paired = confirmed7 !== null && cohort7 !== null
+  const invitesStep = paired ? confirmed7! : sent7
+  const acceptedStep = paired ? cohort7!.accepted : acc7
+  const acceptStep = paired
+    ? (cohort7!.rate === null ? '—' : `${cohort7!.rate}%`)
+    : (sent7 > 0 ? `${Math.round((acc7 / sent7) * 100)}%` : '—')
 
   if (aRows.length === 0 && sRows.length === 0 && oRows.length === 0) {
     return (
@@ -449,20 +461,23 @@ function Funnel({ accept, scans, outcomes, client, cc }: {
     <Section label="Funnel" tail="last 7d">
       <FunnelBars steps={[
         { id: 'sent', n: invitesStep, label: 'Invites' },
-        { id: 'accepted', n: acc7, label: 'Accepted', rate: acceptStep },
+        { id: 'accepted', n: acceptedStep, label: paired ? 'Accepted ≤72h' : 'Accepted', rate: acceptStep },
         { id: 'convos', n: convos7, label: 'Convos' },
         { id: 'calls', n: calls7, label: 'Calls' },
       ]} />
       <div className="a-sends-cap">
-        {confirmed7 !== null
-          ? 'Invites = confirmed invitations (Run 01 definition); Accepted is of the legacy message rows it was computed from.'
-          : 'Invites = message rows — includes refused attempts; unverified.'}
+        {paired
+          ? `Invites = confirmed invitations (Run 01 definition). Accepted = accepted within 72 h, of ${cohort7!.matured} matured invitations — the rate is over that denominator, not over the count beside it. Convos and Calls below are still legacy message rows; unverified.`
+          : 'Invites and Accepted = message rows — includes refused attempts; unverified. Convos and Calls likewise.'}
       </div>
       <div className="a-sends-cap">
         Era totals · convos {convosTotal} · calls {callsTotal} · convos = replied at least once, optouts excluded.
       </div>
       <div className="a-sends-cap">
-        30d · accepted {acc30}/{sent30} · scan opens 7d {opens7} / 30d {opens30} · {distinct} prospects{lastOpen ? ` · last ${ago(lastOpen)}` : ''}
+        {cohort30 && confirmed30 !== null
+          ? <>30d · confirmed invitations {confirmed30} · accepted ≤72 h {cohort30.accepted}/{cohort30.matured} matured {cohort30.rate === null ? '(—)' : `(${cohort30.rate}%)`}</>
+          : <>30d · accepted {acc30}/{sent30} — message rows, unverified</>}
+        {' · '}scan opens 7d {opens7} / 30d {opens30} · {distinct} prospects{lastOpen ? ` · last ${ago(lastOpen)}` : ''} (legacy)
       </div>
       <div className="a-sends-cap">Ivan scope counts the warm-lane era only (since 07-11); Rise counts full history. Recent sends are still maturing, accept rate only rises.</div>
     </Section>

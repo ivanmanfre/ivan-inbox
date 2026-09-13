@@ -716,6 +716,23 @@ export function ccInvitationsForDay(p: CcPayload, client: Client, day: string): 
   return rows.reduce((s, d) => s + d.sent, 0)
 }
 
+/** The invitation acceptance cohort for one window: accepted within 72h over
+    the MATURED denominator. Returned together so a caller can never pair a
+    confirmed numerator with a legacy denominator. */
+export function ccAcceptCohort(p: CcPayload, client: Client, interval: string): { accepted: number; matured: number; rate: number | null } | null {
+  const rows = p.ranges.rows.filter(r =>
+    r.interval === interval && r.channel === 'invitation' && r.source_lane === '__all__'
+    && inClient(r.client_id, client) && r.acceptance_cohort)
+  if (rows.length === 0) return null
+  let accepted = 0, matured = 0
+  for (const r of rows) {
+    accepted += r.acceptance_cohort?.accepted_within_72h ?? 0
+    matured += r.acceptance_cohort?.matured_denominator ?? 0
+  }
+  // An empty denominator has no rate. It is never 0%.
+  return { accepted, matured, rate: matured > 0 ? Math.round((100 * accepted) / matured) : null }
+}
+
 export function ccInvitationsInWindow(p: CcPayload, client: Client, timeframe: CcTimeframe, range: DateRange | null): number | null {
   const want = INTERVAL_OF[timeframe]
   const iv = p.ranges.intervals.find(i => i.name === want)
