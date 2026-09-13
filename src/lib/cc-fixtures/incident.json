@@ -1,16 +1,16 @@
 {
  "schema_version": 1,
  "payload_version": "cc03.v1",
- "generated_at": "2026-09-13T16:03:45Z",
- "as_of": "2026-09-13T16:03:41Z",
+ "generated_at": "2026-09-13T16:08:37Z",
+ "as_of": "2026-09-13T00:00:34Z",
  "source_mode": "snapshot",
  "inputs": {
   "run01_envelope": {
-   "path": "examples/run01-envelope.json",
-   "sha256": "e9832ec05f5450509908b92790fb05b27bcf3d8bd28c28951690eb7f83a83d27",
-   "generated_at": "2026-09-13T16:03:45Z",
+   "path": "package/state/run01-envelope.json",
+   "sha256": "599a074f060e9a55abb885d030c5db86e0707a65e01f1e46c5912ca5a87d6499",
+   "generated_at": "2026-09-13T16:08:37Z",
    "source_mode": "snapshot",
-   "source_spec": "snapshot:/Users/ivanmanfredi/Desktop/Ivan - Content System/goal-runs/campaign-control-03-operator-view-2026-09-13-out/examples/snapshot-root"
+   "source_spec": "snapshot:examples/snapshot-root"
   },
   "run01_package_sha256": "c6120f5ea2dc4ddb06e864b2081084613fa977e2289267209166524ed0e0e333",
   "run02_ledger": {
@@ -177,7 +177,7 @@
     "access": "GET read-only",
     "permission": "local file",
     "retention_from": "2026-09-11T06:50:32.143Z",
-    "observed_at": "2026-09-13T16:03:41Z",
+    "observed_at": "2026-09-13T00:00:34Z",
     "rows": 3544,
     "declared_total": 3544,
     "declared_total_basis": "cursor_exhausted",
@@ -190,7 +190,7 @@
     "access": "GET read-only",
     "permission": "n8n api key read",
     "retention_from": null,
-    "observed_at": "2026-09-13T16:03:41Z",
+    "observed_at": "2026-09-13T00:00:34Z",
     "rows": 46,
     "declared_total": 46,
     "declared_total_basis": "file_manifest",
@@ -203,7 +203,7 @@
     "access": "GET read-only",
     "permission": "local file",
     "retention_from": null,
-    "observed_at": "2026-09-13T16:03:41Z",
+    "observed_at": "2026-09-13T00:00:34Z",
     "rows": 10,
     "declared_total": 10,
     "declared_total_basis": "file_count",
@@ -272,11 +272,11 @@
    {
     "name": "today",
     "from": "2026-09-12T22:00:00Z",
-    "to": "2026-09-13T16:03:41Z",
+    "to": "2026-09-13T00:00:34Z",
     "tz": "Europe/Warsaw",
     "complete": false,
     "execution_receipts_cover": true,
-    "days": 1,
+    "days": 0,
     "partial": true,
     "source_coverage_note": "partial day: from local midnight to as_of"
    }
@@ -307,7 +307,7 @@
   }
  },
  "monitor": {
-  "last_tick_at": "2026-09-13T16:03:41Z",
+  "last_tick_at": "2026-09-13T00:00:34Z",
   "tick_interval_s": 300,
   "stale_after_s": 900,
   "liveness": "fresh",
@@ -319,13 +319,13 @@
    "client_id": "ivan",
    "label": "Ivan",
    "seat_id": "rm-WNhwaS1m7VcZoYLRrJA",
-   "status": "healthy",
-   "status_reason": "The seat is inside its sending window and nothing is blocking it.",
+   "status": "outside_window",
+   "status_reason": "Nothing is going out right now because Saturday is profile-views only for this seat.",
    "status_basis": {
     "evidence_ids": [
-     "ev-2a974d00a2d4",
-     "ev-e0b6056dad66",
-     "ev-e3d5eebd1c57"
+     "ev-93ee9f7d6f25",
+     "ev-c3d78db10fab",
+     "ev-facee919bb2d"
     ],
     "rule_refs": [
      {
@@ -386,27 +386,28 @@
     ]
    },
    "next_action": {
-    "action": "Nothing to do \u2014 sending is running.",
-    "owner": "system",
-    "earliest_safe_at": null,
+    "action": "Nothing to do \u2014 wait for the next window to open.",
+    "owner": "none",
+    "earliest_safe_at": "2026-09-13T04:00:00Z",
     "prerequisites": []
    },
-   "next_check_at": null,
+   "next_check_at": "2026-09-13T04:00:00Z",
    "freshness": {
     "data_age_s": 0,
     "rule_version": "frozen",
     "status": "stale",
-    "as_of": "2026-09-13T16:03:41Z"
+    "as_of": "2026-09-13T00:00:34Z"
    },
    "invitation": {
     "channel": "invitation",
-    "confirmed_sent": 0,
-    "session_confirmed_sent_all_lanes": 0,
-    "planned_by_now": 6,
-    "planned_by_now_reason": null,
-    "pace": "behind",
-    "executable_now": true,
+    "confirmed_sent": 5,
+    "session_confirmed_sent_all_lanes": 5,
+    "planned_by_now": 0,
+    "planned_by_now_reason": "weekday_view_only",
+    "pace": "on_track",
+    "executable_now": false,
     "executable_reasons": [
+     "saturday_view_only",
      "within_initial_delay_grace"
     ],
     "eligible_stock": null,
@@ -417,7 +418,7 @@
     },
     "capacity": {
      "daily_cap": 40,
-     "daily_used": 0,
+     "daily_used": 5,
      "weekly_cap": 280,
      "weekly_used": 176,
      "target": 20,
@@ -425,14 +426,14 @@
     },
     "session": {
      "tz": "America/New_York",
-     "opens_at": "2026-09-13T04:00:00Z",
-     "closes_at": "2026-09-14T04:00:00Z",
+     "opens_at": "2026-09-12T04:00:00Z",
+     "closes_at": "2026-09-13T04:00:00Z",
      "open_now": true,
-     "weekday_rule": "sunday_open",
-     "next_opening_at": "2026-09-14T04:00:00Z",
-     "elapsed_eligible_opportunities": 13,
+     "weekday_rule": "saturday_view_only",
+     "next_opening_at": "2026-09-13T04:00:00Z",
+     "elapsed_eligible_opportunities": 0,
      "expected_opportunities_total": 24,
-     "progress_pct": 54
+     "progress_pct": 0
     },
     "freshness": {
      "data_age_s": 0,
@@ -444,44 +445,47 @@
       "source_lane": "cold",
       "confirmed_sent": 0,
       "eligible_stock": null,
-      "executable_now": true,
+      "executable_now": false,
       "executable_reasons": [
+       "saturday_view_only",
        "within_initial_delay_grace"
       ],
       "evidence_ids": [
-       "ev-e0b6056dad66"
+       "ev-facee919bb2d"
       ]
      },
      {
       "source_lane": "profile_view",
       "confirmed_sent": 0,
       "eligible_stock": null,
-      "executable_now": true,
+      "executable_now": false,
       "executable_reasons": [
+       "saturday_view_only",
        "within_initial_delay_grace"
       ],
       "evidence_ids": [
-       "ev-2a974d00a2d4"
+       "ev-c3d78db10fab"
       ]
      },
      {
       "source_lane": "warm_engager",
-      "confirmed_sent": 0,
+      "confirmed_sent": 5,
       "eligible_stock": null,
-      "executable_now": true,
+      "executable_now": false,
       "executable_reasons": [
+       "saturday_view_only",
        "within_initial_delay_grace"
       ],
       "evidence_ids": [
-       "ev-e3d5eebd1c57"
+       "ev-93ee9f7d6f25"
       ]
      }
     ],
     "lane_basis": "campaign_name",
     "evidence_ids": [
-     "ev-2a974d00a2d4",
-     "ev-e0b6056dad66",
-     "ev-e3d5eebd1c57"
+     "ev-93ee9f7d6f25",
+     "ev-c3d78db10fab",
+     "ev-facee919bb2d"
     ]
    },
    "dm": {
@@ -509,14 +513,14 @@
     },
     "session": {
      "tz": "America/New_York",
-     "opens_at": "2026-09-13T04:00:00Z",
-     "closes_at": "2026-09-14T04:00:00Z",
+     "opens_at": "2026-09-12T04:00:00Z",
+     "closes_at": "2026-09-13T04:00:00Z",
      "open_now": true,
-     "weekday_rule": "sunday_open",
-     "next_opening_at": "2026-09-14T04:00:00Z",
-     "elapsed_eligible_opportunities": 13,
+     "weekday_rule": "saturday_open",
+     "next_opening_at": "2026-09-13T04:00:00Z",
+     "elapsed_eligible_opportunities": 21,
      "expected_opportunities_total": 24,
-     "progress_pct": 54
+     "progress_pct": 88
     },
     "freshness": {
      "data_age_s": 0,
@@ -531,7 +535,7 @@
       "executable_now": true,
       "executable_reasons": [],
       "evidence_ids": [
-       "ev-c02896eb95ae"
+       "ev-2e7517fd7ebb"
       ]
      },
      {
@@ -541,7 +545,7 @@
       "executable_now": true,
       "executable_reasons": [],
       "evidence_ids": [
-       "ev-79e82a8946a2"
+       "ev-6c8caafc6314"
       ]
      },
      {
@@ -551,7 +555,7 @@
       "executable_now": true,
       "executable_reasons": [],
       "evidence_ids": [
-       "ev-4d9afa914d00"
+       "ev-4f28ccc2293a"
       ]
      },
      {
@@ -561,16 +565,16 @@
       "executable_now": true,
       "executable_reasons": [],
       "evidence_ids": [
-       "ev-1c3fd7185b25"
+       "ev-5ee7a0ea788e"
       ]
      }
     ],
     "lane_basis": "campaign_name",
     "evidence_ids": [
-     "ev-1c3fd7185b25",
-     "ev-4d9afa914d00",
-     "ev-79e82a8946a2",
-     "ev-c02896eb95ae"
+     "ev-2e7517fd7ebb",
+     "ev-4f28ccc2293a",
+     "ev-5ee7a0ea788e",
+     "ev-6c8caafc6314"
     ]
    },
    "inmail": {
@@ -598,11 +602,11 @@
     },
     "session": {
      "tz": "America/New_York",
-     "opens_at": "2026-09-13T04:00:00Z",
-     "closes_at": "2026-09-14T04:00:00Z",
+     "opens_at": "2026-09-12T04:00:00Z",
+     "closes_at": "2026-09-13T04:00:00Z",
      "open_now": true,
-     "weekday_rule": "sunday_open",
-     "next_opening_at": "2026-09-14T04:00:00Z",
+     "weekday_rule": "saturday_open",
+     "next_opening_at": "2026-09-13T04:00:00Z",
      "elapsed_eligible_opportunities": 3,
      "expected_opportunities_total": 3,
      "progress_pct": 100
@@ -620,7 +624,7 @@
       "executable_now": true,
       "executable_reasons": [],
       "evidence_ids": [
-       "ev-cebd73bd746a"
+       "ev-0e0f424c70af"
       ]
      },
      {
@@ -630,14 +634,14 @@
       "executable_now": true,
       "executable_reasons": [],
       "evidence_ids": [
-       "ev-5a09922e1778"
+       "ev-6748b4a2a646"
       ]
      }
     ],
     "lane_basis": "campaign_name",
     "evidence_ids": [
-     "ev-5a09922e1778",
-     "ev-cebd73bd746a"
+     "ev-0e0f424c70af",
+     "ev-6748b4a2a646"
     ]
    },
    "incidents": []
@@ -650,8 +654,8 @@
    "status_reason": "Sending is failing on this seat: arch invitation seat pQdTM0R0TRWkwBi7-mKXYA: 157 refused attempts across lanes cold, warm_engager, 0 confirmed since 2026-09-10T12:07:42Z (Request failed with status code 422; arch_422_streak_10_cooldown_armed_2h; arch_422_streak_11_cooldown_armed_2h).",
    "status_basis": {
     "evidence_ids": [
-     "ev-b4a059f0ef8f",
-     "ev-de956cc90b53"
+     "ev-c98a0c6dd077",
+     "ev-e6b1de82e54a"
     ],
     "rule_refs": [
      {
@@ -726,24 +730,25 @@
      "eligible stock > 0"
     ]
    },
-   "next_check_at": "2026-09-14T06:00:00Z",
+   "next_check_at": "2026-09-13T06:00:00Z",
    "freshness": {
     "data_age_s": 0,
     "rule_version": "frozen",
     "status": "stale",
-    "as_of": "2026-09-13T16:03:41Z"
+    "as_of": "2026-09-13T00:00:34Z"
    },
    "invitation": {
     "channel": "invitation",
     "confirmed_sent": 0,
     "session_confirmed_sent_all_lanes": 0,
-    "planned_by_now": 11,
-    "planned_by_now_reason": null,
-    "pace": "behind",
-    "executable_now": true,
+    "planned_by_now": 0,
+    "planned_by_now_reason": "weekday_closed",
+    "pace": "on_track",
+    "executable_now": false,
     "executable_reasons": [
-     "window_state:arch_conn_window_state=frozen",
-     "within_initial_delay_grace"
+     "outside_window",
+     "saturday_closed",
+     "window_state:arch_conn_window_state=frozen"
     ],
     "eligible_stock": null,
     "eligible_stock_note": "unknown: enrichment_data is not in the frozen snapshot, so the live picker predicate cannot be counted (never rendered as 0)",
@@ -761,14 +766,14 @@
     },
     "session": {
      "tz": "Europe/Berlin",
-     "opens_at": "2026-09-13T06:00:00Z",
-     "closes_at": "2026-09-13T19:00:00Z",
-     "open_now": true,
-     "weekday_rule": "sunday_open",
-     "next_opening_at": "2026-09-14T06:00:00Z",
-     "elapsed_eligible_opportunities": 11,
+     "opens_at": "2026-09-12T06:00:00Z",
+     "closes_at": "2026-09-12T19:00:00Z",
+     "open_now": false,
+     "weekday_rule": "saturday_closed",
+     "next_opening_at": "2026-09-13T06:00:00Z",
+     "elapsed_eligible_opportunities": 0,
      "expected_opportunities_total": 13,
-     "progress_pct": 85
+     "progress_pct": 0
     },
     "freshness": {
      "data_age_s": 0,
@@ -780,33 +785,35 @@
       "source_lane": "cold",
       "confirmed_sent": 0,
       "eligible_stock": null,
-      "executable_now": true,
+      "executable_now": false,
       "executable_reasons": [
-       "window_state:arch_conn_window_state=frozen",
-       "within_initial_delay_grace"
+       "saturday_closed",
+       "outside_window",
+       "window_state:arch_conn_window_state=frozen"
       ],
       "evidence_ids": [
-       "ev-de956cc90b53"
+       "ev-c98a0c6dd077"
       ]
      },
      {
       "source_lane": "warm_engager",
       "confirmed_sent": 0,
       "eligible_stock": null,
-      "executable_now": true,
+      "executable_now": false,
       "executable_reasons": [
-       "window_state:arch_conn_window_state=frozen",
-       "within_initial_delay_grace"
+       "saturday_closed",
+       "outside_window",
+       "window_state:arch_conn_window_state=frozen"
       ],
       "evidence_ids": [
-       "ev-b4a059f0ef8f"
+       "ev-e6b1de82e54a"
       ]
      }
     ],
     "lane_basis": "campaign_name",
     "evidence_ids": [
-     "ev-b4a059f0ef8f",
-     "ev-de956cc90b53"
+     "ev-c98a0c6dd077",
+     "ev-e6b1de82e54a"
     ]
    },
    "dm": {
@@ -839,9 +846,9 @@
      "open_now": true,
      "weekday_rule": "sunday_open",
      "next_opening_at": "2026-09-13T22:00:00Z",
-     "elapsed_eligible_opportunities": 19,
+     "elapsed_eligible_opportunities": 3,
      "expected_opportunities_total": 24,
-     "progress_pct": 79
+     "progress_pct": 12
     },
     "freshness": {
      "data_age_s": 0,
@@ -896,7 +903,8 @@
     "pace": "no_target",
     "executable_now": false,
     "executable_reasons": [
-     "outside_window"
+     "outside_window",
+     "saturday_closed"
     ],
     "eligible_stock": null,
     "eligible_stock_note": "unknown: enrichment_data is not in the frozen snapshot, so the live picker predicate cannot be counted (never rendered as 0)",
@@ -914,11 +922,11 @@
     },
     "session": {
      "tz": "Europe/Berlin",
-     "opens_at": "2026-09-13T08:00:00Z",
-     "closes_at": "2026-09-13T15:00:00Z",
+     "opens_at": "2026-09-12T08:00:00Z",
+     "closes_at": "2026-09-12T15:00:00Z",
      "open_now": false,
-     "weekday_rule": "sunday_open",
-     "next_opening_at": "2026-09-14T08:00:00Z",
+     "weekday_rule": "saturday_closed",
+     "next_opening_at": "2026-09-13T08:00:00Z",
      "elapsed_eligible_opportunities": 0,
      "expected_opportunities_total": 7,
      "progress_pct": 0
@@ -935,10 +943,11 @@
       "eligible_stock": null,
       "executable_now": false,
       "executable_reasons": [
+       "saturday_closed",
        "outside_window"
       ],
       "evidence_ids": [
-       "ev-2ca1531e0aaa"
+       "ev-89ced32ab136"
       ]
      },
      {
@@ -947,17 +956,18 @@
       "eligible_stock": null,
       "executable_now": false,
       "executable_reasons": [
+       "saturday_closed",
        "outside_window"
       ],
       "evidence_ids": [
-       "ev-15d67305706e"
+       "ev-0f5ead88a154"
       ]
      }
     ],
     "lane_basis": "campaign_name",
     "evidence_ids": [
-     "ev-15d67305706e",
-     "ev-2ca1531e0aaa"
+     "ev-0f5ead88a154",
+     "ev-89ced32ab136"
     ]
    },
    "incidents": [
@@ -1002,7 +1012,7 @@
        "stage": "eligibility",
        "status": "unknown",
        "evidence_ids": [
-        "ev-de956cc90b53"
+        "ev-c98a0c6dd077"
        ]
       },
       {
@@ -1014,14 +1024,14 @@
        "stage": "provider_attempt",
        "status": "broken",
        "evidence_ids": [
-        "ev-de956cc90b53"
+        "ev-c98a0c6dd077"
        ]
       },
       {
        "stage": "confirmation",
        "status": "broken",
        "evidence_ids": [
-        "ev-de956cc90b53"
+        "ev-c98a0c6dd077"
        ]
       }
      ],
@@ -1029,7 +1039,8 @@
      "client_id": "arch",
      "episode_id": "ep-1bbbbe775435",
      "evidence_ids": [
-      "ev-de956cc90b53"
+      "ev-de956cc90b53",
+      "ev-c98a0c6dd077"
      ],
      "failure_family": "provider_rejection",
      "incident_key": "arch|pQdTM0R0TRWkwBi7-mKXYA|all_lanes|invitation|provider_rejection",
@@ -1045,7 +1056,7 @@
        "eligible stock > 0"
       ]
      },
-     "next_check_at": "2026-09-14T06:00:00Z",
+     "next_check_at": "2026-09-13T06:00:00Z",
      "observed_distinct_prospects": 37,
      "observed_failures": 157,
      "opened_at": "2026-09-10T12:09:12Z",
@@ -1067,15 +1078,15 @@
    "client_id": "risedtc",
    "label": "Mattan",
    "seat_id": "WkWcYGueQvy_atKCNFz2ng",
-   "status": "healthy",
-   "status_reason": "The seat is inside its sending window and nothing is blocking it.",
+   "status": "outside_window",
+   "status_reason": "Nothing is going out right now because Saturday is profile-views only for this seat.",
    "status_basis": {
     "evidence_ids": [
-     "ev-0980e0e87458",
-     "ev-19598d5a7188",
-     "ev-2158462c8ff3",
-     "ev-71a0c9c5a762",
-     "ev-94a43ab91bae"
+     "ev-1f6383503e8b",
+     "ev-235489e7998d",
+     "ev-b01d00391cd6",
+     "ev-b204b8d834b1",
+     "ev-cb9325619f6e"
     ],
     "rule_refs": [
      {
@@ -1131,27 +1142,28 @@
     ]
    },
    "next_action": {
-    "action": "Nothing to do \u2014 sending is running.",
-    "owner": "system",
-    "earliest_safe_at": null,
+    "action": "Nothing to do \u2014 wait for the next window to open.",
+    "owner": "none",
+    "earliest_safe_at": "2026-09-13T12:00:00Z",
     "prerequisites": []
    },
-   "next_check_at": null,
+   "next_check_at": "2026-09-13T12:00:00Z",
    "freshness": {
     "data_age_s": 0,
     "rule_version": "frozen",
     "status": "stale",
-    "as_of": "2026-09-13T16:03:41Z"
+    "as_of": "2026-09-13T00:00:34Z"
    },
    "invitation": {
     "channel": "invitation",
     "confirmed_sent": 0,
     "session_confirmed_sent_all_lanes": 0,
-    "planned_by_now": 30,
-    "planned_by_now_reason": null,
-    "pace": "behind",
-    "executable_now": true,
+    "planned_by_now": 0,
+    "planned_by_now_reason": "weekday_view_only",
+    "pace": "on_track",
+    "executable_now": false,
     "executable_reasons": [
+     "saturday_view_only",
      "within_initial_delay_grace"
     ],
     "eligible_stock": null,
@@ -1170,14 +1182,14 @@
     },
     "session": {
      "tz": "America/Los_Angeles",
-     "opens_at": "2026-09-13T12:00:00Z",
-     "closes_at": "2026-09-14T01:00:00Z",
+     "opens_at": "2026-09-12T12:00:00Z",
+     "closes_at": "2026-09-13T01:00:00Z",
      "open_now": true,
-     "weekday_rule": "sunday_open",
-     "next_opening_at": "2026-09-14T12:00:00Z",
-     "elapsed_eligible_opportunities": 40,
+     "weekday_rule": "saturday_view_only",
+     "next_opening_at": "2026-09-13T12:00:00Z",
+     "elapsed_eligible_opportunities": 0,
      "expected_opportunities_total": 40,
-     "progress_pct": 100
+     "progress_pct": 0
     },
     "freshness": {
      "data_age_s": 0,
@@ -1189,70 +1201,75 @@
       "source_lane": "client_orbit",
       "confirmed_sent": 0,
       "eligible_stock": null,
-      "executable_now": true,
+      "executable_now": false,
       "executable_reasons": [
+       "saturday_view_only",
        "within_initial_delay_grace"
       ],
       "evidence_ids": [
-       "ev-2158462c8ff3"
+       "ev-b204b8d834b1"
       ]
      },
      {
       "source_lane": "cold",
       "confirmed_sent": 0,
       "eligible_stock": null,
-      "executable_now": true,
+      "executable_now": false,
       "executable_reasons": [
+       "saturday_view_only",
        "within_initial_delay_grace"
       ],
       "evidence_ids": [
-       "ev-19598d5a7188"
+       "ev-235489e7998d"
       ]
      },
      {
       "source_lane": "competitor_engager",
       "confirmed_sent": 0,
       "eligible_stock": null,
-      "executable_now": true,
+      "executable_now": false,
       "executable_reasons": [
+       "saturday_view_only",
        "within_initial_delay_grace"
       ],
       "evidence_ids": [
-       "ev-0980e0e87458"
+       "ev-1f6383503e8b"
       ]
      },
      {
       "source_lane": "partner",
       "confirmed_sent": 0,
       "eligible_stock": null,
-      "executable_now": true,
+      "executable_now": false,
       "executable_reasons": [
+       "saturday_view_only",
        "within_initial_delay_grace"
       ],
       "evidence_ids": [
-       "ev-94a43ab91bae"
+       "ev-b01d00391cd6"
       ]
      },
      {
       "source_lane": "profile_view",
       "confirmed_sent": 0,
       "eligible_stock": null,
-      "executable_now": true,
+      "executable_now": false,
       "executable_reasons": [
+       "saturday_view_only",
        "within_initial_delay_grace"
       ],
       "evidence_ids": [
-       "ev-71a0c9c5a762"
+       "ev-cb9325619f6e"
       ]
      }
     ],
     "lane_basis": "campaign_name",
     "evidence_ids": [
-     "ev-0980e0e87458",
-     "ev-19598d5a7188",
-     "ev-2158462c8ff3",
-     "ev-71a0c9c5a762",
-     "ev-94a43ab91bae"
+     "ev-1f6383503e8b",
+     "ev-235489e7998d",
+     "ev-b01d00391cd6",
+     "ev-b204b8d834b1",
+     "ev-cb9325619f6e"
     ]
    },
    "dm": {
@@ -1280,14 +1297,14 @@
     },
     "session": {
      "tz": "America/Los_Angeles",
-     "opens_at": "2026-09-13T07:00:00Z",
-     "closes_at": "2026-09-14T07:00:00Z",
+     "opens_at": "2026-09-12T07:00:00Z",
+     "closes_at": "2026-09-13T07:00:00Z",
      "open_now": true,
-     "weekday_rule": "sunday_open",
-     "next_opening_at": "2026-09-14T07:00:00Z",
-     "elapsed_eligible_opportunities": 10,
+     "weekday_rule": "saturday_open",
+     "next_opening_at": "2026-09-13T07:00:00Z",
+     "elapsed_eligible_opportunities": 18,
      "expected_opportunities_total": 24,
-     "progress_pct": 42
+     "progress_pct": 75
     },
     "freshness": {
      "data_age_s": 0,
@@ -1302,7 +1319,7 @@
       "executable_now": true,
       "executable_reasons": [],
       "evidence_ids": [
-       "ev-f9b5914f47de"
+       "ev-bb5f3904de11"
       ]
      },
      {
@@ -1312,7 +1329,7 @@
       "executable_now": true,
       "executable_reasons": [],
       "evidence_ids": [
-       "ev-e01de4910c65"
+       "ev-ffcb86e8021f"
       ]
      },
      {
@@ -1322,7 +1339,7 @@
       "executable_now": true,
       "executable_reasons": [],
       "evidence_ids": [
-       "ev-6dfe442ac426"
+       "ev-1bb119eca15a"
       ]
      },
      {
@@ -1332,7 +1349,7 @@
       "executable_now": true,
       "executable_reasons": [],
       "evidence_ids": [
-       "ev-ba62c803be3b"
+       "ev-9af4a8ef0e89"
       ]
      },
      {
@@ -1342,7 +1359,7 @@
       "executable_now": true,
       "executable_reasons": [],
       "evidence_ids": [
-       "ev-2f47b7b65ff5"
+       "ev-4d78a80a86db"
       ]
      },
      {
@@ -1352,7 +1369,7 @@
       "executable_now": true,
       "executable_reasons": [],
       "evidence_ids": [
-       "ev-c55e22cba70f"
+       "ev-326584c023a8"
       ]
      },
      {
@@ -1362,19 +1379,19 @@
       "executable_now": true,
       "executable_reasons": [],
       "evidence_ids": [
-       "ev-bc77974d7cd1"
+       "ev-e760fb3040e2"
       ]
      }
     ],
     "lane_basis": "campaign_name",
     "evidence_ids": [
-     "ev-2f47b7b65ff5",
-     "ev-6dfe442ac426",
-     "ev-ba62c803be3b",
-     "ev-bc77974d7cd1",
-     "ev-c55e22cba70f",
-     "ev-e01de4910c65",
-     "ev-f9b5914f47de"
+     "ev-1bb119eca15a",
+     "ev-326584c023a8",
+     "ev-4d78a80a86db",
+     "ev-9af4a8ef0e89",
+     "ev-bb5f3904de11",
+     "ev-e760fb3040e2",
+     "ev-ffcb86e8021f"
     ]
    },
    "inmail": {
@@ -1402,11 +1419,11 @@
     },
     "session": {
      "tz": "America/Los_Angeles",
-     "opens_at": "2026-09-13T07:00:00Z",
-     "closes_at": "2026-09-14T07:00:00Z",
+     "opens_at": "2026-09-12T07:00:00Z",
+     "closes_at": "2026-09-13T07:00:00Z",
      "open_now": true,
-     "weekday_rule": "sunday_open",
-     "next_opening_at": "2026-09-14T07:00:00Z",
+     "weekday_rule": "saturday_open",
+     "next_opening_at": "2026-09-13T07:00:00Z",
      "elapsed_eligible_opportunities": 3,
      "expected_opportunities_total": 3,
      "progress_pct": 100
@@ -1424,7 +1441,7 @@
       "executable_now": true,
       "executable_reasons": [],
       "evidence_ids": [
-       "ev-a8312f4c70d6"
+       "ev-e560a7f30825"
       ]
      },
      {
@@ -1434,7 +1451,7 @@
       "executable_now": true,
       "executable_reasons": [],
       "evidence_ids": [
-       "ev-6dab514179aa"
+       "ev-9e9ea5a1396e"
       ]
      },
      {
@@ -1444,15 +1461,15 @@
       "executable_now": true,
       "executable_reasons": [],
       "evidence_ids": [
-       "ev-d69fa226d89e"
+       "ev-ef892b4057a4"
       ]
      }
     ],
     "lane_basis": "campaign_name",
     "evidence_ids": [
-     "ev-6dab514179aa",
-     "ev-a8312f4c70d6",
-     "ev-d69fa226d89e"
+     "ev-9e9ea5a1396e",
+     "ev-e560a7f30825",
+     "ev-ef892b4057a4"
     ]
    },
    "incidents": []
@@ -1519,11 +1536,11 @@
    {
     "name": "today",
     "from": "2026-09-12T22:00:00Z",
-    "to": "2026-09-13T16:03:41Z",
+    "to": "2026-09-13T00:00:34Z",
     "tz": "Europe/Warsaw",
     "complete": false,
     "execution_receipts_cover": true,
-    "days": 1,
+    "days": 0,
     "partial": true,
     "source_coverage_note": "partial day: from local midnight to as_of"
    }
@@ -1546,9 +1563,9 @@
     "acceptance_cohort": {
      "invited": 157,
      "accepted_within_72h": 22,
-     "matured_denominator": 98,
+     "matured_denominator": 93,
      "maturity_h": 72,
-     "rate_pct": 22
+     "rate_pct": 24
     },
     "reply_cohort": {
      "first_messaged": 157,
@@ -2109,7 +2126,7 @@
     "acceptance_cohort": {
      "invited": 3,
      "accepted_within_72h": 0,
-     "matured_denominator": 3,
+     "matured_denominator": 2,
      "maturity_h": 72,
      "rate_pct": 0
     },
@@ -2140,9 +2157,9 @@
     "acceptance_cohort": {
      "invited": 59,
      "accepted_within_72h": 15,
-     "matured_denominator": 29,
+     "matured_denominator": 25,
      "maturity_h": 72,
-     "rate_pct": 52
+     "rate_pct": 60
     },
     "reply_cohort": {
      "first_messaged": 59,
@@ -2357,7 +2374,7 @@
     "acceptance_cohort": {
      "invited": 623,
      "accepted_within_72h": 110,
-     "matured_denominator": 564,
+     "matured_denominator": 559,
      "maturity_h": 72,
      "rate_pct": 20
     },
@@ -3715,9 +3732,9 @@
     "acceptance_cohort": {
      "invited": 7,
      "accepted_within_72h": 1,
-     "matured_denominator": 7,
+     "matured_denominator": 6,
      "maturity_h": 72,
-     "rate_pct": 14
+     "rate_pct": 17
     },
     "reply_cohort": {
      "first_messaged": 7,
@@ -3746,9 +3763,9 @@
     "acceptance_cohort": {
      "invited": 353,
      "accepted_within_72h": 85,
-     "matured_denominator": 323,
+     "matured_denominator": 319,
      "maturity_h": 72,
-     "rate_pct": 26
+     "rate_pct": 27
     },
     "reply_cohort": {
      "first_messaged": 353,
@@ -3994,7 +4011,7 @@
     "acceptance_cohort": {
      "invited": 1322,
      "accepted_within_72h": 259,
-     "matured_denominator": 1263,
+     "matured_denominator": 1258,
      "maturity_h": 72,
      "rate_pct": 21
     },
@@ -6083,9 +6100,9 @@
     "acceptance_cohort": {
      "invited": 11,
      "accepted_within_72h": 2,
-     "matured_denominator": 11,
+     "matured_denominator": 10,
      "maturity_h": 72,
-     "rate_pct": 18
+     "rate_pct": 20
     },
     "reply_cohort": {
      "first_messaged": 11,
@@ -6114,7 +6131,7 @@
     "acceptance_cohort": {
      "invited": 840,
      "accepted_within_72h": 217,
-     "matured_denominator": 810,
+     "matured_denominator": 806,
      "maturity_h": 72,
      "rate_pct": 27
     },
@@ -8367,9 +8384,9 @@
     "acceptance_cohort": {
      "invited": 152,
      "accepted_within_72h": 51,
-     "matured_denominator": 152,
+     "matured_denominator": 128,
      "maturity_h": 72,
-     "rate_pct": 34
+     "rate_pct": 40
     },
     "reply_cohort": {
      "first_messaged": 152,
@@ -8899,9 +8916,9 @@
     "acceptance_cohort": {
      "invited": 102,
      "accepted_within_72h": 41,
-     "matured_denominator": 102,
+     "matured_denominator": 92,
      "maturity_h": 72,
-     "rate_pct": 40
+     "rate_pct": 45
     },
     "reply_cohort": {
      "first_messaged": 102,
@@ -8930,9 +8947,9 @@
     "acceptance_cohort": {
      "invited": 50,
      "accepted_within_72h": 10,
-     "matured_denominator": 50,
+     "matured_denominator": 36,
      "maturity_h": 72,
-     "rate_pct": 20
+     "rate_pct": 28
     },
     "reply_cohort": {
      "first_messaged": 50,
@@ -9178,9 +9195,9 @@
     "acceptance_cohort": {
      "invited": 304,
      "accepted_within_72h": 89,
-     "matured_denominator": 304,
+     "matured_denominator": 280,
      "maturity_h": 72,
-     "rate_pct": 29
+     "rate_pct": 32
     },
     "reply_cohort": {
      "first_messaged": 304,
@@ -10505,9 +10522,9 @@
     "acceptance_cohort": {
      "invited": 228,
      "accepted_within_72h": 72,
-     "matured_denominator": 228,
+     "matured_denominator": 218,
      "maturity_h": 72,
-     "rate_pct": 32
+     "rate_pct": 33
     },
     "reply_cohort": {
      "first_messaged": 228,
@@ -10536,9 +10553,9 @@
     "acceptance_cohort": {
      "invited": 76,
      "accepted_within_72h": 17,
-     "matured_denominator": 76,
+     "matured_denominator": 62,
      "maturity_h": 72,
-     "rate_pct": 22
+     "rate_pct": 27
     },
     "reply_cohort": {
      "first_messaged": 76,
@@ -10784,9 +10801,9 @@
     "acceptance_cohort": {
      "invited": 304,
      "accepted_within_72h": 89,
-     "matured_denominator": 304,
+     "matured_denominator": 280,
      "maturity_h": 72,
-     "rate_pct": 29
+     "rate_pct": 32
     },
     "reply_cohort": {
      "first_messaged": 304,
@@ -12842,9 +12859,9 @@
     "acceptance_cohort": {
      "invited": 228,
      "accepted_within_72h": 72,
-     "matured_denominator": 228,
+     "matured_denominator": 218,
      "maturity_h": 72,
-     "rate_pct": 32
+     "rate_pct": 33
     },
     "reply_cohort": {
      "first_messaged": 228,
@@ -12873,9 +12890,9 @@
     "acceptance_cohort": {
      "invited": 76,
      "accepted_within_72h": 17,
-     "matured_denominator": 76,
+     "matured_denominator": 62,
      "maturity_h": 72,
-     "rate_pct": 22
+     "rate_pct": 27
     },
     "reply_cohort": {
      "first_messaged": 76,
@@ -14940,9 +14957,9 @@
     "acceptance_cohort": {
      "invited": 163,
      "accepted_within_72h": 34,
-     "matured_denominator": 99,
+     "matured_denominator": 86,
      "maturity_h": 72,
-     "rate_pct": 34
+     "rate_pct": 40
     },
     "reply_cohort": {
      "first_messaged": 163,
@@ -15503,9 +15520,9 @@
     "acceptance_cohort": {
      "invited": 138,
      "accepted_within_72h": 30,
-     "matured_denominator": 99,
+     "matured_denominator": 86,
      "maturity_h": 72,
-     "rate_pct": 30
+     "rate_pct": 35
     },
     "reply_cohort": {
      "first_messaged": 138,
@@ -15813,9 +15830,9 @@
     "acceptance_cohort": {
      "invited": 668,
      "accepted_within_72h": 171,
-     "matured_denominator": 604,
+     "matured_denominator": 591,
      "maturity_h": 72,
-     "rate_pct": 28
+     "rate_pct": 29
     },
     "reply_cohort": {
      "first_messaged": 668,
@@ -17171,7 +17188,7 @@
     "acceptance_cohort": {
      "invited": 643,
      "accepted_within_72h": 167,
-     "matured_denominator": 604,
+     "matured_denominator": 591,
      "maturity_h": 72,
      "rate_pct": 28
     },
@@ -17574,9 +17591,9 @@
     "acceptance_cohort": {
      "invited": 1127,
      "accepted_within_72h": 270,
-     "matured_denominator": 1063,
+     "matured_denominator": 1050,
      "maturity_h": 72,
-     "rate_pct": 25
+     "rate_pct": 26
     },
     "reply_cohort": {
      "first_messaged": 1127,
@@ -19694,7 +19711,7 @@
     "acceptance_cohort": {
      "invited": 947,
      "accepted_within_72h": 255,
-     "matured_denominator": 908,
+     "matured_denominator": 895,
      "maturity_h": 72,
      "rate_pct": 28
     },
@@ -30566,9 +30583,9 @@
     "sent_current": 191,
     "sent_previous": 246,
     "delta": -55,
-    "accept_rate_current_pct": 22,
+    "accept_rate_current_pct": 24,
     "accept_rate_previous_pct": 16,
-    "delta_pp": 6,
+    "delta_pp": 8,
     "small_cohort": false
    },
    {
@@ -30595,7 +30612,7 @@
     "accept_rate_current_pct": null,
     "accept_rate_previous_pct": null,
     "delta_pp": null,
-    "small_cohort": true
+    "small_cohort": false
    },
    {
     "client_id": "ivan",
@@ -30608,7 +30625,7 @@
     "accept_rate_current_pct": null,
     "accept_rate_previous_pct": null,
     "delta_pp": null,
-    "small_cohort": true
+    "small_cohort": false
    },
    {
     "client_id": "ivan",
@@ -30621,7 +30638,7 @@
     "accept_rate_current_pct": null,
     "accept_rate_previous_pct": null,
     "delta_pp": null,
-    "small_cohort": true
+    "small_cohort": false
    },
    {
     "client_id": "ivan",
@@ -30634,7 +30651,7 @@
     "accept_rate_current_pct": null,
     "accept_rate_previous_pct": null,
     "delta_pp": null,
-    "small_cohort": true
+    "small_cohort": false
    },
    {
     "client_id": "arch",
@@ -30644,9 +30661,9 @@
     "sent_current": 152,
     "sent_previous": 152,
     "delta": 0,
-    "accept_rate_current_pct": 34,
+    "accept_rate_current_pct": 40,
     "accept_rate_previous_pct": 25,
-    "delta_pp": 9,
+    "delta_pp": 15,
     "small_cohort": false
    },
    {
@@ -30657,7 +30674,7 @@
     "sent_current": 304,
     "sent_previous": 0,
     "delta": 304,
-    "accept_rate_current_pct": 29,
+    "accept_rate_current_pct": 32,
     "accept_rate_previous_pct": null,
     "delta_pp": null,
     "small_cohort": true
@@ -30673,7 +30690,7 @@
     "accept_rate_current_pct": null,
     "accept_rate_previous_pct": null,
     "delta_pp": null,
-    "small_cohort": true
+    "small_cohort": false
    },
    {
     "client_id": "arch",
@@ -30686,7 +30703,7 @@
     "accept_rate_current_pct": null,
     "accept_rate_previous_pct": null,
     "delta_pp": null,
-    "small_cohort": true
+    "small_cohort": false
    },
    {
     "client_id": "arch",
@@ -30699,7 +30716,7 @@
     "accept_rate_current_pct": null,
     "accept_rate_previous_pct": null,
     "delta_pp": null,
-    "small_cohort": true
+    "small_cohort": false
    },
    {
     "client_id": "arch",
@@ -30712,7 +30729,7 @@
     "accept_rate_current_pct": null,
     "accept_rate_previous_pct": null,
     "delta_pp": null,
-    "small_cohort": true
+    "small_cohort": false
    },
    {
     "client_id": "risedtc",
@@ -30722,9 +30739,9 @@
     "sent_current": 169,
     "sent_previous": 153,
     "delta": 16,
-    "accept_rate_current_pct": 34,
+    "accept_rate_current_pct": 40,
     "accept_rate_previous_pct": 25,
-    "delta_pp": 9,
+    "delta_pp": 15,
     "small_cohort": false
    },
    {
@@ -30735,9 +30752,9 @@
     "sent_current": 674,
     "sent_previous": 459,
     "delta": 215,
-    "accept_rate_current_pct": 28,
+    "accept_rate_current_pct": 29,
     "accept_rate_previous_pct": 22,
-    "delta_pp": 6,
+    "delta_pp": 7,
     "small_cohort": false
    },
    {
@@ -30751,7 +30768,7 @@
     "accept_rate_current_pct": null,
     "accept_rate_previous_pct": null,
     "delta_pp": null,
-    "small_cohort": true
+    "small_cohort": false
    },
    {
     "client_id": "risedtc",
@@ -30764,7 +30781,7 @@
     "accept_rate_current_pct": null,
     "accept_rate_previous_pct": null,
     "delta_pp": null,
-    "small_cohort": true
+    "small_cohort": false
    },
    {
     "client_id": "risedtc",
@@ -30777,7 +30794,7 @@
     "accept_rate_current_pct": null,
     "accept_rate_previous_pct": null,
     "delta_pp": null,
-    "small_cohort": true
+    "small_cohort": false
    },
    {
     "client_id": "risedtc",
@@ -30790,7 +30807,7 @@
     "accept_rate_current_pct": null,
     "accept_rate_previous_pct": null,
     "delta_pp": null,
-    "small_cohort": true
+    "small_cohort": false
    }
   ],
   "notes": [
@@ -31038,6 +31055,19 @@
     ],
     "withheld": true,
     "withheld_reason": "cause confidence rests on 1 independent member event(s); a shared-cause claim needs 2; independent_defect_same_symptom is a 6/20 plurality of the judged members, not a majority, so one repair covers only part of this family",
+    "weekly_eligibility": {
+     "eligible": false,
+     "misses": [
+      "the mechanism is independent_defect_same_symptom, not a returned defect or a rule missing elsewhere",
+      "cause confidence 1.0 rests on 1 independent member event(s); a shared-cause claim needs 2"
+     ],
+     "conditions": [
+      "mechanism is same_defect_returned or rule_missing_elsewhere",
+      "cause confidence >= 0.6 supplied by at least 2 independent member events",
+      "at least 2 distinct days",
+      "a recovery-measurable success measure"
+     ]
+    },
     "rank": {
      "score_ledger": 7.286,
      "score_independent": 7.286,
@@ -32065,6 +32095,18 @@
     ],
     "withheld": true,
     "withheld_reason": "independent_defect_same_symptom is a 59/146 plurality of the judged members, not a majority, so one repair covers only part of this family",
+    "weekly_eligibility": {
+     "eligible": false,
+     "misses": [
+      "the mechanism is independent_defect_same_symptom, not a returned defect or a rule missing elsewhere"
+     ],
+     "conditions": [
+      "mechanism is same_defect_returned or rule_missing_elsewhere",
+      "cause confidence >= 0.6 supplied by at least 2 independent member events",
+      "at least 2 distinct days",
+      "a recovery-measurable success measure"
+     ]
+    },
     "rank": {
      "score_ledger": 6.767,
      "score_independent": 6.767,
@@ -32874,6 +32916,18 @@
     ],
     "withheld": true,
     "withheld_reason": "cause confidence rests on 1 independent member event(s); a shared-cause claim needs 2",
+    "weekly_eligibility": {
+     "eligible": false,
+     "misses": [
+      "cause confidence 1.0 rests on 1 independent member event(s); a shared-cause claim needs 2"
+     ],
+     "conditions": [
+      "mechanism is same_defect_returned or rule_missing_elsewhere",
+      "cause confidence >= 0.6 supplied by at least 2 independent member events",
+      "at least 2 distinct days",
+      "a recovery-measurable success measure"
+     ]
+    },
     "rank": {
      "score_ledger": 6.713,
      "score_independent": 6.713,
@@ -33405,6 +33459,19 @@
     ],
     "withheld": true,
     "withheld_reason": "cause confidence rests on 1 independent member event(s); a shared-cause claim needs 2",
+    "weekly_eligibility": {
+     "eligible": false,
+     "misses": [
+      "the mechanism is independent_defect_same_symptom, not a returned defect or a rule missing elsewhere",
+      "cause confidence 1.0 rests on 1 independent member event(s); a shared-cause claim needs 2"
+     ],
+     "conditions": [
+      "mechanism is same_defect_returned or rule_missing_elsewhere",
+      "cause confidence >= 0.6 supplied by at least 2 independent member events",
+      "at least 2 distinct days",
+      "a recovery-measurable success measure"
+     ]
+    },
     "rank": {
      "score_ledger": 6.524,
      "score_independent": 6.548,
@@ -33703,6 +33770,19 @@
     ],
     "withheld": true,
     "withheld_reason": "creative_iteration is a 12/28 plurality of the judged members, not a majority, so one repair covers only part of this family",
+    "weekly_eligibility": {
+     "eligible": false,
+     "misses": [
+      "the mechanism is creative_iteration, not a returned defect or a rule missing elsewhere",
+      "cause confidence 0.5 is below 0.6"
+     ],
+     "conditions": [
+      "mechanism is same_defect_returned or rule_missing_elsewhere",
+      "cause confidence >= 0.6 supplied by at least 2 independent member events",
+      "at least 2 distinct days",
+      "a recovery-measurable success measure"
+     ]
+    },
     "rank": {
      "score_ledger": 6.138,
      "score_independent": 6.138,
@@ -34083,6 +34163,18 @@
     ],
     "withheld": true,
     "withheld_reason": "rule_missing_elsewhere is a 10/38 plurality of the judged members, not a majority, so one repair covers only part of this family",
+    "weekly_eligibility": {
+     "eligible": false,
+     "misses": [
+      "cause confidence 0.5 is below 0.6"
+     ],
+     "conditions": [
+      "mechanism is same_defect_returned or rule_missing_elsewhere",
+      "cause confidence >= 0.6 supplied by at least 2 independent member events",
+      "at least 2 distinct days",
+      "a recovery-measurable success measure"
+     ]
+    },
     "rank": {
      "score_ledger": 5.897,
      "score_independent": 5.897,
@@ -34639,6 +34731,19 @@
     ],
     "withheld": false,
     "withheld_reason": null,
+    "weekly_eligibility": {
+     "eligible": false,
+     "misses": [
+      "the mechanism is independent_defect_same_symptom, not a returned defect or a rule missing elsewhere",
+      "cause confidence 0.5 is below 0.6"
+     ],
+     "conditions": [
+      "mechanism is same_defect_returned or rule_missing_elsewhere",
+      "cause confidence >= 0.6 supplied by at least 2 independent member events",
+      "at least 2 distinct days",
+      "a recovery-measurable success measure"
+     ]
+    },
     "rank": {
      "score_ledger": 5.884,
      "score_independent": 5.884,
@@ -34867,6 +34972,19 @@
     ],
     "withheld": true,
     "withheld_reason": "independent_defect_same_symptom is a 7/27 plurality of the judged members, not a majority, so one repair covers only part of this family",
+    "weekly_eligibility": {
+     "eligible": false,
+     "misses": [
+      "the mechanism is independent_defect_same_symptom, not a returned defect or a rule missing elsewhere",
+      "cause confidence 0.5 is below 0.6"
+     ],
+     "conditions": [
+      "mechanism is same_defect_returned or rule_missing_elsewhere",
+      "cause confidence >= 0.6 supplied by at least 2 independent member events",
+      "at least 2 distinct days",
+      "a recovery-measurable success measure"
+     ]
+    },
     "rank": {
      "score_ledger": 5.821,
      "score_independent": 5.821,
@@ -35139,6 +35257,18 @@
     ],
     "withheld": false,
     "withheld_reason": null,
+    "weekly_eligibility": {
+     "eligible": false,
+     "misses": [
+      "cause confidence 0.5 is below 0.6"
+     ],
+     "conditions": [
+      "mechanism is same_defect_returned or rule_missing_elsewhere",
+      "cause confidence >= 0.6 supplied by at least 2 independent member events",
+      "at least 2 distinct days",
+      "a recovery-measurable success measure"
+     ]
+    },
     "rank": {
      "score_ledger": 5.566,
      "score_independent": 5.566,
@@ -35391,6 +35521,19 @@
     ],
     "withheld": false,
     "withheld_reason": null,
+    "weekly_eligibility": {
+     "eligible": false,
+     "misses": [
+      "the mechanism is independent_defect_same_symptom, not a returned defect or a rule missing elsewhere",
+      "cause confidence 0.5 is below 0.6"
+     ],
+     "conditions": [
+      "mechanism is same_defect_returned or rule_missing_elsewhere",
+      "cause confidence >= 0.6 supplied by at least 2 independent member events",
+      "at least 2 distinct days",
+      "a recovery-measurable success measure"
+     ]
+    },
     "rank": {
      "score_ledger": 5.449,
      "score_independent": 5.449,
@@ -35558,6 +35701,19 @@
     ],
     "withheld": true,
     "withheld_reason": "independent_defect_same_symptom is a 6/16 plurality of the judged members, not a majority, so one repair covers only part of this family",
+    "weekly_eligibility": {
+     "eligible": false,
+     "misses": [
+      "the mechanism is independent_defect_same_symptom, not a returned defect or a rule missing elsewhere",
+      "cause confidence 0.2 is below 0.6"
+     ],
+     "conditions": [
+      "mechanism is same_defect_returned or rule_missing_elsewhere",
+      "cause confidence >= 0.6 supplied by at least 2 independent member events",
+      "at least 2 distinct days",
+      "a recovery-measurable success measure"
+     ]
+    },
     "rank": {
      "score_ledger": 3.928,
      "score_independent": 3.928,
@@ -35622,6 +35778,19 @@
     ],
     "withheld": true,
     "withheld_reason": "cause confidence rests on 0 independent member event(s); a shared-cause claim needs 2",
+    "weekly_eligibility": {
+     "eligible": false,
+     "misses": [
+      "the mechanism is unresolved and unverified, not a returned defect or a rule missing elsewhere",
+      "cause confidence 0.2 is below 0.6"
+     ],
+     "conditions": [
+      "mechanism is same_defect_returned or rule_missing_elsewhere",
+      "cause confidence >= 0.6 supplied by at least 2 independent member events",
+      "at least 2 distinct days",
+      "a recovery-measurable success measure"
+     ]
+    },
     "rank": {
      "score_ledger": 2.488,
      "score_independent": 2.488,
@@ -35686,6 +35855,19 @@
     ],
     "withheld": true,
     "withheld_reason": "cause confidence rests on 0 independent member event(s); a shared-cause claim needs 2",
+    "weekly_eligibility": {
+     "eligible": false,
+     "misses": [
+      "the mechanism is unresolved and unverified, not a returned defect or a rule missing elsewhere",
+      "cause confidence 0.2 is below 0.6"
+     ],
+     "conditions": [
+      "mechanism is same_defect_returned or rule_missing_elsewhere",
+      "cause confidence >= 0.6 supplied by at least 2 independent member events",
+      "at least 2 distinct days",
+      "a recovery-measurable success measure"
+     ]
+    },
     "rank": {
      "score_ledger": 2.401,
      "score_independent": 2.401,
@@ -35793,121 +35975,121 @@
    "origin_run": "run01"
   },
   {
-   "id": "ev-e0b6056dad66",
+   "id": "ev-facee919bb2d",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T04:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T04:00:00Z",
    "client_id": "ivan",
    "lineage": "independent",
    "derived_from": null,
    "origin_run": "run01"
   },
   {
-   "id": "ev-2a974d00a2d4",
+   "id": "ev-c3d78db10fab",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T04:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T04:00:00Z",
    "client_id": "ivan",
    "lineage": "independent",
    "derived_from": null,
    "origin_run": "run01"
   },
   {
-   "id": "ev-e3d5eebd1c57",
+   "id": "ev-93ee9f7d6f25",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T04:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T04:00:00Z",
    "client_id": "ivan",
    "lineage": "independent",
    "derived_from": null,
    "origin_run": "run01"
   },
   {
-   "id": "ev-c02896eb95ae",
+   "id": "ev-2e7517fd7ebb",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T04:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T04:00:00Z",
    "client_id": "ivan",
    "lineage": "independent",
    "derived_from": null,
    "origin_run": "run01"
   },
   {
-   "id": "ev-79e82a8946a2",
+   "id": "ev-6c8caafc6314",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T04:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T04:00:00Z",
    "client_id": "ivan",
    "lineage": "independent",
    "derived_from": null,
    "origin_run": "run01"
   },
   {
-   "id": "ev-4d9afa914d00",
+   "id": "ev-4f28ccc2293a",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T04:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T04:00:00Z",
    "client_id": "ivan",
    "lineage": "independent",
    "derived_from": null,
    "origin_run": "run01"
   },
   {
-   "id": "ev-1c3fd7185b25",
+   "id": "ev-5ee7a0ea788e",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T04:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T04:00:00Z",
    "client_id": "ivan",
    "lineage": "independent",
    "derived_from": null,
    "origin_run": "run01"
   },
   {
-   "id": "ev-cebd73bd746a",
+   "id": "ev-0e0f424c70af",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T04:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T04:00:00Z",
    "client_id": "ivan",
    "lineage": "independent",
    "derived_from": null,
    "origin_run": "run01"
   },
   {
-   "id": "ev-5a09922e1778",
+   "id": "ev-6748b4a2a646",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T04:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T04:00:00Z",
    "client_id": "ivan",
    "lineage": "independent",
    "derived_from": null,
    "origin_run": "run01"
   },
   {
-   "id": "ev-de956cc90b53",
+   "id": "ev-c98a0c6dd077",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T06:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T06:00:00Z",
    "client_id": "arch",
    "lineage": "independent",
    "derived_from": null,
    "origin_run": "run01"
   },
   {
-   "id": "ev-b4a059f0ef8f",
+   "id": "ev-e6b1de82e54a",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T06:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T06:00:00Z",
    "client_id": "arch",
    "lineage": "independent",
    "derived_from": null,
@@ -35917,7 +36099,7 @@
    "id": "ev-e66be1ce634d",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
+   "observed_at": "2026-09-13T00:00:34Z",
    "event_at": "2026-09-12T22:00:00Z",
    "client_id": "arch",
    "lineage": "independent",
@@ -35928,7 +36110,7 @@
    "id": "ev-8248cf3b8678",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
+   "observed_at": "2026-09-13T00:00:34Z",
    "event_at": "2026-09-12T22:00:00Z",
    "client_id": "arch",
    "lineage": "independent",
@@ -35939,7 +36121,7 @@
    "id": "ev-3b392abc920a",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
+   "observed_at": "2026-09-13T00:00:34Z",
    "event_at": "2026-09-12T22:00:00Z",
    "client_id": "arch",
    "lineage": "independent",
@@ -35947,187 +36129,187 @@
    "origin_run": "run01"
   },
   {
-   "id": "ev-2ca1531e0aaa",
+   "id": "ev-89ced32ab136",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T08:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T08:00:00Z",
    "client_id": "arch",
    "lineage": "independent",
    "derived_from": null,
    "origin_run": "run01"
   },
   {
-   "id": "ev-15d67305706e",
+   "id": "ev-0f5ead88a154",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T08:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T08:00:00Z",
    "client_id": "arch",
    "lineage": "independent",
    "derived_from": null,
    "origin_run": "run01"
   },
   {
-   "id": "ev-2158462c8ff3",
+   "id": "ev-b204b8d834b1",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T12:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T12:00:00Z",
    "client_id": "risedtc",
    "lineage": "independent",
    "derived_from": null,
    "origin_run": "run01"
   },
   {
-   "id": "ev-19598d5a7188",
+   "id": "ev-235489e7998d",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T12:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T12:00:00Z",
    "client_id": "risedtc",
    "lineage": "independent",
    "derived_from": null,
    "origin_run": "run01"
   },
   {
-   "id": "ev-0980e0e87458",
+   "id": "ev-1f6383503e8b",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T12:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T12:00:00Z",
    "client_id": "risedtc",
    "lineage": "independent",
    "derived_from": null,
    "origin_run": "run01"
   },
   {
-   "id": "ev-94a43ab91bae",
+   "id": "ev-b01d00391cd6",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T12:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T12:00:00Z",
    "client_id": "risedtc",
    "lineage": "independent",
    "derived_from": null,
    "origin_run": "run01"
   },
   {
-   "id": "ev-71a0c9c5a762",
+   "id": "ev-cb9325619f6e",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T12:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T12:00:00Z",
    "client_id": "risedtc",
    "lineage": "independent",
    "derived_from": null,
    "origin_run": "run01"
   },
   {
-   "id": "ev-f9b5914f47de",
+   "id": "ev-bb5f3904de11",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T07:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T07:00:00Z",
    "client_id": "risedtc",
    "lineage": "independent",
    "derived_from": null,
    "origin_run": "run01"
   },
   {
-   "id": "ev-e01de4910c65",
+   "id": "ev-ffcb86e8021f",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T07:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T07:00:00Z",
    "client_id": "risedtc",
    "lineage": "independent",
    "derived_from": null,
    "origin_run": "run01"
   },
   {
-   "id": "ev-6dfe442ac426",
+   "id": "ev-1bb119eca15a",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T07:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T07:00:00Z",
    "client_id": "risedtc",
    "lineage": "independent",
    "derived_from": null,
    "origin_run": "run01"
   },
   {
-   "id": "ev-ba62c803be3b",
+   "id": "ev-9af4a8ef0e89",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T07:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T07:00:00Z",
    "client_id": "risedtc",
    "lineage": "independent",
    "derived_from": null,
    "origin_run": "run01"
   },
   {
-   "id": "ev-2f47b7b65ff5",
+   "id": "ev-4d78a80a86db",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T07:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T07:00:00Z",
    "client_id": "risedtc",
    "lineage": "independent",
    "derived_from": null,
    "origin_run": "run01"
   },
   {
-   "id": "ev-c55e22cba70f",
+   "id": "ev-326584c023a8",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T07:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T07:00:00Z",
    "client_id": "risedtc",
    "lineage": "independent",
    "derived_from": null,
    "origin_run": "run01"
   },
   {
-   "id": "ev-bc77974d7cd1",
+   "id": "ev-e760fb3040e2",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T07:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T07:00:00Z",
    "client_id": "risedtc",
    "lineage": "independent",
    "derived_from": null,
    "origin_run": "run01"
   },
   {
-   "id": "ev-a8312f4c70d6",
+   "id": "ev-e560a7f30825",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T07:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T07:00:00Z",
    "client_id": "risedtc",
    "lineage": "independent",
    "derived_from": null,
    "origin_run": "run01"
   },
   {
-   "id": "ev-6dab514179aa",
+   "id": "ev-9e9ea5a1396e",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T07:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T07:00:00Z",
    "client_id": "risedtc",
    "lineage": "independent",
    "derived_from": null,
    "origin_run": "run01"
   },
   {
-   "id": "ev-d69fa226d89e",
+   "id": "ev-ef892b4057a4",
    "source_kind": "database_event",
    "provenance": "database_event",
-   "observed_at": "2026-09-13T16:03:41Z",
-   "event_at": "2026-09-13T07:00:00Z",
+   "observed_at": "2026-09-13T00:00:34Z",
+   "event_at": "2026-09-12T07:00:00Z",
    "client_id": "risedtc",
    "lineage": "independent",
    "derived_from": null,

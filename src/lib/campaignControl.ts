@@ -411,7 +411,9 @@ export const STATUS_WORD: Record<CcStatus, string> = {
   capacity_reached: 'Capacity reached',
   outside_window: 'Outside window',
   incident: 'Incident',
-  unknown: 'Unverified',
+  // The contract's word for the state, not the chip's word for what it means:
+  // "UNVERIFIED unverified" said the same thing twice.
+  unknown: 'Unknown',
 }
 
 // ---- adapters ------------------------------------------------------------

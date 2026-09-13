@@ -42,14 +42,20 @@ function num(v: number | null | undefined): ReactNode {
   return v === null || v === undefined ? <span className="a-dim-2">unknown</span> : v.toLocaleString()
 }
 
-/** A clock time in the reader's own zone, with how far away it is. */
-function whenLabel(iso: string | null | undefined, now: number): string {
+/**
+ * A clock time, and how far away it is FROM THE SNAPSHOT — never from the
+ * reader's wall clock. A snapshot taken at 02:00 saying a window "opens in 6h"
+ * is true; the same line re-timed against a wall clock fourteen hours later
+ * reads "12h ago", which is a future event printed as a past one.
+ * A schedule in the snapshot's past says it was already due, never "ago".
+ */
+function whenLabel(iso: string | null | undefined, asOf: number): string {
   if (!iso) return 'not scheduled'
   const t = new Date(iso).getTime()
   if (!Number.isFinite(t)) return 'not scheduled'
   const clock = new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-  const d = Math.round((t - now) / 1000)
-  if (d <= 0) return `${clock} · ${relAge(iso, now)}`
+  const d = Math.round((t - asOf) / 1000)
+  if (d <= 0) return `${clock} · already due at the snapshot`
   const m = Math.round(d / 60)
   if (m < 60) return `${clock} · in ${m}m`
   const h = Math.round(m / 60)
@@ -80,6 +86,16 @@ function inClient(id: string, client: Client): boolean {
   return client === 'all' || id === client
 }
 
+/* The contract's "sendable-open": the shared sender reports Saturday as
+   `open_now: true` with a view-only reason, so `open_now` alone is not enough to
+   say a lane can send. A lane that is not sendable-open is never paced and never
+   alarmed — it only says when it opens again. */
+const NOT_SENDABLE = /view_only|_closed|outside_window/
+export function sendableOpen(ch: CcChannel): boolean {
+  if (!ch.session?.open_now) return false
+  return !NOT_SENDABLE.test((ch.executable_reasons ?? []).join(' '))
+}
+
 const PACE_WORD: Record<string, string> = {
   no_target: 'no target set for this seat',
   on_track: 'on track against the target',
@@ -103,7 +119,7 @@ function ChannelCard({ ch, title, note }: { ch: CcChannel | null | undefined; ti
   )
 }
 
-function SessionBlock({ ch, closed }: { ch: CcChannel; closed: boolean }) {
+function SessionBlock({ ch, closed, asOf }: { ch: CcChannel; closed: boolean; asOf: number }) {
   const s = ch.session
   if (!s) return null
   const pct = s.progress_pct
@@ -116,7 +132,7 @@ function SessionBlock({ ch, closed }: { ch: CcChannel; closed: boolean }) {
       {/* A closed window is never paced and never alarmed. It only says when it
           opens again. */}
       {closed ? (
-        <div className="a-meta">Opens again {whenLabel(s.next_opening_at, Date.now())}</div>
+        <div className="a-meta">Opens again {whenLabel(s.next_opening_at, asOf)}</div>
       ) : (
         <>
           <div className="a-meta">
@@ -179,7 +195,7 @@ function LaneTable({ ch }: { ch: CcChannel }) {
   return <TableOrRecords label={`${ch.channel} by source lane`} columns={columns} rows={rows} rowKey={r => r.id} />
 }
 
-function IncidentBlock({ inc }: { inc: CcIncident }) {
+function IncidentBlock({ inc, asOf }: { inc: CcIncident; asOf: number }) {
   const [ack, setAck] = useState(Boolean(inc.acknowledged))
   return (
     <div className="a-cc-inc">
@@ -204,8 +220,8 @@ function IncidentBlock({ inc }: { inc: CcIncident }) {
         {inc.next_action?.owner ? <> <Sep />owner {inc.next_action.owner}</> : null}
       </div>
       <div className="a-meta">
-        Earliest safe at {inc.next_action?.earliest_safe_at ? whenLabel(inc.next_action.earliest_safe_at, Date.now()) : 'not set'}
-        <Sep />Next check {whenLabel(inc.next_check_at, Date.now())}
+        Earliest safe at {inc.next_action?.earliest_safe_at ? whenLabel(inc.next_action.earliest_safe_at, asOf) : 'not set'}
+        <Sep />Next check {whenLabel(inc.next_check_at, asOf)}
       </div>
       <div className="a-meta">Recovers when: {inc.recovery_condition ?? 'no recovery condition recorded'}</div>
       <div className="a-wrapline">
@@ -270,15 +286,15 @@ function EvidenceFold({ payload, ids }: { payload: CcPayload; ids: string[] }) {
 
 // ---- one client row ------------------------------------------------------
 
-function ControlRow({ c, payload, liveness, now }: {
-  c: CcClient; payload: CcPayload; liveness: string; now: number
+function ControlRow({ c, payload, liveness, asOf }: {
+  c: CcClient; payload: CcPayload; liveness: string; asOf: number
 }) {
   /* An incident opens expanded. A red row that hides its own cause behind a
      click is a row that gets skipped, and the cause is the whole point of it. */
   const [open, setOpen] = useState(c.status === 'incident')
   const tone = STATUS_TONE[c.status]
   const inv = c.invitation
-  const closed = c.status === 'outside_window'
+  const closed = c.status === 'outside_window' || !sendableOpen(inv)
   const fresh = c.freshness
   const incidents = c.incidents ?? []
 
@@ -289,8 +305,10 @@ function ControlRow({ c, payload, liveness, now }: {
         title={
           <>
             {c.label} <span className="a-cc-status" data-tone={tone ?? 'none'}>{STATUS_WORD[c.status]}</span>
-            {/* Never green, and never silent about why it is not green. */}
-            {c.status === 'unknown' && <span className="a-cc-unverified">unverified</span>}
+            {/* Never green, and never silent about why it is not green. The
+                space is real, not a margin: a screen reader reads the text, and
+                "Unknownunverified" is not a word. */}
+            {c.status === 'unknown' && <>{' '}<span className="a-cc-unverified">unverified</span></>}
           </>
         }
         sub={c.status_reason}
@@ -304,10 +322,10 @@ function ControlRow({ c, payload, liveness, now }: {
         onClick={() => setOpen(v => !v)}
       >
         <span className="a-row-meta a-cc-meta">
-          <span className="a-sends-nb">Next: {c.next_action?.action ?? 'nothing recorded'}</span>
+          <span className="a-cc-next">Next: {c.next_action?.action ?? 'nothing recorded'}</span>
           <Sep />
           <span className="a-sends-nb">
-            {closed ? 'Opens' : 'Next check'} {whenLabel(c.next_check_at, now)}
+            {closed ? 'Opens' : 'Next check'} {whenLabel(c.next_check_at, asOf)}
           </span>
           <Sep />
           <span className="a-sends-nb">{ageLabel(fresh?.data_age_s)} · rules {fresh?.rule_version ?? 'unknown'}</span>
@@ -323,7 +341,7 @@ function ControlRow({ c, payload, liveness, now }: {
             <ChannelCard ch={c.inmail} title="InMail today" note="paid/open-profile knocks — never added to invitations" />
           </Ledger>
           <SupplyBlock ch={inv} />
-          <SessionBlock ch={inv} closed={closed} />
+          <SessionBlock ch={inv} closed={closed} asOf={asOf} />
           {!inv.executable_now && (inv.executable_reasons ?? []).length > 0 && (
             <div className="a-meta a-sev-attention">
               Cannot send right now: {(inv.executable_reasons ?? []).join('; ')}
@@ -331,7 +349,7 @@ function ControlRow({ c, payload, liveness, now }: {
           )}
           {incidents.length === 0
             ? <div className="a-meta">No open incident on this seat.</div>
-            : incidents.map(i => <IncidentBlock key={i.incident_key} inc={i} />)}
+            : incidents.map(i => <IncidentBlock key={i.incident_key} inc={i} asOf={asOf} />)}
           <LaneTable ch={inv} />
           <EvidenceFold
             payload={payload}
@@ -384,13 +402,17 @@ export function ControlSection({ cc, client, now = Date.now() }: {
 
   const p = cc.payload
   const live = monitorLiveness(p, now)
+  const asOf = Number.isFinite(Date.parse(p.as_of)) ? Date.parse(p.as_of) : now
+  const asOfClock = new Date(asOf).toLocaleTimeString('en-GB', { timeZone: p.ranges.tz || 'UTC', hour: '2-digit', minute: '2-digit' })
+  const tzShort = (p.ranges.tz || 'UTC').split('/').pop()
   const rows = p.clients.filter(c => inClient(c.client_id, client))
   return (
     <Section
       label="Control"
       tail={
         <span className="a-mono">
-          {p.source_mode ?? 'snapshot'} <Sep />monitor {live}
+          {p.source_mode ?? 'snapshot'} <Sep />as of {asOfClock} {tzShort} ({relAge(p.as_of, now)})
+          <Sep />monitor {live}
           {p.monitor.last_tick_at ? <> <Sep />tick {relAge(p.monitor.last_tick_at, now)}</> : null}
           {p.coverage.degraded && <> <Sep /><span className="a-sev-attention">coverage degraded</span></>}
         </span>
@@ -402,7 +424,7 @@ export function ControlSection({ cc, client, now = Date.now() }: {
       <Rows>
         {rows.length === 0
           ? <Row title="No client in this filter carries a control reading." />
-          : rows.map(c => <ControlRow key={c.client_id} c={c} payload={p} liveness={live} now={now} />)}
+          : rows.map(c => <ControlRow key={c.client_id} c={c} payload={p} liveness={live} asOf={asOf} />)}
       </Rows>
       <div className="a-sends-cap">
         Confirmed sends from the frozen Run 01 rules. Invitations, DMs and InMail are three separate figures and are never added together.
@@ -417,13 +439,28 @@ function rowFor(rows: CcRangeRow[], cid: string, ch: string, interval: string, l
   return rows.find(r => r.client_id === cid && r.channel === ch && r.interval === interval && r.source_lane === lane) ?? null
 }
 
+/**
+ * A cohort figure always names the denominator it is actually over. A null
+ * `matured_denominator` does not mean "no denominator": it means maturity is
+ * not tracked for that cohort, and the count it IS over (`invited` /
+ * `first_messaged`) is right there. The rate stays "—", because a rate with no
+ * matured denominator would be a number nobody measured.
+ */
 function cohortText(c: CcRangeRow['acceptance_cohort'] | CcRangeRow['reply_cohort'], hitKey: 'accepted_within_72h' | 'replied_within_72h'): ReactNode {
   if (!c) return <span className="a-dim-2">no cohort</span>
-  const den = c.matured_denominator
   const hit = (c as Record<string, unknown>)[hitKey] as number | null | undefined
+  const den = c.matured_denominator
+  if (den === null || den === undefined) {
+    const base = hitKey === 'accepted_within_72h' ? c.invited : c.first_messaged
+    const word = hitKey === 'accepted_within_72h' ? 'invited' : 'first messaged'
+    if (base !== null && base !== undefined) {
+      return <>{num(hit)} of {num(base)} {word} <span className="a-dim">· rate not shown (maturity not tracked)</span></>
+    }
+    return <>{num(hit)} <span className="a-dim">· no denominator recorded</span></>
+  }
   // An empty denominator renders an em dash. It is NEVER 0%.
   const rate = c.rate_pct === null || c.rate_pct === undefined ? '—' : `${c.rate_pct}%`
-  return <>{num(hit)} / {num(den)} <span className="a-dim">({rate})</span></>
+  return <>{num(hit)} / {num(den)} matured <span className="a-dim">({rate})</span></>
 }
 
 type DeliveryRow = {

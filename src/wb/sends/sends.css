@@ -574,3 +574,8 @@
 .a-cc-fold[open] > summary::before{ content:'▾ ' }
 .a-cc-fold > summary:focus-visible{ outline:var(--ds-ring) }
 .a-cc-fold[open] > :not(summary){ max-block-size:22rem; overflow:auto; overscroll-behavior:contain }
+/* A long next action WRAPS. It used to ride `.a-sends-nb` (nowrap) inside a
+   flex meta row, so "wait for the next window to open" was clipped at the right
+   edge on a 390 plate — an instruction the operator could not read. */
+.a-cc-meta > span{ min-width:0; overflow-wrap:anywhere }
+.a-cc-next{ white-space:normal; flex:1 1 100% }

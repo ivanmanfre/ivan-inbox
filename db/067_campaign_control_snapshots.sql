@@ -16,7 +16,7 @@
 
 create table if not exists public.campaign_control_snapshots (
   id            bigint generated always as identity primary key,
-  kind          text        not null check (kind in ('operator', 'evidence')),
+  kind          text        not null check (kind in ('operator', 'evidence', 'liveness')),
   payload_version text      not null,
   generated_at  timestamptz not null,
   as_of         timestamptz,
@@ -28,7 +28,7 @@ create table if not exists public.campaign_control_snapshots (
 );
 
 comment on table public.campaign_control_snapshots is
-  'Operator control payloads (cc03.v1). kind=operator is the browser-safe payload; kind=evidence is the private drill-down. Written by the service role only; read by authenticated readers only.';
+  'Operator control payloads (cc03.v1). kind=operator is the browser-safe payload; kind=evidence is the private drill-down; kind=liveness is the one-row-per-tick heartbeat the deployed monitor writes so a reader can tell a stale payload from a dead monitor. Written by the service role only; read by authenticated readers only.';
 
 -- Newest-first reads by kind are the only access pattern.
 create index if not exists campaign_control_snapshots_kind_generated_idx

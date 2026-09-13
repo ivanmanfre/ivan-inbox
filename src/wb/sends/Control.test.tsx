@@ -34,7 +34,9 @@ describe('Control — the incident scenario', () => {
     expect(t).toMatch(/data \d+[smh] old/)
     expect(t).toContain('rules frozen')
     expect(t).toContain('Next check')
-    expect(t).toContain('monitor fresh')
+    // Never a future schedule printed as a past one.
+    expect(t).not.toMatch(/(Next check|Opens|Opens again|Earliest safe at) \d\d:\d\d · \d+[smhd] ago/)
+    expect(t).toMatch(/monitor (fresh|stale|unknown)/)
   })
   it('shows the alternatives it already ruled out and the evidence count', () => {
     expect(t).toContain('Alternatives checked')
@@ -62,6 +64,11 @@ describe('Control — the incident scenario', () => {
     const statusOf = (s: string) => /Davorin\s+(\S+)/.exec(s)?.[1]
     expect(statusOf(t2)).toBe(statusOf(t))
   })
+  it('does not pace a window that cannot send', () => {
+    // arch is expanded and its session is saturday_closed: no pace line at all.
+    expect(t).not.toContain('Pace:')
+    expect(t).toContain('Opens again')
+  })
   it('draws a per-lane table with reasons', () => {
     expect(t).toContain('Source lane')
     expect(t).toContain('warm_engager')
@@ -78,13 +85,18 @@ describe('Control — the other states', () => {
     const t = text(renderToStaticMarkup(<ControlSection cc={ok(outsideWindow)} client="risedtc" now={NOW} />))
     expect(t).toContain('Outside window')
     expect(t).toContain('Outside window')
+    // A closed window is never paced and never alarmed.
     expect(t).not.toContain('behind the target')
+    expect(t).not.toContain('Pace:')
+    expect(t).toContain('Opens')
   })
   it('unknown says "unverified" in words and never reads clear', () => {
     const t = text(renderToStaticMarkup(<ControlSection cc={ok(unknownFix)} client="risedtc" now={NOW} />))
-    expect(t).toContain('Unverified')
+    expect(t).toContain('Unknown')
     expect(t).toContain('unverified')
-    expect(t).toContain('Unverified')
+    // The word and the chip say two different things, not the same thing twice.
+    expect(t).not.toContain('Unverified unverified')
+    expect(t).toContain('did not come back complete')
   })
   it('unavailable prints the reason and no figures', () => {
     const t = text(renderToStaticMarkup(
@@ -92,6 +104,10 @@ describe('Control — the other states', () => {
     ))
     expect(t).toContain('Control data not available')
     expect(t).toContain('control payload read failed')
+  })
+  it('names the snapshot it is reading in the header', () => {
+    const t = text(renderToStaticMarkup(<ControlSection cc={ok(incident)} client="all" now={NOW} />))
+    expect(t).toMatch(/as of \d\d:\d\d \w+ \(/)
   })
   it('a contract error renders as unverified with the error text', () => {
     const t = text(renderToStaticMarkup(
@@ -116,6 +132,10 @@ describe('Delivery', () => {
   it('shows both cohort denominators', () => {
     expect(t).toContain('Accepted ≤72h')
     expect(t).toContain('Replied ≤72h')
+    // A null matured denominator names the denominator it DOES have.
+    expect(t).toContain('first messaged')
+    expect(t).toContain('maturity not tracked')
+    expect(t).toContain('matured')
   })
   it('shows the partial day separately and the coverage note', () => {
     expect(t).toContain('partial day')
