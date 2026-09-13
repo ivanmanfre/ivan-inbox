@@ -184,7 +184,7 @@ function LaneTable({ ch }: { ch: CcChannel }) {
     stock: num(l.eligible_stock),
     exec: l.executable_now
       ? <span className="a-sev-clear">yes</span>
-      : <span className="a-dim">no — {(l.executable_reasons ?? []).join('; ') || 'no reason given'}</span>,
+      : <span className="a-dim a-cc-wrap">no — {(l.executable_reasons ?? []).join('; ') || 'no reason given'}</span>,
   }))
   const columns: Array<TableColumn<LaneTableRow>> = [
     { id: 'lane', header: 'Source lane', cell: r => r.lane },
@@ -343,7 +343,7 @@ function ControlRow({ c, payload, liveness, asOf }: {
           <SupplyBlock ch={inv} />
           <SessionBlock ch={inv} closed={closed} asOf={asOf} />
           {!inv.executable_now && (inv.executable_reasons ?? []).length > 0 && (
-            <div className="a-meta a-sev-attention">
+            <div className="a-meta a-sev-attention a-cc-wrap">
               Cannot send right now: {(inv.executable_reasons ?? []).join('; ')}
             </div>
           )}
@@ -510,12 +510,12 @@ export function DeliverySection({ cc, timeframe, range, client }: {
   })
 
   const columns: Array<TableColumn<DeliveryRow>> = [
-    { id: 'who', header: 'Seat', cell: r => r.label },
-    { id: 'inv', header: 'Invitations', numeric: true, cell: r => r.inv },
-    { id: 'dm', header: 'DMs', numeric: true, cell: r => r.dm },
-    { id: 'inmail', header: 'InMail', numeric: true, cell: r => r.inmail },
-    { id: 'accept', header: 'Accepted ≤72h', numeric: true, cell: r => r.accept },
-    { id: 'reply', header: 'Replied ≤72h', numeric: true, cell: r => r.reply },
+    { id: 'who', header: 'Seat', width: '10%', cell: r => r.label },
+    { id: 'inv', header: 'Invitations', numeric: true, width: '15%', cell: r => r.inv },
+    { id: 'dm', header: 'DMs', numeric: true, width: '14%', cell: r => r.dm },
+    { id: 'inmail', header: 'InMail', numeric: true, width: '13%', cell: r => r.inmail },
+    { id: 'accept', header: 'Accepted ≤72h', numeric: true, width: '22%', cell: r => r.accept },
+    { id: 'reply', header: 'Replied ≤72h', numeric: true, width: '26%', cell: r => r.reply },
   ]
 
   // Lane breakdown: separate rows, never folded into the __all__ figure.

@@ -594,3 +594,9 @@
 @media (max-width:767px){
   .a-cc-panel .a-ledger{ grid-template-columns:1fr }
 }
+/* A fixed-layout table clips rather than scrolls, so every cell in the new
+   tables wraps. A reason string like
+   "saturday_closed; outside_window; window_state:arch_conn_window_state=frozen"
+   has no space to break on, hence `anywhere`. */
+.a-cc-tbl .ds-table th, .a-cc-tbl .ds-table td{ white-space:normal; overflow-wrap:anywhere }
+.a-cc-wrap{ white-space:normal; overflow-wrap:anywhere; min-width:0 }

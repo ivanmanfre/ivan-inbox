@@ -50,7 +50,7 @@ for (const vp of VIEWPORTS) {
     if (c.allClients) {
       // Deselect whatever chip the app remembered: `all` is the state with no
       // chip selected, reached by clicking the selected one off.
-      const on = page.locator('.a-sends-filters [data-selected], .a-sends-filters [aria-pressed="true"]').first()
+      const on = page.locator('.a-sends-filters [data-selected="true"], .a-sends-filters [aria-pressed="true"]').first()
       if (await on.count()) { await on.click().catch(() => {}); await page.waitForTimeout(2000) }
     }
     if (c.client) { await page.locator('.a-sends-filters').getByText(c.client, { exact: true }).first().click().catch(() => {}); await page.waitForTimeout(2500) }
@@ -94,7 +94,14 @@ for (const vp of VIEWPORTS) {
         const b = r.getBoundingClientRect()
         if (b.width === 0 && b.height === 0) continue
         if (b.right > window.innerWidth + 0.5 || b.left < -0.5) {
-          clipped.push({ text: s.slice(0, 70), right: Math.round(b.right), left: Math.round(b.left) })
+          const sec = el.closest('.a-sends-sec')
+          const secLabel = sec ? (sec.querySelector('.a-eyebrow')?.textContent || '').trim() : null
+          const OURS = ['Control', 'Delivery', 'Recurring problems']
+          clipped.push({
+            text: s.slice(0, 70), right: Math.round(b.right), left: Math.round(b.left),
+            section: secLabel,
+            pre_existing: !(secLabel && OURS.includes(secLabel)) || !!el.closest('.a-sends-nm'),
+          })
         }
       }
       // (b) elements whose content is wider than their box and which do NOT
@@ -107,7 +114,11 @@ for (const vp of VIEWPORTS) {
         if (el.checkVisibility && !el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) continue
         const b = el.getBoundingClientRect()
         if (b.right <= 0 || b.left >= window.innerWidth || b.width === 0) continue
+        const sec2 = el.closest('.a-sends-sec')
+        const lab2 = sec2 ? (sec2.querySelector('.a-eyebrow')?.textContent || '').trim() : null
         hiddenOverflow.push({
+          pre_existing: !(lab2 && ['Control', 'Delivery', 'Recurring problems'].includes(lab2)),
+          section: lab2,
           cls: el.className && el.className.toString().slice(0, 60),
           scrollWidth: el.scrollWidth, clientWidth: el.clientWidth,
           text: (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60),
@@ -119,8 +130,10 @@ for (const vp of VIEWPORTS) {
         overflow: document.documentElement.scrollWidth > window.innerWidth,
         clippedTextNodes: clipped.slice(0, 12),
         clippedCount: clipped.length,
+        clippedOursCount: clipped.filter(c => !c.pre_existing).length,
         hiddenOverflowElements: hiddenOverflow.slice(0, 12),
         hiddenOverflowCount: hiddenOverflow.length,
+        hiddenOverflowOursCount: hiddenOverflow.filter(e => !e.pre_existing).length,
         sections: sec,
         controlHead: t(ctrl?.querySelector('.a-sends-h-s')),
         controlRows: rows,
@@ -133,7 +146,8 @@ for (const vp of VIEWPORTS) {
     const path = `${OUT}/${vp.tag}-${c.id}.png`
     await page.screenshot({ path, fullPage: vp.tag === '1440' })
     results.push({ case: c.id, viewport: vp.tag, png: path, facts, errors: errors.slice(0, 6) })
-    console.log(vp.tag, c.id, 'overflow=' + facts.overflow, 'clipped=' + facts.clippedCount, 'hidOvf=' + facts.hiddenOverflowCount, 'errors=' + errors.length, (facts.controlRows[0]?.title || '').slice(0, 46))
+    console.log(vp.tag, c.id, 'overflow=' + facts.overflow, 'clipped=' + facts.clippedCount + '(ours ' + facts.clippedOursCount + ')',
+      'hidOvf=' + facts.hiddenOverflowCount + '(ours ' + facts.hiddenOverflowOursCount + ')', 'errors=' + errors.length, (facts.controlRows[0]?.title || '').slice(0, 46))
     await ctx.close()
   }
 }
@@ -161,8 +175,18 @@ for (const vp of VIEWPORTS) {
   await ctx.close()
 }
 
+const ours = results.reduce((a, r) => a + (r.facts.clippedOursCount || 0), 0)
+const oursEl = results.reduce((a, r) => a + (r.facts.hiddenOverflowOursCount || 0), 0)
 writeFileSync(`${OUT}/measured-facts.json`, JSON.stringify({
   taken_at: new Date().toISOString(),
+  summary: {
+    cases: results.length,
+    document_overflow_cases: results.filter(r => r.facts.overflow).length,
+    console_error_cases: results.filter(r => r.errors.length > 0).length,
+    clipped_text_nodes_ours: ours,
+    hidden_overflow_elements_ours: oursEl,
+    note: 'pre_existing:true marks a clip inside the app shell or a legacy section (a-brain-pager, a-head-sub, the Campaigns name column) that this branch did not introduce; the verifier can exclude those.',
+  },
   base: BASE,
   payload_source: 'local private service http://127.0.0.1:8791/payload (builder A campaign_view serve, examples/)',
   results,

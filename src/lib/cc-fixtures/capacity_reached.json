@@ -1,16 +1,16 @@
 {
  "schema_version": 1,
  "payload_version": "cc03.v1",
- "generated_at": "2026-09-13T16:08:37Z",
+ "generated_at": "2026-09-13T16:29:11Z",
  "as_of": "2026-09-13T00:00:34Z",
  "source_mode": "snapshot",
  "inputs": {
   "run01_envelope": {
    "path": "package/state/run01-envelope.json",
-   "sha256": "599a074f060e9a55abb885d030c5db86e0707a65e01f1e46c5912ca5a87d6499",
-   "generated_at": "2026-09-13T16:08:37Z",
+   "sha256": "132f2d6c24083479d272f28684019b0c6097ae64f8ebc5b282dbe702ad4f570a",
+   "generated_at": "2026-09-13T16:29:11Z",
    "source_mode": "snapshot",
-   "source_spec": "snapshot:examples/snapshot-root"
+   "source_spec": "snapshot:upstream/run01/evidence"
   },
   "run01_package_sha256": "c6120f5ea2dc4ddb06e864b2081084613fa977e2289267209166524ed0e0e333",
   "run02_ledger": {
@@ -20,7 +20,7 @@
    "events_sha256": "5c4a90ac5319aca64f169098923332dc56d1a28234bca652136ae0efb2b83de8",
    "generated_at": "2026-09-13T15:10:19Z"
   },
-  "receipts_config_sha256": "626a6a4bea1bbec7ec185e55040136f1e7891cb8413582a1e3a3fe2b492ec24b"
+  "receipts_config_sha256": "265a9ba7af34468926e897b38f780d1848111f52a1169702b795fe0fc8a62d86"
  },
  "coverage": {
   "degraded": false,
@@ -29,7 +29,6 @@
    {
     "source_kind": "supabase_table",
     "access": "GET read-only",
-    "permission": "local file",
     "retention_from": null,
     "observed_at": "2026-09-12T23:00:39.526423+00:00",
     "rows": 7099,
@@ -38,12 +37,12 @@
     "grew_during_walk": false,
     "complete": true,
     "gaps": [],
-    "source_ref": "snapshot:outreach_messages.json"
+    "source_ref": "snapshot:outreach_messages.json",
+    "permission": "local file"
    },
    {
     "source_kind": "supabase_table",
     "access": "GET read-only",
-    "permission": "local file",
     "retention_from": null,
     "observed_at": "2026-09-12T23:00:39.526423+00:00",
     "rows": 14597,
@@ -52,12 +51,12 @@
     "grew_during_walk": false,
     "complete": true,
     "gaps": [],
-    "source_ref": "snapshot:outreach_engagement_log.json"
+    "source_ref": "snapshot:outreach_engagement_log.json",
+    "permission": "local file"
    },
    {
     "source_kind": "supabase_table",
     "access": "GET read-only",
-    "permission": "local file",
     "retention_from": null,
     "observed_at": "2026-09-12T23:00:39.526423+00:00",
     "rows": 19927,
@@ -66,12 +65,12 @@
     "grew_during_walk": false,
     "complete": true,
     "gaps": [],
-    "source_ref": "snapshot:outreach_prospects_core.json"
+    "source_ref": "snapshot:outreach_prospects_core.json",
+    "permission": "local file"
    },
    {
     "source_kind": "supabase_table",
     "access": "GET read-only",
-    "permission": "local file",
     "retention_from": null,
     "observed_at": null,
     "rows": 45,
@@ -80,12 +79,12 @@
     "grew_during_walk": false,
     "complete": true,
     "gaps": [],
-    "source_ref": "snapshot:campaigns-snapshot.json"
+    "source_ref": "snapshot:campaigns-snapshot.json",
+    "permission": "local file"
    },
    {
     "source_kind": "integration_config",
     "access": "GET read-only",
-    "permission": "local file",
     "retention_from": null,
     "observed_at": "2026-09-12T23:35:57.883038+00:00",
     "rows": 398,
@@ -94,12 +93,12 @@
     "grew_during_walk": false,
     "complete": true,
     "gaps": [],
-    "source_ref": "snapshot:integration-config-snapshot.json"
+    "source_ref": "snapshot:integration-config-snapshot.json",
+    "permission": "local file"
    },
    {
     "source_kind": "supabase_table",
     "access": "GET read-only",
-    "permission": "local file",
     "retention_from": null,
     "observed_at": "2026-09-12T23:00:39.526423+00:00",
     "rows": 556,
@@ -108,12 +107,12 @@
     "grew_during_walk": false,
     "complete": true,
     "gaps": [],
-    "source_ref": "snapshot:linkedin_daily_actions.json"
+    "source_ref": "snapshot:linkedin_daily_actions.json",
+    "permission": "local file"
    },
    {
     "source_kind": "postgres_view",
     "access": "GET read-only",
-    "permission": "local file",
     "retention_from": null,
     "observed_at": "2026-09-12T23:03:38.680324+00:00",
     "rows": 16,
@@ -123,12 +122,12 @@
     "complete": true,
     "gaps": [],
     "note": "independent Postgres-computed oracle (counts message rows only; carries the phantom silent-422 rows this producer excludes)",
-    "source_ref": "snapshot:independent/inbox_sends_v.json"
+    "source_ref": "snapshot:independent/inbox_sends_v.json",
+    "permission": "local file"
    },
    {
     "source_kind": "postgres_view",
     "access": "GET read-only",
-    "permission": "local file",
     "retention_from": null,
     "observed_at": "2026-09-12T23:03:38.680324+00:00",
     "rows": 342,
@@ -138,12 +137,12 @@
     "complete": true,
     "gaps": [],
     "note": "independent Postgres-computed oracle (counts message rows only; carries the phantom silent-422 rows this producer excludes)",
-    "source_ref": "snapshot:independent/inbox_sends_daily_v.json"
+    "source_ref": "snapshot:independent/inbox_sends_daily_v.json",
+    "permission": "local file"
    },
    {
     "source_kind": "supabase_table",
     "access": "GET read-only",
-    "permission": "local file",
     "retention_from": null,
     "observed_at": null,
     "rows": 0,
@@ -156,12 +155,12 @@
       "error": "enrichment_data_not_in_snapshot"
      }
     ],
-    "source_ref": "snapshot:outreach_prospects(enrichment_data)"
+    "source_ref": "snapshot:outreach_prospects(enrichment_data)",
+    "permission": "local file"
    },
    {
     "source_kind": "supabase_table",
     "access": "GET read-only",
-    "permission": "local file",
     "retention_from": null,
     "observed_at": "2026-09-12T23:00:39.526423+00:00",
     "rows": 91,
@@ -170,12 +169,12 @@
     "grew_during_walk": false,
     "complete": true,
     "gaps": [],
-    "source_ref": "snapshot:system_alerts.json"
+    "source_ref": "snapshot:system_alerts.json",
+    "permission": "local file"
    },
    {
     "source_kind": "n8n_executions",
     "access": "GET read-only",
-    "permission": "local file",
     "retention_from": "2026-09-11T06:50:32.143Z",
     "observed_at": "2026-09-13T00:00:34Z",
     "rows": 3544,
@@ -183,12 +182,12 @@
     "declared_total_basis": "cursor_exhausted",
     "complete": true,
     "gaps": [],
-    "source_ref": "n8n:/api/v1/executions"
+    "source_ref": "n8n:/api/v1/executions",
+    "permission": "local file"
    },
    {
     "source_kind": "n8n_workflows",
     "access": "GET read-only",
-    "permission": "n8n api key read",
     "retention_from": null,
     "observed_at": "2026-09-13T00:00:34Z",
     "rows": 46,
@@ -196,12 +195,12 @@
     "declared_total_basis": "file_manifest",
     "complete": true,
     "gaps": [],
-    "source_ref": "evidence/workflows/INDEX.json (frozen at 2026-09-12T23:00Z)"
+    "source_ref": "evidence/workflows/INDEX.json (frozen at 2026-09-12T23:00Z)",
+    "permission": "n8n api key read"
    },
    {
     "source_kind": "retained_receipts",
     "access": "GET read-only",
-    "permission": "local file",
     "retention_from": null,
     "observed_at": "2026-09-13T00:00:34Z",
     "rows": 10,
@@ -209,7 +208,8 @@
     "declared_total_basis": "file_count",
     "complete": true,
     "gaps": [],
-    "source_ref": "evidence/retained/"
+    "source_ref": "evidence/retained/",
+    "permission": "local file"
    }
   ],
   "source_locator_key_renamed": true,
@@ -279,6 +279,17 @@
     "days": 0,
     "partial": true,
     "source_coverage_note": "partial day: from local midnight to as_of"
+   },
+   {
+    "name": "custom",
+    "from": "2026-07-31T22:00:00Z",
+    "to": "2026-08-31T22:00:00Z",
+    "tz": "Europe/Warsaw",
+    "complete": true,
+    "execution_receipts_cover": false,
+    "days": 31,
+    "partial": false,
+    "source_coverage_note": "completed local days only"
    }
   ],
   "pagination_complete": true,
@@ -311,8 +322,7 @@
   "tick_interval_s": 300,
   "stale_after_s": 900,
   "liveness": "fresh",
-  "host": "local-dev",
-  "note": "no monitor tick has been recorded on this host yet"
+  "host": "local-dev"
  },
  "clients": [
   {
@@ -648,7 +658,7 @@
    "label": "Davorin",
    "seat_id": "pQdTM0R0TRWkwBi7-mKXYA",
    "status": "incident",
-   "status_reason": "LinkedIn has refused 157 invitations from Davorin's seat since 2026-09-10 12:09:12 UTC. The provider gave no reason, so the exact restriction is unknown; nothing is safe to retry before 2026-09-14 06:00:00 UTC.",
+   "status_reason": "LinkedIn has refused 157 invitations from Davorin's seat since 2026-09-10 12:09:12 UTC. The provider gave no reason, so the exact restriction is unknown; nothing is safe to retry before 2026-09-13 06:00:00 UTC.",
    "status_basis": {
     "evidence_ids": [
      "ev-c98a0c6dd077",
@@ -719,8 +729,8 @@
    },
    "next_action": {
     "action": "hold the lane; verify ONE invitation in the next eligible window before any volume returns",
-    "earliest_safe_at": "2026-09-14T06:00:00Z",
     "owner": "operator",
+    "earliest_safe_at": "2026-09-13T06:00:00Z",
     "prerequisites": [
      "cooldown key expired",
      "seat health green",
@@ -969,10 +979,18 @@
    },
    "incidents": [
     {
-     "affected_lanes": [
-      "cold",
-      "warm_engager"
-     ],
+     "incident_key": "arch|pQdTM0R0TRWkwBi7-mKXYA|all_lanes|invitation|provider_rejection",
+     "episode_id": "ep-f7a010b7e12c",
+     "client_id": "arch",
+     "seat_id": "pQdTM0R0TRWkwBi7-mKXYA",
+     "source_lane": "all_lanes",
+     "channel": "invitation",
+     "failure_family": "provider_rejection",
+     "state": "open",
+     "severity": "high",
+     "opened_at": "2026-09-10T12:09:12Z",
+     "last_seen_at": "2026-09-11T18:50:13Z",
+     "symptom": "arch invitation seat pQdTM0R0TRWkwBi7-mKXYA: 157 refused attempts across lanes cold, warm_engager, 0 confirmed since 2026-09-10T12:07:42Z (Request failed with status code 422; arch_422_streak_10_cooldown_armed_2h; arch_422_streak_11_cooldown_armed_2h)",
      "cause": {
       "status": "confirmed",
       "explanation": "157 provider refusals across 37 prospects with no confirmed send since; the error body carries no restriction reason, so the underlying LinkedIn restriction is unknown",
@@ -989,6 +1007,9 @@
        "arch_422_streak_11_cooldown_armed_2h"
       ]
      },
+     "evidence_ids": [
+      "ev-c98a0c6dd077"
+     ],
      "chain": [
       {
        "stage": "collection",
@@ -1032,21 +1053,10 @@
        ]
       }
      ],
-     "channel": "invitation",
-     "client_id": "arch",
-     "episode_id": "ep-1bbbbe775435",
-     "evidence_ids": [
-      "ev-de956cc90b53",
-      "ev-c98a0c6dd077"
-     ],
-     "failure_family": "provider_rejection",
-     "incident_key": "arch|pQdTM0R0TRWkwBi7-mKXYA|all_lanes|invitation|provider_rejection",
-     "last_confirmed_at": "2026-09-10T12:07:42Z",
-     "last_seen_at": "2026-09-11T18:50:13Z",
      "next_action": {
       "action": "hold the lane; verify ONE invitation in the next eligible window before any volume returns",
-      "earliest_safe_at": "2026-09-14T06:00:00Z",
       "owner": "operator",
+      "earliest_safe_at": "2026-09-13T06:00:00Z",
       "prerequisites": [
        "cooldown key expired",
        "seat health green",
@@ -1054,17 +1064,16 @@
       ]
      },
      "next_check_at": "2026-09-13T06:00:00Z",
-     "observed_distinct_prospects": 37,
-     "observed_failures": 157,
-     "opened_at": "2026-09-10T12:09:12Z",
      "recovery_condition": "at least one CONFIRMED invitation in an eligible window",
      "recovery_evidence_ids": [],
-     "seat_id": "pQdTM0R0TRWkwBi7-mKXYA",
-     "severity": "high",
-     "source_lane": "all_lanes",
-     "state": "updated",
-     "symptom": "arch invitation seat pQdTM0R0TRWkwBi7-mKXYA: 157 refused attempts across lanes cold, warm_engager, 0 confirmed since 2026-09-10T12:07:42Z (Request failed with status code 422; arch_422_streak_10_cooldown_armed_2h; arch_422_streak_11_cooldown_armed_2h)",
      "verification_progress": 0,
+     "affected_lanes": [
+      "cold",
+      "warm_engager"
+     ],
+     "last_confirmed_at": "2026-09-10T12:07:42Z",
+     "observed_failures": 157,
+     "observed_distinct_prospects": 37,
      "plain_cause": "LinkedIn refused the last invitations on this seat. The provider sent no reason, so the exact restriction is unknown.",
      "acknowledged": false,
      "recovery_proven": false
@@ -1540,6 +1549,17 @@
     "days": 0,
     "partial": true,
     "source_coverage_note": "partial day: from local midnight to as_of"
+   },
+   {
+    "name": "custom",
+    "from": "2026-07-31T22:00:00Z",
+    "to": "2026-08-31T22:00:00Z",
+    "tz": "Europe/Warsaw",
+    "complete": true,
+    "execution_receipts_cover": false,
+    "days": 31,
+    "partial": false,
+    "source_coverage_note": "completed local days only"
    }
   ],
   "rows": [
@@ -8365,6 +8385,870 @@
     "rule_changes": []
    },
    {
+    "client_id": "ivan",
+    "channel": "invitation",
+    "source_lane": "__all__",
+    "interval": "custom",
+    "sent": 624,
+    "unique_recipients": 624,
+    "attempted": 625,
+    "failed": 5,
+    "phantom": 4,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 0,
+    "replies_people": 0,
+    "acceptance_cohort": {
+     "invited": 614,
+     "accepted_within_72h": 134,
+     "matured_denominator": 614,
+     "maturity_h": 72,
+     "rate_pct": 22
+    },
+    "reply_cohort": {
+     "first_messaged": 614,
+     "replied_within_72h": 40,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": [
+     {
+      "kind": "config",
+      "key": "precall_brief_view_key",
+      "at": "2026-08-01T00:00:00Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_connect_daily_cap",
+      "at": "2026-08-01T23:15:12Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_connect_weekly_cap",
+      "at": "2026-08-01T23:15:12Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_openprofile_routing_enabled",
+      "at": "2026-08-01T23:30:08Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_unipile_account_id",
+      "at": "2026-08-01T23:30:08Z"
+     },
+     {
+      "kind": "config",
+      "key": "anchor_harvest_roster",
+      "at": "2026-08-02T03:00:53Z"
+     },
+     {
+      "kind": "config",
+      "key": "profile_view_send_enabled",
+      "at": "2026-08-02T22:14:05Z"
+     },
+     {
+      "kind": "config",
+      "key": "zernio_token_watch_enabled",
+      "at": "2026-08-05T08:19:57Z"
+     },
+     {
+      "kind": "config",
+      "key": "carousel_render_secret",
+      "at": "2026-08-05T13:19:37Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_ig_mirror_armed",
+      "at": "2026-08-05T13:19:37Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_ig_mirror_not_before",
+      "at": "2026-08-05T13:19:37Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_zernio_account_id",
+      "at": "2026-08-05T13:19:37Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_zernio_profile_id",
+      "at": "2026-08-05T13:19:37Z"
+     },
+     {
+      "kind": "config",
+      "key": "zernio_api_key",
+      "at": "2026-08-05T13:19:37Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_harvest_reactions_enabled",
+      "at": "2026-08-05T22:34:46Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_anchor_wm",
+      "at": "2026-08-06T07:47:47Z"
+     },
+     {
+      "kind": "config",
+      "key": "newsjack_auto_jump",
+      "at": "2026-08-06T13:08:29Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_connect_daily_cap",
+      "at": "2026-08-06T15:50:43Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_geo_market_codes",
+      "at": "2026-08-07T11:26:10Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_engagement_start",
+      "at": "2026-08-07T13:43:38Z"
+     },
+     {
+      "kind": "config",
+      "key": "inmail_warm_lanes_enabled",
+      "at": "2026-08-08T21:13:15Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_seen_rejects",
+      "at": "2026-08-09T22:27:25Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_anchor_zero",
+      "at": "2026-08-10T16:25:24Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_connect_monthly_cap",
+      "at": "2026-08-11T23:21:53Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_roster",
+      "at": "2026-08-11T23:40:58Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_unipile_account_id",
+      "at": "2026-08-12T22:52:20Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_x_apify_enabled",
+      "at": "2026-08-13T09:35:20Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_fireflies_api_key",
+      "at": "2026-08-13T20:27:03Z"
+     },
+     {
+      "kind": "config",
+      "key": "hubspot_arch_private_app_token",
+      "at": "2026-08-13T20:27:03Z"
+     },
+     {
+      "kind": "config",
+      "key": "hubspot_arch_oauth_app_credential",
+      "at": "2026-08-14T07:22:46Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_post_mentions",
+      "at": "2026-08-14T12:59:14Z"
+     },
+     {
+      "kind": "config",
+      "key": "brightdata_api_key",
+      "at": "2026-08-15T23:24:44Z"
+     },
+     {
+      "kind": "config",
+      "key": "brightdata_company_enabled",
+      "at": "2026-08-15T23:24:44Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_anchor_perf",
+      "at": "2026-08-16T09:35:46Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_anchor_power",
+      "at": "2026-08-16T09:35:46Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_weighted_anchors",
+      "at": "2026-08-16T09:35:46Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_harvest_floor",
+      "at": "2026-08-16T09:38:29Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_apify_low_balance_usd",
+      "at": "2026-08-16T10:05:11Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_company_exclusions",
+      "at": "2026-08-16T11:49:35Z"
+     },
+     {
+      "kind": "config",
+      "key": "invite_sweeper_age_days",
+      "at": "2026-08-16T18:06:40Z"
+     },
+     {
+      "kind": "config",
+      "key": "invite_sweeper_daily_cap",
+      "at": "2026-08-16T18:06:40Z"
+     },
+     {
+      "kind": "config",
+      "key": "invite_sweeper_dry_run",
+      "at": "2026-08-16T18:06:40Z"
+     },
+     {
+      "kind": "config",
+      "key": "invite_sweeper_enabled",
+      "at": "2026-08-16T18:06:40Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_ballot_current_url",
+      "at": "2026-08-16T21:04:34Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_harvest_yield_power",
+      "at": "2026-08-17T07:10:05Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_harvest_yield_weighted",
+      "at": "2026-08-17T07:10:05Z"
+     },
+     {
+      "kind": "workflow",
+      "id": "kAMl0IPlURBq7mzc",
+      "name": "Outreach - RISE Gold Harvester (daily)",
+      "at": "2026-08-18T18:46:49Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_ads_gate",
+      "at": "2026-08-19T12:54:08Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_under_streak",
+      "at": "2026-08-20T14:31:29Z"
+     },
+     {
+      "kind": "config",
+      "key": "notify_state_lm_curator_health",
+      "at": "2026-08-21T07:00:10Z"
+     },
+     {
+      "kind": "config",
+      "key": "notify_state_loop_liveness",
+      "at": "2026-08-21T12:00:05Z"
+     },
+     {
+      "kind": "workflow",
+      "id": "qHiGvEGtRV4cE7oG",
+      "name": "Outreach - Replacement Rate Alarm",
+      "at": "2026-08-23T10:13:59Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_post_select",
+      "at": "2026-08-24T08:17:28Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_person_exclusions",
+      "at": "2026-08-24T20:14:39Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_connect_daily_cap",
+      "at": "2026-08-26T13:56:55Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_connect_ramp",
+      "at": "2026-08-26T13:56:55Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_inmail_monthly_cap",
+      "at": "2026-08-26T16:43:03Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_inmail_sent_month",
+      "at": "2026-08-26T16:43:03Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_draft_lint_mode",
+      "at": "2026-08-26T17:50:07Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_detector_armed",
+      "at": "2026-08-27T08:00:08Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_inbound_alert_armed",
+      "at": "2026-08-27T08:00:08Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_perf_sync_armed",
+      "at": "2026-08-27T08:00:08Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_reply_drafter_armed",
+      "at": "2026-08-27T08:00:08Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_sender_armed",
+      "at": "2026-08-27T08:00:08Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_inmail_armed",
+      "at": "2026-08-27T08:00:09Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_anchor_cooldown_h",
+      "at": "2026-08-27T08:58:50Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_booking_tracker_armed",
+      "at": "2026-08-27T09:01:39Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_reply_intent_armed",
+      "at": "2026-08-27T09:04:11Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_engager_note_armed",
+      "at": "2026-08-27T10:43:52Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_inmail_first_mode",
+      "at": "2026-08-27T11:54:44Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_daily_send_floor",
+      "at": "2026-08-27T13:36:03Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_manual_invite_warn_at",
+      "at": "2026-08-27T17:50:53Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_publisher_armed",
+      "at": "2026-08-28T08:19:02Z"
+     },
+     {
+      "kind": "config",
+      "key": "invite_rejoin_daily_cap",
+      "at": "2026-08-28T11:39:37Z"
+     },
+     {
+      "kind": "config",
+      "key": "invite_rejoin_enabled",
+      "at": "2026-08-28T11:39:37Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_dm_sequencer_armed",
+      "at": "2026-08-28T11:41:13Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_invite_retry_dry_run",
+      "at": "2026-08-28T16:09:12Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_invite_retry_enabled",
+      "at": "2026-08-28T16:09:12Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_harvest_reminder_last",
+      "at": "2026-08-29T08:00:04Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_idea_autogen",
+      "at": "2026-08-29T09:20:48Z"
+     },
+     {
+      "kind": "config",
+      "key": "dm_learning_labeler_armed",
+      "at": "2026-08-29T18:31:01Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_radar_enabled",
+      "at": "2026-08-29T21:31:42Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_ytdetector_enabled",
+      "at": "2026-08-29T21:36:06Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_ytdetector_watchlist",
+      "at": "2026-08-29T21:36:06Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_inmail_pause_until",
+      "at": "2026-08-30T08:55:52Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_conn_watch_armed",
+      "at": "2026-08-30T09:46:01Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_engager_anchors",
+      "at": "2026-08-30T12:39:44Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_engager_anchor_cooldown",
+      "at": "2026-08-30T12:42:57Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_engager_harvest_last",
+      "at": "2026-08-30T12:42:57Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_dm_autoapprove",
+      "at": "2026-08-30T13:27:17Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_engager_harvest_armed",
+      "at": "2026-08-30T13:27:18Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_anchor_verdict_sent",
+      "at": "2026-08-30T16:35:53Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_anchor_strikes",
+      "at": "2026-08-30T16:39:40Z"
+     },
+     {
+      "kind": "config",
+      "key": "seat_health_rm-WNhwaS1m7VcZoYLRrJA_account",
+      "at": "2026-08-30T20:29:50Z"
+     },
+     {
+      "kind": "config",
+      "key": "seat_health_rm-WNhwaS1m7VcZoYLRrJA_link",
+      "at": "2026-08-30T20:29:51Z"
+     },
+     {
+      "kind": "config",
+      "key": "seat_health_rm-WNhwaS1m7VcZoYLRrJA_sn",
+      "at": "2026-08-30T20:29:51Z"
+     },
+     {
+      "kind": "config",
+      "key": "sn_watchdog_alerts",
+      "at": "2026-08-31T00:01:35Z"
+     },
+     {
+      "kind": "config",
+      "key": "seat_health_WkWcYGueQvy_atKCNFz2ng_account",
+      "at": "2026-08-31T06:00:56Z"
+     },
+     {
+      "kind": "config",
+      "key": "seat_health_WkWcYGueQvy_atKCNFz2ng_link",
+      "at": "2026-08-31T06:00:56Z"
+     },
+     {
+      "kind": "config",
+      "key": "seat_health_WkWcYGueQvy_atKCNFz2ng_sn",
+      "at": "2026-08-31T06:00:56Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_linkedin_id",
+      "at": "2026-08-31T07:08:30Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_seatless_threshold",
+      "at": "2026-08-31T08:56:07Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_fathom_cursor",
+      "at": "2026-08-31T14:08:38Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_inmail_cooldown_until",
+      "at": "2026-08-31T18:15:00Z"
+     }
+    ]
+   },
+   {
+    "client_id": "ivan",
+    "channel": "invitation",
+    "source_lane": "cold",
+    "interval": "custom",
+    "sent": 110,
+    "unique_recipients": 110,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 0,
+    "replies_people": 0,
+    "acceptance_cohort": {
+     "invited": 110,
+     "accepted_within_72h": 9,
+     "matured_denominator": 110,
+     "maturity_h": 72,
+     "rate_pct": 8
+    },
+    "reply_cohort": {
+     "first_messaged": 110,
+     "replied_within_72h": 4,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "ivan",
+    "channel": "invitation",
+    "source_lane": "profile_view",
+    "interval": "custom",
+    "sent": 8,
+    "unique_recipients": 8,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 0,
+    "replies_people": 0,
+    "acceptance_cohort": {
+     "invited": 8,
+     "accepted_within_72h": 2,
+     "matured_denominator": 8,
+     "maturity_h": 72,
+     "rate_pct": 25
+    },
+    "reply_cohort": {
+     "first_messaged": 8,
+     "replied_within_72h": 0,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "ivan",
+    "channel": "invitation",
+    "source_lane": "warm_engager",
+    "interval": "custom",
+    "sent": 506,
+    "unique_recipients": 506,
+    "attempted": null,
+    "failed": null,
+    "phantom": 4,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 0,
+    "replies_people": 0,
+    "acceptance_cohort": {
+     "invited": 496,
+     "accepted_within_72h": 123,
+     "matured_denominator": 496,
+     "maturity_h": 72,
+     "rate_pct": 25
+    },
+    "reply_cohort": {
+     "first_messaged": 496,
+     "replied_within_72h": 36,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "ivan",
+    "channel": "dm",
+    "source_lane": "__all__",
+    "interval": "custom",
+    "sent": 274,
+    "unique_recipients": 151,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 109,
+    "replies_people": 73,
+    "acceptance_cohort": {
+     "invited": 0,
+     "accepted_within_72h": 0,
+     "matured_denominator": 0,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "reply_cohort": {
+     "first_messaged": 121,
+     "replied_within_72h": 30,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "ivan",
+    "channel": "dm",
+    "source_lane": "cold",
+    "interval": "custom",
+    "sent": 24,
+    "unique_recipients": 13,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 6,
+    "replies_people": 4,
+    "acceptance_cohort": {
+     "invited": 0,
+     "accepted_within_72h": 0,
+     "matured_denominator": 0,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "reply_cohort": {
+     "first_messaged": 9,
+     "replied_within_72h": 2,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "ivan",
+    "channel": "dm",
+    "source_lane": "profile_view",
+    "interval": "custom",
+    "sent": 2,
+    "unique_recipients": 2,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 0,
+    "replies_people": 0,
+    "acceptance_cohort": {
+     "invited": 0,
+     "accepted_within_72h": 0,
+     "matured_denominator": 0,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "reply_cohort": {
+     "first_messaged": 2,
+     "replied_within_72h": 0,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "ivan",
+    "channel": "dm",
+    "source_lane": "warm_engager",
+    "interval": "custom",
+    "sent": 248,
+    "unique_recipients": 136,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 103,
+    "replies_people": 69,
+    "acceptance_cohort": {
+     "invited": 0,
+     "accepted_within_72h": 0,
+     "matured_denominator": 0,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "reply_cohort": {
+     "first_messaged": 110,
+     "replied_within_72h": 28,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "ivan",
+    "channel": "inmail",
+    "source_lane": "__all__",
+    "interval": "custom",
+    "sent": 188,
+    "unique_recipients": 188,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 0,
+    "replies_people": 0,
+    "acceptance_cohort": {
+     "invited": 0,
+     "accepted_within_72h": 0,
+     "matured_denominator": 0,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "reply_cohort": {
+     "first_messaged": 175,
+     "replied_within_72h": 15,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "ivan",
+    "channel": "inmail",
+    "source_lane": "cold",
+    "interval": "custom",
+    "sent": 31,
+    "unique_recipients": 31,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 0,
+    "replies_people": 0,
+    "acceptance_cohort": {
+     "invited": 0,
+     "accepted_within_72h": 0,
+     "matured_denominator": 0,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "reply_cohort": {
+     "first_messaged": 26,
+     "replied_within_72h": 1,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "ivan",
+    "channel": "inmail",
+    "source_lane": "warm_engager",
+    "interval": "custom",
+    "sent": 157,
+    "unique_recipients": 157,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 0,
+    "replies_people": 0,
+    "acceptance_cohort": {
+     "invited": 0,
+     "accepted_within_72h": 0,
+     "matured_denominator": 0,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "reply_cohort": {
+     "first_messaged": 149,
+     "replied_within_72h": 14,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
     "client_id": "arch",
     "channel": "invitation",
     "source_lane": "__all__",
@@ -14929,6 +15813,777 @@
     },
     "reply_cohort": {
      "first_messaged": 0,
+     "replied_within_72h": 0,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "arch",
+    "channel": "invitation",
+    "source_lane": "__all__",
+    "interval": "custom",
+    "sent": 26,
+    "unique_recipients": 26,
+    "attempted": 35,
+    "failed": 246,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 0,
+    "replies_people": 0,
+    "acceptance_cohort": {
+     "invited": 26,
+     "accepted_within_72h": 6,
+     "matured_denominator": 26,
+     "maturity_h": 72,
+     "rate_pct": 23
+    },
+    "reply_cohort": {
+     "first_messaged": 26,
+     "replied_within_72h": 3,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": [
+     {
+      "kind": "config",
+      "key": "precall_brief_view_key",
+      "at": "2026-08-01T00:00:00Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_connect_daily_cap",
+      "at": "2026-08-01T23:15:12Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_connect_weekly_cap",
+      "at": "2026-08-01T23:15:12Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_openprofile_routing_enabled",
+      "at": "2026-08-01T23:30:08Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_unipile_account_id",
+      "at": "2026-08-01T23:30:08Z"
+     },
+     {
+      "kind": "config",
+      "key": "anchor_harvest_roster",
+      "at": "2026-08-02T03:00:53Z"
+     },
+     {
+      "kind": "config",
+      "key": "profile_view_send_enabled",
+      "at": "2026-08-02T22:14:05Z"
+     },
+     {
+      "kind": "config",
+      "key": "zernio_token_watch_enabled",
+      "at": "2026-08-05T08:19:57Z"
+     },
+     {
+      "kind": "config",
+      "key": "carousel_render_secret",
+      "at": "2026-08-05T13:19:37Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_ig_mirror_armed",
+      "at": "2026-08-05T13:19:37Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_ig_mirror_not_before",
+      "at": "2026-08-05T13:19:37Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_zernio_account_id",
+      "at": "2026-08-05T13:19:37Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_zernio_profile_id",
+      "at": "2026-08-05T13:19:37Z"
+     },
+     {
+      "kind": "config",
+      "key": "zernio_api_key",
+      "at": "2026-08-05T13:19:37Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_harvest_reactions_enabled",
+      "at": "2026-08-05T22:34:46Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_anchor_wm",
+      "at": "2026-08-06T07:47:47Z"
+     },
+     {
+      "kind": "config",
+      "key": "newsjack_auto_jump",
+      "at": "2026-08-06T13:08:29Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_connect_daily_cap",
+      "at": "2026-08-06T15:50:43Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_geo_market_codes",
+      "at": "2026-08-07T11:26:10Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_engagement_start",
+      "at": "2026-08-07T13:43:38Z"
+     },
+     {
+      "kind": "config",
+      "key": "inmail_warm_lanes_enabled",
+      "at": "2026-08-08T21:13:15Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_seen_rejects",
+      "at": "2026-08-09T22:27:25Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_anchor_zero",
+      "at": "2026-08-10T16:25:24Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_connect_monthly_cap",
+      "at": "2026-08-11T23:21:53Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_roster",
+      "at": "2026-08-11T23:40:58Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_unipile_account_id",
+      "at": "2026-08-12T22:52:20Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_x_apify_enabled",
+      "at": "2026-08-13T09:35:20Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_fireflies_api_key",
+      "at": "2026-08-13T20:27:03Z"
+     },
+     {
+      "kind": "config",
+      "key": "hubspot_arch_private_app_token",
+      "at": "2026-08-13T20:27:03Z"
+     },
+     {
+      "kind": "config",
+      "key": "hubspot_arch_oauth_app_credential",
+      "at": "2026-08-14T07:22:46Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_post_mentions",
+      "at": "2026-08-14T12:59:14Z"
+     },
+     {
+      "kind": "config",
+      "key": "brightdata_api_key",
+      "at": "2026-08-15T23:24:44Z"
+     },
+     {
+      "kind": "config",
+      "key": "brightdata_company_enabled",
+      "at": "2026-08-15T23:24:44Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_anchor_perf",
+      "at": "2026-08-16T09:35:46Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_anchor_power",
+      "at": "2026-08-16T09:35:46Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_weighted_anchors",
+      "at": "2026-08-16T09:35:46Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_harvest_floor",
+      "at": "2026-08-16T09:38:29Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_apify_low_balance_usd",
+      "at": "2026-08-16T10:05:11Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_company_exclusions",
+      "at": "2026-08-16T11:49:35Z"
+     },
+     {
+      "kind": "config",
+      "key": "invite_sweeper_age_days",
+      "at": "2026-08-16T18:06:40Z"
+     },
+     {
+      "kind": "config",
+      "key": "invite_sweeper_daily_cap",
+      "at": "2026-08-16T18:06:40Z"
+     },
+     {
+      "kind": "config",
+      "key": "invite_sweeper_dry_run",
+      "at": "2026-08-16T18:06:40Z"
+     },
+     {
+      "kind": "config",
+      "key": "invite_sweeper_enabled",
+      "at": "2026-08-16T18:06:40Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_ballot_current_url",
+      "at": "2026-08-16T21:04:34Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_harvest_yield_power",
+      "at": "2026-08-17T07:10:05Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_harvest_yield_weighted",
+      "at": "2026-08-17T07:10:05Z"
+     },
+     {
+      "kind": "workflow",
+      "id": "kAMl0IPlURBq7mzc",
+      "name": "Outreach - RISE Gold Harvester (daily)",
+      "at": "2026-08-18T18:46:49Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_ads_gate",
+      "at": "2026-08-19T12:54:08Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_under_streak",
+      "at": "2026-08-20T14:31:29Z"
+     },
+     {
+      "kind": "config",
+      "key": "notify_state_lm_curator_health",
+      "at": "2026-08-21T07:00:10Z"
+     },
+     {
+      "kind": "config",
+      "key": "notify_state_loop_liveness",
+      "at": "2026-08-21T12:00:05Z"
+     },
+     {
+      "kind": "workflow",
+      "id": "qHiGvEGtRV4cE7oG",
+      "name": "Outreach - Replacement Rate Alarm",
+      "at": "2026-08-23T10:13:59Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_post_select",
+      "at": "2026-08-24T08:17:28Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_person_exclusions",
+      "at": "2026-08-24T20:14:39Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_connect_daily_cap",
+      "at": "2026-08-26T13:56:55Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_connect_ramp",
+      "at": "2026-08-26T13:56:55Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_inmail_monthly_cap",
+      "at": "2026-08-26T16:43:03Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_inmail_sent_month",
+      "at": "2026-08-26T16:43:03Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_draft_lint_mode",
+      "at": "2026-08-26T17:50:07Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_detector_armed",
+      "at": "2026-08-27T08:00:08Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_inbound_alert_armed",
+      "at": "2026-08-27T08:00:08Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_perf_sync_armed",
+      "at": "2026-08-27T08:00:08Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_reply_drafter_armed",
+      "at": "2026-08-27T08:00:08Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_sender_armed",
+      "at": "2026-08-27T08:00:08Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_inmail_armed",
+      "at": "2026-08-27T08:00:09Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_anchor_cooldown_h",
+      "at": "2026-08-27T08:58:50Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_booking_tracker_armed",
+      "at": "2026-08-27T09:01:39Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_reply_intent_armed",
+      "at": "2026-08-27T09:04:11Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_engager_note_armed",
+      "at": "2026-08-27T10:43:52Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_inmail_first_mode",
+      "at": "2026-08-27T11:54:44Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_daily_send_floor",
+      "at": "2026-08-27T13:36:03Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_manual_invite_warn_at",
+      "at": "2026-08-27T17:50:53Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_publisher_armed",
+      "at": "2026-08-28T08:19:02Z"
+     },
+     {
+      "kind": "config",
+      "key": "invite_rejoin_daily_cap",
+      "at": "2026-08-28T11:39:37Z"
+     },
+     {
+      "kind": "config",
+      "key": "invite_rejoin_enabled",
+      "at": "2026-08-28T11:39:37Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_dm_sequencer_armed",
+      "at": "2026-08-28T11:41:13Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_invite_retry_dry_run",
+      "at": "2026-08-28T16:09:12Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_invite_retry_enabled",
+      "at": "2026-08-28T16:09:12Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_harvest_reminder_last",
+      "at": "2026-08-29T08:00:04Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_idea_autogen",
+      "at": "2026-08-29T09:20:48Z"
+     },
+     {
+      "kind": "config",
+      "key": "dm_learning_labeler_armed",
+      "at": "2026-08-29T18:31:01Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_radar_enabled",
+      "at": "2026-08-29T21:31:42Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_ytdetector_enabled",
+      "at": "2026-08-29T21:36:06Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_ytdetector_watchlist",
+      "at": "2026-08-29T21:36:06Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_inmail_pause_until",
+      "at": "2026-08-30T08:55:52Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_conn_watch_armed",
+      "at": "2026-08-30T09:46:01Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_engager_anchors",
+      "at": "2026-08-30T12:39:44Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_engager_anchor_cooldown",
+      "at": "2026-08-30T12:42:57Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_engager_harvest_last",
+      "at": "2026-08-30T12:42:57Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_dm_autoapprove",
+      "at": "2026-08-30T13:27:17Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_engager_harvest_armed",
+      "at": "2026-08-30T13:27:18Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_anchor_verdict_sent",
+      "at": "2026-08-30T16:35:53Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_anchor_strikes",
+      "at": "2026-08-30T16:39:40Z"
+     },
+     {
+      "kind": "config",
+      "key": "seat_health_rm-WNhwaS1m7VcZoYLRrJA_account",
+      "at": "2026-08-30T20:29:50Z"
+     },
+     {
+      "kind": "config",
+      "key": "seat_health_rm-WNhwaS1m7VcZoYLRrJA_link",
+      "at": "2026-08-30T20:29:51Z"
+     },
+     {
+      "kind": "config",
+      "key": "seat_health_rm-WNhwaS1m7VcZoYLRrJA_sn",
+      "at": "2026-08-30T20:29:51Z"
+     },
+     {
+      "kind": "config",
+      "key": "sn_watchdog_alerts",
+      "at": "2026-08-31T00:01:35Z"
+     },
+     {
+      "kind": "config",
+      "key": "seat_health_WkWcYGueQvy_atKCNFz2ng_account",
+      "at": "2026-08-31T06:00:56Z"
+     },
+     {
+      "kind": "config",
+      "key": "seat_health_WkWcYGueQvy_atKCNFz2ng_link",
+      "at": "2026-08-31T06:00:56Z"
+     },
+     {
+      "kind": "config",
+      "key": "seat_health_WkWcYGueQvy_atKCNFz2ng_sn",
+      "at": "2026-08-31T06:00:56Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_linkedin_id",
+      "at": "2026-08-31T07:08:30Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_seatless_threshold",
+      "at": "2026-08-31T08:56:07Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_fathom_cursor",
+      "at": "2026-08-31T14:08:38Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_inmail_cooldown_until",
+      "at": "2026-08-31T18:15:00Z"
+     }
+    ]
+   },
+   {
+    "client_id": "arch",
+    "channel": "invitation",
+    "source_lane": "cold",
+    "interval": "custom",
+    "sent": 26,
+    "unique_recipients": 26,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 0,
+    "replies_people": 0,
+    "acceptance_cohort": {
+     "invited": 26,
+     "accepted_within_72h": 6,
+     "matured_denominator": 26,
+     "maturity_h": 72,
+     "rate_pct": 23
+    },
+    "reply_cohort": {
+     "first_messaged": 26,
+     "replied_within_72h": 3,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "arch",
+    "channel": "dm",
+    "source_lane": "__all__",
+    "interval": "custom",
+    "sent": 20,
+    "unique_recipients": 10,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 20,
+    "replies_people": 7,
+    "acceptance_cohort": {
+     "invited": 0,
+     "accepted_within_72h": 0,
+     "matured_denominator": 0,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "reply_cohort": {
+     "first_messaged": 10,
+     "replied_within_72h": 5,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "arch",
+    "channel": "dm",
+    "source_lane": "cold",
+    "interval": "custom",
+    "sent": 3,
+    "unique_recipients": 3,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 1,
+    "replies_people": 1,
+    "acceptance_cohort": {
+     "invited": 0,
+     "accepted_within_72h": 0,
+     "matured_denominator": 0,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "reply_cohort": {
+     "first_messaged": 3,
+     "replied_within_72h": 0,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "arch",
+    "channel": "dm",
+    "source_lane": "inbound",
+    "interval": "custom",
+    "sent": 15,
+    "unique_recipients": 5,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 19,
+    "replies_people": 6,
+    "acceptance_cohort": {
+     "invited": 0,
+     "accepted_within_72h": 0,
+     "matured_denominator": 0,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "reply_cohort": {
+     "first_messaged": 5,
+     "replied_within_72h": 5,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "arch",
+    "channel": "dm",
+    "source_lane": "warm_engager",
+    "interval": "custom",
+    "sent": 2,
+    "unique_recipients": 2,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 0,
+    "replies_people": 0,
+    "acceptance_cohort": {
+     "invited": 0,
+     "accepted_within_72h": 0,
+     "matured_denominator": 0,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "reply_cohort": {
+     "first_messaged": 2,
+     "replied_within_72h": 0,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "arch",
+    "channel": "inmail",
+    "source_lane": "__all__",
+    "interval": "custom",
+    "sent": 5,
+    "unique_recipients": 5,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 0,
+    "replies_people": 0,
+    "acceptance_cohort": {
+     "invited": 0,
+     "accepted_within_72h": 0,
+     "matured_denominator": 0,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "reply_cohort": {
+     "first_messaged": 5,
+     "replied_within_72h": 0,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "arch",
+    "channel": "inmail",
+    "source_lane": "cold",
+    "interval": "custom",
+    "sent": 5,
+    "unique_recipients": 5,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 0,
+    "replies_people": 0,
+    "acceptance_cohort": {
+     "invited": 0,
+     "accepted_within_72h": 0,
+     "matured_denominator": 0,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "reply_cohort": {
+     "first_messaged": 5,
      "replied_within_72h": 0,
      "matured_denominator": null,
      "maturity_h": 72,
@@ -22371,6 +24026,963 @@
     "reply_cohort": {
      "first_messaged": 0,
      "replied_within_72h": 0,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "risedtc",
+    "channel": "invitation",
+    "source_lane": "__all__",
+    "interval": "custom",
+    "sent": 713,
+    "unique_recipients": 713,
+    "attempted": 742,
+    "failed": 29,
+    "phantom": 29,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 0,
+    "replies_people": 0,
+    "acceptance_cohort": {
+     "invited": 713,
+     "accepted_within_72h": 177,
+     "matured_denominator": 713,
+     "maturity_h": 72,
+     "rate_pct": 25
+    },
+    "reply_cohort": {
+     "first_messaged": 713,
+     "replied_within_72h": 40,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": [
+     {
+      "kind": "config",
+      "key": "precall_brief_view_key",
+      "at": "2026-08-01T00:00:00Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_connect_daily_cap",
+      "at": "2026-08-01T23:15:12Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_connect_weekly_cap",
+      "at": "2026-08-01T23:15:12Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_openprofile_routing_enabled",
+      "at": "2026-08-01T23:30:08Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_unipile_account_id",
+      "at": "2026-08-01T23:30:08Z"
+     },
+     {
+      "kind": "config",
+      "key": "anchor_harvest_roster",
+      "at": "2026-08-02T03:00:53Z"
+     },
+     {
+      "kind": "config",
+      "key": "profile_view_send_enabled",
+      "at": "2026-08-02T22:14:05Z"
+     },
+     {
+      "kind": "config",
+      "key": "zernio_token_watch_enabled",
+      "at": "2026-08-05T08:19:57Z"
+     },
+     {
+      "kind": "config",
+      "key": "carousel_render_secret",
+      "at": "2026-08-05T13:19:37Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_ig_mirror_armed",
+      "at": "2026-08-05T13:19:37Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_ig_mirror_not_before",
+      "at": "2026-08-05T13:19:37Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_zernio_account_id",
+      "at": "2026-08-05T13:19:37Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_zernio_profile_id",
+      "at": "2026-08-05T13:19:37Z"
+     },
+     {
+      "kind": "config",
+      "key": "zernio_api_key",
+      "at": "2026-08-05T13:19:37Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_harvest_reactions_enabled",
+      "at": "2026-08-05T22:34:46Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_anchor_wm",
+      "at": "2026-08-06T07:47:47Z"
+     },
+     {
+      "kind": "config",
+      "key": "newsjack_auto_jump",
+      "at": "2026-08-06T13:08:29Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_connect_daily_cap",
+      "at": "2026-08-06T15:50:43Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_geo_market_codes",
+      "at": "2026-08-07T11:26:10Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_engagement_start",
+      "at": "2026-08-07T13:43:38Z"
+     },
+     {
+      "kind": "config",
+      "key": "inmail_warm_lanes_enabled",
+      "at": "2026-08-08T21:13:15Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_seen_rejects",
+      "at": "2026-08-09T22:27:25Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_anchor_zero",
+      "at": "2026-08-10T16:25:24Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_connect_monthly_cap",
+      "at": "2026-08-11T23:21:53Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_roster",
+      "at": "2026-08-11T23:40:58Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_unipile_account_id",
+      "at": "2026-08-12T22:52:20Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_x_apify_enabled",
+      "at": "2026-08-13T09:35:20Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_fireflies_api_key",
+      "at": "2026-08-13T20:27:03Z"
+     },
+     {
+      "kind": "config",
+      "key": "hubspot_arch_private_app_token",
+      "at": "2026-08-13T20:27:03Z"
+     },
+     {
+      "kind": "config",
+      "key": "hubspot_arch_oauth_app_credential",
+      "at": "2026-08-14T07:22:46Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_post_mentions",
+      "at": "2026-08-14T12:59:14Z"
+     },
+     {
+      "kind": "config",
+      "key": "brightdata_api_key",
+      "at": "2026-08-15T23:24:44Z"
+     },
+     {
+      "kind": "config",
+      "key": "brightdata_company_enabled",
+      "at": "2026-08-15T23:24:44Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_anchor_perf",
+      "at": "2026-08-16T09:35:46Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_anchor_power",
+      "at": "2026-08-16T09:35:46Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_weighted_anchors",
+      "at": "2026-08-16T09:35:46Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_harvest_floor",
+      "at": "2026-08-16T09:38:29Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_apify_low_balance_usd",
+      "at": "2026-08-16T10:05:11Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_company_exclusions",
+      "at": "2026-08-16T11:49:35Z"
+     },
+     {
+      "kind": "config",
+      "key": "invite_sweeper_age_days",
+      "at": "2026-08-16T18:06:40Z"
+     },
+     {
+      "kind": "config",
+      "key": "invite_sweeper_daily_cap",
+      "at": "2026-08-16T18:06:40Z"
+     },
+     {
+      "kind": "config",
+      "key": "invite_sweeper_dry_run",
+      "at": "2026-08-16T18:06:40Z"
+     },
+     {
+      "kind": "config",
+      "key": "invite_sweeper_enabled",
+      "at": "2026-08-16T18:06:40Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_ballot_current_url",
+      "at": "2026-08-16T21:04:34Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_harvest_yield_power",
+      "at": "2026-08-17T07:10:05Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_harvest_yield_weighted",
+      "at": "2026-08-17T07:10:05Z"
+     },
+     {
+      "kind": "workflow",
+      "id": "kAMl0IPlURBq7mzc",
+      "name": "Outreach - RISE Gold Harvester (daily)",
+      "at": "2026-08-18T18:46:49Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_ads_gate",
+      "at": "2026-08-19T12:54:08Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_under_streak",
+      "at": "2026-08-20T14:31:29Z"
+     },
+     {
+      "kind": "config",
+      "key": "notify_state_lm_curator_health",
+      "at": "2026-08-21T07:00:10Z"
+     },
+     {
+      "kind": "config",
+      "key": "notify_state_loop_liveness",
+      "at": "2026-08-21T12:00:05Z"
+     },
+     {
+      "kind": "workflow",
+      "id": "qHiGvEGtRV4cE7oG",
+      "name": "Outreach - Replacement Rate Alarm",
+      "at": "2026-08-23T10:13:59Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_post_select",
+      "at": "2026-08-24T08:17:28Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_person_exclusions",
+      "at": "2026-08-24T20:14:39Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_connect_daily_cap",
+      "at": "2026-08-26T13:56:55Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_connect_ramp",
+      "at": "2026-08-26T13:56:55Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_inmail_monthly_cap",
+      "at": "2026-08-26T16:43:03Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_inmail_sent_month",
+      "at": "2026-08-26T16:43:03Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_draft_lint_mode",
+      "at": "2026-08-26T17:50:07Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_detector_armed",
+      "at": "2026-08-27T08:00:08Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_inbound_alert_armed",
+      "at": "2026-08-27T08:00:08Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_perf_sync_armed",
+      "at": "2026-08-27T08:00:08Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_reply_drafter_armed",
+      "at": "2026-08-27T08:00:08Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_sender_armed",
+      "at": "2026-08-27T08:00:08Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_inmail_armed",
+      "at": "2026-08-27T08:00:09Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_engager_anchor_cooldown_h",
+      "at": "2026-08-27T08:58:50Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_booking_tracker_armed",
+      "at": "2026-08-27T09:01:39Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_reply_intent_armed",
+      "at": "2026-08-27T09:04:11Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_engager_note_armed",
+      "at": "2026-08-27T10:43:52Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_inmail_first_mode",
+      "at": "2026-08-27T11:54:44Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_daily_send_floor",
+      "at": "2026-08-27T13:36:03Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_manual_invite_warn_at",
+      "at": "2026-08-27T17:50:53Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_publisher_armed",
+      "at": "2026-08-28T08:19:02Z"
+     },
+     {
+      "kind": "config",
+      "key": "invite_rejoin_daily_cap",
+      "at": "2026-08-28T11:39:37Z"
+     },
+     {
+      "kind": "config",
+      "key": "invite_rejoin_enabled",
+      "at": "2026-08-28T11:39:37Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_dm_sequencer_armed",
+      "at": "2026-08-28T11:41:13Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_invite_retry_dry_run",
+      "at": "2026-08-28T16:09:12Z"
+     },
+     {
+      "kind": "config",
+      "key": "ivan_invite_retry_enabled",
+      "at": "2026-08-28T16:09:12Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_harvest_reminder_last",
+      "at": "2026-08-29T08:00:04Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_idea_autogen",
+      "at": "2026-08-29T09:20:48Z"
+     },
+     {
+      "kind": "config",
+      "key": "dm_learning_labeler_armed",
+      "at": "2026-08-29T18:31:01Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_radar_enabled",
+      "at": "2026-08-29T21:31:42Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_ytdetector_enabled",
+      "at": "2026-08-29T21:36:06Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_ytdetector_watchlist",
+      "at": "2026-08-29T21:36:06Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_inmail_pause_until",
+      "at": "2026-08-30T08:55:52Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_conn_watch_armed",
+      "at": "2026-08-30T09:46:01Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_engager_anchors",
+      "at": "2026-08-30T12:39:44Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_engager_anchor_cooldown",
+      "at": "2026-08-30T12:42:57Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_engager_harvest_last",
+      "at": "2026-08-30T12:42:57Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_dm_autoapprove",
+      "at": "2026-08-30T13:27:17Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_engager_harvest_armed",
+      "at": "2026-08-30T13:27:18Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_anchor_verdict_sent",
+      "at": "2026-08-30T16:35:53Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_anchor_strikes",
+      "at": "2026-08-30T16:39:40Z"
+     },
+     {
+      "kind": "config",
+      "key": "seat_health_rm-WNhwaS1m7VcZoYLRrJA_account",
+      "at": "2026-08-30T20:29:50Z"
+     },
+     {
+      "kind": "config",
+      "key": "seat_health_rm-WNhwaS1m7VcZoYLRrJA_link",
+      "at": "2026-08-30T20:29:51Z"
+     },
+     {
+      "kind": "config",
+      "key": "seat_health_rm-WNhwaS1m7VcZoYLRrJA_sn",
+      "at": "2026-08-30T20:29:51Z"
+     },
+     {
+      "kind": "config",
+      "key": "sn_watchdog_alerts",
+      "at": "2026-08-31T00:01:35Z"
+     },
+     {
+      "kind": "config",
+      "key": "seat_health_WkWcYGueQvy_atKCNFz2ng_account",
+      "at": "2026-08-31T06:00:56Z"
+     },
+     {
+      "kind": "config",
+      "key": "seat_health_WkWcYGueQvy_atKCNFz2ng_link",
+      "at": "2026-08-31T06:00:56Z"
+     },
+     {
+      "kind": "config",
+      "key": "seat_health_WkWcYGueQvy_atKCNFz2ng_sn",
+      "at": "2026-08-31T06:00:56Z"
+     },
+     {
+      "kind": "config",
+      "key": "arch_linkedin_id",
+      "at": "2026-08-31T07:08:30Z"
+     },
+     {
+      "kind": "config",
+      "key": "rise_seatless_threshold",
+      "at": "2026-08-31T08:56:07Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_fathom_cursor",
+      "at": "2026-08-31T14:08:38Z"
+     },
+     {
+      "kind": "config",
+      "key": "risedtc_inmail_cooldown_until",
+      "at": "2026-08-31T18:15:00Z"
+     }
+    ]
+   },
+   {
+    "client_id": "risedtc",
+    "channel": "invitation",
+    "source_lane": "cold",
+    "interval": "custom",
+    "sent": 85,
+    "unique_recipients": 85,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 0,
+    "replies_people": 0,
+    "acceptance_cohort": {
+     "invited": 85,
+     "accepted_within_72h": 6,
+     "matured_denominator": 85,
+     "maturity_h": 72,
+     "rate_pct": 7
+    },
+    "reply_cohort": {
+     "first_messaged": 85,
+     "replied_within_72h": 1,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "risedtc",
+    "channel": "invitation",
+    "source_lane": "competitor_engager",
+    "interval": "custom",
+    "sent": 627,
+    "unique_recipients": 627,
+    "attempted": null,
+    "failed": null,
+    "phantom": 29,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 0,
+    "replies_people": 0,
+    "acceptance_cohort": {
+     "invited": 627,
+     "accepted_within_72h": 170,
+     "matured_denominator": 627,
+     "maturity_h": 72,
+     "rate_pct": 27
+    },
+    "reply_cohort": {
+     "first_messaged": 627,
+     "replied_within_72h": 39,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "risedtc",
+    "channel": "invitation",
+    "source_lane": "profile_view",
+    "interval": "custom",
+    "sent": 1,
+    "unique_recipients": 1,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 0,
+    "replies_people": 0,
+    "acceptance_cohort": {
+     "invited": 1,
+     "accepted_within_72h": 1,
+     "matured_denominator": 1,
+     "maturity_h": 72,
+     "rate_pct": 100
+    },
+    "reply_cohort": {
+     "first_messaged": 1,
+     "replied_within_72h": 0,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "risedtc",
+    "channel": "dm",
+    "source_lane": "__all__",
+    "interval": "custom",
+    "sent": 620,
+    "unique_recipients": 243,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 213,
+    "replies_people": 90,
+    "acceptance_cohort": {
+     "invited": 0,
+     "accepted_within_72h": 0,
+     "matured_denominator": 0,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "reply_cohort": {
+     "first_messaged": 222,
+     "replied_within_72h": 48,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "risedtc",
+    "channel": "dm",
+    "source_lane": "client_orbit",
+    "interval": "custom",
+    "sent": 4,
+    "unique_recipients": 3,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 3,
+    "replies_people": 3,
+    "acceptance_cohort": {
+     "invited": 0,
+     "accepted_within_72h": 0,
+     "matured_denominator": 0,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "reply_cohort": {
+     "first_messaged": 1,
+     "replied_within_72h": 0,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "risedtc",
+    "channel": "dm",
+    "source_lane": "cold",
+    "interval": "custom",
+    "sent": 24,
+    "unique_recipients": 10,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 8,
+    "replies_people": 2,
+    "acceptance_cohort": {
+     "invited": 0,
+     "accepted_within_72h": 0,
+     "matured_denominator": 0,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "reply_cohort": {
+     "first_messaged": 9,
+     "replied_within_72h": 2,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "risedtc",
+    "channel": "dm",
+    "source_lane": "competitor_engager",
+    "interval": "custom",
+    "sent": 548,
+    "unique_recipients": 214,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 140,
+    "replies_people": 64,
+    "acceptance_cohort": {
+     "invited": 0,
+     "accepted_within_72h": 0,
+     "matured_denominator": 0,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "reply_cohort": {
+     "first_messaged": 198,
+     "replied_within_72h": 38,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "risedtc",
+    "channel": "dm",
+    "source_lane": "inbound",
+    "interval": "custom",
+    "sent": 35,
+    "unique_recipients": 11,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 52,
+    "replies_people": 18,
+    "acceptance_cohort": {
+     "invited": 0,
+     "accepted_within_72h": 0,
+     "matured_denominator": 0,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "reply_cohort": {
+     "first_messaged": 10,
+     "replied_within_72h": 7,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "risedtc",
+    "channel": "dm",
+    "source_lane": "profile_view",
+    "interval": "custom",
+    "sent": 9,
+    "unique_recipients": 5,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 10,
+    "replies_people": 3,
+    "acceptance_cohort": {
+     "invited": 0,
+     "accepted_within_72h": 0,
+     "matured_denominator": 0,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "reply_cohort": {
+     "first_messaged": 4,
+     "replied_within_72h": 1,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "risedtc",
+    "channel": "inmail",
+    "source_lane": "__all__",
+    "interval": "custom",
+    "sent": 80,
+    "unique_recipients": 80,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 0,
+    "replies_people": 0,
+    "acceptance_cohort": {
+     "invited": 0,
+     "accepted_within_72h": 0,
+     "matured_denominator": 0,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "reply_cohort": {
+     "first_messaged": 80,
+     "replied_within_72h": 5,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "risedtc",
+    "channel": "inmail",
+    "source_lane": "client_orbit",
+    "interval": "custom",
+    "sent": 1,
+    "unique_recipients": 1,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 0,
+    "replies_people": 0,
+    "acceptance_cohort": {
+     "invited": 0,
+     "accepted_within_72h": 0,
+     "matured_denominator": 0,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "reply_cohort": {
+     "first_messaged": 1,
+     "replied_within_72h": 0,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "risedtc",
+    "channel": "inmail",
+    "source_lane": "cold",
+    "interval": "custom",
+    "sent": 14,
+    "unique_recipients": 14,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 0,
+    "replies_people": 0,
+    "acceptance_cohort": {
+     "invited": 0,
+     "accepted_within_72h": 0,
+     "matured_denominator": 0,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "reply_cohort": {
+     "first_messaged": 14,
+     "replied_within_72h": 0,
+     "matured_denominator": null,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "eligibility_at_time": "unknown",
+    "rule_changes": []
+   },
+   {
+    "client_id": "risedtc",
+    "channel": "inmail",
+    "source_lane": "competitor_engager",
+    "interval": "custom",
+    "sent": 65,
+    "unique_recipients": 65,
+    "attempted": null,
+    "failed": null,
+    "phantom": 0,
+    "blocked": 0,
+    "unreconciled": 0,
+    "replies_messages": 0,
+    "replies_people": 0,
+    "acceptance_cohort": {
+     "invited": 0,
+     "accepted_within_72h": 0,
+     "matured_denominator": 0,
+     "maturity_h": 72,
+     "rate_pct": null
+    },
+    "reply_cohort": {
+     "first_messaged": 65,
+     "replied_within_72h": 5,
      "matured_denominator": null,
      "maturity_h": 72,
      "rate_pct": null
@@ -30811,7 +33423,8 @@
    "90-day source-lane coverage: lane attribution is by campaign_name (lane_basis) \u2014 disclosed, not backfilled; enrichment_data is not in the frozen snapshot.",
    "Invitations, DMs and InMails are separate everywhere in this payload; they are never summed.",
    "Comparisons pair equal-length complete windows only; `today` is partial and is excluded.",
-   "Cohort rates are null (not 0) when the matured denominator is 0."
+   "Cohort rates are null (not 0) when the matured denominator is 0.",
+   "Custom interval 2026-08-01..2026-08-31 (Warsaw, completed days) \u2014 the built-in default, exercised on every build."
   ]
  },
  "recurrence": {
@@ -32833,13 +35446,15 @@
         "measured_result": "found_post 48 -> 192 and eligible_for_rank 4 -> 20 on 198 rows, read back one second after the migration was applied",
         "supports_scope": "the audience-learning post-identity join only",
         "recurrence_id": "fam:shared-rule-missing-in-consumer",
-        "fix_scope": "rise-engager-identity-gate-2026-09-11.md",
         "closes_defect": false,
         "reason": "contradicted_by_later_failure",
+        "also_approval_only": false,
         "origin_run": "audience-learning-04-rollout-2026-09-09",
         "duplicates_of": null,
         "synthetic": false,
-        "artifact_id": "05fb6026218cbac0"
+        "artifact_id": "05fb6026218cbac0",
+        "fix_scope": "a fix recorded on 2026-09-11",
+        "fix_scope_redacted": true
        },
        {
         "receipt_id": "rcpt-audn09-identity-readback-dup",
@@ -32853,13 +35468,15 @@
         "measured_result": "same read-back offered a second time",
         "supports_scope": "the audience-learning post-identity join only",
         "recurrence_id": "fam:shared-rule-missing-in-consumer",
-        "fix_scope": "rise-engager-identity-gate-2026-09-11.md",
         "closes_defect": false,
         "reason": "measured_scope_only",
+        "also_approval_only": false,
         "origin_run": "audience-learning-04-rollout-2026-09-09",
         "duplicates_of": "rcpt-audn09-identity-readback",
         "synthetic": false,
-        "artifact_id": "05fb6026218cbac0"
+        "artifact_id": "05fb6026218cbac0",
+        "fix_scope": "a fix recorded on 2026-09-11",
+        "fix_scope_redacted": true
        },
        {
         "receipt_id": "rcpt-audn-rowbaseline-prechange",
@@ -32873,13 +35490,15 @@
         "measured_result": "row counts captured 2026-09-09T22:02Z, before the change",
         "supports_scope": "the pre-change state only",
         "recurrence_id": "fam:shared-rule-missing-in-consumer",
-        "fix_scope": "rise-engager-identity-gate-2026-09-11.md",
         "closes_defect": false,
         "reason": "pre_change",
+        "also_approval_only": false,
         "origin_run": "audience-learning-04-rollout-2026-09-09",
         "duplicates_of": null,
         "synthetic": false,
-        "artifact_id": "728c1329203ada0a"
+        "artifact_id": "728c1329203ada0a",
+        "fix_scope": "a fix recorded on 2026-09-11",
+        "fix_scope_redacted": true
        },
        {
         "receipt_id": "rcpt-audn-authority-approval",
@@ -32893,13 +35512,15 @@
         "measured_result": "Ivan granted the deployment; nothing was measured",
         "supports_scope": "authorisation only",
         "recurrence_id": "fam:shared-rule-missing-in-consumer",
-        "fix_scope": "rise-engager-identity-gate-2026-09-11.md",
         "closes_defect": false,
-        "reason": "approval_only",
+        "reason": "pre_change",
+        "also_approval_only": true,
         "origin_run": "audience-learning-04-rollout-2026-09-09",
         "duplicates_of": null,
         "synthetic": false,
-        "artifact_id": "18f6743d58bba413"
+        "artifact_id": "18f6743d58bba413",
+        "fix_scope": "a fix recorded on 2026-09-11",
+        "fix_scope_redacted": true
        }
       ]
      }
@@ -36326,6 +38947,7 @@
    "monitor.liveness -> fresh with last_tick_at = as_of (so rule 1 cannot fire)",
    "every channel freshness.status -> fresh",
    "ivan.invitation open_now true, executable_reasons emptied",
+   "every client's next_check_at falls back to the next monitor tick (as_of + 300s)",
    "ivan.status -> healthy (the only green state)",
    "ivan.invitation.capacity.daily_used -> daily_cap (40) \u2014 the ONLY numeric change",
    "ivan.status -> capacity_reached; next_check_at = the reset (next_opening_at)"
