@@ -45,11 +45,15 @@ import { hasMock } from '../../exp/v2c/mock'
 import './sends.css'
 
 type Client = 'all' | 'ivan' | 'risedtc' | 'arch'
-type Timeframe = '7d' | '30d' | 'custom'
+type Timeframe = '7d' | '30d' | '90d' | 'custom'
 
 const TIMEFRAMES: { key: Timeframe; label: string }[] = [
   { key: '7d', label: '7d' },
   { key: '30d', label: '30d' },
+  // 90d joins the pill with the operator payload: the Delivery section carries a
+  // 90-day interval, and a range the data has but the control cannot pick is a
+  // figure nobody can reach.
+  { key: '90d', label: '90d' },
   { key: 'custom', label: 'Custom' },
 ]
 

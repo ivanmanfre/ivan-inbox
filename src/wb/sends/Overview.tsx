@@ -30,13 +30,19 @@ import {
   type AcceptRow, type ReplyRow, type PipelineRow, type GovernorRow, type ScanOpenRow, type OutcomeRow, type RangeKpiRow,
   type ReplacementRow, type LedgerRow,
 } from '../../lib/kpis'
-import { Badge, Icon, Table, type TableColumn } from '../../ds'
+import { Badge, Icon, type TableColumn } from '../../ds'
 import { BarLine, Body, Cell, Dot, Group, KV, Ledger, Row, Rows, Sep, Spark, type Tone } from '../kit'
 import { SendsSkeleton } from '../chrome/Skeleton'
+import { Section, BarGauge, TableOrRecords } from './parts'
+import {
+  ControlSection, DeliverySection, RecurrenceSection, useCampaignControl,
+  ccPayload, ccInvitationsForDay, ccInvitationsInWindow,
+} from './Control'
+import type { CcPayload } from '../../lib/campaignControl'
 import './sends.css'
 
 type Client = 'all' | 'ivan' | 'risedtc' | 'arch'
-type Timeframe = '7d' | '30d' | 'custom'
+type Timeframe = '7d' | '30d' | '90d' | 'custom'
 type DateRange = { from: string; to: string }
 
 // The four-step severity vocabulary of the old file, expressed in the system's
@@ -107,19 +113,6 @@ function shortDate(d: string): string {
   return mm ? `${mm[2]}-${mm[3]}` : d
 }
 
-/** An eyebrow line and its predicate, over one instrument. */
-function Section({ label, tail, children }: { label: ReactNode; tail?: ReactNode; children: ReactNode }) {
-  return (
-    <section className="a-sends-sec">
-      <div className="a-sends-h">
-        <span className="a-eyebrow">{label}</span>
-        {tail !== undefined && tail !== null && <span className="a-sends-h-s">{tail}</span>}
-      </div>
-      {children}
-    </section>
-  )
-}
-
 // ---- Honest over-cap gauge (grafted from direction A) ----
 // When used<=cap the fill is used/cap. When used>cap — the operator raised the
 // cap on purpose — the number is NEVER clamped: the solid fill ends at a cap
@@ -146,15 +139,6 @@ function Gauge({ used, cap, tone, sm }: { used: number; cap: number; tone?: Tone
           <span className="a-sends-g-t" style={{ insetInlineStart: `${g.capPct}%` }} />
         </>
       )}
-    </span>
-  )
-}
-
-// A plain percentage gauge (no overflow logic) for the acceptance / runway tiles.
-function BarGauge({ pct, tone, sm }: { pct: number; tone?: Tone; sm?: boolean }) {
-  return (
-    <span className="a-sends-g" data-sm={sm ? '' : undefined}>
-      <span className="a-sends-g-f" data-tone={tone} style={{ width: `${Math.max(0, Math.min(100, pct))}%` }} />
     </span>
   )
 }
@@ -430,8 +414,9 @@ function FunnelBars({ steps }: { steps: Step[] }) {
 // % arrow. Conversations (any inbound reply, optouts excluded) can arrive via
 // InMail/email without an accept, and calls can come from any channel, so the
 // later steps are neutral separators, never a "conversion" percentage.
-function Funnel({ accept, scans, outcomes, client }: {
+function Funnel({ accept, scans, outcomes, client, cc }: {
   accept: AcceptRow[]; scans: ScanOpenRow[]; outcomes: OutcomeRow[]; client: Client
+  cc: CcPayload | null
 }) {
   const aRows = accept.filter(r => inClient(r.client_id, client))
   const sent7 = sum(aRows, 'sent_7d'), acc7 = sum(aRows, 'accepted_7d')
@@ -446,6 +431,10 @@ function Funnel({ accept, scans, outcomes, client }: {
   const convos7 = sum(oRows, 'convos_7d'), convosTotal = sum(oRows, 'convos_total')
   const calls7 = sum(oRows, 'calls_7d'), callsTotal = sum(oRows, 'calls_total')
 
+  // The first step is the confirmed invitation count when the payload carries
+  // it; the accept rate stays on the legacy denominator it was computed from.
+  const confirmed7 = cc ? ccInvitationsInWindow(cc, client, '7d', null) : null
+  const invitesStep = confirmed7 !== null ? confirmed7 : sent7
   const acceptStep = sent7 > 0 ? `${Math.round((acc7 / sent7) * 100)}%` : '—'
 
   if (aRows.length === 0 && sRows.length === 0 && oRows.length === 0) {
@@ -459,11 +448,16 @@ function Funnel({ accept, scans, outcomes, client }: {
   return (
     <Section label="Funnel" tail="last 7d">
       <FunnelBars steps={[
-        { id: 'sent', n: sent7, label: 'Invites' },
+        { id: 'sent', n: invitesStep, label: 'Invites' },
         { id: 'accepted', n: acc7, label: 'Accepted', rate: acceptStep },
         { id: 'convos', n: convos7, label: 'Convos' },
         { id: 'calls', n: calls7, label: 'Calls' },
       ]} />
+      <div className="a-sends-cap">
+        {confirmed7 !== null
+          ? 'Invites = confirmed invitations (Run 01 definition); Accepted is of the legacy message rows it was computed from.'
+          : 'Invites = message rows — includes refused attempts; unverified.'}
+      </div>
       <div className="a-sends-cap">
         Era totals · convos {convosTotal} · calls {callsTotal} · convos = replied at least once, optouts excluded.
       </div>
@@ -489,56 +483,6 @@ function ledgerDayLabel(day: string, todayIso: string): string {
   return d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', timeZone: 'UTC' })
 }
 
-/**
- * One table, drawn twice and shown once — the move Money already makes with its
- * seven ledgers, said again here because the two tables on this screen are the
- * two that could not fit a phone.
- *
- * Above 767px it is the design system's `Table`. At or below, the same columns
- * become a run of records: the first column is the record's name, every other
- * column is its header and its value on the meta line under it. Nothing is
- * dropped and nothing scrolls sideways — a six-column day ledger is 519px of
- * columns inside a 342px plate, so as a table on a phone it could only ever be
- * read half at a time, and the first thing off the right edge was the seat cap.
- *
- * Both forms read the SAME `columns` array, so the two cannot drift apart, and
- * they are mutually exclusive in CSS, so a screen reader meets exactly one.
- */
-function TableOrRecords<R>({ label, columns, rows, rowKey }: {
-  label: string
-  columns: Array<TableColumn<R>>
-  rows: R[]
-  rowKey: (r: R) => string
-}) {
-  return (
-    <>
-      <div className="a-sends-wide">
-        <Table label={label} columns={columns} rows={rows} rowKey={rowKey} />
-      </div>
-      <div className="a-sends-narrow">
-        <Rows>
-          {rows.map(r => (
-            <Row
-              key={rowKey(r)}
-              titleWrap
-              title={columns[0].cell(r)}
-              meta={columns.slice(1).map((c, i, all) => (
-                <span className="a-sends-pair" key={c.id}>
-                  <span className="a-sends-pk a-eyebrow">{c.header}</span>
-                  <span className="a-sends-pv">{c.cell(r)}</span>
-                  {/* The middot trails its pair rather than leading the next
-                      one, so a line that wraps starts on a word. */}
-                  {i < all.length - 1 && <Sep />}
-                </span>
-              ))}
-            />
-          ))}
-        </Rows>
-      </div>
-    </>
-  )
-}
-
 type LedgerTableRow = {
   id: string
   label: string
@@ -552,14 +496,23 @@ type LedgerTableRow = {
   burned: number
 }
 
-function DayLedger({ rows, client, timeframe }: { rows: LedgerRow[]; client: Client; timeframe: Timeframe }) {
+function DayLedger({ rows, client, timeframe, cc }: { rows: LedgerRow[]; client: Client; timeframe: Timeframe; cc: CcPayload | null }) {
   // Nothing rendered when the view is not applied: the fetch soft-fails to [].
   if (rows.length === 0) return null
   const days = timeframe === '7d' ? 7 : 14
   const todayIso = new Date().toISOString().slice(0, 10)
   const led = buildLedger(rows, client, days, todayIso)
+  /* The Invites column is the CONFIRMED invitation count whenever the operator
+     payload carries that day — the legacy ledger row counts message rows, which
+     include attempts the provider refused. When the payload is absent the
+     legacy figure still shows, captioned as what it actually is. */
+  const inv = (day: string, legacy: number) => {
+    if (!cc) return legacy
+    const v = ccInvitationsForDay(cc, client, day)
+    return v === null ? legacy : v
+  }
   const tot = led.reduce((a, d) => ({
-    invites: a.invites + d.invites, accepted: a.accepted + d.accepted,
+    invites: a.invites + inv(d.day, d.invites), accepted: a.accepted + d.accepted,
     dms: a.dms + d.dms, inmails: a.inmails + d.inmails, burned: a.burned + d.burned,
   }), { invites: 0, accepted: 0, dms: 0, inmails: 0, burned: 0 })
   const pct = (acc: number, inv: number) => (inv > 0 ? ` ${Math.round((acc / inv) * 100)}%` : '')
@@ -571,7 +524,7 @@ function DayLedger({ rows, client, timeframe }: { rows: LedgerRow[]; client: Cli
       label: ledgerDayLabel(d.day, todayIso),
       today: d.day === todayIso,
       total: false,
-      invites: d.invites,
+      invites: inv(d.day, d.invites),
       accepted: d.accepted,
       dms: d.dms,
       inmails: d.inmails,
@@ -633,7 +586,10 @@ function DayLedger({ rows, client, timeframe }: { rows: LedgerRow[]; client: Cli
         rowKey={r => r.id}
       />
       <div className="a-sends-cap">
-        Invites = notes that left the seat. Cap = the seat's counter, spent before the provider answers; when it runs ahead of Invites those slots went to refused sends. Accepted is of that day's invites and only rises.
+        {cc
+          ? 'Invites = confirmed invitations (Run 01 definition), taken from the operator payload.'
+          : 'Invites = message rows — includes refused attempts; unverified.'}
+        {' '}Cap = the seat's counter, spent before the provider answers; when it runs ahead of Invites those slots went to refused sends. Accepted is of that day's invites and only rises.
       </div>
     </Section>
   )
@@ -696,10 +652,16 @@ function laneCount(lane: Lane, daily: DailyRow[], client: Client, tf: Timeframe,
     .reduce((s, d) => s + d.sent, 0)
 }
 
-function KpiRow({ lanes, daily, client, timeframe, range }: {
+function KpiRow({ lanes, daily, client, timeframe, range, cc }: {
   lanes: Lane[]; daily: DailyRow[]; client: Client; timeframe: Timeframe; range: DateRange | null
+  cc: CcPayload | null
 }) {
-  const counts = lanes.map(l => laneCount(l, daily, client, timeframe, range))
+  /* Connections is the one lane the operator payload can speak for: when it is
+     present the bar reads confirmed invitations, not message rows. */
+  const confirmed = cc ? ccInvitationsInWindow(cc, client, timeframe, range) : null
+  const counts = lanes.map(l => (
+    l.key === 'connection_note' && confirmed !== null ? confirmed : laneCount(l, daily, client, timeframe, range)
+  ))
   const top = Math.max(1, ...counts)
   const total = counts.reduce((s, c) => s + c, 0)
   return (
@@ -731,7 +693,14 @@ function KpiRow({ lanes, daily, client, timeframe, range }: {
               tail={<span className="a-sends-spk"><Spark values={lane.daily} highlightLast /></span>}
             >
               <BarLine pct={(counts[i] / top) * 100} tone="quiet" tail={<b className="a-ink">{counts[i]}</b>} />
-              <span className="a-row-meta">24h: {lane.sent_24h}</span>
+              <span className="a-row-meta">
+                24h: {lane.sent_24h}
+                {lane.key === 'connection_note' && (
+                  <> <Sep />{confirmed !== null
+                    ? 'confirmed invitations (Run 01 definition)'
+                    : 'message rows — includes refused attempts; unverified'}</>
+                )}
+              </span>
             </Row>
           ))}
         </Rows>
@@ -1061,6 +1030,10 @@ export function OverviewView({ client, timeframe, setClient, range = null }: {
   range?: DateRange | null
 }) {
   const [data, setData] = useState<OverviewData | null>(null)
+  // One read of the verified operator payload per mount. It is deliberately
+  // OUTSIDE the legacy Promise.all: a failed control read must never take the
+  // instruments below it down, and a failed legacy read must never hide Control.
+  const cc = useCampaignControl()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -1083,20 +1056,31 @@ export function OverviewView({ client, timeframe, setClient, range = null }: {
   // W4-1: `?wbmock=fetch-error` (before the `#`) had no wiring here.
   const err = error ?? (hasMock('fetch-error') ? 'Sends overview read failed' : null)
   // S43-3: the first load echoes the shape of the lane cards that replace it.
-  if (loading && !data) return <Body><SendsSkeleton /></Body>
-  if (err) return <Body><div className="a-sends-load">{err}</div></Body>
-  if (!data) return <Body><div className="a-sends-load">No data yet, the call returned, it just had nothing in it.</div></Body>
+  const ccp = ccPayload(cc)
+  // Control answers for itself in every state, so it renders even when the
+  // legacy fetch is still in flight or failed outright.
+  const control = (
+    <>
+      <ControlSection cc={cc} client={client} />
+      <DeliverySection cc={cc} timeframe={timeframe} range={range} client={client} />
+      <RecurrenceSection cc={cc} />
+    </>
+  )
+  if (loading && !data) return <Body>{control}<SendsSkeleton /></Body>
+  if (err) return <Body>{control}<div className="a-sends-load">{err}</div></Body>
+  if (!data) return <Body>{control}<div className="a-sends-load">No data yet, the call returned, it just had nothing in it.</div></Body>
 
   const lanes = buildLanes(data.rows, data.daily, client)
 
   return (
     <Body>
+      {control}
       <Hero accept={data.accept} governor={data.governor} pipeline={data.pipeline} replacement={data.replacement} client={client} />
       {timeframe === 'custom' && range && <RangeSummary range={range} client={client} />}
-      <DayLedger rows={data.ledger} client={client} timeframe={timeframe} />
-      <Funnel accept={data.accept} scans={data.scans} outcomes={data.outcomes} client={client} />
+      <DayLedger rows={data.ledger} client={client} timeframe={timeframe} cc={ccp} />
+      <Funnel accept={data.accept} scans={data.scans} outcomes={data.outcomes} client={client} cc={ccp} />
       <div className="a-cols" data-cols="2">
-        <KpiRow lanes={lanes} daily={data.daily} client={client} timeframe={timeframe} range={range} />
+        <KpiRow lanes={lanes} daily={data.daily} client={client} timeframe={timeframe} range={range} cc={ccp} />
         <Pipeline rows={data.pipeline} governor={data.governor} client={client} />
       </div>
       <div className="a-cols" data-cols="2">
