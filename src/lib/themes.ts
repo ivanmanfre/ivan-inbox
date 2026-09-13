@@ -42,6 +42,24 @@ export type Themes = {
   posts_total: number
   untagged: number
   themes: Theme[]
+  /** Additive canonical dimensions from migration 19. Each n is unique posts,
+      never a pooled performance score. */
+  canonical?: Record<string, CanonicalTheme[]> | null
+  window?: { first?: string | null; last?: string | null } | null
+}
+
+export type CanonicalTheme = {
+  value?: string | null
+  subject?: string | null
+  purpose?: string | null
+  hook?: string | null
+  format?: string | null
+  n: number
+  impression_n: number
+  engagement_n: number
+  median_imp: number | null
+  median_eng: number | null
+  target_age_days?: number | null
 }
 
 export type ThemesState =

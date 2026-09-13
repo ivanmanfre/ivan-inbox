@@ -105,6 +105,13 @@ export type Benchmark = {
   own_dist: OwnDist
   own_recent: OwnRecent[]
   floors: { own_min: number; author_min: number }
+  source_classifications?: Array<{
+    author_name: string; roster_role: string; roster_reason: string | null
+    subject: string | null; purpose: string | null; hook: string | null; format: string | null
+    taxonomy_version: string | null; n: number; observed_from: string | null; observed_to: string | null
+  }>
+  source_classification_unknown_time?: number
+  source_classification_excluded_count?: number
 }
 
 export type BenchmarkState =

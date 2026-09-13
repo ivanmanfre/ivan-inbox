@@ -14,7 +14,7 @@ import { Group } from '../kit'
 import { CalmEmpty, Failed } from './parts'
 import {
   angleLabel, angleMix, fetchThemes, fitLine, num, outlierRatio, themeLabel,
-  type Theme, type ThemePost, type ThemesState,
+  type CanonicalTheme, type Theme, type ThemePost, type ThemesState,
 } from '../../lib/themes'
 import type { ContentLane } from '../../lib/content'
 import './content.css'
@@ -56,6 +56,20 @@ function ThemeCard({ t }: { t: Theme }) {
   )
 }
 
+function CanonicalDimension({ name, rows }: { name: string; rows: CanonicalTheme[] }) {
+  if (!rows.length) return null
+  const label = name.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase())
+  const friendly = (value: string) => value.replace(/_/g, ' ')
+  return <div className="a-th-card" data-dimension={name}>
+    <div className="a-th-name">{label}</div>
+    <div className="a-ct-sub">Unique own posts at the captured comparison age. Unknown remains a visible category.</div>
+    <div className="a-bm-measure-grid">{rows.map((r, i) => {
+      const value = r.value ?? r.subject ?? r.purpose ?? r.hook ?? r.format ?? 'unknown'
+      return <div className="a-bm-measure-row" key={`${value}-${i}`}><div><strong>{friendly(value)}</strong><span>n={r.n} · impressions n={r.impression_n} · engagement n={r.engagement_n}{r.target_age_days ? ` · ${r.target_age_days}d matched age` : ' · no selected 7/14-day snapshot'}</span></div><div className="a-bm-measure-detail">Median impressions {num(r.median_imp)} · median engagement {num(r.median_eng)}</div></div>
+    })}</div>
+  </div>
+}
+
 /** Exported so the suite can render from a fixture without a fetch. */
 export function ThemesView({ state, onRetry }: { state: ThemesState; onRetry?: () => void }) {
   const label = 'Your posts by theme'
@@ -76,13 +90,7 @@ export function ThemesView({ state, onRetry }: { state: ThemesState; onRetry?: (
       tail={<Badge tone="neutral" variant="ring">{d.posts_total} posts · {d.days} days{d.untagged ? ` · ${d.untagged} not yet read` : ''}</Badge>}
       pad
     >
-      <div className="a-ct-sub a-th-intro">
-        Sorted by the biggest post in each theme. "Fit" counts engagers our scorer rated 7 or more, so a big post
-        reads as a buyer bet or a reach bet. Angle is the move the post makes; the theme is what it is about.
-      </div>
-      <div className="a-th-grid">
-        {d.themes.map(t => <ThemeCard key={t.theme} t={t} />)}
-      </div>
+      {d.canonical ? <div className="a-th-grid">{Object.entries(d.canonical).map(([name, rows]) => <CanonicalDimension key={name} name={name} rows={rows || []} />)}</div> : <div className="a-th-grid">{d.themes.map(t => <ThemeCard key={t.theme} t={t} />)}</div>}
     </Group>
   )
 }

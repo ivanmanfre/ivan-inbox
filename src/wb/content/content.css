@@ -987,6 +987,16 @@ a.a-prop-src:hover{ color:var(--ds-text) }
 .a-bm-seg button.on { background: var(--ds-surface-3); color: var(--ds-text); font-weight: 600; }
 .a-bm-post-cell { min-width: 260px; max-width: 460px; }
 
+/* Measurement is a compact evidence ledger, separate from the legacy benchmark
+   tiles so impressions, engagement count and rate cannot be read as one score. */
+.a-bm-measure { border: 1px solid var(--ds-line); border-radius: var(--ds-r2); padding: var(--ds-s3); margin-bottom: var(--ds-s2); min-width: 0; }
+.a-bm-measure-grid { display: grid; gap: 0; margin: var(--ds-s2) 0; }
+.a-bm-measure-row { display: grid; grid-template-columns: minmax(180px, 1fr) auto minmax(260px, 2fr); gap: var(--ds-s2); align-items: start; padding: var(--ds-s2) 0; border-top: 1px solid var(--ds-line); font-size: var(--ds-fs-meta); }
+.a-bm-measure-row strong, .a-bm-measure-row span { display: block; }
+.a-bm-measure-row span { color: var(--ds-text-3); margin-top: 2px; }
+.a-bm-measure-detail { color: var(--ds-text-2); overflow-wrap: anywhere; }
+@media (max-width: 680px) { .a-bm-measure-row { grid-template-columns: 1fr auto; } .a-bm-measure-detail { grid-column: 1 / -1; } }
+
 
 /* You vs one account */
 .a-bm-cmp-head { display: flex; justify-content: space-between; gap: var(--ds-s3); align-items: flex-start; margin-bottom: var(--ds-s3); flex-wrap: wrap; }

@@ -1,5 +1,73 @@
 import { supabase } from './supabase'
-import type { ContentLane } from './content'
+import { CLIENT_OPS_GATE, type ContentLane } from './content'
+
+/* Run 07 measurement contract. This is deliberately a separate read from the
+   older audience views: those views describe people and recommendation history,
+   while this payload is the canonical matched-age measurement basis. */
+export type MeasurementMetric = 'impressions' | 'engagement_count' | 'engagement_per_1000'
+export type MeasurementStatus = 'supported' | 'below_floor' | 'metric_missing'
+export type MeasurementRow = {
+  client_id: string
+  canonical_post_id: string | null
+  raw_snapshot_id: string | null
+  target_age_days: number | null
+  published_at: string | null
+  captured_at: string | null
+  actual_age_days: number | null
+  metric: MeasurementMetric
+  value: number | null
+  eligible_n: number | null
+  missing_n: number | null
+  p50: number | null
+  p75: number | null
+  p90: number | null
+  standing_pct: number | null
+  status: MeasurementStatus
+  minimum_n: number | null
+  methods?: string | null
+  basis?: string | null
+}
+export type MeasurementPayload = {
+  contract_version: string | number
+  client_id: string
+  targets: number[]
+  tolerance_days: number
+  cohort_days: number
+  self_inclusive: boolean
+  minimum_n: number
+  snapshot_selection?: string | null
+  quantile_method?: string | null
+  standing_method?: string | null
+  matched_age: MeasurementRow[]
+  monthly_trend: Array<{ month: string; target_age_days: number; metric: MeasurementMetric; median: number | null; n: number; min_actual_age_days: number | null; max_actual_age_days: number | null; captured_through: string | null; basis: string | null }>
+  coverage: Array<{ canonical_post_id?: string | null; raw_snapshot_id?: string | null; collection_status?: string | null; selected_snapshot_count?: number | null; resolution_status?: string | null; unresolved_reason?: string | null }>
+  classifications: Array<{ canonical_post_id: string | null; taxonomy_version: string | null; subject: string | null; purpose: string | null; hook: string | null; format: string | null; confidence: number | null; source_ref: string | null; classified_at: string | null; classified: boolean }>
+}
+export type MeasurementRead =
+  | { kind: 'loading' }
+  | { kind: 'ready'; data: MeasurementPayload }
+  | { kind: 'empty'; message: string }
+  | { kind: 'denied'; message: string }
+  | { kind: 'failed'; message: string }
+
+export async function fetchMeasurement(lane: ContentLane): Promise<MeasurementRead> {
+  // The raw payload is service-only. Operator reads go through this existing
+  // authenticated gate, which authorizes the session before it accepts a lane.
+  const { data, error } = await supabase.rpc('operator_audn_measurement', {
+    p_gate: CLIENT_OPS_GATE, p_client_id: lane,
+  })
+  if (error) {
+    const message = error.message || 'Measurement could not be read.'
+    return /permission|denied|not authorized|not_authenticated/i.test(message)
+      ? { kind: 'denied', message }
+      : { kind: 'failed', message }
+  }
+  const payload = data as MeasurementPayload | null
+  if (!payload || !Array.isArray(payload.matched_age)) return { kind: 'failed', message: 'Measurement returned no usable payload.' }
+  if (payload.client_id !== lane) return { kind: 'denied', message: 'Measurement was not returned for this lane.' }
+  if (payload.matched_age.length === 0) return { kind: 'empty', message: 'No matched-age measurements yet.' }
+  return { kind: 'ready', data: payload }
+}
 
 /* ==========================================================================
    AUDIENCE — the read-only layer behind the Strategy tab's audience block
