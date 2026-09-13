@@ -503,7 +503,14 @@ async function getLocal(path: string): Promise<unknown> {
 
 async function getSnapshot(kind: 'operator' | 'evidence'): Promise<unknown> {
   if (kind === 'operator') {
-    const v = await supabase.from('campaign_control_latest_v').select('payload').limit(1)
+    // The view holds one row PER KIND (evidence, liveness, operator — that order). Without the
+    // kind filter the first row is the private evidence payload, which the parser rightly
+    // refuses (seen live 2026-09-13 after Run 04's first ticks). Ask for the operator row only.
+    const v = await supabase
+      .from('campaign_control_latest_v')
+      .select('payload')
+      .eq('kind', 'operator')
+      .limit(1)
     if (!v.error && v.data && v.data.length > 0) return (v.data[0] as { payload: unknown }).payload
   }
   const t = await supabase
