@@ -6,7 +6,14 @@
 // states", "ERROR(reason, retryable) from any state"). Rather than fake them
 // with dead-end demo chrome inside the product UI, they are reachable by URL:
 //
-//   ?wbmock=fetch-error  → every data surface reports a failed load
+//   ?wbmock=fetch-error  → every data surface reports a failed load, the
+//                          operator control payload included
+//   ?wbmock=cc:<name>    → the Sends Control sections render one frozen operator
+//                          scenario instead of the live payload. <name> is one of
+//                          outside_window | healthy | capacity_reached | incident |
+//                          unknown | empty | partial (see src/lib/ccScenarios.ts).
+//                          `empty` is the ABSENCE of a snapshot, `partial` is a
+//                          snapshot with no recurrence ledger.
 //   ?wbmock=chat:error-cold → the broker refuses before the stream opens
 //   ?wbmock=chat:error-mid  → the stream dies a third of the way in
 //   ?wbmock=voice:on        → drive the voice machine from timers instead of a live

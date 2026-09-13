@@ -15,6 +15,13 @@ export default defineConfig({
   plugins: [react(), VitePWA({
     strategies: 'injectManifest', srcDir: 'src', filename: 'sw.ts',
     registerType: 'autoUpdate',
+    // The `?wbmock=cc:<scenario>` operator fixtures are a DEVELOPMENT lever
+    // (src/lib/cc-fixtures/*.json). They are never requested by the shipped app
+    // — `loadScenario` refuses outside DEV — so precaching ~2.7 MB of them would
+    // put the whole test corpus on every install for nobody's benefit.
+    injectManifest: {
+      globIgnores: ['**/{healthy,incident,unknown,partial,capacity_reached,outside_window}-*.js'],
+    },
     manifest: {
       name: 'Inbox', short_name: 'Inbox', display: 'standalone',
       // goal run inbox-agent-drawer-2026-09-12 (Seat B): `id` pins the
