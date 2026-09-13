@@ -19,8 +19,9 @@ import { Badge } from '../../ds'
 import { Group } from '../kit'
 import { CalmEmpty, Failed } from './parts'
 import {
-  DAYS, HEAT_FLOOR, ROLE_EXPLAINER, ROLE_LABEL, compareRows, compareSummary, fetchBenchmark, formatRows,
-  heatIndex, heatScale, num, peakLine, pickCompare, ratioLine, shortDate, subLine,
+  DAYS, HEAT_FLOOR, ROLE_EXPLAINER, ROLE_LABEL, baselineSentence, compareRows, compareSummary, distLine,
+  fetchBenchmark, formatRows, heatIndex, heatScale, liftLabel, num, pctLabel, peakLine, per1kLine, pickCompare,
+  ratioLine, recentRows, shortDate, subLine,
   type Benchmark, type BenchmarkState, type BenchPost,
 } from '../../lib/benchmark'
 import type { ContentLane } from '../../lib/content'
@@ -239,6 +240,67 @@ function Accounts({ b, lane }: { b: Benchmark; lane: ContentLane }) {
   )
 }
 
+/* Where a post lands. Ivan 2026-09-13, recalling the Imagine AI method: score a
+   post against a baseline instead of reading a raw number. Theirs is fitted per
+   account across 132 companies; ours is this lane's own posts, plus the only rate
+   LinkedIn gives a poster about themselves, engagement per 1,000 impressions. */
+function Baseline({ b, lane }: { b: Benchmark; lane: ContentLane }) {
+  const d = b.own_dist
+  if (!d) return null
+  const floor = b.floors?.own_min ?? 20
+  const youLabel = lane === 'ivan' ? 'Your' : "This lane's"
+  const line = distLine(d, floor)
+  const rate = per1kLine(d, floor)
+  const rows = recentRows(b.own_recent || [])
+  return (
+    <div className="a-bm-panel">
+      <div className="a-bm-h">Where a post of {lane === 'ivan' ? 'yours' : 'theirs'} lands</div>
+      <div className="a-ct-sub">{baselineSentence(d, floor, youLabel)}</div>
+      {line ? (
+        <div className="a-bm-dist">
+          <div className="a-bm-dist-cell">
+            <span className="a-eyebrow">Half · three quarters · nine in ten</span>
+            <span className="a-bm-v a-mono">{line}</span>
+            <span className="a-bm-d">engagement, last {b.days} days, {d.n} posts</span>
+          </div>
+          {rate ? (
+            <div className="a-bm-dist-cell">
+              <span className="a-eyebrow">Same three, as a rate</span>
+              <span className="a-bm-v a-mono">{rate.replace(' per 1,000 impressions', '')}</span>
+              <span className="a-bm-d">per 1,000 impressions, on {d.n_imp} posts</span>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      <div className="a-bm-tscroll">
+        <table className="a-bm-table">
+          <thead>
+            <tr>
+              <th>Posted</th><th>Against the baseline</th><th>Post</th><th className="a-bm-num">Impressions</th>
+              <th className="a-bm-num">Engagement</th><th className="a-bm-num">Per 1,000</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(r => (
+              <tr key={`${r.published_at}-${r.eng}`}>
+                <td className="a-mono">{shortDate(r.published_at)}</td>
+                <td>{r.label ? <span className={`a-bm-pct ${r.pct !== null && r.pct >= 90 ? 'a-bm-pct-hi' : ''}`}>{r.label}</span> : <span className="a-dim">not enough posts yet</span>}</td>
+                <td className="a-bm-post-cell">{r.url ? <a href={r.url} target="_blank" rel="noreferrer">{r.text || 'open post'}</a> : (r.text || '–')}</td>
+                <td className="a-bm-num">{num(r.impressions)}</td>
+                <td className="a-bm-num">{num(r.eng)}</td>
+                <td className="a-bm-num">{r.per1k === null ? '–' : r.per1k.toFixed(1)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="a-ct-sub a-bm-foot">
+        A percentile here is against this lane's own posts in the window, never against another account. Impressions exist only for posts we own, so the rate column cannot be drawn for anybody we watch.
+      </div>
+    </div>
+  )
+}
+
 function Post({ p }: { p: BenchPost }) {
   return (
     <div className="a-bm-post">
@@ -249,6 +311,12 @@ function Post({ p }: { p: BenchPost }) {
       <div className="a-bm-post-eng">
         {num(p.eng)} <small>{num(p.likes)} reactions · {num(p.comments)} comments</small>
       </div>
+      {liftLabel(p) ? (
+        <div className="a-bm-post-lift">
+          <span className={`a-bm-pct ${p.lift !== null && p.lift >= 2 ? 'a-bm-pct-hi' : ''}`}>{liftLabel(p)}</span>
+          {p.author_pct !== null ? <span className="a-dim">{pctLabel(p.author_pct)} of their {p.author_n} posts</span> : null}
+        </div>
+      ) : null}
       <div className="a-bm-post-txt">{p.text}</div>
       {p.angle
         ? <div className="a-bm-post-angle"><b>Angle for this lane.</b> {p.angle}</div>
@@ -259,12 +327,31 @@ function Post({ p }: { p: BenchPost }) {
 }
 
 function TopPosts({ b }: { b: Benchmark }) {
+  // Two readings of the same window. Sorted by raw engagement the list is a ranking of
+  // account size; sorted by how far a post beat its own author it is a ranking of what
+  // the post did. The second is the one to copy, so it leads.
+  const [mode, setMode] = useState<'outliers' | 'biggest'>('outliers')
+  const outliers = b.outliers || []
+  const rows = mode === 'outliers' && outliers.length ? outliers : b.top
+  const floor = b.floors?.author_min ?? 8
   return (
     <div className="a-bm-panel">
-      <div className="a-bm-h">Their posts worth studying</div>
-      <div className="a-ct-sub">Top of the last {b.days} days, at most three per account. Where an angle was already written, it sits under the post.</div>
+      <div className="a-bm-cmp-head">
+        <div>
+          <div className="a-bm-h">Their posts worth studying</div>
+          <div className="a-ct-sub">
+            {mode === 'outliers'
+              ? `Posts that beat their own author's median by the widest margin, among accounts with at least ${floor} posts in the window.`
+              : `The biggest numbers of the last ${b.days} days, at most three per account. Large accounts fill this list by being large.`}
+          </div>
+        </div>
+        <div className="a-bm-seg" role="group" aria-label="How to rank these posts">
+          <button type="button" className={mode === 'outliers' ? 'on' : ''} onClick={() => setMode('outliers')}>Beat their own baseline</button>
+          <button type="button" className={mode === 'biggest' ? 'on' : ''} onClick={() => setMode('biggest')}>Biggest numbers</button>
+        </div>
+      </div>
       <div className="a-bm-posts">
-        {b.top.map(p => <Post key={p.url ?? `${p.who}-${p.at}`} p={p} />)}
+        {rows.map(p => <Post key={`${mode}-${p.url ?? `${p.who}-${p.at}`}`} p={p} />)}
       </div>
     </div>
   )
@@ -312,6 +399,7 @@ export function BenchmarkView({ lane, state, onRetry }: {
         <Formats b={b} />
         <Heat b={b} />
       </div>
+      <Baseline b={b} lane={lane} />
       <Accounts b={b} lane={lane} />
       <TopPosts b={b} />
       <div className="a-ct-sub a-bm-foot">

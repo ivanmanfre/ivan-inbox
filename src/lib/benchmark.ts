@@ -31,6 +31,7 @@ export type BenchAccount = {
   per_wk: number
   median: number | null
   smart: number | null
+  p90?: number | null
   media: string
   best: { eng: number; url: string | null; text: string } | null
 }
@@ -47,6 +48,37 @@ export type BenchPost = {
   text: string
   angle: string | null
   why: string | null
+  /** The median post of this post's OWN author inside the window. */
+  author_med: number | null
+  author_n: number | null
+  /** eng / author_med. Null when the author has too few posts to have a shape. */
+  lift: number | null
+  /** 0-100: where this post sits among that author's own posts. */
+  author_pct: number | null
+}
+
+/** The lane's own baseline: the distribution its next post will be judged against. */
+export type OwnDist = {
+  n: number
+  p50: number | null
+  p75: number | null
+  p90: number | null
+  best: number | null
+  n_imp: number
+  k50: number | null
+  k75: number | null
+  k90: number | null
+}
+
+export type OwnRecent = {
+  published_at: string
+  eng: number
+  impressions: number | null
+  per1k: number | null
+  /** percentile of this post inside the lane's own window; null under the floor. */
+  pct: number | null
+  text: string | null
+  url: string | null
 }
 
 export type HeatCell = { dow: number; h: number; n: number; avg: number }
@@ -69,6 +101,10 @@ export type Benchmark = {
   heat: HeatCell[]
   accounts: BenchAccount[]
   top: BenchPost[]
+  outliers: BenchPost[]
+  own_dist: OwnDist
+  own_recent: OwnRecent[]
+  floors: { own_min: number; author_min: number }
 }
 
 export type BenchmarkState =
@@ -216,4 +252,59 @@ export function compareSummary(you: BenchYou, them: BenchAccount, youLabel: stri
   const r = ratioLine(them.smart, you.smart)
   const gap = r ? ` (${r})` : ''
   return `${them.who} posts ${them.per_wk} a week, ${youLabel.toLowerCase()} ${you.per_wk}. Their typical post gets ${num(them.smart)}, yours ${num(you.smart)}${gap}.`
+}
+
+/* ---- Baselines ------------------------------------------------------------
+   Ivan, 2026-09-13, on the Imagine AI method: "he will measure the content on
+   performance per baseline impressions... P90, P70". Their published numbers are
+   percentiles ACROSS accounts and are theirs, not ours. What we borrow is the
+   shape: a post is read against the distribution of the account that wrote it.
+   Ours are computed on our own posts and on each competitor's own posts. */
+
+/** "1 · 2 · 5" for p50/p75/p90, or null when the lane is under the floor. */
+export function distLine(d: OwnDist, floorN: number): string | null {
+  if (!d || d.n < floorN) return null
+  return `${num(d.p50)} · ${num(d.p75)} · ${num(d.p90)}`
+}
+
+/** The one sentence under the baseline: what a normal post looks like here. */
+export function baselineSentence(d: OwnDist, floorN: number, youLabel = 'Your'): string {
+  if (!d || d.n === 0) return 'No posts with metrics in this window.'
+  if (d.n < floorN) {
+    return `${d.n} posts with metrics. Under ${floorN} a percentile is noise, so this lane shows counts only.`
+  }
+  const mid = num(d.p50)
+  const hi = num(d.p90)
+  return `Half of ${youLabel.toLowerCase()} posts land at or under ${mid} engagement. One in ten clears ${hi}. Best in the window ${num(d.best)}.`
+}
+
+/** Where one post sits, in words. The band around the middle is named rather than
+    numbered: "top 47%" is a true statement about a completely ordinary post, and it
+    reads like praise. Null under the floor. */
+export function pctLabel(pct: number | null): string | null {
+  if (pct === null || pct === undefined) return null
+  const p = Math.round(pct)
+  if (p >= 60) return `top ${Math.max(1, 100 - p)}%`
+  if (p >= 40) return 'about typical'
+  return `bottom ${Math.max(1, p)}%`
+}
+
+/** "3.4× their median" for a post that beat its author; null when we cannot say. */
+export function liftLabel(p: { lift: number | null; author_n: number | null }): string | null {
+  if (p.lift === null || p.lift === undefined) return null
+  if (p.lift >= 1.15) return `${p.lift.toFixed(1)}× their median`
+  if (p.lift <= 0.85) return `${(1 / p.lift).toFixed(1)}× under their median`
+  return 'their normal post'
+}
+
+/** Engagement per 1,000 impressions, the only rate we can compute, and only on
+    our own posts: LinkedIn gives impressions for the poster and nobody else. */
+export function per1kLine(d: OwnDist, floorN: number): string | null {
+  if (!d || d.n_imp < floorN || d.k50 === null) return null
+  return `${num(d.k50)} · ${num(d.k75)} · ${num(d.k90)} per 1,000 impressions`
+}
+
+/** Recent posts, newest first, with the percentile resolved to a phrase. */
+export function recentRows(rows: OwnRecent[]): Array<OwnRecent & { label: string | null }> {
+  return (rows || []).map(r => ({ ...r, label: pctLabel(r.pct) }))
 }

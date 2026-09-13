@@ -975,6 +975,19 @@ a.a-prop-src:hover{ color:var(--ds-text) }
 .a-bm-post-angle b { color: var(--ds-text); font-weight: 600; }
 .a-bm-foot { margin-top: var(--ds-s2); }
 
+/* Baselines: where a post lands against its own author */
+.a-bm-dist { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--ds-s2); margin: var(--ds-s3) 0; }
+.a-bm-dist-cell { display: flex; flex-direction: column; gap: 2px; padding: var(--ds-s2) var(--ds-s3); border-left: 2px solid var(--ds-line); }
+.a-bm-pct { display: inline-block; font-size: var(--ds-fs-meta); padding: 1px 6px; border: 1px solid var(--ds-line); border-radius: var(--ds-r1); color: var(--ds-text-2); white-space: nowrap; }
+.a-bm-pct-hi { color: var(--ds-text); border-color: var(--ds-text-2); font-weight: 600; }
+.a-bm-post-lift { display: flex; gap: var(--ds-s2); align-items: center; flex-wrap: wrap; font-size: var(--ds-fs-meta); margin-bottom: 4px; }
+.a-bm-seg { display: inline-flex; border: 1px solid var(--ds-line); border-radius: var(--ds-r1); overflow: hidden; flex-shrink: 0; }
+.a-bm-seg button { font: inherit; font-size: var(--ds-fs-meta); color: var(--ds-text-2); background: transparent; border: 0; padding: 5px 10px; cursor: pointer; }
+.a-bm-seg button + button { border-left: 1px solid var(--ds-line); }
+.a-bm-seg button.on { background: var(--ds-surface-3); color: var(--ds-text); font-weight: 600; }
+.a-bm-post-cell { min-width: 260px; max-width: 460px; }
+
+
 /* You vs one account */
 .a-bm-cmp-head { display: flex; justify-content: space-between; gap: var(--ds-s3); align-items: flex-start; margin-bottom: var(--ds-s3); flex-wrap: wrap; }
 .a-bm-cmp-pick { display: flex; flex-direction: column; gap: 2px; min-width: 200px; }

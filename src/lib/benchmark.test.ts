@@ -93,3 +93,41 @@ describe('you vs one account', () => {
       .toBe('Rival B posts 1 a week, you 3.1. Their typical post gets 300, yours 4 (they get 75.0×).')
   })
 })
+
+describe('baselines', () => {
+  const dist = { n: 59, p50: 1, p75: 2, p90: 5, best: 68, n_imp: 59, k50: 9.1, k75: 21.3, k90: 38.9 }
+
+  it('withholds percentiles under the floor and says why', async () => {
+    const { baselineSentence, distLine } = await import('./benchmark')
+    expect(distLine(dist, 20)).toBe('1 · 2 · 5')
+    expect(distLine({ ...dist, n: 9 }, 20)).toBeNull()
+    expect(baselineSentence({ ...dist, n: 9 }, 20))
+      .toBe('9 posts with metrics. Under 20 a percentile is noise, so this lane shows counts only.')
+    expect(baselineSentence({ ...dist, n: 0 }, 20, 'You')).toBe('No posts with metrics in this window.')
+    expect(baselineSentence(dist, 20, 'You'))
+      .toBe('Half of you posts land at or under 1 engagement. One in ten clears 5. Best in the window 68.')
+  })
+
+  it('pctLabel names the band and liftLabel names the gap', async () => {
+    const { liftLabel, pctLabel } = await import('./benchmark')
+    expect(pctLabel(100)).toBe('top 1%')
+    expect(pctLabel(92)).toBe('top 8%')
+    expect(pctLabel(60)).toBe('top 40%')
+    expect(pctLabel(53)).toBe('about typical')
+    expect(pctLabel(41)).toBe('about typical')
+    expect(pctLabel(10)).toBe('bottom 10%')
+    expect(pctLabel(0)).toBe('bottom 1%')
+    expect(pctLabel(null)).toBeNull()
+    expect(liftLabel({ lift: 3.42, author_n: 30 })).toBe('3.4× their median')
+    expect(liftLabel({ lift: 1, author_n: 30 })).toBe('their normal post')
+    expect(liftLabel({ lift: 0.5, author_n: 30 })).toBe('2.0× under their median')
+    expect(liftLabel({ lift: null, author_n: 3 })).toBeNull()
+  })
+
+  it('per1k is withheld when too few posts carry impressions', async () => {
+    const { per1kLine } = await import('./benchmark')
+    expect(per1kLine(dist, 20)).toBe('9 · 21 · 39 per 1,000 impressions')
+    expect(per1kLine({ ...dist, n_imp: 4 }, 20)).toBeNull()
+    expect(per1kLine({ ...dist, k50: null }, 20)).toBeNull()
+  })
+})
