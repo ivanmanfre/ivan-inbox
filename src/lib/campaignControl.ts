@@ -327,6 +327,37 @@ function cohortBad(c: CcCohort | null | undefined, where: string): string | null
   return null
 }
 
+const DAY_MS = 86_400_000
+const nextDay = (d: string): string => new Date(Date.parse(`${d}T00:00:00Z`) + DAY_MS).toISOString().slice(0, 10)
+
+/** The first hole in `ranges.daily`, as a sentence, or null when it is whole. */
+function findDailyGap(ranges: CcRanges): string | null {
+  if (!Array.isArray(ranges.daily) || ranges.daily.length === 0) return null
+  const series = new Map<string, Set<string>>()
+  for (const d of ranges.daily) {
+    if (!d || typeof d.day !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(d.day)) {
+      return `ranges.daily carries a row with no usable day (${String(d?.day)})`
+    }
+    const key = `${d.client_id}/${d.channel}`
+    const set = series.get(key) ?? new Set<string>()
+    set.add(d.day)
+    series.set(key, set)
+  }
+  const todayIv = (ranges.intervals ?? []).find(i => i.name === 'today')
+  const expectedLast = todayIv ? todayIv.to.slice(0, 10) : null
+  for (const [key, set] of series) {
+    const days = [...set].sort()
+    const first = days[0], last = days[days.length - 1]
+    for (let d = first; d !== last; d = nextDay(d)) {
+      if (!set.has(d)) return `ranges.daily is missing ${d} for ${key} — a missing day is a hole in the read, not a zero`
+    }
+    if (expectedLast && last !== expectedLast) {
+      return `ranges.daily for ${key} ends at ${last} but the "today" interval ends at ${expectedLast}`
+    }
+  }
+  return null
+}
+
 /**
  * Parse and validate a `cc03.v1` browser payload.
  * Returns the payload, or a `{ contract_error }` the UI prints verbatim.
@@ -368,6 +399,14 @@ export function parsePayload(json: unknown): CcPayload | CcContractError {
       ?? cohortBad(r.reply_cohort, `ranges.rows ${r.client_id}/${r.channel}/${r.interval} reply`)
     if (bad) return err(bad)
   }
+
+  /* A day missing from the daily series is a contract error, never a zero.
+     A day with no sends is present carrying 0 and the coverage says the source
+     was complete; a day that is simply ABSENT is a hole in the read, and
+     rendering it as a gap (or summing around it) would understate the window
+     without saying so. */
+  const dailyGap = findDailyGap(ranges)
+  if (dailyGap) return err(dailyGap)
 
   if (!p.monitor || typeof p.monitor !== 'object') return err('missing section: monitor')
   if (!p.coverage || typeof p.coverage !== 'object') return err('missing section: coverage')

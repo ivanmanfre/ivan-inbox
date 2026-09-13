@@ -78,6 +78,31 @@ describe('parsePayload', () => {
     expect(isContractError(parsePayload(ok))).toBe(false)
   })
 
+  it('rejects a daily series with a day missing from the middle', () => {
+    const bad = clone(healthy) as { ranges: { daily: Array<{ client_id: string; channel: string; day: string }> } }
+    const victim = bad.ranges.daily.find(d => d.client_id === 'ivan' && d.channel === 'invitation' && d.day === '2026-08-20')!
+    bad.ranges.daily = bad.ranges.daily.filter(d => d !== victim)
+    const r = parsePayload(bad)
+    expect(isContractError(r)).toBe(true)
+    expect((r as { contract_error: string }).contract_error).toContain('2026-08-20')
+    expect((r as { contract_error: string }).contract_error).toContain('not a zero')
+  })
+
+  it('rejects a daily series that stops short of the today interval', () => {
+    const bad = clone(healthy) as { ranges: { daily: Array<{ day: string }> } }
+    bad.ranges.daily = bad.ranges.daily.filter(d => d.day !== '2026-09-13')
+    const r = parsePayload(bad)
+    expect(isContractError(r)).toBe(true)
+    expect((r as { contract_error: string }).contract_error).toContain('today')
+  })
+
+  it('accepts a day that is present carrying zero', () => {
+    const ok = clone(healthy) as { ranges: { daily: Array<{ client_id: string; channel: string; day: string; sent: number }> } }
+    const row = ok.ranges.daily.find(d => d.client_id === 'ivan' && d.channel === 'invitation' && d.day === '2026-08-20')!
+    row.sent = 0
+    expect(isContractError(parsePayload(ok))).toBe(false)
+  })
+
   it('privacy guard: rejects a text key anywhere in the browser payload', () => {
     const bad = clone(healthy) as { evidence: Array<Record<string, unknown>> }
     bad.evidence[0].text = 'a memory body that must never reach a browser'
