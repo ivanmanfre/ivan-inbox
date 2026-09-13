@@ -652,9 +652,9 @@ export function DeliverySection({ cc, timeframe, range, client }: {
       {todayRows.length > 0 && (
         <div className="a-cc-block">
           <div className="a-eyebrow a-cc-sublabel">Today, a partial day — never compared</div>
-          <span className="a-meta">
+          <span className="a-meta a-cc-wrap">
             {todayRows.map(r => (
-              <span key={`${r.client_id}:${r.channel}`} className="a-sends-nb">
+              <span key={`${r.client_id}:${r.channel}`}>
                 {p.clients.find(c => c.client_id === r.client_id)?.label ?? r.client_id} {r.channel} {r.sent}<Sep />
               </span>
             ))}
