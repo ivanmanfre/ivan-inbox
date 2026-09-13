@@ -286,27 +286,23 @@ function EvidenceFold({ payload, ids }: { payload: CcPayload; ids: string[] }) {
 
 // ---- one client row ------------------------------------------------------
 
-function ControlRow({ c, payload, liveness, asOf, staleMinutes, selected }: {
-  c: CcClient; payload: CcPayload; liveness: string; asOf: number
+function ControlSummary({ c, liveness, asOf, staleMinutes, selected, onOpen }: {
+  c: CcClient; liveness: string; asOf: number
   /** Set when the monitor has gone quiet: status rule 1 then applies here, in
       the browser, exactly as it applies in the builder. A green word beside a
       dead monitor is the one reading this surface must never show. */
   staleMinutes: number | null
   /** The chip's seat. It marks and opens this row; it never hides another. */
   selected?: boolean
+  onOpen: () => void
 }) {
-  /* An incident opens expanded. A red row that hides its own cause behind a
-     click is a row that gets skipped, and the cause is the whole point of it. */
-  const [open, setOpen] = useState(c.status === 'incident' || Boolean(selected))
   const shown: CcStatus = staleMinutes === null ? c.status : 'unknown'
   const tone = STATUS_TONE[shown]
   const inv = c.invitation
   const closed = c.status === 'outside_window' || !sendableOpen(inv)
   const fresh = c.freshness
-  const incidents = c.incidents ?? []
 
   return (
-    <>
       <Row
         lead={<Dot tone={tone as Tone} off={tone === undefined} />}
         title={
@@ -329,7 +325,7 @@ function ControlRow({ c, payload, liveness, asOf, staleMinutes, selected }: {
           </span>
         }
         selected={selected}
-        onClick={() => setOpen(v => !v)}
+        onClick={onOpen}
       >
         <span className="a-row-meta a-cc-meta">
           <span className="a-cc-next">Next: {c.next_action?.action ?? 'nothing recorded'}</span>
@@ -343,8 +339,20 @@ function ControlRow({ c, payload, liveness, asOf, staleMinutes, selected }: {
           <span className="a-sends-nb">monitor {liveness}</span>
         </span>
       </Row>
-      {open && (
+  )
+}
+
+/* The three summary rows sit together, then ONE detail panel below them. With
+   the panel inline, opening a seat pushed the other two below the fold — three
+   rows on the page and one seat on the screen, which is the thing this surface
+   exists to stop. */
+function ControlPanel({ c, payload, asOf }: { c: CcClient; payload: CcPayload; asOf: number }) {
+  const inv = c.invitation
+  const closed = c.status === 'outside_window' || !sendableOpen(inv)
+  const incidents = c.incidents ?? []
+  return (
         <div className="a-cc-panel">
+          <div className="a-eyebrow a-cc-sublabel">{c.label} — detail</div>
           <Ledger>
             <ChannelCard ch={inv} title="Invitations today" note="invitations only" />
             <ChannelCard ch={c.dm} title="DMs today" note="messages after an accept — never added to invitations" />
@@ -366,8 +374,6 @@ function ControlRow({ c, payload, liveness, asOf, staleMinutes, selected }: {
             ids={[...(c.status_basis?.evidence_ids ?? []), ...(inv.evidence_ids ?? []), ...incidents.flatMap(i => i.evidence_ids ?? [])]}
           />
         </div>
-      )}
-    </>
   )
 }
 
@@ -376,6 +382,10 @@ function ControlRow({ c, payload, liveness, asOf, staleMinutes, selected }: {
 export function ControlSection({ cc, client, now = Date.now() }: {
   cc: CcState | null; client: Client; now?: number
 }) {
+  /* Which seat's detail is open. The chip's seat opens by default, and so does
+     a seat with an open incident: a red row that hides its own cause behind a
+     click is a row that gets skipped, and the cause is the whole point of it. */
+  const [openId, setOpenId] = useState<string | null>(null)
   if (cc === null) {
     return <Section label="Control" tail="reading" wrapTail><SkeletonRows rows={3} label="Reading the control payload" /></Section>
   }
@@ -429,6 +439,10 @@ export function ControlSection({ cc, client, now = Date.now() }: {
      never removes a seat from the answer. Delivery and Recurring problems keep
      honouring the filter, because those are windows onto one seat's numbers. */
   const rows = p.clients
+  const fallbackOpen = rows.find(c => client !== 'all' && c.client_id === client)
+    ?? rows.find(c => c.status === 'incident')
+    ?? null
+  const detail = (openId ? rows.find(c => c.client_id === openId) : null) ?? (openId ? null : fallbackOpen)
   return (
     <Section
       label="Control"
@@ -454,17 +468,18 @@ export function ControlSection({ cc, client, now = Date.now() }: {
         {rows.length === 0
           ? <Row title="No seat in this payload carries a control reading." />
           : rows.map(c => (
-              <ControlRow
+              <ControlSummary
                 key={c.client_id}
                 c={c}
-                payload={p}
                 liveness={live}
                 asOf={asOf}
                 staleMinutes={staleMinutes}
                 selected={client !== 'all' && c.client_id === client}
+                onOpen={() => setOpenId(v => (v === c.client_id ? null : c.client_id))}
               />
             ))}
       </Rows>
+      {detail && <ControlPanel c={detail} payload={p} asOf={asOf} />}
       <div className="a-sends-cap">
         Confirmed sends from the frozen Run 01 rules. Invitations, DMs and InMail are three separate figures and are never added together.
       </div>

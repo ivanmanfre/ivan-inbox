@@ -423,15 +423,28 @@ export function parsePayload(json: unknown): CcPayload | CcContractError {
   }
 }
 
-/** Stale when the monitor's last tick is older than its own staleness budget. */
-export function monitorLiveness(payload: Pick<CcPayload, 'monitor'>, now: number = Date.now()): CcLiveness {
+/**
+ * Stale when the monitor's last tick is older than its own staleness budget.
+ *
+ * A SNAPSHOT is judged at its own instant, not at the reader's. A payload built
+ * at 00:00:34Z whose monitor ticked at 00:00:00Z was fresh when it was taken and
+ * is still a record of a fresh read seventeen hours later; measuring it against
+ * wall clock turned every frozen scenario into "monitor stale" and forced every
+ * seat to unverified. Only a `live` payload is judged against wall clock.
+ */
+export function monitorLiveness(
+  payload: Pick<CcPayload, 'monitor'> & Partial<Pick<CcPayload, 'as_of' | 'source_mode'>>,
+  now: number = Date.now(),
+): CcLiveness {
   const m = payload.monitor
   if (!m || !m.last_tick_at) return 'unknown'
   const t = new Date(m.last_tick_at).getTime()
   if (!Number.isFinite(t)) return 'unknown'
   const budget = m.stale_after_s
   if (!budget || budget <= 0) return 'unknown'
-  return (now - t) / 1000 > budget ? 'stale' : 'fresh'
+  const asOf = payload.as_of ? Date.parse(payload.as_of) : NaN
+  const at = payload.source_mode === 'snapshot' && Number.isFinite(asOf) ? asOf : now
+  return (at - t) / 1000 > budget ? 'stale' : 'fresh'
 }
 
 /* `unknown` is an ATTENTION state, never a clear one: a reading we could not

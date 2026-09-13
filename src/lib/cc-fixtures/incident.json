@@ -1,14 +1,14 @@
 {
  "schema_version": 1,
  "payload_version": "cc03.v1",
- "generated_at": "2026-09-13T16:29:11Z",
+ "generated_at": "2026-09-13T16:51:21Z",
  "as_of": "2026-09-13T00:00:34Z",
  "source_mode": "snapshot",
  "inputs": {
   "run01_envelope": {
    "path": "package/state/run01-envelope.json",
-   "sha256": "132f2d6c24083479d272f28684019b0c6097ae64f8ebc5b282dbe702ad4f570a",
-   "generated_at": "2026-09-13T16:29:11Z",
+   "sha256": "5bbf4cc073e142ce64e20c90b746cf3633e392dce946385ed25728078e1b17f4",
+   "generated_at": "2026-09-13T16:51:21Z",
    "source_mode": "snapshot",
    "source_spec": "snapshot:upstream/run01/evidence"
   },
@@ -322,7 +322,8 @@
   "tick_interval_s": 300,
   "stale_after_s": 900,
   "liveness": "fresh",
-  "host": "local-dev"
+  "host": "local-dev",
+  "note": "no monitor runs in snapshot mode"
  },
  "clients": [
   {
@@ -661,7 +662,7 @@
    "label": "Davorin",
    "seat_id": "pQdTM0R0TRWkwBi7-mKXYA",
    "status": "incident",
-   "status_reason": "Sending is failing on this seat: arch invitation seat pQdTM0R0TRWkwBi7-mKXYA: 157 refused attempts across lanes cold, warm_engager, 0 confirmed since 2026-09-10T12:07:42Z (Request failed with status code 422; arch_422_streak_10_cooldown_armed_2h; arch_422_streak_11_cooldown_armed_2h).",
+   "status_reason": "LinkedIn has refused 157 invitations from Davorin's seat since 2026-09-10 12:09:12 UTC. The provider gave no reason, so the exact restriction is unknown; nothing is safe to retry before 2026-09-13 06:00:00 UTC.",
    "status_basis": {
     "evidence_ids": [
      "ev-c98a0c6dd077",
@@ -38946,7 +38947,8 @@
   "method": "minimal mutation of the real payload; every change is listed below",
   "mutations": [
    "no mutation to arch.incidents \u2014 this is the real provider_rejection episode from the snapshot envelope",
-   "monitor.liveness -> fresh and coverage.degraded -> false so the incident is not masked by rule 1"
+   "monitor.liveness -> fresh and coverage.degraded -> false so the incident is not masked by rule 1",
+   "arch.status_reason left exactly as the real build wrote it (plain sentence); the raw provider text is never promoted out of incidents[].symptom"
   ]
  }
 }

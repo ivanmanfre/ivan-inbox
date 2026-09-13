@@ -62,7 +62,7 @@ describe('Control — the incident scenario', () => {
     // The status word and its reason are byte-identical; only the local
     // acknowledgment caption appears.
     expect(t2).toContain('Incident')
-    expect(t2).toContain('Sending is failing on this seat')
+    expect(t2).toContain('LinkedIn has refused 157 invitations')
     expect(t2).toContain('acknowledged, not recovered')
     expect(t2).not.toContain('Recovered')
     const statusOf = (s: string) => /Davorin\s+(\S+)/.exec(s)?.[1]

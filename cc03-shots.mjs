@@ -29,6 +29,7 @@ const CASES = [
   { id: 'cc-empty',         q: '?wbmock=cc:empty',     hash: '#exp/brain-b/sends' },
   { id: 'cc-partial',       q: '?wbmock=cc:partial',   hash: '#exp/brain-b/sends' },
   { id: 'fetch-error',      q: '?wbmock=fetch-error',  hash: '#exp/brain-b/sends' },
+  { id: 'loading',          q: '',                     hash: '#exp/brain-b/sends', slowPayload: true },
   { id: 'lanes',            q: '',                     hash: '#exp/brain-b/sends', view: 'Lanes' },
   { id: 'log',              q: '',                     hash: '#exp/brain-b/sends', view: 'Log' },
 ]
@@ -43,15 +44,33 @@ for (const vp of VIEWPORTS) {
     const errors = []
     page.on('pageerror', e => errors.push(String(e)))
     page.on('console', m => { if (m.type() === 'error') errors.push(`console: ${m.text()}`) })
+    const failedRequests = []
+    page.on('response', r => { if (r.status() >= 500) failedRequests.push({ url: r.url(), status: r.status() }) })
     await page.addInitScript(([s]) => { localStorage.setItem('sb-bjbvqvzbzczjbatgmccb-auth-token', s) }, [session])
+    if (c.slowPayload) {
+      // F3 "loading": hold the payload request open so the skeleton is what is
+      // on screen when the shutter falls. Nothing is stubbed — the same request
+      // is answered, six seconds late.
+      await page.route('**/payload', async route => {
+        await new Promise(r => setTimeout(r, 6000))
+        await route.continue()
+      })
+    }
     await page.goto(`${BASE}${c.q}${c.hash}`, { waitUntil: 'domcontentloaded' })
-    await page.waitForTimeout(4500)
-    if (c.view) { await page.getByRole('button', { name: c.view, exact: true }).click().catch(() => {}); await page.waitForTimeout(1200) }
+    await page.waitForTimeout(c.slowPayload ? 2200 : 4500)
+    if (!c.slowPayload) {
+      await page.waitForFunction(() => {
+        const secs = [...document.querySelectorAll('.a-sends-sec')]
+        const ctrl = secs.find(s => (s.querySelector('.a-eyebrow')?.textContent || '').trim() === 'Control')
+        return !!ctrl && ctrl.querySelectorAll('.a-rows > .a-row').length >= 1
+      }, null, { timeout: 15000 }).catch(() => {})
+    }
+    if (c.view) { await page.getByRole('button', { name: c.view, exact: true }).click().catch(() => {}); await page.waitForTimeout(1500) }
     if (c.allClients) {
       // Deselect whatever chip the app remembered: `all` is the state with no
       // chip selected, reached by clicking the selected one off.
       const on = page.locator('.a-sends-filters [data-selected="true"], .a-sends-filters [aria-pressed="true"]').first()
-      if (await on.count()) { await on.click().catch(() => {}); await page.waitForTimeout(2000) }
+      if (await on.count()) { await on.click().catch(() => {}); await page.waitForTimeout(2500) }
     }
     if (c.client) { await page.locator('.a-sends-filters').getByText(c.client, { exact: true }).first().click().catch(() => {}); await page.waitForTimeout(2500) }
     if (c.range) {
@@ -66,11 +85,16 @@ for (const vp of VIEWPORTS) {
       const t = (el) => (el ? el.textContent.replace(/\s+/g, ' ').trim() : null)
       const sec = [...document.querySelectorAll('.a-sends-sec')].map(s => t(s.querySelector('.a-eyebrow')))
       const ctrl = [...document.querySelectorAll('.a-sends-sec')].find(s => t(s.querySelector('.a-eyebrow')) === 'Control')
-      const rows = ctrl ? [...ctrl.querySelectorAll('.a-rows > .a-row')].map(r => ({
-        title: t(r.querySelector('.a-row-title')),
-        sub: t(r.querySelector('.a-row-sub')),
-        tail: t(r.querySelector('.a-row-tail')),
-      })) : []
+      const rows = ctrl ? [...ctrl.querySelectorAll('.a-rows > .a-row')].map(r => {
+        const b = r.getBoundingClientRect()
+        return {
+          title: t(r.querySelector('.a-row-title')),
+          sub: t(r.querySelector('.a-row-sub')),
+          tail: t(r.querySelector('.a-row-tail')),
+          top: Math.round(b.top + window.scrollY),
+          inFirstScreen: b.top + window.scrollY < window.innerHeight,
+        }
+      }) : []
       // Two independent measures, because `scrollWidth` on the document cannot
       // see a span clipped inside an `overflow:hidden` ancestor — which is
       // exactly the G06 MUSTNOT ("hidden overflowing evidence").
@@ -112,6 +136,7 @@ for (const vp of VIEWPORTS) {
         const ox = getComputedStyle(el).overflowX
         if (ox === 'auto' || ox === 'scroll') continue
         if (el.checkVisibility && !el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) continue
+        if (el.closest('.ds-sr, .ds-skel, .ds-skel-rows')) continue
         const b = el.getBoundingClientRect()
         if (b.right <= 0 || b.left >= window.innerWidth || b.width === 0) continue
         const sec2 = el.closest('.a-sends-sec')
@@ -140,12 +165,22 @@ for (const vp of VIEWPORTS) {
         unverifiedBadges: document.querySelectorAll('.a-cc-unverified').length,
         statusWords: [...document.querySelectorAll('.a-cc-status')].map(e => `${e.textContent}|${e.dataset.tone}`),
         loginGate: /Send code|Email me a link/i.test(document.body.textContent || ''),
+        skeletons: document.querySelectorAll('.ds-skel-rows, .ds-skel').length,
         bodyHead: (document.body.textContent || '').replace(/\s+/g, ' ').slice(0, 420),
       }
     })
     const path = `${OUT}/${vp.tag}-${c.id}.png`
     await page.screenshot({ path, fullPage: vp.tag === '1440' })
-    results.push({ case: c.id, viewport: vp.tag, png: path, facts, errors: errors.slice(0, 6) })
+    // The Lanes and Log views are untouched by this branch and read Supabase
+    // directly; a 500 from one of their own requests is a backend state, not a
+    // defect introduced here, and it is recorded with the URL that produced it.
+    const preExistingView = c.id === 'lanes' || c.id === 'log'
+    results.push({
+      case: c.id, viewport: vp.tag, png: path, facts,
+      errors: errors.slice(0, 6),
+      errors_pre_existing: preExistingView && failedRequests.length > 0,
+      failedRequests: failedRequests.slice(0, 6),
+    })
     console.log(vp.tag, c.id, 'overflow=' + facts.overflow, 'clipped=' + facts.clippedCount + '(ours ' + facts.clippedOursCount + ')',
       'hidOvf=' + facts.hiddenOverflowCount + '(ours ' + facts.hiddenOverflowOursCount + ')', 'errors=' + errors.length, (facts.controlRows[0]?.title || '').slice(0, 46))
     await ctx.close()
@@ -183,6 +218,14 @@ writeFileSync(`${OUT}/measured-facts.json`, JSON.stringify({
     cases: results.length,
     document_overflow_cases: results.filter(r => r.facts.overflow).length,
     console_error_cases: results.filter(r => r.errors.length > 0).length,
+    console_error_cases_ours: results.filter(r => r.errors.length > 0 && !r.errors_pre_existing).length,
+    all_three_rows_in_first_screen: results
+      .filter(r => r.case.startsWith('real-all') || r.case.endsWith('-all'))
+      .every(r => (r.facts.controlRows || []).length === 3 && r.facts.controlRows.every(x => x.inFirstScreen)),
+    all_client_cases_with_three_control_rows: results
+      .filter(r => !r.case.startsWith('expired') && r.case !== 'loading')
+      .every(r => (r.facts.controlRows || []).length === 3),
+    control_rows_per_case: Object.fromEntries(results.map(r => [`${r.viewport}-${r.case}`, (r.facts.controlRows || []).length])),
     clipped_text_nodes_ours: ours,
     hidden_overflow_elements_ours: oursEl,
     note: 'pre_existing:true marks a clip inside the app shell or a legacy section (a-brain-pager, a-head-sub, the Campaigns name column) that this branch did not introduce; the verifier can exclude those.',

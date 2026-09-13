@@ -148,10 +148,23 @@ describe('monitorLiveness', () => {
     expect(monitorLiveness(p(null), at('2026-09-13T15:40:00Z'))).toBe('unknown')
     expect(monitorLiveness(p('2026-09-13T15:39:20Z', 0), at('2026-09-13T15:40:00Z'))).toBe('unknown')
   })
-  it('reads the unknown fixture as stale', () => {
+  it('judges a SNAPSHOT at its own as_of, not at the reader wall clock', () => {
     const parsed = parsePayload(clone(healthy)) as CcPayload
-    parsed.monitor.last_tick_at = '2026-09-13T14:05:00Z'
-    expect(monitorLiveness(parsed, at('2026-09-13T15:40:00Z'))).toBe('stale')
+    // Its monitor ticked seconds before it was built: fresh then, and still a
+    // record of a fresh read a day later.
+    expect(parsed.source_mode).toBe('snapshot')
+    expect(monitorLiveness(parsed, at('2026-09-14T15:40:00Z'))).toBe('fresh')
+    // A tick well before the snapshot's own instant is stale in the snapshot.
+    parsed.monitor.last_tick_at = '2026-09-12T00:00:00Z'
+    expect(monitorLiveness(parsed, at('2026-09-13T00:01:00Z'))).toBe('stale')
+  })
+
+  it('judges a LIVE payload against wall clock', () => {
+    const parsed = parsePayload(clone(healthy)) as CcPayload
+    const live = { ...parsed, source_mode: 'live' as const }
+    live.monitor = { ...live.monitor, last_tick_at: '2026-09-13T14:05:00Z' }
+    expect(monitorLiveness(live, at('2026-09-13T15:40:00Z'))).toBe('stale')
+    expect(monitorLiveness(live, at('2026-09-13T14:10:00Z'))).toBe('fresh')
   })
 })
 
