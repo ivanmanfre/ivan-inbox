@@ -154,19 +154,30 @@ function Unit({ children }: { children: ReactNode }) {
 }
 
 // ---- HERO: four decision tiles (Converting? Throttled? Runway? Refilling?) ----
-function Hero({ accept, governor, pipeline, replacement, client }: {
+function Hero({ accept, governor, pipeline, replacement, client, cc }: {
   accept: AcceptRow[]; governor: GovernorRow[]; pipeline: PipelineRow[]
-  replacement: ReplacementRow[]; client: Client
+  replacement: ReplacementRow[]; client: Client; cc: CcPayload | null
 }) {
   // Q1 — Is outreach converting? Acceptance 7d vs 30d baseline. Neutral (grey)
   // when the 7d cohort is too thin to judge — never a false green/red.
   const aRows = accept.filter(r => inClient(r.client_id, client))
-  const sent7 = sum(aRows, 'sent_7d'), acc7 = sum(aRows, 'accepted_7d')
-  const sent30 = sum(aRows, 'sent_30d'), acc30 = sum(aRows, 'accepted_30d')
-  const r7 = acceptRate(sent7, acc7), r30 = acceptRate(sent30, acc30)
+  /* The tile sat beside a Funnel drawing confirmed invitations while it drew
+     `inbox_accept_v2` message rows, with no caption to tell them apart. When the
+     payload is here the tile is the 72-hour cohort over its own matured
+     denominator; when it is not, the tile keeps its legacy figure AND says so. */
+  const hero7 = cc ? ccAcceptCohort(cc, client, '7d') : null
+  const hero30 = cc ? ccAcceptCohort(cc, client, '30d') : null
+  const confirmed = hero7 !== null && hero7.rate !== null && hero30 !== null && hero30.rate !== null
+  const sent7 = confirmed ? hero7!.matured : sum(aRows, 'sent_7d')
+  const acc7 = confirmed ? hero7!.accepted : sum(aRows, 'accepted_7d')
+  const sent30 = confirmed ? hero30!.matured : sum(aRows, 'sent_30d')
+  const acc30 = confirmed ? hero30!.accepted : sum(aRows, 'accepted_30d')
+  const r7 = confirmed ? hero7!.rate! : acceptRate(sent7, acc7)
+  const r30 = confirmed ? hero30!.rate! : acceptRate(sent30, acc30)
   const trend = r7 - r30
   let aSev: Sev
-  if (aRows.length === 0 || sent7 === 0) aSev = 'neutral'
+  const noAccept = confirmed ? sent7 === 0 : aRows.length === 0
+  if (noAccept || sent7 === 0) aSev = 'neutral'
   else if (r30 === 0) aSev = r7 > 0 ? 'green' : 'neutral'
   else if (r7 >= r30) aSev = 'green'
   else if (r7 >= r30 * 0.65) aSev = 'amber'
@@ -226,8 +237,8 @@ function Hero({ accept, governor, pipeline, replacement, client }: {
         <Cell
           label={<span className="a-sends-cl">Accept{mark(aSev)}</span>}
           emptyText="No data"
-          value={aRows.length === 0 ? undefined : <>{r7}<Unit>%</Unit></>}
-          note={aRows.length === 0 ? undefined : (
+          value={noAccept ? undefined : <>{r7}<Unit>%</Unit></>}
+          note={noAccept ? undefined : (
             <>
               <span className="a-sends-nb">{acc7}/{sent7} <Sep />7d</span>
               {' '}
@@ -240,7 +251,12 @@ function Hero({ accept, governor, pipeline, replacement, client }: {
             </>
           )}
         >
-          {aRows.length > 0 && <BarGauge pct={r7} tone={SEV_TONE[aSev] ?? 'clear'} sm />}
+          {!noAccept && <BarGauge pct={r7} tone={SEV_TONE[aSev] ?? 'clear'} sm />}
+          <span className="a-cell-n a-cc-wrap">
+            {confirmed
+              ? `≤72 h, of ${sent7} matured · confirmed invitations`
+              : 'message rows — includes refused attempts; unverified'}
+          </span>
         </Cell>
         {/* Governor */}
         <Cell
@@ -1090,7 +1106,7 @@ export function OverviewView({ client, timeframe, setClient, range = null }: {
   return (
     <Body>
       {control}
-      <Hero accept={data.accept} governor={data.governor} pipeline={data.pipeline} replacement={data.replacement} client={client} />
+      <Hero accept={data.accept} governor={data.governor} pipeline={data.pipeline} replacement={data.replacement} client={client} cc={ccp} />
       {timeframe === 'custom' && range && <RangeSummary range={range} client={client} />}
       <DayLedger rows={data.ledger} client={client} timeframe={timeframe} cc={ccp} />
       <Funnel accept={data.accept} scans={data.scans} outcomes={data.outcomes} client={client} cc={ccp} />

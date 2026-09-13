@@ -21,7 +21,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import {
   fetchPayload, fetchEvidence, monitorLiveness, STATUS_TONE, STATUS_WORD,
   type CcState, type CcPayload, type CcClient, type CcChannel, type CcIncident,
-  type CcRangeRow, type CcRecurrenceItem, type CcEvidenceState,
+  type CcRangeRow, type CcRecurrenceItem, type CcEvidenceState, type CcStatus,
 } from '../../lib/campaignControl'
 import { Badge, Button, type TableColumn } from '../../ds'
 import { Cell, Dot, Ledger, Row, Rows, Sep, relAge, type Tone } from '../kit'
@@ -286,13 +286,20 @@ function EvidenceFold({ payload, ids }: { payload: CcPayload; ids: string[] }) {
 
 // ---- one client row ------------------------------------------------------
 
-function ControlRow({ c, payload, liveness, asOf }: {
+function ControlRow({ c, payload, liveness, asOf, staleMinutes, selected }: {
   c: CcClient; payload: CcPayload; liveness: string; asOf: number
+  /** Set when the monitor has gone quiet: status rule 1 then applies here, in
+      the browser, exactly as it applies in the builder. A green word beside a
+      dead monitor is the one reading this surface must never show. */
+  staleMinutes: number | null
+  /** The chip's seat. It marks and opens this row; it never hides another. */
+  selected?: boolean
 }) {
   /* An incident opens expanded. A red row that hides its own cause behind a
      click is a row that gets skipped, and the cause is the whole point of it. */
-  const [open, setOpen] = useState(c.status === 'incident')
-  const tone = STATUS_TONE[c.status]
+  const [open, setOpen] = useState(c.status === 'incident' || Boolean(selected))
+  const shown: CcStatus = staleMinutes === null ? c.status : 'unknown'
+  const tone = STATUS_TONE[shown]
   const inv = c.invitation
   const closed = c.status === 'outside_window' || !sendableOpen(inv)
   const fresh = c.freshness
@@ -304,14 +311,16 @@ function ControlRow({ c, payload, liveness, asOf }: {
         lead={<Dot tone={tone as Tone} off={tone === undefined} />}
         title={
           <>
-            {c.label} <span className="a-cc-status" data-tone={tone ?? 'none'}>{STATUS_WORD[c.status]}</span>
+            {c.label} <span className="a-cc-status" data-tone={tone ?? 'none'}>{STATUS_WORD[shown]}</span>
             {/* Never green, and never silent about why it is not green. The
                 space is real, not a margin: a screen reader reads the text, and
                 "Unknownunverified" is not a word. */}
-            {c.status === 'unknown' && <>{' '}<span className="a-cc-unverified">unverified</span></>}
+            {shown === 'unknown' && <>{' '}<span className="a-cc-unverified">unverified</span></>}
           </>
         }
-        sub={c.status_reason}
+        sub={staleMinutes === null
+          ? c.status_reason
+          : `The monitor has not reported in for ${staleMinutes} minutes; these figures may be out of date. Payload said: ${STATUS_WORD[c.status].toLowerCase()} — ${c.status_reason}`}
         subWrap
         tail={
           <span className="a-cc-tail">
@@ -319,6 +328,7 @@ function ControlRow({ c, payload, liveness, asOf }: {
             <span className="a-meta a-dim">invitations today</span>
           </span>
         }
+        selected={selected}
         onClick={() => setOpen(v => !v)}
       >
         <span className="a-row-meta a-cc-meta">
@@ -405,7 +415,20 @@ export function ControlSection({ cc, client, now = Date.now() }: {
   const asOf = Number.isFinite(Date.parse(p.as_of)) ? Date.parse(p.as_of) : now
   const asOfClock = new Date(asOf).toLocaleTimeString('en-GB', { timeZone: p.ranges.tz || 'UTC', hour: '2-digit', minute: '2-digit' })
   const tzShort = (p.ranges.tz || 'UTC').split('/').pop()
-  const rows = p.clients.filter(c => inClient(c.client_id, client))
+  /* Status rule 1: a stale monitor makes EVERY client unknown, whatever the
+     payload's own word was when it was built. `unknown` liveness (a snapshot
+     with no tick at all) does not trigger it — that is a missing heartbeat, not
+     a dead one. */
+  const staleMinutes = live === 'stale' && p.monitor.last_tick_at
+    ? Math.max(1, Math.round((now - new Date(p.monitor.last_tick_at).getTime()) / 60000))
+    : null
+  /* RULED: Control shows EVERY seat, always. The screen exists so one look
+     answers "is each client on track" without opening three screens, and a chip
+     filter that hides two of the three seats is the opposite of that. The chip
+     still means something here — it marks and opens the seat you picked — but it
+     never removes a seat from the answer. Delivery and Recurring problems keep
+     honouring the filter, because those are windows onto one seat's numbers. */
+  const rows = p.clients
   return (
     <Section
       label="Control"
@@ -419,13 +442,28 @@ export function ControlSection({ cc, client, now = Date.now() }: {
         </span>
       }
     >
+      {staleMinutes !== null && (
+        <div className="a-sends-cap a-sev-attention">
+          The monitor last reported {staleMinutes} minutes ago, past its own staleness budget, so every seat below reads unverified regardless of the word the payload carried.
+        </div>
+      )}
       {p.coverage.degraded && p.coverage.degraded_reasons.length > 0 && (
         <div className="a-sends-cap">Degraded sources: {p.coverage.degraded_reasons.join(' · ')}</div>
       )}
       <Rows>
         {rows.length === 0
-          ? <Row title="No client in this filter carries a control reading." />
-          : rows.map(c => <ControlRow key={c.client_id} c={c} payload={p} liveness={live} asOf={asOf} />)}
+          ? <Row title="No seat in this payload carries a control reading." />
+          : rows.map(c => (
+              <ControlRow
+                key={c.client_id}
+                c={c}
+                payload={p}
+                liveness={live}
+                asOf={asOf}
+                staleMinutes={staleMinutes}
+                selected={client !== 'all' && c.client_id === client}
+              />
+            ))}
       </Rows>
       <div className="a-sends-cap">
         Confirmed sends from the frozen Run 01 rules. Invitations, DMs and InMail are three separate figures and are never added together.

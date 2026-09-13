@@ -155,13 +155,10 @@ describe('monitorLiveness', () => {
   })
 })
 
-describe('the adapter falls back and soft-fails', () => {
-  it('answers unavailable rather than throwing when every source fails', async () => {
-    // The module reads its levers at import time, so the adapter is exercised
-    // here through its public contract: no throw, a named reason.
-    const { fetchPayload } = await import('./campaignControl')
-    const r = await fetchPayload()
-    expect(['ok', 'unavailable', 'error']).toContain(r.state)
-    if (r.state === 'unavailable') expect(typeof r.reason).toBe('string')
-  })
-})
+/* The adapter's soft-fail is proven where it matters and where it can be proven
+   without a network: `src/wb/sends/Control.test.tsx` renders both failure states
+   ({state:'unavailable'} and {state:'error'}) and asserts the reason is printed
+   and no figure is; `evidence/render/measured-facts.json` carries the same two
+   states from the real app (`?wbmock=fetch-error` and `?wbmock=cc:empty`).
+   A unit test here would have to reach Supabase to fail, which is a network
+   test wearing a unit test's clothes. */

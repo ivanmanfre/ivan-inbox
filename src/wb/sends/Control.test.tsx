@@ -13,7 +13,11 @@ function ok(fixture: unknown): CcState {
   return { state: 'ok', payload: p as CcPayload, source: 'scenario' }
 }
 
-const NOW = new Date('2026-09-13T15:40:00Z').getTime()
+/* A minute after the fixture's own monitor tick. Every relative label on this
+   surface is measured from the payload, so a test clock that drifts a day away
+   from the fixture would exercise the stale-monitor override in every case
+   instead of the states each test is about. */
+const NOW = Date.parse((incident as { monitor: { last_tick_at: string } }).monitor.last_tick_at) + 60_000
 const text = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/&#x27;|&#39;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ')
 
 describe('Control — the incident scenario', () => {
@@ -77,6 +81,44 @@ describe('Control — the incident scenario', () => {
   it('does not fetch private evidence before the fold is opened', () => {
     expect(t).toContain('Private detail')
     expect(t).toContain('Not fetched yet.')
+  })
+})
+
+describe('Control shows every seat, always', () => {
+  it('draws three rows even with one client chip selected', () => {
+    for (const c of ['all', 'ivan', 'risedtc', 'arch'] as const) {
+      const html = renderToStaticMarkup(<ControlSection cc={ok(incident)} client={c} now={NOW} />)
+      const t = text(html)
+      for (const label of ['Ivan', 'Davorin', 'Mattan']) expect(t).toContain(label)
+    }
+  })
+  it('marks the picked seat instead of hiding the other two', () => {
+    const html = renderToStaticMarkup(<ControlSection cc={ok(incident)} client="ivan" now={NOW} />)
+    expect(html).toContain('data-selected')
+    expect(text(html)).toContain('Mattan')
+  })
+})
+
+describe('Control — a stale monitor makes every seat unverified', () => {
+  const stale = () => {
+    const d = JSON.parse(JSON.stringify(incident)) as { monitor: { last_tick_at: string } }
+    d.monitor.last_tick_at = new Date(NOW - 2 * 3600_000).toISOString()
+    return d
+  }
+  it('renders unknown with the minutes and keeps the payload word as secondary text', () => {
+    const t = text(renderToStaticMarkup(<ControlSection cc={ok(stale())} client="all" now={NOW} />))
+    expect(t).toContain('The monitor has not reported in for 120 minutes')
+    expect(t).toContain('Payload said:')
+    expect(t).toContain('Unknown')
+    expect(t).toContain('unverified')
+    // No seat reads healthy next to a monitor that stopped reporting.
+    expect(t).not.toContain('Healthy')
+  })
+  it('a snapshot with no tick at all is NOT treated as stale', () => {
+    const d = JSON.parse(JSON.stringify(incident)) as { monitor: { last_tick_at: string | null } }
+    d.monitor.last_tick_at = null
+    const t = text(renderToStaticMarkup(<ControlSection cc={ok(d)} client="all" now={NOW} />))
+    expect(t).not.toContain('has not reported in for')
   })
 })
 

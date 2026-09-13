@@ -593,7 +593,17 @@ export function SendsScreen({ client, setClient }: {
             chip that got left behind rather than as a filter. */}
         <span className="a-sends-filters">
           {CHIPS.map(c => (
-            <Chip key={c.key} selected={client === c.key} onClick={() => setClient(c.key)}>{c.label}</Chip>
+            /* Clicking the selected chip clears the filter back to ALL THREE
+               SEATS. Without this there is no path to `all` at all: the screen
+               opens on Ivan and every chip only ever sets another single
+               client, so the one view that answers "where does every seat
+               stand" was unreachable. */
+            <Chip
+              key={c.key}
+              selected={client === c.key}
+              title={client === c.key ? 'Show all three seats' : `Only ${c.label}`}
+              onClick={() => setClient(client === c.key ? 'all' : c.key)}
+            >{c.label}</Chip>
           ))}
           {view === 'overview' && (
             <span className="a-sends-pop">
