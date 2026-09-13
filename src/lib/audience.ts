@@ -743,51 +743,44 @@ function joinDecisions(
 // chose. Nothing here derives a client from a route, and this module is never
 // imported by a client-facing surface (contract §4).
 // ---------------------------------------------------------------------------
-const PERSON_CAP = 1000
+type OperatorAudienceSources = Pick<AudienceSources, 'topics' | 'labels' | 'activity' | 'ranks' | 'monthly' | 'links'>
 
-export function fetchTopicPeople(lane: ContentLane): Promise<Soft<TopicPeopleRow>> {
-  return soft('topics', () =>
-    supabase.from('audn_topic_people_v')
-      .select('client_id, topic, people, events, posts')
-      .eq('client_id', lane))
+/** Owner-executed, operator-gated read: invoker views cannot traverse the
+ * service-only identity sources from an authenticated browser. */
+export async function fetchOperatorAudience(lane: ContentLane): Promise<OperatorAudienceSources> {
+  const failure = (error: string): OperatorAudienceSources => ({
+    topics: { ok: false, error }, labels: { ok: false, error },
+    activity: { ok: false, error }, ranks: { ok: false, error },
+    monthly: { ok: false, error }, links: { ok: false, error },
+  })
+  try {
+    const { data, error } = await supabase.rpc('operator_audn_audience', {
+      p_gate: CLIENT_OPS_GATE, p_client_id: lane,
+    })
+    if (error) return failure(`Audience: ${error.message}`)
+    if (!data || data.client_id !== lane) return failure('Audience was not returned for this lane.')
+    const section = <T extends { client_id: string }>(key: string, counted = false): Soft<T> => {
+      const value = data[key]
+      if (value?.ok === false && typeof value.error === 'string') return value
+      if (value?.ok !== true || !Array.isArray(value.rows)
+        || value.rows.some((row: T) => !row || row.client_id !== lane)
+        || (counted && (!Number.isInteger(value.count) || value.count < value.rows.length))) {
+        return { ok: false, error: `${key}: Audience returned an invalid or cross-lane payload.` }
+      }
+      return value
+    }
+    return {
+      topics: section<TopicPeopleRow>('topics'), labels: section<PersonLabelRow>('labels', true),
+      activity: section<PersonActivityRow>('activity', true), ranks: section<MatchedAgeRankRow>('ranks'),
+      monthly: section<MonthlyMedianRow>('monthly'), links: section<RecommendationLinkRow>('links'),
+    }
+  } catch (error) {
+    return failure(`Audience: ${msg(error)}`)
+  }
 }
 
-export function fetchPersonLabels(lane: ContentLane): Promise<Soft<PersonLabelRow>> {
-  return soft('labels', () =>
-    supabase.from('audn_person_label_v')
-      .select('client_id, person_key, label, is_operator, is_excluded, conflict', { count: 'exact' })
-      .eq('client_id', lane)
-      .limit(PERSON_CAP))
-}
-
-export function fetchPersonActivity(lane: ContentLane): Promise<Soft<PersonActivityRow>> {
-  return soft('people', () =>
-    supabase.from('audn_person_activity_v')
-      .select(
-        'client_id, person_key, distinct_posts, total_events, observed_across_posts, ' +
-        'confirmed_return, return_timing, is_operator, is_excluded',
-        { count: 'exact' },
-      )
-      .eq('client_id', lane)
-      .limit(PERSON_CAP))
-}
-
-export function fetchMatchedAgeRanks(lane: ContentLane): Promise<Soft<MatchedAgeRankRow>> {
-  return soft('matched-age ranks', () =>
-    supabase.from('audn_matched_age_rank_v')
-      .select('client_id, post_social_id, target_age_days, reactions, rank, eligible_n, rank_basis')
-      .eq('client_id', lane)
-      .order('rank', { ascending: true, nullsFirst: false })
-      .limit(50))
-}
-
-export function fetchMonthlyMedian(lane: ContentLane): Promise<Soft<MonthlyMedianRow>> {
-  return soft('monthly median', () =>
-    supabase.from('audn_monthly_median_v')
-      .select('client_id, month, target_age_days, median_reactions, n, basis')
-      .eq('client_id', lane)
-      .order('month', { ascending: false })
-      .limit(12))
+export async function fetchPersonLabels(lane: ContentLane): Promise<Soft<PersonLabelRow>> {
+  return (await fetchOperatorAudience(lane)).labels
 }
 
 /** D3 recommendation identity, per store.
@@ -841,30 +834,9 @@ export async function fetchRecommendations(lane: ContentLane): Promise<Soft<Reco
   }
 }
 
-/** `audn_recommendation_links_v` — recommendation → idea → draft → published
-    post, one row per recommendation per client (migration 08).
-
-    CLIENT-SCOPED BY THE LANE THAT WAS PASSED IN, exactly like every other
-    `audn_*` read on this surface: the view carries a `client_id` for BOTH
-    stores — `client_ideas.client_id` for a client lane and the literal `'ivan'`
-    for the `lm_idea_candidates` branch — so one filter covers both and nothing
-    here has to know which store it is looking at.
-
-    Soft. This is an AUXILIARY source, not a core one: until migration 08 is
-    applied, production answers this select with 42P01 and the block still
-    renders every recommendation it can read from the idea store, with the
-    ladder topping out at `drafted` and the failure named in `partial`. It must
-    never take the block to `unavailable` — the people counts do not depend on
-    it. */
-export function fetchRecommendationLinks(lane: ContentLane): Promise<Soft<RecommendationLinkRow>> {
-  return soft('recommendation links', () =>
-    supabase.from('audn_recommendation_links_v')
-      .select(
-        'client_id, recommendation_id, recommendation_ref, idea_id, draft_id, ' +
-        'published_post_social_id, link_state',
-      )
-      .eq('client_id', lane)
-      .limit(200))
+/** The same gated source used by the summary, retained for independent reads. */
+export async function fetchRecommendationLinks(lane: ContentLane): Promise<Soft<RecommendationLinkRow>> {
+  return (await fetchOperatorAudience(lane)).links!
 }
 
 /** The lane's whole idea store, counted without the audn filter. The only
@@ -931,17 +903,9 @@ export async function fetchDecisions(
     only sequential step, because Ivan's decisions key off the candidate ids
     the recommendation read returns. */
 export async function fetchAudienceSummary(lane: ContentLane): Promise<AudienceSummary> {
-  const [topics, labels, activity, ranks, monthly, storeCount, links, pair] = await Promise.all([
-    fetchTopicPeople(lane),
-    fetchPersonLabels(lane),
-    fetchPersonActivity(lane),
-    fetchMatchedAgeRanks(lane),
-    fetchMonthlyMedian(lane),
+  const [audience, storeCount, pair] = await Promise.all([
+    fetchOperatorAudience(lane),
     fetchIdeaStoreCount(lane),
-    // Parallel with the recommendations rather than after them: the join is
-    // done here, on keys the view already carries, so it needs no ids from the
-    // idea read the way `fetchDecisions` does.
-    fetchRecommendationLinks(lane),
     (async () => {
       const recommendations = await fetchRecommendations(lane)
       const decisions = await fetchDecisions(lane, recommendations.ok ? recommendations.rows : [])
@@ -949,7 +913,7 @@ export async function fetchAudienceSummary(lane: ContentLane): Promise<AudienceS
     })(),
   ])
   return summarize({
-    lane, topics, labels, activity, ranks, monthly, storeCount, links,
+    lane, ...audience, storeCount,
     recommendations: pair.recommendations,
     decisions: pair.decisions,
   })

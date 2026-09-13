@@ -34,10 +34,18 @@ function builder(table: string) {
   return chain
 }
 
-vi.mock('./supabase', () => ({ supabase: { from: (t: string) => builder(t) } }))
+let rpcCalls: Array<{ name: string; args: Record<string, unknown> }> = []
+let rpcResult: { data: unknown; error: { message: string } | null } | null = null
+vi.mock('./supabase', () => ({ supabase: {
+  from: (t: string) => builder(t),
+  rpc: (name: string, args: Record<string, unknown>) => {
+    rpcCalls.push({ name, args })
+    return Promise.resolve(rpcResult ?? result)
+  },
+} }))
 
 const {
-  summarize, fetchRecommendations, fetchDecisions, fetchPersonLabels,
+  summarize, fetchOperatorAudience, fetchRecommendations, fetchDecisions, fetchPersonLabels,
   fetchRecommendationLinks, fetchAudienceSummary, KNOWN_NONEMPTY, knownFloorFor,
 } = await import('./audience')
 const { fixtureSummary } = await import('./audience.fixtures')
@@ -53,6 +61,8 @@ const text = (s: Parameters<typeof Recommendations>[0]['s']) =>
 
 beforeEach(() => {
   queries = []
+  rpcCalls = []
+  rpcResult = null
   result = { data: [], error: null, count: 0 }
 })
 
@@ -547,25 +557,20 @@ describe('the link view carries the rest of the ladder (migration 08)', () => {
     expect(s.recommendations[0].link_state).toBe('published')
   })
 
-  it('reads the view client-scoped, on BOTH lanes', async () => {
-    await fetchRecommendationLinks('arch')
-    expect(queries).toHaveLength(1)
-    expect(queries[0].table).toBe('audn_recommendation_links_v')
-    expect(queries[0].ops).toContainEqual(['eq', 'client_id', 'arch'])
-
-    queries = []
-    // Ivan's own store (lm_idea_candidates) has no client_id column, but the
-    // VIEW gives that branch the literal 'ivan' — so the same filter applies
-    // here, and it is the only thing keeping the lanes apart in one relation.
-    await fetchRecommendationLinks('ivan')
-    expect(queries[0].table).toBe('audn_recommendation_links_v')
-    expect(queries[0].ops).toContainEqual(['eq', 'client_id', 'ivan'])
+  it('reads recommendation links through the operator gate for each lane', async () => {
+    for (const lane of ['arch', 'ivan', 'risedtc'] as const) {
+      await fetchRecommendationLinks(lane)
+      expect(rpcCalls.at(-1)).toMatchObject({ name: 'operator_audn_audience', args: { p_client_id: lane } })
+      expect(rpcCalls.at(-1)?.args.p_gate).toBeTruthy()
+    }
+    expect(queries).toHaveLength(0)
   })
 
-  it('is read by fetchAudienceSummary — the whole point of Run 04 F-A', async () => {
-    result = { data: [], error: null, count: 0 }
+  it('fetches all six summary datasets once through the gated boundary', async () => {
     await fetchAudienceSummary('risedtc')
-    expect(queries.some(q => q.table === 'audn_recommendation_links_v')).toBe(true)
+    expect(rpcCalls).toHaveLength(1)
+    expect(rpcCalls[0].name).toBe('operator_audn_audience')
+    expect(queries.some(q => q.table.startsWith('audn_'))).toBe(false)
   })
 })
 
@@ -649,7 +654,7 @@ describe('a missing relation reaches the surface as a message, not as an excepti
     result = { data: null, error: { message: 'relation "public.audn_person_label_v" does not exist' }, count: null }
     const s = await fetchPersonLabels('risedtc')
     expect(s.ok).toBe(false)
-    if (!s.ok) expect(s.error).toBe('labels: relation "public.audn_person_label_v" does not exist')
+    if (!s.ok) expect(s.error).toBe('Audience: relation "public.audn_person_label_v" does not exist')
   })
 
   it('is what the whole block renders today, on every lane', async () => {
@@ -782,5 +787,48 @@ describe('the row, as it actually renders (Run 04 A2 — after the visual review
     const t = text(fixtureSummary('ivan'))
     expect(t).toContain('Decisions are made in the idea flow.')
     expect(t).not.toContain('not here')
+  })
+})
+
+
+describe('operator Audience response boundary', () => {
+  const payload = (lane: string) => ({
+    client_id: lane,
+    topics: { ok: true, rows: [] }, labels: { ok: true, rows: [], count: 0 },
+    activity: { ok: true, rows: [], count: 0 }, ranks: { ok: true, rows: [] },
+    monthly: { ok: true, rows: [] }, links: { ok: true, rows: [] },
+  })
+  it('preserves complete counts, unknown labels, exclusions and return timing', async () => {
+    const data = payload('ivan')
+    const activity = { client_id: 'ivan', person_key: 'p', confirmed_return: null,
+      return_timing: 'immature', is_operator: false, is_excluded: true }
+    const labels = { client_id: 'ivan', person_key: 'p', label: 'unknown' }
+    rpcResult = { error: null, data: { ...data,
+      activity: { ok: true, rows: [activity], count: 1200 },
+      labels: { ok: true, rows: [labels], count: 1200 },
+    } }
+    const actual = await fetchOperatorAudience('ivan')
+    expect(actual.activity).toEqual({ ok: true, rows: [activity], count: 1200 })
+    expect(actual.labels).toEqual({ ok: true, rows: [labels], count: 1200 })
+  })
+  it('rejects a wrong client envelope and cross-client rows', async () => {
+    rpcResult = { error: null, data: payload('arch') }
+    expect((await fetchOperatorAudience('ivan')).topics.ok).toBe(false)
+    rpcResult = { error: null, data: { ...payload('ivan'), topics: { ok: true, rows: [{ client_id: 'arch' }] } } }
+    expect((await fetchOperatorAudience('ivan')).topics.ok).toBe(false)
+  })
+  it('rejects missing complete counts and malformed sources instead of displaying zero', async () => {
+    rpcResult = { error: null, data: { ...payload('ivan'), labels: { ok: true, rows: [] }, activity: null } }
+    const actual = await fetchOperatorAudience('ivan')
+    expect(actual.labels.ok).toBe(false)
+    expect(actual.activity.ok).toBe(false)
+  })
+  it('keeps an auxiliary source failure partial and a denied call unavailable', async () => {
+    rpcResult = { error: null, data: { ...payload('ivan'), links: { ok: false, error: 'links: unavailable' } } }
+    const actual = await fetchOperatorAudience('ivan')
+    expect(actual.topics.ok).toBe(true)
+    expect(actual.links).toEqual({ ok: false, error: 'links: unavailable' })
+    rpcResult = { data: null, error: { message: 'unauthorized' } }
+    expect((await fetchAudienceSummary('ivan')).state).toBe('unavailable')
   })
 })
