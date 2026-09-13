@@ -151,16 +151,28 @@ function SessionBlock({ ch, closed, asOf }: { ch: CcChannel; closed: boolean; as
   )
 }
 
+/* The live producer nests the pool counts one level down — `{ note, by_pool: { cold: 137 } }` —
+   while the snapshot fixture carried `{ reason }`. Only numeric entries are pool counts; a string
+   under `note`/`reason` is shown as text, never as "[object Object]" (seen live 2026-09-13). */
+function poolEntries(raw: CcChannel['eligible_stock_by_pool']): { pools: [string, number][]; note: string | null } {
+  if (!raw || typeof raw !== 'object') return { pools: [], note: null }
+  const r = raw as Record<string, unknown>
+  const inner = r.by_pool && typeof r.by_pool === 'object' ? (r.by_pool as Record<string, unknown>) : r
+  const pools = Object.entries(inner).filter((e): e is [string, number] => typeof e[1] === 'number')
+  const noteRaw = r.note ?? r.reason
+  return { pools, note: typeof noteRaw === 'string' ? noteRaw : null }
+}
+
 function SupplyBlock({ ch }: { ch: CcChannel }) {
-  const pools = ch.eligible_stock_by_pool && Object.keys(ch.eligible_stock_by_pool).length > 0
-    ? Object.entries(ch.eligible_stock_by_pool)
-    : null
+  const { pools: poolList, note } = poolEntries(ch.eligible_stock_by_pool)
+  const pools = poolList.length > 0 ? poolList : null
   return (
     <div className="a-cc-block">
       <div className="a-meta">
         Eligible supply <b>{num(ch.eligible_stock)}</b>
         {ch.eligible_stock_scope ? <> <Sep />scope {ch.eligible_stock_scope}</> : null}
       </div>
+      {note && <div className="a-meta a-cc-pool-note">{note}</div>}
       {pools && (
         <div className="a-cc-pools">
           {pools.map(([k, v]) => (
