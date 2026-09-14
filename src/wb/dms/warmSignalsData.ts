@@ -129,6 +129,16 @@ export function inviteLine(c: Pick<WarmCard, 'signal_invite_state' | 'note_varia
   return { kind: 'pending', text: '' }
 }
 
+/**
+ * Invite is out (or approved) and no DM1 draft exists yet: nothing for Ivan to
+ * decide. These rows stay out of the DMs list until the person accepts and a
+ * draft appears; the section shows one count line for them instead.
+ */
+export function isWaiting(c: Parameters<typeof primaryAction>[0]): boolean {
+  const k = inviteLine(c).kind
+  return primaryAction(c) === null && !c.draft_id && (k === 'sent' || k === 'approved')
+}
+
 /** Which of the two decisions is the loud one on this card. */
 export function primaryAction(c: Pick<WarmCard, 'signal_invite_state' | 'note_variant' | 'connection_sent_at' | 'trigger_type' | 'signal_approved_at' | 'draft_id' | 'draft_approved_at'>): 'invite' | 'dm1' | null {
   if (inviteLine(c).kind === 'pending') return 'invite'

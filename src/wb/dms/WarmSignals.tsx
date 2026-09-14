@@ -30,7 +30,7 @@ import { useConfirm } from '../chrome/ConfirmSheet'
 import { approveDraft, saveDraftText, type Filter } from '../../lib/inbox'
 import {
   WARM_GROUPS, dayOf, decideWarm, dm1Deliverable, evidenceLine, fetchWarmCards, inviteLine,
-  primaryAction, warmGroup, type WarmCard, type WarmGroupKey,
+  isWaiting, primaryAction, warmGroup, type WarmCard, type WarmGroupKey,
 } from './warmSignalsData'
 import './dms.css'
 
@@ -73,18 +73,23 @@ export function WarmSignals({ filter, refresh, inboxLoadedAt, focus, onOpenThrea
   }, [focus, cards])
 
   const visible = filter === 'all' || filter === 'ivan'
-  const groups = useMemo(() => {
+  // People waiting on an accept with nothing to decide are not rows: one count
+  // line under the list says how many, and they come back once a draft exists.
+  const { groups, waiting } = useMemo(() => {
     const by = new Map<WarmGroupKey, WarmCard[]>()
+    let waiting = 0
     for (const c of cards ?? []) {
+      if (isWaiting(c)) { waiting++; continue }
       const g = warmGroup(c)
       by.set(g, [...(by.get(g) ?? []), c])
     }
-    return WARM_GROUPS.map(g => ({ ...g, cards: by.get(g.key) ?? [] })).filter(g => g.cards.length > 0)
+    const groups = WARM_GROUPS.map(g => ({ ...g, cards: by.get(g.key) ?? [] })).filter(g => g.cards.length > 0)
+    return { groups, waiting }
   }, [cards])
 
   if (!visible) return null
   if (cards === null && !error) return null
-  const total = cards?.length ?? 0
+  const total = groups.reduce((n, g) => n + g.cards.length, 0)
   if (total === 0 && !error) return null
 
   return (
@@ -110,6 +115,11 @@ export function WarmSignals({ filter, refresh, inboxLoadedAt, focus, onOpenThrea
             ))}
           </div>
         ))}
+        {open && waiting > 0 && (
+          <div className="a-warm-waiting a-meta" data-waiting={waiting}>
+            {waiting === 1 ? '1 invite out, waiting on their accept.' : `${waiting} invites out, waiting on their accept.`}
+          </div>
+        )}
       </Group>
     </section>
   )
@@ -142,9 +152,6 @@ function WarmCardView({ card: c, reload, refresh, onOpenThread }: {
   const first = c.name.split(' ')[0]
   const windowEnds = c.view_window_ends && invite.kind === 'pending' ? dayOf(c.view_window_ends) : null
   const primary = primaryAction(c)
-  // Nothing to decide yet (invite out, no draft to approve): one compact row, so
-  // five people waiting on an accept do not push the conversation list off the phone.
-  const compact = primary === null && !c.draft_id && (invite.kind === 'sent' || invite.kind === 'approved')
 
   async function run(kind: NonNullable<typeof busy>, fn: () => Promise<void>) {
     if (busy) return
@@ -225,24 +232,6 @@ function WarmCardView({ card: c, reload, refresh, onOpenThread }: {
       if (!r.ok) throw new Error(r.error ?? 'could not skip')
       await reload(); refresh()
     })
-  }
-
-  if (compact) {
-    return (
-      <div className="a-warm-card" data-warm-card={c.prospect_id} data-stage={c.stage} data-compact="">
-        <Rows>
-          <Row
-            lead={<Face name={c.name} size="sm" />}
-            title={c.name}
-            sub={`${evidenceLine(c)} · ${invite.text}`}
-            subWrap
-            tail={<Button variant="quiet" size="sm" icon="remove" busy={busy === 'skip'} onClick={onSkip}>Skip</Button>}
-            onClick={c.connection_sent_at ? () => onOpenThread(c.prospect_id) : undefined}
-          />
-        </Rows>
-        {error && <Banner tone="urgent" icon="error">{error}</Banner>}
-      </div>
-    )
   }
 
   return (

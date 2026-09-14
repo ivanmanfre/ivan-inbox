@@ -785,3 +785,7 @@
   .a-dms .a-row.r > .a-row-tail > *,
   .a-dms-verb{ transform:none !important; transition:opacity var(--ds-dur-hover) var(--ds-ease) }
 }
+
+/* One line for the people whose invite is out and who have nothing to decide yet. */
+.a-warm-waiting{ padding:var(--ds-s2) var(--ds-card-pad) var(--ds-s3) }
+@media (max-width:480px){ .a-warm-waiting{ padding-inline:var(--ds-s3) } }

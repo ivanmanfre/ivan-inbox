@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dm1Deliverable, evidenceLine, inviteLine, primaryAction, warmGroup } from './warmSignalsData'
+import { dm1Deliverable, evidenceLine, inviteLine, isWaiting, primaryAction, warmGroup } from './warmSignalsData'
 
 // The first real case, as the RPC returned it on 2026-09-12: the invite already
 // went out with the lane's generic note before the hold, so the card is DM1-only
@@ -44,6 +44,19 @@ describe('warm signals helpers', () => {
     expect(primaryAction({ ...natalia, signal_invite_state: 'pending', connection_sent_at: null })).toBe('invite')
     expect(primaryAction({ ...natalia, draft_approved_at: '2026-09-13T10:00:00Z' })).toBe(null)
     expect(primaryAction({ ...natalia, draft_id: null })).toBe(null)
+  })
+
+  it('keeps invite-out-nothing-to-decide people out of the list', () => {
+    // Natalia has a DM1 draft waiting: a decision, so a row.
+    expect(isWaiting(natalia)).toBe(false)
+    // A viewer whose blank invite went out and who has no draft yet: not a row.
+    expect(isWaiting({ ...natalia, trigger_type: 'profile_view', note_variant: null, draft_id: null })).toBe(true)
+    // Approved but not yet sent by the sender: same, nothing to decide.
+    expect(isWaiting({ ...natalia, signal_invite_state: 'pending', connection_sent_at: null, signal_approved_at: '2026-09-12T16:00:00Z', draft_id: null })).toBe(true)
+    // Invite still pending Ivan's approval: a decision, so a row.
+    expect(isWaiting({ ...natalia, signal_invite_state: 'pending', connection_sent_at: null, draft_id: null })).toBe(false)
+    // DM1 already approved: done, and not "waiting" either (falls out via the RPC).
+    expect(isWaiting({ ...natalia, draft_approved_at: '2026-09-13T10:00:00Z' })).toBe(false)
   })
 
   it('writes the evidence line from what they did', () => {
