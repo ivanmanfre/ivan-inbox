@@ -441,6 +441,38 @@ describe('the three states, as they actually render', () => {
     expect(strip(h)).toContain('Unknown')
   })
 
+  it('renders recovered founder source provenance and text with safe links', () => {
+    const p = proposal()
+    const founderText = 'Mattan explained the risk-sharing criterion in the original July 13 source. '.repeat(4)
+    const withFounder = {
+      ...p,
+      context: { ...p.context, audn: {
+        ...p.context?.audn,
+        founder_source_ids: ['rise-july-13', 'missing-row'],
+        founder_source_rows: [{
+          id: 'rise-july-13', author: 'Mattan', date: '2026-07-13',
+          url: 'https://example.com/founder/13', table: 'founder_sources', text: founderText,
+        }],
+      } },
+    } satisfies Proposal
+    const h = rowHtml(withFounder)
+    const t = strip(h)
+    expect(h).toContain('href="https://example.com/founder/13"')
+    expect(t).toContain('Mattan · 2026-07-13 · rise-july-13')
+    expect(t).toContain('Retained source text')
+    expect(t).toContain(founderText.trim())
+    expect(t).toContain('missing-row · retained ID; source row unavailable')
+
+    const unsafe = {
+      ...withFounder,
+      context: { ...withFounder.context, audn: { ...withFounder.context.audn,
+        founder_source_rows: [{ id: 'rise-july-13', url: 'javascript:alert(1)', text: 'Retained fact.' }],
+      } },
+    } satisfies Proposal
+    expect(rowHtml(unsafe)).not.toContain('href="javascript:')
+    expect(strip(rowHtml(unsafe))).toContain('Retained fact.')
+  })
+
   it('uses an asset requirement as the single prerequisite fallback', () => {
     const p = proposal()
     const withAsset = {

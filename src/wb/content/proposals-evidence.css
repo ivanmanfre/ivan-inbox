@@ -23,3 +23,10 @@
 .a-prop-history > .a-prop-body{
   padding-top:var(--ds-s2);
 }
+
+.a-prop-founder-src{
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s1);
+  min-width:0;
+}

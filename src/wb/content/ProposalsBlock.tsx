@@ -34,7 +34,7 @@ import {
   buyerReason, changedOverrides, compactEvidenceLine, dropProposal, editDraft, evidenceCategory,
   evidenceLine, fetchProposals, prerequisites, proposalTitle, proposedAt, publishProposal, rosterRole,
   proposalEditDirty, proposalRefreshMayApply, seedNote, textField, topicChange, TEXT_FIELDS,
-  type Proposal, type SourceRow, type TextOverrides,
+  type FounderSourceRow, type Proposal, type SourceRow, type TextOverrides,
 } from '../../lib/proposals'
 import type { ContentLane } from '../../lib/content'
 import './content.css'
@@ -82,6 +82,11 @@ function EditField({ label, value, onChange }: {
     the three things that decide whether the citation is worth opening, so all
     three are printed rather than a bare id. A row with no url is still shown —
     it is evidence that exists, just not evidence you can click. */
+function safeSourceHref(url: string | null | undefined): string | null {
+  const href = url?.trim()
+  return href && /^https?:\/\//i.test(href) ? href : null
+}
+
 function SourceLink({ s }: { s: SourceRow }) {
   const label = [
     s.author?.trim() || s.id || 'unattributed',
@@ -90,12 +95,31 @@ function SourceLink({ s }: { s: SourceRow }) {
     typeof s.comments === 'number' ? `${s.comments} comment${s.comments === 1 ? '' : 's'}` : null,
     typeof s.shares === 'number' ? `${s.shares} share${s.shares === 1 ? '' : 's'}` : null,
   ].filter(Boolean).join(' · ')
-  const href = s.url?.trim()
-  if (!href || !/^https?:\/\//i.test(href)) {
+  const href = safeSourceHref(s.url)
+  if (!href) {
     return <span className="a-prop-src a-dim">{label}</span>
   }
   return (
     <a className="a-prop-src" href={href} target="_blank" rel="noreferrer">{label}</a>
+  )
+}
+
+function FounderSource({ s }: { s: FounderSourceRow }) {
+  const label = [s.author?.trim(), s.date?.trim(), s.id?.trim()].filter(Boolean).join(' · ') || 'Unattributed founder source'
+  const href = safeSourceHref(s.url)
+  const text = s.text?.trim()
+  return (
+    <div className="a-prop-founder-src">
+      {href
+        ? <a className="a-prop-src" href={href} target="_blank" rel="noreferrer">{label}</a>
+        : <span className="a-prop-src a-dim">{label}</span>}
+      {text && text.length > 180 ? (
+        <details className="a-prop-history">
+          <summary>Retained source text</summary>
+          <div className="a-prop-v">{text}</div>
+        </details>
+      ) : text ? <span className="a-prop-v">{text}</span> : null}
+    </div>
   )
 }
 
@@ -170,6 +194,7 @@ export function ProposalRow({ p, onApprove, onDrop, onDirtyChange }: {
   const at = proposedAt(p)
   const change = topicChange(p)
   const founderIds = audn?.founder_source_ids?.filter(Boolean) ?? []
+  const founderRows = audn?.founder_source_rows?.filter(Boolean) ?? []
   const original = p.context?.correction_review?.original_audn
   const baseline = p.context?.author_baseline
 
@@ -269,11 +294,12 @@ export function ProposalRow({ p, onApprove, onDrop, onDirtyChange }: {
 
           <div className="a-prop-f">
             <span className="a-eyebrow">Founder factual sources</span>
-            <span className="a-prop-v">
-              {founderIds.length
-                ? `${founderIds.join(', ')} · factual input, not performance evidence`
-                : 'None recorded.'}
-            </span>
+            <span className="a-ct-sub">factual input, not performance evidence.</span>
+            {founderRows.map((s, i) => <FounderSource key={s.id ?? i} s={s} />)}
+            {founderIds.filter(id => !founderRows.some(s => s.id === id)).map(id => (
+              <span className="a-prop-v" key={id}>{id} · retained ID; source row unavailable</span>
+            ))}
+            {!founderRows.length && !founderIds.length ? <span className="a-prop-v">None recorded.</span> : null}
           </div>
 
           <div className="a-prop-f">

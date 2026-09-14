@@ -77,6 +77,16 @@ export type AudnObject = {
   next_action?: string | null
   original_angle?: string | null
   founder_source_ids?: string[] | null
+  founder_source_rows?: FounderSourceRow[] | null
+}
+
+export type FounderSourceRow = {
+  id?: string | null
+  url?: string | null
+  date?: string | null
+  table?: string | null
+  author?: string | null
+  text?: string | null
 }
 
 /** One cited row, as the writer captured it. Every id in
