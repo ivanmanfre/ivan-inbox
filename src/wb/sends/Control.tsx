@@ -801,15 +801,30 @@ export function RecurrenceSection({ cc }: { cc: CcState | null }) {
 
 // ---- the hook the Overview mounts ---------------------------------------
 
-/** One read per mount. `null` while it is in flight. */
+/** Refresh while visible and when returning to the page; stale tabs must not impersonate a dead monitor. */
 export function useCampaignControl(): CcState | null {
   const [cc, setCc] = useState<CcState | null>(null)
   useEffect(() => {
     let live = true
-    fetchPayload()
-      .then(s => { if (live) setCc(s) })
-      .catch(e => { if (live) setCc({ state: 'unavailable', reason: e instanceof Error ? e.message : 'control payload read failed' }) })
-    return () => { live = false }
+    let pending = false
+    const refresh = () => {
+      if (!live || pending || document.visibilityState === 'hidden') return
+      pending = true
+      fetchPayload()
+        .then(s => { if (live) setCc(s) })
+        .catch(e => { if (live) setCc({ state: 'unavailable', reason: e instanceof Error ? e.message : 'control payload read failed' }) })
+        .finally(() => { pending = false })
+    }
+    refresh()
+    const timer = setInterval(refresh, 60_000)
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      live = false
+      clearInterval(timer)
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', refresh)
+    }
   }, [])
   return cc
 }
