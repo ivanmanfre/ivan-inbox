@@ -2,6 +2,8 @@ import { Suspense, lazy, useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
 import { reconcilePush } from './lib/push'
+import { bootGate } from './lib/bootGate'
+import { currentUserId } from './lib/swr'
 // S32 rebuilt on the design system (goal run inbox-app-revamp-2026-09-05, W1).
 // BOTH shells sign in through it. Lazy on purpose: `src/ds` then stays out of
 // the first paint of `#exp/stock`, which the pixel gate measures with a session
@@ -107,8 +109,10 @@ export default function App() {
     if (!session) return
     void reconcilePush()
   }, [session])
-  if (!ready) return null
-  if (!session) return <Suspense fallback={null}><Login /></Suspense>
+  // Paint from the stored session while getSession() resolves (src/lib/bootGate.ts).
+  const gate = bootGate({ ready, hasSession: !!session, storedUser: currentUserId() !== null })
+  if (gate === 'blank') return null
+  if (gate === 'login') return <Suspense fallback={null}><Login /></Suspense>
   // A SALES DOCUMENT IS A PAGE, NOT A PANEL. `#doc?slug=…&doc=…` paints the
   // document and nothing else — no rail, no phone chrome, no shell — because
   // the chips on the week's calls open it with target="_blank" and the point of
