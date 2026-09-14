@@ -31,12 +31,14 @@ import { Group, Row, relAge } from '../kit'
 import { CalmEmpty, Failed } from './parts'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import {
-  changedOverrides, dropProposal, editDraft, evidenceLine, fetchProposals, proposalTitle,
-  proposedAt, publishProposal, rosterRole, seedNote, textField, TEXT_FIELDS,
+  buyerReason, changedOverrides, compactEvidenceLine, dropProposal, editDraft, evidenceCategory,
+  evidenceLine, fetchProposals, prerequisites, proposalTitle, proposedAt, publishProposal, rosterRole,
+  proposalEditDirty, proposalRefreshMayApply, seedNote, textField, topicChange, TEXT_FIELDS,
   type Proposal, type SourceRow, type TextOverrides,
 } from '../../lib/proposals'
 import type { ContentLane } from '../../lib/content'
 import './content.css'
+import './proposals-evidence.css'
 
 // What a finished approve leaves behind on the screen. Kept per row rather than
 // as a toast: the sentence names the table the idea landed in, and that is a
@@ -85,21 +87,27 @@ function SourceLink({ s }: { s: SourceRow }) {
     s.author?.trim() || s.id || 'unattributed',
     s.date?.trim() || null,
     typeof s.reactions === 'number' ? `${s.reactions} reactions` : null,
+    typeof s.comments === 'number' ? `${s.comments} comment${s.comments === 1 ? '' : 's'}` : null,
+    typeof s.shares === 'number' ? `${s.shares} share${s.shares === 1 ? '' : 's'}` : null,
   ].filter(Boolean).join(' · ')
-  if (!s.url) return <span className="a-prop-src a-dim">{label}</span>
+  const href = s.url?.trim()
+  if (!href || !/^https?:\/\//i.test(href)) {
+    return <span className="a-prop-src a-dim">{label}</span>
+  }
   return (
-    <a className="a-prop-src" href={s.url} target="_blank" rel="noreferrer">{label}</a>
+    <a className="a-prop-src" href={href} target="_blank" rel="noreferrer">{label}</a>
   )
 }
 
 /** One proposal. Exported so the suite can render a row without a fetch, the
     same way `Recommendations` is exported from the audience block: a phrase
     that has never been rendered is a phrase nobody has checked. */
-export function ProposalRow({ p, onApprove, onDrop }: {
+export function ProposalRow({ p, onApprove, onDrop, onDirtyChange }: {
   p: Proposal
   /** Resolves to the receipt line when the write landed, or throws. */
   onApprove: (p: Proposal, overrides: TextOverrides) => Promise<Receipt>
   onDrop: (p: Proposal) => Promise<void>
+  onDirtyChange?: (id: string, dirty: boolean) => void
 }) {
   // ---- hooks, all of them, before any branch ------------------------------
   const [editing, setEditing] = useState(false)
@@ -108,6 +116,12 @@ export function ProposalRow({ p, onApprove, onDrop }: {
   const [error, setError] = useState<string | null>(null)
   const [receipt, setReceipt] = useState<Receipt | null>(null)
   const confirm = useConfirm()
+  const dirty = proposalEditDirty(p, draft, editing, receipt !== null)
+
+  useEffect(() => {
+    onDirtyChange?.(p.id, dirty)
+    return () => onDirtyChange?.(p.id, false)
+  }, [dirty, onDirtyChange, p.id])
 
   const startEdit = useCallback(() => {
     setDraft(editDraft(p))
@@ -119,6 +133,7 @@ export function ProposalRow({ p, onApprove, onDrop }: {
     setError(null)
     try {
       const r = await onApprove(p, editing ? changedOverrides(p, draft) : {})
+      setEditing(false)
       setReceipt(r)
     } catch (e: unknown) {
       // The row STAYS. Whatever the server refused, the proposal is still there
@@ -152,8 +167,11 @@ export function ProposalRow({ p, onApprove, onDrop }: {
   const audn = p.context?.audn ?? null
   const sources = p.context?.source_rows ?? []
   const seed = seedNote(p)
-  const asset = audn?.asset_required
   const at = proposedAt(p)
+  const change = topicChange(p)
+  const founderIds = audn?.founder_source_ids?.filter(Boolean) ?? []
+  const original = p.context?.correction_review?.original_audn
+  const baseline = p.context?.author_baseline
 
   if (receipt) {
     // The row has left the queue. It is replaced by the sentence that says
@@ -202,33 +220,110 @@ export function ProposalRow({ p, onApprove, onDrop }: {
         </div>
       ) : (
         <div className="a-prop-body">
-          {TEXT_FIELDS.map(f => {
-            const v = textField(p, f.key)
-            if (!v) return null
-            return (
-              <div className="a-prop-f" key={f.key}>
-                <span className="a-eyebrow">{f.label}</span>
-                <span className="a-prop-v">{v}</span>
+          <div className="a-prop-f">
+            <span className="a-eyebrow">Could publish</span>
+            <span className="a-prop-v">{textField(p, 'could_publish') || 'Publishing angle not stated.'}</span>
+          </div>
+        </div>
+      )}
+
+      <div className="a-prop-evidence-head">
+        <div className="a-prop-f">
+          <span className="a-eyebrow">Buyer reason</span>
+          <span className="a-prop-v">{buyerReason(p)}</span>
+        </div>
+        <div className="a-prop-f">
+          <span className="a-eyebrow">Evidence category</span>
+          <span className="a-prop-v">{evidenceCategory(p)}</span>
+        </div>
+        <div className="a-prop-ev">Observed source record · {compactEvidenceLine(p) || 'source count and dates not stated'}</div>
+        <div className="a-prop-f">
+          <span className="a-eyebrow">Prerequisite</span>
+          <span className="a-prop-v">{prerequisites(p)}</span>
+        </div>
+      </div>
+
+      <details className="a-prop-details">
+        <summary>Review evidence and topic history</summary>
+        <div className="a-prop-detail-body">
+          {sources.length > 0 ? (
+            <div className="a-prop-f">
+              <span className="a-eyebrow">Observed competitor or buyer sources</span>
+              <div className="a-prop-srcs">
+                {sources.map((s, i) => <SourceLink key={s.id ?? i} s={s} />)}
               </div>
-            )
-          })}
-        </div>
-      )}
+            </div>
+          ) : <div className="a-ct-sub">No linked observed source rows were retained.</div>}
 
-      <div className="a-prop-ev">{evidenceLine(p)}</div>
+          <div className="a-prop-f">
+            <span className="a-eyebrow">Evidence limits</span>
+            <span className="a-prop-v">{evidenceLine(p).split(' · unknowns: ')[1] || 'Not stated.'}</span>
+          </div>
 
-      {sources.length > 0 && (
-        <div className="a-prop-srcs">
-          {sources.map((s, i) => <SourceLink key={s.id ?? i} s={s} />)}
-        </div>
-      )}
+          {textField(p, 'what_changed') ? (
+            <div className="a-prop-f">
+              <span className="a-eyebrow">Observed change</span>
+              <span className="a-prop-v">{textField(p, 'what_changed')}</span>
+            </div>
+          ) : null}
 
-      {asset ? (
-        <div className="a-ct-sub">
-          Asset needed: {asset}
-          {audn?.asset_state ? ` · ${audn.asset_state}` : ''}
+          <div className="a-prop-f">
+            <span className="a-eyebrow">Founder factual sources</span>
+            <span className="a-prop-v">
+              {founderIds.length
+                ? `${founderIds.join(', ')} · factual input, not performance evidence`
+                : 'None recorded.'}
+            </span>
+          </div>
+
+          <div className="a-prop-f">
+            <span className="a-eyebrow">Performance evidence</span>
+            <span className="a-prop-v">
+              {typeof baseline?.median === 'number' && typeof baseline?.n === 'number'
+                ? `Observed author median: ${baseline.median} across ${baseline.n} posts${typeof baseline.window_days === 'number' ? ` in ${baseline.window_days} days` : ''}. P90 and recommendation validation are not recorded.`
+                : 'No comparable performance baseline is recorded. P90 and recommendation validation are unavailable.'}
+            </span>
+          </div>
+
+          <div className="a-prop-f">
+            <span className="a-eyebrow">Prerequisite details</span>
+            {[audn?.next_action, audn?.proof_needed,
+              typeof audn?.asset_required === 'string' ? audn.asset_required : null]
+              .filter((v): v is string => typeof v === 'string' && v.trim() !== '')
+              .filter((v, i, all) => all.findIndex(x => x.trim() === v.trim()) === i)
+              .filter(v => v.trim() !== prerequisites(p))
+              .map((v, i) => <span className="a-prop-v" key={`${i}-${v}`}>{v.trim()}</span>)}
+            <span className="a-ct-sub">Primary prerequisite shown above.</span>
+            {typeof audn?.asset_required === 'string' && audn.asset_state
+              ? <span className="a-ct-sub">Asset status: {audn.asset_state}</span>
+              : null}
+            {!audn?.next_action && !audn?.proof_needed && typeof audn?.asset_required !== 'string'
+              ? <span className="a-prop-v">Not stated.</span>
+              : null}
+          </div>
+
+          {change ? (
+            <div className="a-prop-f">
+              <span className="a-eyebrow">Topic correction</span>
+              <span className="a-prop-v">Original: {change.from}</span>
+              <span className="a-prop-v">Final: {change.to}</span>
+              {change.reason ? <span className="a-ct-sub">Reason: {change.reason}</span> : null}
+            </div>
+          ) : <div className="a-ct-sub">No original-to-final topic change was retained.</div>}
+
+          {original ? (
+            <details className="a-prop-history">
+              <summary>Full original recommendation</summary>
+              <div className="a-prop-body">
+                <div className="a-prop-f"><span className="a-eyebrow">What changed</span><span className="a-prop-v">{original.what_changed || p.context?.correction_review?.original_body || 'Not stated.'}</span></div>
+                <div className="a-prop-f"><span className="a-eyebrow">Why it mattered</span><span className="a-prop-v">{original.why_it_matters || 'Not stated.'}</span></div>
+                <div className="a-prop-f"><span className="a-eyebrow">Original angle</span><span className="a-prop-v">{original.could_publish || 'Not stated.'}</span></div>
+                <div className="a-prop-f"><span className="a-eyebrow">Original proof needed</span><span className="a-prop-v">{original.proof_needed || 'Not stated.'}</span></div>
+              </div>
+            </details>
+          ) : null}
         </div>
-      ) : null}
+      </details>
 
       {error && <div className="a-ct-sub a-sev-urgent a-prop-err">{error}</div>}
 
@@ -267,15 +362,29 @@ export function ProposalRow({ p, onApprove, onDrop }: {
 
 /** The list, given rows. Pure apart from the row's own state, so the three
     states below can be rendered in a test without a network. */
-export function ProposalsList({ rows, onApprove, onDrop }: {
+export function ProposalsList({ rows, onApprove, onDrop, onDirtyChange }: {
   rows: Proposal[]
   onApprove: (p: Proposal, overrides: TextOverrides) => Promise<Receipt>
   onDrop: (p: Proposal) => Promise<void>
+  onDirtyChange?: (dirty: boolean) => void
 }) {
+  const dirtyIds = useRef(new Set<string>())
+  const rowDirty = useCallback((id: string, dirty: boolean) => {
+    if (dirty) dirtyIds.current.add(id)
+    else dirtyIds.current.delete(id)
+    onDirtyChange?.(dirtyIds.current.size > 0)
+  }, [onDirtyChange])
+
   return (
     <>
       {rows.map(p => (
-        <ProposalRow key={p.id} p={p} onApprove={onApprove} onDrop={onDrop} />
+        <ProposalRow
+          key={p.id}
+          p={p}
+          onApprove={onApprove}
+          onDrop={onDrop}
+          onDirtyChange={rowDirty}
+        />
       ))}
     </>
   )
@@ -294,13 +403,14 @@ export type ProposalsState =
 /** The whole surface, given its state. PURE — no hook, no fetch — so all four
     states can be rendered and read in a test rather than reasoned about. The
     block below is this plus the read. */
-export function ProposalsView({ lane, state, loadedAt, onRetry, onApprove, onDrop }: {
+export function ProposalsView({ lane, state, loadedAt, onRetry, onApprove, onDrop, onDirtyChange }: {
   lane: ContentLane
   state: ProposalsState
   loadedAt: string | null
   onRetry?: () => void
   onApprove: (p: Proposal, overrides: TextOverrides) => Promise<Receipt>
   onDrop: (p: Proposal) => Promise<void>
+  onDirtyChange?: (dirty: boolean) => void
 }) {
   const stamp = <span className="a-dim a-mono">{lane} · read {relAge(loadedAt)}</span>
 
@@ -353,28 +463,40 @@ export function ProposalsView({ lane, state, loadedAt, onRetry, onApprove, onDro
       pad
     >
       <div className="a-ct-sub">
-        Written weekly from the posts in the benchmark above. Send to ideas puts one
+        Written weekly from the retained competitor source records. Send to ideas puts one
         in this lane’s idea bank, where it joins the normal idea flow; Delete removes
         it for good. Nothing is published from here.
       </div>
-      <ProposalsList rows={state.rows} onApprove={onApprove} onDrop={onDrop} />
+      <ProposalsList rows={state.rows} onApprove={onApprove} onDrop={onDrop} onDirtyChange={onDirtyChange} />
     </Group>
   )
 }
 
-export function ProposalsBlock({ lane }: { lane: ContentLane }) {
+export function ProposalsBlock({ lane, onDirtyChange, refreshKey }: {
+  lane: ContentLane
+  onDirtyChange?: (dirty: boolean) => void
+  refreshKey?: number
+}) {
   // EVERY HOOK FIRST. Nothing below this line may return before they have all
   // been declared (2026-09-09, the DMs outage).
   const [rows, setRows] = useState<Proposal[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadedAt, setLoadedAt] = useState<string | null>(null)
+  const dirtyRef = useRef(false)
 
   const refresh = useCallback(() => {
     let live = true
     setLoading(true)
     void fetchProposals(lane).then(s => {
       if (!live) return
+      // A refresh can begin while clean and return after the reader starts an
+      // edit. Applying either success or failure then would replace the row or
+      // unmount its editor, so the response is discarded.
+      if (!proposalRefreshMayApply(dirtyRef.current)) {
+        setLoading(false)
+        return
+      }
       if (s.ok) {
         setRows(s.rows)
         setError(null)
@@ -389,7 +511,14 @@ export function ProposalsBlock({ lane }: { lane: ContentLane }) {
 
   // A lane switch mid-read must never land one lane's proposals under another
   // lane's heading, so the cleanup disowns the in-flight result.
-  useEffect(() => refresh(), [refresh])
+  useEffect(() => {
+    if (!dirtyRef.current) return refresh()
+  }, [refresh, refreshKey])
+
+  const handleDirtyChange = useCallback((dirty: boolean) => {
+    dirtyRef.current = dirty
+    onDirtyChange?.(dirty)
+  }, [onDirtyChange])
 
   const onApprove = useCallback(async (p: Proposal, overrides: TextOverrides) => {
     const r = await publishProposal(lane, p.id, overrides)
@@ -428,6 +557,7 @@ export function ProposalsBlock({ lane }: { lane: ContentLane }) {
       onRetry={refresh}
       onApprove={onApprove}
       onDrop={onDrop}
+      onDirtyChange={handleDirtyChange}
     />
   )
 }

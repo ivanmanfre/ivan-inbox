@@ -1,0 +1,25 @@
+.a-prop-evidence-head,
+.a-prop-detail-body{
+  display:flex;
+  flex-direction:column;
+  gap:var(--ds-s2);
+  max-width:78ch;
+}
+
+.a-prop-details,
+.a-prop-history{
+  color:var(--ds-text-2);
+  min-width:0;
+}
+
+.a-prop-details > summary,
+.a-prop-history > summary{
+  cursor:pointer;
+  font-size:var(--ds-fs-meta);
+  font-weight:var(--ds-fw-medium);
+}
+
+.a-prop-detail-body,
+.a-prop-history > .a-prop-body{
+  padding-top:var(--ds-s2);
+}

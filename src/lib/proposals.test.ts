@@ -55,8 +55,9 @@ vi.mock('./supabase', () => ({
 }))
 
 const {
-  fetchProposals, publishProposal, dropProposal, evidenceLine, proposalTitle,
+  fetchProposals, publishProposal, dropProposal, compactEvidenceLine, evidenceLine, proposalTitle,
   rosterRole, seedNote, changedOverrides, editDraft, textField, shortDate,
+  evidenceCategory, buyerReason, prerequisites, proposalEditDirty, proposalRefreshMayApply, topicChange,
   COLUMNS, PROPOSAL_KIND,
 } = await import('./proposals')
 const { pendingOps, pendingDmLaneOps, isAudnKind } = await import('./ops')
@@ -98,11 +99,11 @@ const proposal = (o: Partial<Proposal> = {}): Proposal => ({
       format: null,
     },
     source_rows: [
-      { table: 'competitor_posts', id: 'cp-1', author: 'Northwind Studio', date: '2026-08-19', reactions: 41, url: 'https://example.com/p/1' },
+      { table: 'competitor_posts', id: 'cp-1', author: 'Northwind Studio', date: '2026-08-19', reactions: 41, comments: 6, shares: 1, url: 'https://example.com/p/1' },
       { table: 'competitor_posts', id: 'cp-2', author: 'Belmar Growth', date: '2026-08-24', reactions: 12, url: 'https://example.com/p/2' },
       { table: 'competitor_posts', id: 'cp-3', author: 'Northwind Studio', date: '2026-08-30', reactions: 58, url: 'https://example.com/p/3' },
     ],
-    author_baseline: null,
+    author_baseline: { median: 34, n: 18, window_days: 90, source: 'competitor_posts' },
     proposed_at: '2026-09-08T09:00:00Z',
     prompt: 'audn-recommendation-writer@v1',
     seed: null,
@@ -265,10 +266,52 @@ describe('an audience proposal is not an ops card (CONTRACTS B2)', () => {
 })
 
 describe('the pure lines', () => {
+  it('labels recommendation evidence without claiming validation or a percentile', () => {
+    expect(evidenceCategory(proposal())).toBe('Editorial hypothesis')
+    const legacy = proposal({ context: null })
+    expect(evidenceCategory(legacy)).toBe('Evidence category not stated')
+    expect(evidenceCategory(proposal())).not.toMatch(/validated|p90/i)
+  })
+
+  it('keeps buyer fit, prerequisites and corrected topic history explicit', () => {
+    const p = proposal()
+    const corrected = {
+      ...p,
+      context: {
+        ...p.context,
+        audn: {
+          ...p.context?.audn,
+          buyer_relevance: 'A DTC founder needs a testable decision.',
+          next_action: 'Confirm the example with Mattan.',
+          founder_source_ids: ['rise-20260715-revshare'],
+        },
+        correction_review: {
+          reason: 'Align the topic with the buyer.',
+          original_audn: { title: 'A viral post pattern' },
+          original_body: 'Original observation.',
+          history_preserved: true,
+        },
+      },
+    } satisfies Proposal
+    expect(buyerReason(corrected)).toBe('A DTC founder needs a testable decision.')
+    expect(prerequisites(corrected)).toBe('Confirm the example with Mattan.')
+    expect(topicChange(corrected)).toEqual({
+      from: 'A viral post pattern', to: 'Post the placement rule', reason: 'Align the topic with the buyer.',
+    })
+    const t = strip(rowHtml(corrected))
+    expect(t).toContain('Founder factual sources')
+    expect(t).toContain('factual input, not performance evidence')
+    expect(t).toContain('Original: A viral post pattern')
+    expect(t).toContain('Final: Post the placement rule')
+  })
   it('writes the evidence line as count, window and unknowns', () => {
     expect(evidenceLine(proposal())).toBe(
       '3 sources · 19 Aug – 30 Aug · unknowns: no reach figure on two of the three',
     )
+  })
+
+  it('keeps the shortlist evidence compact and leaves unknowns for the disclosure', () => {
+    expect(compactEvidenceLine(proposal())).toBe('3 sources · 19 Aug – 30 Aug')
   })
 
   it('says `1 source` and one date when there is one of each', () => {
@@ -334,6 +377,19 @@ describe('the pure lines', () => {
     expect(changedOverrides(p, { ...draft, proof_needed: `  ${textField(p, 'proof_needed')}  ` }))
       .toEqual({})
   })
+
+  it('clears dirty state once an edited approval is complete', () => {
+    const p = proposal()
+    const changed = { ...editDraft(p), title: 'A shorter title' }
+    expect(proposalEditDirty(p, changed, true)).toBe(true)
+    expect(proposalEditDirty(p, changed, true, true)).toBe(false)
+    expect(proposalEditDirty(p, changed, false)).toBe(false)
+  })
+
+  it('does not apply a refresh response after an edit becomes dirty', () => {
+    expect(proposalRefreshMayApply(false)).toBe(true)
+    expect(proposalRefreshMayApply(true)).toBe(false)
+  })
 })
 
 describe('the three states, as they actually render', () => {
@@ -341,11 +397,17 @@ describe('the three states, as they actually render', () => {
     const h = listHtml([proposal()])
     const t = strip(h)
     expect(t).toContain('Post the placement rule')
-    expect(t).toContain('What changed')
-    expect(t).toContain('Why it matters')
+    expect(t).toContain('Observed change')
+    expect(t).toContain('Buyer reason')
     expect(t).toContain('Could publish')
-    expect(t).toContain('Proof needed')
-    expect(t).toContain('3 sources · 19 Aug – 30 Aug · unknowns:')
+    expect(t).toContain('Prerequisite')
+    expect(t).toContain('3 sources · 19 Aug – 30 Aug')
+    expect(t).toContain('Evidence limits')
+    expect(t).toContain('Editorial hypothesis')
+    expect(t).toContain('Observed source record')
+    expect(t).toContain('41 reactions · 6 comments · 1 share')
+    expect(t).toContain('Observed author median: 34 across 18 posts in 90 days')
+    expect(t).toContain('P90 and recommendation validation are not recorded')
     // The role badge, neutral: this is a record, not a live signal.
     expect(h).toMatch(/data-ds="Badge"[^>]*data-tone="neutral"/)
     expect(t).toContain('direct competitor')
@@ -358,14 +420,38 @@ describe('the three states, as they actually render', () => {
     for (const label of ['Send to ideas', 'Edit', 'Delete']) expect(t).toContain(label)
   })
 
-  it('names the asset when one is required, and stays silent when none is', () => {
+  it('renders each current recommendation paragraph once', () => {
+    const t = strip(rowHtml(proposal()))
+    for (const value of [
+      textField(proposal(), 'what_changed'),
+      textField(proposal(), 'why_it_matters'),
+      textField(proposal(), 'could_publish'),
+      textField(proposal(), 'proof_needed'),
+    ]) expect(t.split(value)).toHaveLength(2)
+  })
+
+  it('links only http and https evidence URLs', () => {
+    const p = proposal()
+    const unsafe = {
+      ...p,
+      context: { ...p.context, source_rows: [{ id: 'bad', author: 'Unknown', url: 'javascript:alert(1)' }] },
+    }
+    const h = rowHtml(unsafe)
+    expect(h).not.toContain('href="javascript:')
+    expect(strip(h)).toContain('Unknown')
+  })
+
+  it('uses an asset requirement as the single prerequisite fallback', () => {
     const p = proposal()
     const withAsset = {
       ...p,
       context: { ...p.context, audn: { ...p.context?.audn, asset_required: 'A screenshot of the two proof lines', asset_state: 'missing' } },
     }
-    expect(strip(rowHtml(withAsset))).toContain('Asset needed: A screenshot of the two proof lines')
-    expect(strip(rowHtml(p))).not.toContain('Asset needed')
+    expect(strip(rowHtml(withAsset))).toContain('The two dates and the reaction counts')
+    expect(strip(rowHtml(withAsset))).toContain('A screenshot of the two proof lines')
+    expect(strip(rowHtml(withAsset))).toContain('Asset status: missing')
+    const assetOnly = { ...withAsset, context: { ...withAsset.context, audn: { ...withAsset.context.audn, proof_needed: null } } }
+    expect(strip(rowHtml(assetOnly))).toContain('PrerequisiteA screenshot of the two proof lines')
   })
 
   it('renders the three states, and says what failed rather than showing nothing', () => {
@@ -394,7 +480,7 @@ describe('the three states, as they actually render', () => {
 
   it('carries no workflow id and no outreach table name (copy hygiene, Run 03 C1)', () => {
     const t = strip(listHtml([proposal()]))
-    expect(t).not.toMatch(/\b[A-Za-z0-9]{16}\b/)
+    expect(t).not.toMatch(/\b(?=[A-Za-z0-9]{16}\b)(?=[A-Za-z0-9]*\d)[A-Za-z0-9]+\b/)
     expect(t).not.toMatch(/post_engagers|client_post_engagers|outreach_prospects/)
   })
 })

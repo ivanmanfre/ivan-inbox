@@ -27,7 +27,7 @@ import { Badge } from '../../ds'
 import { Cell, Group, Ledger, Row, relAge } from '../kit'
 import { CalmEmpty, Failed } from './parts'
 import { useAudience } from '../../hooks/useAudience'
-import type { AudienceSummary, RecLine } from '../../lib/audience'
+import { audienceMetricLabel, type AudienceSummary, type RecLine } from '../../lib/audience'
 import type { ContentLane } from '../../lib/content'
 import './content.css'
 
@@ -127,7 +127,7 @@ function Ranks({ s }: { s: AudienceSummary }) {
     <>
       {s.ranks.map(r => (
         <Row
-          key={r.post_social_id}
+          key={`${r.post_social_id}-${r.target_age_days}`}
           title={r.rank == null || r.eligible_n == null
             ? 'unranked'
             : `#${r.rank} of ${r.eligible_n} eligible`}
@@ -135,7 +135,7 @@ function Ranks({ s }: { s: AudienceSummary }) {
           subWrap
           tail={
             <span className="a-mono a-dim">
-              {r.reactions == null ? 'no reading' : `${r.reactions} reactions`}
+              {r.reactions == null ? 'no reading' : `${r.reactions} ${audienceMetricLabel(r.rank_basis)}`}
               {r.target_age_days == null ? '' : ` at ${r.target_age_days}d`}
             </span>
           }
@@ -320,21 +320,21 @@ export function AudienceBlock({ lane }: { lane: ContentLane }) {
       <Numbers s={s} />
 
       <div className="a-aud-sec">
-        <div className="a-eyebrow">Top posts by matched-age rank</div>
+        <div className="a-eyebrow">Post measurements and available rankings</div>
         <Ranks s={s} />
       </div>
 
       <div className="a-aud-sec">
-        <div className="a-eyebrow">Monthly median reactions</div>
+        <div className="a-eyebrow">Monthly measurements</div>
         {s.monthly.length ? s.monthly.map(m => (
           <Row
             key={`${m.month}-${m.target_age_days}`}
             title={m.month ?? 'unknown month'}
-            sub={`${m.n ?? 0} posts${m.target_age_days == null ? '' : ` at ${m.target_age_days}d`}${m.basis ? ` · ${m.basis}` : ''}`}
+            sub={`${m.n ?? 0} posts${m.target_age_days == null ? '' : ` at ${m.target_age_days}d`}${m.basis ? ` · ${audienceMetricLabel(m.basis)}` : ''}`}
             subWrap
             tail={
               <span className="a-mono a-dim">
-                {m.median_reactions == null ? 'no reading' : `${m.median_reactions} median`}
+                {m.median_reactions == null ? 'no reading' : `${m.median_reactions} median ${audienceMetricLabel(m.basis)}`}
               </span>
             }
           />

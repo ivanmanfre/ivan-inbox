@@ -73,6 +73,10 @@ export type AudnObject = {
   pillar?: string | null
   format?: string | null
   title?: string | null
+  buyer_relevance?: string | null
+  next_action?: string | null
+  original_angle?: string | null
+  founder_source_ids?: string[] | null
 }
 
 /** One cited row, as the writer captured it. Every id in
@@ -115,6 +119,14 @@ export type ProposalContext = {
     ref?: string | null
     at?: string | null
     overrides?: Record<string, string> | null
+  } | null
+  correction_review?: {
+    at?: string | null
+    reason?: string | null
+    version?: string | null
+    original_audn?: AudnObject | null
+    original_body?: string | null
+    history_preserved?: boolean | null
   } | null
   [key: string]: unknown
 }
@@ -342,6 +354,42 @@ export function evidenceLine(p: Proposal): string {
   return parts.join(' · ')
 }
 
+/** Count and observation window for the shortlist. Unknowns belong in the
+    evidence disclosure, where the reader can inspect them with the sources. */
+export function compactEvidenceLine(p: Proposal): string {
+  return evidenceLine(p).split(' · unknowns:')[0]
+}
+
+/** The cited rows are observations. They can support a pattern description,
+    but they do not validate the recommendation or establish a percentile. */
+export function evidenceCategory(p: Proposal): string {
+  const audn = p.context?.audn
+  if (!audn) return 'Evidence category not stated'
+  return 'Editorial hypothesis'
+}
+
+export function buyerReason(p: Proposal): string {
+  const audn = p.context?.audn
+  return audn?.buyer_relevance?.trim() || audn?.why_it_matters?.trim() || 'Buyer reason not stated.'
+}
+
+export function prerequisites(p: Proposal): string {
+  const audn = p.context?.audn
+  const asset = typeof audn?.asset_required === 'string' ? audn.asset_required.trim() : ''
+  return audn?.next_action?.trim() || audn?.proof_needed?.trim() || asset || 'Prerequisites not stated.'
+}
+
+export function topicChange(p: Proposal): { from: string; to: string; reason: string | null } | null {
+  const review = p.context?.correction_review
+  const from = review?.original_audn?.title?.trim()
+  if (!from) return null
+  return {
+    from,
+    to: proposalTitle(p),
+    reason: review?.reason?.trim() || null,
+  }
+}
+
 /** The proposal's own age line, from the writer's stamp rather than the row's
     — `proposed_at` is when the model was asked, `created_at` is when the
     insert landed, and the first is the one the reader is judging. */
@@ -381,6 +429,18 @@ export function changedOverrides(p: Proposal, draft: TextOverrides): TextOverrid
     out[key] = next.trim()
   }
   return out
+}
+
+/** A completed approval cannot keep navigation or refresh guards active. */
+export function proposalEditDirty(
+  p: Proposal, draft: TextOverrides, editing: boolean, complete = false,
+): boolean {
+  return !complete && editing && Object.keys(changedOverrides(p, draft)).length > 0
+}
+
+/** A refresh that started before an edit must not replace or unmount it. */
+export function proposalRefreshMayApply(dirty: boolean): boolean {
+  return !dirty
 }
 
 /** The prefilled editor state — every field, as it stands now. */

@@ -197,9 +197,10 @@ export type FilterSpec = { client_id: string; run_tag: string; captured_at: stri
 
 // Soft-fails to [] like fetchReplacement: one missing relation must not take the
 // Strategy tab down with it.
-export async function fetchFilterSpec(): Promise<FilterSpec[]> {
-  const { data, error } = await supabase
-    .from('inbox_filter_spec_v').select('*').order('captured_at', { ascending: false })
-  if (error) return []
-  return (data ?? []) as FilterSpec[]
+export async function fetchFilterSpec(lane?: string): Promise<FilterSpec[]> {
+  let query = supabase.from('inbox_filter_spec_v').select('*').order('captured_at', { ascending: false })
+  if (lane) query = query.eq('client_id', lane)
+  const { data, error } = await query
+  if (error) throw new Error(error.message)
+  return ((data ?? []) as FilterSpec[]).filter(row => !lane || row.client_id === lane)
 }

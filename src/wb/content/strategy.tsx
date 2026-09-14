@@ -31,6 +31,7 @@ import { ProposalsBlock } from './ProposalsBlock'
 import { BenchmarkBlock } from './BenchmarkBlock'
 import { ThemesBlock } from './ThemesBlock'
 import './content.css'
+import './strategy-evidence.css'
 
 // A textarea that grows to its content, because a strategy section is 2 lines
 // or 20 and a fixed box makes the 20-line one a 4-line scroll port. Measured on
@@ -191,15 +192,23 @@ function StrategySection({ s, first, last, onPatch, onMove, onRemove, onAddAfter
 // be current. Every gate is printed verbatim, regexes included. They look dense
 // because they ARE dense, and a prettified paraphrase would be the same drift
 // problem wearing a nicer font.
-function FilterSpecBlock() {
+function FilterSpecBlock({ lane }: { lane: ContentLane }) {
   const [rows, setRows] = useState<FilterSpec[] | null>(null)
-  useEffect(() => { void fetchFilterSpec().then(setRows) }, [])
-  if (rows === null) return null
+  const [error, setError] = useState<string | null>(null)
+  const [tick, setTick] = useState(0)
+  useEffect(() => {
+    let live = true
+    setRows(null); setError(null)
+    fetchFilterSpec(lane).then(data => { if (live) setRows(data) })
+      .catch(e => { if (live) setError(e instanceof Error ? e.message : 'Filters could not load.') })
+    return () => { live = false }
+  }, [lane, tick])
+  if (error) return <Failed what="This lane's outreach filters" message={error} onRetry={() => setTick(t => t + 1)} />
+  if (rows === null) return <div className="a-ct-sub">Reading this lane’s filters…</div>
   if (!rows.length) {
     return (
       <div className="a-ct-sub">
-        No filter spec published yet. The harvest engine writes one on each run,
-        so this fills in within a couple of hours of the next one.
+        No outreach filter spec is available for {LANE_LABEL[lane]} in this read.
       </div>
     )
   }
@@ -252,18 +261,25 @@ export function StrategyView({ lane, setLane }: {
   setLane: (l: ContentLane) => void
 }) {
   const st = useStrategy(lane)
+  const [view, setView] = useState('recommendations')
+  const [refreshTick, setRefreshTick] = useState(0)
+  const [proposalDirty, setProposalDirty] = useState(false)
   const rowsRef = useRef<HTMLDivElement>(null)
   const confirm = useConfirm()
   // Pull-to-refresh would discard unsaved edits, so it is wired to a refresh
   // that refuses while dirty rather than being wired to nothing (a dead pull
   // gesture reads as a broken surface).
-  const ptr = usePullToRefresh(rowsRef, () => { if (!st.dirty) st.refresh() })
+  const ptr = usePullToRefresh(rowsRef, () => {
+    if (view === 'notes') { if (!st.dirty) st.refresh() }
+    else if (!proposalDirty) setRefreshTick(t => t + 1)
+  })
+  useEffect(() => { if (rowsRef.current) rowsRef.current.scrollTop = 0 }, [view, lane])
 
   const head = (
     <>
     <Head
       title="Strategy"
-      sub={st.dirty ? 'unsaved' : st.updatedAt ? `saved ${relAge(st.updatedAt)}` : 'never saved'}
+      sub={st.dirty ? 'Unsaved notes' : 'Recommendations and evidence'}
     />
     <Bar>
         <Segmented
@@ -271,35 +287,35 @@ export function StrategyView({ lane, setLane }: {
           markerId="a-strat-lane"
           value={lane}
           onChange={async k => {
+            if (st.saving) return
             // Switching lane remounts against a different row. Doing that with
             // unsaved text would drop it silently.
-            if (st.dirty) {
+            if (st.dirty || proposalDirty) {
               const ok = await confirm({
-                title: 'You have unsaved strategy edits on this lane.',
+                title: 'You have unsaved edits on this lane.',
                 message: 'Switch lane and lose them?',
                 confirmText: 'Switch and lose them',
                 danger: true,
               })
               if (!ok) return
             }
+            setProposalDirty(false)
             setLane(k as ContentLane)
           }}
           options={CONTENT_LANES.map(k => ({ id: k, label: LANE_LABEL[k] }))}
         />
     </Bar>
+    <Bar>
+      <Segmented label="Strategy views" className="a-strategy-nav" markerId="a-strategy-view"
+        value={view} onChange={setView} options={[
+          { id: 'recommendations', label: 'Recommendations' },
+          { id: 'results', label: 'Results' },
+          { id: 'competitors', label: 'Competitors' },
+          { id: 'notes', label: st.dirty ? 'Notes •' : 'Notes' },
+        ]} />
+    </Bar>
     </>
   )
-
-  if (st.error) {
-    return (
-      <Screen className="a-ct">
-        {head}
-        <Body>
-          <Failed what="This lane's strategy" message={st.error} onRetry={st.refresh} loadedAt={null} />
-        </Body>
-      </Screen>
-    )
-  }
 
   const blanks = blankCount(st.sections)
 
@@ -308,7 +324,16 @@ export function StrategyView({ lane, setLane }: {
       {head}
       <Body innerRef={rowsRef} className="a-strat">
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
-        {st.loading ? (
+        <div className="a-strategy-panel" hidden={view !== 'recommendations'}><ProposalsBlock key={lane} lane={lane} refreshKey={refreshTick} onDirtyChange={setProposalDirty} /></div>
+        {view === 'results' && <div key={`${lane}-${refreshTick}`} className="a-strategy-results">
+          <BenchmarkBlock lane={lane} view="results" />
+          <details className="a-strategy-disclosure"><summary>Explore subjects, hooks and formats</summary><ThemesBlock lane={lane} /></details>
+          <details className="a-strategy-disclosure"><summary>Audience and recommendation outcomes</summary><AudienceBlock lane={lane} /></details>
+        </div>}
+        {view === 'competitors' && <BenchmarkBlock key={`${lane}-${refreshTick}`} lane={lane} view="competitors" />}
+        {view === 'notes' && <>
+        <div className="a-ct-sub">Private editorial notes{st.updatedAt ? ` · saved ${relAge(st.updatedAt)}` : ''}. These notes are not connected to the generator. Review dated claims against Competitors and Results before using them.</div>
+        {st.error ? <Failed what="This lane's notes" message={st.error} onRetry={st.refresh} loadedAt={null} /> : st.loading ? (
           <div className="a-ct-sub a-strat-hold">Loading…</div>
         ) : (
           <>
@@ -316,7 +341,7 @@ export function StrategyView({ lane, setLane }: {
               {blanks > 0
                 ? `${blanks} of ${st.sections.length} sections still unwritten.`
                 : `${st.sections.length} sections, all written.`}
-              {' '}Only you can see this. It is never read by the generator and never shown to the client.
+              {' '}Only you can see these notes.
             </div>
             <AnimatePresence initial={false}>
               {st.sections.map((s, i) => (
@@ -339,30 +364,8 @@ export function StrategyView({ lane, setLane }: {
             </div>
           </>
         )}
-        {/* W6-5: CLS 0.4992, one element (`section.a-group`) carrying 0.496 of
-            it. This block used to render under the "Loading…" line and then be
-            shoved a whole document down when the sections arrived. It mounts
-            once the sections have, so it lands where it stays. */}
-        {/* W16 · The audience read, under what Ivan writes and above what the
-            engine publishes. Gated on `!st.loading` for the same CLS reason as
-            the block below it: mounted under "Loading…" it would be shoved a
-            document down the moment the sections arrive. Read-only — the
-            sections above stay the only writer on this screen. */}
-        {/* Run 06 · The audience writer's proposals, above the numbers that
-            produced them. Gated on `!st.loading` for the same CLS reason as the
-            two blocks below: mounted under "Loading…" it would be shoved a
-            document down the moment the sections arrive.
-            This block is the ONE writer of proposal decisions on this screen
-            (approve calls the publish RPC, drop deletes the row); the strategy
-            sections editor above stays the only writer of strategy text. */}
-        {/* Ivan 09-11: the benchmark (this lane vs the accounts we watch) above
-            the proposals written from it. Read-only; one RPC. */}
-        {!st.loading && <BenchmarkBlock lane={lane} />}
-        {/* Ivan 09-12: his posts by theme, read for the tail. */}
-        {!st.loading && <ThemesBlock lane={lane} />}
-        {!st.loading && <ProposalsBlock lane={lane} />}
-        {!st.loading && <AudienceBlock lane={lane} />}
-        {!st.loading && <FilterSpecBlock />}
+        <details className="a-strategy-disclosure"><summary>Live outreach filters for {LANE_LABEL[lane]}</summary><FilterSpecBlock key={lane} lane={lane} /></details>
+        </>}
         <div className="a-strat-foot" aria-hidden />
       </Body>
       {/* The save bar exists only when there is something to save — a

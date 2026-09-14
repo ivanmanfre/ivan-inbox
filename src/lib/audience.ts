@@ -65,7 +65,6 @@ export async function fetchMeasurement(lane: ContentLane): Promise<MeasurementRe
   const payload = data as MeasurementPayload | null
   if (!payload || !Array.isArray(payload.matched_age)) return { kind: 'failed', message: 'Measurement returned no usable payload.' }
   if (payload.client_id !== lane) return { kind: 'denied', message: 'Measurement was not returned for this lane.' }
-  if (payload.matched_age.length === 0) return { kind: 'empty', message: 'No matched-age measurements yet.' }
   return { kind: 'ready', data: payload }
 }
 
@@ -310,6 +309,7 @@ export type TopicLine = {
 }
 
 export type RankLine = {
+  rank_basis?: string | null
   post_social_id: string
   rank: number | null
   eligible_n: number | null
@@ -571,9 +571,10 @@ export function summarize(src: AudienceSources): AudienceSummary {
         eligible_n: num(r.eligible_n),
         target_age_days: num(r.target_age_days),
         reactions: num(r.reactions),
+        rank_basis: r.rank_basis,
       }))
       .sort((a, b) => (a.rank ?? Number.MAX_SAFE_INTEGER) - (b.rank ?? Number.MAX_SAFE_INTEGER))
-      .slice(0, 5)
+
   } else {
     base.partial.push(src.ranks.error)
   }
@@ -917,4 +918,11 @@ export async function fetchAudienceSummary(lane: ContentLane): Promise<AudienceS
     recommendations: pair.recommendations,
     decisions: pair.decisions,
   })
+}
+
+/** Compatibility column names do not determine the measure shown to readers. */
+export function audienceMetricLabel(basis: string | null | undefined): string {
+  if (basis === 'matched_age_engagement_count') return 'engagements'
+  if (basis === 'matched_age_reactions') return 'reactions'
+  return 'metric value'
 }

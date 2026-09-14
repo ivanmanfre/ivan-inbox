@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   fetchStrategy, saveStrategy, STARTER_SECTIONS,
   type StrategySection,
@@ -15,6 +15,10 @@ import type { ContentLane } from '../lib/content'
 // version BEFORE his sentence. Refresh is manual (pull-to-refresh / the button)
 // and blocked while the draft is dirty.
 export function useStrategy(lane: ContentLane) {
+  const readVersion = useRef(0)
+  const currentLane = useRef(lane)
+  currentLane.current = lane
+  const [loadedLane, setLoadedLane] = useState<ContentLane | null>(null)
   const [sections, setSections] = useState<StrategySection[]>(STARTER_SECTIONS)
   const [saved, setSaved] = useState<StrategySection[]>(STARTER_SECTIONS)
   const [updatedAt, setUpdatedAt] = useState<string | null>(null)
@@ -24,9 +28,15 @@ export function useStrategy(lane: ContentLane) {
   const [saveError, setSaveError] = useState<string | null>(null)
 
   const refresh = useCallback(() => {
+    const version = ++readVersion.current
+    setLoadedLane(null)
     setLoading(true)
+    setError(null)
+    setSaveError(null)
     fetchStrategy(lane)
       .then(s => {
+        if (version !== readVersion.current || currentLane.current !== lane) return
+        setLoadedLane(lane)
         setSections(s.sections)
         setSaved(s.sections)
         setUpdatedAt(s.updatedAt)
@@ -34,16 +44,18 @@ export function useStrategy(lane: ContentLane) {
         setLoading(false)
       })
       .catch((e: unknown) => {
+        if (version !== readVersion.current || currentLane.current !== lane) return
         setError(e instanceof Error ? e.message : 'strategy unavailable')
         setLoading(false)
       })
   }, [lane])
 
-  useEffect(() => { refresh() }, [refresh])
+  useEffect(() => { refresh(); return () => { readVersion.current += 1 } }, [refresh])
 
-  const dirty = JSON.stringify(sections) !== JSON.stringify(saved)
+  const dirty = loadedLane === lane && JSON.stringify(sections) !== JSON.stringify(saved)
 
   const save = useCallback(async () => {
+    if (loadedLane !== lane || loading) return
     setSaving(true)
     setSaveError(null)
     // Snapshot what is being written. Ivan can keep typing during the round
@@ -52,14 +64,16 @@ export function useStrategy(lane: ContentLane) {
     const writing = sections
     try {
       const at = await saveStrategy(lane, writing)
+      if (currentLane.current !== lane) return
       setSaved(writing)
       setUpdatedAt(at)
     } catch (e: unknown) {
+      if (currentLane.current !== lane) return
       setSaveError(e instanceof Error ? e.message : 'save failed')
     } finally {
-      setSaving(false)
+      if (currentLane.current === lane) setSaving(false)
     }
-  }, [lane, sections])
+  }, [lane, sections, loadedLane, loading])
 
   // Unsaved work must not vanish on a tab close or a lane switch that reloads.
   useEffect(() => {
@@ -70,7 +84,7 @@ export function useStrategy(lane: ContentLane) {
   }, [dirty])
 
   return {
-    sections, setSections, updatedAt, loading, error,
+    sections, setSections, updatedAt: loadedLane === lane ? updatedAt : null, loading: loading || (!error && loadedLane !== lane), error,
     saving, saveError, dirty, save, refresh,
   }
 }

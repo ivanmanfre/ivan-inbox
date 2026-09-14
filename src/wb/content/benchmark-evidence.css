@@ -1,0 +1,8 @@
+/* The metric names retain their measurement units at phone widths. */
+.a-bm-metric-tabs { display: flex; width: 100%; max-width: 100%; margin-bottom: var(--ds-s3); }
+.a-bm-metric-tabs .ds-seg-item { min-width: 0; flex: 1; height: auto; min-height: var(--ds-tap); white-space: normal; }
+.a-bm-metric-tabs .ds-seg-item > span { overflow-wrap: anywhere; }
+.a-bm-g .a-bm-measure-row > div { min-width: 0; overflow-wrap: anywhere; }
+.a-bm-g a { color: var(--ds-accent-ui); text-underline-offset: 3px; }
+.a-bm-g a:focus-visible { outline: 2px solid var(--ds-accent-ui); outline-offset: 3px; }
+.a-bm-g summary { cursor: pointer; min-height: 44px; padding-block: 10px; }
