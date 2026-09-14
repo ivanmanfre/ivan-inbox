@@ -2,6 +2,11 @@
 declare const self: ServiceWorkerGlobalScope
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
 import { clientsClaim } from 'workbox-core'
+import { supabase } from './lib/supabase'
+import { loadInbox } from './lib/inboxLoad'
+import { INBOX_QUERY, buildInboxCache, type InboxCache } from './lib/inboxCache'
+import { SESSION_KEY, readHandoff, shouldPrefetch, swrHandoffKey, writeHandoff } from './lib/handoff'
+import type { SwrEntry } from './lib/swr'
 
 // A new build must REPLACE the running one, not queue behind it. Without these
 // two lines an updated worker sits in `waiting` until every tab of the app is
@@ -91,8 +96,41 @@ self.addEventListener('push', (e) => {
     // stop trusting a feed.
     const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
     for (const c of clients) c.postMessage({ type: 'push', url, family: d.family })
+    await prefetchInbox(clients.length)
   })())
 })
+
+// FETCH THE DMs LIST NOW, WHILE THE APP IS CLOSED, so the tap on the
+// notification opens on current rows instead of on a 3 s read (2026-09-14,
+// Ivan: "how can it feel like a true app"). The session comes from the hand-off
+// store (src/lib/handoff.ts); an expired access token is refreshed here and the
+// rotated session written back, which is safe ONLY because shouldPrefetch
+// refuses while any window is open: an open page owns the refresh token. The
+// rows are assembled by the same loadInbox the screen uses and saved in the
+// same SwrEntry shape, then adopted into localStorage by main.tsx on the next
+// open. An empty read is never saved: the inbox is not empty, so an empty
+// result is a failed read, not a truth (N3b rule).
+async function prefetchInbox(windowClients: number): Promise<string> {
+  try {
+    const stored = await readHandoff<string>(SESSION_KEY)
+    if (!shouldPrefetch({ windowClients, session: stored })) return windowClients > 0 ? 'app-open' : 'no-session'
+    const parsed = JSON.parse(stored!) as { access_token: string; refresh_token: string }
+    const { data, error } = await supabase.auth.setSession({ access_token: parsed.access_token, refresh_token: parsed.refresh_token })
+    if (error || !data.session) return `auth: ${error?.message ?? 'no session'}`
+    if (data.session.access_token !== parsed.access_token) await writeHandoff(SESSION_KEY, JSON.stringify(data.session))
+    const prior = await readHandoff<SwrEntry<InboxCache>>(swrHandoffKey(INBOX_QUERY))
+    const { threads } = await loadInbox(prior?.payload?.threads?.length ?? 0)
+    if (threads.length === 0) return 'empty read, not saved'
+    const entry: SwrEntry<InboxCache> = { savedAt: new Date().toISOString(), user: data.session.user.id, payload: buildInboxCache(threads) }
+    await writeHandoff(swrHandoffKey(INBOX_QUERY), entry)
+    return `saved ${entry.payload.threads.length} threads`
+  } catch (e) {
+    return `failed: ${e instanceof Error ? e.message : String(e)}`
+  }
+}
+// Reachable from a test harness (worker.evaluate) so the prefetch can be driven
+// without a real push.
+;(self as unknown as { __inboxPrefetch: typeof prefetchInbox }).__inboxPrefetch = prefetchInbox
 
 // Tapping a notification must land IN the app, on the thing the notification is
 // about. openWindow() alone opens a SECOND copy of the PWA every time — the

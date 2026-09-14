@@ -1,4 +1,20 @@
 import { createClient } from '@supabase/supabase-js'
+import { SESSION_KEY, deleteHandoff, readHandoff, writeHandoff } from './handoff'
+import { makePageStorage } from './sessionStorage'
+
+// Page context only (see src/lib/sessionStorage.ts). The worker has no
+// localStorage and gets supabase-js's default memory storage instead.
+const pageStorage = typeof localStorage === 'undefined' ? undefined : makePageStorage({
+  local: localStorage,
+  readWorker: () => readHandoff<string>(SESSION_KEY),
+  writeWorker: v => writeHandoff(SESSION_KEY, v),
+  deleteWorker: () => deleteHandoff(SESSION_KEY),
+})
+if (pageStorage && typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') pageStorage.consultWorkerAgain()
+  })
+}
 
 export const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -14,6 +30,7 @@ export const supabase = createClient(
       // existing signed-in sessions are not orphaned on deploy.
       detectSessionInUrl: true,
       flowType: 'implicit',
+      storage: pageStorage,
     },
   },
 )

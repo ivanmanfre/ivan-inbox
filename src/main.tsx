@@ -17,6 +17,7 @@ import { ConfirmProvider } from './wb/chrome/ConfirmSheet'
 // src/lib/pushLater.ts and this is the design system's provider over it, so
 // every `usePushLater()` call site is unchanged.
 import { PushLaterProvider } from './wb/sheets/PushLater'
+import { adoptPrefetchedInbox } from './lib/handoff'
 
 if (localStorage.getItem('inbox-theme') === 'light') {
   document.documentElement.dataset.theme = 'light'
@@ -115,14 +116,21 @@ if ('serviceWorker' in navigator) {
 
 console.log('[inbox] build', __BUILD__)
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <Motion>
-      <ConfirmProvider>
-        <PushLaterProvider>
-          <App />
-        </PushLaterProvider>
-      </ConfirmProvider>
-    </Motion>
-  </StrictMode>,
-)
+// A push that arrived while the app was closed may have left a fresher DMs
+// copy in the hand-off store (src/sw.ts). It moves into localStorage BEFORE the
+// first render, because useInbox seeds from localStorage synchronously and a
+// copy adopted one frame later would be a skeleton flash followed by rows.
+// Bounded inside: a wedged IndexedDB resolves within 300 ms either way.
+adoptPrefetchedInbox().then(() => {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <Motion>
+        <ConfirmProvider>
+          <PushLaterProvider>
+            <App />
+          </PushLaterProvider>
+        </ConfirmProvider>
+      </Motion>
+    </StrictMode>,
+  )
+})

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { fetchDraftContextGaps, fetchDraftEmailStamps, fetchDraftEvidence, fetchManualReplyIds, fetchMessages, groupThreads, type DraftContextGap, type DraftEmailStamp, type Thread, SPAM_REASON } from '../lib/inbox'
+import { type Thread, SPAM_REASON } from '../lib/inbox'
+import { loadInbox } from '../lib/inboxLoad'
 import { playChime } from '../lib/chime'
 import { readInboxCache, writeInboxCache } from '../lib/inboxCache'
 
@@ -49,39 +50,13 @@ export function useInbox() {
   // it and re-subscribing on every list change is a channel churn bug).
   const knownRows = useRef<number>(seed?.cache.threads.length ?? 0)
   const refresh = useCallback(() => {
-    // The needs_manual_reply probe rides alongside the message fetch, never in
-    // front of it: a failed flag read degrades the badge (those threads drop to
-    // "waiting"), it must not take the whole inbox down with it.
-    Promise.all([
-      fetchMessages(knownRows.current),
-      fetchManualReplyIds().catch(() => new Set<string>()),
-      // Same degrade rule as the flag probe: a failed stamp read only loses the
-      // "also emails" badge, it must never take the inbox down.
-      fetchDraftEmailStamps().catch(() => new Map<string, DraftEmailStamp>()),
-    ]).then(async ([rows, manualReplyIds, emailStamps]) => {
-      const draftIds = groupThreads(rows, manualReplyIds).flatMap(t =>
-        [t.draft, t.companionDraft, t.ownerConfirmation].flatMap(m => m ? [m.id] : []))
-      const [evidence, contextGaps] = await Promise.all([
-        fetchDraftEvidence(draftIds).catch(() => null),
-        fetchDraftContextGaps(draftIds).catch(() => new Map<string, DraftContextGap>()),
-      ])
-      const pendingIds = new Set(draftIds)
-      for (const m of rows) {
-        const em = emailStamps.get(m.id)
-        if (em) { m.recipient_email = em.recipient_email; m.email_mirror_text = em.email_mirror_text }
-        const cg = contextGaps.get(m.id)
-        if (cg) m.context_gap = cg
-        m.draft_evidence_unavailable = evidence === null && pendingIds.has(m.id)
-        const ev = evidence?.get(m.id)
-        if (ev) m.draft_evidence = ev
-      }
+    loadInbox(knownRows.current).then(({ rows, threads: grouped }) => {
       // 2026-09-10 (Ivan: strangers filed under Likely spam get "no notifications or sound"):
       // a filed thread never moves the chime watermark. Registration inserts old messages with
       // a fresh created_at, so without this every triage batch would ring the open app.
       const latest = rows
         .filter(m => m.direction === 'inbound' && (m.prospect_skip_reason ?? null) !== SPAM_REASON)
         .map(m => m.created_at).sort().at(-1) ?? null
-      const grouped = groupThreads(rows, manualReplyIds)
       // THE SAME RULE fetchMessages applies to its first page, applied once more
       // to the grouped list: an empty result over an inbox we KNOW had rows is a
       // failed refresh. It must not wipe the rows, must not write the cache, and

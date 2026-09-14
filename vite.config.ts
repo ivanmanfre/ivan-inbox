@@ -21,6 +21,20 @@ export default defineConfig({
     // put the whole test corpus on every install for nobody's benefit.
     injectManifest: {
       globIgnores: ['**/{healthy,incident,unknown,partial,capacity_reached,outside_window}-*.js'],
+      // The worker imports the app's Supabase client for the push-time DMs
+      // prefetch (src/sw.ts). supabase-js carries a dynamic
+      // `import('@opentelemetry/api')` whose bundler helper references
+      // `import.meta`, which is a SyntaxError in a classic worker script: the
+      // whole worker failed to evaluate and no push handler was registered
+      // (caught 2026-09-14 in the Playwright gate, never shipped). The import
+      // itself is already wrapped in a catch upstream; only the two
+      // `import.meta` reads have to go.
+      buildPlugins: { vite: [{
+        name: 'sw-no-import-meta',
+        renderChunk(code) {
+          return code.replaceAll('import.meta.resolve', 'undefined').replaceAll('import.meta.url', 'self.location.href')
+        },
+      }] },
     },
     manifest: {
       name: 'Inbox', short_name: 'Inbox', display: 'standalone',
