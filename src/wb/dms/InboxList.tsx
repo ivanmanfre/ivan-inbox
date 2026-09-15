@@ -22,7 +22,7 @@ import { InboxSkeleton } from '../chrome/Skeleton'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { returnsIn } from '../../lib/pushLater'
 import { useConfirm } from '../chrome/ConfirmSheet'
-import { discardDraft, filterByStatus, filterThreads, inboxWaitingCount, isLeadMagnet, searchThreads, threadKind, type Filter, type Status, type Thread, eventTime } from '../../lib/inbox'
+import { discardDraft, filterByStatus, filterThreads, inboxWaitingCount, isConversation, isLeadMagnet, searchThreads, threadKind, type Filter, type Status, type Thread, eventTime } from '../../lib/inbox'
 import { DM_FIELDS, applyThreadTokens, hasStatusToken, tokensForFilter, type FilterToken } from '../../lib/filterTokens'
 import { checkedPhrase } from '../../lib/today'
 import { clientBadge } from '../../lib/labels'
@@ -98,12 +98,20 @@ function usePhone(): boolean {
   return on
 }
 
-// The day label the group header prints. Today says so in words; every other day
-// is the weekday and the date, so a reader never has to work out which Tuesday.
-function dayLabel(iso: string): string {
+// The day label the group header prints. Ivan, 2026-09-15: "we should have
+// everything properly ordered like today... yesterday... one day less.. and then
+// all the rest". Today and yesterday in words, the rest of the week as weekday +
+// date so a reader never has to work out which Tuesday, and everything older
+// than a week under ONE header - a run of dated headers over month-old rows
+// says nothing he acts on. `now` is a parameter so a test can pin the clock.
+export function dayLabel(iso: string, now: Date = new Date()): string {
   const d = new Date(iso)
-  if (d.toDateString() === new Date().toDateString()) return 'TODAY'
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()
+  const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+  const diff = Math.round((startOfDay(now) - startOfDay(d)) / 86_400_000)
+  if (diff <= 0) return 'TODAY'
+  if (diff === 1) return 'YESTERDAY'
+  if (diff < 7) return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()
+  return 'EARLIER'
 }
 
 type Item =
@@ -343,7 +351,7 @@ function RowHost({ height, onDiscard, children }: {
   )
 }
 
-export function InboxList({ threads, filter, setFilter, tokens, setTokens, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt, refreshing = false, cachedAt = null, error = null, title = 'Inbox', status, before, after, rowsFor, renderRow, rowNote, rowChip, rowTag, renderNote, emptyLine }: {
+export function InboxList({ threads, filter, setFilter, tokens, setTokens, refresh, onOpenThread, onOpenDrafts, activeThread = null, windowed = false, head, verifiedAt, refreshing = false, cachedAt = null, error = null, title = 'Inbox', status, browse = false, before, after, rowsFor, renderRow, rowNote, rowChip, rowTag, renderNote, emptyLine }: {
   threads: Thread[]
   filter: Filter
   setFilter: (f: Filter) => void
@@ -381,6 +389,13 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
   // The status axis (bucket filter). Omitted = no status filtering, and the
   // draft banner keeps its old job of pointing at a separate drafts screen.
   status?: Status
+  // Ivan, 2026-09-15: the DMs list was two lists - the pending rows under day
+  // headers, then a "DM history" block holding every answered conversation, so
+  // the chats from the last day sat below drafts from ten days ago. `browse`
+  // renders the WHOLE lane in one recency order (pending rows keep their DRAFT /
+  // needs-reply chips), day headers on the phone too. Search, the spam folder
+  // and an explicit status token still win, exactly as before.
+  browse?: boolean
   // Rendered BELOW the list, inside the same scroller: the DM history section
   // lives here so it reads as the tail of the surface rather than a second page.
   after?: ReactNode
@@ -454,7 +469,12 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
   const statusToken = tokenMode && hasStatusToken(tokens)
   const shown = query
     ? searchThreads(laned, query)
-    : (status && filter !== 'spam' && !statusToken ? filterByStatus(laned, status) : laned)
+    : (browse && filter !== 'spam' && !statusToken)
+      // Conversations only (someone answered, a draft is waiting, a magnet went
+      // out): the lane also holds every invite that never got a reply, and those
+      // are not chats. Newest activity first, drafts dated by their own clock.
+      ? laned.filter(isConversation).sort((a, b) => eventTime(b.last).localeCompare(eventTime(a.last)))
+      : (status && filter !== 'spam' && !statusToken ? filterByStatus(laned, status) : laned)
   const rowH = useRowH()
   const phone = usePhone()
   const desktopHover = useDesktopHover()
@@ -467,7 +487,7 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
     let lastDay: string | null = null
     let head: Extract<Item, { kind: 'day' }> | null = null
     for (const t of shown) {
-      if (!phone) {
+      if (!phone || browse) {
         const d = dayLabel(eventTime(t.last))
         if (d !== lastDay) {
           lastDay = d

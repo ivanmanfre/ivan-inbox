@@ -9,7 +9,7 @@
 import { useEffect, useState } from 'react'
 import { InboxList } from './InboxList'
 import { DraftCard, PushedBar, StaleBar } from './DraftCard'
-import { DmHistory } from './DmHistory'
+import { DmCount } from './DmHistory'
 import { WarmSignals } from './WarmSignals'
 import { PreReadNote } from './PreReadNote'
 import { ChatLink } from './parts'
@@ -109,6 +109,7 @@ export function Dms({
       tokens={tokens}
       setTokens={setTokens}
       status={status}
+      browse
       refresh={refresh}
       onOpenThread={onOpenThread}
       // A `status` is passed, so the list renders no draft banner and this never
@@ -129,14 +130,16 @@ export function Dms({
             invite or DM goes out. Ivan's tenant only; hidden on client lanes.
             Nothing on it sends: the senders read the stamps on their own clock. */}
         <WarmSignals filter={filter} refresh={refresh} inboxLoadedAt={loadedAt} focus={warm} onOpenThread={onOpenThread} />
+        {/* The "N conversations · N replies" receipt ("so i know this is
+            working") stays as one caption line. The DM-history LIST it used to
+            head is gone (Ivan, 2026-09-15): the list below now holds every
+            conversation in one recency order, so a second copy underneath was
+            the thing he had to scroll past.
+            N3b-1: `loadedAt` is stamped only by a fetch that RESOLVED, so this is
+            false for exactly as long as the rows came off the device, and the
+            caption states no count while it is. */}
+        <DmCount threads={laned} verified={loadedAt !== null} />
       </>}
-      // DM HISTORY ("so i know this is working"). With zero pending the surface
-      // would otherwise be an empty screen that proves nothing; the history is
-      // the receipt that the engine holds conversations.
-      // N3b-1: `loadedAt` is stamped only by a fetch that RESOLVED, so this is
-      // false for exactly as long as the rows came off the device, and the
-      // history head states no count while it is.
-      after={<DmHistory threads={laned} onOpen={onOpenThread} verified={loadedAt !== null} />}
       // The generated line stands in place of the message preview (the row's
       // height is what the list windows against). Absent on any row where Ivan is
       // not the one being waited on.

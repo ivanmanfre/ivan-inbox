@@ -33,6 +33,25 @@ function manualCount(t: Thread): number {
 // states exactly how many are still folded.
 const PAGE = 20
 
+// The receipt line on its own: same membership rule and the same three numbers
+// the DmHistory head prints, for a host that renders the conversations itself.
+export function DmCount({ threads, verified = true }: { threads: Thread[]; verified?: boolean }) {
+  const answered = threads.filter(t => t.messages.some(m => m.direction === 'inbound') || isLeadMagnet(t))
+  if (answered.length === 0) return null
+  const replies = answered.reduce((n, t) => n + t.messages.filter(m => m.direction === 'inbound').length, 0)
+  const magnets = answered.filter(isLeadMagnet).length
+  return (
+    <div className="a-dms-count a-mono a-dim" style={{ padding: '6px 16px 2px' }}>
+      {verified ? (
+        <>
+          {answered.length} conversations · {replies} replies
+          {magnets > 0 && ` · ${magnets} lead magnet${magnets === 1 ? '' : 's'}`}
+        </>
+      ) : 'counting…'}
+    </div>
+  )
+}
+
 export function DmHistory({ threads, onOpen, verified = true }: {
   threads: Thread[]
   onOpen: (id: string) => void
