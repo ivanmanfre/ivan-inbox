@@ -1165,7 +1165,42 @@ export function canRestore(t: Thread, m: InboxMessage): boolean {
   })
 }
 
+type ConversationAgentRpcError = { code?: unknown; message?: unknown; status?: unknown }
+
+function missingConversationAgentRpc(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const e = error as ConversationAgentRpcError
+  return e.code === 'PGRST202' || (e.status === 404 && typeof e.message === 'string' && e.message.includes('conversation_agent_'))
+}
+
+/** The compatibility exception is deliberately narrow: both the takeover RPC
+    and the read feed must be absent. If cards exist but takeover does not, the
+    migration is partial and a manual send cannot prove it owns the thread. */
+export function missingManualGuardMeansPreMigration(beforeError: unknown, cardsError: unknown): boolean {
+  return missingConversationAgentRpc(beforeError) && missingConversationAgentRpc(cardsError)
+}
+
+async function takeOwnershipBeforeManualReply(prospectId: string): Promise<number | null> {
+  const guarded = await supabase.rpc('conversation_agent_before_manual_send', { p_prospect_id: prospectId })
+  if (guarded.error) {
+    if (missingConversationAgentRpc(guarded.error)) {
+      const readiness = await supabase.rpc('conversation_agent_cards')
+      if (missingManualGuardMeansPreMigration(guarded.error, readiness.error)) return null
+    }
+    throw new Error('Conversation ownership could not be verified. The manual reply was not queued.')
+  }
+  const result = (guarded.data ?? {}) as { ok?: boolean; allow_send?: boolean; reason?: string; in_flight?: boolean; revision?: number }
+  if (!result.ok || !result.allow_send) {
+    throw new Error(`Manual reply blocked: ${(result.reason ?? 'ownership_unverified').replaceAll('_', ' ')}.`)
+  }
+  if (result.in_flight) {
+    throw new Error('An agent message is already in flight. Wait for delivery reconciliation before replying.')
+  }
+  return result.revision ?? null
+}
+
 export async function composeReply(t: Thread, text: string): Promise<void> {
+  const manualRevision = await takeOwnershipBeforeManualReply(t.prospect_id)
   const { error } = await supabase.from('outreach_messages').insert({
     prospect_id: t.prospect_id, direction: 'outbound', message_text: text,
     message_type: 'manual_reply', channel: t.channel === 'email' ? 'email' : 'linkedin',
@@ -1173,6 +1208,7 @@ export async function composeReply(t: Thread, text: string): Promise<void> {
     // sent_at defaults to now() at the column level; explicit null keeps the
     // row pickable by the dispatcher (approved_at NOT NULL AND sent_at IS NULL).
     sent_at: null,
+    ...(manualRevision === null ? {} : { draft_evidence: { conversation_agent_manual_revision: manualRevision } }),
   })
   if (error) throw error
   // Ivan just answered this thread himself, so the pending AI draft (if any)

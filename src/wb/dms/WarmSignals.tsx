@@ -32,6 +32,11 @@ import {
   WARM_GROUPS, dayOf, decideWarm, dm1Deliverable, evidenceLine, fetchWarmCards, inviteLine,
   isWaiting, primaryAction, warmGroup, type WarmCard, type WarmGroupKey,
 } from './warmSignalsData'
+import { ConversationAgentControls, ConversationAgentEnrollment } from './ConversationAgentControls'
+import {
+  agentCardsWithoutWarmCards, fetchConversationAgentCards,
+  type ConversationAgentCard, type ConversationAgentFeed,
+} from './conversationAgentData'
 import './dms.css'
 
 export function WarmSignals({ filter, refresh, inboxLoadedAt, focus, onOpenThread }: {
@@ -44,17 +49,24 @@ export function WarmSignals({ filter, refresh, inboxLoadedAt, focus, onOpenThrea
   onOpenThread: (id: string) => void
 }) {
   const [cards, setCards] = useState<WarmCard[] | null>(null)
+  const [agentFeed, setAgentFeed] = useState<ConversationAgentFeed | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState(true)
   const host = useRef<HTMLElement | null>(null)
   const focused = useRef(false)
 
   const load = useCallback(async () => {
-    try {
-      setCards(await fetchWarmCards())
+    const [warm, agent] = await Promise.allSettled([fetchWarmCards(), fetchConversationAgentCards()])
+    if (warm.status === 'fulfilled') {
+      setCards(warm.value)
       setError(null)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not read the warm signals')
+    } else {
+      setError(warm.reason instanceof Error ? warm.reason.message : 'Could not read the warm signals')
+    }
+    if (agent.status === 'fulfilled') {
+      setAgentFeed(agent.value)
+    } else {
+      setAgentFeed({ kind: 'error', reason: agent.reason instanceof Error ? agent.reason.message : 'Agent status could not be verified.' })
     }
   }, [])
 
@@ -70,26 +82,34 @@ export function WarmSignals({ filter, refresh, inboxLoadedAt, focus, onOpenThrea
     focused.current = true
     setOpen(true)
     el.scrollIntoView({ block: 'start', behavior: 'smooth' })
-  }, [focus, cards])
+  }, [focus, cards, agentFeed])
 
   const visible = filter === 'all' || filter === 'ivan'
+  const agentByProspect = useMemo(() => new Map(
+    agentFeed?.kind === 'ready' ? agentFeed.cards.map(card => [card.prospect_id, card] as const) : [],
+  ), [agentFeed])
+  const warmProspectIds = useMemo(() => new Set((cards ?? []).map(card => card.prospect_id)), [cards])
+  const agentOnlyCards = useMemo(() => agentFeed?.kind === 'ready'
+    ? agentCardsWithoutWarmCards(agentFeed.cards, warmProspectIds)
+    : [], [agentFeed, warmProspectIds])
   // People waiting on an accept with nothing to decide are not rows: one count
   // line under the list says how many, and they come back once a draft exists.
+  // An agent card is itself a decision/hold, so it always keeps the person visible.
   const { groups, waiting } = useMemo(() => {
     const by = new Map<WarmGroupKey, WarmCard[]>()
     let waiting = 0
     for (const c of cards ?? []) {
-      if (isWaiting(c)) { waiting++; continue }
+      if (isWaiting(c) && !agentByProspect.has(c.prospect_id)) { waiting++; continue }
       const g = warmGroup(c)
       by.set(g, [...(by.get(g) ?? []), c])
     }
     const groups = WARM_GROUPS.map(g => ({ ...g, cards: by.get(g.key) ?? [] })).filter(g => g.cards.length > 0)
     return { groups, waiting }
-  }, [cards])
+  }, [cards, agentByProspect])
 
   if (!visible) return null
   if (cards === null && !error) return null
-  const total = groups.reduce((n, g) => n + g.cards.length, 0)
+  const total = groups.reduce((n, g) => n + g.cards.length, 0) + agentOnlyCards.length
   if (total === 0 && !error) return null
 
   return (
@@ -107,14 +127,31 @@ export function WarmSignals({ filter, refresh, inboxLoadedAt, focus, onOpenThrea
         quiet
       >
         {error && <Banner tone="urgent" icon="error">{error}</Banner>}
+        {open && agentFeed?.kind === 'unavailable' && (
+          <Banner tone="neutral" icon="lock">{agentFeed.reason}</Banner>
+        )}
+        {open && agentFeed?.kind === 'error' && (
+          <Banner tone="attention" icon="guard">Agent status could not be verified. Agent approvals are blocked; existing warm review remains available.</Banner>
+        )}
         {open && groups.map(g => (
           <div className="a-warm-group" key={g.key} data-group={g.key}>
             <div className="a-warm-sub">{g.label} <span className="a-mono">{g.cards.length}</span></div>
             {g.cards.map(c => (
-              <WarmCardView key={c.prospect_id} card={c} reload={load} refresh={refresh} onOpenThread={onOpenThread} />
+              <WarmCardView
+                key={c.prospect_id} card={c} agentCard={agentByProspect.get(c.prospect_id) ?? null}
+                reload={load} refresh={refresh} onOpenThread={onOpenThread}
+              />
             ))}
           </div>
         ))}
+        {open && agentOnlyCards.length > 0 && (
+          <div className="a-warm-group" data-group="agent_conversations">
+            <div className="a-warm-sub">Agent conversations <span className="a-mono">{agentOnlyCards.length}</span></div>
+            {agentOnlyCards.map(card => (
+              <AgentConversationCard key={card.thread_id} card={card} reload={load} onOpenThread={onOpenThread} />
+            ))}
+          </div>
+        )}
         {open && waiting > 0 && (
           <div className="a-warm-waiting a-meta" data-waiting={waiting}>
             {waiting === 1 ? '1 invite out, waiting on their accept.' : `${waiting} invites out, waiting on their accept.`}
@@ -125,12 +162,37 @@ export function WarmSignals({ filter, refresh, inboxLoadedAt, focus, onOpenThrea
   )
 }
 
+function AgentConversationCard({ card, reload, onOpenThread }: {
+  card: ConversationAgentCard
+  reload: () => Promise<void>
+  onOpenThread: (id: string) => void
+}) {
+  return (
+    <div className="a-warm-card" data-warm-card={card.prospect_id} data-agent-only="">
+      <Rows>
+        <Row
+          lead={<Face name={card.prospect_name} />}
+          title={card.prospect_name}
+          sub={card.latest_inbound?.text ?? 'Conversation under agent control'}
+          subWrap
+          tail={<Chip tone={card.owner === 'agent' ? 'accent' : 'quiet'}>{card.owner === 'agent' ? 'Agent' : 'Human'}</Chip>}
+          onClick={() => onOpenThread(card.prospect_id)}
+        />
+      </Rows>
+      <div className="a-warm-body">
+        <ConversationAgentControls card={card} now={Date.now()} onChanged={reload} />
+      </div>
+    </div>
+  )
+}
+
 function Counter({ n, max }: { n: number; max: number }) {
   return <span className="a-warm-cnt" data-over={n > max ? '' : undefined}>{n}/{max}</span>
 }
 
-function WarmCardView({ card: c, reload, refresh, onOpenThread }: {
+function WarmCardView({ card: c, agentCard, reload, refresh, onOpenThread }: {
   card: WarmCard
+  agentCard: ConversationAgentCard | null
   reload: () => Promise<void>
   refresh: () => void
   onOpenThread: (id: string) => void
@@ -152,6 +214,7 @@ function WarmCardView({ card: c, reload, refresh, onOpenThread }: {
   const first = c.name.split(' ')[0]
   const windowEnds = c.view_window_ends && invite.kind === 'pending' ? dayOf(c.view_window_ends) : null
   const primary = primaryAction(c)
+  const agentThreadManaged = agentCard !== null && agentCard.mode !== 'shadow'
 
   async function run(kind: NonNullable<typeof busy>, fn: () => Promise<void>) {
     if (busy) return
@@ -199,6 +262,7 @@ function WarmCardView({ card: c, reload, refresh, onOpenThread }: {
 
   async function onApproveDm1() {
     if (busy || !c.draft_id) return
+    if (agentThreadManaged) { setError('Review this proposal through the conversation agent action below.'); return }
     if (!deliverable) { setError(`Approve unlocks once ${first} accepts the invite.`); return }
     if (dm1.trim().length === 0) { setError('The DM is empty.'); return }
     const ok = await confirm({
@@ -287,6 +351,8 @@ function WarmCardView({ card: c, reload, refresh, onOpenThread }: {
           {c.draft_id ? (
             c.draft_approved_at ? (
               <div className="a-meta">Approved {dayOf(c.draft_approved_at)}. The sender picks it up within about 2 minutes.</div>
+            ) : agentThreadManaged ? (
+              <div className="a-meta">Managed through the revision-bound conversation agent action below.</div>
             ) : (
               <>
                 <textarea
@@ -313,19 +379,24 @@ function WarmCardView({ card: c, reload, refresh, onOpenThread }: {
           )}
         </div>
 
+        {agentCard && <ConversationAgentControls card={agentCard} now={Date.now()} onChanged={reload} />}
+        {isViewer && !agentCard && <ConversationAgentEnrollment prospectId={c.prospect_id} onChanged={reload} />}
+
         {error && <Banner tone="urgent" icon="error">{error}</Banner>}
         {done && !error && <div className="a-meta a-warm-done"><Icon name="check" size={16} />{done}</div>}
       </div>
-      <div className="a-warm-foot">
-        <Button variant="quiet" size="sm" icon="remove" busy={busy === 'skip'} onClick={onSkip}>Skip</Button>
-        <span className="a-grow" />
-        {primary === 'invite' && (
-          <Button variant="primary" size="sm" icon="send" busy={busy === 'invite'} onClick={onApproveInvite}>Approve invite</Button>
-        )}
-        {primary === 'dm1' && (
-          <Button variant={deliverable ? 'primary' : 'outline'} size="sm" icon="send" busy={busy === 'dm1'} disabled={!deliverable} title={deliverable ? undefined : `Unlocks once ${first} accepts`} onClick={onApproveDm1}>Approve DM1</Button>
-        )}
-      </div>
+      {(!agentThreadManaged || primary === 'invite') && (
+        <div className="a-warm-foot">
+          {!agentThreadManaged && <Button variant="quiet" size="sm" icon="remove" busy={busy === 'skip'} onClick={onSkip}>Skip</Button>}
+          <span className="a-grow" />
+          {primary === 'invite' && (
+            <Button variant="primary" size="sm" icon="send" busy={busy === 'invite'} onClick={onApproveInvite}>Approve invite</Button>
+          )}
+          {primary === 'dm1' && !agentThreadManaged && (
+            <Button variant={deliverable ? 'primary' : 'outline'} size="sm" icon="send" busy={busy === 'dm1'} disabled={!deliverable} title={deliverable ? undefined : `Unlocks once ${first} accepts`} onClick={onApproveDm1}>Approve DM1</Button>
+          )}
+        </div>
+      )}
     </div>
   )
 }

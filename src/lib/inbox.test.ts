@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { isReplyRetryPending, internalHoldSummary, isOwnerConfirmation, isInternalConfirmation, isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, ladderSteps, sendFailed, type InboxMessage, type Status, type DraftGuard } from './inbox'
+import { isReplyRetryPending, internalHoldSummary, isOwnerConfirmation, isInternalConfirmation, isDraft, isFollowUp, snoozeActive, snoozeTarget, SNOOZE_PRESETS, SNOOZE_HOUR, eventTime, groupThreads, filterThreads, dedupeMessages, searchThreads, threadChatId, needsAnswer, inboxBreakdown, inboxWaitingCount, isLeadMagnet, threadBucket, filterByStatus, messageChannel, isMixedChannel, channelFamilies, canRestore, isDiscarded, applyDraftGuard, DISCARD_GUARD, RESTORE_GUARD, DISCARD_REASON, RACE_HOLD_PREFIX, ladderSteps, sendFailed, missingManualGuardMeansPreMigration, type InboxMessage, type Status, type DraftGuard } from './inbox'
 
 // inbox.ts:191 gates needsAnswer on a 14-day wall-clock staleness window
 // (STALE_DAYS), measured against Date.now() by default -- and most callers
@@ -996,5 +996,19 @@ describe('sendFailed', () => {
   it('an unblocked or inbound row is never a failure', () => {
     expect(sendFailed({ ...base, direction: 'outbound', sent_at: '2026-07-22T10:00:00Z' })).toBe(false)
     expect(sendFailed({ ...blocked('send_failed_verified:x'), direction: 'inbound' })).toBe(false)
+  })
+})
+
+describe('manual reply conversation-agent readiness', () => {
+  const missing = { code: 'PGRST202', message: 'Could not find conversation_agent_before_manual_send' }
+
+  it('preserves legacy manual replies only when both guard and cards prove the migration is absent', () => {
+    expect(missingManualGuardMeansPreMigration(missing, missing)).toBe(true)
+  })
+
+  it('fails closed for a partial migration, permission denial or network uncertainty', () => {
+    expect(missingManualGuardMeansPreMigration(missing, null)).toBe(false)
+    expect(missingManualGuardMeansPreMigration(missing, { code: '42501', message: 'permission denied' })).toBe(false)
+    expect(missingManualGuardMeansPreMigration(new Error('network failed'), missing)).toBe(false)
   })
 })
