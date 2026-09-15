@@ -79,7 +79,7 @@ function TaskRow({ draft, refresh, onLeaving }: {
     })
     if (!ok) return
     setBusy(true); setError('')
-    try { await discardOpsDraft(draft.id); refresh() }
+    try { await discardOpsDraft(draft.id, draft.kind); refresh() }
     catch (e) { setError(errText(e)) }
     finally { setBusy(false) }
   }

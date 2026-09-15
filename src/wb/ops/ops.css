@@ -73,6 +73,7 @@
 .a-ops-err{ color:var(--ds-sev-urgent-ui) }
 .a-ops-refused{ color:var(--ds-sev-attention-ui) }
 .a-ops-cons{ color:var(--ds-text-3) }
+.a-ops-takeover-title{ color:var(--ds-text); font-weight:var(--ds-fw-strong) }
 
 .a-ops-decide{ display:flex; flex-direction:column; gap:var(--ds-s3); width:100%; min-width:0 }
 .a-ops-acts{ display:flex; flex-wrap:wrap; align-items:flex-start; gap:var(--ds-s4); width:100% }

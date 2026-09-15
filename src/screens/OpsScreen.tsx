@@ -12,6 +12,7 @@ import {
 } from '../lib/ops'
 import { checkedPhrase } from '../lib/today'
 import { label } from '../lib/labels'
+import { ConversationTakeoverCard } from '../wb/ops/ConversationTakeoverCard'
 
 function slotText(iso?: string): string {
   if (!iso) return ''
@@ -34,13 +35,13 @@ function timeAgo(iso: string): string {
 // 'OUTBOUND' said what the ENGINE calls the lane, not what the card is. Ivan
 // reads these as comments, so they say Comments; `comment_reply` becomes REPLY
 // in the same pass so the two comment kinds cannot be told apart by an S.
-const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK', weekly_report: 'WEEKLY', comment_reply: 'REPLY', comment_outbound: 'COMMENTS', booking: 'BOOKED', precall_email: 'PRE-CALL', manual_invite: 'INVITE', task: 'TASK', leads_ballot: 'LEADS', audn_recommendation: 'AUDIENCE' }
+const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK', weekly_report: 'WEEKLY', comment_reply: 'REPLY', comment_outbound: 'COMMENTS', booking: 'BOOKED', precall_email: 'PRE-CALL', manual_invite: 'INVITE', task: 'TASK', leads_ballot: 'LEADS', audn_recommendation: 'AUDIENCE', conversation_takeover: 'TAKEOVER' }
 // Escalations run warm/red (something needs attention); updates stay neutral/blue (fyi);
 // newsjack runs amber because it is the only kind with a clock on it. Booking takes the
 // Rise accent gold: it is the only card that reports money arriving rather than work owed.
 // A task runs neutral grey: it is the only card that asks for nothing to be sent,
 // so it should not compete for attention with the kinds that publish.
-const KIND_COLOR: Record<OpsKind, string> = { escalation: '#FF453A', update: '#0A84FF', newsjack: '#FF9F0A', weekly_report: '#30D158', comment_reply: '#BF5AF2', comment_outbound: '#64D2FF', booking: '#FFD60A', precall_email: '#5E5CE6', manual_invite: '#66D4CF', task: '#8E8E93', leads_ballot: '#FF6482', audn_recommendation: '#8E8E93' }
+const KIND_COLOR: Record<OpsKind, string> = { escalation: '#FF453A', update: '#0A84FF', newsjack: '#FF9F0A', weekly_report: '#30D158', comment_reply: '#BF5AF2', comment_outbound: '#64D2FF', booking: '#FFD60A', precall_email: '#5E5CE6', manual_invite: '#66D4CF', task: '#8E8E93', leads_ballot: '#FF6482', audn_recommendation: '#8E8E93', conversation_takeover: '#30D158' }
 
 // Slack channel ids are unreadable on a card. escalation/update/booking all print a
 // destination, so name the ones we own and fall back to the raw id for anything else.
@@ -279,7 +280,7 @@ function TaskRow({ draft, refresh, onLeaving }: {
     })
     if (!ok) return
     setBusy(true); setError('')
-    try { await discardOpsDraft(draft.id); refresh() }
+    try { await discardOpsDraft(draft.id, draft.kind); refresh() }
     catch (e) { setError(errText(e)) }
     finally { setBusy(false) }
   }
@@ -385,6 +386,16 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
   feed?: FeedState
   // Lets the host (which owns the retry line) learn what the gate said without
   // this card having to know a queue exists.
+  onGateResult?: (id: string, v: GateVerdict) => void
+}) {
+  if (draft.kind === 'conversation_takeover') return <ConversationTakeoverCard draft={draft} refresh={refresh} />
+  return <StandardPendingCard draft={draft} refresh={refresh} feed={feed} onGateResult={onGateResult} />
+}
+
+function StandardPendingCard({ draft, refresh, feed, onGateResult }: {
+  draft: OpsDraft
+  refresh: () => void
+  feed?: FeedState
   onGateResult?: (id: string, v: GateVerdict) => void
 }) {
   const [body, setBody] = useState(draft.body)
@@ -553,7 +564,7 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
       })
       if (!ok) return
       setBusy(true); setError('')
-      try { await approveOpsDraft(draft.id, body); refresh() }
+      try { await approveOpsDraft(draft.id, body, draft.kind); refresh() }
       catch (e) { setError(errText(e)) }
       finally { setBusy(false) }
       return
@@ -595,7 +606,7 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
           // A sender is watching for approved_at with sent_at still null, so
           // stamp approved_at ALONE and let it post. Stamping both is what
           // silently swallowed the 0830 ARCH report (2026-09-07).
-          await approveOpsDraft(draft.id, body)
+          await approveOpsDraft(draft.id, body, draft.kind)
         } else {
           // No sender for this shape: approving IS the send. Copy first, so a
           // blocked clipboard leaves the card put and the message recoverable
@@ -621,7 +632,7 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
     })
     if (!ok) return
     setBusy(true); setError('')
-    try { await approveOpsDraft(draft.id, body); refresh() }
+    try { await approveOpsDraft(draft.id, body, draft.kind); refresh() }
     catch (e) { setError(errText(e)) }
     finally { setBusy(false) }
   }
@@ -685,7 +696,7 @@ export function PendingCard({ draft, refresh, feed, onGateResult }: {
       // fine - the row expires on its own 5-day gate.
       const skip = outboundSkipUrl(draft)
       if (skip) { try { void fetch(skip, { mode: 'no-cors' }) } catch { /* fire and forget */ } }
-      await discardOpsDraft(draft.id); refresh()
+      await discardOpsDraft(draft.id, draft.kind); refresh()
     }
     catch (e) { setError(errText(e)) }
     finally { setBusy(false) }

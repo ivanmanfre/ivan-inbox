@@ -223,7 +223,7 @@ $$;
 create or replace function public.conversation_agent_payload_hash(p_payload jsonb)
 returns text
 language sql immutable
-set search_path = public, pg_temp
+set search_path = public, extensions, pg_temp
 as $$
   select encode(digest(convert_to(p_payload::text, 'UTF8'), 'sha256'), 'hex')
 $$;
@@ -997,7 +997,7 @@ begin
   select * into v_a from public.outreach_agent_accounts where account_id=v_t.account_id;
   if v_x.status='sent' and v_status='confirmed' and (
     (v_x.kind='reply' and v_x.provider_message_id=p_outcome->>'providerMessageId')
-    or (v_x.kind='react_message' and v_x.target_id=p_outcome->>'providerTargetId'
+    or (v_x.kind in ('react_message','react_post') and v_x.target_id=p_outcome->>'providerTargetId'
       and v_x.payload->>'reaction'=p_outcome->>'providerReaction')) then
     return jsonb_build_object('ok',true,'status','sent','revision',v_t.revision,'reason','already_confirmed');
   end if;
@@ -1031,7 +1031,7 @@ begin
     end if;
     if v_x.kind='reply' and v_mid is null then
       return jsonb_build_object('ok',false,'status',v_x.status,'revision',v_t.revision,'reason','delivery_evidence_required');
-    elsif v_x.kind='react_message' then
+    elsif v_x.kind in ('react_message','react_post') then
       if p_outcome->>'providerTargetId' is distinct from v_x.target_id
         or p_outcome->>'providerReaction' is distinct from v_x.payload->>'reaction'
         or p_outcome#>>'{deliveryEvidence,source}' is distinct from 'reaction_readback'
@@ -1199,6 +1199,31 @@ begin
 end;
 $$;
 
+create or replace function public.conversation_agent_takeover_review_hold(p_prospect_id uuid,p_account_id text)
+returns boolean
+language sql stable security definer
+set search_path = public, pg_temp
+as $$
+  select exists(
+    select 1 from public.ops_drafts d
+    where d.kind='conversation_takeover' and d.context->>'prospect_id'=p_prospect_id::text
+      and d.context->>'account_id'=p_account_id
+  ) or exists(
+    select 1 from public.outreach_prospects p
+    join public.outreach_agent_accounts a on a.account_id=p_account_id and a.campaign_id=p.campaign_id
+    join public.profile_view_log l on l.prospect_id=p.id and l.seat=a.shared_cap_seat
+      and l.viewer_provider_id is not distinct from p.linkedin_profile_id and l.icp_pass is true
+    where p.id=p_prospect_id and a.client_id='ivan' and a.provider_config->'takeover_review_required'='true'::jsonb
+      and p.trigger_type='profile_view' and not coalesce(p.blacklisted,false)
+      and coalesce(p.skip_state,'') not in ('manual_skip','opted_out','stopped')
+      and lower(coalesce(p.stage,'')) not in ('archived','client','customer','team','internal','skipped','blacklisted','do_not_contact','stopped')
+      and a.required_scorer_version is not null and p.icp_score>=a.icp_floor and nullif(trim(p.icp_reasoning),'') is not null
+      and p.scorer_version=a.required_scorer_version and p.scored_at>=now()-make_interval(days=>a.score_max_age_days)
+      and l.viewed_at>=now()-interval '7 days' and p.connection_sent_at is null
+      and not exists(select 1 from public.outreach_messages m where m.prospect_id=p.id and (m.direction='inbound' or m.sent_at is not null))
+  )
+$$;
+
 create or replace function public.conversation_agent_guard(p_prospect_id uuid)
 returns jsonb
 language plpgsql security definer
@@ -1222,11 +1247,14 @@ begin
     if v_count=1 then select * into v_t from public.outreach_agent_threads where id=v_thread_id; end if;
   end if;
   if v_t.id is null then
+    select * into v_a from public.outreach_agent_accounts where campaign_id=v_p.campaign_id;
     if not public.conversation_agent_is_service() then
-      select * into v_a from public.outreach_agent_accounts where campaign_id=v_p.campaign_id;
       if not found or not public.conversation_agent_is_operator(v_a.account_id) then
         return jsonb_build_object('allow_legacy',false,'reason','operator_denied','thread_id',null,'owner',null,'state',null,'revision',null);
       end if;
+    end if;
+    if v_a.account_id is not null and public.conversation_agent_takeover_review_hold(v_p.id,v_a.account_id) then
+      return jsonb_build_object('allow_legacy',false,'reason','takeover_review_required','thread_id',null,'owner','legacy','state',null,'revision',null);
     end if;
     return jsonb_build_object('allow_legacy',true,'reason','unenrolled','thread_id',null,'owner','legacy','state',null,'revision',null);
   end if;
@@ -1290,7 +1318,15 @@ begin
       select * into v_t from public.outreach_agent_threads where id=v_prospect_id;
       return public.conversation_agent_guard_result(v_t);
     end if;
-    if exists(select 1 from public.outreach_prospects where linkedin_profile_id=trim(p_provider_recipient_id)) then
+    select count(*),(array_agg(id order by created_at))[1] into v_count,v_prospect_id
+      from public.outreach_prospects where linkedin_profile_id=trim(p_provider_recipient_id);
+    if v_count>1 then return jsonb_build_object('allow_legacy',false,'reason','routing_ambiguous','thread_id',null,'account_id',null,'owner',null,'state',null,'revision',null); end if;
+    if v_count=1 then
+      select * into v_p from public.outreach_prospects where id=v_prospect_id;
+      select * into v_a from public.outreach_agent_accounts where campaign_id=v_p.campaign_id;
+      if v_a.account_id is not null and public.conversation_agent_takeover_review_hold(v_p.id,v_a.account_id) then
+        return jsonb_build_object('allow_legacy',false,'reason','takeover_review_required','thread_id',null,'account_id',v_a.account_id,'owner','legacy','state',null,'revision',null);
+      end if;
       return jsonb_build_object('allow_legacy',true,'reason','unenrolled','thread_id',null,'account_id',null,'owner','legacy','state',null,'revision',null);
     end if;
   end if;
@@ -1336,6 +1372,12 @@ begin
     return jsonb_build_object('allow_legacy',false,'reason','recipient_mismatch','thread_id',v_t.id,'account_id',v_t.account_id,'owner',v_t.owner,'state',v_t.state,'revision',v_t.revision);
   end if;
   if v_t.id is null then
+    if v_p.id is null and v_a.account_id is not null and nullif(trim(p_provider_recipient_id),'') is not null then
+      select * into v_p from public.outreach_prospects where campaign_id=v_a.campaign_id and linkedin_profile_id=trim(p_provider_recipient_id);
+    end if;
+    if v_p.id is not null and v_a.account_id is not null and public.conversation_agent_takeover_review_hold(v_p.id,v_a.account_id) then
+      return jsonb_build_object('allow_legacy',false,'reason','takeover_review_required','thread_id',null,'account_id',v_a.account_id,'owner','legacy','state',null,'revision',null);
+    end if;
     return jsonb_build_object('allow_legacy',true,'reason','unenrolled','thread_id',null,'account_id',v_a.account_id,'owner','legacy','state',null,'revision',null);
   end if;
   return public.conversation_agent_guard_result(v_t);
@@ -1449,7 +1491,7 @@ grant execute on function public.conversation_agent_ingest(jsonb),public.convers
 
 revoke execute on function public.conversation_agent_is_service(),public.conversation_agent_is_operator(text),
   public.conversation_agent_payload_hash(jsonb),public.conversation_agent_cancel_future(uuid,text,timestamptz),
-  public.conversation_agent_guard_result(public.outreach_agent_threads) from public,anon,authenticated;
+  public.conversation_agent_guard_result(public.outreach_agent_threads),public.conversation_agent_takeover_review_hold(uuid,text) from public,anon,authenticated;
 grant execute on function public.conversation_agent_is_service(),public.conversation_agent_is_operator(text),
   public.conversation_agent_payload_hash(jsonb),public.conversation_agent_cancel_future(uuid,text,timestamptz),
-  public.conversation_agent_guard_result(public.outreach_agent_threads) to service_role;
+  public.conversation_agent_guard_result(public.outreach_agent_threads),public.conversation_agent_takeover_review_hold(uuid,text) to service_role;

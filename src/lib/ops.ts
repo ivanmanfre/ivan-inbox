@@ -16,7 +16,7 @@ import { supabase } from './supabase'
 // reach a channel, and it is not an Ops card either — it is decided in Strategy,
 // under the audience block, where the evidence it cites is on the same screen.
 // See `isAudnKind` below for the one place that exclusion is written.
-export type OpsKind = 'escalation' | 'update' | 'newsjack' | 'weekly_report' | 'comment_reply' | 'comment_outbound' | 'booking' | 'precall_email' | 'manual_invite' | 'task' | 'leads_ballot' | 'audn_recommendation'
+export type OpsKind = 'escalation' | 'update' | 'newsjack' | 'weekly_report' | 'comment_reply' | 'comment_outbound' | 'booking' | 'precall_email' | 'manual_invite' | 'task' | 'leads_ballot' | 'audn_recommendation' | 'conversation_takeover'
 
 // The row shape varies by kind (escalation carries a prospect, update carries
 // receipts, newsjack carries the idea it will generate from), so context stays a
@@ -119,6 +119,12 @@ export type OpsContext = {
   sendable?: number
   page_url?: string
   posts_as?: string
+  // conversation_takeover — the server-authored proposal binding and the
+  // viewer evidence the operator reviews before transferring this conversation.
+  proposal_hash?: string
+  linkedin_url?: string
+  icp_score?: number
+  viewed_at?: string
   [key: string]: unknown
 }
 
@@ -433,11 +439,85 @@ export async function createBotTask(
 // Approve stamps the (possibly edited) body and approved_at together, same
 // shape as outreach_messages' approveDraft — the n8n dispatcher picks up any
 // row with approved_at set and posts it to Slack within ~2 minutes.
-export async function approveOpsDraft(id: string, editedBody: string): Promise<void> {
+export async function approveOpsDraft(id: string, editedBody: string, kind: OpsKind): Promise<void> {
+  if (kind === 'conversation_takeover') {
+    throw new Error('Conversation takeovers require the dedicated approval route.')
+  }
   const { error } = await supabase.from('ops_drafts')
     .update({ body: editedBody, approved_at: new Date().toISOString() })
     .eq('id', id).is('sent_at', null)
   if (error) throw error
+}
+
+export type ConversationTakeoverApproval = {
+  ok: boolean
+  reason?: string
+  thread_id?: string
+  draft_id?: string
+}
+
+export const TAKEOVER_SENDING_HELD = 'Draft ready. Sending is held while LinkedIn checks finish.'
+
+export async function fetchConversationTakeoverReadiness(draftId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('conversation_agent_takeover_readiness', { p_draft_id: draftId })
+  if (error) throw error
+  return data?.ready === true
+}
+
+export async function approveConversationTakeover(
+  draftId: string,
+  expectedHash: string,
+  editedBody: string,
+): Promise<ConversationTakeoverApproval> {
+  const body = editedBody.trim()
+  if (!expectedHash) throw new Error('This proposal has no approval hash. Refresh Ops before approving it.')
+  if (!body) throw new Error('Write an opener before approving the takeover.')
+  if (body.length > 400) throw new Error('The opener must be 400 characters or fewer.')
+
+  const { data, error } = await supabase.rpc('conversation_agent_approve_takeover', {
+    p_draft_id: draftId,
+    p_expected_hash: expectedHash,
+    p_body: editedBody,
+  })
+  if (error) throw error
+  const result = data as ConversationTakeoverApproval | null
+  if (!result?.ok) throw new Error(takeoverApprovalError(result?.reason))
+  return result
+}
+
+function takeoverDiscardError(reason?: string): string {
+  if (reason === 'operator_denied') return 'Only an authenticated operator can skip a takeover.'
+  if (reason === 'not_found') return 'This takeover proposal no longer exists. Refresh Ops.'
+  if (reason === 'proposal_hash_mismatch') return 'This takeover proposal changed. Refresh Ops before skipping it.'
+  if (reason === 'already_approved') return 'This takeover was already approved. Refresh Ops.'
+  return reason ? `Takeover was not skipped: ${reason.replaceAll('_', ' ')}.` : 'Takeover was not skipped.'
+}
+
+export async function discardConversationTakeover(
+  draftId: string,
+  expectedHash: string,
+): Promise<ConversationTakeoverApproval> {
+  if (!expectedHash) throw new Error('This proposal has no approval hash. Refresh Ops before skipping it.')
+  const { data, error } = await supabase.rpc('conversation_agent_discard_takeover', {
+    p_draft_id: draftId,
+    p_expected_hash: expectedHash,
+  })
+  if (error) throw error
+  const result = data as ConversationTakeoverApproval | null
+  if (!result?.ok) throw new Error(takeoverDiscardError(result?.reason))
+  return result
+}
+
+export function takeoverApprovalError(reason?: string): string {
+  if (reason === 'operator_denied') return 'Only an authenticated operator can approve a takeover.'
+  if (['sending_held', 'account_not_ready', 'release_not_ready', 'new_chat_unverified', 'takeover_review_disabled'].includes(reason ?? '')) return TAKEOVER_SENDING_HELD
+  if (reason === 'invalid_body') return 'The opener is invalid. Keep it under 400 characters and try again.'
+  if (reason === 'not_found') return 'This takeover proposal no longer exists. Refresh Ops.'
+  if (reason === 'proposal_discarded') return 'This takeover proposal was already skipped.'
+  if (reason === 'proposal_expired') return 'This takeover proposal expired. Refresh Ops for a current draft.'
+  if (reason === 'proposal_hash_mismatch') return 'This takeover proposal changed. Refresh Ops before approving it.'
+  if (reason?.startsWith('stale_')) return 'The viewer or conversation changed. Refresh Ops for a current proposal.'
+  return reason ? `Takeover was not approved: ${reason.replaceAll('_', ' ')}.` : 'Takeover was not approved.'
 }
 
 // A weekly_report card either dispatches or it does not, and the CARD says
@@ -637,7 +717,10 @@ export async function approveWeeklyReport(id: string, editedBody: string): Promi
   if (error) throw error
 }
 
-export async function discardOpsDraft(id: string): Promise<void> {
+export async function discardOpsDraft(id: string, kind: OpsKind): Promise<void> {
+  if (kind === 'conversation_takeover') {
+    throw new Error('Conversation takeovers require the dedicated discard route.')
+  }
   const { error } = await supabase.from('ops_drafts')
     .update({ send_blocked_reason: DISCARDED_REASON })
     .eq('id', id).is('sent_at', null)
