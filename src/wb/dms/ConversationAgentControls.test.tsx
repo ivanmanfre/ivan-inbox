@@ -98,12 +98,15 @@ describe('ConversationAgentControls', () => {
 })
 
 describe('ConversationAgentEnrollment', () => {
-  it('offers explicit shadow and reviewed enrollment while auto stays disabled', () => {
-    const html = renderToStaticMarkup(<ConversationAgentEnrollment prospectId="prospect-1" onChanged={() => {}} />)
+  it('routes enrollment through Ops approval and exposes no enrollment mutation', () => {
+    const html = renderToStaticMarkup(<ConversationAgentEnrollment />)
     const t = text(html)
-    expect(t).toContain('Start shadow')
-    expect(t).toContain('Enroll in review')
-    expect(t).toContain('Auto enrollment')
-    expect(html).toContain('disabled=""')
+    expect(t).toContain('Open Ops')
+    expect(t).toContain('Approve takeover')
+    expect(t).toContain('Sending stays held')
+    expect(t).not.toContain('Start shadow')
+    expect(t).not.toContain('Enroll in review')
+    expect(t).not.toContain('Auto enrollment')
+    expect(html).toContain('href="#exp/v2/ops"')
   })
 })

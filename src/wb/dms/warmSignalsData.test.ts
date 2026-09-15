@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dm1Deliverable, evidenceLine, inviteLine, isWaiting, primaryAction, warmGroup } from './warmSignalsData'
+import { dm1Deliverable, evidenceLine, inviteLine, isWaiting, linkedinProfileHref, primaryAction, warmGroup } from './warmSignalsData'
 
 // The first real case, as the RPC returned it on 2026-09-12: the invite already
 // went out with the lane's generic note before the hold, so the card is DM1-only
@@ -63,5 +63,15 @@ describe('warm signals helpers', () => {
     expect(evidenceLine(natalia)).toMatch(/^commented on your post · Sep 7$/)
     expect(evidenceLine({ signal_source: 'reacted_two_posts', trigger_type: 'engaged_post', signal_evidence: { n_posts: 2 }, created_at: '2026-09-12T00:00:00Z' })).toBe('reacted to 2 posts')
     expect(evidenceLine({ signal_source: 'profile_view', trigger_type: 'profile_view', signal_evidence: { viewed_at: '2026-09-12T09:18:00Z', distance: 'DISTANCE_1' }, created_at: '2026-09-12T11:41:41Z' })).toBe('viewed your profile Sep 12 · 1st degree')
+    expect(evidenceLine({ signal_source: 'profile_view', trigger_type: 'profile_view', signal_evidence: { distance: 'DISTANCE_1' }, created_at: '2026-09-12T11:41:41Z' })).toBe('viewed your profile · date unavailable · 1st degree')
+  })
+
+  it('opens only saved http LinkedIn profile URLs', () => {
+    expect(linkedinProfileHref('https://www.linkedin.com/in/giorgiomhanna')).toBe('https://www.linkedin.com/in/giorgiomhanna')
+    expect(linkedinProfileHref('http://linkedin.com/in/ada-lovelace/')).toBe('http://linkedin.com/in/ada-lovelace/')
+    expect(linkedinProfileHref('javascript:alert(1)')).toBe(null)
+    expect(linkedinProfileHref('https://example.com/in/ada-lovelace')).toBe(null)
+    expect(linkedinProfileHref('https://www.linkedin.com/company/openai')).toBe(null)
+    expect(linkedinProfileHref(null)).toBe(null)
   })
 })

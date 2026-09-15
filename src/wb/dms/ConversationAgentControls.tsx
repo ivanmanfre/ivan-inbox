@@ -4,9 +4,10 @@ import { useConfirm } from '../chrome/ConfirmSheet'
 import {
   actionForCard, approvalGate, approveConversationAgentAction, controlConversationAgent,
   CONVERSATION_AGENT_POLICY_VERSION, describeAction, editConversationAgentAction,
-  enrollConversationAgent, historicalHeldActions, modeCopy, ownerCopy, plainHoldReason,
-  type ConversationAgentCard, type ConversationAgentCommand, type ConversationAgentEnrollmentMode,
+  historicalHeldActions, modeCopy, ownerCopy, plainHoldReason,
+  type ConversationAgentCard, type ConversationAgentCommand,
 } from './conversationAgentData'
+import { wbHash } from '../../exp/v2c/route'
 
 export function ConversationAgentControls({ card, onChanged, now = Date.now() }: {
   card: ConversationAgentCard
@@ -198,28 +199,7 @@ export function ConversationAgentControls({ card, onChanged, now = Date.now() }:
   )
 }
 
-export function ConversationAgentEnrollment({ prospectId, onChanged }: {
-  prospectId: string
-  onChanged: () => void | Promise<void>
-}) {
-  const [busy, setBusy] = useState<ConversationAgentEnrollmentMode | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [done, setDone] = useState<string | null>(null)
-
-  async function enroll(mode: ConversationAgentEnrollmentMode) {
-    if (busy) return
-    setBusy(mode); setError(null); setDone(null)
-    try {
-      await enrollConversationAgent(prospectId, mode)
-      setDone(mode === 'shadow' ? 'Shadow observation started.' : 'Enrolled in review mode.')
-      await onChanged()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Enrollment could not be verified.')
-    } finally {
-      setBusy(null)
-    }
-  }
-
+export function ConversationAgentEnrollment() {
   return (
     <section className="a-agent-enroll" aria-label="Conversation agent enrollment">
       <div className="a-agent-enrollhead">
@@ -229,13 +209,11 @@ export function ConversationAgentEnrollment({ prospectId, onChanged }: {
         </div>
         <Chip tone="quiet">Not enrolled</Chip>
       </div>
-      <div className="a-agent-enrollcopy a-meta">Shadow observes without sending. Review proposes actions and waits for approval.</div>
-      {error && <Banner tone="urgent" icon="error">{error}</Banner>}
-      {done && !error && <div className="a-meta a-agent-done" aria-live="polite"><Icon name="check" size={16} />{done}</div>}
+      <div className="a-agent-enrollcopy a-meta">
+        Qualified viewer openers are reviewed in Ops. If a proposal is present, use Approve takeover. Sending stays held until approval.
+      </div>
       <div className="a-agent-enrollactions">
-        <Button variant="outline" size="sm" icon="eye" busy={busy === 'shadow'} onClick={() => void enroll('shadow')}>Start shadow</Button>
-        <Button variant="outline" size="sm" icon="approve" busy={busy === 'review'} onClick={() => void enroll('review')}>Enroll in review</Button>
-        <Button variant="quiet" size="sm" icon="lock" disabled title="Requires server-confirmed release gates">Auto enrollment</Button>
+        <a className="a-link" href={wbHash('ops', null)}>Open Ops</a>
       </div>
     </section>
   )

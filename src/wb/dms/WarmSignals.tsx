@@ -30,7 +30,7 @@ import { useConfirm } from '../chrome/ConfirmSheet'
 import { approveDraft, saveDraftText, type Filter } from '../../lib/inbox'
 import {
   WARM_GROUPS, dayOf, decideWarm, dm1Deliverable, evidenceLine, fetchWarmCards, inviteLine,
-  isWaiting, primaryAction, warmGroup, type WarmCard, type WarmGroupKey,
+  isWaiting, linkedinProfileHref, primaryAction, warmGroup, type WarmCard, type WarmGroupKey,
 } from './warmSignalsData'
 import { ConversationAgentControls, ConversationAgentEnrollment } from './ConversationAgentControls'
 import {
@@ -38,6 +38,13 @@ import {
   type ConversationAgentCard, type ConversationAgentFeed,
 } from './conversationAgentData'
 import './dms.css'
+
+export function LinkedInProfileAccess({ url }: { url: string | null }) {
+  const href = linkedinProfileHref(url)
+  return href
+    ? <a className="a-link" href={href} target="_blank" rel="noreferrer">Open LinkedIn</a>
+    : <span className="a-meta">LinkedIn profile unavailable</span>
+}
 
 export function WarmSignals({ filter, refresh, inboxLoadedAt, focus, onOpenThread }: {
   filter: Filter
@@ -180,6 +187,7 @@ function AgentConversationCard({ card, reload, onOpenThread }: {
         />
       </Rows>
       <div className="a-warm-body">
+        <LinkedInProfileAccess url={card.linkedin_url} />
         <ConversationAgentControls card={card} now={Date.now()} onChanged={reload} />
       </div>
     </div>
@@ -314,6 +322,7 @@ function WarmCardView({ card: c, agentCard, reload, refresh, onOpenThread }: {
         />
       </Rows>
       <div className="a-warm-body">
+        <LinkedInProfileAccess url={c.linkedin_url} />
         <div className="a-warm-ev">
           <Icon name={isViewer ? 'eye' : 'quote'} size={16} />
           <span>{evidenceLine(c)}</span>
@@ -380,7 +389,7 @@ function WarmCardView({ card: c, agentCard, reload, refresh, onOpenThread }: {
         </div>
 
         {agentCard && <ConversationAgentControls card={agentCard} now={Date.now()} onChanged={reload} />}
-        {isViewer && !agentCard && <ConversationAgentEnrollment prospectId={c.prospect_id} onChanged={reload} />}
+        {isViewer && !agentCard && <ConversationAgentEnrollment />}
 
         {error && <Banner tone="urgent" icon="error">{error}</Banner>}
         {done && !error && <div className="a-meta a-warm-done"><Icon name="check" size={16} />{done}</div>}

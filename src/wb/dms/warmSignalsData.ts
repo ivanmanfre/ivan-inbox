@@ -87,6 +87,21 @@ export function dayOf(iso: string | null | undefined): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
+/** A saved LinkedIn member profile is the only external destination this card
+    may expose. Invalid, non-profile and non-http values stay unavailable. */
+export function linkedinProfileHref(value: string | null | undefined): string | null {
+  const href = value?.trim()
+  if (!href) return null
+  try {
+    const url = new URL(href)
+    const host = url.hostname.toLowerCase().replace(/^www\./, '')
+    if ((url.protocol !== 'https:' && url.protocol !== 'http:') || host !== 'linkedin.com') return null
+    return /^\/in\/[^/]+\/?$/i.test(url.pathname) ? href : null
+  } catch {
+    return null
+  }
+}
+
 function distanceWord(d: string | null | undefined): string | null {
   if (!d) return null
   if (/1/.test(d)) return '1st degree'
@@ -100,7 +115,8 @@ export function evidenceLine(c: Pick<WarmCard, 'signal_source' | 'trigger_type' 
   const ev = c.signal_evidence ?? {}
   const g = warmGroup(c)
   if (g === 'profile_view') {
-    const parts = [`viewed your profile ${dayOf(ev.viewed_at ?? c.created_at)}`]
+    const viewed = dayOf(ev.viewed_at)
+    const parts = [`viewed your profile${viewed ? ` ${viewed}` : ' · date unavailable'}`]
     const dw = distanceWord(ev.distance)
     if (dw) parts.push(dw)
     return parts.join(' · ')
