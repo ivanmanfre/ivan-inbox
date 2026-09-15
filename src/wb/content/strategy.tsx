@@ -29,6 +29,7 @@ import { Failed, PullIndicator, relAge } from './parts'
 import { AudienceBlock } from './AudienceBlock'
 import { ProposalsBlock } from './ProposalsBlock'
 import { BenchmarkBlock } from './BenchmarkBlock'
+import { ReachBlock } from './ReachBlock'
 import { ThemesBlock } from './ThemesBlock'
 import './content.css'
 import './strategy-evidence.css'
@@ -326,6 +327,7 @@ export function StrategyView({ lane, setLane }: {
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
         <div className="a-strategy-panel" hidden={view !== 'recommendations'}><ProposalsBlock key={lane} lane={lane} refreshKey={refreshTick} onDirtyChange={setProposalDirty} /></div>
         {view === 'results' && <div key={`${lane}-${refreshTick}`} className="a-strategy-results">
+          <ReachBlock lane={lane} />
           <BenchmarkBlock lane={lane} view="results" />
           <details className="a-strategy-disclosure"><summary>Explore subjects, hooks and formats</summary><ThemesBlock lane={lane} /></details>
           <details className="a-strategy-disclosure"><summary>Audience and recommendation outcomes</summary><AudienceBlock lane={lane} /></details>

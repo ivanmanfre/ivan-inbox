@@ -1,0 +1,90 @@
+/* WHO THE POSTS REACHED (Strategy > Results). Ledger grammar: hairline rows,
+   mono figures, no lime (nothing here is live state). Out of network is the
+   bright half of every split bar, in network the dim track behind it. */
+.a-reach-g .a-group-pad > .a-ct-sub{ padding-inline:0 }
+.a-reach-lede{ padding-top:0 }
+.a-reach-g .a-group-pad > .a-ledger{ margin-inline:0 }
+
+.a-reach-split{
+  position:relative; display:block; height:var(--ds-s2); min-width:48px;
+  background:var(--ds-hairline-strong); border-radius:var(--ds-r1); overflow:hidden;
+}
+.a-reach-split-out{ position:absolute; inset-block:0; inset-inline-start:0; background:var(--ds-text-2); }
+.a-cell .a-reach-split{ margin-top:var(--ds-s1) }
+
+.a-reach-sec{ margin-top:var(--ds-s5); display:flex; flex-direction:column; gap:var(--ds-s2); min-width:0 }
+.a-reach-foot{ font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3) }
+.a-reach-g .a-group-pad > .a-reach-foot{ margin-top:var(--ds-s4) }
+
+/* Shares: three short columns on a wide screen, stacked on the phone. */
+.a-reach-shares{ display:grid; grid-template-columns:repeat(auto-fit,minmax(15rem,1fr)); gap:var(--ds-s3) var(--ds-s5) }
+.a-reach-share{ display:flex; flex-direction:column; gap:var(--ds-s1); min-width:0 }
+.a-reach-share-h{ display:flex; justify-content:space-between; align-items:baseline; gap:var(--ds-s2); font-weight:var(--ds-fw-semi); padding-bottom:var(--ds-s1); border-bottom:1px solid var(--ds-line) }
+.a-reach-share-h .a-mono{ font-weight:var(--ds-fw-regular); font-size:var(--ds-fs-mono); white-space:nowrap }
+.a-reach-share-r{ display:grid; grid-template-columns:minmax(0,1fr) 64px 3.2em; gap:var(--ds-s2); align-items:center; font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); min-height:24px }
+.a-reach-share-l{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ds-text-2) }
+.a-reach-share-r .a-mono{ text-align:right; font-variant-numeric:tabular-nums }
+.a-reach-share-bar{ display:block; height:var(--ds-s2); background:var(--ds-surface-3); border-radius:var(--ds-r1); overflow:hidden }
+.a-reach-share-bar > span{ display:block; height:100%; background:var(--ds-text-2) }
+.a-reach-share-none{ font-size:var(--ds-fs-meta) }
+
+/* Weeks: one hairline row each. Empty weeks stay one quiet line. */
+.a-reach-weeks{ list-style:none; margin:0; padding:0; border-top:1px solid var(--ds-line) }
+.a-reach-weeks > li{ border-bottom:1px solid var(--ds-line) }
+.a-reach-week-empty{ display:flex; justify-content:space-between; align-items:center; min-height:32px; font-size:var(--ds-fs-meta) }
+.a-reach-wk-l{ display:inline-flex; gap:var(--ds-s2); align-items:baseline; white-space:nowrap }
+.a-reach-wk-l .a-mono{ font-size:var(--ds-fs-mono) }
+.a-reach-week > summary{
+  list-style:none; cursor:pointer; min-height:var(--ds-tap);
+  display:flex; flex-direction:column; justify-content:center; gap:var(--ds-s1);
+  padding-block:var(--ds-s2); min-width:0;
+}
+.a-reach-week > summary::-webkit-details-marker{ display:none }
+.a-reach-week > summary:focus-visible{ outline:2px solid var(--ds-accent-ui); outline-offset:2px }
+.a-reach-week > summary:hover{ background:var(--ds-surface-2) }
+.a-reach-wk-top{ display:flex; justify-content:space-between; align-items:baseline; gap:var(--ds-s2); font-weight:var(--ds-fw-semi) }
+.a-reach-wk-top::after{ content:'›'; color:var(--ds-text-3); font-weight:var(--ds-fw-regular); transition:transform var(--ds-dur-hover) var(--ds-ease); order:3 }
+.a-reach-week[open] .a-reach-wk-top::after{ transform:rotate(90deg) }
+.a-reach-wk-n{ font-weight:var(--ds-fw-regular); font-size:var(--ds-fs-mono); color:var(--ds-text-2); margin-inline-start:auto; white-space:nowrap }
+.a-reach-wk-bot{ display:grid; grid-template-columns:72px 4.6em minmax(0,1fr); gap:var(--ds-s2); align-items:center; font-size:var(--ds-fs-meta); color:var(--ds-text-3) }
+.a-reach-wk-pct{ color:var(--ds-text-2); font-size:var(--ds-fs-mono); white-space:nowrap }
+.a-reach-wk-nosplit{ grid-column:1 / 3; white-space:nowrap }
+.a-reach-wk-ind{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right }
+.a-reach-wk-note{ font-size:var(--ds-fs-meta); color:var(--ds-text-3) }
+
+.a-reach-posts{ list-style:none; margin:0 0 var(--ds-s3); padding:0 0 0 var(--ds-s3); border-inline-start:2px solid var(--ds-line) }
+.a-reach-post{ display:flex; flex-direction:column; gap:2px; padding-block:var(--ds-s2); min-width:0 }
+.a-reach-post + .a-reach-post{ border-top:1px solid var(--ds-line) }
+.a-reach-post-t{
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  color:var(--ds-text); font-size:var(--ds-fs-body); line-height:var(--ds-lh-body);
+  padding-block:var(--ds-s1); overflow-wrap:anywhere;
+}
+@media (max-width:39.999rem){ .a-reach-post-t{ min-height:var(--ds-tap) } }
+a.a-reach-post-t{ text-decoration:underline; text-decoration-color:var(--ds-hairline-strong); text-underline-offset:3px }
+a.a-reach-post-t:focus-visible{ outline:2px solid var(--ds-accent-ui); outline-offset:2px }
+.a-reach-post-m{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--ds-s1) var(--ds-s3); font-size:var(--ds-fs-meta); color:var(--ds-text-2) }
+.a-reach-post-m .a-mono{ font-size:var(--ds-fs-mono) }
+.a-reach-post-split{ display:inline-flex; align-items:center; gap:var(--ds-s2) }
+.a-reach-post-split .a-reach-split{ width:56px }
+.a-reach-post-d{ font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3); overflow-wrap:anywhere }
+.a-reach-more{ display:flex; justify-content:flex-start; margin-top:var(--ds-s2) }
+.a-reach-more .ds-btn{ min-height:var(--ds-tap) }
+
+/* Wide: a week reads as one row, columns aligned down the list. */
+@media (min-width:40rem){
+  .a-reach-week > summary{ display:grid; grid-template-columns:9rem 13rem 96px 5em minmax(0,1fr); align-items:center; column-gap:var(--ds-s4) }
+  .a-reach-wk-top, .a-reach-wk-bot{ display:contents }
+  .a-reach-wk-top::after{ display:none }
+  .a-reach-wk-l{ grid-column:1; grid-row:1 }
+  .a-reach-wk-n{ grid-column:2; grid-row:1; margin-inline-start:0 }
+  .a-reach-wk-bot > .a-reach-split{ grid-column:3; grid-row:1 }
+  .a-reach-wk-pct{ grid-column:4; grid-row:1 }
+  .a-reach-wk-nosplit{ grid-column:3 / 5; grid-row:1 }
+  .a-reach-wk-ind{ grid-column:5; grid-row:1; text-align:left }
+  .a-reach-wk-note{ grid-column:5; grid-row:2 }
+  .a-reach-week-empty{ justify-content:flex-start; gap:var(--ds-s4) }
+  .a-reach-week-empty .a-reach-wk-l{ min-width:9rem }
+  /* A wrapped line on the phone would start with a stray dot, so only the one-line layout separates. */
+  .a-reach-post-m > * + *::before{ content:'·'; margin-inline-end:var(--ds-s3); color:var(--ds-text-3) }
+}
