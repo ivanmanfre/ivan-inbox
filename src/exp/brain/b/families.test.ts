@@ -216,6 +216,11 @@ describe('stateWord — every family, on its own verbatim bodies', () => {
 })
 
 describe('sanitizeBody', () => {
+  it('keeps the ownership hold reason readable', () => {
+    expect(sanitizeBody('Reason: hard error: conversation_agent_owned_or_unresolved'))
+      .toBe('Reason: hard error: conversation ownership could not be confirmed')
+  })
+
   it('strips the leading status emoji and the raw arrow-transition token', () => {
     const body = 'SEAT HEALTH\n🔴 Seat Mattan Danino Sales Navigator: OK → PARENT_CONNECTING'
     const out = sanitizeBody(body)

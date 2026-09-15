@@ -167,6 +167,7 @@ const EMOJI_RE = /\p{Extended_Pictographic}/gu
  */
 export function sanitizeBody(body: string): string {
   return body
+    .replace(/\bconversation_agent_owned_or_unresolved\b/g, 'conversation ownership could not be confirmed')
     .replace(EMOJI_RE, '')
     .replace(/OK\s*(?:\u2192|->)\s*[A-Z][A-Z0-9_]*/g, 'disconnected')
     .replace(RAW_ENUM_RE_G, '')
