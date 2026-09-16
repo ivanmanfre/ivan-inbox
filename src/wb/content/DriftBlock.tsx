@@ -48,13 +48,13 @@ export function DriftView({ read, own, lane, now, onRetry }: {
   if (!underFloor) {
     lines.push({
       key: 'countries',
-      text: `Countries: ${shares(s.recent.countries)}.`,
+      text: `Top countries: ${shares(s.recent.countries)}.`,
       note: `${num(s.recent.placed)} of ${num(s.recent.n)} accepts carry a country`,
     })
     if (s.recent.titles.length) {
       lines.push({
         key: 'titles',
-        text: `Titles: ${shares(s.recent.titles)}.`,
+        text: `Top titles: ${shares(s.recent.titles)}.`,
         note: `${num(s.recent.titled)} of ${num(s.recent.n)} accepts carry a title`,
       })
     }

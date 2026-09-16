@@ -21,6 +21,12 @@ describe('DriftView', () => {
     expect(html).toMatch(/data-reach-drift="failed"/)
     expect(html).toMatch(/Who joined the network/)
   })
+  it('shows the denied copy and attribute when the RPC reports unauthorized', () => {
+    const html = renderToStaticMarkup(<DriftView read={{ kind: 'denied', message: 'unauthorized: not your seat' }} own={[]} lane="arch" now={NOW} onRetry={() => {}} />)
+    expect(html).toMatch(/data-reach-drift="denied"/)
+    expect(html).toMatch(/The network read didn.t load/)
+    expect(html).toMatch(/unauthorized: not your seat/)
+  })
   it('renders counts, country and title shares, and the reach line', () => {
     const rows = [...many(12, { country: 'US' }), ...many(4, { country: 'Israel', title: 'CMO' }), joined({ country: 'Croatia', location: 'Zagreb, Croatia' }), ...many(10, { connected_at: at(120), country: 'Poland' })]
     const own = [
@@ -32,8 +38,8 @@ describe('DriftView', () => {
     expect(html).toMatch(/data-reach-drift="ready"/)
     expect(html).toMatch(/data-drift-recent="17"/)
     expect(html).toMatch(/17 connections accepted/)
-    expect(html).toMatch(/United States 71%/)
-    expect(html).toMatch(/Founder 76%/)
+    expect(html).toMatch(/Top countries:.*United States 71%/)
+    expect(html).toMatch(/Top titles:.*Founder 76%/)
     expect(html).toMatch(/data-drift-reach="1"/)
     expect(html).toMatch(/Zagreb/)
     expect(html).toMatch(/1 of 17/)

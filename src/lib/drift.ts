@@ -88,6 +88,31 @@ export function cityOf(label: string): string {
   return (cut >= 0 ? s.slice(0, cut) : s).trim()
 }
 
+/** Whether `text`'s own city (its first comma segment, metro suffix stripped via
+    `cityOf`) is `city`. A boundary match, not a substring one, so "Rome" does
+    not match a `text` of "Romeoville, Illinois, United States". */
+function cityMatches(text: string | null, city: string): boolean {
+  if (!text) return false
+  return cityOf(text).toLowerCase() === city.toLowerCase()
+}
+
+// Left lowercase when not the first word ("Head of Growth", not "Head Of Growth").
+const MINOR_WORDS = new Set(['of', 'and', 'the', 'at', 'in', 'for', 'to', 'a', 'an', 'on', 'with'])
+
+/** Upper-cases the first letter of each space-separated word, except a minor
+    word (see `MINOR_WORDS`) that is not the first word, which is left as-is.
+    The rest of every word is left untouched, so an existing acronym ("CEO")
+    or an already-normalised name ("USA"/"UK" from the COUNTRY table) survives
+    as-is. Applied to every group's survivor label so the display casing never
+    depends on which spelling of a case-insensitive group happened to arrive
+    first (Finding 2). */
+function titleCase(label: string): string {
+  return label
+    .split(' ')
+    .map((w, i) => (!w || (i > 0 && MINOR_WORDS.has(w.toLowerCase())) ? w : w[0].toUpperCase() + w.slice(1)))
+    .join(' ')
+}
+
 /** Full ranked list, un-truncated: shifts (Finding 1) need shares beyond the top-`DRIFT_TOP` display slice. */
 function buckets(values: Array<string | null>): { placed: number; list: DriftBucket[] } {
   const count = new Map<string, { label: string; n: number }>()
@@ -102,7 +127,7 @@ function buckets(values: Array<string | null>): { placed: number; list: DriftBuc
   }
   const list = [...count.values()]
     .sort((a, b) => b.n - a.n || a.label.localeCompare(b.label))
-    .map(b => ({ label: b.label, n: b.n, pct: placed ? Math.round((100 * b.n) / placed) : 0 }))
+    .map(b => ({ label: titleCase(b.label), n: b.n, pct: placed ? Math.round((100 * b.n) / placed) : 0 }))
   return { placed, list }
 }
 
@@ -156,11 +181,13 @@ export function driftSummary(joined: JoinedRow[], own: PostAudienceRow[], now: n
   const top = reachLoc?.labels[0]
   if (top && reachLoc && reachLoc.posts >= REACH_LINE_MIN_POSTS) {
     const city = cityOf(top.label)
-    const needle = city.toLowerCase()
     // The outreach tables sometimes put the metro string in `country` rather than `location`
-    // (Finding 3), so a joined row counts toward the city if either column carries it.
-    const joinedInCity = needle
-      ? recentRows.filter(r => (r.location ?? '').toLowerCase().includes(needle) || (r.country ?? '').toLowerCase().includes(needle)).length
+    // (Finding 3), so a joined row counts toward the city if either column carries it. Matched
+    // on the FIRST segment of that column, run through `cityOf` (so "Zagreb, Croatia" and
+    // "Zagreb Metropolitan Area" both resolve to "Zagreb") rather than a raw substring test,
+    // which let "Rome" match "Romeoville".
+    const joinedInCity = city
+      ? recentRows.filter(r => cityMatches(r.location, city) || cityMatches(r.country, city)).length
       : 0
     reachTop = { label: top.label, pct: top.pct, city, joinedInCity, posts: reachLoc.posts, reached: reachLoc.reached }
   }

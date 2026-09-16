@@ -76,6 +76,18 @@ describe('driftSummary', () => {
     expect(s.recent.titles.map(t => t.label)).toEqual(['Founder', 'Co-Founder', 'CEO', 'CMO', 'Head of Growth'])
     expect(s.recent.titles[0]).toEqual({ label: 'Founder', n: 9, pct: 45 })
   })
+  it('title-cases the surviving label regardless of which spelling came first', () => {
+    // The lowercase spelling is the first one inserted into the group; the old
+    // code kept whichever spelling arrived first, so this would have shown
+    // "chief marketing officer" verbatim.
+    const rows = [...many(7, { title: 'chief marketing officer' }), ...many(3, { title: 'Chief Marketing Officer' })]
+    const s = driftSummary(rows, [], NOW)
+    expect(s.recent.titles[0]).toEqual({ label: 'Chief Marketing Officer', n: 10, pct: 100 })
+  })
+  it('leaves a minor word lowercase mid-title but does not know acronyms, so "vp of sales" becomes "Vp of Sales", not "VP of Sales"', () => {
+    const s = driftSummary(many(10, { title: 'vp of sales' }), [], NOW)
+    expect(s.recent.titles[0]).toEqual({ label: 'Vp of Sales', n: 10, pct: 100 })
+  })
   it('gates shares off below the floor, but keeps the raw counts', () => {
     const s = driftSummary(many(4, {}), [], NOW)
     expect(s.recent.hasShares).toBe(false)
@@ -112,6 +124,21 @@ describe('driftSummary', () => {
     ])
     expect(driftSummary(rows.slice(0, 10).concat(rows.slice(10, 15)), [], NOW).shifts).toEqual([]) // prior window under the floor
   })
+  it('treats SHIFT_POINTS as inclusive: a four-point move is not a shift, a five-point move is', () => {
+    const fourPointRows = [
+      ...many(13, { country: 'US' }), ...many(12, { country: 'United Kingdom' }),
+      ...many(12, { connected_at: at(120), country: 'US' }), ...many(13, { connected_at: at(120), country: 'United Kingdom' }),
+    ]
+    expect(driftSummary(fourPointRows, [], NOW).shifts).toEqual([])
+
+    const fivePointRows = [
+      ...many(11, { country: 'US' }), ...many(9, { country: 'United Kingdom' }),
+      ...many(10, { connected_at: at(120), country: 'US' }), ...many(10, { connected_at: at(120), country: 'United Kingdom' }),
+    ]
+    const s = driftSummary(fivePointRows, [], NOW)
+    expect(s.shifts).toContainEqual({ label: 'United States', recentPct: 55, priorPct: 50 })
+    expect(s.shifts).toContainEqual({ label: 'United Kingdom', recentPct: 45, priorPct: 50 })
+  })
   it('names the top reached location and counts accepts in that city, matching country too', () => {
     const own = [
       post({ demographics: { location: [{ label: 'Zagreb Metropolitan Area', pct: 32 }, { label: 'London Area, United Kingdom', pct: 10 }] } }),
@@ -125,6 +152,21 @@ describe('driftSummary', () => {
     ]
     const s = driftSummary(rows, own, NOW)
     expect(s.reachTop).toEqual({ label: 'Zagreb Metropolitan Area', pct: 37, city: 'Zagreb', joinedInCity: 2, posts: 3, reached: 300 })
+  })
+  it('matches the reach city on a boundary, not a substring, so "Rome" does not catch "Romeoville"', () => {
+    const own = [
+      post({ demographics: { location: [{ label: 'Rome Metropolitan Area', pct: 32 }] } }),
+      post({ demographics: { location: [{ label: 'Rome Metropolitan Area', pct: 40 }] } }),
+      post({ demographics: { location: [{ label: 'Rome Metropolitan Area', pct: 40 }] } }),
+    ]
+    const rows = [
+      ...many(9, { country: 'US' }),
+      joined({ country: 'Italy', location: 'Rome, Italy' }), // a real match on the city
+      joined({ country: 'US', location: 'Romeoville, Illinois, United States' }), // substring only, must not count
+    ]
+    const s = driftSummary(rows, own, NOW)
+    expect(s.reachTop?.city).toBe('Rome')
+    expect(s.reachTop?.joinedInCity).toBe(1)
   })
   it('gives no reach line without a located post in the recent weeks', () => {
     expect(driftSummary(many(12, {}), [post({ demographics: null })], NOW).reachTop).toBeNull()
