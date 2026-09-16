@@ -26,8 +26,8 @@ import { CLIENT_OPS_GATE, type ContentLane } from './content'
    ========================================================================== */
 
 export type ReachBucket = { label: string; pct: number }
-export type ReachCategory = 'job_title' | 'seniority' | 'industry'
-export type ReachDemographics = Partial<Record<ReachCategory | 'company_size' | 'location', ReachBucket[] | null>>
+export type ReachCategory = 'job_title' | 'seniority' | 'industry' | 'location'
+export type ReachDemographics = Partial<Record<ReachCategory | 'company_size', ReachBucket[] | null>>
 
 export type PostAudienceRow = {
   activity_id: string
@@ -38,6 +38,9 @@ export type PostAudienceRow = {
   in_pct: number | null
   out_pct: number | null
   members_reached: number | null
+  /** From the trackers' latest capture or the backfill; absent on rows read before 069. */
+  reactions?: number | null
+  comments?: number | null
   demographics: ReachDemographics | null
   captured_at: string | null
   source: string | null
@@ -218,11 +221,105 @@ export function summarizeReach(rows: PostAudienceRow[], now: number = Date.now()
         job_title: reachShares(recentPosts, 'job_title', 3),
         seniority: reachShares(recentPosts, 'seniority', 3),
         industry: reachShares(recentPosts, 'industry', 3),
+        location: reachShares(recentPosts, 'location', 3),
       },
     },
     total: rows.length,
     undated,
   }
+}
+
+// ---- what the history says --------------------------------------------------
+
+/* Four readings the backfilled history supports (checked on the real rows,
+   2026-09-16), each with the smallest post count that keeps it honest. A
+   reading below its floor is null and the block leaves the line out.
+     · concentration: the one post behind the 4-week total, next to the median
+       post (Rise 09-16: one post = 85% of the 4-week reach),
+     · floor: how many people the author's own network shows a post to, so the
+       rest reads as out of network (Ivan ≈ 21, Rise ≈ 80, ARCH ≈ 306),
+     · outcome: out of network follows reach (under 100 people ≈ 34% out, over
+       300 ≈ 82% on Ivan's lane), so it is a result, never a lever,
+     · comments: what commented posts reached against uncommented ones.
+   Medians are unweighted per post; p90 is nearest rank. */
+
+export const INSIGHT_WEEKS = 12
+const MIN_TOP = 3
+const MIN_GROUP = 5
+
+export function median(xs: number[]): number | null {
+  if (!xs.length) return null
+  const s = [...xs].sort((a, b) => a - b)
+  const m = Math.floor(s.length / 2)
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2
+}
+
+/** Nearest-rank percentile: the value at or below which `q` of the posts sit. */
+export function percentile(xs: number[], q: number): number | null {
+  if (!xs.length) return null
+  const s = [...xs].sort((a, b) => a - b)
+  return s[Math.max(0, Math.ceil(q * s.length) - 1)]
+}
+
+/** People the author's own network showed the post to: reached x in-network share. Null without a split or reach. */
+export function inNetworkOf(p: PostAudienceRow): number | null {
+  const sp = splitOf(p), r = reachedOf(p)
+  return sp && r != null ? Math.round((r * sp.inPct) / 100) : null
+}
+
+/** A title short enough for one line: cut on a word boundary with an ellipsis. The trackers store an 80-character stub. */
+export function shortTitle(title: string | null | undefined, max = 60): string | null {
+  const t = (title ?? '').replace(/\s+/g, ' ').trim()
+  if (!t) return null
+  if (t.length <= max) return t
+  const cut = t.slice(0, max)
+  const at = cut.lastIndexOf(' ')
+  return `${(at > max / 2 ? cut.slice(0, at) : cut).replace(/[\s,.:;&-]+$/, '')}…`
+}
+
+export type ReachInsights = {
+  concentration: { posts: number; reached: number; top: { title: string | null; reached: number; pct: number }; median: number } | null
+  floor: { posts: number; median: number; p90: number } | null
+  outcome: { small: { n: number; outPct: number }; large: { n: number; outPct: number } } | null
+  comments: { withComments: { n: number; median: number }; without: { n: number; median: number } } | null
+}
+
+const sinceMonday = (now: number, weeks: number) => {
+  const current = weekStartOf(new Date(now).toISOString()) as string
+  return new Date(new Date(`${current}T00:00:00Z`).getTime() - (weeks - 1) * 7 * DAY).toISOString().slice(0, 10)
+}
+
+export function reachInsights(rows: PostAudienceRow[], now: number = Date.now()): ReachInsights {
+  const dated = rows.filter(p => weekStartOf(p.published_at))
+  const inWindow = (weeks: number) => { const from = sinceMonday(now, weeks); return dated.filter(p => (weekStartOf(p.published_at) as string) >= from) }
+
+  const recent = inWindow(RECENT_WEEKS).filter(p => reachedOf(p) != null)
+  let concentration: ReachInsights['concentration'] = null
+  if (recent.length >= MIN_TOP) {
+    const reached = recent.reduce((a, p) => a + (reachedOf(p) as number), 0)
+    const top = recent.reduce((a, p) => ((reachedOf(p) as number) > (reachedOf(a) as number) ? p : a), recent[0])
+    const title = shortTitle(top.title)
+    concentration = { posts: recent.length, reached, top: { title, reached: reachedOf(top) as number, pct: Math.round(((reachedOf(top) as number) / reached) * 100) }, median: median(recent.map(p => reachedOf(p) as number)) as number }
+  }
+
+  const inNet = inWindow(INSIGHT_WEEKS).map(inNetworkOf).filter((v): v is number => v != null)
+  const floor = inNet.length >= MIN_GROUP ? { posts: inNet.length, median: median(inNet) as number, p90: percentile(inNet, 0.9) as number } : null
+
+  const withSplit = dated.filter(p => splitOf(p) && reachedOf(p) != null)
+  const small = withSplit.filter(p => (reachedOf(p) as number) < 100).map(p => (splitOf(p) as { outPct: number }).outPct)
+  const large = withSplit.filter(p => (reachedOf(p) as number) >= 300).map(p => (splitOf(p) as { outPct: number }).outPct)
+  const outcome = small.length >= MIN_GROUP && large.length >= MIN_GROUP
+    ? { small: { n: small.length, outPct: Math.round(median(small) as number) }, large: { n: large.length, outPct: Math.round(median(large) as number) } }
+    : null
+
+  const known = dated.filter(p => isNum(p.comments) && reachedOf(p) != null)
+  const c1 = known.filter(p => (p.comments as number) >= 1).map(p => reachedOf(p) as number)
+  const c0 = known.filter(p => p.comments === 0).map(p => reachedOf(p) as number)
+  const comments = c1.length >= MIN_GROUP && c0.length >= MIN_GROUP
+    ? { withComments: { n: c1.length, median: median(c1) as number }, without: { n: c0.length, median: median(c0) as number } }
+    : null
+
+  return { concentration, floor, outcome, comments }
 }
 
 // ---- read -----------------------------------------------------------------

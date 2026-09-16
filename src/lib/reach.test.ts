@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('./supabase', () => ({ supabase: {} }))
 import {
   dayLabel, formatShares, isoWeek, reachShares, reachedOf, splitOf, summarizeReach, topBuckets,
-  weekStartOf, weightedSplit, type PostAudienceRow,
+  reachInsights, shortTitle, weekStartOf, weightedSplit, type PostAudienceRow,
 } from './reach'
 
 const post = (o: Partial<PostAudienceRow>): PostAudienceRow => ({
@@ -135,5 +135,73 @@ describe('share of members reached, truncated buckets', () => {
     expect(s.weeks[0].topIndustry).toEqual({ label: 'Retail', pct: 9 })
     expect(formatShares([{ label: 'Technology, Information and Internet', pct: 3 }, { label: 'Retail', pct: 9 }]))
       .toBe('Technology, Information and Internet 3% · Retail 9%')
+  })
+})
+
+describe('what the history says', () => {
+  const now = Date.parse('2026-09-16T12:00:00Z') // Wednesday; 4-week window from Mon 24 Aug, 12-week from Mon 29 Jun
+  const at = (daysAgo: number) => new Date(now - daysAgo * 86_400_000).toISOString()
+  const hist = (n: number, o: Partial<PostAudienceRow>, from = 10, step = 3) =>
+    Array.from({ length: n }, (_, i) => post({ published_at: at(from + i * step), ...o }))
+
+  it('names the one post behind the 4-week total, with the median post beside it', () => {
+    const rows = [
+      post({ published_at: at(8), title: 'The big one', in_pct: 5, out_pct: 95, members_reached: 3670 }),
+      post({ published_at: at(9), in_pct: 60, out_pct: 40, members_reached: 52 }),
+      post({ published_at: at(10), in_pct: 60, out_pct: 40, members_reached: 40 }),
+      post({ published_at: at(11), in_pct: 60, out_pct: 40, members_reached: 60 }),
+      post({ published_at: at(60), in_pct: 60, out_pct: 40, members_reached: 9999 }), // outside the window
+    ]
+    const i = reachInsights(rows, now)
+    expect(i.concentration).toEqual({ posts: 4, reached: 3822, top: { title: 'The big one', reached: 3670, pct: 96 }, median: 56 })
+  })
+  it('needs three posts with reach before it names a top post', () => {
+    expect(reachInsights([post({ published_at: at(2), members_reached: 100 }), post({ published_at: at(3), members_reached: 50 })], now).concentration).toBeNull()
+    expect(reachInsights([], now).concentration).toBeNull()
+  })
+  it('states the in-network floor from the last 12 weeks as a median and a 9-in-10 line', () => {
+    // in-network people = reached x in%: 20, 20, 20, 20, 30, 30, 40, 50, 60, 184
+    const rows = [
+      ...hist(4, { in_pct: 50, out_pct: 50, members_reached: 40 }),
+      ...hist(2, { in_pct: 30, out_pct: 70, members_reached: 100 }, 30),
+      post({ published_at: at(40), in_pct: 40, out_pct: 60, members_reached: 100 }),
+      post({ published_at: at(41), in_pct: 25, out_pct: 75, members_reached: 200 }),
+      post({ published_at: at(42), in_pct: 20, out_pct: 80, members_reached: 300 }),
+      post({ published_at: at(43), in_pct: 5, out_pct: 95, members_reached: 3680 }),
+      post({ published_at: at(200), in_pct: 100, out_pct: 0, members_reached: 5000 }), // older than 12 weeks
+      post({ published_at: at(5), members_reached: 5000 }), // no split: cannot say how many were in network
+    ]
+    expect(reachInsights(rows, now).floor).toEqual({ posts: 10, median: 30, p90: 60 })
+  })
+  it('needs five posts with a split and reach before it states a floor', () => {
+    expect(reachInsights(hist(4, { in_pct: 50, out_pct: 50, members_reached: 40 }), now).floor).toBeNull()
+  })
+  it('shows out of network following reach only when both ends have five posts', () => {
+    const rows = [
+      ...hist(5, { in_pct: 66, out_pct: 34, members_reached: 40 }),
+      ...hist(5, { in_pct: 18, out_pct: 82, members_reached: 500 }, 40),
+      post({ published_at: at(3), in_pct: 50, out_pct: 50, members_reached: 150 }), // the middle band is not in either end
+    ]
+    expect(reachInsights(rows, now).outcome).toEqual({ small: { n: 5, outPct: 34 }, large: { n: 5, outPct: 82 } })
+    expect(reachInsights(rows.slice(1), now).outcome).toBeNull()
+  })
+  it('compares the median reach of commented and uncommented posts, five of each', () => {
+    const rows = [
+      ...hist(5, { comments: 1, members_reached: 56 }),
+      ...hist(5, { comments: 0, members_reached: 33 }, 40),
+      post({ published_at: at(3), comments: null, members_reached: 9999 }), // unknown comments: in neither group
+    ]
+    expect(reachInsights(rows, now).comments).toEqual({ withComments: { n: 5, median: 56 }, without: { n: 5, median: 33 } })
+    expect(reachInsights(rows.slice(0, 9), now).comments).toBeNull()
+  })
+  it('shortens a top-post title on a word boundary, never mid-word', () => {
+    expect(shortTitle("I'm in Warsaw, Poland right now & I don't want to leave. I'm Argentinian. M")).toBe("I'm in Warsaw, Poland right now & I don't want to leave…")
+    expect(shortTitle('I hate it when an agency hands the client a list of 1,000 creators and calls tha')).toBe('I hate it when an agency hands the client a list of 1,000…')
+    expect(shortTitle("I didn't want to do this...")).toBe("I didn't want to do this...")
+    expect(shortTitle('  ')).toBeNull()
+  })
+  it('lists the top location beside the other shares', () => {
+    const s = summarizeReach([post({ members_reached: 100, demographics: { location: [{ label: 'Zagreb Metropolitan Area', pct: 33 }] } })], now)
+    expect(s.recent.shares.location?.labels).toEqual([{ label: 'Zagreb Metropolitan Area', pct: 33 }])
   })
 })

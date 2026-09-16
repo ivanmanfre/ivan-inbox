@@ -21,7 +21,7 @@ import { Button } from '../../ds'
 import { Cell, Group, Ledger, relAge } from '../kit'
 import { Failed } from './parts'
 import {
-  RECENT_WEEKS, dayLabel, fetchPostAudience, reachedOf, splitOf, summarizeReach, topBuckets,
+  INSIGHT_WEEKS, RECENT_WEEKS, dayLabel, fetchPostAudience, reachInsights, reachedOf, splitOf, summarizeReach, topBuckets,
   type PostAudienceRow, type ReachCategory, type ReachRead, type ReachWeek,
 } from '../../lib/reach'
 import { num } from '../../lib/benchmark'
@@ -30,7 +30,7 @@ import './content.css'
 import './reach.css'
 
 const FOLD_WEEKS = 12
-const CATEGORY_LABEL: Record<ReachCategory, string> = { job_title: 'Job title', seniority: 'Seniority', industry: 'Industry' }
+const CATEGORY_LABEL: Record<ReachCategory, string> = { job_title: 'Job title', seniority: 'Seniority', industry: 'Industry', location: 'Location' }
 const plural = (n: number, one: string, many = `${one}s`) => `${num(n)} ${n === 1 ? one : many}`
 
 /** In network (dim) and out of network (bright) as one bar. */
@@ -46,6 +46,8 @@ function PostLine({ p, thisYear }: { p: PostAudienceRow; thisYear: number }) {
   const sp = splitOf(p)
   const reached = reachedOf(p)
   const titles = topBuckets(p.demographics?.job_title, 2)
+  const industry = topBuckets(p.demographics?.industry, 1)[0]
+  const location = topBuckets(p.demographics?.location, 1)[0]
   const date = p.published_at ? dayLabel(p.published_at.slice(0, 10), thisYear) : 'Date unknown'
   // The trackers store the first 80 characters of the post as its title.
   const raw = p.title?.trim() ?? ''
@@ -64,6 +66,8 @@ function PostLine({ p, thisYear }: { p: PostAudienceRow; thisYear: number }) {
       </span>
       <span className="a-reach-post-d">
         {titles.length ? `Top job titles ${titles.map(t => `${t.label} ${t.pct}%`).join(' · ')}` : 'No job titles listed'}
+        {industry ? ` · Industry ${industry.label} ${industry.pct}%` : ''}
+        {location ? ` · Location ${location.label} ${location.pct}%` : ''}
       </span>
     </li>
   )
@@ -102,6 +106,57 @@ function WeekRow({ w, thisYear }: { w: ReachWeek; thisYear: number }) {
   )
 }
 
+/** The readings the history supports, each with its post count. A reading below its floor is left out. */
+function Insights({ rows, now }: { rows: PostAudienceRow[]; now: number }) {
+  const i = useMemo(() => reachInsights(rows, now), [rows, now])
+  const lines: { key: string; text: string; note: string }[] = []
+  if (i.concentration) {
+    const c = i.concentration
+    lines.push({
+      key: 'top',
+      text: c.top.pct >= 50
+        ? `One post is ${c.top.pct}% of the last ${RECENT_WEEKS} weeks: ${num(c.top.reached)} of ${num(c.reached)} people${c.top.title ? `, "${c.top.title}"` : ''}. The median post reached ${num(c.median)}.`
+        : `The top post reached ${num(c.top.reached)} of the ${num(c.reached)} people in the last ${RECENT_WEEKS} weeks (${c.top.pct}%)${c.top.title ? `, "${c.top.title}"` : ''}. The median post reached ${num(c.median)}.`,
+      note: `${plural(c.posts, 'post')} with reach`,
+    })
+  }
+  if (i.floor) {
+    lines.push({
+      key: 'floor',
+      text: `The author's own network shows a post to about ${num(i.floor.median)} people, and 9 in 10 posts stay under ${num(i.floor.p90)}. Everything above that came from outside the network.`,
+      note: `${plural(i.floor.posts, 'post')} with a split, last ${INSIGHT_WEEKS} weeks`,
+    })
+  }
+  if (i.outcome) {
+    lines.push({
+      key: 'outcome',
+      text: `Out of network follows reach: posts under 100 people run ${i.outcome.small.outPct}% out, posts over 300 run ${i.outcome.large.outPct}% out. It is a result of a post travelling, not a setting.`,
+      note: `${num(i.outcome.small.n)} and ${plural(i.outcome.large.n, 'post')}, all history`,
+    })
+  }
+  if (i.comments) {
+    lines.push({
+      key: 'comments',
+      text: `Posts with at least one comment reached ${num(i.comments.withComments.median)} people at the median, posts with none ${num(i.comments.without.median)}.`,
+      note: `${num(i.comments.withComments.n)} and ${plural(i.comments.without.n, 'post')}, all history`,
+    })
+  }
+  if (!lines.length) return null
+  return (
+    <div className="a-reach-sec" data-reach-insights={lines.length}>
+      <div className="a-eyebrow">What the history says</div>
+      <ul className="a-reach-ins">
+        {lines.map(l => (
+          <li key={l.key} className="a-reach-in" data-insight={l.key}>
+            <span className="a-reach-in-t">{l.text}</span>
+            <span className="a-mono a-dim-2 a-reach-in-n">{l.note}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 export function ReachReady({ rows, readAt, now: nowProp }: { rows: PostAudienceRow[]; readAt: string; now?: number }) {
   const [showOlder, setShowOlder] = useState(false)
   const [mountedAt] = useState(() => Date.now())
@@ -134,6 +189,8 @@ export function ReachReady({ rows, readAt, now: nowProp }: { rows: PostAudienceR
           note={!r.withReach ? `No post since ${dayLabel(r.from, thisYear)} reports it` : r.withReach === r.posts ? `Summed over ${plural(r.posts, 'post')}` : `Summed over ${num(r.withReach)} of ${plural(r.posts, 'post')}, the rest do not report it`}
         />
       </Ledger>
+
+      <Insights rows={rows} now={now} />
 
       <div className="a-reach-sec">
         <div className="a-eyebrow">Share of members reached · last {RECENT_WEEKS} weeks</div>
