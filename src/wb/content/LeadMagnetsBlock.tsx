@@ -26,6 +26,8 @@ import {
 import './reach.css'
 
 const TITLE = 'Lead magnets'
+/** Same words as the dedicated view's disclosure: one surface should not name it differently. */
+const CALLS_SUMMARY = 'Why calls read as not attributable'
 const ROSTER_TITLE = 'Gated posts on the roster'
 const FOOT = 'Comments per 1,000 followers puts a small account with a loud post above a big account with a quiet one. Where the follower count is unknown the line ranks by comments alone.'
 const TITLE_MAX = 72
@@ -69,9 +71,11 @@ function LmLine({ row, since, thisYear }: { row: LmRow; since: string; thisYear:
     <li className="a-reach-in" data-lm-slug={row.slug} data-lm-rate={rate ? 1 : 0}>
       <span className="a-reach-in-t">
         {shortTitle(plain(row.title), TITLE_MAX) ?? row.slug}: {text}.
-        <span className="a-lm-tags">
-          <span className="a-mono a-dim-2 a-lm-tag">{row.status}</span>
-          {row.keyword ? <span className="a-mono a-dim-2 a-lm-tag">comment {plain(row.keyword)}</span> : null}
+        {/* `a-reach-lm-*`, not `a-lm-*`: the dedicated Lead magnets view owns `.a-lm-tag`
+            in `leadmagnets.css` and the two sheets load on the same screen. */}
+        <span className="a-reach-lm-tags">
+          <span className="a-mono a-dim-2 a-reach-lm-tag">{row.status}</span>
+          {row.keyword ? <span className="a-mono a-dim-2 a-reach-lm-tag">comment {plain(row.keyword)}</span> : null}
         </span>
       </span>
       <span className="a-mono a-dim-2 a-reach-in-n">{span ? `${note} · ${span}` : note}</span>
@@ -88,7 +92,7 @@ function GatedLine({ p }: { p: GatedPost }) {
     ? `${plural(p.comments, 'comment')} of ${sizeLabel(p)} · ${rate1(rate)} per 1k followers`
     : `${plural(p.comments, 'comment')}, ${sizeLabel(p)}, so no rate`
   return (
-    <li className="a-reach-in" data-lm-gate={p.cta_kind} data-lm-sized={p.follower_count != null ? 1 : 0}>
+    <li className="a-reach-in" data-lm-gate={p.cta_kind} data-lm-sized={p.follower_count != null && p.follower_count > 0 ? 1 : 0}>
       <span className="a-reach-in-t">
         {p.post_ref
           ? <a href={p.post_ref} target="_blank" rel="noopener noreferrer">{plain(p.author)}</a>
@@ -161,7 +165,8 @@ export function LeadMagnetsView({ lm, gated, now, onRetryLm, onRetryGated }: {
   const lmSince = lm.kind === 'ready' ? dayLabel(lm.since.slice(0, 10), thisYear) : ''
   const ownVisible = openOwn ? own : own.slice(0, LM_TOP)
   const rosterVisible = openRoster ? ranked : ranked.slice(0, LM_TOP)
-  const sized = ranked.filter(p => p.follower_count != null).length
+  // `sizeLabel` reads 0 followers as unknown, so the count must agree: a zero is not a size.
+  const sized = ranked.filter(p => p.follower_count != null && p.follower_count > 0).length
 
   // A half that failed carries no count: `0` would read as a fact, and it is an unread one.
   return (
@@ -180,7 +185,15 @@ export function LeadMagnetsView({ lm, gated, now, onRetryLm, onRetryGated }: {
             </ul>
           ) : null}
           <Fold hidden={Math.max(0, own.length - LM_TOP)} open={openOwn} onToggle={() => setOpenOwn(v => !v)} noun="lead magnets" controls={ownListId} />
-          {own.length && lm.calls_note ? <div className="a-reach-foot">{plain(lm.calls_note)}</div> : null}
+          {/* The engine's own sentence names tables ("lm_attribution holds no production row"),
+              which is reference, not reading. It sits behind the same disclosure the dedicated
+              view uses, and only when there is a list for it to explain. */}
+          {own.length && lm.calls_note ? (
+            <details className="a-reach-why">
+              <summary><span className="a-reach-foot">{CALLS_SUMMARY}</span></summary>
+              <div className="a-reach-foot a-reach-why-body">{plain(lm.calls_note)}</div>
+            </details>
+          ) : null}
         </>
       ) : (
         <Failed what="The lead magnets read" message={lm.message} onRetry={onRetryLm} />

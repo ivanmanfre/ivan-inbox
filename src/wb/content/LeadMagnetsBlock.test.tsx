@@ -67,6 +67,38 @@ describe('LeadMagnetsView', () => {
     expect(html).not.toMatch(NOISE)
   })
 
+  it('collapses the calls note behind a disclosure, and only when a row is there to explain', () => {
+    const lms = [lm({ slug: 'kit', title: 'The Rise DTC AI Kit', cta_clicks: 5 })]
+    const note = 'calls is null when no booking carries the slug. lm_attribution holds no production row.'
+    const html = renderToStaticMarkup(<LeadMagnetsView lm={ready(lms, note)} gated={gready([])} now={NOW} />)
+    expect(html).toMatch(/<details class="a-reach-why"><summary>/)
+    expect(html).toMatch(/Why calls read as not attributable/)
+    expect(html).toMatch(/lm_attribution holds no production row/)
+    // Nothing listed, nothing to explain.
+    const bare = renderToStaticMarkup(<LeadMagnetsView lm={ready([lm({ slug: 'idle' })], note)} gated={gready([])} now={NOW} />)
+    expect(bare).not.toMatch(/a-reach-why/)
+    expect(bare).not.toMatch(/lm_attribution/)
+  })
+
+  it('reads a zero follower count as unsized, the way the size label already does', () => {
+    const posts = [
+      gp({ author: 'Zero Size', comments: 40, follower_count: 0, per_1k: null }),
+      gp({ author: 'Real Size', comments: 30, follower_count: 6000, per_1k: 5 }),
+    ]
+    const html = renderToStaticMarkup(<LeadMagnetsView lm={ready([])} gated={gready(posts)} now={NOW} />)
+    expect(html).toMatch(/1 of 2 carries a follower count/)
+    expect(html).toMatch(/size unknown/)
+    expect(html).toMatch(/data-lm-sized="0"/)
+    expect(html).not.toMatch(NOISE)
+  })
+
+  it('keeps its tag class out of the dedicated view\'s namespace', () => {
+    const html = renderToStaticMarkup(<LeadMagnetsView lm={ready([lm({ slug: 'kit', keyword: 'KIT', cta_clicks: 3 })])} gated={gready([])} now={NOW} />)
+    expect(html).toMatch(/a-reach-lm-tags/)
+    expect(html).toMatch(/a-reach-lm-tag/)
+    expect(html).not.toMatch(/class="[^"]*\ba-lm-tag\b/)
+  })
+
   it('states the em dash out of a catalog title rather than printing one', () => {
     const lms = [lm({ slug: 'score', title: 'The Agency Efficiency Score — How Much Profit Are You Leaving on the Table?', cta_clicks: 19, status: 'retired' })]
     const html = renderToStaticMarkup(<LeadMagnetsView lm={ready(lms)} gated={gready([])} now={NOW} />)

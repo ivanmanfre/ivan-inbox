@@ -114,6 +114,19 @@ a.a-reach-post-t:focus-visible{ outline:2px solid var(--ds-accent-ui); outline-o
 
 /* Lead magnets: the status and gate-word tags that ride on an own lead magnet line. The group wraps
    as one unit and keeps a gutter, so a tag never lands flush against the right edge. */
-.a-lm-tags{ display:inline-flex; gap:var(--ds-s2); margin-inline:var(--ds-s2) var(--ds-s4); white-space:nowrap; vertical-align:baseline }
-.a-lm-tag{ display:inline-block; font-size:var(--ds-fs-mono); color:var(--ds-text-3); border:1px solid var(--ds-line); border-radius:var(--ds-r1); padding:0 4px; white-space:nowrap }
+/* `a-reach-lm-*`: `leadmagnets.css` owns `.a-lm-tag` for the dedicated view, and both
+   sheets are loaded whenever Strategy is open. */
+.a-reach-lm-tags{ display:inline-flex; gap:var(--ds-s2); margin-inline:var(--ds-s2) var(--ds-s4); white-space:nowrap; vertical-align:baseline }
+.a-reach-lm-tag{ display:inline-block; font-size:var(--ds-fs-mono); color:var(--ds-text-3); border:1px solid var(--ds-line); border-radius:var(--ds-r1); padding:0 4px; white-space:nowrap }
+
+/* The calls note, collapsed. A disclosure is a control, so its summary keeps the tap floor. */
+.a-reach-why > summary{
+  list-style:none; cursor:pointer; min-height:var(--ds-tap);
+  display:flex; align-items:center; padding-block:var(--ds-s2);
+}
+.a-reach-why > summary::-webkit-details-marker{ display:none }
+.a-reach-why > summary:hover{ background:var(--ds-surface-2) }
+.a-reach-why > summary:focus-visible{ outline:2px solid var(--ds-accent-ui); outline-offset:2px }
+.a-reach-why > summary .a-reach-foot{ text-decoration:underline; text-decoration-color:var(--ds-hairline-strong); text-underline-offset:3px }
+.a-reach-why-body{ padding-bottom:var(--ds-s3) }
 .a-reach-ins .a-reach-in-t > a{ color:inherit; text-decoration:underline; text-underline-offset:2px }
