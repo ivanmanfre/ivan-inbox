@@ -26,6 +26,7 @@ import {
 } from '../../lib/reach'
 import { num } from '../../lib/benchmark'
 import type { ContentLane } from '../../lib/content'
+import { RosterSection } from './RosterBlock'
 import './content.css'
 import './reach.css'
 
@@ -222,7 +223,7 @@ function Winners({ rows, now, thisYear }: { rows: PostAudienceRow[]; now: number
   )
 }
 
-export function ReachReady({ rows, followers, readAt, now: nowProp }: { rows: PostAudienceRow[]; followers: ReachFollowers; readAt: string; now?: number }) {
+export function ReachReady({ rows, followers, readAt, now: nowProp, lane }: { rows: PostAudienceRow[]; followers: ReachFollowers; readAt: string; now?: number; lane?: ContentLane }) {
   const [showOlder, setShowOlder] = useState(false)
   const [mountedAt] = useState(() => Date.now())
   const now = nowProp ?? mountedAt
@@ -257,6 +258,7 @@ export function ReachReady({ rows, followers, readAt, now: nowProp }: { rows: Po
 
       <Insights rows={rows} now={now} followers={followers} />
       <Winners rows={rows} now={now} thisYear={thisYear} />
+      {lane ? <RosterSection lane={lane} own={rows} now={now} /> : null}
 
       <div className="a-reach-sec">
         <div className="a-eyebrow">Share of members reached · last {RECENT_WEEKS} weeks</div>
@@ -307,10 +309,10 @@ export function ReachReady({ rows, followers, readAt, now: nowProp }: { rows: Po
   )
 }
 
-export function ReachView({ read, onRetry, now }: { read: ReachRead | null; onRetry?: () => void; now?: number }) {
+export function ReachView({ read, onRetry, now, lane }: { read: ReachRead | null; onRetry?: () => void; now?: number; lane?: ContentLane }) {
   let body
   if (!read) body = <div className="a-ct-sub">Reading who the posts reached…</div>
-  else if (read.kind === 'ready') body = <ReachReady rows={read.rows} followers={read.followers} readAt={read.readAt} now={now} />
+  else if (read.kind === 'ready') body = <ReachReady rows={read.rows} followers={read.followers} readAt={read.readAt} now={now} lane={lane} />
   else body = <Failed what="Who the posts reached" message={read.message} onRetry={onRetry} />
   return (
     <div className="a-reach" data-reach-state={read ? read.kind : 'loading'}>
@@ -331,5 +333,5 @@ export function ReachBlock({ lane }: { lane: ContentLane }) {
     return () => { live = false }
   }, [lane, tick])
   const current = read?.lane === lane ? read.read : null
-  return <ReachView read={current} onRetry={() => setTick(t => t + 1)} />
+  return <ReachView read={current} lane={lane} onRetry={() => setTick(t => t + 1)} />
 }

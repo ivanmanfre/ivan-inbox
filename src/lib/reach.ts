@@ -41,6 +41,8 @@ export type PostAudienceRow = {
   /** From the trackers' latest capture or the backfill; absent on rows read before 069. */
   reactions?: number | null
   comments?: number | null
+  /** Reposts, from the tracker capture only (071). */
+  shares?: number | null
   /** Tracker rows only (070): profile views from the post, the winner flag, funnel class, Ivan's hook type, a staged reuse idea. */
   profile_views?: number | null
   is_winner?: boolean | null
@@ -296,7 +298,7 @@ export type ReachInsights = {
   comments: { withComments: { n: number; median: number }; without: { n: number; median: number } } | null
 }
 
-const sinceMonday = (now: number, weeks: number) => {
+export const sinceMonday = (now: number, weeks: number) => {
   const current = weekStartOf(new Date(now).toISOString()) as string
   return new Date(new Date(`${current}T00:00:00Z`).getTime() - (weeks - 1) * 7 * DAY).toISOString().slice(0, 10)
 }

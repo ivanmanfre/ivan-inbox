@@ -102,3 +102,12 @@ a.a-reach-post-t:focus-visible{ outline:2px solid var(--ds-accent-ui); outline-o
   /* A wrapped line on the phone would start with a stray dot, so only the one-line layout separates. */
   .a-reach-post-m > * + *::before{ content:'·'; margin-inline-end:var(--ds-s3); color:var(--ds-text-3) }
 }
+
+/* Against the roster: one hairline row per account, numbers right-aligned. */
+.a-reach-roster{ list-style:none; margin:0; padding:0; border-top:1px solid var(--ds-line) }
+.a-reach-roster-r{ display:grid; grid-template-columns:minmax(0,1fr) 4.6em 5.4em 4.6em; gap:var(--ds-s2); align-items:baseline; padding-block:var(--ds-s2); border-bottom:1px solid var(--ds-line); font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); min-width:0 }
+.a-reach-roster-r > span:not(:first-child){ text-align:right; white-space:nowrap }
+.a-reach-roster-h{ color:var(--ds-text-3) }
+.a-reach-roster-you{ font-weight:var(--ds-fw-semi) }
+.a-reach-roster-l{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.a-reach-sec > .a-eyebrow + .a-eyebrow, .a-reach-sec > * + .a-eyebrow{ margin-top:var(--ds-s4) }
