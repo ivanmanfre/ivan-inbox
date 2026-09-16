@@ -19,9 +19,10 @@ export const EYEBROW_OWN = 'Your lead magnets'
 export const EYEBROW_ROSTER = 'Gated posts on the roster'
 export const EMPTY_ROSTER = 'No gated post judged on this roster yet.'
 export const CALLS_SUMMARY = 'Why calls read as not attributable'
-/* Two sentences, because one ran to four lines at 390. */
+/* Two sentences and 124 characters, because the first draft ran to four lines at 390
+   and the rewrite to four again. Measured at 390: three lines. */
 export const FOOT =
-  'Comments per 1,000 followers puts a small account with a loud post above a big one with a quiet post. Lines with no follower count rank by comments alone, below the sized lines.'
+  'Comments per 1,000 followers puts a small account with a loud post over a big quiet one. Unsized lines rank by comments alone.'
 
 /** The catalog, not the window, is what is empty here: the window filters posts, never rows. */
 export const emptyOwn = (since: string, thisYear: number) =>
