@@ -88,6 +88,16 @@ describe('parsePayload', () => {
     expect((r as { contract_error: string }).contract_error).toContain('not a zero')
   })
 
+  it.each([
+    ['Europe/Warsaw', '2026-09-12T22:11:00Z'],
+    ['America/Los_Angeles', '2026-09-14T01:11:00Z'],
+  ])('accepts today using the range timezone %s', (tz, to) => {
+    const ok = clone(healthy)
+    ok.ranges.tz = tz
+    ok.ranges.intervals.find(i => i.name === 'today')!.to = to
+    expect(isContractError(parsePayload(ok))).toBe(false)
+  })
+
   it('rejects a daily series that stops short of the today interval', () => {
     const bad = clone(healthy) as { ranges: { daily: Array<{ day: string }> } }
     bad.ranges.daily = bad.ranges.daily.filter(d => d.day !== '2026-09-13')
