@@ -133,8 +133,9 @@ export function LeadMagnetsView({ lm, gated, now, onRetryLm, onRetryGated }: {
   const rosterVisible = openRoster ? ranked : ranked.slice(0, LM_TOP)
   const sized = ranked.filter(p => p.follower_count != null).length
 
+  // A half that failed carries no count: `0` would read as a fact, and it is an unread one.
   return (
-    <div className="a-reach-sec" data-reach-lm="ready" data-lm-own={own.length} data-lm-gated={ranked.length}>
+    <div className="a-reach-sec" data-reach-lm="ready" data-lm-own={lm.kind === 'ready' ? own.length : undefined} data-lm-gated={gated.kind === 'ready' ? ranked.length : undefined}>
       <div className="a-eyebrow">{TITLE}</div>
       {lm.kind === 'ready' ? (
         <>

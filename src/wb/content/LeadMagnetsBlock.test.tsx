@@ -101,6 +101,8 @@ describe('LeadMagnetsView', () => {
   it('keeps the roster when the catalog read fails, and the catalog when the roster read fails', () => {
     const one = renderToStaticMarkup(<LeadMagnetsView lm={{ kind: 'failed', message: 'lm boom' }} gated={gready([gp({ author: 'Still Here', comments: 18 })])} now={NOW} onRetryLm={() => {}} onRetryGated={() => {}} />)
     expect(one).toMatch(/data-reach-lm="ready"/)
+    expect(one).not.toMatch(/data-lm-own=/)        // an unread half never claims a count of zero
+    expect(one).toMatch(/data-lm-gated="1"/)
     expect(one).toMatch(/The lead magnets read didn.t load/)
     expect(one).toMatch(/lm boom/)
     expect(one).toMatch(/Still Here/)
