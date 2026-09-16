@@ -85,12 +85,13 @@ export function RosterView({ read, own, lane, now, onRetry }: { read: RosterRead
           <ul className="a-reach-posts a-reach-winners" data-roster-angles={angles.length}>
             {angles.map((a, i) => (
               <li className="a-reach-post" key={`${a.url ?? a.who}-${i}`}>
-                <span className="a-reach-post-t">{a.topic ?? `${a.who}'s post`}</span>
+                {a.url
+                  ? <a className="a-reach-post-t" href={a.url} target="_blank" rel="noopener noreferrer">{a.topic ?? `${a.who}'s post`}</a>
+                  : <span className="a-reach-post-t">{a.topic ?? `${a.who}'s post`}</span>}
                 <span className="a-reach-post-m">
                   <span>{a.who}</span>
                   <span className="a-mono">{a.at ? dayLabel(a.at.slice(0, 10), thisYear) : 'Date unknown'}</span>
                   <span className="a-mono">{plural(a.comments, 'comment')}</span>
-                  {a.url ? <a href={a.url} target="_blank" rel="noopener noreferrer">Open post</a> : null}
                 </span>
                 <span className="a-reach-post-d">{a.angle}</span>
               </li>
