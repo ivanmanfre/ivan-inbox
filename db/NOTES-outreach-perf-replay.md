@@ -1,5 +1,74 @@
 # outreach_perf_payload: live replay notes
 
+## Fourth replay after 6a33c4d (2026-09-17)
+
+**SQL version replayed:** `db/069_outreach_perf_payload.sql` at commit `6a33c4d`,
+sha256 `31cebc4aff4706961da4b54b1dc11ab644d6ada5475b08fa880accd085755763`. Applied through the
+Management API with a 5-attempt retry loop on 544; succeeded on the first attempt (201, body `[]`).
+The change is the verdict floor, `v_floor` 30 to 20; the child floor stays 15. The script's own
+thin constant was lowered to 20 in the same round so both sides agree on what counts as thin.
+
+Grants re-checked for all four functions against the control, all identical:
+
+```
+audn_benchmark_payload   anon=False  authenticated=True  service_role=True
+outreach_perf_payload    anon=False  authenticated=True  service_role=True
+perf_country_key         anon=False  authenticated=True  service_role=True
+perf_wilson_upper        anon=False  authenticated=True  service_role=True
+```
+
+**Exit 0.** No IMPOSSIBLE, no transport or shape failure. One WARN, explained below.
+
+### Every alarm, verbatim
+
+```
+ivan:    ALARM drift dm1     4.5% vs 29.6% suspect=none share=-
+ivan:    ALARM drift inmail  4.8% vs 13.6% suspect=country share=0.6829
+risedtc: ALARM drift dm1    10.8% vs 19.3% suspect=country share=0.7857
+arch:    (no alarms)
+```
+
+### What changed versus the third replay, in words
+
+**1. Ivan cold dm1 now fires, as predicted.** `cold dm1 now 1/22 (4.5%) prior 8/27 (29.6%)` moved
+from `thin` to `drift` and raised `ALARM drift dm1 4.5% vs 29.6%`. This is the 25-point fall the
+third replay flagged as the largest in the payload and unreportable; the floor change makes it
+reportable. It is the only new alarm.
+
+**2. Ivan cold inmail did NOT fire, and could not have.** The expectation allowed for it, but
+`cold inmail now 1/28 (3.6%) prior 1/48 (2.1%)` is a rate that went **up**, not down. Drift only
+triggers on a fall, so no floor would have produced an alarm here. It moved from `thin` to `ok`,
+which is the correct verdict: judged, and healthy.
+
+**3. The new cold alarm carries no suspect, and that is structural rather than a bug.**
+`suspect=none`. With a verdict floor of 20 and a child floor of 15, attribution needs a child of at
+least 15 that still leaves at least 15 outside it, so it needs a cell of at least 30. A 22-send
+cell can now raise an alarm but can never name a suspect. Every cell between 20 and 29 is in that
+band. The alarm is still correct, it just says "this fell" without "and here is where". Flagged as
+an open concern below.
+
+**4. Three cells moved from unjudged to judged healthy.** ivan harvest dm1 (6/29 against 30/129),
+ivan harvest nudge (2/20 against 3/62) and ivan cold inmail (1/28 against 1/48) all went `thin` to
+`ok`. Lowering the floor did not only add alarms; it also converted cells that were previously
+silent into positive statements that they are fine.
+
+**5. The first WARN of any replay appeared, and the run still passed.**
+`xcheck harvest: weekly 5/44 sent = 11.4% ... vs payload dm1 6/29 = 20.7% WARN`. This line was
+`skip (thin)` before only because the payload side, 29, was under the old floor of 30. The 9.3
+point gap is the familiar population and window difference: weekly is one unmatured week counting
+every step on the lane, while the payload is 21 days of matured dm1 only. It is a WARN and not a
+failure, which is exactly the exit-code separation working as designed.
+
+**6. Ivan cold's cross-check became a real comparison**, which the third replay predicted would
+happen once the floor allowed it: `xcheck cold: weekly 3/88 sent = 3.4% ... vs payload dm1 1/22 =
+4.5% ok`. The two sides agree within about a point now that the same campaigns sit on both.
+
+**7. RISE and ARCH are unchanged.** RISE cold cells are all still under 20 (1, 0 and 2 current), so
+nothing there crossed the new floor, and ARCH still has no baseline at all. Reply basis is
+identical on all three lanes: ivan 108/0, risedtc 86/2, arch 20/0.
+
+---
+
 ## Third replay after e0033f9 (2026-09-17)
 
 **SQL version replayed:** `db/069_outreach_perf_payload.sql` at commit `e0033f9`,
@@ -188,29 +257,35 @@ surfaces will not line up lane for lane in the UI. Ivan should pick one axis.
 
 ## (c) Alarms that fired on live data
 
-Two, both drift, none sibling. Current values below are from the third replay, produced by
-`db/069` at `e0033f9`, sha256 `6415c449...3f6115`. Neither alarm is on a cold lane.
+Three, all drift, none sibling. Current values below are from the fourth replay, produced by
+`db/069` at `6a33c4d`, sha256 `31cebc4a...755763`, with the verdict floor at 20.
 
-1. **ivan / harvest / inmail: 4.8% now (2/42) versus 13.6% prior (30/220).** Suspect dimension
+1. **ivan / cold / dm1: 4.5% now (1/22) versus 29.6% prior (8/27).** Suspect dimension none. This
+   is the largest fall in the payload, a 25-point drop, and it became reportable only when the
+   verdict floor dropped from 30 to 20 in `6a33c4d`. It carries no suspect because attribution
+   needs a child of at least 15 that leaves at least 15 outside it, which is impossible in a
+   22-send cell; see the concerns.
+2. **ivan / harvest / inmail: 4.8% now (2/42) versus 13.6% prior (30/220).** Suspect dimension
    country, share 0.68. The split is US 1/26 (3.9%), UK 0/8, Canada 0/4, Spain 0/2, Ireland 1/1,
    United Arab Emirates 0/1. The US subset is 26 of the 42 sends and carries most of the miss, so
    the InMail fall is concentrated in the US rather than spread across geographies.
-2. **risedtc / engager / dm1: 10.8% now (12/111) versus 19.3% prior (41/212).** Suspect dimension
+3. **risedtc / engager / dm1: 10.8% now (12/111) versus 19.3% prior (41/212).** Suspect dimension
    country, share 0.79. The split is US 9/85 (10.6%), CA 1/12 (8.3%), GB 0/6, AU 1/4, FR 0/1,
    BE 1/1, DE 0/1, SG 0/1. The US subset is 85 of the 111 sends and is running at roughly half the
    baseline rate. `US` and `United States` are one bucket here since `e0033f9`.
 
-Both alarms point at country. No alarm fires on a cold lane, but see the concerns: the largest
-fall in the whole payload, ivan cold dm1 at 4.5% against a 29.6% prior, is suppressed by the
-30-send floor.
+Two of the three point at country. The third, ivan cold dm1, is unattributed by construction.
+Ivan cold inmail (1/28 against 1/48) does **not** alarm and never could: its rate rose rather than
+fell, and drift only triggers on a fall. It reads `ok`.
 
 ## Concerns
 
-- **The cold lane is visible now but still cannot alarm.** ivan cold dm1 reads 4.5% (1/22)
-  against a 29.6% prior (8/27), a 25-point fall and the largest anywhere in the payload, yet it is
-  marked `thin` because both sides are under the 30-send floor. ivan cold inmail (28) is also just
-  short. Ivan should see this number even though the function refuses to flag it, and the floor of
-  30 may be wrong for a lane that sends in small batches.
+- **A cell between 20 and 29 sends can alarm but can never name a suspect.** With the verdict
+  floor now 20 and the child floor still 15, attribution needs a child of at least 15 that leaves
+  at least 15 outside it, so it needs a cell of at least 30. ivan cold dm1 (22 sends) is the live
+  example: it raises a correct alarm and reports `suspect=none`. The alarm says "this fell"
+  without "and here is where". Either that band is accepted as alarm-only, or the child floor
+  needs to scale with the cell rather than sit at a fixed 15.
 - **The campaign flags are still stale, even though the payload now routes around them.** Ivan's
   "Agency-Focused Consultants & Fractionals" (89 matured sends in 90 days) and "Agency Owners &
   Ops Leaders" (82), and "RiseDTC Cold (DTC Sales Nav)" (46), are all `is_active = false` while
@@ -233,6 +308,9 @@ fall in the whole payload, ivan cold dm1 at 4.5% against a 29.6% prior, is suppr
   sends to 165, RISE cold from 1 to 52.
 - *(Closed)* The country dimension mixing ISO codes and full names was **fixed in `e0033f9`** via
   `perf_country_key`. The third replay shows one `US` bucket per split.
+- *(Closed)* The cold lane being visible but unable to alarm was **fixed in `6a33c4d`**, which
+  lowered the verdict floor from 30 to 20. ivan cold dm1 now fires, and three further cells moved
+  from unjudged to judged healthy. The script's own thin constant was lowered to 20 to match.
 
 ## Lanes present, and the active lanes that are missing and why
 
@@ -257,30 +335,31 @@ absent.
 
 ---
 
-## Raw replay output (third replay, db/069 at e0033f9, sha256 6415c449...3f6115)
+## Raw replay output (fourth replay, db/069 at 6a33c4d, sha256 31cebc4a...755763)
 
 ```
-run 2026-09-16T22:24:54.211Z · cross-check week_start 2026-09-07
+run 2026-09-16T22:29:53.151Z · cross-check week_start 2026-09-07
 exit 3 = transport/shape · exit 1 = impossible value · WARN = like-for-like rate gap > 5 points
 
 == ivan · threaded 108 · stamp_only 0
-cold                 dm1    now 1/22 (4.5%)  prior 8/27 (29.6%)  thin
+cold                 dm1    now 1/22 (4.5%)  prior 8/27 (29.6%)  drift
 cold                 dm3    now 0/3 (0.0%)  prior 2/7 (28.6%)  thin
-cold                 inmail now 1/28 (3.6%)  prior 1/48 (2.1%)  thin
+cold                 inmail now 1/28 (3.6%)  prior 1/48 (2.1%)  ok
 cold                 nudge  now 0/10 (0.0%)  prior 1/20 (5.0%)  thin
+  ALARM drift dm1  4.5% vs 29.6% suspect=none share=-
 engager              dm1    now 0/0 (0.0%)  prior 0/2 (0.0%)  thin
-harvest              dm1    now 6/29 (20.7%)  prior 30/129 (23.3%)  thin
+harvest              dm1    now 6/29 (20.7%)  prior 30/129 (23.3%)  ok
 harvest              dm3    now 1/10 (10.0%)  prior 1/9 (11.1%)  thin
 harvest              inmail now 2/42 (4.8%)  prior 30/220 (13.6%)  drift
-harvest              nudge  now 2/20 (10.0%)  prior 3/62 (4.8%)  thin
+harvest              nudge  now 2/20 (10.0%)  prior 3/62 (4.8%)  ok
   ALARM drift inmail  4.8% vs 13.6% suspect=country share=0.6829
 warm                 dm1    now 0/0 (0.0%)  prior 11/60 (18.3%)  thin
 warm                 dm3    now 0/8 (0.0%)  prior 1/8 (12.5%)  thin
 warm                 inmail now 0/1 (0.0%)  prior 3/22 (13.6%)  thin
 warm                 nudge  now 0/0 (0.0%)  prior 3/33 (9.1%)  thin
   lanes in payload: cold, engager, harvest, warm
-  xcheck cold: weekly 3/88 sent = 3.4% (rpc reply_rate 50.0% over 6 acc) vs payload dm1 1/22 = 4.5% skip (thin)
-  xcheck harvest: weekly 5/44 sent = 11.4% (rpc reply_rate 29.4% over 17 acc) vs payload dm1 6/29 = 20.7% skip (thin)
+  xcheck cold: weekly 3/88 sent = 3.4% (rpc reply_rate 50.0% over 6 acc) vs payload dm1 1/22 = 4.5% ok
+  xcheck harvest: weekly 5/44 sent = 11.4% (rpc reply_rate 29.4% over 17 acc) vs payload dm1 6/29 = 20.7% WARN
   xcheck poland: no dm1 cell in payload (weekly sends 11, replied 1)
   xcheck inmail: no dm1 cell in payload (weekly sends 5, replied 0)
   xcheck profile_view: no dm1 cell in payload (weekly sends 3, replied 0)

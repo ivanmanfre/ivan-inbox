@@ -15,7 +15,8 @@
 // divides by matured DM sends. Comparing those two directly would fire forever on every
 // accept-gated lane, so the gate could never pass. This script instead rebuilds the weekly rate
 // like-for-like as `replied / sends` and prints both denominators on the line, and it skips the
-// comparison entirely when either side is too thin to mean anything.
+// comparison entirely when either side is too thin to mean anything: FLOOR below tracks the
+// verdict floor `v_floor` in db/069 (20 matured sends per cell) so both sides agree on what is thin.
 //
 // lane_chain_weekly takes (p_client_id text, p_week_start date); Ivan is passed as null. Argument
 // shape copied from the cap watchdog at lines 304-310; result columns (lane, sends, replied,
@@ -24,7 +25,7 @@ const SB = 'https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1'
 const KEY = process.env.SUPABASE_SERVICE_KEY
 if (!KEY) { console.error('SUPABASE_SERVICE_KEY missing'); process.exit(2) }
 const H = { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' }
-const FLOOR = 30
+const FLOOR = 20
 
 const die3 = (msg) => { console.error(`TRANSPORT/SHAPE FAILURE: ${msg}`); process.exit(3) }
 
