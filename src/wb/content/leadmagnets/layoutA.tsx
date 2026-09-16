@@ -48,11 +48,13 @@ export function LayoutA({ own, roster, ownFail, rosterFail, weeks, thisYear, sho
         />
         <Cell
           label="CTA clicks"
-          value={own ? num(own.clicks) : null}
-          emptyText="No read"
-          note={own
-            ? `over ${plural(own.rows.length, 'lead magnet')} since ${sinceLabel}`
-            : 'The lead magnets read did not land'}
+          value={own && own.rows.length ? num(own.clicks) : null}
+          emptyText={own ? 'No clicks yet' : 'No read'}
+          note={!own
+            ? 'The lead magnets read did not land'
+            : own.rows.length
+              ? `over ${plural(own.rows.length, 'lead magnet')} since ${sinceLabel}`
+              : `No lead magnet shows a post or a click since ${sinceLabel}`}
         />
         <Cell
           label="Gated posts on the roster"
