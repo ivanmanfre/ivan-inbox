@@ -1,0 +1,16 @@
+/* Outreach performance view. .ct-card is a 4-column anchor grid (faithful.css §7.1);
+   every card here opts out with display:block or its children auto-place into columns. */
+.a-op-card { display: block; padding: 12px 14px; border-radius: 12px; background: var(--ds-surface-2, rgba(127,127,127,.08)); margin-bottom: 10px; }
+.a-op-card.a-op-alarm { border-left: 3px solid var(--ds-danger, #d9534f); }
+.a-op-h { font-weight: 600; margin-bottom: 4px; }
+.a-op-line { font-variant-numeric: tabular-nums; }
+.a-op-split { margin: 6px 0 0; padding: 0; list-style: none; font-variant-numeric: tabular-nums; }
+.a-op-split li { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; }
+.a-op-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 8px; }
+.a-op-tile { display: block; padding: 10px 12px; border-radius: 10px; background: var(--ds-surface-2, rgba(127,127,127,.08)); }
+.a-op-tile .a-op-rate { font-size: 1.25rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.a-op-tile.is-drift .a-op-rate { color: var(--ds-danger, #d9534f); }
+.a-op-tile.is-thin { opacity: .7; }
+.a-op-table { width: 100%; border-collapse: collapse; font-size: .85rem; font-variant-numeric: tabular-nums; }
+.a-op-table th, .a-op-table td { text-align: left; padding: 4px 6px; border-bottom: 1px solid rgba(127,127,127,.2); white-space: nowrap; }
+.a-op-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
