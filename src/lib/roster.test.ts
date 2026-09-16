@@ -70,4 +70,11 @@ describe('rosterAngles', () => {
     expect(a[0].angle.endsWith('…')).toBe(true)
     expect(a[0].topic).toBe('Personal brand as layoff insurance')
   })
+  it('lists an angle from a client-lane roster post, where topic and actioned are null', () => {
+    const p = rp({ who: 'Barry Hott', comments: 12, reposts: 1, url: 'https://linkedin.com/posts/x', angle: 'Creative fatigue shows up in frequency before it shows up in ROAS.', at: '2026-09-10T08:00:00Z' })
+    const out = rosterAngles([p], NOW)
+    expect(out).toHaveLength(1)
+    expect(out[0].topic).toBeNull()
+    expect(out[0].angle).toMatch(/Creative fatigue/)
+  })
 })

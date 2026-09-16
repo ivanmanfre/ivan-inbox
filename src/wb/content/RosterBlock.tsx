@@ -98,7 +98,7 @@ export function RosterView({ read, own, lane, now, onRetry }: { read: RosterRead
             ))}
           </ul>
         </>
-      ) : <div className="a-dim-2 a-reach-share-none">{lane === 'ivan' ? 'No unused angle on a roster post in these weeks.' : 'No analysed angles exist for this roster yet, so read the posts above. Only Ivan\'s competitor table carries angles today.'}</div>}
+      ) : <div className="a-dim-2 a-reach-share-none">No unused angle on a roster post in these weeks.</div>}
     </div>
   )
 }

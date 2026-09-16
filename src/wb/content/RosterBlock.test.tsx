@@ -32,7 +32,7 @@ describe('roster view', () => {
     expect(html).toContain('No post collected in the window: Ben Sharf')
     expect(html).toContain('The big one about creative testing')
     expect(html).toContain('7.5× their median of 4')
-    expect(html).toContain('No analysed angles exist for this roster yet')
+    expect(html).toContain('No unused angle on a roster post in these weeks.')
     expect(html).not.toMatch(/NaN|undefined/)
   })
   it('ivan: angles not taken list the topic, the author and the angle', () => {

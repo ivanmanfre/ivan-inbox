@@ -145,7 +145,7 @@ export function rosterTop(posts: RosterPost[], now: number = Date.now(), weeks: 
 export type RosterAngle = { who: string; at: string | null; comments: number; url: string | null; topic: string | null; angle: string }
 
 /** Analysed angles on roster posts in the window that nobody has marked as taken, most commented first.
-    Only Ivan's competitor table carries angles today; other lanes get an empty list, and the block says so. */
+    Angles come from competitor_posts.suggested_angle (Ivan) and audn_competitor_posts.suggested_angle (client lanes, written weekly by the Client Angle Writer). */
 export function rosterAngles(posts: RosterPost[], now: number = Date.now(), weeks: number = INSIGHT_WEEKS, max = 6): RosterAngle[] {
   const from = sinceMonday(now, weeks)
   return posts
