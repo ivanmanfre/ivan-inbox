@@ -184,8 +184,11 @@ export function LmLine({ row, posted, weeks, thisYear }: { row: LmRow; posted: b
 export function LmCard({ row, posted, weeks, thisYear }: { row: LmRow; posted: boolean; weeks: LmWindow; thisYear: number }) {
   return (
     <div className="a-lm-card" data-lm-slug={row.slug} data-lm-posted={posted ? '' : undefined}>
+      {/* The keyword leads only when there IS one: 57 of Ivan's 72 catalog rows carry
+          none, and a grid of cards all headed "no keyword" says nothing 14 times. The
+          title under it is the identity either way. */}
       <div className="a-lm-card-h">
-        <span>{keywordLabel(row.keyword)}</span>
+        <span>{row.keyword ?? ''}</span>
         <span className="a-mono a-dim-2">{row.status}</span>
       </div>
       <div className="a-lm-t">{plain(row.title || row.slug)}</div>
