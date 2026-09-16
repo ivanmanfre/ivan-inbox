@@ -112,6 +112,8 @@ a.a-reach-post-t:focus-visible{ outline:2px solid var(--ds-accent-ui); outline-o
 .a-reach-roster-l{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 .a-reach-sec > .a-eyebrow + .a-eyebrow, .a-reach-sec > * + .a-eyebrow{ margin-top:var(--ds-s4) }
 
-/* Lead magnets: the status and gate-word tags that ride on an own lead magnet line. */
-.a-lm-tag{ display:inline-block; font-size:var(--ds-fs-mono); color:var(--ds-text-3); border:1px solid var(--ds-line); border-radius:var(--ds-r1); padding:0 4px; margin-inline-start:var(--ds-s2); white-space:nowrap }
+/* Lead magnets: the status and gate-word tags that ride on an own lead magnet line. The group wraps
+   as one unit and keeps a gutter, so a tag never lands flush against the right edge. */
+.a-lm-tags{ display:inline-flex; gap:var(--ds-s2); margin-inline:var(--ds-s2) var(--ds-s4); white-space:nowrap; vertical-align:baseline }
+.a-lm-tag{ display:inline-block; font-size:var(--ds-fs-mono); color:var(--ds-text-3); border:1px solid var(--ds-line); border-radius:var(--ds-r1); padding:0 4px; white-space:nowrap }
 .a-reach-ins .a-reach-in-t > a{ color:inherit; text-decoration:underline; text-underline-offset:2px }

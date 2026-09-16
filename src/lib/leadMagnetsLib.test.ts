@@ -103,6 +103,16 @@ describe('lmRate', () => {
     const r = lmRate(lm({ posts: 4, per_post_comments: 1, gate_dms: 3, cta_clicks: 0 }))
     expect(r).toEqual({ text: 'Comments per post 1.0', note: '3 gate DMs over 4 posts' })
   })
+  it('takes the singular on a count of one and the plural above it', () => {
+    expect(lmRate(lm({ posts: 2, per_post_comments: 1, gate_dms: 1, cta_clicks: 1 }))?.note)
+      .toBe('1 gate DM, 1 CTA click over 2 posts')
+    expect(lmRate(lm({ posts: 2, per_post_comments: 1, gate_dms: 2, cta_clicks: 2 }))?.note)
+      .toBe('2 gate DMs, 2 CTA clicks over 2 posts')
+  })
+  it('reads every count through num(), so a four-figure one carries its separator', () => {
+    expect(lmRate(lm({ posts: 1200, per_post_comments: 1, gate_dms: 1400, cta_clicks: 2500 }))?.note)
+      .toBe('1,400 gate DMs, 2,500 CTA clicks over 1,200 posts')
+  })
 })
 
 describe('inWindow', () => {

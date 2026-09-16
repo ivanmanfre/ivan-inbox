@@ -23,7 +23,7 @@ const ready = (lms: LmRow[], calls_note = 'A null here means not attributable, i
 const gready = (posts: GatedPost[], judged = 58): GatedRead =>
   ({ kind: 'ready', since: SINCE, judged, gated: posts.length, posts, readAt: SINCE })
 
-const NOISE = /NaN|undefined|—/
+const NOISE = /NaN|undefined|—|–/
 
 describe('LeadMagnetsView', () => {
   it('renders both blocks with denominators, the floor sentence and the rank order', () => {
@@ -46,17 +46,18 @@ describe('LeadMagnetsView', () => {
 
     // 1. own rows: the sub line, the rate with its denominator, the floor sentence
     expect(html).toMatch(/2 of 3 lead magnets show a post or a click since 17 Jun\./)
-    expect(html).toMatch(/Comments per post 6\.5 · 1 gate DMs?, 5 CTA clicks over 4 posts/)
+    expect(html).toMatch(/Comments per post 6\.5 · 1 gate DM, 5 CTA clicks over 4 posts/)
     expect(html).toMatch(/23 Jul to 12 Aug/)
     expect(html).toMatch(/1 post since 17 Jun, under the 2-post floor, so no rate yet · posted 9 Aug/)
-    expect(html).toMatch(/4 posts, 26 comments, 1 gate DM, 5 CTA clicks, calls not attributable\./)
+    expect(html).toMatch(/4 posts, 26 comments, 1 gate DM, 5 CTA clicks\./)
+    expect(html).not.toMatch(/calls not attributable/)   // the RPC's own note under the list says it once
     expect(html).toMatch(/comment KIT/)
     expect(html).toMatch(/not attributable, it does not mean zero calls/)
 
     // 2. roster: sub line names the sized share, lines carry their own denominator, rank is per 1k
     expect(html).toMatch(/3 gated of the 58 loudest roster posts judged since 17 Jun\./)
-    expect(html).toMatch(/2 of 3 carry a follower count/)
-    expect(html).toMatch(/90 comments of 9,000 followers · 10 per 1k followers/)
+    expect(html).toMatch(/2 of 3 carry a follower count, so the rank mixes sized and unsized lines\./)
+    expect(html).toMatch(/90 comments of 9,000 followers · 10\.0 per 1k followers/)   // a rate always shows its decimal
     expect(html).toMatch(/200 comments, size unknown, so no rate/)
     expect(html).toMatch(/comment &quot;VAULT&quot; for a doc of 50\+ DM scripts/)
     expect(html.indexOf('Loud Small')).toBeLessThan(html.indexOf('Quiet Giant'))
@@ -70,8 +71,28 @@ describe('LeadMagnetsView', () => {
     const lms = [lm({ slug: 'score', title: 'The Agency Efficiency Score — How Much Profit Are You Leaving on the Table?', cta_clicks: 19, status: 'retired' })]
     const html = renderToStaticMarkup(<LeadMagnetsView lm={ready(lms)} gated={gready([])} now={NOW} />)
     expect(html).toMatch(/The Agency Efficiency Score, How Much Profit/)
-    expect(html).toMatch(/no post in the window, 0 gate DMs, 19 CTA clicks, calls not attributable\./)
-    expect(html).toMatch(/0 posts since 17 Jun, under the 2-post floor, so no rate yet/)
+    expect(html).toMatch(/no post in the window, 0 gate DMs, 19 CTA clicks\./)
+    expect(html).toMatch(/no post in the window, so no rate/)
+    expect(html).not.toMatch(/0 posts since 17 Jun, under the 2-post floor/)
+    expect(html).not.toMatch(NOISE)
+  })
+
+  it('names what the rank did when no author is sized, and when every author is', () => {
+    const none = renderToStaticMarkup(<LeadMagnetsView lm={ready([])} gated={gready([gp({ author: 'A', comments: 107 }), gp({ author: 'B', comments: 75 })])} now={NOW} />)
+    expect(none).toMatch(/0 of 2 carry a follower count, so the rank is by comments alone\./)
+    expect(none).not.toMatch(/mixes sized and unsized/)
+    expect(none).not.toMatch(NOISE)
+
+    const all = renderToStaticMarkup(<LeadMagnetsView lm={ready([])} gated={gready([gp({ author: 'A', comments: 18, follower_count: 25332, per_1k: 0.711 })])} now={NOW} />)
+    expect(all).toMatch(/1 of 1 carries a follower count, so the rank is by comments per 1k followers\./)
+    expect(all).not.toMatch(NOISE)
+  })
+
+  it('says how many of the counted gated posts the list actually carries', () => {
+    const gated = { kind: 'ready' as const, since: SINCE, judged: 58, gated: 35, posts: [gp({ author: 'Only Row', comments: 9 })], readAt: SINCE }
+    const html = renderToStaticMarkup(<LeadMagnetsView lm={ready([])} gated={gated} now={NOW} />)
+    expect(html).toMatch(/35 gated of the 58 loudest roster posts judged since 17 Jun\. 1 of 35 shown\./)
+    expect(html).toMatch(/0 of 1 carry a follower count/)     // the sized share counts the rows on screen
     expect(html).not.toMatch(NOISE)
   })
 
@@ -94,7 +115,9 @@ describe('LeadMagnetsView', () => {
     const posts = Array.from({ length: 11 }, (_, i) => gp({ author: `Author ${i}`, comments: 100 - i }))
     const html = renderToStaticMarkup(<LeadMagnetsView lm={ready([])} gated={gready(posts)} now={NOW} />)
     expect(html.match(/data-lm-gate=/g) ?? []).toHaveLength(8)
-    expect(html).toMatch(/Show 3 more/)
+    expect(html).toMatch(/Show 3 more gated posts/)
+    expect(html).toMatch(/aria-expanded="false"/)
+    expect(html).toMatch(/aria-controls="[^"]+"/)
     expect(html).toMatch(/class="[^"]*a-reach-more/)
     expect(html).not.toMatch(NOISE)
   })
@@ -116,9 +139,18 @@ describe('LeadMagnetsView', () => {
   })
 
   it('shows the denied copy and attribute when both RPCs report unauthorized', () => {
-    const html = renderToStaticMarkup(<LeadMagnetsView lm={{ kind: 'denied', message: 'unauthorized: not your seat' }} gated={{ kind: 'denied', message: 'unauthorized: not your seat' }} now={NOW} onRetryLm={() => {}} />)
+    const html = renderToStaticMarkup(<LeadMagnetsView lm={{ kind: 'denied', message: 'unauthorized: not your seat' }} gated={{ kind: 'denied', message: 'unauthorized: not your seat' }} now={NOW} onRetryLm={() => {}} onRetryGated={() => {}} />)
     expect(html).toMatch(/data-reach-lm="denied"/)
     expect(html).toMatch(/The lead magnets read didn.t load/)
+    expect(html).toMatch(/The gated posts read didn.t load/)   // both failures get their own banner and retry
+    expect(html.match(/Try again/g) ?? []).toHaveLength(2)
+    expect(html).toMatch(/unauthorized: not your seat/)
+  })
+
+  it('is failed, not denied, when only one of the two reads was denied', () => {
+    const html = renderToStaticMarkup(<LeadMagnetsView lm={{ kind: 'denied', message: 'unauthorized: not your seat' }} gated={{ kind: 'failed', message: 'connection reset' }} now={NOW} onRetryLm={() => {}} onRetryGated={() => {}} />)
+    expect(html).toMatch(/data-reach-lm="failed"/)
+    expect(html).toMatch(/connection reset/)
     expect(html).toMatch(/unauthorized: not your seat/)
   })
 

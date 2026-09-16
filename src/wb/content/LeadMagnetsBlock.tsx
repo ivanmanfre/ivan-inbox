@@ -8,11 +8,12 @@
    followers so a small account with a loud post outranks a big account with a
    quiet one.
 
-   Every number carries its denominator. A failure of one read never hides the
-   other: each block shows Failed with its own retry and the other still
-   renders. All arithmetic lives in lib/leadMagnets.
+   Every number carries its denominator. The two reads are independent all the
+   way down: each has its own state slot, its own Failed banner and its own
+   retry, and retrying one never blanks the other. All arithmetic lives in
+   lib/leadMagnets.
    ========================================================================== */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { Button } from '../../ds'
 import { Failed } from './parts'
 import { dayLabel, shortTitle } from '../../lib/reach'
@@ -31,9 +32,13 @@ const TITLE_MAX = 72
 
 const plural = (n: number, one: string, many = `${one}s`) => `${num(n)} ${n === 1 ? one : many}`
 
-/** Catalog titles and judge-written offers carry an em dash ("Score — Where the hours go"). This
-    surface never prints one, so it reads as a comma. Nothing else about the string changes. */
-const plain = (s: string) => s.replace(/\s*—\s*/g, ', ')
+/** A rate with its thousands separator and exactly one decimal. `num()` rounds to a whole number,
+    which would turn 13.3 per 1k into 13, so a rate cannot go through it. */
+const rate1 = (v: number) => v.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+
+/** Catalog titles and judge-written offers carry an em or en dash ("Score — Where the hours go").
+    This surface never prints one, so it reads as a comma. Nothing else about the string changes. */
+const plain = (s: string) => s.replace(/\s*[—–]\s*/g, ', ')
 
 const CTA_LABEL: Record<string, string> = { comment_gate: 'a comment gate', dm_gate: 'a DM gate', link: 'a link' }
 
@@ -52,17 +57,22 @@ function LmLine({ row, since, thisYear }: { row: LmRow; since: string; thisYear:
     row.posts > 0 ? `${plural(row.posts, 'post')}, ${plural(row.comments, 'comment')}` : 'no post in the window',
     plural(row.gate_dms, 'gate DM'),
     plural(row.cta_clicks, 'CTA click'),
-    row.calls === null ? 'calls not attributable' : plural(row.calls, 'call'),
+    // A null `calls` is explained once, by the RPC's own note under the list.
+    ...(row.calls !== null ? [plural(row.calls, 'call')] : []),
   ].join(', ')
   const note = rate
     ? `${rate.text} · ${rate.note}`
-    : `${plural(row.posts, 'post')} since ${since}, under the ${LM_FLOOR_POSTS}-post floor, so no rate yet`
+    : row.posts === 0
+      ? 'no post in the window, so no rate'
+      : `${plural(row.posts, 'post')} since ${since}, under the ${LM_FLOOR_POSTS}-post floor, so no rate yet`
   return (
     <li className="a-reach-in" data-lm-slug={row.slug} data-lm-rate={rate ? 1 : 0}>
       <span className="a-reach-in-t">
         {shortTitle(plain(row.title), TITLE_MAX) ?? row.slug}: {text}.
-        <span className="a-mono a-dim-2 a-lm-tag">{row.status}</span>
-        {row.keyword ? <span className="a-mono a-dim-2 a-lm-tag">comment {plain(row.keyword)}</span> : null}
+        <span className="a-lm-tags">
+          <span className="a-mono a-dim-2 a-lm-tag">{row.status}</span>
+          {row.keyword ? <span className="a-mono a-dim-2 a-lm-tag">comment {plain(row.keyword)}</span> : null}
+        </span>
       </span>
       <span className="a-mono a-dim-2 a-reach-in-n">{span ? `${note} · ${span}` : note}</span>
     </li>
@@ -75,7 +85,7 @@ function GatedLine({ p }: { p: GatedPost }) {
   const what = p.gate_keyword ? `comment "${plain(p.gate_keyword)}"` : label
   const offer = p.offer ? ` for ${plain(p.offer)}` : ', offer not named'
   const note = rate != null
-    ? `${plural(p.comments, 'comment')} of ${sizeLabel(p)} · ${rate} per 1k followers`
+    ? `${plural(p.comments, 'comment')} of ${sizeLabel(p)} · ${rate1(rate)} per 1k followers`
     : `${plural(p.comments, 'comment')}, ${sizeLabel(p)}, so no rate`
   return (
     <li className="a-reach-in" data-lm-gate={p.cta_kind} data-lm-sized={p.follower_count != null ? 1 : 0}>
@@ -89,13 +99,28 @@ function GatedLine({ p }: { p: GatedPost }) {
   )
 }
 
-function Fold({ hidden, open, onToggle, noun }: { hidden: number; open: boolean; onToggle: () => void; noun: string }) {
+function Fold({ hidden, open, onToggle, noun, controls }: {
+  hidden: number; open: boolean; onToggle: () => void; noun: string; controls: string
+}) {
   if (hidden <= 0) return null
   return (
     <div className="a-reach-more">
-      <Button variant="quiet" onClick={onToggle}>{open ? `Show fewer ${noun}` : `Show ${num(hidden)} more`}</Button>
+      <Button variant="quiet" onClick={onToggle} aria-expanded={open} aria-controls={controls}>
+        {open ? `Show fewer ${noun}` : `Show ${num(hidden)} more ${noun}`}
+      </Button>
     </div>
   )
+}
+
+/** "7 of 35 carry a follower count, so ..." — the tail names what the rank actually did, because
+    with none sized it is a comment ranking and with all sized it is a rate ranking. */
+function sizedLine(sized: number, shown: number): string {
+  const tail = sized === 0
+    ? 'so the rank is by comments alone'
+    : sized === shown
+      ? 'so the rank is by comments per 1k followers'
+      : 'so the rank mixes sized and unsized lines'
+  return `${num(sized)} of ${num(shown)} ${sized === 1 ? 'carries' : 'carry'} a follower count, ${tail}.`
 }
 
 export function LeadMagnetsView({ lm, gated, now, onRetryLm, onRetryGated }: {
@@ -107,6 +132,9 @@ export function LeadMagnetsView({ lm, gated, now, onRetryLm, onRetryGated }: {
 }) {
   const [openOwn, setOpenOwn] = useState(false)
   const [openRoster, setOpenRoster] = useState(false)
+  const uid = useId()
+  const ownListId = `${uid}-own`
+  const rosterListId = `${uid}-roster`
   const thisYear = new Date(now).getUTCFullYear()
   const own = useMemo(() => (lm?.kind === 'ready' ? activeLms(lm.lms) : []), [lm])
   const ranked = useMemo(() => (gated?.kind === 'ready' ? rankGated(gated.posts) : []), [gated])
@@ -120,10 +148,12 @@ export function LeadMagnetsView({ lm, gated, now, onRetryLm, onRetryGated }: {
     )
   }
   if (lm.kind !== 'ready' && gated.kind !== 'ready') {
+    // Two reads, two failures, two retries. Denied only when both said denied.
     return (
-      <div className="a-reach-sec" data-reach-lm={lm.kind}>
+      <div className="a-reach-sec" data-reach-lm={lm.kind === 'denied' && gated.kind === 'denied' ? 'denied' : 'failed'}>
         <div className="a-eyebrow">{TITLE}</div>
         <Failed what="The lead magnets read" message={lm.message} onRetry={onRetryLm} />
+        <Failed what="The gated posts read" message={gated.message} onRetry={onRetryGated} />
       </div>
     )
   }
@@ -145,11 +175,11 @@ export function LeadMagnetsView({ lm, gated, now, onRetryLm, onRetryGated }: {
               : `No post or click on ${lm.lms.length ? `the ${plural(lm.lms.length, 'lead magnet')} in this lane's catalog` : 'a lead magnet in this lane'} since ${lmSince}.`}
           </div>
           {own.length ? (
-            <ul className="a-reach-ins">
+            <ul className="a-reach-ins" id={ownListId}>
               {ownVisible.map(r => <LmLine key={r.slug} row={r} since={lmSince} thisYear={thisYear} />)}
             </ul>
           ) : null}
-          <Fold hidden={Math.max(0, own.length - LM_TOP)} open={openOwn} onToggle={() => setOpenOwn(v => !v)} noun="lead magnets" />
+          <Fold hidden={Math.max(0, own.length - LM_TOP)} open={openOwn} onToggle={() => setOpenOwn(v => !v)} noun="lead magnets" controls={ownListId} />
           {own.length && lm.calls_note ? <div className="a-reach-foot">{plain(lm.calls_note)}</div> : null}
         </>
       ) : (
@@ -160,16 +190,21 @@ export function LeadMagnetsView({ lm, gated, now, onRetryLm, onRetryGated }: {
       {gated.kind === 'ready' ? (
         <>
           <div className="a-ct-sub">
-            {gated.gated
-              ? `${num(gated.gated)} gated of the ${plural(gated.judged, 'loudest roster post')} judged since ${dayLabel(gated.since.slice(0, 10), thisYear)}. ${num(sized)} of ${num(gated.gated)} ${sized === 1 ? 'carries' : 'carry'} a follower count, so the rank mixes sized and unsized lines.`
+            {ranked.length
+              ? [
+                `${num(gated.gated)} gated of the ${plural(gated.judged, 'loudest roster post')} judged since ${dayLabel(gated.since.slice(0, 10), thisYear)}.`,
+                // The list is the only count the reader can check, so say so when it is shorter.
+                ranked.length === gated.gated ? null : `${num(ranked.length)} of ${num(gated.gated)} shown.`,
+                sizedLine(sized, ranked.length),
+              ].filter(Boolean).join(' ')
               : `No gated offer in the ${plural(gated.judged, 'loudest roster post')} judged since ${dayLabel(gated.since.slice(0, 10), thisYear)}.`}
           </div>
           {ranked.length ? (
-            <ul className="a-reach-ins">
-              {rosterVisible.map(p => <GatedLine key={p.post_ref} p={p} />)}
+            <ul className="a-reach-ins" id={rosterListId}>
+              {rosterVisible.map((p, i) => <GatedLine key={`${p.post_ref || p.author_url || p.author}-${i}`} p={p} />)}
             </ul>
           ) : null}
-          <Fold hidden={Math.max(0, ranked.length - LM_TOP)} open={openRoster} onToggle={() => setOpenRoster(v => !v)} noun="posts" />
+          <Fold hidden={Math.max(0, ranked.length - LM_TOP)} open={openRoster} onToggle={() => setOpenRoster(v => !v)} noun="gated posts" controls={rosterListId} />
           <div className="a-reach-foot">{FOOT}</div>
         </>
       ) : (
@@ -180,19 +215,40 @@ export function LeadMagnetsView({ lm, gated, now, onRetryLm, onRetryGated }: {
 }
 
 export function LeadMagnetsSection({ lane, now }: { lane: ContentLane; now: number }) {
-  const [read, setRead] = useState<{ lane: ContentLane; lm: LeadMagnetsRead; gated: GatedRead } | null>(null)
-  const [tick, setTick] = useState(0)
+  const [lm, setLm] = useState<{ lane: ContentLane; read: LeadMagnetsRead } | null>(null)
+  const [gated, setGated] = useState<{ lane: ContentLane; read: GatedRead } | null>(null)
+  const [lmTick, setLmTick] = useState(0)
+  const [gatedTick, setGatedTick] = useState(0)
+
+  // Each read owns its slot and its tick. A retry re-runs only its own effect, and it clears only
+  // its own slot on a lane change, so the half that already loaded stays on screen throughout.
   useEffect(() => {
     let live = true
-    setRead(null)
-    Promise.all([
-      fetchLeadMagnets(lane).catch((e: unknown): LeadMagnetsRead => ({ kind: 'failed', message: e instanceof Error ? e.message : 'The lead magnets could not be read.' })),
-      fetchGatedPosts(lane).catch((e: unknown): GatedRead => ({ kind: 'failed', message: e instanceof Error ? e.message : 'The gated posts could not be read.' })),
-    ])
-      .then(([lm, gated]) => { if (live) setRead({ lane, lm, gated }) })
+    setLm(prev => (prev && prev.lane === lane ? prev : null))
+    fetchLeadMagnets(lane)
+      .catch((e: unknown): LeadMagnetsRead => ({ kind: 'failed', message: e instanceof Error ? e.message : 'The lead magnets could not be read.' }))
+      .then(read => { if (live) setLm({ lane, read }) })
     return () => { live = false }
-  }, [lane, tick])
-  const current = read?.lane === lane ? read : null
-  const retry = () => setTick(t => t + 1)
-  return <LeadMagnetsView lm={current?.lm ?? null} gated={current?.gated ?? null} now={now} onRetryLm={retry} onRetryGated={retry} />
+  }, [lane, lmTick])
+
+  useEffect(() => {
+    let live = true
+    setGated(prev => (prev && prev.lane === lane ? prev : null))
+    fetchGatedPosts(lane)
+      .catch((e: unknown): GatedRead => ({ kind: 'failed', message: e instanceof Error ? e.message : 'The gated posts could not be read.' }))
+      .then(read => { if (live) setGated({ lane, read }) })
+    return () => { live = false }
+  }, [lane, gatedTick])
+
+  // Keyed by lane: an open fold belongs to the lane whose rows it opened, so a lane switch starts folded.
+  return (
+    <LeadMagnetsView
+      key={lane}
+      lm={lm?.lane === lane ? lm.read : null}
+      gated={gated?.lane === lane ? gated.read : null}
+      now={now}
+      onRetryLm={() => setLmTick(t => t + 1)}
+      onRetryGated={() => setGatedTick(t => t + 1)}
+    />
+  )
 }

@@ -24,7 +24,7 @@ import { num } from './benchmark'
 export type LmRow = {
   slug: string
   title: string
-  status: 'published' | 'draft' | 'retired'
+  status: 'published' | 'draft' | 'retired' | 'private'
   keyword: string | null
   posts: number
   comments: number
@@ -102,16 +102,19 @@ export function sizeLabel(p: { follower_count: number | null }): string {
   return p.follower_count != null && p.follower_count > 0 ? `${num(p.follower_count)} followers` : 'size unknown'
 }
 
+const plural = (n: number, one: string) => `${num(n)} ${n === 1 ? one : `${one}s`}`
+
 /** null under `LM_FLOOR_POSTS` (too thin to read as a rate). Every number carries its denominator:
     text is "Comments per post 6.5"; note is "over 4 posts", or "14 gate DMs, 9 CTA clicks over 4 posts"
-    when either count is present. */
+    when either count is present. Counts read through `num()` and take a singular when they are one. */
 export function lmRate(row: LmRow): { text: string; note: string } | null {
   if (row.posts < LM_FLOOR_POSTS) return null
   const rate = (row.per_post_comments ?? 0).toFixed(1)
   const extras: string[] = []
-  if (row.gate_dms > 0) extras.push(`${row.gate_dms} gate DMs`)
-  if (row.cta_clicks > 0) extras.push(`${row.cta_clicks} CTA clicks`)
-  const note = extras.length ? `${extras.join(', ')} over ${row.posts} posts` : `over ${row.posts} posts`
+  if (row.gate_dms > 0) extras.push(`${num(row.gate_dms)} gate ${row.gate_dms === 1 ? 'DM' : 'DMs'}`)
+  if (row.cta_clicks > 0) extras.push(`${num(row.cta_clicks)} CTA ${row.cta_clicks === 1 ? 'click' : 'clicks'}`)
+  const over = `over ${plural(row.posts, 'post')}`
+  const note = extras.length ? `${extras.join(', ')} ${over}` : over
   return { text: `Comments per post ${rate}`, note }
 }
 
