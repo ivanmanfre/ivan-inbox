@@ -91,6 +91,38 @@ begin
       count(*) filter (where threaded or stamp_hit) as replies
     from perf_scored group by lane, step, variant, source, country, vertical
   ),
+  drift as (
+    select c.*, round(c.replies::numeric / c.n, 4) as rate, round(c.base_replies::numeric / c.base_n, 4) as base_rate
+    from cells c
+    where c.n >= v_floor and c.base_n >= v_floor
+      and (c.replies::numeric / c.n) < (c.base_replies::numeric / c.base_n)
+      and perf_wilson_upper(c.replies, c.n) < (c.base_replies::numeric / c.base_n)
+      and (c.base_replies::numeric / c.base_n) - (c.replies::numeric / c.n) >= 0.03
+  ),
+  attribution as (
+    -- missing replies per child = expected at baseline rate minus observed; the worst child per dim,
+    -- then the dim whose worst child explains the largest share of the cell's missing replies.
+    -- A child equal to the whole cell (one variant, one country) is skipped: it can only restate the cell.
+    select d.lane, d.step, s.dim,
+      max((d.base_rate * s.n) - s.replies) as worst_missing
+    from drift d join splits s on s.lane = d.lane and s.step = d.step
+    where s.n >= v_child_floor and s.n < d.n   -- a child that IS the whole cell explains nothing
+    group by d.lane, d.step, s.dim
+  ),
+  suspect as (
+    select distinct on (lane, step) lane, step, dim, worst_missing
+    from attribution order by lane, step, worst_missing desc
+  ),
+  sibling as (
+    select v.lane, v.step, v.variant, v.n, v.replies, o.n as others_n, o.replies as others_replies
+    from variants v
+    cross join lateral (select coalesce(sum(n), 0) as n, coalesce(sum(replies), 0) as replies
+                        from variants w where w.lane = v.lane and w.step = v.step and w.variant <> v.variant) o
+    where v.n >= v_floor and o.n >= v_floor
+      and (v.replies::numeric / v.n) < (o.replies::numeric / o.n)
+      and perf_wilson_upper(v.replies, v.n) < (o.replies::numeric / o.n)
+      and (o.replies::numeric / o.n) - (v.replies::numeric / v.n) >= 0.03
+  ),
   lanes as (select distinct lane from perf_scored)
   select coalesce(jsonb_agg(jsonb_build_object(
     'lane', l.lane,
@@ -102,13 +134,17 @@ begin
         'positive_rate', case when c.has_intent and c.n > 0 then round(c.positive_n::numeric / c.n, 4) else null end,
         'base_n', c.base_n, 'base_replies', c.base_replies,
         'base_rate', case when c.base_n = 0 then 0 else round(c.base_replies::numeric / c.base_n, 4) end,
-        'status', case when c.n < v_floor or c.base_n < v_floor then 'thin' else 'ok' end
+        'status', case when c.n < v_floor or c.base_n < v_floor then 'thin'
+                       when exists (select 1 from drift d where d.lane = c.lane and d.step = c.step) then 'drift'
+                       else 'ok' end
       ) order by c.step), '[]'::jsonb) from cells c where c.lane = l.lane),
     'variants', (select coalesce(jsonb_agg(jsonb_build_object(
         'step', v.step, 'variant', v.variant, 'n', v.n, 'replies', v.replies,
         'rate', case when v.n = 0 then 0 else round(v.replies::numeric / v.n, 4) end,
         'others_n', o.n, 'others_rate', case when o.n = 0 then 0 else round(o.replies::numeric / o.n, 4) end,
-        'status', case when v.n < v_floor or o.n < v_floor then 'thin' else 'ok' end
+        'status', case when v.n < v_floor or o.n < v_floor then 'thin'
+                       when exists (select 1 from sibling sb where sb.lane = v.lane and sb.step = v.step and sb.variant = v.variant) then 'sibling'
+                       else 'ok' end
       ) order by v.step, v.n desc), '[]'::jsonb)
       from variants v
       cross join lateral (select coalesce(sum(n), 0) as n, coalesce(sum(replies), 0) as replies
@@ -118,7 +154,29 @@ begin
         'step', s.step, 'dim', s.dim, 'value', s.value, 'n', s.n, 'replies', s.replies,
         'rate', round(s.replies::numeric / s.n, 4)) order by s.step, s.dim, s.n desc), '[]'::jsonb)
       from splits s where s.lane = l.lane),
-    'alarms', '[]'::jsonb,
+    'alarms', (select coalesce(jsonb_agg(a order by a->>'kind', a->>'step'), '[]'::jsonb) from (
+      select jsonb_build_object(
+        'kind', 'drift', 'step', d.step, 'variant', null,
+        'now_n', d.n, 'now_replies', d.replies, 'now_rate', d.rate,
+        'prior_n', d.base_n, 'prior_rate', d.base_rate, 'gap', round(d.base_rate - d.rate, 4),
+        'suspect_dim', su.dim,
+        'suspect_share', case when su.dim is null or (d.base_rate * d.n - d.replies) <= 0 then null
+                              else round(su.worst_missing / (d.base_rate * d.n - d.replies), 4) end,
+        'split', case when su.dim is null then '[]'::jsonb else
+          (select coalesce(jsonb_agg(jsonb_build_object('value', s.value, 'n', s.n, 'replies', s.replies,
+                    'rate', round(s.replies::numeric / s.n, 4)) order by s.n desc), '[]'::jsonb)
+           from splits s where s.lane = d.lane and s.step = d.step and s.dim = su.dim) end) as a
+      from drift d left join suspect su on su.lane = d.lane and su.step = d.step
+      where d.lane = l.lane
+      union all
+      select jsonb_build_object(
+        'kind', 'sibling', 'step', sb.step, 'variant', sb.variant,
+        'now_n', sb.n, 'now_replies', sb.replies, 'now_rate', round(sb.replies::numeric / sb.n, 4),
+        'prior_n', sb.others_n, 'prior_rate', round(sb.others_replies::numeric / sb.others_n, 4),
+        'gap', round(sb.others_replies::numeric / sb.others_n - sb.replies::numeric / sb.n, 4),
+        'suspect_dim', 'variant', 'suspect_share', null, 'split', '[]'::jsonb)
+      from sibling sb where sb.lane = l.lane
+    ) x),
     'table', (select coalesce(jsonb_agg(jsonb_build_object(
         'step', t.step, 'variant', t.variant, 'source', t.source, 'country', t.country, 'vertical', t.vertical,
         'n', t.n, 'replies', t.replies, 'rate', round(t.replies::numeric / t.n, 4)) order by t.step, t.n desc), '[]'::jsonb)
