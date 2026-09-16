@@ -27,6 +27,7 @@ import {
 import { num } from '../../lib/benchmark'
 import type { ContentLane } from '../../lib/content'
 import { RosterSection } from './RosterBlock'
+import { DriftSection } from './DriftBlock'
 import './content.css'
 import './reach.css'
 
@@ -259,6 +260,7 @@ export function ReachReady({ rows, followers, readAt, now: nowProp, lane }: { ro
       <Insights rows={rows} now={now} followers={followers} />
       <Winners rows={rows} now={now} thisYear={thisYear} />
       {lane ? <RosterSection lane={lane} own={rows} now={now} /> : null}
+      {lane ? <DriftSection lane={lane} own={rows} now={now} /> : null}
 
       <div className="a-reach-sec">
         <div className="a-eyebrow">Share of members reached · last {RECENT_WEEKS} weeks</div>
