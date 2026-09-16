@@ -407,3 +407,5 @@ engager              nudge  now 0/8 (0.0%)  prior 0/0 (0.0%)  thin
   xcheck orbit_pilot_fintech: no dm1 cell in payload (weekly sends 0, replied 1)
   xcheck sponsor_team: no dm1 cell in payload (weekly sends 0, replied 0)
 ```
+
+- Weekly WhatsApp digest wired: n8n workflow `Outreach - Perf Alerts (weekly)` id `HumBEynfiGtRRrb4`, active=true (Monday 08:00 Europe/Warsaw + POST webhook `perf-alerts-now`); forced run execution `1774207` status success, sent: 3 (ivan cold DM1, ivan harvest InMail, [RISE] engager DM1; arch none).
