@@ -132,4 +132,14 @@ describe('outreach_perf_payload alarms', () => {
     expect(a).toMatchObject({ suspect_dim: null, suspect_share: null, split: [] })
     expect(a.prior_rate).toBeCloseTo(0.2, 3)
   })
+  it('names no suspect when the only large child leaves fewer than child_floor sends outside it', async () => {
+    const p = await payload('risedtc')
+    expect(cell(p, 'cold', 'dm3')).toMatchObject({ n: 105, replies: 3, base_n: 200, status: 'drift' })
+    const s = lane(p, 'cold')!.splits.filter(x => x.step === 'dm3' && x.dim === 'source')
+    expect(s.find(x => x.value === 'mono_source')).toMatchObject({ n: 100, replies: 3 }) // leaves only 5 outside
+    expect(s.find(x => x.value === 'tiny_source')).toMatchObject({ n: 5, replies: 0 })   // under the child floor
+    const a = lane(p, 'cold')!.alarms.find((x: any) => x.kind === 'drift' && x.step === 'dm3') as any
+    expect(a).toMatchObject({ suspect_dim: null, suspect_share: null, split: [] })
+    expect(a.prior_rate).toBeCloseTo(0.15, 3)
+  })
 })

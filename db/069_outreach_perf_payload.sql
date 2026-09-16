@@ -102,11 +102,12 @@ begin
   attribution as (
     -- missing replies per child = expected at baseline rate minus observed; the worst child per dim,
     -- then the dim whose worst child explains the largest share of the cell's missing replies.
-    -- A child equal to the whole cell (one variant, one country) is skipped: it can only restate the cell.
+    -- A child needs at least child_floor sends outside it to be a contrast: a child that is the whole
+    -- cell, or all but a handful of it, can only restate the cell and explains nothing.
     select d.lane, d.step, s.dim,
       max((d.base_rate * s.n) - s.replies) as worst_missing
     from drift d join splits s on s.lane = d.lane and s.step = d.step
-    where s.n >= v_child_floor and s.n < d.n   -- a child that IS the whole cell explains nothing
+    where s.n >= v_child_floor and (d.n - s.n) >= v_child_floor
     group by d.lane, d.step, s.dim
   ),
   suspect as (
