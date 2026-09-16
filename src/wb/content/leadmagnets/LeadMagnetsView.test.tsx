@@ -194,6 +194,35 @@ describe('LeadMagnetsPanel', () => {
     expect(h).toMatch(/Reading this lane’s lead magnets…/)
   })
 
+  it('never arms on a query key that merely ends in lm', () => {
+    const mem = () => { const box: Record<string, string> = {}; return { getItem: (k: string) => box[k] ?? null, setItem: (k: string, v: string) => { box[k] = v } } }
+    expect(armedLayout({ hash: '', search: '?film=b' }, mem())).toBe('a')
+    expect(armedLayout({ hash: '#exp/brain-b/strategy?film=b', search: '' }, mem())).toBe('a')
+    expect(armedLayout({ hash: '', search: '?lm=b' }, mem())).toBe('b')
+    expect(armedLayout({ hash: '', search: '?tab=x&lm=b' }, mem())).toBe('b')
+    expect(armedLayout({ hash: '', search: '?lm=bb' }, mem())).toBe('a')
+  })
+
+  it('retries one half without blanking the other', () => {
+    let lmRetries = 0, gatedRetries = 0
+    const h = renderToStaticMarkup(
+      <LeadMagnetsPanel lm={{ kind: 'failed', message: 'lm read broke' }} gated={GATED} layout="a" weeks={12} now={NOW}
+        onRetryLm={() => { lmRetries += 1 }} onRetryGated={() => { gatedRetries += 1 }} />)
+    // The roster half is untouched by the other half's failure.
+    expect(h).toMatch(/lm read broke/)
+    expect(h).toMatch(/Matt Lakajev/)
+    expect(h).toMatch(/Try again/)
+    expect(lmRetries + gatedRetries).toBe(0)
+  })
+
+  it('says one line carries a follower count in the singular', () => {
+    const one = [POSTS[0], { ...POSTS[2], post_ref: 'ref-b' }, { ...POSTS[2], post_ref: 'ref-c' }]
+    const h = html({ gated: { ...GATED, kind: 'ready', posts: one } })
+    expect(h).toMatch(/1 of 3 carries a follower count, so sized lines rank by comments per 1k followers/)
+    const solo = html({ gated: { ...GATED, kind: 'ready', posts: [POSTS[0]] } })
+    expect(solo).toMatch(/1 of 1 carries a follower count, so the rank is by comments per 1k followers\./)
+  })
+
   it('arms the layout from the search, from the hash, or from what a first arm stored', () => {
     const mem = () => {
       const box: Record<string, string> = {}

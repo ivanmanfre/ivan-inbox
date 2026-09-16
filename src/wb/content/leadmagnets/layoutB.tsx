@@ -18,7 +18,7 @@ import {
   type OwnView, type RosterView,
 } from './parts'
 
-export function LayoutB({ own, roster, ownFail, rosterFail, weeks, thisYear, showAll, onShowAll, showAllOwn, onShowAllOwn, onRetry }: {
+export function LayoutB({ own, roster, ownFail, rosterFail, weeks, thisYear, showAll, onShowAll, showAllOwn, onShowAllOwn, onRetryLm, onRetryGated }: {
   own: OwnView | null
   roster: RosterView | null
   ownFail: string | null
@@ -29,7 +29,8 @@ export function LayoutB({ own, roster, ownFail, rosterFail, weeks, thisYear, sho
   onShowAll: () => void
   showAllOwn: boolean
   onShowAllOwn: () => void
-  onRetry?: () => void
+  onRetryLm?: () => void
+  onRetryGated?: () => void
 }) {
   const shown = roster ? (showAll ? roster.roster : roster.roster.slice(0, LM_TOP)) : []
   const hidden = roster ? roster.roster.length - shown.length : 0
@@ -41,7 +42,7 @@ export function LayoutB({ own, roster, ownFail, rosterFail, weeks, thisYear, sho
       <div className="a-lm-sec" data-lm-sec="roster">
         <div className="a-eyebrow">{EYEBROW_ROSTER}</div>
         {rosterFail
-          ? <Failed what="The gated posts read" message={rosterFail} onRetry={onRetry} />
+          ? <Failed what="The gated posts read" message={rosterFail} onRetry={onRetryGated} />
           : roster ? (
             <>
               <div className="a-lm-sub">{gatedCounts(roster, thisYear)} {rankLine(roster.sized, roster.roster.length)}</div>
@@ -60,7 +61,7 @@ export function LayoutB({ own, roster, ownFail, rosterFail, weeks, thisYear, sho
       <div className="a-lm-sec" data-lm-sec="own">
         <div className="a-eyebrow">{EYEBROW_OWN}</div>
         {ownFail
-          ? <Failed what="The lead magnets read" message={ownFail} onRetry={onRetry} />
+          ? <Failed what="The lead magnets read" message={ownFail} onRetry={onRetryLm} />
           : own ? (
             <>
               <div className="a-lm-sub">{ownSub(own, thisYear, weeks)}</div>

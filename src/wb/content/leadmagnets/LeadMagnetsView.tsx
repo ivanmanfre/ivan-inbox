@@ -56,7 +56,9 @@ const LAYOUT_KEY = 'a-lm-layout'
    Whichever form armed it, the answer is held in sessionStorage so a lane
    switch, a pull to refresh or any other remount keeps the arm for the tab. */
 export function armedLayout(loc: { hash: string; search: string }, store?: Pick<Storage, 'getItem' | 'setItem'>): LmLayout {
-  if (/[?&]lm=(a|b)\b/.test(loc.hash) || /[?&]?lm=(a|b)\b/.test(loc.search)) {
+  // Anchored on both sides: `?film=b` and `#…?film=b` carry the substring `lm=b`
+  // and must never arm a ballot layout.
+  if (/[?&]lm=(a|b)\b/.test(loc.hash) || /(?:^\?|[?&])lm=(a|b)\b/.test(loc.search)) {
     const v = layoutFromLocation(loc)
     try { store?.setItem(LAYOUT_KEY, v) } catch { /* private window: the arm lasts this mount only */ }
     return v
@@ -69,14 +71,16 @@ export function armedLayout(loc: { hash: string; search: string }, store?: Pick<
 }
 
 /** The whole surface, pure: both reads in, nothing fetched. The tests render this one. */
-export function LeadMagnetsPanel({ lm, gated, layout, weeks, onWeeks, now, onRetry }: {
+export function LeadMagnetsPanel({ lm, gated, layout, weeks, onWeeks, now, onRetryLm, onRetryGated }: {
   lm: LeadMagnetsRead | null
   gated: GatedRead | null
   layout: LmLayout
   weeks: LmWindow
   onWeeks?: (w: LmWindow) => void
   now?: number
-  onRetry?: () => void
+  /** One retry per read: the two halves fail and recover independently. */
+  onRetryLm?: () => void
+  onRetryGated?: () => void
 }) {
   const [mountedAt] = useState(() => Date.now())
   const [showAll, setShowAll] = useState(false)
@@ -109,7 +113,8 @@ export function LeadMagnetsPanel({ lm, gated, layout, weeks, onWeeks, now, onRet
         onShowAll={() => setShowAll(v => !v)}
         showAllOwn={showAllOwn}
         onShowAllOwn={() => setShowAllOwn(v => !v)}
-        onRetry={onRetry}
+        onRetryLm={onRetryLm}
+        onRetryGated={onRetryGated}
       />
     )
 
@@ -138,7 +143,8 @@ export function LeadMagnetsPanel({ lm, gated, layout, weeks, onWeeks, now, onRet
 export function LeadMagnetsView({ lane }: { lane: ContentLane }) {
   const [lm, setLm] = useState<{ lane: ContentLane; read: LeadMagnetsRead } | null>(null)
   const [gated, setGated] = useState<{ lane: ContentLane; read: GatedRead } | null>(null)
-  const [tick, setTick] = useState(0)
+  const [lmTick, setLmTick] = useState(0)
+  const [gatedTick, setGatedTick] = useState(0)
   const [weeks, setWeeks] = useState<LmWindow>(DEFAULT_WINDOW)
   // The arm was read when this module loaded (see `armedLayout`); a later read
   // of the URL would find the hash already normalised. It is a ballot switch,
@@ -146,17 +152,26 @@ export function LeadMagnetsView({ lane }: { lane: ContentLane }) {
   const [layout] = useState<LmLayout>(() =>
     typeof window === 'undefined' ? LM_DEFAULT_LAYOUT : armedLayout(window.location, window.sessionStorage))
 
+  // Each read owns its slot and its tick, the way `LeadMagnetsSection` does on the
+  // Results block: retrying the half that broke re-runs only its own effect, so the
+  // half already on screen is never blanked to re-fetch the other one.
   useEffect(() => {
     let live = true
-    setLm(null); setGated(null)
+    setLm(prev => (prev && prev.lane === lane ? prev : null))
     fetchLeadMagnets(lane)
+      .catch((e: unknown): LeadMagnetsRead => ({ kind: 'failed', message: e instanceof Error ? e.message : 'The lead magnets could not be read.' }))
       .then(read => { if (live) setLm({ lane, read }) })
-      .catch(e => { if (live) setLm({ lane, read: { kind: 'failed', message: e instanceof Error ? e.message : 'The lead magnets could not be read.' } }) })
-    fetchGatedPosts(lane)
-      .then(read => { if (live) setGated({ lane, read }) })
-      .catch(e => { if (live) setGated({ lane, read: { kind: 'failed', message: e instanceof Error ? e.message : 'The gated posts could not be read.' } }) })
     return () => { live = false }
-  }, [lane, tick])
+  }, [lane, lmTick])
+
+  useEffect(() => {
+    let live = true
+    setGated(prev => (prev && prev.lane === lane ? prev : null))
+    fetchGatedPosts(lane)
+      .catch((e: unknown): GatedRead => ({ kind: 'failed', message: e instanceof Error ? e.message : 'The gated posts could not be read.' }))
+      .then(read => { if (live) setGated({ lane, read }) })
+    return () => { live = false }
+  }, [lane, gatedTick])
 
   return (
     <LeadMagnetsPanel
@@ -165,7 +180,8 @@ export function LeadMagnetsView({ lane }: { lane: ContentLane }) {
       layout={layout}
       weeks={weeks}
       onWeeks={setWeeks}
-      onRetry={() => setTick(t => t + 1)}
+      onRetryLm={() => setLmTick(t => t + 1)}
+      onRetryGated={() => setGatedTick(t => t + 1)}
     />
   )
 }

@@ -49,8 +49,9 @@ export const gatedCounts = (r: RosterView, thisYear: number) =>
 export function rankLine(sized: number, shown: number): string {
   if (shown === 0) return ''
   if (sized === 0) return 'No line carries a follower count, so the rank is by comments alone.'
-  if (sized === shown) return `${num(sized)} of ${num(shown)} carry a follower count, so the rank is by comments per 1k followers.`
-  return `${num(sized)} of ${num(shown)} carry a follower count, so sized lines rank by comments per 1k followers and unsized lines follow by comments.`
+  const carry = sized === 1 ? 'carries' : 'carry'
+  if (sized === shown) return `${num(sized)} of ${num(shown)} ${carry} a follower count, so the rank is by comments per 1k followers.`
+  return `${num(sized)} of ${num(shown)} ${carry} a follower count, so sized lines rank by comments per 1k followers and unsized lines follow by comments.`
 }
 
 /** Catalog titles and judge-written offers carry an em or en dash ("Score — Where the hours go"),
