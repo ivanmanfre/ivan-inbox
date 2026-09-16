@@ -6,7 +6,7 @@
    ========================================================================== */
 import { useCallback, useEffect, useState } from 'react'
 import { Failed, CalmEmpty } from './parts'
-import { alarmLine, alarmTitle, fetchOutreachPerf, pct, rankAlarms, stepLabel, type PerfLane, type PerfPayload, type PerfState } from '../../lib/outreachPerf'
+import { alarmLine, alarmTitle, loadPerf, pct, rankAlarms, stepLabel, type PerfLane, type PerfPayload, type PerfState } from '../../lib/outreachPerf'
 import { LANE_LABEL, type ContentLane } from '../../lib/content'
 import './content.css'
 import './outreach-perf.css'
@@ -72,7 +72,12 @@ export function OutreachView({ lane, state, onRetry }: { lane: ContentLane; stat
 
 export function OutreachBlock({ lane }: { lane: ContentLane }) {
   const [state, setState] = useState<PerfState>({ kind: 'loading' })
-  const load = useCallback(() => { setState({ kind: 'loading' }); void fetchOutreachPerf(lane).then(setState) }, [lane])
+  // loadPerf already turns a rejection into a failed state; the second .then argument is the
+  // belt for the brace, so no path can leave this block stuck on "Loading".
+  const load = useCallback(() => {
+    setState({ kind: 'loading' })
+    void loadPerf(lane).then(setState, e => setState({ kind: 'failed', message: String((e && e.message) || e) }))
+  }, [lane])
   useEffect(() => { load() }, [load])
   return <OutreachView lane={lane} state={state} onRetry={load} />
 }

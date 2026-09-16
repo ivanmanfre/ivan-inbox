@@ -23,6 +23,16 @@ export async function fetchOutreachPerf(lane: ContentLane): Promise<PerfState> {
   return { kind: 'ready', data: p }
 }
 
+/** The only loader the UI should call: a rejected RPC (offline, aborted, a thrown client)
+    becomes a failed state instead of an unhandled rejection that leaves the block on "Loading". */
+export async function loadPerf(lane: ContentLane): Promise<PerfState> {
+  try {
+    return await fetchOutreachPerf(lane)
+  } catch (e) {
+    return { kind: 'failed', message: String((e && (e as Error).message) || e) }
+  }
+}
+
 export function pct(rate: number): string { return `${(rate * 100).toFixed(1)}%` }
 
 const STEP: Record<string, string> = { dm1: 'DM1', nudge: 'Nudge', dm3: 'DM3', inmail: 'InMail' }

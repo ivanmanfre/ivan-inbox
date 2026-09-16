@@ -1,11 +1,19 @@
 .a-strategy-nav { flex-wrap: wrap; max-width: 100%; }
-.a-strategy-nav .ds-seg-item { min-height: 44px; }
+/* Five tabs in three phone columns: a label longer than its column must wrap inside the pill
+   instead of spilling out of it. Same shape as benchmark-evidence.css:3. */
+.a-strategy-nav .ds-seg-item { min-width: 0; white-space: normal; overflow-wrap: anywhere; height: auto; min-height: 44px; }
 .a-strategy-results { display: grid; gap: 20px; min-width: 0; }
 .a-strategy-disclosure { border-top: 1px solid var(--ds-line); padding-top: 12px; min-width: 0; }
 .a-strategy-disclosure > summary { min-height: 44px; cursor: pointer; font-weight: 600; padding: 12px 4px; color: var(--ds-text-2); }
 .a-strategy-disclosure > summary:focus-visible { outline: 2px solid var(--ds-accent-ui); outline-offset: 2px; }
 .a-strat { overflow-wrap: anywhere; }
-@media (max-width: 600px) { .a-strategy-nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; } }
+@media (max-width: 600px) {
+  .a-strategy-nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+  /* "Recommendations" is 108px of text in a 117px column: the pill keeps its own width but
+     gives up the 12px side padding it cannot afford, so the longest label stays on one line
+     and the wrap above is only the fallback for a wider font. */
+  .a-strategy-nav .ds-seg-item { padding-inline: var(--ds-s1); }
+}
 
 .a-strategy-panel[hidden] { display: none; }
 
