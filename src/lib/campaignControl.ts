@@ -344,7 +344,9 @@ function findDailyGap(ranges: CcRanges): string | null {
     series.set(key, set)
   }
   const todayIv = (ranges.intervals ?? []).find(i => i.name === 'today')
-  const expectedLast = todayIv ? todayIv.to.slice(0, 10) : null
+  const expectedLast = todayIv
+    ? new Intl.DateTimeFormat('en-CA', { timeZone: ranges.tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(todayIv.to))
+    : null
   for (const [key, set] of series) {
     const days = [...set].sort()
     const first = days[0], last = days[days.length - 1]
