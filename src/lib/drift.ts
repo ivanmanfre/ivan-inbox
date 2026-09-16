@@ -33,12 +33,13 @@ export type DriftWindow = {
   titles: DriftBucket[]
 }
 export type DriftShift = { label: string; recentPct: number; priorPct: number }
-export type DriftReachTop = { label: string; pct: number; city: string; joinedInCity: number }
+export type DriftReachTop = { label: string; pct: number; city: string; joinedInCity: number; posts: number; reached: number }
 export type DriftSummary = { recent: DriftWindow; prior: DriftWindow; shifts: DriftShift[]; reachTop: DriftReachTop | null }
 
 export const DRIFT_DAYS = 90
 export const DRIFT_FLOOR = 10   // a window under this many accepts shows counts, never shares
 export const DRIFT_TOP = 5
+export const REACH_LINE_MIN_POSTS = 3   // a reach reading off fewer located posts than this shows no line
 const SHIFT_POINTS = 5
 
 // The outreach tables hold ISO-2 codes, full names and metro strings in the
@@ -151,8 +152,9 @@ export function driftSummary(joined: JoinedRow[], own: PostAudienceRow[], now: n
   }
 
   let reachTop: DriftReachTop | null = null
-  const top = summarizeReach(own, now).recent.shares.location?.labels[0]
-  if (top) {
+  const reachLoc = summarizeReach(own, now).recent.shares.location
+  const top = reachLoc?.labels[0]
+  if (top && reachLoc && reachLoc.posts >= REACH_LINE_MIN_POSTS) {
     const city = cityOf(top.label)
     const needle = city.toLowerCase()
     // The outreach tables sometimes put the metro string in `country` rather than `location`
@@ -160,7 +162,7 @@ export function driftSummary(joined: JoinedRow[], own: PostAudienceRow[], now: n
     const joinedInCity = needle
       ? recentRows.filter(r => (r.location ?? '').toLowerCase().includes(needle) || (r.country ?? '').toLowerCase().includes(needle)).length
       : 0
-    reachTop = { label: top.label, pct: top.pct, city, joinedInCity }
+    reachTop = { label: top.label, pct: top.pct, city, joinedInCity, posts: reachLoc.posts, reached: reachLoc.reached }
   }
   return { recent, prior, shifts, reachTop }
 }

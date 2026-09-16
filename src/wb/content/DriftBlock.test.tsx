@@ -23,7 +23,11 @@ describe('DriftView', () => {
   })
   it('renders counts, country and title shares, and the reach line', () => {
     const rows = [...many(12, { country: 'US' }), ...many(4, { country: 'Israel', title: 'CMO' }), joined({ country: 'Croatia', location: 'Zagreb, Croatia' }), ...many(10, { connected_at: at(120), country: 'Poland' })]
-    const own = [post({ demographics: { location: [{ label: 'Zagreb Metropolitan Area', pct: 32 }] } })]
+    const own = [
+      post({ demographics: { location: [{ label: 'Zagreb Metropolitan Area', pct: 32 }] } }),
+      post({ demographics: { location: [{ label: 'Zagreb Metropolitan Area', pct: 32 }] } }),
+      post({ demographics: { location: [{ label: 'Zagreb Metropolitan Area', pct: 32 }] } }),
+    ]
     const html = renderToStaticMarkup(<DriftView read={ready(rows)} own={own} lane="arch" now={NOW} onRetry={() => {}} />)
     expect(html).toMatch(/data-reach-drift="ready"/)
     expect(html).toMatch(/data-drift-recent="17"/)
@@ -50,6 +54,17 @@ describe('DriftView', () => {
     const html = renderToStaticMarkup(<DriftView read={ready(many(4, {}))} own={[]} lane="ivan" now={NOW} onRetry={() => {}} />)
     expect(html).toMatch(/4 connections accepted/)
     expect(html).not.toMatch(/%/)
-    expect(html).toMatch(/Under 10/)
+    expect(html).toMatch(/Under 10 placed accepts, so no country or title shares yet/)
+  })
+  it('still renders the reach line under the floor, with copy that names what is missing', () => {
+    const own = [
+      post({ demographics: { location: [{ label: 'Zagreb Metropolitan Area', pct: 32 }] }, members_reached: 100 }),
+      post({ demographics: { location: [{ label: 'Zagreb Metropolitan Area', pct: 32 }] }, members_reached: 100 }),
+      post({ demographics: { location: [{ label: 'Zagreb Metropolitan Area', pct: 32 }] }, members_reached: 100 }),
+    ]
+    const html = renderToStaticMarkup(<DriftView read={ready(many(4, {}))} own={own} lane="ivan" now={NOW} onRetry={() => {}} />)
+    expect(html).toMatch(/data-drift-reach="1"/)
+    expect(html).toMatch(/Under 10 placed accepts, so no country or title shares yet/)
+    expect(html).toMatch(/Zagreb/)
   })
 })

@@ -116,6 +116,7 @@ describe('driftSummary', () => {
     const own = [
       post({ demographics: { location: [{ label: 'Zagreb Metropolitan Area', pct: 32 }, { label: 'London Area, United Kingdom', pct: 10 }] } }),
       post({ demographics: { location: [{ label: 'Zagreb Metropolitan Area', pct: 40 }] } }),
+      post({ demographics: { location: [{ label: 'Zagreb Metropolitan Area', pct: 40 }] } }),
     ]
     const rows = [
       ...many(10, { country: 'US' }),
@@ -123,10 +124,17 @@ describe('driftSummary', () => {
       joined({ country: 'Zagreb Metropolitan Area', location: null }), // the metro string lands in `country`, not `location`
     ]
     const s = driftSummary(rows, own, NOW)
-    expect(s.reachTop).toEqual({ label: 'Zagreb Metropolitan Area', pct: 36, city: 'Zagreb', joinedInCity: 2 })
+    expect(s.reachTop).toEqual({ label: 'Zagreb Metropolitan Area', pct: 37, city: 'Zagreb', joinedInCity: 2, posts: 3, reached: 300 })
   })
   it('gives no reach line without a located post in the recent weeks', () => {
     expect(driftSummary(many(12, {}), [post({ demographics: null })], NOW).reachTop).toBeNull()
+  })
+  it('gives no reach line under the located-post floor even with a clear leader', () => {
+    const own = [
+      post({ demographics: { location: [{ label: 'Zagreb Metropolitan Area', pct: 32 }, { label: 'London Area, United Kingdom', pct: 10 }] } }),
+      post({ demographics: { location: [{ label: 'Zagreb Metropolitan Area', pct: 40 }] } }),
+    ]
+    expect(driftSummary(many(10, { country: 'US' }), own, NOW).reachTop).toBeNull()
   })
 })
 

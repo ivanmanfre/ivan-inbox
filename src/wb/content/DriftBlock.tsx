@@ -70,7 +70,7 @@ export function DriftView({ read, own, lane, now, onRetry }: {
     lines.push({
       key: 'reach',
       text: `${who}'s posts reach ${s.reachTop.city} most, ${s.reachTop.pct}% of members reached in the last 4 weeks. Accepts in ${s.reachTop.city} these ${DRIFT_DAYS} days: ${num(s.reachTop.joinedInCity)} of ${num(s.recent.n)}.`,
-      note: `location share from the reach rows above, last 4 weeks; city match on the accept's location or country text`,
+      note: `${s.reachTop.posts} located posts, ${num(s.reachTop.reached)} members reached in the last 4 weeks; city match on the accept's location or country text`,
     })
   }
   return (
@@ -78,7 +78,7 @@ export function DriftView({ read, own, lane, now, onRetry }: {
       <div className="a-eyebrow">{TITLE}</div>
       <div className="a-ct-sub">
         {plural(s.recent.n, 'connection')} accepted through outreach in the last {DRIFT_DAYS} days, {num(s.prior.n)} in the {DRIFT_DAYS} before.
-        {underFloor ? ` Under ${DRIFT_FLOOR} placed accepts, so no shares yet.` : ''}
+        {underFloor ? ` Under ${DRIFT_FLOOR} placed accepts, so no country or title shares yet.` : ''}
       </div>
       {lines.length ? (
         <ul className="a-reach-ins">
@@ -90,7 +90,7 @@ export function DriftView({ read, own, lane, now, onRetry }: {
           ))}
         </ul>
       ) : null}
-      <div className="a-reach-foot">The network a post reaches next is the one the seat is accepting now. A post spreads to people like the network it came from, so the country mix here is the lever behind the location share above.</div>
+      <div className="a-reach-foot">The network a post reaches next is the one the seat is accepting now. A post spreads to people like the network it came from, so the country mix here is the lever behind the location share below.</div>
     </div>
   )
 }
