@@ -21,7 +21,17 @@ export type DriftRead =
   | { kind: 'denied' | 'failed'; message: string }
 
 export type DriftBucket = { label: string; n: number; pct: number }
-export type DriftWindow = { n: number; placed: number; countries: DriftBucket[]; titles: DriftBucket[] }
+export type DriftWindow = {
+  n: number
+  /** Rows with a resolved country. */
+  placed: number
+  /** Rows with a title. */
+  titled: number
+  /** `placed >= DRIFT_FLOOR`; when false, `countries` and `titles` are empty (the counts still hold). */
+  hasShares: boolean
+  countries: DriftBucket[]
+  titles: DriftBucket[]
+}
 export type DriftShift = { label: string; recentPct: number; priorPct: number }
 export type DriftReachTop = { label: string; pct: number; city: string; joinedInCity: number }
 export type DriftSummary = { recent: DriftWindow; prior: DriftWindow; shifts: DriftShift[]; reachTop: DriftReachTop | null }
@@ -77,7 +87,8 @@ export function cityOf(label: string): string {
   return (cut >= 0 ? s.slice(0, cut) : s).trim()
 }
 
-function buckets(values: Array<string | null>, top: number): { placed: number; list: DriftBucket[] } {
+/** Full ranked list, un-truncated: shifts (Finding 1) need shares beyond the top-`DRIFT_TOP` display slice. */
+function buckets(values: Array<string | null>): { placed: number; list: DriftBucket[] } {
   const count = new Map<string, { label: string; n: number }>()
   let placed = 0
   for (const v of values) {
@@ -90,15 +101,26 @@ function buckets(values: Array<string | null>, top: number): { placed: number; l
   }
   const list = [...count.values()]
     .sort((a, b) => b.n - a.n || a.label.localeCompare(b.label))
-    .slice(0, top)
     .map(b => ({ label: b.label, n: b.n, pct: placed ? Math.round((100 * b.n) / placed) : 0 }))
   return { placed, list }
 }
 
-function windowOf(rows: JoinedRow[]): DriftWindow {
-  const countries = buckets(rows.map(r => normalizeCountry(r.country, r.location)), DRIFT_TOP)
-  const titles = buckets(rows.map(r => (r.title?.trim() ? r.title.trim().replace(/\s+/g, ' ') : null)), DRIFT_TOP)
-  return { n: rows.length, placed: countries.placed, countries: countries.list, titles: titles.list }
+/** `window` is the published shape; `countryShares` is the full un-truncated list, kept only for shift math. */
+function windowOf(rows: JoinedRow[]): { window: DriftWindow; countryShares: DriftBucket[] } {
+  const countries = buckets(rows.map(r => normalizeCountry(r.country, r.location)))
+  const titles = buckets(rows.map(r => (r.title?.trim() ? r.title.trim().replace(/\s+/g, ' ') : null)))
+  const hasShares = countries.placed >= DRIFT_FLOOR
+  return {
+    window: {
+      n: rows.length,
+      placed: countries.placed,
+      titled: titles.placed,
+      hasShares,
+      countries: hasShares ? countries.list.slice(0, DRIFT_TOP) : [],
+      titles: hasShares ? titles.list.slice(0, DRIFT_TOP) : [],
+    },
+    countryShares: countries.list,
+  }
 }
 
 function pctOf(list: DriftBucket[], label: string): number {
@@ -112,15 +134,17 @@ export function driftSummary(joined: JoinedRow[], own: PostAudienceRow[], now: n
   const stamped = joined.filter(r => r.connected_at && Number.isFinite(Date.parse(r.connected_at)))
   const recentRows = stamped.filter(r => Date.parse(r.connected_at as string) >= recentFrom)
   const priorRows = stamped.filter(r => { const t = Date.parse(r.connected_at as string); return t >= priorFrom && t < recentFrom })
-  const recent = windowOf(recentRows)
-  const prior = windowOf(priorRows)
+  const recentResult = windowOf(recentRows)
+  const priorResult = windowOf(priorRows)
+  const recent = recentResult.window
+  const prior = priorResult.window
 
   const shifts: DriftShift[] = []
-  if (recent.placed >= DRIFT_FLOOR && prior.placed >= DRIFT_FLOOR) {
-    const labels = new Set([...recent.countries, ...prior.countries].map(b => b.label))
+  if (recent.hasShares && prior.hasShares) {
+    const labels = new Set([...recentResult.countryShares, ...priorResult.countryShares].map(b => b.label))
     for (const label of labels) {
-      const r = pctOf(recent.countries, label)
-      const p = pctOf(prior.countries, label)
+      const r = pctOf(recentResult.countryShares, label)
+      const p = pctOf(priorResult.countryShares, label)
       if (Math.abs(r - p) >= SHIFT_POINTS) shifts.push({ label, recentPct: r, priorPct: p })
     }
     shifts.sort((a, b) => Math.abs(b.recentPct - b.priorPct) - Math.abs(a.recentPct - a.priorPct) || a.label.localeCompare(b.label))
@@ -131,7 +155,11 @@ export function driftSummary(joined: JoinedRow[], own: PostAudienceRow[], now: n
   if (top) {
     const city = cityOf(top.label)
     const needle = city.toLowerCase()
-    const joinedInCity = recentRows.filter(r => (r.location ?? '').toLowerCase().includes(needle)).length
+    // The outreach tables sometimes put the metro string in `country` rather than `location`
+    // (Finding 3), so a joined row counts toward the city if either column carries it.
+    const joinedInCity = needle
+      ? recentRows.filter(r => (r.location ?? '').toLowerCase().includes(needle) || (r.country ?? '').toLowerCase().includes(needle)).length
+      : 0
     reachTop = { label: top.label, pct: top.pct, city, joinedInCity }
   }
   return { recent, prior, shifts, reachTop }

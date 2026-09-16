@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
-vi.mock('./supabase', () => ({ supabase: {} }))
-import { normalizeCountry, cityOf, driftSummary, type JoinedRow } from './drift'
+const { rpc } = vi.hoisted(() => ({ rpc: vi.fn() }))
+vi.mock('./supabase', () => ({ supabase: { rpc } }))
+import { normalizeCountry, cityOf, driftSummary, fetchNetworkDrift, type JoinedRow } from './drift'
 import type { PostAudienceRow } from './reach'
 
 const NOW = Date.parse('2026-09-16T12:00:00Z')
@@ -71,8 +72,33 @@ describe('driftSummary', () => {
       joined({ title: null }),
     ]
     const s = driftSummary(rows, [], NOW)
+    expect(s.recent.titled).toBe(20)
     expect(s.recent.titles.map(t => t.label)).toEqual(['Founder', 'Co-Founder', 'CEO', 'CMO', 'Head of Growth'])
     expect(s.recent.titles[0]).toEqual({ label: 'Founder', n: 9, pct: 45 })
+  })
+  it('gates shares off below the floor, but keeps the raw counts', () => {
+    const s = driftSummary(many(4, {}), [], NOW)
+    expect(s.recent.hasShares).toBe(false)
+    expect(s.recent.n).toBe(4)
+    expect(s.recent.placed).toBe(4)
+    expect(s.recent.titled).toBe(4)
+    expect(s.recent.countries).toEqual([])
+    expect(s.recent.titles).toEqual([])
+  })
+  it('computes shifts off the full country shares, not just the top-five display list', () => {
+    const rows = [
+      ...many(20, { country: 'Canada' }),
+      ...many(20, { country: 'Germany' }),
+      ...many(20, { country: 'United States' }),
+      ...many(18, { country: 'France' }),
+      ...many(16, { country: 'Netherlands' }),
+      ...many(6, { country: 'Israel' }), // rank 6 by count: outside the top-five display slice
+      ...many(41, { connected_at: at(120), country: 'United States' }),
+      ...many(9, { connected_at: at(120), country: 'Israel' }),
+    ]
+    const s = driftSummary(rows, [], NOW)
+    expect(s.recent.countries.map(c => c.label)).not.toContain('Israel')
+    expect(s.shifts).toContainEqual({ label: 'Israel', recentPct: 6, priorPct: 18 })
   })
   it('reports a shift only when both windows reach the floor and the move is five points or more', () => {
     const rows = [
@@ -86,16 +112,43 @@ describe('driftSummary', () => {
     ])
     expect(driftSummary(rows.slice(0, 10).concat(rows.slice(10, 15)), [], NOW).shifts).toEqual([]) // prior window under the floor
   })
-  it('names the top reached location and counts accepts in that city', () => {
+  it('names the top reached location and counts accepts in that city, matching country too', () => {
     const own = [
       post({ demographics: { location: [{ label: 'Zagreb Metropolitan Area', pct: 32 }, { label: 'London Area, United Kingdom', pct: 10 }] } }),
       post({ demographics: { location: [{ label: 'Zagreb Metropolitan Area', pct: 40 }] } }),
     ]
-    const rows = [...many(10, { country: 'US' }), joined({ country: 'Croatia', location: 'Zagreb, Croatia' })]
+    const rows = [
+      ...many(10, { country: 'US' }),
+      joined({ country: 'Croatia', location: 'Zagreb, Croatia' }),
+      joined({ country: 'Zagreb Metropolitan Area', location: null }), // the metro string lands in `country`, not `location`
+    ]
     const s = driftSummary(rows, own, NOW)
-    expect(s.reachTop).toEqual({ label: 'Zagreb Metropolitan Area', pct: 36, city: 'Zagreb', joinedInCity: 1 })
+    expect(s.reachTop).toEqual({ label: 'Zagreb Metropolitan Area', pct: 36, city: 'Zagreb', joinedInCity: 2 })
   })
   it('gives no reach line without a located post in the recent weeks', () => {
     expect(driftSummary(many(12, {}), [post({ demographics: null })], NOW).reachTop).toBeNull()
+  })
+})
+
+describe('fetchNetworkDrift', () => {
+  it('reads the joined rows and calls the RPC with the ops gate and the lane', async () => {
+    const data = { joined: [joined({})] }
+    rpc.mockResolvedValueOnce({ data, error: null })
+    const result = await fetchNetworkDrift('arch')
+    expect(result.kind).toBe('ready')
+    expect(result.kind === 'ready' ? result.joined : null).toEqual(data.joined)
+    expect(rpc).toHaveBeenCalledWith('operator_network_drift', { p_gate: 'clientops', p_client_id: 'arch' })
+  })
+  it('reports denied when the error message says unauthorized', async () => {
+    rpc.mockResolvedValueOnce({ data: null, error: { message: 'unauthorized: not your seat' } })
+    expect(await fetchNetworkDrift('arch')).toEqual({ kind: 'denied', message: 'unauthorized: not your seat' })
+  })
+  it('reports failed for any other error', async () => {
+    rpc.mockResolvedValueOnce({ data: null, error: { message: 'connection reset' } })
+    expect(await fetchNetworkDrift('arch')).toEqual({ kind: 'failed', message: 'connection reset' })
+  })
+  it('reports failed when the data has no usable joined array', async () => {
+    rpc.mockResolvedValueOnce({ data: { nope: true }, error: null })
+    expect((await fetchNetworkDrift('arch')).kind).toBe('failed')
   })
 })
