@@ -11,6 +11,17 @@ language sql immutable as $$
     / (1 + (1.2816^2) / n) end
 $$;
 
+-- Country buckets: live rows mix 'United States', 'usa', 'US'. One key per country so a split never
+-- shows the same country twice.
+create or replace function perf_country_key(c text) returns text
+language sql immutable as $$
+  select case
+    when lower(trim(c)) in ('united states', 'usa', 'us') then 'US'
+    when lower(trim(c)) in ('united kingdom', 'uk', 'great britain') then 'UK'
+    when length(trim(c)) = 2 then upper(trim(c))
+    else trim(c) end
+$$;
+
 create or replace function outreach_perf_payload(p_client_id text, p_days int default 90)
 returns jsonb
 language plpgsql volatile security definer set search_path = public as $$
@@ -25,7 +36,20 @@ declare
   v_threaded bigint;
   v_stamp bigint;
 begin
-  drop table if exists pg_temp.perf_sends; drop table if exists pg_temp.perf_scored;
+  drop table if exists pg_temp.perf_campaigns; drop table if exists pg_temp.perf_sends; drop table if exists pg_temp.perf_scored;
+  -- In scope: not archived, and either flagged active or still sending (a matured DM send inside the
+  -- current window). Live campaigns flagged inactive kept sending, so the flag alone hid most cold volume.
+  -- A campaign that qualifies keeps every row, baseline included.
+  create temp table perf_campaigns on commit drop as
+  select c.id, c.name
+  from outreach_campaigns c
+  where not coalesce(c.archived, false)
+    and case when p_client_id = 'ivan' then c.client_id is null else c.client_id = p_client_id end
+    and (c.is_active or exists (
+      select 1 from outreach_messages m join outreach_prospects pr on pr.id = m.prospect_id
+      where pr.campaign_id = c.id and m.direction = 'outbound'
+        and m.message_type in ('dm', 'inmail') and coalesce(m.ai_model, '') <> 'manual_mirror'
+        and m.sent_at >= v_cur_from and m.sent_at <= v_mature));
   create temp table perf_sends on commit drop as
   select m.id, m.prospect_id, m.sent_at, coalesce(m.ai_model, 'unknown') as variant,
          case when m.channel = 'linkedin_inmail' then 'inmail'
@@ -34,18 +58,16 @@ begin
               else 'dm3' end as step,
          lane_of(c.name) as lane, c.name as campaign,
          coalesce(pr.enrichment_data->>'source', pr.enrichment_data->>'source_kind', pr.enrichment_data->>'seed', 'unknown') as source,
-         coalesce(nullif(pr.country, ''), 'unknown') as country,
+         coalesce(nullif(perf_country_key(pr.country), ''), 'unknown') as country,
          coalesce(pr.enrichment_data->'gate'->>'vertical', pr.enrichment_data->>'vertical', 'unknown') as vertical,
          pr.last_reply_at
   from outreach_messages m
   join outreach_prospects pr on pr.id = m.prospect_id
-  join outreach_campaigns c on c.id = pr.campaign_id
+  join perf_campaigns c on c.id = pr.campaign_id
   where m.direction = 'outbound'
     and m.sent_at is not null and m.sent_at >= v_table_from and m.sent_at <= v_mature
     and m.message_type in ('dm', 'inmail')
-    and coalesce(m.ai_model, '') <> 'manual_mirror'
-    and c.is_active and not coalesce(c.archived, false)
-    and case when p_client_id = 'ivan' then c.client_id is null else c.client_id = p_client_id end;
+    and coalesce(m.ai_model, '') <> 'manual_mirror';
 
   create temp table perf_scored on commit drop as
   select s.*,
@@ -197,3 +219,5 @@ revoke all on function outreach_perf_payload(text, int) from public, anon;
 grant execute on function outreach_perf_payload(text, int) to authenticated, service_role;
 revoke all on function perf_wilson_upper(bigint, bigint) from public, anon;
 grant execute on function perf_wilson_upper(bigint, bigint) to authenticated, service_role;
+revoke all on function perf_country_key(text) from public, anon;
+grant execute on function perf_country_key(text) to authenticated, service_role;

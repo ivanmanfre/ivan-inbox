@@ -50,6 +50,25 @@ describe('outreach_perf_payload counts', () => {
     const p = await payload('arch')
     expect(p.lanes).toEqual([])
   })
+  it('keeps an inactive campaign that still sends and drops one that stopped', async () => {
+    const p = await payload('risedtc')
+    const flags = await db.query<{ id: string; is_active: boolean }>(
+      `select id, is_active from outreach_campaigns where client_id = 'risedtc' order by id`)
+    expect(flags.rows.filter(r => !r.is_active).map(r => r.id.slice(-2))).toEqual(['c1', 'c5'])
+    // c1 is inactive but sent inside the current window: whole lane stays, baseline rows included
+    expect(cell(p, 'cold', 'dm1')).toMatchObject({ n: 112, base_n: 250 })
+    // c5 is inactive and only sent 40 days ago: no lane at all
+    expect(lane(p, 'partner')).toBeUndefined()
+    expect(p.lanes.map(l => l.lane)).toEqual(['cold', 'warm'])
+  })
+  it('folds country spellings into one bucket before the split', async () => {
+    const p = await payload('risedtc')
+    const s = lane(p, 'cold')!.splits.filter(x => x.step === 'dm1' && x.dim === 'country')
+    expect(s).toHaveLength(1)
+    expect(s[0]).toMatchObject({ value: 'US', n: 112 })
+    const raw = await db.query<{ n: number }>(`select count(distinct country)::int as n from outreach_prospects where campaign_id = '00000000-0000-0000-0000-0000000000c1'`)
+    expect(raw.rows[0].n).toBe(3) // 'US', 'United States', 'usa' on disk
+  })
   it('maps ivan to client_id null and counts stamp-only replies', async () => {
     const p = await payload('ivan')
     const c = cell(p, 'cold', 'dm1')!

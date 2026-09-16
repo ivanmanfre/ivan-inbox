@@ -14,8 +14,11 @@ insert into outreach_campaigns (id, name, client_id) values
   ('00000000-0000-0000-0000-0000000000c1', 'RiseDTC — Cold (DTC Sales Nav)', 'risedtc'),
   ('00000000-0000-0000-0000-0000000000c2', 'RiseDTC — Network Activation (ICP connections)', 'risedtc'),
   ('00000000-0000-0000-0000-0000000000c3', 'Poland — Agencies (Cold)', null),
-  ('00000000-0000-0000-0000-0000000000c4', 'ARCH. Influencer Agency — Cold', 'arch');
+  ('00000000-0000-0000-0000-0000000000c4', 'ARCH. Influencer Agency — Cold', 'arch'),
+  ('00000000-0000-0000-0000-0000000000c5', 'RiseDTC — Partner Referrals (paused)', 'risedtc');
 update outreach_campaigns set archived = true where id = '00000000-0000-0000-0000-0000000000c4';
+-- c1 is flagged inactive but still sends inside the current window, so it stays in scope (live shape)
+update outreach_campaigns set is_active = false where id in ('00000000-0000-0000-0000-0000000000c1', '00000000-0000-0000-0000-0000000000c5');
 
 -- helper: n prospects in a campaign with a source, k of them replied to their DM
 create or replace function fx_seed(p_camp uuid, p_source text, p_variant text, p_step int,
@@ -55,6 +58,17 @@ select fx_seed('00000000-0000-0000-0000-0000000000c2', 'warm_engager_harvester',
 select fx_seed('00000000-0000-0000-0000-0000000000c1', 'own_engagers', 'rise_dm1_a', 1, 50, 0, 3);
 -- manual mirrors must be ignored
 select fx_seed('00000000-0000-0000-0000-0000000000c1', 'own_engagers', 'manual_mirror', 1, 20, 20, 10);
+-- inactive campaign with no current-window sends must not appear at all
+select fx_seed('00000000-0000-0000-0000-0000000000c5', 'referral', 'rise_partner_v1', 1, 40, 8, 40);
+-- RISE cold dm1 current window: mixed country spellings must fold into one US bucket
+update outreach_prospects set country = 'United States' where id in (
+  select pr.id from outreach_prospects pr join outreach_messages m on m.prospect_id = pr.id
+  where pr.campaign_id = '00000000-0000-0000-0000-0000000000c1' and m.direction = 'outbound' and m.sequence_step = 1
+    and m.sent_at >= now() - interval '12 days' and m.ai_model = 'rise_dm1_a' order by pr.id limit 2);
+update outreach_prospects set country = 'usa' where id = (
+  select pr.id from outreach_prospects pr join outreach_messages m on m.prospect_id = pr.id
+  where pr.campaign_id = '00000000-0000-0000-0000-0000000000c1' and m.direction = 'outbound' and m.sequence_step = 1
+    and m.sent_at >= now() - interval '12 days' and m.ai_model = 'rise_dm1_a' and pr.country = 'US' order by pr.id limit 1);
 -- archived ARCH campaign must not appear
 select fx_seed('00000000-0000-0000-0000-0000000000c4', 'cold', 'arch_dm1_a', 1, 40, 4, 10);
 -- RISE cold nudge: drifts with only single-valued splits (one source, one variant, one country, one vertical)
