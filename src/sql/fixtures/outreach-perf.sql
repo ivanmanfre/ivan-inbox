@@ -57,8 +57,17 @@ select fx_seed('00000000-0000-0000-0000-0000000000c1', 'own_engagers', 'rise_dm1
 select fx_seed('00000000-0000-0000-0000-0000000000c1', 'own_engagers', 'manual_mirror', 1, 20, 20, 10);
 -- archived ARCH campaign must not appear
 select fx_seed('00000000-0000-0000-0000-0000000000c4', 'cold', 'arch_dm1_a', 1, 40, 4, 10);
--- Ivan lane: 40 sends, 4 replies via stamp only (no threaded row), no baseline
+-- RISE cold nudge: drifts with only single-valued splits (one source, one variant, one country, one vertical)
+select fx_seed('00000000-0000-0000-0000-0000000000c1', 'own_engagers', 'rise_dm2_nudge_v1', 2, 40, 0, 10);
+select fx_seed('00000000-0000-0000-0000-0000000000c1', 'own_engagers', 'rise_dm2_nudge_v1', 2, 60, 12, 40, false);
+-- RISE cold: vertical follows source, so the source and vertical dims tie exactly on attribution
+update outreach_prospects set enrichment_data = enrichment_data || '{"gate":{"vertical":"games"}}'
+  where campaign_id = '00000000-0000-0000-0000-0000000000c1' and enrichment_data->>'source' = 'competitor_engagers';
+update outreach_prospects set enrichment_data = enrichment_data || '{"gate":{"vertical":"apps"}}'
+  where campaign_id = '00000000-0000-0000-0000-0000000000c1' and enrichment_data->>'source' = 'own_engagers';
+-- Ivan lane: 40 sends, 4 replies via stamp only (no threaded row); healthy against a 5% baseline
 select fx_seed('00000000-0000-0000-0000-0000000000c3', 'apify_search', 'template/agency_dm_v3_owned', 1, 40, 4, 10, false);
+select fx_seed('00000000-0000-0000-0000-0000000000c3', 'apify_search', 'template/agency_dm_v3_owned', 1, 60, 3, 40, false);
 -- a reaction-only inbound must not count as a reply (RISE cold, one extra prospect)
 do $$ declare pid uuid; mid uuid; begin
   insert into outreach_prospects (campaign_id, country, enrichment_data) values ('00000000-0000-0000-0000-0000000000c1','US','{"source":"own_engagers"}') returning id into pid;

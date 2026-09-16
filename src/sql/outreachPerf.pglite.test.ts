@@ -57,7 +57,7 @@ describe('outreach_perf_payload counts', () => {
     expect(c.n).toBe(41)
     expect(c.replies).toBe(4)
     expect(c.positive_rate).toBeNull()
-    expect(p.reply_basis.stamp_only).toBe(4)
+    expect(p.reply_basis.stamp_only).toBe(7) // 4 current + 3 baseline
   })
   it('scores a stamped reply to the later send, not the earlier DM', async () => {
     const p = await payload('ivan')
@@ -65,8 +65,8 @@ describe('outreach_perf_payload counts', () => {
       `select count(*)::int as n from outreach_prospects pr
          join outreach_campaigns c on c.id = pr.campaign_id
         where c.client_id is null and pr.last_reply_at is not null`)
-    // 5 Ivan prospects carry a reply stamp, but only 4 are credited to a DM1 send
-    expect(rows.rows[0].n).toBe(5)
+    // 8 Ivan prospects carry a reply stamp (4 current, 3 baseline, 1 nudge), but only 4 are credited to a current DM1 send
+    expect(rows.rows[0].n).toBe(8)
     expect(cell(p, 'cold', 'dm1')!.replies).toBe(4)
   })
   it('pairs sibling variants with each other as others', async () => {
@@ -110,7 +110,26 @@ describe('outreach_perf_payload alarms', () => {
     expect(cell(p, 'warm', 'nudge')!.status).toBe('thin')
     expect(cell(p, 'warm', 'dm1')!.status).not.toBe('drift')
     const ivan = await payload('ivan')
-    expect(cell(ivan, 'cold', 'dm1')!.status).toBe('thin') // no baseline rows
+    const c = cell(ivan, 'cold', 'dm1')!
+    expect(c.base_n).toBe(60)
+    expect(c.rate).toBeGreaterThan(c.base_rate) // 4/41 above a 5% baseline: healthy
+    expect(c.status).toBe('ok')
     expect(lane(ivan, 'cold')!.alarms).toEqual([])
+  })
+  it('breaks an attribution tie between dims deterministically', async () => {
+    const p = await payload('risedtc')
+    const s = lane(p, 'cold')!.splits.filter(x => x.step === 'dm1')
+    // vertical games is the same 71 prospects as source competitor_engagers, so both dims tie on worst_missing
+    expect(s.find(x => x.dim === 'vertical' && x.value === 'games')).toMatchObject({ n: 71, replies: 2 })
+    const a = lane(p, 'cold')!.alarms.find((x: any) => x.kind === 'drift' && x.step === 'dm1') as any
+    expect(a.suspect_dim).toBe('source') // alphabetical tie-break: source before vertical
+    expect(a.suspect_share).toBeLessThanOrEqual(1)
+  })
+  it('fires drift with no suspect when every split is the whole cell', async () => {
+    const p = await payload('risedtc')
+    expect(cell(p, 'cold', 'nudge')).toMatchObject({ n: 40, replies: 0, base_n: 60, status: 'drift' })
+    const a = lane(p, 'cold')!.alarms.find((x: any) => x.kind === 'drift' && x.step === 'nudge') as any
+    expect(a).toMatchObject({ suspect_dim: null, suspect_share: null, split: [] })
+    expect(a.prior_rate).toBeCloseTo(0.2, 3)
   })
 })

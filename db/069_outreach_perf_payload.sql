@@ -111,7 +111,7 @@ begin
   ),
   suspect as (
     select distinct on (lane, step) lane, step, dim, worst_missing
-    from attribution order by lane, step, worst_missing desc
+    from attribution order by lane, step, worst_missing desc, dim   -- dim breaks exact ties deterministically
   ),
   sibling as (
     select v.lane, v.step, v.variant, v.n, v.replies, o.n as others_n, o.replies as others_replies
@@ -161,7 +161,7 @@ begin
         'prior_n', d.base_n, 'prior_rate', d.base_rate, 'gap', round(d.base_rate - d.rate, 4),
         'suspect_dim', su.dim,
         'suspect_share', case when su.dim is null or (d.base_rate * d.n - d.replies) <= 0 then null
-                              else round(su.worst_missing / (d.base_rate * d.n - d.replies), 4) end,
+                              else least(round(su.worst_missing / (d.base_rate * d.n - d.replies), 4), 1) end,
         'split', case when su.dim is null then '[]'::jsonb else
           (select coalesce(jsonb_agg(jsonb_build_object('value', s.value, 'n', s.n, 'replies', s.replies,
                     'rate', round(s.replies::numeric / s.n, 4)) order by s.n desc), '[]'::jsonb)
