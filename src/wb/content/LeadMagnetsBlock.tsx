@@ -149,7 +149,7 @@ export function LeadMagnetsView({ lm, gated, now, onRetryLm, onRetryGated }: {
               {ownVisible.map(r => <LmLine key={r.slug} row={r} since={lmSince} thisYear={thisYear} />)}
             </ul>
           ) : null}
-          <Fold hidden={own.length - ownVisible.length} open={openOwn} onToggle={() => setOpenOwn(v => !v)} noun="lead magnets" />
+          <Fold hidden={Math.max(0, own.length - LM_TOP)} open={openOwn} onToggle={() => setOpenOwn(v => !v)} noun="lead magnets" />
           {own.length && lm.calls_note ? <div className="a-reach-foot">{plain(lm.calls_note)}</div> : null}
         </>
       ) : (
@@ -169,7 +169,7 @@ export function LeadMagnetsView({ lm, gated, now, onRetryLm, onRetryGated }: {
               {rosterVisible.map(p => <GatedLine key={p.post_ref} p={p} />)}
             </ul>
           ) : null}
-          <Fold hidden={ranked.length - rosterVisible.length} open={openRoster} onToggle={() => setOpenRoster(v => !v)} noun="posts" />
+          <Fold hidden={Math.max(0, ranked.length - LM_TOP)} open={openRoster} onToggle={() => setOpenRoster(v => !v)} noun="posts" />
           <div className="a-reach-foot">{FOOT}</div>
         </>
       ) : (

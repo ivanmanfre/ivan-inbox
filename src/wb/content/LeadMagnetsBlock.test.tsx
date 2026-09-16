@@ -95,6 +95,7 @@ describe('LeadMagnetsView', () => {
     const html = renderToStaticMarkup(<LeadMagnetsView lm={ready([])} gated={gready(posts)} now={NOW} />)
     expect(html.match(/data-lm-gate=/g) ?? []).toHaveLength(8)
     expect(html).toMatch(/Show 3 more/)
+    expect(html).toMatch(/class="[^"]*a-reach-more/)
     expect(html).not.toMatch(NOISE)
   })
 
