@@ -1,5 +1,87 @@
 # outreach_perf_payload: live replay notes
 
+## Third replay after e0033f9 (2026-09-17)
+
+**SQL version replayed:** `db/069_outreach_perf_payload.sql` at commit `e0033f9`,
+sha256 `6415c4495d1f6f447990d330aa49cdddab322fae4ad22b601fafcd06e43f6115`. Applied through the
+Management API with a 5-attempt retry loop on 544; it succeeded on the first attempt (201, body
+`[]`), so no retries were consumed. Every number in this section was produced by that file.
+
+Grants re-checked for all three functions the file defines, against the `audn_benchmark_payload`
+control. All four match:
+
+```
+audn_benchmark_payload   anon=False  authenticated=True  service_role=True
+outreach_perf_payload    anon=False  authenticated=True  service_role=True
+perf_country_key         anon=False  authenticated=True  service_role=True
+perf_wilson_upper        anon=False  authenticated=True  service_role=True
+```
+
+Replay re-run for all three lanes with the key in the environment only. **Exit 0.** No WARN, no
+IMPOSSIBLE, no transport or shape failure.
+
+### What changed versus the second replay, in words
+
+`e0033f9` did two things: campaign scope became not-archived AND (flagged active OR still sending a
+matured DM inside the current window), and country spellings now fold through `perf_country_key`.
+Both landed, and the effect is confined to where it was predicted.
+
+**1. The cold lanes are no longer empty.** This is the big change, and it answers the concern the
+second replay raised about inactive-flagged campaigns that kept sending.
+
+- Ivan cold went from a single `dm1 0/3` cell to a full four-step ladder: `dm1 1/22` (prior 8/27),
+  `dm3 0/3` (prior 2/7), `inmail 1/28` (prior 1/48), `nudge 0/10` (prior 1/20). That is 63 current
+  and 102 baseline sends where there were 3 and 0, so roughly 165 sends re-entered scope. That is
+  in line with the expected 89 + 82 matured from "Agency-Focused Consultants & Fractionals" and
+  "Agency Owners & Ops Leaders", the balance being sends in days 81 to 90 that the baseline window
+  excludes by design.
+- RISE cold went from `dm1 0/1` alone to `dm1 0/1` (prior 6/17), `inmail 0/0` (prior 2/27),
+  `nudge 0/2` (prior 0/5): 3 current and 49 baseline, against the expected ~46 matured from
+  "RiseDTC Cold (DTC Sales Nav)". The RISE cold dm1 baseline also thickened from 3/5 to 6/17.
+- Reply basis rose accordingly: ivan threaded 94 to 108, RISE threaded 81 to 86. Stamp-only is
+  unchanged at 0 / 2 / 0, so every recovered reply is threaded inbound.
+
+**2. Country now shows one US bucket.** In the RISE engager dm1 alarm the second replay listed
+`US` 84 and `United States` 1 as two separate rows; they are now a single `US` 9/85. Ivan's harvest
+inmail split changed spelling the same way, `United States` to `US` and `United Kingdom` to `UK`,
+with the same counts. The RISE suspect share moved from 0.7653 to 0.7857 as a direct result of the
+merge. No other alarm field moved.
+
+**3. ARCH is byte for byte unchanged**, as expected: it has no inactive-but-sending campaigns and
+its country values were already single-spelling.
+
+### Does any new alarm fire on cold? No, and the reason matters
+
+**No new alarm fired.** Both alarms are the same two as the second replay, and neither is on a cold
+lane. But the most dramatic fall anywhere in the payload is now sitting in a cold cell and is being
+suppressed by the sample floor:
+
+- **ivan cold dm1: 4.5% now (1/22) against 29.6% prior (8/27).** That is a 25-point drop, far
+  larger than either alarm that did fire. It is marked `thin` and cannot alarm because both sides
+  are under the 30-send floor (22 and 27). It is within a handful of sends of qualifying.
+- ivan cold inmail (28 current) is likewise one or two sends short of the floor.
+
+So the cold lane is now visible but still cannot raise an alarm. Ivan should see that number even
+though the function refuses to flag it, and it is worth deciding whether the floor of 30 is right
+for a lane that sends in small batches.
+
+### Cross-check: the cold lines did not become real comparisons
+
+The expectation was that the cold cross-check lines might move from `skip (thin)` to a real
+comparison. They did not, on either client, and for different reasons:
+
+- ivan cold: the payload side is now 22, up from 3, but still below the script's floor of 30. The
+  line reads `weekly 3/88 sent = 3.4% ... vs payload dm1 1/22 = 4.5% skip (thin)`. Worth noting
+  the two rates are now close (3.4% against 4.5%) where before they were 3.4% against 0.0%, which
+  is what you would expect once the same campaigns are on both sides.
+- RISE cold: the payload dm1 side is still 1, because the recovered RISE cold volume is almost all
+  baseline (49 of 52 sends) rather than current. Nothing to compare yet.
+
+The one real comparison, RISE engager, is unchanged and still `ok` (weekly 12/142 = 8.5% against
+payload 12/111 = 10.8%).
+
+---
+
 ## Second replay after e6f8c1b (2026-09-17)
 
 **SQL version replayed:** `db/069_outreach_perf_payload.sql` at commit `e6f8c1b`,
@@ -106,31 +188,35 @@ surfaces will not line up lane for lane in the UI. Ivan should pick one axis.
 
 ## (c) Alarms that fired on live data
 
-Two, both drift, none sibling. Produced by `db/069` at `e6f8c1b`, sha256 `8498e20a...6368195`.
+Two, both drift, none sibling. Current values below are from the third replay, produced by
+`db/069` at `e0033f9`, sha256 `6415c449...3f6115`. Neither alarm is on a cold lane.
 
 1. **ivan / harvest / inmail: 4.8% now (2/42) versus 13.6% prior (30/220).** Suspect dimension
-   country, share 0.68. The split is United States 1/26 (3.9%), United Kingdom 0/8, Canada 0/4,
-   Spain 0/2, Ireland 1/1, UAE 0/1. The US subset is 26 of the 42 sends and carries most of the
-   miss, so the InMail fall is concentrated in the US rather than spread across geographies.
+   country, share 0.68. The split is US 1/26 (3.9%), UK 0/8, Canada 0/4, Spain 0/2, Ireland 1/1,
+   United Arab Emirates 0/1. The US subset is 26 of the 42 sends and carries most of the miss, so
+   the InMail fall is concentrated in the US rather than spread across geographies.
 2. **risedtc / engager / dm1: 10.8% now (12/111) versus 19.3% prior (41/212).** Suspect dimension
-   country, share 0.77. The split is US 9/84 (10.7%), CA 1/12 (8.3%), GB 0/6, AU 1/4, FR 0/1,
-   United States 0/1, BE 1/1, DE 0/1. The US subset is 84 of the 111 sends and is running at
-   roughly half the baseline rate.
+   country, share 0.79. The split is US 9/85 (10.6%), CA 1/12 (8.3%), GB 0/6, AU 1/4, FR 0/1,
+   BE 1/1, DE 0/1, SG 0/1. The US subset is 85 of the 111 sends and is running at roughly half the
+   baseline rate. `US` and `United States` are one bucket here since `e0033f9`.
 
-Both alarms point at country.
+Both alarms point at country. No alarm fires on a cold lane, but see the concerns: the largest
+fall in the whole payload, ivan cold dm1 at 4.5% against a 29.6% prior, is suppressed by the
+30-send floor.
 
 ## Concerns
 
-- **Campaigns flagged inactive are still sending.** Ivan's "Agency-Focused Consultants &
-  Fractionals" (89 matured sends in 90 days) and "Agency Owners & Ops Leaders" (82), and
-  "RiseDTC Cold (DTC Sales Nav)" (46), are all `is_active = false` yet account for the bulk of the
-  weekly cold volume. The payload excludes them by design, which is why ivan cold reads n = 3 and
-  RISE cold n = 1. Either the flags are stale or the cold lane is genuinely invisible on this
-  view; Ivan should say which.
-- **The country dimension mixes ISO codes and full names.** RISE carries both `US` (84 sends) and
-  `United States` (1 send) in the same split; ivan uses full names throughout. Normalise before
-  rendering the split as an explanation, or a country child will be split across two rows and
-  understated.
+- **The cold lane is visible now but still cannot alarm.** ivan cold dm1 reads 4.5% (1/22)
+  against a 29.6% prior (8/27), a 25-point fall and the largest anywhere in the payload, yet it is
+  marked `thin` because both sides are under the 30-send floor. ivan cold inmail (28) is also just
+  short. Ivan should see this number even though the function refuses to flag it, and the floor of
+  30 may be wrong for a lane that sends in small batches.
+- **The campaign flags are still stale, even though the payload now routes around them.** Ivan's
+  "Agency-Focused Consultants & Fractionals" (89 matured sends in 90 days) and "Agency Owners &
+  Ops Leaders" (82), and "RiseDTC Cold (DTC Sales Nav)" (46), are all `is_active = false` while
+  still sending. `e0033f9` keeps them in scope on the strength of their sends, so the numbers are
+  right, but the flags themselves say something untrue about the campaigns and anything else
+  reading `is_active` will still be wrong.
 - **Ivan's warm lane has gone quiet.** "Creators' Lead-Magnet Commenters" has 133 matured sends in
   90 days but 0 dm1 in the current 21-day window (warm dm1 now 0/0, prior 11/60). No alarm can
   fire on a lane that stopped sending, so silence there will never be flagged.
@@ -141,15 +227,20 @@ Both alarms point at country.
   attempts; later applies needed none. Scripted DDL on this project should retry.
 - *(Closed)* The vacuous-attribution defect, where the guard `s.n < d.n` let a child covering
   nearly the whole cell claim to explain it, was **fixed in `e6f8c1b`** and the second replay ran
-  against the fixed function. It is no longer open. See the RISE alarm above for the corrected
-  behaviour.
+  against the fixed function. See the RISE alarm above for the corrected behaviour.
+- *(Closed)* The cold lane being empty under the active-only rule was **fixed in `e0033f9`**,
+  which keeps a not-archived campaign in scope when it is still sending. Ivan cold went from 3
+  sends to 165, RISE cold from 1 to 52.
+- *(Closed)* The country dimension mixing ISO codes and full names was **fixed in `e0033f9`** via
+  `perf_country_key`. The third replay shows one `US` bucket per split.
 
 ## Lanes present, and the active lanes that are missing and why
 
 Verified against a live dump of `outreach_campaigns` joined to matured send counts.
 
 - **ivan** payload lanes: cold, engager, harvest, warm.
-  Missing `signal`: the four active "Quiet on LinkedIn" campaigns have 0 sends in 90 days.
+  Missing `signal`: the four "Quiet on LinkedIn" campaigns have 0 sends in 90 days, so they are
+  neither active-with-sends nor still-sending.
   Legitimate. Missing `partner`: Ivan has no partner campaign. Poland Agencies and the Agency
   Owners campaigns are not separate lanes here, they fold into `cold` by `lane_of`; Profile View
   folds into `engager`.
@@ -166,14 +257,17 @@ absent.
 
 ---
 
-## Raw replay output (db/069 at e6f8c1b, sha256 8498e20a...6368195)
+## Raw replay output (third replay, db/069 at e0033f9, sha256 6415c449...3f6115)
 
 ```
-run 2026-09-16T22:19:42.933Z · cross-check week_start 2026-09-07
+run 2026-09-16T22:24:54.211Z · cross-check week_start 2026-09-07
 exit 3 = transport/shape · exit 1 = impossible value · WARN = like-for-like rate gap > 5 points
 
-== ivan · threaded 94 · stamp_only 0
-cold                 dm1    now 0/3 (0.0%)  prior 0/0 (0.0%)  thin
+== ivan · threaded 108 · stamp_only 0
+cold                 dm1    now 1/22 (4.5%)  prior 8/27 (29.6%)  thin
+cold                 dm3    now 0/3 (0.0%)  prior 2/7 (28.6%)  thin
+cold                 inmail now 1/28 (3.6%)  prior 1/48 (2.1%)  thin
+cold                 nudge  now 0/10 (0.0%)  prior 1/20 (5.0%)  thin
 engager              dm1    now 0/0 (0.0%)  prior 0/2 (0.0%)  thin
 harvest              dm1    now 6/29 (20.7%)  prior 30/129 (23.3%)  thin
 harvest              dm3    now 1/10 (10.0%)  prior 1/9 (11.1%)  thin
@@ -185,7 +279,7 @@ warm                 dm3    now 0/8 (0.0%)  prior 1/8 (12.5%)  thin
 warm                 inmail now 0/1 (0.0%)  prior 3/22 (13.6%)  thin
 warm                 nudge  now 0/0 (0.0%)  prior 3/33 (9.1%)  thin
   lanes in payload: cold, engager, harvest, warm
-  xcheck cold: weekly 3/88 sent = 3.4% (rpc reply_rate 50.0% over 6 acc) vs payload dm1 0/3 = 0.0% skip (thin)
+  xcheck cold: weekly 3/88 sent = 3.4% (rpc reply_rate 50.0% over 6 acc) vs payload dm1 1/22 = 4.5% skip (thin)
   xcheck harvest: weekly 5/44 sent = 11.4% (rpc reply_rate 29.4% over 17 acc) vs payload dm1 6/29 = 20.7% skip (thin)
   xcheck poland: no dm1 cell in payload (weekly sends 11, replied 1)
   xcheck inmail: no dm1 cell in payload (weekly sends 5, replied 0)
@@ -194,13 +288,15 @@ warm                 nudge  now 0/0 (0.0%)  prior 3/33 (9.1%)  thin
   xcheck kyle: no dm1 cell in payload (weekly sends 0, replied 1)
   xcheck lm_commenters: no dm1 cell in payload (weekly sends 0, replied 0)
 
-== risedtc · threaded 81 · stamp_only 2
-cold                 dm1    now 0/1 (0.0%)  prior 3/5 (60.0%)  thin
+== risedtc · threaded 86 · stamp_only 2
+cold                 dm1    now 0/1 (0.0%)  prior 6/17 (35.3%)  thin
+cold                 inmail now 0/0 (0.0%)  prior 2/27 (7.4%)  thin
+cold                 nudge  now 0/2 (0.0%)  prior 0/5 (0.0%)  thin
 engager              dm1    now 12/111 (10.8%)  prior 41/212 (19.3%)  drift
 engager              dm3    now 0/15 (0.0%)  prior 0/0 (0.0%)  thin
 engager              inmail now 1/31 (3.2%)  prior 5/65 (7.7%)  ok
 engager              nudge  now 4/84 (4.8%)  prior 10/136 (7.3%)  ok
-  ALARM drift dm1  10.8% vs 19.3% suspect=country share=0.7653
+  ALARM drift dm1  10.8% vs 19.3% suspect=country share=0.7857
 warm                 dm1    now 0/0 (0.0%)  prior 1/3 (33.3%)  thin
 warm                 dm3    now 0/1 (0.0%)  prior 0/0 (0.0%)  thin
 warm                 inmail now 1/2 (50.0%)  prior 5/21 (23.8%)  thin
