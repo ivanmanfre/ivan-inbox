@@ -2,22 +2,24 @@
 
 ## Second replay after e6f8c1b (2026-09-17)
 
+**SQL version replayed:** `db/069_outreach_perf_payload.sql` at commit `e6f8c1b`,
+sha256 `8498e20a8087c76ca77d3cfcf86322575b71e8cc9c51a4cac4738ea4c6368195`. That exact file was
+applied to `bjbvqvzbzczjbatgmccb` through the Management API (201, body `[]`) and every number and
+alarm below was produced by it, so the alarm block reproduces against that hash.
+
 Commit `e6f8c1b` changed the attribution guard from a strict count comparison (`s.n < d.n`) to a
 complement floor (`(d.n - s.n) >= v_child_floor`, so a suspect child must leave at least 15 sends
-outside it). Re-applied `db/069_outreach_perf_payload.sql` through the Management API: 201, body
-`[]`, first attempt, no retries needed. Grants re-checked and unchanged: `outreach_perf_payload`
-and `audn_benchmark_payload` are both anon=false, authenticated=true, service_role=true.
+outside it). Grants re-checked and unchanged: `outreach_perf_payload` and `audn_benchmark_payload`
+are both anon=false, authenticated=true, service_role=true.
 
-Replay re-run for all three lanes with the key in the environment only. Exit 1, which is the
-cross-check flag and not a payload error, same as the first replay.
-
-**The defect is fixed, and the suspect did not go to none.** The RISE engager dm1 alarm now reads
-`suspect=country share=0.7653`, where it previously read `suspect=source share=0.9801`. The old
-suspect `rise_warm_engager` covered 111 of the cell's 111 sends and left a complement of zero, so
-the new floor excludes it, exactly as intended. A country child then cleared the floor honestly:
-United States is 84 of 111 sends at 10.7%, leaving a complement of 27, which is above the floor of
-15. That is a real contrast against the 19.3% baseline rather than a restatement of the cell. Ivan
-lane's alarm is unchanged at `suspect=country share=0.6829`.
+**The attribution defect is fixed, and the suspect did not go to none.** The RISE engager dm1 alarm
+now reads `suspect=country share=0.7653`, where against the pre-fix function it read
+`suspect=source share=0.9801`. The old suspect `rise_warm_engager` covered 111 of the cell's 111
+sends and left a complement of zero, so the new floor excludes it, exactly as intended. A country
+child then cleared the floor honestly: United States is 84 of 111 sends at 10.7%, leaving a
+complement of 27, which is above the floor of 15. That is a real contrast against the 19.3%
+baseline rather than a restatement of the cell. Ivan lane's alarm is unchanged at
+`suspect=country share=0.6829`.
 
 Everything else matches the first replay apart from one day of corpus movement, which is expected
 because both windows roll:
@@ -28,12 +30,6 @@ because both windows roll:
   boundary from the current window into the baseline. The rate moved 10.7% to 10.8% and the prior
   19.4% to 19.3%. The reply counts (12 and 41) did not move.
 - ARCH is byte for byte identical. Reply basis is identical on all three lanes.
-
-New observation from the RISE split: the `country` dimension mixes ISO codes and full names. The
-RISE split carries both `US` (84) and `United States` (1), and the ivan split uses full names
-throughout while RISE uses codes. This fragments the dimension and will understate a country child
-wherever both spellings are in use. It did not change the verdict here, but it should be
-normalised before the split is rendered as an explanation in the UI.
 
 ---
 
@@ -49,32 +45,47 @@ Threaded replies dominate everywhere. The stamp fallback (a `last_reply_at` newe
 with no later send in between) contributes 2 replies in total, all on RISE. So the reply numbers
 below are essentially all real threaded inbound, not inferred from a timestamp.
 
-## (b) The CHECK lines and why they are not bugs
+## (b) The cross-check lines and what they mean
 
-Four CHECK lines fired, all on the same two causes. Neither is a defect in the payload.
+The script now compares like for like and no line fails the run. Three causes separate the two
+RPCs. The first two are measurement differences; the third is a population difference and is the
+one that matters most when reading the cold lanes.
 
-1. **Different denominator.** `lane_chain_weekly` is cohort based: its `reply_rate` divides by
-   `accepted` whenever the lane has an accept step, not by sends. `outreach_perf_payload` divides
-   by matured DM sends. So the weekly number is structurally larger on every lane that gates on an
-   accept. RISE engager is the clearest case: weekly 29.3% is 12 replied over 41 accepted, while
-   the payload's 10.8% is the same 12 replies over 111 matured dm1 sends. The replies agree
-   exactly. The rates differ because the denominators are different questions.
+1. **Different denominator.** `lane_chain_weekly.reply_rate` divides by `accepted` on any
+   accept-gated lane (cap watchdog line 286: `replyDen = r.has_accept ? Number(r.accepted) :
+   Number(r.sends)`), while the payload divides by matured DM sends. The script therefore rebuilds
+   the weekly rate as `replied / sends` and prints both denominators; the RPC's own `reply_rate` is
+   shown alongside for reference only. On RISE engager the like-for-like comparison is weekly
+   12/142 = 8.5% against payload dm1 12/111 = 10.8%, which passes at `ok`. Both sides report 12
+   replies, though the two populations are not identical (different windows, different lane maps),
+   so this is agreement in magnitude rather than a proof of the same underlying set.
 2. **Different window and maturation.** Weekly covers the single closed week 2026-09-07 and is
    unmatured. The payload's current cell is the last 21 days of sends that are at least 7 days old.
-   On the two thin cold lanes (ivan cold 3/6 accepted, RISE cold 2/4 accepted) the weekly
-   denominator is under ten, so its rate swings to 50% on a couple of replies.
 
-CHECK lines, verbatim from the run:
+3. **Different population: the active-only rule, and Poland.** This is the cause the two cold
+   lines need, and maturation cannot explain them. Ivan's weekly `cold` lane carries 88 sends in
+   one week while the payload's ivan cold cell has n = 3. No maturation window turns 88 into 3.
+   The reason is that the payload counts only campaigns with `is_active = true`, per Ivan's
+   instruction ("only show active lanes and dm sends"), and Ivan's two largest cold campaigns,
+   "Agency-Focused Consultants & Fractionals" (89 matured sends in 90 days) and "Agency Owners &
+   Ops Leaders" (82), are both flagged `is_active = false` while still producing sends. The weekly
+   RPC has no such filter, so it counts them. On top of that, `lane_of` folds Poland Agencies into
+   `cold` while the weekly RPC gives Poland its own `poland` lane (11 sends that week), so the two
+   cold buckets do not even contain the same campaigns. RISE is the same story: its weekly cold
+   carries 44 sends while the payload's cold cell has n = 1, because "RiseDTC Cold (DTC Sales Nav)"
+   (46 matured) is `is_active = false`.
 
-- `xcheck cold: weekly reply_rate 50.0% (3 replied / 88 sent / 6 acc) vs payload dm1 0.0% CHECK`
-  Weekly divides 3 by 6 accepted. The payload's ivan cold cell has 3 matured sends in the window
-  (Poland Agencies), none with a reply. Denominator plus tiny-n, not a bug.
-- `xcheck harvest: weekly reply_rate 29.4% (5 replied / 44 sent / 17 acc) vs payload dm1 20.7% CHECK`
-  5 over 17 accepted versus 6 over 29 matured sends. Denominator, not a bug.
-- `xcheck engager: weekly reply_rate 29.3% (12 replied / 142 sent / 41 acc) vs payload dm1 10.8% CHECK`
-  Same 12 replies on both sides. Denominator, not a bug.
-- `xcheck cold: weekly reply_rate 50.0% (2 replied / 44 sent / 4 acc) vs payload dm1 0.0% CHECK`
-  2 over 4 accepted versus 0 over 1 matured send. Denominator plus tiny-n, not a bug.
+   **Read the cold lines accordingly.** A weekly 50% against a payload 0% on those lanes is not a
+   maturation artifact and not a disagreement about reply counting. The two sides are measuring
+   different campaigns. The script now prints `skip (thin)` on both of them, because the payload
+   side is below the 30-send floor and the comparison would be meaningless either way.
+
+Cross-check lines, verbatim from the run:
+
+- `xcheck cold: weekly 3/88 sent = 3.4% (rpc reply_rate 50.0% over 6 acc) vs payload dm1 0/3 = 0.0% skip (thin)`
+- `xcheck harvest: weekly 5/44 sent = 11.4% (rpc reply_rate 29.4% over 17 acc) vs payload dm1 6/29 = 20.7% skip (thin)`
+- `xcheck engager: weekly 12/142 sent = 8.5% (rpc reply_rate 29.3% over 41 acc) vs payload dm1 12/111 = 10.8% ok`
+- `xcheck cold: weekly 2/44 sent = 4.5% (rpc reply_rate 50.0% over 4 acc) vs payload dm1 0/1 = 0.0% skip (thin)`
 
 ## (b2) The two RPCs do not share a lane vocabulary
 
@@ -93,9 +104,9 @@ They are lanes that exist in the weekly vocabulary and have no counterpart name 
 example ARCH `engager_warm` with 76 sends, which our payload counts inside `engager`. The two
 surfaces will not line up lane for lane in the UI. Ivan should pick one axis.
 
-## (c) Alarms that fired on live data today
+## (c) Alarms that fired on live data
 
-Two, both drift, none sibling.
+Two, both drift, none sibling. Produced by `db/069` at `e6f8c1b`, sha256 `8498e20a...6368195`.
 
 1. **ivan / harvest / inmail: 4.8% now (2/42) versus 13.6% prior (30/220).** Suspect dimension
    country, share 0.68. The split is United States 1/26 (3.9%), United Kingdom 0/8, Canada 0/4,
@@ -106,21 +117,20 @@ Two, both drift, none sibling.
    United States 0/1, BE 1/1, DE 0/1. The US subset is 84 of the 111 sends and is running at
    roughly half the baseline rate.
 
-Both alarms now point at country. On RISE that is the post-fix answer; before `e6f8c1b` this
-alarm pointed at `source` with a 0.98 share that only restated the cell.
+Both alarms point at country.
 
 ## Concerns
 
+- **Campaigns flagged inactive are still sending.** Ivan's "Agency-Focused Consultants &
+  Fractionals" (89 matured sends in 90 days) and "Agency Owners & Ops Leaders" (82), and
+  "RiseDTC Cold (DTC Sales Nav)" (46), are all `is_active = false` yet account for the bulk of the
+  weekly cold volume. The payload excludes them by design, which is why ivan cold reads n = 3 and
+  RISE cold n = 1. Either the flags are stale or the cold lane is genuinely invisible on this
+  view; Ivan should say which.
 - **The country dimension mixes ISO codes and full names.** RISE carries both `US` (84 sends) and
   `United States` (1 send) in the same split; ivan uses full names throughout. Normalise before
   rendering the split as an explanation, or a country child will be split across two rows and
   understated.
-- **The active-only rule hides most of Ivan's and RISE's cold history.** Ivan's "Agency Owners &
-  Ops Leaders" (82 matured sends) and "Agency-Focused Consultants & Fractionals" (89) are
-  `is_active = false`, as is "RiseDTC Cold (DTC Sales Nav)" (46). They are excluded by design,
-  which is why ivan cold shows n=3 and RISE cold shows n=1. That follows Ivan's instruction
-  ("only show active lanes and dm sends") but it means the cold lane on both clients is
-  effectively empty on this view.
 - **Ivan's warm lane has gone quiet.** "Creators' Lead-Magnet Commenters" has 133 matured sends in
   90 days but 0 dm1 in the current 21-day window (warm dm1 now 0/0, prior 11/60). No alarm can
   fire on a lane that stopped sending, so silence there will never be flagged.
@@ -128,7 +138,11 @@ alarm pointed at `source` with a 0.98 share that only restated the cell.
   has no matured sends older than 81 days. Drift detection on ARCH is inert until roughly late
   October. ARCH cold dm1 at 30.8% (16/52) is real but currently uncomparable.
 - **The Management API returns intermittent 544 timeouts.** The first apply needed several
-  attempts; the second needed none. Scripted DDL on this project should retry.
+  attempts; later applies needed none. Scripted DDL on this project should retry.
+- *(Closed)* The vacuous-attribution defect, where the guard `s.n < d.n` let a child covering
+  nearly the whole cell claim to explain it, was **fixed in `e6f8c1b`** and the second replay ran
+  against the fixed function. It is no longer open. See the RISE alarm above for the corrected
+  behaviour.
 
 ## Lanes present, and the active lanes that are missing and why
 
@@ -152,10 +166,11 @@ absent.
 
 ---
 
-## Raw replay output (second replay, after e6f8c1b)
+## Raw replay output (db/069 at e6f8c1b, sha256 8498e20a...6368195)
 
 ```
-run 2026-09-16T22:16:41.885Z · cross-check week_start 2026-09-07
+run 2026-09-16T22:19:42.933Z · cross-check week_start 2026-09-07
+exit 3 = transport/shape · exit 1 = impossible value · WARN = like-for-like rate gap > 5 points
 
 == ivan · threaded 94 · stamp_only 0
 cold                 dm1    now 0/3 (0.0%)  prior 0/0 (0.0%)  thin
@@ -170,8 +185,8 @@ warm                 dm3    now 0/8 (0.0%)  prior 1/8 (12.5%)  thin
 warm                 inmail now 0/1 (0.0%)  prior 3/22 (13.6%)  thin
 warm                 nudge  now 0/0 (0.0%)  prior 3/33 (9.1%)  thin
   lanes in payload: cold, engager, harvest, warm
-  xcheck cold: weekly reply_rate 50.0% (3 replied / 88 sent / 6 acc, thin=false) vs payload dm1 0.0% CHECK
-  xcheck harvest: weekly reply_rate 29.4% (5 replied / 44 sent / 17 acc, thin=false) vs payload dm1 20.7% CHECK
+  xcheck cold: weekly 3/88 sent = 3.4% (rpc reply_rate 50.0% over 6 acc) vs payload dm1 0/3 = 0.0% skip (thin)
+  xcheck harvest: weekly 5/44 sent = 11.4% (rpc reply_rate 29.4% over 17 acc) vs payload dm1 6/29 = 20.7% skip (thin)
   xcheck poland: no dm1 cell in payload (weekly sends 11, replied 1)
   xcheck inmail: no dm1 cell in payload (weekly sends 5, replied 0)
   xcheck profile_view: no dm1 cell in payload (weekly sends 3, replied 0)
@@ -191,8 +206,8 @@ warm                 dm3    now 0/1 (0.0%)  prior 0/0 (0.0%)  thin
 warm                 inmail now 1/2 (50.0%)  prior 5/21 (23.8%)  thin
 warm                 nudge  now 0/0 (0.0%)  prior 0/4 (0.0%)  thin
   lanes in payload: cold, engager, warm
-  xcheck engager: weekly reply_rate 29.3% (12 replied / 142 sent / 41 acc, thin=false) vs payload dm1 10.8% CHECK
-  xcheck cold: weekly reply_rate 50.0% (2 replied / 44 sent / 4 acc, thin=false) vs payload dm1 0.0% CHECK
+  xcheck engager: weekly 12/142 sent = 8.5% (rpc reply_rate 29.3% over 41 acc) vs payload dm1 12/111 = 10.8% ok
+  xcheck cold: weekly 2/44 sent = 4.5% (rpc reply_rate 50.0% over 4 acc) vs payload dm1 0/1 = 0.0% skip (thin)
   xcheck inmail: no dm1 cell in payload (weekly sends 18, replied 3)
   xcheck orbit: no dm1 cell in payload (weekly sends 0, replied 1)
 
