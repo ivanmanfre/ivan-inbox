@@ -60,6 +60,10 @@ select fx_seed('00000000-0000-0000-0000-0000000000c4', 'cold', 'arch_dm1_a', 1, 
 -- RISE cold nudge: drifts with only single-valued splits (one source, one variant, one country, one vertical)
 select fx_seed('00000000-0000-0000-0000-0000000000c1', 'own_engagers', 'rise_dm2_nudge_v1', 2, 40, 0, 10);
 select fx_seed('00000000-0000-0000-0000-0000000000c1', 'own_engagers', 'rise_dm2_nudge_v1', 2, 60, 12, 40, false);
+-- RISE cold dm3: drifts, but one source is nearly the whole cell (100 of 105) and the other is under the child floor
+select fx_seed('00000000-0000-0000-0000-0000000000c1', 'mono_source', 'rise_dm3_v1', 3, 100, 3, 10);
+select fx_seed('00000000-0000-0000-0000-0000000000c1', 'tiny_source', 'rise_dm3_v1', 3, 5, 0, 10);
+select fx_seed('00000000-0000-0000-0000-0000000000c1', 'mono_source', 'rise_dm3_v1', 3, 200, 30, 40, false);
 -- RISE cold: vertical follows source, so the source and vertical dims tie exactly on attribution
 update outreach_prospects set enrichment_data = enrichment_data || '{"gate":{"vertical":"games"}}'
   where campaign_id = '00000000-0000-0000-0000-0000000000c1' and enrichment_data->>'source' = 'competitor_engagers';
