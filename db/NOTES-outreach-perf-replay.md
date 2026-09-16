@@ -409,3 +409,4 @@ engager              nudge  now 0/8 (0.0%)  prior 0/0 (0.0%)  thin
 ```
 
 - Weekly WhatsApp digest wired: n8n workflow `Outreach - Perf Alerts (weekly)` id `HumBEynfiGtRRrb4`, active=true (Monday 08:00 Europe/Warsaw + POST webhook `perf-alerts-now`); forced run execution `1774207` status success, sent: 3 (ivan cold DM1, ivan harvest InMail, [RISE] engager DM1; arch none).
+- Perf digest fix round 1: webhook `perf-alerts-now` now key-gated (`n8n_webhook_key`, webhook path only; schedule path ungated), every wa() call isolated, errorWorkflow `9xf4cbR1ay9fRot9` set. Keyed forced run execution `1774289` success sent: 3; unkeyed run execution `1774294` success, Digest did not run, 0 sent. Workflow `HumBEynfiGtRRrb4` left active=true. No tags (the push round-trip strips them).
