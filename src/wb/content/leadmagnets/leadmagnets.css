@@ -4,7 +4,12 @@
    table of columns above it, so the phone never scrolls sideways.
    Tokens only: every value is a var(--ds-*). */
 
-.a-lm{ display:flex; flex-direction:column; gap:var(--ds-s5); min-width:0 }
+.a-lm{ min-width:0 }
+.a-lm-body{ display:flex; flex-direction:column; gap:var(--ds-s5); min-width:0 }
+/* The block is a group card like every other whole-view block, so the phone
+   ledger must not inset a second time inside the pad it already sits in. */
+.a-lm .a-ledger{ margin-inline:0 }
+.a-lm-g .a-group-pad > *{ min-width:0 }
 .a-lm-filters{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--ds-chip-gap) }
 
 .a-lm-sec{ display:flex; flex-direction:column; gap:var(--ds-s2); min-width:0; margin-top:var(--ds-s5) }

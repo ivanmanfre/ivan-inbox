@@ -19,6 +19,7 @@
    ========================================================================== */
 import { useEffect, useMemo, useState } from 'react'
 import { Segmented } from '../../../ds'
+import { Group } from '../../kit'
 import type { ContentLane } from '../../../lib/content'
 import {
   LM_WINDOWS, fetchGatedPosts, fetchLeadMagnets, layoutFromLocation,
@@ -83,17 +84,21 @@ export function LeadMagnetsPanel({ lm, gated, layout, weeks, onWeeks, now, onRet
 
   return (
     <div className="a-lm" data-lm-layout={layout} data-lm-state={state} data-lm-window={weeks}>
-      <div className="a-lm-filters">
-        <Segmented
-          label="Window"
-          markerId="a-lm-window"
-          value={String(weeks)}
-          onChange={id => onWeeks?.(Number(id) as LmWindow)}
-          options={LM_WINDOWS.map(w => ({ id: String(w), label: `Last ${w} weeks` }))}
-        />
-      </div>
-      {body}
-      <div className="a-lm-foot">{FOOT}</div>
+      <Group className="a-lm-g" label="Lead magnets and the gated roster" pad>
+        <div className="a-lm-body">
+          <div className="a-lm-filters">
+            <Segmented
+              label="Window"
+              markerId="a-lm-window"
+              value={String(weeks)}
+              onChange={id => onWeeks?.(Number(id) as LmWindow)}
+              options={LM_WINDOWS.map(w => ({ id: String(w), label: `Last ${w} weeks` }))}
+            />
+          </div>
+          {body}
+          <div className="a-lm-foot">{FOOT}</div>
+        </div>
+      </Group>
     </div>
   )
 }

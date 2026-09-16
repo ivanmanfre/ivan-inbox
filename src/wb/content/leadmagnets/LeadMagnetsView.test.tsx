@@ -31,7 +31,10 @@ const LMS: LmRow[] = [
 const POSTS: GatedPost[] = [
   gp({ post_ref: 'ref-top', author: 'Alex Vacca', comments: 974, follower_count: 73256, per_1k: 13.3 }),
   gp({ post_ref: 'ref-mid', author: 'Matt Lakajev', comments: 816, follower_count: 117138, per_1k: 7, gate_keyword: 'KEEN' }),
-  gp({ post_ref: 'ref-unsized', author: 'Lara Acosta', comments: 1133, follower_count: null, followers_source: null, per_1k: null, gate_keyword: null, cta_kind: 'link' }),
+  // The live read returns a null `gate_keyword` on 23 of Ivan's 35 gated posts
+  // though `GatedPost` types it as a string, so the fixture forces the real
+  // shape rather than the declared one.
+  gp({ post_ref: 'ref-unsized', author: 'Lara Acosta', comments: 1133, follower_count: null, followers_source: null, per_1k: null, gate_keyword: null as unknown as string, cta_kind: 'link' }),
 ]
 
 const READY: LeadMagnetsRead = {
