@@ -86,6 +86,9 @@ update outreach_prospects set enrichment_data = enrichment_data || '{"gate":{"ve
 -- Ivan lane: 40 sends, 4 replies via stamp only (no threaded row); healthy against a 5% baseline
 select fx_seed('00000000-0000-0000-0000-0000000000c3', 'apify_search', 'template/agency_dm_v3_owned', 1, 40, 4, 10, false);
 select fx_seed('00000000-0000-0000-0000-0000000000c3', 'apify_search', 'template/agency_dm_v3_owned', 1, 60, 3, 40, false);
+-- Ivan nudge: fires only under the 20 floor (24 current, 26 baseline), thin under 30; stamp-only replies
+select fx_seed('00000000-0000-0000-0000-0000000000c3', 'apify_search', 'template/agency_nudge_v1', 2, 24, 1, 10, false);
+select fx_seed('00000000-0000-0000-0000-0000000000c3', 'apify_search', 'template/agency_nudge_v1', 2, 26, 8, 40, false);
 -- a reaction-only inbound must not count as a reply (RISE cold, one extra prospect)
 do $$ declare pid uuid; mid uuid; begin
   insert into outreach_prospects (campaign_id, country, enrichment_data) values ('00000000-0000-0000-0000-0000000000c1','US','{"source":"own_engagers"}') returning id into pid;

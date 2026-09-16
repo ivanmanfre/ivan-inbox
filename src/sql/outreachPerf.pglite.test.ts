@@ -76,7 +76,7 @@ describe('outreach_perf_payload counts', () => {
     expect(c.n).toBe(41)
     expect(c.replies).toBe(4)
     expect(c.positive_rate).toBeNull()
-    expect(p.reply_basis.stamp_only).toBe(7) // 4 current + 3 baseline
+    expect(p.reply_basis.stamp_only).toBe(16) // dm1: 4 current + 3 baseline; nudge: 1 current + 8 baseline
   })
   it('scores a stamped reply to the later send, not the earlier DM', async () => {
     const p = await payload('ivan')
@@ -84,8 +84,9 @@ describe('outreach_perf_payload counts', () => {
       `select count(*)::int as n from outreach_prospects pr
          join outreach_campaigns c on c.id = pr.campaign_id
         where c.client_id is null and pr.last_reply_at is not null`)
-    // 8 Ivan prospects carry a reply stamp (4 current, 3 baseline, 1 nudge), but only 4 are credited to a current DM1 send
-    expect(rows.rows[0].n).toBe(8)
+    // 17 Ivan prospects carry a reply stamp (dm1 4 current + 3 baseline, nudge 1 + 8, 1 immature-nudge prospect),
+    // but only 4 are credited to a current DM1 send
+    expect(rows.rows[0].n).toBe(17)
     expect(cell(p, 'cold', 'dm1')!.replies).toBe(4)
   })
   it('pairs sibling variants with each other as others', async () => {
@@ -133,7 +134,7 @@ describe('outreach_perf_payload alarms', () => {
     expect(c.base_n).toBe(60)
     expect(c.rate).toBeGreaterThan(c.base_rate) // 4/41 above a 5% baseline: healthy
     expect(c.status).toBe('ok')
-    expect(lane(ivan, 'cold')!.alarms).toEqual([])
+    expect(lane(ivan, 'cold')!.alarms.filter((x: any) => x.step === 'dm1')).toEqual([])
   })
   it('breaks an attribution tie between dims deterministically', async () => {
     const p = await payload('risedtc')
@@ -160,5 +161,17 @@ describe('outreach_perf_payload alarms', () => {
     const a = lane(p, 'cold')!.alarms.find((x: any) => x.kind === 'drift' && x.step === 'dm3') as any
     expect(a).toMatchObject({ suspect_dim: null, suspect_share: null, split: [] })
     expect(a.prior_rate).toBeCloseTo(0.15, 3)
+  })
+  it('fires drift on a cell between 20 and 30 sends, the noise floor', async () => {
+    const p = await payload('ivan')
+    expect(cell(p, 'cold', 'nudge')).toMatchObject({ n: 24, replies: 1, base_n: 26, base_replies: 8, status: 'drift' })
+    const a = lane(p, 'cold')!.alarms.find((x: any) => x.kind === 'drift' && x.step === 'nudge') as any
+    expect(a).toMatchObject({ prior_n: 26, now_n: 24 })
+    expect(a.prior_rate).toBeCloseTo(8 / 26, 3)
+    // the floor is 20, not lower: a 12-send cell is still thin
+    const rise = await payload('risedtc')
+    expect(cell(rise, 'warm', 'nudge')).toMatchObject({ n: 12, status: 'thin' })
+    // and the healthy Ivan dm1 cell (41/4 vs 60/3) is still ok
+    expect(cell(p, 'cold', 'dm1')!.status).toBe('ok')
   })
 })
