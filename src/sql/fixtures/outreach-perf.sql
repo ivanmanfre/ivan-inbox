@@ -65,3 +65,14 @@ do $$ declare pid uuid; mid uuid; begin
   insert into outreach_messages (prospect_id, direction, message_type, channel, sequence_step, sent_at, ai_model) values (pid,'outbound','dm','linkedin',1, now() - interval '10 days','rise_dm1_a') returning id into mid;
   insert into outreach_messages (prospect_id, direction, sent_at, replies_to_message_id, is_reaction) values (pid,'inbound', now() - interval '9 days', mid, true);
 end $$;
+-- Ivan lane: a matured DM1 whose stamped reply came AFTER a later, immature nudge.
+-- The nudge earned the reply, so DM1 must not be credited (it is invisible to perf_sends).
+do $$ declare pid uuid; begin
+  insert into outreach_prospects (campaign_id, country, enrichment_data)
+    values ('00000000-0000-0000-0000-0000000000c3','US','{"source":"apify_search"}') returning id into pid;
+  insert into outreach_messages (prospect_id, direction, message_type, channel, sequence_step, sent_at, ai_model)
+    values (pid,'outbound','dm','linkedin',1, now() - interval '10 days','template/agency_dm_v3_owned');
+  insert into outreach_messages (prospect_id, direction, message_type, channel, sequence_step, sent_at, ai_model)
+    values (pid,'outbound','dm','linkedin',2, now() - interval '5 days','template/agency_nudge_v1');
+  update outreach_prospects set last_reply_at = now() - interval '4 days' where id = pid;
+end $$;

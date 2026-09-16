@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { beforeAll, describe, expect, it } from 'vitest'
 
 type Cell = { step: string; n: number; replies: number; rate: number; base_n: number; base_rate: number; status: string; positive_rate: number | null }
-type Lane = { lane: string; campaigns: string[]; cells: Cell[]; variants: { step: string; variant: string; n: number; rate: number; status: string }[]; splits: { step: string; dim: string; value: string; n: number; replies: number }[]; alarms: unknown[]; table: unknown[] }
+type Lane = { lane: string; campaigns: string[]; cells: Cell[]; variants: { step: string; variant: string; n: number; replies: number; rate: number; others_n: number; status: string }[]; splits: { step: string; dim: string; value: string; n: number; replies: number }[]; alarms: unknown[]; table: unknown[] }
 type Payload = { ok: boolean; lanes: Lane[]; reply_basis: { threaded: number; stamp_only: number } }
 
 let db: PGlite
@@ -53,10 +53,27 @@ describe('outreach_perf_payload counts', () => {
   it('maps ivan to client_id null and counts stamp-only replies', async () => {
     const p = await payload('ivan')
     const c = cell(p, 'cold', 'dm1')!
-    expect(c.n).toBe(40)
+    // 40 seeded + the intervening-nudge prospect, whose stamped reply belongs to the nudge, not DM1
+    expect(c.n).toBe(41)
     expect(c.replies).toBe(4)
     expect(c.positive_rate).toBeNull()
-    expect(p.reply_basis.stamp_only).toBeGreaterThanOrEqual(4)
+    expect(p.reply_basis.stamp_only).toBe(4)
+  })
+  it('scores a stamped reply to the later send, not the earlier DM', async () => {
+    const p = await payload('ivan')
+    const rows = await db.query<{ n: number }>(
+      `select count(*)::int as n from outreach_prospects pr
+         join outreach_campaigns c on c.id = pr.campaign_id
+        where c.client_id is null and pr.last_reply_at is not null`)
+    // 5 Ivan prospects carry a reply stamp, but only 4 are credited to a DM1 send
+    expect(rows.rows[0].n).toBe(5)
+    expect(cell(p, 'cold', 'dm1')!.replies).toBe(4)
+  })
+  it('pairs sibling variants with each other as others', async () => {
+    const p = await payload('risedtc')
+    const v = lane(p, 'warm')!.variants.filter(x => x.step === 'dm1')
+    expect(v.find(x => x.variant === 'rise_dm1_b')).toMatchObject({ n: 40, replies: 12, others_n: 35, status: 'ok' })
+    expect(v.find(x => x.variant === 'rise_dm1_c')).toMatchObject({ n: 35, replies: 1, others_n: 40, status: 'ok' })
   })
   it('splits the current window by source with counts', async () => {
     const p = await payload('risedtc')
