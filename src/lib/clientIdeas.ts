@@ -51,6 +51,11 @@ export type ClientIdea = {
   // the row (the Fathom call miner and the X trend ingestor both write here),
   // so it is carried whole and read defensively at the card.
   score_breakdown: Record<string, unknown> | null
+  // Winner repurpose rows (n8n YAKAUb0cEuWdWJEg): the post this idea reuses
+  // and the day it may run again (published + 90 d). The RPC hides the row
+  // until then (db/073), so a visible eligible_at is always in the past.
+  reuse_of: string | null
+  eligible_at: string | null
 }
 
 function num(v: unknown): number | null {
@@ -82,6 +87,8 @@ function toIdea(raw: unknown): ClientIdea | null {
     score_breakdown: r.score_breakdown && typeof r.score_breakdown === 'object'
       ? (r.score_breakdown as Record<string, unknown>)
       : null,
+    reuse_of: str(r.reuse_of),
+    eligible_at: str(r.eligible_at),
   }
 }
 
@@ -143,6 +150,7 @@ const CLIENT_IDEA_MESSAGES: Record<string, string> = {
   not_found_or_not_staged:
     'That idea is no longer staged — something decided it first. Nothing changed here.',
   bad_decision: 'The database only accepts approve or reject on an idea.',
+  not_eligible_yet: 'This reuse idea is not eligible yet. The card comes back the day it is.',
 }
 
 // 🔴 `score_breakdown.why` IS THE VERBATIM LINE FROM THE CALL, not a rationale.

@@ -26,6 +26,7 @@ import {
 import { withoutDecided } from '../../exp/v2c/contentIdeas'
 import { absTime, relTime, sourceLabel } from '../../exp/v2c/fmt'
 import { label } from '../../lib/labels'
+import { dayLabel } from '../../lib/reach'
 import { Button, Chip, Icon, Input } from '../../ds'
 import { Group, Row, Rows } from '../kit'
 import { CalmEmpty, Failed, FilteredEmpty } from './parts'
@@ -350,6 +351,9 @@ function ClientIdeaCard({ i, lane, onDecided }: {
           {/* The hook is the SENTENCE the writer would open with, and the title
               is the filed version of it. Shown only when they differ. */}
           {i.hook && i.hook !== title && <div className="a-ct-why">{i.hook}</div>}
+          {i.reuse_of && (
+            <div className="a-ct-why">Reuse of a winner{i.eligible_at ? `, eligible since ${dayLabel(i.eligible_at.slice(0, 10), new Date().getUTCFullYear())}` : ''}. Keep the idea and the hook shape, update the numbers and examples.</div>
+          )}
           <div className="a-wrapline">
             {i.pillar && <Chip>{label(i.pillar)}</Chip>}
             {i.format && <Chip>{label(i.format)}</Chip>}

@@ -9,6 +9,7 @@ const base: ClientIdea = {
   created_at: '2026-08-23T14:05:40Z', icp_score: 82,
   funnel_stage: 'trust', funnel_source: 'declared',
   score_breakdown: { why: 'we tried that and it did nothing', voice: 'buyer' },
+  reuse_of: null, eligible_at: null,
 }
 const idea = (o: Partial<ClientIdea>): ClientIdea => ({ ...base, ...o })
 
@@ -91,5 +92,13 @@ describe('sourceHues — the ask was DISTINCT, not just deterministic', () => {
       expect(Number.isInteger(h)).toBe(true)
     }
     expect(sourceHues(['only one']).get('only one')).toBeLessThan(360)
+  })
+})
+
+describe('reuse fields', () => {
+  it('carries reuse_of and eligible_at through the row shape', () => {
+    const r = idea({ reuse_of: '9f1c', eligible_at: '2026-10-25T00:00:00Z', source_label: 'Winner repurpose' })
+    expect(r.reuse_of).toBe('9f1c')
+    expect(r.eligible_at).toBe('2026-10-25T00:00:00Z')
   })
 })
