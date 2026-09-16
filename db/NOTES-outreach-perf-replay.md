@@ -1,5 +1,139 @@
 # outreach_perf_payload: live replay notes
 
+## Fifth replay after the review-wave SQL fix (2026-09-17)
+
+**SQL version replayed:** `db/069_outreach_perf_payload.sql` as committed in the final review-wave
+fix commit on `outreach-perf` (parent `7eab64a`), sha256
+`fbfc16dbd9b687560a5d31366bc043fea3aad51615fdb3fc83a3a401dd4e935f`. Applied through the Management
+API with a 5-attempt retry loop on 544; succeeded on the first attempt (201, body `[]`). No retries
+consumed. Two changes since `6a33c4d`:
+
+1. The `attribution` CTE gained `having max((d.base_rate * s.n) - s.replies) > 0`, so a dim whose
+   only eligible child is at or above baseline can no longer be named as the suspect. Before the
+   guard that path produced a suspect with a NEGATIVE share.
+2. `outreach_perf_payload` is now `set search_path = public, pg_temp`, so the temp tables it builds
+   resolve through the function's own search path rather than the caller's.
+
+Grants re-checked for all four functions against the `audn_benchmark_payload` control, all
+identical:
+
+```
+audn_benchmark_payload   anon=false  authenticated=true  service_role=true
+outreach_perf_payload    anon=false  authenticated=true  service_role=true
+perf_country_key         anon=false  authenticated=true  service_role=true
+perf_wilson_upper        anon=false  authenticated=true  service_role=true
+```
+
+`pg_proc.proconfig` for `outreach_perf_payload` reads `search_path=public, pg_temp` live, so
+change 2 landed.
+
+**Exit 0.** No IMPOSSIBLE, no transport or shape failure. One WARN (ivan harvest), the same one the
+fourth replay carried.
+
+### Every alarm, verbatim
+
+```
+ivan:    ALARM drift dm1     4.5% vs 29.6% suspect=none share=-
+ivan:    ALARM drift inmail  4.8% vs 13.6% suspect=country share=0.6829
+risedtc: ALARM drift dm1    10.8% vs 19.3% suspect=country share=0.7857
+arch:    (no alarms)
+```
+
+### What changed versus the fourth replay
+
+**No alarm changed.** Same three alarms, same lanes, same steps, same suspects and the same shares
+to four decimals. The `having` guard did not fire anywhere on the live corpus: every named suspect
+today is a child that is genuinely missing replies, so none of them was the negative-share case the
+guard removes. The guard is therefore proved only by the fixture cell in
+`src/sql/fixtures/outreach-perf.sql` (RISE cold InMail), not by live data, and that is the honest
+reading of this run.
+
+The only movement is one day of the rolling window, all of it outside the alarms:
+
+- ivan harvest dm1 `6/29` to `6/28` current and `30/129` to `30/130` prior: one send aged across
+  the 21-day boundary. Status stays `ok`.
+- risedtc threaded reply basis 86 to 87; stamp-only unchanged at 2. ivan 108/0 and arch 20/0 are
+  identical to the fourth replay.
+- ARCH is byte for byte identical and still has no baseline.
+
+The cross-check lines are unchanged in shape: one `ok` on ivan cold, one `ok` on RISE engager, one
+WARN on ivan harvest, one `skip (thin)` on RISE cold, and the same lane-vocabulary lines.
+
+### Raw replay output (fifth replay, db/069 sha256 fbfc16db...4e935f)
+
+```
+run 2026-09-16T22:59:23.883Z · cross-check week_start 2026-09-07
+exit 3 = transport/shape · exit 1 = impossible value · WARN = like-for-like rate gap > 5 points
+
+== ivan · threaded 108 · stamp_only 0
+cold                 dm1    now 1/22 (4.5%)  prior 8/27 (29.6%)  drift
+cold                 dm3    now 0/3 (0.0%)  prior 2/7 (28.6%)  thin
+cold                 inmail now 1/28 (3.6%)  prior 1/48 (2.1%)  ok
+cold                 nudge  now 0/10 (0.0%)  prior 1/20 (5.0%)  thin
+  ALARM drift dm1  4.5% vs 29.6% suspect=none share=-
+engager              dm1    now 0/0 (0.0%)  prior 0/2 (0.0%)  thin
+harvest              dm1    now 6/28 (21.4%)  prior 30/130 (23.1%)  ok
+harvest              dm3    now 1/10 (10.0%)  prior 1/9 (11.1%)  thin
+harvest              inmail now 2/42 (4.8%)  prior 30/220 (13.6%)  drift
+harvest              nudge  now 2/20 (10.0%)  prior 3/62 (4.8%)  ok
+  ALARM drift inmail  4.8% vs 13.6% suspect=country share=0.6829
+warm                 dm1    now 0/0 (0.0%)  prior 11/60 (18.3%)  thin
+warm                 dm3    now 0/8 (0.0%)  prior 1/8 (12.5%)  thin
+warm                 inmail now 0/1 (0.0%)  prior 3/22 (13.6%)  thin
+warm                 nudge  now 0/0 (0.0%)  prior 3/33 (9.1%)  thin
+  lanes in payload: cold, engager, harvest, warm
+  xcheck cold: weekly 3/88 sent = 3.4% (rpc reply_rate 50.0% over 6 acc) vs payload dm1 1/22 = 4.5% ok
+  xcheck harvest: weekly 5/44 sent = 11.4% (rpc reply_rate 29.4% over 17 acc) vs payload dm1 6/28 = 21.4% WARN
+  xcheck poland: no dm1 cell in payload (weekly sends 11, replied 1)
+  xcheck inmail: no dm1 cell in payload (weekly sends 5, replied 0)
+  xcheck profile_view: no dm1 cell in payload (weekly sends 3, replied 0)
+  xcheck own_post_engager: no dm1 cell in payload (weekly sends 1, replied 0)
+  xcheck kyle: no dm1 cell in payload (weekly sends 0, replied 1)
+  xcheck lm_commenters: no dm1 cell in payload (weekly sends 0, replied 0)
+
+== risedtc · threaded 87 · stamp_only 2
+cold                 dm1    now 0/1 (0.0%)  prior 6/17 (35.3%)  thin
+cold                 inmail now 0/0 (0.0%)  prior 2/27 (7.4%)  thin
+cold                 nudge  now 0/2 (0.0%)  prior 0/5 (0.0%)  thin
+engager              dm1    now 12/111 (10.8%)  prior 41/212 (19.3%)  drift
+engager              dm3    now 0/15 (0.0%)  prior 0/0 (0.0%)  thin
+engager              inmail now 1/31 (3.2%)  prior 5/65 (7.7%)  ok
+engager              nudge  now 5/85 (5.9%)  prior 10/136 (7.3%)  ok
+  ALARM drift dm1  10.8% vs 19.3% suspect=country share=0.7857
+warm                 dm1    now 0/0 (0.0%)  prior 1/3 (33.3%)  thin
+warm                 dm3    now 0/1 (0.0%)  prior 0/0 (0.0%)  thin
+warm                 inmail now 1/2 (50.0%)  prior 5/21 (23.8%)  thin
+warm                 nudge  now 0/0 (0.0%)  prior 0/4 (0.0%)  thin
+  lanes in payload: cold, engager, warm
+  xcheck engager: weekly 12/142 sent = 8.5% (rpc reply_rate 29.3% over 41 acc) vs payload dm1 12/111 = 10.8% ok
+  xcheck cold: weekly 2/44 sent = 4.5% (rpc reply_rate 50.0% over 4 acc) vs payload dm1 0/1 = 0.0% skip (thin)
+  xcheck inmail: no dm1 cell in payload (weekly sends 18, replied 3)
+  xcheck orbit: no dm1 cell in payload (weekly sends 0, replied 1)
+
+== arch · threaded 20 · stamp_only 0
+cold                 dm1    now 16/52 (30.8%)  prior 0/0 (0.0%)  thin
+cold                 inmail now 1/21 (4.8%)  prior 0/0 (0.0%)  thin
+cold                 nudge  now 1/14 (7.1%)  prior 0/0 (0.0%)  thin
+engager              dm1    now 2/18 (11.1%)  prior 0/0 (0.0%)  thin
+engager              inmail now 0/3 (0.0%)  prior 0/0 (0.0%)  thin
+engager              nudge  now 0/8 (0.0%)  prior 0/0 (0.0%)  thin
+  lanes in payload: cold, engager
+  xcheck engager_warm: no dm1 cell in payload (weekly sends 76, replied 5)
+  xcheck inmail: no dm1 cell in payload (weekly sends 18, replied 2)
+  xcheck hiring_signal: no dm1 cell in payload (weekly sends 11, replied 1)
+  xcheck cold_games: no dm1 cell in payload (weekly sends 9, replied 0)
+  xcheck israel_trip: no dm1 cell in payload (weekly sends 9, replied 1)
+  xcheck soft_launch: no dm1 cell in payload (weekly sends 3, replied 0)
+  xcheck hand_raise: no dm1 cell in payload (weekly sends 2, replied 1)
+  xcheck funding_signal: no dm1 cell in payload (weekly sends 1, replied 0)
+  xcheck cold_apps: no dm1 cell in payload (weekly sends 0, replied 2)
+  xcheck new_in_role: no dm1 cell in payload (weekly sends 0, replied 0)
+  xcheck orbit_pilot_fintech: no dm1 cell in payload (weekly sends 0, replied 1)
+  xcheck sponsor_team: no dm1 cell in payload (weekly sends 0, replied 0)
+```
+
+---
+
 ## Fourth replay after 6a33c4d (2026-09-17)
 
 **SQL version replayed:** `db/069_outreach_perf_payload.sql` at commit `6a33c4d`,
@@ -186,6 +320,8 @@ because both windows roll:
 
 ## (a) Reply basis per lane: threaded vs stamp-only
 
+> First replay, db/069 at 12e2830, superseded: see the third and fourth replay sections above. Where a number here disagrees with a replay section above, the replay section is the current one.
+
 | client  | threaded | stamp-only |
 |---------|----------|------------|
 | ivan    | 94       | 0          |
@@ -197,6 +333,8 @@ with no later send in between) contributes 2 replies in total, all on RISE. So t
 below are essentially all real threaded inbound, not inferred from a timestamp.
 
 ## (b) The cross-check lines and what they mean
+
+> First replay, db/069 at 12e2830, superseded: see the third and fourth replay sections above. Where a number here disagrees with a replay section above, the replay section is the current one.
 
 The script now compares like for like and no line fails the run. Three causes separate the two
 RPCs. The first two are measurement differences; the third is a population difference and is the
@@ -239,6 +377,8 @@ Cross-check lines, verbatim from the run:
 - `xcheck cold: weekly 2/44 sent = 4.5% (rpc reply_rate 50.0% over 4 acc) vs payload dm1 0/1 = 0.0% skip (thin)`
 
 ## (b2) The two RPCs do not share a lane vocabulary
+
+> First replay, db/069 at 12e2830, superseded: see the third and fourth replay sections above. Where a number here disagrees with a replay section above, the replay section is the current one.
 
 This is the finding the cross-check surfaced that the brief did not anticipate, and it is worth a
 decision before the UI is built.

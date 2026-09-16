@@ -162,6 +162,20 @@ describe('outreach_perf_payload alarms', () => {
     expect(a).toMatchObject({ suspect_dim: null, suspect_share: null, split: [] })
     expect(a.prior_rate).toBeCloseTo(0.15, 3)
   })
+  it('names no suspect when the only eligible child is above baseline', async () => {
+    const p = await payload('risedtc')
+    // 13/46 (28.3%) against 40/100 (40.0%): the cell drifts
+    expect(cell(p, 'cold', 'inmail')).toMatchObject({ n: 46, replies: 13, base_n: 100, base_replies: 40, status: 'drift' })
+    const s = lane(p, 'cold')!.splits.filter(x => x.step === 'inmail' && x.dim === 'source')
+    expect(s.find(x => x.value === 'good_source')).toMatchObject({ n: 30, replies: 13 }) // 43.3%, ABOVE the 40% baseline
+    expect(s.find(x => x.value === 'bad_a')).toMatchObject({ n: 8, replies: 0 })         // under the child floor
+    expect(s.find(x => x.value === 'bad_b')).toMatchObject({ n: 8, replies: 0 })         // under the child floor
+    const a = lane(p, 'cold')!.alarms.find((x: any) => x.kind === 'drift' && x.step === 'inmail') as any
+    // good_source is the only child clearing both floors and it is MISSING nothing (12 expected, 13 got),
+    // so attribution must stay empty rather than name a suspect with a negative share
+    expect(a).toMatchObject({ suspect_dim: null, suspect_share: null, split: [] })
+    expect(a.prior_rate).toBeCloseTo(0.4, 3)
+  })
   it('fires drift on a cell between 20 and 30 sends, the noise floor', async () => {
     const p = await payload('ivan')
     expect(cell(p, 'cold', 'nudge')).toMatchObject({ n: 24, replies: 1, base_n: 26, base_replies: 8, status: 'drift' })

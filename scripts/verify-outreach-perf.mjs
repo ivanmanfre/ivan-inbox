@@ -2,6 +2,8 @@
 // dm1 reply rate against lane_chain_weekly on a LIKE-FOR-LIKE basis.
 //
 // Exit codes are distinct on purpose, so a red run means one specific thing:
+//   2  SUPABASE_SERVICE_KEY is not in the environment. Nothing ran at all, no RPC was called.
+//      Export the key (it is read from `integration_config.key = 'n8n_sb_key'`) and re-run.
 //   3  transport or shape failure: an RPC returned non-OK, or the payload is missing
 //      `reply_basis` / `lanes`. Nothing was verified. Never reported as a data problem.
 //   1  the payload contains an IMPOSSIBLE value: a rate above 1, a negative count, or a lane

@@ -22,7 +22,8 @@ update outreach_campaigns set is_active = false where id in ('00000000-0000-0000
 
 -- helper: n prospects in a campaign with a source, k of them replied to their DM
 create or replace function fx_seed(p_camp uuid, p_source text, p_variant text, p_step int,
-  p_n int, p_replied int, p_days_ago int, p_threaded boolean default true, p_intent text default null)
+  p_n int, p_replied int, p_days_ago int, p_threaded boolean default true, p_intent text default null,
+  p_channel text default 'linkedin')
 returns void language plpgsql as $$
 declare i int; pid uuid; mid uuid;
 begin
@@ -30,7 +31,7 @@ begin
     insert into outreach_prospects (campaign_id, country, enrichment_data)
       values (p_camp, 'US', jsonb_build_object('source', p_source)) returning id into pid;
     insert into outreach_messages (prospect_id, direction, message_type, channel, sequence_step, sent_at, ai_model)
-      values (pid, 'outbound', 'dm', 'linkedin', p_step, now() - make_interval(days => p_days_ago), p_variant)
+      values (pid, 'outbound', 'dm', p_channel, p_step, now() - make_interval(days => p_days_ago), p_variant)
       returning id into mid;
     if i <= p_replied then
       if p_threaded then
@@ -106,3 +107,12 @@ do $$ declare pid uuid; begin
     values (pid,'outbound','dm','linkedin',2, now() - interval '5 days','template/agency_nudge_v1');
   update outreach_prospects set last_reply_at = now() - interval '4 days' where id = pid;
 end $$;
+
+-- RISE cold InMail: drifts, and the ONLY child that clears both floors is ABOVE baseline.
+-- good_source 13/30 (43.3%) beats the 40% baseline, so its missing replies are negative; the whole
+-- miss sits in bad_a and bad_b, 8 sends each, both under the child floor. Without the `having` on
+-- the attribution CTE the cell would be blamed on good_source with a negative share.
+select fx_seed('00000000-0000-0000-0000-0000000000c1', 'good_source', 'rise_inmail_v1', 1, 30, 13, 10, true, null, 'linkedin_inmail');
+select fx_seed('00000000-0000-0000-0000-0000000000c1', 'bad_a',       'rise_inmail_v1', 1, 8,  0,  10, true, null, 'linkedin_inmail');
+select fx_seed('00000000-0000-0000-0000-0000000000c1', 'bad_b',       'rise_inmail_v1', 1, 8,  0,  10, true, null, 'linkedin_inmail');
+select fx_seed('00000000-0000-0000-0000-0000000000c1', 'good_source', 'rise_inmail_v1', 1, 100, 40, 40, false, null, 'linkedin_inmail');

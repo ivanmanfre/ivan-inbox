@@ -25,7 +25,7 @@ $$;
 
 create or replace function outreach_perf_payload(p_client_id text, p_days int default 90)
 returns jsonb
-language plpgsql volatile security definer set search_path = public as $$
+language plpgsql volatile security definer set search_path = public, pg_temp as $$
 declare
   v_mature timestamptz := now() - interval '7 days';
   v_cur_from timestamptz := now() - interval '21 days';
@@ -132,6 +132,9 @@ begin
     from drift d join splits s on s.lane = d.lane and s.step = d.step
     where s.n >= v_child_floor and (d.n - s.n) >= v_child_floor
     group by d.lane, d.step, s.dim
+    -- A dim whose worst child is still AT OR ABOVE baseline explains nothing: the miss sits in the
+    -- children the floors excluded. Naming it would hand Ivan a suspect with a negative share.
+    having max((d.base_rate * s.n) - s.replies) > 0
   ),
   suspect as (
     select distinct on (lane, step) lane, step, dim, worst_missing
