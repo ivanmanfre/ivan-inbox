@@ -18,14 +18,14 @@ declare
   v_mature timestamptz := now() - interval '7 days';
   v_cur_from timestamptz := now() - interval '21 days';
   v_base_from timestamptz := now() - interval '81 days';
-  v_table_from timestamptz := now() - make_interval(days => greatest(p_days, 21));
+  v_table_from timestamptz := now() - make_interval(days => greatest(p_days, 81));
   v_floor int := 30;
   v_child_floor int := 15;
   v_lanes jsonb;
   v_threaded bigint;
   v_stamp bigint;
 begin
-  drop table if exists perf_sends; drop table if exists perf_scored;
+  drop table if exists pg_temp.perf_sends; drop table if exists pg_temp.perf_scored;
   create temp table perf_sends on commit drop as
   select m.id, m.prospect_id, m.sent_at, coalesce(m.ai_model, 'unknown') as variant,
          case when m.channel = 'linkedin_inmail' then 'inmail'
@@ -52,7 +52,8 @@ begin
     exists (select 1 from outreach_messages r where r.replies_to_message_id = s.id
               and r.direction = 'inbound' and not coalesce(r.is_reaction, false)) as threaded,
     (s.last_reply_at is not null and s.last_reply_at > s.sent_at
-      and not exists (select 1 from perf_sends s2 where s2.prospect_id = s.prospect_id
+      and not exists (select 1 from outreach_messages s2 where s2.prospect_id = s.prospect_id
+                        and s2.direction = 'outbound' and s2.sent_at is not null
                         and s2.sent_at > s.sent_at and s2.sent_at < s.last_reply_at)) as stamp_hit,
     (select r.reply_intent from outreach_messages r where r.replies_to_message_id = s.id
        and r.direction = 'inbound' and not coalesce(r.is_reaction, false)
