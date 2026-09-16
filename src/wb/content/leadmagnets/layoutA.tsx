@@ -6,19 +6,18 @@
    one row each, then the roster of other accounts running the same play.
    Reading order: what we did, then what everyone else did.
    ========================================================================== */
-import { Button } from '../../../ds'
 import { Cell, Ledger } from '../../kit'
 import { Failed } from '../parts'
 import { num } from '../../../lib/benchmark'
 import { dayLabel } from '../../../lib/reach'
 import { LM_TOP, perThousand, type LmWindow } from '../../../lib/leadMagnets'
 import {
-  CallsNote, EMPTY_ROSTER, EYEBROW_OWN, EYEBROW_ROSTER, GatedLine, LmLine,
+  CallsNote, EMPTY_ROSTER, EYEBROW_OWN, EYEBROW_ROSTER, Fold, GatedLine, LmLine,
   activeLine, emptyOwn, gatedCounts, ownSub, plural, rankLine,
   type OwnView, type RosterView,
 } from './parts'
 
-export function LayoutA({ own, roster, ownFail, rosterFail, weeks, thisYear, showAll, onShowAll, onRetry }: {
+export function LayoutA({ own, roster, ownFail, rosterFail, weeks, thisYear, showAll, onShowAll, showAllOwn, onShowAllOwn, onRetry }: {
   own: OwnView | null
   roster: RosterView | null
   ownFail: string | null
@@ -27,10 +26,14 @@ export function LayoutA({ own, roster, ownFail, rosterFail, weeks, thisYear, sho
   thisYear: number
   showAll: boolean
   onShowAll: () => void
+  showAllOwn: boolean
+  onShowAllOwn: () => void
   onRetry?: () => void
 }) {
   const shown = roster ? (showAll ? roster.roster : roster.roster.slice(0, LM_TOP)) : []
   const hidden = roster ? roster.roster.length - shown.length : 0
+  const ownShown = own ? (showAllOwn ? own.rows : own.rows.slice(0, LM_TOP)) : []
+  const ownHidden = own ? own.rows.length - ownShown.length : 0
   const best = roster?.best ?? null
   const sinceLabel = own ? dayLabel(own.since, thisYear) : ''
   const bestRate = best ? perThousand(best.comments, best.follower_count) : null
@@ -82,8 +85,9 @@ export function LayoutA({ own, roster, ownFail, rosterFail, weeks, thisYear, sho
               {own.rows.length
                 ? <>
                     <ul className="a-lm-tbl" data-cols="4">
-                      {own.rows.map(r => <LmLine key={r.row.slug} row={r.row} posted={r.posted} weeks={weeks} thisYear={thisYear} />)}
+                      {ownShown.map(r => <LmLine key={r.row.slug} row={r.row} posted={r.posted} weeks={weeks} thisYear={thisYear} />)}
                     </ul>
+                    <Fold hidden={ownHidden} noun="lead magnets" open={showAllOwn} onToggle={onShowAllOwn} />
                     <CallsNote note={own.callsNote} />
                   </>
                 : <div className="a-lm-empty">{emptyOwn(own.since, thisYear)}</div>}
@@ -103,13 +107,7 @@ export function LayoutA({ own, roster, ownFail, rosterFail, weeks, thisYear, sho
                   <ul className="a-lm-tbl" data-cols="3">
                     {shown.map(p => <GatedLine key={p.post_ref} p={p} thisYear={thisYear} />)}
                   </ul>
-                  {hidden > 0 || showAll ? (
-                    <div className="a-lm-more">
-                      <Button variant="quiet" onClick={onShowAll}>
-                        {showAll ? 'Show fewer' : `Show ${num(hidden)} more`}
-                      </Button>
-                    </div>
-                  ) : null}
+                  <Fold hidden={hidden} noun="roster posts" open={showAll} onToggle={onShowAll} />
                 </>
               ) : <div className="a-lm-empty">{EMPTY_ROSTER}</div>}
             </>

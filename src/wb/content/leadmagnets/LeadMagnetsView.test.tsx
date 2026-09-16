@@ -101,6 +101,20 @@ describe('LeadMagnetsPanel', () => {
     expect(h).not.toMatch(HOLES)
   })
 
+  it('folds the own list at the top eight and names what the control hides', () => {
+    const many: LmRow[] = Array.from({ length: 11 }, (_, i) =>
+      lm({ slug: `lm-${i}`, title: `Magnet ${i}`, posts: 0, comments: 0, gate_dms: 0, cta_clicks: 11 - i, first_post: null, last_post: null, per_post_comments: null }))
+    const read: LeadMagnetsRead = { ...READY, kind: 'ready', lms: many }
+    for (const layout of ['a', 'b'] as const) {
+      const h = html({ lm: read, layout })
+      expect(h).toMatch(/Show 3 more lead magnets/)
+      expect(h).toMatch(/aria-expanded="false"/)
+      expect(h).toMatch(/Magnet 7/)      // the eighth row still shows
+      expect(h).not.toMatch(/Magnet 8/)  // the ninth is behind the fold
+      expect(h).not.toMatch(HOLES)
+    }
+  })
+
   it('states the window count, the whole read and the judged set in one line', () => {
     const h = html()
     // 3 of the 3 fixture posts fall in the 12-week window, which opens on the ISO Monday.

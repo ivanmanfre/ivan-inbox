@@ -8,6 +8,7 @@
    arithmetic — every number comes from `lib/leadMagnets` already computed.
    ========================================================================== */
 import type { ReactNode } from 'react'
+import { Button } from '../../../ds'
 import { num } from '../../../lib/benchmark'
 import { dayLabel, sinceMonday } from '../../../lib/reach'
 import {
@@ -154,6 +155,20 @@ export function ownSub(own: OwnView, thisYear: number, weeks: LmWindow): string 
     ? `1 posted in the last ${weeks} weeks`
     : `${num(own.postedInWindow)} posted in the last ${weeks} weeks`
   return `${activeLine(own.rows.length, own.total, own.since, thisYear)}, ${posted}.`
+}
+
+/** THE ONE FOLD CONTROL. Both lists use it, so the label always names what is
+    hidden ("Show 25 more roster posts", not "Show 25 more") and the control
+    reports its own state to a screen reader rather than only to the eye. */
+export function Fold({ hidden, noun, open, onToggle }: { hidden: number; noun: string; open: boolean; onToggle: () => void }) {
+  if (hidden <= 0 && !open) return null
+  return (
+    <div className="a-lm-more">
+      <Button variant="quiet" aria-expanded={open} onClick={onToggle}>
+        {open ? `Show fewer ${noun}` : `Show ${num(hidden)} more ${noun}`}
+      </Button>
+    </div>
+  )
 }
 
 export function Figs({ items }: { items: string[] }) {

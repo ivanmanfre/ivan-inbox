@@ -10,17 +10,15 @@
    keyword and the counts, not the body, so the disclosure shows the offer the
    judge read rather than an invented excerpt.
    ========================================================================== */
-import { Button } from '../../../ds'
 import { Failed } from '../parts'
-import { num } from '../../../lib/benchmark'
 import { LM_TOP, type LmWindow } from '../../../lib/leadMagnets'
 import {
-  CallsNote, EMPTY_ROSTER, EYEBROW_OWN, EYEBROW_ROSTER, GatedDetail, LmCard,
+  CallsNote, EMPTY_ROSTER, EYEBROW_OWN, EYEBROW_ROSTER, Fold, GatedDetail, LmCard,
   emptyOwn, gatedCounts, ownSub, rankLine,
   type OwnView, type RosterView,
 } from './parts'
 
-export function LayoutB({ own, roster, ownFail, rosterFail, weeks, thisYear, showAll, onShowAll, onRetry }: {
+export function LayoutB({ own, roster, ownFail, rosterFail, weeks, thisYear, showAll, onShowAll, showAllOwn, onShowAllOwn, onRetry }: {
   own: OwnView | null
   roster: RosterView | null
   ownFail: string | null
@@ -29,10 +27,14 @@ export function LayoutB({ own, roster, ownFail, rosterFail, weeks, thisYear, sho
   thisYear: number
   showAll: boolean
   onShowAll: () => void
+  showAllOwn: boolean
+  onShowAllOwn: () => void
   onRetry?: () => void
 }) {
   const shown = roster ? (showAll ? roster.roster : roster.roster.slice(0, LM_TOP)) : []
   const hidden = roster ? roster.roster.length - shown.length : 0
+  const ownShown = own ? (showAllOwn ? own.rows : own.rows.slice(0, LM_TOP)) : []
+  const ownHidden = own ? own.rows.length - ownShown.length : 0
 
   return (
     <>
@@ -48,13 +50,7 @@ export function LayoutB({ own, roster, ownFail, rosterFail, weeks, thisYear, sho
                   <ul className="a-lm-tbl" data-cols="3">
                     {shown.map(p => <GatedDetail key={p.post_ref} p={p} thisYear={thisYear} />)}
                   </ul>
-                  {hidden > 0 || showAll ? (
-                    <div className="a-lm-more">
-                      <Button variant="quiet" onClick={onShowAll}>
-                        {showAll ? 'Show fewer' : `Show ${num(hidden)} more`}
-                      </Button>
-                    </div>
-                  ) : null}
+                  <Fold hidden={hidden} noun="roster posts" open={showAll} onToggle={onShowAll} />
                 </>
               ) : <div className="a-lm-empty">{EMPTY_ROSTER}</div>}
             </>
@@ -71,8 +67,9 @@ export function LayoutB({ own, roster, ownFail, rosterFail, weeks, thisYear, sho
               {own.rows.length
                 ? <>
                     <div className="a-lm-cards">
-                      {own.rows.map(r => <LmCard key={r.row.slug} row={r.row} posted={r.posted} weeks={weeks} thisYear={thisYear} />)}
+                      {ownShown.map(r => <LmCard key={r.row.slug} row={r.row} posted={r.posted} weeks={weeks} thisYear={thisYear} />)}
                     </div>
+                    <Fold hidden={ownHidden} noun="lead magnets" open={showAllOwn} onToggle={onShowAllOwn} />
                     <CallsNote note={own.callsNote} />
                   </>
                 : <div className="a-lm-empty">{emptyOwn(own.since, thisYear)}</div>}

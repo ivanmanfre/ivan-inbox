@@ -80,9 +80,14 @@ export function LeadMagnetsPanel({ lm, gated, layout, weeks, onWeeks, now, onRet
 }) {
   const [mountedAt] = useState(() => Date.now())
   const [showAll, setShowAll] = useState(false)
+  const [showAllOwn, setShowAllOwn] = useState(false)
   const at = now ?? mountedAt
   const thisYear = new Date(at).getUTCFullYear()
   const state = lmState(lm, gated)
+
+  // A lane change remounts the whole view (Strategy keys it by lane), and a window
+  // change swaps both lists underneath, so neither fold may stay open across one.
+  useEffect(() => { setShowAll(false); setShowAllOwn(false) }, [weeks])
 
   const own = useMemo(() => (lm?.kind === 'ready' ? selectOwn(lm, weeks, at) : null), [lm, weeks, at])
   const roster = useMemo(() => (gated?.kind === 'ready' ? selectRoster(gated, weeks, at) : null), [gated, weeks, at])
@@ -102,6 +107,8 @@ export function LeadMagnetsPanel({ lm, gated, layout, weeks, onWeeks, now, onRet
         thisYear={thisYear}
         showAll={showAll}
         onShowAll={() => setShowAll(v => !v)}
+        showAllOwn={showAllOwn}
+        onShowAllOwn={() => setShowAllOwn(v => !v)}
         onRetry={onRetry}
       />
     )
