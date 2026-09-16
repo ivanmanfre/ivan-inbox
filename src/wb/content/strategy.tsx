@@ -27,6 +27,7 @@ import { Badge, Button, Card, IconButton, Input, Segmented, spring } from '../..
 import { Bar, Body, Group, Head, Screen } from '../kit'
 import { Failed, PullIndicator, relAge } from './parts'
 import { AudienceBlock } from './AudienceBlock'
+import { OutreachBlock } from './OutreachBlock'
 import { ProposalsBlock } from './ProposalsBlock'
 import { BenchmarkBlock } from './BenchmarkBlock'
 import { ThemesBlock } from './ThemesBlock'
@@ -311,6 +312,7 @@ export function StrategyView({ lane, setLane }: {
           { id: 'recommendations', label: 'Recommendations' },
           { id: 'results', label: 'Results' },
           { id: 'competitors', label: 'Competitors' },
+          { id: 'outreach', label: 'Outreach' },
           { id: 'notes', label: st.dirty ? 'Notes •' : 'Notes' },
         ]} />
     </Bar>
@@ -331,6 +333,7 @@ export function StrategyView({ lane, setLane }: {
           <details className="a-strategy-disclosure"><summary>Audience and recommendation outcomes</summary><AudienceBlock lane={lane} /></details>
         </div>}
         {view === 'competitors' && <BenchmarkBlock key={`${lane}-${refreshTick}`} lane={lane} view="competitors" />}
+        {view === 'outreach' && <div key={`${lane}-${refreshTick}`} className="a-strategy-panel"><OutreachBlock lane={lane} /></div>}
         {view === 'notes' && <>
         <div className="a-ct-sub">Private editorial notes{st.updatedAt ? ` · saved ${relAge(st.updatedAt)}` : ''}. These notes are not connected to the generator. Review dated claims against Competitors and Results before using them.</div>
         {st.error ? <Failed what="This lane's notes" message={st.error} onRetry={st.refresh} loadedAt={null} /> : st.loading ? (
