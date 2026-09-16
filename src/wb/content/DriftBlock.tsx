@@ -70,7 +70,7 @@ export function DriftView({ read, own, lane, now, onRetry }: {
     lines.push({
       key: 'reach',
       text: `${who}'s posts reach ${s.reachTop.city} most, ${s.reachTop.pct}% of members reached in the last 4 weeks. Accepts in ${s.reachTop.city} these ${DRIFT_DAYS} days: ${num(s.reachTop.joinedInCity)} of ${num(s.recent.n)}.`,
-      note: `${s.reachTop.posts} located posts, ${num(s.reachTop.reached)} members reached in the last 4 weeks; city match on the accept's location or country text`,
+      note: `${s.reachTop.posts} located posts, ${num(s.reachTop.reached)} members reached in the last 4 weeks; city match on the first segment of the accept's location or country text`,
     })
   }
   return (

@@ -96,38 +96,55 @@ function cityMatches(text: string | null, city: string): boolean {
   return cityOf(text).toLowerCase() === city.toLowerCase()
 }
 
-// Left lowercase when not the first word ("Head of Growth", not "Head Of Growth").
+// Forced lowercase when not the first word ("Head of Growth", not "Head Of Growth",
+// and "Head OF Growth" corrects the same way).
 const MINOR_WORDS = new Set(['of', 'and', 'the', 'at', 'in', 'for', 'to', 'a', 'an', 'on', 'with'])
+// Display casing only, not a gate: a whole word that is one of these common role
+// acronyms is shown upper-cased, whatever case it arrived in.
+const ALL_CAPS_WORDS = new Set(['ceo', 'cmo', 'cto', 'coo', 'cfo', 'vp', 'svp', 'evp', 'hr'])
 
-/** Upper-cases the first letter of each space-separated word, except a minor
-    word (see `MINOR_WORDS`) that is not the first word, which is left as-is.
-    The rest of every word is left untouched, so an existing acronym ("CEO")
-    or an already-normalised name ("USA"/"UK" from the COUNTRY table) survives
-    as-is. Applied to every group's survivor label so the display casing never
-    depends on which spelling of a case-insensitive group happened to arrive
-    first (Finding 2). */
+/** Upper-cases the first letter of each space-separated word; forces a non-first
+    minor word (see `MINOR_WORDS`) to lowercase, and a recognised acronym (see
+    `ALL_CAPS_WORDS`) to upper-case, at any position. Anything else keeps the
+    rest of the word untouched, so an already-normalised name ("USA"/"UK" from
+    the COUNTRY table) survives as-is. Applied to every group's canonical label
+    (Finding 1) so the display casing never depends on which spelling of a
+    case-insensitive group happened to arrive first, or how many times. */
 function titleCase(label: string): string {
   return label
     .split(' ')
-    .map((w, i) => (!w || (i > 0 && MINOR_WORDS.has(w.toLowerCase())) ? w : w[0].toUpperCase() + w.slice(1)))
+    .map((w, i) => {
+      if (!w) return w
+      const lower = w.toLowerCase()
+      if (ALL_CAPS_WORDS.has(lower)) return w.toUpperCase()
+      if (i > 0 && MINOR_WORDS.has(lower)) return lower
+      return w[0].toUpperCase() + w.slice(1)
+    })
     .join(' ')
 }
 
-/** Full ranked list, un-truncated: shifts (Finding 1) need shares beyond the top-`DRIFT_TOP` display slice. */
+/** Full ranked list, un-truncated: shifts (Finding 1) need shares beyond the top-`DRIFT_TOP` display slice.
+    Each case-insensitive group's canonical spelling is the exact text seen most often within that
+    group (ties broken by localeCompare), title-cased on top — so the label never depends on which
+    spelling of the group happened to be inserted first. */
 function buckets(values: Array<string | null>): { placed: number; list: DriftBucket[] } {
-  const count = new Map<string, { label: string; n: number }>()
+  const groups = new Map<string, Map<string, number>>()
   let placed = 0
   for (const v of values) {
     if (!v) continue
     placed++
     const key = v.toLowerCase()
-    const cur = count.get(key)
-    if (cur) cur.n++
-    else count.set(key, { label: v, n: 1 })
+    let spellings = groups.get(key)
+    if (!spellings) { spellings = new Map(); groups.set(key, spellings) }
+    spellings.set(v, (spellings.get(v) ?? 0) + 1)
   }
-  const list = [...count.values()]
+  const list = [...groups.values()]
+    .map(spellings => {
+      const n = [...spellings.values()].reduce((sum, c) => sum + c, 0)
+      const [canonical] = [...spellings.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]
+      return { label: titleCase(canonical), n, pct: placed ? Math.round((100 * n) / placed) : 0 }
+    })
     .sort((a, b) => b.n - a.n || a.label.localeCompare(b.label))
-    .map(b => ({ label: titleCase(b.label), n: b.n, pct: placed ? Math.round((100 * b.n) / placed) : 0 }))
   return { placed, list }
 }
 

@@ -84,9 +84,24 @@ describe('driftSummary', () => {
     const s = driftSummary(rows, [], NOW)
     expect(s.recent.titles[0]).toEqual({ label: 'Chief Marketing Officer', n: 10, pct: 100 })
   })
-  it('leaves a minor word lowercase mid-title but does not know acronyms, so "vp of sales" becomes "Vp of Sales", not "VP of Sales"', () => {
+  it('picks the group\'s most-used exact spelling as canonical, not whichever arrived first', () => {
+    // "Co-Founder" has more occurrences (2) than "co-founder" (1); the label
+    // must be "Co-Founder" whichever spelling was inserted into the group
+    // first. Padded with distinct single-count titles so the country floor
+    // (which titles' `hasShares` piggybacks on) is met.
+    const pad = Array.from({ length: 7 }, (_, i) => joined({ title: `Other ${i}` }))
+    const lowercaseFirst = [...many(1, { title: 'co-founder' }), ...many(2, { title: 'Co-Founder' }), ...pad]
+    expect(driftSummary(lowercaseFirst, [], NOW).recent.titles[0]).toEqual({ label: 'Co-Founder', n: 3, pct: 30 })
+    const properFirst = [...many(2, { title: 'Co-Founder' }), ...many(1, { title: 'co-founder' }), ...pad]
+    expect(driftSummary(properFirst, [], NOW).recent.titles[0]).toEqual({ label: 'Co-Founder', n: 3, pct: 30 })
+  })
+  it('upper-cases a recognised role acronym at any position, so "vp of sales" becomes "VP of Sales"', () => {
     const s = driftSummary(many(10, { title: 'vp of sales' }), [], NOW)
-    expect(s.recent.titles[0]).toEqual({ label: 'Vp of Sales', n: 10, pct: 100 })
+    expect(s.recent.titles[0]).toEqual({ label: 'VP of Sales', n: 10, pct: 100 })
+  })
+  it('forces a non-first minor word to lowercase even when the input shouts it, so "Head OF Growth" reads "Head of Growth"', () => {
+    const s = driftSummary(many(10, { title: 'Head OF Growth' }), [], NOW)
+    expect(s.recent.titles[0]).toEqual({ label: 'Head of Growth', n: 10, pct: 100 })
   })
   it('gates shares off below the floor, but keeps the raw counts', () => {
     const s = driftSummary(many(4, {}), [], NOW)
@@ -153,7 +168,7 @@ describe('driftSummary', () => {
     const s = driftSummary(rows, own, NOW)
     expect(s.reachTop).toEqual({ label: 'Zagreb Metropolitan Area', pct: 37, city: 'Zagreb', joinedInCity: 2, posts: 3, reached: 300 })
   })
-  it('matches the reach city on a boundary, not a substring, so "Rome" does not catch "Romeoville"', () => {
+  it('matches the reach city on its first segment so Rome skips Romeoville', () => {
     const own = [
       post({ demographics: { location: [{ label: 'Rome Metropolitan Area', pct: 32 }] } }),
       post({ demographics: { location: [{ label: 'Rome Metropolitan Area', pct: 40 }] } }),
@@ -192,6 +207,12 @@ describe('fetchNetworkDrift', () => {
   it('reports denied when the error message says unauthorized', async () => {
     rpc.mockResolvedValueOnce({ data: null, error: { message: 'unauthorized: not your seat' } })
     expect(await fetchNetworkDrift('arch')).toEqual({ kind: 'denied', message: 'unauthorized: not your seat' })
+  })
+  it('classifies "permission denied" as denied and any other message as failed', async () => {
+    rpc.mockResolvedValueOnce({ data: null, error: { message: 'permission denied for function operator_network_drift' } })
+    expect(await fetchNetworkDrift('arch')).toEqual({ kind: 'denied', message: 'permission denied for function operator_network_drift' })
+    rpc.mockResolvedValueOnce({ data: null, error: { message: 'service temporarily unavailable' } })
+    expect(await fetchNetworkDrift('arch')).toEqual({ kind: 'failed', message: 'service temporarily unavailable' })
   })
   it('reports failed for any other error', async () => {
     rpc.mockResolvedValueOnce({ data: null, error: { message: 'connection reset' } })
