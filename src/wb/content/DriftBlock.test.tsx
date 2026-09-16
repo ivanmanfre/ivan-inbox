@@ -35,6 +35,17 @@ describe('DriftView', () => {
     expect(html).toMatch(/1 of 17/)
     expect(html).not.toMatch(/NaN|undefined/)
   })
+  it('renders at most four shift lines when the module finds more', () => {
+    const six = ['US', 'Israel', 'Croatia', 'Poland', 'Germany', 'France']
+    // Recent: 12 placed, two per country, 17% each. Prior: 12 placed, US 58% and 8% each for the rest.
+    // Every country moves at least 5 points, so driftSummary returns six shifts.
+    const recent = six.flatMap(country => many(2, { country }))
+    const prior = [...many(7, { country: 'US', connected_at: at(120) }), ...six.slice(1).map(country => joined({ country, connected_at: at(120) }))]
+    const html = renderToStaticMarkup(<DriftView read={ready([...recent, ...prior])} own={[]} lane="arch" now={NOW} onRetry={() => {}} />)
+    expect(html).toMatch(/data-drift-shifts="6"/)
+    expect(html.match(/data-drift-line="shift-/g) ?? []).toHaveLength(4)
+    expect(html).not.toMatch(/NaN|undefined/)
+  })
   it('shows counts only under the floor and says so', () => {
     const html = renderToStaticMarkup(<DriftView read={ready(many(4, {}))} own={[]} lane="ivan" now={NOW} onRetry={() => {}} />)
     expect(html).toMatch(/4 connections accepted/)

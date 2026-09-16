@@ -20,6 +20,7 @@ import { Failed } from './parts'
 import './reach.css'
 
 const TITLE = 'Who joined the network'
+const SHIFT_LINES = 4   // the module returns every country over the threshold, sorted by size of move
 
 const plural = (n: number, one: string, many = `${one}s`) => `${num(n)} ${n === 1 ? one : many}`
 
@@ -42,7 +43,7 @@ export function DriftView({ read, own, lane, now, onRetry }: {
     return <div className="a-reach-sec" data-reach-drift={read.kind}><div className="a-eyebrow">{TITLE}</div><Failed what="The network read" message={read.kind === 'ready' ? 'The accepts could not be summarised.' : read.message} onRetry={onRetry} /></div>
   }
   const who = LANE_LABEL[lane].split(' ')[0]
-  const underFloor = s.recent.placed < DRIFT_FLOOR
+  const underFloor = !s.recent.hasShares   // lib/drift owns the floor; the view never recomputes it
   const lines: Array<{ key: string; text: string; note: string }> = []
   if (!underFloor) {
     lines.push({
@@ -54,10 +55,10 @@ export function DriftView({ read, own, lane, now, onRetry }: {
       lines.push({
         key: 'titles',
         text: `Titles: ${shares(s.recent.titles)}.`,
-        note: `top ${num(s.recent.titles.length)} of the titles on these accepts`,
+        note: `${num(s.recent.titled)} of ${num(s.recent.n)} accepts carry a title`,
       })
     }
-    for (const sh of s.shifts) {
+    for (const sh of s.shifts.slice(0, SHIFT_LINES)) {
       lines.push({
         key: `shift-${sh.label}`,
         text: `${sh.label}: ${sh.recentPct}% of accepts now, ${sh.priorPct}% in the ${DRIFT_DAYS} days before.`,
@@ -69,7 +70,7 @@ export function DriftView({ read, own, lane, now, onRetry }: {
     lines.push({
       key: 'reach',
       text: `${who}'s posts reach ${s.reachTop.city} most, ${s.reachTop.pct}% of members reached in the last 4 weeks. Accepts in ${s.reachTop.city} these ${DRIFT_DAYS} days: ${num(s.reachTop.joinedInCity)} of ${num(s.recent.n)}.`,
-      note: `location share from the reach rows above; city match on the accept's location text`,
+      note: `location share from the reach rows above, last 4 weeks; city match on the accept's location or country text`,
     })
   }
   return (
