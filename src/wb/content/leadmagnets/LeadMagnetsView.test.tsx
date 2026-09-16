@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { vi } from 'vitest'
 vi.mock('../../../lib/supabase', () => ({ supabase: {} }))
-import { LeadMagnetsPanel, lmState } from './LeadMagnetsView'
+import { LeadMagnetsPanel, armedLayout, lmState } from './LeadMagnetsView'
 import type { GatedPost, GatedRead, LeadMagnetsRead, LmRow } from '../../../lib/leadMagnets'
 
 const NOW = Date.parse('2026-09-16T12:00:00Z')
@@ -128,6 +128,29 @@ describe('LeadMagnetsPanel', () => {
     const h = html({ gated: null })
     expect(h).toMatch(/data-lm-state="loading"/)
     expect(h).toMatch(/Reading this lane’s lead magnets…/)
+  })
+
+  it('arms the layout from the search, from the hash, or from what a first arm stored', () => {
+    const mem = () => {
+      const box: Record<string, string> = {}
+      return { box, getItem: (k: string) => box[k] ?? null, setItem: (k: string, v: string) => { box[k] = v } }
+    }
+    // The Shell strips the hash query at boot, so the search is the form that
+    // survives a cold load; the hash form still works when it reaches this far.
+    const s1 = mem()
+    expect(armedLayout({ hash: '#exp/brain-b/strategy', search: '?lm=b' }, s1)).toBe('b')
+    // Armed once, the tab keeps it: the rewritten hash carries nothing.
+    expect(armedLayout({ hash: '#exp/brain-b/strategy', search: '' }, s1)).toBe('b')
+    const s2 = mem()
+    expect(armedLayout({ hash: '#exp/brain-b/strategy?lm=b', search: '' }, s2)).toBe('b')
+    expect(armedLayout({ hash: '#exp/brain-b/strategy?lm=a', search: '' }, s2)).toBe('a')
+    // Nothing asked for and nothing stored: the default arm.
+    expect(armedLayout({ hash: '#exp/brain-b/strategy', search: '' }, mem())).toBe('a')
+    expect(armedLayout({ hash: '', search: '' })).toBe('a')
+    // A store that throws (private window) never breaks the read.
+    const dead = { getItem: () => { throw new Error('blocked') }, setItem: () => { throw new Error('blocked') } }
+    expect(armedLayout({ hash: '', search: '?lm=b' }, dead)).toBe('b')
+    expect(armedLayout({ hash: '', search: '' }, dead)).toBe('a')
   })
 
   it('lmState takes the worse of the two reads', () => {

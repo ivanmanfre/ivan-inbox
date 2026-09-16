@@ -22,7 +22,7 @@ import { Segmented } from '../../../ds'
 import { Group } from '../../kit'
 import type { ContentLane } from '../../../lib/content'
 import {
-  LM_WINDOWS, fetchGatedPosts, fetchLeadMagnets, layoutFromLocation,
+  LM_DEFAULT_LAYOUT, LM_WINDOWS, fetchGatedPosts, fetchLeadMagnets, layoutFromLocation,
   type GatedRead, type LeadMagnetsRead, type LmLayout, type LmWindow,
 } from '../../../lib/leadMagnets'
 import { FOOT, selectOwn, selectRoster } from './parts'
@@ -43,6 +43,30 @@ export function lmState(lm: LeadMagnetsRead | null, gated: GatedRead | null): Lm
 }
 
 const DEFAULT_WINDOW: LmWindow = 12
+const LAYOUT_KEY = 'a-lm-layout'
+
+/* THE BALLOT ARM RIDES IN THE SEARCH, NOT IN THE HASH.
+   The workbench Shell rewrites the hash to its own canonical form at boot and
+   drops every key it does not own, so `#exp/brain-b/strategy?lm=b` is already
+   `#exp/brain-b/strategy` by the time anything here runs. Reading it earlier is
+   not available either: this view is reached through a lazily loaded screen
+   (`src/exp/v2c/Shell.tsx`), so its module body evaluates AFTER that rewrite.
+   Measured on 2026-09-16 against the dev server: the hash form arms layout A,
+   `http://host/?lm=b#exp/brain-b/strategy` arms layout B.
+   Whichever form armed it, the answer is held in sessionStorage so a lane
+   switch, a pull to refresh or any other remount keeps the arm for the tab. */
+export function armedLayout(loc: { hash: string; search: string }, store?: Pick<Storage, 'getItem' | 'setItem'>): LmLayout {
+  if (/[?&]lm=(a|b)\b/.test(loc.hash) || /[?&]?lm=(a|b)\b/.test(loc.search)) {
+    const v = layoutFromLocation(loc)
+    try { store?.setItem(LAYOUT_KEY, v) } catch { /* private window: the arm lasts this mount only */ }
+    return v
+  }
+  try {
+    const v = store?.getItem(LAYOUT_KEY)
+    if (v === 'a' || v === 'b') return v
+  } catch { /* nothing stored, nothing lost */ }
+  return LM_DEFAULT_LAYOUT
+}
 
 /** The whole surface, pure: both reads in, nothing fetched. The tests render this one. */
 export function LeadMagnetsPanel({ lm, gated, layout, weeks, onWeeks, now, onRetry }: {
@@ -109,10 +133,11 @@ export function LeadMagnetsView({ lane }: { lane: ContentLane }) {
   const [gated, setGated] = useState<{ lane: ContentLane; read: GatedRead } | null>(null)
   const [tick, setTick] = useState(0)
   const [weeks, setWeeks] = useState<LmWindow>(DEFAULT_WINDOW)
-  // Read once at mount: the layout is a ballot switch on the URL, not a control
-  // the operator flips mid-session.
+  // The arm was read when this module loaded (see `armedLayout`); a later read
+  // of the URL would find the hash already normalised. It is a ballot switch,
+  // never a control the operator flips mid-session.
   const [layout] = useState<LmLayout>(() =>
-    typeof window === 'undefined' ? 'a' : layoutFromLocation(window.location))
+    typeof window === 'undefined' ? LM_DEFAULT_LAYOUT : armedLayout(window.location, window.sessionStorage))
 
   useEffect(() => {
     let live = true
