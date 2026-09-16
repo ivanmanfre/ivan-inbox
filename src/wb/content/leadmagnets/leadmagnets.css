@@ -58,9 +58,16 @@ a.a-lm-t:focus-visible{ outline:2px solid var(--ds-accent-ui); outline-offset:2p
 
 /* The engine's own note about `calls`, collapsed: it is reference, not reading. */
 .a-lm-why{ margin-top:var(--ds-s2) }
-.a-lm-why > summary{ min-height:0; padding-block:var(--ds-s2) }
+/* A disclosure is a control, so it keeps the tap floor even though it is quiet. */
+.a-lm-why > summary{ min-height:var(--ds-tap); padding-block:var(--ds-s2) }
 .a-lm-why > summary .a-lm-note{ text-decoration:underline; text-decoration-color:var(--ds-hairline-strong); text-underline-offset:3px }
 .a-lm-why > summary .a-lm-note::after{ content:none }
+
+/* Phone: the author link is the row's one target, so it takes the tap floor
+   instead of being a 19px line of text inside a 60px row. */
+@media (max-width:51.999rem){
+  .a-lm-r a.a-lm-t{ display:inline-flex; align-items:center; min-height:var(--ds-tap) }
+}
 
 /* Cards, for the lane's own lead magnets in layout B. */
 .a-lm-cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(15rem,1fr)); gap:var(--ds-s3) var(--ds-s5) }
@@ -83,4 +90,5 @@ a.a-lm-t:focus-visible{ outline:2px solid var(--ds-accent-ui); outline-offset:2p
   .a-lm-tbl[data-cols="4"] .a-lm-r > .a-lm-note{ grid-column:1 / 6; grid-row:2 }
   .a-lm-tbl[data-cols="3"] .a-lm-r > .a-lm-note{ grid-column:1 / 5; grid-row:2 }
   .a-lm-tbl[data-cols="3"] .a-lm-d > summary{ min-height:0 }
+  .a-lm-why > summary{ min-height:0 }
 }

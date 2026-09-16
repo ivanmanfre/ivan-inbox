@@ -10,10 +10,11 @@ import { Button } from '../../../ds'
 import { Cell, Ledger } from '../../kit'
 import { Failed } from '../parts'
 import { num } from '../../../lib/benchmark'
+import { dayLabel } from '../../../lib/reach'
 import { LM_TOP, perThousand, type LmWindow } from '../../../lib/leadMagnets'
 import {
   CallsNote, EMPTY_ROSTER, EYEBROW_OWN, EYEBROW_ROSTER, GatedLine, LmLine,
-  activeLine, emptyOwn, ownSub, rosterLine,
+  activeLine, emptyOwn, gatedCounts, ownSub, plural, rankLine,
   type OwnView, type RosterView,
 } from './parts'
 
@@ -31,6 +32,7 @@ export function LayoutA({ own, roster, ownFail, rosterFail, weeks, thisYear, sho
   const shown = roster ? (showAll ? roster.roster : roster.roster.slice(0, LM_TOP)) : []
   const hidden = roster ? roster.roster.length - shown.length : 0
   const best = roster?.best ?? null
+  const sinceLabel = own ? dayLabel(own.since, thisYear) : ''
   const bestRate = best ? perThousand(best.comments, best.follower_count) : null
 
   return (
@@ -38,19 +40,25 @@ export function LayoutA({ own, roster, ownFail, rosterFail, weeks, thisYear, sho
       <Ledger>
         <Cell
           label="Lead magnets posted"
-          value={own ? num(own.posted.length) : null}
+          value={own ? num(own.postedInWindow) : null}
           emptyText="No read"
           note={own
-            ? activeLine(own.active, own.total, own.since, thisYear)
+            ? activeLine(own.rows.length, own.total, own.since, thisYear)
+            : 'The lead magnets read did not land'}
+        />
+        <Cell
+          label="CTA clicks"
+          value={own ? num(own.clicks) : null}
+          emptyText="No read"
+          note={own
+            ? `over ${plural(own.rows.length, 'lead magnet')} since ${sinceLabel}`
             : 'The lead magnets read did not land'}
         />
         <Cell
           label="Gated posts on the roster"
           value={roster ? num(roster.roster.length) : null}
           emptyText="No read"
-          note={roster
-            ? `of the ${num(roster.judged)} loudest roster posts judged`
-            : 'The roster read did not land'}
+          note={roster ? gatedCounts(roster, thisYear) : 'The roster read did not land'}
         />
         <Cell
           label="Best per 1k followers"
@@ -68,11 +76,15 @@ export function LayoutA({ own, roster, ownFail, rosterFail, weeks, thisYear, sho
           ? <Failed what="The lead magnets read" message={ownFail} onRetry={onRetry} />
           : own ? (
             <>
-              <div className="a-lm-sub">{ownSub(own, thisYear)}</div>
-              {own.posted.length
-                ? <ul className="a-lm-tbl" data-cols="4">{own.posted.map(r => <LmLine key={r.slug} row={r} thisYear={thisYear} />)}</ul>
-                : <div className="a-lm-empty">{emptyOwn(weeks)}</div>}
-              <CallsNote note={own.callsNote} />
+              <div className="a-lm-sub">{ownSub(own, thisYear, weeks)}</div>
+              {own.rows.length
+                ? <>
+                    <ul className="a-lm-tbl" data-cols="4">
+                      {own.rows.map(r => <LmLine key={r.row.slug} row={r.row} posted={r.posted} weeks={weeks} thisYear={thisYear} />)}
+                    </ul>
+                    <CallsNote note={own.callsNote} />
+                  </>
+                : <div className="a-lm-empty">{emptyOwn(own.since, thisYear)}</div>}
             </>
           ) : null}
       </div>
@@ -83,7 +95,7 @@ export function LayoutA({ own, roster, ownFail, rosterFail, weeks, thisYear, sho
           ? <Failed what="The gated posts read" message={rosterFail} onRetry={onRetry} />
           : roster ? (
             <>
-              <div className="a-lm-sub">{rosterLine(roster.sized, roster.roster.length, roster.judged)}</div>
+              <div className="a-lm-sub">{gatedCounts(roster, thisYear)} {rankLine(roster.sized, roster.roster.length)}</div>
               {roster.roster.length ? (
                 <>
                   <ul className="a-lm-tbl" data-cols="3">

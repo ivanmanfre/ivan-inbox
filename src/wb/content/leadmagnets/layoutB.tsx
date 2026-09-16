@@ -16,7 +16,7 @@ import { num } from '../../../lib/benchmark'
 import { LM_TOP, type LmWindow } from '../../../lib/leadMagnets'
 import {
   CallsNote, EMPTY_ROSTER, EYEBROW_OWN, EYEBROW_ROSTER, GatedDetail, LmCard,
-  emptyOwn, ownSub, rosterLine,
+  emptyOwn, gatedCounts, ownSub, rankLine,
   type OwnView, type RosterView,
 } from './parts'
 
@@ -42,7 +42,7 @@ export function LayoutB({ own, roster, ownFail, rosterFail, weeks, thisYear, sho
           ? <Failed what="The gated posts read" message={rosterFail} onRetry={onRetry} />
           : roster ? (
             <>
-              <div className="a-lm-sub">{rosterLine(roster.sized, roster.roster.length, roster.judged)}</div>
+              <div className="a-lm-sub">{gatedCounts(roster, thisYear)} {rankLine(roster.sized, roster.roster.length)}</div>
               {roster.roster.length ? (
                 <>
                   <ul className="a-lm-tbl" data-cols="3">
@@ -67,11 +67,15 @@ export function LayoutB({ own, roster, ownFail, rosterFail, weeks, thisYear, sho
           ? <Failed what="The lead magnets read" message={ownFail} onRetry={onRetry} />
           : own ? (
             <>
-              <div className="a-lm-sub">{ownSub(own, thisYear)}</div>
-              {own.posted.length
-                ? <div className="a-lm-cards">{own.posted.map(r => <LmCard key={r.slug} row={r} thisYear={thisYear} />)}</div>
-                : <div className="a-lm-empty">{emptyOwn(weeks)}</div>}
-              <CallsNote note={own.callsNote} />
+              <div className="a-lm-sub">{ownSub(own, thisYear, weeks)}</div>
+              {own.rows.length
+                ? <>
+                    <div className="a-lm-cards">
+                      {own.rows.map(r => <LmCard key={r.row.slug} row={r.row} posted={r.posted} weeks={weeks} thisYear={thisYear} />)}
+                    </div>
+                    <CallsNote note={own.callsNote} />
+                  </>
+                : <div className="a-lm-empty">{emptyOwn(own.since, thisYear)}</div>}
             </>
           ) : null}
       </div>

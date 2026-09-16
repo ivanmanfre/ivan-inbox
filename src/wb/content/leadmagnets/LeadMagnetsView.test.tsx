@@ -55,8 +55,8 @@ describe('LeadMagnetsPanel', () => {
     // two of the four catalog rows carry a post inside the window
     expect(h).toMatch(/Lead magnets posted/)
     expect(h).toMatch(/3 of 4 lead magnets show a post or a click since 17 Jun/)
-    expect(h).toMatch(/of the 58 loudest roster posts judged/)
-    expect(h).toMatch(/2 of 3 carry a follower count, of the 58 loudest roster posts judged\./)
+    expect(h).toMatch(/from the 58 loudest roster posts judged/)
+    expect(h).toMatch(/2 of 3 carry a follower count, so sized lines rank by comments per 1k followers and unsized lines follow by comments\./)
     expect(h).toMatch(/13\.3/)
     expect(h).not.toMatch(HOLES)
   })
@@ -65,8 +65,47 @@ describe('LeadMagnetsPanel', () => {
     const h = html()
     expect(h).toMatch(/Comments per post 6\.5, 14 gate DMs, 9 CTA clicks over 4 posts/)
     expect(h).toMatch(/1 post, under the 2-post floor, so no rate yet/)
-    expect(h).toMatch(/Calls not attributable/)
-    expect(h).toMatch(/1 lead magnet carries clicks with no post, so it sits in no window\./)
+  })
+
+  it('says the missing call ledger once, under the list, and never on a row', () => {
+    const h = html()
+    expect(h).toMatch(/Why calls read as not attributable/)
+    expect(h).not.toMatch(/Calls not attributable/)
+    // A lane with nothing to list has no list to explain, so no disclosure either.
+    const bare = html({ lm: { kind: 'ready', since: '2026-06-17T00:00:00Z', lms: [], readAt: at(0), calls_note: 'no ledger' } })
+    expect(bare).not.toMatch(/Why calls read as not attributable/)
+    expect(bare).toMatch(/No lead magnet shows a post or a click since 17 Jun\./)
+  })
+
+  it('keeps a lead magnet with clicks and no post, and states the window instead of hiding the row', () => {
+    const h = html()
+    // 29 CTA clicks, no post at all: the row the first build dropped.
+    expect(h).toMatch(/Return Rate Rescue/)
+    expect(h).toMatch(/15 CTA clicks/)
+    expect(h).toMatch(/No post carries this keyword yet\./)
+    // The ledger answers "which CTAs perform" on the first screenful.
+    expect(h).toMatch(/CTA clicks/)
+    expect(h).toMatch(/over 3 lead magnets since 17 Jun/)
+    expect(h).toMatch(/3 of 4 lead magnets show a post or a click since 17 Jun, 2 posted in the last 12 weeks\./)
+    // The sentence that used to explain the hiding is gone.
+    expect(h).not.toMatch(/sits in no window|sit in no window/)
+    expect(h).not.toMatch(HOLES)
+  })
+
+  it('states the window count, the whole read and the judged set in one line', () => {
+    const h = html()
+    // 3 of the 3 fixture posts fall in the 12-week window, which opens on the ISO Monday.
+    expect(h).toMatch(/3 gated posts since 29 Jun, 3 posts over 92 days, from the 58 loudest roster posts judged\./)
+  })
+
+  it('names what the roster ranked by, and changes the sentence when nothing carries a size', () => {
+    const unsized = POSTS.map(p => ({ ...p, follower_count: null, per_1k: null }))
+    const h = html({ gated: { ...GATED, kind: 'ready', posts: unsized } })
+    expect(h).toMatch(/No line carries a follower count, so the rank is by comments alone\./)
+    const sized = POSTS.filter(p => p.follower_count)
+    const h2 = html({ gated: { ...GATED, kind: 'ready', posts: sized } })
+    expect(h2).toMatch(/2 of 2 carry a follower count, so the rank is by comments per 1k followers\./)
+    // The mixed case is asserted in the layout A test above.
   })
 
   it('ranks the roster by per 1k with the unsized post last', () => {
@@ -95,9 +134,11 @@ describe('LeadMagnetsPanel', () => {
     const h = renderToStaticMarkup(
       <LeadMagnetsPanel lm={outside} gated={{ ...GATED, kind: 'ready', posts: [gp({ post_ref: 'ref-old', posted_at: at(60) })] }} layout="a" weeks={4} now={NOW} />)
     expect(h).toMatch(/data-lm-window="4"/)
-    expect(h).toMatch(/No lead magnet posted in the last 4 weeks\./)
+    // The row stays, its counts stay, and the note says the window is what is empty.
+    expect(h).toMatch(/The AI Kit/)
+    expect(h).toMatch(/No post in the last 4 weeks\./)
+    expect(h).toMatch(/1 of 1 lead magnet shows a post or a click since 17 Jun, 0 posted in the last 4 weeks\./)
     expect(h).toMatch(/No gated post judged on this roster yet\./)
-    expect(h).toMatch(/1 posted before this window\./)
     expect(h).not.toMatch(HOLES)
   })
 

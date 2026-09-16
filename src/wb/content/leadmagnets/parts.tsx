@@ -9,7 +9,7 @@
    ========================================================================== */
 import type { ReactNode } from 'react'
 import { num } from '../../../lib/benchmark'
-import { dayLabel } from '../../../lib/reach'
+import { dayLabel, sinceMonday } from '../../../lib/reach'
 import {
   LM_FLOOR_POSTS, activeLms, inWindow, lmRate, perThousand, rankGated, sizeLabel,
   type GatedPost, type GatedRead, type LeadMagnetsRead, type LmRow, type LmWindow,
@@ -19,10 +19,13 @@ export const EYEBROW_OWN = 'Your lead magnets'
 export const EYEBROW_ROSTER = 'Gated posts on the roster'
 export const EMPTY_ROSTER = 'No gated post judged on this roster yet.'
 export const CALLS_SUMMARY = 'Why calls read as not attributable'
+/* Two sentences, because one ran to four lines at 390. */
 export const FOOT =
-  'Comments per 1,000 followers puts a small account with a loud post above a big account with a quiet one. Where the follower count is unknown the line ranks by comments alone.'
+  'Comments per 1,000 followers puts a small account with a loud post above a big one with a quiet post. Lines with no follower count rank by comments alone, below the sized lines.'
 
-export const emptyOwn = (weeks: LmWindow) => `No lead magnet posted in the last ${weeks} weeks.`
+/** The catalog, not the window, is what is empty here: the window filters posts, never rows. */
+export const emptyOwn = (since: string, thisYear: number) =>
+  `No lead magnet shows a post or a click since ${dayLabel(since, thisYear)}.`
 
 export const plural = (n: number, one: string, many = `${one}s`) => `${num(n)} ${n === 1 ? one : many}`
 
@@ -32,16 +35,29 @@ export function activeLine(active: number, total: number, since: string, thisYea
   return `${num(active)} of ${num(total)} ${noun} a post or a click since ${dayLabel(since, thisYear)}`
 }
 
-/** The roster's own denominators: what carries a size, and what the ranking was drawn from. */
-export const rosterLine = (sized: number, shown: number, judged: number) =>
-  `${num(sized)} of ${num(shown)} carry a follower count, of the ${num(judged)} loudest roster posts judged.`
+/** THE THREE COUNTS NEVER TRAVEL ALONE. The window count, the whole read, and the
+    set the judge drew from are three different numbers and a reader who sees one
+    of them cannot derive the others: `33 gated posts since 29 Jun, 35 over 91
+    days, from the 58 loudest roster posts judged.` The window's start is the
+    ISO-week Monday `lib/reach` computes, printed rather than described. */
+export const gatedCounts = (r: RosterView, thisYear: number) =>
+  `${plural(r.roster.length, 'gated post')} since ${dayLabel(r.from, thisYear)}, ${plural(r.all, 'post')} over ${num(r.days)} days, from the ${num(r.judged)} loudest roster posts judged.`
+
+/** What the order in front of the reader actually is, stated the way the reach section states a floor. */
+export function rankLine(sized: number, shown: number): string {
+  if (shown === 0) return ''
+  if (sized === 0) return 'No line carries a follower count, so the rank is by comments alone.'
+  if (sized === shown) return `${num(sized)} of ${num(shown)} carry a follower count, so the rank is by comments per 1k followers.`
+  return `${num(sized)} of ${num(shown)} carry a follower count, so sized lines rank by comments per 1k followers and unsized lines follow by comments.`
+}
 
 const KIND_LABEL: Record<string, string> = { comment_gate: 'comment gate', dm_gate: 'DM gate', link: 'link' }
 export const kindLabel = (k: string) => KIND_LABEL[k] ?? k.replace(/_/g, ' ')
 export const keywordLabel = (k: string | null) => k && k.trim() ? k : 'no keyword'
 
-/** Null reads as "not attributable", never as zero: `calls_note` on the read says why. */
-export const callsPhrase = (row: LmRow) => row.calls == null ? 'Calls not attributable' : `${plural(row.calls, 'call')} booked`
+/** A number or nothing. A null is NOT said on the row: it would repeat on every line to
+    report the same missing ledger, and the disclosure under the list says it once. */
+export const callsPhrase = (row: LmRow) => row.calls == null ? null : plural(row.calls, 'call')
 
 export const lmFigures = (row: LmRow) => [
   plural(row.posts, 'post'),
@@ -58,27 +74,30 @@ export function lmDates(row: LmRow, thisYear: number): string {
     : `First post ${dayLabel(row.first_post, thisYear)}, last ${dayLabel(row.last_post, thisYear)}`
 }
 
-/** The rate with its denominator, or the floor said in words, then calls and dates. */
-export function lmNote(row: LmRow, thisYear: number): string {
+/** The rate with its denominator, or the floor said in words, then the window fact,
+    then calls when there is a number, then the dates. The rate and the counts are the
+    RPC's aggregates since its own `since`, which is why the note prints the dates. */
+export function lmNote(row: LmRow, thisYear: number, weeks: LmWindow, postedInWindow: boolean): string {
   const rate = lmRate(row)
   const floor = row.posts > 0 && row.posts < LM_FLOOR_POSTS
     ? `${plural(row.posts, 'post')}, under the ${LM_FLOOR_POSTS}-post floor, so no rate yet`
     : null
-  return [rate ? `${rate.text}, ${rate.note}` : null, floor, callsPhrase(row), lmDates(row, thisYear)]
+  const window = row.posts > 0 && !postedInWindow ? `No post in the last ${weeks} weeks` : null
+  return [rate ? `${rate.text}, ${rate.note}` : null, floor, window, callsPhrase(row), lmDates(row, thisYear)]
     .filter(Boolean).join('. ') + '.'
 }
 
-/** What a layout renders for the lane's own lead magnets in the open window.
-    `posted` is the rows with a post inside the window; `undated` is the rows
-    that carry clicks and no post at all, so they sit in no window and are
-    counted in words instead of being dropped silently. */
+/** EVERY ROW WITH ACTIVITY IS RENDERED. The window filters POSTS, never catalog
+    rows: a lead magnet with 29 CTA clicks and no post this window is the row most
+    worth reading, and the first build hid it. `posted` says whether that row's
+    last post falls in the open window, which the note then states. */
+export type OwnRow = { row: LmRow; posted: boolean }
 export type OwnView = {
   since: string
   total: number
-  active: number
-  posted: LmRow[]
-  undated: number
-  outside: number
+  rows: OwnRow[]
+  postedInWindow: number
+  clicks: number
   callsNote?: string
 }
 
@@ -86,21 +105,25 @@ export type LmReady = Extract<LeadMagnetsRead, { kind: 'ready' }>
 export type GatedReady = Extract<GatedRead, { kind: 'ready' }>
 
 export function selectOwn(read: LmReady, weeks: LmWindow, now: number): OwnView {
-  const active = activeLms(read.lms)
-  const posted = active.filter(r => inWindow(r.last_post, weeks, now))
+  const rows = activeLms(read.lms).map(row => ({ row, posted: inWindow(row.last_post, weeks, now) }))
   return {
     since: read.since,
     total: read.lms.length,
-    active: active.length,
-    posted,
-    undated: active.filter(r => !r.last_post).length,
-    outside: active.filter(r => r.last_post && !inWindow(r.last_post, weeks, now)).length,
+    rows,
+    postedInWindow: rows.filter(r => r.posted).length,
+    clicks: rows.reduce((a, r) => a + r.row.cta_clicks, 0),
     ...(read.calls_note ? { callsNote: read.calls_note } : {}),
   }
 }
 
 export type RosterView = {
   judged: number
+  /** Every gated post the read carries, windowed or not. */
+  all: number
+  /** Days the read itself covers, from its own `since` to now. */
+  days: number
+  /** The open window's first day, the ISO-week Monday. */
+  from: string
   roster: GatedPost[]
   sized: number
   best: GatedPost | null
@@ -110,22 +133,21 @@ export function selectRoster(read: GatedReady, weeks: LmWindow, now: number): Ro
   const roster = rankGated(read.posts.filter(p => inWindow(p.posted_at, weeks, now)))
   return {
     judged: read.judged,
+    all: read.posts.length,
+    days: Math.max(0, Math.round((now - Date.parse(read.since)) / 86400e3)),
+    from: sinceMonday(now, weeks),
     roster,
     sized: roster.filter(p => p.follower_count != null && p.follower_count > 0).length,
     best: roster.find(p => p.per_1k !== null) ?? null,
   }
 }
 
-/** The sentence a section shows when the window, not the lane, is what is empty. */
-export function ownSub(own: OwnView, thisYear: number): string {
-  const parts = [`${activeLine(own.active, own.total, own.since, thisYear)}.`]
-  if (own.outside) parts.push(`${num(own.outside)} posted before this window.`)
-  if (own.undated) {
-    parts.push(own.undated === 1
-      ? '1 lead magnet carries clicks with no post, so it sits in no window.'
-      : `${num(own.undated)} lead magnets carry clicks with no post, so they sit in no window.`)
-  }
-  return parts.join(' ')
+/** What the lane's catalog shows, and how much of it posted inside the open window. */
+export function ownSub(own: OwnView, thisYear: number, weeks: LmWindow): string {
+  const posted = own.postedInWindow === 1
+    ? `1 posted in the last ${weeks} weeks`
+    : `${num(own.postedInWindow)} posted in the last ${weeks} weeks`
+  return `${activeLine(own.rows.length, own.total, own.since, thisYear)}, ${posted}.`
 }
 
 export function Figs({ items }: { items: string[] }) {
@@ -137,32 +159,32 @@ export function Tag({ children }: { children: ReactNode }) {
 }
 
 /** One lead magnet as a row: title, its keyword and status, the four counts, then the note. */
-export function LmLine({ row, thisYear }: { row: LmRow; thisYear: number }) {
+export function LmLine({ row, posted, weeks, thisYear }: { row: LmRow; posted: boolean; weeks: LmWindow; thisYear: number }) {
   return (
     <li>
-      <div className="a-lm-r" data-lm-slug={row.slug}>
+      <div className="a-lm-r" data-lm-slug={row.slug} data-lm-posted={posted ? '' : undefined}>
         <span className="a-lm-t">
           {row.title || row.keyword || row.slug}
           <Tag>{keywordLabel(row.keyword)} · {row.status}</Tag>
         </span>
         <Figs items={lmFigures(row)} />
-        <span className="a-lm-note">{lmNote(row, thisYear)}</span>
+        <span className="a-lm-note">{lmNote(row, thisYear, weeks, posted)}</span>
       </div>
     </li>
   )
 }
 
 /** One lead magnet as a card: the keyword leads, the title explains it. */
-export function LmCard({ row, thisYear }: { row: LmRow; thisYear: number }) {
+export function LmCard({ row, posted, weeks, thisYear }: { row: LmRow; posted: boolean; weeks: LmWindow; thisYear: number }) {
   return (
-    <div className="a-lm-card" data-lm-slug={row.slug}>
+    <div className="a-lm-card" data-lm-slug={row.slug} data-lm-posted={posted ? '' : undefined}>
       <div className="a-lm-card-h">
         <span>{keywordLabel(row.keyword)}</span>
         <span className="a-mono a-dim-2">{row.status}</span>
       </div>
       <div className="a-lm-t">{row.title || row.slug}</div>
       <Figs items={lmFigures(row)} />
-      <div className="a-lm-note">{lmNote(row, thisYear)}</div>
+      <div className="a-lm-note">{lmNote(row, thisYear, weeks, posted)}</div>
     </div>
   )
 }
