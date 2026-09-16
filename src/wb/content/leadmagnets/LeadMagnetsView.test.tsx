@@ -92,6 +92,15 @@ describe('LeadMagnetsPanel', () => {
     expect(h).not.toMatch(HOLES)
   })
 
+  it('states an em dash out of a catalog title and an offer rather than printing one', () => {
+    const dashed: LeadMagnetsRead = { ...READY, kind: 'ready', lms: [lm({ slug: 'score', title: 'The Agency Efficiency Score — How Much Profit Are You Leaving on the Table?' })] }
+    const h = renderToStaticMarkup(
+      <LeadMagnetsPanel lm={dashed} gated={{ ...GATED, kind: 'ready', posts: [gp({ offer: 'the kit — free' })] }} layout="a" weeks={12} now={NOW} />)
+    expect(h).toMatch(/The Agency Efficiency Score, How Much Profit/)
+    expect(h).toMatch(/the kit, free/)
+    expect(h).not.toMatch(HOLES)
+  })
+
   it('states the window count, the whole read and the judged set in one line', () => {
     const h = html()
     // 3 of the 3 fixture posts fall in the 12-week window, which opens on the ISO Monday.

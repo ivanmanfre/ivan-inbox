@@ -51,6 +51,11 @@ export function rankLine(sized: number, shown: number): string {
   return `${num(sized)} of ${num(shown)} carry a follower count, so sized lines rank by comments per 1k followers and unsized lines follow by comments.`
 }
 
+/** Catalog titles and judge-written offers carry an em or en dash ("Score — Where the hours go"),
+    and the house rule is that neither reaches the screen. The sibling surface
+    (`src/wb/content/LeadMagnetsBlock.tsx`) states it out the same way: CHANGE ONE, CHANGE BOTH. */
+export const plain = (s: string) => s.replace(/\s*[—–]\s*/g, ', ')
+
 const KIND_LABEL: Record<string, string> = { comment_gate: 'comment gate', dm_gate: 'DM gate', link: 'link' }
 export const kindLabel = (k: string) => KIND_LABEL[k] ?? k.replace(/_/g, ' ')
 export const keywordLabel = (k: string | null) => k && k.trim() ? k : 'no keyword'
@@ -164,7 +169,7 @@ export function LmLine({ row, posted, weeks, thisYear }: { row: LmRow; posted: b
     <li>
       <div className="a-lm-r" data-lm-slug={row.slug} data-lm-posted={posted ? '' : undefined}>
         <span className="a-lm-t">
-          {row.title || row.keyword || row.slug}
+          {plain(row.title || row.keyword || row.slug)}
           <Tag>{keywordLabel(row.keyword)} · {row.status}</Tag>
         </span>
         <Figs items={lmFigures(row)} />
@@ -182,7 +187,7 @@ export function LmCard({ row, posted, weeks, thisYear }: { row: LmRow; posted: b
         <span>{keywordLabel(row.keyword)}</span>
         <span className="a-mono a-dim-2">{row.status}</span>
       </div>
-      <div className="a-lm-t">{row.title || row.slug}</div>
+      <div className="a-lm-t">{plain(row.title || row.slug)}</div>
       <Figs items={lmFigures(row)} />
       <div className="a-lm-note">{lmNote(row, thisYear, weeks, posted)}</div>
     </div>
@@ -197,15 +202,15 @@ export function gatedFigures(p: GatedPost): string[] {
 
 export function GatedLine({ p, thisYear }: { p: GatedPost; thisYear: number }) {
   const who = p.post_ref
-    ? <a className="a-lm-t" href={p.post_ref} target="_blank" rel="noopener noreferrer">{p.author}</a>
-    : <span>{p.author}</span>
+    ? <a className="a-lm-t" href={p.post_ref} target="_blank" rel="noopener noreferrer">{plain(p.author)}</a>
+    : <span>{plain(p.author)}</span>
   return (
     <li>
       <div className="a-lm-r" data-lm-author={p.author}>
         <span className="a-lm-t">{who}<Tag>{keywordLabel(p.gate_keyword)} · {kindLabel(p.cta_kind)}</Tag></span>
         <Figs items={gatedFigures(p)} />
         <span className="a-lm-note">
-          {p.offer}. Posted {dayLabel(p.posted_at, thisYear)}, {num(p.likes)} likes, {num(p.reposts)} reposts.
+          {plain(p.offer)}. Posted {dayLabel(p.posted_at, thisYear)}, {num(p.likes)} likes, {num(p.reposts)} reposts.
         </span>
       </div>
     </li>
@@ -218,11 +223,11 @@ export function GatedDetail({ p, thisYear }: { p: GatedPost; thisYear: number })
     <li>
       <details className="a-lm-d" data-lm-author={p.author}>
         <summary>
-          <span className="a-lm-t">{p.author}<Tag>{keywordLabel(p.gate_keyword)} · {kindLabel(p.cta_kind)}</Tag></span>
+          <span className="a-lm-t">{plain(p.author)}<Tag>{keywordLabel(p.gate_keyword)} · {kindLabel(p.cta_kind)}</Tag></span>
           <Figs items={gatedFigures(p)} />
         </summary>
         <div className="a-lm-dd">
-          <span className="a-lm-note">{p.offer}</span>
+          <span className="a-lm-note">{plain(p.offer)}</span>
           <Figs items={[`${num(p.likes)} likes`, `${num(p.reposts)} reposts`, kindLabel(p.cta_kind), `judged ${Math.round(p.confidence * 100)}% sure`]} />
           <span className="a-lm-note">
             Posted {dayLabel(p.posted_at, thisYear)}.{' '}
