@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('./supabase', () => ({ supabase: {} }))
 import {
   dayLabel, formatShares, isoWeek, reachShares, reachedOf, splitOf, summarizeReach, topBuckets,
-  reachInsights, shortTitle, weekStartOf, weightedSplit, type PostAudienceRow,
+  reachGroups, reachInsights, reachWinners, shortTitle, weekStartOf, weightedSplit, type PostAudienceRow,
 } from './reach'
 
 const post = (o: Partial<PostAudienceRow>): PostAudienceRow => ({
@@ -171,7 +171,9 @@ describe('what the history says', () => {
       post({ published_at: at(200), in_pct: 100, out_pct: 0, members_reached: 5000 }), // older than 12 weeks
       post({ published_at: at(5), members_reached: 5000 }), // no split: cannot say how many were in network
     ]
-    expect(reachInsights(rows, now).floor).toEqual({ posts: 10, median: 30, p90: 60 })
+    expect(reachInsights(rows, now).floor).toEqual({ posts: 10, median: 30, p90: 60, followers: null, ofFollowers: null })
+    expect(reachInsights(rows, now, 1910).floor).toMatchObject({ followers: 1910, ofFollowers: 1.6 }) // 30 / 1910 = 1.57%
+    expect(reachInsights(rows, now, 0).floor).toMatchObject({ followers: null, ofFollowers: null })
   })
   it('needs five posts with a split and reach before it states a floor', () => {
     expect(reachInsights(hist(4, { in_pct: 50, out_pct: 50, members_reached: 40 }), now).floor).toBeNull()
@@ -203,5 +205,52 @@ describe('what the history says', () => {
   it('lists the top location beside the other shares', () => {
     const s = summarizeReach([post({ members_reached: 100, demographics: { location: [{ label: 'Zagreb Metropolitan Area', pct: 33 }] } })], now)
     expect(s.recent.shares.location?.labels).toEqual([{ label: 'Zagreb Metropolitan Area', pct: 33 }])
+  })
+})
+
+describe('winners and groups', () => {
+  const now = Date.parse('2026-09-16T12:00:00Z')
+  const at = (daysAgo: number) => new Date(now - daysAgo * 86_400_000).toISOString()
+  it('lists the flagged posts newest first when the lane runs a winner rule', () => {
+    const rows = [
+      post({ published_at: at(40), is_winner: true, comments: 9, title: 'older winner' }),
+      post({ published_at: at(3), is_winner: true, comments: 22, title: 'new winner', reuse: { status: 'staged', eligible_at: '2026-12-01T14:00:00Z', title: 'Repurpose winner' } }),
+      post({ published_at: at(2), is_winner: false, comments: 40 }),
+    ]
+    const w = reachWinners(rows, now)
+    expect(w.mode).toBe('flagged')
+    expect(w.posts.map(p => p.title)).toEqual(['new winner', 'older winner'])
+  })
+  it('falls back to the most commented posts of the last 12 weeks, at least one comment, at most five', () => {
+    const rows = [
+      post({ published_at: at(2), comments: 0, members_reached: 999 }),
+      post({ published_at: at(100), comments: 30 }), // outside 12 weeks
+      ...[1, 2, 3, 4, 5, 6].map(c => post({ published_at: at(10 + c), comments: c, title: `c${c}` })),
+      post({ published_at: at(9), comments: null }),
+    ]
+    const w = reachWinners(rows, now)
+    expect(w).toMatchObject({ mode: 'candidates', weeks: 12 })
+    expect(w.posts.map(p => p.title)).toEqual(['c6', 'c5', 'c4', 'c3', 'c2'])
+  })
+  it('groups by a label with five posts each, best median reach first, profile views per 100 only when every post reports them', () => {
+    const rows = [
+      ...Array.from({ length: 5 }, () => post({ funnel_class: 'trust', members_reached: 466, in_pct: 55, out_pct: 45, profile_views: 1 })),
+      ...Array.from({ length: 6 }, () => post({ funnel_class: 'buyers', members_reached: 100, in_pct: 65, out_pct: 35, profile_views: 1 })),
+      ...Array.from({ length: 4 }, () => post({ funnel_class: 'reach', members_reached: 5000 })), // four: no group
+      post({ funnel_class: 'other', members_reached: 5000 }),
+    ]
+    expect(reachGroups(rows, p => p.funnel_class)).toEqual([
+      { label: 'trust', n: 5, reached: 466, outPct: 45, profileViewsPer100: 0.2 },
+      { label: 'buyers', n: 6, reached: 100, outPct: 35, profileViewsPer100: 1 },
+    ])
+    expect(reachGroups(rows.slice(0, 5), p => p.funnel_class)).toBeNull()
+    expect(reachGroups(rows.map(p => ({ ...p, profile_views: null })), p => p.funnel_class)?.[0].profileViewsPer100).toBeNull()
+  })
+  it('names hook types in words', () => {
+    const rows = [
+      ...Array.from({ length: 5 }, () => post({ hook_type: 'story_opener', members_reached: 49 })),
+      ...Array.from({ length: 5 }, () => post({ hook_type: 'data_led', members_reached: 22 })),
+    ]
+    expect(reachInsights(rows, now).byHookType?.map(g => [g.label, g.reached])).toEqual([['story opener', 49], ['data-led', 22]])
   })
 })

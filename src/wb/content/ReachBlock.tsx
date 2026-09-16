@@ -21,8 +21,8 @@ import { Button } from '../../ds'
 import { Cell, Group, Ledger, relAge } from '../kit'
 import { Failed } from './parts'
 import {
-  INSIGHT_WEEKS, RECENT_WEEKS, dayLabel, fetchPostAudience, reachInsights, reachedOf, splitOf, summarizeReach, topBuckets,
-  type PostAudienceRow, type ReachCategory, type ReachRead, type ReachWeek,
+  INSIGHT_WEEKS, RECENT_WEEKS, dayLabel, fetchPostAudience, reachInsights, reachWinners, reachedOf, shortTitle, splitOf, summarizeReach, topBuckets,
+  type PostAudienceRow, type ReachCategory, type ReachFollowers, type ReachGroup, type ReachRead, type ReachWeek,
 } from '../../lib/reach'
 import { num } from '../../lib/benchmark'
 import type { ContentLane } from '../../lib/content'
@@ -107,8 +107,11 @@ function WeekRow({ w, thisYear }: { w: ReachWeek; thisYear: number }) {
 }
 
 /** The readings the history supports, each with its post count. A reading below its floor is left out. */
-function Insights({ rows, now }: { rows: PostAudienceRow[]; now: number }) {
-  const i = useMemo(() => reachInsights(rows, now), [rows, now])
+const groupLine = (gs: ReachGroup[], views: boolean) => gs.map(g =>
+  `${g.label} ${num(g.reached)} reached, ${views && g.profileViewsPer100 != null ? `${g.profileViewsPer100} profile views per 100` : `${g.outPct}% out`}`).join(' · ')
+
+function Insights({ rows, now, followers }: { rows: PostAudienceRow[]; now: number; followers: ReachFollowers }) {
+  const i = useMemo(() => reachInsights(rows, now, followers?.count ?? null), [rows, now, followers])
   const lines: { key: string; text: string; note: string }[] = []
   if (i.concentration) {
     const c = i.concentration
@@ -123,8 +126,8 @@ function Insights({ rows, now }: { rows: PostAudienceRow[]; now: number }) {
   if (i.floor) {
     lines.push({
       key: 'floor',
-      text: `The author's own network shows a post to about ${num(i.floor.median)} people, and 9 in 10 posts stay under ${num(i.floor.p90)}. Everything above that came from outside the network.`,
-      note: `${plural(i.floor.posts, 'post')} with a split, last ${INSIGHT_WEEKS} weeks`,
+      text: `The author's own network shows a post to about ${num(i.floor.median)} people${i.floor.ofFollowers != null ? `, ${i.floor.ofFollowers}% of the ${num(i.floor.followers as number)} followers` : ''}, and 9 in 10 posts stay under ${num(i.floor.p90)}. Everything above that came from outside the network.`,
+      note: `${plural(i.floor.posts, 'post')} with a split, last ${INSIGHT_WEEKS} weeks${followers ? ` · followers as of ${dayLabel(followers.date, new Date(now).getUTCFullYear())}` : ''}`,
     })
   }
   if (i.outcome) {
@@ -139,6 +142,20 @@ function Insights({ rows, now }: { rows: PostAudienceRow[]; now: number }) {
       key: 'comments',
       text: `Posts with at least one comment reached ${num(i.comments.withComments.median)} people at the median, posts with none ${num(i.comments.without.median)}.`,
       note: `${num(i.comments.withComments.n)} and ${plural(i.comments.without.n, 'post')}, all history`,
+    })
+  }
+  if (i.byFunnelClass) {
+    lines.push({
+      key: 'funnel',
+      text: `By funnel class: ${groupLine(i.byFunnelClass, true)}.`,
+      note: `${i.byFunnelClass.map(g => `${g.label} ${g.n}`).join(', ')} posts, all history · median per class`,
+    })
+  }
+  if (i.byHookType) {
+    lines.push({
+      key: 'hook',
+      text: `By hook: ${groupLine(i.byHookType, false)}.`,
+      note: `${i.byHookType.map(g => `${g.label} ${g.n}`).join(', ')} posts, all history · median per hook`,
     })
   }
   if (!lines.length) return null
@@ -157,7 +174,55 @@ function Insights({ rows, now }: { rows: PostAudienceRow[]; now: number }) {
   )
 }
 
-export function ReachReady({ rows, readAt, now: nowProp }: { rows: PostAudienceRow[]; readAt: string; now?: number }) {
+const REUSE_STATUS: Record<string, string> = { staged: 'Reuse idea staged', approved: 'Reuse idea approved', drafted: 'Reuse drafted', published: 'Reused', archived: 'Reuse idea archived', rejected: 'Reuse idea rejected' }
+
+function WinnerLine({ p, thisYear }: { p: PostAudienceRow; thisYear: number }) {
+  const sp = splitOf(p), reached = reachedOf(p)
+  const industry = topBuckets(p.demographics?.industry, 1)[0], location = topBuckets(p.demographics?.location, 1)[0]
+  const title = shortTitle(p.title, 72) ?? 'Untitled post'
+  const eligible = p.reuse?.eligible_at ? dayLabel(p.reuse.eligible_at.slice(0, 10), thisYear) : null
+  const reuse = p.reuse
+    ? `${REUSE_STATUS[p.reuse.status] ?? `Reuse idea ${p.reuse.status}`}${eligible && p.reuse.status === 'staged' ? ` · eligible ${eligible}` : ''}`
+    : 'No reuse idea'
+  return (
+    <li className="a-reach-post a-reach-winner" data-reuse={p.reuse?.status ?? 'none'}>
+      {p.post_url
+        ? <a className="a-reach-post-t" href={p.post_url} target="_blank" rel="noopener noreferrer">{title}</a>
+        : <span className="a-reach-post-t">{title}</span>}
+      <span className="a-reach-post-m">
+        <span className="a-mono">{p.published_at ? dayLabel(p.published_at.slice(0, 10), thisYear) : 'Date unknown'}</span>
+        <span className="a-mono">{plural(p.comments ?? 0, 'comment')}</span>
+        <span className="a-mono">{reached != null ? `${num(reached)} reached` : 'Reach not reported'}</span>
+        {sp ? <span className="a-mono">{sp.outPct}% out</span> : null}
+      </span>
+      <span className="a-reach-post-d">
+        {[industry ? `${industry.label} ${industry.pct}%` : null, location ? `${location.label} ${location.pct}%` : null].filter(Boolean).join(' · ') || 'No buckets listed'}
+      </span>
+      <span className="a-reach-post-d a-reach-reuse">{reuse}</span>
+    </li>
+  )
+}
+
+/** Rise: the tracker's flagged winners with their reuse status. Other lanes: the most commented posts, labelled as candidates. */
+function Winners({ rows, now, thisYear }: { rows: PostAudienceRow[]; now: number; thisYear: number }) {
+  const w = useMemo(() => reachWinners(rows, now), [rows, now])
+  const flagged = w.mode === 'flagged'
+  return (
+    <div className="a-reach-sec" data-reach-winners={w.mode} data-winner-count={w.posts.length}>
+      <div className="a-eyebrow">{flagged ? 'Winners' : `Most commented · last ${w.weeks} weeks`}</div>
+      <div className="a-reach-foot">
+        {flagged
+          ? 'Flagged by the lane\'s winner rule: comments at three times the trailing 12-week median, at least 6. Impressions never count. A reuse idea opens 90 days after the post.'
+          : 'No winner rule runs on this lane. These are candidates to read, not flags: a comment can be a tag or a question.'}
+      </div>
+      {w.posts.length
+        ? <ul className="a-reach-posts a-reach-winners">{w.posts.map(p => <WinnerLine key={p.activity_id} p={p} thisYear={thisYear} />)}</ul>
+        : <div className="a-dim-2 a-reach-share-none">{flagged ? 'No winners flagged.' : `No post with a comment in the last ${w.weeks} weeks.`}</div>}
+    </div>
+  )
+}
+
+export function ReachReady({ rows, followers, readAt, now: nowProp }: { rows: PostAudienceRow[]; followers: ReachFollowers; readAt: string; now?: number }) {
   const [showOlder, setShowOlder] = useState(false)
   const [mountedAt] = useState(() => Date.now())
   const now = nowProp ?? mountedAt
@@ -190,7 +255,8 @@ export function ReachReady({ rows, readAt, now: nowProp }: { rows: PostAudienceR
         />
       </Ledger>
 
-      <Insights rows={rows} now={now} />
+      <Insights rows={rows} now={now} followers={followers} />
+      <Winners rows={rows} now={now} thisYear={thisYear} />
 
       <div className="a-reach-sec">
         <div className="a-eyebrow">Share of members reached · last {RECENT_WEEKS} weeks</div>
@@ -244,7 +310,7 @@ export function ReachReady({ rows, readAt, now: nowProp }: { rows: PostAudienceR
 export function ReachView({ read, onRetry, now }: { read: ReachRead | null; onRetry?: () => void; now?: number }) {
   let body
   if (!read) body = <div className="a-ct-sub">Reading who the posts reached…</div>
-  else if (read.kind === 'ready') body = <ReachReady rows={read.rows} readAt={read.readAt} now={now} />
+  else if (read.kind === 'ready') body = <ReachReady rows={read.rows} followers={read.followers} readAt={read.readAt} now={now} />
   else body = <Failed what="Who the posts reached" message={read.message} onRetry={onRetry} />
   return (
     <div className="a-reach" data-reach-state={read ? read.kind : 'loading'}>

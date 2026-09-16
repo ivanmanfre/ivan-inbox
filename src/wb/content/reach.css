@@ -22,6 +22,13 @@
 .a-reach-in-t{ font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); color:var(--ds-text); overflow-wrap:anywhere }
 .a-reach-in-n{ font-size:var(--ds-fs-mono) }
 
+/* Winners: the post list grammar without the left rule, one hairline per post. */
+.a-reach-winners{ border-inline-start:0; padding-inline-start:0; margin-bottom:0; border-top:1px solid var(--ds-line) }
+.a-reach-winners > .a-reach-post{ border-bottom:1px solid var(--ds-line) }
+.a-reach-winners > .a-reach-post + .a-reach-post{ border-top:0 }
+.a-reach-reuse{ color:var(--ds-text-2) }
+.a-reach-winner[data-reuse="none"] .a-reach-reuse{ color:var(--ds-text-3) }
+
 /* Shares: short columns on a wide screen, stacked on the phone. */
 .a-reach-shares{ display:grid; grid-template-columns:repeat(auto-fit,minmax(15rem,1fr)); gap:var(--ds-s3) var(--ds-s5) }
 .a-reach-share{ display:flex; flex-direction:column; gap:var(--ds-s1); min-width:0 }

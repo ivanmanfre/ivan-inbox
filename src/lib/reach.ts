@@ -41,6 +41,13 @@ export type PostAudienceRow = {
   /** From the trackers' latest capture or the backfill; absent on rows read before 069. */
   reactions?: number | null
   comments?: number | null
+  /** Tracker rows only (070): profile views from the post, the winner flag, funnel class, Ivan's hook type, a staged reuse idea. */
+  profile_views?: number | null
+  is_winner?: boolean | null
+  winner_detected_at?: string | null
+  funnel_class?: string | null
+  hook_type?: string | null
+  reuse?: { status: string; eligible_at: string | null; title: string | null } | null
   demographics: ReachDemographics | null
   captured_at: string | null
   source: string | null
@@ -277,9 +284,14 @@ export function shortTitle(title: string | null | undefined, max = 60): string |
   return `${(at > max / 2 ? cut.slice(0, at) : cut).replace(/[\s,.:;&-]+$/, '')}…`
 }
 
+export type ReachGroup = { label: string; n: number; reached: number; outPct: number; profileViewsPer100: number | null }
 export type ReachInsights = {
   concentration: { posts: number; reached: number; top: { title: string | null; reached: number; pct: number }; median: number } | null
-  floor: { posts: number; median: number; p90: number } | null
+  /** `ofFollowers` = median in-network people as a share of the lane's followers, one decimal, when a count is known. */
+  floor: { posts: number; median: number; p90: number; ofFollowers: number | null; followers: number | null } | null
+  /** Rise funnel classes and Ivan hook types, each group with at least five posts, best median reach first. Null under two groups. */
+  byFunnelClass: ReachGroup[] | null
+  byHookType: ReachGroup[] | null
   outcome: { small: { n: number; outPct: number }; large: { n: number; outPct: number } } | null
   comments: { withComments: { n: number; median: number }; without: { n: number; median: number } } | null
 }
@@ -289,7 +301,53 @@ const sinceMonday = (now: number, weeks: number) => {
   return new Date(new Date(`${current}T00:00:00Z`).getTime() - (weeks - 1) * 7 * DAY).toISOString().slice(0, 10)
 }
 
-export function reachInsights(rows: PostAudienceRow[], now: number = Date.now()): ReachInsights {
+const HOOK_LABEL: Record<string, string> = {
+  story_opener: 'story opener', data_led: 'data-led', quote_cold_open: 'quote cold open', how_to_declarative: 'how-to',
+  specific_receipt: 'specific receipt', contrarian: 'contrarian', pattern_interrupt: 'pattern interrupt',
+}
+
+/** Posts grouped by a label, groups under `MIN_GROUP` dropped, best median reach first. `other` and blanks never form a group. */
+export function reachGroups(rows: PostAudienceRow[], key: (p: PostAudienceRow) => string | null | undefined, label: (k: string) => string = k => k): ReachGroup[] | null {
+  const by = new Map<string, PostAudienceRow[]>()
+  for (const p of rows) {
+    const k = key(p)
+    if (!k || k === 'other' || reachedOf(p) == null) continue
+    by.set(k, [...(by.get(k) ?? []), p])
+  }
+  const groups: ReachGroup[] = []
+  for (const [k, ps] of by) {
+    if (ps.length < MIN_GROUP) continue
+    const reached = ps.reduce((a, p) => a + (reachedOf(p) as number), 0)
+    const pv = ps.filter(p => isNum(p.profile_views))
+    groups.push({
+      label: label(k), n: ps.length,
+      reached: median(ps.map(p => reachedOf(p) as number)) as number,
+      outPct: Math.round(median(ps.map(p => splitOf(p)?.outPct).filter((v): v is number => v != null)) ?? 0),
+      profileViewsPer100: pv.length === ps.length && reached > 0 ? Math.round((100 * pv.reduce((a, p) => a + (p.profile_views as number), 0) / reached) * 10) / 10 : null,
+    })
+  }
+  groups.sort((a, b) => b.reached - a.reached)
+  return groups.length >= 2 ? groups : null
+}
+
+export type ReachWinners =
+  /** The lane runs a winner rule (Rise): its flagged posts, newest first. */
+  | { mode: 'flagged'; posts: PostAudienceRow[] }
+  /** No rule on this lane: the most commented posts of the last 12 weeks, at least one comment, at most five. */
+  | { mode: 'candidates'; posts: PostAudienceRow[]; weeks: number }
+
+export function reachWinners(rows: PostAudienceRow[], now: number = Date.now()): ReachWinners {
+  const flagged = rows.filter(p => p.is_winner === true).sort((a, b) => String(b.published_at).localeCompare(String(a.published_at)))
+  if (flagged.length) return { mode: 'flagged', posts: flagged }
+  const from = sinceMonday(now, INSIGHT_WEEKS)
+  const posts = rows
+    .filter(p => (weekStartOf(p.published_at) ?? '') >= from && isNum(p.comments) && p.comments >= 1)
+    .sort((a, b) => (b.comments as number) - (a.comments as number) || (reachedOf(b) ?? 0) - (reachedOf(a) ?? 0))
+    .slice(0, 5)
+  return { mode: 'candidates', posts, weeks: INSIGHT_WEEKS }
+}
+
+export function reachInsights(rows: PostAudienceRow[], now: number = Date.now(), followers: number | null = null): ReachInsights {
   const dated = rows.filter(p => weekStartOf(p.published_at))
   const inWindow = (weeks: number) => { const from = sinceMonday(now, weeks); return dated.filter(p => (weekStartOf(p.published_at) as string) >= from) }
 
@@ -303,7 +361,14 @@ export function reachInsights(rows: PostAudienceRow[], now: number = Date.now())
   }
 
   const inNet = inWindow(INSIGHT_WEEKS).map(inNetworkOf).filter((v): v is number => v != null)
-  const floor = inNet.length >= MIN_GROUP ? { posts: inNet.length, median: median(inNet) as number, p90: percentile(inNet, 0.9) as number } : null
+  const floorMedian = median(inNet)
+  const floor = inNet.length >= MIN_GROUP && floorMedian != null
+    ? {
+      posts: inNet.length, median: floorMedian, p90: percentile(inNet, 0.9) as number,
+      followers: isNum(followers) && followers > 0 ? followers : null,
+      ofFollowers: isNum(followers) && followers > 0 ? Math.round((floorMedian / followers) * 1000) / 10 : null,
+    }
+    : null
 
   const withSplit = dated.filter(p => splitOf(p) && reachedOf(p) != null)
   const small = withSplit.filter(p => (reachedOf(p) as number) < 100).map(p => (splitOf(p) as { outPct: number }).outPct)
@@ -319,13 +384,18 @@ export function reachInsights(rows: PostAudienceRow[], now: number = Date.now())
     ? { withComments: { n: c1.length, median: median(c1) as number }, without: { n: c0.length, median: median(c0) as number } }
     : null
 
-  return { concentration, floor, outcome, comments }
+  return {
+    concentration, floor, outcome, comments,
+    byFunnelClass: reachGroups(dated, p => p.funnel_class),
+    byHookType: reachGroups(dated, p => p.hook_type, k => HOOK_LABEL[k] ?? k.replace(/_/g, ' ')),
+  }
 }
 
 // ---- read -----------------------------------------------------------------
 
+export type ReachFollowers = { count: number; date: string } | null
 export type ReachRead =
-  | { kind: 'ready'; rows: PostAudienceRow[]; readAt: string }
+  | { kind: 'ready'; rows: PostAudienceRow[]; followers: ReachFollowers; readAt: string }
   | { kind: 'denied'; message: string }
   | { kind: 'failed'; message: string }
 
@@ -340,7 +410,11 @@ export async function fetchPostAudience(lane: ContentLane): Promise<ReachRead> {
       ? { kind: 'denied', message }
       : { kind: 'failed', message }
   }
-  if (!Array.isArray(data)) return { kind: 'failed', message: 'Post reach returned no usable list.' }
-  if (!data.length) return { kind: 'failed', message: 'The read returned no posts, but this lane has tracked posts on record.' }
-  return { kind: 'ready', rows: data as PostAudienceRow[], readAt: new Date().toISOString() }
+  // 070 returns { posts, followers }; an older reply was the bare list.
+  const posts = Array.isArray(data) ? data : data && typeof data === 'object' && Array.isArray((data as { posts?: unknown }).posts) ? (data as { posts: unknown[] }).posts : null
+  if (!posts) return { kind: 'failed', message: 'Post reach returned no usable list.' }
+  if (!posts.length) return { kind: 'failed', message: 'The read returned no posts, but this lane has tracked posts on record.' }
+  const f = !Array.isArray(data) ? (data as { followers?: { count?: unknown; date?: unknown } | null }).followers : null
+  const followers: ReachFollowers = f && isNum(f.count) && f.count > 0 && typeof f.date === 'string' ? { count: f.count, date: f.date } : null
+  return { kind: 'ready', rows: posts as PostAudienceRow[], followers, readAt: new Date().toISOString() }
 }
