@@ -173,3 +173,6 @@
     padding-block:var(--ds-s4);
   }
 }
+.a-ops-arch-more{margin-top:6px}
+.a-ops-arch-more>summary{cursor:pointer;list-style:none;text-decoration:underline;text-underline-offset:3px}
+.a-ops-arch-more>summary::-webkit-details-marker{display:none}

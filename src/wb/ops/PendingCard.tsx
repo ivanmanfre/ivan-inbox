@@ -735,32 +735,40 @@ function StandardPendingCard({ draft, refresh, feed, onGateResult }: {
               )}
               {needsDavor && <Chip tone="attention">waiting on Davorin</Chip>}
             </div>
-            {archReason && <div className="a-ops-arch-why a-meta">{archReason}</div>}
-            {/* Only a DRAFT rests on something: the published line it answers
-                from. The other three outcomes exist because nothing does. */}
-            {archOut === 'DRAFT' && archBasis && (
-              <div className="a-ops-arch-why a-meta">Rests on: {archBasis}</div>
-            )}
-            {typeof draft.context?.arch_caution === 'string' && draft.context.arch_caution && (
-              <div className="a-ops-arch-why a-meta">Starting draft, check first: {draft.context.arch_caution}</div>
-            )}
-            {archSrc.length > 0 && (
-              <div className="a-ops-arch-src">
-                <div className="a-meta">Sources</div>
-                <ul className="a-ops-srcs">
-                  {archSrc.map(s => (
-                    <li key={s.id}>
-                      <span>{s.title}</span>
-                      <Sep />
-                      <span className="a-meta">{s.source_type}</span>
-                      <Sep />
-                      {/* A private source informed the read and may never be
-                          quoted back at the commenter. The card says which. */}
-                      <span className="a-meta">{s.public ? 'public' : 'private, context only'}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+            {/* Ivan 2026-09-17: the reasoning crowded out the comment and the reply box.
+                The chip says the verdict; the why, the check-first note and the sources
+                open on a tap. */}
+            {(archReason || archSrc.length > 0) && (
+              <details className="a-ops-arch-more">
+                <summary className="a-meta">Why, and what it read</summary>
+              {archReason && <div className="a-ops-arch-why a-meta">{archReason}</div>}
+              {/* Only a DRAFT rests on something: the published line it answers
+                  from. The other three outcomes exist because nothing does. */}
+              {archOut === 'DRAFT' && archBasis && (
+                <div className="a-ops-arch-why a-meta">Rests on: {archBasis}</div>
+              )}
+              {typeof draft.context?.arch_caution === 'string' && draft.context.arch_caution && (
+                <div className="a-ops-arch-why a-meta">Starting draft, check first: {draft.context.arch_caution}</div>
+              )}
+              {archSrc.length > 0 && (
+                <div className="a-ops-arch-src">
+                  <div className="a-meta">Sources</div>
+                  <ul className="a-ops-srcs">
+                    {archSrc.map(s => (
+                      <li key={s.id}>
+                        <span>{s.title}</span>
+                        <Sep />
+                        <span className="a-meta">{s.source_type}</span>
+                        <Sep />
+                        {/* A private source informed the read and may never be
+                            quoted back at the commenter. The card says which. */}
+                        <span className="a-meta">{s.public ? 'public' : 'private, context only'}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              </details>
             )}
           </div>
         )}
