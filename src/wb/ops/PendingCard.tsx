@@ -741,6 +741,9 @@ function StandardPendingCard({ draft, refresh, feed, onGateResult }: {
             {archOut === 'DRAFT' && archBasis && (
               <div className="a-ops-arch-why a-meta">Rests on: {archBasis}</div>
             )}
+            {typeof draft.context?.arch_caution === 'string' && draft.context.arch_caution && (
+              <div className="a-ops-arch-why a-meta">Starting draft, check first: {draft.context.arch_caution}</div>
+            )}
             {archSrc.length > 0 && (
               <div className="a-ops-arch-src">
                 <div className="a-meta">Sources</div>

@@ -85,6 +85,9 @@ export type OpsContext = {
   arch_outcome?: string
   arch_reason?: string
   arch_basis?: string
+  // set when a flagged card (escalate / needs Davor) still carries a starter draft
+  arch_starter?: boolean
+  arch_caution?: string | null
   arch_sources?: ArchSource[]
   drafted_at?: string
   draft_version?: number
