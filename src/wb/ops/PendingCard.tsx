@@ -17,7 +17,7 @@ import { useConfirm } from '../chrome/ConfirmSheet'
 import {
   approveOpsDraft, approveWeeklyReport, canGenerateDraft, canTagCommenter, isCloseOnlyComment,
   discardOpsDraft, DRAFT_CONTINUE_MAX, engineLabel, expiresIn, generateCommentDraft, likeComment,
-  markCommentHandled, outboundApproveUrl, outboundSkipUrl, postCommentReply, seatLabel,
+  markCommentHandled, outboundApproveUrl, outboundSkipUrl, postCommentReply, isHandWritten, seatLabel,
   dispatchCommentGate, cardStateOf, weeklyReportDispatches, weeklySendAfter,
   archOutcome, archOutcomeLabel, archSources, markNeedsDavor, DRAFTER_BUSY,
   type OpsDraft, type OpsKind, type GateVerdict, type FeedState,
@@ -457,8 +457,8 @@ function StandardPendingCard({ draft, refresh, feed, onGateResult }: {
         if (commentCloseOnly) {
           await markCommentHandled(draft.id)
         } else {
-          const out = await postCommentReply(draft.id, body, tag)
-          if (!out.posted) setError('Mattan already replied to this one, so nothing was posted. Card cleared.')
+          const out = await postCommentReply(draft.id, body, tag, isHandWritten(draft, body))
+          if (!out.posted) setError(`${draft.client_id === 'arch' ? 'Davorin' : 'Mattan'} already replied to this one, so nothing was posted. Card cleared.`)
           else if (out.tagged && out.tagVerified === false) {
             setError('Posted fine, but the tag rendered as plain text: LinkedIn would not resolve this profile for a mention (usually an out-of-network commenter with a hidden surname).')
           }

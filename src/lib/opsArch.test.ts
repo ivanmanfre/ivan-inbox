@@ -180,3 +180,16 @@ describe('Needs Davor stamps the row and reads what the database said', () => {
     })
   })
 })
+
+import { isHandWritten } from './ops'
+describe('isHandWritten', () => {
+  const base = { id: 'x', kind: 'comment_reply', client_id: 'arch', body: 'Thanks!', context: { arch_outcome: 'DRAFT' } } as never
+  it('is false for the untouched ARCH draft and for every RISE card', () => {
+    expect(isHandWritten(base, 'Thanks! ')).toBe(false)
+    expect(isHandWritten({ ...(base as object), client_id: 'risedtc' } as never, 'anything')).toBe(false)
+  })
+  it('is true when edited, or when the card never got a DRAFT verdict', () => {
+    expect(isHandWritten(base, 'Thanks a lot!')).toBe(true)
+    expect(isHandWritten({ ...(base as object), context: { arch_outcome: 'NEEDS_DAVOR' } } as never, 'Thanks!')).toBe(true)
+  })
+})

@@ -627,15 +627,30 @@ async function callCommentReplyFn(payload: Record<string, unknown>) {
     },
   )
   const out = await res.json().catch(() => ({}))
-  if (!res.ok || out?.ok === false) throw new Error(out?.error ?? `post failed (${res.status})`)
+  if (!res.ok || out?.ok === false) {
+    // The ARCH post-leg gate answers with a reason worth reading, not just a code.
+    const why = Array.isArray(out?.strikes) && out.strikes.length
+      ? `Not posted: ${out.strikes.map((k: { why?: string }) => k.why).filter(Boolean).join('; ')}`
+      : out?.detail ? `Not posted: ${out.detail}` : null
+    throw new Error(why ?? out?.error ?? `post failed (${res.status})`)
+  }
   return out
 }
 
+// True when what is about to post is not the ARCH drafter's own untouched draft.
+export function isHandWritten(d: OpsDraft, finalBody: string): boolean {
+  if (d.client_id !== 'arch') return false
+  return archOutcome(d) !== 'DRAFT' || finalBody.trim() !== (d.body ?? '').trim()
+}
+
 export async function postCommentReply(
-  id: string, editedBody: string, tagCommenter = true,
+  id: string, editedBody: string, tagCommenter = true, handWritten = false,
 ): Promise<{ posted: boolean; reason?: string; tagged?: boolean; tagVerified?: boolean | null }> {
   const out = await callCommentReplyFn({
     ops_draft_id: id, body: editedBody, tag_commenter: tagCommenter,
+    // ARCH post leg (2026-09-17): a machine draft must carry the drafter's DRAFT
+    // verdict; text Ivan typed or edited says so and still passes the range backstop.
+    ...(handWritten ? { hand_written: true } : {}),
   })
   return {
     posted: out.posted === true,
