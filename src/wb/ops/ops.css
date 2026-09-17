@@ -72,7 +72,16 @@
 .a-ops-tags{ display:flex; flex-wrap:wrap; gap:var(--ds-s2) }
 .a-ops-err{ color:var(--ds-sev-urgent-ui) }
 .a-ops-refused{ color:var(--ds-sev-attention-ui) }
+/* The drafter never ran: quiet, because nothing was decided and nothing broke. */
+.a-ops-note{ color:var(--ds-text-2) }
 .a-ops-cons{ color:var(--ds-text-3) }
+
+/* The ARCH verdict block: chip, the sentence behind it, and the receipts. */
+.a-ops-arch{ display:flex; flex-direction:column; gap:var(--ds-s2) }
+.a-ops-arch-why{ color:var(--ds-text-2) }
+.a-ops-arch-src{ display:flex; flex-direction:column; gap:var(--ds-s1); color:var(--ds-text-3) }
+.a-ops-srcs{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:var(--ds-s1) }
+.a-ops-srcs li{ display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--ds-s1); min-width:0 }
 .a-ops-takeover-title{ color:var(--ds-text); font-weight:var(--ds-fw-strong) }
 
 .a-ops-decide{ display:flex; flex-direction:column; gap:var(--ds-s3); width:100%; min-width:0 }

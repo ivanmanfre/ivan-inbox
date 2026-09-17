@@ -18,6 +18,17 @@ import { supabase } from './supabase'
 // See `isAudnKind` below for the one place that exclusion is written.
 export type OpsKind = 'escalation' | 'update' | 'newsjack' | 'weekly_report' | 'comment_reply' | 'comment_outbound' | 'booking' | 'precall_email' | 'manual_invite' | 'task' | 'leads_ballot' | 'audn_recommendation' | 'conversation_takeover'
 
+// One thing the ARCH drafter read before it answered. `public` is load-bearing:
+// a public source may be quoted back at a commenter, a private one (a call note,
+// an internal doc) may only inform the read, which is why the card prints the
+// distinction rather than a flat list of titles.
+export type ArchSource = {
+  id: string
+  source_type: string
+  title: string
+  public: boolean
+}
+
 // The row shape varies by kind (escalation carries a prospect, update carries
 // receipts, newsjack carries the idea it will generate from), so context stays a
 // loose bag rather than a fixed type.
@@ -65,6 +76,23 @@ export type OpsContext = {
   // Stamped by rise-comment-draft: this body came from the button, not from the
   // pipeline, so the card says so before Ivan posts it.
   drafted_on_demand?: boolean
+  // comment_reply · ARCH — stamped by `arch-comment-draft`. That drafter answers
+  // ONLY with what Davorin has already said in public, so it returns a verdict
+  // rather than a draft-or-nothing: `arch_outcome` is which of the four exits
+  // this comment took, `arch_reason` the sentence that justifies it, `arch_basis`
+  // (DRAFT only) the published line the reply rests on, and `arch_sources` what it
+  // read — each marked public (quotable) or private (context only, never quoted).
+  arch_outcome?: string
+  arch_reason?: string
+  arch_basis?: string
+  arch_sources?: ArchSource[]
+  drafted_at?: string
+  draft_version?: number
+  draft_rounds?: number
+  // Stamped by the card's own "Needs Davor" button: the operator read it and it
+  // wants Davorin himself. Nothing is sent and the card stays open.
+  needs_davor?: boolean
+  needs_davor_at?: string
   // booking — someone booked off the client's own LinkedIn link. Slack-bound, same
   // dispatcher contract as escalation/update: approve here, it posts to the client
   // channel ~2 minutes later. `matched_prospect` false means the booker is not in our
@@ -668,6 +696,72 @@ export type GeneratedDraft = {
   can_continue?: boolean
   rounds?: number
   closest?: string | null
+  // arch-comment-draft only — the verdict, written to the row's context too.
+  outcome?: ArchOutcome
+  category?: string
+  basis?: string
+  sources?: ArchSource[]
+  // The drafter could not run (proxy cap, model timeout). NOTHING was written and
+  // nothing was decided: this is neither a draft nor a refusal on the merits, and
+  // the card must not present it as either. Pressing again is the whole fix.
+  transient?: boolean
+  error?: string
+}
+
+// What the card says when the drafter never got to answer. It is not a refusal,
+// so it never renders on the "Refused:" line.
+export const DRAFTER_BUSY = 'drafter busy, nothing written, try again'
+
+// Each lane has its own drafter, because each answers to a different person's
+// public record: risedtc/ivan speak in Mattan's voice from the RISE corpus,
+// `arch` answers only with what Davorin has said in public. Routing on the row's
+// own client_id is what stops an ARCH card being handed to a function that
+// refuses every client but risedtc.
+export const COMMENT_DRAFT_FN: Record<string, string> = { arch: 'arch-comment-draft' }
+
+export function commentDraftFn(clientId?: string): string {
+  return (clientId && COMMENT_DRAFT_FN[clientId]) ?? 'rise-comment-draft'
+}
+
+// The four exits the ARCH drafter is allowed to take. Three of them leave the
+// body empty on purpose, and the card has to name which one it is — an empty
+// editor with no verdict reads as a drafter that broke.
+export type ArchOutcome = 'DRAFT' | 'NEEDS_DAVOR' | 'ESCALATE' | 'HANDLED'
+
+const ARCH_OUTCOMES: ArchOutcome[] = ['DRAFT', 'NEEDS_DAVOR', 'ESCALATE', 'HANDLED']
+
+// The stamped verdict on an ARCH comment card, or null when there is none to
+// read. Null for every other lane and every other kind: this is ARCH furniture,
+// and a RISE card must never grow it from a stray context key.
+export function archOutcome(d: OpsDraft): ArchOutcome | null {
+  if (d.kind !== 'comment_reply' || d.client_id !== 'arch') return null
+  const raw = d.context?.arch_outcome
+  if (typeof raw !== 'string') return null
+  const up = raw.trim().toUpperCase() as ArchOutcome
+  return ARCH_OUTCOMES.includes(up) ? up : null
+}
+
+// What the operator reads on the chip. ESCALATE says who answers instead, because
+// "Escalate" alone reads as a queue it goes into rather than a thing he does.
+export function archOutcomeLabel(outcome: ArchOutcome): string {
+  switch (outcome) {
+    case 'DRAFT': return 'Draft'
+    case 'NEEDS_DAVOR': return 'Needs Davor'
+    case 'ESCALATE': return 'Escalate: answer by hand'
+    case 'HANDLED': return 'No reply needed'
+  }
+}
+
+// The sources block is a receipt, not a bibliography: five is what fits on a
+// phone card, and anything beyond it is read on the post itself.
+export const ARCH_SOURCES_MAX = 5
+
+export function archSources(d: OpsDraft, max: number = ARCH_SOURCES_MAX): ArchSource[] {
+  const raw = d.context?.arch_sources
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter((s): s is ArchSource => Boolean(s) && typeof s === 'object' && typeof (s as ArchSource).title === 'string')
+    .slice(0, max)
 }
 
 // How many continuation calls one press of the button makes on its own. Each call
@@ -681,12 +775,16 @@ export const DRAFT_CONTINUE_MAX = 6
 // exemplars, same RAG corpus, same gates), for one card, now. It writes the body
 // and nothing else — publishing still goes through postCommentReply, which
 // re-reads the thread first. A refusal returns its reasons instead of a draft.
-export async function generateCommentDraft(id: string): Promise<GeneratedDraft> {
+//
+// `clientId` picks the lane's drafter (see commentDraftFn). It is optional only
+// so the older stock shell keeps compiling; every ARCH call site MUST pass the
+// row's client_id or the card is handed to a function that will refuse it.
+export async function generateCommentDraft(id: string, clientId?: string): Promise<GeneratedDraft> {
   const { data: sess } = await supabase.auth.getSession()
   const token = sess.session?.access_token
   if (!token) throw new Error('not signed in')
   const res = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/rise-comment-draft`,
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${commentDraftFn(clientId)}`,
     {
       method: 'POST',
       headers: {
@@ -698,8 +796,30 @@ export async function generateCommentDraft(id: string): Promise<GeneratedDraft> 
     },
   )
   const out = await res.json().catch(() => ({}))
+  // Read BEFORE the error guard, and before the continue loop can act on it: a
+  // transient bail wrote nothing and decided nothing. Treating it as a throw
+  // paints a red failure on the card; treating it as a refusal would tell the
+  // operator the drafter judged this comment when it never ran at all. Both are
+  // lies, so it comes back as its own state with the loop stopped.
+  if (out?.transient === true) {
+    return { ...out, drafted: false, can_continue: false, transient: true } as GeneratedDraft
+  }
   if (!res.ok || out?.ok === false) throw new Error(out?.error ?? `draft failed (${res.status})`)
   return out as GeneratedDraft
+}
+
+// "This one wants Davorin." Stamps the row and nothing else: no approve, no send,
+// no close — the card stays in the queue wearing the reason it is still there.
+//
+// A plain `update` on the jsonb column, so the whole context is merged HERE and
+// written back; the `{ error }` is read and thrown, never assumed away (a silent
+// PostgREST refusal would paint the chip and leave the row untouched, and the
+// next refresh would quietly drop it).
+export async function markNeedsDavor(d: OpsDraft, now: string = new Date().toISOString()): Promise<void> {
+  const { error } = await supabase.from('ops_drafts')
+    .update({ context: { ...(d.context ?? {}), needs_davor: true, needs_davor_at: now } })
+    .eq('id', d.id).is('sent_at', null)
+  if (error) throw error
 }
 
 // An escalate card has no draft to post: closing it is bookkeeping only, the same

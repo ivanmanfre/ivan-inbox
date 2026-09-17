@@ -19,6 +19,7 @@ import {
   discardOpsDraft, DRAFT_CONTINUE_MAX, engineLabel, expiresIn, generateCommentDraft, likeComment,
   markCommentHandled, outboundApproveUrl, outboundSkipUrl, postCommentReply, seatLabel,
   dispatchCommentGate, cardStateOf, weeklyReportDispatches, weeklySendAfter,
+  archOutcome, archOutcomeLabel, archSources, markNeedsDavor, DRAFTER_BUSY,
   type OpsDraft, type OpsKind, type GateVerdict, type FeedState,
 } from '../../lib/ops'
 import { Banner, Button, Chip, Textarea } from '../../ds'
@@ -231,6 +232,12 @@ function StandardPendingCard({ draft, refresh, feed, onGateResult }: {
   // context.liked is the durable answer (stamped by the edge fn); likedNow just
   // paints the button before the next refresh lands.
   const [likedNow, setLikedNow] = useState(false)
+  // Same pattern for the ARCH "Needs Davor" stamp: context.needs_davor is the
+  // durable answer, this paints the chip between the write and the refresh.
+  const [davorNow, setDavorNow] = useState(false)
+  // The drafter never ran. Not a refusal (it judged nothing) and not an error
+  // (nothing broke), so it gets its own quiet line.
+  const [busyNote, setBusyNote] = useState('')
   // Why the engine refused to write one. Named gate violations, not a spinner
   // that stops: a refusal Ivan cannot see reads as a broken button.
   const [refusal, setRefusal] = useState<string[]>([])
@@ -266,6 +273,21 @@ function StandardPendingCard({ draft, refresh, feed, onGateResult }: {
   // So what decides "post it" vs "just close it" is whether there is text in the
   // box RIGHT NOW. See isCloseOnlyComment for what keying it on the stored row cost.
   const isCloseOnly = isCloseOnlyComment(draft, body)
+  // The ARCH lane (Davorin's own posts) reads its comments through a drafter that
+  // answers with a VERDICT, so the card carries the verdict: the chip, the reason
+  // it gave, what a draft rests on, and what it read. It also splits the two acts
+  // the RISE card folds into one primary — posting and closing are separate
+  // buttons here, because "Needs Davor" sits between them and a card that silently
+  // turned its post button into a close button while he waited would post nothing.
+  const isArchComment = isComment && draft.client_id === 'arch'
+  const archOut = archOutcome(draft)
+  const archReason = typeof draft.context?.arch_reason === 'string' ? draft.context.arch_reason : ''
+  const archBasis = typeof draft.context?.arch_basis === 'string' ? draft.context.arch_basis : ''
+  const archSrc = isArchComment ? archSources(draft) : []
+  const needsDavor = davorNow || draft.context?.needs_davor === true
+  // RISE keeps the one-primary flip it has always had; ARCH never closes a card
+  // from the button that says "post".
+  const commentCloseOnly = isCloseOnly && !isArchComment
   // ...but "on purpose" is not the same as "never". The button writes one
   // through the same gates the pipeline uses, and the card keeps saying whose
   // idea it was.
@@ -307,11 +329,11 @@ function StandardPendingCard({ draft, refresh, feed, onGateResult }: {
     }
     : isComment
       ? {
-        title: isCloseOnly ? 'Mark this handled?' : `Post this reply as ${where}?`,
-        message: isCloseOnly
+        title: commentCloseOnly ? 'Mark this handled?' : `Post this reply as ${where}?`,
+        message: commentCloseOnly
           ? 'Nothing is posted. The card clears and you stop being reminded about this comment.'
           : `Goes live on LinkedIn under their comment, from the client seat.${tag && canTag && commenterName ? ` Tags ${commenterName} so they get the notification, like a native reply.` : ''}${liked ? '' : ' Their comment gets a like too.'} Checks first that they have not already been answered.`,
-        confirmText: isCloseOnly ? 'Mark handled' : 'Approve & post',
+        confirmText: commentCloseOnly ? 'Mark handled' : 'Approve & post',
       }
       : draft.kind === 'precall_email'
         ? {
@@ -366,6 +388,15 @@ function StandardPendingCard({ draft, refresh, feed, onGateResult }: {
             : `It won't be posted to ${draft.slack_channel}.`,
     confirmText: 'Discard',
     danger: true,
+  }
+
+  // The same sentence the RISE card's close-only primary confirms with, read
+  // twice here too: the sheet fires it and the foot prints it as the button's
+  // consequence before the click.
+  const handledConfirm = {
+    title: 'Mark this handled?',
+    message: 'Nothing is posted. The card clears and you stop being reminded about this comment.',
+    confirmText: 'Mark handled',
   }
 
   async function onApprove() {
@@ -423,7 +454,7 @@ function StandardPendingCard({ draft, refresh, feed, onGateResult }: {
       if (!ok) return
       setBusy(true); setError('')
       try {
-        if (isCloseOnly) {
+        if (commentCloseOnly) {
           await markCommentHandled(draft.id)
         } else {
           const out = await postCommentReply(draft.id, body, tag)
@@ -509,16 +540,27 @@ function StandardPendingCard({ draft, refresh, feed, onGateResult }: {
   // `can_continue`; this presses again for Ivan, so one tap runs the whole
   // reasoning loop and a refusal only reaches him once the rounds are spent.
   async function onGenerate() {
-    setDrafting(true); setError(''); setRefusal([])
+    setDrafting(true); setError(''); setRefusal([]); setBusyNote('')
     try {
-      let out = await generateCommentDraft(draft.id)
-      for (let n = 0; !out.drafted && out.can_continue && n < DRAFT_CONTINUE_MAX; n++) {
+      let out = await generateCommentDraft(draft.id, draft.client_id)
+      for (let n = 0; !out.drafted && !out.transient && out.can_continue && n < DRAFT_CONTINUE_MAX; n++) {
         setRefusal([out.why?.[0] ?? 'Still working…'])
-        out = await generateCommentDraft(draft.id)
+        out = await generateCommentDraft(draft.id, draft.client_id)
       }
-      if (out.drafted && out.draft) {
+      if (out.transient) {
+        // Nothing was written and nothing was judged, so the card says exactly
+        // that and keeps every action it had.
+        setRefusal([])
+        setBusyNote(DRAFTER_BUSY)
+      } else if (out.drafted && out.draft) {
         setRefusal([])
         setBody(out.draft)
+        refresh()
+      } else if (isArchComment) {
+        // The ARCH drafter's "no draft" is a VERDICT, not a gate failure: it wrote
+        // its outcome, reason and sources to the row, so the card re-reads the row
+        // and renders them instead of printing a refusal it did not make.
+        setRefusal([])
         refresh()
       } else {
         setRefusal(out.why?.length ? out.why : ['No draft survived the voice gates. Write this one yourself.'])
@@ -526,6 +568,32 @@ function StandardPendingCard({ draft, refresh, feed, onGateResult }: {
       }
     } catch (e) { setError(errText(e)) }
     finally { setDrafting(false) }
+  }
+
+  // "This one wants Davorin." Nothing is sent and nothing is closed — the row is
+  // stamped, the card keeps its place in the queue, and the chip says why it is
+  // still sitting there. The write's own error is read and shown: a chip painted
+  // over a refused update would be the card lying about a database row.
+  async function onNeedsDavor() {
+    if (busy || needsDavor) return
+    setBusy(true); setError('')
+    try {
+      await markNeedsDavor(draft)
+      setDavorNow(true)
+      refresh()
+    } catch (e) { setError(errText(e)) }
+    finally { setBusy(false) }
+  }
+
+  // The close-only path the RISE card reaches through its primary. On an ARCH
+  // card it is its own quiet button, because the primary stays "Approve & post".
+  async function onMarkHandled() {
+    const ok = await confirm(handledConfirm)
+    if (!ok) return
+    setBusy(true); setError('')
+    try { await markCommentHandled(draft.id); refresh() }
+    catch (e) { setError(errText(e)) }
+    finally { setBusy(false) }
   }
 
   async function onDiscard() {
@@ -554,8 +622,15 @@ function StandardPendingCard({ draft, refresh, feed, onGateResult }: {
         : 'Read the page first. Edit this message, then copy it and send it yourself.'
       : isComment
         ? (isCloseOnly
-          ? (draft.client_id === 'arch'
-            ? 'No draft on purpose: this one wants Davorin in his own words. No ARCH drafter exists yet, so write it by hand in his register. Type above and the button posts it.'
+          ? (isArchComment
+            // Before the drafter has answered, the note is an instruction AND a
+            // boundary: it drafts from Davorin's public record only, and when the
+            // record does not cover the question it says so instead of inventing
+            // him an opinion. Once it HAS answered, the verdict block above the
+            // editor carries the reason and this stops repeating the invitation.
+            ? (archOut
+              ? 'Davorin answers this one in his own words. Type above and the button posts it.'
+              : 'Press Draft it. The drafter answers only what Davorin has said in public, and says so when it cannot.')
             : 'No draft on purpose: this one wants Mattan in his own words. Type above and the button posts it, or press Draft it for a starting point.')
           : isEscalatedComment
             ? 'Your own words. Approve posts this live under their comment.'
@@ -569,12 +644,15 @@ function StandardPendingCard({ draft, refresh, feed, onGateResult }: {
           : undefined
 
   const approveLabel = busy
-    ? (isNewsjack ? 'Writing…' : isCloseOnly ? 'Closing…' : isComment ? 'Posting…' : isOutbound ? (approveUrl ? 'Opening…' : 'Copying…') : isWeekly ? (weeklyDispatches ? 'Sending…' : 'Copying…') : 'Sending…')
-    : (isNewsjack ? 'Approve & draft' : isCloseOnly ? 'Mark handled' : isComment ? 'Approve & post' : isOutbound ? (approveUrl ? 'Approve & queue' : 'Approve & copy') : isWeekly ? (weeklyDispatches ? 'Approve & send' : 'Approve & copy') : 'Approve & send')
+    ? (isNewsjack ? 'Writing…' : commentCloseOnly ? 'Closing…' : isComment ? 'Posting…' : isOutbound ? (approveUrl ? 'Opening…' : 'Copying…') : isWeekly ? (weeklyDispatches ? 'Sending…' : 'Copying…') : 'Sending…')
+    : (isNewsjack ? 'Approve & draft' : commentCloseOnly ? 'Mark handled' : isComment ? 'Approve & post' : isOutbound ? (approveUrl ? 'Approve & queue' : 'Approve & copy') : isWeekly ? (weeklyDispatches ? 'Approve & send' : 'Approve & copy') : 'Approve & send')
 
   const foot = (
     <div className="a-ops-decide">
       {error && <div className="a-ops-err a-meta">{error}</div>}
+      {/* The drafter never ran. It reads as neither red nor refused, because it
+          was neither: pressing again is the whole fix. */}
+      {busyNote && <div className="a-ops-note a-meta">{busyNote}</div>}
       {/* If the Draft it button is gone, its refusal still belongs on the card. */}
       {!canDraft && refusal.length > 0 && (
         <div className="a-ops-refused a-meta">Refused: {refusal.join(' · ')}</div>
@@ -599,8 +677,34 @@ function StandardPendingCard({ draft, refresh, feed, onGateResult }: {
             )}
           </div>
         )}
+        {/* ARCH only. Two quiet siblings for the two exits that post nothing, so
+            the primary can stay the one act that publishes. */}
+        {isArchComment && (
+          <div className="a-ops-act">
+            <Button variant="quiet" disabled={busy || drafting || needsDavor} onClick={onNeedsDavor}>
+              {needsDavor ? 'Waiting on Davorin' : 'Needs Davor'}
+            </Button>
+            <span className="a-ops-cons a-meta">
+              Nothing is posted and nothing closes. The card stays here, marked as waiting on Davorin.
+            </span>
+          </div>
+        )}
+        {isArchComment && (
+          <div className="a-ops-act">
+            <Button variant="quiet" disabled={busy || drafting} onClick={onMarkHandled}>Mark handled</Button>
+            <span className="a-ops-cons a-meta">{handledConfirm.message}</span>
+          </div>
+        )}
         <div className="a-ops-act a-ops-act-p">
-          <Button variant="primary" busy={busy} disabled={drafting} onClick={onApprove}>{approveLabel}</Button>
+          {/* On an ARCH card the primary publishes or it does nothing: with an
+              empty editor there is no reply to post, so it is disabled rather
+              than quietly becoming a close button. */}
+          <Button
+            variant="primary"
+            busy={busy}
+            disabled={drafting || (isArchComment && !body.trim())}
+            onClick={onApprove}
+          >{approveLabel}</Button>
           <span className="a-ops-cons a-meta">{approveConfirm.message}</span>
         </div>
       </div>
@@ -617,6 +721,46 @@ function StandardPendingCard({ draft, refresh, feed, onGateResult }: {
     >
       <div className="a-stack" data-tight>
         <ContextBlock draft={draft} />
+        {/* The ARCH verdict, read in the order the operator decides in: what the
+            drafter did, why, what a draft rests on, and what it read. The three
+            outcomes that leave the editor empty are ANSWERS — printing them is
+            what stops an empty box reading as a drafter that failed. */}
+        {isArchComment && (archOut || needsDavor) && (
+          <div className="a-ops-arch">
+            <div className="a-ops-tags">
+              {archOut && (
+                <Chip tone={archOut === 'DRAFT' ? 'clear' : archOut === 'ESCALATE' ? 'attention' : 'neutral'}>
+                  {archOutcomeLabel(archOut)}
+                </Chip>
+              )}
+              {needsDavor && <Chip tone="attention">waiting on Davorin</Chip>}
+            </div>
+            {archReason && <div className="a-ops-arch-why a-meta">{archReason}</div>}
+            {/* Only a DRAFT rests on something: the published line it answers
+                from. The other three outcomes exist because nothing does. */}
+            {archOut === 'DRAFT' && archBasis && (
+              <div className="a-ops-arch-why a-meta">Rests on: {archBasis}</div>
+            )}
+            {archSrc.length > 0 && (
+              <div className="a-ops-arch-src">
+                <div className="a-meta">Sources</div>
+                <ul className="a-ops-srcs">
+                  {archSrc.map(s => (
+                    <li key={s.id}>
+                      <span>{s.title}</span>
+                      <Sep />
+                      <span className="a-meta">{s.source_type}</span>
+                      <Sep />
+                      {/* A private source informed the read and may never be
+                          quoted back at the commenter. The card says which. */}
+                      <span className="a-meta">{s.public ? 'public' : 'private, context only'}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
         <Textarea
           label="Draft"
           labelHidden
@@ -624,7 +768,9 @@ function StandardPendingCard({ draft, refresh, feed, onGateResult }: {
           value={body}
           onChange={e => setBody(e.target.value)}
           disabled={busy || drafting}
-          placeholder={canDraft ? 'Write his reply, or press Draft it.' : undefined}
+          // An ARCH card whose verdict is "he answers this one" is not waiting on
+          // a draft, so nothing in the box invites one.
+          placeholder={canDraft && !(isArchComment && archOut && archOut !== 'DRAFT') ? 'Write his reply, or press Draft it.' : undefined}
           hint={editorNote}
         />
         {/* Comment tools (Ivan, 08-27): emoji into the draft, like their comment,
