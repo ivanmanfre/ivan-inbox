@@ -24,7 +24,7 @@ beforeAll(async () => {
     if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated; end if;
     if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role; end if;
   end $$;`)
-  await db.exec(readFileSync('db/069_outreach_perf_payload.sql', 'utf8'))
+  await db.exec(readFileSync('db/081_outreach_perf_payload.sql', 'utf8'))
 })
 
 describe('outreach_perf_payload counts', () => {

@@ -1,4 +1,4 @@
--- 069: outreach_perf_payload: per-lane DM performance for the Strategy "Outreach" view and the
+-- 081: outreach_perf_payload: per-lane DM performance for the Strategy "Outreach" view and the
 -- weekly WhatsApp digest. Spec: docs/superpowers/specs/2026-09-16-outreach-performance-alerts-design.md
 -- Counts only DM/InMail sends (never connection notes), matured 7 days, active campaigns only.
 -- Verdict floor 20 matured sends per cell (a noise floor only; Wilson guards small n), child floor 15.

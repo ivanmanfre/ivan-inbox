@@ -1,8 +1,11 @@
 # outreach_perf_payload: live replay notes
 
+> Renumbered at merge (2026-09-17): this migration shipped as `db/081_outreach_perf_payload.sql` because upstream took 069-080 while the branch was open. Every `db/069` stamp below names the same file at the commit shown; the SQL body is unchanged by the rename.
+
+
 ## Fifth replay after the review-wave SQL fix (2026-09-17)
 
-**SQL version replayed:** `db/069_outreach_perf_payload.sql` as committed in the final review-wave
+**SQL version replayed:** `db/081_outreach_perf_payload.sql` as committed in the final review-wave
 fix commit on `outreach-perf` (parent `7eab64a`), sha256
 `fbfc16dbd9b687560a5d31366bc043fea3aad51615fdb3fc83a3a401dd4e935f`. Applied through the Management
 API with a 5-attempt retry loop on 544; succeeded on the first attempt (201, body `[]`). No retries
@@ -136,7 +139,7 @@ engager              nudge  now 0/8 (0.0%)  prior 0/0 (0.0%)  thin
 
 ## Fourth replay after 6a33c4d (2026-09-17)
 
-**SQL version replayed:** `db/069_outreach_perf_payload.sql` at commit `6a33c4d`,
+**SQL version replayed:** `db/081_outreach_perf_payload.sql` at commit `6a33c4d`,
 sha256 `31cebc4aff4706961da4b54b1dc11ab644d6ada5475b08fa880accd085755763`. Applied through the
 Management API with a 5-attempt retry loop on 544; succeeded on the first attempt (201, body `[]`).
 The change is the verdict floor, `v_floor` 30 to 20; the child floor stays 15. The script's own
@@ -205,7 +208,7 @@ identical on all three lanes: ivan 108/0, risedtc 86/2, arch 20/0.
 
 ## Third replay after e0033f9 (2026-09-17)
 
-**SQL version replayed:** `db/069_outreach_perf_payload.sql` at commit `e0033f9`,
+**SQL version replayed:** `db/081_outreach_perf_payload.sql` at commit `e0033f9`,
 sha256 `6415c4495d1f6f447990d330aa49cdddab322fae4ad22b601fafcd06e43f6115`. Applied through the
 Management API with a 5-attempt retry loop on 544; it succeeded on the first attempt (201, body
 `[]`), so no retries were consumed. Every number in this section was produced by that file.
@@ -287,7 +290,7 @@ payload 12/111 = 10.8%).
 
 ## Second replay after e6f8c1b (2026-09-17)
 
-**SQL version replayed:** `db/069_outreach_perf_payload.sql` at commit `e6f8c1b`,
+**SQL version replayed:** `db/081_outreach_perf_payload.sql` at commit `e6f8c1b`,
 sha256 `8498e20a8087c76ca77d3cfcf86322575b71e8cc9c51a4cac4738ea4c6368195`. That exact file was
 applied to `bjbvqvzbzczjbatgmccb` through the Management API (201, body `[]`) and every number and
 alarm below was produced by it, so the alarm block reproduces against that hash.
