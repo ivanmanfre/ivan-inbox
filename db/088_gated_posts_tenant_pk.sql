@@ -1,5 +1,13 @@
 -- 088: competitor_gated_posts primary key becomes (client_id, post_ref).
 --
+-- SUPERSEDES db/076_competitor_gated_posts.sql:7, which declares `post_ref text primary key`.
+-- That line is left as it was, because 076 is the history of what was built on that day and
+-- editing it would make the migration tree a worse record than the database. Anyone rebuilding
+-- from migrations gets 076's single-column key and then this file widens it. Anyone reading 076
+-- on its own should read this line first: the live key is two columns, and 8 post_refs are
+-- legitimately held by two tenants each, so a rebuild that stops after 076 and then loads live
+-- data will fail on the primary key.
+--
 -- The table was created in 076 with `post_ref text primary key` while every read of it is
 -- lane-scoped (077/080: `join competitor_gated_posts j on j.post_ref = s.post_ref and
 -- j.client_id = p_client_id`). Those two facts contradict each other. One post read by the gate
