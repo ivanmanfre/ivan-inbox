@@ -260,6 +260,13 @@ begin
       select coalesce(jsonb_agg(row_obj order by comments desc nulls last, post_ref collate "C"), '[]'::jsonb) as arr
       from obj where not on_roster
     ),
+    -- The offers are counted over the roster posts we have JUDGED, so the denominator of any
+    -- share has to be the judged roster posts too. Dividing judged offers by every roster post
+    -- would report a floor while reading like a rate.
+    roster_judged as (
+      select count(*) as n from judged j
+      where exists (select 1 from roster_urls u where u.post_ref = j.post_ref)
+    ),
     roster_offer_stats as (
       select count(*) as roster_offers,
              max(comments) as roster_max_comments,
@@ -326,20 +333,37 @@ begin
       ) e on true
     ),
     -- ---- section: own ------------------------------------------------------------------------
-    -- `stale` is the honest half of this section. own_posts carries 0 likes AND 0 comments on
-    -- most of Ivan's recent rows: the publisher stored the post and no later pass wrote the
-    -- counters back. A post with nothing on either counter is a post we have not measured, not a
-    -- post nobody answered, so the view withholds the comparison rather than reading a zero as a
-    -- result. A row that drew reactions and no comments is measured and counts as a real zero.
+    -- MEASURED OR NOT, WHICH IS NOT THE SAME QUESTION AS ZERO OR NOT.
+    --
+    -- The first shape of this read called a post "stale" when both its counters sat at zero, and
+    -- that answer was wrong in both directions. On Ivan's 72 posts in the window it called 38 of
+    -- them unmeasured, and 22 of those 38 carry a recorded impression count and a capture stamp:
+    -- posts we measured, which drew nothing. A post that drew no comment is a result, and calling
+    -- it a gap hides the result.
+    --
+    -- The honest test is whether a capture ever ran, and ran late enough to mean anything. A post
+    -- read within three days of publication was read before it matured, so its counters are a
+    -- snapshot of an unfinished post rather than a reading of it. So:
+    --
+    --   unmeasured  = no capture stamp at all, OR a stamp less than three days after publication
+    --   measured    = everything else
+    --
+    -- Live on Ivan's lane: 16 posts with no stamp, 2 captured early, 18 unmeasured, 54 measured,
+    -- and of those 54, 21 are true zeros on both counters. The median across the 54 is 0 comments
+    -- at a median of 99 impressions, which is a real reading of his feed and is printed as one.
+    -- client_post_metrics carries `captured_at` for the same purpose and no impression column, so
+    -- the client branch asks the identical question of its own stamp.
     own_src as (
       select o.social_id, o.posted_at as at, coalesce(o.num_comments, 0) as comments,
              o.linkedin_url as url, o.post_text as title,
-             (coalesce(o.num_comments, 0) = 0 and coalesce(o.num_likes, 0) = 0) as stale
+             (o.metrics_updated_at is null
+              or o.metrics_updated_at - o.posted_at < interval '3 days') as unmeasured
       from public.own_posts o
       where p_client_id = 'ivan' and o.posted_at >= v_since
       union all
       select c.social_id, c.published_at, coalesce(c.comments, 0), c.post_url, c.title,
-             (coalesce(c.comments, 0) = 0 and coalesce(c.reactions, 0) = 0)
+             (c.captured_at is null
+              or c.captured_at - c.published_at < interval '3 days')
       from public.client_post_metrics c
       where p_client_id <> 'ivan' and c.client_id = p_client_id and c.published_at >= v_since
     ),
@@ -347,9 +371,13 @@ begin
       select count(*) as posts,
              (percentile_cont(0.5) within group (order by comments))::numeric as median_comments,
              max(comments) as best_comments,
-             count(*) filter (where stale) as stale_count,
+             count(*) filter (where unmeasured) as unmeasured,
+             count(*) filter (where not unmeasured) as measured,
+             -- The median the screen prints, and the only one it compares to the market: it rests
+             -- on the posts we actually read.
              (percentile_cont(0.5) within group (order by comments)
-               filter (where not stale))::numeric as median_measured
+               filter (where not unmeasured))::numeric as median_measured,
+             max(comments) filter (where not unmeasured) as best_measured
       from own_src
     ),
     own_best as (
@@ -437,14 +465,21 @@ begin
              jsonb_build_object('theme', t.theme, 'posts', t.posts, 'authors', t.authors, 'med', t.med)
       from (select * from theme_rows order by posts desc, authors desc, med desc, theme collate "C" limit 1) t
       union all
-      select 4, 'own_median', (select posts from own_stats)::numeric,
+      -- The base of this test is the posts we MEASURED, never every post on file, and 30 of them
+      -- is the floor under which a median is not a number worth writing a test against. It also
+      -- never runs on a lane whose median the screen withholds: a test built on a number the same
+      -- screen refuses to print two sections above it is the defect this clause exists to stop.
+      select 4, 'own_median', (select measured from own_stats)::numeric,
              jsonb_build_object(
                'own_posts', (select posts from own_stats),
-               'own_median', (select median_comments from own_stats),
+               'measured', (select measured from own_stats),
+               'unmeasured', (select unmeasured from own_stats),
+               'own_median', (select median_measured from own_stats),
                'roster_median', (select roster_median_comments from populations),
                'roster_posts', (select roster_posts from populations))
-      where (select posts from own_stats) > 0
-        and (select median_comments from own_stats) is not null
+      where (select measured from own_stats) >= 30
+        and (select unmeasured from own_stats) * 2 < (select posts from own_stats)
+        and (select median_measured from own_stats) is not null
         and (select roster_median_comments from populations) is not null
       union all
       select 5, 'offer_share', (select roster_posts from populations)::numeric,
@@ -517,6 +552,7 @@ begin
           'comment_gate', (select cta_comment_gate from roster_offer_stats),
           'dm_gate', (select cta_dm_gate from roster_offer_stats)),
         'with_keyword', (select with_keyword from roster_offer_stats),
+        'roster_judged', (select n from roster_judged),
         'rank', (select jsonb_build_object('median_per1k', median_per1k,
                   'max_per1k', max_per1k, 'min_per1k', min_per1k) from rank_stats),
         'ranked', (select arr from ranked_arr),
@@ -543,8 +579,10 @@ begin
         'median_comments', (select median_comments from own_stats),
         'best_comments', (select best_comments from own_stats),
         'best', (select case when (select posts from own_stats) > 0 then (select obj from own_best) end),
-        'stale_count', (select stale_count from own_stats),
+        'unmeasured', (select unmeasured from own_stats),
+        'measured', (select measured from own_stats),
         'median_measured', (select median_measured from own_stats),
+        'best_measured', (select best_measured from own_stats),
         'attributed', (select attributed_posts from lane_counts),
         'unattributed', (select unattributed_posts from lane_counts),
         'lm_catalog', (select lm_catalog from lm_counts),

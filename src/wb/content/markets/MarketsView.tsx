@@ -27,7 +27,7 @@ import { readSwr, writeSwr } from '../../../lib/swr'
 import {
   ACCOUNTS, INSIGHTS_EMPTY, answer, askLabel, askRows, coverageLine, dec, fetchMarketReadout,
   firstLine, floorReason, insightBase, insightRows, int, one, ownState, planThinLine, plu,
-  shapeLine, testCopy, themeLine, widerNote, widerTitle,
+  shapeLine, shownTests, testCopy, themeLine, widerNote, widerTitle,
   type MarketOffer, type MarketRead, type MarketReadout,
 } from '../../../lib/markets'
 import '../content.css'
@@ -132,6 +132,7 @@ export function MarketsPanel({ read, onRetry }: { read: MarketRead | null; onRet
   const a = useMemo(() => (m ? answer(m) : null), [m])
   const own = useMemo(() => (m ? ownState(m) : null), [m])
   const readings = useMemo(() => (m ? insightRows(m) : []), [m])
+  const tests = useMemo(() => (m ? shownTests(m) : []), [m])
 
   if (!m || !a || !own) {
     return (
@@ -309,11 +310,11 @@ export function MarketsPanel({ read, onRetry }: { read: MarketRead | null; onRet
           <section className="a-mk-sec">
             <h3 className="a-mk-h">
               What we would run first
-              <span className="a-mk-tag">{int(m.tests.length)} {plu(m.tests.length, 'test')}</span>
+              <span className="a-mk-tag">{int(tests.length)} {plu(tests.length, 'test')}</span>
             </h3>
-            {m.tests.length ? (
+            {tests.length ? (
               <ol className="a-mk-plan">
-                {m.tests.map((t, i) => {
+                {tests.map((t, i) => {
                   const c = testCopy(t, m)
                   return (
                     <li className="a-mk-plan-i" key={t.kind}>

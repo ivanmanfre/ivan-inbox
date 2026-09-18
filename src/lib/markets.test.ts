@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   ACCOUNTS, INSIGHTS_EMPTY, accountsWithPosts, answer, askRows, coverageLine, dec, firstLine,
   floorReason, insightBase, insightRows, int, medianWithheld, one, ownState, planThinLine, plu,
-  sectionTitle, shapeLine, testCopy, themeLine, widerLine,
+  sectionTitle, shapeLine, shownTests, testCopy, themeLine, widerLine,
   type MarketOffer, type MarketReadout,
 } from './markets'
 
@@ -40,13 +40,13 @@ function readout(over: Partial<MarketReadout> = {}): MarketReadout {
       cta: { link: 14, comment_gate: 2, dm_gate: 0 }, with_keyword: 3,
       rank: { median_per1k: 2.2, max_per1k: 3.3, min_per1k: 0.3 },
       ranked, below: [], wider: [],
-      top_by_comments: ranked[0], top_leads_ranking: true,
+      top_by_comments: ranked[0], top_leads_ranking: true, roster_judged: 182,
     },
     themes: { run_id: 'r1', total: 5, rows: [] },
     own: {
       posts: 54, median_comments: 2.5, best_comments: 22,
       best: { url: 'https://x/1', title: 'A post\nwith two lines', comments: 22, at: '2026-09-02T00:00:00Z' },
-      stale_count: 2, median_measured: 3,
+      unmeasured: 2, measured: 52, median_measured: 2.5, best_measured: 22,
       attributed: 3, unattributed: 51, lm_catalog: 18, lm_used: 3,
     },
     tests: [], coverage: { judged: 314, unjudged: 341, total: 655 },
@@ -123,7 +123,7 @@ describe('the answer', () => {
       offers: { ...base.offers, top_leads_ranking: false, top_by_comments: offer({ author: 'Nick Shackelford', per_1k: null, follower_count: null }) },
     })
     expect(answer(m).lines[0]).toContain('no follower count')
-    expect(answer(m).lines[1]).toContain('Alex Vacca leads it')
+    expect(answer(m).lines[1]).toContain('Alex Vacca leads at')
   })
 
   it('falls back to the read count when no offer is on file', () => {
@@ -202,56 +202,104 @@ describe('thin states', () => {
   })
 })
 
-describe('stale own metrics are withheld, never read as a result', () => {
-  it("Ivan's lane: 38 of 72 posts carry no counters, so the median position is one of them", () => {
+describe('measured or not, which is not the same question as zero or not', () => {
+  it("Ivan's lane: 18 unmeasured of 72 leaves the median standing, and the screen names the 18", () => {
     const base = readout()
     const m = readout({
-      own: { ...base.own, posts: 72, stale_count: 38, median_comments: 0, median_measured: 0, best_comments: 26 },
+      own: { ...base.own, posts: 72, unmeasured: 18, measured: 54, median_comments: 0, median_measured: 0, best_comments: 26, best_measured: 26 },
     })
-    expect(medianWithheld(m.own)).toBe(true)
-    const s = ownState(m)
-    expect(s.kind).toBe('withheld')
-    if (s.kind !== 'withheld') throw new Error('expected a withheld state')
-    expect(s.line).toContain('38 of them')
-    expect(s.line).toContain('never measured them')
-    expect(s.line).toContain('withhold the comparison')
-    // The market median must not appear as a thing this lane was compared to.
-    expect(s.line).not.toContain('median of 0')
-    expect(s.measured).toContain('34 we did measure')
-  })
-
-  it('two stale posts out of 54 leave the median standing and are still named', () => {
-    const m = readout()
+    // 18 * 2 < 72: the median position sits on a post we read, so it is a reading.
     expect(medianWithheld(m.own)).toBe(false)
     const s = ownState(m)
     expect(s.kind).toBe('ready')
     if (s.kind !== 'ready') throw new Error('expected a ready state')
+    expect(s.line).toContain('we have measured 54 of them, at a median of 0 comments')
+    expect(s.line).toContain('18 carry no reading we can trust')
     const own = s.rows.find(r => r.id === 'own_median_comments')
-    expect(own?.display).toBe('2.5')
-    expect(own?.base).toContain('2 of which we have not measured')
+    expect(own?.display).toBe('0')
+    expect(own?.base).toContain('Across the 54 posts we measured of the 72 you published')
   })
 
-  it('a lane with no stale row says nothing about staleness', () => {
+  it('a lane over half unmeasured withholds the comparison and says why', () => {
     const base = readout()
-    const m = readout({ own: { ...base.own, posts: 11, stale_count: 0, median_comments: 0, median_measured: 0, best_comments: 5 } })
+    const m = readout({ own: { ...base.own, posts: 40, unmeasured: 24, measured: 16, median_comments: 0, median_measured: 1, best_measured: 9 } })
+    expect(medianWithheld(m.own)).toBe(true)
+    const s = ownState(m)
+    expect(s.kind).toBe('withheld')
+    if (s.kind !== 'withheld') throw new Error('expected a withheld state')
+    expect(s.line).toContain('24 carry no reading we can trust')
+    expect(s.line).toContain('withhold the comparison against the market median')
+    expect(s.measured).toContain('Across the 16 we did measure, the median is 1 comment')
+  })
+
+  it('exactly half unmeasured already carries the median position', () => {
+    const base = readout()
+    expect(medianWithheld({ ...base.own, posts: 10, unmeasured: 5, measured: 5 })).toBe(true)
+    expect(medianWithheld({ ...base.own, posts: 10, unmeasured: 4, measured: 6 })).toBe(false)
+  })
+
+  it('a lane we measured whole says nothing about a gap', () => {
+    const base = readout()
+    const m = readout({ own: { ...base.own, posts: 11, unmeasured: 0, measured: 11, median_comments: 0, median_measured: 0, best_comments: 5, best_measured: 5 } })
     const s = ownState(m)
     expect(s.kind).toBe('ready')
     if (s.kind !== 'ready') throw new Error('expected a ready state')
-    expect(s.rows.find(r => r.id === 'own_median_comments')?.base).not.toContain('measured')
-  })
-
-  it('exactly half stale is already enough to carry the median position', () => {
-    const base = readout()
-    const m = readout({ own: { ...base.own, posts: 10, stale_count: 5 } })
-    expect(medianWithheld(m.own)).toBe(true)
+    expect(s.line).not.toContain('no reading we can trust')
+    expect(s.rows.find(r => r.id === 'own_median_comments')?.base).not.toContain('The other')
   })
 
   it('a lane with no own post asks for nothing and says the section fills in later', () => {
     const base = readout()
-    const m = readout({ own: { ...base.own, posts: 0, stale_count: 0 } })
+    const m = readout({ own: { ...base.own, posts: 0, unmeasured: 0, measured: 0 } })
     const s = ownState(m)
     expect(s.kind).toBe('none')
     expect(s.line).toContain('fills in from the first post')
+  })
+
+  it('the offer share divides the offers we read by the posts we read, and says so', () => {
+    const s = ownState(readout())
+    if (s.kind !== 'ready') throw new Error('expected a ready state')
+    // 16 offers over the 182 roster posts we judged, never over all 328.
+    expect(s.line).toContain('9 in a hundred across the 182 posts we have read')
+    expect(s.line).toContain('of 328 they published')
+  })
+})
+
+describe('a test never argues from a number the same screen refuses to print', () => {
+  const withOwnMedian = (own: Partial<MarketReadout['own']>) => {
+    const base = readout()
+    return readout({
+      own: { ...base.own, ...own },
+      tests: [{ kind: 'own_median', base: Number(own.measured ?? 0), n: { own_posts: own.posts, measured: own.measured, unmeasured: own.unmeasured, own_median: 0, roster_median: 7, roster_posts: 328 } }],
+    })
+  }
+
+  it('drops the own-median test on a lane whose median is withheld', () => {
+    const m = withOwnMedian({ posts: 40, unmeasured: 24, measured: 16, median_measured: 1 })
+    expect(medianWithheld(m.own)).toBe(true)
+    expect(shownTests(m)).toEqual([])
+  })
+
+  it('keeps it on a lane whose median stands', () => {
+    const m = withOwnMedian({ posts: 72, unmeasured: 18, measured: 54, median_measured: 0 })
+    expect(medianWithheld(m.own)).toBe(false)
+    expect(shownTests(m).map(t => t.kind)).toEqual(['own_median'])
+  })
+
+  it('the test says how many posts it measured, and how many it left out', () => {
+    const m = withOwnMedian({ posts: 72, unmeasured: 18, measured: 54, median_measured: 0 })
+    const c = testCopy(shownTests(m)[0], m)
+    expect(c.body).toContain('We measured 54 of the 72 posts you published')
+    expect(c.body).toContain('The other 18 carry no reading we can trust')
+  })
+
+  it('leaves every other test alone', () => {
+    const base = readout()
+    const m = readout({
+      own: { ...base.own, posts: 40, unmeasured: 24, measured: 16 },
+      tests: [{ kind: 'shape', base: 9, n: {} }, { kind: 'own_median', base: 16, n: {} }, { kind: 'theme', base: 5, n: {} }],
+    })
+    expect(shownTests(m).map(t => t.kind)).toEqual(['shape', 'theme'])
   })
 })
 
@@ -351,7 +399,7 @@ describe('a stored reading renders from whatever the pass could fill', () => {
 describe('the copy rules hold on every sentence this module writes', () => {
   const sentences = () => {
     const m = readout()
-    const withheld = readout({ own: { ...m.own, posts: 72, stale_count: 38, median_comments: 0, median_measured: 0 } })
+    const withheld = readout({ own: { ...m.own, posts: 40, unmeasured: 24, measured: 16, median_comments: 0, median_measured: 1 } })
     const s = ownState(withheld)
     const r = ownState(m)
     return [

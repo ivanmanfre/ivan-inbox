@@ -107,6 +107,8 @@ export type MarketReadout = {
     wider: MarketOffer[]
     top_by_comments: MarketOffer | null
     top_leads_ranking: boolean
+    /** Roster posts we have judged. The denominator of any offer share. */
+    roster_judged?: number
   }
   themes: { run_id: string | null; total: number; rows: MarketTheme[] }
   own: {
@@ -114,10 +116,14 @@ export type MarketReadout = {
     median_comments: number | null
     best_comments: number | null
     best: { url: string | null; title: string | null; comments: number | null; at: string | null } | null
-    /** Posts carrying no comments AND no reactions: stored but never measured. */
-    stale_count: number
-    /** The median across the posts we did measure. */
+    /** Posts with no capture stamp, or one written less than three days after
+        publication: read before the post had matured, so never really read. */
+    unmeasured: number
+    /** Posts a capture ran against, late enough to mean something. */
+    measured: number
+    /** The median across those measured posts. The only median the screen compares. */
     median_measured: number | null
+    best_measured: number | null
     attributed: number
     unattributed: number
     lm_catalog: number
@@ -246,7 +252,7 @@ export function answer(m: MarketReadout): { figure: string; unit: string; lines:
       lines: [
         `${accountsWithPosts(p)} published ${int(p.roster_posts)} ${plu(p.roster_posts, 'post')} in this window and none of them carried an offer, so we have nothing to rank yet.`,
         widerLine(m),
-        `We read the rest of the window as it lands. The first offer those accounts publish turns up here.`,
+        `We read the rest of the window as it lands, and we put the first offer those accounts publish here.`,
       ].filter(Boolean),
     }
   }
@@ -261,12 +267,12 @@ export function answer(m: MarketReadout): { figure: string; unit: string; lines:
 
   if (lead && !o.top_leads_ranking) {
     lines.push(
-      `The ranking counts comments for every thousand followers on offers that cleared ${int(m.floor.comments)} comments and ${int(m.floor.followers)} followers, `
-      + `so ${lead.author} leads it at ${one(lead.per_1k)} on ${int(lead.comments)} ${plu(lead.comments, 'comment')} from ${int(lead.follower_count)} followers.`)
+      `We rank by comments for every thousand followers, on offers that cleared ${int(m.floor.comments)} comments and ${int(m.floor.followers)} followers, `
+      + `so ${lead.author} leads at ${one(lead.per_1k)} on ${int(lead.comments)} ${plu(lead.comments, 'comment')} from ${int(lead.follower_count)} followers.`)
   } else if (lead && o.ranked_count === 1) {
     lines.push(`That post is the only offer from those accounts that cleared ${int(m.floor.comments)} comments and ${int(m.floor.followers)} followers, so it is the only one we can rank by reach.`)
   } else if (lead && lead.vs_median) {
-    lines.push(`That post also leads the ranking at ${one(lead.vs_median)} times the ${one(o.rank.median_per1k)} the other ${int(o.ranked_count)} ranked offers run at.`)
+    lines.push(`That post also leads the ranking at ${one(lead.vs_median)} times the ${one(o.rank.median_per1k)} that the ${int(o.ranked_count)} ranked offers run at, itself included.`)
   }
 
   const w = widerLine(m)
@@ -365,14 +371,19 @@ export type OwnState =
   | { kind: 'ready'; line: string; rows: OwnRow[] }
 
 /**
- * A post carrying no comments AND no reactions was stored and never measured.
- * When at least half of the lane's posts are in that state the median position
- * itself lands on an unmeasured row, so the median is a property of the gap
- * rather than of the market, and the comparison is withheld and said out loud.
- * Ivan's lane today: 38 of 72.
+ * A post is UNMEASURED when no capture ever ran against it, or when the one that
+ * ran landed inside three days of publication and read a post that had not
+ * finished happening. That is a different question from whether the post drew
+ * nothing: a measured post at zero comments is a result, and the screen prints
+ * it as one.
+ *
+ * The comparison is withheld only when at least half the lane is unmeasured,
+ * because that is exactly when the median POSITION lands on a row nobody read,
+ * so the median describes the gap instead of the market. Ivan's lane today is 18
+ * unmeasured of 72, so it prints its median of 0 over the 54 we measured.
  */
 export function medianWithheld(own: MarketReadout['own']): boolean {
-  return own.posts > 0 && own.stale_count * 2 >= own.posts
+  return own.posts > 0 && own.unmeasured * 2 >= own.posts
 }
 
 export function ownState(m: MarketReadout): OwnState {
@@ -385,16 +396,21 @@ export function ownState(m: MarketReadout): OwnState {
     }
   }
 
+  // Judged over judged. The offers are only known for the roster posts we have read, so dividing
+  // them by every roster post would report a floor in the shape of a rate.
+  const judged = m.offers.roster_judged ?? null
   const share = `${int(own.attributed)} of your ${int(own.posts)} ${plu(own.posts, 'post')} carried one of your offers, ${pct(own.attributed, own.posts)} in a hundred, `
-    + `against ${pct(m.offers.roster_offers, p.roster_posts)} in a hundred across the ${int(p.roster_posts)} posts ${ACCOUNTS} published.`
+    + (judged
+      ? `against ${pct(m.offers.roster_offers, judged)} in a hundred across the ${int(judged)} posts we have read from ${ACCOUNTS}, of ${int(p.roster_posts)} they published.`
+      : `and we have read none of the posts ${ACCOUNTS} published, so there is nothing to compare it against yet.`)
 
   if (medianWithheld(own)) {
-    const measured = own.posts - own.stale_count
     return {
       kind: 'withheld',
-      line: `We hold ${int(own.posts)} of your posts in this window. Comments and reactions read zero on ${int(own.stale_count)} of them, which means we stored those posts and never measured them, so we withhold the comparison against the market median. ${share}`,
-      measured: measured > 0
-        ? `Across the ${int(measured)} we did measure, the median is ${dec(own.median_measured)} ${plu(own.median_measured ?? 0, 'comment')} and the best post drew ${int(own.best_comments)}.`
+      line: `We hold ${int(own.posts)} of your posts in this window and we have measured ${int(own.measured)} of them. `
+        + `${int(own.unmeasured)} carry no reading we can trust, so we withhold the comparison against the market median. ${share}`,
+      measured: own.measured > 0
+        ? `Across the ${int(own.measured)} we did measure, the median is ${dec(own.median_measured)} ${plu(own.median_measured ?? 0, 'comment')} and the best post drew ${int(own.best_measured)}.`
         : `We have measured none of them yet, so there is no median to read.`,
     }
   }
@@ -413,20 +429,36 @@ export function ownState(m: MarketReadout): OwnState {
     })
   }
   rows.push({
-    id: 'own_median_comments', value: Number(own.median_comments ?? 0), display: dec(own.median_comments), you: true,
+    id: 'own_median_comments', value: Number(own.median_measured ?? 0), display: dec(own.median_measured), you: true,
     label: 'Median comments on your posts',
-    base: `Across ${int(own.posts)} ${plu(own.posts, 'post')} you published in the same window`
-      + (own.stale_count ? `, ${int(own.stale_count)} of which we have not measured yet.` : '.'),
+    base: `Across the ${int(own.measured)} ${plu(own.measured, 'post')} we measured of the ${int(own.posts)} you published in the same window`
+      + (own.unmeasured ? `. The other ${int(own.unmeasured)} carry no reading we can trust yet.` : '.'),
   })
   rows.push({
-    id: 'own_best_comments', value: Number(own.best_comments ?? 0), display: dec(own.best_comments), you: true,
+    id: 'own_best_comments', value: Number(own.best_measured ?? 0), display: dec(own.best_measured), you: true,
     label: 'Your best post',
-    base: own.best?.title ? String(firstLine(own.best.title, 80)) : 'Your highest comment count in this window.',
+    base: own.best?.title ? String(firstLine(own.best.title, 80)) : 'Your highest comment count among the posts we measured.',
   })
-  return { kind: 'ready', line: `We hold ${int(own.posts)} of your posts in this window. ${share}`, rows }
+  return {
+    kind: 'ready',
+    line: `We hold ${int(own.posts)} of your posts in this window and we have measured ${int(own.measured)} of them, at a median of ${dec(own.median_measured)} ${plu(own.median_measured ?? 0, 'comment')}`
+      + (own.unmeasured ? `. ${int(own.unmeasured)} carry no reading we can trust. ` : '. ')
+      + share,
+    rows,
+  }
 }
 
 /* ---------------------------------------------------------------- the plan */
+
+/**
+ * The tests a screen may print. The own-median test is dropped whenever the same
+ * screen withholds that median two sections above it: the RPC already refuses to
+ * build it, and this refuses to render one that arrived from an older payload.
+ */
+export function shownTests(m: MarketReadout): MarketTest[] {
+  const tests = Array.isArray(m.tests) ? m.tests : []
+  return medianWithheld(m.own) ? tests.filter(t => t.kind !== 'own_median') : tests
+}
 
 /** What the plan section says when the numbers cannot carry a test yet. */
 export function planThinLine(m: MarketReadout): string {
@@ -447,7 +479,7 @@ export function testCopy(t: MarketTest, m: MarketReadout): { title: string; body
     return {
       title: 'Run one offer in the shape of the loudest one',
       body: `${top.author ?? 'That account'} drew ${one(top.per_1k)} comments for every thousand followers`
-        + (ratio ? `, ${one(ratio)} times the ${one(nnum(n.median_per1k))} the other ranked offers run at` : '')
+        + (ratio ? `, ${one(ratio)} times the ${one(nnum(n.median_per1k))} that the ranked offers run at, itself included` : '')
         + `. That sits on ${int(t.base)} ranked ${plu(t.base, 'offer')} from ${ACCOUNTS}. We write one offer in that shape for you and run it.`,
     }
   }
@@ -474,10 +506,12 @@ export function testCopy(t: MarketTest, m: MarketReadout): { title: string; body
     }
   }
   if (t.kind === 'own_median') {
+    const unmeasured = nnum(n.unmeasured) ?? 0
     return {
       title: 'Close the gap on the median',
-      body: `You published ${int(nnum(n.own_posts))} ${plu(nnum(n.own_posts), 'post')} in this window at a median of ${dec(nnum(n.own_median))} comments, `
+      body: `We measured ${int(t.base)} of the ${int(nnum(n.own_posts))} ${plu(nnum(n.own_posts), 'post')} you published in this window, at a median of ${dec(nnum(n.own_median))} comments, `
         + `against ${dec(nnum(n.roster_median))} across the ${int(nnum(n.roster_posts))} posts ${ACCOUNTS} published. `
+        + (unmeasured ? `The other ${int(unmeasured)} carry no reading we can trust, so they sit out of this. ` : '')
         + `We write the next three against that number and read them back to you.`,
     }
   }

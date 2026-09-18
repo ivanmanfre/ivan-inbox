@@ -33,7 +33,7 @@ function readout(over: Partial<MarketReadout> = {}): MarketReadout {
       ranked,
       below: [offer({ post_ref: 'p3', author: 'Small Account', per_1k: null, comments: 4, follower_count: null, vs_median: null, why_followers: 'missing', why_comments: true })],
       wider: [offer({ post_ref: 'p4', author: 'Someone Unvetted', per_1k: null, follower_count: null, vs_median: null })],
-      top_by_comments: ranked[0], top_leads_ranking: true,
+      top_by_comments: ranked[0], top_leads_ranking: true, roster_judged: 182,
     },
     themes: {
       run_id: 'r1', total: 1,
@@ -42,7 +42,8 @@ function readout(over: Partial<MarketReadout> = {}): MarketReadout {
     own: {
       posts: 54, median_comments: 2.5, best_comments: 22,
       best: { url: 'https://x/1', title: 'A post of mine', comments: 22, at: '2026-09-02T00:00:00Z' },
-      stale_count: 2, median_measured: 3, attributed: 3, unattributed: 51, lm_catalog: 18, lm_used: 3,
+      unmeasured: 2, measured: 52, median_measured: 2.5, best_measured: 22,
+      attributed: 3, unattributed: 51, lm_catalog: 18, lm_used: 3,
     },
     tests: [{ kind: 'shape', base: 9, n: { top: offer(), median_per1k: 2.2, ranked: 9 } }],
     coverage: { judged: 314, unjudged: 341, total: 655 },
@@ -115,18 +116,34 @@ describe('the Markets screen', () => {
     expect(t).not.toContain('Test 1')
   })
 
-  it("Ivan today: 38 stale posts of 72 withhold the comparison and say so on the screen", () => {
+  it("Ivan today: 18 unmeasured of 72 keeps the median and names the 18 on the screen", () => {
     const base = readout()
     const m = readout({
       client_id: 'ivan', display_name: 'Ivan',
-      own: { ...base.own, posts: 72, stale_count: 38, median_comments: 0, median_measured: 0, best_comments: 26 },
+      own: { ...base.own, posts: 72, unmeasured: 18, measured: 54, median_comments: 0, median_measured: 0, best_comments: 26, best_measured: 26 },
     })
     const t = text(renderToStaticMarkup(<MarketsPanel read={ready(m)} />))
-    expect(t).toContain('read zero on 38 of them')
+    expect(t).toContain('we have measured 54 of them, at a median of 0 comments')
+    expect(t).toContain('18 carry no reading we can trust')
+    expect(t).toContain('Median comments on your posts')
+    expect(t).toContain('Across the 54 posts we measured of the 72 you published')
+    expect(t).not.toContain('withhold the comparison')
+  })
+
+  it('a lane over half unmeasured withholds the comparison and prints no median row', () => {
+    const base = readout()
+    const m = readout({
+      own: { ...base.own, posts: 40, unmeasured: 24, measured: 16, median_comments: 0, median_measured: 1, best_measured: 9 },
+      tests: [{ kind: 'own_median', base: 16, n: { own_posts: 40, measured: 16, unmeasured: 24, own_median: 1, roster_median: 7, roster_posts: 328 } }],
+    })
+    const t = text(renderToStaticMarkup(<MarketsPanel read={ready(m)} />))
+    expect(t).toContain('24 carry no reading we can trust')
     expect(t).toContain('withhold the comparison against the market median')
-    expect(t).toContain('Across the 34 we did measure')
-    // No median row may be drawn for a lane whose median position is unmeasured.
+    expect(t).toContain('Across the 16 we did measure')
     expect(t).not.toContain('Median comments on your posts')
+    // And the plan may not argue from the median this screen just refused to print.
+    expect(t).toContain('What we would run first 0 tests')
+    expect(t).not.toContain('Close the gap on the median')
   })
 
   it('a measured lane draws its median against the market', () => {
