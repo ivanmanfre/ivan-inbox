@@ -9,6 +9,9 @@ create table outreach_messages (
   direction text not null, message_type text default 'dm', channel text, sequence_step int,
   sent_at timestamptz, ai_model text, replies_to_message_id uuid, is_reaction boolean default false,
   reply_intent text);
+create table profile_view_log (
+  id uuid primary key default gen_random_uuid(), seat text not null, prospect_id uuid references outreach_prospects(id),
+  viewed_at timestamptz not null, provenance text);
 
 insert into outreach_campaigns (id, name, client_id) values
   ('00000000-0000-0000-0000-0000000000c1', 'RiseDTC — Cold (DTC Sales Nav)', 'risedtc'),

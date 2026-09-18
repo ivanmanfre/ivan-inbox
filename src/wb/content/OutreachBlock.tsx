@@ -37,6 +37,7 @@ function Cells({ l }: { l: PerfLane }) {
       <div className="a-ct-sub">{c.replies} of {c.n} · prior {c.base_n ? pct(c.base_rate) : 'none'}</div>
       {c.status === 'thin' && <div className="a-ct-sub">too few to call</div>}
       <div className="a-ct-sub">{c.positive_rate === null ? 'positive: no reply classification on this seat' : `positive ${pct(c.positive_rate)}`}</div>
+      {c.viewed_rate !== null && <div className="a-ct-sub">viewed back {pct(c.viewed_rate)} ({c.viewed_n})</div>}
     </div>
   ))}</div>
 }
@@ -44,7 +45,7 @@ function Cells({ l }: { l: PerfLane }) {
 function Variants({ l }: { l: PerfLane }) {
   if (!l.variants.length) return null
   return <ul className="a-op-split">{l.variants.map(v => (
-    <li key={`${v.step}-${v.variant}`}><span>{stepLabel(v.step)} · {v.variant}{v.status === 'sibling' ? ' · below siblings' : v.status === 'thin' ? ' · too few to call' : ''}</span><span>{v.replies} of {v.n} ({pct(v.rate)})</span></li>
+    <li key={`${v.step}-${v.variant}`}><span>{stepLabel(v.step)} · {v.variant}{v.status === 'sibling' ? ' · below siblings' : v.status === 'thin' ? ' · too few to call' : ''}</span><span>{v.replies} of {v.n} ({pct(v.rate)}){v.viewed_n > 0 && v.viewed_rate !== null ? ` · viewed back ${pct(v.viewed_rate)}` : ''}</span></li>
   ))}</ul>
 }
 
@@ -62,7 +63,7 @@ export function OutreachView({ lane, state, onRetry }: { lane: ContentLane; stat
   if (state.kind === 'empty') return <CalmEmpty line={state.reason} loadedAt={null} />
   const p = state.data
   return <>
-    <div className="a-ct-sub">DM sends only, active lanes only. A send counts 7 days after it went out. Current window is the last 14 matured days against the 60 days before. Floor {p.floor} sends per cell. Reply basis: {p.reply_basis.threaded} threaded, {p.reply_basis.stamp_only} by thread stamp. Positive rate counts threaded replies only.</div>
+    <div className="a-ct-sub">DM sends only, active lanes only. A send counts 7 days after it went out. Current window is the last 14 matured days against the 60 days before. Floor {p.floor} sends per cell. Reply basis: {p.reply_basis.threaded} threaded, {p.reply_basis.stamp_only} by thread stamp. Positive rate counts threaded replies only. Viewed back counts recipients who looked at the profile within 14 days of the message; LinkedIn shows only some viewers, so read it as a floor and compare within one seat.</div>
     <Alarms p={p} />
     <div className="a-bm-h">Lane and step</div>
     {p.lanes.map(l => <div key={l.lane}><Cells l={l} /><Variants l={l} /></div>)}

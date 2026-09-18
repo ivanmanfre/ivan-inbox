@@ -25,6 +25,7 @@ beforeAll(async () => {
     if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role; end if;
   end $$;`)
   await db.exec(readFileSync('db/081_outreach_perf_payload.sql', 'utf8'))
+  await db.exec(readFileSync('db/088_outreach_perf_viewed_back.sql', 'utf8'))
 })
 
 describe('outreach_perf_payload counts', () => {
@@ -187,5 +188,36 @@ describe('outreach_perf_payload alarms', () => {
     expect(cell(rise, 'warm', 'nudge')).toMatchObject({ n: 12, status: 'thin' })
     // and the healthy Ivan dm1 cell (41/4 vs 60/3) is still ok
     expect(cell(p, 'cold', 'dm1')!.status).toBe('ok')
+  })
+})
+
+describe('outreach_perf_payload viewed back (088)', () => {
+  it('counts a recipient once however often the view was re-captured, and only on the sending seat inside 14 days', async () => {
+    type V = { viewed_n: number; viewed_rate: number | null }
+    const before = cell(await payload('risedtc'), 'cold', 'dm1') as unknown as V
+    expect(before.viewed_n).toBe(0)
+    const sends = await db.query<{ prospect_id: string; sent_at: string }>(`
+      select m.prospect_id, m.sent_at from outreach_messages m
+      join outreach_prospects pr on pr.id = m.prospect_id join outreach_campaigns c on c.id = pr.campaign_id
+      where c.client_id = 'risedtc' and c.name like '%Cold%' and m.direction = 'outbound' and m.message_type = 'dm'
+        and coalesce(m.sequence_step, 1) <= 1 and coalesce(m.ai_model, '') <> 'manual_mirror'
+        and m.sent_at >= now() - interval '21 days' and m.sent_at <= now() - interval '7 days'
+      order by m.sent_at, m.prospect_id limit 4`)
+    const [a, b, c, d] = sends.rows
+    await db.query(`insert into profile_view_log (seat, prospect_id, viewed_at) values
+      ('risedtc', $1, $2::timestamptz + interval '1 day'),
+      ('risedtc', $1, $2::timestamptz + interval '2 days'),
+      ('ivan',    $3, $4::timestamptz + interval '1 day'),
+      ('risedtc', $5, $6::timestamptz - interval '1 day'),
+      ('risedtc', $7, $8::timestamptz + interval '15 days')`,
+      [a.prospect_id, a.sent_at, b.prospect_id, b.sent_at, c.prospect_id, c.sent_at, d.prospect_id, d.sent_at])
+    const p = await payload('risedtc')
+    const after = cell(p, 'cold', 'dm1') as unknown as V & { n: number; replies: number }
+    expect(after.viewed_n).toBe(1)
+    expect(after.viewed_rate).toBeCloseTo(1 / 112, 3)
+    // display only: the reply counts and the alarm set are untouched by a view
+    expect(after).toMatchObject({ n: 112, replies: 8 })
+    const vs = lane(p, 'cold')!.variants.filter(v => v.step === 'dm1') as unknown as V[]
+    expect(vs.reduce((n, v) => n + v.viewed_n, 0)).toBe(1)
   })
 })
