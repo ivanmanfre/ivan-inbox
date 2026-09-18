@@ -385,9 +385,14 @@ begin
              max(comments) filter (where not unmeasured) as best_measured
       from own_src
     ),
+    -- The best post is picked from the ones we MEASURED, because the row beside it prints the
+    -- measured best and the two may not disagree. A lane with nothing measured yet falls back to
+    -- its loudest row rather than showing no post at all.
     own_best as (
       select jsonb_build_object('url', url, 'title', title, 'comments', comments, 'at', at) as obj
-      from own_src order by comments desc, at desc nulls last limit 1
+      from own_src
+      order by (case when unmeasured then 1 else 0 end), comments desc, at desc nulls last
+      limit 1
     ),
     -- ---- the lane's own offer catalog --------------------------------------------------------
     -- 080: one row per slug. lead_magnets has carried a duplicated slug, and a per-slug join
