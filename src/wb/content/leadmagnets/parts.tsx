@@ -107,7 +107,7 @@ export type OwnView = {
   postedInWindow: number
   clicks: number
   callsNote?: string
-  /** db/086: "2 of 74 posts since 19 Jun name their lead magnet." Absent on an older RPC, and on a
+  /** db/086: "2 of 74 posts since 19 Jun are linked to a lead magnet." Absent on an older RPC, and on a
       lane that published nothing in the read's own window. Built once in `selectOwn` so both
       layouts print the same sentence. */
   attribution?: string

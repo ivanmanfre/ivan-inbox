@@ -200,12 +200,12 @@ describe('LeadMagnetsView attribution line', () => {
     const read = { ...ready(lms), attributed_posts: 2, unattributed_posts: 72 } as LeadMagnetsRead
     const html = renderToStaticMarkup(<LeadMagnetsView lm={read} gated={gready([])} now={NOW} />)
     expect(html).toMatch(/data-lm-attribution="1"/)
-    expect(html).toMatch(/2 of 74 posts since 17 Jun name their lead magnet\./)
+    expect(html).toMatch(/2 of 74 posts since 17 Jun are linked to a lead magnet\./)
     expect(html).not.toMatch(NOISE)
   })
   it('prints no line at all on an older RPC that sends neither count', () => {
     const html = renderToStaticMarkup(<LeadMagnetsView lm={ready(lms)} gated={gready([])} now={NOW} />)
     expect(html).not.toMatch(/data-lm-attribution/)
-    expect(html).not.toMatch(/name their lead magnet/)
+    expect(html).not.toMatch(/are linked to a lead magnet/)
   })
 })

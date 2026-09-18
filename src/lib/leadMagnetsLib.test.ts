@@ -328,11 +328,11 @@ describe('attributionLine', () => {
   it('names the count, the denominator and the RPC window', () => {
     const year = new Date().getUTCFullYear()
     const line = attributionLine(read({ since: `${year}-06-19T09:26:58Z`, attributed_posts: 2, unattributed_posts: 72 }))
-    expect(line).toBe('2 of 74 posts since 19 Jun name their lead magnet.')
+    expect(line).toBe('2 of 74 posts since 19 Jun are linked to a lead magnet.')
   })
   it('states no window rather than a wrong one when since is unusable', () => {
     expect(attributionLine(read({ since: 'not a date', attributed_posts: 3, unattributed_posts: 50 })))
-      .toBe('3 of 53 posts name their lead magnet.')
+      .toBe('3 of 53 posts are linked to a lead magnet.')
   })
   it('is null on an older RPC that sends neither key, or only one of them', () => {
     expect(attributionLine(read({}))).toBeNull()
@@ -344,7 +344,7 @@ describe('attributionLine', () => {
   })
   it('prints a real 0 of n rather than nothing when the lane posted but attributed none', () => {
     expect(attributionLine(read({ since: 'x', attributed_posts: 0, unattributed_posts: 11 })))
-      .toBe('0 of 11 posts name their lead magnet.')
+      .toBe('0 of 11 posts are linked to a lead magnet.')
   })
   it('is null on a read that is not ready, and on no read at all', () => {
     expect(attributionLine({ kind: 'denied', message: 'no' })).toBeNull()

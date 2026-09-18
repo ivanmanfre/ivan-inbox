@@ -169,7 +169,7 @@ begin
         from public.lm_attribution a
         where a.lm_slug in (select slug from lm)
           and coalesce(a.status, '') <> 'canceled'
-          and a.booked_at >= v_since
+          and coalesce(a.booked_at, a.created_at) >= v_since
         group by a.lm_slug
       ) b on b.lm_slug = m.slug
     ),

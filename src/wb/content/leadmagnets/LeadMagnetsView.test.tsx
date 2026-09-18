@@ -283,17 +283,17 @@ describe('LeadMagnetsPanel attribution line', () => {
   it('prints the share under the own summary in layout A', () => {
     const h = html({ lm: withCounts })
     expect(h).toMatch(/data-lm-attribution="1"/)
-    expect(h).toMatch(/3 of 53 posts since 17 Jun name their lead magnet\./)
+    expect(h).toMatch(/3 of 53 posts since 17 Jun are linked to a lead magnet\./)
     expect(h).not.toMatch(HOLES)
   })
   it('prints the same line in layout B', () => {
     const h = html({ lm: withCounts, layout: 'b' })
     expect(h).toMatch(/data-lm-layout="b"/)
-    expect(h).toMatch(/3 of 53 posts since 17 Jun name their lead magnet\./)
+    expect(h).toMatch(/3 of 53 posts since 17 Jun are linked to a lead magnet\./)
   })
   it('prints no line at all on an older RPC that sends neither count', () => {
     const h = html()
     expect(h).not.toMatch(/data-lm-attribution/)
-    expect(h).not.toMatch(/name their lead magnet/)
+    expect(h).not.toMatch(/are linked to a lead magnet/)
   })
 })

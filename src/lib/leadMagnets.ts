@@ -203,7 +203,7 @@ export function attributionLine(read: LeadMagnetsRead | null | undefined): strin
   if (total <= 0) return null
   const day = read.since && /^\d{4}-\d{2}-\d{2}/.test(read.since) ? read.since.slice(0, 10) : null
   const when = day ? ` since ${dayLabel(day, new Date().getUTCFullYear())}` : ''
-  return `${num(a)} of ${num(total)} posts${when} name their lead magnet.`
+  return `${num(a)} of ${num(total)} posts${when} are linked to a lead magnet.`
 }
 
 /** Line 3: coverage. Absent when `unjudged` is missing (older RPC) or exactly 0 (every roster
