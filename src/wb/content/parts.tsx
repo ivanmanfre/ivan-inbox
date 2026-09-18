@@ -131,7 +131,11 @@ export function VerdictStrip({ gated, lm, bestGate, bestOwn }: {
       no window control and reads the RPC's own `best`/`best_own` unchanged. */
   bestGate?: GatedPost | null; bestOwn?: LmRow | null
 }) {
-  const overrides = bestGate !== undefined || bestOwn !== undefined ? { bestGate, bestOwn } : undefined
+  // Only the keys the caller actually passed: `verdictLines` tests `'bestOwn' in overrides`, so an
+  // undefined key would blank the line instead of falling back to the RPC's pick.
+  const overrides = bestGate !== undefined || bestOwn !== undefined
+    ? { ...(bestGate !== undefined ? { bestGate } : {}), ...(bestOwn !== undefined ? { bestOwn } : {}) }
+    : undefined
   const lines = verdictLines(gated, lm, overrides)
   if (!lines.length) return null
   return (

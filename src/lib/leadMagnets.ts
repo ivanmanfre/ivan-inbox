@@ -18,7 +18,7 @@
    ========================================================================== */
 import { supabase } from './supabase'
 import { CLIENT_OPS_GATE, type ContentLane } from './content'
-import { sinceMonday } from './reach'
+import { dayLabel, sinceMonday } from './reach'
 import { num } from './benchmark'
 
 export type LmRow = {
@@ -141,7 +141,9 @@ const GATE_KIND_LABEL: Record<string, string> = { comment_gate: 'a comment gate'
     unvalidated object would throw on `plain(best.author)` (unmounting the tree, no error boundary
     exists) or print `num()`'s en-dash placeholder for a missing count — both worse than no line. */
 function isUsableGatedPost(v: GatedPost | null | undefined): v is GatedPost {
-  return !!v && typeof v.author === 'string' && typeof v.comments === 'number'
+  // `cta_kind` is nullable in the table and the line calls `.replace` on it: with no error
+  // boundary in src, a null kind would blank the screen, so it fails validation instead.
+  return !!v && typeof v.author === 'string' && typeof v.comments === 'number' && typeof v.cta_kind === 'string'
 }
 
 /** Line 1: the loudest gate on the roster, from the RPC's own `best` pick on the Results block
@@ -172,10 +174,14 @@ function isUsableLmRow(v: LmRow | null | undefined): v is LmRow {
     `null`/absent/unusable renders no line. The status travels on the line: `best_own` is picked by
     activity alone (same rule as `activeLms`), so it is routinely a `retired` or `draft` row, and
     naming the title without saying so would read as a live recommendation it is not. */
-export function bestOwnLine(row: LmRow | null | undefined): string | null {
+export function bestOwnLine(row: LmRow | null | undefined, since?: string | null): string | null {
   if (!isUsableLmRow(row)) return null
   const name = plain(row.title || row.keyword || row.slug)
-  return `Your best lead magnet: ${name}, ${row.status}, ${plural(row.cta_clicks, 'CTA click')}, ${plural(row.gate_dms, 'gate DM')}, ${plural(row.posts, 'post')}.`
+  // The counts are the RPC's own window (db/084: clicks and gate DMs since `since`), so the line
+  // names it. Without a usable date it states no window rather than a wrong one.
+  const day = since && /^\d{4}-\d{2}-\d{2}/.test(since) ? since.slice(0, 10) : null
+  const when = day ? ` since ${dayLabel(day, new Date().getUTCFullYear())}` : ''
+  return `Your best lead magnet${when}: ${name}, ${row.status}, ${plural(row.cta_clicks, 'CTA click')}, ${plural(row.gate_dms, 'gate DM')}, ${plural(row.posts, 'post')}.`
 }
 
 /** Line 3: coverage. Absent when `unjudged` is missing (older RPC) or exactly 0 (every roster
@@ -204,7 +210,7 @@ export function verdictLines(
   const bestOwn = overrides && 'bestOwn' in overrides ? overrides.bestOwn ?? null : (l?.best_own ?? null)
   return [
     g ? bestGateLine(bestGate) : null,
-    l ? bestOwnLine(bestOwn) : null,
+    l ? bestOwnLine(bestOwn, l.since) : null,
     g ? coverageLine(g.judged, g.unjudged) : null,
   ].filter((line): line is string => line !== null)
 }

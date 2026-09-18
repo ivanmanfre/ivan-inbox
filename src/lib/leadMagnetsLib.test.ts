@@ -257,7 +257,20 @@ describe('bestGateLine', () => {
   })
 })
 
+describe('bestGateLine with a null cta_kind', () => {
+  it('prints no line and never throws', () => {
+    expect(bestGateLine({ author: 'A', comments: 3, cta_kind: null, gate_keyword: null } as never)).toBeNull()
+  })
+})
+
 describe('bestOwnLine', () => {
+  it('names the RPC window when the read carries one, and no window when it does not', () => {
+    const row = lm({ title: 'The Kit', cta_clicks: 6, gate_dms: 0, posts: 0 })
+    const year = new Date().getUTCFullYear()
+    expect(bestOwnLine(row, `${year}-06-19T00:00:00Z`)?.startsWith('Your best lead magnet since 19 Jun: The Kit,')).toBe(true)
+    expect(bestOwnLine(row, 'not a date')?.startsWith('Your best lead magnet: The Kit,')).toBe(true)
+    expect(bestOwnLine(row)?.startsWith('Your best lead magnet: The Kit,')).toBe(true)
+  })
   it('is null when the row is null or absent', () => {
     expect(bestOwnLine(null)).toBeNull()
     expect(bestOwnLine(undefined)).toBeNull()

@@ -123,16 +123,15 @@ export function LeadMagnetsPanel({ lm, gated, layout, weeks, onWeeks, now, onRet
     <div className="a-lm" data-lm-layout={layout} data-lm-state={state} data-lm-window={weeks}>
       <Group className="a-lm-g" label="Lead magnets and the gated roster" pad>
         <div className="a-lm-body">
-          {/* This surface HAS the 4/12-week control, so the strip must describe exactly the rows
-              the window currently shows: it overrides the RPC's own (unwindowed, 91-day) `best` /
-              `best_own` with this same render's windowed roster/own picks — `roster.roster[0]`,
-              the same ranking (`per_1k desc nulls last, comments desc`) the list below uses, and
-              `own.rows[0].row`, the same order the own-catalog list uses — never `roster.best`
-              (that key is `find(p => p.per_1k !== null)`, which drops the comments fallback a
-              lane with no sized author runs on). Suppressed entirely while either half is still
-              loading, so the strip never states a verdict over a placeholder. */}
+          {/* This surface HAS the 4/12-week control, so line 1 describes exactly the roster rows
+              the window shows: `roster.roster[0]`, the same ranking the list below uses (never
+              `roster.best`, which drops the comments fallback an unsized lane runs on). Line 2
+              stays the RPC's own `best_own` and names its own window in the sentence: the own
+              catalog's counts are 91-day aggregates on both surfaces, so there is no windowed
+              own pick to substitute (the most-posted row is a different question). No strip
+              while either half is loading. */}
           {state !== 'loading'
-            ? <VerdictStrip gated={gated} lm={lm} bestGate={roster ? roster.roster[0] ?? null : null} bestOwn={own ? own.rows[0]?.row ?? null : null} />
+            ? <VerdictStrip gated={gated} lm={lm} bestGate={roster ? roster.roster[0] ?? null : null} />
             : null}
           <div className="a-lm-filters">
             <Segmented

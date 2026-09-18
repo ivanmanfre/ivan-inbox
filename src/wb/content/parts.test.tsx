@@ -40,7 +40,7 @@ describe('VerdictStrip', () => {
     expect(html).toMatch(/data-lm-verdict="true"/)
     expect(linesOf(html)).toHaveLength(3)
     expect(html).toMatch(/Loudest gate by comments per 1k followers: Alex Vacca, comment &quot;GTM&quot;, 974 comments, 13\.3 per 1k followers\./)
-    expect(html).toMatch(/Your best lead magnet: The Kit, published, 5 CTA clicks, 1 gate DM, 4 posts\./)
+    expect(html).toMatch(/Your best lead magnet since \d{1,2} [A-Z][a-z]{2}(?: \d{4})?: The Kit, published, 5 CTA clicks, 1 gate DM, 4 posts\./)
     expect(html).toMatch(/174 of 1,386 roster posts judged, so treat the gate share as an upper bound\./)
     expect(html).not.toMatch(NOISE)
   })
@@ -55,7 +55,7 @@ describe('VerdictStrip', () => {
       />,
     )
     expect(html).toMatch(/Loudest gate by comments, no follower count on this lane&#x27;s gated authors: Luis Camacho, a link, 107 comments\./)
-    expect(html).toMatch(/Your best lead magnet: Workflow Audit Checklist for Service Businesses, retired, 29 CTA clicks, 0 gate DMs, 0 posts\./)
+    expect(html).toMatch(/Your best lead magnet since \d{1,2} [A-Z][a-z]{2}(?: \d{4})?: Workflow Audit Checklist for Service Businesses, retired, 29 CTA clicks, 0 gate DMs, 0 posts\./)
     expect(html).not.toMatch(NOISE)
   })
 
