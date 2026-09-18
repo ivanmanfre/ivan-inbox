@@ -22,7 +22,7 @@ import {
   addSection, blankCount, lineShape, moveSection, removeSection, sectionIsBlank, updateSection,
 } from '../../lib/strategy'
 import { type ContentLane } from '../../lib/content'
-import { laneOptions, useLanes } from '../../hooks/useLanes'
+import { laneOptions, resolveLane, useLanes } from '../../hooks/useLanes'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import { Badge, Button, Card, IconButton, Input, Segmented, spring } from '../../ds'
 import { Bar, Body, Group, Head, Screen } from '../kit'
@@ -282,6 +282,15 @@ export function StrategyView({ lane, setLane }: {
     else if (!proposalDirty) setRefreshTick(t => t + 1)
   })
   useEffect(() => { if (rowsRef.current) rowsRef.current.scrollTop = 0 }, [view, lane])
+  // A lane the registry no longer lists would leave the switch with nothing
+  // selected and every block fetching a seat it may not read. The shell holds
+  // one lane for all four content surfaces, so correcting it here corrects it
+  // everywhere. Inert while the three shipped lanes are the registry's answer.
+  useEffect(() => {
+    if (lanes.state !== 'registry') return
+    const next = resolveLane(lane, lanes.lanes)
+    if (next !== lane) setLane(next as ContentLane)
+  }, [lane, lanes.state, lanes.lanes, setLane])
 
   const head = (
     <>
