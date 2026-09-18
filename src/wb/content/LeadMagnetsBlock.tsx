@@ -15,7 +15,7 @@
    ========================================================================== */
 import { useEffect, useId, useMemo, useState } from 'react'
 import { Button } from '../../ds'
-import { Failed } from './parts'
+import { Failed, VerdictStrip } from './parts'
 import { dayLabel, shortTitle } from '../../lib/reach'
 import { num } from '../../lib/benchmark'
 import type { ContentLane } from '../../lib/content'
@@ -171,6 +171,7 @@ export function LeadMagnetsView({ lm, gated, now, onRetryLm, onRetryGated }: {
   // A half that failed carries no count: `0` would read as a fact, and it is an unread one.
   return (
     <div className="a-reach-sec" data-reach-lm="ready" data-lm-own={lm.kind === 'ready' ? own.length : undefined} data-lm-gated={gated.kind === 'ready' ? ranked.length : undefined}>
+      <VerdictStrip gated={gated} lm={lm} />
       <div className="a-eyebrow">{TITLE}</div>
       {lm.kind === 'ready' ? (
         <>

@@ -4,6 +4,7 @@ vi.mock('./supabase', () => ({ supabase: { rpc } }))
 import {
   activeLms, perThousand, rankGated, sizeLabel, lmRate, inWindow, layoutFromLocation,
   fetchLeadMagnets, fetchGatedPosts,
+  bestGateLine, bestOwnLine, coverageLine, verdictLines,
   LM_FLOOR_POSTS, LM_DEFAULT_LAYOUT,
   type LmRow, type GatedPost,
 } from './leadMagnets'
@@ -183,5 +184,116 @@ describe('fetchGatedPosts', () => {
   it('reports failed when required fields are missing', async () => {
     rpc.mockResolvedValueOnce({ data: { posts: [] }, error: null })
     expect((await fetchGatedPosts('arch')).kind).toBe('failed')
+  })
+  it('carries unjudged and best when the RPC sends them, including an explicit null best', async () => {
+    const best = gated({ post_ref: 'loud' })
+    rpc.mockResolvedValueOnce({ data: { since: '2026-06-17T18:11:01.898Z', judged: 58, gated: 35, posts: [], unjudged: 12, best }, error: null })
+    const r1 = await fetchGatedPosts('ivan')
+    expect(r1.kind === 'ready' ? r1.unjudged : null).toBe(12)
+    expect(r1.kind === 'ready' ? r1.best : undefined).toEqual(best)
+
+    rpc.mockResolvedValueOnce({ data: { since: '2026-06-17T18:11:01.898Z', judged: 58, gated: 35, posts: [], unjudged: 0, best: null }, error: null })
+    const r2 = await fetchGatedPosts('ivan')
+    expect(r2.kind === 'ready' ? r2.unjudged : null).toBe(0)
+    expect(r2.kind === 'ready' ? r2.best : undefined).toBeNull()
+  })
+  it('leaves unjudged and best off the read when an older RPC sends neither', async () => {
+    rpc.mockResolvedValueOnce({ data: { since: '2026-06-17T18:11:01.898Z', judged: 58, gated: 35, posts: [] }, error: null })
+    const r = await fetchGatedPosts('ivan')
+    expect(r.kind === 'ready' && 'unjudged' in r).toBe(false)
+    expect(r.kind === 'ready' && 'best' in r).toBe(false)
+  })
+})
+
+describe('fetchLeadMagnets best_own', () => {
+  it('carries best_own when the RPC sends it, including an explicit null', async () => {
+    const own = lm({ slug: 'kit' })
+    rpc.mockResolvedValueOnce({ data: { since: '2026-06-17T18:11:01.898Z', lms: [], best_own: own }, error: null })
+    const r1 = await fetchLeadMagnets('ivan')
+    expect(r1.kind === 'ready' ? r1.best_own : undefined).toEqual(own)
+
+    rpc.mockResolvedValueOnce({ data: { since: '2026-06-17T18:11:01.898Z', lms: [], best_own: null }, error: null })
+    const r2 = await fetchLeadMagnets('ivan')
+    expect(r2.kind === 'ready' ? r2.best_own : undefined).toBeNull()
+  })
+  it('leaves best_own off the read when an older RPC sends none', async () => {
+    rpc.mockResolvedValueOnce({ data: { since: '2026-06-17T18:11:01.898Z', lms: [] }, error: null })
+    const r = await fetchLeadMagnets('ivan')
+    expect(r.kind === 'ready' && 'best_own' in r).toBe(false)
+  })
+})
+
+describe('bestGateLine', () => {
+  it('is null when best is null or absent', () => {
+    expect(bestGateLine(null)).toBeNull()
+    expect(bestGateLine(undefined)).toBeNull()
+  })
+  it('states the keyword, the comment count and the rate when sized', () => {
+    const best = gated({ author: 'Alex Vacca', comments: 974, follower_count: 73256, gate_keyword: 'GTM' })
+    expect(bestGateLine(best)).toBe('Best gate on the roster: Alex Vacca, comment "GTM", 974 comments, 13.3 per 1k followers.')
+  })
+  it('falls back to the CTA kind when there is no keyword, and to size unknown when unsized', () => {
+    const best = gated({ author: 'No Keyword', comments: 5, gate_keyword: '', cta_kind: 'dm_gate', follower_count: null })
+    expect(bestGateLine(best)).toBe('Best gate on the roster: No Keyword, a DM gate, 5 comments, size unknown.')
+  })
+  // db/083: gate_keyword is JSON null (not '') on every `link`-kind row by rubric design — the
+  // whole risedtc roster today. A null must fall back exactly like an empty string does.
+  it('falls back the same way on a null gate_keyword as on an empty one', () => {
+    const best = gated({ author: 'Luis Camacho', comments: 107, gate_keyword: null, cta_kind: 'link', follower_count: null })
+    expect(bestGateLine(best)).toBe('Best gate on the roster: Luis Camacho, a link, 107 comments, size unknown.')
+  })
+  it('takes the em dash out of the author name', () => {
+    const best = gated({ author: 'A — B', comments: 1, gate_keyword: '' })
+    expect(bestGateLine(best)?.startsWith('Best gate on the roster: A, B,')).toBe(true)
+  })
+})
+
+describe('bestOwnLine', () => {
+  it('is null when the row is null or absent', () => {
+    expect(bestOwnLine(null)).toBeNull()
+    expect(bestOwnLine(undefined)).toBeNull()
+  })
+  it('names the title, the status, the clicks, the gate DMs and the posts', () => {
+    const row = lm({ title: 'The Rise DTC AI Kit', status: 'published', cta_clicks: 5, gate_dms: 1, posts: 4 })
+    expect(bestOwnLine(row)).toBe('Your best lead magnet: The Rise DTC AI Kit, published, 5 CTA clicks, 1 gate DM, 4 posts.')
+  })
+  // db/083's own live example: Ivan's best lead magnet by clicks is a RETIRED one (activeLms
+  // picks by activity, not by status), so the strip must say so rather than imply it is live.
+  it('states a retired or draft pick as such, never silent about it', () => {
+    const row = lm({ title: 'Workflow Audit Checklist for Service Businesses', status: 'retired', keyword: 'AUDIT', posts: 0, comments: 0, gate_dms: 0, cta_clicks: 29 })
+    expect(bestOwnLine(row)).toBe('Your best lead magnet: Workflow Audit Checklist for Service Businesses, retired, 29 CTA clicks, 0 gate DMs, 0 posts.')
+  })
+  it('falls back to the keyword, then the slug, when there is no title', () => {
+    expect(bestOwnLine(lm({ title: '', keyword: 'KIT', slug: 'kit-slug' }))?.startsWith('Your best lead magnet: KIT,')).toBe(true)
+    expect(bestOwnLine(lm({ title: '', keyword: null, slug: 'kit-slug' }))?.startsWith('Your best lead magnet: kit-slug,')).toBe(true)
+  })
+})
+
+describe('coverageLine', () => {
+  it('is null when unjudged is missing (an older RPC) or exactly 0 (every post judged)', () => {
+    expect(coverageLine(58, undefined)).toBeNull()
+    expect(coverageLine(58, null)).toBeNull()
+    expect(coverageLine(58, 0)).toBeNull()
+  })
+  it('states judged of the total, and the upper-bound caveat', () => {
+    expect(coverageLine(174, 1212)).toBe('174 of 1,386 roster posts judged, so treat the gate share as an upper bound.')
+  })
+})
+
+describe('verdictLines', () => {
+  it('returns all three lines when both reads are ready and both picks are present', () => {
+    const g = { kind: 'ready' as const, since: '2026-06-17T00:00:00Z', judged: 58, gated: 35, posts: [], unjudged: 1212, best: gated({ author: 'Alex Vacca', comments: 974, follower_count: 73256, gate_keyword: 'GTM' }), readAt: '' }
+    const l = { kind: 'ready' as const, since: '2026-06-17T00:00:00Z', lms: [], best_own: lm({ title: 'The Kit', cta_clicks: 5, gate_dms: 1, posts: 4 }), readAt: '' }
+    expect(verdictLines(g, l)).toHaveLength(3)
+  })
+  it('drops to two lines when one pick is null, and to one when only one read is ready', () => {
+    const g = { kind: 'ready' as const, since: '2026-06-17T00:00:00Z', judged: 58, gated: 0, posts: [], unjudged: 0, best: null, readAt: '' }
+    const l = { kind: 'ready' as const, since: '2026-06-17T00:00:00Z', lms: [], best_own: lm({ title: 'The Kit', cta_clicks: 5, gate_dms: 1, posts: 4 }), readAt: '' }
+    expect(verdictLines(g, l)).toHaveLength(1)
+    expect(verdictLines(g, null)).toHaveLength(0)
+  })
+  it('returns nothing for a loading or fully failed pair', () => {
+    expect(verdictLines(null, null)).toEqual([])
+    expect(verdictLines({ kind: 'failed', message: 'x' }, { kind: 'denied', message: 'y' })).toEqual([])
   })
 })

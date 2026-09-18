@@ -8,6 +8,7 @@
    ========================================================================== */
 import type { ReactNode } from 'react'
 import { Banner, Button, EmptyState, Icon } from '../../ds'
+import { verdictLines, type GatedRead, type LeadMagnetsRead } from '../../lib/leadMagnets'
 import './content.css'
 
 /* `relAge` moved to the shared kit in Phase 3 W6 (the rail, Money and Ops read
@@ -113,6 +114,22 @@ export function PullIndicator({ pull, refreshing, trigger }: {
       >
         <Icon name={refreshing ? 'refresh' : ready ? 'up' : 'down'} size={16} />
       </div>
+    </div>
+  )
+}
+
+/** THE ANSWER ON TOP. Shared by both lead-magnet surfaces (`LeadMagnetsBlock` in Strategy >
+    Results, `leadmagnets/LeadMagnetsPanel` in the dedicated view) so they read the same verdict
+    off the same two RPCs through the one pure builder in `lib/leadMagnets`: they cannot disagree
+    because there is only one place that decides what the lines say. At most three plain
+    sentences, each carrying its own count; a read with nothing to report contributes none of its
+    lines, so the strip can print one, two, three, or nothing at all. */
+export function VerdictStrip({ gated, lm }: { gated: GatedRead | null; lm: LeadMagnetsRead | null }) {
+  const lines = verdictLines(gated, lm)
+  if (!lines.length) return null
+  return (
+    <div className="a-lm-verdict" data-lm-verdict>
+      {lines.map((line, i) => <p key={i} className="a-lm-verdict-l">{line}</p>)}
     </div>
   )
 }

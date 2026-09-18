@@ -20,6 +20,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Segmented } from '../../../ds'
 import { Group } from '../../kit'
+import { VerdictStrip } from '../parts'
 import type { ContentLane } from '../../../lib/content'
 import {
   LM_DEFAULT_LAYOUT, LM_WINDOWS, fetchGatedPosts, fetchLeadMagnets, layoutFromLocation,
@@ -122,6 +123,9 @@ export function LeadMagnetsPanel({ lm, gated, layout, weeks, onWeeks, now, onRet
     <div className="a-lm" data-lm-layout={layout} data-lm-state={state} data-lm-window={weeks}>
       <Group className="a-lm-g" label="Lead magnets and the gated roster" pad>
         <div className="a-lm-body">
+          {/* Window-independent: `best` / `best_own` are the RPC's own picks, not filtered by the
+              4/12-week control below, so the answer sits above it rather than inside its scope. */}
+          <VerdictStrip gated={gated} lm={lm} />
           <div className="a-lm-filters">
             <Segmented
               label="Window"
