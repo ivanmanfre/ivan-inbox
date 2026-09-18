@@ -51,6 +51,16 @@ export const fetchPipeline = () => selectAll<PipelineRow>('inbox_pipeline_v')
 export const fetchScanOpens = () => selectAll<ScanOpenRow>('inbox_scan_opens_v')
 export const fetchOutcomes = () => selectAll<OutcomeRow>('inbox_outcomes_v')
 
+// Of the people invited in the window, how many looked at the sending seat's profile
+// afterwards (db/089_inbox_viewed_back.sql). LinkedIn exposes only some viewers, so
+// every figure is a floor. Soft-fails to [] so one missing function never blanks Lanes.
+export type ViewedBackRow = { client_id: string; invited_7d: number; viewed_7d: number; invited_30d: number; viewed_30d: number }
+export async function fetchViewedBack(): Promise<ViewedBackRow[]> {
+  const { data, error } = await supabase.rpc('inbox_viewed_back')
+  if (error) return []
+  return (data ?? []) as ViewedBackRow[]
+}
+
 // Soft-fails to [] when the view is not applied yet, so the Overview keeps rendering
 // its other three tiles instead of erroring the whole screen on one missing relation.
 // Same pre-apply discipline as fetchCampaignSends.
