@@ -1,4 +1,4 @@
--- 087: the seat allowlist reads client_registry instead of a literal lane triple.
+-- 088: the seat allowlist reads client_registry instead of a literal lane triple.
 --
 -- Until now every lane-keyed operator RPC carried the same line:
 --     if p_client_id not in ('ivan','risedtc','arch') then raise exception 'unknown seat'; end if;

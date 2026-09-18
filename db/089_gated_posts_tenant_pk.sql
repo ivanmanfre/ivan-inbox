@@ -1,4 +1,4 @@
--- 088: competitor_gated_posts primary key becomes (client_id, post_ref).
+-- 089: competitor_gated_posts primary key becomes (client_id, post_ref).
 --
 -- SUPERSEDES db/076_competitor_gated_posts.sql:7, which declares `post_ref text primary key`.
 -- That line is left as it was, because 076 is the history of what was built on that day and

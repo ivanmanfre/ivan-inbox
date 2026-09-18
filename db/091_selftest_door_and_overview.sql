@@ -1,7 +1,7 @@
--- 090: the fix round. Three corrections and one comment.
+-- 091: the fix round. Three corrections and one comment.
 --
 -- 1. lane_allowed() gets a second, explicit door.
---    087 made it `is_active AND a roster`, on the stated premise that nothing else read
+--    088 made it `is_active AND a roster`, on the stated premise that nothing else read
 --    is_active. That premise was wrong. Four live readers predate it:
 --      /Users/ivanmanfredi/Desktop/claude-code-railway/entrypoint.sh:325 and :400
 --      /Users/ivanmanfredi/Desktop/claude-code-railway/web-ui/server.js:437
@@ -25,7 +25,7 @@
 --    unproven spend path, it now refuses the run and says where harvesting actually lives.
 --
 -- 4. operator_gated_posts: one stale comment. 083 justified the exact `unjudged` subtraction by
---    a PRIMARY KEY on post_ref alone; 088 widened that key. The guarantee survives for a
+--    a PRIMARY KEY on post_ref alone; 089 widened that key. The guarantee survives for a
 --    different reason, and the comment now states the real one. No behaviour change: the two
 --    function bodies differ only inside that comment.
 
@@ -222,7 +222,7 @@ begin
       -- 083: roster posts in the window that carry no judgment at all. The subtraction is exact
       -- (judged + unjudged = every roster post in the window, always) because the `judged` join
       -- cannot multiply a src row. 083 justified that by competitor_gated_posts having a PRIMARY
-      -- KEY on post_ref alone; 088 widened that key to (client_id, post_ref), and the guarantee
+      -- KEY on post_ref alone; 089 widened that key to (client_id, post_ref), and the guarantee
       -- now rests on the join itself -- it pins j.client_id = p_client_id, and (client_id,
       -- post_ref) is unique, so at most one row can match a given src post_ref.
       'unjudged', (select count(*) from src) - (select count(*) from judged),
