@@ -21,7 +21,8 @@ import { useStrategy } from '../../hooks/useStrategy'
 import {
   addSection, blankCount, lineShape, moveSection, removeSection, sectionIsBlank, updateSection,
 } from '../../lib/strategy'
-import { CONTENT_LANES, LANE_LABEL, type ContentLane } from '../../lib/content'
+import { type ContentLane } from '../../lib/content'
+import { laneOptions, useLanes } from '../../hooks/useLanes'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import { Badge, Button, Card, IconButton, Input, Segmented, spring } from '../../ds'
 import { Bar, Body, Group, Head, Screen } from '../kit'
@@ -33,6 +34,7 @@ import { BenchmarkBlock } from './BenchmarkBlock'
 import { ReachBlock } from './ReachBlock'
 import { ThemesBlock } from './ThemesBlock'
 import { LeadMagnetsView } from './leadmagnets'
+import { MarketsView } from './markets'
 import './content.css'
 import './strategy-evidence.css'
 
@@ -264,6 +266,9 @@ export function StrategyView({ lane, setLane }: {
   setLane: (l: ContentLane) => void
 }) {
   const st = useStrategy(lane)
+  // The tenants this operator may see come from client_registry through
+  // operator_lanes, so onboarding a client adds a lane here with no deploy.
+  const lanes = useLanes()
   const [view, setView] = useState('recommendations')
   const [refreshTick, setRefreshTick] = useState(0)
   const [proposalDirty, setProposalDirty] = useState(false)
@@ -305,7 +310,7 @@ export function StrategyView({ lane, setLane }: {
             setProposalDirty(false)
             setLane(k as ContentLane)
           }}
-          options={CONTENT_LANES.map(k => ({ id: k, label: LANE_LABEL[k] }))}
+          options={laneOptions(lanes.lanes)}
         />
     </Bar>
     <Bar>
@@ -316,6 +321,7 @@ export function StrategyView({ lane, setLane }: {
           { id: 'competitors', label: 'Competitors' },
           { id: 'magnets', label: 'Lead magnets' },
           { id: 'outreach', label: 'Outreach' },
+          { id: 'markets', label: 'Markets' },
           { id: 'notes', label: st.dirty ? 'Notes •' : 'Notes' },
         ]} />
     </Bar>
@@ -325,7 +331,7 @@ export function StrategyView({ lane, setLane }: {
   const blanks = blankCount(st.sections)
 
   return (
-    <Screen className="a-ct">
+    <Screen className="a-ct" lanes={lanes.state}>
       {head}
       <Body innerRef={rowsRef} className="a-strat">
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
@@ -338,6 +344,7 @@ export function StrategyView({ lane, setLane }: {
         </div>}
         {view === 'competitors' && <BenchmarkBlock key={`${lane}-${refreshTick}`} lane={lane} view="competitors" />}
         {view === 'magnets' && <LeadMagnetsView key={`${lane}-${refreshTick}`} lane={lane} />}
+        {view === 'markets' && <MarketsView key={`${lane}-${refreshTick}`} lane={lane} />}
         {view === 'outreach' && <div key={`${lane}-${refreshTick}`} className="a-strategy-panel"><OutreachBlock lane={lane} /></div>}
         {view === 'notes' && <>
         <div className="a-ct-sub">Private editorial notes{st.updatedAt ? ` · saved ${relAge(st.updatedAt)}` : ''}. These notes are not connected to the generator. Review dated claims against Competitors and Results before using them.</div>

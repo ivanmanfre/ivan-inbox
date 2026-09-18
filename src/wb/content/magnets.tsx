@@ -17,9 +17,10 @@ import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { useIdeaCandidates, useResources } from '../../hooks/useContent'
 import { useSectionState } from '../../hooks/useSectionState'
 import {
-  CONTENT_LANES, elapsedMinutes, LANE_LABEL, LANE_POSSESSIVE, STUCK_GENERATING_MINUTES,
+  elapsedMinutes, LANE_POSSESSIVE, STUCK_GENERATING_MINUTES,
   type ContentLane, type IdeaCandidate,
 } from '../../lib/content'
+import { laneOptions, useLanes } from '../../hooks/useLanes'
 import {
   groupByLmStage, isStuckGeneratingLm, isStuckResource,
   LM_PIPELINE_STAGES, LM_STAGE_LABEL, normalizeLmStatus, stageOfLm,
@@ -290,6 +291,7 @@ export function MagnetsList({ lane, setLane, onOpen }: {
   setLane: (l: ContentLane) => void
   onOpen?: OpenMagnet
 }) {
+  const lanes = useLanes()
   const resources = useResources(lane)
   // Ivan lane only: the LM side of the content_type partition. The hook is
   // enabled per lane so a client view never pays the fetch for a row set it is
@@ -299,7 +301,7 @@ export function MagnetsList({ lane, setLane, onOpen }: {
   const ptr = usePullToRefresh(rowsRef, () => resources.refresh())
 
   return (
-    <Screen className="a-ct">
+    <Screen className="a-ct" lanes={lanes.state}>
       {/* W3-11: the title and the lane switch share ONE 44px band. They were
           two, and with the stage strip's four wrapped rows under them not one
           magnet row reached the fold. The row itself scrolls sideways, so the
@@ -312,7 +314,7 @@ export function MagnetsList({ lane, setLane, onOpen }: {
             markerId="a-lm-lane"
             value={lane}
             onChange={k => setLane(k as ContentLane)}
-            options={CONTENT_LANES.map(k => ({ id: k, label: LANE_LABEL[k] }))}
+            options={laneOptions(lanes.lanes)}
           />
         </div>
       </Head>

@@ -35,12 +35,13 @@ import {
   useClientIdeas, useContent, useIdeaCandidates, useScheduledQueue,
 } from '../../hooks/useContent'
 import {
-  CONTENT_LANES, ERROR_ALARM_HOURS, LANE_LABEL, LANE_POSSESSIVE, PIPELINE_STAGES,
+  ERROR_ALARM_HOURS, LANE_LABEL, LANE_POSSESSIVE, PIPELINE_STAGES,
   STAGE_LABEL, STAGE_SHORT, boardGroupOf, clientStageLabel,
   countBoardVisible, countUndated, groupByLaneStage, groupByStage,
   isRecentError, isStuckGenerating, stageOfLane, tabSev,
   type BoardGroup, type ContentDraft, type ContentLane, type ContentStage, type ContentStages,
 } from '../../lib/content'
+import { laneOptions, useLanes } from '../../hooks/useLanes'
 import {
   applyFilters, applySearch, buildFacets, draftProminent, draftSpecs,
   DRAFT_PROMINENT, splitFacets,
@@ -123,11 +124,11 @@ function CommandStrip({
             markerId="a-ct-lane"
             value={lane}
             onChange={k => setLane(k as ContentLane)}
-            options={CONTENT_LANES.map(k => {
-              const n = laneCounts?.[k] ?? 0
+            options={lanes.lanes.map(l => {
+              const n = laneCounts?.[l.client_id as ContentLane] ?? 0
               return {
-                id: k,
-                label: <span title={n > 0 ? `${LANE_LABEL[k]}: ${n} at review` : undefined}>{LANE_LABEL[k]}</span>,
+                id: l.client_id,
+                label: <span title={n > 0 ? `${l.display_name}: ${n} at review` : undefined}>{l.display_name}</span>,
                 count: n > 0 ? n : undefined,
               }
             })}
@@ -733,6 +734,7 @@ export function ContentList({ lane, setLane, openId, onOpen, laneCounts }: {
       the lane you are already looking at. */
   laneCounts?: Partial<Record<ContentLane, number>>
 }) {
+  const lanes = useLanes()
   const { drafts, stages, matched, laneTotal, loading, error, loadedAt, refresh } = useContent(lane)
   const rowsRef = useRef<HTMLDivElement>(null)
   const ptr = usePullToRefresh(rowsRef, () => refresh())
@@ -784,7 +786,7 @@ export function ContentList({ lane, setLane, openId, onOpen, laneCounts }: {
   const onBoard = useMemo(() => countBoardVisible(drafts), [drafts])
 
   return (
-    <Screen className="a-ct">
+    <Screen className="a-ct" lanes={lanes.state}>
       {(err || firstLoad || nothingMatched) ? (
         <>
           {/* The lane switch is the ONE control that must survive every data

@@ -1,0 +1,160 @@
+/* MARKETS (Strategy > Markets). The Ledger grammar the inbox already speaks:
+   hairline rows, mono figures with their predicate attached, one accent, and
+   no lime anywhere (nothing on this screen is live state, it is a reading).
+   Mobile first: every grid collapses to a stack under 52rem, so the phone
+   never scrolls sideways and every section still opens with its number.
+   Tokens only: every value is a var(--ds-*). */
+
+.a-mk{ min-width:0 }
+.a-mk-body{ display:flex; flex-direction:column; gap:var(--ds-s6); min-width:0 }
+.a-mk-g .a-group-pad > *{ min-width:0 }
+.a-mk-fail{ display:flex; flex-direction:column; gap:var(--ds-s3); align-items:flex-start }
+
+/* ---- the answer fold. One number first, the ask ledger beside it. */
+.a-mk-fold{ display:grid; grid-template-columns:minmax(0,1.35fr) minmax(0,1fr); gap:var(--ds-s6); min-width:0 }
+.a-mk-fold-main{ min-width:0; display:flex; flex-direction:column; gap:var(--ds-s3) }
+.a-mk-fig{ display:flex; flex-direction:column; gap:var(--ds-s1); min-width:0 }
+.a-mk-n{
+  font-family:var(--ds-font-mono); font-variant-numeric:tabular-nums;
+  font-size:var(--ds-fs-hero, 40px); line-height:1; letter-spacing:-0.02em; color:var(--ds-text);
+}
+.a-mk-u{ font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); color:var(--ds-text-2); overflow-wrap:anywhere }
+.a-mk-lede{ font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); color:var(--ds-text-2); overflow-wrap:anywhere }
+
+.a-mk-asks{
+  min-width:0; display:flex; flex-direction:column; gap:var(--ds-s2);
+  background:var(--ds-surface-2); border-radius:var(--ds-radius); padding:var(--ds-s4);
+}
+.a-mk-asklist{ list-style:none; margin:0; padding:0; border-top:1px solid var(--ds-line) }
+.a-mk-ask{
+  display:grid; grid-template-columns:4.5rem minmax(0,1fr); gap:var(--ds-s3);
+  align-items:baseline; padding-block:var(--ds-s2); border-bottom:1px solid var(--ds-line);
+}
+.a-mk-askv{
+  font-family:var(--ds-font-mono); font-variant-numeric:tabular-nums;
+  font-size:var(--ds-fs-lg, 20px); line-height:1.1; color:var(--ds-text);
+}
+.a-mk-askl{ font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-2); overflow-wrap:anywhere }
+
+/* ---- a section. Its number rides in the heading, so the heading is the reading. */
+.a-mk-sec{ display:flex; flex-direction:column; gap:var(--ds-s2); min-width:0 }
+.a-mk-h{
+  display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--ds-s1) var(--ds-s3);
+  font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); font-weight:600; color:var(--ds-text); margin:0;
+}
+.a-mk-k{
+  font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); letter-spacing:0.08em;
+  text-transform:uppercase; color:var(--ds-text-3);
+}
+.a-mk-sub{ font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3); overflow-wrap:anywhere }
+.a-mk-note{ font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3); overflow-wrap:anywhere }
+.a-mk-empty{ font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3); padding-block:var(--ds-s3) }
+/* The one sentence that says a number is missing rather than zero. */
+.a-mk-withheld{
+  font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-2);
+  border-inline-start:2px solid var(--ds-hairline-strong); padding-inline-start:var(--ds-s3);
+}
+.a-mk-tag{
+  font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono); font-variant-numeric:tabular-nums;
+  color:var(--ds-text-3); white-space:nowrap; margin-inline-start:var(--ds-s3);
+}
+
+/* ---- the offer block, the unit this screen is built from. */
+.a-mk-offers{ list-style:none; margin:0; padding:0 }
+.a-mk-offer{
+  display:grid; grid-template-columns:2.75rem minmax(0,1.5fr) minmax(0,1fr); gap:var(--ds-s4);
+  padding-block:var(--ds-s4); border-top:1px solid var(--ds-line); min-width:0;
+}
+.a-mk-offer:last-child{ border-bottom:1px solid var(--ds-line) }
+.a-mk-rank{
+  font-family:var(--ds-font-mono); font-variant-numeric:tabular-nums;
+  font-size:var(--ds-fs-lg, 20px); line-height:1.1; color:var(--ds-text-3);
+}
+.a-mk-omain{ min-width:0; display:flex; flex-direction:column; gap:var(--ds-s2) }
+.a-mk-ot{ font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); font-weight:600; color:var(--ds-text); margin:0; overflow-wrap:anywhere }
+.a-mk-ow{ font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-2); overflow-wrap:anywhere }
+.a-mk-oside{
+  min-width:0; display:flex; flex-direction:column; gap:var(--ds-s2);
+  border-inline-start:1px solid var(--ds-line); padding-inline-start:var(--ds-s4);
+}
+.a-mk-take{ font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-2); overflow-wrap:anywhere }
+
+/* The bar is the comparison: the fill is this offer, the tick is the median. */
+.a-mk-reach{ position:relative; height:0.5rem; background:var(--ds-surface-2); border-radius:var(--ds-radius-sm, 2px); overflow:hidden }
+.a-mk-reach-fill{ position:absolute; inset-block:0; inset-inline-start:0; background:var(--ds-accent-ui); border-radius:inherit }
+.a-mk-reach-med{ position:absolute; inset-block:0; width:2px; background:var(--ds-text) }
+.a-mk-legend{
+  display:flex; flex-wrap:wrap; gap:var(--ds-s1) var(--ds-s4);
+  font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono); font-variant-numeric:tabular-nums; color:var(--ds-text-3);
+}
+.a-mk-open{
+  align-self:flex-start; display:inline-flex; align-items:center; min-height:var(--ds-tap);
+  font-size:var(--ds-fs-meta); color:var(--ds-text);
+  text-decoration:underline; text-decoration-color:var(--ds-hairline-strong); text-underline-offset:3px;
+}
+.a-mk-open:focus-visible{ outline:2px solid var(--ds-accent-ui); outline-offset:2px }
+
+/* ---- the ruled list, for everything that is a line rather than a block. */
+.a-mk-tbl{ list-style:none; margin:0; padding:0; border-top:1px solid var(--ds-line) }
+.a-mk-tbl > li{ border-bottom:1px solid var(--ds-line) }
+.a-mk-row{ display:flex; flex-direction:column; gap:var(--ds-s1); padding-block:var(--ds-s3); min-width:0 }
+.a-mk-row[data-mk-you='true'] .a-mk-tag{ color:var(--ds-text) }
+.a-mk-t{ font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); color:var(--ds-text); overflow-wrap:anywhere }
+a.a-mk-t-a{ color:var(--ds-text); text-decoration:underline; text-decoration-color:var(--ds-hairline-strong); text-underline-offset:3px }
+a.a-mk-t-a:focus-visible{ outline:2px solid var(--ds-accent-ui); outline-offset:2px }
+.a-mk-figs{
+  display:flex; flex-wrap:wrap; gap:var(--ds-s1) var(--ds-s4);
+  font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono); font-variant-numeric:tabular-nums; color:var(--ds-text-2);
+}
+.a-mk-f{ white-space:nowrap }
+.a-mk-why{ font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3); overflow-wrap:anywhere }
+.a-mk-more{ display:flex; margin-top:var(--ds-s2) }
+.a-mk-more .ds-btn{ min-height:var(--ds-tap) }
+
+/* ---- a reading that carries its examples, expandable like a reach week. */
+.a-mk-d > summary{
+  list-style:none; cursor:pointer; min-height:var(--ds-tap);
+  display:flex; flex-direction:column; justify-content:center; gap:var(--ds-s1);
+  padding-block:var(--ds-s3); min-width:0;
+}
+.a-mk-d > summary::-webkit-details-marker{ display:none }
+.a-mk-d > summary:hover{ background:var(--ds-surface-2) }
+.a-mk-d > summary:focus-visible{ outline:2px solid var(--ds-accent-ui); outline-offset:2px }
+.a-mk-d > summary .a-mk-t::after{
+  content:'\203A'; color:var(--ds-text-3); margin-inline-start:var(--ds-s3);
+  display:inline-block; transition:transform var(--ds-dur-hover) var(--ds-ease);
+}
+.a-mk-d[open] > summary .a-mk-t::after{ transform:rotate(90deg) }
+.a-mk-dd{ padding-bottom:var(--ds-s4); display:flex; flex-direction:column; gap:var(--ds-s2) }
+.a-mk-change{ font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text); overflow-wrap:anywhere }
+.a-mk-ex{ font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-2); overflow-wrap:anywhere }
+
+/* ---- the named ideas, as tiles. */
+.a-mk-tiles{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:var(--ds-s3); min-width:0 }
+.a-mk-tile{
+  min-width:0; display:flex; flex-direction:column; gap:var(--ds-s2);
+  background:var(--ds-surface-2); border-radius:var(--ds-radius); padding:var(--ds-s4);
+}
+.a-mk-tt{ font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); font-weight:600; color:var(--ds-text); margin:0; overflow-wrap:anywhere }
+.a-mk-q{
+  font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3);
+  border-inline-start:2px solid var(--ds-hairline-strong); padding-inline-start:var(--ds-s3); overflow-wrap:anywhere;
+}
+
+/* ---- the plan. */
+.a-mk-plan{ list-style:none; margin:0; padding:0; border-top:1px solid var(--ds-line) }
+.a-mk-plan-i{ display:flex; flex-direction:column; gap:var(--ds-s1); padding-block:var(--ds-s4); border-bottom:1px solid var(--ds-line); min-width:0 }
+
+/* ---- phone. Every grid becomes a stack; the side column keeps its rule as a
+   top hairline so the reading still reads as one unit. */
+@media (max-width:51.999rem){
+  .a-mk-fold{ grid-template-columns:1fr; gap:var(--ds-s4) }
+  .a-mk-offer{ grid-template-columns:2.25rem minmax(0,1fr); gap:var(--ds-s3) }
+  .a-mk-oside{
+    grid-column:2; border-inline-start:0; padding-inline-start:0;
+    border-top:1px solid var(--ds-line); padding-top:var(--ds-s3);
+  }
+  .a-mk-tiles{ grid-template-columns:1fr }
+  .a-mk-n{ font-size:var(--ds-fs-xl, 30px) }
+  .a-mk-row a.a-mk-t-a{ display:inline-flex; align-items:center; min-height:var(--ds-tap) }
+}

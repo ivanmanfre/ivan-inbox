@@ -35,8 +35,15 @@ export function relAge(iso: string | null, now: number = Date.now()): string {
   return `${Math.floor(h / 24)}d ago`
 }
 
-export function Screen({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={`a-root ds-body${className ? ` ${className}` : ''}`}>{children}</div>
+export function Screen({ className, lanes, children }: {
+  className?: string
+  /** Where the surface's lane list came from: 'registry', 'fallback' or 'loading'.
+      A registry-driven switch and the typed-in constant look identical on screen,
+      so the surface states which one it is rendering and a shot can read it. */
+  lanes?: string
+  children: ReactNode
+}) {
+  return <div className={`a-root ds-body${className ? ` ${className}` : ''}`} data-lanes={lanes}>{children}</div>
 }
 
 /* N2b-1 - ONE HEAD ON THE PHONE. The phone chrome (alerts, bell, settings) drew

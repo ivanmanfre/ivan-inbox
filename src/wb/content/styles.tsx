@@ -14,8 +14,9 @@ import { useRef, useState } from 'react'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { useContent, useStyleRoster } from '../../hooks/useContent'
 import {
-  CONTENT_LANES, LANE_LABEL, LANE_POSSESSIVE, type ContentDraft, type ContentLane,
+  LANE_POSSESSIVE, type ContentDraft, type ContentLane,
 } from '../../lib/content'
+import { laneOptions, useLanes } from '../../hooks/useLanes'
 import {
   cleanStyleTitle, previewKeyFor, previewsByStyle, type StylePrompt,
 } from '../../lib/styles'
@@ -156,13 +157,14 @@ export function StylesList({ lane, setLane }: {
   lane: ContentLane
   setLane: (l: ContentLane) => void
 }) {
+  const lanes = useLanes()
   const roster = useStyleRoster()
   const { drafts } = useContent(lane)
   const rowsRef = useRef<HTMLDivElement>(null)
   const ptr = usePullToRefresh(rowsRef, () => roster.refresh())
 
   return (
-    <Screen className="a-ct">
+    <Screen className="a-ct" lanes={lanes.state}>
       <Head title="Styles" />
       <Bar>
         <Segmented
@@ -170,7 +172,7 @@ export function StylesList({ lane, setLane }: {
           markerId="a-st-lane"
           value={lane}
           onChange={k => setLane(k as ContentLane)}
-          options={CONTENT_LANES.map(k => ({ id: k, label: LANE_LABEL[k] }))}
+          options={laneOptions(lanes.lanes)}
         />
       </Bar>
       <Body innerRef={rowsRef}>

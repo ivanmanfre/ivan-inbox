@@ -326,20 +326,30 @@ begin
       ) e on true
     ),
     -- ---- section: own ------------------------------------------------------------------------
+    -- `stale` is the honest half of this section. own_posts carries 0 likes AND 0 comments on
+    -- most of Ivan's recent rows: the publisher stored the post and no later pass wrote the
+    -- counters back. A post with nothing on either counter is a post we have not measured, not a
+    -- post nobody answered, so the view withholds the comparison rather than reading a zero as a
+    -- result. A row that drew reactions and no comments is measured and counts as a real zero.
     own_src as (
       select o.social_id, o.posted_at as at, coalesce(o.num_comments, 0) as comments,
-             o.linkedin_url as url, o.post_text as title
+             o.linkedin_url as url, o.post_text as title,
+             (coalesce(o.num_comments, 0) = 0 and coalesce(o.num_likes, 0) = 0) as stale
       from public.own_posts o
       where p_client_id = 'ivan' and o.posted_at >= v_since
       union all
-      select c.social_id, c.published_at, coalesce(c.comments, 0), c.post_url, c.title
+      select c.social_id, c.published_at, coalesce(c.comments, 0), c.post_url, c.title,
+             (coalesce(c.comments, 0) = 0 and coalesce(c.reactions, 0) = 0)
       from public.client_post_metrics c
       where p_client_id <> 'ivan' and c.client_id = p_client_id and c.published_at >= v_since
     ),
     own_stats as (
       select count(*) as posts,
              (percentile_cont(0.5) within group (order by comments))::numeric as median_comments,
-             max(comments) as best_comments
+             max(comments) as best_comments,
+             count(*) filter (where stale) as stale_count,
+             (percentile_cont(0.5) within group (order by comments)
+               filter (where not stale))::numeric as median_measured
       from own_src
     ),
     own_best as (
@@ -533,6 +543,8 @@ begin
         'median_comments', (select median_comments from own_stats),
         'best_comments', (select best_comments from own_stats),
         'best', (select case when (select posts from own_stats) > 0 then (select obj from own_best) end),
+        'stale_count', (select stale_count from own_stats),
+        'median_measured', (select median_measured from own_stats),
         'attributed', (select attributed_posts from lane_counts),
         'unattributed', (select unattributed_posts from lane_counts),
         'lm_catalog', (select lm_catalog from lm_counts),
