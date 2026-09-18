@@ -68,22 +68,38 @@ create index if not exists competitor_post_snapshots_ref_idx
 -- Backfill: one row per existing non-killed post from today's values, so every
 -- series has a first point. follower_count stays null here; it is not a roster
 -- column and is not inferred.
+--
+-- Runs ONCE, at the table's birth, and only while the table is empty. Re-applying
+-- this file on a later day must not stamp a second 'backfill-082' observation day:
+-- that would be indistinguishable from a real harvest reading and would destroy
+-- `source` as provenance. The guard is emptiness, not mtime and not the row count
+-- of one lane, so a partially harvested table is never re-backfilled either. The
+-- `on conflict do nothing` below stays as a second line of defence.
 -- ---------------------------------------------------------------------------
-insert into public.competitor_post_snapshots
-  (client_id, post_ref, observed_at, likes, comments, reposts, follower_count, source)
-select 'ivan', p.linkedin_post_url, now(),
-       p.likes_count, p.comments_count, p.reposts_count, null, 'backfill-082'
-from public.competitor_posts p
-where coalesce(p.competitor_role, '') <> 'killed'
-  and p.linkedin_post_url is not null
-  and (p.client_id is null or p.client_id = 'ivan')
-on conflict (client_id, post_ref, observed_on) do nothing;
+do $backfill$
+begin
+  if exists (select 1 from public.competitor_post_snapshots) then
+    raise notice 'competitor_post_snapshots already holds rows; backfill skipped';
+    return;
+  end if;
 
-insert into public.competitor_post_snapshots
-  (client_id, post_ref, observed_at, likes, comments, reposts, follower_count, source)
-select a.client_id, a.linkedin_post_url, now(),
-       a.likes_count, a.comments_count, a.reposts_count, null, 'backfill-082'
-from public.audn_competitor_posts a
-where coalesce(a.competitor_role, '') <> 'killed'
-  and a.linkedin_post_url is not null
-on conflict (client_id, post_ref, observed_on) do nothing;
+  insert into public.competitor_post_snapshots
+    (client_id, post_ref, observed_at, likes, comments, reposts, follower_count, source)
+  select 'ivan', p.linkedin_post_url, now(),
+         p.likes_count, p.comments_count, p.reposts_count, null, 'backfill-082'
+  from public.competitor_posts p
+  where coalesce(p.competitor_role, '') <> 'killed'
+    and p.linkedin_post_url is not null
+    and (p.client_id is null or p.client_id = 'ivan')
+  on conflict (client_id, post_ref, observed_on) do nothing;
+
+  insert into public.competitor_post_snapshots
+    (client_id, post_ref, observed_at, likes, comments, reposts, follower_count, source)
+  select a.client_id, a.linkedin_post_url, now(),
+         a.likes_count, a.comments_count, a.reposts_count, null, 'backfill-082'
+  from public.audn_competitor_posts a
+  where coalesce(a.competitor_role, '') <> 'killed'
+    and a.linkedin_post_url is not null
+  on conflict (client_id, post_ref, observed_on) do nothing;
+end
+$backfill$;
