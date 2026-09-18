@@ -5,8 +5,8 @@
 import { supabase } from './supabase'
 import type { ContentLane } from './content'
 
-export type PerfCell = { step: string; n: number; replies: number; rate: number; positive_n: number; positive_rate: number | null; base_n: number; base_replies: number; base_rate: number; status: 'ok' | 'thin' | 'drift' }
-export type PerfVariant = { step: string; variant: string; n: number; replies: number; rate: number; others_n: number; others_rate: number; status: 'ok' | 'thin' | 'sibling' }
+export type PerfCell = { step: string; n: number; replies: number; rate: number; positive_n: number; positive_rate: number | null; viewed_n: number; viewed_rate: number | null; base_n: number; base_replies: number; base_rate: number; status: 'ok' | 'thin' | 'drift' }
+export type PerfVariant = { step: string; variant: string; n: number; replies: number; rate: number; viewed_n: number; viewed_rate: number | null; others_n: number; others_rate: number; status: 'ok' | 'thin' | 'sibling' }
 export type PerfSplit = { step: string; dim: 'source' | 'variant' | 'country' | 'vertical'; value: string; n: number; replies: number; rate: number }
 export type PerfAlarm = { kind: 'drift' | 'sibling'; step: string; variant: string | null; now_n: number; now_replies: number; now_rate: number; prior_n: number; prior_rate: number; gap: number; suspect_dim: string | null; suspect_share: number | null; split: { value: string; n: number; replies: number; rate: number }[] }
 export type PerfRow = { step: string; variant: string; source: string; country: string; vertical: string; n: number; replies: number; rate: number }

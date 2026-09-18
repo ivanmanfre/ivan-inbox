@@ -24,10 +24,10 @@ import {
 import { getExpVariant } from '../../exp'
 import { hasMock } from '../../exp/v2c/mock'
 import {
-  fetchAccept, fetchReply, fetchPipeline, fetchGovernor, fetchScanOpens, fetchOutcomes, fetchRangeKpis,
+  fetchAccept, fetchReply, fetchPipeline, fetchGovernor, fetchScanOpens, fetchOutcomes, fetchRangeKpis, fetchViewedBack,
   fetchReplacement, replacementRate, daysToEmpty, fetchDayLedger, buildLedger,
   acceptRate, runwayDays, laneLabel, governorEnforcementGap,
-  type AcceptRow, type ReplyRow, type PipelineRow, type GovernorRow, type ScanOpenRow, type OutcomeRow, type RangeKpiRow,
+  type AcceptRow, type ReplyRow, type PipelineRow, type GovernorRow, type ScanOpenRow, type OutcomeRow, type RangeKpiRow, type ViewedBackRow,
   type ReplacementRow, type LedgerRow,
 } from '../../lib/kpis'
 import { Badge, Icon, type TableColumn } from '../../ds'
@@ -430,8 +430,8 @@ function FunnelBars({ steps }: { steps: Step[] }) {
 // % arrow. Conversations (any inbound reply, optouts excluded) can arrive via
 // InMail/email without an accept, and calls can come from any channel, so the
 // later steps are neutral separators, never a "conversion" percentage.
-function Funnel({ accept, scans, outcomes, client, cc }: {
-  accept: AcceptRow[]; scans: ScanOpenRow[]; outcomes: OutcomeRow[]; client: Client
+function Funnel({ accept, scans, outcomes, viewedBack, client, cc }: {
+  accept: AcceptRow[]; scans: ScanOpenRow[]; outcomes: OutcomeRow[]; viewedBack: ViewedBackRow[]; client: Client
   cc: CcPayload | null
 }) {
   const aRows = accept.filter(r => inClient(r.client_id, client))
@@ -442,6 +442,10 @@ function Funnel({ accept, scans, outcomes, client, cc }: {
   const opens7 = sum(sRows, 'opens_7d'), opens30 = sum(sRows, 'opens_30d')
   const distinct = sum(sRows, 'distinct_prospects')
   const lastOpen = latestIso(sRows.map(r => r.last_open))
+
+  const vRows = viewedBack.filter(r => inClient(r.client_id, client))
+  const inv7 = sum(vRows, 'invited_7d'), view7 = sum(vRows, 'viewed_7d')
+  const inv30 = sum(vRows, 'invited_30d'), view30 = sum(vRows, 'viewed_30d')
 
   const oRows = outcomes.filter(r => inClient(r.client_id, client))
   const convos7 = sum(oRows, 'convos_7d'), convosTotal = sum(oRows, 'convos_total')
@@ -495,6 +499,11 @@ function Funnel({ accept, scans, outcomes, client, cc }: {
           : <>30d · accepted {acc30}/{sent30} — message rows, unverified</>}
         {' · '}scan opens 7d {opens7} / 30d {opens30} · {distinct} prospects{lastOpen ? ` · last ${ago(lastOpen)}` : ''} (legacy)
       </div>
+      {(inv7 > 0 || inv30 > 0) && (
+        <div className="a-sends-cap">
+          Viewed the profile back · 7d {view7} of {inv7} invite attempts{inv7 > 0 ? ` (${(view7 / inv7 * 100).toFixed(1)}%)` : ''} · 30d {view30} of {inv30}{inv30 > 0 ? ` (${(view30 / inv30 * 100).toFixed(1)}%)` : ''}. LinkedIn shows only some viewers, read it as a floor.
+        </div>
+      )}
       <div className="a-sends-cap">Ivan scope counts the warm-lane era only (since 07-11); Rise counts full history. Recent sends are still maturing, accept rate only rises.</div>
     </Section>
   )
@@ -1049,6 +1058,7 @@ type OverviewData = {
   pipeline: PipelineRow[]
   governor: GovernorRow[]
   scans: ScanOpenRow[]
+  viewedBack: ViewedBackRow[]
   outcomes: OutcomeRow[]
   campaigns: CampaignSend[]
   replacement: ReplacementRow[]
@@ -1074,10 +1084,10 @@ export function OverviewView({ client, timeframe, setClient, range = null }: {
     Promise.all([
       fetchSends(), fetchSendsDaily(), fetchAccept(), fetchPipeline(),
       fetchGovernor(), fetchScanOpens(), fetchOutcomes(), fetchCampaignSends(client),
-      fetchReplacement(), fetchReply(), fetchDayLedger(),
+      fetchReplacement(), fetchReply(), fetchDayLedger(), fetchViewedBack(),
     ])
-      .then(([rows, daily, accept, pipeline, governor, scans, outcomes, campaigns, replacement, reply, ledger]) => {
-        if (live) setData({ rows, daily, accept, pipeline, governor, scans, outcomes, campaigns, replacement, reply, ledger })
+      .then(([rows, daily, accept, pipeline, governor, scans, outcomes, campaigns, replacement, reply, ledger, viewedBack]) => {
+        if (live) setData({ rows, daily, accept, pipeline, governor, scans, outcomes, campaigns, replacement, reply, ledger, viewedBack })
       })
       .catch(e => { if (live) setError(e instanceof Error ? e.message : 'Failed to load') })
       .finally(() => { if (live) setLoading(false) })
@@ -1109,7 +1119,7 @@ export function OverviewView({ client, timeframe, setClient, range = null }: {
       <Hero accept={data.accept} governor={data.governor} pipeline={data.pipeline} replacement={data.replacement} client={client} cc={ccp} />
       {timeframe === 'custom' && range && <RangeSummary range={range} client={client} />}
       <DayLedger rows={data.ledger} client={client} timeframe={timeframe} cc={ccp} />
-      <Funnel accept={data.accept} scans={data.scans} outcomes={data.outcomes} client={client} cc={ccp} />
+      <Funnel accept={data.accept} scans={data.scans} outcomes={data.outcomes} viewedBack={data.viewedBack} client={client} cc={ccp} />
       <div className="a-cols" data-cols="2">
         <KpiRow lanes={lanes} daily={data.daily} client={client} timeframe={timeframe} range={range} cc={ccp} />
         <Pipeline rows={data.pipeline} governor={data.governor} client={client} />
