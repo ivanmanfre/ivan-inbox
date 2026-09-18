@@ -29,7 +29,7 @@ import { Linkified } from '../chrome/Linkified'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import { formatReturn, returnsIn, usePushLater } from '../../lib/pushLater'
 import {
-  approveDraft, channelFamilies, composeReply, discardDraft, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isFollowUp, isMixedChannel,
+  approveDraft, channelFamilies, composeReply, discardDraft, clientOwner, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isFollowUp, isMixedChannel,
   saveDraftEmail, saveDraftText, snoozeDraft, unsnoozeDraft,
   markThreadRead, messageChannel, threadChatId, emailRowSender, ladderSteps, sendFailed,
   type InboxMessage, type MsgChannel, type Thread, eventTime, emailSenderLabel } from '../../lib/inbox'
@@ -627,11 +627,11 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
                 <Banner
                   tone="attention"
                   icon="alert"
-                  title={`This answers something our RISE notes do not cover${draft.context_gap.why ? `: ${draft.context_gap.why}` : '.'}`}
+                  title={`This answers something our ${clientOwner(thread.client_id)?.notes ?? 'own'} notes do not cover${draft.context_gap.why ? `: ${draft.context_gap.why}` : '.'}`}
                 >
                   <span className="a-stack" data-tight>
                     {draft.context_gap.question && (
-                      <span>For Mattan: {draft.context_gap.question}</span>
+                      <span>{clientOwner(thread.client_id) ? `For ${clientOwner(thread.client_id)!.owner}: ` : ''}{draft.context_gap.question}</span>
                     )}
                     <span className="a-wrapline">
                       <Button
@@ -646,7 +646,7 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
                             .finally(() => setAsking(false))
                         }}
                         icon={askNote ? 'check' : undefined}
-                      >{askNote ? 'Asked' : asking ? 'Queueing…' : 'Ask Mattan'}</Button>
+                      >{askNote ? 'Asked' : asking ? 'Queueing…' : `Ask ${clientOwner(thread.client_id)?.owner ?? 'the client'}`}</Button>
                       {draft.context_gap.chat_url && (
                         <a className="a-link" href={draft.context_gap.chat_url} target="_blank" rel="noreferrer">
                           open the conversation

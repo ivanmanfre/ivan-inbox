@@ -8,7 +8,7 @@ import { Linkified } from '../components/Linkified'
 import { useConfirm } from '../components/ConfirmSheet'
 import { formatReturn, returnsIn, usePushLater } from '../components/PushLaterSheet'
 import {
-  approveDraft, channelFamilies, composeReply, discardDraft, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isFollowUp, isMixedChannel,
+  approveDraft, channelFamilies, composeReply, discardDraft, clientOwner, escalateDraftToClient, isReplyRetryPending, isInternalConfirmation, isDraft, isFollowUp, isMixedChannel,
   saveDraftEmail, saveDraftText, snoozeDraft, unsnoozeDraft,
   markThreadRead, messageChannel, threadChatId, emailRowSender,
   type InboxMessage, type MsgChannel, type Thread, eventTime, emailSenderLabel } from '../lib/inbox'
@@ -449,11 +449,11 @@ export function ThreadScreen({ thread, onBack, refresh }: {
           {draft.context_gap && (
             <div className="gapwarn" style={{ margin: '0 14px 10px' }}>
               <div className="gw-h">
-                This answers something our RISE notes do not cover
+                This answers something our {clientOwner(thread.client_id)?.notes ?? 'own'} notes do not cover
                 {draft.context_gap.why ? `: ${draft.context_gap.why}` : '.'}
               </div>
               {draft.context_gap.question && (
-                <div className="gw-q">For Mattan: {draft.context_gap.question}</div>
+                <div className="gw-q">{clientOwner(thread.client_id) ? `For ${clientOwner(thread.client_id)!.owner}: ` : ''}{draft.context_gap.question}</div>
               )}
               <div className="gw-a">
                 <span
@@ -465,7 +465,7 @@ export function ThreadScreen({ thread, onBack, refresh }: {
                       .catch(e => setAskNote(e?.message || 'Could not queue that.'))
                       .finally(() => setAsking(false))
                   }}
-                >{askNote ? 'Asked ✓' : asking ? 'Queueing…' : 'Ask Mattan'}</span>
+                >{askNote ? 'Asked ✓' : asking ? 'Queueing…' : `Ask ${clientOwner(thread.client_id)?.owner ?? 'the client'}`}</span>
                 {draft.context_gap.chat_url && (
                   <a className="gw-link" href={draft.context_gap.chat_url} target="_blank" rel="noreferrer">
                     open the conversation

@@ -898,6 +898,16 @@ export async function fetchDraftContextGaps(draftIds: string[]): Promise<Map<str
 
 /** Optional: queue the "what do I tell them" question for Mattan in the Ops inbox, carrying the
  *  conversation link. Never sends anything itself, and never blocks approving the draft. */
+/** Who answers a question the notes do not cover, per client seat. Null on Ivan's own seat: there
+    is nobody to ask, so the "Ask" control is not drawn. The route itself is decided in SQL by the
+    prospect's tenant (db/098); this only words the button. 2026-09-18: every thread said "Mattan"
+    and "RISE notes", including Davorin's. */
+export function clientOwner(clientId: string): { owner: string; notes: string } | null {
+  if (clientId === 'risedtc') return { owner: 'Mattan', notes: 'RISE' }
+  if (clientId === 'arch') return { owner: 'Davorin', notes: 'ARCH' }
+  return null
+}
+
 export async function escalateDraftToClient(messageId: string): Promise<string> {
   const { data, error } = await supabase.rpc('operator_escalate_rise_draft', {
     p_gate: 'clientops', p_message_id: messageId,
@@ -905,7 +915,7 @@ export async function escalateDraftToClient(messageId: string): Promise<string> 
   if (error) throw error
   const r = (data ?? {}) as { ok?: boolean; note?: string; error?: string }
   if (!r.ok) throw new Error(r.error || 'could not queue that')
-  return r.note || 'Queued for Mattan.'
+  return r.note || 'Queued in the Ops inbox.'
 }
 
 export async function fetchDraftEmailStamps(): Promise<Map<string, DraftEmailStamp>> {
