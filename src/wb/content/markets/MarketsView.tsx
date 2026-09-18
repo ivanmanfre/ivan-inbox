@@ -198,7 +198,7 @@ export function MarketsPanel({ read, onRetry }: { read: MarketRead | null; onRet
                           <details className="a-mk-d">
                             <summary>
                               <p className="a-mk-t">{r.headline}</p>
-                              {base ? <p className="a-mk-figs"><span className="a-mk-f">{base}</span></p> : null}
+                              {base ? <p className="a-mk-figs"><span className="a-mk-fbase">{base}</span></p> : null}
                             </summary>
                             <div className="a-mk-dd">
                               {r.change ? <p className="a-mk-change">{r.change}</p> : null}
@@ -215,7 +215,7 @@ export function MarketsPanel({ read, onRetry }: { read: MarketRead | null; onRet
                         ) : (
                           <div className="a-mk-row">
                             <p className="a-mk-t">{r.headline}</p>
-                            {base ? <p className="a-mk-figs"><span className="a-mk-f">{base}</span></p> : null}
+                            {base ? <p className="a-mk-figs"><span className="a-mk-fbase">{base}</span></p> : null}
                           </div>
                         )}
                       </li>

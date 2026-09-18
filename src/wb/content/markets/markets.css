@@ -110,6 +110,8 @@ a.a-mk-t-a:focus-visible{ outline:2px solid var(--ds-accent-ui); outline-offset:
   font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono); font-variant-numeric:tabular-nums; color:var(--ds-text-2);
 }
 .a-mk-f{ white-space:nowrap }
+/* A reading's evidence line is a sentence, so it wraps; the short figures above stay on one line. */
+.a-mk-fbase{ white-space:normal; overflow-wrap:anywhere; line-height:var(--ds-lh-meta) }
 .a-mk-why{ font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3); overflow-wrap:anywhere }
 .a-mk-more{ display:flex; margin-top:var(--ds-s2) }
 .a-mk-more .ds-btn{ min-height:var(--ds-tap) }
