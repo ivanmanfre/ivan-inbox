@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { dmsEmptyKind, hoverVerbFor, rowVerb } from './InboxList'
+import { dmsEmptyKind, hoverVerbFor, rowVerb, rowsScrollTop } from './InboxList'
 
 // W2-5 (absorbs GAPS-3): a screen with 0 rows on it is not always genuinely
 // empty. Only a host that has established the fetch resolved (`verifiedAt`
@@ -131,5 +131,23 @@ describe('hoverVerbFor', () => {
       }
     }
     expect([...answers].sort()).toEqual([null, 'discard', 'open', 'sumup'].sort())
+  })
+})
+
+// 2026-09-18: the scroller also holds the sections ABOVE the rows (Warm signals, Came back).
+// Windowing off the scroller's own scrollTop unmounted the rows still on screen once that slot
+// grew to ~700px: every chat went grey while scrolling. The window now measures from a marker
+// where the rows start.
+describe('rowsScrollTop', () => {
+  const el = (top: number, scrollTop = 0) => ({ scrollTop, getBoundingClientRect: () => ({ top }) }) as unknown as HTMLElement
+  it('is 0 while the rows have not reached the top of the scroller', () => {
+    expect(rowsScrollTop(el(100, 600), el(800))).toBe(0)
+  })
+  it('counts only the distance scrolled INTO the rows, never the slot above them', () => {
+    // scroller top at 100, rows marker now 500px above it: 500 into the rows, whatever scrollTop says
+    expect(rowsScrollTop(el(100, 1200), el(-400))).toBe(500)
+  })
+  it('falls back to scrollTop with no marker', () => {
+    expect(rowsScrollTop(el(100, 321), null)).toBe(321)
   })
 })

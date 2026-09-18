@@ -118,22 +118,40 @@ type Item =
   | { kind: 'day'; key: string; label: string; count: number }
   | { kind: 'row'; key: string; t: Thread }
 
+/** How far the reader has scrolled INTO the rows: 0 until the rows reach the top of the scroller. */
+export function rowsScrollTop(scroller: HTMLElement, anchor: HTMLElement | null): number {
+  if (!anchor) return scroller.scrollTop
+  return Math.max(0, scroller.getBoundingClientRect().top - anchor.getBoundingClientRect().top)
+}
+
 // TWO item shapes now, so the offsets are SUMMED once per render rather than
 // divided. With no day headers (the phone) the sum reduces to the multiplication
 // it replaced, and the rows are still a fixed height either way.
-function useRowWindow(ref: React.RefObject<HTMLDivElement | null>, items: Item[], on: boolean, rowH: number) {
+// `anchor` is a zero-height marker placed where the rows START. The scroller also holds the
+// `before` slot (stale and pushed bars, Warm signals, Came back), so the scroller's scrollTop
+// overstates how far into the ROWS the reader is by that slot's height. Measured off scrollTop
+// alone, a tall slot (Came back, 2026-09-18, ~700px) unmounted the rows still on screen and left
+// the grey spacer showing: "scrolling down it blurries gray every chat". The offset is re-read
+// on every scroll and after every render, because the slot loads late and collapses.
+function useRowWindow(ref: React.RefObject<HTMLDivElement | null>, anchor: React.RefObject<HTMLDivElement | null>, items: Item[], on: boolean, rowH: number) {
   const [top, setTop] = useState(0)
   const [view, setView] = useState(900)
   useEffect(() => {
     const el = ref.current
     if (!el || !on) return
-    const onScroll = () => setTop(el.scrollTop)
+    const onScroll = () => setTop(rowsScrollTop(el, anchor.current))
     const onSize = () => setView(el.clientHeight || 900)
     onSize()
     el.addEventListener('scroll', onScroll, { passive: true })
     window.addEventListener('resize', onSize)
     return () => { el.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onSize) }
-  }, [ref, on])
+  }, [ref, anchor, on])
+  // The slot above the rows changes height without a scroll event (cards load, a section folds).
+  // setTop with an unchanged number is a no-op, so this settles in one pass.
+  useEffect(() => {
+    const el = ref.current
+    if (el && on) setTop(rowsScrollTop(el, anchor.current))
+  })
   const itemH = (it: Item) => (it.kind === 'day' ? DAY_H : rowH)
   if (!on) return { start: 0, end: items.length, padTop: 0, padBottom: 0 }
   const offs: number[] = []
@@ -499,7 +517,8 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
       items.push({ kind: 'row', key: t.prospect_id, t })
     }
   }
-  const win = useRowWindow(rowsRef, items, windowed && !renderRow, rowH)
+  const rowsAnchor = useRef<HTMLDivElement>(null)
+  const win = useRowWindow(rowsRef, rowsAnchor, items, windowed && !renderRow, rowH)
   const draftTotal = threads.filter(t => t.draft && t.draftSnoozedUntil === null).length
   // Same derivation as the tab badge (lib/inbox.ts) — the chip suffix and the
   // bubble must never say two different numbers for the same list.
@@ -613,6 +632,7 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
           if (kind === 'verified') return <EmptyVerified line={emptyLine ?? EMPTY[filter]} verifiedAt={verifiedAt} />
           return null
         })()}
+        <div ref={rowsAnchor} aria-hidden />
         {shown.length > 0 && (renderRow ? (
           <div className="a-stack">{shown.map(t => renderRow(t))}</div>
         ) : (
