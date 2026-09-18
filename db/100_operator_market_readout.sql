@@ -50,6 +50,11 @@
 
 -- =============================================================================================
 -- operator_lanes
+--
+-- SUPERSEDED BY 101. That migration replaces this body with one that orders by
+-- platform.client.rank, so the switch keeps the order it has always had. Re-applying THIS file
+-- on its own silently reorders the lane switch by name; replay 101 after it. (Caught 2026-09-19
+-- by a screenshot reading "Davorin Smit, Ivan, Mattan Danino" after a re-apply of 100 alone.)
 -- =============================================================================================
 
 create or replace function public.operator_lanes(p_gate text)
