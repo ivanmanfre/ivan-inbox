@@ -12,7 +12,7 @@ import { Button } from '../../../ds'
 import { num } from '../../../lib/benchmark'
 import { dayLabel, sinceMonday } from '../../../lib/reach'
 import {
-  LM_FLOOR_POSTS, activeLms, inWindow, lmRate, perThousand, rankGated, sizeLabel,
+  LM_FLOOR_POSTS, activeLms, attributionLine, inWindow, lmRate, perThousand, rankGated, sizeLabel,
   type GatedPost, type GatedRead, type LeadMagnetsRead, type LmRow, type LmWindow,
 } from '../../../lib/leadMagnets'
 
@@ -107,6 +107,10 @@ export type OwnView = {
   postedInWindow: number
   clicks: number
   callsNote?: string
+  /** db/086: "2 of 74 posts since 19 Jun name their lead magnet." Absent on an older RPC, and on a
+      lane that published nothing in the read's own window. Built once in `selectOwn` so both
+      layouts print the same sentence. */
+  attribution?: string
 }
 
 export type LmReady = Extract<LeadMagnetsRead, { kind: 'ready' }>
@@ -121,6 +125,7 @@ export function selectOwn(read: LmReady, weeks: LmWindow, now: number): OwnView 
     postedInWindow: rows.filter(r => r.posted).length,
     clicks: rows.reduce((a, r) => a + r.row.cta_clicks, 0),
     ...(read.calls_note ? { callsNote: read.calls_note } : {}),
+    ...(attributionLine(read) ? { attribution: attributionLine(read) as string } : {}),
   }
 }
 

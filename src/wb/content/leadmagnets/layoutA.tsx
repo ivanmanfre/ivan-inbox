@@ -83,6 +83,9 @@ export function LayoutA({ own, roster, ownFail, rosterFail, weeks, thisYear, sho
           : own ? (
             <>
               <div className="a-lm-sub">{ownSub(own, thisYear, weeks)}</div>
+              {/* db/086: how much of the lane's own output names the lead magnet it carries.
+                  Quiet sub line under the section summary; absent on an older RPC. */}
+              {own.attribution ? <div className="a-lm-foot" data-lm-attribution="1">{own.attribution}</div> : null}
               {own.rows.length
                 ? <>
                     <ul className="a-lm-tbl" data-cols="4">

@@ -192,3 +192,20 @@ describe('LeadMagnetsView', () => {
     expect(html).toMatch(/Lead magnets/)
   })
 })
+
+// db/086: the attribution sub line under the own catalog summary on the Results block.
+describe('LeadMagnetsView attribution line', () => {
+  const lms = [lm({ slug: 'kit', title: 'The Kit', posts: 1, comments: 2, cta_clicks: 5, per_post_comments: 2, first_post: SINCE, last_post: SINCE })]
+  it('prints the share under the summary when the RPC sends both counts', () => {
+    const read = { ...ready(lms), attributed_posts: 2, unattributed_posts: 72 } as LeadMagnetsRead
+    const html = renderToStaticMarkup(<LeadMagnetsView lm={read} gated={gready([])} now={NOW} />)
+    expect(html).toMatch(/data-lm-attribution="1"/)
+    expect(html).toMatch(/2 of 74 posts since 17 Jun name their lead magnet\./)
+    expect(html).not.toMatch(NOISE)
+  })
+  it('prints no line at all on an older RPC that sends neither count', () => {
+    const html = renderToStaticMarkup(<LeadMagnetsView lm={ready(lms)} gated={gready([])} now={NOW} />)
+    expect(html).not.toMatch(/data-lm-attribution/)
+    expect(html).not.toMatch(/name their lead magnet/)
+  })
+})

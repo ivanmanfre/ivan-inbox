@@ -20,7 +20,7 @@ import { dayLabel, shortTitle } from '../../lib/reach'
 import { num } from '../../lib/benchmark'
 import type { ContentLane } from '../../lib/content'
 import {
-  LM_FLOOR_POSTS, LM_TOP, activeLms, fetchGatedPosts, fetchLeadMagnets, lmRate, perThousand, rankGated, sizeLabel,
+  LM_FLOOR_POSTS, LM_TOP, activeLms, attributionLine, fetchGatedPosts, fetchLeadMagnets, lmRate, perThousand, rankGated, sizeLabel,
   type GatedPost, type GatedRead, type LeadMagnetsRead, type LmRow,
 } from '../../lib/leadMagnets'
 import './reach.css'
@@ -180,6 +180,9 @@ export function LeadMagnetsView({ lm, gated, now, onRetryLm, onRetryGated }: {
               ? `${num(own.length)} of ${plural(lm.lms.length, 'lead magnet')} show a post or a click since ${lmSince}.`
               : `No post or click on ${lm.lms.length ? `the ${plural(lm.lms.length, 'lead magnet')} in this lane's catalog` : 'a lead magnet in this lane'} since ${lmSince}.`}
           </div>
+          {/* db/086: the other half of the same window, read from the lane's own posts rather than
+              from the catalog. Quiet sub line, no line at all on an older RPC. */}
+          {attributionLine(lm) ? <div className="a-reach-foot" data-lm-attribution="1">{attributionLine(lm)}</div> : null}
           {own.length ? (
             <ul className="a-reach-ins" id={ownListId}>
               {ownVisible.map(r => <LmLine key={r.slug} row={r} since={lmSince} thisYear={thisYear} />)}

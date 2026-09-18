@@ -62,6 +62,10 @@ export type LeadMagnetsRead =
       /** The active row with the most CTA clicks plus gate DMs (db/083). Absent on an older RPC;
           `null` when the RPC ran and found no row. Either way, no line prints for it. */
       best_own?: LmRow | null
+      /** db/086: the lane's OWN posts since `since` that do / do not resolve to one of its lead
+          magnets. Absent on an older RPC, in which case no attribution line prints. */
+      attributed_posts?: number
+      unattributed_posts?: number
     }
   | { kind: 'denied' | 'failed'; message: string }
 
@@ -184,6 +188,24 @@ export function bestOwnLine(row: LmRow | null | undefined, since?: string | null
   return `Your best lead magnet${when}: ${name}, ${row.status}, ${plural(row.cta_clicks, 'CTA click')}, ${plural(row.gate_dms, 'gate DM')}, ${plural(row.posts, 'post')}.`
 }
 
+/** How much of the lane's own output in the window names the lead magnet it carries (db/086).
+    The pipeline used to forget the slug the moment a post published, so this share was 1 of 256
+    across Ivan's whole history before the stamps went in. Prints only when the RPC sent BOTH
+    numbers and the lane actually posted in the window; an older RPC, or a lane with nothing
+    published since `since`, renders no line rather than "0 of 0". The window comes from the read's
+    own `since`, same as `bestOwnLine`, and is stated so the share is never read as all-time. */
+export function attributionLine(read: LeadMagnetsRead | null | undefined): string | null {
+  if (!read || read.kind !== 'ready') return null
+  const a = read.attributed_posts
+  const u = read.unattributed_posts
+  if (typeof a !== 'number' || typeof u !== 'number') return null
+  const total = a + u
+  if (total <= 0) return null
+  const day = read.since && /^\d{4}-\d{2}-\d{2}/.test(read.since) ? read.since.slice(0, 10) : null
+  const when = day ? ` since ${dayLabel(day, new Date().getUTCFullYear())}` : ''
+  return `${num(a)} of ${num(total)} posts${when} name their lead magnet.`
+}
+
 /** Line 3: coverage. Absent when `unjudged` is missing (older RPC) or exactly 0 (every roster
     post in the window is judged, so the gate share is no longer an upper bound). */
 export function coverageLine(judged: number, unjudged: number | null | undefined): string | null {
@@ -263,7 +285,10 @@ export async function fetchLeadMagnets(lane: ContentLane): Promise<LeadMagnetsRe
       ? { kind: 'denied', message }
       : { kind: 'failed', message }
   }
-  const d = data as { since?: unknown; lms?: unknown; calls_note?: unknown; best_own?: unknown } | null
+  const d = data as {
+    since?: unknown; lms?: unknown; calls_note?: unknown; best_own?: unknown
+    attributed_posts?: unknown; unattributed_posts?: unknown
+  } | null
   if (!d || typeof d.since !== 'string' || !Array.isArray(d.lms)) {
     return { kind: 'failed', message: 'The lead magnets read returned no usable list.' }
   }
@@ -273,6 +298,11 @@ export async function fetchLeadMagnets(lane: ContentLane): Promise<LeadMagnetsRe
     lms: d.lms as LmRow[],
     ...(typeof d.calls_note === 'string' ? { calls_note: d.calls_note } : {}),
     ...('best_own' in d ? { best_own: readRowOrNull<LmRow>(d.best_own) } : {}),
+    // db/086. Carried only when the RPC actually sent numbers: an older RPC omits both keys and
+    // the attribution line simply never prints. A non-number (null, string) is dropped the same
+    // way rather than becoming NaN downstream.
+    ...(typeof d.attributed_posts === 'number' ? { attributed_posts: d.attributed_posts } : {}),
+    ...(typeof d.unattributed_posts === 'number' ? { unattributed_posts: d.unattributed_posts } : {}),
     readAt: new Date().toISOString(),
   }
 }

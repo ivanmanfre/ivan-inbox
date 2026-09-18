@@ -4,9 +4,9 @@ vi.mock('./supabase', () => ({ supabase: { rpc } }))
 import {
   activeLms, perThousand, rankGated, sizeLabel, lmRate, inWindow, layoutFromLocation,
   fetchLeadMagnets, fetchGatedPosts,
-  bestGateLine, bestOwnLine, coverageLine, verdictLines,
+  attributionLine, bestGateLine, bestOwnLine, coverageLine, verdictLines,
   LM_FLOOR_POSTS, LM_DEFAULT_LAYOUT,
-  type LmRow, type GatedPost,
+  type LmRow, type GatedPost, type LeadMagnetsRead,
 } from './leadMagnets'
 
 const NOW = Date.parse('2026-09-16T12:00:00Z')
@@ -317,5 +317,43 @@ describe('verdictLines', () => {
   it('returns nothing for a loading or fully failed pair', () => {
     expect(verdictLines(null, null)).toEqual([])
     expect(verdictLines({ kind: 'failed', message: 'x' }, { kind: 'denied', message: 'y' })).toEqual([])
+  })
+})
+
+// db/086: the share of the lane's own output that names the lead magnet it carries.
+describe('attributionLine', () => {
+  const read = (o: Partial<Extract<LeadMagnetsRead, { kind: 'ready' }>>): LeadMagnetsRead =>
+    ({ kind: 'ready', since: '2026-06-19T09:26:58.263042+00:00', lms: [], readAt: '2026-09-18T10:00:00Z', ...o })
+
+  it('names the count, the denominator and the RPC window', () => {
+    const year = new Date().getUTCFullYear()
+    const line = attributionLine(read({ since: `${year}-06-19T09:26:58Z`, attributed_posts: 2, unattributed_posts: 72 }))
+    expect(line).toBe('2 of 74 posts since 19 Jun name their lead magnet.')
+  })
+  it('states no window rather than a wrong one when since is unusable', () => {
+    expect(attributionLine(read({ since: 'not a date', attributed_posts: 3, unattributed_posts: 50 })))
+      .toBe('3 of 53 posts name their lead magnet.')
+  })
+  it('is null on an older RPC that sends neither key, or only one of them', () => {
+    expect(attributionLine(read({}))).toBeNull()
+    expect(attributionLine(read({ attributed_posts: 2 }))).toBeNull()
+    expect(attributionLine(read({ unattributed_posts: 72 }))).toBeNull()
+  })
+  it('is null when the lane published nothing in the window, never "0 of 0"', () => {
+    expect(attributionLine(read({ attributed_posts: 0, unattributed_posts: 0 }))).toBeNull()
+  })
+  it('prints a real 0 of n rather than nothing when the lane posted but attributed none', () => {
+    expect(attributionLine(read({ since: 'x', attributed_posts: 0, unattributed_posts: 11 })))
+      .toBe('0 of 11 posts name their lead magnet.')
+  })
+  it('is null on a read that is not ready, and on no read at all', () => {
+    expect(attributionLine({ kind: 'denied', message: 'no' })).toBeNull()
+    expect(attributionLine(null)).toBeNull()
+    expect(attributionLine(undefined)).toBeNull()
+  })
+  it('carries no em dash and no contrast pair', () => {
+    const line = attributionLine(read({ attributed_posts: 2, unattributed_posts: 72 })) as string
+    expect(line).not.toMatch(/[\u2014\u2013]/)
+    expect(line).not.toMatch(/\bnot\b[^.]*\bbut\b/)
   })
 })

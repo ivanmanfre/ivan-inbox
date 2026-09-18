@@ -276,3 +276,24 @@ describe('LeadMagnetsPanel', () => {
     expect(lmState(READY, GATED)).toBe('ready')
   })
 })
+
+// db/086: the attribution sub line under the own catalog summary on the dedicated view.
+describe('LeadMagnetsPanel attribution line', () => {
+  const withCounts: LeadMagnetsRead = { ...READY, attributed_posts: 3, unattributed_posts: 50 }
+  it('prints the share under the own summary in layout A', () => {
+    const h = html({ lm: withCounts })
+    expect(h).toMatch(/data-lm-attribution="1"/)
+    expect(h).toMatch(/3 of 53 posts since 17 Jun name their lead magnet\./)
+    expect(h).not.toMatch(HOLES)
+  })
+  it('prints the same line in layout B', () => {
+    const h = html({ lm: withCounts, layout: 'b' })
+    expect(h).toMatch(/data-lm-layout="b"/)
+    expect(h).toMatch(/3 of 53 posts since 17 Jun name their lead magnet\./)
+  })
+  it('prints no line at all on an older RPC that sends neither count', () => {
+    const h = html()
+    expect(h).not.toMatch(/data-lm-attribution/)
+    expect(h).not.toMatch(/name their lead magnet/)
+  })
+})
