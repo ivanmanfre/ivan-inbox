@@ -228,23 +228,32 @@ describe('bestGateLine', () => {
     expect(bestGateLine(null)).toBeNull()
     expect(bestGateLine(undefined)).toBeNull()
   })
+  // Opus review FU-2: an unvalidated row would throw on `plain(best.author)` (no error boundary
+  // exists in this tree) or print num()'s en-dash placeholder for a missing count. A row that
+  // fails validation must yield no line, never either of those.
+  it('never throws and never prints a dash on a malformed best row', () => {
+    expect(bestGateLine({} as unknown as GatedPost)).toBeNull()
+    expect(() => bestGateLine({ author: 'X' } as unknown as GatedPost)).not.toThrow()
+    expect(bestGateLine({ author: 'X' } as unknown as GatedPost)).toBeNull()
+    expect(bestGateLine({ comments: 5 } as unknown as GatedPost)).toBeNull()
+  })
   it('states the keyword, the comment count and the rate when sized', () => {
-    const best = gated({ author: 'Alex Vacca', comments: 974, follower_count: 73256, gate_keyword: 'GTM' })
-    expect(bestGateLine(best)).toBe('Best gate on the roster: Alex Vacca, comment "GTM", 974 comments, 13.3 per 1k followers.')
+    const best = gated({ author: 'Alex Vacca', comments: 974, follower_count: 73256, gate_keyword: 'GTM', per_1k: 13.3 })
+    expect(bestGateLine(best)).toBe('Loudest gate by comments per 1k followers: Alex Vacca, comment "GTM", 974 comments, 13.3 per 1k followers.')
   })
   it('falls back to the CTA kind when there is no keyword, and to size unknown when unsized', () => {
     const best = gated({ author: 'No Keyword', comments: 5, gate_keyword: '', cta_kind: 'dm_gate', follower_count: null })
-    expect(bestGateLine(best)).toBe('Best gate on the roster: No Keyword, a DM gate, 5 comments, size unknown.')
+    expect(bestGateLine(best)).toBe("Loudest gate by comments, no follower count on this lane's gated authors: No Keyword, a DM gate, 5 comments.")
   })
   // db/083: gate_keyword is JSON null (not '') on every `link`-kind row by rubric design — the
   // whole risedtc roster today. A null must fall back exactly like an empty string does.
   it('falls back the same way on a null gate_keyword as on an empty one', () => {
     const best = gated({ author: 'Luis Camacho', comments: 107, gate_keyword: null, cta_kind: 'link', follower_count: null })
-    expect(bestGateLine(best)).toBe('Best gate on the roster: Luis Camacho, a link, 107 comments, size unknown.')
+    expect(bestGateLine(best)).toBe("Loudest gate by comments, no follower count on this lane's gated authors: Luis Camacho, a link, 107 comments.")
   })
   it('takes the em dash out of the author name', () => {
     const best = gated({ author: 'A — B', comments: 1, gate_keyword: '' })
-    expect(bestGateLine(best)?.startsWith('Best gate on the roster: A, B,')).toBe(true)
+    expect(bestGateLine(best)?.startsWith("Loudest gate by comments, no follower count on this lane's gated authors: A, B,")).toBe(true)
   })
 })
 
@@ -282,7 +291,7 @@ describe('coverageLine', () => {
 
 describe('verdictLines', () => {
   it('returns all three lines when both reads are ready and both picks are present', () => {
-    const g = { kind: 'ready' as const, since: '2026-06-17T00:00:00Z', judged: 58, gated: 35, posts: [], unjudged: 1212, best: gated({ author: 'Alex Vacca', comments: 974, follower_count: 73256, gate_keyword: 'GTM' }), readAt: '' }
+    const g = { kind: 'ready' as const, since: '2026-06-17T00:00:00Z', judged: 58, gated: 35, posts: [], unjudged: 1212, best: gated({ author: 'Alex Vacca', comments: 974, follower_count: 73256, gate_keyword: 'GTM', per_1k: 13.3 }), readAt: '' }
     const l = { kind: 'ready' as const, since: '2026-06-17T00:00:00Z', lms: [], best_own: lm({ title: 'The Kit', cta_clicks: 5, gate_dms: 1, posts: 4 }), readAt: '' }
     expect(verdictLines(g, l)).toHaveLength(3)
   })

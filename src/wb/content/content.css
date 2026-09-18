@@ -1042,9 +1042,11 @@ a.a-prop-src:hover{ color:var(--ds-text) }
    VERDICT STRIP (`parts.tsx` VerdictStrip) — the answer on top, shared by
    Strategy > Results "Lead magnets" and the dedicated Lead magnets view.
    Plain sentences, no card, no rule of its own above it: it reads as the
-   first thing said, not a boxed callout. One line-height gap between
-   sentences; the section below still draws its own top border/margin so the
-   strip never needs a bottom rule to separate from what follows.
+   first thing said, not a boxed callout. A tight `--ds-s2` gap between
+   sentences (not a full line-height, on purpose: they read as one voice
+   answering in a row, not as separate paragraphs); the section below still
+   draws its own top border/margin so the strip never needs a bottom rule to
+   separate from what follows.
    ========================================================================== */
 .a-lm-verdict{ display:flex; flex-direction:column; gap:var(--ds-s2); margin-bottom:var(--ds-s4) }
 .a-lm-verdict-l{ margin:0; font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); color:var(--ds-text); overflow-wrap:anywhere }

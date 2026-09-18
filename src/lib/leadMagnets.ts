@@ -137,22 +137,43 @@ const GATE_KIND_LABEL: Record<string, string> = { comment_gate: 'a comment gate'
    simply produces no line for the piece it does not carry, never a crash.
    ========================================================================== */
 
-/** Line 1: the loudest gate on the roster, from the RPC's own `best` pick (top by `per_1k`,
-    else by comments). `null`/absent renders no line — there is no invented "best" to report. */
-export function bestGateLine(best: GatedPost | null | undefined): string | null {
-  if (!best) return null
-  const what = best.gate_keyword ? `comment "${plain(best.gate_keyword)}"` : (GATE_KIND_LABEL[best.cta_kind] ?? best.cta_kind.replace(/_/g, ' '))
-  const rate = perThousand(best.comments, best.follower_count)
-  const size = rate != null ? `${rate1(rate)} per 1k followers` : 'size unknown'
-  return `Best gate on the roster: ${plain(best.author)}, ${what}, ${plural(best.comments, 'comment')}, ${size}.`
+/** A `best` row has to carry the one field this line dereferences before it is trusted: an
+    unvalidated object would throw on `plain(best.author)` (unmounting the tree, no error boundary
+    exists) or print `num()`'s en-dash placeholder for a missing count — both worse than no line. */
+function isUsableGatedPost(v: GatedPost | null | undefined): v is GatedPost {
+  return !!v && typeof v.author === 'string' && typeof v.comments === 'number'
 }
 
-/** Line 2: the lane's own best performer, from the RPC's own `best_own` pick (most CTA clicks
-    plus gate DMs). `null`/absent renders no line. The status travels on the line: `best_own` is
-    picked by activity alone (same rule as `activeLms`), so it is routinely a `retired` or `draft`
-    row, and naming the title without saying so would read as a live recommendation it is not. */
+/** Line 1: the loudest gate on the roster, from the RPC's own `best` pick on the Results block
+    (top by `per_1k`, else by comments) — or, on the dedicated view, the caller's own windowed
+    roster pick (see `verdictLines`'s `overrides.bestGate`), so the line never names a row the
+    4/12-week list beneath it does not show. `null`/absent/unusable renders no line. */
+export function bestGateLine(best: GatedPost | null | undefined): string | null {
+  if (!isUsableGatedPost(best)) return null
+  const keyword = best.gate_keyword?.trim()
+  const what = keyword ? `comment "${plain(keyword)}"` : (GATE_KIND_LABEL[best.cta_kind] ?? best.cta_kind.replace(/_/g, ' '))
+  // Matches the sibling surface's own gate (`LeadMagnetsBlock.tsx`'s `GatedLine`): a null `per_1k`
+  // means no rate, whether or not a follower count happens to be present.
+  const rate = best.per_1k == null ? null : perThousand(best.comments, best.follower_count)
+  const basis = rate != null
+    ? `Loudest gate by comments per 1k followers`
+    : `Loudest gate by comments, no follower count on this lane's gated authors`
+  const size = rate != null ? `, ${rate1(rate)} per 1k followers` : ''
+  return `${basis}: ${plain(best.author)}, ${what}, ${plural(best.comments, 'comment')}${size}.`
+}
+
+function isUsableLmRow(v: LmRow | null | undefined): v is LmRow {
+  return !!v && typeof v.status === 'string' && typeof v.cta_clicks === 'number' && typeof v.gate_dms === 'number' && typeof v.posts === 'number'
+    && (typeof v.title === 'string' || typeof v.keyword === 'string' || typeof v.slug === 'string')
+}
+
+/** Line 2: the lane's own best performer, from the RPC's own `best_own` pick on the Results block
+    (most CTA clicks plus gate DMs), or the caller's own windowed pick on the dedicated view.
+    `null`/absent/unusable renders no line. The status travels on the line: `best_own` is picked by
+    activity alone (same rule as `activeLms`), so it is routinely a `retired` or `draft` row, and
+    naming the title without saying so would read as a live recommendation it is not. */
 export function bestOwnLine(row: LmRow | null | undefined): string | null {
-  if (!row) return null
+  if (!isUsableLmRow(row)) return null
   const name = plain(row.title || row.keyword || row.slug)
   return `Your best lead magnet: ${name}, ${row.status}, ${plural(row.cta_clicks, 'CTA click')}, ${plural(row.gate_dms, 'gate DM')}, ${plural(row.posts, 'post')}.`
 }
@@ -165,13 +186,25 @@ export function coverageLine(judged: number, unjudged: number | null | undefined
 }
 
 /** The whole strip, at most three lines, each independent: a read that is not `ready` (loading,
-    denied, failed) contributes none of its lines rather than a placeholder for the other's. */
-export function verdictLines(gated: GatedRead | null, lm: LeadMagnetsRead | null): string[] {
+    denied, failed) contributes none of its lines rather than a placeholder for the other's.
+    `overrides` lets the DEDICATED VIEW (the surface with the 4/12-week window control) substitute
+    the windowed roster/own picks it already computes for its list and ledger, so line 1/2 always
+    name a row that is actually on screen; the RESULTS block passes no overrides and keeps reading
+    the RPC's own `best`/`best_own`, since it has no window to disagree with. An override key that
+    is present (even as `null`) always wins over the read's own pick — `null` means "nothing to
+    show for this windowed slice", not "fall back to the unwindowed one". */
+export function verdictLines(
+  gated: GatedRead | null,
+  lm: LeadMagnetsRead | null,
+  overrides?: { bestGate?: GatedPost | null; bestOwn?: LmRow | null },
+): string[] {
   const g = gated?.kind === 'ready' ? gated : null
   const l = lm?.kind === 'ready' ? lm : null
+  const bestGate = overrides && 'bestGate' in overrides ? overrides.bestGate ?? null : (g?.best ?? null)
+  const bestOwn = overrides && 'bestOwn' in overrides ? overrides.bestOwn ?? null : (l?.best_own ?? null)
   return [
-    g ? bestGateLine(g.best) : null,
-    l ? bestOwnLine(l.best_own) : null,
+    g ? bestGateLine(bestGate) : null,
+    l ? bestOwnLine(bestOwn) : null,
     g ? coverageLine(g.judged, g.unjudged) : null,
   ].filter((line): line is string => line !== null)
 }

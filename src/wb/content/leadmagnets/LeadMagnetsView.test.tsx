@@ -246,6 +246,28 @@ describe('LeadMagnetsPanel', () => {
     expect(armedLayout({ hash: '', search: '' }, dead)).toBe('a')
   })
 
+  // BLOCKER fix (Opus review B1): this surface HAS the 4/12-week control, so the strip must name
+  // whatever the windowed list actually shows, never the RPC's own unwindowed `best`.
+  it('names the windowed top row, not the RPC-wide best that has dropped out of the window', () => {
+    const posts: GatedPost[] = [
+      // Highest per_1k overall, but posted 50 days ago: outside a 4-week window today.
+      gp({ post_ref: 'ref-old-best', author: 'Old Champion', comments: 500, follower_count: 10000, per_1k: 50, posted_at: at(50) }),
+      // Inside the 4-week window, lower per_1k: this is what a 4-week reader actually sees on top.
+      gp({ post_ref: 'ref-recent', author: 'Recent Author', comments: 200, follower_count: 20000, per_1k: 10, posted_at: at(5) }),
+    ]
+    const gated: GatedRead = { ...GATED, posts }
+    const at12 = html({ gated, weeks: 12 })
+    const at4 = html({ gated, weeks: 4 })
+    // At 12 weeks both posts are in range, so the RPC-wide best (highest per_1k) is also the
+    // windowed top: agreement is not the interesting case, it is the floor.
+    expect(at12).toMatch(/Loudest gate by comments per 1k followers: Old Champion,/)
+    // At 4 weeks "Old Champion" has fallen out of the visible roster entirely; the strip must
+    // follow the list, not keep repeating a row that is no longer anywhere on the screen.
+    expect(at4).not.toMatch(/Old Champion/)
+    expect(at4).toMatch(/Loudest gate by comments per 1k followers: Recent Author,/)
+    expect(at4).not.toMatch(HOLES)
+  })
+
   it('lmState takes the worse of the two reads', () => {
     expect(lmState(null, GATED)).toBe('loading')
     expect(lmState(READY, { kind: 'denied', message: 'x' })).toBe('denied')

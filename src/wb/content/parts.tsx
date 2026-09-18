@@ -8,7 +8,7 @@
    ========================================================================== */
 import type { ReactNode } from 'react'
 import { Banner, Button, EmptyState, Icon } from '../../ds'
-import { verdictLines, type GatedRead, type LeadMagnetsRead } from '../../lib/leadMagnets'
+import { verdictLines, type GatedPost, type GatedRead, type LeadMagnetsRead, type LmRow } from '../../lib/leadMagnets'
 import './content.css'
 
 /* `relAge` moved to the shared kit in Phase 3 W6 (the rail, Money and Ops read
@@ -124,8 +124,15 @@ export function PullIndicator({ pull, refreshing, trigger }: {
     because there is only one place that decides what the lines say. At most three plain
     sentences, each carrying its own count; a read with nothing to report contributes none of its
     lines, so the strip can print one, two, three, or nothing at all. */
-export function VerdictStrip({ gated, lm }: { gated: GatedRead | null; lm: LeadMagnetsRead | null }) {
-  const lines = verdictLines(gated, lm)
+export function VerdictStrip({ gated, lm, bestGate, bestOwn }: {
+  gated: GatedRead | null; lm: LeadMagnetsRead | null
+  /** DEDICATED VIEW ONLY: the caller's own windowed roster/own picks, so the strip never names a
+      row the 4/12-week list beneath it does not show. Omit both on the Results block, which has
+      no window control and reads the RPC's own `best`/`best_own` unchanged. */
+  bestGate?: GatedPost | null; bestOwn?: LmRow | null
+}) {
+  const overrides = bestGate !== undefined || bestOwn !== undefined ? { bestGate, bestOwn } : undefined
+  const lines = verdictLines(gated, lm, overrides)
   if (!lines.length) return null
   return (
     <div className="a-lm-verdict" data-lm-verdict>

@@ -108,7 +108,10 @@ describe('Retry-blank regression (mounted)', () => {
     expect(retryBtn, 'expected a Try again button on the failed half').toBeTruthy()
 
     act(() => { retryBtn!.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
+    // Mid-retry, mirroring the Results-half assertion above: the ready half stays, and the failed
+    // half keeps showing its LAST message rather than blanking.
     expect(container.textContent).toContain('Roster Author')
+    expect(container.textContent).toContain('lm boom')
     expect(harness.fetchGatedPosts).toHaveBeenCalledTimes(1)
 
     await flush()
