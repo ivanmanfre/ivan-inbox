@@ -79,9 +79,12 @@
 }
 .a-mk-take{ font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-2); overflow-wrap:anywhere }
 
-/* The bar is the comparison: the fill is this offer, the tick is the median. */
+/* The bar is the comparison: the fill is this offer, the tick is the median.
+   No lime here. The Ledger reserves the accent for live state, and a reading of
+   the last 91 days is not live state, so the fill is a mid tone and the median
+   is a hard tick in the full text colour above it. */
 .a-mk-reach{ position:relative; height:0.5rem; background:var(--ds-surface-2); border-radius:var(--ds-radius-sm, 2px); overflow:hidden }
-.a-mk-reach-fill{ position:absolute; inset-block:0; inset-inline-start:0; background:var(--ds-accent-ui); border-radius:inherit }
+.a-mk-reach-fill{ position:absolute; inset-block:0; inset-inline-start:0; background:var(--ds-text-2); border-radius:inherit }
 .a-mk-reach-med{ position:absolute; inset-block:0; width:2px; background:var(--ds-text) }
 .a-mk-legend{
   display:flex; flex-wrap:wrap; gap:var(--ds-s1) var(--ds-s4);
