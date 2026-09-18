@@ -21,7 +21,7 @@ import { Group, Row, Rows } from '../kit'
 import { Face } from './parts'
 import type { Filter } from '../../lib/inbox'
 import {
-  cameBackLine, cardsFor, dismissCameBack, fetchCameBack, firstComment, sentLine, tenantLabel,
+  cameBackLine, cardsFor, dismissCameBack, fetchCameBack, firstComment, scanOpenDays, sentLine, tenantLabel,
   type CameBackCard,
 } from './cameBackData'
 import './dms.css'
@@ -87,7 +87,7 @@ export function CameBack({ filter, inboxLoadedAt, onOpenThread }: {
                     <Row
                       lead={<Face name={c.name} />}
                       title={<>{c.name}<span className="a-meta"> · {[c.title ?? c.headline, c.company].filter(Boolean).join(' · ')}</span></>}
-                      sub={<span className="a-warm-ev"><Icon name={c.n_views > 0 ? 'eye' : 'quote'} size={16} /><span>{cameBackLine(c)}. {sentLine(c)}{comment ? ` “${comment}”` : ''}</span></span>}
+                      sub={<span className="a-warm-ev"><Icon name={c.n_views > 0 || scanOpenDays(c) > 0 ? 'eye' : 'quote'} size={16} /><span>{cameBackLine(c)}. {sentLine(c)}{comment ? ` “${comment}”` : ''}</span></span>}
                       subWrap
                       tail={<span className="a-warm-tail">
                         {client && <Chip tone="quiet">{client}</Chip>}

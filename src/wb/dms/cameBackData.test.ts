@@ -33,6 +33,8 @@ describe('tenantLabel', () => {
 
 describe('cameBackLine', () => {
   it('reads a single view', () => expect(cameBackLine(card({}))).toMatch(/^viewed the profile · /))
+  it('names an opened scan, which rides in signals (db/097)', () => expect(cameBackLine(card({ n_views: 0, signals: [{ kind: 'scan_open', at: '2026-09-16T10:00:00Z', detail: null }] }))).toMatch(/^opened the scan · /))
+  it('counts scan-open days', () => expect(cameBackLine(card({ n_views: 0, signals: [{ kind: 'scan_open', at: '2026-09-16T10:00:00Z', detail: null }, { kind: 'scan_open', at: '2026-09-15T10:00:00Z', detail: null }] }))).toMatch(/^opened the scan on 2 days/))
   it('counts view days, not raw captures', () => expect(cameBackLine(card({ n_views: 3 }))).toMatch(/^viewed the profile on 3 days/))
   it('joins a view and a reaction', () =>
     expect(cameBackLine(card({ n_views: 1, n_engagements: 2, signals: [{ kind: 'reaction', at: '', detail: null }] })))

@@ -51,6 +51,9 @@ export function tenantLabel(c: Pick<CameBackCard, 'tenant'>, filter: Filter): st
 /** The one line that says what the person did and when. */
 export function cameBackLine(c: Pick<CameBackCard, 'n_views' | 'n_engagements' | 'last_signal_at' | 'signals'>): string {
   const parts: string[] = []
+  // db/097: they opened the scan we sent. Rides in `signals`, so the RPC's return type never changed.
+  const scans = scanOpenDays(c)
+  if (scans > 0) parts.push(scans === 1 ? 'opened the scan' : `opened the scan on ${scans} days`)
   if (c.n_views > 0) parts.push(c.n_views === 1 ? 'viewed the profile' : `viewed the profile on ${c.n_views} days`)
   if (c.n_engagements > 0) {
     const commented = (c.signals ?? []).some(s => s.kind === 'comment')
@@ -59,6 +62,10 @@ export function cameBackLine(c: Pick<CameBackCard, 'n_views' | 'n_engagements' |
   }
   const when = dayOf(c.last_signal_at)
   return `${parts.join(' and ') || 'came back'}${when ? ` · ${when}` : ''}`
+}
+
+export function scanOpenDays(c: Pick<CameBackCard, 'signals'>): number {
+  return (c.signals ?? []).filter(s => s.kind === 'scan_open').length
 }
 
 /** Where the sequence stands, in words. */
