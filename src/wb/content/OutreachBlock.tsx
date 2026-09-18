@@ -63,7 +63,7 @@ export function OutreachView({ lane, state, onRetry }: { lane: ContentLane; stat
   if (state.kind === 'empty') return <CalmEmpty line={state.reason} loadedAt={null} />
   const p = state.data
   return <>
-    <div className="a-ct-sub">DM sends only, active lanes only. A send counts 7 days after it went out. Current window is the last 14 matured days against the 60 days before. Floor {p.floor} sends per cell. Reply basis: {p.reply_basis.threaded} threaded, {p.reply_basis.stamp_only} by thread stamp. Positive rate counts threaded replies only. Viewed back counts recipients who looked at the profile within 14 days of the message; LinkedIn shows only some viewers, so read it as a floor and compare within one seat.</div>
+    <div className="a-ct-sub">DM sends only, active lanes only. A send counts 7 days after it went out. Current window is the last 14 matured days against the 60 days before. Floor {p.floor} sends per cell. Reply basis: {p.reply_basis.threaded} threaded, {p.reply_basis.stamp_only} by thread stamp. Positive counts threaded replies that took a step forward: a yes, a booking, a price or a real question about the offer. Viewed back counts recipients who looked at the profile within 14 days of the message; LinkedIn shows only some viewers, so read it as a floor and compare within one seat.</div>
     <Alarms p={p} />
     <div className="a-bm-h">Lane and step</div>
     {p.lanes.map(l => <div key={l.lane}><Cells l={l} /><Variants l={l} /></div>)}

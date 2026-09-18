@@ -26,6 +26,7 @@ beforeAll(async () => {
   end $$;`)
   await db.exec(readFileSync('db/081_outreach_perf_payload.sql', 'utf8'))
   await db.exec(readFileSync('db/092_outreach_perf_viewed_back.sql', 'utf8'))
+  await db.exec(readFileSync('db/096_outreach_perf_positive_family.sql', 'utf8'))
 })
 
 describe('outreach_perf_payload counts', () => {
@@ -219,5 +220,32 @@ describe('outreach_perf_payload viewed back (092)', () => {
     expect(after).toMatchObject({ n: 112, replies: 8 })
     const vs = lane(p, 'cold')!.variants.filter(v => v.step === 'dm1') as unknown as V[]
     expect(vs.reduce((n, v) => n + v.viewed_n, 0)).toBe(1)
+  })
+})
+
+describe('outreach_perf_payload positive family (096)', () => {
+  it('counts booking, price_ask, info_ask and soft_yes as positive, and a plain no as nothing', async () => {
+    // one threaded reply to a current-window send, relabelled through the 10-label set
+    const r = await db.query<{ id: string; lane: string; step: string; client: string }>(`
+      select r.id, lane_of(c.name) as lane, coalesce(c.client_id, 'ivan') as client,
+        case when m.channel = 'linkedin_inmail' then 'inmail' when coalesce(m.sequence_step, 1) <= 1 then 'dm1'
+             when m.sequence_step = 2 then 'nudge' else 'dm3' end as step
+      from outreach_messages r join outreach_messages m on m.id = r.replies_to_message_id
+      join outreach_prospects pr on pr.id = m.prospect_id join outreach_campaigns c on c.id = pr.campaign_id
+      where not coalesce(c.archived, false) and r.direction = 'inbound' and not coalesce(r.is_reaction, false)
+        and m.direction = 'outbound' and m.message_type in ('dm', 'inmail') and coalesce(m.ai_model, '') <> 'manual_mirror'
+        and not exists (select 1 from outreach_messages o where o.replies_to_message_id = m.id and o.id <> r.id)
+        and m.sent_at >= now() - interval '21 days' and m.sent_at <= now() - interval '7 days'
+      order by r.id limit 1`)
+    const { id, lane: l, step, client } = r.rows[0]
+    const positives = async () => (cell(await payload(client), l, step) as unknown as { positive_n: number }).positive_n
+    await db.query(`update outreach_messages set reply_intent = 'negative' where id = $1`, [id])
+    const base = await positives()
+    for (const label of ['booking', 'price_ask', 'info_ask', 'soft_yes', 'positive']) {
+      await db.query(`update outreach_messages set reply_intent = $2 where id = $1`, [id, label])
+      expect(await positives(), label).toBe(base + 1)
+    }
+    await db.query(`update outreach_messages set reply_intent = 'neutral' where id = $1`, [id])
+    expect(await positives()).toBe(base)
   })
 })
