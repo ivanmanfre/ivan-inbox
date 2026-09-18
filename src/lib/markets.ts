@@ -471,7 +471,7 @@ const nnum = (v: unknown): number | null => (typeof v === 'number' && Number.isF
 const nstr = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v : null)
 
 /** One test, as a title and a body. Each one starts from a number already on the screen. */
-export function testCopy(t: MarketTest, m: MarketReadout): { title: string; body: string } {
+export function testCopy(t: MarketTest, _m: MarketReadout): { title: string; body: string } {
   const n = t.n || {}
   if (t.kind === 'shape') {
     const top = (n.top || {}) as MarketOffer

@@ -21,7 +21,7 @@ import { useStrategy } from '../../hooks/useStrategy'
 import {
   addSection, blankCount, lineShape, moveSection, removeSection, sectionIsBlank, updateSection,
 } from '../../lib/strategy'
-import { type ContentLane } from '../../lib/content'
+import { LANE_LABEL, type ContentLane } from '../../lib/content'
 import { laneOptions, resolveLane, useLanes } from '../../hooks/useLanes'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import { Badge, Button, Card, IconButton, Input, Segmented, spring } from '../../ds'

@@ -41,7 +41,7 @@ import {
   isRecentError, isStuckGenerating, stageOfLane, tabSev,
   type BoardGroup, type ContentDraft, type ContentLane, type ContentStage, type ContentStages,
 } from '../../lib/content'
-import { laneOptions, useLanes } from '../../hooks/useLanes'
+import { useLanes } from '../../hooks/useLanes'
 import {
   applyFilters, applySearch, buildFacets, draftProminent, draftSpecs,
   DRAFT_PROMINENT, splitFacets,
@@ -110,6 +110,7 @@ function CommandStrip({
   stats?: ReactNode
   filter?: ReactNode
 }) {
+  const lanes = useLanes()
   const phone = usePhone()
   return (
     <>
