@@ -11,6 +11,7 @@ import { InboxList } from './InboxList'
 import { DraftCard, PushedBar, StaleBar } from './DraftCard'
 import { DmCount } from './DmHistory'
 import { WarmSignals } from './WarmSignals'
+import { CameBack } from './CameBack'
 import { PreReadNote } from './PreReadNote'
 import { ChatLink } from './parts'
 import { Button } from '../../ds'
@@ -130,6 +131,11 @@ export function Dms({
             invite or DM goes out. Ivan's tenant only; hidden on client lanes.
             Nothing on it sends: the senders read the stamps on their own clock. */}
         <WarmSignals filter={filter} refresh={refresh} inboxLoadedAt={loadedAt} focus={warm} onOpenThread={onOpenThread} />
+        {/* CAME BACK (Ivan, 2026-09-18: "this should be judged in all clients. me,
+            mattan, davoirin"). People we already messaged who viewed the profile or
+            engaged a post afterwards and never replied. All three clients, following
+            the lane switch. Read-only apart from Dismiss: nothing here sends. */}
+        <CameBack filter={filter} inboxLoadedAt={loadedAt} onOpenThread={onOpenThread} />
         {/* The "N conversations · N replies" receipt ("so i know this is
             working") stays as one caption line. The DM-history LIST it used to
             head is gone (Ivan, 2026-09-15): the list below now holds every
