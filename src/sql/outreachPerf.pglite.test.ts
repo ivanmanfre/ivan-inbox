@@ -25,7 +25,7 @@ beforeAll(async () => {
     if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role; end if;
   end $$;`)
   await db.exec(readFileSync('db/081_outreach_perf_payload.sql', 'utf8'))
-  await db.exec(readFileSync('db/088_outreach_perf_viewed_back.sql', 'utf8'))
+  await db.exec(readFileSync('db/092_outreach_perf_viewed_back.sql', 'utf8'))
 })
 
 describe('outreach_perf_payload counts', () => {
@@ -191,7 +191,7 @@ describe('outreach_perf_payload alarms', () => {
   })
 })
 
-describe('outreach_perf_payload viewed back (088)', () => {
+describe('outreach_perf_payload viewed back (092)', () => {
   it('counts a recipient once however often the view was re-captured, and only on the sending seat inside 14 days', async () => {
     type V = { viewed_n: number; viewed_rate: number | null }
     const before = cell(await payload('risedtc'), 'cold', 'dm1') as unknown as V

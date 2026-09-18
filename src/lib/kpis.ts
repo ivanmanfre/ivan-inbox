@@ -52,7 +52,7 @@ export const fetchScanOpens = () => selectAll<ScanOpenRow>('inbox_scan_opens_v')
 export const fetchOutcomes = () => selectAll<OutcomeRow>('inbox_outcomes_v')
 
 // Of the people invited in the window, how many looked at the sending seat's profile
-// afterwards (db/089_inbox_viewed_back.sql). LinkedIn exposes only some viewers, so
+// afterwards (db/093_inbox_viewed_back.sql). LinkedIn exposes only some viewers, so
 // every figure is a floor. Soft-fails to [] so one missing function never blanks Lanes.
 export type ViewedBackRow = { client_id: string; invited_7d: number; viewed_7d: number; invited_30d: number; viewed_30d: number }
 export async function fetchViewedBack(): Promise<ViewedBackRow[]> {

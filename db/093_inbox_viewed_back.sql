@@ -1,4 +1,4 @@
--- 089: inbox_viewed_back(): per client, of the people invited in the last 7 and 30 days, how many
+-- 093: inbox_viewed_back(): per client, of the people invited in the last 7 and 30 days, how many
 -- looked at the sending seat's profile afterwards. One caption line under the Lanes funnel.
 -- Ivan 2026-09-18: "this should be judged in all clients. me, mattan, davoirin".
 -- A CAPTION, never a funnel step: the funnel is strictly denominated (confirmed invitations, accepted

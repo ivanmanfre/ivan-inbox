@@ -1,10 +1,10 @@
--- 088: outreach_perf_payload gains "viewed back" per cell and per variant: how many recipients of a
+-- 092: outreach_perf_payload gains "viewed back" per cell and per variant: how many recipients of a
 -- message looked at the sending seat's profile in the 14 days after it went out.
 -- Ivan 2026-09-18, on surfacing the silent signal: "this should be judged in all clients. me, mattan,
 -- davoirin". Measured the same day: prospects who view back reply about 4x more on all three seats.
 -- DISPLAY ONLY. It feeds no drift or sibling alarm: the capture is partial (LinkedIn exposes some
 -- viewers), so the rate is a floor and only comparable between variants on the SAME seat.
--- Full copy of the 081 function with the additions marked 088; 081 stays on disk as history.
+-- Full copy of the 081 function with the additions marked 092; 081 stays on disk as history.
 -- profile_view_log is service_role-only under RLS; this function is SECURITY DEFINER, so it reads it.
 
 create or replace function outreach_perf_payload(p_client_id text, p_days int default 90)
@@ -65,7 +65,7 @@ begin
     (select r.reply_intent from outreach_messages r where r.replies_to_message_id = s.id
        and r.direction = 'inbound' and not coalesce(r.is_reaction, false)
        order by r.sent_at limit 1) as intent,
-    -- 088: the recipient looked at the sending seat's profile within 14 days after this message.
+    -- 092: the recipient looked at the sending seat's profile within 14 days after this message.
     -- An existence test, so profile_view_log re-capturing the same view on later days cannot inflate it.
     exists (select 1 from profile_view_log l where l.prospect_id = s.prospect_id and l.seat = p_client_id
               and l.viewed_at > s.sent_at and l.viewed_at < s.sent_at + interval '14 days') as viewed_back,
