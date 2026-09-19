@@ -178,10 +178,67 @@
   cursor:pointer;
   white-space:nowrap;
 }
-.a-worksep-pill{ transition:background-color var(--ds-dur-hover) var(--ds-ease), color var(--ds-dur-hover) var(--ds-ease) }
-.a-worksep-pill:hover{ color:var(--ds-text); background:var(--ds-wash) }
-.a-worksep-pill:active{ background:var(--ds-wash-strong) }
-.a-worksep-pill[data-active='true']{ background:var(--ds-surface-2); color:var(--ds-text) }
+
+/* ==========================================================================
+   ELEVATION (2026-09-20) · THE SECTION STRIP WAS A RUN OF WORDS, AND IT IS THE
+   SAME CASCADE TRAP E4 CAUGHT ON THE LANE SWITCH.
+
+   `wb.css`'s `.a-root button:not([class*='ds-']):not([class*='wb-'])` strips
+   `background`, `border`, `padding` and `color` off every workbench button that
+   is neither a design-system control nor shell chrome, at 0,3,1.
+   `.a-worksep-pill` is exactly that button and every declaration above is
+   0,1,0, so MEASURED at 1440 the four lanes rendered `padding:0px`,
+   `background:transparent` and `color:rgb(255,255,255)` — no inline padding,
+   no active fill, and the three inactive lanes the same white as the one the
+   reader is on. "Content  Content 144 Magnets 15 Styles Strategy" ran together
+   as one string with 4px between the words.
+
+   Restated at 0,4,1, the weight §10 already uses two blocks down, so the reset
+   still applies to every bare button that has no box of its own.
+   ========================================================================== */
+.a-root .a-worksep button.a-worksep-pill.a-worksep-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:var(--ds-s2);          /* the count sits one step after its word */
+  flex:0 0 auto;
+  min-height:var(--ds-control-h);
+  padding:0 var(--ds-s3);
+  border:0;
+  border-radius:var(--ds-r3);
+  background:transparent;
+  color:var(--ds-text-3);
+  font-size:var(--ds-fs-body);
+  font-weight:var(--ds-fw-medium);
+  white-space:nowrap;
+  cursor:pointer;
+  transition:background-color var(--ds-dur-hover) var(--ds-ease),
+             color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-root .a-worksep button.a-worksep-pill.a-worksep-pill:hover{
+  color:var(--ds-text); background:var(--ds-wash);
+}
+.a-root .a-worksep button.a-worksep-pill.a-worksep-pill:active{ background:var(--ds-wash-strong) }
+/* The one place on this strip the accent is spent, and it is on budget:
+   tokens.css §1.5 names "active nav" as one of its three roles, and this is
+   the same soft fill the rail's own active place already carries. */
+.a-root .a-worksep button.a-worksep-pill.a-worksep-pill[data-active='true']{
+  background:var(--ds-accent-soft);
+  color:var(--ds-text);
+}
+/* Tab spacing. The items are a tab row, not a chip ribbon: 20px between them,
+   on top of each item's own 8px of inset. */
+.a-worksep{ gap:var(--ds-s6) }
+.a-worksep-seg{ gap:var(--ds-s6) }
+/* The section's name is a label ON the row of places, not one of them. */
+.a-worksep-l{
+  font-size:var(--ds-fs-meta);
+  color:var(--ds-text-4);
+  padding-inline-end:var(--ds-s5);
+  border-inline-end:1px solid var(--ds-line);
+  align-self:stretch;
+  display:flex;
+  align-items:center;
+}
 
 /* The phone form of the segment. The group label is dropped: the tab bar under
    it already reads "Content", and repeating the word is what pushed the four
@@ -214,6 +271,17 @@
   .a-worksep-l{ display:none }
   .a-worksep-seg{ flex:1 1 auto }
   .a-worksep-pill.a-worksep-pill{ min-height:var(--ds-tap); padding:0 var(--ds-s3) }
+  /* ELEVATION: the strip's first word started at x=8 while the page title
+     under it starts at the gutter. The strip pays the gutter too, minus the
+     item's own inset, so the two left edges are one line. The four lanes plus
+     their tab spacing measure past 390, so the row scrolls sideways rather
+     than wrapping — which is what §8's own headline says it is for. */
+  .a-worksep{ padding-inline:calc(var(--ds-gutter) - var(--ds-s3)) }
+  .a-worksep-seg{ gap:var(--ds-s5); flex-wrap:nowrap }
+  .a-root .a-worksep button.a-worksep-pill.a-worksep-pill{
+    min-height:var(--ds-tap);
+    font-size:var(--ds-fs-body);
+  }
 }
 
 /* 9 · S39 the phone bar. The 44px floor is the system's own, on `.ds-tab`; the

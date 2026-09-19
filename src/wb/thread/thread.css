@@ -52,12 +52,16 @@
 }
 .a-thread-lbl[data-right]{ justify-content:flex-end }
 
-/* Theirs: on the canvas, one measure wide, nothing drawn around it. */
+/* Theirs: on the canvas, one measure wide, nothing drawn around it. The
+   measure is the reading one and stays; ELEVATION only states the leading,
+   which used to come from whatever ancestor was nearest. */
 .a-thread-said{
   display:flex;
   flex-direction:column;
   gap:var(--ds-s2);
-  max-width:64ch;
+  max-width:60ch;
+  font-size:var(--ds-fs-body);
+  line-height:var(--ds-lh-body);
   color:var(--ds-text);
   overflow-wrap:anywhere;
 }
@@ -66,15 +70,23 @@
   display:flex;
   flex-direction:column;
   gap:var(--ds-s2);
-  max-width:56ch;
-  padding:var(--ds-s4);
+  max-width:52ch;
+  /* ELEVATION: 12px of padding on a 52ch bubble read as a form field, not as
+     a message. 16 is the bubble's own inset and it matches the card pad the
+     rest of the app reads at. */
+  padding:var(--ds-s5);
+  font-size:var(--ds-fs-body);
+  line-height:var(--ds-lh-body);
   background:var(--ds-surface-2);
   border:1px solid var(--ds-line);
   border-radius:var(--ds-r4);
   color:var(--ds-text);
   overflow-wrap:anywhere;
 }
-.a-thread-box + .a-thread-box{ margin-top:var(--ds-s2) }
+/* ELEVATION: two turns are 20px apart (`.a-thread-msgs` gap); two bubbles
+   inside ONE turn were 4px apart, which read as one bubble broken by a seam.
+   8 is a run. */
+.a-thread-box + .a-thread-box{ margin-top:var(--ds-s3) }
 /* A reply typed by hand in the LinkedIn app is the one thing on this screen no
    automation did, so it is marked in FORM, not only in the label above it. */
 .a-thread-box[data-manual]{
@@ -174,7 +186,10 @@
 
 .a-thread-composer{
   flex:0 0 auto;
-  padding:var(--ds-s0) var(--ds-gutter) var(--ds-s3);
+  /* ELEVATION: the composer sat 8px off the plate's bottom edge with nothing
+     above it, so it read as the last row of the thread rather than as the
+     band the thread is written from. One step of air on each side. */
+  padding:var(--ds-s3) var(--ds-gutter) var(--ds-s4);
 }
 
 /* --------------------------------------------------------------------------

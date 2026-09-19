@@ -917,28 +917,51 @@
 @media (min-width:768px){
   .wb-work.wide .a-dms-rowhost > .a-row.a-row.a-row.a-row.r{
     display:grid;
-    /* avatar | name + preview | time and pill | the row's own verbs */
+    /* avatar | name + tags + preview | the row's own verbs | time and pill */
     grid-template-columns:
       auto
       minmax(0,1fr)
-      calc(var(--ds-s11) * 2 + var(--ds-s3))
-      calc(var(--ds-s11) * 3);
+      calc(var(--ds-s11) * 3)
+      calc(var(--ds-s11) * 2 + var(--ds-s7));
     align-items:center;
     column-gap:var(--ds-stack);
   }
-  /* The time takes the left of its track and the pill the right, so a row with
-     no pill still puts its time where every other row put one. `4ch` is the
-     floor the longest value ("yday") already needs; it is a floor, not a cap. */
+  /* THE TIME AND THE PILL SIT ON THE CARD'S EDGE, NOT IN THE MIDDLE OF IT.
+     First build put the actions track last, so at rest the Draft pill floated
+     with ~200px of reserved (and invisible) verb lane to the right of it. The
+     two trailing tracks swap: the verbs take the lane BEFORE the tail, where
+     the preview's own ellipsis already leaves white, and the tail closes the
+     row against its right padding. Explicit columns, because grid
+     auto-placement follows DOM order and the tail is written first. */
+  .wb-work.wide .a-dms .a-row.r > .a-row-lead{ grid-column:1 }
+  .wb-work.wide .a-dms .a-row.r > .a-row-main{ grid-column:2 }
+  .wb-work.wide .a-dms .a-row.r > .a-row-actions{ grid-column:3; justify-content:flex-end }
   .wb-work.wide .a-dms .a-row.r > .a-row-tail{
+    grid-column:4;
     justify-content:flex-start;
     overflow:visible;
+    min-width:0;
   }
-  .wb-work.wide .a-dms .a-row.r > .a-row-tail > .a-mono{ flex:0 0 auto; min-width:4ch }
+  /* The time takes a fixed cell and sets right inside it, so its last digit
+     lands on one x whether the row says "6h" or "yday"; the pill is pushed to
+     the track's end, which is the row's right padding. A row with no pill
+     keeps the track, so nothing above or below it moves. */
+  .wb-work.wide .a-dms .a-row.r > .a-row-tail > .a-mono{
+    flex:0 0 auto; width:5ch; text-align:right;
+  }
   .wb-work.wide .a-dms .a-row.r > .a-row-tail > .a-dms-draftchip,
   .wb-work.wide .a-dms .a-row.r > .a-row-tail > [data-ds='Chip']{ margin-inline-start:auto }
-  .wb-work.wide .a-dms .a-row.r > .a-row-actions{ justify-content:flex-end }
-  /* The verb overlay (E3) keeps the tail's right edge; the reservation its own
-     `:has()` rule makes is now smaller than the track and does nothing. */
+  /* THE TAGS BELONG TO THE NAME. Right-aligned against the main column they
+     read as a third column of their own, 200px adrift of the person they
+     describe. `flex:1 1 auto` on the name is what pushed them there; the name
+     takes only what it needs now and the tags follow it. The floor stays:
+     this is the wide list, where the column is 600px and nothing shrinks. */
+  .wb-work.wide .a-dms-titleline > :first-child{ flex:0 1 auto }
+  /* E3 reserves 64px on the tail of a row that carries the hover verb and
+     right-sets it, which was the answer when the tail's width was its own
+     content. The track is 152px and fixed now, so the reservation does
+     nothing and the right-set would move the time off the column. Stated
+     rather than left to source order, since the two selectors tie. */
   .wb-work.wide .a-dms .a-row.r:has(> .a-row-tail > .a-dms-verb) > .a-row-tail{
     min-width:0;
     justify-content:flex-start;

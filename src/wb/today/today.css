@@ -149,6 +149,34 @@
   .a-today-z .a-group-h{ flex-wrap:wrap; row-gap:var(--ds-s1) }
   .a-today-z .a-group-h > .a-eyebrow{ flex:1 0 auto; overflow:visible }
   .a-today-z .a-group-h > .a-group-tail{ margin-inline-start:auto }
+
+  /* ELEVATION (2026-09-20) · THE CLAUDE BUTTON'S LANE. `.a-ask-fab` is a fixed
+     44px control 12px off the plate's right edge, so it owns the bottom-right
+     corner of every phone viewport — measured at 390 it sat at x 334-378,
+     y 736-780, directly over "8 across every lane" in the work queue's head
+     (tail 257-374, y 723-767). A zone head is the one thing on this screen
+     that right-sets its text, so it is the one thing that lands under the
+     button. The head keeps that lane clear: 44 for the control plus the 12 it
+     floats by. The eyebrow and its count still measure 213px inside the 302
+     that are left at 390, so nothing wraps or truncates for it. */
+  .a-today-z .a-group-h{
+    padding-inline-end:calc(var(--ds-row-x) + var(--ds-tap) + var(--ds-s4));
+  }
+
+  /* THE THIRD CELL IS NOT A LEFTOVER. "New today / Carried over / Oldest" in
+     two columns left the second row half-drawn, and spanning the lone cell
+     made it a wide band under two narrow ones. All three are a short label
+     over a short figure, so they take three equal columns: 119px each at 390,
+     against a widest label ("Carried over") of 78. Scoped to THIS ledger —
+     other screens' ledgers carry figures like "354/600" that do not fit a
+     third of a phone. */
+  .a-today-read .a-ledger{ grid-template-columns:repeat(3,1fr) }
+  .a-today-read .a-ledger > .a-cell{ padding-inline:var(--ds-s4) }
+  /* wb.css spans an odd LAST cell across the phone's two columns, which is the
+     right answer for a two-column ledger and the wrong one here: at three
+     columns it dropped "Oldest" onto a second row of its own and left the
+     third slot of the first row empty. Withdrawn for this ledger only. */
+  .a-today-read .a-ledger > .a-cell:last-child:nth-child(odd){ grid-column:auto }
 }
 
 
