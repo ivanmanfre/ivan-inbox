@@ -29,12 +29,22 @@
   font-weight:var(--ds-fw-display); letter-spacing:var(--ds-tr-display);
   color:var(--ds-text);
 }
-.a-mk-u{ font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); color:var(--ds-text-2); overflow-wrap:anywhere }
-/* The sentence under the number is the second read and keeps a measure, so it
-   does not run 150 characters wide on a 1440 column. */
+/* The predicate the number needs to mean anything: the second read, one step
+   under the figure and still in reading ink. */
+.a-mk-u{
+  font-size:var(--ds-fs-title); line-height:var(--ds-lh-title); letter-spacing:var(--ds-tr-title);
+  color:var(--ds-text-2); overflow-wrap:anywhere;
+}
+/* The evidence sentence is the THIRD read: where the number came from, for
+   whoever wants to check it. At body size in full reading ink it competed with
+   the line above it, so it drops to meta and the quiet step, and it clamps —
+   three lines is enough to recognise the source, and the whole sentence is one
+   scroll away in the offers list below. */
 .a-mk-lede{
-  font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); color:var(--ds-text-2);
+  font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3);
   overflow-wrap:anywhere; max-width:78ch;
+  display:-webkit-box; -webkit-line-clamp:3; line-clamp:3;
+  -webkit-box-orient:vertical; overflow:hidden;
 }
 
 .a-mk-asks{
@@ -241,10 +251,12 @@ a.a-mk-t-a:focus-visible{ outline:2px solid var(--ds-accent-ui); outline-offset:
 /* The move is the card's own last line and sits on its own hairline, so the
    reading (above) and the decision (below) never run together. */
 .a-mk-cd{
-  font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text);
-  overflow-wrap:anywhere; margin-top:auto; padding-top:var(--ds-s3);
+  font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); color:var(--ds-text);
+  overflow-wrap:anywhere; margin-top:auto; padding-top:var(--ds-s4);
   border-top:1px solid var(--ds-line);
 }
+/* "we do:" is a label on the move, not part of the sentence: it names who the
+   line is for and then gets out of the way. */
 .a-mk-cd b{ color:var(--ds-text-3); font-weight:var(--ds-fw-medium) }
 
 /* ---- the offers as lines. */

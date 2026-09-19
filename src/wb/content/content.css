@@ -165,10 +165,15 @@
    mark on its corner and the select mark, so the stage of every row reads
    down a single column at 390 and at 1440.
    -------------------------------------------------------------------------- */
-.a-ct-anchor{ position:relative; width:1.75rem; height:1.75rem; flex:0 0 auto }
+/* ELEVATION: the anchor was 28px, which made the thumb a stamp beside a
+   three-line row. It is the tap size now, at the control radius, so the row has
+   a real picture in it and the QA pip has room on its corner. One custom
+   property, because the column head has to reserve exactly this width. */
+.a-ct{ --a-ct-anchor:2.75rem }
+.a-ct-anchor{ position:relative; width:var(--a-ct-anchor); height:var(--a-ct-anchor); flex:0 0 auto }
 .a-ct-thumb{
   width:100%; height:100%; object-fit:cover; display:block;
-  border-radius:var(--ds-r2); background:var(--ds-surface-2);
+  border-radius:var(--ds-r3); background:var(--ds-surface-2);
 }
 /* W3-17: the storage-400 fallback. Same box, no image, two letters. */
 .a-ct-thumb-fb{
@@ -188,7 +193,7 @@
   width:100%; height:100%; padding:0; margin:0; border:0;
   display:flex; align-items:center; justify-content:center;
   background:var(--ds-surface-3); color:var(--ds-text);
-  border-radius:var(--ds-r2); cursor:pointer; opacity:0;
+  border-radius:var(--ds-r3); cursor:pointer; opacity:0;
   transition:opacity var(--ds-dur-hover) var(--ds-ease);
 }
 .a-row:hover .a-ct-selmark,
@@ -237,7 +242,18 @@
     display:flex; align-items:center; gap:var(--ds-s4); flex:0 0 auto;
     font-size:var(--ds-fs-meta); color:var(--ds-text-3);
   }
-  .a-ct-colv{ width:7rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+  .a-ct-colv{ width:7rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ds-text-3) }
+  /* THE FOUR COLUMNS SIT ON THE TITLE'S LINE, not on the row's middle. A row
+     is three lines tall (title, excerpt, verdict) and a vertically centred tail
+     put "Buyers · Claude session · 12h ago" beside the EXCERPT, so the eye read
+     the columns as belonging to the summary rather than to the draft. The 2px
+     is the half-leading difference between the 16px title and the 13px meta,
+     which lands the two on one baseline. */
+  .a-ct-row > .a-row-tail{ align-self:flex-start; padding-block-start:var(--ds-s1) }
+  .a-ct-row > .a-row-tail,
+  .a-ct-cols{ color:var(--ds-text-3) }
+  /* and the thumb rides with the title for the same reason. */
+  .a-ct-row > .a-row-lead{ align-self:flex-start }
   /* The clock is a column too: one fixed width, right-aligned, so "27m ago"
      and "1d ago" end on the same x and the three facts never drift per row. */
   .a-ct-when{
@@ -252,8 +268,8 @@
      over its own value at any width. */
   .a-ct-colhead{
     display:flex; align-items:center; gap:var(--ds-stack);
-    padding:var(--ds-s2) var(--ds-row-x);
-    padding-inline-start:calc(var(--ds-row-x) + 1.75rem + var(--ds-stack));
+    padding:var(--ds-s3) var(--ds-row-x);
+    padding-inline-start:calc(var(--ds-row-x) + var(--a-ct-anchor) + var(--ds-stack));
     border-bottom:1px solid var(--ds-line);
   }
   .a-ct-colhead-t{ flex:1 1 auto; min-width:0 }
@@ -1169,6 +1185,11 @@ a.a-prop-src:hover{ color:var(--ds-text) }
 .a-ct > .a-bar:not(:has(~ .a-bar)):not(:has(~ .a-ct-tabsbar)){
   border-bottom:1px solid var(--ds-line);
 }
+/* ...unless that last bar holds the Strategy tablist, which draws the line
+   itself so its accent underline can sit on it (strategy-evidence.css). The
+   bar's bottom padding goes with the rule, or the tabs would float 12px above
+   the line they are supposed to stand on. */
+.a-ct > .a-bar.a-bar:has(> .a-strategy-nav){ border-bottom:0; padding-block:var(--ds-s4) 0 }
 /* The strip's own `.ds-tabs` keeps its rule and the active underline sits on
    it; the strip itself draws none (see `.a-ct-tabsbar` above). */
 

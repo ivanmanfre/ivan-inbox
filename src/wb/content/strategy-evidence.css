@@ -1,12 +1,30 @@
-/* THE STRATEGY TAB ROW. It used to wrap: five, then seven pills wrapped into a
-   three-column grid at 600px, which broke "Recommendations" across two lines as
-   "Recommendation / s" and cost 3 rows of a 844px fold. It is ONE row now, at
-   every width, scrolled sideways with the scrollbar hidden and a fade on the
-   edge that has more row behind it, which is the affordance a bare cut-off
-   never gives. The sliding marker lives inside each pill, so it travels with
-   the scroll rather than against it. */
+/* THE STRATEGY TAB ROW.
+
+   It used to wrap: five, then seven pills wrapped into a three-column grid at
+   600px, which broke "Recommendations" across two lines as "Recommendation / s"
+   and cost 3 rows of a 844px fold. It is ONE row now, at every width, scrolled
+   sideways with the scrollbar hidden and a fade on the edge that has more row
+   behind it, which is the affordance a bare cut-off never gives.
+
+   ROUND 2: it is also UNDERLINE TABS rather than a second grey pill track. The
+   client switch above it is the segmented pill; two identical grey tracks
+   stacked read as one undifferentiated block, and the lane and the view are not
+   the same kind of choice. The Segmented component's own sliding marker becomes
+   the 2px accent underline, so it still travels between tabs with `layoutId`
+   and nothing in the .tsx changes. The row's one hairline is the tablist's own,
+   which the underline sits on — so the bar under it gives up its rule rather
+   than drawing a second line 12px lower. */
 .a-strategy-nav {
+  /* the tablist spans the bar, so its hairline is the head stack's one line */
+  display: flex;
+  flex: 1 1 auto;
+  align-items: stretch;
   max-width: 100%;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  border-bottom: 1px solid var(--ds-line);
+  gap: var(--ds-s6);
   flex-wrap: nowrap;
   overflow-x: auto;
   overflow-y: hidden;
@@ -14,6 +32,7 @@
   scroll-snap-type: x proximity;
   scroll-padding-inline: var(--ds-s1);
 }
+/* The bar that holds it gives up its own rule (content.css, §head stack). */
 .a-strategy-nav::-webkit-scrollbar { display: none; }
 .a-strategy-nav .ds-seg-item {
   flex: 0 0 auto;
@@ -22,7 +41,20 @@
   overflow-wrap: normal;
   height: auto;
   min-height: var(--ds-tap);
+  padding-inline: 0;
+  border-radius: 0;
+  color: var(--ds-text-3);
   scroll-snap-align: start;
+}
+.a-strategy-nav .ds-seg-item:hover { color: var(--ds-text); }
+.a-strategy-nav .ds-seg-item[data-active='true'] { color: var(--ds-text); }
+/* The pill marker, turned into the underline. `inset:0` becomes a 2px strip on
+   the bottom edge, one pixel low so it covers the tablist's hairline. */
+.a-strategy-nav .ds-seg-marker {
+  inset: auto 0 -1px 0;
+  height: 2px;
+  border-radius: var(--ds-r-pill);
+  background: var(--ds-accent);
 }
 
 .a-strategy-results { display: grid; gap: var(--ds-section-gap); min-width: 0; }
@@ -59,10 +91,10 @@
 .a-strategy-disclosure > summary:hover { background: var(--ds-wash); color: var(--ds-text); }
 .a-strategy-disclosure > summary:focus-visible { outline: 2px solid var(--ds-accent-ui); outline-offset: 2px; }
 
-/* The edge fade, on the phone only — the only width where seven pills actually
-   run past the bar. It is a sticky flex item fading to the segmented control's
-   own bed, the same move `orbit.css` uses on its overflowing rows, so no colour
-   is invented here. */
+/* The edge fade, on the phone only — the only width where seven tabs actually
+   run past the bar. It is a sticky flex item fading to the bar's own ground,
+   the same move `orbit.css` uses on its overflowing rows, so no colour is
+   invented here. */
 @media (max-width: 767px) {
   .a-strategy-nav::after {
     content: '';
@@ -71,9 +103,7 @@
     flex: 0 0 var(--ds-s7);
     align-self: stretch;
     margin-inline-start: calc(var(--ds-s7) * -1);
-    border-end-end-radius: var(--ds-r2);
-    border-start-end-radius: var(--ds-r2);
-    background: linear-gradient(to right, transparent, var(--ds-surface-2));
+    background: linear-gradient(to right, transparent, var(--ds-canvas));
     pointer-events: none;
   }
 }
