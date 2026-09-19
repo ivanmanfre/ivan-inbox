@@ -128,9 +128,9 @@ body :focus-visible{
   font-weight:var(--ds-fw-regular); color:var(--ds-text-3); margin:0;
 }
 .ds-t-eyebrow{
-  font-size:var(--ds-fs-eyebrow); line-height:var(--ds-lh-eyebrow);
+  font-size:var(--ds-fs-meta); line-height:var(--ds-lh-eyebrow);
   letter-spacing:var(--ds-tr-eyebrow); font-weight:var(--ds-fw-medium);
-  text-transform:uppercase; color:var(--ds-text-3); margin:0;
+  text-transform:var(--ds-tt-eyebrow); color:var(--ds-text-3); margin:0;
 }
 .ds-t-mono{
   font-family:var(--ds-font-mono);
@@ -233,8 +233,8 @@ body :focus-visible{
   position:relative;
   display:flex; align-items:center; gap:var(--ds-s4);
   width:100%;
-  min-height:var(--ds-control-h);
-  padding:var(--ds-s2) var(--ds-s3);
+  min-height:40px;
+  padding:var(--ds-s2) var(--ds-s4);
   border:0; background:transparent; color:var(--ds-text-2);
   border-radius:var(--ds-r3);
   font-size:var(--ds-fs-body); font-weight:var(--ds-fw-regular);
@@ -242,7 +242,9 @@ body :focus-visible{
   transition:background-color var(--ds-dur-hover) var(--ds-ease),
              color var(--ds-dur-hover) var(--ds-ease);
 }
-.ds-rail-item:hover{ background:var(--ds-wash); color:var(--ds-text) }
+.ds-rail-item:hover{ background:var(--ds-wash-strong); color:var(--ds-text) }
+.ds-rail-item .ds-icon{ transition:transform var(--ds-dur) var(--ds-ease-out), color var(--ds-dur-hover) var(--ds-ease) }
+.ds-rail-item:hover .ds-icon{ transform:scale(1.08) }
 .ds-rail-item[data-active='true']{ color:var(--ds-text); background:var(--ds-accent-soft) }
 .ds-rail-item[data-active='true'] .ds-icon{ color:var(--ds-accent-ui) }
 .ds-rail-item[data-nested='true']{ padding-left:var(--ds-s8) }
@@ -421,7 +423,7 @@ body :focus-visible{
   flex:0 0 auto;
   display:flex; align-items:center; gap:var(--ds-s4);
   min-height:var(--ds-header-h);
-  padding:var(--ds-s3) var(--ds-gutter);
+  padding:var(--ds-s4) var(--ds-gutter);
   background:var(--ds-canvas);
   border-bottom:1px solid var(--ds-line);
   z-index:var(--ds-z-header);
@@ -439,9 +441,10 @@ body :focus-visible{
   display:flex; flex-direction:column;
   background:var(--ds-surface-1);
   border-radius:var(--ds-r4);
+  box-shadow:inset 0 0 0 1px var(--ds-line);
   overflow:hidden;
 }
-.ds-list[data-flush='true']{ background:transparent; border-radius:var(--ds-r1) }
+.ds-list[data-flush='true']{ background:transparent; border-radius:var(--ds-r1); box-shadow:none }
 .ds-list > .ds-row + .ds-row{ box-shadow:inset 0 1px 0 0 var(--ds-line) }
 
 .ds-row{
@@ -502,14 +505,20 @@ body :focus-visible{
   padding:var(--ds-card-pad);
   background:var(--ds-surface-1);
   border-radius:var(--ds-r4);
-  border:1px solid transparent;
+  border:1px solid var(--ds-line);
   transition:background-color var(--ds-dur-hover) var(--ds-ease),
-             border-color var(--ds-dur-hover) var(--ds-ease);
+             border-color var(--ds-dur-hover) var(--ds-ease),
+             transform var(--ds-dur) var(--ds-ease-out),
+             box-shadow var(--ds-dur) var(--ds-ease-out);
 }
 .ds-card[data-tone='quiet']{ background:transparent; border-color:var(--ds-line) }
 .ds-card[data-tone='raised']{ background:var(--ds-surface-2) }
 .ds-card[data-interactive='true']{ cursor:pointer }
-.ds-card[data-interactive='true']:hover{ background:var(--ds-surface-2) }
+.ds-card[data-interactive='true']:hover{
+  background:var(--ds-surface-2); border-color:var(--ds-line-strong);
+  transform:var(--ds-lift); box-shadow:var(--ds-shadow-lift);
+}
+.ds-card[data-interactive='true']:active{ transform:none; box-shadow:none }
 .ds-card[data-selected='true']{ border-color:var(--ds-accent-line) }
 .ds-card-head{ display:flex; align-items:flex-start; gap:var(--ds-s3) }
 .ds-card-head-main{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:var(--ds-s1) }
@@ -518,7 +527,7 @@ body :focus-visible{
   padding-top:var(--ds-s2);
 }
 
-.ds-section{ display:flex; flex-direction:column; gap:var(--ds-s3) }
+.ds-section{ display:flex; flex-direction:column; gap:var(--ds-s4) }
 .ds-section-head{
   display:flex; align-items:center; gap:var(--ds-s3);
   padding:var(--ds-s0) var(--ds-s2);
@@ -527,9 +536,10 @@ body :focus-visible{
 .ds-section-body{
   background:var(--ds-surface-1);
   border-radius:var(--ds-r4);
+  box-shadow:inset 0 0 0 1px var(--ds-line);
   overflow:hidden;
 }
-.ds-section[data-tone='flush'] .ds-section-body{ background:transparent }
+.ds-section[data-tone='flush'] .ds-section-body{ background:transparent; box-shadow:none }
 
 /* a settings row: label + description on the left, the control on the right */
 .ds-setting{
@@ -548,7 +558,7 @@ body :focus-visible{
 .ds-chip{
   display:inline-flex; align-items:center; gap:var(--ds-s2);
   height:var(--ds-control-h-sm);
-  padding:0 var(--ds-s3);
+  padding:0 var(--ds-s4);
   border-radius:var(--ds-r2);
   background:var(--ds-surface-2);
   color:var(--ds-text-2);
@@ -605,7 +615,7 @@ body :focus-visible{
   background:var(--ds-surface-2);
   box-shadow:inset 0 0 0 1px var(--ds-line);
   color:var(--ds-text-2);
-  font-family:var(--ds-font-mono); font-size:var(--ds-fs-eyebrow); line-height:1;
+  font-family:var(--ds-font-code); font-size:var(--ds-fs-eyebrow); line-height:1;
 }
 
 .ds-avatar{
@@ -649,7 +659,8 @@ body :focus-visible{
   transition:background-color var(--ds-dur-hover) var(--ds-ease),
              color var(--ds-dur-hover) var(--ds-ease),
              opacity var(--ds-dur-hover) var(--ds-ease),
-             transform var(--ds-dur-hover) var(--ds-ease);
+             transform var(--ds-dur-hover) var(--ds-ease),
+             box-shadow var(--ds-dur) var(--ds-ease);
 }
 .ds-btn:hover{ background:var(--ds-surface-3) }
 .ds-btn:active{ transform:scale(.98) }
@@ -658,7 +669,7 @@ body :focus-visible{
 .ds-btn[data-block='true']{ width:100% }
 /* THE accent fill. One per screen: the primary action. */
 .ds-btn[data-variant='primary']{ background:var(--ds-accent); color:var(--ds-accent-ink) }
-.ds-btn[data-variant='primary']:hover{ background:var(--ds-accent); opacity:.9 }
+.ds-btn[data-variant='primary']:hover{ background:var(--ds-accent); box-shadow:0 0 0 4px var(--ds-accent-soft) }
 .ds-btn[data-variant='quiet']{ background:transparent; color:var(--ds-text-2) }
 .ds-btn[data-variant='quiet']:hover{ background:var(--ds-wash); color:var(--ds-text) }
 .ds-btn[data-variant='outline']{ background:transparent; box-shadow:inset 0 0 0 1px var(--ds-line-strong) }
@@ -677,9 +688,12 @@ body :focus-visible{
   background:transparent; color:var(--ds-text-2);
   cursor:pointer;
   transition:background-color var(--ds-dur-hover) var(--ds-ease),
-             color var(--ds-dur-hover) var(--ds-ease);
+             color var(--ds-dur-hover) var(--ds-ease),
+             transform var(--ds-dur-hover) var(--ds-ease);
 }
-.ds-ibtn:hover{ background:var(--ds-wash); color:var(--ds-text) }
+.ds-ibtn:hover{ background:var(--ds-wash-strong); color:var(--ds-text) }
+.ds-ibtn:active{ transform:scale(.94) }
+.ds-ibtn:disabled:active{ transform:none }
 .ds-ibtn[data-size='sm']{ width:var(--ds-control-h-sm); height:var(--ds-control-h-sm) }
 .ds-ibtn[data-variant='solid']{ background:var(--ds-surface-2) }
 .ds-ibtn[data-variant='solid']:hover{ background:var(--ds-surface-3) }
@@ -732,7 +746,7 @@ body :focus-visible{
   white-space:nowrap; cursor:pointer;
   transition:color var(--ds-dur-hover) var(--ds-ease);
 }
-.ds-seg-item:hover{ color:var(--ds-text-2) }
+.ds-seg-item:hover{ color:var(--ds-text) }
 .ds-seg-item[data-active='true']{ color:var(--ds-text) }
 .ds-seg-item > *{ position:relative; z-index:1 }
 .ds-seg-marker{
@@ -742,7 +756,7 @@ body :focus-visible{
 }
 
 .ds-tabs{
-  display:flex; align-items:center; gap:var(--ds-s5);
+  display:flex; align-items:center; gap:var(--ds-s7);
   border-bottom:1px solid var(--ds-line);
   overflow-x:auto; scrollbar-width:none;
 }
@@ -757,7 +771,7 @@ body :focus-visible{
   white-space:nowrap; cursor:pointer;
   transition:color var(--ds-dur-hover) var(--ds-ease);
 }
-.ds-tabs-item:hover{ color:var(--ds-text-2) }
+.ds-tabs-item:hover{ color:var(--ds-text) }
 .ds-tabs-item[data-active='true']{ color:var(--ds-text) }
 .ds-tabs-underline{
   position:absolute; left:0; right:0; bottom:-1px; height:2px;
@@ -885,7 +899,7 @@ body :focus-visible{
   border-bottom:1px solid var(--ds-line);
   color:var(--ds-text-3);
   font-size:var(--ds-fs-eyebrow); font-weight:var(--ds-fw-medium);
-  letter-spacing:var(--ds-tr-eyebrow); text-transform:uppercase;
+  letter-spacing:var(--ds-tr-eyebrow); text-transform:var(--ds-tt-eyebrow);
   text-align:left; white-space:nowrap;
 }
 .ds-table tbody td{
@@ -908,10 +922,11 @@ body :focus-visible{
    13 · STAT TILE · STEPPER
    ========================================================================== */
 .ds-tile{
-  display:flex; flex-direction:column; gap:var(--ds-s2);
+  display:flex; flex-direction:column; gap:var(--ds-s3);
   padding:var(--ds-card-pad);
   background:var(--ds-surface-1);
   border-radius:var(--ds-r4);
+  box-shadow:inset 0 0 0 1px var(--ds-line);
   min-width:0;
 }
 .ds-tile[data-tone='quiet']{ background:transparent; box-shadow:inset 0 0 0 1px var(--ds-line) }
@@ -1363,11 +1378,11 @@ body :focus-visible{
      the ellipsis backstop it added is still here: nothing overflows its
      column, it truncates. PNG-verified at 375 for all seven. */
   .ds-tab-label{
-    font-family:var(--ds-font-mono);
+    font-family:var(--ds-font);
     font-size:var(--ds-fs-tab);
     font-variant-caps:normal;
-    text-transform:uppercase;
-    letter-spacing:var(--ds-tr-tab);
+    text-transform:none;
+    letter-spacing:0;
     font-weight:var(--ds-fw-medium);
   }
 
@@ -1559,6 +1574,19 @@ button.ds-ftk-op, button.ds-ftk-v, button.ds-ftk-x{ cursor:pointer }
   .ds-ftk-menu-body{ max-height:none }
   .ds-sheet .ds-ftk-menu-body .ds-popover-item{ min-height:var(--ds-tap) }
 }
+
+/* ==========================================================================
+   17b · THE ENTRANCE (elevation, 2026-09-20). A working column's sections
+   arrive once, 6px and 220ms, staggered by position and capped at the sixth.
+   Opacity and transform only; §18 zeroes it under reduced motion.
+   ========================================================================== */
+@keyframes ds-enter{ from{ opacity:0; transform:translateY(6px) } to{ opacity:1; transform:none } }
+.ds-col-body > *{ animation:ds-enter 220ms var(--ds-ease-out) both }
+.ds-col-body > *:nth-child(2){ animation-delay:calc(var(--ds-stagger) * 1) }
+.ds-col-body > *:nth-child(3){ animation-delay:calc(var(--ds-stagger) * 2) }
+.ds-col-body > *:nth-child(4){ animation-delay:calc(var(--ds-stagger) * 3) }
+.ds-col-body > *:nth-child(5){ animation-delay:calc(var(--ds-stagger) * 4) }
+.ds-col-body > *:nth-child(n+6){ animation-delay:calc(var(--ds-stagger) * 5) }
 
 /* ==========================================================================
    18 · THE COLLAPSE. A reduced-motion request outranks every authored duration

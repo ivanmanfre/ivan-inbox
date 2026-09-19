@@ -31,9 +31,9 @@
   /* 1.2 the surface ladder. Depth is LIGHTNESS, never a shadow. surface-1 is
      the card colour, surface-2 the raised control, surface-3 the pressed or
      floating layer. */
-  --ds-surface-1:#1F1F1F;
-  --ds-surface-2:#2A2A29;
-  --ds-surface-3:#353533;
+  --ds-surface-1:#171716;
+  --ds-surface-2:#222221;
+  --ds-surface-3:#2E2E2C;
 
   /* 1.3 hairlines. Two forms of the same line:
        --ds-hairline / --ds-hairline-strong are the canon solids;
@@ -43,15 +43,15 @@
        within one step of the canon #303030 — the same line, made composable.
      Primitives use --ds-line. The solids stay for anything that must not
      composite (a divider over an image well). */
-  --ds-hairline:#303030;
+  --ds-hairline:#272726;
   --ds-hairline-strong:#4C4C4C;
-  --ds-line:rgba(255,255,255,.075);
-  --ds-line-strong:rgba(255,255,255,.16);
+  --ds-line:rgba(255,255,255,.06);
+  --ds-line-strong:rgba(255,255,255,.13);
 
   /* 1.4 ink over the ladder. Four steps, no fifth. */
   --ds-text:#FFFFFF;
-  --ds-text-2:#C7C7C7;
-  --ds-text-3:#949494;
+  --ds-text-2:#D2D2CE;
+  --ds-text-3:#9C9C97;
   /* Step 4 was #6E6E6E, measured at 3.84:1 on the canvas under the Settings
      build line (D24's leftover: the token, not the one screen). It takes the
      darkest value clearing 4.5 on the two beds it sits on (canvas 5.97,
@@ -133,12 +133,12 @@
   /* 2.1 the named steps. These are the ONLY spacing values a primitive is
      allowed to reach for; they are re-pointed by density and by the phone
      query below, which is how one component gets three densities. */
-  --ds-row-y:12px;        /* list row padding, vertical */
-  --ds-row-x:16px;        /* list row padding, horizontal */
-  --ds-card-pad:20px;     /* card and section-card padding */
-  --ds-section-gap:24px;  /* gap between two sections on a page */
-  --ds-gutter:16px;       /* page gutter, plate edge to content */
-  --ds-stack:8px;         /* gap inside a row: mark to label to meta */
+  --ds-row-y:14px;        /* list row padding, vertical */
+  --ds-row-x:20px;        /* list row padding, horizontal */
+  --ds-card-pad:24px;     /* card and section-card padding */
+  --ds-section-gap:32px;  /* gap between two sections on a page */
+  --ds-gutter:28px;       /* page gutter, plate edge to content */
+  --ds-stack:12px;         /* gap inside a row: mark to label to meta */
   --ds-control-h:36px;    /* button, input, segmented height */
   --ds-control-h-sm:28px; /* chip-height control */
   --ds-tap:44px;          /* minimum hit area on the phone */
@@ -160,8 +160,8 @@
   /* --- 5 · TYPE — eight roles. mono shares meta's size, so a surface never
          renders more than seven distinct sizes at one width. --------------- */
   --ds-fs-display:44px;   /* the ONE display size. Stepped by width, never clamped. */
-  --ds-fs-figure:30px;    /* a stat numeral */
-  --ds-fs-page:22px;      /* the page title */
+  --ds-fs-figure:36px;    /* a stat numeral */
+  --ds-fs-page:26px;      /* the page title */
   --ds-fs-title:16px;     /* a row title, a card title */
   --ds-fs-body:15px;      /* prose and control labels */
   --ds-fs-meta:13px;      /* secondary meta, chips, counts */
@@ -178,11 +178,15 @@
   --ds-lh-eyebrow:1.2;
 
   --ds-tr-display:-0.022em;
-  --ds-tr-figure:-0.02em;
-  --ds-tr-page:-0.012em;
+  --ds-tr-figure:-0.03em;
+  --ds-tr-page:-0.02em;
   --ds-tr-title:-0.006em;
   --ds-tr-body:0em;
-  --ds-tr-eyebrow:0.08em;
+  --ds-tr-eyebrow:0.01em;
+  /* ELEVATION (2026-09-20): a group label reads as a quiet sentence-case
+     line. The uppercase letter-spaced eyebrow was the loudest "terminal"
+     signal in the app. Every sheet reads this token, never the literal. */
+  --ds-tt-eyebrow:none;
 
   --ds-fw-regular:400;
   --ds-fw-medium:500;
@@ -190,7 +194,12 @@
   --ds-fw-display:700;    /* the single >=700 exception, >=28px only */
 
   --ds-font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
-  --ds-font-mono:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace;
+  /* ELEVATION (2026-09-20): times, counts and tags were set in a monospace
+     face on every surface, which read as a log file. --ds-font-mono now
+     resolves to the UI face (tabular figures keep the columns); a real
+     fixed-width face is --ds-font-code, for a key cap or an id only. */
+  --ds-font-mono:var(--ds-font);
+  --ds-font-code:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,monospace;
 
   /* --- 6 · ICONS -------------------------------------------------------- */
   --ds-icon-sm:16px;
@@ -201,9 +210,12 @@
   /* --- 7 · MOTION — ONE spring (in motion.ts), ONE duration, ONE easing --- */
   --ds-ease:cubic-bezier(.25,1,.5,1);
   --ds-dur:180ms;        /* opacity and colour: the one duration */
-  --ds-dur-hover:120ms;  /* hover and focus only */
+  --ds-dur-hover:160ms;  /* hover and focus only */
   --ds-dur-slow:320ms;   /* the ceiling; a shimmer sweep, nothing else */
   --ds-stagger:30ms;
+  --ds-ease-out:cubic-bezier(.16,1,.3,1);  /* an entrance, a lift */
+  --ds-lift:translateY(-1px);              /* the one hover lift, cards only */
+  --ds-shadow-lift:0 6px 24px rgba(0,0,0,.35);
 
   /* --- 8 · LAYERS ------------------------------------------------------- */
   --ds-z-rail:10;
@@ -238,7 +250,7 @@
   --ds-rail-w-collapsed:60px;
   --ds-peer-w:420px;
   --ds-tabbar-h:56px;
-  --ds-header-h:52px;
+  --ds-header-h:68px;
 }
 
 /* ==========================================================================
@@ -294,6 +306,7 @@
   --ds-wash-strong:rgba(19,19,19,.07);
   --ds-scrim:rgba(0,0,0,.35);
   --ds-shadow-float:0 12px 40px rgba(0,0,0,.16);
+  --ds-shadow-lift:0 6px 24px rgba(0,0,0,.10);
   --ds-sev-clear-soft:rgba(16,163,127,.16);
   --ds-sev-attention-soft:rgba(255,159,10,.20);
   --ds-sev-urgent-soft:rgba(255,69,58,.14);
@@ -310,18 +323,18 @@
   --ds-row-y:8px;
   --ds-row-x:12px;
   --ds-card-pad:16px;
-  --ds-section-gap:20px;
-  --ds-gutter:12px;
+  --ds-section-gap:24px;
+  --ds-gutter:20px;
   --ds-control-h:32px;
   --ds-control-h-sm:26px;
-  --ds-fs-figure:26px;
-  --ds-fs-page:20px;
+  --ds-fs-figure:30px;
+  --ds-fs-page:22px;
   --ds-fs-title:15px;
   --ds-fs-body:14px;
   --ds-fs-meta:12px;
   --ds-fs-eyebrow:11px;
   --ds-fs-mono:12px;
-  --ds-header-h:46px;
+  --ds-header-h:56px;
 }
 
 /* ==========================================================================
@@ -332,7 +345,10 @@
 @media (max-width:767px){
   :root{
     --ds-fs-display:34px;
-    --ds-fs-page:22px;
+    --ds-fs-page:24px;
+    --ds-fs-figure:32px;
+    --ds-stack:10px;
+    --ds-section-gap:24px;
     --ds-fs-title:17px;
     --ds-fs-body:16px;
     --ds-fs-meta:13px;
