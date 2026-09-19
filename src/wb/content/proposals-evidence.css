@@ -14,10 +14,33 @@
 
 .a-prop-details > summary,
 .a-prop-history > summary{
+  list-style:none;
   cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s3);
+  min-height:var(--ds-tap);
+  padding-inline:var(--ds-s3);
+  margin-inline:calc(var(--ds-s3) * -1);
+  border-radius:var(--ds-r3);
   font-size:var(--ds-fs-meta);
   font-weight:var(--ds-fw-medium);
+  transition:background-color var(--ds-dur-hover) var(--ds-ease),
+             color var(--ds-dur-hover) var(--ds-ease);
 }
+.a-prop-details > summary::-webkit-details-marker,
+.a-prop-history > summary::-webkit-details-marker{ display:none }
+.a-prop-details > summary::before,
+.a-prop-history > summary::before{
+  content:'\203A';
+  flex:0 0 auto;
+  color:var(--ds-text-3);
+  transition:transform var(--ds-dur) var(--ds-ease-out);
+}
+.a-prop-details[open] > summary::before,
+.a-prop-history[open] > summary::before{ transform:rotate(90deg) }
+.a-prop-details > summary:hover,
+.a-prop-history > summary:hover{ background:var(--ds-wash); color:var(--ds-text) }
 
 .a-prop-detail-body,
 .a-prop-history > .a-prop-body{
@@ -42,12 +65,31 @@
 }
 
 .a-prop-older > summary{
+  list-style:none;
   cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:var(--ds-s3);
+  min-height:var(--ds-tap);
   color:var(--ds-text-2);
   font-size:var(--ds-fs-meta);
   font-weight:var(--ds-fw-medium);
   padding-block:var(--ds-s3);
+  padding-inline:var(--ds-s3);
+  margin-inline:calc(var(--ds-s3) * -1);
+  border-radius:var(--ds-r3);
+  transition:background-color var(--ds-dur-hover) var(--ds-ease),
+             color var(--ds-dur-hover) var(--ds-ease);
 }
+.a-prop-older > summary::-webkit-details-marker{ display:none }
+.a-prop-older > summary::before{
+  content:'\203A';
+  flex:0 0 auto;
+  color:var(--ds-text-3);
+  transition:transform var(--ds-dur) var(--ds-ease-out);
+}
+.a-prop-older[open] > summary::before{ transform:rotate(90deg) }
+.a-prop-older > summary:hover{ background:var(--ds-wash); color:var(--ds-text) }
 
 .a-prop-older > summary:focus-visible{
   outline:2px solid var(--ds-text-2);

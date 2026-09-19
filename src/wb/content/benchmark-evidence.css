@@ -1,8 +1,38 @@
 /* The metric names retain their measurement units at phone widths. */
-.a-bm-metric-tabs { display: flex; width: 100%; max-width: 100%; margin-bottom: var(--ds-s3); }
+.a-bm-metric-tabs { display: flex; width: 100%; max-width: 100%; margin-bottom: var(--ds-s5); }
 .a-bm-metric-tabs .ds-seg-item { min-width: 0; flex: 1; height: auto; min-height: var(--ds-tap); white-space: normal; }
 .a-bm-metric-tabs .ds-seg-item > span { overflow-wrap: anywhere; }
 .a-bm-g .a-bm-measure-row > div { min-width: 0; overflow-wrap: anywhere; }
-.a-bm-g a { color: var(--ds-accent-ui); text-underline-offset: 3px; }
+.a-bm-g a {
+  color: var(--ds-accent-ui);
+  text-underline-offset: 3px;
+  transition: color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-bm-g a:hover { color: var(--ds-text); }
 .a-bm-g a:focus-visible { outline: 2px solid var(--ds-accent-ui); outline-offset: 3px; }
-.a-bm-g summary { cursor: pointer; min-height: 44px; padding-block: 10px; }
+/* A disclosure is a control: tap floor, its own wash, and a caret that turns
+   instead of the browser's triangle. */
+.a-bm-g summary {
+  list-style: none;
+  cursor: pointer;
+  min-height: var(--ds-tap);
+  display: flex;
+  align-items: center;
+  gap: var(--ds-s3);
+  padding-block: var(--ds-s3);
+  padding-inline: var(--ds-s3);
+  margin-inline: calc(var(--ds-s3) * -1);
+  border-radius: var(--ds-r3);
+  color: var(--ds-text-2);
+  transition: background-color var(--ds-dur-hover) var(--ds-ease),
+              color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-bm-g summary::-webkit-details-marker { display: none; }
+.a-bm-g summary::before {
+  content: '\203A';
+  flex: 0 0 auto;
+  color: var(--ds-text-3);
+  transition: transform var(--ds-dur) var(--ds-ease-out);
+}
+.a-bm-g details[open] > summary::before { transform: rotate(90deg); }
+.a-bm-g summary:hover { background: var(--ds-wash); color: var(--ds-text); }

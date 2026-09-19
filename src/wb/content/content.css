@@ -41,26 +41,37 @@
    under the pair. No card, no fill, no chrome (the kanban read). */
 .a-ct-stats{ display:flex; align-items:stretch; gap:var(--ds-s4); flex-wrap:wrap }
 .a-ct-stat{
-  display:flex; flex-direction:column; gap:var(--ds-s1);
+  display:flex; flex-direction:column; gap:var(--ds-s2);
   background:none; border:0; padding:var(--ds-s0); margin:0; font:inherit;
   color:inherit; text-align:left; cursor:pointer; min-width:0;
-  transition:opacity var(--ds-dur-hover) var(--ds-ease);
 }
-.a-ct-stat:hover{ opacity:.72 }
 .a-ct-stat-h{ display:flex; align-items:center; gap:var(--ds-s2) }
 .a-ct-stat-l{
-  font-size:var(--ds-fs-eyebrow); line-height:var(--ds-lh-eyebrow);
-  letter-spacing:var(--ds-tr-eyebrow); text-transform:uppercase;
+  font-size:var(--ds-fs-meta); line-height:var(--ds-lh-eyebrow);
+  letter-spacing:var(--ds-tr-eyebrow); text-transform:var(--ds-tt-eyebrow);
   font-weight:var(--ds-fw-medium); color:var(--ds-text-3); white-space:nowrap;
+  transition:color var(--ds-dur-hover) var(--ds-ease);
 }
 .a-ct-stat-n{
-  font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono);
+  font-family:var(--ds-font-mono); font-size:var(--ds-fs-meta);
   font-variant-numeric:tabular-nums; color:var(--ds-text);
   margin-inline-start:auto; padding-inline-start:var(--ds-s2);
 }
+/* The mark is a control: hover speaks in the label and the rule, not in the
+   opacity of the whole thing (a faded control reads as a disabled one). */
+.a-ct-stat:hover .a-ct-stat-l{ color:var(--ds-text) }
+.a-ct-stat:hover .a-ct-stat-r > i{ background:var(--ds-text-2) }
+.a-ct-stat:active .a-ct-stat-r{ transform:scaleY(1.5) }
 .a-ct-stat[data-tone='attention'] .a-ct-stat-n{ color:var(--ds-sev-attention-ui) }
-.a-ct-stat-r{ height:2px; background:var(--ds-surface-2); border-radius:var(--ds-r1); overflow:hidden }
-.a-ct-stat-r > i{ display:block; height:100%; background:var(--ds-hairline-strong) }
+.a-ct-stat-r{
+  height:2px; background:var(--ds-surface-2); border-radius:var(--ds-r1); overflow:hidden;
+  transition:transform var(--ds-dur-hover) var(--ds-ease-out);
+}
+.a-ct-stat-r > i{
+  display:block; height:100%; background:var(--ds-hairline-strong);
+  transition:width var(--ds-dur-slow) var(--ds-ease-out),
+             background-color var(--ds-dur-hover) var(--ds-ease);
+}
 .a-ct-stat[data-tone='attention'] .a-ct-stat-r > i{ background:var(--ds-sev-attention) }
 
 /* --------------------------------------------------------------------------
@@ -107,9 +118,12 @@
 /* The stage strip: the ds tabs, scrolled sideways, never wrapped. */
 .a-ct-tabsbar{
   display:flex; align-items:center; gap:var(--ds-s2);
-  padding:var(--ds-s0) var(--ds-gutter);
+  /* ELEVATION: the strip gets air above it and draws NO line of its own — the
+     `.ds-tabs` inside it already draws one, and the two stacked read as the
+     double rule Ivan called "old school". */
+  padding:var(--ds-s4) var(--ds-gutter) 0;
   background:var(--ds-canvas);
-  border-bottom:1px solid var(--ds-line);
+  border-bottom:0;
   overflow-x:auto; overflow-y:hidden; scrollbar-width:none;
   flex:0 0 auto;
 }
@@ -131,11 +145,14 @@
 .a-ct-ptr-i{ display:flex; align-items:center; justify-content:center; padding-bottom:var(--ds-s3); color:var(--ds-text-3) }
 @keyframes a-ct-spin{ to{ transform:rotate(360deg) } }
 .a-ct-ptr-i[data-spin] .ds-icon{ animation:a-ct-spin 900ms linear infinite }
+/* The quiet note under a bar. It is PROSE, so it keeps a reading measure: at
+   1440 it ran the full 1500px column, which is a 200-character line. */
 .a-ct-sub{
-  padding:var(--ds-s3) var(--ds-row-x);
+  padding:var(--ds-s4) var(--ds-row-x);
   font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3);
+  max-width:calc(78ch + var(--ds-row-x) * 2);
 }
-.a-ct-sub code{ font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono) }
+.a-ct-sub code{ font-family:var(--ds-font-code); font-size:var(--ds-fs-mono) }
 .a-ct-bandline{
   display:flex; align-items:center; gap:var(--ds-s3); flex-wrap:wrap;
   padding:var(--ds-s3) var(--ds-row-x);
@@ -270,8 +287,8 @@
 }
 .a-ct-scores i{
   font-style:normal; font-family:var(--ds-font);
-  font-size:var(--ds-fs-eyebrow); letter-spacing:var(--ds-tr-eyebrow);
-  text-transform:uppercase; color:var(--ds-text-3);
+  font-size:var(--ds-fs-meta); letter-spacing:var(--ds-tr-eyebrow);
+  text-transform:var(--ds-tt-eyebrow); color:var(--ds-text-3);
 }
 .a-ct-why{ font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); color:var(--ds-text-2) }
 .a-ct-links{ display:flex; align-items:center; gap:var(--ds-s4); flex-wrap:wrap }
@@ -294,7 +311,10 @@
 /* The pillar mix: a measured bar per pillar, one ruled block. */
 .a-ct-mix{ display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:var(--ds-s3); align-items:center }
 .a-ct-mixbar{ height:var(--ds-s3); background:var(--ds-surface-2); border-radius:var(--ds-r1); overflow:hidden }
-.a-ct-mixbar > i{ display:block; height:100%; background:var(--ds-hairline-strong) }
+.a-ct-mixbar > i{
+  display:block; height:100%; background:var(--ds-hairline-strong);
+  transition:width var(--ds-dur-slow) var(--ds-ease-out);
+}
 
 /* --------------------------------------------------------------------------
    6 · IN FLIGHT — one mark, fixed to the corner, on every tab.
@@ -362,9 +382,9 @@
   background:none; border:0; padding:var(--ds-s1) var(--ds-s0); margin:0;
   font:inherit; font-size:var(--ds-fs-meta); color:var(--ds-accent-ui);
   cursor:pointer;
-  transition:opacity var(--ds-dur-hover) var(--ds-ease);
+  transition:color var(--ds-dur-hover) var(--ds-ease);
 }
-.a-ct-more:hover{ opacity:.75 }
+.a-ct-more:hover{ color:var(--ds-text) }
 
 /* AGENDA (the default, and the phone reading): a sticky day header per day
    with a mono right-aligned count, dense rows under it. A day with nothing
@@ -380,9 +400,9 @@
     overflow:hidden;
   }
   .a-ct-weekhead > span{
-    background:var(--ds-surface-1); padding:var(--ds-s2) var(--ds-s3);
-    font-size:var(--ds-fs-eyebrow); line-height:var(--ds-lh-eyebrow);
-    letter-spacing:var(--ds-tr-eyebrow); text-transform:uppercase;
+    background:var(--ds-surface-1); padding:var(--ds-s3) var(--ds-s4);
+    font-size:var(--ds-fs-meta); line-height:var(--ds-lh-eyebrow);
+    letter-spacing:var(--ds-tr-eyebrow); text-transform:var(--ds-tt-eyebrow);
     font-weight:var(--ds-fw-medium); color:var(--ds-text-3);
   }
   .a-ct-grid{
@@ -401,7 +421,11 @@
     transition:background-color var(--ds-dur-hover) var(--ds-ease);
   }
   .a-ct-day[data-empty]{ display:flex }
+  /* A cell is a drop target and a reading surface, so it answers the pointer:
+     one surface step, no movement (the lattice must not shift). */
+  .a-ct-day:hover{ background:var(--ds-surface-2) }
   .a-ct-day[data-out]{ background:var(--ds-canvas); opacity:1 }
+  .a-ct-day[data-out]:hover{ background:var(--ds-surface-1) }
   .a-ct-day[data-out] .a-ct-dn-n{ color:var(--ds-text-3) }
   .a-ct-day[data-now] .a-ct-dn-n{ color:var(--ds-accent-ui); font-weight:var(--ds-fw-semi) }
   .a-ct-day[data-over]{ background:var(--ds-accent-soft) }
@@ -439,15 +463,21 @@
 .a-ct-chip-t{
   flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:var(--ds-s1);
   background:none; border:0; padding:var(--ds-s0); margin:0; font:inherit;
-  color:inherit; text-align:left;
-  transition:opacity var(--ds-dur-hover) var(--ds-ease);
+  color:inherit; text-align:left; border-radius:var(--ds-r1);
+  transition:color var(--ds-dur-hover) var(--ds-ease),
+             transform var(--ds-dur-hover) var(--ds-ease-out);
 }
 button.a-ct-chip-t{ cursor:pointer }
-button.a-ct-chip-t:hover{ opacity:.75 }
+/* A chip answers the pointer by getting BRIGHTER, not fainter: a faded chip
+   reads as a chip that has been switched off. */
+button.a-ct-chip-t:hover .a-ct-chip-h{ color:var(--ds-text-2) }
+button.a-ct-chip-t:active{ transform:scale(.98) }
+.a-ct-chip{ transition:border-inline-start-color var(--ds-dur-hover) var(--ds-ease) }
 .a-ct-chip-h{
   display:flex; align-items:center; gap:var(--ds-s2); flex-wrap:wrap;
   font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono);
   font-variant-numeric:tabular-nums; color:var(--ds-text-3);
+  transition:color var(--ds-dur-hover) var(--ds-ease);
 }
 .a-ct-chip-out{ color:var(--ds-sev-clear-ui); display:inline-flex }
 .a-ct-chip-drift{ color:var(--ds-sev-attention-ui); display:inline-flex }
@@ -521,16 +551,18 @@ button.a-ct-chip-t:hover{ opacity:.75 }
 /* ==========================================================================
    10 · S06 STYLES — the roster. A read-only run of cards, one per prompt.
    ========================================================================== */
-.a-st-list{ display:flex; flex-direction:column; gap:var(--ds-s4); min-width:0 }
-.a-st-card .ds-section-body{ display:flex; flex-direction:column; gap:var(--ds-s3) }
+.a-st-list{ display:flex; flex-direction:column; gap:var(--ds-section-gap); min-width:0 }
+.a-st-card .ds-section-body{ display:flex; flex-direction:column; gap:var(--ds-s4) }
 .a-st-t{
   font-size:var(--ds-fs-title); line-height:var(--ds-lh-title);
-  font-weight:var(--ds-fw-medium); letter-spacing:var(--ds-tr-title);
+  font-weight:var(--ds-fw-semi); letter-spacing:var(--ds-tr-title);
   color:var(--ds-text);
 }
+/* A style is PROSE, so it keeps a reading measure: at 1440 the card runs past
+   1500px, which put a 180-character line on every description. */
 .a-st-b{
   font-size:var(--ds-fs-body); line-height:var(--ds-lh-body);
-  color:var(--ds-text-2);
+  color:var(--ds-text-2); max-width:78ch;
 }
 /* The example strip scrolls sideways rather than wrapping into a wall: a style
    with nine published examples is a fact about the style, not nine rows of
@@ -540,9 +572,12 @@ button.a-ct-chip-t:hover{ opacity:.75 }
 .a-st-i{ display:flex; flex-wrap:wrap; gap:var(--ds-s3) }
 .a-st-i img{
   flex:0 0 auto; width:5.5rem; height:5.5rem; object-fit:cover;
-  border-radius:var(--ds-r2); background:var(--ds-surface-2);
-  border:1px solid var(--ds-line);
+  border-radius:var(--ds-r3); background:var(--ds-surface-2);
+  box-shadow:inset 0 0 0 1px var(--ds-line);
+  transition:transform var(--ds-dur) var(--ds-ease-out),
+             box-shadow var(--ds-dur) var(--ds-ease-out);
 }
+.a-st-i img:hover{ transform:var(--ds-lift); box-shadow:inset 0 0 0 1px var(--ds-line-strong), var(--ds-shadow-lift) }
 
 /* ==========================================================================
    11 · S07 STRATEGY — the editable document.
@@ -612,7 +647,7 @@ button.a-ct-chip-t:hover{ opacity:.75 }
 .a-fs-d{ grid-column:2; font-size:var(--ds-fs-meta); color:var(--ds-text-3) }
 .a-fs-d summary{ cursor:pointer; min-height:var(--ds-control-h-sm); display:flex; align-items:center }
 .a-fs-c{
-  display:block; font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono);
+  display:block; font-family:var(--ds-font-code); font-size:var(--ds-fs-mono);
   color:var(--ds-text-2); overflow-wrap:anywhere;
   background:var(--ds-surface-2); border-radius:var(--ds-r2); padding:var(--ds-s3);
   margin-top:var(--ds-s2);
@@ -647,7 +682,11 @@ button.a-ct-chip-t:hover{ opacity:.75 }
 @media (max-width:767px){
   .a-ct .a-bar{ flex-wrap:wrap; overflow-x:visible; overflow-y:visible; row-gap:var(--ds-s2) }
   .a-ct .a-bar > *{ flex-shrink:1; min-width:0 }
-  .a-ct .a-bar .ds-seg{ flex-wrap:wrap; row-gap:var(--ds-s1) }
+  /* `:not(.a-strategy-nav)`: the Strategy tab row is the one segmented control
+     that scrolls instead of wrapping (strategy-evidence.css). Wrapped, its
+     seven pills took three rows of the fold and broke "Recommendations" across
+     two lines. */
+  .a-ct .a-bar .ds-seg:not(.a-strategy-nav){ flex-wrap:wrap; row-gap:var(--ds-s1) }
 }
 
 
@@ -806,7 +845,7 @@ button.a-ct-chip-t:hover{ opacity:.75 }
 /* A post urn is 30+ opaque characters and must never be shortened (an id is
    only an id whole), so it wraps instead of truncating. */
 .a-aud-id{
-  font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono);
+  font-family:var(--ds-font-code); font-size:var(--ds-fs-mono);
   color:var(--ds-text-3); overflow-wrap:anywhere;
 }
 
@@ -931,82 +970,130 @@ a.a-prop-src:hover{ color:var(--ds-text) }
    with the attention tint. Heat = one hue, opacity by intensity.
    ========================================================================== */
 .a-bm-g .ds-badge { max-width: 60vw; white-space: normal; text-align: right; }
-.a-bm-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--ds-s2); margin-bottom: var(--ds-s3); }
-.a-bm-tile { display: flex; flex-direction: column; gap: 2px; padding: var(--ds-s3); border: 1px solid var(--ds-line); border-radius: var(--ds-r2); background: var(--ds-surface-2); min-width: 0; }
-.a-bm-v { font-size: 26px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
-.a-bm-v small { font-size: var(--ds-fs-meta); font-weight: var(--ds-fw-medium); color: var(--ds-text-3); margin-left: 6px; }
+.a-bm-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--ds-s3); margin-bottom: var(--ds-s5); }
+.a-bm-tile {
+  display: flex; flex-direction: column; gap: var(--ds-s2);
+  padding: var(--ds-card-pad); border-radius: var(--ds-r4);
+  background: var(--ds-surface-1); box-shadow: inset 0 0 0 1px var(--ds-line);
+  min-width: 0;
+}
+/* The figure is the tile's first read: UI face, negative tracking, one weight
+   above everything around it. It was a 26px hand-typed size with its own
+   tracking. */
+.a-bm-v {
+  font-size: var(--ds-fs-figure); font-weight: var(--ds-fw-semi);
+  line-height: var(--ds-lh-figure); font-variant-numeric: tabular-nums;
+  letter-spacing: var(--ds-tr-figure); color: var(--ds-text);
+}
+.a-bm-v small { font-size: var(--ds-fs-meta); font-weight: var(--ds-fw-medium); color: var(--ds-text-3); margin-left: var(--ds-s2); letter-spacing: var(--ds-tr-body); }
 .a-bm-d { font-size: var(--ds-fs-meta); line-height: var(--ds-lh-meta); color: var(--ds-text-3); }
 .a-bm-cap { text-transform: capitalize; }
-.a-bm-two { display: grid; grid-template-columns: 1fr 1.4fr; gap: var(--ds-s2); margin-bottom: var(--ds-s2); }
+.a-bm-two { display: grid; grid-template-columns: 1fr 1.4fr; gap: var(--ds-s3); margin-bottom: var(--ds-s3); }
 @media (max-width: 760px) { .a-bm-two { grid-template-columns: 1fr; } }
-.a-bm-panel { border: 1px solid var(--ds-line); border-radius: var(--ds-r2); padding: var(--ds-s3); margin-bottom: var(--ds-s2); min-width: 0; }
-.a-bm-h { font-weight: 600; margin-bottom: 2px; }
-.a-bm-bars { display: flex; flex-direction: column; gap: var(--ds-s1); margin-top: var(--ds-s2); }
-.a-bm-bar-row { display: grid; grid-template-columns: 96px 1fr 56px; gap: var(--ds-s2); align-items: center; }
-.a-bm-bar-lbl { font-size: var(--ds-fs-meta); }
-.a-bm-bar-track { height: 10px; background: var(--ds-surface-3); border-radius: 4px; overflow: hidden; }
-.a-bm-bar { height: 100%; background: var(--ds-text-2); border-radius: 0 4px 4px 0; }
-.a-bm-bar-val { text-align: right; font-size: var(--ds-fs-meta); color: var(--ds-text-2); }
-.a-bm-heat-scroll { overflow-x: auto; margin-top: var(--ds-s2); }
-.a-bm-heat { display: grid; grid-template-columns: 34px repeat(24, minmax(14px, 1fr)); gap: 2px; min-width: 520px; font-size: 10px; }
+.a-bm-panel {
+  border-radius: var(--ds-r4); padding: var(--ds-card-pad); margin-bottom: var(--ds-s3);
+  background: var(--ds-surface-1); box-shadow: inset 0 0 0 1px var(--ds-line);
+  min-width: 0;
+}
+.a-bm-h { font-weight: var(--ds-fw-semi); margin-bottom: var(--ds-s1); color: var(--ds-text); }
+.a-bm-bars { display: flex; flex-direction: column; gap: var(--ds-s2); margin-top: var(--ds-s3); }
+.a-bm-bar-row { display: grid; grid-template-columns: 96px 1fr 56px; gap: var(--ds-s3); align-items: center; }
+.a-bm-bar-lbl { font-size: var(--ds-fs-meta); color: var(--ds-text-2); }
+.a-bm-bar-track { height: var(--ds-s3); background: var(--ds-surface-3); border-radius: var(--ds-r1); overflow: hidden; }
+.a-bm-bar {
+  height: 100%; background: var(--ds-text-2); border-radius: var(--ds-r1);
+  transition: width var(--ds-dur-slow) var(--ds-ease-out);
+}
+.a-bm-bar-val { text-align: right; font-size: var(--ds-fs-meta); color: var(--ds-text-2); font-variant-numeric: tabular-nums; }
+.a-bm-heat-scroll { overflow-x: auto; margin-top: var(--ds-s3); }
+.a-bm-heat { display: grid; grid-template-columns: 34px repeat(24, minmax(14px, 1fr)); gap: 2px; min-width: 520px; font-size: var(--ds-fs-eyebrow); }
 .a-bm-heat-rowc { display: contents; }
-.a-bm-heat-hl { color: var(--ds-text-3); text-align: center; font-family: var(--ds-font-mono); }
-.a-bm-heat-dl { color: var(--ds-text-3); font-family: var(--ds-font-mono); line-height: 18px; }
-.a-bm-cell { height: 18px; border-radius: 3px; background: var(--ds-sev-attention-ui); }
+.a-bm-heat-hl { color: var(--ds-text-3); text-align: center; font-family: var(--ds-font-mono); font-variant-numeric: tabular-nums; }
+.a-bm-heat-dl { color: var(--ds-text-3); font-family: var(--ds-font-mono); line-height: var(--ds-s6); }
+.a-bm-cell { height: var(--ds-s6); border-radius: var(--ds-r1); background: var(--ds-sev-attention-ui); }
 .a-bm-cell[data-on="0"] { background: var(--ds-surface-3); }
-.a-bm-tscroll { overflow-x: auto; margin-top: var(--ds-s2); }
+.a-bm-tscroll { overflow-x: auto; margin-top: var(--ds-s3); }
 .a-bm-table { width: 100%; border-collapse: collapse; font-size: var(--ds-fs-meta); min-width: 640px; }
-.a-bm-table th { font-family: var(--ds-font-mono); font-size: var(--ds-fs-mono); font-weight: 500; letter-spacing: .05em; text-transform: uppercase; color: var(--ds-text-3); text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--ds-line); }
-.a-bm-table td { padding: 7px 8px; border-bottom: 1px solid var(--ds-line); vertical-align: top; }
-.a-bm-table td a { color: var(--ds-text); text-decoration: underline; text-decoration-color: var(--ds-line); }
+.a-bm-table th {
+  font-family: var(--ds-font); font-size: var(--ds-fs-meta); font-weight: var(--ds-fw-medium);
+  letter-spacing: var(--ds-tr-eyebrow); text-transform: var(--ds-tt-eyebrow);
+  color: var(--ds-text-3); text-align: left; padding: var(--ds-s3) var(--ds-s3);
+  border-bottom: 1px solid var(--ds-line);
+}
+.a-bm-table td { padding: var(--ds-s3); border-bottom: 1px solid var(--ds-line); vertical-align: top; }
+.a-bm-table tbody tr { transition: background-color var(--ds-dur-hover) var(--ds-ease); }
+.a-bm-table tbody tr:hover { background: var(--ds-wash); }
+.a-bm-table td a { color: var(--ds-text); text-decoration: underline; text-decoration-color: var(--ds-line); transition: text-decoration-color var(--ds-dur-hover) var(--ds-ease); }
+.a-bm-table td a:hover { text-decoration-color: var(--ds-text-2); }
 .a-bm-num { text-align: right !important; font-family: var(--ds-font-mono); font-variant-numeric: tabular-nums; }
-.a-bm-you td { background: var(--ds-accent-soft); font-weight: 600; }
-.a-bm-role { display: inline-block; font-family: var(--ds-font-mono); font-size: var(--ds-fs-mono); padding: 1px 7px; border-radius: 999px; border: 1px solid var(--ds-line); color: var(--ds-text-3); white-space: nowrap; }
-.a-bm-role-direct_competitor { color: var(--ds-text); border-color: var(--ds-hairline-strong); }
+.a-bm-you td { background: var(--ds-accent-soft); font-weight: var(--ds-fw-semi); }
+.a-bm-you:hover td { background: var(--ds-accent-soft); }
+.a-bm-role { display: inline-block; font-family: var(--ds-font-mono); font-size: var(--ds-fs-mono); padding: var(--ds-s1) var(--ds-s3); border-radius: var(--ds-r-pill); box-shadow: inset 0 0 0 1px var(--ds-line); color: var(--ds-text-3); white-space: nowrap; }
+.a-bm-role-direct_competitor { color: var(--ds-text); box-shadow: inset 0 0 0 1px var(--ds-line-strong); }
 .a-bm-role-buyer_voice { color: var(--ds-accent-ui); }
 .a-bm-role-format_reference { color: var(--ds-sev-attention-ui); }
-.a-bm-posts { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--ds-s2); margin-top: var(--ds-s2); }
-.a-bm-post { border: 1px solid var(--ds-line); border-radius: var(--ds-r2); padding: var(--ds-s3); display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.a-bm-post-who { display: flex; justify-content: space-between; gap: 8px; font-size: var(--ds-fs-meta); color: var(--ds-text-3); flex-wrap: wrap; }
-.a-bm-post-eng { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.a-bm-post-eng small { font-size: var(--ds-fs-meta); font-weight: 400; color: var(--ds-text-3); margin-left: 4px; }
-.a-bm-post-txt { white-space: pre-line; max-height: 6em; overflow: hidden; overflow-wrap: anywhere; }
-.a-bm-post-angle { font-size: var(--ds-fs-meta); color: var(--ds-text-2); border-top: 1px dashed var(--ds-line); padding-top: 6px; }
-.a-bm-post-angle b { color: var(--ds-text); font-weight: 600; }
-.a-bm-foot { margin-top: var(--ds-s2); }
+.a-bm-posts { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--ds-s3); margin-top: var(--ds-s3); }
+.a-bm-post {
+  border-radius: var(--ds-r4); padding: var(--ds-card-pad);
+  background: var(--ds-surface-1); box-shadow: inset 0 0 0 1px var(--ds-line);
+  display: flex; flex-direction: column; gap: var(--ds-s3); min-width: 0;
+  transition: box-shadow var(--ds-dur) var(--ds-ease-out);
+}
+.a-bm-post:hover { box-shadow: inset 0 0 0 1px var(--ds-line-strong); }
+.a-bm-post-who { display: flex; justify-content: space-between; gap: var(--ds-s3); font-size: var(--ds-fs-meta); color: var(--ds-text-3); flex-wrap: wrap; }
+.a-bm-post-eng { font-size: var(--ds-fs-page); font-weight: var(--ds-fw-semi); font-variant-numeric: tabular-nums; letter-spacing: var(--ds-tr-figure); color: var(--ds-text); }
+.a-bm-post-eng small { font-size: var(--ds-fs-meta); font-weight: var(--ds-fw-regular); color: var(--ds-text-3); margin-left: var(--ds-s2); letter-spacing: var(--ds-tr-body); }
+.a-bm-post-txt { white-space: pre-line; max-height: 6em; overflow: hidden; overflow-wrap: anywhere; color: var(--ds-text-2); }
+.a-bm-post-angle { font-size: var(--ds-fs-meta); color: var(--ds-text-2); border-top: 1px solid var(--ds-line); padding-top: var(--ds-s3); }
+.a-bm-post-angle b { color: var(--ds-text); font-weight: var(--ds-fw-semi); }
+.a-bm-foot { margin-top: var(--ds-s3); }
 
 /* Baselines: where a post lands against its own author */
-.a-bm-dist { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--ds-s2); margin: var(--ds-s3) 0; }
-.a-bm-dist-cell { display: flex; flex-direction: column; gap: 2px; padding: var(--ds-s2) var(--ds-s3); border-left: 2px solid var(--ds-line); }
-.a-bm-pct { display: inline-block; font-size: var(--ds-fs-meta); padding: 1px 6px; border: 1px solid var(--ds-line); border-radius: var(--ds-r1); color: var(--ds-text-2); white-space: nowrap; }
-.a-bm-pct-hi { color: var(--ds-text); border-color: var(--ds-text-2); font-weight: 600; }
-.a-bm-post-lift { display: flex; gap: var(--ds-s2); align-items: center; flex-wrap: wrap; font-size: var(--ds-fs-meta); margin-bottom: 4px; }
-.a-bm-seg { display: inline-flex; border: 1px solid var(--ds-line); border-radius: var(--ds-r1); overflow: hidden; flex-shrink: 0; }
-.a-bm-seg button { font: inherit; font-size: var(--ds-fs-meta); color: var(--ds-text-2); background: transparent; border: 0; padding: 5px 10px; cursor: pointer; }
-.a-bm-seg button + button { border-left: 1px solid var(--ds-line); }
-.a-bm-seg button.on { background: var(--ds-surface-3); color: var(--ds-text); font-weight: 600; }
+.a-bm-dist { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--ds-s3); margin: var(--ds-s5) 0; }
+.a-bm-dist-cell { display: flex; flex-direction: column; gap: var(--ds-s1); padding: var(--ds-s2) var(--ds-s4); border-left: 2px solid var(--ds-line); }
+.a-bm-pct { display: inline-block; font-size: var(--ds-fs-meta); padding: var(--ds-s1) var(--ds-s3); box-shadow: inset 0 0 0 1px var(--ds-line); border-radius: var(--ds-r2); color: var(--ds-text-2); white-space: nowrap; }
+.a-bm-pct-hi { color: var(--ds-text); box-shadow: inset 0 0 0 1px var(--ds-line-strong); font-weight: var(--ds-fw-semi); }
+.a-bm-post-lift { display: flex; gap: var(--ds-s3); align-items: center; flex-wrap: wrap; font-size: var(--ds-fs-meta); margin-bottom: var(--ds-s2); }
+.a-bm-seg { display: inline-flex; gap: var(--ds-s1); padding: var(--ds-s1); background: var(--ds-surface-2); border-radius: var(--ds-r3); flex-shrink: 0; }
+.a-bm-seg button {
+  font: inherit; font-size: var(--ds-fs-meta); color: var(--ds-text-3);
+  background: transparent; border: 0; border-radius: var(--ds-r2);
+  padding: var(--ds-s2) var(--ds-s4); cursor: pointer;
+  transition: color var(--ds-dur-hover) var(--ds-ease), background-color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-bm-seg button:hover { color: var(--ds-text); }
+.a-bm-seg button.on { background: var(--ds-surface-3); color: var(--ds-text); font-weight: var(--ds-fw-medium); }
 .a-bm-post-cell { min-width: 260px; max-width: 460px; }
 
 /* Measurement is a compact evidence ledger, separate from the legacy benchmark
    tiles so impressions, engagement count and rate cannot be read as one score. */
-.a-bm-measure { border: 1px solid var(--ds-line); border-radius: var(--ds-r2); padding: var(--ds-s3); margin-bottom: var(--ds-s2); min-width: 0; }
-.a-bm-measure-grid { display: grid; gap: 0; margin: var(--ds-s2) 0; }
-.a-bm-measure-row { display: grid; grid-template-columns: minmax(180px, 1fr) auto minmax(260px, 2fr); gap: var(--ds-s2); align-items: start; padding: var(--ds-s2) 0; border-top: 1px solid var(--ds-line); font-size: var(--ds-fs-meta); }
+.a-bm-measure {
+  border-radius: var(--ds-r4); padding: var(--ds-card-pad); margin-bottom: var(--ds-s3); min-width: 0;
+  background: var(--ds-surface-1); box-shadow: inset 0 0 0 1px var(--ds-line);
+}
+.a-bm-measure-grid { display: grid; gap: 0; margin: var(--ds-s3) 0; }
+.a-bm-measure-row { display: grid; grid-template-columns: minmax(180px, 1fr) auto minmax(260px, 2fr); gap: var(--ds-s3); align-items: start; padding: var(--ds-s3) 0; border-top: 1px solid var(--ds-line); font-size: var(--ds-fs-meta); }
 .a-bm-measure-row strong, .a-bm-measure-row span { display: block; }
-.a-bm-measure-row span { color: var(--ds-text-3); margin-top: 2px; }
+.a-bm-measure-row span { color: var(--ds-text-3); margin-top: var(--ds-s1); }
 .a-bm-measure-detail { color: var(--ds-text-2); overflow-wrap: anywhere; }
 @media (max-width: 680px) { .a-bm-measure-row { grid-template-columns: 1fr auto; } .a-bm-measure-detail { grid-column: 1 / -1; } }
 
 
 /* You vs one account */
-.a-bm-cmp-head { display: flex; justify-content: space-between; gap: var(--ds-s3); align-items: flex-start; margin-bottom: var(--ds-s3); flex-wrap: wrap; }
-.a-bm-cmp-pick { display: flex; flex-direction: column; gap: 2px; min-width: 200px; }
-.a-bm-cmp-pick select { font: inherit; color: var(--ds-text); background: var(--ds-surface-2); border: 1px solid var(--ds-line); border-radius: var(--ds-r1); padding: 4px 8px; max-width: 100%; }
-.a-bm-cmp-cols, .a-bm-cmp-row { display: grid; grid-template-columns: 150px 1fr 1fr; gap: var(--ds-s2); align-items: center; }
-.a-bm-cmp-cols { margin-bottom: 4px; }
-.a-bm-cmp-row { padding: 6px 0; border-top: 1px solid var(--ds-line); }
+.a-bm-cmp-head { display: flex; justify-content: space-between; gap: var(--ds-s4); align-items: flex-start; margin-bottom: var(--ds-s5); flex-wrap: wrap; }
+.a-bm-cmp-pick { display: flex; flex-direction: column; gap: var(--ds-s2); min-width: 200px; }
+.a-bm-cmp-pick select {
+  font: inherit; color: var(--ds-text); background: var(--ds-surface-2);
+  border: 0; box-shadow: inset 0 0 0 1px var(--ds-line); border-radius: var(--ds-r3);
+  padding: var(--ds-s2) var(--ds-s3); max-width: 100%; cursor: pointer;
+  transition: box-shadow var(--ds-dur-hover) var(--ds-ease), background-color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-bm-cmp-pick select:hover { background: var(--ds-surface-3); box-shadow: inset 0 0 0 1px var(--ds-line-strong); }
+.a-bm-cmp-cols, .a-bm-cmp-row { display: grid; grid-template-columns: 150px 1fr 1fr; gap: var(--ds-s3); align-items: center; }
+.a-bm-cmp-cols { margin-bottom: var(--ds-s2); }
+.a-bm-cmp-row { padding: var(--ds-s3) 0; border-top: 1px solid var(--ds-line); }
 .a-bm-cmp-lbl { display: flex; flex-direction: column; font-size: var(--ds-fs-meta); }
-.a-bm-cmp-cell { display: grid; grid-template-columns: 1fr 56px; gap: var(--ds-s2); align-items: center; min-width: 0; }
+.a-bm-cmp-cell { display: grid; grid-template-columns: 1fr 56px; gap: var(--ds-s3); align-items: center; min-width: 0; }
 .a-bm-bar-you { background: var(--ds-text); }
 .a-bm-cmp-text { font-size: var(--ds-fs-meta); }
 .a-bm-cmp-text > div { min-width: 0; overflow-wrap: anywhere; }
@@ -1019,20 +1106,27 @@ a.a-prop-src:hover{ color:var(--ds-text) }
    OWN-POST THEMES (Strategy) — the tail per theme, with engager fit.
    ========================================================================== */
 .a-th-g .ds-badge { max-width: 60vw; white-space: normal; text-align: right; }
-.a-th-intro { margin-bottom: var(--ds-s3); }
-.a-th-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--ds-s2); }
-.a-th-card { border: 1px solid var(--ds-line); border-radius: var(--ds-r2); padding: var(--ds-s3); display: flex; flex-direction: column; gap: var(--ds-s2); min-width: 0; }
+.a-th-intro { margin-bottom: var(--ds-s5); }
+.a-th-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--ds-s3); }
+.a-th-card {
+  border-radius: var(--ds-r4); padding: var(--ds-card-pad);
+  background: var(--ds-surface-1); box-shadow: inset 0 0 0 1px var(--ds-line);
+  display: flex; flex-direction: column; gap: var(--ds-s3); min-width: 0;
+  transition: box-shadow var(--ds-dur) var(--ds-ease-out);
+}
+.a-th-card:hover { box-shadow: inset 0 0 0 1px var(--ds-line-strong); }
 .a-th-card[data-theme="untagged"] { opacity: .7; }
-.a-th-head { display: flex; justify-content: space-between; gap: var(--ds-s2); align-items: flex-start; }
-.a-th-name { font-weight: 600; font-size: 15px; }
+.a-th-head { display: flex; justify-content: space-between; gap: var(--ds-s3); align-items: flex-start; }
+.a-th-name { font-weight: var(--ds-fw-semi); font-size: var(--ds-fs-title); letter-spacing: var(--ds-tr-title); color: var(--ds-text); }
 .a-th-best { text-align: right; display: flex; flex-direction: column; align-items: flex-end; }
-.a-th-best-v { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
-.a-th-angles { border-top: 1px dashed var(--ds-line); padding-top: var(--ds-s1); }
-.a-th-posts { display: flex; flex-direction: column; gap: var(--ds-s2); }
-.a-th-post { border-top: 1px solid var(--ds-line); padding-top: var(--ds-s2); display: flex; flex-direction: column; gap: 4px; }
-.a-th-post-top { display: flex; justify-content: space-between; gap: var(--ds-s2); font-size: var(--ds-fs-meta); flex-wrap: wrap; }
+.a-th-best-v { font-size: var(--ds-fs-page); font-weight: var(--ds-fw-semi); font-variant-numeric: tabular-nums; line-height: var(--ds-lh-figure); letter-spacing: var(--ds-tr-figure); color: var(--ds-text); }
+.a-th-angles { border-top: 1px solid var(--ds-line); padding-top: var(--ds-s3); }
+.a-th-posts { display: flex; flex-direction: column; gap: var(--ds-s3); }
+.a-th-post { border-top: 1px solid var(--ds-line); padding-top: var(--ds-s3); display: flex; flex-direction: column; gap: var(--ds-s2); }
+.a-th-post-top { display: flex; justify-content: space-between; gap: var(--ds-s3); font-size: var(--ds-fs-meta); color: var(--ds-text-3); flex-wrap: wrap; }
 .a-th-post-txt { font-size: var(--ds-fs-meta); line-height: var(--ds-lh-meta); color: var(--ds-text-2); white-space: pre-line; max-height: 4.5em; overflow: hidden; overflow-wrap: anywhere; }
-.a-th-post a { color: var(--ds-text); }
+.a-th-post a { color: var(--ds-text); transition: color var(--ds-dur-hover) var(--ds-ease); }
+.a-th-post a:hover { color: var(--ds-accent-ui); }
 
 /* R5b · The filter bar's chips, at the chip gap (tokens.css §2). `column-gap`
    only: the phone wraps this bar and owns its own row gap. */
@@ -1048,5 +1142,63 @@ a.a-prop-src:hover{ color:var(--ds-text) }
    draws its own top border/margin so the strip never needs a bottom rule to
    separate from what follows.
    ========================================================================== */
-.a-lm-verdict{ display:flex; flex-direction:column; gap:var(--ds-s2); margin-bottom:var(--ds-s4) }
+.a-lm-verdict{ display:flex; flex-direction:column; gap:var(--ds-s2); margin-bottom:var(--ds-s5) }
 .a-lm-verdict-l{ margin:0; font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); color:var(--ds-text); overflow-wrap:anywhere }
+
+/* ==========================================================================
+   ELEVATION (2026-09-20). Ivan on the inbox: "feels kinda old school - poorly
+   formatted". Three things on these surfaces said it out loud.
+
+   1 · THREE HAIRLINES BEFORE THE FIRST ROW. The head, the filter bar and the
+       stage strip each drew one, stacked inside 150px. One line closes the
+       chrome now: the last bar's, or the stage strip's `.ds-tabs` rule where
+       there is a strip. The bars keep the air instead of the rule.
+   2 · UPPERCASE LETTER-SPACED LABELS. Every group label and column head on
+       this surface reads its casing from `--ds-tt-eyebrow` now, at the meta
+       size, so "NEEDS REVIEW / TITLE / PILLAR" is a sentence-case line.
+   3 · NOTHING ANSWERED THE POINTER. Rows, cells, chips and marks all carry a
+       hover and an active state; §18 of ds.css collapses them under a
+       reduced-motion request.
+   ========================================================================== */
+
+/* 1 · one hairline under the head stack. `:has` is how the LAST bar is found
+   without giving it a class: a bar with another bar or the stage strip after
+   it is an interior bar and draws nothing. */
+.a-ct > .a-head{ border-bottom:0 }
+.a-ct > .a-bar{ border-bottom:0; padding-block:var(--ds-s4) }
+.a-ct > .a-bar:not(:has(~ .a-bar)):not(:has(~ .a-ct-tabsbar)){
+  border-bottom:1px solid var(--ds-line);
+}
+/* The strip's own `.ds-tabs` keeps its rule and the active underline sits on
+   it; the strip itself draws none (see `.a-ct-tabsbar` above). */
+
+/* 2 · sentence case for every label on this surface. */
+.a-ct .a-eyebrow,
+.a-ct .ds-t-eyebrow,
+.a-ct-colhead .a-eyebrow{
+  font-size:var(--ds-fs-meta);
+  letter-spacing:var(--ds-tr-eyebrow);
+  text-transform:var(--ds-tt-eyebrow);
+}
+/* The column head is a table head, not a title: it stays the quietest line on
+   the row and its values sit one step above it. */
+.a-ct-colhead{ color:var(--ds-text-3) }
+
+/* 3 · the parts of this surface that had no hover at all. */
+.a-ct-opt{ transition:background-color var(--ds-dur-hover) var(--ds-ease),
+                      color var(--ds-dur-hover) var(--ds-ease) }
+.a-ct-opt:active{ background:var(--ds-surface-2) }
+.a-strat-read:hover{ background:var(--ds-wash-strong) }
+.a-ct-inflight:active{ transform:scale(.98) }
+.a-ct-inflight{ transition:background-color var(--ds-dur-hover) var(--ds-ease),
+                           transform var(--ds-dur-hover) var(--ds-ease) }
+.a-prop-src{ transition:color var(--ds-dur-hover) var(--ds-ease) }
+.a-ct-quote{ transition:background-color var(--ds-dur-hover) var(--ds-ease) }
+
+/* The document's own sections breathe like sections, not like rows. */
+.a-strat .a-strategy-results{ gap:var(--ds-section-gap) }
+.a-strat-card + .a-strat-card{ margin-top:var(--ds-s4) }
+
+/* The undated rail and the day panel sit on the card surface with the kit's
+   one hairline rather than floating on the canvas. */
+.a-ct-daylist{ border-radius:var(--ds-r4); overflow:hidden }

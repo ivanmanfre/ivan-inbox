@@ -1,19 +1,84 @@
-.a-strategy-nav { flex-wrap: wrap; max-width: 100%; }
-/* Five tabs in three phone columns: a label longer than its column must wrap inside the pill
-   instead of spilling out of it. Same shape as benchmark-evidence.css:3. */
-.a-strategy-nav .ds-seg-item { min-width: 0; white-space: normal; overflow-wrap: anywhere; height: auto; min-height: 44px; }
-.a-strategy-results { display: grid; gap: 20px; min-width: 0; }
-.a-strategy-disclosure { border-top: 1px solid var(--ds-line); padding-top: 12px; min-width: 0; }
-.a-strategy-disclosure > summary { min-height: 44px; cursor: pointer; font-weight: 600; padding: 12px 4px; color: var(--ds-text-2); }
-.a-strategy-disclosure > summary:focus-visible { outline: 2px solid var(--ds-accent-ui); outline-offset: 2px; }
-.a-strat { overflow-wrap: anywhere; }
-@media (max-width: 600px) {
-  .a-strategy-nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
-  /* "Recommendations" is 108px of text in a 117px column: the pill keeps its own width but
-     gives up the 12px side padding it cannot afford, so the longest label stays on one line
-     and the wrap above is only the fallback for a wider font. */
-  .a-strategy-nav .ds-seg-item { padding-inline: var(--ds-s1); }
+/* THE STRATEGY TAB ROW. It used to wrap: five, then seven pills wrapped into a
+   three-column grid at 600px, which broke "Recommendations" across two lines as
+   "Recommendation / s" and cost 3 rows of a 844px fold. It is ONE row now, at
+   every width, scrolled sideways with the scrollbar hidden and a fade on the
+   edge that has more row behind it, which is the affordance a bare cut-off
+   never gives. The sliding marker lives inside each pill, so it travels with
+   the scroll rather than against it. */
+.a-strategy-nav {
+  max-width: 100%;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: var(--ds-s1);
 }
+.a-strategy-nav::-webkit-scrollbar { display: none; }
+.a-strategy-nav .ds-seg-item {
+  flex: 0 0 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  height: auto;
+  min-height: var(--ds-tap);
+  scroll-snap-align: start;
+}
+
+.a-strategy-results { display: grid; gap: var(--ds-section-gap); min-width: 0; }
+
+/* A disclosure is a control: it takes the tap floor, answers the pointer, and
+   its own caret turns rather than the browser's triangle sitting in front of
+   the words. */
+.a-strategy-disclosure { border-top: 1px solid var(--ds-line); padding-top: var(--ds-s4); min-width: 0; }
+.a-strategy-disclosure > summary {
+  list-style: none;
+  min-height: var(--ds-tap);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: var(--ds-s3);
+  font-size: var(--ds-fs-body);
+  font-weight: var(--ds-fw-medium);
+  padding: var(--ds-s4) var(--ds-s3);
+  margin-inline: calc(var(--ds-s3) * -1);
+  border-radius: var(--ds-r3);
+  color: var(--ds-text-2);
+  transition: background-color var(--ds-dur-hover) var(--ds-ease),
+              color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-strategy-disclosure > summary::-webkit-details-marker { display: none; }
+.a-strategy-disclosure > summary::before {
+  content: '\203A';
+  flex: 0 0 auto;
+  color: var(--ds-text-3);
+  font-weight: var(--ds-fw-regular);
+  transition: transform var(--ds-dur) var(--ds-ease-out);
+}
+.a-strategy-disclosure[open] > summary::before { transform: rotate(90deg); }
+.a-strategy-disclosure > summary:hover { background: var(--ds-wash); color: var(--ds-text); }
+.a-strategy-disclosure > summary:focus-visible { outline: 2px solid var(--ds-accent-ui); outline-offset: 2px; }
+
+/* The edge fade, on the phone only — the only width where seven pills actually
+   run past the bar. It is a sticky flex item fading to the segmented control's
+   own bed, the same move `orbit.css` uses on its overflowing rows, so no colour
+   is invented here. */
+@media (max-width: 767px) {
+  .a-strategy-nav::after {
+    content: '';
+    position: sticky;
+    inset-inline-end: 0;
+    flex: 0 0 var(--ds-s7);
+    align-self: stretch;
+    margin-inline-start: calc(var(--ds-s7) * -1);
+    border-end-end-radius: var(--ds-r2);
+    border-start-end-radius: var(--ds-r2);
+    background: linear-gradient(to right, transparent, var(--ds-surface-2));
+    pointer-events: none;
+  }
+}
+
+.a-strat { overflow-wrap: anywhere; }
 
 .a-strategy-panel[hidden] { display: none; }
 

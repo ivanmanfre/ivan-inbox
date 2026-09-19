@@ -22,9 +22,15 @@
 .a-lm-r{ display:flex; flex-direction:column; gap:var(--ds-s1); padding-block:var(--ds-s3); min-width:0 }
 
 .a-lm-t{ font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); color:var(--ds-text); overflow-wrap:anywhere }
-a.a-lm-t{ color:var(--ds-text); text-decoration:underline; text-decoration-color:var(--ds-hairline-strong); text-underline-offset:3px }
+a.a-lm-t{
+  color:var(--ds-text); text-decoration:underline;
+  text-decoration-color:var(--ds-hairline-strong); text-underline-offset:3px;
+  transition:color var(--ds-dur-hover) var(--ds-ease),
+             text-decoration-color var(--ds-dur-hover) var(--ds-ease);
+}
+a.a-lm-t:hover{ color:var(--ds-accent-ui); text-decoration-color:var(--ds-accent-ui) }
 a.a-lm-t:focus-visible{ outline:2px solid var(--ds-accent-ui); outline-offset:2px }
-.a-lm-tag{ font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono); color:var(--ds-text-3); margin-inline-start:var(--ds-s3); white-space:nowrap }
+.a-lm-tag{ font-family:var(--ds-font-mono); font-size:var(--ds-fs-meta); color:var(--ds-text-4); margin-inline-start:var(--ds-s3); white-space:nowrap }
 .a-lm-figs{
   display:flex; flex-wrap:wrap; gap:var(--ds-s1) var(--ds-s4);
   font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono); font-variant-numeric:tabular-nums;
@@ -47,11 +53,15 @@ a.a-lm-t:focus-visible{ outline:2px solid var(--ds-accent-ui); outline-offset:2p
   padding-block:var(--ds-s3); min-width:0;
 }
 .a-lm-d > summary::-webkit-details-marker{ display:none }
-.a-lm-d > summary:hover{ background:var(--ds-surface-2) }
+.a-lm-d > summary{
+  padding-inline:var(--ds-s3); margin-inline:calc(var(--ds-s3) * -1); border-radius:var(--ds-r3);
+  transition:background-color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-lm-d > summary:hover{ background:var(--ds-wash) }
 .a-lm-d > summary:focus-visible{ outline:2px solid var(--ds-accent-ui); outline-offset:2px }
 .a-lm-d > summary .a-lm-t::after{
   content:'›'; color:var(--ds-text-3); margin-inline-start:var(--ds-s3);
-  display:inline-block; transition:transform var(--ds-dur-hover) var(--ds-ease);
+  display:inline-block; transition:transform var(--ds-dur) var(--ds-ease-out);
 }
 .a-lm-d[open] > summary .a-lm-t::after{ transform:rotate(90deg) }
 .a-lm-dd{ padding-bottom:var(--ds-s4); display:flex; flex-direction:column; gap:var(--ds-s2) }
@@ -68,6 +78,15 @@ a.a-lm-t:focus-visible{ outline:2px solid var(--ds-accent-ui); outline-offset:2p
 @media (max-width:51.999rem){
   .a-lm-r a.a-lm-t{ display:inline-flex; align-items:center; min-height:var(--ds-tap) }
 }
+
+/* ELEVATION (2026-09-20): a ruled line is a row, so it answers the pointer
+   with one wash and no movement (these are columns of figures). */
+.a-lm-r{
+  padding-inline:var(--ds-s3); margin-inline:calc(var(--ds-s3) * -1);
+  border-radius:var(--ds-r3);
+  transition:background-color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-lm-tbl > li:hover > .a-lm-r{ background:var(--ds-wash) }
 
 /* Cards, for the lane's own lead magnets in layout B. */
 .a-lm-cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(15rem,1fr)); gap:var(--ds-s3) var(--ds-s5) }

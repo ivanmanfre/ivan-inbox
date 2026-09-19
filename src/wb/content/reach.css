@@ -6,10 +6,13 @@
 .a-reach-g .a-group-pad > .a-ledger{ margin-inline:0 }
 
 .a-reach-split{
-  position:relative; display:block; height:var(--ds-s2); min-width:48px;
+  position:relative; display:block; height:var(--ds-s3); min-width:48px;
   background:var(--ds-hairline-strong); border-radius:var(--ds-r1); overflow:hidden;
 }
-.a-reach-split-out{ position:absolute; inset-block:0; inset-inline-start:0; background:var(--ds-text-2); }
+.a-reach-split-out{
+  position:absolute; inset-block:0; inset-inline-start:0; background:var(--ds-text-2);
+  transition:width var(--ds-dur-slow) var(--ds-ease-out);
+}
 .a-cell .a-reach-split{ margin-top:var(--ds-s1) }
 
 .a-reach-sec{ margin-top:var(--ds-s5); display:flex; flex-direction:column; gap:var(--ds-s2); min-width:0 }
@@ -19,7 +22,9 @@
 /* What the history says: one hairline line per reading, its post count under it. */
 .a-reach-ins{ list-style:none; margin:0; padding:0; border-top:1px solid var(--ds-line) }
 .a-reach-in{ display:flex; flex-direction:column; gap:2px; padding-block:var(--ds-s2); border-bottom:1px solid var(--ds-line); min-width:0 }
-.a-reach-in-t{ font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); color:var(--ds-text); overflow-wrap:anywhere }
+/* A reading, not a table cell: it keeps a measure so a 1440 column does not
+   put a 190-character line on every finding. */
+.a-reach-in-t{ font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); color:var(--ds-text); overflow-wrap:anywhere; max-width:90ch }
 .a-reach-in-n{ font-size:var(--ds-fs-mono) }
 
 /* Winners: the post list grammar without the left rule, one hairline per post. */
@@ -38,8 +43,11 @@
 .a-reach-share-r{ display:grid; grid-template-columns:minmax(0,1fr) 64px 3.2em; gap:var(--ds-s2); align-items:center; font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); min-height:24px }
 .a-reach-share-l{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ds-text-2) }
 .a-reach-share-r .a-mono{ text-align:right; font-variant-numeric:tabular-nums }
-.a-reach-share-bar{ display:block; height:var(--ds-s2); background:var(--ds-surface-3); border-radius:var(--ds-r1); overflow:hidden }
-.a-reach-share-bar > span{ display:block; height:100%; background:var(--ds-text-2) }
+.a-reach-share-bar{ display:block; height:var(--ds-s3); background:var(--ds-surface-3); border-radius:var(--ds-r1); overflow:hidden }
+.a-reach-share-bar > span{
+  display:block; height:100%; background:var(--ds-text-2);
+  transition:width var(--ds-dur-slow) var(--ds-ease-out);
+}
 .a-reach-share-none{ font-size:var(--ds-fs-meta) }
 
 /* Weeks: one hairline row each. Empty weeks stay one quiet line. */
@@ -55,9 +63,13 @@
 }
 .a-reach-week > summary::-webkit-details-marker{ display:none }
 .a-reach-week > summary:focus-visible{ outline:2px solid var(--ds-accent-ui); outline-offset:2px }
-.a-reach-week > summary:hover{ background:var(--ds-surface-2) }
+.a-reach-week > summary{
+  padding-inline:var(--ds-s3); margin-inline:calc(var(--ds-s3) * -1); border-radius:var(--ds-r3);
+  transition:background-color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-reach-week > summary:hover{ background:var(--ds-wash) }
 .a-reach-wk-top{ display:flex; justify-content:space-between; align-items:baseline; gap:var(--ds-s2); font-weight:var(--ds-fw-semi) }
-.a-reach-wk-top::after{ content:'›'; color:var(--ds-text-3); font-weight:var(--ds-fw-regular); transition:transform var(--ds-dur-hover) var(--ds-ease); order:3 }
+.a-reach-wk-top::after{ content:'›'; color:var(--ds-text-3); font-weight:var(--ds-fw-regular); transition:transform var(--ds-dur) var(--ds-ease-out); order:3 }
 .a-reach-week[open] .a-reach-wk-top::after{ transform:rotate(90deg) }
 .a-reach-wk-n{ font-weight:var(--ds-fw-regular); font-size:var(--ds-fs-mono); color:var(--ds-text-2); margin-inline-start:auto; white-space:nowrap }
 .a-reach-wk-bot{ display:grid; grid-template-columns:72px 4.6em minmax(0,1fr); gap:var(--ds-s2); align-items:center; font-size:var(--ds-fs-meta); color:var(--ds-text-3) }
@@ -75,7 +87,12 @@
   padding-block:var(--ds-s1); overflow-wrap:anywhere;
 }
 @media (max-width:39.999rem){ .a-reach-post-t{ min-height:var(--ds-tap) } }
-a.a-reach-post-t{ text-decoration:underline; text-decoration-color:var(--ds-hairline-strong); text-underline-offset:3px }
+a.a-reach-post-t{
+  text-decoration:underline; text-decoration-color:var(--ds-hairline-strong); text-underline-offset:3px;
+  transition:color var(--ds-dur-hover) var(--ds-ease),
+             text-decoration-color var(--ds-dur-hover) var(--ds-ease);
+}
+a.a-reach-post-t:hover{ color:var(--ds-accent-ui); text-decoration-color:var(--ds-accent-ui) }
 a.a-reach-post-t:focus-visible{ outline:2px solid var(--ds-accent-ui); outline-offset:2px }
 .a-reach-post-m{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--ds-s1) var(--ds-s3); font-size:var(--ds-fs-meta); color:var(--ds-text-2) }
 .a-reach-post-m .a-mono{ font-size:var(--ds-fs-mono) }
@@ -117,16 +134,40 @@ a.a-reach-post-t:focus-visible{ outline:2px solid var(--ds-accent-ui); outline-o
 /* `a-reach-lm-*`: `leadmagnets.css` owns `.a-lm-tag` for the dedicated view, and both
    sheets are loaded whenever Strategy is open. */
 .a-reach-lm-tags{ display:inline-flex; gap:var(--ds-s2); margin-inline:var(--ds-s2) var(--ds-s4); white-space:nowrap; vertical-align:baseline }
-.a-reach-lm-tag{ display:inline-block; font-size:var(--ds-fs-mono); color:var(--ds-text-3); border:1px solid var(--ds-line); border-radius:var(--ds-r1); padding:0 4px; white-space:nowrap }
+.a-reach-lm-tag{ display:inline-block; font-size:var(--ds-fs-mono); color:var(--ds-text-3); box-shadow:inset 0 0 0 1px var(--ds-line); border-radius:var(--ds-r2); padding:0 var(--ds-s2); white-space:nowrap }
 
 /* The calls note, collapsed. A disclosure is a control, so its summary keeps the tap floor. */
 .a-reach-why > summary{
   list-style:none; cursor:pointer; min-height:var(--ds-tap);
   display:flex; align-items:center; padding-block:var(--ds-s2);
+  padding-inline:var(--ds-s3); margin-inline:calc(var(--ds-s3) * -1);
+  border-radius:var(--ds-r3);
+  transition:background-color var(--ds-dur-hover) var(--ds-ease);
 }
 .a-reach-why > summary::-webkit-details-marker{ display:none }
-.a-reach-why > summary:hover{ background:var(--ds-surface-2) }
+.a-reach-why > summary:hover{ background:var(--ds-wash) }
 .a-reach-why > summary:focus-visible{ outline:2px solid var(--ds-accent-ui); outline-offset:2px }
 .a-reach-why > summary .a-reach-foot{ text-decoration:underline; text-decoration-color:var(--ds-hairline-strong); text-underline-offset:3px }
 .a-reach-why-body{ padding-bottom:var(--ds-s3) }
-.a-reach-ins .a-reach-in-t > a{ color:inherit; text-decoration:underline; text-underline-offset:2px }
+.a-reach-ins .a-reach-in-t > a{
+  color:inherit; text-decoration:underline; text-underline-offset:2px;
+  transition:color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-reach-ins .a-reach-in-t > a:hover{ color:var(--ds-accent-ui) }
+
+/* ==========================================================================
+   ELEVATION (2026-09-20). A ruled line in this block IS a row, and a row in
+   this app answers the pointer. One wash, one hover duration, no movement:
+   these lists are columns of figures and must not shift under the cursor.
+   ========================================================================== */
+.a-reach-in,
+.a-reach-roster-r,
+.a-reach-post{
+  padding-inline:var(--ds-s3);
+  margin-inline:calc(var(--ds-s3) * -1);
+  transition:background-color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-reach-in:hover,
+.a-reach-roster-r:hover,
+.a-reach-post:hover{ background:var(--ds-wash) }
+.a-reach-roster-h:hover{ background:none }
