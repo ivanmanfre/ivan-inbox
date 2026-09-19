@@ -21,7 +21,13 @@
   .a-today-mast{ grid-template-columns:minmax(0,auto) minmax(0,1fr); gap:var(--ds-s8) }
 }
 .a-today-fig{ display:flex; flex-direction:column; gap:var(--ds-s2); min-width:0 }
-.a-today-read{ display:flex; flex-direction:column; gap:var(--ds-s4); min-width:0 }
+/* ELEVATION: the masthead's right half is four readings stacked — the bar, its
+   legend, the split and the freshness stamp — and at 12px they ran together as
+   one grey block. 16 separates them; the stamp, which is the quietest thing in
+   the card, gets one more step of air so it reads as a footnote to the block
+   rather than a fifth reading. */
+.a-today-read{ display:flex; flex-direction:column; gap:var(--ds-s5); min-width:0 }
+.a-today-read > .a-mono:last-child{ margin-top:var(--ds-s1); color:var(--ds-text-3) }
 
 /* The legend: a mono line of dot + count + label, dimmed where the count is 0. */
 .a-today-legend{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--ds-s2) var(--ds-s5); min-width:0 }
@@ -57,7 +63,27 @@
    4 · The alert strip. A bar over one banner per open group; nothing is
    deleted, the rest of a body and a group's members are one tap further away.
    -------------------------------------------------------------------------- */
-.a-today-alerts{ display:flex; flex-direction:column; gap:var(--ds-s3); min-width:0 }
+/* ELEVATION (2026-09-20) · THE SUMMARY AND ITS BANNERS ARE ONE OBJECT.
+   The bar ("10 · 1 critical · 12 warnings") sat in its own rounded group with
+   8px of canvas under it and the critical banner sat in a second rounded box,
+   so the count and the thing it was counting read as two unrelated cards. They
+   are stacked flush now with one outer radius: the bar is the head of the
+   stack, each banner a band under it, and only the last corner rounds. */
+.a-today-alerts{ display:flex; flex-direction:column; gap:var(--ds-s0); min-width:0 }
+.a-today-alerts > .a-group{ border-radius:var(--ds-r4) var(--ds-r4) 0 0; border-bottom:0 }
+.a-today-alerts > .a-group:last-child{ border-radius:var(--ds-r4); border-bottom:1px solid var(--ds-line) }
+.a-today-alerts > .ds-banner{
+  border-radius:0;
+  box-shadow:inset 0 1px 0 var(--ds-line), inset 0 0 0 1px var(--ds-line);
+  padding:var(--ds-s5) var(--ds-card-pad);
+}
+.a-today-alerts > .ds-banner:last-child{ border-radius:0 0 var(--ds-r4) var(--ds-r4) }
+/* The summary bar is the way IN to the stack under it, so its chevron leans
+   toward the rows the way every disclosure in the app does. */
+.a-today-alerts > .a-group .a-row-tail .ds-icon{
+  transition:transform var(--ds-dur) var(--ds-ease-out);
+}
+.a-today-alerts > .a-group .a-row:hover .a-row-tail .ds-icon{ transform:translateX(var(--ds-s1)) }
 .a-today-sev{ display:inline-flex; align-items:center; gap:var(--ds-s2); flex:0 0 auto }
 /* The mark rides inside the row title, which is plain inline text, so it needs
    its own leading space: without it the name and the alarm read as one word. */
@@ -82,13 +108,18 @@
 .a-today-fold > summary::-webkit-details-marker{ display:none }
 .a-today-fold > summary::marker{ content:'' }
 .a-today-fold > summary:hover{ color:var(--ds-text) }
+.a-today-fold > summary .ds-icon{ transition:transform var(--ds-dur) var(--ds-ease-out) }
+.a-today-fold[open] > summary .ds-icon{ transform:rotate(180deg) }
+/* The raw body IS wire text, so it is the one place in this sheet that takes
+   the real fixed-width face rather than the UI face --ds-font-mono now
+   resolves to. */
 .a-today-pre{
   margin:var(--ds-s0);
-  padding:var(--ds-s3) var(--ds-s4);
+  padding:var(--ds-s4);
   white-space:pre-wrap;
   overflow-wrap:anywhere;
-  font-family:var(--ds-font-mono);
-  font-size:var(--ds-fs-mono);
+  font-family:var(--ds-font-code);
+  font-size:var(--ds-fs-meta);
   line-height:var(--ds-lh-meta);
   color:var(--ds-text-2);
   background:var(--ds-surface-2);
@@ -96,8 +127,15 @@
 }
 .a-today-members{ display:flex; flex-direction:column; min-width:0 }
 
-/* A hand-off row that is a real link rather than a click handler. */
-.a-today-linkrow{ text-decoration:none; color:inherit }
+/* A hand-off row that is a real link rather than a click handler. It takes the
+   same wash and press the kit's own interactive row takes, so a row that leaves
+   the screen does not feel deader than one that does not. */
+.a-today-linkrow{
+  text-decoration:none; color:inherit;
+  transition:background-color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-today-linkrow:hover{ background:var(--ds-wash) }
+.a-today-linkrow:active{ background:var(--ds-wash-strong) }
 
 /* --------------------------------------------------------------------------
    5 · The zone head at 390 (D14). Every zone head is an eyebrow plus a mono

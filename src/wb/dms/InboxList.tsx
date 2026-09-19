@@ -108,10 +108,10 @@ export function dayLabel(iso: string, now: Date = new Date()): string {
   const d = new Date(iso)
   const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
   const diff = Math.round((startOfDay(now) - startOfDay(d)) / 86_400_000)
-  if (diff <= 0) return 'TODAY'
-  if (diff === 1) return 'YESTERDAY'
-  if (diff < 7) return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()
-  return 'EARLIER'
+  if (diff <= 0) return 'Today'
+  if (diff === 1) return 'Yesterday'
+  if (diff < 7) return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  return 'Earlier'
 }
 
 type Item =
@@ -746,7 +746,7 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
                           /* W2-9: named so the phone can drop it where the
                              inline Discard is painting over it. The wrapper is
                              `display:contents` everywhere else. */
-                          : <span className="a-dms-draftchip"><Chip icon="wand">DRAFT</Chip></span>)}
+                          : <span className="a-dms-draftchip"><Chip icon="wand">Draft</Chip></span>)}
                         {/* E3 · THE VERB, IN THE METADATA'S OWN PLACE. It is
                             absolutely positioned over the tail (the sheet), so
                             it costs the row NOTHING at rest: the resting flex

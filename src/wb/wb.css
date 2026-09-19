@@ -46,12 +46,12 @@
   align-items:center;
   gap:var(--ds-s3);
   min-height:var(--ds-header-h);
-  padding:var(--ds-s2) var(--ds-gutter);
+  padding:var(--ds-s4) var(--ds-gutter);
   /* N1: the rib is the phone chrome's own status-bar band (standalone,
      theme_color #000000). Without the inset it sat under the notch; a
      device with no notch reports 0px for --sat so every desktop screen
      using Head is unmoved. */
-  padding-top:calc(var(--ds-s2) + var(--sat));
+  padding-top:calc(var(--ds-s4) + var(--sat));
   background:var(--ds-canvas);
   border-bottom:1px solid var(--ds-line);
   flex:0 0 auto;
@@ -86,7 +86,7 @@
   display:flex;
   align-items:center;
   gap:var(--ds-s2);
-  padding:var(--ds-s2) var(--ds-gutter);
+  padding:var(--ds-s4) var(--ds-gutter);
   background:var(--ds-canvas);
   border-bottom:1px solid var(--ds-line);
   overflow-x:auto;
@@ -95,6 +95,14 @@
   flex:0 0 auto;
 }
 .a-bar::-webkit-scrollbar{ display:none }
+/* ELEVATION (2026-09-20) · ONE HAIRLINE UNDER THE CHROME, NOT THREE. A head, a
+   search bar and a filter bar each drew their own bottom line, so every screen
+   opened on three rules 45px apart. Only the LAST band in the run keeps its
+   line; the ones above it close the gap they were ruling off and the run reads
+   as one block of chrome. */
+.a-head:has(+ .a-bar),
+.a-bar:has(+ .a-bar){ border-bottom:0 }
+.a-bar + .a-bar{ padding-top:var(--ds-s0) }
 /* The bar scrolls sideways, so its children keep their own width instead of
    being squeezed into an unreadable stack of collapsed chips. */
 .a-bar > *{ flex-shrink:0 }
@@ -181,7 +189,7 @@
   display:flex;
   align-items:center;
   gap:var(--ds-s3);
-  padding:var(--ds-s3) var(--ds-row-x);
+  padding:var(--ds-s4) var(--ds-row-x);
   border-bottom:1px solid var(--ds-line);
   min-width:0;
 }
@@ -191,12 +199,15 @@
   z-index:1;
   background:var(--ds-surface-1);
 }
+/* ELEVATION (2026-09-20): a group label is a quiet sentence, not a shouted
+   one. The size, the case and the tracking are the system's tokens now, so
+   the whole app moves together when tokens.css moves. */
 .a-eyebrow{
-  font-size:var(--ds-fs-eyebrow);
+  font-size:var(--ds-fs-meta);
   line-height:var(--ds-lh-eyebrow);
   font-weight:var(--ds-fw-medium);
   letter-spacing:var(--ds-tr-eyebrow);
-  text-transform:uppercase;
+  text-transform:var(--ds-tt-eyebrow);
   color:var(--ds-text-3);
   white-space:nowrap;
   overflow:hidden;
@@ -248,6 +259,8 @@
 .a-rows > * + .a-row{ box-shadow:inset 0 1px 0 var(--ds-line) }
 .a-row[data-interactive]{ cursor:pointer }
 .a-row[data-interactive]:hover{ background:var(--ds-wash) }
+/* ELEVATION: a row answers the press, not only the pointer. */
+.a-row[data-interactive]:active{ background:var(--ds-wash-strong) }
 .a-row[data-focused]{ background:var(--ds-wash-strong) }
 .a-row[data-selected]{ background:var(--ds-accent-soft) }
 .a-row[data-sev='attention']::before,
@@ -328,7 +341,7 @@
 .a-title-t{ font-size:var(--ds-fs-title); line-height:var(--ds-lh-title); font-weight:var(--ds-fw-medium); color:var(--ds-text) }
 .a-page-t{ font-size:var(--ds-fs-page); line-height:var(--ds-lh-page); font-weight:var(--ds-fw-semi); letter-spacing:var(--ds-tr-page) }
 .a-figure-t{
-  font-family:var(--ds-font-mono);
+  font-family:var(--ds-font);
   font-size:var(--ds-fs-figure);
   line-height:var(--ds-lh-figure);
   font-weight:var(--ds-fw-semi);
@@ -374,15 +387,15 @@
   min-width:0;
 }
 .a-cell-l{
-  font-size:var(--ds-fs-eyebrow);
+  font-size:var(--ds-fs-meta);
   line-height:var(--ds-lh-eyebrow);
   letter-spacing:var(--ds-tr-eyebrow);
-  text-transform:uppercase;
+  text-transform:var(--ds-tt-eyebrow);
   font-weight:var(--ds-fw-medium);
   color:var(--ds-text-3);
 }
 .a-cell-v{
-  font-family:var(--ds-font-mono);
+  font-family:var(--ds-font);
   font-size:var(--ds-fs-figure);
   line-height:var(--ds-lh-figure);
   font-weight:var(--ds-fw-semi);
@@ -393,7 +406,12 @@
 .a-cell-n{ font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3) }
 .a-cell[data-interactive]{ cursor:pointer; text-align:left; border:0; font:inherit; transition:background-color var(--ds-dur-hover) var(--ds-ease) }
 .a-cell[data-interactive]:hover{ background:var(--ds-surface-2) }
+.a-cell[data-interactive]:active{ background:var(--ds-surface-3) }
 .a-cell[data-on]{ background:var(--ds-accent-soft) }
+/* ELEVATION · NO BOX INSIDE A BOX. A ledger dropped into a padded group drew a
+   second ring one card-pad inside the first. Inside a group the run of cells
+   keeps its own 1px rules and gives up the outer ring. */
+.a-group .a-ledger{ border:0; border-radius:var(--ds-r3) }
 
 /* A measured bar: the figure drawn, not described. */
 .a-bars{ display:flex; flex-direction:column; gap:var(--ds-s2) }
@@ -411,6 +429,10 @@
   inset-inline-start:0;
   background:var(--ds-accent);
   border-radius:var(--ds-r1);
+  /* ELEVATION: a measured bar GROWS to its reading. The figure is drawn, and
+     now it is drawn arriving, which is also what tells the eye the number
+     changed when a refresh lands. */
+  transition:width var(--ds-dur-slow) var(--ds-ease-out);
 }
 .a-barfill[data-tone='attention']{ background:var(--ds-sev-attention) }
 .a-barfill[data-tone='urgent']{ background:var(--ds-sev-urgent) }
@@ -418,7 +440,7 @@
 .a-barfill[data-tone='quiet']{ background:var(--ds-hairline-strong) }
 /* One stacked bar, the shape of a queue drawn in one line. */
 .a-stackbar{ display:flex; height:var(--ds-s3); border-radius:var(--ds-r1); overflow:hidden; background:var(--ds-surface-2) }
-.a-stackseg{ height:100% }
+.a-stackseg{ height:100%; transition:width var(--ds-dur-slow) var(--ds-ease-out), flex-basis var(--ds-dur-slow) var(--ds-ease-out) }
 .a-stackseg[data-tone='urgent']{ background:var(--ds-sev-urgent) }
 .a-stackseg[data-tone='attention']{ background:var(--ds-sev-attention) }
 .a-stackseg[data-tone='accent']{ background:var(--ds-accent) }
@@ -430,14 +452,14 @@
 .a-stackseg + .a-stackseg{ box-shadow:inset 1px 0 0 var(--ds-canvas) }
 /* A column of sparkline bars, for a per-day read. */
 .a-spark{ display:flex; align-items:flex-end; gap:1px; height:var(--ds-s6) }
-.a-sparkbar{ flex:1 1 0; min-width:1px; background:var(--ds-hairline-strong); border-radius:var(--ds-r1) }
+.a-sparkbar{ flex:1 1 0; min-width:1px; background:var(--ds-hairline-strong); border-radius:var(--ds-r1); transition:height var(--ds-dur-slow) var(--ds-ease-out) }
 .a-sparkbar[data-on]{ background:var(--ds-accent) }
 
 /* --------------------------------------------------------------------------
    7 · Small parts.
    -------------------------------------------------------------------------- */
 .a-kv{ display:grid; grid-template-columns:auto minmax(0,1fr); gap:var(--ds-s2) var(--ds-s4); align-items:baseline }
-.a-kv dt{ font-size:var(--ds-fs-eyebrow); letter-spacing:var(--ds-tr-eyebrow); text-transform:uppercase; color:var(--ds-text-3); font-weight:var(--ds-fw-medium) }
+.a-kv dt{ font-size:var(--ds-fs-meta); letter-spacing:var(--ds-tr-eyebrow); text-transform:var(--ds-tt-eyebrow); color:var(--ds-text-3); font-weight:var(--ds-fw-medium) }
 .a-kv dd{ margin:0; font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono); color:var(--ds-text-2); min-width:0; overflow-wrap:anywhere }
 .a-dot{ width:var(--ds-s3); height:var(--ds-s3); border-radius:var(--ds-r-pill); background:var(--ds-hairline-strong); flex:0 0 auto; display:inline-block }
 .a-dot[data-tone='accent']{ background:var(--ds-accent) }
@@ -466,9 +488,11 @@
   padding:0;
   font:inherit;
   cursor:pointer;
-  transition:opacity var(--ds-dur-hover) var(--ds-ease);
+  transition:opacity var(--ds-dur-hover) var(--ds-ease),
+             color var(--ds-dur-hover) var(--ds-ease);
 }
-.a-link:hover{ opacity:.75 }
+.a-link:hover{ opacity:.75; text-decoration:underline; text-underline-offset:3px }
+.a-link:active{ opacity:.6 }
 .a-plain{ background:none; border:0; padding:0; margin:0; font:inherit; color:inherit; text-align:inherit; cursor:pointer }
 .a-wrapline{ display:flex; align-items:center; gap:var(--ds-s2); flex-wrap:wrap; min-width:0 }
 .a-grow{ flex:1 1 auto; min-width:0 }
@@ -518,6 +542,12 @@
   .a-group{ border-radius:0; margin-inline:var(--ds-s0); border-inline:0 }
   .a-ledger{ grid-template-columns:1fr 1fr; margin-inline:var(--ds-gutter) }
   .a-head, .a-bar{ padding-inline:var(--ds-gutter) }
+  /* The desktop bands take --ds-s4 of air; the phone cannot spend it. A 56px
+     head already clears the 44px tile inside it, and a filter bar padded to 12
+     costs the fold a whole conversation row. */
+  .a-head{ padding-block:var(--ds-s2); padding-top:calc(var(--ds-s2) + var(--sat)) }
+  .a-bar{ padding-block:var(--ds-s3) }
+  .a-bar + .a-bar{ padding-top:var(--ds-s0) }
 
   /* N2b-1 · ONE HEAD. The phone chrome portals its tiles into the slot the
      surface head publishes (kit.tsx), so the two stacked 56px rows become one:
@@ -537,19 +567,23 @@
        the header band, still far below the tab bar at 30 and the sheet at 60. */
     z-index:calc(var(--ds-z-header) + 1);
   }
+  /* ELEVATION (2026-09-20) · THE DATE IS READ WHOLE. N2b-1 put the predicate
+     line BESIDE the title to hold the merged head at one 56px row, on the
+     argument that stacking it would grow the row to 74. It does not: at the
+     phone ramp the title is 24/1.2 (28.8px) and the predicate 13/1.35 (17.6),
+     which with the 2px stack gap is 48.4 inside a 56px band that already has
+     to clear a 44px tile. Beside the title, "Sunday, September 20" measured
+     138px of text inside 91px of column and ellipsised on every Today. Stacked,
+     it has the whole 162px and the head is the same height it was. */
   .a-head[data-chrome] > .a-head-t{
-    flex-direction:row;
-    align-items:baseline;
-    gap:var(--ds-s3);
+    flex-direction:column;
+    align-items:flex-start;
+    justify-content:center;
+    gap:var(--ds-s1);
     overflow:hidden;
   }
-  /* The title never gives. Both children are nowrap, so a plain `0 1 auto` on
-     each let flexbox shrink them in proportion and "Today" ellipsised to
-     "To..." beside a date that had room to spare. `min-content` of nowrap text
-     is the text itself, so the title holds its width and the predicate line is
-     the only thing that truncates. */
-  .a-head[data-chrome] > .a-head-t > .a-head-title{ flex:0 1 auto; min-width:min-content }
-  .a-head[data-chrome] > .a-head-t > .a-head-sub{ flex:0 1 auto; min-width:0 }
+  .a-head[data-chrome] > .a-head-t > .a-head-title{ flex:0 0 auto; max-width:100% }
+  .a-head[data-chrome] > .a-head-t > .a-head-sub{ flex:0 0 auto; max-width:100% }
 
   /* N2-1 · THE RIB TILE. Every head control on the phone is a square 44x44
      tile on the raised surface with a 12px corner, so the top strip reads as

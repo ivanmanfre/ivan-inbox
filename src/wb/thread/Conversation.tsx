@@ -66,8 +66,8 @@ function legName(m: InboxMessage): string {
 
 function dayLabel(iso: string): string {
   const d = new Date(iso)
-  if (d.toDateString() === new Date().toDateString()) return 'TODAY'
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()
+  if (d.toDateString() === new Date().toDateString()) return 'Today'
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 }
 
 /** The clock on a message. A time, in mono, on every one of them. */
@@ -432,7 +432,7 @@ export function Conversation({ thread, refresh, onBack, onClose, onAsk, mobile }
               was squeezed to nothing and the actions ran off the plate. On the
               phone the draft card is two lines below anyway, and Claude is his
               own place in the tab bar. */}
-          {!mobile && thread.draft && <Chip icon="wand">DRAFT</Chip>}
+          {!mobile && thread.draft && <Chip icon="wand">Draft</Chip>}
           {/* The hand-off. The decision that a conversation needs Mattan is made
               HERE, reading it, so the link is one tap from the message that
               prompted it. */}

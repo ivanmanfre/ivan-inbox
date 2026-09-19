@@ -22,14 +22,15 @@
   transition:color var(--ds-dur-hover) var(--ds-ease);
 }
 .a-thread-who:hover{ color:var(--ds-accent-ui) }
+.a-thread-who:active{ opacity:.75 }
 .a-thread-ladder{ display:block; flex:1 1 auto; min-width:0; max-width:44ch }
 
 /* --------------------------------------------------------------------------
    The conversation.
    -------------------------------------------------------------------------- */
 .a-thread-msgs{
-  padding:var(--ds-s4) var(--ds-gutter) var(--ds-s6);
-  gap:var(--ds-s5);
+  padding:var(--ds-s5) var(--ds-gutter) var(--ds-s7);
+  gap:var(--ds-s6);
 }
 .a-thread-turn{
   display:flex;
@@ -156,6 +157,7 @@
 }
 .a-thread-devs::-webkit-details-marker{ display:none }
 .a-thread-devs:hover{ color:var(--ds-text) }
+.a-thread-devs::marker{ content:'' }
 .a-thread-devg{ display:flex; flex-direction:column; gap:var(--ds-s1); min-width:0 }
 .a-thread-devr{
   display:grid;

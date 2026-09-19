@@ -118,9 +118,12 @@
   overflow:hidden;
   cursor:pointer;
   min-height:var(--ds-tap);
-  transition:border-color var(--ds-dur-hover) var(--ds-ease);
+  transition:border-color var(--ds-dur-hover) var(--ds-ease),
+             transform var(--ds-dur) var(--ds-ease-out),
+             box-shadow var(--ds-dur) var(--ds-ease-out);
 }
-.a-dw-tile:hover{ border-color:var(--ds-line-strong) }
+.a-dw-tile:hover{ border-color:var(--ds-line-strong); transform:var(--ds-lift); box-shadow:var(--ds-shadow-lift) }
+.a-dw-tile:active{ transform:none; box-shadow:none }
 .a-dw-tile[data-on]{ border-color:var(--ds-accent) }
 .a-dw-tile img{ width:100%; aspect-ratio:1; object-fit:cover; display:block }
 .a-dw-tile-b{
@@ -155,6 +158,7 @@
   transition:background-color var(--ds-dur-hover) var(--ds-ease), color var(--ds-dur-hover) var(--ds-ease);
 }
 .a-dw-qrow:hover{ background:var(--ds-wash); color:var(--ds-text) }
+.a-dw-qrow:active{ background:var(--ds-wash-strong) }
 .a-dw-qrow[data-on]{ background:var(--ds-accent-soft); color:var(--ds-text) }
 .a-dw-qrow-i{ flex:0 0 auto; padding-top:var(--ds-s1) }
 .a-dw-qrow-b{ display:flex; flex-direction:column; gap:var(--ds-s1); min-width:0; flex:1 1 auto }
@@ -242,9 +246,9 @@
   min-width:0;
 }
 .a-dw-rows dt{
-  font-size:var(--ds-fs-eyebrow);
+  font-size:var(--ds-fs-meta);
   letter-spacing:var(--ds-tr-eyebrow);
-  text-transform:uppercase;
+  text-transform:var(--ds-tt-eyebrow);
   color:var(--ds-text-3);
   font-weight:var(--ds-fw-medium);
 }
@@ -267,7 +271,10 @@
   color:var(--ds-accent-ui);
   text-decoration:underline;
   text-underline-offset:.2em;
+  transition:opacity var(--ds-dur-hover) var(--ds-ease);
 }
+.a-dw-link:hover{ opacity:.75 }
+.a-dw-link:active{ opacity:.6 }
 
 /* The fold. The caret turns; nothing else moves. */
 .a-dw-fold{ min-width:0 }

@@ -39,7 +39,10 @@
   display:flex;
   align-items:center;
   gap:var(--ds-s3);
-  padding:var(--ds-s3) var(--ds-s4);
+  /* ELEVATION: a window head at 8px of block padding read as a title bar on a
+     document, not as the head of a decision. It takes the same air the app's
+     own heads take, and the same side gutter the document under it has. */
+  padding:var(--ds-s4) var(--ds-card-pad);
   border-bottom:1px solid var(--ds-line);
   min-width:0;
   flex:0 0 auto;
@@ -109,7 +112,7 @@
   align-items:center;
   justify-content:space-between;
   gap:var(--ds-s3);
-  padding:var(--ds-s3) var(--ds-row-x);
+  padding:var(--ds-s4) var(--ds-row-x);
   border-bottom:1px solid var(--ds-line);
   position:sticky;
   top:0;
@@ -124,7 +127,7 @@
   position:sticky;
   bottom:0;
   z-index:1;
-  padding:var(--ds-s3) var(--ds-card-pad);
+  padding:var(--ds-s4) var(--ds-card-pad);
   border-top:1px solid var(--ds-line);
   background:var(--ds-canvas);
   min-width:0;

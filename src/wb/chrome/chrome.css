@@ -18,7 +18,10 @@
   text-decoration:underline;
   text-underline-offset:2px;
   word-break:break-word;
+  transition:opacity var(--ds-dur-hover) var(--ds-ease);
 }
+.a-msglink:hover{ opacity:.75 }
+.a-msglink:active{ opacity:.6 }
 
 /* --------------------------------------------------------------------------
    3 · S42 pull indicator. The height IS the pull distance, so the mark travels
@@ -115,7 +118,9 @@
   cursor:pointer;
   text-align:left;
 }
+.a-rail-sync{ transition:background-color var(--ds-dur-hover) var(--ds-ease), color var(--ds-dur-hover) var(--ds-ease) }
 .a-rail-sync:hover{ background:var(--ds-surface-1); color:var(--ds-text-2) }
+.a-rail-sync:active{ background:var(--ds-surface-2) }
 .a-rail-sync-t{ flex:1 1 auto; min-width:0 }
 /* The dot is the sync's OWN element and carries no shared class: a past defect
    had it borrowing a card class, which inflated it to a blob and left it green
@@ -173,7 +178,9 @@
   cursor:pointer;
   white-space:nowrap;
 }
-.a-worksep-pill:hover{ color:var(--ds-text) }
+.a-worksep-pill{ transition:background-color var(--ds-dur-hover) var(--ds-ease), color var(--ds-dur-hover) var(--ds-ease) }
+.a-worksep-pill:hover{ color:var(--ds-text); background:var(--ds-wash) }
+.a-worksep-pill:active{ background:var(--ds-wash-strong) }
 .a-worksep-pill[data-active='true']{ background:var(--ds-surface-2); color:var(--ds-text) }
 
 /* The phone form of the segment. The group label is dropped: the tab bar under
@@ -212,6 +219,23 @@
 /* 9 · S39 the phone bar. The 44px floor is the system's own, on `.ds-tab`; the
    wrapper only pins the bar to the bottom of the plate. */
 .a-tabs{ flex:0 0 auto; background:var(--ds-canvas); border-top:1px solid var(--ds-line) }
+/* ELEVATION (2026-09-20): a three-digit count ("144" on Content) is a 20px-tall
+   pill roughly 40px wide, dropped into a tab that is 50px wide at 390 — it
+   covered the glyph and sat across the top of the word under it. Seven of these
+   share the bar, so the count takes the badge's own smallest form here: the
+   phone's 10px badge size, a hairline of padding, and the tab's top-right
+   corner. Nothing is dropped and no number changes. */
+.a-tabs .ds-tab-count{
+  top:var(--ds-s0);
+  right:var(--ds-s0);
+}
+.a-tabs .ds-tab-count .ds-badge{
+  min-width:var(--ds-s5);
+  height:var(--ds-s5);
+  padding:0 var(--ds-s1);
+  font-size:var(--ds-fs-badge, var(--ds-fs-tab));
+  box-shadow:0 0 0 2px var(--ds-canvas);
+}
 
 /* --------------------------------------------------------------------------
    10 · S22 palette and S23 shortcut sheet. The Dialog draws the box and the
@@ -241,13 +265,17 @@
   font-size:var(--ds-fs-meta);
   cursor:pointer;
 }
-.a-root .a-find-lanes button.a-find-lane.a-find-lane:hover{ color:var(--ds-text) }
+.a-root .a-find-lanes button.a-find-lane.a-find-lane{
+  transition:background-color var(--ds-dur-hover) var(--ds-ease), color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-root .a-find-lanes button.a-find-lane.a-find-lane:hover{ color:var(--ds-text); background:var(--ds-wash) }
 .a-root .a-find-lanes button.a-find-lane.a-find-lane[data-active='true']{
   background:var(--ds-surface-2); color:var(--ds-text);
 }
 /* The `Also written elsewhere` row's buttons are the same class outside
    `.a-find-lanes`; they keep the plain-text look they have always had. */
 .a-find-lane{ color:var(--ds-text-3); cursor:pointer }
+.a-find-lane{ transition:color var(--ds-dur-hover) var(--ds-ease) }
 .a-find-lane:hover{ color:var(--ds-text) }
 .a-find-badge{ color:var(--ds-text-4); flex:0 0 auto }
 .a-find-else{ display:flex; align-items:center; gap:var(--ds-s2); flex-wrap:wrap; color:var(--ds-text-3) }

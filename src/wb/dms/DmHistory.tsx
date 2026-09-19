@@ -41,7 +41,7 @@ export function DmCount({ threads, verified = true }: { threads: Thread[]; verif
   const replies = answered.reduce((n, t) => n + t.messages.filter(m => m.direction === 'inbound').length, 0)
   const magnets = answered.filter(isLeadMagnet).length
   return (
-    <div className="a-dms-count a-mono a-dim" style={{ padding: '6px 16px 2px' }}>
+    <div className="a-dms-count a-mono a-dim">
       {verified ? (
         <>
           {answered.length} conversations · {replies} replies
