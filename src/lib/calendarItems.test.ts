@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   ARMING_LABEL, armingOf, buildCalendarItems, buildCalendarRail, canArm, canMoveDate,
   dayKey, dayKeyOf, groupByDay, itemDayISO, monthLabel, monthWeeks, publishAtForDay,
@@ -414,7 +414,12 @@ describe('buildCalendarItems — the merged grid', () => {
   })
 
   it('passing no queue is the old behaviour exactly', () => {
-    expect(buildCalendarItems([d()], [], NOW)).toEqual(buildCalendarItems([d()]))
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(NOW)
+    try {
+      expect(buildCalendarItems([d()], [], NOW)).toEqual(buildCalendarItems([d()]))
+    } finally {
+      clock.mockRestore()
+    }
   })
 })
 
