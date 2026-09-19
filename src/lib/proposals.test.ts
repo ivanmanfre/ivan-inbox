@@ -605,6 +605,15 @@ describe('retained weekly rejection', () => {
     await expect(passWeeklyProposal('risedtc', 'p-1', 'Not relevant.')).rejects.toThrow(/gone|not_found/i)
   })
 
+  it.each([
+    ['proposal_already_accepted', 'Already accepted elsewhere. Refresh to see the current choices.'],
+    ['not_weekly_proposal', 'This recommendation is not part of a weekly shortlist. Refresh to see the available actions.'],
+    ['not_updated', 'Your reason could not be saved. Refresh and try again.'],
+  ])('explains the %s decision refusal while retaining its error code', async (code, message) => {
+    rpcResult = { data: { ok: false, error: code }, error: null }
+    await expect(passWeeklyProposal('risedtc', 'p-1', 'Already covered.')).rejects.toMatchObject({ code, message })
+  })
+
   it('hides retained rejections only for weekly rows while keeping legacy rows', async () => {
     const legacy = proposal({ id: 'legacy', context: { weekly_decision: { decision: 'rejected', reason: 'Earlier note.' } } })
     const rejected = proposal({ id: 'rejected', context: { audn: { weekly: { week_start: '2026-09-21' } }, weekly_decision: { decision: 'rejected', reason: 'Already covered.' } } })

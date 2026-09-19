@@ -266,6 +266,9 @@ export type PublishResult = {
 export const PUBLISH_MESSAGES: Record<string, string> = {
   not_found: 'That proposal is gone: dropped or already approved elsewhere.',
   proposal_rejected: 'This topic was passed on. Refresh to see current choices.',
+  proposal_already_accepted: 'Already accepted elsewhere. Refresh to see the current choices.',
+  not_weekly_proposal: 'This recommendation is not part of a weekly shortlist. Refresh to see the available actions.',
+  not_updated: 'Your reason could not be saved. Refresh and try again.',
   unknown_client:
     'That lane has no client registry row, so the database refused to publish it. Nothing changed.',
   no_text:
