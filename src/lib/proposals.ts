@@ -12,13 +12,16 @@ import type { Soft } from './audience'
    (`audn_recommendation_publish`), not an insert from here: one writer per
    table, and the idempotency key is the proposal's own id.
 
-   Three states exist and no others (CONTRACTS §2.1):
+   Legacy proposals have three states (CONTRACTS §2.1):
 
      open       no stamps. This module reads exactly these.
      published  `approved_at` and `sent_at` are set and `context.published`
                 names the row that was written. It leaves this list.
      dropped    the row is DELETED. Delete means delete — there is no archive
                 flag to restore it from and the surface says so before asking.
+
+   Weekly proposals also retain a rejected decision and reason in context.
+   They remain stored for learning and are excluded from this open queue.
 
    Two rules carried over from the audience block next door:
 
@@ -50,17 +53,32 @@ export const COLUMNS = 'id, client_id, kind, body, context, created_at'
 export type RosterRole =
   | 'direct_competitor' | 'buyer_voice' | 'format_reference' | 'warm_anchor'
 
+export type WeeklyRecommendation = {
+  week_start?: string | null
+  slot?: 'supported' | 'timely' | 'experiment' | null
+  hook?: string | null
+  intended_response?: string | null
+  why_now?: string | null
+  success_metric?: string | null
+  evidence_confidence?: 'high' | 'medium' | 'low' | null
+  confidence_reason?: string | null
+  priority_reason?: string | null
+  learning?: { recommendation_ids?: string[] | null; explanation?: string | null } | null
+  rank?: number | null
+}
+
 /** The recommendation object itself (Run 03 CONTRACTS §2.1, minus the fields
     the RPC owns). The four text fields plus the title are the ONLY things a
     client can read after approval, and they are the only things Edit changes. */
 export type AudnObject = {
+  weekly?: WeeklyRecommendation | null
   what_changed?: string | null
   why_it_matters?: string | null
   could_publish?: string | null
   proof_needed?: string | null
   evidence?: {
     source_ids?: string[] | null
-    source_dates?: string[] | null
+    source_dates?: (string | null)[] | null
     sample_n?: number | null
     unknowns?: string | null
   } | null
@@ -92,6 +110,10 @@ export type FounderSourceRow = {
 /** One cited row, as the writer captured it. Every id in
     `evidence.source_ids` appears here, so the reader can open what was read. */
 export type SourceRow = {
+  kind?: string | null
+  location?: string | null
+  excerpt?: string | null
+  limitations?: string[] | string | null
   table?: string | null
   id?: string | null
   author?: string | null
@@ -104,6 +126,7 @@ export type SourceRow = {
 
 export type ProposalContext = {
   audn?: AudnObject | null
+  weekly_decision?: { decision?: 'rejected' | null; reason?: string | null; decided_at?: string | null } | null
   source_rows?: SourceRow[] | null
   author_baseline?: {
     median?: number | null
@@ -178,10 +201,8 @@ async function soft<T>(
 // Reads
 // ---------------------------------------------------------------------------
 
-/** Every OPEN proposal for one lane, oldest first — the order they were
-    written in is the order they are read in, so nothing jumps the queue by
-    being re-read. 50 is a ceiling far above the writer's own per-cycle limit
-    (3 by default); hitting it would mean the lane was never reviewed. */
+/** Read the newest open proposals so a backlog cannot hide the new week's
+    shortlist. The view groups by week and orders each shortlist by rank. */
 export async function fetchProposals(lane: ContentLane): Promise<Soft<Proposal>> {
   // DEV ONLY. The writer workflow is not deployed and this app is behind a
   // magic-link gate, so the list layout cannot otherwise be LOOKED at. The
@@ -193,19 +214,28 @@ export async function fetchProposals(lane: ContentLane): Promise<Soft<Proposal>>
     if (flag === '1') return { ok: true, rows: devFixture(lane) }
     if (flag === 'empty') return { ok: true, rows: [] }
   }
-  return soft<Proposal>('proposals', () =>
-    supabase.from('ops_drafts')
-      .select(COLUMNS)
-      .eq('kind', PROPOSAL_KIND)
-      .eq('client_id', lane)
-      .is('approved_at', null)
-      .is('sent_at', null)
-      .order('created_at', { ascending: true })
-      .limit(50))
+  const rows: Proposal[] = []
+  const pageSize = 100
+  for (let offset = 0; ; offset += pageSize) {
+    const result = await soft<Proposal>('proposals', () =>
+      supabase.from('ops_drafts')
+        .select(COLUMNS)
+        .eq('kind', PROPOSAL_KIND)
+        .eq('client_id', lane)
+        .is('approved_at', null)
+        .is('sent_at', null)
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+        .range(offset, offset + pageSize - 1))
+    if (!result.ok) return result
+    rows.push(...result.rows.filter(p => !(p.context?.audn?.weekly && p.context.weekly_decision?.decision === 'rejected')))
+    // Test the raw page length: an entire page can contain retained passes.
+    if (result.rows.length < pageSize) return { ok: true, rows }
+  }
 }
 
 // ---------------------------------------------------------------------------
-// Writes. Both of them, and there are only two.
+// Writes: approve, retained weekly pass, and legacy delete.
 // ---------------------------------------------------------------------------
 
 /** The five strings a human may change before approving. Evidence is never
@@ -235,6 +265,7 @@ export type PublishResult = {
 // does that), because an unnamed refusal is unsearchable.
 export const PUBLISH_MESSAGES: Record<string, string> = {
   not_found: 'That proposal is gone: dropped or already approved elsewhere.',
+  proposal_rejected: 'This topic was passed on. Refresh to see current choices.',
   unknown_client:
     'That lane has no client registry row, so the database refused to publish it. Nothing changed.',
   no_text:
@@ -263,6 +294,20 @@ export async function publishProposal(
     table: typeof r.table === 'string' ? r.table : null,
     id: typeof r.id === 'string' ? r.id : null,
     ref: typeof r.ref === 'string' ? r.ref : null,
+  }
+}
+
+/** Weekly passes retain the decision and reason for the next writer cycle. */
+export async function passWeeklyProposal(lane: ContentLane, id: string, reason: string): Promise<void> {
+  if (!reason.trim()) throw new Error('Add a reason before passing on this recommendation.')
+  const { data, error } = await supabase.rpc('audn_weekly_recommendation_decide', {
+    p_client_id: lane, p_proposal_id: id, p_reason: reason.trim(),
+  })
+  if (error) throw new Error(error.message)
+  const r = (data ?? {}) as Record<string, unknown>
+  if (r.ok !== true) {
+    const code = typeof r.error === 'string' ? r.error : 'unknown'
+    throw new ClientRpcError(code, PUBLISH_MESSAGES[code] ?? clientRpcMessage(code))
   }
 }
 

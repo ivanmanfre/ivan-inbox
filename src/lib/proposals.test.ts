@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { Proposal } from './proposals'
@@ -28,6 +28,7 @@ type Rpc = { fn: string; args: unknown }
 
 let queries: Q[] = []
 let rpcs: Rpc[] = []
+let pageResults: typeof result[] = []
 let result: { data: unknown; error: { message: string } | null } = { data: [], error: null }
 let rpcResult: { data: unknown; error: { message: string } | null } = { data: { ok: true }, error: null }
 
@@ -37,10 +38,10 @@ function builder(table: string) {
   const q: Q = { table, ops: [] }
   queries.push(q)
   const chain: Record<string, unknown> = {}
-  for (const m of ['select', 'eq', 'in', 'is', 'like', 'order', 'limit', 'delete']) {
+  for (const m of ['select', 'eq', 'in', 'is', 'like', 'order', 'limit', 'range', 'delete']) {
     chain[m] = (...args: unknown[]) => { q.ops.push([m, ...args]); return chain }
   }
-  chain.then = (res: (v: unknown) => unknown) => Promise.resolve(result).then(res)
+  chain.then = (res: (v: unknown) => unknown) => Promise.resolve(pageResults.shift() ?? result).then(res)
   return chain
 }
 
@@ -55,7 +56,7 @@ vi.mock('./supabase', () => ({
 }))
 
 const {
-  fetchProposals, publishProposal, dropProposal, compactEvidenceLine, evidenceLine, proposalTitle,
+  fetchProposals, publishProposal, passWeeklyProposal, dropProposal, compactEvidenceLine, evidenceLine, proposalTitle,
   rosterRole, seedNote, changedOverrides, editDraft, textField, shortDate,
   evidenceCategory, buyerReason, prerequisites, proposalEditDirty, proposalRefreshMayApply, topicChange,
   COLUMNS, PROPOSAL_KIND,
@@ -66,6 +67,7 @@ const { ProposalsList, ProposalRow, ProposalsView } = await import('../wb/conten
 beforeEach(() => {
   queries = []
   rpcs = []
+  pageResults = []
   result = { data: [], error: null }
   rpcResult = { data: { ok: true, already: false, table: 'client_ideas', id: 'i-1', ref: 'audn-rec:p-1' }, error: null }
 })
@@ -140,8 +142,9 @@ describe('the read is the contract', () => {
     // must never come back to a screen offering to approve it again.
     expect(queries[0].ops).toContainEqual(['is', 'approved_at', null])
     expect(queries[0].ops).toContainEqual(['is', 'sent_at', null])
-    expect(queries[0].ops).toContainEqual(['order', 'created_at', { ascending: true }])
-    expect(queries[0].ops).toContainEqual(['limit', 50])
+    expect(queries[0].ops).toContainEqual(['order', 'created_at', { ascending: false }])
+    expect(queries[0].ops).toContainEqual(['order', 'id', { ascending: false }])
+    expect(queries[0].ops).toContainEqual(['range', 0, 99])
   })
 
   it('scopes by the lane it was PASSED, never by anything it derived', async () => {
@@ -202,6 +205,7 @@ describe('publish — the one path to an idea bank', () => {
     for (const [code, phrase] of [
       ['unknown_client', 'no client registry row'],
       ['no_text', 'nothing to publish'],
+      ['proposal_rejected', 'This topic was passed on. Refresh to see current choices.'],
     ] as const) {
       rpcResult = { data: { ok: false, error: code }, error: null }
       await expect(publishProposal('risedtc', 'p-1')).rejects.toThrow(phrase)
@@ -514,5 +518,122 @@ describe('the three states, as they actually render', () => {
     const t = strip(listHtml([proposal()]))
     expect(t).not.toMatch(/\b(?=[A-Za-z0-9]{16}\b)(?=[A-Za-z0-9]*\d)[A-Za-z0-9]+\b/)
     expect(t).not.toMatch(/post_engagers|client_post_engagers|outreach_prospects/)
+  })
+})
+
+
+describe('weekly shortlist', () => {
+  beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date('2026-09-19T12:00:00Z')) })
+  afterEach(() => vi.useRealTimers())
+
+  function weekly(id: string, week: string, rank = 1): Proposal {
+    return proposal({ id, context: { audn: { title: id, format: 'text_post', weekly: {
+      week_start: week, slot: 'supported', rank, hook: 'The hidden cost of a rushed test.',
+      intended_response: 'Ask for the decision checklist.', why_now: 'A fresh buyer question exposed the gap.',
+      success_metric: 'Qualified replies after seven days.', evidence_confidence: 'medium',
+      confidence_reason: 'One direct source; no comparable post results.',
+      priority_reason: 'Matches the next buyer decision.',
+      learning: { recommendation_ids: ['prior-1'], explanation: 'The earlier recommendation was accepted; results are pending.' },
+    } }, source_rows: [{ id: 'founder:1', kind: 'founder', date: null, excerpt: 'The original founder observation.', limitations: ['Undated source.'] }] } })
+  }
+
+  it('puts the upcoming week first on weekends, ranks its picks, and folds older and legacy rows', () => {
+    const h = listHtml([proposal(), weekly('older pick', '2026-09-07'), weekly('second pick', '2026-09-21', 2), weekly('current pick', '2026-09-14'), weekly('first pick', '2026-09-21')])
+    const t = strip(h)
+    expect(t.indexOf('first pick')).toBeLessThan(t.indexOf('second pick'))
+    expect(t.indexOf('second pick')).toBeLessThan(t.indexOf('current pick'))
+    expect(h).toMatch(/<details class="a-prop-older"><summary>Older and undated recommendations · 2<\/summary>/)
+    expect(t.indexOf('current pick')).toBeLessThan(t.indexOf('Older and undated'))
+    expect(t).toContain('Upcoming week · 21 Sep 2026')
+    expect(t).toContain('This week · 14 Sep 2026')
+    expect(t).toContain('Week of 7 Sep 2026')
+  })
+
+  it('uses UTC weekdays, including the Friday/Saturday and Sunday/Monday boundaries', () => {
+    const rows = [weekly('current pick', '2026-09-14'), weekly('next pick', '2026-09-21')]
+    vi.setSystemTime(new Date('2026-09-18T23:59:59Z'))
+    expect(strip(listHtml(rows)).indexOf('current pick')).toBeLessThan(strip(listHtml(rows)).indexOf('next pick'))
+    vi.setSystemTime(new Date('2026-09-19T00:00:00Z'))
+    expect(strip(listHtml(rows)).indexOf('next pick')).toBeLessThan(strip(listHtml(rows)).indexOf('current pick'))
+    vi.setSystemTime(new Date('2026-09-21T00:00:00Z'))
+    const h = listHtml(rows)
+    expect(strip(h)).toContain('This week · 21 Sep 2026')
+    expect(strip(h).indexOf('next pick')).toBeLessThan(strip(h).indexOf('Older and undated'))
+    expect(strip(h).indexOf('Older and undated')).toBeLessThan(strip(h).indexOf('current pick'))
+  })
+
+  it('shows the package and learning while keeping confidence separate from future outcomes', () => {
+    const t = strip(rowHtml(weekly('pick', '2026-09-21')))
+    for (const value of ['Supported', 'text post', 'The hidden cost', 'Ask for the decision checklist', 'A fresh buyer question', 'Qualified replies after seven days', 'Evidence confidence', 'Medium', 'One direct source', 'Matches the next buyer decision', 'results are pending', 'prior-1']) expect(t).toContain(value)
+    expect(t).toContain('Evidence confidence describes source support, not the chance of success.')
+  })
+
+  it('keeps mixed-source evidence inspectable and says when its event date is unknown', () => {
+    const h = rowHtml(weekly('pick', '2026-09-21'))
+    const t = strip(h)
+    expect(t).toContain('Source evidence')
+    expect(t).toContain('founder')
+    expect(t).toContain('date not recorded')
+    expect(t).toContain('The original founder observation.')
+    expect(t).toContain('Undated source.')
+    expect(t).not.toContain('Observed competitor or buyer sources')
+  })
+
+  it('does not present legacy backlog as the upcoming shortlist', () => {
+    const t = strip(listHtml([proposal()]))
+    expect(t).toContain('No open picks for the upcoming week.')
+    expect(t).toContain('Older and undated recommendations · 1')
+    expect(t).toContain('Post the placement rule')
+  })
+})
+
+
+describe('retained weekly rejection', () => {
+  it('records the reason through the client-scoped decision RPC', async () => {
+    rpcResult = { data: { ok: true, already: false }, error: null }
+    await passWeeklyProposal('risedtc', 'p-1', 'Already covered this buyer question.')
+    expect(rpcs).toEqual([{ fn: 'audn_weekly_recommendation_decide', args: {
+      p_client_id: 'risedtc', p_proposal_id: 'p-1', p_reason: 'Already covered this buyer question.',
+    } }])
+    expect(queries).toEqual([])
+  })
+
+  it('refuses an empty reason without writing and surfaces server refusal', async () => {
+    await expect(passWeeklyProposal('risedtc', 'p-1', ' ')).rejects.toThrow(/reason/i)
+    expect(rpcs).toEqual([])
+    rpcResult = { data: { ok: false, error: 'not_found' }, error: null }
+    await expect(passWeeklyProposal('risedtc', 'p-1', 'Not relevant.')).rejects.toThrow(/gone|not_found/i)
+  })
+
+  it('hides retained rejections only for weekly rows while keeping legacy rows', async () => {
+    const legacy = proposal({ id: 'legacy', context: { weekly_decision: { decision: 'rejected', reason: 'Earlier note.' } } })
+    const rejected = proposal({ id: 'rejected', context: { audn: { weekly: { week_start: '2026-09-21' } }, weekly_decision: { decision: 'rejected', reason: 'Already covered.' } } })
+    result = { data: [rejected, legacy, proposal()], error: null }
+    const read = await fetchProposals('risedtc')
+    expect(read.ok && read.rows.map(row => row.id)).toEqual(['legacy', 'p-1'])
+  })
+})
+
+
+describe('complete proposal history', () => {
+  it('reads the next page even if the first page is entirely retained rejections', async () => {
+    const rejected = Array.from({ length: 100 }, (_, i) => proposal({ id: `rejected-${i}`, context: {
+      audn: { weekly: { week_start: '2026-09-21' } }, weekly_decision: { decision: 'rejected', reason: 'Already covered.' },
+    } }))
+    pageResults = [{ data: rejected, error: null }, { data: [proposal({ id: 'older' })], error: null }]
+    const read = await fetchProposals('ivan')
+    expect(read.ok && read.rows.map(row => row.id)).toEqual(['older'])
+    expect(queries).toHaveLength(2)
+    expect(queries[1].ops).toContainEqual(['range', 100, 199])
+    for (const query of queries) {
+      expect(query.ops).toContainEqual(['eq', 'client_id', 'ivan'])
+      expect(query.ops).toContainEqual(['is', 'approved_at', null])
+      expect(query.ops).toContainEqual(['order', 'id', { ascending: false }])
+    }
+  })
+
+  it('surfaces a failed later page instead of claiming the partial list is complete', async () => {
+    pageResults = [{ data: Array.from({ length: 100 }, () => proposal()), error: null }, { data: null, error: { message: 'page unavailable' } }]
+    expect(await fetchProposals('ivan')).toEqual({ ok: false, error: 'proposals: page unavailable' })
   })
 })

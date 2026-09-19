@@ -6,10 +6,9 @@
    counts. Deciding it anywhere else would mean deciding it away from its
    proof.
 
-   This is the FIRST audience surface that writes, and it writes exactly two
-   things: an approve (a database function that copies the proposal into the
-   lane's idea bank) and a drop (a DELETE). The strategy sections above stay
-   the only writer of strategy text; nothing here touches them.
+   This surface approves a proposal into the lane's idea bank, retains a
+   weekly pass with its reason, or deletes a legacy proposal. The strategy
+   sections above stay the only writer of strategy text; nothing here touches them.
 
    What the surface refuses to do:
 
@@ -32,8 +31,8 @@ import { CalmEmpty, Failed } from './parts'
 import { useConfirm } from '../chrome/ConfirmSheet'
 import {
   buyerReason, changedOverrides, compactEvidenceLine, dropProposal, editDraft, evidenceCategory,
-  evidenceLine, fetchProposals, prerequisites, proposalTitle, proposedAt, publishProposal, rosterRole,
-  proposalEditDirty, proposalRefreshMayApply, seedNote, textField, topicChange, TEXT_FIELDS,
+  evidenceLine, fetchProposals, prerequisites, proposalTitle, proposedAt, publishProposal, passWeeklyProposal, rosterRole,
+  proposalEditDirty, proposalRefreshMayApply, seedNote, shortDate, textField, topicChange, TEXT_FIELDS,
   type FounderSourceRow, type Proposal, type SourceRow, type TextOverrides,
 } from '../../lib/proposals'
 import type { ContentLane } from '../../lib/content'
@@ -89,23 +88,29 @@ function safeSourceHref(url: string | null | undefined): string | null {
 
 function SourceLink({ s }: { s: SourceRow }) {
   const label = [
+    s.kind?.replace(/_/g, ' '),
     s.author?.trim() || s.id || 'unattributed',
-    s.date?.trim() || null,
+    s.date?.trim() || 'date not recorded',
     typeof s.reactions === 'number' ? `${s.reactions} reactions` : null,
     typeof s.comments === 'number' ? `${s.comments} comment${s.comments === 1 ? '' : 's'}` : null,
     typeof s.shares === 'number' ? `${s.shares} share${s.shares === 1 ? '' : 's'}` : null,
   ].filter(Boolean).join(' · ')
   const href = safeSourceHref(s.url)
-  if (!href) {
-    return <span className="a-prop-src a-dim">{label}</span>
-  }
+  const limits = Array.isArray(s.limitations) ? s.limitations.join(' ') : s.limitations
   return (
-    <a className="a-prop-src" href={href} target="_blank" rel="noreferrer">{label}</a>
+    <div className="a-prop-founder-src">
+      {href
+        ? <a className="a-prop-src" href={href} target="_blank" rel="noreferrer">{label}</a>
+        : <span className="a-prop-src a-dim">{label}</span>}
+      {s.location && !href ? <span className="a-ct-sub">{s.location}</span> : null}
+      {s.excerpt ? <span className="a-prop-v">{s.excerpt}</span> : null}
+      {limits ? <span className="a-ct-sub">{limits}</span> : null}
+    </div>
   )
 }
 
 function FounderSource({ s }: { s: FounderSourceRow }) {
-  const label = [s.author?.trim(), s.date?.trim(), s.id?.trim()].filter(Boolean).join(' · ') || 'Unattributed founder source'
+  const label = [s.author?.trim(), s.date?.trim() || 'date not recorded', s.id?.trim()].filter(Boolean).join(' · ') || 'Unattributed founder source'
   const href = safeSourceHref(s.url)
   const text = s.text?.trim()
   return (
@@ -130,17 +135,19 @@ export function ProposalRow({ p, onApprove, onDrop, onDirtyChange }: {
   p: Proposal
   /** Resolves to the receipt line when the write landed, or throws. */
   onApprove: (p: Proposal, overrides: TextOverrides) => Promise<Receipt>
-  onDrop: (p: Proposal) => Promise<void>
+  onDrop: (p: Proposal, reason?: string) => Promise<void>
   onDirtyChange?: (id: string, dirty: boolean) => void
 }) {
   // ---- hooks, all of them, before any branch ------------------------------
   const [editing, setEditing] = useState(false)
+  const [passing, setPassing] = useState(false)
+  const [passReason, setPassReason] = useState('')
   const [draft, setDraft] = useState<TextOverrides>(() => editDraft(p))
   const [busy, setBusy] = useState<null | 'approve' | 'drop'>(null)
   const [error, setError] = useState<string | null>(null)
   const [receipt, setReceipt] = useState<Receipt | null>(null)
   const confirm = useConfirm()
-  const dirty = proposalEditDirty(p, draft, editing, receipt !== null)
+  const dirty = proposalEditDirty(p, draft, editing, receipt !== null) || (passing && passReason.trim() !== '')
 
   useEffect(() => {
     onDirtyChange?.(p.id, dirty)
@@ -169,26 +176,31 @@ export function ProposalRow({ p, onApprove, onDrop, onDirtyChange }: {
   }, [draft, editing, onApprove, p])
 
   const drop = useCallback(async () => {
-    const ok = await confirm({
-      title: 'Delete this proposal?',
-      message: 'It is deleted, not archived.',
-      confirmText: 'Delete it',
-      danger: true,
-    })
-    if (!ok) return
+    if (p.context?.audn?.weekly) {
+      if (!passReason.trim()) return
+    } else {
+      const ok = await confirm({
+        title: 'Delete this proposal?',
+        message: 'It is deleted, not archived.',
+        confirmText: 'Delete it',
+        danger: true,
+      })
+      if (!ok) return
+    }
     setBusy('drop')
     setError(null)
     try {
-      await onDrop(p)
+      await onDrop(p, p.context?.audn?.weekly ? passReason.trim() : undefined)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'The drop did not go through.')
+      setError(e instanceof Error ? e.message : 'The decision did not go through.')
     } finally {
       setBusy(null)
     }
-  }, [confirm, onDrop, p])
+  }, [confirm, onDrop, p, passReason])
 
   // ---- the row ------------------------------------------------------------
   const audn = p.context?.audn ?? null
+  const weekly = audn?.weekly
   const sources = p.context?.source_rows ?? []
   const seed = seedNote(p)
   const at = proposedAt(p)
@@ -217,11 +229,12 @@ export function ProposalRow({ p, onApprove, onDrop, onDirtyChange }: {
         titleWrap
         meta={
           <span className="a-prop-meta">
+            {weekly?.week_start ? `Week of ${shortDate(weekly.week_start)} ${weekly.week_start.slice(0, 4)} · ` : ''}
             {at ? `proposed ${relAge(at)}` : 'proposed date not recorded'}
             {seed ? <> · {seed}</> : null}
           </span>
         }
-        tail={<Badge tone="neutral" variant="ring">{rosterRole(p)}</Badge>}
+        tail={<Badge tone="neutral" variant="ring">{weekly?.slot ? `${weekly.slot[0].toUpperCase()}${weekly.slot.slice(1)}` : rosterRole(p)}</Badge>}
       />
 
       {editing ? (
@@ -252,14 +265,36 @@ export function ProposalRow({ p, onApprove, onDrop, onDirtyChange }: {
         </div>
       )}
 
+      {weekly ? (
+        <div className="a-prop-body">
+          {[
+            ['Hook', weekly.hook],
+            ['Format', audn?.format?.replace(/_/g, ' ')],
+            ['Why now', weekly.why_now],
+            ['Intended response', weekly.intended_response],
+            ['Success metric', weekly.success_metric],
+          ].map(([label, value]) => (
+            <div className="a-prop-f" key={label}>
+              <span className="a-eyebrow">{label}</span>
+              <span className="a-prop-v">{value?.trim() || 'Not stated.'}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       <div className="a-prop-evidence-head">
         <div className="a-prop-f">
           <span className="a-eyebrow">Buyer reason</span>
           <span className="a-prop-v">{buyerReason(p)}</span>
         </div>
         <div className="a-prop-f">
-          <span className="a-eyebrow">Evidence category</span>
-          <span className="a-prop-v">{evidenceCategory(p)}</span>
+          <span className="a-eyebrow">{weekly ? 'Evidence confidence' : 'Evidence category'}</span>
+          <span className="a-prop-v">{weekly
+            ? weekly.evidence_confidence
+              ? `${weekly.evidence_confidence[0].toUpperCase()}${weekly.evidence_confidence.slice(1)} · ${weekly.confidence_reason?.trim() || 'Reason not stated.'}`
+              : 'Not stated.'
+            : evidenceCategory(p)}</span>
+          {weekly ? <span className="a-ct-sub">Evidence confidence describes source support, not the chance of success.</span> : null}
         </div>
         <div className="a-prop-ev">Observed source record · {compactEvidenceLine(p) || 'source count and dates not stated'}</div>
         <div className="a-prop-f">
@@ -271,9 +306,23 @@ export function ProposalRow({ p, onApprove, onDrop, onDirtyChange }: {
       <details className="a-prop-details">
         <summary>Review evidence and topic history</summary>
         <div className="a-prop-detail-body">
+          {weekly ? <>
+            <div className="a-prop-f">
+              <span className="a-eyebrow">Editorial priority</span>
+              <span className="a-prop-v">{weekly.priority_reason?.trim() || 'Reason not stated.'}</span>
+              <span className="a-ct-sub">Order reflects editorial priority; performance is not predicted.</span>
+            </div>
+            <div className="a-prop-f">
+              <span className="a-eyebrow">Learning from earlier recommendations</span>
+              <span className="a-prop-v">{weekly.learning?.explanation?.trim() || 'No prior learning recorded.'}</span>
+              {weekly.learning?.recommendation_ids?.length
+                ? <span className="a-ct-sub">Prior recommendation references: {weekly.learning.recommendation_ids.join(', ')}</span>
+                : null}
+            </div>
+          </> : null}
           {sources.length > 0 ? (
             <div className="a-prop-f">
-              <span className="a-eyebrow">Observed competitor or buyer sources</span>
+              <span className="a-eyebrow">Source evidence</span>
               <div className="a-prop-srcs">
                 {sources.map((s, i) => <SourceLink key={s.id ?? i} s={s} />)}
               </div>
@@ -353,7 +402,16 @@ export function ProposalRow({ p, onApprove, onDrop, onDirtyChange }: {
 
       {error && <div className="a-ct-sub a-sev-urgent a-prop-err">{error}</div>}
 
-      <div className="a-prop-acts">
+      {passing ? (
+        <div className="a-prop-editor">
+          <EditField label="Why pass on this?" value={passReason} onChange={setPassReason} />
+          <div className="a-ct-sub">Required. This reason is retained to improve future recommendations.</div>
+          <div className="a-prop-acts">
+            <Button variant="primary" size="sm" busy={busy === 'drop'} disabled={busy !== null || !passReason.trim()} onClick={() => { void drop() }}>Save reason</Button>
+            <Button variant="quiet" size="sm" disabled={busy !== null} onClick={() => setPassing(false)}>Cancel</Button>
+          </div>
+        </div>
+      ) : <div className="a-prop-acts">
         <Button
           variant="primary"
           size="sm"
@@ -377,11 +435,11 @@ export function ProposalRow({ p, onApprove, onDrop, onDirtyChange }: {
           size="sm"
           busy={busy === 'drop'}
           disabled={busy !== null}
-          onClick={() => { void drop() }}
+          onClick={() => { if (weekly) setPassing(true); else void drop() }}
         >
-          Delete
+          {weekly ? 'Pass on this' : 'Delete'}
         </Button>
-      </div>
+      </div>}
     </div>
   )
 }
@@ -391,7 +449,7 @@ export function ProposalRow({ p, onApprove, onDrop, onDirtyChange }: {
 export function ProposalsList({ rows, onApprove, onDrop, onDirtyChange }: {
   rows: Proposal[]
   onApprove: (p: Proposal, overrides: TextOverrides) => Promise<Receipt>
-  onDrop: (p: Proposal) => Promise<void>
+  onDrop: (p: Proposal, reason?: string) => Promise<void>
   onDirtyChange?: (dirty: boolean) => void
 }) {
   const dirtyIds = useRef(new Set<string>())
@@ -401,17 +459,40 @@ export function ProposalsList({ rows, onApprove, onDrop, onDirtyChange }: {
     onDirtyChange?.(dirtyIds.current.size > 0)
   }, [onDirtyChange])
 
+  // Use UTC, matching the writer and commit RPC. Weekends prepare next Monday.
+  const now = new Date()
+  const day = now.getUTCDay()
+  const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - (day + 6) % 7))
+  const current = monday.toISOString().slice(0, 10)
+  monday.setUTCDate(monday.getUTCDate() + 7)
+  const upcoming = monday.toISOString().slice(0, 10)
+  const weekend = day === 0 || day === 6
+  const weeks = weekend ? [upcoming, current] : [current, upcoming]
+  const older = rows.filter(p => !weeks.includes(p.context?.audn?.weekly?.week_start ?? ''))
+    .sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? ''))
+  const renderRow = (p: Proposal) => (
+    <ProposalRow key={p.id} p={p} onApprove={onApprove} onDrop={onDrop} onDirtyChange={rowDirty} />
+  )
+
   return (
     <>
-      {rows.map(p => (
-        <ProposalRow
-          key={p.id}
-          p={p}
-          onApprove={onApprove}
-          onDrop={onDrop}
-          onDirtyChange={rowDirty}
-        />
-      ))}
+      {weeks.map((week, index) => {
+        const picks = rows.filter(p => p.context?.audn?.weekly?.week_start === week)
+          .sort((a, b) => (a.context?.audn?.weekly?.rank ?? Infinity) - (b.context?.audn?.weekly?.rank ?? Infinity))
+        if (!picks.length && index > 0) return null
+        return (
+          <section className="a-prop-week" key={week} aria-label={`${week === current ? 'This' : 'Upcoming'} week · ${week}`}>
+            <h3 className="a-eyebrow">{week === current ? 'This week' : 'Upcoming week'} · {shortDate(week)} {week.slice(0, 4)}</h3>
+            {picks.length ? picks.map(renderRow) : <div className="a-ct-sub">No open picks for {week === current ? 'this' : 'the upcoming'} week.</div>}
+          </section>
+        )
+      })}
+      {older.length ? (
+        <details className="a-prop-older">
+          <summary>Older and undated recommendations · {older.length}</summary>
+          {older.map(renderRow)}
+        </details>
+      ) : null}
     </>
   )
 }
@@ -435,7 +516,7 @@ export function ProposalsView({ lane, state, loadedAt, onRetry, onApprove, onDro
   loadedAt: string | null
   onRetry?: () => void
   onApprove: (p: Proposal, overrides: TextOverrides) => Promise<Receipt>
-  onDrop: (p: Proposal) => Promise<void>
+  onDrop: (p: Proposal, reason?: string) => Promise<void>
   onDirtyChange?: (dirty: boolean) => void
 }) {
   const stamp = <span className="a-dim a-mono">{lane} · read {relAge(loadedAt)}</span>
@@ -489,9 +570,9 @@ export function ProposalsView({ lane, state, loadedAt, onRetry, onApprove, onDro
       pad
     >
       <div className="a-ct-sub">
-        Written weekly from the retained competitor source records. Send to ideas puts one
-        in this lane’s idea bank, where it joins the normal idea flow; Delete removes
-        it for good. Nothing is published from here.
+        Written weekly from available source evidence. Send to ideas puts one
+        in this lane’s idea bank. Pass on this saves your reason for the next review.
+        Nothing is published from here.
       </div>
       <ProposalsList rows={state.rows} onApprove={onApprove} onDrop={onDrop} onDirtyChange={onDirtyChange} />
     </Group>
@@ -559,7 +640,12 @@ export function ProposalsBlock({ lane, onDirtyChange, refreshKey }: {
     }
   }, [lane])
 
-  const onDrop = useCallback(async (p: Proposal) => {
+  const onDrop = useCallback(async (p: Proposal, reason?: string) => {
+    if (p.context?.audn?.weekly) {
+      await passWeeklyProposal(lane, p.id, reason ?? '')
+      setRows(cur => (cur ?? []).filter(r => r.id !== p.id))
+      return
+    }
     const { deleted } = await dropProposal(p.id)
     if (deleted === 0) {
       // Nothing was removed, and the open guard is the usual reason: it was
@@ -567,7 +653,7 @@ export function ProposalsBlock({ lane, onDirtyChange, refreshKey }: {
       throw new Error('Nothing was deleted. It may have been approved already. Refresh to see.')
     }
     setRows(cur => (cur ?? []).filter(r => r.id !== p.id))
-  }, [])
+  }, [lane])
 
   const state: ProposalsState =
     loading && rows === null && !error ? { kind: 'loading' }
