@@ -619,7 +619,7 @@ function StandardPendingCard({ draft, refresh, feed, onGateResult }: {
     ? 'Posts from your own Slack account, not the app. What you approve is exactly what Davorin reads.'
     : isWeekly
       ? weeklyDispatches
-        ? 'Read the page first. Both messages below go out as written — the section markers and the reference footer are stripped before sending.'
+        ? 'Read the page first. Both messages below go out as written: the section markers and the reference footer are stripped before sending.'
         : 'Read the page first. Edit this message, then copy it and send it yourself.'
       : isComment
         ? (isCloseOnly

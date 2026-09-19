@@ -196,7 +196,7 @@ function LaneTable({ ch }: { ch: CcChannel }) {
     stock: num(l.eligible_stock),
     exec: l.executable_now
       ? <span className="a-sev-clear">yes</span>
-      : <span className="a-dim a-cc-wrap">no — {(l.executable_reasons ?? []).join('; ') || 'no reason given'}</span>,
+      : <span className="a-dim a-cc-wrap">no: {(l.executable_reasons ?? []).join('; ') || 'no reason given'}</span>,
   }))
   const columns: Array<TableColumn<LaneTableRow>> = [
     { id: 'lane', header: 'Source lane', cell: r => r.lane },
@@ -329,7 +329,7 @@ function ControlSummary({ c, liveness, asOf, staleMinutes, selected, onOpen }: {
         }
         sub={staleMinutes === null
           ? c.status_reason
-          : `The monitor has not reported in for ${staleMinutes} minutes; these figures may be out of date. Payload said: ${STATUS_WORD[c.status].toLowerCase()} — ${c.status_reason}`}
+          : `The monitor has not reported in for ${staleMinutes} minutes; these figures may be out of date. Payload said: ${STATUS_WORD[c.status].toLowerCase()}, ${c.status_reason}`}
         subWrap
         tail={
           <span className="a-cc-tail">
@@ -365,11 +365,11 @@ function ControlPanel({ c, payload, asOf }: { c: CcClient; payload: CcPayload; a
   const incidents = c.incidents ?? []
   return (
         <div className="a-cc-panel">
-          <div className="a-eyebrow a-cc-sublabel">{c.label} — detail</div>
+          <div className="a-eyebrow a-cc-sublabel">{c.label}, detail</div>
           <Ledger>
             <ChannelCard ch={inv} title="Invitations today" note="invitations only" />
-            <ChannelCard ch={c.dm} title="DMs today" note="messages after an accept — never added to invitations" />
-            <ChannelCard ch={c.inmail} title="InMail today" note="paid/open-profile knocks — never added to invitations" />
+            <ChannelCard ch={c.dm} title="DMs today" note="messages after an accept, never added to invitations" />
+            <ChannelCard ch={c.inmail} title="InMail today" note="paid/open-profile knocks, never added to invitations" />
           </Ledger>
           <SupplyBlock ch={inv} />
           <SessionBlock ch={inv} closed={closed} asOf={asOf} />
@@ -552,7 +552,7 @@ export function DeliverySection({ cc, timeframe, range, client }: {
       <Section label="Delivery" tail={timeframe} wrapTail>
         <div className="a-sends-empty">
           {timeframe === 'custom'
-            ? 'custom range not in this snapshot — run build --custom'
+            ? 'custom range not in this snapshot: run build --custom'
             : `no ${timeframe} interval in this snapshot`}
         </div>
       </Section>
@@ -627,7 +627,7 @@ export function DeliverySection({ cc, timeframe, range, client }: {
       </div>
       <div className="a-sends-cap">
         Confirmed sends only. Invitations attempted {disclosure.attempted}, of which {disclosure.failed} failed and {disclosure.phantom} were phantom rows that never left the seat. Invitations, DMs and InMail are never combined into one total.
-        {' '}A cohort shown as "n of m first messaged" or "n of m invited" has no matured denominator in this snapshot — maturity is not tracked for it, so no rate is shown.
+        {' '}A cohort shown as "n of m first messaged" or "n of m invited" has no matured denominator in this snapshot: maturity is not tracked for it, so no rate is shown.
       </div>
 
       {lanes.length > 0 && (
@@ -663,7 +663,7 @@ export function DeliverySection({ cc, timeframe, range, client }: {
 
       {todayRows.length > 0 && (
         <div className="a-cc-block">
-          <div className="a-eyebrow a-cc-sublabel">Today, a partial day — never compared</div>
+          <div className="a-eyebrow a-cc-sublabel">Today, a partial day, never compared</div>
           <span className="a-meta a-cc-wrap">
             {todayRows.map(r => (
               <span key={`${r.client_id}:${r.channel}`}>
@@ -716,7 +716,7 @@ function RecurrenceRow({ item, payload }: { item: CcRecurrenceItem; payload: CcP
       )}
       <div className="a-meta">
         Cause confidence {cc?.value === null || cc?.value === undefined ? 'unknown' : cc.value}
-        {cc?.meaning ? <> — {cc.meaning}</> : null}
+        {cc?.meaning ? <>: {cc.meaning}</> : null}
         <Sep />{num(cc?.supporting_independent_events)} supporting independent events
       </div>
       <div className="a-meta">
@@ -725,7 +725,7 @@ function RecurrenceRow({ item, payload }: { item: CcRecurrenceItem; payload: CcP
       </div>
       <div className="a-body-t">
         {item.withheld
-          ? <>Repair withheld — {item.withheld_reason ?? 'no reason recorded'}</>
+          ? <>Repair withheld: {item.withheld_reason ?? 'no reason recorded'}</>
           : <>Recommended repair: {item.recommended_fix ?? 'none recorded'}</>}
       </div>
       <div className="a-meta">
@@ -785,7 +785,7 @@ export function RecurrenceSection({ cc }: { cc: CcState | null }) {
     <Section wrapTail label="Recurring problems" tail={<span className="a-mono">as of {r.as_of ?? '—'}</span>}>
       <div className="a-sends-cap">
         Weekly result: <b>{r.weekly?.result ?? 'unknown'}</b>
-        {r.weekly?.reason ? ` — ${r.weekly.reason}` : ''}
+        {r.weekly?.reason ? `: ${r.weekly.reason}` : ''}
         {r.weekly?.provisional ? ' (provisional)' : ''}
       </div>
       {items.length === 0

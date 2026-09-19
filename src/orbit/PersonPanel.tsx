@@ -94,7 +94,7 @@ export function PersonPanel({ person, tenant, lanes, onClose }: PersonPanelProps
       const r = await queueInvite(tenant, person.pid)
       if (!r.ok) { setQueueNote(`Blocked: ${r.blocker}`) }
       else {
-        setQueueNote(r.remaining.ok ? 'Queued — clears every sender gate now.' : `Queued. Still blocked: ${r.remaining.blockers.join('; ')}`)
+        setQueueNote(r.remaining.ok ? 'Queued, clears every sender gate now.' : `Queued. Still blocked: ${r.remaining.blockers.join('; ')}`)
         await refetchRow(person.pid)
       }
     } catch (e) {
@@ -107,7 +107,7 @@ export function PersonPanel({ person, tenant, lanes, onClose }: PersonPanelProps
     setBusy('skip'); setSkipNote(null)
     try {
       await skipAction(tenant, person.pid)
-      setSkipNote(tenant === 'ivan' ? 'Removed from the send line.' : 'Skipped — the sender now excludes this row.')
+      setSkipNote(tenant === 'ivan' ? 'Removed from the send line.' : 'Skipped, the sender now excludes this row.')
       await refetchRow(person.pid)
     } catch (e) {
       setSkipNote(e instanceof Error ? e.message : 'Could not skip this.')
@@ -144,7 +144,7 @@ export function PersonPanel({ person, tenant, lanes, onClose }: PersonPanelProps
                   {[person.ti, person.c].filter(Boolean).join(' · ') || 'No headline on file'}
                 </div>
                 <div className="a-orbit-panel-sub">
-                  ICP {person.i ?? '—'} · {laneRow?.name ?? (person.pid ? 'campaign unknown' : 'no campaign — content touch only')}
+                  ICP {person.i ?? '—'} · {laneRow?.name ?? (person.pid ? 'campaign unknown' : 'no campaign, content touch only')}
                 </div>
                 {person.nr && person.nrw ? (
                   <div className="a-orbit-panel-nr" data-bucket={person.nr}>{person.nrw}</div>
@@ -171,7 +171,7 @@ export function PersonPanel({ person, tenant, lanes, onClose }: PersonPanelProps
 
               <section className="a-orbit-actions">
                 <div className="a-orbit-action">
-                  <div className="a-orbit-action-effect">Open thread — jumps to the DM conversation. Read-only, writes nothing.</div>
+                  <div className="a-orbit-action-effect">Open thread: jumps to the DM conversation. Read-only, writes nothing.</div>
                   <Chip tone="neutral" onClick={person.pid ? openThread : undefined}>
                     {person.pid ? 'Open thread' : 'No thread yet'}
                   </Chip>

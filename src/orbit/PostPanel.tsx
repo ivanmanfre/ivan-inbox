@@ -88,7 +88,7 @@ export function PostPanel({ post, tenant, people, contentEdges, onClose, onOpenP
 
               <section className="a-orbit-action">
                 <div className="a-orbit-action-effect">
-                  Queue every unreached engager at ICP ≥ 7 — {queueCandidates.length} row{queueCandidates.length === 1 ? '' : 's'}. {queueInviteEffect(tenant)}
+                  Queue every unreached engager at ICP ≥ 7, {queueCandidates.length} row{queueCandidates.length === 1 ? '' : 's'}. {queueInviteEffect(tenant)}
                   {excludedNoProspect.length > 0
                     ? ` ${excludedNoProspect.length} more clear ICP but have no prospect row yet — open their panel and use Add to lane first.`
                     : ''}

@@ -62,12 +62,20 @@
 .a-sends-h-s{
   font-size:var(--ds-fs-meta);
   line-height:var(--ds-lh-meta);
-  color:var(--ds-text-4);
+  color:var(--ds-text-3);
   display:flex;
   align-items:center;
   gap:var(--ds-s2);
   white-space:nowrap;
 }
+/* The one word in that run that is a LIVE signal takes the severity's ink form,
+   so it still reads as a warning on the light ladder. */
+.a-sends-h-s .a-sev-attention{ color:var(--ds-sev-attention-ui) }
+/* R2: the caption that explains the section's own state ("Degraded sources: …",
+   the stale-monitor line) belongs TO the label above it, not to the instrument
+   below. The section stacks at --ds-s5, so the first caption pulls back to the
+   --ds-s3 that makes it one block with the label. */
+.a-sends-h + .a-sends-cap{ margin-block-start:calc(var(--ds-s3) - var(--ds-s5)) }
 /* The caption under a table: an explainer, never a figure. */
 .a-sends-cap{
   font-size:var(--ds-fs-meta);
@@ -593,12 +601,33 @@
   box-shadow:inset 0 0 0 1px var(--ds-line); border-radius:var(--ds-r2);
   color:var(--ds-text-3);
 }
+/* R2 · THE CONTROL LIST IS A LIST. Its three rows sat bare on the canvas, so
+   the selected seat painted as a full-bleed square-cornered accent slab across
+   the whole plate. On the grouped surface every other list in this app uses —
+   one hairline edge, one radius, clipped — the selection becomes a row inside a
+   list again, and the hairline between rows is the list's own. */
+.a-sends-sec > .a-rows:has(> .a-cc-row){
+  background:var(--ds-surface-1);
+  box-shadow:inset 0 0 0 1px var(--ds-line);
+  border-radius:var(--ds-r4);
+  overflow:hidden;
+}
+
+/* The three lines under the seat's name are a LADDER, not one block of grey:
+   the reason is the sentence (`.a-row-sub` is already --ds-text-2), the next
+   action is the instruction behind it, and the status crumbs are the receipt. */
+.a-cc-next{ color:var(--ds-text-3) }
+.a-cc-meta > .a-sends-nb,
+.a-cc-meta > .a-sep{ color:var(--ds-text-4) }
+
 .a-cc-tail{ display:flex; flex-direction:column; align-items:flex-end; gap:0; min-width:0 }
 .a-cc-meta{ display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--ds-s2); min-width:0 }
+/* R2: the rule that separated this panel from the bare rows above it is the
+   list card's own bottom edge now, so the panel is an open block under it and
+   its content lines up with that card rather than sitting one inset in. */
 .a-cc-panel{
   display:flex; flex-direction:column; gap:var(--ds-s4);
-  padding:var(--ds-s4) var(--ds-s4) var(--ds-s5);
-  border-block-start:1px solid var(--ds-line); min-width:0;
+  padding:var(--ds-s0); min-width:0;
 }
 .a-cc-block{ display:flex; flex-direction:column; gap:var(--ds-s2); min-width:0 }
 .a-cc-sub{ display:block }

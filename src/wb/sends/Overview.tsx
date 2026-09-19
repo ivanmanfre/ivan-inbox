@@ -256,7 +256,7 @@ function Hero({ accept, governor, pipeline, replacement, client, cc }: {
           <span className="a-cell-n a-cc-wrap">
             {confirmed
               ? `≤72 h, of ${sent7} matured · confirmed invitations`
-              : 'message rows — includes refused attempts; unverified'}
+              : 'message rows: includes refused attempts; unverified'}
           </span>
         </Cell>
         {/* Governor */}
@@ -489,7 +489,7 @@ function Funnel({ accept, scans, outcomes, viewedBack, client, cc }: {
       <div className="a-sends-cap">
         {paired
           ? `Invites = confirmed invitations (Run 01 definition). Accepted = accepted within 72 h, of ${cohort7!.matured} matured invitations — the rate is over that denominator, not over the count beside it. Convos and Calls below are still legacy message rows; unverified.`
-          : 'Invites and Accepted = message rows — includes refused attempts; unverified. Convos and Calls likewise.'}
+          : 'Invites and Accepted = message rows: includes refused attempts; unverified. Convos and Calls likewise.'}
       </div>
       <div className="a-sends-cap">
         Era totals · convos {convosTotal} · calls {callsTotal} · convos = replied at least once, optouts excluded.
@@ -497,7 +497,7 @@ function Funnel({ accept, scans, outcomes, viewedBack, client, cc }: {
       <div className="a-sends-cap">
         {cohort30 && confirmed30 !== null
           ? <>30d · confirmed invitations {confirmed30} · accepted ≤72 h {cohort30.accepted}/{cohort30.matured} matured {cohort30.rate === null ? '(—)' : `(${cohort30.rate}%)`}</>
-          : <>30d · accepted {acc30}/{sent30} — message rows, unverified</>}
+          : <>30d · accepted {acc30}/{sent30}, message rows, unverified</>}
         {' · '}scan opens 7d {opens7} / 30d {opens30} · {distinct} prospects{lastOpen ? ` · last ${ago(lastOpen)}` : ''} (legacy)
       </div>
       {(inv7 > 0 || inv30 > 0) && (
@@ -629,7 +629,7 @@ function DayLedger({ rows, client, timeframe, cc }: { rows: LedgerRow[]; client:
       <div className="a-sends-cap">
         {cc
           ? 'Invites = confirmed invitations (Run 01 definition), taken from the operator payload.'
-          : 'Invites = message rows — includes refused attempts; unverified.'}
+          : 'Invites = message rows: includes refused attempts; unverified.'}
         {' '}Cap = the seat's counter, spent before the provider answers; when it runs ahead of Invites those slots went to refused sends. Accepted is of that day's invites and only rises.
       </div>
     </Section>
@@ -739,7 +739,7 @@ function KpiRow({ lanes, daily, client, timeframe, range, cc }: {
                 {lane.key === 'connection_note' && (
                   <> <Sep />{confirmed !== null
                     ? 'confirmed invitations (Run 01 definition)'
-                    : 'message rows — includes refused attempts; unverified'}</>
+                    : 'message rows: includes refused attempts; unverified'}</>
                 )}
               </span>
             </Row>
