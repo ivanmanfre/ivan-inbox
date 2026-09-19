@@ -395,15 +395,17 @@
      counts land after the fetch so the bar grew under the thumb. It wraps
      instead, which is the call the content bars already made: nothing is
      hidden and nothing overflows. */
+  /* ELEVATION (2026-09-20): the wider chip padding pushed "+ Filter" onto a
+     second row. The bar is ONE row that scrolls sideways, the way a phone
+     app's filter strip does: nothing hidden, nothing wrapped, the fold kept. */
   .a-dms > .a-bar{
-    flex-wrap:wrap; overflow-x:visible; overflow-y:visible; row-gap:var(--ds-s2);
-    padding-inline:var(--ds-s3);
+    flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden;
+    scrollbar-width:none; -webkit-overflow-scrolling:touch;
+    padding-inline:var(--ds-gutter);
+    scroll-padding-inline:var(--ds-gutter);
   }
-  .a-dms > .a-bar > *{ flex-shrink:1; min-width:0 }
-  /* The six of them fit ONE row once the inline padding comes off (the 44px
-     floor is a min-width, so no chip gets smaller than a thumb). Two rows of
-     chips would have handed the fold back what W2-10 just won for the list. */
-  .a-dms > .a-bar [data-ds='Chip']{ padding-inline:var(--ds-s2) }
+  .a-dms > .a-bar::-webkit-scrollbar{ display:none }
+  .a-dms > .a-bar > *{ flex:0 0 auto }
 }
 
 /* --------------------------------------------------------------------------
