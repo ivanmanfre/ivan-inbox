@@ -30,6 +30,7 @@ import {
   shapeLine, shownTests, testCopy, themeLine, widerLine, widerNote, widerTitle,
   type MarketOffer, type MarketRead, type MarketReadout,
 } from '../../../lib/markets'
+import { OutliersBlock } from './OutliersBlock'
 import '../content.css'
 import './markets.css'
 
@@ -388,5 +389,10 @@ export function MarketsView({ lane }: { lane: string }) {
   }, [lane, tick])
 
   const retry = useCallback(() => setTick(t => t + 1), [])
-  return <MarketsPanel read={read} onRetry={retry} />
+  return (
+    <>
+      <MarketsPanel read={read} onRetry={retry} />
+      {read && read.kind === 'ready' ? <OutliersBlock lane={lane} /> : null}
+    </>
+  )
 }
