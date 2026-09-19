@@ -225,15 +225,17 @@
    share the bar, so the count takes the badge's own smallest form here: the
    phone's 10px badge size, a hairline of padding, and the tab's top-right
    corner. Nothing is dropped and no number changes. */
-.a-tabs .ds-tab-count{
+.a-tabs .ds-tab-count,
+.ds-tabbar .ds-tab-count{
   top:var(--ds-s0);
   right:var(--ds-s0);
 }
-.a-tabs .ds-tab-count .ds-badge{
+.a-tabs .ds-tab-count .ds-badge,
+.ds-tabbar .ds-tab-count .ds-badge{
   min-width:var(--ds-s5);
   height:var(--ds-s5);
   padding:0 var(--ds-s1);
-  font-size:var(--ds-fs-badge, var(--ds-fs-tab));
+  font-size:var(--ds-fs-tab);
   box-shadow:0 0 0 2px var(--ds-canvas);
 }
 

@@ -225,3 +225,18 @@
 .a-thread > .a-head{ flex-wrap:wrap; row-gap:var(--ds-s2) }
 .a-thread > .a-head > .a-head-t{ flex:1 1 14rem }
 .a-thread > .a-head > .a-head-tail{ margin-inline-start:auto }
+
+/* ELEVATION (2026-09-20) · THE PHONE HEAD DOES NOT SPEND A LINE ON ONE PILL.
+   The wrap above is the desktop's, and it is right there: at 1440 with the list
+   open the pane is ~704px and the head's four marks genuinely need their own
+   line. At 390 the head carries exactly ONE of them (the markup drops Draft,
+   Ask Claude and the close below 768), and it was still taking a whole 56px
+   band to park "copy chat" alone under the name. Back arrow, face, the one pill
+   and their gaps are 212px, which leaves 178 for a title that measures 160 —
+   so they share the line, and the predicate under the name is the only thing
+   that ever has to ellipsise. */
+@media (max-width:767px){
+  .a-thread > .a-head{ flex-wrap:nowrap }
+  .a-thread > .a-head > .a-head-t{ flex:1 1 0; min-width:9ch }
+  .a-thread > .a-head > .a-head-tail{ flex:0 0 auto }
+}

@@ -409,9 +409,11 @@
 .a-cell[data-interactive]:active{ background:var(--ds-surface-3) }
 .a-cell[data-on]{ background:var(--ds-accent-soft) }
 /* ELEVATION · NO BOX INSIDE A BOX. A ledger dropped into a padded group drew a
-   second ring one card-pad inside the first. Inside a group the run of cells
-   keeps its own 1px rules and gives up the outer ring. */
-.a-group .a-ledger{ border:0; border-radius:var(--ds-r3) }
+   second ring one card-pad inside the first, and on the phone it took the page
+   gutter a second time on top of the card's own padding (16 + 16 = a 32px
+   indent nothing else on the screen shared). Inside a group the run of cells
+   keeps its own 1px rules and gives up both. */
+.a-group .a-ledger{ border:0; border-radius:var(--ds-r3); margin-inline:var(--ds-s0) }
 
 /* A measured bar: the figure drawn, not described. */
 .a-bars{ display:flex; flex-direction:column; gap:var(--ds-s2) }
@@ -541,6 +543,12 @@
      it, which the row and the group header already carry (--ds-row-x is 16). */
   .a-group{ border-radius:0; margin-inline:var(--ds-s0); border-inline:0 }
   .a-ledger{ grid-template-columns:1fr 1fr; margin-inline:var(--ds-gutter) }
+  /* AN ODD LAST CELL TAKES THE WHOLE ROW. Three cells in two columns left the
+     second row half-drawn: a labelled figure beside an empty half-width box the
+     ledger's own rules still ruled off. It spans instead. Phone only — the
+     desktop ledger is `auto-fit`, where the column count is not the child
+     count and `nth-child` knows nothing about it. */
+  .a-ledger > .a-cell:last-child:nth-child(odd){ grid-column:1 / -1 }
   .a-head, .a-bar{ padding-inline:var(--ds-gutter) }
   /* The desktop bands take --ds-s4 of air; the phone cannot spend it. A 56px
      head already clears the 44px tile inside it, and a filter bar padded to 12
