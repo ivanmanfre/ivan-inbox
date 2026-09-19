@@ -173,6 +173,8 @@ export function armingCountWord(value: string | null | undefined): string {
  * rather than silently inheriting whichever lane the ternary happened to name.
  */
 export function clientBadge(id: string): string {
-  if (id === 'risedtc') return 'RISE'
-  return id.toUpperCase()
+  // ELEVATION (2026-09-20): the same names in the app's sentence case; the
+  // DMs filter chips above these pills already spell them this way.
+  if (id === 'risedtc') return 'Rise'
+  return id.charAt(0).toUpperCase() + id.slice(1).toLowerCase()
 }

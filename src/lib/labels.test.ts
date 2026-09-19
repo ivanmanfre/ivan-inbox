@@ -138,15 +138,15 @@ describe('armingLabel / armingCountWord', () => {
 
 describe('clientBadge', () => {
   it('names EVERY live seat, not just the two that existed when it was written', () => {
-    expect(clientBadge('ivan')).toBe('IVAN')
-    expect(clientBadge('risedtc')).toBe('RISE')
+    expect(clientBadge('ivan')).toBe('Ivan')
+    expect(clientBadge('risedtc')).toBe('Rise')
     // The bug: ARCH conversations rendered IVAN, so Davorin's own cold DMs read
     // as Ivan's on the seat Ivan opens first every morning (2026-09-01).
-    expect(clientBadge('arch')).toBe('ARCH')
+    expect(clientBadge('arch')).toBe('Arch')
   })
 
   it('a seat that does not exist yet gets its own name, never another seat\'s', () => {
-    expect(clientBadge('newclient')).toBe('NEWCLIENT')
-    expect(clientBadge('newclient')).not.toBe('IVAN')
+    expect(clientBadge('newclient')).toBe('Newclient')
+    expect(clientBadge('newclient')).not.toBe('Ivan')
   })
 })
