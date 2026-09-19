@@ -163,3 +163,58 @@ a.a-mk-t-a:focus-visible{ outline:2px solid var(--ds-accent-ui); outline-offset:
   .a-mk-n{ font-size:var(--ds-fs-xl, 30px) }
   .a-mk-row a.a-mk-t-a{ display:inline-flex; align-items:center; min-height:var(--ds-tap) }
 }
+
+/* ---- THE REBUILD (2026-09-19). Ivan read the first version and said it was
+   "super random", "too long and not digestible", "too much filler, so I cannot
+   even focus on anything". The first screen now carries one number, one
+   sentence, three cards, three offers and one test, and everything else moved
+   behind The working. These rules are what makes that fit. */
+
+/* The fold is one column now: the ask ledger moved into The working. */
+.a-mk-fold{ display:flex; flex-direction:column; gap:var(--ds-s2) }
+.a-mk-body{ gap:var(--ds-s5) }
+
+/* ---- the three cards. Headline, one figure line, one move. Nothing else. */
+.a-mk-cards{ list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:var(--ds-s3); min-width:0 }
+.a-mk-card{
+  min-width:0; display:flex; flex-direction:column; gap:var(--ds-s2);
+  background:var(--ds-surface-2); border-radius:var(--ds-radius); padding:var(--ds-s4);
+}
+.a-mk-ch{ font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); font-weight:600; color:var(--ds-text); margin:0; overflow-wrap:anywhere }
+/* The figure line reads as a sentence, so it is body type. A number here is a
+   finding, not a column in a table. */
+.a-mk-cf{ font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); color:var(--ds-text-2); overflow-wrap:anywhere }
+.a-mk-cb{
+  display:block; margin-top:var(--ds-s1);
+  font-family:var(--ds-font-mono); font-size:var(--ds-fs-mono); color:var(--ds-text-3); overflow-wrap:anywhere;
+}
+.a-mk-cd{ font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text); overflow-wrap:anywhere }
+.a-mk-cd b{ color:var(--ds-text-3); font-weight:600 }
+
+/* ---- the offers as lines. */
+.a-mk-lines{ list-style:none; margin:0; padding:0; border-top:1px solid var(--ds-line) }
+.a-mk-line{
+  border-bottom:1px solid var(--ds-line); padding-block:var(--ds-s3);
+  font-size:var(--ds-fs-body); line-height:var(--ds-lh-body); color:var(--ds-text); overflow-wrap:anywhere;
+}
+.a-mk-test{ display:flex; flex-direction:column; gap:var(--ds-s2); min-width:0 }
+
+/* ---- a disclosure that hides a whole section rather than one row. */
+.a-mk-d2 > summary, .a-mk-work > summary{
+  list-style:none; cursor:pointer; min-height:var(--ds-tap);
+  display:flex; align-items:center; gap:var(--ds-s2);
+  font-size:var(--ds-fs-meta); line-height:var(--ds-lh-meta); color:var(--ds-text-3);
+}
+.a-mk-d2 > summary::-webkit-details-marker, .a-mk-work > summary::-webkit-details-marker{ display:none }
+.a-mk-d2 > summary::after, .a-mk-work > summary::after{
+  content:'\203A'; display:inline-block; transition:transform var(--ds-dur-hover) var(--ds-ease);
+}
+.a-mk-d2[open] > summary::after, .a-mk-work[open] > summary::after{ transform:rotate(90deg) }
+.a-mk-d2 > summary:focus-visible, .a-mk-work > summary:focus-visible{ outline:2px solid var(--ds-accent-ui); outline-offset:2px }
+.a-mk-work{ border-top:1px solid var(--ds-line); padding-top:var(--ds-s2) }
+.a-mk-work > summary{ text-transform:uppercase; letter-spacing:0.08em; font-weight:600 }
+.a-mk-work > .a-mk-dd{ gap:var(--ds-s6); padding-top:var(--ds-s3) }
+
+@media (max-width:51.999rem){
+  .a-mk-cards{ grid-template-columns:1fr }
+}

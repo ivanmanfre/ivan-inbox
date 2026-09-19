@@ -68,30 +68,93 @@ describe('the Markets screen', () => {
     expect(text(html)).toContain('Read it again')
   })
 
-  it('opens on one number with its sentence, then the ask ledger and the coverage line', () => {
+  it('opens on one number and one sentence, and nothing else', () => {
     const t = text(renderToStaticMarkup(<MarketsPanel read={ready(readout())} />))
     expect(t).toContain('88')
     expect(t).toContain('comments on the loudest offer from the accounts we follow for you')
-    expect(t).toContain('Alex Vacca offered')
+    expect(t).toContain('Alex Vacca')
+    // Everything that explained itself on the first build moved into The working.
+    expect(t).toContain('The working')
     expect(t).toContain('How the accounts we follow ask')
-    expect(t).toContain('asked for a link in the post')
     expect(t).toContain('We read 314 of the 655 posts')
+    const firstScreen = t.slice(0, t.indexOf('The working'))
+    expect(firstScreen).not.toContain('How the accounts we follow ask')
+    expect(firstScreen).not.toContain('We read 314 of the 655 posts')
+    expect(firstScreen).not.toContain('We also stored 327 posts')
+    expect(firstScreen).not.toContain('We rank by comments')
+  })
+
+  it('shows three cards, from the market readings only', () => {
+    const m = readout({
+      insights: {
+        run_id: 'r1',
+        rows: [
+          { section: 'reading-8', reading: { headline: 'Your own posts: you post less', base: '72 posts' } },
+          { section: 'reading-10', reading: { headline: 'Outreach: the engager lane replies more', base: '900 prospects' } },
+          { section: 'cross-client-1', reading: { headline: 'Every market rewards length', base: '1,700 posts' } },
+          { section: 'reading-1', reading: { headline: 'Comments by format: text leads, video trails', number: '33 median on 215 text posts against 12 on 67 video posts', base: '678 posts, 91 days', change: 'so we change: we write text first' } },
+          { section: 'reading-3', reading: { headline: 'Comments by length: the long band doubles the rest', number: '59.5 against 26.0 in the band below', base: '655 posts' } },
+          { section: 'reading-6', reading: { headline: 'Day and hour: mornings carry the top quartile', number: '42.7 percent against 7.7', base: '600 posts' } },
+        ] as never,
+      },
+    })
+    const t = text(renderToStaticMarkup(<MarketsPanel read={ready(m)} />))
+    expect(t).toContain('What pulls comments here')
+    expect(t).toContain('Text leads, video trails')
+    expect(t).toContain('The long band doubles the rest')
+    expect(t).toContain('Mornings carry the top quartile')
+    expect(t).toContain('33 median on 215 text posts against 12 on 67 video posts')
+    expect(t).toContain('we do: We write text first')
+    // A reading about us is not a reading about the market.
+    expect(t).not.toContain('you post less')
+    expect(t).not.toContain('engager lane')
+    expect(t).not.toContain('Every market rewards length')
+  })
+
+  it('shows three offers as lines, with the rest behind one disclosure', () => {
+    const base = readout()
+    const ranked = [
+      base.offers.ranked[0],
+      { ...base.offers.ranked[1], post_ref: 'p2' },
+      { ...base.offers.ranked[0], post_ref: 'p3', author: 'Third Author' },
+      { ...base.offers.ranked[0], post_ref: 'p4', author: 'Fourth Author' },
+    ]
+    const m = readout({ offers: { ...base.offers, ranked, ranked_count: 4 } })
+    const t = text(renderToStaticMarkup(<MarketsPanel read={ready(m)} />))
+    expect(t).toContain('Alex Vacca \u00B7')
+    expect(t).toContain('Third Author')
+    // 1 ranked past the top three plus 1 below the floor.
+    expect(t).toContain('2 more')
+  })
+
+  it('shows one test, never three', () => {
+    const base = readout()
+    const m = readout({
+      tests: [
+        { kind: 'shape', base: 9, n: { top: base.offers.ranked[0], median_per1k: 2.2 } },
+        { kind: 'ask', base: 16, n: { roster_offers: 16, link: 14, comment_gate: 2, dm_gate: 0 } },
+      ],
+    })
+    const t = text(renderToStaticMarkup(<MarketsPanel read={ready(m)} />))
+    expect(t).toContain('First test')
+    expect(t).toContain('Run one offer in the shape of the loudest one')
+    const firstScreen = t.slice(0, t.indexOf('The working'))
+    expect(firstScreen).not.toContain('Ask the way this market already asks')
+    expect(t).toContain('The other tests')
   })
 
   it('each section carries its own count in the heading', () => {
     const t = text(renderToStaticMarkup(<MarketsPanel read={ready(readout())} />))
-    expect(t).toContain('The loudest offers, one at a time 9 ranked of 16')
+    expect(t).toContain('Loudest offers 9 ranked of 16')
     expect(t).toContain('Ideas that came back 1 named')
     expect(t).toContain('Your own posts against that 54 posts')
-    expect(t).toContain('What we would run first 1 test')
   })
 
-  it('an offer block names who published it, the audience, the comments and what we would copy', () => {
+  it('an offer line carries the author, the offer, the rate and the comments, and no prose', () => {
     const t = text(renderToStaticMarkup(<MarketsPanel read={ready(readout())} />))
-    expect(t).toContain('Alex Vacca published it and asked for a word in the comments, by writing')
-    expect(t).toContain('12,000 people followed the account when we read it')
-    expect(t).toContain('What we would copy')
-    expect(t).toContain('3.3 comments for every thousand followers, 1.5 times the median of 2.2')
+    expect(t).toContain('Alex Vacca \u00B7 \u201Ca go to market checklist\u201D \u00B7 3.3 per 1,000 \u00B7 40 comments')
+    const firstScreen = t.slice(0, t.indexOf('The working'))
+    expect(firstScreen).not.toContain('published it and asked for')
   })
 
   it('the wider feed is named as unvetted and stays closed', () => {
@@ -111,9 +174,8 @@ describe('the Markets screen', () => {
       tests: [],
     })
     const t = text(renderToStaticMarkup(<MarketsPanel read={ready(m)} />))
-    expect(t).toContain('What we would run first 0 tests')
+    expect(t).toContain('First test')
     expect(t).toContain('We pick the first test once 5 offers')
-    expect(t).not.toContain('Test 1')
   })
 
   it("Ivan today: 18 unmeasured of 72 keeps the median and names the 18 on the screen", () => {
@@ -142,7 +204,6 @@ describe('the Markets screen', () => {
     expect(t).toContain('Across the 16 we did measure')
     expect(t).not.toContain('Median comments on your posts')
     // And the plan may not argue from the median this screen just refused to print.
-    expect(t).toContain('What we would run first 0 tests')
     expect(t).not.toContain('Close the gap on the median')
   })
 
@@ -155,38 +216,8 @@ describe('the Markets screen', () => {
 
   it('an empty insights key is an empty state, never an empty market', () => {
     const t = text(renderToStaticMarkup(<MarketsPanel read={ready(readout())} />))
-    expect(t).toContain('What the posts say 0 readings')
+    expect(t).toContain('What pulls comments here')
     expect(t).toContain('No readings stored for this market yet.')
-  })
-
-  it('a stored reading renders its number, its base, its examples and the change', () => {
-    const m = readout({
-      insights: {
-        run_id: 'r9',
-        rows: [{
-          section: 'hook_shape',
-          reading: {
-            headline: 'Posts opening on a number draw 2.1 times the comments',
-            number: '2.1x', base: '142 posts',
-            examples: [{ url: 'https://x/9', first_line: 'We spent 40,000 dollars to learn this', comments: 88 }],
-            change: 'We open the next four posts on a number.',
-          },
-        }],
-      },
-    })
-    const t = text(renderToStaticMarkup(<MarketsPanel read={ready(m)} />))
-    expect(t).toContain('What the posts say 1 reading')
-    expect(t).toContain('Posts opening on a number draw 2.1 times the comments')
-    expect(t).toContain('2.1x on a base of 142 posts')
-    expect(t).toContain('We spent 40,000 dollars to learn this')
-    expect(t).toContain('We open the next four posts on a number.')
-  })
-
-  it('a reading carrying only a section still renders, with no invented number', () => {
-    const m = readout({ insights: { run_id: 'r9', rows: [{ section: 'post_length', reading: {} }] } })
-    const t = text(renderToStaticMarkup(<MarketsPanel read={ready(m)} />))
-    expect(t).toContain('Post length')
-    expect(t).toContain('What the posts say 1 reading')
   })
 
   it('carries no em dash and no internal lane id on the rendered screen', () => {

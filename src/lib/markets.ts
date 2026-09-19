@@ -239,49 +239,32 @@ export function accountsWithPosts(p: MarketReadout['populations']): string {
 }
 
 /** The one number the screen opens with, and the sentence under it. */
-export function answer(m: MarketReadout): { figure: string; unit: string; lines: string[] } {
+/**
+ * The first screen, and nothing else on it. One number, one sentence.
+ *
+ * Ivan read the first build and said it was "too long and not digestible", and
+ * "too much filler, so I cannot even focus on anything". Everything the fold
+ * used to explain (how we rank, how wide the feed is, how much of it we have
+ * read) is true and belongs on the page, so it moved into The working. What
+ * stays is who published the loudest offer, what it was, and what it drew.
+ */
+export function answer(m: MarketReadout): { figure: string; unit: string; line: string } {
   const o = m.offers, p = m.populations
   const top = o.top_by_comments
-  const lead = o.ranked[0] ?? null
-  const lines: string[] = []
 
   if (!o.roster_offers || !top) {
     return {
       figure: int(m.coverage.judged),
-      unit: `posts read from this market so far`,
-      lines: [
-        `${accountsWithPosts(p)} published ${int(p.roster_posts)} ${plu(p.roster_posts, 'post')} in this window and none of them carried an offer, so we have nothing to rank yet.`,
-        widerLine(m),
-        `We read the rest of the window as it lands, and we put the first offer those accounts publish here.`,
-      ].filter(Boolean),
+      unit: 'posts read from this market so far',
+      line: `${accountsWithPosts(p)} published ${int(p.roster_posts)} ${plu(p.roster_posts, 'post')} and none carried an offer yet.`,
     }
   }
 
-  lines.push(
-    `${top.author} offered ${quote(top.offer)} and asked for ${askLabel(top.cta_kind)}. `
-    + (top.follower_count
-      ? `${int(top.follower_count)} ${plu(top.follower_count, 'person', 'people')} followed the account when we read it and ${int(top.comments)} ${plu(top.comments, 'comment')} came back, `
-        + `${one(top.per_1k)} for every thousand followers.`
-      : `${int(top.comments)} ${plu(top.comments, 'comment')} came back. We hold no follower count for that account yet, so it stays out of the ranking.`),
-  )
-
-  if (lead && !o.top_leads_ranking) {
-    lines.push(
-      `We rank by comments for every thousand followers, on offers that cleared ${int(m.floor.comments)} comments and ${int(m.floor.followers)} followers, `
-      + `so ${lead.author} leads at ${one(lead.per_1k)} on ${int(lead.comments)} ${plu(lead.comments, 'comment')} from ${int(lead.follower_count)} followers.`)
-  } else if (lead && o.ranked_count === 1) {
-    lines.push(`That post is the only offer from those accounts that cleared ${int(m.floor.comments)} comments and ${int(m.floor.followers)} followers, so it is the only one we can rank by reach.`)
-  } else if (lead && lead.vs_median) {
-    lines.push(`That post also leads the ranking at ${one(lead.vs_median)} times the ${one(o.rank.median_per1k)} that the ${int(o.ranked_count)} ranked offers run at, itself included.`)
-  }
-
-  const w = widerLine(m)
-  if (w) lines.push(w)
-
   return {
     figure: int(o.roster_max_comments),
-    unit: `comments on the loudest offer from the accounts we follow for you`,
-    lines,
+    unit: 'comments on the loudest offer from the accounts we follow for you',
+    line: `${top.author}, ${quote(top.offer)}, ${int(top.comments)} ${plu(top.comments, 'comment')}`
+      + (top.per_1k ? `, ${one(top.per_1k)} per 1,000 followers.` : `, and we hold no follower count for the account.`),
   }
 }
 
@@ -525,6 +508,114 @@ export function testCopy(t: MarketTest, _m: MarketReadout): { title: string; bod
 }
 
 /* ---------------------------------------------------------------- insights */
+
+/* ---------------------------------------------------------------- the cards */
+
+/**
+ * WHICH READINGS BELONG ON A MARKET SCREEN.
+ *
+ * The mining pass writes eleven readings plus gaps and a cross-client set, and
+ * only seven of them are about the market: format, hook, length, gate, angle,
+ * timing and repetition (`reading-1` to `reading-7`). `reading-8` and `-9` read
+ * the lane's OWN posts, `-10` and `-11` read outreach, and the gap and
+ * cross-client rows are about the system rather than the market. Ivan saw one of
+ * those own-side rows here and asked "why do I see an Ivan statement there".
+ * This regex is the answer: the other sections never reach this screen.
+ */
+export const MARKET_SECTION = /^reading-[1-7]$/
+
+/** How many cards the screen will ever show. Three is what fits before a scroll. */
+export const MARKET_CARDS = 3
+
+/** The longest a card headline may be, counted in words. */
+export const HEADLINE_WORDS = 12
+
+export type MarketCard = {
+  section: string
+  headline: string
+  figure: string | null
+  base: string | null
+  change: string | null
+}
+
+/** The number a base rests on, read off the front of the base sentence. */
+export function baseCount(base: string | null | undefined): number {
+  const m = /(\d[\d,]*)/.exec(String(base ?? ''))
+  return m ? Number(m[1].replace(/,/g, '')) : 0
+}
+
+/**
+ * The card's headline, from the reading's own. A stored headline is written as
+ * "Subject: the finding", and the finding is the part worth reading, so the
+ * subject is dropped and the finding stands on its own. Capped at
+ * HEADLINE_WORDS, and any lane name is stripped: a market card says "this
+ * market" or says the number, never a person's name.
+ */
+export function cardHeadline(headline: string, laneName?: string): string {
+  let t = String(headline || '').trim()
+  const colon = t.indexOf(': ')
+  if (colon > 0 && colon < t.length - 2) t = t.slice(colon + 2)
+  t = t.replace(/[.\s]+$/, '')
+  if (laneName) {
+    for (const word of String(laneName).split(/\s+/).filter(w => w.length > 2)) {
+      t = t.replace(new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:'s|\u2019s)?\\b`, 'gi'), 'this market')
+    }
+  }
+  const words = t.split(/\s+/).filter(Boolean)
+  if (words.length > HEADLINE_WORDS) t = `${words.slice(0, HEADLINE_WORDS).join(' ')}\u2026`
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) : 'A reading we could not name'
+}
+
+/**
+ * The one line that says what we do about it. Only a change the mining pass
+ * actually committed to ("so we change: ...") earns the line; anything else is
+ * a reading without a move behind it and the card says nothing rather than
+ * padding.
+ */
+export function weDo(change: string | null | undefined): string | null {
+  const t = String(change ?? '').trim()
+  const m = /^so we change\s*:?\s*/i.exec(t)
+  if (!m) return null
+  const rest = t.slice(m[0].length).trim().replace(/[.\s]+$/, '')
+  return rest ? rest.charAt(0).toUpperCase() + rest.slice(1) : null
+}
+
+/** The three market readings with the largest base behind them. */
+export function marketCards(m: MarketReadout, laneName?: string): MarketCard[] {
+  const rows = m.insights?.rows
+  if (!Array.isArray(rows)) return []
+  return rows
+    .filter(r => r && typeof r.section === 'string' && MARKET_SECTION.test(r.section))
+    .map(r => {
+      const reading = (r.reading && typeof r.reading === 'object' ? r.reading : {}) as InsightReading
+      return {
+        section: r.section,
+        headline: cardHeadline(String(reading.headline ?? ''), laneName),
+        figure: reading.number === null || reading.number === undefined ? null : String(reading.number),
+        base: reading.base === null || reading.base === undefined ? null : String(reading.base),
+        change: weDo(reading.change),
+        _n: baseCount(reading.base as string),
+      }
+    })
+    .sort((a, b) => b._n - a._n || cmp(a.section, b.section))
+    .slice(0, MARKET_CARDS)
+    .map(({ _n, ...card }) => card)
+}
+
+const cmp = (a: string, b: string) => {
+  const na = Number(/(\d+)/.exec(a)?.[1] ?? 0), nb = Number(/(\d+)/.exec(b)?.[1] ?? 0)
+  return na - nb || (a < b ? -1 : a > b ? 1 : 0)
+}
+
+/** One offer on one line, with no prose around it. */
+export function offerLine(o: MarketOffer): string {
+  return [
+    o.author,
+    o.offer ? `\u201C${o.offer}\u201D` : 'an offer we could not name',
+    o.per_1k === null ? null : `${one(o.per_1k)} per 1,000`,
+    `${int(o.comments)} ${plu(o.comments, 'comment')}`,
+  ].filter(Boolean).join(' \u00B7 ')
+}
 
 /** A stored reading, with every optional field resolved to something printable or null.
     A pass that could not fill a field left it out, so nothing here invents one. */

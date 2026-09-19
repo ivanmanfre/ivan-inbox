@@ -26,8 +26,8 @@ import { Group } from '../../kit'
 import { readSwr, writeSwr } from '../../../lib/swr'
 import {
   ACCOUNTS, INSIGHTS_EMPTY, answer, askLabel, askRows, coverageLine, dec, fetchMarketReadout,
-  firstLine, floorReason, insightBase, insightRows, int, one, ownState, planThinLine, plu,
-  shapeLine, shownTests, testCopy, themeLine, widerNote, widerTitle,
+  firstLine, floorReason, int, marketCards, offerLine, one, ownState, planThinLine, plu,
+  shapeLine, shownTests, testCopy, themeLine, widerLine, widerNote, widerTitle,
   type MarketOffer, type MarketRead, type MarketReadout,
 } from '../../../lib/markets'
 import '../content.css'
@@ -126,12 +126,11 @@ function OfferLine({ o, m }: { o: MarketOffer; m: MarketReadout }) {
 export function MarketsPanel({ read, onRetry }: { read: MarketRead | null; onRetry?: () => void }) {
   const state: MarketsState = !read ? 'loading' : read.kind === 'ready' ? 'ready' : read.kind
   const [showWider, setShowWider] = useState(false)
-  const [showRest, setShowRest] = useState(false)
 
   const m = read && read.kind === 'ready' ? read.data : null
   const a = useMemo(() => (m ? answer(m) : null), [m])
   const own = useMemo(() => (m ? ownState(m) : null), [m])
-  const readings = useMemo(() => (m ? insightRows(m) : []), [m])
+  const cards = useMemo(() => (m ? marketCards(m, m.display_name) : []), [m])
   const tests = useMemo(() => (m ? shownTests(m) : []), [m])
 
   if (!m || !a || !own) {
@@ -139,7 +138,7 @@ export function MarketsPanel({ read, onRetry }: { read: MarketRead | null; onRet
       <div className="a-mk" data-mk-state={state}>
         <Group className="a-mk-g" label="Markets" pad>
           {state === 'loading'
-            ? <p className="a-mk-sub">Reading this market…</p>
+            ? <p className="a-mk-sub">Reading this market\u2026</p>
             : (
               <div className="a-mk-fail">
                 <p className="a-mk-sub">{read && read.kind !== 'ready' ? read.message : 'The market readout failed.'}</p>
@@ -151,201 +150,212 @@ export function MarketsPanel({ read, onRetry }: { read: MarketRead | null; onRet
     )
   }
 
-  const top5 = m.offers.ranked.slice(0, 5)
-  const rest = [...m.offers.ranked.slice(5), ...m.offers.below]
+  const top3 = m.offers.ranked.slice(0, 3)
+  const restRanked = m.offers.ranked.slice(3)
+  const test = tests[0] ?? null
+  const testCopyOne = test ? testCopy(test, m) : null
 
   return (
     <div className="a-mk" data-mk-state={state} data-mk-lane={m.client_id}>
       <Group className="a-mk-g" label={`${m.display_name}, what works in this market`} pad>
         <div className="a-mk-body">
 
-          {/* 1. THE ANSWER. One number, its sentence, how those accounts ask. */}
+          {/* 1. THE ANSWER. One number and one sentence, and nothing else. */}
           <section className="a-mk-fold">
-            <div className="a-mk-fold-main">
-              <Figure value={a.figure} unit={a.unit} />
-              {a.lines.map((l, i) => <p className="a-mk-lede" key={i}>{l}</p>)}
-            </div>
-            <aside className="a-mk-asks">
-              <p className="a-mk-k">How the accounts we follow ask</p>
-              <ul className="a-mk-asklist">
-                {askRows(m).map(r => (
-                  <li className="a-mk-ask" key={r.id}>
-                    <b className="a-mk-askv">{int(r.value)}</b>
-                    <span className="a-mk-askl">{r.label}</span>
-                  </li>
-                ))}
-              </ul>
-              <p className="a-mk-note">{coverageLine(m)}</p>
-            </aside>
+            <Figure value={a.figure} unit={a.unit} />
+            <p className="a-mk-lede">{a.line}</p>
           </section>
 
-          {/* 2. THE READINGS. What the corpus itself says, stored by the mining pass. */}
+          {/* 2. WHAT PULLS COMMENTS HERE. Three cards, market readings only: the
+              own-side, outreach, gap and cross-client readings are about us and
+              never belong on a screen about the market. */}
           <section className="a-mk-sec">
-            <h3 className="a-mk-h">
-              What the posts say
-              <span className="a-mk-tag">{int(readings.length)} {plu(readings.length, 'reading')}</span>
-            </h3>
-            {readings.length === 0
+            <h3 className="a-mk-h">What pulls comments here</h3>
+            {cards.length === 0
               ? <p className="a-mk-empty">{INSIGHTS_EMPTY}</p>
               : (
-                <ul className="a-mk-tbl">
-                  {readings.map(r => {
-                    const base = insightBase(r)
-                    const body = r.examples.length || r.change
-                    return (
-                      <li key={r.section}>
-                        {body ? (
-                          <details className="a-mk-d">
-                            <summary>
-                              <p className="a-mk-t">{r.headline}</p>
-                              {base ? <p className="a-mk-figs"><span className="a-mk-fbase">{base}</span></p> : null}
-                            </summary>
-                            <div className="a-mk-dd">
-                              {r.change ? <p className="a-mk-change">{r.change}</p> : null}
-                              {r.examples.map((e, i) => (
-                                <p className="a-mk-ex" key={i}>
-                                  {e.url
-                                    ? <a className="a-mk-t-a" href={e.url} target="_blank" rel="noreferrer">{e.line}</a>
-                                    : e.line}
-                                  {e.comments === null ? null : <span className="a-mk-tag">{int(e.comments)} {plu(e.comments, 'comment')}</span>}
-                                </p>
-                              ))}
-                            </div>
-                          </details>
-                        ) : (
-                          <div className="a-mk-row">
-                            <p className="a-mk-t">{r.headline}</p>
-                            {base ? <p className="a-mk-figs"><span className="a-mk-fbase">{base}</span></p> : null}
-                          </div>
-                        )}
-                      </li>
-                    )
-                  })}
+                <ul className="a-mk-cards">
+                  {cards.map(c => (
+                    <li className="a-mk-card" key={c.section}>
+                      <h4 className="a-mk-ch">{c.headline}</h4>
+                      {c.figure ? (
+                        <p className="a-mk-cf">
+                          {c.figure}
+                          {c.base ? <span className="a-mk-cb">{c.base}</span> : null}
+                        </p>
+                      ) : null}
+                      {c.change ? <p className="a-mk-cd"><b>we do:</b> {c.change}</p> : null}
+                    </li>
+                  ))}
                 </ul>
               )}
           </section>
 
-          {/* 3. THE OFFERS. One block each, loudest first. */}
+          {/* 3. THE LOUDEST OFFERS, as lines. The blocks keep everything they
+              carried, behind one disclosure. */}
           <section className="a-mk-sec">
             <h3 className="a-mk-h">
-              The loudest offers, one at a time
+              Loudest offers
               <span className="a-mk-tag">{int(m.offers.ranked_count)} ranked of {int(m.offers.roster_offers)}</span>
             </h3>
-            <p className="a-mk-sub">{shapeLine(m)}</p>
-            {top5.length
-              ? <ul className="a-mk-offers">{top5.map((o, i) => <OfferBlock key={o.post_ref} o={o} i={i} m={m} />)}</ul>
-              : <p className="a-mk-empty">We hold {int(m.populations.roster_posts)} posts from {ACCOUNTS} and no offer among them clears the floor yet.</p>}
-
-            {rest.length ? (
-              <div className="a-mk-more">
-                <Button size="sm" variant="quiet" onClick={() => setShowRest(v => !v)} aria-expanded={showRest}>
-                  {showRest ? 'Hide' : 'Show'} the other {int(rest.length)} {plu(rest.length, 'offer')} from these accounts
-                </Button>
-              </div>
-            ) : null}
-            {showRest && rest.length
-              ? <ul className="a-mk-tbl">{rest.map(o => <OfferLine key={o.post_ref} o={o} m={m} />)}</ul>
-              : null}
-          </section>
-
-          {/* 4. THE IDEAS THAT CAME BACK. */}
-          <section className="a-mk-sec">
-            <h3 className="a-mk-h">
-              Ideas that came back
-              <span className="a-mk-tag">{int(m.themes.total)} named</span>
-            </h3>
-            <p className="a-mk-sub">{themeLine(m)}</p>
-            {m.themes.rows.length ? (
-              <div className="a-mk-tiles">
-                {m.themes.rows.slice(0, 6).map(t => (
-                  <article className="a-mk-tile" key={t.theme}>
-                    <h4 className="a-mk-tt">{t.theme}</h4>
-                    <p className="a-mk-figs">
-                      <span className="a-mk-f">{int(t.posts)} {plu(t.posts, 'post')}</span>
-                      <span className="a-mk-f">{int(t.authors)} {plu(t.authors, 'account')}</span>
-                      <span className="a-mk-f">median {dec(t.med)} comments</span>
-                    </p>
-                    {firstLine(t.ex_text) ? (
-                      <p className="a-mk-q">
-                        {t.ex_url
-                          ? <a className="a-mk-t-a" href={t.ex_url} target="_blank" rel="noreferrer">{firstLine(t.ex_text)}</a>
-                          : firstLine(t.ex_text)}
-                      </p>
-                    ) : null}
-                  </article>
-                ))}
-              </div>
-            ) : null}
-          </section>
-
-          {/* 5. THE LANE'S OWN POSTS. A stale counter is said out loud, never read as a result. */}
-          <section className="a-mk-sec">
-            <h3 className="a-mk-h">
-              Your own posts against that
-              <span className="a-mk-tag">{int(m.own.posts)} {plu(m.own.posts, 'post')}</span>
-            </h3>
-            <p className="a-mk-sub">{own.line}</p>
-            {own.kind === 'withheld' ? <p className="a-mk-withheld">{own.measured}</p> : null}
-            {own.kind === 'ready' ? (
-              <ul className="a-mk-tbl">
-                {own.rows.map(r => (
-                  <li key={r.id}>
-                    <div className="a-mk-row" data-mk-you={r.you ? 'true' : undefined}>
-                      <p className="a-mk-t">{r.label}<span className="a-mk-tag">{r.display}</span></p>
-                      <p className="a-mk-note">{r.base}</p>
-                    </div>
+            {top3.length ? (
+              <ul className="a-mk-lines">
+                {top3.map(o => (
+                  <li className="a-mk-line" key={o.post_ref}>
+                    {o.post_ref
+                      ? <a className="a-mk-t-a" href={o.post_ref} target="_blank" rel="noreferrer">{offerLine(o)}</a>
+                      : offerLine(o)}
                   </li>
                 ))}
               </ul>
-            ) : null}
-            {m.own.best?.url ? (
-              <p className="a-mk-note">
-                <a className="a-mk-t-a" href={m.own.best.url} target="_blank" rel="noreferrer">Open your best post</a>
-                {m.own.best.comments === null ? null : `, ${int(m.own.best.comments)} ${plu(m.own.best.comments, 'comment')}.`}
-              </p>
+            ) : <p className="a-mk-empty">{shapeLine(m)}</p>}
+            {restRanked.length || m.offers.below.length ? (
+              <details className="a-mk-d2">
+                <summary>{int(restRanked.length + m.offers.below.length)} more</summary>
+                <div className="a-mk-dd">
+                  <p className="a-mk-sub">{shapeLine(m)}</p>
+                  <ul className="a-mk-offers">
+                    {restRanked.map((o, i) => <OfferBlock key={o.post_ref} o={o} i={i + 3} m={m} />)}
+                  </ul>
+                  {m.offers.below.length ? (
+                    <ul className="a-mk-tbl">{m.offers.below.map(o => <OfferLine key={o.post_ref} o={o} m={m} />)}</ul>
+                  ) : null}
+                </div>
+              </details>
             ) : null}
           </section>
 
-          {/* 6. WHAT WE WOULD TEST. Under five ranked offers, a thin state instead. */}
+          {/* 4. ONE TEST. */}
           <section className="a-mk-sec">
-            <h3 className="a-mk-h">
-              What we would run first
-              <span className="a-mk-tag">{int(tests.length)} {plu(tests.length, 'test')}</span>
-            </h3>
-            {tests.length ? (
-              <ol className="a-mk-plan">
-                {tests.map((t, i) => {
-                  const c = testCopy(t, m)
-                  return (
-                    <li className="a-mk-plan-i" key={t.kind}>
-                      <p className="a-mk-k">Test {i + 1}, on a base of {int(t.base)}</p>
-                      <h4 className="a-mk-tt">{c.title}</h4>
-                      <p className="a-mk-sub">{c.body}</p>
-                    </li>
-                  )
-                })}
-              </ol>
+            <h3 className="a-mk-h">First test</h3>
+            {testCopyOne && test ? (
+              <div className="a-mk-test">
+                <h4 className="a-mk-ch">{testCopyOne.title}</h4>
+                <p className="a-mk-sub">{testCopyOne.body}</p>
+                <p className="a-mk-cb">on a base of {int(test.base)}</p>
+              </div>
             ) : <p className="a-mk-empty">{planThinLine(m)}</p>}
           </section>
 
-          {/* 7. THE WIDER FEED. Unvetted, said plainly, closed by default. */}
-          {m.offers.wider.length ? (
-            <section className="a-mk-sec">
-              <h3 className="a-mk-h">
-                {widerTitle}
-                <span className="a-mk-tag">{int(m.offers.wider_offers)} {plu(m.offers.wider_offers, 'offer')}</span>
-              </h3>
-              <p className="a-mk-sub">{widerNote(m)}</p>
-              <div className="a-mk-more">
-                <Button size="sm" variant="quiet" onClick={() => setShowWider(v => !v)} aria-expanded={showWider}>
-                  {showWider ? 'Hide' : 'Show'} the {int(m.offers.wider.length)} unvetted {plu(m.offers.wider.length, 'offer')}
-                </Button>
-              </div>
-              {showWider
-                ? <ul className="a-mk-tbl">{m.offers.wider.map(o => <OfferLine key={o.post_ref} o={o} m={m} />)}</ul>
-                : null}
-            </section>
-          ) : null}
+          {/* 5. THE WORKING. Everything true that the first screen does not need:
+              how they ask, the ideas that repeat, this lane's own posts against
+              the market, the offers below the floor, the unvetted feed, and how
+              much of the window we have read. */}
+          <details className="a-mk-work">
+            <summary>The working</summary>
+            <div className="a-mk-dd">
+
+              <section className="a-mk-sec">
+                <h3 className="a-mk-h">How the accounts we follow ask</h3>
+                <ul className="a-mk-asklist">
+                  {askRows(m).map(r => (
+                    <li className="a-mk-ask" key={r.id}>
+                      <b className="a-mk-askv">{int(r.value)}</b>
+                      <span className="a-mk-askl">{r.label}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+
+              <section className="a-mk-sec">
+                <h3 className="a-mk-h">
+                  Ideas that came back
+                  <span className="a-mk-tag">{int(m.themes.total)} named</span>
+                </h3>
+                <p className="a-mk-sub">{themeLine(m)}</p>
+                {m.themes.rows.length ? (
+                  <div className="a-mk-tiles">
+                    {m.themes.rows.slice(0, 6).map(t => (
+                      <article className="a-mk-tile" key={t.theme}>
+                        <h4 className="a-mk-tt">{t.theme}</h4>
+                        <p className="a-mk-figs">
+                          <span className="a-mk-f">{int(t.posts)} {plu(t.posts, 'post')}</span>
+                          <span className="a-mk-f">{int(t.authors)} {plu(t.authors, 'account')}</span>
+                          <span className="a-mk-f">median {dec(t.med)} comments</span>
+                        </p>
+                        {firstLine(t.ex_text) ? (
+                          <p className="a-mk-q">
+                            {t.ex_url
+                              ? <a className="a-mk-t-a" href={t.ex_url} target="_blank" rel="noreferrer">{firstLine(t.ex_text)}</a>
+                              : firstLine(t.ex_text)}
+                          </p>
+                        ) : null}
+                      </article>
+                    ))}
+                  </div>
+                ) : null}
+              </section>
+
+              <section className="a-mk-sec">
+                <h3 className="a-mk-h">
+                  Your own posts against that
+                  <span className="a-mk-tag">{int(m.own.posts)} {plu(m.own.posts, 'post')}</span>
+                </h3>
+                <p className="a-mk-sub">{own.line}</p>
+                {own.kind === 'withheld' ? <p className="a-mk-withheld">{own.measured}</p> : null}
+                {own.kind === 'ready' ? (
+                  <ul className="a-mk-tbl">
+                    {own.rows.map(r => (
+                      <li key={r.id}>
+                        <div className="a-mk-row" data-mk-you={r.you ? 'true' : undefined}>
+                          <p className="a-mk-t">{r.label}<span className="a-mk-tag">{r.display}</span></p>
+                          <p className="a-mk-note">{r.base}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {m.own.best?.url ? (
+                  <p className="a-mk-note">
+                    <a className="a-mk-t-a" href={m.own.best.url} target="_blank" rel="noreferrer">Open your best post</a>
+                    {m.own.best.comments === null ? null : `, ${int(m.own.best.comments)} ${plu(m.own.best.comments, 'comment')}.`}
+                  </p>
+                ) : null}
+              </section>
+
+              {m.offers.wider.length ? (
+                <section className="a-mk-sec">
+                  <h3 className="a-mk-h">
+                    {widerTitle}
+                    <span className="a-mk-tag">{int(m.offers.wider_offers)} {plu(m.offers.wider_offers, 'offer')}</span>
+                  </h3>
+                  <p className="a-mk-sub">{widerNote(m)}</p>
+                  <div className="a-mk-more">
+                    <Button size="sm" variant="quiet" onClick={() => setShowWider(v => !v)} aria-expanded={showWider}>
+                      {showWider ? 'Hide' : 'Show'} the {int(m.offers.wider.length)} unvetted {plu(m.offers.wider.length, 'offer')}
+                    </Button>
+                  </div>
+                  {showWider
+                    ? <ul className="a-mk-tbl">{m.offers.wider.map(o => <OfferLine key={o.post_ref} o={o} m={m} />)}</ul>
+                    : null}
+                </section>
+              ) : null}
+
+              <section className="a-mk-sec">
+                <h3 className="a-mk-h">How much of this market we have read</h3>
+                <p className="a-mk-sub">{coverageLine(m)}</p>
+                <p className="a-mk-sub">{widerLine(m)}</p>
+                {tests.length > 1 ? (
+                  <>
+                    <h3 className="a-mk-h">The other tests</h3>
+                    <ol className="a-mk-plan">
+                      {tests.slice(1).map(t => {
+                        const c = testCopy(t, m)
+                        return (
+                          <li className="a-mk-plan-i" key={t.kind}>
+                            <h4 className="a-mk-tt">{c.title}</h4>
+                            <p className="a-mk-sub">{c.body}</p>
+                            <p className="a-mk-cb">on a base of {int(t.base)}</p>
+                          </li>
+                        )
+                      })}
+                    </ol>
+                  </>
+                ) : null}
+              </section>
+
+            </div>
+          </details>
         </div>
       </Group>
     </div>

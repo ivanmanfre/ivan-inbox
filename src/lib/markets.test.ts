@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   ACCOUNTS, INSIGHTS_EMPTY, accountsWithPosts, answer, askRows, coverageLine, dec, firstLine,
   floorReason, insightBase, insightRows, int, medianWithheld, one, ownState, planThinLine, plu,
-  sectionTitle, shapeLine, shownTests, testCopy, themeLine, widerLine,
+  HEADLINE_WORDS, MARKET_CARDS, baseCount, cardHeadline, marketCards, offerLine,
+  sectionTitle, shapeLine, shownTests, testCopy, themeLine, weDo, widerLine,
   type MarketOffer, type MarketReadout,
 } from './markets'
 
@@ -113,8 +114,11 @@ describe('the answer', () => {
     const a = answer(readout())
     expect(a.figure).toBe('88')
     expect(a.unit).toContain('accounts we follow for you')
-    expect(a.lines[0]).toContain('Alex Vacca offered')
-    expect(a.lines[0]).toContain('12,000 people followed')
+    expect(a.line).toContain('Alex Vacca')
+    expect(a.line).toContain('40 comments')
+    expect(a.line).toContain('3.3 per 1,000 followers')
+    // One sentence and nothing else. Ivan: "too long and not digestible".
+    expect(a.line.split('. ').length).toBe(1)
   })
 
   it('says plainly when the loudest by comments is not the one leading the ranking', () => {
@@ -122,8 +126,7 @@ describe('the answer', () => {
     const m = readout({
       offers: { ...base.offers, top_leads_ranking: false, top_by_comments: offer({ author: 'Nick Shackelford', per_1k: null, follower_count: null }) },
     })
-    expect(answer(m).lines[0]).toContain('no follower count')
-    expect(answer(m).lines[1]).toContain('Alex Vacca leads at')
+    expect(answer(m).line).toContain('no follower count')
   })
 
   it('falls back to the read count when no offer is on file', () => {
@@ -132,7 +135,7 @@ describe('the answer', () => {
     const a = answer(m)
     expect(a.figure).toBe('314')
     expect(a.unit).toContain('posts read')
-    expect(a.lines[0]).toContain('none of them carried an offer')
+    expect(a.line).toContain('none carried an offer')
   })
 })
 
@@ -403,7 +406,7 @@ describe('the copy rules hold on every sentence this module writes', () => {
     const s = ownState(withheld)
     const r = ownState(m)
     return [
-      ...answer(m).lines, coverageLine(m), widerLine(m), shapeLine(m), themeLine(m), planThinLine(m),
+      answer(m).line, coverageLine(m), widerLine(m), shapeLine(m), themeLine(m), planThinLine(m),
       accountsWithPosts(m.populations),
       s.kind === 'withheld' ? s.line : '', s.kind === 'withheld' ? s.measured : '',
       r.kind === 'ready' ? r.line : '',
@@ -420,5 +423,92 @@ describe('the copy rules hold on every sentence this module writes', () => {
 
   it('never hands the reader a job', () => {
     for (const line of sentences()) expect(line).not.toMatch(/your turn|needs you|action required/i)
+  })
+})
+
+
+describe('the cards: only the market, only three, only what fits', () => {
+  const reading = (section: string, headline: string, base: string, change?: string) =>
+    ({ section, reading: { headline, number: `${section} figure`, base, ...(change ? { change } : {}) } })
+
+  const withRows = (rows: Array<{ section: string; reading: Record<string, unknown> }>) =>
+    readout({ insights: { run_id: 'r1', rows: rows as never } })
+
+  it('takes the market readings and never the own-side, outreach, gap or cross-client ones', () => {
+    // Ivan, on the first build: "why do I see an Ivan statement there".
+    const m = withRows([
+      reading('reading-8', 'Your own posts: you post less than the market', '72 posts'),
+      reading('reading-9', 'Your own gate: you ran one', '72 posts'),
+      reading('reading-10', 'Outreach: the engager lane replies more', '900 prospects'),
+      reading('reading-11', 'Outreach: the cold lane stalls', '800 prospects'),
+      reading('gap-1', 'A gap in the corpus', '500 posts'),
+      reading('cross-client-1', 'Every market rewards length', '1,700 posts'),
+      reading('reading-0', 'A scene setter', '999 posts'),
+      reading('reading-1', 'Comments by format: text leads, video trails', '678 posts, 91 days'),
+    ])
+    expect(marketCards(m).map(c => c.section)).toEqual(['reading-1'])
+  })
+
+  it('ranks by the base behind the reading and stops at three', () => {
+    const m = withRows([
+      reading('reading-1', 'Format: text leads', '100 posts'),
+      reading('reading-2', 'Hook: numbers lead', '678 posts'),
+      reading('reading-3', 'Length: long leads', '295 judged of 678 posts'),
+      reading('reading-4', 'Gate: nobody gates', '24 repeats'),
+      reading('reading-6', 'Timing: mornings lead', '655 posts'),
+    ])
+    const cards = marketCards(m)
+    expect(cards).toHaveLength(MARKET_CARDS)
+    expect(cards.map(c => c.section)).toEqual(['reading-2', 'reading-6', 'reading-3'])
+  })
+
+  it('breaks a tie on the base by the reading number, so the order never wobbles', () => {
+    const m = withRows([
+      reading('reading-6', 'Timing: mornings lead', '678 posts'),
+      reading('reading-3', 'Length: long leads', '678 posts'),
+      reading('reading-1', 'Format: text leads', '678 posts'),
+    ])
+    expect(marketCards(m).map(c => c.section)).toEqual(['reading-1', 'reading-3', 'reading-6'])
+  })
+
+  it('reads the base off the front of the base sentence', () => {
+    expect(baseCount('678 posts, 91 days')).toBe(678)
+    expect(baseCount('1,667 unlabelled posts')).toBe(1667)
+    expect(baseCount('3 to 5 posts per theme')).toBe(3)
+    expect(baseCount(null)).toBe(0)
+  })
+
+  it('a headline drops the subject, keeps the finding and stays inside twelve words', () => {
+    expect(cardHeadline('Comments by format: carousel and text lead, video trails.'))
+      .toBe('Carousel and text lead, video trails')
+    const long = cardHeadline('Day and hour: ' + 'word '.repeat(30))
+    expect(long.split(/\s+/).length).toBeLessThanOrEqual(HEADLINE_WORDS + 1)
+    expect(long).toMatch(/\u2026$/)
+    expect(cardHeadline('')).toBe('A reading we could not name')
+  })
+
+  it('a lane name never reaches a card headline', () => {
+    expect(cardHeadline('Mattan Danino posts less than the market', 'Mattan Danino'))
+      .toBe('This market this market posts less than the market')
+    expect(cardHeadline("Ivan's own gate beats the market", 'Ivan Content System'))
+      .not.toMatch(/Ivan/)
+  })
+
+  it('a card says what we do only when the reading committed to a change', () => {
+    expect(weDo('so we change: we write text-first posts')).toBe('We write text-first posts')
+    expect(weDo('so we change we open with a figure')).toBe('We open with a figure')
+    expect(weDo('the labels cannot rank one topic against another')).toBeNull()
+    expect(weDo('')).toBeNull()
+    expect(weDo(null)).toBeNull()
+  })
+
+  it('an offer is one line with no prose around it', () => {
+    const o = readout().offers.ranked[0]
+    expect(offerLine(o)).toBe('Alex Vacca \u00B7 \u201Ca go to market checklist\u201D \u00B7 3.3 per 1,000 \u00B7 40 comments')
+  })
+
+  it('an unsized offer says its comments and leaves the rate out', () => {
+    const o = { ...readout().offers.ranked[0], per_1k: null, offer: null }
+    expect(offerLine(o)).toBe('Alex Vacca \u00B7 an offer we could not name \u00B7 40 comments')
   })
 })
