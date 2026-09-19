@@ -17,6 +17,7 @@ function study(over: Partial<OutlierStudy> = {}): OutlierStudy {
     answer: { figure: '4 of 75', unit: 'top outliers were plain how-to', line: 'The posts that left their author’s baseline were stories and news.' },
     cards: [1, 2, 3, 4].map(i => ({ headline: `Card ${i}`, figure: `${i}0%`, base: `on ${i} posts`, change: `change ${i}` })),
     base: { authors: 51, posts: 4329, outliers: 147, months: 12, top_n: 75, audited_posts: 40, per_post: 40, reactors: 1580 },
+    lines: ['Line one about a repeated shape.', 'Line two.', 'Line three.', 'Line four never shows.'],
     travels: [{ type: 'milestone', label: 'Milestones', n: 14 }],
     bands: [{ type: 'brand_story', label: 'Brand story', posts: 5, reactors: 200, brand_lo: 5, brand_hi: 18, brand: 11, peer: 40, vendor: 9 }],
     winners: [0, 1, 2, 3, 4].map(i => winner(i)),
@@ -48,8 +49,18 @@ describe('OutliersPanel', () => {
     expect(text(beforeFold)).toContain('18% brand side of 40')
   })
 
+  it('shows at most three one-liners above the winners', () => {
+    expect((beforeFold.match(/class="a-mk-line"/g) || []).length).toBe(3)
+    expect(text(beforeFold)).toContain('Line one about a repeated shape.')
+    expect(text(html)).not.toContain('Line four never shows.')
+  })
+
+  it('calls the brand share a floor where it is shown', () => {
+    expect(text(beforeFold)).toContain('brand share is a floor')
+  })
+
   it('states the sample size on the bands and reads them as a range', () => {
-    expect(text(html)).toContain('n=40 a post, read as bands')
+    expect(text(html)).toContain('n=40 a post, floors read as bands')
     expect(text(html)).toContain('5 to 18% brand side')
   })
 

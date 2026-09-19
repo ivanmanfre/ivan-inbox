@@ -25,6 +25,7 @@ export type OutlierStudy = {
   created_at: string
   answer: { figure: string; unit: string; line: string }
   cards: OutlierCard[]
+  lines: string[]
   base: { authors: number; posts: number; outliers: number; months: number; top_n: number; audited_posts: number; per_post: number; reactors: number }
   travels: OutlierTravel[]
   bands: OutlierBand[]
@@ -51,6 +52,7 @@ export async function fetchOutliers(lane: string): Promise<OutlierRead> {
     kind: 'ready',
     data: {
       ...(d as OutlierStudy),
+      lines: Array.isArray(d.lines) ? d.lines : [],
       travels: Array.isArray(d.travels) ? d.travels : [],
       bands: Array.isArray(d.bands) ? d.bands : [],
       method: Array.isArray(d.method) ? d.method : [],
@@ -61,6 +63,7 @@ export async function fetchOutliers(lane: string): Promise<OutlierRead> {
 /** The rule on this surface: three cards, three lines, the rest behind the fold. */
 export const SHOWN_CARDS = 3
 export const SHOWN_WINNERS = 3
+export const SHOWN_LINES = 3
 
 const pct = (n: number) => `${Math.round(Number(n) || 0)}%`
 const lift = (n: number) => `${(Math.round((Number(n) || 0) * 10) / 10).toString()}x`

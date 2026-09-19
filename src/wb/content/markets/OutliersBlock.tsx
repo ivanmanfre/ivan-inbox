@@ -11,7 +11,7 @@
 import { useEffect, useState } from 'react'
 import { Group } from '../../kit'
 import {
-  SHOWN_CARDS, SHOWN_WINNERS, bandBase, bandRange, fetchOutliers, outlierPct, winnerFigures,
+  SHOWN_CARDS, SHOWN_LINES, SHOWN_WINNERS, bandBase, bandRange, fetchOutliers, outlierPct, winnerFigures,
   type OutlierRead, type OutlierStudy, type OutlierWinner,
 } from '../../../lib/outliers'
 
@@ -65,10 +65,18 @@ export function OutliersPanel({ study }: { study: OutlierStudy }) {
             </ul>
           </section>
 
+          {s.lines.length ? (
+            <section className="a-mk-sec">
+              <ul className="a-mk-lines">
+                {s.lines.slice(0, SHOWN_LINES).map(l => <li className="a-mk-line" key={l}>{l}</li>)}
+              </ul>
+            </section>
+          ) : null}
+
           <section className="a-mk-sec">
             <h3 className="a-mk-h">
               Winners to mirror
-              <span className="a-mk-tag">{s.base.per_post} reactors read on each</span>
+              <span className="a-mk-tag">{s.base.per_post} reactors read on each, brand share is a floor</span>
             </h3>
             <ul className="a-mk-tbl">{shown.map(w => <WinnerRow key={w.url} w={w} />)}</ul>
           </section>
@@ -91,7 +99,7 @@ export function OutliersPanel({ study }: { study: OutlierStudy }) {
                 <section className="a-mk-sec">
                   <h3 className="a-mk-h">
                     Who reacted, by post type
-                    <span className="a-mk-tag">n={s.base.per_post} a post, read as bands</span>
+                    <span className="a-mk-tag">n={s.base.per_post} a post, floors read as bands</span>
                   </h3>
                   <ul className="a-mk-tbl">
                     {s.bands.map(b => (
