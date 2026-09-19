@@ -18,13 +18,17 @@
 .a-money-cv{
   font-size:var(--ds-fs-body);
   line-height:var(--ds-lh-body);
+  font-weight:var(--ds-fw-medium);
+  letter-spacing:var(--ds-tr-title);
   color:var(--ds-text);
   font-variant-numeric:tabular-nums;
 }
+/* The receipt is a step behind the reading it explains, or the two read as one
+   paragraph of equal weight — which is what turned this page into a wall. */
 .a-money-cp{
   font-size:var(--ds-fs-meta);
   line-height:var(--ds-lh-meta);
-  color:var(--ds-text-3);
+  color:var(--ds-text-4);
   overflow-wrap:anywhere;
 }
 .a-money-cell[data-stale] .a-money-cv{ color:var(--ds-text-3) }
@@ -46,7 +50,7 @@
 .a-money-runway{ display:flex; flex-direction:column; gap:var(--ds-s3); margin-block-start:var(--ds-s4) }
 .a-money-runway .a-money-cv{ font-size:var(--ds-fs-figure); line-height:var(--ds-lh-figure); font-weight:var(--ds-fw-semi) }
 
-.a-money-note{ display:block; color:var(--ds-text-3); overflow-wrap:anywhere }
+.a-money-note{ display:block; color:var(--ds-text-4); overflow-wrap:anywhere }
 .a-money-block{ display:flex; flex-direction:column; gap:var(--ds-s3); min-width:0 }
 .a-money-block + .a-money-block{ margin-block-start:var(--ds-s6) }
 .a-money-tlabel{ color:var(--ds-text-3) }

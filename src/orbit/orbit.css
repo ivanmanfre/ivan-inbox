@@ -18,9 +18,9 @@
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  gap: var(--ds-s2);
-  padding: var(--ds-s2) var(--ds-gutter);
-  border-bottom: 1px solid var(--ds-hairline);
+  gap: var(--ds-s4);
+  padding: var(--ds-s5) var(--ds-gutter);
+  border-bottom: 1px solid var(--ds-line);
   min-height: var(--ds-header-h);
   justify-content: center;
 }
@@ -30,10 +30,14 @@
   justify-content: space-between;
   gap: var(--ds-s3);
 }
+/* ELEVATION (2026-09-20): the screen's one first read. It was set at row-title
+   size, so the page name, the tenant switch and the date presets were three
+   lines of the same thing. */
 .a-orbit-title {
-  font-size: var(--ds-fs-title);
+  font-size: var(--ds-fs-page);
+  line-height: var(--ds-lh-page);
   font-weight: var(--ds-fw-semi);
-  letter-spacing: var(--ds-tr-title);
+  letter-spacing: var(--ds-tr-page);
 }
 .a-orbit-live {
   display: flex;
@@ -41,7 +45,6 @@
   gap: var(--ds-s2);
   font-size: var(--ds-fs-meta);
   color: var(--ds-text-3);
-  font-family: var(--ds-font-mono);
 }
 .a-orbit-head-row2 {
   display: flex;
@@ -56,38 +59,68 @@
   gap: var(--ds-s1);
   flex: 0 0 auto;
 }
-.a-orbit-preset {
+/* 🔴 ELEVATION (2026-09-20) · THE PRESET HAD NO BOX. `.a-root button:not(
+   [class*="ds-"]):not([class*="wb-"])` in wb.css is the bare-button reset and
+   weighs (0,3,1) — each `:not()` counts its argument — so a one-class rule lost
+   to it and every tenant and date preset rendered as bare text on the canvas:
+   no pill, no surface, and no visible ACTIVE state on the one that was picked.
+   Same out-specify device `src/exp/v2c/rowselect.css` already documents for the
+   selection mark, and the same reason: the sheet it is fighting is written that
+   way. Repeated class, not !important. */
+.a-orbit .a-orbit-preset.a-orbit-preset,
+.a-root button.a-orbit-preset.a-orbit-preset {
   appearance: none;
-  border: 1px solid var(--ds-hairline);
+  display: inline-flex;
+  align-items: center;
+  border: 0;
+  box-shadow: inset 0 0 0 1px var(--ds-line);
   background: var(--ds-surface-2);
   color: var(--ds-text-2);
   border-radius: var(--ds-r-pill);
   font-size: var(--ds-fs-meta);
-  font-family: var(--ds-font-mono);
+  font-weight: var(--ds-fw-medium);
   padding: 0 var(--ds-s4);
-  height: 28px;
+  height: var(--ds-control-h-sm);
   cursor: pointer;
   white-space: nowrap;
+  transition: background-color var(--ds-dur-hover) var(--ds-ease),
+              color var(--ds-dur-hover) var(--ds-ease),
+              box-shadow var(--ds-dur-hover) var(--ds-ease),
+              transform var(--ds-dur-hover) var(--ds-ease);
 }
-.a-orbit-preset[data-active] {
+.a-orbit .a-orbit-preset.a-orbit-preset:hover,
+.a-root button.a-orbit-preset.a-orbit-preset:hover {
+  background: var(--ds-surface-3);
+  color: var(--ds-text);
+}
+.a-orbit .a-orbit-preset.a-orbit-preset:active,
+.a-root button.a-orbit-preset.a-orbit-preset:active { transform: scale(.96) }
+.a-orbit .a-orbit-preset.a-orbit-preset[data-active],
+.a-root button.a-orbit-preset.a-orbit-preset[data-active] {
   background: var(--ds-accent-soft);
-  border-color: var(--ds-accent-line);
+  box-shadow: inset 0 0 0 1px var(--ds-accent-line);
   color: var(--ds-accent-ui);
+}
+/* The phone keeps the tap floor the rest of this surface holds. */
+@media (max-width: 767px) {
+  .a-orbit .a-orbit-preset.a-orbit-preset,
+  .a-root button.a-orbit-preset.a-orbit-preset { height: var(--ds-chip-h) }
 }
 
 /* --- chip rows: filters (own row, most-reached-for) then campaigns -------- */
+/* Its own hairline is gone: the head above it draws one and the rates band
+   below draws one, and three rules in a row is a printout, not a boundary. */
 .a-orbit-chiprows {
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  border-bottom: 1px solid var(--ds-hairline);
 }
 .a-orbit-filterrow {
   position: relative;
   display: flex;
   align-items: center;
   gap: var(--ds-s2);
-  padding: var(--ds-s2) var(--ds-gutter);
+  padding: var(--ds-s4) var(--ds-gutter) var(--ds-s2);
   overflow-x: auto;
   scrollbar-width: none;
   min-height: var(--ds-tap);
@@ -108,7 +141,7 @@
   width: 168px;
   height: var(--ds-control-h-sm);
   border-radius: var(--ds-r-pill);
-  border: 1px solid var(--ds-hairline);
+  border: 1px solid var(--ds-line);
   background: var(--ds-surface-2);
   color: var(--ds-text);
   font-size: var(--ds-fs-meta);
@@ -124,7 +157,7 @@
   display: flex;
   align-items: center;
   gap: var(--ds-s2);
-  padding: var(--ds-s2) var(--ds-gutter);
+  padding: var(--ds-s2) var(--ds-gutter) var(--ds-s4);
   overflow-x: auto;
   scrollbar-width: none;
   min-height: var(--ds-tap);
@@ -144,26 +177,32 @@
   flex: 0 0 auto;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: var(--ds-s2);
-  padding: var(--ds-s4) var(--ds-gutter) var(--ds-s2);
+  gap: var(--ds-s4);
+  padding: var(--ds-s5) var(--ds-gutter) var(--ds-s4);
 }
 .a-orbit-stat {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--ds-s1);
   min-width: 0;
 }
+/* ELEVATION (2026-09-20): the four counts ARE the instrument, so they read at
+   the figure role rather than at row-title size with a capitalised caption of
+   nearly the same weight under them. */
 .a-orbit-stat-n {
-  font-size: var(--ds-fs-title);
-  font-weight: var(--ds-fw-semi);
+  font-size: var(--ds-fs-figure);
+  line-height: var(--ds-lh-figure);
+  font-weight: var(--ds-fw-display);
   font-variant-numeric: tabular-nums;
-  letter-spacing: var(--ds-tr-title);
+  letter-spacing: var(--ds-tr-figure);
 }
 .a-orbit-stat-l {
-  font-size: var(--ds-fs-eyebrow);
+  font-size: var(--ds-fs-meta);
+  line-height: var(--ds-lh-meta);
   color: var(--ds-text-3);
-  text-transform: uppercase;
+  text-transform: var(--ds-tt-eyebrow);
   letter-spacing: var(--ds-tr-eyebrow);
+  font-weight: var(--ds-fw-medium);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -172,16 +211,21 @@
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 0 var(--ds-gutter) var(--ds-s3);
-  border-bottom: 1px solid var(--ds-hairline);
+  gap: var(--ds-s1);
+  padding: 0 var(--ds-gutter) var(--ds-s5);
+  border-bottom: 1px solid var(--ds-line);
 }
 .a-orbit-rate-line {
   margin: 0;
   font-size: var(--ds-fs-meta);
+  line-height: var(--ds-lh-meta);
   color: var(--ds-text-3);
 }
 .a-orbit-rate-line strong { color: var(--ds-text); font-weight: var(--ds-fw-semi); }
+/* Four figures at 32px do not share 358px of phone: two rows of two. */
+@media (max-width: 767px) {
+  .a-orbit-stats { grid-template-columns: 1fr 1fr; row-gap: var(--ds-s5) }
+}
 
 /* --- canvas region ---------------------------------------------------------- */
 .a-orbit-canvas {
@@ -210,7 +254,7 @@
   align-items: center;
   gap: var(--ds-s3);
   padding: var(--ds-s2) var(--ds-gutter);
-  border-top: 1px solid var(--ds-hairline);
+  border-top: 1px solid var(--ds-line);
   background: var(--ds-surface-1);
 }
 .a-orbit-scrub input[type='range'] {
@@ -223,21 +267,39 @@
   font-size: var(--ds-fs-meta);
   color: var(--ds-text-3);
 }
-.a-orbit-live-btn {
+/* Same bare-button reset trap as the preset above, same out-specify device. */
+.a-orbit .a-orbit-live-btn.a-orbit-live-btn,
+.a-root button.a-orbit-live-btn.a-orbit-live-btn {
   flex: 0 0 auto;
   appearance: none;
-  border: 1px solid var(--ds-hairline);
+  display: inline-flex;
+  align-items: center;
+  border: 0;
+  box-shadow: inset 0 0 0 1px var(--ds-line);
   background: var(--ds-surface-2);
   color: var(--ds-text-2);
   border-radius: var(--ds-r-pill);
   font-size: var(--ds-fs-meta);
+  font-weight: var(--ds-fw-medium);
   padding: 0 var(--ds-s4);
-  height: 28px;
+  height: var(--ds-control-h-sm);
   cursor: pointer;
+  transition: background-color var(--ds-dur-hover) var(--ds-ease),
+              color var(--ds-dur-hover) var(--ds-ease),
+              box-shadow var(--ds-dur-hover) var(--ds-ease),
+              transform var(--ds-dur-hover) var(--ds-ease);
 }
-.a-orbit-live-btn[data-live='true'] {
+.a-orbit .a-orbit-live-btn.a-orbit-live-btn:hover,
+.a-root button.a-orbit-live-btn.a-orbit-live-btn:hover {
+  background: var(--ds-surface-3);
+  color: var(--ds-text);
+}
+.a-orbit .a-orbit-live-btn.a-orbit-live-btn:active,
+.a-root button.a-orbit-live-btn.a-orbit-live-btn:active { transform: scale(.96) }
+.a-orbit .a-orbit-live-btn.a-orbit-live-btn[data-live='true'],
+.a-root button.a-orbit-live-btn.a-orbit-live-btn[data-live='true'] {
   background: var(--ds-accent-soft);
-  border-color: var(--ds-accent-line);
+  box-shadow: inset 0 0 0 1px var(--ds-accent-line);
   color: var(--ds-accent-ui);
 }
 
@@ -269,7 +331,7 @@
     left: 0; right: 0; bottom: 0;
     max-height: 82vh;
     border-radius: var(--ds-r4) var(--ds-r4) 0 0;
-    border-top: 1px solid var(--ds-hairline);
+    border-top: 1px solid var(--ds-line);
     transform: translateY(100%);
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
@@ -280,7 +342,7 @@
   .a-orbit-panel {
     top: 0; right: 0; bottom: 0;
     width: var(--ds-peer-w);
-    border-left: 1px solid var(--ds-hairline);
+    border-left: 1px solid var(--ds-line);
     transform: translateX(100%);
   }
   .a-orbit-panel[data-open] { transform: translateX(0); }
@@ -294,15 +356,15 @@
   justify-content: space-between;
   gap: var(--ds-s3);
   padding: var(--ds-card-pad);
-  border-bottom: 1px solid var(--ds-hairline);
+  border-bottom: 1px solid var(--ds-line);
 }
 .a-orbit-panel-head-t { min-width: 0; }
 .a-orbit-panel-name { font-size: var(--ds-fs-title); font-weight: var(--ds-fw-semi); }
-.a-orbit-panel-sub { font-size: var(--ds-fs-meta); color: var(--ds-text-3); margin-top: 2px; }
+.a-orbit-panel-sub { font-size: var(--ds-fs-meta); color: var(--ds-text-3); margin-top: var(--ds-s1); }
 /* Never-reached blocker line (db/062's nr/nrw): judged_out reads as a caution
    (this person was actively screened out), icp_unasked as an accent (a scored
    person nobody has approached — the actionable case), unjudged stays quiet. */
-.a-orbit-panel-nr { font-size: var(--ds-fs-meta); margin-top: 4px; }
+.a-orbit-panel-nr { font-size: var(--ds-fs-meta); margin-top: var(--ds-s2); }
 .a-orbit-panel-nr[data-bucket='judged_out'] { color: var(--ds-sev-attention-ui); }
 .a-orbit-panel-nr[data-bucket='icp_unasked'] { color: var(--ds-accent-ui); }
 .a-orbit-panel-nr[data-bucket='unjudged'] { color: var(--ds-text-3); }
@@ -325,8 +387,9 @@
   font-size: var(--ds-fs-meta);
 }
 .a-orbit-ladder-dot {
-  width: 8px; height: 8px; border-radius: 999px;
+  width: var(--ds-s3); height: var(--ds-s3); border-radius: var(--ds-r-pill);
   background: var(--ds-hairline-strong);
+  transition: background-color var(--ds-dur) var(--ds-ease);
   flex: 0 0 auto;
 }
 .a-orbit-ladder-row[data-reached] .a-orbit-ladder-dot { background: var(--ds-text-3); }
@@ -337,12 +400,12 @@
 /* --- event history ------------------------------------------------------------ */
 .a-orbit-events { display: flex; flex-direction: column; gap: var(--ds-s3); }
 .a-orbit-event { display: flex; gap: var(--ds-s3); font-size: var(--ds-fs-meta); }
-.a-orbit-event-mark { width: 6px; border-radius: 3px; flex: 0 0 auto; background: var(--ds-hairline-strong); }
+.a-orbit-event-mark { width: var(--ds-s2); border-radius: var(--ds-r-pill); flex: 0 0 auto; background: var(--ds-hairline-strong); }
 .a-orbit-event[data-dir='in'] .a-orbit-event-mark { background: var(--ds-sev-attention); }
 .a-orbit-event-body { min-width: 0; }
 .a-orbit-event-kind { color: var(--ds-text-2); font-family: var(--ds-font-mono); font-size: var(--ds-fs-mono); }
 .a-orbit-event-date { color: var(--ds-text-4); margin-left: var(--ds-s2); }
-.a-orbit-event-text { color: var(--ds-text-3); margin-top: 2px; word-break: break-word; }
+.a-orbit-event-text { color: var(--ds-text-3); margin-top: var(--ds-s1); word-break: break-word; }
 
 /* --- action list --------------------------------------------------------------- */
 .a-orbit-actions { display: flex; flex-direction: column; gap: var(--ds-s5); }
@@ -357,9 +420,13 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--ds-s3);
-  padding: var(--ds-s2) 0;
-  border-bottom: 1px solid var(--ds-line);
+  padding: var(--ds-s3) var(--ds-s3);
+  margin-inline: calc(var(--ds-s3) * -1);
+  border-radius: var(--ds-r2);
+  box-shadow: inset 0 -1px 0 var(--ds-line);
+  transition: background-color var(--ds-dur-hover) var(--ds-ease);
 }
+.a-orbit-engager:hover { background: var(--ds-wash) }
 .a-orbit-engager-main { min-width: 0; }
 .a-orbit-engager-name { font-size: var(--ds-fs-body); }
 .a-orbit-engager-meta { font-size: var(--ds-fs-meta); color: var(--ds-text-3); }

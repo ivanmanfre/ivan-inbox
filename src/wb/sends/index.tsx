@@ -114,9 +114,11 @@ function inboundStatusText(lane: InboundLane): string {
   return `Quiet for ${daysBetween(lane.last_at!)} days`
 }
 
+// ELEVATION (2026-09-20): the same words, in the app's sentence case. The
+// letter-spaced capital was the loudest terminal signal left on this screen.
 const TYPE_LABEL: Record<string, string> = {
-  connection_note: 'CONN', dm: 'DM', inmail: 'INMAIL', email: 'EMAIL', manual_reply: 'REPLY',
-  open_profile: 'OPEN PROF', connection_note_blank: 'CONN·BLANK', connection_note_bare: 'CONN·BARE',
+  connection_note: 'Conn', dm: 'DM', inmail: 'InMail', email: 'Email', manual_reply: 'Reply',
+  open_profile: 'Open prof', connection_note_blank: 'Conn·blank', connection_note_bare: 'Conn·bare',
 }
 
 // Open-profile sends land as message_type='dm' with channel='linkedin_inmail', so the raw type
@@ -128,8 +130,8 @@ const TYPE_LABEL: Record<string, string> = {
 
 function logDay(iso: string): string {
   const d = new Date(iso)
-  if (d.toDateString() === new Date().toDateString()) return 'TODAY'
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()
+  if (d.toDateString() === new Date().toDateString()) return 'Today'
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 }
 
 /** The mono clock column the logs-table move puts first after the chevron. */
@@ -144,14 +146,14 @@ function logTime(iso: string): string {
 function tagChips(t: LeadTags | undefined): string[] {
   if (!t) return []
   const chips: string[] = []
-  if (t.lane) chips.push(t.lane.replace(/_/g, ' ').toUpperCase())
-  if (t.eu_logic === true) chips.push('EU LOGIC')
-  if (t.eu_logic === false) chips.push('US-BOUND')
-  if (t.source_kind === 'profile_view_warm') chips.push('PROFILE VIEW')
-  else if (t.source_kind === 'client_sourced_sponsor') chips.push('FROM DAVORIN')
-  else if (t.source_kind === 'youtube_sponsor_mining') chips.push('YT SPONSOR')
-  else if (t.source_kind) chips.push(t.source_kind.replace(/_/g, ' ').toUpperCase())
-  if (t.network_distance === 'DISTANCE_1' || t.network_distance === 'FIRST_DEGREE') chips.push('ALREADY CONNECTED')
+  if (t.lane) chips.push(t.lane.replace(/_/g, ' '))
+  if (t.eu_logic === true) chips.push('EU logic')
+  if (t.eu_logic === false) chips.push('US-bound')
+  if (t.source_kind === 'profile_view_warm') chips.push('Profile view')
+  else if (t.source_kind === 'client_sourced_sponsor') chips.push('From Davorin')
+  else if (t.source_kind === 'youtube_sponsor_mining') chips.push('YT sponsor')
+  else if (t.source_kind) chips.push(t.source_kind.replace(/_/g, ' '))
+  if (t.network_distance === 'DISTANCE_1' || t.network_distance === 'FIRST_DEGREE') chips.push('Already connected')
   if (t.country) chips.push(t.country.toUpperCase())
   return chips
 }
@@ -182,8 +184,8 @@ function LogRow({ m, tags, open, onToggle }: {
             state, so it is the one that carries a tone. */}
         <span className="a-log-kind">
           {failed
-            ? <Chip tone="urgent">FAILED</Chip>
-            : <Chip tone="quiet">{TYPE_LABEL[sendKind(m)] ?? sendKind(m).toUpperCase()}</Chip>}
+            ? <Chip tone="urgent">Failed</Chip>
+            : <Chip tone="quiet">{TYPE_LABEL[sendKind(m)] ?? sendKind(m)}</Chip>}
         </span>
         <span className="a-log-tm a-mono">{logTime(m.event_at)}</span>
         <span className="a-log-nm">{m.prospect_name}</span>
@@ -276,7 +278,7 @@ function LogView({ client }: { client: Client }) {
         }
       >
         <div className="a-log-note a-meta">
-          CONN = note attached and accepted by the API · CONN·BLANK = deliberate no-note A/B arm · CONN·BARE = note rejected, sent bare as a fallback.
+          Conn = note attached and accepted by the API · Conn·blank = deliberate no-note A/B arm · Conn·bare = note rejected, sent bare as a fallback.
         </div>
         <div className="a-scroll-x">
           <div className="a-log">
@@ -418,7 +420,7 @@ function InboundDetail({ lane, client, onBack }: {
               {rows.map(d => (
                 <Row
                   key={d.id}
-                  lead={<Chip tone={d.outcome === 'passed' ? 'clear' : 'quiet'}>{d.outcome === 'passed' ? 'THROUGH' : 'STOPPED'}</Chip>}
+                  lead={<Chip tone={d.outcome === 'passed' ? 'clear' : 'quiet'}>{d.outcome === 'passed' ? 'Through' : 'Stopped'}</Chip>}
                   title={d.who}
                   tail={<span className="a-mono a-dim">{ago(d.decided_at)}</span>}
                 >

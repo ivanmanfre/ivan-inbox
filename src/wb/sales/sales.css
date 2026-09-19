@@ -16,11 +16,20 @@
 /* The section's own name, above the week it is showing. */
 .a-sl-eb{ display:block }
 
+/* The head's own eyebrow sits ABOVE the week, so it keeps its own line. */
+.a-sl > .a-head .a-sl-eb{ margin-block-end:var(--ds-s1) }
+
 /* 1 · The row. Person and clocks left, the meeting link right, the chips on
    their own line — the strip never competes with the name for width, which is
    the fight that turns both into ellipses. */
 .a-sl-row{ flex-wrap:wrap; align-items:center; gap:var(--ds-stack) }
 .a-sl-row[data-past]{ color:var(--ds-text-2) }
+/* The row answers the pointer. It already trades its clocks for the verb under
+   one (E3 below); the wash is what says the whole line is the thing being
+   worked, not just the control that lit up. */
+@media (hover:hover) and (pointer:fine){
+  .a-sl[data-density='a'] .a-sl-row:hover{ background:var(--ds-wash) }
+}
 
 .a-sl-top{
   display:flex; flex-wrap:wrap; align-items:baseline;
@@ -52,10 +61,16 @@
   background:var(--ds-surface-2); color:var(--ds-text);
   font-size:var(--ds-fs-meta); font-weight:var(--ds-fw-medium);
   text-decoration:none; white-space:nowrap;
-  transition:background-color var(--ds-dur-hover) var(--ds-ease);
+  transition:background-color var(--ds-dur-hover) var(--ds-ease),
+             transform var(--ds-dur-hover) var(--ds-ease),
+             box-shadow var(--ds-dur) var(--ds-ease);
 }
 .a-sl-join:hover{ background:var(--ds-surface-3) }
+.a-sl-join:active{ transform:scale(.98) }
 .a-sl-join[data-live]{ background:var(--ds-accent); color:var(--ds-accent-ink) }
+/* The one accent fill on the screen glows rather than dims when reached for:
+   the same recipe the design system's primary button already uses. */
+.a-sl-join[data-live]:hover{ background:var(--ds-accent); box-shadow:0 0 0 4px var(--ds-accent-soft) }
 
 /* 3 · The chip strip. Full width, so six chips wrap as a block instead of
    pushing the name off the row. */
@@ -120,10 +135,16 @@
    already print "today", "later", "next" with their own totals.
    ========================================================================== */
 @media (max-width:767px){
+  /* ELEVATION (2026-09-20): a COLUMN, not a baseline row. Five chrome tiles and
+     a 24px page title leave the week nothing, so at 390 it truncated to
+     "Week …" — a predicate with its whole meaning cut off. Two lines is the
+     head every other surface on this phone already has; the count line the
+     merge dropped stays dropped. */
   .a-sl > .a-head[data-chrome] > .a-head-t > .a-head-title{
     display:flex;
-    align-items:baseline;
-    gap:var(--ds-s3);
+    flex-direction:column;
+    align-items:flex-start;
+    gap:var(--ds-s1);
     min-width:0;
   }
   .a-sl > .a-head[data-chrome] .a-sl-eb{
@@ -137,10 +158,10 @@
     color:var(--ds-text);
   }
   .a-sl > .a-head[data-chrome] .a-sl-week{
-    flex:0 1 auto;
-    min-width:0;
-    font-family:var(--ds-font-mono);
-    font-size:var(--ds-fs-mono);
+    max-width:100%;
+    font-size:var(--ds-fs-meta);
+    font-weight:var(--ds-fw-regular);
+    letter-spacing:0;
     line-height:var(--ds-lh-meta);
     color:var(--ds-text-3);
     white-space:nowrap;

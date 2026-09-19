@@ -30,8 +30,11 @@
   pointer-events:auto;
   transition:opacity var(--ds-dur-hover) var(--ds-ease),
              background-color var(--ds-dur-hover) var(--ds-ease),
-             border-color var(--ds-dur-hover) var(--ds-ease);
+             border-color var(--ds-dur-hover) var(--ds-ease),
+             transform var(--ds-dur-hover) var(--ds-ease);
 }
+/* The press the rest of the system's small controls answer with. */
+.a-selmark:active{ transform:scale(.9) }
 
 /* The visible box stays at the row's density band; the HIT area clears 44px
    through an inset overlay, the same pattern the alert dismiss and the header

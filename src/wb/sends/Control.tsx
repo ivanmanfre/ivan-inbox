@@ -212,7 +212,7 @@ function IncidentBlock({ inc, asOf }: { inc: CcIncident; asOf: number }) {
   return (
     <div className="a-cc-inc">
       <div className="a-wrapline">
-        <Badge tone="urgent" label={`Incident ${inc.state}`}>{inc.state.toUpperCase()}</Badge>
+        <Badge tone="urgent" label={`Incident ${inc.state}`}>{inc.state}</Badge>
         <span className="a-meta">{inc.failure_family ?? 'incident'}{inc.source_lane ? ` · ${inc.source_lane}` : ''}</span>
       </div>
       <div className="a-body-t">

@@ -30,7 +30,8 @@ import { ConversationTakeoverCard } from './ConversationTakeoverCard'
 // 'OUTBOUND' said what the ENGINE calls the lane, not what the card is. Ivan
 // reads these as comments, so they say Comments; `comment_reply` becomes REPLY
 // in the same pass so the two comment kinds cannot be told apart by an S.
-export const KIND_LABEL: Record<OpsKind, string> = { escalation: 'ESC', update: 'UPDATE', newsjack: 'NEWSJACK', weekly_report: 'WEEKLY', comment_reply: 'REPLY', comment_outbound: 'COMMENTS', booking: 'BOOKED', precall_email: 'PRE-CALL', manual_invite: 'INVITE', task: 'TASK', leads_ballot: 'LEADS', audn_recommendation: 'AUDIENCE', conversation_takeover: 'TAKEOVER' }
+// ELEVATION (2026-09-20): the same thirteen words, in the app's sentence case.
+export const KIND_LABEL: Record<OpsKind, string> = { escalation: 'Esc', update: 'Update', newsjack: 'Newsjack', weekly_report: 'Weekly', comment_reply: 'Reply', comment_outbound: 'Comments', booking: 'Booked', precall_email: 'Pre-call', manual_invite: 'Invite', task: 'Task', leads_ballot: 'Leads', audn_recommendation: 'Audience', conversation_takeover: 'Takeover' }
 
 // Slack channel ids are unreadable on a card. escalation/update/booking all print a
 // destination, so name the ones we own and fall back to the raw id for anything else.

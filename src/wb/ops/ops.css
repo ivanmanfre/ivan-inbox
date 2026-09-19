@@ -15,6 +15,10 @@
 /* Two live columns earn the whole plate; one column keeps its measure. */
 .a-ops-canvas[data-wide]{ max-width:160ch }
 
+/* A KV block is a reading grid: the key column holds its own width and the
+   value beside it gets the room, with a line of air between rows. */
+.a-ops-canvas .a-kv{ row-gap:var(--ds-s3) }
+
 /* --------------------------------------------------------------------------
    2 · Pull to refresh. The mark is an icon, never an arrow glyph.
    -------------------------------------------------------------------------- */
@@ -67,7 +71,17 @@
    4 · The pending card. The group is the card; this is only what sits inside
    it and the decision bar in its foot.
    -------------------------------------------------------------------------- */
-.a-ops-card .a-ops-body textarea{ min-height:var(--ds-s11) }
+/* ELEVATION (2026-09-20): 64px held four of the angle's eight lines and cut the
+   fifth through its own letters, with a whole plate of empty ground under the
+   card. The editor opens on the paragraph it is asking him to approve, and the
+   height is counted in LINE BOXES plus the field's own inset, so the last line
+   it shows is a WHOLE line at every type scale rather than a row of sliced
+   letters. Seven line boxes plus ONE `--ds-s4`, not two: a textarea's scroll
+   viewport includes its bottom padding, so the text runs right into that edge
+   and only the top inset sits outside the run. */
+.a-ops-card .a-ops-body textarea{
+  min-height:calc(var(--ds-lh-body) * 7em + var(--ds-s4));
+}
 .a-ops-warn{ color:var(--ds-sev-attention-ui) }
 .a-ops-tags{ display:flex; flex-wrap:wrap; gap:var(--ds-s2) }
 .a-ops-err{ color:var(--ds-sev-urgent-ui) }
@@ -104,9 +118,11 @@
   font-size:var(--ds-fs-title);
   line-height:var(--ds-lh-title);
   border-radius:var(--ds-r2);
-  transition:background-color var(--ds-dur-hover) var(--ds-ease);
+  transition:background-color var(--ds-dur-hover) var(--ds-ease),
+             transform var(--ds-dur-hover) var(--ds-ease);
 }
-.a-ops-emo:hover{ background:var(--ds-wash) }
+.a-ops-emo:hover{ background:var(--ds-wash-strong) }
+.a-ops-emo:active:not(:disabled){ transform:scale(.94) }
 .a-ops-emo:disabled{ cursor:default }
 .a-ops-toolchips{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--ds-s2) }
 
@@ -125,10 +141,10 @@
   display:block;
   width:100%;
   height:auto;
-  border-radius:var(--ds-r2);
-  border:1px solid var(--ds-line);
+  border-radius:var(--ds-r3);
+  box-shadow:inset 0 0 0 1px var(--ds-line);
 }
-.a-ops-rx .a-ops-body textarea{ min-height:var(--ds-s11) }
+.a-ops-rx .a-ops-body textarea{ min-height:calc(var(--ds-lh-body) * 5em + var(--ds-s4)) }
 
 /* --------------------------------------------------------------------------
    7 · Phone. The decision bar stops being a row and becomes a stack, so every
@@ -173,6 +189,13 @@
     padding-block:var(--ds-s4);
   }
 }
-.a-ops-arch-more{margin-top:6px}
-.a-ops-arch-more>summary{cursor:pointer;list-style:none;text-decoration:underline;text-underline-offset:3px}
-.a-ops-arch-more>summary::-webkit-details-marker{display:none}
+.a-ops-arch-more{ margin-block-start:var(--ds-s3) }
+.a-ops-arch-more > summary{
+  cursor:pointer; list-style:none;
+  color:var(--ds-text-3);
+  text-decoration:underline; text-decoration-style:dotted;
+  text-underline-offset:var(--ds-s2);
+  transition:color var(--ds-dur-hover) var(--ds-ease);
+}
+.a-ops-arch-more > summary:hover{ color:var(--ds-text) }
+.a-ops-arch-more > summary::-webkit-details-marker{ display:none }

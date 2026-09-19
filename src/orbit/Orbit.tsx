@@ -33,7 +33,9 @@ function errorLine(error: string): string {
 const OrbitCanvasLazy = lazy(() => import('./OrbitCanvas'))
 
 const TENANT_OPTS: { id: OrbitTenant; label: string }[] = [
-  { id: 'ivan', label: 'Ivan' }, { id: 'arch', label: 'ARCH' }, { id: 'risedtc', label: 'RISE' },
+  // ELEVATION (2026-09-20): the same two names, in the case every other
+  // client switch in the app already spells them (Lanes' own chips).
+  { id: 'ivan', label: 'Ivan' }, { id: 'arch', label: 'Arch' }, { id: 'risedtc', label: 'Rise' },
 ]
 const PRESET_OPTS: { id: DatePreset; label: string }[] = [
   { id: '7d', label: '7d' }, { id: '30d', label: '30d' }, { id: '90d', label: '90d' },

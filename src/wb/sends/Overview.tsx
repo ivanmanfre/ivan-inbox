@@ -51,17 +51,18 @@ type Sev = 'green' | 'amber' | 'red' | 'neutral'
 const SEV_TONE: Record<Sev, Tone | undefined> = {
   green: 'clear', amber: 'attention', red: 'urgent', neutral: undefined,
 }
+// ELEVATION (2026-09-20): same words, the app's sentence case.
 const MODE: Record<GovernorRow['mode'], { label: string; tone: Tone }> = {
-  normal: { label: 'NORMAL', tone: 'clear' },
-  warm_only: { label: 'WARM-ONLY', tone: 'attention' },
-  cold_paused: { label: 'COLD-PAUSED', tone: 'urgent' },
+  normal: { label: 'Normal', tone: 'clear' },
+  warm_only: { label: 'Warm-only', tone: 'attention' },
+  cold_paused: { label: 'Cold-paused', tone: 'urgent' },
 }
 const MODE_RANK: Record<GovernorRow['mode'], number> = { normal: 0, warm_only: 1, cold_paused: 2 }
 
 // A seat sitting AT its cap is not "NORMAL", whatever its adaptive mode says: the
 // sender is refusing every pick until the window rolls. Badge says so (Ivan
 // 2026-09-01, Arch read "NORMAL · 35/35 · 0 left today").
-const CAP_HIT: { label: string; tone: Tone } = { label: 'CAP REACHED', tone: 'attention' }
+const CAP_HIT: { label: string; tone: Tone } = { label: 'Cap reached', tone: 'attention' }
 function modeBadge(g: GovernorRow | null, used: number, cap: number): { label: string; tone: Tone } {
   if (cap > 0 && used >= cap) return CAP_HIT
   return g ? MODE[g.mode] : MODE.normal
@@ -1003,8 +1004,8 @@ function Campaigns({ rows, client }: { rows: CampaignSend[]; client: Client }) {
       header: 'State',
       width: '7rem',
       cell: c => (
-        <Badge tone={c.is_active ? 'clear' : 'neutral'} label={c.is_active ? 'ACTIVE' : 'PAUSED'}>
-          {c.is_active ? 'ACTIVE' : 'PAUSED'}
+        <Badge tone={c.is_active ? 'clear' : 'neutral'} label={c.is_active ? 'Active' : 'Paused'}>
+          {c.is_active ? 'Active' : 'Paused'}
         </Badge>
       ),
     },
