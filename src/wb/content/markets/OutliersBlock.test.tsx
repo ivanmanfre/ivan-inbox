@@ -56,7 +56,7 @@ describe('OutliersPanel', () => {
   })
 
   it('calls the brand share a floor where it is shown', () => {
-    expect(text(beforeFold)).toContain('brand share is a floor')
+    expect(text(beforeFold)).toContain('n=40 a post, a floor')
   })
 
   it('states the sample size on the bands and reads them as a range', () => {

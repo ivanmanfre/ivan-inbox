@@ -76,7 +76,7 @@ export function OutliersPanel({ study }: { study: OutlierStudy }) {
           <section className="a-mk-sec">
             <h3 className="a-mk-h">
               Winners to mirror
-              <span className="a-mk-tag">{s.base.per_post} reactors read on each, brand share is a floor</span>
+              <span className="a-mk-tag">n={s.base.per_post} a post, a floor</span>
             </h3>
             <ul className="a-mk-tbl">{shown.map(w => <WinnerRow key={w.url} w={w} />)}</ul>
           </section>
