@@ -86,10 +86,18 @@ function safeSourceHref(url: string | null | undefined): string | null {
   return href && /^https?:\/\//i.test(href) ? href : null
 }
 
+const SOURCE_LABELS: Record<string, string> = {
+  own_post: 'Your post',
+  founder: 'Founder note',
+  buyer_question: 'Buyer question',
+  news: 'News source',
+  trend: 'Trend source',
+  competitor: 'Reference post',
+}
+
 function SourceLink({ s }: { s: SourceRow }) {
   const label = [
-    s.kind?.replace(/_/g, ' '),
-    s.author?.trim() || s.id || 'unattributed',
+    s.author?.trim() || SOURCE_LABELS[s.kind ?? ''] || 'Reference post',
     s.date?.trim() || 'date not recorded',
     typeof s.reactions === 'number' ? `${s.reactions} reactions` : null,
     typeof s.comments === 'number' ? `${s.comments} comment${s.comments === 1 ? '' : 's'}` : null,

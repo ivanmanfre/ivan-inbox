@@ -445,6 +445,23 @@ describe('the three states, as they actually render', () => {
     expect(strip(h)).toContain('Unknown')
   })
 
+  it.each([
+    ['own_post', 'Your post'], ['founder', 'Founder note'], ['buyer_question', 'Buyer question'],
+    ['news', 'News source'], ['trend', 'Trend source'], ['competitor', 'Reference post'],
+    [undefined, 'Reference post'],
+  ])('labels an authorless %s source without exposing its internal ID', (kind, label) => {
+    const p = proposal({ context: { audn: {}, source_rows: [{
+      id: 'source:9a57c8da-68cb-4f27-a16d-0123456789ab', kind, author: ' ',
+      date: '2026-09-21', url: 'https://example.com/source', excerpt: 'Retained source excerpt.',
+    }] } })
+    const h = rowHtml(p)
+    const t = strip(h)
+    expect(h).toContain(`>${label} · 2026-09-21</a>`)
+    expect(h).toContain('href="https://example.com/source"')
+    expect(t).toContain('Retained source excerpt.')
+    expect(t).not.toContain('source:9a57c8da-68cb-4f27-a16d-0123456789ab')
+  })
+
   it('renders recovered founder source provenance and text with safe links', () => {
     const p = proposal()
     const founderText = 'Mattan explained the risk-sharing criterion in the original July 13 source. '.repeat(4)
