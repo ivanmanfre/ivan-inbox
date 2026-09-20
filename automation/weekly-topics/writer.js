@@ -93,7 +93,7 @@ const getAll = async (path) => {
   }
 };
 
-// <selector-pack:begin sha256=9ea5a2548fbfc826c1df311b809f0060668db1cc48940499e275e960247468c1>
+// <selector-pack:begin sha256=6b2bddcff395f085f12b9ebd9d51ea6e2f2d8ac3fd994bac1bc2051e30b8fd4f>
 // GENERATED from automation/content-evidence/selector-pack.mjs by sync-selector.mjs.
 // Do not hand-edit this block -- edit selector-pack.mjs and rerun the sync script.
 // content-evidence / selector-pack.mjs
@@ -299,6 +299,20 @@ function resolveClientFacts(finding, clientFactsById, origin) {
   return { denied: null, resolved, needsMaterial };
 }
 
+// F6 (audit): test_metric must be a declared test in plain words a person can act on, not a
+// policy/metric id. metric_id is kept as its own candidate field for provenance instead of
+// being conflated with the human-readable measurement plan.
+const DECLARED_TEST_METRIC_BY_OBJECTIVE = Object.freeze({
+  attention_reach: "weighted reactions (likes + 3 x reposts) at 7 and 14 days against the account's own usual",
+  buyer_response: "relevant buyer replies or DMs at 7 and 14 days against the account's own usual",
+  conversion_action: "the defined conversion action (click, booking or signup) at 7 and 14 days against the account's own usual",
+});
+function declaredTestMetric(objective, explicit) {
+  if (typeof explicit === 'string' && explicit.trim()) return explicit.trim();
+  return DECLARED_TEST_METRIC_BY_OBJECTIVE[objective]
+    || "weighted reactions (likes + 3 x reposts) at 7 and 14 days against the account's own usual";
+}
+
 /** Builds one Candidate, or a rejection when a client-fact permission blocks it outright. */
 function buildCandidate({ clientId, weekStart, finding, origin, lift, isExperiment, experimentReason,
   clientFactsById, previousTests }) {
@@ -326,13 +340,14 @@ function buildCandidate({ clientId, weekStart, finding, origin, lift, isExperime
   const observationWindowDays = [7, 14].includes(finding.observation_window_days)
     ? finding.observation_window_days : 7;
 
+  const objective = typeof finding.objective === 'string' && finding.objective.trim() ? finding.objective : 'attention_reach';
   const candidate = {
     schema_version: 1,
     client_id: clientId,
     week_start: weekStart,
     recommendation_id: null,
     draft_key: `${clientId}:${weekStart}:${finding.finding_id}`,
-    objective: typeof finding.objective === 'string' && finding.objective.trim() ? finding.objective : 'attention_reach',
+    objective,
     source_finding_ids: [finding.finding_id],
     source_posts: Array.isArray(finding.source_ids) ? finding.source_ids.slice() : [],
     client_fact_refs: factResolution.resolved,
@@ -343,8 +358,10 @@ function buildCandidate({ clientId, weekStart, finding, origin, lift, isExperime
     format: typeof finding.format === 'string' && finding.format ? finding.format : null,
     structural_features: Array.isArray(finding.structural_features) ? finding.structural_features.slice() : [],
     adaptation_history: historyForFinding(finding, previousTests),
-    test_metric: (typeof finding.metric_id === 'string' && finding.metric_id)
-      || (typeof finding.test_metric === 'string' && finding.test_metric) || 'likes_plus_reposts',
+    // metric_id is provenance (the study's own policy/metric identifier, when supplied);
+    // test_metric is the declared, plain-words measurement plan a person can act on.
+    metric_id: (typeof finding.metric_id === 'string' && finding.metric_id) || null,
+    test_metric: declaredTestMetric(objective, finding.test_metric),
     comparison_rule: 'author_own_baseline_multiple',
     observation_window: { days: observationWindowDays },
     needs_material: factResolution.needsMaterial,
@@ -611,9 +628,24 @@ function commitGuard({ pack, rolloutEnabled, existingCommits } = {}) {
 async function readEvidenceRollout() {
   try {
     const rows = await getJson('/integration_config?select=key,value&key=eq.weekly_evidence_selector_clients&limit=1');
-    const raw = Array.isArray(rows) && rows[0] ? rows[0].value : undefined;
-    if (!Array.isArray(raw)) return { clients: [], readError: null };
-    return { clients: raw.filter((x) => typeof x === 'string' && x), readError: null };
+    const row = Array.isArray(rows) && rows[0] ? rows[0] : undefined;
+    if (!row) return { clients: [], readError: null }; // no row at all: legacy path, not malformed
+    let raw = row.value;
+    // F1 (audit): integration_config.value is a `text` column live, so PostgREST returns the
+    // JSON array literally as a JSON STRING ('["ivan"]'), never as an already-parsed array.
+    // Without this, the switch can never enable anyone. Parsed inside the same try, so a parse
+    // failure falls through to the catch below only if it throws past this block -- it does not,
+    // it returns directly, recording exactly which text failed to parse.
+    if (typeof raw === 'string') {
+      try { raw = JSON.parse(raw); }
+      catch (e) {
+        return { clients: [], readError: 'weekly_evidence_selector_clients text is not valid JSON: ' + String((e && e.message) || e).slice(0, 150) };
+      }
+    }
+    if (!Array.isArray(raw) || raw.some((x) => typeof x !== 'string' || x === '')) {
+      return { clients: [], readError: 'weekly_evidence_selector_clients value is not a JSON array of non-empty strings' };
+    }
+    return { clients: raw, readError: null };
   } catch (e) {
     return { clients: [], readError: String((e && e.message) || e).slice(0, 200) };
   }
@@ -732,6 +764,18 @@ const quotedSpans = (s) => {
   const re2 = /“([^”]{25,})”/g;
   while ((m = re2.exec(str)) !== null) out.push(m[1]);
   return out;
+};
+
+// F3 (audit): a saved client_fact_refs entry must never render as a raw id on screen. The
+// consent-checked approved source itself carries no dedicated "title" field, so the short human
+// label is the source's own retained excerpt (what a reader would recognize), falling back to
+// its location, then its kind, in that order -- never the bare source_id.
+const clientFactLabel = (source) => {
+  const text = (source && typeof source.excerpt === 'string' && source.excerpt.trim())
+    || (source && typeof source.location === 'string' && source.location.trim())
+    || (source && typeof source.kind === 'string' && source.kind.trim())
+    || 'Approved client source';
+  return text.length > 80 ? text.slice(0, 80).trim() + '…' : text;
 };
 
 const summary = { run_at: RUN_ISO, cycle_id: CYCLE_ID, prompt: PROMPT_STAMP, preview: PREVIEW, week_start: WEEK_START, clients: [], evidence_rollout: { clients: evidenceRollout.clients, read_error: evidenceRollout.readError } };
@@ -1073,6 +1117,7 @@ for (const t of targets) {
 }
 for (const p of prepared) {
   const {t,cid,rec,openRows,context,allowedSubjects,approvedSources,rosterOut,roleByName,accountByName,sourceBaselines,packRows,rowById,already,pack,evidenceActive,evidenceCandidates}=p;
+  const approvedSourcesById = new Map(approvedSources.map((s) => [s.source_id, s]));
   if (Date.now()-START > BUDGET_MS-280000) {rec.skipped=true;rec.reason='run_budget_exhausted';continue;}
 
   // ---- 5. one proxy call per client, never a retry loop -----------------------
@@ -1269,18 +1314,30 @@ for (const p of prepared) {
         // candidate -- never from model-echoed fields, so this can never carry a number the
         // pack did not produce. Absent entirely on every legacy row, exactly matching prior
         // behavior byte for byte when the evidence path is inactive.
+        // F3 (audit): saved at context.evidence_package -- top level, sibling of audn -- which is
+        // exactly where the writer's own history read (previousTests, above) and commitGuard
+        // both look. client_fact_refs is never a bare id: each entry is the consent-checked
+        // approved source's own kind plus a short human label, resolved here, never on screen as
+        // a raw id. needs_material and experiment_reason are always/conditionally present so a
+        // reader (or the SQL reader) never has to reconstruct them from other fields.
         ...(k.evidenceCandidate ? { evidence_package: {
           schema_version: k.evidenceCandidate.schema_version,
           source_finding_ids: k.evidenceCandidate.source_finding_ids,
           source_posts: k.evidenceCandidate.source_posts,
-          client_fact_refs: k.evidenceCandidate.client_fact_refs,
+          client_fact_refs: k.evidenceCandidate.client_fact_refs.map((factId) => {
+            const src = approvedSourcesById.get(factId);
+            return { source_id: factId, kind: (src && src.kind) || null, label: clientFactLabel(src) };
+          }),
           objective: k.evidenceCandidate.objective,
           test_metric: k.evidenceCandidate.test_metric,
+          metric_id: k.evidenceCandidate.metric_id,
           comparison_rule: k.evidenceCandidate.comparison_rule,
           observation_window: k.evidenceCandidate.observation_window,
           adaptation_history: k.evidenceCandidate.adaptation_history,
+          needs_material: k.evidenceCandidate.needs_material,
           limitations: k.evidenceCandidate.limitations,
           label: k.evidenceCandidate.label,
+          ...(k.evidenceCandidate.label === 'experiment' ? { experiment_reason: k.evidenceCandidate.experiment_reason } : {}),
         } } : {}),
       },
     };

@@ -201,6 +201,20 @@ function resolveClientFacts(finding, clientFactsById, origin) {
   return { denied: null, resolved, needsMaterial };
 }
 
+// F6 (audit): test_metric must be a declared test in plain words a person can act on, not a
+// policy/metric id. metric_id is kept as its own candidate field for provenance instead of
+// being conflated with the human-readable measurement plan.
+const DECLARED_TEST_METRIC_BY_OBJECTIVE = Object.freeze({
+  attention_reach: "weighted reactions (likes + 3 x reposts) at 7 and 14 days against the account's own usual",
+  buyer_response: "relevant buyer replies or DMs at 7 and 14 days against the account's own usual",
+  conversion_action: "the defined conversion action (click, booking or signup) at 7 and 14 days against the account's own usual",
+});
+function declaredTestMetric(objective, explicit) {
+  if (typeof explicit === 'string' && explicit.trim()) return explicit.trim();
+  return DECLARED_TEST_METRIC_BY_OBJECTIVE[objective]
+    || "weighted reactions (likes + 3 x reposts) at 7 and 14 days against the account's own usual";
+}
+
 /** Builds one Candidate, or a rejection when a client-fact permission blocks it outright. */
 function buildCandidate({ clientId, weekStart, finding, origin, lift, isExperiment, experimentReason,
   clientFactsById, previousTests }) {
@@ -228,13 +242,14 @@ function buildCandidate({ clientId, weekStart, finding, origin, lift, isExperime
   const observationWindowDays = [7, 14].includes(finding.observation_window_days)
     ? finding.observation_window_days : 7;
 
+  const objective = typeof finding.objective === 'string' && finding.objective.trim() ? finding.objective : 'attention_reach';
   const candidate = {
     schema_version: 1,
     client_id: clientId,
     week_start: weekStart,
     recommendation_id: null,
     draft_key: `${clientId}:${weekStart}:${finding.finding_id}`,
-    objective: typeof finding.objective === 'string' && finding.objective.trim() ? finding.objective : 'attention_reach',
+    objective,
     source_finding_ids: [finding.finding_id],
     source_posts: Array.isArray(finding.source_ids) ? finding.source_ids.slice() : [],
     client_fact_refs: factResolution.resolved,
@@ -245,8 +260,10 @@ function buildCandidate({ clientId, weekStart, finding, origin, lift, isExperime
     format: typeof finding.format === 'string' && finding.format ? finding.format : null,
     structural_features: Array.isArray(finding.structural_features) ? finding.structural_features.slice() : [],
     adaptation_history: historyForFinding(finding, previousTests),
-    test_metric: (typeof finding.metric_id === 'string' && finding.metric_id)
-      || (typeof finding.test_metric === 'string' && finding.test_metric) || 'likes_plus_reposts',
+    // metric_id is provenance (the study's own policy/metric identifier, when supplied);
+    // test_metric is the declared, plain-words measurement plan a person can act on.
+    metric_id: (typeof finding.metric_id === 'string' && finding.metric_id) || null,
+    test_metric: declaredTestMetric(objective, finding.test_metric),
     comparison_rule: 'author_own_baseline_multiple',
     observation_window: { days: observationWindowDays },
     needs_material: factResolution.needsMaterial,

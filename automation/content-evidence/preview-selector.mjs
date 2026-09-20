@@ -159,7 +159,12 @@ export function toMarkdown(preview) {
   }
   lines.push('## Coverage');
   lines.push('');
-  for (const [k, v] of Object.entries(preview.coverage || {})) lines.push(`- ${k}: ${v}`);
+  for (const [k, v] of Object.entries(preview.coverage || {})) {
+    // F6 (audit): an object-valued coverage field (author_pool_cap, small_author_baseline) must
+    // render as JSON, never string-coerce to "[object Object]".
+    const rendered = v !== null && typeof v === 'object' ? JSON.stringify(v) : v;
+    lines.push(`- ${k}: ${rendered}`);
+  }
   lines.push('');
   lines.push(`## Choices (${preview.choices.length})`);
   lines.push('');

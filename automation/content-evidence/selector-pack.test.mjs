@@ -118,7 +118,7 @@ test('a richer own outcome is kept over a thinner one when the cap forces a choi
 });
 
 // ---------------------------------------------------------------------------
-// 5. failed prior adaptation omitted (synthetic Toby Waller shape)
+// 5. failed prior adaptation omitted (synthetic prior-adaptation shape, fictional author)
 // ---------------------------------------------------------------------------
 test('a failed prior adaptation of the same source is carried in adaptation_history, never omitted', () => {
   const f = readFixture('selector-toby-adaptation.json');
@@ -414,4 +414,23 @@ test('D10: a below-8 baseline sorts after all at-or-above-8 findings and is limi
   assert(pack.candidates[1].limitations.includes('Very small author baseline; the ratio overstates the gap.'));
   assert.equal(pack.coverage.small_author_baseline.threshold, 8);
   assert.equal(pack.coverage.small_author_baseline.count, 1);
+});
+
+// F6 (PRELEASE-AUDIT.md): test_metric must be a declared test in plain words derived from the
+// objective, not a policy/metric id; metric_id is kept separately for provenance.
+test('F6: test_metric is a plain-words declared test, metric_id is kept separately for provenance', () => {
+  const finding = qualifyingMarketFinding({ finding_id: 'f-metric', metric_id: 'new-policy-v1' });
+  const pack = buildEvidencePack({ clientId: 'ivan', weekStart: '2026-09-28', limit: 3, findings: [finding] });
+  const c = pack.candidates[0];
+  assert.equal(c.metric_id, 'new-policy-v1');
+  assert.notEqual(c.test_metric, 'new-policy-v1');
+  assert.match(c.test_metric, /reactions|reposts|likes/i);
+  assert.match(c.test_metric, /\bdays\b/);
+});
+
+test('F6: an unknown objective still gets a plain-words declared test, never a raw id', () => {
+  const finding = qualifyingMarketFinding({ finding_id: 'f-metric-2', objective: 'buyer_response', metric_id: 'x' });
+  const pack = buildEvidencePack({ clientId: 'ivan', weekStart: '2026-09-28', limit: 3, findings: [finding] });
+  assert.notEqual(pack.candidates[0].test_metric, 'x');
+  assert(pack.candidates[0].test_metric.length > 10);
 });

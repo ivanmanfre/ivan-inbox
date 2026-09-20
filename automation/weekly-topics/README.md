@@ -45,9 +45,14 @@ anything the model echoes, so a model cannot introduce a number the pack did not
 `commitGuard` (also generated from `selector-pack.mjs`) refuses any commit that would carry
 `evidence_package` unless the rollout switch names the client and the run is not a preview --
 this is checked immediately before the existing `audn_recommendation_commit` call, as defense in
-depth on top of the structural preview/rollout gate above it. With the rollout switch empty, the
-legacy path's behavior is unchanged: every existing writer test still passes unmodified, and a
-`context.evidence_package` key never appears on any row.
+depth on top of the structural preview/rollout gate above it.
+
+With the rollout switch empty, the run is NOT byte-identical to the pre-evidence writer: it makes
+one extra read (`GET /integration_config`, wrapped and fail-closed), and the returned summary
+carries a new `evidence_rollout` key plus `evidence_path: false` on each client record. What IS
+unchanged: every model pack sent to the proxy (`evidence_candidates` is spread onto the pack only
+when non-empty) and every committed row's shape and content -- every existing writer test still
+passes unmodified, and a `context.evidence_package` key never appears on any row.
 
 Offline preview (no DB, no model call): `automation/content-evidence/preview-selector.mjs`
 builds the same `buildEvidencePack` output from a frozen study JSON file plus

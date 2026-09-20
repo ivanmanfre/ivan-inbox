@@ -98,7 +98,11 @@ test('recommendation prose over250 words is rejected without rewriting the model
 // Evidence path (D6/D7/D8): selector-pack region, rollout switch, evidence_package.
 // ---------------------------------------------------------------------------
 import { sha256Hex, currentRegionSha } from './sync-selector.mjs';
-const rolloutRow=(clientIds)=>[{key:'weekly_evidence_selector_clients',value:clientIds}];
+// Live integration_config.value is a `text` column: PostgREST returns the JSON array literally
+// as a JSON STRING ('["ivan"]'), never as a parsed array (audit F1). This is the realistic mock.
+const rolloutRow=(clientIds)=>[{key:'weekly_evidence_selector_clients',value:JSON.stringify(clientIds)}];
+const rolloutRowRaw=(clientIds)=>[{key:'weekly_evidence_selector_clients',value:clientIds}];
+const rolloutRowText=(text)=>[{key:'weekly_evidence_selector_clients',value:text}];
 const evidenceFinding=(overrides={})=>({client_id:'ivan',finding_id:'ef1',kind:'market',source_ids:['sp1'],observed_value:400,baseline_value:50,baseline_n:30,likes:90,metric_id:'likes_plus_reposts',...overrides});
 
 test('the writer.js selector-pack region is not stale against selector-pack.mjs',()=>{
@@ -111,6 +115,49 @@ test('a rollout switch read error fails closed to the legacy path and is recorde
  assert.equal(first(x).evidence_path,false);
  assert.equal(x.result.evidence_rollout.clients.length,0);
  assert.match(x.result.evidence_rollout.read_error,/Simulated/);
+});
+
+// ---------------------------------------------------------------------------
+// F1: integration_config.value is TEXT live; PostgREST returns a JSON string, not an array.
+// ---------------------------------------------------------------------------
+
+test('F1: a text-column rollout value (\'["ivan"]\') is parsed and enables that client',async()=>{
+ const x=await run({body:{client_id:'ivan'},rolloutRows:rolloutRowText('["ivan"]')});
+ assert.equal(x.result.evidence_rollout.clients.length,1);
+ assert.equal(x.result.evidence_rollout.clients[0],'ivan');
+ assert.equal(x.result.evidence_rollout.read_error,null);
+});
+
+test('F1: a genuinely already-parsed array value is still accepted (not text-only)',async()=>{
+ const x=await run({body:{client_id:'ivan'},rolloutRows:rolloutRowRaw(['ivan'])});
+ assert.equal(x.result.evidence_rollout.clients.length,1);
+ assert.equal(x.result.evidence_rollout.clients[0],'ivan');
+});
+
+test('F1: malformed JSON text fails closed to [] and records a read_error',async()=>{
+ const x=await run({body:{},rolloutRows:rolloutRowText('["ivan"')});
+ assert.equal(x.result.evidence_rollout.clients.length,0);
+ assert.equal(typeof x.result.evidence_rollout.read_error,'string');
+ assert(x.result.evidence_rollout.read_error.length>0);
+ assert.equal(first(x).evidence_path,false);
+});
+
+test('F1: the text \'null\' fails closed to [] and records a read_error',async()=>{
+ const x=await run({body:{},rolloutRows:rolloutRowText('null')});
+ assert.equal(x.result.evidence_rollout.clients.length,0);
+ assert(x.result.evidence_rollout.read_error);
+});
+
+test('F1: the text \'{}\' fails closed to [] and records a read_error',async()=>{
+ const x=await run({body:{},rolloutRows:rolloutRowText('{}')});
+ assert.equal(x.result.evidence_rollout.clients.length,0);
+ assert(x.result.evidence_rollout.read_error);
+});
+
+test('F1: an absent row stays [] with no read_error (not malformed, just unset)',async()=>{
+ const x=await run({body:{}});
+ assert.equal(x.result.evidence_rollout.clients.length,0);
+ assert.equal(x.result.evidence_rollout.read_error,null);
 });
 
 test('an absent rollout row keeps every client on the legacy path with no evidence_package and no content_evidence_pack read',async()=>{
@@ -227,4 +274,50 @@ test('D10: the evidence pool passed to buildEvidencePack is capped at EVIDENCE_P
  const findings=['p1','p2','p3','p4'].map((id,i)=>evidenceFinding({finding_id:'ef-pool-'+id,source_ids:['sp-pool-'+id],observed_value:400-i*10}));
  const x=await run({body:{preview:true,client_id:'ivan',evidence:true},evidencePack:{study:{study_id:'s1',state:'validated'},findings}});
  assert.equal(first(x).evidence_coverage.candidates_selected,4);
+});
+
+// ---------------------------------------------------------------------------
+// F3 (PRELEASE-AUDIT.md): the saved package's exact shape -- client_fact_refs as
+// {source_id,kind,label} objects (never a raw id for display), needs_material, and
+// experiment_reason when the candidate is an experiment.
+// ---------------------------------------------------------------------------
+
+test('F3: the saved evidence_package carries client_fact_refs as {source_id,kind,label} objects and needs_material',async()=>{
+ const finding=evidenceFinding({client_fact_ids:['founder-1']});
+ const it=candidate();it.evidence_candidate_key='ivan:2026-09-21:ef1';
+ const x=await run({body:{},items:[it],rolloutRows:rolloutRow(['ivan']),evidencePack:{study:{study_id:'s1',state:'validated'},findings:[finding]}});
+ const commit=x.calls.find(c=>c.url.endsWith('/audn_recommendation_commit'));
+ const pkg=commit.body.p_rows[0].context.evidence_package;
+ assert.equal(pkg.label,'evidence_backed');
+ assert.equal(pkg.needs_material,null);
+ assert.equal('experiment_reason' in pkg,false);
+ assert.equal(pkg.client_fact_refs.length,1);
+ assert.equal(pkg.client_fact_refs[0].source_id,'founder-1');
+ assert.equal(pkg.client_fact_refs[0].kind,'authorized_call_transcript');
+ assert.equal(typeof pkg.client_fact_refs[0].label,'string');
+ assert(pkg.client_fact_refs[0].label.length>0);
+ assert.notEqual(pkg.client_fact_refs[0].label,'founder-1');
+});
+
+test('F3: a needs_material candidate saves the reason string, not null',async()=>{
+ const finding=evidenceFinding();
+ const it=candidate();it.evidence_candidate_key='ivan:2026-09-21:ef1';
+ const x=await run({body:{},items:[it],rolloutRows:rolloutRow(['ivan']),evidencePack:{study:{study_id:'s1',state:'validated'},findings:[finding]}});
+ const commit=x.calls.find(c=>c.url.endsWith('/audn_recommendation_commit'));
+ const pkg=commit.body.p_rows[0].context.evidence_package;
+ assert.equal(typeof pkg.needs_material,'string');
+ assert(pkg.needs_material.length>0);
+ assert.equal(pkg.client_fact_refs.length,0);
+});
+
+test('F3: an experiment-labeled saved evidence_package carries experiment_reason',async()=>{
+ const finding=evidenceFinding({finding_id:'ef-exp',observed_value:10,baseline_value:50,baseline_n:25,experiment_eligible:true});
+ delete finding.likes;
+ const it=candidate();it.evidence_candidate_key='ivan:2026-09-21:ef-exp';
+ const x=await run({body:{},items:[it],rolloutRows:rolloutRow(['ivan']),evidencePack:{study:{study_id:'s1',state:'validated'},findings:[finding]}});
+ const commit=x.calls.find(c=>c.url.endsWith('/audn_recommendation_commit'));
+ const pkg=commit.body.p_rows[0].context.evidence_package;
+ assert.equal(pkg.label,'experiment');
+ assert.equal(typeof pkg.experiment_reason,'string');
+ assert(pkg.experiment_reason.length>0);
 });

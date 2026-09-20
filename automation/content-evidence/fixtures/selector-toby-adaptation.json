@@ -1,5 +1,5 @@
 {
-  "_comment": "Synthetic equivalent of the RISE Toby Waller adaptation trace (goal-runs/content-evidence-01-foundation-2026-09-20-out/parent-checks/own-outcome-trace-risedtc.json). No private post text or real profile identity: a made-up author and made-up numbers shaped the same way -- a source that was an ORDINARY post for its author (lift 1.1, not an outlier) was adapted anyway, and the adaptation was observed weak. This fixture proves a failed prior adaptation of the same source is carried in adaptation_history, never silently omitted, when that source is proposed again.",
+  "_comment": "Synthetic equivalent of a real RISE prior-adaptation trace on file (goal-runs/content-evidence-01-foundation-2026-09-20-out/parent-checks/own-outcome-trace-risedtc.json). No private post text, and the author here is a fictional placeholder ('J. Sample'), never the real third-party name -- a made-up author and made-up numbers shaped the same way -- a source that was an ORDINARY post for its author (lift 1.1, not an outlier) was adapted anyway, and the adaptation was observed weak. This fixture proves a failed prior adaptation of the same source is carried in adaptation_history, never silently omitted, when that source is proposed again.",
   "clientId": "risedtc",
   "weekStart": "2026-09-28",
   "studies": [],
