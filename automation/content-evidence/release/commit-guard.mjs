@@ -80,8 +80,17 @@ export function checkPreview(preview, enabled) {
       continue;
     }
     clients.push(cid);
-    if (block.writer_bail || block.skipped || !Array.isArray(block.rows)) {
+    // M6 (pre-release audit): --preview must be the RAW native capture, the file whose sha256 the
+    // reviewed receipt carries, not a hand-written F06 summary receipt. An F06 receipt has
+    // `choices[]` and no `rows[]`, so it would otherwise fail here with a vague "incomplete
+    // block" while looking plausible. Say exactly what was handed over and what is expected.
+    // A bailed or skipped client legitimately has no rows; that stays its own refusal, unchanged.
+    if (block.writer_bail || block.skipped) {
       problems.push(`client ${cid} has an incomplete block (writer bail, skipped, or no rows); resolve it before committing`);
+      continue;
+    }
+    if (!Array.isArray(block.rows)) {
+      problems.push(`client ${cid} carries no rows[]: --preview must be the raw native preview capture (the file whose sha256 the reviewed receipt records), not a summary receipt. A receipt with choices[] and no rows[] is never committable.`);
       continue;
     }
     for (const row of block.rows) {

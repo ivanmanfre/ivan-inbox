@@ -231,11 +231,16 @@ test('an unknown evidence_candidate_key is dropped, never invented into a citati
  assert.equal(first(x).dropped[0].reason,'evidence_candidate_unknown');
 });
 
-test('a second item citing the same experiment-labeled candidate is dropped once the slot is filled',async()=>{
- const experimentFinding=evidenceFinding({finding_id:'ef-exp',observed_value:10,baseline_value:50,baseline_n:25,likes:undefined,experiment_reason:'Untested angle for this client.'});
+test('a second experiment choice is dropped once the single slot is filled, whichever route it takes',async()=>{
+ // Two distinct experiment candidates, so the guard under test is the one-experiment slot and
+ // not the D8 already-cited rule, which has its own control.
+ // The selector offers at most one experiment candidate, so the second experiment here is the
+ // freeform slot. Both routes into the one-experiment cap are covered by this one assertion.
+ const experimentFinding=evidenceFinding({finding_id:'ef-exp',observed_value:10,baseline_value:50,baseline_n:25,experiment_reason:'Untested angle for this client.'});
  delete experimentFinding.likes;
  const a=citing(candidate(),'ivan:2026-09-21:ef-exp');
- const b=citing(candidate(),'ivan:2026-09-21:ef-exp');b.weekly.rank=2;b.weekly.topic_key='different-topic';b.original_angle='A different angle entirely.';
+ const b=candidate();b.experiment=true;b.experiment_reason='A second untested opening.';b.test_metric='Weighted reactions at 7 days.';
+ b.weekly.rank=2;b.weekly.topic_key='different-topic';b.original_angle='A different angle entirely.';
  const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[a,b],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[experimentFinding]}});
  assert.equal(first(x).proposed,1);
  assert.equal(first(x).dropped[0].reason,'evidence_candidate_second_experiment');
@@ -442,13 +447,16 @@ test('audit C: the model writing choices that all fail measured-source validatio
  assert.equal(first(x).evidence_selection.dropped_no_measured_source,1);
 });
 
-test('audit C: a deliberate model [] on an evidence-active client still commits the immutable empty cycle with coverage_gap, unchanged',async()=>{
+test('audit C, superseded by DECISIONS D8: a deliberate model [] on a client with a real measured pool no longer commits an empty week',async()=>{
+ // Run 3 accepted an immutable empty cycle here. D8 (M5b) reverses that on the evidence path
+ // only: audn_recommendation_commit has no delete path, so an empty commit would burn the week
+ // for a client that has a measured pool waiting. The legacy half of the original assertion is
+ // kept intact by the legacy-path control below it.
  const x=await run({body:{},items:[],rolloutRows:rolloutRow(['ivan']),evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
- const commit=x.calls.find(c=>c.url.endsWith('/audn_recommendation_commit'));
- assert(commit);
- assert.equal(commit.body.p_rows.length,0);
- assert.equal(first(x).writer_bail,false);
- assert.equal(first(x).reason,'no_supported_candidates');
+ assert.equal(x.calls.some(c=>c.url.endsWith('/audn_recommendation_commit')),false);
+ assert.equal(first(x).writer_bail,true);
+ assert.equal(first(x).retryable,true);
+ assert.equal(first(x).reason,'no_choices_returned');
  assert.equal(first(x).coverage_gap,'no_candidate_fit_this_week');
 });
 
@@ -734,4 +742,55 @@ test('regression: reserved-evidence-budget -- context is slimmed in a stated ord
  // constraint material is byte-identical: the voice prompt body is never shortened
  assert.equal(x.packs[0].prompts[0].body.length,'Complete applicable voice rule. '.repeat(5320).length);
  assert(prompt.length+128+JSON.stringify(x.packs[0]).length<=200000);
+});
+
+// ---------------------------------------------------------------------------
+// Pre-release audit fixes (DECISIONS D8). M1, M5a, M5b.
+// ---------------------------------------------------------------------------
+
+test('regression: proxy-4xx-not-retried -- a 401 is the provider answering, so it is never retried',async()=>{
+ let attempts=0;
+ const x=await run({body:{},items:[],proxyBehaviour:()=>{attempts++;const e=new Error('Request failed with status code 401');e.httpCode=401;throw e;}});
+ assert.equal(attempts,1,'a 4xx must not burn the client\'s whole share being refused three times');
+ assert.equal(first(x).proxy_attempts,1);
+ assert.equal(first(x).proxy_status,401);
+ assert.equal(first(x).reason,'proxy_error');
+ assert.equal(x.calls.some(c=>c.url.endsWith('/audn_recommendation_commit')),false);
+ // a 5xx is still weather and is still retried to the bound
+ let five=0;
+ const y=await run({body:{},items:[],proxyBehaviour:()=>{five++;const e=new Error('Bad gateway');e.httpCode=502;throw e;}});
+ assert.equal(five,3);
+ assert.equal(first(y).proxy_attempts,3);
+});
+
+test('regression: evidence-candidate-reused -- a second choice citing an already-cited candidate is dropped',async()=>{
+ const a=citing(candidate(),'ivan:2026-09-21:ef1');
+ const b=citing(candidate(),'ivan:2026-09-21:ef1');
+ b.weekly.rank=2;b.weekly.topic_key='a-different-story';b.original_angle='A different angle entirely.';
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[a,b],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ assert.equal(first(x).proposed,1);
+ assert.deepEqual(first(x).dropped.map(d=>d.reason),['evidence_candidate_already_cited']);
+ assert.equal(first(x).evidence_selection.cited,1);
+});
+
+test('regression: empty-reply-on-evidence-path -- a deliberate [] for a client with a real pool is a retryable bail, never an empty committed week',async()=>{
+ const x=await run({body:{},items:[],rolloutRows:rolloutRow(['ivan']),evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ assert.equal(first(x).reason,'no_choices_returned');
+ assert.equal(first(x).writer_bail,true);
+ assert.equal(first(x).retryable,true);
+ assert.equal(x.calls.some(c=>c.url.endsWith('/audn_recommendation_commit')),false);
+});
+
+test('regression: empty-reply-on-legacy-path-unchanged -- a deliberate [] still completes the week off the evidence path',async()=>{
+ const x=await run({body:{},items:[]});
+ const c=x.calls.find(c=>c.url.endsWith('/audn_recommendation_commit'));
+ assert(c,'the legacy path still commits the empty cycle exactly as before');
+ assert.equal(c.body.p_rows.length,0);
+ assert.equal(first(x).reason,'no_supported_candidates');
+ assert.equal(first(x).writer_bail,false);
+ // and the same holds for an evidence-active client whose pool came back empty: that run is
+ // legacy for this week, so it keeps legacy behaviour.
+ const y=await run({body:{},items:[],rolloutRows:rolloutRow(['ivan']),evidencePack:{study:{study_id:'s1',state:'validated'},findings:[]}});
+ assert.equal(first(y).reason,'no_supported_candidates');
+ assert(x.calls.some(c=>c.url.endsWith('/audn_recommendation_commit')));
 });

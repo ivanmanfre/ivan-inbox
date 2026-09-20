@@ -166,3 +166,18 @@ test('a non-zero exit from the commit tool is surfaced', () => {
   assert.equal(code, 1);
   assert.ok(c.errors.join('\n').includes('Commit refused'));
 });
+
+test('regression: preview-must-carry-rows -- an F06 summary receipt with choices[] and no rows[] is refused by name', () => {
+  const receipt = {
+    schema_version: 1, client: 'ivan', week: '2026-09-28', preview: true, committed: false,
+    clients: [{ client_id: 'ivan', choices: [{ choice_id: 'c1', title: 'A title' }] }],
+  };
+  const result = checkPreview(receipt, ['ivan']);
+  assert.equal(result.allowed, false);
+  const problem = result.problems.find((p) => p.includes('carries no rows[]'));
+  assert(problem, 'the refusal names the missing rows[] rather than saying "incomplete block"');
+  assert(problem.includes('raw native preview capture'), 'the refusal says which file to hand over');
+  // and a real capture with rows[] is not refused for this reason
+  const capture = { preview: true, clients: [{ client_id: 'ivan', rows: [] }] };
+  assert.equal(checkPreview(capture, ['ivan']).problems.some((p) => p.includes('carries no rows[]')), false);
+});

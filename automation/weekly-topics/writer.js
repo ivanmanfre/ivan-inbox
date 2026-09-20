@@ -1353,6 +1353,13 @@ for (const p of prepared) {
         break;
       } catch (e) {
         lastErr = e;
+        // M1 (pre-release audit): a 4xx is the provider answering, not weather. Retrying a 401,
+        // a 403 or a 400 burns this client's whole share of the run to be refused three times.
+        // Only transport failures and 5xx are retried; the status is read from whichever field
+        // the n8n HTTP helper carries it in.
+        const status = Number((e && (e.httpCode || e.statusCode
+          || (e.response && (e.response.status || e.response.statusCode)))) || 0);
+        if (status >= 400 && status < 500) { rec.proxy_status = status; break; }
         if (proxyAttempts >= PROXY_MAX_ATTEMPTS) break;
         const wait = Math.min(PROXY_BACKOFF_MS * proxyAttempts, Math.max(0, clientDeadline - Date.now() - 5000));
         if (wait <= 0) break;
@@ -1455,6 +1462,10 @@ for (const p of prepared) {
         const key = String(it.evidence_candidate_key);
         evidenceCandidate = (evidenceCandidates || []).find((c) => c.draft_key === key) || null;
         if (!evidenceCandidate) { drop('evidence_candidate_unknown'); continue; }
+        // M5a (audit, ruled in DECISIONS D8): one candidate supports at most one choice. Two
+        // choices citing the same measured source would present one finding twice as if it were
+        // two pieces of evidence. The second citation is dropped, never merged or renumbered.
+        if (keep.some((k) => k.evidenceCandidate && k.evidenceCandidate.draft_key === evidenceCandidate.draft_key)) { drop('evidence_candidate_already_cited'); continue; }
         if (evidenceCandidate.label === 'experiment' && evidenceExperimentUsed) { drop('evidence_candidate_second_experiment'); continue; }
         if (!isStr(evidenceCandidate.objective) || !isStr(evidenceCandidate.test_metric)) { drop('evidence_candidate_missing_objective'); continue; }
         // Run 4 TRACE C2 binding: the choice must cite the candidate's OWN measured source post,
@@ -1533,10 +1544,21 @@ for (const p of prepared) {
       rec.writer_bail = true;
       continue;
     }
+    // M5b (audit, ruled in DECISIONS D8): on the evidence path an empty model reply is a
+    // retryable bail, never an immutable empty committed week. audn_recommendation_commit has no
+    // delete path, so committing nothing here would burn the week for a client that has a real
+    // measured pool waiting. The LEGACY path keeps its existing behaviour byte for byte: a
+    // deliberate [] still completes the week there.
+    if (measuredRequired) {
+      rec.reason = 'no_choices_returned';
+      rec.writer_bail = true;
+      rec.retryable = true;
+      rec.coverage_gap = 'no_candidate_fit_this_week';
+      continue;
+    }
+    // Legacy path only, byte-identical to before this pass: a deliberate [] completes the week,
+    // because an honest empty answer is a legitimate weekly outcome there (D3/D6).
     rec.reason = 'no_supported_candidates';
-    // A deliberate [] completes the week -- unchanged, including for a measured-source-required
-    // client: an honest empty answer is itself a legitimate weekly outcome (D3/D6).
-    if (measuredRequired) rec.coverage_gap = 'no_candidate_fit_this_week';
     if (PREVIEW) continue;
   }
   keep.sort((a,b) => a.item.weekly.rank - b.item.weekly.rank);
