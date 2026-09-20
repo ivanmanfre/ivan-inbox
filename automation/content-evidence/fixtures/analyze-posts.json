@@ -1,0 +1,182 @@
+[
+  {
+    "client_id": "ivan",
+    "author_id": "author-a",
+    "post_id": "author-a-p-0",
+    "value": 50
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-a",
+    "post_id": "author-a-p-1",
+    "value": 51
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-a",
+    "post_id": "author-a-p-2",
+    "value": 52
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-a",
+    "post_id": "author-a-p-3",
+    "value": 53
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-a",
+    "post_id": "author-a-p-4",
+    "value": 54
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-a",
+    "post_id": "author-a-c-0",
+    "value": 40
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-a",
+    "post_id": "author-a-c-1",
+    "value": 41
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-a",
+    "post_id": "author-a-c-2",
+    "value": 42
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-a",
+    "post_id": "author-a-c-3",
+    "value": 43
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-a",
+    "post_id": "author-a-c-4",
+    "value": 44
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-b",
+    "post_id": "author-b-p-0",
+    "value": 50
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-b",
+    "post_id": "author-b-p-1",
+    "value": 51
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-b",
+    "post_id": "author-b-p-2",
+    "value": 52
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-b",
+    "post_id": "author-b-p-3",
+    "value": 53
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-b",
+    "post_id": "author-b-p-4",
+    "value": 54
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-b",
+    "post_id": "author-b-c-0",
+    "value": 40
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-b",
+    "post_id": "author-b-c-1",
+    "value": 41
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-b",
+    "post_id": "author-b-c-2",
+    "value": 42
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-b",
+    "post_id": "author-b-c-3",
+    "value": 43
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-b",
+    "post_id": "author-b-c-4",
+    "value": 44
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-c",
+    "post_id": "author-c-p-0",
+    "value": 50
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-c",
+    "post_id": "author-c-p-1",
+    "value": 51
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-c",
+    "post_id": "author-c-p-2",
+    "value": 52
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-c",
+    "post_id": "author-c-p-3",
+    "value": 53
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-c",
+    "post_id": "author-c-p-4",
+    "value": 54
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-c",
+    "post_id": "author-c-c-0",
+    "value": 40
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-c",
+    "post_id": "author-c-c-1",
+    "value": 41
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-c",
+    "post_id": "author-c-c-2",
+    "value": 42
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-c",
+    "post_id": "author-c-c-3",
+    "value": 43
+  },
+  {
+    "client_id": "ivan",
+    "author_id": "author-c",
+    "post_id": "author-c-c-4",
+    "value": 44
+  }
+]

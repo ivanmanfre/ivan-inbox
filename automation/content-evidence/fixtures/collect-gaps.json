@@ -1,0 +1,4 @@
+[
+  { "authorId": "author-alpha", "unit": "author_page", "missingPages": 2 },
+  { "authorId": "author-beta", "unit": "author_page", "missingPages": 1 }
+]

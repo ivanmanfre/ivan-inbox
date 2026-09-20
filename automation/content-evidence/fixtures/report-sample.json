@@ -1,0 +1,38 @@
+{
+  "_comment": "Synthetic report inputs for run.mjs's 'report' command. No real bodies, no real profile URLs.",
+  "coverage": {
+    "rows": [
+      { "postId": "p1", "authorId": "author-a" },
+      { "postId": "p2", "authorId": "author-a" },
+      { "postId": "p3", "authorId": "author-b" }
+    ],
+    "summary": { "distinctPosts": 3, "distinctAuthors": 2, "dateSpan": { "from": "2026-01-01", "to": "2026-06-01" } },
+    "excluded": [ { "reason": "reshare", "count": 2 }, { "reason": "missing_canonical_id", "count": 1 } ]
+  },
+  "winners": {
+    "rows": [
+      {
+        "sourceId": "p1", "author": "author-a",
+        "openingLine": "Synthetic example opening line about one small concrete change that worked",
+        "publishedAt": "2026-05-01", "observedValue": 120, "baselineValue": 30, "liftValue": 4,
+        "sampleN": 25, "limitations": ["descriptive, not causal"]
+      }
+    ],
+    "summary": { "count": 1 }
+  },
+  "controls": {
+    "rows": [
+      { "sourceId": "p2", "author": "author-a", "kind": "ordinary", "sampleN": 25 },
+      { "sourceId": "p4", "author": "author-b", "kind": "weak", "sampleN": 8 }
+    ],
+    "summary": { "ordinaryCount": 1, "weakCount": 1 }
+  },
+  "cost": { "approvedUsd": 0, "actualUsd": 0, "paidProviderRequestsMade": 0 },
+  "methods": {
+    "rows": [
+      { "id": "public-weighted-v1", "version": "v1", "formula": "likes + 3 * reposts" },
+      { "id": "rise-original-147", "version": "legacy", "formula": "unknown", "isLegacy": true }
+    ],
+    "summary": { "count": 2 }
+  }
+}

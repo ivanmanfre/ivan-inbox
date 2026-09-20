@@ -1,0 +1,11 @@
+{
+  "_comment": "Verbatim from docs/superpowers/plans/2026-09-20-content-evidence-system.md, Package 3's pattern fixture. Synthetic data only.",
+  "posts": [
+    { "client_id": "test", "author_id": "a", "post_id": "w", "value": 100 }
+  ],
+  "labels": [
+    { "post_id": "w", "pattern": "one-change-one-number", "label_version": "v1" }
+  ],
+  "partition": { "discovery": ["w"], "holdout": [] },
+  "policy": { "minimumPatternPerAuthor": 5, "minimumComparatorPerAuthor": 5, "minimumAuthors": 3 }
+}

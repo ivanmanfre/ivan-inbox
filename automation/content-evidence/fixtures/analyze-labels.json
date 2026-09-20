@@ -1,0 +1,152 @@
+[
+  {
+    "post_id": "author-a-p-0",
+    "pattern": "one-change-one-number",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-a-p-1",
+    "pattern": "one-change-one-number",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-a-p-2",
+    "pattern": "one-change-one-number",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-a-p-3",
+    "pattern": "one-change-one-number",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-a-p-4",
+    "pattern": "one-change-one-number",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-a-c-0",
+    "pattern": "generic-narrative",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-a-c-1",
+    "pattern": "generic-narrative",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-a-c-2",
+    "pattern": "generic-narrative",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-a-c-3",
+    "pattern": "generic-narrative",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-a-c-4",
+    "pattern": "generic-narrative",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-b-p-0",
+    "pattern": "one-change-one-number",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-b-p-1",
+    "pattern": "one-change-one-number",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-b-p-2",
+    "pattern": "one-change-one-number",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-b-p-3",
+    "pattern": "one-change-one-number",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-b-p-4",
+    "pattern": "one-change-one-number",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-b-c-0",
+    "pattern": "generic-narrative",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-b-c-1",
+    "pattern": "generic-narrative",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-b-c-2",
+    "pattern": "generic-narrative",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-b-c-3",
+    "pattern": "generic-narrative",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-b-c-4",
+    "pattern": "generic-narrative",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-c-p-0",
+    "pattern": "one-change-one-number",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-c-p-1",
+    "pattern": "one-change-one-number",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-c-p-2",
+    "pattern": "one-change-one-number",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-c-p-3",
+    "pattern": "one-change-one-number",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-c-p-4",
+    "pattern": "one-change-one-number",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-c-c-0",
+    "pattern": "generic-narrative",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-c-c-1",
+    "pattern": "generic-narrative",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-c-c-2",
+    "pattern": "generic-narrative",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-c-c-3",
+    "pattern": "generic-narrative",
+    "label_version": "v1"
+  },
+  {
+    "post_id": "author-c-c-4",
+    "pattern": "generic-narrative",
+    "label_version": "v1"
+  }
+]
