@@ -434,3 +434,156 @@ test('F6: an unknown objective still gets a plain-words declared test, never a r
   assert.notEqual(pack.candidates[0].test_metric, 'x');
   assert(pack.candidates[0].test_metric.length > 10);
 });
+
+// ---------------------------------------------------------------------------
+// D11: a source with no identifiable body to adapt is refused by name, and the refusal is
+// counted. Fixtures are synthetic; the shapes mirror the live rows the guard was calibrated
+// against (see the comment block above SOURCE_BODY_FLOOR in selector-pack.mjs).
+// ---------------------------------------------------------------------------
+const post = (id, text, extra = {}) => ({ canonical_source_id: id, post_text: text, ...extra });
+const LONG_GENERIC = 'Consistency is the whole game on this platform. '.repeat(20);
+// 282 characters of real argument, the length of the shortest source an independent reviewer
+// accepted (ivan finding f3024b73).
+const SHORT_SUBSTANTIVE = 'Writers overcorrect to prove a human wrote it. They chop every sentence in half, '
+  + 'drop capital letters and avoid punctuation they think a machine would use. The reader notices '
+  + 'the flinching before they notice the writing. Fix the tells that actually repeat instead.';
+
+test('D11: a 37-character source is refused source_no_adaptable_body and the refusal is counted', () => {
+  const pack = buildEvidencePack({
+    clientId: 'risedtc', weekStart: '2026-09-28', limit: 3,
+    findings: [qualifyingMarketFinding({ client_id: 'risedtc', finding_id: 'f-bare', source_ids: ['p-bare'] })],
+    sourcePosts: [post('p-bare', '"The price for one TikTok is $45,000"')],
+  });
+  assert.equal(pack.candidates.length, 0);
+  assert.equal(pack.rejected[0].code, 'source_no_adaptable_body');
+  assert.match(pack.rejected[0].reason, /nothing in it to adapt/);
+  assert.equal(pack.coverage.adaptable_source.applied, true);
+  assert.equal(pack.coverage.adaptable_source.refused, 1);
+  assert.equal(pack.coverage.adaptable_source.refused_by_code.source_no_adaptable_body, 1);
+});
+
+test('D11: a short but substantive source is kept -- the floor is an availability guard, not a length preference', () => {
+  const pack = buildEvidencePack({
+    clientId: 'ivan', weekStart: '2026-09-28', limit: 3,
+    findings: [qualifyingMarketFinding({ finding_id: 'f-short-good', source_ids: ['p-short-good'] })],
+    sourcePosts: [post('p-short-good', SHORT_SUBSTANTIVE)],
+  });
+  assert.equal(pack.candidates.length, 1);
+  assert.equal(pack.coverage.adaptable_source.refused, 0);
+  assert(SHORT_SUBSTANTIVE.length < 300);
+});
+
+test('D11: a long generic source is NOT refused -- this guard never decides relevance', () => {
+  const pack = buildEvidencePack({
+    clientId: 'ivan', weekStart: '2026-09-28', limit: 3,
+    findings: [qualifyingMarketFinding({ finding_id: 'f-long-generic', source_ids: ['p-long-generic'] })],
+    sourcePosts: [post('p-long-generic', LONG_GENERIC)],
+  });
+  assert.equal(pack.candidates.length, 1);
+  assert.equal(pack.coverage.adaptable_source.refused, 0);
+});
+
+test('D11: truncated source text is kept and carries its own limitation, never silently repaired', () => {
+  const truncated = 'a'.repeat(3000);
+  const pack = buildEvidencePack({
+    clientId: 'ivan', weekStart: '2026-09-28', limit: 3,
+    findings: [qualifyingMarketFinding({ finding_id: 'f-trunc', source_ids: ['p-trunc'] })],
+    sourcePosts: [post('p-trunc', truncated)],
+  });
+  assert.equal(pack.candidates.length, 1);
+  assert(pack.candidates[0].limitations.some((l) => /cut off at the capture limit/.test(l)));
+});
+
+test('D11: a caption on a carousel or video is refused source_caption_only, with no invented slides', () => {
+  const pack = buildEvidencePack({
+    clientId: 'risedtc', weekStart: '2026-09-28', limit: 3,
+    findings: [
+      qualifyingMarketFinding({ client_id: 'risedtc', finding_id: 'f-carousel', source_ids: ['p-carousel'] }),
+      qualifyingMarketFinding({ client_id: 'risedtc', finding_id: 'f-video', source_ids: ['p-video'] }),
+    ],
+    sourcePosts: [
+      post('p-carousel', 'pov: you posted a personal instagram story to the brand account', { format_evidence: { post_type: 'carousel' } }),
+      post('p-video', 'Who can relate?', { format_evidence: { post_type: 'video' } }),
+    ],
+  });
+  assert.equal(pack.candidates.length, 0);
+  assert.equal(pack.coverage.adaptable_source.refused_by_code.source_caption_only, 2);
+  assert(pack.rejected.every((r) => !/slide|shot|frame/i.test(r.reason)));
+});
+
+test('D11: a link-only promotion normalises below the floor once the link and pictograph are removed', () => {
+  const pack = buildEvidencePack({
+    clientId: 'ivan', weekStart: '2026-09-28', limit: 3,
+    findings: [qualifyingMarketFinding({ finding_id: 'f-link', source_ids: ['p-link'] })],
+    sourcePosts: [post('p-link', 'Grab my new reach guide (free) \u{1F449} https://lnkd.in/dqccAVpw #reach @someone')],
+  });
+  assert.equal(pack.candidates.length, 0);
+  assert.equal(pack.rejected[0].code, 'source_no_adaptable_body');
+});
+
+test('D11: a finding whose source post did not resolve is refused source_text_unavailable', () => {
+  const pack = buildEvidencePack({
+    clientId: 'ivan', weekStart: '2026-09-28', limit: 3,
+    findings: [qualifyingMarketFinding({ finding_id: 'f-missing', source_ids: ['p-absent'] })],
+    sourcePosts: [],
+  });
+  assert.equal(pack.candidates.length, 0);
+  assert.equal(pack.rejected[0].code, 'source_text_unavailable');
+  assert.equal(pack.coverage.adaptable_source.refused_by_code.source_text_unavailable, 1);
+});
+
+test('D11: a caller that supplies no source posts leaves the guard inactive and says so', () => {
+  const pack = buildEvidencePack({
+    clientId: 'ivan', weekStart: '2026-09-28', limit: 3,
+    findings: [qualifyingMarketFinding({ finding_id: 'f-nosrc', source_ids: ['p-any'] })],
+  });
+  assert.equal(pack.candidates.length, 1);
+  assert.equal(pack.coverage.adaptable_source.applied, false);
+});
+
+// ---------------------------------------------------------------------------
+// D15: mechanism class comes from the support actually held, computed here, never from the model
+// ---------------------------------------------------------------------------
+test('D15: a market source-only adaptation is classed experiment and carries its competing explanations', () => {
+  const pack = buildEvidencePack({
+    clientId: 'ivan', weekStart: '2026-09-28', limit: 3,
+    findings: [qualifyingMarketFinding({ finding_id: 'f-mech' })],
+  });
+  const c = pack.candidates[0];
+  assert.equal(c.mechanism_class, 'experiment');
+  assert.equal(c.mechanism_support, 'source_only');
+  assert.equal(c.label, 'evidence_backed'); // the measured FLOOR was cleared; the mechanism is still untested
+  assert.match(c.mechanism_reason, /test/i);
+  assert(c.limitations.some((l) => /giveaway|distribution/i.test(l)));
+  assert.equal(pack.coverage.mechanism_class.experiment, 1);
+});
+
+test("D15: the client's own measured result is classed supported", () => {
+  const pack = buildEvidencePack({
+    clientId: 'ivan', weekStart: '2026-09-28', limit: 3,
+    ownResults: [qualifyingMarketFinding({ finding_id: 'f-own', kind: 'own_result' })],
+  });
+  const c = pack.candidates[0];
+  assert.equal(c.mechanism_class, 'supported');
+  assert.equal(c.mechanism_support, 'client_own_result');
+  assert.equal(c.mechanism_reason, null);
+  assert(!c.limitations.some((l) => /giveaway|distribution/i.test(l)));
+});
+
+test('D15: a pattern comparison is supported only when it was predeclared AND passed', () => {
+  const base = { finding_id: 'f-pattern', kind: 'pattern' };
+  const passed = buildEvidencePack({
+    clientId: 'ivan', weekStart: '2026-09-28', limit: 3,
+    findings: [qualifyingMarketFinding({ ...base, predeclared: true, validation_state: 'passed' })],
+  });
+  assert.equal(passed.candidates[0].mechanism_class, 'supported');
+  assert.equal(passed.candidates[0].mechanism_support, 'pattern_comparison');
+
+  for (const drift of [{ predeclared: false, validation_state: 'passed' }, { predeclared: true, validation_state: 'computed' }]) {
+    const pack = buildEvidencePack({
+      clientId: 'ivan', weekStart: '2026-09-28', limit: 3,
+      findings: [qualifyingMarketFinding({ ...base, ...drift })],
+    });
+    assert.equal(pack.candidates[0].mechanism_class, 'experiment', JSON.stringify(drift));
+  }
+});

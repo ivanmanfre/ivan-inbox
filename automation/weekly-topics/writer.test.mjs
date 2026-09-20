@@ -10,7 +10,11 @@ const registry = (id='ivan') => ({client_id:id,is_active:true,platform:{measurem
 const candidate = (kind='founder',id='founder-1',date='2026-09-18') => ({client_id:'ivan',subject:'operations',title:'Review before sending',buyer_relevance:'Agency owners need control over outgoing replies.',original_angle:'Show the approval decision before the automation.',next_action:'Collect one approved example.',what_changed:'A founder describes requiring review before sending.',why_it_matters:'Agency owners can inspect the approval step.',could_publish:'Show the decision on a short screen recording.',proof_needed:'One redacted example.',asset_required:false,format:'screen-demo',roster_accounts:[],roster_role:null,founder_source_ids:kind==='founder'?[id]:[],evidence:{source_ids:[kind+':'+id],source_dates:[date],sample_n:1,unknowns:'No measured result supplied.'},weekly:{week_start:'2026-09-21',slot:'experiment',hook:'Who approves the next reply?',intended_response:'Ask readers which step they review.',why_now:'Use this week to test the approval walkthrough.',success_metric:'Count relevant replies after seven days.',evidence_confidence:'medium',confidence_reason:'One direct excerpt, no outcome measurement.',priority_reason:'Direct fit to the buyer problem.',learning:{recommendation_ids:[],explanation:'No relevant measured feedback yet.'},rank:1,topic_key:'review-before-send'}});
 // Run 4: a measured source post as the live table returns it, keyed by canonical_source_id.
 const STUDY_POST_DATE='2026-09-16';
-const studyPost=(id,overrides={})=>({canonical_source_id:id,source_url:'https://linkedin.com/posts/'+id,author_id:'Source Author',author_role:'peer',published_at:STUDY_POST_DATE+'T09:00:00Z',post_text:'A measured source post that opens on the approval decision.',format_evidence:{},age_comparability:'age_unmatched',...overrides});
+// D11: the default body is a substantive post, because a source with nothing to adapt is now
+// refused before it can become a candidate. Keep it above SOURCE_BODY_FLOOR (80 characters after
+// links, tags and pictographs are removed); the caption-only and bare-quote cases are their own
+// named fixtures below.
+const studyPost=(id,overrides={})=>({canonical_source_id:id,source_url:'https://linkedin.com/posts/'+id,author_id:'Source Author',author_role:'peer',published_at:STUDY_POST_DATE+'T09:00:00Z',post_text:'A measured source post that opens on the approval decision. It sets out the step where someone reads the draft before it leaves, then shows what that step caught last month.',format_evidence:{},age_comparability:'age_unmatched',...overrides});
 // Cite a candidate the way the repaired contract requires: the candidate key PLUS its own
 // measured source post, in citation order, with that post's exact date.
 const citing=(it,key,sourceIds=['sp1'])=>{
@@ -733,14 +737,14 @@ test('regression: per-client-isolation -- one client bailing on the proxy never 
 });
 
 test('regression: reserved-evidence-budget -- context is slimmed in a stated order before any candidate is dropped, and constraint material is never trimmed',async()=>{
- const x=await run({...nearCeilingFixtureArgs(5320),items:[],body:{preview:true,client_id:'ivan',evidence:true},evidencePack:{study:{study_id:'s1',state:'validated'},findings:poolFindings(12)}});
+ const x=await run({...nearCeilingFixtureArgs(5250),items:[],body:{preview:true,client_id:"ivan",evidence:true},evidencePack:{study:{study_id:'s1',state:'validated'},findings:poolFindings(12)}});
  const rec=first(x);
  assert.equal(rec.evidence_pool_survivors,12,'the full pool survives once context is slimmed first');
  assert.deepEqual(rec.evidence_pool_dropped_for_budget,[]);
  assert(rec.evidence_budget.slim_stage>0,'a slim stage was actually applied');
  assert(rec.evidence_budget.context_lost.length>0,'what was lost is recorded');
  // constraint material is byte-identical: the voice prompt body is never shortened
- assert.equal(x.packs[0].prompts[0].body.length,'Complete applicable voice rule. '.repeat(5320).length);
+ assert.equal(x.packs[0].prompts[0].body.length,'Complete applicable voice rule. '.repeat(5250).length);
  assert(prompt.length+128+JSON.stringify(x.packs[0]).length<=200000);
 });
 

@@ -47,6 +47,93 @@ const BASE_LIMITATIONS = Object.freeze([
 const EXPERIMENT_LIMITATION =
   'Source-only example with unresolved transferability. Presented as an experiment, never a proven client winner.';
 
+// D11 (orchestrator, binding): the selector offered a source whose whole body was 37 characters
+// ("The price for one TikTok is $45,000"), so the choice built on it was a generic topic with a
+// citation attached. The guard below is an AVAILABILITY guard: it answers "is there any body to
+// adapt here", and it never claims to answer "is this relevant" or "does this mechanism
+// transfer" -- those stay with the model and the independent reviewer. The floor is an early
+// guard only; it can refuse an empty source, and it can never accept one as relevant.
+//
+// The body a floor is measured against is the post text with the parts that carry no structure
+// removed: links, hashtags, @mentions and pictographs. That is what separates a short but
+// substantive post (kept) from a caption whose substance sits in an attached image, carousel or
+// video (refused): the attachment is not in this store, and inventing its slides or shots is
+// exactly the failure this refuses.
+//
+// Calibration against the live corpus, read 2026-09-20: the shortest source an independent
+// reviewer accepted is 282 characters (Jakub Zajicek, ivan finding f3024b73). Every caption-only
+// and link-only row among the live finding sources normalises below 80 characters, including
+// "Who can relate?" (15), "In London with Big Ben Walter" (29), the 37-character TikTok price
+// quote D11 rejected, and "Grab my new reach guide <link>" (23 after the link is removed).
+const SOURCE_BODY_FLOOR = 80;
+// The study importer stores at most this many characters of a post. A body sitting exactly on
+// the cap is an incomplete extraction: it is kept (there is plenty to adapt) and carries its own
+// limitation so no reader treats the visible end as the author's ending.
+const SOURCE_TEXT_CAPTURE_CAP = 3000;
+const SOURCE_TRUNCATED_LIMITATION =
+  'The stored source text is cut off at the capture limit, so the end of the post is missing here.';
+// Attachment-led post types. A body below the floor on one of these is a caption for material
+// this store does not hold.
+const ATTACHMENT_POST_TYPES = new Set(['image', 'video', 'carousel', 'article', 'document']);
+
+/** The part of a source post that carries structure a choice could adapt. */
+function adaptableBody(text) {
+  return String(text === null || text === undefined ? '' : text)
+    .replace(/https?:\/\/\S+/g, ' ')
+    .replace(/[#@][\p{L}\p{N}_][\p{L}\p{N}_-]*/gu, ' ')
+    .replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Is there a source body for this finding at all? Runs only when the caller supplied the source
+ * posts (`sourcePostsById`); a caller that holds no post text leaves the guard inactive and says
+ * so in coverage.adaptable_source.applied, so a downstream commit path can refuse to run without
+ * it rather than silently skipping it.
+ *
+ * @returns {{ok:true, limitations:string[], body_characters:number}
+ *          |{ok:false, code:string, reason:string}}
+ */
+function adaptableSourceCheck(finding, sourcePostsById) {
+  const sourceIds = Array.isArray(finding.source_ids) ? finding.source_ids.map(String) : [];
+  const posts = sourceIds.map((sid) => sourcePostsById.get(sid)).filter(isObject);
+  if (!posts.length) {
+    return {
+      ok: false,
+      code: 'source_text_unavailable',
+      reason: `no stored source post resolved for ${sourceIds.length ? sourceIds.join(', ') : 'this finding'}, `
+        + 'so there is no body to adapt',
+    };
+  }
+  let best = null;
+  for (const post of posts) {
+    const raw = String(post.post_text === null || post.post_text === undefined ? '' : post.post_text);
+    const body = adaptableBody(raw);
+    if (best === null || body.length > best.body.length) best = { post, raw, body };
+  }
+  if (best.body.length < SOURCE_BODY_FLOOR) {
+    const postType = isObject(best.post.format_evidence) ? String(best.post.format_evidence.post_type || '') : '';
+    if (ATTACHMENT_POST_TYPES.has(postType)) {
+      return {
+        ok: false,
+        code: 'source_caption_only',
+        reason: `the source is a ${postType} post whose caption leaves ${best.body.length} characters of body; `
+          + 'its substance sits in the attachment, which this store does not hold',
+      };
+    }
+    return {
+      ok: false,
+      code: 'source_no_adaptable_body',
+      reason: `the source body is ${best.body.length} characters after links, tags and pictographs are removed, `
+        + `below the availability floor of ${SOURCE_BODY_FLOOR}; there is nothing in it to adapt`,
+    };
+  }
+  const limitations = [];
+  if (best.raw.length >= SOURCE_TEXT_CAPTURE_CAP) limitations.push(SOURCE_TRUNCATED_LIMITATION);
+  return { ok: true, limitations, body_characters: best.body.length };
+}
+
 function isFiniteNumber(v) {
   return typeof v === 'number' && Number.isFinite(v);
 }
@@ -215,9 +302,38 @@ function declaredTestMetric(objective, explicit) {
     || "weighted reactions (likes + 3 x reposts) at 7 and 14 days against the account's own usual";
 }
 
+// D15 (orchestrator, binding). A measured source post supports exactly one claim: that post beat
+// its own author's baseline. It never supports "this mechanism transfers to this client". So the
+// class of a choice is decided here, by trusted code, from the support actually held:
+//
+//   client_own_result   the finding is this client's own published result
+//   pattern_comparison  a predeclared pattern-level comparison for this client that passed
+//   source_only         one someone-else post; adapting it is a hypothesis
+//
+// Only the first two make a choice supported. The model never sets this field and can never
+// downgrade it: it is copied onto the saved row from here, alongside the numbers.
+const SUPPORTED_PATTERN_STATES = new Set(['passed', 'validated', 'supported', 'confirmed']);
+const SOURCE_ONLY_MECHANISM_REASON =
+  "The measured lift belongs to the source author's own post. No result yet shows the same move "
+  + 'works for this client, so publishing it is a test.';
+const COMPETING_EXPLANATION_LIMITATION =
+  "A giveaway, a free resource offer or that author's own distribution can explain the source's "
+  + 'lift as well as the structure being adapted.';
+
+function mechanismSupportFor(finding, origin) {
+  if (origin === 'own_result' || finding.kind === 'own_result') {
+    return { support: 'client_own_result', mechanismClass: 'supported' };
+  }
+  const state = typeof finding.validation_state === 'string' ? finding.validation_state.trim().toLowerCase() : '';
+  if (finding.kind === 'pattern' && finding.predeclared === true && SUPPORTED_PATTERN_STATES.has(state)) {
+    return { support: 'pattern_comparison', mechanismClass: 'supported' };
+  }
+  return { support: 'source_only', mechanismClass: 'experiment' };
+}
+
 /** Builds one Candidate, or a rejection when a client-fact permission blocks it outright. */
 function buildCandidate({ clientId, weekStart, finding, origin, lift, isExperiment, experimentReason,
-  clientFactsById, previousTests }) {
+  clientFactsById, previousTests, extraLimitations = [] }) {
   const factResolution = resolveClientFacts(finding, clientFactsById, origin);
   if (factResolution.denied) {
     return {
@@ -238,6 +354,11 @@ function buildCandidate({ clientId, weekStart, finding, origin, lift, isExperime
     limitations.push(SMALL_BASELINE_LIMITATION);
   }
   if (isExperiment) limitations.push(EXPERIMENT_LIMITATION);
+  const mechanism = mechanismSupportFor(finding, origin);
+  // D15: a source-only mechanism carries its competing explanations with it, so the model has to
+  // state them in its own words instead of treating the lift as proof of the structure.
+  if (mechanism.support === 'source_only') limitations.push(COMPETING_EXPLANATION_LIMITATION);
+  for (const extra of extraLimitations) if (typeof extra === 'string' && extra && !limitations.includes(extra)) limitations.push(extra);
 
   const observationWindowDays = [7, 14].includes(finding.observation_window_days)
     ? finding.observation_window_days : 7;
@@ -268,7 +389,16 @@ function buildCandidate({ clientId, weekStart, finding, origin, lift, isExperime
     observation_window: { days: observationWindowDays },
     needs_material: factResolution.needsMaterial,
     limitations,
+    // `label` stays what it has always been: did this finding clear the measured eligibility
+    // floor. D15's separate question -- what supports the MECHANISM being proposed to the client
+    // -- is answered by mechanism_class/mechanism_support, and it is that pair the saved row and
+    // the reader key on.
     label: isExperiment ? 'experiment' : 'evidence_backed',
+    mechanism_class: mechanism.mechanismClass,
+    mechanism_support: mechanism.support,
+    mechanism_reason: mechanism.mechanismClass === 'experiment'
+      ? (mechanism.support === 'source_only' ? SOURCE_ONLY_MECHANISM_REASON : experimentReason)
+      : null,
   };
   if (isExperiment) candidate.experiment_reason = experimentReason;
   return { candidate, rejected: null };
@@ -280,7 +410,7 @@ function buildCandidate({ clientId, weekStart, finding, origin, lift, isExperime
  */
 export function buildEvidencePack({
   clientId, weekStart, studies = [], findings = [], ownResults = [], clientFacts = [],
-  previousTests = [], limit,
+  previousTests = [], limit, sourcePosts,
 } = {}) {
   if (typeof clientId !== 'string' || clientId.trim() === '') {
     throw new TypeError('buildEvidencePack requires a non-empty clientId');
@@ -301,6 +431,21 @@ export function buildEvidencePack({
     const factId = fact.source_id || fact.fact_id || fact.id;
     if (typeof factId === 'string' && factId) clientFactsById.set(factId, fact);
   }
+
+  // D11: the caller supplies the stored source posts so the adaptable-source guard can run. An
+  // array (even an empty one) turns the guard on; leaving the argument out leaves it off and
+  // records that plainly, so a commit path can refuse a pack the guard never ran on.
+  const sourcePostsById = new Map();
+  const adaptableSourceApplied = Array.isArray(sourcePosts);
+  if (adaptableSourceApplied) {
+    for (const post of sourcePosts) {
+      if (isObject(post) && post.canonical_source_id) sourcePostsById.set(String(post.canonical_source_id), post);
+    }
+  }
+  const adaptableRefusedByCode = {};
+  const countAdaptableRefusal = (code) => {
+    adaptableRefusedByCode[code] = (adaptableRefusedByCode[code] || 0) + 1;
+  };
 
   const entries = [
     ...findingsIn.map((finding) => ({ finding, origin: 'finding' })),
@@ -338,10 +483,18 @@ export function buildEvidencePack({
     }
 
     const outcome = eligibilityForFinding(finding);
+    // D11: checked only for a finding that would otherwise become a candidate, so a finding that
+    // fails the measured floor still reports the floor as its reason rather than its body length.
+    const sourceCheck = adaptableSourceApplied ? adaptableSourceCheck(finding, sourcePostsById) : { ok: true, limitations: [] };
     if (outcome.ok) {
+      if (!sourceCheck.ok) {
+        countAdaptableRefusal(sourceCheck.code);
+        rejected.push({ finding_id: findingId, code: sourceCheck.code, reason: sourceCheck.reason });
+        continue;
+      }
       const built = buildCandidate({
         clientId, weekStart, finding, origin, lift: outcome.lift, isExperiment: false, experimentReason: null,
-        clientFactsById, previousTests: previousTestsSnapshot,
+        clientFactsById, previousTests: previousTestsSnapshot, extraLimitations: sourceCheck.limitations,
       });
       if (built.rejected) {
         rejected.push({ finding_id: findingId, ...built.rejected });
@@ -361,9 +514,15 @@ export function buildEvidencePack({
         ? `Unsupported by the measured floor: ${outcome.reason}. Offered as a test.`
         : null);
     if (effectiveExperimentReason) {
+      // The experiment slot adapts a source post too, so it needs a readable one just as much.
+      if (!sourceCheck.ok) {
+        countAdaptableRefusal(sourceCheck.code);
+        rejected.push({ finding_id: findingId, code: sourceCheck.code, reason: sourceCheck.reason });
+        continue;
+      }
       const built = buildCandidate({
         clientId, weekStart, finding, origin, lift: null, isExperiment: true, experimentReason: effectiveExperimentReason,
-        clientFactsById, previousTests: previousTestsSnapshot,
+        clientFactsById, previousTests: previousTestsSnapshot, extraLimitations: sourceCheck.limitations,
       });
       if (built.rejected) {
         rejected.push({ finding_id: findingId, ...built.rejected });
@@ -479,6 +638,19 @@ export function buildEvidencePack({
       rejected_count: rejected.length,
       author_pool_cap: { limit: AUTHOR_POOL_CAP, omitted: authorCapOmitted },
       small_author_baseline: { threshold: SMALL_BASELINE_THRESHOLD, count: smallBaselineCount },
+      // D11: availability of a body to adapt, never a relevance verdict.
+      adaptable_source: {
+        applied: adaptableSourceApplied,
+        floor_characters: SOURCE_BODY_FLOOR,
+        source_posts_supplied: sourcePostsById.size,
+        refused: Object.values(adaptableRefusedByCode).reduce((a, b) => a + b, 0),
+        refused_by_code: adaptableRefusedByCode,
+      },
+      // D15: what supports the MECHANISM of each kept candidate, counted by class.
+      mechanism_class: candidates.reduce((acc, c) => {
+        acc[c.mechanism_class] = (acc[c.mechanism_class] || 0) + 1;
+        return acc;
+      }, {}),
     },
     missingInputs,
     sourceManifest: {
