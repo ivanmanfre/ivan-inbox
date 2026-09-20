@@ -11,6 +11,7 @@
    project rule is explicit: "Private corpus text (post bodies, reactor
    data) never enters the repo: tests use small synthetic fixtures."
    ========================================================================== */
+import { laneDisplayName } from './contentEvidence'
 import type { ContentLane } from './content'
 import type {
   ContentEvidenceCandidate, ContentEvidenceChoice, ContentEvidenceMarketWinner,
@@ -32,7 +33,12 @@ function candidate(i: number, over: Partial<ContentEvidenceCandidate> = {}): Con
     evidence_sentence: `${1000 + i * 40} weighted reactions against a usual ${90 + i * 5} across ${25 + i} posts`,
     source_url: `https://example.com/fixture-source-${i}`,
     source_label: `Fixture author ${i}, 1 Sep 2026`,
-    client_material: i % 3 === 0 ? null : `A real fact the client can honestly say for topic ${i}.`,
+    // Audit fix pass: client_fact_refs arrive as {source_id, kind, label}
+    // objects. Render (and here, generate) `label` only -- `source_id` is a
+    // retained reference id, never shown.
+    client_fact_refs: i % 3 === 0 ? null : [
+      { source_id: `fixture-fact-${i}`, kind: 'founder', label: `A real fact the client can honestly say for topic ${i}.` },
+    ],
     needs_material: i % 3 === 0,
     objective: (['attention', 'buyer_response', 'conversion'] as const)[i % 3],
     is_experiment: i === 2,
@@ -110,7 +116,7 @@ export function fixturePack(lane: ContentLane, scenario: FixtureScenario): Conte
       week_start: '2026-09-28',
       freshness: { as_of: null, stale_after_days: 14, is_stale: false },
       this_week: {
-        coverage_line: `No verified market study for ${lane} yet.`,
+        coverage_line: `No verified market study for ${laneDisplayName(lane)} yet.`,
         candidates: [],
         missing_inputs: ['no validated market study for this client'],
       },
@@ -136,7 +142,7 @@ export function fixturePack(lane: ContentLane, scenario: FixtureScenario): Conte
   const asOf = isStale ? '2026-07-01T00:00:00Z' : '2026-09-19T08:00:00Z'
 
   const candidates = partial
-    ? [candidate(0), candidate(2, { needs_material: true, client_material: null })]
+    ? [candidate(0), candidate(2, { needs_material: true, client_fact_refs: null })]
     : [candidate(0), candidate(1), candidate(2)]
 
   // Deliberately carries a low-sample AND a legacy row so the same fixture
@@ -167,7 +173,7 @@ export function fixturePack(lane: ContentLane, scenario: FixtureScenario): Conte
     week_start: '2026-09-28',
     freshness: { as_of: asOf, stale_after_days: 14, is_stale: isStale },
     this_week: {
-      coverage_line: `${flavor.authors} ranked authors, ${flavor.posts} eligible posts for ${lane}.`,
+      coverage_line: `${flavor.authors} ranked authors, ${flavor.posts} eligible posts for ${laneDisplayName(lane)}.`,
       candidates,
       missing_inputs: partial ? ['Author baselines have not been reviewed for one candidate.'] : [],
     },

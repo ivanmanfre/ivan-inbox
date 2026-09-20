@@ -12,7 +12,7 @@ import { Badge, Button } from '../../../ds'
 import { Group } from '../../kit'
 import { CalmEmpty, Failed, relAge } from '../parts'
 import { laneDisplayName, objectiveLabel, type ContentEvidenceCandidate, type ThisWeekRead } from '../../../lib/contentEvidence'
-import { ReaderStateTag } from './readerState'
+import { FAILED_MESSAGE, FailedDetails, ReaderStateTag } from './readerState'
 // `.a-prop-*` / `.a-ct-sub` / `.a-eyebrow` (content.css) and the `.a-prop-history`
 // disclosure (proposals-evidence.css) are reused rather than reinvented — the
 // same visual language the Recommendations tab already uses for a "review
@@ -102,7 +102,7 @@ function CandidateCard({ c }: { c: ContentEvidenceCandidate }) {
         <span className="a-prop-v">
           {c.needs_material
             ? 'Needs material.'
-            : (c.client_material?.trim() || 'Not stated.')}
+            : (c.client_fact_refs?.length ? c.client_fact_refs.map(r => r.label).join('; ') : 'Not stated.')}
         </span>
       </div>
       <div className="a-cev-f">
@@ -151,7 +151,9 @@ export function ThisWeekPanel({ view, onRetry }: { view: ThisWeekRead; onRetry?:
     return (
       <div data-testid="strategy-this-week">
         <Group className="a-cev-g" label="This week" tail={<span className="a-prop-tail"><ReaderStateTag state="failed" />{stamp}</span>} pad>
-          <Failed what="This week's evidence" message={view.message ?? 'The read failed.'} onRetry={onRetry} loadedAt={null} />
+          <Failed what="This week's evidence" message={FAILED_MESSAGE} onRetry={onRetry} loadedAt={null}>
+            <FailedDetails message={view.message} />
+          </Failed>
         </Group>
       </div>
     )

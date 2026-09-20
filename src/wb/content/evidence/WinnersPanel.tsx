@@ -21,7 +21,8 @@ import {
 // and a winner row under Markets are the same kind of fact on screen.
 import '../content.css'
 import '../markets/markets.css'
-import { ReaderStateTag } from './readerState'
+import '../proposals-evidence.css'
+import { FAILED_MESSAGE, FailedDetails, ReaderStateTag } from './readerState'
 
 function comparisonLabel(w: ContentEvidenceMarketWinner): string {
   if (w.observed_value === null || w.baseline_value === null) return 'Comparison not recorded.'
@@ -80,7 +81,9 @@ export function WinnersPanel({ view, onRetry }: { view: WinnersRead; onRetry?: (
   if (view.state === 'failed') {
     return (
       <Group className="a-cev-g" label="Winners" tail={<span className="a-prop-tail"><ReaderStateTag state="failed" />{stamp}</span>} pad>
-        <Failed what="The winners read" message={view.message ?? 'The read failed.'} onRetry={onRetry} loadedAt={null} />
+        <Failed what="The winners read" message={FAILED_MESSAGE} onRetry={onRetry} loadedAt={null}>
+          <FailedDetails message={view.message} />
+        </Failed>
       </Group>
     )
   }

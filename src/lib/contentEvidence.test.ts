@@ -289,3 +289,48 @@ describe('coverage line and gaps never surface an internal codename', () => {
     }
   })
 })
+
+// Audit (PRELEASE-AUDIT.md, section E): "The fixture coverage line prints
+// the raw id ('for ivan.')." The coverage_line is a pre-built sentence, not a
+// separate field a panel can wrap at render time, so the fix has to live
+// where the sentence is built: the fixture generator (and, live, whatever
+// writes db/104's coverage_line) must call laneDisplayName itself.
+describe('audit: the coverage line never prints a raw client id', () => {
+  it('every scenario\'s coverage_line carries the display name, not the raw lane id, for the two lanes whose names differ from their id', () => {
+    for (const [lane, display] of [['risedtc', 'Mattan Danino'], ['arch', 'Davorin Smit']] as const) {
+      for (const scenario of ['ready', 'partial', 'empty', 'stale'] as const) {
+        const line = fixturePack(lane, scenario).this_week.coverage_line
+        expect(line, `${lane}/${scenario}`).toContain(display)
+        // The raw id must not appear as its own word (a substring match would
+        // false-negative on "Mattan Danino" never containing "risedtc", but a
+        // literal regression would reintroduce the bare id as a token).
+        expect(line, `${lane}/${scenario}`).not.toMatch(new RegExp(`\\b${lane}\\b`))
+      }
+    }
+  })
+
+  it("ivan's own id equals its display name, so this is a real cross-lane check, not a coincidence", () => {
+    expect(laneDisplayName('ivan')).toBe('Ivan')
+  })
+})
+
+// Audit F3: client_fact_refs arrive as {source_id, kind, label} objects.
+describe('audit F3: client_fact_refs is an array of {source_id, kind, label}, never a bare string', () => {
+  it('every non-null client_fact_refs entry on the ready fixture carries a label and a source_id', () => {
+    const p = fixturePack('ivan', 'ready')
+    const withRefs = p.this_week.candidates.filter(c => c.client_fact_refs)
+    expect(withRefs.length).toBeGreaterThan(0)
+    for (const c of withRefs) {
+      for (const ref of c.client_fact_refs!) {
+        expect(typeof ref.label).toBe('string')
+        expect(ref.label.length).toBeGreaterThan(0)
+        expect(typeof ref.source_id).toBe('string')
+      }
+    }
+  })
+
+  it('thisWeekWordCount counts the label text, not a raw id, and stays under 300', () => {
+    const view = buildThisWeek(fixturePack('ivan', 'ready'))
+    expect(thisWeekWordCount(view)).toBeLessThanOrEqual(300)
+  })
+})

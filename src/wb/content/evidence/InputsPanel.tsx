@@ -19,14 +19,21 @@ import { Group } from '../../kit'
 import { Failed, relAge } from '../parts'
 import { laneDisplayName, type InputsView } from '../../../lib/contentEvidence'
 import '../content.css'
-import { ReaderStateTag } from './readerState'
+import '../proposals-evidence.css'
+import { FAILED_MESSAGE, FailedDetails, ReaderStateTag } from './readerState'
 
+// Audit F5 (PRELEASE-AUDIT.md): "validated" is honest only as a claim about
+// arithmetic (contracts.mjs grants it when both hashes verify), never as a
+// claim that the study supports a recommendation. A bare "Validated" beside
+// "Sufficient for this question: Yes" reads as one verdict; they are two
+// independent fields (`sufficientForThisQuestion` is never derived from
+// `studyState` anywhere in this file) and the label must not blur that.
 const STUDY_STATE_LABEL: Record<InputsView['studyState'], string> = {
   missing: 'No study imported yet',
   imported: 'Imported, not yet validated',
   needs_reconciliation: 'Imported, unresolved discrepancy',
-  validated: 'Validated',
-  stale: 'Validated, past the freshness window',
+  validated: 'Arithmetic verified, descriptive only',
+  stale: 'Arithmetic verified, descriptive only, past the freshness window',
   failed: 'The last study read failed',
 }
 
@@ -44,7 +51,9 @@ export function InputsPanel({ data, onRetry }: { data: InputsView; onRetry?: () 
   if (data.state === 'failed') {
     return (
       <Group className="a-cev-g" label="Inputs" tail={<span className="a-prop-tail"><ReaderStateTag state="failed" />{stamp}</span>} pad>
-        <Failed what="The inputs read" message={data.message ?? 'The read failed.'} onRetry={onRetry} loadedAt={null} />
+        <Failed what="The inputs read" message={FAILED_MESSAGE} onRetry={onRetry} loadedAt={null}>
+          <FailedDetails message={data.message} />
+        </Failed>
       </Group>
     )
   }

@@ -14,7 +14,7 @@ import { choiceStatusLabel, laneDisplayName, objectiveLabel, type ContentEvidenc
 import '../content.css'
 import '../markets/markets.css'
 import '../proposals-evidence.css'
-import { ReaderStateTag } from './readerState'
+import { FAILED_MESSAGE, FailedDetails, ReaderStateTag } from './readerState'
 
 const PENDING_STATUSES = new Set(['awaiting_publication', 'measuring', 'ready_for_review', 'approved', 'candidate', 'needs_material'])
 
@@ -52,7 +52,9 @@ export function ResultsPanel({ view, onRetry }: { view: ResultsRead; onRetry?: (
   if (view.state === 'failed') {
     return (
       <Group className="a-cev-g" label="Results" tail={<span className="a-prop-tail"><ReaderStateTag state="failed" />{stamp}</span>} pad>
-        <Failed what="The results read" message={view.message ?? 'The read failed.'} onRetry={onRetry} loadedAt={null} />
+        <Failed what="The results read" message={FAILED_MESSAGE} onRetry={onRetry} loadedAt={null}>
+          <FailedDetails message={view.message} />
+        </Failed>
       </Group>
     )
   }

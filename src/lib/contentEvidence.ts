@@ -28,7 +28,8 @@
            "evidence_sentence": "1,240 weighted reactions against a usual 129 across 29 posts",
            "source_url": "https://..." | null,
            "source_label": "Author name, 16 Mar 2026" | null,
-           "client_material": "What the client can honestly say" | null,
+           "client_fact_refs": [ { "source_id": "...", "kind": "founder" | "buyer_question" | "…", "label": "What the client can honestly say" } ] | null,
+           // Render `label` only. `source_id` is a retained reference, never shown.
            "needs_material": false,
            "objective": "attention" | "buyer_response" | "conversion",
            "is_experiment": false,
@@ -112,10 +113,15 @@ export function laneDisplayName(id: string): string {
 
 export type ViewState = 'ready' | 'partial' | 'empty' | 'stale' | 'failed'
 
-export type Objective = 'attention' | 'buyer_response' | 'conversion'
+// `attention_reach` is the value the weekly writer actually saves (selector-pack.mjs's default
+// objective, confirmed against $OUT/EVIDENCE-PACKAGE-SHAPE.json). It is the same objective as
+// `attention` and is listed here so a real saved row renders its label instead of "Unrecognized
+// item". Narrow integration fix from the pre-release audit's F3 pass.
+export type Objective = 'attention' | 'attention_reach' | 'buyer_response' | 'conversion'
 
 const OBJECTIVE_LABEL: Record<Objective, string> = {
   attention: 'Attention and reach',
+  attention_reach: 'Attention and reach',
   buyer_response: 'A relevant buyer response',
   conversion: 'A defined conversion action',
 }
@@ -168,13 +174,19 @@ export type ContentEvidenceCandidateDetail = {
   full_source_text: string | null
 }
 
+/** Audit F3/client_fact_refs (Phase-2 audit fix pass): a fact reference is an
+    object with a retained `source_id` and the one field ever shown, `label`.
+    Never render `source_id` — printing an id where a person expects a fact is
+    exactly the "raw id on screen" defect the audit named. */
+export type ContentEvidenceFactRef = { source_id: string; kind: string; label: string }
+
 export type ContentEvidenceCandidate = {
   id: string
   topic: string
   evidence_sentence: string
   source_url: string | null
   source_label: string | null
-  client_material: string | null
+  client_fact_refs: ContentEvidenceFactRef[] | null
   needs_material: boolean
   objective: string
   is_experiment: boolean
@@ -398,7 +410,7 @@ export function thisWeekWordCount(view: ThisWeekRead): number {
   const parts: string[] = [view.coverageLine]
   for (const c of view.candidates) {
     parts.push(c.topic, c.evidence_sentence, objectiveLabel(c.objective))
-    parts.push(c.needs_material ? 'Needs material.' : (c.client_material ?? ''))
+    parts.push(c.needs_material ? 'Needs material.' : (c.client_fact_refs ?? []).map(r => r.label).join(' '))
     if (c.is_experiment) parts.push('Experiment', c.experiment_reason ?? '', c.test_metric ?? '')
   }
   const text = parts.filter(Boolean).join(' ')

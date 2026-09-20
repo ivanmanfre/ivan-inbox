@@ -13,9 +13,11 @@ import { buildThisWeek, type ThisWeekRead } from '../../../lib/contentEvidence'
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 const text = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+const beforeDetails = (html: string) => html.split('<details')[0]
+const afterDetails = (html: string) => html.split('<details').slice(1).join('<details')
 
 const failedView: ThisWeekRead = {
-  state: 'failed', message: 'connection refused', clientId: 'ivan',
+  state: 'failed', message: 'unknown seat', clientId: 'ivan',
   coverageLine: '', candidates: [], missingInputs: [], asOf: null,
 }
 const emptyView = buildThisWeek(fixturePack('ivan', 'empty'))
@@ -39,8 +41,15 @@ describe('ThisWeekPanel, the state marker and the word-count root', () => {
     const failedHtml = text(renderToStaticMarkup(<ThisWeekPanel view={failedView} />))
     const emptyHtml = text(renderToStaticMarkup(<ThisWeekPanel view={emptyView} />))
     expect(failedHtml).not.toBe(emptyHtml)
-    expect(failedHtml).toContain('connection refused')
-    expect(emptyHtml).not.toContain('connection refused')
+    expect(failedHtml).toContain('The evidence read failed.')
+    expect(emptyHtml).not.toContain('The evidence read failed.')
+  })
+
+  it('audit: a raw technical message ("unknown seat") never reaches the visible banner, only the collapsed Details', () => {
+    const html = renderToStaticMarkup(<ThisWeekPanel view={failedView} />)
+    expect(text(beforeDetails(html))).not.toContain('unknown seat')
+    expect(text(beforeDetails(html))).toContain('The evidence read failed.')
+    expect(text(afterDetails(html))).toContain('unknown seat')
   })
 
   it('the default (ready) root [data-testid="strategy-this-week"] stays at or under 300 visible words', () => {
@@ -56,6 +65,16 @@ describe('ThisWeekPanel, the state marker and the word-count root', () => {
     const html = text(renderToStaticMarkup(<ThisWeekPanel view={view} />))
     expect(html).toContain('Experiment')
     expect(html).toContain('Test metric:')
+  })
+
+  it('audit F3: client_fact_refs renders the label, never the source_id', () => {
+    const view = buildThisWeek(fixturePack('ivan', 'ready'))
+    const withRefs = view.candidates.find(c => c.client_fact_refs?.length)!
+    expect(withRefs).toBeTruthy()
+    const ref = withRefs.client_fact_refs![0]
+    const html = text(renderToStaticMarkup(<ThisWeekPanel view={view} />))
+    expect(html).toContain(ref.label)
+    expect(html).not.toContain(ref.source_id)
   })
 })
 

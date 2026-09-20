@@ -6,10 +6,21 @@ import { fixturePack } from '../../../lib/contentEvidence.fixtures'
 import { buildWinners, type WinnersRead } from '../../../lib/contentEvidence'
 
 const text = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+const beforeDetails = (html: string) => html.split('<details')[0]
+const afterDetails = (html: string) => html.split('<details').slice(1).join('<details')
 
 const failedView: WinnersRead = {
-  state: 'failed', message: 'timeout', clientId: 'ivan', market: [], own: [], asOf: null,
+  state: 'failed', message: 'unknown seat', clientId: 'ivan', market: [], own: [], asOf: null,
 }
+
+describe('audit: a raw technical message never reaches the visible failed banner', () => {
+  it('"unknown seat" appears only after the Details disclosure', () => {
+    const html = renderToStaticMarkup(<WinnersPanel view={failedView} />)
+    expect(text(beforeDetails(html))).not.toContain('unknown seat')
+    expect(text(beforeDetails(html))).toContain('The evidence read failed.')
+    expect(text(afterDetails(html))).toContain('unknown seat')
+  })
+})
 
 describe('WinnersPanel, the state marker', () => {
   it('carries [data-testid="reader-state"] with the matching data-state in every state', () => {
