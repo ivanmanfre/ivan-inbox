@@ -24,15 +24,15 @@ const citing=(it,key,sourceIds=['sp1'])=>{
  it.evidence.sample_n=it.evidence.source_ids.length;
  return it;
 };
-async function run({body={preview:true},items=[candidate()],sources=[source],own=[],rows=[],cycles=[],clients=[registry()],external=[],competitors=[],gates=[],readLatency=0,contextLatency=0,contextExtra={},now='2026-09-19T10:00:00Z',feedback=[],rolloutRows=[],rolloutError=false,evidencePack={study:null,findings:[]},studyPosts=null,proxyBehaviour=null}={}) {
+async function run({body={preview:true},items=[candidate()],sources=[source],own=[],rows=[],cycles=[],clients=[registry()],external=[],competitors=[],gates=[],readLatency=0,contextLatency=0,contextExtra={},now='2026-09-19T10:00:00Z',feedback=[],rolloutRows=[],rolloutError=false,evidencePack={study:null,findings:[]},studyPosts=null,proxyBehaviour=null,rubric=prompt}={}) {
  const calls=[];const packs=[]; const RealDate=Date;
  class Clock extends RealDate {constructor(...a){super(...(a.length?a:[now]));}static now(){return new RealDate(now).getTime();}}
  const httpRequest=async o=>{calls.push(o);if(o.method==='GET' && o.timeout < readLatency) throw new Error('Required read timed out');const u=new URL(o.url);const p=u.pathname;
   if(p.endsWith('/client_registry')) return clients;
-  if(p.endsWith('/content_prompts')) return [{body:prompt,version:1}];
+  if(p.endsWith('/content_prompts')) return [{body:rubric,version:1}];
   if(p.endsWith('/audn_writer_cycles')) return cycles;
   if(p.endsWith('/ops_drafts')) return rows;
-  if(p.endsWith('/rpc/audn_writer_context')) {if(o.timeout < contextLatency) throw Error('Context read timed out');const cid=o.body.p_client_id;return {client_id:cid,brief:{subjects:['operations'],version:1},own_posts:own,measurement:{minimum_n:8},buyer_fit:{},previous_decisions_and_results:feedback,sources:sources,schema_version:1,...contextExtra};}
+  if(p.endsWith('/rpc/audn_writer_context')) {if(o.timeout < contextLatency) throw Error('Context read timed out');const cid=o.body.p_client_id;return {client_id:cid,brief:{subjects:['operations'],version:1},own_posts:own,measurement:{minimum_n:8},buyer_fit:{},previous_decisions_and_results:feedback,sources:sources,schema_version:1,...(typeof contextExtra==='function'?contextExtra(cid):contextExtra)};}
   if(p.endsWith('/lm_idea_candidates'))return u.searchParams.get('source')==='eq.audience_review'?[]:external;
   if(p.endsWith('/client_ideas'))return external;
   if(p.endsWith('/competitor_posts')||p.endsWith('/audn_competitor_posts'))return competitors;
@@ -101,7 +101,19 @@ test('historical backlog is bounded and truncation is explicit',async()=>{const 
 test('required reads tolerate observed transient database latency without retry or empty fallback',async()=>{const x=await run({readLatency:25000});assert.equal(first(x).proposed,1);assert.equal(x.packs.length,1);});
 
 test('realistic large context is represented under budget with recent and supported own evidence',async()=>{const own=Array.from({length:70},(_,i)=>({post_social_id:'p'+i,text:'Own source material '.repeat(90),published_at:new Date(Date.UTC(2026,8,19)-i*864e5).toISOString(),url:'https://linkedin.com/posts/p'+i}));const measurement={minimum_n:20,coverage:Array.from({length:500},(_,i)=>({canonical_post_id:'p'+i,collection_status:'captured',note:'coverage metadata '.repeat(12)})),classifications:Array.from({length:200},(_,i)=>({canonical_post_id:'p'+i,subject:'operations',taxonomy_version:'v1',note:'taxonomy data '.repeat(15)})),matched_age:[{canonical_post_id:'p69',standing_pct:95,eligible_n:30,minimum_n:20,metric:'engagement_count',target_age_days:7}]};const contextExtra={measurement,prompts:[{role:'voice',body:'Complete applicable voice rule. '.repeat(4000)}]};const c=registry();c.platform.measurement.roster=[{account:'Public Author',role:'format'}];const competitors=Array.from({length:200},(_,i)=>({id:'c'+i,competitor_name:'Public Author',post_date:'2026-09-18',post_text:'Public source excerpt '.repeat(85),linkedin_post_url:'https://linkedin.com/posts/c'+i}));const x=await run({own,contextExtra,clients:[c],competitors});assert(JSON.stringify(x.packs[0]).length<512000);assert(x.packs[0].evidence_items.some(e=>e.id==='own_post:p69'));assert(x.packs[0].evidence_items.some(e=>e.id==='own_post:p0'));assert(first(x).coverage.own_selection.omitted_n>0);assert(first(x).coverage.measurement_selection.coverage.omitted_n>0);assert.equal(x.packs[0].prompts[0].body,contextExtra.prompts[0].body);});
-test('oversized indispensable instructions still fail closed',async()=>{await assert.rejects(run({contextExtra:{prompts:[{role:'voice',body:'x'.repeat(520000)}]}}),/input_budget_exceeded/);});
+test('oversized indispensable instructions still fail closed, superseded by DECISIONS D21: the client is skipped retryable, the run is not ended',async()=>{
+ // D21: constraint material is never trimmed, so a 520,000-character voice body can never fit.
+ // What changed is the BLAST RADIUS: the writer no longer throws out of the preparation loop.
+ const x=await run({contextExtra:{prompts:[{role:'voice',body:'x'.repeat(520000)}]}});
+ assert.equal(first(x).skipped,true);
+ assert.equal(first(x).reason,'input_budget_exceeded');
+ assert.equal(first(x).retryable,true);
+ assert.equal(x.packs.length,0,'an unfittable client never reaches the model');
+ assert(!x.calls.some(c=>c.url.endsWith('/audn_recommendation_commit')));
+ assert.equal(x.packs[0],undefined);
+ // the voice body was never shortened on the way to that decision
+ assert.equal(first(x).coverage.input_total_characters>520000,true);
+});
 test('deliberate empty model result commits an immutable empty weekly cycle',async()=>{const x=await run({body:{},items:[]});const c=x.calls.find(c=>c.url.endsWith('/audn_recommendation_commit'));assert(c);assert.equal(c.body.p_rows.length,0);assert.equal(first(x).reason,'no_supported_candidates');});
 test('all-invalid model output stays retryable and does not commit empty cycle',async()=>{const it=candidate();it.client_id='wrong';const x=await run({body:{},items:[it]});assert(!x.calls.some(c=>c.url.endsWith('/audn_recommendation_commit')));assert.equal(first(x).writer_bail,true);});
 test('dense measured gate packages stay representative and within input budget',async()=>{const c=registry();c.platform.measurement.roster=[{account:'Author A',role:'format'},{account:'Author B',role:'format'}];const competitors=Array.from({length:200},(_,i)=>({id:'c'+i,competitor_name:i%2?'Author A':'Author B',post_date:'2026-09-18',post_text:'A useful source paragraph '.repeat(20),linkedin_post_url:'https://linkedin.com/posts/c'+i}));const gates=competitors.map(r=>({client_id:'ivan',post_ref:r.linkedin_post_url,is_gated:true,why:'Observed gate explanation '.repeat(50),offer:'A relevant checklist',cta_kind:'comment',gate_keyword:'CHECK'}));const x=await run({clients:[c],competitors,gates,contextExtra:{prompts:[{role:'voice',body:'Complete applicable rule. '.repeat(5300)}]}});assert(JSON.stringify(x.packs[0]).length<512000);const ev=x.packs[0].evidence_items.filter(e=>e.kind==='competitor');assert(ev.some(e=>e.competitor_name==='Author A'));assert(ev.some(e=>e.competitor_name==='Author B'));assert(first(x).coverage.source_selection.omitted_n>0);});
@@ -400,10 +412,74 @@ test('regression: aggregate-input-overflow -- near-ceiling legacy input trims th
  assert(totalChars<=200000);
 });
 
-test('budget fix: a legacy input that already exceeds the ceiling on its own still throws exactly as before (item 2, unchanged)',async()=>{
- await assert.rejects(run({...nearCeilingFixtureArgs(6200),items:[],body:{preview:true,client_id:'ivan',evidence:true},evidencePack:{study:{study_id:'s1',state:'validated'},findings:poolFindings(12)}}),/audn_input_budget_exceeded:ivan/);
- // Unchanged: the SAME legacy-only pack, with no evidence path at all, throws identically.
- await assert.rejects(run({...nearCeilingFixtureArgs(6200),items:[]}),/audn_input_budget_exceeded:ivan/);
+test('regression: over-ceiling-client-skipped -- a client that cannot fit is skipped retryable and NEVER ends another client\'s week (D21 M1)',async()=>{
+ // The live shape the continuation audit measured: one client over the ceiling, two under it.
+ // Before D21 the writer threw out of the preparation loop and arch and risedtc lost their week.
+ const clients=[registry('arch'),registry('ivan'),registry('risedtc')];
+ const big='Complete applicable voice rule. '.repeat(20000);
+ const x=await run({body:{preview:true},items:[],clients,
+  contextExtra:(cid)=>cid==='ivan'?{prompts:[{role:'voice',body:big}]}:{}});
+ const byId=Object.fromEntries(x.result.clients.map(c=>[c.client_id,c]));
+ assert.equal(byId.ivan.skipped,true);
+ assert.equal(byId.ivan.reason,'input_budget_exceeded');
+ assert.equal(byId.ivan.retryable,true);
+ assert.equal(byId.arch.skipped,false,'arch keeps its week');
+ assert.equal(byId.risedtc.skipped,false,'risedtc keeps its week');
+ assert.equal(x.result.clients.length,3,'the run never ends early');
+ assert.deepEqual(x.packs.map(p=>p.client_id),['arch','risedtc'],'only the fitting clients reach the model');
+});
+
+test('regression: over-ceiling-ladder -- above the ceiling the evidence section is withheld first, then the slim stages, and constraint material is never trimmed (D21 M1)',async()=>{
+ // Served the REAL rubric, because the section the ladder withholds is delimited in prompt.md.
+ const realRubric=fs.readFileSync(new URL('./prompt.md',import.meta.url),'utf8');
+ const repeats=6200;
+ const x=await run({...nearCeilingFixtureArgs(repeats),items:[],body:{preview:true,client_id:'ivan'},rubric:realRubric});
+ const rec=first(x);
+ assert(Array.isArray(rec.input_ladder)&&rec.input_ladder.length>0,'the ladder ran');
+ assert.equal(rec.input_ladder[0].stage,'evidence_section_withheld','the evidence section goes first');
+ assert(rec.input_ladder[0].saved>5000,'the whole delimited section is what is withheld');
+ assert.deepEqual(rec.input_ladder.slice(1).map(e=>e.stage),['slim_1','slim_2','slim_3'],'then the existing slim stages, in their stated order');
+ const totals=rec.input_ladder.map(e=>e.input_characters);
+ for(let i=1;i<totals.length;i+=1) assert(totals[i]<=totals[i-1],'every stage reduces the input');
+ assert(totals[totals.length-1]<totals[0],'the ladder actually reduced the input');
+ // Constraint material is byte-identical on the way through: this fixture is over the ceiling
+ // on its voice body alone, so it ends SKIPPED rather than trimmed, which is the whole point.
+ assert.equal(rec.skipped,true);
+ assert.equal(rec.reason,'input_budget_exceeded');
+ assert.equal(rec.retryable,true);
+ assert.equal(x.packs.length,0,'an unfittable client never reaches the model');
+ assert(realRubric.includes('<!-- evidence-section:begin -->'),'the marker the ladder cuts on exists in prompt.md');
+});
+
+test('regression: over-ceiling-ladder-rescues -- a client whose overage is in trimmable context fits after the ladder and still reaches the model (D21 M1)',async()=>{
+ const realRubric=fs.readFileSync(new URL('./prompt.md',import.meta.url),'utf8');
+ // Overage carried by competitor excerpts, which the slim stages shorten, rather than by the
+ // voice body, which is never touched.
+ const c=registry();c.platform.measurement.roster=[{account:'Public Author',role:'format'}];
+ const competitors=Array.from({length:200},(_,i)=>({id:'c'+i,competitor_name:'Public Author',post_date:'2026-09-18',post_text:'Public source excerpt '.repeat(120),linkedin_post_url:'https://linkedin.com/posts/c'+i}));
+ const contextExtra={prompts:[{role:'voice',body:'Complete applicable voice rule. '.repeat(5100)}]};
+ const x=await run({clients:[c],competitors,contextExtra,items:[],body:{preview:true,client_id:'ivan'},rubric:realRubric});
+ const rec=first(x);
+ assert(Array.isArray(rec.input_ladder)&&rec.input_ladder.length>0,'the ladder ran');
+ assert.equal(rec.input_ladder[0].stage,'evidence_section_withheld');
+ assert.equal(rec.skipped,false,'the client fits after the ladder');
+ assert.equal(rec.input_ladder.length,1,'the ladder stops as soon as the input fits; the slim stages are not needed here');
+ assert(rec.coverage.input_total_characters<=200000);
+ assert.equal(x.packs[0].prompts[0].body.length,contextExtra.prompts[0].body.length,'the voice body is byte-identical');
+ const sent=x.calls.find(c2=>c2.url.endsWith('/v1/messages')).body.messages[0].content;
+ assert(!sent.includes('<!-- evidence-section:begin -->'),'the withheld section is absent from what the model receives');
+ assert(sent.includes('Write plain conversational copy'),'every other paragraph of the rubric is still there');
+});
+
+test('regression: under-ceiling-legacy-unchanged -- a legacy input under the ceiling is byte-identical and the ladder never runs (D21 M1)',async()=>{
+ const x=await run({...nearCeilingFixtureArgs(3000),items:[]});
+ const rec=first(x);
+ assert.equal(rec.input_ladder,undefined,'the ladder only exists above the ceiling');
+ assert(rec.coverage.input_total_characters<=200000);
+ const sent=x.calls.find(c=>c.url.endsWith('/v1/messages')).body.messages[0].content;
+ const rubric=fs.readFileSync(new URL('./prompt.md',import.meta.url),'utf8');
+ assert(sent.startsWith(prompt),'the whole rubric is sent unchanged under the ceiling');
+ assert(rubric.length>0);
 });
 
 test('budget fix: an evidence-path failure for one client is isolated and does not abort or affect another client',async()=>{

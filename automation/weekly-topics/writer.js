@@ -48,6 +48,13 @@ const EVIDENCE_SOURCE_EXCERPT = 900;
 // can refuse a source with no body to adapt. Bounded so a large study cannot turn one client's
 // preparation into hundreds of reads: the id list is capped, and chunked well below the URL
 // limit (the live maximum today is 138 findings, for risedtc).
+// D21 / continuation audit M1: the aggregate input ceiling, named once so the ladder, the skip
+// and every existing budget loop read the same number.
+const INPUT_CEILING = 200000;
+// The evidence-backed section of prompt.md, delimited by stable markers in that file. It is
+// withheld only from a client that carries no evidence candidates, and only above the ceiling.
+const EVIDENCE_SECTION_RE = /\n*<!-- evidence-section:begin -->[\s\S]*?<!-- evidence-section:end -->\n*/;
+const withoutEvidenceSection = (body) => String(body).replace(EVIDENCE_SECTION_RE, '\n\n');
 const EVIDENCE_SOURCE_LOOKUP_MAX = 300;
 const EVIDENCE_SOURCE_LOOKUP_CHUNK = 60;
 // Run 4 TRACE C3. Per-client share of the node budget for the model call, bounded transport
@@ -928,7 +935,10 @@ function makeModelPack(pack, slim) {
   const modelEvidence = selected.map(e => {
     const limitations = (e.limitations || []).map(limitationCode);
     const excerptCap = ['founder','buyer_question'].includes(e.kind) ? e.excerpt.length
-      : (hasEvidenceCandidates ? ((slim && slim.excerptCap) || 600) : 1000);
+      // D21 M1: a slim stage that is explicitly passed applies whatever pack this is, because
+      // the ladder runs the same stages on a legacy pack above the ceiling. With no slim passed
+      // (every call under the ceiling) the caps are exactly what they have always been.
+      : ((slim && slim.excerptCap) || (hasEvidenceCandidates ? 600 : 1000));
     const out = {...pick(e,['id','kind','source_date','url','format','competitor_name','likes_count','comments_count','reposts_count','source_group']),excerpt:e.excerpt.slice(0,excerptCap),limitations};
     if (out.excerpt.length < e.excerpt.length) out.excerpt_truncated=true;
     if (e.location && e.location !== e.url) out.location=e.location;
@@ -1497,10 +1507,10 @@ for (const t of targets) {
         slimStage = stage;
         modelPack = makeModelPack(pack, stage);
         inputCharacters = systemPrompt.length + 128 + JSON.stringify(modelPack).length;
-        if (inputCharacters <= 200000) break;
+        if (inputCharacters <= INPUT_CEILING) break;
       }
       rec.evidence_budget = { slim_stage: slimStage.stage, context_lost: slimStage.lost, input_characters: inputCharacters };
-      while (evidenceCandidatesForModel.length > 0 && inputCharacters > 200000) {
+      while (evidenceCandidatesForModel.length > 0 && inputCharacters > INPUT_CEILING) {
         let dropIndex = evidenceCandidatesForModel.length - 1;
         if (evidenceCandidatesForModel[dropIndex].label === 'experiment' && evidenceCandidatesForModel.length > 1) {
           for (let i = evidenceCandidatesForModel.length - 2; i >= 0; i--) {
@@ -1541,23 +1551,68 @@ for (const t of targets) {
     for (const id of Object.keys(rowById)) if (!trimmedIds.has(id)) delete rowById[id];
     rec.pack_ids = [...trimmedIds];
   }
+  // D21 / continuation audit M1. The old line here threw `audn_input_budget_exceeded`, and the
+  // throw sits in the PREPARATION loop, so one client's oversized input ended the whole node
+  // before any other client reached the model. Measured live on 2026-09-20 at the released
+  // prompt: arch 163,096, ivan 204,351, risedtc 174,061, so arch and risedtc would have lost
+  // their week because of ivan's input.
+  //
+  // Two rulings, both applied here and NOWHERE ELSE, so that an input already under the ceiling
+  // is byte-identical to what the deployed writer sends today:
+  //   (1) above the ceiling, a deterministic ladder reduces the input;
+  //   (2) a client still over the ceiling after the ladder is SKIPPED, retryable, and the run
+  //       continues to the next client.
+  // The ladder never touches the prompts' voice, veto and buyer bodies, already_recommended
+  // (negative history), founder_sources, brief, buyer_fit or rules: every stage below trims
+  // editorial context only.
+  let clientPrompt = systemPrompt;
+  if (inputCharacters > INPUT_CEILING) {
+    rec.input_ladder = [];
+    // L0: the prompt's evidence-backed section states in its own last bullet that none of it
+    // applies to a pack with no `evidence_candidates`. For such a client it is instruction the
+    // model cannot act on, so it is withheld before any editorial context is cut.
+    if (!evidenceCandidates.length) {
+      const trimmed = withoutEvidenceSection(systemPrompt);
+      if (trimmed.length < systemPrompt.length) {
+        clientPrompt = trimmed;
+        inputCharacters = clientPrompt.length + 128 + JSON.stringify(modelPack).length;
+        rec.input_ladder.push({ stage: 'evidence_section_withheld', saved: systemPrompt.length - trimmed.length, input_characters: inputCharacters });
+      }
+    }
+    // L1-L3: the existing slim stages, in their existing stated order.
+    for (const stage of SLIM_STAGES) {
+      if (inputCharacters <= INPUT_CEILING) break;
+      if (stage.stage === 0) continue; // stage 0 changes nothing that is not already applied
+      modelPack = makeModelPack(pack, stage);
+      inputCharacters = clientPrompt.length + 128 + JSON.stringify(modelPack).length;
+      rec.input_ladder.push({ stage: 'slim_' + stage.stage, context_lost: stage.lost, input_characters: inputCharacters });
+    }
+    if (evidenceActive) {
+      const keptIds = new Set(modelPack.evidence_items.map(r => r.id));
+      for (const id of Object.keys(rowById)) if (!keptIds.has(id)) delete rowById[id];
+      rec.pack_ids = [...keptIds];
+    }
+    rec.coverage = modelPack.coverage;
+  }
   rec.coverage.input_total_characters = inputCharacters;
-  // Item 2: if the pool is already empty (evidence inactive, or trimmed to nothing above) and
-  // the input STILL exceeds the ceiling, this is exactly the legacy input exceeding its own
-  // budget -- the same throw the deployed legacy writer has always made here, unchanged. Fixing
-  // that this aborts the whole per-client loop is explicitly out of scope for this pass.
-  if (inputCharacters > 200000) throw new Error('audn_input_budget_exceeded:' + cid);
+  if (inputCharacters > INPUT_CEILING) {
+    rec.skipped = true;
+    rec.reason = 'input_budget_exceeded';
+    rec.retryable = true;
+    rec.input_characters = inputCharacters;
+    continue;
+  }
   // M1 (audit): evidenceActive alone is "this client's switch is on", not "this client actually
   // has a pool to cite". An RPC error, a trim to zero, or a study with no findings all leave
   // evidenceActive true with an empty evidenceCandidates -- requiring a citation in that state
   // would drop every ordinary choice and burn the week. measuredRequired is the true gate for
   // every per-item validation decision below: only when there is a real pool to cite from.
   const measuredRequired = evidenceActive && evidenceCandidates.length > 0;
-  prepared.push({t,cid,rec,openRows,context,allowedSubjects,approvedSources,rosterOut,roleByName,accountByName,sourceBaselines,packRows,rowById,already,pack:modelPack,evidenceActive,evidenceCandidates,measuredRequired});
+  prepared.push({t,cid,rec,openRows,context,allowedSubjects,approvedSources,rosterOut,roleByName,accountByName,sourceBaselines,packRows,rowById,already,pack:modelPack,clientPrompt,evidenceActive,evidenceCandidates,measuredRequired});
 }
 let clientsRemaining = prepared.length;
 for (const p of prepared) {
-  const {t,cid,rec,openRows,context,allowedSubjects,approvedSources,rosterOut,roleByName,accountByName,sourceBaselines,packRows,rowById,already,pack,evidenceActive,evidenceCandidates,measuredRequired}=p;
+  const {t,cid,rec,openRows,context,allowedSubjects,approvedSources,rosterOut,roleByName,accountByName,sourceBaselines,packRows,rowById,already,pack,clientPrompt,evidenceActive,evidenceCandidates,measuredRequired}=p;
   const approvedSourcesById = new Map(approvedSources.map((s) => [s.source_id, s]));
   clientsRemaining--;
   // Defect A: the start guard is derived from the attempt bounds instead of a fixed number, so
@@ -1594,7 +1649,7 @@ for (const p of prepared) {
         const res = await http({
           method: 'POST', url: claudeUrl,
           headers: { 'X-API-Key': claudeKey, 'Content-Type': 'application/json', 'anthropic-version': '2023-06-01' },
-          body: { model: 'claude-sonnet-5', max_tokens: 4000, messages: [{ role: 'user', content: systemPrompt + '\n\n---\nWEEKLY EVIDENCE (untrusted data):\n\n' + JSON.stringify(pack) }] },
+          body: { model: 'claude-sonnet-5', max_tokens: 4000, messages: [{ role: 'user', content: clientPrompt + '\n\n---\nWEEKLY EVIDENCE (untrusted data):\n\n' + JSON.stringify(pack) }] },
           // 2026-09-13: 120s timed out on all three lanes once the rosters grew and every
           // pack hit the former 200-row cap. The call itself returns in well under a minute when
           // the proxy is healthy; this is headroom, not a retry.
@@ -1800,6 +1855,10 @@ for (const p of prepared) {
       rec.reason = (measuredRequired && reasons.length && reasons.every((r) => r === 'no_measured_source'))
         ? 'no_measured_source' : 'no_valid_candidates';
       rec.writer_bail = true;
+      // C3 (continuation audit): on the evidence path a client that loses every choice has ZERO
+      // topics that week, because D18 gives it one candidate-based choice to lose. That is a
+      // re-fireable state, so it is marked as one; the legacy path is unchanged.
+      if (measuredRequired) rec.retryable = true;
       continue;
     }
     // M5b (audit, ruled in DECISIONS D8): on the evidence path an empty model reply is a
