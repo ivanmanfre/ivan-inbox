@@ -299,3 +299,35 @@ test('a market finding satisfies contracts.mjs\'s own validateFinding -- a real 
   assert.doesNotThrow(() => validateFinding(f, { clientId: 'test' }));
   assert.equal(f.kind, 'market');
 });
+
+test('an observation needs valid publication and capture timestamps in publication-to-capture order and at or before cutoff', () => {
+  const policy = { id: 'x', windowDays: 365, minimumN: 1, repostWeight: 1, minimumLift: 1, minimumLikes: 0 };
+  const cases = [
+    [{ published_at: null, captured_at: '2026-09-19T00:00:00Z' }, 'invalid_or_missing_publication_date'],
+    [{ published_at: 'not-a-date', captured_at: '2026-09-19T00:00:00Z' }, 'invalid_or_missing_publication_date'],
+    [{ published_at: '2026-09-21T00:00:00Z', captured_at: '2026-09-21T01:00:00Z' }, 'publication_after_cutoff'],
+    [{ published_at: '2026-09-18T00:00:00Z', captured_at: null }, 'invalid_or_missing_capture_date'],
+    [{ published_at: '2026-09-18T00:00:00Z', captured_at: 'not-a-date' }, 'invalid_or_missing_capture_date'],
+    [{ published_at: '2026-09-18T00:00:00Z', captured_at: '2026-09-21T00:00:00Z' }, 'observation_after_cutoff'],
+    [{ published_at: '2026-09-19T00:00:00Z', captured_at: '2026-09-18T00:00:00Z' }, 'captured_before_publication'],
+  ];
+  for (const [dates, reason] of cases) {
+    const r = computeOutliers({ posts: [{ client_id: 'ivan', author_id: 'a', post_id: reason, ...dates, likes: 10, reposts: 0 }], cutoff: '2026-09-20T00:00:00Z', policy });
+    assert.equal(r.findings.length, 0);
+    assert.ok(r.excluded.some((x) => x.post_id === reason && x.reason === reason), reason);
+  }
+});
+
+test('blank and whitespace public metrics are unknown while explicit zero remains scoreable', () => {
+  const policy = { id: 'x', windowDays: 365, minimumN: 1, repostWeight: 1, minimumLift: 1, minimumLikes: 0 };
+  const r = computeOutliers({ posts: [
+    { client_id: 'ivan', author_id: 'a', post_id: 'blank-likes', published_at: '2026-09-18T00:00:00Z', captured_at: '2026-09-19T00:00:00Z', likes: '', reposts: 0 },
+    { client_id: 'ivan', author_id: 'a', post_id: 'space-reposts', published_at: '2026-09-18T00:00:00Z', captured_at: '2026-09-19T00:00:00Z', likes: 0, reposts: '  ' },
+    { client_id: 'ivan', author_id: 'a', post_id: 'genuine-zero', published_at: '2026-09-18T00:00:00Z', captured_at: '2026-09-19T00:00:00Z', likes: 0, reposts: 0 },
+  ], cutoff: '2026-09-20T00:00:00Z', policy });
+  assert.equal(r.baselineCoverage[0].n, 1);
+  assert.equal(r.baselineCoverage[0].unknown_score_n, 2);
+  assert.ok(r.excluded.some((x) => x.post_id === 'blank-likes' && x.reason === 'unknown_metric'));
+  assert.ok(r.excluded.some((x) => x.post_id === 'space-reposts' && x.reason === 'unknown_metric'));
+  assert.ok(!r.excluded.some((x) => x.post_id === 'genuine-zero'));
+});

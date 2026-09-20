@@ -45,6 +45,7 @@ const fail = (code, message, details) => { throw new OutcomesError(code, message
 // real RISE trace: a 2-day capture and a 17-day capture were BOTH age_matched: false.
 const STANDING_CHECKPOINTS_DAYS = [7, 14];
 const STANDING_TOLERANCE_DAYS = 1;
+const INFERRED_LINK_TOLERANCE_MS = 3600000;
 
 /**
  * @param {object} args
@@ -252,24 +253,20 @@ function resolveLink(rec, publications, explicitByRecommendation) {
   if (byReuseOf !== undefined) {
     return { publicationId: byReuseOf.publication_id, linkStatus: 'explicit' };
   }
-  // 3. No stored key anywhere. Fall back to matching by source_ref + a close target-time match --
+  // 3. No stored key anywhere. An inferred link needs BOTH identity (the same source_ref) and
+  // one unambiguous close target-time candidate. Source_ref alone is not a publication key.
   //    this is exactly the real Toby Waller case: reuse_of empty on both sides, only heuristic
   //    evidence (publish time matches target to the minute, title carries the copied shape).
   //    This NEVER upgrades to 'explicit', however close the match.
-  if (rec.source_ref) {
-    const bySourceRef = publications.find((p) => p.source_ref === rec.source_ref);
-    if (bySourceRef !== undefined) {
-      return { publicationId: bySourceRef.publication_id, linkStatus: 'inferred' };
-    }
-  }
-  if (rec.target_publish_at) {
+  if (rec.source_ref && rec.target_publish_at) {
     const targetMs = Date.parse(utcIso(rec.target_publish_at) ?? '');
     if (!Number.isNaN(targetMs)) {
-      const closest = publications.find((p) => {
+      const candidates = publications.filter((p) => {
         const pubMs = Date.parse(p.published_at ?? '');
-        return !Number.isNaN(pubMs) && Math.abs(pubMs - targetMs) < 3600000; // within 1 hour of target
+        return p.source_ref === rec.source_ref && !Number.isNaN(pubMs)
+          && Math.abs(pubMs - targetMs) < INFERRED_LINK_TOLERANCE_MS;
       });
-      if (closest !== undefined) return { publicationId: closest.publication_id, linkStatus: 'inferred' };
+      if (candidates.length === 1) return { publicationId: candidates[0].publication_id, linkStatus: 'inferred' };
     }
   }
   return { publicationId: null, linkStatus: null };

@@ -278,3 +278,27 @@ test('a valid past publication with at least one eligible observation is, and on
   assert.equal(r.tests[0].state, 'evaluated');
   assert.equal(r.tests[0].observations[0].eligible, true);
 });
+
+test('a source_ref inference requires one unambiguous publication within the documented one-hour target-time window', () => {
+  const r = run({
+    recommendations: [recommendation({ source_ref: 'same-source', target_publish_at: '2026-09-19T12:00:00Z' })],
+    publications: [publication({ source_ref: 'same-source', published_at: '2026-01-01T00:00:00Z', reuse_of: null })],
+    observations: [observation({ captured_at: '2026-01-08T00:00:00Z' })],
+  });
+  assert.equal(r.evaluated, 0);
+  assert.equal(r.tests.length, 0);
+  assert.ok(r.due.some((x) => x.recommendation_id === 'idea-1'));
+});
+
+test('ambiguous source_ref candidates stay unevaluated instead of selecting the first publication', () => {
+  const r = run({
+    recommendations: [recommendation({ source_ref: 'same-source', target_publish_at: '2026-09-17T14:00:00Z' })],
+    publications: [
+      publication({ publication_id: 'pub-1', source_ref: 'same-source', reuse_of: null, published_at: '2026-09-17T14:00:00Z' }),
+      publication({ publication_id: 'pub-2', source_ref: 'same-source', reuse_of: null, published_at: '2026-09-17T14:20:00Z' }),
+    ],
+  });
+  assert.equal(r.evaluated, 0);
+  assert.equal(r.tests.length, 0);
+  assert.ok(r.due.some((x) => x.recommendation_id === 'idea-1'));
+});

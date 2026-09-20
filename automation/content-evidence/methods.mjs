@@ -18,7 +18,8 @@
 
 import { computeLift, hashObject, validatePolicy } from './contracts.mjs';
 
-export const METHOD_VERSION = 'content-evidence-methods-v1';
+// v2 adds a hard as-of/date-order contract and refuses blank public counters as unknown.
+export const METHOD_VERSION = 'content-evidence-methods-v2';
 
 export class MethodsError extends Error {
   constructor(code, message, details = undefined) {
@@ -78,12 +79,28 @@ export function computeOutliers({ posts, cutoff, policy, studyId = null } = {}) 
       excluded.push({ client_id: clientId, post_id: postId, author_id: authorId, reason: 'reshare' });
       continue;
     }
+    const publishedMs = row.published_at ? Date.parse(row.published_at) : NaN;
     const capturedMs = row.captured_at ? Date.parse(row.captured_at) : NaN;
-    if (!Number.isNaN(capturedMs) && capturedMs > cutoffMs) {
+    if (Number.isNaN(publishedMs)) {
+      excluded.push({ client_id: clientId, post_id: postId, author_id: authorId, reason: 'invalid_or_missing_publication_date' });
+      continue;
+    }
+    if (Number.isNaN(capturedMs)) {
+      excluded.push({ client_id: clientId, post_id: postId, author_id: authorId, reason: 'invalid_or_missing_capture_date' });
+      continue;
+    }
+    if (publishedMs > cutoffMs) {
+      excluded.push({ client_id: clientId, post_id: postId, author_id: authorId, reason: 'publication_after_cutoff' });
+      continue;
+    }
+    if (capturedMs > cutoffMs) {
       excluded.push({ client_id: clientId, post_id: postId, author_id: authorId, reason: 'observation_after_cutoff' });
       continue;
     }
-    const publishedMs = row.published_at ? Date.parse(row.published_at) : NaN;
+    if (capturedMs < publishedMs) {
+      excluded.push({ client_id: clientId, post_id: postId, author_id: authorId, reason: 'captured_before_publication' });
+      continue;
+    }
     if (!Number.isNaN(publishedMs) && publishedMs < windowFloorMs) {
       excluded.push({ client_id: clientId, post_id: postId, author_id: authorId, reason: 'outside_window' });
       continue;
@@ -236,6 +253,7 @@ function score(row, repostWeight) {
 
 function numOrNull(v) {
   if (v === null || v === undefined) return null;
+  if (typeof v === 'string' && v.trim() === '') return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
