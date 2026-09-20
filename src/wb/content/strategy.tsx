@@ -30,6 +30,7 @@ import { Failed, PullIndicator, relAge } from './parts'
 import { AudienceBlock } from './AudienceBlock'
 import { OutreachBlock } from './OutreachBlock'
 import { ProposalsBlock } from './ProposalsBlock'
+import { EvidenceBlock } from './evidence/EvidenceBlock'
 import { BenchmarkBlock } from './BenchmarkBlock'
 import { ReachBlock } from './ReachBlock'
 import { ThemesBlock } from './ThemesBlock'
@@ -326,6 +327,7 @@ export function StrategyView({ lane, setLane }: {
       <Segmented label="Strategy views" className="a-strategy-nav" markerId="a-strategy-view"
         value={view} onChange={setView} options={[
           { id: 'recommendations', label: 'Recommendations' },
+          { id: 'evidence', label: 'Evidence' },
           { id: 'results', label: 'Results' },
           { id: 'competitors', label: 'Competitors' },
           { id: 'magnets', label: 'Lead magnets' },
@@ -345,6 +347,7 @@ export function StrategyView({ lane, setLane }: {
       <Body innerRef={rowsRef} className="a-strat">
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
         <div className="a-strategy-panel" hidden={view !== 'recommendations'}><ProposalsBlock key={lane} lane={lane} refreshKey={refreshTick} onDirtyChange={setProposalDirty} /></div>
+        {view === 'evidence' && <div key={`${lane}-${refreshTick}`} className="a-strategy-panel"><EvidenceBlock lane={lane} /></div>}
         {view === 'results' && <div key={`${lane}-${refreshTick}`} className="a-strategy-results">
           <ReachBlock lane={lane} />
           <BenchmarkBlock lane={lane} view="results" />

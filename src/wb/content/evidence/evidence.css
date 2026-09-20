@@ -1,0 +1,82 @@
+/* THE EVIDENCE TAB. Four sub-views (This week / Winners / Inputs / Results),
+   sub-tabbed with the same Segmented component the outer Strategy tab row
+   already uses, so switching lives INSIDE one new top-level tab rather than
+   adding four more entries to the already-long outer tab row. */
+
+.a-cev { display: grid; gap: var(--ds-section-gap); min-width: 0; }
+
+.a-cev-nav-bar { padding-block: 0; }
+.a-cev-nav { max-width: 100%; }
+
+.a-cev-g { min-width: 0; }
+
+.a-cev-sec + .a-cev-sec { margin-top: var(--ds-s5); }
+.a-cev-sec > h3 { margin: 0 0 var(--ds-s2) 0; }
+
+/* One evidence-backed card: topic, one evidence sentence, client material,
+   objective, source link, the Evidence toggle. */
+.a-cev-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--ds-s4); }
+
+.a-cev-card {
+  display: grid;
+  gap: var(--ds-s2);
+  padding: var(--ds-s4);
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-r3);
+  min-width: 0;
+}
+.a-cev-card[data-experiment] { border-color: var(--ds-accent-ui); }
+
+.a-cev-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--ds-s3); }
+.a-cev-topic { font-weight: var(--ds-fw-medium); overflow-wrap: anywhere; }
+.a-cev-sentence { margin: 0; color: var(--ds-text-2); overflow-wrap: anywhere; }
+
+.a-cev-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-s3);
+  flex-wrap: wrap;
+  margin-top: var(--ds-s1);
+}
+
+.a-cev-f { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+/* The calculation/detail panel a card's Evidence control opens. It receives
+   keyboard focus on open (tabIndex=-1 target) and Escape returns focus to
+   the control that opened it. */
+.a-cev-detail {
+  display: grid;
+  gap: var(--ds-s3);
+  margin-top: var(--ds-s2);
+  padding: var(--ds-s3);
+  border-top: 1px solid var(--ds-line);
+  outline: none;
+}
+.a-cev-detail:focus-visible { box-shadow: inset 0 0 0 2px var(--ds-accent-ui); }
+
+/* Winners / Results rows, laid out on the Markets block's own `.a-mk-row`
+   shape (markets.css) — this wrapper only adds the list-item boundary. */
+.a-cev-wrow + .a-cev-wrow { border-top: 1px solid var(--ds-line); }
+
+.a-cev-badge { margin-inline-start: var(--ds-s2); }
+
+.a-cev-inputs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--ds-s4);
+}
+
+/* THE STATE MARKER every evidence view carries in every one of its five
+   states. `failed` is tinted urgent so it never reads the same as `empty`
+   (neutral) at a glance, independent of whatever prose sits beside it. */
+.a-cev-state-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--ds-fs-meta);
+  font-weight: var(--ds-fw-medium);
+  color: var(--ds-text-3);
+}
+.a-cev-state-tag[data-state='failed'] { color: var(--ds-sev-urgent-ui); }
+.a-cev-state-tag[data-state='stale'] { color: var(--ds-sev-attention-ui); }
+.a-cev-state-tag[data-state='ready'] { color: var(--ds-text-2); }
