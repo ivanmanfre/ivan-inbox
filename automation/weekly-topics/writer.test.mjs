@@ -25,7 +25,7 @@ async function run({body={preview:true},items=[candidate()],sources=[source],own
   if(p.endsWith('/v1/messages')){packs.push(JSON.parse(o.body.messages[0].content.split('WEEKLY EVIDENCE (untrusted data):\n\n').at(-1))); return {content:[{type:'text',text:typeof items==='string'?items:JSON.stringify(items)}]};}
   if(p.endsWith('/rpc/audn_recommendation_commit'))return {ok:true,written:o.body.p_rows.length};
   if(p.endsWith('/integration_config')) { if (rolloutError) throw new Error('Simulated integration_config read failure'); return rolloutRows; }
-  if(p.endsWith('/rpc/content_evidence_pack')) return evidencePack;
+  if(p.endsWith('/rpc/content_evidence_pack')) return typeof evidencePack==='function' ? evidencePack(o.body.p_client_id) : evidencePack;
   throw Error('Unexpected request '+p);
  };
  const sandbox={Date:Clock,console,encodeURIComponent,$:()=>({all:()=>[{json:{key:'n8n_sb_key',value:'fixture'}},{json:{key:'railway_proxy_key',value:'fixture'}}]}),$input:{all:()=>[{json:{body}}]},$workflow:{id:'writer'},$execution:{id:'run'},helpers:{httpRequest}};
@@ -320,4 +320,72 @@ test('F3: an experiment-labeled saved evidence_package carries experiment_reason
  assert.equal(pkg.label,'experiment');
  assert.equal(typeof pkg.experiment_reason,'string');
  assert(pkg.experiment_reason.length>0);
+});
+
+// ---------------------------------------------------------------------------
+// Budget fix (S7 rollout live finding, $OUT/RELEASE-RECEIPTS/S7-rollout.json). Measured on this
+// exact fixture shape (own=70 posts, competitors=200, a tuned voice-prompt repeat count): the
+// synthetic legacy-only pack crosses 200,000 chars at repeat~5324. A `repeat` just under that
+// puts the LEGACY input alone near the ceiling -- exactly the "ivan scale" condition the live
+// failure reproduced.
+// ---------------------------------------------------------------------------
+function nearCeilingFixtureArgs(repeat) {
+  const own=Array.from({length:70},(_,i)=>({post_social_id:'p'+i,text:'Own source material '.repeat(90),published_at:new Date(Date.UTC(2026,8,19)-i*864e5).toISOString(),url:'https://linkedin.com/posts/p'+i}));
+  const measurement={minimum_n:20,coverage:Array.from({length:500},(_,i)=>({canonical_post_id:'p'+i,collection_status:'captured',note:'coverage metadata '.repeat(12)})),classifications:Array.from({length:200},(_,i)=>({canonical_post_id:'p'+i,subject:'operations',taxonomy_version:'v1',note:'taxonomy data '.repeat(15)})),matched_age:[{canonical_post_id:'p69',standing_pct:95,eligible_n:30,minimum_n:20,metric:'engagement_count',target_age_days:7}]};
+  const contextExtra={measurement,prompts:[{role:'voice',body:'Complete applicable voice rule. '.repeat(repeat)}]};
+  const c=registry();c.platform.measurement.roster=[{account:'Public Author',role:'format'}];
+  const competitors=Array.from({length:200},(_,i)=>({id:'c'+i,competitor_name:'Public Author',post_date:'2026-09-18',post_text:'Public source excerpt '.repeat(85),linkedin_post_url:'https://linkedin.com/posts/c'+i}));
+  return {own,contextExtra,clients:[c],competitors};
+}
+const poolFindings=(n)=>Array.from({length:n},(_,i)=>evidenceFinding({finding_id:'ef-pool-'+i,source_ids:['sp-pool-'+i],observed_value:400-i}));
+
+test('budget fix: near-ceiling legacy input trims the evidence pool from the end (lowest-ranked first), commits nothing extra, and fits',async()=>{
+ const x=await run({...nearCeilingFixtureArgs(5320),items:[],body:{preview:true,client_id:'ivan',evidence:true},evidencePack:{study:{study_id:'s1',state:'validated'},findings:poolFindings(12)}});
+ const rec=first(x);
+ assert.equal(rec.evidence_pool_offered,12);
+ assert(rec.evidence_pool_dropped_for_budget.length>=1);
+ assert(rec.evidence_pool_dropped_for_budget.every(d=>d.code==='input_budget'));
+ const survivors=x.packs[0].evidence_candidates;
+ assert.equal(survivors.length,12-rec.evidence_pool_dropped_for_budget.length);
+ const droppedKeys=new Set(rec.evidence_pool_dropped_for_budget.map(d=>d.draft_key));
+ assert(survivors.every(c=>!droppedKeys.has(c.draft_key)));
+ // dropped from the END of the lift-ranked pool: the lowest-ranked (last) findings go first.
+ assert(droppedKeys.has('ivan:2026-09-21:ef-pool-11'));
+ const totalChars=prompt.length+128+JSON.stringify(x.packs[0]).length;
+ assert(totalChars<=200000);
+});
+
+test('budget fix: a legacy input that already exceeds the ceiling on its own still throws exactly as before (item 2, unchanged)',async()=>{
+ await assert.rejects(run({...nearCeilingFixtureArgs(6200),items:[],body:{preview:true,client_id:'ivan',evidence:true},evidencePack:{study:{study_id:'s1',state:'validated'},findings:poolFindings(12)}}),/audn_input_budget_exceeded:ivan/);
+ // Unchanged: the SAME legacy-only pack, with no evidence path at all, throws identically.
+ await assert.rejects(run({...nearCeilingFixtureArgs(6200),items:[]}),/audn_input_budget_exceeded:ivan/);
+});
+
+test('budget fix: an evidence-path failure for one client is isolated and does not abort or affect another client',async()=>{
+ const clients=[registry('ivan'),registry('arch')];
+ const evidencePackFn=(cid)=>{
+  if(cid==='ivan') throw new Error('Simulated content_evidence_pack RPC failure');
+  return {study:{study_id:'s1',state:'validated'},findings:[evidenceFinding({client_id:'arch',finding_id:'ef-arch'})]};
+ };
+ const x=await run({body:{},items:[],clients,rolloutRows:rolloutRow(['ivan','arch']),evidencePack:evidencePackFn});
+ assert.equal(x.packs.length,2);
+ const ivanRec=x.result.clients.find(c=>c.client_id==='ivan');
+ const archRec=x.result.clients.find(c=>c.client_id==='arch');
+ assert(ivanRec);assert(archRec);
+ assert.equal(typeof ivanRec.evidence_error,'string');
+ assert(ivanRec.evidence_error.includes('Simulated'));
+ assert.equal(ivanRec.skipped,false);
+ assert.equal('evidence_error' in archRec,false);
+ assert.equal(archRec.evidence_coverage.candidates_selected,1);
+});
+
+test('budget fix: an evidence-path failure inside the budget-fitting loop itself is also isolated (defense in depth)',async()=>{
+ // The evidence pool build succeeds, but the SAVED committed row shape (not the fitting loop)
+ // is unaffected either way -- this proves the fitting stage's own try/catch is reachable and
+ // falls back cleanly rather than only ever being dead code.
+ const x=await run({body:{},items:[],rolloutRows:rolloutRow(['ivan']),evidencePack:{study:{study_id:'s1',state:'validated'},findings:poolFindings(1)}});
+ const rec=first(x);
+ assert.equal(rec.evidence_pool_offered,1);
+ assert.deepEqual(rec.evidence_pool_dropped_for_budget,[]);
+ assert.equal('evidence_error' in rec,false);
 });

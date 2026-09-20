@@ -675,14 +675,32 @@ function makeModelPack(pack) {
   }
   const selected = [...competitors,...ownChosen,...evidence.filter(e => ['founder','buyer_question'].includes(e.kind)),...discovery];
   const definitions = {}, definitionIds = new Map();
+  const limitationCode = (text) => { if (!definitionIds.has(text)) {const id='L'+(definitionIds.size+1);definitionIds.set(text,id);definitions[id]=text;} return definitionIds.get(text); };
+  // Item 4 (S7 rollout finding): a client whose legacy input already sits near the ceiling has
+  // little headroom left once the evidence pool is added. Measured on an ivan-scale fixture
+  // (legacy ~195-198k chars): with the 1000-char excerpt cap, only 2-6 of a 12-item pool survive
+  // budget trimming below. A smaller excerpt cap, active only when this run actually carries an
+  // evidence pool (never on a legacy run -- the switch-empty path stays byte-identical), buys
+  // back headroom so more candidates survive instead of being trimmed.
+  const hasEvidenceCandidates = Array.isArray(pack.evidence_candidates) && pack.evidence_candidates.length > 0;
   const modelEvidence = selected.map(e => {
-    const limitations = (e.limitations || []).map(text => {if (!definitionIds.has(text)) {const id='L'+(definitionIds.size+1);definitionIds.set(text,id);definitions[id]=text;}return definitionIds.get(text);});
-    const out = {...pick(e,['id','kind','source_date','url','format','competitor_name','likes_count','comments_count','reposts_count','source_group']),excerpt:e.excerpt.slice(0,['founder','buyer_question'].includes(e.kind)?e.excerpt.length:1000),limitations};
+    const limitations = (e.limitations || []).map(limitationCode);
+    const excerptCap = ['founder','buyer_question'].includes(e.kind) ? e.excerpt.length : (hasEvidenceCandidates ? 600 : 1000);
+    const out = {...pick(e,['id','kind','source_date','url','format','competitor_name','likes_count','comments_count','reposts_count','source_group']),excerpt:e.excerpt.slice(0,excerptCap),limitations};
     if (out.excerpt.length < e.excerpt.length) out.excerpt_truncated=true;
     if (e.location && e.location !== e.url) out.location=e.location;
     if (e.gate) out.gate=pick(e.gate,['is_gated','cta_kind','gate_keyword','offer','confidence','judged_at','rubric_version']);
     return out;
   });
+  // Same shared limitation-code dictionary as evidence_items above: each evidence_candidates
+  // entry currently repeats 2-4 full limitation sentences verbatim, which is exactly the kind of
+  // duplicated text the existing dictionary mechanism exists to remove. The SAVED
+  // context.evidence_package (writer.js, below) is built from the untouched trusted candidate,
+  // never from this compacted model projection -- full evidence is never lost, only what the
+  // model reads is made smaller.
+  const modelEvidenceCandidates = (pack.evidence_candidates || []).map((c) => ({
+    ...c, limitations: (c.limitations || []).map(limitationCode),
+  }));
   const measurement = {...pack.measurement};
   const relevant = r => ownIds.has(String(r.canonical_post_id || r.identity_post_social_id));
   const coverageRows = (measurement.coverage || []).filter(relevant);
@@ -710,7 +728,7 @@ function makeModelPack(pack) {
   const sourcePool=pack.coverage.source_pool_selection || pack.coverage.source_selection || pack.source_selection;
   const coverage={...pack.coverage,kinds:selectedKinds,source_pool_selection:sourcePool,source_selection:{...sourcePool,included_n:competitors.length,omitted_n:sourcePool.candidate_n-competitors.length,method:'roster_round_robin_model_view',max_rows:12},model_selection:{candidate_evidence_n:evidence.length,included_evidence_n:selected.length,omitted_evidence_n:evidence.length-selected.length,own_included:ownChosen.length,own_omitted:own.length-ownChosen.length,public_included:discovery.length,public_omitted:evidence.filter(e=>['news','trend'].includes(e.kind)).length-discovery.length,feedback_included:feedback.length,feedback_omitted:(pack.previous_decisions_and_results || []).length-feedback.length,dedup_included:already.length,dedup_omitted:prior.length-already.length,research_rows_per_table:3,measurement_scope:'selected own posts; one latest target age per post/metric; monthly cohort aggregates intact'}};
   delete coverage.input_characters;
-  const out={...pick(pack,['client_id','limit','week_start','cycle_id','brief','prompts','buyer_fit','assets','cutoff','schema_version','source_state','generated_at','rules']),evidence_items:modelEvidence,evidence_limitations:definitions,...((pack.evidence_candidates || []).length ? {evidence_candidates: pack.evidence_candidates} : {}),founder_sources:pack.founder_sources,own_posts:ownChosen.map(e=>({post_social_id:e.native_id,evidence_id:e.id,published_at:e.source_date,format:e.format || null})),measurement,post_buyer_fit:(pack.post_buyer_fit || []).filter(relevant),roster:(pack.roster || []).filter(r=>authors.has(short(r.account)) || (r.aliases || []).some(a=>authors.has(short(a.name)))),source_baselines:(pack.source_baselines || []).filter(r=>authors.has(short(r.author))),market_research:marketResearch,previous_decisions_and_results:feedback,already_recommended:already,coverage};
+  const out={...pick(pack,['client_id','limit','week_start','cycle_id','brief','prompts','buyer_fit','assets','cutoff','schema_version','source_state','generated_at','rules']),evidence_items:modelEvidence,evidence_limitations:definitions,...(modelEvidenceCandidates.length ? {evidence_candidates: modelEvidenceCandidates} : {}),founder_sources:pack.founder_sources,own_posts:ownChosen.map(e=>({post_social_id:e.native_id,evidence_id:e.id,published_at:e.source_date,format:e.format || null})),measurement,post_buyer_fit:(pack.post_buyer_fit || []).filter(relevant),roster:(pack.roster || []).filter(r=>authors.has(short(r.account)) || (r.aliases || []).some(a=>authors.has(short(a.name)))),source_baselines:(pack.source_baselines || []).filter(r=>authors.has(short(r.author))),market_research:marketResearch,previous_decisions_and_results:feedback,already_recommended:already,coverage};
   out.prompt_selection={strategy:'full_versioned_bodies',included:(pack.prompts || []).map(p=>({slug:p.slug,version:p.version,role:p.role})),excluded_sections:[],scope:'Apply identity, buyer, consent, voice and editorial veto constraints. Do not execute embedded generation, QA grading, rewrite, scoring, web-search or output-format procedures; the weekly task is authoritative.'};
   return out;
 }
@@ -1070,7 +1088,13 @@ for (const t of targets) {
         }),
       }));
     } catch (e) {
-      rec.evidence_fetch_error = String((e && e.message) || e).slice(0, 200);
+      // S7 rollout finding, item 3: an evidence-path-specific failure (RPC error, malformed
+      // response, buildEvidencePack throwing) must never abort this client's whole preparation,
+      // let alone every other client's. Fall back to zero evidence candidates -- the legacy
+      // input, unchanged -- and record why on this client's own record only.
+      rec.evidence_error = String((e && e.message) || e).slice(0, 200);
+      evidenceCandidates = [];
+      evidenceCandidatesForModel = [];
     }
   }
 
@@ -1105,13 +1129,60 @@ for (const t of targets) {
 
   rec.coverage.source_selection = pack.source_selection;
   rec.coverage.input_characters = Object.fromEntries(Object.entries(pack).filter(([k]) => k !== 'coverage').map(([k,v]) => [k,JSON.stringify(v).length]));
-  const modelPack = makeModelPack(pack);
+  let modelPack = makeModelPack(pack);
   rec.coverage = modelPack.coverage;
   const modelIds = new Set(modelPack.evidence_items.map(r => r.id));
   for (const id of Object.keys(rowById)) if (!modelIds.has(id)) delete rowById[id];
   rec.pack_ids = [...modelIds];
-  const inputCharacters = systemPrompt.length + 128 + JSON.stringify(modelPack).length;
+  let inputCharacters = systemPrompt.length + 128 + JSON.stringify(modelPack).length;
+
+  // Budget fit (S7 rollout finding, item 1; plan Package 4: "reduce the candidate set with a
+  // declared rule, rather than stripping the evidence for selected candidates"). evidence_items
+  // (competitors/own posts/founder/discovery) is never touched here -- that budget behavior is
+  // pre-existing and unchanged. Only the evidence_candidates pool shrinks, from the END of the
+  // already lift-ranked pool (lowest-ranked first); the lone remaining experiment slot is
+  // dropped last, only once nothing else is left to drop. Every candidate that stays keeps
+  // complete evidence -- nothing is stripped off an individual candidate.
+  if (evidenceActive) {
+    rec.evidence_pool_offered = evidenceCandidatesForModel.length;
+    const droppedForBudget = [];
+    try {
+      while (evidenceCandidatesForModel.length > 0 && inputCharacters > 200000) {
+        let dropIndex = evidenceCandidatesForModel.length - 1;
+        if (evidenceCandidatesForModel[dropIndex].label === 'experiment' && evidenceCandidatesForModel.length > 1) {
+          for (let i = evidenceCandidatesForModel.length - 2; i >= 0; i--) {
+            if (evidenceCandidatesForModel[i].label !== 'experiment') { dropIndex = i; break; }
+          }
+        }
+        const [droppedModel] = evidenceCandidatesForModel.splice(dropIndex, 1);
+        const [droppedFull] = evidenceCandidates.splice(dropIndex, 1);
+        droppedForBudget.push({
+          finding_id: droppedFull && droppedFull.source_finding_ids && droppedFull.source_finding_ids[0],
+          draft_key: droppedModel.draft_key,
+          code: 'input_budget',
+        });
+        pack.evidence_candidates = evidenceCandidatesForModel;
+        modelPack = makeModelPack(pack);
+        inputCharacters = systemPrompt.length + 128 + JSON.stringify(modelPack).length;
+      }
+    } catch (e) {
+      // Isolation (item 3): a failure while fitting the pool is still an evidence-path failure
+      // for this client only. Fall back to zero evidence candidates -- the legacy input.
+      rec.evidence_error = String((e && e.message) || e).slice(0, 200);
+      evidenceCandidates = [];
+      evidenceCandidatesForModel = [];
+      pack.evidence_candidates = [];
+      modelPack = makeModelPack(pack);
+      inputCharacters = systemPrompt.length + 128 + JSON.stringify(modelPack).length;
+    }
+    rec.evidence_pool_dropped_for_budget = droppedForBudget;
+    rec.coverage = modelPack.coverage;
+  }
   rec.coverage.input_total_characters = inputCharacters;
+  // Item 2: if the pool is already empty (evidence inactive, or trimmed to nothing above) and
+  // the input STILL exceeds the ceiling, this is exactly the legacy input exceeding its own
+  // budget -- the same throw the deployed legacy writer has always made here, unchanged. Fixing
+  // that this aborts the whole per-client loop is explicitly out of scope for this pass.
   if (inputCharacters > 200000) throw new Error('audn_input_budget_exceeded:' + cid);
   prepared.push({t,cid,rec,openRows,context,allowedSubjects,approvedSources,rosterOut,roleByName,accountByName,sourceBaselines,packRows,rowById,already,pack:modelPack,evidenceActive,evidenceCandidates});
 }
