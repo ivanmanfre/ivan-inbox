@@ -71,7 +71,17 @@ const SOURCE_BODY_FLOOR = 80;
 // limitation so no reader treats the visible end as the author's ending.
 const SOURCE_TEXT_CAPTURE_CAP = 3000;
 const SOURCE_TRUNCATED_LIMITATION =
-  'The stored source text is cut off at the capture limit, so the end of the post is missing here.';
+  'The stored source text is cut off, so the end of the post is missing here and nothing may be claimed about it.';
+// A stored body is an incomplete extraction when it sits on the importer's capture cap, or when
+// the capture itself kept the platform's "see more" marker. 7 ellipsis rows and 10 "see more"
+// rows exist in the live corpus, read 2026-09-20.
+function isTruncatedCapture(raw) {
+  const full = String(raw);
+  // The cap is measured on the stored length, because a capped capture may well end on a space.
+  if (full.length >= SOURCE_TEXT_CAPTURE_CAP) return true;
+  const t = full.trimEnd();
+  return /\u2026$/.test(t) || /see more$/i.test(t);
+}
 // Attachment-led post types. A body below the floor on one of these is a caption for material
 // this store does not hold.
 const ATTACHMENT_POST_TYPES = new Set(['image', 'video', 'carousel', 'article', 'document']);
@@ -126,11 +136,17 @@ function adaptableSourceCheck(finding, sourcePostsById) {
       ok: false,
       code: 'source_no_adaptable_body',
       reason: `the source body is ${best.body.length} characters after links, tags and pictographs are removed, `
-        + `below the availability floor of ${SOURCE_BODY_FLOOR}; there is nothing in it to adapt`,
+        + `below the availability floor of ${SOURCE_BODY_FLOOR}; there is nothing in it to adapt`
+        + (isTruncatedCapture(best.raw)
+          // D21: a capped body still holds identifiable content and stays adaptable; a truncated
+          // one whose REMAINING body is below the floor holds none, and the missing ending can
+          // never be guessed at to make up the difference.
+          ? '. The stored text is also cut off, and the missing ending is not available to make up the difference'
+          : ''),
     };
   }
   const limitations = [];
-  if (best.raw.length >= SOURCE_TEXT_CAPTURE_CAP) limitations.push(SOURCE_TRUNCATED_LIMITATION);
+  if (isTruncatedCapture(best.raw)) limitations.push(SOURCE_TRUNCATED_LIMITATION);
   return { ok: true, limitations, body_characters: best.body.length };
 }
 

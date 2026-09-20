@@ -491,7 +491,7 @@ test('D11: truncated source text is kept and carries its own limitation, never s
     sourcePosts: [post('p-trunc', truncated)],
   });
   assert.equal(pack.candidates.length, 1);
-  assert(pack.candidates[0].limitations.some((l) => /cut off at the capture limit/.test(l)));
+  assert(pack.candidates[0].limitations.some((l) => /cut off/.test(l)));
 });
 
 test('D11: a caption on a carousel or video is refused source_caption_only, with no invented slides', () => {
@@ -586,4 +586,37 @@ test('D15: a pattern comparison is supported only when it was predeclared AND pa
     });
     assert.equal(pack.candidates[0].mechanism_class, 'experiment', JSON.stringify(drift));
   }
+});
+
+// D21 (checker contract change 8): a body AT the 3,000-character capture cap holds identifiable
+// content and stays adaptable, carrying a limitation that bars any claim about the unseen ending.
+// A truncated source whose REMAINING body is below the availability floor holds none and fails.
+test('truncated_source_text_rejected: a truncated source whose remaining body is below the floor is refused, while a capped 3,000-character body is kept', () => {
+  const rejected = buildEvidencePack({
+    clientId: 'risedtc', weekStart: '2026-09-28', limit: 3,
+    findings: [
+      qualifyingMarketFinding({ client_id: 'risedtc', finding_id: 'f-trunc-short', source_ids: ['p-trunc-short'] }),
+      qualifyingMarketFinding({ client_id: 'risedtc', finding_id: 'f-trunc-seemore', source_ids: ['p-trunc-seemore'] }),
+    ],
+    sourcePosts: [
+      post('p-trunc-short', 'The one thing nobody tells you…'),
+      post('p-trunc-seemore', 'Three numbers changed how we buy... see more'),
+    ],
+  });
+  assert.equal(rejected.candidates.length, 0);
+  assert.equal(rejected.coverage.adaptable_source.refused_by_code.source_no_adaptable_body, 2);
+  for (const r of rejected.rejected) {
+    assert.match(r.reason, /cut off/, 'the refusal says the text is truncated as well as short');
+    assert(!/slide|shot|frame|probably|likely/i.test(r.reason), 'the missing ending is never guessed at');
+  }
+
+  const kept = buildEvidencePack({
+    clientId: 'ivan', weekStart: '2026-09-28', limit: 3,
+    findings: [qualifyingMarketFinding({ finding_id: 'f-capped', source_ids: ['p-capped'] })],
+    sourcePosts: [post('p-capped', 'A complete argument about review before sending. '.repeat(70).slice(0, 3000))],
+  });
+  assert.equal(kept.candidates.length, 1, 'a capped body still holds identifiable content');
+  assert(kept.candidates[0].limitations.some((l) => /cut off/.test(l)));
+  assert(kept.candidates[0].limitations.some((l) => /nothing may be claimed about it/.test(l)),
+    'the limitation bars any claim about the unseen ending');
 });
