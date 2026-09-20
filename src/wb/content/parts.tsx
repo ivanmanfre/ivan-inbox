@@ -45,7 +45,7 @@ export function Failed({ what, message, onRetry, loadedAt, children }: {
         <span className="a-dim">
           {loadedAt
             ? `Showing what loaded ${relAge(loadedAt)}. It may be out of date.`
-            : 'Nothing has loaded yet, so this is not an empty queue, it is an unread one.'}
+            : 'Nothing has loaded yet. This screen has not been read, so an empty view here does not mean an empty queue.'}
         </span>
         {children}
       </span>

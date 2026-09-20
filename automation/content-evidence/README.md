@@ -64,12 +64,13 @@ and nothing here writes to a database by itself.
   and observed, and keeps `explicit` and `inferred` links permanently distinct. A recommendation
   with no publication is never performance. A lifetime or backfilled capture is never relabelled a
   seven-day standing reading.
-- **`outcome-links.mjs`** — the same chain over the smallest existing storage, plus the review
-  milestone. It names the four existing slots it uses (`ops_drafts.context`,
-  `client_ideas.reuse_of`, `client_post_metrics`, `post_audience_history`) and adds no table and no
-  column. `planLinkWrites` plans additive writes and refuses to overwrite a stored link, to touch
-  approval or dispatch state, or to cross a tenant. Two ages stay two numbers: a window comes due
-  on publication age and is answered only by a capture whose own age lands on it.
+- **`outcome-links.mjs`** — the recommendation -> idea -> publication chain, read (never written)
+  from the one place it is already computed live: `public.audn_recommendation_links()`. No new
+  storage: `adaptCanonicalLinkRow` reshapes its rows and `buildOutcomeChain` joins them against
+  publications/observations for age and window math only. `client_ideas.reuse_of` is explicitly
+  never touched here -- verified live to already carry an unrelated idea-reuse-staging feature on
+  8 risedtc rows. Two ages stay two numbers: a window comes due on publication age and is answered
+  only by a capture whose own age lands on it.
   `reviewMilestone({ weeksCompleted, evaluatedPosts })` is the LATER of six completed weeks and
   twelve evaluated posts, so it is true only when both are in.
 

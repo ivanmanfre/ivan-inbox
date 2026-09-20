@@ -1,5 +1,8 @@
 // Tests for outcome-links.mjs. Every fixture is synthetic: no client post body, no reactor
-// identity, no real profile URL, no credential.
+// identity, no real profile URL, no credential. Row shapes mirror the LIVE columns of
+// public.audn_recommendation_links(), verified read-only via
+// `select pg_get_functiondef(p.oid) ... where proname='audn_recommendation_links'`
+// (Run 4 Phase 3 step 1).
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -9,9 +12,8 @@ import {
   reviewMilestoneStatus,
   REVIEW_MILESTONE_WEEKS,
   REVIEW_MILESTONE_EVALUATED_POSTS,
-  planLinkWrites,
-  readRecommendationLink,
-  LINK_STORAGE,
+  CANONICAL_LINK_SOURCE,
+  adaptCanonicalLinkRow,
   dueWindows,
   stampCapture,
   buildOutcomeChain,
@@ -64,118 +66,39 @@ test('milestone status refuses an unbound tenant', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Where the link is stored
+// Where the link already lives, and where it is never written
 // ---------------------------------------------------------------------------
 
-test('the link storage names existing columns only', () => {
-  assert.equal(LINK_STORAGE.recommendation.table, 'public.ops_drafts');
-  assert.deepEqual(LINK_STORAGE.recommendation.link_path, ['context', 'audn', 'outcome_link']);
-  assert.equal(LINK_STORAGE.idea.link_column, 'reuse_of');
-  assert.equal(LINK_STORAGE.observation.table, 'public.post_audience_history');
+test('the canonical source names the live function, not an invented table', () => {
+  assert.equal(CANONICAL_LINK_SOURCE.function, 'public.audn_recommendation_links()');
+  assert.deepEqual(CANONICAL_LINK_SOURCE.arguments, []);
+  assert.ok(CANONICAL_LINK_SOURCE.returns.includes('published_post_social_id'));
+  assert.ok(CANONICAL_LINK_SOURCE.returns.includes('idea_table'));
 });
 
-test('a context with no link reads as null, not as an empty object', () => {
-  assert.equal(readRecommendationLink(null), null);
-  assert.equal(readRecommendationLink({}), null);
-  assert.equal(readRecommendationLink({ audn: {} }), null);
+test('reuse_of is documented as off-limits, never as a storage slot this module uses', () => {
+  assert.ok('client_ideas.reuse_of' in CANONICAL_LINK_SOURCE.never_used_for_this_chain);
 });
 
-test('a malformed stored link is refused rather than coerced', () => {
-  assert.throws(() => readRecommendationLink({ audn: { outcome_link: 'p1' } }),
-    (e) => e.code === 'LINK_CONTEXT_MALFORMED');
-});
-
-// ---------------------------------------------------------------------------
-// planLinkWrites
-// ---------------------------------------------------------------------------
-
-const rec = (over = {}) => ({ recommendation_id: 'r1', client_id: 'risedtc', context: { audn: {} }, ...over });
-
-test('a fresh link plans exactly two additive writes', () => {
-  const plan = planLinkWrites({
-    clientId: 'risedtc',
-    recommendation: rec(),
-    idea: { idea_id: 'i1', client_id: 'risedtc', reuse_of: null },
-    publicationId: 'p1',
-    evidence: 'operator confirmed this draft became this post',
+test('adaptCanonicalLinkRow reshapes the live column name to publication_id', () => {
+  const link = adaptCanonicalLinkRow({
+    client_id: 'risedtc', recommendation_id: 'r1', recommendation_ref: 'audn-rec:r1',
+    idea_table: 'client_ideas', idea_id: 'i1', idea_status: 'staged', draft_id: null,
+    published_post_social_id: null, link_state: 'idea', decision: null, decision_reason: null,
+    decided_at: null, decision_source: null,
   });
-  assert.equal(plan.writes.length, 2);
-  assert.ok(plan.writes.every((w) => w.mode === 'add_only'));
-  assert.equal(plan.writes[0].value.link_status, 'explicit');
-  assert.equal(plan.writes[1].column, 'reuse_of');
-  assert.equal(plan.writes[1].value, 'p1');
+  assert.equal(link.publication_id, null);
+  assert.equal(link.idea_table, 'client_ideas');
+  assert.equal(link.link_state, 'idea');
 });
 
-test('a link already stored to the same publication plans nothing', () => {
-  const plan = planLinkWrites({
-    clientId: 'risedtc',
-    recommendation: rec({ context: { audn: { outcome_link: { publication_id: 'p1' } } } }),
-    idea: { idea_id: 'i1', reuse_of: 'p1' },
-    publicationId: 'p1',
-    evidence: 'same link, replayed',
-  });
-  assert.deepEqual(plan.writes, []);
-  assert.equal(plan.already_linked, true);
-});
-
-test('a different stored publication is never overwritten', () => {
-  assert.throws(() => planLinkWrites({
-    clientId: 'risedtc',
-    recommendation: rec({ context: { audn: { outcome_link: { publication_id: 'p-old' } } } }),
-    publicationId: 'p-new',
-    evidence: 'a second opinion',
-  }), (e) => e.code === 'LINK_WOULD_OVERWRITE');
-});
-
-test('a populated client_ideas.reuse_of is never overwritten either', () => {
-  assert.throws(() => planLinkWrites({
-    clientId: 'risedtc',
-    recommendation: rec(),
-    idea: { idea_id: 'i1', reuse_of: 'p-old' },
-    publicationId: 'p-new',
-    evidence: 'a second opinion',
-  }), (e) => e.code === 'LINK_WOULD_OVERWRITE');
-});
-
-test('a foreign tenant row is refused', () => {
-  assert.throws(() => planLinkWrites({
-    clientId: 'risedtc',
-    recommendation: rec({ client_id: 'arch' }),
-    publicationId: 'p1',
-    evidence: 'x',
-  }), (e) => e.code === 'LINK_TENANT_MISMATCH');
-});
-
-test('a link with no stated evidence is refused', () => {
-  assert.throws(() => planLinkWrites({
-    clientId: 'risedtc', recommendation: rec(), publicationId: 'p1', evidence: '   ',
-  }), (e) => e.code === 'LINK_MISSING_EVIDENCE');
-});
-
-test('approval and dispatch state can never ride along on a link write', () => {
-  assert.throws(() => planLinkWrites({
-    clientId: 'risedtc',
-    recommendation: rec({ set_approved_at: '2026-09-20T00:00:00Z' }),
-    publicationId: 'p1',
-    evidence: 'x',
-  }), (e) => e.code === 'LINK_TOUCHES_APPROVAL');
-  assert.throws(() => planLinkWrites({
-    clientId: 'risedtc',
-    recommendation: rec({ set_sent_at: '2026-09-20T00:00:00Z' }),
-    publicationId: 'p1',
-    evidence: 'x',
-  }), (e) => e.code === 'LINK_TOUCHES_APPROVAL');
-});
-
-test('every planned write carries a guard that makes a replay a no-op', () => {
-  const plan = planLinkWrites({
-    clientId: 'ivan',
-    recommendation: { recommendation_id: 'r9', context: null },
-    idea: { idea_id: 'i9' },
-    publicationId: 'p9',
-    evidence: 'operator confirmed',
-  });
-  assert.ok(plan.writes.every((w) => typeof w.guard === 'string' && w.guard.includes('is null')));
+test('adaptCanonicalLinkRow refuses a row with no client_id or recommendation_id', () => {
+  assert.throws(() => adaptCanonicalLinkRow({ recommendation_id: 'r1' }),
+    (e) => e.code === 'LINK_MISSING_CLIENT');
+  assert.throws(() => adaptCanonicalLinkRow({ client_id: 'ivan' }),
+    (e) => e.code === 'LINK_BAD_INPUT');
+  assert.throws(() => adaptCanonicalLinkRow(null),
+    (e) => e.code === 'LINK_BAD_INPUT');
 });
 
 // ---------------------------------------------------------------------------
@@ -219,22 +142,43 @@ test('a premature capture answers no window', () => {
 // The chain
 // ---------------------------------------------------------------------------
 
-test('a recommendation with no stored link is pending, never a failure', () => {
+const row = (over = {}) => adaptCanonicalLinkRow({
+  client_id: 'arch', recommendation_id: 'r1', recommendation_ref: 'audn-rec:r1',
+  idea_table: 'client_ideas', idea_id: 'i1', idea_status: 'staged', draft_id: null,
+  published_post_social_id: null, link_state: 'idea', decision: null, decision_reason: null,
+  decided_at: null, decision_source: null, ...over,
+});
+
+test('a recommendation-only decision, no idea at all, is pending, never a failure', () => {
   const r = buildOutcomeChain({
     clientId: 'arch',
-    recommendations: [{ recommendation_id: 'r1', context: { audn: {} } }],
+    canonicalRows: [row({
+      idea_table: null, idea_id: null, idea_status: null, link_state: 'recommended',
+      decision: 'deferred', decision_reason: 'deploy test, excluded from learning metrics',
+    })],
     publications: [], observations: [], cutoff: '2026-09-20T00:00:00Z',
   });
   assert.equal(r.chain[0].state, 'awaiting_publication');
   assert.equal(r.evaluated, 0);
   assert.equal(r.awaiting_publication, 1);
-  assert.match(r.chain[0].pending_reason, /no stored link/);
+  assert.match(r.chain[0].pending_reason, /no idea ever created/);
+});
+
+test('an idea with no publication stays awaiting_publication, and says which stage it reached', () => {
+  const r = buildOutcomeChain({
+    clientId: 'ivan',
+    canonicalRows: [row({ client_id: 'ivan', idea_table: 'lm_idea_candidates', link_state: 'drafted' })],
+    publications: [], observations: [], cutoff: '2026-09-20T00:00:00Z',
+  });
+  assert.equal(r.chain[0].state, 'awaiting_publication');
+  assert.equal(r.chain[0].publication_id, null);
+  assert.match(r.chain[0].pending_reason, /drafted/);
 });
 
 test('a stored link to an unpublished post stays awaiting_publication', () => {
   const r = buildOutcomeChain({
     clientId: 'ivan',
-    recommendations: [{ recommendation_id: 'r1', context: { audn: { outcome_link: { publication_id: 'p1' } } } }],
+    canonicalRows: [row({ client_id: 'ivan', published_post_social_id: 'p1', link_state: 'published' })],
     publications: [{ publication_id: 'p1', published_at: '2026-10-01T00:00:00Z' }],
     observations: [], cutoff: '2026-09-20T00:00:00Z',
   });
@@ -245,7 +189,7 @@ test('a stored link to an unpublished post stays awaiting_publication', () => {
 test('a published post with no answered window is measuring, and says which window is missing', () => {
   const r = buildOutcomeChain({
     clientId: 'ivan',
-    recommendations: [{ recommendation_id: 'r1', context: { audn: { outcome_link: { publication_id: 'p1' } } } }],
+    canonicalRows: [row({ client_id: 'ivan', published_post_social_id: 'p1', link_state: 'published' })],
     publications: [{ publication_id: 'p1', published_at: '2026-09-01T00:00:00Z' }],
     observations: [{ publication_id: 'p1', captured_at: '2026-09-03T00:00:00Z', metrics: { likes: 2 } }],
     cutoff: '2026-09-20T00:00:00Z',
@@ -261,7 +205,7 @@ test('a published post with no answered window is measuring, and says which wind
 test('an answered window evaluates the test and leaves the other window stated as missing', () => {
   const r = buildOutcomeChain({
     clientId: 'ivan',
-    recommendations: [{ recommendation_id: 'r1', context: { audn: { outcome_link: { publication_id: 'p1' } } } }],
+    canonicalRows: [row({ client_id: 'ivan', published_post_social_id: 'p1', link_state: 'published' })],
     publications: [{ publication_id: 'p1', published_at: '2026-09-01T00:00:00Z' }],
     observations: [
       { publication_id: 'p1', captured_at: '2026-09-08T00:00:00Z', metrics: { likes: 9 } },
@@ -279,24 +223,10 @@ test('an answered window evaluates the test and leaves the other window stated a
   assert.equal(lifetime.age_matched, false);
 });
 
-test('client_ideas.reuse_of alone carries the link when no context key was written', () => {
-  const r = buildOutcomeChain({
-    clientId: 'risedtc',
-    recommendations: [{ recommendation_id: 'r1', context: null }],
-    ideas: [{ idea_id: 'i1', recommendation_id: 'r1', reuse_of: 'p1' }],
-    publications: [{ publication_id: 'p1', published_at: '2026-09-01T00:00:00Z' }],
-    observations: [{ publication_id: 'p1', captured_at: '2026-09-15T00:00:00Z' }],
-    cutoff: '2026-09-20T00:00:00Z',
-  });
-  assert.equal(r.chain[0].link_status, 'explicit');
-  assert.equal(r.chain[0].idea_id, 'i1');
-  assert.deepEqual(r.chain[0].answered_windows, [14]);
-});
-
 test('a capture recorded before publication never counts', () => {
   const r = buildOutcomeChain({
     clientId: 'ivan',
-    recommendations: [{ recommendation_id: 'r1', context: { audn: { outcome_link: { publication_id: 'p1' } } } }],
+    canonicalRows: [row({ client_id: 'ivan', published_post_social_id: 'p1', link_state: 'published' })],
     publications: [{ publication_id: 'p1', published_at: '2026-09-10T00:00:00Z' }],
     observations: [{ publication_id: 'p1', captured_at: '2026-09-01T00:00:00Z' }],
     cutoff: '2026-09-20T00:00:00Z',
@@ -308,17 +238,17 @@ test('a capture recorded before publication never counts', () => {
 test('a foreign tenant anywhere in the chain inputs is refused', () => {
   assert.throws(() => buildOutcomeChain({
     clientId: 'ivan',
-    recommendations: [{ recommendation_id: 'r1', client_id: 'arch' }],
+    canonicalRows: [row({ client_id: 'arch' })],
     publications: [], observations: [], cutoff: '2026-09-20T00:00:00Z',
   }), (e) => e.code === 'LINK_TENANT_MISMATCH');
 });
 
-test('a link naming a publication this context does not hold stays pending with a stated reason', () => {
+test('a named published post id this context does not hold stays pending with a stated reason', () => {
   const r = buildOutcomeChain({
     clientId: 'ivan',
-    recommendations: [{ recommendation_id: 'r1', context: { audn: { outcome_link: { publication_id: 'p-gone' } } } }],
+    canonicalRows: [row({ client_id: 'ivan', published_post_social_id: 'p-gone', link_state: 'published' })],
     publications: [], observations: [], cutoff: '2026-09-20T00:00:00Z',
   });
   assert.equal(r.chain[0].state, 'awaiting_publication');
-  assert.match(r.chain[0].pending_reason, /no record of/);
+  assert.match(r.chain[0].pending_reason, /no publication record of/);
 });

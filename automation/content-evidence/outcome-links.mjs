@@ -1,42 +1,25 @@
 // content-evidence / outcome-links.mjs
 //
-// The recommendation -> idea -> publication -> observation chain, expressed over the SMALLEST
-// EXISTING storage this system already has. No new table is proposed here and none is needed.
+// The recommendation -> idea -> publication -> observation chain, read from the ONE place it is
+// already computed live: public.audn_recommendation_links() (no arguments; discovered read-only,
+// Run 4 Phase 3 step 1, `select pg_get_functiondef(p.oid) ... where proname=
+// 'audn_recommendation_links'`). It already stamps the recommendation->idea half of this chain at
+// idea-creation time (`client_ideas.source_ref like 'audn-rec:%'` for arch/risedtc,
+// `lm_idea_candidates.source_ref like 'audn-rec:%'` for ivan -- Ivan's ideas live in a different
+// table, exposed as `idea_table` on every row) and extends it through
+// carousel_drafts/scheduled_posts to a published post id where one exists, plus any recorded
+// client_board_actions decision. There is no separate write path this module needs to invent.
 //
-// WHERE EACH LINK LIVES (discovered read-only, Phase 0 surfaces section C)
-//
-//   recommendation  public.ops_drafts (kind='audn_recommendation'), tenant column client_id.
-//                   Today NOTHING ties one of these rows to a client_ideas row: in the single
-//                   fully-traced production case (the RISE "Toby Waller" idea, client_ideas
-//                   613abda6) zero ops_drafts rows reference it at all. The only existing field
-//                   with documented capacity for a structured sub-key is ops_drafts.context
-//                   (jsonb, already carrying author_baseline and source_coverage), so the
-//                   recommendation side of the link is written there and nowhere else.
-//
-//   idea            public.client_ideas. Its EXISTING, currently-empty column reuse_of is the
-//                   documented slot for exactly this join. Populating it upgrades
-//                   idea -> publication from inferred to stored. No column is added.
-//
-//   publication     public.client_post_metrics (tenant column client_id) for a client lane, or
-//                   public.own_posts for Ivan (which carries no tenant column at all, so its
-//                   rows are only ever read through an explicitly bound client descriptor).
-//
-//   observation     public.post_audience_history, keyed on seat rather than client_id, joined by
-//                   activity id (urn:li:activity:<id>). That match is exact identity, not a
-//                   heuristic, so publication -> observation is the one link in the chain that is
-//                   already stored today.
-//
-// WHAT THIS MODULE REFUSES TO DO
-//
-//   * It never writes. It PLANS writes (planLinkWrites) as explicit, additive patches, and it
-//     refuses to plan one that would overwrite a link already stored, touch approval or dispatch
-//     state, or cross a tenant. Existing unapproved rows stay unapproved and existing published
-//     rows stay exactly as published.
-//   * It never turns an inferred join into a stored one. A plan is only produced from evidence
-//     the caller states explicitly; reconstructing a link from timing lives in outcomes.mjs and
-//     stays labelled `inferred` there forever.
-//   * A recommendation with no publication is PENDING, never a failed result. Its chain state is
-//     `awaiting_publication`, the same word outcomes.mjs uses, so one vocabulary covers both.
+// A PRIOR VERSION OF THIS FILE INVENTED A SECOND, UNREAD LINK MECHANISM. Corrected here (Run 4
+// Phase 3, mission section 7 / Run 3 FINAL-HANDOFF.md open item 5). That version wrote a
+// synthetic key to `ops_drafts.context.audn.outcome_link` (a location nothing else reads) and, on
+// the idea side, to `client_ideas.reuse_of` -- verified LIVE, read-only, to already hold populated
+// data for a DIFFERENT feature: 8 risedtc rows carry `source_ref = 'reuse-<uuid>'` /
+// `reuse_of = '<uuid>'` / `status = 'staged'`, an idea-reuse staging mechanism unrelated to audn
+// recommendation outcomes. Writing an audn publication id into that column on any of those rows,
+// or any future row, would silently repurpose a populated field -- forbidden by this run's
+// AUTHORITY.md and by mission section 7 ("never repurpose a populated field"). This module now
+// only READS the canonical function; it plans no write and defines no new storage.
 //
 // TWO AGES, NEVER ONE NUMBER
 //
@@ -112,148 +95,71 @@ function toCount(v) {
 }
 
 // ---------------------------------------------------------------------------
-// Where the links are stored
+// Where the link already lives (read-only; nothing here is a write target)
 // ---------------------------------------------------------------------------
 
 /**
- * The exact existing columns this chain uses. Named in one place so a release plan, a rollback
- * and a test all point at the same four slots and no code invents a fifth.
+ * The canonical, already-live source of this chain. Named in one place so a reconciliation
+ * script, a contract doc and a test all point at the same function and no code invents a second
+ * source of truth.
  */
-export const LINK_STORAGE = Object.freeze({
-  recommendation: Object.freeze({
-    table: 'public.ops_drafts',
-    tenant_column: 'client_id',
-    selector: "kind = 'audn_recommendation'",
-    link_path: ['context', 'audn', 'outcome_link'],
-    note: 'context is jsonb and already carries structured sub-keys; no column is added',
+export const CANONICAL_LINK_SOURCE = Object.freeze({
+  function: 'public.audn_recommendation_links()',
+  arguments: [],
+  returns: Object.freeze([
+    'client_id', 'recommendation_id', 'recommendation_ref', 'idea_table', 'idea_id',
+    'idea_status', 'draft_id', 'published_post_social_id', 'link_state', 'decision',
+    'decision_reason', 'decided_at', 'decision_source',
+  ]),
+  idea_table_by_client: Object.freeze({
+    // recorded here as documentation of an already-live fact, not a rule this module enforces --
+    // the function itself decides which table a given client_id's ideas live in.
+    arch: 'client_ideas', risedtc: 'client_ideas', ivan: 'lm_idea_candidates',
   }),
-  idea: Object.freeze({
-    table: 'public.client_ideas',
-    link_column: 'reuse_of',
-    note: 'existing column, empty today, documented for exactly this join',
-  }),
-  publication: Object.freeze({
-    client_table: 'public.client_post_metrics',
-    ivan_table: 'public.own_posts',
-    note: 'own_posts carries no tenant column; it is only read through a bound client descriptor',
-  }),
-  observation: Object.freeze({
-    table: 'public.post_audience_history',
-    tenant_column: 'seat',
-    join: 'activity id, urn:li:activity:<id>',
-    note: 'exact identity match, the one already-stored link in the chain',
+  recommendation_ref_prefix: 'audn-rec:',
+  never_used_for_this_chain: Object.freeze({
+    'client_ideas.reuse_of': 'populated today by an unrelated idea-reuse-staging feature '
+      + '(8 risedtc rows, source_ref=\'reuse-<uuid>\', status=\'staged\'); verified live, '
+      + 'read-only, before this file was corrected -- never written or read here',
   }),
 });
 
-export const LINK_CONTEXT_KEY = 'outcome_link';
-
-/** Read the stored link out of an ops_drafts.context jsonb, or null when there is none. */
-export function readRecommendationLink(context) {
-  const link = context?.audn?.[LINK_CONTEXT_KEY];
-  if (link === null || link === undefined) return null;
-  if (typeof link !== 'object' || Array.isArray(link)) {
-    fail('LINK_CONTEXT_MALFORMED',
-      `ops_drafts.context.audn.${LINK_CONTEXT_KEY} must be an object when present`);
-  }
-  return link;
-}
-
 /**
- * Plan the two additive writes that turn this chain from inferred into stored. Returns patches;
- * it opens no connection and issues no statement.
+ * Normalize one row of `audn_recommendation_links()` (or an equivalent local fixture in the same
+ * shape) into the fields this module's chain builder needs. Read-only: it validates and reshapes,
+ * it never writes anything back.
  *
- * Refusals, all of them deliberate:
- *   * a foreign tenant on any row                        LINK_TENANT_MISMATCH
- *   * a link already stored with a different value       LINK_WOULD_OVERWRITE
- *   * any attempt to carry approval or dispatch state    LINK_TOUCHES_APPROVAL
- *
- * @param {object} args
- * @param {string} args.clientId
- * @param {object} args.recommendation  { recommendation_id, client_id?, context? }
- * @param {object} [args.idea]          { idea_id, client_id?, reuse_of? }
- * @param {string} args.publicationId
- * @param {string} [args.evidence]      why this link is asserted; required, never blank
- * @returns {{ writes: object[], already_linked: boolean }}
+ * @param {object} row  one row as the live function returns it
+ * @returns {{recommendation_id, client_id, recommendation_ref, idea_table, idea_id, idea_status,
+ *   draft_id, publication_id, link_state, decision, decision_reason, decided_at, decision_source}}
  */
-export function planLinkWrites({
-  clientId, recommendation, idea = null, publicationId, evidence,
-} = {}) {
-  requireClient(clientId, 'planLinkWrites');
-  if (recommendation === null || typeof recommendation !== 'object') {
-    fail('LINK_BAD_INPUT', 'planLinkWrites requires a recommendation row');
+export function adaptCanonicalLinkRow(row) {
+  if (row === null || typeof row !== 'object') {
+    fail('LINK_BAD_INPUT', 'adaptCanonicalLinkRow requires a row object');
   }
-  if (typeof publicationId !== 'string' || publicationId.trim() === '') {
-    fail('LINK_BAD_INPUT', 'planLinkWrites requires an explicit publicationId');
+  if (typeof row.client_id !== 'string' || row.client_id.trim() === '') {
+    fail('LINK_MISSING_CLIENT', 'a canonical link row requires client_id');
   }
-  if (typeof evidence !== 'string' || evidence.trim() === '') {
-    fail('LINK_MISSING_EVIDENCE',
-      'a stored link states why it is asserted; an unexplained join is an inferred one and belongs in outcomes.mjs');
+  if (typeof row.recommendation_id !== 'string' || row.recommendation_id.trim() === '') {
+    fail('LINK_BAD_INPUT', 'a canonical link row requires recommendation_id');
   }
-  for (const row of [recommendation, idea]) {
-    if (row && row.client_id !== undefined && row.client_id !== null && row.client_id !== clientId) {
-      fail('LINK_TENANT_MISMATCH',
-        `row carries tenant ${JSON.stringify(row.client_id)} but the link context is ${JSON.stringify(clientId)}`);
-    }
-  }
-  for (const field of ['approved_at', 'sent_at', 'published_at']) {
-    if (Object.prototype.hasOwnProperty.call(recommendation, `set_${field}`)) {
-      fail('LINK_TOUCHES_APPROVAL',
-        `planLinkWrites never changes ${field}; approval and dispatch stay where the operator left them`);
-    }
-  }
-
-  const writes = [];
-  let alreadyLinked = false;
-
-  const existing = readRecommendationLink(recommendation.context ?? null);
-  if (existing !== null) {
-    if (existing.publication_id !== publicationId) {
-      fail('LINK_WOULD_OVERWRITE',
-        `recommendation ${JSON.stringify(recommendation.recommendation_id)} already links to publication ${JSON.stringify(existing.publication_id)}`,
-        { stored: existing.publication_id, proposed: publicationId });
-    }
-    alreadyLinked = true;
-  } else {
-    writes.push({
-      table: LINK_STORAGE.recommendation.table,
-      match: { client_id: clientId, id: recommendation.recommendation_id, kind: 'audn_recommendation' },
-      jsonb_path: LINK_STORAGE.recommendation.link_path,
-      value: {
-        publication_id: publicationId,
-        idea_id: idea?.idea_id ?? null,
-        link_status: 'explicit',
-        evidence: evidence.trim(),
-      },
-      mode: 'add_only',
-      guard: `context->'audn'->'${LINK_CONTEXT_KEY}' is null`,
-    });
-  }
-
-  if (idea !== null) {
-    if (typeof idea.idea_id !== 'string' || idea.idea_id.trim() === '') {
-      fail('LINK_BAD_INPUT', 'an idea row needs an idea_id');
-    }
-    const storedReuse = idea.reuse_of ?? null;
-    if (storedReuse !== null && storedReuse !== publicationId) {
-      fail('LINK_WOULD_OVERWRITE',
-        `client_ideas ${JSON.stringify(idea.idea_id)} already reuses ${JSON.stringify(storedReuse)}`,
-        { stored: storedReuse, proposed: publicationId });
-    }
-    if (storedReuse === null) {
-      writes.push({
-        table: LINK_STORAGE.idea.table,
-        match: { client_id: clientId, id: idea.idea_id },
-        column: LINK_STORAGE.idea.link_column,
-        value: publicationId,
-        mode: 'add_only',
-        guard: `${LINK_STORAGE.idea.link_column} is null`,
-      });
-    } else {
-      alreadyLinked = true;
-    }
-  }
-
-  return { writes, already_linked: alreadyLinked && writes.length === 0 };
+  return {
+    client_id: row.client_id,
+    recommendation_id: row.recommendation_id,
+    recommendation_ref: row.recommendation_ref ?? null,
+    idea_table: row.idea_table ?? null,
+    idea_id: row.idea_id ?? null,
+    idea_status: row.idea_status ?? null,
+    draft_id: row.draft_id ?? null,
+    // the function's own column name for this is published_post_social_id; renamed here to the
+    // vocabulary the rest of this chain (and buildOutcomeChain below) already uses.
+    publication_id: row.published_post_social_id ?? null,
+    link_state: row.link_state ?? null,
+    decision: row.decision ?? null,
+    decision_reason: row.decision_reason ?? null,
+    decided_at: row.decided_at ?? null,
+    decision_source: row.decision_source ?? null,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -312,29 +218,34 @@ export const CHAIN_STATES = Object.freeze([
 ]);
 
 /**
- * Walk one client's recommendation -> idea -> publication -> observation chain over stored links
- * only, and report, per recommendation:
+ * Walk one client's recommendation -> idea -> publication -> observation chain over rows already
+ * shaped by `adaptCanonicalLinkRow` (i.e. straight off `audn_recommendation_links()`), joined
+ * against publication/observation records for age and window math only -- the recommendation ->
+ * idea link itself is taken exactly as the canonical function reports it; this function never
+ * upgrades, invents or infers one.
  *
- *   state                'awaiting_publication' (pending, never a failure), 'measuring' (published,
- *                        no window answered yet) or 'evaluated' (at least one window answered)
+ * Per recommendation:
+ *   state                'awaiting_publication' (pending, never a failure -- covers no idea yet,
+ *                        an idea with no publication, and a decision-only orphan row with no
+ *                        idea at all), 'measuring' (published, no window answered yet) or
+ *                        'evaluated' (at least one window answered)
  *   due_windows          keyed on publication age
  *   answered_windows     keyed on capture age
  *   missing_windows      due minus answered, so a gap is a stated gap rather than a zero
  *
  * @param {object} args
  * @param {string} args.clientId
- * @param {object[]} args.recommendations  { recommendation_id, client_id?, context? }
- * @param {object[]} [args.ideas]          { idea_id, client_id?, reuse_of? , recommendation_id? }
- * @param {object[]} args.publications     { publication_id, client_id?, published_at }
- * @param {object[]} args.observations     { publication_id, captured_at, metrics?, is_backfill?, is_lifetime? }
+ * @param {object[]} args.canonicalRows   rows already passed through adaptCanonicalLinkRow
+ * @param {object[]} args.publications    { publication_id, client_id?, published_at }
+ * @param {object[]} [args.observations]  { publication_id, captured_at, metrics?, is_backfill?, is_lifetime? }
  * @param {string} args.cutoff
  */
 export function buildOutcomeChain({
-  clientId, recommendations, ideas = [], publications, observations, cutoff,
+  clientId, canonicalRows, publications, observations = [], cutoff,
 } = {}) {
   requireClient(clientId, 'buildOutcomeChain');
-  for (const [name, list] of [['recommendations', recommendations], ['ideas', ideas],
-    ['publications', publications], ['observations', observations]]) {
+  for (const [name, list] of [['canonicalRows', canonicalRows], ['publications', publications],
+    ['observations', observations]]) {
     if (!Array.isArray(list)) fail('LINK_BAD_INPUT', `${name} must be an array`);
     for (const row of list) {
       if (row && row.client_id !== undefined && row.client_id !== null && row.client_id !== clientId) {
@@ -348,10 +259,6 @@ export function buildOutcomeChain({
   const cutoffMs = Date.parse(cutoffIso);
 
   const publicationsById = new Map(publications.map((p) => [p.publication_id, p]));
-  const ideasByRecommendation = new Map();
-  for (const idea of ideas) {
-    if (idea.recommendation_id) ideasByRecommendation.set(idea.recommendation_id, idea);
-  }
   const observationsByPublication = new Map();
   for (const obs of observations) {
     if (!observationsByPublication.has(obs.publication_id)) observationsByPublication.set(obs.publication_id, []);
@@ -361,10 +268,8 @@ export function buildOutcomeChain({
   const chain = [];
   let evaluated = 0;
 
-  for (const rec of recommendations) {
-    const stored = readRecommendationLink(rec.context ?? null);
-    const idea = ideasByRecommendation.get(rec.recommendation_id) ?? null;
-    const publicationId = stored?.publication_id ?? idea?.reuse_of ?? null;
+  for (const row of canonicalRows) {
+    const publicationId = row.publication_id ?? null;
     const publication = publicationId === null ? undefined : publicationsById.get(publicationId);
     const publishedIso = publication ? utcIso(publication.published_at) : null;
     const publishedMs = publishedIso === null ? null : Date.parse(publishedIso);
@@ -397,11 +302,14 @@ export function buildOutcomeChain({
 
     chain.push({
       client_id: clientId,
-      recommendation_id: rec.recommendation_id,
-      idea_id: idea?.idea_id ?? stored?.idea_id ?? null,
+      recommendation_id: row.recommendation_id,
+      recommendation_ref: row.recommendation_ref,
+      idea_table: row.idea_table,
+      idea_id: row.idea_id,
+      link_state: row.link_state,
+      decision: row.decision,
+      decision_reason: row.decision_reason,
       publication_id: published ? publicationId : null,
-      link_status: stored !== null ? (stored.link_status ?? 'explicit')
-        : (idea?.reuse_of ? 'explicit' : null),
       state,
       published_at: published ? publishedIso : null,
       publication_age_days: published ? Math.floor((cutoffMs - publishedMs) / DAY_MS) : null,
@@ -411,11 +319,13 @@ export function buildOutcomeChain({
       captures,
       // A pending item is pending. It is never a failed test and never a zero result.
       pending_reason: state === 'awaiting_publication'
-        ? (publicationId === null
-          ? 'no stored link to a publication yet'
-          : (publication === undefined
-            ? 'the stored link names a publication this context has no record of'
-            : 'the linked publication has not happened as of the cutoff'))
+        ? (row.idea_id === null
+          ? 'a decision is recorded with no idea ever created from this recommendation'
+          : (publicationId === null
+            ? `idea exists (${row.link_state ?? 'idea'}); no publication recorded yet`
+            : (publication === undefined
+              ? 'the canonical function names a published post id this context has no publication record of'
+              : 'the linked publication has not happened as of the cutoff')))
         : null,
     });
   }
