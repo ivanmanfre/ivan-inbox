@@ -14,6 +14,8 @@ import {
   REVIEW_MILESTONE_EVALUATED_POSTS,
   CANONICAL_LINK_SOURCE,
   adaptCanonicalLinkRow,
+  adaptUnlinkedRecommendation,
+  UNLINKED_ROW_REASON,
   dueWindows,
   stampCapture,
   buildOutcomeChain,
@@ -241,6 +243,21 @@ test('a foreign tenant anywhere in the chain inputs is refused', () => {
     canonicalRows: [row({ client_id: 'arch' })],
     publications: [], observations: [], cutoff: '2026-09-20T00:00:00Z',
   }), (e) => e.code === 'LINK_TENANT_MISMATCH');
+});
+
+test('a recommendation with no live link row at all is pending, distinct from a decided-but-idea-less one', () => {
+  const stub = adaptUnlinkedRecommendation({ clientId: 'risedtc', recommendationId: 'r-undecided' });
+  const r = buildOutcomeChain({
+    clientId: 'risedtc', canonicalRows: [stub], publications: [], observations: [],
+    cutoff: '2026-09-20T00:00:00Z',
+  });
+  assert.equal(r.chain[0].state, 'awaiting_publication');
+  assert.match(r.chain[0].pending_reason, new RegExp(UNLINKED_ROW_REASON));
+});
+
+test('adaptUnlinkedRecommendation refuses a missing recommendationId', () => {
+  assert.throws(() => adaptUnlinkedRecommendation({ clientId: 'ivan' }),
+    (e) => e.code === 'LINK_BAD_INPUT');
 });
 
 test('a named published post id this context does not hold stays pending with a stated reason', () => {

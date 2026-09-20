@@ -162,6 +162,44 @@ export function adaptCanonicalLinkRow(row) {
   };
 }
 
+/**
+ * The reason code for an ops_drafts recommendation row that has NO row at all in
+ * `audn_recommendation_links()` -- neither an idea was ever created from it nor a decision was
+ * recorded. Named once so a reconciliation script and this module's own pending_reason text use
+ * the same code (verified live 2026-09-20: 17 of 26 ops_drafts `audn_recommendation` rows are in
+ * exactly this state -- PRE-RELEASE-AUDIT.md M4).
+ */
+export const UNLINKED_ROW_REASON = 'undecided_no_link_row';
+
+/**
+ * Synthesize the minimal canonical-shaped stub for an ops_drafts recommendation row the live
+ * function does not return at all. This is NOT a write and NOT an inference of a link -- it is
+ * the explicit statement that no link row exists yet, so `buildOutcomeChain` can carry it through
+ * the same pending/awaiting_publication path as every other undecided row instead of a caller
+ * having to special-case a hole in the join.
+ */
+export function adaptUnlinkedRecommendation({ clientId, recommendationId } = {}) {
+  requireClient(clientId, 'adaptUnlinkedRecommendation');
+  if (typeof recommendationId !== 'string' || recommendationId.trim() === '') {
+    fail('LINK_BAD_INPUT', 'adaptUnlinkedRecommendation requires an explicit recommendationId');
+  }
+  return {
+    client_id: clientId,
+    recommendation_id: recommendationId,
+    recommendation_ref: null,
+    idea_table: null,
+    idea_id: null,
+    idea_status: null,
+    draft_id: null,
+    publication_id: null,
+    link_state: null,
+    decision: null,
+    decision_reason: null,
+    decided_at: null,
+    decision_source: null,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Two ages
 // ---------------------------------------------------------------------------
@@ -320,7 +358,9 @@ export function buildOutcomeChain({
       // A pending item is pending. It is never a failed test and never a zero result.
       pending_reason: state === 'awaiting_publication'
         ? (row.idea_id === null
-          ? 'a decision is recorded with no idea ever created from this recommendation'
+          ? (row.link_state === null && row.decision === null
+            ? `no link row exists yet for this recommendation (${UNLINKED_ROW_REASON})`
+            : 'a decision is recorded with no idea ever created from this recommendation')
           : (publicationId === null
             ? `idea exists (${row.link_state ?? 'idea'}); no publication recorded yet`
             : (publication === undefined
