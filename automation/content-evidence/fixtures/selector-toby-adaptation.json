@@ -1,0 +1,32 @@
+{
+  "_comment": "Synthetic equivalent of the RISE Toby Waller adaptation trace (goal-runs/content-evidence-01-foundation-2026-09-20-out/parent-checks/own-outcome-trace-risedtc.json). No private post text or real profile identity: a made-up author and made-up numbers shaped the same way -- a source that was an ORDINARY post for its author (lift 1.1, not an outlier) was adapted anyway, and the adaptation was observed weak. This fixture proves a failed prior adaptation of the same source is carried in adaptation_history, never silently omitted, when that source is proposed again.",
+  "clientId": "risedtc",
+  "weekStart": "2026-09-28",
+  "studies": [],
+  "clientFacts": [],
+  "ownResults": [],
+  "previousTests": [
+    {
+      "recommendation_id": "rec-synthetic-toby-1",
+      "source_id": "post-synthetic-toby",
+      "status": "failed",
+      "decided_at": "2026-09-06",
+      "outcome_status": "observed weak at 2 days; copied a non-outlier source",
+      "note": "Format test copied the source topic and shape verbatim; the source was an ordinary post for its author (lift 1.1), not an outlier."
+    }
+  ],
+  "limit": 3,
+  "findings": [
+    {
+      "client_id": "risedtc",
+      "finding_id": "finding-synthetic-toby-reuse",
+      "kind": "market",
+      "source_ids": ["post-synthetic-toby"],
+      "observed_value": 400,
+      "baseline_value": 40,
+      "baseline_n": 30,
+      "likes": 120,
+      "metric_id": "likes_plus_reposts"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "_comment": "Verbatim from docs/superpowers/plans/2026-09-20-content-evidence-system.md, Package 4's selector fixture (lines 260-270). Synthetic data only.",
+  "clientId": "ivan",
+  "weekStart": "2026-09-28",
+  "studies": [],
+  "ownResults": [],
+  "clientFacts": [],
+  "previousTests": [],
+  "limit": 3,
+  "findings": [
+    {
+      "client_id": "ivan",
+      "finding_id": "f1",
+      "kind": "market_outlier",
+      "observed_value": 32,
+      "baseline_value": 55,
+      "baseline_n": 23,
+      "validation_state": "unqualified"
+    }
+  ]
+}
