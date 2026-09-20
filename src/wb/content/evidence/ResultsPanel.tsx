@@ -10,7 +10,7 @@
 import { Badge } from '../../../ds'
 import { Group } from '../../kit'
 import { CalmEmpty, Failed } from '../parts'
-import { choiceStatusLabel, objectiveLabel, type ContentEvidenceChoice, type ResultsRead } from '../../../lib/contentEvidence'
+import { choiceStatusLabel, laneDisplayName, objectiveLabel, type ContentEvidenceChoice, type ResultsRead } from '../../../lib/contentEvidence'
 import '../content.css'
 import '../markets/markets.css'
 import '../proposals-evidence.css'
@@ -47,7 +47,7 @@ function ChoiceRow({ c }: { c: ContentEvidenceChoice }) {
 }
 
 export function ResultsPanel({ view, onRetry }: { view: ResultsRead; onRetry?: () => void }) {
-  const stamp = <span className="a-dim a-mono">{view.clientId}</span>
+  const stamp = <span className="a-dim a-mono">{laneDisplayName(view.clientId)}</span>
 
   if (view.state === 'failed') {
     return (
@@ -61,7 +61,7 @@ export function ResultsPanel({ view, onRetry }: { view: ResultsRead; onRetry?: (
     return (
       <Group className="a-cev-g" label="Results" tail={<span className="a-prop-tail"><ReaderStateTag state="empty" />{stamp}</span>} pad>
         <CalmEmpty
-          line={`No published choice recorded for ${view.clientId} yet.`}
+          line={`No published choice recorded for ${laneDisplayName(view.clientId)} yet.`}
           sub="Nothing has been published from the evidence-backed picks yet, so there is nothing to evaluate."
           loadedAt={view.asOf}
         />
@@ -79,7 +79,6 @@ export function ResultsPanel({ view, onRetry }: { view: ResultsRead; onRetry?: (
       tail={
         <span className="a-prop-tail">
           <ReaderStateTag state={view.state} />
-          {view.state === 'stale' ? <Badge tone="attention" variant="ring">Stale</Badge> : null}
           {view.state === 'partial' ? <Badge tone="neutral" variant="ring">Incomplete measurement</Badge> : null}
           {stamp}
         </span>

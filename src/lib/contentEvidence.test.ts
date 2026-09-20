@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
 import type { ContentLane } from './content'
 // `./contentEvidence` imports `./supabase`, which throws at module load with
@@ -8,7 +9,8 @@ vi.mock('./supabase', () => ({ supabase: { rpc: () => Promise.resolve({ data: nu
 import { fixturePack } from './contentEvidence.fixtures'
 import {
   LOW_SAMPLE_BASELINE_N, buildInputs, buildResults, buildThisWeek, buildWinners,
-  choiceStatusLabel, isLowSample, objectiveLabel, thisWeekWordCount,
+  choiceStatusLabel, evidenceFixtureBypassActive, isLowSample, laneDisplayName, objectiveLabel,
+  thisWeekWordCount,
   type ContentEvidencePack,
 } from './contentEvidence'
 
@@ -104,6 +106,82 @@ describe('failed is never empty', () => {
     expect(r.state).toBe('failed')
     expect(r.message).toBeTruthy()
     vi.doUnmock('./supabase')
+  })
+})
+
+// MUST-FIX 1 (Phase-2 review): before this fix, `readPack` had no try/catch
+// and the four `EvidenceBlock` hooks called `.then(...)` with no `.catch`.
+// A REJECTING rpc call (not a returned `{error}`, an actual thrown/rejected
+// promise) propagated straight through the `await` chain: `fetchThisWeek`
+// etc. returned a rejected promise instead of resolving to `{state:
+// 'failed', ...}`, and in the real component that left `view` at `null`
+// forever — a spinner with no failure path. These two tests are the
+// red-first proof: run against the pre-fix `readPack` (no try/catch) they
+// throw out of the `await mod.fetchThisWeek(...)` call below instead of
+// resolving, which fails the test with an uncaught rejection rather than a
+// clean assertion failure — that IS the bug, reproduced. Against the fixed
+// `readPack` (this file, wrapped in try/catch) both resolve to
+// `state: 'failed'`.
+describe('a rejected/thrown read fails, it never hangs (must-fix 1)', () => {
+  it('a rejecting (not just erroring) rpc call yields state failed on all four reads', async () => {
+    vi.resetModules()
+    vi.doMock('./supabase', () => ({
+      supabase: { rpc: () => Promise.reject(new Error('boom')) },
+    }))
+    const mod = await import('./contentEvidence')
+    const thisWeek = await mod.fetchThisWeek('ivan')
+    const winners = await mod.fetchWinners('ivan')
+    const inputs = await mod.fetchInputs('ivan')
+    const results = await mod.fetchResults('ivan')
+    for (const r of [thisWeek, winners, inputs, results]) {
+      expect(r.state).toBe('failed')
+      expect(r.message).toContain('boom')
+    }
+    vi.doUnmock('./supabase')
+  })
+
+  it('a failed dynamic import of the fixture chunk also yields state failed, not a hang', async () => {
+    vi.resetModules()
+    vi.doMock('./contentEvidence.fixtures', () => {
+      throw new Error('fixture chunk failed to load')
+    })
+    const mod = await import('./contentEvidence')
+    // Routes through the DEV fixture branch: vitest's own `import.meta.env.DEV`
+    // is true by default, and this file already runs under jsdom-compatible
+    // globals, so `window` exists.
+    window.history.pushState(null, '', '/?evidenceFixture=ready')
+    const r = await mod.fetchThisWeek('ivan')
+    expect(r.state).toBe('failed')
+    window.history.pushState(null, '', '/')
+    vi.doUnmock('./contentEvidence.fixtures')
+  })
+})
+
+describe('the W5 login-gate bypass is DEV-only (must-fix 2)', () => {
+  it('never activates when isDev is false, regardless of the query string', () => {
+    expect(evidenceFixtureBypassActive(false, '?evidenceFixture=ready')).toBe(false)
+    expect(evidenceFixtureBypassActive(false, '?evidenceFixture=failed')).toBe(false)
+    expect(evidenceFixtureBypassActive(false, '')).toBe(false)
+  })
+
+  it('activates only for a recognized fixture state when isDev is true', () => {
+    for (const state of ['ready', 'partial', 'empty', 'stale', 'failed']) {
+      expect(evidenceFixtureBypassActive(true, `?evidenceFixture=${state}`)).toBe(true)
+    }
+    expect(evidenceFixtureBypassActive(true, '?evidenceFixture=bogus')).toBe(false)
+    expect(evidenceFixtureBypassActive(true, '')).toBe(false)
+  })
+})
+
+describe('client ids are never printed raw on screen (must-fix 3)', () => {
+  it('maps every registered lane to its LANE_LABEL display name', () => {
+    expect(laneDisplayName('ivan')).toBe('Ivan')
+    expect(laneDisplayName('risedtc')).toBe('Mattan Danino')
+    expect(laneDisplayName('arch')).toBe('Davorin Smit')
+  })
+
+  it('falls back to the raw id for an unknown lane rather than throwing', () => {
+    expect(laneDisplayName('some-future-lane')).toBe('some-future-lane')
   })
 })
 

@@ -16,8 +16,8 @@
    ========================================================================== */
 import { Badge } from '../../../ds'
 import { Group } from '../../kit'
-import { Failed } from '../parts'
-import type { InputsView } from '../../../lib/contentEvidence'
+import { Failed, relAge } from '../parts'
+import { laneDisplayName, type InputsView } from '../../../lib/contentEvidence'
 import '../content.css'
 import { ReaderStateTag } from './readerState'
 
@@ -39,7 +39,7 @@ function count(n: number | null | undefined): string {
 }
 
 export function InputsPanel({ data, onRetry }: { data: InputsView; onRetry?: () => void }) {
-  const stamp = <span className="a-dim a-mono">{data.clientId}</span>
+  const stamp = <span className="a-dim a-mono">{laneDisplayName(data.clientId)}</span>
 
   if (data.state === 'failed') {
     return (
@@ -56,7 +56,6 @@ export function InputsPanel({ data, onRetry }: { data: InputsView; onRetry?: () 
       tail={
         <span className="a-prop-tail">
           <ReaderStateTag state={data.state} />
-          {data.state === 'stale' ? <Badge tone="attention" variant="ring">Stale</Badge> : null}
           {data.state === 'partial' ? <Badge tone="neutral" variant="ring">Coverage gap</Badge> : null}
           {data.state === 'empty' ? <Badge tone="neutral" variant="ring">Nothing collected</Badge> : null}
           {stamp}
@@ -66,7 +65,7 @@ export function InputsPanel({ data, onRetry }: { data: InputsView; onRetry?: () 
     >
       {data.studyState === 'missing' ? (
         <div className="a-ct-sub">
-          No verified market study for {data.clientId} yet.
+          No verified market study for {laneDisplayName(data.clientId)} yet.
           {data.storedPosts !== null
             ? ' Existing source posts are available; author baselines and full-post labels still need review.'
             : ''}
@@ -94,7 +93,7 @@ export function InputsPanel({ data, onRetry }: { data: InputsView; onRetry?: () 
         <div className="a-cev-f">
           <span className="a-eyebrow">Current</span>
           <span className="a-prop-v">
-            {data.lastSuccessfulCollection ? `Last successful collection ${data.lastSuccessfulCollection}` : 'No successful collection recorded.'}
+            {data.lastSuccessfulCollection ? `Last successful collection ${relAge(data.lastSuccessfulCollection)}` : 'No successful collection recorded.'}
           </span>
           <span className="a-ct-sub">{studyStateLabel(data.studyState)}</span>
         </div>

@@ -97,8 +97,18 @@
    no network, so a fixture in or a live pack in produces the same view out.
    ========================================================================== */
 import { supabase } from './supabase'
-import { CLIENT_OPS_GATE } from './content'
+import { CLIENT_OPS_GATE, LANE_LABEL } from './content'
 import type { ContentLane } from './content'
+
+/** The display name a client id becomes wherever it reaches the screen.
+    `LANE_LABEL` (src/lib/content.ts) is the one canonical map; 'risedtc' and
+    'arch' are database values and are never shown verbatim (Phase-2 review,
+    must-fix 3 / orchestrator ruling b). Falls back to the raw id only for a
+    value LANE_LABEL does not know, which never leaks raw JSON, just an
+    unfamiliar string. */
+export function laneDisplayName(id: string): string {
+  return (LANE_LABEL as Record<string, string>)[id] ?? id
+}
 
 export type ViewState = 'ready' | 'partial' | 'empty' | 'stale' | 'failed'
 
@@ -388,7 +398,7 @@ export function thisWeekWordCount(view: ThisWeekRead): number {
   const parts: string[] = [view.coverageLine]
   for (const c of view.candidates) {
     parts.push(c.topic, c.evidence_sentence, objectiveLabel(c.objective))
-    parts.push(c.needs_material ? `Needs material: ${c.topic}` : (c.client_material ?? ''))
+    parts.push(c.needs_material ? 'Needs material.' : (c.client_material ?? ''))
     if (c.is_experiment) parts.push('Experiment', c.experiment_reason ?? '', c.test_metric ?? '')
   }
   const text = parts.filter(Boolean).join(' ')
@@ -421,49 +431,119 @@ export type FixtureUiState = (typeof FIXTURE_STATES)[number]
     default `npm run build` (`vite build` sets `NODE_ENV=production`) never
     emits the fixture chunk, and `NODE_ENV=development npx vite build
     --outDir dist-fixture` keeps DEV true so the SAME optimized/rollup build
-    can be served with `vite preview` for a screenshot pass. */
+    can be served with `vite preview` for a screenshot pass.
+
+    MUST-FIX 1 (Phase-2 review): the whole body is wrapped in try/catch. A
+    REJECTED promise -- a thrown auth-refresh error, any network exception
+    that never reaches the `{data,error}` shape, or a failed dynamic
+    `import()` of the fixture chunk -- is still a failed read, never a hang.
+    The packet is explicit: "a thrown/failed request MUST yield state
+    'failed'"; before this fix the four `EvidenceBlock` hooks called
+    `.then(...)` with no `.catch(...)`, so a rejection left `view` at `null`
+    and the panel spun on "Reading…" forever. This is the one place in the
+    module a rejection can occur and the one place it is caught. */
 async function readPack(lane: ContentLane): Promise<{ ok: true; pack: ContentEvidencePack } | { ok: false; error: string }> {
-  if (import.meta.env.DEV && typeof window !== 'undefined') {
-    const raw = new URLSearchParams(window.location.search).get('evidenceFixture')
-    if (raw && (FIXTURE_STATES as readonly string[]).includes(raw)) {
-      const fx = raw as FixtureUiState
-      if (fx === 'failed') return { ok: false, error: 'Fixture: simulated read failure (?evidenceFixture=failed).' }
-      const m = await import('./contentEvidence.fixtures')
-      return { ok: true, pack: m.fixturePack(lane, fx) }
+  try {
+    if (import.meta.env.DEV && typeof window !== 'undefined') {
+      const raw = new URLSearchParams(window.location.search).get('evidenceFixture')
+      if (raw && (FIXTURE_STATES as readonly string[]).includes(raw)) {
+        const fx = raw as FixtureUiState
+        if (fx === 'failed') return { ok: false, error: 'Fixture: simulated read failure (?evidenceFixture=failed).' }
+        const m = await import('./contentEvidence.fixtures')
+        return { ok: true, pack: m.fixturePack(lane, fx) }
+      }
     }
+    const { data, error } = await supabase.rpc('operator_content_evidence', {
+      p_gate: CLIENT_OPS_GATE, p_client_id: lane,
+    })
+    if (error) return { ok: false, error: error.message || 'The evidence read failed.' }
+    if (!data || typeof data !== 'object') return { ok: false, error: 'The evidence read returned no usable payload.' }
+    return { ok: true, pack: data as ContentEvidencePack }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) }
   }
-  const { data, error } = await supabase.rpc('operator_content_evidence', {
-    p_gate: CLIENT_OPS_GATE, p_client_id: lane,
-  })
-  if (error) return { ok: false, error: error.message || 'The evidence read failed.' }
-  if (!data || typeof data !== 'object') return { ok: false, error: 'The evidence read returned no usable payload.' }
-  return { ok: true, pack: data as ContentEvidencePack }
+}
+
+/** DEV-ONLY, tree-shaken exactly like the fixture lever above (the same
+    inline `import.meta.env.DEV &&` shape at the call site is what makes
+    Rollup fold the whole branch away in a `NODE_ENV=production` build --
+    confirmed by building and grepping `dist/` for both `evidenceFixture` and
+    this function's own name; see UI-RECEIPT.md). It exists for exactly one
+    reader: W5's independent checker opens a `state_urls` URL with a fresh,
+    signed-out browser profile and clicks nothing, so the app's own login
+    gate (checked in `App.tsx` before any hash routing) has to be bypassed
+    for a URL carrying a recognized `?evidenceFixture=` value, in DEV only.
+    `isDev` is an explicit parameter (not read from `import.meta.env` inside
+    this function) so the "never true when DEV is false" guarantee is
+    unit-testable independent of whatever mode the test runner itself
+    happens to build under -- see contentEvidence.test.ts. */
+export function evidenceFixtureBypassActive(isDev: boolean, search: string): boolean {
+  if (!isDev) return false
+  const v = new URLSearchParams(search).get('evidenceFixture')
+  return (FIXTURE_STATES as readonly string[]).includes(v ?? '')
+}
+
+function failedThisWeek(lane: ContentLane, message: string): ThisWeekRead {
+  return { state: 'failed', message, clientId: lane, coverageLine: '', candidates: [], missingInputs: [], asOf: null }
+}
+function failedWinners(lane: ContentLane, message: string): WinnersRead {
+  return { state: 'failed', message, clientId: lane, market: [], own: [], asOf: null }
+}
+function failedInputs(lane: ContentLane, message: string): InputsView {
+  return { state: 'failed', message, clientId: lane, storedPosts: null, eligiblePosts: null, studyState: 'failed', gaps: [] }
+}
+function failedResults(lane: ContentLane, message: string): ResultsRead {
+  return { state: 'failed', message, clientId: lane, choices: [], priorFailures: [], asOf: null }
 }
 
 export async function fetchThisWeek(lane: ContentLane): Promise<ThisWeekRead> {
   const r = await readPack(lane)
-  if (!r.ok) {
-    return { state: 'failed', message: r.error, clientId: lane, coverageLine: '', candidates: [], missingInputs: [], asOf: null }
-  }
-  return buildThisWeek(r.pack)
+  return r.ok ? buildThisWeek(r.pack) : failedThisWeek(lane, r.error)
 }
 
 export async function fetchWinners(lane: ContentLane): Promise<WinnersRead> {
   const r = await readPack(lane)
-  if (!r.ok) return { state: 'failed', message: r.error, clientId: lane, market: [], own: [], asOf: null }
-  return buildWinners(r.pack)
+  return r.ok ? buildWinners(r.pack) : failedWinners(lane, r.error)
 }
 
 export async function fetchInputs(lane: ContentLane): Promise<InputsView> {
   const r = await readPack(lane)
-  if (!r.ok) {
-    return { state: 'failed', message: r.error, clientId: lane, storedPosts: null, eligiblePosts: null, studyState: 'failed', gaps: [] }
-  }
-  return buildInputs(r.pack)
+  return r.ok ? buildInputs(r.pack) : failedInputs(lane, r.error)
 }
 
 export async function fetchResults(lane: ContentLane): Promise<ResultsRead> {
   const r = await readPack(lane)
-  if (!r.ok) return { state: 'failed', message: r.error, clientId: lane, choices: [], priorFailures: [], asOf: null }
-  return buildResults(r.pack)
+  return r.ok ? buildResults(r.pack) : failedResults(lane, r.error)
+}
+
+/** THE SHARED READ. `EvidenceBlock` calls this ONE function once per lane
+    change and derives all four sub-view reads from its single result
+    (Phase-2 review NOTE: the block's four independent hooks were firing four
+    identical `operator_content_evidence` round trips on every mount). The
+    four `fetch*` functions above stay exported and independently useful --
+    every existing test that reads one view in isolation still can -- but
+    nothing in this module calls them internally any more. */
+export type ContentEvidenceViews = {
+  thisWeek: ThisWeekRead
+  winners: WinnersRead
+  inputs: InputsView
+  results: ResultsRead
+}
+
+export async function fetchContentEvidenceViews(lane: ContentLane): Promise<ContentEvidenceViews> {
+  const r = await readPack(lane)
+  if (!r.ok) {
+    return {
+      thisWeek: failedThisWeek(lane, r.error),
+      winners: failedWinners(lane, r.error),
+      inputs: failedInputs(lane, r.error),
+      results: failedResults(lane, r.error),
+    }
+  }
+  return {
+    thisWeek: buildThisWeek(r.pack),
+    winners: buildWinners(r.pack),
+    inputs: buildInputs(r.pack),
+    results: buildResults(r.pack),
+  }
 }

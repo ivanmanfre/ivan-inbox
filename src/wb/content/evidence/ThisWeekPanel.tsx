@@ -10,8 +10,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Badge, Button } from '../../../ds'
 import { Group } from '../../kit'
-import { CalmEmpty, Failed } from '../parts'
-import { objectiveLabel, type ContentEvidenceCandidate, type ThisWeekRead } from '../../../lib/contentEvidence'
+import { CalmEmpty, Failed, relAge } from '../parts'
+import { laneDisplayName, objectiveLabel, type ContentEvidenceCandidate, type ThisWeekRead } from '../../../lib/contentEvidence'
 import { ReaderStateTag } from './readerState'
 // `.a-prop-*` / `.a-ct-sub` / `.a-eyebrow` (content.css) and the `.a-prop-history`
 // disclosure (proposals-evidence.css) are reused rather than reinvented — the
@@ -57,7 +57,10 @@ function EvidenceDetail({ c, id }: { c: ContentEvidenceCandidate; id: string }) 
         </div>
       ) : null}
       {c.detail.method_version ? (
-        <div className="a-ct-sub a-mono">{c.detail.method_version}</div>
+        <div className="a-cev-f">
+          <span className="a-eyebrow">Method</span>
+          <span className="a-prop-v a-mono">{c.detail.method_version}</span>
+        </div>
       ) : null}
       {c.detail.full_source_text ? (
         <details className="a-prop-history">
@@ -98,7 +101,7 @@ function CandidateCard({ c }: { c: ContentEvidenceCandidate }) {
         <span className="a-eyebrow">Client material</span>
         <span className="a-prop-v">
           {c.needs_material
-            ? `Needs material: ${c.topic}`
+            ? 'Needs material.'
             : (c.client_material?.trim() || 'Not stated.')}
         </span>
       </div>
@@ -142,7 +145,7 @@ function CandidateCard({ c }: { c: ContentEvidenceCandidate }) {
 }
 
 export function ThisWeekPanel({ view, onRetry }: { view: ThisWeekRead; onRetry?: () => void }) {
-  const stamp = <span className="a-dim a-mono">{view.clientId}</span>
+  const stamp = <span className="a-dim a-mono">{laneDisplayName(view.clientId)}</span>
 
   if (view.state === 'failed') {
     return (
@@ -159,7 +162,7 @@ export function ThisWeekPanel({ view, onRetry }: { view: ThisWeekRead; onRetry?:
       <div data-testid="strategy-this-week">
         <Group className="a-cev-g" label="This week" tail={<span className="a-prop-tail"><ReaderStateTag state="empty" />{stamp}</span>} pad>
           <CalmEmpty
-            line={`No evidence-backed picks for ${view.clientId} yet.`}
+            line={`No evidence-backed picks for ${laneDisplayName(view.clientId)} yet.`}
             sub={view.missingInputs[0] ?? 'Source posts may exist without a validated study behind them yet.'}
             loadedAt={view.asOf}
           />
@@ -176,7 +179,6 @@ export function ThisWeekPanel({ view, onRetry }: { view: ThisWeekRead; onRetry?:
         tail={
           <span className="a-prop-tail">
             <ReaderStateTag state={view.state} />
-            {view.state === 'stale' ? <Badge tone="attention" variant="ring">Stale</Badge> : null}
             {view.state === 'partial' ? <Badge tone="neutral" variant="ring">Coverage gap</Badge> : null}
             {stamp}
           </span>
@@ -186,7 +188,7 @@ export function ThisWeekPanel({ view, onRetry }: { view: ThisWeekRead; onRetry?:
         <div className="a-ct-sub">{view.coverageLine}</div>
         {view.state === 'stale' ? (
           <div className="a-ct-sub a-sev-attention">
-            This read is older than the freshness window. Showing what last computed.
+            This read is older than the freshness window. Showing what last computed, {relAge(view.asOf)}.
           </div>
         ) : null}
         {view.missingInputs.length ? (

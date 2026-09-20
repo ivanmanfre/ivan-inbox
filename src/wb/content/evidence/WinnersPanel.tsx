@@ -13,7 +13,7 @@ import { Badge } from '../../../ds'
 import { Group } from '../../kit'
 import { CalmEmpty, Failed } from '../parts'
 import {
-  isLowSample, objectiveLabel,
+  isLowSample, laneDisplayName, objectiveLabel,
   type ContentEvidenceMarketWinner, type ContentEvidenceOwnResult, type WinnersRead,
 } from '../../../lib/contentEvidence'
 // The `.a-mk-*` row shapes are the Markets/Outliers block's own vocabulary
@@ -75,7 +75,7 @@ function OwnRow({ o }: { o: ContentEvidenceOwnResult }) {
 }
 
 export function WinnersPanel({ view, onRetry }: { view: WinnersRead; onRetry?: () => void }) {
-  const stamp = <span className="a-dim a-mono">{view.clientId}</span>
+  const stamp = <span className="a-dim a-mono">{laneDisplayName(view.clientId)}</span>
 
   if (view.state === 'failed') {
     return (
@@ -89,7 +89,7 @@ export function WinnersPanel({ view, onRetry }: { view: WinnersRead; onRetry?: (
     return (
       <Group className="a-cev-g" label="Winners" tail={<span className="a-prop-tail"><ReaderStateTag state="empty" />{stamp}</span>} pad>
         <CalmEmpty
-          line={`No market or own-account winners recorded for ${view.clientId} yet.`}
+          line={`No market or own-account winners recorded for ${laneDisplayName(view.clientId)} yet.`}
           sub="A verified market study or a measured own post has not produced a qualifying row yet."
           loadedAt={view.asOf}
         />
@@ -104,7 +104,6 @@ export function WinnersPanel({ view, onRetry }: { view: WinnersRead; onRetry?: (
       tail={
         <span className="a-prop-tail">
           <ReaderStateTag state={view.state} />
-          {view.state === 'stale' ? <Badge tone="attention" variant="ring">Stale</Badge> : null}
           {view.state === 'partial' ? <Badge tone="neutral" variant="ring">Thin coverage</Badge> : null}
           {stamp}
         </span>

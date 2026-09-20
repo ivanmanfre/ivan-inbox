@@ -4,20 +4,24 @@
    idiom. One new top-level tab ("Evidence") in `strategy.tsx`, sub-tabbed
    internally with the same `Segmented` component the outer tab row already
    uses — no new dashboard, no new route, no second tab literally named
-   "Results" competing with the existing Results tab (ReachBlock/Benchmark).
+   "Results" competing with the existing Results tab (ReachBlock/Benchmark);
+   the inner sub-view is labelled "Test results" instead (orchestrator
+   ruling, Phase-2 fix pass: it is still the spec's Results view, the panel
+   heading stays "Results", only the TAB text changes so two identical
+   labels never sit in adjacent tablists at once).
 
-   Each sub-view fetches independently, only while it is the active sub-tab —
-   the same "only the mounted block reads" idiom `OutliersBlock`/
-   `ProposalsBlock` already use elsewhere on this screen.
+   ONE shared read per lane, not four. `fetchContentEvidenceViews` is a
+   single `operator_content_evidence` round trip; all four sub-views are
+   derived from that one result and switching tabs never re-fetches (Phase-2
+   review NOTE: the previous four independent hooks fired four identical
+   round trips on every mount, which this file's own comment claimed did not
+   happen).
    ========================================================================== */
 import { useCallback, useEffect, useState } from 'react'
 import { Segmented } from '../../../ds'
 import { Bar } from '../../kit'
 import type { ContentLane } from '../../../lib/content'
-import {
-  fetchInputs, fetchResults, fetchThisWeek, fetchWinners,
-  type InputsView, type ResultsRead, type ThisWeekRead, type WinnersRead,
-} from '../../../lib/contentEvidence'
+import { fetchContentEvidenceViews, type ContentEvidenceViews } from '../../../lib/contentEvidence'
 import { ThisWeekPanel } from './ThisWeekPanel'
 import { WinnersPanel } from './WinnersPanel'
 import { InputsPanel } from './InputsPanel'
@@ -30,51 +34,18 @@ const SUB_VIEWS: Array<{ id: SubView; label: string }> = [
   { id: 'this_week', label: 'This week' },
   { id: 'winners', label: 'Winners' },
   { id: 'inputs', label: 'Inputs' },
-  { id: 'results', label: 'Results' },
+  { id: 'results', label: 'Test results' },
 ]
 
-function useThisWeek(lane: ContentLane, tick: number) {
-  const [view, setView] = useState<ThisWeekRead | null>(null)
+function useContentEvidence(lane: ContentLane, tick: number) {
+  const [views, setViews] = useState<ContentEvidenceViews | null>(null)
   useEffect(() => {
     let live = true
-    setView(null)
-    void fetchThisWeek(lane).then(v => { if (live) setView(v) })
+    setViews(null)
+    void fetchContentEvidenceViews(lane).then(v => { if (live) setViews(v) })
     return () => { live = false }
   }, [lane, tick])
-  return view
-}
-
-function useWinners(lane: ContentLane, tick: number) {
-  const [view, setView] = useState<WinnersRead | null>(null)
-  useEffect(() => {
-    let live = true
-    setView(null)
-    void fetchWinners(lane).then(v => { if (live) setView(v) })
-    return () => { live = false }
-  }, [lane, tick])
-  return view
-}
-
-function useInputs(lane: ContentLane, tick: number) {
-  const [view, setView] = useState<InputsView | null>(null)
-  useEffect(() => {
-    let live = true
-    setView(null)
-    void fetchInputs(lane).then(v => { if (live) setView(v) })
-    return () => { live = false }
-  }, [lane, tick])
-  return view
-}
-
-function useResults(lane: ContentLane, tick: number) {
-  const [view, setView] = useState<ResultsRead | null>(null)
-  useEffect(() => {
-    let live = true
-    setView(null)
-    void fetchResults(lane).then(v => { if (live) setView(v) })
-    return () => { live = false }
-  }, [lane, tick])
-  return view
+  return views
 }
 
 /** Loading has no fifth state of its own: `null` (nothing has loaded) simply
@@ -89,10 +60,7 @@ export function EvidenceBlock({ lane }: { lane: ContentLane }) {
   const [tick, setTick] = useState(0)
   const retry = useCallback(() => setTick(t => t + 1), [])
 
-  const thisWeek = useThisWeek(lane, tick)
-  const winners = useWinners(lane, tick)
-  const inputs = useInputs(lane, tick)
-  const results = useResults(lane, tick)
+  const views = useContentEvidence(lane, tick)
 
   return (
     <div className="a-cev">
@@ -107,10 +75,10 @@ export function EvidenceBlock({ lane }: { lane: ContentLane }) {
         />
       </Bar>
 
-      {sub === 'this_week' && (thisWeek ? <ThisWeekPanel view={thisWeek} onRetry={retry} /> : <Loading label="this week's evidence" />)}
-      {sub === 'winners' && (winners ? <WinnersPanel view={winners} onRetry={retry} /> : <Loading label="the winners" />)}
-      {sub === 'inputs' && (inputs ? <InputsPanel data={inputs} onRetry={retry} /> : <Loading label="the inputs" />)}
-      {sub === 'results' && (results ? <ResultsPanel view={results} onRetry={retry} /> : <Loading label="the results" />)}
+      {sub === 'this_week' && (views ? <ThisWeekPanel view={views.thisWeek} onRetry={retry} /> : <Loading label="this week's evidence" />)}
+      {sub === 'winners' && (views ? <WinnersPanel view={views.winners} onRetry={retry} /> : <Loading label="the winners" />)}
+      {sub === 'inputs' && (views ? <InputsPanel data={views.inputs} onRetry={retry} /> : <Loading label="the inputs" />)}
+      {sub === 'results' && (views ? <ResultsPanel view={views.results} onRetry={retry} /> : <Loading label="the results" />)}
     </div>
   )
 }
