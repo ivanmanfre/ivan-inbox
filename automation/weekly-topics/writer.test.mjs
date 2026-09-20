@@ -794,3 +794,30 @@ test('regression: empty-reply-on-legacy-path-unchanged -- a deliberate [] still 
  assert.equal(first(y).reason,'no_supported_candidates');
  assert(x.calls.some(c=>c.url.endsWith('/audn_recommendation_commit')));
 });
+
+test('regression: single-client-gets-run-budget -- one client gets a fair share of the whole run, three clients split it',async()=>{
+ // D10. The fixture clock is frozen, so elapsed is 0 and every share is exact:
+ //   share = floor((BUDGET_MS 900000 - elapsed - RESERVE_MS 60000) / clients still to run)
+ const one=await run({body:{preview:true,client_id:'ivan'},items:[]});
+ assert.equal(first(one).client_share_ms,840000,'a single-client preview gets ~the whole 900s node budget, not a fixed 260s slice');
+ assert(first(one).client_share_ms>480000,'a share that cannot hold a 480s proxy call is what caused the three live 272s bails');
+ const three=await run({body:{preview:true},items:[],clients:[registry('arch'),registry('ivan'),registry('risedtc')]});
+ assert.equal(three.result.clients.length,3);
+ assert.equal(three.result.clients[0].client_share_ms,280000,'the first of three clients takes a third, protecting the two queued behind it');
+ for(const c of three.result.clients) assert.equal(c.skipped,false,'every client still runs');
+});
+
+test('regression: proxy-timeout-no-useful-window -- a client that cannot get a minimum window is skipped retryable, never aborting the run',async()=>{
+ // Squeeze the share below MIN_ATTEMPT_MS by queueing more clients than the budget can serve.
+ const many=Array.from({length:5},(_,i)=>registry('c'+i));
+ const x=await run({body:{preview:true},items:[],clients:many});
+ const squeezed=x.result.clients.filter(c=>c.skipped);
+ assert(squeezed.length>0,'at least one client is squeezed below the minimum useful window');
+ for(const c of squeezed){
+  assert.equal(c.reason,'run_budget_exhausted');
+  assert.equal(c.retryable,true,'a squeezed client is retryable, never a silent loss');
+  assert.equal(c.writer_bail,false,'being skipped is not a bail');
+ }
+ assert.equal(x.result.clients.length,5,'the run never aborts: every client still gets a record');
+ assert.equal(x.calls.some(c=>c.url.endsWith('/audn_recommendation_commit')),false);
+});

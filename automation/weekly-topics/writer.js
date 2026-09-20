@@ -33,7 +33,19 @@ const EVIDENCE_POOL_LIMIT = 12;
 const EVIDENCE_SOURCE_EXCERPT = 900;
 // Run 4 TRACE C3. Per-client share of the node budget for the model call, bounded transport
 // retries and a bounded backoff. These exist so one slow client cannot spend the whole run.
-const PER_CLIENT_MS = 260000;
+// D10 (orchestrator, after three live 272 s bails): a FIXED per-client share is a coin flip on a
+// proxy that needs 240-480 s per call, and it throws away most of the node budget on a
+// single-client preview. The share is now a fair division of what is actually left:
+//   floor((BUDGET_MS - elapsed - RESERVE_MS) / clients still to run)
+// One client therefore gets roughly the whole run (about 825 s of a 900 s node budget), while a
+// three-client scheduled run still gives each client about 275 s and protects the clients queued
+// behind it. RESERVE_MS is the tail left for the commit and the summary.
+const RESERVE_MS = 60000;
+// Never start an attempt that cannot get a useful window: below this, the client is marked
+// retryable and left for the next run rather than burned on a call that cannot finish.
+const MIN_ATTEMPT_MS = 200000;
+// One attempt never eats the entire share, so a hung connection still leaves room for a retry.
+const ATTEMPT_MAX_MS = 600000;
 const PROXY_MAX_ATTEMPTS = 3;
 const PROXY_BACKOFF_MS = 5000;
 // Run 4 TRACE item 4. Deterministic slimming, in a stable, stated priority order, applied ONLY on
@@ -1316,10 +1328,18 @@ for (const t of targets) {
   const measuredRequired = evidenceActive && evidenceCandidates.length > 0;
   prepared.push({t,cid,rec,openRows,context,allowedSubjects,approvedSources,rosterOut,roleByName,accountByName,sourceBaselines,packRows,rowById,already,pack:modelPack,evidenceActive,evidenceCandidates,measuredRequired});
 }
+let clientsRemaining = prepared.length;
 for (const p of prepared) {
   const {t,cid,rec,openRows,context,allowedSubjects,approvedSources,rosterOut,roleByName,accountByName,sourceBaselines,packRows,rowById,already,pack,evidenceActive,evidenceCandidates,measuredRequired}=p;
   const approvedSourcesById = new Map(approvedSources.map((s) => [s.source_id, s]));
-  if (Date.now()-START > BUDGET_MS-280000) {rec.skipped=true;rec.reason='run_budget_exhausted';continue;}
+  clientsRemaining--;
+  if (Date.now()-START > BUDGET_MS-280000) {rec.skipped=true;rec.reason='run_budget_exhausted';rec.retryable=true;continue;}
+  // D10: this client's fair share of what is left, not a fixed slice.
+  const clientShare = Math.floor((BUDGET_MS - (Date.now() - START) - RESERVE_MS) / (clientsRemaining + 1));
+  rec.client_share_ms = clientShare;
+  if (clientShare < MIN_ATTEMPT_MS) {
+    rec.skipped = true; rec.reason = 'run_budget_exhausted'; rec.retryable = true; continue;
+  }
 
   // ---- 5. proxy call per client, bounded transport retries --------------------
   // Run 4 TRACE C3: 2 of 3 captured attempts aborted at the 240s ceiling and one client consumed
@@ -1331,12 +1351,14 @@ for (const p of prepared) {
   // never retried: that is a diagnosis, not weather.
   let aiText = '';
   let proxyAttempts = 0;
-  const clientDeadline = Date.now() + Math.max(0, Math.min(PER_CLIENT_MS, BUDGET_MS - (Date.now() - START) - 30000));
+  const clientDeadline = Date.now() + Math.max(0, Math.min(clientShare, BUDGET_MS - (Date.now() - START) - 30000));
   try {
     let lastErr = null;
     while (proxyAttempts < PROXY_MAX_ATTEMPTS) {
+      // D10: never start an attempt that cannot get a useful window. Out of time with no
+      // attempt yet is a retryable skip, not a failure to diagnose.
       const remaining = clientDeadline - Date.now();
-      if (remaining <= 5000) { rec.proxy_attempts = proxyAttempts; throw lastErr || new Error('audn_client_deadline'); }
+      if (remaining < MIN_ATTEMPT_MS) { rec.proxy_attempts = proxyAttempts; throw lastErr || new Error('audn_client_deadline'); }
       proxyAttempts++;
       try {
         const res = await http({
@@ -1346,7 +1368,7 @@ for (const p of prepared) {
           // 2026-09-13: 120s timed out on all three lanes once the rosters grew and every
           // pack hit the former 200-row cap. The call itself returns in well under a minute when
           // the proxy is healthy; this is headroom, not a retry.
-          json: true, timeout: Math.min(240000, remaining),
+          json: true, timeout: Math.min(ATTEMPT_MAX_MS, remaining),
         });
         aiText = ((res && res.content) || []).filter(p => p && p.type === 'text').map(p => p.text || '').join('');
         lastErr = null;
