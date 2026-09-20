@@ -75,7 +75,8 @@ const EDITORIAL_TABLES = [
   'editorial_refresh_requests', 'editorial_outcome_snapshots',
 ]
 
-describe('db/105 editorial brief contract — migration', () => {
+// A fresh PGlite plus the full migration replay outruns vitest's 5s default when the whole suite runs in parallel.
+describe('db/105 editorial brief contract — migration', { timeout: 60_000 }, () => {
   it('applies, re-applies unchanged, rolls back and applies again', async () => {
     const db = await freshDb()
     await db.exec(migrationSql)
@@ -153,7 +154,7 @@ describe('db/105 editorial brief contract — migration', () => {
   })
 })
 
-describe('db/tests/editorial_brief_contract.sql', () => {
+describe('db/tests/editorial_brief_contract.sql', { timeout: 60_000 }, () => {
   it('runs clean against the real migration', async () => {
     const db = await migratedDb()
     await expect(db.exec(assertionsSql)).resolves.toBeDefined()
