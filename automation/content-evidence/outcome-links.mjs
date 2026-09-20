@@ -381,6 +381,179 @@ export function buildOutcomeChain({
 }
 
 // ---------------------------------------------------------------------------
+// Population reconciliation (pure; Run 4 continuation Phase 3 step 2/3)
+//
+// Everything below is read-only aggregation over rows the caller already fetched (live SQL in
+// outcomes/scripts/reconcile.mjs, or a synthetic production-shaped fixture in this module's own
+// test file). No SQL lives here, so this can be exercised in isolation with no live dependency --
+// exactly the "local production-shaped schema/fixture" the continuation packet asks for.
+// ---------------------------------------------------------------------------
+
+/**
+ * True exactly when a recorded decision_reason marks a row a deploy-test artifact, not a real
+ * client recommendation. A text match on a recorded, human-written reason, never a guess.
+ */
+export function isDeployTestArtifact(decisionReason) {
+  return typeof decisionReason === 'string'
+    && decisionReason.toLowerCase().includes('excluded from learning metrics');
+}
+
+/**
+ * A single recommendation whose linked idea named more than one distinct publication id. Grouped
+ * straight off already-classified links (never off raw, possibly-duplicate rows), so a genuinely
+ * ambiguous input (two raw rows racing for the same recommendation id) is resolved to `ambiguous`
+ * upstream in `reconcilePopulation` and never silently reinterpreted as one-to-many here.
+ */
+export function computeOneToMany(links) {
+  const pubsByRec = new Map();
+  for (const link of links) {
+    if (link.publication_id === null || link.publication_id === undefined) continue;
+    const key = `${link.client_id}::${link.recommendation_id}`;
+    if (!pubsByRec.has(key)) pubsByRec.set(key, { recommendation_id: link.recommendation_id, ids: new Set() });
+    pubsByRec.get(key).ids.add(link.publication_id);
+  }
+  return [...pubsByRec.values()]
+    .filter((e) => e.ids.size > 1)
+    .map((e) => ({ recommendation_id: e.recommendation_id, publication_ids: [...e.ids] }));
+}
+
+/**
+ * Reconcile the FULL recommendation population against the canonical link function's rows.
+ *
+ * `opsDraftsRows`: every recommendation row ({ client_id, recommendation_id, created_at? }) --
+ * this is the population; a row with no matching link row is real population, bucketed
+ * `unresolved`, never dropped (PRE-RELEASE-AUDIT.md M4).
+ * `linkRows`: every row `audn_recommendation_links()` (or an equivalent fixture) returns, in its
+ * own live column names (client_id, recommendation_id, idea_id, published_post_social_id,
+ * decision, decision_reason, ...).
+ *
+ * Tenant-scoped throughout: every row carries its own client_id and the join key is always the
+ * compound (client_id, recommendation_id) -- two different clients are free to reuse the same
+ * bare recommendation id string with no collision between their buckets or their links.
+ *
+ * Returns the same shape `outcomes/RECONCILIATION.json` persists (population, buckets,
+ * excluded_rows, unresolved_rows, link_rows_outside_population, orphan_link_rows, one_to_many,
+ * real_chain), plus `links[]` (every row after `adaptCanonicalLinkRow`/`adaptUnlinkedRecommendation`,
+ * for a caller that wants to feed `buildOutcomeChain` next).
+ */
+export function reconcilePopulation({ opsDraftsRows, linkRows } = {}) {
+  if (!Array.isArray(opsDraftsRows)) fail('LINK_BAD_INPUT', 'reconcilePopulation requires opsDraftsRows[]');
+  if (!Array.isArray(linkRows)) fail('LINK_BAD_INPUT', 'reconcilePopulation requires linkRows[]');
+
+  const linkByKey = new Map();
+  for (const l of linkRows) {
+    const key = `${l.client_id}::${l.recommendation_id}`;
+    if (!linkByKey.has(key)) linkByKey.set(key, []);
+    linkByKey.get(key).push(l);
+  }
+  const opsKeys = new Set(opsDraftsRows.map((r) => `${r.client_id}::${r.recommendation_id}`));
+
+  const buckets = { explicit: 0, inferred: 0, unresolved: 0, withdrawn: 0, ambiguous: 0, excluded: 0 };
+  const excludedRows = [];
+  const unresolvedRows = [];
+  const links = [];
+
+  for (const row of opsDraftsRows) {
+    const key = `${row.client_id}::${row.recommendation_id}`;
+    const matches = linkByKey.get(key) ?? [];
+
+    // Ambiguous: more than one live link row races for this exact (client_id, recommendation_id).
+    // Checked before any classification -- never assumed to be zero.
+    if (matches.length > 1) {
+      buckets.ambiguous += 1;
+      continue;
+    }
+
+    if (matches.length === 0) {
+      buckets.unresolved += 1;
+      unresolvedRows.push({
+        id: `${row.client_id}:${row.recommendation_id}`,
+        reason: UNLINKED_ROW_REASON,
+        created_at: row.created_at ?? null,
+      });
+      links.push(adaptUnlinkedRecommendation({ clientId: row.client_id, recommendationId: row.recommendation_id }));
+      continue;
+    }
+
+    const raw = matches[0];
+    const link = adaptCanonicalLinkRow({ ...raw, client_id: row.client_id, recommendation_id: row.recommendation_id });
+    links.push(link);
+
+    if (isDeployTestArtifact(raw.decision_reason)) {
+      buckets.excluded += 1;
+      excludedRows.push({ id: `${link.client_id}:${link.recommendation_id}`, reason: raw.decision_reason });
+      continue;
+    }
+    if (link.idea_id !== null) {
+      // Explicit: the recommendation -> idea half of the chain is a stored key, read straight off
+      // the canonical function -- never reconstructed from timing. This module never infers one,
+      // so `inferred` stays 0 by construction here (a separate module, outcomes.mjs, does
+      // timing-based inference for a different question and is out of this function's scope).
+      buckets.explicit += 1;
+      continue;
+    }
+    if (link.decision === 'rejected' || link.decision === 'deferred') {
+      // Withdrawn / failed attempt: a real recorded client decision with no idea ever created.
+      buckets.withdrawn += 1;
+      continue;
+    }
+    // A live link row that names neither a stored idea nor a decision. Not observed live as of
+    // this reconciliation, but reachable and correctly bucketed rather than assumed impossible.
+    buckets.unresolved += 1;
+    unresolvedRows.push({
+      id: `${row.client_id}:${row.recommendation_id}`,
+      reason: 'no idea created and no decision recorded',
+      created_at: row.created_at ?? null,
+    });
+  }
+
+  // Link rows with a recorded decision but no matching ops_drafts row at all -- not part of the
+  // population, never folded into the bucket sum, kept visible rather than silently vanishing.
+  const linkRowsOutsidePopulation = linkRows
+    .filter((r) => !opsKeys.has(`${r.client_id}::${r.recommendation_id}`))
+    .map((r) => ({
+      id: `${r.client_id}:${r.recommendation_id}`,
+      decision: r.decision ?? null,
+      decision_reason: r.decision_reason ?? null,
+      note: 'a live decision references this recommendation id; no ops_drafts row for it exists, so it is outside the recommendation population',
+    }));
+
+  const oneToMany = computeOneToMany(links);
+
+  const publishedLink = links.find((l) => l.publication_id !== null);
+  const realChain = publishedLink
+    ? {
+      present: true,
+      example: {
+        recommendation_id: publishedLink.recommendation_id,
+        source_ref: publishedLink.recommendation_ref,
+        idea_id: publishedLink.idea_id,
+        publication_id: publishedLink.publication_id,
+      },
+    }
+    : { present: false };
+
+  const population = { recommendations_total: opsDraftsRows.length };
+  const bucketSum = Object.values(buckets).reduce((a, b) => a + b, 0);
+  if (bucketSum !== population.recommendations_total) {
+    fail('LINK_POPULATION_MISMATCH',
+      `bucket sum ${bucketSum} != population ${population.recommendations_total} -- refusing to return a mismatched reconciliation`);
+  }
+
+  return {
+    population,
+    buckets,
+    excluded_rows: excludedRows,
+    unresolved_rows: unresolvedRows,
+    link_rows_outside_population: linkRowsOutsidePopulation,
+    orphan_link_rows: linkRowsOutsidePopulation,
+    one_to_many: oneToMany,
+    real_chain: realChain,
+    links,
+  };
+}
+
+// ---------------------------------------------------------------------------
 
 function requireClient(clientId, fn) {
   if (typeof clientId !== 'string' || clientId.trim() === '') {

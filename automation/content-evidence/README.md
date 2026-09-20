@@ -73,6 +73,14 @@ and nothing here writes to a database by itself.
   only by a capture whose own age lands on it.
   `reviewMilestone({ weeksCompleted, evaluatedPosts })` is the LATER of six completed weeks and
   twelve evaluated posts, so it is true only when both are in.
+  `reconcilePopulation({ opsDraftsRows, linkRows })` is the pure, SQL-free population reconciler:
+  given every recommendation row and every canonical link row (or an equivalent synthetic
+  fixture), it buckets each recommendation explicit/inferred/unresolved/withdrawn/ambiguous/
+  excluded, tenant-scoped throughout (the join key is always the compound client_id +
+  recommendation_id, so two clients reusing the same bare id never cross-link), and reports
+  `one_to_many` (via `computeOneToMany`) and `real_chain` off the same rows. `outcomes/scripts/
+  reconcile.mjs` fetches the two live row sets and calls this function unchanged; its own test
+  file exercises it with a synthetic production-shaped fixture, with zero live dependency.
 
 ### Reporting and the CLI
 
