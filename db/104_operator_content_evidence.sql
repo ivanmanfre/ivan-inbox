@@ -27,6 +27,22 @@
 -- this_week  the unapproved weekly shortlist rows for the newest addressed week, each read
 --            through its own stored evidence package. No row is invented and no card is padded:
 --            a choice with no stored measured source says so in its own sentence.
+--
+--            WHERE THE PACKAGE LIVES. The writer saves it at `context.evidence_package`, the TOP
+--            LEVEL of the context jsonb and a sibling of `context.audn`; its own history read and
+--            its commitGuard use that same path. Every read here is
+--            `coalesce(context->'evidence_package', context->'audn'->'evidence_package')` so the
+--            older nested shape still renders rather than reading as "no measured source". The
+--            fields inside it are the writer's real ones, recorded in
+--            $OUT/EVIDENCE-PACKAGE-SHAPE.json and seeded verbatim into
+--            db/tests/content_evidence_operator.sql: `label` carries 'evidence_backed' or
+--            'experiment' (so `label = 'experiment'` is the experiment flag, with the two older
+--            flags kept as fallbacks), `experiment_reason` is present only on an experiment,
+--            `needs_material` is a string reason or null, and `client_fact_refs` entries are
+--            objects {source_id, kind, label} of which ONLY the label is ever shown. A bare
+--            source id is an internal identifier and never reaches the screen.
+--            `needs_material_reason` is returned alongside the boolean as an additive field, so a
+--            reader that wants the words has them and one that does not can ignore it.
 -- winners    two disjoint arrays. `market` comes only from findings of kind 'market' in a market
 --            study; `own` comes only from findings of kind 'own_result' in an own study. They are
 --            built by separate queries over separate rows, so a source example's multiple can
@@ -245,12 +261,35 @@ begin
                  else coalesce(v_authors_dir->>p.author_id, p.author_id)
                       || coalesce(', ' || to_char(p.published_at, 'DD Mon YYYY'), '')
                end,
-               'client_material', nullif(btrim(coalesce(q.ev->'client_fact_refs'->0->>'summary',
-                                                        q.ev->'client_fact_refs'->>0)), ''),
-               'needs_material', coalesce(
-                 jsonb_array_length(coalesce(q.ev->'needs_material', '[]'::jsonb)) > 0, false),
+               -- client_fact_refs entries are objects {source_id, kind, label}. Only the label is
+               -- ever shown: a bare source id on screen is an internal identifier, not client
+               -- material, so an entry that carries no label renders as nothing at all.
+               'client_material', case
+                 when jsonb_typeof(q.ev->'client_fact_refs'->0) = 'object'
+                   then nullif(btrim(coalesce(q.ev->'client_fact_refs'->0->>'label',
+                                              q.ev->'client_fact_refs'->0->>'summary', '')), '')
+                 else null
+               end,
+               -- needs_material is a string reason or null on a saved row; an older array form is
+               -- still read so a row written before that change does not silently read as ready.
+               'needs_material', case
+                 when jsonb_typeof(q.ev->'needs_material') = 'array'
+                   then jsonb_array_length(q.ev->'needs_material') > 0
+                 when jsonb_typeof(q.ev->'needs_material') = 'string'
+                   then btrim(q.ev->>'needs_material') <> ''
+                 else false
+               end,
+               'needs_material_reason', case
+                 when jsonb_typeof(q.ev->'needs_material') = 'string'
+                   then nullif(btrim(q.ev->>'needs_material'), '')
+                 else null
+               end,
                'objective', coalesce(nullif(btrim(q.ev->>'objective'), ''), 'attention'),
-               'is_experiment', coalesce((q.ev->>'is_experiment')::boolean,
+               -- label = 'experiment' is what the writer actually saves. The two older flags stay
+               -- as fallbacks so a row written before that is still labelled on screen; an
+               -- experiment that renders without its label is the defect this coalesce prevents.
+               'is_experiment', coalesce(q.ev->>'label' = 'experiment',
+                                         (q.ev->>'is_experiment')::boolean,
                                          q.ev->>'selection_kind' = 'experiment', false),
                'experiment_reason', nullif(btrim(q.ev->>'experiment_reason'), ''),
                'test_metric', nullif(btrim(q.ev->>'test_metric'), ''),
@@ -273,7 +312,12 @@ begin
       from (
         select d.id, d.created_at,
                d.context->'audn' as audn,
-               d.context->'audn'->'evidence_package' as ev
+               -- THE WRITER SAVES THE PACKAGE AT THE TOP LEVEL OF context, as a sibling of
+               -- context.audn, and its own history read and commitGuard use that same path. The
+               -- nested path is read second so a row written under the older shape is not
+               -- silently rendered as "no measured source".
+               coalesce(d.context->'evidence_package',
+                        d.context->'audn'->'evidence_package') as ev
           from public.ops_drafts d
          where d.client_id = p_client_id
            and d.kind = 'audn_recommendation'
@@ -392,7 +436,13 @@ begin
                when m.published_at is not null then 'measuring'
                -- Approved with nothing published is PENDING. It is never a failed result.
                when q.approved_at is not null then 'awaiting_publication'
-               when jsonb_array_length(coalesce(q.ev->'needs_material', '[]'::jsonb)) > 0
+               when (case
+                       when jsonb_typeof(q.ev->'needs_material') = 'array'
+                         then jsonb_array_length(q.ev->'needs_material') > 0
+                       when jsonb_typeof(q.ev->'needs_material') = 'string'
+                         then btrim(q.ev->>'needs_material') <> ''
+                       else false
+                     end)
                  then 'needs_material'
                else 'ready_for_review'
              end,
@@ -412,7 +462,8 @@ begin
     from (
       select d.id, d.created_at, d.approved_at, d.sent_at,
              d.context->'audn' as audn,
-             d.context->'audn'->'evidence_package' as ev,
+             coalesce(d.context->'evidence_package',
+                      d.context->'audn'->'evidence_package') as ev,
              d.context->'audn'->'outcome_link' as link,
              d.context->'weekly_decision'->>'decision' as decision,
              mm.published_at as pub_at, mm.captured_at as cap_at, mm.id as metric_id,

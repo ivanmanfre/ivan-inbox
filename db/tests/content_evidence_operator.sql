@@ -110,25 +110,74 @@ values
   ('o-alpha', 'own-1', 'fo1', 'own_result', 'reach', 1200, 800, 21, null,
    'reach', 'test-v2', '["urn:own1"]'::jsonb, 'computed');
 
--- Two weekly shortlist rows for alpha, one carrying an evidence package that names f1.
+-- Three weekly shortlist rows for alpha. THE PACKAGE SHAPE BELOW IS THE WRITER'S REAL ONE, copied
+-- from $OUT/EVIDENCE-PACKAGE-SHAPE.json (which automation/weekly-topics/writer.js generated from
+-- its own save path), not a shape this test invented: top level of context, sibling of audn,
+-- client_fact_refs as {source_id, kind, label} objects, needs_material a string reason or null,
+-- label carrying 'evidence_backed' or 'experiment', experiment_reason present only on the latter.
+-- Row k1 is an evidence_backed row with one resolved client fact. Row k2 is an experiment with
+-- none. Row k3 is the OLDER nested shape, kept so the reader's fallback path is exercised too.
 insert into public.ops_drafts (client_id, kind, body, context, created_at)
 values
   ('o-alpha', 'audn_recommendation', 'body one',
-   jsonb_build_object('cycle_id', 'weekly:2026-09-28', 'audn', jsonb_build_object(
-     'title', 'A concrete topic',
-     'weekly', jsonb_build_object('week_start', '2026-09-28', 'topic_key', 'k1'),
+   jsonb_build_object(
+     'cycle_id', 'weekly:2026-09-28',
+     'audn', jsonb_build_object(
+       'title', 'A concrete topic',
+       'weekly', jsonb_build_object('week_start', '2026-09-28', 'topic_key', 'k1')),
      'evidence_package', jsonb_build_object(
-       'objective', 'attention', 'source_finding_ids', jsonb_build_array('f1'),
-       'test_metric', 'reactions in seven days', 'needs_material', '[]'::jsonb,
-       'client_fact_refs', jsonb_build_array(jsonb_build_object('summary', 'We ran this in July.'))))),
-   now() - interval '2 hours'),
+       'schema_version', 1,
+       'source_finding_ids', jsonb_build_array('f1'),
+       'source_posts', jsonb_build_array('urn:a1'),
+       'client_fact_refs', jsonb_build_array(jsonb_build_object(
+         'source_id', 'founder-1',
+         'kind', 'authorized_call_transcript',
+         'label', 'We review every proposed reply before anyone can send it.')),
+       'objective', 'attention_reach',
+       'test_metric', 'weighted reactions at 7 and 14 days against the account''s own usual',
+       'metric_id', 'new-policy-v1',
+       'comparison_rule', 'author_own_baseline_multiple',
+       'observation_window', jsonb_build_object('days', 7),
+       'adaptation_history', '[]'::jsonb,
+       'needs_material', null,
+       'limitations', jsonb_build_array('Descriptive, not causal.'),
+       'label', 'evidence_backed')),
+   now() - interval '3 hours'),
   ('o-alpha', 'audn_recommendation', 'body two',
-   jsonb_build_object('cycle_id', 'weekly:2026-09-28', 'audn', jsonb_build_object(
-     'title', 'A second topic',
-     'weekly', jsonb_build_object('week_start', '2026-09-28', 'topic_key', 'k2'),
+   jsonb_build_object(
+     'cycle_id', 'weekly:2026-09-28',
+     'audn', jsonb_build_object(
+       'title', 'A second topic',
+       'weekly', jsonb_build_object('week_start', '2026-09-28', 'topic_key', 'k2')),
      'evidence_package', jsonb_build_object(
-       'objective', 'buyer_response', 'source_finding_ids', '[]'::jsonb,
-       'needs_material', jsonb_build_array('a customer example'), 'client_fact_refs', '[]'::jsonb))),
+       'schema_version', 1,
+       'source_finding_ids', '[]'::jsonb,
+       'source_posts', '[]'::jsonb,
+       'client_fact_refs', '[]'::jsonb,
+       'objective', 'buyer_response',
+       'test_metric', 'weighted reactions at 7 and 14 days against the account''s own usual',
+       'metric_id', null,
+       'comparison_rule', 'author_own_baseline_multiple',
+       'observation_window', jsonb_build_object('days', 7),
+       'adaptation_history', '[]'::jsonb,
+       'needs_material', 'no permitted client material is available for this source; source-only, transferability unresolved',
+       'limitations', jsonb_build_array('Source-only example with unresolved transferability.'),
+       'label', 'experiment',
+       'experiment_reason', 'Unsupported by the measured floor: lift 0.20 is below the production floor of 4. Offered as a test.')),
+   now() - interval '2 hours'),
+  ('o-alpha', 'audn_recommendation', 'body three',
+   jsonb_build_object(
+     'cycle_id', 'weekly:2026-09-28',
+     'audn', jsonb_build_object(
+       'title', 'A third topic under the older shape',
+       'weekly', jsonb_build_object('week_start', '2026-09-28', 'topic_key', 'k3'),
+       'evidence_package', jsonb_build_object(
+         'schema_version', 1,
+         'source_finding_ids', jsonb_build_array('f2'),
+         'client_fact_refs', '[]'::jsonb,
+         'objective', 'conversion',
+         'needs_material', '[]'::jsonb,
+         'label', 'evidence_backed'))),
    now() - interval '1 hour');
 
 -- Beta gets its own shortlist row so a leak in either direction is visible.
@@ -343,11 +392,14 @@ begin
   -- ------------------------------------------------------------------
   perform pg_temp.assert_true(v_alpha->>'week_start' = '2026-09-28',
     'the pack answers for the newest addressed week');
-  perform pg_temp.assert_true(jsonb_array_length(v_alpha->'this_week'->'candidates') = 2,
-    'both unapproved choices are shown');
+  perform pg_temp.assert_true(jsonb_array_length(v_alpha->'this_week'->'candidates') = 3,
+    'all three unapproved choices are shown');
+
+  -- The package the writer really saves lives at the TOP LEVEL of context. Reading only the
+  -- nested path would make every one of these cards read "No measured source is recorded".
   perform pg_temp.assert_true(
     v_alpha->'this_week'->'candidates'->0->>'evidence_sentence' = '400 against a usual 50 across 24 posts',
-    'the evidence sentence is built from the finding the package names');
+    'the evidence sentence is built from the finding the top-level package names');
   perform pg_temp.assert_true(
     v_alpha->'this_week'->'candidates'->0->>'source_url' = 'https://example.org/a1'
     and v_alpha->'this_week'->'candidates'->0->>'source_label' like 'Author A, %',
@@ -356,11 +408,53 @@ begin
     v_alpha->'this_week'->'candidates'->0->'detail'->>'full_source_text' is not null
     and v_alpha->'this_week'->'candidates'->0->'detail'->>'method_version' = 'test-v2',
     'the calculation detail carries the full source text and the method version');
+
+  -- client_fact_refs are objects. The LABEL is shown and the raw source_id never is.
+  perform pg_temp.assert_true(
+    v_alpha->'this_week'->'candidates'->0->>'client_material'
+      = 'We review every proposed reply before anyone can send it.',
+    'client material is the approved fact''s label');
+  perform pg_temp.assert_true(
+    not ((v_alpha->'this_week'->'candidates'->0)::text like '%founder-1%'),
+    'a raw client fact id never reaches the screen');
+  perform pg_temp.assert_true(
+    (v_alpha->'this_week'->'candidates'->0->>'needs_material')::boolean = false
+    and (v_alpha->'this_week'->'candidates'->0->>'is_experiment')::boolean = false,
+    'a resolved evidence-backed row needs no material and is not an experiment');
+  perform pg_temp.assert_true(
+    v_alpha->'this_week'->'candidates'->0->>'objective' = 'attention_reach',
+    'the objective is the value the writer saved, not a translation of it');
+
+  -- label = 'experiment' is the flag. An experiment that rendered without its label was the
+  -- defect the pre-release audit found.
+  perform pg_temp.assert_true(
+    (v_alpha->'this_week'->'candidates'->1->>'is_experiment')::boolean = true,
+    'label = experiment marks the card as an experiment');
+  perform pg_temp.assert_true(
+    v_alpha->'this_week'->'candidates'->1->>'experiment_reason' like 'Unsupported by the measured floor%',
+    'the experiment carries the reason the selector gave');
   perform pg_temp.assert_true(
     (v_alpha->'this_week'->'candidates'->1->>'needs_material')::boolean = true
-    and v_alpha->'this_week'->'candidates'->1->>'evidence_sentence'
+    and v_alpha->'this_week'->'candidates'->1->>'needs_material_reason' like 'no permitted client material%',
+    'a string needs_material reason reads as needing material, and the reason is carried');
+  perform pg_temp.assert_true(
+    jsonb_typeof(v_alpha->'this_week'->'candidates'->1->'client_material') = 'null',
+    'an empty client_fact_refs array shows no client material rather than an empty string');
+  perform pg_temp.assert_true(
+    v_alpha->'this_week'->'candidates'->1->>'evidence_sentence'
         = 'No measured source is recorded for this choice.',
     'a choice with no measured source says so rather than being padded');
+  perform pg_temp.assert_true(
+    v_alpha->'this_week'->'candidates'->1->>'test_metric' like '%reactions at 7 and 14 days%',
+    'test_metric is the declared measurement plan in plain words, never a policy id');
+
+  -- The older nested shape still reads, so a row written before the move is not blanked.
+  perform pg_temp.assert_true(
+    v_alpha->'this_week'->'candidates'->2->>'evidence_sentence' = '300 against a usual 50 across 24 posts',
+    'a package saved under the older nested path is still read');
+  perform pg_temp.assert_true(
+    (v_alpha->'this_week'->'candidates'->2->>'needs_material')::boolean = false,
+    'an empty array needs_material still reads as false');
   perform pg_temp.assert_true(
     v_alpha->'this_week'->>'coverage_line' = '2 authors and 3 eligible posts are stored for this lane.',
     'the coverage line counts the market population');
@@ -381,6 +475,17 @@ begin
        public.operator_content_evidence('clientops', 'o-alpha')->'results'->'choices') c
       where c->>'id' = v_rec::text) = true,
     'a pending choice is an incomplete measurement, never a zero result');
+  -- Results reads the package from the same top-level path This week does.
+  perform pg_temp.assert_true(
+    (select c->>'source_finding_id' from jsonb_array_elements(
+       public.operator_content_evidence('clientops', 'o-alpha')->'results'->'choices') c
+      where c->>'id' = v_rec::text) = 'f1',
+    'the Results row traces to the finding the top-level package names');
+  perform pg_temp.assert_true(
+    (select c->>'objective' from jsonb_array_elements(
+       public.operator_content_evidence('clientops', 'o-alpha')->'results'->'choices') c
+      where c->>'id' = v_rec::text) = 'attention_reach',
+    'the Results row carries the saved objective rather than the attention fallback');
 
   -- A publication for THIS tenant, linked through the stored outcome_link slot.
   insert into public.client_post_metrics

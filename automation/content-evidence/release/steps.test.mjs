@@ -4,8 +4,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  STEPS, CLIENTS, REQUIRED_STEP_FIELDS, validateSteps, rollbackOrder,
-  WORKFLOW_ID, WORKFLOW_CRON, PROMPT_ROW_ID, PROMPT_SLUG, ROLLOUT_KEY, STUDY_IDS,
+  STEPS, CLIENTS, ENABLED_CLIENT_PROPOSAL, ROOT_FILES_TOUCHED, REQUIRED_STEP_FIELDS,
+  validateSteps, rollbackOrder,
+  WORKFLOW_ID, WORKFLOW_CRON, PROMPT_ROW_ID, PROMPT_SLUG, PROMPT_BODY_SHA256_AT_DISCOVERY,
+  ROLLOUT_KEY, STUDY_IDS,
 } from './steps.mjs';
 import { main as releaseMain } from './release.mjs';
 import { main as rollbackMain, FASTEST_ROLLBACK } from './rollback.mjs';
@@ -23,35 +25,112 @@ test('every step carries all six release fields', () => {
   }
 });
 
-test('there is one import step and one rollout step per client', () => {
-  for (const c of CLIENTS) {
-    assert.ok(STEPS.some((s) => s.id === `S3-import-${c}`));
+test('there is one import step per client, but rollout and shortlist only for enabled clients', () => {
+  for (const c of CLIENTS) assert.ok(STEPS.some((s) => s.id === `S3-import-${c}`));
+  for (const c of ENABLED_CLIENT_PROPOSAL) {
     assert.ok(STEPS.some((s) => s.id === `S7-rollout-${c}`));
+    assert.ok(STEPS.some((s) => s.id === `S9-shortlist-${c}`));
   }
+  // arch is imported and shown, and is never enabled or committed on the evidence path.
+  assert.ok(!ENABLED_CLIENT_PROPOSAL.includes('arch'));
+  assert.ok(!STEPS.some((s) => s.id === 'S7-rollout-arch'));
+  assert.ok(!STEPS.some((s) => s.id === 'S9-shortlist-arch'));
 });
 
-test('the schema steps run before the imports that need them', () => {
+test('every root file this release touches is byte-copied before anything is edited', () => {
+  const s0 = STEPS[0];
+  assert.equal(s0.id, 'S0-before-copies');
+  for (const f of ROOT_FILES_TOUCHED) {
+    assert.ok(s0.identity.includes(f) || s0.before.includes(f) || s0.apply.includes(f), f);
+  }
+  assert.ok(/refusing to overwrite/.test(s0.before));
+  assert.ok(/guarded on EXISTENCE/.test(s0.guard));
+  assert.ok(s0.rollback.startsWith('cp '), 'a rollback must restore bytes, never a hash');
+  const s6 = STEPS.find((x) => x.id === 'S6-source-sync');
+  assert.ok(s6.rollback.includes('RELEASE-RECEIPTS/before/'));
+  assert.ok(!/from the worktree/.test(s6.guard + s6.apply));
+  assert.ok(/copied from nowhere/.test(s6.guard));
+});
+
+test('the order puts every prerequisite before the step that needs it', () => {
   const at = (id) => STEPS.findIndex((s) => s.id === id);
+  assert.ok(at('S0-before-copies') < at('S4-prompt'));   // release.py prompt reads the root prompt.md
+  assert.ok(at('S0-before-copies') < at('S5-workflow')); // release.py prepare reads the root writer.js
   assert.ok(at('S1-db-103') < at('S3-import-ivan'));
   assert.ok(at('S2-db-104') < at('S8-ui'));
   assert.ok(at('S3-import-arch') < at('S7-rollout-ivan'));
-  assert.ok(at('S5-workflow') < at('S9-shortlist'));
+  assert.ok(at('S4-prompt') < at('S7-rollout-ivan'));    // v5 knows nothing of the evidence path
+  assert.ok(at('S5-workflow') < at('S9-shortlist-ivan'));
 });
 
 test('the workflow step keeps the existing schedule and adds no trigger', () => {
   const s = STEPS.find((x) => x.id === 'S5-workflow');
   assert.ok(s.identity.includes(WORKFLOW_ID));
   assert.ok(s.identity.includes(WORKFLOW_CRON));
-  assert.ok(/no trigger is added and no cron is changed/.test(s.guard));
+  assert.ok(/no trigger is added, none is removed, and no cron is changed/.test(s.guard));
   assert.ok(/schedule_before must equal schedule_after/.test(s.readback));
-  assert.ok(/n8nac pull/.test(s.before) && /n8nac push/.test(s.apply) && /--verify/.test(s.apply));
 });
 
-test('the prompt step names the exact row and plans no write', () => {
+test('the workflow step follows the n8n protocol in full', () => {
+  const s = STEPS.find((x) => x.id === 'S5-workflow');
+  const text = [s.before, s.guard, s.apply, s.readback].join('\n');
+  for (const required of [
+    'n8nac-config.json', 'n8nac instance list --json', 'n8nac list', 'n8nac pull',
+    '<workflow-map>', 'skills validate', 'n8nac push', '--verify', 'n8nac verify',
+    'test-plan', 'workflow deactivate', 'workflow activate',
+  ]) assert.ok(text.includes(required), 'S5 must carry ' + required);
+});
+
+test('the pinned test body is a preview and names exactly one client', () => {
+  const s = STEPS.find((x) => x.id === 'S5-workflow');
+  assert.ok(s.apply.includes('{"preview":true,"evidence":true,"client_id":"ivan","week_start":"2026-09-28"}'));
+  assert.ok(/PREVIEW:TRUE IS NOT OPTIONAL/.test(s.apply));
+  assert.ok(/live committing run/.test(s.apply));
+});
+
+test('the active version is proven rather than assumed', () => {
+  const s = STEPS.find((x) => x.id === 'S5-workflow');
+  assert.ok(/AFTER the deactivate\/activate cycle/.test(s.readback));
+  assert.ok(!/there is no activate or deactivate call/.test([s.apply, s.readback, s.rollback].join('\n')));
+});
+
+test('the prompt step plans the write by the table own existing convention', () => {
   const s = STEPS.find((x) => x.id === 'S4-prompt');
   assert.ok(s.identity.includes(PROMPT_ROW_ID));
   assert.ok(s.identity.includes(PROMPT_SLUG));
-  assert.ok(/NO WRITE IS PLANNED/.test(s.apply));
+  assert.ok(!/NO WRITE IS PLANNED/.test(s.apply));
+  assert.ok(/release\.py prompt/.test(s.apply));
+  assert.ok(/IN-PLACE body/.test(s.apply) && /version=version\+1/.test(s.apply));
+  assert.ok(/no new-row plus/.test(s.apply), 'the plan must say which convention this table uses');
+});
+
+test('the prompt step compares sha and version before writing, and restores the saved v5 body', () => {
+  const s = STEPS.find((x) => x.id === 'S4-prompt');
+  assert.ok(s.guard.includes(PROMPT_BODY_SHA256_AT_DISCOVERY));
+  assert.ok(/version 5/.test(s.guard));
+  assert.ok(/Prompt drift; no update applied/.test(s.guard));
+  assert.ok(/prompt-before-v5\.json/.test(s.before));
+  assert.ok(s.rollback.includes(PROMPT_BODY_SHA256_AT_DISCOVERY));
+  assert.ok(/prompt-before-v5\.json/.test(s.rollback));
+});
+
+test('the prompt step states with line references that a legacy run behaves exactly as v5', () => {
+  const s = STEPS.find((x) => x.id === 'S4-prompt');
+  assert.ok(/prompt\.md:37/.test(s.apply));
+  assert.ok(/prompt\.md:45/.test(s.apply));
+  assert.ok(/exactly as before/.test(s.apply));
+});
+
+test('the shortlist step is one preview per enabled client, behind the guard', () => {
+  for (const c of ENABLED_CLIENT_PROPOSAL) {
+    const s = STEPS.find((x) => x.id === `S9-shortlist-${c}`);
+    assert.ok(s.before.includes(`"client_id":"${c}"`));
+    assert.ok(s.before.includes('"preview":true'));
+    assert.ok(/commit-guard\.mjs/.test(s.guard) && /commit-guard\.mjs/.test(s.apply));
+    assert.ok(/--enabled \$OUT\/ENABLED-CLIENTS\.json/.test(s.apply));
+    assert.ok(/commit-reviewed\.py unchanged/.test(s.apply));
+    assert.ok(/"already":true/.test(s.readback));
+  }
 });
 
 test('every import step is scoped to one tenant and one study id', () => {

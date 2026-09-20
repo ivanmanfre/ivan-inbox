@@ -41,3 +41,6 @@ dist-gallery/
 
 # dev-only Signal Orbit fixtures: REAL prospect data, never bundled, never committed
 orbit-fixtures/
+
+# local Vite env: never committed (pre-release audit, process note)
+.env
