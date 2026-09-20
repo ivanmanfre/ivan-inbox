@@ -187,3 +187,44 @@ test('an echoed evidence_package citing a client fact the server-built candidate
  assert.equal(first(x).proposed,0);
  assert.equal(first(x).dropped[0].reason,'evidence_package_unauthorized_client_fact');
 });
+
+// ---------------------------------------------------------------------------
+// Fix pass (Sol review, PHASE-1-REVIEW.md must-fix 2/7/8; D10)
+// ---------------------------------------------------------------------------
+
+test('must-fix 7: a legacy (evidence-inactive) model pack never carries an evidence_candidates key at all',async()=>{
+ const x=await run({body:{}});
+ assert.equal('evidence_candidates' in x.packs[0],false);
+});
+
+test('must-fix 2: previousTests for the evidence path is built from openRows, not left empty',async()=>{
+ const priorRow={id:'prior-evidence-row',body:'Prior topic',context:{evidence_package:{source_finding_ids:['ef1']},weekly_decision:{decision:'rejected',reason:'Timing was off'}}};
+ const it=candidate();it.evidence_candidate_key='ivan:2026-09-21:ef1';
+ const x=await run({body:{},items:[it],rows:[priorRow],rolloutRows:rolloutRow(['ivan']),evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ const commit=x.calls.find(c=>c.url.endsWith('/audn_recommendation_commit'));
+ assert(commit);
+ const history=commit.body.p_rows[0].context.evidence_package.adaptation_history;
+ assert.equal(history.length,1);
+ assert.equal(history[0].recommendation_id,'prior-evidence-row');
+ assert.equal(history[0].status,'rejected');
+});
+
+test('must-fix 8 (D7): a preview carrying evidence:true may target the first uncommitted Monday up to NEXT_WEEK+7',async()=>{
+ const it=candidate();it.weekly.week_start='2026-09-28';
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true,week_start:'2026-09-28'},items:[it]});
+ assert.equal(x.result.cycle_id,'weekly:2026-09-28');
+});
+
+test('must-fix 8 (D7): the same +7 week is still rejected for a non-evidence preview',async()=>{
+ await assert.rejects(run({body:{preview:true,client_id:'ivan',week_start:'2026-09-28'}}),/week/);
+});
+
+test('must-fix 8 (D7): the same +7 week is still rejected for a live (non-preview) request even with evidence:true',async()=>{
+ await assert.rejects(run({body:{client_id:'ivan',evidence:true,week_start:'2026-09-28'}}),/week/);
+});
+
+test('D10: the evidence pool passed to buildEvidencePack is capped at EVIDENCE_POOL_LIMIT (12), not the registry weekly cap',async()=>{
+ const findings=['p1','p2','p3','p4'].map((id,i)=>evidenceFinding({finding_id:'ef-pool-'+id,source_ids:['sp-pool-'+id],observed_value:400-i*10}));
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},evidencePack:{study:{study_id:'s1',state:'validated'},findings}});
+ assert.equal(first(x).evidence_coverage.candidates_selected,4);
+});

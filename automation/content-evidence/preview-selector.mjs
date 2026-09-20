@@ -38,13 +38,22 @@ function parseArgs(argv) {
   return out;
 }
 
+// D10 (orchestrator, binding, bound-after-Phase-0 fix pass): the pool a preview builds from is
+// wider than what it shows. Build the EVIDENCE_POOL_LIMIT-wide, author-capped, lift-ranked pool
+// (same constant name and value as writer.js), then take the first 3 for `choices` -- the
+// contract's own cap -- and list whatever else made the pool under `pool_not_chosen`, reason
+// `awaiting_editorial_choice`. `candidate_cap_exceeded` in `rejected[]` stays exactly what it
+// was: anything that never made the pool at all.
+const EVIDENCE_POOL_LIMIT = 12;
+const FINAL_CHOICE_CAP = 3;
+
 /**
  * Pure builder: given the already-loaded study and digest JSON, returns the SELECTOR-PREVIEWS
  * document per verification/SELECTOR-CONTRACT.md's PREVIEWS section shape, plus additional
  * audit fields the contract does not forbid (coverage, rejected, missingInputs, sourceManifest,
- * a digest-ref lookup for the .md renderer, and an explicit offline_note).
+ * pool_not_chosen, a digest-ref lookup for the .md renderer, and an explicit offline_note).
  */
-export function buildPreview({ clientId, weekStart, studyJson, digestJson, limit = 3 }) {
+export function buildPreview({ clientId, weekStart, studyJson, digestJson, limit = EVIDENCE_POOL_LIMIT }) {
   const study = studyJson || {};
   const digestClient = (digestJson && digestJson.clients && digestJson.clients[clientId]) || null;
   const digestById = new Map();
@@ -53,11 +62,17 @@ export function buildPreview({ clientId, weekStart, studyJson, digestJson, limit
   }
 
   // Findings go into buildEvidencePack exactly as the study stores them, PLUS the likes count
-  // joined from the digest (the raw study file does not carry likes; the digest does, from the
-  // same posts file the study was built against). No other numeric field is altered.
+  // and author name joined from the digest (the raw study file carries neither; the digest does,
+  // from the same posts file the study was built against, joined by finding_id). No other
+  // numeric field is altered. `author` is what engages D10's per-author pool cap.
   const findings = (Array.isArray(study.findings) ? study.findings : []).map((f) => {
     const d = digestById.get(f.finding_id);
-    return d && typeof d.likes === 'number' ? { ...f, likes: d.likes } : f;
+    if (!d) return f;
+    return {
+      ...f,
+      ...(typeof d.likes === 'number' ? { likes: d.likes } : {}),
+      ...(typeof d.author === 'string' && d.author ? { author: d.author } : {}),
+    };
   });
 
   const studies = study.study_id
@@ -68,7 +83,13 @@ export function buildPreview({ clientId, weekStart, studyJson, digestJson, limit
     clientId, weekStart, studies, findings, ownResults: [], clientFacts: [], previousTests: [], limit,
   });
 
-  const choices = pack.candidates; // untouched candidate objects -- exact contract shape
+  const choices = pack.candidates.slice(0, FINAL_CHOICE_CAP); // exact contract shape, first 3 of the pool
+  const poolNotChosen = pack.candidates.slice(FINAL_CHOICE_CAP).map((c) => ({
+    finding_id: c.source_finding_ids[0], draft_key: c.draft_key, label: c.label,
+    code: 'awaiting_editorial_choice',
+    reason: `ranked in the pool (position ${pack.candidates.indexOf(c) + 1} of ${pack.candidates.length}) `
+      + `but not among the first ${FINAL_CHOICE_CAP} shown; awaiting editorial choice, not rejected`,
+  }));
   const coverageGap = choices.length === 0
     ? ((pack.missingInputs[0] && pack.missingInputs[0].reason)
       || `no qualifying source for ${clientId} in ${weekStart}`)
@@ -82,8 +103,9 @@ export function buildPreview({ clientId, weekStart, studyJson, digestJson, limit
       published_at: d.published_at, likes: d.likes, comments: d.comments, reposts: d.reposts,
     };
   };
-  const citedFindingIds = [...new Set(choices.flatMap((c) => c.source_finding_ids))];
-  const citedAuthors = new Set(citedFindingIds.map((fid) => digestById.get(fid) && digestById.get(fid).author).filter(Boolean));
+  const citedFindingIds = [...new Set([...choices, ...pack.candidates.slice(FINAL_CHOICE_CAP)].flatMap((c) => c.source_finding_ids))];
+  const citedAuthors = new Set(choices.flatMap((c) => c.source_finding_ids)
+    .map((fid) => digestById.get(fid) && digestById.get(fid).author).filter(Boolean));
 
   // The contract forbids a non-null coverage_gap when choices is non-empty (D3 for ARCH: rows
   // may be shown, but a coverage gap is still the expected READINESS verdict). This does not
@@ -105,6 +127,7 @@ export function buildPreview({ clientId, weekStart, studyJson, digestJson, limit
     coverage: pack.coverage,
     missingInputs: pack.missingInputs,
     rejected: pack.rejected,
+    pool_not_chosen: poolNotChosen,
     sourceManifest: pack.sourceManifest,
     single_author_caution: singleAuthorCaution,
     source_posts_digest_refs: Object.fromEntries(citedFindingIds.map((fid) => [fid, digestRefFor(fid)])),
@@ -160,6 +183,14 @@ export function toMarkdown(preview) {
     if (c.label === 'experiment') lines.push(`- experiment_reason: ${c.experiment_reason}`);
     lines.push('');
   }
+  lines.push(`## Pool, not chosen (${preview.pool_not_chosen.length})`);
+  lines.push('');
+  if (!preview.pool_not_chosen.length) lines.push('None.');
+  for (const p of preview.pool_not_chosen) {
+    const ref = preview.source_posts_digest_refs[p.finding_id] || {};
+    lines.push(`- \`${p.finding_id}\` (${p.label}) -- ${ref.author || 'unknown author'}: ${p.reason}`);
+  }
+  lines.push('');
   lines.push(`## Rejected (${preview.rejected.length})`);
   lines.push('');
   if (!preview.rejected.length) lines.push('None.');
@@ -179,7 +210,7 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   const clientId = args.client;
   const weekStart = args.week || '2026-09-28';
-  const limit = Number(args.limit) || 3;
+  const limit = Number(args.limit) || EVIDENCE_POOL_LIMIT;
   if (!clientId || !args.study || !args.digest || !args.out) {
     process.stderr.write('Usage: preview-selector.mjs --client <id> --week <YYYY-MM-DD> --study <path> --digest <path> --out <dir>\n');
     process.exit(1);

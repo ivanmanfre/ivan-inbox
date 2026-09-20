@@ -23,12 +23,17 @@ const http = async (opts) => {
 const PROMPT_SLUG = 'audn-recommendation-writer';
 const KIND = 'audn_recommendation';
 const SOURCE_WINDOW_DAYS = 45;
+// D10 (orchestrator, binding): the pool buildEvidencePack ranks from is wider than the weekly
+// choice cap, so a client-aware pass (this file, then the model) can pick among real candidates
+// instead of a pre-made shortlist of the top 3 by raw lift alone. The final weekly cap (t.limit,
+// typically 3) and the one-experiment cap are unchanged and still enforced downstream.
+const EVIDENCE_POOL_LIMIT = 12;
 
 const RUN_ISO = new Date().toISOString();
 const enc = encodeURIComponent;
 // Scheduled and manual runs share one immutable UTC week, including accepted slots.
 const REQUEST = (() => {
-  try { for (const it of $input.all()) { const j = it && it.json || {}; const b = j.body || j; if (b && ['preview','client_id','week_start','force_review_gap'].some(k => Object.prototype.hasOwnProperty.call(b,k))) return b; } } catch (e) {}
+  try { for (const it of $input.all()) { const j = it && it.json || {}; const b = j.body || j; if (b && ['preview','client_id','week_start','force_review_gap','evidence'].some(k => Object.prototype.hasOwnProperty.call(b,k))) return b; } } catch (e) {}
   return {};
 })();
 const PREVIEW = REQUEST.preview === true;
@@ -38,8 +43,16 @@ monday.setUTCDate(monday.getUTCDate() - (weekday + 6) % 7);
 const CURRENT_WEEK = monday.toISOString().slice(0,10);
 monday.setUTCDate(monday.getUTCDate() + 7);
 const NEXT_WEEK = monday.toISOString().slice(0,10);
+// D7, scoped: only a preview explicitly carrying evidence:true may target one week further out
+// than the ordinary two-week rule -- the first uncommitted Monday can sit past NEXT_WEEK when
+// every current/next-week slot is already committed. Any other request (live, or preview
+// without evidence:true) keeps exactly the original two-week rule.
+monday.setUTCDate(monday.getUTCDate() + 7);
+const NEXT_WEEK_PLUS_7 = monday.toISOString().slice(0,10);
 const WEEK_START = REQUEST.week_start === undefined ? (weekday === 0 || weekday === 6 ? NEXT_WEEK : CURRENT_WEEK) : REQUEST.week_start;
-if (typeof WEEK_START !== 'string' || ![CURRENT_WEEK,NEXT_WEEK].includes(WEEK_START)) throw new Error('audn_invalid_week: current or next UTC Monday required');
+const EVIDENCE_PREVIEW = PREVIEW && REQUEST.evidence === true;
+const ALLOWED_WEEKS = EVIDENCE_PREVIEW ? [CURRENT_WEEK,NEXT_WEEK,NEXT_WEEK_PLUS_7] : [CURRENT_WEEK,NEXT_WEEK];
+if (typeof WEEK_START !== 'string' || !ALLOWED_WEEKS.includes(WEEK_START)) throw new Error('audn_invalid_week: current or next UTC Monday required' + (EVIDENCE_PREVIEW ? ' (or next+7 for an evidence preview)' : ''));
 const CYCLE_ID = 'weekly:' + WEEK_START;
 const FORCE_GAP = false; // Weekly RPC branch owns the cap; legacy gap override is irrelevant.
 
@@ -80,7 +93,7 @@ const getAll = async (path) => {
   }
 };
 
-// <selector-pack:begin sha256=3f891b90b009939cfca829320753df9d88011436584cd05ef9b28bfc7ef71649>
+// <selector-pack:begin sha256=9ea5a2548fbfc826c1df311b809f0060668db1cc48940499e275e960247468c1>
 // GENERATED from automation/content-evidence/selector-pack.mjs by sync-selector.mjs.
 // Do not hand-edit this block -- edit selector-pack.mjs and rerun the sync script.
 // content-evidence / selector-pack.mjs
@@ -116,6 +129,14 @@ const getAll = async (path) => {
 
 const RECOGNIZED_FINDING_KINDS = new Set(['market', 'market_outlier', 'own_result', 'pattern']);
 
+// D10 (orchestrator, binding, bound-after-Phase-0 fix pass): the pool a 12-wide writer.js
+// EVIDENCE_POOL_LIMIT hands the model must not let one prolific author or one tiny-baseline
+// outlier own the whole week. Two stated, non-weighted rules, applied while ranking the pool --
+// never a synthesized score.
+const AUTHOR_POOL_CAP = 2;
+const SMALL_BASELINE_THRESHOLD = 8;
+const SMALL_BASELINE_LIMITATION = 'Very small author baseline; the ratio overstates the gap.';
+
 const BASE_LIMITATIONS = Object.freeze([
   "Descriptive, not causal: a post crossing its own author's baseline is not evidence the format caused the reach.",
   'Retrospective measurement with an unmatched capture age.',
@@ -146,15 +167,10 @@ function eligibilityForFinding(finding) {
       reason: `unrecognized finding kind: ${JSON.stringify(finding.kind)}`,
     };
   }
-  const sourceIds = finding.source_ids;
-  if (!Array.isArray(sourceIds) || sourceIds.length === 0
-      || sourceIds.some((id) => typeof id !== 'string' || id.trim() === '')) {
-    return {
-      ok: false,
-      code: 'missing_outliers_connection',
-      reason: 'finding has no valid source_ids connection back to its outlier study',
-    };
-  }
+  // Checked BEFORE source_ids on purpose (Sol review must-fix 5): when a follow-up has neither
+  // a measured result nor a valid study link, "no measured result" is the more specific and
+  // more actionable gap -- report that, not a study-connection error that would suggest the
+  // missing piece is the citation rather than the measurement itself.
   const hasObserved = isFiniteNumber(finding.observed_value);
   const hasBaseline = isFiniteNumber(finding.baseline_value);
   if (!hasObserved || !hasBaseline) {
@@ -162,6 +178,15 @@ function eligibilityForFinding(finding) {
       ok: false,
       code: 'no_performance_support',
       reason: 'no measured observed_value/baseline_value supplied for this follow-up',
+    };
+  }
+  const sourceIds = finding.source_ids;
+  if (!Array.isArray(sourceIds) || sourceIds.length === 0
+      || sourceIds.some((id) => typeof id !== 'string' || id.trim() === '')) {
+    return {
+      ok: false,
+      code: 'missing_outliers_connection',
+      reason: 'finding has no valid source_ids connection back to its outlier study',
     };
   }
   const baselineN = finding.baseline_n;
@@ -237,7 +262,21 @@ function historyForFinding(finding, previousTests) {
     (typeof t.source_id === 'string' && sourceIds.includes(t.source_id))
     || (typeof t.finding_id === 'string' && t.finding_id === finding.finding_id)
     || (typeof t.source_ref === 'string' && sourceIds.includes(t.source_ref))
+    // The key the committed row actually persists (writer.js context.evidence_package.
+    // source_finding_ids) -- without this, a failed prior adaptation of THIS system's own
+    // output is invisible to itself.
+    || (Array.isArray(t.source_finding_ids) && (
+      t.source_finding_ids.includes(finding.finding_id)
+      || t.source_finding_ids.some((id) => sourceIds.includes(id))
+    ))
   ));
+}
+
+/** An author id/name, when one is available on the finding itself or its source post (D10a). */
+function authorKeyForFinding(finding) {
+  const raw = finding.author_id || finding.author
+    || (isObject(finding.source_post) && (finding.source_post.author_id || finding.source_post.author));
+  return typeof raw === 'string' && raw.trim() !== '' ? raw.trim().toLowerCase() : null;
 }
 
 function resolveClientFacts(finding, clientFactsById, origin) {
@@ -267,6 +306,7 @@ function buildCandidate({ clientId, weekStart, finding, origin, lift, isExperime
   if (factResolution.denied) {
     return {
       candidate: null,
+      deniedFactId: factResolution.denied,
       rejected: {
         code: 'client_fact_permission_denied',
         reason: `client fact ${factResolution.denied} is permission-denied and cannot support this candidate`,
@@ -277,6 +317,9 @@ function buildCandidate({ clientId, weekStart, finding, origin, lift, isExperime
   const limitations = [...BASE_LIMITATIONS];
   if (!isFiniteNumber(finding.likes)) {
     limitations.push('Likes unknown for this finding; reach is approximated via likes + reposts where known, never invented.');
+  }
+  if (isFiniteNumber(finding.baseline_value) && finding.baseline_value < SMALL_BASELINE_THRESHOLD) {
+    limitations.push(SMALL_BASELINE_LIMITATION);
   }
   if (isExperiment) limitations.push(EXPERIMENT_LIMITATION);
 
@@ -335,7 +378,9 @@ function buildEvidencePack({
 
   const clientFactsById = new Map();
   for (const fact of (Array.isArray(clientFacts) ? clientFacts : [])) {
-    if (fact && typeof fact.source_id === 'string') clientFactsById.set(fact.source_id, fact);
+    if (!isObject(fact)) continue;
+    const factId = fact.source_id || fact.fact_id || fact.id;
+    if (typeof factId === 'string' && factId) clientFactsById.set(factId, fact);
   }
 
   const entries = [
@@ -346,6 +391,9 @@ function buildEvidencePack({
   const rejected = [];
   const evidenceBacked = [];
   const experiments = [];
+  // Must-fix 3: track denied facts already surfaced via a specific candidate's rejection, so the
+  // global "every denied fact is visible, referenced or not" pass below never double-reports one.
+  const deniedFactIdsReported = new Set();
 
   for (const { finding, origin } of entries) {
     if (!isObject(finding)) {
@@ -353,7 +401,15 @@ function buildEvidencePack({
       continue;
     }
     const findingId = typeof finding.finding_id === 'string' ? finding.finding_id : (finding.source_id || '(unknown)');
-    const experimentReason = typeof finding.experiment_reason === 'string' && finding.experiment_reason.trim()
+
+    // Must-fix 6: a finding stamped with another client's id can never become this client's
+    // candidate, however strong its numbers -- the 09-12 shared-table leak shape.
+    if (typeof finding.client_id === 'string' && finding.client_id !== clientId) {
+      rejected.push({ finding_id: findingId, code: 'foreign_client_finding', reason: 'finding belongs to another client' });
+      continue;
+    }
+
+    const explicitExperimentReason = typeof finding.experiment_reason === 'string' && finding.experiment_reason.trim()
       ? finding.experiment_reason.trim() : null;
 
     if (finding.kind === 'audience') {
@@ -368,25 +424,46 @@ function buildEvidencePack({
         clientId, weekStart, finding, origin, lift: outcome.lift, isExperiment: false, experimentReason: null,
         clientFactsById, previousTests: previousTestsSnapshot,
       });
-      if (built.rejected) { rejected.push({ finding_id: findingId, ...built.rejected }); continue; }
+      if (built.rejected) {
+        rejected.push({ finding_id: findingId, ...built.rejected });
+        if (built.deniedFactId) deniedFactIdsReported.add(built.deniedFactId);
+        continue;
+      }
       evidenceBacked.push({ finding, findingId, lift: outcome.lift, candidate: built.candidate });
       continue;
     }
-    if (experimentReason) {
+    // Must-fix 4: an eligibility FLAG, not only a hand-authored reason string, can fill the
+    // experiment slot -- an upstream store may know a finding is worth testing without anyone
+    // having written prose about it yet. The candidate still always carries a concrete,
+    // non-empty experiment_reason (contract requirement), synthesized from the floor outcome
+    // when the caller supplied none.
+    const effectiveExperimentReason = explicitExperimentReason
+      || (finding.experiment_eligible === true
+        ? `Unsupported by the measured floor: ${outcome.reason}. Offered as a test.`
+        : null);
+    if (effectiveExperimentReason) {
       const built = buildCandidate({
-        clientId, weekStart, finding, origin, lift: null, isExperiment: true, experimentReason,
+        clientId, weekStart, finding, origin, lift: null, isExperiment: true, experimentReason: effectiveExperimentReason,
         clientFactsById, previousTests: previousTestsSnapshot,
       });
-      if (built.rejected) { rejected.push({ finding_id: findingId, ...built.rejected }); continue; }
+      if (built.rejected) {
+        rejected.push({ finding_id: findingId, ...built.rejected });
+        if (built.deniedFactId) deniedFactIdsReported.add(built.deniedFactId);
+        continue;
+      }
       experiments.push({ finding, findingId, candidate: built.candidate });
       continue;
     }
     rejected.push({ finding_id: findingId, code: outcome.code, reason: outcome.reason });
   }
 
-  // Declared ranking rule: strongest directly-observed multiple first, tie-broken by sample
-  // size, then by finding_id for determinism. No synthesized/weighted score.
+  // Declared ranking rule (D10): a below-SMALL_BASELINE_THRESHOLD baseline_value sorts after
+  // every finding at or above it (tier first), then strongest directly-observed multiple, then
+  // sample size, then finding_id for determinism. No synthesized/weighted score.
   evidenceBacked.sort((a, b) => {
+    const at = isFiniteNumber(a.finding.baseline_value) && a.finding.baseline_value < SMALL_BASELINE_THRESHOLD ? 1 : 0;
+    const bt = isFiniteNumber(b.finding.baseline_value) && b.finding.baseline_value < SMALL_BASELINE_THRESHOLD ? 1 : 0;
+    if (at !== bt) return at - bt;
     if (b.lift !== a.lift) return b.lift - a.lift;
     const bn = (isFiniteNumber(b.finding.baseline_n) ? b.finding.baseline_n : 0)
       - (isFiniteNumber(a.finding.baseline_n) ? a.finding.baseline_n : 0);
@@ -394,6 +471,32 @@ function buildEvidencePack({
     return String(a.findingId).localeCompare(String(b.findingId));
   });
   experiments.sort((a, b) => String(a.findingId).localeCompare(String(b.findingId)));
+
+  // D10a: at most AUTHOR_POOL_CAP evidence_backed candidates per author in the pool, applied on
+  // the already-ranked list so the strongest per author are the ones kept. A finding with no
+  // resolvable author id/name is never capped.
+  const authorCounts = new Map();
+  let authorCapOmitted = 0;
+  const evidenceBackedAfterAuthorCap = [];
+  for (const entry of evidenceBacked) {
+    const authorKey = authorKeyForFinding(entry.finding);
+    if (authorKey !== null) {
+      const count = authorCounts.get(authorKey) || 0;
+      if (count >= AUTHOR_POOL_CAP) {
+        authorCapOmitted += 1;
+        rejected.push({
+          finding_id: entry.findingId,
+          code: 'author_pool_cap_exceeded',
+          reason: `at most ${AUTHOR_POOL_CAP} candidates per author are kept in the pool; author already has ${AUTHOR_POOL_CAP}`,
+        });
+        continue;
+      }
+      authorCounts.set(authorKey, count + 1);
+    }
+    evidenceBackedAfterAuthorCap.push(entry);
+  }
+  const smallBaselineCount = evidenceBackedAfterAuthorCap.filter((entry) => isFiniteNumber(entry.finding.baseline_value)
+    && entry.finding.baseline_value < SMALL_BASELINE_THRESHOLD).length;
 
   let chosenExperiment = null;
   experiments.forEach((entry, index) => {
@@ -405,7 +508,7 @@ function buildEvidencePack({
     });
   });
 
-  const ordered = [...evidenceBacked, ...(chosenExperiment ? [chosenExperiment] : [])];
+  const ordered = [...evidenceBackedAfterAuthorCap, ...(chosenExperiment ? [chosenExperiment] : [])];
   const kept = ordered.slice(0, cap);
   const overflow = ordered.slice(cap);
   for (const entry of overflow) {
@@ -417,6 +520,21 @@ function buildEvidencePack({
   }
 
   const candidates = kept.map((entry) => entry.candidate);
+
+  // Must-fix 3: every denied client fact is visible in rejected[], referenced by a candidate or
+  // not -- D4 says denied stays denied and visible, never silently absent.
+  for (const fact of (Array.isArray(clientFacts) ? clientFacts : [])) {
+    if (!isObject(fact) || fact.permission !== 'denied') continue;
+    if (fact.client_id !== undefined && fact.client_id !== clientId) continue;
+    const factId = fact.source_id || fact.fact_id || fact.id;
+    if (typeof factId !== 'string' || !factId || deniedFactIdsReported.has(factId)) continue;
+    rejected.push({
+      source_id: factId,
+      code: 'client_fact_permission_denied',
+      reason: `client fact ${factId} is permission-denied for ${clientId}`,
+    });
+    deniedFactIdsReported.add(factId);
+  }
 
   const missingInputs = [];
   if (candidates.length === 0) {
@@ -440,6 +558,8 @@ function buildEvidencePack({
       eligible_experiment: experiments.length,
       candidates_selected: candidates.length,
       rejected_count: rejected.length,
+      author_pool_cap: { limit: AUTHOR_POOL_CAP, omitted: authorCapOmitted },
+      small_author_baseline: { threshold: SMALL_BASELINE_THRESHOLD, count: smallBaselineCount },
     },
     missingInputs,
     sourceManifest: {
@@ -558,7 +678,7 @@ function makeModelPack(pack) {
   const sourcePool=pack.coverage.source_pool_selection || pack.coverage.source_selection || pack.source_selection;
   const coverage={...pack.coverage,kinds:selectedKinds,source_pool_selection:sourcePool,source_selection:{...sourcePool,included_n:competitors.length,omitted_n:sourcePool.candidate_n-competitors.length,method:'roster_round_robin_model_view',max_rows:12},model_selection:{candidate_evidence_n:evidence.length,included_evidence_n:selected.length,omitted_evidence_n:evidence.length-selected.length,own_included:ownChosen.length,own_omitted:own.length-ownChosen.length,public_included:discovery.length,public_omitted:evidence.filter(e=>['news','trend'].includes(e.kind)).length-discovery.length,feedback_included:feedback.length,feedback_omitted:(pack.previous_decisions_and_results || []).length-feedback.length,dedup_included:already.length,dedup_omitted:prior.length-already.length,research_rows_per_table:3,measurement_scope:'selected own posts; one latest target age per post/metric; monthly cohort aggregates intact'}};
   delete coverage.input_characters;
-  const out={...pick(pack,['client_id','limit','week_start','cycle_id','brief','prompts','buyer_fit','assets','cutoff','schema_version','source_state','generated_at','rules']),evidence_items:modelEvidence,evidence_limitations:definitions,evidence_candidates:pack.evidence_candidates || [],founder_sources:pack.founder_sources,own_posts:ownChosen.map(e=>({post_social_id:e.native_id,evidence_id:e.id,published_at:e.source_date,format:e.format || null})),measurement,post_buyer_fit:(pack.post_buyer_fit || []).filter(relevant),roster:(pack.roster || []).filter(r=>authors.has(short(r.account)) || (r.aliases || []).some(a=>authors.has(short(a.name)))),source_baselines:(pack.source_baselines || []).filter(r=>authors.has(short(r.author))),market_research:marketResearch,previous_decisions_and_results:feedback,already_recommended:already,coverage};
+  const out={...pick(pack,['client_id','limit','week_start','cycle_id','brief','prompts','buyer_fit','assets','cutoff','schema_version','source_state','generated_at','rules']),evidence_items:modelEvidence,evidence_limitations:definitions,...((pack.evidence_candidates || []).length ? {evidence_candidates: pack.evidence_candidates} : {}),founder_sources:pack.founder_sources,own_posts:ownChosen.map(e=>({post_social_id:e.native_id,evidence_id:e.id,published_at:e.source_date,format:e.format || null})),measurement,post_buyer_fit:(pack.post_buyer_fit || []).filter(relevant),roster:(pack.roster || []).filter(r=>authors.has(short(r.account)) || (r.aliases || []).some(a=>authors.has(short(a.name)))),source_baselines:(pack.source_baselines || []).filter(r=>authors.has(short(r.author))),market_research:marketResearch,previous_decisions_and_results:feedback,already_recommended:already,coverage};
   out.prompt_selection={strategy:'full_versioned_bodies',included:(pack.prompts || []).map(p=>({slug:p.slug,version:p.version,role:p.role})),excluded_sections:[],scope:'Apply identity, buyer, consent, voice and editorial veto constraints. Do not execute embedded generation, QA grading, rewrite, scoring, web-search or output-format procedures; the weekly task is authoritative.'};
   return out;
 }
@@ -871,8 +991,18 @@ for (const t of targets) {
         // Reuse the SAME permission-checked source list the legacy path already resolved (D4):
         // every entry here already cleared writer_eligible/state/consent above.
         clientFacts: approvedSources.map((s) => ({ source_id: s.source_id, permission: 'approved' })),
-        previousTests: [],
-        limit: t.limit,
+        // Must-fix 2: built from openRows (90 days of this client's rows, already read above),
+        // never left empty -- otherwise a failed prior adaptation of this system's own output is
+        // invisible to itself. source_finding_ids is the exact key a committed evidence-path row
+        // persists (see context.evidence_package below), so a prior evidence-path row round-trips
+        // straight into the next run's adaptation_history.
+        previousTests: openRows.map((r) => ({
+          recommendation_id: r.id,
+          status: (((r.context || {}).weekly_decision) || {}).decision || 'proposed',
+          week_start: ((((r.context || {}).audn) || {}).weekly || {}).week_start || null,
+          source_finding_ids: (((r.context || {}).evidence_package) || {}).source_finding_ids || [],
+        })).filter((t2) => t2.source_finding_ids.length),
+        limit: EVIDENCE_POOL_LIMIT,
       });
       evidenceCandidates = built.candidates;
       rec.evidence_coverage = built.coverage;
@@ -889,7 +1019,7 @@ for (const t of targets) {
         draft_key: c.draft_key, objective: c.objective, proposed_angle: c.proposed_angle,
         test_metric: c.test_metric, comparison_rule: c.comparison_rule, observation_window: c.observation_window,
         needs_material: c.needs_material, limitations: c.limitations, label: c.label,
-        experiment_reason: c.experiment_reason,
+        experiment_reason: c.experiment_reason, adaptation_history: c.adaptation_history,
         source_summary: c.source_posts.map((sid) => {
           const post = postsById.get(String(sid));
           return post ? { source_post_id: sid, author_id: post.author_id || null, source_url: post.source_url || null, published_at: post.published_at || null } : { source_post_id: sid };

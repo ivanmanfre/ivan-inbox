@@ -314,3 +314,104 @@ test('commitGuard allows a rollout-enabled client with no prior commit for the w
   assert.equal(result.allowed, true);
   assert(result.reason.length > 0);
 });
+
+// ---------------------------------------------------------------------------
+// Fix pass (Sol review, PHASE-1-REVIEW.md must-fix 1-6; D10)
+// ---------------------------------------------------------------------------
+
+// Must-fix 1: adaptation_history must also match previousTests[].source_finding_ids, the exact
+// key the committed row persists (writer.js context.evidence_package.source_finding_ids).
+test('adaptation_history matches a previousTests entry keyed by source_finding_ids, not just source_id', () => {
+  const finding = qualifyingMarketFinding({ finding_id: 'f-history-key' });
+  const previousTests = [{ recommendation_id: 'rec-1', status: 'failed', source_finding_ids: ['f-history-key'] }];
+  const pack = buildEvidencePack({ clientId: 'ivan', weekStart: '2026-09-28', limit: 3, findings: [finding], previousTests });
+  assert.equal(pack.candidates.length, 1);
+  assert.equal(pack.candidates[0].adaptation_history.length, 1);
+  assert.equal(pack.candidates[0].adaptation_history[0].recommendation_id, 'rec-1');
+});
+
+// Must-fix 3: a denied client fact must be visible in rejected[] even when it is keyed fact_id
+// (not source_id) and referenced by nobody -- D4 says denied stays denied and visible.
+test('a denied client fact keyed fact_id and referenced by no candidate still appears in rejected', () => {
+  const finding = qualifyingMarketFinding({ finding_id: 'f-unreferenced' });
+  const pack = buildEvidencePack({
+    clientId: 'ivan', weekStart: '2026-09-28', limit: 3, findings: [finding],
+    clientFacts: [{ fact_id: 'fact-unreferenced', permission: 'denied' }],
+  });
+  assert.equal(pack.candidates.length, 1); // unreferenced denial never blocks an unrelated candidate
+  assert(pack.rejected.some((r) => r.code === 'client_fact_permission_denied' && r.source_id === 'fact-unreferenced'));
+});
+
+// Must-fix 4: an eligibility-flagged (not hand-authored) finding can still fill the experiment
+// slot, with a synthesized non-empty experiment_reason.
+test('experiment_eligible:true alone (no hand-written experiment_reason) fills the experiment slot', () => {
+  const finding = qualifyingMarketFinding({
+    finding_id: 'f-flagged-experiment', observed_value: 10, baseline_value: 50, baseline_n: 25, experiment_eligible: true,
+  });
+  delete finding.likes;
+  const pack = buildEvidencePack({ clientId: 'ivan', weekStart: '2026-09-28', limit: 3, findings: [finding] });
+  assert.equal(pack.candidates.length, 1);
+  assert.equal(pack.candidates[0].label, 'experiment');
+  assert.equal(typeof pack.candidates[0].experiment_reason, 'string');
+  assert(pack.candidates[0].experiment_reason.length > 0);
+});
+
+// Must-fix 5: a finding with neither a valid source_ids connection NOR a measured result must
+// report no_performance_support, not missing_outliers_connection -- performance is the more
+// specific and more informative gap when both are absent.
+test('a finding missing both source_ids and a measured result reports no_performance_support', () => {
+  const finding = { client_id: 'ivan', finding_id: 'f-both-missing', kind: 'own_result' };
+  const pack = buildEvidencePack({ clientId: 'ivan', weekStart: '2026-09-28', limit: 3, ownResults: [finding] });
+  assert.equal(pack.candidates.length, 0);
+  assert.equal(pack.rejected[0].code, 'no_performance_support');
+});
+
+// Must-fix 6: a finding stamped with another client's client_id must never become this client's
+// candidate (the 09-12 shared-table leak shape).
+test('a finding belonging to another client is rejected, never adapted for this client', () => {
+  const finding = qualifyingMarketFinding({ finding_id: 'f-foreign', client_id: 'risedtc' });
+  const pack = buildEvidencePack({ clientId: 'ivan', weekStart: '2026-09-28', limit: 3, findings: [finding] });
+  assert.equal(pack.candidates.length, 0);
+  assert.equal(pack.rejected[0].code, 'foreign_client_finding');
+});
+
+// D10(a): at most 2 candidates per source author in the pool when an author id/name is
+// available on the finding.
+test('D10: at most two candidates per author are kept in the pool; the rest are author-capped', () => {
+  const findings = ['a1', 'a2', 'a3'].map((id, i) => qualifyingMarketFinding({
+    finding_id: `f-author-${id}`, source_ids: [`post-${id}`], author: 'Zain Kahn',
+    observed_value: 500 - i * 10, baseline_value: 50, baseline_n: 25, likes: 90,
+  }));
+  const pack = buildEvidencePack({ clientId: 'ivan', weekStart: '2026-09-28', limit: 12, findings });
+  assert.equal(pack.candidates.length, 2);
+  assert.equal(pack.rejected.some((r) => r.code === 'author_pool_cap_exceeded' && r.finding_id === 'f-author-a3'), true);
+  assert.equal(pack.coverage.author_pool_cap.limit, 2);
+  assert.equal(pack.coverage.author_pool_cap.omitted, 1);
+});
+
+test('D10: an author id/name on finding.source_post also triggers the per-author pool cap', () => {
+  const findings = ['b1', 'b2', 'b3'].map((id, i) => qualifyingMarketFinding({
+    finding_id: `f-sp-author-${id}`, source_ids: [`post-${id}`], source_post: { author_id: 'author-9' },
+    observed_value: 500 - i * 10, baseline_value: 50, baseline_n: 25, likes: 90,
+  }));
+  const pack = buildEvidencePack({ clientId: 'ivan', weekStart: '2026-09-28', limit: 12, findings });
+  assert.equal(pack.candidates.length, 2);
+});
+
+// D10(b): a finding whose baseline_value is below 8 sorts after all findings at or above 8, and
+// carries the small-baseline limitation.
+test('D10: a below-8 baseline sorts after all at-or-above-8 findings and is limitation-flagged', () => {
+  const tiny = qualifyingMarketFinding({
+    finding_id: 'f-tiny-baseline', source_ids: ['post-tiny'], observed_value: 400, baseline_value: 1, baseline_n: 25, likes: 90,
+  }); // lift 400 -- would rank first on lift alone
+  const normal = qualifyingMarketFinding({
+    finding_id: 'f-normal-baseline', source_ids: ['post-normal'], observed_value: 200, baseline_value: 20, baseline_n: 25, likes: 90,
+  }); // lift 10 -- lower lift, but baseline_value >= 8
+  const pack = buildEvidencePack({ clientId: 'ivan', weekStart: '2026-09-28', limit: 12, findings: [tiny, normal] });
+  assert.equal(pack.candidates.length, 2);
+  assert.equal(pack.candidates[0].source_finding_ids[0], 'f-normal-baseline');
+  assert.equal(pack.candidates[1].source_finding_ids[0], 'f-tiny-baseline');
+  assert(pack.candidates[1].limitations.includes('Very small author baseline; the ratio overstates the gap.'));
+  assert.equal(pack.coverage.small_author_baseline.threshold, 8);
+  assert.equal(pack.coverage.small_author_baseline.count, 1);
+});
