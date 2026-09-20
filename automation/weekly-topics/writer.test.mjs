@@ -389,3 +389,67 @@ test('budget fix: an evidence-path failure inside the budget-fitting loop itself
  assert.deepEqual(rec.evidence_pool_dropped_for_budget,[]);
  assert.equal('evidence_error' in rec,false);
 });
+
+// ---------------------------------------------------------------------------
+// Measured-source requirement (second live finding). Native evidence previews proved the model
+// can propose a choice that cites nothing: on an evidence-active client every normal choice must
+// cite a surviving pool candidate or be the one explicit experiment -- never neither.
+// ---------------------------------------------------------------------------
+
+test('an evidence-active client drops an uncited choice as no_measured_source, never pads with it',async()=>{
+ const it=candidate(); // plain founder citation, no evidence_candidate_key, no experiment:true
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ assert.equal(first(x).proposed,0);
+ assert.equal(first(x).dropped[0].reason,'no_measured_source');
+ assert.equal(first(x).coverage_gap,'no_candidate_fit_this_week');
+ assert.equal(first(x).evidence_selection.dropped_no_measured_source,1);
+ assert.equal(first(x).evidence_selection.cited,0);
+});
+
+test('the identical uncited choice is kept unchanged on the legacy path (switch empty, no evidence:true)',async()=>{
+ const it=candidate();
+ const x=await run({items:[it]});
+ assert.equal(first(x).proposed,1);
+ assert.equal('evidence_selection' in first(x),false);
+});
+
+test('exactly one freeform experiment (experiment:true) is kept; a second is dropped',async()=>{
+ const a=candidate();a.experiment=true;a.experiment_reason='Untested angle for this client.';a.test_metric='replies at 7 days';
+ const b=candidate();b.experiment=true;b.experiment_reason='A second untested angle.';b.test_metric='replies at 7 days';b.weekly.rank=2;b.weekly.topic_key='other';b.original_angle='Other angle';
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[a,b],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[]}});
+ assert.equal(first(x).proposed,1);
+ assert.equal(first(x).rows[0].context.evidence_package.label,'experiment');
+ assert.equal(first(x).rows[0].context.evidence_package.source_finding_ids.length,0);
+ assert.equal(first(x).rows[0].context.evidence_package.limitations[0],'No measured source supports this choice; it is a test.');
+ assert.equal(first(x).rows[0].context.evidence_package.experiment_reason,a.experiment_reason);
+ assert.equal(first(x).dropped[0].reason,'evidence_candidate_second_experiment');
+ assert.equal(first(x).evidence_selection.experiments,1);
+});
+
+test('a freeform experiment missing experiment_reason or test_metric is dropped as no_measured_source',async()=>{
+ const it=candidate();it.experiment=true;it.experiment_reason='';it.test_metric='replies at 7 days';
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[]}});
+ assert.equal(first(x).proposed,0);
+ assert.equal(first(x).dropped[0].reason,'no_measured_source');
+});
+
+test('zero rows surviving validation on an evidence-active client commits the same immutable empty cycle a deliberate [] uses',async()=>{
+ const it=candidate();
+ const x=await run({body:{},items:[it],rolloutRows:rolloutRow(['ivan']),evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ const commit=x.calls.find(c=>c.url.endsWith('/audn_recommendation_commit'));
+ assert(commit);
+ assert.equal(commit.body.p_rows.length,0);
+ assert.equal(first(x).writer_bail,false);
+ assert.equal(first(x).reason,'no_supported_candidates');
+ assert.equal(first(x).coverage_gap,'no_candidate_fit_this_week');
+});
+
+test('a cited row\'s saved numbers still come from the server-built candidate, not the model',async()=>{
+ const it=candidate();it.evidence_candidate_key='ivan:2026-09-21:ef1';
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding({observed_value:900,baseline_value:60,baseline_n:40,likes:150})]}});
+ const pkg=first(x).rows[0].context.evidence_package;
+ assert.equal(pkg.source_finding_ids[0],'ef1');
+ assert.match(pkg.test_metric,/reactions|reposts|likes/i);
+ assert.equal(pkg.label,'evidence_backed');
+ assert.equal(first(x).evidence_selection.cited,1);
+});

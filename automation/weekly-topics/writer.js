@@ -1176,6 +1176,7 @@ for (const t of targets) {
       inputCharacters = systemPrompt.length + 128 + JSON.stringify(modelPack).length;
     }
     rec.evidence_pool_dropped_for_budget = droppedForBudget;
+    rec.evidence_pool_survivors = evidenceCandidates.length;
     rec.coverage = modelPack.coverage;
   }
   rec.coverage.input_total_characters = inputCharacters;
@@ -1281,52 +1282,80 @@ for (const p of prepared) {
     let badQuote = false;
     for (const s of texts) for (const span of quotedSpans(s)) if (hay.indexOf(nz(span)) < 0) badQuote = true;
     if (badQuote) { drop('quote_not_in_source'); continue; }
-    // ---- evidence path validation (D6): only when this client's evidence path is active. The
-    // model may reference at most one offered candidate per item, by its draft_key. Numbers are
-    // NEVER trusted from the model -- the committed evidence_package is always copied from the
-    // server-built candidate, never from model-echoed fields, so "numbers that differ from the
-    // pack" cannot occur in what gets saved. What IS validated here is which candidate (if any)
-    // the model is entitled to cite.
+    // ---- evidence path validation (mission rule, second live finding): on an evidence-active
+    // client, EVERY kept choice must either cite a surviving offered candidate by exact
+    // draft_key, or be the ONE explicit experiment slot (model sets experiment:true with a
+    // concrete reason and test metric) -- never neither, never both. Anything else is dropped as
+    // no_measured_source: never padded with an ordinary unsupported choice. Numbers are NEVER
+    // trusted from the model for a cited candidate -- the committed evidence_package is always
+    // copied from the server-built candidate, never from model-echoed fields.
     let evidenceCandidate = null;
-    if (evidenceActive && it.evidence_candidate_key !== undefined && it.evidence_candidate_key !== null) {
-      const key = String(it.evidence_candidate_key);
-      evidenceCandidate = (evidenceCandidates || []).find((c) => c.draft_key === key) || null;
-      if (!evidenceCandidate) { drop('evidence_candidate_unknown'); continue; }
-      if (evidenceCandidate.label === 'experiment' && evidenceExperimentUsed) { drop('evidence_candidate_second_experiment'); continue; }
-      if (!isStr(evidenceCandidate.objective) || !isStr(evidenceCandidate.test_metric)) { drop('evidence_candidate_missing_objective'); continue; }
-      // A model-echoed evidence_package, if present at all, must match the trusted candidate
-      // exactly on every field it repeats -- it is optional and only ever cross-checked, never
-      // the source of truth.
-      if (it.evidence_package && typeof it.evidence_package === 'object' && !Array.isArray(it.evidence_package)) {
-        const echoed = it.evidence_package;
-        const echoedIds = Array.isArray(echoed.source_finding_ids) ? echoed.source_finding_ids : null;
-        if (!echoedIds || JSON.stringify([...echoedIds].sort()) !== JSON.stringify([...evidenceCandidate.source_finding_ids].sort())) { drop('evidence_package_number_mismatch'); continue; }
-        const echoedFacts = Array.isArray(echoed.client_fact_refs) ? echoed.client_fact_refs : [];
-        if (echoedFacts.some((f) => !evidenceCandidate.client_fact_refs.includes(f))) { drop('evidence_package_unauthorized_client_fact'); continue; }
-        if (echoed.objective !== undefined && echoed.objective !== evidenceCandidate.objective) { drop('evidence_package_number_mismatch'); continue; }
-      }
-      // Relevance-as-performance guard: an evidence_backed source is someone ELSE's post. Prose
-      // may never phrase that source's lift as the client's own achieved result. This is a
-      // heuristic first-person-achievement scan, not exhaustive; the second (model) review pass
-      // named in the plan supplements it.
-      if (evidenceCandidate.label === 'evidence_backed'
-          && /\b(?:our|we)\s+(?:saw|achieved|got|generated|drove|delivered|hit)\b[^.]{0,80}\b(?:reach|engagement|likes|views|results?|impressions)\b/i.test(texts.join(' '))) {
-        drop('evidence_package_relevance_as_performance'); continue;
+    let freeformExperiment = null;
+    if (evidenceActive) {
+      const hasKey = it.evidence_candidate_key !== undefined && it.evidence_candidate_key !== null;
+      const isFreeform = it.experiment === true;
+      if (hasKey && isFreeform) { drop('no_measured_source'); continue; } // exactly one path, never both
+      if (hasKey) {
+        const key = String(it.evidence_candidate_key);
+        evidenceCandidate = (evidenceCandidates || []).find((c) => c.draft_key === key) || null;
+        if (!evidenceCandidate) { drop('evidence_candidate_unknown'); continue; }
+        if (evidenceCandidate.label === 'experiment' && evidenceExperimentUsed) { drop('evidence_candidate_second_experiment'); continue; }
+        if (!isStr(evidenceCandidate.objective) || !isStr(evidenceCandidate.test_metric)) { drop('evidence_candidate_missing_objective'); continue; }
+        // A model-echoed evidence_package, if present at all, must match the trusted candidate
+        // exactly on every field it repeats -- it is optional and only ever cross-checked, never
+        // the source of truth.
+        if (it.evidence_package && typeof it.evidence_package === 'object' && !Array.isArray(it.evidence_package)) {
+          const echoed = it.evidence_package;
+          const echoedIds = Array.isArray(echoed.source_finding_ids) ? echoed.source_finding_ids : null;
+          if (!echoedIds || JSON.stringify([...echoedIds].sort()) !== JSON.stringify([...evidenceCandidate.source_finding_ids].sort())) { drop('evidence_package_number_mismatch'); continue; }
+          const echoedFacts = Array.isArray(echoed.client_fact_refs) ? echoed.client_fact_refs : [];
+          if (echoedFacts.some((f) => !evidenceCandidate.client_fact_refs.includes(f))) { drop('evidence_package_unauthorized_client_fact'); continue; }
+          if (echoed.objective !== undefined && echoed.objective !== evidenceCandidate.objective) { drop('evidence_package_number_mismatch'); continue; }
+        }
+        // Relevance-as-performance guard: an evidence_backed source is someone ELSE's post.
+        // Prose may never phrase that source's lift as the client's own achieved result. This is
+        // a heuristic first-person-achievement scan, not exhaustive; the second (model) review
+        // pass named in the plan supplements it.
+        if (evidenceCandidate.label === 'evidence_backed'
+            && /\b(?:our|we)\s+(?:saw|achieved|got|generated|drove|delivered|hit)\b[^.]{0,80}\b(?:reach|engagement|likes|views|results?|impressions)\b/i.test(texts.join(' '))) {
+          drop('evidence_package_relevance_as_performance'); continue;
+        }
+      } else if (isFreeform) {
+        if (evidenceExperimentUsed) { drop('evidence_candidate_second_experiment'); continue; }
+        if (!isStr(it.experiment_reason) || !isStr(it.test_metric)) { drop('no_measured_source'); continue; }
+        freeformExperiment = { experiment_reason: it.experiment_reason.trim(), test_metric: it.test_metric.trim() };
+      } else {
+        drop('no_measured_source'); continue;
       }
     }
     if (keep.length >= t.limit) { drop('over_limit'); continue; }
-    if (evidenceCandidate && evidenceCandidate.label === 'experiment') evidenceExperimentUsed = true;
-    keep.push({ item: it, cited: cited, evidenceCandidate });
+    if ((evidenceCandidate && evidenceCandidate.label === 'experiment') || freeformExperiment) evidenceExperimentUsed = true;
+    keep.push({ item: it, cited: cited, evidenceCandidate, freeformExperiment });
   }
 
   // ---- 7. write: ops_drafts only ---------------------------------------------
   rec.coverage.requested = t.limit;
   rec.coverage.proposed = keep.length;
   rec.coverage.shortfall = t.limit - keep.length;
+  if (evidenceActive) {
+    rec.evidence_selection = {
+      offered: rec.evidence_pool_offered || 0,
+      survivors: rec.evidence_pool_survivors || 0,
+      cited: keep.filter((k) => k.evidenceCandidate).length,
+      experiments: keep.filter((k) => (k.evidenceCandidate && k.evidenceCandidate.label === 'experiment') || k.freeformExperiment).length,
+      dropped_no_measured_source: rec.dropped.filter((d) => d.reason === 'no_measured_source').length,
+    };
+  }
   if (!keep.length) {
     if (PREVIEW) rec.rows = [];
-    if (items.length) { rec.reason = 'no_valid_candidates'; rec.writer_bail = true; continue; }
+    // Second live finding: on an evidence-active client, every dropped item being
+    // no_measured_source means the model tried and had nothing it was allowed to cite this week
+    // -- a legitimate empty outcome, never a writer bug. Route it through the SAME immutable
+    // empty-cycle path a deliberate [] already uses, not the retryable no_valid_candidates path.
+    const allNoMeasuredSource = evidenceActive && rec.dropped.length > 0 && rec.dropped.every((d) => d.reason === 'no_measured_source');
+    if (items.length && !allNoMeasuredSource) { rec.reason = 'no_valid_candidates'; rec.writer_bail = true; continue; }
     rec.reason = 'no_supported_candidates';
+    if (evidenceActive) rec.coverage_gap = 'no_candidate_fit_this_week';
     // A deliberate [] completes the week. Invalid/refused responses remain retryable.
     if (PREVIEW) continue;
   }
@@ -1409,7 +1438,25 @@ for (const p of prepared) {
           limitations: k.evidenceCandidate.limitations,
           label: k.evidenceCandidate.label,
           ...(k.evidenceCandidate.label === 'experiment' ? { experiment_reason: k.evidenceCandidate.experiment_reason } : {}),
-        } } : {}),
+        } } : (k.freeformExperiment ? { evidence_package: {
+          // The one explicit experiment slot, not tied to any offered candidate (mission rule):
+          // no measured source, so no source_finding_ids/source_posts/client_fact_refs -- saying
+          // so plainly in the limitation rather than leaving those arrays ambiguous.
+          schema_version: 1,
+          source_finding_ids: [],
+          source_posts: [],
+          client_fact_refs: [],
+          objective: 'attention_reach',
+          test_metric: k.freeformExperiment.test_metric,
+          metric_id: null,
+          comparison_rule: 'not_applicable_experiment',
+          observation_window: { days: 7 },
+          adaptation_history: [],
+          needs_material: null,
+          limitations: ['No measured source supports this choice; it is a test.'],
+          label: 'experiment',
+          experiment_reason: k.freeformExperiment.experiment_reason,
+        } } : {})),
       },
     };
   });
