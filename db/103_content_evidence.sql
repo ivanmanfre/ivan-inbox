@@ -34,7 +34,9 @@
 -- service_role only. content_evidence_pack is a SERVICE-ONLY computational reader -- its signature
 -- is fixed by the plan and carries no p_gate, so it is granted to service_role alone and is NOT
 -- an operator reader. The gated browser-facing reader (operator_gate_ok + lane_allowed, granted to
--- authenticated, exactly like operator_market_outliers) is added by the UI package that needs it.
+-- authenticated, exactly like operator_market_outliers) is db/104's operator_content_evidence.
+-- (Corrected 2026-09-20: this line previously said "added by the UI package that needs it"; the UI
+-- package owns no migration, and 104 is where that reader actually landed.)
 -- anon is revoked from the function BY NAME because a default-privileges rule grants it execute on
 -- every new function (see the note in 100).
 
@@ -237,8 +239,12 @@ grant select, insert, update on public.client_research_findings    to service_ro
 -- content_evidence_pack: the bounded service read
 -- ---------------------------------------------------------------------------
 --
--- One client, one week. It returns the LATEST VALIDATED study of each kind -- never whichever
--- research row happens to be newest -- plus the market population, the own-control count kept
+-- One client, one week. It returns the LATEST VALIDATED MARKET study -- study_kind = 'market'
+-- only, and never whichever research row happens to be newest. The other kinds ('own', 'pattern',
+-- 'audience') are storable here today and are NOT served by this function; a reader that needs one
+-- selects it by kind itself, on the same latest-validated rule. (Corrected 2026-09-20: this line
+-- previously said "of each kind", which the body at the select below has never done.)
+-- Plus the market population, the own-control count kept
 -- separately, the findings and an explicit coverage/missing-inputs block. An empty answer is a
 -- stated gap, not a silent zero.
 --
