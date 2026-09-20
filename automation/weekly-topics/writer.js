@@ -68,6 +68,13 @@ const SLIM_STAGES = [
   { stage: 3, excerptCap: 150, dropMarketResearch: true, lost: ['source excerpts shortened to 150 characters', 'market_research context omitted'] },
 ];
 
+// D15: one reading of a candidate's mechanism class, used by the weekly cap, by the saved row
+// and by what the reader shows, so those three can never disagree. `mechanism_class` is computed
+// in the selector region below from the support actually held. The fallback covers a candidate
+// built before that field existed: an unclassified candidate is treated as an experiment,
+// because no support has been established for it.
+const isExperimentMechanism = (c) => !c || c.mechanism_class !== 'supported';
+
 const RUN_ISO = new Date().toISOString();
 const enc = encodeURIComponent;
 // Scheduled and manual runs share one immutable UTC week, including accepted slots.
@@ -1362,7 +1369,10 @@ for (const t of targets) {
         draft_key: c.draft_key, objective: c.objective, proposed_angle: c.proposed_angle,
         test_metric: c.test_metric, comparison_rule: c.comparison_rule, observation_window: c.observation_window,
         needs_material: c.needs_material, limitations: c.limitations, label: c.label,
-        experiment_reason: c.experiment_reason, adaptation_history: c.adaptation_history,
+        // D15: the class trusted code decided, so the model can read the cap it has to respect.
+        // It is shown for information only: the saved row copies this value, never the model's.
+        mechanism_class: c.mechanism_class, mechanism_support: c.mechanism_support,
+        experiment_reason: c.experiment_reason || c.mechanism_reason, adaptation_history: c.adaptation_history,
         // TRACE C2 fix: the exact evidence_items ids this candidate's measured sources were
         // published under. A choice citing this candidate must put these in evidence.source_ids;
         // trusted code re-checks that below, so the citation can never drift to another row.
@@ -1678,7 +1688,11 @@ for (const p of prepared) {
         // choices citing the same measured source would present one finding twice as if it were
         // two pieces of evidence. The second citation is dropped, never merged or renumbered.
         if (keep.some((k) => k.evidenceCandidate && k.evidenceCandidate.draft_key === evidenceCandidate.draft_key)) { drop('evidence_candidate_already_cited'); continue; }
-        if (evidenceCandidate.label === 'experiment' && evidenceExperimentUsed) { drop('evidence_candidate_second_experiment'); continue; }
+        // D15: the cap is applied to the MECHANISM class the selector computed, after
+        // classification, never to the model's own wording. A measured source post supports
+        // "that post beat its author's baseline"; it never supports "this move works for this
+        // client", so adapting one is an experiment and at most one experiment runs per week.
+        if (isExperimentMechanism(evidenceCandidate) && evidenceExperimentUsed) { drop('evidence_candidate_second_experiment'); continue; }
         if (!isStr(evidenceCandidate.objective) || !isStr(evidenceCandidate.test_metric)) { drop('evidence_candidate_missing_objective'); continue; }
         // Run 4 TRACE C2 binding: the choice must cite the candidate's OWN measured source post,
         // by the evidence_items id that post was published under. Trusted code decides which id
@@ -1700,11 +1714,12 @@ for (const p of prepared) {
           if (echoedFacts.some((f) => !evidenceCandidate.client_fact_refs.includes(f))) { drop('evidence_package_unauthorized_client_fact'); continue; }
           if (echoed.objective !== undefined && echoed.objective !== evidenceCandidate.objective) { drop('evidence_package_number_mismatch'); continue; }
         }
-        // Relevance-as-performance guard: an evidence_backed source is someone ELSE's post.
+        // Relevance-as-performance guard: a source-only candidate is someone ELSE's post.
         // Prose may never phrase that source's lift as the client's own achieved result. This is
         // a heuristic first-person-achievement scan, not exhaustive; the second (model) review
-        // pass named in the plan supplements it.
-        if (evidenceCandidate.label === 'evidence_backed'
+        // pass named in the plan supplements it. D15: keyed on who owns the result rather than
+        // on the eligibility floor, so an experiment-labelled market source is covered too.
+        if (evidenceCandidate.mechanism_support !== 'client_own_result'
             && /\b(?:our|we)\s+(?:saw|achieved|got|generated|drove|delivered|hit)\b[^.]{0,80}\b(?:reach|engagement|likes|views|results?|impressions)\b/i.test(texts.join(' '))) {
           drop('evidence_package_relevance_as_performance'); continue;
         }
@@ -1717,7 +1732,7 @@ for (const p of prepared) {
       }
     }
     if (keep.length >= t.limit) { drop('over_limit'); continue; }
-    if ((evidenceCandidate && evidenceCandidate.label === 'experiment') || freeformExperiment) evidenceExperimentUsed = true;
+    if ((evidenceCandidate && isExperimentMechanism(evidenceCandidate)) || freeformExperiment) evidenceExperimentUsed = true;
     keep.push({ item: it, cited: cited, evidenceCandidate, freeformExperiment });
   }
 
@@ -1730,7 +1745,8 @@ for (const p of prepared) {
       offered: rec.evidence_pool_offered || 0,
       survivors: rec.evidence_pool_survivors || 0,
       cited: keep.filter((k) => k.evidenceCandidate).length,
-      experiments: keep.filter((k) => (k.evidenceCandidate && k.evidenceCandidate.label === 'experiment') || k.freeformExperiment).length,
+      experiments: keep.filter((k) => (k.evidenceCandidate && isExperimentMechanism(k.evidenceCandidate)) || k.freeformExperiment).length,
+      dropped_second_experiment: rec.dropped.filter((d) => d.reason === 'evidence_candidate_second_experiment').length,
       dropped_no_measured_source: rec.dropped.filter((d) => d.reason === 'no_measured_source').length,
     };
   }
@@ -1850,8 +1866,18 @@ for (const p of prepared) {
           adaptation_history: k.evidenceCandidate.adaptation_history,
           needs_material: k.evidenceCandidate.needs_material,
           limitations: k.evidenceCandidate.limitations,
-          label: k.evidenceCandidate.label,
-          ...(k.evidenceCandidate.label === 'experiment' ? { experiment_reason: k.evidenceCandidate.experiment_reason } : {}),
+          // D15: `label` is what the saved row and the reader key on (db/104 derives
+          // is_experiment from it), so it carries the MECHANISM class. The eligibility-floor
+          // result the selector computed is kept beside it as floor_label rather than being
+          // overwritten, and is_experiment is written explicitly so no reader has to infer it.
+          label: isExperimentMechanism(k.evidenceCandidate) ? 'experiment' : 'evidence_backed',
+          floor_label: k.evidenceCandidate.label,
+          mechanism_class: k.evidenceCandidate.mechanism_class || 'experiment',
+          mechanism_support: k.evidenceCandidate.mechanism_support || 'source_only',
+          is_experiment: isExperimentMechanism(k.evidenceCandidate),
+          ...(isExperimentMechanism(k.evidenceCandidate)
+            ? { experiment_reason: k.evidenceCandidate.experiment_reason || k.evidenceCandidate.mechanism_reason }
+            : {}),
         } } : (k.freeformExperiment ? { evidence_package: {
           // The one explicit experiment slot, not tied to any offered candidate (mission rule):
           // no measured source, so no source_finding_ids/source_posts/client_fact_refs -- saying
@@ -1869,6 +1895,10 @@ for (const p of prepared) {
           needs_material: null,
           limitations: ['No measured source supports this choice; it is a test.'],
           label: 'experiment',
+          floor_label: 'experiment',
+          mechanism_class: 'experiment',
+          mechanism_support: 'none',
+          is_experiment: true,
           experiment_reason: k.freeformExperiment.experiment_reason,
         } } : {})),
       },

@@ -216,7 +216,12 @@ test('preview with evidence:true never reaches the commit RPC even when a candid
  assert(x.calls.some(c=>c.url.endsWith('/rpc/content_evidence_pack')));
  assert.equal(x.calls.some(c=>c.url.endsWith('/audn_recommendation_commit')),false);
  assert.equal(first(x).rows[0].context.evidence_package.source_finding_ids[0],'ef1');
- assert.equal(first(x).rows[0].context.evidence_package.label,'evidence_backed');
+ // D15: a single market source post supports the SOURCE's result, never that the mechanism
+ // transfers, so the saved label (and the reader's Experiment badge) says experiment.
+ assert.equal(first(x).rows[0].context.evidence_package.label,'experiment');
+ assert.equal(first(x).rows[0].context.evidence_package.floor_label,'evidence_backed');
+ assert.equal(first(x).rows[0].context.evidence_package.mechanism_support,'source_only');
+ assert.equal(first(x).rows[0].context.evidence_package.is_experiment,true);
 });
 
 test('a rollout-named client commits a row carrying evidence_package copied from the server-built candidate',async()=>{
@@ -225,7 +230,8 @@ test('a rollout-named client commits a row carrying evidence_package copied from
  const commit=x.calls.find(c=>c.url.endsWith('/audn_recommendation_commit'));
  assert(commit);
  assert.equal(commit.body.p_rows[0].context.evidence_package.source_finding_ids[0],'ef1');
- assert.equal(commit.body.p_rows[0].context.evidence_package.label,'evidence_backed');
+ assert.equal(commit.body.p_rows[0].context.evidence_package.label,'experiment'); // D15
+ assert.equal(commit.body.p_rows[0].context.evidence_package.floor_label,'evidence_backed');
 });
 
 test('an unknown evidence_candidate_key is dropped, never invented into a citation',async()=>{
@@ -324,9 +330,12 @@ test('F3: the saved evidence_package carries client_fact_refs as {source_id,kind
  const x=await run({body:{},items:[it],rolloutRows:rolloutRow(['ivan']),evidencePack:{study:{study_id:'s1',state:'validated'},findings:[finding]}});
  const commit=x.calls.find(c=>c.url.endsWith('/audn_recommendation_commit'));
  const pkg=commit.body.p_rows[0].context.evidence_package;
- assert.equal(pkg.label,'evidence_backed');
+ assert.equal(pkg.label,'experiment'); // D15: mechanism class, floor result kept at floor_label
+ assert.equal(pkg.floor_label,'evidence_backed');
  assert.equal(pkg.needs_material,null);
- assert.equal('experiment_reason' in pkg,false);
+ // D15: the row IS an experiment now, so it carries the reason the reader shows.
+ assert.equal(typeof pkg.experiment_reason,'string');
+ assert(pkg.experiment_reason.length>20);
  assert.equal(pkg.client_fact_refs.length,1);
  assert.equal(pkg.client_fact_refs[0].source_id,'founder-1');
  assert.equal(pkg.client_fact_refs[0].kind,'authorized_call_transcript');
@@ -497,7 +506,8 @@ test('a cited row\'s saved numbers still come from the server-built candidate, n
  const pkg=first(x).rows[0].context.evidence_package;
  assert.equal(pkg.source_finding_ids[0],'ef1');
  assert.match(pkg.test_metric,/reactions|reposts|likes/i);
- assert.equal(pkg.label,'evidence_backed');
+ assert.equal(pkg.label,'experiment'); // D15: mechanism class, floor result kept at floor_label
+ assert.equal(pkg.floor_label,'evidence_backed');
  assert.equal(first(x).evidence_selection.cited,1);
 });
 
@@ -688,7 +698,11 @@ test('regression: legacy-path-unchanged -- a switch-empty run publishes no evide
 });
 
 test('regression: cap-three-choices -- the weekly cap holds on the evidence path',async()=>{
- const findings=[evidenceFinding(),evidenceFinding({finding_id:'ef2',source_ids:['sp2'],observed_value:390}),evidenceFinding({finding_id:'ef3',source_ids:['sp3'],observed_value:380}),evidenceFinding({finding_id:'ef4',source_ids:['sp4'],observed_value:370})];
+ // D15: the weekly cap is a separate cap from the one-experiment cap, so this control uses
+ // SUPPORTED mechanisms (a predeclared pattern comparison that passed) -- otherwise the
+ // experiment cap would bind first and the weekly cap would never be exercised at all.
+ const supported=(o)=>evidenceFinding({kind:'pattern',predeclared:true,validation_state:'passed',...o});
+ const findings=[supported({}),supported({finding_id:'ef2',source_ids:['sp2'],observed_value:390}),supported({finding_id:'ef3',source_ids:['sp3'],observed_value:380}),supported({finding_id:'ef4',source_ids:['sp4'],observed_value:370})];
  const mk=(n,key,sid)=>{const it=citing(candidate(),key,[sid]);it.weekly.rank=n;it.weekly.topic_key='topic-'+n;it.original_angle='Angle number '+n;return it;};
  const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[mk(1,'ivan:2026-09-21:ef1','sp1'),mk(2,'ivan:2026-09-21:ef2','sp2'),mk(3,'ivan:2026-09-21:ef3','sp3'),mk(4,'ivan:2026-09-21:ef4','sp4')],evidencePack:{study:{study_id:'s1',state:'validated'},findings}});
  assert.equal(first(x).proposed,3,'never more than the registry cap');
@@ -737,14 +751,14 @@ test('regression: per-client-isolation -- one client bailing on the proxy never 
 });
 
 test('regression: reserved-evidence-budget -- context is slimmed in a stated order before any candidate is dropped, and constraint material is never trimmed',async()=>{
- const x=await run({...nearCeilingFixtureArgs(5250),items:[],body:{preview:true,client_id:"ivan",evidence:true},evidencePack:{study:{study_id:'s1',state:'validated'},findings:poolFindings(12)}});
+ const x=await run({...nearCeilingFixtureArgs(5150),items:[],body:{preview:true,client_id:"ivan",evidence:true},evidencePack:{study:{study_id:'s1',state:'validated'},findings:poolFindings(12)}});
  const rec=first(x);
  assert.equal(rec.evidence_pool_survivors,12,'the full pool survives once context is slimmed first');
  assert.deepEqual(rec.evidence_pool_dropped_for_budget,[]);
  assert(rec.evidence_budget.slim_stage>0,'a slim stage was actually applied');
  assert(rec.evidence_budget.context_lost.length>0,'what was lost is recorded');
  // constraint material is byte-identical: the voice prompt body is never shortened
- assert.equal(x.packs[0].prompts[0].body.length,'Complete applicable voice rule. '.repeat(5250).length);
+ assert.equal(x.packs[0].prompts[0].body.length,'Complete applicable voice rule. '.repeat(5150).length);
  assert(prompt.length+128+JSON.stringify(x.packs[0]).length<=200000);
 });
 
@@ -824,4 +838,51 @@ test('regression: proxy-timeout-no-useful-window -- a client that cannot get a m
  }
  assert.equal(x.result.clients.length,5,'the run never aborts: every client still gets a record');
  assert.equal(x.calls.some(c=>c.url.endsWith('/audn_recommendation_commit')),false);
+});
+
+// D15 (DECISIONS.md): classification happens in trusted code, the cap is applied AFTER it, and
+// every capped row is counted under a named reason. Today no client holds pattern-level support,
+// so a shortlist of source-only adaptations collapses to one choice, by design.
+test('regression: cap-one-experiment-after-classification -- a second source-only adaptation is dropped under a counted reason',async()=>{
+ const findings=[evidenceFinding(),evidenceFinding({finding_id:'ef2',source_ids:['sp2'],observed_value:390}),evidenceFinding({finding_id:'ef3',source_ids:['sp3'],observed_value:380})];
+ const mk=(n,key,sid)=>{const it=citing(candidate(),key,[sid]);it.weekly.rank=n;it.weekly.topic_key='topic-'+n;it.original_angle='Angle number '+n;return it;};
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[mk(1,'ivan:2026-09-21:ef1','sp1'),mk(2,'ivan:2026-09-21:ef2','sp2'),mk(3,'ivan:2026-09-21:ef3','sp3')],evidencePack:{study:{study_id:'s1',state:'validated'},findings}});
+ const rec=first(x);
+ assert.equal(rec.proposed,1,'one experiment per week, whatever the model returns');
+ assert.deepEqual(rec.dropped.map(d=>d.reason),['evidence_candidate_second_experiment','evidence_candidate_second_experiment']);
+ assert.equal(rec.evidence_selection.experiments,1);
+ assert.equal(rec.evidence_selection.dropped_second_experiment,2);
+ assert.equal(rec.rows[0].context.evidence_package.mechanism_class,'experiment');
+});
+
+test('D15: the model can never downgrade the class -- an echoed supported package does not change the saved row',async()=>{
+ const it=citing(candidate(),'ivan:2026-09-21:ef1');
+ it.experiment=false;
+ it.evidence_package={source_finding_ids:['ef1'],client_fact_refs:[],label:'evidence_backed',is_experiment:false,mechanism_class:'supported'};
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ const pkg=first(x).rows[0].context.evidence_package;
+ assert.equal(pkg.label,'experiment');
+ assert.equal(pkg.is_experiment,true);
+ assert.equal(pkg.mechanism_class,'experiment');
+ assert.equal(pkg.mechanism_support,'source_only');
+ assert(isFinite(pkg.observation_window.days));
+});
+
+test("D15: a client's own measured result stays supported and keeps its evidence_backed label",async()=>{
+ const it=citing(candidate(),'ivan:2026-09-21:ef-own');
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding({finding_id:'ef-own',kind:'own_result'})]}});
+ const pkg=first(x).rows[0].context.evidence_package;
+ assert.equal(pkg.label,'evidence_backed');
+ assert.equal(pkg.is_experiment,false);
+ assert.equal(pkg.mechanism_support,'client_own_result');
+});
+
+test('D15: the competing explanations a source-only lift carries reach the model and the saved row',async()=>{
+ const it=citing(candidate(),'ivan:2026-09-21:ef1');
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ const offered=x.packs[0].evidence_candidates[0];
+ // limitations reach the model as L-codes resolved through the pack's own dictionary.
+ const resolved=offered.limitations.map(c=>x.packs[0].evidence_limitations[c]||c);
+ assert(resolved.some(l=>/giveaway|distribution/i.test(l)),'the model is shown the competing explanations');
+ assert(first(x).rows[0].context.evidence_package.limitations.some(l=>/giveaway|distribution/i.test(l)));
 });
