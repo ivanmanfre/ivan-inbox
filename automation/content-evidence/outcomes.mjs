@@ -25,7 +25,7 @@
 //     on a SOURCE population. A source's lift and a client's own post are never merged in one
 //     record here.
 
-import { utcIso, EvidenceValidationError } from './contracts.mjs';
+import { utcIso } from './contracts.mjs';
 
 export class OutcomesError extends Error {
   constructor(code, message, details = undefined) {

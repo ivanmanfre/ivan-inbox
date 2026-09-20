@@ -36,12 +36,19 @@ export class NormalizeError extends Error {
 
 const fail = (code, message, details) => { throw new NormalizeError(code, message, details); };
 
+// Matches the contract's own seven-term vocabulary exactly (CONTRACT.md), so this module and
+// import-study.mjs hold one frozen vocabulary for "why was this record excluded", not two. This
+// module only ever excludes on CAPTURE time today (observation_after_cutoff) -- it has no separate
+// publication-date gate -- so published_after_cutoff is a reserved, currently-unused reason here;
+// it is still listed so a caller checking membership in EXCLUSION_REASONS against either module's
+// output sees the same seven names.
 export const EXCLUSION_REASONS = Object.freeze([
   'missing_canonical_id',
   'own_control',
   'reshare',
   'selftest',
   'observation_after_cutoff',
+  'published_after_cutoff',
   'duplicate_source_url',
 ]);
 

@@ -16,7 +16,7 @@
 // caller is responsible for tenant separation, same as normalize.mjs) and only ever scores a
 // SOURCE population -- it has no concept of "own performance". Owner: outcomes.mjs, separately.
 
-import { computeLift, hashObject } from './contracts.mjs';
+import { computeLift, hashObject, validatePolicy } from './contracts.mjs';
 
 export const METHOD_VERSION = 'content-evidence-methods-v1';
 
@@ -44,7 +44,7 @@ export function computeOutliers({ posts, cutoff, policy, studyId = null } = {}) 
   if (typeof cutoff !== 'string' || cutoff.trim() === '') fail('METHODS_MISSING_CUTOFF', 'cutoff is required');
   const cutoffMs = Date.parse(cutoff);
   if (Number.isNaN(cutoffMs)) fail('METHODS_BAD_CUTOFF', `cutoff is not a parseable date: ${JSON.stringify(cutoff)}`);
-  validatePolicyLoose(policy);
+  checkPolicy(policy);
 
   const windowFloorMs = Number.isFinite(policy.windowDays) ? cutoffMs - policy.windowDays * 86400000 : -Infinity;
 
@@ -118,8 +118,12 @@ export function computeOutliers({ posts, cutoff, policy, studyId = null } = {}) 
   // replaying the LEGACY study's recovered policy) raises any baseline below it up to the floor
   // before computing lift, so a near-zero denominator does not manufacture an enormous multiplier.
   // The two policies are never mixed: a caller wanting the legacy figure passes baselineFloor
-  // explicitly and gets method_version-tagged findings that say so (see policy.id).
+  // explicitly and gets a DISTINCT method_version that says so -- a floored run and an unfloored
+  // run must never be grouped under the same method_version, or a downstream consumer grouping by
+  // that key (the obvious key, and the one WINNERS.md itself uses to keep the three live baselines
+  // apart) would pool floored and unfloored multipliers into one population.
   const baselineFloor = policy.baselineFloor ?? null;
+  const effectiveMethodVersion = baselineFloor === null ? METHOD_VERSION : `${METHOD_VERSION}-floor${baselineFloor}`;
 
   const findings = [];
   const baselineCoverage = [];
@@ -157,7 +161,7 @@ export function computeOutliers({ posts, cutoff, policy, studyId = null } = {}) 
         if (lift < minimumLift) continue;
         if (likes < minimumLikes) continue;
 
-        const findingId = hashObject({ v: METHOD_VERSION, policyId: policy.id, clientId, postId: row.post_id ?? row.canonical_source_id });
+        const findingId = hashObject({ v: effectiveMethodVersion, policyId: policy.id, clientId, postId: row.post_id ?? row.canonical_source_id });
         findings.push({
           client_id: clientId,
           study_id: studyId,
@@ -172,7 +176,7 @@ export function computeOutliers({ posts, cutoff, policy, studyId = null } = {}) 
           baseline_n: n,
           lift,
           formula: `likes + ${repostWeight} * reposts`,
-          method_version: METHOD_VERSION,
+          method_version: effectiveMethodVersion,
           source_dates: { published_at: row.published_at ?? null },
           capture_dates: { captured_at: row.captured_at ?? null },
           age_comparability: 'unknown',
@@ -192,7 +196,7 @@ export function computeOutliers({ posts, cutoff, policy, studyId = null } = {}) 
     findings,
     excluded,
     baselineCoverage,
-    methodVersion: METHOD_VERSION,
+    methodVersion: effectiveMethodVersion,
   };
 }
 
@@ -219,18 +223,13 @@ function median(nums) {
   return n % 2 === 0 ? (s[mid - 1] + s[mid]) / 2 : s[mid];
 }
 
-function validatePolicyLoose(policy) {
-  if (policy === null || typeof policy !== 'object') fail('METHODS_BAD_POLICY', 'policy must be an object');
-  for (const key of ['id']) {
-    if (typeof policy[key] !== 'string' || policy[key].trim() === '') {
-      fail('METHODS_BAD_POLICY', `policy.${key} must be a non-empty string`);
-    }
-  }
-  for (const key of ['windowDays', 'minimumN', 'repostWeight', 'minimumLift', 'minimumLikes']) {
-    if (typeof policy[key] !== 'number' || !Number.isFinite(policy[key]) || policy[key] < 0) {
-      fail('METHODS_BAD_POLICY', `policy.${key} must be a finite number >= 0`);
-    }
-  }
+// The frozen policy shape (id, windowDays, minimumN, repostWeight, minimumLift, minimumLikes) is
+// contracts.mjs's own -- validatePolicy is imported and called directly rather than restated here,
+// so this module and contracts.mjs cannot drift into two different definitions of a valid policy.
+// baselineFloor is this module's own EXTRA, optional field (contracts.mjs's policy shape has no
+// concept of a floor), so it gets its own check after the shared one.
+function checkPolicy(policy) {
+  validatePolicy(policy); // throws EvidenceValidationError (code POLICY_INVALID) on the shared shape
   // baselineFloor is optional. Omitted or null = this module's own policy (no floor: a zero/low
   // baseline yields no finite multiplier). When present it must be a finite number >= 0.
   if (policy.baselineFloor !== undefined && policy.baselineFloor !== null) {

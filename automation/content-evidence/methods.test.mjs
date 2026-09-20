@@ -5,6 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { computeOutliers } from './methods.mjs';
+import { validateFinding } from './contracts.mjs';
 
 // ---------------------------------------------------------------------------
 // Verbatim Package 2 fixture
@@ -227,19 +228,35 @@ test('baselineFloor:8 replays the legacy low-baseline policy -- a near-zero base
   assert.equal(finding.baseline_floor, 8);
 });
 
+test('a baselineFloor:8 run stamps a DISTINCT method_version from a no-floor run on the same posts -- never pooled under one key', () => {
+  const posts = ordinaryPosts(20, { likes: 2 });
+  posts.push({ client_id: 'test', author_id: 'a', post_id: 'w', published_at: '2026-08-01',
+    captured_at: '2026-09-01', likes: 40, reposts: 0, comments: 0, is_reshare: false });
+
+  const noFloor = computeOutliers({ posts, cutoff: '2026-09-02', policy: POLICY }); // baselineFloor omitted
+  const floored = computeOutliers({ posts, cutoff: '2026-09-02', policy: { ...POLICY, baselineFloor: 8 } });
+
+  assert.notEqual(floored.methodVersion, noFloor.methodVersion);
+  assert.equal(floored.methodVersion, `${noFloor.methodVersion}-floor8`);
+  // and every finding under each run carries its own run's method_version, not the other's
+  const flooredFinding = floored.findings.find((f) => f.source_ids.includes('w'));
+  assert.equal(flooredFinding.method_version, floored.methodVersion);
+  assert.notEqual(flooredFinding.method_version, noFloor.methodVersion);
+});
+
 // ---------------------------------------------------------------------------
 // Required Finding contract fields are all present (contracts.mjs shape)
 // ---------------------------------------------------------------------------
-test('a market finding carries every field contracts.mjs requires, including lift', () => {
+test('a market finding satisfies contracts.mjs\'s own validateFinding -- a real conformance check, not a name check', () => {
   const posts = ordinaryPosts(20);
   posts.push({ client_id: 'test', author_id: 'a', post_id: 'w', published_at: '2026-08-01',
     captured_at: '2026-09-01', likes: 50, reposts: 10, comments: 0, is_reshare: false });
   const r = computeOutliers({ posts, cutoff: '2026-09-02', policy: POLICY, studyId: 's1' });
   const f = r.findings[0];
-  for (const field of ['client_id', 'study_id', 'finding_id', 'kind', 'source_ids', 'metric_id',
-    'observed_value', 'baseline_value', 'baseline_n', 'formula', 'method_version',
-    'source_dates', 'capture_dates', 'age_comparability', 'limitations', 'validation_state', 'lift']) {
-    assert.ok(field in f, `finding missing ${field}`);
-  }
+  // validateFinding is the thing that actually decides whether the contract accepts this finding:
+  // it checks presence AND shape (kind-specific required fields, array types, enum membership),
+  // not merely that seventeen key names exist. It throws on failure, so a passing call IS the
+  // assertion.
+  assert.doesNotThrow(() => validateFinding(f, { clientId: 'test' }));
   assert.equal(f.kind, 'market');
 });
