@@ -54,6 +54,10 @@ export function computeOutliers({ posts, cutoff, policy, studyId = null } = {}) 
   /** @type {Map<string, Map<string, object>>} client_id -> post_id -> latest kept observation (per author scope) */
   const latestByPost = new Map();
   const seenAuthors = new Map(); // client_id -> Set(author_id), so a fully-excluded author still gets a coverage row
+  /** @type {Map<string, Map<string, number>>} client_id -> author_id -> count of unknown-score posts,
+   * so an author's coverage row can report how many of their posts were unscoreable without pretending
+   * they scored zero. */
+  const unknownScoreByAuthor = new Map();
 
   for (const row of posts) {
     if (row === null || typeof row !== 'object') fail('METHODS_BAD_POSTS', 'every post row must be an object');
@@ -98,12 +102,25 @@ export function computeOutliers({ posts, cutoff, policy, studyId = null } = {}) 
     }
   }
 
-  // Build eligible-per-author lists from the deduplicated latest-capture-per-post rows.
+  // Build eligible-per-author lists from the deduplicated latest-capture-per-post rows. A post
+  // whose score cannot be computed (likes or reposts missing/null) is UNKNOWN, never a manufactured
+  // zero: it is excluded here from both the baseline arithmetic and the minimumN count, and counted
+  // separately so a coverage row can say how many of an author's posts were unscoreable.
   for (const [clientId, postMap] of latestByPost) {
     if (!eligibleByAuthor.has(clientId)) eligibleByAuthor.set(clientId, new Map());
     const byAuthor = eligibleByAuthor.get(clientId);
     for (const row of postMap.values()) {
       const authorId = row.author_id;
+      if (score(row, policy.repostWeight) === null) {
+        excluded.push({
+          client_id: clientId, post_id: row.post_id ?? row.canonical_source_id ?? null, author_id: authorId,
+          reason: 'unknown_metric',
+        });
+        if (!unknownScoreByAuthor.has(clientId)) unknownScoreByAuthor.set(clientId, new Map());
+        const uByAuthor = unknownScoreByAuthor.get(clientId);
+        uByAuthor.set(authorId, (uByAuthor.get(authorId) ?? 0) + 1);
+        continue;
+      }
       if (!byAuthor.has(authorId)) byAuthor.set(authorId, []);
       byAuthor.get(authorId).push(row);
     }
@@ -149,6 +166,7 @@ export function computeOutliers({ posts, cutoff, policy, studyId = null } = {}) 
         effective_baseline_value: effectiveBaselineValue,
         ranked,
         below_minimum_n: n < minimumN,
+        unknown_score_n: unknownScoreByAuthor.get(clientId)?.get(authorId) ?? 0,
       });
 
       if (!ranked) continue; // zero/null baseline (no floor) or below minimumN: inspectable, not ranked
@@ -202,9 +220,17 @@ export function computeOutliers({ posts, cutoff, policy, studyId = null } = {}) 
 
 // ---------------------------------------------------------------------------
 
+// Returns null -- UNKNOWN, never a manufactured 0 -- when either likes or reposts is missing/null.
+// A missing public count is not evidence of a zero count; the audit's P1 finding 3 was exactly this
+// module treating a never-captured metric as if it had been captured and found empty. There is no
+// documented provider-absence flag anywhere in this codebase that would license a true-zero
+// substitution (checked: adapters.mjs, contracts.mjs, normalize.mjs carry no such flag today), so
+// both missing likes and missing reposts stay unknown rather than defaulting either one to 0.
+// A REAL zero (the value 0, explicitly present) is a genuine observation and always scores as 0.
 function score(row, repostWeight) {
-  const likes = numOrNull(row.likes) ?? 0;
-  const reposts = numOrNull(row.reposts) ?? 0; // a public repost count that was never captured scores as 0, not unknown
+  const likes = numOrNull(row.likes);
+  const reposts = numOrNull(row.reposts);
+  if (likes === null || reposts === null) return null;
   return likes + repostWeight * reposts;
 }
 

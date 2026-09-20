@@ -57,6 +57,14 @@ const STANDING_TOLERANCE_DAYS = 1;
  * @param {string} args.cutoff             ISO cutoff; a recommendation past its target with no
  *                                         publication by cutoff is "due"
  * @returns {{ tests: object[], unresolvedLinks: object[], due: object[], evaluated: number }}
+ *   Each `tests[i]` carries a `state` of 'awaiting_publication' (no valid-as-of-cutoff publication
+ *   evidence yet), 'measuring' (valid publication, no eligible observation yet) or 'evaluated'
+ *   (valid publication + >=1 eligible observation). `evaluated` (top-level) counts only tests in
+ *   state 'evaluated'. Each `tests[i].excluded` lists {kind, id, reason} for every observation or
+ *   publication that could not count as evidence (future/invalid dates, capture-before-publish). A
+ *   same-client link to a nonexistent publication_id never produces a test -- it lands in
+ *   `unresolvedLinks` instead. `approval_status` ('recorded' | 'not_recorded') replaces the old
+ *   shipped_without_approval overclaim; it is separate from `link_status` (explicit vs inferred).
  */
 export function joinTestOutcomes({
   clientId, recommendations, ideaLinks = [], publications, observations, cutoff,
@@ -65,13 +73,17 @@ export function joinTestOutcomes({
     fail('OUTCOMES_MISSING_CLIENT', 'joinTestOutcomes requires an explicit clientId');
   }
   if (!Array.isArray(recommendations)) fail('OUTCOMES_BAD_INPUT', 'recommendations must be an array');
+  if (!Array.isArray(ideaLinks)) fail('OUTCOMES_BAD_INPUT', 'ideaLinks must be an array');
   if (!Array.isArray(publications)) fail('OUTCOMES_BAD_INPUT', 'publications must be an array');
   if (!Array.isArray(observations)) fail('OUTCOMES_BAD_INPUT', 'observations must be an array');
   const cutoffIso = utcIso(cutoff);
   if (cutoffIso === null) fail('OUTCOMES_BAD_CUTOFF', 'a parseable cutoff is required');
   const cutoffMs = Date.parse(cutoffIso);
 
-  for (const list of [recommendations, publications, observations]) {
+  // ideaLinks is a tenant-scoped input exactly like recommendations/publications/observations --
+  // a foreign client_id here (audit P1 finding 1) is refused the same way as anywhere else, never
+  // silently joined because the row happens to be a link rather than a recommendation.
+  for (const list of [recommendations, ideaLinks, publications, observations]) {
     for (const row of list) {
       if (row.client_id !== undefined && row.client_id !== null && row.client_id !== clientId) {
         throw new OutcomesError('OUTCOMES_TENANT_MISMATCH',
@@ -121,26 +133,84 @@ export function joinTestOutcomes({
     }
 
     const publication = publicationsById.get(publicationId);
-    const rawObservations = observationsByPublication.get(publicationId) ?? [];
-    const publishedMs = publication?.published_at ? Date.parse(publication.published_at) : NaN;
+    if (publication === undefined) {
+      // A stored link (explicit or inferred -- inferred can never dangle since it only ever
+      // matches an id already present in `publications`) points at a publication_id this join
+      // context has no record of. This is NOT "performance": no test is fabricated, no
+      // published_at:null stands in for evidence. Kept unresolved, same as a recommendation with
+      // no link at all.
+      unresolvedLinks.push({
+        client_id: clientId,
+        recommendation_id: rec.recommendation_id,
+        publication_id: publicationId,
+        reason: `linked publication_id ${JSON.stringify(publicationId)} has no matching publication record`,
+      });
+      continue;
+    }
 
+    const rawObservations = observationsByPublication.get(publicationId) ?? [];
+    const publishedIso = utcIso(publication.published_at);
+    const publishedMs = publishedIso ? Date.parse(publishedIso) : NaN;
+    // Valid publication evidence requires a parseable published_at that has actually happened as
+    // of the cutoff -- a future or unparseable publication date is never "evidence", it is a
+    // publication still awaited.
+    const publicationValid = !Number.isNaN(publishedMs) && publishedMs <= cutoffMs;
+
+    const excludedItems = [];
     const stampedObservations = rawObservations.map((obs) => {
-      const capturedMs = obs.captured_at ? Date.parse(obs.captured_at) : NaN;
+      const capturedIso = utcIso(obs.captured_at);
+      const capturedMs = capturedIso ? Date.parse(capturedIso) : NaN;
+
+      let excludeReason = null;
+      if (Number.isNaN(capturedMs)) {
+        excludeReason = 'invalid_or_missing_capture_date';
+      } else if (capturedMs > cutoffMs) {
+        excludeReason = 'observation_after_cutoff';
+      } else if (!publicationValid) {
+        excludeReason = Number.isNaN(publishedMs) ? 'invalid_or_missing_publication_date' : 'publication_after_cutoff';
+      } else if (capturedMs < publishedMs) {
+        excludeReason = 'captured_before_publication';
+      }
+      const eligible = excludeReason === null;
+
       const ageDays = !Number.isNaN(publishedMs) && !Number.isNaN(capturedMs)
         ? Math.round((capturedMs - publishedMs) / 86400000)
         : null;
       const isBackfillOrLifetime = obs.is_backfill === true || obs.is_lifetime === true;
-      const ageMatched = !isBackfillOrLifetime && ageDays !== null
+      // Future data is never labelled age_matched, even when its raw age happens to land on a
+      // standing checkpoint (audit P1 finding 2) -- ineligibility wins over a coincidental match.
+      const ageMatched = eligible && !isBackfillOrLifetime && ageDays !== null
         && STANDING_CHECKPOINTS_DAYS.some((cp) => Math.abs(ageDays - cp) <= STANDING_TOLERANCE_DAYS);
+
+      if (!eligible) {
+        excludedItems.push({ kind: 'observation', id: capturedIso, reason: excludeReason });
+      }
+
       return {
-        captured_at: utcIso(obs.captured_at),
+        captured_at: capturedIso,
         capture_age_days: ageDays,
         age_matched: ageMatched,
         is_backfill: obs.is_backfill === true,
         is_lifetime: obs.is_lifetime === true,
         metrics: obs.metrics ?? null,
+        eligible,
       };
     });
+
+    if (!publicationValid) {
+      excludedItems.push({
+        kind: 'publication', id: publicationId,
+        reason: Number.isNaN(publishedMs) ? 'invalid_or_missing_publication_date' : 'publication_after_cutoff',
+      });
+    }
+
+    const hasEligibleObservation = stampedObservations.some((o) => o.eligible);
+    // A test counts as evaluated only with valid publication evidence AND >=1 eligible observed
+    // outcome. A valid publication with no eligible observation yet is still being measured, not
+    // evaluated; a publication that has not (as of cutoff) actually happened is awaiting_publication.
+    const state = !publicationValid
+      ? 'awaiting_publication'
+      : hasEligibleObservation ? 'evaluated' : 'measuring';
 
     tests.push({
       client_id: clientId,
@@ -149,17 +219,23 @@ export function joinTestOutcomes({
       link_status: linkStatus,
       source_ref: rec.source_ref ?? null,
       approved_at: utcIso(rec.approved_at),
-      shipped_without_approval: rec.approved_at === null || rec.approved_at === undefined,
+      // A null/absent approved_at means "no approval recorded in THIS source" -- it is never
+      // evidence that no authorization exists elsewhere (audit P2 finding). approval_status
+      // replaces the old shipped_without_approval overclaim; link_status (above) already carries
+      // the separate explicit-vs-inferred provenance question.
+      approval_status: (rec.approved_at === null || rec.approved_at === undefined) ? 'not_recorded' : 'recorded',
       target_publish_at: utcIso(rec.target_publish_at),
-      published_at: utcIso(publication?.published_at ?? null),
+      published_at: publishedIso,
+      state,
       observations: stampedObservations,
+      excluded: excludedItems,
       limitations: linkStatus === 'inferred'
         ? ['this recommendation-to-publication link is INFERRED (no stored key); it is circumstantial (timing/title match), never a verified join']
         : [],
     });
   }
 
-  return { tests, unresolvedLinks, due, evaluated: tests.length };
+  return { tests, unresolvedLinks, due, evaluated: tests.filter((t) => t.state === 'evaluated').length };
 }
 
 // ---------------------------------------------------------------------------

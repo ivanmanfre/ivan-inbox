@@ -5,7 +5,16 @@
 //
 //   * TENANCY. Every reader takes an explicit clientId and refuses to build SQL without one.
 //     There is no default client, no "current" client and no inference from a path or a cwd.
-//     The client is always a bound parameter, never interpolated into the statement.
+//     The client is always a bound parameter, never interpolated into the statement. The readers
+//     are a CLOSED SET of named builders whose statements are constants in this file; there is no
+//     caller-supplied SQL, because a statement this module has not written cannot be scoped by
+//     inspecting it. (Independent audit 2026-09-20, finding 4: the old runReadOnly accepted any
+//     statement in which `$1` appeared with the right bind, so
+//     `select $1 as requested_client, p.* from public.client_post_metrics p` read as "tenant
+//     bound" and returned another tenant's rows. Parameter presence is not scope proof.)
+//   * OUTPUT TENANCY. Scope is checked again on the way back. A row whose tenant column is absent,
+//     null or another tenant's value is a THROWN error, never a quietly filtered result and never
+//     a returned row: a narrowed result hides the broken predicate that produced it.
 //   * COLLECTION. An adapter reads. It never harvests and never writes: assertReadOnlySql()
 //     rejects anything that is not a single select/with statement, including a select with a
 //     write smuggled in after a semicolon.
@@ -29,6 +38,12 @@ export class AdapterError extends Error {
 }
 
 const IVAN = 'ivan';
+
+// The explicit registry set for this workspace. Scope comes from here and from nowhere else --
+// never from a directory name, a session, a path substring or a caller's string. A new tenant is
+// an edit to this line, reviewed like any other code change; an unregistered clientId is refused
+// rather than quietly given an empty or a shared population.
+export const REGISTERED_CLIENTS = Object.freeze(['ivan', 'risedtc', 'arch']);
 
 // ---------------------------------------------------------------------------
 // Market source descriptors: where a tenant's market corpus actually lives
@@ -61,7 +76,9 @@ export const MARKET_SOURCES = Object.freeze({
     table: 'public.competitor_posts',
     // The untenanted legacy population IS Ivan's corpus. Never narrow this to client_id = 'ivan'.
     tenantPredicate: "(p.client_id is null or p.client_id = $1)",
+    tenantColumn: 'client_id',
     includesNullTenant: true,
+    untenanted: false,
     matches: (row, clientId) =>
       !SELFTEST_LANES.includes(row.client_id)
       && (row.client_id === null || row.client_id === undefined || row.client_id === clientId),
@@ -71,7 +88,9 @@ export const MARKET_SOURCES = Object.freeze({
     lane: 'default',
     table: 'public.audn_competitor_posts',
     tenantPredicate: 'p.client_id = $1',
+    tenantColumn: 'client_id',
     includesNullTenant: false,
+    untenanted: false,
     matches: (row, clientId) =>
       !SELFTEST_LANES.includes(row.client_id) && row.client_id === clientId,
     note: 'Per-tenant table, properly tagged. An untagged row belongs to nobody and is not read.',
@@ -79,18 +98,33 @@ export const MARKET_SOURCES = Object.freeze({
 });
 
 /**
+ * The one place a clientId becomes a scope. Missing, a selftest lane, or absent from the explicit
+ * registry are three distinct refusals; none of them is a silent empty population.
+ */
+function assertClient(caller, clientId, population = 'population') {
+  if (typeof clientId !== 'string' || clientId.trim() === '') {
+    throw new AdapterError('ADAPTER_MISSING_CLIENT',
+      `${caller} requires an explicit clientId; there is no default tenant`);
+  }
+  // By name, and before the registry check. lane_allowed('zz-selftest') is true, so authorization
+  // would let a selftest lane build a population; scope does not.
+  if (SELFTEST_LANES.includes(clientId)) {
+    throw new AdapterError('ADAPTER_SELFTEST_LANE',
+      `${caller} refuses ${clientId}: a selftest lane is not a tenant and has no ${population}. lane_allowed() passing is authorization, not scope.`);
+  }
+  if (!REGISTERED_CLIENTS.includes(clientId)) {
+    throw new AdapterError('ADAPTER_UNKNOWN_CLIENT',
+      `${caller} refuses ${JSON.stringify(clientId)}: it is not in the explicit client registry [${REGISTERED_CLIENTS.join(', ')}]`);
+  }
+  return clientId;
+}
+
+/**
  * The market source descriptor for one tenant. Throws for a selftest lane: it is not a tenant and
  * must never acquire a market population, whatever lane_allowed() says about it.
  */
 export function marketSourceFor(clientId) {
-  if (typeof clientId !== 'string' || clientId.trim() === '') {
-    throw new AdapterError('ADAPTER_MISSING_CLIENT',
-      'marketSourceFor requires an explicit clientId; there is no default tenant');
-  }
-  if (SELFTEST_LANES.includes(clientId)) {
-    throw new AdapterError('ADAPTER_SELFTEST_LANE',
-      `${clientId} is a selftest lane, not a tenant; it has no market population. lane_allowed() passing is authorization, not scope.`);
-  }
+  assertClient('marketSourceFor', clientId, 'market population');
   const base = clientId === IVAN ? MARKET_SOURCES.ivan : MARKET_SOURCES.default;
   return Object.freeze({ ...base, clientId });
 }
@@ -118,6 +152,12 @@ export const OWN_POST_SOURCES = Object.freeze({
     lane: 'ivan',
     table: 'public.own_posts',
     tenantColumn: null,
+    // The ONE descriptor allowed to return rows that carry no tenant value, and it says so here
+    // rather than leaving the validator to infer it from a missing column. It serves the client it
+    // names and no other; every other client routes to the tenanted table below.
+    untenanted: true,
+    onlyClient: IVAN,
+    includesNullTenant: false,
     tenancy: 'untenanted table; ivan-only by descriptor',
     note: 'No client_id/seat/tenant/owner column exists. Scope comes from the descriptor, never from SQL.',
   }),
@@ -125,6 +165,8 @@ export const OWN_POST_SOURCES = Object.freeze({
     lane: 'default',
     table: 'public.client_post_metrics',
     tenantColumn: 'client_id',
+    untenanted: false,
+    includesNullTenant: false,
     tenancy: 'tenant column client_id, bound as $1',
     note: 'Per-tenant table; the client is a bound parameter in the where clause.',
   }),
@@ -132,17 +174,18 @@ export const OWN_POST_SOURCES = Object.freeze({
 
 /** The own-post source descriptor for one tenant. Selftest lanes are refused, as everywhere. */
 export function ownPostSourceFor(clientId) {
-  if (typeof clientId !== 'string' || clientId.trim() === '') {
-    throw new AdapterError('ADAPTER_MISSING_CLIENT',
-      'ownPostSourceFor requires an explicit clientId; there is no default tenant');
-  }
-  if (SELFTEST_LANES.includes(clientId)) {
-    throw new AdapterError('ADAPTER_SELFTEST_LANE',
-      `${clientId} is a selftest lane, not a tenant; it has no own-post population.`);
-  }
+  assertClient('ownPostSourceFor', clientId, 'own-post population');
   const base = clientId === IVAN ? OWN_POST_SOURCES.ivan : OWN_POST_SOURCES.default;
   return Object.freeze({ ...base, clientId });
 }
+
+// ---------------------------------------------------------------------------
+// The closed set of named readers
+// ---------------------------------------------------------------------------
+//
+// Every read this module performs is one of these five statements. Each is a constant here, each
+// filters rows by the bound client, and each declares the tenant column its rows must carry so the
+// result can be checked again on the way back.
 
 /** Reader names, in one place, so a tenancy test can loop over all of them instead of a sample. */
 export const READERS = Object.freeze([
@@ -151,8 +194,80 @@ export const READERS = Object.freeze([
   'readOwnAudience',
   'readStudyReading',
   'readRoster',
-  'runReadOnly',
 ]);
+
+/**
+ * Names that were removed from the read surface and still exist only to reject. `runReadOnly` took
+ * caller-supplied SQL; audit finding 4 showed that checking such a statement for `$1` proves
+ * nothing about what it reads. Kept as a throwing member so an old caller gets a named error
+ * instead of "undefined is not a function".
+ */
+export const REMOVED_READERS = Object.freeze(['runReadOnly']);
+
+/** Source descriptors for the readers whose table is the same for every tenant. */
+export const READER_SOURCES = Object.freeze({
+  readOwnAudience: Object.freeze({
+    lane: 'all', table: 'public.post_audience_history',
+    tenantColumn: 'seat', untenanted: false, includesNullTenant: false,
+    tenancy: 'tenant column seat, bound as $1',
+  }),
+  readStudyReading: Object.freeze({
+    lane: 'all', table: 'public.client_research_outliers',
+    tenantColumn: 'client_id', untenanted: false, includesNullTenant: false,
+    tenancy: 'tenant column client_id, bound as $1',
+  }),
+  readRoster: Object.freeze({
+    lane: 'all', table: 'public.client_registry',
+    tenantColumn: 'client_id', untenanted: false, includesNullTenant: false,
+    tenancy: 'tenant column client_id, bound as $1',
+  }),
+});
+
+/** The statement each named reader runs, verbatim. The only market statement is built from the
+ *  tenant's descriptor, so the predicate a test inspects is the predicate that runs. */
+const SQL = Object.freeze({
+  marketPosts: (src, selftestList) =>
+    `select p.linkedin_post_url, p.competitor_name, p.linkedin_profile_url, p.competitor_role,
+            p.client_id, p.post_date, p.created_at, p.updated_at, p.post_type, p.post_text,
+            p.likes_count, p.comments_count, p.reposts_count
+       from ${src.table} p
+      where ${src.tenantPredicate}
+        and coalesce(p.client_id, '') not in (${selftestList})
+        and coalesce(p.competitor_role, '') <> 'killed'
+      order by p.post_date desc nulls last`,
+  ownPostsLegacyIvan:
+    `select o.social_id, o.linkedin_url, o.post_text, o.post_type, o.posted_at,
+            o.metrics_updated_at, o.scraped_at, o.num_likes, o.num_comments, o.num_shares,
+            o.num_impressions, o.profile_views_from_post
+       from public.own_posts o
+      order by o.posted_at desc nulls last`,
+  // client_id is selected as well as bound: a row that cannot show its tenant is refused, so the
+  // reader has to ask for the column it validates.
+  ownPostsTenanted:
+    `select m.client_id, m.social_id, m.post_url, m.title, m.published_at, m.captured_at,
+            m.impressions, m.reactions, m.comments, m.shares,
+            m.profile_views_from_post, m.followers_gained_from_post, m.inbound_dms
+       from public.client_post_metrics m
+      where m.client_id = $1
+      order by m.published_at desc nulls last`,
+  ownAudience:
+    `select h.seat, h.activity_id, h.post_url, h.title, h.published_at, h.captured_at,
+            h.impressions, h.reactions, h.comments, h.members_reached, h.demographics,
+            h.in_pct, h.out_pct, h.source
+       from public.post_audience_history h
+      where h.seat = $1
+      order by h.published_at desc nulls last`,
+  studyReading:
+    `select o.client_id, o.run_id, o.reading, o.created_at
+       from public.client_research_outliers o
+      where o.client_id = $1
+      order by o.created_at desc, o.run_id desc
+      limit 1`,
+  roster:
+    `select r.client_id, r.display_name, r.is_active, r.platform
+       from public.client_registry r
+      where r.client_id = $1`,
+});
 
 // The statement verbs an adapter must never emit. Assembled from a list so the word "write verb"
 // list reads as data. A single read statement is allowed; `with` is included because the repo's
@@ -187,18 +302,56 @@ export function assertReadOnlySql(sql) {
 }
 
 function requireClient(reader, opts) {
-  const clientId = opts && opts.clientId;
-  if (typeof clientId !== 'string' || clientId.trim() === '') {
-    throw new AdapterError('ADAPTER_MISSING_CLIENT',
-      `${reader} requires an explicit clientId; there is no default tenant`);
+  return assertClient(reader, opts && opts.clientId, 'evidence population');
+}
+
+/**
+ * Output tenancy. Defence in depth, run on the rows that came BACK: a where clause can be widened
+ * by a view, a future column default, a join or a mistake, and a narrowed result would hide it.
+ *
+ * A row is accepted only when the source descriptor can account for it:
+ *   * tenanted source -- the declared tenant column must be present and equal the client. Absent or
+ *     null counts as unproven and is refused, unless the descriptor declares includesNullTenant
+ *     (Ivan's legacy market corpus, where the untenanted rows ARE the population).
+ *   * untenanted source -- allowed only for the single client the descriptor names, and only
+ *     because that descriptor states the table has no tenant column at all.
+ * A stray foreign `client_id` is refused even on a source whose tenant column is something else.
+ *
+ * @returns {true} when every row is in scope; otherwise it throws and no row is returned.
+ */
+export function assertRowTenancy(reader, source, clientId, rows) {
+  if (source.untenanted === true) {
+    if (source.onlyClient !== clientId) {
+      throw new AdapterError('ADAPTER_UNTENANTED_SOURCE',
+        `${reader}: ${source.table} has no tenant column and its descriptor serves ${JSON.stringify(source.onlyClient)} only; ${JSON.stringify(clientId)} cannot read it`);
+    }
+  } else if (typeof source.tenantColumn !== 'string' || source.tenantColumn === '') {
+    throw new AdapterError('ADAPTER_UNTENANTED_SOURCE',
+      `${reader}: ${source.table} declares no tenant column and no untenanted descriptor; its rows cannot be scoped`);
   }
-  // By name, in every reader. lane_allowed('zz-selftest') is true, so authorization would let a
-  // selftest lane build a population; scope does not.
-  if (SELFTEST_LANES.includes(clientId)) {
-    throw new AdapterError('ADAPTER_SELFTEST_LANE',
-      `${reader} refuses ${clientId}: a selftest lane is not a tenant and has no evidence population`);
+  const col = source.untenanted === true ? null : source.tenantColumn;
+  for (const row of rows) {
+    if (col !== null) {
+      const present = row !== null && typeof row === 'object' && col in row;
+      const value = present ? row[col] : undefined;
+      if (value === null || value === undefined) {
+        if (source.includesNullTenant !== true) {
+          throw new AdapterError('ADAPTER_TENANCY_VIOLATION',
+            `${reader}: a row from ${source.table} carries no ${col}; an unattributable row cannot be read as ${JSON.stringify(clientId)}`);
+        }
+      } else if (value !== clientId) {
+        throw new AdapterError('ADAPTER_TENANCY_VIOLATION',
+          `${reader}: ${source.table} returned a row for ${JSON.stringify(value)} while reading ${JSON.stringify(clientId)}`);
+      }
+    }
+    // A tenant tag the source did not promise is still a tenant tag.
+    if (col !== 'client_id' && row && typeof row === 'object' && 'client_id' in row
+        && row.client_id !== null && row.client_id !== undefined && row.client_id !== clientId) {
+      throw new AdapterError('ADAPTER_TENANCY_VIOLATION',
+        `${reader}: ${source.table} returned a row tagged ${JSON.stringify(row.client_id)} while reading ${JSON.stringify(clientId)}`);
+    }
   }
-  return clientId;
+  return true;
 }
 
 /** null/undefined stay null; a genuine 0 stays 0. */
@@ -232,32 +385,32 @@ export function createAdapters({ query }) {
     throw new AdapterError('ADAPTER_NO_QUERY', 'createAdapters needs a { query } executor');
   }
 
-  async function run(sql, params) {
+  /**
+   * The only path to the executor. The statement is one of this module's constants, the client is
+   * its bound parameter, and the rows that come back are checked against the source descriptor
+   * before any caller sees them.
+   */
+  async function runNamed(reader, source, clientId, sql, params) {
     assertReadOnlySql(sql);
+    assertRowTenancy(reader, source, clientId, []); // source reachability, before anything is sent
     const rows = await query(sql, params);
-    return Array.isArray(rows) ? rows : [];
+    const list = Array.isArray(rows) ? rows : [];
+    assertRowTenancy(reader, source, clientId, list);
+    return list;
   }
 
   return {
     /**
-     * Escape hatch for a caller with its own read statement. Read-only, and genuinely tenant-bound:
-     * the statement MUST reference $1 and $1 MUST be this client. A caller-supplied statement that
-     * never mentions the client is an untenanted read wearing a clientId argument, so it is refused
-     * rather than executed. (Read-only is checked first, so a smuggled write still reports as one.)
+     * Removed. It ran caller-supplied SQL and treated the presence of `$1` plus a matching bind as
+     * proof of tenancy; `select $1 as requested_client, p.* from public.client_post_metrics p`
+     * satisfied both and read every tenant's rows (independent audit 2026-09-20, finding 4). A
+     * statement this module did not write cannot be scoped by looking at it, so there is no
+     * free-SQL surface left -- only the named readers in READERS. The name survives so an old
+     * caller receives this error rather than a TypeError.
      */
-    async runReadOnly(opts = {}) {
-      const clientId = requireClient('runReadOnly', opts);
-      assertReadOnlySql(opts.sql);
-      const params = opts.params ?? [];
-      if (!/\$1\b/.test(String(opts.sql))) {
-        throw new AdapterError('ADAPTER_UNBOUND_CLIENT',
-          'runReadOnly requires the statement to reference the bound client parameter $1');
-      }
-      if (params[0] !== clientId) {
-        throw new AdapterError('ADAPTER_UNBOUND_CLIENT',
-          `runReadOnly requires params[0] to be the clientId ${JSON.stringify(clientId)}`);
-      }
-      return run(opts.sql, params);
+    async runReadOnly() {
+      throw new AdapterError('ADAPTER_FREE_SQL_FORBIDDEN',
+        `runReadOnly is removed: caller-supplied SQL cannot establish tenancy (a bound $1 proves only that a parameter exists). Use a named reader: ${READERS.join(', ')}.`);
     },
 
     /**
@@ -269,22 +422,12 @@ export function createAdapters({ query }) {
       const clientId = requireClient('readMarketPosts', opts);
       const src = marketSourceFor(clientId);
       const selftestList = SELFTEST_LANES.map((l) => `'${l}'`).join(', ');
-      const sql =
-        `select p.linkedin_post_url, p.competitor_name, p.linkedin_profile_url, p.competitor_role,
-                p.client_id, p.post_date, p.created_at, p.updated_at, p.post_type, p.post_text,
-                p.likes_count, p.comments_count, p.reposts_count
-           from ${src.table} p
-          where ${src.tenantPredicate}
-            and coalesce(p.client_id, '') not in (${selftestList})
-            and coalesce(p.competitor_role, '') <> 'killed'
-          order by p.post_date desc nulls last`;
-      const rows = await run(sql, [clientId]);
-      // Belt and braces: the descriptor's in-memory predicate re-checks every row that comes back,
-      // so a view, a future column default or a hand-written statement cannot widen the population
-      // behind the adapter's back.
-      return rows
-        .filter((r) => !('client_id' in r) || src.matches(r, clientId))
-        .map((r) => mapMarketRow(clientId, r));
+      // The descriptor's in-memory predicate re-checks every row that comes back, so a view, a
+      // future column default or a widened predicate cannot enlarge the population behind the
+      // adapter's back. A row the descriptor does not match is an error, not a row to drop.
+      const rows = await runNamed('readMarketPosts', src, clientId,
+        SQL.marketPosts(src, selftestList), [clientId]);
+      return rows.map((r) => mapMarketRow(clientId, r));
     },
 
     /**
@@ -295,37 +438,21 @@ export function createAdapters({ query }) {
     async readOwnPosts(opts = {}) {
       const clientId = requireClient('readOwnPosts', opts);
       const src = ownPostSourceFor(clientId);
-      if (src.tenantColumn === null) {
+      if (src.untenanted === true) {
         // No tenant column exists, so there is no predicate to write. The descriptor is the scope,
-        // and no client but the one it names can reach this table at all.
-        const rows = await run(
-          `select o.social_id, o.linkedin_url, o.post_text, o.post_type, o.posted_at,
-                  o.metrics_updated_at, o.scraped_at, o.num_likes, o.num_comments, o.num_shares,
-                  o.num_impressions, o.profile_views_from_post
-             from ${src.table} o
-            order by o.posted_at desc nulls last`, []);
+        // it says so in `untenanted`, and no client but the one it names can reach this table.
+        const rows = await runNamed('readOwnPosts', src, clientId, SQL.ownPostsLegacyIvan, []);
         return rows.map((r) => mapOwnPostRow(clientId, r));
       }
-      const rows = await run(
-        `select m.social_id, m.post_url, m.title, m.published_at, m.captured_at,
-                m.impressions, m.reactions, m.comments, m.shares,
-                m.profile_views_from_post, m.followers_gained_from_post, m.inbound_dms
-           from ${src.table} m
-          where m.${src.tenantColumn} = $1
-          order by m.published_at desc nulls last`, [clientId]);
+      const rows = await runNamed('readOwnPosts', src, clientId, SQL.ownPostsTenanted, [clientId]);
       return rows.map((r) => mapClientMetricRow(clientId, r));
     },
 
     /** Audience history for one seat. Unknown demographics stay null, never {} and never zero. */
     async readOwnAudience(opts = {}) {
       const clientId = requireClient('readOwnAudience', opts);
-      const rows = await run(
-        `select h.seat, h.activity_id, h.post_url, h.title, h.published_at, h.captured_at,
-                h.impressions, h.reactions, h.comments, h.members_reached, h.demographics,
-                h.in_pct, h.out_pct, h.source
-           from public.post_audience_history h
-          where h.seat = $1
-          order by h.published_at desc nulls last`, [clientId]);
+      const rows = await runNamed('readOwnAudience', READER_SOURCES.readOwnAudience, clientId,
+        SQL.ownAudience, [clientId]);
       return rows.map((r) => ({
         client_id: clientId,
         activity_id: str(r.activity_id),
@@ -349,12 +476,8 @@ export function createAdapters({ query }) {
     /** The newest stored study reading for one tenant, or null. Presentation adapter, not evidence. */
     async readStudyReading(opts = {}) {
       const clientId = requireClient('readStudyReading', opts);
-      const rows = await run(
-        `select o.client_id, o.run_id, o.reading, o.created_at
-           from public.client_research_outliers o
-          where o.client_id = $1
-          order by o.created_at desc, o.run_id desc
-          limit 1`, [clientId]);
+      const rows = await runNamed('readStudyReading', READER_SOURCES.readStudyReading, clientId,
+        SQL.studyReading, [clientId]);
       if (rows.length === 0) return null;
       const r = rows[0];
       return {
@@ -368,10 +491,8 @@ export function createAdapters({ query }) {
     /** The registry roster for one tenant. Scope comes from here, never from a directory name. */
     async readRoster(opts = {}) {
       const clientId = requireClient('readRoster', opts);
-      const rows = await run(
-        `select r.client_id, r.display_name, r.is_active, r.platform
-           from public.client_registry r
-          where r.client_id = $1`, [clientId]);
+      const rows = await runNamed('readRoster', READER_SOURCES.readRoster, clientId,
+        SQL.roster, [clientId]);
       if (rows.length === 0) return null;
       const r = rows[0];
       const platform = r.platform ?? {};

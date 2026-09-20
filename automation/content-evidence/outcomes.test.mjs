@@ -8,7 +8,11 @@ import assert from 'node:assert/strict';
 
 import { joinTestOutcomes } from './outcomes.mjs';
 
-const CUTOFF = '2026-09-19T13:30:03.523Z';
+// Bumped past the backfill/7-day fixtures below (2026-09-24) now that cutoff enforcement is real:
+// those fixtures test age_matched/backfill logic, not cutoff logic, so they must stay eligible.
+// Cutoff-specific behavior gets its own explicit `cutoff` override per test, mirroring the audit's
+// exact dates (2026-09-20 cutoff / 2026-10-01 publish / 2026-10-08 capture).
+const CUTOFF = '2026-10-01T00:00:00.000Z';
 
 function recommendation(over = {}) {
   return {
@@ -86,20 +90,32 @@ test('an inferred link is never upgraded to explicit just because the timing mat
   assert.equal(r.tests[0].link_status, 'inferred');
 });
 
-test('a recommendation shipped without approval is flagged, not silently treated as a clean test', () => {
+test('a null approved_at means no approval recorded in THIS source -- never a claim that it was never approved anywhere', () => {
   const r = run({
     recommendations: [recommendation({ approved_at: null })],
     publications: [publication({ reuse_of: 'idea-1' })],
   });
-  assert.equal(r.tests[0].shipped_without_approval, true);
+  assert.equal(r.tests[0].approval_status, 'not_recorded');
+  assert.equal(r.tests[0].approved_at, null);
+  assert.ok(!('shipped_without_approval' in r.tests[0]), 'the old overclaiming key must not survive');
 });
 
-test('an approved recommendation that published on schedule is not flagged for approval', () => {
+test('an approved recommendation that published on schedule records approval_status: recorded', () => {
   const r = run({
     recommendations: [recommendation({ approved_at: '2026-09-06T00:00:00Z' })],
     publications: [publication({ reuse_of: 'idea-1' })],
   });
-  assert.equal(r.tests[0].shipped_without_approval, false);
+  assert.equal(r.tests[0].approval_status, 'recorded');
+  assert.equal(r.tests[0].approved_at, '2026-09-06T00:00:00.000Z');
+});
+
+test('approval_status and link_status are independent fields -- a recorded approval on an INFERRED link is never conflated with a verified join', () => {
+  const r = run({
+    recommendations: [recommendation({ approved_at: '2026-09-06T00:00:00Z', reuse_of: null })],
+    publications: [publication({ reuse_of: null })], // no stored key either side -> inferred match
+  });
+  assert.equal(r.tests[0].link_status, 'inferred');
+  assert.equal(r.tests[0].approval_status, 'recorded');
 });
 
 test('an unpublished approval is never performance: a recommendation with no matching publication yields no test, only a due/unresolved entry', () => {
@@ -162,4 +178,103 @@ test('evaluated and due counts are exact and mutually exclusive', () => {
   });
   assert.equal(r.evaluated, 1);
   assert.equal(r.due.length, 1);
+});
+
+// ---------------------------------------------------------------------------
+// Audit counterexamples (out/content-evidence-01-independent-check-2026-09-20/CODE-AUDIT.md,
+// code-counterexamples.mjs/.log): P1 findings 1 and 2.
+// ---------------------------------------------------------------------------
+
+test('a FOREIGN tenant ideaLinks row is refused exactly like a foreign recommendation/publication/observation, not silently joined', () => {
+  // Audit counterexample: clientId ivan, link {client_id:'arch', recommendation_id:'r1', publication_id:'ghost'}.
+  assert.throws(() => joinTestOutcomes({
+    clientId: 'ivan',
+    recommendations: [{ client_id: 'ivan', recommendation_id: 'r1', approved_at: null }],
+    ideaLinks: [{ client_id: 'arch', recommendation_id: 'r1', publication_id: 'ghost' }],
+    publications: [],
+    observations: [],
+    cutoff: '2026-09-20',
+  }), /tenant/i);
+});
+
+test('a SAME-client link to a publication_id that does not exist is kept unresolved, never a fabricated evaluated test with published_at:null', () => {
+  const r = joinTestOutcomes({
+    clientId: 'ivan',
+    recommendations: [{ client_id: 'ivan', recommendation_id: 'r1', approved_at: null }],
+    ideaLinks: [{ client_id: 'ivan', recommendation_id: 'r1', publication_id: 'ghost' }],
+    publications: [],
+    observations: [],
+    cutoff: '2026-09-20',
+  });
+  assert.equal(r.tests.length, 0);
+  assert.equal(r.evaluated, 0);
+  assert.ok(!r.tests.some((t) => t.publication_id === 'ghost'));
+  assert.ok(r.unresolvedLinks.some((u) => u.recommendation_id === 'r1' && /publication/i.test(u.reason)));
+});
+
+test('the exact audit FUTURE_OUTCOME counterexample: cutoff 2026-09-20, publication 2026-10-01, capture 2026-10-08 -- never evaluated', () => {
+  // Audit counterexample verbatim: an explicit reuse_of link (no dangling/tenant issue here), only
+  // the cutoff freeze was broken (old code reported evaluated:1, age_matched:true, capture_age_days:7).
+  const r = joinTestOutcomes({
+    clientId: 'ivan',
+    recommendations: [{ client_id: 'ivan', recommendation_id: 'r1', approved_at: null }],
+    ideaLinks: [],
+    publications: [{ client_id: 'ivan', publication_id: 'p1', reuse_of: 'r1', published_at: '2026-10-01' }],
+    observations: [{ client_id: 'ivan', publication_id: 'p1', captured_at: '2026-10-08', metrics: { impressions: 100 } }],
+    cutoff: '2026-09-20',
+  });
+  assert.equal(r.evaluated, 0);
+  assert.equal(r.tests.length, 1);
+  assert.equal(r.tests[0].state, 'awaiting_publication');
+  assert.equal(r.tests[0].observations[0].eligible, false);
+  assert.equal(r.tests[0].observations[0].age_matched, false, 'future data is never labelled age_matched');
+  assert.ok(r.tests[0].excluded.length > 0);
+});
+
+test('a future CAPTURE of an otherwise eligible PAST publication is excluded, and the publication stays measuring (not evaluated)', () => {
+  const r = run({
+    cutoff: '2026-09-20T00:00:00Z',
+    recommendations: [recommendation({ recommendation_id: 'idea-1' })],
+    publications: [publication({ reuse_of: 'idea-1', published_at: '2026-09-01T00:00:00Z' })], // past, eligible publication
+    observations: [observation({ captured_at: '2026-10-08T00:00:00Z' })], // future capture
+  });
+  assert.equal(r.evaluated, 0);
+  assert.equal(r.tests[0].state, 'measuring');
+  assert.equal(r.tests[0].observations[0].eligible, false);
+  assert.ok(r.tests[0].excluded.some((e) => e.reason === 'observation_after_cutoff'));
+});
+
+test('an invalid/missing publication date never counts as valid publication evidence', () => {
+  const r = run({
+    cutoff: '2026-09-20T00:00:00Z',
+    recommendations: [recommendation({ recommendation_id: 'idea-1' })],
+    publications: [publication({ reuse_of: 'idea-1', published_at: 'not-a-real-date' })],
+    observations: [observation({ captured_at: '2026-09-10T00:00:00Z' })],
+  });
+  assert.equal(r.evaluated, 0);
+  assert.equal(r.tests[0].state, 'awaiting_publication');
+});
+
+test('an observation captured before its own publication is excluded, never treated as a valid outcome', () => {
+  const r = run({
+    cutoff: '2026-09-20T00:00:00Z',
+    recommendations: [recommendation({ recommendation_id: 'idea-1' })],
+    publications: [publication({ reuse_of: 'idea-1', published_at: '2026-09-10T00:00:00Z' })],
+    observations: [observation({ captured_at: '2026-09-05T00:00:00Z' })], // before publish
+  });
+  assert.equal(r.evaluated, 0);
+  assert.equal(r.tests[0].state, 'measuring');
+  assert.ok(r.tests[0].excluded.some((e) => e.reason === 'captured_before_publication'));
+});
+
+test('a valid past publication with at least one eligible observation is, and only then is, evaluated', () => {
+  const r = run({
+    cutoff: '2026-09-20T00:00:00Z',
+    recommendations: [recommendation({ recommendation_id: 'idea-1' })],
+    publications: [publication({ reuse_of: 'idea-1', published_at: '2026-09-01T00:00:00Z' })],
+    observations: [observation({ captured_at: '2026-09-08T00:00:00Z' })], // 7 days, eligible
+  });
+  assert.equal(r.evaluated, 1);
+  assert.equal(r.tests[0].state, 'evaluated');
+  assert.equal(r.tests[0].observations[0].eligible, true);
 });

@@ -122,16 +122,55 @@ test('repeated snapshots of one post contribute once to the baseline and produce
 });
 
 // ---------------------------------------------------------------------------
-// Missing reposts
+// Missing metrics (audit P1 finding 3: a missing likes/reposts count must never manufacture a
+// denominator by silently becoming 0). Corrects the previous "missing reposts is treated as 0"
+// expectation -- that was the exact bug the audit demonstrated (methods.test.mjs:127).
 // ---------------------------------------------------------------------------
-test('missing reposts is treated as 0 for scoring (a public count that was never captured)', () => {
+test('missing reposts is UNKNOWN, not zero -- excluded from the finding, from the baseline, and from minimumN', () => {
   const posts = ordinaryPosts(20);
   posts.push({ client_id: 'test', author_id: 'a', post_id: 'w', published_at: '2026-08-01',
     captured_at: '2026-09-01', likes: 50, comments: 0, is_reshare: false }); // reposts omitted entirely
   const r = computeOutliers({ posts, cutoff: '2026-09-02', policy: POLICY });
-  const finding = r.findings.find((f) => f.source_ids.includes('w'));
-  assert.ok(finding);
-  assert.equal(finding.observed_value, 50); // 50 + 3*0
+  assert.equal(r.findings.find((f) => f.source_ids.includes('w')), undefined);
+  assert.ok(r.excluded.some((e) => e.post_id === 'w' && e.reason === 'unknown_metric'));
+  const coverage = r.baselineCoverage.find((c) => c.author_id === 'a');
+  assert.equal(coverage.n, 20); // the unknown-score post never joined the 20 known ordinary posts
+  assert.equal(coverage.unknown_score_n, 1);
+});
+
+test('missing likes is UNKNOWN, not zero -- same treatment as missing reposts', () => {
+  const posts = ordinaryPosts(20);
+  posts.push({ client_id: 'test', author_id: 'a', post_id: 'w', published_at: '2026-08-01',
+    captured_at: '2026-09-01', reposts: 10, comments: 0, is_reshare: false }); // likes omitted entirely
+  const r = computeOutliers({ posts, cutoff: '2026-09-02', policy: POLICY });
+  assert.equal(r.findings.find((f) => f.source_ids.includes('w')), undefined);
+  assert.ok(r.excluded.some((e) => e.post_id === 'w' && e.reason === 'unknown_metric'));
+});
+
+test('a real zero for both likes and reposts is a genuine 0, stays eligible, and is not confused with unknown', () => {
+  const posts = ordinaryPosts(20);
+  posts.push({ client_id: 'test', author_id: 'a', post_id: 'w', published_at: '2026-08-01',
+    captured_at: '2026-09-01', likes: 0, reposts: 0, comments: 0, is_reshare: false });
+  const r = computeOutliers({ posts, cutoff: '2026-09-02', policy: POLICY });
+  assert.ok(!r.excluded.some((e) => e.post_id === 'w'));
+  const coverage = r.baselineCoverage.find((c) => c.author_id === 'a');
+  assert.equal(coverage.n, 21); // the real-zero post counted toward n, unlike an unknown-score post
+  assert.equal(coverage.unknown_score_n, 0);
+});
+
+test('the exact audit UNKNOWN_BASELINE counterexample: likes [null,10,100], reposts known-zero, minimumN 3 -- only two score-eligible posts, below minimumN, no finding', () => {
+  const policy = { id: 'x', windowDays: 365, minimumN: 3, repostWeight: 3, minimumLift: 4, minimumLikes: 40 };
+  const posts = [null, 10, 100].map((likes, i) => ({
+    client_id: 'ivan', post_id: 'p' + i, author_id: 'a',
+    published_at: '2026-09-01', captured_at: '2026-09-08', likes, reposts: 0,
+  }));
+  const r = computeOutliers({ posts, cutoff: '2026-09-20', policy, studyId: 's1' });
+  assert.equal(r.findings.length, 0);
+  const coverage = r.baselineCoverage.find((c) => c.author_id === 'a');
+  assert.equal(coverage.n, 2);
+  assert.equal(coverage.unknown_score_n, 1);
+  assert.equal(coverage.below_minimum_n, true);
+  assert.ok(r.excluded.some((e) => e.post_id === 'p0' && e.reason === 'unknown_metric'));
 });
 
 // ---------------------------------------------------------------------------
