@@ -814,20 +814,23 @@ test('regression: empty-reply-on-legacy-path-unchanged -- a deliberate [] still 
 });
 
 test('regression: single-client-gets-run-budget -- one client gets a fair share of the whole run, three clients split it',async()=>{
- // D10. The fixture clock is frozen, so elapsed is 0 and every share is exact:
- //   share = floor((BUDGET_MS 900000 - elapsed - RESERVE_MS 60000) / clients still to run)
+ // D10, renumbered for the defect A budget. The fixture clock is frozen, so elapsed is 0 and
+ // every share is exact:
+ //   share = floor((BUDGET_MS 1800000 - elapsed - RESERVE_MS 60000) / clients still to run)
  const one=await run({body:{preview:true,client_id:'ivan'},items:[]});
- assert.equal(first(one).client_share_ms,840000,'a single-client preview gets ~the whole 900s node budget, not a fixed 260s slice');
- assert(first(one).client_share_ms>480000,'a share that cannot hold a 480s proxy call is what caused the three live 272s bails');
+ assert.equal(first(one).client_share_ms,1740000,'a single-client preview gets ~the whole node budget, never a fixed slice');
  const three=await run({body:{preview:true},items:[],clients:[registry('arch'),registry('ivan'),registry('risedtc')]});
  assert.equal(three.result.clients.length,3);
- assert.equal(three.result.clients[0].client_share_ms,280000,'the first of three clients takes a third, protecting the two queued behind it');
+ assert.equal(three.result.clients[0].client_share_ms,580000,'the first of three clients takes a third, protecting the two queued behind it');
+ // Defect A: the share a three-client run gives each client must hold the slowest evidence call
+ // ever measured (293s) AND a retry, which the old 900s budget could not do (273s each).
+ for(const c of three.result.clients) assert(c.client_share_ms>=293000+250000,'a three-client share holds the slowest measured call plus a retry window');
  for(const c of three.result.clients) assert.equal(c.skipped,false,'every client still runs');
 });
 
 test('regression: proxy-timeout-no-useful-window -- a client that cannot get a minimum window is skipped retryable, never aborting the run',async()=>{
  // Squeeze the share below MIN_ATTEMPT_MS by queueing more clients than the budget can serve.
- const many=Array.from({length:5},(_,i)=>registry('c'+i));
+ const many=Array.from({length:8},(_,i)=>registry('c'+i));
  const x=await run({body:{preview:true},items:[],clients:many});
  const squeezed=x.result.clients.filter(c=>c.skipped);
  assert(squeezed.length>0,'at least one client is squeezed below the minimum useful window');
@@ -836,7 +839,7 @@ test('regression: proxy-timeout-no-useful-window -- a client that cannot get a m
   assert.equal(c.retryable,true,'a squeezed client is retryable, never a silent loss');
   assert.equal(c.writer_bail,false,'being skipped is not a bail');
  }
- assert.equal(x.result.clients.length,5,'the run never aborts: every client still gets a record');
+ assert.equal(x.result.clients.length,8,'the run never aborts: every client still gets a record');
  assert.equal(x.calls.some(c=>c.url.endsWith('/audn_recommendation_commit')),false);
 });
 
@@ -885,4 +888,59 @@ test('D15: the competing explanations a source-only lift carries reach the model
  const resolved=offered.limitations.map(c=>x.packs[0].evidence_limitations[c]||c);
  assert(resolved.some(l=>/giveaway|distribution/i.test(l)),'the model is shown the competing explanations');
  assert(first(x).rows[0].context.evidence_package.limitations.some(l=>/giveaway|distribution/i.test(l)));
+});
+
+// Defect A (Run 4 continuation): the measured proxy edge. Seven successful evidence calls took
+// 198-293s; a large call fired alongside another returned HTTP 502 at 300.1s. One attempt is
+// therefore capped just past that edge, and a 502 is weather that gets retried.
+test('regression: attempt-window-capped-at-the-measured-edge -- one attempt never eats a client\'s whole share',async()=>{
+ const one=await run({body:{preview:true,client_id:'ivan'},items:[]});
+ assert.equal(first(one).client_share_ms,1740000);
+ const call=one.calls.find(c=>c.url.endsWith('/v1/messages'));
+ assert(call.timeout<=310000,'an attempt past the ~300s edge cannot return, so a longer window only blocks the retry');
+ assert(call.timeout>=293000,'the window still holds the slowest evidence call ever measured');
+});
+
+test('regression: proxy-502-retried -- the edge answering 502 at the ceiling is weather, and the retry still fits',async()=>{
+ let attempts=0;
+ const x=await run({body:{preview:true},clients:[registry('arch'),registry('ivan'),registry('risedtc')],items:[],proxyBehaviour:()=>{
+  attempts++;
+  if(attempts>3) return null;
+  const e=new Error('Request failed with status code 502');e.httpCode=502;throw e;
+ }});
+ assert.equal(first(x).proxy_attempts,3,'a 502 is 5xx: retried up to the attempt cap, never treated as a refusal');
+ assert.equal(first(x).reason,'proxy_error');
+ assert.equal(first(x).retryable,true);
+ assert.equal(x.result.clients.length,3,'the other clients still run');
+});
+
+// D11 at the writer boundary: the guard runs on the live-shaped read, and a pack it did not run
+// on never reaches the model.
+test('regression: adaptable-source-refused -- a source with no body to adapt never becomes an offered candidate',async()=>{
+ const findings=[evidenceFinding(),evidenceFinding({finding_id:'ef-bare',source_ids:['sp-bare'],observed_value:900})];
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[],
+  evidencePack:{study:{study_id:'s1',state:'validated'},findings},
+  studyPosts:(o)=>{const u=new URL(o.url);const ids=(/^in\.\((.*)\)$/.exec(u.searchParams.get('canonical_source_id')||'')||[,''])[1].split(',').map(decodeURIComponent).filter(Boolean);
+   return ids.map(id=>id==='sp-bare'?studyPost(id,{post_text:'"The price for one TikTok is $45,000"'}):studyPost(id));}});
+ const rec=first(x);
+ const offered=x.packs[0].evidence_candidates.map(c=>c.draft_key);
+ assert.equal(offered.length,1,'the bare-quote source is refused before the model ever sees it');
+ assert(offered[0].endsWith(':ef1'));
+ const refusal=rec.evidence_source_refusals.find(r=>r.finding_id==='ef-bare');
+ assert.equal(refusal.code,'source_no_adaptable_body');
+ assert.equal(rec.evidence_coverage.adaptable_source.refused_by_code.source_no_adaptable_body,1);
+ assert(!JSON.stringify(x.packs[0]).includes('45,000'),'its text never reaches the model either');
+});
+
+test('regression: adaptable-source-unreadable -- when no source post resolves, nothing is offered and the record says why',async()=>{
+ // No study id, so the by-primary-key read cannot run and no source body is available. The
+ // honest outcome is a refusal per finding, an empty pool and a legacy pack -- never a candidate
+ // offered on a source nobody could read.
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[],
+  evidencePack:{study:null,findings:[evidenceFinding()]}});
+ const rec=first(x);
+ assert.equal(rec.evidence_source_refusals[0].code,'source_text_unavailable');
+ assert.equal(rec.evidence_coverage.adaptable_source.source_posts_supplied,0);
+ assert.equal(rec.evidence_pool_survivors,0);
+ assert.equal(x.packs[0].evidence_candidates,undefined,'no candidate is offered on an unreadable source');
 });

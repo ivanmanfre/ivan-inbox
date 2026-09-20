@@ -7,8 +7,16 @@ const _S = (() => { for (const n of ["Secrets", "Secrets 2", "Secrets 3", "Secre
 // It never touches client_ideas or lm_idea_candidates (only the approve RPC does, on
 // Ivan's hand), and it has no path to outreach, carousels, schedules or any sender.
 const START = Date.now();
-// Actual runner task timeout2700s verified at build cutoff. Bound this node to900s.
-const BUDGET_MS = 900000;
+// Run 4 continuation, defect A. The 900 s bound was self-imposed, and with three clients it gave
+// each one about 273 s of model time while a successful evidence call measured 198-293 s. Two of
+// three clients bailed on that clamp in the native all-client run (execution 1845193).
+// What is PROVEN about this node's ceiling: execution 1845193 ran 813.6 s to success on
+// 2026-09-20, and 1830060 ran 703.9 s to success the day before, both over the webhook path. The
+// recorded runner task timeout of 2700 s is a build-cutoff note and is NOT re-verified here, so
+// the budget below stays well inside it and the residual risk is stated in WRITER-REPAIR.md.
+// Raising this ceiling does not lengthen a healthy run: a client stops at its answer. It buys the
+// slow tail of a first attempt and room for exactly one retry.
+const BUDGET_MS = 1800000;
 const SB = 'https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1';
 const KEY = _S.n8n_sb_key;
 const HDR = { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json' };
@@ -47,11 +55,18 @@ const EVIDENCE_SOURCE_LOOKUP_CHUNK = 60;
 // three-client scheduled run still gives each client about 275 s and protects the clients queued
 // behind it. RESERVE_MS is the tail left for the commit and the summary.
 const RESERVE_MS = 60000;
-// Never start an attempt that cannot get a useful window: below this, the client is marked
-// retryable and left for the next run rather than burned on a call that cannot finish.
-const MIN_ATTEMPT_MS = 200000;
-// One attempt never eats the entire share, so a hung connection still leaves room for a retry.
-const ATTEMPT_MAX_MS = 600000;
+// Defect A, measured 2026-09-20 on the same proxy route this node uses (probe records under
+// private/writer/): seven successful evidence calls took 198, 202, 231, 248, 268, 283 and 293
+// seconds. None has ever exceeded 293 s. A large call fired alongside another large call came
+// back HTTP 502 "upstream error" at 300.1 s, so there is a ceiling near 300 s at the proxy edge.
+// Never start an attempt that cannot get a useful window. 250 s covers the majority of that
+// distribution; below it a retry is a coin flip that eats the next client's room, so the client
+// is marked retryable and left for the next run instead.
+const MIN_ATTEMPT_MS = 250000;
+// One attempt is capped just past the measured ~300 s edge ceiling. Past that a call cannot
+// return, so a longer window buys nothing and only blocks the retry; and letting the edge answer
+// 502 is better than aborting ourselves, because a 502 is a 5xx this code already retries.
+const ATTEMPT_MAX_MS = 310000;
 const PROXY_MAX_ATTEMPTS = 3;
 const PROXY_BACKOFF_MS = 5000;
 // Run 4 TRACE item 4. Deterministic slimming, in a stable, stated priority order, applied ONLY on
@@ -1319,6 +1334,13 @@ for (const t of targets) {
       evidenceCandidates = built.candidates;
       rec.evidence_coverage = built.coverage;
       rec.evidence_missing_inputs = built.missingInputs;
+      // D11: the refusals themselves, not only their counts, so a run summary says which source
+      // was refused and why without anyone having to re-derive it. Bounded so a large study
+      // cannot flood the record.
+      rec.evidence_source_refusals = (built.rejected || [])
+        .filter((r) => r && ['source_no_adaptable_body', 'source_caption_only', 'source_text_unavailable'].includes(r.code))
+        .slice(0, 20)
+        .map((r) => ({ finding_id: r.finding_id, code: r.code, reason: r.reason }));
       // D11, fail closed: a pack the adaptable-source guard never ran on is not a pack this path
       // may offer. Treat it as an evidence-path failure for this client and fall back to the
       // legacy input, rather than offering sources nobody checked for a body.
@@ -1533,7 +1555,10 @@ for (const p of prepared) {
   const {t,cid,rec,openRows,context,allowedSubjects,approvedSources,rosterOut,roleByName,accountByName,sourceBaselines,packRows,rowById,already,pack,evidenceActive,evidenceCandidates,measuredRequired}=p;
   const approvedSourcesById = new Map(approvedSources.map((s) => [s.source_id, s]));
   clientsRemaining--;
-  if (Date.now()-START > BUDGET_MS-280000) {rec.skipped=true;rec.reason='run_budget_exhausted';rec.retryable=true;continue;}
+  // Defect A: the start guard is derived from the attempt bounds instead of a fixed number, so
+  // it stays correct when those bounds move. A client whose turn begins with less than the tail
+  // reserve plus one useful attempt left cannot do anything with its turn.
+  if (Date.now()-START > BUDGET_MS - RESERVE_MS - MIN_ATTEMPT_MS) {rec.skipped=true;rec.reason='run_budget_exhausted';rec.retryable=true;continue;}
   // D10: this client's fair share of what is left, not a fixed slice.
   const clientShare = Math.floor((BUDGET_MS - (Date.now() - START) - RESERVE_MS) / (clientsRemaining + 1));
   rec.client_share_ms = clientShare;
