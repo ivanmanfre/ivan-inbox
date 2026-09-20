@@ -735,7 +735,7 @@ function makeModelPack(pack) {
 // MODEL_VIEW_END
 
 // ---- 1. registry: who gets a review this week -------------------------------
-const registry = await getJson('/client_registry?select=client_id,is_active,platform&is_active=eq.true');
+const registry = await getJson('/client_registry?select=client_id,is_active,platform&is_active=eq.true&order=client_id.asc');
 // Evidence path readiness (D6/D7/D8): preview-only unless the client is named in the rollout
 // switch AND the run is not a preview. Read once per run; every client's evidenceActive check
 // below reuses this single read.
@@ -1185,10 +1185,16 @@ for (const t of targets) {
   // budget -- the same throw the deployed legacy writer has always made here, unchanged. Fixing
   // that this aborts the whole per-client loop is explicitly out of scope for this pass.
   if (inputCharacters > 200000) throw new Error('audn_input_budget_exceeded:' + cid);
-  prepared.push({t,cid,rec,openRows,context,allowedSubjects,approvedSources,rosterOut,roleByName,accountByName,sourceBaselines,packRows,rowById,already,pack:modelPack,evidenceActive,evidenceCandidates});
+  // M1 (audit): evidenceActive alone is "this client's switch is on", not "this client actually
+  // has a pool to cite". An RPC error, a trim to zero, or a study with no findings all leave
+  // evidenceActive true with an empty evidenceCandidates -- requiring a citation in that state
+  // would drop every ordinary choice and burn the week. measuredRequired is the true gate for
+  // every per-item validation decision below: only when there is a real pool to cite from.
+  const measuredRequired = evidenceActive && evidenceCandidates.length > 0;
+  prepared.push({t,cid,rec,openRows,context,allowedSubjects,approvedSources,rosterOut,roleByName,accountByName,sourceBaselines,packRows,rowById,already,pack:modelPack,evidenceActive,evidenceCandidates,measuredRequired});
 }
 for (const p of prepared) {
-  const {t,cid,rec,openRows,context,allowedSubjects,approvedSources,rosterOut,roleByName,accountByName,sourceBaselines,packRows,rowById,already,pack,evidenceActive,evidenceCandidates}=p;
+  const {t,cid,rec,openRows,context,allowedSubjects,approvedSources,rosterOut,roleByName,accountByName,sourceBaselines,packRows,rowById,already,pack,evidenceActive,evidenceCandidates,measuredRequired}=p;
   const approvedSourcesById = new Map(approvedSources.map((s) => [s.source_id, s]));
   if (Date.now()-START > BUDGET_MS-280000) {rec.skipped=true;rec.reason='run_budget_exhausted';continue;}
 
@@ -1291,7 +1297,7 @@ for (const p of prepared) {
     // copied from the server-built candidate, never from model-echoed fields.
     let evidenceCandidate = null;
     let freeformExperiment = null;
-    if (evidenceActive) {
+    if (measuredRequired) {
       const hasKey = it.evidence_candidate_key !== undefined && it.evidence_candidate_key !== null;
       const isFreeform = it.experiment === true;
       if (hasKey && isFreeform) { drop('no_measured_source'); continue; } // exactly one path, never both
@@ -1337,7 +1343,7 @@ for (const p of prepared) {
   rec.coverage.requested = t.limit;
   rec.coverage.proposed = keep.length;
   rec.coverage.shortfall = t.limit - keep.length;
-  if (evidenceActive) {
+  if (measuredRequired) {
     rec.evidence_selection = {
       offered: rec.evidence_pool_offered || 0,
       survivors: rec.evidence_pool_survivors || 0,
@@ -1348,15 +1354,20 @@ for (const p of prepared) {
   }
   if (!keep.length) {
     if (PREVIEW) rec.rows = [];
-    // Second live finding: on an evidence-active client, every dropped item being
-    // no_measured_source means the model tried and had nothing it was allowed to cite this week
-    // -- a legitimate empty outcome, never a writer bug. Route it through the SAME immutable
-    // empty-cycle path a deliberate [] already uses, not the retryable no_valid_candidates path.
-    const allNoMeasuredSource = evidenceActive && rec.dropped.length > 0 && rec.dropped.every((d) => d.reason === 'no_measured_source');
-    if (items.length && !allNoMeasuredSource) { rec.reason = 'no_valid_candidates'; rec.writer_bail = true; continue; }
+    // Audit (c): an immutable empty cycle is right only when the MODEL deliberately returned [].
+    // When it wrote choices and none survived measured-source validation, that is not the same
+    // outcome -- audn_recommendation_commit has no delete path, so committing empty here would
+    // burn the week irrecoverably on a prompt/model miss. Bail retryable instead; evidence_selection
+    // above still records exactly what was offered/cited/dropped for the next run or an operator.
+    if (items.length) {
+      rec.reason = measuredRequired ? 'no_measured_source' : 'no_valid_candidates';
+      rec.writer_bail = true;
+      continue;
+    }
     rec.reason = 'no_supported_candidates';
-    if (evidenceActive) rec.coverage_gap = 'no_candidate_fit_this_week';
-    // A deliberate [] completes the week. Invalid/refused responses remain retryable.
+    // A deliberate [] completes the week -- unchanged, including for a measured-source-required
+    // client: an honest empty answer is itself a legitimate weekly outcome (D3/D6).
+    if (measuredRequired) rec.coverage_gap = 'no_candidate_fit_this_week';
     if (PREVIEW) continue;
   }
   keep.sort((a,b) => a.item.weekly.rank - b.item.weekly.rank);

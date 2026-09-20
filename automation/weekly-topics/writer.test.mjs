@@ -401,9 +401,28 @@ test('an evidence-active client drops an uncited choice as no_measured_source, n
  const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
  assert.equal(first(x).proposed,0);
  assert.equal(first(x).dropped[0].reason,'no_measured_source');
- assert.equal(first(x).coverage_gap,'no_candidate_fit_this_week');
  assert.equal(first(x).evidence_selection.dropped_no_measured_source,1);
  assert.equal(first(x).evidence_selection.cited,0);
+});
+
+test('audit C: the model writing choices that all fail measured-source validation bails retryable, never commits an empty cycle',async()=>{
+ const it=candidate();
+ const x=await run({body:{},items:[it],rolloutRows:rolloutRow(['ivan']),evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ assert.equal(x.calls.some(c=>c.url.endsWith('/audn_recommendation_commit')),false);
+ assert.equal(first(x).writer_bail,true);
+ assert.equal(first(x).reason,'no_measured_source');
+ assert.equal('coverage_gap' in first(x),false);
+ assert.equal(first(x).evidence_selection.dropped_no_measured_source,1);
+});
+
+test('audit C: a deliberate model [] on an evidence-active client still commits the immutable empty cycle with coverage_gap, unchanged',async()=>{
+ const x=await run({body:{},items:[],rolloutRows:rolloutRow(['ivan']),evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ const commit=x.calls.find(c=>c.url.endsWith('/audn_recommendation_commit'));
+ assert(commit);
+ assert.equal(commit.body.p_rows.length,0);
+ assert.equal(first(x).writer_bail,false);
+ assert.equal(first(x).reason,'no_supported_candidates');
+ assert.equal(first(x).coverage_gap,'no_candidate_fit_this_week');
 });
 
 test('the identical uncited choice is kept unchanged on the legacy path (switch empty, no evidence:true)',async()=>{
@@ -416,7 +435,7 @@ test('the identical uncited choice is kept unchanged on the legacy path (switch 
 test('exactly one freeform experiment (experiment:true) is kept; a second is dropped',async()=>{
  const a=candidate();a.experiment=true;a.experiment_reason='Untested angle for this client.';a.test_metric='replies at 7 days';
  const b=candidate();b.experiment=true;b.experiment_reason='A second untested angle.';b.test_metric='replies at 7 days';b.weekly.rank=2;b.weekly.topic_key='other';b.original_angle='Other angle';
- const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[a,b],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[]}});
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[a,b],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
  assert.equal(first(x).proposed,1);
  assert.equal(first(x).rows[0].context.evidence_package.label,'experiment');
  assert.equal(first(x).rows[0].context.evidence_package.source_finding_ids.length,0);
@@ -428,20 +447,9 @@ test('exactly one freeform experiment (experiment:true) is kept; a second is dro
 
 test('a freeform experiment missing experiment_reason or test_metric is dropped as no_measured_source',async()=>{
  const it=candidate();it.experiment=true;it.experiment_reason='';it.test_metric='replies at 7 days';
- const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[]}});
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
  assert.equal(first(x).proposed,0);
  assert.equal(first(x).dropped[0].reason,'no_measured_source');
-});
-
-test('zero rows surviving validation on an evidence-active client commits the same immutable empty cycle a deliberate [] uses',async()=>{
- const it=candidate();
- const x=await run({body:{},items:[it],rolloutRows:rolloutRow(['ivan']),evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
- const commit=x.calls.find(c=>c.url.endsWith('/audn_recommendation_commit'));
- assert(commit);
- assert.equal(commit.body.p_rows.length,0);
- assert.equal(first(x).writer_bail,false);
- assert.equal(first(x).reason,'no_supported_candidates');
- assert.equal(first(x).coverage_gap,'no_candidate_fit_this_week');
 });
 
 test('a cited row\'s saved numbers still come from the server-built candidate, not the model',async()=>{
@@ -452,4 +460,48 @@ test('a cited row\'s saved numbers still come from the server-built candidate, n
  assert.match(pkg.test_metric,/reactions|reposts|likes/i);
  assert.equal(pkg.label,'evidence_backed');
  assert.equal(first(x).evidence_selection.cited,1);
+});
+
+// ---------------------------------------------------------------------------
+// M1 fix (PRELEASE-AUDIT.md section 7): evidenceActive alone is "the switch is on", not "there is
+// a pool to cite". An empty pool (RPC error, budget-trimmed to zero, or no findings) must fall
+// back to ordinary legacy validation for that client, never require a citation nobody can supply.
+// The auditor's own two probes, reproduced as tests.
+// ---------------------------------------------------------------------------
+
+test('M1 probe 1: content_evidence_pack throwing on a live enabled run still commits the ordinary row, no evidence_package',async()=>{
+ const it=candidate();
+ const x=await run({body:{},items:[it],rolloutRows:rolloutRow(['ivan']),evidencePack:()=>{throw new Error('Simulated RPC failure');}});
+ const commit=x.calls.find(c=>c.url.endsWith('/audn_recommendation_commit'));
+ assert(commit);
+ assert.equal(commit.body.p_rows.length,1);
+ assert.equal('evidence_package' in commit.body.p_rows[0].context,false);
+ assert.equal(first(x).proposed,1);
+ assert.match(first(x).evidence_error,/Simulated/);
+ assert.equal(first(x).writer_bail,false);
+ assert.equal('coverage_gap' in first(x),false);
+ assert.equal('evidence_selection' in first(x),false);
+});
+
+test('M1 probe 2: empty findings (no RPC error, empty pool) on a live enabled run still commits the ordinary row, no evidence_package',async()=>{
+ const it=candidate();
+ const x=await run({body:{},items:[it],rolloutRows:rolloutRow(['ivan']),evidencePack:{study:{study_id:'s1',state:'validated'},findings:[]}});
+ const commit=x.calls.find(c=>c.url.endsWith('/audn_recommendation_commit'));
+ assert(commit);
+ assert.equal(commit.body.p_rows.length,1);
+ assert.equal('evidence_package' in commit.body.p_rows[0].context,false);
+ assert.equal(first(x).proposed,1);
+ assert.equal('evidence_error' in first(x),false);
+ assert.equal('evidence_selection' in first(x),false);
+});
+
+// ---------------------------------------------------------------------------
+// D: stable client_registry order.
+// ---------------------------------------------------------------------------
+
+test('D: the client_registry read requests a stable order (client_id.asc)',async()=>{
+ const x=await run({body:{}});
+ const req=x.calls.find(c=>c.url.includes('/client_registry?'));
+ assert(req);
+ assert(req.url.includes('order=client_id.asc'));
 });
