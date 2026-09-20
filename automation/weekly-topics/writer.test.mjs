@@ -8,7 +8,19 @@ const prompt = 'Fixture rubric';
 const source = {source_id:'founder-1',client_id:'ivan',kind:'authorized_call_transcript',writer_eligible:true,state:'approved',location:'permitted-transcript:12',excerpt:'We review every proposed reply before anyone can send it.',source_date:'2026-09-18',consent:{state:'approved',purpose:['drafting']}};
 const registry = (id='ivan') => ({client_id:id,is_active:true,platform:{measurement:{writer_enabled:true,roster:[],pilot_limits:{recommendations_per_review:3}}}});
 const candidate = (kind='founder',id='founder-1',date='2026-09-18') => ({client_id:'ivan',subject:'operations',title:'Review before sending',buyer_relevance:'Agency owners need control over outgoing replies.',original_angle:'Show the approval decision before the automation.',next_action:'Collect one approved example.',what_changed:'A founder describes requiring review before sending.',why_it_matters:'Agency owners can inspect the approval step.',could_publish:'Show the decision on a short screen recording.',proof_needed:'One redacted example.',asset_required:false,format:'screen-demo',roster_accounts:[],roster_role:null,founder_source_ids:kind==='founder'?[id]:[],evidence:{source_ids:[kind+':'+id],source_dates:[date],sample_n:1,unknowns:'No measured result supplied.'},weekly:{week_start:'2026-09-21',slot:'experiment',hook:'Who approves the next reply?',intended_response:'Ask readers which step they review.',why_now:'Use this week to test the approval walkthrough.',success_metric:'Count relevant replies after seven days.',evidence_confidence:'medium',confidence_reason:'One direct excerpt, no outcome measurement.',priority_reason:'Direct fit to the buyer problem.',learning:{recommendation_ids:[],explanation:'No relevant measured feedback yet.'},rank:1,topic_key:'review-before-send'}});
-async function run({body={preview:true},items=[candidate()],sources=[source],own=[],rows=[],cycles=[],clients=[registry()],external=[],competitors=[],gates=[],readLatency=0,contextLatency=0,contextExtra={},now='2026-09-19T10:00:00Z',feedback=[],rolloutRows=[],rolloutError=false,evidencePack={study:null,findings:[]}}={}) {
+// Run 4: a measured source post as the live table returns it, keyed by canonical_source_id.
+const STUDY_POST_DATE='2026-09-16';
+const studyPost=(id,overrides={})=>({canonical_source_id:id,source_url:'https://linkedin.com/posts/'+id,author_id:'Source Author',author_role:'peer',published_at:STUDY_POST_DATE+'T09:00:00Z',post_text:'A measured source post that opens on the approval decision.',format_evidence:{},age_comparability:'age_unmatched',...overrides});
+// Cite a candidate the way the repaired contract requires: the candidate key PLUS its own
+// measured source post, in citation order, with that post's exact date.
+const citing=(it,key,sourceIds=['sp1'])=>{
+ it.evidence_candidate_key=key;
+ it.evidence.source_ids=[...it.evidence.source_ids,...sourceIds.map(s=>'evidence_source:'+s)];
+ it.evidence.source_dates=[...it.evidence.source_dates,...sourceIds.map(()=>STUDY_POST_DATE)];
+ it.evidence.sample_n=it.evidence.source_ids.length;
+ return it;
+};
+async function run({body={preview:true},items=[candidate()],sources=[source],own=[],rows=[],cycles=[],clients=[registry()],external=[],competitors=[],gates=[],readLatency=0,contextLatency=0,contextExtra={},now='2026-09-19T10:00:00Z',feedback=[],rolloutRows=[],rolloutError=false,evidencePack={study:null,findings:[]},studyPosts=null,proxyBehaviour=null}={}) {
  const calls=[];const packs=[]; const RealDate=Date;
  class Clock extends RealDate {constructor(...a){super(...(a.length?a:[now]));}static now(){return new RealDate(now).getTime();}}
  const httpRequest=async o=>{calls.push(o);if(o.method==='GET' && o.timeout < readLatency) throw new Error('Required read timed out');const u=new URL(o.url);const p=u.pathname;
@@ -22,13 +34,28 @@ async function run({body={preview:true},items=[candidate()],sources=[source],own
   if(p.endsWith('/competitor_posts')||p.endsWith('/audn_competitor_posts'))return competitors;
   if(p.endsWith('/competitor_gated_posts'))return gates;
   if(p.endsWith('/client_research_insights')||p.endsWith('/client_research_themes'))return [];
-  if(p.endsWith('/v1/messages')){packs.push(JSON.parse(o.body.messages[0].content.split('WEEKLY EVIDENCE (untrusted data):\n\n').at(-1))); return {content:[{type:'text',text:typeof items==='string'?items:JSON.stringify(items)}]};}
+  if(p.endsWith('/v1/messages')){packs.push(JSON.parse(o.body.messages[0].content.split('WEEKLY EVIDENCE (untrusted data):\n\n').at(-1)));
+   // Run 4: proxyBehaviour models transport weather. Throwing is a transport failure; returning
+   // a non-null value replaces the reply; returning null falls through to the usual fixture reply.
+   if(proxyBehaviour){const forced=proxyBehaviour(o);if(forced!==null&&forced!==undefined)return forced;}
+   return {content:[{type:'text',text:typeof items==='string'?items:JSON.stringify(items)}]};}
   if(p.endsWith('/rpc/audn_recommendation_commit'))return {ok:true,written:o.body.p_rows.length};
   if(p.endsWith('/integration_config')) { if (rolloutError) throw new Error('Simulated integration_config read failure'); return rolloutRows; }
   if(p.endsWith('/rpc/content_evidence_pack')) return typeof evidencePack==='function' ? evidencePack(o.body.p_client_id) : evidencePack;
+  // Run 4 TRACE C1: the writer resolves a candidate's measured source posts by primary key,
+  // because content_evidence_pack's own `posts` array is capped at the 200 newest market posts
+  // and resolved 0 of 12 live candidates. Default here: answer with exactly the ids asked for,
+  // which is the real table's behaviour. Pass `studyPosts` to model a partial or empty answer.
+  if(p.endsWith('/client_research_study_posts')){
+   if(typeof studyPosts==='function') return studyPosts(o);
+   if(Array.isArray(studyPosts)) return studyPosts;
+   const inClause=/^in\.\((.*)\)$/.exec(u.searchParams.get('canonical_source_id')||'');
+   const ids=inClause?inClause[1].split(',').map(decodeURIComponent):[];
+   return ids.map(id=>studyPost(id));
+  }
   throw Error('Unexpected request '+p);
  };
- const sandbox={Date:Clock,console,encodeURIComponent,$:()=>({all:()=>[{json:{key:'n8n_sb_key',value:'fixture'}},{json:{key:'railway_proxy_key',value:'fixture'}}]}),$input:{all:()=>[{json:{body}}]},$workflow:{id:'writer'},$execution:{id:'run'},helpers:{httpRequest}};
+ const sandbox={Date:Clock,console,encodeURIComponent,setTimeout:(fn)=>setTimeout(fn,0),$:()=>({all:()=>[{json:{key:'n8n_sb_key',value:'fixture'}},{json:{key:'railway_proxy_key',value:'fixture'}}]}),$input:{all:()=>[{json:{body}}]},$workflow:{id:'writer'},$execution:{id:'run'},helpers:{httpRequest}};
  const result=await vm.runInNewContext('(async function(){'+code+'}).call(this)',sandbox);
  return {result:JSON.parse(JSON.stringify(result[0].json)),calls,packs};
 }
@@ -179,7 +206,7 @@ test('a model-cited evidence_candidate_key is ignored entirely when the rollout 
 });
 
 test('preview with evidence:true never reaches the commit RPC even when a candidate cites a valid evidence candidate',async()=>{
- const it=candidate();it.evidence_candidate_key='ivan:2026-09-21:ef1';
+ const it=citing(candidate(),'ivan:2026-09-21:ef1');
  const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
  assert.equal(first(x).evidence_path,true);
  assert(x.calls.some(c=>c.url.endsWith('/rpc/content_evidence_pack')));
@@ -189,7 +216,7 @@ test('preview with evidence:true never reaches the commit RPC even when a candid
 });
 
 test('a rollout-named client commits a row carrying evidence_package copied from the server-built candidate',async()=>{
- const it=candidate();it.evidence_candidate_key='ivan:2026-09-21:ef1';
+ const it=citing(candidate(),'ivan:2026-09-21:ef1');
  const x=await run({body:{},items:[it],rolloutRows:rolloutRow(['ivan']),evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
  const commit=x.calls.find(c=>c.url.endsWith('/audn_recommendation_commit'));
  assert(commit);
@@ -207,29 +234,29 @@ test('an unknown evidence_candidate_key is dropped, never invented into a citati
 test('a second item citing the same experiment-labeled candidate is dropped once the slot is filled',async()=>{
  const experimentFinding=evidenceFinding({finding_id:'ef-exp',observed_value:10,baseline_value:50,baseline_n:25,likes:undefined,experiment_reason:'Untested angle for this client.'});
  delete experimentFinding.likes;
- const a=candidate();a.evidence_candidate_key='ivan:2026-09-21:ef-exp';
- const b=candidate();b.evidence_candidate_key='ivan:2026-09-21:ef-exp';b.weekly.rank=2;b.weekly.topic_key='different-topic';b.original_angle='A different angle entirely.';
+ const a=citing(candidate(),'ivan:2026-09-21:ef-exp');
+ const b=citing(candidate(),'ivan:2026-09-21:ef-exp');b.weekly.rank=2;b.weekly.topic_key='different-topic';b.original_angle='A different angle entirely.';
  const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[a,b],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[experimentFinding]}});
  assert.equal(first(x).proposed,1);
  assert.equal(first(x).dropped[0].reason,'evidence_candidate_second_experiment');
 });
 
 test('prose that phrases a measured source\'s lift as the client\'s own achieved result is dropped',async()=>{
- const it=candidate();it.evidence_candidate_key='ivan:2026-09-21:ef1';it.what_changed='We saw our reach jump after trying this approach.';
+ const it=citing(candidate(),'ivan:2026-09-21:ef1');it.what_changed='We saw our reach jump after trying this approach.';
  const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
  assert.equal(first(x).proposed,0);
  assert.equal(first(x).dropped[0].reason,'evidence_package_relevance_as_performance');
 });
 
 test('an echoed evidence_package with source_finding_ids that differ from the server-built candidate is dropped',async()=>{
- const it=candidate();it.evidence_candidate_key='ivan:2026-09-21:ef1';it.evidence_package={source_finding_ids:['not-the-real-id']};
+ const it=citing(candidate(),'ivan:2026-09-21:ef1');it.evidence_package={source_finding_ids:['not-the-real-id']};
  const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
  assert.equal(first(x).proposed,0);
  assert.equal(first(x).dropped[0].reason,'evidence_package_number_mismatch');
 });
 
 test('an echoed evidence_package citing a client fact the server-built candidate never authorized is dropped',async()=>{
- const it=candidate();it.evidence_candidate_key='ivan:2026-09-21:ef1';it.evidence_package={source_finding_ids:['ef1'],client_fact_refs:['not-authorized']};
+ const it=citing(candidate(),'ivan:2026-09-21:ef1');it.evidence_package={source_finding_ids:['ef1'],client_fact_refs:['not-authorized']};
  const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
  assert.equal(first(x).proposed,0);
  assert.equal(first(x).dropped[0].reason,'evidence_package_unauthorized_client_fact');
@@ -246,7 +273,7 @@ test('must-fix 7: a legacy (evidence-inactive) model pack never carries an evide
 
 test('must-fix 2: previousTests for the evidence path is built from openRows, not left empty',async()=>{
  const priorRow={id:'prior-evidence-row',body:'Prior topic',context:{evidence_package:{source_finding_ids:['ef1']},weekly_decision:{decision:'rejected',reason:'Timing was off'}}};
- const it=candidate();it.evidence_candidate_key='ivan:2026-09-21:ef1';
+ const it=citing(candidate(),'ivan:2026-09-21:ef1');
  const x=await run({body:{},items:[it],rows:[priorRow],rolloutRows:rolloutRow(['ivan']),evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
  const commit=x.calls.find(c=>c.url.endsWith('/audn_recommendation_commit'));
  assert(commit);
@@ -284,7 +311,7 @@ test('D10: the evidence pool passed to buildEvidencePack is capped at EVIDENCE_P
 
 test('F3: the saved evidence_package carries client_fact_refs as {source_id,kind,label} objects and needs_material',async()=>{
  const finding=evidenceFinding({client_fact_ids:['founder-1']});
- const it=candidate();it.evidence_candidate_key='ivan:2026-09-21:ef1';
+ const it=citing(candidate(),'ivan:2026-09-21:ef1');
  const x=await run({body:{},items:[it],rolloutRows:rolloutRow(['ivan']),evidencePack:{study:{study_id:'s1',state:'validated'},findings:[finding]}});
  const commit=x.calls.find(c=>c.url.endsWith('/audn_recommendation_commit'));
  const pkg=commit.body.p_rows[0].context.evidence_package;
@@ -301,7 +328,7 @@ test('F3: the saved evidence_package carries client_fact_refs as {source_id,kind
 
 test('F3: a needs_material candidate saves the reason string, not null',async()=>{
  const finding=evidenceFinding();
- const it=candidate();it.evidence_candidate_key='ivan:2026-09-21:ef1';
+ const it=citing(candidate(),'ivan:2026-09-21:ef1');
  const x=await run({body:{},items:[it],rolloutRows:rolloutRow(['ivan']),evidencePack:{study:{study_id:'s1',state:'validated'},findings:[finding]}});
  const commit=x.calls.find(c=>c.url.endsWith('/audn_recommendation_commit'));
  const pkg=commit.body.p_rows[0].context.evidence_package;
@@ -313,7 +340,7 @@ test('F3: a needs_material candidate saves the reason string, not null',async()=
 test('F3: an experiment-labeled saved evidence_package carries experiment_reason',async()=>{
  const finding=evidenceFinding({finding_id:'ef-exp',observed_value:10,baseline_value:50,baseline_n:25,experiment_eligible:true});
  delete finding.likes;
- const it=candidate();it.evidence_candidate_key='ivan:2026-09-21:ef-exp';
+ const it=citing(candidate(),'ivan:2026-09-21:ef-exp');
  const x=await run({body:{},items:[it],rolloutRows:rolloutRow(['ivan']),evidencePack:{study:{study_id:'s1',state:'validated'},findings:[finding]}});
  const commit=x.calls.find(c=>c.url.endsWith('/audn_recommendation_commit'));
  const pkg=commit.body.p_rows[0].context.evidence_package;
@@ -339,8 +366,8 @@ function nearCeilingFixtureArgs(repeat) {
 }
 const poolFindings=(n)=>Array.from({length:n},(_,i)=>evidenceFinding({finding_id:'ef-pool-'+i,source_ids:['sp-pool-'+i],observed_value:400-i}));
 
-test('budget fix: near-ceiling legacy input trims the evidence pool from the end (lowest-ranked first), commits nothing extra, and fits',async()=>{
- const x=await run({...nearCeilingFixtureArgs(5320),items:[],body:{preview:true,client_id:'ivan',evidence:true},evidencePack:{study:{study_id:'s1',state:'validated'},findings:poolFindings(12)}});
+test('regression: aggregate-input-overflow -- near-ceiling legacy input trims the evidence pool from the end (lowest-ranked first), commits nothing extra, and fits',async()=>{
+ const x=await run({...nearCeilingFixtureArgs(5700),items:[],body:{preview:true,client_id:'ivan',evidence:true},evidencePack:{study:{study_id:'s1',state:'validated'},findings:poolFindings(12)}});
  const rec=first(x);
  assert.equal(rec.evidence_pool_offered,12);
  assert(rec.evidence_pool_dropped_for_budget.length>=1);
@@ -453,7 +480,7 @@ test('a freeform experiment missing experiment_reason or test_metric is dropped 
 });
 
 test('a cited row\'s saved numbers still come from the server-built candidate, not the model',async()=>{
- const it=candidate();it.evidence_candidate_key='ivan:2026-09-21:ef1';
+ const it=citing(candidate(),'ivan:2026-09-21:ef1');
  const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding({observed_value:900,baseline_value:60,baseline_n:40,likes:150})]}});
  const pkg=first(x).rows[0].context.evidence_package;
  assert.equal(pkg.source_finding_ids[0],'ef1');
@@ -504,4 +531,204 @@ test('D: the client_registry read requests a stable order (client_id.asc)',async
  const req=x.calls.find(c=>c.url.includes('/client_registry?'));
  assert(req);
  assert(req.url.includes('order=client_id.asc'));
+});
+
+// ---------------------------------------------------------------------------
+// Run 4 regression controls. Each name carries a `regression: <slug>` a checker can find.
+// Boundary types are the REAL ones: the rollout value is TEXT holding JSON, and a saved
+// evidence package lives at context.evidence_package.
+// ---------------------------------------------------------------------------
+
+test('regression: text-rollout-parsing -- the switch value is a TEXT column holding JSON, parsed as text, never as an array',async()=>{
+ const x=await run({body:{},items:[citing(candidate(),'ivan:2026-09-21:ef1')],rolloutRows:[{key:'weekly_evidence_selector_clients',value:'["ivan"]'}],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ assert.deepEqual(x.result.evidence_rollout.clients,['ivan']);
+ assert.equal(first(x).evidence_path,true);
+ // a genuine array (the shape the writer wrongly tested for before) must still parse
+ const y=await run({body:{},items:[],rolloutRows:[{key:'weekly_evidence_selector_clients',value:['ivan']}]});
+ assert.deepEqual(y.result.evidence_rollout.clients,['ivan']);
+});
+
+test('regression: writer-reader-package-path -- a saved evidence package is written at context.evidence_package, the path the reader and the history read use',async()=>{
+ const x=await run({body:{},items:[citing(candidate(),'ivan:2026-09-21:ef1')],rolloutRows:rolloutRow(['ivan']),evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ const row=x.calls.find(c=>c.url.endsWith('/audn_recommendation_commit')).body.p_rows[0];
+ assert.equal(typeof row.context.evidence_package,'object');
+ assert.equal('evidence_package' in row.context.audn,false);
+ assert.equal(JSON.stringify(row.context.evidence_package.source_finding_ids),'["ef1"]');
+});
+
+test('regression: uncited-ordinary-choice -- an evidence-active client refuses an uncited non-experiment choice',async()=>{
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[candidate()],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ assert.equal(first(x).proposed,0);
+ assert.deepEqual(first(x).dropped.map(d=>d.reason),['no_measured_source']);
+});
+
+test('regression: empty-week-poisoning -- every model row dropped leaves a retryable bail and never commits an empty cycle',async()=>{
+ const x=await run({body:{},items:[candidate()],rolloutRows:rolloutRow(['ivan']),evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ assert.equal(first(x).writer_bail,true);
+ assert.equal(x.calls.some(c=>c.url.endsWith('/audn_recommendation_commit')),false);
+});
+
+test('regression: honest-bail-reason -- a drop by another validator reports no_valid_candidates with the real reasons, not no_measured_source',async()=>{
+ const it=citing(candidate(),'ivan:2026-09-21:ef1');
+ it.weekly.learning.recommendation_ids=['not-a-real-recommendation'];
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ assert.deepEqual(first(x).dropped.map(d=>d.reason),['learning_reference_invalid']);
+ assert.equal(first(x).reason,'no_valid_candidates');
+ assert.deepEqual(first(x).drop_reasons,{learning_reference_invalid:1});
+ // and the honest label is still claimed when that validator really did the dropping
+ const y=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[candidate()],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ assert.equal(first(y).reason,'no_measured_source');
+});
+
+test('regression: incompatible-learning-reference -- an empty learning list is valid on the evidence path and never drops a correctly cited row',async()=>{
+ const it=citing(candidate(),'ivan:2026-09-21:ef1');
+ it.weekly.learning={recommendation_ids:[],explanation:'No measured learning exists for this source yet.'};
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ assert.deepEqual(first(x).dropped,[]);
+ assert.equal(first(x).proposed,1);
+});
+
+test('regression: unknown-citation -- a candidate key that was never offered is refused, never invented',async()=>{
+ const it=citing(candidate(),'ivan:2026-09-21:never-offered');
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ assert.deepEqual(first(x).dropped.map(d=>d.reason),['evidence_candidate_unknown']);
+});
+
+test('regression: stale-citation -- a key minted for another week is refused',async()=>{
+ const it=citing(candidate(),'ivan:2026-09-14:ef1');
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ assert.deepEqual(first(x).dropped.map(d=>d.reason),['evidence_candidate_unknown']);
+});
+
+test('regression: cross-client-citation -- one client can never cite a key minted for another',async()=>{
+ const it=citing(candidate(),'arch:2026-09-21:ef1');
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ assert.deepEqual(first(x).dropped.map(d=>d.reason),['evidence_candidate_unknown']);
+ // and the minted key is always scoped to the client and week that asked for it
+ assert.equal(x.packs[0].evidence_candidates[0].draft_key,'ivan:2026-09-21:ef1');
+});
+
+test('regression: source-citation-binding -- a cited choice must cite its own candidate measured source post',async()=>{
+ const it=candidate();it.evidence_candidate_key='ivan:2026-09-21:ef1'; // key copied, source post not cited
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ assert.deepEqual(first(x).dropped.map(d=>d.reason),['evidence_source_not_cited']);
+});
+
+test('regression: source-arithmetic-mismatch -- an echoed evidence package that disagrees with the trusted candidate is refused',async()=>{
+ const it=citing(candidate(),'ivan:2026-09-21:ef1');
+ it.evidence_package={source_finding_ids:['ef1'],objective:'a_different_objective'};
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ assert.deepEqual(first(x).dropped.map(d=>d.reason),['evidence_package_number_mismatch']);
+});
+
+test('regression: missing-client-permission -- an unapproved client fact never reaches the model and never becomes a client_fact_ref',async()=>{
+ const denied={...source,source_id:'fact-denied',excerpt:'DENIED CLIENT MATERIAL',consent:{state:'denied',purpose:[]},writer_eligible:false,state:'denied'};
+ const finding=evidenceFinding({client_fact_ids:['fact-denied']});
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[],sources:[denied],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[finding]}});
+ // the excerpt never reaches the model, and the candidate says plainly that material is missing
+ assert(!JSON.stringify(x.packs).includes('DENIED CLIENT MATERIAL'));
+ assert.equal(x.packs[0].founder_sources.some(f=>f.source_id==='fact-denied'),false);
+ const cand=x.packs[0].evidence_candidates[0];
+ assert.equal('client_fact_refs' in cand,false,'the model view never carries a fact reference it may not use');
+ assert(cand,'the candidate is still offered, never silently dropped');
+ assert.equal(typeof cand.needs_material,'string');
+ assert(cand.needs_material.length>0);
+ // and a choice that tries to use it is refused by a permission validator, never written
+ const it=citing(candidate(),'ivan:2026-09-21:ef1');
+ it.evidence_package={source_finding_ids:['ef1'],client_fact_refs:['fact-denied']};
+ const y=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],sources:[denied],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[finding]}});
+ assert.equal(first(y).proposed,0);
+ assert.deepEqual(first(y).dropped.map(d=>d.reason),['founder_source_not_approved']);
+ // the same refusal when the unapproved fact is smuggled only through the echoed package
+ const z=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[(()=>{const q=citing(candidate(),'ivan:2026-09-21:ef1');q.evidence_package={source_finding_ids:['ef1'],client_fact_refs:['fact-denied']};return q;})()],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[finding]}});
+ assert.deepEqual(first(z).dropped.map(d=>d.reason),['evidence_package_unauthorized_client_fact']);
+});
+
+test('regression: evidence-source-resolution -- a candidate whose measured source post cannot be resolved is refused, never allowed through on an unrelated citation',async()=>{
+ const it=citing(candidate(),'ivan:2026-09-21:ef1');
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],studyPosts:[],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ // the unresolvable source id is not in the pack at all, so the legacy citation check fires first
+ assert.deepEqual(first(x).dropped.map(d=>d.reason),['source_id_not_in_pack']);
+ assert.equal(first(x).evidence_source_posts_resolved,0);
+ assert.equal(x.packs[0].evidence_items.some(e=>e.kind==='evidence_source'),false);
+});
+
+test('regression: evidence-source-visible -- the measured source post reaches the model with its author, url, date and text',async()=>{
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ const item=x.packs[0].evidence_items.find(e=>e.kind==='evidence_source');
+ assert(item,'the measured source post is published as an evidence item');
+ assert.equal(item.id,'evidence_source:sp1');
+ assert.equal(item.source_date,STUDY_POST_DATE);
+ assert.equal(item.competitor_name,'Source Author');
+ assert(item.excerpt.length>0);
+ assert.deepEqual(x.packs[0].evidence_candidates[0].source_evidence_ids,['evidence_source:sp1']);
+ assert.equal(x.packs[0].evidence_candidates[0].source_summary[0].evidence_id,'evidence_source:sp1');
+ assert.equal(first(x).evidence_source_posts_resolved,1);
+});
+
+test('regression: legacy-path-unchanged -- a switch-empty run publishes no evidence_source item and reads no study posts',async()=>{
+ const x=await run({body:{}});
+ assert.equal(x.packs[0].evidence_items.some(e=>e.kind==='evidence_source'),false);
+ assert.equal('evidence_candidates' in x.packs[0],false);
+ assert.equal(x.calls.some(c=>c.url.includes('/client_research_study_posts')),false);
+ assert.equal(first(x).proposed,1);
+ assert.equal('evidence_package' in x.calls.find(c=>c.url.endsWith('/audn_recommendation_commit')).body.p_rows[0].context,false);
+});
+
+test('regression: three-choice-and-one-experiment-caps -- the weekly cap and the single experiment slot both hold on the evidence path',async()=>{
+ const findings=[evidenceFinding(),evidenceFinding({finding_id:'ef2',source_ids:['sp2'],observed_value:390}),evidenceFinding({finding_id:'ef3',source_ids:['sp3'],observed_value:380}),evidenceFinding({finding_id:'ef4',source_ids:['sp4'],observed_value:370})];
+ const mk=(n,key,sid)=>{const it=citing(candidate(),key,[sid]);it.weekly.rank=n;it.weekly.topic_key='topic-'+n;it.original_angle='Angle number '+n;return it;};
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[mk(1,'ivan:2026-09-21:ef1','sp1'),mk(2,'ivan:2026-09-21:ef2','sp2'),mk(3,'ivan:2026-09-21:ef3','sp3'),mk(4,'ivan:2026-09-21:ef4','sp4')],evidencePack:{study:{study_id:'s1',state:'validated'},findings}});
+ assert.equal(first(x).proposed,3,'never more than the registry cap');
+ assert.equal(first(x).dropped.length,1,'the fourth choice is refused, never squeezed in');
+ assert.equal(first(x).evidence_selection.cited,3);
+ assert.equal(first(x).evidence_selection.experiments,0);
+ // one experiment slot: a second freeform experiment is refused even when the first was accepted
+ const e1=candidate();e1.experiment=true;e1.experiment_reason='An untested opening for this buyer.';e1.test_metric='Weighted reactions at 7 days.';
+ const e2=candidate();e2.experiment=true;e2.experiment_reason='A second untested opening.';e2.test_metric='Weighted reactions at 7 days.';e2.weekly.rank=2;e2.weekly.topic_key='second-topic';e2.original_angle='A second angle entirely.';
+ const y=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[e1,e2],evidencePack:{study:{study_id:'s1',state:'validated'},findings}});
+ assert.equal(first(y).proposed,1);
+ assert.deepEqual(first(y).dropped.map(d=>d.reason),['evidence_candidate_second_experiment']);
+ assert.equal(first(y).evidence_selection.experiments,1);
+});
+
+test('regression: proxy-timeout -- transport failures retry a bounded number of times, then bail retryable without committing',async()=>{
+ let attempts=0;
+ const x=await run({body:{},items:[],proxyBehaviour:()=>{attempts++;throw new Error('Simulated proxy transport failure');}});
+ assert.equal(attempts,3);
+ assert.equal(first(x).proxy_attempts,3);
+ assert.equal(first(x).writer_bail,true);
+ assert.equal(first(x).reason,'proxy_error');
+ assert.equal(first(x).retryable,true);
+ assert.equal(x.calls.some(c=>c.url.endsWith('/audn_recommendation_commit')),false);
+});
+
+test('regression: proxy-timeout-recovers -- a transport failure followed by a good reply still produces the week',async()=>{
+ let attempts=0;
+ const x=await run({body:{},proxyBehaviour:()=>{attempts++;if(attempts===1) throw new Error('Simulated proxy transport failure');return null;}});
+ assert.equal(attempts,2);
+ assert.equal(first(x).proxy_attempts,2);
+ assert.equal(first(x).proposed,1);
+});
+
+test('regression: per-client-isolation -- one client bailing on the proxy never stops the next client',async()=>{
+ const x=await run({body:{},clients:[registry('ivan'),registry('arch')],items:[],proxyBehaviour:(o)=>{if(o.body.messages[0].content.includes('"client_id":"ivan"')) throw new Error('Simulated proxy transport failure');return null;}});
+ const ivanRec=x.result.clients.find(c=>c.client_id==='ivan');
+ const archRec=x.result.clients.find(c=>c.client_id==='arch');
+ assert.equal(ivanRec.reason,'proxy_error');
+ assert.equal(ivanRec.retryable,true);
+ assert.equal(archRec.writer_bail,false);
+ assert.equal(archRec.skipped,false);
+});
+
+test('regression: reserved-evidence-budget -- context is slimmed in a stated order before any candidate is dropped, and constraint material is never trimmed',async()=>{
+ const x=await run({...nearCeilingFixtureArgs(5320),items:[],body:{preview:true,client_id:'ivan',evidence:true},evidencePack:{study:{study_id:'s1',state:'validated'},findings:poolFindings(12)}});
+ const rec=first(x);
+ assert.equal(rec.evidence_pool_survivors,12,'the full pool survives once context is slimmed first');
+ assert.deepEqual(rec.evidence_pool_dropped_for_budget,[]);
+ assert(rec.evidence_budget.slim_stage>0,'a slim stage was actually applied');
+ assert(rec.evidence_budget.context_lost.length>0,'what was lost is recorded');
+ // constraint material is byte-identical: the voice prompt body is never shortened
+ assert.equal(x.packs[0].prompts[0].body.length,'Complete applicable voice rule. '.repeat(5320).length);
+ assert(prompt.length+128+JSON.stringify(x.packs[0]).length<=200000);
 });

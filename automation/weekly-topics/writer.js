@@ -28,6 +28,27 @@ const SOURCE_WINDOW_DAYS = 45;
 // instead of a pre-made shortlist of the top 3 by raw lift alone. The final weekly cap (t.limit,
 // typically 3) and the one-experiment cap are unchanged and still enforced downstream.
 const EVIDENCE_POOL_LIMIT = 12;
+// Run 4 TRACE C1/C2: how much of a measured source post the model may read. The structure has to
+// be legible for the model to say what is transferable about it; the full post is not needed.
+const EVIDENCE_SOURCE_EXCERPT = 900;
+// Run 4 TRACE C3. Per-client share of the node budget for the model call, bounded transport
+// retries and a bounded backoff. These exist so one slow client cannot spend the whole run.
+const PER_CLIENT_MS = 260000;
+const PROXY_MAX_ATTEMPTS = 3;
+const PROXY_BACKOFF_MS = 5000;
+// Run 4 TRACE item 4. Deterministic slimming, in a stable, stated priority order, applied ONLY on
+// a run that actually carries an evidence pool (a switch-empty run stays byte-identical). Every
+// stage below trims editorial CONTEXT. Nothing here ever trims `prompts` (identity, consent,
+// voice and veto constraints), `already_recommended` (negative history), `founder_sources`,
+// `brief`, `buyer_fit` or `rules`. Candidates are trimmed only after every stage is exhausted,
+// which inverts the pre-Run-4 order where a 2,289-char candidate pool was dropped to protect
+// 134,028 chars of prompt bodies that were never at risk.
+const SLIM_STAGES = [
+  { stage: 0, excerptCap: 600, dropMarketResearch: false, lost: [] },
+  { stage: 1, excerptCap: 300, dropMarketResearch: false, lost: ['source excerpts shortened to 300 characters'] },
+  { stage: 2, excerptCap: 300, dropMarketResearch: true, lost: ['source excerpts shortened to 300 characters', 'market_research context omitted'] },
+  { stage: 3, excerptCap: 150, dropMarketResearch: true, lost: ['source excerpts shortened to 150 characters', 'market_research context omitted'] },
+];
 
 const RUN_ISO = new Date().toISOString();
 const enc = encodeURIComponent;
@@ -652,7 +673,7 @@ async function readEvidenceRollout() {
 }
 
 // Pure projection: full evidence remains local for validation and saved provenance.
-function makeModelPack(pack) {
+function makeModelPack(pack, slim) {
   const pick = (r,keys) => Object.fromEntries(keys.filter(k => r[k] !== undefined).map(k => [k,r[k]]));
   const short = v => String(v || '').toLowerCase().split(' (')[0].trim();
   const evidence = pack.evidence_items || [];
@@ -673,7 +694,11 @@ function makeModelPack(pack) {
     for (const queue of publicQueues) if (queue[i] && discovery.length<6) {discovery.push(queue[i]);added=true;}
     if (!added) break;
   }
-  const selected = [...competitors,...ownChosen,...evidence.filter(e => ['founder','buyer_question'].includes(e.kind)),...discovery];
+  // Run 4 TRACE C2: a measured source post published as an evidence item is ALWAYS in the model
+  // view when its candidate is. It is the one row a cited choice has to name, so it is never a
+  // discretionary selection and never competes with the competitor round-robin for a slot.
+  const evidenceSources = evidence.filter(e => e.kind === 'evidence_source');
+  const selected = [...competitors,...ownChosen,...evidence.filter(e => ['founder','buyer_question'].includes(e.kind)),...discovery,...evidenceSources];
   const definitions = {}, definitionIds = new Map();
   const limitationCode = (text) => { if (!definitionIds.has(text)) {const id='L'+(definitionIds.size+1);definitionIds.set(text,id);definitions[id]=text;} return definitionIds.get(text); };
   // Item 4 (S7 rollout finding): a client whose legacy input already sits near the ceiling has
@@ -685,7 +710,8 @@ function makeModelPack(pack) {
   const hasEvidenceCandidates = Array.isArray(pack.evidence_candidates) && pack.evidence_candidates.length > 0;
   const modelEvidence = selected.map(e => {
     const limitations = (e.limitations || []).map(limitationCode);
-    const excerptCap = ['founder','buyer_question'].includes(e.kind) ? e.excerpt.length : (hasEvidenceCandidates ? 600 : 1000);
+    const excerptCap = ['founder','buyer_question'].includes(e.kind) ? e.excerpt.length
+      : (hasEvidenceCandidates ? ((slim && slim.excerptCap) || 600) : 1000);
     const out = {...pick(e,['id','kind','source_date','url','format','competitor_name','likes_count','comments_count','reposts_count','source_group']),excerpt:e.excerpt.slice(0,excerptCap),limitations};
     if (out.excerpt.length < e.excerpt.length) out.excerpt_truncated=true;
     if (e.location && e.location !== e.url) out.location=e.location;
@@ -719,12 +745,12 @@ function makeModelPack(pack) {
   // Monthly aggregates stay intact: re-summarizing them could change their cohort basis.
   const authors=new Set(competitors.map(e=>short(e.competitor_name)));
   const marketResearch={};
-  for(const [table,rows]of Object.entries(pack.market_research || {})) marketResearch[table]=rows.slice(0,3).map(r=>({run_id:r.run_id,captured_at:r.created_at,freshness:r.freshness,limitation:r.limitation,theme:r.theme,section:r.section,headline:r.reading && String(r.reading.headline || '').slice(0,300),editorial_suggestion:r.reading && String(r.reading.change || '').slice(0,300)}));
+  for(const [table,rows]of Object.entries((slim && slim.dropMarketResearch) ? {} : (pack.market_research || {}))) marketResearch[table]=rows.slice(0,3).map(r=>({run_id:r.run_id,captured_at:r.created_at,freshness:r.freshness,limitation:r.limitation,theme:r.theme,section:r.section,headline:r.reading && String(r.reading.headline || '').slice(0,300),editorial_suggestion:r.reading && String(r.reading.change || '').slice(0,300)}));
   const prior = (pack.already_recommended || []).slice().sort((a,b)=>(a.source==='proposal'?0:1)-(b.source==='proposal'?0:1));
   const already=prior.slice(0,40).map(r=>({...pick(r,['source','recommendation_id','topic_key']),subject:String(r.subject || '').slice(0,160),original_angle:String(r.original_angle || '').slice(0,160)}));
   const feedbackDate = r => Math.max(Date.parse(r.decided_at || '') || 0,...(r.linked_results || []).map(x => Date.parse(x.captured_at || x.measured_at || x.published_at || '') || 0));
   const feedback=(pack.previous_decisions_and_results || []).slice().sort((a,b) => Number(b.decision_source === 'weekly_review') - Number(a.decision_source === 'weekly_review') || feedbackDate(b) - feedbackDate(a)).slice(0,12);
-  const selectedKinds=Object.fromEntries(['competitor','own_post','founder','buyer_question','news','trend'].map(kind=>[kind,{available:selected.filter(e=>e.kind===kind).length,fresh:selected.filter(e=>e.kind===kind && e.source_date && Date.parse(pack.week_start)-Date.parse(e.source_date)<=14*864e5 && Date.parse(e.source_date)<=Date.parse(pack.generated_at)).length}]));
+  const selectedKinds=Object.fromEntries(['competitor','own_post','founder','buyer_question','news','trend','evidence_source'].map(kind=>[kind,{available:selected.filter(e=>e.kind===kind).length,fresh:selected.filter(e=>e.kind===kind && e.source_date && Date.parse(pack.week_start)-Date.parse(e.source_date)<=14*864e5 && Date.parse(e.source_date)<=Date.parse(pack.generated_at)).length}]));
   const sourcePool=pack.coverage.source_pool_selection || pack.coverage.source_selection || pack.source_selection;
   const coverage={...pack.coverage,kinds:selectedKinds,source_pool_selection:sourcePool,source_selection:{...sourcePool,included_n:competitors.length,omitted_n:sourcePool.candidate_n-competitors.length,method:'roster_round_robin_model_view',max_rows:12},model_selection:{candidate_evidence_n:evidence.length,included_evidence_n:selected.length,omitted_evidence_n:evidence.length-selected.length,own_included:ownChosen.length,own_omitted:own.length-ownChosen.length,public_included:discovery.length,public_omitted:evidence.filter(e=>['news','trend'].includes(e.kind)).length-discovery.length,feedback_included:feedback.length,feedback_omitted:(pack.previous_decisions_and_results || []).length-feedback.length,dedup_included:already.length,dedup_omitted:prior.length-already.length,research_rows_per_table:3,measurement_scope:'selected own posts; one latest target age per post/metric; monthly cohort aggregates intact'}};
   delete coverage.input_characters;
@@ -1040,6 +1066,7 @@ for (const t of targets) {
   // failure here degrades to the legacy pack for this client (recorded on rec), never throws.
   let evidenceCandidates = [];
   let evidenceCandidatesForModel = [];
+  let evidenceSourceItems = [];
   if (evidenceActive) {
     try {
       const evidencePackRaw = await http({ method: 'POST', url: SB + '/rpc/content_evidence_pack', headers: HDR,
@@ -1077,14 +1104,70 @@ for (const t of targets) {
       for (const post of (evidencePackRaw && Array.isArray(evidencePackRaw.posts) ? evidencePackRaw.posts : [])) {
         if (post && post.canonical_source_id) postsById.set(String(post.canonical_source_id), post);
       }
+      // Run 4 TRACE C1: content_evidence_pack caps `posts` at the 200 NEWEST market posts
+      // (db/103 v_cap). Findings are the highest-lift outliers across the whole study, not the
+      // newest posts, so that array resolved 0 of 12 selected candidates for risedtc (2 of 138
+      // findings live inside the cap at all). The model was then ordered by the prompt to "name
+      // the source's author, using only source_summary" for a source it had never been shown.
+      // Fetch exactly the posts the SELECTED candidates cite, by primary key, so enrichment no
+      // longer depends on a recency window. Read-only; the numbers still come only from the
+      // trusted candidate. A failure here is caught by the same per-client handler below.
+      const studyId = evidencePackRaw && evidencePackRaw.study && evidencePackRaw.study.study_id;
+      const wantedSourceIds = [...new Set(evidenceCandidates.flatMap((c) => (c.source_posts || []).map(String)))]
+        .filter((sid) => sid && !postsById.has(sid));
+      if (studyId && wantedSourceIds.length) {
+        const missing = await getJson('/client_research_study_posts?select=canonical_source_id,source_url,author_id,author_role,published_at,post_text,format_evidence,age_comparability'
+          + '&client_id=eq.' + enc(cid) + '&study_id=eq.' + enc(studyId)
+          + '&canonical_source_id=in.(' + wantedSourceIds.map(enc).join(',') + ')');
+        for (const post of missing) if (post && post.canonical_source_id) postsById.set(String(post.canonical_source_id), post);
+      }
+      rec.evidence_source_posts_resolved = evidenceCandidates
+        .flatMap((c) => (c.source_posts || []).map(String))
+        .filter((sid) => postsById.has(sid)).length;
+      // TRACE C2: the candidate's measured source post was not in `rowById`, so a cited choice
+      // had no id it could legally put in evidence.source_ids -- `source_id_not_in_pack` drops
+      // the whole item. Publish each resolved source post as an ordinary evidence item of its own
+      // kind so every existing validator (dates, sample_n, quote-in-source, duplicate story)
+      // keeps working unchanged on it. It is NOT kind 'competitor': it carries no roster row, so
+      // it must never pull roster_accounts/roster_role claims with it.
+      evidenceSourceItems = [];
+      for (const sid of [...new Set(evidenceCandidates.flatMap((c) => (c.source_posts || []).map(String)))]) {
+        const post = postsById.get(sid);
+        if (!post) continue;
+        const item = {
+          id: 'evidence_source:' + sid,
+          native_id: sid,
+          kind: 'evidence_source',
+          client_id: cid,
+          source_date: dOnly(post.published_at),
+          url: post.source_url || null,
+          location: post.source_url || null,
+          excerpt: String(post.post_text || '').slice(0, EVIDENCE_SOURCE_EXCERPT),
+          competitor_name: post.author_id || null,
+          author_role: post.author_role || null,
+          table: 'client_research_study_posts',
+          source_group: sourceGroup(post.source_url),
+          limitations: [
+            'Someone else\'s post, measured against that author\'s own baseline. Never the client\'s own result.',
+            ...(post.age_comparability === 'comparable' ? [] : ['Capture age is unmatched for this source.']),
+          ],
+        };
+        evidenceSourceItems.push(item);
+        evidenceItems.push(item);
+        rowById[item.id] = item;
+      }
       evidenceCandidatesForModel = evidenceCandidates.map((c) => ({
         draft_key: c.draft_key, objective: c.objective, proposed_angle: c.proposed_angle,
         test_metric: c.test_metric, comparison_rule: c.comparison_rule, observation_window: c.observation_window,
         needs_material: c.needs_material, limitations: c.limitations, label: c.label,
         experiment_reason: c.experiment_reason, adaptation_history: c.adaptation_history,
+        // TRACE C2 fix: the exact evidence_items ids this candidate's measured sources were
+        // published under. A choice citing this candidate must put these in evidence.source_ids;
+        // trusted code re-checks that below, so the citation can never drift to another row.
+        source_evidence_ids: c.source_posts.map(String).filter((sid) => postsById.has(sid)).map((sid) => 'evidence_source:' + sid),
         source_summary: c.source_posts.map((sid) => {
           const post = postsById.get(String(sid));
-          return post ? { source_post_id: sid, author_id: post.author_id || null, source_url: post.source_url || null, published_at: post.published_at || null } : { source_post_id: sid };
+          return post ? { source_post_id: sid, evidence_id: 'evidence_source:' + sid, author_id: post.author_id || null, source_url: post.source_url || null, published_at: post.published_at || null } : { source_post_id: sid };
         }),
       }));
     } catch (e) {
@@ -1095,6 +1178,14 @@ for (const t of targets) {
       rec.evidence_error = String((e && e.message) || e).slice(0, 200);
       evidenceCandidates = [];
       evidenceCandidatesForModel = [];
+      // Leave the legacy pack byte-identical to a switch-empty run: withdraw anything this
+      // block already published before it failed.
+      for (const item of evidenceSourceItems) {
+        const at = evidenceItems.indexOf(item);
+        if (at >= 0) evidenceItems.splice(at, 1);
+        delete rowById[item.id];
+      }
+      evidenceSourceItems = [];
     }
   }
 
@@ -1143,10 +1234,33 @@ for (const t of targets) {
   // already lift-ranked pool (lowest-ranked first); the lone remaining experiment slot is
   // dropped last, only once nothing else is left to drop. Every candidate that stays keeps
   // complete evidence -- nothing is stripped off an individual candidate.
+  const dropOrphanEvidenceSources = () => {
+    const stillCited = new Set(evidenceCandidates.flatMap((c) => (c.source_posts || []).map((sid) => 'evidence_source:' + sid)));
+    for (let i = evidenceSourceItems.length - 1; i >= 0; i--) {
+      const item = evidenceSourceItems[i];
+      if (stillCited.has(item.id)) continue;
+      const at = pack.evidence_items.indexOf(item);
+      if (at >= 0) pack.evidence_items.splice(at, 1);
+      delete rowById[item.id];
+      evidenceSourceItems.splice(i, 1);
+    }
+  };
   if (evidenceActive) {
     rec.evidence_pool_offered = evidenceCandidatesForModel.length;
     const droppedForBudget = [];
     try {
+      // Run 4 TRACE item 4, stage ladder BEFORE any candidate is dropped. Each stage removes
+      // editorial context only; constraint material is never a stage. The first stage that fits
+      // wins and the rest are never applied, so the model keeps as much context as the budget
+      // allows. `slimStage`/`context_lost` go on the record so a trimmed run is visible.
+      let slimStage = SLIM_STAGES[0];
+      for (const stage of SLIM_STAGES) {
+        slimStage = stage;
+        modelPack = makeModelPack(pack, stage);
+        inputCharacters = systemPrompt.length + 128 + JSON.stringify(modelPack).length;
+        if (inputCharacters <= 200000) break;
+      }
+      rec.evidence_budget = { slim_stage: slimStage.stage, context_lost: slimStage.lost, input_characters: inputCharacters };
       while (evidenceCandidatesForModel.length > 0 && inputCharacters > 200000) {
         let dropIndex = evidenceCandidatesForModel.length - 1;
         if (evidenceCandidatesForModel[dropIndex].label === 'experiment' && evidenceCandidatesForModel.length > 1) {
@@ -1162,9 +1276,14 @@ for (const t of targets) {
           code: 'input_budget',
         });
         pack.evidence_candidates = evidenceCandidatesForModel;
-        modelPack = makeModelPack(pack);
+        // A source post is published for its candidate. Once the last candidate citing it is
+        // gone the row is orphaned: leaving it would offer the model a measured source with no
+        // candidate behind it, which is exactly the uncited-ordinary-choice failure.
+        dropOrphanEvidenceSources();
+        modelPack = makeModelPack(pack, slimStage);
         inputCharacters = systemPrompt.length + 128 + JSON.stringify(modelPack).length;
       }
+      rec.evidence_budget = { slim_stage: slimStage.stage, context_lost: slimStage.lost, input_characters: inputCharacters };
     } catch (e) {
       // Isolation (item 3): a failure while fitting the pool is still an evidence-path failure
       // for this client only. Fall back to zero evidence candidates -- the legacy input.
@@ -1172,12 +1291,16 @@ for (const t of targets) {
       evidenceCandidates = [];
       evidenceCandidatesForModel = [];
       pack.evidence_candidates = [];
+      dropOrphanEvidenceSources();
       modelPack = makeModelPack(pack);
       inputCharacters = systemPrompt.length + 128 + JSON.stringify(modelPack).length;
     }
     rec.evidence_pool_dropped_for_budget = droppedForBudget;
     rec.evidence_pool_survivors = evidenceCandidates.length;
     rec.coverage = modelPack.coverage;
+    const trimmedIds = new Set(modelPack.evidence_items.map(r => r.id));
+    for (const id of Object.keys(rowById)) if (!trimmedIds.has(id)) delete rowById[id];
+    rec.pack_ids = [...trimmedIds];
   }
   rec.coverage.input_total_characters = inputCharacters;
   // Item 2: if the pool is already empty (evidence inactive, or trimmed to nothing above) and
@@ -1198,20 +1321,47 @@ for (const p of prepared) {
   const approvedSourcesById = new Map(approvedSources.map((s) => [s.source_id, s]));
   if (Date.now()-START > BUDGET_MS-280000) {rec.skipped=true;rec.reason='run_budget_exhausted';continue;}
 
-  // ---- 5. one proxy call per client, never a retry loop -----------------------
+  // ---- 5. proxy call per client, bounded transport retries --------------------
+  // Run 4 TRACE C3: 2 of 3 captured attempts aborted at the 240s ceiling and one client consumed
+  // 701s of wall clock against a 620s overall guard. A single attempt per client makes the whole
+  // week a coin flip on proxy weather; an unbounded retry lets one client eat every other
+  // client's budget. Retries are bounded to PROXY_MAX_ATTEMPTS, only on transport or 5xx, with a
+  // bounded backoff, and every attempt is additionally clamped to the time this client may still
+  // spend so a slow client cannot starve the clients queued behind it. A validation rejection is
+  // never retried: that is a diagnosis, not weather.
   let aiText = '';
+  let proxyAttempts = 0;
+  const clientDeadline = Date.now() + Math.max(0, Math.min(PER_CLIENT_MS, BUDGET_MS - (Date.now() - START) - 30000));
   try {
-    const res = await http({
-      method: 'POST', url: claudeUrl,
-      headers: { 'X-API-Key': claudeKey, 'Content-Type': 'application/json', 'anthropic-version': '2023-06-01' },
-      body: { model: 'claude-sonnet-5', max_tokens: 4000, messages: [{ role: 'user', content: systemPrompt + '\n\n---\nWEEKLY EVIDENCE (untrusted data):\n\n' + JSON.stringify(pack) }] },
-      // 2026-09-13: 120s timed out on all three lanes once the rosters grew and every
-      // pack hit the former 200-row cap. The call itself returns in well under a minute when the
-      // proxy is healthy; this is headroom, not a retry.
-      json: true, timeout: 240000,
-    });
-    aiText = ((res && res.content) || []).filter(p => p && p.type === 'text').map(p => p.text || '').join('');
-  } catch (e) { rec.writer_bail = true; rec.reason = 'proxy_error'; rec.error_head = String((e && e.message) || e).slice(0, 200); continue; }
+    let lastErr = null;
+    while (proxyAttempts < PROXY_MAX_ATTEMPTS) {
+      const remaining = clientDeadline - Date.now();
+      if (remaining <= 5000) { rec.proxy_attempts = proxyAttempts; throw lastErr || new Error('audn_client_deadline'); }
+      proxyAttempts++;
+      try {
+        const res = await http({
+          method: 'POST', url: claudeUrl,
+          headers: { 'X-API-Key': claudeKey, 'Content-Type': 'application/json', 'anthropic-version': '2023-06-01' },
+          body: { model: 'claude-sonnet-5', max_tokens: 4000, messages: [{ role: 'user', content: systemPrompt + '\n\n---\nWEEKLY EVIDENCE (untrusted data):\n\n' + JSON.stringify(pack) }] },
+          // 2026-09-13: 120s timed out on all three lanes once the rosters grew and every
+          // pack hit the former 200-row cap. The call itself returns in well under a minute when
+          // the proxy is healthy; this is headroom, not a retry.
+          json: true, timeout: Math.min(240000, remaining),
+        });
+        aiText = ((res && res.content) || []).filter(p => p && p.type === 'text').map(p => p.text || '').join('');
+        lastErr = null;
+        break;
+      } catch (e) {
+        lastErr = e;
+        if (proxyAttempts >= PROXY_MAX_ATTEMPTS) break;
+        const wait = Math.min(PROXY_BACKOFF_MS * proxyAttempts, Math.max(0, clientDeadline - Date.now() - 5000));
+        if (wait <= 0) break;
+        if (typeof setTimeout === 'function') await new Promise((r) => setTimeout(r, wait));
+      }
+    }
+    rec.proxy_attempts = proxyAttempts;
+    if (lastErr) throw lastErr;
+  } catch (e) { rec.writer_bail = true; rec.reason = 'proxy_error'; rec.retryable = true; rec.proxy_attempts = proxyAttempts; rec.error_head = String((e && e.message) || e).slice(0, 200); continue; }
   if (!aiText.trim()) { rec.writer_bail = true; rec.reason = 'proxy_no_json'; continue; } // a quota refusal reads as empty
   const mJ = aiText.match(/\[[\s\S]*\]|\{[\s\S]*\}/);
   // hotfix-02 lesson: an HTTP 200 whose only content is the weekly-limit banner carries no
@@ -1307,6 +1457,15 @@ for (const p of prepared) {
         if (!evidenceCandidate) { drop('evidence_candidate_unknown'); continue; }
         if (evidenceCandidate.label === 'experiment' && evidenceExperimentUsed) { drop('evidence_candidate_second_experiment'); continue; }
         if (!isStr(evidenceCandidate.objective) || !isStr(evidenceCandidate.test_metric)) { drop('evidence_candidate_missing_objective'); continue; }
+        // Run 4 TRACE C2 binding: the choice must cite the candidate's OWN measured source post,
+        // by the evidence_items id that post was published under. Trusted code decides which id
+        // that is -- the model never supplies it from anywhere but the pack -- so a citation can
+        // never drift to an unrelated competitor row while claiming a measured source. When the
+        // source post could not be resolved at all, the candidate carries no citable row and is
+        // refused rather than allowed through on an unrelated citation.
+        const requiredSourceIds = (evidenceCandidate.source_posts || []).map((sid) => 'evidence_source:' + String(sid)).filter((eid) => rowById[eid]);
+        if (!requiredSourceIds.length) { drop('evidence_source_unresolved'); continue; }
+        if (!requiredSourceIds.every((eid) => ids.includes(eid))) { drop('evidence_source_not_cited'); continue; }
         // A model-echoed evidence_package, if present at all, must match the trusted candidate
         // exactly on every field it repeats -- it is optional and only ever cross-checked, never
         // the source of truth.
@@ -1360,7 +1519,17 @@ for (const p of prepared) {
     // burn the week irrecoverably on a prompt/model miss. Bail retryable instead; evidence_selection
     // above still records exactly what was offered/cited/dropped for the next run or an operator.
     if (items.length) {
-      rec.reason = measuredRequired ? 'no_measured_source' : 'no_valid_candidates';
+      // Run 4 TRACE C3 / RESUME (d): the reason must name what actually dropped the rows.
+      // Reporting `no_measured_source` when the only drop was, say, learning_reference_invalid
+      // sent the whole round-3 diagnosis down a false lead. `no_measured_source` is now claimed
+      // only when that validator really did the dropping; otherwise the honest answer is
+      // `no_valid_candidates`, with every real reason and its count attached.
+      const reasons = rec.dropped.map((d) => d.reason);
+      const counts = {};
+      for (const r of reasons) counts[r] = (counts[r] || 0) + 1;
+      rec.drop_reasons = counts;
+      rec.reason = (measuredRequired && reasons.length && reasons.every((r) => r === 'no_measured_source'))
+        ? 'no_measured_source' : 'no_valid_candidates';
       rec.writer_bail = true;
       continue;
     }
