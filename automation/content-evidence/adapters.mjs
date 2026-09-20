@@ -95,6 +95,55 @@ export function marketSourceFor(clientId) {
   return Object.freeze({ ...base, clientId });
 }
 
+// ---------------------------------------------------------------------------
+// Own-post source descriptors: the tenant's OWN published posts
+// ---------------------------------------------------------------------------
+//
+// `public.own_posts` has NO tenant column. Checked against information_schema on 2026-09-20: the
+// only column resembling one is `source text`, which is provenance (where the row came from), not
+// tenancy. The table is Ivan's spine by history, and nothing in it says so.
+//
+// An earlier version of this adapter wrote `where $1 = 'ivan'`, which is a comparison between a
+// bound parameter and a literal -- true or false for the whole statement, never a row filter. For
+// clientId 'ivan' it returned the entire table, which is right by accident; the shape is wrong
+// because it looks like a tenancy predicate and is not one. It is gone.
+//
+// The rule now: an untenanted table is reachable only through the descriptor that names its lane.
+// `ownPostSourceFor('risedtc')` returns the client_post_metrics descriptor, so own_posts is
+// unreachable for any client but ivan BY CONSTRUCTION -- there is no predicate to get wrong, and
+// no parameter whose value could widen the population.
+
+export const OWN_POST_SOURCES = Object.freeze({
+  ivan: Object.freeze({
+    lane: 'ivan',
+    table: 'public.own_posts',
+    tenantColumn: null,
+    tenancy: 'untenanted table; ivan-only by descriptor',
+    note: 'No client_id/seat/tenant/owner column exists. Scope comes from the descriptor, never from SQL.',
+  }),
+  default: Object.freeze({
+    lane: 'default',
+    table: 'public.client_post_metrics',
+    tenantColumn: 'client_id',
+    tenancy: 'tenant column client_id, bound as $1',
+    note: 'Per-tenant table; the client is a bound parameter in the where clause.',
+  }),
+});
+
+/** The own-post source descriptor for one tenant. Selftest lanes are refused, as everywhere. */
+export function ownPostSourceFor(clientId) {
+  if (typeof clientId !== 'string' || clientId.trim() === '') {
+    throw new AdapterError('ADAPTER_MISSING_CLIENT',
+      'ownPostSourceFor requires an explicit clientId; there is no default tenant');
+  }
+  if (SELFTEST_LANES.includes(clientId)) {
+    throw new AdapterError('ADAPTER_SELFTEST_LANE',
+      `${clientId} is a selftest lane, not a tenant; it has no own-post population.`);
+  }
+  const base = clientId === IVAN ? OWN_POST_SOURCES.ivan : OWN_POST_SOURCES.default;
+  return Object.freeze({ ...base, clientId });
+}
+
 /** Reader names, in one place, so a tenancy test can loop over all of them instead of a sample. */
 export const READERS = Object.freeze([
   'readMarketPosts',
@@ -190,10 +239,25 @@ export function createAdapters({ query }) {
   }
 
   return {
-    /** Escape hatch for a caller with its own read statement. Still read-only, still tenant-bound. */
+    /**
+     * Escape hatch for a caller with its own read statement. Read-only, and genuinely tenant-bound:
+     * the statement MUST reference $1 and $1 MUST be this client. A caller-supplied statement that
+     * never mentions the client is an untenanted read wearing a clientId argument, so it is refused
+     * rather than executed. (Read-only is checked first, so a smuggled write still reports as one.)
+     */
     async runReadOnly(opts = {}) {
-      requireClient('runReadOnly', opts);
-      return run(opts.sql, opts.params ?? []);
+      const clientId = requireClient('runReadOnly', opts);
+      assertReadOnlySql(opts.sql);
+      const params = opts.params ?? [];
+      if (!/\$1\b/.test(String(opts.sql))) {
+        throw new AdapterError('ADAPTER_UNBOUND_CLIENT',
+          'runReadOnly requires the statement to reference the bound client parameter $1');
+      }
+      if (params[0] !== clientId) {
+        throw new AdapterError('ADAPTER_UNBOUND_CLIENT',
+          `runReadOnly requires params[0] to be the clientId ${JSON.stringify(clientId)}`);
+      }
+      return run(opts.sql, params);
     },
 
     /**
@@ -223,27 +287,32 @@ export function createAdapters({ query }) {
         .map((r) => mapMarketRow(clientId, r));
     },
 
-    /** The tenant's own published posts. Ivan's spine is own_posts; a client's is client_post_metrics. */
+    /**
+     * The tenant's own published posts, from that tenant's named source descriptor.
+     * Ivan's spine is the untenanted own_posts; every other tenant's is client_post_metrics,
+     * which has a real client_id column and binds it.
+     */
     async readOwnPosts(opts = {}) {
       const clientId = requireClient('readOwnPosts', opts);
-      const params = [clientId];
-      if (clientId === IVAN) {
+      const src = ownPostSourceFor(clientId);
+      if (src.tenantColumn === null) {
+        // No tenant column exists, so there is no predicate to write. The descriptor is the scope,
+        // and no client but the one it names can reach this table at all.
         const rows = await run(
           `select o.social_id, o.linkedin_url, o.post_text, o.post_type, o.posted_at,
                   o.metrics_updated_at, o.scraped_at, o.num_likes, o.num_comments, o.num_shares,
                   o.num_impressions, o.profile_views_from_post
-             from public.own_posts o
-            where $1 = 'ivan'
-            order by o.posted_at desc nulls last`, params);
+             from ${src.table} o
+            order by o.posted_at desc nulls last`, []);
         return rows.map((r) => mapOwnPostRow(clientId, r));
       }
       const rows = await run(
         `select m.social_id, m.post_url, m.title, m.published_at, m.captured_at,
                 m.impressions, m.reactions, m.comments, m.shares,
                 m.profile_views_from_post, m.followers_gained_from_post, m.inbound_dms
-           from public.client_post_metrics m
-          where m.client_id = $1
-          order by m.published_at desc nulls last`, params);
+           from ${src.table} m
+          where m.${src.tenantColumn} = $1
+          order by m.published_at desc nulls last`, [clientId]);
       return rows.map((r) => mapClientMetricRow(clientId, r));
     },
 

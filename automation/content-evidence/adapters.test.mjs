@@ -8,8 +8,10 @@ import {
   createAdapters,
   READERS,
   MARKET_SOURCES,
+  OWN_POST_SOURCES,
   SELFTEST_LANES,
   marketSourceFor,
+  ownPostSourceFor,
   assertReadOnlySql,
 } from './adapters.mjs';
 
@@ -74,6 +76,74 @@ test('the adapter refuses a query the caller smuggled a write into', async () =>
   const a = createAdapters({ query: rec.query });
   await assert.rejects(() => a.runReadOnly({ clientId: 'ivan', sql: 'update own_posts set x = 1', params: [] }),
     (err) => err.code === 'ADAPTER_WRITE_FORBIDDEN');
+});
+
+test('runReadOnly refuses caller SQL that never binds the client', async () => {
+  const rec = recorder();
+  const a = createAdapters({ query: rec.query });
+  // a read that mentions no client at all is an untenanted read wearing a clientId argument
+  await assert.rejects(
+    () => a.runReadOnly({ clientId: 'risedtc', sql: 'select * from public.client_post_metrics', params: [] }),
+    (err) => err.code === 'ADAPTER_UNBOUND_CLIENT');
+  // $1 present but bound to somebody else
+  await assert.rejects(
+    () => a.runReadOnly({
+      clientId: 'risedtc',
+      sql: 'select 1 from public.client_post_metrics where client_id = $1',
+      params: ['arch'],
+    }),
+    (err) => err.code === 'ADAPTER_UNBOUND_CLIENT');
+  assert.equal(rec.calls.length, 0);
+  // correctly bound: it runs
+  await a.runReadOnly({
+    clientId: 'risedtc',
+    sql: 'select 1 from public.client_post_metrics where client_id = $1',
+    params: ['risedtc'],
+  });
+  assert.equal(rec.calls.length, 1);
+  assert.deepEqual(rec.calls[0].params, ['risedtc']);
+});
+
+test('own_posts is untenanted, so only the descriptor that names it can reach it', async () => {
+  assert.equal(OWN_POST_SOURCES.ivan.table, 'public.own_posts');
+  assert.equal(OWN_POST_SOURCES.ivan.tenantColumn, null);
+  assert.equal(OWN_POST_SOURCES.ivan.tenancy, 'untenanted table; ivan-only by descriptor');
+  assert.equal(OWN_POST_SOURCES.default.tenantColumn, 'client_id');
+
+  const rec = recorder();
+  const a = createAdapters({ query: rec.query });
+  await a.readOwnPosts({ clientId: 'ivan' });
+  assert.match(rec.calls[0].sql, /from public\.own_posts/);
+
+  // No other client can reach the untenanted table, by construction rather than by predicate.
+  for (const clientId of ['risedtc', 'arch', 't-nobody']) {
+    assert.equal(ownPostSourceFor(clientId).table, 'public.client_post_metrics');
+    const r2 = recorder();
+    const a2 = createAdapters({ query: r2.query });
+    await a2.readOwnPosts({ clientId });
+    assert.ok(!/own_posts/.test(r2.calls[0].sql), `${clientId} must not reach own_posts`);
+    assert.match(r2.calls[0].sql, /where m\.client_id = \$1/);
+    assert.deepEqual(r2.calls[0].params, [clientId]);
+  }
+  assert.throws(() => ownPostSourceFor('zz-selftest'), (err) => err.code === 'ADAPTER_SELFTEST_LANE');
+});
+
+test('no reader compares a bound parameter to a literal instead of filtering rows', async () => {
+  const rec = recorder();
+  const a = createAdapters({ query: rec.query });
+  for (const clientId of ['ivan', 'risedtc', 'arch']) {
+    await a.readMarketPosts({ clientId });
+    await a.readOwnPosts({ clientId });
+    await a.readOwnAudience({ clientId });
+    await a.readStudyReading({ clientId });
+    await a.readRoster({ clientId });
+  }
+  assert.ok(rec.calls.length > 0);
+  for (const { sql } of rec.calls) {
+    // `where $1 = 'ivan'` is a whole-statement boolean, not a row filter.
+    assert.ok(!/\$\d+\s*=\s*'/.test(sql),
+      `a reader compares a bound parameter to a literal: ${sql.replace(/\s+/g, ' ').slice(0, 120)}`);
+  }
 });
 
 test('ivan reads the legacy shared market table, another tenant reads its own', async () => {
