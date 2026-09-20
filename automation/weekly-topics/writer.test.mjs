@@ -675,7 +675,7 @@ test('regression: legacy-path-unchanged -- a switch-empty run publishes no evide
  assert.equal('evidence_package' in x.calls.find(c=>c.url.endsWith('/audn_recommendation_commit')).body.p_rows[0].context,false);
 });
 
-test('regression: three-choice-and-one-experiment-caps -- the weekly cap and the single experiment slot both hold on the evidence path',async()=>{
+test('regression: cap-three-choices -- the weekly cap holds on the evidence path',async()=>{
  const findings=[evidenceFinding(),evidenceFinding({finding_id:'ef2',source_ids:['sp2'],observed_value:390}),evidenceFinding({finding_id:'ef3',source_ids:['sp3'],observed_value:380}),evidenceFinding({finding_id:'ef4',source_ids:['sp4'],observed_value:370})];
  const mk=(n,key,sid)=>{const it=citing(candidate(),key,[sid]);it.weekly.rank=n;it.weekly.topic_key='topic-'+n;it.original_angle='Angle number '+n;return it;};
  const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[mk(1,'ivan:2026-09-21:ef1','sp1'),mk(2,'ivan:2026-09-21:ef2','sp2'),mk(3,'ivan:2026-09-21:ef3','sp3'),mk(4,'ivan:2026-09-21:ef4','sp4')],evidencePack:{study:{study_id:'s1',state:'validated'},findings}});
@@ -683,7 +683,10 @@ test('regression: three-choice-and-one-experiment-caps -- the weekly cap and the
  assert.equal(first(x).dropped.length,1,'the fourth choice is refused, never squeezed in');
  assert.equal(first(x).evidence_selection.cited,3);
  assert.equal(first(x).evidence_selection.experiments,0);
- // one experiment slot: a second freeform experiment is refused even when the first was accepted
+});
+
+test('regression: cap-one-experiment -- a second experiment-flagged choice is refused once the single slot is filled',async()=>{
+ const findings=[evidenceFinding()];
  const e1=candidate();e1.experiment=true;e1.experiment_reason='An untested opening for this buyer.';e1.test_metric='Weighted reactions at 7 days.';
  const e2=candidate();e2.experiment=true;e2.experiment_reason='A second untested opening.';e2.test_metric='Weighted reactions at 7 days.';e2.weekly.rank=2;e2.weekly.topic_key='second-topic';e2.original_angle='A second angle entirely.';
  const y=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[e1,e2],evidencePack:{study:{study_id:'s1',state:'validated'},findings}});
