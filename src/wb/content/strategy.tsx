@@ -31,6 +31,7 @@ import { AudienceBlock } from './AudienceBlock'
 import { OutreachBlock } from './OutreachBlock'
 import { ProposalsBlock } from './ProposalsBlock'
 import { EvidenceBlock } from './evidence/EvidenceBlock'
+import { evidenceFixtureBypassActive } from '../../lib/contentEvidence'
 import { BenchmarkBlock } from './BenchmarkBlock'
 import { ReachBlock } from './ReachBlock'
 import { ThemesBlock } from './ThemesBlock'
@@ -270,7 +271,19 @@ export function StrategyView({ lane, setLane }: {
   // The tenants this operator may see come from client_registry through
   // operator_lanes, so onboarding a client adds a lane here with no deploy.
   const lanes = useLanes()
-  const [view, setView] = useState('recommendations')
+  // W5 REACHABILITY (content-evidence-03 Phase 2 fix pass): the independent
+  // checker opens a `?evidenceFixture=<state>` URL with a fresh browser
+  // profile and clicks nothing, so a URL carrying that param has to land
+  // directly on the Evidence tab rather than the default Recommendations
+  // one. DEV-only and tree-shaken exactly like `contentEvidence.ts`'s own
+  // fixture lever — the inline `import.meta.env.DEV &&` here is what lets
+  // Rollup fold the whole branch (and `evidenceFixtureBypassActive`'s call)
+  // out of a `NODE_ENV=production` build.
+  const [view, setView] = useState(() => (
+    import.meta.env.DEV && typeof window !== 'undefined'
+      && evidenceFixtureBypassActive(import.meta.env.DEV, window.location.search)
+      ? 'evidence' : 'recommendations'
+  ))
   const [refreshTick, setRefreshTick] = useState(0)
   const [proposalDirty, setProposalDirty] = useState(false)
   const rowsRef = useRef<HTMLDivElement>(null)

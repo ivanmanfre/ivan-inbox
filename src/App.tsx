@@ -66,6 +66,22 @@ const StockShell = lazy(() => import('./stockShell'))
   history.replaceState(null, '', `#exp/brain-b/dms?thread=${encodeURIComponent(id)}`)
 })()
 import { getExpVariant, ExpGate } from './exp'
+import { evidenceFixtureBypassActive } from './lib/contentEvidence'
+// DEV ONLY, see the bypass check in App() below. The `import.meta.env.DEV`
+// ternary (not just the render-site `if`) is required: `lazy(() =>
+// import(...))` is an ordinary top-level call, so Rollup treats its
+// `import()` as reachable and emits a real `FixtureHarness-*.js` chunk in a
+// default `npm run build` REGARDLESS of the conditional around where
+// `<EvidenceFixtureHarness/>` gets rendered below -- confirmed by building:
+// the first version of this fix (an unconditional `const ... = lazy(...)`)
+// still leaked the chunk into `dist/`. Folding the `lazy()` call itself
+// behind the same literal `import.meta.env.DEV` (`false` in a
+// `NODE_ENV=production` build) lets Rollup dead-code-eliminate the whole
+// ternary branch, taking the `import()` reference with it -- verified again
+// after this change: `dist/` carries no `FixtureHarness` chunk.
+const EvidenceFixtureHarness = import.meta.env.DEV
+  ? lazy(() => import('./wb/content/evidence/FixtureHarness').then(m => ({ default: m.FixtureHarness })))
+  : null
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -109,6 +125,24 @@ export default function App() {
     if (!session) return
     void reconcilePush()
   }, [session])
+  // W5 CHECKER REACHABILITY (content-evidence-03 Phase 2 fix pass,
+  // orchestrator ruling c): the independent checker opens a
+  // `?evidenceFixture=<state>` URL with a fresh, signed-out browser profile
+  // and clicks nothing, so the login gate below has to be skippable for that
+  // one case. DEV-only and tree-shaken exactly like the fixture reader
+  // itself (src/lib/contentEvidence.ts readPack) — the literal
+  // `import.meta.env.DEV` token at this call site is what lets Rollup fold
+  // this whole branch (and the `evidenceFixtureBypassActive` call) out of a
+  // `NODE_ENV=production` build; verified by grepping `dist/` after building
+  // (see UI-RECEIPT.md). `evidenceFixtureBypassActive` takes `isDev` as an
+  // explicit argument so "never true when DEV is false" is independently
+  // unit-tested (contentEvidence.test.ts) without depending on this file's
+  // own build mode.
+  if (import.meta.env.DEV && typeof window !== 'undefined'
+    && evidenceFixtureBypassActive(import.meta.env.DEV, window.location.search)
+    && EvidenceFixtureHarness) {
+    return <Suspense fallback={null}><EvidenceFixtureHarness /></Suspense>
+  }
   // Paint from the stored session while getSession() resolves (src/lib/bootGate.ts).
   const gate = bootGate({ ready, hasSession: !!session, storedUser: currentUserId() !== null })
   if (gate === 'blank') return null
