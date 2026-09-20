@@ -8,7 +8,7 @@ const prompt = 'Fixture rubric';
 const source = {source_id:'founder-1',client_id:'ivan',kind:'authorized_call_transcript',writer_eligible:true,state:'approved',location:'permitted-transcript:12',excerpt:'We review every proposed reply before anyone can send it.',source_date:'2026-09-18',consent:{state:'approved',purpose:['drafting']}};
 const registry = (id='ivan') => ({client_id:id,is_active:true,platform:{measurement:{writer_enabled:true,roster:[],pilot_limits:{recommendations_per_review:3}}}});
 const candidate = (kind='founder',id='founder-1',date='2026-09-18') => ({client_id:'ivan',subject:'operations',title:'Review before sending',buyer_relevance:'Agency owners need control over outgoing replies.',original_angle:'Show the approval decision before the automation.',next_action:'Collect one approved example.',what_changed:'A founder describes requiring review before sending.',why_it_matters:'Agency owners can inspect the approval step.',could_publish:'Show the decision on a short screen recording.',proof_needed:'One redacted example.',asset_required:false,format:'screen-demo',roster_accounts:[],roster_role:null,founder_source_ids:kind==='founder'?[id]:[],evidence:{source_ids:[kind+':'+id],source_dates:[date],sample_n:1,unknowns:'No measured result supplied.'},weekly:{week_start:'2026-09-21',slot:'experiment',hook:'Who approves the next reply?',intended_response:'Ask readers which step they review.',why_now:'Use this week to test the approval walkthrough.',success_metric:'Count relevant replies after seven days.',evidence_confidence:'medium',confidence_reason:'One direct excerpt, no outcome measurement.',priority_reason:'Direct fit to the buyer problem.',learning:{recommendation_ids:[],explanation:'No relevant measured feedback yet.'},rank:1,topic_key:'review-before-send'}});
-async function run({body={preview:true},items=[candidate()],sources=[source],own=[],rows=[],cycles=[],clients=[registry()],external=[],competitors=[],gates=[],readLatency=0,contextLatency=0,contextExtra={},now='2026-09-19T10:00:00Z',feedback=[]}={}) {
+async function run({body={preview:true},items=[candidate()],sources=[source],own=[],rows=[],cycles=[],clients=[registry()],external=[],competitors=[],gates=[],readLatency=0,contextLatency=0,contextExtra={},now='2026-09-19T10:00:00Z',feedback=[],rolloutRows=[],rolloutError=false,evidencePack={study:null,findings:[]}}={}) {
  const calls=[];const packs=[]; const RealDate=Date;
  class Clock extends RealDate {constructor(...a){super(...(a.length?a:[now]));}static now(){return new RealDate(now).getTime();}}
  const httpRequest=async o=>{calls.push(o);if(o.method==='GET' && o.timeout < readLatency) throw new Error('Required read timed out');const u=new URL(o.url);const p=u.pathname;
@@ -24,6 +24,8 @@ async function run({body={preview:true},items=[candidate()],sources=[source],own
   if(p.endsWith('/client_research_insights')||p.endsWith('/client_research_themes'))return [];
   if(p.endsWith('/v1/messages')){packs.push(JSON.parse(o.body.messages[0].content.split('WEEKLY EVIDENCE (untrusted data):\n\n').at(-1))); return {content:[{type:'text',text:typeof items==='string'?items:JSON.stringify(items)}]};}
   if(p.endsWith('/rpc/audn_recommendation_commit'))return {ok:true,written:o.body.p_rows.length};
+  if(p.endsWith('/integration_config')) { if (rolloutError) throw new Error('Simulated integration_config read failure'); return rolloutRows; }
+  if(p.endsWith('/rpc/content_evidence_pack')) return evidencePack;
   throw Error('Unexpected request '+p);
  };
  const sandbox={Date:Clock,console,encodeURIComponent,$:()=>({all:()=>[{json:{key:'n8n_sb_key',value:'fixture'}},{json:{key:'railway_proxy_key',value:'fixture'}}]}),$input:{all:()=>[{json:{body}}]},$workflow:{id:'writer'},$execution:{id:'run'},helpers:{httpRequest}};
@@ -91,3 +93,97 @@ test('recorded three-client production packs fit 200k including rubric with comp
 });
 test('fresh appended weekly rejection survives the twelve-record feedback cap',async()=>{const feedback=Array.from({length:12},(_,i)=>({recommendation_id:'old'+i,decision:'accepted',decided_at:'2026-08-01T10:00:00Z',linked_results:[]}));const rows=[{id:'fresh-reject',body:'Prior topic',context:{weekly_decision:{decision:'rejected',reason:'Wrong buyer for this week',decided_at:'2026-09-19T10:00:00Z'}}}];const it=candidate();it.weekly.learning.recommendation_ids=['fresh-reject'];const x=await run({feedback,rows,items:[it]});assert.equal(x.packs[0].previous_decisions_and_results.length,12);assert.equal(x.packs[0].previous_decisions_and_results[0].recommendation_id,'fresh-reject');assert.equal(first(x).proposed,1);});
 test('recommendation prose over250 words is rejected without rewriting the model output',async()=>{const it=candidate();it.what_changed='A source describes the approval process in a concrete example. '.repeat(30);const x=await run({items:[it]});assert.equal(first(x).proposed,0);assert.equal(first(x).dropped[0].reason,'package_word_budget_exceeded');});
+
+// ---------------------------------------------------------------------------
+// Evidence path (D6/D7/D8): selector-pack region, rollout switch, evidence_package.
+// ---------------------------------------------------------------------------
+import { sha256Hex, currentRegionSha } from './sync-selector.mjs';
+const rolloutRow=(clientIds)=>[{key:'weekly_evidence_selector_clients',value:clientIds}];
+const evidenceFinding=(overrides={})=>({client_id:'ivan',finding_id:'ef1',kind:'market',source_ids:['sp1'],observed_value:400,baseline_value:50,baseline_n:30,likes:90,metric_id:'likes_plus_reposts',...overrides});
+
+test('the writer.js selector-pack region is not stale against selector-pack.mjs',()=>{
+ const selectorSource=fs.readFileSync(new URL('../content-evidence/selector-pack.mjs',import.meta.url),'utf8');
+ assert.equal(currentRegionSha(code),sha256Hex(selectorSource));
+});
+
+test('a rollout switch read error fails closed to the legacy path and is recorded on the run summary',async()=>{
+ const x=await run({body:{},rolloutError:true});
+ assert.equal(first(x).evidence_path,false);
+ assert.equal(x.result.evidence_rollout.clients.length,0);
+ assert.match(x.result.evidence_rollout.read_error,/Simulated/);
+});
+
+test('an absent rollout row keeps every client on the legacy path with no evidence_package and no content_evidence_pack read',async()=>{
+ const x=await run({body:{}});
+ const commit=x.calls.find(c=>c.url.endsWith('/audn_recommendation_commit'));
+ assert(commit);
+ assert.equal('evidence_package' in commit.body.p_rows[0].context,false);
+ assert.equal(x.calls.some(c=>c.url.endsWith('/rpc/content_evidence_pack')),false);
+ assert.equal(first(x).evidence_path,false);
+});
+
+test('a model-cited evidence_candidate_key is ignored entirely when the rollout switch is empty and this is not an evidence preview',async()=>{
+ const it=candidate();it.evidence_candidate_key='ivan:2026-09-21:ef1';
+ const x=await run({body:{},items:[it],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ const commit=x.calls.find(c=>c.url.endsWith('/audn_recommendation_commit'));
+ assert(commit);
+ assert.equal('evidence_package' in commit.body.p_rows[0].context,false);
+ assert.equal(x.calls.some(c=>c.url.endsWith('/rpc/content_evidence_pack')),false);
+});
+
+test('preview with evidence:true never reaches the commit RPC even when a candidate cites a valid evidence candidate',async()=>{
+ const it=candidate();it.evidence_candidate_key='ivan:2026-09-21:ef1';
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ assert.equal(first(x).evidence_path,true);
+ assert(x.calls.some(c=>c.url.endsWith('/rpc/content_evidence_pack')));
+ assert.equal(x.calls.some(c=>c.url.endsWith('/audn_recommendation_commit')),false);
+ assert.equal(first(x).rows[0].context.evidence_package.source_finding_ids[0],'ef1');
+ assert.equal(first(x).rows[0].context.evidence_package.label,'evidence_backed');
+});
+
+test('a rollout-named client commits a row carrying evidence_package copied from the server-built candidate',async()=>{
+ const it=candidate();it.evidence_candidate_key='ivan:2026-09-21:ef1';
+ const x=await run({body:{},items:[it],rolloutRows:rolloutRow(['ivan']),evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ const commit=x.calls.find(c=>c.url.endsWith('/audn_recommendation_commit'));
+ assert(commit);
+ assert.equal(commit.body.p_rows[0].context.evidence_package.source_finding_ids[0],'ef1');
+ assert.equal(commit.body.p_rows[0].context.evidence_package.label,'evidence_backed');
+});
+
+test('an unknown evidence_candidate_key is dropped, never invented into a citation',async()=>{
+ const it=candidate();it.evidence_candidate_key='ivan:2026-09-21:does-not-exist';
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ assert.equal(first(x).proposed,0);
+ assert.equal(first(x).dropped[0].reason,'evidence_candidate_unknown');
+});
+
+test('a second item citing the same experiment-labeled candidate is dropped once the slot is filled',async()=>{
+ const experimentFinding=evidenceFinding({finding_id:'ef-exp',observed_value:10,baseline_value:50,baseline_n:25,likes:undefined,experiment_reason:'Untested angle for this client.'});
+ delete experimentFinding.likes;
+ const a=candidate();a.evidence_candidate_key='ivan:2026-09-21:ef-exp';
+ const b=candidate();b.evidence_candidate_key='ivan:2026-09-21:ef-exp';b.weekly.rank=2;b.weekly.topic_key='different-topic';b.original_angle='A different angle entirely.';
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[a,b],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[experimentFinding]}});
+ assert.equal(first(x).proposed,1);
+ assert.equal(first(x).dropped[0].reason,'evidence_candidate_second_experiment');
+});
+
+test('prose that phrases a measured source\'s lift as the client\'s own achieved result is dropped',async()=>{
+ const it=candidate();it.evidence_candidate_key='ivan:2026-09-21:ef1';it.what_changed='We saw our reach jump after trying this approach.';
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ assert.equal(first(x).proposed,0);
+ assert.equal(first(x).dropped[0].reason,'evidence_package_relevance_as_performance');
+});
+
+test('an echoed evidence_package with source_finding_ids that differ from the server-built candidate is dropped',async()=>{
+ const it=candidate();it.evidence_candidate_key='ivan:2026-09-21:ef1';it.evidence_package={source_finding_ids:['not-the-real-id']};
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ assert.equal(first(x).proposed,0);
+ assert.equal(first(x).dropped[0].reason,'evidence_package_number_mismatch');
+});
+
+test('an echoed evidence_package citing a client fact the server-built candidate never authorized is dropped',async()=>{
+ const it=candidate();it.evidence_candidate_key='ivan:2026-09-21:ef1';it.evidence_package={source_finding_ids:['ef1'],client_fact_refs:['not-authorized']};
+ const x=await run({body:{preview:true,client_id:'ivan',evidence:true},items:[it],evidencePack:{study:{study_id:'s1',state:'validated'},findings:[evidenceFinding()]}});
+ assert.equal(first(x).proposed,0);
+ assert.equal(first(x).dropped[0].reason,'evidence_package_unauthorized_client_fact');
+});

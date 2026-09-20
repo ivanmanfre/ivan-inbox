@@ -20,6 +20,41 @@ Final model view: source collection and the local full evidence lookup stay inta
 
 Editorial package quality: hooks must express a buyer-relevant topic and point, not just a CTA. Unsupplied personal practices/absence claims cannot be borrowed from competitor evidence, and a selected sample cannot establish an author never used a tactic. Publication dates do not date embedded news events. The prompt requires exact timing, attribution, finished prose without self-corrections and170–210-word targets; the writer enforces a250-word total prose ceiling per choice. Semantic provenance and topic usefulness remain review requirements rather than broad keyword bans.
 
+## Evidence path (preview-only until Phase 3's rollout cutover)
+
+`writer.js` carries a generated region between `// <selector-pack:begin sha256=...>` and
+`// <selector-pack:end>` markers, copied verbatim from `automation/content-evidence/selector-pack.mjs`
+by `automation/weekly-topics/sync-selector.mjs` (a Code node cannot `import`). Run
+`node automation/weekly-topics/sync-selector.mjs` after any change to `selector-pack.mjs`, and
+`node automation/weekly-topics/sync-selector.mjs --check` to verify the region is not stale
+(exit 1 if it is). `writer.test.mjs` asserts the sha256 in the marker matches the live module on
+every run, so a forgotten sync fails the suite instead of silently drifting.
+
+The evidence path runs for a client only when (a) the request is a preview carrying literal
+`evidence: true`, or (b) the client is named in the rollout switch: one row in the existing
+`public.integration_config` table, key `weekly_evidence_selector_clients`, value a JSON array of
+client ids. Row absent, unreadable, or a non-array value all mean `[]` -- every client stays on
+the legacy path. A read error on that row fails closed to `[]` for the run and is recorded on
+`summary.evidence_rollout.read_error`; it never enables anything. When the evidence path is
+active for a client, the writer calls `content_evidence_pack(p_client_id, p_week_start)`
+(service role, db/103), builds candidates with `buildEvidencePack`, and offers them to the model
+as `evidence_candidates` (see prompt.md). A model choice may cite at most one candidate by its
+exact `draft_key`, via the new `evidence_candidate_key` field; every number that ends up on a
+committed row's `context.evidence_package` is copied from the server-built candidate, never from
+anything the model echoes, so a model cannot introduce a number the pack did not produce.
+`commitGuard` (also generated from `selector-pack.mjs`) refuses any commit that would carry
+`evidence_package` unless the rollout switch names the client and the run is not a preview --
+this is checked immediately before the existing `audn_recommendation_commit` call, as defense in
+depth on top of the structural preview/rollout gate above it. With the rollout switch empty, the
+legacy path's behavior is unchanged: every existing writer test still passes unmodified, and a
+`context.evidence_package` key never appears on any row.
+
+Offline preview (no DB, no model call): `automation/content-evidence/preview-selector.mjs`
+builds the same `buildEvidencePack` output from a frozen study JSON file plus
+`WINNER-DIGEST.json`, for one client at a time. Client facts, own-result history and
+previous-test history are unavailable offline, so every offline candidate is expected to show
+`needs_material` -- that is the correct offline answer, not a defect.
+
 ## Deployed integration
 
 The companion database migration is `db/20260919_weekly_topic_shortlists.sql`. This source snapshot is the deployed five-node Audience Review writer (`UGKZGBBM9332apHo`), prompt v5. Monday scheduling and the existing human approval path remain active. The manual webhook requires a dedicated header credential stored only in n8n and the operator’s private credential directory; no credential is included here.
