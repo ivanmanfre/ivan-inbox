@@ -15,8 +15,13 @@ const START = Date.now();
 // recorded runner task timeout of 2700 s is a build-cutoff note and is NOT re-verified here, so
 // the budget below stays well inside it and the residual risk is stated in WRITER-REPAIR.md.
 // Raising this ceiling does not lengthen a healthy run: a client stops at its answer. It buys the
-// slow tail of a first attempt and room for exactly one retry.
-const BUDGET_MS = 1800000;
+// slow tail of a first attempt and room to retry the edge.
+// Sized from harness run R2 (2026-09-20 18:07-18:20Z, risedtc, fired alone): attempt 1 returned
+// HTTP 502 "upstream error" at 299 s, attempt 2 at 301 s, and attempt 3 returned a complete reply
+// in 197.2 s on the SAME body. The edge is load-dependent, not payload-dependent, so a single
+// attempt is not reliable and each client needs room for two full attempts:
+//   3 clients x (310 s + 5 s backoff + 310 s) + 60 s reserve + ~20 s preparation
+const BUDGET_MS = 2100000;
 const SB = 'https://bjbvqvzbzczjbatgmccb.supabase.co/rest/v1';
 const KEY = _S.n8n_sb_key;
 const HDR = { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json' };

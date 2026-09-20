@@ -816,21 +816,22 @@ test('regression: empty-reply-on-legacy-path-unchanged -- a deliberate [] still 
 test('regression: single-client-gets-run-budget -- one client gets a fair share of the whole run, three clients split it',async()=>{
  // D10, renumbered for the defect A budget. The fixture clock is frozen, so elapsed is 0 and
  // every share is exact:
- //   share = floor((BUDGET_MS 1800000 - elapsed - RESERVE_MS 60000) / clients still to run)
+ //   share = floor((BUDGET_MS 2100000 - elapsed - RESERVE_MS 60000) / clients still to run)
  const one=await run({body:{preview:true,client_id:'ivan'},items:[]});
- assert.equal(first(one).client_share_ms,1740000,'a single-client preview gets ~the whole node budget, never a fixed slice');
+ assert.equal(first(one).client_share_ms,2040000,'a single-client preview gets ~the whole node budget, never a fixed slice');
  const three=await run({body:{preview:true},items:[],clients:[registry('arch'),registry('ivan'),registry('risedtc')]});
  assert.equal(three.result.clients.length,3);
- assert.equal(three.result.clients[0].client_share_ms,580000,'the first of three clients takes a third, protecting the two queued behind it');
- // Defect A: the share a three-client run gives each client must hold the slowest evidence call
- // ever measured (293s) AND a retry, which the old 900s budget could not do (273s each).
- for(const c of three.result.clients) assert(c.client_share_ms>=293000+250000,'a three-client share holds the slowest measured call plus a retry window');
+ assert.equal(three.result.clients[0].client_share_ms,680000,'the first of three clients takes a third, protecting the two queued behind it');
+ // Defect A: harness run R2 hit the ~300s proxy edge TWICE on the same body before a third
+ // attempt returned in 197s, so a three-client share must hold TWO full attempts plus a backoff.
+ // The old 900s budget gave each client 273s: less than one.
+ for(const c of three.result.clients) assert(c.client_share_ms>=310000*2+5000,'a three-client share holds two full attempts plus a backoff');
  for(const c of three.result.clients) assert.equal(c.skipped,false,'every client still runs');
 });
 
 test('regression: proxy-timeout-no-useful-window -- a client that cannot get a minimum window is skipped retryable, never aborting the run',async()=>{
  // Squeeze the share below MIN_ATTEMPT_MS by queueing more clients than the budget can serve.
- const many=Array.from({length:8},(_,i)=>registry('c'+i));
+ const many=Array.from({length:10},(_,i)=>registry('c'+i));
  const x=await run({body:{preview:true},items:[],clients:many});
  const squeezed=x.result.clients.filter(c=>c.skipped);
  assert(squeezed.length>0,'at least one client is squeezed below the minimum useful window');
@@ -839,7 +840,7 @@ test('regression: proxy-timeout-no-useful-window -- a client that cannot get a m
   assert.equal(c.retryable,true,'a squeezed client is retryable, never a silent loss');
   assert.equal(c.writer_bail,false,'being skipped is not a bail');
  }
- assert.equal(x.result.clients.length,8,'the run never aborts: every client still gets a record');
+ assert.equal(x.result.clients.length,10,'the run never aborts: every client still gets a record');
  assert.equal(x.calls.some(c=>c.url.endsWith('/audn_recommendation_commit')),false);
 });
 
@@ -895,7 +896,7 @@ test('D15: the competing explanations a source-only lift carries reach the model
 // therefore capped just past that edge, and a 502 is weather that gets retried.
 test('regression: attempt-window-capped-at-the-measured-edge -- one attempt never eats a client\'s whole share',async()=>{
  const one=await run({body:{preview:true,client_id:'ivan'},items:[]});
- assert.equal(first(one).client_share_ms,1740000);
+ assert.equal(first(one).client_share_ms,2040000);
  const call=one.calls.find(c=>c.url.endsWith('/v1/messages'));
  assert(call.timeout<=310000,'an attempt past the ~300s edge cannot return, so a longer window only blocks the retry');
  assert(call.timeout>=293000,'the window still holds the slowest evidence call ever measured');
