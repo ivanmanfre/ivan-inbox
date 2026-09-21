@@ -9,7 +9,7 @@ const routerToken = Deno.env.get('EDITORIAL_GENERATOR_TOKEN') ?? ''
 const origins = ['https://ivanmanfre.github.io', 'http://localhost:5173', 'http://localhost:4173']
 const headers = (origin: string | null) => ({
   'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origins.includes(origin ?? '') ? origin! : origins[0],
-  'Access-Control-Allow-Headers': 'authorization,apikey,content-type', 'Access-Control-Allow-Methods': 'POST,OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization,apikey,content-type,x-client-info', 'Access-Control-Allow-Methods': 'POST,OPTIONS',
   'Vary': 'Origin',
 })
 const reply = (status: number, body: unknown, origin: string | null) => new Response(JSON.stringify(body), { status, headers: headers(origin) })
@@ -43,9 +43,38 @@ Deno.serve(async request => {
   if (!scoped.data?.found) return reply(200, receipt('conflict', 'no_such_version'), origin)
   const brief = scoped.data.brief
   if (brief.identity?.content_hash !== expectedHash) return reply(200, receipt('conflict', 'content_hash_mismatch'), origin)
-  if (brief.readiness !== 'ready_to_draft' || brief.missing_material?.length) {
+  const internalCopy = role === 'internal_copy'
+  if ((brief.readiness !== 'ready_to_draft' || brief.missing_material?.length) && !internalCopy) {
     return reply(200, receipt('blocked', 'essential_material_missing'), origin)
   }
+  const format = brief.editorial_direction?.format
+  if (internalCopy && !['carousel', 'lm_promo', 'video'].includes(format)) {
+    return reply(200, receipt('blocked', 'internal_copy_format_not_supported'), origin)
+  }
+  const sourceIds = (brief.evidence ?? []).filter((e: Record<string, unknown>) =>
+    !e.gap_state && (e.source_client_scope === 'public' || e.source_client_scope === clientId) &&
+    (e.permission_state === 'public_source' || e.permission_state === 'granted' || e.permission_state == null))
+    .map((e: Record<string, unknown>) => e.source_id)
+  const claimIds = (brief.claim_ledger ?? []).filter((claim: { supporting_refs?: string[] }) =>
+    claim.supporting_refs?.length && claim.supporting_refs.every((ref: string) =>
+      brief.evidence?.some((e: { evidence_id: string; source_id: string }) =>
+        e.evidence_id === ref && sourceIds.includes(e.source_id))))
+    .map((claim: { claim_id: string }) => claim.claim_id)
+  if (!sourceIds.length || !claimIds.length) return reply(200, receipt('blocked', 'permitted_evidence_missing'), origin)
+  if (format === 'lm_promo' && (brief.resource?.readiness !== 'ready' ||
+      !brief.resource?.asset_id || !brief.resource?.version ||
+      brief.resource?.required_missing_material?.length)) {
+    return reply(200, receipt('blocked', 'resource_not_ready'), origin)
+  }
+  const holds = [...(brief.missing_material ?? [])]
+  if (format === 'carousel') holds.unshift('rendered_deck_unverified')
+  if (format === 'video') holds.unshift('recording_pending')
+  const envelope = { schema: 'editorial-generation-v1', client_id: clientId,
+    brief_id: briefId, brief_version: version, brief_hash: expectedHash,
+    artifact_role: role, request_id: requestId, source_cutoff: brief.identity.source_cutoff,
+    direction_version: brief.purpose.direction_version, source_ids: sourceIds,
+    permitted_claim_ids: claimIds, brief, prior_generation: body.prior_generation ?? null,
+    production_hold: holds, copy_only: internalCopy }
   // The router is an exact, release-controlled generation handoff. A missing
   // router blocks cleanly; it never mints a draft identity or falls back to a topic.
   if (!routerUrl || !routerToken) return reply(200, receipt('blocked', 'generation_router_not_deployed'), origin)
@@ -61,12 +90,13 @@ Deno.serve(async request => {
       headers: { Authorization: `Bearer ${routerToken}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ client_id: clientId, brief_id: briefId, version,
         content_hash: expectedHash, artifact_id: reserved.data.artifact_id,
-        artifact_role: role, request_id: requestId }),
+        artifact_role: role, request_id: requestId, editorial_generation: envelope }),
     })
     if (!response.ok) throw new Error(`generator router returned HTTP ${response.status}`)
     const result = await response.json()
     if (result?.artifact_id !== reserved.data.artifact_id || result?.brief_id !== briefId ||
-        result?.version !== version || result?.content_hash !== expectedHash) {
+        result?.version !== version || result?.content_hash !== expectedHash ||
+        !result?.model_response_id || !result?.qa_receipt || !result?.persistence_receipt) {
       throw new Error('generator did not echo the exact brief identity')
     }
     return reply(200, reserved.data, origin)
