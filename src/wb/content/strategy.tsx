@@ -38,6 +38,8 @@ import { ThemesBlock } from './ThemesBlock'
 import { LeadMagnetsView } from './leadmagnets'
 import { MarketsView } from './markets'
 import { ClientDirectionPanel, DemoPanel, ResearchPanel, ResultsPanel as EditorialResultsPanel, ThisWeekPanel as EditorialThisWeekPanel } from './research/ResearchWorkspace'
+import { isStrategyView, readStrategyDeepLink, type StrategyViewId } from './strategy/deepLink'
+import { prefixOf, wbHash } from '../../exp/v2c/route'
 import './content.css'
 import './strategy-evidence.css'
 
@@ -264,9 +266,18 @@ function FilterSpecBlock({ lane }: { lane: ContentLane }) {
   )
 }
 
-export function StrategyView({ lane, setLane }: {
+export function StrategyView({ lane, setLane, initialSection }: {
   lane: ContentLane
   setLane: (l: ContentLane) => void
+  // content-brain-05 Task 6: the fixture-data preview harness parses its own
+  // `?lane=&section=` off `location.search` (it has no `#exp/` hash to read)
+  // and hands the validated Strategy tab straight in here, so the same tab
+  // vocabulary and the same component are exercised whether the deep link
+  // arrived via the real Shell hash or via the local preview's query string.
+  // The real Shell never passes this — it has nothing to pass yet, since the
+  // hash itself is read below — so it is optional and changes nothing for
+  // that caller.
+  initialSection?: StrategyViewId
 }) {
   const st = useStrategy(lane)
   // The tenants this operator may see come from client_registry through
@@ -280,11 +291,56 @@ export function StrategyView({ lane, setLane }: {
   // fixture lever — the inline `import.meta.env.DEV &&` here is what lets
   // Rollup fold the whole branch (and `evidenceFixtureBypassActive`'s call)
   // out of a `NODE_ENV=production` build.
-  const [view, setView] = useState(() => (
-    import.meta.env.DEV && typeof window !== 'undefined'
-      && evidenceFixtureBypassActive(import.meta.env.DEV, window.location.search)
-      ? 'evidence' : (typeof location !== 'undefined' && (() => { const q = new URLSearchParams(location.hash.split('?')[1] ?? ''); return q.get('sources') === '1' || q.get('section') === 'sources' })() ? 'research' : 'this-week')
-  ))
+  //
+  // content-brain-05 Task 6: below that, priority is explicit `initialSection`
+  // (the harness already validated it) over the legacy `?sources=1`/
+  // `?section=sources` Content-shortcut alias over a real
+  // `?lane=&section=` deep link (`readStrategyDeepLink`) over the plain
+  // default. Every branch here is read-once, at mount, on purpose — this is
+  // an initializer, not a subscription.
+  const [view, setView] = useState<string>(() => {
+    if (import.meta.env.DEV && typeof window !== 'undefined'
+      && evidenceFixtureBypassActive(import.meta.env.DEV, window.location.search)) return 'evidence'
+    if (initialSection && isStrategyView(initialSection)) return initialSection
+    if (typeof location === 'undefined') return 'this-week'
+    const legacy = new URLSearchParams(location.hash.split('?')[1] ?? '')
+    if (legacy.get('sources') === '1' || legacy.get('section') === 'sources') return 'research'
+    return readStrategyDeepLink(location.hash).section ?? 'this-week'
+  })
+  // Same deep link, the other half: `?lane=` restores the CLIENT the link was
+  // scoped to. Read once (a ref guard rather than an empty-array effect that
+  // could race a fast-changing `lane` prop), and only ever moves `lane` away
+  // from whatever the parent booted it as — it never fights a later, real
+  // lane switch. Revoked lanes still self-correct afterward via the
+  // `resolveLane` effect below; this only decides where correction starts
+  // from.
+  const laneLinkRead = useRef(false)
+  useEffect(() => {
+    if (laneLinkRead.current) return
+    laneLinkRead.current = true
+    if (typeof location === 'undefined') return
+    const link = readStrategyDeepLink(location.hash)
+    if (link.lane && link.lane !== lane) setLane(link.lane)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  // Write the CURRENT lane/tab back into the address bar so a reload — not
+  // just the original link — lands back here. Deferred one macrotask past
+  // the render that changed `lane`/`view`: Shell.tsx owns a sibling
+  // `useEffect(() => history.replaceState(null, '', wbHash(job, null)), [job])`
+  // that strips every query param, and on the very first render into this
+  // job (including a cold boot straight onto a Strategy deep link) React
+  // flushes passive effects child-first, so this effect would otherwise run
+  // and then immediately be overwritten by Shell's. Queuing the write for
+  // the next tick lets that synchronous flush finish first and always wins.
+  useEffect(() => {
+    if (typeof location === 'undefined') return
+    const id = window.setTimeout(() => {
+      if (!/^#exp\//.test(location.hash)) return
+      const query = new URLSearchParams({ lane, section: view })
+      history.replaceState(null, '', `${wbHash('strategy', null, prefixOf(location.hash))}?${query.toString()}`)
+    }, 0)
+    return () => window.clearTimeout(id)
+  }, [lane, view])
   const [refreshTick, setRefreshTick] = useState(0)
   const [proposalDirty, setProposalDirty] = useState(false)
   const rowsRef = useRef<HTMLDivElement>(null)

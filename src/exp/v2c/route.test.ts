@@ -185,6 +185,38 @@ describe('ask deep link', () => {
   })
 })
 
+// content-brain-05 Task 6: the Strategy client/tab has to survive a reload,
+// so the raw query is read here (validated against the real lane/view
+// vocabularies one level up, in wb/content/strategy/deepLink.ts).
+describe('Strategy lane/section deep link', () => {
+  it('reads lane and section together, raw and unvalidated', () => {
+    expect(parseWbHash('#exp/v2/strategy?lane=risedtc&section=research'))
+      .toEqual({ job: 'strategy', focus: null, lane: 'risedtc', section: 'research' })
+  })
+
+  it('reads either one alone', () => {
+    expect(parseWbHash('#exp/v2/strategy?lane=arch')).toEqual({ job: 'strategy', focus: null, lane: 'arch' })
+    expect(parseWbHash('#exp/v2/strategy?section=results')).toEqual({ job: 'strategy', focus: null, section: 'results' })
+  })
+
+  it('is silent on an ordinary hash with neither', () => {
+    expect(parseWbHash('#exp/v2/strategy')).toEqual({ job: 'strategy', focus: null })
+  })
+
+  it('never collides with the pre-existing Content Sources alias', () => {
+    // `?section=sources` already means "open Strategy" (job resolution,
+    // tested above); it must not ALSO surface as route.section, or the two
+    // meanings of that one query key would be indistinguishable downstream.
+    expect(parseWbHash('#exp/v2/content?section=sources'))
+      .toEqual({ job: 'strategy', focus: null })
+  })
+
+  it('round-trips through a hand-built query the way other deep links do', () => {
+    const built = `${wbHash('strategy', null)}?lane=ivan&section=direction`
+    expect(parseWbHash(built)).toEqual({ job: 'strategy', focus: null, lane: 'ivan', section: 'direction' })
+  })
+})
+
 describe('hashNamesJob', () => {
   it('is true when a path segment names a job', () => {
     expect(hashNamesJob('#exp/brain-b/sales')).toBe(true)
