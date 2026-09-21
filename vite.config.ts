@@ -10,6 +10,9 @@ const BUILD = (() => {
 })()
 
 export default defineConfig({
+  // DEV preview reads named, local evidence artifacts through /@fs. These
+  // paths are never imported by production code or copied into dist.
+  server: { fs: { allow: ['/Users/ivanmanfredi/Desktop/Ivan - Content System'] } },
   base: './',
   define: { __BUILD__: JSON.stringify(BUILD) },
   plugins: [react(), VitePWA({
