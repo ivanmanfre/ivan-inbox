@@ -85,6 +85,9 @@ const JOB_ALIAS: Record<string, Job> = { inbox: 'dms', drafts: 'dms' }
 // every test written against the path grammar keeps resolving where it did.
 // An unknown section is ignored exactly the way an unknown segment is.
 function sectionJob(q: URLSearchParams): Job | undefined {
+  // Content's historical Sources shortcut is an alias to the one Research
+  // reader. It creates no second queue and preserves every Content route.
+  if (q.get('sources') === '1' || q.get('section') === 'sources') return 'strategy'
   const s = q.get('section') ?? ''
   if ((JOBS as string[]).includes(s)) return s as Job
   return JOB_ALIAS[s]

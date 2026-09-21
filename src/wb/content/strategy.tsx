@@ -283,7 +283,7 @@ export function StrategyView({ lane, setLane }: {
   const [view, setView] = useState(() => (
     import.meta.env.DEV && typeof window !== 'undefined'
       && evidenceFixtureBypassActive(import.meta.env.DEV, window.location.search)
-      ? 'this-week' : 'this-week'
+      ? 'evidence' : (typeof location !== 'undefined' && new URLSearchParams(location.hash.split('?')[1] ?? '').get('sources') === '1' ? 'research' : 'this-week')
   ))
   const [refreshTick, setRefreshTick] = useState(0)
   const [proposalDirty, setProposalDirty] = useState(false)
@@ -344,14 +344,6 @@ export function StrategyView({ lane, setLane }: {
           { id: 'research', label: 'Research' },
           { id: 'results', label: 'Results' },
           { id: 'direction', label: 'Client direction' },
-          { id: 'demos', label: 'Demos' },
-          { id: 'recommendations', label: 'Legacy suggestions' },
-          { id: 'evidence', label: 'Evidence archive' },
-          { id: 'competitors', label: 'Competitors' },
-          { id: 'magnets', label: 'Lead magnets' },
-          { id: 'outreach', label: 'Outreach' },
-          { id: 'markets', label: 'Markets' },
-          { id: 'notes', label: st.dirty ? 'Notes •' : 'Notes' },
         ]} />
     </Bar>
     </>
@@ -364,6 +356,7 @@ export function StrategyView({ lane, setLane }: {
       {head}
       <Body innerRef={rowsRef} className="a-strat">
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
+        <details className="a-strategy-disclosure"><summary>More: demos, legacy analysis and private notes</summary><div className="a-research-actions"><Button size="sm" variant="quiet" onClick={() => setView('demos')}>Demos</Button><Button size="sm" variant="quiet" onClick={() => setView('recommendations')}>Legacy suggestions</Button><Button size="sm" variant="quiet" onClick={() => setView('evidence')}>Evidence archive</Button><Button size="sm" variant="quiet" onClick={() => setView('competitors')}>Competitors</Button><Button size="sm" variant="quiet" onClick={() => setView('magnets')}>Lead magnets</Button><Button size="sm" variant="quiet" onClick={() => setView('outreach')}>Outreach</Button><Button size="sm" variant="quiet" onClick={() => setView('markets')}>Markets</Button><Button size="sm" variant="quiet" onClick={() => setView('notes')}>{st.dirty ? 'Notes •' : 'Notes'}</Button></div></details>
         {view === 'this-week' && <div className="a-strategy-panel"><EditorialThisWeekPanel key={`${lane}-${refreshTick}`} lane={lane} /></div>}
         {view === 'research' && <div className="a-strategy-panel"><ResearchPanel key={`${lane}-${refreshTick}`} lane={lane} /></div>}
         {view === 'results' && <div key={`${lane}-${refreshTick}`} className="a-strategy-results">

@@ -82,6 +82,9 @@ import { evidenceFixtureBypassActive } from './lib/contentEvidence'
 const EvidenceFixtureHarness = import.meta.env.DEV
   ? lazy(() => import('./wb/content/evidence/FixtureHarness').then(m => ({ default: m.FixtureHarness })))
   : null
+const LocalEditorialPreview = import.meta.env.DEV
+  ? lazy(() => import('./wb/content/research/LocalPreviewHarness').then(m => ({ default: m.LocalPreviewHarness })))
+  : null
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -125,6 +128,9 @@ export default function App() {
     if (!session) return
     void reconcilePush()
   }, [session])
+  if (import.meta.env.DEV && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('localEditorialPreview') === '1' && LocalEditorialPreview) {
+    return <Suspense fallback={null}><LocalEditorialPreview /></Suspense>
+  }
   // W5 CHECKER REACHABILITY (content-evidence-03 Phase 2 fix pass,
   // orchestrator ruling c): the independent checker opens a
   // `?evidenceFixture=<state>` URL with a fresh, signed-out browser profile
