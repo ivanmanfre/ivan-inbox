@@ -84,14 +84,16 @@ export function normalizeResourceOutcomes(input: {
   }
   const bookings = new Map<string, ResourceAttribution>()
   for (const a of input.attributions.filter(x => x.lm_slug === input.slug)) {
-    if (/cancel|test|spam/i.test(a.status) || testSource.test(a.source ?? '')) { excluded.canceled++; continue }
     if (!a.calendly_event_uri || !a.booked_at) continue
     const prior = bookings.get(a.calendly_event_uri)
+    if (prior) excluded.duplicate++
     if (!prior || String(a.updated_at ?? '') > String(prior.updated_at ?? '')) bookings.set(a.calendly_event_uri, a)
-    else excluded.duplicate++
   }
   let direct = 0, assisted = 0, unknown = 0
+  let active = 0
   for (const a of bookings.values()) {
+    if (/cancel|test|spam/i.test(a.status) || testSource.test(a.source ?? '')) { excluded.canceled++; continue }
+    active++
     const source = (a.source ?? '').toLowerCase()
     if (source === 'direct' && a.session_id) direct++
     else if (source === 'assisted') assisted++
@@ -100,7 +102,7 @@ export function normalizeResourceOutcomes(input: {
   return {
     kind: 'resource', client_id: input.clientId, asset_slug: input.slug, asset_version: input.dataVersion,
     views: counts.view, cta_clicks: counts.cta_click, captures: counts.capture,
-    active_bookings: bookings.size, direct_bookings: unknown ? 'unknown' : direct,
+    active_bookings: active, direct_bookings: unknown ? 'unknown' : direct,
     assisted_bookings: unknown ? 'unknown' : assisted, excluded,
     attribution_limitation: unknown
       ? `${unknown} booking(s) lack a reliable direct/assisted route; no causal claim is available.`

@@ -19,7 +19,7 @@ describe('post and resource outcomes', () => {
     expect(resource.captures).toBe(1)
     expect(resource.active_bookings).toBe(2)
     expect(resource.direct_bookings).toBe('unknown')
-    expect(resource.excluded).toEqual({ test: 1, bot: 1, wrong_version: 1, duplicate: 2, canceled: 1 })
+    expect(resource.excluded).toEqual({ test: 1, bot: 1, wrong_version: 1, duplicate: 4, canceled: 1 })
     expect(post.impressions).toBe(0)
     expect(post.reactions).toBe('unknown')
     mkdirSync('../../proof', { recursive: true })
