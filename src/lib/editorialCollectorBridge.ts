@@ -1,4 +1,5 @@
 import type { EditorialClientId } from './editorialTypes.ts'
+import { resolveEvidenceCompleteness } from './editorialEvidenceCompleteness.ts'
 
 export type CollectorName = 'own_posts' | 'client_post_metrics' | 'lm_idea_candidates' |
   'client_ideas' | 'client_research_study_posts' | 'client_research_findings'
@@ -63,14 +64,16 @@ export async function normalizeCollectorRow(clientId: EditorialClientId, collect
       shares: row.num_shares ?? null, impressions: row.num_impressions ?? null,
       profile_views: row.profile_views_from_post ?? null,
       followers_gained: row.followers_gained_from_post ?? null }, observation_window: { published_at: published,
-      captured_at: captured }, metric_source: 'own_posts' }
+      captured_at: captured }, metric_source: 'own_posts', metric_denominator: 'one exact own post',
+      source_identity: { platform: 'linkedin', native_id: val(row.social_id) || id, collector_row_id: id } }
   } else if (collector === 'client_post_metrics') {
     if (row.client_id !== clientId) throw new Error('client_post_metrics tenant mismatch')
-    id = val(row.id); kind = 'own_post'; url = val(row.post_url) || null
+    const meta = row.meta && typeof row.meta === 'object' ? row.meta as Record<string, unknown> : {}
+    const collectorRowId = val(row.id)
+    id = collectorRowId; kind = 'own_post'; url = val(row.post_url) || null
     pointer = url ? null : `client_post_metrics.id=${id}`
     owner = clientId === 'risedtc' ? 'Mattan Danino / RISE DTC' : 'Davorin Smit / ARCH'
     published = date(row.published_at); captured = date(row.captured_at)
-    const meta = row.meta && typeof row.meta === 'object' ? row.meta as Record<string, unknown> : {}
     body = val(row.full_text ?? meta.text) || null; permission = 'granted'
     context = `Observed own post; impressions=${val(row.impressions) || 'unknown'}, reactions=${val(row.reactions) || 'unknown'}, comments=${val(row.comments) || 'unknown'}.`
     limitation = 'Own outcome counts need an observation window and cannot establish causality.'
@@ -79,7 +82,9 @@ export async function normalizeCollectorRow(clientId: EditorialClientId, collect
       profile_views: row.profile_views_from_post ?? null,
       followers_gained: row.followers_gained_from_post ?? null,
       inbound_dms: row.inbound_dms ?? null }, observation_window: {
-        published_at: published, captured_at: captured }, metric_source: 'client_post_metrics' }
+        published_at: published, captured_at: captured }, metric_source: 'client_post_metrics',
+      metric_denominator: 'one exact own post',
+      source_identity: { platform: 'linkedin', native_id: val(row.social_id ?? meta.social_id ?? meta.id) || id, collector_row_id: collectorRowId } }
   } else if (collector === 'client_research_study_posts') {
     if (row.client_id !== clientId) throw new Error('study post tenant mismatch')
     id = val(row.canonical_source_id); kind = 'public_post'; url = val(row.source_url) || null
@@ -96,7 +101,10 @@ export async function normalizeCollectorRow(clientId: EditorialClientId, collect
     limitation = 'Market performance belongs to the original author; source age and study selection limit transfer.'
     fields = { observed_metrics: observations, linked_findings: exactFindings,
       age_comparability: row.age_comparability ?? 'unknown', population: row.population ?? 'unknown',
-      inclusion: row.inclusion ?? 'unknown', study_id: row.study_id }
+      inclusion: row.inclusion ?? 'unknown', study_id: row.study_id,
+      metric_source: 'client_research_study_posts', metric_denominator: row.population ?? null,
+      observation_window: { published_at: published, captured_at: captured },
+      source_identity: { platform: 'linkedin', native_id: id, collector_row_id: id } }
   } else if (collector === 'lm_idea_candidates') {
     if (clientId !== 'ivan') throw new Error('lm_idea_candidates is explicitly scoped to the Ivan lane')
     id = val(row.id); kind = 'candidate'; pointer = `lm_idea_candidates.id=${id}`
@@ -126,6 +134,12 @@ export async function normalizeCollectorRow(clientId: EditorialClientId, collect
   }
   if (!id) throw new Error(`${collector} row lacks a native identity`)
   if (!body && !gap) gap = { reason: 'unavailable', detail: 'Original body is absent from the collector row.' }
+  const completeness = resolveEvidenceCompleteness({
+    body,
+    declaredState: row.body_state,
+    fetchFailed: gap?.reason === 'unavailable',
+  })
+  fields = { ...(fields ?? {}), body_state: completeness.bodyState }
   const hasNativeCapture = Boolean(captured)
   const source = {
     client_id: clientId, source_id: id, seen_version: 1, source_kind: kind,
@@ -170,7 +184,8 @@ export async function normalizeVerifiedCall(clientId: EditorialClientId,
     gap_state: null,
     candidate_fields: { transcript_sha256: passages[0].transcript_sha256,
       candidate_ids: passages.map(p => p.candidate_id).sort(), private_names: privateNames,
-      transcript_source: passages[0].transcript_source },
+      transcript_source: passages[0].transcript_source, body_state: 'full',
+      source_identity: { platform: 'transcript', native_id: id, collector_row_id: id } },
   }
   return { ...source, snapshot_hash: await hash(canonical({ ...source, seen_version: undefined })) }
 }

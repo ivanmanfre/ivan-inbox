@@ -252,15 +252,27 @@ export const EDITORIAL_RPCS = {
 
 export type SourceGapState = { reason: GapReason; detail: string }
 
-/** The five fields an `lm_idea_candidates`-style row carries. The first two are
-    SOURCE FACT; the last three are DERIVED and are labelled as such wherever
-    they travel (T04). */
-export type CandidateFields = {
-  evidence: string
-  raw_context: string
-  editorial_assessment: string
-  editorial_strength: string
-  angle_options: string[]
+/** Metadata carried in the persisted candidate_fields JSON payload. Candidate
+    records require all five named fields; non-candidate records use the same
+    payload for metrics, body completeness and native identity. */
+export type CandidateFields = Record<string, unknown> & {
+  evidence?: string
+  raw_context?: string
+  editorial_assessment?: string
+  editorial_strength?: string
+  angle_options?: string[]
+}
+
+export type EvidenceBodyState = 'full' | 'excerpt' | 'unavailable' | 'unknown'
+export type SourceIdentity = {
+  platform: string
+  native_id: string
+  collector_row_id: string | null
+}
+export type MetricProvenance = {
+  source: string | null
+  denominator: string | null
+  observation_window: Record<string, unknown> | null
 }
 
 export const CANDIDATE_SOURCE_FACT_FIELDS = ['evidence', 'raw_context'] as const
@@ -291,6 +303,13 @@ export type SourceSnapshot = {
   /** Bounded verbatim excerpt. null ONLY with a gap_state. A silent shortening
       is an error, not a shortening (T04 → 'truncated_passage'). */
   passage: string | null
+  /** Collection-established body state. It is independent of any display cap. */
+  body_state: EvidenceBodyState
+  /** The platform/native identity behind this immutable snapshot. */
+  source_identity: SourceIdentity
+  /** Structured observations copied from the collector JSON payload. */
+  observed_metrics: Record<string, unknown> | null
+  metric_provenance: MetricProvenance
   retained_context: string
   limitation: string
   independent: boolean

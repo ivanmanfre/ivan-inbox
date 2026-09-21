@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { bridgeCollectedSources } from '../../supabase/functions/editorial-refresh/bridge'
+import { normalizeCollectorRow } from './editorialCollectorBridge'
 
 const rows: Record<string, Record<string, unknown>[]> = {
   own_posts: [{ id: 'captured-own-1', post_text: 'The captured original post body.',
@@ -10,6 +11,63 @@ const rows: Record<string, Record<string, unknown>[]> = {
 }
 
 describe('collector bridge', () => {
+  it('keeps a retained 500-character public metrics capture ambiguous and keyed to its native activity', async () => {
+    const source = await normalizeCollectorRow('risedtc', 'client_post_metrics', {
+      id: '6cdd1e61-9693-4b0a-9963-4696b7f6b7d0',
+      client_id: 'risedtc', social_id: 'urn:li:activity:7505626612307038208',
+      post_url: 'https://www.linkedin.com/posts/sanitized-7505626612307038208',
+      published_at: '2026-09-15T14:00:32.173Z', captured_at: '2026-09-20T13:34:31.885Z',
+      meta: { text: 'x'.repeat(500) }, impressions: 271, reactions: 9, comments: 5,
+    }, '2026-09-20T13:34:31.885Z')
+
+    expect(source.source_id).toBe('6cdd1e61-9693-4b0a-9963-4696b7f6b7d0')
+    expect(source.candidate_fields).toMatchObject({
+      body_state: 'unknown', metric_denominator: 'one exact own post',
+      source_identity: { platform: 'linkedin', native_id: 'urn:li:activity:7505626612307038208', collector_row_id: '6cdd1e61-9693-4b0a-9963-4696b7f6b7d0' },
+      observed_metrics: { impressions: 271, reactions: 9, comments: 5 },
+      observation_window: { published_at: '2026-09-15T14:00:32.173Z', captured_at: '2026-09-20T13:34:31.885Z' },
+    })
+  })
+
+  it('keeps duplicate collector rows for one platform activity on the legacy source identity', async () => {
+    const original = rows.client_post_metrics
+    rows.client_post_metrics = [
+      { id: 'legacy-metric-row', client_id: 'risedtc', social_id: 'urn:li:activity:one-native-post',
+        post_url: 'https://www.linkedin.com/posts/sanitized-one-native-post', full_text: 'The retained original.',
+        published_at: '2026-09-18T10:00:00Z', captured_at: '2026-09-19T10:00:00Z', impressions: 12 },
+      { id: 'newer-metric-row', client_id: 'risedtc', social_id: 'urn:li:activity:one-native-post',
+        post_url: 'https://www.linkedin.com/posts/sanitized-one-native-post', full_text: 'The retained original.',
+        published_at: '2026-09-18T10:00:00Z', captured_at: '2026-09-20T10:00:00Z', impressions: 12 },
+    ]
+    const latest = new Map<string, { seen_version: number; snapshot_hash: string }>()
+    const inserted: Record<string, unknown>[] = []
+    const db = {
+      from(table: string) {
+        const state = { from: 0, to: 0 }
+        const chain = {
+          select() { return chain }, order() { return chain }, eq() { return chain },
+          range(from: number, to: number) { state.from = from; state.to = to; return chain },
+          then(resolve: (value: unknown) => unknown) { const items = rows[table] ?? []
+            return Promise.resolve(resolve({ data: items.slice(state.from, state.to + 1), count: items.length, error: null })) },
+          async insert(batch: Record<string, unknown>[]) { inserted.push(...batch); for (const item of batch) latest.set(String(item.source_id), { seen_version: Number(item.seen_version), snapshot_hash: String(item.snapshot_hash) }); return { error: null } },
+          async upsert() { return { error: null } },
+        }
+        return chain
+      },
+      async rpc(_name: string, args: { p_source_ids: string[] }) { return { data: args.p_source_ids.flatMap(id => latest.has(id) ? [{ source_id: id, ...latest.get(id)! }] : []), error: null } },
+    }
+    try {
+      await bridgeCollectedSources(db, 'risedtc')
+      const firstHash = String(inserted[0].snapshot_hash)
+      await bridgeCollectedSources(db, 'risedtc')
+      expect(inserted).toHaveLength(1)
+      expect(inserted[0]).toMatchObject({ source_id: 'legacy-metric-row', seen_version: 1, independent: true })
+      expect(latest.get('legacy-metric-row')?.snapshot_hash).toBe(firstHash)
+    } finally {
+      rows.client_post_metrics = original
+    }
+  })
+
   it('normalizes a captured legacy original once, retries unchanged despite a later read clock, and excludes unrelated private calls', async () => {
     const latest = new Map<string, { seen_version: number; snapshot_hash: string }>()
     const inserted: Record<string, unknown>[] = []

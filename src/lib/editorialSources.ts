@@ -45,6 +45,7 @@ import {
   SOURCE_KINDS, UNKNOWN, countIndependentSources, daysBetween, deriveCurrencyState,
   isEditorialClientId, isUnknown,
 } from './editorialTypes.ts'
+import { resolveEvidenceCompleteness } from './editorialEvidenceCompleteness.ts'
 import type {
   CandidateFields, CurationState, CurrencyState, EditorialClient, EditorialClientId,
   GapReason, PermissionState, SourceFilters, SourceGapState, SourceKind, SourcePage,
@@ -181,7 +182,7 @@ function parseGapState(raw: unknown): SourceGapState | null {
 /** All five candidate fields, or none. A source claiming `source_kind:
     'candidate'` with a partial `candidate_fields` object is exactly the
     "silently dropped input" this contract refuses (T04). */
-function parseCandidateFields(raw: unknown): CandidateFields | null {
+function parseCandidateFields(raw: unknown, kind: SourceKind): CandidateFields | null {
   if (!isObj(raw)) return null
   const evidence = str(raw.evidence)
   const rawContext = str(raw.raw_context)
@@ -190,10 +191,25 @@ function parseCandidateFields(raw: unknown): CandidateFields | null {
   const angleOptions = Array.isArray(raw.angle_options)
     ? raw.angle_options.filter((x): x is string => typeof x === 'string')
     : null
-  if (!evidence || !rawContext || !assessment || !strength || !angleOptions) return null
+  if (kind === 'candidate' && (!evidence || !rawContext || !assessment || !strength || !angleOptions)) return null
+  return raw as CandidateFields
+}
+
+function sourceIdentity(raw: CandidateFields | null, sourceId: string): SourceSnapshot['source_identity'] {
+  const identity = raw?.source_identity
+  if (isObj(identity) && str(identity.platform) && str(identity.native_id)) {
+    return { platform: str(identity.platform)!, native_id: str(identity.native_id)!,
+      collector_row_id: str(identity.collector_row_id) }
+  }
+  return { platform: 'unknown', native_id: sourceId, collector_row_id: null }
+}
+
+function metricProvenance(raw: CandidateFields | null): SourceSnapshot['metric_provenance'] {
+  const window = raw?.observation_window
   return {
-    evidence, raw_context: rawContext, editorial_assessment: assessment,
-    editorial_strength: strength, angle_options: angleOptions,
+    source: str(raw?.metric_source),
+    denominator: str(raw?.metric_denominator),
+    observation_window: isObj(window) ? window : null,
   }
 }
 
@@ -232,7 +248,14 @@ export function parseSourceItem(raw: unknown, lane: EditorialClientId): ParsedSo
   }
   const kind = kindRaw as SourceKind
 
-  const scope = str(raw.source_client_scope) ?? 'public'
+  const scope = str(raw.source_client_scope)
+  if (!scope) {
+    throw new EditorialContractError(
+      'wrong_client',
+      'A source arrived without an explicit tenant scope; refusing to assume it is public.',
+      sourceId,
+    )
+  }
   if (scope !== 'public' && scope !== lane) {
     // Belt and braces over `editorial_guard` and the RLS-equivalent
     // `where s.client_id = p_client_id` in the SQL: a source scoped to a
@@ -281,7 +304,7 @@ export function parseSourceItem(raw: unknown, lane: EditorialClientId): ParsedSo
     }
   }
 
-  const candidateFields = parseCandidateFields(raw.candidate_fields)
+  const candidateFields = parseCandidateFields(raw.candidate_fields, kind)
   if (kind === 'candidate' && candidateFields === null && gapState?.reason !== 'permission_denied') {
     return {
       ok: false,
@@ -308,6 +331,12 @@ export function parseSourceItem(raw: unknown, lane: EditorialClientId): ParsedSo
     ? [...CANDIDATE_DERIVED_FIELDS]
     : arr(raw.derived_field_names).filter((x): x is string => typeof x === 'string')
 
+  const completeness = resolveEvidenceCompleteness({
+    body: passage,
+    declaredState: candidateFields?.body_state,
+    fetchFailed: gapState?.reason === 'unavailable',
+  })
+  const observations = candidateFields?.observed_metrics
   const item: SourceSnapshot = {
     source_id: sourceId,
     source_kind: kind,
@@ -318,6 +347,10 @@ export function parseSourceItem(raw: unknown, lane: EditorialClientId): ParsedSo
     owner: str(raw.owner) ?? UNKNOWN,
     source_content_hash: contentHash,
     passage,
+    body_state: completeness.bodyState,
+    source_identity: sourceIdentity(candidateFields, sourceId),
+    observed_metrics: isObj(observations) ? observations : null,
+    metric_provenance: metricProvenance(candidateFields),
     retained_context: str(raw.retained_context) ?? '',
     limitation: str(raw.limitation) ?? '',
     independent,

@@ -10,6 +10,7 @@ describe('whole synthesis context budget', () => {
     expect(result.outcomes).toEqual([outcomes[1]])
     expect(result.coverage.outcomes_omitted).toBe(1601)
     expect(result.selected[0].candidate_fields?.private_names).toEqual(['Private Person'])
+    expect(result.selected[0].candidate_fields?.observed_metrics).toEqual({ comments: 0 })
     expect(result.selected[0].candidate_fields?.raw_context).toBeUndefined()
     expect(result.messages[0].content).toContain('BINDING DECISION')
     expect(source.passage.length).toBe(9000)

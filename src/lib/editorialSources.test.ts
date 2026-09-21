@@ -78,10 +78,44 @@ describe('T02 tenant isolation (source side)', () => {
     }
   })
 
+  it('refuses a row missing its tenant scope instead of defaulting it to public', () => {
+    const raw = rawSourceItem()
+    delete raw.source_client_scope
+    expect(() => parseSourceItem(raw, 'ivan')).toThrow(EditorialContractError)
+  })
+
   it('accepts a public-scoped source for any lane', () => {
     const raw = rawSourceItem({ source_client_scope: 'public' })
     const r = parseSourceItem(raw, 'arch')
     expect(r.ok).toBe(true)
+  })
+})
+
+describe('source evidence projection', () => {
+  it('preserves public-post metrics, denominator and capture dates outside candidate-only fields', () => {
+    const raw = rawSourceItem({
+      candidate_fields: {
+        observed_metrics: { impressions: 271, reaction_counter: 9, comment_counter: 5 },
+        observation_window: { published_at: '2026-09-15T14:00:32.173Z', captured_at: '2026-09-20T13:34:31.885Z' },
+        metric_source: 'client_post_metrics',
+        metric_denominator: 'one exact public post',
+        body_state: 'unknown',
+        source_identity: { platform: 'linkedin', native_id: 'urn:li:activity:7505626612307038208', collector_row_id: '6cdd1e61-9693-4b0a-9963-4696b7f6b7d0' },
+      },
+    })
+
+    const parsed = parseSourceItem(raw, 'risedtc')
+    expect(parsed).toMatchObject({ ok: true })
+    if (!parsed.ok) throw new Error('expected source')
+    expect(parsed.item.observed_metrics).toEqual({ impressions: 271, reaction_counter: 9, comment_counter: 5 })
+    expect(parsed.item.metric_provenance).toEqual({
+      source: 'client_post_metrics', denominator: 'one exact public post',
+      observation_window: { published_at: '2026-09-15T14:00:32.173Z', captured_at: '2026-09-20T13:34:31.885Z' },
+    })
+    expect(parsed.item.body_state).toBe('unknown')
+    expect(parsed.item.source_identity).toEqual({
+      platform: 'linkedin', native_id: 'urn:li:activity:7505626612307038208', collector_row_id: '6cdd1e61-9693-4b0a-9963-4696b7f6b7d0',
+    })
   })
 })
 

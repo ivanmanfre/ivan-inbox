@@ -115,12 +115,22 @@ export async function bridgeCollectedSources(db: Db, clientId: EditorialClientId
     }
     // One canonical identity may occur in multiple studies. Keep its latest
     // capture; repetitions do not become independent corroboration.
+    const nativeKey = (source: typeof allNormalized[number]) => {
+      const identity = source.candidate_fields?.source_identity
+      if (identity && typeof identity === 'object') {
+        const value = identity as Record<string, unknown>
+        if (typeof value.platform === 'string' && typeof value.native_id === 'string')
+          return `${value.platform}:${value.native_id}`
+      }
+      return source.source_id
+    }
     const byId = new Map<string, typeof allNormalized[number]>()
     const repeatedHashes = new Map<string, string[]>()
     for (const source of allNormalized) {
-      const prior = byId.get(source.source_id)
-      if (!prior) { byId.set(source.source_id, source); continue }
-      repeatedHashes.set(source.source_id, [...(repeatedHashes.get(source.source_id) ?? [prior.snapshot_hash]),
+      const key = nativeKey(source)
+      const prior = byId.get(key)
+      if (!prior) { byId.set(key, source); continue }
+      repeatedHashes.set(key, [...(repeatedHashes.get(key) ?? [prior.snapshot_hash]),
         source.snapshot_hash])
       const newest = source.captured_at > prior.captured_at ? source : prior
       const earlier = newest === source ? prior : source
@@ -131,7 +141,10 @@ export async function bridgeCollectedSources(db: Db, clientId: EditorialClientId
       const unique = [...new Map(merged.map(f => [`${f.study_id}:${f.finding_id}`, f])).values()]
       // Repeat captures remain one original author/source. Their distinct
       // study findings survive as context, never as independent sources.
-      byId.set(source.source_id, { ...newest,
+      // Preserve the first immutable editorial source id so existing brief
+      // references remain valid even if another collector row names the same
+      // platform-native post.
+      byId.set(key, { ...newest, source_id: prior.source_id,
         candidate_fields: { ...(newest.candidate_fields ?? {}), linked_findings: unique },
         retained_context: `${newest.retained_context}\nEarlier study findings: ${JSON.stringify(unique)}`,
       })
@@ -161,7 +174,9 @@ export async function bridgeCollectedSources(db: Db, clientId: EditorialClientId
     if (spec.table === 'own_posts' || spec.table === 'client_post_metrics') {
       const outcomeRows = await Promise.all(rows.flatMap(row => {
         const id = String(row.id ?? '')
-        const source = normalized.find(s => s.source_id === id)
+        const source = normalized.find(s => s.candidate_fields?.source_identity &&
+          typeof s.candidate_fields.source_identity === 'object' &&
+          (s.candidate_fields.source_identity as Record<string, unknown>).collector_row_id === id)
         if (!source) return []
         const metrics = source.candidate_fields?.observed_metrics as Record<string, unknown> | undefined
         if (!metrics) return []
@@ -173,8 +188,8 @@ export async function bridgeCollectedSources(db: Db, clientId: EditorialClientId
           const stable = `${clientId}|${spec.table}|${id}|${metric}|${String(raw)}|${nativeCapture ?? 'unknown'}`
           const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(stable))
           const suffix = [...new Uint8Array(digest)].map(x => x.toString(16).padStart(2, '0')).join('')
-          return { client_id: clientId, snapshot_id: `collector-${suffix}`, brief_id: `unattributed-own-post:${id}`,
-            brief_version: null, artifact_id: id, artifact_role: 'own_post', metric,
+          return { client_id: clientId, snapshot_id: `collector-${suffix}`, brief_id: `unattributed-own-post:${source.source_id}`,
+            brief_version: null, artifact_id: source.source_id, artifact_role: 'own_post', metric,
             observed_value: observed, unknown_reason: observed === null ? 'Collector did not retain a valid count' : null,
             denominator: observed === null ? null : 'one exact own post',
             scope: `native ${spec.table}.id=${id}`, window_start: source.source_published_at,
