@@ -212,6 +212,9 @@ export type EditorialRpcResult = { data: unknown; error: { message: string } | n
 
 export type EditorialClient = {
   rpc(fn: string, params: Record<string, unknown>): Promise<EditorialRpcResult>
+  functions?: {
+    invoke(name: string, options: { body: Record<string, unknown> }): Promise<EditorialRpcResult>
+  }
 }
 
 /* -------------------------------------------------------------------------
@@ -389,6 +392,8 @@ export type BriefEvidence = {
   evidence_id: string
   relation: EvidenceRelation
   source_id: string
+  /** Exact immutable source version used by a Run 2 synthesis batch. */
+  seen_version?: number
   source_kind: SourceKind
   source_client_scope: 'public' | EditorialClientId
   source_ref: SourceRef

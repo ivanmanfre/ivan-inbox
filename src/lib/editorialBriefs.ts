@@ -1,15 +1,12 @@
 /* ==========================================================================
    src/lib/editorialBriefs.ts — the typed, authenticated brief-side adapter.
 
-   THE FIVE IMPLEMENTED FUNCTIONS in Run 1 are read/decision only. Three more
-   (`requestDraft`, `requestSuggestionRefresh`, `readSuggestionRefresh`) are
-   SPECIFIED here — their types are frozen in editorialTypes.ts and in
-   CONTRACT.json — and their bodies throw `NotImplementedInRun1`. A planned
-   function is not an implemented one, and a stub that returned a plausible
-   object would be the more dangerous of the two.
+   The Run 1 read/decision surface stays stable. Run 2 adds authenticated
+   refresh, review, results and draft-request adapters; the server performs
+   the exact identity, material and source checks before accepting a request.
 
    AN INJECTED CLIENT, ALWAYS. Nothing in this module imports `./supabase`.
-   Every function takes an `EditorialClient` (a `{ rpc(name, params) }` shape)
+   Every function takes an `EditorialClient` (RPC plus Edge invoke shape)
    as its first argument, which is what makes the whole module unit-testable
    without a network and makes it impossible for a test run to reach a live
    project. The app wires the real client at the call site.
@@ -32,7 +29,7 @@
    because an unread surface and a confirmed-empty one are different facts.
    ========================================================================== */
 import {
-  EDITORIAL_RPCS, EditorialContractError, NotImplementedInRun1,
+  EDITORIAL_RPCS, EditorialContractError,
   STALE_DAYS, METRIC_FAMILY_SOURCES,
   countIndependentSources, daysBetween, isEditorialClientId, isUnknown,
 } from './editorialTypes'
@@ -542,11 +539,41 @@ export function unknownOutcomeMetrics(read: OutcomeRead): string[] {
  *    does not delete the suggestion and does not affect another client;
  *  · it never approves, schedules, publishes or sends.
  */
-export function requestDraft(
-  _client: EditorialClient, _clientId: string, _briefId: string, _version: number,
-  _expectedHash: string, _requestId: string, _artifactRole: string,
+export async function requestDraft(
+  client: EditorialClient, clientId: string, briefId: string, version: number,
+  expectedHash: string, requestId: string, artifactRole: string,
 ): Promise<DraftReceipt> {
-  throw new NotImplementedInRun1('requestDraft', 'CONTRACT.json#/schemas/DraftReceipt')
+  const lane = assertRegisteredClient(clientId)
+  if (!client.functions || !briefId || !Number.isInteger(version) || version < 1 ||
+      !/^[0-9a-f]{64}$/.test(expectedHash) || !requestId || !artifactRole) {
+    throw new EditorialContractError('invalid_argument', 'An authenticated function client and exact brief identity are required.', 'requestDraft')
+  }
+  const { data, error } = await client.functions.invoke('editorial-draft', {
+    body: { client_id: lane, brief_id: briefId, version, expected_hash: expectedHash, request_id: requestId, artifact_role: artifactRole },
+  })
+  if (error || !isObj(data)) throw new EditorialContractError('read_failed', 'The draft request failed.', error?.message ?? 'No receipt')
+  return data as DraftReceipt
+}
+
+/** An explicit human review writes a new immutable brief version. Passing it
+    authorizes an internal draft request only; it never approves publication. */
+export async function reviewEditorialBrief(
+  client: EditorialClient, clientId: string, briefId: string, version: number,
+  expectedHash: string, verdict: 'pass' | 'revise' | 'fail', reason: string, requestId: string,
+): Promise<{ state: 'accepted' | 'blocked' | 'conflict'; brief_id?: string;
+  version?: number; content_hash?: string; reason?: string; idempotent_replay?: boolean }> {
+  const lane = assertRegisteredClient(clientId)
+  if (!client.functions || !briefId || !Number.isInteger(version) || version < 1 ||
+      !/^[0-9a-f]{64}$/.test(expectedHash) || !reason.trim() || !requestId.trim()) {
+    throw new EditorialContractError('invalid_argument', 'Review needs an authenticated client, exact version/hash, reason and request ID.', 'reviewEditorialBrief')
+  }
+  const { data, error } = await client.functions.invoke('editorial-review', {
+    body: { client_id: lane, brief_id: briefId, version, expected_hash: expectedHash,
+      verdict, reason, request_id: requestId },
+  })
+  if (error || !isObj(data)) throw new EditorialContractError('read_failed', 'The editorial review failed.', error?.message ?? 'No receipt')
+  return data as { state: 'accepted' | 'blocked' | 'conflict'; brief_id?: string;
+    version?: number; content_hash?: string; reason?: string; idempotent_replay?: boolean }
 }
 
 /**
@@ -570,12 +597,19 @@ export function requestDraft(
  *    batch `awaiting_reconciliation`; a stale decision cutoff yields
  *    `pending_reconciliation`, never an overwrite.
  */
-export function requestSuggestionRefresh(
-  _client: EditorialClient, _clientId: string,
-  _expectedDirectionVersion: string, _requestId: string,
+export async function requestSuggestionRefresh(
+  client: EditorialClient, clientId: string,
+  expectedDirectionVersion: string, requestId: string,
 ): Promise<RefreshReceipt> {
-  throw new NotImplementedInRun1(
-    'requestSuggestionRefresh', 'CONTRACT.json#/schemas/RefreshReceipt')
+  const lane = assertRegisteredClient(clientId)
+  if (!client.functions || !expectedDirectionVersion || !requestId) {
+    throw new EditorialContractError('invalid_argument', 'An authenticated function client, direction version and request id are required.', 'requestSuggestionRefresh')
+  }
+  const { data, error } = await client.functions.invoke('editorial-refresh', {
+    body: { client_id: lane, expected_direction_version: expectedDirectionVersion, request_id: requestId },
+  })
+  if (error || !isObj(data)) throw new EditorialContractError('read_failed', 'The refresh request failed.', error?.message ?? 'No receipt')
+  return data as RefreshReceipt
 }
 
 /**
@@ -591,11 +625,16 @@ export function requestSuggestionRefresh(
  *  · a partial batch carries its exact `coverage_gaps` and cannot certify a
  *    client or a format it did not cover.
  */
-export function readSuggestionRefresh(
-  _client: EditorialClient, _clientId: string, _refreshId: string,
+export async function readSuggestionRefresh(
+  client: EditorialClient, clientId: string, refreshId: string,
 ): Promise<RefreshState> {
-  throw new NotImplementedInRun1(
-    'readSuggestionRefresh', 'CONTRACT.json#/schemas/RefreshState')
+  const lane = assertRegisteredClient(clientId)
+  if (!refreshId) throw new EditorialContractError('invalid_argument', 'A refresh id is required.', 'readSuggestionRefresh')
+  const r = await callRpc(client, 'editorial_read_refresh', {
+    p_gate: EDITORIAL_GATE, p_client_id: lane, p_refresh_id: refreshId,
+  })
+  if (!r.ok) throw new EditorialContractError('read_failed', 'The refresh read failed.', r.error)
+  return r.data as RefreshState
 }
 
 /* -------------------------------------------------------------------------

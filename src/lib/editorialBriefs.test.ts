@@ -25,7 +25,7 @@ import {
 import {
   brief, briefStore, evidence, failingClient, measurement, stubClient,
 } from './editorialBriefs.fixtures'
-import { EDITORIAL_RPCS, EditorialContractError, NotImplementedInRun1 } from './editorialTypes'
+import { EDITORIAL_RPCS, EditorialContractError } from './editorialTypes'
 import type { EditorialBrief, EditorialRpcResult } from './editorialTypes'
 
 const sha256 = (s: string) => createHash('sha256').update(s, 'utf8').digest('hex')
@@ -671,29 +671,34 @@ describe('T12 read calls are side-effect free', () => {
   })
 })
 
-/* ------------------------------------------- Run-2 functions are specified */
+/* ------------------------------------------- Run-2 authenticated boundaries */
 
-describe('functions specified for Run 2', () => {
-  it('refuse with a typed NotImplementedInRun1 carrying their spec reference', () => {
-    const c = stubClient({})
-    const cases: [string, () => unknown][] = [
-      ['requestDraft', () => requestDraft(c, 'ivan', 'b', 1, 'h', 'r', 'post_draft')],
-      ['requestSuggestionRefresh', () => requestSuggestionRefresh(c, 'ivan', 'dir-v1', 'r')],
-      ['readSuggestionRefresh', () => readSuggestionRefresh(c, 'ivan', 'rf-1')],
-    ]
-    for (const [name, call] of cases) {
-      try {
-        call()
-        throw new Error(`${name} should have refused`)
-      } catch (e) {
-        expect(e).toBeInstanceOf(NotImplementedInRun1)
-        const err = e as NotImplementedInRun1
-        expect(err.code).toBe('not_implemented_in_run_1')
-        expect(err.fnName).toBe(name)
-        expect(err.specRef).toContain('CONTRACT.json#/schemas/')
-      }
-    }
-    expect(c.calls).toEqual([])
+describe('Run 2 authenticated boundaries', () => {
+  it('routes explicit refresh/draft requests and polls the exact refresh id', async () => {
+    const c = stubClient({ editorial_read_refresh: p => ({ data: {
+      refresh_id: p.p_refresh_id, client_id: p.p_client_id, status: 'failed', batch_id: null,
+      last_usable_batch_id: 'old-batch', coverage_gaps: [], awaiting_reconciliation: false,
+      collection_health: { last_successful_collection: null, new_evidence_awaiting_refresh: 0, stale_inputs: 0 },
+      synthesis_health: { last_successful_synthesis: null, last_failure_reason: 'provider failed' },
+      updated_at: '2026-09-21T00:00:00Z',
+    }, error: null }) })
+    const invokes: { name: string; body: Record<string, unknown> }[] = []
+    c.functions = { async invoke(name, options) {
+      invokes.push({ name, body: options.body })
+      return { data: name === 'editorial-refresh'
+        ? { refresh_id: 'rf-1', client_id: 'ivan', request_id: 'r1', status: 'running' }
+        : { request_id: 'd1', client_id: 'ivan', brief_id: 'b1', brief_version: 2,
+          artifact_id: null, state: 'blocked', blocked_reason: 'generation_router_not_deployed' }, error: null }
+    } }
+    const refresh = await requestSuggestionRefresh(c, 'ivan', 'dir-v1', 'r1')
+    expect(refresh.refresh_id).toBe('rf-1')
+    const state = await readSuggestionRefresh(c, 'ivan', 'rf-1')
+    expect(state.last_usable_batch_id).toBe('old-batch')
+    const draft = await requestDraft(c, 'ivan', 'b1', 2, 'a'.repeat(64), 'd1', 'post')
+    expect(draft.state).toBe('blocked')
+    expect(invokes.map(x => x.name)).toEqual(['editorial-refresh', 'editorial-draft'])
+    expect(invokes[1].body).toMatchObject({ client_id: 'ivan', brief_id: 'b1', version: 2,
+      expected_hash: 'a'.repeat(64), request_id: 'd1' })
   })
 })
 
