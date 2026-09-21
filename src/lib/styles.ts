@@ -220,6 +220,10 @@ export type Resource = {
   cover_url: string | null
   landing_slug: string | null
   updated_at: string
+  /** Preserved so demo records retain their original category/relations. */
+  source?: string | null
+  source_ref?: string | null
+  campaign_id?: string | null
 }
 
 // READ ONLY. LM rows are never written from this app: whether an n8n watcher
@@ -238,18 +242,22 @@ export type Resource = {
 // Ivan's, the same fail-closed posture as the cross-tenant rule (IA §4.4).
 export async function fetchResources(lane: ContentLane = 'ivan'): Promise<Resource[]> {
   const f = laneFilter(lane)
-  let q = supabase.from('lm_drafts_v2')
-    .select('id, topic, format, status, resource_url, landing_url, cover_url, landing_slug, updated_at')
-  q = f.op === 'is' ? q.is(f.column, null) : q.eq(f.column, f.value)
   // The resource_url filter this fetch used to carry is gone: "has a resource
   // URL" is a FACET (AFFORDANCES §2.4), and a facet whose rows were already
   // filtered out at the query is a control with one side. Dropping it is also
   // what lets Mattan's lane render all 5 of its rows rather than 3.
-  const { data, error } = await q
-    .order('updated_at', { ascending: false })
-    .limit(200)
-  if (error) throw error
-  return (data ?? []) as unknown as Resource[]
+  const rows: Resource[] = []
+  const pageSize = 200
+  for (let from = 0; ; from += pageSize) {
+    let q = supabase.from('lm_drafts_v2')
+      .select('id, topic, format, status, resource_url, landing_url, cover_url, landing_slug, updated_at, source, source_ref, campaign_id')
+    q = f.op === 'is' ? q.is(f.column, null) : q.eq(f.column, f.value)
+    const { data, error } = await q.order('updated_at', { ascending: false }).range(from, from + pageSize - 1)
+    if (error) throw error
+    const page = (data ?? []) as unknown as Resource[]
+    rows.push(...page)
+    if (page.length < pageSize) return rows
+  }
 }
 
 // ---------- LM detail (one full row, fetched when a row is opened) ----------

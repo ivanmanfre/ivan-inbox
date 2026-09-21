@@ -37,6 +37,7 @@ import { ReachBlock } from './ReachBlock'
 import { ThemesBlock } from './ThemesBlock'
 import { LeadMagnetsView } from './leadmagnets'
 import { MarketsView } from './markets'
+import { ClientDirectionPanel, DemoPanel, ResearchPanel, ResultsPanel as EditorialResultsPanel, ThisWeekPanel as EditorialThisWeekPanel } from './research/ResearchWorkspace'
 import './content.css'
 import './strategy-evidence.css'
 
@@ -282,7 +283,7 @@ export function StrategyView({ lane, setLane }: {
   const [view, setView] = useState(() => (
     import.meta.env.DEV && typeof window !== 'undefined'
       && evidenceFixtureBypassActive(import.meta.env.DEV, window.location.search)
-      ? 'evidence' : 'recommendations'
+      ? 'this-week' : 'this-week'
   ))
   const [refreshTick, setRefreshTick] = useState(0)
   const [proposalDirty, setProposalDirty] = useState(false)
@@ -339,9 +340,13 @@ export function StrategyView({ lane, setLane }: {
     <Bar>
       <Segmented label="Strategy views" className="a-strategy-nav" markerId="a-strategy-view"
         value={view} onChange={setView} options={[
-          { id: 'recommendations', label: 'Recommendations' },
-          { id: 'evidence', label: 'Evidence' },
+          { id: 'this-week', label: 'This week' },
+          { id: 'research', label: 'Research' },
           { id: 'results', label: 'Results' },
+          { id: 'direction', label: 'Client direction' },
+          { id: 'demos', label: 'Demos' },
+          { id: 'recommendations', label: 'Legacy suggestions' },
+          { id: 'evidence', label: 'Evidence archive' },
           { id: 'competitors', label: 'Competitors' },
           { id: 'magnets', label: 'Lead magnets' },
           { id: 'outreach', label: 'Outreach' },
@@ -359,14 +364,19 @@ export function StrategyView({ lane, setLane }: {
       {head}
       <Body innerRef={rowsRef} className="a-strat">
         <PullIndicator pull={ptr.pull} refreshing={ptr.refreshing} trigger={ptr.trigger} />
-        <div className="a-strategy-panel" hidden={view !== 'recommendations'}><ProposalsBlock key={lane} lane={lane} refreshKey={refreshTick} onDirtyChange={setProposalDirty} /></div>
-        {view === 'evidence' && <div key={`${lane}-${refreshTick}`} className="a-strategy-panel"><EvidenceBlock lane={lane} /></div>}
+        {view === 'this-week' && <div className="a-strategy-panel"><EditorialThisWeekPanel key={`${lane}-${refreshTick}`} lane={lane} /></div>}
+        {view === 'research' && <div className="a-strategy-panel"><ResearchPanel key={`${lane}-${refreshTick}`} lane={lane} /></div>}
         {view === 'results' && <div key={`${lane}-${refreshTick}`} className="a-strategy-results">
+          <EditorialResultsPanel lane={lane} />
           <ReachBlock lane={lane} />
           <BenchmarkBlock lane={lane} view="results" />
           <details className="a-strategy-disclosure"><summary>Explore subjects, hooks and formats</summary><ThemesBlock lane={lane} /></details>
           <details className="a-strategy-disclosure"><summary>Audience and recommendation outcomes</summary><AudienceBlock lane={lane} /></details>
         </div>}
+        {view === 'direction' && <ClientDirectionPanel lane={lane} />}
+        {view === 'demos' && <DemoPanel lane={lane} />}
+        {view === 'recommendations' && <div className="a-strategy-panel"><ProposalsBlock key={lane} lane={lane} refreshKey={refreshTick} onDirtyChange={setProposalDirty} /></div>}
+        {view === 'evidence' && <div key={`${lane}-${refreshTick}`} className="a-strategy-panel"><EvidenceBlock lane={lane} /></div>}
         {view === 'competitors' && <BenchmarkBlock key={`${lane}-${refreshTick}`} lane={lane} view="competitors" />}
         {view === 'magnets' && <LeadMagnetsView key={`${lane}-${refreshTick}`} lane={lane} />}
         {view === 'markets' && <MarketsView key={`${lane}-${refreshTick}`} lane={lane} />}
