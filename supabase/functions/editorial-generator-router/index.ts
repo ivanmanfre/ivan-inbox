@@ -39,12 +39,17 @@ Deno.serve(async request => {
     return reply(400,{error:'exact_editorial_envelope_required'})
   }
   const format = direction?.format
-  // These native post workflows own text and their nested carousel branch;
-  // the video webhook owns script drafting. LM asset/promo need their distinct
-  // native format/fulfillment bridge, so refusal avoids a generic substitute.
-  if (format !== 'text' && format !== 'carousel' && format !== 'video')
+  // Native text/carousel, video, and editorial-only LM branches each stop at
+  // an internal draft boundary. No release or scheduling phase is dispatched.
+  if (!['text','carousel','video','lm_promo','resource'].includes(String(format)))
     return reply(409,{error:'native_format_bridge_not_staged',format})
   if (format === 'carousel' && envelope.copy_only !== true) return reply(409,{error:'carousel_copy_only_hold_required'})
+  if (format === 'lm_promo' && (envelope.copy_only !== true ||
+      (brief?.resource as Record<string,unknown> | undefined)?.readiness !== 'ready'))
+    return reply(409,{error:'promotion_copy_hold_or_resource_missing'})
+  if (format === 'resource' && ((brief?.resource as Record<string,unknown> | undefined)?.readiness !== 'ready' ||
+      !['guide','checklist','template','calculator','skill_pack'].includes(String((brief?.resource as Record<string,unknown> | undefined)?.artifact_role))))
+    return reply(409,{error:'resource_format_or_readiness_missing'})
   const title = String(direction?.proposed_hook || direction?.topic || '').slice(0,240)
   const topic = String(direction?.topic || '')
   const started = await service.rpc('editorial_begin_native_draft', {
@@ -60,12 +65,15 @@ Deno.serve(async request => {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), 30_000)
   try {
-    const path = format === 'video' ? 'video-script' : postRoutes[clientId]
+    const path = format === 'video' ? 'video-script' :
+      (format === 'lm_promo' || format === 'resource') ? 'lm-gen-v2' : postRoutes[clientId]
     const response = await fetch(`${n8nHost}/webhook/${path}`, {
       method: 'POST', signal: controller.signal,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ draft_id:native.native_draft_id,
+      body: JSON.stringify({ draft_id:native.native_draft_id, artifact_id:artifactId,
         videoIdeaId:native.native_draft_id, title, topic,
+        phase: format === 'lm_promo' ? 'editorial_promo' : format === 'resource' ? 'editorial_resource' : undefined,
+        format: format === 'lm_promo' ? 'promo' : (brief?.resource as Record<string,unknown> | undefined)?.artifact_role,
         post_format: format === 'carousel' ? 'carousel' : 'text',
         editorial_generation: envelope }),
     })

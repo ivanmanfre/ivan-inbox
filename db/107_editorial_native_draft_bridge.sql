@@ -11,8 +11,16 @@ alter table public.video_ideas
   add column if not exists editorial_brief_artifact_id text;
 alter table public.video_ideas
   add column if not exists client_id text;
+alter table public.video_ideas
+  add column if not exists editorial_qa jsonb;
 create unique index if not exists video_ideas_editorial_artifact_uq
   on public.video_ideas(editorial_brief_artifact_id)
+  where editorial_brief_artifact_id is not null;
+
+alter table public.lm_drafts_v2
+  add column if not exists editorial_brief_artifact_id text;
+create unique index if not exists lm_drafts_v2_editorial_artifact_uq
+  on public.lm_drafts_v2(editorial_brief_artifact_id)
   where editorial_brief_artifact_id is not null;
 
 create table if not exists public.editorial_native_draft_dispatches (
@@ -57,9 +65,12 @@ begin
   if v_brief.payload#>>'{editorial_direction,format}' is distinct from p_format then
     raise exception 'native format differs from reserved brief'; end if;
   if v_link.artifact_role not in(p_format,'internal_copy',
-       case when p_format in('text','carousel') then 'post' else 'video_script' end) then
+       case when p_format in('text','carousel') then 'post'
+         when p_format='video' then 'video_script'
+         when p_format='lm_promo' then 'promotion'
+         else 'resource' end) then
     raise exception 'native format differs from reserved artifact role'; end if;
-  if p_format not in('text','carousel','video') then
+  if p_format not in('text','carousel','video','resource','lm_promo') then
     raise exception 'unsupported native draft format'; end if;
   if nullif(btrim(p_title),'') is null or nullif(btrim(p_topic),'') is null then
     raise exception 'native draft needs title and topic'; end if;
@@ -83,6 +94,11 @@ begin
     insert into public.video_ideas(id,client_id,title,description,status,
         editorial_brief_artifact_id)
       values(v_native,p_client_id,p_title,p_topic,'idea',p_artifact_id);
+  elsif p_format in('resource','lm_promo') then
+    insert into public.lm_drafts_v2(id,client_id,topic,format,status,spec,editorial_brief_artifact_id)
+      values(v_native,p_client_id,p_topic,
+        case when p_format='lm_promo' then 'promo' else 'editorial_resource' end,
+        'draft',v_detail,p_artifact_id);
   else
     insert into public.carousel_drafts(id,client_id,title,type,topic,description,status,
         source_detail,editorial_brief_artifact_id,scheduled_at,published_at,board_visible)

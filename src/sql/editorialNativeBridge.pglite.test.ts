@@ -26,7 +26,9 @@ describe('native draft bridge', { timeout: 120_000 }, () => {
       topic text,description text,status text not null default 'draft',source_detail jsonb,
       scheduled_at timestamptz,published_at timestamptz,board_visible boolean not null default false)`)
     await db.exec(`create table public.video_ideas(id uuid primary key,title text not null,
-      description text,status text default 'idea')`)
+      description text,status text default 'idea');
+      create table public.lm_drafts_v2(id uuid primary key,client_id text,topic text,
+      format text,status text not null,spec jsonb)`)
     await db.exec(sql('107_editorial_native_draft_bridge.sql'))
     await db.exec(`insert into public.client_registry(client_id,display_name,is_active,platform) values
       ('ivan','Ivan',true,'{"measurement":{"roster":[{"account":"ivan"}]}}'),
@@ -61,6 +63,20 @@ describe('native draft bridge', { timeout: 120_000 }, () => {
     await expect(db.query(`select public.editorial_begin_native_draft('clientops','ivan',
       $1,'brief-ivan-01',2,$2,'bridge-request','A guarded title','video','A guarded topic')`,args))
       .rejects.toThrow(/native format differs from reserved brief/)
+    const promo = seed.plan[3].records.find((x: any) => x.client_id === 'risedtc' &&
+      x.brief_id === 'brief-risedtc-05' && x.version === 2)
+    const promoReserve = await db.query<{ result: any }>(`select public.editorial_reserve_draft('clientops','risedtc',
+      'brief-risedtc-05',2,$1,'promo-bridge','internal_copy') result`,[promo.content_hash])
+    expect(promoReserve.rows[0].result.state).toBe('accepted')
+    const promoArtifact = promoReserve.rows[0].result.artifact_id
+    const promoNative = await db.query<{ result: any }>(`select public.editorial_begin_native_draft('clientops','risedtc',
+      $1,'brief-risedtc-05',2,$2,'promo-bridge','Ungated skills promo','lm_promo','Existing skills kit') result`,
+      [promoArtifact,promo.content_hash])
+    expect(promoNative.rows[0].result.should_dispatch).toBe(true)
+    const lm = await db.query<any>(`select * from public.lm_drafts_v2 where editorial_brief_artifact_id=$1`,[promoArtifact])
+    expect(lm.rows).toHaveLength(1)
+    expect(lm.rows[0]).toMatchObject({client_id:'risedtc',status:'draft',format:'promo'})
+    expect(lm.rows[0].spec).toMatchObject({brief_hash:promo.content_hash,internal_only:true})
     const after = await db.query<{ n: number }>(`select count(*)::int n from public.carousel_drafts`)
     expect(after.rows[0].n).toBe(1)
     await db.close()
