@@ -200,25 +200,31 @@ export async function bridgeCollectedSources(db: Db, clientId: EditorialClientId
     if (spec.table === 'own_posts' || spec.table === 'client_post_metrics') {
       const outcomeRows = await Promise.all(rows.flatMap(row => {
         const id = String(row.id ?? '')
-        const source = normalized.find(s => sourceMetricObservations(s).some(observation =>
+        const match = normalized.map(source => ({ source, observation: sourceMetricObservations(source).find(observation =>
           observation && typeof observation === 'object' &&
-          (observation as Record<string, unknown>).collector_row_id === id))
-        if (!source) return []
-        const metrics = source.candidate_fields?.observed_metrics as Record<string, unknown> | undefined
-        if (!metrics) return []
+          (observation as Record<string, unknown>).collector_row_id === id &&
+          (observation as Record<string, unknown>).metric_source === spec.table) })).find(item => item.observation)
+        if (!match || !match.observation || typeof match.observation !== 'object') return []
+        const observation = match.observation as Record<string, unknown>
+        const metrics = observation.observed_metrics
+        const window = observation.observation_window
+        if (!metrics || typeof metrics !== 'object' || Array.isArray(metrics) || !window || typeof window !== 'object') return []
+        const dates = window as Record<string, unknown>
+        const publishedAt = typeof dates.published_at === 'string' ? dates.published_at : null
+        const nativeCapture = typeof dates.captured_at === 'string' ? dates.captured_at : null
+        const denominator = typeof observation.metric_denominator === 'string' && observation.metric_denominator.trim()
+          ? observation.metric_denominator : null
+        if (!publishedAt || !denominator) return []
         return Object.entries(metrics).flatMap(async ([metric, raw]) => {
           const observed = typeof raw === 'number' && Number.isFinite(raw) && raw >= 0 ? raw : null
-          const nativeCapture = spec.table === 'own_posts'
-            ? row.metrics_updated_at ? String(row.metrics_updated_at) : row.scraped_at ? String(row.scraped_at) : null
-            : row.captured_at ? String(row.captured_at) : null
           const stable = `${clientId}|${spec.table}|${id}|${metric}|${String(raw)}|${nativeCapture ?? 'unknown'}`
           const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(stable))
           const suffix = [...new Uint8Array(digest)].map(x => x.toString(16).padStart(2, '0')).join('')
-          return { client_id: clientId, snapshot_id: `collector-${suffix}`, brief_id: `unattributed-own-post:${source.source_id}`,
-            brief_version: null, artifact_id: source.source_id, artifact_role: 'own_post', metric,
+          return { client_id: clientId, snapshot_id: `collector-${suffix}`, brief_id: `unattributed-own-post:${match.source.source_id}`,
+            brief_version: null, artifact_id: match.source.source_id, artifact_role: 'own_post', metric,
             observed_value: observed, unknown_reason: observed === null ? 'Collector did not retain a valid count' : null,
-            denominator: observed === null ? null : 'one exact own post',
-            scope: `native ${spec.table}.id=${id}`, window_start: source.source_published_at,
+            denominator: observed === null ? null : denominator,
+            scope: `native ${spec.table}.id=${id}`, window_start: publishedAt,
             window_end: nativeCapture, captured_at: nativeCapture ?? observedAt,
             event_definition: `${metric} count captured by ${spec.table}`, attribution: 'unknown',
             limitation: 'Own post observation only; no brief attribution, buyer identity, or commercial conversion inferred.',

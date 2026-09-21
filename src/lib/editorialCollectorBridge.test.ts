@@ -82,6 +82,7 @@ describe('collector bridge', () => {
       ['legacy-metric-row', { seen_version: 4, snapshot_hash: 'prior-legacy-version' }],
     ])
     const inserted: Record<string, unknown>[] = []
+    const outcomes: Record<string, unknown>[] = []
     const db = {
       from(table: string) {
         const state = { from: 0, to: 0 }
@@ -91,7 +92,7 @@ describe('collector bridge', () => {
           then(resolve: (value: unknown) => unknown) { const items = rows[table] ?? []
             return Promise.resolve(resolve({ data: items.slice(state.from, state.to + 1), count: items.length, error: null })) },
           async insert(batch: Record<string, unknown>[]) { inserted.push(...batch); for (const item of batch) latest.set(String(item.source_id), { seen_version: Number(item.seen_version), snapshot_hash: String(item.snapshot_hash) }); return { error: null } },
-          async upsert() { return { error: null } },
+          async upsert(batch: Record<string, unknown>[]) { if (table === 'editorial_outcome_snapshots') outcomes.push(...batch); return { error: null } },
         }
         return chain
       },
@@ -100,6 +101,14 @@ describe('collector bridge', () => {
     try {
       await bridgeCollectedSources(db, 'risedtc')
       const firstHash = String(inserted[0].snapshot_hash)
+      const metricOutcomes = outcomes.filter(row => row.scope === 'native client_post_metrics.id=legacy-metric-row')
+      expect(metricOutcomes).toEqual(expect.arrayContaining([
+        expect.objectContaining({ metric: 'impressions', observed_value: 12, denominator: 'one exact own post',
+          window_start: '2026-09-18T10:00:00.000Z', window_end: '2026-09-19T10:00:00.000Z' }),
+        expect.objectContaining({ metric: 'reactions', observed_value: 0, denominator: 'one exact own post',
+          window_start: '2026-09-18T10:00:00.000Z', window_end: '2026-09-19T10:00:00.000Z' }),
+      ]))
+      expect(metricOutcomes).not.toContainEqual(expect.objectContaining({ metric: 'reactions', observed_value: 99 }))
       await bridgeCollectedSources(db, 'risedtc')
       expect(inserted).toHaveLength(1)
       expect(inserted[0]).toMatchObject({ source_id: 'legacy-metric-row', seen_version: 5, independent: true,
