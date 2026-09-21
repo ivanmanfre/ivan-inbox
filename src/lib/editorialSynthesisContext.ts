@@ -45,12 +45,35 @@ export function prepareSynthesisContext(input: {
   render: (parts: ContextParts) => SynthesisMessage[]
 }) {
   const keys = ['observed_metrics', 'linked_findings', 'private_names', 'age_comparability', 'population', 'inclusion', 'study_id',
-    'metric_source', 'metric_denominator', 'observation_window', 'metric_observations', 'body_state', 'body_provenance', 'source_identity']
-  const project = (source: SelectionRow, cap: number): SelectionRow => ({ ...source,
-    passage: String(source.passage ?? '').slice(0, cap), retained_context: String(source.retained_context ?? '').slice(0, Math.min(cap, 2000)),
-    candidate_fields: Object.fromEntries(keys.filter(k => source.candidate_fields?.[k] !== undefined)
-      .map(k => [k, source.candidate_fields![k]])),
-  })
+    'metric_source', 'metric_denominator', 'observation_window', 'metric_observations', 'source_identity']
+  const project = (source: SelectionRow, cap: number): SelectionRow => {
+    const sourcePassage = String(source.passage ?? '')
+    const sourceContext = String(source.retained_context ?? '')
+    const passage = sourcePassage.slice(0, cap)
+    const retainedContext = sourceContext.slice(0, Math.min(cap, 2000))
+    const sourceBodyState = String(source.candidate_fields?.body_state ?? 'unknown')
+    const passageClipped = passage.length < sourcePassage.length
+    const retainedContextClipped = retainedContext.length < sourceContext.length
+    const candidateFields = Object.fromEntries(keys.filter(k => source.candidate_fields?.[k] !== undefined)
+      .map(k => [k, source.candidate_fields![k]]))
+    return { ...source, passage, retained_context: retainedContext, candidate_fields: {
+      ...candidateFields,
+      // `body_state` describes the model-visible passage. The immutable source
+      // state and provenance remain distinct inside `model_projection`.
+      body_state: passageClipped ? 'excerpt' : sourceBodyState,
+      model_projection: {
+        source_body_state: sourceBodyState,
+        source_body_provenance: source.candidate_fields?.body_provenance ?? null,
+        source_content_hash: source.source_content_hash ?? null,
+        source_passage_chars: sourcePassage.length,
+        supplied_passage_chars: passage.length,
+        passage_clipped: passageClipped,
+        source_retained_context_chars: sourceContext.length,
+        supplied_retained_context_chars: retainedContext.length,
+        retained_context_clipped: retainedContextClipped,
+      },
+    } }
+  }
   // Round-robin kinds when context is tight: never spend the whole remaining
   // budget on high-engagement public posts and silently lose own/call evidence.
   const kinds = [...new Set(input.sources.map(s => s.source_kind))]

@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { prepareSynthesisContext, renderCanonicalPromptBodies, selectSynthesisAssets } from './editorialSynthesisContext'
-const source = { source_id: 's', source_kind: 'own_post', owner: 'A', passage: 'p'.repeat(9000), captured_at: '2026-09-20', retained_context: 'c'.repeat(7000), candidate_fields: { raw_context: 'x'.repeat(300000), observed_metrics: { comments: 0 }, private_names: ['Private Person'], metric_source: 'client_post_metrics', metric_denominator: 'one exact own post', observation_window: { published_at: '2026-09-15', captured_at: '2026-09-20' }, metric_observations: [{ collector_row_id: 'row-1', observed_metrics: { comments: 0 } }, { collector_row_id: 'study-row', observed_metrics: { comments: 9 } }], body_state: 'excerpt', source_identity: { platform: 'linkedin', native_id: 'urn:li:activity:source', collector_row_id: 'row-1' } } }
+const source = { source_id: 's', source_kind: 'own_post', owner: 'A', passage: 'p'.repeat(9000),
+  source_content_hash: 'a'.repeat(64), captured_at: '2026-09-20', retained_context: 'c'.repeat(7000),
+  candidate_fields: { raw_context: 'x'.repeat(300000), observed_metrics: { comments: 0 }, private_names: ['Private Person'], metric_source: 'client_post_metrics', metric_denominator: 'one exact own post', observation_window: { published_at: '2026-09-15', captured_at: '2026-09-20' }, metric_observations: [{ collector_row_id: 'row-1', observed_metrics: { comments: 0 } }, { collector_row_id: 'study-row', observed_metrics: { comments: 9 } }], body_state: 'full', body_provenance: 'retained_native_recovery:original', source_identity: { platform: 'linkedin', native_id: 'urn:li:activity:source', collector_row_id: 'row-1' } } }
 describe('whole synthesis context budget', () => {
   it('keeps canonical prompt bodies byte-for-byte without JSON-stringifying them into the prompt', () => {
     const prompts = [{ id: 'p-1', slug: 'author-voice', version: 4, body: 'Line one\n"quoted"\\literal\nLine three' },
@@ -44,6 +46,13 @@ describe('whole synthesis context budget', () => {
       metric_denominator: 'one exact own post', observation_window: { captured_at: '2026-09-20' },
       metric_observations: [{ collector_row_id: 'row-1', observed_metrics: { comments: 0 } }, { collector_row_id: 'study-row', observed_metrics: { comments: 9 } }],
       body_state: 'excerpt', source_identity: { native_id: 'urn:li:activity:source' } })
+    expect(result.selected[0].candidate_fields?.model_projection).toEqual({
+      source_body_state: 'full', source_body_provenance: 'retained_native_recovery:original',
+      source_content_hash: 'a'.repeat(64), source_passage_chars: 9000,
+      supplied_passage_chars: String(result.selected[0].passage ?? '').length, passage_clipped: true,
+      source_retained_context_chars: 7000, supplied_retained_context_chars: result.selected[0].retained_context?.length,
+      retained_context_clipped: true,
+    })
     expect(result.selected[0].candidate_fields?.raw_context).toBeUndefined()
     expect(result.coverage.asset_catalog).toEqual({ assets_omitted: 4 })
     expect(result.messages[0].content).toContain('BINDING DECISION')
@@ -59,6 +68,10 @@ describe('whole synthesis context budget', () => {
       observation_window: { published_at: '2026-09-15', captured_at: '2026-09-20' },
       metric_observations: [{ collector_row_id: 'row-1', observed_metrics: { comments: 0 } }, { collector_row_id: 'study-row', observed_metrics: { comments: 9 } }],
       body_state: 'excerpt', source_identity: { platform: 'linkedin', native_id: 'urn:li:activity:source' } })
+    expect(rendered.selected[0].candidate_fields?.model_projection).toMatchObject({
+      source_body_state: 'full', source_content_hash: 'a'.repeat(64), passage_clipped: true,
+      retained_context_clipped: true,
+    })
   })
   it('retains an observed own post, including zero, ahead of an unobserved planned post under a tight budget', () => {
     const planned = { ...source, source_id: 'planned', passage: 'planned' }
