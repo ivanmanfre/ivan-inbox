@@ -90,7 +90,9 @@ export function prepareSynthesisContext(input: {
   const balanced: SelectionRow[] = []
   for (let i = 0; balanced.length < input.sources.length; i++)
     for (const group of groups) if (group[i]) balanced.push(group[i])
-  // Keep 24k for correction; a larger actual reply still fails closed at 200k.
+  // Keep a 16k planning allowance for correction. This is not a guarantee: the
+  // actual initial and correction requests each still fail closed at 200k in
+  // runSynthesis, and a rejected reply is retained even when no retry can fit.
   for (const count of [...new Set([input.sources.length, 16, 12, 8, 6, kinds.length])].filter(n => n <= input.sources.length)) {
     const supplied = count === input.sources.length ? input.sources : balanced.slice(0, count)
     const sourceIds = new Set(supplied.map(s => s.source_id))
@@ -109,10 +111,10 @@ export function prepareSynthesisContext(input: {
         sources_considered: input.sources.length, sources_supplied: selected.length, sources_omitted_by_budget: input.sources.length - selected.length,
         outcomes_frozen: input.outcomes.length, outcomes_supplied: outcomes.length, outcomes_omitted: input.outcomes.length - outcomes.length,
         excerpted_sources: selected.filter((s, i) => s.passage !== supplied[i].passage || s.retained_context !== String(supplied[i].retained_context ?? '')).length,
-        passage_cap: cap, correction_reserve_chars: 24000,
+        passage_cap: cap, correction_reserve_chars: 16000,
         limits: 'Only selected sources and their latest exact-artifact observations are supplied. All binding decisions remain supplied. Omitted outcomes are unknown here, not zero. Historical feed overlap and buyer composition are unknown. Full source/outcome snapshots remain in the immutable manifest. Candidate duplicate raw context is excluded; structured measurements and private-name guards are retained.' }
       const messages = input.render({ selected, outcomes, coverage })
-      if (JSON.stringify(messages).length <= 176000) return { selected, outcomes, coverage, messages }
+      if (JSON.stringify(messages).length <= 184000) return { selected, outcomes, coverage, messages }
     }
   }
   throw new Error('Mandatory canonical instructions, decisions and selected evidence exceed bounded context; last usable batch retained')

@@ -22,7 +22,32 @@ describe('bounded synthesis correction', () => {
   })
   it('does not call provider when correction would exceed the input ceiling',async()=>{
     const provider=vi.fn().mockResolvedValue({raw:JSON.stringify({x:'x'.repeat(199990)}),model:'local'})
-    await expect(runSynthesis({messages,correctionContext:'',provider,validate:async()=>{throw Error('reject')}})).rejects.toThrow('200000')
+    try {
+      await runSynthesis({messages,correctionContext:'',provider,validate:async()=>{throw Error('reject')}})
+      throw Error('unexpected accept')
+    } catch (error) {
+      expect(error).toBeInstanceOf(SynthesisAttemptsFailed)
+      const attempts=(error as SynthesisAttemptsFailed).attempts
+      expect(attempts).toHaveLength(1)
+      expect(attempts[0].reply?.raw).toContain('"x"')
+      expect(attempts[0].validation_error).toBe('reject')
+    }
     expect(provider).toHaveBeenCalledTimes(1)
+  })
+  it('allows a reviewed 184k-class initial request and sends a fitting correction under the unchanged 200k guard',async()=>{
+    const large=[{role:'user',content:'x'.repeat(180000)}]
+    const provider=vi.fn().mockResolvedValueOnce({raw:'{"metric":"wrong"}',model:'local'})
+      .mockResolvedValueOnce({raw:'{"metric":"m"}',model:'local'})
+    const result=await runSynthesis({messages:large,correctionContext:'Allowed: m',provider,
+      validate:async value=>{if ((value as {metric:string}).metric!=='m') throw Error('reject');return value}})
+    expect(JSON.stringify(provider.mock.calls[0][0]).length).toBeGreaterThan(176000)
+    expect(JSON.stringify(provider.mock.calls[1][0]).length).toBeLessThanOrEqual(200000)
+    expect(result.attempts).toHaveLength(2)
+  })
+  it('makes zero provider calls when the initial request exceeds the unchanged 200k guard',async()=>{
+    const provider=vi.fn()
+    await expect(runSynthesis({messages:[{role:'user',content:'x'.repeat(200001)}],correctionContext:'',provider,
+      validate:async value=>value})).rejects.toThrow('200000')
+    expect(provider).not.toHaveBeenCalled()
   })
 })

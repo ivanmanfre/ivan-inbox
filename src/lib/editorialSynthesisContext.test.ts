@@ -40,7 +40,8 @@ describe('whole synthesis context budget', () => {
     const outcomes = [{ snapshot_id: 'old', artifact_id: 's', metric: 'comments', observed_value: 9, captured_at: '2026-09-19' }, { snapshot_id: 'new', artifact_id: 's', metric: 'comments', observed_value: 0, captured_at: '2026-09-20' }, ...Array.from({length: 1600}, (_,i) => ({snapshot_id:String(i),artifact_id:'other',metric:'comments',observed_value:4}))]
     const result = prepareSynthesisContext({ sources: [source], outcomes, coverage: { asset_catalog: { assets_omitted: 4 } },
       render: parts => [{ role: 'user', content: 'v'.repeat(166000) + JSON.stringify(parts) + 'BINDING DECISION' }] })
-    expect(JSON.stringify(result.messages).length).toBeLessThanOrEqual(176000)
+    expect(JSON.stringify(result.messages).length).toBeLessThanOrEqual(184000)
+    expect(result.coverage.correction_reserve_chars).toBe(16000)
     expect(result.outcomes).toEqual([outcomes[1]])
     expect(result.coverage.outcomes_omitted).toBe(1601)
     expect(result.selected[0].candidate_fields?.private_names).toEqual(['Private Person'])
@@ -85,6 +86,14 @@ describe('whole synthesis context budget', () => {
     expect(result.outcomes[0].observed_value).toBe(0)
   })
   it('refuses oversized mandatory instructions instead of dropping decisions or canon', () => {
-    expect(() => prepareSynthesisContext({ sources: [source], outcomes: [], render: () => [{role:'user',content:'x'.repeat(176001)}] })).toThrow('Mandatory canonical')
+    expect(() => prepareSynthesisContext({ sources: [source], outcomes: [], render: () => [{role:'user',content:'x'.repeat(184001)}] })).toThrow('Mandatory canonical')
+  })
+  it('admits a complete initial request above 176k when it fits the reviewed 184k preparation ceiling', () => {
+    const result = prepareSynthesisContext({ sources: [source], outcomes: [],
+      render: parts => [{ role:'user', content:'x'.repeat(176500) + JSON.stringify(parts) }] })
+    const size = JSON.stringify(result.messages).length
+    expect(size).toBeGreaterThan(176000)
+    expect(size).toBeLessThanOrEqual(184000)
+    expect(result.coverage.correction_reserve_chars).toBe(16000)
   })
 })
