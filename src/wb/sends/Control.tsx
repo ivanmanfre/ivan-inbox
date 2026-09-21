@@ -21,6 +21,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import {
   fetchPayload, fetchEvidence, monitorLiveness, STATUS_TONE, STATUS_WORD,
   isRateLimitIncident, rateLimitIncident, rateLimitSentence, RATE_LIMITED_WORD,
+  isQueueEmptyClient, QUEUE_EMPTY_WORD,
   type CcState, type CcPayload, type CcClient, type CcChannel, type CcIncident,
   type CcRangeRow, type CcRecurrenceItem, type CcEvidenceState, type CcStatus,
 } from '../../lib/campaignControl'
@@ -330,6 +331,13 @@ function ControlSummary({ c, liveness, asOf, staleMinutes, selected, onOpen }: {
      the same way it outranks every other word on this surface (rule 1), so it
      is read only when `staleMinutes` is null. */
   const limited = staleMinutes === null ? rateLimitIncident(c) : null
+  /* A seat that has only run out of people to invite is not an outage. Same
+     precedence as above: a stale monitor and a confirmed refusal both outrank it. */
+  const queueEmpty = staleMinutes === null && !limited && isQueueEmptyClient(c)
+  /* The count sits beside the cap it is measured against, on the same UTC day
+     the senders' own counter uses, so "40" reads as "40 of 40" and not as a
+     bare number the operator has to compare from memory. */
+  const dailyCap = inv.capacity?.daily_cap
 
   return (
       <Row
@@ -337,7 +345,7 @@ function ControlSummary({ c, liveness, asOf, staleMinutes, selected, onOpen }: {
         lead={<Dot tone={tone as Tone} off={tone === undefined} />}
         title={
           <>
-            {c.label} <span className="a-cc-status" data-tone={tone ?? 'none'}>{limited ? RATE_LIMITED_WORD : STATUS_WORD[shown]}</span>
+            {c.label} <span className="a-cc-status" data-tone={tone ?? 'none'}>{limited ? RATE_LIMITED_WORD : queueEmpty ? QUEUE_EMPTY_WORD : STATUS_WORD[shown]}</span>
             {/* Never green, and never silent about why it is not green. The
                 space is real, not a margin: a screen reader reads the text, and
                 "Unknownunverified" is not a word. */}
@@ -355,7 +363,7 @@ function ControlSummary({ c, liveness, asOf, staleMinutes, selected, onOpen }: {
         tail={
           <span className="a-cc-tail">
             <b className="a-figure-t">{num(inv.confirmed_sent)}</b>
-            <span className="a-meta a-dim">invitations today</span>
+            <span className="a-meta a-dim">{typeof dailyCap === 'number' && dailyCap > 0 ? `of ${dailyCap} invitations today` : 'invitations today'}</span>
           </span>
         }
         selected={selected}

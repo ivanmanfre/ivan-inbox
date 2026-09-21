@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   parsePayload, isContractError, monitorLiveness, STATUS_TONE, CC_STATUSES,
   isOpenIncident, isRateLimitIncident, rateLimitIncident, rateLimitSentence,
-  RATE_LIMIT_RESTRICTION,
+  RATE_LIMIT_RESTRICTION, isQueueEmptyClient, QUEUE_EMPTY_FAMILY,
   type CcPayload, type CcClient, type CcIncident,
 } from './campaignControl'
 import healthy from './cc-fixtures/healthy.json'
@@ -211,6 +211,27 @@ describe('the rate-limited incident', () => {
     // The lead and the reassurance survive on their own.
     expect(noDate).toContain('LinkedIn is refusing invitations on this seat')
     expect(noDate).toContain('Nobody is marked as sent')
+  })
+})
+
+describe('the empty queue', () => {
+  const base = (rateLimited as unknown as { clients: CcClient[] }).clients.find(c => c.client_id === 'arch')!
+  const inc = (family: string, state = 'updated'): CcIncident => ({ ...base.incidents![0], failure_family: family, state })
+  const seat = (incidents: CcIncident[], status: CcClient['status'] = 'incident'): CcClient => ({ ...base, status, incidents })
+
+  it('a seat whose only open incidents are "nobody left to invite" reads as an empty queue', () => {
+    expect(isQueueEmptyClient(seat([inc(QUEUE_EMPTY_FAMILY), inc(QUEUE_EMPTY_FAMILY)]))).toBe(true)
+  })
+  it('one real fault beside it keeps the word Incident', () => {
+    expect(isQueueEmptyClient(seat([inc(QUEUE_EMPTY_FAMILY), inc('provider_rejection')]))).toBe(false)
+  })
+  it('a closed empty-queue episode beside an open refusal is not an empty queue, and a recovered refusal does not block it', () => {
+    expect(isQueueEmptyClient(seat([inc(QUEUE_EMPTY_FAMILY, 'resolved'), inc('provider_rejection')]))).toBe(false)
+    expect(isQueueEmptyClient(seat([inc(QUEUE_EMPTY_FAMILY), inc('provider_rejection', 'resolved')]))).toBe(true)
+  })
+  it('never applies to a seat the payload does not call incident, or to a seat with no incidents', () => {
+    expect(isQueueEmptyClient(seat([inc(QUEUE_EMPTY_FAMILY)], 'healthy'))).toBe(false)
+    expect(isQueueEmptyClient(seat([]))).toBe(false)
   })
 })
 
