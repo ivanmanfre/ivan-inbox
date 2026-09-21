@@ -77,32 +77,77 @@ function relationFor(source: SynthesisSource, measured: boolean): EvidenceRelati
   return 'supports_claim'
 }
 
+/** The provider's JSON is untrusted at runtime. Report all shape errors before
+ * reading strings so the existing bounded correction gets actionable paths. */
+function assertSuggestionShapes(value: unknown): asserts value is SynthesisSuggestion[] {
+  const errors: string[] = []
+  const object = (item: unknown, path: string): Record<string, unknown> => {
+    if (item && typeof item === 'object' && !Array.isArray(item)) return item as Record<string, unknown>
+    errors.push(`${path}: expected object`)
+    return {}
+  }
+  const texts = (item: Record<string, unknown>, path: string, keys: string, allowEmpty = false) => {
+    for (const key of keys.split(' ')) {
+      const field = item[key]
+      if (typeof field !== 'string' || (!allowEmpty && !field.trim()))
+        errors.push(`${path}.${key}: expected ${allowEmpty ? '' : 'nonempty '}string`)
+    }
+  }
+  const array = (item: unknown, path: string, minimum = 0): unknown[] => {
+    if (!Array.isArray(item)) { errors.push(`${path}: expected array`); return [] }
+    if (item.length < minimum) errors.push(`${path}: expected at least ${minimum} item`)
+    return item
+  }
+  const strings = (item: unknown, path: string, minimum = 0) => {
+    array(item, path, minimum).forEach((field, i) => {
+      if (typeof field !== 'string') errors.push(`${path}[${i}]: expected string`)
+    })
+  }
+  for (const [index, item] of array(value, 'suggestions').entries()) {
+    const path = `suggestions[${index}]`, s = object(item, path)
+    texts(s, path, 'topic angle hook objective intended_audience why_now tone overlap_with_existing_content novelty_reason format')
+    strings(s.source_ids, `${path}.source_ids`, 1)
+    for (const key of ['structural_beats', 'missing_material']) strings(s[key], `${path}.${key}`)
+    array(s.claims, `${path}.claims`, 1).forEach((claim, i) => {
+      const at = `${path}.claims[${i}]`
+      texts(object(claim, at), at, 'source_id supporting_quote statement allowed_phrasing prohibited_inference status')
+    })
+    array(s.measurements, `${path}.measurements`).forEach((metric, i) => {
+      const at = `${path}.measurements[${i}]`, m = object(metric, at)
+      texts(m, at, 'source_id metric_name formula denominator comparison_population observation_window')
+      texts(m, at, 'comparison_method_version', true)
+      strings(m.unknowns, `${at}.unknowns`)
+      if (typeof m.observed_value !== 'string' && typeof m.observed_value !== 'number')
+        errors.push(`${at}.observed_value: expected number or string`)
+    })
+    const resource = object(s.resource, `${path}.resource`)
+    texts(resource, `${path}.resource`, 'readiness')
+    texts(resource, `${path}.resource`, 'asset_id version artifact_role access_route permission_basis draft_state public_catalog_state', true)
+    strings(resource.required_missing_material, `${path}.resource.required_missing_material`)
+    const distribution = object(s.distribution, `${path}.distribution`)
+    texts(distribution, `${path}.distribution`, 'channel cta route')
+    strings(distribution.fulfillment_requirements, `${path}.distribution.fulfillment_requirements`)
+    const production = object(s.production, `${path}.production`)
+    texts(production, `${path}.production`, 'structure effort_category')
+    for (const key of ['required_materials', 'critical_constraints']) strings(production[key], `${path}.production.${key}`)
+    const evaluation = object(s.evaluation, `${path}.evaluation`)
+    texts(evaluation, `${path}.evaluation`, 'primary_metric comparator window earliest_valid_observation event_source_availability attribution_limitations')
+    strings(evaluation.secondary_metrics, `${path}.evaluation.secondary_metrics`)
+  }
+  if (errors.length) throw new Error(`Synthesis field errors: ${errors.join('; ')}`)
+}
+
 export async function buildSynthesisBriefs(input: {
   clientId: EditorialClientId; batchId: string; directionVersion: string; sourceCutoff: string
   sources: SynthesisSource[]; suggestions: SynthesisSuggestion[]
   voiceRefs?: EditorialBrief['production']['voice_references']
   assets?: { id: string; version: string; access_route: string; permission_basis: string; status: string }[]
 }): Promise<EditorialBrief[]> {
+  assertSuggestionShapes(input.suggestions)
   const sourceById = new Map(input.sources.map(s => [s.source_id, s]))
   const seen = new Set<string>()
   const briefs: EditorialBrief[] = []
   for (const [index, s] of input.suggestions.entries()) {
-    if (!s.topic?.trim() || !s.angle?.trim() || !s.hook?.trim() || !s.objective?.trim() ||
-        !s.intended_audience?.trim() || !s.why_now?.trim() || !Array.isArray(s.structural_beats) ||
-        !Array.isArray(s.source_ids) || !s.source_ids.length || !Array.isArray(s.missing_material) ||
-        !s.tone?.trim() || !s.overlap_with_existing_content?.trim() || !s.novelty_reason?.trim() ||
-        !Array.isArray(s.claims) || !s.claims.length || !Array.isArray(s.measurements) ||
-        !s.resource || !s.distribution || !s.production || !s.evaluation ||
-        !s.distribution.cta?.trim() || !s.distribution.channel?.trim() ||
-        !s.production.structure?.trim() || !s.production.effort_category?.trim() ||
-        !Array.isArray(s.production.required_materials) || !Array.isArray(s.production.critical_constraints) ||
-        !s.evaluation.primary_metric?.trim() || !s.evaluation.comparator?.trim() ||
-        !s.evaluation.window?.trim() || !s.evaluation.earliest_valid_observation?.trim() ||
-        !s.evaluation.event_source_availability?.trim() || !s.evaluation.attribution_limitations?.trim() ||
-        !Array.isArray(s.evaluation.secondary_metrics) || !Array.isArray(s.distribution.fulfillment_requirements) ||
-        !s.resource.readiness || !Array.isArray(s.resource.required_missing_material)) {
-      throw new Error(`suggestion ${index + 1} is incomplete`)
-    }
     if (!['text', 'carousel', 'video', 'lm_promo', 'resource'].includes(s.format)) {
       throw new Error(`suggestion ${index + 1} has an unsupported format`)
     }
