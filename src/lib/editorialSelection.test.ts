@@ -7,6 +7,18 @@ import { buildSynthesisBriefs } from './editorialSynthesis'
 const snapshot = JSON.parse(readFileSync('../../../content-brain-01-evidence-briefs-2026-09-20-out/research/snapshots/risedtc.json', 'utf8'))
 
 describe('measured study source preservation', () => {
+  it('counts retained rows without readable bodies instead of crashing or selecting them', () => {
+    const missing = { source_id: 'missing-body', source_kind: 'public_post', owner: 'Unknown', passage: null,
+      captured_at: '2026-09-21T00:00:00Z' }
+    const readable = { ...missing, source_id: 'readable-body', passage: 'A retained readable source passage.' }
+
+    const result = selectSynthesisSources([missing, readable] as never)
+
+    expect(result.selected.map(source => source.source_id)).toEqual(['readable-body'])
+    expect(result.withoutUsableBody).toBe(1)
+    expect(result.omitted).toBe(1)
+  })
+
   it('links a captured RISE finding to its single original author and rejects coincidental metric values', async () => {
     const finding = snapshot.market.items.find((x: any) => x.kind === 'market' && x.source_posts?.length === 1)
     const post = finding.source_posts[0]

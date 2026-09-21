@@ -1,10 +1,39 @@
 import { describe, it, expect } from 'vitest'
-import { prepareSynthesisContext } from './editorialSynthesisContext'
+import { prepareSynthesisContext, renderCanonicalPromptBodies, selectSynthesisAssets } from './editorialSynthesisContext'
 const source = { source_id: 's', source_kind: 'own_post', owner: 'A', passage: 'p'.repeat(9000), captured_at: '2026-09-20', retained_context: 'c'.repeat(7000), candidate_fields: { raw_context: 'x'.repeat(300000), observed_metrics: { comments: 0 }, private_names: ['Private Person'], metric_source: 'client_post_metrics', metric_denominator: 'one exact own post', observation_window: { published_at: '2026-09-15', captured_at: '2026-09-20' }, metric_observations: [{ collector_row_id: 'row-1', observed_metrics: { comments: 0 } }, { collector_row_id: 'study-row', observed_metrics: { comments: 9 } }], body_state: 'excerpt', source_identity: { platform: 'linkedin', native_id: 'urn:li:activity:source', collector_row_id: 'row-1' } } }
 describe('whole synthesis context budget', () => {
+  it('keeps canonical prompt bodies byte-for-byte without JSON-stringifying them into the prompt', () => {
+    const prompts = [{ id: 'p-1', slug: 'author-voice', version: 4, body: 'Line one\n"quoted"\\literal\nLine three' },
+      { id: 'p-2', slug: 'forbidden-language', version: 2, body: 'Never claim a result without evidence.' }]
+    const rendered = renderCanonicalPromptBodies(prompts)
+
+    for (const prompt of prompts) expect(rendered).toContain(prompt.body)
+    expect(rendered).not.toContain(JSON.stringify(prompts[0].body))
+    expect(rendered).toContain('"prompt_id":"p-1"')
+  })
+
+  it('bounds assets by catalog relevance and records every omitted identity', () => {
+    const assets = [
+      { id: 'retired', version: '1', access_route: '/retired', permission_basis: 'client-owned catalog', status: 'needs_material', catalog_state: 'retired', slug: 'retired' },
+      { id: 'draft-b', version: '1', access_route: '/draft-b', permission_basis: 'client-owned catalog', status: 'needs_material', catalog_state: 'draft', slug: 'draft-b' },
+      { id: 'published', version: '3', access_route: '/published', permission_basis: 'client-owned catalog', status: 'needs_material', catalog_state: 'published', slug: 'published' },
+      { id: 'ready', version: '2', access_route: '/ready', permission_basis: 'client-owned catalog', status: 'ready', catalog_state: 'published', slug: 'ready' },
+      { id: 'draft-a', version: '1', access_route: '/draft-a', permission_basis: 'client-owned catalog', status: 'needs_material', catalog_state: 'draft', slug: 'draft-a' },
+    ]
+
+    const result = selectSynthesisAssets(assets, 3)
+
+    expect(result.selected.map(asset => asset.id)).toEqual(['ready', 'published', 'draft-a'])
+    expect(result.coverage).toMatchObject({ assets_considered: 5, assets_supplied: 3, assets_omitted: 2 })
+    expect(result.coverage.omitted_assets).toEqual([
+      { id: 'draft-b', catalog_state: 'draft' },
+      { id: 'retired', catalog_state: 'retired' },
+    ])
+  })
+
   it('bounds serialized fields, preserves zero/latest exact identity and reports omissions', () => {
     const outcomes = [{ snapshot_id: 'old', artifact_id: 's', metric: 'comments', observed_value: 9, captured_at: '2026-09-19' }, { snapshot_id: 'new', artifact_id: 's', metric: 'comments', observed_value: 0, captured_at: '2026-09-20' }, ...Array.from({length: 1600}, (_,i) => ({snapshot_id:String(i),artifact_id:'other',metric:'comments',observed_value:4}))]
-    const result = prepareSynthesisContext({ sources: [source], outcomes,
+    const result = prepareSynthesisContext({ sources: [source], outcomes, coverage: { asset_catalog: { assets_omitted: 4 } },
       render: parts => [{ role: 'user', content: 'v'.repeat(166000) + JSON.stringify(parts) + 'BINDING DECISION' }] })
     expect(JSON.stringify(result.messages).length).toBeLessThanOrEqual(176000)
     expect(result.outcomes).toEqual([outcomes[1]])
@@ -16,6 +45,7 @@ describe('whole synthesis context budget', () => {
       metric_observations: [{ collector_row_id: 'row-1', observed_metrics: { comments: 0 } }, { collector_row_id: 'study-row', observed_metrics: { comments: 9 } }],
       body_state: 'excerpt', source_identity: { native_id: 'urn:li:activity:source' } })
     expect(result.selected[0].candidate_fields?.raw_context).toBeUndefined()
+    expect(result.coverage.asset_catalog).toEqual({ assets_omitted: 4 })
     expect(result.messages[0].content).toContain('BINDING DECISION')
     expect(source.passage.length).toBe(9000)
   })
