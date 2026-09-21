@@ -8,6 +8,6 @@ it('rejects real unit and qualification distortions without rewriting the model 
     expect(() => assertMeasurementWording([source], proposal(copy))).toThrow()
 })
 it('accepts exact public observation units and explicitly labelled proxy limits', () => {
-  for (const copy of ['790 impressions, 0 public comments as of September 20.', 'The likes + 3 × reposts proxy scored 8x its author’s baseline; actual reach is unknown.', 'Pay attention to replies as well as likes.'])
+  for (const copy of ['790 impressions, 0 public comments as of September 20.', 'The likes + 3 × reposts proxy scored 8x its author’s baseline; actual reach is unknown.', 'Pay attention to replies as well as likes.', "The finding says crossing a baseline does not indicate the format caused the reach."])
     expect(() => assertMeasurementWording([source], proposal(copy))).not.toThrow()
 })

@@ -48,7 +48,7 @@ export function assertMeasurementWording(sources: SynthesisSource[], suggestion:
       if (metrics?.comments === 0 && /\b(?:0|zero)\s+(?:said|replied|responded|replies|responses|feedback)\b/i.test(text))
         errors.add('Zero public comments does not prove zero replies, DMs or other feedback: name recorded public comments and the capture date.')
       if (Array.isArray(findings) && findings.some(f => String(f.formula).includes('reposts')) &&
-        /\breach\b/i.test(text) && /(?:\b\d+(?:\.\d+)?x\b|\bbaseline\b)/i.test(text) && !/\bproxy\b/i.test(text))
+        /\breach\b/i.test(text) && /(?:\b\d+(?:\.\d+)?x\b|\bbaseline\s+reach\b)/i.test(text) && !/\bproxy\b/i.test(text))
         errors.add('A weighted likes/reposts score is a proxy, not measured reach: name the exact proxy/formula wherever its baseline lift appears.')
       if (/not just likes/i.test(source.passage ?? '') && /\breplies[,\s]+not likes\b/i.test(text))
         errors.add('The source says not JUST likes: replies supplement likes, not replace/exclude them. Preserve that qualification.')
