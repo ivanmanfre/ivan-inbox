@@ -112,3 +112,38 @@ export function assertEnvelopeAtStage(value: unknown, expected: Pick<GenerationE
     e.request_id !== expected.request_id) throw new GenerationBlocked('brief_lineage_lost')
   return e
 }
+
+export type HistoryRow = {
+  native_id: string
+  qa_failed?: boolean
+  is_test?: boolean
+  published_at?: string | null
+}
+
+export type HistoryRole = 'excluded' | 'negative_only' | 'duplicate_only' | 'positive_precedent'
+
+/** Decides what one past native object may do for the row being generated now.
+ * The object under generation can never be its own precedent; a QA-failed or
+ * release-test row is a negative example only; an unpublished draft is a
+ * duplication check, never evidence that a shape was published and worked. */
+export function classifyHistoryRole(row: HistoryRow, currentNativeId: string): { role: HistoryRole; reason: string } {
+  if (row.native_id === currentNativeId)
+    return { role: 'excluded', reason: 'this is the native object being generated, not its history' }
+  if (row.qa_failed || row.is_test)
+    return { role: 'negative_only', reason: 'QA-failed or release-test row; usable only as a negative example' }
+  if (row.published_at === null || row.published_at === undefined)
+    return { role: 'duplicate_only', reason: 'unpublished draft; a duplication check, not published precedent' }
+  return { role: 'positive_precedent', reason: 'published row with no QA failure and no test marker' }
+}
+
+/** Projects a writer's intended columns onto the destination table's ACTUAL
+ * schema, in schema order, and names what it dropped. A column the destination
+ * does not have is reported, never silently written. */
+export function projectNativeColumns(intended: string[], actualSchemaColumns: string[]):
+  { projected: string[]; unknown: string[] } {
+  const wanted = new Set(intended)
+  return {
+    projected: actualSchemaColumns.filter(c => wanted.has(c)),
+    unknown: intended.filter(c => !actualSchemaColumns.includes(c)),
+  }
+}

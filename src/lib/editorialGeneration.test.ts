@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { brief, evidence } from './editorialBriefs.fixtures'
-import { assertEnvelopeAtStage, attachEnvelope, buildGenerationEnvelope, GenerationBlocked } from './editorialGeneration'
+import { assertEnvelopeAtStage, attachEnvelope, buildGenerationEnvelope, classifyHistoryRole, GenerationBlocked, projectNativeColumns } from './editorialGeneration'
 
 const make = (over = {}) => {
   const b = brief(over)
@@ -59,5 +59,45 @@ describe('editorial generation boundary', () => {
     expect(result.production_hold).toContain('call_public_use_permission_unresolved')
     expect(() => make({ evidence: [evidence({ source_kind: 'call', source_client_scope: 'arch',
       permission_state: 'unknown' })] })).toThrow(new GenerationBlocked('no_permitted_source'))
+  })
+})
+
+describe('history row roles for a generation route', () => {
+  const row = (over: Record<string, unknown> = {}) => ({
+    native_id: 'older', qa_failed: false, is_test: false, published_at: null, ...over,
+  })
+
+  it('never lets the current native object act as its own history', () => {
+    expect(classifyHistoryRole(row({ native_id: 'current' }), 'current').role).toBe('excluded')
+  })
+
+  it('demotes a QA-failed or test row to a negative example only', () => {
+    expect(classifyHistoryRole(row({ qa_failed: true }), 'current').role).toBe('negative_only')
+    expect(classifyHistoryRole(row({ is_test: true }), 'current').role).toBe('negative_only')
+    expect(classifyHistoryRole(row({ qa_failed: true, published_at: '2026-09-01T00:00:00Z' }), 'current').role)
+      .toBe('negative_only')
+  })
+
+  it('treats an unpublished draft as a duplication check, never as published precedent', () => {
+    expect(classifyHistoryRole(row(), 'current').role).toBe('duplicate_only')
+  })
+
+  it('allows a clean published row as positive precedent', () => {
+    expect(classifyHistoryRole(row({ published_at: '2026-09-01T00:00:00Z' }), 'current').role)
+      .toBe('positive_precedent')
+  })
+})
+
+describe('projected native columns', () => {
+  it('keeps only columns that exist in the actual destination schema, in schema order', () => {
+    const r = projectNativeColumns(['post_text', 'invented_column', 'post_format'],
+      ['id', 'post_text', 'post_format', 'scheduled_at'])
+    expect(r.projected).toEqual(['post_text', 'post_format'])
+    expect(r.unknown).toEqual(['invented_column'])
+  })
+
+  it('reports an empty projection rather than inventing a destination column', () => {
+    expect(projectNativeColumns(['nope'], ['id']))
+      .toEqual({ projected: [], unknown: ['nope'] })
   })
 })

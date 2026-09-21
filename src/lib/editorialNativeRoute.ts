@@ -33,3 +33,49 @@ export function planNativeRoute(clientId: string, format: string, copyOnly: bool
     return { path: postPath[clientId], postFormat: format === 'carousel' ? 'carousel' : 'text' }
   return null
 }
+
+export type NativeFinalizationInput = {
+  artifactId: string
+  requestId: string
+  briefHash: string
+  dispatchState: 'claimed' | 'complete' | 'failed'
+  transportAmbiguous: boolean
+  selectedQaCopy: string
+  selectedAssessmentId: string
+  persistedCopy?: string | null
+  persistedAssessmentId?: string | null
+}
+
+export type NativeFinalizationPlan = {
+  decision: 'persist_final' | 'idempotent_replay' | 'hold_unreconciled'
+    | 'failed_original_retained' | 'persisted_copy_conflict' | 'no_selected_copy'
+  reported_state: 'claimed' | 'complete' | 'failed'
+  persist: boolean
+  reason: string
+}
+
+/** Decides the terminal state of one dispatched native draft BEFORE any write.
+ * A claimed job whose transport outcome is unknown stays claimed: an unresolved
+ * dispatch is never reported complete. A failed original is retained as failed
+ * and is never rewritten as the corrected final. A replay of an identical
+ * completed job writes nothing. */
+export function planNativeFinalization(input: NativeFinalizationInput): NativeFinalizationPlan {
+  const selected = (input.selectedQaCopy ?? '').trim()
+  if (!selected) return { decision: 'no_selected_copy', reported_state: input.dispatchState,
+    persist: false, reason: 'no QA-selected final copy to persist' }
+  if (input.dispatchState === 'failed') return { decision: 'failed_original_retained',
+    reported_state: 'failed', persist: false,
+    reason: 'the original dispatch failed; its status and candidate provenance are retained rather than overwritten by a corrected final' }
+  if (input.transportAmbiguous) return { decision: 'hold_unreconciled', reported_state: 'claimed',
+    persist: false, reason: 'transport outcome unresolved; the job stays claimed until read-only reconciliation settles it' }
+  if (input.dispatchState === 'complete') {
+    const stored = (input.persistedCopy ?? '').trim()
+    if (stored === selected && input.persistedAssessmentId === input.selectedAssessmentId)
+      return { decision: 'idempotent_replay', reported_state: 'complete', persist: false,
+        reason: 'identical request already persisted; no second native object and no further provider call' }
+    return { decision: 'persisted_copy_conflict', reported_state: 'complete', persist: false,
+      reason: 'the stored final copy or assessment differs from the selected QA copy; refusing to overwrite a terminal object' }
+  }
+  return { decision: 'persist_final', reported_state: 'complete', persist: true,
+    reason: 'claimed job with a settled transport outcome and a QA-selected final copy' }
+}
