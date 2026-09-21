@@ -80,6 +80,17 @@ export function assertMeasurementWording(sources: SynthesisSource[], suggestion:
 export const MIN_ADAPTABLE_SOURCE_CHARS = 200
 const RECENT_TOPIC_OVERLAP = 0.6
 
+/** Timestamps arrive as ISO strings over PostgREST and as Date objects over a direct
+ * driver. Every comparison below goes through this so neither shape can crash a batch. */
+export const isoText = (value: unknown) => value instanceof Date ? value.toISOString() : String(value ?? '')
+export const isoDay = (value: unknown) => {
+  if (value instanceof Date) return value.toISOString().slice(0, 10)
+  const text = isoText(value)
+  const parsed = Date.parse(text)
+  return /^\d{4}-\d{2}-\d{2}/.test(text) ? text.slice(0, 10)
+    : Number.isFinite(parsed) ? new Date(parsed).toISOString().slice(0, 10) : ''
+}
+
 const STOPWORDS = new Set(('a an the and or of to in on for with is are was were be been being it its this that these those i you we they my our your'
   + ' their from at by as not no but if then than so what how why when who whom which more most some any all can will would should could do does did'
   + ' have has had about into over under after before out up down only just also very each per via one two').split(' '))
@@ -255,7 +266,7 @@ export async function buildSynthesisBriefs(input: {
 }): Promise<EditorialBrief[]> {
   const semantic = typeof input.requestedAt === 'string' && input.requestedAt.length > 0
   assertSuggestionShapes(input.suggestions, semantic)
-  const requestedAt = semantic ? Date.parse(input.requestedAt!) : NaN
+  const requestedAt = semantic ? Date.parse(isoText(input.requestedAt)) : NaN
   if (semantic && !Number.isFinite(requestedAt)) throw new Error('refresh request time is not a valid timestamp')
   const history = input.history ?? []
   const historyTokens = history.map(row => ({ row, tokens: topicTokens(row.topic_text) }))
@@ -322,7 +333,7 @@ export async function buildSynthesisBriefs(input: {
         ...undisclosed('commercial', COMMERCIAL_MARKERS, s, s.commercial_claims ?? [], safeSources)]
       if (defects.length) throw new Error(`${at} ${defects.join('; ')}`)
       // 7. An evaluation date must be a future check, not a date already passed.
-      const evaluateAt = Date.parse(s.evaluation.earliest_valid_observation)
+      const evaluateAt = Date.parse(isoText(s.evaluation.earliest_valid_observation))
       if (!Number.isFinite(evaluateAt)) throw new Error(`${at} evaluation date ${s.evaluation.earliest_valid_observation} is not a parseable timestamp`)
       if (evaluateAt <= requestedAt) throw new Error(`${at} evaluation date ${s.evaluation.earliest_valid_observation} is not after the refresh request time ${input.requestedAt}`)
       // 8. One rejected execution scopes to that piece, never to a whole topic.
@@ -384,7 +395,10 @@ export async function buildSynthesisBriefs(input: {
           !metric.formula?.trim() || !metric.observation_window?.trim() || !metric.comparison_population?.trim()) {
         throw new Error(`suggestion ${index + 1} metric lacks exact structured source observation, denominator, formula or window`)
       }
-      if (source.captured_at && !metric.observation_window.includes(source.captured_at.slice(0, 10))) {
+      // A timestamp reaches this module as a string over PostgREST and as a Date over a
+      // direct driver. Coercing here keeps a metric judged instead of crashing the batch.
+      const capturedDay = source.captured_at ? isoDay(source.captured_at) : ''
+      if (capturedDay && !metric.observation_window.includes(capturedDay)) {
         throw new Error(`suggestion ${index + 1} metric omits its exact capture date`)
       }
       if (linked) {
@@ -411,13 +425,14 @@ export async function buildSynthesisBriefs(input: {
       throw new Error(`suggestion ${index + 1} asserts an unverified resource for an ordinary post`)
     }
     const evidence = safeSources.map((v, n) => {
-      const age = v.source_published_at ? Math.floor((Date.parse(input.sourceCutoff) - Date.parse(v.source_published_at)) / 86_400_000) : null
+      const published = v.source_published_at ? Date.parse(isoText(v.source_published_at)) : NaN
+      const age = Number.isFinite(published) ? Math.floor((Date.parse(isoText(input.sourceCutoff)) - published) / 86_400_000) : null
       return {
         evidence_id: `ev-${n + 1}`, relation: relationFor(v, s.measurements.some(m => m.source_id === v.source_id)), source_id: v.source_id,
         seen_version: v.seen_version, source_kind: v.source_kind, source_client_scope: v.source_client_scope,
         source_ref: v.source_url ? { url: v.source_url } : { excerpt_pointer: v.excerpt_pointer ?? '' },
-        source_published_date: v.source_published_at ?? 'unknown' as const,
-        captured_date: v.captured_at, currency_state: age === null ? 'unknown' as const : age > 90 ? 'historical' as const : 'current' as const,
+        source_published_date: v.source_published_at ? isoText(v.source_published_at) : 'unknown' as const,
+        captured_date: isoText(v.captured_at), currency_state: age === null ? 'unknown' as const : age > 90 ? 'historical' as const : 'current' as const,
         owner: v.owner, source_content_hash: v.body_sha256, passage: v.passage,
         retained_context: v.retained_context, limitation: v.limitation,
         independent: v.independent, derived_from: v.derived_from,

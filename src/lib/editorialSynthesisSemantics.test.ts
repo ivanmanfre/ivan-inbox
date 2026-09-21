@@ -339,3 +339,45 @@ describe('a rejected batch carries its exact defects forward', () => {
     expect(edge).toContain("${priorDefects.length ? `")
   })
 })
+
+// ARCH's final local reply lost two otherwise-checkable proposals to
+// `source.captured_at.slice is not a function`: the local driver hands back Date objects
+// where PostgREST hands back ISO strings. A crash is not a judgement.
+describe('timestamps judge the same whether they arrive as strings or Date objects', () => {
+  const asDates = {
+    ...ownPost,
+    captured_at: new Date('2026-09-20T00:00:00Z') as unknown as string,
+    source_published_at: new Date('2026-09-17T00:00:00Z') as unknown as string,
+  }
+
+  it('accepts the grounded direction when every timestamp is a Date', async () => {
+    const briefs = await run([asDates], [grounded], { sourceCutoff: new Date('2026-09-21T00:00:00Z') })
+
+    expect(briefs).toHaveLength(1)
+    expect(briefs[0].evidence[0].captured_date).toBe('2026-09-20T00:00:00.000Z')
+    expect(briefs[0].evidence[0].currency_state).toBe('current')
+  })
+
+  it('still rejects a metric whose window omits the capture date, with Date inputs', async () => {
+    const suggestion = { ...grounded, measurements: [{ ...grounded.measurements[0],
+      observation_window: 'captured some time last week; window start unknown' }] }
+
+    await expect(run([asDates], [suggestion])).rejects.toThrow(/exact capture date/)
+  })
+})
+
+// RISE's second local reply cited three derived candidate rows as proof. derived_from is
+// set on candidate rows and nowhere else in the retained population, so the rule is exact
+// — but the request has to say so, and show which rows are derived.
+describe('derived candidate rows are visible and named as unusable proof', () => {
+  const edge = readFileSync('supabase/functions/editorial-refresh/index.ts', 'utf8')
+
+  it('supplies derived_from on every rendered source', () => {
+    expect(edge).toContain('derived_from: x.derived_from ?? null')
+  })
+
+  it('tells the model a derived summary can never be the cited source', () => {
+    expect(edge).toMatch(/derived_from is not null \(kind=candidate\)/)
+    expect(edge).toMatch(/never be the cited source for any claim/)
+  })
+})
