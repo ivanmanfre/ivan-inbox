@@ -22,7 +22,7 @@ import { InboxSkeleton } from '../chrome/Skeleton'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import { returnsIn } from '../../lib/pushLater'
 import { useConfirm } from '../chrome/ConfirmSheet'
-import { discardDraft, filterByStatus, filterThreads, inboxWaitingCount, isConversation, isLeadMagnet, searchThreads, threadKind, type Filter, type Status, type Thread, eventTime } from '../../lib/inbox'
+import { browseOrder, discardDraft, filterByStatus, filterThreads, inboxWaitingCount, isLeadMagnet, searchThreads, threadKind, type Filter, type Status, type Thread, eventTime } from '../../lib/inbox'
 import { DM_FIELDS, applyThreadTokens, hasStatusToken, tokensForFilter, type FilterToken } from '../../lib/filterTokens'
 import { checkedPhrase } from '../../lib/today'
 import { clientBadge } from '../../lib/labels'
@@ -115,7 +115,7 @@ export function dayLabel(iso: string, now: Date = new Date()): string {
 }
 
 type Item =
-  | { kind: 'day'; key: string; label: string; count: number }
+  | { kind: 'day'; key: string; label: string; count: number; section?: boolean }
   | { kind: 'row'; key: string; t: Thread }
 
 /** How far the reader has scrolled INTO the rows: 0 until the rows reach the top of the scroller. */
@@ -485,13 +485,15 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
   // with the surface's own default ('needs', frozen since 2026-08-04) would
   // empty every view but that one.
   const statusToken = tokenMode && hasStatusToken(tokens)
+  const sectioned = !query && browse && filter !== 'spam' && !statusToken
+  const ordered = browseOrder(laned)
   const shown = query
     ? searchThreads(laned, query)
-    : (browse && filter !== 'spam' && !statusToken)
+    : sectioned
       // Conversations only (someone answered, a draft is waiting, a magnet went
       // out): the lane also holds every invite that never got a reply, and those
       // are not chats. Newest activity first, drafts dated by their own clock.
-      ? laned.filter(isConversation).sort((a, b) => eventTime(b.last).localeCompare(eventTime(a.last)))
+      ? [...ordered.pending, ...ordered.rest]
       : (status && filter !== 'spam' && !statusToken ? filterByStatus(laned, status) : laned)
   const rowH = useRowH()
   const phone = usePhone()
@@ -504,8 +506,26 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
   {
     let lastDay: string | null = null
     let head: Extract<Item, { kind: 'day' }> | null = null
+    const pendingIds = new Set(ordered.pending.map(t => t.prospect_id))
+    let section: 'pending' | 'rest' | null = null
     for (const t of shown) {
-      if (!phone || browse) {
+      // Two blocks, each under its own header: what owes him a reply, then the
+      // rest. The pending block carries no day headers - the row already shows
+      // its age and the block is short; the rest keeps them.
+      if (sectioned) {
+        const s = pendingIds.has(t.prospect_id) ? 'pending' : 'rest'
+        if (s !== section) {
+          section = s
+          lastDay = null
+          head = null
+          items.push({
+            kind: 'day', section: true, key: `section-${s}`,
+            label: s === 'pending' ? 'Needs your reply' : 'Sent, waiting on them',
+            count: s === 'pending' ? ordered.pending.length : ordered.rest.length,
+          })
+        }
+      }
+      if ((!phone || browse) && section !== 'pending') {
         const d = dayLabel(eventTime(t.last))
         if (d !== lastDay) {
           lastDay = d
@@ -642,7 +662,7 @@ export function InboxList({ threads, filter, setFilter, tokens, setTokens, refre
               {items.slice(win.start, win.end).map(it => {
                 if (it.kind === 'day') {
                   return (
-                    <div key={it.key} className="a-dms-dayhost" style={{ height: DAY_H }}>
+                    <div key={it.key} className="a-dms-dayhost" data-section={it.section ? '1' : undefined} style={{ height: DAY_H }}>
                       <DayHeader sticky={false} label={it.label} tail={it.count} />
                     </div>
                   )
