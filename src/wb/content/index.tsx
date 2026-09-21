@@ -50,7 +50,8 @@ import {
 import { useSectionState } from '../../hooks/useSectionState'
 import { draftFacetsActive } from '../../exp/v2c/contentIdeas'
 import { hasMock } from '../../exp/v2c/mock'
-import { Segmented, SkeletonRows, Tabs } from '../../ds'
+import { Button, Segmented, SkeletonRows, Tabs } from '../../ds'
+import { prefixOf, wbHash } from '../../exp/v2c/route'
 import { Bar, Body, Dot, Head, Screen } from '../kit'
 import { CalmEmpty, cacheLoadedAt, Failed, FilteredEmpty, PullIndicator } from './parts'
 import { FilterRow } from './filters'
@@ -151,6 +152,7 @@ function CommandStrip({
             />
           )}
           {laneNote}
+          <Button size="sm" variant="quiet" onClick={() => { window.location.hash = `${wbHash('strategy', null, prefixOf(window.location.hash))}?section=sources` }}>Sources</Button>
           {/* W3-2: five stacked bands ate 483px of a 844px phone. On the phone
               the filter row rides the SAME 44px bar as the lane and view
               switches (the bar scrolls sideways, so nothing is squeezed), the

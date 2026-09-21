@@ -17,6 +17,14 @@ const EditorialClientContext = createContext<EditorialClient>(supabase as unknow
 export function EditorialClientProvider({ client, children }: { client: EditorialClient; children: ReactNode }) { return <EditorialClientContext.Provider value={client}>{children}</EditorialClientContext.Provider> }
 const useEditorialClient = () => useContext(EditorialClientContext)
 const requestId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+function draftRequestId(brief: EditorialBrief, version = brief.identity.version, hash = brief.identity.content_hash) {
+  const key = `editorial-draft:${brief.identity.client_id}:${brief.identity.brief_id}:${version}:${hash}:${brief.identity.kind}`
+  try {
+    const existing = sessionStorage.getItem(key)
+    if (existing) return existing
+    const id = requestId('create-draft'); sessionStorage.setItem(key, id); return id
+  } catch { return requestId('create-draft') }
+}
 const when = (value: string | number | null | undefined) => value && value !== 'unknown' ? String(value) : 'Unknown'
 
 export function SourceDetail({ source, close, lane, previewLinked, readOnly = false }: { source: SourceSnapshot; close: () => void; lane: ContentLane; previewLinked?: EditorialBrief[]; readOnly?: boolean }) {
@@ -41,7 +49,7 @@ export function SourceDetail({ source, close, lane, previewLinked, readOnly = fa
       <dt>Original / excerpt</dt><dd>{source.passage ?? 'Original passage is unavailable.'} {'url' in source.source_ref ? <a href={source.source_ref.url} target="_blank" rel="noreferrer">Open original</a> : <span> Authenticated excerpt: {source.source_ref.excerpt_pointer}</span>}</dd>
       <dt>Owner</dt><dd>{source.owner}</dd><dt>Published</dt><dd>{when(source.source_published_date)}</dd>
       <dt>Observed</dt><dd>{when(source.captured_date)}</dd><dt>Scope</dt><dd>{source.source_client_scope}</dd>
-      <dt>Observation</dt><dd>{source.candidate_fields?.evidence ?? 'No source observation recorded.'}</dd>
+      <dt>Observation</dt><dd>{source.retained_context || source.candidate_fields?.evidence || 'No source observation recorded.'}</dd>
       <dt>Limits</dt><dd>{source.limitation || source.gap_state?.detail || 'No additional limit recorded.'}</dd>
       <dt>Linked suggestions</dt><dd>{linked.length ? linked.map(b => `${b.editorial_direction.topic} (v${b.identity.version})`).join('; ') : 'No current suggestion cites this source.'}</dd>
     </dl>
@@ -58,17 +66,19 @@ export function ResearchPanel({ lane }: { lane: ContentLane }) {
   const [selected, setSelected] = useState<SourceSnapshot | null>(null)
   const [cursor, setCursor] = useState<string | null>(null)
   const [kind, setKind] = useState('all')
+  const requestGeneration = useRef(0)
   const load = async (append = false) => {
+    const generation = ++requestGeneration.current
     setError(null)
-    try { const next = await readResearch(editorialClient, clientId(lane), kind === 'all' ? {} : { kinds: [kind as SourceSnapshot['source_kind']] }, append ? cursor : null, 25); if (next.state === 'failed') { setError(next.message ?? 'Research read failed.'); return } setPage(p => append && p ? { ...next, items: [...p.items, ...next.items] } : next); setCursor(next.next_cursor) }
-    catch (e) { setError(e instanceof Error ? e.message : 'Research could not be read.') }
+    try { const next = await readResearch(editorialClient, clientId(lane), kind === 'all' ? {} : { kinds: [kind as SourceSnapshot['source_kind']] }, append ? cursor : null, 25); if (generation !== requestGeneration.current) return; if (next.state === 'failed') { setError(next.message ?? 'Research read failed.'); return } setPage(p => append && p ? { ...next, items: [...p.items, ...next.items] } : next); setCursor(next.next_cursor) }
+    catch (e) { if (generation === requestGeneration.current) setError(e instanceof Error ? e.message : 'Research could not be read.') }
   }
-  useEffect(() => { setPage(null); setSelected(null); setCursor(null); setError(null); void load() }, [lane, kind])
-  if (error && !page) return <Group label="Research" pad><p className="a-ct-sub">{error}</p><Button size="sm" onClick={() => void load()}>Try again</Button></Group>
-  if (!page) return <p className="a-ct-sub">Reading research…</p>
-  return <Group label="Research" tail={<span className="a-dim a-mono">{page.total} records · {page.independent_source_count} independent</span>} pad>
+  useEffect(() => { setPage(null); setSelected(null); setCursor(null); setError(null); void load(); return () => { requestGeneration.current++ } }, [lane, kind])
+  return <Group label="Research" tail={page && <span className="a-dim a-mono">{page.total} records · {page.independent_source_count} independent</span>} pad>
     {error && <p className="a-ct-sub" role="alert">{error} <Button size="sm" onClick={() => void load(Boolean(cursor))}>Try again</Button></p>}
     <label className="a-research-reason">Source kind <select value={kind} onChange={e => setKind(e.target.value)}><option value="all">All kinds</option><option value="public_post">Public posts</option><option value="market_study">Market studies</option><option value="own_post">Own posts</option><option value="call">Calls</option><option value="asset">Assets</option><option value="candidate">Candidates</option></select></label>
+    {!page && !error && <p className="a-ct-sub">Reading research…</p>}
+    {page && <>
     <p className="a-ct-sub">Source cutoff {when(page.health.source_cutoff)} · {page.health.new_evidence_awaiting_refresh} new inputs await review. Loaded {page.items.length} of {page.total}; the total is the scoped server count.</p>
     {page.gaps.length > 0 && <p className="a-ct-sub a-sev-attention">{page.gaps.length} unavailable or unsupported records remain counted: {page.gaps.map(g => g.detail).join(' ')}</p>}
     <div className="a-research-list">{page.items.map(source => <Card key={`${source.source_id}-${source.seen_version}`} title={source.owner} sub={`${source.source_kind} · published ${when(source.source_published_date)}`} tail={<Badge tone={source.currency_state === 'current' ? 'accent' : 'neutral'} variant="ring">{source.currency_state}</Badge>}>
@@ -76,6 +86,7 @@ export function ResearchPanel({ lane }: { lane: ContentLane }) {
     </Card>)}</div>
     {cursor && <Button variant="quiet" size="sm" onClick={() => void load(true)}>Load more ({page.items.length} of {page.total})</Button>}
     {selected && <SourceDetail source={selected} close={() => setSelected(null)} lane={lane} />}
+    </>}
   </Group>
 }
 
@@ -85,18 +96,32 @@ export function BriefCard({ brief, lane, reload, readOnly = false }: { brief: Ed
   const [message, setMessage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [scope, setScope] = useState<'candidate' | 'angle' | 'format'>('candidate')
-  const [reviewed, setReviewed] = useState<{ version: number; hash: string } | null>(null)
-  const draftRequest = useRef(requestId(`create-draft-${brief.identity.brief_id}-${brief.identity.version}`))
+  const [reviewed, setReviewed] = useState<{ version: number; hash: string } | null>(() =>
+    brief.review?.verdict === 'pass' && brief.readiness === 'ready_to_draft' && brief.missing_material.length === 0
+      ? { version: brief.identity.version, hash: brief.identity.content_hash } : null)
+  const draftRequest = useRef(draftRequestId(brief))
   const reviewRequest = useRef(requestId(`review-${brief.identity.brief_id}-${brief.identity.version}`))
   const decide = async (action: 'shortlist' | 'defer' | 'reject') => {
     if (!reason.trim()) { setMessage('Add a reason and choose its scope before saving.'); return }
     setBusy(true); try { const r = await recordEditorialDecision(editorialClient, clientId(lane), { kind: 'brief', id: brief.identity.brief_id, version: brief.identity.version }, brief.identity.version, action, reason, scope, requestId(`brief-${action}`)); setMessage(r.outcome === 'conflict' ? `Conflict: ${r.conflict?.reason ?? 'newer decision exists'}.` : `${action} saved. It did not generate, approve, schedule, or publish.`); reload() } catch (e) { setMessage(e instanceof Error ? e.message : 'Decision failed.') } finally { setBusy(false) }
   }
-  const review = async () => { if (!reason.trim()) { setMessage('Add a review reason before marking this brief ready.'); return } setBusy(true); try { const r = await reviewEditorialBrief(editorialClient, clientId(lane), brief.identity.brief_id, brief.identity.version, brief.identity.content_hash, 'pass', reason, reviewRequest.current); if (r.state === 'accepted' && r.version && r.content_hash) { setReviewed({ version:r.version, hash:r.content_hash }); draftRequest.current = requestId(`create-draft-${brief.identity.brief_id}-${r.version}`); setMessage(`Reviewed as v${r.version}. Create draft is now a separate action.`) } else setMessage(`Review ${r.state}: ${r.reason ?? 'reload the current brief and inspect its missing material.'}`) } catch (e) { setMessage(e instanceof Error ? e.message : 'Review could not be saved.') } finally { setBusy(false) } }
+  const review = async () => { if (!reason.trim()) { setMessage('Add a review reason before marking this brief ready.'); return } setBusy(true); try { const r = await reviewEditorialBrief(editorialClient, clientId(lane), brief.identity.brief_id, brief.identity.version, brief.identity.content_hash, 'pass', reason, reviewRequest.current); if (r.state === 'accepted' && r.version && r.content_hash) { setReviewed({ version:r.version, hash:r.content_hash }); draftRequest.current = draftRequestId(brief, r.version, r.content_hash); setMessage(`Reviewed as v${r.version}. Create draft is now a separate action.`) } else setMessage(`Review ${r.state}: ${r.reason ?? 'reload the current brief and inspect its missing material.'}`) } catch (e) { setMessage(e instanceof Error ? e.message : 'Review could not be saved.') } finally { setBusy(false) } }
   const createDraft = async () => { if (!reviewed) { setMessage('Review this brief before requesting a draft.'); return } setBusy(true); try { const r = await requestDraft(editorialClient, clientId(lane), brief.identity.brief_id, reviewed.version, reviewed.hash, draftRequest.current, brief.identity.kind); setMessage(r.state === 'accepted' ? 'Draft request accepted. It remains an internal draft for review.' : `Draft blocked: ${r.blocked_reason ?? 'review the brief requirements.'}`) } catch (e) { setMessage(e instanceof Error ? e.message : 'Draft request failed.') } finally { setBusy(false) } }
-  return <Card title={brief.editorial_direction.topic} sub={`${brief.identity.kind} · v${brief.identity.version} · ${brief.identity.status}`} tail={brief.strongest_three ? <Badge tone="accent" variant="ring">Strongest 3</Badge> : <Badge tone="neutral" variant="ring">Remaining</Badge>}>
+  return <Card title={brief.editorial_direction.topic} sub={`${brief.identity.kind} · v${brief.identity.version} · ${brief.effective_status ?? brief.identity.status}`} tail={brief.strongest_three ? <Badge tone="accent" variant="ring">Strongest 3</Badge> : <Badge tone="neutral" variant="ring">Remaining</Badge>}>
     <p className="a-research-hook">{brief.editorial_direction.proposed_hook}</p><p className="a-ct-sub"><strong>Why:</strong> {brief.ranking_reason ?? brief.purpose.relevance_reason}</p><p className="a-ct-sub"><strong>Evidence:</strong> {brief.evidence.map(e => e.owner).filter(Boolean).join(', ') || 'No readable evidence.'}</p><p className="a-ct-sub"><strong>Readiness:</strong> {brief.readiness}{brief.missing_material.length ? ` · needs ${brief.missing_material.join(', ')}` : ''}</p>
-    <details><summary>Complete brief</summary><dl className="a-research-ledger"><dt>Direction</dt><dd>{brief.editorial_direction.angle}. {brief.editorial_direction.structural_beats.join(' ')}</dd><dt>Claims</dt><dd>{brief.claim_ledger.map(c => `${c.allowed_phrasing} Evidence: ${c.supporting_refs.join(', ')}`).join(' ')}</dd><dt>Passages</dt><dd>{brief.evidence.map(e => `${e.owner}: ${e.passage ?? e.limitation}`).join(' ')}</dd><dt>Dates and limits</dt><dd>{brief.evidence.map(e => `${when(e.source_published_date)}; ${e.limitation}`).join(' ')}</dd><dt>Measurement</dt><dd>{brief.measurements.length ? brief.measurements.map(m => `${m.metric_name}: ${m.observed_value}/${m.denominator}; ${m.observation_window}`).join(' ') : brief.measurements_none_reason ?? 'No measurement.'}</dd><dt>Distribution</dt><dd>{brief.distribution.cta} via {brief.distribution.route}</dd><dt>Resource / production</dt><dd>{brief.resource.artifact_role}: {brief.resource.readiness}. {brief.production.required_materials.join(', ')}</dd></dl></details>
+    <details><summary>Complete brief</summary><dl className="a-research-ledger">
+      <dt>Audience and aim</dt><dd>{brief.purpose.intended_audience} ({brief.purpose.audience_status}). {brief.purpose.objective}</dd>
+      <dt>Direction</dt><dd>{brief.editorial_direction.angle}<br />{brief.editorial_direction.structural_beats.join('\n')}<br />Tone: {brief.editorial_direction.tone}</dd>
+      <dt>Why now</dt><dd>{brief.editorial_direction.why_now}</dd>
+      <dt>Overlap and novelty</dt><dd>{brief.editorial_direction.overlap_with_existing_content}<br />{brief.editorial_direction.novelty_reason}</dd>
+      <dt>Claims</dt><dd>{brief.claim_ledger.map(c => <p key={c.claim_id}>{c.allowed_phrasing}<br />{c.status} · {c.attribution_owner} · evidence {c.supporting_refs.join(', ')}<br />Limit: {c.prohibited_inference}</p>)}</dd>
+      <dt>Original evidence</dt><dd>{brief.evidence.map(e => <div key={e.evidence_id}><p><strong>{e.owner}</strong> · {e.evidence_id}<br />{e.passage ?? e.gap_state?.detail ?? 'Original passage unavailable.'}</p><p>{e.retained_context}<br />Published {when(e.source_published_date)} · observed {when(e.captured_date)} · {e.currency_state}<br />{e.limitation}<br />{'url' in e.source_ref ? <a href={e.source_ref.url} target="_blank" rel="noreferrer">Open original</a> : <>Internal excerpt: {e.source_ref.excerpt_pointer}</>}</p></div>)}</dd>
+      <dt>Measurements</dt><dd>{brief.measurements.length ? brief.measurements.map((m,i) => <p key={i}>{m.metric_name}: {m.observed_value}<br />Owner: {m.owner}. Source: {m.source_ref}<br />Formula: {m.formula}<br />Denominator: {m.denominator}<br />Comparison: {m.comparison_population}<br />Window: {m.observation_window}; capture age {m.capture_age_days}; method {m.comparison_method_version}<br />Unknown: {m.unknowns.join(', ') || 'None recorded'}</p>) : brief.measurements_none_reason ?? 'No measurement.'}</dd>
+      <dt>Distribution</dt><dd>{brief.distribution.cta}<br />{brief.distribution.channel} · {brief.distribution.route}<br />Fulfillment: {brief.distribution.fulfillment_requirements.join(', ') || 'No additional requirements'}</dd>
+      <dt>Resource</dt><dd>{brief.resource.artifact_role}: {brief.resource.readiness}<br />{brief.resource.asset_id} {brief.resource.version && `v${brief.resource.version}`}<br />Access: {brief.resource.access_route || 'Not required'}<br />{brief.resource.permission_basis}<br />Missing: {brief.resource.required_missing_material.join(', ') || 'None recorded'}</dd>
+      <dt>Production</dt><dd>{brief.production.structure}<br />Materials: {brief.production.required_materials.join(', ')}<br />Constraints: {brief.production.critical_constraints.join(' ')}<br />Effort: {brief.production.effort_category}</dd>
+      <dt>How to evaluate</dt><dd>{brief.evaluation.primary_metric}; {brief.evaluation.secondary_metrics.join(', ')}<br />Compare with: {brief.evaluation.comparator}<br />Window: {brief.evaluation.window}; earliest valid observation: {brief.evaluation.earliest_valid_observation}<br />{brief.evaluation.event_source_availability}<br />{brief.evaluation.attribution_limitations}</dd>
+    </dl></details>
     {!readOnly && <><label className="a-research-reason">Decision reason <input value={reason} onChange={e => setReason(e.target.value)} /></label><label className="a-research-reason">Apply to <select value={scope} onChange={e => setScope(e.target.value as typeof scope)}><option value="candidate">This suggestion</option><option value="angle">This angle</option><option value="format">This format</option></select></label>
     <div className="a-research-actions"><Button size="sm" disabled={busy} onClick={() => void decide('shortlist')}>Shortlist</Button><Button variant="quiet" size="sm" disabled={busy} onClick={() => void decide('defer')}>Defer</Button><Button variant="quiet" size="sm" disabled={busy} onClick={() => void decide('reject')}>Dismiss</Button><Button variant="outline" size="sm" disabled={busy || !!reviewed} onClick={() => void review()}>Review for draft</Button><Button variant="outline" size="sm" disabled={busy || !reviewed} onClick={() => void createDraft()}>Create draft</Button></div></>}
     {message && <p className="a-ct-sub" role="status">{message}</p>}

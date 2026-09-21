@@ -6,6 +6,14 @@ import { DEFAULT_ROUTE, parseWbHash, prefixOf, wbHash, hashNamesJob } from './ro
 // because "the old link still works" is exactly the kind of claim that rots.
 
 describe('parseWbHash', () => {
+  it('maps the Content Sources shortcut to the shared Strategy reader, preserving ordinary Content', () => {
+    for (const prefix of ['v2', 'brain-b', 'v2c']) {
+      expect(parseWbHash(`#exp/${prefix}/content?sources=1`)).toEqual({ job: 'strategy', focus: null })
+      expect(parseWbHash(`#exp/${prefix}/content?section=sources`)).toEqual({ job: 'strategy', focus: null })
+      expect(parseWbHash(`#exp/${prefix}/content`)).toEqual({ job: 'content', focus: null })
+      expect(parseWbHash(`#exp/${prefix}/content?sources=0`)).toEqual({ job: 'content', focus: null })
+    }
+  })
   it('defaults to DMs with nothing focused', () => {
     expect(parseWbHash('#exp/v2')).toEqual(DEFAULT_ROUTE)
   })

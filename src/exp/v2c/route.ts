@@ -98,7 +98,9 @@ export function parseWbHash(hash: string): WbRoute {
   if (!m) return DEFAULT_ROUTE
   const seg = m[1] ?? ''
   const query = new URLSearchParams(m[3] ?? '')
-  const job = (JOBS as string[]).includes(seg)
+  const contentSources = ['content', 'strategy', ''].includes(seg)
+    && (query.get('sources') === '1' || query.get('section') === 'sources')
+  const job = contentSources ? 'strategy' : (JOBS as string[]).includes(seg)
     ? (seg as Job)
     : JOB_ALIAS[seg] ?? sectionJob(query) ?? DEFAULT_ROUTE.job
   // Only 'chat' is addressable as a focus: a thread/draft peer key is a database

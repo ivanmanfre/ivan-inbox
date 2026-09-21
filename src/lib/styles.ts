@@ -252,7 +252,7 @@ export async function fetchResources(lane: ContentLane = 'ivan'): Promise<Resour
     let q = supabase.from('lm_drafts_v2')
       .select('id, topic, format, status, resource_url, landing_url, cover_url, landing_slug, updated_at, source, source_ref, campaign_id')
     q = f.op === 'is' ? q.is(f.column, null) : q.eq(f.column, f.value)
-    const { data, error } = await q.order('updated_at', { ascending: false }).range(from, from + pageSize - 1)
+    const { data, error } = await q.order('updated_at', { ascending: false }).order('id').range(from, from + pageSize - 1)
     if (error) throw error
     const page = (data ?? []) as unknown as Resource[]
     rows.push(...page)
