@@ -57,7 +57,7 @@ begin
   if v_brief.payload#>>'{editorial_direction,format}' is distinct from p_format then
     raise exception 'native format differs from reserved brief'; end if;
   if v_link.artifact_role not in(p_format,'internal_copy',
-       case when p_format='text' then 'post' else 'video_script' end) then
+       case when p_format in('text','carousel') then 'post' else 'video_script' end) then
     raise exception 'native format differs from reserved artifact role'; end if;
   if p_format not in('text','carousel','video') then
     raise exception 'unsupported native draft format'; end if;
