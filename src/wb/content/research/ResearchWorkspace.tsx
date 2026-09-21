@@ -110,12 +110,13 @@ export function BriefCard({ brief, lane, reload, readOnly = false }: { brief: Ed
   const productionHolds = [...brief.missing_material,
     ...(brief.editorial_direction.format === 'single_image' ? brief.production.required_materials : []),
     ...brief.production.critical_constraints]
+  let generationEligible = false
   let internalCopyEligible = false
-  if (brief.readiness === 'needs_material' && brief.missing_material.length > 0) {
-    try {
-      internalCopyEligible = buildGenerationEnvelope({ brief, clientId: clientId(lane), expectedHash: brief.identity.content_hash, artifactRole: 'internal_copy', requestId: 'ui-eligibility' }).copy_only
-    } catch { /* The server remains the authority; an unrecognized hold is not offered as eligible. */ }
-  }
+  try {
+    const envelope = buildGenerationEnvelope({ brief, clientId: clientId(lane), expectedHash: brief.identity.content_hash, artifactRole: 'internal_copy', requestId: 'ui-eligibility' })
+    generationEligible = true
+    internalCopyEligible = envelope.copy_only
+  } catch { /* The server remains the authority; an unrecognized hold is not offered as eligible. */ }
   const draftRequest = useRef(draftRequestId(brief))
   const reviewRequest = useRef(requestId(`review-${brief.identity.brief_id}-${brief.identity.version}`))
   const decide = async (action: 'shortlist' | 'defer' | 'reject') => {
@@ -140,7 +141,7 @@ export function BriefCard({ brief, lane, reload, readOnly = false }: { brief: Ed
       <dt>How to evaluate</dt><dd>{brief.evaluation.primary_metric}; {brief.evaluation.secondary_metrics.join(', ')}<br />Compare with: {brief.evaluation.comparator}<br />Window: {brief.evaluation.window}; earliest valid observation: {brief.evaluation.earliest_valid_observation}<br />{brief.evaluation.event_source_availability}<br />{brief.evaluation.attribution_limitations}</dd>
     </dl></details>
     {!readOnly && <><label className="a-research-reason">Decision reason <input value={reason} onChange={e => setReason(e.target.value)} /></label><label className="a-research-reason">Apply to <select value={scope} onChange={e => setScope(e.target.value as typeof scope)}><option value="candidate">This suggestion</option><option value="angle">This angle</option><option value="format">This format</option></select></label>
-    <div className="a-research-actions"><Button size="sm" disabled={busy} onClick={() => void decide('shortlist')}>Shortlist</Button><Button variant="quiet" size="sm" disabled={busy} onClick={() => void decide('defer')}>Defer</Button><Button variant="quiet" size="sm" disabled={busy} onClick={() => void decide('reject')}>Dismiss</Button><Button variant="outline" size="sm" disabled={busy || !!reviewed} onClick={() => void review()}>Review for draft</Button><Button variant="outline" size="sm" disabled={busy || !reviewed} onClick={() => void createDraft()}>{internalCopyEligible ? 'Create internal copy' : 'Create draft'}</Button></div></>}
+    <div className="a-research-actions"><Button size="sm" disabled={busy} onClick={() => void decide('shortlist')}>Shortlist</Button><Button variant="quiet" size="sm" disabled={busy} onClick={() => void decide('defer')}>Defer</Button><Button variant="quiet" size="sm" disabled={busy} onClick={() => void decide('reject')}>Dismiss</Button><Button variant="outline" size="sm" disabled={busy || !!reviewed} onClick={() => void review()}>Review for draft</Button><Button variant="outline" size="sm" disabled={busy || !reviewed || !generationEligible} onClick={() => void createDraft()}>{internalCopyEligible ? 'Create internal copy' : 'Create draft'}</Button></div></>}
     {message && <p className="a-ct-sub" role="status">{message}</p>}
   </Card>
 }

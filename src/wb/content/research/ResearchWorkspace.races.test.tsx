@@ -76,3 +76,30 @@ it('offers held carousel copy only after review and retains its production hold'
   expect(vi.mocked(requestDraft).mock.calls[0][6]).toBe('internal_copy')
   expect(host.textContent).toContain('does not approve publication')
 })
+
+
+it('requests ready image posts as internal copy with their image holds intact', async () => {
+  const base = brief()
+  const b = brief({ editorial_direction: { ...base.editorial_direction, format: 'single_image' },
+    readiness: 'ready_to_draft', missing_material: [],
+    production: { ...base.production, required_materials: ['Owned image still required'] } })
+  b.review = { reviewer_seat: 'independent-reviewer', reviewer_model: 'human',
+    reviewed_at: '2026-09-21T00:00:00Z', verdict: 'pass', notes: 'Internal copy reviewed.' }
+  vi.mocked(requestDraft).mockResolvedValue({ state: 'accepted' } as never)
+  await act(async () => root.render(<BriefCard brief={b} lane="ivan" reload={() => {}} />))
+  expect(host.textContent).toContain('Owned image still required')
+  expect(button('Create internal copy')).toBeDefined()
+  await act(async () => button('Create internal copy').click())
+  expect(vi.mocked(requestDraft).mock.calls[0][6]).toBe('internal_copy')
+  expect(vi.mocked(requestDraft).mock.calls[0].slice(1,5)).toEqual(['ivan', b.identity.brief_id, b.identity.version, b.identity.content_hash])
+})
+
+it('does not offer an internal-copy escape for image posts missing factual proof', async () => {
+  const base = brief()
+  const b = brief({ editorial_direction: { ...base.editorial_direction, format: 'single_image' },
+    readiness: 'needs_material', missing_material: ['Verified measurement unavailable'] })
+  await act(async () => root.render(<BriefCard brief={b} lane="ivan" reload={() => {}} />))
+  expect(button('Create internal copy')).toBeUndefined()
+  expect(button('Create draft').disabled).toBe(true)
+  expect(vi.mocked(requestDraft)).not.toHaveBeenCalled()
+})
