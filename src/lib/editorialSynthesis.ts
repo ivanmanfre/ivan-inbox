@@ -7,6 +7,7 @@ export type SynthesisSource = {
   owner: string; source_published_at: string | null; captured_at: string; body_sha256: string | null
   passage: string | null; retained_context: string; limitation: string; independent: boolean
   derived_from: string | null; permission_state: string; gap_state: { reason: string; detail: string } | null
+  candidate_fields?: Record<string, unknown> | null
   snapshot_hash?: string
 }
 
@@ -68,8 +69,14 @@ export async function buildSynthesisBriefs(input: {
         !s.tone?.trim() || !s.overlap_with_existing_content?.trim() || !s.novelty_reason?.trim() ||
         !Array.isArray(s.claims) || !s.claims.length || !Array.isArray(s.measurements) ||
         !s.resource || !s.distribution || !s.production || !s.evaluation ||
-        !s.distribution.cta?.trim() || !s.production.structure?.trim() ||
-        !s.evaluation.primary_metric?.trim()) {
+        !s.distribution.cta?.trim() || !s.distribution.channel?.trim() ||
+        !s.production.structure?.trim() || !s.production.effort_category?.trim() ||
+        !Array.isArray(s.production.required_materials) || !Array.isArray(s.production.critical_constraints) ||
+        !s.evaluation.primary_metric?.trim() || !s.evaluation.comparator?.trim() ||
+        !s.evaluation.window?.trim() || !s.evaluation.earliest_valid_observation?.trim() ||
+        !s.evaluation.event_source_availability?.trim() || !s.evaluation.attribution_limitations?.trim() ||
+        !Array.isArray(s.evaluation.secondary_metrics) || !Array.isArray(s.distribution.fulfillment_requirements) ||
+        !s.resource.readiness || !Array.isArray(s.resource.required_missing_material)) {
       throw new Error(`suggestion ${index + 1} is incomplete`)
     }
     if (!['text', 'carousel', 'video', 'lm_promo', 'resource'].includes(s.format)) {
@@ -88,6 +95,15 @@ export async function buildSynthesisBriefs(input: {
       const source = safeSources.find(x => x.source_id === sourceId)
       if (!source) throw new Error(`suggestion ${index + 1} has a claim or metric outside its evidence`)
       return source
+    }
+    const publicWords = [s.topic, s.angle, s.hook, ...s.structural_beats, s.distribution.cta,
+      ...s.claims.map(c => c.allowed_phrasing)].join('\n').toLowerCase()
+    for (const call of safeSources.filter(x => x.source_kind === 'call')) {
+      const names = call.candidate_fields?.private_names
+      if (Array.isArray(names) && names.some(name => typeof name === 'string' && name.trim().length > 3 &&
+        publicWords.includes(name.toLowerCase()))) {
+        throw new Error(`suggestion ${index + 1} leaks a private call participant into public direction`)
+      }
     }
     for (const claim of s.claims) {
       const source = sourceFor(claim.source_id)
@@ -108,10 +124,29 @@ export async function buildSynthesisBriefs(input: {
     }
     for (const metric of s.measurements) {
       const source = sourceFor(metric.source_id)
-      const haystack = `${source.passage ?? ''}\n${source.retained_context}`
-      if (!haystack.includes(String(metric.observed_value)) || !metric.denominator?.trim() ||
+      const fields = source.candidate_fields ?? {}
+      const observations = fields.observed_metrics && typeof fields.observed_metrics === 'object'
+        ? fields.observed_metrics as Record<string, unknown> : {}
+      const findings = Array.isArray(fields.linked_findings) ? fields.linked_findings as Record<string, unknown>[] : []
+      const observed = Object.hasOwn(observations, metric.metric_name) &&
+        String(observations[metric.metric_name]) === String(metric.observed_value)
+      const linked = findings.some(f => f.metric_id === metric.metric_name &&
+        String(f.observed_value) === String(metric.observed_value) && f.formula === metric.formula &&
+        Array.isArray(f.source_ids) && f.source_ids.length === 1 && f.source_ids[0] === source.source_id)
+      if ((!observed && !linked) || !metric.denominator?.trim() ||
           !metric.formula?.trim() || !metric.observation_window?.trim() || !metric.comparison_population?.trim()) {
-        throw new Error(`suggestion ${index + 1} metric lacks exact source value, denominator, formula or window`)
+        throw new Error(`suggestion ${index + 1} metric lacks exact structured source observation, denominator, formula or window`)
+      }
+      if (source.captured_at && !metric.observation_window.includes(source.captured_at.slice(0, 10))) {
+        throw new Error(`suggestion ${index + 1} metric omits its exact capture date`)
+      }
+      if (linked) {
+        const finding = findings.find(f => f.metric_id === metric.metric_name &&
+          String(f.observed_value) === String(metric.observed_value))!
+        if (metric.comparison_method_version !== finding.method_version ||
+            (finding.baseline_n != null && !metric.denominator.includes(String(finding.baseline_n)))) {
+          throw new Error(`suggestion ${index + 1} metric changes linked baseline or method`)
+        }
       }
       if (source.source_kind === 'call') throw new Error('call material cannot supply a performance metric')
     }
@@ -122,6 +157,11 @@ export async function buildSynthesisBriefs(input: {
           (s.format === 'lm_promo' && match.status !== 'ready')) {
         throw new Error(`suggestion ${index + 1} resource identity/readiness is not verified`)
       }
+      if (s.resource.readiness === 'needs_material' && !s.resource.required_missing_material.length) {
+        throw new Error(`suggestion ${index + 1} omits required material for an incomplete resource`)
+      }
+    } else if (s.resource.readiness !== 'not_needed' || s.resource.asset_id || s.resource.version) {
+      throw new Error(`suggestion ${index + 1} asserts an unverified resource for an ordinary post`)
     }
     const evidence = safeSources.map((v, n) => {
       const age = v.source_published_at ? Math.floor((Date.parse(input.sourceCutoff) - Date.parse(v.source_published_at)) / 86_400_000) : null
@@ -137,11 +177,8 @@ export async function buildSynthesisBriefs(input: {
         gap_state: null, permission_state: v.permission_state as EditorialBrief['evidence'][number]['permission_state'],
       }
     })
-    const missing = [...new Set([...s.missing_material, ...s.production.required_materials,
-      ...s.resource.required_missing_material])]
-    if (safeSources.some(x => x.source_kind === 'call' && x.permission_state !== 'granted')) {
-      missing.push('Public use permission for the cited private call excerpt')
-    }
+    const missing = [...new Set([...s.missing_material, ...s.resource.required_missing_material])]
+    const publicCallHold = safeSources.some(x => x.source_kind === 'call' && x.permission_state !== 'granted')
     // A fully supported proposal can be reviewed explicitly into a new
     // ready-to-draft version; synthesis itself cannot award its own review.
     if (missing.length === 0) missing.push('Explicit independent editorial review')
@@ -176,7 +213,8 @@ export async function buildSynthesisBriefs(input: {
       distribution: { ...s.distribution, send_authorization: 'none' },
       production: { ...s.production, voice_references: input.voiceRefs ?? [],
         critical_constraints: [...s.production.critical_constraints,
-          'Use only source-supported claims; withhold private call identities.'] },
+          'Use only source-supported claims; withhold private call identities.',
+          ...(publicCallHold ? ['Internal copy only: cited private call excerpt has no public-use permission.'] : [])] },
       evaluation: s.evaluation,
       decisions_links: { selection_events: [], generation_request: null, draft_ids: [], resource_ids: [],
         publication_id: null, observed_outcomes: [] },

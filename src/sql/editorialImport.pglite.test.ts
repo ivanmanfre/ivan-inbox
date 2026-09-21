@@ -55,6 +55,19 @@ describe('Run 1 seed import against local FK-enforced 105/106', { timeout: 120_0
       'brief-ivan-06',2,$1,'draft-blocked','post') result`,
       [seed.plan[3].records.find((x: any) => x.client_id === 'ivan' && x.brief_id === 'brief-ivan-06' && x.version === 2).content_hash])
     expect(blocked.rows[0].result.state).toBe('blocked')
+    const heldPromo = seed.plan[3].records.find((x: any) => x.client_id === 'risedtc' &&
+      x.brief_id === 'brief-risedtc-05' && x.version === 2)
+    const publicPromo = await db.query<{ result: any }>(`select public.editorial_reserve_draft('clientops','risedtc',
+      'brief-risedtc-05',2,$1,'promo-public','promotion') result`, [heldPromo.content_hash])
+    expect(publicPromo.rows[0].result).toMatchObject({ state: 'blocked', blocked_reason: 'essential_material_missing' })
+    const internalPromo = await db.query<{ result: any }>(`select public.editorial_reserve_draft('clientops','risedtc',
+      'brief-risedtc-05',2,$1,'promo-internal','internal_copy') result`, [heldPromo.content_hash])
+    expect(internalPromo.rows[0].result.state).toBe('accepted')
+    const uncorrected = seed.plan[3].records.find((x: any) => x.client_id === 'ivan' &&
+      x.brief_id === 'brief-ivan-06' && x.version === 1)
+    const invalidInternal = await db.query<{ result: any }>(`select public.editorial_reserve_draft('clientops','ivan',
+      'brief-ivan-06',1,$1,'uncorrected-internal','internal_copy') result`, [uncorrected.content_hash])
+    expect(invalidInternal.rows[0].result).toMatchObject({ state: 'blocked', blocked_reason: 'essential_material_missing' })
 
     // A second batch consumes new evidence, an existing scoped decision and an
     // own-outcome snapshot. A decision landing DURING synthesis is kept and

@@ -27,6 +27,36 @@ async function setup() {
 }
 
 describe('106 editorial refresh transaction', { timeout: 60_000 }, () => {
+  it('links only exact owned original-call quotes, never a foreign call by native ID alone', async () => {
+    const db = await setup()
+    await db.exec(`create table public.transcripts(id uuid primary key,source text,fireflies_id text,date timestamptz,
+      transcript_text text,transcript_json jsonb,participants text[]);
+      create table public.lm_idea_candidates(id uuid primary key,source text,source_ref text,evidence jsonb);
+      create table public.client_ideas(id uuid primary key,client_id text,source_label text,meta jsonb,
+        score_breakdown jsonb);`)
+    await db.exec(`insert into public.transcripts values
+      ('ba816f0c-03b9-4591-94db-fa12b4724272','ivan-listener','ivan-listener-1789745655229',
+       '2026-09-18','The founder said exact verified words in the call.','{}','{"Private Founder"}'),
+      ('bc5050d1-3a98-49ce-92d0-ae73393f6cfe','fathom-risedtc',null,
+       '2026-09-17','The RISE buyer said separate verified words.','{"recording_id":"184202305"}','{"Private RISE Buyer"}');
+      insert into public.lm_idea_candidates values
+      ('9fd495db-16e2-4c27-8c94-23ed94a31604','ivan_call','ivan-listener-1789745655229',
+       '[{"quote":"exact verified words"}]'),
+      ('99abbfdd-36a3-4de1-a2fc-d049058add72','calls','bc5050d1-3a98-49ce-92d0-ae73393f6cfe',
+       '[{"quote":"separate verified words"}]');
+      insert into public.client_ideas values
+      ('b17d9050-29ac-465e-81ea-3f1450cba27a','risedtc','From your sales calls',
+       '{"source_ts":"184202305|2026-09-17T18:13:22Z"}',
+       '{"why":"separate verified words"}');`)
+    const ids = ['9fd495db-16e2-4c27-8c94-23ed94a31604', '99abbfdd-36a3-4de1-a2fc-d049058add72']
+    const ivan = await db.query<{ candidate_id: string; transcript_id: string }>(`select candidate_id,transcript_id
+      from public.editorial_linked_call_passages('clientops','ivan',$1)`, [ids])
+    expect(ivan.rows).toEqual([{ candidate_id: ids[0], transcript_id: 'ba816f0c-03b9-4591-94db-fa12b4724272' }])
+    const rise = await db.query<{ candidate_id: string }>(`select candidate_id from
+      public.editorial_linked_call_passages('clientops','risedtc',$1)`, [[
+        'b17d9050-29ac-465e-81ea-3f1450cba27a']])
+    expect(rise.rows).toEqual([{ candidate_id: 'b17d9050-29ac-465e-81ea-3f1450cba27a' }])
+  })
   it('requires explicit direction; deduplicates requests and unchanged inputs; preserves usable pointer after empty output', async () => {
     const db = await setup()
     const lease1 = await db.query<{ v: boolean }>(`select public.editorial_claim_bridge('clientops','ivan','first') v`)
@@ -42,7 +72,8 @@ describe('106 editorial refresh transaction', { timeout: 60_000 }, () => {
     const adopted = await db.query<{ result: any }>(`select public.editorial_adopt_direction('clientops','ivan',null,
       '{"audience":"operators","topic":"source-backed"}'::jsonb,'reviewed seed','explicit acceptance','a1') result`)
     const version = adopted.rows[0].result.active_version
-    const begin = await db.query<{ result: any }>(`select public.editorial_begin_refresh('clientops','ivan',$1,'r1') result`, [version])
+    const begin = await db.query<{ result: any }>(`select public.editorial_begin_refresh('clientops','ivan',$1,'r1',
+      '{"configured_model":"model-a","prompt_version":"v1","prompt_refs":[{"prompt_id":"voice","hash":"a"}]}'::jsonb) result`, [version])
     const receipt = begin.rows[0].result
     expect(receipt.status).toBe('running')
     expect(receipt.starts_acquisition).toBe(false)
@@ -55,8 +86,15 @@ describe('106 editorial refresh transaction', { timeout: 60_000 }, () => {
       'local-test','v1','[]'::jsonb,null) result`, [receipt.refresh_id])
     expect(finished.rows[0].result.status).toBe('empty')
     expect(finished.rows[0].result.last_usable_batch_id).toBeNull()
-    const retry = await db.query<{ result: any }>(`select public.editorial_begin_refresh('clientops','ivan',$1,'r3') result`, [version])
+    const retry = await db.query<{ result: any }>(`select public.editorial_begin_refresh('clientops','ivan',$1,'r3',
+      '{"configured_model":"model-a","prompt_version":"v1","prompt_refs":[{"prompt_id":"voice","hash":"b"}]}'::jsonb) result`, [version])
     expect(retry.rows[0].result.status).toBe('running')
+    const descriptors = await db.query<{ input_manifest_hash: string; synthesis_descriptor: any }>(`select
+      input_manifest_hash,synthesis_descriptor from public.editorial_input_manifests where client_id='ivan'
+      order by source_cutoff`)
+    expect(descriptors.rows).toHaveLength(2)
+    expect(descriptors.rows[0].input_manifest_hash).not.toBe(descriptors.rows[1].input_manifest_hash)
+    expect(descriptors.rows[1].synthesis_descriptor.prompt_refs[0].hash).toBe('b')
     const other = await db.query<{ result: any }>(`select public.editorial_begin_refresh('clientops','risedtc',$1,'r4') result`, [version])
     expect(other.rows[0].result.conflict.reason).toBe('stale_direction_version')
   })

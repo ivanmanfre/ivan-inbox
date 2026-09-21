@@ -118,7 +118,8 @@ export function normalizePostOutcome(input: {
   const m = input.metrics ?? {}
   const count = (x: unknown) => valid(x) ? x : 'unknown' as const
   return { kind: 'post', client_id: input.clientId, post_id: input.postId,
-    captured_at: typeof m.metric_capture_date === 'string' ? m.metric_capture_date : 'unknown',
+    captured_at: typeof (m.captured_at ?? m.metrics_updated_at ?? m.scraped_at) === 'string'
+      ? String(m.captured_at ?? m.metrics_updated_at ?? m.scraped_at) : 'unknown',
     impressions: count(m.impressions ?? m.num_impressions),
     reactions: count(m.reactions ?? m.num_likes), comments: count(m.comments ?? m.num_comments),
     shares: count(m.shares ?? m.num_shares),

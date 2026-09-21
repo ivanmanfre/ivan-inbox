@@ -1,5 +1,7 @@
 -- Run 2: explicit client direction and serialized, versioned synthesis.
 -- Depends on 105_editorial_brief_contract.sql. No live object is replaced except new RPCs.
+alter table public.editorial_input_manifests
+  add column if not exists synthesis_descriptor jsonb not null default '{}'::jsonb;
 create table if not exists public.editorial_direction_versions (
   client_id text not null,
   version text not null,
@@ -29,6 +31,7 @@ create table if not exists public.editorial_synthesis_traces (
   input_manifest_hash text not null,
   prompt_version text not null,
   model text not null,
+  input_payload jsonb,
   raw_response jsonb,
   validation jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
@@ -92,7 +95,8 @@ end;$function$;
 -- The caller is an authenticated edge adapter. A single transaction fixes the
 -- exact source versions, direction, decisions and outcomes before any model call.
 create or replace function public.editorial_begin_refresh(
-  p_gate text,p_client_id text,p_expected_direction_version text,p_request_id text)
+  p_gate text,p_client_id text,p_expected_direction_version text,p_request_id text,
+  p_synthesis_descriptor jsonb default '{}'::jsonb)
 returns jsonb language plpgsql volatile security definer set search_path to 'public' as $function$
 declare v_old public.editorial_refresh_requests%rowtype; v_dir text; v_prev text;
   v_sources jsonb; v_decisions jsonb; v_outcomes jsonb; v_cutoff timestamptz:=now();
@@ -131,7 +135,8 @@ begin
   select coalesce(jsonb_object_agg(collector,cursor),'{}'::jsonb) into v_cursors
     from public.editorial_collector_cursors where client_id=p_client_id;
   v_manifest:=jsonb_build_object('source_refs',v_sources,'direction_version',v_dir,
-    'decision_ids',v_decisions,'outcome_snapshot_ids',v_outcomes,'collector_cursors',v_cursors);
+    'decision_ids',v_decisions,'outcome_snapshot_ids',v_outcomes,'collector_cursors',v_cursors,
+    'synthesis_descriptor',p_synthesis_descriptor);
   v_hash:=encode(sha256(convert_to(v_manifest::text,'UTF8')),'hex');
   select batch_id into v_existing from public.editorial_batches
     where client_id=p_client_id and input_manifest_hash=v_hash and status in('complete','partial')
@@ -154,8 +159,8 @@ begin
       'conflict',jsonb_build_object('reason','in_flight','detail','A refresh is already active for this client'));
   end if;
   insert into public.editorial_input_manifests(client_id,input_manifest_hash,source_refs,source_cutoff,
-    collector_cursors,direction_version,decision_cutoff,decision_ids,outcome_snapshot_ids)
-    values(p_client_id,v_hash,v_sources,v_cutoff,v_cursors,v_dir,v_cutoff,v_decisions,v_outcomes)
+    collector_cursors,direction_version,decision_cutoff,decision_ids,outcome_snapshot_ids,synthesis_descriptor)
+    values(p_client_id,v_hash,v_sources,v_cutoff,v_cursors,v_dir,v_cutoff,v_decisions,v_outcomes,p_synthesis_descriptor)
     on conflict do nothing;
   v_batch:='batch-'||encode(sha256(convert_to(p_client_id||'|'||p_request_id||'|'||v_hash,'UTF8')),'hex');
   insert into public.editorial_batches(client_id,batch_id,status,input_manifest_hash,
@@ -199,8 +204,8 @@ revoke all on function public.editorial_read_direction(text,text) from public,an
 grant execute on function public.editorial_read_direction(text,text) to authenticated,service_role;
 revoke all on function public.editorial_adopt_direction(text,text,text,jsonb,text,text,text) from public,anon;
 grant execute on function public.editorial_adopt_direction(text,text,text,jsonb,text,text,text) to authenticated,service_role;
-revoke all on function public.editorial_begin_refresh(text,text,text,text) from public,anon,authenticated;
-grant execute on function public.editorial_begin_refresh(text,text,text,text) to service_role;
+revoke all on function public.editorial_begin_refresh(text,text,text,text,jsonb) from public,anon,authenticated;
+grant execute on function public.editorial_begin_refresh(text,text,text,text,jsonb) to service_role;
 revoke all on function public.editorial_read_refresh(text,text,text) from public,anon;
 grant execute on function public.editorial_read_refresh(text,text,text) to authenticated,service_role;
 
@@ -322,7 +327,11 @@ begin
       'artifact_id',null,'idempotent_replay',false,'state','conflict','blocked_reason','no_such_version'); end if;
   if v.content_hash is distinct from p_expected_hash then
     v_reason:='content_hash_mismatch';
-  elsif v.readiness<>'ready_to_draft' or jsonb_array_length(v.missing_material)>0 then
+  elsif (v.readiness<>'ready_to_draft' or jsonb_array_length(v.missing_material)>0)
+    and not (p_artifact_role='internal_copy' and v.readiness='needs_material'
+      and jsonb_array_length(v.missing_material)>0
+      and not exists (select 1 from jsonb_array_elements_text(v.missing_material) m
+        where m !~* '^(A permission decision on the .+ before .+ published|4-6 slide visual sequence design|Ivan''s explicit go/no-go on committing a second carousel|Decision: the planned draft title implies a comment-gate CTA|Resolution of which record is canonical|Final post/carousel copy for )')) then
     v_reason:='essential_material_missing';
   elsif v.payload->'review' is null or v.payload#>>'{review,verdict}'<>'pass'
      or v.payload#>>'{review,reviewer_seat}' is null
@@ -418,6 +427,46 @@ revoke all on function public.editorial_latest_source_versions(text,text,text[])
 grant execute on function public.editorial_claim_bridge(text,text,text) to service_role;
 grant execute on function public.editorial_release_bridge(text,text,text) to service_role;
 grant execute on function public.editorial_latest_source_versions(text,text,text[]) to service_role;
+
+-- Exact, bounded original-call linkage. The service passes candidate IDs, while
+-- these joins re-check tenant, source namespace and quote presence in the
+-- retained transcript. No title, full transcript or participant names leave
+-- this function except the private QA participant list.
+create or replace function public.editorial_linked_call_passages(
+  p_gate text,p_client_id text,p_candidate_ids text[])
+returns table(candidate_id text,transcript_id text,transcript_date timestamptz,
+  transcript_sha256 text,excerpt text,permission_state text,participants text[],transcript_source text)
+language plpgsql stable security definer set search_path to 'public' as $function$
+begin
+  perform public.editorial_guard(p_gate,p_client_id);
+  if cardinality(p_candidate_ids)>500 then raise exception 'call linkage request exceeds 500 candidates'; end if;
+  if p_client_id='ivan' then
+    return query select c.id::text,t.id::text,t.date,
+      encode(sha256(convert_to(t.transcript_text,'UTF8')),'hex'),
+      coalesce(c.evidence->0->>'quote',c.evidence->0->>'anchor_quote'),
+      'unknown'::text,t.participants,t.source
+      from public.lm_idea_candidates c join public.transcripts t
+        on t.source='ivan-listener' and (c.source_ref=t.id::text or c.source_ref=t.fireflies_id)
+      where c.id::text=any(p_candidate_ids) and c.source in('ivan_call','calls')
+        and nullif(coalesce(c.evidence->0->>'quote',c.evidence->0->>'anchor_quote'),'') is not null
+        and position(coalesce(c.evidence->0->>'quote',c.evidence->0->>'anchor_quote') in t.transcript_text)>0;
+  else
+    return query select i.id::text,t.id::text,t.date,
+      encode(sha256(convert_to(t.transcript_text,'UTF8')),'hex'),
+      i.score_breakdown->>'why',
+      case when coalesce(i.meta->>'consent_tier',i.score_breakdown->>'consent_tier','') in('public','granted','approved')
+        then 'granted' else 'unknown' end,t.participants,t.source
+      from public.client_ideas i join public.transcripts t
+        on t.source=case p_client_id when 'risedtc' then 'fathom-risedtc' else 'fireflies-arch' end
+        and split_part(i.meta->>'source_ts','|',1)=t.transcript_json->>'recording_id'
+      where i.client_id=p_client_id and i.id::text=any(p_candidate_ids)
+        and i.source_label=case p_client_id when 'risedtc' then 'From your sales calls' else 'From your calls' end
+        and nullif(i.score_breakdown->>'why','') is not null
+        and position(i.score_breakdown->>'why' in t.transcript_text)>0;
+  end if;
+end;$function$;
+revoke all on function public.editorial_linked_call_passages(text,text,text[]) from public,anon,authenticated;
+grant execute on function public.editorial_linked_call_passages(text,text,text[]) to service_role;
 
 create table if not exists public.editorial_reviews (
   client_id text not null,
